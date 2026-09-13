@@ -47,8 +47,8 @@ SH-OPEN, LAZY-FLAG, TEXT-LW, APP-IFACE, UNTAG, DISC-RATE, E4 SH-ECHO, E2
 INIT-BOOT (2026-09-13, `bde2b8659`), CLOSED-READ, DISC-SIMPLIFY (2026-09-13),
 CONS-ROWS (2026-09-13, `b3f64b406`).
 
-- [ ] **KILL-PAY** (kernel; `-sup`, `lane/kill-pay`; milestones A LAZY-ROW
-  and B1 LANDED; B2 = K2+K3(b)+K4 next, from the parked patch): a kill is paid with a persistent
+- [ ] **KILL-PAY** (kernel; `-sup`, `lane/kill-pay`; A, B1, B2 LANDED; K4
+  next, ruled -- see "KILL-PAY B2 LANDED"): a kill is paid with a persistent
   credential that reaches every party the kill touches (design: "KILL-ARM"
   below, plus the rulings: the 13/15 route is gated by the lazy bit; the -1
   exit payload is a wand from the credential; the generic supply carries
@@ -61,11 +61,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   after KILL-PAY B2 and the E5 design): the line-boundary invariant on
   `ush_pos`, the line fact through getcmd, `ush_rest` renamed, the composer
   with E4's dispatch, `sh_rest_holds`; and E4's leftover `sh_pay_state`.
-- [ ] **E5** (after OUT-FUPD, KILL-PAY): the write leaves at the program's
-  view shift (init's eighteen bytes, sh's prompt, echo's four writes; closes
-  `udepw_law 16`); `Hphi` from the console invariant's predicate read
-  through `Htx` against `echo_R_untainted`; then `echo_adequacy` closed from
-  `echo_adequacy_modulo_phi`.
+- [ ] **E5** (design of record: "E5 -- THE OUTPUT CLAIM FOR ECHO" below;
+  lanes CONS-HALF -> ECHO-OUT -> WRITE-LEAF -> SH-LINE R2/R3 -> PHI, after
+  OUT-FUPD and K4 land).
 
 ## What is in `iris/AppEcho.v` today
 
@@ -2623,6 +2621,155 @@ TX-RECEIPT's `tx_claim` so the two lanes merge by juxtaposition; the hart lines'
 `boot_hart_pre`, banners-before via `k_ledger_lb [banners]` on the `started`
 invariant; `boot_k_shape` deleted.  `BACKSPACE` is the int 0x100 (not byte 8):
 the "\b \b" triple is reachable only from `%c`, unused.
+
+KILL-PAY B2 LANDED (2026-09-13; `7d0bb8402`; 36 files +659/-110; build killc14,
+audit = the thirteen, lemma_diff CLEAN).  `p->killed` is no longer a bare
+existential: `SchedCtx.proc_pub`'s killed row is `⌜kl = mword_of_int 0⌝ ∨ □
+riscv_kill_cred` at the cell's own 32-bit width (`kill_paid`); the boot and
+freeproc found it at zero; kkill (and `ProofKkill.wp_kkill_loop`, the scan
+that re-bundles the row) and setkilled take the credential; sys_kill relays
+it out of the trapping process's deposit at 6; killed() hands the row back
+beside the value.  A TRAP THE KERNEL CANNOT HANDLE COSTS THE SAME PRICE:
+`UexecRet.ukill_sc sc` names exactly the causes usertrap kills at (anything
+but the ecall and the two delegated S-mode interrupts) and the deposit
+carries `ukill_cred_at sc` there (`uexec_dep_F`/`uexec_ret_F`'s transparent
+arm, `uexec_ret_transparent`, `UkStepGen.Ret_transparent`).  No verified
+program pays: an interrupt arm's cause is one of devintr's two
+(`UkStep.u_dispatch_MIE_S`, `utrap_scause_intr_not_kill`; `uk_arm_intr` and
+`uk_arm_intr'` gain `i = I_S_Timer \/ i = I_S_External`), and the store/load
+fault arms take a FAULT WITNESS `u_fault_flavor … -> ⊢ □ riscv_kill_cred`
+that `wp_uk_store_later`/`wp_uk_load_later` refute in all three flavors at
+`uvis_lazy = false` (`uva_canon`, `lazy_free_wmapped`, the new
+`UserPtTree.uleaf_ok_denied_excl` over `PtTree.pte_check_ok_denied_excl`).
+The generic slot pays out of `xv6_ssupply` (`uexec_dep_F_of_supply`, riding
+`uexec_wp_uslot*`/`cond_entry_slot*`/`uslot_mint*` -- `Happ_kill`/
+`Hkill_sup` are SPENT there).  The credential reaches setkilled as
+`SpecUsertrap.ut_kill_in` beside `ut_pay_in`, cashed by the dispatcher's
+fall-through (`ud_devintr_zero_ukill`) into `ut_d0` and `ut_56`.
+NOT YET -- K4, RULED (next lane, `-sup`): (a) the -1 PAYLOAD IS A WAND AND
+THE RUN CARRIES THE WAND: `upay_at`'s kill conjunct is `upay_neg Q := □
+riscv_kill_cred -∗ Q (-1)` in both branches, `uexec_pay_arm` returns it,
+and `urun`'s payload row IS `upay_neg (ukn_pay N)` -- the process never
+hands over `Q (-1)` itself: at its own exit it pays `sexit_pay f xs` from
+its own state, and the wand from the CREDENTIAL'S TAINT READING (every
+payload family has a taint arm: `ucons_pay`'s `∨ T`, and at echo
+`riscv_kill_cred = echo_taint γ = T`, so `upay_neg` is `iRight` -- a
+per-program lemma `ukn_pay_neg_free : ⊢ □ riscv_kill_cred -∗ ukn_pay N (-1)`
+discharged where the equation is known, UInitSh/UInitBoot); at a kill the
+kernel cashes the wand with the credential from killed()'s row and parks the
+taint arm, so the parent's wait sees `T` and goes generic (the dead
+process's lease is lost with it).  The parked patch
+`scratchpad/kill-pay-B2-K4a-only.patch` has `upay_neg`, `upay_neg_of`/
+`_pay` and the three `kexit(-1)` sites; what it lacked is exactly the
+exit stubs paying the wand from the taint.  (b) THE -1 ARMS: `SpecConsoleread`'s
+post gets `(⌜(0 <= r)%Z⌝ ∨ □ riscv_kill_cred)` off killed()'s row, and
+`console_receipt`'s left arm is `⌜r = -1⌝ ∗ (⌜(n < 0)%Z⌝ ∨ □ riscv_kill_cred)
+∗ ∃ cur d', Rd cur d'` (fileread's `n < 0` exit stays free; a reader with
+`n >= 0` gets the credential); `fileread_dev_env`/`fileread_devsw`'s
+per-cell disjunction becomes EXCLUSIVE, `(mj ≠ CONSOLE ∧ slot = 0) ∨ (mj =
+CONSOLE ∧ slot = consoleread)` (from `ConsoleInv.devsw_read_val_other`/
+`_console`), so the `devsw.read == NULL` exit cannot be the console's;
+`UkSh.ush_read_ans`'s minus-one arm gains `□ riscv_kill_cred` and
+`UShLine.ush_read_recv_leaf_holds` relays it.
+
+E5 -- THE OUTPUT CLAIM FOR ECHO: DESIGN OF RECORD (coordinator, 2026-09-13;
+to be folded into app-echo.md at the next landing).  Builds on OUT-FUPD as
+landed on `lane/out-fupd`: the console UART's invariant carries the
+application's resource `riscv_out_res ho acc` at a movable witness history
+`ho` (`obs_hist_lb_o ho`), every store to the console pays `out_link`, a
+generic process pays from the LICENCE (`Happ_out_sup`), and the console echo
+pays from the boot-fixed builder `cons_echo_shift` (`Happ_echo`).
+
+THE TWO OBSTACLES the pure predicate could not clear and the resource must:
+(i) the IMPOSTOR: nothing but a resource says WHO may put the next
+transcript byte on the wire; (ii) STORED ≠ INPUT: the ring drops a byte when
+full and the transcript expects every input's echo, so the claim must know
+that the ring's committed sequence IS the input sequence -- which is true
+only under the rate discipline and is what sh's line proof needs too
+(SH-LINE's gap (2)).
+
+THE SHAPE.  Echo's claim is a stage machine over the RING, not over the
+trace: `acc = D cs st ++ w`, where `st` is the console ring's committed
+sequence (the stored bytes), `D cs st` is the transcript DUE after the last
+stored byte's echo (`D cs [] = []`; `D cs (st ++ [c]) = D cs st ++ pending
+cs st ++ [echo_of c]`), and `pending cs st` is the process output owed at
+this stage (`u_prologue` at `st = []`; `line_alts !!! cs !!! (q-1)` when
+`length st = 17 q`; `[]` mid-line).  `w` is the prefix of `pending cs st`
+already written.  Facts: `sess_n cs (length st) = D cs st ++ pending cs st`
+at a line boundary and `= D cs st` mid-line, so `acc ⊑ sess_n cs (length
+st)`; and `length st <= length (ins (open_seg ho))` (every stored byte is an
+input) gives `acc ⊑ sess cs (ins (open_seg ho))` by `sess_n_mono` -- that is
+`good_out` at the drain, through `Htx`'s `⌜ho prefix_of h⌝` and
+`expected_rel_ins_prefix`/`expected_rel_out_mono` (the wire is a prefix of
+`acc` by `u_wire u = u_out u`).
+
+THE RESOURCE (per era, at echo's fixed part γ):
+  echo_out γ ho acc :=
+      echo_taint γ                                      (the licence's arm)
+    ∨ ∃ cn γo cs st w,
+        cons_stored_auth cn (1/2) st                    (HALF the ring's authority)
+      ∗ turn_auth γo (length w)                         (the writer's cursor)
+      ∗ ⌜acc = D cs st ++ w⌝ ∗ ⌜w prefix_of pending cs st⌝
+      ∗ ⌜Forall (fun c => c < length line_alts) cs⌝ ∗ ⌜length cs = length st `div` 17⌝
+      ∗ ⌜stored_are_inputs ho st⌝                       (the j-th stored byte's history has j+1 inputs, each disciplined -- or the taint above)
+  turn γo p := the exclusive fragment agreeing with `turn_auth γo p`.
+- THE ECHO (kernel, `cons_echo_shift`): consoleintr commits the byte to the
+  ring's GHOST at the echo point (before the physical store; it holds
+  cons.lock for the whole byte, so no reader sees the gap) and hands the
+  builder the kernel's half `cons_stored_auth cn (1/2) st` for the exchange:
+  the builder agrees `st`, learns from the tag `⌜disc hc⌝ ∨ taint` and
+  `stored_are_inputs` that `c` is input `length st + 1` (D2: the user typed
+  it after the echo of input `length st` was on the wire, and the wire is
+  below `acc`; D1 at a line boundary: `pending` is complete, so `w = pending`
+  and `acc = sess_n cs (length st)` exactly), appends `echo_of c`, commits
+  `st ++ [(hc, c)]` on both halves and resets `w := []`; the taint arm pays
+  through the licence.  `cons_echo`'s erase arms (^U/^H/DEL) are refuted by
+  the discipline (`disc_no_ctrl_d`'s siblings: 0x15/0x08/0x7f are not bytes
+  of `echo_line`), and the `cs = []` arm (a full ring) by
+  `stored_are_inputs` + the rate bound (at most one line outstanding).
+- A PROCESS WRITE (row 16, the U-tier write leaf): the program builds
+  `cons_out_chain M ua Q 0 n` from `turn γo p` and its knowledge that its
+  bytes are `pending cs st` at `p`; each link agrees `p`, appends, moves the
+  turn.  init (the banner, eighteen one-byte writes), sh ("$ ", "fork\n",
+  the child's "exec echo failed\n"), echo (four writes) each hold the turn
+  at their write sites; it travels in the WAIT-EXIT payloads (fork: parent
+  to child; exit/wait: child to parent) and is NOT lent during read (the
+  echo needs no turn).  At a block's start the first writer's byte pins
+  `cs !!! q` ('h'/'e'/'$'/'f' are pairwise distinct); the invariant's `cs`
+  is existential and agrees with `disc_seg'`'s by the wire's content.
+- THE FOUNDING: at the boot, not the transport -- the ring's half is a
+  kernel ghost of the era: `Hout_found : ∀ cn, cons_stored_auth cn (1/2) []
+  ==∗ app_out c [] [] ∗ app_obr c` where `app_obr c` (a new record field)
+  is init's `turn γo 0`, handed to `Hinit_boot` beside `app_boot`.  This
+  REPLACES OUT-FUPD's transport founding `O [] []` (and the `ghost_var` era
+  pair: agreement is by `cn`).  ConsoleInv holds the ring's authority at
+  HALF (`cons_res`), the other half minted for the application at the
+  console's boot mint.
+- SH'S LINE (SH-LINE's gaps (1) and (2)): the reader's window at cursor `n`
+  (`cons_window sl n 17 g hs`, the tags) plus `stored_are_inputs` read off
+  the invariant (sh's proof opens `uart_inv Uart0` at the receipt, a
+  fupd at ⊤) gives "stored byte `n + j` is input `n + j + 1`, disciplined",
+  hence `n = 17 q` and the window is `echo_line` -- the line-boundary
+  invariant on `ush_pos` is `∃ q, ⌜n = 17 q⌝` and nothing more; the bridge
+  is the invariant's pure conjunct, not a premise.
+- Hphi: the ledger `echo_R γ h` keeps the phase; at the end of the run the
+  crash slot gives `pristine ∨ taint` and the ledger's tx steps have
+  recorded, per cycle, `good_out` off `Htx`'s claim (`echo_R` gains the pure
+  conjunct `⌜Forall good_out (cycles_of h)⌝`-shaped: at a pop the claim at
+  `ho ⊑ h` lifts to the open segment; a push, an output on the other port
+  and a power event leave it).  `echo_phi h` follows with `echo_R_untainted`
+  where the disciplined branch is needed.
+
+LANES, in order: OUT-FUPD lands; CONS-HALF (kernel: ConsoleInv at half
+authority + consoleintr's ghost commit at the echo; `cons_echo_shift` takes
+and returns the kernel's half; the boot founding `Hout_found`/`app_obr`;
+`Happ_boot` loses `O`); ECHO-OUT (application: `EchoOut.v` -- `D`,
+`pending`, `stored_are_inputs`, the resource, the echo builder, the licence
+arm, the founding); WRITE-LEAF (U-tier: the write leaf on the chain, the
+turn in the payloads, init's eighteen bytes, sh's prompt and diagnostics,
+echo's four writes; closes `sh_deps`' write(16)); SH-LINE R2/R3 (the line
+boundary off the invariant; the composer; `sh_rest_holds`); PHI (the ledger
+conjunct, `Hphi`, `echo_adequacy` closed).
 
 SH-LINE 2b R1'/(a)/(b) LANDED (2026-09-13; four commits on KILL-PAY B1; 9 files
 +1136/-662; builds shr33/shr34/shr42/shland1, audit = the thirteen, lemma_diff =

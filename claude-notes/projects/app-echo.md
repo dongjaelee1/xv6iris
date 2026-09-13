@@ -70,11 +70,24 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   1-4a; the note below): the input resource, the shift as one fupd per
   accepted input over the two-resource `echo_link`, the log's high-water
   half, the wire rider, the licences, `app_in`.
-- [ ] **CONS-IO milestone B** (kernel; `-tlw`, `lane/cons-io`): the READ side
-  (C3): `cons_deliv`/`cons_log_lb`/`cons_gaps_ok` in `cons_res`, `read_link`
-  fired in SpecConsoleread at the final release on the clean arm,
-  `fileread_in`'s `Rin`, `xfam.rf_in`, `console_receipt`, sh's
-  `□ (T -∗ in_licence)` law.  Handover `cons-io-handover-2.md`.
+- [x] ~~**CONS-IO milestone B**~~ LANDED 2026-09-14 (`47bae7cae`; the note
+  below): the READ side -- `read_link` fired inside consoleread at the final
+  release on the clean arm with the kernel's `read_ok`; the consumed list on
+  the reader's lease; the exact log mirror; every consoleintr arm files its
+  own entry; `fileread_in`'s `Rin`, `xfam.rf_in`, the receipt's `ws` row.
+- [ ] **CONS-IO milestone C -- ERA-INDEX** (kernel; `-tlw`, `lane/cons-io`;
+  owner-confirmed 2026-09-14): the application's claims and every
+  application-facing link indexed by the ERA NUMBER `S gen_id` (no fresh
+  name), and the kernel's stamp `⌜obs_boots h = S gen_id⌝` on every history
+  it hands the application (`Hpow`'s on-arm, `Htx`/`Hrx` with a `GenId`
+  binder, the receive column's per-byte entry, `cons_echo_shift`'s
+  premises); `app_out`/`app_in`/`app_boot A c k`, the founding `∀ k`.
+  Reason (the design review, 2026-09-14): a dead era's writer keeps its
+  linear turn inside that era's closed invariants and nothing can reclaim
+  it, so a writer's link lemma must be excluded from the current claim BY
+  THE INDEX; the same-cycle facts become pure from the stamps (a history
+  comparison against the ledger's is unprovable inside a link: the
+  observation authority is in the state interpretation).
 - [x] ~~**ECHO-PURE**~~ LANDED 2026-09-13 (`c1781608b`; the note below): E5's
   pure half -- `ConsLog.v` (the boundary vocabulary), `EchoOutPure.v` (the
   stage machine and the four facts), `disc_prefix`.
@@ -3109,6 +3122,30 @@ for 23 minutes; write the argument.  SUPERSEDED IN PART by the
 owner's ruling of the same day (K' := Q(-1), the lane item above): step 3's
 alive token and `K'`/`kcred` saved proposition are removed again in 4b'; the
 tie, the denied-store leaf and the token's `kpay` stay.
+
+CONS-IO MILESTONE B LANDED (2026-09-14; `47bae7cae` on `063604878`; 23 files
++1925/-490; builds cio31-cio39 in `-tlw`; audit the thirteen; lemma_diff CLEAN;
+trusted diff in the session scratchpad `trusted-cons-io-B.diff`).
+The READ side of E5's boundary.  `read_link`, `read_ok`, `in_licence`,
+`out_link`, `out_licence` are UNCHANGED; this is what lets the kernel PAY one.
+THE LOG'S MIRROR IS A PAIR (`UartNames.un_logm`, F4): the gap clause quantifies
+over log entries ABOVE the ring's top, which a `mono_list` bound cannot
+exclude, so `cons_res` says L IS the log (`cons_logm cn L0 ∗ ⌜cons_log_ok L0
+(st ++ pd) gp⌝`) and `in_claim_read` takes `read_ok` as a plain premise.
+EVERY consoleintr ARM FILES ITS OWN ENTRY (F2), because the ring's account of
+the log must hold wherever the ring is SEALED: the store appends and pushes in
+one ghost step, the drops file `cs = []`, and the erase arms OWE their
+character from before their first pop -- `ct_gh` carries `pe : option (list
+mobs * bv 8)`, and the C('U') loop carries that promise across its back edge.
+`dl` RIDES WITH THE LEASE (F1): `cons_reader` is `cons_rdtok ∗ cons_dl`, split
+at the first pop and rejoined at the release, because the copy loop drops
+cons.lock with bytes already popped.  Its name and arity are unchanged.
+THE FIRE is `ProofConsoleread.cr_out_of_rout`, at the final release on the
+clean arm, with `uart_inv Uart0 (cn_uart cn)` a new premise of consoleread's
+contract (F6, discharged at ProofMain's mint).  `fileread_in` gains
+`cons_read_pay Rin`, `console_receipt`'s clean arm the consumed window and
+`Rin ws` at `sl'` (F5), `xfam` gains `rf_in` (LAST); the generic slot and sh
+pay from `in_licence` and claim nothing.
 
 RULINGS AFTER CONS-IO PHASE 1 (coordinator, 2026-09-13; the E5 note above is
 read with these): (1) the shift is CHAIN-FIRST, APPEND-LAST -- the echo's

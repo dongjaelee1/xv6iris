@@ -1,0 +1,310 @@
+(* ===================================================================== *)
+(*  UkWriteLeaf.v -- THE U-TIER WRITE LEAF'S CONCRETE HALF                *)
+(*  (app-echo.md, "E5 -- THE CONSOLE I/O CLAIM: DESIGN OF RECORD", (W);   *)
+(*   lane IO-LEAF, first half.)                                          *)
+(*                                                                       *)
+(*  [UkRunSys.wp_uk_ecall_write_chain] is the leaf, and like every other  *)
+(*  U-tier leaf it is stated against the ABSTRACT deposit class           *)
+(*  ([UexecSG.sbundle_at] / [spost_at]): UkRunSys sits below the file     *)
+(*  system and cannot name a row.  This file is where row 16 is named --  *)
+(*  [UConsOpen.v] (open), [UInitConsK.v] (mknod) and [UShLine.v] (read)   *)
+(*  are the three moulds, and this is the fourth:                         *)
+(*                                                                       *)
+(*    S1  THE FAMILY.  [UexecExecInst.xfam] at the ONE field row 16 reads *)
+(*        ([wf_Q], the caller's own output cursor) and the payload field  *)
+(*        every deposit must answer at ([kf_xpay]); trivial everywhere    *)
+(*        else, because a deposit is read at one number.                  *)
+(*    S2  THE TWO KEY-LEVEL ROWS, IN THE PROCESS'S DIRECTION.             *)
+(*        [UexecExecInst] states row 16's deposit ELIM and its post INTRO *)
+(*        -- the dispatcher's two -- so a process needs the other two.    *)
+(*    S3  THE ARM, out of the caller's own ledger: which arm              *)
+(*        [SpecFilewrite.filewrite_in] takes is decided by the KEY's      *)
+(*        descriptor table, and what a program holds is the low [NSTD]    *)
+(*        slots of it.  [UShLine.ush_fd_st_console] is the read's; this   *)
+(*        is the same fact at an arbitrary standard descriptor (a write   *)
+(*        goes to fd 1 or fd 2, never to fd 0).                           *)
+(*    S4  THE SUPPLY: the process's chain, minted as the deposit.  The    *)
+(*        chain is over the image [UkRun.udepwf_std]'s ∀ binds, so the    *)
+(*        program supplies it against the heap the wand lends it --       *)
+(*        [UkRunSys.uheap_ubytes_wat] is what turns a program's byte RUN  *)
+(*        into the per-byte lookups the chain's nodes ask for.            *)
+(*    S5  THE SMOKE TEST: a two-byte write paid from the OUTPUT LICENCE   *)
+(*        at a cursor family that is not the trivial one, and the post    *)
+(*        read back at that same family.  This is the anti-vacuity        *)
+(*        witness: the deposit is satisfiable and the post says           *)
+(*        something.                                                      *)
+(* ===================================================================== *)
+From Stdlib Require Import ZArith Bool Lia List.
+From stdpp Require Import gmap list bitvector.definitions.
+From iris.proofmode Require Import proofmode.
+From iris.base_logic.lib Require Import ghost_map ghost_var invariants.
+From iris.program_logic Require Import language lifting.
+Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
+Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
+Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
+Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes ObsTrace.
+Require Import RegFile.
+(* THE GHOST BINDER LIST, each module IMPORTED and not merely required --
+   naming a class without its defining module in scope introduces a FRESH
+   Type variable and the kernel's [uexecSG] instance becomes invisible to
+   resolution ([UInitSh.v]'s header). *)
+Require Import Xv6Cameras.
+Require Import Xv6G.
+Require Import FdSlots.
+Require Import IrefSlots.
+Require Import ProcAvail.
+Require Import FileInvDefs.
+Require Import UserFd.
+Require Import UserHeap.
+Require Import UserPerm.           (* [uperm] -- the heap's permission map *)
+Require Import ProcPtOwn.
+Require Import UserPtTree.
+Require Import UserCwd UserChildren.
+Require Import UmodeArith.
+Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
+Require Import VcGen.              (* [trunc32] *)
+Require Import PieceFam.
+Require Import FsTree.
+Require Import ChildTok.
+Require Import UexecSlot UexecRet UsysMemOk UexecSG.
+Require Import UkRun UkRunSys.
+Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
+Require Import SpecArgfd.          (* [fd_st_of_key] *)
+Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
+Require Import SpecConsolewrite.   (* [cons_out_chain] *)
+Require Import SpecSysRead.        (* [sys_rw_count] *)
+Require Import WpUart.             (* [out_licence] / [out_link] *)
+Require Import ConsoleInv.         (* [CONSOLE] *)
+Require Import FsCfg.
+Require Import FsAbsDefs.
+Require Import TsoCtx.
+Local Open Scope Z_scope.
+Import Defs.
+
+Section UkWriteLeaf.
+  Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
+
+  Local Notation a0_idx := (mword_of_int 10 : mword 5).
+  Local Notation a1_idx := (mword_of_int 11 : mword 5).
+  Local Notation a2_idx := (mword_of_int 12 : mword 5).
+
+  (* =================================================================== *)
+  (*  S1  THE FAMILY                                                      *)
+  (* =================================================================== *)
+  (* [UShLine.xfam_rd] is the mould.  Row 16 reads ONE field -- [wf_Q],
+     the caller's own output cursor, which serves BOTH arms of
+     [SpecFilewrite.filewrite_in] since lane OUT-FUPD retired the trace
+     seed -- and every deposit must answer the payload row, which is
+     [kf_xpay] ([UexecSG.sexit_pay]).  Everything else is inert. *)
+  Definition xfam_wr (Q : nat -> iProp Σ) (Xp : Z -> iProp Σ) : xfam :=
+    {| xf_P     := fun _ _ => True%I;
+       xf_Pmiss := fun _ _ => True%I;
+       xf_Fo    := pfam_triv (fun _ _ _ => True%I);
+       xf_Rs    := True%I;
+       rf_F     := pfam_triv (fun _ _ _ _ => True%I);
+       cf_P     := fun _ _ => True%I;
+       cf_Pmiss := fun _ _ => True%I;
+       cf_Fo    := pfam_triv (fun _ _ _ => True%I);
+       of_P     := fun _ _ => True%I;
+       of_Pmiss := fun _ _ => True%I;
+       of_Farm  := pfam_triv (fun _ _ => True%I);
+       of_Fun   := pfam_triv (fun _ _ => True%I);
+       of_Fok   := pfam_triv (fun _ _ _ _ => True%I);
+       of_Fex   := pfam_triv (fun _ _ _ _ => True%I);
+       of_Fo    := pfam_triv (fun _ _ _ => True%I);
+       of_Ft    := pfam_triv (fun _ _ _ => True%I);
+       wf_Q     := Q;
+       nf_P     := fun _ _ => True%I;
+       nf_Pmiss := fun _ _ => True%I;
+       nf_Farm  := pfam_triv (fun _ _ => True%I);
+       nf_Fun   := pfam_triv (fun _ _ => True%I);
+       nf_Fok   := pfam_triv (fun _ _ _ _ => True%I);
+       nf_Fex   := pfam_triv (fun _ _ _ _ => True%I);
+       uf_P     := fun _ _ => True%I;
+       uf_Pmiss := fun _ _ => True%I;
+       uf_Fent  := pfam_triv (fun _ _ _ _ => True%I);
+       uf_Ftgt  := pfam_triv (fun _ _ => True%I);
+       uf_Fex   := pfam_triv (fun _ _ _ _ => True%I);
+       uf_Fmiss := pfam_triv (fun _ _ _ => True%I);
+       lf_Ftgt  := pfam_triv (fun _ _ _ => True%I);
+       lf_Fent  := pfam_triv (fun _ _ _ _ => True%I);
+       lf_Funt  := pfam_triv (fun _ _ => True%I);
+       df_P     := fun _ _ => True%I;
+       df_Pmiss := fun _ _ => True%I;
+       df_Farm  := pfam_triv (fun _ _ => True%I);
+       df_Fdots := pfam_triv (fun _ _ _ _ => True%I);
+       df_Fun   := pfam_triv (fun _ _ => True%I);
+       df_Fok   := pfam_triv (fun _ _ _ _ => True%I);
+       df_Fex   := pfam_triv (fun _ _ _ _ => True%I);
+       kf_pay   := fun _ => True%I;
+       kf_xpay  := Xp;
+       rf_ret   := fun _ _ => True%I |}.
+
+  (* the payload row [UkRun.udepwf_std] asks for, by computation *)
+  Lemma xfam_wr_pay (Q : nat -> iProp Σ) (Xp : Z -> iProp Σ) :
+    sexit_pay (xfam_wr Q Xp) = Xp.
+  Proof. reflexivity. Qed.
+
+  (* =================================================================== *)
+  (*  S2  THE TWO KEY-LEVEL ROWS, IN THE PROCESS'S DIRECTION              *)
+  (*                                                                      *)
+  (*  [UConsOpen]'s two are the mould; the proofs are the same three      *)
+  (*  lines, the match at one literal.                                    *)
+  (* =================================================================== *)
+  Local Ltac xv6_skip :=
+    match goal with
+    | |- context [ @decide (?a = ?b) _ ] =>
+        let Hc := fresh "Hc" in
+        destruct (decide (a = b)) as [Hc | _]; [ exfalso; by vm_compute in Hc | ]
+    end.
+  Local Ltac xv6_take :=
+    match goal with
+    | |- context [ @decide (?a = ?b) _ ] =>
+        let Hc := fresh "Hc" in
+        destruct (decide (a = b)) as [_ | Hc]; [ | exfalso; by apply Hc ]
+    end.
+
+  Lemma sbundle_at_write_intro_at (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
+      (v0 v1 v2 : mword 64) (sts : list fdstate) (Mv : gmap Z (bv 8)) :
+    tf_w (uvis_tf W) (tf_arg_idx 0) = v0 ->
+    tf_w (uvis_tf W) (tf_arg_idx 1) = v1 ->
+    tf_w (uvis_tf W) (tf_arg_idx 2) = v2 ->
+    uvis_fd W = sts ->
+    uvis_M W = Mv ->
+    filewrite_in (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) -∗
+    sbundle_at X 16 f W.
+  Proof.
+  Admitted.
+
+  Lemma spost_at_write_elim_at (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
+      (v0 v1 v2 : mword 64) (sts : list fdstate) (Mv : gmap Z (bv 8))
+      (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate)
+      (cw' : Z) (cs' : gset gname) :
+    tf_w (uvis_tf W) (tf_arg_idx 0) = v0 ->
+    tf_w (uvis_tf W) (tf_arg_idx 1) = v1 ->
+    tf_w (uvis_tf W) (tf_arg_idx 2) = v2 ->
+    uvis_fd W = sts ->
+    uvis_M W = Mv ->
+    spost_at X 16 f W r M' fdv' cw' cs' -∗
+    filewrite_extra (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) r.
+  Proof.
+  Admitted.
+
+  (* =================================================================== *)
+  (*  S3  THE ARM, OUT OF THE CALLER'S OWN LEDGER                         *)
+  (* =================================================================== *)
+  (* [UShLine.ush_fd_st_console] at an arbitrary standard descriptor: a
+     write goes to fd 1 or fd 2, never to fd 0, so the index cannot be
+     baked in the way the read's is.  The WRITABLE bit is what selects
+     [SpecFilewrite.filewrite_in]'s device arm; the major is left free
+     because the input arm asks for the chain at EVERY major
+     ([filewrite_in]'s header: the devsw cell is null-or-consolewrite
+     everywhere), and only the POST's arm is keyed on [CONSOLE]. *)
+  Lemma uwr_fd_st_dev (v0 : mword 64) (fdv l : list fdstate)
+      (i : nat) (rb : bool) (mj : Z) :
+    bv_signed (trunc32 v0) = Z.of_nat i ->
+    (i < NSTD)%nat ->
+    take NSTD fdv = l ->
+    l !! i = Some (FdOpen rb true (FdDevice mj)) ->
+    fd_st_of_key v0 fdv = FdOpen rb true (FdDevice mj).
+  Proof.
+  Admitted.
+
+  (* =================================================================== *)
+  (*  S4  THE SUPPLY                                                      *)
+  (* =================================================================== *)
+  (* THE DEPOSIT, AT THE PROGRAM'S OWN CURSOR.  [UkRun.udepwf_std] binds
+     the image, the permission map and the break, and LENDS the heap
+     authority inside the wand -- which is exactly what a program needs to
+     justify its bytes: it owns its output run as [UserHeap.ubytesq] at a
+     source function and reads the chain's per-byte premise off the heap
+     with [UkRunSys.uheap_ubytes_wat].  So the chain enters here as a wand
+     over the lent heap, and nothing about the image is fixed. *)
+  Lemma uwrite_chain_sup (N : uk_names Σ) (Q : nat -> iProp Σ)
+      (m : regfile) (pc : mword 64) (l : list fdstate)
+      (i : nat) (rb : bool) (mj : Z) :
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat i ->
+    (i < NSTD)%nat ->
+    l !! i = Some (FdOpen rb true (FdDevice mj)) ->
+    (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
+       cons_out_chain M (m !!! Regidx a1_idx) Q 0%nat
+         (Z.to_nat (sys_rw_count (m !!! Regidx a2_idx)))) -∗
+    udepwf_std N m pc 16 (xfam_wr Q (ukn_pay N)) l.
+  Proof.
+  Admitted.
+
+  (* ...AND THE POST, READ BACK AT THE SAME FAMILY.  The device arm of
+     [SpecFilewrite.filewrite_extra] is keyed on [CONSOLE] -- at any other
+     major the call reached a callee this layer cannot name and nothing
+     true is left to say ([filewrite_extra_dev_drop]) -- so this is where
+     the major stops being free. *)
+  Lemma uwrite_post_cons (Q : nat -> iProp Σ) (Xp : Z -> iProp Σ)
+      (W : uvis) (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate)
+      (cw' : Z) (cs' : gset gname) (l : list fdstate) (i : nat) (rb : bool) :
+    bv_signed (trunc32 (tf_w (uvis_tf W) (tf_arg_idx 0))) = Z.of_nat i ->
+    (i < NSTD)%nat ->
+    take NSTD (uvis_fd W) = l ->
+    l !! i = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    spost_at uslot 16 (xfam_wr Q Xp) W r M' fdv' cw' cs' -∗
+    write_cons_arms Q (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) r.
+  Proof.
+  Admitted.
+
+  (* =================================================================== *)
+  (*  S5  THE SMOKE TEST (W3): A TWO-BYTE WRITE FROM THE LICENCE           *)
+  (*                                                                      *)
+  (*  [SpecConsolewrite.cons_out_chain_of_licence] pays the chain at the   *)
+  (*  TRIVIAL cursor, which is what every quiet write leaf does and what   *)
+  (*  says nothing.  This is the same payment at a cursor that DEPENDS ON  *)
+  (*  ITS INDEX, which is the whole point of the leaf: the caller's own    *)
+  (*  family travels into the deposit and comes back out of the post.      *)
+  (* =================================================================== *)
+
+  (* the licence pays any cursor the chain's own range makes free -- the
+     bounded form of [SpecConsolewrite.cons_out_chain_of_licence] *)
+  Lemma cons_out_chain_of_licence_bnd (M : gmap Z (bv 8)) (ua : mword 64)
+      (Q : nat -> iProp Σ) (k cnt : nat) :
+    (forall j : nat, (k <= j <= k + cnt)%nat -> ⊢ Q j) ->
+    out_licence -∗ cons_out_chain M ua Q k cnt.
+  Proof.
+  Admitted.
+
+  (* a cursor that is not the trivial one: "at most two bytes so far" *)
+  Definition uwr_demo_Q : nat -> iProp Σ := fun k => (⌜(k <= 2)%nat⌝)%I.
+
+  Lemma uwrite_two_of_licence (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (l : list fdstate) (i : nat) (rb : bool) (mj : Z) :
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat i ->
+    (i < NSTD)%nat ->
+    l !! i = Some (FdOpen rb true (FdDevice mj)) ->
+    sys_rw_count (m !!! Regidx a2_idx) = 2 ->
+    out_licence -∗
+    udepwf_std N m pc 16 (xfam_wr uwr_demo_Q (ukn_pay N)) l.
+  Proof.
+  Admitted.
+
+  (* ...AND WHAT COMES BACK IS THE COUNT, AT THE CALLER'S OWN FAMILY: not
+     [emp], not a claim about the wire, but "the answer is a byte count
+     this call did not exceed", read off [uwr_demo_Q] at the very index
+     [SpecFilewrite.write_cons_arms] hands the cursor back at. *)
+  Lemma uwrite_two_post (W : uvis) (r : mword 64) (M' : gmap Z (bv 8))
+      (fdv' : list fdstate) (cw' : Z) (cs' : gset gname)
+      (Xp : Z -> iProp Σ) (l : list fdstate) (i : nat) (rb : bool) :
+    bv_signed (trunc32 (tf_w (uvis_tf W) (tf_arg_idx 0))) = Z.of_nat i ->
+    (i < NSTD)%nat ->
+    take NSTD (uvis_fd W) = l ->
+    l !! i = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2)) = 2 ->
+    spost_at uslot 16 (xfam_wr uwr_demo_Q Xp) W r M' fdv' cw' cs' -∗
+    ⌜filewrite_ret 2 r⌝ ∗
+    ∃ k : nat, ⌜r = (mword_of_int (Z.of_nat k) : mword 64) /\ (k <= 2)%nat⌝.
+  Proof.
+  Admitted.
+
+End UkWriteLeaf.

@@ -37,6 +37,11 @@ Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             which rides inside [urun] *)
 Require Import UsysMemOk. (* [USYS_exec] -- excluded by the minting law *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
+(* [tf_w] / [tf_arg_idx] / [uvis] / [uslot]: the write-chain stub below
+   states its post at the TRAPPING KEY, which nothing else in this file
+   names.  All three files are already in this file's cone through
+   [UkRunSys]; what is added here is the IMPORT. *)
+Require Import UexecSlot UexecRet ProcGeom FdSlots.
 
 Section UkEcho.
   Context `{!riscvGS Σ}.
@@ -1037,6 +1042,51 @@ Section UkEcho.
     iIntros (h3) "Hrun".
     iApply ("Hcont" $! h3 ret with "Hrun").
   Qed.
+  (* ...AND THE SAME STUB WITH THE OUTPUT CHAIN AND THE POST                *)
+  (* (app-echo.md, lane IO-LEAF, first half; the leaf is                    *)
+  (* [UkRunSys.wp_uk_ecall_write_chain]).                                   *)
+  (*                                                                       *)
+  (* [wp_kecho_write] above pays row 16 from the FLAGGED DEPOSIT            *)
+  (* ([UkRun.udepw_law] 16) and throws the post away, which is what a       *)
+  (* licensed writer can afford and all echo has ever claimed.  This is the *)
+  (* same three instructions with the deposit taken at echo's OWN cursor    *)
+  (* family and the post handed back, so that ECHO-OUT's four writes can    *)
+  (* justify their bytes and read their own [wf_Q] at the count that was    *)
+  (* pushed.  Two premises replace the one:                                 *)
+  (*                                                                       *)
+  (*   THE DEPOSIT, at the key the ecall traps from -- a7 already holds 16  *)
+  (*   and the pc is the ecall's -- because the chain reads the buffer      *)
+  (*   address and the count off that very key ([UkRun.udepwf_std]'s ∀      *)
+  (*   binds the image, not the registers).                                 *)
+  (*                                                                       *)
+  (*   ITS LEDGER, because the arm row 16 asks for is selected by the KEY's *)
+  (*   descriptor table and a program holds only the low [NSTD] slots of it.*)
+  (*                                                                       *)
+  (* The three argument words come back at the CALLER's register file:      *)
+  (* a0/a1/a2 are untouched by the stub, which writes only a7 and then a0.  *)
+  Lemma wp_kecho_write_chain (h : CpuId) (m : regfile) (avail : nat)
+      (fdep : sfam) (l : list fdstate) :
+    echo_code γt -∗
+    urun N h m (mword_of_int EchoSyms.write) avail -∗
+    udepwf_std N (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+      (add_vec_int (mword_of_int EchoSyms.write : mword 64) 2) 16 fdep l -∗
+    UserFd.ustd γfd l -∗
+    (∀ (h' : CpuId) (ret : mword 64) (W : uvis) (cw' : Z) (cs' : gset gname),
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx a0_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx a1_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx a2_idx⌝ -∗
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       UserFd.ustd γfd l -∗
+       spost_at uslot 16 fdep W ret (uvis_M W) (uvis_fd W) cw' cs' -∗
+       urun N h'
+         (<[Regidx a0_idx := ret]>
+            (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
+         (ret_pc (m !!! Regidx ra_idx)) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+  Admitted.
+
 
 
   (* ===================================================================== *)

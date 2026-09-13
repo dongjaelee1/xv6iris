@@ -1225,6 +1225,41 @@ Section UkInit.
     iIntros (h3) "Hrun".
     iApply ("Hcont" $! h3 ret with "Hrun").
   Qed.
+  (* ...AND THE SAME STUB WITH THE OUTPUT CHAIN AND THE POST                *)
+  (* (app-echo.md, lane IO-LEAF, first half; the leaf is                    *)
+  (* [UkRunSys.wp_uk_ecall_write_chain]).                                   *)
+  (*                                                                       *)
+  (* [wp_kinit_write] above pays row 16 from the FLAGGED DEPOSIT            *)
+  (* ([UkRun.udepw_law] 16) and throws the post away.  This is the same     *)
+  (* three instructions with the deposit taken at /init's OWN cursor family *)
+  (* and the post handed back, so that the banner and the two diagnostics   *)
+  (* can justify their own bytes and read their [wf_Q] at the count that    *)
+  (* was pushed.  Both stubs stand: the quiet one keeps working from the    *)
+  (* licence, and IO-LEAF's second half swaps the call only where /init has *)
+  (* a claim to make.                                                       *)
+  Lemma wp_kinit_write_chain (h : CpuId) (m : regfile) (avail : nat)
+      (fdep : sfam) (l : list fdstate) :
+    init_code γt -∗
+    urun N h m (mword_of_int InitSyms.write) avail -∗
+    udepwf_std N (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+      (add_vec_int (mword_of_int InitSyms.write : mword 64) 2) 16 fdep l -∗
+    UserFd.ustd γfd l -∗
+    (∀ (h' : CpuId) (ret : mword 64) (W : uvis) (cw' : Z) (cs' : gset gname),
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx a0_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx a1_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx a2_idx⌝ -∗
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       UserFd.ustd γfd l -∗
+       spost_at uslot 16 fdep W ret (uvis_M W) (uvis_fd W) cw' cs' -∗
+       urun N h'
+         (<[Regidx a0_idx := ret]>
+            (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
+         (ret_pc (m !!! Regidx ra_idx)) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+  Admitted.
+
 
   (* THE PAYLOAD IS TRIVIAL AT THIS LANE.  exit's leaf is a PAYMENT
      ([UkRunSys.wp_uk_ecall_exit]): the program owes what its record says

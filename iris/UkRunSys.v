@@ -3465,6 +3465,111 @@ Section UkRunSys.
     cbn [uvis_M uvis_of_run]. iExact "Hpost".
   Qed.
 
+  (* ------------------------------------------------------------------- *)
+  (* THE RUN, AS THE OUTPUT CHAIN'S PER-BYTE PREMISE                       *)
+  (* (app-echo.md, lane IO-LEAF, (W)).                                     *)
+  (*                                                                       *)
+  (* [SpecConsolewrite.cons_out_chain]'s node at cursor [k] is quantified   *)
+  (* over the byte the image holds at [uint (add_vec_int ua (Z.of_nat k))]  *)
+  (* -- the MACHINE-WORD addressing, because that is how consolewrite       *)
+  (* walks its buffer -- while a program owns its output run as             *)
+  (* [UserHeap.ubytesq] at a base [Z] and a source function.  This is the   *)
+  (* bridge, and it is [uheap_ubytes_run] above with its own no-wrap fact   *)
+  (* spent: the run's canonicity clause bounds every index below 2^38, so   *)
+  (* the word add does not wrap and the two addressings agree.              *)
+  (*                                                                       *)
+  (* It is stated HERE rather than in [UserHeap.v] for the dev loop's       *)
+  (* reason ([durable-notes.md]: put an ADDITIVE change to a shared         *)
+  (* invariant file in a NEW leaf file); nothing below this file needs it.  *)
+  (* ------------------------------------------------------------------- *)
+  Lemma uheap_ubytes_wat (γt γd γs : gname) (M : gmap Z (bv 8))
+      (pmv : gmap (mword 27) uperm) (sz : Z) (dq : dfrac)
+      (ua : mword 64) (nb : nat) (f : nat -> bv 8) :
+    uheap γt γd γs M pmv sz -∗ ubytesq γd dq (uint ua) nb f -∗
+    ⌜ forall j : nat, (j < nb)%nat ->
+        M !! uint (add_vec_int ua (Z.of_nat j)) = Some (f j) ⌝.
+  Proof.
+  Admitted.
+
+  (* ------------------------------------------------------------------- *)
+  (* ecall, at WRITE (16) -- THE LEAF THAT LETS THE PROCESS PAY THE         *)
+  (* CONSOLE ARM WITH ITS OWN CHAIN (app-echo.md, E5 -- THE CONSOLE I/O     *)
+  (* CLAIM, item (W); lane IO-LEAF, first half).                            *)
+  (*                                                                       *)
+  (* Row 16's deposit is [SpecFilewrite.filewrite_in] at                    *)
+  (* [SpecArgfd.fd_st_of_key (xk_a W 0) (uvis_fd W)], and on a WRITABLE     *)
+  (* DEVICE descriptor that arm is [SpecConsolewrite.cons_out_chain] over   *)
+  (* the caller's own cursor family [wf_Q f] -- one view shift per byte,    *)
+  (* the byte pinned against the image the process lent.  Every write leaf  *)
+  (* in the tree today ([wp_uk_ecall_quiet] and the three programs' stubs)  *)
+  (* pays that chain out of the OUTPUT LICENCE at the TRIVIAL cursor        *)
+  (* ([SpecConsolewrite.cons_out_chain_of_licence]) and throws the post      *)
+  (* away, so no verified program has ever learned anything about what it   *)
+  (* wrote.  This leaf is the same walk with the deposit NAMED and the post *)
+  (* KEPT, and it costs exactly the two things                              *)
+  (* [wp_uk_ecall_read_recv] costs:                                         *)
+  (*                                                                       *)
+  (*  - THE DEPOSIT MUST NAME ITS FAMILY, because the post is read at it    *)
+  (*    ([UkRun.udepwf]'s note): [spost_at] at 16 is                        *)
+  (*    [SpecFilewrite.filewrite_extra] at [wf_Q f], and [UkRun.udepw]'s    *)
+  (*    existential loses the [f].                                         *)
+  (*  - AND IT MUST BE LEDGER-FIXED ([UkRun.udepwf_std]), which is the      *)
+  (*    point [UexecSG.free_num]'s note already makes about 16: a KEY-FREE  *)
+  (*    supplier would have to answer the INODE arm -- an                   *)
+  (*    [FsAbsWriteFire.awrite_chain] -- at a key whose descriptor row is   *)
+  (*    an inode, and a console writer has no such chain.  Which arm row 16 *)
+  (*    asks for is decided by the key's own table, so the leaf reads the   *)
+  (*    agreement off the authority it has just destructed and hands it     *)
+  (*    back as [take NSTD (uvis_fd W) = l].  The pure row beside it -- fd  *)
+  (*    [i] of [l] is an open, writable device -- is the CALLER's, exactly  *)
+  (*    as [UkSh.ush_fd0p] is on the read side, and it is spent where the   *)
+  (*    deposit is built, not here.                                        *)
+  (*                                                                       *)
+  (* THE POST IS AT THE TRAPPING KEY, for row 16's own reason: the arm is   *)
+  (* selected by argument 0, and the buffer address and the count are       *)
+  (* arguments 1 and 2, while the returning bump OVERWRITES a0.  The three  *)
+  (* argument words come back tied to the caller's own register file.  NO   *)
+  (* IMAGE ROW is handed out and none is owed: the console arm's post       *)
+  (* ([SpecFilewrite.write_cons_arms]) reads the cursor, the count and the  *)
+  (* answer, and no byte of [M'].                                          *)
+  (*                                                                       *)
+  (* NO CWD HALF, unlike [wp_uk_ecall_quiet_recv]: a write resolves no      *)
+  (* path, so the directory the round resumes at is handed to the           *)
+  (* continuation ∀-bound rather than pinned by a fragment the caller would *)
+  (* otherwise have to own.                                                *)
+  (*                                                                       *)
+  (* THE WALK IS [wp_uk_ecall_quiet_recv]'s -- 16 moves no user byte, no    *)
+  (* descriptor and no directory -- with the ledger agreement taken where   *)
+  (* both halves are in one hand.                                          *)
+  (* ------------------------------------------------------------------- *)
+  Lemma wp_uk_ecall_write_chain (N : uk_names Σ) (h : CpuId)
+      (m : regfile) (pc : mword 64) (avail : nat) (fdep : sfam)
+      (l : list fdstate) :
+    usysno m = 16 ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    udepwf_std N m pc 16 fdep l -∗
+    UserFd.ustd (ukn_fd N) l -∗
+    (∀ (h' : CpuId) (r : mword 64) (W : uvis) (cw' : Z) (cs' : gset gname),
+       (* THE TRAPPING KEY'S THREE ARGUMENT WORDS ARE THE CALLER'S OWN *)
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx (mword_of_int 10)⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx (mword_of_int 11)⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx (mword_of_int 12)⌝ -∗
+       (* ...AND ITS LEDGER IS THE CALLER'S OWN TOO: without this row "fd 1
+          is the console" says nothing about the arm this call took *)
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       (* the ledger comes straight back: write moves no descriptor *)
+       UserFd.ustd (ukn_fd N) l -∗
+       (* THE POST, AT THE TRAPPING KEY *)
+       spost_at uslot 16 fdep W r (uvis_M W) (uvis_fd W) cw' cs' -∗
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
+         (add_vec_int pc 4) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+  Admitted.
+
 
   (* ------------------------------------------------------------------- *)
   (* ...AND THE TWO OF THEM WITH THE IMAGE ROW (lane OPEN-PIN, phase 4).    *)

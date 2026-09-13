@@ -947,6 +947,44 @@ Section UkSh.
     { iApply (uis_shk_ca8 with "Hcode"). }
     { iApply (uis_shk_cac with "Hcode"). }
   Qed.
+  (* ...AND THE SAME STUB WITH THE OUTPUT CHAIN AND THE POST                *)
+  (* (app-echo.md, lane IO-LEAF, first half; the leaf is                    *)
+  (* [UkRunSys.wp_uk_ecall_write_chain]).                                   *)
+  (*                                                                       *)
+  (* [wp_ksh_write] above pays row 16 out of [sh_deps] -- the flagged       *)
+  (* deposit at 16, which is the whole of what [UkShKernel]'s entry still   *)
+  (* owes -- and throws the post away.  This is the same three              *)
+  (* instructions with the deposit taken at sh's OWN cursor family and the  *)
+  (* post handed back, so that the prompt, "fork\n" and the child's         *)
+  (* diagnostic can justify their own bytes.  It does NOT replace           *)
+  (* [wp_ksh_write]: the two live side by side, and IO-LEAF's second half   *)
+  (* swaps the call at each write site that has a claim to make.            *)
+  (*                                                                       *)
+  (* [sh_deps] is not a premise here: a named deposit and a flagged one are *)
+  (* alternatives, not a pair, and this leaf takes the named one.           *)
+  Lemma wp_ksh_write_chain (h : CpuId) (m : regfile) (avail : nat)
+      (fdep : sfam) (l : list fdstate) :
+    shk_code γt -∗
+    urun N h m (mword_of_int ShSyms.write) avail -∗
+    udepwf_std N (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+      (add_vec_int (mword_of_int ShSyms.write : mword 64) 2) 16 fdep l -∗
+    UserFd.ustd γfd l -∗
+    (∀ (h' : CpuId) (ret : mword 64) (W : uvis) (cw' : Z) (cs' : gset gname),
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx a0_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx a1_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx a2_idx⌝ -∗
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       UserFd.ustd γfd l -∗
+       spost_at uslot 16 fdep W ret (uvis_M W) (uvis_fd W) cw' cs' -∗
+       urun N h'
+         (<[Regidx a0_idx := ret]>
+            (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
+         (ret_pc (m !!! Regidx ra_idx)) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+  Admitted.
+
 
 
   (* ===================================================================== *)

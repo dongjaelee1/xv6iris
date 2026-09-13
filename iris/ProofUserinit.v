@@ -451,7 +451,12 @@ Section ProofUserinit.
        ([ParkCap.park_child]) to forkret, which puts the first back into
        the block and hands the second to kexec("/init"). *)
     iApply fupd_wp.
-    iMod (gen_split with "Hgen") as "(_ & Hkq & #Hmp)".
+    (* ...AND <init>'S ALIVE TOKEN comes out of the same row (lane SELF-KILL
+       §3a); it has no home in the block yet, so it is DROPPED here exactly
+       as the parent's quarter is. *)
+    iDestruct (ChildTok.gen_fresh_split with "Hgen") as (gai) "[Hgen _]".
+    iMod (gen_split with "Hgen") as "(_ & Hkq & #Hknow)".
+    iDestruct (ChildTok.gen_know_my_pay with "Hknow") as "#Hmp".
     iModIntro.
     (* ...AND THE TWO EXCLUSIVE GHOSTS, SPLIT THE SAME WAY AND THE THREE
        QUARTERS DROPPED.  They are what a forking parent deposits under

@@ -344,8 +344,7 @@ Section KforkPrologue.
            and [ProofKforkMain] does the [ChildTok.gen_set] and the split.
            At [Uc']'s field because every step between is an [upd_*] that
            preserves it. *)
-        ChildTok.gen_own (pv_gen (us_V Uc')) (DfracOwn 1) npa pid_c
-          (fun _ => True)%I -∗
+        ChildTok.gen_fresh (pv_gen (us_V Uc')) npa pid_c -∗
         (* ...AND THE CHILD SLOT'S TWO EXCLUSIVE GHOSTS, BOTH WHOLE, off
            the same arm: the forking process is the party that splits them
            ([SlotGen.slot_gen_quarters], [pid_reg_quarters]) -- a quarter

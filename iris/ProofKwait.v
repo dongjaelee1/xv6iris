@@ -1515,8 +1515,7 @@ Section ProofKwait.
       as "(%HW2 & Hsg & Hent & Hci)".
     iDestruct "Hent" as (pide) "(Hpr34 & #Hgpid)".
     iDestruct "Hesc" as (pae Qe Qe') "(Hkq & Hmye & HQe)".
-    iDestruct "Hgpid" as (pag Qg) "Hgp".
-    iDestruct (gen_agree_pure with "Hgp Hkq") as %[_ ->].
+    iDestruct (ChildTok.gen_pid_kq_agree with "Hgpid Hkq") as %->.
     iAssert (pid_reg pidc (DfracOwn 1) (pv_gen Vc)) with "[Hpr34 Hpr14]" as "Hpr".
     { rewrite pid_reg_quarters. iFrame "Hpr34 Hpr14". }
     (* the escrow, back in one piece: the three agreements above were pure,

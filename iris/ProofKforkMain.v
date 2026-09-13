@@ -573,8 +573,7 @@ Section KforkArms.
     (* THE CHILD'S GENERATION, WHOLE -- allocproc minted it, and this arm
        is where the forking process's choice of payload is written onto it
        and the three pieces cut ([ChildTok.gen_set] / [gen_split]). *)
-    ChildTok.gen_own (pv_gen (us_V Uc')) (DfracOwn 1) npa pid_c
-      (fun _ => True)%I -∗
+    ChildTok.gen_fresh (pv_gen (us_V Uc')) npa pid_c -∗
     (* ...AND THE CHILD SLOT'S TWO EXCLUSIVE GHOSTS, BOTH WHOLE, cut at the
        same point and 3/4 : 1/4 ([SlotGen.slot_gen_quarters]): the quarters
        close the child's block, the three quarters are the deposit
@@ -749,9 +748,19 @@ Section KforkArms.
          here, before [B4]'s [sd a0,336(s4)]: that store is what closes the
          block, and a block cannot be closed without the pair. *)
       iApply fupd_wp.
-      iMod (gen_set (pv_gen (us_V Uc')) npa pid_c (fun _ => True)%I Q
-              with "Hcgen") as "Hcgen".
-      iMod (gen_split with "Hcgen") as "(Htok & Hkq & #Hmp)".
+      (* THE CHILD'S ALIVE TOKEN comes out of the same row allocproc minted
+         (lane SELF-KILL §3a).  The fork row's CHOICE of what the child's
+         death costs is the next milestone's ([K'] and its payment rule
+         stay [emp] here, which is exactly the generic child's choice: a
+         process nobody gave a credential to costs nothing to kill).  The
+         token itself has no home in the child's block yet, so it is
+         DROPPED -- the milestone that gives [urun] its row is what routes
+         it to the child. *)
+      iDestruct (ChildTok.gen_fresh_split with "Hcgen") as (gac) "[Hcgen _]".
+      iMod (gen_set (pv_gen (us_V Uc')) npa pid_c gac (fun _ => True)%I
+              emp emp Q emp emp with "Hcgen") as "Hcgen".
+      iMod (gen_split with "Hcgen") as "(Htok & Hkq & #Hknow)".
+      iDestruct (ChildTok.gen_know_my_pay with "Hknow") as "#Hmp".
       iModIntro.
       (* ...AND THE TWO EXCLUSIVE GHOSTS, CUT THE SAME WAY AND AT THE SAME
          POINT, 3/4 : 1/4 ([SlotGen.slot_gen_quarters]).  The QUARTERS go
@@ -769,12 +778,8 @@ Section KforkArms.
       (* the generation's two persistent readings, off the discarded half
          and the kernel quarter: the deposit carries them so that a reaper
          can read an entry as -- this slot, this pid. *)
-      iAssert (ChildTok.gen_slot (pv_gen (us_V Uc')) npa ∗
-               ChildTok.gen_pid (pv_gen (us_V Uc')) pid_c)%I as "#Hgsp".
-      { iDestruct "Hmp" as (pa0 pid0) "#Hmo".
-        iDestruct (gen_agree_pure with "Hmo Hkq") as %[-> ->].
-        iSplit; [iExists pid_c, Q; iExact "Hmo" | iExists npa, Q; iExact "Hmo"]. }
-      iDestruct "Hgsp" as "[#Hgslot #Hgpid]".
+      iDestruct (ChildTok.my_pay_kq_readings with "Hmp Hkq")
+        as "(#Hgslot & #Hgpid & Hkq)".
       (* ---- ProofKforkB4: idup / safestrcpy / pid read ---- *)
       iApply (B4.kfk_b4 γf
                 pid_p pid_c Up

@@ -655,7 +655,9 @@ Definition ap_pid_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !wchG Σ} `{GEN : 
      (* the fresh incarnation, whole and at the trivial payload -- a process
         nobody forked owes its parent nothing, and a fork REPLACES the
         payload before splitting ([ChildTok.gen_set]) *)
-     gen_own γg (DfracOwn 1) (proc_addr k) pidn (fun _ => True)%I -∗
+     (* ...AND THE ALIVE TOKEN MINTED WITH IT (lane SELF-KILL §3a), bundled
+        into this row so the arity does not move *)
+     gen_fresh γg (proc_addr k) pidn -∗
      (* ...the slot, re-keyed to it: the whole this block was handed came
         out of the dormant block at the LAST incarnation's name *)
      slot_gen (proc_addr k) (DfracOwn 1) γg -∗

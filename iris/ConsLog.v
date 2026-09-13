@@ -125,3 +125,76 @@ Proof.
     + exfalso. apply lookup_ge_None_1 in Hj.
       apply lookup_lt_Some in H2. lia.
 Qed.
+
+(* CONS-IO bridge lemmas *)
+(* ====================================================================== *)
+(*  ONE CONTIGUOUS BLOCK, every name prefixed [cl_], so the merge with     *)
+(*  ECHO-PURE's copy of everything above is an append.  These are the      *)
+(*  three facts the KERNEL side of the boundary needs and nothing else:    *)
+(*  what the log's high-water half buys the shift, where that mark sits    *)
+(*  after an append, and that the log stays well-formed across one.        *)
+(*                                                                        *)
+(*  THE LOG'S TOP IS SPELLED BY INDEX, never with [last]: the Sail imports *)
+(*  above bring in [Stdlib.List.last], which takes a default and shadows   *)
+(*  stdpp's -- the same dodge [ObsTrace.obs_ends_in_inj] documents.        *)
+(* ====================================================================== *)
+
+(* EVERY LOGGED HISTORY IS STRICTLY BELOW [h] once the LAST one is.  This is
+   exactly what [WpUart.uart_log_hi]'s two halves buy consoleintr's shift:
+   the mark IS the log's top, so one comparison against the byte being
+   accepted orders it against the WHOLE log -- which is the premise
+   [WpUart.in_append] asks for, and hence why a byte can be logged only
+   once and the log is in arrival order. *)
+Lemma cl_log_ok_last_ext (pops : list log_entry) (h : list mobs) :
+  log_ok pops ->
+  (forall el, pops !! (length pops - 1)%nat = Some el -> hist_ext (le_hist el) h) ->
+  forall e, e ∈ pops -> hist_ext (le_hist e) h.
+Proof.
+  intros Hok Htop e He.
+  apply elem_of_list_lookup_1 in He as [i Hi].
+  assert (Hlen : (i < length pops)%nat) by (apply lookup_lt_Some in Hi; lia).
+  destruct (lookup_lt_is_Some_2 pops (length pops - 1)%nat ltac:(lia)) as [el Hel].
+  destruct (decide (i = length pops - 1)%nat) as [-> | Hne].
+  - rewrite Hel in Hi. injection Hi as <-. exact (Htop el Hel).
+  - apply (hist_ext_trans _ (le_hist el)); [| exact (Htop el Hel)].
+    exact (log_ok_lt pops i (length pops - 1)%nat e el Hok ltac:(lia) Hi Hel).
+Qed.
+
+(* the top entry after an append IS the appended one *)
+Lemma cl_top_snoc (pops : list log_entry) (e : log_entry) :
+  (pops ++ [e]) !! (length (pops ++ [e]) - 1)%nat = Some e.
+Proof.
+  rewrite length_app. cbn [length].
+  replace (length pops + 1 - 1)%nat with (length pops) by lia.
+  rewrite lookup_app_r; [| lia]. by rewrite Nat.sub_diag.
+Qed.
+
+(* ...and the log stays well-formed when one such entry is appended *)
+Lemma cl_log_ok_snoc (pops : list log_entry) (e : log_entry) :
+  log_ok pops ->
+  obs_ends_in Uart0 (le_hist e) (le_byte e) ->
+  cons_echo (le_byte e) (le_echo e) ->
+  (forall e', e' ∈ pops -> hist_ext (le_hist e') (le_hist e)) ->
+  log_ok (pops ++ [e]).
+Proof.
+  intros [Hin Hch] Hends Hecho Hbelow. split.
+  - intros e' He'. apply elem_of_app in He' as [He' | He'].
+    + exact (Hin e' He').
+    + apply elem_of_list_singleton in He' as ->. split; assumption.
+  - intros i e1 e2 H1 H2.
+    assert (Hi : (i < length pops)%nat).
+    { apply lookup_lt_Some in H1. rewrite length_app in H1. cbn [length] in H1.
+      destruct (decide (i < length pops)%nat) as [Hy | Hn]; [exact Hy | exfalso].
+      assert (i = length pops) by lia. subst i.
+      rewrite lookup_app_r in H2; [| lia].
+      replace (S (length pops) - length pops)%nat with 1%nat in H2 by lia.
+      cbn in H2. discriminate. }
+    rewrite lookup_app_l in H1; [| lia].
+    destruct (decide (S i < length pops)%nat) as [Hs | Hs].
+    + rewrite lookup_app_l in H2; [| lia]. exact (Hch i e1 e2 H1 H2).
+    + assert (S i = length pops) by lia.
+      rewrite lookup_app_r in H2; [| lia].
+      replace (S i - length pops)%nat with 0%nat in H2 by lia.
+      cbn in H2. injection H2 as <-.
+      apply Hbelow. by eapply elem_of_list_lookup_2.
+Qed.

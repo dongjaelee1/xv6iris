@@ -525,21 +525,21 @@ Section SchedPostSwtch.
       assert (Hf_s3 : Ef !!! Regidx (mword_of_int 19 : mword 5) = m !!! Regidx (mword_of_int 19 : mword 5)).
       { rewrite /Ef upd_ne; [| vm_compute; discriminate]. rewrite /E8 upd_eq. reflexivity. }
       assert (Hf_s4 : Ef !!! Regidx (mword_of_int 20 : mword 5) = m !!! Regidx (mword_of_int 20 : mword 5))
-        by (apply Hs_final; (first [ vm_compute; discriminate | exact Hm20 ])).
+        by (apply Hs_final; (first [ exact Hm20 | vm_compute; discriminate ])).
       assert (Hf_s5 : Ef !!! Regidx (mword_of_int 21 : mword 5) = m !!! Regidx (mword_of_int 21 : mword 5))
-        by (apply Hs_final; (first [ vm_compute; discriminate | exact Hm21 ])).
+        by (apply Hs_final; (first [ exact Hm21 | vm_compute; discriminate ])).
       assert (Hf_s6 : Ef !!! Regidx (mword_of_int 22 : mword 5) = m !!! Regidx (mword_of_int 22 : mword 5))
-        by (apply Hs_final; (first [ vm_compute; discriminate | exact Hm22 ])).
+        by (apply Hs_final; (first [ exact Hm22 | vm_compute; discriminate ])).
       assert (Hf_s7 : Ef !!! Regidx (mword_of_int 23 : mword 5) = m !!! Regidx (mword_of_int 23 : mword 5))
-        by (apply Hs_final; (first [ vm_compute; discriminate | exact Hm23 ])).
+        by (apply Hs_final; (first [ exact Hm23 | vm_compute; discriminate ])).
       assert (Hf_s8 : Ef !!! Regidx (mword_of_int 24 : mword 5) = m !!! Regidx (mword_of_int 24 : mword 5))
-        by (apply Hs_final; (first [ vm_compute; discriminate | exact Hm24 ])).
+        by (apply Hs_final; (first [ exact Hm24 | vm_compute; discriminate ])).
       assert (Hf_s9 : Ef !!! Regidx (mword_of_int 25 : mword 5) = m !!! Regidx (mword_of_int 25 : mword 5))
-        by (apply Hs_final; (first [ vm_compute; discriminate | exact Hm25 ])).
+        by (apply Hs_final; (first [ exact Hm25 | vm_compute; discriminate ])).
       assert (Hf_s10 : Ef !!! Regidx (mword_of_int 26 : mword 5) = m !!! Regidx (mword_of_int 26 : mword 5))
-        by (apply Hs_final; (first [ vm_compute; discriminate | exact Hm26 ])).
+        by (apply Hs_final; (first [ exact Hm26 | vm_compute; discriminate ])).
       assert (Hf_s11 : Ef !!! Regidx (mword_of_int 27 : mword 5) = m !!! Regidx (mword_of_int 27 : mword 5))
-        by (apply Hs_final; (first [ vm_compute; discriminate | exact Hm27 ])).
+        by (apply Hs_final; (first [ exact Hm27 | vm_compute; discriminate ])).
       unfold callee_saved. repeat split; assumption. }
   Qed.
 

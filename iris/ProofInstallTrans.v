@@ -3061,7 +3061,17 @@ Section ProofInstallTrans.
         by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hpp22) in "Hpc".
       iAssert (it_frame m) with "[Hf1 Hf2 Hf3 Hf4 Hf5 Hf6 Hf7 Hf8 Hf9 Hf10]" as "Hframe".
-      { rewrite /it_frame. iFrame. }
+      { rewrite /it_frame.
+        iSplitL "Hf1"; [iExact "Hf1" |].
+        iSplitL "Hf2"; [iExact "Hf2" |].
+        iSplitL "Hf3"; [iExact "Hf3" |].
+        iSplitL "Hf4"; [iExact "Hf4" |].
+        iSplitL "Hf5"; [iExact "Hf5" |].
+        iSplitL "Hf6"; [iExact "Hf6" |].
+        iSplitL "Hf7"; [iExact "Hf7" |].
+        iSplitL "Hf8"; [iExact "Hf8" |].
+        iSplitL "Hf9"; [iExact "Hf9" |].
+        iExact "Hf10". }
       (* ===== +0x22 c.addi4spn s0,sp,80 ===== *)
       iApply (wp_caddi4spn_s_sconf (mword_of_int (KernelSyms.install_trans + 0x22)) (Cregidx (mword_of_int 0))
                 (mword_of_int 20 : mword 8) Rs0 Q1 (K - 10)%nat eb

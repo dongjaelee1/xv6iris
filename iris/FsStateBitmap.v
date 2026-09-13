@@ -77,7 +77,7 @@ Section Bitmap.
   Lemma free_bitmap_at_gname Γ g t bms nb u :
     free_bitmap_at Γ bms nb u
     ⊣⊢ free_bitmap_at (MkFsView (fsΦ Γ) g t) bms nb u.
-  Proof. done. Qed.
+  Proof. reflexivity. Qed.
 
   Global Instance pool_elt_timeless `{!GTimeless Γ} u b :
     Timeless (pool_elt Γ u b).

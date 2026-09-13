@@ -2623,6 +2623,41 @@ TX-RECEIPT's `tx_claim` so the two lanes merge by juxtaposition; the hart lines'
 invariant; `boot_k_shape` deleted.  `BACKSPACE` is the int 0x100 (not byte 8):
 the "\b \b" triple is reachable only from `%c`, unused.
 
+KILL-PAY K4(a) LANDED (2026-09-13; `203532d34`; 39 files +1184/-365; build
+kille13, audit = the thirteen; lemma_diff = one section hypothesis
+`UkInitMain.Hpayfree`, discharged at its only call site from /init's trivial
+payload).  THE -1 PAYLOAD IS A WAND: `UexecSlot.upay_neg Q := □
+riscv_kill_cred -∗ Q (-1)` (at the key vocabulary's altitude:
+`SpecKexec.exec_slot_pre` takes it and SpecKexec is below UexecRet);
+`upay_at`'s kill conjunct, `uexec_pay_arm` and `urun`'s payload row are all
+that wand; usertrap's three `kexit(-1)` sites cash it off `SpecKilled`'s row;
+the generic slot cashes it with `xv6_ssupply`'s credential.  THE LEASE LEFT
+THE PAYLOAD ROW: row 5 of `xv6_sbundle` is a plain deposit at `True`;
+`UkSh.ush_at n := upos γp n ∗ ukn_pay N (-1)`, `ush_pos := ∃ n, ush_at n`
+(callers write `UkSh.ush_pos N γp`); the lease crosses the exec on
+`PinnedExec`'s linear `Pay`, is spent and returned at
+`UShLine.ush_read_sup`/`ush_rd_ret`, and pays sh's exit.  EXIT IS A PREMISE
+OF THE PROGRAM'S LEAF (`wp_ksh_exit`/`wp_kinit_exit` take `ukn_pay N (-1)`);
+the walks shared with sh's forked child (`wp_kshr_exit0`/`runcmd`/`_null`)
+take a Coq-level `⊢ ukn_pay N (-1)` off `UkRun.ukn_pay_free_of_triv`, but
+sh's OWN `fork1` panics, so `ush_diag_leaf`/`wp_kshd_die`/`wp_kshd_panic`
+take the payload LINEARLY and `wp_kshr_fork1*` borrow and return it.
+`Hpay_neg` is `(⊢ □ riscv_kill_cred -∗ T)`, threaded through init's main
+loop to `init_boot_con`, discharged at `UInitBoot.v:~529` from
+`riscv_kill_cred = echo_taint γ`.  A FAILED EXEC REFUNDS:
+`SpecKexec.exec_post_fail_refund`/`SpecSysExec.sys_exec_post_fail_refund`
+read `PieceFam.pf_at_refund` on the failure arm, and the route out is
+`spost_at` AT EXEC -- `emp` before, `⌜r = -1⌝ -∗ sexec_refund f` now (class
+law `UexecSG.spost_at_exec`; `spost_at_emp`/`sysc_num_nofs` exclude 7;
+`pinned_exec_bundle`/`sysc_exec_in_open` no longer quantify the refund
+existentially) -- which the dispatcher already relays to the ecall leaf;
+`UkRun.udepw_at_ref` is the cwd-fixed exec deposit carrying the refund (it
+no longer mentions `psok`, so `(PS := uprogSG_free)` came off
+`init_exec_sup_lend`/`init_cons_sup`), and that is what lets init's child pay
+its `exit(1)` after "init: exec sh failed".  `UConsLine.ush_exec_pay` is
+reshaped (`Pay ∗ ush_tag_law T ∗ upos γp n ∗ ucons_pay cn γp T (-1)`).
+KILL-PAY IS COMPLETE (A, B1, B2, K4(b), K4(a)); SELF-KILL stays open.
+
 KILL-PAY K4(b) LANDED (2026-09-13; `67fb09f80`; 6 files +195/-60; build
 killd10, audit = the thirteen, lemma_diff CLEAN).  A -1 from read(0) says WHY
 it is -1.  `SpecFileread.fileread_dev_env`/`fileread_devsw`'s per-cell row is

@@ -81,10 +81,12 @@ Section EchoAdequacy.
   Theorem echo_adequacy_modulo_phi
       (g : gstate) (sb : FsImg.fs_sb) (nib : nat) (cov : gset Z)
       (* ---- WHAT THE ARC STILL OWES ON THE SHELL'S SIDE, by lane: the
-             three deposits sh calls ([UkSh.sh_deps]: read(5) -- SH-LINE
-             2b, open(15) -- SH-OPEN, write(16) -- E5), write(16) at
-             /init's own instance (E5), sh's static state out of the data
-             below the frame (E4), and sh's tail (SH-LINE 2b).  Quantified
+             ONE deposit sh still calls ([UkSh.sh_deps] is write(16) and
+             nothing else now -- read(5) pays from the console LEASE
+             (SH-LINE 2b, R1') and open(15) is PINNED (SH-OPEN)), which is
+             /init's own write deposit too (E5), sh's static state out of
+             the data below the frame (E4), and sh's tail (SH-LINE 2b).
+             Quantified
              over the era's classes for [Hinit_boot]'s own reason: they
              are born by the boot mint. ---- *)
       (* NO [(XI : CurCtx)] BINDER: [echo_Hinit_boot] does not take one
@@ -92,8 +94,8 @@ Section EchoAdequacy.
          instance, and quantifying it here would leave a [_] at the call
          that nothing determines ("Could not find an instance for
          CurCtx"). *)
-      (* [GEN] IS BACK, and it has to be: [UkRun.udepw_law] and
-         [UkSh.sh_deps] are [urun]-shaped, so they need a full [riscvGS]
+      (* [GEN] IS BACK, and it has to be: [UkSh.sh_deps] is
+         [urun]-shaped, so they need a full [riscvGS]
          and a [GenId], and the only [riscvGS] in sight is this field's
          [HR] -- the section has the PRE-structure classes only.  Without
          the binder the whole hypothesis loses its instances
@@ -102,7 +104,7 @@ Section EchoAdequacy.
       (Hsh_owed : forall (HR : riscvGS Σ) (GEN : GenId)
          `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
            HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ},
-         (* FOUR SEPARATE COQ-LEVEL ENTAILMENTS under a COQ existential,
+         (* THREE SEPARATE COQ-LEVEL ENTAILMENTS under a COQ existential,
             not one [iProp] conjunction under an Iris one.  Each is owed
             whole by a different lane, and [echo_Hinit_boot] takes them as
             Coq premises -- an Iris [∃] would have to be opened inside the
@@ -111,8 +113,7 @@ Section EchoAdequacy.
             [UexecExecInst.uprogSG_free]: that is the acceptance test, and
             it is readable here. *)
          exists Rsh : gname -> gname -> gname -> iProp Σ,
-           (⊢ UkRun.udepw_law (PS := uprogSG_free) 16)
-           /\ (⊢ UkSh.sh_deps (PS := uprogSG_free))
+           (⊢ UkSh.sh_deps (PS := uprogSG_free))
            /\ (⊢ UInitSh.sh_pay_state Rsh 0%nat)
            /\ (⊢ UInitSh.sh_pay_rest Rsh))
       (* ---- ...AND THE TRACE INVARIANT, which is E5's ---- *)
@@ -211,13 +212,13 @@ Section EchoAdequacy.
          the laws are. *)
       rewrite <- Hgen in Heq, Htag, Hkill |- *.
       destruct (Hsh_owed HR GEN HBs HFd HIr HPav HWc HF)
-        as (Rsh & Hw16 & Hdeps & Hst & Hre).
+        as (Rsh & Hdeps & Hst & Hre).
       iIntros "#Hinv Hb".
       (* [GEN] is IMPLICIT and fixed by unification -- from [Hw16] first
          and [Heq] after, both of which carry the record's own [GenId].
          Naming it here would pin the wrong one: the [GEN] this field
          binds is not the one [app_echo] was elaborated at. *)
-      iApply (echo_Hinit_boot HR GEN Rsh c r Hw16 Hdeps Hst Hre
+      iApply (echo_Hinit_boot HR GEN Rsh c r Hdeps Hst Hre
                 Heq Htag Hkill with "Hinv Hb").
     - exact Hphi.
     - exact Hgen0.

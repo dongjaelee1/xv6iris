@@ -358,14 +358,22 @@ Section UkSh.
   Hypothesis Hpsok_free : forall k : Z, free_num k -> psok k.
 
   (* ===================================================================== *)
-  (* THE DEPOSITS SH OWES (lane SUPPLY-SPLIT, P4), as ONE persistent        *)
-  (* bundle: the three CLAIM numbers sh calls, and nothing else.            *)
+  (* THE DEPOSITS SH OWES (lane SUPPLY-SPLIT, P4): ONE, and the bundle is   *)
+  (* kept as a bundle only so that no call site moved when the other two    *)
+  (* left it.                                                               *)
   (*                                                                        *)
-  (*   read(5)   the console read behind [ush_read_leaf] -- getcmd's whole  *)
-  (*             input.  read's console arm spends the supply               *)
-  (*             ([FsAbsInvFire.fsabs_fileread_in]); a LEASE holder pays it *)
-  (*             at its own claim ([UkRun.udepwf_std] is the landed shape,  *)
-  (*             [UkRunSys.wp_uk_ecall_read_recv] its leaf).  SH-LINE 2b.   *)
+  (*   write(16) the prompt and every diagnostic.  E5's output lane.        *)
+  (*                                                                        *)
+  (*   NOT read(5) ANY MORE (lane SH-LINE 2b, R1').  read's console arm     *)
+  (*             spends the EXCLUSIVE reader token, and a [□]-shaped        *)
+  (*             key-free law cannot hold one: sh pays its read out of the  *)
+  (*             LEASE inside its own exit payload                          *)
+  (*             ([UserConsole.ucons_pay], through                          *)
+  (*             [UkRun.udepwf_std] and [UkRunSys.wp_uk_ecall_read_recv]).  *)
+  (*             The law was still in this bundle after the route changed   *)
+  (*             and nothing used it, so the top theorem was carrying a     *)
+  (*             premise no walk could spend -- dropped, and                *)
+  (*             [UInitBootAdequacy]'s [Hsh_owed] is that much weaker.      *)
   (*   NOT open(15).  sh's [open("console", O_RDWR)] loop at its start    *)
   (*             goes through a PINNED open (lane SH-OPEN), exactly as      *)
   (*             UInitConsK landed /init's ([UkRun.udepwf_at]): the leaf    *)
@@ -373,15 +381,13 @@ Section UkSh.
   (*             below carry their own supplier, and at the TAINT the       *)
   (*             preamble does not call at all -- it hands the run to the   *)
   (*             generic slot ([ush_gen_slot]).  So no deposit at 15.       *)
-  (*   write(16) the prompt and every diagnostic.  E5's output lane.        *)
   (*                                                                        *)
   (* WHAT IS NOT HERE: [UkRun.udep] at the generic supplier.  sh's own      *)
   (* free numbers -- close(21) here, chdir(9), sbrk(12), wait(3) in the     *)
   (* sibling files -- go through the minting law at [psok := free_num] and  *)
   (* cost nothing, which is what [Hpsok_free] above says.                   *)
   (* ===================================================================== *)
-  Definition sh_deps : iProp Σ :=
-    (udepw_law 5 ∗ udepw_law 16)%I.
+  Definition sh_deps : iProp Σ := udepw_law 16.
 
   Global Instance sh_deps_persistent : Persistent sh_deps.
   Proof. rewrite /sh_deps. apply _. Qed.
@@ -878,7 +884,7 @@ Section UkSh.
               ltac:(apply bv_eq; vm_compute; reflexivity)
               ltac:(vm_compute; reflexivity)
               with "[Hdp] [] [] [] Hrun Hcont").
-    { iDestruct "Hdp" as "(_ & $)". }
+    { iExact "Hdp". }
     { iApply (uis_shk_ca6 with "Hcode"). }
     { iApply (uis_shk_ca8 with "Hcode"). }
     { iApply (uis_shk_cac with "Hcode"). }

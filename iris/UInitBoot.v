@@ -454,9 +454,12 @@ End UInitBoot.
 (*  carrying, BESIDES the two equations the theorem hands over, ONLY the  *)
 (*  arc's remaining obligations, one per owning lane:                     *)
 (*                                                                       *)
-(*    [Hwr16]     write(16)'s deposit                          -- E5      *)
-(*    [Hsh_deps]  sh's three ([UkSh.sh_deps]: 5, 15, 16)                  *)
-(*                          -- SH-LINE 2b (5), SH-OPEN (15), E5 (16)      *)
+(*    [Hsh_deps]  write(16)'s deposit, which is ALL [UkSh.sh_deps] is now  *)
+(*                (lane SH-LINE 2b, R1': read(5)'s law left the bundle    *)
+(*                when the console read moved onto the lease, and         *)
+(*                open(15) left it when SH-OPEN pinned the open) -- E5.   *)
+(*                /init's own write deposit is the SAME proposition, so   *)
+(*                the two hypotheses collapsed into this one.             *)
 (*    [Hsh_state] sh's static state out of the data below the frame -- E4 *)
 (*    [Hsh_rest]  sh's tail ([UkSh.ush_rest])         -- SH-LINE 2b       *)
 (*                                                                       *)
@@ -504,7 +507,6 @@ Section EchoInitBoot.
       (Rsh : gname -> gname -> gname -> iProp Σ)
       (γ : echo_fixed) (r : echo_names) :
     (* ---- the arc's remaining obligations, by lane ---- *)
-    (⊢ UkRun.udepw_law (PS := uprogSG_free) 16) ->
     (⊢ UkSh.sh_deps (PS := uprogSG_free)) ->
     (⊢ UInitSh.sh_pay_state Rsh 0%nat) ->
     (⊢ UInitSh.sh_pay_rest Rsh) ->
@@ -520,7 +522,7 @@ Section EchoInitBoot.
     ⊢ app_inv fsc_fs -∗ echo_boot γ r -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Hwr16 Hsh_deps Hsh_state Hsh_rest Heq Htag Hkill.
+    intros Hsh_deps Hsh_state Hsh_rest Heq Htag Hkill.
     iIntros "#Hinv Hb". iModIntro.
     (* ---- the taint's supply, and the generic slot it buys ---- *)
     iAssert (□ (echo_taint γ -∗ app_sup))%I as "#Hsup".
@@ -555,7 +557,7 @@ Section EchoInitBoot.
       as "#Hdp".
     { iApply (init_deps_of_laws (PSx := uprogSG_free) (echo_taint γ)
                 with "[] [] []").
-      - iModIntro. iApply Hwr16.
+      - iModIntro. iApply Hsh_deps.
       - iModIntro. iIntros "HT".
         iApply (udepw_law_of_sup (PSx := uprogSG_free) 15
                   (or_introl eq_refl)).

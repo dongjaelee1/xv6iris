@@ -380,6 +380,11 @@ Proof.
   change (2 ^ Z.of_N 16)%Z with (2^16)%Z. lia.
 Qed.
 
+Lemma sl_low16_unsigned_nib `{XI : CurCtx} (v : mword 32) (nib : nat) :
+  bv_unsigned v < 16 * Z.of_nat nib -> 16 * Z.of_nat nib <= 2 ^ 16 ->
+  bv_unsigned (sl_low16 v) = bv_unsigned v.
+Proof. intros H1 H2. apply sl_low16_unsigned. lia. Qed.
+
 Lemma sl_zext64_16_unsigned `{XI : CurCtx} (h : mword 16) :
   bv_unsigned (zero_extend' 64 h : mword 64) = bv_unsigned h.
 Proof.
@@ -3181,10 +3186,8 @@ Section ProofSysLinkBody.
                                 [exfalso; clear -Hz Htotpos; lia | exact H16]. }
                             assert (Hlow16u : bv_unsigned (sl_low16 inum)
                                               = bv_unsigned inum).
-                            { apply sl_low16_unsigned.
-                              assert (E16 : (2 ^ 16 = 65536)%Z)
-                                by (vm_compute; reflexivity).
-                              lia. }
+                            { exact (sl_low16_unsigned_nib inum icfg_nib
+                                       Hinb Hnib16). }
                             assert (Hlow16nz : sl_low16 inum <> bv_0 16).
                             { apply lf_inum_nz. rewrite Hlow16u.
                               clear -Hipos. lia. }

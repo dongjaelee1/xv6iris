@@ -352,6 +352,32 @@ Proof.
   - exfalso. apply lookup_ge_None_1 in Ek. rewrite Hlen in Ek. lia.
 Qed.
 
+Lemma kexec_vec_bytes (top : Z) (alen : nat -> nat) (na : nat)
+    (M : gmap Z (bv 8)) :
+  (forall i k, (i <= na)%nat -> (k < 8)%nat ->
+     M !! (kxc_sp_final top alen na + 8 * Z.of_nat i + Z.of_nat k)
+     = bv_to_little_endian 8 8 (kexec_ustack top alen na i) !! k) ->
+  forall j : Z, 0 <= j < 8 * (Z.of_nat na + 1) ->
+    exists b : bv 8, M !! (kxc_sp_final top alen na + j) = Some b.
+Proof.
+  intros Hvec j Hj.
+  pose proof (Z.div_pos j 8 ltac:(lia) ltac:(lia)) as Hq0.
+  pose proof (Z.mod_pos_bound j 8 ltac:(lia)) as Hr.
+  assert (Hq : (Z.to_nat (j / 8) <= na)%nat).
+  { assert (Hd : j / 8 < Z.of_nat na + 1)
+      by (apply Z.div_lt_upper_bound; lia).
+    lia. }
+  destruct (bv_le8_is_Some (kexec_ustack top alen na (Z.to_nat (j / 8)))
+              (Z.to_nat (j mod 8)) ltac:(lia)) as [b Hb].
+  exists b.
+  replace (kxc_sp_final top alen na + j)
+    with (kxc_sp_final top alen na
+          + 8 * Z.of_nat (Z.to_nat (j / 8))
+          + Z.of_nat (Z.to_nat (j mod 8))) by lia.
+  rewrite (Hvec (Z.to_nat (j / 8)) (Z.to_nat (j mod 8)) Hq ltac:(lia)).
+  exact Hb.
+Qed.
+
 (* ...and eight image bytes PIN the pointer the ABI reads off that slot:
    [UkAbi.uk_argv_p] is [uM_word] read back as a [Z], and [UInitSh.
    uimg_word_det] is what says two spellings of a word's bytes agree. *)
@@ -502,23 +528,7 @@ Proof.
   assert (Hvb : forall j : Z, 0 <= j < 8 * (Z.of_nat na + 1) ->
             exists b : bv 8,
               uvis_M W' !! (kxc_sp_final 0x4000 alen na + j) = Some b).
-  { intros j Hj.
-    pose proof (Z.div_pos j 8 ltac:(lia) ltac:(lia)) as Hq0.
-    pose proof (Z.mod_pos_bound j 8 ltac:(lia)) as Hr.
-    assert (Hq : (Z.to_nat (j / 8) <= na)%nat).
-    { assert (Hd : j / 8 < Z.of_nat na + 1)
-        by (apply Z.div_lt_upper_bound; lia).
-      lia. }
-    destruct (bv_le8_is_Some
-                (kexec_ustack 0x4000 alen na (Z.to_nat (j / 8)))
-                (Z.to_nat (j mod 8)) ltac:(lia)) as [b Hb].
-    exists b.
-    replace (kxc_sp_final 0x4000 alen na + j)
-      with (kxc_sp_final 0x4000 alen na
-            + 8 * Z.of_nat (Z.to_nat (j / 8))
-            + Z.of_nat (Z.to_nat (j mod 8))) by lia.
-    rewrite (Hvec (Z.to_nat (j / 8)) (Z.to_nat (j mod 8)) Hq ltac:(lia)).
-    exact Hb. }
+  { exact (kexec_vec_bytes 0x4000 alen na (uvis_M W') Hvec). }
   assert (Hbelow : forall a : Z,
             0x3000 <= a < kxc_sp_final 0x4000 alen na ->
             uvis_M W' !! a = Some (bv_0 8)).

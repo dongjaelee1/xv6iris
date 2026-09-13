@@ -629,13 +629,18 @@ Section ProofKkill.
             by (apply bv_eq; vm_compute; reflexivity).
           iEval (rewrite Hpp66) in "Hpc".
           (* reassemble: SLEEPING -> RUNNABLE keeps both guards fixed *)
-          iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Hrow]" as "Hpub".
-          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf".
-            (* the flag is 1 here, so the row must be re-closed on its PAID
+          iAssert (|==> proc_pub (proc_addr k))%I with "[Hkilled Hxstate Hpidhalf Hrow]" as ">Hpub".
+          { (* the flag is 1 here, so the row must be re-closed on its PAID
                arm -- and what pays is the price the slot itself publishes:
                the target's payload at -1, bought with the application's
-               TAINT ([RiscvPtsto.riscv_kill_cred], lane SELF-KILL, §4b'). *)
-            iApply (kill_paid_kill pidc kl _ Hpcnz with "Hkc Hrow"). }
+               TAINT ([RiscvPtsto.riscv_kill_cred], lane SELF-KILL, §4b').
+               THE STEP IS A GHOST UPDATE because the writer also FIRES the
+               incarnation's kill one-shot (lane SELF-KILL, P6): from here
+               on the flag is nonzero for good, and that is the fact
+               [killed()] relays and [kexit] spends. *)
+            iMod (kill_paid_kill pidc kl _ Hpcnz with "Hkc Hrow") as "Hrow".
+            iModIntro. iExists _, xs, pidc.
+            iFrame "Hkilled Hxstate Hpidhalf Hrow". }
           iApply fupd_wp.
           iMod (proc_lock_res_wakeup γs γk (proc_addr k) st ch Hst_sl
                   with "Hpst Hpg Hpch Hpub Hslots") as "HR".
@@ -666,9 +671,10 @@ Section ProofKkill.
           assert (Hpp4c : add_vec_int (mword_of_int (KernelSyms.kkill + 0x48) : mword 64) 4 = mword_of_int (KernelSyms.kkill + 0x4c))
             by (apply bv_eq; vm_compute; reflexivity).
           iEval (rewrite Hpp4c) in "Hpc".
-          iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Hrow]" as "Hpub".
-          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf".
-            iApply (kill_paid_kill pidc kl _ Hpcnz with "Hkc Hrow"). }
+          iAssert (|==> proc_pub (proc_addr k))%I with "[Hkilled Hxstate Hpidhalf Hrow]" as ">Hpub".
+          { iMod (kill_paid_kill pidc kl _ Hpcnz with "Hkc Hrow") as "Hrow".
+            iModIntro. iExists _, xs, pidc.
+            iFrame "Hkilled Hxstate Hpidhalf Hrow". }
           iDestruct (proc_lock_res_intro γs γk (proc_addr k) st ch
                        with "Hpst Hpg Hpch Hpub Hslots") as "HR".
           iApply ("Hret0" $! M46 with "[%] Hcg Hpc Htok HR").

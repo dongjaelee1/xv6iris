@@ -397,6 +397,21 @@ Section SlotGen.
     gen_halves_at pa pid g -∗ ⌜bv_unsigned pid <> 0⌝.
   Proof. iIntros "(%Hnz & _ & _)". done. Qed.
 
+  (* THE REGISTRATION EIGHTH, LENT.  It is the one resource in the tree
+     that answers -- the CURRENT generation of this pid is [g] -- and that
+     is what [killed()] needs to tie its answer to a generation its caller
+     can name ([SpecKilled], lane SELF-KILL P6).  A borrow, because the
+     agreement it is spent on is pure. *)
+  Lemma gen_halves_at_reg pa pid g :
+    gen_halves_at pa pid g -∗
+    pid_reg pid (DfracOwn qeighth) g ∗
+    (pid_reg pid (DfracOwn qeighth) g -∗ gen_halves_at pa pid g).
+  Proof.
+    rewrite /gen_halves_at. iIntros "(%Hnz & Hsg & Hpr)".
+    iSplitL "Hpr"; [ iExact "Hpr" | ]. iIntros "Hpr".
+    iSplitR; [ iPureIntro; exact Hnz | ]. iFrame "Hsg Hpr".
+  Qed.
+
   Lemma gen_halves_at_intro pa pid g :
     bv_unsigned pid <> 0 ->
     slot_gen pa (DfracOwn (1/4)) g -∗ pid_reg pid (DfracOwn qeighth) g -∗
@@ -470,6 +485,18 @@ Section SlotGenTok.
 
   (* ...AND THE SPLIT [kexit] TAKES: the marker out, the rest into the park
      ([gen_halves_dorm] at ZOMBIE is exactly [gen_halves_at]). *)
+  (* ...and the same borrow one layer up *)
+  Lemma gen_halves_priv_reg pa pid g :
+    gen_halves_priv pa pid g -∗
+    pid_reg pid (DfracOwn qeighth) g ∗
+    (pid_reg pid (DfracOwn qeighth) g -∗ gen_halves_priv pa pid g).
+  Proof.
+    rewrite /gen_halves_priv. iIntros "[Hat Ht]".
+    iDestruct (gen_halves_at_reg with "Hat") as "[Hpr Hback]".
+    iSplitL "Hpr"; [ iExact "Hpr" | ]. iIntros "Hpr".
+    iSplitR "Ht"; [ iApply ("Hback" with "Hpr") | iExact "Ht" ].
+  Qed.
+
   Lemma gen_halves_priv_split pa pid g :
     gen_halves_priv pa pid g -∗ gen_halves_at pa pid g ∗ ChildTok.taken_at g.
   Proof. iIntros "H". iExact "H". Qed.

@@ -567,7 +567,7 @@ Section ProofFreeproc.
         by exact (proj1 (Hpdom _ (ex_intro _ g Hreg))).
       iDestruct (kill_paid_agree pid kl (DfracOwn (3/4)) g with "Hkrow Hpr34")
         as "[Htie8 Hpr34]".
-      iDestruct "Htie8" as "[[%Hz _] | Htie8]"; [by destruct (Hpnz Hz) |].
+      iDestruct "Htie8" as "[[%Hz _] | [_ Htie8]]"; [by destruct (Hpnz Hz) |].
       (* the live arm's payment publication is persistent and is simply
          dropped: the slot is being freed and its incarnation is over. *)
       iDestruct "Htie8" as (Qk) "(Htie8 & _ & _ & _)".

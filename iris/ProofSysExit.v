@@ -373,7 +373,13 @@ Section ProofSysExit.
            sign-extension of a truncation is the truncation
            ([RiscvExtras.trunc32_sext64]). *)
         f_equal. apply trunc32_sext64. }
-      rewrite Hks. iExact "HQ". }
+      rewrite Hks.
+      (* THE LEFT SIDE OF kexit's PAYMENT DISJUNCTION (lane SELF-KILL, P6):
+         this is a NORMAL exit -- the process asked for it and holds the
+         payload at the status it asked for.  The right side is the
+         kernel's tear-down at -1, where nothing is held and what pays is
+         the killer's deposit in <p->lock>'s killed row. *)
+      iLeft. iExact "HQ". }
   Qed.
 
 End ProofSysExit.

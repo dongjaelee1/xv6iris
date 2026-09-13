@@ -47,6 +47,8 @@ Require Import LockRank.
 Require Import ProcGeom CpuOwn.
 Require Import FdSlots.
 Require Import FileInvDefs.
+Require Import SlotGen.   (* [pid_reg] / [qeighth] -- the caller's tie *)
+Require Import ChildTok.  (* [kill_shot] -- the incarnation's kill one-shot *)
 Require Import SchedCtx.
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
@@ -59,9 +61,9 @@ Import Defs.
 Definition wp_killed_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
      (γs : list gname) (j : nat) (γl : gname)
     (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
-    (* WHAT THE CALLER WANTS OUT OF THE ROW (lane SELF-KILL, §4b'; the
-       owner's ruling of 2026-09-13).  See the accessor premise below. *)
-    (Racc : gname -> mword 32 -> iProp Σ) :=
+    (* WHAT THE CALLER LEARNS FROM THE READ (lane SELF-KILL, P6).  See the
+       premise below. *)
+    (Rout : mword 32 -> iProp Σ) :=
   let pcE : mword 64 := mword_of_int KernelSyms.killed in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   (* the argument is proc j *)
@@ -75,20 +77,28 @@ Definition wp_killed_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG 
      internally (balanced -- [lks] is unchanged across the whole call), so
      the caller must already hold only locks BELOW "proc"'s rank. *)
   locks_below lks "proc" ->
-  (* THE ACCESSOR (lane SELF-KILL, §4b'; the owner's ruling of 2026-09-13:
-     killed() reports the FLAG and nothing else).  [SchedCtx]'s killed row
-     is per-incarnation and LINEAR now -- "the flag is zero, or the payment
-     for this incarnation's death is deposited, or it has been taken" -- so
-     the read can no longer copy it out beside the value, and the old
-     relayed [⌜kl = 0⌝ ∨ □ riscv_kill_cred] is gone with the ambient
-     credential.  What a caller gets instead is an action it supplies HERE
-     and killed() runs INSIDE its critical section, at whatever generation
-     the slot's row is keyed to.  usertrap's exit path instantiates it at
-     "take the payment out and leave the spent marker"; the five callers
-     that only want the number instantiate it at [emp] and drop the
-     result. *)
-  (∀ (gn : gname) (klv : mword 32),
-     SchedCtx.kill_row gn klv ==∗ SchedCtx.kill_row gn klv ∗ Racc gn klv) -∗
+  (* WHAT THE READ MAY LEARN, AND IT IS THE CALLER WHO SAYS (lane
+     SELF-KILL, P6).  killed() reports the FLAG; the useful fact BESIDE the
+     flag is [ChildTok.kill_shot], the incarnation's kill one-shot, which
+     is persistent and therefore outlives this critical section -- and that
+     fact is about a GENERATION, while <p->lock>'s payload names the
+     generation only existentially.  So the identification is the caller's
+     to make, out of resources killed() has no business owning, and it
+     makes it HERE, inside the critical section, on the two pieces this
+     function has open.
+       usertrap's exit route lends the quarter of [p->pid] and the
+     registration eighth its own block carries ([ProcInv.proc_priv_pid],
+     [ProcInv.proc_priv_reg]) and takes [⌜kl = 0⌝ ∨ ChildTok.kill_shot gn]
+     back beside them ([SchedCtx.kill_paid_shot]); the five callers that
+     only want the number lend [emp] and take [emp].
+       PERSISTENT and PURE-CONCLUDING: the two agreements it runs are pure,
+     so nothing of the payload is spent and the row goes back untouched.
+     THIS IS NOT THE OLD VIEW SHIFT: it changes nothing, it only reads. *)
+  (∀ (pidr klr : mword 32),
+     p_pid (proc_addr j) ↦₄{DfracOwn (1/4)} pidr -∗
+     SchedCtx.kill_paid pidr klr -∗
+     p_pid (proc_addr j) ↦₄{DfracOwn (1/4)} pidr ∗
+     SchedCtx.kill_paid pidr klr ∗ Rout klr) -∗
   sie_cap_gpr KT1 m av b p -∗
   cpu_own n eb p b lks -∗
   kernel_text -∗ pc_is pcE -∗
@@ -97,12 +107,8 @@ Definition wp_killed_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG 
     ∀ (mf : regfile) (kl : mword 32),
       ⌜ callee_saved m mf /\
         mf !!! Regidx (mword_of_int 10 : mword 5) = sign_extend' 64 kl ⌝ -∗
-      (* WHAT THE ACCESSOR PRODUCED, beside the value.  The FREE arm is an
-         answer too: nothing in this contract says the slot is live, and an
-         UNUSED slot's payload has no generation to run the action at -- a
-         caller that needs the payment refutes it from its own pid
-         registration ([SchedCtx.kill_paid_agree]). *)
-      (SchedCtx.kill_free kl ∨ ∃ gn : gname, Racc gn kl) -∗
+      (* WHAT THE CALLER'S OWN READ PRODUCED, at the flag that was read *)
+      Rout kl -∗
       sie_cap_gpr KT1 mf av b p -∗
       cpu_own n eb p b lks -∗
       pc_is ret_tgt -∗
@@ -114,6 +120,6 @@ Module Type KILLED.
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
        (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
-      (Racc : gname -> mword 32 -> iProp Σ),
-      wp_killed_sconf_body γs j γl m av n eb p b lks Racc.
+      (Rout : mword 32 -> iProp Σ),
+      wp_killed_sconf_body γs j γl m av n eb p b lks Rout.
 End KILLED.

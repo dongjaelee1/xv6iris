@@ -59,7 +59,7 @@
 (* ===================================================================== *)
 From Stdlib Require Import ZArith.
 From stdpp Require Import gmap.
-From iris.algebra Require Import dfrac excl.  (* [exclR] -- the taken token's camera *)
+From iris.algebra Require Import dfrac excl agree csum.  (* [exclR] -- the taken token's camera; [csumR]/[agreeR] -- the kill flag's one-shot *)
 From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import own saved_prop.
 Require Import SailStdpp.Base SailStdpp.Values.
@@ -95,8 +95,21 @@ Local Open Scope Z_scope.
    the persistent [my_pay] -- at an altitude where [app_sup] is nameable,
    which this one is not (this file requires stdpp, iris and Sail and
    nothing of the application). *)
+(* ...AND THE FOURTH FIELD IS THE KILL FLAG'S ONE-SHOT (lane SELF-KILL,
+   P6).  [p->killed] is set and never cleared while a process lives -- only
+   freeproc zeroes it, and only on a slot whose process is already a ZOMBIE
+   -- but <p->lock>'s payload quantifies the cell EXISTENTIALLY, so "the
+   flag was nonzero a few instructions ago" is not a fact anything can
+   carry across a release.  It has to be a GHOST fact, and a persistent
+   one, because the party that reads the flag ([killed]) and the party that
+   needs to know it ([kexit], which never reads it) are separated by two
+   critical sections.
+     [gk] is that ghost's name, in the PURE component beside the other
+   two: PENDING while the row's zero arm holds it, SHOT the moment a writer
+   sets the flag, and the shot half is persistent and duplicable, which is
+   exactly what makes it relayable.  Its camera is [kshotR] below. *)
 Definition genF : oFunctor :=
-  prodOF (constOF (leibnizO (Values.mword 64 * Values.mword 32 * gname)))
+  prodOF (constOF (leibnizO (Values.mword 64 * Values.mword 32 * gname * gname)))
          (Z -d> ▶ ∙).
 
 Global Instance genF_contractive : oFunctorContractive genF.
@@ -115,6 +128,20 @@ Proof. solve_decision. Defined.
 
 Definition atokR : cmra := exclR (leibnizO taken_val).
 
+(* THE KILL FLAG'S ONE-SHOT, AND ITS VALUE IS ALSO A TYPE OF OUR OWN.
+   [csumR (exclR unitO) (agreeR unitO)] is already an [inG] of the bundle
+   ([Xv6Cameras.kalloc_oneshotR]), and two providers of one [inG] in one
+   scope make two instance paths whose propositions print identically
+   (durable-notes.md) -- the same trap [atokR] above sidesteps, and by the
+   same move. *)
+Inductive shot_val := Shot.
+
+Global Instance shot_val_eq_dec : EqDecision shot_val.
+Proof. solve_decision. Defined.
+
+Definition kshotR : cmra :=
+  csumR (exclR (leibnizO shot_val)) (agreeR (leibnizO shot_val)).
+
 (* THE CAPACITY CLASS, AND IT LIVES HERE rather than in [Xv6Cameras.v] with
    the bundle's other members.  The reason is import hygiene: the files
    that name this file's pieces are U-tier leaves that bind no
@@ -131,8 +158,11 @@ Class ctokG (Σ : gFunctors) := CtokG {
   (* the taken token's camera rides the SAME class, for the reason the
      class exists at all: a U-tier leaf that names one names the other. *)
   ctok_taken :: inG Σ atokR;
+  (* ...and so does the kill flag's one-shot, for the same reason *)
+  ctok_shot :: inG Σ kshotR;
 }.
-Definition ctokΣ : gFunctors := #[ savedAnythingΣ genF; GFunctor atokR ].
+Definition ctokΣ : gFunctors :=
+  #[ savedAnythingΣ genF; GFunctor atokR; GFunctor kshotR ].
 Global Instance subG_ctokΣ {Σ} : subG ctokΣ Σ -> ctokG Σ.
 Proof. solve_inG. Qed.
 
@@ -169,18 +199,67 @@ Section ChildTok.
   Proof. rewrite /taken_tok. iApply own_alloc. done. Qed.
 
   (* ------------------------------------------------------------------ *)
+  (* THE KILL FLAG'S ONE-SHOT, RAW.                                       *)
+  (* ------------------------------------------------------------------ *)
+
+  (* PENDING: the flag of this incarnation has never been set.  Exclusive,
+     minted with the generation, and it lives in <p->lock>'s killed row --
+     in the arm that CLAIMS the flag is zero ([SchedCtx.kill_row]).  A
+     writer that sets the flag opens the row, finds this, and shoots it. *)
+  Definition shot_pending gk : iProp Σ :=
+    own gk (Cinl (Excl (Shot : leibnizO shot_val))).
+
+  (* SHOT: the flag of this incarnation HAS been set.  Persistent, and
+     that is the whole point -- it is what [killed] relays out of its
+     critical section and what [kexit] uses, two critical sections later,
+     to refute the row's zero arm. *)
+  Definition shot_done gk : iProp Σ :=
+    own gk (Cinr (to_agree (Shot : leibnizO shot_val))).
+
+  Global Instance shot_done_persistent gk : Persistent (shot_done gk).
+  Proof. rewrite /shot_done. apply _. Qed.
+  Global Instance shot_pending_timeless gk : Timeless (shot_pending gk).
+  Proof. apply _. Qed.
+  Global Instance shot_done_timeless gk : Timeless (shot_done gk).
+  Proof. apply _. Qed.
+
+  Lemma shot_pending_excl gk : shot_pending gk -∗ shot_pending gk -∗ False.
+  Proof.
+    rewrite /shot_pending. iIntros "H1 H2".
+    iDestruct (own_valid_2 with "H1 H2") as %Hv. iPureIntro.
+    exact (exclusive_l _ _ Hv).
+  Qed.
+
+  (* the two states are incompatible: this is what refutes the zero arm *)
+  Lemma shot_pending_done gk : shot_pending gk -∗ shot_done gk -∗ False.
+  Proof.
+    rewrite /shot_pending /shot_done. iIntros "H1 H2".
+    by iDestruct (own_valid_2 with "H1 H2") as %Hv.
+  Qed.
+
+  Lemma shot_fire gk : shot_pending gk ==∗ shot_done gk.
+  Proof.
+    rewrite /shot_pending /shot_done. iIntros "H".
+    iApply (own_update with "H"). by apply cmra_update_exclusive.
+  Qed.
+
+  Lemma shot_pending_alloc : ⊢ |==> ∃ gk, shot_pending gk.
+  Proof. rewrite /shot_pending. iApply own_alloc. done. Qed.
+
+  (* ------------------------------------------------------------------ *)
   (* THE GENERATION.                                                      *)
   (* ------------------------------------------------------------------ *)
 
   (* the saved element, spelled once: the three PURE values and the
      payload under [Next] (the functor's ▷) *)
-  Definition gen_el pa pid ga Q : oFunctor_apply genF (iPropO Σ) :=
-    (((pa, pid, ga) : leibnizO (Values.mword 64 * Values.mword 32 * gname)),
+  Definition gen_el pa pid ga gk Q : oFunctor_apply genF (iPropO Σ) :=
+    (((pa, pid, ga, gk)
+        : leibnizO (Values.mword 64 * Values.mword 32 * gname * gname)),
      Next ∘ Q).
 
   (* A FRACTION OF A GENERATION.  Every piece below is this at a fraction. *)
-  Definition gen_own γ dq pa pid ga Q : iProp Σ :=
-    saved_anything_own (F := genF) γ dq (gen_el pa pid ga Q).
+  Definition gen_own γ dq pa pid ga gk Q : iProp Σ :=
+    saved_anything_own (F := genF) γ dq (gen_el pa pid ga gk Q).
 
   (* ---- the readings, and they are facts only off the discarded half ---- *)
 
@@ -189,33 +268,37 @@ Section ChildTok.
      in its own right because the party that CUTS the generation
      ([gen_split]) knows all four and every later reader wants a different
      one. *)
-  Definition gen_know γ ga Q : iProp Σ :=
-    (∃ pa pid, gen_own γ DfracDiscarded pa pid ga Q)%I.
+  Definition gen_know γ ga gk Q : iProp Σ :=
+    (∃ pa pid, gen_own γ DfracDiscarded pa pid ga gk Q)%I.
 
   (* the slot this incarnation occupies *)
   Definition gen_slot γ pa : iProp Σ :=
-    (∃ pid ga Q, gen_own γ DfracDiscarded pa pid ga Q)%I.
+    (∃ pid ga gk Q, gen_own γ DfracDiscarded pa pid ga gk Q)%I.
 
   (* ...and the pid it was given.  A generation has one pid forever, which
      is what the escrow's pid-keyed reading in [SpecKwait]'s success arm
      stands on. *)
   Definition gen_pid γ pid : iProp Σ :=
-    (∃ pa ga Q, gen_own γ DfracDiscarded pa pid ga Q)%I.
+    (∃ pa ga gk Q, gen_own γ DfracDiscarded pa pid ga gk Q)%I.
 
   (* THE CHILD'S KNOWLEDGE OF ITS OWN PAYLOAD.  Persistent, so it travels
      into the child's slot and survives exec ([UexecSlot.uvis_gen] does),
      and so that a slot -- re-established at every trap -- may name it
      without owning anything linear. *)
   Definition my_pay γ Q : iProp Σ :=
-    (∃ pa pid ga, gen_own γ DfracDiscarded pa pid ga Q)%I.
+    (∃ pa pid ga gk, gen_own γ DfracDiscarded pa pid ga gk Q)%I.
 
   (* ...AND THE SAME READING FOR THE THREE NEW COMPONENTS.  [gen_taken] is
      PURE agreement (the name is in the [constOF] half), the other two cost
      a later, exactly as the payload does. *)
   Definition gen_taken γ ga : iProp Σ :=
-    (∃ pa pid Q, gen_own γ DfracDiscarded pa pid ga Q)%I.
+    (∃ pa pid gk Q, gen_own γ DfracDiscarded pa pid ga gk Q)%I.
 
-  Global Instance gen_know_persistent γ ga Q : Persistent (gen_know γ ga Q).
+  (* ...AND THE ONE-SHOT'S NAME, read the same way *)
+  Definition gen_shotn γ gk : iProp Σ :=
+    (∃ pa pid ga Q, gen_own γ DfracDiscarded pa pid ga gk Q)%I.
+
+  Global Instance gen_know_persistent γ ga gk Q : Persistent (gen_know γ ga gk Q).
   Proof. apply _. Qed.
   Global Instance gen_slot_persistent γ pa : Persistent (gen_slot γ pa).
   Proof. apply _. Qed.
@@ -225,19 +308,27 @@ Section ChildTok.
   Proof. apply _. Qed.
   Global Instance gen_taken_persistent γ ga : Persistent (gen_taken γ ga).
   Proof. apply _. Qed.
+  Global Instance gen_shotn_persistent γ gk : Persistent (gen_shotn γ gk).
+  Proof. apply _. Qed.
 
 
   (* the two projections of the whole reading *)
-  Lemma gen_know_my_pay γ ga Q : gen_know γ ga Q -∗ my_pay γ Q.
+  Lemma gen_know_my_pay γ ga gk Q : gen_know γ ga gk Q -∗ my_pay γ Q.
   Proof.
     rewrite /gen_know /my_pay. iIntros "H". iDestruct "H" as (pa pid) "H".
-    iExists pa, pid, ga. iExact "H".
+    iExists pa, pid, ga, gk. iExact "H".
   Qed.
 
-  Lemma gen_know_taken γ ga Q : gen_know γ ga Q -∗ gen_taken γ ga.
+  Lemma gen_know_taken γ ga gk Q : gen_know γ ga gk Q -∗ gen_taken γ ga.
   Proof.
     rewrite /gen_know /gen_taken. iIntros "H". iDestruct "H" as (pa pid) "H".
-    iExists pa, pid, Q. iExact "H".
+    iExists pa, pid, gk, Q. iExact "H".
+  Qed.
+
+  Lemma gen_know_shotn γ ga gk Q : gen_know γ ga gk Q -∗ gen_shotn γ gk.
+  Proof.
+    rewrite /gen_know /gen_shotn. iIntros "H". iDestruct "H" as (pa pid) "H".
+    iExists pa, pid, ga, Q. iExact "H".
   Qed.
 
   (* ---- the two linear quarters ---- *)
@@ -246,11 +337,11 @@ Section ChildTok.
      arm.  The slot is existential: a parent is told which CHILD it has,
      not which proc slot the kernel put it in. *)
   Definition child_tok γ pid Q : iProp Σ :=
-    (∃ pa ga, gen_own γ (DfracOwn (1/4)%Qp) pa pid ga Q)%I.
+    (∃ pa ga gk, gen_own γ (DfracOwn (1/4)%Qp) pa pid ga gk Q)%I.
 
   (* THE KERNEL'S QUARTER, in the child's private block. *)
   Definition gen_kq γ pa pid Q : iProp Σ :=
-    (∃ ga, gen_own γ (DfracOwn (1/4)%Qp) pa pid ga Q)%I.
+    (∃ ga gk, gen_own γ (DfracOwn (1/4)%Qp) pa pid ga gk Q)%I.
 
   (* THE ESCROW.  What a ZOMBIE slot holds for its parent: the kernel's
      quarter of the dead incarnation's generation, and the payload PAID at
@@ -297,9 +388,9 @@ Section ChildTok.
      the saved predicate's own later. *)
   (* THE THREE PURE COMPONENTS AGREE PURELY, and the payload up to the
      saved predicate's own later. *)
-  Lemma gen_agree_all γ dq dq' pa pid ga Q pa' pid' ga' Q' :
-    gen_own γ dq pa pid ga Q -∗ gen_own γ dq' pa' pid' ga' Q' -∗
-    ⌜pa = pa' /\ pid = pid' /\ ga = ga'⌝ ∗ ▷ (∀ xs, Q xs ≡ Q' xs).
+  Lemma gen_agree_all γ dq dq' pa pid ga gk Q pa' pid' ga' gk' Q' :
+    gen_own γ dq pa pid ga gk Q -∗ gen_own γ dq' pa' pid' ga' gk' Q' -∗
+    ⌜pa = pa' /\ pid = pid' /\ ga = ga' /\ gk = gk'⌝ ∗ ▷ (∀ xs, Q xs ≡ Q' xs).
   Proof.
     iIntros "H1 H2".
     iDestruct (saved_anything_agree with "H1 H2") as "Heq".
@@ -307,8 +398,10 @@ Section ChildTok.
     iDestruct "Heq" as "[Hv Hf]".
     iDestruct "Hv" as %Hv.
     iSplitR.
-    { iPureIntro. change ((pa, pid, ga) = (pa', pid', ga')) in Hv.
-      split; [ exact (f_equal (fun z => fst (fst z)) Hv) | ].
+    { iPureIntro.
+      change ((pa, pid, ga, gk) = (pa', pid', ga', gk')) in Hv.
+      split; [ exact (f_equal (fun z => fst (fst (fst z))) Hv) | ].
+      split; [ exact (f_equal (fun z => snd (fst (fst z))) Hv) | ].
       split; [ exact (f_equal (fun z => snd (fst z)) Hv)
              | exact (f_equal snd Hv) ]. }
     rewrite discrete_fun_equivI.
@@ -317,18 +410,18 @@ Section ChildTok.
   Qed.
 
   (* the shape every existing caller wants: the pure half and the payload *)
-  Lemma gen_agree γ dq dq' pa pid ga Q pa' pid' ga' Q' :
-    gen_own γ dq pa pid ga Q -∗ gen_own γ dq' pa' pid' ga' Q' -∗
-    ⌜pa = pa' /\ pid = pid' /\ ga = ga'⌝ ∗ ▷ (∀ xs, Q xs ≡ Q' xs).
+  Lemma gen_agree γ dq dq' pa pid ga gk Q pa' pid' ga' gk' Q' :
+    gen_own γ dq pa pid ga gk Q -∗ gen_own γ dq' pa' pid' ga' gk' Q' -∗
+    ⌜pa = pa' /\ pid = pid' /\ ga = ga' /\ gk = gk'⌝ ∗ ▷ (∀ xs, Q xs ≡ Q' xs).
   Proof.
     iIntros "H1 H2".
     iDestruct (gen_agree_all with "H1 H2") as "($ & $)".
   Qed.
 
   (* the pure half alone, which is all most callers want *)
-  Lemma gen_agree_pure γ dq dq' pa pid ga Q pa' pid' ga' Q' :
-    gen_own γ dq pa pid ga Q -∗ gen_own γ dq' pa' pid' ga' Q' -∗
-    ⌜pa = pa' /\ pid = pid' /\ ga = ga'⌝.
+  Lemma gen_agree_pure γ dq dq' pa pid ga gk Q pa' pid' ga' gk' Q' :
+    gen_own γ dq pa pid ga gk Q -∗ gen_own γ dq' pa' pid' ga' gk' Q' -∗
+    ⌜pa = pa' /\ pid = pid' /\ ga = ga' /\ gk = gk'⌝.
   Proof.
     iIntros "H1 H2". iDestruct (gen_agree with "H1 H2") as "[$ _]".
   Qed.
@@ -339,27 +432,37 @@ Section ChildTok.
     gen_taken γ ga -∗ gen_taken γ ga' -∗ ⌜ga = ga'⌝.
   Proof.
     iIntros "H1 H2".
-    iDestruct "H1" as (pa pid Q) "H1".
-    iDestruct "H2" as (pa' pid' Q') "H2".
-    iDestruct (gen_agree_pure with "H1 H2") as %(_ & _ & Hga). done.
+    iDestruct "H1" as (pa pid gk Q) "H1".
+    iDestruct "H2" as (pa' pid' gk' Q') "H2".
+    iDestruct (gen_agree_pure with "H1 H2") as %(_ & _ & Hga & _). done.
+  Qed.
+
+  (* ...AND THE ONE-SHOT'S NAME, on exactly the same footing *)
+  Lemma gen_shotn_agree γ gk gk' :
+    gen_shotn γ gk -∗ gen_shotn γ gk' -∗ ⌜gk = gk'⌝.
+  Proof.
+    iIntros "H1 H2".
+    iDestruct "H1" as (pa pid ga Q) "H1".
+    iDestruct "H2" as (pa' pid' ga' Q') "H2".
+    iDestruct (gen_agree_pure with "H1 H2") as %(_ & _ & _ & Hgk). done.
   Qed.
 
   Lemma gen_slot_agree γ pa pa' :
     gen_slot γ pa -∗ gen_slot γ pa' -∗ ⌜pa = pa'⌝.
   Proof.
     iIntros "H1 H2".
-    iDestruct "H1" as (pid ga Q) "H1".
-    iDestruct "H2" as (pid' ga' Q') "H2".
-    iDestruct (gen_agree_pure with "H1 H2") as %(Hpa & _ & _). done.
+    iDestruct "H1" as (pid ga gk Q) "H1".
+    iDestruct "H2" as (pid' ga' gk' Q') "H2".
+    iDestruct (gen_agree_pure with "H1 H2") as %(Hpa & _ & _ & _). done.
   Qed.
 
   Lemma gen_pid_agree γ pid pid' :
     gen_pid γ pid -∗ gen_pid γ pid' -∗ ⌜pid = pid'⌝.
   Proof.
     iIntros "H1 H2".
-    iDestruct "H1" as (pa ga Q) "H1".
-    iDestruct "H2" as (pa' ga' Q') "H2".
-    iDestruct (gen_agree_pure with "H1 H2") as %(_ & Hpid & _). done.
+    iDestruct "H1" as (pa ga gk Q) "H1".
+    iDestruct "H2" as (pa' ga' gk' Q') "H2".
+    iDestruct (gen_agree_pure with "H1 H2") as %(_ & Hpid & _ & _). done.
   Qed.
 
   (* THE ESCROW'S QUARTER NAMES THE PID ITS GENERATION WAS GIVEN.  Stated
@@ -370,9 +473,9 @@ Section ChildTok.
     gen_pid γ pid' -∗ gen_kq γ pa pid Q -∗ ⌜pid' = pid⌝.
   Proof.
     iIntros "H1 H2".
-    iDestruct "H1" as (pa1 ga1 Q1) "H1".
-    iDestruct "H2" as (ga2) "H2".
-    iDestruct (gen_agree_pure with "H1 H2") as %(_ & Hpid & _). done.
+    iDestruct "H1" as (pa1 ga1 gk1 Q1) "H1".
+    iDestruct "H2" as (ga2 gk2) "H2".
+    iDestruct (gen_agree_pure with "H1 H2") as %(_ & Hpid & _ & _). done.
   Qed.
 
   (* ...AND THE TWO PERSISTENT READINGS AT THE NAMED SLOT AND PID.  A
@@ -384,13 +487,13 @@ Section ChildTok.
     gen_slot γ pa ∗ gen_pid γ pid ∗ gen_kq γ pa pid Q.
   Proof.
     iIntros "#H1 H2".
-    iDestruct "H1" as (pa1 pid1 ga1) "#Hd".
+    iDestruct "H1" as (pa1 pid1 ga1 gk1) "#Hd".
     iAssert (⌜pa1 = pa /\ pid1 = pid⌝)%I as %[-> ->].
-    { iDestruct "H2" as (ga2) "H2".
-      iDestruct (gen_agree_pure with "Hd H2") as %(Hpa & Hpid & _).
+    { iDestruct "H2" as (ga2 gk2) "H2".
+      iDestruct (gen_agree_pure with "Hd H2") as %(Hpa & Hpid & _ & _).
       iPureIntro. exact (conj Hpa Hpid). }
-    iSplitR; [ iExists pid, ga1, Q; iExact "Hd" | ].
-    iSplitR; [ iExists pa, ga1, Q; iExact "Hd" | ]. iExact "H2".
+    iSplitR; [ iExists pid, ga1, gk1, Q; iExact "Hd" | ].
+    iSplitR; [ iExists pa, ga1, gk1, Q; iExact "Hd" | ]. iExact "H2".
   Qed.
 
   (* a quarter reads the pid the persistent fact records *)
@@ -398,9 +501,9 @@ Section ChildTok.
     child_tok γ pid Q -∗ gen_pid γ pid' -∗ ⌜pid = pid'⌝.
   Proof.
     iIntros "H1 H2".
-    iDestruct "H1" as (pa ga) "H1".
-    iDestruct "H2" as (pa' ga' Q') "H2".
-    iDestruct (gen_agree_pure with "H1 H2") as %(_ & Hpid & _). done.
+    iDestruct "H1" as (pa ga gk) "H1".
+    iDestruct "H2" as (pa' ga' gk' Q') "H2".
+    iDestruct (gen_agree_pure with "H1 H2") as %(_ & Hpid & _ & _). done.
   Qed.
 
   (* ...and the child's persistent knowledge is the parent's payload *)
@@ -408,8 +511,8 @@ Section ChildTok.
     my_pay γ Q -∗ my_pay γ Q' -∗ ▷ (∀ xs, Q xs ≡ Q' xs).
   Proof.
     iIntros "H1 H2".
-    iDestruct "H1" as (pa pid ga) "H1".
-    iDestruct "H2" as (pa' pid' ga') "H2".
+    iDestruct "H1" as (pa pid ga gk) "H1".
+    iDestruct "H2" as (pa' pid' ga' gk') "H2".
     iDestruct (gen_agree with "H1 H2") as "[_ $]".
   Qed.
 
@@ -444,6 +547,54 @@ Section ChildTok.
 
   (* two of them cannot exist: the name is pinned purely and the token is
      exclusive.  This is what makes the take ONE-SHOT. *)
+  (* ------------------------------------------------------------------ *)
+  (* ...AND THE KILL FLAG'S ONE-SHOT AT THE GENERATION (lane SELF-KILL,
+     P6).  The two states, with the name hidden exactly as [taken_at]
+     hides the marker's: <p->lock>'s killed row is read by parties that
+     know the generation and not the ghost's name, and the name is a pure
+     component of the generation, so the persistent reading pins it.
+
+     WHERE EACH LIVES.  [kill_pend] is in the row's ZERO arm -- it is what
+     that arm's claim rests on -- and a writer that sets the flag shoots
+     it there.  [kill_shot] is PERSISTENT, so from the moment of the first
+     write every later opening of the row can hand a copy out; that is
+     what [killed] relays to its caller and what [kexit] spends, two
+     critical sections later, to refute the zero arm and take the
+     payment. *)
+  Definition kill_pend γ : iProp Σ :=
+    (∃ gk, gen_shotn γ gk ∗ shot_pending gk)%I.
+
+  Definition kill_shot γ : iProp Σ :=
+    (∃ gk, gen_shotn γ gk ∗ shot_done gk)%I.
+
+  Global Instance kill_shot_persistent γ : Persistent (kill_shot γ).
+  Proof. rewrite /kill_shot. apply _. Qed.
+
+  Lemma kill_pend_of γ gk : gen_shotn γ gk -∗ shot_pending gk -∗ kill_pend γ.
+  Proof. iIntros "#Hg H". iExists gk. iFrame "Hg H". Qed.
+
+  Lemma kill_shot_of γ gk : gen_shotn γ gk -∗ shot_done gk -∗ kill_shot γ.
+  Proof. iIntros "#Hg #H". iExists gk. iFrame "Hg H". Qed.
+
+  (* WHAT A WRITER OF [p->killed] DOES, and the only producer of the shot
+     state there is. *)
+  Lemma kill_pend_fire γ : kill_pend γ ==∗ kill_shot γ.
+  Proof.
+    iIntros "H". iDestruct "H" as (gk) "[#Hg H]".
+    iMod (shot_fire with "H") as "#H". iModIntro.
+    iApply (kill_shot_of γ gk with "Hg H").
+  Qed.
+
+  (* ...AND WHAT THE SHOT STATE BUYS: the zero arm of the row is refuted,
+     which is exactly the fact [kexit] cannot read off the cell. *)
+  Lemma kill_pend_shot γ : kill_pend γ -∗ kill_shot γ -∗ False.
+  Proof.
+    iIntros "H1 H2".
+    iDestruct "H1" as (gk1) "[#Hg1 H1]". iDestruct "H2" as (gk2) "[#Hg2 H2]".
+    iDestruct (gen_shotn_agree with "Hg1 Hg2") as %->.
+    iApply (shot_pending_done with "H1 H2").
+  Qed.
+
   Lemma taken_at_excl γ : taken_at γ -∗ taken_at γ -∗ False.
   Proof.
     iIntros "H1 H2".
@@ -479,10 +630,10 @@ Section ChildTok.
   Lemma exit_tok_pid γ pid xs : exit_tok γ pid xs -∗ gen_pid γ pid.
   Proof.
     iIntros "H". iDestruct "H" as (pa Q Q') "(Hk & Hmy & _)".
-    iDestruct "Hk" as (ga) "Hk".
-    iDestruct "Hmy" as (pa' pid' ga') "#Hmy".
-    iDestruct (gen_agree_pure with "Hk Hmy") as %(_ & Hpid & _).
-    rewrite /gen_pid Hpid. iExists pa', ga', Q'. iExact "Hmy".
+    iDestruct "Hk" as (ga gk) "Hk".
+    iDestruct "Hmy" as (pa' pid' ga' gk') "#Hmy".
+    iDestruct (gen_agree_pure with "Hk Hmy") as %(_ & Hpid & _ & _).
+    rewrite /gen_pid Hpid. iExists pa', ga', gk', Q'. iExact "Hmy".
   Qed.
 
   (* ------------------------------------------------------------------ *)
@@ -563,9 +714,9 @@ Section ChildTok.
     child_tok γ pid Q -∗ exit_tok γ pid xs -∗ ▷ Q xs.
   Proof.
     iIntros "Ht He".
-    iDestruct "Ht" as (pa ga) "Ht".
+    iDestruct "Ht" as (pa ga gk) "Ht".
     iDestruct "He" as (pa' Q0 Q') "[Hk [Hmy HQ]]".
-    iDestruct "Hmy" as (pa'' pid' ga'') "Hmy".
+    iDestruct "Hmy" as (pa'' pid' ga'' gk'') "Hmy".
     iDestruct (gen_agree with "Ht Hmy") as "[_ Heq]".
     iNext. iSpecialize ("Heq" $! xs). by iRewrite "Heq".
   Qed.
@@ -597,9 +748,9 @@ Section ChildTok.
      wants a different one ([gen_know_my_pay] and [gen_know_taken]).
      Handing out [my_pay] alone would lose the taken token's name at the
      one point where it is known. *)
-  Lemma gen_split γ pa pid ga Q :
-    gen_own γ (DfracOwn 1) pa pid ga Q ==∗
-    child_tok γ pid Q ∗ gen_kq γ pa pid Q ∗ gen_know γ ga Q.
+  Lemma gen_split γ pa pid ga gk Q :
+    gen_own γ (DfracOwn 1) pa pid ga gk Q ==∗
+    child_tok γ pid Q ∗ gen_kq γ pa pid Q ∗ gen_know γ ga gk Q.
   Proof.
     iIntros "H". rewrite /gen_own.
     iEval (rewrite -Qp.half_half) in "H".
@@ -608,8 +759,8 @@ Section ChildTok.
     iEval (rewrite -Qp.quarter_quarter) in "H1".
     iDestruct "H1" as "[Ha Hb]".
     iModIntro. iSplitL "Ha".
-    { iExists pa, ga. iExact "Ha". }
-    iSplitL "Hb"; [ iExists ga; iExact "Hb" |].
+    { iExists pa, ga, gk. iExact "Ha". }
+    iSplitL "Hb"; [ iExists ga, gk; iExact "Hb" |].
     iExists pa, pid. iExact "Hp".
   Qed.
 
@@ -640,37 +791,52 @@ Section ChildTok.
      generation and the token minted with it.  Bundled rather than handed
      out as four rows so that [SpecAllocproc]'s post keeps its arity and
      every pass-through site is untouched. *)
-  Definition gen_new γ pa pid ga Q : iProp Σ :=
-    (child_tok γ pid Q ∗ gen_kq γ pa pid Q ∗ gen_know γ ga Q ∗
-     taken_tok ga)%I.
+  (* IT MINTS THE KILL FLAG'S ONE-SHOT TOO, in the PENDING state, and that
+     is where <p->lock>'s killed row's zero arm comes from: allocproc
+     closes the fresh incarnation's row at a flag it has just read to be
+     zero, and this is the token that arm holds. *)
+  (* THE NAMES ARE GONE FROM THE INTERFACE.  Both ghosts are handed out at
+     their GENERATION-indexed forms ([taken_at], [kill_pend]) and the
+     persistent reading as [my_pay], so no caller of allocproc binds a
+     ghost name it has no use for. *)
+  Definition gen_new γ pa pid Q : iProp Σ :=
+    (child_tok γ pid Q ∗ gen_kq γ pa pid Q ∗ my_pay γ Q ∗ taken_at γ)%I.
 
   (* ...and the persistent reading comes off the row WITHOUT spending it,
      which is what allocproc founds the killed row's payment publication
      on ([SchedCtx.kill_paid]'s live arm names the payload). *)
-  Lemma gen_new_my_pay γ pa pid ga Q :
-    gen_new γ pa pid ga Q -∗ my_pay γ Q ∗ gen_new γ pa pid ga Q.
+  Lemma gen_new_my_pay γ pa pid Q :
+    gen_new γ pa pid Q -∗ my_pay γ Q ∗ gen_new γ pa pid Q.
   Proof.
     iIntros "H". rewrite /gen_new.
-    iDestruct "H" as "(Ht & Hk & #Hknow & Hta)".
-    iDestruct (gen_know_my_pay with "Hknow") as "#Hmy".
-    iFrame "Hmy Ht Hk Hta". iExact "Hknow".
+    iDestruct "H" as "(Ht & Hk & #Hmy & Hta)".
+    iFrame "Hmy Ht Hk Hta".
   Qed.
 
-  Lemma gen_new_split γ pa pid ga Q :
-    gen_new γ pa pid ga Q -∗
-    child_tok γ pid Q ∗ gen_kq γ pa pid Q ∗ gen_know γ ga Q ∗ taken_tok ga.
+  Lemma gen_new_split γ pa pid Q :
+    gen_new γ pa pid Q -∗
+    child_tok γ pid Q ∗ gen_kq γ pa pid Q ∗ my_pay γ Q ∗ taken_at γ.
   Proof. iIntros "H". iExact "H". Qed.
 
+  (* THE ONE-SHOT IS BESIDE THE ROW AND NOT IN IT, because allocproc SPENDS
+     it: it goes straight into <p->lock>'s killed row's zero arm at the
+     store that gives the slot its new pid, and never reaches the caller. *)
   Lemma gen_alloc pa pid (Q : Z -> iProp Σ) :
-    ⊢ |==> ∃ (γ ga : gname), gen_new γ pa pid ga Q.
+    ⊢ |==> ∃ γ : gname, gen_new γ pa pid Q ∗ kill_pend γ.
   Proof.
     iMod taken_tok_alloc as (ga) "Hga".
+    iMod shot_pending_alloc as (gk) "Hgk".
     iMod (saved_anything_alloc (F := genF)
-            (gen_el pa pid ga Q) (DfracOwn 1)
+            (gen_el pa pid ga gk Q) (DfracOwn 1)
             ltac:(done)) as (γ) "Hg".
     iMod (gen_split with "Hg") as "(Htok & Hkq & #Hknow)".
-    iModIntro. iExists γ, ga. rewrite /gen_new.
-    iFrame "Htok Hkq Hga". iExact "Hknow".
+    iModIntro. iExists γ. rewrite /gen_new.
+    iDestruct (gen_know_my_pay with "Hknow") as "#Hmy".
+    iDestruct (gen_know_taken with "Hknow") as "#Hgt".
+    iDestruct (gen_know_shotn with "Hknow") as "#Hgs".
+    iFrame "Htok Hkq Hmy".
+    iSplitL "Hga"; [ iApply (taken_at_of γ ga with "Hgt Hga") | ].
+    iApply (kill_pend_of γ gk with "Hgs Hgk").
   Qed.
 
 

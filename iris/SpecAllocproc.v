@@ -216,12 +216,16 @@ Definition allocproc_post
           the incarnation that never started, exactly as [pv_fdg] does.
           The block records the name ([ProcDefs.pv_gen]), which is what
           makes [UexecSlot.uvis_gen] a reading of the block. *)
-       (* ...AND THE ALIVE TOKEN MINTED WITH IT (lane SELF-KILL §3a): the
-          incarnation's own exclusive token, at a ghost name the generation
-          RECORDS, so every later reading says which token is this
-          incarnation's.  Bundled into this row rather than added beside it
-          so that every pass-through site keeps its arity. *)
-       (∃ ga : gname, gen_new (pv_gen (us_V U)) (proc_addr j) pid ga Q) ∗
+       (* ...AND THE TWO GHOSTS MINTED WITH IT (lane SELF-KILL, P6): the
+          incarnation's exclusive SPENT MARKER, which rides the process's
+          private block until its exit trades it for the death payment, and
+          the kill flag's ONE-SHOT at PENDING, which is what <p->lock>'s
+          killed row's zero arm is founded on.  Both are handed out at
+          their GENERATION-indexed forms ([ChildTok.taken_at] /
+          [kill_pend]) so no caller binds a ghost name, and both are
+          bundled into this row so that every pass-through site keeps its
+          arity. *)
+       gen_new (pv_gen (us_V U)) (proc_addr j) pid Q ∗
        (* ...AND THE TWO EXCLUSIVE GHOSTS THAT SAY THIS INCARNATION IS THE
           SLOT'S CURRENT ONE, BOTH WHOLE ([SlotGen]).  The generation's
           came out of the dormant block and was re-keyed here; the pid's

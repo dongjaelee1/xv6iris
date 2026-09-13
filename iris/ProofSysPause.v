@@ -1234,13 +1234,16 @@ Section SpBodies.
     { rewrite /L1 upd_ne; [| reg_neq]. rewrite Hmpa0. reflexivity. }
     (* killed() ONLY REPORTS THE FLAG (lane SELF-KILL, §4b'): the access
        this caller supplies is the identity. *)
-    iAssert (∀ (gn : gname) (klv : mword 32),
-               SchedCtx.kill_row gn klv ==∗ SchedCtx.kill_row gn klv ∗ emp)%I
+    iAssert (∀ (pidr klr : mword 32),
+               p_pid (proc_addr j) ↦₄{DfracOwn (1/4)} pidr -∗
+               SchedCtx.kill_paid pidr klr -∗
+               p_pid (proc_addr j) ↦₄{DfracOwn (1/4)} pidr ∗
+               SchedCtx.kill_paid pidr klr ∗ emp)%I
       as "Hkacc".
-    { iIntros (gn klv) "H". iModIntro. iSplitL "H"; [ iExact "H" | done ]. }
+    { iIntros (pidr klr) "Hq Hr". iFrame "Hq Hr". }
     iApply (Killed.wp_killed_sconf γs j γl L1 (trap_res true + (av - 8))%nat 1%nat eb (proc_addr j) false
               ({["time"]} ∪ lks)
-              (fun (_ : gname) (_ : mword 32) => emp)%I
+              (fun (_ : mword 32) => emp)%I
               HL1a0 Hj Hjl Hn1 ltac:(lia) Hfresh_proc
               with "Hkacc Hcg Hown Htext Hpc Hpinv").
     all: try lkbelow.

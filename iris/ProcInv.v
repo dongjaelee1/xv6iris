@@ -1997,6 +1997,82 @@ Section ProcInv.
     iIntros "[Hc _]". iApply (proc_priv_core_pid_nz with "Hc").
   Qed.
 
+  (* ...AND THE REGISTRATION EIGHTH, LENT out of the same bundle
+     ([SlotGen.gen_halves_priv_reg]).  [killed()] takes it beside the pid
+     quarter and hands both back: the two say the killed row it opened is
+     THIS incarnation's, which is what makes the one-shot it relays usable
+     (lane SELF-KILL, P6; [SpecKilled]). *)
+  Lemma proc_priv_core_reg (pa : mword 64) (pid : mword 32) (U : ustate) :
+    proc_priv_core pa pid U -∗
+    pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
+    (pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) -∗
+       proc_priv_core pa pid U).
+  Proof.
+    iIntros "H". iEval (rewrite proc_priv_core_bare) in "H".
+    iDestruct "H" as "(Hb & %Hlz & Hc & Hft & Hgq & Hxs & Hgh)".
+    iDestruct (gen_halves_priv_reg with "Hgh") as "[Hpr Hback]".
+    iSplitL "Hpr"; [ iExact "Hpr" | ]. iIntros "Hpr".
+    rewrite proc_priv_core_bare. iFrame "Hb Hc Hft Hgq Hxs".
+    iSplitR; [ iPureIntro; exact Hlz | ]. iApply ("Hback" with "Hpr").
+  Qed.
+
+  Lemma proc_priv_reg (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) :
+    proc_priv γf pa pid U -∗
+    pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
+    (pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) -∗
+       proc_priv γf pa pid U).
+  Proof.
+    iIntros "[Hc Ho]".
+    iDestruct (proc_priv_core_reg with "Hc") as "[Hpr Hback]".
+    iSplitL "Hpr"; [ iExact "Hpr" | ]. iIntros "Hpr".
+    iSplitR "Ho"; [ iApply ("Hback" with "Hpr") | iExact "Ho" ].
+  Qed.
+
+  (* ...AND THE TWO TOGETHER, WHICH IS WHAT [killed()] ACTUALLY WANTS.  The
+     two borrows above do NOT compose: each closer asks for its own share
+     back and neither can be run while the other's is outstanding.  The
+     caller needs BOTH at once -- the pid quarter names the row's cell, the
+     registration eighth names its generation -- so the borrow is stated
+     once, with one closer taking both (lane SELF-KILL, P6;
+     [SpecKilled]'s premise). *)
+  Lemma proc_priv_core_pid_reg (pa : mword 64) (pid : mword 32) (U : ustate) :
+    proc_priv_core pa pid U -∗
+    p_pid pa ↦₄{DfracOwn (1/4)} pid ∗
+    pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
+    (p_pid pa ↦₄{DfracOwn (1/4)} pid -∗
+     pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) -∗
+     proc_priv_core pa pid U).
+  Proof.
+    iIntros "H". iEval (rewrite proc_priv_core_bare) in "H".
+    iDestruct "H" as "(Hb & %Hlz & Hc & Hft & Hgq & Hxs & Hgh)".
+    iDestruct (proc_priv_bare_pid with "Hb") as "[Hq Hbback]".
+    iDestruct (gen_halves_priv_reg with "Hgh") as "[Hpr Hgback]".
+    iSplitL "Hq"; [ iExact "Hq" | ].
+    iSplitL "Hpr"; [ iExact "Hpr" | ].
+    iIntros "Hq Hpr". rewrite proc_priv_core_bare.
+    iSplitL "Hbback Hq"; [ iApply ("Hbback" with "Hq") | ].
+    iSplitR; [ iPureIntro; exact Hlz | ].
+    iFrame "Hc Hft Hgq Hxs". iApply ("Hgback" with "Hpr").
+  Qed.
+
+  Lemma proc_priv_pid_reg (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) :
+    proc_priv γf pa pid U -∗
+    p_pid pa ↦₄{DfracOwn (1/4)} pid ∗
+    pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
+    (p_pid pa ↦₄{DfracOwn (1/4)} pid -∗
+     pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) -∗
+     proc_priv γf pa pid U).
+  Proof.
+    iIntros "[Hc Ho]".
+    iDestruct (proc_priv_core_pid_reg with "Hc") as "(Hq & Hpr & Hback)".
+    iSplitL "Hq"; [ iExact "Hq" | ].
+    iSplitL "Hpr"; [ iExact "Hpr" | ].
+    iIntros "Hq Hpr". iSplitR "Ho"; [ | iExact "Ho" ].
+    iApply ("Hback" with "Hq Hpr").
+  Qed.
+
   (* The read-only trapframe-POINTER fraction: what [p->trapframe->aN] reads
      first.  Same discipline as [proc_priv_pid] and for the same reason --
      argraw should take the weakest premise (a bare fraction of one cell),

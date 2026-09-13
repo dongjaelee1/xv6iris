@@ -349,7 +349,7 @@ Section KforkPrologue.
            killed row -- and closing it freezes the payload
            ([ChildTok.gen_alloc]).  So the three pieces and the taken token
            arrive here as one row and nothing re-chooses. *)
-        (∃ ga : gname, ChildTok.gen_new (pv_gen (us_V Uc')) npa pid_c ga Q) -∗
+        ChildTok.gen_new (pv_gen (us_V Uc')) npa pid_c Q -∗
         (* ...AND THE CHILD SLOT'S TWO EXCLUSIVE GHOSTS, BOTH WHOLE, off
            the same arm: the forking process is the party that splits them
            ([SlotGen.slot_gen_quarters], [pid_reg_quarters]) -- a quarter

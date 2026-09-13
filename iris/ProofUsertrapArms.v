@@ -92,6 +92,7 @@ Require Import Xv6Cameras.
 Require Import SpecFileclose.
 Require Import IrefSlots.
 Require Import FdSlots ProcInv.
+Require Import SlotGen.   (* [pid_reg] / [qeighth] -- the tie killed() is read at *)
 Require Import SchedCtx.
 Require Import FileInvDefs.
 Require Import CodeUsertrap.
@@ -1296,21 +1297,47 @@ Section UtE8.
       by (rewrite /M2 upd_ne; [exact HM1s1 | reg_neq]).
     assert (HcsM2 : ut_cs m0 M2)
       by (rewrite /M2; apply ut_cs_insert; [vm_compute; reflexivity | exact HcsM1]).
-    (* THE ACCESS killed() RUNS ON THE ROW (lane SELF-KILL, §4b'): at a
-       nonzero flag the row carries the taint that wrote it, and that is
-       what this exit cashes [UexecSlot.upay_neg] with.  Persistent, so the
-       row goes back untouched. *)
-    iAssert (∀ (gnk : gname) (klv : mword 32),
-               SchedCtx.kill_row gnk klv ==∗
-               SchedCtx.kill_row gnk klv ∗ SchedCtx.kill_why klv)%I as "Hkacc".
-    { iIntros (gnk klv) "H". iApply (SchedCtx.kill_why_access with "H"). }
+    (* WHAT THIS READ IS FOR, AND THE TIE IT IS MADE AT (lane SELF-KILL,
+       P6).  A nonzero flag means the incarnation's kill ONE-SHOT has been
+       fired, and that fact -- persistent, and about a GENERATION -- is
+       what [kexit] needs to take the killer's deposit out of the row.
+       <p->lock>'s payload names its generation only existentially, so the
+       identification is made HERE, out of the dying process's OWN block:
+       the quarter of [p->pid] says the row's cell is this slot's, and the
+       registration eighth says the row's generation is this
+       incarnation's ([ProcInv.proc_priv_pid_reg]).  Both come straight
+       back -- the two agreements are pure. *)
+    iDestruct (ut_own_priv with "Hown") as "(Hpv & Hufr & Hch & Hsy & Hownback)".
+    iDestruct (ProcInv.proc_priv_pid_reg with "Hpv") as "(Hqp & Hrg & Hpvback)".
+    iAssert (∀ (pidr klr : mword 32),
+               p_pid (proc_addr (un_j N)) ↦₄{DfracOwn (1/4)} pidr -∗
+               SchedCtx.kill_paid pidr klr -∗
+               p_pid (proc_addr (un_j N)) ↦₄{DfracOwn (1/4)} pidr ∗
+               SchedCtx.kill_paid pidr klr ∗
+               ((⌜klr = (mword_of_int 0 : mword 32)⌝
+                 ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                p_pid (un_pj N) ↦₄{DfracOwn (1/4)} pid ∗
+                pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U))))%I
+      with "[Hqp Hrg]" as "Hkacc".
+    { iIntros (pidr klr) "Hq Hr".
+      iDestruct (ctx_word4_pointsto_agree with "Hq Hqp") as %->.
+      iDestruct (SchedCtx.kill_paid_shot pid klr (DfracOwn qeighth)
+                   (pv_gen (us_V U)) with "Hr Hrg") as "(Hr & Hrg & Hs)".
+      iFrame "Hq Hr Hs Hqp Hrg". }
     iApply (KI.wp_killed_sconf (un_s N) (un_j N) (un_l N) M2 nx 0%nat false
               (un_pj N) false lks
-              (fun (_ : gname) (klv : mword 32) => SchedCtx.kill_why klv)
+              (fun (klv : mword 32) =>
+                 ((⌜klv = (mword_of_int 0 : mword 32)⌝
+                   ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                  p_pid (un_pj N) ↦₄{DfracOwn (1/4)} pid ∗
+                  pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)))%I)
               HM2a0 Hj Hjl ltac:(vm_compute; reflexivity)
               ltac:(lia) with "Hkacc Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
-    iApply wp_next_off_intro. iIntros (mf kl) "[%Hcskl %Hkla0] #Hkw Hcg Hcpu Hpc".
+    iApply wp_next_off_intro.
+    iIntros (mf kl) "[%Hcskl %Hkla0] (#Hkw & Hqp & Hrg) Hcg Hcpu Hpc".
+    iDestruct ("Hpvback" with "Hqp Hrg") as "Hpv".
+    iDestruct ("Hownback" $! U sts cs with "Hpv Hufr Hch Hsy") as "Hown".
     assert (Hretee : ret_pc (M2 !!! Regidx Rra) = mword_of_int (UT + 0xf0))
       by (rewrite HM2ra; pcw).
     iEval (rewrite Hretee) in "Hpc".
@@ -1461,12 +1488,8 @@ Section UtE8.
          somebody paid for it. *)
       assert (Hknz : kl <> (mword_of_int 0 : mword 32)).
       { intro Hz0. rewrite Hz0 in Hz. vm_compute in Hz. discriminate Hz. }
-      iAssert (□ riscv_kill_cred)%I with "[]" as "#Hkcx".
-      { iDestruct "Hkw" as "[%Hz0 | Hacc]";
-          [ exfalso; exact (Hknz Hz0)
-          | iDestruct "Hacc" as (gn0) "Hacc";
-            iApply (SchedCtx.kill_why_cred kl Hknz with "Hacc") ]. }
-      iDestruct (upay_neg_pay (sexit_pay fdep) with "Hkcx Hpayv") as "Hpayv".
+      iAssert (ChildTok.kill_shot (pv_gen (us_V U)))%I with "[]" as "#Hshot".
+      { iDestruct "Hkw" as "[%Hz0 | $]". exfalso; exact (Hknz Hz0). }
       iApply (T.ut_kexit Rsys N U
                 (<[Regidx Rra := regval_into_reg
                      (add_vec_int (mword_of_int (UT + 0xf8) : mword 64) 4)]> K1)
@@ -1476,7 +1499,7 @@ Section UtE8.
                         [ subst K1; apply upd_eq | vm_compute; discriminate ]
                       | vm_compute; reflexivity ])
                 ltac:(lkbelow)
-                with "Htext Hpc Hcg Hkcl4 Hmyp Hpayv [-]").
+                with "Htext Hpc Hcg Hkcl4 Hmyp Hshot [-]").
       iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu Hcsrs Hclm [-]").
       rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
   Qed.

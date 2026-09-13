@@ -464,8 +464,7 @@ Section ProofUserinit.
        <init>'S TAKEN TOKEN goes into the block with the kernel's quarter
        ([ProcInv.proc_priv_core]), which is where usertrap's exit path
        finds it. *)
-    iDestruct "Hgen" as (gai) "(_ & Hkq & #Hknow & Htaken)".
-    iDestruct (ChildTok.gen_know_my_pay with "Hknow") as "#Hmp".
+    iDestruct "Hgen" as "(_ & Hkq & #Hmp & Htaken)".
     (* ...AND THE TWO EXCLUSIVE GHOSTS, SPLIT THE SAME WAY AND THE THREE
        QUARTERS DROPPED.  They are what a forking parent deposits under
        <wait_lock> for its child ([WaitInv.gen_halves]); <init> has no
@@ -479,9 +478,7 @@ Section ProofUserinit.
     iAssert (gen_halves_priv (proc_addr j) pid (pv_gen V))
       with "[Hsg Hpr Htaken]" as "Hgh";
       [iApply (gen_halves_priv_intro (proc_addr j) pid (pv_gen V)
-                 ltac:(lia) with "Hsg Hpr [Htaken]");
-       iApply (ChildTok.taken_at_of _ gai with "[] Htaken");
-       iApply (ChildTok.gen_know_taken with "Hknow") |].
+                 ltac:(lia) with "Hsg Hpr Htaken") |].
     (* [Hkfree] is KEPT: the paid park is anchored on the child's free
        kernel stack ([ProcDefs.kstack_free_at] spells it at [ks] below). *)
     iDestruct "Hks" as "#Hks".

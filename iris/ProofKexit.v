@@ -1068,12 +1068,17 @@ Section KexitPark.
        THE STATUS THIS CALL STORES ([ProcGeom.xstate_of] of the argument the
        prologue moved into s4) *)
     my_pay (pv_gen (us_V U)) Q -∗
-    Q (xstate_of sv) -∗
+    (* the two-sided payment ([SpecKexit]): the caller's own [Q] at the
+       status, or -- on the kernel's tear-down route -- the incarnation's
+       kill one-shot, which the take below trades the MARKER for. *)
+    (Q (xstate_of sv)
+     ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U)))) -∗
+    ChildTok.taken_at (pv_gen (us_V U)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros pj Hj Hgl Hav Hregs Hof Hcwd Hfresh.
     destruct Hregs as (Hs3 & Hs4 & Hsp0 & Hdom).
-    iIntros "Hcg Hcloser Hown Htce Hcce #Htext Hpc #Hprocs #Hwl Hinit Hsp Hir Hbs Hpriv Hgq Hrow Hxb Hgh #Hmy HQ".
+    iIntros "Hcg Hcloser Hown Htce Hcce #Htext Hpc #Hprocs #Hwl Hinit Hsp Hir Hbs Hpriv Hgq Hrow Hxb Hgh #Hmy HQ Htaken".
     (* THE SCHED CROSSING NEEDS THE EXACT SINGLETON: swtch is contracted at
        [{["proc"]}] on both sides (SpecSwtch.v), xv6's own
        [panic("sched locks")] discipline.  [kx_park] enters at depth 0, so the
@@ -1445,7 +1450,40 @@ Section KexitPark.
     iDestruct (pstate_whole_split pj RUNNING) as "[_ Hwe]".
     iDestruct ("Hwe" with "[Hpg Hclm]") as "Hpg".
     { rewrite unclaimed_RUNNING. iFrame "Hpg Hclm". }
-    iDestruct "Hpub" as (kl xs pidv) "(Hkilled & Hxstate & (Hpidh & Hgen) & Hkrow)".
+    iDestruct "Hpub" as (kl xs pidv) "(Hkilled & Hxstate & Hpidq & Hkrow)".
+    (* ---- THE DEATH PAYMENT, TAKEN OUT OF THE ROW (lane SELF-KILL, P6).
+       On the kernel's tear-down route the caller brought no [Q (-1)]: what
+       the process owes its parent was DEPOSITED by whoever killed it, in
+       the row this critical section is holding, and kexit is the one party
+       that can take it -- it has the incarnation's spent MARKER (out of
+       the block it is consuming) to leave in the row's place, and the
+       one-shot [killed()] relayed to refute the row's zero arm.  What
+       comes out IS the escrow's own shape ([ChildTok.kill_owed] is
+       [∃ Q', my_pay ∗ Q' (-1)], which is exactly what
+       [ProcInv.proc_priv_to_dormant_zombie] asks for), so nothing has to
+       agree with anything and the take costs no later.
+       THE TWO PIDS MEET FIRST: the row is keyed at <p->lock>'s pid and the
+       registration eighth rides the block, so the block's half of the cell
+       is what says they are one word. *)
+    iDestruct (proc_priv_nocwd_pid with "Hpriv") as "[Hpidb Hpivback]".
+    iDestruct (ctx_word4_pointsto_agree with "Hpidb Hpidq") as %<-.
+    iDestruct ("Hpivback" with "Hpidb") as "Hpriv".
+    iAssert ((∃ Qp : Z -> iProp Σ,
+                ChildTok.my_pay (pv_gen (us_V U)) Qp ∗ Qp (xstate_of sv)) ∗
+             SchedCtx.kill_paid pid kl ∗
+             gen_halves_at pj pid (pv_gen (us_V U)))%I
+      with "[HQ Htaken Hkrow Hgh]" as "(Hpay0 & Hkrow & Hgh)".
+    { iDestruct "HQ" as "[HQ | [%Hm1 #Hshot]]".
+      - iFrame "Hkrow Hgh". iExists Q. iFrame "Hmy HQ".
+      - iDestruct (gen_halves_at_nz with "Hgh") as %Hnz.
+        iDestruct (gen_halves_at_reg with "Hgh") as "[Hpr Hback]".
+        iDestruct (SchedCtx.kill_paid_take pid kl (DfracOwn qeighth)
+                     (pv_gen (us_V U)) Hnz with "Hshot Htaken Hpr Hkrow")
+          as "(Howed & Hpr & Hkrow)".
+        iFrame "Hkrow". iSplitL "Howed".
+        + iDestruct "Howed" as (Qp) "[#Hmyp HQp]". iExists Qp.
+          iFrame "Hmyp". rewrite Hm1. iExact "HQp".
+        + iApply ("Hback" with "Hpr"). }
     (* +0x80 sw s4,44(s3) : p->xstate = status.
        THE WORD THE ESCROW IS KEYED AT.  [s4] holds this call's [status]
        argument, which on the exit route is argument 0 of the frame the
@@ -1636,11 +1674,11 @@ Section KexitPark.
        index-generic, so it just rides through at that index. *)
     iApply (Sched.wp_sched_sconf (CID := CIDa)  γs j γl ZOMBIE ch0 PD (trap_res b + av)%nat eb
               Hj Hgl park_ok_ZOMBIE ltac:(lia)
-              with "Hcg Htext Hpc Hprocs [Hlkp Hstate Hpg Hchan Hkilled Hxstate Hpidh Hgen Hkrow]
-                    [Hpriv Hgq Hsp Hir Hbs Hcloser Hrow Hxb Hgh HQ] Hpay Hcpuemp Hoc Htag Hvc").
+              with "Hcg Htext Hpc Hprocs [Hlkp Hstate Hpg Hchan Hkilled Hxstate Hpidq Hkrow]
+                    [Hpriv Hgq Hsp Hir Hbs Hcloser Hrow Hxb Hgh Hpay0] Hpay Hcpuemp Hoc Htag Hvc").
     { rewrite /proc_held. iFrame "Hlkp Hstate Hpg Hchan".
-      iExists kl, (trunc32 (rget (CID := CIDa) mlk (mword_of_int 20 : mword 5))), pidv.
-      iFrame "Hkilled Hxstate Hpidh Hgen Hkrow". }
+      iExists kl, (trunc32 (rget (CID := CIDa) mlk (mword_of_int 20 : mword 5))), pid.
+      iFrame "Hkilled Hxstate Hpidq Hkrow". }
     { (* THE DONATION.  sched's [park_pay] is a CLOSER: at a park that never
          returns it hands back the whole stack region it was called with,
          because its own frame and tail are dead the instant the swtch
@@ -1653,10 +1691,14 @@ Section KexitPark.
       iIntros "Hstk".
       iEval (rewrite HPDsp) in "Hstk".
       iDestruct ("Hcloser" with "Hstk") as "Hkst".
-      iApply (kexit_park_pay γf j pid U Q
+      (* the payload the escrow is built at is the one the take produced --
+         the caller's own [Q] on the paid side, the ROW's on the killed
+         side, and the park does not care which. *)
+      iDestruct "Hpay0" as (Qp) "[#Hmyp HQp]".
+      iApply (kexit_park_pay γf j pid U Qp
                 (trunc32 (rget (CID := CIDa) mlk (mword_of_int 20 : mword 5)))
                 Hof Hcwd
-                with "Hpriv Hgq Hsp Hir Hbs Hkst Hrow Hxb Hmy [HQ] Hgh").
+                with "Hpriv Hgq Hsp Hir Hbs Hkst Hrow Hxb Hmyp [HQp] Hgh").
       (* the cell holds what the [sw] committed, and the deposit was paid at
          [ProcGeom.xstate_of] of the same register -- the same [Z], because
          [xstate_of] is stated through the store's own [trunc32]. *)
@@ -1664,7 +1706,7 @@ Section KexitPark.
                        (trunc32 (rget (CID := CIDa) mlk (mword_of_int 20 : mword 5)))
                      = xstate_of sv)
         by (rgne; rewrite Hlk_s4; reflexivity).
-      rewrite Hxeq. iExact "HQ". }
+      rewrite Hxeq. iExact "HQp". }
     (* NO POST-RESUME ARM.  [needs_ctx ZOMBIE] is false, so sched's contract
        owes the caller nothing after the crossing: the swtch a dying thread
        makes does not come back, and THAT is the proof that the
@@ -1766,7 +1808,9 @@ Section KexitRest.
        calls below neither read nor move it either; the park spends it on
        the ZOMBIE escrow ([SpecKexit.kexit_park_pay]). *)
     my_pay (pv_gen (us_V U)) Q -∗
-    Q (xstate_of sv) -∗
+    (* the two-sided payment, straight through ([SpecKexit]) *)
+    (Q (xstate_of sv)
+     ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U)))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros pj Hj Hgl Hav Hgeom Hregs Hof
@@ -1798,12 +1842,11 @@ Section KexitRest.
        (lane SELF-KILL, P6).  [SlotGen.gen_halves_priv] is the token-free
        core plus [ChildTok.taken_at], and only the CORE crosses into the
        ZOMBIE block ([SlotGen.gen_halves_dorm]'s ZOMBIE arm).  The marker
-       is DROPPED for now; P6's exit path is what puts it into
-       <p->lock>'s killed row in exchange for the death payment, and the
-       logic is affine so dropping it is sound in the meantime -- a marker
-       nobody holds is a row arm nobody can close, which only ever makes
-       the killed row HARDER to satisfy. *)
-    iDestruct (gen_halves_priv_split with "Hgh") as "[Hgh _]".
+       goes on to the park, which TRADES it for the death payment
+       <p->lock>'s killed row is holding ([SchedCtx.kill_paid_take]) -- so
+       nothing is dropped and the row's spent arm gets its one and only
+       producer. *)
+    iDestruct (gen_halves_priv_split with "Hgh") as "[Hgh Htaken]".
     (* THE BLOCK, NOT A QUARTER OF [p->pid].  begin_op, iput and end_op all
        take [proc_priv_bare] now, and [p->cwd] lives INSIDE it -- so the cell
        is borrowed for the two instructions that touch it (+0x50's load and
@@ -2051,7 +2094,7 @@ Section KexitRest.
               ltac:(cbn [upd_cwd pv_cwd pv_fdg]; reflexivity)
               Hfresh_wl
               with "Hcg Hcloser Hown Htce Hcce Htext Hpc Hprocs Hwl Hinit Hsp Hir Hbsl
-                    Hpriv [Hgq] Hrow Hxb [Hgh] Hmy [HQ]").
+                    Hpriv [Hgq] Hrow Hxb [Hgh] Hmy [HQ] [Htaken]").
     { (* the pair is keyed at the block's generation, which zeroing
          [p->cwd] does not touch *)
       cbn [us_cwd upd_usV us_V upd_cwd pv_gen]. iExact "Hgq". }
@@ -2060,6 +2103,8 @@ Section KexitRest.
     { (* the deposit's payload is at this call's status argument, which the
          block does not name at all *)
       iExact "HQ". }
+    { (* ...and so is the marker: [upd_cwd] does not touch [pv_gen] *)
+      cbn [us_cwd upd_usV us_V upd_cwd pv_gen]. iExact "Htaken". }
   Qed.
 
 End KexitRest.
@@ -2477,8 +2522,10 @@ Section ProofKexit.
         { (* the loop's [kx_nulled] carries the generation name unchanged *)
           iEval (rewrite Hxgen). iExact "Hmy". }
         { (* ...and the status it is paid at, which is this call's argument
-             and not anything the fd loop touches *)
-          iExact "HQ". } }
+             and not anything the fd loop touches; the loop's [kx_nulled]
+             carries the generation name unchanged, which is what the
+             one-shot side of the disjunction is stated at *)
+          iEval (rewrite Hxgen). iExact "HQ". } }
       iApply ("Hloop" $! 0%nat A5 U with "[%] [%] [%] Hcg Hown Htce Hcce Hpc Hpriv Hfrag Hpenv Hfenv Hiru0").
       + unfold NOFILE. lia.
       + split; [exact HA5s1|]. split; [exact HA5s2|]. split; [exact HA5s3|].

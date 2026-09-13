@@ -274,15 +274,18 @@ Section ProofSetkilled.
       apply kv_addv_zero. }
     (* reassemble the lock resource: [proc_pub] quantifies [killed], so the
        stored value need never be named. *)
-    iAssert (proc_lock_res γs γl (proc_addr j)) with "[Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot]" as "HR2".
-    { iApply (proc_lock_res_intro γs γl (proc_addr j) st ch with "Hstate Hpg Hchan [-Hslot] Hslot").
-      iExists _, xs, pidv. iFrame "Hkilled Hxstate Hpidq".
-      (* the flag is 1 from here on, so the row must be re-closed on its
+    iAssert (|==> proc_lock_res γs γl (proc_addr j))%I with "[Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot]" as ">HR2".
+    { (* the flag is 1 from here on, so the row must be re-closed on its
          PAID arm -- and what pays is the price the slot itself publishes:
          the target's payload at -1, bought with the application's TAINT
          ([RiscvPtsto.riscv_kill_cred], lane SELF-KILL, §4b').  The side
-         condition is the caller's: the slot is LIVE. *)
-      iApply (kill_paid_kill pidv kl _ Hpidnz with "Hkc Hrow"). }
+         condition is the caller's: the slot is LIVE.
+         THE STEP IS A GHOST UPDATE because the writer also FIRES the
+         incarnation's kill one-shot (lane SELF-KILL, P6). *)
+      iMod (kill_paid_kill pidv kl _ Hpidnz with "Hkc Hrow") as "Hrow".
+      iModIntro.
+      iApply (proc_lock_res_intro γs γl (proc_addr j) st ch with "Hstate Hpg Hchan [-Hslot] Hslot").
+      iExists _, xs, pidv. iFrame "Hkilled Hxstate Hpidq Hrow". }
     (* ===================== release(&p->lock) ===================== *)
     (* the acquire handed the window index out as [trap_res b + N]; release
        wants it as [trap_res outb + N] with [outb = match n with O => eb

@@ -3045,13 +3045,16 @@ Section ProofConsoleread.
     (* killed() ONLY REPORTS THE FLAG (lane SELF-KILL, §4b'): consoleread
        branches on the number and relays nothing off the row, so the access
        it supplies is the identity. *)
-    iAssert (∀ (gnk : gname) (klv : mword 32),
-               SchedCtx.kill_row gnk klv ==∗ SchedCtx.kill_row gnk klv ∗ emp)%I
+    iAssert (∀ (pidr klr : mword 32),
+               p_pid (proc_addr jp) ↦₄{DfracOwn (1/4)} pidr -∗
+               SchedCtx.kill_paid pidr klr -∗
+               p_pid (proc_addr jp) ↦₄{DfracOwn (1/4)} pidr ∗
+               SchedCtx.kill_paid pidr klr ∗ emp)%I
       as "Hkacc".
-    { iIntros (gnk klv) "H". iModIntro. iSplitL "H"; [ iExact "H" | done ]. }
+    { iIntros (pidr klr) "Hq Hr". iFrame "Hq Hr". }
     iApply (Killed.wp_killed_sconf γs jp γlp W2 (trap_res true + (av - 12))%nat 1%nat true
               (proc_addr jp) false ({["cons"]} ∪ lks)
-              (fun (_ : gname) (_ : mword 32) => emp)%I
+              (fun (_ : mword 32) => emp)%I
               HW2a0 Hjp Hjl cr_lvl1
               ltac:(assert (trap_res true = 90%nat) as -> by reflexivity;
                     lia)

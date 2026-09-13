@@ -576,7 +576,7 @@ Section KforkArms.
        per-incarnation and names the payload persistently, which is only
        possible once the generation has been split.  So this arm receives
        the three pieces and the taken token, and re-chooses nothing. *)
-    (∃ ga : gname, ChildTok.gen_new (pv_gen (us_V Uc')) npa pid_c ga Q) -∗
+    ChildTok.gen_new (pv_gen (us_V Uc')) npa pid_c Q -∗
     (* ...AND THE CHILD SLOT'S TWO EXCLUSIVE GHOSTS, BOTH WHOLE, cut at the
        same point and 3/4 : 1/4 ([SlotGen.slot_gen_quarters]): the quarters
        close the child's block, the three quarters are the deposit
@@ -758,8 +758,7 @@ Section KforkArms.
          THE CHILD'S TAKEN TOKEN comes out of the same row and goes into
          the child's PRIVATE BLOCK ([ProcInv.proc_priv_core]), which is
          where usertrap's exit path finds it when the kill is spent. *)
-      iDestruct "Hcgen" as (gac) "(Htok & Hkq & #Hknow & Htaken)".
-      iDestruct (ChildTok.gen_know_my_pay with "Hknow") as "#Hmp".
+      iDestruct "Hcgen" as "(Htok & Hkq & #Hmp & Htaken)".
       (* ...AND THE TWO EXCLUSIVE GHOSTS, CUT THE SAME WAY AND AT THE SAME
          POINT, 3/4 : 1/4 ([SlotGen.slot_gen_quarters]).  The QUARTERS go
          into the child's block with the kernel's quarter of the generation
@@ -802,9 +801,7 @@ Section KforkArms.
            <p->lock>'s killed row. *)
         cbn [us_V]. rewrite /kfk_childV /V2 /V1.
         iApply (SlotGen.gen_halves_priv_intro npa pid_c (pv_gen (us_V Uc'))
-                  ltac:(lia) with "Hsg14 Hpr14 [Htaken]").
-        iApply (ChildTok.taken_at_of _ gac with "[] Htaken").
-        iApply (ChildTok.gen_know_taken with "Hknow"). }
+                  ltac:(lia) with "Hsg14 Hpr14 Htaken"). }
       iApply wp_next_off_intro.
       iIntros (mf4) "%Hp4 Hsc4 Hown4 Hpc4 Hpvx4 Hpvcx4 Hirsp".
       destruct Hp4 as (Hthr4 & Hpid4).

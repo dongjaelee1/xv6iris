@@ -661,7 +661,13 @@ Definition ap_pid_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !wchG Σ} `{GEN : 
         arrives ALREADY SPLIT, at the payload the creator chose: see
         [ChildTok.gen_alloc] for why the choice cannot wait for a fork
         row any more. *)
-     (∃ ga : gname, gen_new γg (proc_addr k) pidn ga Q) -∗
+     gen_new γg (proc_addr k) pidn Q -∗
+     (* ...AND THE KILL FLAG'S ONE-SHOT, PENDING, beside it (lane
+        SELF-KILL, P6).  It is minted with the generation and does not
+        travel any further than this function: allocproc spends it into
+        <p->lock>'s killed row's zero arm when it closes that row at the
+        new pid. *)
+     ChildTok.kill_pend γg -∗
      (* ...the slot, re-keyed to it: the whole this block was handed came
         out of the dormant block at the LAST incarnation's name *)
      slot_gen (proc_addr k) (DfracOwn 1) γg -∗
@@ -1180,7 +1186,7 @@ Section ProofAllocprocPid.
               assert (Hpk0 : bv_unsigned pk = 0)
                 by (rewrite -(proj2 Hpeq); exact Hpid0).
               iApply fupd_wp.
-              iMod (gen_alloc (proc_addr k) pidn Q) as (γg gan) "Hgen".
+              iMod (gen_alloc (proc_addr k) pidn Q) as (γg) "[Hgen Hpend]".
               iMod (slot_gen_update (proc_addr k) g0 γg with "Hsg") as "Hsg".
               iMod (pid_reg_insert PR pidn γg Hfree with "Hauth") as "[Hauth Hpr]".
               iModIntro.
@@ -1254,8 +1260,7 @@ Section ProofAllocprocPid.
               (* ---- hand back: the block's whole hart chain is entry -> acquire -> release ---- *)
               iSpecialize ("Hcont" $! CIDrel with "[%]"); [wp_next_chain |].
               iEval (rewrite /ap_pid_post) in "Hcont".
-              iApply ("Hcont" $! mrel pidn γg with "[%] [%] Hcg Hcpu Hpc Hpidi Hpidh [Hgen] Hsg Hpr");
-                [ | | iExists gan; iExact "Hgen" ].
+              iApply ("Hcont" $! mrel pidn γg with "[%] [%] Hcg Hcpu Hpc Hpidi Hpidh Hgen Hpend Hsg Hpr").
               * exact (callee_saved_trans _ _ _ HRrcs Hcsrel).
               * exact Hpidnb.
             + (* more slots to look at: back to +0x74 *)
@@ -1910,7 +1915,7 @@ Section ProofAllocproc.
                   (ap_lvlS lvl Hlvl) ltac:(pose proof (ap_K14 K HK); lia) Hk HL3s1 (ap_below_nextpid lks Hbelow) Hpid00
                   with "Hcg Hcpu Htext Hpc Hpidlk Hpidinv Hpidhalf Hsg").
         iApply wp_next_off_intro. rewrite /ap_pid_post.
-        iIntros (mfa pidn γg) "%Hcsfa %Hpidnb Hcg Hcpu Hpc Hpidinv Hpidown Hgen Hsg Hpr".
+        iIntros (mfa pidn γg) "%Hcsfa %Hpidnb Hcg Hcpu Hpc Hpidinv Hpidown Hgen Hpend Hsg Hpr".
         (* THE TIE FOR THE NEW INCARNATION (lane SELF-KILL, §1).  The
            registration the pid section just minted is a WHOLE; an eighth
            of it stays behind in <p->lock>'s public payload, which is where
@@ -1930,18 +1935,23 @@ Section ProofAllocproc.
            The reading comes off the row allocproc is about to hand its
            caller WITHOUT spending it ([ChildTok.gen_new_my_pay]); the wand
            is this function's own premise. *)
-        iDestruct "Hgen" as (gan) "Hgen".
         iDestruct (ChildTok.gen_new_my_pay with "Hgen") as "[#Hmp Hgen]".
-        iAssert (kill_paid pidn kl) with "[Hpr8]" as "Hkrow".
+        (* ...AND THE ROW'S ZERO ARM IS FOUNDED ON THE ONE-SHOT (lane
+           SELF-KILL, P6).  The mint hands the incarnation's kill flag out
+           PENDING, and this is where it goes: the arm that CLAIMS the flag
+           is zero is exactly the arm that holds it, so the first writer of
+           [p->killed] finds it there and fires it.  It comes out of the
+           row allocproc is about to hand its caller and does not come
+           back -- a fresh incarnation has one, and only one. *)
+        iAssert (kill_paid pidn kl) with "[Hpr8 Hpend]" as "Hkrow".
         { iApply (kill_paid_of_reg pidn kl γg Q ltac:(lia)
                     with "Hpr8 Hmp HKp").
           (* the flag the slot already carried, and it is ZERO: [kkill]
              refuses pid 0 (XV6_REV 64c58ba), so no writer can reach a slot
              whose pid cell is 0 and an UNUSED slot's flag is what freeproc
              and the .bss left. *)
-          iDestruct "Hkfree" as "%Hz". rewrite Hz. iApply kill_row_zero. }
-        iAssert (∃ ga : gname, gen_new γg (proc_addr k) pidn ga Q)%I
-          with "[Hgen]" as "Hgen"; [ iExists gan; iExact "Hgen" | ].
+          iDestruct "Hkfree" as "%Hz". rewrite Hz.
+          iApply (kill_row_zero with "Hpend"). }
         assert (Hfa_s1 : mfa !!! Regidx ap_s1 = proc_addr k).
         { rewrite (callee_saved_lookup Hcsfa ap_s1 ltac:(vm_compute; reflexivity)). exact HL3s1. }
         assert (Hfa_csp : mfa !!! Regidx csp_rs1 = spd).

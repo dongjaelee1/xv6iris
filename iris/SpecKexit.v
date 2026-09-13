@@ -309,7 +309,21 @@ Definition wp_kexit_sconf_body
      escrow carries both so that nothing on this path has to pay it
      ([ChildTok.gen_pay] does, at the reaper). *)
   my_pay (pv_gen (us_V U)) Q -∗
-  Q (kexit_status m) -∗
+  (* ...OR, AT THE KILLED ROUTE, NOTHING BUT THE ONE-SHOT (lane SELF-KILL,
+     P6).  A process the kernel is tearing down at [exit(-1)] holds no
+     [Q (-1)]: its program never ran again, and what it owes its parent was
+     DEPOSITED by whoever killed it, in <p->lock>'s killed row
+     ([SchedCtx.kill_row]'s paid arm).  kexit is the party that can take it
+     -- it holds the row at the ZOMBIE store and the incarnation's spent
+     MARKER in the block it is consuming -- so on this side the caller
+     brings only the fact that the row HAS a payment: the incarnation's kill
+     one-shot, fired by the writer of the flag and relayed out of
+     [killed()].  See [SchedCtx.kill_paid_take].
+       THE STATUS IS PINNED at -1 because that is the only status the
+     kernel's own tear-down uses; a process exiting with -1 of its own
+     accord takes the LEFT side and pays as any other exit does. *)
+  (Q (kexit_status m)
+   ∨ (⌜kexit_status m = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U)))) -∗
   (* NO continuation: kexit does not return.  See the header. *)
   WP (Loop : expr riscv_lang).
 

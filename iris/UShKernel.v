@@ -465,10 +465,15 @@ Section UShKernel.
               (fun l0 => Hrl N l0 Hpayeq)
               (R (ukn_t N) (ukn_d N) (ukn_s N)) K h _ f n0
               (take NSTD (uvis_fd W))
-              with "Hdp Hr [] [] Hgen' Hfd0 Hin [Hstd] [Hcwf] [Hchf] [Hpos]
+              with "Hdp Hr [] [] [] Hgen' Hfd0 Hin [Hstd] [Hcwf] [Hchf] [Hpos]
                     HR Hbs [Hrun]").
     - iApply (shk_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (shk_img_text _ Hsub) Hx with "Ht").
+    - (* runcmd's JUMP TABLE, off the same image (lane SH-LINE 2b, (b)):
+         [UkSh.ush_rest] takes it now, so the entry is where it is paid. *)
+      iApply (UkSh.ush_jtab_of_rodata (ukn_t N) with "[]").
+      iApply (shk_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
+                (shk_img_data _ Hsub) Hx with "Ht").
     - iApply (shk_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (shk_img_data _ Hsub) Hx with "Ht").
     - rewrite /UkSh.ush_std. iExact "Hstd".

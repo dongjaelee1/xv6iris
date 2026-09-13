@@ -182,21 +182,19 @@ Definition ush_ty (c : ushcmd) : Z :=
 Lemma ush_ty_range (c : ushcmd) : 1 <= ush_ty c <= 5.
 Proof. destruct c; cbn; lia. Qed.
 
-(* THE JUMP TABLE at 0x1398 (.rodata), read as six SIGNED 32-bit
-   displacements from the table's own base.  The six values are the dump's
-   ([user-rocq/ShData.v], 0x1398..0x13af); the arm each one names is
-   [ush_jarm] below and every one of those is checked by [vm_compute]
-   against the pc the walk actually continues at. *)
-Definition SH_JTAB : Z := 0x1398.
-
-Definition ush_jent (k : Z) : mword 32 :=
-  mword_of_int
-    (if Z.eqb k 1 then 0xffffed36
-     else if Z.eqb k 2 then 0xffffed5e
-     else if Z.eqb k 3 then 0xffffeda4
-     else if Z.eqb k 4 then 0xffffed8c
-     else if Z.eqb k 5 then 0xffffee2c
-     else 0xffffed2a).
+(* THE JUMP TABLE'S ADDRESS AND ITS SIX ENTRIES ARE [UkSh]'S NOW (lane
+   SH-LINE 2b, (b)): [UkSh.ush_rest] takes [ush_jtab] as a premise -- the
+   entry pays it off the key's own text -- and [UkSh.v] is below this one.
+   Kept here as abbreviations. *)
+Notation SH_JTAB := UkSh.SH_JTAB.
+Notation ush_jent := UkSh.ush_jent.
+(* ...and the table AS A RESOURCE, moved down for the same reason: it is a
+   premise of [UkSh.ush_rest] now, and only the entry can pay it
+   ([UkSh.ush_jtab_of_rodata]).  OUTSIDE the section, so the abbreviations
+   survive its close and every file above this one is unaffected. *)
+Notation ush_jrow := UkSh.ush_jrow.
+Notation ush_jtab := UkSh.ush_jtab.
+Notation ush_jtab_ro := UkSh.ush_jtab_ro.
 
 (* ...and the pc the [add a5,a5,a4 ; jr a5] pair lands on. *)
 Definition ush_jarm (c : ushcmd) : Z :=
@@ -407,32 +405,12 @@ Section UkShRun.
   Qed.
 
   (* ===================================================================== *)
-  (* §2b THE JUMP TABLE, as a resource: five rows of four TEXT bytes.  Only *)
-  (* the five rows a well-formed node can select are here; row 0 is the     *)
-  (* default arm's, and the node predicate makes it unreachable.            *)
+  (* §2b THE JUMP TABLE AS A RESOURCE IS [UkSh]'S NOW (lane SH-LINE 2b,     *)
+  (* (b)).  [ush_jrow] / [ush_jtab] / [ush_jtab_ro] moved down beside       *)
+  (* [UkSh.ush_rest], which takes the table as a premise; the [Forkable]    *)
+  (* half stays here, because [UkFork] is not in [UkSh]'s cone.  Kept here  *)
+  (* as abbreviations, so nothing above this file moved.                    *)
   (* ===================================================================== *)
-  Definition ush_jrow (g : gname) (k : Z) : iProp Σ :=
-    ([∗ list] j ∈ seq 0 4,
-       utext g (SH_JTAB + 4 * k + Z.of_nat j) (nth_byte (ush_jent k) j))%I.
-
-  (* ...AND SH'S READ-ONLY IMAGE BESIDE THEM.  The jump table IS .rodata
-     (0x1398 is inside [ShData.sh_data]), so the two belong together, and
-     what makes it worth saying is the DIAGNOSTIC CUT below: every site that
-     reaches sh's printer needs the three format strings, which are .rodata
-     too, and every one of those sites already carries [ush_jtab] -- through
-     the recursion, through each arm, and across every fork, since the whole
-     thing is [Forkable].  Carrying the image here rather than as a sixth
-     premise is what keeps [wp_kshr_runcmd]'s statement, all four fork
-     payloads and every budget exactly where stage 5 left them. *)
-  Definition ush_jtab (g : gname) : iProp Σ :=
-    (ush_jrow g 1 ∗ ush_jrow g 2 ∗ ush_jrow g 3 ∗
-     ush_jrow g 4 ∗ ush_jrow g 5 ∗ shk_rodata g)%I.
-
-  Global Instance ush_jrow_persistent g k : Persistent (ush_jrow g k).
-  Proof. apply _. Qed.
-  Global Instance ush_jtab_persistent g : Persistent (ush_jtab g).
-  Proof. apply _. Qed.
-
   Lemma forkable_ush_jrow (k : Z) :
     Forkable (fun g _ _ => ush_jrow g k).
   Proof. apply forkable_utext_run. Qed.
@@ -468,9 +446,6 @@ Section UkShRun.
       [ iExact "H1" | iExact "H2" | iExact "H3" | iExact "H4" | iExact "H5" ].
   Qed.
 
-  (* ...and the image it carries *)
-  Lemma ush_jtab_ro (g : gname) : ush_jtab g -∗ shk_rodata g.
-  Proof. iIntros "(_ & _ & _ & _ & _ & #H)". iExact "H". Qed.
 
   (* ===================================================================== *)
   (* §3 FOUR LANE LEAVES.                                                   *)

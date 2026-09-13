@@ -928,11 +928,9 @@ Section UkShFork.
     UserPtTree.pgroundup sz = sz ->
     usz_ok (sz + 65536) ->
     UkSh.sh_deps -∗
-    shk_code γt -∗
     (* the exec deposit's supplier -- [UkRun.uxsup], see
        [UkShRun.wp_kshr_runcmd]: this walk reaches runcmd's EXEC arm *)
     uxsup -∗
-    shk_rodata γt -∗ ush_jtab γt -∗
     (* ...AND THE TAINT'S CONTINUATION.  The line fact's second arm is the
        taint, and a tainted process does not run sh's code any more: the
        body hands its run to the generic slot. *)
@@ -944,8 +942,15 @@ Section UkShFork.
        the [#] intro keeps the [Persistent] search off its wand chain
        (durable-notes, "[iIntros "#H"] on a bundle of wands"). *)
     rewrite /UkSh.ush_gen_slot.
-    iIntros "#Hdp #Hcode #Hxs #Hro #Hjt #Hgen".
-    iModIntro. iIntros (l) "Hhead".
+    iIntros "#Hdp #Hxs #Hgen".
+    (* THE RECORD'S OWN THREE COME OUT OF THE OBLIGATION now (lane SH-LINE
+       2b, (b)): sh's text, its jump table and the constancy of its exit
+       payload are facts about the record the KERNEL minted, so the entry
+       pays them and the discharger no longer takes them as premises --
+       which is what makes [UInitSh.sh_pay_rest], a [∀] over every record,
+       provable at all.  [.rodata] rides in with the table. *)
+    iModIntro. iIntros (l) "%Hc #Hcode #Hjt Hhead".
+    iDestruct (ush_jtab_ro γt with "Hjt") as "#Hro".
     iIntros (h m f k i2 n) "%Hregs %Hs1 %Ha5 %Hi2 %Hfd0 Hline Hstd [Hdat Hsz] Hbuf Hrun".
     destruct Hi2 as [[Hki2 Hi2n] Hnul2].
     destruct (ushf_first_nul f k i2 Hki2 Hnul2) as (len & Hle & Hnn & Hnul).

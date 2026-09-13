@@ -298,6 +298,51 @@ Proof.
 Qed.
 
 
+(* THE JUMP TABLE at 0x1398 (.rodata), read as six SIGNED 32-bit
+   displacements from the table's own base.  The six values are the dump's
+   ([user-rocq/ShData.v], 0x1398..0x13af); the arm each one names is
+   [ush_jarm] below and every one of those is checked by [vm_compute]
+   against the pc the walk actually continues at. *)
+Definition SH_JTAB : Z := 0x1398.
+
+Definition ush_jent (k : Z) : mword 32 :=
+  mword_of_int
+    (if Z.eqb k 1 then 0xffffed36
+     else if Z.eqb k 2 then 0xffffed5e
+     else if Z.eqb k 3 then 0xffffeda4
+     else if Z.eqb k 4 then 0xffffed8c
+     else if Z.eqb k 5 then 0xffffee2c
+     else 0xffffed2a).
+
+(* ...AND THE TABLE'S TWENTY BYTES ARE IN SH'S OWN .rodata, which is what
+   lets the ENTRY pay [ush_jtab] instead of a caller carrying it (lane
+   SH-LINE 2b, (b)).  0x1398 is below 0x2000, so it is inside
+   [UCodeShK.shk_ro]; the check is one [vm_compute] on the dump, in the
+   [forallb]-over-[seq] shape [UShConsK.sh_cons_ro_bytes_bool] uses for
+   sh's "console" literal. *)
+Definition ush_jrow_bytes_ok (k : Z) : bool :=
+  forallb (fun j : nat =>
+      bool_decide (UCodeShK.shk_ro !! (SH_JTAB + 4 * k + Z.of_nat j)
+                   = Some (nth_byte (ush_jent k) j)))
+    (seq 0 4).
+
+Lemma ush_jrow_bytes_all :
+  forallb ush_jrow_bytes_ok [1; 2; 3; 4; 5]%Z = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma ush_jrow_bytes (k : Z) (j : nat) :
+  In k [1; 2; 3; 4; 5]%Z -> (j < 4)%nat ->
+  UCodeShK.shk_ro !! (SH_JTAB + 4 * k + Z.of_nat j)
+  = Some (nth_byte (ush_jent k) j).
+Proof.
+  intros Hk Hj.
+  pose proof (proj1 (forallb_forall _ _) ush_jrow_bytes_all k Hk) as H.
+  unfold ush_jrow_bytes_ok in H.
+  pose proof (proj1 (forallb_forall _ _) H j ltac:(apply in_seq; lia)) as H2.
+  exact (bool_decide_eq_true_1 _ H2).
+Qed.
+
+
 Section UkSh.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.
@@ -4906,8 +4951,89 @@ Section UkSh.
     T -∗ ush_rest_line f k.
   Proof. iIntros "HT". rewrite /ush_rest_line. by iRight. Qed.
 
+  (* ===================================================================== *)
+  (* §2b THE JUMP TABLE, as a resource: five rows of four TEXT bytes.  Only *)
+  (* the five rows a well-formed node can select are here; row 0 is the     *)
+  (* default arm's, and the node predicate makes it unreachable.            *)
+  (* ===================================================================== *)
+  Definition ush_jrow (g : gname) (k : Z) : iProp Σ :=
+    ([∗ list] j ∈ seq 0 4,
+       utext g (SH_JTAB + 4 * k + Z.of_nat j) (nth_byte (ush_jent k) j))%I.
+
+  (* ...AND SH'S READ-ONLY IMAGE BESIDE THEM.  The jump table IS .rodata
+     (0x1398 is inside [ShData.sh_data]), so the two belong together, and
+     what makes it worth saying is the DIAGNOSTIC CUT below: every site that
+     reaches sh's printer needs the three format strings, which are .rodata
+     too, and every one of those sites already carries [ush_jtab] -- through
+     the recursion, through each arm, and across every fork, since the whole
+     thing is [Forkable].  Carrying the image here rather than as a sixth
+     premise is what keeps [wp_kshr_runcmd]'s statement, all four fork
+     payloads and every budget exactly where stage 5 left them. *)
+  Definition ush_jtab (g : gname) : iProp Σ :=
+    (ush_jrow g 1 ∗ ush_jrow g 2 ∗ ush_jrow g 3 ∗
+     ush_jrow g 4 ∗ ush_jrow g 5 ∗ shk_rodata g)%I.
+
+  Global Instance ush_jrow_persistent g k : Persistent (ush_jrow g k).
+  Proof. apply _. Qed.
+  Global Instance ush_jtab_persistent g : Persistent (ush_jtab g).
+  Proof. apply _. Qed.
+
+  (* ...and the image it carries *)
+  Lemma ush_jtab_ro (g : gname) : ush_jtab g -∗ shk_rodata g.
+  Proof. iIntros "(_ & _ & _ & _ & _ & #H)". iExact "H". Qed.
+
+  (* ...AND WHERE IT COMES FROM: the .rodata image itself (lane SH-LINE 2b,
+     (b)).  The table IS .rodata, so a process that holds sh's read-only
+     image holds the table -- twenty [utext] points-tos out of one
+     [UserHeap.utext_img], each looked up by [ush_jrow_bytes].  This is
+     what lets [UShKernel.sh_uexec_slot] pay [ush_jtab] off the key's own
+     text, beside [shk_code] and [shk_rodata], instead of a caller of
+     [UInitSh.sh_pay_rest] carrying it -- which no caller could. *)
+  Lemma ush_jtab_of_rodata (g : gname) : shk_rodata g -∗ ush_jtab g.
+  Proof.
+    iIntros "#Hro".
+    iAssert (∀ k : Z, ⌜In k [1; 2; 3; 4; 5]%Z⌝ -∗ ush_jrow g k)%I as "#Hrow".
+    { iIntros (k) "%Hk". rewrite /ush_jrow.
+      iApply (utext_img_run g shk_ro (SH_JTAB + 4 * k) 4 (ush_jent k)
+                ltac:(intros j Hj; exact (ush_jrow_bytes k j Hk Hj))
+                with "[Hro]").
+      rewrite /shk_rodata. iExact "Hro". }
+    rewrite /ush_jtab.
+    iSplitR; [ iApply ("Hrow" $! 1 with "[%]"); cbn; tauto | ].
+    iSplitR; [ iApply ("Hrow" $! 2 with "[%]"); cbn; tauto | ].
+    iSplitR; [ iApply ("Hrow" $! 3 with "[%]"); cbn; tauto | ].
+    iSplitR; [ iApply ("Hrow" $! 4 with "[%]"); cbn; tauto | ].
+    iSplitR; [ iApply ("Hrow" $! 5 with "[%]"); cbn; tauto | ].
+    iExact "Hro".
+  Qed.
+
+  (* WHAT THE ENTRY PAYS AND THE BODY MAY THEREFORE ASK FOR (lane
+     SH-LINE 2b, (b)).  Three things sh's body needs that its own
+     [urun] does not carry, and all three are facts about THE RECORD the
+     kernel minted for it, so only the ENTRY can produce them and no
+     caller of [UInitSh.sh_pay_rest] ever could:
+
+       [⌜ukn_const N⌝]   sh's exit stub answers [ukn_pay N xs ∧
+                         ukn_pay N (-1)] out of ONE resource, which it
+                         can only do at a payload that does not read the
+                         status ([UserConsole.ucons_pay_const] is the
+                         witness the entry supplies).
+       [shk_code γt]     sh's text, off the key's own image
+                         ([UCodeShK.shk_code_of_text]).
+       [ush_jtab γt]     runcmd's jump table and the .rodata it carries,
+                         off the same image.
+
+     Before this they were premises of the DISCHARGER
+     ([UkShFork.ushf_rest_of_body]), which made [sh_pay_rest] -- a [∀]
+     over every [uk_names] record -- unprovable by construction.  They are
+     premises of the OBLIGATION now, [wp_ksh_loop] below pays them (it
+     already holds the first two and the third is threaded beside the
+     code), and [UShKernel.sh_uexec_slot] pays them at the entry. *)
   Definition ush_rest (R : iProp Σ) : iProp Σ :=
     (□ (∀ (l : list fdstate),
+        ⌜ ukn_const N ⌝ -∗
+        shk_code γt -∗
+        ush_jtab γt -∗
         ush_loop_head R l -∗
         ∀ (h : CpuId) (m : regfile) (f : nat -> bv 8) (k i2 : nat) (n : nat),
           ⌜ ush_regs m ⌝ -∗
@@ -4938,6 +5064,9 @@ Section UkSh.
      does, the loop takes this one and [ush_rest] above is deleted. *)
   Definition ush_rest_l (R : iProp Σ) : iProp Σ :=
     (□ (∀ (l : list fdstate),
+        ⌜ ukn_const N ⌝ -∗
+        shk_code γt -∗
+        ush_jtab γt -∗
         ush_loop_head R l -∗
         ∀ (h : CpuId) (m : regfile) (f : nat -> bv 8) (k i2 : nat) (n : nat),
           ⌜ ush_regs m ⌝ -∗
@@ -4958,8 +5087,10 @@ Section UkSh.
   Lemma ush_rest_l_of_rest (R : iProp Σ) : ush_rest R -∗ ush_rest_l R.
   Proof.
     rewrite /ush_rest /ush_rest_l. iIntros "#H". iModIntro.
-    iIntros (l) "Hhd". iIntros (h m f k i2 n) "%H1 %H2 %H3 %H4 %H5 _".
-    iApply ("H" $! l with "Hhd"); by iPureIntro.
+    iIntros (l) "%Hc #Hcode #Hjt Hhd".
+    iIntros (h m f k i2 n) "%H1 %H2 %H3 %H4 %H5 _".
+    iApply ("H" $! l with "[%] Hcode Hjt Hhd");
+      [ exact Hc | by iPureIntro.. ].
   Qed.
 
   Global Instance ush_rest_persistent R : Persistent (ush_rest R).
@@ -5352,12 +5483,12 @@ Section UkSh.
   (* DEPENDS ON [ush_read_leaf] (through getcmd).                          *)
   Local Lemma wp_ksh_loop (R : iProp Σ) (l : list fdstate) :
     sh_deps -∗
-    ush_rest R -∗ shk_code γt -∗ ush_loop_head R l.
+    ush_rest R -∗ shk_code γt -∗ ush_jtab γt -∗ ush_loop_head R l.
   Proof.
     assert (Hbf : sh_buf = 8224) by (vm_compute; reflexivity).
     assert (Hnb : sh_nbuf = 100%nat) by (vm_compute; reflexivity).
     assert (Hnbz : Z.of_nat sh_nbuf = 100) by (vm_compute; reflexivity).
-    iIntros "#Hdp #Hrest #Hcode".
+    iIntros "#Hdp #Hrest #Hcode #Hjt".
     iLöb as "IH".
     iIntros (h m f n0) "%Hregs %Hfd0 Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
@@ -5580,7 +5711,8 @@ Section UkSh.
                      = mword_of_int 0x97a)
         by (apply bv_eq; vm_compute; reflexivity).
       rewrite E976. iIntros (hh1) "Hrun".
-      iDestruct ("Hrest" $! l with "IH") as "Hbody".
+      iDestruct ("Hrest" $! l with "[%] Hcode Hjt IH") as "Hbody";
+        [ exact Hpay | ].
       iApply ("Hbody" $! hh1 mm g kk i2 n0
                 with "[] [] [] [] [] Hstd HR Hbs Hrun");
         iPureIntro; [ exact Hrm | exact Hsm | exact Ham
@@ -5730,6 +5862,7 @@ Section UkSh.
     sh_deps -∗
     ush_rest R -∗
     shk_code γt -∗
+    ush_jtab γt -∗
     ⌜ ush_fd0p l ⌝ -∗
     ush_pstate l -∗
     R -∗
@@ -5737,7 +5870,7 @@ Section UkSh.
     urun N h m (mword_of_int 0x914) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hrest #Hcode %Hfd0 Hstd HR Hbs Hrun".
+    iIntros "#Hdp #Hrest #Hcode #Hjt %Hfd0 Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
     (* ---- 0x914  li s3,100 ---- *)
     iApply (wp_uk_li N h m (mword_of_int 0x914)
@@ -5886,7 +6019,7 @@ Section UkSh.
                  (regval_into_reg (mword_of_int 99 : mword 64))).
       - exact (upd_eq m5 (Regidx s6_idx)
                  (regval_into_reg (mword_of_int 32 : mword 64))). }
-    iDestruct (wp_ksh_loop R l with "Hdp Hrest Hcode") as "Hhead".
+    iDestruct (wp_ksh_loop R l with "Hdp Hrest Hcode Hjt") as "Hhead".
     iApply ("Hhead" $! h7 m6 f n0 with "[] [] Hstd HR Hbs Hrun");
       iPureIntro; [ exact Hregs | exact Hfd0 ].
   Qed.
@@ -5942,6 +6075,7 @@ Section UkSh.
     sh_deps -∗
     ush_rest R -∗
     shk_code γt -∗
+    ush_jtab γt -∗
     shk_rodata γt -∗
     ush_gen_slot -∗
     ⌜m !!! Regidx s1_idx = (mword_of_int 2 : mword 64)⌝ -∗
@@ -5957,7 +6091,7 @@ Section UkSh.
     urun N h m (mword_of_int 0x900) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hrest #Hcode #Hro #Hgen".
+    iIntros "#Hdp #Hrest #Hcode #Hjt #Hro #Hgen".
     set (n := (16 + (ush_Dbody + n0))%nat).
     iLöb as "IH" forall (h m l).
     iIntros "%Hs1 %Hs2 %Hfd0 Hin Hstd Hcwd Hch Hpos HR Hbs Hrun".
@@ -6114,7 +6248,7 @@ Section UkSh.
          the row that ledger satisfies *)
       iIntros (h5) "Hrun".
       iApply (wp_ksh_cmd_head R h5 mD f n0 l'
-                with "Hdp Hrest Hcode [%] [Hstd Hcwd Hch Hpos] HR Hbs Hrun");
+                with "Hdp Hrest Hcode Hjt [%] [Hstd Hcwd Hch Hpos] HR Hbs Hrun");
         [ exact Hfd0' | ].
       rewrite /ush_pstate /ush_std. iFrame "Hstd".
       iSplitL "Hcwd"; [ iApply (ucwd_any_of with "Hcwd") | ].
@@ -6195,7 +6329,7 @@ Section UkSh.
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Eret2.
     iApply (wp_ksh_cmd_head R h8 _ f n0 l'
-              with "Hdp Hrest Hcode [%] [Hstd Hcwd Hch Hpos] HR Hbs Hrun");
+              with "Hdp Hrest Hcode Hjt [%] [Hstd Hcwd Hch Hpos] HR Hbs Hrun");
       [ exact Hfd0' | ].
     rewrite /ush_pstate /ush_std. iFrame "Hstd".
     iSplitL "Hcwd"; [ iApply (ucwd_any_of with "Hcwd") | ].
@@ -6215,6 +6349,7 @@ Section UkSh.
     sh_deps -∗
     ush_rest R -∗
     shk_code γt -∗
+    ush_jtab γt -∗
     shk_rodata γt -∗
     ush_gen_slot -∗
     ⌜ ush_fd0p l ⌝ -∗
@@ -6233,7 +6368,7 @@ Section UkSh.
       (8 + (16 + (ush_Dbody + n0))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hrest #Hcode #Hro #Hgen %Hfd0 Hin Hstd Hcwd Hch Hpos HR Hbs Hrun".
+    iIntros "#Hdp #Hrest #Hcode #Hjt #Hro #Hgen %Hfd0 Hin Hstd Hcwd Hch Hpos HR Hbs Hrun".
     set (n := (16 + (ush_Dbody + n0))%nat).
     rewrite shp_main.
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom].
@@ -6448,7 +6583,7 @@ Section UkSh.
        [bge s1,a0] at 0x90c is what tells a descriptor above the standard
        streams from one that landed on a closed standard stream. *)
     iApply (wp_ksh_console R K he _ f n0 l
-              with "Hdp Hrest Hcode Hro Hgen [] [] [%] Hin Hstd Hcwd Hch Hpos
+              with "Hdp Hrest Hcode Hjt Hro Hgen [] [] [%] Hin Hstd Hcwd Hch Hpos
                     HR Hbs Hrun");
       [ | | exact Hfd0 ].
     - (* s1 is O_RDWR, off the [c.li] at 0x8f6 *)
@@ -6482,6 +6617,9 @@ Section UkSh.
     sh_deps -∗
     ush_rest R -∗
     shk_code γt -∗
+    (* runcmd's jump table, which the BODY needs and only the entry can
+       produce ([ush_rest]'s header) *)
+    ush_jtab γt -∗
     (* sh's own READ-ONLY IMAGE, which the pinned open needs: the path is a
        string in it ([UCodeShK.shk_ro] at 0x1378). *)
     shk_rodata γt -∗
@@ -6508,7 +6646,7 @@ Section UkSh.
       (2 + (8 + (16 + (ush_Dbody + n0)))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hrest #Hcode #Hro #Hgen #Hfd0 Hin Hstd Hcwd Hch Hpos HR Hbs Hrun".
+    iIntros "#Hdp #Hrest #Hcode #Hjt #Hro #Hgen #Hfd0 Hin Hstd Hcwd Hch Hpos HR Hbs Hrun".
     (* THE TAINT ARM GOES GENERIC AT ONCE, and this is the ONE place it can:
        every walk below is sh's own code, and sh's console open is PINNED --
        under the taint there is no pin and no bundle to pay row 15 with.  So
@@ -6621,7 +6759,7 @@ Section UkSh.
        [uinstr_is] hypotheses holding the literal into the context. *)
     rewrite <- ?shp_main.
     iApply (wp_ksh_main R K h5 _ f n0 l
-              with "Hdp Hrest Hcode Hro Hgen [%] Hin Hstd Hcwd Hch Hpos
+              with "Hdp Hrest Hcode Hjt Hro Hgen [%] Hin Hstd Hcwd Hch Hpos
                     HR Hbs Hrun").
     exact Hfd0.
   Qed.

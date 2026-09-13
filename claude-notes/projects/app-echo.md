@@ -83,6 +83,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   its linear turn inside that era's closed invariants and nothing can
   reclaim it, so a writer's link lemma is excluded from the current claim BY
   THE INDEX; the same-cycle facts become pure from the stamps.
+- [x] ~~**CONS-IO milestone D -- ERA-TOK**~~ LANDED 2026-09-14 (`c32757bf9` on
+  the owner's `688c4c1b7`; the note below): the kernel hands init a
+  per-power-cycle exclusive token so the application's ledger adopts each
+  era exactly once.
 - [ ] **ECHO-OUT** (application; `-disc`, `lane/echo-out`): `EchoOut.v` (the
   ledger-anchored claims at the era index, the stage machine's Iris side,
   the ledger's four steps, `echo_phi` in the owner's form) -- proving its
@@ -3169,6 +3173,27 @@ live thread), relayed by `wp_uart_loop` to `uart_obs_permit` and so to `Htx`/`Hr
 `ct_mk_pay` spends it ONCE -- no arm lemma changed.  `Hpow` untouched (the fact is
 `obs_boots_app`); `read_link` carries no stamp.  ECHO-OUT replaces the `emp` holes
 at the new arity and re-proves the out/in/boot obligations at the index.
+
+CONS-IO MILESTONE D -- ERA-TOK LANDED (2026-09-14; `c32757bf9` on `688c4c1b7`;
+10 files +322/-99; builds cio46-cio51 in `-tlw`; audit the thirteen; lemma_diff
+CLEAN; nothing Admitted).  The kernel hands <init> a per-power-cycle EXCLUSIVE
+so the application's ledger can adopt each era exactly once (REVISION 7 of the
+E5 design: the founding allocates the era's ghosts into `app_boot` only, the
+claims' founded arms stay pure, adoption at init's first banner byte consumes
+the token).  `era_tok k := ∃ E, k ↪[riscv_eratok_name] E` -- a SECOND NAME at
+the generation registry's own functor (`riscv_eratok_name`, the only new
+fixed-record field), because every conjunct of `gen_cert` is persistent and a
+new `ghost_mapG Σ nat unit` field may not exist (it is `logG`'s `logtx_inG`; a
+second field is two instance paths).  Its auth `era_tok_bank (start_count g)`
+is `power_interp`'s last conjunct at `dom T = set_seq 1 (start_count g)` -- the
+registry's counter keyed by the ERA NUMBER `S gen` -- so the PowerOn arm's mint
+(same fupd as the registration) is the machine's only insert and
+`era_tok_excl : era_tok k -∗ era_tok k -∗ False`.  It rides `power_boot_res`
+(not the `Rb` hook, which holds no authority) to `Hinit_boot` beside
+`app_boot`; `app_xfer_boot_raw` untouched.  In the U tier it is
+`UInitKernel.init_boot_pay`'s third conjunct beside the console lease, into
+`UkInitMain.wp_kinit_start`, where init `iClear`s it until IO-LEAF spends it
+at init's first banner byte.  Handover: scratchpad `cons-io-handover-6.md`.
 
 RULINGS AFTER CONS-IO PHASE 1 (coordinator, 2026-09-13; the E5 note above is
 read with these): (1) the shift is CHAIN-FIRST, APPEND-LAST -- the echo's

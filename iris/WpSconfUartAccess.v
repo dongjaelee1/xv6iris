@@ -548,6 +548,9 @@ Section WpSconfUartAccess.
             CONS-IO): the persistent rider the column filed beside the tag,
             which is what the byte's echo spends at its store. *)
          uart_out_lb γd (obs_wire i (open_seg h)) ∗
+         (* ...and the byte's ERA STAMP (milestone C), which is what says
+            the shift it pays for is the CURRENT era's. *)
+         ⌜obs_boots h = S gen_id⌝ ∗
          uart_rx_tok γd (S k) (Some h)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
@@ -563,6 +566,7 @@ Section WpSconfUartAccess.
                  ⌜ obs_ends_in i h c ⌝ ∗ ⌜ ohist_ext hl h ⌝ ∗
                  riscv_rx_tag h ∗ obs_hist_lb h ∗
                  uart_out_lb γd (obs_wire i (open_seg h)) ∗
+                 ⌜obs_boots h = S gen_id⌝ ∗
                  uart_rx_tok γd (S k) (Some h))%I b p
               ltac:(unfold uart_size; lia) Hrd Hrdok
               ltac:(rewrite Haddr; exact Hg1)
@@ -753,7 +757,7 @@ Section WpSconfUartAccess.
        console caller that is not answering an input owes no order fact, and
        [WpUart.store_ob_of_out_link] turns its link into the leaf's ghost
        step (lane CONS-IO). *)
-    out_link Uart0 sb Φ -∗
+    out_link Uart0 (S gen_id) sb Φ -∗
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
@@ -815,6 +819,7 @@ Section WpSconfUartAccess.
          ⌜ obs_ends_in Uart0 h c ⌝ ∗ ⌜ ohist_ext hl h ⌝ ∗
          riscv_rx_tag h ∗ obs_hist_lb h ∗
          uart_out_lb γd (obs_wire Uart0 (open_seg h)) ∗
+         ⌜obs_boots h = S gen_id⌝ ∗
          uart_rx_tok γd (S k) (Some h)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).

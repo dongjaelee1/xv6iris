@@ -669,10 +669,25 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
      invariant's instance by [ghost_var_agree] and the previous era's halves
      die with its processes.  The FOUNDING is the transport's too
      ([SystemAdequacy.app_xfer_boot_raw]'s third component), which is why
-     there is no [_nil] field here. *)
-  riscv_out_res : list mobs -> list (bv 8) -> iProp Σ;
+     there is no [_nil] field here.
+
+     THE ERA INDEX (lane CONS-IO milestone C, the design review of
+     2026-09-14).  The FIRST argument is the ERA NUMBER [k], and the kernel
+     instantiates it at [S gen_id] -- the generation the claim's era runs
+     at, which is exactly [ObsTrace.obs_boots h] of every history that era
+     hands the application ([ObsTrace.obs_wf]).  WHY IT IS NEEDED: a
+     process of a DEAD era keeps its linear writer's token inside that
+     era's closed invariants, nothing can reclaim it at power-off, and an
+     era-agnostic link would let such a stale writer pay the CURRENT era's
+     claim.  The index excludes it BY CONSTRUCTION, so no reclaim, no
+     one-shot and no per-era registry is needed.  It is the pure GENERATION
+     NUMBER and not a fresh ghost name (owner's ruling, 2026-09-14): the
+     ledger keys its per-era state by [k], and the kernel's STAMP
+     [obs_boots h = S gen_id] makes every same-era fact PURE. *)
+  riscv_out_res : nat -> list mobs -> list (bv 8) -> iProp Σ;
   riscv_out_res_timeless :
-    forall (h : list mobs) (acc : list (bv 8)), Timeless (riscv_out_res h acc);
+    forall (k : nat) (h : list mobs) (acc : list (bv 8)),
+      Timeless (riscv_out_res k h acc);
   (* THE INPUT LOG (claude-notes/projects/app-echo.md, "E5 -- THE CONSOLE
      I/O CLAIM", lane CONS-IO).  The receive side's twin of
      [riscv_out_res]: the application's claim about the inputs the CONSOLE
@@ -704,12 +719,15 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
      timeless; NOT persistent.  Founded by the TRANSPORT at [[] [] []]
      ([SystemAdequacy.app_xfer_boot_raw]'s fourth component), exactly as
      the output claim is; the trivial application sets it to
-     [in_res_triv]. *)
-  riscv_in_res : list mobs -> list ConsLog.log_entry ->
+     [in_res_triv].
+
+     ERA-INDEXED, on [riscv_out_res]'s mould and for its reason: the first
+     argument is the era number, [S gen_id] at the kernel. *)
+  riscv_in_res : nat -> list mobs -> list ConsLog.log_entry ->
                  list (list mobs * bv 8) -> iProp Σ;
   riscv_in_res_timeless :
-    forall (h : list mobs) (pops : list ConsLog.log_entry)
-           (dl : list (list mobs * bv 8)), Timeless (riscv_in_res h pops dl);
+    forall (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+           (dl : list (list mobs * bv 8)), Timeless (riscv_in_res k h pops dl);
   (* THE APPLICATION'S FIXED PART (claude-notes/projects/app-instances.md
      §6 ruling 1, round D0).  The machine no longer owns a counter: the
      application declares whatever [Type] its fixed part has, and its BIRTH
@@ -1019,20 +1037,21 @@ Proof. rewrite /kill_cred_triv. apply _. Qed.
    EVERY application -- the owner's ruling that UART1's output is
    unconstrained, made literal. *)
 Definition out_res_triv {Σ : gFunctors} :
-    list mobs -> list (bv 8) -> iProp Σ := fun _ _ => emp%I.
+    nat -> list mobs -> list (bv 8) -> iProp Σ := fun _ _ _ => emp%I.
 
-Global Instance out_res_triv_timeless {Σ : gFunctors} (h : list mobs)
-    (acc : list (bv 8)) : Timeless (out_res_triv (Σ := Σ) h acc).
+Global Instance out_res_triv_timeless {Σ : gFunctors} (k : nat) (h : list mobs)
+    (acc : list (bv 8)) : Timeless (out_res_triv (Σ := Σ) k h acc).
 Proof. rewrite /out_res_triv. apply _. Qed.
 
 (* ...and the input log's, on the same mould: the generic application
    claims nothing about what was typed and nothing about who got it. *)
 Definition in_res_triv {Σ : gFunctors} :
-    list mobs -> list ConsLog.log_entry -> list (list mobs * bv 8) -> iProp Σ :=
-  fun _ _ _ => emp%I.
-Global Instance in_res_triv_timeless {Σ : gFunctors} (h : list mobs)
+    nat -> list mobs -> list ConsLog.log_entry ->
+    list (list mobs * bv 8) -> iProp Σ :=
+  fun _ _ _ _ => emp%I.
+Global Instance in_res_triv_timeless {Σ : gFunctors} (k : nat) (h : list mobs)
     (pops : list ConsLog.log_entry) (dl : list (list mobs * bv 8)) :
-  Timeless (in_res_triv (Σ := Σ) h pops dl).
+  Timeless (in_res_triv (Σ := Σ) k h pops dl).
 Proof. rewrite /in_res_triv. apply _. Qed.
 
 (* the TRIVIAL trace predicate -- the client's half and nothing about it.

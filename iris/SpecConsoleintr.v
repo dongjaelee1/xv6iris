@@ -156,8 +156,15 @@ Section EchoShift.
      section so the statement can be made where the application record is.
      The [CurCtx] binder is kept and UNUSED -- nothing in the body is
      context-relative -- so that [console_caps]'s [CtxMorph] proof keeps
-     seeing a ξ-indexed conjunct and not a constant. *)
+     seeing a ξ-indexed conjunct and not a constant.
+
+     SINCE lane CONS-IO milestone C IT ALSO CARRIES [GenId]: the shift is
+     paid at the ERA'S index [S gen_id] and takes the era STAMP on the
+     byte's history as a premise, so the section needs the ambient
+     generation.  App.v quantifies over it beside [CurCtx] ([Happ_echo]),
+     which is exactly "the application pays for every era". *)
   Context `{!riscvGS Σ}.
+  Context `{GEN : GenId}.
 
   (* THE ECHO'S JUSTIFICATION, FIXED AT BOOT (lane OUT-FUPD, F3).
      What the application must supply once, at the console environment's
@@ -195,10 +202,20 @@ Section EchoShift.
      EVERY ARM FIRES IT, including the two that echo nothing (a NUL byte, a
      full ring): a dropped byte is an accepted byte and the log records it
      at [cs = []], which is the disjunct a read's gap clause spends. *)
+  (* THE ERA STAMP (lane CONS-IO milestone C).  Beside the tag premise the
+     kernel hands the shift [⌜obs_boots h = S gen_id⌝]: the byte arrived in
+     THIS era, and the era's number is readable from its own history.  It
+     comes from the receive column, which files it beside the byte's tag at
+     the rx push ([WpUart.uart_col]) and relays it through uartgetc and
+     uartintr.  WHAT IT BUYS the application: every same-era fact it needs
+     is PURE from the stamp -- a comparison of the byte's history against
+     the ledger's own is unprovable inside a link, because the observation
+     authority lives in the state interpretation and no link holds it. *)
   Definition cons_echo_shift `{XI : CurCtx} : iProp Σ :=
     (□ ∀ (h : list mobs) (c : bv 8) (cs : list (bv 8)) (Φ : iProp Σ),
-        ⌜obs_ends_in Uart0 h c⌝ -∗ ⌜cons_echo c cs⌝ -∗
-        riscv_rx_tag h -∗ obs_hist_lb h -∗ Φ -∗ in_run h c [] cs Φ)%I.
+        ⌜obs_ends_in Uart0 h c⌝ -∗ ⌜obs_boots h = S gen_id⌝ -∗
+        ⌜cons_echo c cs⌝ -∗
+        riscv_rx_tag h -∗ obs_hist_lb h -∗ Φ -∗ in_run (S gen_id) h c [] cs Φ)%I.
 
   Global Instance cons_echo_shift_persistent `{XI : CurCtx} :
     Persistent (cons_echo_shift (XI := XI)).
@@ -211,17 +228,19 @@ Section EchoShift.
     riscv_out_res = out_res_triv -> riscv_in_res = in_res_triv ->
     ⊢ cons_echo_shift (XI := XI).
   Proof.
-    intros Hout Hin. iIntros "!>" (h c cs Φ) "_ _ _ _ HΦ".
+    intros Hout Hin. iIntros "!>" (h c cs Φ) "_ _ _ _ _ HΦ".
     iApply (in_run_of_licence with "[] [] HΦ").
     - by iApply in_licence_triv.
     - rewrite /out_licence Hout /out_res_triv.
-      iIntros "!>" (h' acc b) "_". by iModIntro.
+      iIntros "!>" (k' h' acc b) "_". by iModIntro.
   Qed.
 
 End EchoShift.
 
 Section ConsoleCaps.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ}.
+  (* the era's generation: [cons_echo_shift] is era-indexed (milestone C) *)
+  Context `{GEN : GenId}.
 
   (* The two locks the console's interrupt path takes, plus the trace
      baseline its echo extends.  The ghost NAMES are existential: nothing
@@ -281,6 +300,10 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
     = (extend_value (n := 8) true (cb : mword 8) : mword 64) ->
   (* ...at the history [hb], which ends with exactly that arrival *)
   obs_ends_in Uart0 hb cb ->
+  (* ...IN THIS ERA (lane CONS-IO milestone C): the stamp the receive column
+     filed beside the byte's tag, relayed by uartgetc and uartintr.  It is
+     what lets the arms pay [cons_echo_shift], which is era-indexed. *)
+  obs_boots hb = S gen_id ->
   (* ...and which is strictly newer than everything the ring holds *)
   ohist_ext hh hb ->
   (* ...and strictly newer than everything the kernel has LOGGED *)

@@ -47,7 +47,7 @@
    takes the same lock but not for the whole run), so a single view shift over
    the message would be unsound.  The premise is
 
-       WpUart.out_chain i (f <$> seq 0 n) Phi
+       WpUart.out_chain i (S gen_id) (f <$> seq 0 n) Phi
 
    -- one link per byte of the buffer, in order -- and the post is the
    payload [Phi].  The loop carries [drop k] of the chain as its invariant.
@@ -206,7 +206,7 @@ Definition wp_uartwrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
      payload comes back in the post, where the sublist receipt used to be.
      At [Uart1] -- prputc's port -- [WpUart.out_chain_triv] builds it out of
      [Φ], so the kernel's own writer owes nothing. *)
-  out_chain i (f <$> seq 0 n) Φ -∗
+  out_chain i (S gen_id) (f <$> seq 0 n) Φ -∗
   (* the running-thread bundle (SpecSleep.v) *)
   procs_inv gs -∗
   wp_next b pj (fun (CID : CpuId) =>

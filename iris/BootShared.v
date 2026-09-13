@@ -1631,13 +1631,13 @@ Section BootAlloc.
        on [power_boot_res]'s lend and handed straight to
        [WpUart.uart_ghosts_alloc] at [Uart0].  The kernel's port founds its
        own out of nothing ([WpUart.out_res_at_uart1]). *)
-    out_res_at Uart0 [] [] -∗
+    out_res_at Uart0 (Datatypes.S gen_id) [] [] -∗
     (* ...AND THE ERA'S INPUT LOG AT THE EMPTY RUN (lane CONS-IO), the
        output claim's twin from the same transport and the same lend: the
        console port's invariant carries the application's account of what
        was typed and who got it ([WpUart.in_claim_at]), founded here at the
        empty log with nothing delivered. *)
-    in_res_at Uart0 [] [] [] -∗
+    in_res_at Uart0 (Datatypes.S gen_id) [] [] [] -∗
     (* the transport and the crash seam at the application's guest, both
        straight through to the mint, which parks the one and puts both on
        fsinit's kit (round C) *)
@@ -2168,8 +2168,8 @@ Section BootAlloc.
        main's SECOND deposit, exactly as the console's do. ---- *)
     (* the KERNEL's port claims nothing, so its founding is free:
        [WpUart.out_res_at Uart1] is [emp] (lane OUT-FUPD) *)
-    iAssert (out_res_at Uart1 [] []) as "Hores1"; [done|].
-    iAssert (in_res_at Uart1 [] [] []) as "Hires1"; [done|].
+    iAssert (out_res_at Uart1 (Datatypes.S gen_id) [] []) as "Hores1"; [done|].
+    iAssert (in_res_at Uart1 (Datatypes.S gen_id) [] [] []) as "Hires1"; [done|].
     iMod (uart_ghosts_alloc Uart1 (g.(gdev).(duart) Uart1)
             ltac:(rewrite Hu0; reflexivity)
             ltac:(rewrite Hu0; vm_compute; reflexivity)

@@ -107,6 +107,10 @@ Section FsAbsInvFire.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
             !irefslotG Σ, !pavG Σ, !wchG Σ}.
   Context `{XI : CurCtx}.
+  (* the era's generation: [SpecFileread.fileread_in]'s console arm is
+     era-indexed since lane CONS-IO milestone C ([WpUart.cons_read_pay] at
+     [S gen_id]), and [SpecFilewrite.filewrite_in]'s is too. *)
+  Context `{GEN : GenId}.
 
   (* ------------------------------------------------------------------ *)
   (*  1.  The walk premises: every hop says yes, every cursor is [True]   *)

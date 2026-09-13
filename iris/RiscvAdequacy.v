@@ -673,8 +673,13 @@ Section power.
            ◇ (disk_fixed_auth dk ∗ ▷ riscv_crash_pred ∗ ⌜Ppure dk⌝))
       (* the client's picture of a disk image (see [power_boot_res]) *)
       (Mof : (Z -> bv 8) -> log_mirror)
-      (* ...and the resource it is lent beside it (see [power_boot_res]) *)
-      (Rb : (Z -> bv 8) -> iProp Σ)
+      (* ...and the resource it is lent beside it (see [power_boot_res]).
+         AT THE GENERATION (lane CONS-IO milestone C): the era's boot
+         resource carries the application's ERA-INDEXED claims, whose index
+         is the number of the era being booted, so the lend is a function of
+         [gen].  [Hswap] -- the one hook that produces it -- already has the
+         generation in hand, and [Hboot] receives it already applied. *)
+      (Rb : nat -> (Z -> bv 8) -> iProp Σ)
       (* THE CUSTODY HOOK (durable-disk 1a), the second client hook and the
          reason the era's mirror can be BORN TRUE.  A born-true value alone
          is not enough: a later WAL permit's disk image is ∀-bound, so the
@@ -714,7 +719,7 @@ Section power.
                    transport needs; so it is where a resource comes OUT of
                    the crash predicate, not just where the mirror's other
                    half goes in. *)
-                Rb dk))
+                Rb gen dk))
       (* THE TRACE HOOK (claude-notes/completed/uart-trace.md).  Both power
          arms are OBSERVED (RiscvLang §3b'), and the history ghost can only
          move with the client's half, which lives in its trace predicate --
@@ -746,7 +751,7 @@ Section power.
          Ppure (v_disk (g'.(gdev).(dvirtio))) ->
          (* ...and the trace invariant, FIXED-layer like [crash_inv]: the
             boot client threads it to the UART thread's permit *)
-         ⊢ obs_inv -∗ power_boot_res HE gen D nproc ndisk Mof Rb g' ={⊤}=∗
+         ⊢ obs_inv -∗ power_boot_res HE gen D nproc ndisk Mof (Rb gen) g' ={⊤}=∗
             ([∗ list] c ∈ enum CPU,
                WP (LoopE gen c : expr riscv_lang) @ ⊤) ∗
             ([∗ list] i ∈ enum uart_id, WP (UartLoopE gen i : expr riscv_lang) @ ⊤) ∗
@@ -1175,17 +1180,18 @@ Definition boot_fixedGS {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
        [RiscvPtsto.riscv_out_res]); TIMELESS, so the UART invariant's body
        still strips its later.  Its FOUNDING is the transport's, not a
        field and not a premise here. *)
-    (Ores : list mobs -> list (bv 8) -> iProp Σ)
-    (HOrest : forall (h : list mobs) (acc : list (bv 8)), Timeless (Ores h acc))
+    (Ores : nat -> list mobs -> list (bv 8) -> iProp Σ)
+    (HOrest : forall (k : nat) (h : list mobs) (acc : list (bv 8)),
+       Timeless (Ores k h acc))
     (* ...and the INPUT LOG (app-echo.md, lane CONS-IO), the receive side's
        twin of [Ores] and a Coq-level argument for the same reason: what
        the application claims of the inputs the CONSOLE UART has accepted
        and of which of them a process has been given.  A RESOURCE and
        TIMELESS for [Ores]'s reasons; founded by the transport, not here. *)
-    (Ires : list mobs -> list ConsLog.log_entry ->
+    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
-    (HIrest : forall (h : list mobs) (pops : list ConsLog.log_entry)
-                     (dl : list (list mobs * bv 8)), Timeless (Ires h pops dl))
+    (HIrest : forall (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+                     (dl : list (list mobs * bv 8)), Timeless (Ires k h pops dl))
     (* the application's FIXED PART (app-instances.md §6 ruling 1): its
        type and the one value [riscv_power_adequacy]'s birth step produced,
        before the crash slot *)
@@ -1267,11 +1273,11 @@ Lemma disk_proj_trace {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
     (Tg : list mobs -> iProp Σ) (HTg : forall h, Persistent (Tg h))
     (HTgt : forall h, Timeless (Tg h))
     (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
-    (Ores : list mobs -> list (bv 8) -> iProp Σ)
-    (HOrest : forall h acc, Timeless (Ores h acc))
-    (Ires : list mobs -> list ConsLog.log_entry ->
+    (Ores : nat -> list mobs -> list (bv 8) -> iProp Σ)
+    (HOrest : forall k h acc, Timeless (Ores k h acc))
+    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
-    (HIrest : forall h pops dl, Timeless (Ires h pops dl)) (c : CT)
+    (HIrest : forall k h pops dl, Timeless (Ires k h pops dl)) (c : CT)
     (g' : gstate) :
   ⊢ @power_interp Σ
        (boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
@@ -1516,7 +1522,7 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
        produces it out of [Pc] and [power_boot_res] delivers it to [Hboot];
        this layer never looks inside it.  A client with nothing to lend
        instantiates it at [emp]. *)
-    (Rb : CT -> (Z -> bv 8) -> iProp Σ)
+    (Rb : CT -> nat -> (Z -> bv 8) -> iProp Σ)
     (Hswap : forall (γdisk γsw γreg γst : gname) (c : CT)
                     (E : riscvEraGS)
                     (gen : nat) (dk : Z -> bv 8),
@@ -1533,7 +1539,7 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
               mono_nat_lb_own γsw (S gen) ∗
               (* ...and the client's lent resource (durable-disk BT-1), at
                  the application's fixed part (app-instances.md §6) *)
-              Rb c dk))
+              Rb c gen dk))
     (* THE TRACE PREDICATE (claude-notes/completed/uart-trace.md): the SECOND
        fixed-layer named slot, beside the crash predicate and for a
        different job.  The crash predicate is the file system's durable
@@ -1571,14 +1577,16 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
        drain.  A RESOURCE and not a [Prop] ([RiscvPtsto.riscv_out_res]),
        and TIMELESS so the device invariant's body still strips its later;
        its FOUNDING is the application transport's, not this layer's. *)
-    (Ores : CT -> list mobs -> list (bv 8) -> iProp Σ)
-    (HOrest : forall (c : CT) (h : list mobs) (acc : list (bv 8)),
-       Timeless (Ores c h acc))
+    (Ores : CT -> nat -> list mobs -> list (bv 8) -> iProp Σ)
+    (HOrest : forall (c : CT) (k : nat) (h : list mobs) (acc : list (bv 8)),
+       Timeless (Ores c k h acc))
     (* ...and the INPUT LOG (lane CONS-IO), threaded exactly as [Ores] is *)
-    (Ires : CT -> list mobs -> list ConsLog.log_entry ->
+    (Ires : CT -> nat -> list mobs -> list ConsLog.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
-    (HIrest : forall (c : CT) (h : list mobs) (pops : list ConsLog.log_entry)
-                     (dl : list (list mobs * bv 8)), Timeless (Ires c h pops dl))
+    (HIrest : forall (c : CT) (k : nat) (h : list mobs)
+                     (pops : list ConsLog.log_entry)
+                     (dl : list (list mobs * bv 8)),
+       Timeless (Ires c k h pops dl))
     (* ...born holding the empty history AND what the application's birth
        step yielded (app-instances.md §6 ruling 1): the birth ran first,
        and the trace slot is the owner of its yield from the slot's own
@@ -1698,7 +1706,7 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
              (Pc γdisk γswap γreg γstart c) γobs T (Pt γobs c) γhist
              (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
              (Ores c) (HOrest c) (Ires c) (HIrest c) CT c ->
-       ⊢ obs_inv -∗ power_boot_res HE gen D nproc ndisk Mof (Rb c) g' ={⊤}=∗
+       ⊢ obs_inv -∗ power_boot_res HE gen D nproc ndisk Mof (Rb c gen) g' ={⊤}=∗
           ([∗ list] c ∈ enum CPU,
              WP (LoopE gen c : expr riscv_lang) @ ⊤) ∗
           ([∗ list] i ∈ enum uart_id, WP (UartLoopE gen i : expr riscv_lang) @ ⊤) ∗
@@ -1932,7 +1940,7 @@ Proof.
            (fun γdisk γsw γreg γst _ => Pc γdisk γsw γreg γst)
            (fun γdisk γsw γreg γst _ => HPc γdisk γsw γreg γst)
            Ppure (fun γdisk γsw γreg γst _ => Hproj γdisk γsw γreg γst)
-           Mof (fun _ => Rb) (fun γdisk γsw γreg γst _ => Hswap γdisk γsw γreg γst)
+           Mof (fun _ _ => Rb) (fun γdisk γsw γreg γst _ => Hswap γdisk γsw γreg γst)
            (fun γobs _ => obs_ledger_at R γobs)
            (fun _ : unit => rx_tag_triv)
            (fun (_ : unit) (h : list mobs) => @rx_tag_triv_persistent Σ h)
@@ -1941,12 +1949,13 @@ Proof.
            (fun _ : unit => @kill_cred_triv_persistent Σ)
            (fun _ : unit => @kill_cred_triv_timeless Σ)
            (fun _ : unit => out_res_triv)
-           (fun (_ : unit) (h : list mobs) (acc : list (bv 8)) =>
-              @out_res_triv_timeless Σ h acc)
+           (fun (_ : unit) (k : nat) (h : list mobs) (acc : list (bv 8)) =>
+              @out_res_triv_timeless Σ k h acc)
            (fun _ : unit => in_res_triv)
-           (fun (_ : unit) (h : list mobs) (pops : list ConsLog.log_entry)
+           (fun (_ : unit) (k : nat) (h : list mobs)
+                (pops : list ConsLog.log_entry)
                 (dl : list (list mobs * bv 8)) =>
-              @in_res_triv_timeless Σ h pops dl)
+              @in_res_triv_timeless Σ k h pops dl)
            (fun γobs _ => obs_ledger_at_alloc_cl R γobs True%I
                             ltac:(iIntros "_"; iMod HR0 as "HR"; by iModIntro))
            (fun γdisk γobs _ => obs_ledger_at_step ndisk R HRt Hpow γdisk γobs)

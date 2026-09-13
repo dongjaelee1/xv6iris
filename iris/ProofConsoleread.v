@@ -421,7 +421,7 @@ Section CrBodies.
                (⌜d = 0%nat⌝ ∨ cons_dirty_lb cn))%I
     | Some n0 =>
         ((∃ sl : list (list mobs * bv 8),
-            cons_rdtok cn (n0 + d)%nat ∗ cr_dlc cn n0 ∗ cons_read_pay Rin ∗
+            cons_rdtok cn (n0 + d)%nat ∗ cr_dlc cn n0 ∗ cons_read_pay (S gen_id) Rin ∗
             cons_stored_lb cn sl ∗
             ⌜cons_window sl n0 d bs hs⌝ ∗ ⌜cons_chain sl⌝)
          ∨ (∃ sl : list (list mobs * bv 8), cons_stored_lb cn sl) ∗
@@ -446,7 +446,7 @@ Section CrBodies.
     | Some n0 =>
         ((∃ sl : list (list mobs * bv 8),
             cons_swallow cn (fault d) sl d dc ∗
-            cons_rdtok cn (n0 + dc)%nat ∗ cr_dlc cn n0 ∗ cons_read_pay Rin ∗
+            cons_rdtok cn (n0 + dc)%nat ∗ cr_dlc cn n0 ∗ cons_read_pay (S gen_id) Rin ∗
             cons_stored_lb cn sl ∗
             ⌜cons_window sl n0 d bs hs⌝ ∗ ⌜cons_chain sl⌝)
          ∨ (∃ sl : list (list mobs * bv 8), cons_stored_lb cn sl) ∗
@@ -714,7 +714,7 @@ Section CrBodies.
       (ord : option nat) (rr ww ee : mword 32) (bs : list (bv 8))
       (ts : list (option (list mobs))) (g : nat -> bv 8) :
     cr_ghost cn rr ww ee bs ts -∗ cons_pay cn Wd ord -∗
-    cons_read_pay Rin -∗
+    cons_read_pay (S gen_id) Rin -∗
     cr_ghost cn rr ww ee bs ts ∗ cr_racc cn Wd ord 0%nat g [].
   Proof.
     iIntros "Hgh Hpay Hrp". rewrite /cr_ghost.

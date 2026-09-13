@@ -253,7 +253,7 @@ Section UkWriteLeaf.
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
-       cons_out_chain M (m !!! Regidx a1_idx) Q 0%nat
+       cons_out_chain (S gen_id) M (m !!! Regidx a1_idx) Q 0%nat
          (Z.to_nat (sys_rw_count (m !!! Regidx a2_idx)))) -∗
     udepwf_std N m pc 16 (xfam_wr Q (ukn_pay N)) l.
   Proof.
@@ -318,14 +318,14 @@ Section UkWriteLeaf.
   Lemma cons_out_chain_of_licence_bnd (M : gmap Z (bv 8)) (ua : mword 64)
       (Q : nat -> iProp Σ) (k cnt : nat) :
     (forall j : nat, (k <= j <= k + cnt)%nat -> ⊢ Q j) ->
-    out_licence -∗ cons_out_chain M ua Q k cnt.
+    out_licence -∗ cons_out_chain (S gen_id) M ua Q k cnt.
   Proof.
     revert k. induction cnt as [| cnt IH]; intros k HQ.
     - iIntros "_". cbn [cons_out_chain].
       iApply (HQ k ltac:(lia)).
     - iIntros "#Hlic". cbn [cons_out_chain]. iSplit.
       + iApply (HQ k ltac:(lia)).
-      + iIntros (b) "_". iApply (out_link_of_licence b with "Hlic").
+      + iIntros (b) "_". iApply (out_link_of_licence _ b with "Hlic").
         iApply (IH (S k) with "Hlic"). intros j Hj. apply HQ. lia.
   Qed.
 

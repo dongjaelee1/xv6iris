@@ -149,24 +149,30 @@ Section ConsSentCnt.
   (*  ([SpecCopyin.ubytes_at]'s pointwise reading at one index), so the    *)
   (*  caller justifies ITS OWN bytes and nothing else.                     *)
   (* ==================================================================== *)
-  Fixpoint cons_out_chain (M : gmap Z (bv 8)) (ua : mword 64)
-      (Q : nat -> iProp Σ) (k cnt : nat) : iProp Σ :=
+  (* ...AND AT THE ERA [k] (lane CONS-IO milestone C), which is the chain's
+     FIRST argument now and the cursor's [j] the second-to-last: a link is
+     era-indexed, so a chain of them is.  Every kernel statement below
+     instantiates it at [S gen_id]; the argument is explicit because this
+     section has no ambient generation and because the U tier states the
+     chain for the era its own leaf runs in. *)
+  Fixpoint cons_out_chain (k : nat) (M : gmap Z (bv 8)) (ua : mword 64)
+      (Q : nat -> iProp Σ) (j cnt : nat) : iProp Σ :=
     match cnt with
-    | O => Q k
+    | O => Q j
     | S cnt' =>
-        (Q k
+        (Q j
          ∧ (∀ b : bv 8,
-              ⌜M !! uint (add_vec_int ua (Z.of_nat k)) = Some b⌝ -∗
-              out_link Uart0 b (cons_out_chain M ua Q (S k) cnt')))%I
+              ⌜M !! uint (add_vec_int ua (Z.of_nat j)) = Some b⌝ -∗
+              out_link Uart0 k b (cons_out_chain k M ua Q (S j) cnt')))%I
     end.
 
-  Lemma cons_out_chain_0 M ua Q k : cons_out_chain M ua Q k 0 ⊣⊢ Q k.
+  Lemma cons_out_chain_0 k M ua Q j : cons_out_chain k M ua Q j 0 ⊣⊢ Q j.
   Proof. reflexivity. Qed.
 
   (* the caller reads its cursor off at any stop position: the node IS the
      cursor ([FsAbsWriteFire.awrite_chain_cursor]'s twin) *)
-  Lemma cons_out_chain_cursor M ua Q k cnt :
-    cons_out_chain M ua Q k cnt -∗ Q k.
+  Lemma cons_out_chain_cursor k M ua Q j cnt :
+    cons_out_chain k M ua Q j cnt -∗ Q j.
   Proof. destruct cnt; [by iIntros "$" | by iIntros "[$ _]"]. Qed.
 
   (* THE CHUNK BRIDGE, and the only reason this is a [Fixpoint] over a
@@ -176,26 +182,27 @@ Section ConsSentCnt.
      the head of the cursor chain and hands back the residue at the moved
      cursor.  The premise is [SpecCopyin.ubytes_at] at the bumped base,
      spelled out index-wise so that the induction needs no shift lemma. *)
-  Lemma cons_out_chain_run (M : gmap Z (bv 8)) (ua : mword 64)
-      (Q : nat -> iProp Σ) (bs : list (bv 8)) (k cnt : nat) :
+  Lemma cons_out_chain_run (k : nat) (M : gmap Z (bv 8)) (ua : mword 64)
+      (Q : nat -> iProp Σ) (bs : list (bv 8)) (j cnt : nat) :
     (length bs <= cnt)%nat ->
     (forall (d : nat) (c : bv 8), bs !! d = Some c ->
-       M !! uint (add_vec_int ua (Z.of_nat (k + d))) = Some c) ->
-    cons_out_chain M ua Q k cnt -∗
-    out_chain Uart0 bs (cons_out_chain M ua Q (k + length bs) (cnt - length bs)).
+       M !! uint (add_vec_int ua (Z.of_nat (j + d))) = Some c) ->
+    cons_out_chain k M ua Q j cnt -∗
+    out_chain Uart0 k bs
+      (cons_out_chain k M ua Q (j + length bs) (cnt - length bs)).
   Proof.
-    revert k cnt. induction bs as [| b bs IH]; intros k cnt Hlen Hat.
+    revert j cnt. induction bs as [| b bs IH]; intros j cnt Hlen Hat.
     - cbn [out_chain length]. rewrite Nat.add_0_r Nat.sub_0_r. by iIntros "$".
     - cbn [length] in Hlen. destruct cnt as [| cnt]; [lia |].
       iIntros "H". cbn [cons_out_chain]. iDestruct "H" as "[_ H]".
       iDestruct ("H" $! b with "[%]") as "H".
-      { rewrite -(Nat.add_0_r k). apply (Hat 0%nat b). reflexivity. }
+      { rewrite -(Nat.add_0_r j). apply (Hat 0%nat b). reflexivity. }
       cbn [out_chain length].
-      replace (k + S (length bs))%nat with (S k + length bs)%nat by lia.
+      replace (j + S (length bs))%nat with (S j + length bs)%nat by lia.
       iIntros (o acc) "Hlb Hres".
       iMod ("H" $! o acc with "Hlb Hres") as (o') "(Hlb' & Hres' & Hrest)".
       iModIntro. iExists o'. iFrame "Hlb' Hres'".
-      iApply (IH (S k) cnt with "Hrest"); [lia |].
+      iApply (IH (S j) cnt with "Hrest"); [lia |].
       intros d c Hd. rewrite Nat.add_succ_comm. exact (Hat (S d) c Hd).
   Qed.
 
@@ -203,14 +210,15 @@ Section ConsSentCnt.
      [write(2)] on the console is paid out of the OUTPUT LICENCE its supply
      carries ([WpUart.out_licence], [UexecExecInst.xv6_ssupply]): a licensed
      writer claims nothing about the input, so every node is the licence's
-     one-byte step at the trivial payload. *)
-  Lemma cons_out_chain_of_licence (M : gmap Z (bv 8)) (ua : mword 64)
-      (k cnt : nat) :
-    out_licence -∗ cons_out_chain M ua (fun _ => True%I) k cnt.
+     one-byte step at the trivial payload -- AT EVERY ERA, because the
+     licence is quantified over the index. *)
+  Lemma cons_out_chain_of_licence (k : nat) (M : gmap Z (bv 8)) (ua : mword 64)
+      (j cnt : nat) :
+    out_licence -∗ cons_out_chain k M ua (fun _ => True%I) j cnt.
   Proof.
-    iIntros "#Hlic". iInduction cnt as [| cnt] "IH" forall (k); [done|].
+    iIntros "#Hlic". iInduction cnt as [| cnt] "IH" forall (j); [done|].
     cbn [cons_out_chain]. iSplit; [done|].
-    iIntros (b) "_". iApply (out_link_of_licence b with "Hlic").
+    iIntros (b) "_". iApply (out_link_of_licence k b with "Hlic").
     by iApply "IH".
   Qed.
 
@@ -267,7 +275,7 @@ Definition wp_consolewrite_sconf_body
   (* ---- THE CALLER'S OUTPUT JUSTIFICATION (lane OUT-FUPD), in place of the
      trace seed: one node per byte the call may push, each carrying the
      caller's own payload at that count. ---- *)
-  cons_out_chain (us_M U) uaddr Q 0%nat (Z.to_nat n) -∗
+  cons_out_chain (S gen_id) (us_M U) uaddr Q 0%nat (Z.to_nat n) -∗
   wp_next true pj (fun (CID : CpuId) =>
   ∀ (mf : regfile) (r : Z) (P' : uptd),
       ⌜callee_saved m mf⌝ -∗

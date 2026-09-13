@@ -940,12 +940,12 @@ Section SpecFileread.
                  CONS-IO, milestone B, B4).  A console read moves the
                  application's DELIVERED sequence, and it moves it through
                  one fupd the process supplies -- so the console arm of
-                 read's deposit carries [WpUart.cons_read_pay Rin] beside
+                 read's deposit carries [WpUart.cons_read_pay (S gen_id) Rin] beside
                  the ring's own payment.  The generic slot pays it from the
                  input licence its supply already holds
                  ([FsAbsInvFire.fsabs_fileread_in]); a process that wants
                  to be told what it read chooses a real [Rin]. *)
-              ∗ WpUart.cons_read_pay Rin
+              ∗ WpUart.cons_read_pay (S gen_id) Rin
          else P
      | _ => P
      end)%I.
@@ -1528,7 +1528,7 @@ Section SpecFileread.
     st = FdOpen true wb (FdDevice mj) -> mj = CONSOLE ->
     fileread_in st F Rd Rin P -∗ P -∗
     cons_acc fsc_cons app_sup (fun cur dc => P ∗ Rd cur dc)
-    ∗ WpUart.cons_read_pay Rin.
+    ∗ WpUart.cons_read_pay (S gen_id) Rin.
   Proof.
     intros -> ->. rewrite /fileread_in.
     case_decide as Hc; [| exfalso; by apply Hc].

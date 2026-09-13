@@ -1102,10 +1102,19 @@ Section WPDev.
      ([obs_inv]): that is how every observation is authorised by the client
      ([WpUart.uart_obs_permit]).  A client that states no trace property
      moves the ghost and ignores [κ]. *)
+  (* ...AND THE ERA STAMP (lane CONS-IO milestone C).  [obs_wf]'s second
+     conjunct at a LIVE thread ([g.(ggen) = gen_id], [g.(gpow) = true]) is
+     exactly [obs_boots h = S gen_id]: the history the callback is handed
+     belongs to THIS generation's era, and the number of that era is
+     readable from the history alone.  It is what lets every application
+     fact stated about a history be tied to the era's indexed claim
+     ([RiscvPtsto.riscv_out_res]'s ERA INDEX paragraph) without any
+     comparison against an authority the callback does not hold. *)
   Lemma wp_uart_step (i : uart_id) :
     gen_cert -∗
     (∀ gr m d (h : list mobs),
        ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire (duart d i)⌝ -∗
+       ⌜obs_boots h = S gen_id⌝ -∗
        gregs_interp gr ∗ gen_heap_interp m ∗ dev_interp d ∗ obs_auth h ={⊤,∅}=∗
        ▷ (∀ κ d', ⌜uart_step i d κ d'⌝ ={∅,⊤}=∗
             gregs_interp gr ∗ gen_heap_interp m ∗ dev_interp d' ∗
@@ -1150,10 +1159,12 @@ Section WPDev.
     iDestruct "Hdur" as (dmap) "[Hdauth %Hdview]".
     (* the history so far, and what the callback may know about it *)
     iDestruct "Hobs" as (h) "(%Htot & %Hwf & Hoauth)".
-    pose proof Hwf as (Hsh & _ & Hwire). rewrite Hpw in Hsh Hwire.
+    pose proof Hwf as (Hsh & Hbt & Hwire). rewrite Hpw in Hsh Hwire Hbt.
     specialize (Hwire eq_refl i).
+    (* the era stamp: [obs_wf]'s boot count at a live thread *)
+    assert (Hstamp : obs_boots h = S gen_id) by (rewrite Hbt Heq; lia).
     iMod ("H" $! g.(gregs) g.(gmem) g.(gdev) h
-            with "[//] [//] [$Hgr $Hmem $Hdev $Hoauth]") as "Hk".
+            with "[//] [//] [//] [$Hgr $Hmem $Hdev $Hoauth]") as "Hk".
     iModIntro. iSplitR.
     { iPureIntro. exists [], (UartLoopE gen_id i),
         (GState g.(gregs) g.(gmem) g.(gdev) g.(ggen) g.(gpow) g.(gresv)

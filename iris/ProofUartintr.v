@@ -596,7 +596,8 @@ Section ProofUartintr.
       - (* a byte came out.  What happens to it is decided by the PORT, and
            by nothing at run time: [uart_rx_word] says what `u->rx` holds. *)
         iIntros (bt c) "_ Hcg Hpc Hh".
-        iDestruct "Hh" as (h) "(%Hlast & %Hanch & #Htg & #Hlbh & #Hwlb & Htok)".
+        iDestruct "Hh" as (h)
+          "(%Hlast & %Hanch & #Htg & #Hlbh & #Hwlb & %Hbts & Htok)".
         (* THE ORDER THE STORE NEEDS: the ring's mark is at or before the
            popper's anchor, and the byte just popped is strictly after that
            anchor, so the mark is strictly before the byte. *)
@@ -681,7 +682,7 @@ Section ProofUartintr.
           iDestruct (cpu_own_transport CIDk CIDj lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
           iApply (Consoleintr.wp_consoleintr_sconf γu γv H2 γs pme lvl (av - 4)%nat eb b lks
                     h c hh hg
-                    ltac:(lia) HH2a0 Hlast Hhext Hgext
+                    ltac:(lia) HH2a0 Hlast Hbts Hhext Hgext
                     Hlen ltac:(lia) Hbelow
                     with "Hcg Hcnt Ht Hpc Hpinv Hdinv Hccaps Htg Hlbh Hwlb Hhi Hlgh").
           all: try lkbelow.

@@ -218,6 +218,8 @@ Section WpUartgetc.
                (* ...and the WIRE RIDER the column filed with the tag (lane
                   CONS-IO): what the byte's echo spends at its store *)
                uart_out_lb γd (obs_wire i (open_seg h)) ∗
+               (* ...and its ERA STAMP (milestone C) *)
+               ⌜obs_boots h = S gen_id⌝ ∗
                uart_rx_tok γd (S k) (Some h)) -∗
             WP (Loop : expr riscv_lang)) )) -∗
     WP (Loop : expr riscv_lang).

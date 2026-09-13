@@ -535,7 +535,7 @@ Section UwProps.
        cpu_own 0%nat eb (proc_addr j) true lks -∗
        pc_is (mword_of_int (KernelSyms.uartwrite + 0x48)) -∗
        p_pid (proc_addr j) ↦₄{dqp} pidv -∗
-       out_chain prt (drop (S i) (uw_bytes f n)) Φ -∗
+       out_chain prt (S gen_id) (drop (S i) (uw_bytes f n)) Φ -∗
        uw_full sp0 m0 -∗ uw_buf buf dq f n -∗
        WP (Loop : expr riscv_lang)))%I.
 
@@ -567,7 +567,7 @@ Section UwProps.
        cpu_own 0%nat eb (proc_addr j) true lks -∗
        pc_is (mword_of_int (KernelSyms.uartwrite + 0x48)) -∗
        p_pid (proc_addr j) ↦₄{dqp} pidv -∗
-       out_chain prt (drop i (uw_bytes f n)) Φ -∗
+       out_chain prt (S gen_id) (drop i (uw_bytes f n)) Φ -∗
        uw_full sp0 m0 -∗ uw_buf buf dq f n -∗
        uw_exit_cont (CID0 := CID0) prt γu j m0 av eb sp0 buf n f dq pidv dqp Φ lks -∗
        WP (Loop : expr riscv_lang)))%I.
@@ -913,7 +913,7 @@ Section UwBodies.
     cpu_own 0%nat eb pj true lks -∗
     pc_is (mword_of_int (KernelSyms.uartwrite + 0x48)) -∗
     p_pid pj ↦₄{dqp} pidv -∗
-    out_chain prt (drop i (uw_bytes f n)) Φ -∗
+    out_chain prt (S gen_id) (drop i (uw_bytes f n)) Φ -∗
     uw_full sp0 m0 -∗ uw_buf buf dq f n -∗
     ( uw_next_cont (CID0 := CID0) prt γu j m0 av eb sp0 buf n f dq pidv dqp Φ i lks
       ∧ uw_exit_cont (CID0 := CID0) prt γu j m0 av eb sp0 buf n f dq pidv dqp Φ lks ) -∗
@@ -978,7 +978,7 @@ Section UwBodies.
          justification is a RESOURCE now, so it cannot sit in the ambient
          persistent context the way the trace receipt did -- it rides the
          Löb-guarded turn like the buffer and the frame. *)
-      out_chain prt (drop i (uw_bytes f n)) Φ -∗
+      out_chain prt (S gen_id) (drop i (uw_bytes f n)) Φ -∗
       uw_full sp0 m0 -∗ uw_buf buf dq f n -∗
       ( uw_next_cont (CID0 := CID0) prt γu j m0 av true sp0 buf n f dq pidv dqp Φ i lks
         ∧ uw_exit_cont (CID0 := CID0) prt γu j m0 av true sp0 buf n f dq pidv dqp Φ lks ) -∗
@@ -1301,7 +1301,7 @@ Section UwBodies.
         iEval (rewrite (uw_drop_S f n i Hin)) in "Hch".
         iApply (UAcc.wp_uart_thr_write_s_sconf_at prt γu (mword_of_int (KernelSyms.uartwrite + 0x6a))
                   Ra5 Ra4 G2 (trap_res true + (av - 8))%nat l
-                  (out_chain prt (drop (S i) (uw_bytes f n)) Φ) false HG2a4
+                  (out_chain prt (S gen_id) (drop (S i) (uw_bytes f n)) Φ) false HG2a4
                   with "Hcg Hpc [] Huinv Hown Hlb Hdlab [Hch]").
         { iApply (uwi_6a with "Ht"). }
         { rewrite Hsb. iApply (store_ob_of_out_link with "Hch"). }

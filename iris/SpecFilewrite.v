@@ -772,7 +772,7 @@ Section SpecFilewrite.
     | FdOpen _ true (FdInode i γo) =>
         awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua Q 0%nat (wchunks n)
     | FdOpen _ true (FdDevice _) =>
-        cons_out_chain M ua Q 0%nat (Z.to_nat n)
+        cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n)
     | _ => emp
     end%I.
 
@@ -819,7 +819,7 @@ Section SpecFilewrite.
      EVERY major because the cell is null-or-consolewrite at every major *)
   Lemma filewrite_in_cons rb (mj : Z) n M ua Q :
     filewrite_in (FdOpen rb true (FdDevice mj)) n M ua Q -∗
-    cons_out_chain M ua Q 0%nat (Z.to_nat n).
+    cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n).
   Proof. by iIntros "$". Qed.
 
   Lemma filewrite_extra_inode rb i γo n M ua Q r :

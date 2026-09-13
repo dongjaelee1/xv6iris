@@ -23,7 +23,7 @@
        and its two callers) take it as a premise and hand it on.
 
    (3) THE LOOP INVARIANT IS THE CHAIN'S RESIDUE AT [i]:
-       [SpecConsolewrite.cons_out_chain Mu src Q (Z.to_nat i)
+       [SpecConsolewrite.cons_out_chain (S gen_id) Mu src Q (Z.to_nat i)
         (Z.to_nat (n - i))], at the SAME [i] the register invariant pins in
        s1.  Unlike the retired receipt it is LINEAR -- the chunk step spends
        [nn] of its nodes -- so it rides the spatial context; the park inside
@@ -1029,7 +1029,7 @@ Section CwBodies.
          invariant pins in s1.  It is LINEAR now -- the chunk step spends
          [nn] of its nodes -- so it rides the spatial context and not the
          intuitionistic one. *)
-      cons_out_chain Mu src Q (Z.to_nat i) (Z.to_nat (n - i)) -∗
+      cons_out_chain (S gen_id) Mu src Q (Z.to_nat i) (Z.to_nat (n - i)) -∗
       cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q -∗
       WP (Loop : expr riscv_lang).
   Proof.
@@ -1366,7 +1366,7 @@ Section CwBodies.
         { rewrite length_fmap length_seq. reflexivity. }
         assert (Hlenle : (length ((fb' <$> seq 0 nnN) : list (bv 8))
                           <= Z.to_nat (n - i))%nat) by (rewrite Hlenfb; lia).
-        iDestruct (cons_out_chain_run Mu src Q ((fb' <$> seq 0 nnN) : list (bv 8))
+        iDestruct (cons_out_chain_run (S gen_id) Mu src Q ((fb' <$> seq 0 nnN) : list (bv 8))
                      (Z.to_nat i) (Z.to_nat (n - i)) Hlenle Hchunkb
                      with "Hrcpt") as "Hch".
         iEval (rewrite Hlenfb) in "Hch".
@@ -1375,7 +1375,7 @@ Section CwBodies.
         iAssert (uart_inv Uart0 γu) as "#Huinv"; [by iApply dev_inv_uart|].
         iApply (Uartwrite.wp_uartwrite_sconf Uart0 γu γs jp γlp γl D3 (av - 16)%nat
                   eb nnN fb' (DfracOwn 1) true pid (DfracOwn (1/2))
-                  (cons_out_chain Mu src Q (Z.to_nat i + nnN)
+                  (cons_out_chain (S gen_id) Mu src Q (Z.to_nat i + nnN)
                      (Z.to_nat (n - i) - nnN)) lks
                   Hj Hjlp HD3a0 ltac:(rewrite HD3a2 HnnN; reflexivity)
                   ltac:(rewrite HnnN; lia)

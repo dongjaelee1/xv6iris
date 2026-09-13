@@ -203,11 +203,11 @@ Section EchoAdequacy.
          (measured: 34 GB RSS in 45 seconds).  Introducing the field's own
          binders first turns it into an application at known arguments. *)
       
-      intros HR HF c r γ Heq Huart.
-      exact (echo_Htx (HF := HF) HR c r γ Heq Huart).
+      intros HR GEN HF c r γ Heq Huart.
+      exact (echo_Htx (HF := HF) HR GEN c r γ Heq Huart).
     - 
-      intros HR HF c r γ Heq Huart.
-      exact (echo_Hrx (HF := HF) HR c r γ Heq Huart).
+      intros HR GEN HF c r γ Heq Huart.
+      exact (echo_Hrx (HF := HF) HR GEN c r γ Heq Huart).
     - exact echo_Happ_boot.
     - exact (echo_Happ_init g sb nib cov Himg Hdk Hsb Hcov).
     - (* ---- [Hinit_boot]: E2's own, and the only obligation of the

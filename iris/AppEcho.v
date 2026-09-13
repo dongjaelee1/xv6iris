@@ -1100,7 +1100,10 @@ Section EchoPred.
      transport has no second copy to hand out -- and /init does not want
      one there.  So /init's console dance has to be proved at BOTH arms,
      at every era. *)
-  Definition echo_boot (γ : echo_fixed) (r : echo_names) : iProp Σ :=
+  (* ...AT THE ERA'S NUMBER (lane CONS-IO milestone C), which this
+     placeholder-era resource does not read: the console key is the same
+     thing whatever era it is handed in. *)
+  Definition echo_boot (γ : echo_fixed) (k : nat) (r : echo_names) : iProp Σ :=
     (cons_key r ∨ ∃ i : Z, cons_made r i)%I.
 
   (* THE TRANSPORT, WITH THE BOOT RESOURCE ([App.Happ_boot]).  The arm is
@@ -1112,10 +1115,10 @@ Section EchoPred.
      from nothing while [echo_out] below is the E5 placeholder, so
      [SystemAdequacy.app_xfer_boot_raw_out] bolts it on and this proof does
      not have to thread an [emp] through its eight arms. *)
-  Lemma echo_xfer_boot (γ : echo_fixed) :
+  Lemma echo_xfer_boot (γ : echo_fixed) (k : nat) :
     ⊢ □ (∀ (r : echo_names) (av : FsAbsDefs.aview),
            ▷ echo_pred γ r av ==∗ ▷ echo_pred γ r av ∗
-           ∃ r' : echo_names, ▷ echo_pred γ r' av ∗ echo_boot γ r').
+           ∃ r' : echo_names, ▷ echo_pred γ r' av ∗ echo_boot γ k r').
   Proof.
     iIntros "!>" (r av) "H".
     iMod (own_alloc (●ML (cons_inum av : list (leibnizO Z)))) as (g1) "Ha";
@@ -1395,8 +1398,11 @@ Section EchoApp.
      [echo_Happ_out_sup], [echo_Happ_echo]) says anything about the echo.
      It is here only so that the record TYPECHECKS at [App.MkApp]'s new
      arity; E5 replaces this line and re-proves the three. *)
-  Definition echo_out : echo_fixed -> list mobs -> list (bv 8) -> iProp Σ :=
-    fun _ _ _ => emp%I.
+  (* ...NOW WITH THE ERA INDEX AS ITS SECOND ARGUMENT (lane CONS-IO
+     milestone C): [app_out A c k ho acc].  Still a hole. *)
+  Definition echo_out :
+      echo_fixed -> nat -> list mobs -> list (bv 8) -> iProp Σ :=
+    fun _ _ _ _ => emp%I.
 
   (* ...AND THE INPUT LOG'S PLACEHOLDER (lane CONS-IO), on [echo_out]'s
      mould and equally a HOLE.  The real claim is the second half of E5's
@@ -1406,9 +1412,10 @@ Section EchoApp.
      [echo_Happ_in_sup], [echo_Happ_echo], [echo_Htx]'s input arm say
      nothing); it is here only so that the record TYPECHECKS at
      [App.MkApp]'s new arity, and ECHO-OUT replaces both lines together. *)
-  Definition echo_in : echo_fixed -> list mobs -> list ConsLog.log_entry ->
+  Definition echo_in : echo_fixed -> nat -> list mobs ->
+                       list ConsLog.log_entry ->
                        list (list mobs * bv 8) -> iProp Σ :=
-    fun _ _ _ _ => emp%I.
+    fun _ _ _ _ _ => emp%I.
 
   Definition app_echo : xv6_app Σ :=
     MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R echo_tag
@@ -1457,35 +1464,37 @@ Section EchoApp.
   Qed.
 
   (* ---- THE OUTPUT CLAIM'S THREE, ALL VACUOUS AT THE PLACEHOLDER ---- *)
-  Lemma echo_Houtt (c : app_fixed app_echo) (h : list mobs)
-      (acc : list (bv 8)) : Timeless (app_out app_echo c h acc).
+  Lemma echo_Houtt (c : app_fixed app_echo) (k : nat) (h : list mobs)
+      (acc : list (bv 8)) : Timeless (app_out app_echo c k h acc).
   Proof. cbn [app_echo app_fixed app_out echo_out] in c |- *. apply _. Qed.
 
-  Lemma echo_Hinpt (c : app_fixed app_echo) (h : list mobs)
+  Lemma echo_Hinpt (c : app_fixed app_echo) (k : nat) (h : list mobs)
       (pops : list ConsLog.log_entry) (dl : list (list mobs * bv 8)) :
-    Timeless (app_in app_echo c h pops dl).
+    Timeless (app_in app_echo c k h pops dl).
   Proof. cbn [app_echo app_fixed app_in echo_in] in c |- *. apply _. Qed.
 
   Lemma echo_Happ_in_sup (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r
-      ⊢ □ (∀ (h : list mobs) (pops : list ConsLog.log_entry)
+      ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
              (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
-             app_in app_echo c h pops dl ==∗ app_in app_echo c h (pops ++ [e]) dl)
-        ∗ □ (∀ (h : list mobs) (pops : list ConsLog.log_entry)
+             app_in app_echo c k h pops dl ==∗
+             app_in app_echo c k h (pops ++ [e]) dl)
+        ∗ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
                (dl ws : list (list mobs * bv 8)),
-               app_in app_echo c h pops dl ==∗ app_in app_echo c h pops (dl ++ ws)).
+               app_in app_echo c k h pops dl ==∗
+               app_in app_echo c k h pops (dl ++ ws)).
   Proof.
     cbn [app_echo app_fixed app_names app_in echo_in] in c, r |- *.
-    iIntros "_". iSplit; iIntros "!>" (????) "_"; by iModIntro.
+    iIntros "_". iSplit; iIntros "!>" (?????) "_"; by iModIntro.
   Qed.
 
   Lemma echo_Happ_out_sup (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r
-      ⊢ □ (∀ (h : list mobs) (acc : list (bv 8)) (b : bv 8),
-             app_out app_echo c h acc ==∗ app_out app_echo c h (acc ++ [b])).
+      ⊢ □ (∀ (k : nat) (h : list mobs) (acc : list (bv 8)) (b : bv 8),
+             app_out app_echo c k h acc ==∗ app_out app_echo c k h (acc ++ [b])).
   Proof.
     cbn [app_echo app_fixed app_names app_out echo_out] in c, r |- *.
-    iIntros "_ !>" (h acc b) "_". by iModIntro.
+    iIntros "_ !>" (k h acc b) "_". by iModIntro.
   Qed.
 
   Lemma echo_HR0 (c : app_fixed app_echo) :
@@ -1508,7 +1517,8 @@ Section EchoApp.
      which the theorem carries ambiently, so a binder here is what the
      theorem's own context supplies at the application site. *)
   Lemma echo_Htx `{!uartGhostG Σ} `{HF : !fileG Σ}
-      (HR : riscvGS Σ) (c : app_fixed app_echo) (r : app_names app_echo)
+      (HR : riscvGS Σ) (GEN : GenId)
+      (c : app_fixed app_echo) (r : app_names app_echo)
       (i : uart_id) (γ : uart_names) :
     @file_app Σ HF = MkAppcfg (app_names app_echo) (app_pred app_echo c) r ->
     (i = Uart0 -> FsCfg.fsc_uart = γ) ->
@@ -1520,18 +1530,23 @@ Section EchoApp.
            (* the LOOP-off rider and the two witness histories' reality, the
               first new in lane OUT-FUPD, the second in CONS-IO, and all of
               them unread at the placeholder claims *)
-           ⌜u_wire u = u_out u⌝ -∗ ⌜ho `prefix_of` h⌝ -∗ ⌜hi `prefix_of` h⌝ -∗
-           (if i is Uart0 then app_out app_echo c ho (uart_acc u) else emp) -∗
-           (if i is Uart0 then app_in app_echo c hi pops dl else emp) -∗
+           ⌜u_wire u = u_out u⌝ -∗ ⌜obs_boots h = S gen_id⌝ -∗
+           ⌜ho `prefix_of` h⌝ -∗ ⌜hi `prefix_of` h⌝ -∗
+           (if i is Uart0 then app_out app_echo c (S gen_id) ho (uart_acc u)
+            else emp) -∗
+           (if i is Uart0 then app_in app_echo c (S gen_id) hi pops dl
+            else emp) -∗
            uart_ghosts γ u' -∗ app_R app_echo c h
              ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
-           (if i is Uart0 then app_out app_echo c ho (uart_acc u) else emp) ∗
-           (if i is Uart0 then app_in app_echo c hi pops dl else emp) ∗
+           (if i is Uart0 then app_out app_echo c (S gen_id) ho (uart_acc u)
+            else emp) ∗
+           (if i is Uart0 then app_in app_echo c (S gen_id) hi pops dl
+            else emp) ∗
            uart_ghosts γ u' ∗ app_R app_echo c (h ++ [ObsUartOut i b])%list).
   Proof.
     intros _ _.
     cbn [app_echo app_fixed app_R app_out echo_out app_in echo_in] in c |- *.
-    iIntros "!>" (h b u u' ho hi pops dl) "_ _ %Hsh _ _ _ _ Ho Hi Hg Hled".
+    iIntros "!>" (h b u u' ho hi pops dl) "_ _ %Hsh _ _ _ _ _ Ho Hi Hg Hled".
     iMod (echo_R_tx c h i b Hsh with "Hled") as "Hled".
     iModIntro. iFrame "Ho Hi Hg Hled".
   Qed.
@@ -1547,23 +1562,25 @@ Section EchoApp.
     @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out app_echo c ->
     @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in app_echo c ->
     @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag app_echo c ->
-    ⊢ ∀ XI : CurCtx, @cons_echo_shift Σ HR XI.
+    ⊢ ∀ (GEN : GenId) (XI : CurCtx), @cons_echo_shift Σ HR GEN XI.
   Proof.
     intros Hout Hin _.
     assert (Hot : @riscv_out_res Σ (@riscv_fixedGS Σ HR) = out_res_triv)
       by (rewrite Hout; cbn [app_echo app_out echo_out]; reflexivity).
     assert (Hit : @riscv_in_res Σ (@riscv_fixedGS Σ HR) = in_res_triv)
       by (rewrite Hin; cbn [app_echo app_in echo_in]; reflexivity).
-    iIntros (XI). iApply (@cons_echo_shift_triv Σ HR XI Hot Hit).
+    iIntros (GEN XI). iApply (@cons_echo_shift_triv Σ HR GEN XI Hot Hit).
   Qed.
 
   Lemma echo_Hrx `{!uartGhostG Σ} `{HF : !fileG Σ}
-      (HR : riscvGS Σ) (c : app_fixed app_echo) (r : app_names app_echo)
+      (HR : riscvGS Σ) (GEN : GenId)
+      (c : app_fixed app_echo) (r : app_names app_echo)
       (i : uart_id) (γ : uart_names) :
     @file_app Σ HF = MkAppcfg (app_names app_echo) (app_pred app_echo c) r ->
     (i = Uart0 -> FsCfg.fsc_uart = γ) ->
     ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state),
            ⌜uart_rx_push u b = Some u'⌝ -∗ ⌜trace_shape h true⌝ -∗
+           ⌜obs_boots h = S gen_id⌝ -∗
            uart_ghosts γ u' -∗ app_R app_echo c h
              ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
            uart_ghosts γ u' ∗ app_R app_echo c (h ++ [ObsUartIn i b])%list ∗
@@ -1571,15 +1588,15 @@ Section EchoApp.
   Proof.
     intros _ _.
     cbn [app_echo app_fixed app_R app_tag] in c |- *.
-    iIntros "!>" (h b u u') "_ %Hsh Hg Hled".
+    iIntros "!>" (h b u u') "_ %Hsh _ Hg Hled".
     iMod (echo_R_rx c h i b Hsh with "Hled") as "[Hled Htag]".
     iModIntro. iFrame "Hg Hled Htag".
   Qed.
 
   (* ---- THE TRANSPORT, WITH THE FIRST PROCESS'S BOOT RESOURCE ---- *)
-  Lemma echo_Happ_boot (c : app_fixed app_echo) :
-    ⊢ app_xfer_boot_raw (app_pred app_echo c) (app_boot app_echo c)
-        (app_out app_echo c) (app_in app_echo c).
+  Lemma echo_Happ_boot (c : app_fixed app_echo) (k : nat) :
+    ⊢ app_xfer_boot_raw (app_pred app_echo c) (app_boot app_echo c k)
+        (app_out app_echo c k) (app_in app_echo c k).
   Proof.
     cbn [app_echo app_fixed app_names app_pred app_boot app_out echo_out
          app_in echo_in] in c |- *.

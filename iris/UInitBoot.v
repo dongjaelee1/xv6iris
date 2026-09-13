@@ -537,7 +537,7 @@ Section EchoInitBoot.
        the console UART's log.  At [AppEcho.echo_in]'s E5 PLACEHOLDER the
        claim is [emp], so this licence is free as well. *)
     @riscv_in_res Σ (@riscv_fixedGS Σ HR) = echo_in γ ->
-    ⊢ app_inv fsc_fs -∗ echo_boot γ r -∗
+    ⊢ app_inv fsc_fs -∗ echo_boot γ (S gen_id) r -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
     intros Hsh_deps Hsh_rest Heq Htag Hkill Hout Hin.
@@ -553,7 +553,7 @@ Section EchoInitBoot.
       by (rewrite Hout; cbn [echo_out]; reflexivity).
     iAssert (out_licence) as "#Hlic".
     { rewrite /out_licence Hot /out_res_triv.
-      iIntros "!>" (h acc b) "_". by iModIntro. }
+      iIntros "!>" (k h acc b) "_". by iModIntro. }
     (* ...and the INPUT licence, free at [AppEcho.echo_in]'s placeholder for
        the same reason (lane CONS-IO) *)
     assert (Hit : @riscv_in_res Σ (@riscv_fixedGS Σ HR) = in_res_triv)

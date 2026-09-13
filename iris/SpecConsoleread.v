@@ -143,7 +143,7 @@ Definition wp_consoleread_sconf_body
        the console UART's accepted-input log and the sequence delivered out
        of it ([RiscvPtsto.riscv_in_res]); a read moves the second, and it
        moves it through ONE fupd the process supplies,
-       [WpUart.cons_read_pay Rin], fired HERE -- at the final release, on
+       [WpUart.cons_read_pay (S gen_id) Rin], fired HERE -- at the final release, on
        the CLEAN arm, where the ring's own account of the window is still
        in hand.  [Rin ws] is what the process gets back, at the window it
        actually consumed. *)
@@ -194,7 +194,7 @@ Definition wp_consoleread_sconf_body
   (* ...AND THE INPUT LINK IT SPENDS.  Consumed exactly once, on the clean
      arm; a call that finds the ring MARKED drops it (its [dl] is frozen
      and the caller's continuation is generic anyway). *)
-  WpUart.cons_read_pay Rin -∗
+  WpUart.cons_read_pay (S gen_id) Rin -∗
   (* THE CONSOLE PORT'S OWN INVARIANT, which is where the boundary's two
      resources live.  A new premise (ruling F6): the fire opens [uartN
      Uart0] inside the WP, and neither [is_conslock] nor [console_caps]

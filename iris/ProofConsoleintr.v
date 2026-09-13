@@ -704,7 +704,7 @@ Section CtBodies.
     uart_inv Uart0 γu -∗
     uart_rx_hi γu (1/2) hh -∗
     uart_log_hi γu (1/2) hg -∗
-    in_append h c [ConsLog.echo_of c] Φ -∗
+    in_append (S gen_id) h c [ConsLog.echo_of c] Φ -∗
     ct_gh cn None rr ww ee bs ts ={⊤}=∗
       uart_rx_hi γu (1/2) (Some h) ∗
       uart_log_hi γu (1/2) (Some h) ∗ Φ ∗
@@ -754,7 +754,7 @@ Section CtBodies.
     ohist_ext hg h ->
     uart_inv Uart0 γu -∗
     uart_log_hi γu (1/2) hg -∗
-    in_append h c [] Φ -∗
+    in_append (S gen_id) h c [] Φ -∗
     ct_gh cn None rr ww ee bs ts ={⊤}=∗
       uart_log_hi γu (1/2) (Some h) ∗ Φ ∗
       ct_gh cn None rr ww ee bs ts.
@@ -785,7 +785,7 @@ Section CtBodies.
     ohist_ext hg h ->
     uart_inv Uart0 γu -∗
     uart_log_hi γu (1/2) hg -∗
-    in_append h c [] Φ -∗
+    in_append (S gen_id) h c [] Φ -∗
     cons_res cn ={⊤}=∗
       uart_log_hi γu (1/2) (Some h) ∗ Φ ∗ cons_res cn.
   Proof.
@@ -846,7 +846,7 @@ Section CtBodies.
     ConsLog.cons_echo c cs ->
     uart_inv Uart0 γu -∗
     uart_log_hi γu (1/2) hg -∗
-    in_append h c cs Φ -∗
+    in_append (S gen_id) h c cs Φ -∗
     ct_gh cn (Some (h, c)) rr ww ee bs ts ={⊤}=∗
       uart_log_hi γu (1/2) (Some h) ∗ Φ ∗
       ct_gh cn None rr ww ee bs ts.
@@ -1091,21 +1091,27 @@ Section ProofConsoleintr.
         persistent, so it travels with the builder. *)
      uart_out_lb γu (obs_wire Uart0 (open_seg hb)) ∗
      □ ∀ (cs : list (bv 8)) (Φ : iProp Σ),
-        ⌜ cons_echo cb cs ⌝ -∗ Φ -∗ in_run hb cb [] cs Φ)%I.
+        ⌜ cons_echo cb cs ⌝ -∗ Φ -∗ in_run (S gen_id) hb cb [] cs Φ)%I.
 
   Global Instance ct_pay_persistent γu hb cb : Persistent (ct_pay γu hb cb).
   Proof. rewrite /ct_pay. apply _. Qed.
 
+  (* ...AND THE ERA STAMP IS SPENT HERE, ONCE (lane CONS-IO milestone C).
+     [cons_echo_shift] is era-indexed and asks for [obs_boots hb = S gen_id];
+     the contract carries that fact as a pure premise (relayed from the
+     receive column through uartgetc and uartintr), so the builder is
+     specialised at the mint and NO ARM has to carry the stamp. *)
   Lemma ct_mk_pay (γu : uart_names) (hb : list mobs) (cb : bv 8) :
     obs_ends_in Uart0 hb cb ->
+    obs_boots hb = S gen_id ->
     cons_echo_shift -∗ riscv_rx_tag hb -∗ obs_hist_lb hb -∗
     uart_out_lb γu (obs_wire Uart0 (open_seg hb)) -∗ ct_pay γu hb cb.
   Proof.
-    intros Hends. iIntros "#Hsh #Htg #Hlb #Hwlb".
+    intros Hends Hbts. iIntros "#Hsh #Htg #Hlb #Hwlb".
     iSplitR; [iExact "Hwlb" |].
     iIntros "!>" (cs Φ) "%Hcs HΦ".
-    iApply ("Hsh" $! hb cb cs Φ with "[%] [%] Htg Hlb HΦ");
-      [exact Hends | exact Hcs].
+    iApply ("Hsh" $! hb cb cs Φ with "[%] [%] [%] Htg Hlb HΦ");
+      [exact Hends | exact Hbts | exact Hcs].
   Qed.
 
   (* =================================================================== *)
@@ -1125,7 +1131,7 @@ Section ProofConsoleintr.
   Definition ct_owed (γu : uart_names) (hb : list mobs) (cb : bv 8) : iProp Σ :=
     (∃ (cs : list (bv 8)) (hg : option (list mobs)),
        ⌜ cons_echo cb cs ⌝ ∗ ⌜ ohist_ext hg hb ⌝ ∗
-       uart_log_hi γu (1/2) hg ∗ in_append hb cb cs True)%I.
+       uart_log_hi γu (1/2) hg ∗ in_append (S gen_id) hb cb cs True)%I.
 
   (* the arms that echo NOTHING -- a NUL byte, a full ring, an erase that
      found nothing to erase -- and this is the whole of what CONS-IO adds
@@ -1133,7 +1139,7 @@ Section ProofConsoleintr.
   (* the currency an arm that echoes NOTHING spends: a dropped byte is an
      ACCEPTED byte, logged at [cs = []] (lane CONS-IO). *)
   Lemma ct_append_nil (γu : uart_names) (hb : list mobs) (cb : bv 8) :
-    ct_pay γu hb cb -∗ in_append hb cb [] True.
+    ct_pay γu hb cb -∗ in_append (S gen_id) hb cb [] True.
   Proof.
     iIntros "[_ #Hp]". iApply ("Hp" $! [] True%I with "[%] [//]"). by left.
   Qed.
@@ -1181,11 +1187,11 @@ Section ProofConsoleintr.
     ct_pay γu hb cb -∗ ⌜ ohist_ext hg hb ⌝ -∗ ⌜ cons_echo cb cs ⌝ -∗
     uart_log_hi γu (1/2) hg -∗ Φ -∗
     store_chain Uart0 γu cs
-      (uart_log_hi γu (1/2) hg ∗ in_append hb cb cs Φ).
+      (uart_log_hi γu (1/2) hg ∗ in_append (S gen_id) hb cb cs Φ).
   Proof.
     iIntros "[#Hwlb #Hp] %Hx %Hecho Hlgh HΦ".
     iDestruct ("Hp" $! cs Φ with "[%] HΦ") as "Hrun"; [exact Hecho |].
-    iDestruct (in_run_full hb cb [] cs Φ with "Hrun") as "Hch".
+    iDestruct (in_run_full (S gen_id) hb cb [] cs Φ with "Hrun") as "Hch".
     iApply (store_chain_of_echo_chain γu hb hg cs _ Hx with "Hwlb Hlgh Hch").
   Qed.
 
@@ -1195,13 +1201,14 @@ Section ProofConsoleintr.
     ⌜ ohist_ext hg hb ⌝ -∗
     uart_out_lb γu (obs_wire Uart0 (open_seg hb)) -∗
     uart_log_hi γu (1/2) hg -∗
-    in_run hb cb pre ((consputc_bs ++ bs)%list) Φ -∗
+    in_run (S gen_id) hb cb pre ((consputc_bs ++ bs)%list) Φ -∗
     store_chain Uart0 γu consputc_bs
       (uart_log_hi γu (1/2) hg ∗
-       in_run hb cb ((pre ++ consputc_bs)%list) bs Φ).
+       in_run (S gen_id) hb cb ((pre ++ consputc_bs)%list) bs Φ).
   Proof.
     iIntros "%Hx #Hwlb Hlgh Hrun".
-    iDestruct (in_run_app hb cb pre consputc_bs bs Φ with "Hrun") as "Hch".
+    iDestruct (in_run_app (S gen_id) hb cb pre consputc_bs bs Φ with "Hrun")
+      as "Hch".
     iApply (store_chain_of_echo_chain γu hb hg consputc_bs _ Hx
               with "Hwlb Hlgh Hch").
   Qed.
@@ -1248,7 +1255,7 @@ Section ProofConsoleintr.
     (∃ (hg : option (list mobs)) (i n : nat),
        ⌜ ohist_ext hg hb ⌝ ∗ ⌜ (nrem <= Z.of_nat n)%Z ⌝ ∗
        uart_log_hi γu (1/2) hg ∗
-       in_run hb cb (mjoin (replicate i consputc_bs))
+       in_run (S gen_id) hb cb (mjoin (replicate i consputc_bs))
                     (mjoin (replicate n consputc_bs)) True)%I.
 
   Lemma ct_mk_kill_run (γu : uart_names) (hb : list mobs) (cb : bv 8)
@@ -2004,7 +2011,7 @@ Section ProofConsoleintr.
     iEval (rewrite (ct_bs_cons nn)) in "Hru".
     iAssert (store_chain Uart0 γu (consputc_cs (L6 !!! Regidx Ra0))
                (uart_log_hi γu (1/2) hg ∗
-                in_run hb cb ((mjoin (replicate ii consputc_bs)
+                in_run (S gen_id) hb cb ((mjoin (replicate ii consputc_bs)
                                ++ consputc_bs)%list)
                              (mjoin (replicate nn consputc_bs)) True))%I
       with "[Hlgh Hru]" as "Hch".
@@ -2015,7 +2022,7 @@ Section ProofConsoleintr.
     iApply (Consputc.wp_consputc_sconf KT1 γtx γu γv L6
               (trap_res (match lvl with O => eb | S _ => false end) + (K - 6))%nat
               (uart_log_hi γu (1/2) hg ∗
-               in_run hb cb ((mjoin (replicate ii consputc_bs)
+               in_run (S gen_id) hb cb ((mjoin (replicate ii consputc_bs)
                               ++ consputc_bs)%list)
                             (mjoin (replicate nn consputc_bs)) True)%I
               (S lvl) eb false pme
@@ -2262,7 +2269,7 @@ Section ProofConsoleintr.
     iDestruct "Hmark" as (hg) "[%Hxg Hlgh]".
     iAssert (store_chain Uart0 (cn_uart cn) (consputc_cs (D2 !!! Regidx Ra0))
                (uart_log_hi (cn_uart cn) (1/2) hg ∗
-                in_append h c [echo_of c] True))%I
+                in_append (S gen_id) h c [echo_of c] True))%I
       with "[Hlgh]" as "Hch".
     { rewrite Hcsb.
       iApply (ct_ch_full (cn_uart cn) h c hg [echo_of c] True%I
@@ -2271,7 +2278,7 @@ Section ProofConsoleintr.
     iApply (Consputc.wp_consputc_sconf KT1 γtx (cn_uart cn) γv D2
               (trap_res b + (K - 6))%nat
               (uart_log_hi (cn_uart cn) (1/2) hg ∗
-               in_append h c [echo_of c] True)%I
+               in_append (S gen_id) h c [echo_of c] True)%I
               (S lvl) eb false pme ({["cons"]} ∪ lks)
               ltac:(lia) ltac:(lia)
               with "Hcg Hcnt Ht Hpc Hdev Hbw Htxl Hch").
@@ -2741,14 +2748,14 @@ Section ProofConsoleintr.
       by rewrite /= ?app_nil_r. }
     iDestruct "Hmark" as (hg) "[%Hxg Hlgh]".
     iAssert (store_chain Uart0 γu (consputc_cs (B8 !!! Regidx Ra0))
-               (uart_log_hi γu (1/2) hg ∗ in_append hb cb consputc_bs True))%I
+               (uart_log_hi γu (1/2) hg ∗ in_append (S gen_id) hb cb consputc_bs True))%I
       with "[Hlgh]" as "Hch".
     { rewrite Hcsbs.
       iApply (ct_ch_full γu hb cb hg consputc_bs True%I
                 with "Hpy [%] [%] Hlgh [//]"); [exact Hxg | exact Hechobs]. }
     iApply (Consputc.wp_consputc_sconf KT1 γtx γu γv B8
               (trap_res b + (K - 6))%nat
-              (uart_log_hi γu (1/2) hg ∗ in_append hb cb consputc_bs True)%I
+              (uart_log_hi γu (1/2) hg ∗ in_append (S gen_id) hb cb consputc_bs True)%I
               (S lvl) eb false pme ({["cons"]} ∪ lks)
               ltac:(lia) ltac:(lia)
               with "Hcg Hcnt Ht Hpc Hdev Hbw Htxl Hch").
@@ -3175,7 +3182,7 @@ Section ProofConsoleintr.
     iDestruct "Hmark" as (hg) "[%Hxg Hlgh]".
     iAssert (store_chain Uart0 (cn_uart cn) (consputc_cs (F2 !!! Regidx Ra0))
                (uart_log_hi (cn_uart cn) (1/2) hg ∗
-                in_append h c [echo_of c] True))%I
+                in_append (S gen_id) h c [echo_of c] True))%I
       with "[Hlgh]" as "Hch".
     { rewrite Hcsb.
       iApply (ct_ch_full (cn_uart cn) h c hg [echo_of c] True%I
@@ -3184,7 +3191,7 @@ Section ProofConsoleintr.
     iApply (Consputc.wp_consputc_sconf KT1 γtx (cn_uart cn) γv F2
               (trap_res b + (K - 6))%nat
               (uart_log_hi (cn_uart cn) (1/2) hg ∗
-               in_append h c [echo_of c] True)%I
+               in_append (S gen_id) h c [echo_of c] True)%I
               (S lvl) eb false pme ({["cons"]} ∪ lks)
               ltac:(lia) ltac:(lia)
               with "Hcg Hcnt Ht Hpc Hdev Hbw Htxl Hch").
@@ -3935,7 +3942,7 @@ Section ProofConsoleintr.
     : wp_consoleintr_sconf_body γu γv m γs pme lvl K eb b lks hb cb hh hg.
   Proof.
     cbv beta delta [wp_consoleintr_sconf_body].
-    intros rettgt HK Hcva Hends Hx Hxg Hlen Hlvl Hbelow.
+    intros rettgt HK Hcva Hends Hbts Hx Hxg Hlen Hlvl Hbelow.
     iIntros "Hcg Hcnt #Ht Hpc #Hpinv #Hdev #Hcaps #Htg #Hlbh #Hwlb Hhi Hlgh
              Hcont".
     iDestruct "Hcaps" as (γtx γc cn)
@@ -3948,7 +3955,7 @@ Section ProofConsoleintr.
        application's boot-fixed shift with this call's three facts -- the
        byte's arrival history, its tag and the monotone bound on it --
        already discharged.  Every arm below spends it. *)
-    iPoseProof (ct_mk_pay γu hb cb Hends with "Hsh Htg Hlbh Hwlb") as "#Hpy".
+    iPoseProof (ct_mk_pay γu hb cb Hends Hbts with "Hsh Htg Hlbh Hwlb") as "#Hpy".
     (* the console's own `.data` base word, out of the array's row: the
        bundle carries all four words as one ([SpecUartPutc.uarts_words]) and
        every arm below wants just this one. *)

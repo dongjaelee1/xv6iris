@@ -47,8 +47,9 @@ SH-OPEN, LAZY-FLAG, TEXT-LW, APP-IFACE, UNTAG, DISC-RATE, E4 SH-ECHO, E2
 INIT-BOOT (2026-09-13, `bde2b8659`), CLOSED-READ, DISC-SIMPLIFY (2026-09-13),
 CONS-ROWS (2026-09-13, `b3f64b406`).
 
-- [ ] **KILL-PAY** (kernel; `-sup`, `lane/kill-pay`; A, B1, B2 LANDED; K4
-  next, ruled -- see "KILL-PAY B2 LANDED"): a kill is paid with a persistent
+- [ ] **KILL-PAY** (kernel; `-sup`, `lane/kill-pay`; A, B1, B2, K4(b) LANDED;
+  K4(a) next, ruled -- the lease leaves the payload row, see "KILL-PAY
+  K4(b) LANDED"): a kill is paid with a persistent
   credential that reaches every party the kill touches (design: "KILL-ARM"
   below, plus the rulings: the 13/15 route is gated by the lazy bit; the -1
   exit payload is a wand from the credential; the generic supply carries
@@ -2621,6 +2622,47 @@ TX-RECEIPT's `tx_claim` so the two lanes merge by juxtaposition; the hart lines'
 `boot_hart_pre`, banners-before via `k_ledger_lb [banners]` on the `started`
 invariant; `boot_k_shape` deleted.  `BACKSPACE` is the int 0x100 (not byte 8):
 the "\b \b" triple is reachable only from `%c`, unused.
+
+KILL-PAY K4(b) LANDED (2026-09-13; `67fb09f80`; 6 files +195/-60; build
+killd10, audit = the thirteen, lemma_diff CLEAN).  A -1 from read(0) says WHY
+it is -1.  `SpecFileread.fileread_dev_env`/`fileread_devsw`'s per-cell row is
+EXCLUSIVE (`(mj <> CONSOLE /\ slot = 0) \/ (mj = CONSOLE /\ slot =
+consoleread)`, off `ConsoleInv.devsw_read_val_other`/`_console`), so the
+`devsw.read == NULL` exit cannot be the console's and
+`fileread_extra_dev_m1`/`_of_dev_m1` take `mj <> CONSOLE`.
+`SpecConsoleread`'s post carries `(⌜(0 <= r)%Z⌝ ∨ □ riscv_kill_cred)` beside
+the return-value bound, off killed()'s row, through `cr_ret`/`cr_epi`/
+`cr_epi_prop`.  `console_receipt`'s left arm is `⌜r = -1⌝ ∗ (⌜(n < 0)%Z⌝ ∨
+□ riscv_kill_cred) ∗ ∃ cur d', Rd cur d'`, and its WINDOW arm gains
+`⌜Z.of_nat d <= Z.max 0 n⌝` (consoleread's own row, which stopped at fileread
+until now) so a caller holding `fileread_ret`'s -1 alternative REFUTES the
+window arm instead of routing to the minus-one one.  `UkSh.ush_read_ans`
+takes the ledger `l`; its minus-one arm is `⌜r = -1⌝ ∗ (⌜l !! 0 = Some
+FdClosed⌝ ∨ □ riscv_kill_cred) ∗ ush_pos` -- the leaf answers both arms of
+its own `ush_fd0p`, so gets does not case split, and a caller that has
+resolved fd 0 to the console reads out the credential, which at echo IS the
+taint.  SH-LINE's gap (3) is closed.
+K4(a) -- RULED (next, same lane): THE LEASE LEAVES THE PAYLOAD ROW.  With
+the -1 payload a wand, sh has no lease in the run's row, at its read and at
+its own exit alike, and `xv6_sbundle` row 5 (`fileread_in … (kf_xpay f
+(-1))`, SH-LINE R1's "the read supply is a wand from the exit payload") has
+nothing to feed.  So: sh's console reader lease (`ucons_reader cn n ∗ upos_a
+γp n`, `ucons_pay`'s left arm) moves INTO sh's carried state (`UkSh.ush_pos`
+gains it beside `upos γp n`; the two positions agree by `upos_agree`); row 5
+becomes a PLAIN deposit -- `fileread_in … Rd` with the console arm's payment
+(`cons_pay`: the token, or the dirty credential `Wd = app_sup` for a
+tokenless reader) supplied by the PROCESS's bundle, no payload wand; sh's
+`ush_read_sup` takes the lease linearly and `ush_rd_ret` hands it back; the
+generic slot's row 5 pays the credential from the supply as before R1.
+Then `upay_at`'s kill conjunct is `upay_neg (sexit_pay f) := □
+riscv_kill_cred -∗ sexit_pay f (-1)` in both branches, `uexec_pay_arm`
+returns it, `urun`'s payload row IS the wand, and sh's exit pays `ucons_pay`
+at its status from the lease it holds and the wand from the taint
+(`Hpay_neg : ⊢ □ riscv_kill_cred -∗ ukn_pay N (-1)`, discharged where
+`riscv_kill_cred = echo_taint γ` is known).  The generic constant payload
+needs no taint arm: the generic slot buys `R` from `xv6_ssupply`, which
+carries the credential since B1.  Parked patch:
+`scratchpad/kill-pay-B2-K4a-only.patch`.
 
 KILL-PAY B2 LANDED (2026-09-13; `7d0bb8402`; 36 files +659/-110; build killc14,
 audit = the thirteen, lemma_diff CLEAN).  `p->killed` is no longer a bare

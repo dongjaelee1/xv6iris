@@ -300,7 +300,7 @@ Section SRsPFrames.
       s_rs_p_paddr s_rs_p_mc s_rs_p_micfg s_rs_p_misa s_rs_p_sec s_rs_p_pma
       s_rs_p_htif s_rs_p_elp s_rs_p_senv s_rs_p_satp s_rs_p_mie s_rs_p_mdl
       s_rs_p_menv.
-    iFrame.
+    iFrame "HPC HnPC Hms Hmi Hcy Hti Hip Htlbc Hpriv Hmst Hhs Hpcfg Hpaddr Hmc Hmicfg Hmisa Hsec Hpma Hhtif Help Hsenv Hsatp Hmie Hmdl Hmenv".
   Qed.
 
   (* [SmodeCorePt.spt_frames_elim] at [cur_privilege := p] *)

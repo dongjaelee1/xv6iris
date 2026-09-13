@@ -677,7 +677,7 @@ Section ProofFilestatParts.
     iDestruct "H22" as (b22) "H22". iDestruct "H23" as (b23) "H23".
     iExists (fun j => nth j [b0;b1;b2;b3;b4;b5;b6;b7;b8;b9;b10;b11;
                              b12;b13;b14;b15;b16;b17;b18;b19;b20;b21;b22;b23] b0).
-    cbn [nth]. iFrame. all: try done.
+    cbn [nth]. iFrame "H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 H17 H18 H19 H20 H21 H22 H23". all: try done.
   Qed.
 
   (* =================================================================== *)

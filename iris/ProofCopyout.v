@@ -347,7 +347,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_78 with "Htext"). }
     iIntros (CID1 Hsk1) "Hcg Hpc".
-    set (G1 := <[Regidx Ra2 := regval_into_reg (mword_of_int 0 : mword 64)]> M).
+    pose (G1 := <[Regidx Ra2 := regval_into_reg (mword_of_int 0 : mword 64)]> M).
     assert (Hp7a : add_vec_int (mword_of_int (KernelSyms.copyout + 0x78) : mword 64) 2
                    = mword_of_int (KernelSyms.copyout + 0x7a)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hp7a) in "Hpc".
@@ -357,7 +357,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_7a with "Htext"). }
     iIntros (CID2 Hsk2) "Hcg Hpc".
-    set (G2 := <[Regidx Ra1 := regval_into_reg (add_vec zero_reg (G1 !!! Regidx Rs1))]> G1).
+    pose (G2 := <[Regidx Ra1 := regval_into_reg (add_vec zero_reg (G1 !!! Regidx Rs1))]> G1).
     assert (Hp7c : add_vec_int (mword_of_int (KernelSyms.copyout + 0x7a) : mword 64) 2
                    = mword_of_int (KernelSyms.copyout + 0x7c)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hp7c) in "Hpc".
@@ -367,7 +367,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_7c with "Htext"). }
     iIntros (CID3 Hsk3) "Hcg Hpc".
-    set (G3 := <[Regidx Ra0 := regval_into_reg (add_vec zero_reg (G2 !!! Regidx Rs7))]> G2).
+    pose (G3 := <[Regidx Ra0 := regval_into_reg (add_vec zero_reg (G2 !!! Regidx Rs7))]> G2).
     assert (Hp7e : add_vec_int (mword_of_int (KernelSyms.copyout + 0x7c) : mword 64) 2
                    = mword_of_int (KernelSyms.copyout + 0x7e)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hp7e) in "Hpc".
@@ -379,7 +379,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_7e with "Htext"). }
     iIntros (CID4 Hsk4) "Hcg Hpc".
-    set (G4 := <[Regidx Rra := regval_into_reg
+    pose (G4 := <[Regidx Rra := regval_into_reg
                   (add_vec_int (mword_of_int (KernelSyms.copyout + 0x7e) : mword 64) 4)]> G3).
     assert (Htgtwk : add_vec (mword_of_int (KernelSyms.copyout + 0x7e) : mword 64)
                        (sign_extend' 64 (mword_of_int 2095470 : mword 21))
@@ -445,7 +445,7 @@ Section ProofCopyout.
     { iEval (rgne; rewrite Hea0 Ha0v). iExact "Hcell". }
     iIntros (CID6 Hsk6) "Hcg Hpc Hcell".
     iEval (rgne; rewrite Hea0 Ha0v) in "Hcell".
-    set (H1 := <[Regidx Ra5 := regval_into_reg w0]> mw).
+    pose (H1 := <[Regidx Ra5 := regval_into_reg w0]> mw).
     assert (Hp84 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x82) : mword 64) 2
                    = mword_of_int (KernelSyms.copyout + 0x84)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hp84) in "Hpc".
@@ -458,7 +458,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_84 with "Htext"). }
     iIntros (CID7 Hsk7) "Hcg Hpc".
-    set (H2 := <[Regidx Ra5 := regval_into_reg
+    pose (H2 := <[Regidx Ra5 := regval_into_reg
                   (and_vec (H1 !!! Regidx Ra5)
                      (sign_extend' 64 (sign_extend' 12 (mword_of_int 4 : mword 6))))]> H1).
     assert (Hp86 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x84) : mword 64) 2
@@ -728,7 +728,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_54 with "Htext"). }
     iIntros (CIDl1 Hsl1) "Hcg Hpc".
-    set (V1 := <[Regidx Rs1 := regval_into_reg va0]> M).
+    pose (V1 := <[Regidx Rs1 := regval_into_reg va0]> M).
     assert (HV1s1 : V1 !!! Regidx Rs1 = va0) by (rewrite /V1 upd_eq; reflexivity).
     assert (HV1sp : V1 !!! Regidx csp_rs1 = spr)
       by (rewrite /V1; rewrite upd_ne; [exact Hsp | reg_neq]).
@@ -784,7 +784,7 @@ Section ProofCopyout.
                 with "Hcg Hpc []").
       { iApply (coi_9e with "Htext"). }
       iIntros (CIDl3 Hsl3) "Hcg Hpc".
-      set (Z1 := <[Regidx Ra0 := regval_into_reg (mword_of_int (-1) : mword 64)]> V1).
+      pose (Z1 := <[Regidx Ra0 := regval_into_reg (mword_of_int (-1) : mword 64)]> V1).
       assert (Hpa0 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x9e) : mword 64) 2
                      = mword_of_int (KernelSyms.copyout + 0xa0)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hpa0) in "Hpc".
@@ -873,7 +873,7 @@ Section ProofCopyout.
                 with "Hcg Hpc []").
       { iApply (coi_88 with "Htext"). }
       iIntros (CIDh1 Hsh1) "Hcg Hpc".
-      set (T1 := <[Regidx Rs2 := regval_into_reg (sub_vec va0 dstva)]> Md).
+      pose (T1 := <[Regidx Rs2 := regval_into_reg (sub_vec va0 dstva)]> Md).
       assert (Hp8c : add_vec_int (mword_of_int (KernelSyms.copyout + 0x88) : mword 64) 4
                      = mword_of_int (KernelSyms.copyout + 0x8c)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hp8c) in "Hpc".
@@ -884,7 +884,7 @@ Section ProofCopyout.
       { iApply (coi_8c with "Htext"). }
       iIntros (CIDh2 Hsh2) "Hcg Hpc".
       iEval (rgne; rgne) in "Hcg".
-      set (T2 := <[Regidx Rs2 := regval_into_reg
+      pose (T2 := <[Regidx Rs2 := regval_into_reg
                     (add_vec (T1 !!! Regidx Rs2) (T1 !!! Regidx Rs8))]> T1).
       assert (HT2s2 : T2 !!! Regidx Rs2 = (mword_of_int (Z.of_nat navail) : mword 64)).
       { rewrite /T2 upd_eq. rewrite /T1 upd_eq. rewrite upd_ne; [| reg_neq].
@@ -918,7 +918,7 @@ Section ProofCopyout.
                   with "Hcg Hpc []").
         { iApply (coi_36 with "Htext"). }
         iIntros (CIDc1 Hsc1) "Hcg Hpc".
-        set (U1 := <[Regidx Ra0 := regval_into_reg
+        pose (U1 := <[Regidx Ra0 := regval_into_reg
                       (mword_of_int (Z.of_nat off) : mword 64)]> Mn).
         assert (Hp3a : add_vec_int (mword_of_int (KernelSyms.copyout + 0x36) : mword 64) 4
                        = mword_of_int (KernelSyms.copyout + 0x3a)) by (apply bv_eq; vm_compute; reflexivity).
@@ -932,7 +932,7 @@ Section ProofCopyout.
         iIntros (CIDc2 Hsc2) "Hcg Hpc".
         assert (HU1s2 : U1 !!! Regidx Rs2 = (mword_of_int (Z.of_nat nn) : mword 64))
           by (rewrite /U1; rewrite upd_ne; [exact HNs2 | reg_neq]).
-        set (U2 := <[Regidx Ra2 := regval_into_reg
+        pose (U2 := <[Regidx Ra2 := regval_into_reg
                       (mword_of_int (Z.of_nat nn) : mword 64)]> U1).
         assert (HU2eq : <[Regidx Ra2 := regval_into_reg
                           (sign_extend' 64 (subrange_vec_dec
@@ -952,7 +952,7 @@ Section ProofCopyout.
                   with "Hcg Hpc []").
         { iApply (coi_3e with "Htext"). }
         iIntros (CIDc3 Hsc3) "Hcg Hpc".
-        set (U3 := <[Regidx Ra1 := regval_into_reg (add_vec zero_reg (U2 !!! Regidx Rs6))]> U2).
+        pose (U3 := <[Regidx Ra1 := regval_into_reg (add_vec zero_reg (U2 !!! Regidx Rs6))]> U2).
         assert (Hp40 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x3e) : mword 64) 2
                        = mword_of_int (KernelSyms.copyout + 0x40)) by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hp40) in "Hpc".
@@ -962,7 +962,7 @@ Section ProofCopyout.
                   with "Hcg Hpc []").
         { iApply (coi_40 with "Htext"). }
         iIntros (CIDc4 Hsc4) "Hcg Hpc".
-        set (U4 := <[Regidx Ra0 := regval_into_reg
+        pose (U4 := <[Regidx Ra0 := regval_into_reg
                       (add_vec (U3 !!! Regidx Ra0) (U3 !!! Regidx Rs3))]> U3).
         assert (Hp42 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x40) : mword 64) 2
                        = mword_of_int (KernelSyms.copyout + 0x42)) by (apply bv_eq; vm_compute; reflexivity).
@@ -975,7 +975,7 @@ Section ProofCopyout.
                   with "Hcg Hpc []").
         { iApply (coi_42 with "Htext"). }
         iIntros (CIDc5 Hsc5) "Hcg Hpc".
-        set (U5 := <[Regidx Rra := regval_into_reg
+        pose (U5 := <[Regidx Rra := regval_into_reg
                       (add_vec_int (mword_of_int (KernelSyms.copyout + 0x42) : mword 64) 4)]> U4).
         assert (Htgtmv : add_vec (mword_of_int (KernelSyms.copyout + 0x42) : mword 64)
                            (sign_extend' 64 (mword_of_int 2094964 : mword 21))
@@ -1105,7 +1105,7 @@ Section ProofCopyout.
                   with "Hcg Hpc []").
         { iApply (coi_46 with "Htext"). }
         iIntros (CIDc7 Hsc7) "Hcg Hpc".
-        set (W1 := <[Regidx Rs5 := regval_into_reg
+        pose (W1 := <[Regidx Rs5 := regval_into_reg
                       (mword_of_int (Z.of_nat (rem - nn)) : mword 64)]> mv).
         assert (Hp4a : add_vec_int (mword_of_int (KernelSyms.copyout + 0x46) : mword 64) 4
                        = mword_of_int (KernelSyms.copyout + 0x4a)) by (apply bv_eq; vm_compute; reflexivity).
@@ -1116,7 +1116,7 @@ Section ProofCopyout.
                   with "Hcg Hpc []").
         { iApply (coi_4a with "Htext"). }
         iIntros (CIDc8 Hsc8) "Hcg Hpc".
-        set (W2 := <[Regidx Rs6 := regval_into_reg
+        pose (W2 := <[Regidx Rs6 := regval_into_reg
                       (add_vec (W1 !!! Regidx Rs6) (W1 !!! Regidx Rs2))]> W1).
         assert (HW2s6 : W2 !!! Regidx Rs6 = pa_add src (done + nn)%nat).
         { rewrite /W2 upd_eq.
@@ -1141,7 +1141,7 @@ Section ProofCopyout.
                   with "Hcg Hpc []").
         { iApply (coi_4c with "Htext"). }
         iIntros (CIDc9 Hsc9) "Hcg Hpc".
-        set (W3 := <[Regidx Rs4 := regval_into_reg
+        pose (W3 := <[Regidx Rs4 := regval_into_reg
                       (add_vec va0 (mword_of_int 4096))]> W2).
         assert (Hp50 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x4c) : mword 64) 4
                        = mword_of_int (KernelSyms.copyout + 0x50)) by (apply bv_eq; vm_compute; reflexivity).
@@ -1187,7 +1187,7 @@ Section ProofCopyout.
                     with "Hcg Hpc []").
           { iApply (coi_96 with "Htext"). }
           iIntros (CIDc11 Hsc11) "Hcg Hpc".
-          set (X1 := <[Regidx Ra0 := regval_into_reg (mword_of_int 0 : mword 64)]> W3).
+          pose (X1 := <[Regidx Ra0 := regval_into_reg (mword_of_int 0 : mword 64)]> W3).
           assert (Hp98 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x96) : mword 64) 2
                          = mword_of_int (KernelSyms.copyout + 0x98))
             by (apply bv_eq; vm_compute; reflexivity).
@@ -1333,7 +1333,7 @@ Section ProofCopyout.
                   with "Hcg Hpc []").
         { iApply (coi_92 with "Htext"). }
         iIntros (CIDh4 Hsh4) "Hcg Hpc".
-        set (T3 := <[Regidx Rs2 := regval_into_reg (add_vec zero_reg (T2 !!! Regidx Rs5))]> T2).
+        pose (T3 := <[Regidx Rs2 := regval_into_reg (add_vec zero_reg (T2 !!! Regidx Rs5))]> T2).
         assert (HT3s2 : T3 !!! Regidx Rs2 = (mword_of_int (Z.of_nat rem) : mword 64)).
         { rewrite /T3 upd_eq. rewrite add_vec_zero_l. exact HT2s5. }
         assert (Hp94 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x92) : mword 64) 2
@@ -1382,7 +1382,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_5c with "Htext"). }
     iIntros (CIDg1 Hsg1) "Hcg Hpc".
-    set (V2 := <[Regidx Ra1 := regval_into_reg (add_vec zero_reg (V1 !!! Regidx Rs1))]> V1).
+    pose (V2 := <[Regidx Ra1 := regval_into_reg (add_vec zero_reg (V1 !!! Regidx Rs1))]> V1).
     assert (Hp5e : add_vec_int (mword_of_int (KernelSyms.copyout + 0x5c) : mword 64) 2
                    = mword_of_int (KernelSyms.copyout + 0x5e)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hp5e) in "Hpc".
@@ -1392,7 +1392,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_5e with "Htext"). }
     iIntros (CIDg2 Hsg2) "Hcg Hpc".
-    set (V3 := <[Regidx Ra0 := regval_into_reg (add_vec zero_reg (V2 !!! Regidx Rs7))]> V2).
+    pose (V3 := <[Regidx Ra0 := regval_into_reg (add_vec zero_reg (V2 !!! Regidx Rs7))]> V2).
     assert (Hp60 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x5e) : mword 64) 2
                    = mword_of_int (KernelSyms.copyout + 0x60)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hp60) in "Hpc".
@@ -1404,7 +1404,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_60 with "Htext"). }
     iIntros (CIDg3 Hsg3) "Hcg Hpc".
-    set (V4 := <[Regidx Rra := regval_into_reg
+    pose (V4 := <[Regidx Rra := regval_into_reg
                   (add_vec_int (mword_of_int (KernelSyms.copyout + 0x60) : mword 64) 4)]> V3).
     assert (Htgtwa : add_vec (mword_of_int (KernelSyms.copyout + 0x60) : mword 64)
                        (sign_extend' 64 (mword_of_int 2095654 : mword 21))
@@ -1457,7 +1457,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_64 with "Htext"). }
     iIntros (CIDg5 Hsg5) "Hcg Hpc".
-    set (R1 := <[Regidx Rs3 := regval_into_reg (add_vec zero_reg (mr !!! Regidx Ra0))]> mr).
+    pose (R1 := <[Regidx Rs3 := regval_into_reg (add_vec zero_reg (mr !!! Regidx Ra0))]> mr).
     assert (HR1s3 : R1 !!! Regidx Rs3 = mr !!! Regidx Ra0)
       by (rewrite /R1 upd_eq; apply add_vec_zero_l).
     assert (HR1a0 : R1 !!! Regidx Ra0 = mr !!! Regidx Ra0)
@@ -1496,7 +1496,7 @@ Section ProofCopyout.
                 with "Hcg Hpc []").
       { iApply (coi_68 with "Htext"). }
       iIntros (CIDm2 Hsm2) "Hcg Hpc".
-      set (F1 := <[Regidx Ra3 := regval_into_reg (mword_of_int 0 : mword 64)]> R1).
+      pose (F1 := <[Regidx Ra3 := regval_into_reg (mword_of_int 0 : mword 64)]> R1).
       assert (Hp6a : add_vec_int (mword_of_int (KernelSyms.copyout + 0x68) : mword 64) 2
                      = mword_of_int (KernelSyms.copyout + 0x6a)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hp6a) in "Hpc".
@@ -1506,7 +1506,7 @@ Section ProofCopyout.
                 with "Hcg Hpc []").
       { iApply (coi_6a with "Htext"). }
       iIntros (CIDm3 Hsm3) "Hcg Hpc".
-      set (F2 := <[Regidx Ra2 := regval_into_reg (add_vec zero_reg (F1 !!! Regidx Rs1))]> F1).
+      pose (F2 := <[Regidx Ra2 := regval_into_reg (add_vec zero_reg (F1 !!! Regidx Rs1))]> F1).
       assert (Hp6c : add_vec_int (mword_of_int (KernelSyms.copyout + 0x6a) : mword 64) 2
                      = mword_of_int (KernelSyms.copyout + 0x6c)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hp6c) in "Hpc".
@@ -1518,7 +1518,7 @@ Section ProofCopyout.
                 with "Hcg Hpc []").
       { iApply (coi_6c with "Htext"). }
       iIntros (CIDm3b Hsm3b) "Hcg Hpc".
-      set (F3 := <[Regidx Ra1 := regval_into_reg (add_vec zero_reg (F2 !!! Regidx Rs11))]> F2).
+      pose (F3 := <[Regidx Ra1 := regval_into_reg (add_vec zero_reg (F2 !!! Regidx Rs11))]> F2).
       assert (Hp6e : add_vec_int (mword_of_int (KernelSyms.copyout + 0x6c) : mword 64) 2
                      = mword_of_int (KernelSyms.copyout + 0x6e)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hp6e) in "Hpc".
@@ -1528,7 +1528,7 @@ Section ProofCopyout.
                 with "Hcg Hpc []").
       { iApply (coi_6e with "Htext"). }
       iIntros (CIDm4 Hsm4) "Hcg Hpc".
-      set (F4 := <[Regidx Ra0 := regval_into_reg (add_vec zero_reg (F3 !!! Regidx Rs7))]> F3).
+      pose (F4 := <[Regidx Ra0 := regval_into_reg (add_vec zero_reg (F3 !!! Regidx Rs7))]> F3).
       assert (Hp70 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x6e) : mword 64) 2
                      = mword_of_int (KernelSyms.copyout + 0x70)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hp70) in "Hpc".
@@ -1540,7 +1540,7 @@ Section ProofCopyout.
                 with "Hcg Hpc []").
       { iApply (coi_70 with "Htext"). }
       iIntros (CIDm5 Hsm5) "Hcg Hpc".
-      set (F5 := <[Regidx Rra := regval_into_reg
+      pose (F5 := <[Regidx Rra := regval_into_reg
                     (add_vec_int (mword_of_int (KernelSyms.copyout + 0x70) : mword 64) 4)]> F4).
       assert (Htgtvf : add_vec (mword_of_int (KernelSyms.copyout + 0x70) : mword 64)
                          (sign_extend' 64 (mword_of_int 2096916 : mword 21))
@@ -1619,7 +1619,7 @@ Section ProofCopyout.
                 with "Hcg Hpc []").
       { iApply (coi_74 with "Htext"). }
       iIntros (CIDm7 Hsm7) "Hcg Hpc".
-      set (F6 := <[Regidx Rs3 := regval_into_reg (add_vec zero_reg (mf !!! Regidx Ra0))]> mf).
+      pose (F6 := <[Regidx Rs3 := regval_into_reg (add_vec zero_reg (mf !!! Regidx Ra0))]> mf).
       assert (HF6s3 : F6 !!! Regidx Rs3 = mf !!! Regidx Ra0)
         by (rewrite /F6 upd_eq; apply add_vec_zero_l).
       assert (HF6a0 : F6 !!! Regidx Ra0 = mf !!! Regidx Ra0)
@@ -1653,7 +1653,7 @@ Section ProofCopyout.
                   with "Hcg Hpc []").
         { iApply (coi_be with "Htext"). }
         iIntros (CIDmf2 Hsmf2) "Hcg Hpc".
-        set (FB := <[Regidx Ra0 := regval_into_reg (mword_of_int (-1) : mword 64)]> F6).
+        pose (FB := <[Regidx Ra0 := regval_into_reg (mword_of_int (-1) : mword 64)]> F6).
         assert (Hpc0 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xbe) : mword 64) 2
                        = mword_of_int (KernelSyms.copyout + 0xc0)) by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hpc0) in "Hpc".
@@ -1804,7 +1804,7 @@ Section ProofCopyout.
                   with "Hcg Hpc []").
         { iApply (coi_c2 with "Htext"). }
         iIntros (CIDmsf1 Hsmsf1) "Hcg Hpc".
-        set (FC := <[Regidx Ra0 := regval_into_reg (mword_of_int (-1) : mword 64)]> Mf).
+        pose (FC := <[Regidx Ra0 := regval_into_reg (mword_of_int (-1) : mword 64)]> Mf).
         assert (Hpc4 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xc2) : mword 64) 2
                        = mword_of_int (KernelSyms.copyout + 0xc4)) by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hpc4) in "Hpc".
@@ -1941,7 +1941,7 @@ Section ProofCopyout.
                 with "Hcg Hpc []").
       { iApply (coi_c2 with "Htext"). }
       iIntros (CIDhf1 Hshf1) "Hcg Hpc".
-      set (GC := <[Regidx Ra0 := regval_into_reg (mword_of_int (-1) : mword 64)]> Mf).
+      pose (GC := <[Regidx Ra0 := regval_into_reg (mword_of_int (-1) : mword 64)]> Mf).
       assert (Hpc4 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xc2) : mword 64) 2
                      = mword_of_int (KernelSyms.copyout + 0xc4)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hpc4) in "Hpc".
@@ -2013,7 +2013,7 @@ Section ProofCopyout.
                 with "Hcg Hpc []").
       { iApply (coi_9a with "Htext"). }
       iIntros (CIDz2 Hsz2) "Hcg Hpc".
-      set (N0 := <[Regidx Ra0 := regval_into_reg (mword_of_int 0 : mword 64)]> mm).
+      pose (N0 := <[Regidx Ra0 := regval_into_reg (mword_of_int 0 : mword 64)]> mm).
       assert (Hp9c : add_vec_int (mword_of_int (KernelSyms.copyout + 0x9a) : mword 64) 2
                      = mword_of_int (KernelSyms.copyout + 0x9c)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hp9c) in "Hpc".
@@ -2057,7 +2057,7 @@ Section ProofCopyout.
     { iApply (coi_02 with "Htext"). }
     iIntros (CIDpr1 Hspr1) "Hcg Hframe Hpc".
     iEval (rewrite Hspm) in "Hframe".
-    set (R1 := <[Regidx csp_rs1 := regval_into_reg
+    pose (R1 := <[Regidx csp_rs1 := regval_into_reg
                   (add_vec (mm !!! Regidx csp_rs1)
                      (sign_extend' 64 (caddi16sp_imm (mword_of_int 57 : mword 6))))]> mm).
     change (<[Regidx csp_rs1 := regval_into_reg
@@ -2274,7 +2274,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_1e with "Htext"). }
     iIntros (CIDpr16 Hspr16) "Hcg Hpc".
-    set (Q1 := <[Regidx Rs0 := regval_into_reg
+    pose (Q1 := <[Regidx Rs0 := regval_into_reg
                   (add_vec (R1 !!! Regidx csp_rs1)
                      (sign_extend' 64 (caddi4spn_imm (mword_of_int 28 : mword 8))))]> R1).
     assert (Hpp20 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x1e) : mword 64) 2
@@ -2286,7 +2286,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_20 with "Htext"). }
     iIntros (CIDpr17 Hspr17) "Hcg Hpc".
-    set (Q2 := <[Regidx Rs7 := regval_into_reg (add_vec zero_reg (Q1 !!! Regidx Ra0))]> Q1).
+    pose (Q2 := <[Regidx Rs7 := regval_into_reg (add_vec zero_reg (Q1 !!! Regidx Ra0))]> Q1).
     assert (Hpp22 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x20) : mword 64) 2
                     = mword_of_int (KernelSyms.copyout + 0x22)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp22) in "Hpc".
@@ -2296,7 +2296,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_22 with "Htext"). }
     iIntros (CIDpr17b Hspr17b) "Hcg Hpc".
-    set (Q3 := <[Regidx Rs11 := regval_into_reg (add_vec zero_reg (Q2 !!! Regidx Ra1))]> Q2).
+    pose (Q3 := <[Regidx Rs11 := regval_into_reg (add_vec zero_reg (Q2 !!! Regidx Ra1))]> Q2).
     assert (Hpp24 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x22) : mword 64) 2
                     = mword_of_int (KernelSyms.copyout + 0x24)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp24) in "Hpc".
@@ -2306,7 +2306,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_24 with "Htext"). }
     iIntros (CIDpr18 Hspr18) "Hcg Hpc".
-    set (Q4 := <[Regidx Rs4 := regval_into_reg (add_vec zero_reg (Q3 !!! Regidx Ra2))]> Q3).
+    pose (Q4 := <[Regidx Rs4 := regval_into_reg (add_vec zero_reg (Q3 !!! Regidx Ra2))]> Q3).
     assert (Hpp26 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x24) : mword 64) 2
                     = mword_of_int (KernelSyms.copyout + 0x26)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp26) in "Hpc".
@@ -2316,7 +2316,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_26 with "Htext"). }
     iIntros (CIDpr19 Hspr19) "Hcg Hpc".
-    set (Q5 := <[Regidx Rs6 := regval_into_reg (add_vec zero_reg (Q4 !!! Regidx Ra3))]> Q4).
+    pose (Q5 := <[Regidx Rs6 := regval_into_reg (add_vec zero_reg (Q4 !!! Regidx Ra3))]> Q4).
     assert (Hpp28 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x26) : mword 64) 2
                     = mword_of_int (KernelSyms.copyout + 0x28)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp28) in "Hpc".
@@ -2326,7 +2326,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_28 with "Htext"). }
     iIntros (CIDpr20 Hspr20) "Hcg Hpc".
-    set (Q6 := <[Regidx Rs5 := regval_into_reg (add_vec zero_reg (Q5 !!! Regidx Ra4))]> Q5).
+    pose (Q6 := <[Regidx Rs5 := regval_into_reg (add_vec zero_reg (Q5 !!! Regidx Ra4))]> Q5).
     assert (Hpp2a : add_vec_int (mword_of_int (KernelSyms.copyout + 0x28) : mword 64) 2
                     = mword_of_int (KernelSyms.copyout + 0x2a)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp2a) in "Hpc".
@@ -2337,7 +2337,7 @@ Section ProofCopyout.
               lui_m4096 with "Hcg Hpc []").
     { iApply (coi_2a with "Htext"). }
     iIntros (CIDpr21 Hspr21) "Hcg Hpc".
-    set (Q7 := <[Regidx Rs10 := regval_into_reg (mword_of_int (-4096) : mword 64)]> Q6).
+    pose (Q7 := <[Regidx Rs10 := regval_into_reg (mword_of_int (-4096) : mword 64)]> Q6).
     assert (Hpp2c : add_vec_int (mword_of_int (KernelSyms.copyout + 0x2a) : mword 64) 2
                     = mword_of_int (KernelSyms.copyout + 0x2c)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp2c) in "Hpc".
@@ -2349,7 +2349,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_2c with "Htext"). }
     iIntros (CIDpr22 Hspr22) "Hcg Hpc".
-    set (Q8 := <[Regidx Rs9 := regval_into_reg (mword_of_int (-1) : mword 64)]> Q7).
+    pose (Q8 := <[Regidx Rs9 := regval_into_reg (mword_of_int (-1) : mword 64)]> Q7).
     assert (HQ8s9 : Q8 !!! Regidx Rs9 = (mword_of_int (-1) : mword 64))
       by (rewrite /Q8 upd_eq; reflexivity).
     assert (Hpp2e : add_vec_int (mword_of_int (KernelSyms.copyout + 0x2c) : mword 64) 2
@@ -2362,7 +2362,7 @@ Section ProofCopyout.
               with "Hcg Hpc []").
     { iApply (coi_2e with "Htext"). }
     iIntros (CIDpr23 Hspr23) "Hcg Hpc".
-    set (Q9 := <[Regidx Rs9 := regval_into_reg
+    pose (Q9 := <[Regidx Rs9 := regval_into_reg
                   (mword_of_int 274877906943 : mword 64)]> Q8).
     assert (HQ9eq : <[Regidx Rs9 := regval_into_reg
                       (shift_bits_right (rget Q8 Rs9)
@@ -2380,7 +2380,7 @@ Section ProofCopyout.
               lui_4096 with "Hcg Hpc []").
     { iApply (coi_32 with "Htext"). }
     iIntros (CIDpr24 Hspr24) "Hcg Hpc".
-    set (Q10 := <[Regidx Rs8 := regval_into_reg (mword_of_int 4096 : mword 64)]> Q9).
+    pose (Q10 := <[Regidx Rs8 := regval_into_reg (mword_of_int 4096 : mword 64)]> Q9).
     assert (Hpp34 : add_vec_int (mword_of_int (KernelSyms.copyout + 0x32) : mword 64) 2
                     = mword_of_int (KernelSyms.copyout + 0x34)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp34) in "Hpc".
@@ -2521,7 +2521,7 @@ Section ProofCopyout.
       { iApply (coi_a0 with "Htext"). }
       { iEval (rewrite HspE0 Hb1). iExact "Hk1". }
       iIntros (CIDe1 Hse1) "Hcg Hpc Hk1". iEval (rewrite HspE0 Hb1) in "Hk1".
-      set (E1 := <[Regidx Rra := regval_into_reg (mm !!! Regidx Rra)]> mj).
+      pose (E1 := <[Regidx Rra := regval_into_reg (mm !!! Regidx Rra)]> mj).
       assert (HspE1 : E1 !!! Regidx csp_rs1 = spr)
         by (rewrite /E1; rewrite upd_ne; [exact HspE0 | reg_neq]).
       assert (HpEa2 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xa0) : mword 64) 2
@@ -2534,7 +2534,7 @@ Section ProofCopyout.
       { iApply (coi_a2 with "Htext"). }
       { iEval (rewrite HspE1 Hb2). iExact "Hk2". }
       iIntros (CIDe2 Hse2) "Hcg Hpc Hk2". iEval (rewrite HspE1 Hb2) in "Hk2".
-      set (E2 := <[Regidx Rs0 := regval_into_reg (mm !!! Regidx Rs0)]> E1).
+      pose (E2 := <[Regidx Rs0 := regval_into_reg (mm !!! Regidx Rs0)]> E1).
       assert (HspE2 : E2 !!! Regidx csp_rs1 = spr)
         by (rewrite /E2; rewrite upd_ne; [exact HspE1 | reg_neq]).
       assert (HpEa4 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xa2) : mword 64) 2
@@ -2547,7 +2547,7 @@ Section ProofCopyout.
       { iApply (coi_a4 with "Htext"). }
       { iEval (rewrite HspE2 Hb3). iExact "Hk3". }
       iIntros (CIDe3 Hse3) "Hcg Hpc Hk3". iEval (rewrite HspE2 Hb3) in "Hk3".
-      set (E3 := <[Regidx Rs1 := regval_into_reg (mm !!! Regidx Rs1)]> E2).
+      pose (E3 := <[Regidx Rs1 := regval_into_reg (mm !!! Regidx Rs1)]> E2).
       assert (HspE3 : E3 !!! Regidx csp_rs1 = spr)
         by (rewrite /E3; rewrite upd_ne; [exact HspE2 | reg_neq]).
       assert (HpEa6 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xa4) : mword 64) 2
@@ -2560,7 +2560,7 @@ Section ProofCopyout.
       { iApply (coi_a6 with "Htext"). }
       { iEval (rewrite HspE3 Hb4). iExact "Hk4". }
       iIntros (CIDe4 Hse4) "Hcg Hpc Hk4". iEval (rewrite HspE3 Hb4) in "Hk4".
-      set (E4 := <[Regidx Rs2 := regval_into_reg (mm !!! Regidx Rs2)]> E3).
+      pose (E4 := <[Regidx Rs2 := regval_into_reg (mm !!! Regidx Rs2)]> E3).
       assert (HspE4 : E4 !!! Regidx csp_rs1 = spr)
         by (rewrite /E4; rewrite upd_ne; [exact HspE3 | reg_neq]).
       assert (HpEa8 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xa6) : mword 64) 2
@@ -2573,7 +2573,7 @@ Section ProofCopyout.
       { iApply (coi_a8 with "Htext"). }
       { iEval (rewrite HspE4 Hb5). iExact "Hk5". }
       iIntros (CIDe5 Hse5) "Hcg Hpc Hk5". iEval (rewrite HspE4 Hb5) in "Hk5".
-      set (E5 := <[Regidx Rs3 := regval_into_reg (mm !!! Regidx Rs3)]> E4).
+      pose (E5 := <[Regidx Rs3 := regval_into_reg (mm !!! Regidx Rs3)]> E4).
       assert (HspE5 : E5 !!! Regidx csp_rs1 = spr)
         by (rewrite /E5; rewrite upd_ne; [exact HspE4 | reg_neq]).
       assert (HpEaa : add_vec_int (mword_of_int (KernelSyms.copyout + 0xa8) : mword 64) 2
@@ -2586,7 +2586,7 @@ Section ProofCopyout.
       { iApply (coi_aa with "Htext"). }
       { iEval (rewrite HspE5 Hb6). iExact "Hk6". }
       iIntros (CIDe6 Hse6) "Hcg Hpc Hk6". iEval (rewrite HspE5 Hb6) in "Hk6".
-      set (E6 := <[Regidx Rs4 := regval_into_reg (mm !!! Regidx Rs4)]> E5).
+      pose (E6 := <[Regidx Rs4 := regval_into_reg (mm !!! Regidx Rs4)]> E5).
       assert (HspE6 : E6 !!! Regidx csp_rs1 = spr)
         by (rewrite /E6; rewrite upd_ne; [exact HspE5 | reg_neq]).
       assert (HpEac : add_vec_int (mword_of_int (KernelSyms.copyout + 0xaa) : mword 64) 2
@@ -2599,7 +2599,7 @@ Section ProofCopyout.
       { iApply (coi_ac with "Htext"). }
       { iEval (rewrite HspE6 Hb7). iExact "Hk7". }
       iIntros (CIDe7 Hse7) "Hcg Hpc Hk7". iEval (rewrite HspE6 Hb7) in "Hk7".
-      set (E7 := <[Regidx Rs5 := regval_into_reg (mm !!! Regidx Rs5)]> E6).
+      pose (E7 := <[Regidx Rs5 := regval_into_reg (mm !!! Regidx Rs5)]> E6).
       assert (HspE7 : E7 !!! Regidx csp_rs1 = spr)
         by (rewrite /E7; rewrite upd_ne; [exact HspE6 | reg_neq]).
       assert (HpEae : add_vec_int (mword_of_int (KernelSyms.copyout + 0xac) : mword 64) 2
@@ -2612,7 +2612,7 @@ Section ProofCopyout.
       { iApply (coi_ae with "Htext"). }
       { iEval (rewrite HspE7 Hb8). iExact "Hk8". }
       iIntros (CIDe8 Hse8) "Hcg Hpc Hk8". iEval (rewrite HspE7 Hb8) in "Hk8".
-      set (E8 := <[Regidx Rs6 := regval_into_reg (mm !!! Regidx Rs6)]> E7).
+      pose (E8 := <[Regidx Rs6 := regval_into_reg (mm !!! Regidx Rs6)]> E7).
       assert (HspE8 : E8 !!! Regidx csp_rs1 = spr)
         by (rewrite /E8; rewrite upd_ne; [exact HspE7 | reg_neq]).
       assert (HpEb0 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xae) : mword 64) 2
@@ -2625,7 +2625,7 @@ Section ProofCopyout.
       { iApply (coi_b0 with "Htext"). }
       { iEval (rewrite HspE8 Hb9). iExact "Hk9". }
       iIntros (CIDe9 Hse9) "Hcg Hpc Hk9". iEval (rewrite HspE8 Hb9) in "Hk9".
-      set (E9 := <[Regidx Rs7 := regval_into_reg (mm !!! Regidx Rs7)]> E8).
+      pose (E9 := <[Regidx Rs7 := regval_into_reg (mm !!! Regidx Rs7)]> E8).
       assert (HspE9 : E9 !!! Regidx csp_rs1 = spr)
         by (rewrite /E9; rewrite upd_ne; [exact HspE8 | reg_neq]).
       assert (HpEb2 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xb0) : mword 64) 2
@@ -2638,7 +2638,7 @@ Section ProofCopyout.
       { iApply (coi_b2 with "Htext"). }
       { iEval (rewrite HspE9 Hb10). iExact "Hk10". }
       iIntros (CIDe10 Hse10) "Hcg Hpc Hk10". iEval (rewrite HspE9 Hb10) in "Hk10".
-      set (E10 := <[Regidx Rs8 := regval_into_reg (mm !!! Regidx Rs8)]> E9).
+      pose (E10 := <[Regidx Rs8 := regval_into_reg (mm !!! Regidx Rs8)]> E9).
       assert (HspE10 : E10 !!! Regidx csp_rs1 = spr)
         by (rewrite /E10; rewrite upd_ne; [exact HspE9 | reg_neq]).
       assert (HpEb4 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xb2) : mword 64) 2
@@ -2651,7 +2651,7 @@ Section ProofCopyout.
       { iApply (coi_b4 with "Htext"). }
       { iEval (rewrite HspE10 Hb11). iExact "Hk11". }
       iIntros (CIDe11 Hse11) "Hcg Hpc Hk11". iEval (rewrite HspE10 Hb11) in "Hk11".
-      set (E11 := <[Regidx Rs9 := regval_into_reg (mm !!! Regidx Rs9)]> E10).
+      pose (E11 := <[Regidx Rs9 := regval_into_reg (mm !!! Regidx Rs9)]> E10).
       assert (HspE11 : E11 !!! Regidx csp_rs1 = spr)
         by (rewrite /E11; rewrite upd_ne; [exact HspE10 | reg_neq]).
       assert (HpEb6 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xb4) : mword 64) 2
@@ -2664,7 +2664,7 @@ Section ProofCopyout.
       { iApply (coi_b6 with "Htext"). }
       { iEval (rewrite HspE11 Hb12). iExact "Hk12". }
       iIntros (CIDe12 Hse12) "Hcg Hpc Hk12". iEval (rewrite HspE11 Hb12) in "Hk12".
-      set (E12 := <[Regidx Rs10 := regval_into_reg (mm !!! Regidx Rs10)]> E11).
+      pose (E12 := <[Regidx Rs10 := regval_into_reg (mm !!! Regidx Rs10)]> E11).
       assert (HspE12 : E12 !!! Regidx csp_rs1 = spr)
         by (rewrite /E12; rewrite upd_ne; [exact HspE11 | reg_neq]).
       assert (HpEb8 : add_vec_int (mword_of_int (KernelSyms.copyout + 0xb6) : mword 64) 2
@@ -2677,14 +2677,14 @@ Section ProofCopyout.
       { iApply (coi_b8 with "Htext"). }
       { iEval (rewrite HspE12 Hb13). iExact "Hk13". }
       iIntros (CIDe13 Hse13) "Hcg Hpc Hk13". iEval (rewrite HspE12 Hb13) in "Hk13".
-      set (E13 := <[Regidx Rs11 := regval_into_reg (mm !!! Regidx Rs11)]> E12).
+      pose (E13 := <[Regidx Rs11 := regval_into_reg (mm !!! Regidx Rs11)]> E12).
       assert (HspE13 : E13 !!! Regidx csp_rs1 = spr)
         by (rewrite /E13; rewrite upd_ne; [exact HspE12 | reg_neq]).
       assert (HpEba : add_vec_int (mword_of_int (KernelSyms.copyout + 0xb8) : mword 64) 2
                       = mword_of_int (KernelSyms.copyout + 0xba)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite HpEba) in "Hpc".
       (* +0xba c.addi16sp sp,112 : trade the frame back *)
-      set (E14 := <[Regidx csp_rs1 := regval_into_reg
+      pose (E14 := <[Regidx csp_rs1 := regval_into_reg
                      (add_vec (E13 !!! Regidx csp_rs1)
                         (sign_extend' 64 (caddi16sp_imm (mword_of_int 7 : mword 6))))]> E13).
       assert (Hwv : add_vec (E13 !!! Regidx csp_rs1)

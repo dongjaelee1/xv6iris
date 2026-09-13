@@ -54,10 +54,8 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   the writable data below the frame -- discharged (or restated where the
   `∀ W'` makes the size unprovable), plus `UConsLine`'s three unproved line
   `Prop`s.
-- [ ] **OUT-FUPD** (kernel; main, next): the application-fixed output
-  predicate in the console UART's invariant, the store's view shift, the
-  writers' contracts, the retirement of the sublist receipts (design:
-  "OUT-FUPD PHASE 1 -- DESIGN" narrowed by "TWO UARTS").
+- [x] ~~**OUT-FUPD**~~ LANDED 2026-09-13 (`c6a5521ac`; the note below); the
+  `AppEcho.echo_out` placeholder is ECHO-OUT's to replace.
 - [ ] **SH-LINE 2b R2/R3** (U-tier; R1'/(a)/(b) LANDED 2026-09-13; the rest
   after KILL-PAY B2 and the E5 design): the line-boundary invariant on
   `ush_pos`, the line fact through getcmd, `ush_rest` renamed, the composer
@@ -2622,6 +2620,61 @@ TX-RECEIPT's `tx_claim` so the two lanes merge by juxtaposition; the hart lines'
 `boot_hart_pre`, banners-before via `k_ledger_lb [banners]` on the `started`
 invariant; `boot_k_shape` deleted.  `BACKSPACE` is the int 0x100 (not byte 8):
 the "\b \b" triple is reachable only from `%c`, unused.
+
+OUT-FUPD LANDED (2026-09-13; `c6a5521ac`; 58 files +2715/-3620; builds
+outg27/outg28, audit = the thirteen; lemma_diff = 28 retirements/deletions
+and one rename, no admits).  EVERY STORE TO THE CONSOLE UART'S TRANSMITTER
+IS JUSTIFIED BY A VIEW SHIFT ITS WRITER BRINGS; nothing above the driver
+receives a claim about what came out.  THE CLAIM IS A RESOURCE on the fixed
+record (`RiscvPtsto.riscv_out_res : list mobs -> list (bv 8) -> iProp`,
+timeless; `out_res_triv := fun _ _ => emp`): a pure predicate cannot say
+WHO may write, so an impostor's byte would make the echo's shift
+unprovable; `riscvEraGS` is Σ-free and `appcfg` unreachable from `WpUart`,
+so the era selection lives inside the application's predicate (a fresh
+`ghost_var` half pair per era, one half in the claim's ∃, the other in
+`app_boot` -- E5's).  `App.xv6_app.app_out` is the application's entry; the
+TRANSPORT founds it (`app_xfer_boot_raw A B O` yields `O [] []`), the
+PowerOn lend carries it, `xv6_boot_era` hands it to `uart_ghosts_alloc
+Uart0`.  The console port's invariant carries `out_claim_at Uart0 acc := ∃
+o, obs_hist_lb_o o ∗ riscv_out_res (default [] o) acc` inside `uart_colE`
+(`Uart1`: `emp`); the witness is the invariant's own and a writer may MOVE
+it to the history its byte answers (`obs_hist_lb_cmp`).  The THR leaf takes
+`out_link i sb Φ := ∀ o acc, obs_hist_lb_o o -∗ out_res_at i (default [] o)
+acc ={⊤ ∖ ↑uartN i}=∗ ∃ o', obs_hist_lb_o o' ∗ out_res_at i (default []
+o') (acc ++ [sb]) ∗ Φ` and returns `Φ` (the mask is what the open port
+invariant leaves); `out_chain` is the per-byte chain (the transmit lock is
+per byte), `out_run` its stoppable form, `out_chain_shift` the message
+shape one way only, `out_chain_triv` discharges `Uart1`.  WRITERS:
+uartputc_sync one link; consputc COMPUTES its bytes (`consputc_cs`) and
+takes the chain; consoleintr's echo out of `console_caps`'s
+`cons_echo_shift` (persistent: `□ ∀ h c cs Φ, ⌜obs_ends_in Uart0 h c⌝ -∗
+⌜cons_echo c cs⌝ -∗ riscv_rx_tag h -∗ obs_hist_lb h -∗ Φ -∗ out_chain Uart0
+cs Φ`, with `cons_echo`'s erase arm GUARDED by an erase byte), a RECORD
+OBLIGATION `Happ_echo` that rides `wp_main_boot_sconf_body`/
+`boot_hart_primary` into `ProofMain`'s `console_caps`; uartwrite the run's
+chain with `drop k` as the loop invariant; consolewrite `cons_out_chain M
+ua Q k cnt`, one node per byte at the caller's cursor, the byte pinned
+against the lent image; filewrite/sys_write/row 16 with `wf_Q` serving both
+arms (`wf_tr0` gone; `filewrite_in`'s device arm asks for the chain at
+every major -- the devsw cell is "null or consolewrite" everywhere).  THE
+GENERIC WRITE IS LICENSED: `out_licence := □ (∀ h acc b, riscv_out_res h
+acc ==∗ riscv_out_res h (acc ++ [b]))`; `xv6_ssupply := app_sup ∗ □
+riscv_kill_cred ∗ □ out_licence`; `Happ_out_sup : app_sup_raw … ⊢ □ (∀ h
+acc b, app_out A c h acc ==∗ app_out A c h (acc ++ [b]))` sets the price;
+`fsabs_filewrite_in`'s console arm is the trivial chain off it.  `Htx` at
+Uart0 gains `⌜u_wire u = u_out u⌝`, `⌜ho prefix_of h⌝` and the claim taken
+LINEARLY and given back -- the only channel to `Hphi`; `Hinit_boot` gains
+`riscv_out_res = app_out A c`; `xv6_trace_adequacy` gains three client
+premises (`Hecho`, `Hxfer`, `Hout_lic`).  RETIRED: `uart_sent_sub*`,
+`uart_sent_from*`, `cons_sent_cnt*`, `wcons_ok`/`wcons_short`, `wf_tr0`,
+`UartSentLoc.v`, `UartSentResidue.v`, the `UartwriteLoc` trio (one uartwrite
+contract again; `ProofConsolewrite` at `UARTWRITE`).  THE ONE TOLERATED
+HOLE: `AppEcho.echo_out` is the PLACEHOLDER `fun _ _ _ => emp` (marked in
+the file), so `echo_Happ_out_sup`/`echo_Happ_echo`/`echo_Htx`'s output arm
+are vacuous until ECHO-OUT replaces it with the real claim (E5's design
+below).  The trusted diff (RiscvPtsto/RiscvAdequacy/SystemAdequacy/App) is
+`git diff 2f36915fd..c6a5521ac -- iris/RiscvPtsto.v iris/RiscvAdequacy.v
+iris/SystemAdequacy.v iris/App.v` -- FOR THE OWNER'S REVIEW.
 
 KILL-PAY K4(a) LANDED (2026-09-13; `203532d34`; 39 files +1184/-365; build
 kille13, audit = the thirteen; lemma_diff = one section hypothesis

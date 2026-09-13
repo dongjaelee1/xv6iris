@@ -435,9 +435,18 @@ for it.
   a fix — the failing branches are exactly where the unifier deltas. And check
   for a missing read-only twin of the full-agreement lemma before believing a
   file's cost: the `etransitivity` fallback reads as the settled answer.
-- **`pose`, not `set`, for a register chain.** `set` pays a whole-goal pattern
-  search per instruction and the goal is `envs_entails Δ Q`, so cost scales with
-  CONTEXT. Where a file already uses `set`, deleting a trailing `change T with X`
+- **`pose` vs `set` for a register chain turns on whether the GOAL carries the
+  map, and it is worth seconds in BOTH directions.** `set` pays a whole-goal
+  pattern search per instruction, and the goal is `envs_entails Δ Q`, so that
+  search is priced by the Iris context — but the fold it performs is what keeps
+  the tower out of Δ afterwards. So: where the next leaf takes the map as an
+  ARGUMENT BY NAME, the goal never contains the body, the search finds nothing,
+  and `pose` is free money (copyinstr, copyout). Where the goal carries the
+  updated map, the fold is load-bearing and `pose` leaves the tower spelled out
+  for every later step to pay for (printk, consoleintr, balloc: converting
+  measured WORSE by about as much as the other two measured better). Read which
+  case a file is in before converting, and measure the file either way.
+  Where a file already uses `set`, deleting a trailing `change T with X`
   is free (the `change` folds nothing — `set` already did).
 - **`Local Strategy opaque [rget tp_pin rf_upd]`** where leaves state premises
   over `rget`. Trap: a premise spelled `M !!! Regidx r` was bridging by delta and

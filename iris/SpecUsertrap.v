@@ -1590,6 +1590,17 @@ Module Type USERTRAP_RES.
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{!ufdG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (pt : uptd) (ksp : mword 64) (U : ustate) (sts : list fdstate) (cs : gset gname) (pid : mword 32),
       usertrap_res_bare pt ksp U sts cs pid -∗ ⌜uint (pv_sz (us_V U)) <= uvm_maxsz⌝.
 
+  (* ...AND WHAT THE PROCESS'S LAZY BIT CLAIMS ABOUT THE TABLE IT RUNS ON
+     (lane KILL-PAY, milestone LAZY-ROW), off the same residue and for the
+     same reason: the U tier's slot guard demands it at every resume
+     ([UexecRet.uslot_F]'s fill row), and across user execution the loop
+     holds no block -- only this residue.  Stated at the residue's OWN
+     table, which it pins itself.  Concrete: [UsertrapRes.ut_res_bare_lazy]. *)
+  Parameter usertrap_res_bare_lazy :
+    forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{!ufdG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (pt : uptd) (ksp : mword 64) (U : ustate) (sts : list fdstate) (cs : gset gname) (pid : mword 32),
+      usertrap_res_bare pt ksp U sts cs pid -∗
+      ⌜pv_lazy (us_V U) = false -> lazy_free (ud_um pt) (uint (pv_sz (us_V U)))⌝.
+
   (* THE APPLICATION-SIDE FS INVARIANT, off the bare residue: the one
      persistent fact the trap loop needs of the kernel to mint the
      process's exec bundle ([UexecExecMint]).  Concrete:

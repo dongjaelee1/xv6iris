@@ -1257,6 +1257,10 @@ Section UkLoad.
   Hypothesis (HRut : forall pt' : uptd,
                        ⊢ Rut pt' -∗ TsoCtx.own_context XI ∗
                                     (TsoCtx.own_context XI -∗ Rut pt')).
+  (* the fill row (lane KILL-PAY, milestone LAZY-ROW), on [Hlo]/[Hpm]'s
+     footing: the section's [pt] is fixed, so the slot guard's row is a
+     section hypothesis here and the caller supplies it out of [urun]. *)
+  Hypothesis (Hlf0 : lazy_free (ud_um pt) sz).
 
   (* ------------------------------------------------------------------- *)
   (* THE LOAD LEAF.                                                        *)
@@ -1315,13 +1319,13 @@ Section UkLoad.
     iIntros "Hb Hcont".
     (* the payment goes to the engine with the continuation, under the same
        later ([UexecRet.ukcq]) *)
-    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut _ Qp M m pc fdv cw gn cs pidv Hal2
+    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 _ Qp M m pc fdv cw gn cs pidv Hal2
               with "Hb [] [Hcont]").
     2:{ iNext. rewrite /ukcq. iExact "Hcont". }
     iModIntro.
     rewrite /uk_step_obl.
     iIntros (R CIDo XIo C' pt' Rfd' Rut' HRut' Mp' t rs1s rsA usatp pcfg paddr)
-      "%Hlo' %Hpm' %Hpure %Hpre #Hamb Hk Hany Hrw Hro Hctx Hmm Hres".
+      "%Hlo' %Hpm' %Hlf' %Hpure %Hpre #Hamb Hk Hany Hrw Hro Hctx Hmm Hres".
     pose proof (uk_instr_mapped π M Mp' pc _ i pt' sz
                   (loop_ok_wf C' pt' Hlo') Hpm' Hpure Hui) as Hui'.
     (* THE DISPATCH, at THIS table.  The key says the page is in the map;
@@ -1346,14 +1350,20 @@ Section UkLoad.
           exact (ukp_win pt' sz M Mp' va w_ld j _ (proj1 Hwf') Hpure Hl
                    (ukp_off va k (Z.of_nat j) Hpg ltac:(lia))
                    (uM_word_bytes M (uint va) k ltac:(lia) HMb j Hj)).
-      - right. right. left.
-        pose proof (perm_of_unmapped_lt (ud_um pt') sz (svpn_of va) q
-                      (ukp_sz _ _ _ _ Hpure)
-                      ltac:(rewrite Hpm'; exact Hq) Hl) as Hlt.
-        split; [ exact Hcanon | ].
-        split; [ exact Hl | ].
-        split; apply vpn_lt_ne;
-          [ rewrite tramp_vpn_unsigned | rewrite tf_vpn_unsigned ]; lia. }
+      - (* THE FAULT ARM IS REFUTED (lane KILL-PAY, milestone LAZY-ROW).
+           The key's [uvis_lazy] bit is [false] at this tier, so the slot's
+           guard hands the leaf [lazy_free (ud_um pt') sz]: every live page
+           of this process is really mapped, and the fill cannot have
+           supplied the W bit the key's own [uk_store_ok] / [uk_load_ok]
+           premise reads.  So the table maps this page and the [None] case
+           is impossible -- a verified program never takes a page fault,
+           which is what makes cause 13/15 unreachable for it.  The fault
+           LEAVES stay ([uk_store_fault_post_fetch] / its load twin): the
+           engine still supports a lazy key, where the fill is real. *)
+        exfalso.
+        destruct (lazy_free_wmapped pt' sz (svpn_of va) q Hwf' Hlf'
+                    ltac:(rewrite Hpm'; exact Hq) Hqw) as (w & Hw & _ & _).
+        rewrite Hl in Hw. discriminate Hw. }
     iPoseProof "Hamb" as "(#Hhw & _ & _)".
     iPoseProof "Hhw" as (misa0 mseccfg0 pmar0 elp0)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
@@ -1375,8 +1385,8 @@ Section UkLoad.
         iDestruct "Hkc" as "(_ & Hpayv & Hkc)".
         iDestruct ("Hkc" with "Hpayv") as "[Hkc _]".
         iIntros "Hb". rewrite /ukc.
-        iApply ("Hkc" $! CIDo XIo C' pt' Rfd' Rut' HRut' with "[%] [%] Hb");
-          [ exact Hlo' | exact Hpm' ].
+        iApply ("Hkc" $! CIDo XIo C' pt' Rfd' Rut' HRut' with "[%] [%] [%] Hb");
+          [ exact Hlo' | exact Hpm' | intros _; exact Hlf' ].
       - (* the FAULT leg: the payment is handed to the kernel with the
            slot, and the arm hands it back into the continuation *)
         iDestruct "Hkc" as "(#Hmyp & Hpayv & Hkc)". iFrame "Hmyp Hpayv".

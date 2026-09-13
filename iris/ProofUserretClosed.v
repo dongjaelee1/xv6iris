@@ -588,6 +588,10 @@ Section UserretClosed.
     (* xv6's own bound on [p->sz], read off the residue -- [UexecRet.uvb]'s
        size guard.  Pure conclusion, so the bundle stays whole. *)
     iDestruct (UV.usertrap_res_bare_sz pt' ksp U2 with "Hures'") as "%Hszb".
+    (* ...AND THE FILL ROW, off the same residue (lane KILL-PAY, milestone
+       LAZY-ROW): the slot guard demands it at the table this round resumes
+       on, and the residue is where the block's claim reaches the loop. *)
+    iDestruct (UV.usertrap_res_bare_lazy pt' ksp U2 with "Hures'") as "%Hlzf2".
     assert (Hszok : usz_ok (uint (pv_sz (us_V U2))))
       by exact (usz_ok_of_maxsz _ Hszb).
     destruct Hretms as (_ & _ & HSXL & HTVM & HMXR & HTSR & HFS & HVS & _
@@ -771,6 +775,7 @@ Section UserretClosed.
                  HXS HSD HMPP HSPIE)
               Hpi2 eq_refl eq_refl eq_refl eq_refl eq_refl eq_refl eq_refl
               eq_refl
+              Hlzf2
               (eq_sym Hgprtie') (eq_sym Hpcret')
               with "Hslot Hhw' Hmin' Hwire Hregs' Hupt' Hfrag2 Hcfg' Hrut' [-]").
     (* the next round's contract, under the later the bundle takes it at --
@@ -845,6 +850,7 @@ Section Res.
   Definition usertrap_res_csrs_open := UV.usertrap_res_csrs_open.
   Definition usertrap_res_sstc := UV.usertrap_res_sstc.
   Definition usertrap_res_bare_sz := UV.usertrap_res_bare_sz.
+  Definition usertrap_res_bare_lazy := UV.usertrap_res_bare_lazy.
   Definition usertrap_res_tf_csrs_open := UV.usertrap_res_tf_csrs_open.
   Definition usertrap_res_tf_open := UV.usertrap_res_tf_open.
   Definition usertrap_res_bare_fsabs := UV.usertrap_res_bare_fsabs.
@@ -905,6 +911,8 @@ End Res.
        guard, which the dovetail now takes as a premise.  Pure conclusion,
        so the bundle stays whole. *)
     iDestruct (usertrap_res_bare_sz pt ksp U with "Hures") as "%Hszb".
+    (* ...and the fill row, off the same residue -- see the round's own read *)
+    iDestruct (usertrap_res_bare_lazy pt ksp U with "Hures") as "%Hlzf".
     assert (Hszok : usz_ok (uint (pv_sz (us_V U))))
       by exact (usz_ok_of_maxsz _ Hszb).
     (* THE TRAPFRAME WORDS userret is about to read.  NO SLOT COMES OUT WITH
@@ -947,7 +955,7 @@ End Res.
               mcen scen hpm
               HSIE HMPRV HSXL HTVM HMXR (uc_mm C) Hwf HTSR Hsup Ha0
               HuMode Huasid Huppn HFS HVS HXS HSD HMPP HSPIE Hdqc Hinj Hacc Hlok
-              Hszok
+              Hszok Hlzf
               with "Hkt Hhw Hmin Hwire Hhs Hpriv Hms Hmiec Hmdlc Hmenvc Hsenvc
                     Hsepc Hclaim Hktlb Hufr Hpc Hfile
                     Htf40 Htf48 Htf56 Htf64 Htf72 Htf80 Htf88 Htf96 Htf104 Htf120 Htf128 Htf136 Htf144 Htf152 Htf160 Htf168 Htf176 Htf184 Htf192 Htf200 Htf208 Htf216 Htf224 Htf232 Htf240 Htf248 Htf256 Htf264 Htf272 Htf280 Htf112

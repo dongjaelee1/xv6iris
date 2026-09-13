@@ -69,6 +69,7 @@ Require Import BioInv.
 Require Import FsBlocks LogInv.
 Require Import FsCrash.
 Require Import UserPtTree.
+Require Import UserPerm.      (* [lazy_free] -- what the block's lazy bit claims *)
 Require Import SpecProcinit.
 Require Import SpecFileclose.
 Require Import SysExecDefs.   (* [K_sys_exec] -- usertrap's budget bottoms out in exec *)
@@ -1305,6 +1306,27 @@ Section UsertrapRes.
     iEval (rewrite /ut_own_nopt) in "Hown".
     iDestruct "Hown" as "(_ & _ & _ & _ & Hpv & _)".
     iApply (proc_priv_nopt_sz_maxsz with "Hpv").
+  Qed.
+
+  (* ...AND THE FILL ROW, off the same block (lane KILL-PAY, milestone
+     LAZY-ROW): what the process's [ProcDefs.pv_lazy] bit claims about the
+     table it is running on.  The U tier's slot guard demands it at every
+     resume, and the trap loop -- which holds this residue across user
+     execution -- is the one party that can produce it. *)
+  (* AT THE RESIDUE'S OWN TABLE, not the block's: the bare residue pins
+     [pv_upt (us_V U) = pt] itself, and the slot guard demands the row at
+     the table the resume runs on. *)
+  Lemma ut_res_bare_lazy (Rsys : gname -> mword 64 -> fclose_names -> iProp Σ)
+      (pt : uptd) (ksp : mword 64) (U : ustate) (sts : list fdstate) (cs : gset gname) (pid : mword 32) :
+    ut_res_bare Rsys pt ksp U sts cs pid -∗
+    ⌜pv_lazy (us_V U) = false -> lazy_free (ud_um pt) (uint (pv_sz (us_V U)))⌝.
+  Proof.
+    iIntros "H".
+    iDestruct "H" as (N av) "(%Hupt & _ & _ & _ & _ & _ & _ & (_ & Hown))".
+    iEval (rewrite /ut_own_nopt) in "Hown".
+    iDestruct "Hown" as "(_ & _ & _ & _ & Hpv & _)".
+    iDestruct (proc_priv_nopt_lazy with "Hpv") as "%Hlz".
+    iPureIntro. rewrite <- Hupt. exact Hlz.
   Qed.
 
   (* THE APPLICATION-SIDE FS INVARIANT, off the bare residue's syscall

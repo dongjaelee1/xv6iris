@@ -350,7 +350,7 @@ Section UkShMain.
   Proof.
     iIntros "Hrun Hbs".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
-      "(_ & _ & _ & Hheap & _)".
+      "(_ & _ & _ & _ & Hheap & _)".
     iDestruct (uheap_ubytes_img γt γd γs M pm sz a nb fb with "Hheap Hbs")
       as %Hall.
     iPureIntro. intros j Hj. exact (proj2 (Hall j Hj)).

@@ -1420,6 +1420,23 @@ Section UexecRet.
                               (TsoCtx.own_context TsoCtx.cur_ctx -∗ Rut pt')),
          ⌜loop_ok C pt⌝ -∗
          ⌜perm_of (ud_um pt) (uvis_sz W) = uvis_perm W⌝ -∗
+         (* ...AND THE FILL IS EMPTY WHERE THE KEY SAYS SO (lane KILL-PAY,
+            milestone LAZY-ROW; the LAZY-FLAG lane's MAP-KEY strengthening,
+            taken at the one place it belongs).  The key's [uvis_lazy] bit
+            claims "no page of mine is live-but-unmapped"
+            ([UserPerm.lazy_free]); until now that claim reached the U tier
+            only through row 5's post ([UexecExecInst.xv6_spost]) and the
+            engine could not see it at all, so a leaf standing on a WRITABLE
+            page of the projection could not tell a mapped page from a
+            lazily-filled one and had to keep a page-fault arm it can never
+            take.  Carried in the GUARD it is the KERNEL's to prove -- it
+            holds the block whose [ProcDefs.pv_lazy] the key's bit IS
+            ([ProcInv.v]'s block row) -- and free to the program, which
+            reads it off the guard and REFUTES the fault arm
+            ([UkStore.wp_uk_store_later], [UkLoad.wp_uk_load_later]).
+            GUARDED BY THE BIT, not unconditional: the engine still supports
+            a lazy key, where the fill is real and the arm is live. *)
+         ⌜uvis_lazy W = false -> lazy_free (ud_um pt) (uvis_sz W)⌝ -∗
          uvb_F X (CID := h) (XI := xi) C pt Rfd Rut (uvis_sz W) (uvis_perm W) (uvis_fd W)
            (uvis_cwd W) (uvis_gen W) (uvis_ch W) (uvis_pid W) (uvis_lazy W)
            (uvis_M W) (tf_resume_gpr0 (uvis_tf W)) (tf_resume_pc (uvis_tf W)) -∗
@@ -1475,6 +1492,8 @@ Section UexecRet.
                               (TsoCtx.own_context TsoCtx.cur_ctx -∗ Rut pt')),
        ⌜loop_ok C pt⌝ -∗
        ⌜perm_of (ud_um pt) szv = π⌝ -∗
+       (* ...and the fill row, as [uslot_F] states it *)
+       ⌜lz = false -> lazy_free (ud_um pt) szv⌝ -∗
        uvb (CID := h) (XI := xi) C pt Rfd Rut szv π fdv cw g cs pidv lz M m pc -∗
        WP (Loop : expr riscv_lang))%I.
 
@@ -1528,6 +1547,8 @@ Section UexecRet.
                               (TsoCtx.own_context TsoCtx.cur_ctx -∗ Rut pt')),
        ⌜loop_ok C pt⌝ -∗
        ⌜perm_of (ud_um pt) (uvis_sz W) = uvis_perm W⌝ -∗
+       (* ...and the fill row, as [uslot_F] states it *)
+       ⌜uvis_lazy W = false -> lazy_free (ud_um pt) (uvis_sz W)⌝ -∗
        uvb (CID := h) (XI := xi) C pt Rfd Rut (uvis_sz W) (uvis_perm W) (uvis_fd W)
          (uvis_cwd W) (uvis_gen W) (uvis_ch W) (uvis_pid W) (uvis_lazy W)
          (uvis_M W)
@@ -1544,9 +1565,9 @@ Section UexecRet.
   Lemma uslot_bupd (W : uvis) : (|==> uslot W) -∗ uslot W.
   Proof.
     rewrite !(uslot_unfold W).
-    iIntros "H" (h xi C pt Rfd Rut HRut) "%Hl %Hp Hb".
+    iIntros "H" (h xi C pt Rfd Rut HRut) "%Hl %Hp %Hlz Hb".
     iMod "H".
-    iApply ("H" $! h xi C pt Rfd Rut HRut with "[//] [//] Hb").
+    iApply ("H" $! h xi C pt Rfd Rut HRut with "[//] [//] [//] Hb").
   Qed.
 
   Lemma uslot_ukc (W : uvis) :
@@ -2055,7 +2076,7 @@ Section UexecRetGen.
     iLöb as "IH" forall (W).
     iIntros "#Hpay HR".
     rewrite uslot_unfold.
-    iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm Hb".
+    iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlz Hb".
     rewrite /uvb /uvb_F.
     iDestruct "Hb" as
       "(#Hamb & Hur & %Hsz & Hpt & Hfrag & Hcfg & Hg & Hpc & Hrut & Hk)".

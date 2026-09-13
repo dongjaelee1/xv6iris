@@ -70,6 +70,10 @@ Section UkBranch.
   Hypothesis (HRut : forall pt' : uptd,
                        ⊢ Rut pt' -∗ TsoCtx.own_context XI ∗
                                     (TsoCtx.own_context XI -∗ Rut pt')).
+  (* the fill row (lane KILL-PAY, milestone LAZY-ROW), on [Hlo]/[Hpm]'s
+     footing: the section's [pt] is fixed, so the slot guard's row is a
+     section hypothesis here and the caller supplies it out of [urun]. *)
+  Hypothesis (Hlf0 : lazy_free (ud_um pt) sz).
 
   (* RELOCATION DEBT: reads naturally beside [uv_next] in WpUmodeStep.v;
      kept here (as WpUmodeBranch.v keeps its own copy) so adding it does
@@ -136,7 +140,7 @@ Section UkBranch.
                   (add_vec_int pc (if is_rvc then 2 else 4))))%I
       with "[Hcont]" as "Hcont".
     { iNext. rewrite uk_next_bool. iExact "Hcont". }
-    iApply (wp_uk_retire_later C pt Rfd Rut π sz Hlo Hpm HRut M m pc fdv cw gn cs pidv is_rvc i o
+    iApply (wp_uk_retire_later C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 M m pc fdv cw gn cs pidv is_rvc i o
               (if taken then Some tgt else None) None
               Hui Hred Hlpad I Hg1
               ltac:(intros s_pc Lpc Lnpc Lcp Hag Hvals;

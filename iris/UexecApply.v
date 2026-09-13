@@ -1404,6 +1404,10 @@ Section LoopApply.
     loop_ok C pt ->
     usz_ok sz ->
     user_mstatus_ok ms_v ->
+    (* ...AND THE FILL ROW THE SLOT GUARD NOW CARRIES (lane KILL-PAY,
+       milestone LAZY-ROW): the loop hands the continuation the claim its
+       own key's [lz] bit makes, read off the process's block. *)
+    (lz = false -> lazy_free (ud_um pt) sz) ->
     ukc (perm_of (ud_um pt) sz) M sz fdv cw gn cs pidv lz m pc -∗
     hw_config -∗ minstret_inv -∗ wire_inv -∗
     u_regs (HART_ACTIVE tt) ms_v sc_v stv_v sepc_v pc pc m -∗
@@ -1414,15 +1418,16 @@ Section LoopApply.
     ▷ ukb C pt Rfd Rut sz (perm_of (ud_um pt) sz) fdv cw gn cs pidv lz -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hlo Hsz Hms.
+    intros Hlo Hsz Hms Hlz.
     iIntros "Hkc Hhw Hmi Hwi Hregs Hupt Hfrag Hcfg Hrut Hk".
     (* the cell bundle splits into the U-mode residue, the file and the pc *)
     iDestruct (u_regs_uv_regs ms_v sc_v stv_v sepc_v pc m Hms with "Hregs")
       as "(Hur & Hg & Hpc)".
     iApply ("Hkc" $! CID XI C pt Rfd Rut HRut
-              with "[%] [%] [Hhw Hmi Hwi Hur Hg Hpc Hupt Hfrag Hcfg Hrut Hk]").
+              with "[%] [%] [%] [Hhw Hmi Hwi Hur Hg Hpc Hupt Hfrag Hcfg Hrut Hk]").
     - exact Hlo.
     - reflexivity.
+    - exact Hlz.
     - (* THE BUNDLE, ROW BY ROW -- it carries [gpr_file], so never [iFrame]
          (claude-notes/optimization.md, "Framing"). *)
       rewrite /uvb /uvb_F.
@@ -1462,6 +1467,8 @@ Section LoopApply.
     uvis_ch W = cs ->
     uvis_pid W = pidv ->
     uvis_lazy W = lz ->
+    (* the fill row, as [ukc_apply] takes it *)
+    (lz = false -> lazy_free (ud_um pt) sz) ->
     tf_resume_gpr0 (uvis_tf W) = m ->
     tf_resume_pc (uvis_tf W) = pc ->
     uslot W -∗
@@ -1474,13 +1481,13 @@ Section LoopApply.
     ▷ ukb C pt Rfd Rut sz (perm_of (ud_um pt) sz) fdv cw gn cs pidv lz -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hlo Hsz Hms Hpi HM Hsw Hfd Hcw Hgn Hch Hpid Hlz Hg Hpc.
+    intros Hlo Hsz Hms Hpi HM Hsw Hfd Hcw Hgn Hch Hpid Hlz Hlf Hg Hpc.
     iIntros "Hs".
     (* the seal comes off the HYPOTHESIS only *)
     iEval (rewrite uslot_ukc) in "Hs".
     iEval (rewrite Hpi HM Hsw Hfd Hcw Hgn Hch Hpid Hlz Hg Hpc) in "Hs".
     iApply (ukc_apply C pt Rfd Rut HRut sz fdv cw gn cs pidv lz M m ms_v sc_v
-              stv_v sepc_v pc Hlo Hsz Hms with "Hs").
+              stv_v sepc_v pc Hlo Hsz Hms Hlf with "Hs").
   Qed.
 
 End LoopApply.

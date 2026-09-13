@@ -765,6 +765,12 @@ Section UkRun.
           key is at. *)
        (gn : gname) (cs : gset gname) (pidv : mword 32),
        ⌜ loop_ok C pt ⌝ ∗ ⌜ perm_of (ud_um pt) sz = pm ⌝ ∗
+       (* ...AND THE FILL IS EMPTY (lane KILL-PAY, milestone LAZY-ROW): the
+          slot guard's own row, read off the guard at the constructor and
+          carried between instructions so the store and load leaves can
+          REFUTE their page-fault arms.  The run's key is at
+          [uvis_lazy = false], so the row arrives without its antecedent. *)
+       ⌜ lazy_free (ud_um pt) sz ⌝ ∗
        (* A6.140: the residue-token accessor rides the bundle as a PURE
           fact, so a leaf that re-enters [ukc] can hand it back over *)
        ⌜ forall pt' : uptd,
@@ -896,11 +902,11 @@ Section UkRun.
   Proof.
     iIntros "Hheap Hstk Hufd Hcwd Hch #Hmy Hpay #Hdep Hcont".
     rewrite /ukcq. iFrame "Hmy Hpay". iIntros "Hpay".
-    rewrite /ukc. iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm Hb".
+    rewrite /ukc. iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzf Hb".
     iApply ("Hcont" $! h).
     iExists xi, C, pt, Rfd, Rut, sz, M, pm, fdv, cw, gn, cs, pidv.
     iFrame "Hheap Hstk Hufd Hcwd Hch Hmy Hpay Hdep Hb". iPureIntro.
-    split_and!; [ exact Hlo | exact Hpm | exact HRut ].
+    split_and!; [ exact Hlo | exact Hpm | exact (Hlzf eq_refl) | exact HRut ].
   Qed.
 
   (* [uv_upd] is the OTHER way a leaf writes a register (jalr's, where the
@@ -973,14 +979,14 @@ Section UkRun.
   Proof.
     intros Hal. iIntros "#Hgen HT Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
-      "(%Hlo & %Hpm & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+      "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     iDestruct ("Hgen" $! (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
                  with "HT [] Hpayv") as "Hslot".
     { cbn [uvis_gen uvis_of_run]. iExact "Hmy". }
     rewrite (uslot_run m pc M pm sz fdv cw gn cs pidv Hx0 Hal).
-    iApply ("Hslot" $! h xi C pt Rfd Rut HRut with "[%] [%] Hb");
-      [ exact Hlo | exact Hpm ].
+    iApply ("Hslot" $! h xi C pt Rfd Rut HRut with "[%] [%] [%] Hb");
+      [ exact Hlo | exact Hpm | intros _; exact Hlzf ].
   Qed.
 
   (* ===================================================================== *)
@@ -1238,7 +1244,7 @@ Section UkRun.
       /\ 8 * Z.of_nat avail <= uint (m !!! Regidx csp_rs1) ⌝.
   Proof.
     iIntros "Hrun".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %HRut & Hheap & Hstk & Hufd & Hcwd & Hch & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwd & Hch & #Hdep & Hb)".
     iDestruct (ustack_align with "Hstk") as %Hal.
     iDestruct (ustack_room with "Hheap Hstk") as %Hroom.
     iPureIntro. exact (conj Hal Hroom).
@@ -1393,7 +1399,7 @@ Section UkRun.
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
     iIntros "#Hdep #Hpay Hpayv Hprog".
     rewrite uslot_ukc /ukc Hlzf.
-    iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm Hb".
+    iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
     set (sz := uvis_sz W).
     assert (Hwf : proc_pt_wf pt)
       by (destruct Hlo as (_ & _ & _ & _ & _ & H); exact H).
@@ -1462,6 +1468,7 @@ Section UkRun.
       (uvis_cwd W), (uvis_gen W), (uvis_ch W), (uvis_pid W).
     iSplitR; [ iPureIntro; exact Hlo | ].
     iSplitR; [ iPureIntro; exact Hpm | ].
+    iSplitR; [ iPureIntro; exact (Hlzr eq_refl) | ].
     iSplitR; [ iPureIntro; exact HRut | ].
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
@@ -1556,7 +1563,7 @@ Section UkRun.
   Proof.
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
     iIntros "#Hdep #Hpay Hpayv Hprog". rewrite uslot_ukc /ukc Hlzf.
-    iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm Hb".
+    iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
     set (sz := uvis_sz W).
     assert (Hwf : proc_pt_wf pt)
       by (destruct Hlo as (_ & _ & _ & _ & _ & H); exact H).
@@ -1601,6 +1608,7 @@ Section UkRun.
       (uvis_cwd W), (uvis_gen W), (uvis_ch W), (uvis_pid W).
     iSplitR; [ iPureIntro; exact Hlo | ].
     iSplitR; [ iPureIntro; exact Hpm | ].
+    iSplitR; [ iPureIntro; exact (Hlzr eq_refl) | ].
     iSplitR; [ iPureIntro; exact HRut | ].
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
@@ -1708,7 +1716,7 @@ Section UkRun.
   Proof.
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
     iIntros "#Hdep #Hpay Hpayv Hprog". rewrite uslot_ukc /ukc Hlzf.
-    iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm Hb".
+    iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
     set (sz := uvis_sz W).
     assert (Hwf : proc_pt_wf pt)
       by (destruct Hlo as (_ & _ & _ & _ & _ & H); exact H).
@@ -1765,6 +1773,7 @@ Section UkRun.
       (uvis_cwd W), (uvis_gen W), (uvis_ch W), (uvis_pid W).
     iSplitR; [ iPureIntro; exact Hlo | ].
     iSplitR; [ iPureIntro; exact Hpm | ].
+    iSplitR; [ iPureIntro; exact (Hlzr eq_refl) | ].
     iSplitR; [ iPureIntro; exact HRut | ].
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)

@@ -1623,6 +1623,18 @@ Section ProcInv.
     proc_priv_nopt γf pa pid V -∗ ⌜uint (pv_sz V) <= uvm_maxsz⌝.
   Proof. iIntros "(%Hszb & _)". done. Qed.
 
+  (* ...AND WHAT THE LAZY BIT CLAIMS, off the reduced block (lane KILL-PAY,
+     milestone LAZY-ROW).  [proc_priv_lazy]'s twin at the shape the trap
+     residue carries ([UsertrapRes.ut_res_bare]), and the one the U tier's
+     slot guard is discharged from: the loop holds the block across user
+     execution, so it is the party that can say the process's fill is
+     empty. *)
+  Lemma proc_priv_nopt_lazy (γf : gname) (pa : mword 64) (pid : mword 32)
+      (V : pprivate) :
+    proc_priv_nopt γf pa pid V -∗
+    ⌜pv_lazy V = false -> lazy_free (ud_um (pv_upt V)) (uint (pv_sz V))⌝.
+  Proof. iIntros "(_ & _ & _ & _ & _ & _ & %Hlz & _)". done. Qed.
+
   (* THE TIER SEAM.  What splits off is the LAZY view -- the block's own
      memory conjunct, verbatim -- and NOT the mapped [proc_pt].  The
      residue's own boundary ([UsertrapRes.ut_res_pt_close] / [_pt_open])

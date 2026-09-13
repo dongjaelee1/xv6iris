@@ -159,6 +159,12 @@ Section UserretUser.
     (* ---- xv6's own bound on [p->sz], which [UexecRet.uvb] carries and the
            caller reads off the residue ([UexecApply.usz_ok_of_maxsz]) ---- *)
     usz_ok sz ->
+    (* ---- ...AND THE FILL ROW THE SLOT GUARD CARRIES (lane KILL-PAY,
+           milestone LAZY-ROW): what the key's [lz] bit claims about the
+           table this resume runs on.  The loop reads it off the process's
+           block ([ProcInv]'s block row) and hands it over here, exactly as
+           it hands over [loop_ok] and the projection. ---- *)
+    (lz = false -> lazy_free (ud_um pt) sz) ->
     kernel_text -∗
     hw_config -∗
     minstret_inv -∗
@@ -299,7 +305,7 @@ Section UserretUser.
     WP (Loop : expr riscv_lang).
   Proof.
     intros HSIE HMPRV HSXL HTVM HMXR Hmm Hwf HTSR Hsup Ha0 HuMode Huasid Huppn
-      HFS HVS HXS HSD HMPP HSPIE Hdqc Hinj Hacc Hlok Hszok.
+      HFS HVS HXS HSD HMPP HSPIE Hdqc Hinj Hacc Hlok Hszok Hlzf.
     iIntros "#Hkt #Hhw #Hmi #Hwi Hhs Hpriv Hms Hmie Hmdl Hmenv Hsenv Hsepc
              #Hclaim Hktlb Hufr Hpc Hfile
              Htf40 Htf48 Htf56 Htf64 Htf72 Htf80 Htf88 Htf96 Htf104 Htf120
@@ -366,7 +372,7 @@ Section UserretUser.
                  va3 va4 va5 va6 va7 vs2 vs3 vs4 vs5 vs6 vs7 vs8 vs9 vs10
                  vs11 vt3 vt4 vt5 vt6 va0f)
               (sret_ms5 mstatus0) sc_v stval_v sepc0 (ret_pc sepc0)
-              Hlok Hszok Hmsok
+              Hlok Hszok Hmsok Hlzf
               with "Huwp Hhw Hmi Hwi Hregs Hupt Hfdr Hcfg Hrut Hhandler").
   Qed.
 

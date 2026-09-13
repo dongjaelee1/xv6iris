@@ -113,6 +113,7 @@ Section UservecAllPt.
   Definition usertrap_res_csrs_open := UT.usertrap_res_csrs_open.
   Definition usertrap_res_sstc := UT.usertrap_res_sstc.
   Definition usertrap_res_bare_sz := UT.usertrap_res_bare_sz.
+  Definition usertrap_res_bare_lazy := UT.usertrap_res_bare_lazy.
   Definition usertrap_res_bare_fsabs := UT.usertrap_res_bare_fsabs.
   Definition usertrap_res_tf_csrs_open := UT.usertrap_res_tf_csrs_open.
   Definition usertrap_res_tlb_close := UT.usertrap_res_tlb_close.

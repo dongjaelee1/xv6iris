@@ -496,6 +496,10 @@ Section UkObl.
        (paddr : type_of_register pmpaddr_n),
        ⌜loop_ok C pt⌝ -∗
        ⌜perm_of (ud_um pt) sz = π⌝ -∗
+       (* the fill row (lane KILL-PAY, milestone LAZY-ROW): the obligation
+          has to REBUILD the continuation at this very table, and the
+          continuation's guard now carries it -- see [uk_ih]. *)
+       ⌜lazy_free (ud_um pt) sz⌝ -∗
        ⌜uk_pt_pure pt sz M Mp⌝ -∗
        ⌜uv_pre C pt Mp m pc t rs1 rsA usatp pcfg paddr⌝ -∗
        uv_amb (CID := CIDo) -∗
@@ -530,6 +534,13 @@ Section UkObl.
                               (TsoCtx.own_context (CID := h) (cur_ctx (CurCtx := xi)) -∗ Rut pt'))
        (sz : Z),
        ⌜loop_ok C pt⌝ -∗ ⌜perm_of (ud_um pt) sz = π⌝ -∗
+       (* ...AND THE FILL IS EMPTY (lane KILL-PAY, milestone LAZY-ROW).
+          The engine's keys are all at [uvis_lazy = false], so the slot
+          guard's row ([UexecRet.uslot_F]) arrives here without its
+          antecedent: no page of this process is live-but-unmapped, which
+          is what lets the store and load leaves REFUTE their page-fault
+          arms. *)
+       ⌜lazy_free (ud_um pt) sz⌝ -∗
        uvb (CID := h) (XI := xi) C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
        □ uk_step_obl π Kc Q sz fdv cw gn cs pidv M m pc -∗
        (* THE PAYMENT RIDES THE STEP'S OWN LATER, with the continuation it
@@ -778,7 +789,7 @@ Section UkStepEngine.
     intros Hal2.
     rewrite /uk_ih.
     iLöb as "IH".
-    iIntros (CID XIv C pt Rfd Rut HRut sz) "%Hlo %Hpm Hb #Hobl Hpay3".
+    iIntros (CID XIv C pt Rfd Rut HRut sz) "%Hlo %Hpm %Hlf Hb #Hobl Hpay3".
     iDestruct (uvb_elim with "Hb")
       as (Mp) "(%Hpure & #Hamb & Hregs & Hutlb & Humem & Hfdv & Hcfg & Hgpr & Hpc & Hrut & Hk)".
     (* A6.140: borrow the running token out of the residue for this step;
@@ -966,8 +977,8 @@ Section UkStepEngine.
         iDestruct (resv_any_intro cpu_id None with "Hfrag") as "Hany".
         iApply ("Hobl" $! (uk_payload sz π fdv cw gn cs pidv Kc Q M m pc C pt Rfd Rut) CID XIv C pt Rfd Rut HRut Mp t RS
                   (wrap_pre RS) usatp pcfg paddr
-                  with "[%] [%] [%] [%] Hamb [] Hany Hrw Hro Hctx Hmm Hres");
-          [ exact Hlo | exact Hpm | exact Hpure | exact Hpre | ].
+                  with "[%] [%] [%] [%] [%] Hamb [] Hany Hrw Hro Hctx Hmm Hres");
+          [ exact Hlo | exact Hpm | exact Hlf | exact Hpure | exact Hpre | ].
         rewrite /uk_payload. iIntros "(Hkc & Hbak & Hfdr & Hkb)". iFrame "Hbak Hfdr Hkb Hkc".
     - (* ================= THE CYCLE'S TAIL ================= *)
       iNext. iIntros (rs3 rs2) "%Hag Hrw Hro (Hctx & Hresv & Hcl)".
@@ -987,11 +998,11 @@ Section UkStepEngine.
          into the continuation. *)
       iFrame "Hmyp Hpayv". iIntros "Hpayv".
       iSplit; [ iApply ("Hkc" with "Hpayv") | ].
-      rewrite /ukc. iIntros (h' xi' C' pt' Rfd' Rut' HRut') "%Hlo' %Hpm' Hb".
+      rewrite /ukc. iIntros (h' xi' C' pt' Rfd' Rut' HRut') "%Hlo' %Hpm' %Hlz' Hb".
       rewrite /uk_ih.
       iApply ("IH" $! h' xi' C' pt' Rfd' Rut' HRut' sz
-                with "[%] [%] Hb Hobl [Hmyp Hpayv Hkc]");
-        [ exact Hlo' | exact Hpm'
+                with "[%] [%] [%] Hb Hobl [Hmyp Hpayv Hkc]");
+        [ exact Hlo' | exact Hpm' | exact (Hlz' eq_refl)
         | iNext; iFrame "Hmyp Hpayv"; iExact "Hkc" ].
   Qed.
 
@@ -1014,6 +1025,10 @@ Section UkFunnel.
   Hypothesis (HRut : forall pt' : uptd,
                        ⊢ Rut pt' -∗ TsoCtx.own_context XI ∗
                                     (TsoCtx.own_context XI -∗ Rut pt')).
+  (* the fill row (lane KILL-PAY, milestone LAZY-ROW), on [Hlo]/[Hpm]'s
+     footing: the section's [pt] is fixed, so the slot guard's row is a
+     section hypothesis here and the caller supplies it out of [urun]. *)
+  Hypothesis (Hlf0 : lazy_free (ud_um pt) sz).
 
   (* the engine at the ambient hart and table *)
   Lemma wp_uk_step (Kc : iProp Σ) (Q : Z -> iProp Σ) (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
@@ -1025,7 +1040,7 @@ Section UkFunnel.
     iIntros "Hb #Hobl Hpay3".
     iPoseProof (wp_uk_step_gen π Kc Q M m pc fdv cw gn cs pidv Hal2) as "H". rewrite /uk_ih.
     iApply ("H" $! CID XI C pt Rfd Rut HRut sz
-              with "[%] [%] Hb Hobl Hpay3"); [ exact Hlo | exact Hpm ].
+              with "[%] [%] [%] Hb Hobl Hpay3"); [ exact Hlo | exact Hpm | exact Hlf0 ].
   Qed.
 
 End UkFunnel.
@@ -1530,6 +1545,10 @@ Section UkRetire.
   Hypothesis (HRut : forall pt' : uptd,
                        ⊢ Rut pt' -∗ TsoCtx.own_context XI ∗
                                     (TsoCtx.own_context XI -∗ Rut pt')).
+  (* the fill row (lane KILL-PAY, milestone LAZY-ROW), on [Hlo]/[Hpm]'s
+     footing: the section's [pt] is fixed, so the slot guard's row is a
+     section hypothesis here and the caller supplies it out of [urun]. *)
+  Hypothesis (Hlf0 : lazy_free (ud_um pt) sz).
 
   Lemma wp_uk_retire_later (M : gmap Z (bv 8))
       (m : regfile) (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32)
@@ -1584,13 +1603,13 @@ Section UkRetire.
     iIntros "Hb Hcont".
     (* THE PAYMENT GOES TO THE ENGINE WITH THE CONTINUATION, under the same
        later ([UexecRet.ukcq] is exactly the triple the engine takes). *)
-    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut _ Qp M m pc fdv cw gn cs pidv Hal2
+    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 _ Qp M m pc fdv cw gn cs pidv Hal2
               with "Hb [] [Hcont]").
     2:{ iNext. rewrite /ukcq. iExact "Hcont". }
     iModIntro.
     rewrite /uk_step_obl.
     iIntros (R CIDo XIo C' pt' Rfd' Rut' HRut' Mp' t rs1 rsA usatp pcfg paddr)
-      "%Hlo' %Hpm' %Hpure %Hpre #Hamb Hk Hany Hrw Hro Hctx Hmm Hres".
+      "%Hlo' %Hpm' %Hlf' %Hpure %Hpre #Hamb Hk Hany Hrw Hro Hctx Hmm Hres".
     pose proof (uk_instr_mapped π M Mp' pc _ i pt' sz
                   (loop_ok_wf C' pt' Hlo') Hpm' Hpure Hui) as Hui'.
     iPoseProof "Hamb" as "(#Hhw & _ & _)".
@@ -1614,8 +1633,8 @@ Section UkRetire.
       iDestruct "Hkc" as "[Hkc _]".
       iFrame "Hbak Hfdr Hkb". iIntros "Hb".
       rewrite /ukc.
-      iApply ("Hkc" $! CIDo XIo C' pt' Rfd' Rut' HRut' with "[%] [%] Hb");
-        [ exact Hlo' | exact Hpm' ]. }
+      iApply ("Hkc" $! CIDo XIo C' pt' Rfd' Rut' HRut' with "[%] [%] [%] Hb");
+        [ exact Hlo' | exact Hpm' | intros _; exact Hlf' ]. }
     iPoseProof (uv_swp_fetch_uinstr (CID := CIDo) (XI := XIo) pt' Mp' t (uc_dqc C')
                   rsA pc is_rvc i Hinj Hui' LpcA LcpA (proj1 HmsokA) LmenvA
                   HpinsA Htok) as "Hf".
@@ -1957,6 +1976,10 @@ Section UkEcall.
   Hypothesis (HRut : forall pt' : uptd,
                        ⊢ Rut pt' -∗ TsoCtx.own_context XI ∗
                                     (TsoCtx.own_context XI -∗ Rut pt')).
+  (* the fill row (lane KILL-PAY, milestone LAZY-ROW), on [Hlo]/[Hpm]'s
+     footing: the section's [pt] is fixed, so the slot guard's row is a
+     section hypothesis here and the caller supplies it out of [urun]. *)
+  Hypothesis (Hlf0 : lazy_free (ud_um pt) sz).
 
   Lemma wp_uk_ecall (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
     uk_instr π M pc false (ECALL tt) ->
@@ -1977,13 +2000,13 @@ Section UkEcall.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
     pose proof (ui_al2 _ _ _ _ _ Hui0) as Hal2.
     iIntros "Hb #Hmyp Hpayv Hret".
-    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut _ Qp M m pc fdv cw gn cs pidv Hal2
+    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 _ Qp M m pc fdv cw gn cs pidv Hal2
               with "Hb [] [Hmyp Hpayv Hret]").
     2:{ iNext. iFrame "Hmyp Hpayv". iExact "Hret". }
     iModIntro.
     rewrite /uk_step_obl.
     iIntros (R CIDo XIo C' pt' Rfd' Rut' HRut' Mp' t rs1 rsA usatp pcfg paddr)
-      "%Hlo' %Hpm' %Hpure %Hpre #Hamb Hk Hany Hrw Hro Hctx Hmm Hres".
+      "%Hlo' %Hpm' %Hlf' %Hpure %Hpre #Hamb Hk Hany Hrw Hro Hctx Hmm Hres".
     iAssert (R -∗ (TsoCtx.own_context (CID := CIDo) XIo -∗ Rut' pt') ∗ Rfd' fdv ∗
              ukb (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false ∗
              uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false))%I with "[Hk]" as "Hk".

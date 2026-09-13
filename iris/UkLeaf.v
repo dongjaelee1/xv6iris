@@ -184,6 +184,10 @@ Section UkLeaf.
   Hypothesis (HRut : forall pt' : uptd,
                        ⊢ Rut pt' -∗ TsoCtx.own_context XI ∗
                                     (TsoCtx.own_context XI -∗ Rut pt')).
+  (* the fill row (lane KILL-PAY, milestone LAZY-ROW), on [Hlo]/[Hpm]'s
+     footing: the section's [pt] is fixed, so the slot guard's row is a
+     section hypothesis here and the caller supplies it out of [urun]. *)
+  Hypothesis (Hlf0 : lazy_free (ud_um pt) sz).
 
   (* =================================================================== *)
   (* THE THREE GENERIC gpr-WRITE LEAVES, indexed by SOURCE ARITY rather   *)
@@ -247,7 +251,7 @@ Section UkLeaf.
   Proof.
     intros Hui Hred Hlpad Hrd Hg1 Hg2 Hop.
     iIntros "Hb Hcont".
-    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut M m pc fdv cw gn cs pidv is_rvc i o None (Some (rd, wval))
+    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 M m pc fdv cw gn cs pidv is_rvc i o None (Some (rd, wval))
               Hui Hred Hlpad Hrd
               (fun s _ _ _ _ _ => Hg1 s) (fun s _ _ _ _ _ => Hg2 s)
               with "Hb Hcont").
@@ -282,7 +286,7 @@ Section UkLeaf.
   Proof.
     intros Hui Hred Hlpad Hrd Hg1 Hg2 Hop Hwval.
     iIntros "Hb Hcont".
-    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut M m pc fdv cw gn cs pidv is_rvc i o None (Some (rd, wval))
+    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 M m pc fdv cw gn cs pidv is_rvc i o None (Some (rd, wval))
               Hui Hred Hlpad Hrd
               (fun s _ _ _ _ _ => Hg1 s) (fun s _ _ _ _ _ => Hg2 s)
               with "Hb Hcont").
@@ -321,7 +325,7 @@ Section UkLeaf.
   Proof.
     intros Hui Hred Hlpad Hrd Hg1 Hg2 Hop Hwval.
     iIntros "Hb Hcont".
-    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut M m pc fdv cw gn cs pidv is_rvc i o None (Some (rd, wval))
+    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 M m pc fdv cw gn cs pidv is_rvc i o None (Some (rd, wval))
               Hui Hred Hlpad Hrd
               (fun s _ _ _ _ _ => Hg1 s) (fun s _ _ _ _ _ => Hg2 s)
               with "Hb Hcont").
@@ -358,7 +362,7 @@ Section UkLeaf.
   Proof.
     intros Hui Hrd Hwval.
     iIntros "Hb Hcont".
-    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut M m pc fdv cw gn cs pidv true (C_LI (imm, Regidx rd))
+    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 M m pc fdv cw gn cs pidv true (C_LI (imm, Regidx rd))
               (Some (ITYPE (sign_extend' 12 imm, zreg, Regidx rd, ADDI)))
               None (Some (rd, wval)) Hui
               ltac:(intro s; apply exec_execute_C_LI)
@@ -487,7 +491,7 @@ Section UkLeaf.
   Proof.
     intros Hui Hrd Htgt Hwval Hal0.
     iIntros "Hb Hcont".
-    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut M m pc fdv cw gn cs pidv false (JAL (imm, Regidx rd)) None
+    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 M m pc fdv cw gn cs pidv false (JAL (imm, Regidx rd)) None
               (Some tgt) (Some (rd, wval)) Hui
               ltac:(intro s; exact I)
               eq_refl Hrd
@@ -533,7 +537,7 @@ Section UkLeaf.
   Proof.
     intros Hui Hrs1 Htgt.
     iIntros "Hb Hcont".
-    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut M m pc fdv cw gn cs pidv true (C_JR (Regidx rs1))
+    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 M m pc fdv cw gn cs pidv true (C_JR (Regidx rs1))
               (Some (JALR (zeros' 12, Regidx rs1, zreg)))
               (Some tgt) None Hui
               ltac:(intro s; apply exec_execute_C_JR)
@@ -626,7 +630,7 @@ Section UkLeaf.
   Proof.
     intros Hui Hrd Hwval.
     iIntros "Hb Hcont".
-    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut M m pc fdv cw gn cs pidv true (C_MV (Regidx rd, Regidx rs2))
+    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 M m pc fdv cw gn cs pidv true (C_MV (Regidx rd, Regidx rs2))
               (Some (RTYPE (Regidx rs2, zreg, Regidx rd, ADD)))
               None (Some (rd, wval)) Hui
               ltac:(intro s; apply exec_execute_C_MV)
@@ -709,7 +713,7 @@ Section UkLeaf.
   Proof.
     intros Hui Htgt Hal0.
     iIntros "Hb Hcont".
-    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut M m pc fdv cw gn cs pidv true (C_J imm)
+    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 M m pc fdv cw gn cs pidv true (C_J imm)
               (Some (JAL (sign_extend' 21 (concat_vec imm ('b"0")), zreg)))
               (Some tgt) None Hui
               ltac:(intro s; apply exec_execute_C_J)
@@ -1344,7 +1348,7 @@ Section UkLeaf.
     assert (Hwrok : uv_wrok wr).
     { destruct Hwr as [[_ ->] | [Hrd ->]]; [ exact I | exact Hrd ]. }
     iIntros "Hb Hcont".
-    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut M m pc fdv cw gn cs pidv false (JALR (imm, Regidx rs1, Regidx rd))
+    iApply (wp_uk_retire C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 M m pc fdv cw gn cs pidv false (JALR (imm, Regidx rs1, Regidx rd))
               None (Some tgt) wr Hui (fun _ : mstate => I) eq_refl Hwrok
               ltac:(intros s _ _ _ Hag _;
                     exact (goodmb_execute_JALR_total Du_r Du_w imm rs1 rd s

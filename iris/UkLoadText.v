@@ -687,6 +687,10 @@ Section UkLoadText.
   Hypothesis (HRut : forall pt' : uptd,
                        ⊢ Rut pt' -∗ TsoCtx.own_context XI ∗
                                     (TsoCtx.own_context XI -∗ Rut pt')).
+  (* the fill row (lane KILL-PAY, milestone LAZY-ROW), on [Hlo]/[Hpm]'s
+     footing: the section's [pt] is fixed, so the slot guard's row is a
+     section hypothesis here and the caller supplies it out of [urun]. *)
+  Hypothesis (Hlf0 : lazy_free (ud_um pt) sz).
 
   (* the load's leaf permission, on the KEY: a TEXT page -- X and not W *)
   Definition uk_text_ok (va : mword 64) : Prop :=
@@ -732,13 +736,13 @@ Section UkLoadText.
     iIntros "Hb Hcont".
     (* the payment goes to the engine with the continuation, under the same
        later ([UexecRet.ukcq]) *)
-    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut _ Qp M m pc fdv cw gn cs pidv Hal2
+    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 _ Qp M m pc fdv cw gn cs pidv Hal2
               with "Hb [] [Hcont]").
     2:{ iNext. rewrite /ukcq. iExact "Hcont". }
     iModIntro.
     rewrite /uk_step_obl.
     iIntros (R CIDo XIo C' pt' Rfd' Rut' HRut' Mp' t rs1s rsA usatp pcfg paddr)
-      "%Hlo' %Hpm' %Hpure %Hpre #Hamb Hk Hany Hrw Hro Hctx Hmm Hres".
+      "%Hlo' %Hpm' %Hlf' %Hpure %Hpre #Hamb Hk Hany Hrw Hro Hctx Hmm Hres".
     pose proof (uk_instr_mapped π M Mp' pc _ i pt' sz
                   (loop_ok_wf C' pt' Hlo') Hpm' Hpure Hui) as Hui'.
     pose proof (loop_ok_wf C' pt' Hlo') as Hwf'.
@@ -779,8 +783,8 @@ Section UkLoadText.
         iDestruct "Hkc" as "(_ & Hpayv & Hkc)".
         iDestruct ("Hkc" with "Hpayv") as "[Hkc _]".
         iIntros "Hb". rewrite /ukc.
-        iApply ("Hkc" $! CIDo XIo C' pt' Rfd' Rut' HRut' with "[%] [%] Hb");
-          [ exact Hlo' | exact Hpm' ].
+        iApply ("Hkc" $! CIDo XIo C' pt' Rfd' Rut' HRut' with "[%] [%] [%] Hb");
+          [ exact Hlo' | exact Hpm' | intros _; exact Hlf' ].
       - (* the FAULT leg: the payment is handed to the kernel with the slot,
            and the arm hands it back into the continuation *)
         iDestruct "Hkc" as "(#Hmyp & Hpayv & Hkc)". iFrame "Hmyp Hpayv".

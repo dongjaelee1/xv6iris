@@ -77,6 +77,7 @@ Require Import IntrDefs.
 Require Import WpLock.
 Require Import ProcGeom.
 Require Import UserPtTree.
+Require Import UserPerm.   (* [lazy_free] -- the residue's fill row *)
 Require Import KptTree.
 Require Import TrampPt.
 Require Import DiskPtsto WpUart LogInv.
@@ -1361,6 +1362,13 @@ Lemma usertrap_res_bare_sz
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{!ufdG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (pt : uptd) (ksp : mword 64) (U : ustate) (sts : list fdstate) (cs : gset gname) (pid : mword 32) :
   usertrap_res_bare pt ksp U sts cs pid -∗ ⌜uint (pv_sz (us_V U)) <= uvm_maxsz⌝.
 Proof. exact (ut_res_bare_sz SY.syscall_env pt ksp U sts cs pid). Qed.
+
+(* the fill row, off the same residue -- see [SpecUsertrap]'s Parameter *)
+Lemma usertrap_res_bare_lazy
+    `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{!ufdG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (pt : uptd) (ksp : mword 64) (U : ustate) (sts : list fdstate) (cs : gset gname) (pid : mword 32) :
+  usertrap_res_bare pt ksp U sts cs pid -∗
+  ⌜pv_lazy (us_V U) = false -> lazy_free (ud_um pt) (uint (pv_sz (us_V U)))⌝.
+Proof. exact (ut_res_bare_lazy SY.syscall_env pt ksp U sts cs pid). Qed.
 
 Lemma usertrap_res_bare_fsabs
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{!ufdG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (pt : uptd) (ksp : mword 64) (U : ustate) (sts : list fdstate) (cs : gset gname) (pid : mword 32) :

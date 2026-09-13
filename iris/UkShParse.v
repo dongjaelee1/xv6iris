@@ -963,12 +963,12 @@ Section UkShParse.
   Proof.
     iIntros "Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
-      "(%Hlo & %Hpm & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+      "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     iSplitR; [ iPureIntro; exact Hx0 | ].
     iExists xi, C, pt, Rfd, Rut, sz, M, pm, fdv, cw, gn, cs, pidv.
     iFrame "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep Hb".
-    iPureIntro. split_and!; [ exact Hlo | exact Hpm | exact HRut ].
+    iPureIntro. split_and!; [ exact Hlo | exact Hpm | exact Hlzf | exact HRut ].
   Qed.
 
   (* ...and what that instruction WRITES: 1 exactly when its operand is

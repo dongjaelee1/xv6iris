@@ -58,16 +58,42 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   flag only, KILL-PAY B1's fixed-record credential is rolled back, and sh's
   child may die at sbrk failure (the null store inside memset) paying Q(-1).
 - [ ] **CONS-IO** (kernel; `-tlw`, `lane/cons-io`; the E5 note and its
-  "RULINGS AFTER CONS-IO PHASE 1"): the input resource, the shift as one
+  "WRITE-LEAF LANDED (2026-09-13; `3adb0bcdf`, three commits on `4db3e18d1`; 6
+files +882/-0; builds wl3/wl4/wl5 in the main checkout; audit the thirteen;
+lemma_diff CLEAN).  A VERIFIED PROGRAM MAY PAY ROW 16'S CONSOLE ARM WITH ITS
+OWN `cons_out_chain`.  The leaf SPLITS, as the read's does:
+`UkRunSys.wp_uk_ecall_write_chain` is `wp_uk_ecall_quiet_recv`'s walk at 16
+with the deposit LEDGER-FIXED (`UkRun.udepwf_std`; the cwd-fixed `udepwf_at`
+cannot serve 16, whose ∀-ledger would owe the INODE arm's `awrite_chain` --
+`UexecSG.free_num`'s own note) and the post KEPT, handing back the three
+argument words, `take NSTD (uvis_fd W) = l`, `ustd`, and `spost_at uslot 16
+fdep W r (uvis_M W) (uvis_fd W) cw' cs'`.  No cwd half (a write resolves no
+path), no `∃ P`/lazy row (row 16's post reads no byte of `M'`), and the buffer
+is not a precondition (16 is quiet in memory).  `UkWriteLeaf.v` NAMES row 16,
+fourth of the UConsOpen/UInitConsK/UShLine mould: `xfam_wr` (`wf_Q := Q`), the
+two directions, `uwr_fd_st_dev`, `uwrite_chain_sup` (the chain against the
+heap `udepwf_std` lends, bridged by `UkRunSys.uheap_ubytes_wat` at the
+machine-word addressing), `uwrite_post_cons`.  W3: `cons_out_chain_of_licence_bnd`
+pays a two-byte write at `uwr_demo_Q k := ⌜k ≤ 2⌝` and `uwrite_two_post` reads
+it back.  `wp_kinit/ksh/kecho_write_chain` are the stubs BESIDE the quiet ones,
+which are untouched (`sh_deps` unchanged).  CALLER OWES: `filewrite_extra` pays
+`Q` only at `ma = CONSOLE` and `n ≥ 0` -- the `n < 0` arm returns no `Q` at all
+and a non-CONSOLE major returns `emp` while the chain is still asked for; the
+post is the program's cursor at the count consolewrite pushed (full or short),
+nothing about the wire.  Row 16 has no killed arm.  Dev-loop note: run-on-gcp's
+sync drops the .vo of every transferred .v, so a rocq-warm check of a file whose
+DEPENDENCY was just edited needs a real build of the dependency first.
+
+RULINGS AFTER CONS-IO PHASE 1"): the input resource, the shift as one
   fupd per accepted input, `read_link` at the read receipt with `read_ok`,
   the licences.  Phase 2 in flight.
 - [x] ~~**ECHO-PURE**~~ LANDED 2026-09-13 (`c1781608b`; the note below): E5's
   pure half -- `ConsLog.v` (the boundary vocabulary), `EchoOutPure.v` (the
   stage machine and the four facts), `disc_prefix`.
-- [ ] **WRITE-LEAF** (U tier; main checkout, `lane/write-leaf`): the write
-  leaf that pays row 16 with the program's own `cons_out_chain`
+- [x] ~~**WRITE-LEAF**~~ LANDED 2026-09-13 (`3adb0bcdf`; the note below): the
+  write leaf that pays row 16 with the program's own `cons_out_chain`
   (`UkRunSys.wp_uk_ecall_write_chain` + `UkWriteLeaf.v`), the three
-  wrappers; IO-LEAF's first half.  Phase 2 in flight.
+  wrappers; IO-LEAF's first half.
 - [x] ~~**OUT-FUPD**~~ LANDED 2026-09-13 (`c6a5521ac`; the note below); the
   `AppEcho.echo_out` placeholder is ECHO-OUT's to replace.
 - [ ] **SH-LINE 2b R2/R3** (U-tier; R1'/(a)/(b) LANDED 2026-09-13; the rest

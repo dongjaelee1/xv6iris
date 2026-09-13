@@ -1857,7 +1857,7 @@ Section ProofAllocproc.
         iModIntro.
         iDestruct "Hrest" as (V pid0)
           "([%Hof [%Hcwd [%Hszb [%Hpid00 %Hlzv]]]] & Hpidhalf & Hfields & Hofiles & Hrow & Hsg & Hfrag)".
-        iDestruct "Hpub" as (kl xs pid1) "(Hkilled & Hxstate & Hpidinv)".
+        iDestruct "Hpub" as (kl xs pid1) "(Hkilled & Hxstate & Hpidinv & #Hkw)".
         (* +0x38 .. +0xee: THE INLINED allocpid -- acquire(&pid_lock), the
            retry scan for a pid no slot holds, [p->pid = pid], release.  One
            block lemma ([wp_ap_pidsec] above), stated in the shape the
@@ -2103,7 +2103,8 @@ Section ProofAllocproc.
                     with "Hcg Hcpu Htext Hpc Hpidlk [Hlocked Hstate Hpg Hchan Hkilled Hxstate Hpidinv] [Hpidown Hfields Hofc Hofs Hspare Hirsp Hbsp Hkst Hctx] Hrow Hsg Hpr Hxb [Hpgcell] [Htfcell] Henvb").
           all: try lkbelow.
           { rewrite /proc_held. iFrame "Hlocked Hstate Hpg Hchan".
-            iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv". }
+            iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv".
+            iExact "Hkw". }
           { rewrite /fp_rest. iSplitR.
             { iPureIntro. split; [exact Hof|]. split; [exact Hcwd|]. exact Hszb. }
             iFrame "Hpidown Hfields Hofc Hofs Hspare Hirsp Hbsp Hkst Hctx". }
@@ -2475,7 +2476,8 @@ Section ProofAllocproc.
                     with "Hcg Hcpu Htext Hpc Hpidlk [Hlocked Hstate Hpg Hchan Hkilled Hxstate Hpidinv] [Hpidown Hfields Hofc Hofs Hspare Hirsp Hbsp Hkst Hctx] Hrow Hsg Hpr Hxb [Hpgcell] [Htfcell Htfpage] Henvb").
           all: try lkbelow.
           { rewrite /proc_held. iFrame "Hlocked Hstate Hpg Hchan".
-            iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv". }
+            iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv".
+            iExact "Hkw". }
           { rewrite /fp_rest. iSplitR.
             { iPureIntro. split; [exact Hof|]. split; [exact Hcwd|]. exact Hszb. }
             iFrame "Hpidown Hfields Hofc Hofs Hspare Hirsp Hbsp Hkst Hctx". }
@@ -2967,7 +2969,8 @@ Section ProofAllocproc.
           split; [exact Hrestlen|]. exact (ap_nodes_le (pt_nodes t) Hnodes). }
         iSplitL "Hlocked Hstate Hpg Hchan Hkilled Hxstate Hpidinv".
         { rewrite /proc_held. iFrame "Hlocked Hstate Hpg Hchan".
-          iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv". }
+          iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv".
+          iExact "Hkw". }
         iFrame "Hkst".
         iFrame "Hpark Hpriv Hgen Hsg Hpr Hfrag Hrow Hxb Hmk Hspare Hirsp Hbsp Hks".
         iSplitL "Hc0 Hc1 Hcrest".

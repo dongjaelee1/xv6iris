@@ -187,10 +187,15 @@ Section UkGen.
      slot AND the payment the kill path is spent out of -- the process
      hands the payload over at every kernel entry, not only at a syscall
      ([UexecRet.uexec_ret_transparent] is the plain instance). *)
+  (* ...AND THE KILL ROW WITH IT (lane KILL-PAY, K3(b)): at a cause
+     usertrap cannot handle the deposit carries the application's kill
+     credential, so the transparent arm the engine proves carries it too.
+     [UexecRet.uexec_ret_transparent] is still the plain instance. *)
   Hypothesis Ret_transparent : forall (sc : mword 64) (W : uvis),
     sc <> uecall_scause ->
     RetF X sc W ⊣⊢
-    (∃ f : sfam, uexec_pay_dep sc W f ∗ (uexec_pay_arm f -∗ X W)).
+    (∃ f : sfam, uexec_pay_dep sc W f ∗ ukill_cred_at sc ∗
+       (uexec_pay_arm f -∗ X W)).
 
   (* the slot at a TRAP-OUT key is the continuation at the running state --
      UexecRet.[uslot_run]'s proof, at the hypothesis *)
@@ -447,6 +452,11 @@ Section UkGenArms.
     uv_pre C pt Mp m pc t rs1 rsA usatp pcfg paddr ->
     uk_pt_pure pt sz M Mp ->
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
+    (* WHICH interrupt (lane KILL-PAY, K3(b)): at [mie = MIE_S] the machine
+       dispatches only the S-mode timer or the S-mode external interrupt
+       ([UkStep.u_dispatch_MIE_S], applied at this arm's one call site),
+       and that is what makes the trap deposit's kill row [emp] here. *)
+    i = I_S_Timer \/ i = I_S_External ->
     gen_cert -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
@@ -456,7 +466,7 @@ Section UkGenArms.
     uv_step_post C (uk_payload' sz π fdv cw gn cs pidv Kc Qp M m pc C pt Rfd Rut) rs1
       (Step_Pending_Interrupt (i, Supervisor)).
   Proof.
-    intros Hpre Hpure Hal2.
+    intros Hpre Hpure Hal2 Hi.
     pose proof Hpre as (Hinj & Htok & Hpins & Lhs & Lpriv & Hmsok & Lpc & Hgag & Lstvec &
             Lmie & Lmdl & Lmedl & Lmenv & Lsatp & Lpcfg & Lpaddr & Lmi & Hx0).
     pose proof Hpins as ((Hmisa & Hsec & Hsenv & Hhtif & Hall & Helpne) &
@@ -558,6 +568,12 @@ Section UkGenArms.
                   (utrap_scause_intr_ne i
                      (register_lookup (R_bitvector_64 scause) rsA))
                   (sexit_pay_at Qp sfam_pt) with "Hmyp Hpayv") | ].
+    (* THE KILL ROW IS [emp] AT AN INTERRUPT (lane KILL-PAY, K3(b)): the
+       dispatched cause is one devintr handles, so no kill can follow it. *)
+    iSplitR.
+    { iApply (ukill_cred_at_not _
+                (UkStep.utrap_scause_intr_not_kill i
+                   (register_lookup (R_bitvector_64 scause) rsA) Hi)). }
     iIntros "Hpayv".
     rewrite (ukc'_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2).
     iDestruct ("Hkc" with "Hpayv") as "Hkc".
@@ -757,10 +773,19 @@ Section UkGenStepEngine.
                            (uc_mie C) (uc_mideleg C))); [| discriminate Hd].
             congruence. }
           subst pr.
+          (* WHICH interrupt was dispatched (lane KILL-PAY, K3(b)):
+             [UexecWp.loop_ok] pins [mie] at [MIE_S], and there the only
+             two the machine can select are the S-mode timer and the S-mode
+             external one -- the two devintr handles. *)
+          assert (Hmie : uc_mie C = MIE_S)
+            by (destruct Hlo as (_ & _ & Hm & _); exact Hm).
+          assert (Hii : ii = I_S_Timer \/ ii = I_S_External).
+          { rewrite <- u_dispatch_of_pending in Hd. rewrite Hmie in Hd.
+            exact (UkStep.u_dispatch_MIE_S _ (uc_mideleg C) meip seip ii Supervisor (eq_sym Hd)). }
           iDestruct "HWd" as "(Hfrag & Hctx & Hmm & Hres)".
           iDestruct (resv_any_intro cpu_id None with "Hfrag") as "Hany".
           iApply (uk_arm_intr' C pt Rfd Rut sz π Kc Qp M Mp m pc t usatp pcfg paddr RS
-                    (wrap_pre RS) ii fdv cw gn cs pidv Hpre Hpure Hal2
+                    (wrap_pre RS) ii fdv cw gn cs pidv Hpre Hpure Hal2 Hii
                     with "Hcert Hany Hrw Hro Hctx Hmm Hres").
         * iFrame.
       + (* ---- THE FETCH: the caller's obligation ---- *)
@@ -1903,7 +1928,8 @@ Section UkGenPlain.
   Lemma uexec_ret_transparent_gen (sc : mword 64) (W : uvis) :
     sc <> uecall_scause ->
     uexec_ret_F uslot sc W ⊣⊢
-    (∃ f : sfam, uexec_pay_dep sc W f ∗ (uexec_pay_arm f -∗ uslot W)).
+    (∃ f : sfam, uexec_pay_dep sc W f ∗ ukill_cred_at sc ∗
+       (uexec_pay_arm f -∗ uslot W)).
   Proof. exact (uexec_ret_transparent sc W). Qed.
 
   (* UkStep.v's exported ecall-driver type, spelled out once *)

@@ -1234,7 +1234,7 @@ Section UtA6.
               ltac:(lkbelow)
               with "Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
-    iIntros (CID3 Hk3 mf kl) "[%Hcskl %Hkla0] Hcg Hcpu Hpc".
+    iIntros (CID3 Hk3 mf kl) "[%Hcskl %Hkla0] _ Hcg Hcpu Hpc".
     assert (Hretac : ret_pc (M2 !!! Regidx Rra) = mword_of_int (UT + 0xac))
       by (rewrite HM2ra; pcw).
     iEval (rewrite Hretac) in "Hpc".

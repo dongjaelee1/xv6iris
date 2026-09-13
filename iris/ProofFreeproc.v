@@ -253,7 +253,7 @@ Section ProofFreeproc.
     iApply fupd_wp.
     iMod (pstate_whole_update (proc_addr j) st UNUSED with "Hpsg") as "Hpsg".
     iModIntro.
-    iDestruct "Hpub" as (kl xs pid2) "(Hkilled & Hxstate & Hpid2)".
+    iDestruct "Hpub" as (kl xs pid2) "(Hkilled & Hxstate & Hpid2 & _)".
     iDestruct "Hfields" as "(Hsz & Hcwd & %Hnmlen & Hnm)".
     (* [proc_held] is stated at [proc_addr j] and the block at the [let]-bound
        [pa].  Convertible, but [iFrame]/[iSpecialize] want them SYNTACTICALLY
@@ -846,7 +846,11 @@ Section ProofFreeproc.
         iFrame "Hchan".
         iExists (mword_of_int 0 : mword 32), (mword_of_int 0 : mword 32),
                 (mword_of_int 0 : mword 32).
-        iFrame "Hkilled Hxs1 Hpid2". }
+        iFrame "Hkilled Hxs1 Hpid2".
+        (* freeproc CLEARS [p->killed], so the slot is founded back at the
+           free arm of the killed row and nothing is owed (lane KILL-PAY,
+           K2) *)
+        iLeft. done. }
       { (* proc_dormant pa UNUSED, at the emptied V *)
         iApply (fp_to_dormant_unused pa
                   (MkPPriv (zero_reg : mword 64) (pv_upt V) (pv_tf V)

@@ -637,6 +637,13 @@ Section UkLoadPostFetch.
     uv_exp i o = LOAD (imm, Regidx lr1, Regidx lrd, is_unsigned, kk) ->
     va = add_vec (m !!! Regidx lr1) (sign_extend' 64 imm) ->
     u_fault_flavor (Load Data) (ud_tfp pt) (ud_um pt) va ->
+    (* THE KILL PRICE OF A PAGE FAULT (lane KILL-PAY, K3(b)): cause 13 is
+       not one usertrap handles -- it prints "unexpected scause" and kills
+       -- so the deposit this arm proves carries the application's kill
+       credential.  The WITNESS is the fault flavor above; the caller
+       ([wp_uk_load_later]) refutes all three flavors at
+       [uvis_lazy W = false] and discharges this vacuously. *)
+    (⊢ (□ riscv_kill_cred : iProp Σ)) ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     uva_inj pt Mp ->
     match o with
@@ -683,7 +690,7 @@ Section UkLoadPostFetch.
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rsE (Step_Execute (r, ib'))) ib).
   Proof.
-    intros Hkw Hred Hexp Hva Hfault Hpg Hinj Hg1
+    intros Hkw Hred Hexp Hva Hfault Hkcw Hpg Hinj Hg1
       Hpins2 Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2 Lmie2 Lmdl2 Lmedl2 Lmenv2
       Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2 Lmi2 Hagd2 Htok' Hpure.
     destruct Hkw as (Hvw & Hread_plain).
@@ -910,6 +917,10 @@ Section UkLoadPostFetch.
       [ iApply (uexec_pay_dep_ne _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false) _ (sfam_at Qp sfam_pt)
                   (utrap_scause_load_ne (register_lookup (R_bitvector_64 scause) rsx))
                   (sexit_pay_at Qp sfam_pt) with "Hmyp Hpayv") | ].
+    (* THE KILL ROW, out of the fault witness (lane KILL-PAY, K3(b)) *)
+    iSplitR.
+    { iPoseProof Hkcw as "#Hkcw".
+      iApply (ukill_cred_at_of_cred with "Hkcw"). }
     iExact "Hret".
   Qed.
 
@@ -956,6 +967,13 @@ Section UkLoadObl.
     va = add_vec (m !!! Regidx lr1) (sign_extend' 64 imm) ->
     wval = extend_value is_unsigned dv ->
     uk_load_disp pt Mp va kk dv ->
+    (* THE FAULT WITNESS (lane KILL-PAY, K3(b)), the load twin of
+       [UkStore.uk_store_obl_base]'s: the engine still supports a LAZY key,
+       where the fault arm is real, and a load page fault is a cause
+       usertrap kills at.  Gated on the flavor, so a verified program --
+       whose caller refutes all three -- pays nothing. *)
+    (u_fault_flavor (Load Data) (ud_tfp pt) (ud_um pt) va ->
+     ⊢ (□ riscv_kill_cred : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     is_aligned_vaddr (Virtaddr va) kk = true ->
@@ -979,7 +997,7 @@ Section UkLoadObl.
          (fun _ : ext_fetch_addr_error => False)).
   Proof.
     intros Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hrd
-      Hva Hwval Hdisp Hcanon Hpg Hal.
+      Hva Hwval Hdisp Hkcf Hcanon Hpg Hal.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
                         HgagA & LstvecA & LmieA & LmdlA & LmedlA & LmenvA &
                         LsatpA & LpcfgA & LpaddrA & LmiA & Hx0).
@@ -1058,7 +1076,7 @@ Section UkLoadObl.
     - iApply (uk_load_fault_post_fetch C pt Rfd R Rut sz π M Mp m pc 4 kk i o imm
                 lr1 lrd is_unsigned va (zero_extend' 32 w) t' usatp pcfg paddr
                 rs1 rs2 fdv cw gn cs pidv
-                Hkw Hred Hexp Hva Hfault Hpg Hinj Hg1
+                Hkw Hred Hexp Hva Hfault (Hkcf Hfault) Hpg Hinj Hg1
                 Hpins2
                 (T2 _ _ u_in_PC ltac:(vm_compute; reflexivity) LpcA)
                 (T2 _ _ u_in_hart ltac:(vm_compute; reflexivity) LhsA)
@@ -1106,6 +1124,13 @@ Section UkLoadObl.
     va = add_vec (m !!! Regidx lr1) (sign_extend' 64 imm) ->
     wval = extend_value is_unsigned dv ->
     uk_load_disp pt Mp va kk dv ->
+    (* THE FAULT WITNESS (lane KILL-PAY, K3(b)), the load twin of
+       [UkStore.uk_store_obl_base]'s: the engine still supports a LAZY key,
+       where the fault arm is real, and a load page fault is a cause
+       usertrap kills at.  Gated on the flavor, so a verified program --
+       whose caller refutes all three -- pays nothing. *)
+    (u_fault_flavor (Load Data) (ud_tfp pt) (ud_um pt) va ->
+     ⊢ (□ riscv_kill_cred : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     is_aligned_vaddr (Virtaddr va) kk = true ->
@@ -1129,7 +1154,7 @@ Section UkLoadObl.
          (fun _ : ext_fetch_addr_error => False)).
   Proof.
     intros Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hrd
-      Hva Hwval Hdisp Hcanon Hpg Hal.
+      Hva Hwval Hdisp Hkcf Hcanon Hpg Hal.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
                         HgagA & LstvecA & LmieA & LmdlA & LmedlA & LmenvA &
                         LsatpA & LpcfgA & LpaddrA & LmiA & Hx0).
@@ -1213,7 +1238,7 @@ Section UkLoadObl.
     - iApply (uk_load_fault_post_fetch C pt Rfd R Rut sz π M Mp m pc 2 kk i o imm
                 lr1 lrd is_unsigned va (zero_extend' 32 h) t' usatp pcfg paddr
                 rs1 rs2 fdv cw gn cs pidv
-                Hkw Hred Hexp Hva Hfault Hpg Hinj Hg1
+                Hkw Hred Hexp Hva Hfault (Hkcf Hfault) Hpg Hinj Hg1
                 Hpins2
                 (T2 _ _ u_in_PC ltac:(vm_compute; reflexivity) LpcA)
                 (T2 _ _ u_in_hart ltac:(vm_compute; reflexivity) LhsA)
@@ -1364,6 +1389,31 @@ Section UkLoad.
         destruct (lazy_free_wmapped pt' sz (svpn_of va) q Hwf' Hlf'
                     ltac:(rewrite Hpm'; exact Hq) Hqw) as (w & Hw & _ & _).
         rewrite Hl in Hw. discriminate Hw. }
+    (* ...AND THE FAULT WITNESS GOES THE SAME WAY (lane KILL-PAY, K3(b)),
+       in all three flavors: non-canonical by the leaf's [uva_canon],
+       unmapped by [UserPerm.lazy_free_wmapped] (LAZY-ROW's step), denied
+       by [UserPtTree.uleaf_ok_denied_excl] against [UserPerm.perm_of_R].
+       So a verified program never pays the price of a kill it cannot
+       suffer. *)
+    assert (Hkcf : u_fault_flavor (Load Data) (ud_tfp pt') (ud_um pt') va ->
+                   ⊢ (□ riscv_kill_cred : iProp Σ)).
+    { intros Hfl. exfalso.
+      destruct (lazy_free_wmapped pt' sz (svpn_of va) q Hwf' Hlf'
+                  ltac:(rewrite Hpm'; exact Hq) Hqw) as (w0 & Hw0 & _ & _).
+      unfold uva_canon in Hcanon.
+      destruct Hfl as [Hnc | [ (_ & Hnone & _ & _) | (_ & w1 & Hleaf & Hden) ]].
+      - rewrite Hcanon in Hnc. discriminate Hnc.
+      - rewrite Hw0 in Hnone. discriminate Hnone.
+      - destruct Hleaf as [(Htr & _) | [ (Htf & _) | Hl1 ]].
+        + exact (upt_map_wf_not_tramp (ud_um pt') (svpn_of va) w0
+                   (proj1 Hwf') Hw0 Htr).
+        + exact (upt_map_wf_not_tf (ud_um pt') (svpn_of va) w0
+                   (proj1 Hwf') Hw0 Htf).
+        + rewrite Hw0 in Hl1. injection Hl1 as <-.
+          exact (uleaf_ok_denied_excl (Load Data) w0
+                   (perm_of_R pt' sz (svpn_of va) q w0 Hwf'
+                      ltac:(rewrite Hpm'; exact Hq) Hw0)
+                   Hden). }
     iPoseProof "Hamb" as "(#Hhw & _ & _)".
     iPoseProof "Hhw" as (misa0 mseccfg0 pmar0 elp0)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
@@ -1399,12 +1449,12 @@ Section UkLoad.
     - iDestruct "Hf" as (h) "[[%HisRVC %Hdecrvc] Hbridge]".
       iApply (uk_load_obl_rvc C' pt' Rfd' R Rut' sz π M Mp' m pc h i o k imm rs1 rd
                 is_unsigned va wval _ t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv Hpre Hpure
-                Hdecrvc Hkw Hred Hg1 Hexp Hrd Hva Hwval Hdisp Hcanon Hpg Hal
+                Hdecrvc Hkw Hred Hg1 Hexp Hrd Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
     - iDestruct "Hf" as (w) "[[%HnRVC %Hdecbase] Hbridge]".
       iApply (uk_load_obl_base C' pt' Rfd' R Rut' sz π M Mp' m pc w i o k imm rs1 rd
                 is_unsigned va wval _ t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv Hpre Hpure
-                Hdecbase Hkw Hred Hg1 Hexp Hrd Hva Hwval Hdisp Hcanon Hpg Hal
+                Hdecbase Hkw Hred Hg1 Hexp Hrd Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
   Qed.
 

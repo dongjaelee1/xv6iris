@@ -2649,7 +2649,7 @@ Section ProofPiperead.
                 HL3a0 Hj Hjl pr_lvl1 ltac:(lia) ltac:(lkbelow)
                 with "Hcg Hown Htext Hpc Hpinv").
       all: try lkbelow.
-      iApply wp_next_off_intro. iIntros (mk kl) "[%Hkcs %Hka0] Hcg Hown Hpc". rgall.
+      iApply wp_next_off_intro. iIntros (mk kl) "[%Hkcs %Hka0] _ Hcg Hown Hpc". rgall.
       iEval (rewrite HL3ra) in "Hpc".
       clear HL3ra.
       assert (Hw40 : ret_pc (add_vec_int (mword_of_int (KernelSyms.piperead + 0x3c) : mword 64) 4)

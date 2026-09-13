@@ -80,6 +80,17 @@ Definition wp_killed_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG 
     ∀ (mf : regfile) (kl : mword 32),
       ⌜ callee_saved m mf /\
         mf !!! Regidx (mword_of_int 10 : mword 5) = sign_extend' 64 kl ⌝ -∗
+      (* WHAT THE ANSWER COSTS (app-echo.md, lane KILL-PAY, K2).  killed()
+         reads the flag out of [SchedCtx.proc_pub], whose killed row is "the
+         flag is zero OR the application's kill credential has been paid";
+         the read copies that row out beside the value.  So a caller that
+         sees a NONZERO answer is handed the credential -- which is what
+         usertrap's three [kexit(-1)] sites and consoleread's -1 arm spend,
+         and what turns "the process was killed" from an unexplained event
+         into a paid one.  PERSISTENT (both arms), so nothing is spent by
+         handing it over.  The five other call sites destruct it and drop
+         it. *)
+      (⌜kl = (mword_of_int 0 : mword 32)⌝ ∨ □ riscv_kill_cred) -∗
       sie_cap_gpr KT1 mf av b p -∗
       cpu_own n eb p b lks -∗
       pc_is ret_tgt -∗

@@ -229,6 +229,23 @@ Qed.
    all read false there. *)
 Local Definition pte_s0 : mstate := MState init_regstate ∅ dev0_state.
 
+(* THE TWO CLASSES ARE EXCLUSIVE (lane KILL-PAY, K3(b)).  Both are stated
+   as [forall s, exec (check_PTE_permission ...) s = Some (r, s)] at the
+   SAME leaf and the same access, so one state decides the question: at
+   [pte_s0] the model returns [PTE_Check_Success] and [PTE_Check_Failure]
+   at once, which it cannot.  This is what refutes the DENIED flavor of
+   [UserPtTree.u_fault_flavor] at a page whose key says the access is
+   allowed. *)
+Lemma pte_check_ok_denied_excl (acc : MemoryAccessType mem_payload)
+    (p : Privilege) (mxr do_sum : bool) (f : pte_check_failure) (w : mword 64) :
+  pte_check_ok acc p mxr do_sum w -> pte_check_denied acc p mxr do_sum f w ->
+  False.
+Proof.
+  intros Hok Hden.
+  pose proof (Hok pte_s0) as H1. pose proof (Hden pte_s0) as H2.
+  rewrite H1 in H2. discriminate H2.
+Qed.
+
 (* [pte_is_invalid] EVALUATED at [pte_s0], with ALL EIGHT disjuncts exposed
    concretely.  The three state probes the model consults -- menvcfg.SSE,
    [Ext_Svnapot], menvcfg.PBMTE / [Ext_Svrsw60t59b] -- are decided by that

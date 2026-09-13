@@ -220,7 +220,7 @@ Section UtSysBlock.
               HM1a0 Hj Hjl ltac:(vm_compute; reflexivity) ltac:(lia)
               with "Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
-    iApply wp_next_off_intro. iIntros (mf kl) "[%Hcskl %Hkla0] Hcg Hcpu Hpc".
+    iApply wp_next_off_intro. iIntros (mf kl) "[%Hcskl %Hkla0] _ Hcg Hcpu Hpc".
     assert (Hret94 : ret_pc (M1 !!! Regidx Rra) = mword_of_int (UT + 0x94))
       by (rewrite HM1ra; pcw).
     iEval (rewrite Hret94) in "Hpc".

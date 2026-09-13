@@ -94,6 +94,23 @@ Definition uleaf_denied (acc : MemoryAccessType mem_payload) (w : mword 64) : Pr
   forall (a d : mword 1) (mxr do_sum : bool),
     pte_check_denied acc User mxr do_sum (PTE_No_Permission tt) (pte_set_ad w a d).
 
+(* ...AND NO LEAF IS BOTH (lane KILL-PAY, K3(b)).  The two classes are
+   [PtTree.pte_check_ok] / [pte_check_denied] at every A/D variant, and
+   those are exclusive at one machine state.  What this buys: at a page
+   whose key says the access is allowed the DENIED flavor of
+   [u_fault_flavor] below is impossible, so a verified program cannot take
+   a permission page fault -- the third of the three refutations that make
+   the store/load fault arms unreachable at [uvis_lazy W = false]. *)
+Lemma uleaf_ok_denied_excl (acc : MemoryAccessType mem_payload) (w : mword 64) :
+  uleaf_ok acc w -> uleaf_denied acc w -> False.
+Proof.
+  intros Hok Hden.
+  exact (pte_check_ok_denied_excl acc User false false (PTE_No_Permission tt)
+           (pte_set_ad w ('b"0") ('b"0"))
+           (Hok ('b"0") ('b"0") false false)
+           (Hden ('b"0") ('b"0") false false)).
+Qed.
+
 (* the classification each user-map entry carries: decided once when the
    map is built, from the entry's concrete flag byte (each side is a
    4-way a/d x 4-way mxr/do_sum vm_compute) *)

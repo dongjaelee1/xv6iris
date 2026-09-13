@@ -373,7 +373,15 @@ Section UserretClosed.
            input at each of the nine contracted numbers -- goes DOWN to the
            kernel as uservec's pre row; the arm without it stays for the
            round ([UexecRet.uexec_ret_split]). ---- *)
-    iDestruct (uexec_ret_split sc W with "Hret") as (fdep) "[[Hpay Hxin] Hret]".
+    iDestruct (uexec_ret_split sc W with "Hret") as (fdep) "[Hdep Hret]".
+    (* ...AND THE KILL ROW COMES OUT OF THE DEPOSIT FIRST (lane KILL-PAY,
+       K3(b)).  It is persistent at both branches, so this is a COPY and
+       not a move: the deposit's own rows go on down as before, and the
+       copy rides uservec's pre beside the payment
+       ([SpecUsertrap.ut_kill_in]) to the dispatcher, which cashes it at
+       the unexpected-scause arm -- the one place setkilled runs. *)
+    iDestruct (uexec_dep_F_kill uslot sc W fdep with "Hdep") as "[#Hkin Hdep]".
+    iDestruct "Hdep" as "[Hpay Hxin]".
     (* THE PAYMENT IS THE ONE ROW WITH NO GUARD, so it is split off here
        rather than in the case analysis below: the process owes it at every
        cause and every number ([UexecRet.upay_at]), and what carries it
@@ -566,7 +574,7 @@ Section UserretClosed.
               (tf_resume_gpr0 (uvis_tf W))
               ms_v sc stv (tf_w (uvis_tf W) tf_epc_idx)
               Hstv Hdqc Hmie Hj Hnorm Hptwf
-              with "Hkt Hhw Hmin Hclaim Hcreds Hframe Hures Hin Hfin [Hpay] [-]").
+              with "Hkt Hhw Hmin Hclaim Hcreds Hframe Hures Hin Hfin [Hpay] Hkin [-]").
     { rewrite /SpecUsertrap.ut_pay_in. iExact "Hpay". }
     iApply wp_next_intro. iIntros (CID').
     rewrite /uservec_post.

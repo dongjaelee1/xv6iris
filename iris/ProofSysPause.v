@@ -1237,7 +1237,7 @@ Section SpBodies.
               HL1a0 Hj Hjl Hn1 ltac:(lia) Hfresh_proc
               with "Hcg Hown Htext Hpc Hpinv").
     all: try lkbelow.
-    iApply wp_next_off_intro. iIntros (mfk kl) "%Hkf Hcg Hown Hpc".
+    iApply wp_next_off_intro. iIntros (mfk kl) "%Hkf _ Hcg Hown Hpc".
     destruct Hkf as (Hkcs & Hka0).
     assert (Hl52 : ret_pc (L1 !!! Regidx (mword_of_int 1 : mword 5)) = mword_of_int (KernelSyms.sys_pause + 0x52))
       by (rewrite HL1ra; pcstep).

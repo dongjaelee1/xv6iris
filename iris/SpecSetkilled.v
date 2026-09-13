@@ -79,6 +79,13 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
      setkilled is BALANCED -- both the entry and the exit [cpu_own] carry the
      same [lks] -- because the C releases p->lock on its only return path. *)
   locks_below lks "proc" ->
+  (* THE KILL CREDENTIAL (app-echo.md, lane KILL-PAY, K2).  Writing
+     [p->killed] nonzero costs the application's price of a kill:
+     [SchedCtx.proc_pub]'s killed row is "the flag is zero OR the credential
+     has been paid", and this function is one of the two writers, so it
+     cannot re-bundle the lock's payload without it.  PERSISTENT, so it is
+     lent and not spent. *)
+  □ riscv_kill_cred -∗
   sie_cap_gpr KT1 m av b p -∗
   cpu_own n eb p b lks -∗
   kernel_text -∗ pc_is pcE -∗

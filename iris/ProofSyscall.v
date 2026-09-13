@@ -3239,6 +3239,20 @@ Section SyscallArms.
     rewrite (list_lookup_total_correct _ _ _ Hv0). iExact "H".
   Qed.
 
+  (* ...AND THE NINTH: the KILL PRICE (lane KILL-PAY, K3(a)).  The one
+     branch of the deposit that is not about the file system -- what a
+     process trapping with number 6 pays for the kill it is asking for. *)
+  Lemma sysc_dep_kill (U : ustate) (sts : list fdstate) (gn : gname)
+      (cs : gset gname) (pid : mword 32) (f : sfam) :
+    sysc_num (us_V U) = 6 ->
+    sysc_sys_in U sts gn cs pid f -∗ □ riscv_kill_cred.
+  Proof.
+    intros Hn. iIntros "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 6 Hn ltac:(vm_compute; discriminate)
+                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iApply (sbundle_at_kill_elim uslot f _ with "H").
+  Qed.
+
   Lemma sysc_dep_write (U : ustate) (sts : list fdstate) (gn : gname) (cs : gset gname)
       (pid : mword 32) (f : sfam)
       (v0 v1 v2 : mword 64) :
@@ -4421,7 +4435,11 @@ Section SyscallArms.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hsysin _ Hdep".
+    (* THE KILL PRICE, OUT OF THE PROCESS'S OWN DEPOSIT (lane KILL-PAY,
+       K3(a)): row 6 of [UexecExecInst.xv6_sbundle].  It goes straight to
+       sys_kill, which relays it to kkill. *)
+    iDestruct (sysc_dep_kill U sts gn cs pid fdep Hnum with "Hsysin") as "#Hkc".
     (* a RETURNING arm takes the left conjunct and forgets the closer *)
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 6) : mword 64)
@@ -4439,7 +4457,7 @@ Section SyscallArms.
     iApply (SysKill.wp_sys_kill_sconf γs M (av - 4)%nat 0%nat true pj
               (ud_tfp (pv_upt (us_V U))) (pv_tf (us_V U)) v0 (DfracOwn (1/4)) true ∅
               Hlen Hv0 sysc_noff0 ltac:(lia) (locks_below_empty "proc") Hpv
-              with "Hcg Hcpu Htext Hdata Hpc Htfc Htfp Hprocs").
+              with "Hkc Hcg Hcpu Htext Hdata Hpc Htfc Htfp Hprocs").
     iIntros (CIDy Hsy mf rv) "%Hmf Hcg Hcpu Hpc Htfc Htfp".
     destruct Hmf as [Hcs _].
     iDestruct ("Hpvback" with "Htfc Htfp") as "Hpriv".

@@ -327,15 +327,21 @@ Section UexecCond.
   Lemma cond_entry_slot (PF : uprogSG Σ) (W : uvis) :
     (forall k : Z, free_num k -> @psok Σ PF k) ->
     udepw_law (PS := PF) 16 -∗
-    udep (PS := PF) -∗ □ ssupply -∗ □ uexec_wp -∗
+    (* ...AND THE KILL CREDENTIAL, which only the GENERIC tail spends (lane
+       KILL-PAY, K3(b)): a slot that answers at every cause answers at the
+       causes usertrap kills at, and the deposit there is the price of a
+       kill.  The two gated arms are verified programs and pay nothing --
+       their interrupt cause is one of the two delegated ones and their
+       page-fault arms are refuted at [uvis_lazy W = false]. *)
+    udep (PS := PF) -∗ □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
     my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof.
-    intros Hpsok_free. iIntros "#Hwr #Hdep #Hsup #Hgen #Hpay".
+    intros Hpsok_free. iIntros "#Hwr #Hdep #Hsup #Hkc #Hgen #Hpay".
     destruct (decide (sync_gate W)) as [Hgate | _].
     { iApply (sync_gate_slot PF W Hpsok_free Hgate with "Hdep Hpay"). }
     destruct (decide (echo_gate W)) as [Hgate | _].
     { iApply (echo_gate_slot PF W Hgate with "Hwr Hdep Hpay"). }
-    iApply (uexec_wp_uslot_triv W with "Hsup Hgen Hpay").
+    iApply (uexec_wp_uslot_triv W with "Hsup Hkc Hgen Hpay").
   Qed.
 
   (* ...AND THE ENTRY AT A CONSTANT PAYLOAD (GENERIC-PAY).  A process whose
@@ -349,11 +355,11 @@ Section UexecCond.
      [udep] is not needed: the generic tail pays every deposit out of
      [ssupply] alone ([UexecRet.uexec_wp_uslot]). *)
   Lemma cond_entry_slot_pay (R : iProp Σ) (W : uvis) :
-    □ ssupply -∗ □ uexec_wp -∗
+    □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
     my_pay (uvis_gen W) (fun _ => R)%I -∗ R -∗ uslot W.
   Proof.
-    iIntros "#Hsup #Hgen #Hpay HR".
-    iApply (uexec_wp_uslot R W with "Hsup Hgen Hpay HR").
+    iIntros "#Hsup #Hkc #Hgen #Hpay HR".
+    iApply (uexec_wp_uslot R W with "Hsup Hkc Hgen Hpay HR").
   Qed.
 
 End UexecCond.

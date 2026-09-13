@@ -158,7 +158,7 @@ Section UservecAllPt.
        unify through the definition. See claude-notes/optimization.md. *)
     unfold uservec_gpr.
     intros Hstvec Hdqc Hmie Hjlt Hnorm Hptwf.
-    iIntros "#Hkt #Hhw #Hinv #Hclaim #Hcreds Hframe Hures Hxin Hfin Hein Hcont".
+    iIntros "#Hkt #Hhw #Hinv #Hclaim #Hcreds Hframe Hures Hxin Hfin Hein #Hkin Hcont".
     (* ============ open the trapped machine ============ *)
     (* AT NAMED DATA (milestone J1a).  [user_trap_frame] is definitionally the
        ∃ over [user_trap_frame_at], so this is the same premise with its five
@@ -1637,7 +1637,7 @@ Section UservecAllPt.
               ms_v sc_v stval_v sepc_v vksp (uc_mie C) (uc_mideleg C) MENVCFG_S _ sts
               gn cs pid fdep
               Hums Hjlt Hspv' Htpv' Hmie Hmm Hmenvval0
-              with "Hkt Hpc Hhw Hinv Hhs Hpriv Hms Hsc Hstval Hsepc Hstvec Hmie Hmdl Hmenv Hfile Hures' [Hxin] [Hfin] [Hein]").
+              with "Hkt Hpc Hhw Hinv Hhs Hpriv Hms Hsc Hstval Hsepc Hstvec Hmie Hmdl Hmenv Hfile Hures' [Hxin] [Hfin] [Hein] Hkin").
     { (* THE BUNDLE ACROSS THE SAVE WALK: the saved frame is [g]'s registers
          at the two words the bundle's key and guard read (a1, a7) -- the
          agreement the round crosses by, restricted to two indices, hence

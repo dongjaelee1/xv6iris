@@ -174,10 +174,43 @@ Section SchedCtx.
      [ctx_word4_pointsto_agree]; the writers (kexit's [p->xstate = status],
      freeproc's [p->xstate = 0]) hold p->lock and therefore write the whole
      cell and re-split it. *)
+  (* ...AND THE KILLED WORD IS PAID FOR (app-echo.md, lane KILL-PAY, K2).
+     [p->killed] used to be a bare existential, so the invariant said
+     NOTHING about a kill: any slot could be found killed at any moment and
+     every consequence -- usertrap's [kexit(-1)], consoleread's -1, wait()'s
+     -1 status, init reprinting its banner -- was unexplained.  The row
+     below is the explanation: the flag is zero, OR the application's KILL
+     CREDENTIAL has been paid ([RiscvPtsto.riscv_kill_cred]).
+
+     PERSISTENT, both arms, and that is what keeps the cost at one conjunct:
+     every party that opens the lock may keep a copy and every re-bundle
+     puts it straight back, so only the two WRITERS -- kkill's [p->killed =
+     1] and setkilled's -- have anything to pay, and each takes the
+     credential in its contract ([SpecKkill], [SpecSetkilled]).  The
+     FOUNDERS ([BootCarveMain]'s carve, [ProofFreeproc]'s clear) found it at
+     zero, which costs nothing.
+
+     THE ZERO IS SPELLED AT THE CELL'S WIDTH: [p->killed] is an [int], so the
+     word is [mword 32] and [RiscvLang.zero_reg] -- a 64-bit constant -- is
+     not it. *)
   Definition proc_pub (pa : mword 64) : iProp Σ :=
     (∃ (kl xs pid : mword 32),
        p_killed pa ↦₄ kl ∗ p_xstate pa ↦₄{DfracOwn (1/2)} xs ∗
-       p_pid pa ↦₄{DfracOwn (1/4)} pid)%I.
+       p_pid pa ↦₄{DfracOwn (1/4)} pid ∗
+       (⌜kl = (mword_of_int 0 : mword 32)⌝ ∨ □ riscv_kill_cred))%I.
+
+  (* the killed row on its own, for the sites that carry it across a write *)
+  Definition kill_paid (kl : mword 32) : iProp Σ :=
+    (⌜kl = (mword_of_int 0 : mword 32)⌝ ∨ □ riscv_kill_cred)%I.
+
+  Global Instance kill_paid_persistent kl : Persistent (kill_paid kl).
+  Proof. rewrite /kill_paid. apply _. Qed.
+
+  Lemma kill_paid_zero : ⊢ kill_paid (mword_of_int 0 : mword 32).
+  Proof. rewrite /kill_paid. iLeft. done. Qed.
+
+  Lemma kill_paid_of_cred (kl : mword 32) : □ riscv_kill_cred -∗ kill_paid kl.
+  Proof. rewrite /kill_paid. iIntros "#H". iRight. iExact "H". Qed.
 
   (* THE SLOT'S GENERATION IS NOT HERE.  A generation is a SAVED PREDICATE
      carrying the slot, the pid and the process's exit payload

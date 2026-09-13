@@ -73,6 +73,12 @@ Definition wp_sys_kill_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
   locks_below lks "proc" ->
   (* what argint's own load needs -- see SpecArgraw's matching premise. *)
   page_valid (page_base tfp) ->
+  (* ...AND THE KILL CREDENTIAL, RELAYED (lane KILL-PAY, K2/K3(a)): sys_kill
+     hands it straight to kkill, and what a trapping process pays it with is
+     the deposit at syscall number 6 ([UexecExecInst.xv6_sbundle]'s row 6).
+     No verified program issues 6; the generic slot pays it out of the
+     application's supply. *)
+  □ riscv_kill_cred -∗
   sie_cap_gpr KT1 m av b p -∗
   cpu_own n eb p b lks -∗
   kernel_text -∗ kernel_data -∗ pc_is pcE -∗

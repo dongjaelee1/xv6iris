@@ -760,6 +760,15 @@ Section UkStorePostFetch.
     va = add_vec (m !!! Regidx sr1) (sign_extend' 64 imm) ->
     wval = m !!! Regidx sr2 ->
     u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va ->
+    (* THE KILL PRICE OF A PAGE FAULT (lane KILL-PAY, K3(b)).  Cause 15 is
+       not one usertrap handles: it prints "unexpected scause" and kills.
+       So the deposit this arm proves carries the application's kill
+       credential, and the WITNESS THAT SUCH A TRAP IS POSSIBLE AT ALL is
+       the fault flavor above -- the caller ([wp_uk_store_later]) refutes
+       all three flavors at [uvis_lazy W = false] and discharges this
+       premise vacuously, which is exactly how a verified program pays
+       nothing. *)
+    (⊢ (□ riscv_kill_cred : iProp Σ)) ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     uva_inj pt Mp ->
     match o with
@@ -806,7 +815,7 @@ Section UkStorePostFetch.
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rsE (Step_Execute (r, ib'))) ib).
   Proof.
-    intros Hkw Hred Hexp Hva Hwval Hfault Hpg Hinj Hg1
+    intros Hkw Hred Hexp Hva Hwval Hfault Hkcw Hpg Hinj Hg1
       Hpins2 Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2 Lmie2 Lmdl2 Lmedl2 Lmenv2
       Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2 Lmi2 Hagd2 Htok' Hpure.
     destruct Hkw as (Hvw & Hwrite_plain).
@@ -1036,6 +1045,10 @@ Section UkStorePostFetch.
       [ iApply (uexec_pay_dep_ne _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false) _ (sfam_at Qp sfam_pt)
                   (utrap_scause_samo_ne (register_lookup (R_bitvector_64 scause) rsx))
                   (sexit_pay_at Qp sfam_pt) with "Hmyp Hpayv") | ].
+    (* THE KILL ROW, out of the fault witness (lane KILL-PAY, K3(b)) *)
+    iSplitR.
+    { iPoseProof Hkcw as "#Hkcw".
+      iApply (ukill_cred_at_of_cred with "Hkcw"). }
     iExact "Hret".
   Qed.
 
@@ -1079,6 +1092,17 @@ Section UkStoreObl.
     va = add_vec (m !!! Regidx sr1) (sign_extend' 64 imm) ->
     wval = m !!! Regidx sr2 ->
     uk_store_disp pt Mp va kk ->
+    (* THE FAULT WITNESS (lane KILL-PAY, K3(b)).  The dispatch above still
+       has a fault arm -- the engine supports a LAZY key, where the fill is
+       real -- and a store page fault is a cause usertrap kills at, so the
+       deposit owes the application's kill credential THERE and nowhere
+       else.  Stating it as a premise GATED ON THE FLAVOR is what makes it
+       free for a verified program: at [uvis_lazy W = false] the caller
+       refutes all three flavors ([UmodeMem.uva_canon],
+       [UserPerm.lazy_free_wmapped], [UserPtTree.uleaf_ok_denied_excl]) and
+       discharges this by [False]. *)
+    (u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va ->
+     ⊢ (□ riscv_kill_cred : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     is_aligned_vaddr (Virtaddr va) kk = true ->
@@ -1102,7 +1126,7 @@ Section UkStoreObl.
          (fun _ : ext_fetch_addr_error => False)).
   Proof.
     intros Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hva Hwval
-      Hdisp Hcanon Hpg Hal.
+      Hdisp Hkcf Hcanon Hpg Hal.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
                         HgagA & LstvecA & LmieA & LmdlA & LmedlA & LmenvA &
                         LsatpA & LpcfgA & LpaddrA & LmiA & Hx0).
@@ -1179,7 +1203,7 @@ Section UkStoreObl.
       iDestruct "Hkc" as "[Hkc _]". iFrame "Hrut Hfdr Hkb Hkc".
     - iApply (uk_store_fault_post_fetch C pt Rfd R Rut sz π M Mp m pc 4 kk i o imm sr1 sr2 va wval
               (zero_extend' 32 w) t' usatp pcfg paddr rs1 rs2 fdv cw gn cs pidv
-              Hkw Hred Hexp Hva Hwval Hfault Hpg Hinj Hg1
+              Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
               Hpins2
               (T2 _ _ u_in_PC ltac:(vm_compute; reflexivity) LpcA)
               (T2 _ _ u_in_hart ltac:(vm_compute; reflexivity) LhsA)
@@ -1225,6 +1249,17 @@ Section UkStoreObl.
     va = add_vec (m !!! Regidx sr1) (sign_extend' 64 imm) ->
     wval = m !!! Regidx sr2 ->
     uk_store_disp pt Mp va kk ->
+    (* THE FAULT WITNESS (lane KILL-PAY, K3(b)).  The dispatch above still
+       has a fault arm -- the engine supports a LAZY key, where the fill is
+       real -- and a store page fault is a cause usertrap kills at, so the
+       deposit owes the application's kill credential THERE and nowhere
+       else.  Stating it as a premise GATED ON THE FLAVOR is what makes it
+       free for a verified program: at [uvis_lazy W = false] the caller
+       refutes all three flavors ([UmodeMem.uva_canon],
+       [UserPerm.lazy_free_wmapped], [UserPtTree.uleaf_ok_denied_excl]) and
+       discharges this by [False]. *)
+    (u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va ->
+     ⊢ (□ riscv_kill_cred : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     is_aligned_vaddr (Virtaddr va) kk = true ->
@@ -1248,7 +1283,7 @@ Section UkStoreObl.
          (fun _ : ext_fetch_addr_error => False)).
   Proof.
     intros Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hva Hwval
-      Hdisp Hcanon Hpg Hal.
+      Hdisp Hkcf Hcanon Hpg Hal.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
                         HgagA & LstvecA & LmieA & LmdlA & LmedlA & LmenvA &
                         LsatpA & LpcfgA & LpaddrA & LmiA & Hx0).
@@ -1330,7 +1365,7 @@ Section UkStoreObl.
       iDestruct "Hkc" as "[Hkc _]". iFrame "Hrut Hfdr Hkb Hkc".
     - iApply (uk_store_fault_post_fetch C pt Rfd R Rut sz π M Mp m pc 2 kk i o imm sr1 sr2 va wval
               (zero_extend' 32 h) t' usatp pcfg paddr rs1 rs2 fdv cw gn cs pidv
-              Hkw Hred Hexp Hva Hwval Hfault Hpg Hinj Hg1
+              Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
               Hpins2
               (T2 _ _ u_in_PC ltac:(vm_compute; reflexivity) LpcA)
               (T2 _ _ u_in_hart ltac:(vm_compute; reflexivity) LhsA)
@@ -1481,6 +1516,38 @@ Section UkStore.
         destruct (lazy_free_wmapped pt' sz (svpn_of va) q Hwf' Hlf'
                     ltac:(rewrite Hpm'; exact Hq) Hqw) as (w & Hw & _ & _).
         rewrite Hl in Hw. discriminate Hw. }
+    (* ...AND THE FAULT WITNESS GOES THE SAME WAY (lane KILL-PAY, K3(b)).
+       The obligation's fault arm is stated at a WITNESS -- "if such a
+       trap is possible, here is the kill credential" -- and at this tier
+       it is not possible, in all three flavors:
+         (1) NON-CANONICAL is refuted by the leaf's own [uva_canon];
+         (2) UNMAPPED by [UserPerm.lazy_free_wmapped], LAZY-ROW's step:
+             the key says the page is writable and the fill is empty, so
+             the table maps it;
+         (3) DENIED by [UserPtTree.uleaf_ok_denied_excl]: the same leaf
+             cannot be both store-ok ([UserPerm.perm_of_W], off the key's
+             own W bit) and store-denied.  The two reserved vpns are not
+             in the map at all ([UptTree.upt_map_wf_not_tramp] / [_not_tf]).
+       So a verified program pays NOTHING for the kill it cannot suffer. *)
+    assert (Hkcf : u_fault_flavor (Store Data) (ud_tfp pt') (ud_um pt') va ->
+                   ⊢ (□ riscv_kill_cred : iProp Σ)).
+    { intros Hfl. exfalso.
+      destruct (lazy_free_wmapped pt' sz (svpn_of va) q Hwf' Hlf'
+                  ltac:(rewrite Hpm'; exact Hq) Hqw) as (w0 & Hw0 & _ & _).
+      unfold uva_canon in Hcanon.
+      destruct Hfl as [Hnc | [ (_ & Hnone & _ & _) | (_ & w1 & Hleaf & Hden) ]].
+      - rewrite Hcanon in Hnc. discriminate Hnc.
+      - rewrite Hw0 in Hnone. discriminate Hnone.
+      - destruct Hleaf as [(Htr & _) | [ (Htf & _) | Hl1 ]].
+        + exact (upt_map_wf_not_tramp (ud_um pt') (svpn_of va) w0
+                   (proj1 Hwf') Hw0 Htr).
+        + exact (upt_map_wf_not_tf (ud_um pt') (svpn_of va) w0
+                   (proj1 Hwf') Hw0 Htf).
+        + rewrite Hw0 in Hl1. injection Hl1 as <-.
+          exact (uleaf_ok_denied_excl (Store Data) w0
+                   (proj1 (perm_of_W pt' sz (svpn_of va) q w0 Hwf'
+                             ltac:(rewrite Hpm'; exact Hq) Hqw Hw0))
+                   Hden). }
     iPoseProof "Hamb" as "(#Hhw & _ & _)".
     iPoseProof "Hhw" as (misa0 mseccfg0 pmar0 elp0)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
@@ -1515,12 +1582,12 @@ Section UkStore.
     - iDestruct "Hf" as (h) "[[%HisRVC %Hdecrvc] Hbridge]".
       iApply (uk_store_obl_rvc C' pt' Rfd' R Rut' sz π M Mp' m pc h i o k imm rs1 rs2 va wval
                 t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv Hpre Hpure Hdecrvc Hkw Hred Hg1 Hexp
-                Hva Hwval Hdisp Hcanon Hpg Hal
+                Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
     - iDestruct "Hf" as (w) "[[%HnRVC %Hdecbase] Hbridge]".
       iApply (uk_store_obl_base C' pt' Rfd' R Rut' sz π M Mp' m pc w i o k imm rs1 rs2 va wval
                 t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv Hpre Hpure Hdecbase Hkw Hred Hg1 Hexp
-                Hva Hwval Hdisp Hcanon Hpg Hal
+                Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
   Qed.
 

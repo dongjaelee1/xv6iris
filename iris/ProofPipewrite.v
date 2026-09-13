@@ -2211,7 +2211,7 @@ Section ProofPipewrite.
                     Ha0L3 Hj Hjlp Hlvl1 Hav14 ltac:(lkbelow)
                     with "Hcg Hown Htext Hpc Hpinv").
           all: try lkbelow.
-          iApply wp_next_off_intro. iIntros (K0 kl) "%Hkfacts Hcg Hown Hpc". rgall.
+          iApply wp_next_off_intro. iIntros (K0 kl) "%Hkfacts _ Hcg Hown Hpc". rgall.
           destruct Hkfacts as [Hkcs Hka0].
           assert (HraL3 : L3 !!! Regidx Rra = add_vec_int (mword_of_int (KernelSyms.pipewrite + 0x94) : mword 64) 4)
             by (rewrite /L3; apply upd_eq).

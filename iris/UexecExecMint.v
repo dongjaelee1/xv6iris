@@ -207,7 +207,7 @@ Section UexecExecMint.
        the caller that instantiates it here, where every number is admitted
        and echo's flagged deposit is therefore free as well. *)
     iApply (UexecCond.cond_entry_slot uprogSG_gen W ltac:(intros k _; exact I)
-              with "[] Hdep [] Hgen Hpay").
+              with "[] Hdep [] Hkc Hgen Hpay").
     { iApply (udepw_law_of_psok (PS := uprogSG_gen) 16
                 ltac:(exact I) ltac:(vm_compute; discriminate)). }
     { rewrite /ssupply /= /xv6_ssupply. iModIntro.
@@ -230,7 +230,7 @@ Section UexecExecMint.
   Proof.
     iIntros "#Hsup #Hkc #Hgen".
     iIntros "!>" (W) "#Hpay HR".
-    iApply (UexecCond.cond_entry_slot_pay R W with "[] Hgen Hpay HR").
+    iApply (UexecCond.cond_entry_slot_pay R W with "[] Hkc Hgen Hpay HR").
     rewrite /ssupply /= /xv6_ssupply. iModIntro.
     iSplit; [ iExact "Hsup" | iExact "Hkc" ].
   Qed.
@@ -249,7 +249,7 @@ Section UexecExecMint.
   Proof.
     iIntros "#Hsup #Hkc #Hgen".
     iIntros "!>" (R W) "#Hpay HR".
-    iApply (UexecCond.cond_entry_slot_pay R W with "[] Hgen Hpay HR").
+    iApply (UexecCond.cond_entry_slot_pay R W with "[] Hkc Hgen Hpay HR").
     rewrite /ssupply /= /xv6_ssupply. iModIntro.
     iSplit; [ iExact "Hsup" | iExact "Hkc" ].
   Qed.

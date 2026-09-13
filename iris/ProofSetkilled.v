@@ -74,7 +74,7 @@ Section ProofSetkilled.
     cbv beta delta [wp_setkilled_sconf_body].
     intros pcE ret_tgt Ha0 Hj Hgl Hn Hav Hno.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
-    iIntros "Hcg Hcpu #Htext Hpc #Hprocs Hcont".
+    iIntros "#Hkc Hcg Hcpu #Htext Hpc #Hprocs Hcont".
     iDestruct (cpu_own_eb_agree with "Hcg Hcpu") as %Hbeq.
     iDestruct (procs_inv_lookup γs j γl Hgl with "Hprocs") as "#Hislock".
     (* ===================== PROLOGUE (32-byte frame, 3 slots used) ======= *)
@@ -198,7 +198,7 @@ Section ProofSetkilled.
     iEval (rewrite Hp10) in "Hpc".
     (* ---- open the lock: p->killed is in the ALWAYS-RESIDENT row ---- *)
     iDestruct (proc_lock_res_elim γs γl (proc_addr j) with "HR") as (st ch) "(Hstate & Hpg & Hchan & Hpub & Hslot)".
-    iDestruct "Hpub" as (kl xs pid) "(Hkilled & Hxstate & Hpidhalf & Hgen)".
+    iDestruct "Hpub" as (kl xs pid) "(Hkilled & Hxstate & (Hpidhalf & Hgen) & _)".
     assert (Hmacq_s1 : macq !!! Regidx sk_s1 = proc_addr j).
     { rewrite (callee_saved_lookup Hcs_acq sk_s1 ltac:(vm_compute; reflexivity)).
       rewrite /B1 upd_ne; [| vm_compute; discriminate]. exact HA2s1. }
@@ -269,7 +269,10 @@ Section ProofSetkilled.
        stored value need never be named. *)
     iAssert (proc_lock_res γs γl (proc_addr j)) with "[Hstate Hpg Hchan Hkilled Hxstate Hpidhalf Hgen Hslot]" as "HR2".
     { iApply (proc_lock_res_intro γs γl (proc_addr j) st ch with "Hstate Hpg Hchan [-Hslot] Hslot").
-      iExists _, xs, pid. iFrame "Hkilled Hxstate Hpidhalf Hgen". }
+      iExists _, xs, pid. iFrame "Hkilled Hxstate Hpidhalf Hgen".
+      (* the flag is 1 from here on: the killed row is paid with the
+         application's credential (lane KILL-PAY, K2) *)
+      iRight. iExact "Hkc". }
     (* ===================== release(&p->lock) ===================== *)
     (* the acquire handed the window index out as [trap_res b + N]; release
        wants it as [trap_res outb + N] with [outb = match n with O => eb

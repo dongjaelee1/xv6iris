@@ -2113,8 +2113,16 @@ Section BootCarveMain.
                  with "Hcl Hst") as (vst) "Hst".
     iDestruct (boot_cran_cell8 g (A + 32) Hmem ltac:(lia) ltac:(lia) M32
                  with "Hcl Hch") as (vch) "Hch".
-    iDestruct (boot_cran_cell4 g (A + 40) Hmem ltac:(lia) ltac:(lia) M40
-                 with "Hcl Hkl") as (vkl) "Hkl".
+    (* THE KILLED CELL IS PINNED AT ZERO (lane KILL-PAY, K2), off the same
+       BSS premise the pid cell uses: [SchedCtx.proc_pub]'s killed row is
+       "the flag is zero OR the kill credential has been paid", and the boot
+       founds it on the free arm.  proc[] is past [img_end], so its bytes
+       are zero and there is nothing to pay. *)
+    iDestruct (boot_cran_cell4_bss g (A + 40) (mword_of_int 0 : mword 32) Hmem
+                 ltac:(lia) ltac:(lia) ltac:(lia) M40
+                 ltac:(intros j _; apply (nth_byte_zero (mword_of_int 0 : mword 32) j);
+                       vm_compute; reflexivity)
+                 with "Hcl Hkl") as "Hkl".
     iDestruct (boot_cran_cell4 g (A + 44) Hmem ltac:(lia) ltac:(lia) M44
                  with "Hcl Hxs") as (vxs) "Hxs".
     iDestruct (boot_cran_cell4_bss g (A + 48) (mword_of_int 0 : mword 32) Hmem
@@ -2212,9 +2220,10 @@ Section BootCarveMain.
       iSplitL "Hpg"; [iExact "Hpg" |]. iExact "Htf". }
     iSplitR "Hpar Hpid3".
     { iSplitL "Hch"; [iExists vch; iExact "Hch" |].
-      iExists vkl, vxs, (mword_of_int 0 : mword 32).
+      iExists (mword_of_int 0 : mword 32), vxs, (mword_of_int 0 : mword 32).
       iSplitL "Hkl"; [iExact "Hkl" |]. iSplitL "Hxs2"; [iExact "Hxs2" |].
-      iExact "Hpid2". }
+      iSplitL "Hpid2"; [iExact "Hpid2" |].
+      iLeft. done. }
     iSplitL "Hpar"; [iExact "Hpar" |].
     iExact "Hpid3".
   Qed.

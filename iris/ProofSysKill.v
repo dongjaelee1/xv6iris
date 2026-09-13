@@ -76,7 +76,7 @@ Section ProofSysKill.
     cbv beta delta [wp_sys_kill_sconf_body].
     intros pcE ret_tgt Hlen Hws Hn Hav Hbelow Hpv.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
-    iIntros "Hcg Hcpu #Htext #Hdata Hpc Htf Hpage #Hprocs Hcont".
+    iIntros "#Hkc Hcg Hcpu #Htext #Hdata Hpc Htf Hpage #Hprocs Hcont".
     (* ===================== PROLOGUE (32-byte frame) ===================== *)
     set (M1 := <[Regidx csp_rs1 := regval_into_reg
         (add_vec (m !!! Regidx csp_rs1) (sign_extend' 64 (sign_extend' 12 (mword_of_int 32 : mword 6))))]> m).
@@ -268,7 +268,7 @@ Section ProofSysKill.
     iDestruct (cpu_own_transport CID8 CID10 n eb p b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
     iApply (Kkill.wp_kkill_sconf γs B2 (av - 4)%nat n eb p b lks
               Hlen Hn ltac:(lia) Hbelow
-              with "Hcg Hcpu Htext Hpc Hprocs").
+              with "Hkc Hcg Hcpu Htext Hpc Hprocs").
     all: try lkbelow.
     iIntros (CID11 Hk11 Mkk rv) "%Hkk Hcg Hcpu Hpc".
     destruct Hkk as (HcsKk & HKka0 & Hrv).

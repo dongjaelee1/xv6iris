@@ -238,7 +238,7 @@ Section ProofKilled.
     iEval (rewrite Hp12) in "Hpc".
     (* ---- open the lock: p->killed is in the ALWAYS-RESIDENT row ---- *)
     iDestruct (proc_lock_res_elim γs γl (proc_addr j) with "HR") as (st ch) "(Hstate & Hpg & Hchan & Hpub & Hslot)".
-    iDestruct "Hpub" as (kl xs pid) "(Hkilled & Hxstate & Hpidhalf & Hgen)".
+    iDestruct "Hpub" as (kl xs pid) "(Hkilled & Hxstate & (Hpidhalf & Hgen) & #Hkw)".
     (* +0x12: c.lw a5,40(s1) *)
     assert (Hmacq_s1 : macq !!! Regidx kl_s1 = proc_addr j).
     { rewrite (callee_saved_lookup Hcs_acq kl_s1 ltac:(vm_compute; reflexivity)).
@@ -315,7 +315,8 @@ Section ProofKilled.
     (* reassemble the lock resource: nothing moved, so the slots go back as-is *)
     iAssert (proc_lock_res γs γl (proc_addr j)) with "[Hstate Hpg Hchan Hkilled Hxstate Hpidhalf Hgen Hslot]" as "HR2".
     { iApply (proc_lock_res_intro γs γl (proc_addr j) st ch with "Hstate Hpg Hchan [-Hslot] Hslot").
-      iExists kl, xs, pid. iFrame "Hkilled Hxstate Hpidhalf Hgen". }
+      iExists kl, xs, pid. iFrame "Hkilled Hxstate Hpidhalf Hgen".
+      iExact "Hkw". }
     (* ===================== release(&p->lock) ===================== *)
     (* the acquire handed the window index out as [trap_res b + N]; release
        wants it as [trap_res outb + N] with [outb = match n with O => eb
@@ -507,7 +508,10 @@ Section ProofKilled.
     iDestruct (cpu_own_transport CIDrel CIDe7 n eb p b ltac:(wp_next_chain)
                  with "Hcpu") as "Hcpu".
     iSpecialize ("Hcont" $! CIDe7 with "[%]"); [wp_next_chain|].
-    iApply ("Hcont" $! E5 kl with "[%] Hcg Hcpu Hpc").
+    (* ...AND THE KILLED ROW, COPIED OUT BESIDE THE VALUE (lane KILL-PAY,
+       K2): it came out of [SchedCtx.proc_pub] at the same [kl] the answer
+       reports, and it is persistent, so the caller gets it for free. *)
+    iApply ("Hcont" $! E5 kl with "[%] Hkw Hcg Hcpu Hpc").
     split; [| exact HE5a0].
     unfold callee_saved.
     split; [exact HE5csp|].

@@ -2864,7 +2864,7 @@ Section ProofConsoleread.
               ltac:(lkbelow)
               with "Hcg Hcnt Ht Hpc Hpinv").
     all: try lkbelow.
-    iApply wp_next_off_intro. iIntros (mkl kl) "[%Hcskl %Hkla0] Hcg Hcnt Hpc". rgall.
+    iApply wp_next_off_intro. iIntros (mkl kl) "[%Hcskl %Hkla0] _ Hcg Hcnt Hpc". rgall.
     iEval (rewrite HW2ra) in "Hpc".
     assert (Hp50 : ret_pc (add_vec_int (mword_of_int (CR + 0x4c) : mword 64) 4)
                    = (mword_of_int (CR + 0x50) : mword 64)) by pcw.

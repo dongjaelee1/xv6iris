@@ -704,6 +704,23 @@ End UtEntry.
 (* ===================================================================== *)
 (*  +0x30 .. +0x54 -- THE scause DISPATCH.                                *)
 (* ===================================================================== *)
+(* THE UNEXPECTED-SCAUSE ARM IS EXACTLY [UexecRet.ukill_sc] (lane KILL-PAY,
+   K3(b)).  usertrap kills at a cause that is neither the ecall nor one
+   devintr recognised, and [SpecDevintr.devintr_ret] is 1 at the S-mode
+   external cause, 2 at the S-mode timer cause and 0 nowhere else -- so a
+   ZERO answer beside "not the ecall cause" IS the process's kill-row
+   guard, and that is what turns [SpecUsertrap.ut_kill_in] into the
+   credential [setkilled] is charged. *)
+Lemma ud_devintr_zero_ukill (sc : mword 64) :
+  sc <> uecall_scause ->
+  neq_vec (devintr_ret sc) (zero_reg : mword 64) = false ->
+  ukill_sc sc.
+Proof.
+  intros Hne Hz. rewrite /ukill_sc.
+  split; [ exact Hne | split ];
+    intros ->; rewrite /devintr_ret in Hz; vm_compute in Hz; discriminate Hz.
+Qed.
+
 Section UtDispatch.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ}.
   Context `{!ufdG Σ}.
@@ -799,6 +816,13 @@ Section UtDispatch.
     (* ...and the PAYMENT, owed at every cause and every number, at the
        same frame ([SpecUsertrap.ut_pay_in]) *)
     ut_pay_in fdep sc (<[tf_epc_idx := ret_pc ep]> (pv_tf (us_V U0))) U0 -∗
+    (* ...AND THE KILL ROW (lane KILL-PAY, K3(b)), owed at every cause too
+       and EMPTY at all but the ones usertrap kills at: what the process
+       deposited for the kill that this dispatch may perform.  Cashed in
+       the fall-through below, where [SpecDevintr.devintr_ret]'s zero
+       answer and the ecall test together say the cause is a
+       [UexecRet.ukill_sc] one. *)
+    ut_kill_in sc -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') SY.syscall_env) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid ep sc fdep) -∗
@@ -808,7 +832,7 @@ Section UtDispatch.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hcpu Hclm Hraw Henv Hframe Hxin Hfin Hein Hcont".
+    iIntros "#Htext Hpc Hcg Hcpu Hclm Hraw Henv Hframe Hxin Hfin Hein #Hkin Hcont".
     iDestruct "Henv" as "[#Hcaps Hown]".
     (* the device complement, at THIS hart, out of the bundle's [∀ h] form *)
     iAssert (devintr_caps_any (fsc_uart) (fsc_disk) (fsc_dlock) (un_tk N) (un_s N)
@@ -1035,6 +1059,20 @@ Section UtDispatch.
                   Hscne
                   with "Htext Hpc Hcg Hhold Hframe Hmyu Hpayv Hcont").
       + (* no device: the two page-fault causes, then the fall-through *)
+        (* ...AND THIS IS WHERE THE KILL ROW IS CASHED (lane KILL-PAY,
+           K3(b)).  devintr answered 0, so the cause is neither of the two
+           delegated S-mode interrupts, and the [beq] at +0x36 already said
+           it is not the ecall: that IS [UexecRet.ukill_sc], the guard the
+           process's deposit carries its kill credential behind.  All three
+           blocks below ([ut_d0] twice, [ut_56] once) can reach setkilled,
+           so each takes the credential. *)
+        assert (Hkill : ukill_sc sc)
+          by exact (ud_devintr_zero_ukill sc Hscne
+                      ltac:(rewrite <- HD4a0; exact Hdev)).
+        iAssert (□ riscv_kill_cred)%I as "#Hkc".
+        { rewrite /ut_kill_in /ukill_cred_at.
+          destruct (decide (ukill_sc sc)) as [_ | Hn];
+            [ iExact "Hkin" | exfalso; exact (Hn Hkill) ]. }
         iApply (wp_cbnez_fall_s_sconf (mword_of_int (UT + 0x40))
                   (mword_of_int 85 : mword 8) (Cregidx (mword_of_int 2)) Ra0
                   D4 nx false ltac:(vm_compute; reflexivity)
@@ -1113,7 +1151,7 @@ Section UtDispatch.
                     (* the transparent arms' defining cause, off the dispatch's own
                        [c.li a5,8; bne] at +0x50 *)
                     Hscne
-                    with "Htext Hpc Hcg Hhold Hframe Hmyu Hpayv Hcont").
+                    with "Htext Hpc Hcg Hhold Hframe Hkc Hmyu Hpayv Hcont").
         *
           iApply (wp_beq_fall_s_sconf (mword_of_int (UT + 0x48))
                     (mword_of_int 136 : mword 13) Ra5 Ra4 D6 nx false
@@ -1195,7 +1233,7 @@ Section UtDispatch.
                        (* the transparent arms' defining cause, off the dispatch's own
                           [c.li a5,8; bne] at +0x50 *)
                        Hscne
-                       with "Htext Hpc Hcg Hhold Hframe Hmyu Hpayv Hcont").
+                       with "Htext Hpc Hcg Hhold Hframe Hkc Hmyu Hpayv Hcont").
           -- (* the unexpected-scause arm *)
              iApply (wp_beq_fall_s_sconf (mword_of_int (UT + 0x52))
                        (mword_of_int 126 : mword 13) Ra5 Ra4 D8 nx false
@@ -1220,7 +1258,7 @@ Section UtDispatch.
                        (* the transparent arms' defining cause, off the dispatch's own
                           [c.li a5,8; bne] at +0x50 *)
                        Hscne
-                       with "Htext Hpc Hcg Hhold Hframe Hmyu Hpayv Hcont").
+                       with "Htext Hpc Hcg Hhold Hframe Hkc Hmyu Hpayv Hcont").
   Qed.
 
 End UtDispatch.
@@ -1417,7 +1455,7 @@ Section UtSeal.
     cbv beta delta [wp_usertrap_body].
     intros pcE pj Hms Hj Hsp Htp Hmiev Hmask Hmenvv.
     iIntros "#Htext Hpc #Hhw #Hminv Hhs Hpriv Hms Hsc Hst Hep Hstv
-             Hmie Hmdl Hmenv Hgpr HR Hxin Hfin Hein Hcont".
+             Hmie Hmdl Hmenv Hgpr HR Hxin Hfin Hein #Hkin Hcont".
     (* SCOPED: a bare [rewrite] would unfold [ut_res] inside the crossing's
        [usertrap_post] too, and the blocks state it folded. *)
     iEval (rewrite /usertrap_res /ut_res) in "HR".
@@ -1441,7 +1479,7 @@ Section UtSeal.
               (trap_res_off (av - 4)%nat)
               ltac:(rewrite HuptV Hupt; reflexivity) Hksp Hsp HMsp HMs1 HMa0 HcsM
               Hmiev Hmenvv
-              with "Htext Hpc Hcg Hcpu Hclm Hraw Henv Hfr Hxin Hfin Hein Hcont").
+              with "Htext Hpc Hcg Hcpu Hclm Hraw Henv Hfr Hxin Hfin Hein Hkin Hcont").
   Qed.
 
 End UtSeal.

@@ -197,6 +197,12 @@ Section ProofKkill.
        below "proc"'s rank (LockRank.v); [locks_below_not_elem] gives the
        per-slot non-membership the ghost step needs. *)
     locks_below lks "proc" ->
+    (* THE KILL CREDENTIAL (lane KILL-PAY, K2): the scan is what writes
+       [p->killed = 1], so the price is charged here as well as at the
+       entry -- [SchedCtx.proc_pub]'s killed row cannot be re-bundled at a
+       nonzero flag without it.  Persistent, so the loop carries it into
+       every iteration for free. *)
+    □ riscv_kill_cred -∗
     procs_inv γs -∗
     (* the exit continuation: control at the epilogue entry [kkill+0x52],
        at whatever hart the scan ended on, with a0 = 0 or -1. *)
@@ -215,7 +221,7 @@ Section ProofKkill.
       WP (Loop : expr riscv_lang).
   Proof.
     intros Hlen Hlvl Hav Hno.
-    iIntros "#Hpinv Hqexit".
+    iIntros "#Hkc #Hpinv Hqexit".
     (* BOUNDED loop: ordinary Coq induction on a [fuel] bounding the
        remaining iterations [NPROC - k].  The exit continuation is a
        PREMISE of the statement (fdalloc's rule), so the IH keeps its
@@ -294,7 +300,7 @@ Section ProofKkill.
       iEval (rewrite Hpc26) in "Hpc".
       iDestruct (proc_lock_res_elim γs γk (proc_addr k) with "HR")
         as (st ch) "(Hpst & Hpg & Hpch & Hpub & Hslots)".
-      iDestruct "Hpub" as (kl xs pidc) "(Hkilled & Hxstate & Hpidhalf)".
+      iDestruct "Hpub" as (kl xs pidc) "(Hkilled & Hxstate & Hpidhalf & #Hkw)".
       (* register facts through acquire *)
       assert (HcsMacq : callee_saved M Macq) by (eapply callee_saved_trans; [exact HcsM22 | exact Hpins]).
       assert (HA9 : Macq !!! Regidx Rs1 = proc_addr k)
@@ -600,7 +606,10 @@ Section ProofKkill.
           iEval (rewrite Hpp64) in "Hpc".
           (* reassemble: SLEEPING -> RUNNABLE keeps both guards fixed *)
           iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf]" as "Hpub".
-          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf". }
+          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf".
+            (* the flag is 1 here: the killed row is paid with the
+               credential (lane KILL-PAY, K2) *)
+            iRight. iExact "Hkc". }
           iApply fupd_wp.
           iMod (proc_lock_res_wakeup γs γk (proc_addr k) st ch Hst_sl
                   with "Hpst Hpg Hpch Hpub Hslots") as "HR".
@@ -632,7 +641,8 @@ Section ProofKkill.
             by (apply bv_eq; vm_compute; reflexivity).
           iEval (rewrite Hpp4a) in "Hpc".
           iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf]" as "Hpub".
-          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf". }
+          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf".
+            iRight. iExact "Hkc". }
           iDestruct (proc_lock_res_intro γs γk (proc_addr k) st ch
                        with "Hpst Hpg Hpch Hpub Hslots") as "HR".
           iApply ("Hret0" $! M44 with "[%] Hcg Hpc Htok HR").
@@ -651,7 +661,8 @@ Section ProofKkill.
         iEval (rewrite Hpp2c) in "Hpc".
         (* nothing moved: put the lock resource straight back *)
         iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf]" as "Hpub".
-        { iExists kl, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf". }
+        { iExists kl, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf".
+          iExact "Hkw". }
         iDestruct (proc_lock_res_intro γs γk (proc_addr k) st ch
                      with "Hpst Hpg Hpch Hpub Hslots") as "HR".
         (* +0x2c c.mv a0,s1 *)
@@ -866,7 +877,7 @@ Section ProofKkillMain.
     cbv beta delta [wp_kkill_sconf_body].
     intros pcE ret_tgt Hlen Hn Hav Hno.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
-    iIntros "Hcg Hcpu #Htext Hpc #Hprocs Hcont".
+    iIntros "#Hkc Hcg Hcpu #Htext Hpc #Hprocs Hcont".
     iDestruct (cpu_own_eb_agree with "Hcg Hcpu") as %Hbeq.
     (* ===================== PROLOGUE (48-byte frame) ===================== *)
     set (M1 := <[Regidx csp_rs1 := regval_into_reg
@@ -1276,7 +1287,7 @@ Section ProofKkillMain.
                  with "Hcpu") as "Hcpu".
     iPoseProof (wp_kkill_loop (CID0 := CID12)  γs m (pa_stk sp0 6)
                   (add_vec zero_reg (M2 !!! Regidx Ra0)) p n (av - 6)%nat eb b lks
-                  Hlen Hn ltac:(lia) Hno with "Hprocs Hqexit") as "Hscan".
+                  Hlen Hn ltac:(lia) Hno with "Hkc Hprocs Hqexit") as "Hscan".
     iApply ("Hscan" $! 0%nat M7 with "[%] [%] Hcg Hcpu Htext Hpc").
     - unfold NPROC; lia.
     - unfold kkl_regs.

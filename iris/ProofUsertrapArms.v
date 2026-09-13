@@ -267,6 +267,14 @@ Section Ut56.
     ut_hold Rsys N U false lks sts cs pid -∗
     ut_frame ksp (m0 !!! Regidx Rra) (m0 !!! Regidx Rs0)
                  (m0 !!! Regidx Rs1) (m0 !!! Regidx Rs2) -∗
+    (* ...AND THE KILL CREDENTIAL (app-echo.md, lane KILL-PAY, K3(b)).
+       This block RUNS setkilled -- it is the "unexpected scause" arm --
+       and [SpecSetkilled] charges the application's price of a kill.  The
+       credential comes from the trapping PROCESS'S OWN DEPOSIT: the kill
+       row of [UexecRet.uexec_ret] at a cause the kernel cannot handle,
+       carried down as [SpecUsertrap.ut_kill_in] and cashed by the
+       dispatcher, which is where [UexecRet.ukill_sc] is known. *)
+    □ riscv_kill_cred -∗
     (* THE PAYMENT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
        device interrupt, an unexpected cause -- and each of them reaches a
        killed check ([SpecUsertrap.ut_pay_in] is owed at every cause for
@@ -283,7 +291,7 @@ Section Ut56.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe #Hmyp Hpayv Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe #Hkc #Hmyp Hpayv Hcont".
     iDestruct (ua_hold_off Rsys N U _ sts cs with "Hhold") as
       "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     (* depth 0 forces the held set empty, so the printk / killed / setkilled
@@ -604,7 +612,7 @@ Section Ut56.
       by (rewrite /MC; apply ut_cs_insert; [vm_compute; reflexivity | exact HcsMB]).
     iApply (SK.wp_setkilled_sconf (un_s N) (un_j N) (un_l N) MC nx 0%nat false
               (un_pj N) false lks HMCa0 Hj Hjl ltac:(vm_compute; reflexivity)
-              ltac:(lia) with "Hcg Hcpu Htext Hpc Hpi [-]").
+              ltac:(lia) with "Hkc Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
     iApply wp_next_off_intro. iIntros (S1) "%HcsS1 Hcg Hcpu Hpc".
     assert (Hret82 : ret_pc (MC !!! Regidx Rra) = mword_of_int (UT + 0x82))
@@ -746,6 +754,14 @@ Section UtD0.
     ut_hold Rsys N U false lks sts cs pid -∗
     ut_frame ksp (m0 !!! Regidx Rra) (m0 !!! Regidx Rs0)
                  (m0 !!! Regidx Rs1) (m0 !!! Regidx Rs2) -∗
+    (* ...AND THE KILL CREDENTIAL (app-echo.md, lane KILL-PAY, K3(b)).
+       This block RUNS setkilled -- it is the "unexpected scause" arm --
+       and [SpecSetkilled] charges the application's price of a kill.  The
+       credential comes from the trapping PROCESS'S OWN DEPOSIT: the kill
+       row of [UexecRet.uexec_ret] at a cause the kernel cannot handle,
+       carried down as [SpecUsertrap.ut_kill_in] and cashed by the
+       dispatcher, which is where [UexecRet.ukill_sc] is known. *)
+    □ riscv_kill_cred -∗
     (* THE PAYMENT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
        device interrupt, an unexpected cause -- and each of them reaches a
        killed check ([SpecUsertrap.ut_pay_in] is owed at every cause for
@@ -762,7 +778,7 @@ Section UtD0.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe #Hmyp Hpayv Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe #Hkc #Hmyp Hpayv Hcont".
     iDestruct (ua_hold_off Rsys N U _ sts cs with "Hhold") as
       "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     (* depth 0 forces the held set empty, so the printk / killed / setkilled
@@ -1030,7 +1046,7 @@ Section UtD0.
                 mie_v menvcfg0 epv scv lks sts gn cs pid fdep
                 Hpk Hwf' Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmrsp Hmrs1 Hcsmr
                 Hmiev Hmenvv Hrd Hnec
-                with "Htext Hpc Hcg [-Hframe Hpayv Hcont] Hframe Hmyp Hpayv Hcont").
+                with "Htext Hpc Hcg [-Hframe Hpayv Hcont] Hframe Hkc Hmyp Hpayv Hcont").
       iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu Hcsrs Hclm [-]").
       rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
     - (* ---- vmfault backed a page: the [bnez] is taken, to +0xa6 ---- *)
@@ -1269,7 +1285,7 @@ Section UtE8.
               (un_pj N) false lks HM2a0 Hj Hjl ltac:(vm_compute; reflexivity)
               ltac:(lia) with "Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
-    iApply wp_next_off_intro. iIntros (mf kl) "[%Hcskl %Hkla0] Hcg Hcpu Hpc".
+    iApply wp_next_off_intro. iIntros (mf kl) "[%Hcskl %Hkla0] _ Hcg Hcpu Hpc".
     assert (Hretee : ret_pc (M2 !!! Regidx Rra) = mword_of_int (UT + 0xf0))
       by (rewrite HM2ra; pcw).
     iEval (rewrite Hretee) in "Hpc".

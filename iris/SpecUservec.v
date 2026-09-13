@@ -528,6 +528,9 @@ Definition wp_uservec_pt_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} 
      ([SpecUsertrap.ut_pay_in]) *)
   ut_pay_in f sc_v (tf_of g (ret_pc sepc_v))
     (ProcDefs.upd_usM (ProcInv.us_tf U (tf_of g (ret_pc sepc_v))) M) -∗
+  (* ...and THE KILL ROW, owed at every cause and read only at the ones
+     usertrap kills at ([SpecUsertrap.ut_kill_in]) *)
+  ut_kill_in sc_v -∗
   wp_next true (proc_addr j) (fun CID' : CpuId =>
     uservec_post (CID := CID') (URes CID') C pt vksp U M g sts gn cs pid
       sepc_v sc_v f) -∗

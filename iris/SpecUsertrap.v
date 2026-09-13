@@ -845,6 +845,20 @@ Proof.
             (eq_sym Hg)).
 Qed.
 
+(* ...AND THE KILL ROW BESIDE IT (app-echo.md, lane KILL-PAY, K3(b)).
+   UNGATED on the cause the way [ut_pay_in] is, and for the same reason:
+   the route that carries it does not know which cause it is on.  But it is
+   READ only at a [UexecRet.ukill_sc] cause -- anything but the ecall and
+   the two delegated S-mode interrupts -- and it is [emp] everywhere else,
+   so the three arms that never reach setkilled owe nothing.
+     WHAT IT IS: the kill row of the trapping process's own deposit
+   ([UexecRet.uexec_dep_F]'s non-ecall branch).  WHO SPENDS IT: the
+   dispatcher's unexpected-scause arm, which calls setkilled -- and
+   [SpecSetkilled] charges the application's price of a kill.  PERSISTENT
+   at both branches, so it costs nothing to carry. *)
+Definition ut_kill_in `{!riscvGS Σ} (sc_v : mword 64) : iProp Σ :=
+  ukill_cred_at sc_v.
+
 (* ...AND WHAT COMES BACK, at the same families: the payload at the kill
    status, returned to whatever resumes the process.  A ROW OF
    [usertrap_post] and UNGATED, for the IN row's reason -- every arm that
@@ -1353,6 +1367,9 @@ Definition wp_usertrap_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, 
      every number, at the same frame fork's row is stated at
      -- [ut_pay_in] *)
   ut_pay_in f sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U))) U -∗
+  (* ...AND THE KILL ROW, owed at every cause and empty at all but the ones
+     usertrap kills at -- [ut_kill_in] *)
+  ut_kill_in sc_v -∗
   (* THE CROSSING: usertrap parks (yield, and every sleeping syscall), so it
      may return on a different hart -- and the bundle comes back at THAT
      hart, which is why [R] is a family (see the note above). *)

@@ -463,7 +463,7 @@ Section ProofSysUnlinkW5D.
       iExFalso. iApply (dinode_at_excl with "Hdiatd Hdiati"). }
     (* the process block, opened for the callees' pid fraction, and THE
        CLOSER, built once (W2/W3's shape) *)
-    iDestruct (proc_priv_split_cwd gf (proc_addr jx) pid (us_upt U P1)
+    iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_split_cwd gf (proc_addr jx) pid (us_upt U P1))
                  with "Hpriv") as "[Hpnc Href]".
     (* the lazy bit's claim, read off the block before the regrouping
        drops it (lane LAZY-FLAG): it is pure, so holding it is free. *)

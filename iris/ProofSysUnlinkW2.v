@@ -652,7 +652,7 @@ Section ProofSysUnlinkW2.
     iDestruct (is_itable2_claims with "Hitab") as "#Hclaimssu".
     iDestruct (su_bs3 with "Hbsl") as "[Hbs1 Hbs2]".
     (* the process block, opened for the callees' pid fraction *)
-    iDestruct (proc_priv_split_cwd gf (proc_addr jx) pid (us_upt U P1)
+    iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_split_cwd gf (proc_addr jx) pid (us_upt U P1))
                  with "Hpriv") as "[Hpnc Href]".
     (* the lazy bit's claim, read off the block before the regrouping
        drops it (lane LAZY-FLAG): it is pure, so holding it is free. *)

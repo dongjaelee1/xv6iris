@@ -162,9 +162,20 @@ Section UserConsole.
          riscv_rx_tag h ∗
          (⌜d = 0%nat /\ bv_unsigned (cons_xlate b) = 4⌝ ∨ ⌜fault⌝))%I.
 
+  (* structural, not one [apply _]: [apply] peels through [ucons_stored_lb]
+     and [riscv_rx_tag], each of which has its own instance, and re-derives
+     them from the ring. *)
+  Local Ltac ucons_pers :=
+    lazymatch goal with
+    | |- Persistent (bi_or _ _)   => apply bi.or_persistent; [ucons_pers|ucons_pers]
+    | |- Persistent (bi_sep _ _)  => apply bi.sep_persistent; [ucons_pers|ucons_pers]
+    | |- Persistent (bi_exist _)  => apply bi.exist_persistent; intro; ucons_pers
+    | |- _ => apply _
+    end.
+
   Global Instance ucons_swallow_persistent cn fault sl d dc :
     Persistent (ucons_swallow cn fault sl d dc).
-  Proof. rewrite /ucons_swallow. apply _. Qed.
+  Proof. rewrite /ucons_swallow. ucons_pers. Qed.
 
   (* THE REASON WEAKENS ([ConsoleInv.cons_swallow_mono]'s twin).  [fault]
      is a statement about the reader's own address space, and the verified

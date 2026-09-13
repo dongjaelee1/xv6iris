@@ -1427,7 +1427,8 @@ Section ProofSysChdirBody.
          [sd s1,336(s2)] (or, on the failure arms, until the tail returns). *)
       (* three-way now: [FirstTok.first_tok] comes off with the reference and
          goes straight back on at each rebuilding arm. *)
-      iDestruct (proc_priv_split_cwd gf pj pid (us_upt U P') with "Hpriv")
+      iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_split_cwd gf pj pid (us_upt U P'))
+                 with "Hpriv")
         as "[Hpnc [Href Hftok]]".
       (* THE BLOCK, NOT THE CELL BESIDE A QUARTER.  namei/ilock/iunlock/iput
          all take [proc_priv_bare] now, and [p->cwd] is one of its own cells,

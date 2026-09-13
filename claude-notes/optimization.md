@@ -270,6 +270,30 @@ cost is linear in the context rather than quadratic. Read that file's header.
   syscall-altitude proof reaches it: its last conjunct is a 4096-element big-op.
   Intro the tail as ONE hypothesis and close with `iExact`.
 
+## A `⊣⊢` lemma costs BOTH directions at every site
+
+The proofmode takes an equivalence as a wand-IFF, so `iDestruct (L with "H")`
+on an `L : P ⊣⊢ Q` builds and specializes both arms against the whole context
+even though the site wants one. At syscall altitude that is seconds a site.
+
+**Name the direction AT THE SITE.** The conversion lemma is generic, so this
+needs nothing new anywhere:
+
+```coq
+    iDestruct (bi.equiv_entails_1_1 _ _ (my_split_lemma a b c)
+                 with "Hblk") as "[Hx [Hy Hz]]".
+```
+
+`bi.equiv_entails_1_1` is left-to-right and `_1_2` right-to-left; both work
+under `iApply` and `iDestruct`, and the tree already used the idiom before
+anyone noticed it was also the fix.
+
+**Do NOT add a forward-only twin of the lemma.** A `foo_fwd` per equivalence is
+one more name, one more thing to keep in step with `foo`, and it buys exactly
+what the two underscores buy. The rule is the same one the notes give for
+closers: say which thing you mean at the site rather than minting a definition
+for it.
+
 ## Typeclass search and sealing
 
 - **A low-priority instance runs LAST, and if the class's other instances are
@@ -313,17 +337,11 @@ cost is linear in the context rather than quadratic. Read that file's header.
   descending into the resource. Diagnose by splitting a wide `iIntros` one name
   per sentence. **Put the seals at the END of the defining section** — a file's
   own projection lemmas are what a seal above them breaks.
-- **A near-identical SIBLING definition is what makes `apply _` catastrophic
-  here.** Search tries the sibling's registered instance, and unifying the two
-  bodies up to delta walks nearly all of both before failing — so the second of
-  two obligations that differ in one row costs many times the first. The tell is
-  that one of a pair of twins is fast and the other is not.
-- **Where the body is a `□`, the whole instance is `rewrite /X. apply
-  bi.intuitionistically_persistent.`** Unfold first: then the connective is
-  syntactic and nothing searches.
-- **Reduce with `cbn [f]`, never bare `cbn`, before a structural descent.** Bare
-  `cbn` unfolds the leaf abstractions that already have their own instances, and
-  the descent then bottoms out on their bodies instead of on their names.
+- **`apply _` on TWINS is wildly asymmetric, and the cheap twin proves nothing
+  about the other.** Two obligations whose bodies differ in one row can cost
+  under a second and over ten; the fast one is not evidence the idiom is fine
+  here. Time each instance, and where the body is a `□` name it outright:
+  `rewrite /X. apply bi.intuitionistically_persistent.`
 - **Prove a big `Timeless`/`Persistent` instance structurally**, never with one
   `apply _`:
 

@@ -605,7 +605,8 @@ Section ProofSysUnlinkW1.
       (* THE PROCESS BLOCK, OPENED for the walk. *)
       (* three-way now: [FirstTok.first_tok] parks beside the reference and
          is handed straight back at the rejoins below. *)
-      iDestruct (proc_priv_split_cwd gf (proc_addr jx) pid (us_upt U P1) with "Hpriv")
+      iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_split_cwd gf (proc_addr jx) pid (us_upt U P1))
+                 with "Hpriv")
         as "[Hpnc [Href Hftok]]".
       (* the lazy bit's claim, read off the block before the regrouping
          drops it (lane LAZY-FLAG): it is pure, so holding it is free. *)

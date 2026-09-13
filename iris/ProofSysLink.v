@@ -1167,7 +1167,8 @@ Section ProofSysLinkBody.
            out until whichever arm rebuilds the block. *)
         (* three-way now: [FirstTok.first_tok] parks beside the reference and
            every rebuilding arm below hands it straight back. *)
-        iDestruct (proc_priv_split_cwd γf pj pid (us_upt U P2) with "Hpriv")
+        iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_split_cwd γf pj pid (us_upt U P2))
+                 with "Hpriv")
           as "[Hpnc [Href Hftok]]".
         (* the lazy bit's claim, read off the block before the regrouping
            drops it (lane LAZY-FLAG): it is pure, so holding it is free. *)

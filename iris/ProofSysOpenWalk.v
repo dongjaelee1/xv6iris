@@ -388,7 +388,8 @@ Section ProofSysOpenWalk.
        the block's own cells now, so namei borrows it for its own load and
        nothing here carries it. ---- *)
     (* three-way now: [FirstTok.first_tok] parks beside the reference. *)
-    iDestruct (proc_priv_split_cwd gf (proc_addr jx) pidv U with "Hpriv")
+    iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_split_cwd gf (proc_addr jx) pidv U)
+                 with "Hpriv")
       as "[Hpnc [Href Hftok]]".
     (* the lazy bit's claim, read off the block before the regrouping
        drops it (lane LAZY-FLAG): it is pure, so holding it is free. *)

@@ -1791,8 +1791,8 @@ Section KexitRest.
        that dies holding the exclusive boot arm has simply consumed the one
        chance to run it (the logic is affine, so the leak is sound and the
        kernel's own "at most one" is unaffected). *)
-    iDestruct (proc_priv_split_cwd γf pj pid U with "Hpriv")
-      as "[Hpriv [Href [Hfdone [Hgq [Hxb Hgh]]]]]".
+    iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_split_cwd γf pj pid U)
+                 with "Hpriv") as "[Hpriv [Href [Hfdone [Hgq [Hxb Hgh]]]]]".
     iClear "Hfdone".
     (* THE BLOCK, NOT A QUARTER OF [p->pid].  begin_op, iput and end_op all
        take [proc_priv_bare] now, and [p->cwd] lives INSIDE it -- so the cell

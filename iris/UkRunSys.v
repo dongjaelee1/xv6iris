@@ -3489,7 +3489,17 @@ Section UkRunSys.
     ⌜ forall j : nat, (j < nb)%nat ->
         M !! uint (add_vec_int ua (Z.of_nat j)) = Some (f j) ⌝.
   Proof.
-  Admitted.
+    iIntros "Hheap Hbs".
+    iDestruct (uheap_ubytes_run γt γd γs M pmv sz dq (uint ua) nb f
+                 with "Hheap Hbs") as %Hrun.
+    iPureIntro. intros j Hj.
+    destruct (Hrun j Hj) as [HM Hc].
+    assert (Hadd : uint (add_vec_int ua (Z.of_nat j)) = (uint ua + Z.of_nat j)%Z).
+    { change (2 ^ 38) with 274877906944 in Hc.
+      rewrite !uint_unsigned in Hc |- *.
+      apply uint_add_vec_int_small; lia. }
+    rewrite Hadd. exact HM.
+  Qed.
 
   (* ------------------------------------------------------------------- *)
   (* ecall, at WRITE (16) -- THE LEAF THAT LETS THE PROCESS PAY THE         *)
@@ -3568,7 +3578,77 @@ Section UkRunSys.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-  Admitted.
+    intros Hn Hal4.
+    iIntros "#Hi Hrun Hsb Hstd Hcont".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    (* THE KEY'S LOW THREE SLOTS ARE THE CALLER'S OWN LEDGER, which is both
+       what the deposit is stated at and what makes row 16's arm readable *)
+    iDestruct (ustd_agree (ukn_fd N) fdv l with "Hufd Hstd") as %Htake.
+    iDestruct "Hsb" as "[%Hfp Hsb]".
+    iDestruct ("Hsb" $! M pm sz fdv cw gn cs pidv with "[%] Hmy Hheap Hufd")
+      as "(Hheap & Hufd & Hdepn)"; [ exact Htake | ].
+    iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
+    iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
+    iApply (UkStep.wp_uk_ecall C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc fdv cw gn cs pidv Hui
+              (fun (s : mstate)
+                   (Hp : register_lookup cur_privilege s.(sregs) = User)
+                   (Hc : register_lookup (R_bitvector_64 PC) s.(sregs) = pc) =>
+                 UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
+                   s pc ltac:(vm_compute; reflexivity)
+                   ltac:(vm_compute; reflexivity) Hp Hc)
+              with "Hb Hmy Hpayv").
+    iIntros "Hpayv".
+    rewrite (uexec_ret_ecall _ _ eq_refl).
+    assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = 16).
+    { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
+    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite Hnum. cbv zeta.
+    destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
+      [ | exfalso; exact (Hpne eq_refl) ].
+    destruct (decide (16 = USYS_exit)) as [He | _]; [ discriminate He | ].
+    destruct (decide (16 = USYS_fork)) as [He | _]; [ discriminate He | ].
+    destruct (decide (16 = USYS_wait)) as [He | _]; [ discriminate He | ].
+    iExists fdep. rewrite Hfp.
+    cbn [uvis_gen uvis_of_run].
+    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitL "Hdepn"; [ iExact "Hdepn" | ].
+    iIntros "Hpayv".
+    iIntros (r M' pm' sz' fdv' cw' gn' cs' lz')
+      "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow Hpost".
+    (* THE LAZY BIT, THE CWD, THE GENERATION AND THE CHILDREN ALL CROSSED
+       THE TRAP UNCHANGED: 16 is none of the rows that move them. *)
+    assert (Hlzq : lz' = false)
+      by (refine (usys_mem_ok_lazy _ _ _ _ _ _ _ _ _ _ _ _ Hok);
+          vm_compute; discriminate).
+    subst lz'.
+    assert (Hcw : cw' = cw)
+      by (refine (usys_cwd_ok_quiet _ _ _ _ _ Hcwrow); vm_compute; discriminate).
+    assert (Hgn : gn' = gn) by exact (usys_gen_ok_quiet _ _ _ Hgnrow).
+    assert (Hch : cs' = cs) by exact (usys_ch_ok_quiet _ _ _ _ Hchrow).
+    subst gn' cs' cw'.
+    destruct (usys_mem_ok_quiet 16 _ r _ _ _ _ _ _ _ _
+                ltac:(discriminate) ltac:(discriminate) ltac:(discriminate)
+                ltac:(discriminate) ltac:(discriminate) ltac:(discriminate) Hok)
+      as [-> [-> ->]].
+    pose proof (usys_fd_ok_quiet 16 _ r _ _
+                  ltac:(discriminate) ltac:(discriminate)
+                  ltac:(discriminate) ltac:(discriminate) Hfdok) as ->.
+    cbn [uvis_M uvis_perm uvis_of_run].
+    rewrite (uslot_bump_run m pc M M pm pm sz sz fdv fdv cw cw gn gn cs cs pidv false false r Hx0 Hal4).
+    iApply ukcq_ukc.
+    iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+    iIntros (h') "Hrun".
+    iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv cw gn cs pidv false) cw cs
+              with "[%] [%] [%] [%] Hstd [Hpost] Hrun").
+    { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg0 m pc). }
+    { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg1 m pc). }
+    { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg2 m pc). }
+    { rewrite (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false). exact Htake. }
+    rewrite (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false).
+    cbn [uvis_M uvis_of_run]. iExact "Hpost".
+  Qed.
 
 
   (* ------------------------------------------------------------------- *)

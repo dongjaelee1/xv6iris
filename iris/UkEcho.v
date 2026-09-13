@@ -1042,6 +1042,8 @@ Section UkEcho.
     iIntros (h3) "Hrun".
     iApply ("Hcont" $! h3 ret with "Hrun").
   Qed.
+
+
   (* ...AND THE SAME STUB WITH THE OUTPUT CHAIN AND THE POST                *)
   (* (app-echo.md, lane IO-LEAF, first half; the leaf is                    *)
   (* [UkRunSys.wp_uk_ecall_write_chain]).                                   *)
@@ -1085,7 +1087,70 @@ Section UkEcho.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-  Admitted.
+    iIntros "#Hcode Hrun Hsb Hstd Hcont".
+    destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite). rewrite Hwrite.
+    (* ---- 0x352  c.li a7,16 ---- *)
+    iApply (wp_uk_cli N h m (mword_of_int 0x352)
+              (mword_of_int 16 : mword 6) a7_idx avail
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; discriminate) with "[] Hrun").
+    { iApply (uis_echo_352 with "Hcode"). }
+    assert (E352 : add_vec_int (mword_of_int 0x352 : mword 64) 2
+                   = mword_of_int 0x354)
+      by (apply bv_eq; vm_compute; reflexivity).
+    assert (Em : <[Regidx a7_idx
+                   := regval_into_reg (sign_extend' 64 (mword_of_int 16 : mword 6)
+                                       : mword 64)]> m
+                 = <[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+      by (f_equal; apply bv_eq; vm_compute; reflexivity).
+    rewrite E352 Em.
+    iIntros (h1) "Hrun".
+    set (m1 := <[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m).
+    (* ---- 0x354  ecall -- THE CHAIN-PAYING WRITE ---- *)
+    iApply (wp_uk_ecall_write_chain N h1 m1 (mword_of_int 0x354) avail fdep l
+              ltac:(unfold m1, usysno;
+                    rewrite (upd_eq m (Regidx a7_idx)
+                               (mword_of_int 16 : mword 64));
+                    vm_compute; reflexivity)
+              ltac:(vm_compute; reflexivity)
+              with "[] Hrun Hsb Hstd").
+    { iApply (uis_echo_354 with "Hcode"). }
+    assert (E354 : add_vec_int (mword_of_int 0x354 : mword 64) 4
+                   = mword_of_int 0x358)
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite E354.
+    iIntros (h2 ret W cw' cs') "%Ha0 %Ha1 %Ha2 %Htk Hstd Hpost Hrun".
+    set (m2 := <[Regidx a0_idx := ret]> m1).
+    (* ---- 0x358  c.jr ra ---- *)
+    assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
+    { unfold m2, m1.
+      exact (eq_trans
+               (upd_ne m1 (Regidx a0_idx) (Regidx ra_idx) ret
+                  ltac:(vm_compute; discriminate))
+               (upd_ne m (Regidx a7_idx) (Regidx ra_idx)
+                  (mword_of_int 16 : mword 64)
+                  ltac:(vm_compute; discriminate))). }
+    iApply (wp_uk_cjr N h2 m2 (mword_of_int 0x358) ra_idx
+              (ret_pc (m !!! Regidx ra_idx)) avail
+              ltac:(vm_compute; discriminate)
+              ltac:(rewrite Hra; reflexivity)
+              with "[] Hrun").
+    { iApply (uis_echo_358 with "Hcode"). }
+    iIntros (h3) "Hrun".
+    (* the three argument words are the CALLER's: the stub writes a7 and
+       then a0, and neither is a0/a1/a2 before the bump *)
+    iApply ("Hcont" $! h3 ret W cw' cs' with "[%] [%] [%] [%] Hstd Hpost Hrun").
+    { rewrite Ha0 /m1.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a0_idx)
+               (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)). }
+    { rewrite Ha1 /m1.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx)
+               (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)). }
+    { rewrite Ha2 /m1.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a2_idx)
+               (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)). }
+    { exact Htk. }
+  Qed.
 
 
 

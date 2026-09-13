@@ -73,6 +73,7 @@ Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
 Require Import SpecConsolewrite.   (* [cons_out_chain] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
+Require Import PipeInvDefs.        (* [pipe_rw_ret]: what [filewrite_ret] is *)
 Require Import WpUart.             (* [out_licence] / [out_link] *)
 Require Import ConsoleInv.         (* [CONSOLE] *)
 Require Import FsCfg.
@@ -178,7 +179,13 @@ Section UkWriteLeaf.
     filewrite_in (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) -∗
     sbundle_at X 16 f W.
   Proof.
-  Admitted.
+    intros H0 H1 H2 Hfd HM. iIntros "H".
+    (* the REWRITE GOES FIRST, against the lemma's own variables
+       ([UConsOpen.sbundle_at_open_intro_at]'s note) *)
+    rewrite -H0 -H1 -H2 -Hfd -HM.
+    rewrite /sbundle_at /= /xv6_sbundle /xk_a.
+    xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
+  Qed.
 
   Lemma spost_at_write_elim_at (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
       (v0 v1 v2 : mword 64) (sts : list fdstate) (Mv : gmap Z (bv 8))
@@ -192,7 +199,11 @@ Section UkWriteLeaf.
     spost_at X 16 f W r M' fdv' cw' cs' -∗
     filewrite_extra (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) r.
   Proof.
-  Admitted.
+    intros H0 H1 H2 Hfd HM. iIntros "H".
+    rewrite -H0 -H1 -H2 -Hfd -HM.
+    rewrite /spost_at /= /xv6_spost /xk_a.
+    xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
+  Qed.
 
   (* =================================================================== *)
   (*  S3  THE ARM, OUT OF THE CALLER'S OWN LEDGER                         *)
@@ -212,7 +223,13 @@ Section UkWriteLeaf.
     l !! i = Some (FdOpen rb true (FdDevice mj)) ->
     fd_st_of_key v0 fdv = FdOpen rb true (FdDevice mj).
   Proof.
-  Admitted.
+    intros H0 Hi Htake Hli. rewrite /fd_st_of_key H0.
+    destruct (decide (0 <= Z.of_nat i < Z.of_nat NOFILE)) as [_ | Hc];
+      [ | exfalso; apply Hc; unfold NOFILE, NSTD in *; lia ].
+    rewrite <- Htake in Hli.
+    rewrite lookup_take in Hli; [ | exact Hi ].
+    rewrite Nat2Z.id Hli. reflexivity.
+  Qed.
 
   (* =================================================================== *)
   (*  S4  THE SUPPLY                                                      *)
@@ -237,7 +254,22 @@ Section UkWriteLeaf.
          (Z.to_nat (sys_rw_count (m !!! Regidx a2_idx)))) -∗
     udepwf_std N m pc 16 (xfam_wr Q (ukn_pay N)) l.
   Proof.
-  Admitted.
+    intros H0 Hi Hli. iIntros "Hch".
+    rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
+    iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
+    iDestruct ("Hch" $! M pm sz with "Hheap") as "[Hheap Hch]".
+    iFrame "Hheap Hufd".
+    iApply (sbundle_at_write_intro_at uslot (xfam_wr Q (ukn_pay N))
+              (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+              (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+              (m !!! Regidx a2_idx) fdv M
+              (tf_of_arg0 m pc) (tf_of_arg1 m pc) (tf_of_arg2 m pc)
+              (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)
+              eq_refl).
+    rewrite (uwr_fd_st_dev (m !!! Regidx a0_idx) fdv l i rb mj H0 Hi Htake Hli).
+    cbn [xfam_wr wf_Q].
+    rewrite /filewrite_in. iExact "Hch".
+  Qed.
 
   (* ...AND THE POST, READ BACK AT THE SAME FAMILY.  The device arm of
      [SpecFilewrite.filewrite_extra] is keyed on [CONSOLE] -- at any other
@@ -254,7 +286,19 @@ Section UkWriteLeaf.
     spost_at uslot 16 (xfam_wr Q Xp) W r M' fdv' cw' cs' -∗
     write_cons_arms Q (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) r.
   Proof.
-  Admitted.
+    intros H0 Hi Htake Hli. iIntros "H".
+    iDestruct (spost_at_write_elim_at uslot (xfam_wr Q Xp) W
+                 (tf_w (uvis_tf W) (tf_arg_idx 0))
+                 (tf_w (uvis_tf W) (tf_arg_idx 1))
+                 (tf_w (uvis_tf W) (tf_arg_idx 2))
+                 (uvis_fd W) (uvis_M W) r M' fdv' cw' cs'
+                 eq_refl eq_refl eq_refl eq_refl eq_refl with "H") as "H".
+    rewrite (uwr_fd_st_dev (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W)
+               l i rb CONSOLE H0 Hi Htake Hli).
+    cbn [xfam_wr wf_Q].
+    rewrite /filewrite_extra.
+    case_decide as Hc; [ iExact "H" | exfalso; by apply Hc ].
+  Qed.
 
   (* =================================================================== *)
   (*  S5  THE SMOKE TEST (W3): A TWO-BYTE WRITE FROM THE LICENCE           *)
@@ -273,7 +317,14 @@ Section UkWriteLeaf.
     (forall j : nat, (k <= j <= k + cnt)%nat -> ⊢ Q j) ->
     out_licence -∗ cons_out_chain M ua Q k cnt.
   Proof.
-  Admitted.
+    revert k. induction cnt as [| cnt IH]; intros k HQ.
+    - iIntros "_". cbn [cons_out_chain].
+      iApply (HQ k ltac:(lia)).
+    - iIntros "#Hlic". cbn [cons_out_chain]. iSplit.
+      + iApply (HQ k ltac:(lia)).
+      + iIntros (b) "_". iApply (out_link_of_licence b with "Hlic").
+        iApply (IH (S k) with "Hlic"). intros j Hj. apply HQ. lia.
+  Qed.
 
   (* a cursor that is not the trivial one: "at most two bytes so far" *)
   Definition uwr_demo_Q : nat -> iProp Σ := fun k => (⌜(k <= 2)%nat⌝)%I.
@@ -287,7 +338,14 @@ Section UkWriteLeaf.
     out_licence -∗
     udepwf_std N m pc 16 (xfam_wr uwr_demo_Q (ukn_pay N)) l.
   Proof.
-  Admitted.
+    intros H0 Hi Hli Hcnt. iIntros "#Hlic".
+    iApply (uwrite_chain_sup N uwr_demo_Q m pc l i rb mj H0 Hi Hli).
+    iIntros (M pm sz) "Hheap". iFrame "Hheap".
+    rewrite Hcnt. change (Z.to_nat 2) with 2%nat.
+    iApply (cons_out_chain_of_licence_bnd M (m !!! Regidx a1_idx) uwr_demo_Q
+              0%nat 2%nat with "Hlic").
+    intros j Hj. rewrite /uwr_demo_Q. iPureIntro. lia.
+  Qed.
 
   (* ...AND WHAT COMES BACK IS THE COUNT, AT THE CALLER'S OWN FAMILY: not
      [emp], not a claim about the wire, but "the answer is a byte count
@@ -305,6 +363,19 @@ Section UkWriteLeaf.
     ⌜filewrite_ret 2 r⌝ ∗
     ∃ k : nat, ⌜r = (mword_of_int (Z.of_nat k) : mword 64) /\ (k <= 2)%nat⌝.
   Proof.
-  Admitted.
+    intros H0 Hi Htake Hli Hcnt. iIntros "H".
+    iDestruct (uwrite_post_cons uwr_demo_Q Xp W r M' fdv' cw' cs' l i rb
+                 H0 Hi Htake Hli with "H") as "H".
+    rewrite Hcnt /write_cons_arms /uwr_demo_Q.
+    iDestruct "H" as "[[%Hr %Hq] | [Hs | %Hr]]".
+    - destruct Hr as [-> _]. iSplit.
+      + iPureIntro. apply filewrite_ret_all. lia.
+      + iExists 2%nat. iPureIntro. split; [ reflexivity | lia ].
+    - iDestruct "Hs" as (k) "(%Hr & %Hlt & %Hq)". subst r. iSplit.
+      + iPureIntro. rewrite /filewrite_ret /pipe_rw_ret. right.
+        exists (Z.of_nat k). split; [ reflexivity | lia ].
+      + iExists k. iPureIntro. split; [ reflexivity | lia ].
+    - exfalso. destruct Hr as [_ Hlt]. lia.
+  Qed.
 
 End UkWriteLeaf.

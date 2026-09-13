@@ -184,6 +184,19 @@ Proof.
   exact (disc_seg'_proj _ (Forall_lookup_1 _ _ _ _ Hd Hi)).
 Qed.
 
+(* ...AND THE BYTE COMES WITH IT.  Lane ECHO-OUT stores E's histories as
+   CYCLE SEGMENTS (the discipline, [good_out] and [acc] are all per power
+   cycle, so [E_index]'s [ins] must count the cycle's inputs and not the
+   run's), and this is what turns the shift's [obs_ends_in] at the whole
+   history into the one at the segment. *)
+Lemma open_seg_ends_in (h : list mobs) (c : bv 8) :
+  obs_ends_in Uart0 h c -> obs_ends_in Uart0 (open_seg h) c.
+Proof.
+  intros [h0 ->].
+  rewrite (open_seg_io h0 [ObsUartIn Uart0 c]); [| by repeat constructor].
+  apply obs_ends_in_snoc.
+Qed.
+
 (* ====================================================================== *)
 (*  2.  THE STAGE MACHINE: [pending] AND [D]                               *)
 (* ====================================================================== *)
@@ -585,18 +598,24 @@ Proof.
 Qed.
 
 (* ...so NO ECHOED ENTRY LIES STRICTLY INSIDE A GAP *)
+(* ...SO NO ECHOED ENTRY LIES STRICTLY INSIDE A GAP.  The premise is the ONE
+   consequence of the discipline this argument uses -- [pops_no_erase] is its
+   producer -- and not the discipline itself: lane ECHO-OUT's claim carries
+   the discipline of each entry's CYCLE SEGMENT, from which the whole
+   history's [disc_seg] does not follow, while the no-erase fact does
+   ([disc_seg_no_erase] at the segment). *)
 Lemma no_echoed_between (pops : list log_entry) (h1 h2 : list mobs)
       (y : list mobs * bv 8) :
-  log_ok pops -> (forall e, e ∈ pops -> disc_seg (le_hist e)) ->
+  log_ok pops -> (forall e, e ∈ pops -> cons_erase (le_byte e) = false) ->
   gap_ok pops h1 h2 ->
   y ∈ echoed pops -> hist_ext h1 y.1 -> hist_ext y.1 h2 -> False.
 Proof.
-  intros Hlog Hdisc Hgap Hy H1 H2.
+  intros Hlog Hnoer Hgap Hy H1 H2.
   destruct (echoed_elem_inv pops y Hy) as (e & Hein & Hech & Heq).
   assert (Hh : le_hist e = y.1) by (by rewrite -Heq).
   destruct Hgap as [Hleft|(e' & He'in & _ & _ & Herase)].
   - apply (log_echoed_nonnil e Hech). apply (Hleft e Hein); by rewrite Hh.
-  - rewrite (pops_no_erase pops Hlog Hdisc e' He'in) in Herase. discriminate.
+  - rewrite (Hnoer e' He'in) in Herase. discriminate.
 Qed.
 
 (* F3(a): THE CONSUMED INPUTS ARE AN INITIAL SEGMENT OF THE ECHOED ONES.
@@ -614,11 +633,14 @@ Qed.
    AFTER the echo's out_links, so between the two the claim's [E] is one
    entry AHEAD of [echoed pops] and no lemma may assume they agree.
 
-   HYPOTHESES THE NOTE DOES NOT LIST.  (1) The discipline is needed on the
-   history of EVERY entry of [pops], not only of [ws]: the gap clause's
-   erase disjunct names an arbitrary LOG entry, which need not have been
-   consumed, and the only thing that refutes it is that a disciplined input
-   byte is a byte of [echo_line] and no erase byte is.  (2) [log_ok pops]
+   HYPOTHESES THE NOTE DOES NOT LIST.  (1) The no-erase fact is needed for
+   EVERY entry of [pops], not only for [ws]'s: the gap clause's erase
+   disjunct names an arbitrary LOG entry, which need not have been consumed,
+   and the only thing that refutes it is that a disciplined input byte is a
+   byte of [echo_line] and no erase byte is.  It is the DISCIPLINE'S
+   consequence and not the discipline ([pops_no_erase] is the producer, and
+   [disc_seg_no_erase] is it at a cycle segment, which is the form lane
+   ECHO-OUT's claim carries).  (2) [log_ok pops]
    is what makes [echoed pops] history-ordered, so that "no log entry
    strictly between two consecutive consumed ones" is a statement about
    INDICES.  Both hold on the Iris side -- [disc] is prefix-closed, so
@@ -628,11 +650,11 @@ Lemma read_window_prefix (pops : list log_entry)
       (dl ws : list (list mobs * bv 8)) :
   log_ok pops ->
   read_ok pops dl ws ->
-  (forall e, e ∈ pops -> disc_seg (le_hist e)) ->
+  (forall e, e ∈ pops -> cons_erase (le_byte e) = false) ->
   dl `prefix_of` echoed pops ->
   (dl ++ ws) `prefix_of` echoed pops.
 Proof.
-  intros Hlog (Hin & Hchain & Hgap0 & Hgap) Hdisc Hdl.
+  intros Hlog (Hin & Hchain & Hgap0 & Hgap) Hnoer Hdl.
   (* the consumed list agrees with [echoed pops] index by index, by strong
      induction on the index (the bound [N] is the induction's measure) *)
   assert (Hpt : forall N k, k < N -> k < length (dl ++ ws) ->
@@ -670,7 +692,7 @@ Proof.
         destruct k as [|k'].
         + destruct p as [hp cp].
           eapply (no_echoed_between pops [] hp y);
-            [exact Hlog|exact Hdisc|by eapply Hgap0|exact HyE| |exact Hyp].
+            [exact Hlog|exact Hnoer|by eapply Hgap0|exact HyE| |exact Hyp].
           destruct (echoed_elem_inv pops y HyE) as (ey & Heyin & _ & Heyeq).
           rewrite -Heyeq /=.
           eapply hist_ext_nil_of_ends.
@@ -681,7 +703,7 @@ Proof.
             by (rewrite (IHN k' ltac:(lia) ltac:(lia)); exact Hp').
           destruct p as [hp cp]. destruct p' as [hp' cp'].
           eapply (no_echoed_between pops hp' hp y);
-            [exact Hlog|exact Hdisc|by eapply Hgap|exact HyE| |exact Hyp].
+            [exact Hlog|exact Hnoer|by eapply Hgap|exact HyE| |exact Hyp].
           apply (echoed_order pops k' (S k') (hp', cp') y);
             [exact Hlog|lia|exact HE'|exact Hy]. }
     by rewrite Hnk in Hn. }

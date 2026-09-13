@@ -1774,6 +1774,13 @@ ConsLog.v
 # applies (the stage is below the session, the next echo is the next input,
 # the read window is a slice of the echoed list, PHI's pure part).
 EchoOutPure.v
+# E5's application claim, THE IRIS HALF (lane ECHO-OUT): the two console
+# port claims (taint / fresh / paired), the ghost names at the fixed part,
+# the LEDGER-ANCHORED era machine the claims are pinned to, and the four
+# links stated at the mask the kernel's own links run at.  Below AppEcho
+# and abstract in the taint, so that the claims may be read without the
+# era-0 pin cone.
+EchoOut.v
 # The ECHO application: its discipline, fixed part, ledger, tag, the
 # [taint or pins] predicate over the three era-0 pin files, the record
 # [app_echo], and every hypothesis of App.xv6_app_adequacy except

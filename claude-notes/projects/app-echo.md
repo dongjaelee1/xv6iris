@@ -3232,6 +3232,62 @@ inherits it.  With the owner's C guard (`kkill` refuses pid 0, 688c4c1b7) the
 free arm is the pure flag; `ProofKkill` was re-walked at that rebase.
 Handover: scratchpad `self-kill-handover.md`.
 
+E5 DESIGN OF RECORD, REVISIONS 4-7 (coordinator, 2026-09-14; these amend the
+"E5 -- THE CONSOLE I/O CLAIM" note above and the RULINGS below; the kernel side
+is LANDED as CONS-IO A/B/C/D; the application side is lane ECHO-OUT):
+(R4) LEDGER-ANCHORED CLAIMS.  The application's exclusive cross-era state --
+the stage machine and the era's turn -- lives in its obs LEDGER `echo_R`
+(`EchoOut.echo_led`), which every link may open (the links run at
+`⊤ ∖ ↑uartN Uart0`, and `Htx` already has `app_R` in hand at
+`⊤ ∖ ↑uartN ∖ ↑obsN`); the port claims `riscv_out_res`/`riscv_in_res` are pure
+facts plus ONE pairing half each, three arms: taint ∨ founded (acc = [] /
+pops = dl = []) ∨ paired (`era_pin k v ∗ frag ∗ (era_closed k ∨ ⌜pure⌝)`).
+The founding (`Happ_boot`) is `⊢` from the founded arm.  Two stages, not one:
+the output stage `(cs, E, w)` and the input stage `(E, owed)`, tied in the
+ledger (`stage_tie`), because a write moves only the output claim and an
+append only the input claim; the echo (`echo_link`) holds both.  The chain-
+first window is `ein_owed`, returned by the echo and consumed by the append.
+The turn is a MONOTONE count of process bytes in the era (`pcount`), which the
+echo never touches (it folds exactly the bytes already counted).  The pure
+layer works at CYCLE SEGMENTS (`open_seg`); `E_byte`/`E_index` are the named
+hypotheses; `sess_n_prefix_det` (the four alternatives' first bytes are
+pairwise distinct) is what lets F2 compare `sess_n` by length.
+(R4') `echo_phi := fun _ h => disc h -> Forall good_out (cycles_of h)` (owner:
+"no per-cycle form; once tainted in one era, tainted forever"; the landed
+guarded-per-cycle form is unprovable -- a tainted run licenses garbage in a
+later cycle whose own discipline holds vacuously).
+(R5/R6) THE ERA INDEX (owner-confirmed): every claim and link is indexed by
+the ERA NUMBER `S gen_id` (CONS-IO C), and the kernel STAMPS every history it
+hands the application with `⌜obs_boots h = S gen_id⌝`; so a dead era's writer
+(whose linear turn sits in that era's closed invariants and can never be
+reclaimed) meets only its own era's claim BY THE INDEX, and the same-cycle
+facts are pure -- NO history comparison against the ledger's inside a link
+(the observation authority is in the state interpretation, unprovable there).
+No injective name map, no `era_cur`, no reclaim at power-off.  The ledger's
+counter is `obs_boots h_led`, pinned to the kernel's number by the stamps.
+(R7) ADOPTION.  The claims' founded arms are pure, and two existentials chosen
+by one founding can never be shown equal, so: the founding allocates the era's
+ghosts with FULL ownership into `app_boot` only (init's boot bundle); the
+kernel hands init a per-generation EXCLUSIVE `era_tok (S gen_id)` (CONS-IO D)
+beside it; the era is ADOPTED at init's FIRST BANNER BYTE (the transcript's
+`u_prologue` is init's own eighteen one-byte writes): the write's fupd finds
+the ledger at `cur = None` (reset at power-on), inserts `k ↦ v` consuming the
+token, splits the ghosts into the ledger's auths + the out claim's frag + the
+ESCROWED in-claim frag (handed to the in claim at its first link), and writes.
+Before adoption an input finds `acc = []`: it precedes the prologue,
+undisciplined, taint arm.  The CHOICE LIST grows at a block's first byte: the
+writer supplies the alternative index `a` with `line_alts !!! a !! 0 = Some b`
+and the step appends `a`; the prologue appends nothing.  THE WRITER'S
+KNOWLEDGE: `turn v P ∗ cs_lb v cs0 ∗ E_lb v n0` (persistent mono_list/mono_nat
+lower bounds of the stage exposed by the ledger; the read link hands out
+`E_lb v (length (dl ++ ws))`), from which `pending cs E !! p = Some b` and the
+strictness ("this continuation is not already complete") follow purely
+(`proc_upto` is definitionally aligned with the cursor; the naive
+`proc_stream` law was FALSE at a completed continuation).
+The Fable design review of 2026-09-14 (scratchpad `brief-review-echo.md`)
+drove R4'/R5/R6 and the turn's monotonicity; its dispositions are in the
+session scratchpad `e5-design.md` REVISION 6.
+
 RULINGS AFTER CONS-IO PHASE 1 (coordinator, 2026-09-13; the E5 note above is
 read with these): (1) the shift is CHAIN-FIRST, APPEND-LAST -- the echo's
 `out_link`s run, then `in_append (h, c, cs)`; between them the claim sees

@@ -47,8 +47,8 @@ SH-OPEN, LAZY-FLAG, TEXT-LW, APP-IFACE, UNTAG, DISC-RATE, E4 SH-ECHO, E2
 INIT-BOOT (2026-09-13, `bde2b8659`), CLOSED-READ, DISC-SIMPLIFY (2026-09-13),
 CONS-ROWS (2026-09-13, `b3f64b406`).
 
-- [ ] **KILL-PAY** (kernel; `-sup`, `lane/kill-pay`; milestone A LAZY-ROW
-  LANDED, milestone B in flight): a kill is paid with a persistent
+- [ ] **KILL-PAY** (kernel; `-sup`, `lane/kill-pay`; milestones A LAZY-ROW
+  and B1 LANDED; B2 = K2+K3(b)+K4 next, from the parked patch): a kill is paid with a persistent
   credential that reaches every party the kill touches (design: "KILL-ARM"
   below, plus the rulings: the 13/15 route is gated by the lazy bit; the -1
   exit payload is a wand from the credential; the generic supply carries
@@ -2622,6 +2622,35 @@ TX-RECEIPT's `tx_claim` so the two lanes merge by juxtaposition; the hart lines'
 `boot_hart_pre`, banners-before via `k_ledger_lb [banners]` on the `started`
 invariant; `boot_k_shape` deleted.  `BACKSPACE` is the int 0x100 (not byte 8):
 the "\b \b" triple is reachable only from `%c`, unused.
+
+KILL-PAY B1 LANDED (2026-09-13; `2f7e79109`; 10 files +333/-58; build killb11,
+audit = the thirteen, lemma_diff CLEAN).  The machine carries an ambient KILL
+CREDENTIAL: `RiscvPtsto.riscv_kill_cred` beside `riscv_rx_tag`, persistent and
+timeless as instances, `kill_cred_triv` beside `rx_tag_triv`; `boot_fixedGS`
+gains `(Kc, HKc, HKct)` after `HTgt` (thirteen literal sites,
+`UInitBootAdequacy.v` included); `riscv_power_adequacy` and
+`xv6_power_adequacy_gen` gain the `CT`-indexed triple; `App.xv6_app` gains
+`app_kill` after `app_tag`.  THE OBLIGATION IS ONE LINE PER APPLICATION:
+`Happ_kill : app_sup_raw (app_pred A c) r ⊢ □ app_kill A c` -- the supply
+BUYS the credential, which keeps the price off every verified program (as
+landed it is discharged but not yet spent: B2 either spends it at the
+kernel's generic mint or drops it).  `Hinit_boot` gains `riscv_kill_cred =
+app_kill A c` (read off the literal as `Htagfix` is).  ECHO'S IS THE TAINT
+(`app_echo`'s ninth field; `echo_Happ_kill = echo_taint_of_sup`).  THE
+GENERIC SUPPLY IS A PAIR: `UexecExecInst.xv6_ssupply := app_sup ∗ □
+riscv_kill_cred`, riding `udep_gen`/`uslot_mint*`/`init_boot_of_sup`;
+`echo_Hinit_boot` pays its one taint-arm mint (`UInitBoot.v:~522`) from the
+taint.  SYS_KILL PAYS AT THE DEPOSIT: `xv6_sbundle` row 6 is `□
+riscv_kill_cred`; `UexecSG.free_num` gains `n <> 6`.  NOT YET (B2, parked as
+`/shared/xv6iris-2-sup-kill-pay-B2-wip.patch`): K2 (the killed word's row --
+`kl : mword 32`, so `⌜kl = mword_of_int 0⌝ ∨ □ cred`), K3(b) (the trap
+deposit gated by `ukill_sc`; the store/load fault arms take a Coq-level
+`u_fault_flavor … -> ⊢ □ cred` on `uk_*_obl_base` discharged at
+`wp_uk_*_later` by refuting all three flavors -- canonicity, LAZY-ROW's
+`lazy_free_wmapped`, and `uleaf_ok` vs `uleaf_denied` at one `mstate`;
+`UkStepGen`'s `Ret_transparent`; the usertrap thread `ut_kill_in` to
+`ut_56`), K4 (the -1 payload wand; the -1 arms).  K2 and K3(b) are ONE unit:
+`SpecSetkilled`'s premise has no source but the trap deposit.
 
 LAZY-ROW LANDED (2026-09-13; KILL-PAY milestone A; 34 files +483/-292; builds
 kill18/lazyrow1, audit = the thirteen; lemma_diff = one NEWAXIOM, the

@@ -27,9 +27,11 @@ first application is [`../projects/app-echo.md`](../projects/app-echo.md).
   `echo hello world` at the console, sh forks and execs echo, echo prints
   the string back.  Its invariant is THE FILE SYSTEM IS UNMODIFIED — the
   binaries of init, sh and echo are the image's at every reboot — and its
-  trace property is "if every byte ever typed follows the discipline, the
-  console's output is the expected one and the durable file system is the
-  mkfs image's at every state".
+  trace property is "if every byte ever typed on the console follows the
+  discipline, the console's output is the expected one and the durable
+  file system keeps the pins (and the console node init may have created)
+  at every state".  Only the console UART is read; the kernel's own UART
+  (printk, panic) is unconstrained.
 
 The generic application constrains nothing, so everything it asks of the
 kernel is discharged trivially (`app_sup_raw_triv`, `app_xfer_raw_triv`,
@@ -269,8 +271,15 @@ yield `app_cl c`.  For the echo application
 
 `disc h` is the DISCIPLINE, a prefix-closed predicate on the whole
 history (uart-trace.md ruling 3: input assumptions are antecedents inside
-the trace predicate, never a semantic change): in every power cycle the
-`ObsUartIn` bytes so far are a prefix of `(echo hello world\n)*`.  The rx
+the trace predicate, never a semantic change), read off the CONSOLE UART
+alone -- the kernel's own UART carries printk and panic and is not the
+theorem's concern: in every power cycle the console's `ObsUartIn` bytes so
+far are a prefix of `(echo hello world\n)*` and each was typed only after
+the expected transcript for the bytes before it had appeared on the
+console wire (`EchoDisc.disc`: the content condition D3 and the positional
+rate bound D1/D2).  The conclusion `good_out` is that the console wire is a
+prefix of the expected transcript, the per-line failure alternatives
+admitted.  The rx
 wand keeps the counter at 0 while the byte keeps the discipline and moves
 it to 1 the first time it does not (monotone: a later disciplined byte
 cannot un-taint).  The taint `mono_nat_lb_own γ 1` is a persistent

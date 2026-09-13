@@ -9,49 +9,63 @@ landed (the top banner of `iris/App.v`).
 
 ## The target statement
 
-At the real image, powered off, never booted: for every run,
+At the real image, powered off, never booted: for every run, every power
+cycle whose CONSOLE input kept the discipline has a console wire that is a
+prefix of the expected session transcript, and the durable file system
+recovers to a view satisfying the three pins and the console state.
 
-    disc κs -> good_out κs /\ pristine (v_disk g2)
+- THE THEOREM READS THE CONSOLE UART ONLY (`DevModel.Uart0`): its input
+  (`EchoDisc.ins`) and its wire (`obs_wire Uart0`).  The kernel's own UART
+  (printk, panic) is unconstrained and never named.
+- `EchoDisc.disc`: D3, the input bytes are a prefix of `(echo hello world\n)*`
+  (`disc_seg`, the landed content condition, verbatim); D1/D2, the rate
+  bound, positional -- before input `i` the expected transcript for `i`
+  bytes is already a prefix of the wire (`disc_pt cs i p := sess_n cs i
+  prefix_of obs_wire Uart0 p`), which is "type a line's first byte after the
+  prompt, every later byte after the previous byte's echo".
+- `EchoDisc.good_out seg := expected_rel (ins seg) (obs_wire Uart0 seg)`: the
+  wire is a prefix of the transcript for the input's length, under some
+  resolution of the per-line failure alternatives (O5: echo ran / exec
+  failed / the child died silently / sh's fork panicked and init restarted
+  it).  `echo_phi h := Forall (fun seg => disc_seg' seg -> good_out seg)
+  (cycles_of h)`.
+- The durable half is `AppEcho.echo_pred`'s untainted arm: the /init, /sh
+  and /echo pins plus `cons_state` -- NOT the mkfs image's view (init's
+  repair arm may have created the console node; review finding 8).
 
-where `disc` says every `ObsUartIn` byte of every power cycle so far is a
-prefix of `(echo hello world\n)*`, `good_out` says every cycle's
-`ObsUartOut` bytes are a prefix of the expected console stream for that
-cycle's inputs, and `pristine dk` says the committed map `dk` recovers to
-has the mkfs image's abstract view (so init, sh and echo are the image's
-binaries at every reboot).
+STATED: `UInitBootAdequacy.echo_adequacy_modulo_phi` = `App.xv6_app_adequacy`
+at `AppEcho.app_echo` with every obligation of the record discharged except
+`Hphi` (E5's) and the shell side's owed hypotheses (`Hsh_owed`: `udepw_law
+16`, `sh_deps`, `sh_pay_state`, `sh_pay_rest`, all at `uprogSG_free`).
 
-## Lanes (design §6), with what each unblocks
+## Lanes, in execution order (refreshed 2026-09-13)
 
-- [x] ~~**L2 — the step moves to the process.**~~  LANDED 2026-09-08 (lanes
-  ARM-a and ARM-b, commits `7cc15a670` … `cb831ce4c`).  Each ecall deposits
-  its syscall's one-shot bundle at the process's own families and gets the
-  armed post back at those families; the generic slot mints from the
-  supply (`app_sup`, born at boot from `Happ_sup`); `app_auto`/`Happ_auto`
-  are GONE.  The application's obligations are `Hbirth`, `Happ_xfer`,
-  `Happ_init`, `Happ_sup`, the ledger's and `Hphi`.  The chdir/open
-  receipt split (RECEIPT-SPLIT) and fork's real row (KFORK-CHILD,
-  STEADY-PARK, FORK-ROW) are landed.
-- [x] ~~**L3 — round E of `app-instances.md`**~~ (kernel side, application-
-  independent).  LANDED: every view move on a dispatched path is an AU fire
-  or a `_step`; link, mkdir, create's legs, the write and `iput`'s free are
-  AU forms with their deltas (`fs-syscall-specs.md` §4); the only `_same`
-  movers left are the two between absent rows (ilock's fresh-inode fill,
-  the escrow deposit's free); `top_move` and the `_auto` movers are gone.
-  `Happ_auto` stays for L2, which is what it is now the only payer of.
-- [x] ~~**L4 — the crash predicate's application conjunct.**~~  Dissolved
-  into the durable instance and the transport (round C): the claim rides
-  the crash slot beside the snapshot and crosses at commit/clone/boot as a
-  resource.
-- [x] ~~**L5 — console input tie.**~~  LANDED 2026-09-09 (RECEIPT-IMAGE,
-  L5-a in two halves, L5-b): every received byte carries the
-  application's persistent tag from the rx wand to the read syscall's
-  receipt; the PLIC claim is the UART's lock (`plic_slot`, the pop
-  token); the ring is coupled.
-- [ ] **L6 — the programs.**  init and sh on the Uk engine with paid
-  ecalls; the exec-site gate at the observed image; fork's real row.
-  Gate: L2, L5; `user-wp-slot.md` items 1–3.
-- [ ] **L7 — the output side.**  `echo_out`, `good_out`, the tx wand.
-  Gate: L6 (the writes' receipts).
+LANDED: L2 (the step moves to the process), L3 (round E), L4 (dissolved into
+the durable instance), L5 (the input tag), the WAIT-EXIT arc, E1 ECHO-PRED,
+CONS-CURSOR/CONS-ROUTE/CONS-SWALLOW, OPEN-PIN, SH-LINE 1/2a/2b R1, SUPPLY-SPLIT,
+SH-OPEN, LAZY-FLAG, TEXT-LW, APP-IFACE, UNTAG, DISC-RATE, E4 SH-ECHO, E2
+INIT-BOOT (2026-09-13, `bde2b8659`), CLOSED-READ, DISC-SIMPLIFY (2026-09-13).
+
+- [ ] **CONS-ROWS** (kernel; in flight, `-disc`, `lane/cons-rows`): the
+  three pure rows the line proof needs -- B1 `d = cap -> dc = d`, B4 `r = 0
+  -> 0 < cap -> dc = d + 1` on consoleread's post and relayed through
+  `console_receipt`, B3 `fileread_ret` restored in `xv6_spost` at 5.
+- [ ] **KILL-PAY** (kernel; phase 1 in flight, `-sup`, `lane/kill-pay`):
+  a kill is paid with a persistent credential that reaches every party the
+  kill touches (design: "KILL-ARM" below).  Trusted-statement diff for the
+  owner at the end of phase 1.
+- [ ] **OUT-FUPD** (kernel; main, next): the application-fixed output
+  predicate in the console UART's invariant, the store's view shift, the
+  writers' contracts, the retirement of the sublist receipts (design:
+  "OUT-FUPD PHASE 1 -- DESIGN" narrowed by "TWO UARTS").
+- [ ] **SH-LINE 2b R2/R3** (U-tier; after CONS-ROWS): the line fact through
+  getcmd, `ush_rest` deleted; the composer `UShLine.v` with E4's dispatch;
+  closes `sh_pay_rest`.
+- [ ] **E5** (after OUT-FUPD, KILL-PAY): the write leaves at the program's
+  view shift (init's eighteen bytes, sh's prompt, echo's four writes; closes
+  `udepw_law 16`); `Hphi` from the console invariant's predicate read
+  through `Htx` against `echo_R_untainted`; then `echo_adequacy` closed from
+  `echo_adequacy_modulo_phi`.
 
 ## What is in `iris/AppEcho.v` today
 
@@ -2609,6 +2623,71 @@ TX-RECEIPT's `tx_claim` so the two lanes merge by juxtaposition; the hart lines'
 `boot_hart_pre`, banners-before via `k_ledger_lb [banners]` on the `started`
 invariant; `boot_k_shape` deleted.  `BACKSPACE` is the int 0x100 (not byte 8):
 the "\b \b" triple is reachable only from `%c`, unused.
+
+DISC-SIMPLIFY LANDED (2026-09-13; `EchoDisc.v` -577/+127, `AppEcho.v`
+comments; build disc2, audit = the thirteen; lemma_diff = 62 GONE, all the
+boot-message machinery).  The theorem reads the console UART only: the ten
+boot messages, the k-point (`subseqb`/`k_done`/`k_point`/`k_pt`), the
+digit-freeness argument, the prologue's prompt-bearing tails and their
+antichain, `shuffle` and `boot_stream` are GONE.  `disc_pt cs i p := sess_n
+cs i prefix_of obs_wire Uart0 p` (D1/D2 measured from the start of the
+wire: nothing but the session writes it); `good_out seg := expected_rel (ins
+seg) (obs_wire Uart0 seg)`; `disc_seg` (D3), `disc_seg'`'s shape, the three
+closure laws, `disc_old`/`disc_proj` and the decidability all keep their
+statements, so nothing above `EchoDisc` moved.  `demo_disc_seg'`/
+`demo_good_out` are the anti-vacuity witnesses; `disc_pt_good_out_pin` is
+where the discipline's lower bound and the claim's upper bound meet at an
+input point -- the simulation invariant E5 carries.  O5' (kernel
+diagnostics admitted) and D0 dissolve; PRINTK-LEDGER/RENDER are not needed.
+
+E2 INIT-BOOT LANDED (2026-09-13; `bde2b8659` = the lane's three commits
+rebased onto the bump; build e2land1, audit = the thirteen, lemma_diff
+CLEAN).  `UInitBootAdequacy.echo_adequacy_modulo_phi` is the whole-system
+theorem at echo's era: `App.xv6_app_adequacy` at `app_echo` with fifteen
+holes, every obligation discharged except `Hphi` (E5) and `Hsh_owed` (the
+shell side's four Coq-level entailments at `uprogSG_free`: `udepw_law 16`,
+`sh_deps`, `sh_pay_state Rsh 0`, `sh_pay_rest Rsh`).  The seal
+(`cons_never`/`cons_seal_tok`, the fourth `cons_state` arm), both console
+dance arms at echo's era, `app_claim_update`, `init_cons_sup`,
+`PinnedExec.pex_slot_at`/`pinned_exec_bundle_boot` (the BOOT shape at a
+literal path and argv), `echo_Hinit_boot` with every deposit at the FREE
+instance; `Hinit_boot` gained `riscvF_genGS (riscv_fixedGS HR) =
+riscv_pre_genGS ->` (App.v/SystemAdequacy.v, discharged by reflexivity at
+the boot literal, taken and unused by `app_triv`).  Durable lessons are in
+durable-notes (invented-class imports; instance mixing wedges; the theorem
+applied with holes).
+
+KILL-ARM -- DESIGN (2026-09-13, coordinator; lane KILL-PAY, phase 1 in
+flight; the trusted-statement half awaits the owner).  THE PROBLEM: a
+killed sh never resumes (usertrap's `if(killed(p)) exit(-1)`), init's wait
+returns and init prints "init: starting sh\n" and forks a fresh sh --
+output the transcript does not predict; and consoleread's -1 arm reaches
+sh's read leaf.  Under the discipline no kill can happen (only init/sh/echo
+run and none calls kill; no verified process traps with an unexpected
+cause), but the kernel says nothing of the kind: `p->killed` is existential
+in `proc_pub`, `SpecKkill`/`SpecSetkilled` demand nothing, `SpecKwait`'s
+-1 status is indistinguishable from the child's own `exit(-1)`.  THE
+DESIGN, on the console's dirty-credential mould (`cons_dirty_cred Wd := □
+Wd`, `Wd := app_sup` = the taint for echo): (K1) a fixed-layer field
+`riscv_kill_cred : iProp` on `riscv_rx_tag`'s mould, from a record field
+`app_kill : app_fixed -> iProp` (echo: `echo_taint c`; triv: `True`) with
+`Hkillp` (persistent) and `Happ_kill : app_sup_raw (app_pred A c) r ⊢
+app_kill A c` (the generic supply pays it; `echo_taint_of_sup`); (K2)
+`proc_pub`'s killed row `∃ k, killed ↦ k ∗ (⌜k = 0⌝ ∨ □ riscv_kill_cred)`,
+kkill/setkilled take the credential, killed() returns `⌜r = 0⌝ ∨ □ cred`;
+(K3) the payers: sys_kill from the process's deposit at 6 (the generic slot
+pays from `app_sup`; verified programs never issue 6), usertrap's
+unexpected-cause arm from the trap deposit (`uexec_ret sc W` at an
+unexpected `sc` carries `□ cred ∗ uexec_slot W`; a verified leaf never
+produces such an `sc`, the generic slot pays) -- the design-bearing item,
+phase 1 surveys the engine; (K4) the consequences carry it: kexit's ZOMBIE
+escrow records the row, kwait hands the parent `⌜k = 0⌝ ∨ □ cred` beside
+the status (LAST, the payload algebra untouched), consoleread's and
+`console_receipt`'s -1 arms carry it to row 5 and the U-tier leaf's killed
+arm.  REJECTED: admitting the restart transcript in `good_out` (a kill is
+impossible under the discipline, so the admission would only weaken the
+theorem); a `Wk` parameter on `procs_inv` (a sweep of every occurrence;
+the class field costs no sweep).
 
 CLOSED-READ LANDED (2026-09-12; owner's ruling: "read on fd 0 returns -1.
 maybe your spec isn't good enough to say it. fix it then.").

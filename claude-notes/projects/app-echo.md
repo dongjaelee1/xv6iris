@@ -57,9 +57,17 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   linear parameter of the generation token chosen at fork, `killed()` is the
   flag only, KILL-PAY B1's fixed-record credential is rolled back, and sh's
   child may die at sbrk failure (the null store inside memset) paying Q(-1).
-- [ ] **CONS-IO** (kernel; `-tlw`, `lane/cons-io`; the E5 note): the input
-  resource, the shift as one fupd per accepted input, `read_link` at the
-  read receipt with `read_ok`, the licences.
+- [ ] **CONS-IO** (kernel; `-tlw`, `lane/cons-io`; the E5 note and its
+  "RULINGS AFTER CONS-IO PHASE 1"): the input resource, the shift as one
+  fupd per accepted input, `read_link` at the read receipt with `read_ok`,
+  the licences.  Phase 2 in flight.
+- [x] ~~**ECHO-PURE**~~ LANDED 2026-09-13 (`c1781608b`; the note below): E5's
+  pure half -- `ConsLog.v` (the boundary vocabulary), `EchoOutPure.v` (the
+  stage machine and the four facts), `disc_prefix`.
+- [ ] **WRITE-LEAF** (U tier; main checkout, `lane/write-leaf`): the write
+  leaf that pays row 16 with the program's own `cons_out_chain`
+  (`UkRunSys.wp_uk_ecall_write_chain` + `UkWriteLeaf.v`), the three
+  wrappers; IO-LEAF's first half.  Phase 2 in flight.
 - [x] ~~**OUT-FUPD**~~ LANDED 2026-09-13 (`c6a5521ac`; the note below); the
   `AppEcho.echo_out` placeholder is ECHO-OUT's to replace.
 - [ ] **SH-LINE 2b R2/R3** (U-tier; R1'/(a)/(b) LANDED 2026-09-13; the rest
@@ -67,7 +75,8 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   `ush_pos`, the line fact through getcmd, `ush_rest` renamed, the composer
   with E4's dispatch, `sh_rest_holds` (`sh_pay_state` is SH-STATE's, landed).
 - [ ] **E5** (design of record: "E5 -- THE CONSOLE I/O CLAIM" below;
-  lanes CONS-IO -> ECHO-OUT -> IO-LEAF -> SH-LINE R2/R3 -> PHI).
+  lanes CONS-IO + ECHO-PURE + WRITE-LEAF (parallel) -> ECHO-OUT -> IO-LEAF
+  (the read leaf, the turn, the programs' write sites) -> SH-LINE R2/R3 -> PHI).
 
 ## What is in `iris/AppEcho.v` today
 
@@ -2950,6 +2959,62 @@ composer; `sh_rest_holds`) -> PHI (the ledger conjunct, `Hphi`,
 `echo_adequacy` closed).  CONS-IO and SELF-KILL touch different files (the
 read receipt vs the trap/exit path) and run in parallel.
 
+
+ECHO-PURE LANDED (2026-09-13; `c1781608b`, three commits on `e7191f868`; 5 files
++1021/-36; builds epu4/epu5 in `-disc`; audit the thirteen; lemma_diff = the
+three relocations).  E5's pure half, so ECHO-OUT only applies lemmas.
+`ConsLog.v` is the coordinator's canonical boundary vocabulary (`echo_of`,
+`cons_erase`, `consputc_bs`, `cons_echo` -- CONS-IO deletes the SpecConsputc/
+SpecConsoleintr copies -- `log_entry`, `log_echoed` with its Decision
+instance, `hist_chain`, `gap_ok`, `read_ok`, `log_ok`) plus `log_ok_lt`/
+`hist_chain_lt`; nat comparisons appended there need `%nat` (list_scope is
+open).  `EchoOutPure.v` is the STAGE MACHINE: `pending cs E` (`u_prologue`,
+then line q-1's alternative at 17q, else `[]`) and `D cs E`, a Fixpoint on E
+FROM THE LEFT with the stage index as accumulator -- the note's right-append
+law is `D_app`.  F1 `D_pending_sess`: `D ++ pending = sess_n (length E)` at
+EVERY stage.  F2 `D2_next_input`, over an ABSTRACT wire `W`: the next echo is
+input `length E + 1`, and `w = pending` unconditionally.  F3
+`read_window_prefix`/`read_window_line`/`read_delivered_line` over the CONSUMED
+window (`d = length ws` is the named no-swallow hypothesis).  F4
+`good_out_of_stage` + `echo_phi_of_good_out` (`echo_phi` is the GUARDED form).
+TWO NAMED HYPOTHESES the design left implicit: `E_byte E` (E's j-th byte is
+`echo_line`'s; F1 turns on it; `E_byte_of_disc` produces it from D3) and, in
+F2, `∀ x ∈ E, hist_ext x.1 h` (the kernel's log-order fact -- nothing else
+refutes a duplicated input).  F3 needs the discipline on EVERY `pops` entry,
+not only the window's, and `log_ok` as the order source.  EchoDisc gains the
+three periodicity lemmas (from UConsLine), `star_prefix_prefix`/
+`disc_seg_prefix`, and `disc_prefix` with NO `trace_shape` premise.  Two
+`ObsTrace`-level copies (`epu_elem_of_rev_head`/`epu_cycles_snoc_in`, from
+UkSh) stay local and flagged.
+
+RULINGS AFTER CONS-IO PHASE 1 (coordinator, 2026-09-13; the E5 note above is
+read with these): (1) the shift is CHAIN-FIRST, APPEND-LAST -- the echo's
+`out_link`s run, then `in_append (h, c, cs)`; between them the claim sees
+`acc = D cs (E ++ [(h,c)])` with the log one entry behind, so ECHO-OUT's claim
+carries an "append owed" state; the erase arms use the STOPPABLE `in_run h c
+pre bs Φ` over the upper bound `length pd` (the ^U loop's glyph count is
+unknown when the shift fires; `out_run` is the precedent).  (2) The input
+claim `in_claim_at` sits at its OWN witness `∃ o` (not the output's;
+`out_link` and OUT-FUPD's surface untouched); "logged once, in arrival order"
+comes from the log's high-water half `uart_log_hi` -- a third half in
+`uart_rx_writer`, twin of `uart_rx_hi` -- with `in_log_auth` (a mono_list
+mirror of `pops`), the `uart_deliv` pair for `dl`, and `⌜log_ok pops⌝`.
+(3) `dl` is every input the read path CONSUMED, delivered or swallowed (the
+kernel has two exits that pop and never deliver: a leading ^D, a copy-out
+fault): `length dl = cur`; `read_link ws` at the consumed window (`length ws
+= dc`), fired as a premise of `SpecConsoleread` at the final release on the
+CLEAN arm only (the dirty arm returns `cons_dirty_cred` as today), NOT at the
+receipt in ProofFileread (assembled after the lock is gone); the receipt's
+clean window arm carries the process's `Rin ws`; `fileread_in` gains `Rin`,
+`xfam.rf_in`; the gap witness `cons_gaps_ok` + a `gp` bit + `cons_log_lb` live
+in `cons_res`.  (4) `xv6_ssupply := app_sup ∗ □ riscv_kill_cred ∗ □
+out_licence ∗ □ in_licence` (SELF-KILL deletes the second); App.v gains
+`app_in`, `Hinpt`, `Happ_in_sup`, the `riscv_in_res = app_in` equations on
+`Hinit_boot`/`Happ_echo`, and `Htx`'s input claim at its own `hi`;
+`app_xfer_boot_raw A B O I`; `AppEcho.echo_in := emp` is ECHO-OUT's hole
+beside `echo_out`.  (5) sh's read leaf takes `□ (T -∗ in_licence)` on
+`ush_tag_law`'s mould, discharged at `echo_Hinit_boot`, until SH-LINE R2/R3
+supplies the real `read_link`.
 
 SH-LINE 2b R1'/(a)/(b) LANDED (2026-09-13; four commits on KILL-PAY B1; 9 files
 +1136/-662; builds shr33/shr34/shr42/shland1, audit = the thirteen, lemma_diff =

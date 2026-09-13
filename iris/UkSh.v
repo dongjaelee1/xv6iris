@@ -133,6 +133,8 @@ Require Import EchoDisc.     (* [echo_line] / [disc] -- the ONE line the
                                 A PURE file: no ghost class comes with it. *)
 Require Import UserConsole.  (* [upos] -- sh's half of the console position
                                 pair (app-echo.md, "SH-LINE RULING") *)
+Require Import ObsTrace.     (* [mobs] -- what a tag's history is made of, and
+                                what the read's receipt hands back per byte *)
 (* lane SH-OPEN: the console preamble's PINNED open.  [uvis] / [uslot] are
    what the TAINT arm of the preamble hands the run to
    ([UkRun.urun_gen]); [FsImg.ROOTINO] is the directory the pin resolves
@@ -800,25 +802,38 @@ Section UkSh.
 
 
   (* ===================================================================== *)
-  (* THE ONE HYPOTHESIS OF STAGE 2: THE GENERAL WINDOW ECALL LEAF.          *)
+  (* THE ONE HYPOTHESIS OF STAGE 2: SH'S CONSOLE READ, WITH THE RECEIPT     *)
+  (* KEPT (lane SH-LINE 2b, R1').                                           *)
   (*                                                                       *)
   (* [read] is syscall 5, and 5 is one of the eight numbers                 *)
-  (* [UsysMemOk.usys_mem_ok] gives a WINDOW to: the kernel may write up to  *)
-  (* [max 0 arg2] bytes at [arg1] and nothing else.  UkRunSys.v has the two *)
-  (* degenerate consumers of that table -- [wp_uk_ecall_quiet], where the   *)
-  (* window is empty by the row, and [wp_uk_ecall_wait_null], where it is   *)
-  (* empty by the argument -- but not the GENERAL one, where the caller     *)
-  (* hands the buffer over and gets it back with a prefix rewritten.  That  *)
-  (* leaf has landed as [UkRunSys.wp_uk_ecall_window]; this is its          *)
-  (* statement, spelled at the same section variables, the same binder      *)
-  (* order and the same resource spellings as [wp_uk_ecall_wait_null]       *)
-  (* (UkRunSys.v:175) so that the discharge is [intros] and an [exact].     *)
+  (* [UsysMemOk.usys_mem_ok] gives a WINDOW to.  The GENERAL window leaf    *)
+  (* ([UkRunSys.wp_uk_ecall_window]) is not what sh runs on any more: it    *)
+  (* binds the process's [spost_at] as [_], so the kernel's receipt reaches *)
+  (* the round and is dropped there, and a shell that has thrown its        *)
+  (* receipt away can never say WHICH bytes are in its line.  This is the   *)
+  (* same call with the post KEPT -- [UkRunSys.wp_uk_ecall_read_recv]'s     *)
+  (* deliverable -- and it costs the caller exactly two things the window   *)
+  (* leaf did not ask for:                                                  *)
   (*                                                                       *)
-  (* NOTE WHAT IT DOES NOT SAY.  Nothing ties the returned [r] to the       *)
-  (* number of bytes [d] the kernel wrote -- the row does not, and gets     *)
-  (* does not need it: gets tests [r] to decide whether to keep reading and *)
-  (* stores whatever byte is in its one-byte window either way, so the walk *)
-  (* is correct at any [d <= k].                                           *)
+  (*   ITS LEDGER, because the arm the kernel's row takes is selected by    *)
+  (*   the KEY's descriptor table and a program holds only its own record   *)
+  (*   of the low [NSTD] slots.  The pure row beside it is [ush_fd0p] --    *)
+  (*   the very row the console preamble establishes and the command loop   *)
+  (*   carries -- so the leaf answers on BOTH of its arms and sh's [gets]   *)
+  (*   does not case split: fd 0 is the console (the receipt), or fd 0 is   *)
+  (*   closed and [read] returns -1 (lane CLOSED-READ), which is the same   *)
+  (*   arm of the answer as a killed process's.                             *)
+  (*                                                                       *)
+  (*   ITS POSITION ([UserConsole.upos]), because a receipt is only a       *)
+  (*   receipt AT A CURSOR: what the shell needs to know is that the byte   *)
+  (*   it was just handed is the one after the byte it was handed last.     *)
+  (*                                                                       *)
+  (* THE COUNT AND THE BUFFER ARE TWO NUMBERS, [cap] and [k], and [cap <=   *)
+  (* k] is all that relates them (lane CONS-ROWS): the slack byte the       *)
+  (* copy-out reason used to need is gone, because at [dd = cap] the        *)
+  (* cursor's first control-flow row says the call popped exactly what it   *)
+  (* delivered, so there is no fault left to refute.  [gets] asks for one   *)
+  (* byte into a one-byte window, i.e. [cap = k = 1].                       *)
   (*                                                                       *)
   (* EVERY LEMMA BELOW THAT DEPENDS ON IT SAYS SO IN ITS HEADER:            *)
   (* [wp_ksh_read], [wp_ksh_gets], [wp_ksh_getcmd], [wp_ksh_cmd_head],      *)
@@ -826,39 +841,136 @@ Section UkSh.
   (* in this file -- the byte-run algebra, the quiet stubs, exit, memset,   *)
   (* and main's blank-line scan -- is unconditional.                        *)
   (* ===================================================================== *)
+
+  (* ...AND THE PROGRAM'S HALF OF THE CONSOLE POSITION PAIR
+     ([UserConsole.upos]).  EXISTENTIAL here and named inside [gets]: a
+     turn of the command loop begins wherever the previous line ended, no
+     lemma between the loop head and the read needs the number, and the
+     read is what moves it.  STATED HERE, above the read, because the
+     read's own answer is what hands it back. *)
+  Definition ush_pos : iProp Σ := (∃ n : nat, upos γp n)%I.
+
+  (* WHAT A READ ANSWERS, at three arms and not one (lane SH-LINE 2b).
+     Which arm the caller gets is not its choice.
+
+       THE WINDOW.  The [dd] bytes the call delivered are the ring's
+       committed sequence at [n .. n+dd), in order ([cons_window] over
+       [cons_chain]'s bound), each with the application's tag on the
+       history it arrived at; and the position comes back at [n + dc],
+       where the extra step is ACCOUNTED FOR rather than merely bounded
+       ([UserConsole.ucons_swallow] at [False] -- the copy-out fault is
+       eliminated inside the discharge, so what is left is [C('D')] with
+       nothing delivered).  THE TWO CONTROL-FLOW ROWS (lane CONS-ROWS,
+       B1/B4) are what a ONE-BYTE reader spends: at [dd = cap] the cursor
+       moved by exactly [dd], so nothing is missing behind the call; at
+       [dd = 0] against a positive request the byte WAS popped, which
+       refutes [ucons_swallow]'s left arm and sends the caller to the
+       reason on the right.  [Z.of_nat dd = bv_unsigned r] is what turns
+       the [blez] the caller ran into either of those two cases.
+
+       THE MINUS ONE.  consoleread answers -1 only when the process was
+       killed, and a shut fd 0 answers -1 without reaching consoleread at
+       all ([SpecFileread.fileread_extra_core]'s [FdClosed] arm, lane
+       CLOSED-READ).  Neither pays a window; the token comes back
+       somewhere.  It is not a placeholder: [gets] breaks on [cc < 1].
+
+       THE TAINT.  A read taken WITHOUT the reader token moved the ring's
+       committed count without moving the cursor, and the kernel cannot
+       keep such a reader out ([ConsoleInv]'s "CONS-CURSOR RULING (7)").
+       What it leaves is the dirty credential, which for a constraining
+       application IS [T], and sh's continuation goes generic. *)
+  Definition ush_read_ans (cnm : cons_names) (r : mword 64)
+      (cap n : nat) (g : nat -> bv 8) : iProp Σ :=
+    ((∃ (dd dc : nat) (hs : list (list mobs))
+        (sl : list (list mobs * bv 8)),
+        ⌜ Z.of_nat dd = bv_unsigned r ⌝ ∗
+        ⌜ (dd <= cap)%nat ⌝ ∗
+        ⌜ dd = cap -> dc = dd ⌝ ∗
+        ⌜ dd = 0%nat -> (0 < cap)%nat -> dc = (dd + 1)%nat ⌝ ∗
+        ⌜ cons_chain sl ⌝ ∗
+        ucons_stored_lb cnm sl ∗
+        ([∗ list] hh ∈ hs, riscv_rx_tag hh) ∗
+        ⌜ cons_window sl n dd g hs ⌝ ∗
+        ucons_swallow cnm False sl dd dc ∗
+        upos γp (n + dc)%nat)
+     ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗ ush_pos)
+     ∨ (T ∗ ush_pos))%I.
+
+  (* ...and the answer, weakened to the ONE thing the walk cannot do
+     without: the position comes back.  This is what stands between R1'
+     (the leaf sh runs on) and R2 (the line fact the loop accumulates). *)
+  Lemma ush_read_ans_pos (cnm : cons_names) (r : mword 64)
+      (cap n : nat) (g : nat -> bv 8) :
+    ush_read_ans cnm r cap n g -∗ ush_pos.
+  Proof.
+    rewrite /ush_read_ans /ush_pos.
+    iIntros "[Hw | [[_ $] | [_ $]]]".
+    iDestruct "Hw" as (dd dc hs sl) "(_ & _ & _ & _ & _ & _ & _ & _ & _ & Hp)".
+    iExists (n + dc)%nat. iExact "Hp".
+  Qed.
+
+  Definition ush_read_recv_leaf (cnm : cons_names) (l : list fdstate)
+      : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (pc : mword 64) (a : Z) (k cap n : nat)
+       (f : nat -> bv 8) (avail : nat),
+       ⌜ usysno m = USYS_read ⌝ -∗
+       (* the descriptor is fd 0, which the row below says is the console
+          or is shut *)
+       ⌜ bv_signed (trunc32 (m !!! Regidx a0_idx)) = 0 ⌝ -∗
+       ⌜ uint (m !!! Regidx a1_idx) = a ⌝ -∗
+       ⌜ uint (m !!! Regidx a2_idx) = Z.of_nat cap ⌝ -∗
+       ⌜ (cap <= k)%nat ⌝ -∗
+       (* the kernel answers the SIGNED 32-bit count, so the request the
+          caller made is the request file.c read only below the sign
+          boundary ([UShLine.ush_count_is_cap] is the bridge) *)
+       ⌜ (Z.of_nat cap < 2 ^ 31)%Z ⌝ -∗
+       ⌜ ush_fd0p l ⌝ -∗
+       ⌜ is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ⌝ -∗
+       uinstr_is γt pc false (ECALL tt) -∗
+       ubytes γd a k f -∗
+       ustd γfd l -∗
+       upos γp n -∗
+       urun N h m pc avail -∗
+       (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8),
+          ⌜ (d <= cap)%nat ⌝ -∗
+          ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
+          ustd γfd l -∗
+          ush_read_ans cnm r cap n g -∗
+          ubytes γd a k g -∗
+          urun N h' (<[Regidx a0_idx := r]> m)
+            (add_vec_int pc 4) avail -∗
+          WP (Loop : expr riscv_lang)) -∗
+       WP (Loop : expr riscv_lang))%I.
+
+  (* THE RING'S NAMES, as a section variable: the program tier names no
+     application and no era, and the ONE discharge of the Hypothesis below
+     ([UShLine.ush_read_recv_leaf_holds]) is at [FsCfg.fsc_cons]. *)
+  Context (cn : cons_names).
+
   Hypothesis ush_read_leaf :
-    forall (h : CpuId) (m : regfile) (pc : mword 64) (a : Z) (k : nat)
-           (f : nat -> bv 8) (avail : nat),
-      usysno m = USYS_read ->
-      uint (m !!! Regidx a1_idx) = a ->
-      uint (m !!! Regidx a2_idx) = Z.of_nat k ->
-      is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
-      sh_deps -∗
-      uinstr_is γt pc false (ECALL tt) -∗
-      ubytes γd a k f -∗
-      urun N h m pc avail -∗
-      (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8),
-         ⌜ (d <= k)%nat ⌝ -∗
-         ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
-         ubytes γd a k g -∗
-         urun N h' (<[Regidx a0_idx := r]> m)
-           (add_vec_int pc 4) avail -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+    forall l : list fdstate, ⊢ ush_read_recv_leaf cn l.
 
   (* ---- read @0xc9e, SYS_read = 5 -- the WINDOW row's stub -------------- *)
   (* DEPENDS ON [ush_read_leaf].                                            *)
-  Lemma wp_ksh_read (h : CpuId) (m : regfile) (a : Z) (k : nat)
-      (f : nat -> bv 8) (avail : nat) :
+  Lemma wp_ksh_read (h : CpuId) (m : regfile) (a : Z) (k cap n : nat)
+      (f : nat -> bv 8) (l : list fdstate) (avail : nat) :
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = 0 ->
     uint (m !!! Regidx a1_idx) = a ->
-    uint (m !!! Regidx a2_idx) = Z.of_nat k ->
+    uint (m !!! Regidx a2_idx) = Z.of_nat cap ->
+    (cap <= k)%nat ->
+    (Z.of_nat cap < 2 ^ 31)%Z ->
+    ush_fd0p l ->
     sh_deps -∗
     shk_code γt -∗
     ubytes γd a k f -∗
+    ustd γfd l -∗
+    upos γp n -∗
     urun N h m (mword_of_int ShSyms.read) avail -∗
     (∀ (h' : CpuId) (ret : mword 64) (d : nat) (g : nat -> bv 8),
-       ⌜ (d <= k)%nat ⌝ -∗
+       ⌜ (d <= cap)%nat ⌝ -∗
        ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
+       ustd γfd l -∗
+       ush_read_ans cn ret cap n g -∗
        ubytes γd a k g -∗
        urun N h'
          (<[Regidx a0_idx := ret]>
@@ -867,7 +979,8 @@ Section UkSh.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Ha1 Ha2. iIntros "#Hdp #Hcode Hbs Hrun Hcont".
+    intros Ha0 Ha1 Ha2 Hck Hc31 Hfd0.
+    iIntros "#Hdp #Hcode Hbs Hstd Hpos Hrun Hcont".
     rewrite shp_read.
     (* ---- 0xc9e  c.li a7,5 ---- *)
     iApply (wp_uk_cli N h m (mword_of_int 0xc9e)
@@ -890,24 +1003,35 @@ Section UkSh.
     { rewrite /m1 (upd_ne m (Regidx a7_idx) (Regidx a1_idx)
                      (mword_of_int 5 : mword 64)
                      ltac:(vm_compute; discriminate)). exact Ha1. }
-    assert (Ha2_1 : uint (m1 !!! Regidx a2_idx) = Z.of_nat k).
+    assert (Ha2_1 : uint (m1 !!! Regidx a2_idx) = Z.of_nat cap).
     { rewrite /m1 (upd_ne m (Regidx a7_idx) (Regidx a2_idx)
                      (mword_of_int 5 : mword 64)
                      ltac:(vm_compute; discriminate)). exact Ha2. }
-    (* ---- 0xca0  ecall -- the WINDOW row ---- *)
-    iApply (ush_read_leaf h1 m1 (mword_of_int 0xca0) a k f avail
-              ltac:(unfold m1, usysno;
-                    rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 5 : mword 64));
-                    vm_compute; reflexivity)
-              Ha1_1 Ha2_1
-              ltac:(vm_compute; reflexivity)
-              with "Hdp [] Hbs Hrun").
+    assert (Ha0_1 : bv_signed (trunc32 (m1 !!! Regidx a0_idx)) = 0).
+    { rewrite /m1 (upd_ne m (Regidx a7_idx) (Regidx a0_idx)
+                     (mword_of_int 5 : mword 64)
+                     ltac:(vm_compute; discriminate)). exact Ha0. }
+    (* ---- 0xca0  ecall -- THE RECEIPT-KEEPING READ ---- *)
+    iPoseProof (ush_read_leaf l) as "Hrl".
+    rewrite /ush_read_recv_leaf.
+    iApply ("Hrl" $! h1 m1 (mword_of_int 0xca0) a k cap n f avail
+              with "[%] [%] [%] [%] [%] [%] [%] [%] [] Hbs Hstd Hpos Hrun").
+    { unfold m1, usysno.
+      rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 5 : mword 64)).
+      vm_compute; reflexivity. }
+    { exact Ha0_1. }
+    { exact Ha1_1. }
+    { exact Ha2_1. }
+    { exact Hck. }
+    { exact Hc31. }
+    { exact Hfd0. }
+    { vm_compute; reflexivity. }
     { iApply (uis_shk_ca0 with "Hcode"). }
     assert (Eca0 : add_vec_int (mword_of_int 0xca0 : mword 64) 4
                    = mword_of_int 0xca4)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Eca0.
-    iIntros (h2 ret d g) "%Hd %Hg Hbs Hrun".
+    iIntros (h2 ret d g) "%Hd %Hg Hstd Hans Hbs Hrun".
     set (m2 := <[Regidx a0_idx := ret]> m1).
     (* ---- 0xca4  c.jr ra ---- *)
     assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
@@ -925,8 +1049,8 @@ Section UkSh.
               with "[] Hrun").
     { iApply (uis_shk_ca4 with "Hcode"). }
     iIntros (h3) "Hrun".
-    iApply ("Hcont" $! h3 ret d g with "[] [] Hbs Hrun");
-      iPureIntro; [ exact Hd | exact Hg ].
+    iApply ("Hcont" $! h3 ret d g with "[%] [%] Hstd Hans Hbs Hrun");
+      [ exact Hd | exact Hg ].
   Qed.
 
 
@@ -1556,7 +1680,8 @@ Section UkSh.
     rewrite Hrr Hq in Hr. discriminate.
   Qed.
 
-  Local Lemma wp_ksh_gets_loop (a : Z) (Nb : nat) (spz : Z) :
+  Local Lemma wp_ksh_gets_loop (a : Z) (Nb : nat) (spz : Z)
+      (l : list fdstate) (Hfd0 : ush_fd0p l) :
     forall (k i : nat) (h : CpuId) (mc : regfile) (f : nat -> bv 8)
            (bc : bv 8) (nn : nat),
     (Nb = i + k)%nat -> (i < Nb)%nat ->
@@ -1572,6 +1697,8 @@ Section UkSh.
     shk_code γt -∗
     ubytes γd a Nb f -∗
     ubyte γd (spz - 81) bc -∗
+    ustd γfd l -∗
+    ush_pos -∗
     urun N h mc (mword_of_int 0xad0) nn -∗
     (∀ (h' : CpuId) (mc' : regfile) (i2 : nat) (g : nat -> bv 8) (bc' : bv 8),
        ⌜ (i2 < Nb)%nat ⌝ -∗
@@ -1580,6 +1707,8 @@ Section UkSh.
            mc' !!! Regidx r = mc !!! Regidx r ⌝ -∗
        ubytes γd a Nb g -∗
        ubyte γd (spz - 81) bc' -∗
+       ustd γfd l -∗
+       ush_pos -∗
        urun N h' mc' (mword_of_int 0xb00) nn -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
@@ -1588,7 +1717,7 @@ Section UkSh.
       intros i h mc f bc nn HN Hi Ha0 Ha64 HN31 Hsz0 Hsz1
              Hs0 Hs1 Hs2 Hs4 Hs5 Hs6.
     { assert (HF : False) by lia. destruct HF. }
-    iIntros "#Hdp #Hcode Hbs Hb Hrun Hcont".
+    iIntros "#Hdp #Hcode Hbs Hb Hstd Hpos Hrun Hcont".
     (* ---- 0xad0  c.mv s8,s1 ---- *)
     iApply (wp_uk_cmv N h mc (mword_of_int 0xad0) s8_idx s1_idx
               (mword_of_int (Z.of_nat i)) nn
@@ -1695,8 +1824,8 @@ Section UkSh.
     destruct (Z.geb_spec (Z.of_nat i + 1) (Z.of_nat Nb)) as [Hge | Hlt].
     { (* the buffer is full: leave with s8 = i *)
       iIntros (h4) "Hrun".
-      iApply ("Hcont" $! h4 m3 i f bc with "[] [] [] Hbs Hb Hrun");
-        iPureIntro; [ lia | exact Hs8_3 | exact P13 ]. }
+      iApply ("Hcont" $! h4 m3 i f bc with "[%] [%] [%] Hbs Hb Hstd Hpos Hrun");
+        [ lia | exact Hs8_3 | exact P13 ]. }
     assert (Ead8 : add_vec_int (mword_of_int 0xad8 : mword 64) 4
                    = mword_of_int 0xadc)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -1808,9 +1937,27 @@ Section UkSh.
     iDestruct (ush_bytes_one (spz - 81) (fun _ => bc) bc eq_refl) as "Hcv".
     iAssert (ubytes γd (spz - 81) 1 (fun _ => bc)) with "[Hb]" as "Hbw".
     { iApply "Hcv". iExact "Hb". }
-    iApply (wp_ksh_read h8 m7 (spz - 81) 1 (fun _ => bc) nn Ha1_7 Ha2_7
-              with "Hdp Hcode Hbw Hrun").
-    iIntros (h9 ret d g1) "%Hd %Hg1 Hbw Hrun".
+    assert (Ha0_7 : bv_signed (trunc32 (m7 !!! Regidx a0_idx)) = 0).
+    { rewrite (upd_ne m6 (Regidx ra_idx) (Regidx a0_idx) _
+                 ltac:(vm_compute; discriminate)).
+      rewrite (upd_eq m5 (Regidx a0_idx)
+                 (regval_into_reg (sign_extend' 64 (mword_of_int 0 : mword 6)
+                                   : mword 64))).
+      vm_compute. reflexivity. }
+    (* THE POSITION IS NAMED HERE and nowhere else in the walk: the read
+       is what moves it, and R2 is where the receipt it comes back with is
+       accumulated into the line. *)
+    iDestruct "Hpos" as (np) "Hpos".
+    iApply (wp_ksh_read h8 m7 (spz - 81) 1%nat 1%nat np (fun _ => bc) l nn
+              Ha0_7 Ha1_7 Ha2_7 ltac:(lia) ltac:(vm_compute; reflexivity)
+              Hfd0
+              with "Hdp Hcode Hbw Hstd Hpos Hrun").
+    iIntros (h9 ret d g1) "%Hd %Hg1 Hstd Hans Hbw Hrun".
+    (* R1' STOPS HERE: the receipt is taken and, for now, weakened to the
+       position it hands back.  R2 is where the window arm is accumulated
+       into [UConsLine.ush_gets_line] and the [dc = 0] arm refuted into the
+       taint ([UConsLine.ush_swallow_taint]). *)
+    iDestruct (ush_read_ans_pos cn ret 1%nat np g1 with "Hans") as "Hpos".
     rewrite Hra7.
     assert (Eret : ret_pc (mword_of_int 0xae6 : mword 64) = mword_of_int 0xae6)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -1859,8 +2006,9 @@ Section UkSh.
     destruct tk6.
     { (* the read gave nothing: leave with s8 = i *)
       iIntros (h10) "Hrun".
-      iApply ("Hcont" $! h10 m8 i f (g1 0%nat) with "[] [] [] Hbs Hb Hrun");
-        iPureIntro; [ lia | exact Hs8_8 | exact P18 ]. }
+      iApply ("Hcont" $! h10 m8 i f (g1 0%nat)
+                with "[%] [%] [%] Hbs Hb Hstd Hpos Hrun");
+        [ lia | exact Hs8_8 | exact P18 ]. }
     assert (Eae6 : add_vec_int (mword_of_int 0xae6 : mword 64) 4
                    = mword_of_int 0xaea)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -2042,7 +2190,7 @@ Section UkSh.
       rewrite Eafe. iIntros (h16) "Hrun".
       iApply ("Hcont" $! h16 _ (i + 1)%nat
                 (ush_set f i (nth_byte (m9 !!! Regidx a5_idx) 0))
-                (g1 0%nat) with "[] [] [] Hbs Hb Hrun").
+                (g1 0%nat) with "[] [] [] Hbs Hb Hstd Hpos Hrun").
       { iPureIntro. lia. }
       { iPureIntro.
         replace (Z.of_nat (i + 1)) with (Z.of_nat i + 1) by lia.
@@ -2145,10 +2293,11 @@ Section UkSh.
                       exact Hs5)
                 ltac:(rewrite (PCall s6_idx ltac:(vm_compute; reflexivity));
                       exact Hs6)
-                with "Hdp Hcode Hbs Hb Hrun").
-      iIntros (h18 mc'' i2 g2 bc2) "%Hi2 %Hs8'' %Hp'' Hbs Hb Hrun".
-      iApply ("Hcont" $! h18 mc'' i2 g2 bc2 with "[] [] [] Hbs Hb Hrun");
-        iPureIntro; [ exact Hi2 | exact Hs8'' | ].
+                with "Hdp Hcode Hbs Hb Hstd Hpos Hrun").
+      iIntros (h18 mc'' i2 g2 bc2) "%Hi2 %Hs8'' %Hp'' Hbs Hb Hstd Hpos Hrun".
+      iApply ("Hcont" $! h18 mc'' i2 g2 bc2
+                with "[%] [%] [%] Hbs Hb Hstd Hpos Hrun");
+        [ exact Hi2 | exact Hs8'' | ].
       intros r Hr. rewrite (Hp'' r Hr). exact (PCall r Hr). }
     (* a '\r': fall into 0xafe *)
     assert (Eafc : add_vec_int (mword_of_int 0xafc : mword 64) 2
@@ -2168,7 +2317,7 @@ Section UkSh.
     rewrite Eafe. iIntros (h18) "Hrun".
     iApply ("Hcont" $! h18 _ (i + 1)%nat
               (ush_set f i (nth_byte (m9 !!! Regidx a5_idx) 0))
-              (g1 0%nat) with "[] [] [] Hbs Hb Hrun").
+              (g1 0%nat) with "[] [] [] Hbs Hb Hstd Hpos Hrun").
     { iPureIntro. lia. }
     { iPureIntro.
       replace (Z.of_nat (i + 1)) with (Z.of_nat i + 1) by lia.
@@ -2258,23 +2407,28 @@ Section UkSh.
   (* ---- gets, the whole function --------------------------------------- *)
   (* DEPENDS ON [ush_read_leaf].                                            *)
   Lemma wp_ksh_gets (h : CpuId) (m : regfile) (a : Z) (Nb : nat)
-      (f : nat -> bv 8) (nn : nat) :
+      (f : nat -> bv 8) (l : list fdstate) (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int a ->
     m !!! Regidx a1_idx = mword_of_int (Z.of_nat Nb) ->
     (0 < Nb)%nat -> Z.of_nat Nb < Z31 ->
+    ush_fd0p l ->
     sh_deps -∗
     shk_code γt -∗
     ubytes γd a Nb f -∗
+    ustd γfd l -∗
+    ush_pos -∗
     urun N h m (mword_of_int ShSyms.gets) (12 + nn) -∗
     ((∃ (g : nat -> bv 8) (i2 : nat),
-        ⌜ (i2 < Nb)%nat /\ g i2 = ubyte0 ⌝ ∗ ubytes γd a Nb g) -∗
+        ⌜ (i2 < Nb)%nat /\ g i2 = ubyte0 ⌝ ∗ ubytes γd a Nb g ∗
+        ustd γfd l ∗ ush_pos) -∗
        ∀ (h' : CpuId) (m' : regfile),
          ⌜ ucallee_saved m m' ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Ha0 Ha1 HN0 HN31. iIntros "#Hdp #Hcode Hbs Hrun Hcont".
+    intros Ha0 Ha1 HN0 HN31 Hfd0.
+    iIntros "#Hdp #Hcode Hbs Hstd Hpos Hrun Hcont".
     rewrite shp_gets.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     iDestruct (urun_ubytes_bnd h m _ (12 + nn) (DfracOwn 1) a Nb f ltac:(lia)
@@ -2614,7 +2768,7 @@ Section UkSh.
     assert (Eg20 : spz - 88 + Z.of_nat 7 = spz - 81) by lia.
     rewrite Eg20. clear Eg20.
     (* ---- 0xad0..0xafe  the loop ---- *)
-    iApply (wp_ksh_gets_loop a Nb spz Nb 0%nat h18 m8 f (nth_byte v11 7) nn
+    iApply (wp_ksh_gets_loop a Nb spz l Hfd0 Nb 0%nat h18 m8 f (nth_byte v11 7) nn
               ltac:(lia) ltac:(lia) Halo ltac:(unfold Z64; lia) HN31
               ltac:(lia) Hhi
               ltac:(rewrite (upd_ne m7 (Regidx s5_idx) (Regidx s0_idx) _
@@ -2656,8 +2810,8 @@ Section UkSh.
                     exact (upd_eq m6 (Regidx s6_idx)
                              (regval_into_reg (mword_of_int (spz - 81)
                                                : mword 64))))
-              with "Hdp Hcode Hbs Hbc Hrun").
-    iIntros (h19 mc i2 g bc2) "%Hi2 %Hs8c %Hpk Hbs Hbc Hrun".
+              with "Hdp Hcode Hbs Hbc Hstd Hpos Hrun").
+    iIntros (h19 mc i2 g bc2) "%Hi2 %Hs8c %Hpk Hbs Hbc Hstd Hpos Hrun".
     iDestruct ("Hclc" $! bc2 with "Hbc") as "Hw11".
     (* ---- 0xb00  c.add s8,s8,s7 ---- *)
     assert (Hs7c : mc !!! Regidx s7_idx = mword_of_int a).
@@ -3025,9 +3179,10 @@ Section UkSh.
               with "[] Hrun").
     { iApply (uis_shk_b1e with "Hcode"). }
     iIntros (h34) "Hrun".
-    iApply ("Hcont" with "[Hbs] [] Hrun").
+    iApply ("Hcont" with "[Hbs Hstd Hpos] [] Hrun").
     { iExists (ush_set g i2 (nth_byte (q0 !!! Regidx x0_idx) 0)), i2.
-      iSplit; [ iPureIntro; split; [ lia | exact Hnul ] | iExact "Hbs" ]. }
+      iSplitR; [ iPureIntro; split; [ lia | exact Hnul ] | ].
+      iFrame "Hbs Hstd Hpos". }
     iPureIntro. intros r Hr.
     destruct (Z.eq_dec (uint r) 2) as [Eq1 | Eq1].
     { rewrite (ush_ridx_eq r csp_rs1
@@ -3251,23 +3406,28 @@ Section UkSh.
   (* instructions go through with their values left as they are.            *)
   (* ===================================================================== *)
   Lemma wp_ksh_getcmd (h : CpuId) (m : regfile) (a : Z) (Nb : nat)
-      (f : nat -> bv 8) (nn : nat) :
+      (f : nat -> bv 8) (l : list fdstate) (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int a ->
     m !!! Regidx a1_idx = mword_of_int (Z.of_nat Nb) ->
     (0 < Nb)%nat -> Z.of_nat Nb < Z31 ->
+    ush_fd0p l ->
     sh_deps -∗
     shk_code γt -∗
     ubytes γd a Nb f -∗
+    ustd γfd l -∗
+    ush_pos -∗
     urun N h m (mword_of_int ShSyms.getcmd) (4 + (12 + nn)) -∗
     ((∃ (g : nat -> bv 8) (i2 : nat),
-        ⌜ (i2 < Nb)%nat /\ g i2 = ubyte0 ⌝ ∗ ubytes γd a Nb g) -∗
+        ⌜ (i2 < Nb)%nat /\ g i2 = ubyte0 ⌝ ∗ ubytes γd a Nb g ∗
+        ustd γfd l ∗ ush_pos) -∗
        ∀ (h' : CpuId) (m' : regfile),
          ⌜ ucallee_saved m m' ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (12 + nn)) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Ha0 Ha1 HN0 HN31. iIntros "#Hdp #Hcode Hbs Hrun Hcont".
+    intros Ha0 Ha1 HN0 HN31 Hfd0.
+    iIntros "#Hdp #Hcode Hbs Hstd Hpos Hrun Hcont".
     rewrite shp_getcmd.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     iDestruct (urun_ubytes_bnd h m _ (4 + (12 + nn)) (DfracOwn 1) a Nb f
@@ -3722,13 +3882,13 @@ Section UkSh.
       rewrite (HnG a1_idx ltac:(vm_compute; discriminate)).
       exact (upd_eq mM (Regidx a1_idx)
                (regval_into_reg (mword_of_int (Z.of_nat Nb) : mword 64))). }
-    iApply (wp_ksh_gets h22 nH a Nb fm nn Ha0_H Ha1_H HN0 HN31
-              with "Hdp Hcode Hbs Hrun").
+    iApply (wp_ksh_gets h22 nH a Nb fm l nn Ha0_H Ha1_H HN0 HN31 Hfd0
+              with "Hdp Hcode Hbs Hstd Hpos Hrun").
     iIntros "Hbs" (h23 mG) "%HcsG Hrun". rewrite HraH.
     assert (Er32 : ret_pc (mword_of_int 0x32 : mword 64) = mword_of_int 0x32)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Er32.
-    iDestruct "Hbs" as (gg i2) "[%Hgi Hbs]".
+    iDestruct "Hbs" as (gg i2) "(%Hgi & Hbs & Hstd & Hpos)".
     (* ---- 0x32  lbu a0,0(s1) -- the return value's only input ---- *)
     assert (Hs1_G : mG !!! Regidx s1_idx = mword_of_int a).
     { rewrite (HcsG s1_idx ltac:(vm_compute; reflexivity)).
@@ -3964,8 +4124,9 @@ Section UkSh.
               with "[] Hrun").
     { iApply (uis_shk_48 with "Hcode"). }
     iIntros (h32) "Hrun".
-    iApply ("Hcont" with "[Hbs] [] Hrun").
-    { iExists gg, i2. iSplit; [ iPureIntro; exact Hgi | iExact "Hbs" ]. }
+    iApply ("Hcont" with "[Hbs Hstd Hpos] [] Hrun").
+    { iExists gg, i2. iSplitR; [ iPureIntro; exact Hgi | ].
+      iFrame "Hbs Hstd Hpos". }
     iPureIntro. intros r Hr.
     assert (Hcsp2 : uint csp_rs1 = 2) by (vm_compute; reflexivity).
     destruct (Z.eq_dec (uint r) 2) as [Eq1 | Eq1].
@@ -4440,11 +4601,9 @@ Section UkSh.
   Qed.
 
   (* ...AND THE PROGRAM'S HALF OF THE CONSOLE POSITION PAIR
-     ([UserConsole.upos]).  EXISTENTIAL here and named inside [gets]: a
-     turn of the command loop begins wherever the previous line ended, no
-     lemma between the loop head and the read needs the number, and the
-     read is what moves it. *)
-  Definition ush_pos : iProp Σ := (∃ n : nat, upos γp n)%I.
+     ([UserConsole.upos]) IS [ush_pos], STATED ABOVE THE READ (lane
+     SH-LINE 2b, R1'): the read's own answer is what hands it back, so its
+     definition has to be in scope where the read leaf is stated. *)
 
   (* ===================================================================== *)
   (* ...AND THE OTHER GHOST A TURN CANNOT ESCAPE CARRYING: THE CWD.        *)
@@ -5078,16 +5237,23 @@ Section UkSh.
       rewrite (upd_ne m2 (Regidx ra_idx) (Regidx a1_idx) _
                  ltac:(vm_compute; discriminate)). exact Ha1_2. }
     replace (16 + n)%nat with (4 + (12 + n))%nat by lia.
-    iApply (wp_ksh_getcmd h3 m3 sh_buf sh_nbuf f n Ha0_3 Ha1_3
+    (* THE LEDGER AND THE POSITION GO INTO getcmd, because the READ inside
+       it is what spends them (lane SH-LINE 2b, R1'); the working
+       directory and the children set stay here. *)
+    iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpos)".
+    iApply (wp_ksh_getcmd h3 m3 sh_buf sh_nbuf f l n Ha0_3 Ha1_3
               ltac:(rewrite Hnb; lia) ltac:(rewrite Hnbz; unfold Z31; lia)
-              with "Hdp Hcode Hbs Hrun").
+              Hfd0
+              with "Hdp Hcode Hbs Hustd Hpos Hrun").
     iIntros "Hbs" (h4 mR) "%HcsR Hrun".
     replace (4 + (12 + n))%nat with (16 + n)%nat by lia.
     rewrite Hra3.
     assert (Er940 : ret_pc (mword_of_int 0x940 : mword 64) = mword_of_int 0x940)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Er940.
-    iDestruct "Hbs" as (g i2) "[%Hgi Hbs]".
+    iDestruct "Hbs" as (g i2) "(%Hgi & Hbs & Hustd & Hpos)".
+    iAssert (ush_pstate l) with "[Hustd Hcwd Hch Hpos]" as "Hstd".
+    { rewrite /ush_pstate /ush_std. iFrame "Hustd Hcwd Hch Hpos". }
     destruct Hgi as [Hi2lt Hnul].
     assert (HrR : ush_regs mR) by exact (ush_regs_cs m3 mR Hr3 HcsR).
     pose proof HrR as (Hs2_R & Hs3_R & Hs4_R & Hs5_R & Hs6_R).

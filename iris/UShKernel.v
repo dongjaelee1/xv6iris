@@ -272,53 +272,29 @@ Section UShKernel.
      hart itself, and the run binds its own context. *)
 
   (* ------------------------------------------------------------------- *)
-  (* SS1 UkSh's Hypothesis, discharged (header).                          *)
+  (* SS1 UkSh's Hypothesis IS NOT DISCHARGED HERE ANY MORE                 *)
+  (*     (lane SH-LINE 2b, R1').                                          *)
+  (*                                                                      *)
+  (* [ush_read_leaf_of_win] used to sit here: the general window leaf      *)
+  (* ([UkRunSys.wp_uk_ecall_read_win]) at [UkSh.sh_deps]' [udepw_law 5].   *)
+  (* It threw the process's post away, so no shell that ran on it could    *)
+  (* ever say WHICH bytes its line holds -- and the deposit it routed      *)
+  (* through is the wrong one anyway: read(5) is a CLAIM number whose      *)
+  (* console arm spends the EXCLUSIVE reader token, which no [□]-shaped    *)
+  (* supplier holds (SH-LINE 2b phase 1's finding).  The Hypothesis is the *)
+  (* RECEIPT-KEEPING leaf now, its supply is the lease inside sh's own     *)
+  (* exit payload, and the one discharge is                                *)
+  (* [UShLine.ush_read_recv_leaf_holds] -- which needs the CONCRETE        *)
+  (* deposit bundle and so cannot live at this file's abstract [uexecSG].  *)
+  (* Both constructors below therefore TAKE the discharge as a Coq-level   *)
+  (* premise, exactly as the note at the bottom of [UkSh.v] predicted.     *)
   (* ------------------------------------------------------------------- *)
-  (* ...AND IT TAKES THE READ DEPOSIT (lane SUPPLY-SPLIT, P4).  read(5) is a
-     CLAIM number: the console arm of its bundle spends the application's
-     supply ([FsAbsInvFire.fsabs_fileread_in]), so this discharge may not
-     route through [UkRun.udep]'s law -- that would put [AppInv.app_sup],
-     and hence the taint, in sh's entry.  [UkSh.sh_deps]'s read conjunct is
-     the premise, and SH-LINE 2b is what pays it, out of the lease
-     ([UkRun.udepwf_std] + [UkRunSys.wp_uk_ecall_read_recv] are landed). *)
-  Lemma ush_read_leaf_of_win (N : uk_names Σ) :
-    forall (h : CpuId) (m : regfile) (pc : mword 64) (a : Z) (k : nat)
-           (f : nat -> bv 8) (avail : nat),
-      usysno m = USYS_read ->
-      uint (m !!! Regidx (mword_of_int 11 : mword 5)) = a ->
-      uint (m !!! Regidx (mword_of_int 12 : mword 5)) = Z.of_nat k ->
-      is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
-      UkSh.sh_deps -∗
-      uinstr_is (ukn_t N) pc false (ECALL tt) -∗
-      ubytes (ukn_d N) a k f -∗
-      urun N h m pc avail -∗
-      (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8),
-         ⌜ (d <= k)%nat ⌝ -∗
-         ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
-         ubytes (ukn_d N) a k g -∗
-         urun N h' (<[Regidx (mword_of_int 10 : mword 5) := r]> m)
-           (add_vec_int pc 4) avail -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
-  Proof.
-    intros h m pc a k f avail Hn Ha Hk Hal4.
-    iIntros "#Hdp #Hi Hbuf Hrun Hcont".
-    subst a.
-    pose proof (sh_rdcount_le _ k Hk) as Hcnt.
-    iApply (wp_uk_ecall_read_win N h m pc _ k f avail Hn eq_refl
-              Hcnt Hal4 with "Hi Hrun [] Hbuf").
-    { iApply (udepw_of_law N m pc USYS_read with "[Hdp]").
-      iDestruct "Hdp" as "($ & _)". }
-    iIntros (h' r d g) "%Hd %Hgf Hrun Hbuf".
-    iApply ("Hcont" $! h' r d g with "[%] [%] Hbuf Hrun");
-      [ lia | exact Hgf ].
-  Qed.
 
   (* ------------------------------------------------------------------- *)
   (* SS2 THE DEPOSIT (header (1), (2)).                                   *)
   (* ------------------------------------------------------------------- *)
   Lemma sh_uexec_slot (R : gname -> gname -> gname -> iProp Σ)
-      (γp : gname) (T K : iProp Σ) `{!Persistent T}
+      (γp : gname) (cn : cons_names) (T K : iProp Σ) `{!Persistent T}
       (* SH'S EXIT PAYLOAD, a parameter (GENERIC-PAY).  It is where the
          console reader token lives, because only [UkRun.ukn_pay N (-1)]
          survives a kill: if the shell is killed, init has to get the
@@ -327,6 +303,16 @@ Section UShKernel.
          resource the run carries; [UserConsole.ucons_pay_const] is the
          witness the application supplies. *)
       (Q : Z -> iProp Σ)
+      (* THE READ LEAF SH RUNS ON, as a Coq-level premise (SS1's note).
+         The one discharge is [UShLine.ush_read_recv_leaf_holds], which
+         needs the CONCRETE deposit bundle and this era's console names --
+         neither of which exists at this file's abstract [uexecSG].  IT IS
+         GUARDED BY THE PAYLOAD EQUATION, and that guard is not slack: the
+         leaf's supply is the reader LEASE inside the record's own exit
+         payload ([UserConsole.ucons_pay]), so the discharge is about the
+         record the kernel minted for THIS program and about no other. *)
+      (Hrl : forall (N : uk_names Σ) (l : list fdstate),
+         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T cn l)
       (W : uvis) (n0 n : nat) :
     (forall x y : Z, Q x = Q y) ->
     tf_resume_pc (uvis_tf W) = (mword_of_int ShSyms.start : mword 64) ->
@@ -475,7 +461,8 @@ Section UShKernel.
     (* ...and the taint's continuation at this record's own payload *)
     iAssert (UkSh.ush_gen_slot N T) as "#Hgen'".
     { rewrite /UkSh.ush_gen_slot Hpayeq. iExact "Hgen". }
-    iApply (wp_ksh_start N γp T Hpsok_free (ush_read_leaf_of_win N)
+    iApply (wp_ksh_start N γp T Hpsok_free cn
+              (fun l0 => Hrl N l0 Hpayeq)
               (R (ukn_t N) (ukn_d N) (ukn_s N)) K h _ f n0
               (take NSTD (uvis_fd W))
               with "Hdp Hr [] [] Hgen' Hfd0 Hin [Hstd] [Hcwf] [Hchf] [Hpos]
@@ -495,9 +482,13 @@ Section UShKernel.
   (* SS3 THE BRIDGE from the kernel's image fact (header).                *)
   (* ------------------------------------------------------------------- *)
   Lemma sh_slot_of_kexec (R : gname -> gname -> gname -> iProp Σ)
-      (γp : gname) (T K : iProp Σ) `{!Persistent T}
+      (γp : gname) (cn : cons_names) (T K : iProp Σ) `{!Persistent T}
       (* sh's exit payload, passed straight through: see [sh_uexec_slot] *)
       (Q : Z -> iProp Σ)
+      (* the read leaf sh runs on, passed straight through: see
+         [sh_uexec_slot] *)
+      (Hrl : forall (N : uk_names Σ) (l : list fdstate),
+         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T cn l)
       (na : nat)
       (alen : nat -> nat) (afun : nat -> nat -> bv 8) (sts : list fdstate)
       (W' : uvis) (n0 n : nat) :
@@ -636,7 +627,7 @@ Section UShKernel.
     (* the entry row is stated at the EXEC'ING process's table, which is
        the one the image fact says the new key carries *)
     rewrite <- Hfd.
-    iApply (sh_uexec_slot R γp T K Q W' n0 n).
+    iApply (sh_uexec_slot R γp cn T K Q Hrl W' n0 n).
     - exact HQc.
     - rewrite Hpc. exact sh_start_pc.
     - exact (shk_img_sub_of_elf M Himg).

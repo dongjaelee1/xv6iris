@@ -169,6 +169,15 @@ Definition ush_echo_tokens : Prop :=
 Notation ush_line_is := UkSh.ush_line_is.
 Notation ush_line_lexable := UkShLoop.ush_line_lexable.
 
+(* ...AND THE READ LEAF'S TWO NAMES, for the same reason and by the same
+   rule (lane SH-LINE 2b, R1'): [ush_read_recv_leaf] and the three-armed
+   answer it hands back are stated in [UkSh.v] now, because sh's [gets] --
+   which is below this file -- is what runs on them.  Kept here as
+   abbreviations so the discharge and the files that quote it are
+   unaffected by the move. *)
+Notation ush_read_recv_leaf := UkSh.ush_read_recv_leaf.
+Notation ush_read_ans := UkSh.ush_read_ans.
+
 (* ===================================================================== *)
 (*  §4b  THE ^D REFUTATION (lane SH-LINE 2b, L2).                         *)
 (*                                                                        *)
@@ -298,155 +307,47 @@ Section UConsLine.
   (* =================================================================== *)
   (*  §2  SH'S READ LEAF, WITH THE RECEIPT KEPT                           *)
   (*                                                                      *)
-  (*  [UkSh.ush_read_leaf] (a Hypothesis of UkSh's section, discharged     *)
-  (*  today by [UShKernel.ush_read_leaf_of_win] out of                     *)
-  (*  [UkRunSys.wp_uk_ecall_read_win]) throws the process's post away.     *)
-  (*  This is the same leaf with the post KEPT, which is what              *)
-  (*  [UkRunSys.wp_uk_ecall_read_recv] exists to deliver.             *)
+  (*  [UkSh.ush_read_leaf] is a Hypothesis of UkSh's section, and it IS    *)
+  (*  this leaf now (lane SH-LINE 2b, R1'): the read the shell runs on is  *)
+  (*  the one that KEEPS the kernel's receipt.  The statement MOVED DOWN   *)
+  (*  to [UkSh.v] for the only reason a statement ever moves down here --  *)
+  (*  its consumer is below this file, and [UkSh.v] must not import        *)
+  (*  [UConsLine] (durable-notes, the heavy-import note).  Nothing in the  *)
+  (*  shape is this file's any more, so what is left is the NAME, so that  *)
+  (*  the discharge above ([UShLine.ush_read_recv_leaf_holds]) and the     *)
+  (*  files that quote it are unaffected by the move.                      *)
   (*                                                                      *)
-  (*  WHAT IT COSTS THE CALLER: its POSITION ([UserConsole.upos] at the    *)
-  (*  cursor it believes the token stands at).  What it hands back is one  *)
-  (*  of two things, and which one is not the caller's choice:             *)
+  (*  WHAT IT COSTS THE CALLER: its LEDGER (the arm the kernel's row takes *)
+  (*  is selected by the KEY's table, and the pure row beside it is        *)
+  (*  [UkSh.ush_fd0p] -- so the leaf answers on BOTH of that row's arms    *)
+  (*  and [gets] does not case split) and its POSITION                     *)
+  (*  ([UserConsole.upos] at the cursor it believes the token stands at).  *)
+  (*  What it hands back is one of THREE things, and which one is not the  *)
+  (*  caller's choice: the WINDOW, the MINUS ONE (killed, or fd 0 shut --  *)
+  (*  lane CLOSED-READ), or the TAINT.  [UkSh.ush_read_ans]'s own header   *)
+  (*  is what says which is which.                                        *)
   (*                                                                      *)
-  (*   THE WINDOW.  The [d] bytes the call delivered are the ring's       *)
-  (*   committed sequence at [n .. n+d), in order ([cons_chain]), each     *)
-  (*   with the application's tag on the history it arrived at; and the    *)
-  (*   position comes back at [n + dc], where the extra step is ACCOUNTED  *)
-  (*   FOR rather than merely bounded ([UserConsole.ucons_swallow], lane   *)
-  (*   CONS-SWALLOW): at [dc = d + 1] the call popped a byte it did not    *)
-  (*   deliver, and the arm NAMES that byte -- its history, its tag and    *)
-  (*   the reason.  THE REASON HAS ONE ARM HERE AND NOT TWO: the copy-out  *)
-  (*   fault is ELIMINATED inside the leaf's own discharge                 *)
-  (*   ([ush_swallow_nofault] below, out of row 5's [∃ P] and the buffer   *)
-  (*   the caller owns, under the lazy flag at [false]), so the [fault]    *)
-  (*   parameter is instantiated at [False] and what is left is [C('D')]   *)
-  (*   with nothing delivered.  That is what lets a reader taking one byte *)
-  (*   at a time tell a delivered line from a line with a hole in it.      *)
+  (*  THE SLACK IS GONE (lane CONS-ROWS spent).  The call asks for [cap]   *)
+  (*  bytes into a buffer of [k], and [cap <= k] is all that relates them: *)
+  (*  the copy-out reason used to need a byte to spare, because            *)
+  (*  [ConsoleInv.cons_swallow]'s fault arm is stated at [dst + dd] and a  *)
+  (*  verified reader refutes it only where it OWNS the byte               *)
+  (*  ([UkRunSys.uk_read_nofault]).  B1 is what makes that byte redundant: *)
+  (*  at [dd = cap] the cursor moved by exactly [dd], so the swallow is on *)
+  (*  its LEFT arm and there is nothing to refute.  The window's           *)
+  (*  [⌜dd <= cap⌝ -∗] guard is gone with it -- the discharge derives the  *)
+  (*  bound from row 5's [SpecFileread.fileread_ret] once the [r = -1]     *)
+  (*  alternative has been routed to the leaf's own minus-one arm.        *)
   (*                                                                      *)
-  (*   THE TAINT.  A read taken WITHOUT the token -- by a process this     *)
-  (*   application says nothing about -- moved the ring's committed count  *)
-  (*   without moving the cursor, and the kernel cannot keep one out       *)
-  (*   ([ConsoleInv]'s "CONS-CURSOR RULING (7)").  What it leaves is the   *)
-  (*   credential, which for a constraining application IS the taint       *)
-  (*   ([AppEcho.echo_sup_of_taint] read backwards), and sh's              *)
-  (*   continuation goes generic.  The position comes back at SOME value:  *)
-  (*   the pair is still the pair, but its number means nothing any more.  *)
-  (*                                                                      *)
-  (*  [T] IS A PARAMETER for [UserConsole.ucons_pay]'s reason: the program *)
-  (*  tier names no application.                                          *)
-  (*                                                                      *)
-  (*  STATED AS A BODY, not as a [Lemma]: the discharge is this lane's     *)
-  (*  phase 2, and it has to happen where the kernel's own instance of     *)
-  (*  [UexecSG.uexecSG] is in scope (that is where [spost_at] at 5 unfolds *)
-  (*  to [SpecFileread.fileread_extra]), which is [UInitSh.v]'s altitude   *)
-  (*  and not [UShKernel.v]'s.                                            *)
+  (*  THE COUNT IS THE REQUEST, AND [Z.of_nat cap < 2 ^ 31] IS WHAT SAYS   *)
+  (*  SO (lane CONS-ROWS).  The kernel's rows are stated at the count the  *)
+  (*  trapframe's argument 2 reads as a 32-bit INT                        *)
+  (*  ([SpecSysRead.sys_rw_count]), and [uint a2 = Z.of_nat cap] pins that *)
+  (*  to [cap] only below the sign boundary -- above it the kernel reads a *)
+  (*  different (possibly negative) request and the rows are about that   *)
+  (*  one.  A caller asking for a whole 2 GB in one read() gets the weaker *)
+  (*  contract; every reader in this tree asks for one byte.              *)
   (* =================================================================== *)
-  (* WHAT THE COUNT IS, AND WHY IT IS NOT THE BUFFER'S LENGTH (lane
-     SH-LINE 2b, phase 2).  The call asks for [cap] bytes and the caller
-     owns [k > cap] of them.  The extra byte is what the copy-out reason
-     costs: [ConsoleInv.cons_swallow]'s fault arm is stated at [dst + d],
-     and a verified reader refutes it only where it OWNS the byte
-     ([UkRunSys.uk_read_nofault] off its own [ubytes]), so at [d = cap]
-     the address the arm names is one past the request and only a buffer
-     with a byte to spare refutes it.  The two CONTROL-FLOW ROWS below
-     (lane CONS-ROWS, B1/B4) are what makes that byte redundant -- at
-     [dd = cap] the cursor moved by exactly [dd], so the swallow is on its
-     left arm and there is nothing to refute -- and spending them, which
-     is what drops [cap < k] and the [dd <= cap] guard, is the consuming
-     U-tier lane's step, not this one's.
-     THE COUNT IS THE REQUEST, AND [Z.of_nat cap < 2 ^ 31] IS WHAT SAYS SO
-     (lane CONS-ROWS).  The kernel's rows are stated at the count the
-     trapframe's argument 2 reads as a 32-bit INT
-     ([SpecSysRead.sys_rw_count]), and [uint a2 = Z.of_nat cap] pins that
-     to [cap] only below the sign boundary -- above it the kernel reads a
-     different (possibly negative) request and the rows are about that one.
-     A caller asking for a whole 2 GB in one read() gets the weaker
-     contract; every reader in this tree asks for one byte. *)
-  Definition ush_read_recv_leaf (N : uk_names Σ) (cn : cons_names)
-      (γp : gname) (T : iProp Σ) (l : list fdstate) : iProp Σ :=
-    (∀ (h : CpuId) (m : regfile) (pc : mword 64) (a : Z) (k cap n : nat)
-       (f : nat -> bv 8) (avail : nat),
-       ⌜usysno m = USYS_read⌝ -∗
-       (* the descriptor is fd 0, which §1's ledger says is the console *)
-       ⌜bv_signed (trunc32 (m !!! Regidx a0_idx)) = 0⌝ -∗
-       ⌜uint (m !!! Regidx a1_idx) = a⌝ -∗
-       ⌜uint (m !!! Regidx a2_idx) = Z.of_nat cap⌝ -∗
-       ⌜(cap < k)%nat⌝ -∗
-       ⌜(Z.of_nat cap < 2 ^ 31)%Z⌝ -∗
-       ⌜is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true⌝ -∗
-       uinstr_is (ukn_t N) pc false (ECALL tt) -∗
-       ubytes (ukn_d N) a k f -∗
-       (* THE LEDGER, which is what SELECTS the console arm: row 5's
-          bundle is [SpecFileread.fileread_in] at [SpecArgfd.fd_st_of_key]
-          of the key's own table, and this is the caller's claim on it
-          ([UkRunSys.wp_uk_ecall_read_recv] hands back the agreement
-          [take NSTD (uvis_fd W) = l]).  read moves no descriptor, so it
-          comes straight back. *)
-       ush_std_cons (ukn_fd N) l -∗
-       (* THE CALLER'S POSITION, which is what makes the window its own *)
-       upos γp n -∗
-       urun N h m pc avail -∗
-       (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8),
-          ⌜(d <= cap)%nat⌝ -∗
-          ⌜forall j : nat, (d <= j < k)%nat -> g j = f j⌝ -∗
-          ush_std_cons (ukn_fd N) l -∗
-          (* THE WINDOW, AND WITH IT THE RETURN VALUE.  The receipt names
-             its OWN count [dd] and ties it to a0
-             ([SpecConsoleread]'s [(0 <= r)%Z -> r = Z.of_nat d], relayed
-             by [SpecFileread.console_receipt]); that tie is what lets a
-             one-byte reader turn its [blez] into a fact about its line.
-
-             THE WINDOW ITSELF IS CONDITIONAL ON [dd <= cap], and the
-             condition is not slack: nothing in the landed contract bounds
-             the receipt's count by the caller's request
-             ([UsysMemOk.usys_mem_ok]'s read row bounds only the bytes
-             WRITTEN, and [UexecExecInst.xv6_spost] drops
-             [SpecFileread.fileread_ret]), so the bytes the receipt speaks
-             of are readable exactly where the caller owns them.  A caller
-             that has tested its return value has the premise: [r = 1]
-             gives [dd = 1].  The SWALLOW rides the same implication for
-             the same reason -- its copy-out arm is refuted at [dst + dd]
-             and only an owned byte can refute it. *)
-          ((∃ (dd dc : nat) (hs : list (list mobs))
-              (sl : list (list mobs * bv 8)),
-              ⌜Z.of_nat dd = bv_unsigned r⌝ ∗
-              (* THE CURSOR'S TWO CONTROL-FLOW ROWS AND THE ANSWER'S RANGE
-                 (lane CONS-ROWS, B1/B4/B3), relayed off
-                 [SpecFileread.console_receipt] and row 5 at this tier's
-                 own count.  A one-byte reader spends all three: [r = 1]
-                 gives [dd = 1 = cap], hence [dc = dd] -- the byte it was
-                 handed is the only one the call took; [r = 0] gives
-                 [dd = 0] against a positive request, hence [dc = dd + 1]
-                 -- the byte IS gone, and [ucons_swallow]'s left arm is
-                 refuted, so the reason on the right is readable; and
-                 [fileread_ret] is what turns the [blez] the caller ran
-                 into either of those two cases. *)
-              ⌜dd = cap -> dc = dd⌝ ∗
-              ⌜dd = 0%nat -> (0 < cap)%nat -> dc = (dd + 1)%nat⌝ ∗
-              ⌜fileread_ret (Z.of_nat cap) r⌝ ∗
-              ⌜cons_chain sl⌝ ∗
-              ucons_stored_lb cn sl ∗
-              ([∗ list] hh ∈ hs, riscv_rx_tag hh) ∗
-              (⌜(dd <= cap)%nat⌝ -∗
-                 ⌜cons_window sl n dd g hs⌝ ∗
-                 ucons_swallow cn False sl dd dc) ∗
-              upos γp (n + dc)%nat)
-           (* ...OR THE PROCESS WAS KILLED (lane SH-LINE 2b, phase 2).
-              consoleread answers -1 only there, and that arm pays the
-              caller's [Rd] at a position and an advance it is not told
-              ([SpecFileread.console_receipt]'s left arm) -- so the token
-              comes back somewhere and the window does not exist.  The
-              kernel's own note says the arm is not observable from user
-              mode; the trap route nevertheless quantifies the resume over
-              every [r], so the arm is HERE rather than refuted.  It is not
-              a placeholder: a killed process's [gets] breaks on [cc < 1]
-              like any other. *)
-           ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ∃ n' : nat, upos γp n')
-           ∨ (T ∗ ∃ n' : nat, upos γp n')) -∗
-          ubytes (ukn_d N) a k g -∗
-          urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
 
   (* =================================================================== *)
   (*  §3  THE [gets] LOOP'S LINE INVARIANT                                *)
@@ -564,17 +465,26 @@ Section UConsLine.
   (*  So there is no third thing for sh to walk: either nothing was        *)
   (*  swallowed and the position is exactly where the loop left it, or the *)
   (*  application is tainted and sh's continuation is the generic one.     *)
+  (*                                                                      *)
+  (*  IT IS AN IMPLICATION AND NOT A DISJUNCTION NOW (lane CONS-ROWS, B4   *)
+  (*  spent).  The old shape had to leave "nothing was swallowed" open,    *)
+  (*  because nothing in the landed contract said what a zero-length read  *)
+  (*  did to the cursor.  B4 does: at [dd = 0] against a POSITIVE request  *)
+  (*  the byte WAS popped, so the caller arrives here already knowing      *)
+  (*  [dc <> 0] -- and then the only arm left is [C('D')], and the only    *)
+  (*  reading of it is the taint.  A zero-length read at a positive        *)
+  (*  request IS the ^D-with-nothing-delivered arm.                        *)
   (* =================================================================== *)
   Lemma ush_swallow_taint (cn : cons_names) (T : iProp Σ)
       (sl : list (list mobs * bv 8)) (dc : nat) :
-    ush_tag_law T -∗ ucons_swallow cn False sl 0%nat dc -∗
-    ⌜dc = 0%nat⌝ ∨ T.
+    dc <> 0%nat ->
+    ush_tag_law T -∗ ucons_swallow cn False sl 0%nat dc -∗ T.
   Proof.
-    iIntros "#Hlaw Hsw". rewrite /ucons_swallow.
-    iDestruct "Hsw" as "[%He | [%He H]]"; [ iLeft; by iPureIntro | ].
+    intro Hdc. iIntros "#Hlaw Hsw". rewrite /ucons_swallow.
+    iDestruct "Hsw" as "[%He | [%He H]]"; [ exfalso; exact (Hdc He) | ].
     iDestruct "H" as (h b) "(%Hen & _ & _ & Htg & Hwhy)".
     iDestruct "Hwhy" as "[%Hd | %Hf]"; [ | exfalso; exact Hf ].
-    iDestruct ("Hlaw" $! h with "Htg") as "[%Hdisc | HT]"; [ | by iRight ].
+    iDestruct ("Hlaw" $! h with "Htg") as "[%Hdisc | HT]"; [ | iExact "HT" ].
     exfalso. exact (disc_no_ctrl_d h b Hen (proj2 Hd) Hdisc).
   Qed.
 

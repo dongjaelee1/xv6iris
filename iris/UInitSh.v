@@ -574,6 +574,19 @@ Section UInitSh.
        is that the head's OWN state is the console one, which is what the
        pinned open's receipt gives it. *)
     (exists wr : bool, st = FdOpen true wr (FdDevice ConsoleInv.CONSOLE)) ->
+    (* ...AND THE READ LEAF SH RUNS ON (lane SH-LINE 2b, R1').  sh's
+       [gets] runs on the RECEIPT-KEEPING console read now, and its supply
+       is the reader lease inside sh's own exit payload -- which is the
+       payload this constructor chooses ([UserConsole.ucons_pay] at the
+       pair minted for the round).  The discharge is
+       [UShLine.ush_read_recv_leaf_holds]; it names [FsCfg.fsc_cons] and
+       the application's two readings of the supply, neither of which this
+       file may name, so it arrives as a Coq-level premise -- quantified
+       over the POSITION GHOST because init mints a fresh pair per child,
+       exactly as [sh_pay]'s tail is. *)
+    (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
+       ukn_pay N = ucons_pay cn γp T ->
+       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T cn l) ->
     udep (PS := uprogSG_free) -∗
     (* ...AND THE THREE DEPOSITS SH OWES: read(5), open(15), write(16), the
        CLAIM numbers sh calls ([UkSh.sh_deps]).  They cross the exec with
@@ -607,7 +620,7 @@ Section UInitSh.
     init_sh_slot T (sh_pay T Rsh n0) -∗
     UkInit.init_exec_sup_lend (PS := uprogSG_free) cn T st.
   Proof.
-    intros Hpsok_free Hn0 Hst.
+    intros Hpsok_free Hn0 Hst Hrl.
     iIntros "#Hdep #Hdp #Hcons (#Hinv & #Hcl0 & #Hgen & #Hpay)".
     (* E4: what crosses is the WHOLE pins law and each consumer projects *)
     iDestruct (sh_pins_of_fs_pure T with "Hcl0") as "#Hcl".
@@ -699,7 +712,7 @@ Section UInitSh.
          INSTANTIATED lemma with no goal in play; the [iApply] then has
          only the resource list to do. *)
       pose proof (sh_slot_of_kexec (SG := uexecSG_xv6) (PS := uprogSG_free)
-                    Hpsok_free Rsh γp T K (ucons_pay cn γp T)
+                    Hpsok_free Rsh γp cn T K (ucons_pay cn γp T) (Hrl γp)
                     1%nat alen afun fdv W' n0 np
                     (ucons_pay_const cn γp T) Hok Hcwd0
                     (init_sh_room alen n0 Halen Hn0) Hlen Hlzf) as Hsk.

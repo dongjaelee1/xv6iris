@@ -100,6 +100,8 @@ Require Import UInitKernel.       (* [init_slot_of_kexec] / the dance *)
 Require Import UInitCons.         (* [init_cons_fd] / [init_cons_cred] *)
 Require Import UInitConsK.        (* the two arms' discharges at echo's era *)
 Require Import UInitSh.           (* [init_cons_sup_of_sh_slot] *)
+Require Import UShLine.           (* [ush_read_recv_leaf_holds] -- the ONE
+                                     discharge of sh's console read leaf *)
 Require Import AppEcho.           (* [echo_boot] / [echo_taint] *)
 Require Import UserConsole.       (* [ucons_reader_eq] *)
 Require Import UserFd.            (* [NSTD] *)
@@ -357,19 +359,24 @@ Section UInitBoot.
     (forall k : Z, free_num k -> @psok Σ uprogSG_free k) ->
     8 * Z.of_nat (2 + (8 + (16 + (UkSh.ush_Dbody + n0)))) <= 0xFE0 ->
     (exists wr : bool, st = FdOpen true wr (FdDevice ConsoleInv.CONSOLE)) ->
+    (* the read leaf sh runs on, passed straight through: see
+       [UInitSh.init_exec_sup_of_sh_slot] *)
+    (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
+       ukn_pay N = ucons_pay cn γp (echo_taint γ) ->
+       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp (echo_taint γ) cn l) ->
     udep (PS := uprogSG_free) -∗ UkSh.sh_deps (PS := uprogSG_free) -∗
     UInitSh.init_sh_slot (echo_taint γ) (UInitSh.sh_pay (echo_taint γ) Rsh n0) -∗
     UkInit.init_cons_sup (PS := uprogSG_free) cn (echo_taint γ)
       (init_cons_cred (echo_taint γ) r) st.
   Proof.
-    intros Heq Hpsok_free Hn0 Hst.
+    intros Heq Hpsok_free Hn0 Hst Hrl.
     iIntros "#Hdep #Hdp #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
     - iIntros "!> #Hcns".
       iDestruct "Hcore" as "#Hcore'".
       (* [Persistent K] is an INSTANCE binder there, so it is not passed
          positionally; [cons_never_persistent] answers it. *)
       iApply (UInitSh.init_exec_sup_of_sh_slot (echo_taint γ) cn st
-                (cons_never r) Rsh n0 Hpsok_free Hn0 Hst
+                (cons_never r) Rsh n0 Hpsok_free Hn0 Hst Hrl
                 with "Hdep Hdp [] Hcore'").
       iApply (ush_cons_in_of_Cns γ r Heq with "[] Hcns").
       iDestruct "Hcore'" as "(#Hinv & _)". iExact "Hinv".
@@ -570,12 +577,28 @@ Section EchoInitBoot.
       iSplitR; [ iExact "Hmint" | ].
       iApply (UInitSh.sh_pay_of_parts (echo_taint γ) Rsh 0%nat
                 with "[] [] Htg"); [ iApply Hsh_state | iApply Hsh_rest ]. }
+    (* THE TWO READINGS OF THE SUPPLY, at Coq level: sh's read leaf is
+       discharged from the console ring's dirty credential read AS THE
+       TAINT and back ([AppEcho.echo_taint_of_sup] / [echo_sup_of_taint]),
+       and [UShLine.ush_read_recv_leaf_holds] takes them as Coq premises
+       because its result is a Coq-level [⊢]. *)
+    assert (Htsw : ⊢ echo_taint γ -∗ app_sup).
+    { rewrite /app_sup. rewrite Heq.
+      cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
+      iIntros "#Ht". iApply (echo_sup_of_taint γ r with "Ht"). }
+    assert (Hstw : ⊢ app_sup -∗ echo_taint γ).
+    { rewrite /app_sup. rewrite Heq.
+      cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
+      iIntros "#Hs". iApply (echo_taint_of_sup γ r with "Hs"). }
     iAssert (UkInit.init_cons_sup (PS := uprogSG_free) fsc_cons (echo_taint γ)
                (init_cons_cred (echo_taint γ) r) init_cons_fd)%I as "#Hxs".
     { iApply (init_cons_sup_of_sh_slot γ r fsc_cons init_cons_fd
                 Rsh 0%nat Heq (fun k H => H)
                 ltac:(vm_compute; discriminate)
                 ltac:(exists true; reflexivity)
+                (fun γp N l Hpq =>
+                   UShLine.ush_read_recv_leaf_holds N γp (echo_taint γ) l
+                     Hpq Hstw Htsw _)
                 with "[] [] Hsh").
       - iApply (udep_free).
       - iApply Hsh_deps. }

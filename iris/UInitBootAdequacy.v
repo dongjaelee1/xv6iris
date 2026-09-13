@@ -126,6 +126,9 @@ Section EchoAdequacy.
                     (FsImg.sb_logstart sb) γd γsw γreg γstart c)
                  γobs T (obs_ledger_at (app_R app_echo c) γobs) γhist
                  (app_tag app_echo c) (echo_Htagp c) (echo_Htagt c)
+                 (* ...and the kill credential's slot (lane KILL-PAY, K1),
+                    which for echo is the taint *)
+                 (app_kill app_echo c) (echo_Hkillp c) (echo_Hkillt c)
                  (app_fixed app_echo) c) g' -∗
            ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
            ▷ xv6_slot (app_names app_echo) (app_pred app_echo) cov
@@ -165,9 +168,13 @@ Section EchoAdequacy.
        [Hphi]'s own statement above names [echo_Htagp c] and [echo_Htagt
        c] inside [boot_fixedGS].  The twelve that remain are these, in
        this order (read off the elaborator, not guessed). *)
+    (* THREE MORE HOLES since lane KILL-PAY (K1): [Hkillp] and [Hkillt] are
+       fixed by unification the way [Htagp]/[Htagt] are (they are named in
+       [Hphi]'s own literal above), so only [Happ_kill] becomes a goal. *)
     refine (xv6_app_adequacy Σ g sb nib cov app_echo
-              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
+              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
     - exact echo_Hbirth.
+    - exact echo_Happ_kill.
     - exact echo_HR0.
     - exact echo_Hpow.
     - (* POINTWISE, not as one term.  [echo_Htx]/[echo_Hrx] state the era
@@ -191,14 +198,18 @@ Section EchoAdequacy.
              [Hsh_owed] at that instance, and [echo_Hinit_boot] builds
              /init's slot from them without ever touching the supply. ---- *)
       
-      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hgen.
+      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen.
+      (* the record's [app_kill] field IS [AppEcho.echo_taint] (lane
+         KILL-PAY, K1); [echo_Hinit_boot] is stated at the latter, and
+         unification does not delta-unfold the record literal for it. *)
+      cbn [app_echo app_kill] in Hkill.
       (* THE TWO LAYERS MEET HERE, and this is the only place they have to.
          [Heq] arrives carrying [app_echo] at the record's PRE-structure
          counter; [echo_Hinit_boot] -- and every [AppInv] law its proof
          uses -- is at the FIXED layer's.  [Hgen] says they are the same
          term at this instance, so one [rewrite] puts the equation where
          the laws are. *)
-      rewrite <- Hgen in Heq, Htag |- *.
+      rewrite <- Hgen in Heq, Htag, Hkill |- *.
       destruct (Hsh_owed HR GEN HBs HFd HIr HPav HWc HF)
         as (Rsh & Hw16 & Hdeps & Hst & Hre).
       iIntros "#Hinv Hb".
@@ -207,7 +218,7 @@ Section EchoAdequacy.
          Naming it here would pin the wrong one: the [GEN] this field
          binds is not the one [app_echo] was elaborated at. *)
       iApply (echo_Hinit_boot HR GEN Rsh c r Hw16 Hdeps Hst Hre
-                Heq Htag with "Hinv Hb").
+                Heq Htag Hkill with "Hinv Hb").
     - exact Hphi.
     - exact Hgen0.
     - exact Hpow0.

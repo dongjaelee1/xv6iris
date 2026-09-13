@@ -146,20 +146,39 @@ Record xv6_app (Σ : gFunctors) := MkApp {
      one per queued byte and every reader copies it out.  It is the record's
      entry for the machine's ambient [RiscvPtsto.riscv_rx_tag]. *)
   app_tag   : app_fixed -> list mobs -> iProp Σ;
+  (* THE KILL CREDENTIAL (app-echo.md lane KILL-PAY, K1): what the
+     application charges for a kill.  The record's entry for the machine's
+     ambient [RiscvPtsto.riscv_kill_cred]: a kill is legal, and every party
+     it touches -- the killer, the killed slot's public payload, the trap
+     that observes [p->killed], the -1 the process exits with, the -1 a
+     console read returns -- is handed this.  A verified continuation
+     therefore goes GENERIC where a kill could have happened, instead of
+     being refuted.
+     PERSISTENT and TIMELESS (the obligations [Hkillp]/[Hkillt] below), and
+     BOUGHT BY THE SUPPLY ([Happ_kill]): the generic user-execution slot
+     runs on [AppInv.app_sup_raw], so the credential has to be free to
+     anything that already holds the application's supply -- which is what
+     lets the kernel charge the kill price at a trap it cannot rule out
+     without charging any verified program.  For echo it is the TAINT
+     ([AppEcho.echo_taint], bought by [echo_taint_of_sup]); [True] for an
+     application that puts no price on a kill. *)
+  app_kill  : app_fixed -> iProp Σ;
   (* the conclusion, over the operational state and the run's trace *)
   app_phi   : gstate -> list mobs -> Prop;
 }.
-Arguments MkApp {Σ} _ _ _ _ _ _ _ _.
+Arguments MkApp {Σ} _ _ _ _ _ _ _ _ _.
 Arguments app_fixed {Σ} _. Arguments app_cl {Σ} _ _.
 Arguments app_names {Σ} _. Arguments app_pred {Σ} _ _ _ _.
 Arguments app_boot {Σ} _ _ _.
 Arguments app_R {Σ} _ _ _. Arguments app_tag {Σ} _ _ _.
+Arguments app_kill {Σ} _ _.
 Arguments app_phi {Σ} _ _ _.
 
 (* THE GENERIC APPLICATION: no fixed part, nothing claimed, nothing read *)
 Definition app_triv (Σ : gFunctors) : xv6_app Σ :=
   MkApp unit (fun _ => True%I) unit (fun _ _ _ => True%I) (fun _ _ => emp%I)
-        (fun _ _ => emp%I) (fun _ _ => True%I) (fun _ _ => True).
+        (fun _ _ => emp%I) (fun _ _ => True%I) (fun _ => True%I)
+        (fun _ _ => True).
 
 (* ---------------------------------------------------------------------- *)
 (* THE THEOREM.  [xv6_power_adequacy_gen] at the application: the birth    *)
@@ -186,6 +205,16 @@ Theorem xv6_app_adequacy Σ
     (* ...and timeless, because the receive column that files it lives in the
        UART invariant, whose body every device leaf strips a later off *)
     (Htagt : forall (c : app_fixed A) (h : list mobs), Timeless (app_tag A c h))
+    (* THE KILL CREDENTIAL'S THREE (lane KILL-PAY, K1).  Persistent and
+       timeless for the reasons the tag's are -- every party a kill touches
+       keeps a copy, and it rides invariant bodies the lock and device
+       leaves strip a later off -- and BOUGHT BY THE SUPPLY, which is what
+       makes the kernel's kill price payable by the generic slot and by no
+       verified program.  echo's is [AppEcho.echo_taint_of_sup]. *)
+    (Hkillp : forall c : app_fixed A, Persistent (app_kill A c))
+    (Hkillt : forall c : app_fixed A, Timeless (app_kill A c))
+    (Happ_kill : forall (c : app_fixed A) (r : app_names A),
+       AppInv.app_sup_raw (app_pred A c) r ⊢ □ app_kill A c)
     (HR0 : forall c : app_fixed A, app_cl A c ⊢ |==> app_R A c [])
     (Hpow : forall (c : app_fixed A) (h : list mobs) (on : bool) (dk : Z -> bv 8),
        trace_shape h on ->
@@ -272,6 +301,9 @@ Theorem xv6_app_adequacy Σ
             about the world, and the premise a pinned <init> discharges
             [UConsLine.ush_tag_law] from. *)
          riscv_rx_tag = app_tag A c ->
+         (* ...and (K1) THE KILL-CREDENTIAL EQUATION, on the same mould:
+            the machine's ambient kill credential IS this application's. *)
+         riscv_kill_cred = app_kill A c ->
          (* ...and (b') THE GENERATION-COUNTER EQUATION (lane APP-IFACE, the
             same pattern as the rx-tag one above).  The era's [A] is FIXED
             before [HR] exists, so the camera [A]'s own predicate carries
@@ -300,7 +332,8 @@ Theorem xv6_app_adequacy Σ
                (xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
                   γd γsw γreg γstart c)
                γobs T (obs_ledger_at (app_R A c) γobs) γhist
-               (app_tag A c) (Htagp c) (Htagt c) (app_fixed A) c) g' -∗
+               (app_tag A c) (Htagp c) (Htagt c)
+               (app_kill A c) (Hkillp c) (Hkillt c) (app_fixed A) c) g' -∗
          ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
          ▷ xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
              γd γsw γreg γstart c -∗
@@ -325,7 +358,8 @@ Proof.
              (xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
                 γd γsw γreg γstart c)
              γobs T (obs_ledger_at (app_R A c) γobs) γhist
-             (app_tag A c) (Htagp c) (Htagt c) (app_fixed A) c
+             (app_tag A c) (Htagp c) (Htagt c)
+             (app_kill A c) (Hkillp c) (Hkillt c) (app_fixed A) c
          /\ @file_app Σ HF = MkAppcfg (app_names A) (app_pred A c) r
          /\ (i = Uart0 -> FsCfg.fsc_uart = γ)) ->
       ⊢ obs_inv -∗ uart_obs_permit i γ).
@@ -338,7 +372,8 @@ Proof.
   exact (xv6_power_adequacy_gen Σ g sb nib cov
            (app_fixed A) (app_cl A) Hbirth
            (app_names A) (app_pred A) (app_boot A) Happ_boot Happ_init
-           (app_tag A) Htagp Htagt Hinit_boot
+           (app_tag A) Htagp Htagt
+           (app_kill A) Hkillp Hkillt Happ_kill Hinit_boot
            (fun γobs c => obs_ledger_at (app_R A c) γobs)
            (fun γobs c =>
               obs_ledger_at_alloc_cl (app_R A c) γobs (app_cl A c) (HR0 c))
@@ -399,17 +434,23 @@ Section AppTriv.
     @file_app Σ HF
       = MkAppcfg (app_names (app_triv Σ)) (app_pred (app_triv Σ) c) r ->
     riscv_rx_tag = app_tag (app_triv Σ) c ->
+    (* ...and the kill-credential equation (lane KILL-PAY, K1): the generic
+       application's credential is [True], which is what pays
+       [init_boot_of_triv]'s new side *)
+    riscv_kill_cred = app_kill (app_triv Σ) c ->
     (* ...and the generation-counter equation (lane APP-IFACE (b')), which
        the generic application takes and does not use *)
     @riscvF_genGS Σ (@riscv_fixedGS Σ HR) = riscv_pre_genGS ->
     ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot (app_triv Σ) c r -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Heq _ _. iIntros "_ _". iModIntro.
+    intros Heq _ Hkc _. iIntros "_ _". iModIntro.
     (* the rewrite goes BEFORE the [intros]: [r'] is typed at
        [app_names file_app], so rewriting under it is a dependent rewrite *)
-    iApply init_boot_of_triv. rewrite Heq. intros r' av.
-    cbn [app_triv app_pred app_names]. reflexivity.
+    iApply init_boot_of_triv.
+    - rewrite Heq. intros r' av.
+      cbn [app_triv app_pred app_names]. reflexivity.
+    - rewrite Hkc. cbn [app_triv app_kill]. reflexivity.
   Qed.
 
   Lemma app_triv_R0 (c : app_fixed (app_triv Σ)) :
@@ -442,6 +483,10 @@ Proof.
            ltac:(intros c h; cbn [app_triv app_R]; apply _)
            ltac:(intros c h; cbn [app_triv app_tag]; apply _)
            ltac:(intros c h; cbn [app_triv app_tag]; apply _)
+           ltac:(intros c; cbn [app_triv app_kill]; apply _)
+           ltac:(intros c; cbn [app_triv app_kill]; apply _)
+           ltac:(intros c r; cbn [app_triv app_kill];
+                 iIntros "_"; iModIntro; done)
            app_triv_R0
            ltac:(intros c h on dk _; cbn [app_triv app_R]; iIntros "_"; by iModIntro)
            ltac:(intros HR HFi c r i γ _ _; cbn [app_triv app_R];

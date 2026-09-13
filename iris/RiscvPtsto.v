@@ -567,6 +567,29 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
   riscv_rx_tag : list mobs -> iProp Σ;
   riscv_rx_tag_persistent : forall h, Persistent (riscv_rx_tag h);
   riscv_rx_tag_timeless : forall h, Timeless (riscv_rx_tag h);
+  (* THE KILL CREDENTIAL (claude-notes/projects/app-echo.md, lane KILL-PAY,
+     item K1).  The ambient PRICE OF A KILL: an application-chosen,
+     persistent proposition that every party a kill touches is handed.
+
+     WHY IT IS A FIXED-LAYER FIELD AND NOT A PARAMETER.  A kill reaches the
+     killer (sys_kill), the killed slot's public payload ([SchedCtx.proc_pub]
+     records that [p->killed] is nonzero only against this credential), the
+     trap that observes it ([SpecKilled]'s post), the -1 the process exits
+     with ([UexecRet.uexec_pay_arm]) and the -1 a console read returns.
+     Threading a [Wk] parameter through all of those is a sweep of every
+     occurrence of [procs_inv]; the record field costs none, exactly as
+     [riscv_rx_tag] costs none on the input side.  The adequacy theorem sets
+     it from the application ([App.app_kill] at the run's fixed part) and the
+     generic application sets it to [True] ([kill_cred_triv] below), so a
+     machine that claims nothing about a kill pays nothing.
+
+     PERSISTENT for the reason the tag family is: it is copied out at each
+     of those parties and none of them may spend it.  TIMELESS because it
+     rides invariant bodies ([SchedCtx.proc_pub] under the proc lock) that
+     the device and lock leaves strip a later off. *)
+  riscv_kill_cred : iProp Σ;
+  riscv_kill_cred_persistent : Persistent riscv_kill_cred;
+  riscv_kill_cred_timeless : Timeless riscv_kill_cred;
   (* THE APPLICATION'S FIXED PART (claude-notes/projects/app-instances.md
      §6 ruling 1, round D0).  The machine no longer owns a counter: the
      application declares whatever [Type] its fixed part has, and its BIRTH
@@ -584,6 +607,9 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
    record component, so resolution needs this line to find it *)
 Global Existing Instance riscv_rx_tag_persistent.
 Global Existing Instance riscv_rx_tag_timeless.
+(* ...and the kill credential's, for the same reason *)
+Global Existing Instance riscv_kill_cred_persistent.
+Global Existing Instance riscv_kill_cred_timeless.
 
 Class riscvGS (Σ : gFunctors) := RiscvGS {
   riscv_fixedGS :: riscvFixedGS Σ;
@@ -836,6 +862,19 @@ Proof. rewrite /rx_tag_triv. apply _. Qed.
 Global Instance rx_tag_triv_timeless {Σ : gFunctors} (h : list mobs) :
   Timeless (rx_tag_triv (Σ := Σ) h).
 Proof. rewrite /rx_tag_triv. apply _. Qed.
+
+(* THE TRIVIAL KILL CREDENTIAL: what an application that puts no price on a
+   kill fills the slot with (lane KILL-PAY, K1).  Named for the same reason
+   [rx_tag_triv] is -- the generic theorem's equations have to match on
+   something -- and [True] rather than [emp] so that the [□] every party
+   holds it under is free. *)
+Definition kill_cred_triv {Σ : gFunctors} : iProp Σ := True%I.
+Global Instance kill_cred_triv_persistent {Σ : gFunctors} :
+  Persistent (kill_cred_triv (Σ := Σ)).
+Proof. rewrite /kill_cred_triv. apply _. Qed.
+Global Instance kill_cred_triv_timeless {Σ : gFunctors} :
+  Timeless (kill_cred_triv (Σ := Σ)).
+Proof. rewrite /kill_cred_triv. apply _. Qed.
 
 (* the TRIVIAL trace predicate -- the client's half and nothing about it.
    What a client that states no trace property fills the slot with. *)

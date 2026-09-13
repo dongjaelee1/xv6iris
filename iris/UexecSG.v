@@ -598,8 +598,13 @@ Class uprogSG (Σ : gFunctors) := {
 (* and a READ-kind commit -- is a closed fact                              *)
 (* ([FsAbsInvFire.fsabs_chdir_pre] takes no supply), so chdir is FREE.     *)
 (* ===================================================================== *)
+(*   6  kill  -- the branch is the KILL CREDENTIAL (lane KILL-PAY, K3(a)):
+                 sys_kill hands it to kkill out of the trapping process's
+                 deposit.  No verified program calls kill(2), so excluding
+                 it here costs nothing; the GENERIC slot pays it out of the
+                 application's supply. *)
 Definition free_num (n : Z) : Prop :=
-  n <> USYS_exec /\ n <> 5 /\ n <> 15 /\ n <> 16 /\ n <> 17 /\
+  n <> USYS_exec /\ n <> 5 /\ n <> 6 /\ n <> 15 /\ n <> 16 /\ n <> 17 /\
   n <> 18 /\ n <> 19 /\ n <> 20.
 
 Global Instance free_num_dec (n : Z) : Decision (free_num n).

@@ -1377,6 +1377,13 @@ Section EchoApp.
 
   Definition app_echo : xv6_app Σ :=
     MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R echo_tag
+          (* THE KILL CREDENTIAL IS THE TAINT (app-echo.md, lane KILL-PAY,
+             K1).  The record's [app_kill] slot has to be filled for the
+             literal to typecheck, and there is exactly one honest value:
+             a kill under this application's discipline is impossible, so
+             what a party a kill touched may keep is the fact the taint
+             already states.  [echo_taint_of_sup] is [Happ_kill]. *)
+          echo_taint
           echo_phi.
 
   (* ---- THE BIRTH STEP ---- *)
@@ -1395,6 +1402,24 @@ Section EchoApp.
   Lemma echo_Htagt (c : app_fixed app_echo) (h : list mobs) :
     Timeless (app_tag app_echo c h).
   Proof. cbn [app_echo app_fixed app_tag] in c |- *. apply _. Qed.
+
+  (* ---- THE KILL CREDENTIAL'S THREE (lane KILL-PAY, K1) ---- *)
+  Lemma echo_Hkillp (c : app_fixed app_echo) :
+    Persistent (app_kill app_echo c).
+  Proof. cbn [app_echo app_fixed app_kill] in c |- *. apply _. Qed.
+
+  Lemma echo_Hkillt (c : app_fixed app_echo) :
+    Timeless (app_kill app_echo c).
+  Proof. cbn [app_echo app_fixed app_kill] in c |- *. apply _. Qed.
+
+  (* the supply buys the credential, and at echo the two are the same
+     reading of the counter ([echo_taint_of_sup]) *)
+  Lemma echo_Happ_kill (c : app_fixed app_echo) (r : app_names app_echo) :
+    AppInv.app_sup_raw (app_pred app_echo c) r ⊢ □ app_kill app_echo c.
+  Proof.
+    cbn [app_echo app_fixed app_names app_pred app_kill] in c, r |- *.
+    iIntros "#Hs". iModIntro. iApply (echo_taint_of_sup c r with "Hs").
+  Qed.
 
   Lemma echo_HR0 (c : app_fixed app_echo) :
     app_cl app_echo c ⊢ |==> app_R app_echo c [].

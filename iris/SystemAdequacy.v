@@ -377,11 +377,15 @@ Lemma fs_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (Hinv : invGS Σ) (γgen γstart γreg γd γsw γobs γhist : gname) (c : CT)
     (T : list mobs) (Tg : list mobs -> iProp Σ)
     (HTg : forall h, Persistent (Tg h)) (HTgt : forall h, Timeless (Tg h))
+    (* the kill credential's slot (lane KILL-PAY, K1): carried by the
+       record literal, read by nothing here *)
+    (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
     (g' : gstate) :
   ⊢ @power_interp Σ
        (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
           (xv6_slot N app_fs cov ls γd γsw γreg γstart c)
-          γobs T (obs_pred_at γobs) γhist Tg HTg HTgt CT c) g' -∗
+          γobs T (obs_pred_at γobs) γhist Tg HTg HTgt
+          Kc HKc HKct CT c) g' -∗
     ▷ xv6_slot N app_fs cov ls γd γsw γreg γstart c -∗
     ◇ ⌜fs_boot_pure cov ls (v_disk (g'.(gdev).(dvirtio)))⌝.
 Proof.
@@ -390,7 +394,7 @@ Proof.
            (fs_boot_pure cov ls)
            (xv6_slot_project N app_fs cov ls)
            Hinv γgen γstart γreg γd γsw γobs T (obs_pred_at γobs) γhist
-           Tg HTg HTgt c g').
+           Tg HTg HTgt Kc HKc HKct c g').
 Qed.
 
 (* ...AND A [phi] THAT IS NOT ABOUT THE DISK AT ALL, beside it.
@@ -420,11 +424,13 @@ Lemma xv6_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (Hinv : invGS Σ) (γgen γstart γreg γd γsw γobs γhist : gname) (c : CT)
     (T : list mobs) (Tg : list mobs -> iProp Σ)
     (HTg : forall h, Persistent (Tg h)) (HTgt : forall h, Timeless (Tg h))
+    (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
     (g' : gstate) :
   ⊢ @power_interp Σ
        (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
           (xv6_slot N app_fs cov ls γd γsw γreg γstart c)
-          γobs T (obs_pred_at γobs) γhist Tg HTg HTgt CT c) g' -∗
+          γobs T (obs_pred_at γobs) γhist Tg HTg HTgt
+          Kc HKc HKct CT c) g' -∗
     ▷ xv6_slot N app_fs cov ls γd γsw γreg γstart c -∗
     ◇ ⌜xv6_trace_pure cov ls g'⌝.
 Proof.
@@ -433,7 +439,8 @@ Proof.
      not spent and the disk projection still has it *)
   iDestruct (power_interp_resv_ok with "Hsi") as %Hresv.
   iDestruct (fs_trace_hook Σ cov ls CT N app_fs Hinv γgen γstart γreg γd γsw
-               γobs γhist c T Tg HTg HTgt g' with "Hsi HP") as ">%Hdisk".
+               γobs γhist c T Tg HTg HTgt Kc HKc HKct g' with "Hsi HP")
+    as ">%Hdisk".
   iModIntro. iPureIntro. split; [exact Hdisk | exact Hresv].
 Qed.
 
@@ -948,11 +955,17 @@ Lemma init_boot_of_sup {Σ}
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
       !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ} `{GEN : GenId}
     (cw : Z) (sts : list fdstate) :
-  app_sup -∗ init_boot_bundle cw sts.
+  (* ...AND THE KILL CREDENTIAL BESIDE THE SUPPLY (lane KILL-PAY, §1c).
+     The generic slot's deposit is the generic supply, and since the trap
+     deposit at an unexpected cause carries the price of a kill
+     ([UexecRet.uexec_ret_F]), that supply is the pair.  The credential is
+     the application's, so it comes in from the boot exactly as the supply
+     does -- [xv6_power_adequacy_gen]'s [Hkill_sup] is what produces it. *)
+  app_sup -∗ □ riscv_kill_cred -∗ init_boot_bundle cw sts.
 Proof.
-  iIntros "#Hsup".
+  iIntros "#Hsup #Hkc".
   iPoseProof LinkUserinit.UG.uexec_wp_gen as "#Hgen".
-  iDestruct (UexecExecMint.uslot_mint with "Hsup Hgen") as "#Hmk".
+  iDestruct (UexecExecMint.uslot_mint with "Hsup Hkc Hgen") as "#Hmk".
   iApply (init_boot_bundle_triv with "Hmk").
 Qed.
 
@@ -963,9 +976,14 @@ Lemma init_boot_of_triv {Σ}
       !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ} `{GEN : GenId}
     (cw : Z) (sts : list fdstate) :
   (forall r av, app_pred r av ⊣⊢ True) ->
+  (* ...and the machine's kill credential is the trivial one, so the
+     generic discharge pays it for nothing (lane KILL-PAY, K1) *)
+  riscv_kill_cred = kill_cred_triv ->
   ⊢ init_boot_bundle cw sts.
 Proof.
-  intros Htriv. iApply init_boot_of_sup. iApply app_sup_of_triv. exact Htriv.
+  intros Htriv Hkc. iApply init_boot_of_sup;
+    [ iApply app_sup_of_triv; exact Htriv
+    | rewrite Hkc /kill_cred_triv; iModIntro; done ].
 Qed.
 
 (* ---------------------------------------------------------------------- *)
@@ -1039,6 +1057,26 @@ Theorem xv6_power_adequacy_gen Σ
     (Tg : CT -> list mobs -> iProp Σ)
     (HTg : forall (c : CT) (h : list mobs), Persistent (Tg c h))
     (HTgt : forall (c : CT) (h : list mobs), Timeless (Tg c h))
+    (* THE KILL CREDENTIAL (app-echo.md lane KILL-PAY, K1), at the fixed
+       part: the ambient price of a kill, set here from the application.
+       DECLARED BESIDE THE TAG FAMILY and before [Hinit_boot], whose new
+       equation names it. *)
+    (Kc : CT -> iProp Σ)
+    (HKc : forall c : CT, Persistent (Kc c))
+    (HKct : forall c : CT, Timeless (Kc c))
+    (* ...AND THE ONE OBLIGATION THAT MAKES IT PAYABLE (K1): the
+       application's SUPPLY -- "the claim holds of every view", which is
+       what an unconstraining application hands the generic slot -- buys
+       the credential.  This is what lets the GENERIC user-execution slot
+       pay the kill price at a trap the kernel cannot rule out, without any
+       verified program being charged: the generic slot already runs on the
+       supply ([UexecExecInst.xv6_ssupply]), so the credential rides it.
+       For echo the credential IS the taint and this is
+       [AppEcho.echo_taint_of_sup]; for the generic application both sides
+       are [True].  PERSISTENT in the conclusion, because every party a kill
+       touches keeps a copy. *)
+    (Hkill_sup : forall (c : CT) (r : app_names),
+       AppInv.app_sup_raw (app_fs c) r ⊢ □ Kc c)
     (* THE FIRST PROCESS'S EXEC BUNDLE (ARM-c): the ONE thing the
        application owes the kernel about user execution.  The kernel mints
        no user-execution slot; the first process's comes out of the
@@ -1064,6 +1102,11 @@ Theorem xv6_power_adequacy_gen Σ
               (c : CT) (r : app_names),
          @file_app Σ HF = MkAppcfg app_names (app_fs c) r ->
          riscv_rx_tag = Tg c ->
+         (* ...and (K1) THE KILL-CREDENTIAL EQUATION, on the rx-tag
+            equation's mould and for the same reason: the machine's ambient
+            kill credential IS the application's, which this theorem's own
+            [boot_fixedGS] literal fixes. *)
+         riscv_kill_cred = Kc c ->
          (* ...and (b') THE GENERATION-COUNTER EQUATION (lane APP-IFACE, the
             same pattern as the rx-tag one above).  The era's [A] is FIXED
             before [HR] exists, so the camera [A]'s own predicate carries
@@ -1127,7 +1170,8 @@ Theorem xv6_power_adequacy_gen Σ
             boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
               (xv6_slot app_names app_fs cov (FsImg.sb_logstart sb)
                  γd γsw γreg γstart c)
-              γobs T (Pt γobs c) γhist (Tg c) (HTg c) (HTgt c) CT c
+              γobs T (Pt γobs c) γhist (Tg c) (HTg c) (HTgt c)
+              (Kc c) (HKc c) (HKct c) CT c
           /\ @file_app Σ HF = MkAppcfg app_names (app_fs c) r
           /\ (i = Uart0 -> FsCfg.fsc_uart = γ)) ->
        ⊢ obs_inv -∗ uart_obs_permit i γ)
@@ -1142,7 +1186,8 @@ Theorem xv6_power_adequacy_gen Σ
             (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
                (xv6_slot app_names app_fs cov (FsImg.sb_logstart sb)
                   γd γsw γreg γstart c)
-               γobs T (Pt γobs c) γhist (Tg c) (HTg c) (HTgt c) CT c) g' -∗
+               γobs T (Pt γobs c) γhist (Tg c) (HTg c) (HTgt c)
+               (Kc c) (HKc c) (HKct c) CT c) g' -∗
          ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
          ▷ xv6_slot app_names app_fs cov (FsImg.sb_logstart sb)
              γd γsw γreg γstart c -∗
@@ -1339,7 +1384,7 @@ Proof.
            (* THE TRACE SLOT AND THE TRACE HOOK, threaded straight through:
               this layer fixes the crash predicate but says nothing about the
               trace, so both pass down unexamined. *)
-           Pt Tg HTg HTgt HPt Hobs phi Hphi
+           Pt Tg HTg HTgt Kc HKc HKct HPt Hobs phi Hphi
            Hgen0 Hpow _ n κs t2 g2 Hn).
   (* the per-era boot entailment, at the era instance the power thread just
      minted.  [riscv_fixedGS (RiscvGS Σ F HE)] iota-reduces to [F] and
@@ -1359,6 +1404,10 @@ Proof.
      the anonymous class slots from [riscvGpreS], so the fixed layer's
      counter IS the pre-structure's here. *)
   assert (Hgenfix : @riscvF_genGS Σ F = riscv_pre_genGS)
+    by (rewrite Hfix; reflexivity).
+  (* ...AND THE KILL CREDENTIAL'S (lane KILL-PAY, K1), read off the same
+     literal and for the same reason as the rx-tag equation. *)
+  assert (Hkillfix : @riscv_kill_cred Σ F = Kc Gcl)
     by (rewrite Hfix; reflexivity).
   subst F.
   (* THE RECORD'S SHAPE, substituted: every projection below reduces, which
@@ -1381,7 +1430,7 @@ Proof.
             (app_xfer_raw_of_boot _ _ (Happ_boot Gcl))
             (fun HBs HFd HIr HPav HWc HF r Hr =>
                Hinit_boot (RiscvGS Σ _ HE) gen HBs HFd HIr HPav HWc HF Gcl r
-                 Hr Htagfix Hgenfix)
+                 Hr Htagfix Hkillfix Hgenfix)
             Hbf Hpure Hcovin Hlogsub Hls2 _ _).
   (* the descriptor class comes back as a GOAL here rather than being
      shelved, because the application is explicit ([@]); it is the section's
@@ -1420,6 +1469,8 @@ Theorem xv6_power_adequacy Σ
                   γd γsw γreg γstart c)
                γobs T (obs_pred_at γobs) γhist rx_tag_triv
                (@rx_tag_triv_persistent Σ) (@rx_tag_triv_timeless Σ)
+               kill_cred_triv (@kill_cred_triv_persistent Σ)
+               (@kill_cred_triv_timeless Σ)
                unit c) g' -∗
          ▷ xv6_slot unit (fun _ _ _ => True%I) cov (FsImg.sb_logstart sb)
              γd γsw γreg γstart c -∗
@@ -1447,10 +1498,14 @@ Proof.
             (fun _ : unit => rx_tag_triv)
             (fun (_ : unit) (h : list mobs) => @rx_tag_triv_persistent Σ h)
             (fun (_ : unit) (h : list mobs) => @rx_tag_triv_timeless Σ h)
+            (fun _ : unit => kill_cred_triv)
+            (fun _ : unit => @kill_cred_triv_persistent Σ)
+            (fun _ : unit => @kill_cred_triv_timeless Σ)
+            ltac:(intros ci ri; iIntros "_"; iModIntro; done)
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
-                         Heq Htag Hgeni;
+                         Heq Htag Hkill Hgeni;
                   iIntros "_ _"; iModIntro; iApply init_boot_of_triv;
-                  rewrite Heq; intros r' av; reflexivity)
+                  [ rewrite Heq; intros r' av; reflexivity | exact Hkill ])
             (fun γobs _ => obs_pred_at γobs)
             (obs_pred_at_alloc_cl (fun _ : unit => True%I))
             (fun γd γobs _ => obs_pred_at_step XV6_DISK_BYTES γd γobs)
@@ -1522,10 +1577,14 @@ Proof.
                   iPureIntro; exact Logic.I)
             (fun _ : unit => Tg) (fun (_ : unit) (h : list mobs) => HTg h)
             (fun (_ : unit) (h : list mobs) => HTgt h)
+            (fun _ : unit => kill_cred_triv)
+            (fun _ : unit => @kill_cred_triv_persistent Σ)
+            (fun _ : unit => @kill_cred_triv_timeless Σ)
+            ltac:(intros ci ri; iIntros "_"; iModIntro; done)
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
-                         Heq Htag Hgeni;
+                         Heq Htag Hkill Hgeni;
                   iIntros "_ _"; iModIntro; iApply init_boot_of_triv;
-                  rewrite Heq; intros r' av; reflexivity)
+                  [ rewrite Heq; intros r' av; reflexivity | exact Hkill ])
             (fun γobs _ => obs_ledger_at R γobs)
             (fun γobs _ => obs_ledger_at_alloc_cl R γobs True%I
                              ltac:(iIntros "_"; iMod HR0 as "HR"; by iModIntro))
@@ -1794,6 +1853,8 @@ Corollary xv6_power_adequacy_xv6Σ (g : gstate)
                   (FsImg.sb_logstart fsimg_sb) γd γsw γreg γstart c)
                γobs T (obs_pred_at γobs) γhist rx_tag_triv
                (@rx_tag_triv_persistent xv6Σ) (@rx_tag_triv_timeless xv6Σ)
+               kill_cred_triv (@kill_cred_triv_persistent xv6Σ)
+               (@kill_cred_triv_timeless xv6Σ)
                unit c) g' -∗
          ▷ xv6_slot unit (fun _ _ _ => True%I) fsimg_cov
              (FsImg.sb_logstart fsimg_sb) γd γsw γreg γstart c -∗
@@ -1859,7 +1920,9 @@ Proof.
                 unit unit (fun _ _ _ => True%I)
                 Hinv γgen γstart γreg γd γsw γobs γhist c T
                 rx_tag_triv (@rx_tag_triv_persistent xv6Σ)
-                (@rx_tag_triv_timeless xv6Σ) g')
+                (@rx_tag_triv_timeless xv6Σ)
+                kill_cred_triv (@kill_cred_triv_persistent xv6Σ)
+                (@kill_cred_triv_timeless xv6Σ) g')
            Hgen0 Hpow Hdisk).
 Qed.
 
@@ -1926,10 +1989,14 @@ Proof.
             (fun _ : unit => rx_tag_triv)
             (fun (_ : unit) (h : list mobs) => @rx_tag_triv_persistent xv6Σ h)
             (fun (_ : unit) (h : list mobs) => @rx_tag_triv_timeless xv6Σ h)
+            (fun _ : unit => kill_cred_triv)
+            (fun _ : unit => @kill_cred_triv_persistent xv6Σ)
+            (fun _ : unit => @kill_cred_triv_timeless xv6Σ)
+            ltac:(intros ci ri; iIntros "_"; iModIntro; done)
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
-                         Heq Htag Hgeni;
+                         Heq Htag Hkill Hgeni;
                   iIntros "_ _"; iModIntro; iApply init_boot_of_triv;
-                  rewrite Heq; intros r' av; reflexivity)
+                  [ rewrite Heq; intros r' av; reflexivity | exact Hkill ])
             (fun γobs _ => obs_pred_at γobs)
             (obs_pred_at_alloc_cl (fun _ : unit => True%I))
             (fun γd γobs _ => obs_pred_at_step XV6_DISK_BYTES γd γobs)

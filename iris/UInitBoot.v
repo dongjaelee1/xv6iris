@@ -504,10 +504,16 @@ Section EchoInitBoot.
     (* ---- and the two equations [Hinit_boot] hands over ---- *)
     @file_app Σ HF = MkAppcfg echo_names (echo_pred γ) r ->
     riscv_rx_tag = echo_tag γ ->
+    (* ...AND THE KILL CREDENTIAL'S (lane KILL-PAY, K1/§1c).  This file sits
+       ABOVE the instantiation, so it cannot know that the machine's kill
+       credential is the taint; the top theorem's [Hinit_boot] hands the
+       equation over exactly as it hands the rx-tag one, and the taint arm's
+       generic mint spends it there. *)
+    riscv_kill_cred = echo_taint γ ->
     ⊢ app_inv fsc_fs -∗ echo_boot γ r -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Hwr16 Hsh_deps Hsh_state Hsh_rest Heq Htag.
+    intros Hwr16 Hsh_deps Hsh_state Hsh_rest Heq Htag Hkill.
     iIntros "#Hinv Hb". iModIntro.
     (* ---- the taint's supply, and the generic slot it buys ---- *)
     iAssert (□ (echo_taint γ -∗ app_sup))%I as "#Hsup".
@@ -519,7 +525,11 @@ Section EchoInitBoot.
                   R -∗ uslot W))%I as "#Hmint".
     { iIntros "!>" (R W) "#Ht Hp HR".
       iDestruct ("Hsup" with "Ht") as "#Hs".
-      iApply (uslot_mint_all with "Hs Hwp Hp HR"). }
+      (* the kill credential IS the taint at this application (K1), and the
+         generic slot's supply is the pair (§1c) *)
+      iAssert (□ riscv_kill_cred)%I as "#Hkc";
+        [ rewrite Hkill; iModIntro; iExact "Ht" | ].
+      iApply (uslot_mint_all with "Hs Hkc Hwp Hp HR"). }
     (* ---- the pins law, and /init's own row out of it ---- *)
     iAssert (□ (∀ v : aview, AppCfg.app_pred AppCfg.app_run v -∗
                   AppCfg.app_pred AppCfg.app_run v ∗ (⌜echo_fs_pure v⌝ ∨ echo_taint γ)))%I

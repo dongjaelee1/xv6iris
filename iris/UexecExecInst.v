@@ -529,6 +529,16 @@ Section UexecExecInst.
        mkdir_au_pre (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
          (df_Fok f) (df_Fex f)
+     else if decide (n = 6) then
+       (* KILL(6) COSTS THE CREDENTIAL (app-echo.md, lane KILL-PAY, K3(a)).
+          The one syscall whose EFFECT is a kill: sys_kill hands kkill the
+          price out of the trapping process's deposit, and the deposit is
+          this row.  A verified program never issues 6 -- so no verified
+          program pays -- and the GENERIC slot pays it out of the
+          application's supply ([xv6_ssupply] below), which is why the row
+          costs the theorem nothing.  It is the only branch of this match
+          that is not about the file system. *)
+       (□ riscv_kill_cred)
      else emp)%I.
 
   (* ...AND THE ARMED POST BACK, at the same key and the same families.
@@ -772,7 +782,18 @@ Section UexecExecInst.
      hence the one an unverified program's bundles are paid from.  Every
      branch of the two laws below is one [FsAbsInvFire] discharger at the
      trivial families, which is exactly the record [xfam_pt] names. *)
-  Definition xv6_ssupply : iProp Σ := app_sup.
+  (* ...AND SINCE lane KILL-PAY (§1c) IT IS THE PAIR: the application's
+     predicate at every view, and the application's KILL CREDENTIAL.  The
+     generic slot is what runs an UNVERIFIED program, and an unverified
+     program may call kill(2) and may trap with a cause the kernel cannot
+     rule out -- both of which now cost the credential ([xv6_sbundle]'s
+     row 6, [UexecRet.uexec_ret_F]'s non-ecall arm).  Both halves are
+     bought by the application at the SAME place ([App.Happ_kill]: the
+     supply buys the credential), so pairing them here charges an
+     application nothing it was not already paying, and keeps every
+     verified program -- whose slot is at [uprogSG_free] and touches
+     neither half -- free. *)
+  Definition xv6_ssupply : iProp Σ := (app_sup ∗ □ riscv_kill_cred)%I.
 
   (* THE BUPD IS WRITE'S, AND ONLY WRITE'S: the console arm carries the trace
      seed [UartSentLoc.uart_sent γu []], a mono-list lower bound at the empty
@@ -791,7 +812,7 @@ Section UexecExecInst.
     n <> USYS_exec ->
     ⊢ □ xv6_ssupply ==∗ ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X n f W.
   Proof.
-    intros Hne. rewrite /xv6_ssupply. iIntros "#Hsup".
+    intros Hne. rewrite /xv6_ssupply. iIntros "#[Hsup Hkc]".
     iAssert (|==> xv6_sbundle X n (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
           iSplitR; [ done | iExact "Hb" ] ].
@@ -814,6 +835,9 @@ Section UexecExecInst.
       [ iModIntro; iApply (fsabs_link_pre with "Hsup") | ].
     destruct (decide (n = 20)) as [_ | _];
       [ iModIntro; iApply (SpecSysMkdir.mkdir_au_pre_unit with "Hsup") | ].
+    (* row 6: the kill price, straight off the supply's second conjunct *)
+    destruct (decide (n = 6)) as [_ | _];
+      [ iModIntro; iExact "Hkc" | ].
     by iModIntro.
   Qed.
 
@@ -835,7 +859,7 @@ Section UexecExecInst.
       □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗ R -∗ X W') ==∗
       ∃ f : xfam, ⌜kf_xpay f = (fun _ => R)%I⌝ ∗ xv6_sbundle X n f W.
   Proof.
-    rewrite /xv6_ssupply. iIntros "#Hpay #Hsup #Hs".
+    rewrite /xv6_ssupply. iIntros "#Hpay #[Hsup Hkc] #Hs".
     destruct (decide (n = USYS_exec)) as [He | Hne].
     - iModIntro. iExists (xfam_at (fun _ => R)%I xfam_pt). iSplitR; [done |].
       rewrite /xv6_sbundle. destruct (decide (n = USYS_exec)) as [_ | Hc];
@@ -870,7 +894,8 @@ Section UexecExecInst.
       + iIntros (av' i ff nl W') "_ _ _ _ _ _ Hp HQ". iApply ("Hs" with "Hp HQ").
       + iIntros (av' i a W') "_ _ _ _ _ _ Hp HQ". iApply ("Hs" with "Hp HQ").
     - iApply (xv6_sbundle_of_supply_ne X n W (fun _ => R)%I Hne).
-      iExact "Hsup".
+      rewrite /xv6_ssupply. iModIntro.
+      iSplit; [ iExact "Hsup" | iExact "Hkc" ].
   Qed.
 
   (* THE RE-KEYING PASSES THROUGH BOTH BUNDLE ROWS ([UexecSG.sbundle_at_at]
@@ -975,7 +1000,7 @@ Section UexecExecInst.
     xv6_free n ->
     ⊢ |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X n f W.
   Proof.
-    intros (Hx & H5 & H15 & H16 & H17 & H18 & H19 & H20).
+    intros (Hx & H5 & H6 & H15 & H16 & H17 & H18 & H19 & H20).
     iAssert (|==> xv6_sbundle X n (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
           iSplitR; [ done | iExact "Hb" ] ].
@@ -991,6 +1016,7 @@ Section UexecExecInst.
     destruct (decide (n = 18)) as [He | _]; [ exfalso; exact (H18 He) | ].
     destruct (decide (n = 19)) as [He | _]; [ exfalso; exact (H19 He) | ].
     destruct (decide (n = 20)) as [He | _]; [ exfalso; exact (H20 He) | ].
+    destruct (decide (n = 6)) as [He | _]; [ exfalso; exact (H6 He) | ].
     by iModIntro.
   Qed.
 
@@ -1106,6 +1132,19 @@ Section UexecExecInst.
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip.
     xv6_skip. xv6_take. iExact "H".
+  Qed.
+
+  (* ROW 6, READ OFF (lane KILL-PAY, K3(a)): what a process trapping with
+     the kill number deposited.  [ProofSyscall.sysc_arm_kill] takes it out
+     here and hands it to [SpecSysKill], which relays it to kkill -- which
+     needs it because writing [p->killed] nonzero has to re-establish
+     [SchedCtx.proc_pub]'s killed row. *)
+  Lemma sbundle_at_kill_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
+    sbundle_at X 6 f W -∗ □ riscv_kill_cred.
+  Proof.
+    iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
+    xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip.
+    xv6_skip. xv6_skip. xv6_take. iExact "H".
   Qed.
 
   (* THE PAY ROW COMES IN BESIDE THE AU HALF, and at the TRIVIAL payload:

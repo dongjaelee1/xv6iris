@@ -1030,3 +1030,61 @@ Proof.
   apply (f_equal length) in H. rewrite !length_app /= in H.
   pose proof u_prologue_pos. lia.
 Qed.
+
+(* ====================================================================== *)
+(*  10.  THE SAME-CYCLE BRIDGE (lane ECHO-OUT, section 7)                  *)
+(*                                                                        *)
+(*  The claims record their same-cycle facts at their OWN witness history  *)
+(*  [ho]; the ledger's drain reads them at the run's history [h], and the  *)
+(*  kernel supplies [ho `prefix_of` h] ([App.Htx]) and the era stamp at    *)
+(*  both ends.  What is missing is the step from "a prefix, at the same    *)
+(*  boot count" to "a prefix of the OPEN SEGMENT" -- and that is exactly   *)
+(*  where the boot count earns its keep: a suffix with no PowerOn in it    *)
+(*  cannot contain a PowerOff either, because the machine is ON at the     *)
+(*  end and only a PowerOn turns it back on.                              *)
+(* ====================================================================== *)
+
+Lemma epu_foldl_obs_step_none (h : list mobs) :
+  foldl obs_step None h = None.
+Proof. induction h as [| e h IH]; [done |]. by cbn. Qed.
+
+Lemma epu_no_power_of_boots (h : list mobs) (st : bool) :
+  obs_boots h = 0%nat ->
+  foldl obs_step (Some st) h = Some true ->
+  st = true /\ Forall (fun e => is_io e = true) h.
+Proof.
+  revert st. induction h as [| e h IH]; intros st Hb Hf.
+  - cbn in Hf. injection Hf as ->. split; [reflexivity | constructor].
+  - destruct e as [i b | i b | |]; cbn in Hb.
+    + cbn in Hf. destruct st.
+      * destruct (IH true Hb Hf) as [_ HF].
+        split; [reflexivity | by constructor].
+      * rewrite epu_foldl_obs_step_none in Hf. discriminate.
+    + cbn in Hf. destruct st.
+      * destruct (IH true Hb Hf) as [_ HF].
+        split; [reflexivity | by constructor].
+      * rewrite epu_foldl_obs_step_none in Hf. discriminate.
+    + (* ObsPowerOn *) lia.
+    + (* ObsPowerOff *)
+      cbn in Hf. destruct st.
+      * destruct (IH false Hb Hf) as [Habs _]. discriminate.
+      * rewrite epu_foldl_obs_step_none in Hf. discriminate.
+Qed.
+
+Lemma open_seg_prefix_boots (h1 h2 : list mobs) :
+  h1 `prefix_of` h2 -> obs_boots h1 = obs_boots h2 ->
+  trace_shape h2 true -> open_seg h1 `prefix_of` open_seg h2.
+Proof.
+  intros [k ->] Hb Hsh.
+  assert (Hk : obs_boots k = 0%nat)
+    by (rewrite obs_boots_app in Hb; lia).
+  rewrite /trace_shape foldl_app in Hsh.
+  destruct (foldl obs_step (Some false) h1) as [st |] eqn:Hst; last first.
+  { rewrite epu_foldl_obs_step_none in Hsh. discriminate. }
+  destruct (epu_no_power_of_boots k st Hk Hsh) as [_ HF].
+  rewrite (open_seg_io h1 k HF). by eexists.
+Qed.
+
+Lemma ins_prefix_of (s1 s2 : list mobs) :
+  s1 `prefix_of` s2 -> ins s1 `prefix_of` ins s2.
+Proof. intros [z ->]. rewrite ins_app. by eexists. Qed.

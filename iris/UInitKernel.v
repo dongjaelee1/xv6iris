@@ -232,6 +232,13 @@ Section UInitKernel.
       (stc : fdstate) (cn : cons_names)
       (W : uvis) (n0 : nat) :
     stc <> FdClosed ->
+    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
+       K4(a)).  A killed process's exit payload is a WAND from the
+       credential now, and the shell /init forks pays its own out of the
+       taint ([UserConsole.ucons_pay]'s right arm).  A Coq-level premise
+       because the equation [riscv_kill_cred = echo_taint] is the
+       application's ([UInitBoot]) and this file sits above it. *)
+    (⊢ □ riscv_kill_cred -∗ T) ->
     tf_resume_pc (uvis_tf W) = (mword_of_int InitSyms.start : mword 64) ->
     init_img_sub (uvis_M W) ->
     (* init's whole image is one executable page *)
@@ -326,7 +333,7 @@ Section UInitKernel.
     my_pay (uvis_gen W) (fun _ => True)%I -∗
     uslot W.
   Proof.
-    intros Hne Hpc Hsub Hx Hwd Hszd Hbase Hal8 Hroom Hstk Hfdlen Hl0 Hstop Hcw
+    intros Hne Hkt Hpc Hsub Hx Hwd Hszd Hbase Hal8 Hroom Hstk Hfdlen Hl0 Hstop Hcw
            Hpsok_free Hlzf.
     (* [Hdp] LINEARLY, and that is not a style choice: [UkInit.init_deps]
        is persistent, but its [T]-indexed conjuncts send the [Persistent]
@@ -337,8 +344,10 @@ Section UInitKernel.
     iIntros "Hdp #Hdep #Hxs Hdn Hrd #Hmp".
     iApply (uslot_of_urun_all W (2 + (4 + (12 + (12 + (4 + n0))))) (fun _ => True)%I
               Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp []").
-    (* the payload at the trivial one -- <init> has no parent *)
-    { done. }
+    (* the payload at the trivial one -- <init> has no parent.  A WAND
+       from the kill credential now (lane KILL-PAY, K4(a)), free at
+       [True] *)
+    { iIntros "_". done. }
     (* init's own half of its children set travels with its cwd: nothing
        on init's walk READS it, but fork MOVES it, so the fragment goes
        down the chain index-free ([UserChildren.uch_any]). *)
@@ -365,8 +374,10 @@ Section UInitKernel.
       as "Dargv".
     iMod (uarea_persist (ukn_d N) init_argv_map with "Dargv") as "#Hargv".
     rewrite Hpc.
-    iApply (wp_kinit_start N Hpsok_free T Cns stc cn (uvis_sz W) h
-              (tf_resume_gpr0 (uvis_tf W)) n0 Hne
+    iApply (wp_kinit_start N Hpsok_free
+              (ukn_pay_free_of_triv N (Hpayeq : UkRun.ukn_triv N))
+              T Cns stc cn (uvis_sz W) h
+              (tf_resume_gpr0 (uvis_tf W)) n0 Hne Hkt
               with "Hdp [] Hxs [Hdn] [] [] Hszf [Hstd] [Hcwf] [Hchf] [Hrd] Hrun").
     - iApply (init_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (init_img_text _ Hsub) Hx with "Ht").
@@ -391,6 +402,13 @@ Section UInitKernel.
       (afun : nat -> nat -> bv 8) (sts : list fdstate)
       (W' : uvis) (n0 : nat) :
     stc <> FdClosed ->
+    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
+       K4(a)).  A killed process's exit payload is a WAND from the
+       credential now, and the shell /init forks pays its own out of the
+       taint ([UserConsole.ucons_pay]'s right arm).  A Coq-level premise
+       because the equation [riscv_kill_cred = echo_taint] is the
+       application's ([UInitBoot]) and this file sits above it. *)
+    (⊢ □ riscv_kill_cred -∗ T) ->
     kexec_image_ok ElfUser.init_elf na alen afun sts W' ->
     (* room for init's frames on the stack page, below the argument block *)
     kexec_sz ElfUser.init_elf - PGSIZE
@@ -419,7 +437,7 @@ Section UInitKernel.
     ucons_reader cn 0%nat -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
   Proof.
-    intros Hne Hok Hroom Hlen Hl0 Hcw Hpsok_free Hlzf.
+    intros Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok_free Hlzf.
     (* THE MAP STOPS AT THE BREAK, off the image fact's own row --
        [UShKernel.sh_slot_of_kexec]'s note is the reasoning. *)
     pose proof (kexec_image_ok_below _ _ _ _ _ _ Hok) as Hstop.
@@ -495,7 +513,7 @@ Section UInitKernel.
               0x3000 <= spv - 8 * Z.of_nat (2 + (4 + (12 + (12 + (4 + n0)))))
                         + Z.of_nat j < spv)
       by (intros j Hj; clear -Hj Hroom; lia).
-    iApply (init_uexec_slot T Cns stc cn W' n0 Hne).
+    iApply (init_uexec_slot T Cns stc cn W' n0 Hne Hkt).
     - rewrite Hpc. exact init_start_pc.
     - exact (init_img_sub_of_elf M Himg).
     - exact Hx.
@@ -545,6 +563,13 @@ Section UInitKernel.
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (n0 : nat) :
     stc <> FdClosed ->
+    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
+       K4(a)).  A killed process's exit payload is a WAND from the
+       credential now, and the shell /init forks pays its own out of the
+       taint ([UserConsole.ucons_pay]'s right arm).  A Coq-level premise
+       because the equation [riscv_kill_cred = echo_taint] is the
+       application's ([UInitBoot]) and this file sits above it. *)
+    (⊢ □ riscv_kill_cred -∗ T) ->
     kexec_sz ElfUser.init_elf - PGSIZE
       + 8 * Z.of_nat (2 + (4 + (12 + (12 + (4 + n0)))))
       <= kxc_sp_final (kexec_sz ElfUser.init_elf) alen na ->
@@ -575,11 +600,11 @@ Section UInitKernel.
        straight out into [init_slot_of_kexec]'s own linear premise.  No
        [Persistent] search, no [iFrame] against a [□]-wand -- see the
        statement's note. *)
-    intros Hne Hroom Hlen Hl0 Hpsok.
+    intros Hne Hkt Hroom Hlen Hl0 Hpsok.
     iIntros "#Hdp #Hdep #Hxs !>"
       (W') "%Hok %Hcw %Hlz #Hmp [Hdn Hrd]".
     iApply (init_slot_of_kexec T Cns stc cn na alen afun sts W' n0
-              Hne Hok Hroom Hlen Hl0 Hcw Hpsok Hlz
+              Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok Hlz
               with "Hdp Hdep Hxs Hdn Hrd Hmp").
   Qed.
 

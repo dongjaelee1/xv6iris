@@ -853,15 +853,24 @@ Section UkSh.
   Qed.
 
   (* ---- exit @0xc86, the arm with no continuation ---------------------- *)
-  (* THE PAYLOAD IS TRIVIAL AT THIS LANE: exit's leaf is a PAYMENT and
-     sh's record is minted at [fun _ => True], so the premise is the
-     equation and the payment is [I]. *)
+  (* THE PAYMENT COMES OUT OF THE PROGRAM'S OWN HAND (lane KILL-PAY,
+     K4(a)).  exit's leaf is a PAYMENT: the program owes what its record
+     says its exit owes.  It used to take it out of [UkRun.urun]'s payload
+     row, and cannot any more -- that row is a WAND from the kill
+     credential, because a process that is torn down behind its back
+     should not have to fund the payload at all.  So the payload is a
+     PREMISE here: [True] at [UkRun.ukn_triv] and free, and at sh's own
+     record the console lease it carries beside its position
+     ([UkSh.ush_at]).  The wand the row does carry is what the leaf's
+     [∧] answers on its other side, and [UexecSlot.upay_neg_of] is the one
+     step -- a payload in hand is a payload under any credential. *)
   Lemma wp_ksh_exit (h : CpuId) (m : regfile) (avail : nat) :
     shk_code γt -∗
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode Hrun".
+    iIntros "#Hcode Hpay Hrun".
     rewrite shp_exit.
     (* ---- 0xc86  c.li a7,2 ---- *)
     iApply (wp_uk_cli N h m (mword_of_int 0xc86)
@@ -885,15 +894,19 @@ Section UkSh.
               ltac:(unfold m1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 2 : mword 64));
                     vm_compute; reflexivity)
-              with "[] [] Hrun").
+              with "[] [Hpay] Hrun").
     { iApply (uis_shk_c88 with "Hcode"). }
     (* AT A PAYLOAD THAT DOES NOT READ THE STATUS ONE RESOURCE ANSWERS
        BOTH CONJUNCTS: sh's exit owes its parent the console reader token
        ([UserConsole.ucons_pay]) and owes it at the kill status just the
-       same, so the additive [∧] is paid from the run's own copy
-       ([UkRun.ukn_const]). *)
+       same, so the additive [∧] is paid from the ONE copy the program
+       holds ([UkRun.ukn_const]) -- outright on the left, and through the
+       credential on the right ([UexecSlot.upay_neg_of]).  The wand that
+       comes IN is dropped: a process that reaches its own exit did not
+       need it. *)
     { rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)).
-      iIntros "Hp". iSplit; iExact "Hp". }
+      iIntros "_". iSplit;
+        [ iExact "Hpay" | iApply (upay_neg_of with "Hpay") ]. }
   Qed.
 
 
@@ -1007,7 +1020,38 @@ Section UkSh.
      lemma between the loop head and the read needs the number, and the
      read is what moves it.  STATED HERE, above the read, because the
      read's own answer is what hands it back. *)
-  Definition ush_pos : iProp Σ := (∃ n : nat, upos γp n)%I.
+  (* ...AND THE LEASE TRAVELS WITH IT (lane KILL-PAY, K4(a)).  sh used to
+     be lent the console reader token INSIDE its exit payload, which lived
+     in [UkRun.urun]'s own row: the run carried [ukn_pay N (-1)] and the
+     read's deposit was a wand from it (SH-LINE R1).  That row is a WAND
+     from the kill credential now ([UexecRet.upay_neg]) -- a killed process
+     pays nothing it cannot pay -- so the payload has nowhere to ride, and
+     the lease moves into the program's OWN hand, beside the half of the
+     position pair it already held.  The two positions agree
+     ([UserConsole.upos_agree]): the payload's is existential and the
+     program's is named, which is what makes a read's receipt a receipt at
+     sh's own cursor.  sh spends the lease at its read (and gets it back)
+     and at its own exit, where it is what init reaps.
+
+     [upos_a] IS NOT REDUNDANT WITH THE LEASE even though both halves are
+     now in one hand: the payload sh HANDS BACK at exit is
+     [UserConsole.ucons_pay], whose left arm is the pair, and init reads
+     the position off it without knowing sh's [n].  Merging them is a
+     separate question and not this lane's. *)
+  (* AT THE RECORD'S OWN PAYLOAD, not at [UserConsole.ucons_pay]: this
+     file names no application and no console era, and the equation
+     [ukn_pay N = ucons_pay fsc_cons γp T] is [UInitSh]'s to choose.  The
+     read leaf's ONE discharge ([UShLine.ush_read_recv_leaf_holds]) is
+     guarded by it and unfolds the lease there; sh's exit stub needs only
+     [ukn_pay N (-1)] and takes it as it stands. *)
+  Definition ush_at (n : nat) : iProp Σ :=
+    (upos γp n ∗ ukn_pay N (-1))%I.
+
+  Definition ush_pos : iProp Σ := (∃ n : nat, ush_at n)%I.
+
+  (* ...and the ONE thing the exit stub wants off it *)
+  Lemma ush_pos_pay : ush_pos -∗ ukn_pay N (-1).
+  Proof. rewrite /ush_pos /ush_at. iIntros "H". by iDestruct "H" as (n) "[_ $]". Qed.
 
   (* WHAT A READ ANSWERS, at three arms and not one (lane SH-LINE 2b).
      Which arm the caller gets is not its choice.
@@ -1051,7 +1095,7 @@ Section UkSh.
         ([∗ list] hh ∈ hs, riscv_rx_tag hh) ∗
         ⌜ cons_window sl n dd g hs ⌝ ∗
         ucons_swallow cnm False sl dd dc ∗
-        upos γp (n + dc)%nat)
+        ush_at (n + dc)%nat)
      ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗
         (* ...AND WHY IT IS -1 (lane KILL-PAY, K4(b)(iv)).  read(0) answers
            -1 on exactly two grounds, and the leaf names both: the process
@@ -1158,7 +1202,7 @@ Section UkSh.
         ⌜cons_window sl n0 i g hs⌝ ∗ ⌜cons_chain sl⌝ ∗
         ucons_stored_lb cnm sl ∗
         ([∗ list] hh ∈ hs, riscv_rx_tag hh) ∗
-        upos γp (n0 + i)%nat)
+        ush_at (n0 + i)%nat)
      ∨ (T ∗ ush_pos))%I.
 
   (* the loop ENTERS at the empty window, which costs nothing but the
@@ -1168,7 +1212,7 @@ Section UkSh.
       (n0 : nat) (g : nat -> bv 8) (sl : list (list mobs * bv 8)) :
     length sl = n0 ->
     cons_chain sl ->
-    ucons_stored_lb cnm sl -∗ upos γp n0 -∗ ush_gets_line cnm n0 0%nat g.
+    ucons_stored_lb cnm sl -∗ ush_at n0 -∗ ush_gets_line cnm n0 0%nat g.
   Proof.
     intros Hlen Hch. iIntros "#Hlb Hp". rewrite /ush_gets_line. iLeft.
     iExists [], sl.
@@ -1200,7 +1244,10 @@ Section UkSh.
        uinstr_is γt pc false (ECALL tt) -∗
        ubytes γd a k f -∗
        ustd γfd l -∗
-       upos γp n -∗
+       (* THE LEASE AND THE POSITION, IN THE PROGRAM'S HAND (lane KILL-PAY,
+          K4(a)): read's deposit is a plain one now, so what pays the
+          console arm is what sh carries. *)
+       ush_at n -∗
        urun N h m pc avail -∗
        (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8),
           ⌜ (d <= cap)%nat ⌝ -∗
@@ -1235,7 +1282,7 @@ Section UkSh.
     shk_code γt -∗
     ubytes γd a k f -∗
     ustd γfd l -∗
-    upos γp n -∗
+    ush_at n -∗
     urun N h m (mword_of_int ShSyms.read) avail -∗
     (∀ (h' : CpuId) (ret : mword 64) (d : nat) (g : nat -> bv 8),
        ⌜ (d <= cap)%nat ⌝ -∗
@@ -4661,7 +4708,7 @@ Section UkSh.
   (* ===================================================================== *)
   Definition ush_gen_slot : iProp Σ :=
     (□ (∀ W : uvis,
-          T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ ukn_pay N (-1) -∗
+          T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ upay_neg (ukn_pay N) -∗
           uslot W))%I.
 
   Global Instance ush_gen_slot_persistent : Persistent ush_gen_slot.
@@ -5393,10 +5440,13 @@ Section UkSh.
   (* ---- 0x9ca  the loop's only exit: exit(0) --------------------------- *)
   Local Lemma wp_ksh_die (h : CpuId) (mc : regfile) (n : nat) :
     shk_code γt -∗
+    (* the loop's exit is sh's OWN exit, so the payload is sh's own lease
+       (lane KILL-PAY, K4(a)) *)
+    ukn_pay N (-1) -∗
     urun N h mc (mword_of_int 0x9ca) n -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode Hrun".
+    iIntros "#Hcode Hpay Hrun".
     iApply (wp_uk_cli N h mc (mword_of_int 0x9ca)
               (mword_of_int 0 : mword 6) a0_idx n
               ltac:(unfold unot_sp; vm_compute; discriminate)
@@ -5420,7 +5470,7 @@ Section UkSh.
               with "[] Hrun").
     { iApply (uis_shk_9cc with "Hcode"). }
     iIntros (h2) "Hrun".
-    iApply (wp_ksh_exit h2 _ n with "Hcode Hrun").
+    iApply (wp_ksh_exit h2 _ n with "Hcode Hpay Hrun").
   Qed.
 
 
@@ -5605,7 +5655,12 @@ Section UkSh.
               with "[] Hrun").
     { iApply (uis_shk_940 with "Hcode"). }
     destruct tk40.
-    { iIntros (h5) "Hrun". iApply (wp_ksh_die h5 mR (16 + n) with "Hcode Hrun"). }
+    (* sh's OWN exit: the payload it owes its parent is the lease it has
+       been carrying since its entry (lane KILL-PAY, K4(a)) *)
+    { iIntros (h5) "Hrun".
+      iDestruct "Hstd" as "(_ & _ & _ & Hpos)".
+      iDestruct (ush_pos_pay with "Hpos") as "Hpay".
+      iApply (wp_ksh_die h5 mR (16 + n) with "Hcode Hpay Hrun"). }
     assert (E940 : add_vec_int (mword_of_int 0x940 : mword 64) 4
                    = mword_of_int 0x944)
       by (apply bv_eq; vm_compute; reflexivity).

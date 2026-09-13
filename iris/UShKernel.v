@@ -419,7 +419,7 @@ Section UShKernel.
        uslot_mint_all]).  sh's console open is PINNED, so the taint has no
        bundle for row 15 and the preamble must be able to stop walking sh's
        code.  This is [UInitSh.init_sh_slot]'s third conjunct at [Q]. *)
-    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ Q (-1) -∗ uslot W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ uslot W') -∗
     (* THE PAY FACT, at sh's own payload, and THE PAYLOAD ITSELF beside
        it: the run carries [Q (-1)] between traps, hands it to the kernel
        at every entry and is handed it back at every resume
@@ -427,15 +427,21 @@ Section UShKernel.
        here -- [SpecKexec.exec_slot_pre]'s wands at the exec init's pinned
        bundle answers ([PinnedExec.pex_slot]). *)
     my_pay (uvis_gen W) Q -∗
-    Q (-1) -∗
+    upay_neg Q -∗
     (* ...AND THE POSITION, the ONE linear resource init's pinned exec
        bundle hands sh through [PinnedExec]'s [Pay].  It goes into
        [UkSh.ush_pstate] and is what the read will move. *)
     upos γp n -∗
+    (* ...AND THE LEASE BESIDE IT (lane KILL-PAY, K4(a)).  The console
+       reader token used to ride in [UkRun.urun]'s payload row; that row
+       is a WAND from the kill credential now, so the token crosses on
+       [PinnedExec]'s [Pay] with the position and lands in
+       [UkSh.ush_at]. *)
+    Q (-1) -∗
     uslot W.
   Proof.
     intros HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf.
-    iIntros "#Hpay #Hdep #Hdp #Htag #Hrest #Hfd0 Hin #Hgen #Hmp HQ Hpos".
+    iIntros "#Hpay #Hdep #Hdp #Htag #Hrest #Hfd0 Hin #Hgen #Hmp HQ Hpos Hlease".
     iApply (uslot_of_urun_all W (2 + (8 + (16 + (ush_Dbody + n0)))) Q
               Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp HQ").
     (* sh's own half of its children set travels in [UkSh.ush_pstate]
@@ -465,8 +471,8 @@ Section UShKernel.
               (fun l0 => Hrl N l0 Hpayeq)
               (R (ukn_t N) (ukn_d N) (ukn_s N)) K h _ f n0
               (take NSTD (uvis_fd W))
-              with "Hdp Hr [] [] [] Hgen' Hfd0 Hin [Hstd] [Hcwf] [Hchf] [Hpos]
-                    HR Hbs [Hrun]").
+              with "Hdp Hr [] [] [] Hgen' Hfd0 Hin [Hstd] [Hcwf] [Hchf]
+                    [Hpos Hlease] HR Hbs [Hrun]").
     - iApply (shk_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (shk_img_text _ Hsub) Hx with "Ht").
     - (* runcmd's JUMP TABLE, off the same image (lane SH-LINE 2b, (b)):
@@ -479,7 +485,8 @@ Section UShKernel.
     - rewrite /UkSh.ush_std. iExact "Hstd".
     - rewrite <- Hcwd0. iExact "Hcwf".
     - iApply (uch_any_of with "Hchf").
-    - rewrite /UkSh.ush_pos. iExists n. iExact "Hpos".
+    - rewrite /UkSh.ush_pos /UkSh.ush_at. iExists n. iFrame "Hpos".
+      rewrite Hpayeq. iExact "Hlease".
     - iExact "Hrun".
   Qed.
 
@@ -538,10 +545,12 @@ Section UShKernel.
     (□ (∀ N : uk_names Σ, UkSh.ush_open_console_leaf N T)
      ∨ (□ (∀ N : uk_names Σ, UkSh.ush_open_absent_leaf N T K) ∗ K)
      ∨ T) -∗
-    □ (∀ W : uvis, T -∗ my_pay (uvis_gen W) Q -∗ Q (-1) -∗ uslot W) -∗
+    □ (∀ W : uvis, T -∗ my_pay (uvis_gen W) Q -∗ upay_neg Q -∗ uslot W) -∗
     my_pay (uvis_gen W') Q -∗
-    Q (-1) -∗
+    upay_neg Q -∗
     upos γp n -∗
+    (* the lease, beside the position (lane KILL-PAY, K4(a)) *)
+    Q (-1) -∗
     uslot W'.
   Proof.
     intros HQc Hok Hcwd0 Hroom Hlen Hlzf.

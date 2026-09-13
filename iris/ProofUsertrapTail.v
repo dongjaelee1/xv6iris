@@ -332,7 +332,7 @@ Section UtRet2.
        record they hold and the conversion at each hop is by the update's
        own definition. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    sexit_pay fdep (-1) -∗
+    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗
@@ -876,7 +876,7 @@ Section UtRet.
        record they hold and the conversion at each hop is by the update's
        own definition. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    sexit_pay fdep (-1) -∗
+    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗
@@ -1165,7 +1165,7 @@ Section UtA6.
        record they hold and the conversion at each hop is by the update's
        own definition. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    sexit_pay fdep (-1) -∗
+    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗
@@ -1234,7 +1234,7 @@ Section UtA6.
               ltac:(lkbelow)
               with "Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
-    iIntros (CID3 Hk3 mf kl) "[%Hcskl %Hkla0] _ Hcg Hcpu Hpc".
+    iIntros (CID3 Hk3 mf kl) "[%Hcskl %Hkla0] #Hkw Hcg Hcpu Hpc".
     assert (Hretac : ret_pc (M2 !!! Regidx Rra) = mword_of_int (UT + 0xac))
       by (rewrite HM2ra; pcw).
     iEval (rewrite Hretac) in "Hpc".
@@ -1352,7 +1352,17 @@ Section UtA6.
          process deposited when it trapped.  This check is reached from
          EVERY arm of usertrap -- the syscall's, the device's and the
          unexpected-cause one -- which is why the row is owed at every
-         cause ([SpecUsertrap.ut_pay_in]). *)
+         cause ([SpecUsertrap.ut_pay_in]).
+         ...AND THE DEPOSIT IS A WAND FROM THE KILL CREDENTIAL (lane
+         KILL-PAY, K4(a)), which is what [killed] just handed back beside
+         its NONZERO answer: this arm is the one where the flag is not
+         zero, so [SpecKilled]'s left arm is refuted and the right one is
+         the credential. *)
+      iAssert (□ riscv_kill_cred)%I with "[]" as "#Hkc".
+      { iDestruct "Hkw" as "[%Hz0 | #Hc]";
+          [ exfalso; rewrite Hz0 in Hnz; vm_compute in Hnz; discriminate Hnz
+          | iExact "Hc" ]. }
+      iDestruct (upay_neg_pay (sexit_pay fdep) with "Hkc Hpayv") as "Hpayv".
       iApply (ut_kexit (CID := CID7) Rsys N U
                 (<[Regidx Rra := regval_into_reg
                      (add_vec_int (mword_of_int (UT + 0xf8) : mword 64) 4)]> K2)
@@ -1505,7 +1515,7 @@ Section UtFa.
        record they hold and the conversion at each hop is by the update's
        own definition. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    sexit_pay fdep (-1) -∗
+    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗

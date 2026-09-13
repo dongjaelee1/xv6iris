@@ -948,7 +948,10 @@ Section UkEcho.
     (* AT THE TRIVIAL PAYLOAD BOTH CONJUNCTS ARE FREE: this program owes
        its parent nothing, at its own status and at the kill status alike
        ([UkRun.ukn_triv]). *)
-    { rewrite (ukn_triv_eq (N := N)). iIntros "_". iSplit; done. }
+    (* ...AND THE RIGHT CONJUNCT IS A WAND NOW (lane KILL-PAY, K4(a)):
+       at [True] it costs one intro. *)
+    { rewrite (ukn_triv_eq (N := N)). iIntros "_".
+      iSplit; [ done | iIntros "_"; done ]. }
   Qed.
 
   (* THE WRITE DEPOSIT, AS A PREMISE (lane SUPPLY-SPLIT, P4).  echo's

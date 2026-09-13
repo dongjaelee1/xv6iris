@@ -168,7 +168,8 @@ Section UkGen.
   Definition ukcq' (Qp : Z -> iProp Σ) (π : gmap (mword 27) uperm)
       (M : gmap Z (bv 8)) (szv : Z) (fdv : list fdstate) (cw : Z)
       (gn : gname) (cs : gset gname) (pidv : mword 32) (m : regfile) (pc : mword 64) : iProp Σ :=
-    (my_pay gn Qp ∗ Qp (-1) ∗ (Qp (-1) -∗ ukc' π M szv fdv cw gn cs pidv m pc))%I.
+    (my_pay gn Qp ∗ upay_neg Qp ∗
+     (upay_neg Qp -∗ ukc' π M szv fdv cw gn cs pidv m pc))%I.
 
   (* ---- THE TWO FACTS ---- *)
   (* GUARDED BY THE LAZY BIT (lane LAZY-FLAG, L6).  The primed bundle is
@@ -291,7 +292,7 @@ Section UkGenObl.
      [UkStep.uk_paycont], of which this is the X-generic twin.  [Qp], not
      [Q]: this section's [Q] is the context predicate. *)
   Definition uk_paycont' (Qp : Z -> iProp Σ) (gn : gname) (K : iProp Σ) : iProp Σ :=
-    (my_pay gn Qp ∗ Qp (-1) ∗ (Qp (-1) -∗ K))%I.
+    (my_pay gn Qp ∗ upay_neg Qp ∗ (upay_neg Qp -∗ K))%I.
 
   Definition uk_step_obl' (π : gmap (mword 27) uperm) (Kc : iProp Σ)
       (Qp : Z -> iProp Σ) (sz : Z)
@@ -358,7 +359,7 @@ Section UkGenObl.
        uvb_F' (CID := h) (XI := xi) C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗
        □ uk_step_obl' π Kc Qp sz fdv cw gn cs pidv M m pc -∗
        (* the payment rides the step's own later -- see [UkStep.uk_ih] *)
-       ▷ (my_pay gn Qp ∗ Qp (-1) ∗ (Qp (-1) -∗ Kc)) -∗
+       ▷ (my_pay gn Qp ∗ upay_neg Qp ∗ (upay_neg Qp -∗ Kc)) -∗
        WP (Loop : expr riscv_lang))%I.
 
   (* the payload the wrapper hands the closer at the cycle's tail *)
@@ -843,7 +844,7 @@ Section UkGenFunnel.
   Lemma wp_uk_step' (Kc : iProp Σ) (Qp : Z -> iProp Σ) (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗ □ uk_step_obl' π Kc Qp sz fdv cw gn cs pidv M m pc -∗
-    ▷ (my_pay gn Qp ∗ Qp (-1) ∗ (Qp (-1) -∗ Kc)) -∗ WP (Loop : expr riscv_lang).
+    ▷ (my_pay gn Qp ∗ upay_neg Qp ∗ (upay_neg Qp -∗ Kc)) -∗ WP (Loop : expr riscv_lang).
   Proof.
     intros Hal2.
     iIntros "Hb #Hobl Hpay3".
@@ -1128,8 +1129,8 @@ Section UkGenEcall.
     uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗
     (* the payment enters here and the return is behind it -- see
        [UkStep.wp_uk_ecall] *)
-    my_pay gn Qp -∗ Qp (-1) -∗
-    (Qp (-1) -∗ RetF X uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false)) -∗
+    my_pay gn Qp -∗ upay_neg Qp -∗
+    (upay_neg Qp -∗ RetF X uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hui Hg.
@@ -1953,8 +1954,8 @@ Section UkGenPlain.
          register_lookup (R_bitvector_64 PC) s.(sregs) = pc ->
          goodmb Du_r Du_w (execute (ECALL tt)) s ∅ = true) ->
       uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
-      my_pay gn Qp -∗ Qp (-1) -∗
-      (Qp (-1) -∗ uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false)) -∗
+      my_pay gn Qp -∗ upay_neg Qp -∗
+      (upay_neg Qp -∗ uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false)) -∗
       WP (Loop : expr riscv_lang).
 
   (* inhabitant 1: upstream's own constant *)

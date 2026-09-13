@@ -814,7 +814,7 @@ Section UkFork.
        ([UexecRet.uexec_pay_dep]).  So the resource crosses HERE: a parent
        that lends its child a resource lends it at the fork.  At
        [fun _ => True] it costs nothing. *)
-    Q (-1) -∗
+    upay_neg Q -∗
     (* ...and the lend itself, which crosses on the same terms *)
     Rc -∗
     P (ukn_t N) (ukn_d N) (ukn_s N) -∗
@@ -1129,7 +1129,7 @@ Section UkFork.
     iApply (wp_uk_ecall_fork N h m pc avail szv l D c Sc (fun _ => True%I)
               emp%I P
               Hn Hal4 with "Hi [] [] HP Hsz Hstd HD Hcwd Hchf Hrun [Hpar Hchild]");
-      [ done | done | ].
+      [ iIntros "_"; done | done | ].
     iSplitL "Hpar".
     - iIntros (h' r) "%Hr Hans HP Hsz Hstd HD Hcwd Hrun".
       (* BOTH ARMS GIVE THE FRAGMENT BACK, and the token the pid arm mints
@@ -1176,7 +1176,7 @@ Section UkFork.
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     (* the child's payload, relayed -- see [wp_uk_ecall_fork] *)
-    Q (-1) -∗
+    upay_neg Q -∗
     (* ...and the parent's lend, relayed with it *)
     Rc -∗
     utext_all (ukn_t N) M0 pm0 -∗

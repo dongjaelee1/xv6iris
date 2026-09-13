@@ -220,7 +220,7 @@ Section UtSysBlock.
               HM1a0 Hj Hjl ltac:(vm_compute; reflexivity) ltac:(lia)
               with "Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
-    iApply wp_next_off_intro. iIntros (mf kl) "[%Hcskl %Hkla0] _ Hcg Hcpu Hpc".
+    iApply wp_next_off_intro. iIntros (mf kl) "[%Hcskl %Hkla0] #Hkw Hcg Hcpu Hpc".
     assert (Hret94 : ret_pc (M1 !!! Regidx Rra) = mword_of_int (UT + 0x94))
       by (rewrite HM1ra; pcw).
     iEval (rewrite Hret94) in "Hpc".
@@ -306,12 +306,25 @@ Section UtSysBlock.
          rather than at the status it asked for -- which is why the row is
          two-armed at that number and why what this arm takes is the ∧'s
          RIGHT conjunct ([SpecUsertrap.ut_pay_in]). *)
-      iAssert (sexit_pay fdep (-1)) with "[Hein]" as "Hpayv".
+      (* ...AND THE KILL CREDENTIAL IS WHAT UNLOCKS IT (lane KILL-PAY,
+         K4(a)).  The deposit's kill conjunct is a WAND from the
+         application's credential, because under a discipline that admits
+         no kill a process should not have to fund the payload at all --
+         and the credential is exactly what [killed] just handed back
+         beside its NONZERO answer ([SpecKilled]'s post, whose left arm is
+         "the flag is zero" and is refuted by the branch this arm is
+         on). *)
+      iAssert (□ riscv_kill_cred)%I with "[]" as "#Hkc".
+      { iDestruct "Hkw" as "[%Hz0 | #Hc]";
+          [ exfalso; rewrite Hz0 in Hnz; vm_compute in Hnz; discriminate Hnz
+          | iExact "Hc" ]. }
+      iAssert (upay_neg (sexit_pay fdep)) with "[Hein]" as "Hpayw".
       { destruct (decide (scv = uecall_scause)) as [_ | Hc];
           [ | exfalso; exact (Hc Hscec) ].
         destruct (decide (usys_num (<[tf_epc_idx := ret_pc epv]>
                                       (pv_tf (us_V U0))) = USYS_exit))
           as [_ | _]; [ iDestruct "Hein" as "[_ $]" | iExact "Hein" ]. }
+      iDestruct (upay_neg_pay (sexit_pay fdep) with "Hkc Hpayw") as "Hpayv".
       (* THE FACT THAT NAMES THE PAYLOAD, RE-KEYED ONTO THE STATE THE KILL
          RUNS AT: the prologue keeps the generation ([SpecUsertrap.ut_pro]'s
          own row), so the entry's [ChildTok.my_pay] is the tail's. *)

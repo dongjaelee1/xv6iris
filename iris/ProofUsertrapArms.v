@@ -102,6 +102,9 @@ Require Import UsysMemOk.   (* [uecall_scause] -- the transparent arms' defining
 Require Import SpecUsertrap UsertrapRes.
 Require Import UexecSG.    (* [sfam] -- the deposit's families, relayed with
                               the syscall channel's out row *)
+Require Import UexecSlot.       (* [upay_neg] -- the -1 payload is a
+                                   WAND from the kill credential (lane
+                                   KILL-PAY, K4(a)) *)
 Require Import UserPerm.   (* [perm_of_uptd_ext_sz] -- the fill is transparent *)
 Require Import ProofUsertrapParts.
 Require Import UsertrapAux.
@@ -281,7 +284,7 @@ Section Ut56.
        exactly that reason): the arm either spends the payload on
        [kexit(-1)] or hands it back through the post's own row. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    sexit_pay fdep (-1) -∗
+    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep) -∗
@@ -768,7 +771,7 @@ Section UtD0.
        exactly that reason): the arm either spends the payload on
        [kexit(-1)] or hands it back through the post's own row. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    sexit_pay fdep (-1) -∗
+    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep) -∗
@@ -1216,7 +1219,7 @@ Section UtE8.
        exactly that reason): the arm either spends the payload on
        [kexit(-1)] or hands it back through the post's own row. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    sexit_pay fdep (-1) -∗
+    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep) -∗
@@ -1285,7 +1288,7 @@ Section UtE8.
               (un_pj N) false lks HM2a0 Hj Hjl ltac:(vm_compute; reflexivity)
               ltac:(lia) with "Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
-    iApply wp_next_off_intro. iIntros (mf kl) "[%Hcskl %Hkla0] _ Hcg Hcpu Hpc".
+    iApply wp_next_off_intro. iIntros (mf kl) "[%Hcskl %Hkla0] #Hkw Hcg Hcpu Hpc".
     assert (Hretee : ret_pc (M2 !!! Regidx Rra) = mword_of_int (UT + 0xf0))
       by (rewrite HM2ra; pcw).
     iEval (rewrite Hretee) in "Hpc".
@@ -1428,7 +1431,17 @@ Section UtE8.
       (* THE KILLED DEVICE ARM IS PAID AT -1, out of the payment the process
          deposited when it trapped: this cause is not an ecall at all, and
          the kill check runs on it exactly as it does on the syscall arm --
-         which is why [SpecUsertrap.ut_pay_in] is owed at every cause. *)
+         which is why [SpecUsertrap.ut_pay_in] is owed at every cause.
+         ...AND WHAT UNLOCKS IT IS THE KILL CREDENTIAL (lane KILL-PAY,
+         K4(a)).  NOT the trap deposit's kill row -- the cause here IS one
+         devintr handled, so that row is [emp] -- but [SpecKilled]'s post:
+         this arm read a NONZERO flag, and the row the flag carries says
+         somebody paid for it. *)
+      iAssert (□ riscv_kill_cred)%I with "[]" as "#Hkcx".
+      { iDestruct "Hkw" as "[%Hz0 | #Hc]";
+          [ exfalso; rewrite Hz0 in Hz; vm_compute in Hz; discriminate Hz
+          | iExact "Hc" ]. }
+      iDestruct (upay_neg_pay (sexit_pay fdep) with "Hkcx Hpayv") as "Hpayv".
       iApply (T.ut_kexit Rsys N U
                 (<[Regidx Rra := regval_into_reg
                      (add_vec_int (mword_of_int (UT + 0xf8) : mword 64) 4)]> K1)

@@ -224,7 +224,7 @@ Section UkShFork.
      [wp_kshf_fork_any] the index-free arm the body takes. *)
   Definition ushf_pstate_at (l : list fdstate) (c : Z) : iProp Σ :=
     (ush_std l ∗ UserCwd.ucwd γcwd c ∗ UserChildren.uch_any γch
-     ∗ UkSh.ush_pos γp)%I.
+     ∗ UkSh.ush_pos N γp)%I.
 
   Lemma ushf_pstate_of_at (l : list fdstate) (c : Z) :
     ushf_pstate_at l c -∗ ush_pstate l.
@@ -276,6 +276,12 @@ Section UkShFork.
     iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hjt %Hfd0 Hstd Hdat Hsz Hbuf Hrun".
     destruct Hregs as (Hs2 & Hs3 & Hs4 & Hs5 & Hs6).
     iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpos)".
+    (* THE LEASE COMES OUT OF THE POSITION STATE (lane KILL-PAY, K4(a)):
+       [UkSh.ush_at] is the position AND sh's exit payload, and fork1's
+       [-1] arm panics -- which is an [exit] and has to pay.  fork1 hands
+       it back on the returning arm and the pair is repacked below. *)
+    iEval (rewrite /UkSh.ush_pos /UkSh.ush_at) in "Hpos".
+    iDestruct "Hpos" as (np0) "[Hpos Hlease]".
     assert (Hlen31 : Z.of_nat len < 2 ^ 31)
       by (unfold sh_nbuf in Hkl; lia).
     (* ---- 0x92c  jal ra,fork1 ---- *)
@@ -303,7 +309,8 @@ Section UkShFork.
       by (unfold UkShDiag.ush_Dg; lia).
     iApply (UkShDiag.wp_kshr_fork1_final N (ushf_pay f)
               sz l ∅ h1 m1 (66 + n) cw
-              with "Hdp Hcode Hro [Hdat Hbuf] Hsz Hustd Hcwd Hch [] Hrun").
+              with "Hdp Hcode Hro [Hdat Hbuf] Hsz Hustd Hcwd Hch []
+                    Hlease Hrun").
     { rewrite /ushf_pay.
       iSplitR; [ iExact "Hcode" | ].
       iSplitR; [ iExact "Hro" | ].
@@ -319,7 +326,7 @@ Section UkShFork.
        child it forks runs [runcmd] under fresh ghost names. *)
     iSplitL "Hhead Hpos".
     - (* ================= THE PARENT: reap, and round again ============= *)
-      iIntros (hA mA rA) "%HrA %HcsA %Ha0A Hpay Hsz Hustd Hcwd Hch _ Hrun".
+      iIntros (hA mA rA) "%HrA %HcsA %Ha0A Hpay Hsz Hustd Hcwd Hch _ Hlease Hrun".
       iDestruct "Hpay" as "(_ & _ & _ & Hdat & Hbuf)".
       (* ---- 0x930  c.beqz a0,0x9c0 -- NOT taken: this is the parent ---- *)
       iApply (wp_uk_cbeqz N hA mA (mword_of_int 0x930)
@@ -420,11 +427,12 @@ Section UkShFork.
       replace (2 + (UkShDiag.ush_Dg + (66 + n)))%nat
         with (16 + (80 + n))%nat by (unfold UkShDiag.ush_Dg; lia).
       iApply ("Hhead" $! hE mD f n
-                with "[%] [%] [Hustd Hcwd Hch Hpos] Hdat Hsz Hbuf Hrun").
+                with "[%] [%] [Hustd Hcwd Hch Hpos Hlease] Hdat Hsz Hbuf Hrun").
       + exact HregsD.
       + exact Hfd0.
       + iApply (ushf_pstate_of_at l cw).
-        rewrite /ushf_pstate_at /UkSh.ush_std. iFrame "Hustd Hcwd Hch Hpos".
+        rewrite /ushf_pstate_at /UkSh.ush_std /UkSh.ush_pos /UkSh.ush_at.
+        iFrame "Hustd Hcwd Hch". iExists np0. iFrame "Hpos Hlease".
     - (* ================= THE CHILD: parse, run, exec =================== *)
       iIntros (N' hA mA) "%Hti' %HcsA %Ha0A #Hcode' Hpay Hsz Hustd Hcwd Hch _ Hrun".
       (* THE POSITION DOES NOT CROSS sh's OWN FORK: the pair is sh's, the

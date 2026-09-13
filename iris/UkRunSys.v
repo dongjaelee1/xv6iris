@@ -1987,10 +1987,18 @@ Section UkRunSys.
     urun N h m pc avail -∗
     (* the program's half of its working directory... *)
     UserCwd.ucwd (ukn_cwd N) c -∗
-    (* ...and the deposit at every key whose cwd is that one inum *)
-    udepw_at N m pc USYS_exec c -∗
+    (* ...and the deposit at every key whose cwd is that one inum.
+       AT THE REFUNDING FORM (lane KILL-PAY, K4(a), ruling R-A): an exec
+       that FAILS comes back, and the process's -1 payload no longer rides
+       [UkRun.urun]'s row, so what it spent into this deposit is the only
+       thing it has left to pay its own [exit] with.  [UkRun.udepw_at_ref]
+       is [udepw_at] at exec plus the one consequence a leaf can state --
+       the refund pays THIS record's exit at the kill status. *)
+    udepw_at_ref N m pc c -∗
     (∀ h' : CpuId,
        UserCwd.ucwd (ukn_cwd N) c -∗
+       (* ...AND THE REFUND, which is what an exec-failure arm exits on *)
+       ukn_pay N (-1) -∗
        urun N h'
          (<[Regidx (mword_of_int 10) := (mword_of_int (-1) : mword 64)]> m)
          (add_vec_int pc 4) avail -∗
@@ -2003,8 +2011,8 @@ Section UkRunSys.
     (* the whole point of the leaf: the key's cwd IS the one the caller's
        bundle is stated at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
-    iMod (udepw_at_mint N m pc _ c M pm _ fdv gn cs pidv
-                with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
+    iDestruct ("Hsb" $! M pm sz fdv gn cs pidv with "Hmy Hheap Hufd")
+      as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     iApply (UkStep.wp_uk_ecall C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc fdv c gn cs pidv Hui
@@ -2036,13 +2044,17 @@ Section UkRunSys.
        R1): read's bundle is a wand from the depositing process's own exit
        payload, so nothing is re-keyed here any more -- the family the
        deposit came at IS at [ukn_pay N]. *)
-    iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
+    iDestruct "Hdepn" as (fdep) "(%Hfp & #Href & Hdepn)".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
     iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
     iIntros "Hpayv".
-    iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
+    (* THE POST AT exec IS THE REFUND (lane KILL-PAY, K4(a), R-A): it used
+       to be [emp] and is a wand from "the answer was -1" now
+       ([UexecSG.spost_at_exec]), which is exactly the branch this leaf is
+       on -- a successful exec never resumes here. *)
+    iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow Hsp".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
        ([UexecRet.ukcq]) -- and every row but sbrk's is the equation
@@ -2066,6 +2078,11 @@ Section UkRunSys.
     subst gn' cs'.
     destruct (usys_mem_ok_exec_row USYS_exec _ r _ _ _ _ _ _ _ _ eq_refl Hok)
       as [-> [-> [-> ->]]].
+    (* the refund, cashed at the answer this arm IS at, and turned into
+       what this record's own exit owes (lane KILL-PAY, K4(a), R-A) *)
+    iEval (rewrite spost_at_exec) in "Hsp".
+    iDestruct ("Hsp" with "[//]") as "Hrf".
+    iDestruct ("Href" with "Hrf") as "Hpayret".
     cbn [uvis_M uvis_perm uvis_of_run].
     assert (Hview : fdv' = fdv).
     { refine (usys_fd_ok_quiet _ _ _ _ _ _ _ _ _ Hfdok);
@@ -2077,7 +2094,7 @@ Section UkRunSys.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
     iIntros (h') "Hrun".
-    iApply ("Hcont" $! h' with "Hcwd Hrun").
+    iApply ("Hcont" $! h' with "Hcwd Hpayret Hrun").
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -4097,7 +4114,8 @@ Section UkRunSys.
        its run keeps ([UkRun.urun]'s [ukn_pay N (-1)]), which is what lets
        one resource answer both conjuncts ([R ⊢ R ∧ R]); at [ukn_triv] it
        is [True] and costs nothing. *)
-    (ukn_pay N (-1) -∗ ukn_pay N (uexitst m) ∧ ukn_pay N (-1)) -∗
+    (upay_neg (ukn_pay N) -∗
+       ukn_pay N (uexitst m) ∧ upay_neg (ukn_pay N)) -∗
     urun N h m pc avail -∗
     WP (Loop : expr riscv_lang).
   Proof.

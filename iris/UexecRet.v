@@ -793,6 +793,13 @@ Section UexecRet.
   (* quarters are out ([ChildTok.gen_set] runs before [gen_split]).  A       *)
   (* generic process's is [fun _ => True] and it pays both rows for free.    *)
   (* ===================================================================== *)
+  (* THE PAYLOAD AT THE KILL STATUS IS A WAND FROM THE CREDENTIAL: it is
+     [UexecSlot.upay_neg], stated THERE and not here (lane KILL-PAY,
+     K4(a)).  [SpecKexec.exec_slot_pre]'s two wands take it, and SpecKexec
+     is BELOW this file -- so the one spelling has to sit at the key
+     vocabulary's altitude, beside [uvis] and above nothing this route
+     needs. *)
+
   (* THE ROW ITSELF, at a GENERATION AND A FRAME rather than at a key: the
      process deposits it at the key's [uvis_gen], the kernel route carries
      it at the BLOCK's [ProcDefs.pv_gen] ([SpecUsertrap.ut_pay_in]), and
@@ -803,9 +810,9 @@ Section UexecRet.
     (my_pay gn (sexit_pay f) ∗
      (if decide (sc = uecall_scause) then
         if decide (usys_num tf = USYS_exit)
-        then sexit_pay f (exit_xs tf) ∧ sexit_pay f (-1)
-        else sexit_pay f (-1)
-      else sexit_pay f (-1)))%I.
+        then sexit_pay f (exit_xs tf) ∧ upay_neg (sexit_pay f)
+        else upay_neg (sexit_pay f)
+      else upay_neg (sexit_pay f)))%I.
 
   (* the row reads the number and argument 0, both of which [TfUser.tf_ueq]
      carries, and the generation is a parameter -- so it transports across
@@ -826,7 +833,7 @@ Section UexecRet.
   (* ...AND WHAT COMES BACK AT THE RESUME, which is the same payload at the
      kill status: the kernel took the deposit at the trap and hands this
      back at every arm that resumes the process.  Exit has no arm. *)
-  Definition uexec_pay_arm (f : sfam) : iProp Σ := sexit_pay f (-1).
+  Definition uexec_pay_arm (f : sfam) : iProp Σ := upay_neg (sexit_pay f).
 
   (* the row at a TRIVIALLY-PAID process -- every generic one, and <init>,
      whose parent is nobody.  It pays out of its own persistent knowledge
@@ -837,16 +844,17 @@ Section UexecRet.
     sexit_pay f = (fun _ => True)%I ->
     my_pay (uvis_gen W) (fun _ => True)%I -∗ uexec_pay_dep sc W f.
   Proof.
-    intros Hf. rewrite /uexec_pay_dep /upay_at Hf. iIntros "#H". iFrame "H".
+    intros Hf. rewrite /uexec_pay_dep /upay_at /upay_neg Hf. iIntros "#H". iFrame "H".
     destruct (decide (sc = uecall_scause));
       [ destruct (decide (usys_num (uvis_tf W) = USYS_exit));
-        [ iSplit; done | done ] | done ].
+        [ iSplit; [ done | iIntros "_"; done ] | iIntros "_"; done ]
+      | iIntros "_"; done ].
   Qed.
 
   (* ...and the arm at the same family, which costs nothing either *)
   Lemma uexec_pay_arm_triv (f : sfam) :
     sexit_pay f = (fun _ => True)%I -> ⊢ uexec_pay_arm f.
-  Proof. intros Hf. rewrite /uexec_pay_arm Hf. done. Qed.
+  Proof. intros Hf. rewrite /uexec_pay_arm /upay_neg Hf. iIntros "_". done. Qed.
 
   (* ...AND THE ROW AT A CONSTANT PAYLOAD (GENERIC-PAY), which is what a
      process holding ONE resource pays with.  It covers every cause and
@@ -860,17 +868,28 @@ Section UexecRet.
     sexit_pay f = (fun _ => R)%I ->
     my_pay (uvis_gen W) (fun _ => R)%I -∗ R -∗ uexec_pay_dep sc W f.
   Proof.
-    intros Hf. iIntros "#Hmy HR". rewrite /uexec_pay_dep /upay_at Hf.
+    intros Hf. iIntros "#Hmy HR". rewrite /uexec_pay_dep /upay_at /upay_neg Hf.
     iFrame "Hmy".
     destruct (decide (sc = uecall_scause));
       [ destruct (decide (usys_num (uvis_tf W) = USYS_exit));
-        [ iSplit; iExact "HR" | iExact "HR" ] | iExact "HR" ].
+        [ iSplit; [ iExact "HR" | iIntros "_"; iExact "HR" ]
+        | iIntros "_"; iExact "HR" ]
+      | iIntros "_"; iExact "HR" ].
   Qed.
 
   (* ...and the arm at such a family: what comes back IS the payload. *)
+  (* ...AND WHAT IT COSTS TO CASH IT (lane KILL-PAY, K4(a)): the resume
+     hands back the WAND, so a party that wants the payload itself has to
+     hold the credential.  The GENERIC slot does -- it is one half of
+     [UexecExecInst.xv6_ssupply] -- which is why the generic inhabitant
+     below still runs on one resource. *)
   Lemma uexec_pay_arm_const (R : iProp Σ) (f : sfam) :
-    sexit_pay f = (fun _ => R)%I -> uexec_pay_arm f -∗ R.
-  Proof. intros Hf. rewrite /uexec_pay_arm Hf. iIntros "H". iExact "H". Qed.
+    sexit_pay f = (fun _ => R)%I ->
+    □ riscv_kill_cred -∗ uexec_pay_arm f -∗ R.
+  Proof.
+    intros Hf. rewrite /uexec_pay_arm /upay_neg Hf. iIntros "#Hk H".
+    iApply ("H" with "Hk").
+  Qed.
 
   (* THE THREE SHAPES A LEAF PAYS IT IN.  Each is the definition at one
      branch of its guard, stated at the RUN key a U-tier leaf traps from
@@ -882,7 +901,7 @@ Section UexecRet.
       (f : sfam) :
     sc <> uecall_scause ->
     sexit_pay f = Q ->
-    my_pay (uvis_gen W) Q -∗ Q (-1) -∗ uexec_pay_dep sc W f.
+    my_pay (uvis_gen W) Q -∗ upay_neg Q -∗ uexec_pay_dep sc W f.
   Proof.
     intros Hne Hf. iIntros "#Hmy HQ". rewrite /uexec_pay_dep /upay_at Hf. iFrame "Hmy".
     destruct (decide (sc = uecall_scause)); [ contradiction | iExact "HQ" ].
@@ -897,7 +916,7 @@ Section UexecRet.
     usys_num (tf_of m pc) = n ->
     n <> USYS_exit ->
     sexit_pay f = Q ->
-    my_pay gn Q -∗ Q (-1) -∗
+    my_pay gn Q -∗ upay_neg Q -∗
     uexec_pay_dep uecall_scause (uvis_of_run m pc M pm sz fdv cw gn cs pidv lz) f.
   Proof.
     intros Hn Hx Hf. iIntros "#Hmy HQ". rewrite /uexec_pay_dep /upay_at Hf.
@@ -918,8 +937,8 @@ Section UexecRet.
       (pidv : mword 32) (lz : bool) (Q : Z -> iProp Σ) (f : sfam) :
     usys_num (tf_of m pc) = USYS_exit ->
     sexit_pay f = Q ->
-    my_pay gn Q -∗ Q (-1) -∗
-    (Q (-1) -∗ Q (exit_xs (tf_of m pc)) ∧ Q (-1)) -∗
+    my_pay gn Q -∗ upay_neg Q -∗
+    (upay_neg Q -∗ Q (exit_xs (tf_of m pc)) ∧ upay_neg Q) -∗
     uexec_pay_dep uecall_scause (uvis_of_run m pc M pm sz fdv cw gn cs pidv lz) f.
   Proof.
     intros Hn Hf. iIntros "#Hmy HQ Hw". rewrite /uexec_pay_dep /upay_at Hf.
@@ -1616,7 +1635,8 @@ Section UexecRet.
        at a key whose fill is empty.  A process that called sbrklazy simply
        has no [UkRun.urun] to run on -- a restriction of that tier, not of
        the model. *)
-    (my_pay g Q ∗ Q (-1) ∗ (Q (-1) -∗ ukc π M szv fdv cw g cs pidv false m pc))%I.
+    (my_pay g Q ∗ upay_neg Q ∗
+     (upay_neg Q -∗ ukc π M szv fdv cw g cs pidv false m pc))%I.
 
   (* ...AND THE WAY BACK DOWN, for a leaf that is NOT handing the engine a
      step but closing a trap: the arm has already handed the payload back
@@ -2066,14 +2086,15 @@ Section UexecRet.
      the resource is nothing at all and the slot drops it. *)
   Lemma uexec_arm_of_all (R : iProp Σ) (sc : mword 64) (W : uvis) (f : sfam) :
     sexit_pay f = (fun _ => R)%I ->
+    □ riscv_kill_cred -∗
     my_pay (uvis_gen W) (fun _ => R)%I -∗
     □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗ R -∗ uslot W') -∗
     uexec_arm sc W f.
   Proof.
-    intros Hf. iIntros "#Hpay #H". rewrite /uexec_arm /uexec_arm_F.
+    intros Hf. iIntros "#Hkc #Hpay #H". rewrite /uexec_arm /uexec_arm_F.
     destruct (decide (sc = uecall_scause));
       [ | iIntros "HR"; iApply ("H" with "Hpay");
-          iApply (uexec_pay_arm_const R f Hf with "HR") ].
+          iApply (uexec_pay_arm_const R f Hf with "Hkc HR") ].
     destruct (decide (usys_num (uvis_tf W) = USYS_exit)); [ done | ].
     (* THE RESUME KEY'S GENERATION IS THIS PROCESS'S, so the credential
        transports -- but only after the key's projection is REDUCED: the
@@ -2081,19 +2102,19 @@ Section UexecRet.
        [uvis_gen], which is [bump]'s own argument. *)
     destruct (decide (usys_num (uvis_tf W) = USYS_fork)).
     { rewrite /uexec_fork_parent_F. iIntros "HR".
-      iDestruct (uexec_pay_arm_const R f Hf with "HR") as "HR".
+      iDestruct (uexec_pay_arm_const R f Hf with "Hkc HR") as "HR".
       iIntros (r fdv' cw' cs' _ _ _) "_". iApply ("H" with "[] HR").
       cbn [uvis_gen bump bump_at]. iExact "Hpay". }
     (* wait's arm differs from the returning arm in ONE row, and a generic
        process reads neither: the answer is dropped like the receipt. *)
     destruct (decide (usys_num (uvis_tf W) = USYS_wait)).
     { rewrite /uexec_wait_F /uexec_ret_cont_gen. iIntros "HR".
-      iDestruct (uexec_pay_arm_const R f Hf with "HR") as "HR".
+      iDestruct (uexec_pay_arm_const R f Hf with "Hkc HR") as "HR".
       iIntros (r M' π' szv' fdv' cw' g' cs' lz' _ _ _ _ Hg _) "_ _".
       rewrite (usys_gen_ok_quiet _ _ _ Hg). iApply ("H" with "[] HR").
       cbn [uvis_gen bump bump_at]. iExact "Hpay". }
     rewrite /uexec_ret_cont_F /uexec_ret_cont_gen. iIntros "HR".
-    iDestruct (uexec_pay_arm_const R f Hf with "HR") as "HR".
+    iDestruct (uexec_pay_arm_const R f Hf with "Hkc HR") as "HR".
     iIntros (r M' π' szv' fdv' cw' g' cs' lz' _ _ _ _ Hg _ _) "_".
     rewrite (usys_gen_ok_quiet _ _ _ Hg). iApply ("H" with "[] HR").
     cbn [uvis_gen bump bump_at]. iExact "Hpay".
@@ -2115,7 +2136,7 @@ Section UexecRet.
       as (f) "[%Hfp Hdep]".
     iModIntro.
     iApply (uexec_ret_join sc W f with "Hdep []").
-    iApply (uexec_arm_of_all R sc W f Hfp with "Hpay H").
+    iApply (uexec_arm_of_all R sc W f Hfp with "Hkc Hpay H").
   Qed.
 
 End UexecRet.

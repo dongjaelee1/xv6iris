@@ -311,6 +311,24 @@ Section SysExecAU.
           ⌜exec_path_of M pv pl⌝ ∗ ⌜exec_args_of M av na alen afun⌝ ∗
           exec_post_fail Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts))%I.
 
+  (* ...AND IT REFUNDS THE DEPOSIT (lane KILL-PAY, K4(a), ruling R-A):
+     [SpecKexec.exec_post_fail_refund] at the second disjunct, and
+     [sys_exec_au_pre]'s own third conjunct at the first. *)
+  Lemma sys_exec_post_fail_refund (Fs : pfam Σ (uvis -> iProp Σ)) Γ
+      (γfs : fs_names) (cw : Z) (Q : Z -> iProp Σ)
+      (P Pmiss : nat -> Z -> iProp Σ)
+      (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
+      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate) :
+    sys_exec_post_fail Fs Γ γfs cw Q P Pmiss Fo M pv av sts
+      ⊢ Fs.(pf_refund).
+  Proof.
+    rewrite /sys_exec_post_fail /sys_exec_au_pre.
+    iIntros "[(_ & _ & Hs) | Hf]".
+    - iApply (pf_at_refund with "Hs").
+    - iDestruct "Hf" as (pl na alen afun) "(_ & _ & Hf)".
+      iApply (exec_post_fail_refund with "Hf").
+  Qed.
+
   (* the armed disjunction on the block after the copy-ins' growth [V]
      and the returned a0; [M] is the image the arguments were read from *)
   Definition sys_exec_arms (Fs : pfam Σ (uvis -> iProp Σ)) Γ (γfs : fs_names) (cw : Z) (γf : gname)

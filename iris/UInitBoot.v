@@ -366,7 +366,7 @@ Section UInitBoot.
        ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp (echo_taint γ) cn l) ->
     udep (PS := uprogSG_free) -∗ UkSh.sh_deps (PS := uprogSG_free) -∗
     UInitSh.init_sh_slot (echo_taint γ) (UInitSh.sh_pay (echo_taint γ) Rsh n0) -∗
-    UkInit.init_cons_sup (PS := uprogSG_free) cn (echo_taint γ)
+    UkInit.init_cons_sup cn (echo_taint γ)
       (init_cons_cred (echo_taint γ) r) st.
   Proof.
     intros Heq Hpsok_free Hn0 Hst Hrl.
@@ -523,6 +523,11 @@ Section EchoInitBoot.
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
     intros Hsh_deps Hsh_state Hsh_rest Heq Htag Hkill.
+    (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
+       a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
+       right arm is the taint, and the equation is known exactly here. *)
+    assert (Hktaint : ⊢ □ riscv_kill_cred -∗ echo_taint γ).
+    { rewrite Hkill. iIntros "#H". iExact "H". }
     iIntros "#Hinv Hb". iModIntro.
     (* ---- the taint's supply, and the generic slot it buys ---- *)
     iAssert (□ (echo_taint γ -∗ app_sup))%I as "#Hsup".
@@ -592,7 +597,7 @@ Section EchoInitBoot.
     { rewrite /app_sup. rewrite Heq.
       cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
       iIntros "#Hs". iApply (echo_taint_of_sup γ r with "Hs"). }
-    iAssert (UkInit.init_cons_sup (PS := uprogSG_free) fsc_cons (echo_taint γ)
+    iAssert (UkInit.init_cons_sup fsc_cons (echo_taint γ)
                (init_cons_cred (echo_taint γ) r) init_cons_fd)%I as "#Hxs".
     { iApply (init_cons_sup_of_sh_slot γ r fsc_cons init_cons_fd
                 Rsh 0%nat Heq (fun k H => H)
@@ -636,7 +641,8 @@ Section EchoInitBoot.
     { iApply (UInitKernel.init_boot_con (PS := uprogSG_free) (echo_taint γ)
                 (init_cons_cred (echo_taint γ) r) init_cons_fd fsc_cons
                 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
-                init_cons_fd_ne (init_boot_room 0%nat
+                init_cons_fd_ne Hktaint
+                (init_boot_room 0%nat
                                    ltac:(vm_compute; discriminate))
                 fdt0_length eq_refl (fun k H => H)
                 with "[] [] Hxs").

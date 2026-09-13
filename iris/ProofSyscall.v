@@ -3224,12 +3224,12 @@ Section SyscallArms.
       (v0 : mword 64) :
     sysc_num (us_V U) = 5 ->
     pv_tf (us_V U) !! tf_arg_idx 0 = Some v0 ->
-    (* AT THE FAMILY'S OWN EXIT PAYLOAD (app-echo.md, "SH-LINE RULING", R1):
-       read's deposit is a wand from it, and the payload the dispatcher
-       feeds the wand is the one it took off this very trap's payment row
-       ([SpecSyscall.sysc_pay_in] / [sysc_pay_in_ret]). *)
+    (* A PLAIN DEPOSIT (lane KILL-PAY, K4(a)).  R1's wand-from-the-exit-
+       payload is superseded: the kill status is a wand from the credential
+       now, so the dispatcher has no payload to feed and lends [emp].  What
+       pays the console arm is in the process's own hand. *)
     sysc_sys_in U sts gn cs pid f -∗
-    fileread_in (fd_st_of_key v0 sts) (rf_F f) (rf_ret f) (sexit_pay f (-1)).
+    fileread_in (fd_st_of_key v0 sts) (rf_F f) (rf_ret f) True%I.
   Proof.
     intros Hn Hv0. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 5 Hn ltac:(vm_compute; discriminate)
@@ -3603,11 +3603,15 @@ Section SyscallArms.
        exec keeps the process -- so what the new image runs at is this
        process's own payload ([UexecSG.sexit_pay]), the one the trap
        route's payment row is at ([sysc_pay_in]). *)
+    (* ...AND THE REFUND IS NAMED, not existential (lane KILL-PAY, K4(a),
+       ruling R-A): a FAILED exec hands it back to the process, and a
+       process that cannot say what it gets back cannot spend it on its own
+       [exit].  It is the family's own field ([UexecSG.sexec_refund]), so
+       naming it costs the opener nothing. *)
     my_pay gn (kf_xpay f) ∗
     ∃ (P Pmiss : nat -> Z -> iProp Σ)
-      (Fo : pfam Σ (gmap Z FsAbsDefs.anode -> Z -> FsAbsDefs.anode -> iProp Σ))
-      (Rs : iProp Σ),
-      sys_exec_au_pre (MkPfam uslot Rs) (fs_gamma_L fsc_fs) fsc_fs
+      (Fo : pfam Σ (gmap Z FsAbsDefs.anode -> Z -> FsAbsDefs.anode -> iProp Σ)),
+      sys_exec_au_pre (MkPfam uslot (sexec_refund f)) (fs_gamma_L fsc_fs) fsc_fs
         (pv_cwi (us_V U)) (kf_xpay f) P Pmiss Fo (us_M U) v0 v1 sts.
   Proof.
     intros Hn Hv0 Hv1. iIntros "H".
@@ -3616,7 +3620,7 @@ Section SyscallArms.
     iDestruct (sbundle_at_exec_elim uslot f _ with "H") as "[Hmp H]".
     cbn [uvis_gen uvis_of] in *.
     iFrame "Hmp".
-    iExists (xf_P f), (xf_Pmiss f), (xf_Fo f), (xf_Rs f).
+    iExists (xf_P f), (xf_Pmiss f), (xf_Fo f).
     rewrite /uvis_of /tf_w. cbn [uvis_M uvis_tf uvis_fd].
     rewrite (list_lookup_total_correct _ _ _ Hv0).
     rewrite (list_lookup_total_correct _ _ _ Hv1). iExact "H".
@@ -5118,8 +5122,8 @@ Section SyscallArms.
     iDestruct (sysc_exec_in_open U sts gn cs pid fdep v0 v1
                  ltac:(rewrite Hnum; reflexivity) Hv0 Hv1
                  with "Hxin") as "[#Hmp Hau]".
-    iDestruct "Hau" as (P Pmiss Fo Rs) "Hau".
-    iApply (SysExec.wp_sys_exec_sconf (MkPfam uslot Rs) γf γs j γl
+    iDestruct "Hau" as (P Pmiss Fo) "Hau".
+    iApply (SysExec.wp_sys_exec_sconf (MkPfam uslot (sexec_refund fdep)) γf γs j γl
               (fcn_pd fn) (fcn_pav fn) (fcn_pu fn)
               DfracDiscarded DfracDiscarded v0 v1 pid U sts gn cs M (av - 4)%nat true true lks
               (kf_xpay fdep) P Pmiss Fo
@@ -5154,11 +5158,18 @@ Section SyscallArms.
                (us_tf (MkUstate V' Mk)
                   (<[tf_arg_idx 0 := mf !!! Regidx Ra0]>
                      (pv_tf (us_V (MkUstate V' Mk)))))
-               sts sts gn cs pid)%I
-      with "[Harm]" as "[(%Htfp' & %Hfg' & %Hchg' & %Hgeng' & %Hcwi') Hxo]".
-    { iDestruct "Harm" as "[[(%Hr & %HV & %HM) _] | Hok]".
+               sts sts gn cs pid
+             (* ...AND THE FAILING exec's REFUND (lane KILL-PAY, K4(a),
+                ruling R-A): [SpecSysExec.sys_exec_post_fail_refund] off
+                the failure disjunct, and the success arms refute the
+                guard out of [kexec_ok]'s own [r <> -1]. *)
+             ∗ (⌜mf !!! Regidx Ra0 = (mword_of_int (-1) : mword 64)⌝ -∗
+                  sexec_refund fdep))%I
+      with "[Harm]" as "[(%Htfp' & %Hfg' & %Hchg' & %Hgeng' & %Hcwi') [Hxo Hrf]]".
+    { iDestruct "Harm" as "[[(%Hr & %HV & %HM) Hfail] | Hok]".
       - (* FAILED *)
         cbn [us_V us_M] in HV, HM.
+        iDestruct (sys_exec_post_fail_refund with "Hfail") as "Hrf".
         iSplitR.
         { iPureIntro. split_and!.
           - rewrite (f_equal (fun x => ud_tfp (pv_upt x)) HV).
@@ -5167,15 +5178,17 @@ Section SyscallArms.
           - exact (f_equal pv_chg HV).
           - exact (f_equal pv_gen HV).
           - exact (f_equal pv_cwi HV). }
-        rewrite /sysc_exec_out. iIntros "_". iLeft. iPureIntro.
-        rewrite /sysc_exec_failed.
-        cbn [us_V us_M us_tf upd_usV upd_tf pv_tf pv_upt pv_sz].
-        rewrite Hr HV HM. cbn [pv_tf pv_upt pv_sz upd_upt].
-        split_and!;
-          [ reflexivity | reflexivity
-          | exact (perm_of_uptd_ext_sz _ _ _ Hext) | reflexivity
-          (* the lazy bit: a failed exec writes no block field *)
-          | reflexivity | reflexivity ].
+        iSplitR "Hrf".
+        { rewrite /sysc_exec_out. iIntros "_". iLeft. iPureIntro.
+          rewrite /sysc_exec_failed.
+          cbn [us_V us_M us_tf upd_usV upd_tf pv_tf pv_upt pv_sz].
+          rewrite Hr HV HM. cbn [pv_tf pv_upt pv_sz upd_upt].
+          split_and!;
+            [ reflexivity | reflexivity
+            | exact (perm_of_uptd_ext_sz _ _ _ Hext) | reflexivity
+            (* the lazy bit: a failed exec writes no block field *)
+            | reflexivity | reflexivity ]. }
+        iIntros "_". cbn [pf_refund]. iExact "Hrf".
       - (* SUCCEEDED *)
         iDestruct "Hok" as (pl na alen afun) "[_ [_ Hok]]".
         rewrite /exec_post_ok.
@@ -5193,8 +5206,10 @@ Section SyscallArms.
             - revert Hchg. cbn [pv_chg upd_upt]. exact id.
             - revert Hgen. cbn [pv_gen upd_upt]. exact id.
             - revert Hcwi. cbn [pv_cwi upd_upt pv_gen pv_chg]. exact id. }
-          rewrite /sysc_exec_out. iIntros "_". iRight.
-          rewrite /exec_key. rewrite Hr. cbn [us_V]. iExact "Hslot".
+          iSplitL "Hslot".
+          { rewrite /sysc_exec_out. iIntros "_". iRight.
+            rewrite /exec_key. rewrite Hr. cbn [us_V]. iExact "Hslot". }
+          iIntros (Hm1). exfalso. exact (Hne Hm1).
         + (* (b) the node was not a loadable file: the same slot, out of
              the deposit's second wand *)
           iDestruct "Hb" as "(_ & %Hok & Hslot)".
@@ -5209,8 +5224,10 @@ Section SyscallArms.
             - revert Hchg. cbn [pv_chg upd_upt]. exact id.
             - revert Hgen. cbn [pv_gen upd_upt]. exact id.
             - revert Hcwi. cbn [pv_cwi upd_upt pv_gen pv_chg]. exact id. }
-          rewrite /sysc_exec_out. iIntros "_". iRight.
-          rewrite /exec_key. rewrite Hr. cbn [us_V]. iExact "Hslot". }
+          iSplitL "Hslot".
+          { rewrite /sysc_exec_out. iIntros "_". iRight.
+            rewrite /exec_key. rewrite Hr. cbn [us_V]. iExact "Hslot". }
+          iIntros (Hm1). exfalso. exact (Hne Hm1). }
     (* ---- what the shared tail needs of the returned state ---- *)
     assert (Hmfsp : mf !!! Regidx csp_rs1 = pa_stk (m !!! Regidx csp_rs1) 4).
     { rewrite (callee_saved_lookup Hcs csp_rs1 ltac:(vm_compute; reflexivity)). exact HMsp. }
@@ -5257,15 +5274,16 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] Hxo [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] Hxo [Hrf] Hpayv").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
     { iApply sysc_wait_out_ne. unfold UsysMemOk.USYS_wait in *; lia. }
-    (* exec's process never resumes on success, so its [spost_at] is [emp]
-       ([UexecExecInst.xv6_spost]) and the row is free. *)
-    iApply (sysc_sys_out_quiet U sts gn cs pid fdep _ _ _ _ _ _ Hnum
-              ltac:(unfold sysc_num_nofs; lia)).
+    (* exec's process never resumes ON SUCCESS -- but a FAILED exec does,
+       and what it gets back is the deposit's refund (lane KILL-PAY,
+       K4(a), ruling R-A).  [SpecSyscall.sysc_out_exec] is the row. *)
+    iApply (sysc_out_exec U sts gn cs pid fdep _ _ _ _ _
+              ltac:(rewrite Hnum; reflexivity) with "Hrf").
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -5740,28 +5758,31 @@ Section SyscallArms.
       as %Hfdk.
     iDestruct (sysc_dep_read U sts gn cs pid fdep v0
                  ltac:(rewrite Hnum; reflexivity) Hv0 with "Hxin") as "Hdepr".
-    iAssert (sys_read_in (us_V U) v0 sts (rf_F fdep) (rf_ret fdep)
-               (sexit_pay fdep (-1)))
+    iAssert (sys_read_in (us_V U) v0 sts (rf_F fdep) (rf_ret fdep) True%I)
       with "[Hdepr]" as "Hsrin".
     { rewrite /sys_read_in Hfdk. iExact "Hdepr". }
-    (* ---- THE PAYLOAD, OFF THE PAYMENT ROW AND LENT TO THE CALL
-       (app-echo.md, "SH-LINE RULING", R1).  The dispatcher is entered past
-       +0xca's killed check, which is the OTHER path this resource pays
-       ([ProofUsertrapTail.ut_kexit] at status -1); this arm RETURNS, so it
-       opens the row at its own number ([SpecSyscall.sysc_pay_in_ret]) and
-       what it gets is exactly [sexit_pay fdep (-1)] -- the payload read's
-       deposit is a wand from.  It goes down into the call and comes back
-       off the post ([sys_read_arms_pay]), whence [sysc_pay_out]. ---- *)
+    (* THE LENT RESOURCE IS NOTHING (lane KILL-PAY, K4(a)): read's deposit
+       is a plain one now, so what goes down and comes back is [emp] and
+       this arm's payment row is untouched by the call. *)
+    iAssert (True)%I with "[]" as "Hnil"; [ done | ].
+    (* ---- THE PAYMENT ROW IS OPENED AND KEPT (lane KILL-PAY, K4(a)).
+       The dispatcher is entered past +0xca's killed check, which is the
+       OTHER path this resource pays ([ProofUsertrapTail.ut_kexit] at
+       status -1); this arm RETURNS, so it opens the row at its own number
+       ([SpecSyscall.sysc_pay_in_ret]) and what it gets is the WAND
+       ([UexecRet.upay_neg]).  It no longer goes down into the call: read's
+       deposit is plain, so the wand is simply carried across and handed
+       back at [sysc_pay_out]. ---- *)
     iDestruct (sysc_pay_in_ret _ U
                  ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
                  with "Hdep") as "Hpayv".
     iEval (rewrite /sysc_pay_out /uexec_pay_arm) in "Hpayv".
     iApply (SysRead.wp_sys_read_sconf γf γs j γl (sysc_fread_names γcon fn)
               pid U sts v0 v1 v2 M (av - 4)%nat true true ∅
-              (rf_F fdep) (rf_ret fdep) (sexit_pay fdep (-1))
+              (rf_F fdep) (rf_ret fdep) True%I
               ltac:(lia) Hj Hgamma Hlen Hv0 Hv1 Hv2
               eq_refl eq_refl eq_refl
-              with "Hcg Hcpu Htext Hdata Hpc Hpanic Hpriv Hufrag Hkalloc Hprocs Hfse Hci Hsrin Hpayv").
+              with "Hcg Hcpu Htext Hdata Hpc Hpanic Hpriv Hufrag Hkalloc Hprocs Hfse Hci Hsrin Hnil").
     iIntros (CIDy Hsy mf r P' dw bsw)
       "%Hcs %Hextz %Hdwle %Htie %Hmfa0 Hcg Hcpu Hpc Hpriv Hufrag _ Hout Harms".
     (* WHAT THE PROCESS GETS BACK: the arm's own payout, at the descriptor
@@ -5777,7 +5798,7 @@ Section SyscallArms.
     assert (Hfrret : fileread_ret (sys_rw_count v2) r).
     { destruct Hsrret as [[Hm1 _] | (fdn & fvv & _ & Hfr)];
         [ rewrite Hm1; apply fileread_ret_m1 | exact Hfr ]. }
-    iDestruct (sys_read_arms_pay with "Harms") as "[Hpayv Hex]".
+    iDestruct (sys_read_arms_pay with "Harms") as "[_ Hex]".
     iEval (rewrite Hfdk) in "Hex".
     (* [Hextz] is the SIZED extension the callee reports, and it is what
        clause (ii) is handed.  The bare projection below is the one the
@@ -5805,8 +5826,9 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment came back off the read's own post ([sys_read_arms_pay]
-       above), not off an untouched row: read BORROWED it. *)
+    (* the payment row was NOT lent to the call (lane KILL-PAY, K4(a)):
+       read's deposit is plain now, so what this arm hands back is the very
+       wand it opened above. *)
     iAssert (sysc_pay_out fdep) with "[Hpayv]" as "Hpayv".
     { rewrite /sysc_pay_out /uexec_pay_arm. iExact "Hpayv". }
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U

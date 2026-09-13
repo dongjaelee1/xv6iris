@@ -402,10 +402,19 @@ Section UConsLine.
   (*  [Pay] is a parameter because [UInitSh.sh_pay] is stated above this   *)
   (*  file's altitude; what this names is the SHAPE the two extra          *)
   (*  conjuncts ride in.                                                   *)
+  (*                                                                      *)
+  (*  ...AND THE LEASE RIDES HERE TOO (lane KILL-PAY, K4(a)).  sh used to  *)
+  (*  be handed the console reader token INSIDE its exit payload, which    *)
+  (*  the run carried ([UkRun.urun]'s own row).  That row is a WAND from   *)
+  (*  the kill credential now ([UexecRet.upay_neg]), so the payload has    *)
+  (*  nowhere to ride and the token crosses on the linear [Pay] beside the *)
+  (*  position, landing in [UkSh.ush_at].  A THIRD conjunct and not a      *)
+  (*  reshaping of the second: the position is what a read's receipt is    *)
+  (*  keyed at and the lease is what pays for the read.                    *)
   (* =================================================================== *)
-  Definition ush_exec_pay (Pay : iProp Σ) (T : iProp Σ) (γp : gname)
-      (n : nat) : iProp Σ :=
-    (Pay ∗ ush_tag_law T ∗ upos γp n)%I.
+  Definition ush_exec_pay (Pay : iProp Σ) (cn : cons_names) (T : iProp Σ)
+      (γp : gname) (n : nat) : iProp Σ :=
+    (Pay ∗ ush_tag_law T ∗ upos γp n ∗ ucons_pay cn γp T (-1))%I.
 
 
 End UConsLine.

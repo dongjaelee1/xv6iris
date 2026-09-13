@@ -817,7 +817,7 @@ Section KexecAU.
         ⌜uvis_cwd W' = cw⌝ -∗
         ⌜uvis_lazy W' = false⌝ -∗
         my_pay (uvis_gen W') Q -∗
-        Q (-1) -∗
+        upay_neg Q -∗
         S W')
      ∗ (∀ (av : aview) (i : Z) (a : anode) (W' : uvis),
           Pfin i -∗
@@ -827,7 +827,7 @@ Section KexecAU.
           ⌜uvis_cwd W' = cw⌝ -∗
           ⌜uvis_lazy W' = false⌝ -∗
           my_pay (uvis_gen W') Q -∗
-          Q (-1) -∗
+          upay_neg Q -∗
           S W'))%I.
 
   (* everything the caller hands in *)
@@ -978,7 +978,7 @@ Section KexecAU.
            ⌜kexec_loadable f⌝ ∗
            ⌜kexec_ok_exec f (us_V U) (us_V U') r na alen⌝ ∗
            ⌜kexec_image_ok f na alen afun sts (exec_key U' sts gn cs pidv na)⌝ ∗
-           (Q (-1) -∗ Fs.(pf_recv) (exec_key U' sts gn cs pidv na)))
+           (upay_neg Q -∗ Fs.(pf_recv) (exec_key U' sts gn cs pidv na)))
         ∨ (* (b) anything else the code accepted (header): the landed
              success conjuncts at some entry, and the caller's OWN WP at
              the resume key -- the deposit's SECOND wand, applied to the
@@ -989,7 +989,7 @@ Section KexecAU.
          ⌜exists (entry spv szv' : mword 64),
             r <> (mword_of_int (-1) : mword 64)
             /\ kexec_ok (us_V U) (us_V U') r entry spv szv' na alen⌝ ∗
-         (Q (-1) -∗ Fs.(pf_recv) (exec_key U' sts gn cs pidv na)))))%I.
+         (upay_neg Q -∗ Fs.(pf_recv) (exec_key U' sts gn cs pidv na)))))%I.
 
   (* ret = -1 (header, OUT): the three-way fold of the bundle *)
   Definition exec_post_fail (Fs : pfam Σ (uvis -> iProp Σ)) Γ
@@ -1018,6 +1018,35 @@ Section KexecAU.
              ∗ pf_at (fun S => exec_slot_pre S Q (P (length (path_elems pl)))
                                  Fo.(pf_recv) cw na alen afun sts)
                  Fs)))%I.
+
+  (* THE FAILURE ARM REFUNDS THE DEPOSIT (app-echo.md, lane KILL-PAY,
+     K4(a), ruling R-A).  All three of [exec_post_fail]'s arms carry the
+     slot piece as [PieceFam.pf_at] -- arm (i) inside [exec_au_pre]'s
+     third conjunct, arms (ii) and (iii) at top level -- and a piece that
+     never fired hands back what was put into it
+     ([PieceFam.pf_at_refund]).  The refund is the PROCESS's, not the
+     kernel's frame: with the -1 payload a wand from the kill credential
+     ([UexecSlot.upay_neg]), what a process spent into the exec deposit is
+     the only thing it has left to pay its own [exit(1)] with when the
+     exec comes back.  SPENDING, not splitting: [pf_at] is an [∧], and a
+     caller that reads the refund has decided not to fire the piece. *)
+  Lemma exec_post_fail_refund (Fs : pfam Σ (uvis -> iProp Σ)) Γ
+      (γfs : fs_names) (cw : Z) (Q : Z -> iProp Σ)
+      (P Pmiss : nat -> Z -> iProp Σ)
+      (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
+      (pl : list (bv 8))
+      (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
+      (sts : list fdstate) :
+    exec_post_fail Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts
+      ⊢ Fs.(pf_refund).
+  Proof.
+    rewrite /exec_post_fail /exec_au_pre.
+    iIntros "[(_ & _ & Hs) | [(_ & _ & Hs) | Hc]]".
+    - iApply (pf_at_refund with "Hs").
+    - iApply (pf_at_refund with "Hs").
+    - iDestruct "Hc" as (i av a c) "(_ & _ & _ & _ & Hs)".
+      iApply (pf_at_refund with "Hs").
+  Qed.
 
   (* the armed disjunction the continuation receives, keyed on a0, beside
      the landed result relation's own failure equation *)
@@ -1110,7 +1139,7 @@ Section KexecAU.
       (U U' : ustate) (r : mword 64) :
     exec_post_ok Fs Γ Q P Fo pl na alen afun sts gn cs pidv U U' r ⊢
       ⌜r <> (mword_of_int (-1) : mword 64)⌝
-      ∗ (Q (-1) -∗ Fs.(pf_recv) (exec_key U' sts gn cs pidv na)).
+      ∗ (upay_neg Q -∗ Fs.(pf_recv) (exec_key U' sts gn cs pidv na)).
   Proof.
     rewrite /exec_post_ok. iIntros "H".
     iDestruct "H" as (i av a) "(_ & [Ha | Hb])".

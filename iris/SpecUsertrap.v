@@ -546,7 +546,7 @@ Definition ut_exec_out `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI :
               (perm_of (ud_um (pv_upt (us_V U'))) (uint (pv_sz (us_V U'))))
               (uint (pv_sz (us_V U'))) (pv_lazy (us_V U'))
          /\ sts' = sts⌝                       (* failed: the returning shape at r = -1 *)
-      ∨ (sexit_pay f (-1) -∗                              (* succeeded: the new image's *)
+      ∨ (upay_neg (sexit_pay f) -∗                        (* succeeded: the new image's *)
            uslot (uvis_of U' sts' gn cs pid))))%I.       (* slot, on the payload *)
 
 (* ===================================================================== *)

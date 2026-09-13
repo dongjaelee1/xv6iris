@@ -580,9 +580,11 @@ Section SyscExec.
 
   (* the numbers that owe nothing, as one premise an arm discharges from its
      own table index by [lia] *)
+  (* ...AND exec (7) IS IN THE LIST NOW (lane KILL-PAY, K4(a), ruling
+     R-A): its post used to be [emp] and is the failing exec's refund. *)
   Definition sysc_num_nofs (k : Z) : Prop :=
     ~ (k = 5 \/ k = 9 \/ k = 15 \/ k = 16 \/ k = 17 \/ k = 18 \/ k = 19
-       \/ k = 20).
+       \/ k = 20 \/ k = 7).
 
   Lemma sysc_sys_out_quiet (U : ustate) (sts : list fdstate) (gn : gname)
       (cs : gset gname) (pid : mword 32) (f : sfam)
@@ -595,6 +597,26 @@ Section SyscExec.
     assert (Hn : sysc_num_nofs n)
       by (rewrite <- (proj1 Hg); rewrite Hk; exact Hno).
     iApply (spost_at_emp uslot n f (uvis_of U sts gn cs pid) r M' sts' cw' cs' Hn).
+  Qed.
+
+  (* ...AND exec's OWN ROW, which is not quiet any more (lane KILL-PAY,
+     K4(a), ruling R-A): a FAILED exec hands the process back the deposit's
+     refund, because with the -1 payload a wand from the kill credential
+     that refund is the only thing the process has left to pay its own
+     [exit] with.  Guarded on the answer, so the success arm -- whose
+     process never resumes -- discharges it by refuting [r = -1]. *)
+  Lemma sysc_out_exec (U : ustate) (sts : list fdstate) (gn : gname)
+      (cs : gset gname) (pid : mword 32) (f : sfam)
+      (r : mword 64) (M' : gmap Z (bv 8)) (sts' : list fdstate) (cw' : Z)
+      (cs' : gset gname) :
+    sysc_num (us_V U) = 7 ->
+    (⌜r = (mword_of_int (-1) : mword 64)⌝ -∗ sexec_refund f) -∗
+    sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
+  Proof.
+    intros Hk. iIntros "H". rewrite /sysc_sys_out. iIntros (n) "%Hg".
+    assert (Hn : n = UsysMemOk.USYS_exec)
+      by (rewrite <- (proj1 Hg); rewrite Hk; reflexivity).
+    subst n. rewrite spost_at_exec. iExact "H".
   Qed.
 
   (* r = -1 and nothing of the process moved but a0: the trapframe up to
@@ -632,7 +654,7 @@ Section SyscExec.
       (gn : gname) (cs : gset gname) (pid : mword 32) : iProp Σ :=
     (⌜sysc_num (us_V U) = 7⌝ -∗
        (⌜sysc_exec_failed U U' sts sts'⌝
-        ∨ (sexit_pay f (-1) -∗
+        ∨ (upay_neg (sexit_pay f) -∗
              uslot (uvis_of U' sts' gn cs pid))))%I.     (* the new image's slot *)
 
   (* every other entry owes nothing *)

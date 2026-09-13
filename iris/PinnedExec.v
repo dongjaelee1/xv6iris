@@ -180,8 +180,8 @@ Section PinnedExec.
     □ (∀ W' : uvis,
          ⌜kexec_image_ok f na alen afun sts W'⌝ -∗
          ⌜uvis_cwd W' = cw⌝ -∗ ⌜uvis_lazy W' = false⌝ -∗
-         my_pay (uvis_gen W') Q -∗ Q (-1) -∗ Pay -∗ X W') -∗
-    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ Q (-1) -∗ X W') -∗
+         my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ Pay -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ X W') -∗
     Pay -∗
     exec_slot_pre X Q (pobs_P T hops (length (path_elems pl)))
       (pobs_recv Pin T) cw na alen afun sts.
@@ -250,13 +250,13 @@ Section PinnedExec.
          ⌜uvis_cwd W' = cw⌝ -∗
          ⌜uvis_lazy W' = false⌝ -∗
          ⌜exec_args_of M av na alen afun⌝ -∗
-         my_pay (uvis_gen W') Q -∗ Q (-1) -∗ Pay -∗ X W') -∗
+         my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ Pay -∗ X W') -∗
     (* THE TAINT ARM TAKES THE KEY FIRST AND THE PAY FACT BESIDE [T]: a
        tainted process runs on the GENERIC family, which is itself indexed
        by the pay fact ([UexecExecMint.uslot_mint]), so the arm cannot be
        "[T] gives a slot at every key" any more -- it is "[T] and this
        key's payload give a slot at this key". *)
-    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ Q (-1) -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ X W') -∗
     Pay -∗
     pf_at (fun S => sys_exec_slot_pre S Q (pobs_P T hops) (pobs_recv Pin T)
                       cw M pv av sts) (MkPfam X Pay).
@@ -319,10 +319,10 @@ Section PinnedExec.
          ⌜uvis_cwd W' = cw⌝ -∗
          ⌜uvis_lazy W' = false⌝ -∗
          ⌜exec_args_of M av na alen afun⌝ -∗
-         my_pay (uvis_gen W') Q -∗ Q (-1) -∗ Pay -∗ X W') -∗
+         my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ Pay -∗ X W') -∗
     (* the taint's generic slot, indexed by the pay fact and handed the
        payload beside it -- see [pex_slot] *)
-    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ Q (-1) -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ X W') -∗
     Pay -∗
     sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) M pv av sts.
@@ -367,16 +367,21 @@ Section PinnedExec.
          ⌜uvis_cwd W' = cw⌝ -∗
          ⌜uvis_lazy W' = false⌝ -∗
          ⌜exec_args_of M av na alen afun⌝ -∗
-         my_pay (uvis_gen W') Q -∗ Q (-1) -∗ Pay -∗ X W') -∗
-    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ Q (-1) -∗ X W') -∗
+         my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ Pay -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ X W') -∗
     Pay -∗
+    (* THE REFUND IS [Pay], NAMED (lane KILL-PAY, K4(a), ruling R-A): a
+       FAILED exec hands the deposit's refund back to the process, and a
+       caller that cannot say what it gets back cannot spend it on its own
+       [exit].  It was existential here for no reason -- the bundle's
+       refund IS the linear resource the caller put in. *)
     ∃ (P Pmiss : nat -> Z -> iProp Σ)
-      (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) (R : iProp Σ),
-      sys_exec_au_pre (MkPfam X R) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
+      (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)),
+      sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
         M pv av sts.
   Proof.
     intros Hres Hload Hpath. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
-    iExists (pobs_P T hops), (pobs_Pmiss T), (pobs_Fo Pin T), Pay.
+    iExists (pobs_P T hops), (pobs_Pmiss T), (pobs_Fo Pin T).
     iApply (pinned_exec_bundle_at γfs X Pin T cw pl hops ino f nl Pay Q
               M pv av sts Hres Hload Hpath with "Hcl Hinv Hcon Hgen HPay").
   Qed.
@@ -412,8 +417,8 @@ Section PinnedExec.
     □ (∀ W' : uvis,
          ⌜kexec_image_ok f na alen afun sts W'⌝ -∗
          ⌜uvis_cwd W' = cw⌝ -∗ ⌜uvis_lazy W' = false⌝ -∗
-         my_pay (uvis_gen W') Q -∗ Q (-1) -∗ Pay -∗ X W') -∗
-    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ Q (-1) -∗ X W') -∗
+         my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ Pay -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ X W') -∗
     Pay -∗
     exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) pl na alen afun sts.
@@ -447,8 +452,8 @@ Section PinnedExec.
     □ (∀ W' : uvis,
          ⌜kexec_image_ok f na alen afun sts W'⌝ -∗
          ⌜uvis_cwd W' = cw⌝ -∗ ⌜uvis_lazy W' = false⌝ -∗
-         my_pay (uvis_gen W') Q -∗ Q (-1) -∗ Pay -∗ X W') -∗
-    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ Q (-1) -∗ X W') -∗
+         my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ Pay -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ X W') -∗
     Pay -∗
     ∃ (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) (R : iProp Σ),

@@ -645,7 +645,8 @@ Section UkShMain.
     iApply (UkShDiag.wp_kshr_runcmd_final Hpsok_free
               (UExec (ush_args s0 (ushp_nulfold toks (ushp_ext len f)) toks))
               ltac:(cbn [ush_simple]; exact I)
-              N h4 m4 p szv ld (60 + n) Ha0_4
+              N h4 m4 p szv ld (60 + n)
+              (ukn_pay_free_of_triv N Htriv) Ha0_4
               with "Hdp Hcode Hxs' Hxs Hjt Htree Hsz Hstd Hcwd Hch Hrun").
   Qed.
 

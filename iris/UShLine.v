@@ -178,8 +178,15 @@ Section UShLine.
      decided by whether a tokenless reader popped while the call slept. *)
   Definition ush_rd_ret (γp : gname) (T : iProp Σ) (n : nat)
       : nat -> nat -> iProp Σ :=
+    (* ...AND THE LEASE COMES BACK WITH THE POSITION (lane KILL-PAY,
+       K4(a)).  The reader token no longer rides in the run's payload row
+       -- that row is a WAND from the kill credential now -- so it goes
+       down into the call in the program's own hand and comes back here.
+       The TAINTED arm hands back only the position:
+       [UserConsole.ucons_pay_taint] rebuilds the payload from [T]. *)
     fun cur dc =>
-      ((⌜cur = n⌝ ∗ upos γp (n + dc)%nat)
+      ((⌜cur = n⌝ ∗ upos γp (n + dc)%nat
+          ∗ ucons_pay fsc_cons γp T (-1))
        ∨ (T ∗ ∃ n' : nat, upos γp n'))%I.
 
   (* AT THE CLASS'S OWN FAMILY TYPE, not at [xfam] ([UConsOpen.v]'s note):
@@ -215,7 +222,7 @@ Section UShLine.
   Lemma sbundle_at_read_intro_at (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
       (v0 : mword 64) (sts : list fdstate) :
     tf_w (uvis_tf W) (tf_arg_idx 0) = v0 -> uvis_fd W = sts ->
-    fileread_in (fd_st_of_key v0 sts) (rf_F f) (rf_ret f) (kf_xpay f (-1)) -∗
+    fileread_in (fd_st_of_key v0 sts) (rf_F f) (rf_ret f) True%I -∗
     sbundle_at X USYS_read f W.
   Proof.
     intros H0 Hfd. iIntros "H".
@@ -284,10 +291,15 @@ Section UShLine.
     (⊢ app_sup -∗ T) ->
     (⊢ T -∗ app_sup) ->
     Persistent T ->
+    (* THE LEASE AND THE POSITION, IN THE PROGRAM'S HAND (lane KILL-PAY,
+       K4(a)): read's deposit is a PLAIN one now ([UexecExecInst]'s row 5
+       at [True]), so nothing is fed in and what pays
+       [ConsoleInv.cons_acc] is what sh carries. *)
     upos γp n -∗
+    ucons_pay fsc_cons γp T (-1) -∗
     udepwf_std N m pc USYS_read (ush_read_fam γp T n (ukn_pay N)) l.
   Proof.
-    intros Hpay Ha0 Hl0 Hst Hts HPT. iIntros "Hpos".
+    intros Hpay Ha0 Hl0 Hst Hts HPT. iIntros "Hpos HP".
     rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
     iFrame "Hheap Hufd".
@@ -302,8 +314,8 @@ Section UShLine.
     rewrite /fileread_in.
     destruct (decide (CONSOLE = CONSOLE)) as [_ | Hc];
       [ | exfalso; exact (Hc eq_refl) ].
-    iIntros "HP".
-    iEval (rewrite Hpay /ucons_pay) in "HP".
+    iIntros "_".
+    iEval (rewrite /ucons_pay) in "HP".
     iDestruct "HP" as "[Hl | #HT]".
     - (* THE LEASE HOLDER'S ARM: the payload's token, at the position the
          program holds ([UserConsole.upos_agree]) *)
@@ -317,25 +329,23 @@ Section UShLine.
            and BOTH halves move ([upos_update]) *)
         subst cur.
         iMod (upos_update γp n (n + dc)%nat with "Hpos Hpa") as "[Hpos Hpa]".
-        iModIntro. iSplitR "Hpos".
-        * rewrite Hpay /ucons_pay. iLeft. iExists (n + dc)%nat.
-          iEval (rewrite ucons_reader_eq). iFrame "Hrd' Hpa".
-        * rewrite /ush_rd_ret. iLeft. iSplitR; [ done | ]. iExact "Hpos".
+        iModIntro. iSplitR "Hpos Hpa Hrd'"; [ done | ].
+        rewrite /ush_rd_ret. iLeft. iSplitR; [ done | ]. iFrame "Hpos".
+        rewrite /ucons_pay. iLeft. iExists (n + dc)%nat.
+        iEval (rewrite ucons_reader_eq). iFrame "Hrd' Hpa".
       + (* a tokenless reader popped while the call slept: what is left is
            the credential, which for a constraining application is the
            taint ([AppEcho.echo_taint_of_sup]) *)
         iAssert T as "#HT"; [ iApply Hst; iExact "Hdirty" | ].
-        iModIntro. iSplitR "Hpos".
-        * rewrite Hpay /ucons_pay. iRight. iExact "HT".
-        * rewrite /ush_rd_ret. iRight. iFrame "HT". iExists n. iExact "Hpos".
+        iModIntro. iSplitR "Hpos"; [ done | ].
+        rewrite /ush_rd_ret. iRight. iFrame "HT". iExists n. iExact "Hpos".
     - (* THE TAINTED ARM: the payload holds no token any more, so the call
          is paid for with the credential like anyone else's
          ([AppEcho.echo_sup_of_taint] read forwards) *)
       iApply (cons_acc_cred fsc_cons app_sup with "[] [Hpos]").
       + rewrite /cons_dirty_cred. iModIntro. iApply Hts. iExact "HT".
-      + iIntros (cur dc). iModIntro. iSplitR.
-        * rewrite Hpay /ucons_pay. iRight. iExact "HT".
-        * rewrite /ush_rd_ret. iRight. iFrame "HT". iExists n. iExact "Hpos".
+      + iIntros (cur dc). iModIntro. iSplitR "Hpos"; [ done | ].
+        rewrite /ush_rd_ret. iRight. iFrame "HT". iExists n. iExact "Hpos".
   Qed.
 
   (* =================================================================== *)
@@ -444,10 +454,15 @@ Section UShLine.
     assert (Hcnt : sys_rw_count (m !!! Regidx a2_idx) = Z.of_nat cap)
       by exact (ush_count_is_cap (m !!! Regidx a2_idx) cap Ha2 Hcap31).
     change (2 ^ 31)%Z with 2147483648%Z in Hcap31.
+    (* THE LEASE, OUT OF THE PROGRAM'S OWN HAND (lane KILL-PAY, K4(a)):
+       [UkSh.ush_at] is the position AND the record's payload, and THIS
+       record's payload is the console's ([Hpay]). *)
+    iDestruct "Hpos" as "[Hpos Hlease]".
+    iEval (rewrite Hpay) in "Hlease".
     destruct Hfd0 as [[wr Hl0] | Hcl].
     - (* ================= fd 0 IS THE CONSOLE ================= *)
       iDestruct (ush_read_sup N γp T m pc l n wr Hpay Ha0 Hl0 Hst Hts HPT
-                   with "Hpos") as "Hsb".
+                   with "Hpos Hlease") as "Hsb".
       iApply (wp_uk_ecall_read_recv (PS := uprogSG_free) N h m pc
                 (bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0
                             : mword 32))
@@ -488,19 +503,23 @@ Section UShLine.
         iSplitR.
         { iDestruct "Hwhy" as "[%Hneg | #Hc]"; [ | iRight; iExact "Hc" ].
           exfalso. rewrite Hcnt in Hneg. lia. }
-        rewrite /ush_rd_ret.
-        iDestruct "Hrd" as "[[_ Hp] | [_ Hp]]";
-          [ iExists (n + dc)%nat; iExact "Hp" | iExact "Hp" ].
+        rewrite /ush_rd_ret /UkSh.ush_at.
+        iDestruct "Hrd" as "[(_ & Hp & Hl) | [#HT Hp]]".
+        * iExists (n + dc)%nat. rewrite Hpay. iFrame "Hp Hl".
+        * iDestruct "Hp" as (n') "Hp". iExists n'. iFrame "Hp".
+          rewrite Hpay. iApply (ucons_pay_taint with "HT").
       + (* THE RECEIPT *)
         iDestruct "Hw" as (dd dc cur hs sl)
           "(%Hdr & %Hdmax & %Hb1 & %Hb4 & %Hhl & %Hled & #Htags & #Hlb & Hwin & Hrd)".
         rewrite /ush_rd_ret.
-        iDestruct "Hrd" as "[[%Hcur Hp] | [#HT Hp]]"; last first.
+        iDestruct "Hrd" as "[(%Hcur & Hp & Hl) | [#HT Hp]]"; last first.
         { (* the caller's own [Rd] came back tainted *)
           iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp] Hbuf Hrun");
             [ lia | exact Hgf | ].
-          rewrite /UkSh.ush_read_ans /UkSh.ush_pos. iRight. iRight.
-          iFrame "HT Hp". }
+          rewrite /UkSh.ush_read_ans /UkSh.ush_pos /UkSh.ush_at.
+          iRight. iRight. iFrame "HT".
+          iDestruct "Hp" as (n') "Hp". iExists n'. iFrame "Hp".
+          rewrite Hpay. iApply (ucons_pay_taint with "HT"). }
         subst cur.
         (* THE ANSWER'S RANGE (lane CONS-ROWS, B3), with the [r = -1]
            alternative routed to the minus-one arm: a receipt at -1 says
@@ -523,11 +542,12 @@ Section UShLine.
         iDestruct "Hwin" as "[(%Hwj & %Hsl & %Hch & #Hsw) | #Hdirty]"; last first.
         { (* a tokenless reader popped while the call slept *)
           iAssert T as "#HT"; [ iApply Hst; iExact "Hdirty" | ].
-          iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp] Hbuf Hrun");
+          iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp Hl] Hbuf Hrun");
             [ lia | exact Hgf | ].
-          rewrite /UkSh.ush_read_ans /UkSh.ush_pos. iRight. iRight.
-          iFrame "HT". iExists (n + dc)%nat. iExact "Hp". }
-        iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp] Hbuf Hrun");
+          rewrite /UkSh.ush_read_ans /UkSh.ush_pos /UkSh.ush_at.
+          iRight. iRight. iFrame "HT". iExists (n + dc)%nat. iFrame "Hp".
+          rewrite Hpay. iApply (ucons_pay_taint with "HT"). }
+        iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp Hl] Hbuf Hrun");
           [ lia | exact Hgf | ].
         rewrite /UkSh.ush_read_ans. iLeft.
         iExists dd, dc, hs, sl.
@@ -562,7 +582,8 @@ Section UShLine.
           rewrite (HM j ltac:(lia)) in Hmj'. by injection Hmj' as Hmj''. }
         (* ...AND THE SWALLOW, WITH THE COPY-OUT ARM ELIMINATED AND THE
            SLACK BYTE NO LONGER NEEDED (lane CONS-ROWS, B1). *)
-        iSplitR "Hp"; [ | iExact "Hp" ].
+        iSplitR "Hp Hl";
+          [ | rewrite /UkSh.ush_at; iFrame "Hp"; rewrite Hpay; iExact "Hl" ].
         destruct (Nat.eq_dec dd cap) as [Hde | Hdne].
         { (* the request was filled: the cursor moved by exactly [dd], so
              the swallow is on its LEFT arm and the byte one past the
@@ -597,15 +618,15 @@ Section UShLine.
       iEval (rewrite (ush_fd_st_closed (m !!! Regidx a0_idx) (uvis_fd W) l
                         Ha0 Htake Hcl) /fileread_extra_core) in "Hrec".
       iDestruct "Hrec" as "%Hm1".
-      iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hpos] Hbuf Hrun");
+      iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hpos Hlease] Hbuf Hrun");
         [ lia | exact Hgf | ].
-      rewrite /UkSh.ush_read_ans /UkSh.ush_pos. iRight. iLeft.
+      rewrite /UkSh.ush_read_ans /UkSh.ush_pos /UkSh.ush_at. iRight. iLeft.
       iSplitR; [ by iPureIntro | ].
       (* THE OTHER GROUND FOR A -1 (lane KILL-PAY, K4(b)(iv)): fd 0 is
          SHUT, which is this arm of [UkSh.ush_fd0p] and costs no
          credential. *)
       iSplitR; [ iLeft; iPureIntro; exact Hcl | ].
-      iExists n. iExact "Hpos".
+      iExists n. iFrame "Hpos". rewrite Hpay. iExact "Hlease".
   Qed.
 
   (* =================================================================== *)

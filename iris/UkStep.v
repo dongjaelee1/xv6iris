@@ -514,7 +514,7 @@ Section UkObl.
      handed BACK into ([UexecRet.uexec_pay_arm] is what the resume returns
      and this wand is where it goes). *)
   Definition uk_paycont (Q : Z -> iProp Σ) (gn : gname) (K : iProp Σ) : iProp Σ :=
-    (my_pay gn Q ∗ Q (-1) ∗ (Q (-1) -∗ K))%I.
+    (my_pay gn Q ∗ upay_neg Q ∗ (upay_neg Q -∗ K))%I.
 
   Definition uk_step_obl (π : gmap (mword 27) uperm) (Kc : iProp Σ)
       (Q : Z -> iProp Σ) (sz : Z)
@@ -585,7 +585,7 @@ Section UkObl.
           cycle's [▷], so nothing here needs the resource before the machine
           has stepped -- and a caller holding [UexecRet.ukcq] under a later
           hands it over verbatim. *)
-       ▷ (my_pay gn Q ∗ Q (-1) ∗ (Q (-1) -∗ Kc)) -∗
+       ▷ (my_pay gn Q ∗ upay_neg Q ∗ (upay_neg Q -∗ Kc)) -∗
        WP (Loop : expr riscv_lang))%I.
 
   (* the payload the wrapper hands the closer at the cycle's tail *)
@@ -1092,7 +1092,7 @@ Section UkFunnel.
   Lemma wp_uk_step (Kc : iProp Σ) (Q : Z -> iProp Σ) (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗ □ uk_step_obl π Kc Q sz fdv cw gn cs pidv M m pc -∗
-    ▷ (my_pay gn Q ∗ Q (-1) ∗ (Q (-1) -∗ Kc)) -∗ WP (Loop : expr riscv_lang).
+    ▷ (my_pay gn Q ∗ upay_neg Q ∗ (upay_neg Q -∗ Kc)) -∗ WP (Loop : expr riscv_lang).
   Proof.
     intros Hal2.
     iIntros "Hb #Hobl Hpay3".
@@ -2050,8 +2050,8 @@ Section UkEcall.
        at once, so what the leaf owes is its return AT the payload -- the
        deposit inside it is paid out of this very copy
        ([UexecRet.uexec_pay_dep]). *)
-    my_pay gn Qp -∗ Qp (-1) -∗
-    (Qp (-1) -∗ uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false)) -∗
+    my_pay gn Qp -∗ upay_neg Qp -∗
+    (upay_neg Qp -∗ uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hui Hg.

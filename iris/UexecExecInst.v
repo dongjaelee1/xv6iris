@@ -487,15 +487,20 @@ Section UexecExecInst.
       : iProp Σ :=
     (if decide (n = USYS_exec) then exec_sbundle X f W
      else if decide (n = 5) then
-       (* AT THE FAMILY'S OWN EXIT PAYLOAD (app-echo.md, "SH-LINE RULING",
-          R1).  read's deposit is a WAND from what this process's exit owes
-          at the kill status, because a program whose payload holds the
-          console reader token has handed that payload to the kernel at
-          this very trap ([UexecRet.uexec_pay_dep]) and holds no second
-          copy.  The kernel feeds the payment row's own resource back in
-          and the console arm returns it inside [rf_ret]. *)
+       (* A PLAIN DEPOSIT AT [emp] (lane KILL-PAY, K4(a)).  R1's shape --
+          read's deposit as a WAND from this process's exit payload, fed
+          by the dispatcher off the payment row -- is SUPERSEDED, not
+          patched: the kill status is a WAND from the credential now
+          ([UexecRet.upay_neg]), so there is no payload for the dispatcher
+          to feed and none to feed it out of.  What pays the console arm
+          is the process's OWN hand: [ConsoleInv.cons_acc] at the reader
+          token it carries beside its position ([UkSh.ush_at]), or the
+          dirty credential a tokenless reader pays
+          ([AppInv.app_sup], which is what the generic slot's supply law
+          hands over -- [FsAbsInvFire.fsabs_fileread_in], unchanged and
+          stated at ANY [P]). *)
        fileread_in (fd_st_of_key (xk_a W 0) (uvis_fd W)) (rf_F f) (rf_ret f)
-         (kf_xpay f (-1))
+         True%I
      else if decide (n = 9) then
        chdir_au_pre (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (cf_P f) (cf_Pmiss f) (cf_Fo f)
@@ -594,7 +599,22 @@ Section UexecExecInst.
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z)
       (cs' : gset gname)
       : iProp Σ :=
-    (if decide (n = 5) then
+    (if decide (n = USYS_exec) then
+       (* ...EXCEPT AT exec, WHICH REFUNDS WHEN IT FAILS (app-echo.md,
+          lane KILL-PAY, K4(a), ruling R-A).  exec's deposit is a
+          [PieceFam.pfam] -- an AU beside its refund -- and a FAILED exec
+          is a piece that never fired, so [PieceFam.pf_at_refund] hands
+          [xf_Rs f] straight back.  It used to stay in the kernel's frame
+          ("a program cannot retry exec"); that is withdrawn, because with
+          the -1 payload a WAND from the kill credential
+          ([UexecSlot.upay_neg]) the resource a process SPENT into the
+          exec deposit is the only thing left to pay its own [exit(1)]
+          with when the exec comes back.  Guarded on the answer, because
+          only the failing exec resumes at all -- the success arm's
+          process is a different image and the wand is refuted there
+          ([SpecKexec.exec_post_ok_recv]'s [r <> -1]). *)
+       (⌜r = (mword_of_int (-1) : mword 64)⌝ -∗ xf_Rs f)
+     else if decide (n = 5) then
        (* THE PAYLOAD IS PEELED: what the PROCESS is told is
           [SpecFileread.fileread_extra_core], the arm's payout without the
           borrowed payload -- the payload goes back on the trap's own
@@ -890,9 +910,15 @@ Section UexecExecInst.
          at this record is the constant [fun _ => R], so the [Q (-1)] each
          wand takes is the [R] the new image's slot runs on and is handed
          straight to the credential. *)
+      (* ...AND THE PAYLOAD ARRIVES AS A WAND FROM THE KILL CREDENTIAL
+         (lane KILL-PAY, K4(a)): the generic slot holds the credential --
+         it is the second half of [xv6_ssupply] -- so it cashes the wand
+         and runs on the [R] behind it. *)
       rewrite /exec_slot_pre. iSplitR.
-      + iIntros (av' i ff nl W') "_ _ _ _ _ _ Hp HQ". iApply ("Hs" with "Hp HQ").
-      + iIntros (av' i a W') "_ _ _ _ _ _ Hp HQ". iApply ("Hs" with "Hp HQ").
+      + iIntros (av' i ff nl W') "_ _ _ _ _ _ Hp HQ".
+        iDestruct ("HQ" with "Hkc") as "HQ". iApply ("Hs" with "Hp HQ").
+      + iIntros (av' i a W') "_ _ _ _ _ _ Hp HQ".
+        iDestruct ("HQ" with "Hkc") as "HQ". iApply ("Hs" with "Hp HQ").
     - iApply (xv6_sbundle_of_supply_ne X n W (fun _ => R)%I Hne).
       rewrite /xv6_ssupply. iModIntro.
       iSplit; [ iExact "Hsup" | iExact "Hkc" ].
@@ -923,6 +949,18 @@ Section UexecExecInst.
     xv6_spost X n (xfam_at Q f) W = xv6_spost X n f W.
   Proof. destruct f; reflexivity. Qed.
 
+  (* ...AND THE POST AT exec IS THE REFUND (lane KILL-PAY, K4(a), R-A) *)
+  Lemma xv6_spost_exec (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
+      (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z)
+      (cs' : gset gname) :
+    xv6_spost X USYS_exec f W r M' fdv' cw' cs'
+      = (⌜r = (mword_of_int (-1) : mword 64)⌝ -∗ xf_Rs f)%I.
+  Proof.
+    rewrite /xv6_spost.
+    destruct (decide (USYS_exec = USYS_exec)) as [_ | Hc];
+      [ reflexivity | exfalso; exact (Hc eq_refl) ].
+  Qed.
+
   Global Instance uexecSG_xv6 : uexecSG Σ :=
     {| sfam := xfam;
        sfam_pt := xfam_pt;
@@ -946,7 +984,11 @@ Section UexecExecInst.
        sbundle_at_mono := xv6_sbundle_mono;
        ssupply := xv6_ssupply;
        sbundle_of_supply_ne := xv6_sbundle_of_supply_ne;
-       sbundle_of_supply := xv6_sbundle_of_supply |}.
+       sbundle_of_supply := xv6_sbundle_of_supply;
+       (* lane KILL-PAY, K4(a), ruling R-A: a failed exec refunds *)
+       sexec_refund := xf_Rs;
+       spost_at_exec := xv6_spost_exec;
+       sexec_refund_at := fun Q f => eq_refl |}.
 
   (* ...AND THE GENERIC PROGRAM'S OWN DEPOSIT DATA ([UexecSG.uprogSG]): the
      supply itself, and every number admitted -- which is what makes the
@@ -1055,7 +1097,7 @@ Section UexecExecInst.
   Lemma sbundle_at_read_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
     sbundle_at X 5 f W -∗
     fileread_in (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
-      (rf_F f) (rf_ret f) (kf_xpay f (-1)).
+      (rf_F f) (rf_ret f) True%I.
   Proof.
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_take. iExact "H".
@@ -1210,6 +1252,32 @@ Section UexecExecInst.
     rewrite /exec_sbundle /=. iFrame "Hmp". iExact "H".
   Qed.
 
+  (* ...AND THE SAME WITH THE FAILING exec's REFUND (lane KILL-PAY, K4(a),
+     ruling R-A).  The extra premise is the one consequence a leaf can
+     state of a refund it cannot name: whatever [Rs] is, it pays this
+     record's own exit at the kill status. *)
+  Lemma sbundle_pay_exec_intro_ref (X : uvis -d> iPropO Σ) (W : uvis)
+      (Q : Z -> iProp Σ)
+      (P Pmiss : nat -> Z -> iProp Σ)
+      (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) (Rs : iProp Σ) :
+    □ (Rs -∗ Q (-1)) -∗
+    my_pay (uvis_gen W) Q -∗
+    sys_exec_au_pre (MkPfam X Rs) (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+      Q P Pmiss Fo
+      (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) -∗
+    sbundle_pay_ref X Q W.
+  Proof.
+    iIntros "#Hrf Hmp H". rewrite /sbundle_pay_ref.
+    iExists (xfam_at Q (xfam_exec P Pmiss Fo Rs)).
+    iSplitR; [ done | ].
+    iSplitR; [ iExact "Hrf" | ].
+    rewrite /sbundle_at /= /xv6_sbundle.
+    destruct (decide (USYS_exec = USYS_exec)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    rewrite /exec_sbundle /=. iFrame "Hmp". iExact "H".
+  Qed.
+
   Lemma sbundle_at_exec_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
     sbundle_at X USYS_exec f W -∗
     my_pay (uvis_gen W) (kf_xpay f) ∗
@@ -1348,15 +1416,19 @@ Section UexecExecInst.
     xv6_take. iExact "H".
   Qed.
 
-  (* ...and the numbers that pay nothing, in one lemma: exec (whose [emp]
-     the header explains) and every number without a contract at all. *)
+  (* ...and the numbers that pay nothing, in one lemma: every number
+     without a contract at all.  exec IS NO LONGER ONE OF THEM (lane
+     KILL-PAY, K4(a), ruling R-A): its post is the failing exec's refund,
+     so 7 joins the eight contract numbers in the exclusion. *)
   Lemma spost_at_emp (X : uvis -d> iPropO Σ) (n : Z) (f : xfam) (W : uvis)
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
     ~ (n = 5 \/ n = 9 \/ n = 15 \/ n = 16 \/ n = 17 \/ n = 18 \/ n = 19
-       \/ n = 20) ->
+       \/ n = 20 \/ n = 7) ->
     ⊢ spost_at X n f W r M' fdv' cw' cs'.
   Proof.
     intros Hne. rewrite /spost_at /= /xv6_spost.
+    destruct (decide (n = USYS_exec)) as [He | _];
+      [ exfalso; apply Hne; unfold USYS_exec in He; tauto |].
     destruct (decide (n = 5)) as [He | _]; [ exfalso; apply Hne; tauto |].
     destruct (decide (n = 9)) as [He | _]; [ exfalso; apply Hne; tauto |].
     destruct (decide (n = 15)) as [He | _]; [ exfalso; apply Hne; tauto |].

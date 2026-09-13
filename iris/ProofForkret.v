@@ -1859,7 +1859,9 @@ Proof.
          ([InitBoot.init_boot_bundle]) -- so the wand's premise is [True]
          and the boot arm pays it for free. *)
       iDestruct (exec_post_ok_recv with "Hok'") as "[_ Hrec]".
-      iApply "Hrec". done. }
+      (* ...AND IT IS A WAND FROM THE KILL CREDENTIAL NOW (lane KILL-PAY,
+         K4(a)): at the trivial payload it still costs one intro. *)
+      iApply "Hrec". iIntros "_". done. }
     iApply (wp_beq_fall_s_sconf (mword_of_int (FR + 0x60))
               (mword_of_int 58 : mword 13) Ra5 Ra4 E4 av2 eb
               ltac:(vm_compute; discriminate) ltac:(vm_compute; discriminate)

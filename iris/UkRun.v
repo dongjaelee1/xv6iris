@@ -184,6 +184,19 @@ Class ukn_triv {Σ : gFunctors} (N : uk_names Σ) : Prop :=
 Class ukn_const {Σ : gFunctors} (N : uk_names Σ) : Prop :=
   ukn_const_eq : forall x y : Z, ukn_pay N x = ukn_pay N y.
 
+(* ...AND WHAT A TRIVIAL PAYLOAD PAYS AT ITS OWN EXIT: nothing (lane
+   KILL-PAY, K4(a)).  [UkRunSys.wp_uk_ecall_exit]'s premise takes the
+   payload out of the PROGRAM's hand now -- [urun]'s row is a WAND from
+   the kill credential, so there is nothing there to spend -- and a
+   program that owes its parent nothing has it for free.  A walk SHARED
+   between a shell and its forked child carries this as a Coq-level
+   premise rather than the class [ukn_triv] itself, because the shell's
+   own payload is a real resource and the walk has to be statable at
+   both. *)
+Lemma ukn_pay_free_of_triv {Σ : gFunctors} (N : uk_names Σ) :
+  ukn_triv N -> ⊢ ukn_pay N (-1).
+Proof. intros Ht. rewrite Ht. done. Qed.
+
 (* the trivial payload is a constant one.  NOT an [Instance]: a program
    file carries exactly one of the two as a section hypothesis, and a
    resolution path from [ukn_triv] would make both available in the files
@@ -651,6 +664,70 @@ Section UkRun.
   Qed.
 
 
+  (* ===================================================================== *)
+  (* THE CWD-FIXED exec DEPOSIT THAT REFUNDS (app-echo.md, lane KILL-PAY,   *)
+  (* K4(a), ruling R-A).                                                    *)
+  (*                                                                       *)
+  (* [udepw_at] is used at exec and nowhere else, and an exec that FAILS    *)
+  (* comes back to a process whose [UkRun.urun] no longer carries the -1    *)
+  (* payload -- that row is a WAND from the kill credential now             *)
+  (* ([UexecSlot.upay_neg]).  The resource such a process spent into the    *)
+  (* exec deposit is therefore the only thing it has left to pay its own    *)
+  (* [exit(1)] with, and the kernel gives it back: the arm's post at exec   *)
+  (* is [UexecSG.spost_at_exec], a wand from "the answer was -1" to the     *)
+  (* family's own refund.                                                   *)
+  (*                                                                       *)
+  (* WHAT THE INDEX WOULD HAVE BEEN, and is not: the refund itself.  The    *)
+  (* family is existential here -- a supplier hands a bundle at SOME [f] -- *)
+  (* so a leaf cannot NAME [sexec_refund f], and indexing the deposit by it *)
+  (* would put a resource-shaped parameter through every pinned supply.     *)
+  (* What the deposit carries instead is the one consequence a leaf wants:  *)
+  (* the refund PAYS THIS RECORD'S EXIT at the kill status.  It is          *)
+  (* persistent, so it costs a [□]-boxed supply nothing; at [ukn_triv] it   *)
+  (* is [_ -∗ True], and at init's pinned supply for /sh the refund IS the  *)
+  (* lease beside the position, so the wand is a projection.                *)
+  (* ===================================================================== *)
+  Definition udepw_at_ref (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (c : Z) : iProp Σ :=
+    (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
+       (fdv : list fdstate) (gn : gname) (cs : gset gname) (pidv : mword 32),
+       my_pay gn (ukn_pay N) -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
+       sbundle_pay_ref uslot (ukn_pay N)
+         (uvis_of_run m pc M pm sz fdv c gn cs pidv false))%I.
+
+  (* ...AND THE FORGETFUL DIRECTION, for a leaf that wants no refund *)
+  Lemma udepw_at_of_ref (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (c : Z) :
+    udepw_at_ref N m pc c -∗ udepw_at N m pc USYS_exec c.
+  Proof.
+    rewrite /udepw_at_ref /udepw_at.
+    iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp Hh Hf".
+    iDestruct ("Hd" $! M pm sz fdv gn cs pidv with "Hmp Hh Hf")
+      as "(Hh & Hf & Hb)".
+    iFrame "Hh Hf". iRight.
+    iApply (sbundle_pay_of_ref with "Hb").
+  Qed.
+
+  (* the trivial supplier pays it: at [ukn_triv] the refund wand is free *)
+  Lemma udepw_at_ref_of_uxsup (N : uk_names Σ) `{!ukn_triv N}
+      (m : regfile) (pc : mword 64) (c : Z) :
+    uxsup -∗ udepw_at_ref N m pc c.
+  Proof.
+    iIntros "#Hx" (M pm sz fdv gn cs pidv) "_ Hh Hf".
+    iFrame "Hh Hf".
+    iAssert (sbundle_pay uslot USYS_exec (fun _ => True)%I
+               (uvis_of_run m pc M pm sz fdv c gn cs pidv false)) as "Hb";
+      [ iApply "Hx" | ].
+    iDestruct "Hb" as (f) "[%Hpay Hb]".
+    rewrite (ukn_triv_eq (N := N)).
+    rewrite /sbundle_pay_ref.
+    iExists f. iSplitR; [ done | ].
+    iSplitR; [ iIntros "!> _"; done | ].
+    iExact "Hb".
+  Qed.
+
   (* THE FAMILY-NAMED DEPOSIT AT A FIXED WORKING DIRECTORY.
      [udepwf] is to [udepw] what this is to [udepw_at]: the two axes are
      INDEPENDENT and a PINNED OPEN needs both at once.
@@ -820,7 +897,7 @@ Section UkRun.
           where the process's own continuation is never delivered and
           nothing the program does could pay.  At [ukn_triv] it is [True]
           and costs nothing. *)
-       ukn_pay N (-1) ∗
+       upay_neg (ukn_pay N) ∗
        udep ∗
        uvb (CID := h) (XI := xi) C pt Rfd Rut sz pm fdv cw gn cs pidv false M m pc)%I.
 
@@ -893,7 +970,7 @@ Section UkRun.
        instructions and the kernel has to be paid there too.  The run the
        continuation rebuilds is at the payload the engine HANDS BACK -- the
        same predicate, by the family the deposit and the arm share. *)
-    ukn_pay N (-1) -∗
+    upay_neg (ukn_pay N) -∗
     (* the deposit supplier and its law, back at the same key -- persistent,
        so a leaf that destructed [urun] hands the very copy it read *)
     udep -∗
@@ -938,7 +1015,7 @@ Section UkRun.
     ucwd_auth (ukn_cwd N) cw -∗
     uch_auth (ukn_ch N) cs -∗
     my_pay gn (ukn_pay N) -∗
-    ukn_pay N (-1) -∗
+    upay_neg (ukn_pay N) -∗
     udep -∗
     (∀ h : CpuId, urun N h (<[Regidx rd := v]> m) pc' avail -∗
                   WP (Loop : expr riscv_lang)) -∗
@@ -974,7 +1051,7 @@ Section UkRun.
       (pc : mword 64) (avail : nat) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     □ (∀ W : uvis,
-         T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ ukn_pay N (-1) -∗ uslot W) -∗
+         T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ upay_neg (ukn_pay N) -∗ uslot W) -∗
     T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
   Proof.
     intros Hal. iIntros "#Hgen HT Hrun".
@@ -1360,7 +1437,7 @@ Section UkRun.
        the slot supplies it -- fork's child arm out of the payload the
        parent chose, exec through [SpecKexec.exec_slot_pre]'s wands, and
        userinit at the trivial payload, where it is [True]. *)
-    Q (-1) -∗
+    upay_neg Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)
@@ -1528,7 +1605,7 @@ Section UkRun.
        the slot supplies it -- fork's child arm out of the payload the
        parent chose, exec through [SpecKexec.exec_slot_pre]'s wands, and
        userinit at the trivial payload, where it is [True]. *)
-    Q (-1) -∗
+    upay_neg Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)
@@ -1676,7 +1753,7 @@ Section UkRun.
        the slot supplies it -- fork's child arm out of the payload the
        parent chose, exec through [SpecKexec.exec_slot_pre]'s wands, and
        userinit at the trivial payload, where it is [True]. *)
-    Q (-1) -∗
+    upay_neg Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)

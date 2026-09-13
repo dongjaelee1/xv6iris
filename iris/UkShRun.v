@@ -1179,6 +1179,15 @@ Section UkShRun.
      [ShInstrs.sh_bytes], so [shk_code] cannot produce them and the premise
      is not dischargeable without this conjunct.  It costs its callers
      nothing: [ush_jtab] carries it and every site already holds one. *)
+  (* ...AND THE EXIT PAYLOAD IS PART OF WHAT THE SITE HANDS OVER (lane
+     KILL-PAY, K4(a)).  All three diagnostics END IN [exit(1)], and exit's
+     leaf takes the payload out of the PROGRAM's own hand now
+     ([UkRunSys.wp_uk_ecall_exit]): [UkRun.urun]'s row is a WAND from the
+     kill credential and there is nothing in it to spend.  A LINEAR
+     premise and not a Coq-level [⊢ ukn_pay N (-1)], because the caller
+     that is NOT at a trivial record is real -- sh's own [fork1] panics
+     when fork fails, and sh's payload is the console lease.  A forked
+     child passes [UkRun.ukn_pay_free_of_triv]. *)
   Hypothesis ush_diag_leaf :
     forall (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile) (pc : Z) (n : nat),
       ush_diag_at pc m ->
@@ -1186,6 +1195,7 @@ Section UkShRun.
       shk_code (ukn_t N) -∗
       shk_rodata (ukn_t N) -∗
       ush_diag_res (ukn_d N) pc m -∗
+      ukn_pay N (-1) -∗
       urun N h m (mword_of_int pc) (Dg + n) -∗
       WP (Loop : expr riscv_lang).
 
@@ -1213,7 +1223,13 @@ Section UkShRun.
     shk_code (ukn_t N) -∗
     shk_rodata (ukn_t N) -∗
     uword (ukn_d N) (uint sp0 - 8) vra -∗
+    (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)).  The [-1] arm of
+       this tail is [panic("fork")], which ends in [exit] and so has to pay
+       what this record's exit owes; the RETURNING arm pays nothing, so the
+       resource comes straight back out of the continuation below.  Two
+       exclusive branches, one resource. *)
     uword (ukn_d N) (uint sp0 - 16) vs0 -∗
+    ukn_pay N (-1) -∗
     urun N h mt (mword_of_int 0x74) (Dg + n) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ forall q : mword 5, uint q <> 1 -> uint q <> 2 -> uint q <> 8 ->
@@ -1221,11 +1237,13 @@ Section UkShRun.
        ⌜ m' !!! Regidx ra_idx = vra ⌝ -∗
        ⌜ m' !!! Regidx s0_idx = vs0 ⌝ -∗
        ⌜ m' !!! Regidx csp_rs1 = sp0 ⌝ -∗
+       (* ...and back, unspent: fork1 returned *)
+       ukn_pay N (-1) -∗
        urun N h' m' (ret_pc vra) (2 + (Dg + n)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hal8 Hlo Hsp. iIntros "#Hdp #Hcode #Hro Hw8 Hw0 Hrun Hcont".
+    intros Hal8 Hlo Hsp. iIntros "#Hdp #Hcode #Hro Hw8 Hw0 Hpayv Hrun Hcont".
     assert (Hbsp1 : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 2)))
                     = bv_unsigned sp0 - 16).
     { replace (- (8 * Z.of_nat 2)) with (-16) by lia.
@@ -1328,7 +1346,7 @@ Section UkShRun.
         apply uint_moi. unfold Z64. lia. }
       iApply (ush_diag_leaf N h5 t4 ShSyms.panic n
                 ltac:(left; split; [ reflexivity | left; exact Hmsg ])
-                with "Hdp Hcode Hro [] Hrun").
+                with "Hdp Hcode Hro [] Hpayv Hrun").
       rewrite ush_diag_res_panic. done. }
     (* ---- fork succeeded: pop and return ---- *)
     (* 0x7a  c.ldsp ra,8(sp) *)
@@ -1415,7 +1433,7 @@ Section UkShRun.
               with "[] Hrun").
     { iApply (uis_shk_80 with "Hcode"). }
     iIntros (h6) "Hrun".
-    iApply ("Hcont" $! h6 e3 with "[%] [%] [%] [%] Hrun");
+    iApply ("Hcont" $! h6 e3 with "[%] [%] [%] [%] Hpayv Hrun");
       [ | exact Hra3 | exact Hs03
         | exact (upd_eq e2 (Regidx csp_rs1) (regval_into_reg sp0)) ].
     intros q H1 H2 H8 H15.
@@ -1450,6 +1468,12 @@ Section UkShRun.
        see [UkFork.wp_uk_ecall_fork].  This is what PIPE's six closes and
        REDIR's close-and-reopen are paid for with. *)
     ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
+    (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)): fork1's [-1] arm
+       panics, and a panic ends in [exit].  The RETURNING arm hands it
+       straight back, on the parent's continuation below; the CHILD's tail
+       runs at a trivial record and pays its own
+       ([UkRun.ukn_pay_free_of_triv]). *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.fork1) (2 + (Dg + n)) -∗
     ((∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
@@ -1460,6 +1484,8 @@ Section UkShRun.
         UserCwd.ucwd (ukn_cwd N) cw -∗
         UserChildren.uch_any (ukn_ch N) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
+        (* ...and the payload back, unspent: fork1 returned *)
+        ukn_pay N (-1) -∗
         urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + (Dg + n)) -∗
         WP (Loop : expr riscv_lang)) ∗
      (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile),
@@ -1482,7 +1508,7 @@ Section UkShRun.
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hcode #Hro HP Hsz Hstd Hcwd Hch HD Hrun [Hpar Hchi]".
+    iIntros "#Hdp #Hcode #Hro HP Hsz Hstd Hcwd Hch HD Hpayv Hrun [Hpar Hchi]".
     rewrite shr_fork1.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     remember (m !!! Regidx csp_rs1) as sp0 eqn:Hsp0.
@@ -1675,17 +1701,19 @@ Section UkShRun.
                                  by (vm_compute; reflexivity); lia)));
            rewrite (Hm2 q (ushr_ridx_ne q s0_idx ltac:(lia)));
            exact (Hm1 q (ushr_ridx_ne q csp_rs1 ltac:(lia))). }
-    iSplitL "Hpar".
+    (* the borrowed payload goes with the PARENT: the child's tail is at a
+       trivial record and pays its own (lane KILL-PAY, K4(a)) *)
+    iSplitL "Hpar Hpayv".
     - (* ---- THE PARENT ---- *)
       iIntros (hp r) "%Hr (_ & HP & Hw8 & Hw0) Hsz Hstd Hcwd Hch HD Hrun".
       iApply (wp_kshr_fork1_tail N hp
                 (<[Regidx a0_idx := r]>
                    (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m3))
                 sp0 vra vs0 n Hal8 Hlo (Hspf r)
-                with "Hdp Hcode Hro Hw8 Hw0 Hrun").
-      iIntros (hp2 m') "%Hq %Hra %Hs0 %Hsps Hrun".
+                with "Hdp Hcode Hro Hw8 Hw0 Hpayv Hrun").
+      iIntros (hp2 m') "%Hq %Hra %Hs0 %Hsps Hpayv Hrun".
       iApply ("Hpar" $! hp2 m' r
-                with "[%] [%] [%] HP Hsz Hstd Hcwd Hch HD [Hrun]").
+                with "[%] [%] [%] HP Hsz Hstd Hcwd Hch HD Hpayv [Hrun]").
       + exact Hr.
       + exact (fun q => Hback r m' q Hq Hra Hs0 Hsps).
       + rewrite (Hq a0_idx ltac:(vm_compute; lia) ltac:(vm_compute; lia)
@@ -1695,12 +1723,15 @@ Section UkShRun.
     - (* ---- THE CHILD, under fresh names ---- *)
       iIntros (N' hc) "%Hti' #Hck (#Hcro & HP & Hw8 & Hw0) Hsz Hstd Hcwd Hch HD Hrun".
       pose proof (ukn_const_of_triv N' Hti') as Hcst'.
+      (* THE CHILD'S RECORD IS TRIVIAL, so its own tail's payload is free
+         (lane KILL-PAY, K4(a)); the parent's copy stays with the parent. *)
+      iDestruct (ukn_pay_free_of_triv N' Hti') as "Hpayc".
       iApply (wp_kshr_fork1_tail N' hc
                 (<[Regidx a0_idx := (mword_of_int 0 : mword 64)]>
                    (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m3))
                 sp0 vra vs0 n Hal8 Hlo (Hspf (mword_of_int 0 : mword 64))
-                with "Hdp Hck Hcro Hw8 Hw0 Hrun").
-      iIntros (hc2 m') "%Hq %Hra %Hs0 %Hsps Hrun".
+                with "Hdp Hck Hcro Hw8 Hw0 Hpayc Hrun").
+      iIntros (hc2 m') "%Hq %Hra %Hs0 %Hsps _ Hrun".
       iApply ("Hchi" $! N' hc2 m'
                 with "[%] [%] [%] Hck HP Hsz Hstd Hcwd Hch HD [Hrun]").
       + exact Hti'.
@@ -1728,6 +1759,12 @@ Section UkShRun.
        see [UkFork.wp_uk_ecall_fork].  This is what PIPE's six closes and
        REDIR's close-and-reopen are paid for with. *)
     ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
+    (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)): fork1's [-1] arm
+       panics, and a panic ends in [exit].  The RETURNING arm hands it
+       straight back, on the parent's continuation below; the CHILD's tail
+       runs at a trivial record and pays its own
+       ([UkRun.ukn_pay_free_of_triv]). *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.fork1) (2 + (Dg + n)) -∗
     ((∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
@@ -1738,6 +1775,8 @@ Section UkShRun.
         UserCwd.ucwd_any (ukn_cwd N) -∗
         UserChildren.uch_any (ukn_ch N) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
+        (* ...and the payload back, unspent: fork1 returned *)
+        ukn_pay N (-1) -∗
         urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + (Dg + n)) -∗
         WP (Loop : expr riscv_lang)) ∗
      (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile),
@@ -1760,14 +1799,14 @@ Section UkShRun.
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hcode #Hro HP Hsz Hstd Hcwd Hch HD Hrun [Hpar Hchi]".
+    iIntros "#Hdp #Hcode #Hro HP Hsz Hstd Hcwd Hch HD Hpayv Hrun [Hpar Hchi]".
     iDestruct "Hcwd" as (cw) "Hcwd".
     iApply (wp_kshr_fork1 N P szv l D h m n cw
-              with "Hdp Hcode Hro HP Hsz Hstd Hcwd Hch HD Hrun").
+              with "Hdp Hcode Hro HP Hsz Hstd Hcwd Hch HD Hpayv Hrun").
     iSplitL "Hpar".
-    - iIntros (h' m' r) "%Hr %Hcs %Ha0 HP Hsz Hstd Hcwd Hch HD Hrun".
+    - iIntros (h' m' r) "%Hr %Hcs %Ha0 HP Hsz Hstd Hcwd Hch HD Hpayv Hrun".
       iApply ("Hpar" $! h' m' r
-                with "[%] [%] [%] HP Hsz Hstd [Hcwd] Hch HD Hrun");
+                with "[%] [%] [%] HP Hsz Hstd [Hcwd] Hch HD Hpayv Hrun");
         [ exact Hr | exact Hcs | exact Ha0
         | iApply (ucwd_any_of with "Hcwd") ].
     - iIntros (N' h' m') "%Hpeq %Hcs %Ha0 #Hck HP Hsz Hstd Hcwd Hch HD Hrun".
@@ -2444,6 +2483,12 @@ Section UkShRun.
   (* ---- [exit(k)] AS A CALL: [c.li a0,k] then [jal ra,<exit>] ---------- *)
   Local Lemma wp_kshr_exit0 (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
       (pc0 pc1 ret : Z) (k : mword 6) (imm : mword 21) (avail : nat) :
+      (* THE PAYLOAD IS FREE AT THIS RECORD (lane KILL-PAY, K4(a)).
+         [UkRunSys.wp_uk_ecall_exit]'s premise takes the exit payload out
+         of the PROGRAM's hand now, and this walk exits; every process
+         that runs it is a forked child at [UkRun.ukn_triv], where
+         [UkRun.ukn_pay_free_of_triv] discharges it. *)
+    (⊢ ukn_pay N (-1)) ->
     add_vec_int (mword_of_int pc0 : mword 64) 2 = mword_of_int pc1 ->
     (mword_of_int ShSyms.exit : mword 64)
       = add_vec (mword_of_int pc1 : mword 64) (sign_extend' 64 imm) ->
@@ -2457,7 +2502,7 @@ Section UkShRun.
     urun N h m (mword_of_int pc0) avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros E01 Hsym Hret Hal. iIntros "#Hcode #Hi0 #Hi1 Hrun".
+    intros Hpx E01 Hsym Hret Hal. iIntros "#Hcode #Hi0 #Hi1 Hrun".
     iApply (wp_uk_cli N h m (mword_of_int pc0) k a0_idx avail
               ltac:(unfold unot_sp; vm_compute; discriminate)
               ltac:(vm_compute; discriminate) with "Hi0 Hrun").
@@ -2465,7 +2510,8 @@ Section UkShRun.
     iApply (wp_kshr_jal N h1 _ pc1 ShSyms.exit ret imm avail
               Hsym Hret Hal with "Hi1 Hrun").
     iIntros (h2) "Hrun".
-    iApply (wp_ksh_exit N h2 _ avail with "Hcode Hrun").
+    iDestruct Hpx as "Hpay".
+    iApply (wp_ksh_exit N h2 _ avail with "Hcode Hpay Hrun").
   Qed.
 
   (* ===================================================================== *)
@@ -2475,12 +2521,18 @@ Section UkShRun.
   (* ===================================================================== *)
   Lemma wp_kshr_runcmd_null (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
       (n : nat) :
+      (* THE PAYLOAD IS FREE AT THIS RECORD (lane KILL-PAY, K4(a)).
+         [UkRunSys.wp_uk_ecall_exit]'s premise takes the exit payload out
+         of the PROGRAM's hand now, and this walk exits; every process
+         that runs it is a forked child at [UkRun.ukn_triv], where
+         [UkRun.ukn_pay_free_of_triv] discharges it. *)
+    (⊢ ukn_pay N (-1)) ->
     m !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ->
     shk_code (ukn_t N) -∗
     urun N h m (mword_of_int ShSyms.runcmd) (6 + n) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Ha0. iIntros "#Hcode Hrun".
+    intros Hpx Ha0. iIntros "#Hcode Hrun".
     rewrite shr_runcmd.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     remember (m !!! Regidx csp_rs1) as sp0 eqn:Hsp0.
@@ -2595,7 +2647,7 @@ Section UkShRun.
     rewrite Eba. iIntros (h6) "Hrun".
     (* ---- 0xbc  c.li a0,1 ; 0xbe  jal ra,0xc86 <exit> ---- *)
     iApply (wp_kshr_exit0 N h6 n2 0xbc 0xbe 0xc2
-              (mword_of_int 1 : mword 6) (mword_of_int 3016 : mword 21) n
+              (mword_of_int 1 : mword 6) (mword_of_int 3016 : mword 21) n Hpx
               ltac:(apply bv_eq; vm_compute; reflexivity)
               ltac:(apply bv_eq; vm_compute; reflexivity)
               ltac:(apply bv_eq; vm_compute; reflexivity)
@@ -2752,16 +2804,31 @@ Section UkShRun.
   (* DEPENDS ON [ush_diag_leaf]: EXEC's returning exec, REDIR's failing     *)
   (* open, PIPE's failing pipe, and fork1's -1 all end in the printer.      *)
   (* ===================================================================== *)
-  (* AT ONE CLASS NOW ([ukn_const]).  The EXEC arm pays its deposit out of
-     the exec supply AT THIS RECORD'S OWN PAYLOAD ([UkRun.uxsup_at]), which
-     is what the supplier names, so nothing here reads whether that payload
-     is trivial -- and runcmd becomes usable by a process that owes its
-     parent something.  A caller whose record IS trivial passes
-     [UkRun.uxsup] and rewrites by its own equation. *)
+  (* AT ONE CLASS ([ukn_const]).  The EXEC arm pays its deposit out of the
+     exec supply AT THIS RECORD'S OWN PAYLOAD ([UkRun.uxsup_at]), which is
+     what the supplier names, so nothing here reads whether that payload is
+     trivial.  A caller whose record IS trivial passes [UkRun.uxsup] and
+     rewrites by its own equation.
+     ...BUT THE PAYLOAD IS FREE ALL THE SAME (lane KILL-PAY, K4(a), ruling
+     R-B).  The earlier promise -- "runcmd becomes usable by a process that
+     owes its parent something" -- is WITHDRAWN: this walk ends in [exit],
+     and exit's leaf takes the payload out of the program's own hand now
+     ([UkRunSys.wp_uk_ecall_exit]), which a record at a real resource
+     cannot supply from nothing.  THE FACT that makes the Coq-level premise
+     below honest is that EVERY process which runs [runcmd] is sh's FORKED
+     CHILD, whose record is trivial ([UkFork.wp_uk_ecall_fork_any]'s child
+     arm gives the equation) -- sh itself never calls it -- so
+     [UkRun.ukn_pay_free_of_triv] discharges it at every call site. *)
   Lemma wp_kshr_runcmd (c : ushcmd) :
     ush_simple c ->
     forall (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile) (t szv : Z)
            (ld : list fdstate) (n : nat),
+      (* THE PAYLOAD IS FREE AT THIS RECORD (lane KILL-PAY, K4(a)).
+         [UkRunSys.wp_uk_ecall_exit]'s premise takes the exit payload out
+         of the PROGRAM's hand now, and this walk exits; every process
+         that runs it is a forked child at [UkRun.ukn_triv], where
+         [UkRun.ukn_pay_free_of_triv] discharges it. *)
+      (⊢ ukn_pay N (-1)) ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       UkSh.sh_deps -∗
       shk_code (ukn_t N) -∗
@@ -2789,7 +2856,7 @@ Section UkShRun.
   Proof.
     induction c as [ args | c1 IH file mode fd | l IHl r IHr
                    | l IHl r IHr | c1 IH ];
-      intros Hs N Hcst h m t szv ld n Ha0;
+      intros Hs N Hcst h m t szv ld n Hpx Ha0;
       iIntros "#Hdp #Hcode #Hexs #Hexs0 #Hjt #Htree Hsz Hstd Hcwd Hch Hrun";
       iDestruct (ush_jtab_ro with "Hjt") as "#Hro";
       iDestruct (ush_cmd_addr with "Htree") as %[Htr Ht8];
@@ -2840,7 +2907,7 @@ Section UkShRun.
         iIntros (h3) "Hrun".
         iApply (wp_kshr_exit0 N h3 k1 0xf0 0xf2 0xf6
                   (mword_of_int 1 : mword 6) (mword_of_int 2964 : mword 21)
-                  (2 + (Dg + n))
+                  (2 + (Dg + n)) Hpx
                   ltac:(apply bv_eq; vm_compute; reflexivity)
                   ltac:(apply bv_eq; vm_compute; reflexivity)
                   ltac:(apply bv_eq; vm_compute; reflexivity)
@@ -2942,10 +3009,11 @@ Section UkShRun.
                          ltac:(vm_compute; discriminate)).
           rewrite Hs1_k. apply uint_moi. unfold Z64. lia. }
         replace (2 + (Dg + n))%nat with (Dg + (2 + n))%nat by lia.
+        iDestruct Hpx as "Hpay".
         iApply (ush_diag_leaf N h6 k4 0xda (2 + n)
                   ltac:(right; left; split;
                         [ reflexivity | rewrite Hs1_k4; exact Ht8 ])
-                  with "Hdp Hcode Hro [] Hrun").
+                  with "Hdp Hcode Hro [] Hpay Hrun").
         rewrite /ush_diag_res.
         destruct (decide ((0xda : Z) = 0xda)) as [_ | Hc];
           [ | exfalso; exact (Hc eq_refl) ].
@@ -2994,17 +3062,18 @@ Section UkShRun.
       assert (Hst_g1 : ush_st g1 sp0 t)
         by (apply ush_st_upd;
             [ exact Hst_m1 | vm_compute; lia | vm_compute; lia ]).
+      iDestruct Hpx as "Hpay".
       iApply (wp_kshr_fork1_any N
                 (fun gt gd _ => (ush_jtab gt ∗ ush_cmd gd t (UList l r))%I)
                 (FP := forkable_ush_pay t (UList l r))
                 szv ld ∅ h2 g1 (6 * Nat.max (ush_ht l) (ush_ht r) + n)
-                with "Hdp Hcode Hro [] Hsz Hstd Hcwd Hch [] Hrun").
+                with "Hdp Hcode Hro [] Hsz Hstd Hcwd Hch [] Hpay Hrun").
       { iFrame "Hjt Htree". }
       { rewrite big_sepM_empty. done. }
       rewrite Hra_g1.
       iSplitL "".
       + (* ---- the PARENT: wait(0), then runcmd(lcmd->right) ---- *)
-        iIntros (hA mA rA) "%HrA %HcsA %Ha0A (#Hjt2 & #Ht2) Hsz Hstd Hcwd Hch _ Hrun".
+        iIntros (hA mA rA) "%HrA %HcsA %Ha0A (#Hjt2 & #Ht2) Hsz Hstd Hcwd Hch _ _ Hrun".
         pose proof (ush_st_cs g1 mA sp0 t Hst_g1 HcsA) as HstA.
         iApply (wp_uk_cbnez N hA mA (mword_of_int 0x128)
                   (mword_of_int 4 : mword 8) (mword_of_int 2 : mword 3)
@@ -3073,7 +3142,7 @@ Section UkShRun.
                                    - ush_ht r) + n))))%nat by lia.
         iApply (IHr (proj2 Hs) N Hcst hE g3 qr szv ld
                   ((6 * (Nat.max (ush_ht l) (ush_ht r) - ush_ht r) + n)%nat)
-                  Ha0_g3 with "Hdp Hcode Hexs Hexs0 Hjt2 Hqrc Hsz Hstd Hcwd Hch Hrun").
+                  Hpx Ha0_g3 with "Hdp Hcode Hexs Hexs0 Hjt2 Hqrc Hsz Hstd Hcwd Hch Hrun").
       + (* ---- the CHILD: runcmd(lcmd->left) ---- *)
         iIntros (N' hA mA) "%Hti' %HcsA %Ha0A #Hck (#Hjt2 & #Ht2) Hsz Hstd Hcwd Hch _ Hrun".
         pose proof (ukn_const_of_triv N' Hti') as Hcst'.
@@ -3139,7 +3208,7 @@ Section UkShRun.
         iDestruct (uxsup_at_triv N' with "Hexs0") as "#Hexs'".
         iApply (IHl (proj1 Hs) N' Hcst' hD g3 ql2 szv ld
                   ((6 * (Nat.max (ush_ht l) (ush_ht r) - ush_ht l) + n)%nat)
-                  Ha0_g3 with "Hdp Hck Hexs' Hexs0 Hjt2 Hqlc2 Hsz Hstd Hcwd Hch Hrun").
+                  (ukn_pay_free_of_triv N' Hti') Ha0_g3 with "Hdp Hck Hexs' Hexs0 Hjt2 Hqlc2 Hsz Hstd Hcwd Hch Hrun").
 
     - (* =================== BACK =================== *)
       iDestruct (ush_cmd_back with "Htree") as (q) "[#Hqp #Hqc]".
@@ -3170,17 +3239,18 @@ Section UkShRun.
       assert (Hst_b1 : ush_st b1 sp0 t)
         by (apply ush_st_upd;
             [ exact Hst_m1 | vm_compute; lia | vm_compute; lia ]).
+      iDestruct Hpx as "Hpay".
       iApply (wp_kshr_fork1_any N
                 (fun gt gd _ => (ush_jtab gt ∗ ush_cmd gd t (UBack c1))%I)
                 (FP := forkable_ush_pay t (UBack c1))
                 szv ld ∅ h2 b1 (6 * ush_ht c1 + n)
-                with "Hdp Hcode Hro [] Hsz Hstd Hcwd Hch [] Hrun").
+                with "Hdp Hcode Hro [] Hsz Hstd Hcwd Hch [] Hpay Hrun").
       { iFrame "Hjt Htree". }
       { rewrite big_sepM_empty. done. }
       rewrite Hra_b1.
       iSplitL "".
       + (* ---- the PARENT: exit(0) immediately ---- *)
-        iIntros (hA mA rA) "%HrA %HcsA %Ha0A (#Hjt2 & #Ht2) Hsz Hstd Hcwd Hch _ Hrun".
+        iIntros (hA mA rA) "%HrA %HcsA %Ha0A (#Hjt2 & #Ht2) Hsz Hstd Hcwd Hch _ _ Hrun".
         iApply (wp_uk_btype0 N hA mA (mword_of_int 0x1c8)
                   (mword_of_int 7970 : mword 13) a0_idx BNE
                   true (mword_of_int 0xea)
@@ -3194,7 +3264,7 @@ Section UkShRun.
         iIntros (hB) "Hrun".
         iApply (wp_kshr_exit0 N hB mA 0xea 0xec 0xf0
                   (mword_of_int 0 : mword 6) (mword_of_int 2970 : mword 21)
-                  (2 + (Dg + (6 * ush_ht c1 + n)))
+                  (2 + (Dg + (6 * ush_ht c1 + n))) Hpx
                   ltac:(apply bv_eq; vm_compute; reflexivity)
                   ltac:(apply bv_eq; vm_compute; reflexivity)
                   ltac:(apply bv_eq; vm_compute; reflexivity)
@@ -3260,7 +3330,8 @@ Section UkShRun.
         replace (2 + (Dg + (6 * ush_ht c1 + n)))%nat
           with (6 * ush_ht c1 + (2 + (Dg + n)))%nat by lia.
         iDestruct (uxsup_at_triv N' with "Hexs0") as "#Hexs'".
-        iApply (IH Hs N' Hcst' hD b3 q2 szv ld n Ha0_b3
+        iApply (IH Hs N' Hcst' hD b3 q2 szv ld n
+                  (ukn_pay_free_of_triv N' Hti') Ha0_b3
                   with "Hdp Hck Hexs' Hexs0 Hjt2 Hqc2 Hsz Hstd Hcwd Hch Hrun").
   Qed.
 

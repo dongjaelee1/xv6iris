@@ -451,6 +451,39 @@ Class uexecSG (Σ : gFunctors) {sg_ctok : ctokG Σ} := {
     ⊢ my_pay (uvis_gen W) (fun _ => R)%I -∗ □ ssupply -∗
       □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗ R -∗ X W') ==∗
       ∃ f : sfam, ⌜sexit_pay f = (fun _ => R)%I⌝ ∗ sbundle_at X n f W;
+
+  (* ===================================================================
+     WHAT A FAILED exec GIVES BACK (app-echo.md, lane KILL-PAY, K4(a),
+     ruling R-A).
+
+     exec's deposit is a [PieceFam.pfam], and a [pfam] is an AU BESIDE ITS
+     REFUND: [PieceFam.pf_at_refund] says a piece that never fired hands
+     back what was put into it.  An exec that FAILS is exactly such a
+     piece -- and with the -1 payload no longer riding [UkRun.urun]'s row
+     (that row is a wand from the kill credential now), the resource a
+     process spent into the exec deposit is the ONLY thing it has left to
+     pay its own [exit(1)] with when the exec comes back.  So the refund
+     is the process's, not the kernel's frame: the earlier design's "a
+     program cannot retry exec" is withdrawn.
+
+     WHERE IT TRAVELS: the arm's post, at exec, which was [emp] and is now
+     a wand from "the answer was -1".  Nothing between the dispatcher and
+     the ecall leaf had to move -- [spost_at] is already relayed at every
+     number ([SpecSyscall.sysc_sys_out], [UexecRet.uexec_ret_cont_gen]) --
+     which is why the refund reaches the leaf without a new row anywhere.
+     [sexec_refund] NAMES it, because [spost_at]'s type cannot: a caller
+     that wants to state what it gets back has to name the family's own
+     refund, and the family is what carries it. *)
+  sexec_refund : sfam -> iProp Σ;
+  spost_at_exec : forall (X : uvis -d> iPropO Σ) (f : sfam) (W : uvis)
+      (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z)
+      (cs' : gset gname),
+    spost_at X USYS_exec f W r M' fdv' cw' cs'
+      = (⌜r = (mword_of_int (-1) : mword 64)⌝ -∗ sexec_refund f)%I;
+  (* the refund passes through the payload re-keying, like every other
+     field but the payload itself ([sfam_at]) *)
+  sexec_refund_at : forall (Q : Z -> iProp Σ) (f : sfam),
+    sexec_refund (sfam_at Q f) = sexec_refund f;
 }.
 
 Global Existing Instance sbundle_at_ne.
@@ -510,6 +543,29 @@ Section SBundle.
       (W : uvis) :
     sbundle_pay X n Q W -∗ sbundle X n W.
   Proof. iIntros "H". iDestruct "H" as (f) "[_ Hb]". iExists f. iExact "Hb". Qed.
+
+  (* ...AND THE exec DEPOSIT WITH ITS REFUND'S ONE CONSEQUENCE (app-echo.md,
+     lane KILL-PAY, K4(a), ruling R-A).  A FAILED exec hands the family's
+     refund back to the process ([spost_at_exec]), and the family is
+     EXISTENTIAL here -- a supplier deposits at SOME [f] -- so the leaf
+     cannot name [sexec_refund f] in its continuation.  What it can state
+     is the consequence it wants: whatever the refund is, it pays this
+     record's own exit at the kill status.  Persistent, so a [□]-boxed
+     supply carries it for free; at a trivial payload it is [_ -∗ True],
+     and at a pinned supply that spent a lease into the deposit it is the
+     projection that gets the lease back. *)
+  Definition sbundle_pay_ref (X : uvis -d> iPropO Σ) (Q : Z -> iProp Σ)
+      (W : uvis) : iProp Σ :=
+    (∃ f : sfam, ⌜sexit_pay f = Q⌝ ∗ □ (sexec_refund f -∗ Q (-1))
+                 ∗ sbundle_at X USYS_exec f W)%I.
+
+  Lemma sbundle_pay_of_ref (X : uvis -d> iPropO Σ) (Q : Z -> iProp Σ)
+      (W : uvis) :
+    sbundle_pay_ref X Q W -∗ sbundle_pay X USYS_exec Q W.
+  Proof.
+    iIntros "H". iDestruct "H" as (f) "(%Hp & _ & Hb)".
+    iExists f. iSplitR; [ done | iExact "Hb" ].
+  Qed.
 
   (* ...and the other direction AT EVERY NUMBER BUT read AND exec, the two
      branches whose bundles read the payload: a bundle at some family is

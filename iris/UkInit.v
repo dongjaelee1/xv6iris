@@ -33,6 +33,9 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 Require Import UkRun UkRunLeaf UkRunSys.
+Require Import UexecSlot.   (* [upay_neg_of] -- the -1 payload is a WAND
+                               from the kill credential (lane KILL-PAY,
+                               K4(a)) *)
 Require Import UCodeInit.
 Require Import TsoCtx.
 Require User.InitSyms User.InitInstrs.
@@ -1230,10 +1233,17 @@ Section UkInit.
      is [I]. *)
   Lemma wp_kinit_exit (h : CpuId) (m : regfile) (avail : nat) :
     init_code γt -∗
+    (* THE PAYMENT COMES OUT OF THE PROGRAM'S OWN HAND (lane KILL-PAY,
+       K4(a)): [UkRun.urun]'s payload row is a WAND from the kill
+       credential now, so exit's leaf takes the payload as a premise.
+       /init's own record is trivial and pays [I]; the CHILD this file's
+       [N] also serves -- the one that execs sh -- holds the console lease
+       until its exec succeeds and pays that. *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int InitSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode Hrun".
+    iIntros "#Hcode Hpay Hrun".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hexit.
     iApply (wp_uk_cli N h m (mword_of_int 0x372)
               (mword_of_int 2 : mword 6) a7_idx avail
@@ -1255,13 +1265,15 @@ Section UkInit.
               ltac:(unfold m1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 2 : mword 64));
                     vm_compute; reflexivity)
-              with "[] [] Hrun").
+              with "[] [Hpay] Hrun").
     { iApply (uis_init_374 with "Hcode"). }
     (* AT A CONSTANT PAYLOAD THE TWO CONJUNCTS ARE ONE PROPOSITION, so the
-       resource the run keeps answers both ([UkRun.ukn_const]). *)
-    { iIntros "HQ".
+       ONE resource the program holds answers both ([UkRun.ukn_const]) --
+       outright on the left and through the credential on the right
+       ([UexecSlot.upay_neg_of]). *)
+    { iIntros "_".
       rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)).
-      iSplit; iExact "HQ". }
+      iSplit; [ iExact "Hpay" | iApply (upay_neg_of with "Hpay") ]. }
   Qed.
 
   (* ===================================================================== *)
@@ -1315,7 +1327,10 @@ Section UkInit.
           init_rodata (ukn_t N') -∗
           init_argv (ukn_d N') -∗
           ustd_any (ukn_fd N') -∗
-          udepw_at N' m pc USYS_exec FsImg.ROOTINO))%I.
+          (* AT THE REFUNDING DEPOSIT (lane KILL-PAY, K4(a), ruling R-A):
+             a failed exec hands the process back what it spent, which is
+             the only thing left to pay its own [exit(1)] with. *)
+          udepw_at_ref N' m pc FsImg.ROOTINO))%I.
 
   Global Instance init_exec_sup_persistent : Persistent init_exec_sup.
   Proof. rewrite /init_exec_sup. apply _. Qed.
@@ -1330,7 +1345,7 @@ Section UkInit.
   Proof.
     iIntros "#Hx". iModIntro. iIntros (N' m pc) "%Hpeq _ _ _ _ _".
     pose proof (Hpeq : UkRun.ukn_triv N') as Hti.
-    iApply (udepw_at_of_uxsup with "Hx").
+    iApply (udepw_at_ref_of_uxsup with "Hx").
   Qed.
 
   (* =================================================================== *)
@@ -1376,7 +1391,13 @@ Section UkInit.
        init_argv (ukn_d N') -∗
        UInitFd.ufd_head T st (ukn_fd N') -∗
        upos γ n -∗
-       udepw_at N' m pc USYS_exec FsImg.ROOTINO)%I.
+       (* ...AND THE LEASE ITSELF (lane KILL-PAY, K4(a)).  The console
+          reader token used to ride in the child's own payload row and
+          reach sh through [UexecRet]'s deposit; that row is a WAND from
+          the kill credential now, so the token crosses [PinnedExec]'s
+          [Pay] beside the position and lands in [UkSh.ush_at]. *)
+       ucons_pay cn γ T (-1) -∗
+       udepw_at_ref N' m pc FsImg.ROOTINO)%I.
 
   Definition init_exec_sup_lend (cn : cons_names) (T : iProp Σ)
       (st : fdstate) : iProp Σ :=
@@ -1426,12 +1447,16 @@ Section UkInit.
        [UkRun.udepw]'s left disjunct excludes it by construction.  The
        caller hands it in, at the key the ecall traps from and at the one
        working directory it answers for. *)
-    udepw_at N
+    udepw_at_ref N
       (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> m)
-      (mword_of_int 0x3ac) USYS_exec c -∗
-    (* exec only comes back when it FAILED, and then it returns -1 *)
+      (mword_of_int 0x3ac) c -∗
+    (* exec only comes back when it FAILED, and then it returns -1 -- AND
+       IT IS REFUNDED (lane KILL-PAY, K4(a), ruling R-A): what the process
+       spent into the deposit comes back, which is what pays the [exit(1)]
+       the diagnostic below ends in. *)
     (∀ h' : CpuId,
        UserCwd.ucwd γcwd c -∗
+       ukn_pay N (-1) -∗
        urun N h'
          (<[Regidx a0_idx := (mword_of_int (-1) : mword 64)]>
             (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> m))
@@ -1468,7 +1493,7 @@ Section UkInit.
                  = mword_of_int 0x3b0)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E1.
-    iIntros (h2) "Hcwd Hrun".
+    iIntros (h2) "Hcwd Hpayret Hrun".
     set (m2 := <[Regidx a0_idx := (mword_of_int (-1) : mword 64)]> m1).
     assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
     { unfold m2, m1.
@@ -1485,7 +1510,7 @@ Section UkInit.
               with "[] Hrun").
     { iApply (uis_init_3b0 with "Hcode"). }
     iIntros (h3) "Hrun".
-    iApply ("Hcont" $! h3 with "Hcwd Hrun").
+    iApply ("Hcont" $! h3 with "Hcwd Hpayret Hrun").
   Qed.
 
   (* init calls [wait] with a NULL status pointer, which is the only arm

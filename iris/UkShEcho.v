@@ -454,7 +454,9 @@ Section UkShEcho.
           ⌜ m !!! Regidx a1_idx = (mword_of_int (t + 8) : mword 64) ⌝ -∗
           ⌜ echo_argv_bytes g ⌝ -∗
           ush_cmd (ukn_d N') t (echo_cmd s0 g) -∗
-          udepw_at N' m pc USYS_exec FsImg.ROOTINO))%I.
+          (* AT THE REFUNDING DEPOSIT (lane KILL-PAY, K4(a), ruling R-A);
+             this record is trivial, so what comes back is [True]. *)
+          udepw_at_ref N' m pc FsImg.ROOTINO))%I.
 
   Global Instance sh_exec_sup_echo_persistent : Persistent sh_exec_sup_echo.
   Proof. rewrite /sh_exec_sup_echo. apply _. Qed.
@@ -472,9 +474,9 @@ Section UkShEcho.
       ⊢ shk_code (ukn_t N) -∗
         urun N h m (mword_of_int ShSyms.exec) avail -∗
         UserCwd.ucwd (ukn_cwd N) c -∗
-        udepw_at N
+        udepw_at_ref N
           (<[Regidx (mword_of_int 17 : mword 5) := (mword_of_int 7 : mword 64)]> m)
-          (mword_of_int 0xcc0) USYS_exec c -∗
+          (mword_of_int 0xcc0) c -∗
         (∀ h' : CpuId,
            UserCwd.ucwd (ukn_cwd N) c -∗
            urun N h'
@@ -553,7 +555,10 @@ Section UkShEcho.
     assert (E1 : add_vec_int (mword_of_int 0xcc0 : mword 64) 4
                  = mword_of_int 0xcc4)
       by (apply bv_eq; vm_compute; reflexivity).
-    rewrite E1. iIntros (h2) "Hcwd Hrun".
+    (* the failed exec's refund is DROPPED here (lane KILL-PAY, K4(a),
+       ruling R-A): sh's forked child runs at [UkRun.ukn_triv] and its
+       exit owes nothing, so the row is [True]. *)
+    rewrite E1. iIntros (h2) "Hcwd _ Hrun".
     set (m2 := <[Regidx a0_idx := (mword_of_int (-1) : mword 64)]> m1).
     assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
     { unfold m2, m1.
@@ -703,9 +708,9 @@ Section UkShEcho.
        evar for [iApply] to solve makes the proofmode unify against
        [UkRun.udepw_at]'s whole ∀-chain, which does not terminate at this
        altitude (durable-notes, "A compile that never finishes"). *)
-    iAssert (udepw_at N
+    iAssert (udepw_at_ref N
                (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> k3)
-               (mword_of_int 0xcc0) USYS_exec FsImg.ROOTINO)
+               (mword_of_int 0xcc0) FsImg.ROOTINO)
       with "[]" as "Hdepx".
     { iApply ("Hexs" $! N
                 (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> k3)
@@ -741,10 +746,11 @@ Section UkShEcho.
       rewrite Hs1_k. apply uint_moi. unfold Z64. lia. }
     replace (2 + (UkShDiag.ush_Dg + n))%nat
       with (UkShDiag.ush_Dg + (2 + n))%nat by lia.
+    iDestruct (ukn_pay_free_of_triv N Hcst) as "Hpayf".
     iApply (UkShDiag.ush_diag_leaf_holds N h6 k4 0xda (2 + n)
               ltac:(right; left; split;
                     [ reflexivity | rewrite Hs1_k4; exact Ht8 ])
-              with "Hdp Hcode Hro [] Hrun").
+              with "Hdp Hcode Hro [] Hpayf Hrun").
     { rewrite /ush_diag_res.
       destruct (decide ((0xda : Z) = 0xda)) as [_ | Hne];
         [ | exfalso; exact (Hne eq_refl) ].
@@ -937,7 +943,7 @@ Section UkShEcho.
   Definition ush_pstate_at (N : uk_names Σ) (gp : gname) (l : list fdstate)
       (c : Z) : iProp Σ :=
     (UkSh.ush_std N l ∗ UserCwd.ucwd (ukn_cwd N) c
-     ∗ UserChildren.uch_any (ukn_ch N) ∗ UkSh.ush_pos gp)%I.
+     ∗ UserChildren.uch_any (ukn_ch N) ∗ UkSh.ush_pos N gp)%I.
 
   Lemma ush_pstate_of_at (N : uk_names Σ) (gp : gname) (l : list fdstate)
       (c : Z) :

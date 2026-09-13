@@ -7019,6 +7019,13 @@ Section UkShDiagRun.
      CLASS so that it reaches the exit ecall without an argument at every
      call site ([UkRun.ukn_const]). *)
   Context `{Hpay : !ukn_const N}.
+  (* ...AND THE EXIT PAYLOAD IS A PREMISE OF THE TWO WALKS BELOW (lane
+     KILL-PAY, K4(a)), not a section hypothesis: both END in [exit], whose
+     payment comes out of the program's own hand now
+     ([UkRunSys.wp_uk_ecall_exit]), and the record that runs them is not
+     always trivial -- sh's own [fork1] panics when fork fails and sh's
+     payload is the console lease.  A forked child passes
+     [UkRun.ukn_pay_free_of_triv]. *)
   (* the fields, under the names the engine has always used *)
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).
@@ -7110,12 +7117,15 @@ Section UkShDiagRun.
     uinstr_is γt (mword_of_int p3) false (JAL (j3, Regidx ra_idx)) -∗
     uinstr_is γt (mword_of_int p4) true (C_LI (kx, Regidx a0_idx)) -∗
     uinstr_is γt (mword_of_int p5) false (JAL (j5, Regidx ra_idx)) -∗
+    (* the exit payload, out of the program's own hand (lane KILL-PAY,
+       K4(a)): this walk ends in [exit] *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int p0) (10 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hok Hnp Hfa0 Hfahi Hq2 Hpq Hps Hc1d Hc1u Hc1x Hc2set
            E0 E1 E2 E3 E4 Efa Ejf Eje Eret Hsanz Ha2.
-    iIntros "#Hdp #Hcode #Hro Hsstr #Ci0 #Ci1 #Ci2 #Ci3 #Ci4 #Ci5 Hrun".
+    iIntros "#Hdp #Hcode #Hro Hsstr #Ci0 #Ci1 #Ci2 #Ci3 #Ci4 #Ci5 Hpay Hrun".
     iDestruct (shd_fmt_str γt fa flen Hok ltac:(lia) with "Hro") as "#Hfstr".
     (* ---- p0  auipc a1,0x1 ---- *)
     iApply (wp_uk_auipc N h m (mword_of_int p0) hi a1_idx
@@ -7215,7 +7225,7 @@ Section UkShDiagRun.
               with "Ci5 Hrun").
     iIntros (h7) "Hrun".
     iApply (wp_ksh_exit N h7 _ (10 + (12 + (4 + n)))
-              with "Hcode Hrun").
+              with "Hcode Hpay Hrun").
   Qed.
 
   (* --------------------------------------------------------------------- *)
@@ -7238,12 +7248,15 @@ Section UkShDiagRun.
     shk_code γt -∗
     shk_rodata γt -∗
     shd_str γt γd tx dqs sa slen sf -∗
+    (* the exit payload, out of the program's own hand (lane KILL-PAY,
+       K4(a)): this walk ends in [exit] *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.panic)
       (2 + (10 + (12 + (4 + n)))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hsanz Ha0.
-    iIntros "#Hdp #Hcode #Hro Hsstr Hrun".
+    iIntros "#Hdp #Hcode #Hro Hsstr Hpay Hrun".
     rewrite shd_pin_panic.
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom'].
     remember (m !!! Regidx csp_rs1) as sp0 eqn:Hsp0e.
@@ -7377,7 +7390,7 @@ Section UkShDiagRun.
               ltac:(apply bv_eq; vm_compute; reflexivity)
               ltac:(apply bv_eq; vm_compute; reflexivity)
               Hsanz Ha2_3
-              with "Hdp Hcode Hro Hsstr [] [] [] [] [] [] Hrun").
+              with "Hdp Hcode Hro Hsstr [] [] [] [] [] [] Hpay Hrun").
     { iApply (uis_shk_54 with "Hcode"). }
     { iApply (uis_shk_58 with "Hcode"). }
     { iApply (uis_shk_5c with "Hcode"). }
@@ -7446,6 +7459,9 @@ Section UkShDiagLeaf.
     iApply (shd_fmt_str gt a len Hok Hlen with "Hro").
   Qed.
 
+  (* ...AT [UkShRun.ush_diag_leaf]'S SHAPE, EXIT PAYLOAD AND ALL (lane
+     KILL-PAY, K4(a)): all three diagnostics end in [exit], whose payment
+     is the program's own now, and the site is what hands it over. *)
   Lemma ush_diag_leaf_holds :
     forall (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile) (pc : Z) (n : nat),
       ush_diag_at pc m ->
@@ -7453,11 +7469,12 @@ Section UkShDiagLeaf.
       shk_code (ukn_t N) -∗
       shk_rodata (ukn_t N) -∗
       ush_diag_res (ukn_d N) pc m -∗
+      ukn_pay N (-1) -∗
       urun N h m (mword_of_int pc) (ush_Dg + n) -∗
       WP (Loop : expr riscv_lang).
   Proof.
     intros N Hti h m pc n Hat.
-    iIntros "#Hdp #Hcode #Hro Hres Hrun".
+    iIntros "#Hdp #Hcode #Hro Hres Hpay Hrun".
     destruct Hat as [ [-> Hmsg] | [ [-> Hal] | [-> Hal] ] ].
     - (* =============== panic, at one of the three messages =============== *)
       rewrite ush_diag_res_panic.
@@ -7476,21 +7493,21 @@ Section UkShDiagLeaf.
         iApply (wp_kshd_panic N true DfracDiscarded 0x1298 4%nat (shd_lit 0x1298)
                   h m n ltac:(lia)
                   (Hmoi 0x1298 Hm1)
-                  with "Hdp Hcode Hro Hs Hrun").
+                  with "Hdp Hcode Hro Hs Hpay Hrun").
       + iDestruct (shd_msg_str (ukn_t N) (ukn_d N) DfracDiscarded 0x12a0 6%nat
                      ltac:(vm_compute; reflexivity) ltac:(lia)
                      with "Hro") as "#Hs".
         iApply (wp_kshd_panic N true DfracDiscarded 0x12a0 6%nat (shd_lit 0x12a0)
                   h m n ltac:(lia)
                   (Hmoi 0x12a0 Hm1)
-                  with "Hdp Hcode Hro Hs Hrun").
+                  with "Hdp Hcode Hro Hs Hpay Hrun").
       + iDestruct (shd_msg_str (ukn_t N) (ukn_d N) DfracDiscarded 0x12c8 4%nat
                      ltac:(vm_compute; reflexivity) ltac:(lia)
                      with "Hro") as "#Hs".
         iApply (wp_kshd_panic N true DfracDiscarded 0x12c8 4%nat (shd_lit 0x12c8)
                   h m n ltac:(lia)
                   (Hmoi 0x12c8 Hm1)
-                  with "Hdp Hcode Hro Hs Hrun").
+                  with "Hdp Hcode Hro Hs Hpay Hrun").
     - (* ================ 0xda: "exec %s failed" ================ *)
       rewrite /ush_diag_res.
       destruct (decide ((0xda : Z) = 0xda)) as [_ | Hc];
@@ -7549,7 +7566,7 @@ Section UkShDiagLeaf.
                 ltac:(apply bv_eq; vm_compute; reflexivity)
                 ltac:(lia)
                 ltac:(exact (upd_eq m (Regidx a2_idx) (regval_into_reg _)))
-                with "Hdp Hcode Hro Hs [] [] [] [] [] [] Hrun").
+                with "Hdp Hcode Hro Hs [] [] [] [] [] [] Hpay Hrun").
       { iApply (uis_shk_dc with "Hcode"). }
       { iApply (uis_shk_e0 with "Hcode"). }
       { iApply (uis_shk_e4 with "Hcode"). }
@@ -7616,7 +7633,7 @@ Section UkShDiagLeaf.
                 ltac:(apply bv_eq; vm_compute; reflexivity)
                 ltac:(lia)
                 ltac:(exact (upd_eq m (Regidx a2_idx) (regval_into_reg _)))
-                with "Hdp Hcode Hro Hs [] [] [] [] [] [] Hrun").
+                with "Hdp Hcode Hro Hs [] [] [] [] [] [] Hpay Hrun").
       { iApply (uis_shk_110 with "Hcode"). }
       { iApply (uis_shk_114 with "Hcode"). }
       { iApply (uis_shk_118 with "Hcode"). }
@@ -7641,6 +7658,11 @@ Section UkShDiagLeaf.
     ush_simple c ->
     forall (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile) (t szv : Z)
            (ld : list fdstate) (n : nat),
+      (* THE PAYLOAD IS FREE AT THIS RECORD (lane KILL-PAY, K4(a), ruling
+         R-B): this walk ends in [exit] and every process that runs
+         [runcmd] is sh's FORKED CHILD, at [UkRun.ukn_triv] --
+         [UkRun.ukn_pay_free_of_triv] discharges it. *)
+      (⊢ ukn_pay N (-1)) ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       (* the three deposits sh owes, passed straight through to the
          diagnostic leaf this lemma discharges ([UkSh.sh_deps]) *)
@@ -7672,6 +7694,10 @@ Section UkShDiagLeaf.
     UserCwd.ucwd (ukn_cwd N) cw -∗
     UserChildren.uch_any (ukn_ch N) -∗
     ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
+    (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)): fork1's [-1] arm
+       panics and a panic ends in [exit].  The returning arm hands it
+       straight back. *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.fork1) (2 + (ush_Dg + n)) -∗
     ((∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
@@ -7682,6 +7708,8 @@ Section UkShDiagLeaf.
         UserCwd.ucwd (ukn_cwd N) cw -∗
         UserChildren.uch_any (ukn_ch N) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
+        (* ...and back, unspent: fork1 returned *)
+        ukn_pay N (-1) -∗
         urun N h' m'
           (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)))
           (2 + (ush_Dg + n)) -∗
@@ -7722,6 +7750,10 @@ Section UkShDiagLeaf.
     UserCwd.ucwd_any (ukn_cwd N) -∗
     UserChildren.uch_any (ukn_ch N) -∗
     ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
+    (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)): fork1's [-1] arm
+       panics and a panic ends in [exit].  The returning arm hands it
+       straight back. *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.fork1) (2 + (ush_Dg + n)) -∗
     ((∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
@@ -7732,6 +7764,8 @@ Section UkShDiagLeaf.
         UserCwd.ucwd_any (ukn_cwd N) -∗
         UserChildren.uch_any (ukn_ch N) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
+        (* ...and back, unspent: fork1 returned *)
+        ukn_pay N (-1) -∗
         urun N h' m'
           (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)))
           (2 + (ush_Dg + n)) -∗

@@ -1229,13 +1229,13 @@ Section UShEcho.
     intros T HP HT Hslot.
     iIntros "#Hdep #Hwr (#Hinv & #Hcl & #Hgen)".
     iModIntro. iIntros (N' m pc s0 t g) "%Hpeq %Ha0 %Ha1 %Hbytes #Hcmd".
-    rewrite /udepw_at. iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
+    rewrite /udepw_at_ref. iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
     (* the node, read ONCE off the lent heap *)
     iAssert (⌜ echo_node_img M s0 t g ⌝)%I as %Himg.
     { iApply (echo_node_img_of_cmd with "Hheap Hcmd"). }
     (* ...and the table's length, off the lent authority *)
     iDestruct (ufd_auth_len with "Hufd") as %Hlen.
-    iFrame "Hheap Hufd". iRight.
+    iFrame "Hheap Hufd".
     (* ---- THE RESOLVING ARM: echo's own entry, at the pinned image ---- *)
     iAssert (□ (∀ (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
                   (W' : uvis),
@@ -1255,7 +1255,9 @@ Section UShEcho.
                   ⌜exec_args_of M (mword_of_int (t + 8) : mword 64)
                      na alen afun⌝ -∗
                   my_pay (uvis_gen W') (fun _ : Z => True)%I -∗
-                  (fun _ : Z => True)%I (-1) -∗ (emp : iProp Σ) -∗
+                  (* the -1 payload is a WAND from the kill credential now
+                     (lane KILL-PAY, K4(a)); at [True] it is dropped *)
+                  upay_neg (fun _ : Z => True)%I -∗ (emp : iProp Σ) -∗
                   uslot W'))%I as "#Hcon".
     { iModIntro.
       iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf %Hargs #Hmp _ _".
@@ -1269,7 +1271,7 @@ Section UShEcho.
     (* ---- THE TAINT ARM: the generic slot at the trivial payload ---- *)
     iAssert (□ (∀ W' : uvis, T -∗
                   my_pay (uvis_gen W') (fun _ : Z => True)%I -∗
-                  (fun _ : Z => True)%I (-1) -∗ uslot W'))%I as "#Hgen'".
+                  upay_neg (fun _ : Z => True)%I -∗ uslot W'))%I as "#Hgen'".
     { iModIntro. iIntros (W') "#HT #Hmp _".
       iApply ("Hgen" $! (True%I : iProp Σ) W' with "HT Hmp []"). done. }
     (* ---- THE BUNDLE ---- *)
@@ -1281,7 +1283,7 @@ Section UShEcho.
                  M (mword_of_int s0) (mword_of_int (t + 8)) fdv
                  sh_echo_pin_resolves echo_elf_loadable
                  (sh_echo_path_of_holds M s0 t g Himg Hbytes)
-                 with "Hcl Hinv Hcon Hgen' []") as (P Pmiss Fo R) "Hb";
+                 with "Hcl Hinv Hcon Hgen' []") as (P Pmiss Fo) "Hb";
       [ done | ].
     assert (Ea0 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv
                                   FsImg.ROOTINO gn cs pidv false))
@@ -1291,9 +1293,13 @@ Section UShEcho.
                                   FsImg.ROOTINO gn cs pidv false))
                     (tf_arg_idx 1) = (mword_of_int (t + 8) : mword 64))
       by (etransitivity; [ exact (tf_of_arg1 m pc) | exact Ha1 ]).
-    iApply (sbundle_pay_exec_intro uslot
+    (* THE REFUND'S ONE CONSEQUENCE (lane KILL-PAY, K4(a), ruling R-A):
+       echo's caller is sh's forked child at [UkRun.ukn_triv], whose exit
+       owes nothing, so whatever a failed exec hands back pays it. *)
+    iApply (sbundle_pay_exec_intro_ref uslot
               (uvis_of_run m pc M pm sz fdv FsImg.ROOTINO gn cs pidv false)
-              (ukn_pay N') P Pmiss Fo R).
+              (ukn_pay N') P Pmiss Fo (emp : iProp Σ)).
+    { rewrite Hpeq. iIntros "!> _". done. }
     { cbn [uvis_gen uvis_of_run]. iExact "Hmpay". }
     rewrite Hpeq Ea0 Ea1. iExact "Hb".
   Qed.

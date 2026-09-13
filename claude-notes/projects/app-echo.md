@@ -52,27 +52,21 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
 - [x] ~~**SH-STATE**~~ LANDED 2026-09-13 (`65536f83f`; the note below):
   `sh_pay_state` proved at a named constant `sh_Rsh`; `Hsh_owed` is
   `sh_deps ∧ sh_pay_rest sh_Rsh`; `UConsLine`'s three Props are lemmas.
-- [ ] **SELF-KILL** (kernel; `-sup`, `lane/self-kill`; steps 1-4a and 4b'
-  LANDED 2026-09-14, `8d04f314e`, the notes below).  OWNER'S RULING
-  2026-09-13: THE KILL CREDENTIAL IS THE TARGET'S EXIT PAYLOAD AT -1 -- "the
-  process gname resource already tracks Q, and Q(-1) becomes the
-  precondition for kill() of that PID"; no separate predicate K', no alive
-  token; a process supplies Q(-1) when it may trap into the kernel at a
-  killing cause (a vmfault, an illegal instruction, an ecall INSTRUCTION
-  whose fetch faults) and supplies the syscall precondition, not Q(-1),
-  when it enters with the syscall cause; hence no separation-logic ∧ and no
-  -1 wand at ecalls.  `riscv_kill_cred` survives ONLY as the application's
-  TAINT on the fixed record, the antecedent of each process's published
-  payment wand (naming `app_sup` in the row would force `fileG` into the
-  engine and 76 U-tier files).  Remaining: P6 (the take moves into `kexit`
-  -- `killed()` reports the flag only; `SpecKexit`'s payment is "the
-  caller's `sexit_pay f status`, or `status = -1` and the row's `kill_owed`
-  taken at the ZOMBIE store with `taken_at` put back from `proc_priv_core`";
-  `upay_neg` deleted everywhere; the deposit-only killing-cause arm
-  `ukill_cred_at gn sc := if ukill_sc sc then kill_owed gn else emp`; the
-  interim `□ riscv_kill_cred` conjunct leaves `kill_row`), then step 5
-  (memset's null store with the trivial Q(-1) of sh's child; `Hsbrk` and
-  `ushm_sbrk_never_fails` deleted).
+- [ ] **SELF-KILL** (kernel; `-sup`, `lane/self-kill`; steps 1-4a, 4b' and P6
+  steps 1-2 LANDED 2026-09-15, `27869216e`, the notes below).  OWNER'S RULING
+  2026-09-13: THE KILL CREDENTIAL IS THE TARGET'S EXIT PAYLOAD AT -1 -- no
+  separate predicate, no alive token; Q(-1) is supplied when a process may
+  trap at a killing cause, the syscall precondition when it enters with the
+  syscall cause; no ∧, no -1 wand at ecalls; `killed()` reports the flag.
+  `riscv_kill_cred` survives ONLY as the application's taint, the antecedent
+  of each process's published payment wand.  REMAINING: P6b (`upay_neg`'s
+  deletion, the two-sided deposit `ukill_cred_at gn sc := if ukill_sc sc
+  then (□ riscv_kill_cred ∨ kill_owed gn) else emp`, `uexec_kill_arm_F` back
+  to `X W`, `SpecSetkilled`'s two-sided premise) -- BLOCKED 2026-09-15 on
+  `upay_neg` being the carrier of the generic family's constant payload
+  (parked patch, ten of twelve files compiling; a Fable review of the lane is
+  in progress at the owner's request before the next ruling); then step 5
+  (memset's null store).
 - [x] ~~**CONS-IO milestone A**~~ LANDED 2026-09-13 (`eef6a8dec` with SELF-KILL
   1-4a; the note below): the input resource, the shift as one fupd per
   accepted input over the two-resource `echo_link`, the log's high-water
@@ -3293,6 +3287,34 @@ unused stays.  CONSTRAINT for ECHO-OUT part 3: `Hpow` is a plain `==∗` fired
 with `obsN` already open -- the era's linear seed must be bupd-mintable from
 the ledger's own state; nothing in `Hpow` may open an invariant.  Handover:
 scratchpad `cons-io-handover-7.md`.
+
+SELF-KILL P6 STEPS 1-2 LANDED (2026-09-15; `0b15f76d2`+`27869216e` on `d3e76970b`;
+26 files +981/-378; builds selfk51-selfk56 in `-sup`; audit the thirteen;
+lemma_diff = the six interim-taint helpers retired).  STEP 1: the incarnation's
+one-shot marker `ChildTok.taken_at g` lives in `SlotGen.gen_halves_priv :=
+gen_halves_at ∗ taken_at g` (its own section, so `PidLock` is untouched); every
+block shape inherits it with no statement change; a ZOMBIE carries none
+(`gen_halves_dorm`'s ZOMBIE arm is the token-free `gen_halves_at`).  STEP 2:
+the kill flag is made MONOTONE in the ghost state, because `kexit` -- the party
+that must take the killer's deposit out of `<p->lock>`'s killed row -- never
+reads `p->killed` and `proc_pub` quantifies the cell existentially.
+`ChildTok`'s pure triple gains a fourth gname at `csumR (exclR (leibnizO
+shot_val)) (agreeR (leibnizO shot_val))` -- its own one-constructor inductive,
+NOT the bundle's `kalloc_oneshotR` (two providers of one `inG` print
+identically); `gen_alloc` mints PENDING beside the row; `kill_row gn kl := (⌜kl
+= 0⌝ ∗ kill_pend gn) ∨ (kill_shot gn ∗ (kill_owed gn ∨ taken_at gn))`; every
+writer of the flag fires the one-shot as it writes (`kill_paid_kill` is `==∗`).
+`killed()` reports the flag and, beside it, whatever the caller's own READ-ONLY
+access made of the row (`SpecKilled`'s `Rout`) -- the accessor could not be
+deleted: `kill_shot` is indexed by a GENERATION and `sys_pause`, one of the
+eight callers, holds no per-process ghost; usertrap's three sites lend the pid
+quarter and the registration eighth off their own block
+(`ProcInv.proc_priv_pid_reg`, the combined borrow) and take the shot back.
+`SpecKexit`'s payment is `Q (kexit_status m) ∨ (⌜status = -1⌝ ∗ kill_shot gn)`
+and `ProofKexit.kx_park` does the take at the ZOMBIE store with NO later
+(`kill_owed` is exactly the park's shape).  `kill_row` loses its interim taint
+conjunct and `kill_why*`/`kill_paid_access` with it.  Handover: scratchpad
+`self-kill-handover.md` (cont. 9-11).
 
 E5 DESIGN OF RECORD, REVISIONS 4-7 (coordinator, 2026-09-14; these amend the
 "E5 -- THE CONSOLE I/O CLAIM" note above and the RULINGS below; the kernel side

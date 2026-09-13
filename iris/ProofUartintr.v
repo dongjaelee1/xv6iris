@@ -569,7 +569,8 @@ Section ProofUartintr.
                 (Hlsr _) (Hrhr _) ltac:(reg_neq) ltac:(reg_neq) ltac:(reg_neq)
                 ltac:(pcw) ltac:(pcw) ltac:(pcw) ltac:(pcw) ltac:(pcw) ltac:(pcw)
                 ltac:(vm_compute; reflexivity)
-                with "Hcg Hpc [] [] [] [] [] Huinv Hdlab Htok [Hcnt Hfr Hcont Hhi]").
+                with "Hcg Hpc [] [] [] [] [] Huinv Hdlab Htok
+                      [Hcnt Hfr Hcont Hhi Hlgh]").
       { iApply (uii2_46 with "Ht"). }
       { iEval (rewrite -UG.ug_cr7). iApply (uii2_4a with "Ht"). }
       { iApply (uii2_4c with "Ht"). }
@@ -601,6 +602,11 @@ Section ProofUartintr.
            anchor, so the mark is strictly before the byte. *)
         assert (Hhext : ObsTrace.ohist_ext hh h)
           by exact (ObsTrace.ohist_ext_le_ext hh hl h Hhle Hanch).
+        (* ...and the same for the LOG's mark (lane CONS-IO), which both
+           port arms need: at [Uart0] it licenses consoleintr's append, at
+           [Uart1] it re-anchors a mark that never moves. *)
+        assert (Hgext : ObsTrace.ohist_ext hg h)
+          by exact (ObsTrace.ohist_ext_le_ext hg hl h Hgle Hanch).
         destruct i.
         + (* ---------------- Uart0: the hook is [consoleintr] ------------ *)
           iAssert (dev_inv γu γv ∗ console_caps γu)%I as "[#Hdinv #Hccaps]";
@@ -673,11 +679,6 @@ Section ProofUartintr.
           assert (HH2regs : ui_regs m0 H2 (pa_stk sp0 4))
             by exact (ui_regs_cs m0 M1 H2 (pa_stk sp0 4) HcsH2 Hregs1).
           iDestruct (cpu_own_transport CIDk CIDj lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
-          (* THE LOG'S ORDER FACT, on the ring mark's mould exactly: the
-             log's high-water history is at or before the popper's anchor,
-             and the byte just popped is strictly after that anchor. *)
-          assert (Hgext : ObsTrace.ohist_ext hg h)
-            by exact (ObsTrace.ohist_ext_le_ext hg hl h Hgle Hanch).
           iApply (Consoleintr.wp_consoleintr_sconf γu γv H2 γs pme lvl (av - 4)%nat eb b lks
                     h c hh hg
                     ltac:(lia) HH2a0 Hlast Hhext Hgext

@@ -44,12 +44,9 @@ LANDED: L2 (the step moves to the process), L3 (round E), L4 (dissolved into
 the durable instance), L5 (the input tag), the WAIT-EXIT arc, E1 ECHO-PRED,
 CONS-CURSOR/CONS-ROUTE/CONS-SWALLOW, OPEN-PIN, SH-LINE 1/2a/2b R1, SUPPLY-SPLIT,
 SH-OPEN, LAZY-FLAG, TEXT-LW, APP-IFACE, UNTAG, DISC-RATE, E4 SH-ECHO, E2
-INIT-BOOT (2026-09-13, `bde2b8659`), CLOSED-READ, DISC-SIMPLIFY (2026-09-13).
+INIT-BOOT (2026-09-13, `bde2b8659`), CLOSED-READ, DISC-SIMPLIFY (2026-09-13),
+CONS-ROWS (2026-09-13, `b3f64b406`).
 
-- [ ] **CONS-ROWS** (kernel; in flight, `-disc`, `lane/cons-rows`): the
-  three pure rows the line proof needs -- B1 `d = cap -> dc = d`, B4 `r = 0
-  -> 0 < cap -> dc = d + 1` on consoleread's post and relayed through
-  `console_receipt`, B3 `fileread_ret` restored in `xv6_spost` at 5.
 - [ ] **KILL-PAY** (kernel; phase 1 in flight, `-sup`, `lane/kill-pay`):
   a kill is paid with a persistent credential that reaches every party the
   kill touches (design: "KILL-ARM" below).  Trusted-statement diff for the
@@ -58,7 +55,7 @@ INIT-BOOT (2026-09-13, `bde2b8659`), CLOSED-READ, DISC-SIMPLIFY (2026-09-13).
   predicate in the console UART's invariant, the store's view shift, the
   writers' contracts, the retirement of the sublist receipts (design:
   "OUT-FUPD PHASE 1 -- DESIGN" narrowed by "TWO UARTS").
-- [ ] **SH-LINE 2b R2/R3** (U-tier; after CONS-ROWS): the line fact through
+- [ ] **SH-LINE 2b R2/R3** (U-tier; `-tlw`, next): the line fact through
   getcmd, `ush_rest` deleted; the composer `UShLine.v` with E4's dispatch;
   closes `sh_pay_rest`.
 - [ ] **E5** (after OUT-FUPD, KILL-PAY): the write leaves at the program's
@@ -2623,6 +2620,30 @@ TX-RECEIPT's `tx_claim` so the two lanes merge by juxtaposition; the hart lines'
 `boot_hart_pre`, banners-before via `k_ledger_lb [banners]` on the `started`
 invariant; `boot_k_shape` deleted.  `BACKSPACE` is the int 0x100 (not byte 8):
 the "\b \b" triple is reachable only from `%c`, unused.
+
+CONS-ROWS LANDED (2026-09-13; `b3f64b406`; 8 files +363/-139; builds
+rows14/rows15, audit = the thirteen; lemma_diff = one GONE).
+`SpecConsoleread`'s post carries two pure rows beside `⌜(0 <= r)%Z -> r =
+Z.of_nat d⌝`: B1 `⌜Z.of_nat d = Z.max 0 n -> dc = d⌝` and B4 `⌜(0 <= r)%Z ->
+d = 0%nat -> (0 < n)%Z -> dc = (d + 1)%nat⌝`, proved at all six exits from
+what the blocks already carry (no exit-kind conjunct); `dc` is an index of
+`cr_rout`/`cr_out`, `cr_winR`/`cr_winO` carry the rows.  THE CURSOR TRACKS
+THE CALL'S POPS ON THE MARKED ARM TOO (the right arms at `n0 + d`/`n0 + dc`,
+the dirty pops at `n0 + S d`): `cons_out` hands the token back at `cur + dc`,
+so rewinding to `n0` would force `dc = 0` on a dirty read and make B1
+unstatable; `cons_res`'s marker is already `cons_dirty_lb` there, and the
+caller still gets the credential disjunct at `cur := n0`.
+`SpecFileread.console_receipt P Rd n r M' addr` takes the count and carries
+both rows above the window disjunction.  `UexecExecInst.xv6_spost` at 5 is
+`⌜fileread_ret (sys_rw_count (xk_a W 2)) r⌝ ∗ ∃ P, …` (B3), off
+`sys_read_arms_ret` in `ProofSyscall.sysc_arm_read`.
+`UConsLine.ush_read_recv_leaf` relays all three at the caller's `cap` and
+gains `⌜(Z.of_nat cap < 2 ^ 31)%Z⌝` (the kernel answers the SIGNED 32-bit
+count; `UShLine.ush_count_is_cap` is the bridge); `cap < k` and the `⌜dd <=
+cap⌝ -∗` guard STAY for the consuming lane to spend (at `dd = cap` B1 puts
+`ucons_swallow` on its left arm, so the slack byte is no longer needed).
+GONE: `SpecFileread.console_recv` (no producer, no consumer).  B2 is
+KILL-PAY's.
 
 DISC-SIMPLIFY LANDED (2026-09-13; `EchoDisc.v` -577/+127, `AppEcho.v`
 comments; build disc2, audit = the thirteen; lemma_diff = 62 GONE, all the

@@ -4,57 +4,47 @@
    read -- and refuted -- without opening the logic.
 
    Design of record: claude-notes/projects/app-echo.md, "E5 -- THE OUTPUT
-   SIDE" (O1-O3 AS RULED BY THE OWNER, D0-D3; O5's allocation-failure
-   alternatives) and "E3 -- THE INPUT LINE" (R4, the per-character ruling);
-   the pre-mortem review review-echo-plan-2026-09-12.md, findings 2, 7, 8
-   and 12.
+   SIDE" (O1-O3 as ruled by the owner; O5's allocation-failure
+   alternatives; "TWO UARTS") and "E3 -- THE INPUT LINE" (R4, the
+   per-character ruling); the pre-mortem review
+   review-echo-plan-2026-09-12.md, findings 7, 8 and 12.
 
-   WHY THIS FILE EXISTS.  [AppEcho.disc] used to be [star_prefix echo_line]
-   of the cycle's INPUT BYTES ALONE -- a predicate that says nothing about
-   WHEN a byte was typed.  Review finding 7 is that the theorem is FALSE at
-   that discipline: the console ring holds 128 unconsumed bytes and
-   [consoleintr] DROPS the next one silently, so an adversary who types a
-   screenful before sh's first read breaks the correspondence between the
-   stored sequence and the input sequence, and nothing downstream can
-   repair it.  The owner's ruling (app-echo.md, O3 (d)) is a RATE BOUND
-   stated on the raw wire:
+   THE THEOREM IS ABOUT THE CONSOLE UART ONLY.  The board has two 16550s
+   and the kernel drives both: the CONSOLE ([DevModel.Uart0]) carries the
+   processes' output and [consoleintr]'s echo of what the user types, and
+   nothing else -- [printk] and [panic] write the OTHER port
+   ([DevModel.Uart1]), whose output is unconstrained and which this file
+   never reads.  So the console wire is PURE SESSION OUTPUT: what a user
+   sees is exactly what init, sh, echo and the echo-back produced, in the
+   order the transmitter accepted it.  (Before the second port existed the
+   kernel's ten boot messages were interleaved into the same wire, byte for
+   byte, and the discipline had to wait for the last of them before it
+   could read anything; all of that is gone.)
 
-     D0  no input byte until all seven "hart i starting\n" lines have
-         appeared on the wire as SUBSEQUENCES.  The three hart-0 banners
-         precede [userinit] and so precede every user byte, and the seven
-         secondaries print at times the scheduler picks; after the last of
-         them no kernel [printk] byte is ever accepted again in this
-         scenario, so the wire's suffix from that point on is PURE U -- the
-         processes' own output and the console's echo.  That is what makes
-         D1 and D2 unambiguous.
-     D1  a line's first byte only after a "$ " prompt on the pure suffix.
-     D2  every later byte only after the previous byte's echo.
+   WHY THE DISCIPLINE IS A RATE BOUND.  [AppEcho.disc] used to be
+   [star_prefix echo_line] of the cycle's INPUT BYTES ALONE -- a predicate
+   that says nothing about WHEN a byte was typed.  Review finding 7 is that
+   the theorem is FALSE at that discipline: the console ring holds 128
+   unconsumed bytes and [consoleintr] DROPS the next one silently, so an
+   adversary who types a screenful before sh's first read breaks the
+   correspondence between the stored sequence and the input sequence, and
+   nothing downstream can repair it.  The owner's ruling (app-echo.md, O3)
+   is a rate bound stated on the raw wire:
+
+     D1  a line's first byte only after the "$ " prompt has appeared.
+     D2  every later byte of a line only after the previous byte's echo.
      D3  the input bytes are a prefix of [echo_line]^* -- the LANDED
          predicate, kept verbatim as [disc_seg].
 
-   D0'S UNAMBIGUITY is section 5 and it is CHEAP: every "hart i starting\n"
-   carries a DECIMAL DIGIT, and the whole U alphabet -- init's banner, sh's
-   prompt, the echoes, echo's output, and every one of O5's failure
-   transcripts -- contains no digit at all.  So no prefix of the expected
-   session can be mistaken for a hart's boot message, whatever the
-   scheduler does.
-
-   D1 AND D2 ARE ONE CONDITION, POSITIONAL.  Rather than "byte i-1's echo
-   has appeared" beside "a prompt has appeared", section 6 states, at every
-   input position i, that a TAIL of init's prologue -- containing the whole
-   "$ " -- followed by the expected transcript for the first i input bytes
-   is already a prefix of the wire's pure suffix ([disc_pt]).  The
-   transcript for i bytes ENDS in exactly the byte D2 asks for when i is
-   mid-line, and in exactly the "$ " D1 asks for when i is at a line
-   boundary (at i = 0 it is empty, and the condition is the prompt's own
-   completion), so the one condition implies both.  The prologue's tail is
-   there because nothing orders init's banner against the seven hart lines:
-   what the prologue printed before the last of them is shuffled into the
-   wire's kernel-bearing prefix and cannot be measured in the suffix.  The
-   tail is UNIQUE ([disc_pt_tail_unique]), so this is the SIMULATION
-   INVARIANT the output proof wants: [good_out] bounds the same suffix from
-   the other side, and at an input point the two bounds meet and the
-   U-projection of the wire is pinned exactly.
+   D1 AND D2 ARE ONE CONDITION, POSITIONAL.  Section 5 states, at every
+   input position i, that the expected transcript for the first i input
+   bytes is already a prefix of the wire ([disc_pt]).  That transcript
+   ENDS in exactly the byte D2 asks for when i is mid-line, and in exactly
+   the "$ " D1 asks for when i is at a line boundary (at i = 0 it is init's
+   banner and sh's first prompt), so the one condition implies both.  It is
+   also the SIMULATION INVARIANT the output proof wants: [good_out] bounds
+   the wire from the other side, and at an input point the two bounds meet
+   and the wire is pinned exactly.
 
    WHAT IS NOT HERE.  [Hphi] -- the theorem's obligation at [echo_phi] --
    is NOT proved by this file, nor by the lane that wrote it; see the note
@@ -83,168 +73,7 @@ Definition sb (s : string) : list (bv 8) := string_bytes s.
 Definition nlb : list (bv 8) := [Z_to_bv 8 10%Z].
 
 (* ====================================================================== *)
-(*  1.  THE BOOT MESSAGES (R1)                                            *)
-(*                                                                        *)
-(*  kernel/main.c: hart 0 prints "\n", "xv6 kernel is booting\n", "\n"     *)
-(*  BEFORE userinit() and before it sets [started]; every other hart spins *)
-(*  on [started] and then prints "hart %d starting\n" of its own cpuid.    *)
-(*  [RiscvLang.NCPU] is 8, so there are SEVEN such lines and TEN messages  *)
-(*  in all (the brief's "eight" counts hart 0's three as one).  printk     *)
-(*  holds pr.lock for a whole message, so the ten do not interleave WITH   *)
-(*  EACH OTHER -- but their bytes do interleave with everything else,      *)
-(*  which is what section 7's shuffle is about.  "%d" of 1..7 is ONE       *)
-(*  decimal digit (kernel/printk.c, printint).                             *)
-(* ====================================================================== *)
-
-Definition msg_nl : list (bv 8) := nlb.
-Definition msg_booting : list (bv 8) := sb "xv6 kernel is booting"%string ++ nlb.
-
-Definition hart_line (n : Z) : list (bv 8) :=
-  sb "hart "%string ++ [Z_to_bv 8 (48 + n)%Z] ++ sb " starting"%string ++ nlb.
-
-Definition hart_lines : list (list (bv 8)) := hart_line <$> [1;2;3;4;5;6;7]%Z.
-
-Definition boot_msgs : list (list (bv 8)) :=
-  [msg_nl; msg_booting; msg_nl] ++ hart_lines.
-
-Lemma hart_lines_length : length hart_lines = 7.
-Proof. reflexivity. Qed.
-Lemma boot_msgs_length : length boot_msgs = 10.
-Proof. reflexivity. Qed.
-
-(* ====================================================================== *)
-(*  2.  THE PURE-SUFFIX POINT (R2)                                         *)
-(*                                                                        *)
-(*  [k_done w]: every hart line has appeared in [w] as a SUBSEQUENCE --    *)
-(*  stdpp's [sublist], the bytes in order but not necessarily adjacent,    *)
-(*  which is what a byte-level interleave leaves of a message.             *)
-(*  [k_point w] is the LEAST prefix length at which that became true.      *)
-(* ====================================================================== *)
-
-(* stdpp has no decision procedure for [sublist]; the greedy leftmost match
-   is one, and the discipline has to stay decidable ([AppEcho.echo_phase]
-   decides it). *)
-Fixpoint subseqb `{EqDecision A} (l1 l2 : list A) : bool :=
-  match l2 with
-  | [] => match l1 with [] => true | _ => false end
-  | y :: l2' =>
-      match l1 with
-      | [] => true
-      | x :: l1' => if decide (x = y) then subseqb l1' l2' else subseqb l1 l2'
-      end
-  end.
-
-Lemma subseqb_spec `{EqDecision A} (l1 l2 : list A) :
-  subseqb l1 l2 = true <-> l1 `sublist_of` l2.
-Proof.
-  revert l1. induction l2 as [|y l2 IH]; intros l1.
-  - destruct l1 as [|a l1]; cbn; split.
-    + intros _. constructor.
-    + intros _. reflexivity.
-    + intros Hf. discriminate Hf.
-    + intros Hs. apply sublist_nil_r in Hs. discriminate Hs.
-  - destruct l1 as [|x l1]; cbn.
-    { split; [intros _; apply sublist_nil_l | intros _; reflexivity]. }
-    destruct (decide (x = y)) as [->|Hne].
-    + rewrite IH. split.
-      * intros Hs. by apply sublist_skip.
-      * intros Hs. apply sublist_cons_r in Hs as [Hs|(l' & Heq & Hs)].
-        { trans (y :: l1); [by apply sublist_cons | exact Hs]. }
-        by simplify_eq.
-    + rewrite IH. split.
-      * intros Hs. by apply sublist_cons.
-      * intros Hs. apply sublist_cons_r in Hs as [Hs|(l' & Heq & Hs)];
-          [exact Hs | by simplify_eq].
-Qed.
-
-Global Instance sublist_byte_dec (l1 l2 : list (bv 8)) :
-  Decision (l1 `sublist_of` l2).
-Proof.
-  destruct (subseqb l1 l2) eqn:E; [left|right].
-  - by apply subseqb_spec.
-  - intros Hs. apply subseqb_spec in Hs. by rewrite E in Hs.
-Defined.
-
-Definition k_done (w : list (bv 8)) : Prop :=
-  Forall (fun l => l `sublist_of` w) hart_lines.
-
-Global Instance k_done_dec w : Decision (k_done w).
-Proof. unfold k_done. apply _. Defined.
-
-(* the least index at which a boolean test first holds, scanning upwards *)
-Fixpoint first_from (f : nat -> bool) (i n : nat) : option nat :=
-  match n with
-  | O => None
-  | S n' => if f i then Some i else first_from f (S i) n'
-  end.
-
-Lemma first_from_Some (f : nat -> bool) (i n k : nat) :
-  first_from f i n = Some k ->
-  i <= k < i + n /\ f k = true /\ (forall j, i <= j < k -> f j = false).
-Proof.
-  revert i. induction n as [|n IH]; intros i Hf; [discriminate|].
-  cbn in Hf. destruct (f i) eqn:Hi.
-  - injection Hf as <-. split; [lia|]. split; [exact Hi|]. intros j Hj. lia.
-  - destruct (IH _ Hf) as (Hr & Hk & Hlt). split; [lia|]. split; [exact Hk|].
-    intros j Hj. destruct (decide (j = i)) as [->|Hne]; [exact Hi|].
-    apply Hlt. lia.
-Qed.
-
-Lemma first_from_None (f : nat -> bool) (i n j : nat) :
-  first_from f i n = None -> i <= j < i + n -> f j = false.
-Proof.
-  revert i. induction n as [|n IH]; intros i Hf Hj; [lia|].
-  cbn in Hf. destruct (f i) eqn:Hi; [discriminate|].
-  destruct (decide (j = i)) as [->|Hne]; [exact Hi|].
-  apply (IH (S i) Hf). lia.
-Qed.
-
-Lemma first_from_true (f : nat -> bool) (i n j : nat) :
-  i <= j < i + n -> f j = true -> exists k, first_from f i n = Some k.
-Proof.
-  intros Hj Hfj. destruct (first_from f i n) as [k|] eqn:E; [by eexists|].
-  by rewrite (first_from_None _ _ _ _ E Hj) in Hfj.
-Qed.
-
-Definition k_point (w : list (bv 8)) : option nat :=
-  first_from (fun k => bool_decide (k_done (take k w))) 0 (S (length w)).
-
-(* the point itself, with the harmless total default: past the end of the
-   wire, which is where "the harts have not all printed" leaves it *)
-Definition k_pt (w : list (bv 8)) : nat := from_option id (length w) (k_point w).
-
-Lemma k_point_done (w : list (bv 8)) (k : nat) :
-  k_point w = Some k -> k_done (take k w) /\ k <= length w.
-Proof.
-  intros Hk. apply first_from_Some in Hk as (Hr & Ht & _).
-  split; [exact (bool_decide_eq_true_1 _ Ht) | lia].
-Qed.
-
-Lemma k_point_least (w : list (bv 8)) (k j : nat) :
-  k_point w = Some k -> j <= length w -> k_done (take j w) -> k <= j.
-Proof.
-  intros Hk Hj Hd. apply first_from_Some in Hk as (_ & _ & Hlt).
-  destruct (decide (k <= j)) as [Hle|Hgt]; [exact Hle|]. exfalso.
-  assert (Hf : bool_decide (k_done (take j w)) = false) by (apply Hlt; lia).
-  by rewrite (bool_decide_eq_true_2 _ Hd) in Hf.
-Qed.
-
-Lemma k_done_k_point (w : list (bv 8)) :
-  k_done w -> exists k, k_point w = Some k.
-Proof.
-  intros Hd. apply (first_from_true _ 0 (S (length w)) (length w)); [lia|].
-  apply bool_decide_eq_true_2. rewrite take_ge; [exact Hd|done].
-Qed.
-
-Lemma k_point_None (w : list (bv 8)) :
-  (forall k, k <= length w -> ~ k_done (take k w)) -> k_point w = None.
-Proof.
-  intros Hn. destruct (k_point w) as [k|] eqn:E; [|done].
-  apply k_point_done in E as [Hd Hk]. by destruct (Hn k Hk).
-Qed.
-
-(* ====================================================================== *)
-(*  3.  THE INPUT LINE AND D3 (the landed predicate, verbatim)             *)
+(*  1.  THE INPUT LINE AND D3 (the landed predicate, verbatim)             *)
 (* ====================================================================== *)
 
 (* the console line the discipline admits: "echo hello world\n" -- the
@@ -264,7 +93,8 @@ Proof. rewrite echo_line_length. lia. Qed.
 Lemma echo_line_string : echo_line = sb "echo hello world"%string ++ nlb.
 Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
-(* the INPUT bytes of an observation list, in order *)
+(* the INPUT bytes of an observation list, in order -- the CONSOLE's; an
+   input on the other port is not the user's and is invisible here *)
 Definition ins (h : list mobs) : list (bv 8) :=
   omap (fun e => match e with ObsUartIn Uart0 b => Some b | _ => None end) h.
 
@@ -317,7 +147,7 @@ Qed.
 
 (* D3: one power cycle's input keeps the CONTENT discipline.  This is the
    whole of the LANDED [AppEcho.disc_seg]; [UConsLine]'s line statements
-   are written at it and are unchanged (section 6's projection). *)
+   are written at it and are unchanged (section 5's projection). *)
 Definition disc_seg (seg : list mobs) : Prop := star_prefix echo_line (ins seg).
 
 Global Instance disc_seg_dec seg : Decision (disc_seg seg).
@@ -331,7 +161,7 @@ Lemma disc_seg_out (seg : list mobs) (b : bv 8) :
 Proof. rewrite /disc_seg ins_app ins_out app_nil_r. done. Qed.
 
 (* THE LANDED WHOLE-HISTORY PREDICATE, kept under its own name: everything
-   already proved against it still means what it meant, and section 6's
+   already proved against it still means what it meant, and section 5's
    [disc_proj] is the one step from the new discipline to it. *)
 Definition disc_old (h : list mobs) : Prop := Forall disc_seg (cycles_of h).
 
@@ -339,10 +169,12 @@ Global Instance disc_old_dec h : Decision (disc_old h).
 Proof. rewrite /disc_old. apply _. Qed.
 
 (* ====================================================================== *)
-(*  4.  THE EXPECTED SESSION (R3, with O5's alternatives)                  *)
+(*  2.  THE EXPECTED SESSION (R3, with O5's alternatives)                  *)
 (* ====================================================================== *)
 
-(* user/init.c:26 and user/sh.c:137 -- init's banner, then sh's prompt. *)
+(* user/init.c:26 and user/sh.c:137 -- init's banner, then sh's prompt.
+   Both are console writes ([write(1, ...)] and [write(2, "$ ", 2)] on
+   descriptors init opened on "console"), so both reach THIS wire. *)
 Definition u_prologue : list (bv 8) :=
   sb "init: starting sh"%string ++ nlb ++ sb "$ "%string.
 
@@ -403,23 +235,11 @@ Definition sess_n (cs : list nat) (n : nat) : list (bv 8) :=
 Definition sess (cs : list nat) (l : list (bv 8)) : list (bv 8) :=
   sess_n cs (length l).
 
-(* THE TRANSCRIPT PAST THE PROLOGUE.  The discipline cannot measure the
-   prologue itself, because part of it may have been printed BEFORE the
-   last hart line and so be shuffled into the wire's kernel-bearing
-   prefix; what it measures is the rest (section 6). *)
-Definition sess_tail (cs : list nat) (n : nat) : list (bv 8) :=
-  alt_seq cs (n `div` length echo_line)
-  ++ take (n `mod` length echo_line) echo_line.
-
-Lemma sess_n_split cs n : sess_n cs n = u_prologue ++ sess_tail cs n.
-Proof. reflexivity. Qed.
-
-Lemma drop_prologue_sess_n cs n :
-  drop (length u_prologue) (sess_n cs n) = sess_tail cs n.
-Proof. by rewrite sess_n_split drop_app_length. Qed.
-
-Lemma sess_tail_0 cs : sess_tail cs 0 = [].
-Proof. reflexivity. Qed.
+Lemma sess_n_0 cs : sess_n cs 0 = u_prologue.
+Proof.
+  by rewrite /sess_n Nat.Div0.div_0_l Nat.Div0.mod_0_l alt_seq_0 take_0
+             app_nil_r.
+Qed.
 
 (* R3's relation: [out] is what the session may have emitted for input [l],
    under SOME resolution of the per-line alternatives. *)
@@ -458,15 +278,6 @@ Proof.
   rewrite H. apply prefix_take.
 Qed.
 
-Lemma prefix_common {A} (a b s : list A) :
-  a `prefix_of` s -> b `prefix_of` s -> length a <= length b -> a `prefix_of` b.
-Proof.
-  intros [k1 Hs] [k2 Hs'] Hlen.
-  assert (Ha : a = take (length a) b).
-  { rewrite -(take_app_le b k2 (length a) Hlen) -Hs' Hs take_app_length //. }
-  exists (drop (length a) b). by rewrite {1}Ha take_drop.
-Qed.
-
 Lemma sess_n_step cs n : sess_n cs n `prefix_of` sess_n cs (S n).
 Proof.
   rewrite /sess_n.
@@ -485,13 +296,6 @@ Proof.
   induction d as [|d IH].
   - rewrite Nat.add_0_r. reflexivity.
   - rewrite Nat.add_succ_r. etrans; [exact IH | apply sess_n_step].
-Qed.
-
-Lemma sess_tail_mono cs n m :
-  n <= m -> sess_tail cs n `prefix_of` sess_tail cs m.
-Proof.
-  intros Hnm. apply (prefix_app_inv u_prologue).
-  rewrite -!sess_n_split. by apply sess_n_mono.
 Qed.
 
 (* R3's monotonicity, both ways round *)
@@ -545,121 +349,7 @@ Proof.
 Qed.
 
 (* ====================================================================== *)
-(*  5.  D0 IS UNAMBIGUOUS: THE SESSION HAS NO DIGITS (R2)                  *)
-(* ====================================================================== *)
-
-Definition digit_bytes : list (bv 8) :=
-  Z_to_bv 8 <$> [48;49;50;51;52;53;54;55;56;57]%Z.
-
-Definition digit_free (w : list (bv 8)) : Prop :=
-  Forall (fun b => b ∉ digit_bytes) w.
-
-Global Instance digit_free_dec w : Decision (digit_free w).
-Proof. unfold digit_free. apply _. Defined.
-
-Lemma digit_free_app w1 w2 :
-  digit_free w1 -> digit_free w2 -> digit_free (w1 ++ w2).
-Proof. rewrite /digit_free Forall_app. by split. Qed.
-
-Lemma digit_free_take n w : digit_free w -> digit_free (take n w).
-Proof. rewrite /digit_free. apply Forall_take. Qed.
-
-Lemma digit_free_sublist (l w : list (bv 8)) :
-  l `sublist_of` w -> digit_free w -> digit_free l.
-Proof.
-  rewrite /digit_free.
-  induction 1 as [| x l w _ IH | x l w _ IH]; intros Hw; [done| |].
-  - rewrite Forall_cons in Hw. destruct Hw as [Hx Hw].
-    rewrite Forall_cons. split; [exact Hx | by apply IH].
-  - rewrite Forall_cons in Hw. by apply IH, Hw.
-Qed.
-
-Lemma digit_free_prefix (l w : list (bv 8)) :
-  l `prefix_of` w -> digit_free w -> digit_free l.
-Proof. intros [k ->]. rewrite /digit_free Forall_app. by intros [? _]. Qed.
-
-(* the U side, byte for byte: no digit anywhere *)
-Lemma digit_free_prologue : digit_free u_prologue.
-Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
-
-Lemma digit_free_echo_line : digit_free echo_line.
-Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
-
-Lemma digit_free_line_alts : Forall digit_free line_alts.
-Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
-
-Lemma digit_free_alt (c : nat) : digit_free (line_alts !!! c).
-Proof.
-  destruct (line_alts !! c) as [a|] eqn:E.
-  - rewrite (list_lookup_total_correct _ _ _ E).
-    by eapply Forall_lookup_1; [apply digit_free_line_alts|exact E].
-  - rewrite list_lookup_total_alt E /=. constructor.
-Qed.
-
-Lemma digit_free_alt_seq cs q : digit_free (alt_seq cs q).
-Proof.
-  induction q as [|q IH].
-  - rewrite alt_seq_0. constructor.
-  - rewrite alt_seq_S. apply digit_free_app; [exact IH|].
-    rewrite /alt_blk. apply digit_free_app;
-      [apply digit_free_echo_line | apply digit_free_alt].
-Qed.
-
-Lemma digit_free_sess_n cs n : digit_free (sess_n cs n).
-Proof.
-  rewrite /sess_n. apply digit_free_app; [apply digit_free_prologue|].
-  apply digit_free_app;
-    [apply digit_free_alt_seq | apply digit_free_take, digit_free_echo_line].
-Qed.
-
-(* ...while every hart line carries its own decimal digit *)
-Lemma hart_lines_not_digit_free (l : list (bv 8)) :
-  l ∈ hart_lines -> ~ digit_free l.
-Proof.
-  intros Hl.
-  assert (HF : Forall (fun m => ~ digit_free m) hart_lines).
-  { apply (bool_decide_unpack _). vm_compute. exact I. }
-  rewrite Forall_forall in HF. by apply HF.
-Qed.
-
-(* D0'S UNAMBIGUITY.  No hart line is a subsequence of anything the session
-   can have printed, so the point at which the discipline lets the user
-   start typing cannot be faked by the user's own transcript. *)
-Lemma k_done_digit_free (w : list (bv 8)) : digit_free w -> ~ k_done w.
-Proof.
-  intros Hdf Hk.
-  assert (Hin : hart_line 1%Z ∈ hart_lines).
-  { rewrite /hart_lines. apply elem_of_list_fmap_1, elem_of_list_here. }
-  apply (hart_lines_not_digit_free _ Hin).
-  eapply digit_free_sublist; [|exact Hdf].
-  rewrite /k_done Forall_forall in Hk. by apply Hk.
-Qed.
-
-Lemma hart_line_not_sublist_sess (cs : list nat) (n : nat)
-    (l w : list (bv 8)) :
-  l ∈ hart_lines -> w `prefix_of` sess_n cs n -> ~ (l `sublist_of` w).
-Proof.
-  intros Hl Hw Hs. apply (hart_lines_not_digit_free _ Hl).
-  eapply digit_free_sublist; [exact Hs|].
-  eapply digit_free_prefix; [exact Hw | apply digit_free_sess_n].
-Qed.
-
-Lemma k_point_sess_n (cs : list nat) (n : nat) : k_point (sess_n cs n) = None.
-Proof.
-  apply k_point_None. intros k _. apply k_done_digit_free.
-  apply digit_free_take, digit_free_sess_n.
-Qed.
-
-Lemma k_point_expected (l out : list (bv 8)) :
-  expected_rel l out -> k_point out = None.
-Proof.
-  intros (cs & _ & Hp). apply k_point_None. intros k _.
-  apply k_done_digit_free, digit_free_take.
-  eapply digit_free_prefix; [exact Hp | apply digit_free_sess_n].
-Qed.
-
-(* ====================================================================== *)
-(*  6.  THE DISCIPLINE (R4)                                               *)
+(*  3.  THE WIRE THE USER HAD SEEN AT EACH INPUT                           *)
 (* ====================================================================== *)
 
 (* the wire the user had seen when each input byte was typed: [in_pres seg]
@@ -681,9 +371,7 @@ Qed.
 (* AN EVENT THAT IS NOT A CONSOLE INPUT IS INVISIBLE TO THE DISCIPLINE.
    The machine has two 16550s and the discipline reads ONE of them -- the
    console's input side and the console's wire -- so an output byte, and
-   ANY event of the other port, leaves both [ins] and [in_pres] alone.
-   Before the second port existed this was only "an output byte"; it is the
-   same fact with the same proof, at the right generality. *)
+   ANY event of the other port, leaves both [ins] and [in_pres] alone. *)
 Definition not_cons_in (e : mobs) : Prop :=
   match e with ObsUartIn Uart0 _ => False | _ => True end.
 
@@ -707,160 +395,32 @@ Proof.
   destruct e as [[] ?|[] ?| |]; cbn; rewrite IH ?fmap_app //.
 Qed.
 
-(* ---- THE PROLOGUE'S TAIL.  [init]'s banner and sh's first prompt are U
-   bytes, and nothing orders them against the seven hart lines: whatever
-   part of [u_prologue] reached the wire BEFORE the last hart line is
-   shuffled into the wire's kernel-bearing prefix and is not measurable
-   there.  So the discipline names the REST of the prologue -- a suffix
-   [t] of it -- and requires that tail, and everything after it, to lie in
-   the PURE SUFFIX.  [t] must contain the whole "$ " (the two bytes of
-   sh's [write(2, "$ ", 2)], which [uartwrite] stores one at a time under
-   [tx_lock], so [consoleintr]'s echo can land between them): if only the
-   '$' had been accepted before the k-point, a prompt test met by some
-   hart line's own space would let the user's first echo precede the real
-   ' ' on the wire, and [good_out] would be FALSE. ---- *)
+(* ====================================================================== *)
+(*  4.  THE DISCIPLINE (R4)                                               *)
+(* ====================================================================== *)
 
-Definition prologue_tails : list (list (bv 8)) :=
-  (fun j => drop j u_prologue) <$> List.seq 0 (S (length u_prologue)).
+(* D1/D2 AT ONE INPUT POSITION.  [p] is the wire before input [i]: the
+   expected transcript for the [i] bytes typed so far is already there.
+   Mid-line that transcript ends in the echo of byte [i-1] (D2); at a line
+   boundary it ends in the "$ " of the previous line's continuation, and at
+   [i = 0] it is init's banner and sh's first prompt (D1).
 
-Lemma elem_of_prologue_tails (t : list (bv 8)) :
-  t ∈ prologue_tails <-> t `suffix_of` u_prologue.
-Proof.
-  rewrite /prologue_tails elem_of_list_fmap. split.
-  - intros (j & -> & _). exists (take j u_prologue). by rewrite take_drop.
-  - intros [k Hk]. exists (length k). split.
-    + by rewrite Hk drop_app_length.
-    + apply elem_of_list_In, in_seq.
-      assert (Hl : length u_prologue = length k + length t)
-        by (rewrite Hk length_app //).
-      lia.
-Qed.
-
-Definition prompt_tails : list (list (bv 8)) :=
-  List.filter (fun t => bool_decide (sb "$ "%string `suffix_of` t))
-    prologue_tails.
-
-Lemma elem_of_prompt_tails (t : list (bv 8)) :
-  t ∈ prompt_tails <-> t `suffix_of` u_prologue /\ sb "$ "%string `suffix_of` t.
-Proof.
-  rewrite /prompt_tails elem_of_list_In List.filter_In. split.
-  - intros [H1 H2]. split.
-    + apply elem_of_prologue_tails, elem_of_list_In, H1.
-    + by apply bool_decide_eq_true_1 in H2.
-  - intros [H1 H2]. split.
-    + by apply elem_of_list_In, elem_of_prologue_tails.
-    + by apply bool_decide_eq_true_2.
-Qed.
-
-(* THE PROLOGUE IS BORDER-FREE among its prompt-bearing tails: of the
-   nineteen suffixes of "init: starting sh\n$ " that end in "$ ", none is a
-   prefix of another.  Closed, so [vm_compute] answers it. *)
-Lemma prompt_tails_antichain_comp :
-  Forall (fun t => Forall (fun t' => t `prefix_of` t' -> t = t') prompt_tails)
-    prompt_tails.
-Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
-
-(* ...and the antichain is not vacuous: there are NINETEEN tails, and the
-   whole prologue is one of them (durable-notes.md, "Vacuity" -- a
-   [Forall] over an empty list proves itself, and a [disc_pt] whose
-   existential had no witness would make every landed corollary of the
-   discipline true and useless). *)
-Lemma prompt_tails_length : length prompt_tails = 19.
-Proof. reflexivity. Qed.
-
-Lemma prologue_in_prompt_tails : u_prologue ∈ prompt_tails.
-Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
-
-Lemma prompt_tails_antichain (t t' : list (bv 8)) :
-  t ∈ prompt_tails -> t' ∈ prompt_tails -> t `prefix_of` t' -> t = t'.
-Proof.
-  intros Ht Ht'. pose proof prompt_tails_antichain_comp as HF.
-  rewrite Forall_forall in HF. specialize (HF t Ht).
-  rewrite Forall_forall in HF. by apply (HF t' Ht').
-Qed.
-
-(* D0 AND D1/D2 AT ONE INPUT POSITION.  [p] is the wire before input [i]:
-     D0    every hart line has already appeared in it, so what follows the
-           k-point is PURE U;
-     D1/D2 the prologue's tail [t] -- at least the whole prompt -- and then
-           the expected transcript for the [i] bytes typed so far are
-           already there, after the k-point.  Mid-line that transcript ends
-           in the echo of byte [i-1] (D2); at a line boundary it ends in
-           the "$ " of the previous line's continuation, and at [i = 0] it
-           is empty so the condition is exactly "the prompt completed after
-           the k-point" (D1).
-
-   WHAT THIS DOES AND DOES NOT CLAIM, as fact.  The k-point falls at the
-   END of the kernel's output: the last hart to print can have its own line
-   completed as a subsequence only by its own " starting\n", and the
-   kernel's bytes alone already suffice there, so the k-point is neither
-   earlier nor later.  Hence the theorem BITES on every schedule where sh's
-   prompt completes after the last hart line, and is VACUOUS -- no
-   disciplined input, so nothing is claimed beyond safety and the boot
-   messages -- on schedules where the whole prompt preceded it.  Both exist
-   in the model, which has no fairness: [started = 1] is set after
-   [userinit()] and hart 0 then enters [scheduler()], so a secondary hart
-   may be arbitrarily late.  Physically the hart lines follow [started] by
-   microseconds while sh's prompt follows the disk I/O of two [exec]s, so
-   the first is the real case. *)
+   The wire is the CONSOLE's, and nothing but the session writes it, so the
+   transcript is measured from the start of the wire: there is no kernel
+   prefix to skip and no partial prologue to name.  WHAT THIS DOES AND DOES
+   NOT CLAIM, as fact: a user who types before the prompt -- or before the
+   previous byte's echo -- is outside the discipline, and the theorem says
+   nothing about that cycle beyond safety.  Under the discipline at most
+   one line (seventeen bytes) is ever outstanding in the console ring,
+   which holds 128, so [consoleintr] drops nothing. *)
 Definition disc_pt (cs : list nat) (i : nat) (p : list mobs) : Prop :=
-  k_done (obs_wire Uart0 p)
-  /\ exists t : list (bv 8),
-       t `suffix_of` u_prologue /\ sb "$ "%string `suffix_of` t
-       /\ (t ++ drop (length u_prologue) (sess_n cs i))
-            `prefix_of` drop (k_pt (obs_wire Uart0 p)) (obs_wire Uart0 p).
+  sess_n cs i `prefix_of` obs_wire Uart0 p.
 
 Global Instance disc_pt_dec cs i p : Decision (disc_pt cs i p).
-Proof.
-  rewrite /disc_pt.
-  destruct (decide (k_done (obs_wire Uart0 p))) as [Hk|Hk]; [|right; by intros [? _]].
-  destruct (decide (Exists
-              (fun t => (t ++ drop (length u_prologue) (sess_n cs i))
-                          `prefix_of` drop (k_pt (obs_wire Uart0 p)) (obs_wire Uart0 p))
-              prompt_tails)) as [HE|HE].
-  - left. split; [exact Hk|].
-    apply Exists_exists in HE as (t & Ht & Hp).
-    apply elem_of_prompt_tails in Ht as [H1 H2]. by exists t.
-  - right. intros [_ (t & H1 & H2 & Hp)]. apply HE, Exists_exists.
-    exists t. split; [by apply elem_of_prompt_tails | exact Hp].
-Defined.
+Proof. rewrite /disc_pt. apply _. Defined.
 
-(* THE TAIL IS UNIQUE, which is what E5's simulation needs: the [t] the
-   discipline exhibits at an input position is forced to be the [t] the
-   REAL decomposition of the wire supplies, so the two bounds on the pure
-   suffix -- this one from below, [good_out]'s from above -- are bounds on
-   the same word. *)
-Lemma prompt_tail_le (X s t t' : list (bv 8)) :
-  t ∈ prompt_tails -> t' ∈ prompt_tails ->
-  (t ++ X) `prefix_of` s -> (t' ++ X) `prefix_of` s ->
-  length t <= length t' -> t = t'.
-Proof.
-  intros Ht Ht' Hp Hp' Hlen.
-  apply (prompt_tails_antichain _ _ Ht Ht').
-  apply (prefix_common t t' (t' ++ X)).
-  - eapply prefix_app_l. eapply prefix_common; [exact Hp|exact Hp'|].
-    rewrite !length_app. lia.
-  - apply prefix_app_r. reflexivity.
-  - exact Hlen.
-Qed.
-
-Lemma disc_pt_tail_unique (X s t t' : list (bv 8)) :
-  t `suffix_of` u_prologue -> sb "$ "%string `suffix_of` t ->
-  (t ++ X) `prefix_of` s ->
-  t' `suffix_of` u_prologue -> sb "$ "%string `suffix_of` t' ->
-  (t' ++ X) `prefix_of` s ->
-  t = t'.
-Proof.
-  intros H1 H2 Hp H1' H2' Hp'.
-  assert (Ht : t ∈ prompt_tails) by (apply elem_of_prompt_tails; done).
-  assert (Ht' : t' ∈ prompt_tails) by (apply elem_of_prompt_tails; done).
-  destruct (decide (length t <= length t')) as [Hle|Hgt].
-  - exact (prompt_tail_le X s t t' Ht Ht' Hp Hp' Hle).
-  - symmetry. apply (prompt_tail_le X s t' t Ht' Ht Hp' Hp). lia.
-Qed.
-
-(* THE NEW PER-CYCLE DISCIPLINE: D3, and at every input byte D0 + D1/D2
-   under ONE resolution of the per-line alternatives. *)
+(* THE PER-CYCLE DISCIPLINE: D3, and at every input byte D1/D2 under ONE
+   resolution of the per-line alternatives. *)
 Definition disc_seg' (seg : list mobs) : Prop :=
   disc_seg seg
   /\ exists cs : list nat,
@@ -942,16 +502,13 @@ Lemma disc_seg'_proj seg : disc_seg' seg -> disc_seg seg.
 Proof. by intros [? _]. Qed.
 
 (* ANTI-VACUITY AT A LITERAL.  [disc_seg'] is not merely decidable and
-   prefix-closed: it is SATISFIED, by the schedule the design names -- the
-   ten boot messages, then init's banner and sh's prompt, then the first
-   byte of "echo hello world\n".  Everything in it is closed, so
-   [vm_compute] answers it, and it is the check that says the strengthened
-   D1/D2 did not make the discipline unsatisfiable. *)
-Definition demo_wire : list (bv 8) :=
-  msg_nl ++ msg_booting ++ msg_nl ++ concat hart_lines ++ u_prologue.
-
+   prefix-closed: it is SATISFIED, by the schedule the design names --
+   init's banner and sh's prompt on the wire, then the first byte of
+   "echo hello world\n".  Everything in it is closed, so [vm_compute]
+   answers it, and it is the check that says D1/D2 did not make the
+   discipline unsatisfiable. *)
 Definition demo_seg : list mobs :=
-  ((fun b => ObsUartOut Uart0 b) <$> demo_wire) ++ [ObsUartIn Uart0 (Z_to_bv 8 101%Z)].
+  ((fun b => ObsUartOut Uart0 b) <$> u_prologue) ++ [ObsUartIn Uart0 (Z_to_bv 8 101%Z)].
 
 Lemma demo_disc_seg' : disc_seg' demo_seg.
 Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
@@ -1061,9 +618,8 @@ Proof.
   assert (Hi' : in_pres (seg ++ [ObsUartIn Uart0 b]) !! i = Some p).
   { rewrite in_pres_in lookup_app_l; [exact Hi|].
     rewrite in_pres_length. lia. }
-  destruct (Hall i p Hi') as [Hk Hpre].
-  split; [exact Hk|].
-  rewrite sess_n_take; [exact Hpre|].
+  specialize (Hall i p Hi'). rewrite /disc_pt in Hall |- *.
+  rewrite sess_n_take; [exact Hall|].
   apply Nat.Div0.div_le_mono. lia.
 Qed.
 
@@ -1079,50 +635,41 @@ Proof.
 Qed.
 
 (* ====================================================================== *)
-(*  7.  THE CLAIM (R5)                                                    *)
+(*  5.  THE CLAIM (R5)                                                    *)
 (* ====================================================================== *)
 
-(* an INTERLEAVING of two streams, order preserved within each.  The wire
-   carries no source tag ([RiscvLang.mobs] has only the byte), so the claim
-   says the observed bytes ARE such an interleaving -- and the witness is
-   the kernel's own per-byte tagging (lane TX-TAG), never chosen for
-   convenience. *)
-Inductive shuffle {A} : list A -> list A -> list A -> Prop :=
-  | shuffle_nil : shuffle [] [] []
-  | shuffle_l (x : A) l1 l2 l : shuffle l1 l2 l -> shuffle (x :: l1) l2 (x :: l)
-  | shuffle_r (x : A) l1 l2 l : shuffle l1 l2 l -> shuffle l1 (x :: l2) (x :: l).
-
-Lemma shuffle_nil_l {A} (l : list A) : shuffle [] l l.
-Proof. induction l; by constructor. Qed.
-Lemma shuffle_nil_r {A} (l : list A) : shuffle l [] l.
-Proof. induction l; by constructor. Qed.
-Lemma shuffle_length {A} (l1 l2 l : list A) :
-  shuffle l1 l2 l -> length l = length l1 + length l2.
-Proof. induction 1; cbn; lia. Qed.
-
-(* THE KERNEL STREAM.  printk holds pr.lock for a whole message, so the ten
-   boot messages do not interleave with each other; hart 0's three precede
-   [started = 1] and so precede all seven hart lines, which the scheduler
-   may order any way it likes.  The trace may stop in the middle of one,
-   hence the prefix. *)
-Definition boot_stream (ks : list (bv 8)) : Prop :=
-  exists hl : list (list (bv 8)),
-    hl ≡ₚ hart_lines
-    /\ ks `prefix_of` (msg_nl ++ msg_booting ++ msg_nl ++ concat hl).
-
-(* THE OUTPUT CLAIM for one power cycle: every byte that reached the wire
-   is either a boot message's or the session's, in each one's own order,
-   and the session part is a PREFIX of the transcript this cycle's input
-   calls for. *)
+(* THE OUTPUT CLAIM for one power cycle: everything that reached the
+   console wire is a PREFIX of the transcript this cycle's input calls
+   for, under some resolution of the per-line alternatives.  Nothing else
+   is on this wire -- the kernel's own messages go to the other port -- so
+   there is no interleaving to name and no witness to exhibit: the claim
+   is a prefix test on the raw wire. *)
 Definition good_out (seg : list mobs) : Prop :=
-  exists (cs : list nat) (ks us : list (bv 8)),
-    shuffle ks us (obs_wire Uart0 seg)
-    /\ boot_stream ks
-    /\ us `prefix_of` sess cs (ins seg).
+  expected_rel (ins seg) (obs_wire Uart0 seg).
 
 Lemma good_out_nil : good_out [].
+Proof. exists []. split; [constructor|]. apply prefix_nil. Qed.
+
+(* ...and it is not vacuous either: the same schedule [demo_disc_seg']
+   admits satisfies it. *)
+Lemma demo_good_out : good_out demo_seg.
 Proof.
-  exists [], [], []. split; [constructor|]. split.
-  - exists hart_lines. split; [done|]. apply prefix_nil.
-  - apply prefix_nil.
+  exists []. split; [constructor|].
+  apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.
+
+(* AT AN INPUT POINT THE TWO BOUNDS MEET.  The discipline says the expected
+   transcript for the bytes typed so far is a prefix of the wire; the claim
+   says the wire is a prefix of the transcript for the same bytes.  So at
+   the moment a disciplined byte is typed the wire IS the transcript --
+   which is the simulation invariant E5's proof of [Hphi] carries: sh has
+   consumed every previous line, the ring holds at most the line in
+   progress, and [consoleintr] drops nothing. *)
+Lemma disc_pt_good_out_pin (cs : list nat) (i : nat) (p : list mobs) :
+  length (ins p) = i ->
+  disc_pt cs i p -> obs_wire Uart0 p `prefix_of` sess cs (ins p) ->
+  obs_wire Uart0 p = sess_n cs i.
+Proof.
+  intros Hlen Hd Hg. rewrite /disc_pt in Hd. rewrite /sess Hlen in Hg.
+  by apply (anti_symm prefix).
 Qed.

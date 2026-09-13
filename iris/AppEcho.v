@@ -145,8 +145,10 @@ Local Open Scope Z_scope.
 (*  ALONE (review-echo-plan-2026-09-12.md, finding 7: the theorem is FALSE *)
 (*  at that discipline, because the 129th unconsumed byte is dropped       *)
 (*  silently) and became the owner's RATE BOUND over the interleaved       *)
-(*  trace -- D0 (wait for all seven harts) and D1/D2 (wait for the prompt, *)
-(*  then for each byte's echo) beside the old content condition D3.  The   *)
+(*  trace -- D1/D2 (wait for the prompt, then for each byte's echo) beside *)
+(*  the old content condition D3, all read off the CONSOLE UART's wire,    *)
+(*  which nothing but the session writes (the kernel's own messages go to  *)
+(*  the other port and are not the theorem's concern).  The               *)
 (*  whole of it is pure combinatorics over [list mobs], so it lives in     *)
 (*  [EchoDisc.v] -- EXPORTED here, because everything stated against the   *)
 (*  landed names ([echo_line], [star_prefix], [disc_seg], [disc]) keeps    *)
@@ -1327,10 +1329,11 @@ End EchoInit.
 (* ====================================================================== *)
 
 (* THE CONCLUSION, at last: every power cycle whose input kept the console
-   discipline emitted, on the wire, an interleaving of the kernel's ten
-   boot messages with a PREFIX of the session transcript that cycle's input
-   calls for ([EchoDisc.good_out]).  It was [True] until 2026-09-12, and at
-   [True] the whole theorem said SAFETY AND NOTHING ELSE.
+   discipline emitted, on the CONSOLE's wire, a PREFIX of the session
+   transcript that cycle's input calls for ([EchoDisc.good_out]) -- and
+   nothing else, because the kernel's own messages go to the other UART.
+   It was [True] until 2026-09-12, and at [True] the whole theorem said
+   SAFETY AND NOTHING ELSE.
 
    [App.app_phi] takes the operational state as well; echo's conclusion
    reads only the trace, so the state argument is dropped -- the durable
@@ -1339,9 +1342,9 @@ End EchoInit.
    THE OBLIGATION IS OPEN.  [Hphi] -- the hypothesis of
    [App.xv6_app_adequacy] that this must be proved at -- IS NOT PROVED BY
    THIS FILE AND NOT BY THE LANE THAT WROTE THIS DEFINITION.  It needs the
-   kernel's per-byte source tagging (lane TX-TAG), the located write
-   receipts (TX-RECEIPT / ECHO-RECEIPT) and the ledger's shadow of the
-   accepted list (APP-IFACE); the proof is E5's, and it reads the ledger
+   application-fixed output predicate in the console UART's invariant,
+   paid at every store by the writer's own view shift (lane OUT-FUPD), and
+   the ledger's reading of it; the proof is E5's, and it reads the ledger
    against [echo_R_untainted] on the crash slot's taint arm.  There is
    deliberately NO lemma here that looks like it discharges [Hphi]. *)
 Definition echo_phi : gstate -> list mobs -> Prop :=

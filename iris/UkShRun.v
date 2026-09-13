@@ -328,10 +328,23 @@ Section UkShRun.
   Global Instance ush_str_persistent g x : Persistent (ush_str g x).
   Proof. apply _. Qed.
 
+  (* Structural, not one [apply _] per branch: [apply] peels straight through
+     [ush_w32]/[ush_ptr]/[ush_str] -- each of which already HAS its instance
+     right above -- and re-derives them from the bytes.  Descend through the
+     connectives by name and let the search see only the leaves; [cbn
+     [ush_cmd]] (not bare [cbn]) is what keeps those leaves folded for it. *)
+  Local Ltac ush_pers :=
+    lazymatch goal with
+    | |- Persistent (bi_sep _ _) => apply bi.sep_persistent; [ush_pers|ush_pers]
+    | |- Persistent (bi_exist _) => apply bi.exist_persistent; intro; ush_pers
+    | |- _ => apply _
+    end.
+
   Global Instance ush_cmd_persistent g t c : Persistent (ush_cmd g t c).
   Proof.
     revert t. induction c as [ args | c1 IH file mode fd | l IHl r IHr
-                             | l IHl r IHr | c1 IH ]; intros t; cbn; apply _.
+                             | l IHl r IHr | c1 IH ]; intros t;
+      cbn [ush_cmd]; ush_pers.
   Qed.
 
   Lemma ush_cmd_addr (g : gname) (t : Z) (c : ushcmd) :

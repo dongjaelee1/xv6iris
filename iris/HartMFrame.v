@@ -397,46 +397,6 @@ Section gpr.
   Context `{!riscvGS Σ}.
   Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
 
-  (* the model's GPR read, at a SYMBOLIC index, against the caller's own
-     [gpr_pt] entry.  x0 is the [Ret] case (hardwired zero, nothing owned);
-     x1..x31 are one [RegRead] node each. *)
-  Lemma swp_rX_bits (i : SailStdpp.Values.mword 5)
-      (v : SailStdpp.Values.mword 64) :
-    gen_cert -∗
-    gpr_pt (Regidx i) v -∗
-    swp (rX_bits (Regidx i)) (fun w => ⌜w = v⌝ ∗ gpr_pt (Regidx i) v).
-  Proof.
-    iIntros "#Hcert Hpt".
-    pose proof (uint5_lt i) as Hb.
-    assert (Hc : uint i = 0 \/ uint i = 1 \/ uint i = 2 \/ uint i = 3 \/
-      uint i = 4 \/ uint i = 5 \/ uint i = 6 \/ uint i = 7 \/ uint i = 8 \/
-      uint i = 9 \/ uint i = 10 \/ uint i = 11 \/ uint i = 12 \/
-      uint i = 13 \/ uint i = 14 \/ uint i = 15 \/ uint i = 16 \/
-      uint i = 17 \/ uint i = 18 \/ uint i = 19 \/ uint i = 20 \/
-      uint i = 21 \/ uint i = 22 \/ uint i = 23 \/ uint i = 24 \/
-      uint i = 25 \/ uint i = 26 \/ uint i = 27 \/ uint i = 28 \/
-      uint i = 29 \/ uint i = 30 \/ uint i = 31) by lia.
-    unfold gpr_pt; cbn match.
-    destruct Hc as [H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|
-      [H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|H]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]].
-    1:{ (* x0: nothing owned, the model returns zero_reg *)
-        rewrite H. cbn match. iDestruct "Hpt" as %->.
-        unfold rX_bits, rX. rewrite H. cbn match.
-        iApply swp_ret. by iSplit. }
-    all: rewrite H; cbn match;
-         unfold rX_bits, rX; rewrite H; cbn match;
-         iApply (swp_hart_regread with "Hcert");
-         [cbn [hregread_at]; apply bool_decide_eq_true_2; reflexivity|];
-         iIntros (σ) "Hsi"; rewrite /mstate_interp;
-         iDestruct "Hsi" as "(Hreg & Hmem & Hdev)";
-         iDestruct (reg_valid with "Hreg Hpt") as %Lv;
-         iApply fupd_mask_intro; [apply empty_subseteq|];
-         iIntros "Hcl"; iApply bi.later_intro; iMod "Hcl" as "_"; iModIntro;
-         iSplitL "Hreg Hmem Hdev"; [by iFrame|];
-         rewrite hregread_resume_red Lv;
-         iApply swp_ret; by iFrame.
-  Qed.
-
   Local Lemma hregwrite_val_at_red (r : register) (ak : option unit)
       (v : type_of_register r) (K : unit -> M unit) :
     hregwrite_val_at r (Interface.Next (Interface.RegWrite r ak v) K) = Some v.
@@ -446,62 +406,16 @@ Section gpr.
     reflexivity.
   Qed.
 
-  (* the model's GPR write, likewise.  [uint i <> 0] is a premise rather
-     than a case, because a write to x0 is discarded and the leaves that
-     use this already carry the guard ([wp_or_gpr] and friends all require
-     [uint rd <> 0]). *)
-  Lemma swp_wX_bits (i : SailStdpp.Values.mword 5)
-      (v w : SailStdpp.Values.mword 64) :
-    uint i <> 0 ->
-    gen_cert -∗
-    gpr_pt (Regidx i) v -∗
-    swp (wX_bits (Regidx i) w)
-      (fun _ => gpr_pt (Regidx i) (regval_into_reg w)).
-  Proof.
-    intros Hnz. iIntros "#Hcert Hpt".
-    pose proof (uint5_lt i) as Hb.
-    assert (Hc : uint i = 1 \/ uint i = 2 \/ uint i = 3 \/
-      uint i = 4 \/ uint i = 5 \/ uint i = 6 \/ uint i = 7 \/ uint i = 8 \/
-      uint i = 9 \/ uint i = 10 \/ uint i = 11 \/ uint i = 12 \/
-      uint i = 13 \/ uint i = 14 \/ uint i = 15 \/ uint i = 16 \/
-      uint i = 17 \/ uint i = 18 \/ uint i = 19 \/ uint i = 20 \/
-      uint i = 21 \/ uint i = 22 \/ uint i = 23 \/ uint i = 24 \/
-      uint i = 25 \/ uint i = 26 \/ uint i = 27 \/ uint i = 28 \/
-      uint i = 29 \/ uint i = 30 \/ uint i = 31) by lia.
-    unfold gpr_pt; cbn match.
-    destruct Hc as [H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|
-      [H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|H]]]]]]]]]]]]]]]]]]]]]]]]]]]]]].
-    all: rewrite H; cbn match;
-         unfold wX_bits, wX; rewrite H;
-         cbn beta iota zeta delta [Defs.bind0 Defs.bind Interface.iMon_bind
-           Defs.write_reg Defs.returnm returnM Z.eqb Pos.eqb];
-         lazymatch goal with
-         | |- context [Interface.RegWrite ?rg] =>
-             iApply (swp_hart_regwrite rg (regval_into_reg w) with "Hcert");
-             [cbn [hregwrite_val_at Defs.write_reg];
-              destruct (decide _) as [Heq|Hne]; [|congruence];
-              assert (Heq = eq_refl) as -> by apply proof_irrel;
-              reflexivity|];
-             iIntros (σ) "Hsi"; rewrite /mstate_interp;
-             iDestruct "Hsi" as "(Hreg & Hmem & Hdev)";
-             iMod (reg_update _ rg _ (regval_into_reg w) with "Hreg Hpt")
-               as "[Hreg Hpt]";
-             iApply fupd_mask_intro; [apply empty_subseteq|];
-             iIntros "Hcl"; iApply bi.later_intro; iMod "Hcl" as "_"; iModIntro;
-             iSplitL "Hreg Hmem Hdev";
-             [rewrite ?sregs_set_reg ?mem_set_reg ?mdev_set_reg; by iFrame|];
-             rewrite hregwrite_resume_red;
-             iApply swp_ret; iExact "Hpt"
-         end.
-  Qed.
-
   (* ------------------------------------------------------------------ *)
   (* A REGISTER NODE AT ONE OWNED CELL.                                    *)
   (*                                                                      *)
   (* [HartSpanChar]'s [swp_read_reg_pinned] / [swp_write_reg_owned] are     *)
   (* frame-shaped, which is right for the wrapper but wrong for a leaf: a    *)
   (* leaf holds [PC ↦ᵣ pc] and [nextPC ↦ᵣ _], not a footprint.  These are   *)
-  (* the same two nodes at a points-to, proved the way [swp_rX_bits] is.     *)
+  (* the same two nodes at a points-to.  They sit ABOVE the GPR dispatchers  *)
+  (* because [swp_rX_bits] is proved BY [swp_read_reg_cell]: the read's      *)
+  (* thirty-one branches all end in this node, so it is stated once here     *)
+  (* rather than spelled out per branch there.                              *)
   (* ------------------------------------------------------------------ *)
   Lemma swp_read_reg_cell (r : register) (v : type_of_register r) :
     gen_cert -∗ r ↦ᵣ v -∗
@@ -549,6 +463,96 @@ Section gpr.
   (* one access at a time is aliasing-proof for free -- it is the same     *)
   (* discipline the exec-based leaves already used.                        *)
   (* ------------------------------------------------------------------ *)
+  (* the model's GPR read, at a SYMBOLIC index, against the caller's own
+     [gpr_pt] entry.  x0 is the [Ret] case (hardwired zero, nothing owned);
+     x1..x31 are one [RegRead] node each. *)
+  Lemma swp_rX_bits (i : SailStdpp.Values.mword 5)
+      (v : SailStdpp.Values.mword 64) :
+    gen_cert -∗
+    gpr_pt (Regidx i) v -∗
+    swp (rX_bits (Regidx i)) (fun w => ⌜w = v⌝ ∗ gpr_pt (Regidx i) v).
+  Proof.
+    iIntros "#Hcert Hpt".
+    pose proof (uint5_lt i) as Hb.
+    assert (Hc : uint i = 0 \/ uint i = 1 \/ uint i = 2 \/ uint i = 3 \/
+      uint i = 4 \/ uint i = 5 \/ uint i = 6 \/ uint i = 7 \/ uint i = 8 \/
+      uint i = 9 \/ uint i = 10 \/ uint i = 11 \/ uint i = 12 \/
+      uint i = 13 \/ uint i = 14 \/ uint i = 15 \/ uint i = 16 \/
+      uint i = 17 \/ uint i = 18 \/ uint i = 19 \/ uint i = 20 \/
+      uint i = 21 \/ uint i = 22 \/ uint i = 23 \/ uint i = 24 \/
+      uint i = 25 \/ uint i = 26 \/ uint i = 27 \/ uint i = 28 \/
+      uint i = 29 \/ uint i = 30 \/ uint i = 31) by lia.
+    unfold gpr_pt; cbn match.
+    destruct Hc as [H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|
+      [H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|H]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]].
+    1:{ (* x0: nothing owned, the model returns zero_reg *)
+        rewrite H. cbn match. iDestruct "Hpt" as %->.
+        unfold rX_bits, rX. rewrite H. cbn match.
+        iApply swp_ret. by iSplit. }
+    (* x1..x31: reduce the model's dispatch to the concrete register and hand
+       the node to [swp_read_reg_cell] above -- which IS this tail, proved
+       ONCE.  Spelling the twelve proofmode steps out per branch made the
+       whole thirty-one-way script cost what those steps cost times 31. *)
+    all: rewrite H; cbn match;
+         unfold rX_bits, rX; rewrite H; cbn match;
+         iApply (swp_read_reg_cell with "Hcert Hpt").
+  Qed.
+
+  (* the model's GPR write, likewise.  [uint i <> 0] is a premise rather
+     than a case, because a write to x0 is discarded and the leaves that
+     use this already carry the guard ([wp_or_gpr] and friends all require
+     [uint rd <> 0]). *)
+  Lemma swp_wX_bits (i : SailStdpp.Values.mword 5)
+      (v w : SailStdpp.Values.mword 64) :
+    uint i <> 0 ->
+    gen_cert -∗
+    gpr_pt (Regidx i) v -∗
+    swp (wX_bits (Regidx i) w)
+      (fun _ => gpr_pt (Regidx i) (regval_into_reg w)).
+  Proof.
+    intros Hnz. iIntros "#Hcert Hpt".
+    pose proof (uint5_lt i) as Hb.
+    assert (Hc : uint i = 1 \/ uint i = 2 \/ uint i = 3 \/
+      uint i = 4 \/ uint i = 5 \/ uint i = 6 \/ uint i = 7 \/ uint i = 8 \/
+      uint i = 9 \/ uint i = 10 \/ uint i = 11 \/ uint i = 12 \/
+      uint i = 13 \/ uint i = 14 \/ uint i = 15 \/ uint i = 16 \/
+      uint i = 17 \/ uint i = 18 \/ uint i = 19 \/ uint i = 20 \/
+      uint i = 21 \/ uint i = 22 \/ uint i = 23 \/ uint i = 24 \/
+      uint i = 25 \/ uint i = 26 \/ uint i = 27 \/ uint i = 28 \/
+      uint i = 29 \/ uint i = 30 \/ uint i = 31) by lia.
+    unfold gpr_pt; cbn match.
+    destruct Hc as [H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|
+      [H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|H]]]]]]]]]]]]]]]]]]]]]]]]]]]]]].
+    (* NOT collapsed onto [swp_write_reg_cell] the way [swp_rX_bits] is onto
+       [swp_read_reg_cell]: the write's continuation is INDEX-DEPENDENT (the
+       model binds [write_reg] to [if neq_int N 0 then xreg_write_callback
+       (Regidx (to_bits 5 N)) w else returnM ()]), so there is no bare node
+       for the shared leaf to match.  Collapsing this one needs a leaf stated
+       over that bind, not the cell lemma. *)
+    all: rewrite H; cbn match;
+         unfold wX_bits, wX; rewrite H;
+         cbn beta iota zeta delta [Defs.bind0 Defs.bind Interface.iMon_bind
+           Defs.write_reg Defs.returnm returnM Z.eqb Pos.eqb];
+         lazymatch goal with
+         | |- context [Interface.RegWrite ?rg] =>
+             iApply (swp_hart_regwrite rg (regval_into_reg w) with "Hcert");
+             [cbn [hregwrite_val_at Defs.write_reg];
+              destruct (decide _) as [Heq|Hne]; [|congruence];
+              assert (Heq = eq_refl) as -> by apply proof_irrel;
+              reflexivity|];
+             iIntros (σ) "Hsi"; rewrite /mstate_interp;
+             iDestruct "Hsi" as "(Hreg & Hmem & Hdev)";
+             iMod (reg_update _ rg _ (regval_into_reg w) with "Hreg Hpt")
+               as "[Hreg Hpt]";
+             iApply fupd_mask_intro; [apply empty_subseteq|];
+             iIntros "Hcl"; iApply bi.later_intro; iMod "Hcl" as "_"; iModIntro;
+             iSplitL "Hreg Hmem Hdev";
+             [rewrite ?sregs_set_reg ?mem_set_reg ?mdev_set_reg; by iFrame|];
+             rewrite hregwrite_resume_red;
+             iApply swp_ret; iExact "Hpt"
+         end.
+  Qed.
+
   Lemma swp_rX_file (i : SailStdpp.Values.mword 5) (m : regfile) :
     gen_cert -∗ gpr_file m -∗
     swp (rX_bits (Regidx i))

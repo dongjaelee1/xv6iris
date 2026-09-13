@@ -6946,6 +6946,67 @@ Proof.
   - apply negb_true_iff, Z.eqb_neq in H. exact H.
 Qed.
 
+(* ===================================================================== *)
+(* THE DIAGNOSTIC BLOCK'S LITERAL SIDE CONDITIONS, AS ONE PREMISE.        *)
+(*                                                                       *)
+(* Every premise of [wp_kshd_die] below except the two about the caller's *)
+(* argument is decided by the block's LITERALS alone -- its six pcs, its  *)
+(* auipc/addi pair, its two jump displacements, its [c.li] immediate and  *)
+(* the format's address and length.  They were twenty separate arrows,    *)
+(* and each of the three call sites spelled twenty [ltac:] closers into   *)
+(* the application's argument list, where the elaborator re-runs them.    *)
+(* One premise, one closer ([shd_die_solve]), and the arrow list stops    *)
+(* being the reason that application is slow to elaborate.               *)
+(* ===================================================================== *)
+Definition shd_die_lits (p0 p1 p2 p3 p4 p5 : Z) (hi : mword 20) (lo : mword 12)
+    (j3 j5 : mword 21) (kx : mword 6) (fa : Z) (flen fq : nat) : Prop :=
+  shd_fmt_ok fa flen = true /\
+  shd_nopct fa flen fq = true /\
+  0 <= fa /\
+  fa + Z.of_nat flen + 2 < 2 ^ 31 /\
+  (S (S fq) < flen)%nat /\
+  bv_unsigned (shd_lit fa fq) = 37 /\
+  bv_unsigned (shd_lit fa (S fq)) = 115 /\
+  bv_unsigned (shd_lit fa (S (S fq))) <> 100 /\
+  bv_unsigned (shd_lit fa (S (S fq))) <> 117 /\
+  bv_unsigned (shd_lit fa (S (S fq))) <> 120 /\
+  ((S (S (S fq)) < flen)%nat ->
+     bv_unsigned (shd_lit fa (S (S (S fq)))) <> 100 /\
+     bv_unsigned (shd_lit fa (S (S (S fq)))) <> 117 /\
+     bv_unsigned (shd_lit fa (S (S (S fq)))) <> 120) /\
+  add_vec_int (mword_of_int p0 : mword 64) 4 = mword_of_int p1 /\
+  add_vec_int (mword_of_int p1 : mword 64) 4 = mword_of_int p2 /\
+  add_vec_int (mword_of_int p2 : mword 64) 2 = mword_of_int p3 /\
+  add_vec_int (mword_of_int p3 : mword 64) 4 = mword_of_int p4 /\
+  add_vec_int (mword_of_int p4 : mword 64) 2 = mword_of_int p5 /\
+  add_vec (add_vec (mword_of_int p0 : mword 64) (auipc_off hi))
+          (sign_extend' 64 lo) = mword_of_int fa /\
+  add_vec (mword_of_int p3 : mword 64) (sign_extend' 64 j3)
+    = mword_of_int ShSyms.fprintf /\
+  add_vec (mword_of_int p5 : mword 64) (sign_extend' 64 j5)
+    = mword_of_int ShSyms.exit /\
+  ret_pc (mword_of_int p4 : mword 64) = mword_of_int p4.
+
+(* The one closer, OUTSIDE any section so every call site gets it.  The
+   [first] on the eleventh row is the only branch in it: a block whose
+   format ends right after "%s" discharges that row from the CONTRADICTORY
+   bound, a longer one computes the three bytes. *)
+Ltac shd_die_solve :=
+  split_and!;
+  [ vm_compute; reflexivity
+  | vm_compute; reflexivity
+  | lia
+  | lia
+  | lia
+  | vm_compute; reflexivity
+  | vm_compute; reflexivity
+  | vm_compute; discriminate
+  | vm_compute; discriminate
+  | vm_compute; discriminate
+  | intros Hlt; first [ exfalso; lia
+                      | vm_compute; split_and!; discriminate ]
+  | apply bv_eq; vm_compute; reflexivity .. ].
+
 Section UkShDiagFmt.
   Context `{!riscvGS Σ}.
 
@@ -7075,33 +7136,10 @@ Section UkShDiagRun.
       (hi : mword 20) (lo : mword 12) (j3 j5 : mword 21) (kx : mword 6)
       (fa : Z) (flen fq : nat) (sa : Z) (slen : nat) (sf : nat -> bv 8)
       (h : CpuId) (m : regfile) (n : nat) :
-    (* the format, all of it decided from the image *)
-    shd_fmt_ok fa flen = true ->
-    shd_nopct fa flen fq = true ->
-    0 <= fa -> fa + Z.of_nat flen + 2 < 2 ^ 31 ->
-    (S (S fq) < flen)%nat ->
-    bv_unsigned (shd_lit fa fq) = 37 ->
-    bv_unsigned (shd_lit fa (S fq)) = 115 ->
-    bv_unsigned (shd_lit fa (S (S fq))) <> 100 ->
-    bv_unsigned (shd_lit fa (S (S fq))) <> 117 ->
-    bv_unsigned (shd_lit fa (S (S fq))) <> 120 ->
-    ((S (S (S fq)) < flen)%nat ->
-       bv_unsigned (shd_lit fa (S (S (S fq)))) <> 100 /\
-       bv_unsigned (shd_lit fa (S (S (S fq)))) <> 117 /\
-       bv_unsigned (shd_lit fa (S (S (S fq)))) <> 120) ->
-    (* the pc chain, and the three addresses the block computes *)
-    add_vec_int (mword_of_int p0 : mword 64) 4 = mword_of_int p1 ->
-    add_vec_int (mword_of_int p1 : mword 64) 4 = mword_of_int p2 ->
-    add_vec_int (mword_of_int p2 : mword 64) 2 = mword_of_int p3 ->
-    add_vec_int (mword_of_int p3 : mword 64) 4 = mword_of_int p4 ->
-    add_vec_int (mword_of_int p4 : mword 64) 2 = mword_of_int p5 ->
-    add_vec (add_vec (mword_of_int p0 : mword 64) (auipc_off hi))
-            (sign_extend' 64 lo) = mword_of_int fa ->
-    add_vec (mword_of_int p3 : mword 64) (sign_extend' 64 j3)
-      = mword_of_int ShSyms.fprintf ->
-    add_vec (mword_of_int p5 : mword 64) (sign_extend' 64 j5)
-      = mword_of_int ShSyms.exit ->
-    ret_pc (mword_of_int p4 : mword 64) = mword_of_int p4 ->
+    (* the format, the pc chain and the three addresses the block computes
+       -- all of it decided from the image, and so ONE premise
+       ([shd_die_lits] above), discharged by [shd_die_solve] *)
+    shd_die_lits p0 p1 p2 p3 p4 p5 hi lo j3 j5 kx fa flen fq ->
     (* the argument *)
     sa <> 0 ->
     m !!! Regidx a2_idx = mword_of_int sa ->
@@ -7123,8 +7161,9 @@ Section UkShDiagRun.
     urun N h m (mword_of_int p0) (10 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hok Hnp Hfa0 Hfahi Hq2 Hpq Hps Hc1d Hc1u Hc1x Hc2set
-           E0 E1 E2 E3 E4 Efa Ejf Eje Eret Hsanz Ha2.
+    intros (Hok & Hnp & Hfa0 & Hfahi & Hq2 & Hpq & Hps & Hc1d & Hc1u & Hc1x
+            & Hc2set & E0 & E1 & E2 & E3 & E4 & Efa & Ejf & Eje & Eret)
+           Hsanz Ha2.
     iIntros "#Hdp #Hcode #Hro Hsstr #Ci0 #Ci1 #Ci2 #Ci3 #Ci4 #Ci5 Hpay Hrun".
     iDestruct (shd_fmt_str γt fa flen Hok ltac:(lia) with "Hro") as "#Hfstr".
     (* ---- p0  auipc a1,0x1 ---- *)
@@ -7366,30 +7405,17 @@ Section UkShDiagRun.
     { rewrite /m3 (upd_eq m2 (Regidx a2_idx) (regval_into_reg _)).
       rewrite Ha0_2. apply add_vec_zero_l. }
     (* ---- 0x54..0x64  the block: fprintf(2, "%s\n", s) ; exit(1) ---- *)
+    assert (Hlits54 : shd_die_lits 0x54 0x58 0x5c 0x5e 0x62 0x64
+                        (mword_of_int 1 : mword 20) (mword_of_int 572 : mword 12)
+                        (mword_of_int 4172 : mword 21) (mword_of_int 3106 : mword 21)
+                        (mword_of_int 1 : mword 6) 0x1290 3%nat 0%nat)
+      by shd_die_solve.
     iApply (wp_kshd_die tx dqs 0x54 0x58 0x5c 0x5e 0x62 0x64
               (mword_of_int 1 : mword 20) (mword_of_int 572 : mword 12)
               (mword_of_int 4172 : mword 21) (mword_of_int 3106 : mword 21)
               (mword_of_int 1 : mword 6)
               0x1290 3%nat 0%nat sa slen sf h5 m3 n
-              ltac:(vm_compute; reflexivity)
-              ltac:(vm_compute; reflexivity)
-              ltac:(lia) ltac:(lia) ltac:(lia)
-              ltac:(vm_compute; reflexivity)
-              ltac:(vm_compute; reflexivity)
-              ltac:(vm_compute; discriminate)
-              ltac:(vm_compute; discriminate)
-              ltac:(vm_compute; discriminate)
-              ltac:(intros HH; exfalso; lia)
-              ltac:(apply bv_eq; vm_compute; reflexivity)
-              ltac:(apply bv_eq; vm_compute; reflexivity)
-              ltac:(apply bv_eq; vm_compute; reflexivity)
-              ltac:(apply bv_eq; vm_compute; reflexivity)
-              ltac:(apply bv_eq; vm_compute; reflexivity)
-              ltac:(apply bv_eq; vm_compute; reflexivity)
-              ltac:(apply bv_eq; vm_compute; reflexivity)
-              ltac:(apply bv_eq; vm_compute; reflexivity)
-              ltac:(apply bv_eq; vm_compute; reflexivity)
-              Hsanz Ha2_3
+              Hlits54 Hsanz Ha2_3
               with "Hdp Hcode Hro Hsstr [] [] [] [] [] [] Hpay Hrun").
     { iApply (uis_shk_54 with "Hcode"). }
     { iApply (uis_shk_58 with "Hcode"). }
@@ -7539,6 +7565,12 @@ Section UkShDiagLeaf.
       iDestruct (shd_str_of_ustr (ukn_t N) (ukn_d N) DfracDiscarded (ua_ptr x) (ua_len x)
                    (ua_bytes x)
                    with "Hxs") as "#Hs".
+      assert (Hlitsdc : shd_die_lits 0xdc 0xe0 0xe4 0xe6 0xea 0xec
+                        (mword_of_int 1 : mword 20) (mword_of_int 460 : mword 12)
+                        (mword_of_int 4036 : mword 21) (mword_of_int 2970 : mword 21)
+                        (mword_of_int 0 : mword 6)
+                        0x12a8 15%nat 5%nat)
+        by shd_die_solve.
       iApply (wp_kshd_die N false DfracDiscarded
                 0xdc 0xe0 0xe4 0xe6 0xea 0xec
                 (mword_of_int 1 : mword 20) (mword_of_int 460 : mword 12)
@@ -7546,24 +7578,7 @@ Section UkShDiagLeaf.
                 (mword_of_int 0 : mword 6)
                 0x12a8 15%nat 5%nat
                 (ua_ptr x) (ua_len x) (ua_bytes x) h1 m1 (n + 2)
-                ltac:(vm_compute; reflexivity)
-                ltac:(vm_compute; reflexivity)
-                ltac:(lia) ltac:(lia) ltac:(lia)
-                ltac:(vm_compute; reflexivity)
-                ltac:(vm_compute; reflexivity)
-                ltac:(vm_compute; discriminate)
-                ltac:(vm_compute; discriminate)
-                ltac:(vm_compute; discriminate)
-                ltac:(intros _; vm_compute; split_and!; discriminate)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
+                Hlitsdc
                 ltac:(lia)
                 ltac:(exact (upd_eq m (Regidx a2_idx) (regval_into_reg _)))
                 with "Hdp Hcode Hro Hs [] [] [] [] [] [] Hpay Hrun").
@@ -7606,6 +7621,12 @@ Section UkShDiagLeaf.
       iDestruct (shd_str_of_ustr (ukn_t N) (ukn_d N) DfracDiscarded (ua_ptr x) (ua_len x)
                    (ua_bytes x)
                    with "Hxs") as "#Hs".
+      assert (Hlits110 : shd_die_lits 0x110 0x114 0x118 0x11a 0x11e 0x120
+                        (mword_of_int 1 : mword 20) (mword_of_int 424 : mword 12)
+                        (mword_of_int 3984 : mword 21) (mword_of_int 2918 : mword 21)
+                        (mword_of_int 1 : mword 6)
+                        0x12b8 15%nat 5%nat)
+        by shd_die_solve.
       iApply (wp_kshd_die N false DfracDiscarded
                 0x110 0x114 0x118 0x11a 0x11e 0x120
                 (mword_of_int 1 : mword 20) (mword_of_int 424 : mword 12)
@@ -7613,24 +7634,7 @@ Section UkShDiagLeaf.
                 (mword_of_int 1 : mword 6)
                 0x12b8 15%nat 5%nat
                 (ua_ptr x) (ua_len x) (ua_bytes x) h1 m1 (n + 2)
-                ltac:(vm_compute; reflexivity)
-                ltac:(vm_compute; reflexivity)
-                ltac:(lia) ltac:(lia) ltac:(lia)
-                ltac:(vm_compute; reflexivity)
-                ltac:(vm_compute; reflexivity)
-                ltac:(vm_compute; discriminate)
-                ltac:(vm_compute; discriminate)
-                ltac:(vm_compute; discriminate)
-                ltac:(intros _; vm_compute; split_and!; discriminate)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
-                ltac:(apply bv_eq; vm_compute; reflexivity)
+                Hlits110
                 ltac:(lia)
                 ltac:(exact (upd_eq m (Regidx a2_idx) (regval_into_reg _)))
                 with "Hdp Hcode Hro Hs [] [] [] [] [] [] Hpay Hrun").

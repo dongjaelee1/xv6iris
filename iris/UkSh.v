@@ -5241,8 +5241,12 @@ Section UkSh.
           urun N h m (mword_of_int 0x97a) (16 + (ush_Dbody + n)) -∗
           WP (Loop : expr riscv_lang)))%I.
 
+  (* NOT [apply _]: with both obligations transparent, the search tries the
+     sibling instance and unifies the two bodies up to delta -- they differ
+     in one row, so it walks nearly all of both before failing (14 s for the
+     [ush_rest] one).  Name the instance the box deserves. *)
   Global Instance ush_rest_l_persistent R : Persistent (ush_rest_l R).
-  Proof. apply _. Qed.
+  Proof. rewrite /ush_rest_l. apply bi.intuitionistically_persistent. Qed.
 
   Lemma ush_rest_l_of_rest (R : iProp Σ) : ush_rest R -∗ ush_rest_l R.
   Proof.
@@ -5254,7 +5258,7 @@ Section UkSh.
   Qed.
 
   Global Instance ush_rest_persistent R : Persistent (ush_rest R).
-  Proof. apply _. Qed.
+  Proof. rewrite /ush_rest. apply bi.intuitionistically_persistent. Qed.
 
   (* ---- ONE TURN of the leading-blank scan, 0x964..0x974 ---------------- *)
   (*   c.addi s1,1 ; lbu a5,0(s1) ; addi a4,a5,-32 ; c.beqz a4,0x964        *)

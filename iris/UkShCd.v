@@ -1085,22 +1085,39 @@ Section UkShCd.
                    with "Hro") as "#Hfstr".
       replace (16 + (80 + n))%nat
         with (10 + (12 + (4 + (70 + n))))%nat by lia.
+      (* [wp_kshd_fprintf_s]'s eleven literal side conditions are proved HERE.
+         As [ltac:]s in the argument list the proofmode re-elaborated every
+         one of them against this walk's context on each pass. *)
+      assert (Hcfa0 : 0 <= 4992) by lia.
+      assert (Hcfhi : 4992 + Z.of_nat 13%nat + 2 < 2 ^ 31)
+        by (vm_compute; reflexivity).
+      assert (Hcfq2 : (S (S 10) < 13)%nat) by lia.
+      assert (Hcfpq : bv_unsigned (UkShDiag.shd_lit 4992 10) = 37)
+        by (vm_compute; reflexivity).
+      assert (Hcfps : bv_unsigned (UkShDiag.shd_lit 4992 (S 10)) = 115)
+        by (vm_compute; reflexivity).
+      assert (Hcfnp : UkShDiag.shd_nopct 4992 13%nat 10%nat = true)
+        by (vm_compute; reflexivity).
+      assert (Hcf1d : bv_unsigned (UkShDiag.shd_lit 4992 (S (S 10))) <> 100)
+        by (vm_compute; discriminate).
+      assert (Hcf1u : bv_unsigned (UkShDiag.shd_lit 4992 (S (S 10))) <> 117)
+        by (vm_compute; discriminate).
+      assert (Hcf1x : bv_unsigned (UkShDiag.shd_lit 4992 (S (S 10))) <> 120)
+        by (vm_compute; discriminate).
+      assert (Hcf2set : (S (S (S 10)) < 13)%nat ->
+                bv_unsigned (UkShDiag.shd_lit 4992 (S (S (S 10)))) <> 100 /\
+                bv_unsigned (UkShDiag.shd_lit 4992 (S (S (S 10)))) <> 117 /\
+                bv_unsigned (UkShDiag.shd_lit 4992 (S (S (S 10)))) <> 120)
+        by (intros Hc; exfalso; lia).
+      assert (Hcfsanz : sh_buf + Z.of_nat k + 3 <> 0) by (unfold sh_buf; lia).
       iApply (UkShDiag.wp_kshd_fprintf_s N false (DfracOwn 1)
                 4992 13%nat 10%nat (UkShDiag.shd_lit 4992)
                 (sh_buf + Z.of_nat k + 3) plen
                 (fun j : nat => g (k + 3 + j)%nat) h23 mI (70 + n)%nat
-                ltac:(lia) ltac:(vm_compute; reflexivity)
-                ltac:(lia)
-                ltac:(vm_compute; reflexivity)
-                ltac:(vm_compute; reflexivity)
+                Hcfa0 Hcfhi Hcfq2 Hcfpq Hcfps
                 (fun j Hj Hne =>
-                   UkShDiag.shd_nopct_ok 4992 13%nat 10%nat j
-                     ltac:(vm_compute; reflexivity) Hj Hne)
-                ltac:(vm_compute; discriminate)
-                ltac:(vm_compute; discriminate)
-                ltac:(vm_compute; discriminate)
-                ltac:(intros Hc; exfalso; lia)
-                ltac:(unfold sh_buf; lia)
+                   UkShDiag.shd_nopct_ok 4992 13%nat 10%nat j Hcfnp Hj Hne)
+                Hcf1d Hcf1u Hcf1x Hcf2set Hcfsanz
                 Ha1_I Ha2_I
                 with "Hdp Hcode Hfstr Hpstr Hrun").
       iIntros (h24 mJ) "Hpstr %HcsIJ Hrun".

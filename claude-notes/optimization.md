@@ -313,6 +313,17 @@ cost is linear in the context rather than quadratic. Read that file's header.
   descending into the resource. Diagnose by splitting a wide `iIntros` one name
   per sentence. **Put the seals at the END of the defining section** — a file's
   own projection lemmas are what a seal above them breaks.
+- **A near-identical SIBLING definition is what makes `apply _` catastrophic
+  here.** Search tries the sibling's registered instance, and unifying the two
+  bodies up to delta walks nearly all of both before failing — so the second of
+  two obligations that differ in one row costs many times the first. The tell is
+  that one of a pair of twins is fast and the other is not.
+- **Where the body is a `□`, the whole instance is `rewrite /X. apply
+  bi.intuitionistically_persistent.`** Unfold first: then the connective is
+  syntactic and nothing searches.
+- **Reduce with `cbn [f]`, never bare `cbn`, before a structural descent.** Bare
+  `cbn` unfolds the leaf abstractions that already have their own instances, and
+  the descent then bottoms out on their bodies instead of on their names.
 - **Prove a big `Timeless`/`Persistent` instance structurally**, never with one
   `apply _`:
 
@@ -448,6 +459,21 @@ whose instance names every variable in scope, so there is nothing to keep. The
 an evar's instance, so COST is no longer a reason to hoist; re-elaboration
 against unresolved evars still is.
 
+**The predictor is HOW MANY closers one application splices, not whether it
+splices any.** One or two measure inside noise and are not worth hoisting; a
+leaf whose call sites spell out twenty of them costs seconds per site, because
+every pass the elaborator makes over the application re-runs all twenty. So read
+a long `ltac:` column as the bug, and hoisting one closer out of a short column
+as churn — measure before you touch a site with two.
+
+**A long column is a MISSING PREMISE, not a hoisting job.** When the closers are
+all decided by the same literals — a block's pcs, its immediates, its format's
+address and length — the fix is one `Definition … : Prop` bundling them and one
+`Ltac` that discharges it, so the lemma takes ONE premise and each site proves it
+in one `assert`. Twenty `assert`s per site is the same cost in a worse shape.
+Put the solver's `Ltac` outside the section, and give the arm that differs
+between sites its own `first […]` branch rather than forking the tactic.
+
 ## Conversion and `Qed`
 
 **Only about a quarter of a `Qed` is typechecking.** The rest is four TREE walks
@@ -476,6 +502,10 @@ lever. Do not expect a spelled-out Sail term to be why a `Qed` is slow.
   dispatch guard.
 - **Never `vm_compute` a goal containing a symbolic `mword` or a built-up
   `mstate`.** Compute only the CLOSED offset.
+- **`exact_no_check` does not make a `vm_compute`d `Definition … Defined`
+  cheaper** — `Defined` re-checks the term the tactic skipped, so the cost moves
+  rather than going away. A definition built by running the model's own chain is
+  paying for the chain; there is no tactic-level lever on it.
 - **Never let an `exact`/`reflexivity` cross an update layer** — the tell is that
   the sentence right below it, four layers down, is free.
 - **Seal a definition tower all the way down to the layer that computes, or not
@@ -585,6 +615,16 @@ metric for whole-tree proof-term size** — treat a jump as a tripwire.
   unifier will, so it also gets `Local Opaque` beside its readers. Rule: any
   lemma about a dumped map is stated and proved closed, then applied.
 
+- **An N-way dispatch over a symbolic index must end in a SHARED LEAF.** When
+  the branches of a `destruct` over "the index is 0 or 1 or … or 31" all run the
+  same proofmode tail, that tail is a lemma — usually one the file already has
+  a few lines further down for the same node at a points-to. Move it above the
+  dispatcher and let each branch reduce the model's match and `iApply` it; the
+  script goes from N copies of a dozen steps to N copies of three. **The limit
+  is whether the reduction leaves a BARE node**: a dispatch whose continuation is
+  index-dependent (the model binding a write to a per-register callback) has
+  nothing for a cell-shaped leaf to match, and collapsing it needs a leaf stated
+  over that bind instead.
 - **`lia` cannot do a nested-division chain** — stage it with `Z_div_exact_2` +
   `Z.div_div`.
 - **In a `first [ … ]`, put the CHEAP-FAILING branch first.** The cost of a

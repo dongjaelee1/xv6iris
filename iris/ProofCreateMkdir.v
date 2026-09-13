@@ -2224,6 +2224,19 @@ Section ProofCreateMkdir.
           { rewrite /fn_nlink !era_node_rec Hbumpeq.
             pose proof (proj1 (bv_unsigned_in_range _ (di_nlink dn))) as Hge.
             rewrite Z2Nat.inj_add; [reflexivity | exact Hge | lia]. }
+          (* [abs_of_dir]'s two side conditions are PROVED HERE, not spliced
+             into its argument list: an [ltac:] in argument position is
+             re-elaborated by every pass the [rewrite] makes over the term,
+             so each closer ran more than once. *)
+          assert (Hbumpdir : fn_is_dir (era_node (cr_setf dp3 (di_major dp3) (di_minor dp3)
+                                          (add_vec (di_nlink dp3 : mword 16)
+                                             (mword_of_int 1 : mword 16))) bm3 dat3) = true)
+            by (rewrite /fn_is_dir /fn_type era_node_rec Hbumpty;
+                apply bool_decide_eq_true_2; exact Hdntdir).
+          assert (Hbumpnz : fn_nlink (era_node (cr_setf dp3 (di_major dp3) (di_minor dp3)
+                                        (add_vec (di_nlink dp3 : mword 16)
+                                           (mword_of_int 1 : mword 16))) bm3 dat3) <> 0%nat)
+            by (rewrite Hbumpnl Nat.add_1_r; exact (Nat.neq_succ_0 _)).
           assert (Habsp' : abs_of (era_node (cr_setf dp3 (di_major dp3) (di_minor dp3)
                                      (add_vec (di_nlink dp3 : mword 16)
                                         (mword_of_int 1 : mword 16))) bm3 dat3)
@@ -2237,9 +2250,7 @@ Section ProofCreateMkdir.
             rewrite (abs_of_dir (era_node (cr_setf dp3 (di_major dp3) (di_minor dp3)
                                    (add_vec (di_nlink dp3 : mword 16)
                                       (mword_of_int 1 : mword 16))) bm3 dat3)
-                       ltac:(rewrite /fn_is_dir /fn_type era_node_rec Hbumpty;
-                             apply bool_decide_eq_true_2; exact Hdntdir)
-                       ltac:(rewrite Hbumpnl; lia)).
+                       Hbumpdir Hbumpnz).
             rewrite Hbumpnl Hents3' Hins3 Hcl16. reflexivity. }
           assert (Habsc : abs_of (era_node dc2 bm2 dat2)
                   = Some (MkAnode (cre_child (bv_unsigned ty) (bv_unsigned major)

@@ -52,41 +52,29 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
 - [x] ~~**SH-STATE**~~ LANDED 2026-09-13 (`65536f83f`; the note below):
   `sh_pay_state` proved at a named constant `sh_Rsh`; `Hsh_owed` is
   `sh_deps ∧ sh_pay_rest sh_Rsh`; `UConsLine`'s three Props are lemmas.
-- [ ] **SELF-KILL** (kernel; `-sup`, `lane/self-kill`; owner's rulings in
-  the KILL-PAY B2/K4 notes and the E5 note): the kill credential is a
-  linear parameter of the generation token chosen at fork, `killed()` is the
-  flag only, KILL-PAY B1's fixed-record credential is rolled back, and sh's
-  child may die at sbrk failure (the null store inside memset) paying Q(-1).
-- [ ] **CONS-IO** (kernel; `-tlw`, `lane/cons-io`; the E5 note and its
-  "WRITE-LEAF LANDED (2026-09-13; `3adb0bcdf`, three commits on `4db3e18d1`; 6
-files +882/-0; builds wl3/wl4/wl5 in the main checkout; audit the thirteen;
-lemma_diff CLEAN).  A VERIFIED PROGRAM MAY PAY ROW 16'S CONSOLE ARM WITH ITS
-OWN `cons_out_chain`.  The leaf SPLITS, as the read's does:
-`UkRunSys.wp_uk_ecall_write_chain` is `wp_uk_ecall_quiet_recv`'s walk at 16
-with the deposit LEDGER-FIXED (`UkRun.udepwf_std`; the cwd-fixed `udepwf_at`
-cannot serve 16, whose ∀-ledger would owe the INODE arm's `awrite_chain` --
-`UexecSG.free_num`'s own note) and the post KEPT, handing back the three
-argument words, `take NSTD (uvis_fd W) = l`, `ustd`, and `spost_at uslot 16
-fdep W r (uvis_M W) (uvis_fd W) cw' cs'`.  No cwd half (a write resolves no
-path), no `∃ P`/lazy row (row 16's post reads no byte of `M'`), and the buffer
-is not a precondition (16 is quiet in memory).  `UkWriteLeaf.v` NAMES row 16,
-fourth of the UConsOpen/UInitConsK/UShLine mould: `xfam_wr` (`wf_Q := Q`), the
-two directions, `uwr_fd_st_dev`, `uwrite_chain_sup` (the chain against the
-heap `udepwf_std` lends, bridged by `UkRunSys.uheap_ubytes_wat` at the
-machine-word addressing), `uwrite_post_cons`.  W3: `cons_out_chain_of_licence_bnd`
-pays a two-byte write at `uwr_demo_Q k := ⌜k ≤ 2⌝` and `uwrite_two_post` reads
-it back.  `wp_kinit/ksh/kecho_write_chain` are the stubs BESIDE the quiet ones,
-which are untouched (`sh_deps` unchanged).  CALLER OWES: `filewrite_extra` pays
-`Q` only at `ma = CONSOLE` and `n ≥ 0` -- the `n < 0` arm returns no `Q` at all
-and a non-CONSOLE major returns `emp` while the chain is still asked for; the
-post is the program's cursor at the count consolewrite pushed (full or short),
-nothing about the wire.  Row 16 has no killed arm.  Dev-loop note: run-on-gcp's
-sync drops the .vo of every transferred .v, so a rocq-warm check of a file whose
-DEPENDENCY was just edited needs a real build of the dependency first.
-
-RULINGS AFTER CONS-IO PHASE 1"): the input resource, the shift as one
-  fupd per accepted input, `read_link` at the read receipt with `read_ok`,
-  the licences.  Phase 2 in flight.
+- [ ] **SELF-KILL** (kernel; `-sup`, `lane/self-kill`; steps 1-4a LANDED
+  2026-09-13 with CONS-IO A, the note below).  OWNER'S RULING 2026-09-13:
+  THE KILL CREDENTIAL IS THE TARGET'S EXIT PAYLOAD AT -1 -- "the process gname
+  resource already tracks Q, and Q(-1) becomes the precondition for kill()
+  of that PID"; no separate predicate K', no alive token; a process supplies
+  Q(-1) when it may trap into the kernel at a killing cause (a vmfault, an
+  illegal instruction, an ecall INSTRUCTION whose fetch faults) and supplies
+  the syscall precondition, not Q(-1), when it enters with the syscall
+  cause; hence no separation-logic ∧ and no -1 wand at ecalls.  Remaining:
+  4b' (ChildTok simplified to Q + `kpay`, the taken token; the row
+  `kl = 0 ∨ kill_owed gn ∨ taken_tok gn` in proc_pub; `SpecKilled` as the
+  one-shot accessor; the deposit-only killing-cause arm; `upay_neg` and the
+  -1 payload row removed), 4c (B1's rollback), step 5 (memset's null store
+  with the trivial Q(-1) of sh's child).
+- [x] ~~**CONS-IO milestone A**~~ LANDED 2026-09-13 (`eef6a8dec` with SELF-KILL
+  1-4a; the note below): the input resource, the shift as one fupd per
+  accepted input over the two-resource `echo_link`, the log's high-water
+  half, the wire rider, the licences, `app_in`.
+- [ ] **CONS-IO milestone B** (kernel; `-tlw`, `lane/cons-io`): the READ side
+  (C3): `cons_deliv`/`cons_log_lb`/`cons_gaps_ok` in `cons_res`, `read_link`
+  fired in SpecConsoleread at the final release on the clean arm,
+  `fileread_in`'s `Rin`, `xfam.rf_in`, `console_receipt`, sh's
+  `□ (T -∗ in_licence)` law.  Handover `cons-io-handover-2.md`.
 - [x] ~~**ECHO-PURE**~~ LANDED 2026-09-13 (`c1781608b`; the note below): E5's
   pure half -- `ConsLog.v` (the boundary vocabulary), `EchoOutPure.v` (the
   stage machine and the four facts), `disc_prefix`.
@@ -3012,6 +3000,115 @@ three periodicity lemmas (from UConsLine), `star_prefix_prefix`/
 `disc_seg_prefix`, and `disc_prefix` with NO `trace_shape` premise.  Two
 `ObsTrace`-level copies (`epu_elem_of_rev_head`/`epu_cycles_snoc_in`, from
 UkSh) stay local and flagged.
+
+WRITE-LEAF LANDED (2026-09-13; `3adb0bcdf`, three commits on `4db3e18d1`; 6
+files +882/-0; builds wl3/wl4/wl5 in the main checkout; audit the thirteen;
+lemma_diff CLEAN).  A VERIFIED PROGRAM MAY PAY ROW 16'S CONSOLE ARM WITH ITS
+OWN `cons_out_chain`.  The leaf SPLITS, as the read's does:
+`UkRunSys.wp_uk_ecall_write_chain` is `wp_uk_ecall_quiet_recv`'s walk at 16
+with the deposit LEDGER-FIXED (`UkRun.udepwf_std`; the cwd-fixed `udepwf_at`
+cannot serve 16, whose ∀-ledger would owe the INODE arm's `awrite_chain` --
+`UexecSG.free_num`'s own note) and the post KEPT, handing back the three
+argument words, `take NSTD (uvis_fd W) = l`, `ustd`, and `spost_at uslot 16
+fdep W r (uvis_M W) (uvis_fd W) cw' cs'`.  No cwd half (a write resolves no
+path), no `∃ P`/lazy row (row 16's post reads no byte of `M'`), and the buffer
+is not a precondition (16 is quiet in memory).  `UkWriteLeaf.v` NAMES row 16,
+fourth of the UConsOpen/UInitConsK/UShLine mould: `xfam_wr` (`wf_Q := Q`), the
+two directions, `uwr_fd_st_dev`, `uwrite_chain_sup` (the chain against the
+heap `udepwf_std` lends, bridged by `UkRunSys.uheap_ubytes_wat` at the
+machine-word addressing), `uwrite_post_cons`.  W3: `cons_out_chain_of_licence_bnd`
+pays a two-byte write at `uwr_demo_Q k := ⌜k ≤ 2⌝` and `uwrite_two_post` reads
+it back.  `wp_kinit/ksh/kecho_write_chain` are the stubs BESIDE the quiet ones,
+which are untouched (`sh_deps` unchanged).  CALLER OWES: `filewrite_extra` pays
+`Q` only at `ma = CONSOLE` and `n ≥ 0` -- the `n < 0` arm returns no `Q` at all
+and a non-CONSOLE major returns `emp` while the chain is still asked for; the
+post is the program's cursor at the count consolewrite pushed (full or short),
+nothing about the wire.  Row 16 has no killed arm.  Dev-loop note: run-on-gcp's
+sync drops the .vo of every transferred .v, so a rocq-warm check of a file whose
+DEPENDENCY was just edited needs a real build of the dependency first.
+
+
+CONS-IO MILESTONE A LANDED (2026-09-13; six lane commits + SELF-KILL 1-4a on the
+owner's 3ec850fca, confirming build land2 in `-tlw`; 32 files +1974/-410; audit
+the thirteen; lemma_diff = the four ConsLog moves + `ct_pay_one`'s three,
+subsumed by `ct_ch_full`).  E5's C2 half, kernel side.  THE INPUT RESOURCE:
+`riscv_in_res : list mobs -> list ConsLog.log_entry -> list (list mobs * bv 8)
+-> iProp` on the fixed record beside `riscv_out_res`, timeless, `in_res_triv`;
+`WpUart.in_res_at` indexes the port.  The console port's invariant gains
+`in_claim_at` AT ITS OWN movable witness: `∃ o pops dl, obs_hist_lb_o o ∗
+in_res_at ∗ uart_log_hi γ (1/2) (log_top pops) ∗ uart_deliv γ (1/2) dl ∗
+in_log_auth γ pops ∗ ⌜log_ok pops⌝`.  THE LOG'S HIGH-WATER HALF is a third
+conjunct of `uart_rx_writer`, the twin of the ring's mark: it rides the PLIC
+payload, uartintr hands it to consoleintr with the byte and `ohist_ext hg hb`,
+and it comes back at `Some hb` on every arm -- "logged once, in arrival order"
+with no owed bit.  THE STORE OBLIGATION: the THR leaf's premise is
+`WpUart.store_ob i γ b Φ` (its own ghost step over `uart_out_auth`, `uart_colE`,
+`in_claim_at`), not `out_link`; the write path is untouched
+(`store_ob_of_out_link`), the echo builds the same shape from `echo_link`
+(`store_ob_of_echo_link`); SpecUart's generic store accessor lends
+`in_claim_at` in and out (only that node opens the port invariant).  THE WIRE
+RIDER: `uart_col` files `uart_out_lb γ (obs_wire iu (open_seg h))` beside each
+queued byte's tag, minted in `wp_uart_loop`'s rx arm (where the trace coupling
+and the out-authority meet) and relayed RHR leaf -> uartgetc -> uartintr ->
+consoleintr's contract -- that is `echo_link`'s wire premise at `hc := h`.
+`echo_link h b Φ` (WpUart:~2161) is the two-resource link: the output claim
+moves, the input claim is passed and returned at its own witness, with the
+order fact `∀ e ∈ pops, hist_ext (le_hist e) h` and `obs_wire Uart0 (open_seg
+h) prefix_of acc`; `in_run h c pre bs Φ` = `in_append ∧ echo_link …`
+(chain-first, append-last, stoppable); `cons_echo_shift` is `□ ∀ h c cs Φ, …
+-∗ Φ -∗ in_run h c [] cs Φ`.  EVERY ARM LOGS: `ct_pay`/`ct_mark`/`ct_owed`
+replace the persistent pay shapes; each arm spends its bytes chain-first and
+hands EXIT one owed append fired once by `ct_mk_exit` through
+`uart_inv_append`; NUL and the full ring log `cs = []`; the ^U loop carries
+`ct_kill_run` at the window's length and stops the run at what went out.
+`in_licence` (both conjuncts) and `xv6_ssupply := app_sup ∗ □ riscv_kill_cred
+∗ □ out_licence ∗ □ in_licence`; App.v: `app_in` (arity 11), `Hinpt`,
+`Happ_in_sup`, `Htx`'s input arm at its own `hi`, the `riscv_in_res = app_in`
+equations on `Hinit_boot`/`Happ_echo`, `Happ_boot` at the four-argument
+transport `app_xfer_boot_raw A B O I` yielding `I [] [] []`; AppEcho's
+`echo_in := emp` is ECHO-OUT's hole beside `echo_out`.  `read_link`,
+`in_claim_read`, `in_log_lb` are proved and unfired: MILESTONE B (C3, the read
+side) fires them.  B's known needs: route `uart_deliv`'s console half (minted,
+DROPPED at BootShared) to `ConsoleInv.cons_deliv` exactly as the `uart_log_hi`
+thread was laid (BootShared -> SpecMain -> BootChain -> SystemAdequacy); the
+`gp` bit rides `ct_gh`; `fsabs_fileread_in` pays `cons_read_pay` from
+`in_licence` (already in the supply); sh's `□ (T -∗ in_licence)` discharges at
+UInitBoot:~560 where `Hilic` is built.  Dev-loop: a WpUart/Spec* statement
+change is ~1200 files (~45 min) and vmbuild drops every dirty .vo; rocq-warm
+replays ProofConsoleintr (3257 sentences) in ~20 s; a run-on-gcp SYNC IS A
+BUILD (it carries uncommitted edits and drops their .vo) -- `--no-sync` for
+reads.  Handover: scratchpad `cons-io-handover-2.md`.
+
+SELF-KILL STEPS 1-4a LANDED (2026-09-13; four lane commits, with CONS-IO A;
+16+ files; audit the thirteen; lemma_diff CLEAN).  (1) `UserPermDenied.v`, a
+new leaf: a key page without W denies a store (`uleaf_store_denied_of_bits`,
+`perm_of_notW_denied`, `uperm_at_notW_denied`, `u_fault_flavor_store_notW`/
+`_key` -- the denied arm of `u_fault_flavor`, `uk_store_fault_post_fetch`'s
+premise).  (2) `UexecRet.uexec_kill_arm_F X sc W f := (uexec_pay_arm f -∗ X W)
+∨ (⌜ukill_sc sc⌝ ∗ ((uexec_pay_arm f -∗ X W) ∧ sexit_pay f (-1)))` -- the
+INTERIM shape (the right arm's `sexit_pay` stand-in is replaced in 4b per the
+owner's pending ruling on Question C); producers pick the left; consumers
+unchanged; `ukill_sc` as the guard, no stval threading.  (3) `ChildTok.genF :=
+prodOF (constOF (leibnizO (mword 64 * mword 32 * gname))) (prodOF (Z -d> ▶ ∙)
+(prodOF (▶ ∙) (▶ ∙)))`: the alive token's gname in the pure triple (its own
+one-constructor camera `atokR := exclR (leibnizO alive_val)`, not `exclR unitO`
+-- `icache_tickG` already provides that instance), `K'`/`kpay` as saved
+propositions; `gen_alive`/`kcred`/`kpay`/`gen_know`; the derived forms
+(`gen_slot`/`gen_pid`/`my_pay`/`child_tok`/`gen_kq`/`exit_tok`) keep their
+signatures, so the tree did not move; `gen_fresh` at `K = Kp = emp` (the
+generic child's choice); the token is DROPPED at ProofKforkMain/ProofUserinit
+until 4b gives it its `urun` row.  (4a) `SlotGen`: `Notation qeighth :=
+((1/4)/2)%Qp` (Qp_scope's numerals stop at 4), `pid_reg_eighths`,
+`pid_reg_rest pid g := pid_reg pid (DfracOwn (3/4)) g ∗ pid_reg pid (DfracOwn
+qeighth) g` replacing the whole registration at seven sites (not allocproc,
+which splits the whole); `SchedCtx.pid_tie pid := ⌜bv_unsigned pid = 0⌝ ∨ ∃
+gn, pid_reg pid (DfracOwn qeighth) gn` as `proc_pub`'s fifth conjunct
+(`pid_tie_zero`/`_of_reg`/`_agree`); WaitInv's 3/4 and the boot untouched.
+HAZARD: `iApply (L _ ltac:(vm_compute; reflexivity))` with an evar pid ground
+for 23 minutes; write the argument.  SUPERSEDED IN PART by the
+owner's ruling of the same day (K' := Q(-1), the lane item above): step 3's
+alive token and `K'`/`kcred` saved proposition are removed again in 4b'; the
+tie, the denied-store leaf and the token's `kpay` stay.
 
 RULINGS AFTER CONS-IO PHASE 1 (coordinator, 2026-09-13; the E5 note above is
 read with these): (1) the shift is CHAIN-FIRST, APPEND-LAST -- the echo's

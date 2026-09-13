@@ -2136,11 +2136,4 @@ UInitBoot.v
 # UInitBoot.v elaborates without bound (54 GB in 64 s, measured).
 UInitBootAdequacy.v
 
-# UkWriteLeaf = the U-tier WRITE leaf's concrete half (lane IO-LEAF,
-# first half): row 16 named -- the cursor family, the two key-level rows in
-# the process's direction, the arm out of the caller's ledger, the deposit
-# built from the process's own [SpecConsolewrite.cons_out_chain], and the
-# two-byte anti-vacuity witness.  On UConsOpen / UInitConsK / UShLine's
-# mould: needs [UexecExecInst]'s instance and [SpecFilewrite], which
-# UkRunSys.v and the three program files do not have.
 UkWriteLeaf.v

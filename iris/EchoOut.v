@@ -186,15 +186,142 @@ Proof.
   cbn [pcount_from length]. lia.
 Qed.
 
-(* THE ERA'S PROCESS BYTES AS ONE STREAM: init's banner and sh's first
-   prompt, then one continuation per completed line.  Only the choices
-   [cs !!! j] for [j < q] are read, so a mono_list LOWER BOUND of [cs]
-   determines any prefix of it -- which is what a writer holds. *)
-Fixpoint proc_stream (cs : list nat) (q : nat) : list (bv 8) :=
-  match q with
-  | 0%nat => u_prologue
-  | S q' => proc_stream cs q' ++ line_alts !!! (cs !!! q')
+(* THE ERA'S PROCESS BYTES AS ONE STREAM: every block the stage owes, in
+   order.  Spelled off [pending_n] and not off [line_alts] directly, so that
+   it is DEFINITIONALLY ALIGNED with [pcount] -- [proc_upto_length] below is
+   one induction, and the cursor is literally an index into this list.  Only
+   the choices [cs !!! j] for [j] below the last completed line are read, so a
+   mono_list LOWER BOUND of [cs] determines any prefix of it, which is what a
+   writer holds. *)
+Fixpoint proc_upto_from (cs : list nat) (k n : nat) : list (bv 8) :=
+  match n with
+  | 0%nat => []
+  | S n' => pending_n cs k ++ proc_upto_from cs (S k) n'
   end.
+
+Definition proc_upto (cs : list nat) (n : nat) : list (bv 8) :=
+  proc_upto_from cs 0 n.
+
+(* THE ALIGNMENT: the cursor counts exactly the bytes of this stream. *)
+Lemma proc_upto_from_length cs k E :
+  length (proc_upto_from cs k (length E)) = pcount_from cs k E.
+Proof.
+  revert k. induction E as [| x E IH]; intros k; cbn; [done |].
+  by rewrite length_app IH.
+Qed.
+
+Lemma proc_upto_length cs E :
+  length (proc_upto cs (length E)) = pcount_from cs 0 E.
+Proof. apply proc_upto_from_length. Qed.
+
+Lemma proc_upto_from_S cs k n :
+  proc_upto_from cs k (S n) = pending_n cs k ++ proc_upto_from cs (S k) n.
+Proof. reflexivity. Qed.
+
+Lemma proc_upto_from_snoc cs k n :
+  proc_upto_from cs k (S n) = proc_upto_from cs k n ++ pending_n cs (k + n).
+Proof.
+  revert k. induction n as [| n IH]; intros k.
+  - cbn [proc_upto_from]. by rewrite app_nil_r Nat.add_0_r.
+  - rewrite (proc_upto_from_S cs k (S n)) (IH (S k))
+            (proc_upto_from_S cs k n) app_assoc.
+    f_equal. f_equal. lia.
+Qed.
+
+Lemma proc_upto_snoc cs n :
+  proc_upto cs (S n) = proc_upto cs n ++ pending_n cs n.
+Proof.
+  assert (H0 : (0 + n)%nat = n) by lia.
+  rewrite /proc_upto (proc_upto_from_snoc cs 0 n). by rewrite ?H0.
+Qed.
+
+Lemma proc_upto_mono cs n m :
+  (n <= m)%nat -> proc_upto cs n `prefix_of` proc_upto cs m.
+Proof.
+  intros Hnm. induction Hnm as [| m Hnm IH]; [reflexivity |].
+  etrans; [exact IH |]. rewrite proc_upto_snoc. by eexists.
+Qed.
+
+(* THE CURSOR IS AN INDEX INTO IT.  Forward: what the stage owes at [length w]
+   is what the stream has at [pcount]. *)
+Lemma proc_upto_pcount cs E w b :
+  pending cs E !! length w = Some b ->
+  proc_upto cs (S (length E)) !! pcount cs E w = Some b.
+Proof.
+  intros Hb. rewrite proc_upto_snoc /pcount -proc_upto_length.
+  rewrite lookup_app_r; [| lia].
+  replace (length (proc_upto cs (length E)) + length w
+           - length (proc_upto cs (length E)))%nat with (length w) by lia.
+  exact Hb.
+Qed.
+
+(* ...and back, which is the direction a WRITER needs.  THE STRICTNESS
+   PREMISE IS NOT DECORATION: at [length w = length (pending cs E)] the cursor
+   indexes the FIRST byte of the NEXT block, which the stream has and the
+   stage does not owe -- writing it would be writing past the continuation,
+   before the echo that closes the line.  The program supplies it; see
+   [eout_step_write]. *)
+Lemma proc_upto_pcount_inv cs E w N b :
+  (S (length E) <= N)%nat ->
+  (length w < length (pending cs E))%nat ->
+  proc_upto cs N !! pcount cs E w = Some b ->
+  pending cs E !! length w = Some b.
+Proof.
+  intros HN Hlt Hl.
+  destruct (lookup_lt_is_Some_2 (pending cs E) (length w) Hlt) as [b' Hb'].
+  pose proof (proc_upto_pcount cs E w b' Hb') as Hfwd.
+  assert (Heq : proc_upto cs N !! pcount cs E w = Some b')
+    by (eapply prefix_lookup_Some;
+        [exact Hfwd | apply (proc_upto_mono cs _ N HN)]).
+  assert (Hbb : b = b') by congruence. by rewrite Hbb.
+Qed.
+
+(* THE CHOICES ARE READ ONLY BELOW THE LAST COMPLETED LINE, so a lower bound
+   of [cs] fixes the stream (review S9). *)
+Lemma pending_n_cs_prefix cs0 cs k :
+  cs0 `prefix_of` cs ->
+  ((k `div` length echo_line) <= length cs0)%nat ->
+  pending_n cs0 k = pending_n cs k.
+Proof.
+  intros [z ->] Hk. rewrite /pending_n.
+  case_decide as H0; [done |].
+  case_decide as Hm; [| done].
+  pose proof echo_line_length as HL.
+  assert (Hq : (1 <= k `div` length echo_line)%nat).
+  { destruct (decide (k `div` length echo_line = 0)%nat) as [Hd | Hd]; [| lia].
+    exfalso. pose proof (Nat.div_mod_eq k (length echo_line)) as Hdm.
+    rewrite Hd Hm in Hdm. lia. }
+  f_equal.
+  rewrite !list_lookup_total_alt lookup_app_l; [done | lia].
+Qed.
+
+Lemma proc_upto_from_ext cs0 cs k n :
+  (forall j, (k <= j)%nat -> (j < k + n)%nat -> pending_n cs0 j = pending_n cs j) ->
+  proc_upto_from cs0 k n = proc_upto_from cs k n.
+Proof.
+  revert k. induction n as [| n IH]; intros k Hj; [done |].
+  cbn [proc_upto_from]. rewrite (Hj k ltac:(lia) ltac:(lia)). f_equal.
+  apply IH. intros j H1 H2. apply Hj; lia.
+Qed.
+
+(* the form the write lemma spends: a writer's lower bound of the choices
+   determines the stream as far as it can index into it *)
+Lemma proc_upto_cs_prefix cs0 cs n :
+  cs0 `prefix_of` cs ->
+  (n <= length echo_line * length cs0)%nat ->
+  proc_upto cs0 n = proc_upto cs n.
+Proof.
+  intros Hp Hn. rewrite /proc_upto. apply proc_upto_from_ext.
+  intros j _ Hj. apply (pending_n_cs_prefix cs0 cs j Hp).
+  pose proof echo_line_length as HL.
+  apply Nat.div_le_upper_bound; lia.
+Qed.
+
+Lemma proc_upto_cs_mono cs0 cs n p b :
+  cs0 `prefix_of` cs ->
+  (n <= length echo_line * length cs0)%nat ->
+  proc_upto cs0 n !! p = Some b -> proc_upto cs n !! p = Some b.
+Proof. intros Hp Hn Hl. by rewrite -(proc_upto_cs_prefix cs0 cs n Hp Hn). Qed.
 
 (* the INPUT claim's pure fact *)
 Definition ein_pure (si : istage) (pops : list log_entry)
@@ -833,27 +960,6 @@ Section echo_out.
   (*  6.  THE STEPS THE LINKS SPEND                                         *)
   (* ====================================================================== *)
 
-  (* THE WRITER'S PURE BRIDGE (review S9): the era's process bytes are ONE
-     stream and the cursor is a position in it, so a lower bound of the line
-     choices plus the cursor determine the byte the stage owes.  This is what
-     lets [echo_write_link] be stated without a stage half in the writer's
-     hand. *)
-  Lemma proc_stream_pcount (cs : list nat) (E : list (list mobs * bv 8))
-      (w : list (bv 8)) (q : nat) :
-    w `prefix_of` pending cs E ->
-    (length E <= length echo_line * q)%nat ->
-    proc_stream cs q !! pcount cs E w = pending cs E !! length w.
-  Proof.
-  Admitted.
-
-  (* ...and its monotonicity in the choices, which is why a LOWER BOUND is
-     enough for a writer that has not seen the whole era. *)
-  Lemma proc_stream_mono (cs0 cs : list nat) (q : nat) (p : nat) (b : bv 8) :
-    cs0 `prefix_of` cs -> (q <= length cs0)%nat ->
-    proc_stream cs0 q !! p = Some b -> proc_stream cs q !! p = Some b.
-  Proof.
-  Admitted.
-
   (* (E) THE ECHO SHIFT's core step, at the STORE arm: the byte goes out and
      [i_owed] is raised; [ein_step_append] lowers it.  The cursor is
      UNTOUCHED ([pcount_echo]), which is what lets this close with the writer
@@ -892,12 +998,40 @@ Section echo_out.
      its byte is the [P]-th of the era's process stream.  What it gets back
      (review S9): the cursor advanced and the lower bound, so the next write
      is paid the same way. *)
+  (* PROOF PLAN.  Open the claim: the FRESH arm ([acc = []]) adopts (insert
+     the pin at [k] -- absent because the ledger is unpaired, [era_inv]'s
+     domain conjunct -- allocate the era's four ghosts with [era_alloc]); the
+     PAIRED arm reads the pin against the ghost_map auth to get [v], then
+     [out_agree] to get [so].  [era_closed_now] kills the closed arm at the
+     current era and [era_closed_of_lt] serves it at a dead one (the cursor's
+     other half is in [era_dead], which is why it is kept).  Then
+     [turn_agree] gives [P = pcount (o_cs so) (o_E so) (o_w so)],
+     [proc_upto_cs_mono] lifts the writer's lower bound to the ledger's [cs],
+     [proc_upto_pcount_inv] turns the stream index into
+     [pending (o_cs so) (o_E so) !! length (o_w so) = Some b], and
+     [eout_pure] is re-established with [o_w := o_w ++ [b]]
+     ([D cs E ++ (w ++ [b]) = (D cs E ++ w) ++ [b]] and [prefix] of the
+     one-longer take).  [pcount_write] moves the cursor.
+
+     [Hstrict] IS OWED BY THE PROGRAM and is not decoration: see
+     [proc_upto_pcount_inv].  It says the continuation this write belongs to
+     is not already complete -- with [length w = length (pending cs E)] the
+     next legal event is the user's byte, not another process byte.  IO-LEAF
+     supplies it at a line boundary, where [UkSh.ush_pos]'s [∃ q, n = 17 q]
+     already names the stage; the ledger has to EXPOSE the stage index for it
+     (a mono_nat lower bound beside [cs_lb]), which is the one piece of this
+     statement still to be designed with the coordinator. *)
   Lemma eout_step_write (k : nat) (v : era_pins) (P : nat) (b : bv 8)
-      (cs0 : list nat) (q : nat) (ho : list mobs) (acc : list (bv 8))
+      (cs0 : list nat) (N : nat) (ho : list mobs) (acc : list (bv 8))
       (h : list mobs) :
-    (q <= length cs0)%nat ->
-    proc_stream cs0 q !! P = Some b ->
+    (N <= length echo_line * length cs0)%nat ->
+    proc_upto cs0 N !! P = Some b ->
     era_pin k v -∗ turn v P -∗ cs_lb v cs0 -∗
+    (* OWED BY THE PROGRAM: the era's stage index, and that the write stays
+       inside the continuation.  Stated over the ledger's own stage, which is
+       what the link produces once opened. *)
+    (∀ so : ostage, ⌜(S (length (o_E so)) <= N)%nat
+                    /\ (length (o_w so) < length (pending (o_cs so) (o_E so)))%nat⌝) -∗
     echo_led h -∗ eout k ho acc ==∗
       echo_led h ∗ eout k ho (acc ++ [b]) ∗ turn v (S P) ∗ cs_lb v cs0.
   Proof.

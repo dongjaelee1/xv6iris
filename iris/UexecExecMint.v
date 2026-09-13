@@ -83,11 +83,16 @@ Section UexecExecMint.
      credential and the licence with the supply ([App.Happ_kill],
      [App.Happ_out_sup]), so every existing caller hands them in
      together. *)
-  Lemma udep_gen : app_sup -∗ □ riscv_kill_cred -∗ out_licence -∗ udep.
+  Lemma udep_gen :
+    app_sup -∗ □ riscv_kill_cred -∗ out_licence -∗ in_licence -∗ udep.
   Proof.
     rewrite /udep /Dsup /= /xv6_ssupply.
-    iIntros "#Hsup #Hkc #Hlic".
-    iSplitR; [ iModIntro; iSplit; [ iExact "Hsup" | iSplit; [ iExact "Hkc" | iExact "Hlic" ] ] | ].
+    iIntros "#Hsup #Hkc #Hlic #Hilic".
+    iSplitR;
+      [ iModIntro; iSplit;
+        [ iExact "Hsup"
+        | iSplit; [ iExact "Hkc"
+                  | iSplit; [ iExact "Hlic" | iExact "Hilic" ] ] ] | ].
     iPureIntro. intros n W Q _ Hne.
     exact (sbundle_of_supply_ne uslot n W Q Hne).
   Qed.
@@ -202,8 +207,8 @@ Section UexecExecMint.
     app_sup -∗ □ riscv_kill_cred -∗ out_licence -∗ □ uexec_wp -∗
     □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W).
   Proof.
-    iIntros "#Hsup #Hkc #Hlic #Hgen".
-    iDestruct (udep_gen with "Hsup Hkc Hlic") as "#Hdep".
+    iIntros "#Hsup #Hkc #Hlic #Hilic #Hgen".
+    iDestruct (udep_gen with "Hsup Hkc Hlic Hilic") as "#Hdep".
     iIntros "!>" (W) "#Hpay".
     (* AT THE GENERIC INSTANCE, EXPLICITLY (lane SUPPLY-SPLIT).  The chain
        is now parametric in which [uprogSG] its two verified arms run at,
@@ -215,7 +220,9 @@ Section UexecExecMint.
     { iApply (udepw_law_of_psok (PS := uprogSG_gen) 16
                 ltac:(exact I) ltac:(vm_compute; discriminate)). }
     { rewrite /ssupply /= /xv6_ssupply. iModIntro.
-      iSplit; [ iExact "Hsup" | iSplit; [ iExact "Hkc" | iExact "Hlic" ] ]. }
+      iSplit; [ iExact "Hsup"
+              | iSplit; [ iExact "Hkc"
+                        | iSplit; [ iExact "Hlic" | iExact "Hilic" ] ] ]. }
   Qed.
 
   (* ...AND THE MINT AT A CONSTANT PAYLOAD (GENERIC-PAY): the same generic
@@ -229,14 +236,16 @@ Section UexecExecMint.
      payload ([USyncKernel.sync_uexec_slot], [UEchoKernel.echo_uexec_slot]),
      so [uslot_mint] stays THE entry decider and this is its sibling. *)
   Lemma uslot_mint_pay (R : iProp Σ) :
-    app_sup -∗ □ riscv_kill_cred -∗ out_licence -∗ □ uexec_wp -∗
+    app_sup -∗ □ riscv_kill_cred -∗ out_licence -∗ in_licence -∗ □ uexec_wp -∗
     □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => R)%I -∗ R -∗ uslot W).
   Proof.
-    iIntros "#Hsup #Hkc #Hlic #Hgen".
+    iIntros "#Hsup #Hkc #Hlic #Hilic #Hgen".
     iIntros "!>" (W) "#Hpay HR".
     iApply (UexecCond.cond_entry_slot_pay R W with "[] Hkc Hgen Hpay HR").
     rewrite /ssupply /= /xv6_ssupply. iModIntro.
-    iSplit; [ iExact "Hsup" | iSplit; [ iExact "Hkc" | iExact "Hlic" ] ].
+    iSplit; [ iExact "Hsup"
+            | iSplit; [ iExact "Hkc"
+                      | iSplit; [ iExact "Hlic" | iExact "Hilic" ] ] ].
   Qed.
 
   (* ...AND THE SAME WITH THE PAYLOAD UNDER THE BOX.  An application that
@@ -247,14 +256,16 @@ Section UexecExecMint.
      resource has to be bound inside the [□].  Nothing about the proof
      changes -- the generic slot is built per call. *)
   Lemma uslot_mint_all :
-    app_sup -∗ □ riscv_kill_cred -∗ out_licence -∗ □ uexec_wp -∗
+    app_sup -∗ □ riscv_kill_cred -∗ out_licence -∗ in_licence -∗ □ uexec_wp -∗
     □ (∀ (R : iProp Σ) (W : uvis),
          my_pay (uvis_gen W) (fun _ => R)%I -∗ R -∗ uslot W).
   Proof.
-    iIntros "#Hsup #Hkc #Hlic #Hgen".
+    iIntros "#Hsup #Hkc #Hlic #Hilic #Hgen".
     iIntros "!>" (R W) "#Hpay HR".
     iApply (UexecCond.cond_entry_slot_pay R W with "[] Hkc Hgen Hpay HR").
     rewrite /ssupply /= /xv6_ssupply. iModIntro.
-    iSplit; [ iExact "Hsup" | iSplit; [ iExact "Hkc" | iExact "Hlic" ] ].
+    iSplit; [ iExact "Hsup"
+            | iSplit; [ iExact "Hkc"
+                      | iSplit; [ iExact "Hlic" | iExact "Hilic" ] ] ].
   Qed.
 End UexecExecMint.

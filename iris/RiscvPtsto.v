@@ -12,6 +12,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvModelBytes.
 Require Import RiscvLang.
 Require Import ObsTrace.
+Require Import ConsLog.  (* [log_entry]: the console input log's vocabulary *)
 Require Import TsoMemPa TsoGhost.  (* the TSO machine ghosts (tso-machine-flip.md) *)
 Require Export DiskImg.  (* [diskImgG]/[disk_img_auth]: the disk image map *)
 (* [disk_write]/[disk_wr]/[wr_apply]: the disk image and the pure write
@@ -672,6 +673,43 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
   riscv_out_res : list mobs -> list (bv 8) -> iProp Σ;
   riscv_out_res_timeless :
     forall (h : list mobs) (acc : list (bv 8)), Timeless (riscv_out_res h acc);
+  (* THE INPUT LOG (claude-notes/projects/app-echo.md, "E5 -- THE CONSOLE
+     I/O CLAIM", lane CONS-IO).  The receive side's twin of
+     [riscv_out_res]: the application's claim about the inputs the CONSOLE
+     UART has ACCEPTED and about which of them a process has been given.
+
+     [pops] is the LOG -- every byte consoleintr took from the receive
+     path, in arrival order, as [(h, c, cs)]: the history it arrived at
+     ([ObsTrace.obs_ends_in Uart0 h c]), the byte, and what the kernel put
+     on the wire for it ([ConsLog.cons_echo c cs]).  EVERY accepted byte is
+     logged, including the ones the ring drops and the ones an erase throws
+     away, which is what makes the log say something about the bytes a
+     reader did NOT get.  [dl] is every input the read path has CONSUMED --
+     delivered to a process OR swallowed by one of consoleread's two
+     byte-losing exits (app-echo.md, lane CONS-SWALLOW), because a byte
+     that left the ring is gone whether or not it reached a buffer, and a
+     log that pretended otherwise would leave the swallowed byte sitting in
+     a gap no kernel fact can excuse.
+
+     A RESOURCE AND NOT A [Prop], for [riscv_out_res]'s reason exactly: a
+     pure predicate cannot say WHOSE delivery a byte was, so the
+     application needs exclusive state tied to the log, and the only place
+     a ghost can be tied to the invariant's [pops] is inside the invariant.
+
+     WHERE IT LIVES: the console port's invariant, at ITS OWN movable
+     witness history ([WpUart.in_claim_at] -- NOT the output claim's, which
+     a writer's [WpUart.out_link] moves and which nothing may move the
+     input claim along with).  [WpUart.in_res_at] does the port indexing
+     ([emp] at [Uart1]).  TIMELESS, so [WpUart.uart_inv_body] stays
+     timeless; NOT persistent.  Founded by the TRANSPORT at [[] [] []]
+     ([SystemAdequacy.app_xfer_boot_raw]'s fourth component), exactly as
+     the output claim is; the trivial application sets it to
+     [in_res_triv]. *)
+  riscv_in_res : list mobs -> list ConsLog.log_entry ->
+                 list (list mobs * bv 8) -> iProp Σ;
+  riscv_in_res_timeless :
+    forall (h : list mobs) (pops : list ConsLog.log_entry)
+           (dl : list (list mobs * bv 8)), Timeless (riscv_in_res h pops dl);
   (* THE APPLICATION'S FIXED PART (claude-notes/projects/app-instances.md
      §6 ruling 1, round D0).  The machine no longer owns a counter: the
      application declares whatever [Type] its fixed part has, and its BIRTH
@@ -693,6 +731,7 @@ Global Existing Instance riscv_rx_tag_timeless.
 Global Existing Instance riscv_kill_cred_persistent.
 Global Existing Instance riscv_kill_cred_timeless.
 Global Existing Instance riscv_out_res_timeless.
+Global Existing Instance riscv_in_res_timeless.
 
 Class riscvGS (Σ : gFunctors) := RiscvGS {
   riscv_fixedGS :: riscvFixedGS Σ;
@@ -985,6 +1024,16 @@ Definition out_res_triv {Σ : gFunctors} :
 Global Instance out_res_triv_timeless {Σ : gFunctors} (h : list mobs)
     (acc : list (bv 8)) : Timeless (out_res_triv (Σ := Σ) h acc).
 Proof. rewrite /out_res_triv. apply _. Qed.
+
+(* ...and the input log's, on the same mould: the generic application
+   claims nothing about what was typed and nothing about who got it. *)
+Definition in_res_triv {Σ : gFunctors} :
+    list mobs -> list ConsLog.log_entry -> list (list mobs * bv 8) -> iProp Σ :=
+  fun _ _ _ => emp%I.
+Global Instance in_res_triv_timeless {Σ : gFunctors} (h : list mobs)
+    (pops : list ConsLog.log_entry) (dl : list (list mobs * bv 8)) :
+  Timeless (in_res_triv (Σ := Σ) h pops dl).
+Proof. rewrite /in_res_triv. apply _. Qed.
 
 (* the TRIVIAL trace predicate -- the client's half and nothing about it.
    What a client that states no trace property fills the slot with. *)

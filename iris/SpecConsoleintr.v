@@ -107,6 +107,8 @@ From iris.base_logic.lib Require Import invariants ghost_var.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Operators_mwords SailStdpp.Values SailStdpp.MachineWord.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvPtsto RiscvLang ObsTrace.
+Require Import ConsLog.   (* [echo_of], [cons_erase], [cons_echo]: the
+   boundary's pure vocabulary, MOVED here from this file (lane CONS-IO). *)
 Require Import RegFile.
 Require Import RiscvExtras.
 Require Import FdSlots.
@@ -137,39 +139,15 @@ Require Import TsoCtx CtxMorphTac.
    lock calls (10) are all shallower than wakeup. *)
 Notation consoleintr_stack := (32%nat) (only parsing).
 (* THE ECHOED BYTES, per arm (console.c:150-183).
-   [SpecConsputc.consputc_bs] is what [consputc(BACKSPACE)] puts on the
-   wire: backspace, space, backspace -- erase one glyph. *)
-
-(* what the default arm echoes for [c]: the byte itself, except that a
-   carriage return is echoed -- and stored -- as a newline
-   ([ConsoleInv.cons_xlate] is the same translation on the ring side) *)
-Definition echo_of (c : bv 8) : bv 8 :=
-  if eq_vec (c : mword 8) (mword_of_int 13 : mword 8)
-  then (mword_of_int 10 : mword 8) else c.
-
-(* THE THREE BYTES THAT REACH THE ERASE ARMS (console.c:150-160): ^U kills
-   the line, ^H and DEL erase one character.  Named (lane OUT-FUPD) because
-   [cons_echo]'s erase disjunct is now GUARDED BY IT: without the guard the
-   contract would allow a run of erase triples for ANY byte, and an
-   application that claims a transcript could not refute an arm the code
-   never takes.  The guard is a fact the walk already has -- it is the
-   [switch]'s own case split. *)
-Definition cons_erase (c : bv 8) : bool :=
-  eq_vec (c : mword 8) (mword_of_int 21 : mword 8)
-  || eq_vec (c : mword 8) (mword_of_int 8 : mword 8)
-  || eq_vec (c : mword 8) (mword_of_int 127 : mword 8).
-
-(* [cons_echo c cs]: the SHAPE of what one consoleintr call echoes, per arm
-   (console.c:150-183).  Nothing -- the byte is NUL, the ring is full and
-   the byte is dropped, or ^H/^U found nothing to erase.  One byte,
-   [echo_of c] -- the default arm with room, which is also the arm that
-   FILES the byte.  Or a run of erase triples -- ^H and DEL erase at most
-   one character, ^U erases back to the write mark and the count is the
-   ring's content, which this contract cannot name -- AND ONLY FOR AN ERASE
-   BYTE. *)
-Definition cons_echo (c : bv 8) (cs : list (bv 8)) : Prop :=
-  cs = [] \/ cs = [echo_of c]
-  \/ (cons_erase c = true /\ exists n : nat, cs = mjoin (replicate n consputc_bs)).
+   [echo_of], [cons_erase] and [cons_echo] MOVED to ConsLog.v (lane CONS-IO,
+   ruling on F10), together with [SpecConsputc.consputc_bs]: they are the
+   PURE vocabulary of the console UART's input log, which the boundary's
+   contract is stated over and which sits below every Iris file that
+   mentions this one.  Nothing about them changed.  What was here:
+     [echo_of c]      -- the byte the default arm echoes ('\r' as '\n');
+     [cons_erase c]   -- ^U, ^H and DEL, the three bytes the erase arms take;
+     [cons_echo c cs] -- the SHAPE of one call's echo, per arm, with the
+                         erase disjunct GUARDED by an erase byte. *)
 
 Section EchoShift.
   (* ONLY [riscvGS], and deliberately: this is the obligation the
@@ -204,10 +182,23 @@ Section EchoShift.
      below): an application that claims a transcript must be able to refute
      the erase arm from its own discipline, which it can only do if the
      kernel says the erase arm needs an erase byte. *)
+  (* SINCE lane CONS-IO IT PAYS BOTH RESOURCES AT ONCE.  The output side is
+     unchanged -- one link per echoed byte -- but the SAME shift now also
+     files the accepted byte in the console UART's INPUT LOG, which is what
+     makes the log say what the reader did NOT get.  [WpUart.in_run] is the
+     two together: the bytes first, the log entry last, and STOPPABLE at
+     every prefix, because the kill-line arm's glyph count is the ring's
+     content and the shift is fired before the loop runs.  [cs] is then an
+     UPPER BOUND on what the arm will emit, and the arm closes the log at
+     exactly what it did emit.
+
+     EVERY ARM FIRES IT, including the two that echo nothing (a NUL byte, a
+     full ring): a dropped byte is an accepted byte and the log records it
+     at [cs = []], which is the disjunct a read's gap clause spends. *)
   Definition cons_echo_shift `{XI : CurCtx} : iProp Σ :=
     (□ ∀ (h : list mobs) (c : bv 8) (cs : list (bv 8)) (Φ : iProp Σ),
         ⌜obs_ends_in Uart0 h c⌝ -∗ ⌜cons_echo c cs⌝ -∗
-        riscv_rx_tag h -∗ obs_hist_lb h -∗ Φ -∗ out_chain Uart0 cs Φ)%I.
+        riscv_rx_tag h -∗ obs_hist_lb h -∗ Φ -∗ in_run h c [] cs Φ)%I.
 
   Global Instance cons_echo_shift_persistent `{XI : CurCtx} :
     Persistent (cons_echo_shift (XI := XI)).
@@ -217,12 +208,14 @@ Section EchoShift.
      is [RiscvPtsto.out_res_triv] every link is free, so the echo justifies
      itself. *)
   Lemma cons_echo_shift_triv `{XI : CurCtx} :
-    riscv_out_res = out_res_triv -> ⊢ cons_echo_shift (XI := XI).
+    riscv_out_res = out_res_triv -> riscv_in_res = in_res_triv ->
+    ⊢ cons_echo_shift (XI := XI).
   Proof.
-    intros Hout. iIntros "!>" (h c cs Φ) "_ _ _ _ HΦ".
-    iApply (out_chain_of_licence with "[] HΦ").
-    rewrite /out_licence Hout /out_res_triv.
-    iIntros "!>" (h' acc b) "_". by iModIntro.
+    intros Hout Hin. iIntros "!>" (h c cs Φ) "_ _ _ _ HΦ".
+    iApply (in_run_of_licence with "[] [] HΦ").
+    - by iApply in_licence_triv.
+    - rewrite /out_licence Hout /out_res_triv.
+      iIntros "!>" (h' acc b) "_". by iModIntro.
   Qed.
 
 End EchoShift.
@@ -280,7 +273,7 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
        and no longer under an existential: the post has to name the byte's
        own history ([hb]) to say where the mark ended up, and an existential
        premise cannot be named by a postcondition. *)
-    (hb : list mobs) (cb : bv 8) (hh : option (list mobs)) :=
+    (hb : list mobs) (cb : bv 8) (hh hg : option (list mobs)) :=
   let rettgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   (consoleintr_stack <= K)%nat ->
   (* a0 carries the byte the environment pushed into the UART *)
@@ -290,6 +283,8 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
   obs_ends_in Uart0 hb cb ->
   (* ...and which is strictly newer than everything the ring holds *)
   ohist_ext hh hb ->
+  (* ...and strictly newer than everything the kernel has LOGGED *)
+  ohist_ext hg hb ->
   length γs = NPROC ->
   (* cons.lock's and wakeup's transient noff increments stay in int range *)
   (Z.of_nat lvl + 2 < 2 ^ 31)%Z ->
@@ -338,6 +333,18 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
      persistent bounds on them are comparable and no more, and the ring's own
      picture can be arbitrarily stale.  The exclusive pair decides it. *)
   uart_rx_hi γu (1/2) hh -∗
+  (* THE LOG'S HIGH-WATER HALF, IN AND OUT (app-echo.md, lane CONS-IO).
+     [hg] is the newest history the kernel has already LOGGED -- every
+     accepted byte, not only the ones the ring filed -- and the premise
+     [ohist_ext hg hb] below is what licenses this call's ONE append: with
+     it, the log's own chain puts every logged history strictly before
+     [hb], so the byte is logged once and the log stays in arrival order.
+     It comes back at [Some hb] UNCONDITIONALLY, because every arm of the
+     switch logs: a NUL byte and a full ring are accepted-and-dropped, the
+     erase arms are accepted-and-edited, and the log records the choice.
+     Like the ring's mark, it is a RESOURCE and not a pure premise: nothing
+     else can say which of two histories came first. *)
+  uart_log_hi γu (1/2) hg -∗
   wp_next b pme (fun (CID : CpuId) =>
   ∀ Mf : regfile,
       ⌜ callee_saved m Mf /\ (forall r : regidx, r ∈ dom (rf_to_gmap Mf)) ⌝ -∗
@@ -358,6 +365,9 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
          arm that FILED the byte, which is what the ring's order needs. *)
       (∃ hh' : option (list mobs),
          uart_rx_hi γu (1/2) hh' ∗ ⌜ohist_le hh' (Some hb)⌝) -∗
+      (* ...AND THE LOG'S MARK, AT THIS BYTE.  No existential and no
+         disjunction: the byte was logged, on every arm. *)
+      uart_log_hi γu (1/2) (Some hb) -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
@@ -366,6 +376,6 @@ Module Type CONSOLEINTR.
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
        (γu : uart_names) (γv : disk_names) (m : regfile) (γs : list gname)
       (pme : mword 64) (lvl K : nat) (eb : bool) (b : bool) (lks : gset string)
-      (hb : list mobs) (cb : bv 8) (hh : option (list mobs)),
-      wp_consoleintr_sconf_body γu γv m γs pme lvl K eb b lks hb cb hh.
+      (hb : list mobs) (cb : bv 8) (hh hg : option (list mobs)),
+      wp_consoleintr_sconf_body γu γv m γs pme lvl K eb b lks hb cb hh hg.
 End CONSOLEINTR.

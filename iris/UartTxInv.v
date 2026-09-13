@@ -288,12 +288,12 @@ Section UartTxInv.
   Proof.
     iIntros (HE) "#Huinv Hown".
     iInv "Huinv" as ">Hbody" "Hclose".
-    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol)".
+    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl)".
     iEval (rewrite /uart_ghosts) in "Hg".
     iDestruct "Hg" as "(Hs & Hout & Htx & Hdl)".
     iDestruct (uart_tx_own_agree with "Htx Hown") as %Hacc.
     iDestruct (uart_sent_get with "Hs") as "[Hs #Hlb]".
-    iMod ("Hclose" with "[Hu Hs Hout Htx Hdl Hcol]") as "_".
+    iMod ("Hclose" with "[Hu Hs Hout Htx Hdl Hcol Hincl]") as "_".
     { iApply bi.later_intro. iExists u. rewrite /uart_ghosts. iFrame. }
     iModIntro. iFrame "Hown". rewrite -Hacc. iExact "Hlb".
   Qed.
@@ -306,12 +306,12 @@ Section UartTxInv.
   Proof.
     iIntros (HE) "#Huinv Hown #HL".
     iInv "Huinv" as ">Hbody" "Hclose".
-    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol)".
+    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl)".
     iEval (rewrite /uart_ghosts) in "Hg".
     iDestruct "Hg" as "(Hs & Hout & Htx & Hdl)".
     iDestruct (uart_tx_own_agree with "Htx Hown") as %Hacc.
     iDestruct (uart_sent_prefix with "Hs HL") as %Hpre.
-    iMod ("Hclose" with "[Hu Hs Hout Htx Hdl Hcol]") as "_".
+    iMod ("Hclose" with "[Hu Hs Hout Htx Hdl Hcol Hincl]") as "_".
     { iApply bi.later_intro. iExists u. rewrite /uart_ghosts. iFrame. }
     iModIntro. iFrame "Hown". iPureIntro. by rewrite -Hacc.
   Qed.

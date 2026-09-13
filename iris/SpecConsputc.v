@@ -67,6 +67,7 @@ From stdpp Require Import gmap list bitvector.definitions.
 From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import ghost_var gen_heap invariants.
 From iris.program_logic Require Import language weakestpre lifting.
+Require Import ConsLog.   (* [consputc_bs]: the erase arm's three bytes *)
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
@@ -115,9 +116,10 @@ Notation consputc_stack := (20%nat) (only parsing).
 (*  pushes.  BACKSPACE is 0x100 (console.c), so it is NOT a byte value    *)
 (*  and the two arms never overlap.                                       *)
 (* ===================================================================== *)
-Definition consputc_bs : list (bv 8) :=
-  [(mword_of_int 8 : mword 8); (mword_of_int 32 : mword 8);
-   (mword_of_int 8 : mword 8)].
+(* [consputc_bs] MOVED to ConsLog.v (lane CONS-IO, ruling on F10): the
+   boundary's pure vocabulary lives in one Iris-free leaf, because the
+   console UART's input log names it ([ConsLog.cons_echo]'s erase arm) and
+   the log sits below every Iris file that mentions this one. *)
 
 (* BACKSPACE is 0x100 (console.c), so it is not a byte value and the two
    arms cannot both fire. *)

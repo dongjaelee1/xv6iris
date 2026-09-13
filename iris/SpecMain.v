@@ -734,6 +734,11 @@ Section SpecMain.
        order the byte it is filing against the bytes already in the ring
        (app-echo.md, lane CONS-CURSOR, C2). *)
     uart_rx_hi γd (1/2) None -∗
+    (* ...AND THE LOG'S HIGH-WATER HALF (lane CONS-IO), parked in the SAME
+       payload: [WpUart.uart_rx_writer] is the pop token, the ring's mark
+       and this.  Its partner is inside the port's invariant, and it is
+       what licenses consoleintr's one log append per accepted byte. *)
+    uart_log_hi γd (1/2) None -∗
     uart_dlab_is γd (DfracOwn (1/2)) b0 -∗
     (* ==================== THE SECOND PORT (bump 163d39b) ==================
        Everything main needs about UART1, all of it minted in
@@ -772,6 +777,7 @@ Section SpecMain.
     uart_tx_own γd1 l1 -∗ uart_sent γd1 l1 -∗ uart_out_lb γd1 l1 -∗
     uart_rx_tok γd1 0%nat None -∗
     uart_rx_hi γd1 (1/2) None -∗
+    uart_log_hi γd1 (1/2) None -∗
     uart_dlab_is γd1 (DfracOwn (1/2)) b1 -∗
     disk_cfg_is γv (DfracOwn (1/2)) c0 -∗
     (* ...and the two disk ghosts the protocol invariant does NOT hold, minted

@@ -241,13 +241,13 @@ Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
             iDestruct "Hsi" as "[Hreg [Hmem Hdev]]".
             iDestruct "Hdev" as "(Hua & Hpldev & Hvdev)".
             iInv "Huinv" as ">Hdbody" "Hdclose".
-            iDestruct "Hdbody" as (u) "(Huf & Hg & Hcol)".
+            iDestruct "Hdbody" as (u) "(Huf & Hg & Hcol & Hincl)".
             iDestruct (uarts_agree with "Hua Huf") as %Hduart.
             destruct (uart_write_total u off storebyte Hoff) as [u' Hwrite_u].
             iMod (dev_interp_update_uart sigma.(mdev) i u u'
                     with "[$Hua $Hpldev $Hvdev] Huf") as "[Hdev' Huf']".
             iMod ("Hacc" $! u u' with "[//] Hg Hcol HR") as "(Hg' & Hcol' & HS)".
-            iMod ("Hdclose" with "[Huf' Hg' Hcol']") as "_".
+            iMod ("Hdclose" with "[Huf' Hg' Hcol' Hincl]") as "_".
             { iApply bi.later_intro. iExists u'. iFrame. }
             iMod (fupd_mask_subseteq ∅) as "Hb2"; [set_solver|].
             iModIntro. iExists (set_duart sigma.(mdev) i u').
@@ -529,14 +529,14 @@ Qed.
             iDestruct "Hsi" as "[Hreg [Hmem Hdev]]".
             iDestruct "Hdev" as "(Hua & Hpldev & Hvdev)".
             iInv "Huinv" as ">Hdbody" "Hdclose".
-            iDestruct "Hdbody" as (u) "(Huf & Hg & Hcol)".
+            iDestruct "Hdbody" as (u) "(Huf & Hg & Hcol & Hincl)".
             iDestruct (uarts_agree with "Hua Huf") as %Hduart.
             destruct (uart_read_total u off Hoff) as (bt & u' & Hread_u).
             iMod (dev_interp_update_uart sigma.(mdev) i u u'
                     with "[$Hua $Hpldev $Hvdev] Huf") as "[Hdev' Huf']".
             iMod ("Hacc" $! u bt u' with "[//] Hg Hcol HR")
               as "(Hg' & Hcol' & HS)".
-            iMod ("Hdclose" with "[Huf' Hg' Hcol']") as "_".
+            iMod ("Hdclose" with "[Huf' Hg' Hcol' Hincl]") as "_".
             { iApply bi.later_intro. iExists u'. iFrame. }
             iMod (fupd_mask_subseteq ∅) as "Hb2"; [set_solver|].
             iModIntro. iExists bt, (set_duart sigma.(mdev) i u').

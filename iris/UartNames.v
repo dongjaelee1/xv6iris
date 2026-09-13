@@ -61,6 +61,27 @@ Record uart_names := UartNames {
   un_rxpop  : gname;
   un_rxhi   : gname;
   un_init   : gname;
+  (* ---- THE INPUT LOG'S THREE (app-echo.md, lane CONS-IO), appended LAST
+         so every literal construction site is an append.
+
+     un_loghi  ghost_var halves over the history of the last input the
+               kernel LOGGED -- every accepted byte, not only the ones the
+               ring filed.  The exact twin of [un_rxhi]: one half rides
+               [WpUart.uart_rx_writer] in the PLIC payload, one sits in the
+               port invariant's input claim, and the pair is what makes
+               "a byte is logged once, and the log is in arrival order" a
+               theorem rather than a hope.
+     un_log    mono_list mirror of the log itself, so that the console ring
+               can keep a PERSISTENT lower bound on it beside its own
+               entries and state the read contract's gap fact against it.
+     un_deliv  ghost_var halves over the inputs the read path has CONSUMED.
+               One half is in the port invariant beside the input claim,
+               the other in [ConsoleInv.cons_res]: that pair is what ties
+               the boundary's [dl] to the ring's consumed count, without
+               which a read cannot say where its window begins.           *)
+  un_loghi  : gname;
+  un_log    : gname;
+  un_deliv  : gname;
 }.
 
 (* THE CONSOLE RING'S GHOST NAMES, here and not in [ConsoleInv.v] for the

@@ -83,6 +83,7 @@ Require Import SailStdpp.Operators_mwords.
 Require SailStdpp.Values.     (* [mword], referenced qualified -- see above   *)
 Require Import Riscv.rv64d_types.
 Require Import RiscvLang.     (* [CPU]                                        *)
+Require Import ConsLog.       (* [log_entry]: the console input log's entries  *)
 Require Import VirtioModel.   (* [virtio_cfg], [disk_wr]                      *)
 Require Import VSlot.         (* [vslot] -- the TYPE only; see that file       *)
 Require Import DinodeEnc.
@@ -373,6 +374,16 @@ Class uartGhostG (Σ : gFunctors) := UartGhostG {
      [WpUart.dev_inv]. *)
   cons_ghost_logG :: inG Σ (mono_listR (leibnizO (list mobs * bv 8)));
   cons_ghost_rdG :: ghost_varG Σ nat;
+  (* THE CONSOLE UART'S INPUT LOG (app-echo.md, lane CONS-IO): the
+     mono_list mirror of the accepted-input log ([WpUart.in_log_auth]),
+     whose persistent lower bound is what the ring carries to state the
+     read contract's gap fact; and the CONSUMED sequence
+     ([WpUart.uart_deliv] / [ConsoleInv.cons_deliv]), the ghost_var pair
+     that ties the boundary's [dl] to the ring's consumed count.  The
+     high-water history of the log reuses [uart_ghost_rxhiG] above -- it is
+     the same [option (list mobs)] camera. *)
+  cons_ghost_inlogG :: inG Σ (mono_listR (leibnizO ConsLog.log_entry));
+  cons_ghost_delivG :: ghost_varG Σ (list (list mobs * bv 8));
 }.
 
 Definition uartGhostΣ : gFunctors :=
@@ -382,7 +393,9 @@ Definition uartGhostΣ : gFunctors :=
      ghost_varΣ (nat * option (list mobs));
      ghost_varΣ (option (list mobs));
      GFunctor (mono_listR (leibnizO (list mobs * bv 8)));
-     ghost_varΣ nat ].
+     ghost_varΣ nat;
+     GFunctor (mono_listR (leibnizO ConsLog.log_entry));
+     ghost_varΣ (list (list mobs * bv 8)) ].
 
 Global Instance subG_uartGhostG Σ : subG uartGhostΣ Σ -> uartGhostG Σ.
 Proof. solve_inG. Qed.

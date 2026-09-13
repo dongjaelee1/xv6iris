@@ -1632,6 +1632,12 @@ Section BootAlloc.
        [WpUart.uart_ghosts_alloc] at [Uart0].  The kernel's port founds its
        own out of nothing ([WpUart.out_res_at_uart1]). *)
     out_res_at Uart0 [] [] -∗
+    (* ...AND THE ERA'S INPUT LOG AT THE EMPTY RUN (lane CONS-IO), the
+       output claim's twin from the same transport and the same lend: the
+       console port's invariant carries the application's account of what
+       was typed and who got it ([WpUart.in_claim_at]), founded here at the
+       empty log with nothing delivered. *)
+    in_res_at Uart0 [] [] [] -∗
     (* the transport and the crash seam at the application's guest, both
        straight through to the mint, which parks the one and puts both on
        fsinit's kit (round C) *)
@@ -1741,6 +1747,12 @@ Section BootAlloc.
          in the PLIC payload with the token.  Its partner is inside the
          ring's resource ([main_globals_raw] above). *)
       uart_rx_hi γd (1/2) None ∗
+      (* ...AND THE LOG'S HIGH-WATER HALF (lane CONS-IO), which main parks
+         in the SAME payload: [WpUart.uart_rx_writer] is the pop token, the
+         ring's mark and this.  Its partner is inside the port's invariant
+         ([WpUart.in_claim_at]), and it is what licenses consoleintr's one
+         append per accepted byte. *)
+      uart_log_hi γd (1/2) None ∗
       (∃ b0 : bool, uart_dlab_is γd (DfracOwn (1/2)) b0) ∗
       (* ---- AND THE SAME FOUR ROWS AT THE SECOND PORT.  [uartinit] runs
          [uartinitone] at BOTH ports, so both need the transmitter token,
@@ -1753,6 +1765,7 @@ Section BootAlloc.
          uart_tx_own γd1 l1 ∗ uart_sent γd1 l1 ∗ uart_out_lb γd1 l1) ∗
       uart_rx_tok γd1 0%nat None ∗
       uart_rx_hi γd1 (1/2) None ∗
+      uart_log_hi γd1 (1/2) None ∗
       (∃ b1 : bool, uart_dlab_is γd1 (DfracOwn (1/2)) b1) ∗
       (∃ c0 : virtio_cfg,
          ⌜virtio_live c0 = false⌝ ∗ disk_cfg_is γv (DfracOwn (1/2)) c0) ∗
@@ -1826,7 +1839,7 @@ Section BootAlloc.
     pose proof Hbf as Hbf'.
     destruct Hbf' as (Hpow & Hin & Hmemf & Hregsf & Hu0 & Hp0 & Hv0' & _).
     destruct Hv0' as (v0 & Hv0).
-    iIntros "Hok Hores #Hxfer #Hseamg Hdursnap H".
+    iIntros "Hok Hores Hires #Hxfer #Hseamg Hdursnap H".
     iDestruct (power_boot_res_unpack Rb g ndisk with "H") as
       "(Hregs & Hbytes & Hkauth & Hkfrags & Hkpt & Hkptb & Hstrans & Hsie & Hspp & Hspie &
         Hlkauth & Hpark & Hpst & Hresv & Huf & Hpf & Hvf & Hdimg & Hmir & #Hswlb &
@@ -2104,9 +2117,9 @@ Section BootAlloc.
             (* NOTHING HAS BEEN ACCEPTED AT POWER-ON (lane OUT-FUPD): the
                reset UART's transmit pair is empty, so the transport's yield
                founds the port's output claim exactly here. *)
-            ltac:(rewrite Hu0; reflexivity) with "Hores") as (γd)
-      "(Hacc & Hout & Htxa & Hdla & Htx & Hsent & Hdlab & Hcol & Htok & Hhi1 &
-        Hhi2 & Hpre)".
+            ltac:(rewrite Hu0; reflexivity) with "Hores Hires") as (γd)
+      "(Hacc & Hout & Htxa & Hdla & Htx & Hsent & Hdlab & Hcol & Hincl &
+        Htok & Hhi1 & Hhi2 & Hlgh & Hdvh & Hpre)".
     (* ---- THE CONSOLE RING'S GHOSTS, beside the UART's and not before
        them: the ring's half of the receive side's HIGH-WATER MARK is one
        of the pair [uart_ghosts_alloc] just made, and the ring's names
@@ -2147,28 +2160,29 @@ Section BootAlloc.
     (* the KERNEL's port claims nothing, so its founding is free:
        [WpUart.out_res_at Uart1] is [emp] (lane OUT-FUPD) *)
     iAssert (out_res_at Uart1 [] []) as "Hores1"; [done|].
+    iAssert (in_res_at Uart1 [] [] []) as "Hires1"; [done|].
     iMod (uart_ghosts_alloc Uart1 (g.(gdev).(duart) Uart1)
             ltac:(rewrite Hu0; reflexivity)
             ltac:(rewrite Hu0; vm_compute; reflexivity)
             ltac:(rewrite Hu0; reflexivity)
             ltac:(rewrite Hu0; reflexivity)
-            with "Hores1") as (γd1)
+            with "Hores1 Hires1") as (γd1)
       "(Hacc1 & Hout1 & Htxa1 & Hdla1 & Htx1 & Hsent1 & Hdlab1 & Hcol1 &
-        Htok1 & Hhi11 & _ & Hpre1)".
+        Hincl1 & Htok1 & Hhi11 & _ & Hlgh1 & _ & Hpre1)".
     iDestruct (uart_out_auth_lb γd1 (g.(gdev).(duart) Uart1) with "Hout1")
       as "[Hout1 #Hlb1]".
     assert (Hacceq1 : uart_acc (g.(gdev).(duart) Uart1)
                       = u_out (g.(gdev).(duart) Uart1))
       by (rewrite Hu0; reflexivity).
     iEval (rewrite -Hacceq1) in "Hlb1".
-    iMod (uart_inv_alloc ⊤ Uart1 γd1 with "[Huf1 Hacc1 Hout1 Htxa1 Hdla1 Hcol1]")
-      as "#Hdev1".
+    iMod (uart_inv_alloc ⊤ Uart1 γd1
+            with "[Huf1 Hacc1 Hout1 Htxa1 Hdla1 Hcol1 Hincl1]") as "#Hdev1".
     { iExists (g.(gdev).(duart) Uart1).
       iSplitL "Huf1"; [iExact "Huf1"|].
-      iSplitR "Hcol1"; [| iExact "Hcol1"].
+      iSplitR "Hcol1 Hincl1"; [| iFrame "Hcol1 Hincl1"].
       rewrite /uart_ghosts. iFrame "Hacc1 Hout1 Htxa1 Hdla1". }
     iMod (dev_inv_alloc ⊤ γd γd1 γv
-            with "[Huf Hpf Hvf Hacc Hout Htxa Hdla Hcol Hpre Hproto] Hpre1 Hpbody Htok")
+            with "[Huf Hpf Hvf Hacc Hout Htxa Hdla Hcol Hincl Hpre Hproto] Hpre1 Hpbody Htok")
       as "(#Hdev & #Hplic & Htok)".
     { rewrite /dev_inv_body.
       iExists (g.(gdev).(duart) Uart0), (g.(gdev).(dplic)), (g.(gdev).(dvirtio)).
@@ -2177,6 +2191,7 @@ Section BootAlloc.
       iSplitL "Hpf"; [iExact "Hpf" |].
       iSplitL "Hvf"; [iExact "Hvf" |].
       iSplitL "Hcol"; [iExact "Hcol" |].
+      iSplitL "Hincl"; [iExact "Hincl" |].
       iSplitL "Hpre"; [iExact "Hpre" |].
       iSplitL "Hproto"; [iExact "Hproto" |].
       iSplit; [iPureIntro; rewrite Hp0; exact plic_ok_plic0
@@ -2322,12 +2337,14 @@ Section BootAlloc.
     { iExists (uart_acc (g.(gdev).(duart) Uart0)). iFrame "Htx Hsent Hlb". }
     iSplitL "Htok"; [iExact "Htok" |].
     iSplitL "Hhi2"; [iExact "Hhi2" |].
+    iSplitL "Hlgh"; [iExact "Hlgh" |].
     iSplitL "Hdlab";
       [iExists (uart_dlab (g.(gdev).(duart) Uart0)); iExact "Hdlab" |].
     iSplitL "Htx1 Hsent1".
     { iExists (uart_acc (g.(gdev).(duart) Uart1)). iFrame "Htx1 Hsent1 Hlb1". }
     iSplitL "Htok1"; [iExact "Htok1" |].
     iSplitL "Hhi11"; [iExact "Hhi11" |].
+    iSplitL "Hlgh1"; [iExact "Hlgh1" |].
     iSplitL "Hdlab1";
       [iExists (uart_dlab (g.(gdev).(duart) Uart1)); iExact "Hdlab1" |].
     iSplitL "Hcfg".

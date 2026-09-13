@@ -192,23 +192,33 @@ Record xv6_app (Σ : gFunctors) := MkApp {
      [ghost_var_agree] and the previous era's halves die with its processes
      and its invariant.  Nothing kernel-side is needed for that. *)
   app_out   : app_fixed -> list mobs -> list (bv 8) -> iProp Σ;
+  (* THE INPUT LOG (app-echo.md, lane CONS-IO), the receive side's twin of
+     [app_out] and the SECOND half of the console I/O boundary.  What the
+     application claims of the inputs the console UART accepted -- each with
+     the history it arrived at and what the kernel echoed for it -- and of
+     the ones a process has been given.  Its founding is the TRANSPORT's
+     ([Happ_boot]'s fourth component); its era selection is by construction
+     inside the predicate, exactly as [app_out]'s. *)
+  app_in    : app_fixed -> list mobs -> list ConsLog.log_entry ->
+              list (list mobs * bv 8) -> iProp Σ;
   (* the conclusion, over the operational state and the run's trace *)
   app_phi   : gstate -> list mobs -> Prop;
 }.
-Arguments MkApp {Σ} _ _ _ _ _ _ _ _ _ _.
+Arguments MkApp {Σ} _ _ _ _ _ _ _ _ _ _ _.
 Arguments app_fixed {Σ} _. Arguments app_cl {Σ} _ _.
 Arguments app_names {Σ} _. Arguments app_pred {Σ} _ _ _ _.
 Arguments app_boot {Σ} _ _ _.
 Arguments app_R {Σ} _ _ _. Arguments app_tag {Σ} _ _ _.
 Arguments app_kill {Σ} _ _.
 Arguments app_out {Σ} _ _ _ _.
+Arguments app_in {Σ} _ _ _ _ _.
 Arguments app_phi {Σ} _ _ _.
 
 (* THE GENERIC APPLICATION: no fixed part, nothing claimed, nothing read *)
 Definition app_triv (Σ : gFunctors) : xv6_app Σ :=
   MkApp unit (fun _ => True%I) unit (fun _ _ _ => True%I) (fun _ _ => emp%I)
         (fun _ _ => emp%I) (fun _ _ => True%I) (fun _ => True%I)
-        (fun _ _ _ => emp%I)
+        (fun _ _ _ => emp%I) (fun _ _ _ _ => emp%I)
         (fun _ _ => True).
 
 (* ---------------------------------------------------------------------- *)
@@ -276,6 +286,29 @@ Theorem xv6_app_adequacy Σ
        AppInv.app_sup_raw (app_pred A c) r
          ⊢ □ (∀ (h : list mobs) (acc : list (bv 8)) (b : bv 8),
                 app_out A c h acc ==∗ app_out A c h (acc ++ [b])))
+    (* THE INPUT LOG IS TIMELESS (lane CONS-IO), for the reason the output
+       claim is: it lives in the console UART's invariant, whose body every
+       device leaf strips a later off.  NOT persistent. *)
+    (Hinpt : forall (c : app_fixed A) (h : list mobs)
+                    (pops : list ConsLog.log_entry)
+                    (dl : list (list mobs * bv 8)),
+       Timeless (app_in A c h pops dl))
+    (* ...AND WHAT HOLDING THE SUPPLY ENTITLES A PROCESS TO ON THE INPUT
+       SIDE ([Happ_out_sup]'s twin, at the same price).  ONE obligation,
+       TWO conjuncts, because the kernel's generic supply has to pay for
+       BOTH boundary moves on behalf of an arbitrary application: the
+       console interrupt's shift, which FILES an accepted byte in the log,
+       and [read(2)] on fd 0, which HANDS one to a process.  The trivial
+       application pays both out of [emp]; a constraining one pays them out
+       of its own taint arm. *)
+    (Happ_in_sup : forall (c : app_fixed A) (r : app_names A),
+       AppInv.app_sup_raw (app_pred A c) r
+         ⊢ □ (∀ (h : list mobs) (pops : list ConsLog.log_entry)
+                (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
+                app_in A c h pops dl ==∗ app_in A c h (pops ++ [e]) dl)
+           ∗ □ (∀ (h : list mobs) (pops : list ConsLog.log_entry)
+                  (dl ws : list (list mobs * bv 8)),
+                  app_in A c h pops dl ==∗ app_in A c h pops (dl ++ ws)))
     (HR0 : forall c : app_fixed A, app_cl A c ⊢ |==> app_R A c [])
     (Hpow : forall (c : app_fixed A) (h : list mobs) (on : bool) (dk : Z -> bv 8),
        trace_shape h on ->
@@ -308,7 +341,9 @@ Theorem xv6_app_adequacy Σ
           the ledger owes an account of an event on EITHER -- an untagged
           obligation would let a byte on the kernel's port slip past the
           claim about the console's. *)
-       ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state) (ho : list mobs),
+       ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
+              (ho hi : list mobs) (pops : list ConsLog.log_entry)
+              (dl : list (list mobs * bv 8)),
               ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
               ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗
               (* THE WIRE IS THE DRAINED SEQUENCE.  A clause of the UART
@@ -331,14 +366,26 @@ Theorem xv6_app_adequacy Σ
                  no application resource.  Conditional on the port, because
                  the kernel's own UART constrains nothing. *)
               ⌜ho `prefix_of` h⌝ -∗
+              (* ...AND THE INPUT LOG AT ITS OWN WITNESS [hi] (lane
+                 CONS-IO).  The two claims are read at INDEPENDENT witness
+                 histories, and that is forced: a writer's
+                 [WpUart.out_link] moves the OUTPUT claim's witness at
+                 every store, and nothing may drag the input claim along
+                 with it without an input-monotonicity law the application
+                 does not owe.  What ties the two together is the
+                 application's own ghost state inside them, not a shared
+                 argument. *)
+              ⌜hi `prefix_of` h⌝ -∗
               (* ...TAKEN LINEARLY AND GIVEN BACK.  The claim is the
                  application's own authority, so the ledger step reads it
                  against its own ledger and returns it to the invariant it
                  was borrowed from. *)
               (if i is Uart0 then app_out A c ho (uart_acc u) else emp) -∗
+              (if i is Uart0 then app_in A c hi pops dl else emp) -∗
               uart_ghosts γ u' -∗ app_R A c h
                 ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
               (if i is Uart0 then app_out A c ho (uart_acc u) else emp) ∗
+              (if i is Uart0 then app_in A c hi pops dl else emp) ∗
               uart_ghosts γ u' ∗ app_R A c (h ++ [ObsUartOut i b])%list))
     (Hrx : forall (HR : riscvGS Σ) `{HF : !fileG Σ}
                   (c : app_fixed A) (r : app_names A)
@@ -364,7 +411,8 @@ Theorem xv6_app_adequacy Σ
        included -- founds its file system from the PowerOn arm's clone, and
        [Happ_init]'s instance never reaches one. *)
     (Happ_boot : forall c : app_fixed A,
-       ⊢ app_xfer_boot_raw (app_pred A c) (app_boot A c) (app_out A c))
+       ⊢ app_xfer_boot_raw (app_pred A c) (app_boot A c) (app_out A c)
+           (app_in A c))
     (Happ_init : forall c : app_fixed A,
        ⊢ |==> ∃ r : app_names A,
            app_pred A c r (abs_view (fss_inodes (FsDurImg.img_state
@@ -410,6 +458,9 @@ Theorem xv6_app_adequacy Σ
             machine's [WpUart.out_licence] and so build its own generic
             slot ([SystemAdequacy.init_boot_of_sup]'s premise). *)
          @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out A c ->
+         (* ...and (b''') THE INPUT-LOG EQUATION (lane CONS-IO), the output
+            claim's twin and true for the same reason *)
+         @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in A c ->
          (* ...and (a) THE BOOT RESOURCE, LINEARLY, at the instance the
             record equation names *)
          ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot A c r -∗
@@ -439,6 +490,10 @@ Theorem xv6_app_adequacy Σ
     (Happ_echo :
        forall (HR : riscvGS Σ) (c : app_fixed A),
          @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out A c ->
+         (* ...AND THE INPUT LOG'S (lane CONS-IO): the shift now FILES the
+            accepted byte as well as justifying its echo, so it reads both
+            ambient claims and both must be this record's. *)
+         @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in A c ->
          @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag A c ->
          ⊢ ∀ XI : CurCtx, @SpecConsoleintr.cons_echo_shift Σ HR XI)
     (* ---- the conclusion's proof, at the end of the run: it holds the
@@ -455,7 +510,8 @@ Theorem xv6_app_adequacy Σ
                γobs T (obs_ledger_at (app_R A c) γobs) γhist
                (app_tag A c) (Htagp c) (Htagt c)
                (app_kill A c) (Hkillp c) (Hkillt c)
-               (app_out A c) (Houtt c) (app_fixed A) c) g' -∗
+               (app_out A c) (Houtt c) (app_in A c) (Hinpt c)
+               (app_fixed A) c) g' -∗
          ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
          ▷ xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
              γd γsw γreg γstart c -∗
@@ -482,7 +538,8 @@ Proof.
              γobs T (obs_ledger_at (app_R A c) γobs) γhist
              (app_tag A c) (Htagp c) (Htagt c)
              (app_kill A c) (Hkillp c) (Hkillt c)
-             (app_out A c) (Houtt c) (app_fixed A) c
+             (app_out A c) (Houtt c) (app_in A c) (Hinpt c)
+             (app_fixed A) c
          /\ @file_app Σ HF = MkAppcfg (app_names A) (app_pred A c) r
          /\ (i = Uart0 -> FsCfg.fsc_uart = γ)) ->
       ⊢ obs_inv -∗ uart_obs_permit i γ).
@@ -490,16 +547,16 @@ Proof.
       (Hi & Gg & Gs & Gr & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & Happ & Huart).
     refine (uart_obs_permit_ledger i (app_R A Gcl) (app_tag A Gcl)
               (app_out A Gcl) γ (HRt Gcl)
-              _ _ _ (Htx HRg HFi Gcl ri i γ Happ Huart)
+              _ _ _ (app_in A Gcl) _ (Htx HRg HFi Gcl ri i γ Happ Huart)
                     (Hrx HRg HFi Gcl ri i γ Happ Huart));
       rewrite Heq; reflexivity. }
   exact (xv6_power_adequacy_gen Σ g sb nib cov
            (app_fixed A) (app_cl A) Hbirth
            (app_names A) (app_pred A) (app_boot A)
-           (app_out A) Houtt Happ_boot Happ_init
+           (app_out A) Houtt (app_in A) Hinpt Happ_boot Happ_init
            (app_tag A) Htagp Htagt
            (app_kill A) Hkillp Hkillt Happ_kill
-           Happ_out_sup Hinit_boot
+           Happ_out_sup Happ_in_sup Hinit_boot
            Happ_echo
            (fun γobs c => obs_ledger_at (app_R A c) γobs)
            (fun γobs c =>
@@ -530,10 +587,10 @@ Section AppTriv.
      and the generic application hands its first process nothing *)
   Lemma app_triv_xfer (c : app_fixed (app_triv Σ)) :
     ⊢ app_xfer_boot_raw (app_pred (app_triv Σ) c) (app_boot (app_triv Σ) c)
-        (app_out (app_triv Σ) c).
+        (app_out (app_triv Σ) c) (app_in (app_triv Σ) c).
   Proof.
-    cbn [app_triv app_pred app_boot app_out]. apply app_xfer_boot_raw_triv.
-    intros r av. reflexivity.
+    cbn [app_triv app_pred app_boot app_out app_in].
+    apply app_xfer_boot_raw_triv. intros r av. reflexivity.
   Qed.
 
   (* era 0: the claim at any view, at the one instance *)
@@ -572,10 +629,13 @@ Section AppTriv.
     (* ...and the output-claim equation (lane OUT-FUPD), which pays the
        other new side: the generic application's claim is [emp] *)
     @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out (app_triv Σ) c ->
+    (* ...and the input-log equation (lane CONS-IO), which the generic
+       application takes and does not use: its log claim is [emp] too *)
+    @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in (app_triv Σ) c ->
     ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot (app_triv Σ) c r -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Heq _ Hkc _ Hout. iIntros "_ _". iModIntro.
+    intros Heq _ Hkc _ Hout _. iIntros "_ _". iModIntro.
     (* the rewrite goes BEFORE the [intros]: [r'] is typed at
        [app_names file_app], so rewriting under it is a dependent rewrite *)
     iApply init_boot_of_triv.
@@ -622,11 +682,15 @@ Proof.
            ltac:(intros c h acc; cbn [app_triv app_out]; apply _)
            ltac:(intros c r; cbn [app_triv app_out];
                  iIntros "_ !>" (h acc b) "_"; by iModIntro)
+           ltac:(intros c h pops dl; cbn [app_triv app_in]; apply _)
+           ltac:(intros c r; cbn [app_triv app_in];
+                 iIntros "_"; iSplit; iIntros "!>" (????) "_"; by iModIntro)
            app_triv_R0
            ltac:(intros c h on dk _; cbn [app_triv app_R]; iIntros "_"; by iModIntro)
            ltac:(intros HR HFi c r i γ _ _; cbn [app_triv app_R];
-                 iIntros "!>" (h b u u' ho) "_ _ _ _ _ _ Ho Hg _"; iModIntro;
-                 iFrame "Ho Hg"; done)
+                 iIntros "!>" (h b u u' ho hi pops dl)
+                   "_ _ _ _ _ _ _ Ho Hi Hg _"; iModIntro;
+                 iFrame "Ho Hi Hg"; done)
            ltac:(intros HR HFi c r i γ _ _; cbn [app_triv app_R app_tag];
                  iIntros "!>" (h b u u') "_ _ Hg _"; iModIntro;
                  iFrame "Hg"; auto)
@@ -634,9 +698,10 @@ Proof.
            ltac:(intros c; exact (app_triv_init c _))
            app_triv_init_boot
            (* the echo justifies itself at the trivial output claim *)
-           ltac:(intros HR c Hout _; iIntros (XI);
+           ltac:(intros HR c Hout Hin _; iIntros (XI);
                  iApply (SpecConsoleintr.cons_echo_shift_triv (XI := XI));
-                 rewrite Hout; cbn [app_triv app_out]; reflexivity)
+                 [ rewrite Hout; cbn [app_triv app_out]; reflexivity
+                 | rewrite Hin; cbn [app_triv app_in]; reflexivity ])
            ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
                  iIntros "_ _ _ _ _"; iModIntro; iPureIntro; exact Logic.I)
            Hgen0 Hpow0 _ n κs t2 g2 Hn)).

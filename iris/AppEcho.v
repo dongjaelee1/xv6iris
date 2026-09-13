@@ -1398,6 +1398,18 @@ Section EchoApp.
   Definition echo_out : echo_fixed -> list mobs -> list (bv 8) -> iProp Σ :=
     fun _ _ _ => emp%I.
 
+  (* ...AND THE INPUT LOG'S PLACEHOLDER (lane CONS-IO), on [echo_out]'s
+     mould and equally a HOLE.  The real claim is the second half of E5's
+     boundary: the accepted inputs are the session's, in order, and the
+     ones a process has been given are a prefix of the echoed ones.  As
+     [emp] every obligation below it is vacuous ([echo_Hinpt],
+     [echo_Happ_in_sup], [echo_Happ_echo], [echo_Htx]'s input arm say
+     nothing); it is here only so that the record TYPECHECKS at
+     [App.MkApp]'s new arity, and ECHO-OUT replaces both lines together. *)
+  Definition echo_in : echo_fixed -> list mobs -> list ConsLog.log_entry ->
+                       list (list mobs * bv 8) -> iProp Σ :=
+    fun _ _ _ _ => emp%I.
+
   Definition app_echo : xv6_app Σ :=
     MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R echo_tag
           (* THE KILL CREDENTIAL IS THE TAINT (app-echo.md, lane KILL-PAY,
@@ -1407,7 +1419,7 @@ Section EchoApp.
              what a party a kill touched may keep is the fact the taint
              already states.  [echo_taint_of_sup] is [Happ_kill]. *)
           echo_taint
-          echo_out echo_phi.
+          echo_out echo_in echo_phi.
 
   (* ---- THE BIRTH STEP ---- *)
   Lemma echo_Hbirth : ⊢ |==> ∃ c : app_fixed app_echo, app_cl app_echo c.
@@ -1449,6 +1461,24 @@ Section EchoApp.
       (acc : list (bv 8)) : Timeless (app_out app_echo c h acc).
   Proof. cbn [app_echo app_fixed app_out echo_out] in c |- *. apply _. Qed.
 
+  Lemma echo_Hinpt (c : app_fixed app_echo) (h : list mobs)
+      (pops : list ConsLog.log_entry) (dl : list (list mobs * bv 8)) :
+    Timeless (app_in app_echo c h pops dl).
+  Proof. cbn [app_echo app_fixed app_in echo_in] in c |- *. apply _. Qed.
+
+  Lemma echo_Happ_in_sup (c : app_fixed app_echo) (r : app_names app_echo) :
+    AppInv.app_sup_raw (app_pred app_echo c) r
+      ⊢ □ (∀ (h : list mobs) (pops : list ConsLog.log_entry)
+             (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
+             app_in app_echo c h pops dl ==∗ app_in app_echo c h (pops ++ [e]) dl)
+        ∗ □ (∀ (h : list mobs) (pops : list ConsLog.log_entry)
+               (dl ws : list (list mobs * bv 8)),
+               app_in app_echo c h pops dl ==∗ app_in app_echo c h pops (dl ++ ws)).
+  Proof.
+    cbn [app_echo app_fixed app_names app_in echo_in] in c, r |- *.
+    iIntros "_". iSplit; iIntros "!>" (????) "_"; by iModIntro.
+  Qed.
+
   Lemma echo_Happ_out_sup (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r
       ⊢ □ (∀ (h : list mobs) (acc : list (bv 8)) (b : bv 8),
@@ -1482,23 +1512,28 @@ Section EchoApp.
       (i : uart_id) (γ : uart_names) :
     @file_app Σ HF = MkAppcfg (app_names app_echo) (app_pred app_echo c) r ->
     (i = Uart0 -> FsCfg.fsc_uart = γ) ->
-    ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state) (ho : list mobs),
+    ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
+           (ho hi : list mobs) (pops : list ConsLog.log_entry)
+           (dl : list (list mobs * bv 8)),
            ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
            ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗
-           (* the LOOP-off rider and the witness history's reality, both new
-              in lane OUT-FUPD and both unread at the placeholder claim *)
-           ⌜u_wire u = u_out u⌝ -∗ ⌜ho `prefix_of` h⌝ -∗
+           (* the LOOP-off rider and the two witness histories' reality, the
+              first new in lane OUT-FUPD, the second in CONS-IO, and all of
+              them unread at the placeholder claims *)
+           ⌜u_wire u = u_out u⌝ -∗ ⌜ho `prefix_of` h⌝ -∗ ⌜hi `prefix_of` h⌝ -∗
            (if i is Uart0 then app_out app_echo c ho (uart_acc u) else emp) -∗
+           (if i is Uart0 then app_in app_echo c hi pops dl else emp) -∗
            uart_ghosts γ u' -∗ app_R app_echo c h
              ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
            (if i is Uart0 then app_out app_echo c ho (uart_acc u) else emp) ∗
+           (if i is Uart0 then app_in app_echo c hi pops dl else emp) ∗
            uart_ghosts γ u' ∗ app_R app_echo c (h ++ [ObsUartOut i b])%list).
   Proof.
     intros _ _.
-    cbn [app_echo app_fixed app_R app_out echo_out] in c |- *.
-    iIntros "!>" (h b u u' ho) "_ _ %Hsh _ _ _ Ho Hg Hled".
+    cbn [app_echo app_fixed app_R app_out echo_out app_in echo_in] in c |- *.
+    iIntros "!>" (h b u u' ho hi pops dl) "_ _ %Hsh _ _ _ _ Ho Hi Hg Hled".
     iMod (echo_R_tx c h i b Hsh with "Hled") as "Hled".
-    iModIntro. iFrame "Ho Hg Hled".
+    iModIntro. iFrame "Ho Hi Hg Hled".
   Qed.
 
   (* THE ECHO'S JUSTIFICATION, VACUOUS AT THE PLACEHOLDER (lane OUT-FUPD).
@@ -1510,13 +1545,16 @@ Section EchoApp.
      lets this shift read. *)
   Lemma echo_Happ_echo (HR : riscvGS Σ) (c : app_fixed app_echo) :
     @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out app_echo c ->
+    @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in app_echo c ->
     @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag app_echo c ->
     ⊢ ∀ XI : CurCtx, @cons_echo_shift Σ HR XI.
   Proof.
-    intros Hout _.
+    intros Hout Hin _.
     assert (Hot : @riscv_out_res Σ (@riscv_fixedGS Σ HR) = out_res_triv)
       by (rewrite Hout; cbn [app_echo app_out echo_out]; reflexivity).
-    iIntros (XI). iApply (@cons_echo_shift_triv Σ HR XI Hot).
+    assert (Hit : @riscv_in_res Σ (@riscv_fixedGS Σ HR) = in_res_triv)
+      by (rewrite Hin; cbn [app_echo app_in echo_in]; reflexivity).
+    iIntros (XI). iApply (@cons_echo_shift_triv Σ HR XI Hot Hit).
   Qed.
 
   Lemma echo_Hrx `{!uartGhostG Σ} `{HF : !fileG Σ}
@@ -1541,11 +1579,11 @@ Section EchoApp.
   (* ---- THE TRANSPORT, WITH THE FIRST PROCESS'S BOOT RESOURCE ---- *)
   Lemma echo_Happ_boot (c : app_fixed app_echo) :
     ⊢ app_xfer_boot_raw (app_pred app_echo c) (app_boot app_echo c)
-        (app_out app_echo c).
+        (app_out app_echo c) (app_in app_echo c).
   Proof.
-    cbn [app_echo app_fixed app_names app_pred app_boot app_out echo_out]
-      in c |- *.
-    iApply app_xfer_boot_raw_out; [done |]. iApply echo_xfer_boot.
+    cbn [app_echo app_fixed app_names app_pred app_boot app_out echo_out
+         app_in echo_in] in c |- *.
+    iApply app_xfer_boot_raw_out; [done | done |]. iApply echo_xfer_boot.
   Qed.
 
   (* ...and the old obligation, which the commit's law and the era mint

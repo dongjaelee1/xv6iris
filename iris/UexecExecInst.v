@@ -822,8 +822,16 @@ Section UexecExecInst.
      already paying, and keeps every verified program -- whose slot is at
      [uprogSG_free] and touches none of the three -- free.  The licence is
      LAST. *)
+  (* ...AND SINCE lane CONS-IO IT IS THE QUADRUPLE, with the INPUT LICENCE
+     LAST.  The console UART's invariant now carries the application's
+     account of what was TYPED as well as of what came out
+     ([RiscvPtsto.riscv_in_res]), so consoleintr's shift and [read(2)] on
+     fd 0 cost a licence exactly as [write(2)] does; [App.Happ_in_sup] is
+     where an application sets its price, beside [Happ_out_sup].  It is
+     LAST so that removing the kill conjunct (lane SELF-KILL) and adding
+     this one do not collide. *)
   Definition xv6_ssupply : iProp Σ :=
-    (app_sup ∗ □ riscv_kill_cred ∗ □ out_licence)%I.
+    (app_sup ∗ □ riscv_kill_cred ∗ □ out_licence ∗ □ in_licence)%I.
 
   (* THE BUPD IS WRITE'S, AND ONLY WRITE'S: the console arm carries the trace
      seed [WpUart.uart_sent γu []], a mono-list lower bound at the empty
@@ -842,7 +850,7 @@ Section UexecExecInst.
     n <> USYS_exec ->
     ⊢ □ xv6_ssupply ==∗ ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X n f W.
   Proof.
-    intros Hne. rewrite /xv6_ssupply. iIntros "#(Hsup & Hkc & Hlic)".
+    intros Hne. rewrite /xv6_ssupply. iIntros "#(Hsup & Hkc & Hlic & Hilic)".
     iAssert (|==> xv6_sbundle X n (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
           iSplitR; [ done | iExact "Hb" ] ].
@@ -889,7 +897,7 @@ Section UexecExecInst.
       □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗ R -∗ X W') ==∗
       ∃ f : xfam, ⌜kf_xpay f = (fun _ => R)%I⌝ ∗ xv6_sbundle X n f W.
   Proof.
-    rewrite /xv6_ssupply. iIntros "#Hpay #(Hsup & Hkc & Hlic) #Hs".
+    rewrite /xv6_ssupply. iIntros "#Hpay #(Hsup & Hkc & Hlic & Hilic) #Hs".
     destruct (decide (n = USYS_exec)) as [He | Hne].
     - iModIntro. iExists (xfam_at (fun _ => R)%I xfam_pt). iSplitR; [done |].
       rewrite /xv6_sbundle. destruct (decide (n = USYS_exec)) as [_ | Hc];
@@ -930,7 +938,10 @@ Section UexecExecInst.
       + iIntros (av' i a W') "_ _ _ _ _ _ Hp HQ".
         iDestruct ("HQ" with "Hkc") as "HQ". iApply ("Hs" with "Hp HQ").
     - iApply (xv6_sbundle_of_supply_ne X n W (fun _ => R)%I Hne).
-      rewrite /xv6_ssupply. iModIntro. iSplit; [ iExact "Hsup" | iSplit; [ iExact "Hkc" | iExact "Hlic" ] ].
+      rewrite /xv6_ssupply. iModIntro.
+      iSplit; [ iExact "Hsup"
+              | iSplit; [ iExact "Hkc"
+                        | iSplit; [ iExact "Hlic" | iExact "Hilic" ] ] ].
   Qed.
 
   (* THE RE-KEYING PASSES THROUGH BOTH BUNDLE ROWS ([UexecSG.sbundle_at_at]

@@ -82,6 +82,14 @@ Require Import ObsTrace.
 Require Import EchoDisc.
 Require Import ConsLog.
 Require Import EchoOutPure.
+(* ...and, for section 7, the kernel's own console contracts: the links the
+   application's claims are wrapped onto, and the observation invariant the
+   ledger lives in.  This file is BELOW [AppEcho] and ABOVE [WpUart], which
+   is where the _CoqProject entry has always said the links belong. *)
+Require Import RiscvPtsto.       (* [obsN], [obs_hist_lb_o], [riscv_out_res],
+                                    [riscv_in_res], [riscvGS] *)
+Require Import WpUart.           (* [out_link], [read_link], [out_res_at],
+                                    [in_res_at], [uartN] *)
 (* as in EchoDisc / EchoOutPure: the Sail imports leave string_scope on top
    and [++] would elaborate as String.append. *)
 Local Open Scope list_scope.
@@ -809,7 +817,7 @@ Proof. reflexivity. Qed.
    but the empty stage has an empty transcript: the first echo folds the
    whole PROLOGUE into [D], and the prologue is not empty.  This is what
    refutes the PAIRED arm of a claim at [acc = []], and with it the last
-   case [eout_step_write_first] would otherwise have to admit. *)
+   case [eout_step_write_first] would otherwise have to leave open. *)
 Lemma eout_pure_nil_stage (k : nat) (ho : list mobs) (so : ostage) :
   eout_pure k ho so [] -> pcount (o_cs so) (o_E so) (o_w so) = 0%nat.
 Proof.
@@ -2556,5 +2564,144 @@ Section echo_out.
       + rewrite -Hacc. exact Hwire.
       + exact Hlen.
   Qed.
+
+  (* ==================================================================== *)
+  (*  7.  THE LINKS: the claims wrapped onto the kernel's own console      *)
+  (*      contracts (lane ECHO-OUT part 3, C)                              *)
+  (*                                                                      *)
+  (*  A link runs at [⊤ ∖ ↑uartN Uart0] -- the store's device node opens   *)
+  (*  the port invariant and the ghost step runs inside it -- and [obsN]   *)
+  (*  is disjoint from [uartN], so a link MAY open the observation         *)
+  (*  invariant and reach the application's ledger.  What it may NOT do is *)
+  (*  compare a history against the ledger's: the observation AUTHORITY    *)
+  (*  lives in the state interpretation, and no link holds it.  That is    *)
+  (*  why the ledger is history-free and every same-cycle fact travels in  *)
+  (*  the claim's own witness.                                            *)
+  (* ==================================================================== *)
+  Section echo_links.
+    Context `{HRg : !riscvGS Σ}.
+
+    (* THE LEDGER ACCESSOR a link spends.  [AppEcho] builds it from
+       [RiscvPtsto.obs_inv] and the record's own obs-predicate equation
+       ([RiscvAdequacy.obs_ledger_at (app_R A c) γobs]); stated here as a
+       parameter so that this file stays below the record.  The ledger's
+       HISTORY is existentially bound and given back unchanged: no link
+       moves it, and no link may read it against its own. *)
+    Definition led_acc : iProp Σ :=
+      (□ |={⊤ ∖ ↑uartN Uart0, ⊤ ∖ ↑uartN Uart0 ∖ ↑obsN}=>
+          ∃ hl : list mobs,
+            echo_led hl
+            ∗ (echo_led hl ={⊤ ∖ ↑uartN Uart0 ∖ ↑obsN, ⊤ ∖ ↑uartN Uart0}=∗
+                 True))%I.
+
+    Global Instance led_acc_persistent : Persistent led_acc.
+    Proof. rewrite /led_acc. apply _. Qed.
+
+    (* the two record equations, as section parameters: [App.Happ_echo] and
+       [App.Hinit_boot] hand them over at the [boot_fixedGS] literal *)
+    Context (Hout : @riscv_out_res Σ (@riscv_fixedGS Σ HRg) = eout).
+    Context (Hin : @riscv_in_res Σ (@riscv_fixedGS Σ HRg) = ein).
+
+    Lemma out_res_at0 (kk : nat) (hh : list mobs) (aa : list (bv 8)) :
+      out_res_at Uart0 kk hh aa = eout kk hh aa.
+    Proof. rewrite /out_res_at. by rewrite Hout. Qed.
+
+    Lemma in_res_at0 (kk : nat) (hh : list mobs) (pp : list log_entry)
+        (dd : list (list mobs * bv 8)) :
+      in_res_at Uart0 kk hh pp dd = ein kk hh pp dd.
+    Proof. rewrite /in_res_at. by rewrite Hin. Qed.
+
+    (* (W) THE WRITE LINK, INSIDE A BLOCK.  What IO-LEAF spends per byte:
+       the era's pin, its cursor and the two persistent bounds, plus the
+       Coq-level fact that the byte is the [P]-th of the era's process
+       stream up to stage [S n0].  What it gets back in [Φ] is the cursor
+       advanced and the same two bounds -- or the taint, if the ledger was
+       already off the discipline when the byte went out.
+
+       THE WITNESS IS NOT MOVED: a process byte answers no input, so the
+       claim stays at the history it was read at ([out_link] lets the
+       writer choose, and choosing [o] is what keeps the claim's
+       same-cycle facts where they are). *)
+    Lemma echo_write_link (k : nat) (v : era_pins) (P n0 : nat) (b : bv 8)
+        (cs0 : list nat) (Φ : iProp Σ) :
+      ((n0 `div` length echo_line) <= length cs0)%nat ->
+      proc_upto cs0 (S n0) !! P = Some b ->
+      led_acc -∗ era_pin k v -∗ turn v P -∗ cs_lb v cs0 -∗ E_lb v n0 -∗
+      (((turn v (S P) ∗ cs_lb v cs0 ∗ E_lb v n0) ∨ T) -∗ Φ) -∗
+      out_link Uart0 k b Φ.
+    Proof.
+      intros Hdiv Hb.
+      iIntros "#Hacc #Hpin Ht #Hcslb #HElb HΦ" (o acc) "#Hlb Hres".
+      rewrite !out_res_at0.
+      iMod "Hacc" as (hl) "[Hled Hcl]".
+      iMod (eout_step_write k v P n0 b cs0 (default [] o) hl acc Hdiv Hb
+              with "Hpin Ht Hcslb HElb Hled Hres")
+        as "(Hled & Hres & Hret)".
+      iMod ("Hcl" with "Hled") as "_".
+      iModIntro. iExists o. rewrite out_res_at0. iFrame "Hlb Hres".
+      by iApply "HΦ".
+    Qed.
+
+    (* (W') THE WRITE LINK AT A BLOCK'S FIRST BYTE.  The alternative's INDEX
+       is the program's own knowledge (sh knows whether it is about to print
+       "hello world" or the exec failure) and the step files it, so the
+       bound that comes back has grown by one. *)
+    Lemma echo_write_link_blk (k : nat) (v : era_pins) (P n0 a : nat)
+        (b : bv 8) (cs0 : list nat) (Φ : iProp Σ) :
+      (0 < n0)%nat ->
+      (n0 `mod` length echo_line)%nat = 0%nat ->
+      ((n0 `div` length echo_line) <= S (length cs0))%nat ->
+      P = length (proc_upto cs0 n0) ->
+      (a < length line_alts)%nat ->
+      line_alts !!! a !! 0%nat = Some b ->
+      led_acc -∗ era_pin k v -∗ turn v P -∗ cs_lb v cs0 -∗ E_lb v n0 -∗
+      (((turn v (S P) ∗ cs_lb v (cs0 ++ [a]) ∗ E_lb v n0) ∨ T) -∗ Φ) -∗
+      out_link Uart0 k b Φ.
+    Proof.
+      intros Hpos Hmod Hdiv HPeq Halt Hhead.
+      iIntros "#Hacc #Hpin Ht #Hcslb #HElb HΦ" (o acc) "#Hlb Hres".
+      rewrite !out_res_at0.
+      iMod "Hacc" as (hl) "[Hled Hcl]".
+      iMod (eout_step_write_blk k v P n0 a b cs0 (default [] o) hl acc
+              Hpos Hmod Hdiv HPeq Halt Hhead
+              with "Hpin Ht Hcslb HElb Hled Hres")
+        as "(Hled & Hres & Hret)".
+      iMod ("Hcl" with "Hled") as "_".
+      iModIntro. iExists o. rewrite out_res_at0. iFrame "Hlb Hres".
+      by iApply "HΦ".
+    Qed.
+
+    (* (R) THE READ LINK.  [ws] is the window the read CONSUMED and
+       [ConsLog.read_ok] is the kernel's whole pure account of it.  What the
+       reader gets back, at the log the invariant actually held: the PREFIX
+       fact SH-LINE turns into the line, and -- for a non-empty window -- the
+       era's pin with the two bounds a later WRITE spends, the stage one at
+       the window's far end (which at a line boundary is the [17 q] the
+       block-first write asks for) and the CHOICE bound beside it. *)
+    Definition read_ret (k : nat) (ws : list (list mobs * bv 8)) : iProp Σ :=
+      (T ∨ ∃ (pops : list log_entry) (dl : list (list mobs * bv 8)),
+         ⌜read_ok pops dl ws⌝ ∗ ⌜(dl ++ ws) `prefix_of` echoed pops⌝
+         ∗ (⌜ws = []⌝
+            ∨ ∃ (v : era_pins) (cs0 : list nat),
+                era_pin k v ∗ cs_lb v cs0 ∗ E_lb v (length (dl ++ ws))
+                ∗ ⌜((length (dl ++ ws)) `div` length echo_line
+                    <= S (length cs0))%nat⌝))%I.
+
+    Lemma echo_read_link (k : nat) (ws : list (list mobs * bv 8))
+        (Φ : iProp Σ) :
+      led_acc -∗ (read_ret k ws -∗ Φ) -∗ read_link k ws Φ.
+    Proof.
+      iIntros "#Hacc HΦ" (o pops dl) "#Hlb Hres %Hread".
+      rewrite !in_res_at0.
+      iMod "Hacc" as (hl) "[Hled Hcl]".
+      iMod (ein_step_read k (default [] o) hl pops dl ws Hread
+              with "Hled Hres") as "(Hled & Hres & Hret)".
+      iMod ("Hcl" with "Hled") as "_".
+      iModIntro. iExists o. rewrite in_res_at0. iFrame "Hlb Hres".
+      iApply "HΦ". rewrite /read_ret.
+      iDestruct "Hret" as "[HT | [%Hpref Hrest]]"; [by iLeft |].
+      iRight. iExists pops, dl. iFrame "Hrest". by iPureIntro.
+    Qed.
+  End echo_links.
 
 End echo_out.

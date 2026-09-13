@@ -609,7 +609,7 @@ Section EchoInitBoot.
     (* ---- the tag's reading: E2's own, off the theorem's equation ---- *)
     iAssert (UkSh.ush_tag_law (echo_taint γ)) as "#Htg".
     { rewrite /UkSh.ush_tag_law. iIntros "!>" (h) "Hr".
-      rewrite Htag /echo_tag. iExact "Hr". }
+      rewrite Htag /echo_tag. iDestruct "Hr" as "[_ Hr]". iExact "Hr". }
     (* ---- the shell's slot, and the exec supply as a wand from the
            console credential ---- *)
     iAssert (UInitSh.init_sh_slot (echo_taint γ)

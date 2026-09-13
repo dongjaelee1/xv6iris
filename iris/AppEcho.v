@@ -221,8 +221,20 @@ Section EchoLedger.
      console discipline, or the taint is already a permanent fact.
      Persistent in both arms, which is what lets the UART's receive column
      hand a copy to every reader of the byte. *)
+  (* ...AND IT CARRIES THE HISTORY'S SHAPE (lane ECHO-OUT part 3, B).  The
+     three steps the echo shift spends -- [EchoOut.eout_step_echo],
+     [ein_step_append] and [ein_step_append_drop] -- all need
+     [trace_shape h true] ([EchoOutPure.disc_seg'_open_seg],
+     [disc_seg_open_seg], [open_seg_prefix_boots]), and
+     [SpecConsoleintr.cons_echo_shift] does not hand it over: it is not
+     derivable from the byte's own premises.  It IS the application's to
+     supply, because [echo_R_rx] -- the one producer of the tag -- is fired
+     with exactly that fact in hand about the PRE-arrival history, and
+     [ObsTrace.trace_shape_snoc] carries it across the input event.
+     Every landed consumer projects only the SECOND conjunct
+     ([UkSh.ush_tag_law]), so nothing else moves. *)
   Definition echo_tag (γcl : echo_fixed) (h : list mobs) : iProp Σ :=
-    (⌜disc h⌝ ∨ echo_taint γcl)%I.
+    (⌜trace_shape h true⌝ ∗ (⌜disc h⌝ ∨ echo_taint γcl))%I.
 
   Global Instance echo_tag_persistent γcl h : Persistent (echo_tag γcl h).
   Proof. rewrite /echo_tag. apply _. Qed.
@@ -277,6 +289,8 @@ Section EchoLedger.
       echo_R γcl (h ++ [ObsUartIn i b]) ∗ echo_tag γcl (h ++ [ObsUartIn i b]).
   Proof.
     intros Hsh. iIntros "H". rewrite /echo_R /echo_tag /echo_taint /echo_phase.
+    assert (Hsh' : trace_shape (h ++ [ObsUartIn i b]) true).
+    { eapply trace_shape_snoc; [exact Hsh | reflexivity]. }
     destruct (decide (disc (h ++ [ObsUartIn i b]))) as [Hd'|Hd'].
     - rewrite decide_True; last first.
       { (* the console's byte can break the discipline; the OTHER port's
@@ -284,14 +298,16 @@ Section EchoLedger.
         destruct i;
           [ exact (disc_in h b Hsh Hd')
           | exact (proj1 (disc_other h (ObsUartIn Uart1 b) eq_refl I Hsh) Hd') ]. }
-      iModIntro. iFrame "H". iLeft. iPureIntro. exact Hd'.
+      iModIntro. iFrame "H". iSplitR; [by iPureIntro |].
+      iLeft. iPureIntro. exact Hd'.
     - (* off the discipline: the counter is at 1 either way, and its lower
          bound is the taint *)
       (* the destruct above already reduced the RHS's [decide] to 1; the
          LHS's is 0 or 1 and both are below it *)
       iMod (mono_nat_own_update 1%nat with "H") as "[H #Hlb]";
         [destruct (decide (disc h)); lia|].
-      iModIntro. iFrame "H". iRight. iExact "Hlb".
+      iModIntro. iFrame "H". iSplitR; [by iPureIntro |].
+      iRight. iExact "Hlb".
   Qed.
 End EchoLedger.
 

@@ -47,10 +47,12 @@ SH-OPEN, LAZY-FLAG, TEXT-LW, APP-IFACE, UNTAG, DISC-RATE, E4 SH-ECHO, E2
 INIT-BOOT (2026-09-13, `bde2b8659`), CLOSED-READ, DISC-SIMPLIFY (2026-09-13),
 CONS-ROWS (2026-09-13, `b3f64b406`).
 
-- [ ] **KILL-PAY** (kernel; phase 1 in flight, `-sup`, `lane/kill-pay`):
-  a kill is paid with a persistent credential that reaches every party the
-  kill touches (design: "KILL-ARM" below).  Trusted-statement diff for the
-  owner at the end of phase 1.
+- [ ] **KILL-PAY** (kernel; `-sup`, `lane/kill-pay`; milestone A LAZY-ROW
+  LANDED, milestone B in flight): a kill is paid with a persistent
+  credential that reaches every party the kill touches (design: "KILL-ARM"
+  below, plus the rulings: the 13/15 route is gated by the lazy bit; the -1
+  exit payload is a wand from the credential; the generic supply carries
+  it).  Trusted-statement diff for the owner at the end.
 - [ ] **OUT-FUPD** (kernel; main, next): the application-fixed output
   predicate in the console UART's invariant, the store's view shift, the
   writers' contracts, the retirement of the sublist receipts (design:
@@ -2620,6 +2622,25 @@ TX-RECEIPT's `tx_claim` so the two lanes merge by juxtaposition; the hart lines'
 `boot_hart_pre`, banners-before via `k_ledger_lb [banners]` on the `started`
 invariant; `boot_k_shape` deleted.  `BACKSPACE` is the int 0x100 (not byte 8):
 the "\b \b" triple is reachable only from `%c`, unused.
+
+LAZY-ROW LANDED (2026-09-13; KILL-PAY milestone A; 34 files +483/-292; builds
+kill18/lazyrow1, audit = the thirteen; lemma_diff = one NEWAXIOM, the
+module-type entry `SpecUsertrap.usertrap_res_bare_lazy`, discharged by
+`ProofUsertrap` and checked by `UtResFits`).  The user-execution slot's
+guard carries `⌜uvis_lazy W = false -> lazy_free (ud_um pt) (uvis_sz W)⌝`
+(`UexecRet.uslot_F`/`ukc`/`uslot_unfold`; `UkRun.urun` carries it as a pure
+conjunct after the projection row; the engine's sections take it as `Hlf0`).
+THE DELIVERABLE: `UkStore.wp_uk_store_later` and `UkLoad.wp_uk_load_later`
+REFUTE the unmapped-page fault arm at `uvis_lazy W = false` through
+`UserPerm.lazy_free_wmapped` (a W page of the projection is a real leaf),
+so a non-lazy program never page-faults; the fault leaves stay for the lazy
+key.  The kernel hands the row over from `ProcInv`'s block row (:1602):
+`ProcInv.proc_priv_nopt_lazy`, `UsertrapRes.ut_res_bare_lazy` at the
+residue's own table, `ProofUserretClosed` reads it at both resumes.  No
+verified program can be lazy: `urun` closes at `false`, `UexecRet.ukcq` is
+hardwired at `false`, and init/sh/echo/cat/sync never call `sbrklazy`
+(`UCode*.v`).  This is what makes KILL-PAY's trap deposit payable at
+causes 13/15 without charging echo's programs.
 
 CONS-ROWS LANDED (2026-09-13; `b3f64b406`; 8 files +363/-139; builds
 rows14/rows15, audit = the thirteen; lemma_diff = one GONE).

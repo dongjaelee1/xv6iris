@@ -449,24 +449,6 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
      ambient era to the one [state_interp]'s existential holds. *)
   riscvF_registryGS :: ghost_mapG Σ nat riscvEraGS;
   riscv_registry_name : gname;
-  (* THE ERA-TOKEN MAP, the registry's EXCLUSIVE twin (lane CONS-IO
-     milestone D, e5-design REVISION 7 ruling (a)).  The registry's element
-     is persistent -- [era_registered] is a certificate, and a certificate
-     that could be held twice is still a certificate -- so nothing in it can
-     serve as the "this era has not been adopted yet" resource the
-     application's ledger needs.  This second map is that resource: a
-     SECOND MAP AT THE REGISTRY'S OWN FUNCTOR (no new class: a second
-     [ghost_mapG] field for a class the tree already carries is TWO
-     INSTANCE PATHS -- see [FileInvDefs]'s "the off ledger's capacity"
-     note, which records what that costs -- so the token map is a second
-     NAME at [riscvF_registryGS], exactly as the era's four per-hart mono
-     counters are second names at one class).  Keyed by the ERA NUMBER
-     [k = S gen] rather than by the generation, so its domain is
-     [set_seq 1 (start_count g)] where the registry's is [set_seq 0 …];
-     one element inserted per PowerOn, and NEVER persisted.  [era_tok k]
-     below is that element with its value hidden, and it is exclusive by
-     [ghost_map_elem_ne] -- so the era's first adopter is its only one. *)
-  riscv_eratok_name : gname;
   (* the reservation mirror's class (§3a); the NAME is per-era
      ([riscvEraGS.era_resv_name] above), since reservations do not survive a
      power cycle -- [boot_shape] mints them all at [None]. *)
@@ -685,9 +667,11 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
      transport allocates that pair per era and hands the other half to the
      era's first process, so a process's fragments agree with the
      invariant's instance by [ghost_var_agree] and the previous era's halves
-     die with its processes.  The FOUNDING is the transport's too
-     ([SystemAdequacy.app_xfer_boot_raw]'s third component), which is why
-     there is no [_nil] field here.
+     die with its processes.  The FOUNDING is the APPLICATION's, at the
+     POWER-ON STEP ([App.Hpow]'s on-arm; it was the transport's until lane
+     CONS-IO milestone E), which is why there is no [_nil] field here: the
+     kernel carries the yield from the power arm to the boot on
+     [RiscvAdequacy.power_boot_res] and never mints one.
 
      THE ERA INDEX (lane CONS-IO milestone C, the design review of
      2026-09-14).  The FIRST argument is the ERA NUMBER [k], and the kernel
@@ -734,10 +718,9 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
      a writer's [WpUart.out_link] moves and which nothing may move the
      input claim along with).  [WpUart.in_res_at] does the port indexing
      ([emp] at [Uart1]).  TIMELESS, so [WpUart.uart_inv_body] stays
-     timeless; NOT persistent.  Founded by the TRANSPORT at [[] [] []]
-     ([SystemAdequacy.app_xfer_boot_raw]'s fourth component), exactly as
-     the output claim is; the trivial application sets it to
-     [in_res_triv].
+     timeless; NOT persistent.  Founded at [[] [] []] by [App.Hpow]'s
+     power-on arm (lane CONS-IO milestone E), exactly as the output claim
+     is; the trivial application sets it to [in_res_triv].
 
      ERA-INDEXED, on [riscv_out_res]'s mould and for its reason: the first
      argument is the era number, [S gen_id] at the kernel. *)
@@ -905,83 +888,6 @@ Definition era_registered `{!riscvFixedGS Σ} (gen : nat) (E : riscvEraGS) : iPr
    premise and case on the current [(ggen, gpow)] against it. *)
 Definition gen_cert `{!riscvGS Σ} `{GEN : GenId} : iProp Σ :=
   (gen_born gen_id ∗ gen_started gen_id ∗ era_registered gen_id riscv_eraGS)%I.
-
-(* ---------------------------------------------------------------------- *)
-(* THE ERA TOKEN (lane CONS-IO milestone D; scratchpad/e5-design.md         *)
-(* REVISION 7 ruling (a)).                                                  *)
-(*                                                                          *)
-(* An EXCLUSIVE resource for the era numbered [k], minted once at the boot   *)
-(* of generation [gen] at [k = S gen] and handed to <init> in the boot       *)
-(* bundle.  The application's ledger uses it as the right to ADOPT the era:  *)
-(* the first verified write inserts the era's ghosts into the ledger and     *)
-(* spends the token, and a second adopter of the SAME era would need a       *)
-(* second token for the same [k], which is impossible -- across the whole    *)
-(* run, not merely within one era's invariants.                              *)
-(*                                                                          *)
-(* WHY IT IS NOT A PIECE OF [gen_cert].  Every conjunct of [gen_cert] is     *)
-(* PERSISTENT ([gen_born] and [gen_started] are [mono_nat] lower bounds,     *)
-(* [era_registered] a discarded [ghost_map] element), so none of them can    *)
-(* be split into an exclusive fragment: a persistent resource is exactly     *)
-(* the thing two adopters could both hold.  Hence the second map above,      *)
-(* whose elements are never discarded.                                      *)
-(*                                                                          *)
-(* WHY IT CANNOT BE MINTED TWICE.  The auth of that map is a conjunct of     *)
-(* [power_interp] ([era_tok_bank] below), pinned to [start_count g] exactly  *)
-(* as the registry's is: its domain IS [{1, ..., start_count g}], and the    *)
-(* PowerOn arm is the only step that moves either.  So the mint at [S gen]   *)
-(* is an insert into a map that provably has no [S gen] key, and no other    *)
-(* step of the machine can insert anything at all. *)
-(* The element's VALUE is the era record the generation ran -- the same
-   thing the registry stores, so the two maps carry one functor between
-   them -- and it is existentially closed here: no reader of the token
-   cares which era it was, only that there is exactly one. *)
-Definition era_tok `{!riscvFixedGS Σ} (k : nat) : iProp Σ :=
-  (∃ E : riscvEraGS, k ↪[riscv_eratok_name] E)%I.
-
-Global Instance era_tok_timeless `{!riscvFixedGS Σ} k : Timeless (era_tok k).
-Proof. rewrite /era_tok. apply _. Qed.
-
-(* THE EXCLUSIVITY, and it is the whole point of the token. *)
-Lemma era_tok_excl `{!riscvFixedGS Σ} (k : nat) :
-  era_tok k -∗ era_tok k -∗ False.
-Proof.
-  rewrite /era_tok. iDestruct 1 as (E1) "H1". iDestruct 1 as (E2) "H2".
-  iDestruct (ghost_map_elem_ne with "H1 H2") as %Hne.
-  iPureIntro. by apply Hne.
-Qed.
-
-(* THE BANK: the era-token map's authority, at the number of eras STARTED so
-   far ([start_count g], the same counter the registry's domain is pinned to
-   -- one entry per era, keyed by the era's own number rather than by its
-   generation, so the domain is [set_seq 1 n] where the registry's is
-   [set_seq 0 n]).  A conjunct of [power_interp]: the token has to outlive
-   every era, so its authority lives with the generation counter and the
-   registry, in the fixed part of the state interpretation. *)
-Definition era_tok_bank `{!riscvFixedGS Σ} (n : nat) : iProp Σ :=
-  (∃ T : gmap nat riscvEraGS,
-     ghost_map_auth riscv_eratok_name 1 T ∗ ⌜dom T = set_seq 1 n⌝)%I.
-
-Lemma set_seq_1_S (n : nat) :
-  set_seq (C := gset nat) 1 (S n) = set_seq 1 n ∪ {[S n]}.
-Proof.
-  apply set_eq; intros x.
-  rewrite elem_of_union elem_of_singleton !elem_of_set_seq. lia.
-Qed.
-
-Lemma not_in_set_seq_1 (n : nat) : S n ∉ set_seq (C := gset nat) 1 n.
-Proof. rewrite elem_of_set_seq. lia. Qed.
-
-(* THE MINT, and the ONLY way an [era_tok] is ever produced. *)
-Lemma era_tok_mint `{!riscvFixedGS Σ} (E : riscvEraGS) (n : nat) :
-  era_tok_bank n ==∗ era_tok_bank (S n) ∗ era_tok (S n).
-Proof.
-  rewrite /era_tok_bank /era_tok. iDestruct 1 as (T) "[Hauth %Hdom]".
-  iMod (ghost_map_insert (S n) E with "Hauth") as "[Hauth Helem]".
-  { apply not_elem_of_dom. rewrite Hdom. apply not_in_set_seq_1. }
-  iModIntro. iSplitR "Helem"; last (iExists E; iExact "Helem").
-  iExists (<[S n := E]> T). iFrame "Hauth".
-  iPureIntro. rewrite dom_insert_L Hdom set_seq_1_S. set_solver.
-Qed.
 
 (* ---------------------------------------------------------------------- *)
 (* THE CRASH-SPANNING INVARIANT (claude-notes/design/crash.md).             *)
@@ -2900,13 +2806,7 @@ Definition power_interp `{!riscvFixedGS Σ} (g : gstate) : iProp Σ :=
       ghost_map_auth riscv_registry_name 1 R ∗
       ⌜dom R = set_seq 0 (start_count g)⌝ ∗
       (if g.(gpow) then (∃ E, ⌜R !! g.(ggen) = Some E⌝ ∗ era_interp E g)%I
-       else True%I)) ∗
-   (* THE ERA-TOKEN BANK (lane CONS-IO milestone D), LAST per the
-      new-conjunct rule: the registry's exclusive twin, at the same counter.
-      Both power arms move it exactly as they move the registry -- PowerOff
-      leaves [start_count] alone and frames it, PowerOn mints the new era's
-      token in the same fupd that registers the era. *)
-   era_tok_bank (start_count g))%I.
+       else True%I)))%I.
 
 (* THE TRACE CONJUNCT OF [state_interp] (claude-notes/completed/uart-trace.md).
    [κs] is Iris's FUTURE observation list; [h] is the PAST.  Three facts:

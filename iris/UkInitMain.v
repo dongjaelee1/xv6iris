@@ -2403,24 +2403,12 @@ Section UkInitMain.
        or the taint, which init lends to each shell it forks
        ([UserConsole.uinit_lend]). *)
     uinit_tok cn T -∗
-    (* THE ERA'S ADOPTION TOKEN (lane CONS-IO milestone D), beside the
-       console lease and travelling with it: the kernel mints one per power
-       cycle, hands it to <init> in the boot bundle
-       ([UInitKernel.init_boot_pay]) and never looks at it again.  <init> is
-       the era's first verified writer, so this is where the application's
-       ledger will spend it to ADOPT the era -- exactly once, because a
-       second [era_tok] at the same number cannot exist
-       ([RiscvPtsto.era_tok_excl]).  Nothing in init's walk reads it yet. *)
-    era_tok (S gen_id) -∗
     urun N h m (mword_of_int InitSyms.start)
       (2 + (4 + (12 + (12 + (4 + n))))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hne Hkt.
-    iIntros "#(Hwr & Hwl15 & Hwl17) #Hcode #Hxs Hcl #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hetok Hrun".
-    (* the era token is HELD, not read: lane ECHO-OUT spends it at the
-       first verified write.  Nothing on this walk mentions it. *)
-    iClear "Hetok".
+    iIntros "#(Hwr & Hwl15 & Hwl17) #Hcode #Hxs Hcl #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
     destruct init_syms_pins
       as (Hstart & Hmain & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _).
     rewrite Hstart.

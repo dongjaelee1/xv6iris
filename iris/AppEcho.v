@@ -1110,11 +1110,10 @@ Section EchoPred.
      decided OUTSIDE the later, by [FsConsPin.cons_inum av] -- a pure
      function of the view, which is exactly why the fresh flag is allocated
      at it -- so the resource handed over is not under the claim's [▷]. *)
-  (* STATED AT THE TWO-COMPONENT SHAPE (lane OUT-FUPD): the transport's
-     third component -- the era's OUTPUT CLAIM at [[]]/[[]] -- is founded
-     from nothing while [echo_out] below is the E5 placeholder, so
-     [SystemAdequacy.app_xfer_boot_raw_out] bolts it on and this proof does
-     not have to thread an [emp] through its eight arms. *)
+  (* THE TWO-COMPONENT SHAPE IS [app_xfer_boot_raw]'s OWN AGAIN (lane
+     CONS-IO milestone E): lanes OUT-FUPD and CONS-IO had bolted the era's
+     two port claims onto the transport, and the founding moved to
+     [App.Hpow]'s power-on arm, so there is nothing to bolt. *)
   Lemma echo_xfer_boot (γ : echo_fixed) (k : nat) :
     ⊢ □ (∀ (r : echo_names) (av : FsAbsDefs.aview),
            ▷ echo_pred γ r av ==∗ ▷ echo_pred γ r av ∗
@@ -1501,14 +1500,25 @@ Section EchoApp.
     app_cl app_echo c ⊢ |==> app_R app_echo c [].
   Proof. cbn [app_echo app_fixed app_cl app_R] in c |- *. exact (echo_R_alloc c). Qed.
 
+  (* ...AND THE ERA'S TWO PORT CLAIMS ON THE ON-ARM (lane CONS-IO milestone
+     E, e5-design REVISION 8).  Both are the [emp] placeholders until
+     ECHO-OUT part 3, so the yield is free here; when the real claims land,
+     this is where the era's LINEAR seed is minted out of the ledger and
+     put into the founded arms, and the adoption at <init>'s first banner
+     byte consumes it. *)
   Lemma echo_Hpow (c : app_fixed app_echo) (h : list mobs) (on : bool)
       (dk : Z -> bv 8) :
     trace_shape h on ->
     ⊢ app_R app_echo c h ==∗
-      app_R app_echo c (h ++ [if on then ObsPowerOff else ObsPowerOn])%list.
+      app_R app_echo c (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
+      (if on then emp
+       else app_out app_echo c (S (obs_boots h)) [] [] ∗
+            app_in app_echo c (S (obs_boots h)) [] [] []).
   Proof.
-    intros _. cbn [app_echo app_fixed app_R] in c |- *.
-    iIntros "H". iApply (echo_R_pow c h on with "H").
+    intros _.
+    cbn [app_echo app_fixed app_R app_out echo_out app_in echo_in] in c |- *.
+    iIntros "H". iMod (echo_R_pow c h on with "H") as "H". iModIntro.
+    iSplitL "H"; [iExact "H" |]. destruct on; by repeat iSplitR.
   Qed.
 
   (* the two UART arms, at the theorem's literal shape: the device ghosts
@@ -1595,12 +1605,10 @@ Section EchoApp.
 
   (* ---- THE TRANSPORT, WITH THE FIRST PROCESS'S BOOT RESOURCE ---- *)
   Lemma echo_Happ_boot (c : app_fixed app_echo) (k : nat) :
-    ⊢ app_xfer_boot_raw (app_pred app_echo c) (app_boot app_echo c k)
-        (app_out app_echo c k) (app_in app_echo c k).
+    ⊢ app_xfer_boot_raw (app_pred app_echo c) (app_boot app_echo c k).
   Proof.
-    cbn [app_echo app_fixed app_names app_pred app_boot app_out echo_out
-         app_in echo_in] in c |- *.
-    iApply app_xfer_boot_raw_out; [done | done |]. iApply echo_xfer_boot.
+    cbn [app_echo app_fixed app_names app_pred app_boot] in c |- *.
+    rewrite /app_xfer_boot_raw. iApply echo_xfer_boot.
   Qed.
 
   (* ...and the old obligation, which the commit's law and the era mint

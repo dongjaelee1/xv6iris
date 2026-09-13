@@ -1418,11 +1418,16 @@ Section BootAlloc.
          supplier.  It arrives as the WHOLE map, exactly as the raw row
          does, and is cut in step with it by [boot_led_all_split]. *)
       BootCarve.boot_led_all g ∗
-      (* THE ERA'S ADOPTION TOKEN (lane CONS-IO milestone D): [S gen_id] is
-         this era's number, and the token is the right to adopt it -- handed
-         on to <init> in the boot bundle and spent by the application's
-         ledger at the era's first verified write. *)
-      era_tok (Datatypes.S gen_id) ∗
+      (* THE ERA'S TWO PORT CLAIMS, FOUNDED AT THE POWER-ON STEP (lane
+         CONS-IO milestone E).  They used to arrive on the client's LEND,
+         founded by the application's transport; since e5-design REVISION 8
+         the APPLICATION founds them in its ledger at the power-on step and
+         the PowerOn arm carries them here on [power_boot_res].  This fupd
+         is their one consumer: [uart_ghosts_alloc] at [Uart0] founds the
+         console port's invariant clause with them, and no caller sees
+         them again. *)
+      out_res_at Uart0 (S gen_id) [] [] ∗
+      in_res_at Uart0 (S gen_id) [] [] [] ∗
       crash_inv ∗ gen_cert ∗
       (* A6.131: the era's image is the boot state's memory, as a pure fact *)
       ⌜era_img riscv_eraGS = g.(gimg)⌝.
@@ -1432,7 +1437,7 @@ Section BootAlloc.
        wrappers ([reg_pointsto]'s notation, the strans/sie/spp/spie splits)
        are sealed, so [iFrame] must unify them one at a time. *)
     iIntros "H". rewrite /power_boot_res.
-    iDestruct "H" as "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & Het & H22 & H23 & H24 & H25 & H26)".
+    iDestruct "H" as "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & H22 & Hores & Hires & H23 & H24 & H25 & H26)".
     rewrite /boot_reg_res /boot_raw_bytes /kmap_auth /kpt_unset /kptb_unset
             /hart_strans /hart_sie /hart_spp /hart_spie /hart_locks /hart_full
             /pstate_full /resv_frag /resv_fragb /uart_frag /plic_frag /virtio_frag
@@ -1469,8 +1474,9 @@ Section BootAlloc.
     iSplitL "H19"; [iExact "H19"|].
     iSplitL "H20"; [iExact "H20"|].
     iSplitL "H21"; [iExact "H21"|].
-    iSplitL "Het"; [iExact "Het"|].
     iSplitL "H22"; [iExact "H22"|].
+    iSplitL "Hores"; [iExact "Hores"|].
+    iSplitL "Hires"; [iExact "Hires"|].
     iSplitL "H23 H24 H25"; [| iExact "H26"].
     iSplitL "H23"; [iExact "H23"|].
     iSplitL "H24"; [iExact "H24"|].
@@ -1628,22 +1634,15 @@ Section BootAlloc.
        the later *)
     ▷ @app_pred Σ APP (@app_run Σ APP)
       (FsAbsDefs.abs_view (FsState.fss_inodes S)) -∗
-    (* ...AND THE ERA'S OUTPUT CLAIM AT THE EMPTY RUN (lane OUT-FUPD).  The
-       CONSOLE port's invariant carries the application's claim about the
-       bytes it has accepted ([WpUart.uart_out_claim]); the claim holds an
-       AUTHORITY, so it is minted per era and the transport is where an
-       era's instance is born -- this is that yield
-       ([SystemAdequacy.app_xfer_boot_raw]'s third component), carried in
-       on [power_boot_res]'s lend and handed straight to
+    (* NO PORT-CLAIM PREMISES (lane CONS-IO milestone E).  The era's output
+       claim and input log used to arrive here as two hypotheses, founded by
+       the application's TRANSPORT at the crash slot's clone and carried in
+       on [power_boot_res]'s lend.  Since e5-design REVISION 8 the
+       APPLICATION founds them at the POWER-ON STEP, in its own ledger, and
+       they ride [power_boot_res] itself: [power_boot_res_unpack] above
+       hands them out and this fupd feeds them straight to
        [WpUart.uart_ghosts_alloc] at [Uart0].  The kernel's port founds its
        own out of nothing ([WpUart.out_res_at_uart1]). *)
-    out_res_at Uart0 (Datatypes.S gen_id) [] [] -∗
-    (* ...AND THE ERA'S INPUT LOG AT THE EMPTY RUN (lane CONS-IO), the
-       output claim's twin from the same transport and the same lend: the
-       console port's invariant carries the application's account of what
-       was typed and who got it ([WpUart.in_claim_at]), founded here at the
-       empty log with nothing delivered. *)
-    in_res_at Uart0 (Datatypes.S gen_id) [] [] [] -∗
     (* the transport and the crash seam at the application's guest, both
        straight through to the mint, which parks the one and puts both on
        fsinit's kit (round C) *)
@@ -1718,13 +1717,7 @@ Section BootAlloc.
          so all four of the array's words travel in
          [SpecConsoleintr.console_caps] instead. *)
       plic_inv γd γd1 ∗
-      wire_inv ∗
-      (* THE ERA'S ADOPTION TOKEN (lane CONS-IO milestone D), straight
-         through from [power_boot_res]: this mint does not read it -- it is
-         the era's caller ([SystemAdequacy.xv6_boot_era]) that hands it to
-         <init> in the boot bundle. *)
-      era_tok (Datatypes.S gen_id) ∗
-      crash_inv ∗ gen_cert ∗
+      wire_inv ∗ crash_inv ∗ gen_cert ∗
       (* --- one bundle per hart --- *)
       ([∗ list] c ∈ enum CPU,
          ∃ iv : mword 32,
@@ -1851,11 +1844,11 @@ Section BootAlloc.
     pose proof Hbf as Hbf'.
     destruct Hbf' as (Hpow & Hin & Hmemf & Hregsf & Hu0 & Hp0 & Hv0' & _).
     destruct Hv0' as (v0 & Hv0).
-    iIntros "Hok Hores Hires #Hxfer #Hseamg Hdursnap H".
+    iIntros "Hok #Hxfer #Hseamg Hdursnap H".
     iDestruct (power_boot_res_unpack Rb g ndisk with "H") as
       "(Hregs & Hbytes & Hkauth & Hkfrags & Hkpt & Hkptb & Hstrans & Hsie & Hspp & Hspie &
         Hlkauth & Hpark & Hpst & Hresv & Huf & Hpf & Hvf & Hdimg & Hmir & #Hswlb &
-        HRb & Hled & Hetok & #Hcinv & #Hcert & %Hera)".
+        HRb & Hled & Hores & Hires & #Hcinv & #Hcert & %Hera)".
     (* DROPPED HERE: the lent resource this fupd carries is the CALLER's
        copy of the epoch's wrapper, already spent -- the caller split it
        off, unpacked it and handed the contents down as [Hdursnap].  At the
@@ -2127,8 +2120,9 @@ Section BootAlloc.
             ltac:(rewrite Hu0; vm_compute; reflexivity)
             ltac:(rewrite Hu0; reflexivity)
             (* NOTHING HAS BEEN ACCEPTED AT POWER-ON (lane OUT-FUPD): the
-               reset UART's transmit pair is empty, so the transport's yield
-               founds the port's output claim exactly here. *)
+               reset UART's transmit pair is empty, so the POWER-ON step's
+               yield (lane CONS-IO milestone E) founds the port's two
+               claims exactly here. *)
             ltac:(rewrite Hu0; reflexivity) with "Hores Hires") as (γd)
       "(Hacc & Hout & Htxa & Hdla & Htx & Hsent & Hdlab & Hcol & Hincl &
         Htok & Hhi1 & Hhi2 & Hlgh & Hdvh & Hlmh & Hpre)".
@@ -2343,7 +2337,6 @@ Section BootAlloc.
     iSplitR; [iExact "Hdev1" |].
     iSplitR; [iExact "Hplic" |].
     iSplitR; [iExact "Hwinv" |].
-    iSplitL "Hetok"; [iExact "Hetok" |].
     iSplitR; [iExact "Hcinv" |].
     iSplitR; [iExact "Hcert" |].
     iSplitL "Hres"; [iExact "Hres" |].

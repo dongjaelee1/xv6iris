@@ -121,11 +121,11 @@ Section EchoAdequacy.
          /\ (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh))
       (* ---- ...AND THE TRACE INVARIANT, which is E5's ---- *)
       (Hphi : forall (Hinv : invGS Σ)
-                     (γgen γstart γreg γet γd γsw γobs γhist : gname)
+                     (γgen γstart γreg γd γsw γobs γhist : gname)
                      (c : app_fixed app_echo)
                      (T : list mobs) (g' : gstate) (h : list mobs),
          ⊢ @power_interp Σ
-              (boot_fixedGS Hinv γgen γstart γreg γet γd XV6_DISK_BYTES γsw
+              (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
                  (xv6_slot (app_names app_echo) (app_pred app_echo) cov
                     (FsImg.sb_logstart sb) γd γsw γreg γstart c)
                  γobs T (obs_ledger_at (app_R app_echo c) γobs) γhist
@@ -235,14 +235,14 @@ Section EchoAdequacy.
       rewrite <- Hgen in Heq, Htag, Hkill |- *.
       destruct (Hsh_owed HR GEN HBs HFd HIr HPav HWc HF)
         as (Hdeps & Hre).
-      iIntros "#Hinv Hb Hetok".
+      iIntros "#Hinv Hb".
       (* [GEN] is IMPLICIT and fixed by unification -- from [Hw16] first
          and [Heq] after, both of which carry the record's own [GenId].
          Naming it here would pin the wrong one: the [GEN] this field
          binds is not the one [app_echo] was elaborated at. *)
       cbn [app_echo app_in] in Hin.
       iApply (echo_Hinit_boot HR GEN c r Hdeps Hre
-                Heq Htag Hkill Hout Hin with "Hinv Hb Hetok").
+                Heq Htag Hkill Hout Hin with "Hinv Hb").
     - (* [Happ_echo]: at [AppEcho.echo_out]'s E5 placeholder the console's
          output claim is trivial, so the echo justifies itself. *)
       exact echo_Happ_echo.

@@ -538,12 +538,6 @@ Section EchoInitBoot.
        claim is [emp], so this licence is free as well. *)
     @riscv_in_res Σ (@riscv_fixedGS Σ HR) = echo_in γ ->
     ⊢ app_inv fsc_fs -∗ echo_boot γ (S gen_id) r -∗
-      (* ...AND THE ERA'S ADOPTION TOKEN (lane CONS-IO milestone D), the
-         KERNEL's per-era exclusive, handed over beside the boot resource.
-         Echo does not read it here: it rides the bundle's one linear slot
-         ([UInitKernel.init_boot_pay]) into <init>'s entry, where lane
-         ECHO-OUT's ledger spends it to adopt the era. *)
-      era_tok (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
     intros Hsh_deps Hsh_rest Heq Htag Hkill Hout Hin.
@@ -569,7 +563,7 @@ Section EchoInitBoot.
        milestone B, B4): [UShLine.ush_read_recv_leaf_holds]'s result is a
        Coq-level [⊢], so its licence premise is one too. *)
     assert (Hlicw : ⊢ in_licence) by (by iApply in_licence_triv).
-    iIntros "#Hinv Hb Hetok". iModIntro.
+    iIntros "#Hinv Hb". iModIntro.
     (* ---- the taint's supply, and the generic slot it buys ---- *)
     iAssert (□ (echo_taint γ -∗ app_sup))%I as "#Hsup".
     { rewrite /app_sup. rewrite Heq. cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
@@ -693,13 +687,12 @@ Section EchoInitBoot.
     iApply (init_boot_bundle_of_pinned (echo_taint γ)
               (UInitKernel.init_boot_pay (PS := uprogSG_free) (echo_taint γ)
                  (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd)
-              with "Hcl Hinv Hcon [] [Hdn Hetok]").
+              with "Hcl Hinv Hcon [] [Hdn]").
     - iIntros "!>" (W') "#Ht Hp".
       iApply ("Hmint" $! True%I W' with "Ht Hp"). done.
     - iIntros "Hrd". rewrite /UInitKernel.init_boot_pay.
       iSplitL "Hdn"; [ iExact "Hdn" | ].
-      iSplitL "Hrd"; [ rewrite ucons_reader_eq; iExact "Hrd" | ].
-      iExact "Hetok".
+      rewrite ucons_reader_eq. iExact "Hrd".
   Qed.
 
 End EchoInitBoot.

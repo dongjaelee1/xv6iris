@@ -202,14 +202,20 @@ Record xv6_app (Σ : gFunctors) := MkApp {
      [k = S gen_id] excludes it, and the kernel's STAMP
      [obs_boots h = S gen_id] on every history it hands over is what makes
      the era's facts pure. *)
+  (* ...AND ITS FOUNDING IS THE APPLICATION'S OWN, AT THE POWER-ON STEP
+     (lane CONS-IO milestone E, e5-design REVISION 8), not the transport's:
+     see [Hpow] below.  The two paragraphs above describe where the era's
+     ghosts come from; what E changes is WHO produces the era's first copy
+     of the claim, and it has to be a step that runs the ledger, because a
+     transport can be run again. *)
   app_out   : app_fixed -> nat -> list mobs -> list (bv 8) -> iProp Σ;
   (* THE INPUT LOG (app-echo.md, lane CONS-IO), the receive side's twin of
      [app_out] and the SECOND half of the console I/O boundary.  What the
      application claims of the inputs the console UART accepted -- each with
      the history it arrived at and what the kernel echoed for it -- and of
-     the ones a process has been given.  Its founding is the TRANSPORT's
-     ([Happ_boot]'s fourth component); its era selection is by construction
-     inside the predicate, exactly as [app_out]'s. *)
+     the ones a process has been given.  Its founding is [Hpow]'s power-on
+     arm (lane CONS-IO milestone E), exactly as [app_out]'s, and its era
+     index is the same generation number. *)
   app_in    : app_fixed -> nat -> list mobs -> list ConsLog.log_entry ->
               list (list mobs * bv 8) -> iProp Σ;
   (* the conclusion, over the operational state and the run's trace *)
@@ -272,9 +278,10 @@ Theorem xv6_app_adequacy Σ
        device leaf strips a later off.  It is NOT persistent -- it holds the
        application's own authority over whose turn it is to write and how
        far the transcript has got, which is exactly what a pure predicate
-       could not express.  Its FOUNDING is the TRANSPORT's ([Happ_boot]
-       below hands each fresh era instance its claim at [[]]/[[]]), not an
-       obligation of its own; and NOTHING ELSE IS OWED, because the
+       could not express.  Its FOUNDING is [Hpow]'s POWER-ON ARM below
+       (lane CONS-IO milestone E; it was the transport's until e5-design
+       REVISION 8, which is unsound -- see [Hpow]); and NOTHING ELSE IS
+       OWED, because the
        invariant's own steps preserve the claim without any monotonicity
        law -- the accepted bytes move only at the store, and the witness
        history moves only inside a writer's own shift.  An application's
@@ -324,10 +331,35 @@ Theorem xv6_app_adequacy Σ
                   (dl ws : list (list mobs * bv 8)),
                   app_in A c k h pops dl ==∗ app_in A c k h pops (dl ++ ws)))
     (HR0 : forall c : app_fixed A, app_cl A c ⊢ |==> app_R A c [])
+    (* THE POWER STEP -- AND, SINCE lane CONS-IO milestone E, THE FOUNDING
+       OF THE ERA'S TWO PORT CLAIMS (e5-design REVISION 8).  Until E the
+       claims were founded by the TRANSPORT ([Happ_boot] below yielded them
+       at [[]]), and that was unsound as a discipline: [app_xfer_boot_raw]
+       is a [□] over a bupd whose only input it hands straight back, so
+       [app_out A c k [] []] was derivable UNBOUNDEDLY from nothing and no
+       ledger fact could refute a claim "reset" to the founded arm.  The
+       power-ON arm is the one step of the machine that runs the
+       application's LEDGER and runs ONCE PER ERA, so it is where a LINEAR
+       seed for the era can be minted: the application takes [app_R] at the
+       pre-event history, mints the era's seed inside its own ledger, and
+       yields the two claims for the era the event starts.
+       THE ERA IS [S (obs_boots h)], read off the PRE-event history: the
+       ledger has no [GenId] to state a stamp at, and
+       [ObsTrace.obs_boots_app] gives [obs_boots (h ++ [ObsPowerOn]) =
+       S (obs_boots h)], so this IS the boot count of the post-event
+       history -- the number the kernel's own stamp ([Htx]/[Hrx]'s
+       [⌜obs_boots h = S gen_id⌝]) will read at every history of the new
+       era.  The kernel matches it to the era it boots by
+       [ObsTrace.obs_wf], whose boot count at a powered-OFF machine is
+       [ggen] exactly ([RiscvAdequacy]'s PowerOn arm).
+       NOTHING IS OWED ON THE OFF ARM: a power-off starts no era. *)
     (Hpow : forall (c : app_fixed A) (h : list mobs) (on : bool) (dk : Z -> bv 8),
        trace_shape h on ->
        ⊢ app_R A c h ==∗
-         app_R A c (h ++ [if on then ObsPowerOff else ObsPowerOn])%list)
+         app_R A c (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
+         (if on then emp
+          else app_out A c (S (obs_boots h)) [] [] ∗
+               app_in A c (S (obs_boots h)) [] [] []))
     (* the two UART-arm wands, at any value of the fixed part: the era
        instance's [riscv_client] is the one the boot's record carries, and
        the record's client type is [app_fixed A] only at that literal *)
@@ -440,13 +472,15 @@ Theorem xv6_app_adequacy Σ
        born there: the machine starts powered OFF, so every boot -- era 0's
        included -- founds its file system from the PowerOn arm's clone, and
        [Happ_init]'s instance never reaches one. *)
-    (* ...AT EVERY ERA (lane CONS-IO milestone C): the transport founds the
-       era it is run for, so it takes the era's NUMBER and yields the boot
-       resource and the two port claims at that index.  [app_xfer_boot_raw]
-       itself is unchanged -- the index is applied before it. *)
+    (* ...AT EVERY ERA (lane CONS-IO milestone C): the boot resource is
+       era-indexed, so the transport takes the era's NUMBER and yields it
+       at that index.  [app_xfer_boot_raw] itself is unchanged -- the index
+       is applied before it. *)
+    (* ...AND IT FOUNDS NOTHING ELSE (lane CONS-IO milestone E): the two
+       port claims rode here from OUT-FUPD until e5-design REVISION 8, and
+       they are [Hpow]'s yield now. *)
     (Happ_boot : forall (c : app_fixed A) (k : nat),
-       ⊢ app_xfer_boot_raw (app_pred A c) (app_boot A c k) (app_out A c k)
-           (app_in A c k))
+       ⊢ app_xfer_boot_raw (app_pred A c) (app_boot A c k))
     (Happ_init : forall c : app_fixed A,
        ⊢ |==> ∃ r : app_names A,
            app_pred A c r (abs_view (fss_inodes (FsDurImg.img_state
@@ -498,15 +532,6 @@ Theorem xv6_app_adequacy Σ
          (* ...and (a) THE BOOT RESOURCE, LINEARLY, at the instance the
             record equation names *)
          ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot A c (S gen_id) r -∗
-           (* ...and (a') THE ERA'S ADOPTION TOKEN, beside the boot
-              resource (lane CONS-IO milestone D).  It is the KERNEL's, not
-              the transport's: [app_xfer_boot_raw] is untouched and the
-              application founds nothing here.  What it buys is the one
-              thing no per-era resource can say -- that this era is adopted
-              AT MOST ONCE in the whole run ([RiscvPtsto.era_tok_excl]) --
-              which is what makes the application's ledger able to insert
-              its era row and know no second writer can. *)
-           era_tok (S gen_id) -∗
            |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0)
     (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3), the SECOND thing this
        record owes the kernel about the console and [Hinit_boot]'s twin.
@@ -548,11 +573,10 @@ Theorem xv6_app_adequacy Σ
        record beside the application's durable claim at the same snapshot
        name) and the ledger side by side ---- *)
     (Hphi : forall (Hinv : invGS Σ)
-                   (γgen γstart γreg γet γd γsw γobs γhist : gname)
-                   (c : app_fixed A)
+                   (γgen γstart γreg γd γsw γobs γhist : gname) (c : app_fixed A)
                    (T : list mobs) (g' : gstate) (h : list mobs),
        ⊢ @power_interp Σ
-            (boot_fixedGS Hinv γgen γstart γreg γet γd XV6_DISK_BYTES γsw
+            (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
                (xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
                   γd γsw γreg γstart c)
                γobs T (obs_ledger_at (app_R A c) γobs) γhist
@@ -577,10 +601,10 @@ Proof.
      ledger was born with, by iota once the record's shape is destructed *)
   assert (Hperm : forall (HR : riscvGS Σ) (GEN : GenId) (HF : fileG Σ)
                          (r : app_names A) (i : uart_id) (γ : uart_names),
-      (exists (Hinv : invGS Σ) (γgen γstart γreg γet γd γsw γobs γhist : gname)
+      (exists (Hinv : invGS Σ) (γgen γstart γreg γd γsw γobs γhist : gname)
               (c : app_fixed A) (T : list mobs),
          riscv_fixedGS =
-           boot_fixedGS Hinv γgen γstart γreg γet γd XV6_DISK_BYTES γsw
+           boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
              (xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
                 γd γsw γreg γstart c)
              γobs T (obs_ledger_at (app_R A c) γobs) γhist
@@ -592,8 +616,7 @@ Proof.
          /\ (i = Uart0 -> FsCfg.fsc_uart = γ)) ->
       ⊢ obs_inv -∗ uart_obs_permit i γ).
   { intros HRg GEN HFi ri i γ
-      (Hi & Gg & Gs & Gr & Get & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & Happ &
-       Huart).
+      (Hi & Gg & Gs & Gr & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & Happ & Huart).
     refine (uart_obs_permit_ledger i (app_R A Gcl) (app_tag A Gcl)
               (app_out A Gcl) γ (HRt Gcl)
               _ _ _ (app_in A Gcl) _ (Htx HRg GEN HFi Gcl ri i γ Happ Huart)
@@ -611,8 +634,8 @@ Proof.
            (fun γobs c =>
               obs_ledger_at_alloc_cl (app_R A c) γobs (app_cl A c) (HR0 c))
            (fun γd γobs c =>
-              obs_ledger_at_step XV6_DISK_BYTES (app_R A c) (HRt c) (Hpow c)
-                γd γobs)
+              obs_ledger_at_step XV6_DISK_BYTES (app_R A c) (HRt c)
+                (app_out A c) (app_in A c) (Hpow c) γd γobs)
            Hperm (app_phi A) Hphi Hgen0 Hpow0 Himg).
 Qed.
 
@@ -635,10 +658,9 @@ Section AppTriv.
   (* the transport: a predicate that holds of every view is its own copy,
      and the generic application hands its first process nothing *)
   Lemma app_triv_xfer (c : app_fixed (app_triv Σ)) (k : nat) :
-    ⊢ app_xfer_boot_raw (app_pred (app_triv Σ) c) (app_boot (app_triv Σ) c k)
-        (app_out (app_triv Σ) c k) (app_in (app_triv Σ) c k).
+    ⊢ app_xfer_boot_raw (app_pred (app_triv Σ) c) (app_boot (app_triv Σ) c k).
   Proof.
-    cbn [app_triv app_pred app_boot app_out app_in].
+    cbn [app_triv app_pred app_boot].
     apply app_xfer_boot_raw_triv. intros r av. reflexivity.
   Qed.
 
@@ -682,12 +704,9 @@ Section AppTriv.
        application takes and does not use: its log claim is [emp] too *)
     @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in (app_triv Σ) c ->
     ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot (app_triv Σ) c (S gen_id) r -∗
-      (* ...and the era's adoption token, which the generic application
-         takes and does not use (lane CONS-IO milestone D) *)
-      era_tok (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Heq _ Hkc _ Hout Hin. iIntros "_ _ _". iModIntro.
+    intros Heq _ Hkc _ Hout Hin. iIntros "_ _". iModIntro.
     (* the rewrite goes BEFORE the [intros]: [r'] is typed at
        [app_names file_app], so rewriting under it is a dependent rewrite *)
     iApply init_boot_of_triv.
@@ -739,7 +758,9 @@ Proof.
            ltac:(intros c r; cbn [app_triv app_in];
                  iIntros "_"; iSplit; iIntros "!>" (?????) "_"; by iModIntro)
            app_triv_R0
-           ltac:(intros c h on dk _; cbn [app_triv app_R]; iIntros "_"; by iModIntro)
+           ltac:(intros c h on dk _; cbn [app_triv app_R app_out app_in];
+                 iIntros "_"; iModIntro; iSplitR; [done |];
+                 destruct on; by repeat iSplitR)
            ltac:(intros HR GEN HFi c r i γ _ _; cbn [app_triv app_R];
                  iIntros "!>" (h b u u' ho hi pops dl)
                    "_ _ _ _ _ _ _ _ Ho Hi Hg _"; iModIntro;
@@ -755,7 +776,7 @@ Proof.
                  iApply (SpecConsoleintr.cons_echo_shift_triv (XI := XI));
                  [ rewrite Hout; cbn [app_triv app_out]; reflexivity
                  | rewrite Hin; cbn [app_triv app_in]; reflexivity ])
-           ltac:(intros Hinv γgen γstart γreg γet γd γsw γobs γhist c T g' h;
+           ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
                  iIntros "_ _ _ _ _"; iModIntro; iPureIntro; exact Logic.I)
            Hgen0 Hpow0 _ n κs t2 g2 Hn)).
   rewrite Hdisk. exact fsimg_image_wf.

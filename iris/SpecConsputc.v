@@ -167,7 +167,7 @@ Definition wp_consputc_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
   (* THE JUSTIFICATION FOR THIS CALL'S BYTES, ONE LINK EACH (lane OUT-FUPD).
      [consputc_cs a00] is the BACKSPACE arm's triple or the argument's low
      byte, so the caller knows the run before the call. *)
-  out_chain Uart0 (consputc_cs a00) Φ -∗
+  store_chain Uart0 γd (consputc_cs a00) Φ -∗
   wp_next b p (fun (CID : CpuId) =>
     ∀ mf,
     sie_cap_gpr kt mf K b p -∗

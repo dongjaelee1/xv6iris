@@ -1043,11 +1043,29 @@ Section DevLoops.
     split; [intros e He; inversion He | intros i e1 e2 H1; by rewrite lookup_nil in H1].
   Qed.
 
+  (* an INPUT event puts nothing on the wire, so the rider minted for a byte
+     is a bound at its OWN post-arrival history as much as at the one
+     before it *)
+  Lemma obs_wire_open_seg_in (i j : uart_id) (h : list mobs) (b : bv 8) :
+    obs_wire i (open_seg (h ++ [ObsUartIn j b])%list) = obs_wire i (open_seg h).
+  Proof.
+    rewrite (open_seg_io h [ObsUartIn j b] ltac:(repeat constructor)).
+    rewrite obs_wire_app. cbn [obs_wire]. by rewrite app_nil_r.
+  Qed.
+
   Definition uart_col (iu : uart_id) (γ : uart_names) (u : uart_state)
       (hs : list (list mobs)) (np nk : nat)
       (hl ht : option (list mobs)) : iProp Σ :=
     (mono_nat_auth_own γ.(un_rxpush) 1 np ∗ uart_rx_popped γ nk hl ∗
-     ([∗ list] h ∈ hs, riscv_rx_tag h ∗ obs_hist_lb h) ∗
+     (* ...AND THE WIRE AS IT STOOD WHEN THE BYTE ARRIVED (lane CONS-IO,
+        the coordinator's second C2 amendment).  A persistent lower bound on
+        the transmitted prefix, minted at the rx arm where the trace
+        coupling IS in hand and carried to whoever pops the byte: at a CPU
+        MMIO step there is no trace authority at all, so the echo's store
+        can get the fact "the transcript the discipline speaks of is inside
+        what this UART has accepted" from nowhere else. *)
+     ([∗ list] h ∈ hs, riscv_rx_tag h ∗ obs_hist_lb h ∗
+                       uart_out_lb γ (obs_wire iu (open_seg h))) ∗
      obs_hist_lb_o ht ∗
      ⌜uart_col_ok iu u hs np nk hl ht⌝)%I.
 
@@ -1183,7 +1201,8 @@ Section DevLoops.
          (* an arrival touches neither end of the transmit pair *)
          ⌜u_wire u' = u_wire u⌝ -∗ ⌜u_out u' = u_out u⌝ -∗
          riscv_rx_tag (h ++ [ObsUartIn iu b])%list -∗
-         obs_hist_lb (h ++ [ObsUartIn iu b])%list ==∗
+         obs_hist_lb (h ++ [ObsUartIn iu b])%list -∗
+         uart_out_lb γ (obs_wire iu (open_seg (h ++ [ObsUartIn iu b])%list)) ==∗
          (∃ hs np nk hl ht, uart_col iu γ u' hs np nk hl ht)).
   Proof.
     iIntros "H Hauth".
@@ -1194,7 +1213,7 @@ Section DevLoops.
       iDestruct (obs_hist_lb_prefix with "Hauth Hht") as %Hp.
       iPureIntro. exact Hp. }
     iFrame "Hauth".
-    iIntros (u' b) "%Hrx %Hlbk %Hw %Ho #Htg #Hlbn".
+    iIntros (u' b) "%Hrx %Hlbk %Hw %Ho #Htg #Hlbn #Hwlb".
     destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
     iMod (mono_nat_own_update (S np) with "Ha") as "[Ha _]"; [lia|].
     iModIntro.
@@ -1212,7 +1231,7 @@ Section DevLoops.
     iFrame "Ha Hk".
     iSplitL "Hts".
     { rewrite big_sepL_app. iFrame "Hts". cbn [big_opL].
-      iSplitL; [| done]. iSplitR; [iExact "Htg" | iExact "Hlbn"]. }
+      iSplitL; [| done]. iFrame "Htg Hlbn Hwlb". }
     iSplitR; [iExact "Hlbn" |].
     iPureIntro. rewrite /uart_col_ok Hrx Hlbk Hw Ho !length_app H2 H3.
     cbn [length]. split_and!; [lia | lia | reflexivity | exact Hwo | | | | | ].
@@ -1318,7 +1337,11 @@ Section DevLoops.
     uart_colE iu γ u -∗ uart_rx_tok γ k hl -∗ uart_rx_pushed_lb γ (S k) ==∗
       uart_colE iu γ u' ∗
       (∃ h, ⌜obs_ends_in iu h bt⌝ ∗ ⌜ohist_ext hl h⌝ ∗
-            riscv_rx_tag h ∗ obs_hist_lb h ∗ uart_rx_tok γ (S k) (Some h)).
+            riscv_rx_tag h ∗ obs_hist_lb h ∗
+            (* ...and the byte's own WIRE RIDER (lane CONS-IO), which is what
+               the echo's store spends *)
+            uart_out_lb γ (obs_wire iu (open_seg h)) ∗
+            uart_rx_tok γ (S k) (Some h)).
   Proof.
     iIntros (Hpop Hw Ho Hacc) "[Hout H] Htok #Hlb".
     iDestruct "H" as (hs np nk hl0 ht) "(Ha & Hk & Hts & Hht & %Hok)".
@@ -1329,7 +1352,7 @@ Section DevLoops.
     { cbn [length] in H1. lia. }
     destruct (Hpop b rx' eq_refl) as (-> & Hrx' & Hlb').
     destruct hs as [| hh hs']; [cbn [length] in H2; discriminate|].
-    iDestruct "Hts" as "[[#Hth #Hlbh] Hts]".
+    iDestruct "Hts" as "[(#Hth & #Hlbh & #Hwlb) Hts]".
     assert (Hhead : obs_ends_in iu hh b) by exact (H4 0%nat b hh eq_refl eq_refl).
     assert (Hanch : ohist_ext hl0 hh) by exact (H6 0%nat hh eq_refl).
     iMod (uart_rx_tok_update γ nk (S nk) hl0 (Some hh) with "Hk Htok")
@@ -1350,7 +1373,7 @@ Section DevLoops.
     - iExists hh. iFrame "Htok".
       iSplitR; [iPureIntro; exact Hhead |].
       iSplitR; [iPureIntro; exact Hanch |].
-      iSplitR; [iExact "Hth" | iExact "Hlbh"].
+      iFrame "Hth Hlbh Hwlb".
   Qed.
 
   (* THE FLUSH: an FCR write that clears the receive FIFO is a pop of
@@ -2469,6 +2492,132 @@ Section DevLoops.
     destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
     rewrite /uart_col_ok Hrx Hlb Hw Ho. split_and!; assumption.
   Qed.
+
+  (* ==================================================================== *)
+  (*  THE STORE OBLIGATION (lane CONS-IO): what the THR write leaf spends.  *)
+  (*                                                                      *)
+  (*  [out_link] was the leaf's premise while a process's own [write(2)]   *)
+  (*  was the only mover of the accepted sequence.  The console ECHO moves *)
+  (*  it too, and its link ([echo_link]) needs two more things AT THE      *)
+  (*  STORE: the INPUT CLAIM -- to place the byte it is echoing against    *)
+  (*  the log -- and the ORDER FACT, which is read off the log's mark.     *)
+  (*  Neither can be handed down from above: the claim lives inside the    *)
+  (*  port invariant, and only the store's own device node opens it.       *)
+  (*                                                                      *)
+  (*  So the leaf's premise is the GHOST STEP ITSELF, and the two writers  *)
+  (*  build it their own way ([store_ob_of_out_link] for the plain one,    *)
+  (*  [store_ob_of_echo_link] for the echo).  ONE leaf, ONE uartputc_sync, *)
+  (*  ONE consputc -- and [out_link]'s own surface is untouched, which is  *)
+  (*  what keeps the write path (and [cons_out_chain]) exactly as landed.  *)
+  (* ==================================================================== *)
+  Definition store_ob (i : uart_id) (γ : uart_names) (b : bv 8)
+      (Φ : iProp Σ) : iProp Σ :=
+    (∀ u u' : uart_state,
+       ⌜u_rx u' = u_rx u⌝ -∗ ⌜uart_loopback u' = uart_loopback u⌝ -∗
+       ⌜u_wire u' = u_wire u⌝ -∗ ⌜u_out u' = u_out u⌝ -∗
+       ⌜uart_acc u' = (uart_acc u ++ [b])%list⌝ -∗
+       uart_out_auth γ u -∗ uart_colE i γ u -∗ in_claim_at i γ
+       ={⊤ ∖ ↑uartN i}=∗
+       uart_out_auth γ u ∗ uart_colE i γ u' ∗ in_claim_at i γ ∗ Φ)%I.
+
+  (* the per-byte chain of them, [out_chain]'s twin one level down *)
+  Fixpoint store_chain (i : uart_id) (γ : uart_names) (bs : list (bv 8))
+      (Φ : iProp Σ) : iProp Σ :=
+    match bs with
+    | [] => Φ
+    | b :: bs' => store_ob i γ b (store_chain i γ bs' Φ)
+    end%I.
+
+  Lemma store_ob_mono (i : uart_id) (γ : uart_names) (b : bv 8)
+      (Φ Φ' : iProp Σ) :
+    (Φ -∗ Φ') -∗ store_ob i γ b Φ -∗ store_ob i γ b Φ'.
+  Proof.
+    iIntros "HΦ H" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
+    iMod ("H" $! u u' with "[//] [//] [//] [//] [//] Hout Hcol Hin")
+      as "(Hout & Hcol & Hin & HP)".
+    iModIntro. iFrame "Hout Hcol Hin". by iApply "HΦ".
+  Qed.
+
+  (* THE PLAIN WRITER'S: the input claim is passed straight back and the
+     column moves by [uart_colE_store], exactly as the landed leaf did. *)
+  Lemma store_ob_of_out_link (i : uart_id) (γ : uart_names) (b : bv 8)
+      (Φ : iProp Σ) : out_link i b Φ -∗ store_ob i γ b Φ.
+  Proof.
+    iIntros "HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
+    iMod (uart_colE_store i γ u u' b Φ H1 H2 H3 H4 H5 with "HΨ Hcol")
+      as "[Hcol HΦ]".
+    iModIntro. iFrame "Hout Hcol Hin HΦ".
+  Qed.
+
+  Lemma store_chain_of_out_chain (i : uart_id) (γ : uart_names)
+      (bs : list (bv 8)) (Φ : iProp Σ) :
+    out_chain i bs Φ -∗ store_chain i γ bs Φ.
+  Proof.
+    iIntros "H". iInduction bs as [| b bs] "IH" forall (Φ); [by iFrame |].
+    cbn [out_chain store_chain]. iApply store_ob_of_out_link.
+    iApply (out_link_mono with "[] H"). iIntros "H". by iApply "IH".
+  Qed.
+
+  (* THE ECHO'S.  The order fact comes out of the log's mark against the
+     claim's own half plus [ConsLog.log_ok]'s chain -- the same three lines
+     as [in_claim_append] -- and the wire fact out of the byte's RIDER
+     against the transmitted-prefix authority, plus [DevModel.uart_acc]'s
+     definition ([u_out] is a prefix of the accepted sequence).  The mark is
+     LENT, not moved: the append that moves it fires once per byte, at the
+     arm's exit, and not per echoed byte. *)
+  Lemma store_ob_of_echo_link (γ : uart_names) (b : bv 8) (h : list mobs)
+      (hg : option (list mobs)) (Φ : iProp Σ) :
+    ohist_ext hg h ->
+    uart_out_lb γ (obs_wire Uart0 (open_seg h)) -∗
+    uart_log_hi γ (1/2) hg -∗ echo_link h b Φ -∗
+    store_ob Uart0 γ b (uart_log_hi γ (1/2) hg ∗ Φ).
+  Proof.
+    intros Hx. iIntros "#Hwlb Hhi HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
+    iDestruct "Hin" as (o1 pops dl) "(#Hilb & Hires & Hhi0 & Hdv & Hau & %Hok)".
+    rewrite /uart_log_hi.
+    iDestruct (ghost_var_agree with "Hhi Hhi0") as %Hagr.
+    assert (Hbelow : forall e, e ∈ pops -> hist_ext (ConsLog.le_hist e) h).
+    { apply (ConsLog.cl_log_ok_last_ext pops h Hok).
+      intros el Hel. rewrite Hagr /log_top Hel /= in Hx. exact Hx. }
+    iDestruct (uart_out_prefix with "Hout Hwlb") as %Hpre.
+    assert (Hwire : obs_wire Uart0 (open_seg h) `prefix_of` uart_acc u).
+    { rewrite /uart_acc. etrans; [exact Hpre |]. by apply prefix_app_r. }
+    iDestruct "Hcol" as "[Hocl Hcolb]".
+    rewrite /uart_out_claim /out_claim_at.
+    iDestruct "Hocl" as (o0) "[#Holb Hres]".
+    iMod ("HΨ" $! o0 o1 (uart_acc u) pops dl
+            with "Holb Hres Hilb Hires [%] [%]")
+      as (o2) "(#Holb2 & Hres2 & _ & Hires2 & HΦ)";
+      [exact Hbelow | exact Hwire |].
+    iModIntro. iFrame "Hout HΦ Hhi".
+    iSplitR "Hires2 Hhi0 Hdv Hau".
+    - iApply (uart_colE_intro Uart0 γ u' with "[Hres2] [Hcolb]").
+      + rewrite /uart_out_claim /out_claim_at H5. iExists o2.
+        iFrame "Holb2 Hres2".
+      + iDestruct "Hcolb" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hcok)".
+        iExists hs, np, nk, hl, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
+        destruct Hcok as (C1 & C2 & C3 & Cwo & C4 & C5 & C6 & C7 & C8).
+        rewrite /uart_col_ok H1 H2 H3 H4. split_and!; assumption.
+    - iExists o1, pops, dl. iFrame "Hilb Hires2 Hhi0 Hdv Hau". by iPureIntro.
+  Qed.
+
+  Lemma store_chain_of_echo_chain (γ : uart_names) (h : list mobs)
+      (hg : option (list mobs)) (bs : list (bv 8)) (Φ : iProp Σ) :
+    ohist_ext hg h ->
+    uart_out_lb γ (obs_wire Uart0 (open_seg h)) -∗
+    uart_log_hi γ (1/2) hg -∗ echo_chain h bs Φ -∗
+    store_chain Uart0 γ bs (uart_log_hi γ (1/2) hg ∗ Φ).
+  Proof.
+    intros Hx. iIntros "#Hwlb".
+    iInduction bs as [| b bs] "IH" forall (Φ).
+    - iIntros "Hhi H". cbn [store_chain]. iFrame "Hhi H".
+    - iIntros "Hhi H". cbn [echo_chain store_chain].
+      iDestruct (store_ob_of_echo_link γ b h hg (echo_chain h bs Φ) Hx
+                   with "Hwlb Hhi H") as "H".
+      iApply (store_ob_mono with "[] H"). iIntros "[Hhi H]".
+      iApply ("IH" with "Hhi H").
+  Qed.
+
   Lemma disk_inv_alloc E γd : disk_inv_body γd ={E}=∗ disk_inv γd.
   Proof. iIntros "Hbody". rewrite /disk_inv. by iApply inv_alloc. Qed.
 
@@ -3092,7 +3241,22 @@ Section DevLoops.
       destruct (uart_rx_push_rx u b u' Hrx) as [Hrxe Hlbe].
       pose proof (uart_rx_push_wire u b u' Hrx) as Hwe.
       pose proof (uart_rx_push_out u b u' Hrx) as Hoe.
-      iMod ("Hpush" $! u' b with "[//] [//] [//] [//] Htg Hlbn") as "Hcolb".
+      (* THE BYTE'S WIRE RIDER (lane CONS-IO, the second C2 amendment).  It
+         is MINTED HERE and nowhere else: this is the one point in the
+         machine where the trace coupling [obs_wire i (open_seg h) = u_wire
+         u] and the transmitted-prefix authority are in the same hands.  An
+         input event puts nothing on the wire, so the bound holds at the
+         byte's OWN post-arrival history, which is the history its tag is
+         filed at. *)
+      assert (Hrider : obs_wire i (open_seg (h ++ [ObsUartIn i b])%list)
+                       = u_out u').
+      { rewrite obs_wire_open_seg_in Hwire Hu Hwo. by rewrite Hoe. }
+      iDestruct "Hg" as "(Hgs & Hgo & Hgt & Hgd)".
+      iDestruct (uart_out_get γ u' with "Hgo") as "[Hgo #Hwlb]".
+      iEval (rewrite -Hrider) in "Hwlb".
+      iAssert (uart_ghosts γ u') with "[Hgs Hgo Hgt Hgd]" as "Hg";
+        [rewrite /uart_ghosts; iFrame "Hgs Hgo Hgt Hgd" |].
+      iMod ("Hpush" $! u' b with "[//] [//] [//] [//] Htg Hlbn Hwlb") as "Hcolb".
       iDestruct (uart_out_claim_stable i u u'
                    (uart_rx_push_acc u b u' Hrx) with "Hocl") as "Hocl".
       iAssert (uart_colE i γ u') with "[Hocl Hcolb]" as "Hcol";

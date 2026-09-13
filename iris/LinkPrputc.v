@@ -80,7 +80,8 @@ Section LinkPrputc.
     iApply (UartPutc.wp_uartputc_sconf kt Uart1 (CID := CID0) γl1 γ1 m0 K emp%I
               n eb b p lks HK Ha0 Hn Hbelow
               with "Hcg Hcpu Htext Hpc Huinv Hbase Htxl []").
-    { iApply (out_chain_triv Uart1 _ emp%I eq_refl). done. }
+    { iApply store_chain_of_out_chain.
+      iApply (out_chain_triv Uart1 _ emp%I eq_refl). done. }
     iIntros (CID1 Hs1 mf) "Hcg Hcpu Hpc %Hcs _".
     iSpecialize ("Hcont" $! CID1 with "[%]"); [exact Hs1|].
     iApply ("Hcont" $! mf with "Hcg Hcpu Hpc [%]"). exact Hcs.

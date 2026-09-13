@@ -266,7 +266,7 @@ Section ProofUartinitone.
               ltac:(rgne; rewrite HL1a5; destruct i; apply bv_eq; vm_compute; reflexivity)
               with "Hcg Hpc [] Huinv [$Htx $Hdlab] []").
     { iApply (uio_0a with "Htext"). }
-    { iIntros (uu uu') "%Hw Hg Hcol [Ht Hd]".
+    { iIntros (uu uu') "%Hw Hg Hcol Hin [Ht Hd]".
       destruct (uart_write_1_stable uu _ uu' Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_rx_stable uu 1 _ uu' ltac:(lia) ltac:(lia) Hw)
         as [Hrxe Hlbe].
@@ -275,7 +275,7 @@ Section ProofUartinitone.
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
              ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
-        | iFrame "Ht Hd" ]. }
+        | iFrame "Hin Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
     assert (Hpp0e : add_vec_int (mword_of_int (UIO + 0x0a) : mword 64) 4 = mword_of_int (UIO + 0x0e)) by (apply bv_eq; vm_compute; reflexivity).
@@ -329,7 +329,7 @@ Section ProofUartinitone.
               ltac:(rgne; rewrite HL3a5; destruct i; apply bv_eq; vm_compute; reflexivity)
               with "Hcg Hpc [] Huinv [$Htx $Hdlab] []").
     { iApply (uio_14 with "Htext"). }
-    { iIntros (uu uu') "%Hw Hg Hcol [Ht Hd]".
+    { iIntros (uu uu') "%Hw Hg Hcol Hin [Ht Hd]".
       destruct (uart_write_3_stable uu _ uu' Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_rx_stable uu 3 _ uu' ltac:(lia) ltac:(lia) Hw)
         as [Hrxe Hlbe].
@@ -341,7 +341,7 @@ Section ProofUartinitone.
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
              ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
-        | iFrame "Ht Hd'" ]. }
+        | iFrame "Hin Ht Hd'" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
     assert (Hpp18 : add_vec_int (mword_of_int (UIO + 0x14) : mword 64) 4 = mword_of_int (UIO + 0x18)) by (apply bv_eq; vm_compute; reflexivity).
@@ -395,7 +395,7 @@ Section ProofUartinitone.
               ltac:(rgne; rewrite HL5a4; destruct i; apply bv_eq; vm_compute; reflexivity)
               with "Hcg Hpc [] Huinv [$Htx $Hdlab] []").
     { iApply (uio_1c with "Htext"). }
-    { iIntros (uu uu') "%Hw Hg Hcol [Ht Hd]".
+    { iIntros (uu uu') "%Hw Hg Hcol Hin [Ht Hd]".
       iDestruct (ui_dlab_of_ghosts γd uu (DfracOwn (1/2)) true with "Hg Hd") as %Hdu.
       destruct (uart_write_0_dlab_stable uu _ uu' Hdu Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_rx_stable uu 0 _ uu' ltac:(lia) ltac:(lia) Hw)
@@ -405,7 +405,7 @@ Section ProofUartinitone.
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
              ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
-        | iFrame "Ht Hd" ]. }
+        | iFrame "Hin Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
     assert (Hpp20 : add_vec_int (mword_of_int (UIO + 0x1c) : mword 64) 4 = mword_of_int (UIO + 0x20)) by (apply bv_eq; vm_compute; reflexivity).
@@ -442,7 +442,7 @@ Section ProofUartinitone.
               ltac:(rgne; rewrite HL6a4; destruct i; apply bv_eq; vm_compute; reflexivity)
               with "Hcg Hpc [] Huinv [$Htx $Hdlab] []").
     { iApply (uio_22 with "Htext"). }
-    { iIntros (uu uu') "%Hw Hg Hcol [Ht Hd]".
+    { iIntros (uu uu') "%Hw Hg Hcol Hin [Ht Hd]".
       destruct (uart_write_1_stable uu _ uu' Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_rx_stable uu 1 _ uu' ltac:(lia) ltac:(lia) Hw)
         as [Hrxe Hlbe].
@@ -451,7 +451,7 @@ Section ProofUartinitone.
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
              ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
-        | iFrame "Ht Hd" ]. }
+        | iFrame "Hin Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
     assert (Hpp26 : add_vec_int (mword_of_int (UIO + 0x22) : mword 64) 4 = mword_of_int (UIO + 0x26)) by (apply bv_eq; vm_compute; reflexivity).
@@ -490,7 +490,7 @@ Section ProofUartinitone.
               ltac:(rgne; rewrite HL7a4; destruct i; apply bv_eq; vm_compute; reflexivity)
               with "Hcg Hpc [] Huinv [$Htx $Hdlab] []").
     { iApply (uio_28 with "Htext"). }
-    { iIntros (uu uu') "%Hw Hg Hcol [Ht Hd]".
+    { iIntros (uu uu') "%Hw Hg Hcol Hin [Ht Hd]".
       destruct (uart_write_3_stable uu _ uu' Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_rx_stable uu 3 _ uu' ltac:(lia) ltac:(lia) Hw)
         as [Hrxe Hlbe].
@@ -502,7 +502,7 @@ Section ProofUartinitone.
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
              ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
-        | iFrame "Ht Hd'" ]. }
+        | iFrame "Hin Ht Hd'" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
     assert (Hpp2c : add_vec_int (mword_of_int (UIO + 0x28) : mword 64) 4 = mword_of_int (UIO + 0x2c)) by (apply bv_eq; vm_compute; reflexivity).
@@ -559,7 +559,7 @@ Section ProofUartinitone.
     { (* THE RECEIVE FLUSH.  FCR = 0x07 sets bit 1, so the receive FIFO is
          emptied outright: this is a pop of everything, and it is why
          uartinitone takes the receive token at all. *)
-      iIntros (uu uu') "%Hw Hg Hcol (Ht & Hd & Htok)".
+      iIntros (uu uu') "%Hw Hg Hcol Hin (Ht & Hd & Htok)".
       iDestruct (ui_tx_empty γd uu l with "Hg Ht Hlb") as %Htxe.
       destruct (uart_write_2_stable uu _ uu' Htxe Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_fcr_rx uu _ uu' Hw) as [Hrxe Hlbe].
@@ -571,12 +571,12 @@ Section ProofUartinitone.
           as "[Hcol Htok]".
         iModIntro. iSplitL "Hg";
           [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
-        iFrame "Hcol Ht Hd Htok".
+        iFrame "Hcol Hin Ht Hd Htok".
       + iDestruct (uart_colE_stable i γd uu uu' Hrxe Hlbe
              ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol") as "Hcol".
         iModIntro. iSplitL "Hg";
           [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
-        iFrame "Hcol Ht Hd". iExists k, hl. iExact "Htok". }
+        iFrame "Hcol Hin Ht Hd". iExists k, hl. iExact "Htok". }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc (Htx & Hdlab & Htok)".
     assert (Hpp34 : add_vec_int (mword_of_int (UIO + 0x30) : mword 64) 4 = mword_of_int (UIO + 0x34)) by (apply bv_eq; vm_compute; reflexivity).
@@ -657,7 +657,7 @@ Section ProofUartinitone.
               ltac:(rgne; rewrite HL13a4; destruct i; apply bv_eq; vm_compute; reflexivity)
               with "Hcg Hpc [] Huinv [$Htx $Hdlab] []").
     { iApply (uio_3e with "Htext"). }
-    { iIntros (uu uu') "%Hw Hg Hcol [Ht Hd]".
+    { iIntros (uu uu') "%Hw Hg Hcol Hin [Ht Hd]".
       destruct (uart_write_1_stable uu _ uu' Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_rx_stable uu 1 _ uu' ltac:(lia) ltac:(lia) Hw)
         as [Hrxe Hlbe].
@@ -666,7 +666,7 @@ Section ProofUartinitone.
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
              ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
-        | iFrame "Ht Hd" ]. }
+        | iFrame "Hin Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
     (* Device programming done, and DLAB is off for good. *)

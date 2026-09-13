@@ -124,9 +124,16 @@ R -∗
    a basic update loses nothing ([bupd_fupd]).
    The column travels here too: an FCR write may clear the receive FIFO,
    and the output claim rides in it. *)
+(* ...AND THE INPUT CLAIM TRAVELS WITH IT (lane CONS-IO).  The CONSOLE
+   ECHO's store has to read the UART's input log to place the byte it is
+   echoing, and the log's claim lives inside THIS invariant, which only this
+   node opens -- so a leaf that needs it can get it nowhere else.  It is
+   lent and given straight back; every leaf but the echo's threads it
+   untouched, and the read node below does not carry it at all. *)
 (∀ u u', ⌜ uart_write u off storebyte = Some u' ⌝ -∗
-   uart_ghosts γd u -∗ uart_colE i γd u -∗ R ={⊤ ∖ ↑uartN i}=∗
-   uart_ghosts γd u' ∗ uart_colE i γd u' ∗ S) -∗
+   uart_ghosts γd u -∗ uart_colE i γd u -∗ in_claim_at i γd -∗ R
+   ={⊤ ∖ ↑uartN i}=∗
+   uart_ghosts γd u' ∗ uart_colE i γd u' ∗ in_claim_at i γd ∗ S) -∗
 wp_next b p (fun (CID : CpuId) =>
   sie_cap_gpr kt m n b p -∗
   pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗

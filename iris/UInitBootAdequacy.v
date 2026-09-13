@@ -188,7 +188,7 @@ Section EchoAdequacy.
        way [Houtt] is (it is named in [Hphi]'s literal above), so the only
        new goal is [Happ_in_sup]. *)
     refine (xv6_app_adequacy Σ g sb nib cov app_echo
-              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
+              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
     - exact echo_Hbirth.
     - exact echo_Happ_kill.
     - exact echo_Happ_out_sup.

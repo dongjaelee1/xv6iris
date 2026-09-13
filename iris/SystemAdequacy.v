@@ -315,7 +315,7 @@ Lemma app_xfer_boot_raw_triv {Σ} {N} (A : N -> FsAbsDefs.aview -> iProp Σ) :
 Proof.
   intros Htriv. rewrite /app_xfer_boot_raw. iIntros "!>" (r av) "H".
   iModIntro. iSplitL "H"; [iExact "H" |]. iExists r.
-  iSplitL; [| by iSplitR; [iSplitR|]].
+  iSplitL; [| by repeat iSplitR].
   iNext. iApply (bi.equiv_entails_1_2 _ _ (Htriv r av)).
   iPureIntro. exact Logic.I.
 Qed.
@@ -828,7 +828,7 @@ Section SystemBoot.
         #Hpinned & #Hubw0 & #Hubw1 & #Hurw0 & #Hurw1 &
         #Hstarted & Hprim & #Hdev & #Hdev1 & #Hplic & #Hwinv &
         #Hcinv & #Hcert & Hharts & Hlk & Hgl & Hmdata & Hpark & Hpst & Hpavail & Hchb & Huart &
-        Htok & Hhi & Hdlab & Huart1 & Htok1 & Hhi1 & Hdlab1 &
+        Htok & Hhi & Hlgh & Hdlab & Huart1 & Htok1 & Hhi1 & Hlgh1 & Hdlab1 &
         Hcfg & Hclaim & Hcmauth & #Hdone & Hkpt & Hkptb & Hkmap & Hmir & Hpages & Hirauth &
         Hirslot & Hfs)".
     (* THE FIRST PROCESS'S EXEC BUNDLE, off [Hinit_boot] at the era's own
@@ -897,12 +897,12 @@ Section SystemBoot.
     iDestruct (dev_inv_disk with "Hdev") as "#Hvinv".
     iDestruct (dev_inv_perm with "Hdev") as "#Hqinv".
     iModIntro.
-    iSplitL "Hthr0 Hprim Hh0 Hhrest Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hdlab Htx1 Htok1 Hhi1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
+    iSplitL "Hthr0 Hprim Hh0 Hhrest Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Hdlab Htx1 Htok1 Hhi1 Hlgh1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
              Hpages".
     { iApply (big_sepL_cpu_glue
                 (fun c => WP (LoopE gen_id c : expr riscv_lang) @ ⊤
 )%I).
-      iSplitL "Hthr0 Hprim Hh0 Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hdlab Htx1 Htok1 Hhi1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
+      iSplitL "Hthr0 Hprim Hh0 Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Hdlab Htx1 Htok1 Hhi1 Hlgh1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
                Hpages".
       { (* THE BOOT HART: the arm that consumes the whole supply. *)
         (* AT [HF] EXPLICITLY, not by resolution.  [SpecMain.MAIN]'s
@@ -980,6 +980,8 @@ Section SystemBoot.
            ring's partner half of the HIGH-WATER MARK beside it *)
         iSpecialize ("HP" with "Htok").
         iSpecialize ("HP" with "Hhi").
+        (* ...and the LOG's high-water half beside it (lane CONS-IO) *)
+        iSpecialize ("HP" with "Hlgh").
         iSpecialize ("HP" with "Hdlab").
         (* ---- THE SECOND PORT'S THIRTEEN ROWS (bump 163d39b).  Two
            invariants -- UART1's own, and the PLIC's at the two CONCRETE
@@ -1000,6 +1002,7 @@ Section SystemBoot.
         iSpecialize ("HP" with "Hlb1").
         iSpecialize ("HP" with "Htok1").
         iSpecialize ("HP" with "Hhi1").
+        iSpecialize ("HP" with "Hlgh1").
         iSpecialize ("HP" with "Hdlab1").
         iSpecialize ("HP" with "Hcfg").
         iSpecialize ("HP" with "Hclaim").
@@ -1937,7 +1940,7 @@ Proof.
   (* the permit at the ledger: the client's two wands *)
   intros HRg GEN HFi ri i γ
          (Hi & Gg & Gs & Gr & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & _ & _).
-  refine (uart_obs_permit_ledger i R Tg Ores γ HRt _ _ _
+  refine (uart_obs_permit_ledger i R Tg Ores γ HRt _ _ _ Ires _
             (Htx HRg i γ) (Hrx HRg i γ));
     rewrite Heq; reflexivity.
 Qed.
@@ -2197,6 +2200,7 @@ Corollary xv6_power_adequacy_xv6Σ (g : gstate)
                kill_cred_triv (@kill_cred_triv_persistent xv6Σ)
                (@kill_cred_triv_timeless xv6Σ)
                out_res_triv (@out_res_triv_timeless _)
+               in_res_triv (@in_res_triv_timeless _)
                unit c) g' -∗
          ▷ xv6_slot unit (fun _ _ _ => True%I) fsimg_cov
              (FsImg.sb_logstart fsimg_sb) γd γsw γreg γstart c -∗
@@ -2265,7 +2269,8 @@ Proof.
                 (@rx_tag_triv_timeless xv6Σ)
                 kill_cred_triv (@kill_cred_triv_persistent xv6Σ)
                 (@kill_cred_triv_timeless xv6Σ)
-                out_res_triv (@out_res_triv_timeless xv6Σ) g')
+                out_res_triv (@out_res_triv_timeless xv6Σ)
+                in_res_triv (@in_res_triv_timeless xv6Σ) g')
            Hgen0 Hpow Hdisk).
 Qed.
 

@@ -635,7 +635,7 @@ Section AppTriv.
     ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot (app_triv Σ) c r -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Heq _ Hkc _ Hout _. iIntros "_ _". iModIntro.
+    intros Heq _ Hkc _ Hout Hin. iIntros "_ _". iModIntro.
     (* the rewrite goes BEFORE the [intros]: [r'] is typed at
        [app_names file_app], so rewriting under it is a dependent rewrite *)
     iApply init_boot_of_triv.
@@ -643,6 +643,7 @@ Section AppTriv.
       cbn [app_triv app_pred app_names]. reflexivity.
     - rewrite Hkc. cbn [app_triv app_kill]. reflexivity.
     - rewrite Hout. cbn [app_triv app_out]. reflexivity.
+    - rewrite Hin. cbn [app_triv app_in]. reflexivity.
   Qed.
 
   Lemma app_triv_R0 (c : app_fixed (app_triv Σ)) :

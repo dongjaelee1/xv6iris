@@ -319,6 +319,16 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
      travels on into the ring's own column: a reader further down the line
      compares two of these to line two windows up. *)
   obs_hist_lb hb -∗
+  (* ...AND THE WIRE AS IT STOOD WHEN THE BYTE ARRIVED (app-echo.md, lane
+     CONS-IO, the coordinator's second C2 amendment).  A persistent bound on
+     the transmitted prefix at THIS byte's own history, minted in the device
+     thread's rx arm -- the one place where the trace coupling is in hand --
+     and carried here in the receive column beside the tag.  The echo's link
+     asks for it because the application has to place the transcript the
+     discipline pins BELOW the wire inside the bytes the UART has ACCEPTED,
+     and at a CPU MMIO step there is no trace authority to derive it from.
+     Persistent, so relaying it costs the caller nothing. *)
+  uart_out_lb γu (obs_wire Uart0 (open_seg hb)) -∗
   (* THE RING'S HIGH-WATER HALF, IN AND OUT (app-echo.md, lane CONS-CURSOR,
      C2).  [hh] is the newest history the ring already holds, and the premise
      [ohist_ext hh hb] -- supplied by the caller out of the pop's own two

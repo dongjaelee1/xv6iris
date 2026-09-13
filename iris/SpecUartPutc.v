@@ -277,8 +277,15 @@ Definition wp_uartputc_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
   (* the .data word the MMIO address is LOADED from *)
   uart_base_word i -∗
   is_txlock_at i γl γd -∗
-  (* THE JUSTIFICATION FOR THE ONE BYTE THIS CALL STORES (lane OUT-FUPD) *)
-  out_chain i [sb] Φ -∗
+  (* THE JUSTIFICATION FOR THE ONE BYTE THIS CALL STORES (lane OUT-FUPD),
+     as the STORE OBLIGATION the leaf spends (lane CONS-IO).  A plain writer
+     builds it from its own [WpUart.out_link]
+     ([WpUart.store_chain_of_out_chain]); the console ECHO builds it from
+     [WpUart.echo_link] plus the log's mark and the byte's wire rider,
+     because its view shift has to READ the UART's input log -- which lives
+     inside the port invariant that only the store's device node opens.  ONE
+     contract serves both. *)
+  store_chain i γd [sb] Φ -∗
   wp_next b p (fun (CID : CpuId) =>
     ∀ mf,
     sie_cap_gpr kt mf K b p -∗

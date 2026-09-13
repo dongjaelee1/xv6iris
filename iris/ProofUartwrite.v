@@ -1304,7 +1304,7 @@ Section UwBodies.
                   (out_chain prt (drop (S i) (uw_bytes f n)) Φ) false HG2a4
                   with "Hcg Hpc [] Huinv Hown Hlb Hdlab [Hch]").
         { iApply (uwi_6a with "Ht"). }
-        { rewrite Hsb. iExact "Hch". }
+        { rewrite Hsb. iApply (store_ob_of_out_link with "Hch"). }
         iApply wp_next_off_intro. iIntros "Hcg Hpc Hown #Hsent Hch".
         iEval (rewrite Hsb) in "Hown". iEval (rewrite Hsb) in "Hsent".
         iEval (rewrite P6e) in "Hpc".

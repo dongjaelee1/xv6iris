@@ -394,8 +394,9 @@ Section ProofUartPutc.
     pc_is (mword_of_int (KernelSyms.uartputc_sync + 0x38)) -∗
     uart_inv i γd -∗ uart_base_word i -∗ uart_tx_own γd l -∗ uart_dlab_off γd -∗
     (* THE JUSTIFICATION FOR THE ONE BYTE THIS STORE PUTS ON THE WIRE (lane
-       OUT-FUPD): the store leaf below invokes it and hands back [Φ]. *)
-    out_link i sb Φ -∗
+       OUT-FUPD, as the leaf's ghost step since CONS-IO): the store leaf
+       below invokes it and hands back [Φ]. *)
+    store_ob i γd sb Φ -∗
     wp_next b p (fun (CID : CpuId) =>
       ∀ bt : bv 8,
       sie_cap_gpr kt (ppc_f5' i m bt) n b p -∗ pc_is (mword_of_int (KernelSyms.uartputc_sync + 0x52)) -∗

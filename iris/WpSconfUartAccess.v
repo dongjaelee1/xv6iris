@@ -369,8 +369,14 @@ Section WpSconfUartAccess.
     sie_cap_gpr kt m n b p -∗
     pc_is pc -∗ instr pc false (STORE (mword_of_int 0 : mword 12, Regidx rs2, Regidx rs1, 1)) -∗
     uart_inv i γd -∗ uart_tx_own γd l -∗ uart_out_lb γd l -∗ uart_dlab_off γd -∗
-    (* THE WRITER'S JUSTIFICATION FOR THIS BYTE (lane OUT-FUPD) *)
-    out_link i sb Φ -∗
+    (* THE WRITER'S JUSTIFICATION FOR THIS BYTE (lane OUT-FUPD), as the
+       GHOST STEP it has to run (lane CONS-IO).  A plain writer builds it
+       from its [out_link] ([WpUart.store_ob_of_out_link]); the console echo
+       builds it from [echo_link] plus the log's mark and the byte's wire
+       rider, which is why the obligation and not the link is what the leaf
+       takes -- the input claim it reads lives inside this port's invariant,
+       which only the store's own device node opens. *)
+    store_ob i γd sb Φ -∗
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
@@ -391,7 +397,7 @@ Section WpSconfUartAccess.
       by (intros hh; exact (src_ok_rget_indep m rs2 hh CID)).
     destruct (uart_geom_ok i 0 ltac:(unfold uart_size; lia)) as (Hg1 & Hg2 & Hg3).
     iApply (Uart.wp_sb_uart_uinv_s_sconf_at kt (CID:=CID) i γd 0 pc false rs2 rs1 (mword_of_int 0 : mword 12)
-              m n (uart_tx_own γd l ∗ out_link i sb Φ)%I
+              m n (uart_tx_own γd l ∗ store_ob i γd sb Φ)%I
               (uart_tx_own γd (l ++ [sb]) ∗ uart_sent γd (l ++ [sb]) ∗ Φ)%I b p
               ltac:(unfold uart_size; lia)
               ltac:(rewrite Haddr; rewrite addv_imm0; exact Hg1)
@@ -399,7 +405,7 @@ Section WpSconfUartAccess.
               ltac:(rewrite Haddr; rewrite addv_imm0; exact Hg3)
               with "Hcg Hpc Hinstr Hdinv [Hown HΨ] [] [Hcont]").
     - iFrame "Hown HΨ".
-    - iIntros (u u') "%Hwrite Hg Hcol [Hown HΨ]".
+    - iIntros (u u') "%Hwrite Hg Hcol Hin [Hown HΨ]".
       (* a THR write is offset 0, which is neither FCR nor MCR *)
       destruct (uart_write_rx_stable u 0 sb u' ltac:(lia) ltac:(lia) Hwrite)
         as [Hrxe Hlbe].
@@ -413,11 +419,12 @@ Section WpSconfUartAccess.
       (* THE OUTPUT CLAIM MOVES BY THE CALLER'S LINK (lane OUT-FUPD), and
          this is the ONE place in the machine where it does: the accepted
          sequence grows by exactly [sb] here and nowhere else. *)
-      iMod (uart_colE_store i γd u u' sb Φ Hrxe Hlbe
-              ltac:(exact (uart_write_wire _ _ _ _ Hwrite))
-              ltac:(exact (uart_write_out _ _ _ _ Hwrite))
-              ltac:(rewrite Hacc' Haccu; reflexivity)
-              with "HΨ Hcol") as "[Hcol HΦ]".
+      iMod ("HΨ" $! u u' with "[%] [%] [%] [%] [%] Hout Hcol Hin")
+        as "(Hout & Hcol & Hin & HΦ)";
+        [ exact Hrxe | exact Hlbe
+        | exact (uart_write_wire _ _ _ _ Hwrite)
+        | exact (uart_write_out _ _ _ _ Hwrite)
+        | rewrite Hacc' Haccu; reflexivity |].
       iMod (uart_tx_own_update γd u l u' with "Htx Hown") as "[Htx Hown]".
       iMod (uart_sent_update γd u u' with "Hs") as "[Hs Hsent]".
       { rewrite Haccu Hacc'. by apply prefix_app_r. }
@@ -425,7 +432,7 @@ Section WpSconfUartAccess.
       iDestruct (uart_dlab_auth_stable γd u u' (uart_write_dlab_0 _ _ _ Hwrite) with "Hdl") as "Hdl".
       iEval (rewrite Hacc') in "Hown". iEval (rewrite Hacc') in "Hsent".
       iModIntro. rewrite /uart_ghosts.
-      iFrame "Hs Hout Htx Hdl Hcol Hown Hsent HΦ".
+      iFrame "Hs Hout Htx Hdl Hcol Hin Hown Hsent HΦ".
     - iEval (rewrite /wp_next). iIntros (CID1 Hs1) "Hcg Hpc (Hown & Hsent & HΦ)".
       iApply ("Hcont" $! CID1 with "[] Hcg Hpc Hown Hsent HΦ").
       iPureIntro. exact Hs1.
@@ -536,7 +543,12 @@ Section WpSconfUartAccess.
          its new anchor IS the popped history. *)
       (∃ h : list mobs,
          ⌜ obs_ends_in i h c ⌝ ∗ ⌜ ohist_ext hl h ⌝ ∗
-         riscv_rx_tag h ∗ obs_hist_lb h ∗ uart_rx_tok γd (S k) (Some h)) -∗
+         riscv_rx_tag h ∗ obs_hist_lb h ∗
+         (* ...and the WIRE AS IT STOOD WHEN THIS BYTE ARRIVED (lane
+            CONS-IO): the persistent rider the column filed beside the tag,
+            which is what the byte's echo spends at its store. *)
+         uart_out_lb γd (obs_wire i (open_seg h)) ∗
+         uart_rx_tok γd (S k) (Some h)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
@@ -550,6 +562,7 @@ Section WpSconfUartAccess.
               (fun c => ∃ h : list mobs,
                  ⌜ obs_ends_in i h c ⌝ ∗ ⌜ ohist_ext hl h ⌝ ∗
                  riscv_rx_tag h ∗ obs_hist_lb h ∗
+                 uart_out_lb γd (obs_wire i (open_seg h)) ∗
                  uart_rx_tok γd (S k) (Some h))%I b p
               ltac:(unfold uart_size; lia) Hrd Hrdok
               ltac:(rewrite Haddr; exact Hg1)
@@ -626,7 +639,7 @@ Section WpSconfUartAccess.
               ltac:(rewrite Haddr; exact Hg3)
               with "Hcg Hpc Hinstr Hdinv [Htok HR] [Hstep] [Hcont]").
     - iFrame "Htok HR".
-    - iIntros (u u') "%Hwrite Hg Hcol [Htok HR]".
+    - iIntros (u u') "%Hwrite Hg Hcol Hin [Htok HR]".
       destruct (uart_write_fcr_rx u sb u' Hwrite) as [Hrxe Hlbe].
       iMod ("Hstep" $! u u' with "[//] Hg HR") as "(%Hacce & Hg & HS)".
       destruct (uart_fcr_clr_rx u sb) eqn:Hclr.
@@ -635,13 +648,13 @@ Section WpSconfUartAccess.
                 ltac:(exact (uart_write_out _ _ _ _ Hwrite))
                 Hacce
                 with "Hcol Htok") as "[Hcol Htok]".
-        iModIntro. iFrame "Hg Hcol Htok HS".
+        iModIntro. iFrame "Hg Hcol Hin Htok HS".
       + iDestruct (uart_colE_stable i γd u u' Hrxe Hlbe
                 ltac:(exact (uart_write_wire _ _ _ _ Hwrite))
                 ltac:(exact (uart_write_out _ _ _ _ Hwrite))
                 Hacce
                 with "Hcol") as "Hcol".
-        iModIntro. iFrame "Hg Hcol HS". iExists k, hl. iExact "Htok".
+        iModIntro. iFrame "Hg Hcol Hin HS". iExists k, hl. iExact "Htok".
     - iEval (rewrite /wp_next). iIntros (CID1 Hs1) "Hcg Hpc [Htok HS]".
       iApply ("Hcont" $! CID1 with "[] Hcg Hpc Htok HS").
       iPureIntro. exact Hs1.
@@ -736,6 +749,10 @@ Section WpSconfUartAccess.
     sie_cap_gpr kt m n b p -∗
     pc_is pc -∗ instr pc false (STORE (mword_of_int 0 : mword 12, Regidx rs2, Regidx rs1, 1)) -∗
     dev_inv γd γv -∗ uart_tx_own γd l -∗ uart_out_lb γd l -∗ uart_dlab_off γd -∗
+    (* the bundle-taking restatement keeps the PLAIN writer's premise: a
+       console caller that is not answering an input owes no order fact, and
+       [WpUart.store_ob_of_out_link] turns its link into the leaf's ghost
+       step (lane CONS-IO). *)
     out_link Uart0 sb Φ -∗
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
@@ -750,7 +767,8 @@ Section WpSconfUartAccess.
     iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Hown #Hlb #Hoff HΨ Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
     iApply (wp_uart_thr_write_s_sconf_at Uart0 γd pc rs2 rs1 m n l Φ b
-              Haddr with "Hcg Hpc Hinstr Huinv Hown Hlb Hoff HΨ Hcont").
+              Haddr with "Hcg Hpc Hinstr Huinv Hown Hlb Hoff [HΨ] Hcont").
+    iApply (store_ob_of_out_link with "HΨ").
   Qed.
 
   Lemma wp_uart_lsr_read_rx_s_sconf (γd : uart_names) (γv : disk_names)
@@ -795,7 +813,9 @@ Section WpSconfUartAccess.
       pc_is (add_vec_int pc 4) -∗
       (∃ h : list mobs,
          ⌜ obs_ends_in Uart0 h c ⌝ ∗ ⌜ ohist_ext hl h ⌝ ∗
-         riscv_rx_tag h ∗ obs_hist_lb h ∗ uart_rx_tok γd (S k) (Some h)) -∗
+         riscv_rx_tag h ∗ obs_hist_lb h ∗
+         uart_out_lb γd (obs_wire Uart0 (open_seg h)) ∗
+         uart_rx_tok γd (S k) (Some h)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.

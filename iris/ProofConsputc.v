@@ -391,10 +391,10 @@ Section ProofConsputc.
       { rewrite /T2 upd_ne; [| reg_neq]. rewrite /T1b upd_ne; [| reg_neq].
         rewrite /T1 upd_eq. reflexivity. }
       iEval (rewrite /consputc_cs Hbseq /consputc_bs) in "HΨ".
-      iEval (cbn [out_chain]) in "HΨ".
+      iEval (cbn [store_chain]) in "HΨ".
       iApply (wp_uartputc γl γd T2 (K - 2)%nat
-                (out_link Uart0 (mword_of_int 32 : mword 8)
-                   (out_link Uart0 (mword_of_int 8 : mword 8) Φ))
+                (store_ob Uart0 γd (mword_of_int 32 : mword 8)
+                   (store_ob Uart0 γd (mword_of_int 8 : mword 8) Φ))
                 n eb b p lks HK4 HT2uid Hn Hbelow
                 with "Hcg Hcpu Htext Hpc Huinv Hubw Htxl [HΨ]").
       { by rewrite cp_byte_sb HT2a1 cp_byte_bs1. }
@@ -441,7 +441,7 @@ Section ProofConsputc.
       { rewrite /T4 upd_ne; [| reg_neq]. rewrite /T3b upd_ne; [| reg_neq].
         rewrite /T3 upd_eq. reflexivity. }
       iApply (wp_uartputc γl γd T4 (K - 2)%nat
-                (out_link Uart0 (mword_of_int 8 : mword 8) Φ)
+                (store_ob Uart0 γd (mword_of_int 8 : mword 8) Φ)
                 n eb b p lks HK4 HT4uid Hn Hbelow
                 with "Hcg Hcpu Htext Hpc Huinv Hubw Htxl [HΨ]").
       { by rewrite cp_byte_sb HT4a1 cp_byte_bs2. }
@@ -589,7 +589,7 @@ Section ProofConsputc.
       (* ONE LINK on this arm: [consputc_cs a00] is the argument's low
          byte, and the callee stores exactly that (lane OUT-FUPD). *)
       iEval (rewrite /consputc_cs Hbsne) in "HΨ".
-      iEval (cbn [out_chain]) in "HΨ".
+      iEval (cbn [store_chain]) in "HΨ".
       iApply (wp_uartputc γl γd F1 (K - 2)%nat Φ n eb b p lks HK4 HF1uid Hn Hbelow
                 with "Hcg Hcpu Htext Hpc Huinv Hubw Htxl [HΨ]").
       { by rewrite cp_byte_sb HF1a1'. }

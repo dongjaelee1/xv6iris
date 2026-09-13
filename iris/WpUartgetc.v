@@ -215,6 +215,9 @@ Section WpUartgetc.
             (∃ h : list mobs,
                ⌜ obs_ends_in i h c ⌝ ∗ ⌜ ohist_ext hl h ⌝ ∗
                riscv_rx_tag h ∗ obs_hist_lb h ∗
+               (* ...and the WIRE RIDER the column filed with the tag (lane
+                  CONS-IO): what the byte's echo spends at its store *)
+               uart_out_lb γd (obs_wire i (open_seg h)) ∗
                uart_rx_tok γd (S k) (Some h)) -∗
             WP (Loop : expr riscv_lang)) )) -∗
     WP (Loop : expr riscv_lang).

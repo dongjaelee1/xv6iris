@@ -246,7 +246,8 @@ Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
             destruct (uart_write_total u off storebyte Hoff) as [u' Hwrite_u].
             iMod (dev_interp_update_uart sigma.(mdev) i u u'
                     with "[$Hua $Hpldev $Hvdev] Huf") as "[Hdev' Huf']".
-            iMod ("Hacc" $! u u' with "[//] Hg Hcol HR") as "(Hg' & Hcol' & HS)".
+            iMod ("Hacc" $! u u' with "[//] Hg Hcol Hincl HR")
+              as "(Hg' & Hcol' & Hincl & HS)".
             iMod ("Hdclose" with "[Huf' Hg' Hcol' Hincl]") as "_".
             { iApply bi.later_intro. iExists u'. iFrame. }
             iMod (fupd_mask_subseteq ∅) as "Hb2"; [set_solver|].
@@ -330,8 +331,9 @@ Qed.
     (* the primitive's ghost step is a fupd at [⊤ ∖ ↑uartN Uart0] (lane
        OUT-FUPD); this corollary's is the landed basic update, and a basic
        update is a fupd at any mask *)
-    iIntros (u u') "%Hw Hg Hcol HR".
-    iMod ("Hacc" $! u u' with "[//] Hg Hcol HR") as "$". done.
+    iIntros (u u') "%Hw Hg Hcol Hin HR".
+    iMod ("Hacc" $! u u' with "[//] Hg Hcol HR") as "(Hg & Hcol & HS)".
+    iModIntro. iFrame "Hg Hcol Hin HS".
   Qed.
 
   (* The bundle-taking RESTATEMENT of the accessor leaf above, statement

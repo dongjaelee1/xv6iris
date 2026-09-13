@@ -35,7 +35,7 @@
    AND THE WHOLE TRACE BOOKKEEPING IS GONE.  Nothing tracks the second port's
    wire (SpecPrputc.v, and claude-notes/projects/xv6-bump-163d39b.md's owner's
    ruling), so no block lemma in this file names a byte list any more: the
-   [l]/[bs] parameters, the [uart_sent_sub] in and out, the [app_assoc] at
+   [l]/[bs] parameters, the trace claim in and out, the [app_assoc] at
    every join and the [app_nil_r] at every empty arm are all deleted.  What
    the arms thread instead is ONE persistent credential, [prputc_env] -- and
    [γl]/[γd]/[γv] left the file with the claims that needed them. *)

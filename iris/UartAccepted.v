@@ -16,7 +16,7 @@
    [uart_acc] ([DevModel.v]) is precisely the object the campaign's
    receipts are lower bounds of: [WpUart.uart_sent γ tr] is
    [own _ (◯ML tr)] against [uart_sent_auth γ u = own _ (●ML (uart_acc u))],
-   and [UartSentLoc.uart_sent_from γ tr0 bs] is a located refinement of the
+   and the retired located receipt was a refinement of the
    same list.  So this theorem is what turns a receipt about [uart_acc]
    into a statement about what the HOST SAW -- see [run_out_accepted_from]
    at the end, which is that composition at the pure level.
@@ -283,7 +283,7 @@ Qed.
 (* ---------------------------------------------------------------------- *)
 (* 6. COMPOSING WITH A LOCATED RECEIPT.                                     *)
 (*                                                                          *)
-(*    [UartSentLoc.uart_sent_from γ tr0 bs] says: the bytes [bs] were        *)
+(*    The retired located receipt said: the bytes [bs] were                  *)
 (*    accepted, in order, at positions strictly after an accepted trace      *)
 (*    that had [tr0] as a prefix.  Its PURE RESIDUE at a state -- what it    *)
 (*    yields once agreed against [uart_sent_auth γ u] -- is exactly the two  *)

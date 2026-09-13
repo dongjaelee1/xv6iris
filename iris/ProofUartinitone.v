@@ -274,7 +274,7 @@ Section ProofUartinitone.
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
         | iFrame "Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
@@ -340,7 +340,7 @@ Section ProofUartinitone.
       iModIntro. iSplitL "Hg'"; [ iExact "Hg'" |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
         | iFrame "Ht Hd'" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
@@ -404,7 +404,7 @@ Section ProofUartinitone.
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
         | iFrame "Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
@@ -450,7 +450,7 @@ Section ProofUartinitone.
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
         | iFrame "Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
@@ -501,7 +501,7 @@ Section ProofUartinitone.
       iModIntro. iSplitL "Hg'"; [ iExact "Hg'" |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
         | iFrame "Ht Hd'" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
@@ -567,13 +567,13 @@ Section ProofUartinitone.
       | u_rx uu' = (if ?cl then [] else _) => destruct cl eqn:Hclr
       end.
       + iMod (uart_colE_flush i γd uu uu' k hl Hrxe Hlbe
-                ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho with "Hcol Htok")
+                ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol Htok")
           as "[Hcol Htok]".
         iModIntro. iSplitL "Hg";
           [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
         iFrame "Hcol Ht Hd Htok".
       + iDestruct (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho with "Hcol") as "Hcol".
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol") as "Hcol".
         iModIntro. iSplitL "Hg";
           [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
         iFrame "Hcol Ht Hd". iExists k, hl. iExact "Htok". }
@@ -665,7 +665,7 @@ Section ProofUartinitone.
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
         | iFrame "Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".

@@ -62,15 +62,24 @@
    which bundles the lock with the frozen-DLAB fact [uart_dlab_off] the THR
    store needs -- hence no separate [uart_dlab_off] premise either.
 
-   WHAT THE CALLER GETS, AT EITHER PORT.  A SUBLIST claim, not a contiguous
-   prefix: the lock is re-acquired per byte, so another hart may have bytes
-   accepted between two of ours.  [UartTxInv.uart_sent_sub] -- persistent --
-   is the honest statement, and this function's step on it is
-   [UartTxInv.uart_sent_sub_snoc]: [bs] in, [bs ++ [sb]] out.  THE OWNER'S
-   RULING that UART1's output is unconstrained does NOT mean the claim stops
-   being TRUE at port 1: [uart_sent_sub] is keyed on the ghost bundle, not on
-   the port, so producing it costs this contract nothing and a caller that
-   owes nothing about the wire simply drops it. *)
+   WHAT THE CALLER BRINGS, AND WHAT IT GETS BACK (lane OUT-FUPD).  The
+   sublist receipt is GONE.  Instead the caller supplies the JUSTIFICATION
+   for the byte this call puts on the wire -- [WpUart.out_chain i [sb] Φ],
+   one link, because uartputc_sync stores exactly once -- and gets back the
+   link's payload [Φ].  That is the owner's redesign made literal at the
+   first writer above the store: "all UART output needs a fupd to justify
+   outputting", and this contract is where the fupd enters the driver.
+
+   WHY A CHAIN OF ONE AND NOT A BARE [out_link].  So that every writer above
+   -- consputc, uartwrite, consolewrite -- states the SAME thing over the
+   run of bytes it pushes, and [WpUart.out_chain_app] is the only bridge
+   any of them needs.  At one byte the two are convertible.
+
+   ONE CONTRACT AT BOTH PORTS.  At [Uart1] -- printk's and panic's path --
+   [WpUart.out_ok_at] is [True], so [WpUart.out_chain_triv] builds the chain
+   out of [Φ] itself and the caller owes nothing: the owner's ruling that
+   the kernel's own UART is unconstrained costs this contract not one
+   binder.  See [SpecPrputc.v]. *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list finite bitvector.definitions.
 From iris.proofmode Require Import proofmode.
@@ -240,7 +249,7 @@ End UartBaseWord.
 
 Definition wp_uartputc_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (kt : ktier) (i : uart_id) (γl : gname) (γd : uart_names) (m0 : regfile) (K : nat)
-    (bs : list (bv 8)) (n : nat) (eb : bool) (b : bool) (p : mword 64) (lks : gset string) :=
+    (Φ : iProp Σ) (n : nat) (eb : bool) (b : bool) (p : mword 64) (lks : gset string) :=
   let ra_idx : mword 5 := mword_of_int 1 in
   let a0_idx : mword 5 := mword_of_int 10 in
   let a1_idx : mword 5 := mword_of_int 11 in
@@ -268,14 +277,15 @@ Definition wp_uartputc_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
   (* the .data word the MMIO address is LOADED from *)
   uart_base_word i -∗
   is_txlock_at i γl γd -∗
-  uart_sent_sub γd bs -∗
+  (* THE JUSTIFICATION FOR THE ONE BYTE THIS CALL STORES (lane OUT-FUPD) *)
+  out_chain i [sb] Φ -∗
   wp_next b p (fun (CID : CpuId) =>
     ∀ mf,
     sie_cap_gpr kt mf K b p -∗
     cpu_own n eb p b lks -∗
     pc_is ret_tgt -∗
     ⌜ callee_saved m0 mf /\ mf !!! Regidx ra_idx = ra0 ⌝ -∗
-    uart_sent_sub γd (bs ++ [sb]) -∗
+    Φ -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
@@ -283,6 +293,6 @@ Module Type UARTPUTC.
   Parameter wp_uartputc_sconf :
     forall `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (kt : ktier) (i : uart_id) (γl : gname) (γd : uart_names) (m0 : regfile) (K : nat)
-      (bs : list (bv 8)) (n : nat) (eb : bool) (b : bool) (p : mword 64) (lks : gset string),
-      wp_uartputc_sconf_body kt i γl γd m0 K bs n eb b p lks.
+      (Φ : iProp Σ) (n : nat) (eb : bool) (b : bool) (p : mword 64) (lks : gset string),
+      wp_uartputc_sconf_body kt i γl γd m0 K Φ n eb b p lks.
 End UARTPUTC.

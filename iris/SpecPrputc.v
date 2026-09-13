@@ -24,14 +24,14 @@
    ledger, no trace obligation -- only that its store goes through.  Three
    consequences, and they are what make this file short:
 
-     - NO [bs] PARAMETER and NO TRACE POSTCONDITION.  consputc's contract
-       threads [UartTxInv.uart_sent_sub γd bs] in and [bs ++ cs] out, and
-       [SpecConsputc.v] even pins WHICH bytes, because the console's echo has
-       to be matched to the byte it echoes.  There is no such consumer at the
-       second port.  The [uart_sent_sub] uartputc_sync still asks for is minted
-       inside the proof out of nothing at all
-       ([UartTxInv.uart_sent_sub_nil_free]: [◯ML []] is the unit of the
-       mono-list RA) and the one it returns is dropped.
+     - NO TRACE PARAMETER and NO TRACE POSTCONDITION.  consputc's contract
+       asks its caller for a JUSTIFICATION CHAIN over the bytes it pushes, and
+       [SpecConsputc.v] even names WHICH bytes, because the console's echo has
+       to be matched to the byte it echoes.  There is no such obligation at the
+       second port: [WpUart.out_res_at Uart1] is [emp], so the chain
+       uartputc_sync still asks for is built inside the proof out of the
+       payload itself ([WpUart.out_chain_triv]) and the payload it returns is
+       dropped.
 
      - NO [dev_inv].  [WpUart.dev_inv] is the CONSOLE BUNDLE -- it names
        [uart_inv Uart0], the PLIC and the disk -- so it cannot even be STATED

@@ -495,6 +495,11 @@ Section ProofMain.
        PLIC payload at [None], where [ohist_le None _] is free. *)
     uart_rx_hi γd1 (1/2) None -∗
     uart_dlab_is γd1 (DfracOwn (1/2)) b1 -∗
+    (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3), the last member of
+       [console_caps] this group assembles and the only one main cannot
+       build: it is the APPLICATION's claim about its own input, threaded
+       here from the boot record. *)
+    cons_echo_shift -∗
     (* NO [γpr] BINDER ANY MORE (fs-cfg-boot.md (f-3)): the "pr" lock is
        allocated at the AMBIENT [fsc_printk] since debt (E), so the group's
        product is spelled, and stage (f) needs it spelled -- an existential
@@ -526,7 +531,7 @@ Section ProofMain.
     iIntros "Hcg #Htext #Hkdata #Hdev Hpc Hfree Hcpu Hlcons Hltx0 Hltx1 Hlpr".
     iIntros "Hkprintk Hdevsw Hrest Hring Hclean Htx Hsent Hlb Htok Hhi Hdlab".
     iIntros "#Hplic #Hpinned #Huinv1 #Hubw0 #Hurw0 #Hubw1 #Hurw1".
-    iIntros "Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hdlab1 Hcont".
+    iIntros "Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hdlab1 #Hecho Hcont".
     iPoseProof (dev_inv_uart with "Hdev") as "#Huinv".
     iPoseProof (kernel_data_string mn_nl_addr mn_nl
                   (mword_of_int mn_nl_addr) eq_refl
@@ -644,7 +649,6 @@ Section ProofMain.
     (* promote once, so both [console_caps] and [printk_env] below can reuse
        the same persistent witness instead of re-deriving it. *)
     iDestruct "Hsent" as "#Hsent".
-    iPoseProof (uart_sent_sub_nil γd l0 with "Hsent") as "#Hsub0".
     (* [newlock_at] at [fsc_printk], not [newlock] with a fresh γ *)
     rewrite /fs_kit_printk.
     (* A6.69: the honest creator deposit (A6.66) wants the running token;
@@ -734,7 +738,7 @@ Section ProofMain.
       iSplitR; [iExact "Htxl" |].
       iSplitR; [iExact "Hconslk0" |].
       iSplitR; [iPureIntro; exact Hcnu |].
-      iSplitR; [iExact "Hsub0" |].
+      iSplitR; [iExact "Hecho" |].
       (* THE ARRAY'S FOUR `.data` WORDS, at the VA tier, as one row
          ([SpecUartPutc.uarts_words]).  The driver LOADS both fields of the
          element it is given since 163d39b instead of spelling them as
@@ -2406,7 +2410,7 @@ Section ProofMain.
         by (apply Z.div_pos; lia).
       rewrite Hsbeq in Hinibeq. lia. }
     pose proof (mn_bounds K HK) as (Hc2 & Hn50 & Hnsched).
-    iIntros "Hcg Hfree Hcpu Hq #Htext #Hkdata Hpc #Hsinv Hprim #Hwand Hlocks Hglobals".
+    iIntros "Hcg Hfree Hcpu Hq #Htext #Hkdata Hpc #Hsinv Hprim #Hwand #Hecho Hlocks Hglobals".
     iIntros "Hfirst Hnpid".
     iIntros "Hparks Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth #Hcert #Hseam".
     iIntros "#Hdev #Hwire Hbundle Htx Hsent Hlb Htok Hhi Hdlab".
@@ -2512,7 +2516,7 @@ Section ProofMain.
                     Hkprintk Hdevsw Hdevrest Hring Hclean Htx Hsent Hlb Htok
                     Hhi Hdlab
                     Hplic Hpinned Huinv1 Hubw0 Hurw0 Hubw1 Hurw1
-                    Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hdlab1").
+                    Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hdlab1 Hecho").
     iIntros (m2) "Hcg Hpc Hfree Hcpu #Hpenv #Hccaps #Hu1caps #Hcready".
     (* ---- STAGE (f): the printk half of [FirstTok.first_boot_persist],
        re-spelled at the CONFIGURATION's device gnames.  The group produces

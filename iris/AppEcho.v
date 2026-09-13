@@ -124,6 +124,8 @@ Require Import DevModel.         (* [uart_state], [uart_tx_pop], [uart_loopback]
 Require Import UartNames.        (* [uart_names] *)
 Require Import RiscvPtsto.       (* [riscvGS], [obsN] *)
 Require Import WpUart.           (* [uart_ghosts], [uartN] *)
+Require Import TsoCtx.           (* [CurCtx]: the echo obligation's context *)
+Require Import SpecConsoleintr. (* [cons_echo_shift]: the echo obligation   *)
 Require Import FileInvDefs.      (* [fileG]/[file_app]: the era's classes, which
                                     the tx/rx wands' identification premise
                                     names (lane APP-IFACE item (c)) *)
@@ -1105,10 +1107,17 @@ Section EchoPred.
      decided OUTSIDE the later, by [FsConsPin.cons_inum av] -- a pure
      function of the view, which is exactly why the fresh flag is allocated
      at it -- so the resource handed over is not under the claim's [▷]. *)
+  (* STATED AT THE TWO-COMPONENT SHAPE (lane OUT-FUPD): the transport's
+     third component -- the era's OUTPUT CLAIM at [[]]/[[]] -- is founded
+     from nothing while [echo_out] below is the E5 placeholder, so
+     [SystemAdequacy.app_xfer_boot_raw_out] bolts it on and this proof does
+     not have to thread an [emp] through its eight arms. *)
   Lemma echo_xfer_boot (γ : echo_fixed) :
-    ⊢ app_xfer_boot_raw (echo_pred γ) (echo_boot γ).
+    ⊢ □ (∀ (r : echo_names) (av : FsAbsDefs.aview),
+           ▷ echo_pred γ r av ==∗ ▷ echo_pred γ r av ∗
+           ∃ r' : echo_names, ▷ echo_pred γ r' av ∗ echo_boot γ r').
   Proof.
-    rewrite /app_xfer_boot_raw. iIntros "!>" (r av) "H".
+    iIntros "!>" (r av) "H".
     iMod (own_alloc (●ML (cons_inum av : list (leibnizO Z)))) as (g1) "Ha";
       [ apply mono_list_auth_valid |].
     iMod (own_alloc (●ML ([] : list (leibnizO Z)))) as (g2) "Hk";
@@ -1375,6 +1384,20 @@ Qed.
 Section EchoApp.
   Context `{!mono_natG Σ, !inG Σ (mono_listR (leibnizO Z))}.
 
+  (* THE OUTPUT CLAIM IS A HOLE, AND IT IS THE ONE THE NEXT LANE CLOSES.
+     E5 -- "THE OUTPUT SIDE" of app-echo.md -- is what instantiates it: the
+     echo application's real claim is that the accepted bytes are the
+     expected reply to the input read so far ([EchoDisc.good_out]), held as
+     a RESOURCE so that only the discipline's own writer may extend it, with
+     a taint arm for a process holding the generic supply.  There is NO
+     honest placeholder for that: [emp] claims nothing, so every obligation
+     below is vacuous at it, and none of the three ([echo_Houtt],
+     [echo_Happ_out_sup], [echo_Happ_echo]) says anything about the echo.
+     It is here only so that the record TYPECHECKS at [App.MkApp]'s new
+     arity; E5 replaces this line and re-proves the three. *)
+  Definition echo_out : echo_fixed -> list mobs -> list (bv 8) -> iProp Σ :=
+    fun _ _ _ => emp%I.
+
   Definition app_echo : xv6_app Σ :=
     MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R echo_tag
           (* THE KILL CREDENTIAL IS THE TAINT (app-echo.md, lane KILL-PAY,
@@ -1384,7 +1407,7 @@ Section EchoApp.
              what a party a kill touched may keep is the fact the taint
              already states.  [echo_taint_of_sup] is [Happ_kill]. *)
           echo_taint
-          echo_phi.
+          echo_out echo_phi.
 
   (* ---- THE BIRTH STEP ---- *)
   Lemma echo_Hbirth : ⊢ |==> ∃ c : app_fixed app_echo, app_cl app_echo c.
@@ -1421,6 +1444,20 @@ Section EchoApp.
     iIntros "#Hs". iModIntro. iApply (echo_taint_of_sup c r with "Hs").
   Qed.
 
+  (* ---- THE OUTPUT CLAIM'S THREE, ALL VACUOUS AT THE PLACEHOLDER ---- *)
+  Lemma echo_Houtt (c : app_fixed app_echo) (h : list mobs)
+      (acc : list (bv 8)) : Timeless (app_out app_echo c h acc).
+  Proof. cbn [app_echo app_fixed app_out echo_out] in c |- *. apply _. Qed.
+
+  Lemma echo_Happ_out_sup (c : app_fixed app_echo) (r : app_names app_echo) :
+    AppInv.app_sup_raw (app_pred app_echo c) r
+      ⊢ □ (∀ (h : list mobs) (acc : list (bv 8)) (b : bv 8),
+             app_out app_echo c h acc ==∗ app_out app_echo c h (acc ++ [b])).
+  Proof.
+    cbn [app_echo app_fixed app_names app_out echo_out] in c, r |- *.
+    iIntros "_ !>" (h acc b) "_". by iModIntro.
+  Qed.
+
   Lemma echo_HR0 (c : app_fixed app_echo) :
     app_cl app_echo c ⊢ |==> app_R app_echo c [].
   Proof. cbn [app_echo app_fixed app_cl app_R] in c |- *. exact (echo_R_alloc c). Qed.
@@ -1445,18 +1482,41 @@ Section EchoApp.
       (i : uart_id) (γ : uart_names) :
     @file_app Σ HF = MkAppcfg (app_names app_echo) (app_pred app_echo c) r ->
     (i = Uart0 -> FsCfg.fsc_uart = γ) ->
-    ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state),
+    ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state) (ho : list mobs),
            ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
            ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗
+           (* the LOOP-off rider and the witness history's reality, both new
+              in lane OUT-FUPD and both unread at the placeholder claim *)
+           ⌜u_wire u = u_out u⌝ -∗ ⌜ho `prefix_of` h⌝ -∗
+           (if i is Uart0 then app_out app_echo c ho (uart_acc u) else emp) -∗
            uart_ghosts γ u' -∗ app_R app_echo c h
              ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
+           (if i is Uart0 then app_out app_echo c ho (uart_acc u) else emp) ∗
            uart_ghosts γ u' ∗ app_R app_echo c (h ++ [ObsUartOut i b])%list).
   Proof.
     intros _ _.
-    cbn [app_echo app_fixed app_R] in c |- *.
-    iIntros "!>" (h b u u') "_ _ %Hsh _ Hg Hled".
+    cbn [app_echo app_fixed app_R app_out echo_out] in c |- *.
+    iIntros "!>" (h b u u' ho) "_ _ %Hsh _ _ _ Ho Hg Hled".
     iMod (echo_R_tx c h i b Hsh with "Hled") as "Hled".
-    iModIntro. iFrame "Hg Hled".
+    iModIntro. iFrame "Ho Hg Hled".
+  Qed.
+
+  (* THE ECHO'S JUSTIFICATION, VACUOUS AT THE PLACEHOLDER (lane OUT-FUPD).
+     At [echo_out] the machine's output claim is [RiscvPtsto.out_res_triv],
+     so every link of consputc's chain is free and the echo justifies
+     itself.  E5 replaces this with the real argument: the transcript's
+     next expected byte IS the echo of the input byte that just arrived,
+     which is what [EchoDisc.expected_rel] says and what the tag at [h]
+     lets this shift read. *)
+  Lemma echo_Happ_echo (HR : riscvGS Σ) (c : app_fixed app_echo) :
+    @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out app_echo c ->
+    @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag app_echo c ->
+    ⊢ ∀ XI : CurCtx, @cons_echo_shift Σ HR XI.
+  Proof.
+    intros Hout _.
+    assert (Hot : @riscv_out_res Σ (@riscv_fixedGS Σ HR) = out_res_triv)
+      by (rewrite Hout; cbn [app_echo app_out echo_out]; reflexivity).
+    iIntros (XI). iApply (@cons_echo_shift_triv Σ HR XI Hot).
   Qed.
 
   Lemma echo_Hrx `{!uartGhostG Σ} `{HF : !fileG Σ}
@@ -1480,10 +1540,12 @@ Section EchoApp.
 
   (* ---- THE TRANSPORT, WITH THE FIRST PROCESS'S BOOT RESOURCE ---- *)
   Lemma echo_Happ_boot (c : app_fixed app_echo) :
-    ⊢ app_xfer_boot_raw (app_pred app_echo c) (app_boot app_echo c).
+    ⊢ app_xfer_boot_raw (app_pred app_echo c) (app_boot app_echo c)
+        (app_out app_echo c).
   Proof.
-    cbn [app_echo app_fixed app_names app_pred app_boot] in c |- *.
-    exact (echo_xfer_boot c).
+    cbn [app_echo app_fixed app_names app_pred app_boot app_out echo_out]
+      in c |- *.
+    iApply app_xfer_boot_raw_out; [done |]. iApply echo_xfer_boot.
   Qed.
 
   (* ...and the old obligation, which the commit's law and the era mint

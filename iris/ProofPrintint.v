@@ -42,8 +42,8 @@
 
    THAT EMPTIES THE PRINT LOOP'S TRACE BOOKKEEPING ENTIRELY.  The induction
    used to thread the LINEAR [uart_tx_own γd (l ++ bs_so_far)] across the
-   back-edge; then, once the transmitter moved under [tx_lock], the persistent
-   sublist [uart_sent_sub γd (bs ++ cs_so_far)].  Now it threads NOTHING:
+   back-edge; then, once the transmitter moved under [tx_lock], a persistent
+   sublist claim about the accepted trace.  Now it threads NOTHING:
    nothing tracks the second port's wire (SpecPrputc.v), so there is no [bs]
    parameter, no [cs] in the postcondition and no [app_assoc] at the join.
    What printint carries is the ordinary spinlock-caller accounting

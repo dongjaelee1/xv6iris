@@ -63,14 +63,14 @@
       [WpUart.dev_inv] could not be reused even in principle, being the
       CONSOLE BUNDLE by definition ([uart_inv Uart0] + PLIC + disk).
 
-      AND NOT A [uart_sent_sub], nor any other claim about what came out.
+      AND NOT A TRACE CLAIM, nor any other claim about what came out.
       Nothing tracks the second port's wire (claude-notes/projects/
       xv6-bump-163d39b.md, "THE OWNER'S RULING: UART1's output is
       unconstrained"), so printk's contract no longer threads a trace claim
       at all and there is nothing for panic to supply or to report.  This
       file used to explain why the [bs] accumulator was pointless HERE (no
       postcondition to feed); it is now pointless everywhere in the cone, and
-      the [UartTxInv.uart_sent_sub_nil_free] mint [ProofPanic] used to run
+      the empty-trace mint [ProofPanic] used to run
       is gone with it.
 
    AND THERE IS NO LONGER A PREMISE THAT IS NOT ABOUT panic.  This contract
@@ -143,7 +143,7 @@ Section PanicEnv.
      gains a parameter.  Two independent reasons this is not a weakening.
 
      LOGICALLY it is an equivalence, not an approximation.  With the
-     [uart_sent_sub] premise gone (see the header), every name occurs EXACTLY
+     trace premise gone (see the header), every name occurs EXACTLY
      ONCE in [wp_panic_sconf_body] -- inside this one conjunct (γpr here, the
      UART1 pair inside [prputc_env]) -- and none occurs in the conclusion,
      which is the bare [WP Loop].  So [(∀ γ⃗, panic_env_at γ⃗ -∗ WP Loop)] and
@@ -184,7 +184,7 @@ Section PanicEnv.
      mint either conjunct.  An [is_lock] and a [uart_inv] are handed down
      from the boot chain that created them and nothing below can conjure one.
      The credential is where they come from.  (What [ProofPanic] COULD mint
-     -- the empty [uart_sent_sub] -- is exactly what the cone stopped
+     -- the empty trace claim -- is exactly what the cone stopped
      wanting, so that mint is gone rather than kept.)
 
      A SITE THAT CARRIES [panic_env] IS EVIDENCE AGAIN.  Between the two

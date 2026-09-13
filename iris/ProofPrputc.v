@@ -13,10 +13,11 @@
    nothing about the bytes, because nothing tracks the second port's wire --
    the owner's ruling, recorded there and in
    claude-notes/projects/xv6-bump-163d39b.md.  uartputc_sync's own contract
-   still threads a [UartTxInv.uart_sent_sub], so this proof MINTS the empty
-   one out of nothing ([uart_sent_sub_nil_free]: [◯ML []] is the unit of the
-   mono-list RA) and DROPS what comes back.  That single [iMod] is the whole
-   of the trace bookkeeping that printk's cone used to carry from here up.
+   asks for a JUSTIFICATION CHAIN for the byte it stores, so this proof builds
+   the chain out of the payload itself ([WpUart.out_chain_triv]: at [Uart1] the
+   claim is [emp], so a link costs nothing) and DROPS the payload that comes
+   back.  That one line is the whole of what printk's cone carries from here
+   up about its own wire.
 
    THE CALLEE'S CONTRACT IS TAKEN AS AN INLINE HYPOTHESIS, not as
    [SpecUartPutc.wp_uartputc_sconf_body i ...].  The port-indexed spelling of
@@ -99,7 +100,6 @@ Section ProofPrputc.
       uart_inv Uart1 γ1 -∗
       uart_base_word Uart1 -∗
       is_txlock_at Uart1 γl1 γ1 -∗
-      uart_sent_sub γ1 [] -∗
       wp_next (CID0 := CID0) b p (fun (CID : CpuId) =>
         ∀ mf : regfile,
         sie_cap_gpr kt mf K b p -∗
@@ -120,12 +120,12 @@ Section ProofPrputc.
     pose proof (pp_cap_bounds K HK20) as (Hc2 & HK18).
     iIntros "Hcg Hcpu #Htext Hpc #Henv Hcont".
     iDestruct "Henv" as (γl1 γ1) "(#Huinv & #Htxl & #Hbase)".
-    (* THE EMPTY TRACE CLAIM, MINTED FROM NOTHING.  uartputc_sync wants a
-       [uart_sent_sub] to extend; this cone has none to give and none to
-       report, so it takes the unit of the mono-list RA. *)
-    iApply fupd_wp.
-    iMod (uart_sent_sub_nil_free γ1) as "#Hsub".
-    iModIntro.
+    (* NOTHING IS OWED FOR THE KERNEL'S OWN PORT (lane OUT-FUPD).
+       uartputc_sync wants a JUSTIFICATION for the byte it stores; at
+       [Uart1] the invariant claims nothing ([WpUart.out_res_at Uart1] is
+       [emp]) and [out_chain_triv] builds the link out of the payload, so
+       this cone has nothing to give and nothing to report -- printk's
+       contract keeps its arity, exactly as the owner ruled. *)
     (* frame-cell address facts (2-slot frame: ra @ slot 1, s0 @ slot 2) *)
     assert (Hpush : add_vec (m !!! Regidx csp_rs1) (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6))) = pa_stk (m !!! Regidx csp_rs1) 2).
     { unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. }
@@ -218,7 +218,7 @@ Section ProofPrputc.
     iDestruct (cpu_own_transport CID CID7 n eb p b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
     iApply (wp_uartputc (CID0 := CID7) γl1 γ1 T3 (K - 2)%nat n eb b p lks
               HK18 HT3a0 Hn Hbelow
-              with "Hcg Hcpu Htext Hpc Huinv Hbase Htxl Hsub").
+              with "Hcg Hcpu Htext Hpc Huinv Hbase Htxl").
     iIntros (CID8 Hs8 mf) "Hcg Hcpu Hpc %Hcs".
     destruct Hcs as [Hcs Hra].
     assert (Hret : ret_pc (T3 !!! Regidx ra_idx) = mword_of_int (KernelSyms.prputc + 0x10)).

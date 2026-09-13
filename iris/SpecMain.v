@@ -601,6 +601,16 @@ Section SpecMain.
          (∃ B : nat, KptGhost.kpt_bound B ∗ ⌜(B <= pos)%nat⌝) -∗
          P pos cur_ctx) -∗
     (* the boot supply *)
+    (* THE ECHO'S JUSTIFICATION, THE APPLICATION'S (lane OUT-FUPD, F3).
+       The console UART's invariant now carries the application's own claim
+       about the bytes it has accepted, so consoleintr's echo has to be
+       PAID FOR -- and the interrupt path has nothing of its own to pay
+       with.  The payment is the application's, minted once here into
+       [SpecConsoleintr.console_caps] and persistent, so every byte's echo
+       re-uses it.  It comes from the boot record's [App.xv6_app]'s
+       [Happ_echo] through [SystemAdequacy.xv6_boot_era]; nothing below
+       main can produce it. *)
+    cons_echo_shift -∗
     main_locks_raw -∗
     main_globals_raw cn -∗
     (* THE IMAGE'S WRITABLE INITIALIZED GLOBALS, which [kernel_data] stopped

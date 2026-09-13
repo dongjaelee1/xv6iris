@@ -590,6 +590,88 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
   riscv_kill_cred : iProp Σ;
   riscv_kill_cred_persistent : Persistent riscv_kill_cred;
   riscv_kill_cred_timeless : Timeless riscv_kill_cred;
+  (* THE OUTPUT PREDICATE (claude-notes/projects/app-echo.md, "THE OWNER'S
+     REDESIGN OF THE UART OUTPUT SIDE", lane OUT-FUPD).  The transmit side's
+     twin of [riscv_rx_tag]: the application's claim about the RAW BYTES the
+     CONSOLE UART has ACCEPTED so far, read against an INPUT HISTORY -- a
+     real prefix of the run's observation trace, so every input byte in it
+     is one the environment really pushed.
+
+     WHERE IT LIVES.  The console port's invariant carries it at every
+     state ([WpUart.uart_out_claim], a conjunct of [WpUart.uart_colE], at a
+     witness history the invariant also holds a monotone lower bound on),
+     and the ONE transition that grows the accepted sequence is the store to
+     the transmit register ([DevModel.uart_write_thr_acc]).  Its leaf
+     ([WpSconfUartAccess.wp_uart_thr_write_s_sconf_at]) re-establishes the
+     clause from a VIEW SHIFT ITS CALLER SUPPLIES ([WpUart.out_link]): every
+     byte that ever reaches the wire was justified, at the store, by whoever
+     stored it.
+
+     WHY THIS IS ALL THE INVARIANT CARRIES.  Attribution -- which writer
+     pushed which byte, and what private ledger that writer keeps -- is
+     APPLICATION-PRIVATE knowledge, updated inside the writers' own view
+     shifts; the device invariant carries this one claim and nothing else
+     of the application's.  So the append-only located-prefix receipts the
+     tree used to hand writers ([UartTxInv]'s sublist claim,
+     [UartSentLoc]'s located receipt) are retired rather than generalized:
+     a writer no longer RECEIVES a claim about what came out, it BRINGS the
+     justification for putting it out.
+
+     NOT INDEXED BY THE PORT.  xv6 drives TWO 16550s -- one the kernel's own
+     (printk, panic), one the CONSOLE, entirely under user-process control
+     -- and by the owner's ruling the theorem is about the console's alone.
+     So the INVARIANT does the indexing ([WpUart.out_res_at] is this field
+     at [Uart0] and [emp] at [Uart1]) and this field says only what is
+     claimed of the console: a kernel-port writer owes no justification at
+     all and its link is discharged by [WpUart.out_chain_triv].
+
+     THE INPUT ARGUMENT IS A TRACE PREFIX, NOT THE RECEIVE QUEUE.  The
+     column's queued histories [hs] shrink at a pop and vanish at a flush,
+     and the byte an echo answers has already been popped; the claim is
+     therefore read against a history the invariant holds a MONOTONE LOWER
+     BOUND on ([RiscvPtsto.obs_hist_lb]), which is what makes it a real
+     prefix of the run and lets the trace ledger lift it to the run's own
+     history at a drain.
+
+     A RESOURCE AND NOT A [Prop], and that is forced.  A pure predicate
+     cannot say WHO may write, so for every [(ho, acc)] it holds at, the
+     console echo's shift would have to answer for an [acc] that already
+     contains the byte the transcript expects next -- an "impostor" write by
+     some other process -- after which the real echo is not a prefix of any
+     transcript and the shift is unprovable.  Nothing pure repairs that: the
+     application needs EXCLUSIVE ghost state tied to [acc] (a turn/position
+     authority), and the only place a ghost can be tied to the invariant's
+     [acc] is inside the invariant.  So the slot holds an [iProp].
+     TIMELESS, so [WpUart.uart_inv_body] stays timeless and every device
+     leaf still strips its later; NOT persistent -- it will hold an
+     authority, and duplicating one would defeat the whole point.
+
+     The application sets it at boot, exactly as it sets [riscv_rx_tag]
+     ([App.app_out] at the [boot_fixedGS] literal); the trivial application
+     sets it to [fun _ _ => emp] ([out_res_triv]).
+
+     WHY THE FIXED LAYER AND NOT THE ERA'S, THOUGH THE CLAIM IS PER ERA.
+     Its ghosts are re-allocated with the device at every boot, so the
+     honest home would be the era half -- but there is none available:
+     [riscvEraGS] is stored in a [ghost_map nat riscvEraGS]
+     ([riscv_registry_name], [era_registered] below), so it must stay a
+     small [Σ]-free record of gnames and cannot hold an [iProp Σ]; and
+     [AppCfg.appcfg], which is [Σ]-parametric and built per era, sits above
+     [FsAbsDefs] behind [fileG] and is not reachable from [WpUart] (which
+     binds [riscvGS], not [fileG]) without putting the application's record
+     in front of every device spec.  AND NO REGISTRY IS NEEDED FOR THAT
+     (coordinator's ruling, 2026-09-13): the era-selection lives inside the
+     application's own predicate BY CONSTRUCTION -- [App.app_out] is
+     [∃ γ, <a half of a fresh ghost_var> ∗ <the era's auths at γ> ∗ …], the
+     transport allocates that pair per era and hands the other half to the
+     era's first process, so a process's fragments agree with the
+     invariant's instance by [ghost_var_agree] and the previous era's halves
+     die with its processes.  The FOUNDING is the transport's too
+     ([SystemAdequacy.app_xfer_boot_raw]'s third component), which is why
+     there is no [_nil] field here. *)
+  riscv_out_res : list mobs -> list (bv 8) -> iProp Σ;
+  riscv_out_res_timeless :
+    forall (h : list mobs) (acc : list (bv 8)), Timeless (riscv_out_res h acc);
   (* THE APPLICATION'S FIXED PART (claude-notes/projects/app-instances.md
      §6 ruling 1, round D0).  The machine no longer owns a counter: the
      application declares whatever [Type] its fixed part has, and its BIRTH
@@ -610,6 +692,7 @@ Global Existing Instance riscv_rx_tag_timeless.
 (* ...and the kill credential's, for the same reason *)
 Global Existing Instance riscv_kill_cred_persistent.
 Global Existing Instance riscv_kill_cred_timeless.
+Global Existing Instance riscv_out_res_timeless.
 
 Class riscvGS (Σ : gFunctors) := RiscvGS {
   riscv_fixedGS :: riscvFixedGS Σ;
@@ -840,6 +923,20 @@ Proof.
   by iDestruct (own_valid_2 with "Ha Hlb") as %?%mono_list_both_valid_L.
 Qed.
 
+(* TWO LOWER BOUNDS ON ONE MONOTONE HISTORY ARE COMPARABLE (lane OUT-FUPD).
+   The history ghost is a [mono_list], so two snapshots of it are two
+   fragments of one chain and one of them is a prefix of the other
+   ([mono_list_lb_op_valid_L]).  This is the ONE fact that lets a writer's
+   view shift place ITS byte's history against the one the UART invariant's
+   output claim is read at, without either side holding the authority. *)
+Lemma obs_hist_lb_cmp `{!riscvFixedGS Σ} (h1 h2 : list mobs) :
+  obs_hist_lb h1 -∗ obs_hist_lb h2 -∗
+    ⌜h1 `prefix_of` h2 \/ h2 `prefix_of` h1⌝.
+Proof.
+  iIntros "H1 H2". rewrite /obs_hist_lb.
+  by iDestruct (own_valid_2 with "H1 H2") as %?%mono_list_lb_op_valid_L.
+Qed.
+
 Lemma obs_hist_lb_mono `{!riscvFixedGS Σ} (h0 h1 : list mobs) :
   h0 `prefix_of` h1 -> obs_hist_lb h1 -∗ obs_hist_lb h0.
 Proof.
@@ -875,6 +972,19 @@ Proof. rewrite /kill_cred_triv. apply _. Qed.
 Global Instance kill_cred_triv_timeless {Σ : gFunctors} :
   Timeless (kill_cred_triv (Σ := Σ)).
 Proof. rewrite /kill_cred_triv. apply _. Qed.
+
+(* THE TRIVIAL OUTPUT CLAIM: an application that claims nothing of the
+   console's accepted bytes.  Every writer's view shift is discharged out of
+   nothing at it and the founding is [emp].  It is also, by
+   [WpUart.out_res_at]'s [match], what the KERNEL's own port carries under
+   EVERY application -- the owner's ruling that UART1's output is
+   unconstrained, made literal. *)
+Definition out_res_triv {Σ : gFunctors} :
+    list mobs -> list (bv 8) -> iProp Σ := fun _ _ => emp%I.
+
+Global Instance out_res_triv_timeless {Σ : gFunctors} (h : list mobs)
+    (acc : list (bv 8)) : Timeless (out_res_triv (Σ := Σ) h acc).
+Proof. rewrite /out_res_triv. apply _. Qed.
 
 (* the TRIVIAL trace predicate -- the client's half and nothing about it.
    What a client that states no trace property fills the slot with. *)

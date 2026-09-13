@@ -19,11 +19,12 @@
    [UartsFields]'s [uart_f_lock i] / [uart_f_chan i] / [uart_f_base i], and
    the device premise is the BARE [uart_inv i gu] rather than the [dev_inv]
    bundle -- which is also strictly easier for a console caller, who projects
-   it with [WpUart.dev_inv_uart].  The OUTPUT CLAIM is kept at BOTH ports: the
-   owner's ruling is that nothing has to TRACK port 1's output, not that the
-   THR write stops landing, and [uart_sent_sub] is keyed on the ghost bundle
-   [gu] rather than on the port, so producing it at port 1 costs this contract
-   nothing and gives a future caller the option.
+   it with [WpUart.dev_inv_uart].  ONE CONTRACT AT BOTH PORTS: the owner's
+   ruling is that nothing has to TRACK port 1's output, not that the THR write
+   stops landing, and [WpUart.out_res_at Uart1] is [emp] -- so the
+   justification premise below is a real obligation at [Uart0] and free at
+   [Uart1] ([WpUart.out_chain_triv]), and neither port costs this contract a
+   binder of its own.
 
    @ KernelSyms.uartwrite, 142 bytes, 54 instructions, a 64-byte frame.
    EVERYTHING IS SHRINK-WRAPPED ONTO THE n > 0 PATH now: the `blez a2` is the first
@@ -40,17 +41,16 @@
    for why the lock is a spinlock again and what a driver that re-acquires per
    byte may claim.
 
-   WHAT THE CONTRACT PROMISES ABOUT THE OUTPUT.  Not "the bytes were sent
-   contiguously" -- uartwrite SLEEPS between bytes, and while it sleeps any
-   other hart may push its own (uartputc_sync takes the same lock but not for
-   the whole run).  The honest statement is the one the accepted-byte trace
-   supports, and it is [UartTxInv.uart_sent_sub]:
+   WHAT THE CONTRACT ASKS ABOUT THE OUTPUT, since lane OUT-FUPD.  Not a
+   receipt but a JUSTIFICATION, and a per-BYTE one: uartwrite SLEEPS between
+   bytes, and while it sleeps any other hart may push its own (uartputc_sync
+   takes the same lock but not for the whole run), so a single view shift over
+   the message would be unsound.  The premise is
 
-       exists tr, uart_sent gu tr * ((f <$> seq 0 n) `sublist_of` tr)
+       WpUart.out_chain i (f <$> seq 0 n) Phi
 
-   -- every byte of the buffer was accepted by the UART, IN ORDER, possibly
-   interleaved with other harts' bytes.  [uart_sent] is persistent and
-   monotone, so this survives everything that happens afterwards.
+   -- one link per byte of the buffer, in order -- and the post is the
+   payload [Phi].  The loop carries [drop k] of the chain as its invariant.
 
    THE BUFFER is taken at an arbitrary [dq] and handed back untouched
    (uartwrite only reads it), named by [f] in strlen's vocabulary.  [n] is a
@@ -124,7 +124,7 @@ Definition wp_uartwrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
     (gs : list gname) (j : nat) (glp : gname) (gl : gname)
     (m : regfile) (av : nat) (eb : bool)
     (n : nat) (f : nat -> bv 8) (dq : dfrac) (b : bool)
-    (pidv : mword 32) (dqp : dfrac) (lks : gset string) :=
+    (pidv : mword 32) (dqp : dfrac) (Φ : iProp Σ) (lks : gset string) :=
   let pcE : mword 64 := mword_of_int KernelSyms.uartwrite in
   let pj := proc_addr j in
   (* a0 = the PORT INDEX, a1 = the buffer, a2 = the count.  The buffer and the
@@ -197,6 +197,16 @@ Definition wp_uartwrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
   p_pid pj ↦₄{dqp} pidv -∗
   (* the buffer, read-only *)
   ([∗ list] kk ∈ seq 0 n, (pa_add buf kk) ↦ₘ[KT1]{dq} f kk) -∗
+  (* THE JUSTIFICATION FOR THE WHOLE RUN, ONE LINK PER BYTE (lane OUT-FUPD,
+     F3).  uartwrite takes port [i]'s transmit lock ONCE PER BYTE and sleeps
+     in between, so another hart's bytes really can be accepted inside this
+     message -- a single shift over [f <$> seq 0 n] would be unsound, and
+     the chain is what the loop consumes ([WpUart.out_chain_app] splits it
+     at the cursor, [drop k] being the loop invariant's residue).  The
+     payload comes back in the post, where the sublist receipt used to be.
+     At [Uart1] -- prputc's port -- [WpUart.out_chain_triv] builds it out of
+     [Φ], so the kernel's own writer owes nothing. *)
+  out_chain i (f <$> seq 0 n) Φ -∗
   (* the running-thread bundle (SpecSleep.v) *)
   procs_inv gs -∗
   wp_next b pj (fun (CID : CpuId) =>
@@ -207,7 +217,7 @@ Definition wp_uartwrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
       pc_is ret_tgt -∗
       ([∗ list] kk ∈ seq 0 n, (pa_add buf kk) ↦ₘ[KT1]{dq} f kk) -∗
       p_pid pj ↦₄{dqp} pidv -∗
-      uart_sent_sub gu (f <$> seq 0 n) -∗
+      Φ -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
@@ -217,6 +227,6 @@ Module Type UARTWRITE.
       (i : uart_id) (gu : uart_names) (gs : list gname) (j : nat) (glp : gname) (gl : gname)
       (m : regfile) (av : nat) (eb : bool)
       (n : nat) (f : nat -> bv 8) (dq : dfrac) (b : bool)
-      (pidv : mword 32) (dqp : dfrac) (lks : gset string),
-      wp_uartwrite_sconf_body i gu gs j glp gl m av eb n f dq b pidv dqp lks.
+      (pidv : mword 32) (dqp : dfrac) (Φ : iProp Σ) (lks : gset string),
+      wp_uartwrite_sconf_body i gu gs j glp gl m av eb n f dq b pidv dqp Φ lks.
 End UARTWRITE.

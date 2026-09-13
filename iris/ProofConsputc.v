@@ -225,20 +225,20 @@ Section ProofConsputc.
      ProofConsoleinit.v's [wp_initlock]/[wp_uartinit]. *)
   Hypothesis wp_uartputc :
     forall `{CID : CpuId} (γl : gname) (γd : uart_names)
-      (m0 : regfile) (K : nat) (bs : list (bv 8)) (n : nat) (eb : bool)
+      (m0 : regfile) (K : nat) (Φ : iProp Σ) (n : nat) (eb : bool)
       (b : bool) (p : mword 64) (lks : gset string),
-      wp_uartputc_sconf_body kt Uart0 γl γd m0 K bs n eb b p lks.
+      wp_uartputc_sconf_body kt Uart0 γl γd m0 K Φ n eb b p lks.
 
   Lemma wp_consputc_sconf_gen (γl : gname) (γd : uart_names) (γv : disk_names)
-      (m : regfile) (K : nat) (bs : list (bv 8)) (n : nat) (eb : bool)
+      (m : regfile) (K : nat) (Φ : iProp Σ) (n : nat) (eb : bool)
       (b : bool) (p : mword 64) (lks : gset string)
-    : wp_consputc_sconf_body kt γl γd γv m K bs n eb b p lks.
+    : wp_consputc_sconf_body kt γl γd γv m K Φ n eb b p lks.
   Proof.
     cbv beta delta [wp_consputc_sconf_body].
     intros ra_i a0_i pcE ra0 a00 ret_tgt HK Hn Hbelow.
     assert (HK20 : (20 <= K)%nat) by (exact HK).
     pose proof (cp_cap_bounds K HK20) as (Hc2 & HK4).
-    iIntros "Hcg Hcpu #Htext Hpc #Hdev #Hubw #Htxl #Hsub Hcont".
+    iIntros "Hcg Hcpu #Htext Hpc #Hdev #Hubw #Htxl HΨ Hcont".
     (* the callee is port-generic now: it takes the BARE [uart_inv Uart0]
        rather than the console bundle, and its order premise names the
        port's own lock. *)
@@ -380,9 +380,24 @@ Section ProofConsputc.
       iDestruct (cpu_own_transport CID CID7 n eb p b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
       assert (HT2uid : T2 !!! Regidx a0_idx = mword_of_int (uart_index Uart0)).
       { rewrite /T2 upd_ne; [| reg_neq]. rewrite /T1b upd_eq. exact cp_uid0. }
-      iApply (wp_uartputc γl γd T2 (K - 2)%nat bs n eb b p lks HK4 HT2uid Hn Hbelow
-                with "Hcg Hcpu Htext Hpc Huinv Hubw Htxl Hsub").
-      iIntros (CID8 Hs8 mf1) "Hcg Hcpu Hpc %Hcs1 #Hsent1".
+      (* THE CALLER'S CHAIN, SPLIT AT THE FIRST OF THE THREE ERASE BYTES
+         (lane OUT-FUPD).  On this arm [consputc_cs a00] is [consputc_bs],
+         so the chain is three links and each [uartputc_sync] call spends
+         exactly one of them; what comes back at the end is the payload. *)
+      assert (Hbseq : eq_vec (m !!! Regidx a0_idx) cp_backspace = true).
+      { rewrite /cp_backspace -(HW3a0 CID) -(HW3a5 CID). exact Hbs. }
+      assert (HT2a1 : T2 !!! Regidx a1_idx = (mword_of_int 8 : mword 64)).
+      { rewrite /T2 upd_ne; [| reg_neq]. rewrite /T1b upd_ne; [| reg_neq].
+        rewrite /T1 upd_eq. reflexivity. }
+      iEval (rewrite /consputc_cs Hbseq /consputc_bs) in "HΨ".
+      iEval (cbn [out_chain]) in "HΨ".
+      iApply (wp_uartputc γl γd T2 (K - 2)%nat
+                (out_link Uart0 (mword_of_int 32 : mword 8)
+                   (out_link Uart0 (mword_of_int 8 : mword 8) Φ))
+                n eb b p lks HK4 HT2uid Hn Hbelow
+                with "Hcg Hcpu Htext Hpc Huinv Hubw Htxl [HΨ]").
+      { by rewrite cp_byte_sb HT2a1 cp_byte_bs1. }
+      iIntros (CID8 Hs8 mf1) "Hcg Hcpu Hpc %Hcs1 HΨ".
       destruct Hcs1 as [Hcs1 Hra1].
       assert (Hret1 : ret_pc (T2 !!! Regidx ra_idx) = mword_of_int (KernelSyms.consputc + 0x28)).
       { rewrite /T2 upd_eq. unfold ret_pc. apply bv_eq; vm_compute; reflexivity. }
@@ -421,9 +436,15 @@ Section ProofConsputc.
       iDestruct (cpu_own_transport CID8 CID10 n eb p b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
       assert (HT4uid : T4 !!! Regidx a0_idx = mword_of_int (uart_index Uart0)).
       { rewrite /T4 upd_ne; [| reg_neq]. rewrite /T3b upd_eq. exact cp_uid0. }
-      iApply (wp_uartputc γl γd T4 (K - 2)%nat _ n eb b p lks HK4 HT4uid Hn Hbelow
-                with "Hcg Hcpu Htext Hpc Huinv Hubw Htxl Hsent1").
-      iIntros (CID11 Hs11 mf2) "Hcg Hcpu Hpc %Hcs2 #Hsent2".
+      assert (HT4a1 : T4 !!! Regidx a1_idx = (mword_of_int 32 : mword 64)).
+      { rewrite /T4 upd_ne; [| reg_neq]. rewrite /T3b upd_ne; [| reg_neq].
+        rewrite /T3 upd_eq. reflexivity. }
+      iApply (wp_uartputc γl γd T4 (K - 2)%nat
+                (out_link Uart0 (mword_of_int 8 : mword 8) Φ)
+                n eb b p lks HK4 HT4uid Hn Hbelow
+                with "Hcg Hcpu Htext Hpc Huinv Hubw Htxl [HΨ]").
+      { by rewrite cp_byte_sb HT4a1 cp_byte_bs2. }
+      iIntros (CID11 Hs11 mf2) "Hcg Hcpu Hpc %Hcs2 HΨ".
       destruct Hcs2 as [Hcs2 Hra2].
       assert (Hret2 : ret_pc (T4 !!! Regidx ra_idx) = mword_of_int (KernelSyms.consputc + 0x32)).
       { rewrite /T4 upd_eq. unfold ret_pc. apply bv_eq; vm_compute; reflexivity. }
@@ -462,9 +483,14 @@ Section ProofConsputc.
       iDestruct (cpu_own_transport CID11 CID13 n eb p b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
       assert (HT6uid : T6 !!! Regidx a0_idx = mword_of_int (uart_index Uart0)).
       { rewrite /T6 upd_ne; [| reg_neq]. rewrite /T5b upd_eq. exact cp_uid0. }
-      iApply (wp_uartputc γl γd T6 (K - 2)%nat _ n eb b p lks HK4 HT6uid Hn Hbelow
-                with "Hcg Hcpu Htext Hpc Huinv Hubw Htxl Hsent2").
-      iIntros (CID14 Hs14 mf3) "Hcg Hcpu Hpc %Hcs3 #Hsent3".
+      assert (HT6a1 : T6 !!! Regidx a1_idx = (mword_of_int 8 : mword 64)).
+      { rewrite /T6 upd_ne; [| reg_neq]. rewrite /T5b upd_ne; [| reg_neq].
+        rewrite /T5 upd_eq. reflexivity. }
+      iApply (wp_uartputc γl γd T6 (K - 2)%nat Φ
+                n eb b p lks HK4 HT6uid Hn Hbelow
+                with "Hcg Hcpu Htext Hpc Huinv Hubw Htxl [HΨ]").
+      { by rewrite cp_byte_sb HT6a1 cp_byte_bs1. }
+      iIntros (CID14 Hs14 mf3) "Hcg Hcpu Hpc %Hcs3 HΨ".
       destruct Hcs3 as [Hcs3 Hra3].
       assert (Hret3 : ret_pc (T6 !!! Regidx ra_idx) = mword_of_int (KernelSyms.consputc + 0x3a)).
       { rewrite /T6 upd_eq. unfold ret_pc. apply bv_eq; vm_compute; reflexivity. }
@@ -504,32 +530,13 @@ Section ProofConsputc.
       { intros c Hc Nsp N8. rewrite (Hthread0 c Hc). exact (HW3cs c Hc Nsp N8). }
       assert (Hmf3sp : mf3 !!! Regidx csp_rs1 = add_vec (m !!! Regidx csp_rs1) (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6)))).
       { rewrite (Hthread0 csp_rs1 ltac:(vm_compute; reflexivity)). exact HW3sp. }
-      (* the three bytes accumulated as [((bs ++ b1) ++ b2) ++ b3]; the spec's
-         post is [bs ++ cs], so reassociate once and read [cs] off. *)
-      iEval (rewrite -!app_assoc) in "Hsent3".
-      (* WHICH THREE BYTES: the BYTE ARGUMENT at each call -- a1 since the
-         bump -- read off the [c.li a1] that set it: 8, 32, 8, i.e.
-         [consputc_bs]. *)
-      assert (HT2a1 : T2 !!! Regidx a1_idx = (mword_of_int 8 : mword 64)).
-      { rewrite /T2 upd_ne; [| reg_neq]. rewrite /T1b upd_ne; [| reg_neq].
-        rewrite /T1 upd_eq. reflexivity. }
-      assert (HT4a1 : T4 !!! Regidx a1_idx = (mword_of_int 32 : mword 64)).
-      { rewrite /T4 upd_ne; [| reg_neq]. rewrite /T3b upd_ne; [| reg_neq].
-        rewrite /T3 upd_eq. reflexivity. }
-      assert (HT6a1 : T6 !!! Regidx a1_idx = (mword_of_int 8 : mword 64)).
-      { rewrite /T6 upd_ne; [| reg_neq]. rewrite /T5b upd_ne; [| reg_neq].
-        rewrite /T5 upd_eq. reflexivity. }
-      assert (Hbseq : eq_vec (m !!! Regidx a0_idx) cp_backspace = true).
-      { rewrite /cp_backspace -(HW3a0 CID) -(HW3a5 CID). exact Hbs. }
       iApply (wp_consputc_epi m mf3 K b p Hc2 Hmf3sp Hthread
                 with "Hcg Htext Hpc Hc1 Hc2").
       iIntros (CID16 Hs16 mfin) "Hcg Hpc %Hfin".
       iDestruct (cpu_own_transport CID14 CID16 n eb p b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
       iSpecialize ("Hcont" $! CID16 with "[%]"); [wp_next_chain|].
-      iApply ("Hcont" $! mfin _ with "Hcg Hcpu Hpc [%] [%] Hsent3").
-      { exact Hfin. }
-      { rewrite Hbseq HT2a1 HT4a1 HT6a1 !cp_byte_sb cp_byte_bs1 cp_byte_bs2.
-        reflexivity. }
+      iApply ("Hcont" $! mfin with "Hcg Hcpu Hpc [%] HΨ").
+      exact Hfin.
     - (* ============ ordinary arm: uartputc_sync(c) ============ *)
       iApply (wp_beq_fall_s_sconf (mword_of_int (KernelSyms.consputc + 0x0c)) (mword_of_int 20 : mword 13) a5_idx a0_idx
                 W3 (K - 2)%nat b ltac:(vm_compute; discriminate) ltac:(vm_compute; discriminate) Hbs
@@ -573,9 +580,19 @@ Section ProofConsputc.
       iDestruct (cpu_own_transport CID CID7' n eb p b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
       assert (HF1uid : F1 !!! Regidx a0_idx = mword_of_int (uart_index Uart0)).
       { rewrite /F1 upd_ne; [| reg_neq]. rewrite /G2 upd_eq. exact cp_uid0. }
-      iApply (wp_uartputc γl γd F1 (K - 2)%nat bs n eb b p lks HK4 HF1uid Hn Hbelow
-                with "Hcg Hcpu Htext Hpc Huinv Hubw Htxl Hsub").
-      iIntros (CID8' Hs8' mf) "Hcg Hcpu Hpc %Hcsf #Hsent".
+      assert (Hbsne : eq_vec (m !!! Regidx a0_idx) cp_backspace = false).
+      { rewrite /cp_backspace -(HW3a0 CID) -(HW3a5 CID). exact Hbs. }
+      assert (HF1a1' : F1 !!! Regidx a1_idx = m !!! Regidx a0_idx).
+      { rewrite /F1 upd_ne; [| reg_neq]. rewrite /G2 upd_ne; [| reg_neq].
+        exact HG1a1. }
+      (* ONE LINK on this arm: [consputc_cs a00] is the argument's low
+         byte, and the callee stores exactly that (lane OUT-FUPD). *)
+      iEval (rewrite /consputc_cs Hbsne) in "HΨ".
+      iEval (cbn [out_chain]) in "HΨ".
+      iApply (wp_uartputc γl γd F1 (K - 2)%nat Φ n eb b p lks HK4 HF1uid Hn Hbelow
+                with "Hcg Hcpu Htext Hpc Huinv Hubw Htxl [HΨ]").
+      { by rewrite cp_byte_sb HF1a1'. }
+      iIntros (CID8' Hs8' mf) "Hcg Hcpu Hpc %Hcsf HΨ".
       destruct Hcsf as [Hcsf Hraf].
       assert (Hretf : ret_pc (F1 !!! Regidx ra_idx) = mword_of_int (KernelSyms.consputc + 0x18)).
       { rewrite /F1 upd_eq. unfold ret_pc. apply bv_eq; vm_compute; reflexivity. }
@@ -598,19 +615,13 @@ Section ProofConsputc.
       (* WHICH BYTE: the [c.mv a1,a0] copied the argument, untouched since
          entry, into the callee's byte register, so what it stored is the
          ARGUMENT's low byte. *)
-      assert (HF1a1 : F1 !!! Regidx a1_idx = m !!! Regidx a0_idx).
-      { rewrite /F1 upd_ne; [| reg_neq]. rewrite /G2 upd_ne; [| reg_neq].
-        exact HG1a1. }
-      assert (Hbsne : eq_vec (m !!! Regidx a0_idx) cp_backspace = false).
-      { rewrite /cp_backspace -(HW3a0 CID) -(HW3a5 CID). exact Hbs. }
       iApply (wp_consputc_epi m mf K b p Hc2 Hmfsp Hthread
                 with "Hcg Htext Hpc Hc1 Hc2").
       iIntros (CID9' Hs9' mfin) "Hcg Hpc %Hfin".
       iDestruct (cpu_own_transport CID8' CID9' n eb p b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
       iSpecialize ("Hcont" $! CID9' with "[%]"); [wp_next_chain|].
-      iApply ("Hcont" $! mfin _ with "Hcg Hcpu Hpc [%] [%] Hsent").
-      { exact Hfin. }
-      { rewrite Hbsne HF1a1 cp_byte_sb. reflexivity. }
+      iApply ("Hcont" $! mfin with "Hcg Hcpu Hpc [%] HΨ").
+      exact Hfin.
   Qed.
 
 End ProofConsputc.
@@ -621,15 +632,15 @@ End ProofConsputc.
 (* ===================================================================== *)
   Definition wp_consputc_sconf `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       {kt : ktier} (γl : gname) (γd : uart_names) (γv : disk_names) (m0 : regfile) (K : nat)
-      (bs : list (bv 8)) (n : nat) (eb : bool) (b : bool) (p : mword 64) (lks : gset string)
-      : wp_consputc_sconf_body kt γl γd γv m0 K bs n eb b p lks :=
+      (Φ : iProp Σ) (n : nat) (eb : bool) (b : bool) (p : mword 64) (lks : gset string)
+      : wp_consputc_sconf_body kt γl γd γv m0 K Φ n eb b p lks :=
     (* eta-expand to keep [UartPutc.wp_uartputc_sconf]'s own [CID] genuinely
        polymorphic per application (see ProofConsoleinit.v's identical fix
        for [wp_initlock]/[wp_uartinit]) rather than letting it be eagerly
        specialized to THIS definition's [CID]. *)
     wp_consputc_sconf_gen
-      (fun `(CID' : CpuId) γl' γd' m' K' bs' n' eb' b' p' lks' =>
-         UartPutc.wp_uartputc_sconf kt (CID:=CID') Uart0 γl' γd' m' K' bs' n' eb' b' p' lks')
-      γl γd γv m0 K bs n eb b p lks.
+      (fun `(CID' : CpuId) γl' γd' m' K' Φ' n' eb' b' p' lks' =>
+         UartPutc.wp_uartputc_sconf kt (CID:=CID') Uart0 γl' γd' m' K' Φ' n' eb' b' p' lks')
+      γl γd γv m0 K Φ n eb b p lks.
 
 End ConsputcProof.

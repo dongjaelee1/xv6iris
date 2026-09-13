@@ -73,7 +73,7 @@
 (*                                                                        *)
 (* BOTH LAWS ARE BUPD-SHAPED, and that is not a convenience.  A bundle    *)
 (* can contain a resource that is FREE but not derivable from [emp]:      *)
-(* write's console arm carries the trace seed [UartSentLoc.uart_sent γu   *)
+(* write's console arm used to carry the trace seed [uart_sent γu []]     *)
 (* []], a mono-list lower bound at the empty list, which is the algebra's *)
 (* unit and is therefore mintable by ANYONE -- under a basic update.      *)
 (* Putting that update in the LAW rather than in some particular supplier *)

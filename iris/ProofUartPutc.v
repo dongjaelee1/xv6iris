@@ -39,10 +39,10 @@
    THE TRANSMITTER TOKEN is the LOCK's resource ([UartTxInv.tx_res]): it comes
    out of the acquire at some trace [l] the caller cannot name, and goes back
    in at [l ++ [sb]] on the release.  The caller's own claim is therefore the
-   SUBLIST form [UartTxInv.uart_sent_sub] -- another hart may have bytes
-   accepted between two of ours -- obtained by pinning [bs `sublist_of` l]
-   under [uart_inv i] ([uart_tx_own_sent_sub_at]) while we hold the token, and
-   cashed at the end with [uart_sent_sub_snoc].
+   caller's own JUSTIFICATION for the byte ([WpUart.out_chain i [sb] Φ], lane
+   OUT-FUPD), spent at the store's ghost step and cashed as the payload [Φ] --
+   another hart may have bytes accepted between two of ours, which is exactly
+   why the obligation is per BYTE and not per message.
 
    EXPLICIT-CPUID: [poll]/[devcore] are DECOMPOSED helper lemmas, each applied
    at a hart a [wp_next] crossing may have migrated to, so each gets its OWN
@@ -384,7 +384,8 @@ Section ProofUartPutc.
   (*  DEVICE CORE: 0x38 -> 0x52 (base load + LSR addr + poll + byte + THR). *)
   (* =================================================================== *)
   Lemma wp_uartputc_devcore_sconf `{CID0 : CpuId} (i : uart_id) (γd : uart_names)
-      (m : regfile) (n : nat) (l : list (bv 8)) (b : bool) (p : mword 64) :
+      (m : regfile) (n : nat) (l : list (bv 8)) (Φ : iProp Σ)
+      (b : bool) (p : mword 64) :
     let sb : mword 8 := autocast (T := mword)
        (subrange_vec_dec (and_vec (m !!! Regidx (mword_of_int 21))
           (sign_extend' 64 (mword_of_int 255 : mword 12))) 7 0) in
@@ -392,15 +393,18 @@ Section ProofUartPutc.
     sie_cap_gpr kt m n b p -∗ kernel_text -∗
     pc_is (mword_of_int (KernelSyms.uartputc_sync + 0x38)) -∗
     uart_inv i γd -∗ uart_base_word i -∗ uart_tx_own γd l -∗ uart_dlab_off γd -∗
+    (* THE JUSTIFICATION FOR THE ONE BYTE THIS STORE PUTS ON THE WIRE (lane
+       OUT-FUPD): the store leaf below invokes it and hands back [Φ]. *)
+    out_link i sb Φ -∗
     wp_next b p (fun (CID : CpuId) =>
       ∀ bt : bv 8,
       sie_cap_gpr kt (ppc_f5' i m bt) n b p -∗ pc_is (mword_of_int (KernelSyms.uartputc_sync + 0x52)) -∗
-      uart_tx_own γd (l ++ [sb]) -∗ uart_sent γd (l ++ [sb]) -∗
+      uart_tx_own γd (l ++ [sb]) -∗ uart_sent γd (l ++ [sb]) -∗ Φ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros sb Hs4.
-    iIntros "Hcg #Ht Hpc #Huinv #Hbw Hown #Hoff Hcont".
+    iIntros "Hcg #Ht Hpc #Huinv #Hbw Hown #Hoff HΨ Hcont".
     assert (P3c : add_vec_int (mword_of_int (KernelSyms.uartputc_sync + 0x38) : mword 64) 4 = mword_of_int (KernelSyms.uartputc_sync + 0x3c)) by (apply bv_eq; vm_compute; reflexivity).
     assert (P40 : add_vec_int (mword_of_int (KernelSyms.uartputc_sync + 0x3c) : mword 64) 4 = mword_of_int (KernelSyms.uartputc_sync + 0x40)) by (apply bv_eq; vm_compute; reflexivity).
     assert (P4e : add_vec_int (mword_of_int (KernelSyms.uartputc_sync + 0x4a) : mword 64) 4 = mword_of_int (KernelSyms.uartputc_sync + 0x4e)) by (apply bv_eq; vm_compute; reflexivity).
@@ -458,24 +462,25 @@ Section ProofUartPutc.
     { rewrite (rget_ne (ppc_f5' i m bt) (mword_of_int 15 : mword 5) ltac:(vm_compute; discriminate)).
       unfold sb. rewrite (ppc_f5'_a5 i m bt). reflexivity. }
     iApply (UAcc.wp_uart_thr_write_s_sconf_at (CID:=CID3) i γd (mword_of_int (KernelSyms.uartputc_sync + 0x4e)) (mword_of_int 15) (mword_of_int 13)
-              (ppc_f5' i m bt) n l b ltac:(rgne; exact (ppc_f5'_a3 i m bt))
-              with "Hcg Hpc [] Huinv Hown Hlb Hoff").
+              (ppc_f5' i m bt) n l Φ b ltac:(rgne; exact (ppc_f5'_a3 i m bt))
+              with "Hcg Hpc [] Huinv Hown Hlb Hoff [HΨ]").
     { iApply (upi_4e with "Ht"). }
-    iIntros (CID5 Hs5) "Hcg Hpc Hown Hsent".
+    { by rewrite Hsbb. }
+    iIntros (CID5 Hs5) "Hcg Hpc Hown Hsent HΦ".
     iEval (rewrite Hsbb) in "Hown". iEval (rewrite Hsbb) in "Hsent".
     iEval (rewrite P52) in "Hpc".
     assert (Hchain : b = false \/ p = zero_reg -> (CID5 : CPU) = (CID0 : CPU)) by wp_next_chain.
     iSpecialize ("Hcont" $! CID5 with "[%]"); [exact Hchain|].
-    iApply ("Hcont" $! bt with "Hcg Hpc Hown Hsent").
+    iApply ("Hcont" $! bt with "Hcg Hpc Hown Hsent HΦ").
   Qed.
 
   (* =================================================================== *)
   (*  THE WHOLE FUNCTION.                                                  *)
   (* =================================================================== *)
   Lemma wp_uartputc_sconf (i : uart_id) (γl : gname) (γd : uart_names)
-      (m0 : regfile) (K : nat) (bs : list (bv 8)) (n : nat) (eb : bool)
+      (m0 : regfile) (K : nat) (Φ : iProp Σ) (n : nat) (eb : bool)
       (b : bool) (p : mword 64) (lks : gset string)
-    : wp_uartputc_sconf_body kt i γl γd m0 K bs n eb b p lks.
+    : wp_uartputc_sconf_body kt i γl γd m0 K Φ n eb b p lks.
   Proof.
     cbv beta delta [wp_uartputc_sconf_body].
     intros ra_idx a0_idx a1_idx pcE ra0 a10 ret_tgt sb HK Ha0 Hn Hfresh.
@@ -483,7 +488,7 @@ Section ProofUartPutc.
     assert (HK8 : (8 <= K)%nat) by lia.
     assert (Hav : (10 <= K - 8)%nat) by lia.
     pose (sp0 := (m0 !!! Regidx csp_rs1 : mword 64)).
-    iIntros "Hcg Hcpu #Ht Hpc #Huinv #Hbw #Htxl #Hsubbs Hcont".
+    iIntros "Hcg Hcpu #Ht Hpc #Huinv #Hbw #Htxl HΨ Hcont".
     iDestruct (cpu_own_eb_agree with "Hcg Hcpu") as %Hbeq.
     iDestruct (is_txlock_at_lock with "Htxl") as "#Hlk".
     iDestruct (is_txlock_at_dlab with "Htxl") as "#Hoff".
@@ -791,10 +796,6 @@ Section ProofUartPutc.
     (* the transmitter comes out of the lock at some trace [l], and our
        persistent [bs] claim is pinned to it under [uart_inv i]. *)
     iDestruct "HR" as (l) "Hown".
-    iApply fupd_wp.
-    iMod (uart_tx_own_sent_sub_at i γd l bs ⊤ ltac:(solve_ndisj)
-            with "Huinv Hown Hsubbs") as "[Hown %Hsl]".
-    iModIntro.
     (* the callee-saved values, threaded through acquire *)
     assert (Hms1 : macq !!! Regidx (mword_of_int 9 : mword 5) = a_tx_lock_at i).
     { rewrite (callee_saved_lookup Hcs_acq (mword_of_int 9 : mword 5) ltac:(vm_compute; reflexivity)).
@@ -868,14 +869,12 @@ Section ProofUartPutc.
                       (subrange_vec_dec (and_vec (M36 !!! Regidx (mword_of_int 21))
                          (sign_extend' 64 (mword_of_int 255 : mword 12))) 7 0) : mword 8) = sb).
     { unfold sb. rewrite HM36s5. reflexivity. }
-    iApply (wp_uartputc_devcore_sconf (CID0:=CIDacq) i γd M36 (trap_res b + (K - 8))%nat l false p
-              HM36s4 with "Hcg Ht Hpc Huinv Hbw Hown Hoff").
+    iApply (wp_uartputc_devcore_sconf (CID0:=CIDacq) i γd M36 (trap_res b + (K - 8))%nat l Φ false p
+              HM36s4 with "Hcg Ht Hpc Huinv Hbw Hown Hoff [HΨ]").
+    { by rewrite Hsbm. }
     iApply wp_next_off_intro.
-    iIntros (bt) "Hcg Hpc Hown Hsent".
+    iIntros (bt) "Hcg Hpc Hown Hsent HΦ".
     iEval (rewrite Hsbm) in "Hown". iEval (rewrite Hsbm) in "Hsent".
-    (* the caller's sublist claim, cashed once and for all *)
-    iAssert (uart_sent_sub γd (bs ++ [sb])) as "#Hsubout".
-    { iApply (uart_sent_sub_snoc γd bs l sb Hsl with "Hsent"). }
     (* ===== 0x52 c.mv a0,s1 ; 0x54 jal release ===== *)
     assert (Hf5s1 : ppc_f5' i M36 bt !!! Regidx (mword_of_int 9 : mword 5) = a_tx_lock_at i).
     { rewrite (ppc_f5'_cs i M36 bt (mword_of_int 9 : mword 5)
@@ -1090,7 +1089,7 @@ Section ProofUartPutc.
     iDestruct (cpu_own_transport CIDrel CIDe9 n eb p b ltac:(wp_next_chain)
                  with "Hcpu") as "Hcpu".
     iSpecialize ("Hcont" $! CIDe9 with "[%]"); [wp_next_chain|].
-    iApply ("Hcont" $! Q66 with "Hcg Hcpu Hpc [%] Hsubout").
+    iApply ("Hcont" $! Q66 with "Hcg Hcpu Hpc [%] HΦ").
     split; [| exact HQ66ra].
     (* threading: a register untouched by the body threads m0 -> Q66 *)
     assert (Hthread : forall c : mword 5, is_cs_idx c = true ->

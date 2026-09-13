@@ -130,6 +130,9 @@ Section EchoAdequacy.
                  (* ...and the kill credential's slot (lane KILL-PAY, K1),
                     which for echo is the taint *)
                  (app_kill app_echo c) (echo_Hkillp c) (echo_Hkillt c)
+                 (* ...and the output claim's (lane OUT-FUPD), which for
+                    echo is E5's placeholder *)
+                 (app_out app_echo c) (echo_Houtt c)
                  (app_fixed app_echo) c) g' -∗
            ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
            ▷ xv6_slot (app_names app_echo) (app_pred app_echo) cov
@@ -171,11 +174,15 @@ Section EchoAdequacy.
        this order (read off the elaborator, not guessed). *)
     (* THREE MORE HOLES since lane KILL-PAY (K1): [Hkillp] and [Hkillt] are
        fixed by unification the way [Htagp]/[Htagt] are (they are named in
-       [Hphi]'s own literal above), so only [Happ_kill] becomes a goal. *)
+       [Hphi]'s own literal above), so only [Happ_kill] becomes a goal.
+       THREE MORE AGAIN since lane OUT-FUPD: [Houtt] is fixed the same way
+       (it too is named in [Hphi]'s literal), so the two that become goals
+       are [Happ_out_sup] and [Happ_echo]. *)
     refine (xv6_app_adequacy Σ g sb nib cov app_echo
-              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
+              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
     - exact echo_Hbirth.
     - exact echo_Happ_kill.
+    - exact echo_Happ_out_sup.
     - exact echo_HR0.
     - exact echo_Hpow.
     - (* POINTWISE, not as one term.  [echo_Htx]/[echo_Hrx] state the era
@@ -199,17 +206,22 @@ Section EchoAdequacy.
              [Hsh_owed] at that instance, and [echo_Hinit_boot] builds
              /init's slot from them without ever touching the supply. ---- *)
       
-      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen.
+      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen Hout.
       (* the record's [app_kill] field IS [AppEcho.echo_taint] (lane
          KILL-PAY, K1); [echo_Hinit_boot] is stated at the latter, and
          unification does not delta-unfold the record literal for it. *)
       cbn [app_echo app_kill] in Hkill.
+      (* ...and the [app_out] field IS [AppEcho.echo_out], for the same
+         reason (lane OUT-FUPD) *)
+      cbn [app_echo app_out] in Hout.
       (* THE TWO LAYERS MEET HERE, and this is the only place they have to.
          [Heq] arrives carrying [app_echo] at the record's PRE-structure
          counter; [echo_Hinit_boot] -- and every [AppInv] law its proof
          uses -- is at the FIXED layer's.  [Hgen] says they are the same
          term at this instance, so one [rewrite] puts the equation where
          the laws are. *)
+      (* [Hout] is NOT in this list: the output claim's equation names no
+         generation counter (lane OUT-FUPD), so there is nothing to move. *)
       rewrite <- Hgen in Heq, Htag, Hkill |- *.
       destruct (Hsh_owed HR GEN HBs HFd HIr HPav HWc HF)
         as (Rsh & Hdeps & Hst & Hre).
@@ -219,7 +231,10 @@ Section EchoAdequacy.
          Naming it here would pin the wrong one: the [GEN] this field
          binds is not the one [app_echo] was elaborated at. *)
       iApply (echo_Hinit_boot HR GEN Rsh c r Hdeps Hst Hre
-                Heq Htag Hkill with "Hinv Hb").
+                Heq Htag Hkill Hout with "Hinv Hb").
+    - (* [Happ_echo]: at [AppEcho.echo_out]'s E5 placeholder the console's
+         output claim is trivial, so the echo justifies itself. *)
+      exact echo_Happ_echo.
     - exact Hphi.
     - exact Hgen0.
     - exact Hpow0.

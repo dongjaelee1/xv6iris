@@ -10,10 +10,10 @@
 
      - the PORT [Uart1] (its contract gained a [uart_id] parameter at
        XV6_REV 163d39b, with a0 pinned to [UartsFields.uart_index i]);
-     - the trace [bs := []], the empty [UartTxInv.uart_sent_sub] ProofPrputc
-       minted from nothing;
+     - the payload [Φ := True], whose justification chain ProofPrputc
+       builds from nothing ([WpUart.out_chain_triv] at [Uart1]);
 
-   and DROPS the [uart_sent_sub γ1 ([] ++ [sb])] that comes back.  That drop
+   and DROPS the payload that comes back.  That drop
    is the whole of the owner's ruling in one line: the second port's wire is
    unconstrained, so what uartputc_sync proves about the byte is thrown away
    here and never appears above.  (Iris is affine; dropping a persistent
@@ -62,7 +62,6 @@ Section LinkPrputc.
     uart_inv Uart1 γ1 -∗
     uart_base_word Uart1 -∗
     is_txlock_at Uart1 γl1 γ1 -∗
-    uart_sent_sub γ1 [] -∗
     wp_next (CID0 := CID0) b p (fun (CID : CpuId) =>
       ∀ mf : regfile,
       sie_cap_gpr kt mf K b p -∗
@@ -73,10 +72,15 @@ Section LinkPrputc.
     WP (Loop : expr riscv_lang).
   Proof.
     intros HK Ha0 Hn Hbelow.
-    iIntros "Hcg Hcpu #Htext Hpc #Huinv #Hbase #Htxl #Hsub Hcont".
-    iApply (UartPutc.wp_uartputc_sconf kt Uart1 (CID := CID0) γl1 γ1 m0 K []
+    iIntros "Hcg Hcpu #Htext Hpc #Huinv #Hbase #Htxl Hcont".
+    (* THE KERNEL'S PORT OWES NOTHING (lane OUT-FUPD, the owner's ruling
+       that UART1's output is unconstrained): [WpUart.out_res_at Uart1] is
+       [emp], so [out_chain_triv] builds the callee's link out of the empty
+       payload and printk's path takes no justification at all. *)
+    iApply (UartPutc.wp_uartputc_sconf kt Uart1 (CID := CID0) γl1 γ1 m0 K emp%I
               n eb b p lks HK Ha0 Hn Hbelow
-              with "Hcg Hcpu Htext Hpc Huinv Hbase Htxl Hsub").
+              with "Hcg Hcpu Htext Hpc Huinv Hbase Htxl []").
+    { iApply (out_chain_triv Uart1 _ emp%I eq_refl). done. }
     iIntros (CID1 Hs1 mf) "Hcg Hcpu Hpc %Hcs _".
     iSpecialize ("Hcont" $! CID1 with "[%]"); [exact Hs1|].
     iApply ("Hcont" $! mf with "Hcg Hcpu Hpc [%]"). exact Hcs.

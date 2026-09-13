@@ -17,7 +17,7 @@
    whose wire nothing in the system tracks (claude-notes/projects/
    xv6-bump-163d39b.md, "THE OWNER'S RULING: UART1's output is
    unconstrained"), so there is no trace to extend and no [bs] to thread.
-   What used to be here -- [UartTxInv.uart_sent_sub γd bs] in, [bs ++ cs] out
+   What used to be here -- a sublist trace claim in, its extension out
    -- was already existential in [cs] for a separate reason (a digit-accurate
    post would have to name the base-[base] representation of [xx] and thread
    it up through printk's format recursion, for no consumer); the ruling

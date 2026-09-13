@@ -171,6 +171,8 @@ Require Import SpecSysUnlink.  (* [unlink_au_pre] / [unlink_arms]     *)
 Require Import SpecSysLink.    (* [link_commits] / [link_arms]        *)
 Require Import SpecSysMkdir.   (* [mkdir_au_pre] / [mkdir_arms]       *)
 Require Import FsTree.         (* [fname]                             *)
+Require Import WpUart.         (* [out_licence] -- the OUTPUT LICENCE the
+                                  generic supply carries (lane OUT-FUPD) *)
 Require Import AppInv.         (* [app_sup] -- THE SUPPLY.  Required
                                   DIRECTLY: the definition is named in a
                                   class field's body                   *)
@@ -235,9 +237,12 @@ Section UexecExecInst.
     of_Fex   : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ);
     of_Fo    : pfam Σ (aview -> Z -> anode -> iProp Σ);
     of_Ft    : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ);
-    (* ---- write (16): the chain's PREFIX CURSOR and the console seed ---- *)
+    (* ---- write (16): the chain's PREFIX CURSOR.  ONE FIELD FOR BOTH
+       ARMS since lane OUT-FUPD: the console arm is now a chain over the
+       same cursor family (one node per BYTE, [SpecConsolewrite.
+       cons_out_chain]) instead of a trace seed plus a located receipt, so
+       the trace-seed field is gone with the receipts it fed. ---- *)
     wf_Q     : nat -> iProp Σ;
-    wf_tr0   : list (bv 8);
     (* ---- mknod (17) ---- *)
     nf_P     : nat -> Z -> iProp Σ;
     nf_Pmiss : nat -> Z -> iProp Σ;
@@ -305,7 +310,7 @@ Section UexecExecInst.
        of_P     := of_P f; of_Pmiss := of_Pmiss f;
        of_Farm  := of_Farm f; of_Fun := of_Fun f; of_Fok := of_Fok f;
        of_Fex   := of_Fex f; of_Fo := of_Fo f; of_Ft := of_Ft f;
-       wf_Q     := wf_Q f; wf_tr0 := wf_tr0 f;
+       wf_Q     := wf_Q f;
        nf_P     := nf_P f; nf_Pmiss := nf_Pmiss f;
        nf_Farm  := nf_Farm f; nf_Fun := nf_Fun f; nf_Fok := nf_Fok f;
        nf_Fex   := nf_Fex f;
@@ -342,7 +347,6 @@ Section UexecExecInst.
        of_Fo    := pfam_triv (fun _ _ _ => True%I);
        of_Ft    := pfam_triv (fun _ _ _ => True%I);
        wf_Q     := fun _ => True%I;
-       wf_tr0   := [];
        nf_P     := fun _ _ => True%I;
        nf_Pmiss := fun _ _ => True%I;
        nf_Farm  := pfam_triv (fun _ _ => True%I);
@@ -517,7 +521,7 @@ Section UexecExecInst.
          (of_Fo f) (of_Ft f)
      else if decide (n = 16) then
        filewrite_in (fd_st_of_key (xk_a W 0) (uvis_fd W))
-         (sys_rw_count (xk_a W 2)) (uvis_M W) (xk_a W 1) (wf_Q f) (wf_tr0 f)
+         (sys_rw_count (xk_a W 2)) (uvis_M W) (xk_a W 1) (wf_Q f)
      else if decide (n = 17) then
        (* ...and mknod's, at ITS path argument beside the two device
           numbers, for open's reason *)
@@ -679,7 +683,7 @@ Section UexecExecInst.
      else if decide (n = 16) then
        filewrite_extra (fd_st_of_key (xk_a W 0) (uvis_fd W))
          (sys_rw_count (xk_a W 2)) (uvis_M W) (xk_a W 1)
-         (wf_Q f) (wf_tr0 f) r
+         (wf_Q f) r
      else if decide (n = 17) then
        mknod_arms (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (uvis_M W) (xk_a W 0)
@@ -802,21 +806,27 @@ Section UexecExecInst.
      hence the one an unverified program's bundles are paid from.  Every
      branch of the two laws below is one [FsAbsInvFire] discharger at the
      trivial families, which is exactly the record [xfam_pt] names. *)
-  (* ...AND SINCE lane KILL-PAY (§1c) IT IS THE PAIR: the application's
-     predicate at every view, and the application's KILL CREDENTIAL.  The
-     generic slot is what runs an UNVERIFIED program, and an unverified
-     program may call kill(2) and may trap with a cause the kernel cannot
-     rule out -- both of which now cost the credential ([xv6_sbundle]'s
-     row 6, [UexecRet.uexec_ret_F]'s non-ecall arm).  Both halves are
-     bought by the application at the SAME place ([App.Happ_kill]: the
-     supply buys the credential), so pairing them here charges an
-     application nothing it was not already paying, and keeps every
-     verified program -- whose slot is at [uprogSG_free] and touches
-     neither half -- free. *)
-  Definition xv6_ssupply : iProp Σ := (app_sup ∗ □ riscv_kill_cred)%I.
+  (* ...AND SINCE lanes KILL-PAY (§1c) AND OUT-FUPD IT IS THE TRIPLE: the
+     application's predicate at every view, the application's KILL
+     CREDENTIAL, and the application's OUTPUT LICENCE.  The generic slot is
+     what runs an UNVERIFIED program, and an unverified program may call
+     kill(2), may trap with a cause the kernel cannot rule out -- both of
+     which cost the credential ([xv6_sbundle]'s row 6,
+     [UexecRet.uexec_ret_F]'s non-ecall arm) -- and may [write(2)] on the
+     CONSOLE, which since lane OUT-FUPD costs the licence: the console
+     UART's invariant carries the application's own claim about the bytes
+     it has accepted ([RiscvPtsto.riscv_out_res]), so putting a byte out is
+     no longer free.  All three are bought by the application at the SAME
+     place ([App.Happ_kill] and [App.Happ_out_sup]: the supply buys both),
+     so bundling them here charges an application nothing it was not
+     already paying, and keeps every verified program -- whose slot is at
+     [uprogSG_free] and touches none of the three -- free.  The licence is
+     LAST. *)
+  Definition xv6_ssupply : iProp Σ :=
+    (app_sup ∗ □ riscv_kill_cred ∗ □ out_licence)%I.
 
   (* THE BUPD IS WRITE'S, AND ONLY WRITE'S: the console arm carries the trace
-     seed [UartSentLoc.uart_sent γu []], a mono-list lower bound at the empty
+     seed [WpUart.uart_sent γu []], a mono-list lower bound at the empty
      list -- the algebra's unit, mintable by anyone but not derivable from
      [emp].  Every other branch is a closed fact or a wand off the supply. *)
   (* AT THE PAYLOAD THE CALLER NAMES (app-echo.md, "SH-LINE RULING", R1).
@@ -832,7 +842,7 @@ Section UexecExecInst.
     n <> USYS_exec ->
     ⊢ □ xv6_ssupply ==∗ ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X n f W.
   Proof.
-    intros Hne. rewrite /xv6_ssupply. iIntros "#[Hsup Hkc]".
+    intros Hne. rewrite /xv6_ssupply. iIntros "#(Hsup & Hkc & Hlic)".
     iAssert (|==> xv6_sbundle X n (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
           iSplitR; [ done | iExact "Hb" ] ].
@@ -846,7 +856,7 @@ Section UexecExecInst.
     destruct (decide (n = 15)) as [_ | _];
       [ iModIntro; iApply (fsabs_open_in with "Hsup") | ].
     destruct (decide (n = 16)) as [_ | _];
-      [ iApply (fsabs_filewrite_in with "Hsup") | ].
+      [ iApply (fsabs_filewrite_in with "Hsup Hlic") | ].
     destruct (decide (n = 17)) as [_ | _];
       [ iModIntro; iApply (fsabs_mknod_pre with "Hsup") | ].
     destruct (decide (n = 18)) as [_ | _];
@@ -879,7 +889,7 @@ Section UexecExecInst.
       □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗ R -∗ X W') ==∗
       ∃ f : xfam, ⌜kf_xpay f = (fun _ => R)%I⌝ ∗ xv6_sbundle X n f W.
   Proof.
-    rewrite /xv6_ssupply. iIntros "#Hpay #[Hsup Hkc] #Hs".
+    rewrite /xv6_ssupply. iIntros "#Hpay #(Hsup & Hkc & Hlic) #Hs".
     destruct (decide (n = USYS_exec)) as [He | Hne].
     - iModIntro. iExists (xfam_at (fun _ => R)%I xfam_pt). iSplitR; [done |].
       rewrite /xv6_sbundle. destruct (decide (n = USYS_exec)) as [_ | Hc];
@@ -920,8 +930,7 @@ Section UexecExecInst.
       + iIntros (av' i a W') "_ _ _ _ _ _ Hp HQ".
         iDestruct ("HQ" with "Hkc") as "HQ". iApply ("Hs" with "Hp HQ").
     - iApply (xv6_sbundle_of_supply_ne X n W (fun _ => R)%I Hne).
-      rewrite /xv6_ssupply. iModIntro.
-      iSplit; [ iExact "Hsup" | iExact "Hkc" ].
+      rewrite /xv6_ssupply. iModIntro. iSplit; [ iExact "Hsup" | iSplit; [ iExact "Hkc" | iExact "Hlic" ] ].
   Qed.
 
   (* THE RE-KEYING PASSES THROUGH BOTH BUNDLE ROWS ([UexecSG.sbundle_at_at]
@@ -1128,7 +1137,7 @@ Section UexecExecInst.
     sbundle_at X 16 f W -∗
     filewrite_in (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (uvis_M W)
-      (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f) (wf_tr0 f).
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f).
   Proof.
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
@@ -1364,7 +1373,7 @@ Section UexecExecInst.
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
     filewrite_extra (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (uvis_M W)
-      (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f) (wf_tr0 f) r -∗
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f) r -∗
     spost_at X 16 f W r M' fdv' cw' cs'.
   Proof.
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.

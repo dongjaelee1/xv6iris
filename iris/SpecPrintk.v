@@ -9,7 +9,7 @@
    and nothing in the system tracks that wire (claude-notes/projects/
    xv6-bump-163d39b.md, "THE OWNER'S RULING: UART1's output is
    unconstrained").  So the trace claim this contract used to carry --
-   [UartTxInv.uart_sent_sub γd bs] in, [bs ++ cs] out, with [cs] existential
+   a sublist trace claim in, its extension out, with the bytes existential
    -- is gone in both directions, and with it the [γl]/[γd]/[γv]/[bs]
    parameters that existed only to state it.  What replaces the three console
    credentials is ONE: [SpecPrputc.prputc_env].
@@ -46,7 +46,7 @@
        bytes go to UART1, whose wire is unconstrained by ruling, so there is
        nothing for printk to promise and nothing for a caller to accumulate.
        [SpecPrputc.v]'s header carries the ruling and the reasoning; the
-       [uart_sent_sub] uartputc_sync still asks for is minted inside
+       justification chain uartputc_sync still asks for is built inside
        [ProofPrputc] out of nothing at all.
 
    THE REST OF THE PRECONDITION is unchanged, and it has exactly three parts
@@ -232,7 +232,7 @@ Section PrintkGen.
 
      IT NAMES THE SECOND PORT NOW.  What used to be here was the console
      quadruple -- [uart_dlab_off γd], [dev_inv γd γv], an existential
-     [is_txlock γl γd] and the trivial [uart_sent_sub γd []].  printk prints
+     [is_txlock γl γd] and the trivial justification chain.  printk prints
      through [prputc] at XV6_REV 163d39b, so every one of those is the wrong
      port's, and [SpecPrputc.prputc_env] (UART1's invariant, UART1's tx lock
      with its frozen DLAB, and the .data word UART1's MMIO base is loaded

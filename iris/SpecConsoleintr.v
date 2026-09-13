@@ -17,8 +17,8 @@
    about it, so consoleintr asks for exactly what its four callees ask for:
 
      acquire / release   [ConsoleInv.is_conslock]
-     consputc            [WpUart.dev_inv] ∗ [UartTxInv.is_txlock] ∗ a
-                         [UartTxInv.uart_sent_sub] to extend ∗
+     consputc            [WpUart.dev_inv] ∗ [UartTxInv.is_txlock] ∗ the
+                         ECHO'S JUSTIFICATION [cons_echo_shift] ∗
                          [SpecUartPutc.uart_base_word Uart0]
      wakeup              [procs_inv]
 
@@ -48,17 +48,21 @@
    rebuilt at a foreign context by a proof holding no domination and must
    therefore stay ξ-free.  See [SpecUartPutc.uarts_words].
 
-   [uart_sent_sub γu []] rather than a threaded [bs]: the bundle carries
-   only the BASELINE each [consputc] call extends.  Keeping it INSIDE the
-   bundle rather than minting it from [dev_inv] is deliberate: minting costs
-   a fupd that opens the device invariant, and the boot assembly that builds
-   this bundle has the real [uart_sent] in hand anyway (consoleinit hands it
-   back).
+   THE ECHO'S JUSTIFICATION RIDES THE BUNDLE (lane OUT-FUPD, F3), where the
+   trace baseline [UartTxInv]'s retired sublist claim used to.  consputc now asks its
+   caller for a CHAIN of view shifts over the bytes it will push
+   ([WpUart.out_chain Uart0 (SpecConsputc.consputc_cs a0) Φ]), and
+   consoleintr is called from the interrupt path with nothing of its own to
+   pay it with: the echo is the APPLICATION's claim about its own input, so
+   the justification is the application's, MINTED AT BOOT into the console
+   environment and persistent so that every byte's echo re-uses it.  That
+   is [cons_echo_shift] below.  consoleintr's arity does not move: the
+   bundle keeps its shape and one conjunct is replaced.
 
    ---- THE ECHO'S BYTES ARE REPORTED (app-echo.md, E5/O4) ----------------
 
-   The bare [∃ cs, uart_sent_sub γu cs] would be VACUOUS -- [cs = []] is a
-   free witness ([UartTxInv.uart_sent_sub_nil_free]) -- so the claim is
+   The bare "∃ cs, these bytes went out" would be VACUOUS -- [cs = []] is a
+   free witness -- so the claim is
    keyed on the HIGH-WATER MARK, which this contract already reports and
    which decides the arm: the incoming mark is strictly before [hb] (the
    premise [ohist_ext hh hb]), so [hh' = Some hb] holds exactly on the arm
@@ -132,6 +136,97 @@ Require Import TsoCtx CtxMorphTac.
    (wakeup, 18) is 24; this is that with slack.  consputc (16) and the two
    lock calls (10) are all shallower than wakeup. *)
 Notation consoleintr_stack := (32%nat) (only parsing).
+(* THE ECHOED BYTES, per arm (console.c:150-183).
+   [SpecConsputc.consputc_bs] is what [consputc(BACKSPACE)] puts on the
+   wire: backspace, space, backspace -- erase one glyph. *)
+
+(* what the default arm echoes for [c]: the byte itself, except that a
+   carriage return is echoed -- and stored -- as a newline
+   ([ConsoleInv.cons_xlate] is the same translation on the ring side) *)
+Definition echo_of (c : bv 8) : bv 8 :=
+  if eq_vec (c : mword 8) (mword_of_int 13 : mword 8)
+  then (mword_of_int 10 : mword 8) else c.
+
+(* THE THREE BYTES THAT REACH THE ERASE ARMS (console.c:150-160): ^U kills
+   the line, ^H and DEL erase one character.  Named (lane OUT-FUPD) because
+   [cons_echo]'s erase disjunct is now GUARDED BY IT: without the guard the
+   contract would allow a run of erase triples for ANY byte, and an
+   application that claims a transcript could not refute an arm the code
+   never takes.  The guard is a fact the walk already has -- it is the
+   [switch]'s own case split. *)
+Definition cons_erase (c : bv 8) : bool :=
+  eq_vec (c : mword 8) (mword_of_int 21 : mword 8)
+  || eq_vec (c : mword 8) (mword_of_int 8 : mword 8)
+  || eq_vec (c : mword 8) (mword_of_int 127 : mword 8).
+
+(* [cons_echo c cs]: the SHAPE of what one consoleintr call echoes, per arm
+   (console.c:150-183).  Nothing -- the byte is NUL, the ring is full and
+   the byte is dropped, or ^H/^U found nothing to erase.  One byte,
+   [echo_of c] -- the default arm with room, which is also the arm that
+   FILES the byte.  Or a run of erase triples -- ^H and DEL erase at most
+   one character, ^U erases back to the write mark and the count is the
+   ring's content, which this contract cannot name -- AND ONLY FOR AN ERASE
+   BYTE. *)
+Definition cons_echo (c : bv 8) (cs : list (bv 8)) : Prop :=
+  cs = [] \/ cs = [echo_of c]
+  \/ (cons_erase c = true /\ exists n : nat, cs = mjoin (replicate n consputc_bs)).
+
+Section EchoShift.
+  (* ONLY [riscvGS], and deliberately: this is the obligation the
+     APPLICATION discharges at the boot record ([App.xv6_app]'s
+     [Happ_echo]), and App.v holds no [xv6G]/[bioslotG].  It sits in its own
+     section so the statement can be made where the application record is.
+     The [CurCtx] binder is kept and UNUSED -- nothing in the body is
+     context-relative -- so that [console_caps]'s [CtxMorph] proof keeps
+     seeing a ξ-indexed conjunct and not a constant. *)
+  Context `{!riscvGS Σ}.
+
+  (* THE ECHO'S JUSTIFICATION, FIXED AT BOOT (lane OUT-FUPD, F3).
+     What the application must supply once, at the console environment's
+     mint, so that consoleintr can pay consputc's chain for EVERY byte it
+     ever echoes.
+
+     WHY IT TAKES THE BYTE'S TAG AND ITS HISTORY, and not just the bytes.
+     The echo answers an input byte; whether echoing it keeps the
+     application's output claim true depends on WHICH byte arrived and on
+     what the application knows about the input so far -- and the only
+     handles on that are the byte's own arrival history [h] (with
+     [RiscvPtsto.obs_hist_lb h], the monotone witness that lets the shift
+     place [h] against the claim's own witness) and the application's
+     persistent claim about it, [RiscvPtsto.riscv_rx_tag h].  consoleintr
+     already holds all three, so nothing new is threaded to it.
+
+     WHY IT IS QUANTIFIED OVER THE PAYLOAD [Φ].  The ^U arm calls consputc
+     once per erased glyph and the number is the ring's content, which this
+     contract cannot name; a □-quantified builder pays each call.
+
+     [cons_echo c cs] is the ARM's shape, and it is GUARDED BY THE BYTE (see
+     below): an application that claims a transcript must be able to refute
+     the erase arm from its own discipline, which it can only do if the
+     kernel says the erase arm needs an erase byte. *)
+  Definition cons_echo_shift `{XI : CurCtx} : iProp Σ :=
+    (□ ∀ (h : list mobs) (c : bv 8) (cs : list (bv 8)) (Φ : iProp Σ),
+        ⌜obs_ends_in Uart0 h c⌝ -∗ ⌜cons_echo c cs⌝ -∗
+        riscv_rx_tag h -∗ obs_hist_lb h -∗ Φ -∗ out_chain Uart0 cs Φ)%I.
+
+  Global Instance cons_echo_shift_persistent `{XI : CurCtx} :
+    Persistent (cons_echo_shift (XI := XI)).
+  Proof. rewrite /cons_echo_shift. apply _. Qed.
+
+  (* THE TRIVIAL APPLICATION'S DISCHARGE.  When the machine's output claim
+     is [RiscvPtsto.out_res_triv] every link is free, so the echo justifies
+     itself. *)
+  Lemma cons_echo_shift_triv `{XI : CurCtx} :
+    riscv_out_res = out_res_triv -> ⊢ cons_echo_shift (XI := XI).
+  Proof.
+    intros Hout. iIntros "!>" (h c cs Φ) "_ _ _ _ HΦ".
+    iApply (out_chain_of_licence with "[] HΦ").
+    rewrite /out_licence Hout /out_res_triv.
+    iIntros "!>" (h' acc b) "_". by iModIntro.
+  Qed.
+
+End EchoShift.
+
 Section ConsoleCaps.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ}.
 
@@ -161,7 +256,7 @@ Section ConsoleCaps.
        is_txlock γtx γu ∗
        WpLock.is_lock γc a_cons "cons"%string (cons_res_at cn) ∗
        ⌜cn_uart cn = γu⌝ ∗
-       uart_sent_sub γu [] ∗ uart_inited γu ∗
+       cons_echo_shift ∗ uart_inited γu ∗
        uarts_words)%I.
 
   Global Instance console_caps_persistent `{XI : CurCtx} γu : Persistent (console_caps γu).
@@ -171,33 +266,12 @@ Section ConsoleCaps.
   Global Instance console_caps_morph γu :
     CtxMorph (λ ξ, console_caps (XI := ξ) γu).
   Proof.
-    rewrite /console_caps /UartTxInv.is_txlock /SpecUartPutc.uarts_words.
+    rewrite /console_caps /UartTxInv.is_txlock /SpecUartPutc.uarts_words
+            /cons_echo_shift.
     ctx_morph_solve.
   Qed.
 
 End ConsoleCaps.
-
-(* THE ECHOED BYTES, per arm (console.c:150-183).
-   [SpecConsputc.consputc_bs] is what [consputc(BACKSPACE)] puts on the
-   wire: backspace, space, backspace -- erase one glyph. *)
-
-(* what the default arm echoes for [c]: the byte itself, except that a
-   carriage return is echoed -- and stored -- as a newline
-   ([ConsoleInv.cons_xlate] is the same translation on the ring side) *)
-Definition echo_of (c : bv 8) : bv 8 :=
-  if eq_vec (c : mword 8) (mword_of_int 13 : mword 8)
-  then (mword_of_int 10 : mword 8) else c.
-
-(* [cons_echo c cs]: the SHAPE of what one consoleintr call echoes, per arm
-   (console.c:150-183).  Nothing -- the byte is NUL, the ring is full and
-   the byte is dropped, or ^H/^U found nothing to erase.  One byte,
-   [echo_of c] -- the default arm with room, which is also the arm that
-   FILES the byte.  Or a run of erase triples -- ^H and DEL erase at most
-   one character, ^U erases back to the write mark and the count is the
-   ring's content, which this contract cannot name. *)
-Definition cons_echo (c : bv 8) (cs : list (bv 8)) : Prop :=
-  cs = [] \/ cs = [echo_of c]
-  \/ (exists n : nat, cs = mjoin (replicate n consputc_bs)).
 
 Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
      (γu : uart_names) (γv : disk_names) (m : regfile) (γs : list gname)
@@ -275,10 +349,15 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
          on the arm that FILED the byte, and that arm echoed [echo_of cb]
          and nothing else.  Every other arm leaves the mark where it was
          and the echo claim is then only [cons_echo]'s shape. *)
-      (∃ (hh' : option (list mobs)) (cs : list (bv 8)),
-         uart_rx_hi γu (1/2) hh' ∗ ⌜ohist_le hh' (Some hb)⌝ ∗
-         uart_sent_sub γu cs ∗ ⌜cons_echo cb cs⌝ ∗
-         ⌜hh' = Some hb -> cs = [echo_of cb]⌝) -∗
+      (* THE MARK.  The ECHO'S RECEIPT IS GONE (lane OUT-FUPD): what one
+         call put on the wire is no longer reported here, because the
+         application already justified it -- the bytes were paid for at the
+         store, out of [console_caps]'s [cons_echo_shift], and the
+         consequence lives in the console UART's invariant rather than in a
+         receipt this contract hands back.  [hh' = Some hb] still marks the
+         arm that FILED the byte, which is what the ring's order needs. *)
+      (∃ hh' : option (list mobs),
+         uart_rx_hi γu (1/2) hh' ∗ ⌜ohist_le hh' (Some hb)⌝) -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

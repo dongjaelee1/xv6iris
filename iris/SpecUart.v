@@ -113,9 +113,19 @@ sie_cap_gpr kt m n b p -∗
 pc_is pc -∗ instr pc is_rvc (STORE (imm, Regidx rs2, Regidx rs1, 1)) -∗
 uart_inv i γd -∗
 R -∗
-(* the column travels here too: an FCR write may clear the receive FIFO *)
+(* THE GHOST STEP, AT THE MASK THE OPEN INVARIANT LEAVES (lane OUT-FUPD).
+   It was a bare [==∗]; it is a fancy update at [⊤ ∖ ↑uartN i] because the
+   THR store's ghost step is where the writer's OUTPUT VIEW SHIFT
+   ([WpUart.out_link]) is invoked, and a view shift is a fupd.  The mask is
+   not a choice: the device node runs at ⊤ ([HartSMem.Wobl_dev1] opens
+   (⊤,∅) around it) and the leaf opens exactly this port's invariant there
+   ([ProofUart.v]'s UART WRITE node), so [⊤ ∖ ↑uartN i] is what is
+   available at that point -- everything but this port.  A caller with only
+   a basic update loses nothing ([bupd_fupd]).
+   The column travels here too: an FCR write may clear the receive FIFO,
+   and the output claim rides in it. *)
 (∀ u u', ⌜ uart_write u off storebyte = Some u' ⌝ -∗
-   uart_ghosts γd u -∗ uart_colE i γd u -∗ R ==∗
+   uart_ghosts γd u -∗ uart_colE i γd u -∗ R ={⊤ ∖ ↑uartN i}=∗
    uart_ghosts γd u' ∗ uart_colE i γd u' ∗ S) -∗
 wp_next b p (fun (CID : CpuId) =>
   sie_cap_gpr kt m n b p -∗

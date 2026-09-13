@@ -3262,7 +3262,7 @@ Section SyscallArms.
     pv_tf (us_V U) !! tf_arg_idx 2 = Some v2 ->
     sysc_sys_in U sts gn cs pid f -∗
     filewrite_in (fd_st_of_key v0 sts) (sys_rw_count v2) (us_M U) v1
-      (wf_Q f) (wf_tr0 f).
+      (wf_Q f).
   Proof.
     intros Hn Hv0 Hv1 Hv2. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 16 Hn ltac:(vm_compute; discriminate)
@@ -3505,7 +3505,7 @@ Section SyscallArms.
     pv_tf (us_V U) !! tf_arg_idx 1 = Some v1 ->
     pv_tf (us_V U) !! tf_arg_idx 2 = Some v2 ->
     filewrite_extra (fd_st_of_key v0 sts) (sys_rw_count v2) (us_M U) v1
-      (wf_Q f) (wf_tr0 f) r -∗
+      (wf_Q f) r -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
   Proof.
     intros Hn Hv0 Hv1 Hv2. iIntros "H".
@@ -5606,12 +5606,12 @@ Section SyscallArms.
                  ltac:(rewrite Hnum; reflexivity) Hv0 Hv1 Hv2 with "Hxin")
       as "Hdepw".
     iAssert (sys_write_in (us_V U) v0 sts (sys_rw_count v2) (us_M U) v1
-               (wf_Q fdep) (wf_tr0 fdep)) with "[Hdepw]" as "Hswin".
+               (wf_Q fdep)) with "[Hdepw]" as "Hswin".
     { rewrite /sys_write_in Hfdk. iExact "Hdepw". }
     iApply (SysWrite.wp_sys_write_sconf γf γs j γl
               (sysc_fwrite_names γtxl γs j γl fn)
               pid U sts v0 v1 v2 M (av - 4)%nat true true ∅
-              (wf_Q fdep) (wf_tr0 fdep)
+              (wf_Q fdep)
               ltac:(lia) Hj Hgamma Hlen eq_refl eq_refl Hv0
               Hv1 Hv2 eq_refl eq_refl eq_refl
               with "Hcg Hcpu Htext Hdata Hpc Hpanic Hpriv Hufrag Hkalloc Hprocs
@@ -7626,7 +7626,7 @@ Section SyscallArms.
 
      The WEAK general corollary [wp_printk_gen_sconf] is what is called (the
      one procdump's own loop uses): syscall makes no claim about what reached
-     the UART, so the trace-carrying contract's [uart_sent_sub] postcondition
+     the UART, so the trace-carrying contract's accepted-trace postcondition
      would be pure overhead.  [printk_env] comes out of [syscall_env], the
      "pr" rank premise out of [cpu_own 0], and the 48-slot budget out of
      [K_syscall]'s own 82. *)

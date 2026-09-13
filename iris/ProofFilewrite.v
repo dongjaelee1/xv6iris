@@ -20,13 +20,12 @@
      ([SpecConsolewrite.CONSOLEWRITE]) at EVERY major, and that is
      why one walk serves both: [filewrite_dev_env] says the cell is "null or
      consolewrite" everywhere, so the arm must be able to call consolewrite
-     where the descriptor's major is not the console's -- and the located
-     contract is the general form for that, its seed premise being free
-     ([UartSentLoc.uart_sent_nil]) where the caller supplied none.  At the
-     console the seed is the caller's own [tr0], out of the keyed input, and
-     the pin that comes with it is what refutes the null-slot -1; off the
-     console the receipt is dropped.  The functor takes [CONSOLEWRITE]
-     and there is no consumer of [CONSOLEWRITE] left.
+     where the descriptor's major is not the console's.  Since lane
+     OUT-FUPD the callee's premise is the caller's JUSTIFICATION CHAIN and
+     no longer a free trace seed, so [SpecFilewrite.filewrite_in]'s device
+     arm asks for it at EVERY major -- one walk, one premise.  What is the
+     console's alone is the devsw PIN, which refutes the null-slot -1; off
+     the console the caller's cursor is dropped.
 
    ==== WHAT THE APPLICATION'S STEP COSTS ===============================
 
@@ -418,7 +417,7 @@ Require Import WriteiBudget.
 Require Import SpecPipewrite.
 Require Import DevModel.      (* [Uart0]: the console's port                    *)
 Require Import SpecUartPutc.  (* [uart_base_word]: the third console credential *)
-Require Import SpecConsolewrite. (* [consolewrite_stack], [cons_sent_cnt] *)
+Require Import SpecConsolewrite. (* [consolewrite_stack], [cons_out_chain] *)
 Require Import ConsoleInv.  (* [NDEV_max], [a_devsw_write] *)
 Require Import SysWriteDefs.  (* [FW_MAX], [wchunks], [wri_pre] *)
 Require Import SpecFilewrite.
@@ -1019,7 +1018,6 @@ Require Import FsBytesGamma.       (* [fs_gamma_L]: the live Γ             *)
 Require Import FsAbsOpenFire.      (* [opf_era_file_row]                   *)
 Require Import FsAbsWriteFire.     (* the fire, the splice bridge, item 4  *)
 Require Import SpecCopyin.         (* [ubytes_at], [add_vec_moi_comm]      *)
-Require Import UartSentLoc.        (* [uart_sent_nil]: the free seed       *)
 Require Import ProofFilewriteChain. (* [fw_au_raw] and its five moves      *)
 Require Import FsAbsDelta.         (* [blk_splice_nil], [delta_write]      *)
 Require Import FsAbsDefs.              (* LAST (FsAbs's own rule)              *)
@@ -3657,8 +3655,8 @@ Section ProofFilewrite.
       (k : nat) (q : Qp) (st : fdstate) (fn : fwrite_names)
       (pidv : mword 32) (U : ustate)
       (m : regfile) (K : nat) (eb : bool) (n : Z) (b : bool)
-      (lks : gset string) (Q : nat -> iProp Σ) (tr0 : list (bv 8))
-    : wp_filewrite_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks Q tr0.
+      (lks : gset string) (Q : nat -> iProp Σ)
+    : wp_filewrite_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks Q.
   Proof.
     cbv beta delta [wp_filewrite_sconf_body].
     intros pcE pj ret_tgt uaddr HK Hk Hj Hgs Hlens Hfnj Hfnps Hconw
@@ -3789,7 +3787,7 @@ Section ProofFilewrite.
         rewrite /filewrite_arms.
         iSplitR; [iPureIntro; apply filewrite_ret_m1 |].
         iApply (filewrite_extra_unwritable inumx γox Cf st n (us_M U) uaddr
-                  Q tr0 (mword_of_int (-1)) Hok Hwrz). }
+                  Q (mword_of_int (-1)) Hok Hwrz). }
     - (* ===============================================================
          WRITABLE.  [fw_wbool_of_fall] turns the FALL into the boolean
          [filewrite_fs_env]'s last pure field is conditioned on -- the
@@ -4010,7 +4008,7 @@ Section ProofFilewrite.
              same cursor; the console arm's NEG disjunct is pure. *)
           rewrite /filewrite_arms.
           iSplitR; [iPureIntro; apply filewrite_ret_m1 |].
-          iApply (filewrite_extra_neg st n (us_M U) uaddr Q tr0 Hneg
+          iApply (filewrite_extra_neg st n (us_M U) uaddr Q Hneg
                     with "Hfin"). } }
       (* ---- 0 <= n : [Hn0] is now a fact of the code, not a premise ---- *)
       assert (Hn0 : (0 <= n)%Z) by lia.
@@ -4303,13 +4301,12 @@ Section ProofFilewrite.
 
              THE CELL IS "NULL OR CONSOLEWRITE" AT EVERY MAJOR
              ([filewrite_dev_env]), so the walk must be able to CALL
-             consolewrite at a major that is not the console's -- and the
-             LOCATED contract is the general form for that, its seed being
-             free where the caller supplied none
-             ([UartSentLoc.uart_sent_nil]).  That is what lets one walk
-             serve both.  At the console the seed is the caller's own [tr0],
-             out of the keyed input -- persistent, so the pin rides with it
-             to the null-slot exit, where it is what refutes the -1. *)
+             consolewrite at a major that is not the console's -- which is
+             exactly why the keyed input's device arm asks for the
+             JUSTIFICATION CHAIN at every major (lane OUT-FUPD): the seed
+             used to be free (the mono-list unit) and the chain is not, so
+             one walk serves both majors only if the caller pays at both.  The devsw PIN, which refutes the null slot, is still
+             the console's alone. *)
           destruct (fdstate_ok_device inumx γox Cf st Hok Htyd)
             as (rd & wd & Hstd).
           assert (Hwd : wd = true).
@@ -4319,29 +4316,15 @@ Section ProofFilewrite.
             destruct wd; [reflexivity |]. exfalso.
             rewrite /fc_wbool Hwrc in Hwb. by vm_compute in Hwb. }
           subst wd.
-          iApply fupd_wp.
-          iMod (uart_sent_nil (fsc_uart)) as "#Hnil".
-          iAssert (∃ trs : list (bv 8),
-                     ⌜bv_unsigned (fc_major Cf) = ConsoleInv.CONSOLE ->
-                        trs = tr0⌝ ∗
-                     ⌜bv_unsigned (fc_major Cf) = ConsoleInv.CONSOLE ->
-                        fwn_wp fn (bv_unsigned (fc_major Cf))
-                          = (mword_of_int KernelSyms.consolewrite : mword 64)⌝ ∗
-                     uart_sent (fsc_uart) trs)%I with "[Hfin]" as "#Hsd".
-          { destruct (decide (bv_unsigned (fc_major Cf) = ConsoleInv.CONSOLE))
-              as [Hc | Hnc].
-            - iDestruct (filewrite_in_cons rd (bv_unsigned (fc_major Cf)) n
-                           (us_M U) uaddr Q tr0 Hc with "[Hfin]") as "Hs";
-                [rewrite Hstd; iExact "Hfin" |].
-              iExists tr0. iSplitR; [done |].
-              (* the pin is the CONTRACT'S OWN premise now, read at the
-                 major this arm is on *)
-              iSplitR; [iPureIntro; intros _; rewrite Hc; exact Hconw |].
-              iExact "Hs".
-            - iExists []. iSplitR; [iPureIntro; intros Hc; by exfalso |].
-              iSplitR; [iPureIntro; intros Hc; by exfalso |]. iExact "Hnil". }
-          iModIntro.
-          iDestruct "Hsd" as (trs) "(%Htrs & %Hpin & #Hseed)".
+          iDestruct (filewrite_in_cons rd (bv_unsigned (fc_major Cf)) n
+                       (us_M U) uaddr Q with "[Hfin]") as "Hseed";
+            [rewrite Hstd; iExact "Hfin" |].
+          (* the pin is the CONTRACT'S OWN premise, read at the major this
+             arm is on *)
+          assert (Hpin : bv_unsigned (fc_major Cf) = ConsoleInv.CONSOLE ->
+                    fwn_wp fn (bv_unsigned (fc_major Cf))
+                      = (mword_of_int KernelSyms.consolewrite : mword 64)).
+          { intros Hc. rewrite Hc. exact Hconw. }
           pose proof (fw_major_range (fc_major Cf : mword 16)) as Hmjr.
           assert (Htgt5c : add_vec (mword_of_int (FW + 0x2e) : mword 64)
                     (sign_extend' 64 (mword_of_int 54 : mword 13))
@@ -4581,7 +4564,7 @@ Section ProofFilewrite.
                     by vm_compute in Hwp0.
                   - iApply (filewrite_extra_dev_other rd true
                               (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q
-                              tr0 (mword_of_int (-1)) Hnc). }
+                              (mword_of_int (-1)) Hnc). }
              ** (* ---- consolewrite: the INDIRECT CALL at +0x7e ---- *)
                 iApply (wp_cbeqz_fall_s_sconf (mword_of_int (FW + 0x82))
                           (mword_of_int 80 : mword 8) (Cregidx (mword_of_int 7)) Ra5
@@ -4679,18 +4662,18 @@ Section ProofFilewrite.
                              with "Hcnt") as "Hcnt".
                 iApply (Consolewrite.wp_consolewrite_sconf fsc_kalloc γf γs j γlp
                           (fsc_uart) (fsc_disk) (fwn_txlock fn)
-                          E2 (K - 12)%nat eb pidv U n b lks trs
+                          E2 (K - 12)%nat eb pidv U n b lks Q
                           Hj Hgs Hlens HE2a0 HE2a2 (fw_n_range n Hn01)
                           (fw_av_cons K HK) Heb
                           with "Hcg Hcnt Htext Hpc Hpriv Hkenv Hdevinv Hupin Htxlk
-                                Hprocs Hseed").
+                                Hprocs [Hseed]").
                 all: try lkbelow.
+                { rewrite /uaddr -HE2a1. iExact "Hseed". }
                 (* consolewrite copies FROM user memory, so its post hands
-                   the block back at a fresh image [Mcw] -- and, since the
-                   contract is the LOCATED one, the accepted-trace receipt
-                   at the seed. *)
+                   the block back at a fresh image -- and the CALLER'S OWN
+                   CURSOR at the count it pushed (lane OUT-FUPD). *)
                 iIntros (CIDcw Hscw mf r P')
-                  "%Hcscw %Hupt %Hrr %Hra0 Hcg Hcnt Hpc Hpriv #Hrcpt".
+                  "%Hcscw %Hupt %Hrr %Hra0 Hcg Hcnt Hpc Hpriv Hrcpt".
                 assert (Hpc80 : ret_pc (E2 !!! Regidx Rra) = mword_of_int (FW + 0x88)).
                 { rewrite HE2ra. apply bv_eq; vm_compute; reflexivity. }
                 iEval (rewrite Hpc80) in "Hpc".
@@ -4734,7 +4717,7 @@ Section ProofFilewrite.
                 iApply ("Hcont" $! mfin (mword_of_int r) P'
                           with "[%] [%] [%] Hcg Hcnt [Hpc]
                                 [Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv]
-                                Hpriv [Hslot] []").
+                                Hpriv [Hslot] [Hrcpt]").
                 { exact Hcsf. }
                 { exact Hupt. }
                 { exact Hrv. }
@@ -4745,9 +4728,9 @@ Section ProofFilewrite.
                   iApply (fw_dev_in_back fn Cf Hin with "[%] Hslot Hdevinv Htxlk Hupin").
                   by right. }
                 { (* THE COUNT-TO-ARMS BRIDGE.  The FD_DEVICE arm relays [r]
-                     untouched, so the located receipt IS the console arm's
-                     post at that [r]; at any other major nothing is armed
-                     and the receipt is simply dropped. *)
+                     untouched, so the caller's cursor at [r] IS the console
+                     arm's post; at any other major nothing is armed and the
+                     cursor is simply dropped. *)
                   rewrite /filewrite_arms.
                   iSplitR.
                   { iPureIntro. apply (fw_ret_of_dev n r (mword_of_int r) Hn0);
@@ -4759,13 +4742,11 @@ Section ProofFilewrite.
                     assert (Hrn : (0 <= r <= n)%Z) by (rewrite Hmaxn in Hrr; lia).
                     rewrite Hc.
                     iApply (filewrite_extra_cons rd ConsoleInv.CONSOLE n (us_M U)
-                              uaddr Q tr0 (mword_of_int r) eq_refl).
-                    rewrite /uaddr -HE2a1 -(Htrs Hc).
-                    iApply (write_cons_arms_of_cnt (fsc_uart) trs (us_M U)
-                              (E2 !!! Regidx Ra1 : mword 64) n r Hn0 Hrn
-                              with "Hrcpt").
-                  - iApply (filewrite_extra_dev_other rd true
-                              (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q tr0
+                              uaddr Q (mword_of_int r) eq_refl).
+                    iApply (write_cons_arms_of_cursor Q n r Hn0 Hrn with "Hrcpt").
+                  - iClear "Hrcpt".
+                    iApply (filewrite_extra_dev_other rd true
+                              (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q
                               (mword_of_int r) Hnc). }
           ++ (* ---------- OUT OF RANGE: the [bltu] is taken to +0x126 ------- *)
              assert (Hmjgt : (9 < bv_unsigned (fc_major Cf))%Z)
@@ -4836,7 +4817,7 @@ Section ProofFilewrite.
                iSplitR; [iPureIntro; apply filewrite_ret_m1 |].
                rewrite Hstd.
                iApply (filewrite_extra_dev_other rd true
-                         (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q tr0
+                         (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q
                          (mword_of_int (-1)) Hnconr). }
         * (* ---- +0x2a c.li a4,2 ; +0x2c bne a5,a4 -> +0x10a (panic) ---- *)
           iApply (wp_beq_fall_s_sconf (mword_of_int (FW + 0x2e))
@@ -5464,7 +5445,7 @@ Section ProofFilewrite.
                  { (* the chain, at the loop's entry state *)
                    iApply fw_au_raw_init.
                    iApply (filewrite_in_inode rx (bv_unsigned inumx) γox n
-                             (us_M U) uaddr Q tr0 with "[Hfin]").
+                             (us_M U) uaddr Q with "[Hfin]").
                    rewrite Hstx. iExact "Hfin". }
                  iIntros (CIDx Hsx mf rv P')
                    "%Hcs %Hup %Hra Hcg Hcnt Hpc Href Hpriv Henvo Harms".

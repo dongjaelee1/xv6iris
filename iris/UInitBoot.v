@@ -55,6 +55,7 @@ From iris.proofmode Require Import proofmode.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvLang RiscvPtsto.
+Require Import WpUart.            (* [out_licence]: the generic slot's output licence *)
 (* THE GHOST BINDER LIST'S DEFINING MODULES, each IMPORTED and not merely
    required ([PinnedExec.v]'s note: a field instance is inert wherever its
    module is not imported). *)
@@ -519,15 +520,31 @@ Section EchoInitBoot.
        equation over exactly as it hands the rx-tag one, and the taint arm's
        generic mint spends it there. *)
     riscv_kill_cred = echo_taint γ ->
+    (* ...AND THE OUTPUT CLAIM'S (lane OUT-FUPD).  Same mould, same reason:
+       the generic slot the taint arm buys now carries an OUTPUT LICENCE
+       ([WpUart.out_licence]) beside the supply and the kill credential,
+       because an unverified program may [write(2)] on the console.  At
+       [AppEcho.echo_out]'s E5 PLACEHOLDER the claim is [emp], so the
+       licence is free -- E5 replaces the placeholder and this line is
+       where its price will be paid. *)
+    @riscv_out_res Σ (@riscv_fixedGS Σ HR) = echo_out γ ->
     ⊢ app_inv fsc_fs -∗ echo_boot γ r -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Hsh_deps Hsh_state Hsh_rest Heq Htag Hkill.
+    intros Hsh_deps Hsh_state Hsh_rest Heq Htag Hkill Hout.
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)
     assert (Hktaint : ⊢ □ riscv_kill_cred -∗ echo_taint γ).
     { rewrite Hkill. iIntros "#H". iExact "H". }
+    (* ...AND THE OUTPUT LICENCE IS FREE at [AppEcho.echo_out]'s E5
+       placeholder (lane OUT-FUPD): the claim is [emp] there, so the
+       generic slot's console write costs nothing yet. *)
+    assert (Hot : @riscv_out_res Σ (@riscv_fixedGS Σ HR) = out_res_triv)
+      by (rewrite Hout; cbn [echo_out]; reflexivity).
+    iAssert (out_licence) as "#Hlic".
+    { rewrite /out_licence Hot /out_res_triv.
+      iIntros "!>" (h acc b) "_". by iModIntro. }
     iIntros "#Hinv Hb". iModIntro.
     (* ---- the taint's supply, and the generic slot it buys ---- *)
     iAssert (□ (echo_taint γ -∗ app_sup))%I as "#Hsup".
@@ -543,7 +560,7 @@ Section EchoInitBoot.
          generic slot's supply is the pair (§1c) *)
       iAssert (□ riscv_kill_cred)%I as "#Hkc";
         [ rewrite Hkill; iModIntro; iExact "Ht" | ].
-      iApply (uslot_mint_all with "Hs Hkc Hwp Hp HR"). }
+      iApply (uslot_mint_all with "Hs Hkc Hlic Hwp Hp HR"). }
     (* ---- the pins law, and /init's own row out of it ---- *)
     iAssert (□ (∀ v : aview, AppCfg.app_pred AppCfg.app_run v -∗
                   AppCfg.app_pred AppCfg.app_run v ∗ (⌜echo_fs_pure v⌝ ∨ echo_taint γ)))%I

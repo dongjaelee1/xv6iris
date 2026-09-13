@@ -1606,22 +1606,17 @@ ProofSysOpenFull.v
 LinkSysOpen.v
 FsAbsWriteFire.v
 # fs-syscall-specs, THE CONSOLE-WRITE LANE: init.c's printf path, and the
-# campaign's last device-side gap on init.  The observable is ACCEPTANCE --
-# the bytes reached the UART transmitter, in order, after a seed the caller
-# holds (UartSentLoc.v's header says why not the wire) -- and it is
-# carried by a LOCATED receipt, which is what makes per-write() receipts
-# concatenate into one for a whole printf.
-#   UartSentLoc is that receipt at the transmitter invariant, where its
-# PRODUCERS live; the *Loc trio is uartwrite's walk with the receipt
-# threaded through, and SpecConsolewrite / ProofConsolewrite /
-# LinkConsolewrite are consolewrite's ONE contract, which takes the seed and
-# returns cons_sent_cnt.  ProofFilewrite's device arm calls it at every
-# major and LinkFilewrite closes the chain, so init.c's printf path is
+# campaign's last device-side gap on init.  Since lane OUT-FUPD the
+# observable is not a RECEIPT the callee hands back but a JUSTIFICATION the
+# caller brings: consolewrite takes SpecConsolewrite.cons_out_chain, one
+# view-shift node per byte over the caller's own cursor family, and returns
+# that cursor at the count it pushed.  Hence the LOCATED trio
+# (UartSentLoc.v, SpecUartwriteLoc.v, ProofUartwriteLoc.v,
+# LinkUartwriteLoc.v) is gone: there is one uartwrite contract again, and
+# the chain flattens onto it.  ProofFilewrite's device arm calls
+# consolewrite at every major -- and therefore asks for the chain at every
+# major -- and LinkFilewrite closes the chain, so init.c's printf path is
 # proved end to end over the standing assumptions and nothing else.
-UartSentLoc.v
-SpecUartwriteLoc.v
-ProofUartwriteLoc.v
-LinkUartwriteLoc.v
 SpecConsolewrite.v
 ProofConsolewrite.v
 LinkConsolewrite.v
@@ -1753,13 +1748,11 @@ LinkKexec.v
 #   UartAccepted is the pure leaf beside ObsTrace: the device invariant
 # [u_wire <= u_out] as a step invariant of the language, and the TIE it
 # gives -- every ObsUartOut byte of the current power cycle is a byte the
-# kernel ACCEPTED, in order ([run_out_accepted]), plus the locating step a
-# located receipt needs.  UartSentResidue is the Iris-to-pure step:
-# [UartSentLoc.uart_sent_from] agreed against [WpUart.uart_sent_auth] IS
-# the pure residue those theorems take.  SystemUartAccepted states the
-# whole thing beside adequacy's own conclusion at the real image.
+# kernel ACCEPTED, in order ([run_out_accepted]).  UartSentResidue, the
+# Iris-to-pure step for the LOCATED receipt, went with the receipt (lane
+# OUT-FUPD).  SystemUartAccepted states the whole thing beside adequacy's
+# own conclusion at the real image.
 UartAccepted.v
-UartSentResidue.v
 SystemUartAccepted.v
 # APPLICATIONS (claude-notes/design/applications.md): the record and the
 # whole-system theorem at one ([App.xv6_app_adequacy]).

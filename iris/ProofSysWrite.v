@@ -333,9 +333,9 @@ Section ProofSysWrite.
       (fn : fwrite_names) (pidv : mword 32) (U : ustate) (sts : list fdstate)
       (v v1 v2 : mword 64)
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
-      (Q : nat -> iProp Σ) (tr0 : list (bv 8))
+      (Q : nat -> iProp Σ)
     : wp_sys_write_sconf_body γf γs j γlp fn pidv U sts v v1 v2 m av eb b lks
-        Q tr0.
+        Q.
   Proof.
     cbv beta delta [wp_sys_write_sconf_body].
     intros pcE pj ret_tgt Hav Hj Hgs Hlens Hfj Hfprocs
@@ -834,7 +834,7 @@ Section ProofSysWrite.
       { (* ARGFD ANSWERED NONE: the key is [FdClosed], so nothing is armed
            and the post is the landed blanket's first disjunct. *)
         iApply (sys_write_arms_none (us_V U) v sts (sys_rw_count v2) (us_M U)
-                  v1 Q tr0 _ Hnone eq_refl). }
+                  v1 Q _ Hnone eq_refl). }
     - (* ================= SUCCESS: the descriptor resolved ============= *)
       iDestruct "Hsucc" as (fd fv) "([%Hr %Hsome] & _ & Hfcell)".
       pose proof (arg_fd_lookup v (pv_ofile (us_V U)) fd fv Hsome)
@@ -977,7 +977,7 @@ Section ProofSysWrite.
       iDestruct (cpu_own_transport CID17 CID24 0%nat eb pj b 
                    ltac:(rewrite Hb; wp_next_chain) with "Hcpu") as "Hcpu".
       iApply (Filewrite.wp_filewrite_sconf γf γs j γlp kk qq stf fn pidv U
-                S4 (av - 6)%nat eb (sys_rw_count v2) b lks Q tr0
+                S4 (av - 6)%nat eb (sys_rw_count v2) b lks Q
                 ltac:(lia) Hkk Hj Hgs Hlens
                 Hfj Hfprocs Hconw HS4a0' HS4a2 Hnrange Heb
                 with "Hcg Hcpu Htext Hdata Hpc Hpenv Href Hcore Hkenv Hprocs Hfenv Hrow [Hswin]").
@@ -986,7 +986,7 @@ Section ProofSysWrite.
            this contract's arms are stated on IS the row the loan named. *)
         rewrite HS4a1.
         iApply (sys_write_in_of (us_V U) v sts fd fv stf (sys_rw_count v2)
-                  (us_M U) v1 Q tr0 Hsome Hstq with "Hswin"). }
+                  (us_M U) v1 Q Hsome Hstq with "Hswin"). }
       iIntros (CID25 Hs25 mf rv P')
         "%Hcsf %Hupt %Hrva Hcg Hcpu Hpc Href Hcore Hfout Harms".
       iDestruct ("Hfback" with "Hfout") as "[Henv _]".
@@ -1045,7 +1045,7 @@ Section ProofSysWrite.
            relays filewrite's return value untouched. *)
         rewrite -HS4a1.
         iApply (sys_write_arms_of (us_V U) v sts fd fv stf (sys_rw_count v2)
-                  (us_M U) (S4 !!! Regidx Ra1) Q tr0 rv Hsome Hstq
+                  (us_M U) (S4 !!! Regidx Ra1) Q rv Hsome Hstq
                   with "Harms"). }
   Qed.
 

@@ -90,7 +90,9 @@ Require Import FsAbsWriteFire.     (* [awrite_full_at], [awrite_chain] *)
 Require Import AppInv.             (* [appN]/[appE], [app_sup], [app_step_acc]: the supply and the step it pays *)
 Require Import FsAbsDefs.          (* [abs_view_lookup_is_Some] *)
 Require Import FsCfg.              (* [fscfg]: the fs configuration is AMBIENT *)
-Require Import UartSentLoc.        (* [uart_sent_nil]: the free trace seed *)
+Require Import SpecConsolewrite.   (* [cons_out_chain_of_licence]: the
+                                      generic write's console arm, paid out
+                                      of the supply's OUTPUT LICENCE *)
 Require Import SpecFilewrite.      (* [filewrite_in]: the one keyed input *)
 Require Import SpecFileread.       (* [fileread_in]: read's keyed input *)
 Require Import SpecSysRead.        (* in the require block; the dischargers
@@ -309,11 +311,12 @@ Section FsAbsInvFire.
   (* WRITE'S WHOLE INPUT, at the trivial cursor and the free seed, and at a
      BARE descriptor state for [fsabs_fileread_in]'s reason.
 
-     THE CONSOLE ARM IS FREE: the devsw pin left the input for
+     THE CONSOLE ARM IS NOT FREE ANY MORE (lane OUT-FUPD; see the note on
+     [fsabs_filewrite_in] below): the devsw pin left the input for
      FILEWRITE/SYSWRITE's Coq premise list (a dispatcher discharges it by
-     [reflexivity] off [fwn_wp fn = devsw_write_val]), so what is left is
-     the trace seed, and that is the unit of the mono-list algebra
-     ([UartSentLoc.uart_sent_nil]).  THE INODE ARM needs no offset resource
+     [reflexivity] off [fwn_wp fn = devsw_write_val]), and what is left is
+     the OUTPUT CHAIN, paid out of the supply's licence.  THE INODE ARM
+     needs no offset resource
      any more: the chain's nodes take the shadow back unmoved.  So this
      input is payable at EVERY key out of the application step alone --
      which is what the ARM asks of it.
@@ -322,11 +325,20 @@ Section FsAbsInvFire.
      ([UexecSG.v]'s header -- the trace seed is the mono-list algebra's unit
      and belongs to the LAW's modality, not to a supplier), and the console
      arm's seed is the only thing here that needs one at all. *)
+  (* ...AND THE CONSOLE ARM IS NO LONGER FREE (lane OUT-FUPD).  It used to
+     be the trace seed [WpUart.uart_sent γu []], the mono-list unit,
+     mintable by anyone.  Under the resource claim the point of the whole
+     lane is that the kernel can say WHO may write, so an arbitrary
+     process's [write(2)] on the console is paid out of the OUTPUT LICENCE
+     its supply carries ([WpUart.out_licence], the last conjunct of
+     [UexecExecInst.xv6_ssupply]) -- and the application sets that
+     licence's price ([App.xv6_app]'s [Happ_out_sup]).  The licence is
+     therefore a PREMISE here, exactly as [app_sup] is. *)
   Lemma fsabs_filewrite_in (st : fdstate) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) :
-    app_sup -∗ |==> filewrite_in st n M ua (fun _ => True%I) [].
+    app_sup -∗ out_licence -∗ |==> filewrite_in st n M ua (fun _ => True%I).
   Proof.
-    iIntros "#Hsup".
+    iIntros "#Hsup #Hlic".
     rewrite /filewrite_in.
     destruct st as [| rb wb ty]; [by iModIntro |].
     destruct wb; [| by iModIntro].
@@ -335,8 +347,7 @@ Section FsAbsInvFire.
       iApply (fsabs_awrite_chain fsc_fs i γo M ua 0%nat (wchunks n)
                 with "Hsup").
     - by iModIntro.
-    - case_decide as Hc; [| by iModIntro].
-      iMod (uart_sent_nil fsc_uart) as "#Hseed". iModIntro. iExact "Hseed".
+    - iModIntro. iApply (cons_out_chain_of_licence with "Hlic").
   Qed.
 
 

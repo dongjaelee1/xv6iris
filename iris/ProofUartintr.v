@@ -722,7 +722,9 @@ Section ProofUartintr.
                        ltac:(wp_next_chain) with "Hcont") as "Hcont".
           iApply ("IH" $! CIDw N1 with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi] Hcont").
           5: { iExists (S k), (Some h). rewrite /uart_rx_writer. iFrame "Htok".
-               iDestruct "Hhi" as (hh' cse) "(Hhi & %Hle' & _ & _ & _)".
+               (* consoleintr's post no longer reports the echo (lane
+                  OUT-FUPD retires the receipt): only the mark. *)
+               iDestruct "Hhi" as (hh') "[Hhi %Hle']".
                iExists hh'. iFrame "Hhi". by iPureIntro. }
           * destruct HMfregs as (A2 & A18 & A19 & A20 & A21 & A22 & A23 & A24 & A25 & A26 & A27).
             unfold ui_regs. split_and!;

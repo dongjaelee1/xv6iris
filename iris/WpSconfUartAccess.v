@@ -219,6 +219,7 @@ Section WpSconfUartAccess.
       iDestruct (uart_colE_stable i γd u u' Hrxe Hlbe
                 ltac:(exact (uart_read_wire _ _ _ _ Hread))
                 ltac:(exact (proj1 (proj2 (uart_read_stable _ _ _ _ Hread))))
+                ltac:(exact (proj1 (uart_read_stable _ _ _ _ Hread)))
                 with "Hcol") as "Hcol".
       rewrite uart_read_lsr in Hread. injection Hread as <- <-.
       iDestruct "Hg" as "(Hs & Hout & Htx & Hdl)".
@@ -325,6 +326,7 @@ Section WpSconfUartAccess.
       iApply (uart_colE_stable i γd u u' Hrxe Hlbe
                 ltac:(exact (uart_read_wire _ _ _ _ Hread))
                 ltac:(exact (proj1 (proj2 (uart_read_stable _ _ _ _ Hread))))
+                ltac:(exact (proj1 (uart_read_stable _ _ _ _ Hread)))
                 with "Hcol").
     - iEval (rewrite /wp_next). iIntros (CID1 Hs1 bt) "Hcg Hpc _".
       iSpecialize ("Hcont" $! CID1 with "[]"); [iPureIntro; exact Hs1|].
@@ -335,9 +337,30 @@ Section WpSconfUartAccess.
      out-bound the poll handed back, and the frozen DLAB fact;
      [uart_tx_ready_persists] turns them into [uart_write_thr_acc]'s two
      premises at the write's own state, so the byte provably lands in the FIFO.
-     Postcondition: the grown token plus a permanent [uart_sent] record. *)
+     Postcondition: the grown token plus a permanent [uart_sent] record.
+
+     ...AND THE ONE THING THAT MAKES THIS THE OUTPUT SIDE'S KEYSTONE (lane
+     OUT-FUPD, F2).  This is the ONLY transition in the machine that grows
+     the accepted sequence ([DevModel.uart_write_thr_acc]), so it is where
+     the console UART's invariant clause -- the application's pure claim
+     about the bytes accepted so far ([WpUart.uart_out_claim]) -- has to be
+     re-established, and it is re-established from a VIEW SHIFT THE CALLER
+     SUPPLIES: [WpUart.out_link i sb Φ].  "All UART output needs a fupd to
+     justify outputting."
+
+     ONE CONTRACT AT BOTH PORTS, instantiated at a trivial shift for the
+     kernel's.  At [Uart0] the link is a real obligation; at [Uart1]
+     [WpUart.out_ok_at] is [True] and [WpUart.out_link_triv] builds the link
+     out of the payload, so printk's path takes the same lemma and owes
+     nothing.  The payload [Φ] comes back in the post, in place of the
+     retired sublist receipt.
+
+     THE MASK IS FORCED: the link runs in the leaf's ghost step, which the
+     store's device node runs with THIS PORT's invariant open, hence at
+     [⊤ ∖ ↑uartN i] -- see [WpUart.out_link]'s paragraph and
+     [SpecUart.wp_sb_uart_uinv_s_sconf_at_body]'s. *)
   Lemma wp_uart_thr_write_s_sconf_at (i : uart_id) (γd : uart_names) (pc : mword 64) (rs2 rs1 : mword 5) `{!SrcOk rs1} `{!SrcOk rs2}
-      (m : regfile) (n : nat) (l : list (bv 8)) (b : bool) :
+      (m : regfile) (n : nat) (l : list (bv 8)) (Φ : iProp Σ) (b : bool) :
     (* the stored byte reads [rs2] at the hart we ENTER on, so it must be
        bound OUTSIDE the [wp_next] lambda (which rebinds [CID], and would
        silently re-read [rs2] -- i.e. [tp] -- at the RESUMING hart). *)
@@ -346,16 +369,19 @@ Section WpSconfUartAccess.
     sie_cap_gpr kt m n b p -∗
     pc_is pc -∗ instr pc false (STORE (mword_of_int 0 : mword 12, Regidx rs2, Regidx rs1, 1)) -∗
     uart_inv i γd -∗ uart_tx_own γd l -∗ uart_out_lb γd l -∗ uart_dlab_off γd -∗
+    (* THE WRITER'S JUSTIFICATION FOR THIS BYTE (lane OUT-FUPD) *)
+    out_link i sb Φ -∗
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
       uart_tx_own γd (l ++ [sb]) -∗
       uart_sent γd (l ++ [sb]) -∗
+      Φ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros sb.
-    iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Hown #Hlb #Hoff Hcont".
+    iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Hown #Hlb #Hoff HΨ Hcont".
     (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
        section. *)
@@ -365,21 +391,18 @@ Section WpSconfUartAccess.
       by (intros hh; exact (src_ok_rget_indep m rs2 hh CID)).
     destruct (uart_geom_ok i 0 ltac:(unfold uart_size; lia)) as (Hg1 & Hg2 & Hg3).
     iApply (Uart.wp_sb_uart_uinv_s_sconf_at kt (CID:=CID) i γd 0 pc false rs2 rs1 (mword_of_int 0 : mword 12)
-              m n (uart_tx_own γd l)
-              (uart_tx_own γd (l ++ [sb]) ∗ uart_sent γd (l ++ [sb]))%I b p
+              m n (uart_tx_own γd l ∗ out_link i sb Φ)%I
+              (uart_tx_own γd (l ++ [sb]) ∗ uart_sent γd (l ++ [sb]) ∗ Φ)%I b p
               ltac:(unfold uart_size; lia)
               ltac:(rewrite Haddr; rewrite addv_imm0; exact Hg1)
               ltac:(rewrite Haddr; rewrite addv_imm0; exact Hg2)
               ltac:(rewrite Haddr; rewrite addv_imm0; exact Hg3)
-              with "Hcg Hpc Hinstr Hdinv Hown [] [Hcont]").
-    - iIntros (u u') "%Hwrite Hg Hcol Hown".
+              with "Hcg Hpc Hinstr Hdinv [Hown HΨ] [] [Hcont]").
+    - iFrame "Hown HΨ".
+    - iIntros (u u') "%Hwrite Hg Hcol [Hown HΨ]".
       (* a THR write is offset 0, which is neither FCR nor MCR *)
       destruct (uart_write_rx_stable u 0 sb u' ltac:(lia) ltac:(lia) Hwrite)
         as [Hrxe Hlbe].
-      iDestruct (uart_colE_stable i γd u u' Hrxe Hlbe
-                ltac:(exact (uart_write_wire _ _ _ _ Hwrite))
-                ltac:(exact (uart_write_out _ _ _ _ Hwrite))
-                with "Hcol") as "Hcol".
       iDestruct "Hg" as "(Hs & Hout & Htx & Hdl)".
       iDestruct (uart_tx_ready_persists γd u l with "Hown Hlb Hoff Htx Hout Hdl") as %[Hempty Hdlab].
       iDestruct (uart_tx_own_agree with "Htx Hown") as %Haccu.
@@ -387,15 +410,24 @@ Section WpSconfUartAccess.
       { rewrite Hempty. cbn [length]. unfold uart_fifo_depth. lia. }
       assert (Hacc' : uart_acc u' = l ++ [sb]).
       { rewrite (uart_write_thr_acc u sb u' Hdlab Hroom Hwrite) Haccu. reflexivity. }
+      (* THE OUTPUT CLAIM MOVES BY THE CALLER'S LINK (lane OUT-FUPD), and
+         this is the ONE place in the machine where it does: the accepted
+         sequence grows by exactly [sb] here and nowhere else. *)
+      iMod (uart_colE_store i γd u u' sb Φ Hrxe Hlbe
+              ltac:(exact (uart_write_wire _ _ _ _ Hwrite))
+              ltac:(exact (uart_write_out _ _ _ _ Hwrite))
+              ltac:(rewrite Hacc' Haccu; reflexivity)
+              with "HΨ Hcol") as "[Hcol HΦ]".
       iMod (uart_tx_own_update γd u l u' with "Htx Hown") as "[Htx Hown]".
       iMod (uart_sent_update γd u u' with "Hs") as "[Hs Hsent]".
       { rewrite Haccu Hacc'. by apply prefix_app_r. }
       iDestruct (uart_out_auth_stable γd u u' (uart_write_out _ _ _ _ Hwrite) with "Hout") as "Hout".
       iDestruct (uart_dlab_auth_stable γd u u' (uart_write_dlab_0 _ _ _ Hwrite) with "Hdl") as "Hdl".
       iEval (rewrite Hacc') in "Hown". iEval (rewrite Hacc') in "Hsent".
-      iModIntro. rewrite /uart_ghosts. iFrame "Hs Hout Htx Hdl Hcol Hown Hsent".
-    - iEval (rewrite /wp_next). iIntros (CID1 Hs1) "Hcg Hpc [Hown Hsent]".
-      iApply ("Hcont" $! CID1 with "[] Hcg Hpc Hown Hsent").
+      iModIntro. rewrite /uart_ghosts.
+      iFrame "Hs Hout Htx Hdl Hcol Hown Hsent HΦ".
+    - iEval (rewrite /wp_next). iIntros (CID1 Hs1) "Hcg Hpc (Hown & Hsent & HΦ)".
+      iApply ("Hcont" $! CID1 with "[] Hcg Hpc Hown Hsent HΦ").
       iPureIntro. exact Hs1.
   Qed.
 
@@ -455,6 +487,7 @@ Section WpSconfUartAccess.
       iDestruct (uart_colE_stable i γd u u' Hrxe Hlbe
                 ltac:(exact (uart_read_wire _ _ _ _ Hread))
                 ltac:(exact (proj1 (proj2 (uart_read_stable _ _ _ _ Hread))))
+                ltac:(exact (proj1 (uart_read_stable _ _ _ _ Hread)))
                 with "Hcol") as "Hcol".
       rewrite uart_read_lsr in Hread. injection Hread as <- <-.
       destruct (uart_rx_ready u) eqn:Hdr.
@@ -530,6 +563,7 @@ Section WpSconfUartAccess.
                     exact (uart_read_rhr_pop u bb rx' bt u' Hd Hrx Hread))
               ltac:(exact (uart_read_wire _ _ _ _ Hread))
                 ltac:(exact (proj1 (proj2 (uart_read_stable _ _ _ _ Hread))))
+                ltac:(exact (proj1 (uart_read_stable _ _ _ _ Hread)))
               with "Hcol Htok Hlb") as "(Hcol & Hh)".
       (* the four transmitter ghosts are untouched by any read *)
       destruct (uart_read_stable u 0 bt u' Hread) as (Ha & Ho & Hdl).
@@ -557,8 +591,15 @@ Section WpSconfUartAccess.
     (* the transmitter side of an FCR write is the caller's own business
        (bit 2 clears the TX FIFO): it runs the usual ghost step beside the
        column's *)
+    (* ...AND IT CERTIFIES THAT THE ACCEPTED SEQUENCE IS UNMOVED (lane
+       OUT-FUPD).  FCR bit 2 clears the TRANSMIT FIFO, which in general
+       SHRINKS [uart_acc] -- the caller already has to rule that out to
+       produce [uart_ghosts] at [u'] (its [uart_sent_auth] is monotone), so
+       saying so costs it nothing, and it is what carries the console's
+       output claim over the store. *)
     (∀ u u', ⌜ uart_write u 2 sb = Some u' ⌝ -∗
-       uart_ghosts γd u -∗ R ==∗ uart_ghosts γd u' ∗ S) -∗
+       uart_ghosts γd u -∗ R ==∗
+       ⌜uart_acc u' = uart_acc u⌝ ∗ uart_ghosts γd u' ∗ S) -∗
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
@@ -587,16 +628,18 @@ Section WpSconfUartAccess.
     - iFrame "Htok HR".
     - iIntros (u u') "%Hwrite Hg Hcol [Htok HR]".
       destruct (uart_write_fcr_rx u sb u' Hwrite) as [Hrxe Hlbe].
-      iMod ("Hstep" $! u u' with "[//] Hg HR") as "[Hg HS]".
+      iMod ("Hstep" $! u u' with "[//] Hg HR") as "(%Hacce & Hg & HS)".
       destruct (uart_fcr_clr_rx u sb) eqn:Hclr.
       + iMod (uart_colE_flush i γd u u' k hl Hrxe Hlbe
                 ltac:(exact (uart_write_wire _ _ _ _ Hwrite))
                 ltac:(exact (uart_write_out _ _ _ _ Hwrite))
+                Hacce
                 with "Hcol Htok") as "[Hcol Htok]".
         iModIntro. iFrame "Hg Hcol Htok HS".
       + iDestruct (uart_colE_stable i γd u u' Hrxe Hlbe
                 ltac:(exact (uart_write_wire _ _ _ _ Hwrite))
                 ltac:(exact (uart_write_out _ _ _ _ Hwrite))
+                Hacce
                 with "Hcol") as "Hcol".
         iModIntro. iFrame "Hg Hcol HS". iExists k, hl. iExact "Htok".
     - iEval (rewrite /wp_next). iIntros (CID1 Hs1) "Hcg Hpc [Htok HS]".
@@ -687,25 +730,27 @@ Section WpSconfUartAccess.
   Qed.
 
   Lemma wp_uart_thr_write_s_sconf (γd : uart_names) (γv : disk_names) (pc : mword 64) (rs2 rs1 : mword 5) `{!SrcOk rs1} `{!SrcOk rs2}
-      (m : regfile) (n : nat) (l : list (bv 8)) (b : bool) :
+      (m : regfile) (n : nat) (l : list (bv 8)) (Φ : iProp Σ) (b : bool) :
     let sb : mword 8 := autocast (T := mword) (subrange_vec_dec (rget m rs2) (Z.sub (Z.mul 1 8) 1) 0) in
     rget m rs1 = uart_pa Uart0 0 ->
     sie_cap_gpr kt m n b p -∗
     pc_is pc -∗ instr pc false (STORE (mword_of_int 0 : mword 12, Regidx rs2, Regidx rs1, 1)) -∗
     dev_inv γd γv -∗ uart_tx_own γd l -∗ uart_out_lb γd l -∗ uart_dlab_off γd -∗
+    out_link Uart0 sb Φ -∗
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
       uart_tx_own γd (l ++ [sb]) -∗
       uart_sent γd (l ++ [sb]) -∗
+      Φ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros sb.
-    iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Hown #Hlb #Hoff Hcont".
+    iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Hown #Hlb #Hoff HΨ Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
-    iApply (wp_uart_thr_write_s_sconf_at Uart0 γd pc rs2 rs1 m n l b
-              Haddr with "Hcg Hpc Hinstr Huinv Hown Hlb Hoff Hcont").
+    iApply (wp_uart_thr_write_s_sconf_at Uart0 γd pc rs2 rs1 m n l Φ b
+              Haddr with "Hcg Hpc Hinstr Huinv Hown Hlb Hoff HΨ Hcont").
   Qed.
 
   Lemma wp_uart_lsr_read_rx_s_sconf (γd : uart_names) (γv : disk_names)
@@ -770,8 +815,15 @@ Section WpSconfUartAccess.
     sie_cap_gpr kt m n b p -∗
     pc_is pc -∗ instr pc false (STORE (imm, Regidx rs2, Regidx rs1, 1)) -∗
     dev_inv γd γv -∗ uart_rx_tok γd k hl -∗ R -∗
+    (* ...AND IT CERTIFIES THAT THE ACCEPTED SEQUENCE IS UNMOVED (lane
+       OUT-FUPD).  FCR bit 2 clears the TRANSMIT FIFO, which in general
+       SHRINKS [uart_acc] -- the caller already has to rule that out to
+       produce [uart_ghosts] at [u'] (its [uart_sent_auth] is monotone), so
+       saying so costs it nothing, and it is what carries the console's
+       output claim over the store. *)
     (∀ u u', ⌜ uart_write u 2 sb = Some u' ⌝ -∗
-       uart_ghosts γd u -∗ R ==∗ uart_ghosts γd u' ∗ S) -∗
+       uart_ghosts γd u -∗ R ==∗
+       ⌜uart_acc u' = uart_acc u⌝ ∗ uart_ghosts γd u' ∗ S) -∗
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗

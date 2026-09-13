@@ -49,6 +49,7 @@ Require Import InitBoot.  (* [init_boot_bundle] -- forwarded to main *)
 Require Import InodeInv.  (* [ROOTINO] *)
 Require Import ProcGeom CpuOwn SchedCtx.
 Require Import SpecMain.
+Require Import SpecConsoleintr.   (* [cons_echo_shift]: the echo's justification *)
 Require Import BootConfig BootBridge.
 Require Import BootHart.   (* §1 geometry, [boot_entry_pre], [boot_hart_res] *)
 Require Import LinkEntry.
@@ -375,6 +376,16 @@ Section BootPrimary.
     own_context cur_ctx -∗
     started_inv γi ξd (main_dep γd γv) -∗ started_prim γi -∗
     (* --- the boot supply --- *)
+    (* THE ECHO'S JUSTIFICATION, THE APPLICATION'S (lane OUT-FUPD, F3).
+       The console UART's invariant now carries the application's own claim
+       about the bytes it has accepted, so consoleintr's echo has to be
+       PAID FOR -- and the interrupt path has nothing of its own to pay
+       with.  The payment is the application's, minted once here into
+       [SpecConsoleintr.console_caps] and persistent, so every byte's echo
+       re-uses it.  It comes from the boot record's [App.xv6_app]'s
+       [Happ_echo] through [SystemAdequacy.xv6_boot_era]; nothing below
+       main can produce it. *)
+    cons_echo_shift -∗
     main_locks_raw -∗
     main_globals_raw cn -∗
     (* the image's writable initialized globals -- main spends [nextpid] on
@@ -467,7 +478,7 @@ Section BootPrimary.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hreset Hz Hprun Hlen Hlive Hcnu Himg.
-    iIntros "#Htext #Hdata Hres Hthr #Hstarted Hprim Hlk Hgl Hfirst Hnext Hpark Hpst Hpav Hchb
+    iIntros "#Htext #Hdata Hres Hthr #Hstarted Hprim #Hecho Hlk Hgl Hfirst Hnext Hpark Hpst Hpav Hchb
              Hfs Hmir Hirslot Hirauth #Hcert #Hseam
              #Hdev #Hwire Hinitb Htx Hsent Hlb Htok Hhi Hdlab
              #Huinv1 #Hplic #Hpinned #Hubw0 #Hurw0 #Hubw1 #Hurw1
@@ -484,7 +495,7 @@ Section BootPrimary.
               (register_lookup tlb rs) γi ξd (main_dep γd γv)
               (cid_word_of_zero _ Hz) K_main_boot_le eq_refl eq_refl Hprun Hlen
               Hlive Hcnu Himg eq_refl
-              with "Hcap Hctx Hcpu Hg Htext Hdata Hpc Hstarted Hprim [] Hlk Hgl
+              with "Hcap Hctx Hcpu Hg Htext Hdata Hpc Hstarted Hprim [] Hecho Hlk Hgl
                     Hfirst Hnext Hpark Hpst Hpav Hchb Hfs Hmir Hirslot Hirauth
                     Hcert Hseam
                     Hdev Hwire Hinitb Htx Hsent Hlb Htok Hhi Hdlab

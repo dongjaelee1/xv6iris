@@ -28,19 +28,30 @@
      would need each cycle's accepted history to survive its own PowerOff,
      which no ghost does -- see uart-trace.md's "Rejected" section.
 
-   WHY NO LEDGER.  The acceptance content of the trace is a pure step
-   invariant of the language and is proved as one ([UartAccepted.v]).  The
-   trace LEDGER ([RiscvAdequacy.obs_ledger_at], [WpUart.
-   uart_obs_permit_ledger]) is for facts a client's own ghosts carry across
-   events -- and its two wands are quantified over an ARBITRARY
-   [γ : uart_names] (see [SystemAdequacy.xv6_trace_adequacy]'s [Htx]/[Hrx]
-   and [xv6_power_adequacy_gen]'s permit premise, [forall γ, ...]), so no
-   client resource can be about THE ERA's UART ghosts at an event.  That is
-   what blocks the remaining half of this lane -- turning a LOCATED RECEIPT
-   ([UartSentLoc.uart_sent_from]) into the pure residue that
-   [xv6_out_accepted_from_xv6Σ] below takes as a hypothesis.  It is the
-   UART instance of uart-trace.md's open "identification gate" (the [P_era]
-   chain's), and the ask is recorded there and in this lane's report. *)
+   WHY NO LEDGER, AND WHY THE GATE THIS FILE USED TO NAME IS CLOSED.  The
+   acceptance content of the trace is a pure step invariant of the language
+   and is proved as one ([UartAccepted.v]); this file needs no ledger for
+   it.  The paragraph that used to stand here recorded an OPEN gate: the
+   ledger's two wands were quantified over an ARBITRARY [γ : uart_names],
+   so no client resource could be about THE ERA's UART ghosts at an event,
+   and a located receipt (retired in lane OUT-FUPD) could not be turned
+   into a pure residue.  BOTH HALVES OF THAT ARE GONE.
+
+   * THE IDENTIFICATION GATE IS CLOSED (lane APP-IFACE item (c)): the wands
+     are quantified over the ERA's [fileG] instead, with the two equations
+     the boot has -- the era's application record, and [FsCfg.fsc_uart = γ]
+     at [i = Uart0], the [γ] every kernel-side UART fact of this era is
+     stated at ([App.xv6_app_adequacy]'s [Htx]/[Hrx],
+     [SystemAdequacy.xv6_power_adequacy_gen]'s permit premise).
+   * THE RESIDUE IS NOT A RECEIPT ANY MORE (lane OUT-FUPD): the located
+     prefix receipts are retired.  What crosses to the ledger at a drain is
+     the CONSOLE UART invariant's own output CLAIM, lent to [Htx] and given
+     back -- [if i is Uart0 then app_out A c ho (uart_acc u) else emp],
+     beside the two facts that place it, [⌜u_wire u = u_out u⌝] and
+     [⌜ho `prefix_of` h⌝].  Every byte in [uart_acc u] was justified at its
+     store by the writer's own view shift.  This file's own hypothesis is
+     unchanged -- it is about the pure language invariant, not about that
+     claim. *)
 
 From Stdlib Require Import ZArith List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -72,7 +83,7 @@ Corollary xv6_out_accepted_xv6Σ (g : gstate)
     /\ obs_wf κs g2
     (* ... and EVERY BYTE THE HOST SAW IN THIS CYCLE WAS ACCEPTED BY THE
        KERNEL, IN ORDER.  [uart_acc] is exactly the list the campaign's
-       receipts ([WpUart.uart_sent], [UartSentLoc.uart_sent_from]) are
+       receipts ([WpUart.uart_sent], and the retired located one) are
        lower bounds of. *)
     /\ obs_wire Uart0 (open_seg κs) `sublist_of` uart_acc (duart g2.(gdev) Uart0).
 Proof.
@@ -85,7 +96,7 @@ Qed.
 (* ---------------------------------------------------------------------- *)
 (* 2. THE COMPOSED READING, at a LOCATED receipt.                          *)
 (*                                                                          *)
-(*    A campaign receipt [UartSentLoc.uart_sent_from γu tr0 bs] -- the       *)
+(*    A campaign receipt (retired in lane OUT-FUPD) -- the                  *)
 (*    bytes [bs] were accepted, in order, at positions strictly after an     *)
 (*    accepted trace that had [tr0] as a prefix -- has a PURE RESIDUE at a   *)
 (*    state: agreed against that era's [uart_sent_auth γu u] it says exactly *)

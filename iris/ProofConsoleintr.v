@@ -398,6 +398,21 @@ Section CtBodies.
     apply bv_eq; vm_compute; reflexivity.
   Qed.
 
+  (* THE BYTE OUT OF A ZERO-EXTENDED [switch] COMPARISON (lane OUT-FUPD).
+     [ct_arg_eq13] specialised to whatever constant the case tested, which
+     is how the three ERASE arms discharge [SpecConsoleintr.cons_erase]'s
+     guard: the switch's own [beq] is the only thing that knows which byte
+     arrived, and the echo's justification is guarded by it. *)
+  Lemma ct_arg_eq_byte (c : bv 8) (z : Z) :
+    eq_vec (extend_value (n := 8) true (c : mword 8) : mword 64)
+           (mword_of_int z : mword 64) = true ->
+    c = trunc8 (mword_of_int z : mword 64).
+  Proof.
+    intro H. apply eq_vec_true_iff in H.
+    apply (f_equal (fun w : mword 64 => trunc8 w)) in H.
+    rewrite ct_arg_trunc8 in H. exact H.
+  Qed.
+
   (* the byte the '\r' arm stores, at the translation's own spelling *)
   Lemma ct_trunc8_10 :
     trunc8 (mword_of_int 10 : mword 64) = (mword_of_int 10 : mword 8).
@@ -668,54 +683,34 @@ Section CtBodies.
 
   (* WHAT THE CALLER GETS BACK: the high-water half, at whatever history the
      ring ended up holding -- the byte just filed if it was filed, and the
-     mark unmoved if the byte was dropped or merely edited away. *)
+     mark unmoved if the byte was dropped or merely edited away.
+
+     THE ECHO'S RECEIPT IS GONE (lane OUT-FUPD).  What the call put on the
+     wire is no longer reported: the bytes were JUSTIFIED BEFORE THE STORE,
+     out of [SpecConsoleintr.cons_echo_shift], and the consequence lives in
+     the console UART's own invariant rather than in a receipt this
+     function hands back.  What is left is the MARK, which is what the
+     ring's order needs. *)
   Definition ct_hi_out (γu : uart_names) (hb : list mobs) (cb : bv 8)
       : iProp Σ :=
-    (∃ (hh' : option (list mobs)) (cs : list (bv 8)),
-       uart_rx_hi γu (1/2) hh' ∗ ⌜ ohist_le hh' (Some hb) ⌝ ∗
-       uart_sent_sub γu cs ∗ ⌜ cons_echo cb cs ⌝ ∗
-       ⌜ hh' = Some hb -> cs = [echo_of cb] ⌝)%I.
+    (∃ hh' : option (list mobs),
+       uart_rx_hi γu (1/2) hh' ∗ ⌜ ohist_le hh' (Some hb) ⌝)%I.
 
-  (* ...AND THE ECHO.  [cs] is what this call echoed.
-
-     THE MARK DECIDES THE ARM, and that is why the two travel together.  The
-     contract's premise puts the incoming mark STRICTLY before [hb], so
-     [hh' = Some hb] holds exactly on the arm that FILED the byte -- and
-     that arm echoes one byte, [echo_of cb].  Every other arm leaves the
-     mark where it was and echoes nothing or a run of erase triples, which
-     is all [cons_echo] claims.  Without the mark the claim would be
-     vacuous: [cs = []] is a free witness.
-
-     THE KILL LOOP'S ACCUMULATOR is stronger on two counts, and both are
-     what the loop carries across its back edge: the mark is STRICTLY
-     before [hb] (the loop files nothing, so the [hh' = Some hb] arm is
-     refuted rather than merely unclaimed), and the echo is a run of erase
-     triples AT A NAMED COUNT, so one more erase is a step in the count
-     rather than a disjunct to re-pick. *)
+  (* THE KILL LOOP'S ACCUMULATOR is stronger on one count, and that is what
+     the loop carries across its back edge: the mark is STRICTLY before
+     [hb], because the loop files nothing.  With the echo's receipt retired
+     there is nothing else to accumulate -- the erase triples are paid for
+     one call at a time out of [ct_pay_erase] below. *)
   Definition ct_hi_kill (γu : uart_names) (hb : list mobs) : iProp Σ :=
-    (∃ (hh' : option (list mobs)) (k : nat),
-       uart_rx_hi γu (1/2) hh' ∗ ⌜ ohist_ext hh' hb ⌝ ∗
-       uart_sent_sub γu (mjoin (replicate k consputc_bs)))%I.
-
-  (* one more erase triple on the end of the run *)
-  Lemma ct_mjoin_snoc {A : Type} (l : list A) (k : nat) :
-    (mjoin (replicate k l) ++ l)%list = mjoin (replicate (S k) l).
-  Proof.
-    induction k as [| k IH]; simpl.
-    - by rewrite app_nil_r.
-    - by rewrite -app_assoc IH.
-  Qed.
+    (∃ hh' : option (list mobs),
+       uart_rx_hi γu (1/2) hh' ∗ ⌜ ohist_ext hh' hb ⌝)%I.
 
   Lemma ct_hi_kill_out (γu : uart_names) (hb : list mobs) (cb : bv 8) :
     ct_hi_kill γu hb -∗ ct_hi_out γu hb cb.
   Proof.
-    iIntros "H". iDestruct "H" as (hh' k) "(Hhi & %Hx & #Hcs)".
-    iExists hh', (mjoin (replicate k consputc_bs)). iFrame "Hhi Hcs".
-    iSplitR; [iPureIntro; exact (ohist_le_of_ext hh' hb Hx) |].
-    iSplitR; [iPureIntro; right; right; by exists k |].
-    iPureIntro. intros Heq. exfalso.
-    destruct hh' as [g|]; [| discriminate].
-    injection Heq as <-. destruct Hx as [_ Hl]. lia.
+    iIntros "H". iDestruct "H" as (hh') "(Hhi & %Hx)".
+    iExists hh'. iFrame "Hhi".
+    iPureIntro. exact (ohist_le_of_ext hh' hb Hx).
   Qed.
 
   (* the function's own exit, as a [wp_next] at the entry hart *)
@@ -882,6 +877,75 @@ Section ProofConsoleintr.
 
   Local Ltac rgall := repeat (rewrite rget_ne; [| vm_compute; discriminate]).
   Local Typeclasses Opaque cpu_own.
+
+  (* =================================================================== *)
+  (*  THE ECHO'S JUSTIFICATION, SPECIALISED TO THIS CALL'S BYTE           *)
+  (*  (lane OUT-FUPD, F3).                                                *)
+  (*                                                                      *)
+  (*  Every store this function makes to the CONSOLE UART goes through     *)
+  (*  consputc, whose contract now asks its caller for a CHAIN of view      *)
+  (*  shifts over the bytes it will push.  consoleintr runs on the         *)
+  (*  interrupt path and has nothing of its own to pay with: the echo is    *)
+  (*  the APPLICATION's claim about its own input, and the application      *)
+  (*  minted the justification into the console environment at boot         *)
+  (*  ([SpecConsoleintr.cons_echo_shift], carried by [console_caps]).       *)
+  (*                                                                      *)
+  (*  [ct_pay cb] is that shift with the three facts this call holds        *)
+  (*  already discharged -- the byte's arrival history, its tag, and the    *)
+  (*  monotone bound on it -- so the arms below carry ONE persistent        *)
+  (*  proposition where they used to carry a trace baseline.                *)
+  (* =================================================================== *)
+  Definition ct_pay (cb : bv 8) : iProp Σ :=
+    (□ ∀ (cs : list (bv 8)) (Φ : iProp Σ),
+        ⌜ cons_echo cb cs ⌝ -∗ Φ -∗ out_chain Uart0 cs Φ)%I.
+
+  Global Instance ct_pay_persistent cb : Persistent (ct_pay cb).
+  Proof. rewrite /ct_pay. apply _. Qed.
+
+  Lemma ct_mk_pay (hb : list mobs) (cb : bv 8) :
+    obs_ends_in Uart0 hb cb ->
+    cons_echo_shift -∗ riscv_rx_tag hb -∗ obs_hist_lb hb -∗ ct_pay cb.
+  Proof.
+    intros Hends. iIntros "#Hsh #Htg #Hlb !>" (cs Φ) "%Hcs HΦ".
+    iApply ("Hsh" $! hb cb cs Φ with "[%] [%] Htg Hlb HΦ");
+      [exact Hends | exact Hcs].
+  Qed.
+
+  (* THE TWO ARM SHAPES, each a closed persistent proposition so that the
+     Löb-guarded kill loop and the three straight-line arms carry exactly
+     what they spend and no case split of their own. *)
+
+  (* the ERASE arms (^U, ^H, DEL): one [consputc(BACKSPACE)] per glyph, and
+     the shape's guard is discharged where the switch decided it *)
+  Definition ct_pay_erase : iProp Σ :=
+    (□ ∀ Φ : iProp Σ, Φ -∗ out_chain Uart0 consputc_bs Φ)%I.
+
+  Global Instance ct_pay_erase_persistent : Persistent ct_pay_erase.
+  Proof. rewrite /ct_pay_erase. apply _. Qed.
+
+  Lemma ct_mk_pay_erase (cb : bv 8) :
+    cons_erase cb = true -> ct_pay cb -∗ ct_pay_erase.
+  Proof.
+    intros Her. iIntros "#Hp !>" (Φ) "HΦ".
+    iApply ("Hp" $! consputc_bs Φ with "[%] HΦ").
+    right; right. split; [exact Her |]. exists 1%nat.
+    by rewrite /= ?app_nil_r.
+  Qed.
+
+  (* the arms that ECHO THE BYTE ITSELF ('\r' translates to '\n'; the
+     default arm echoes what arrived) *)
+  Definition ct_pay_one (cb : bv 8) : iProp Σ :=
+    (□ ∀ Φ : iProp Σ, Φ -∗ out_chain Uart0 [echo_of cb] Φ)%I.
+
+  Global Instance ct_pay_one_persistent cb : Persistent (ct_pay_one cb).
+  Proof. rewrite /ct_pay_one. apply _. Qed.
+
+  Lemma ct_mk_pay_one (cb : bv 8) : ct_pay cb -∗ ct_pay_one cb.
+  Proof.
+    iIntros "#Hp !>" (Φ) "HΦ".
+    iApply ("Hp" $! [echo_of cb] Φ with "[%] HΦ").
+    right; left; reflexivity.
+  Qed.
 
   (* =================================================================== *)
   (*  [EXIT] (+0x104): release cons.lock, then the epilogue.              *)
@@ -1330,22 +1394,23 @@ Section ProofConsoleintr.
        [SpecConsoleintr.console_caps], so every arm projects it rather than
        threading a new premise (persistent, no ghost name). *)
     uart_base_word Uart0 -∗
-    is_txlock γtx γu -∗ uart_sent_sub γu [] -∗
+    is_txlock γtx γu -∗
+    (* THE ERASE ARM'S JUSTIFICATION (lane OUT-FUPD): one triple per glyph,
+       paid per call out of the application's boot-fixed echo shift. *)
+    ct_pay_erase -∗
     ct_kill_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks.
   Proof.
     intros HK Hlvl Hb Hbelow. subst b.
-    iIntros "#Ht #Hdev #Hbw #Htxl #Hsub".
+    iIntros "#Ht #Hdev #Hbw #Htxl #Hep".
     rewrite /ct_kill_prop.
     iLöb as "IH".
     iIntros (CIDk Hsk M rr ww ee bs ts)
       "%Hsp %Hs1 %Hs2 %Hs3 %Ha5 %Hthr %Hlenb %Hlent %Hok %Hrow %Hne
        EXIT Hcg Hpc Hcnt Hpay Hlocked Hrc Hwc Hec Hdat Hts Hgh Hhiout
        H4 H5 H6".
-    (* THE RUN SO FAR, out of the accumulator: [kk] erase triples, and the
-       mark still strictly before this byte's history.  The consputc call
-       below is seeded at that run, so the triple it pushes lands on the
-       end of it and the count steps by one. *)
-    iDestruct "Hhiout" as (hk kk) "(Hhi & %Hxk & #Hck)".
+    (* THE MARK, out of the accumulator: still strictly before this byte's
+       history, because the loop files nothing. *)
+    iDestruct "Hhiout" as (hk) "(Hhi & %Hxk)".
     (* ---- +0x0b8 c.addiw a5,a5,-1 ---- *)
     iApply (wp_caddiw_s_sconf (mword_of_int (CT + 0xb8)) Ra5 (mword_of_int 63 : mword 6)
               M (trap_res (match lvl with O => eb | S _ => false end) + (K - 6))%nat false
@@ -1454,8 +1519,8 @@ Section ProofConsoleintr.
                       = mword_of_int (CT + 0xea)) by pcw.
       iEval (rewrite Hj0ea) in "Hpc".
       iAssert (ct_hi_out γu hb cb) with "[Hhi]" as "Hhiout".
-      { iApply (ct_hi_kill_out γu hb cb). iExists hk, kk. iFrame "Hhi".
-        iSplitR; [iPureIntro; exact Hxk |]. iExact "Hck". }
+      { iApply (ct_hi_kill_out γu hb cb). iExists hk. iFrame "Hhi".
+        iPureIntro; exact Hxk. }
       iApply (ct_restore23 (CIDq := CIDk) γu hb cb cn γc pme m0 L4 K lvl eb _ sp0
                 (mword_of_int (CT + 0xea)) (mword_of_int (CT + 0xec))
                 (mword_of_int (CT + 0xee)) (mword_of_int 11 : mword 11) lks
@@ -1539,28 +1604,30 @@ Section ProofConsoleintr.
     assert (HL6ra : L6 !!! Regidx Rra
                     = add_vec_int (mword_of_int (CT + 0xce) : mword 64) 4)
       by (rewrite /L6; apply upd_eq).
-    iApply (Consputc.wp_consputc_sconf KT1 γtx γu γv L6
-              (trap_res (match lvl with O => eb | S _ => false end) + (K - 6))%nat
-              (mjoin (replicate kk consputc_bs)) (S lvl) eb false pme
-              ({["cons"]} ∪ lks)
-              ltac:(lia) ltac:(lia)
-              with "Hcg Hcnt Ht Hpc Hdev Hbw Htxl Hck").
-    all: try lkbelow.
-    iApply wp_next_off_intro.
-    iIntros (mcp cs) "Hcg Hcnt Hpc [%Hcpcs %Hcpra] %Hcpb #Hcpsent". rgall.
-    (* THE ARGUMENT WAS BACKSPACE, so consputc took its three-byte arm and
-       the accumulated run grew by exactly one triple. *)
+    (* THE ARGUMENT IS BACKSPACE, so consputc's own [consputc_cs] is the
+       three-byte erase triple and the chain this call owes is exactly what
+       [ct_pay_erase] pays. *)
     assert (HL6a0 : L6 !!! Regidx Ra0 = (mword_of_int 256 : mword 64)).
     { rewrite /L6 upd_ne; [| reg_neq]. rewrite /L5 upd_eq. rewrite HL4s3.
       apply w32_zero_add. }
-    assert (Hcsbs : cs = consputc_bs).
-    { rewrite HL6a0 in Hcpb.
+    assert (Hcsbs : consputc_cs (L6 !!! Regidx Ra0) = consputc_bs).
+    { rewrite HL6a0 /consputc_cs.
       assert (Ebs : eq_vec (mword_of_int 256 : mword 64) cp_backspace = true)
         by (vm_compute; reflexivity).
-      rewrite Ebs in Hcpb. exact Hcpb. }
+      by rewrite Ebs. }
+    iAssert (out_chain Uart0 (consputc_cs (L6 !!! Regidx Ra0)) True%I) as "Hch".
+    { rewrite Hcsbs. iApply ("Hep" $! True%I). done. }
+    iApply (Consputc.wp_consputc_sconf KT1 γtx γu γv L6
+              (trap_res (match lvl with O => eb | S _ => false end) + (K - 6))%nat
+              True%I (S lvl) eb false pme
+              ({["cons"]} ∪ lks)
+              ltac:(lia) ltac:(lia)
+              with "Hcg Hcnt Ht Hpc Hdev Hbw Htxl Hch").
+    all: try lkbelow.
+    iApply wp_next_off_intro.
+    iIntros (mcp) "Hcg Hcnt Hpc [%Hcpcs %Hcpra] _". rgall.
     iAssert (ct_hi_kill γu hb) with "[Hhi]" as "Hhiout".
-    { iExists hk, (S kk). iFrame "Hhi". iSplitR; [iPureIntro; exact Hxk |].
-      rewrite -ct_mjoin_snoc -Hcsbs. iExact "Hcpsent". }
+    { iExists hk. iFrame "Hhi". iPureIntro; exact Hxk. }
     iEval (rewrite HL6ra) in "Hpc".
     assert (Hp0d2 : ret_pc (add_vec_int (mword_of_int (CT + 0xce) : mword 64) 4)
                     = (mword_of_int (CT + 0xd2) : mword 64)) by pcw.
@@ -1714,7 +1781,10 @@ Section ProofConsoleintr.
        [SpecConsoleintr.console_caps], so every arm projects it rather than
        threading a new premise (persistent, no ghost name). *)
     uart_base_word Uart0 -∗
-    is_txlock γtx γu -∗ uart_sent_sub γu [] -∗
+    is_txlock γtx γu -∗
+    (* THE ECHO'S JUSTIFICATION FOR THIS ARM'S ONE BYTE (lane OUT-FUPD):
+       [echo_of c] is the newline the '\r' arm puts out. *)
+    ct_pay_one c -∗
     riscv_rx_tag h -∗
     sie_cap_gpr KT1 M (trap_res b + (K - 6))%nat false pme -∗
     pc_is (mword_of_int (CT + 0x12e)) -∗
@@ -1731,7 +1801,7 @@ Section ProofConsoleintr.
   Proof.
     intros Hcnu Hx Hsp Hcs HK Hlvl Hchain Hbelow Hlenb Hlent Hok Hrow Hroom
            Hends Hc13.
-    iIntros "#Ht #Hdev #Hbw #Htxl #Hsub #Htg Hcg Hpc Hcnt Hpay Hlocked
+    iIntros "#Ht #Hdev #Hbw #Htxl #Hp1 #Htg Hcg Hpc Hcnt Hpay Hlocked
              Hrc Hwc Hec Hdat Hts Hgh Hhi Hrest WAKE EXIT".
     rewrite <- Hcnu.
     (* ---- +0x12e c.li a0,10 ; +0x130 jal consputc ---- *)
@@ -1758,27 +1828,27 @@ Section ProofConsoleintr.
     assert (HD2ra : D2 !!! Regidx Rra
                     = add_vec_int (mword_of_int (CT + 0x130) : mword 64) 4)
       by (rewrite /D2; apply upd_eq).
-    iApply (Consputc.wp_consputc_sconf KT1 γtx (cn_uart cn) γv D2
-              (trap_res b + (K - 6))%nat [] (S lvl) eb false pme ({["cons"]} ∪ lks)
-              ltac:(lia) ltac:(lia)
-              with "Hcg Hcnt Ht Hpc Hdev Hbw Htxl Hsub").
-    all: try lkbelow.
-    iApply wp_next_off_intro.
-    iIntros (mcp cs) "Hcg Hcnt Hpc [%Hcpcs %Hcpra] %Hcpb #Hcpsent". rgall.
-    (* WHICH BYTE WENT OUT: a0 was the newline the '\r' test translates to,
+    (* WHICH BYTE GOES OUT: a0 is the newline the '\r' test translates to,
        which is [echo_of c] at this arm's own [c = '\r']. *)
     assert (HD2a0 : D2 !!! Regidx Ra0 = (mword_of_int 10 : mword 64)).
     { rewrite /D2 upd_ne; [| reg_neq]. rewrite /D1; apply upd_eq. }
-    assert (Hcsb : cs = [echo_of c]).
-    { rewrite HD2a0 in Hcpb.
+    assert (Hcsb : consputc_cs (D2 !!! Regidx Ra0) = [echo_of c]).
+    { rewrite HD2a0 /consputc_cs.
       assert (Ene : eq_vec (mword_of_int 10 : mword 64) cp_backspace = false)
         by (vm_compute; reflexivity).
-      rewrite Ene in Hcpb. rewrite Hcpb Hc13 ct_echo_of_13.
+      rewrite Ene Hc13 ct_echo_of_13.
       assert (Ecp : cp_byte (mword_of_int 10 : mword 64) = (mword_of_int 10 : mword 8))
         by (apply bv_eq; vm_compute; reflexivity).
       by rewrite Ecp. }
-    iAssert (uart_sent_sub (cn_uart cn) [echo_of c]) as "#Hecho".
-    { rewrite -Hcsb -(app_nil_l cs). iExact "Hcpsent". }
+    iAssert (out_chain Uart0 (consputc_cs (D2 !!! Regidx Ra0)) True%I) as "Hch".
+    { rewrite Hcsb. iApply ("Hp1" $! True%I). done. }
+    iApply (Consputc.wp_consputc_sconf KT1 γtx (cn_uart cn) γv D2
+              (trap_res b + (K - 6))%nat True%I (S lvl) eb false pme ({["cons"]} ∪ lks)
+              ltac:(lia) ltac:(lia)
+              with "Hcg Hcnt Ht Hpc Hdev Hbw Htxl Hch").
+    all: try lkbelow.
+    iApply wp_next_off_intro.
+    iIntros (mcp) "Hcg Hcnt Hpc [%Hcpcs %Hcpra] _". rgall.
     iEval (rewrite HD2ra) in "Hpc".
     assert (Hp134 : ret_pc (add_vec_int (mword_of_int (CT + 0x130) : mword 64) 4)
                     = (mword_of_int (CT + 0x134) : mword 64)) by pcw.
@@ -1978,10 +2048,8 @@ Section ProofConsoleintr.
     - rewrite Hbyte10 /ee1.
       exact (cons_row_push rr ee idx bs ts h c Hlenb Hlent Hroom Hidx Hends Hrow).
     - rewrite Hbyte10 /ee1. iExact "Hgh".
-    - rewrite /ct_hi_out. iExists (Some h), [echo_of c]. iFrame "Hhi Hecho".
-      iSplitR; [iPureIntro; exact (ohist_le_Some h) |].
-      iSplitR; [iPureIntro; right; left; reflexivity |].
-      iPureIntro. intros _; reflexivity.
+    - rewrite /ct_hi_out. iExists (Some h). iFrame "Hhi".
+      iPureIntro; exact (ohist_le_Some h).
   Qed.
 
   (* =================================================================== *)
@@ -2008,7 +2076,10 @@ Section ProofConsoleintr.
        [SpecConsoleintr.console_caps], so every arm projects it rather than
        threading a new premise (persistent, no ghost name). *)
     uart_base_word Uart0 -∗
-    is_txlock γtx γu -∗ uart_sent_sub γu [] -∗
+    is_txlock γtx γu -∗
+    (* THE ERASE ARM'S JUSTIFICATION (lane OUT-FUPD): this arm erases at
+       most one glyph, so it spends at most one triple. *)
+    ct_pay_erase -∗
     sie_cap_gpr KT1 M (trap_res b + (K - 6))%nat false pme -∗
     pc_is (mword_of_int (CT + 0xf0)) -∗
     cpu_own (S lvl) eb pme false ({["cons"]} ∪ lks) -∗
@@ -2021,12 +2092,11 @@ Section ProofConsoleintr.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hsp Hcs HK Hlvl Hchain Hbelow.
-    iIntros "#Ht #Hdev #Hbw #Htxl #Hsub Hcg Hpc Hcnt Hpay Hlocked Hres Hrest
+    iIntros "#Ht #Hdev #Hbw #Htxl #Hep Hcg Hpc Hcnt Hpay Hlocked Hres Hrest
              Hhiout EXIT".
-    (* THE RUN SO FAR, out of the accumulator: this arm erases at most one
-       character, so the count steps by one on the erase exit and not at
-       all on the "nothing to erase" one. *)
-    iDestruct "Hhiout" as (hk kk) "(Hhi & %Hxk & #Hck)".
+    (* THE MARK, out of the accumulator: this arm files nothing, so it goes
+       back where it came from on both exits. *)
+    iDestruct "Hhiout" as (hk) "(Hhi & %Hxk)".
     (* ---- +0x0f0/+0x0f4 : a4 := &cons ---- *)
     iApply (wp_auipc_s_sconf (mword_of_int (CT + 0xf0)) Ra4 (mword_of_int 18 : mword 20)
               M (trap_res b + (K - 6))%nat false ltac:(nz) ltac:(rdok) with "Hcg Hpc []").
@@ -2104,8 +2174,8 @@ Section ProofConsoleintr.
       iEval (rewrite Hp104) in "Hpc".
       iSpecialize ("EXIT" $! CIDq with "[%]"); [exact Hchain|].
       iAssert (ct_hi_out γu hb cb) with "[Hhi]" as "Hhiout".
-      { iApply (ct_hi_kill_out γu hb cb). iExists hk, kk. iFrame "Hhi".
-        iSplitR; [iPureIntro; exact Hxk |]. iExact "Hck". }
+      { iApply (ct_hi_kill_out γu hb cb). iExists hk. iFrame "Hhi".
+        iPureIntro; exact Hxk. }
       iApply ("EXIT" $! B4 with "[%] [%] Hcg Hpc Hcnt Hpay Hlocked
                 [Hrc Hwc Hec Hdat Hts Hgh] Hrest Hhiout").
       - rewrite (HthrB csp_rs1 ltac:(vm_compute; reflexivity)). exact Hsp.
@@ -2203,26 +2273,27 @@ Section ProofConsoleintr.
     assert (HB8ra : B8 !!! Regidx Rra
                     = add_vec_int (mword_of_int (CT + 0x128) : mword 64) 4)
       by (rewrite /B8; apply upd_eq).
-    iApply (Consputc.wp_consputc_sconf KT1 γtx γu γv B8
-              (trap_res b + (K - 6))%nat (mjoin (replicate kk consputc_bs))
-              (S lvl) eb false pme ({["cons"]} ∪ lks)
-              ltac:(lia) ltac:(lia)
-              with "Hcg Hcnt Ht Hpc Hdev Hbw Htxl Hck").
-    all: try lkbelow.
-    iApply wp_next_off_intro.
-    iIntros (mcp cs) "Hcg Hcnt Hpc [%Hcpcs %Hcpra] %Hcpb #Hcpsent". rgall.
-    (* the argument was BACKSPACE, so one erase triple went out *)
+    (* the argument is BACKSPACE, so one erase triple goes out *)
     assert (HB8a0 : B8 !!! Regidx Ra0 = (mword_of_int 256 : mword 64)).
     { rewrite /B8 upd_ne; [| reg_neq]. rewrite /B7 upd_eq. reflexivity. }
-    assert (Hcsbs : cs = consputc_bs).
-    { rewrite HB8a0 in Hcpb.
+    assert (Hcsbs : consputc_cs (B8 !!! Regidx Ra0) = consputc_bs).
+    { rewrite HB8a0 /consputc_cs.
       assert (Ebs : eq_vec (mword_of_int 256 : mword 64) cp_backspace = true)
         by (vm_compute; reflexivity).
-      rewrite Ebs in Hcpb. exact Hcpb. }
+      by rewrite Ebs. }
+    iAssert (out_chain Uart0 (consputc_cs (B8 !!! Regidx Ra0)) True%I) as "Hch".
+    { rewrite Hcsbs. iApply ("Hep" $! True%I). done. }
+    iApply (Consputc.wp_consputc_sconf KT1 γtx γu γv B8
+              (trap_res b + (K - 6))%nat True%I
+              (S lvl) eb false pme ({["cons"]} ∪ lks)
+              ltac:(lia) ltac:(lia)
+              with "Hcg Hcnt Ht Hpc Hdev Hbw Htxl Hch").
+    all: try lkbelow.
+    iApply wp_next_off_intro.
+    iIntros (mcp) "Hcg Hcnt Hpc [%Hcpcs %Hcpra] _". rgall.
     iAssert (ct_hi_out γu hb cb) with "[Hhi]" as "Hhiout".
-    { iApply (ct_hi_kill_out γu hb cb). iExists hk, (S kk). iFrame "Hhi".
-      iSplitR; [iPureIntro; exact Hxk |].
-      rewrite -ct_mjoin_snoc -Hcsbs. iExact "Hcpsent". }
+    { iApply (ct_hi_kill_out γu hb cb). iExists hk. iFrame "Hhi".
+      iPureIntro; exact Hxk. }
     iEval (rewrite HB8ra) in "Hpc".
     assert (Hp12c : ret_pc (add_vec_int (mword_of_int (CT + 0x128) : mword 64) 4)
                     = (mword_of_int (CT + 0x12c) : mword 64)) by pcw.
@@ -2533,7 +2604,10 @@ Section ProofConsoleintr.
        [SpecConsoleintr.console_caps], so every arm projects it rather than
        threading a new premise (persistent, no ghost name). *)
     uart_base_word Uart0 -∗
-    is_txlock γtx γu -∗ uart_sent_sub γu [] -∗
+    is_txlock γtx γu -∗
+    (* THE ECHO'S JUSTIFICATION FOR THIS ARM'S ONE BYTE (lane OUT-FUPD):
+       the default arm echoes the byte that arrived. *)
+    ct_pay_one c -∗
     riscv_rx_tag h -∗
     sie_cap_gpr KT1 M (trap_res b + (K - 6))%nat false pme -∗
     pc_is (mword_of_int (CT + 0x4e)) -∗
@@ -2550,7 +2624,7 @@ Section ProofConsoleintr.
   Proof.
     intros Hcnu Hx Hsp Hs1 Hcs HK Hlvl Hchain Hbelow Hlenb Hlent Hok Hrow Hroom
            Hends Hcv Hc13.
-    iIntros "#Ht #Hdev #Hbw #Htxl #Hsub #Htg Hcg Hpc Hcnt Hpay Hlocked
+    iIntros "#Ht #Hdev #Hbw #Htxl #Hp1 #Htg Hcg Hpc Hcnt Hpay Hlocked
              Hrc Hwc Hec Hdat Hts Hgh Hhi Hrest WAKE EXIT".
     rewrite <- Hcnu.
     (* ---- +0x04e c.mv a0,s1 ; +0x050 jal consputc : the echo ---- *)
@@ -2577,26 +2651,26 @@ Section ProofConsoleintr.
     assert (HF2ra : F2 !!! Regidx Rra
                     = add_vec_int (mword_of_int (CT + 0x50) : mword 64) 4)
       by (rewrite /F2; apply upd_eq).
-    iApply (Consputc.wp_consputc_sconf KT1 γtx (cn_uart cn) γv F2
-              (trap_res b + (K - 6))%nat [] (S lvl) eb false pme ({["cons"]} ∪ lks)
-              ltac:(lia) ltac:(lia)
-              with "Hcg Hcnt Ht Hpc Hdev Hbw Htxl Hsub").
-    all: try lkbelow.
-    iApply wp_next_off_intro.
-    iIntros (mcp cs) "Hcg Hcnt Hpc [%Hcpcs %Hcpra] %Hcpb #Hcpsent". rgall.
-    (* WHICH BYTE WENT OUT: a0 was the byte itself, zero-extended -- not
-       BACKSPACE (0x100 is not a byte value), so consputc took its ordinary
-       arm and stored the byte's low eight bits, which are the byte.  This
+    (* WHICH BYTE GOES OUT: a0 is the byte itself, zero-extended -- not
+       BACKSPACE (0x100 is not a byte value), so consputc takes its ordinary
+       arm and stores the byte's low eight bits, which are the byte.  This
        is the arm the '\r' test did NOT take, so [echo_of c] is [c]. *)
     assert (HF2a0 : F2 !!! Regidx Ra0 = cv).
     { rewrite /F2 upd_ne; [| reg_neq]. rewrite /F1; apply upd_eq. }
-    assert (Hcsb : cs = [echo_of c]).
-    { rewrite HF2a0 Hcv in Hcpb.
-      rewrite /cp_backspace (ct_arg_ne256 c) in Hcpb.
-      rewrite Hcpb (ct_echo_of_ne c Hc13) ct_cp_trunc ct_arg_trunc8.
+    assert (Hcsb : consputc_cs (F2 !!! Regidx Ra0) = [echo_of c]).
+    { rewrite HF2a0 Hcv /consputc_cs.
+      rewrite /cp_backspace (ct_arg_ne256 c).
+      rewrite (ct_echo_of_ne c Hc13) ct_cp_trunc ct_arg_trunc8.
       reflexivity. }
-    iAssert (uart_sent_sub (cn_uart cn) [echo_of c]) as "#Hecho".
-    { rewrite -Hcsb -(app_nil_l cs). iExact "Hcpsent". }
+    iAssert (out_chain Uart0 (consputc_cs (F2 !!! Regidx Ra0)) True%I) as "Hch".
+    { rewrite Hcsb. iApply ("Hp1" $! True%I). done. }
+    iApply (Consputc.wp_consputc_sconf KT1 γtx (cn_uart cn) γv F2
+              (trap_res b + (K - 6))%nat True%I (S lvl) eb false pme ({["cons"]} ∪ lks)
+              ltac:(lia) ltac:(lia)
+              with "Hcg Hcnt Ht Hpc Hdev Hbw Htxl Hch").
+    all: try lkbelow.
+    iApply wp_next_off_intro.
+    iIntros (mcp) "Hcg Hcnt Hpc [%Hcpcs %Hcpra] _". rgall.
     iEval (rewrite HF2ra) in "Hpc".
     assert (Hp054 : ret_pc (add_vec_int (mword_of_int (CT + 0x50) : mword 64) 4)
                     = (mword_of_int (CT + 0x54) : mword 64)) by pcw.
@@ -2830,10 +2904,8 @@ Section ProofConsoleintr.
                 [Hhi] EXIT");
         [ exact Hsp10 | exact HF10a2 | exact Hcshi10
         | exact Hlenb1 | exact Hlent1 | exact Hok1 | exact Hrow1 | ].
-      rewrite /ct_hi_out. iExists (Some h), [echo_of c]. iFrame "Hhi Hecho".
-      iSplitR; [iPureIntro; exact (ohist_le_Some h) |].
-      iSplitR; [iPureIntro; right; left; reflexivity |].
-      iPureIntro. intros _; reflexivity. }
+      rewrite /ct_hi_out. iExists (Some h). iFrame "Hhi".
+      iPureIntro; exact (ohist_le_Some h). }
     (* ---- +0x07a c.addi s1,s1,-4 ; +0x07c c.beqz s1 : is it C('D')? ---- *)
     iApply (wp_cbeqz_fall_s_sconf (mword_of_int (CT + 0x78)) (mword_of_int 111 : mword 8)
               (Cregidx (mword_of_int 6)) Ra4 F10 (trap_res b + (K - 6))%nat false
@@ -2890,10 +2962,8 @@ Section ProofConsoleintr.
                 [Hhi] EXIT");
         [ exact Hsp11 | exact HF11a2 | exact Hcshi11
         | exact Hlenb1 | exact Hlent1 | exact Hok1 | exact Hrow1 | ].
-      rewrite /ct_hi_out. iExists (Some h), [echo_of c]. iFrame "Hhi Hecho".
-      iSplitR; [iPureIntro; exact (ohist_le_Some h) |].
-      iSplitR; [iPureIntro; right; left; reflexivity |].
-      iPureIntro. intros _; reflexivity. }
+      rewrite /ct_hi_out. iExists (Some h). iFrame "Hhi".
+      iPureIntro; exact (ohist_le_Some h). }
     (* ---- +0x07e .. +0x08c : is the ring now full? ---- *)
     iApply (wp_cbeqz_fall_s_sconf (mword_of_int (CT + 0x7c)) (mword_of_int 109 : mword 8)
               (Cregidx (mword_of_int 1)) Rs1 F11 (trap_res b + (K - 6))%nat false
@@ -2998,10 +3068,8 @@ Section ProofConsoleintr.
       - iApply (ct_gh_res cn rr ww ee1 (<[idx := cons_xlate c]> bs)
                   (<[idx := Some h]> ts) Hlenb1 Hlent1 Hok1 Hrow1
                   with "Hrc Hwc Hec Hdat Hts Hgh").
-      - rewrite /ct_hi_out. iExists (Some h), [echo_of c]. iFrame "Hhi Hecho".
-        iSplitR; [iPureIntro; exact (ohist_le_Some h) |].
-        iSplitR; [iPureIntro; right; left; reflexivity |].
-        iPureIntro. intros _; reflexivity. }
+      - rewrite /ct_hi_out. iExists (Some h). iFrame "Hhi".
+        iPureIntro; exact (ohist_le_Some h). }
     (* the ring is exactly full: hand the line over at +0x090 *)
     iApply (wp_bne_fall_s_sconf (mword_of_int (CT + 0x8c)) (mword_of_int 120 : mword 13)
               Ra4 Ra5 F15 (trap_res b + (K - 6))%nat false ltac:(nz) ltac:(nz)
@@ -3029,10 +3097,8 @@ Section ProofConsoleintr.
               [Hhi] EXIT");
       [ exact Hsp15 | exact HF15a2 | exact Hcshi15
       | exact Hlenb1 | exact Hlent1 | exact Hok1 | exact Hrow1 | ].
-    rewrite /ct_hi_out. iExists (Some h), [echo_of c]. iFrame "Hhi Hecho".
-    iSplitR; [iPureIntro; exact (ohist_le_Some h) |].
-    iSplitR; [iPureIntro; right; left; reflexivity |].
-    iPureIntro. intros _; reflexivity.
+    rewrite /ct_hi_out. iExists (Some h). iFrame "Hhi".
+    iPureIntro; exact (ohist_le_Some h).
   Qed.
 
   (* =================================================================== *)
@@ -3070,7 +3136,11 @@ Section ProofConsoleintr.
        [SpecConsoleintr.console_caps], so every arm projects it rather than
        threading a new premise (persistent, no ghost name). *)
     uart_base_word Uart0 -∗
-    is_txlock γtx γu -∗ uart_sent_sub γu [] -∗
+    is_txlock γtx γu -∗
+    (* THE ECHO'S JUSTIFICATION, passed straight down to the two arms that
+       echo ([ct_cr], [ct_store]); the two that do not -- a NUL byte, a
+       full ring -- spend nothing. *)
+    ct_pay_one c -∗
     riscv_rx_tag h -∗
     sie_cap_gpr KT1 M (trap_res b + (K - 6))%nat false pme -∗
     pc_is (mword_of_int (CT + 0x2c)) -∗
@@ -3085,7 +3155,7 @@ Section ProofConsoleintr.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hcnu Hx Hsp Hs1 Hcs HK Hlvl Hchain Hbelow Hends Hcv.
-    iIntros "#Ht #Hdev #Hbw #Htxl #Hsub #Htg Hcg Hpc Hcnt Hpay Hlocked
+    iIntros "#Ht #Hdev #Hbw #Htxl #Hp1 #Htg Hcg Hpc Hcnt Hpay Hlocked
              Hres Hhi Hrest WAKE EXIT".
     (* THE MARK GOES BACK UNMOVED ON EVERY ARM THAT DOES NOT STORE -- a NUL
        byte and a full ring -- and it is already at or before this byte.  It
@@ -3110,13 +3180,8 @@ Section ProofConsoleintr.
       iApply ("EXIT" $! M with "[%] [%] Hcg Hpc Hcnt Hpay Hlocked Hres Hrest
                 [Hhi]");
         [ exact Hsp | exact Hcs |].
-      rewrite /ct_hi_out. iExists hh, []. iFrame "Hhi".
-      iSplitR; [iPureIntro; exact (ohist_le_of_ext hh h Hx) |].
-      iSplitR; [iExact "Hsub" |].
-      iSplitR; [iPureIntro; left; reflexivity |].
-      iPureIntro. intros Heq. exfalso.
-      destruct hh as [g|]; [| discriminate].
-      injection Heq as <-. destruct Hx as [_ Hl]. lia. }
+      rewrite /ct_hi_out. iExists hh. iFrame "Hhi".
+      iPureIntro; exact (ohist_le_of_ext hh h Hx). }
     iApply (wp_cbeqz_fall_s_sconf (mword_of_int (CT + 0x2c)) (mword_of_int 108 : mword 8)
               (Cregidx (mword_of_int 1)) Rs1 M (trap_res b + (K - 6))%nat false
               ltac:(vm_compute; reflexivity) ltac:(nz)
@@ -3237,13 +3302,8 @@ Section ProofConsoleintr.
       - exact (ct_cs_hi_thr G6 M m0 HthrG6 Hcs).
       - iApply (ct_gh_res cn rr ww ee bs ts Hlenb Hlent Hok Hrow
                   with "Hrc Hwc Hec Hdat Hts Hgh").
-      - rewrite /ct_hi_out. iExists hh, []. iFrame "Hhi".
-        iSplitR; [iPureIntro; exact (ohist_le_of_ext hh h Hx) |].
-        iSplitR; [iExact "Hsub" |].
-        iSplitR; [iPureIntro; left; reflexivity |].
-        iPureIntro. intros Heq. exfalso.
-        destruct hh as [g|]; [| discriminate].
-        injection Heq as <-. destruct Hx as [_ Hl]. lia. }
+      - rewrite /ct_hi_out. iExists hh. iFrame "Hhi".
+        iPureIntro; exact (ohist_le_of_ext hh h Hx). }
     iApply (wp_bltu_fall_s_sconf (mword_of_int (CT + 0x44)) (mword_of_int 192 : mword 13)
               Ra5 Ra4 G6 (trap_res b + (K - 6))%nat false ltac:(nz) ltac:(nz)
               ltac:(rgall; rewrite HG6a4 HG6a5; exact Hgd) with "Hcg Hpc []").
@@ -3295,7 +3355,7 @@ Section ProofConsoleintr.
                 HG7sp (ct_cs_hi_thr G7 M m0 HthrG7 Hcs) HK Hlvl Hchain Hbelow
                 Hlenb Hlent Hok Hrow Hroom Hends
                 ltac:(exact (ct_arg_eq13 c ltac:(rewrite <- Hcv; exact Hcr)))
-                with "Ht Hdev Hbw Htxl Hsub Htg Hcg Hpc Hcnt Hpay Hlocked
+                with "Ht Hdev Hbw Htxl Hp1 Htg Hcg Hpc Hcnt Hpay Hlocked
                       Hrc Hwc Hec Hdat Hts Hgh Hhi Hrest WAKE EXIT"). }
     iApply (wp_beq_fall_s_sconf (mword_of_int (CT + 0x4a)) (mword_of_int 228 : mword 13)
               Ra5 Rs1 G7 (trap_res b + (K - 6))%nat false ltac:(nz) ltac:(nz)
@@ -3310,7 +3370,7 @@ Section ProofConsoleintr.
               HG7sp HG7s1 (ct_cs_hi_thr G7 M m0 HthrG7 Hcs) HK Hlvl Hchain Hbelow
               Hlenb Hlent Hok Hrow Hroom Hends Hcv
               ltac:(exact (ct_arg_ne13 c ltac:(rewrite <- Hcv; exact Hcr)))
-              with "Ht Hdev Hbw Htxl Hsub Htg Hcg Hpc Hcnt Hpay Hlocked
+              with "Ht Hdev Hbw Htxl Hp1 Htg Hcg Hpc Hcnt Hpay Hlocked
                     Hrc Hwc Hec Hdat Hts Hgh Hhi Hrest WAKE EXIT").
   Qed.
 
@@ -3332,7 +3392,13 @@ Section ProofConsoleintr.
     intros rettgt HK Hcva Hends Hx Hlen Hlvl Hbelow.
     iIntros "Hcg Hcnt #Ht Hpc #Hpinv #Hdev #Hcaps #Htg #Hlbh Hhi Hcont".
     iDestruct "Hcaps" as (γtx γc cn)
-      "(#Htxl & #Hlk & %Hcnu & #Hsub & #Hinitd & #Hwords)".
+      "(#Htxl & #Hlk & %Hcnu & #Hsh & #Hinitd & #Hwords)".
+    (* THE ECHO'S JUSTIFICATION FOR THIS CALL'S BYTE (lane OUT-FUPD): the
+       application's boot-fixed shift with this call's three facts -- the
+       byte's arrival history, its tag and the monotone bound on it --
+       already discharged.  Every arm below spends it. *)
+    iPoseProof (ct_mk_pay hb cb Hends with "Hsh Htg Hlbh") as "#Hpy".
+    iPoseProof (ct_mk_pay_one cb with "Hpy") as "#Hp1".
     (* the console's own `.data` base word, out of the array's row: the
        bundle carries all four words as one ([SpecUartPutc.uarts_words]) and
        every arm below wants just this one. *)
@@ -3510,10 +3576,11 @@ Section ProofConsoleintr.
     iAssert (ct_wake_prop (CID0 := CID) γu hb cb cn γc pme m K lvl eb b sp0 lks) as "WAKE".
     { iApply (ct_mk_wake γu hb cb cn γc γs pme m K lvl eb b sp0 lks HK Hlen Hlvl Hbm
                 Hbelow with "Ht Hpinv"). }
-    iAssert (ct_kill_prop (CID0 := CID) γu hb cb cn γc pme m K lvl eb b sp0 lks) as "KILL".
-    { iApply (ct_mk_kill γu hb cb cn γtx γc γv pme m K lvl eb b sp0 lks HK Hlvl Hbm
-                Hbelow with "Ht Hdev Hbw Htxl Hsub"). }
-    (* THE MARK GOES BACK UNMOVED on every arm but the default's store, and
+    (* [KILL] IS BUILT IN THE C('U') ARM AND NOT HERE (lane OUT-FUPD): the
+       loop's consputc calls are paid out of [ct_pay_erase], whose guard
+       [cons_erase cb] is the switch's own case -- so it is only available
+       once the [beq] has decided it.
+       THE MARK GOES BACK UNMOVED on every arm but the default's store, and
        it is already at or before this byte.  Built per arm below, because
        the default arm needs the half itself and not the bundle. *)
     (* ---- +0x014 acquire(&cons.lock) ---- *)
@@ -3575,8 +3642,17 @@ Section ProofConsoleintr.
                       = mword_of_int (CT + 0x92)) by pcw.
       iEval (rewrite Hj092) in "Hpc".
       iAssert (ct_hi_kill γu hb) with "[Hhi]" as "Hhiout".
-      { rewrite /ct_hi_kill. iExists hh, 0%nat. iFrame "Hhi".
-        iSplitR; [iPureIntro; exact Hx |]. iExact "Hsub". }
+      { rewrite /ct_hi_kill. iExists hh. iFrame "Hhi".
+        iPureIntro; exact Hx. }
+      (* THE SWITCH DECIDED THE GUARD: this is ^U, an erase byte. *)
+      assert (Her : cons_erase cb = true).
+      { rewrite (ct_arg_eq_byte cb 21 ltac:(rewrite <- Hcv; exact Hku)).
+        vm_compute; reflexivity. }
+      iPoseProof (ct_mk_pay_erase cb Her with "Hpy") as "#Hep".
+      iAssert (ct_kill_prop (CID0 := CID) γu hb cb cn γc pme m K lvl eb b sp0 lks)
+        as "KILL".
+      { iApply (ct_mk_kill γu hb cb cn γtx γc γv pme m K lvl eb b sp0 lks HK Hlvl Hbm
+                  Hbelow with "Ht Hdev Hbw Htxl Hep"). }
       iApply (ct_kill_pre (CIDq := CIDaq) γu cn hb cb γc pme m S1 K lvl eb b sp0 lks
                 HS1sp HS1cs Hchain Hbelow
                 with "Ht Hcg Hpc Hcnt Hpay Hlocked Hres Hrest Hhiout
@@ -3623,11 +3699,15 @@ Section ProofConsoleintr.
                       = mword_of_int (CT + 0xf0)) by pcw.
       iEval (rewrite Hj0f0) in "Hpc".
       iAssert (ct_hi_kill γu hb) with "[Hhi]" as "Hhiout".
-      { rewrite /ct_hi_kill. iExists hh, 0%nat. iFrame "Hhi".
-        iSplitR; [iPureIntro; exact Hx |]. iExact "Hsub". }
+      { rewrite /ct_hi_kill. iExists hh. iFrame "Hhi".
+        iPureIntro; exact Hx. }
+      assert (Her : cons_erase cb = true).
+      { rewrite (ct_arg_eq_byte cb 127 ltac:(rewrite <- Hcv; exact Hdel)).
+        vm_compute; reflexivity. }
+      iPoseProof (ct_mk_pay_erase cb Her with "Hpy") as "#Hep".
       iApply (ct_bs (CIDq := CIDaq) γtx γc γu γv cn hb cb pme m S2 K lvl eb b sp0 lks
                 HS2sp HS2cs HK Hlvl Hchain Hbelow
-                with "Ht Hdev Hbw Htxl Hsub Hcg Hpc Hcnt Hpay Hlocked Hres Hrest
+                with "Ht Hdev Hbw Htxl Hep Hcg Hpc Hcnt Hpay Hlocked Hres Hrest
                       Hhiout EXIT"). }
     iApply (wp_beq_fall_s_sconf (mword_of_int (CT + 0x22)) (mword_of_int 206 : mword 13)
               Ra5 Rs1 S2 (trap_res b + (K - 6))%nat false ltac:(nz) ltac:(nz)
@@ -3671,11 +3751,15 @@ Section ProofConsoleintr.
                       = mword_of_int (CT + 0xf0)) by pcw.
       iEval (rewrite Hj0f0) in "Hpc".
       iAssert (ct_hi_kill γu hb) with "[Hhi]" as "Hhiout".
-      { rewrite /ct_hi_kill. iExists hh, 0%nat. iFrame "Hhi".
-        iSplitR; [iPureIntro; exact Hx |]. iExact "Hsub". }
+      { rewrite /ct_hi_kill. iExists hh. iFrame "Hhi".
+        iPureIntro; exact Hx. }
+      assert (Her : cons_erase cb = true).
+      { rewrite (ct_arg_eq_byte cb 8 ltac:(rewrite <- Hcv; exact Hbs)).
+        vm_compute; reflexivity. }
+      iPoseProof (ct_mk_pay_erase cb Her with "Hpy") as "#Hep".
       iApply (ct_bs (CIDq := CIDaq) γtx γc γu γv cn hb cb pme m S3 K lvl eb b sp0 lks
                 HS3sp HS3cs HK Hlvl Hchain Hbelow
-                with "Ht Hdev Hbw Htxl Hsub Hcg Hpc Hcnt Hpay Hlocked Hres Hrest
+                with "Ht Hdev Hbw Htxl Hep Hcg Hpc Hcnt Hpay Hlocked Hres Hrest
                       Hhiout EXIT"). }
     (* ---- the default arm ---- *)
     iApply (wp_beq_fall_s_sconf (mword_of_int (CT + 0x28)) (mword_of_int 200 : mword 13)
@@ -3689,7 +3773,7 @@ Section ProofConsoleintr.
     iApply (ct_dflt (CIDq := CIDaq) γtx γc γu γv cn hh pme m S3 K lvl eb b sp0
               cv lks hb cb Hcnu Hx
               HS3sp HS3s1 HS3cs HK Hlvl Hchain Hbelow Hends Hcv
-              with "Ht Hdev Hbw Htxl Hsub Htg Hcg Hpc Hcnt Hpay Hlocked Hres Hhi
+              with "Ht Hdev Hbw Htxl Hp1 Htg Hcg Hpc Hcnt Hpay Hlocked Hres Hhi
                     Hrest WAKE EXIT").
   Qed.
 

@@ -21,7 +21,7 @@
 
    AND THE TRACE THREADING IS GONE.  printk prints to the SECOND 16550 now
    ([SpecPrputc.v]), whose output nothing tracks, so printk's contract has no
-   [bs]/[uart_sent_sub] to accumulate: the [uart_sent_sub_nil_free] mint this
+   trace claim to accumulate: the empty-trace mint this
    proof opened with, and the [Hsub]/[Hsub1] threading between the two calls,
    are simply deleted.  [panic_env] is REFILLED rather than emptied -- see
    SpecPanic.v -- but with the second port's credential, so what is destructed
@@ -239,7 +239,7 @@ Section ProofPanic.
     iDestruct "Henv0" as (γpr) "#Henv".
     iDestruct "Henv" as "(#Hlk & #Hpre)".
     (* NO TRACE BASELINE TO MINT ANY MORE.  This proof used to open with
-       [uart_sent_sub_nil_free], because printk's contract wanted a trace to
+       the empty sublist claim, because printk's contract wanted a trace to
        extend and panic had no caller-supplied one.  163d39b moved printk's
        output to the second port, whose wire is unconstrained by ruling
        (SpecPrputc.v), so printk asks for no trace at all and there is

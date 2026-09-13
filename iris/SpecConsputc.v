@@ -46,9 +46,22 @@
    [uart_tx_own] appears nowhere; the caller brings only the persistent
    [UartTxInv.is_txlock γl γd] (which carries [uart_dlab_off] with it).  And
    because the lock is re-acquired PER BYTE -- three times on the BACKSPACE arm,
-   with other harts free to interleave in between -- the trace claim is the
-   sublist form [UartTxInv.uart_sent_sub], threaded [bs] in / [bs ++ cs] out,
-   with [cs] PINNED to the arm's own bytes (below). *)
+   with other harts free to interleave in between -- the caller's obligation
+   is a CHAIN and not one shift over the message: [WpUart.out_chain Uart0
+   (consputc_cs a00) Φ], one link per byte, because another hart's bytes
+   really can land between two of ours (lane OUT-FUPD, F3).
+
+   AND THAT IS WHY THE BYTES ARE A FUNCTION AND NO LONGER AN EXISTENTIAL.
+   The receipt is retired, so the post's [∃ cs] with its pinned equation has
+   nothing left to say; what the caller needs INSTEAD is to know, BEFORE the
+   call, which bytes it is justifying -- so the arm's bytes are computed
+   from the argument by [consputc_cs] below and the caller's chain is stated
+   over them.  The post is the chain's payload [Φ].
+
+   THIS CONTRACT IS THE CONSOLE'S ALONE.  consputc passes 0 at each of its
+   four call sites (XV6_REV 163d39b), so the port here is [Uart0] and the
+   chain is a real obligation; printk reaches the same store leaf through
+   [SpecPrputc] at [Uart1], where it owes nothing. *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
 From iris.proofmode Require Import proofmode.
@@ -110,6 +123,14 @@ Definition consputc_bs : list (bv 8) :=
    arms cannot both fire. *)
 Definition cp_backspace : mword 64 := mword_of_int 256.
 
+(* WHAT ONE CALL PUTS ON THE WIRE, as a FUNCTION of the argument (lane
+   OUT-FUPD).  This is exactly the disjunction the post used to report
+   existentially; naming it lets the CALLER state its justification chain
+   over the bytes before the call, which is what the store leaf's view
+   shift needs. *)
+Definition consputc_cs (a0 : mword 64) : list (bv 8) :=
+  if eq_vec a0 cp_backspace then consputc_bs else [cp_byte a0].
+
 (* the three bytes of the BACKSPACE arm, at [cp_byte]'s spelling: what the
    three [c.li a0,_ ; jal uartputc_sync] pairs store. *)
 Lemma cp_byte_bs1 : cp_byte (mword_of_int 8) = (mword_of_int 8 : mword 8).
@@ -118,7 +139,7 @@ Lemma cp_byte_bs2 : cp_byte (mword_of_int 32) = (mword_of_int 32 : mword 8).
 Proof. apply bv_eq; vm_compute; reflexivity. Qed.
 Definition wp_consputc_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (kt : ktier) (γl : gname) (γd : uart_names) (γv : disk_names) (m0 : regfile) (K : nat)
-    (bs : list (bv 8)) (n : nat) (eb : bool) (b : bool) (p : mword 64) (lks : gset string) :=
+    (Φ : iProp Σ) (n : nat) (eb : bool) (b : bool) (p : mword 64) (lks : gset string) :=
   let ra_idx : mword 5 := mword_of_int 1 in
   let a0_idx : mword 5 := mword_of_int 10 in
   let pcE := mword_of_int KernelSyms.consputc in
@@ -141,16 +162,17 @@ Definition wp_consputc_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
   (* the .data word the callee LOADS its MMIO base from (SpecUartPutc.v) *)
   uart_base_word Uart0 -∗
   is_txlock γl γd -∗
-  uart_sent_sub γd bs -∗
+  (* THE JUSTIFICATION FOR THIS CALL'S BYTES, ONE LINK EACH (lane OUT-FUPD).
+     [consputc_cs a00] is the BACKSPACE arm's triple or the argument's low
+     byte, so the caller knows the run before the call. *)
+  out_chain Uart0 (consputc_cs a00) Φ -∗
   wp_next b p (fun (CID : CpuId) =>
-    ∀ mf cs,
+    ∀ mf,
     sie_cap_gpr kt mf K b p -∗
     cpu_own n eb p b lks -∗
     pc_is ret_tgt -∗
     ⌜ callee_saved m0 mf /\ mf !!! Regidx ra_idx = ra0 ⌝ -∗
-    (* WHICH BYTES: the BACKSPACE arm's triple, or the argument's low byte *)
-    ⌜ if eq_vec a00 cp_backspace then cs = consputc_bs else cs = [cp_byte a00] ⌝ -∗
-    uart_sent_sub γd (bs ++ cs) -∗
+    Φ -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
@@ -158,6 +180,6 @@ Module Type CONSPUTC.
   Parameter wp_consputc_sconf :
     forall `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (kt : ktier) (γl : gname) (γd : uart_names) (γv : disk_names) (m0 : regfile) (K : nat)
-      (bs : list (bv 8)) (n : nat) (eb : bool) (b : bool) (p : mword 64) (lks : gset string),
-      wp_consputc_sconf_body kt γl γd γv m0 K bs n eb b p lks.
+      (Φ : iProp Σ) (n : nat) (eb : bool) (b : bool) (p : mword 64) (lks : gset string),
+      wp_consputc_sconf_body kt γl γd γv m0 K Φ n eb b p lks.
 End CONSPUTC.

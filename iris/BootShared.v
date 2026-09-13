@@ -1622,6 +1622,16 @@ Section BootAlloc.
        the later *)
     ▷ @app_pred Σ APP (@app_run Σ APP)
       (FsAbsDefs.abs_view (FsState.fss_inodes S)) -∗
+    (* ...AND THE ERA'S OUTPUT CLAIM AT THE EMPTY RUN (lane OUT-FUPD).  The
+       CONSOLE port's invariant carries the application's claim about the
+       bytes it has accepted ([WpUart.uart_out_claim]); the claim holds an
+       AUTHORITY, so it is minted per era and the transport is where an
+       era's instance is born -- this is that yield
+       ([SystemAdequacy.app_xfer_boot_raw]'s third component), carried in
+       on [power_boot_res]'s lend and handed straight to
+       [WpUart.uart_ghosts_alloc] at [Uart0].  The kernel's port founds its
+       own out of nothing ([WpUart.out_res_at_uart1]). *)
+    out_res_at Uart0 [] [] -∗
     (* the transport and the crash seam at the application's guest, both
        straight through to the mint, which parks the one and puts both on
        fsinit's kit (round C) *)
@@ -1816,7 +1826,7 @@ Section BootAlloc.
     pose proof Hbf as Hbf'.
     destruct Hbf' as (Hpow & Hin & Hmemf & Hregsf & Hu0 & Hp0 & Hv0' & _).
     destruct Hv0' as (v0 & Hv0).
-    iIntros "Hok #Hxfer #Hseamg Hdursnap H".
+    iIntros "Hok Hores #Hxfer #Hseamg Hdursnap H".
     iDestruct (power_boot_res_unpack Rb g ndisk with "H") as
       "(Hregs & Hbytes & Hkauth & Hkfrags & Hkpt & Hkptb & Hstrans & Hsie & Hspp & Hspie &
         Hlkauth & Hpark & Hpst & Hresv & Huf & Hpf & Hvf & Hdimg & Hmir & #Hswlb &
@@ -2090,7 +2100,11 @@ Section BootAlloc.
     iMod (uart_ghosts_alloc Uart0 (g.(gdev).(duart) Uart0)
             ltac:(rewrite Hu0; reflexivity)
             ltac:(rewrite Hu0; vm_compute; reflexivity)
-            ltac:(rewrite Hu0; reflexivity)) as (γd)
+            ltac:(rewrite Hu0; reflexivity)
+            (* NOTHING HAS BEEN ACCEPTED AT POWER-ON (lane OUT-FUPD): the
+               reset UART's transmit pair is empty, so the transport's yield
+               founds the port's output claim exactly here. *)
+            ltac:(rewrite Hu0; reflexivity) with "Hores") as (γd)
       "(Hacc & Hout & Htxa & Hdla & Htx & Hsent & Hdlab & Hcol & Htok & Hhi1 &
         Hhi2 & Hpre)".
     (* ---- THE CONSOLE RING'S GHOSTS, beside the UART's and not before
@@ -2130,10 +2144,15 @@ Section BootAlloc.
        [uart_inv Uart1] holds its four ghosts, and its transmitter token,
        receipt, DLAB half and receive pair leave for [uartinit] and for
        main's SECOND deposit, exactly as the console's do. ---- *)
+    (* the KERNEL's port claims nothing, so its founding is free:
+       [WpUart.out_res_at Uart1] is [emp] (lane OUT-FUPD) *)
+    iAssert (out_res_at Uart1 [] []) as "Hores1"; [done|].
     iMod (uart_ghosts_alloc Uart1 (g.(gdev).(duart) Uart1)
             ltac:(rewrite Hu0; reflexivity)
             ltac:(rewrite Hu0; vm_compute; reflexivity)
-            ltac:(rewrite Hu0; reflexivity)) as (γd1)
+            ltac:(rewrite Hu0; reflexivity)
+            ltac:(rewrite Hu0; reflexivity)
+            with "Hores1") as (γd1)
       "(Hacc1 & Hout1 & Htxa1 & Hdla1 & Htx1 & Hsent1 & Hdlab1 & Hcol1 &
         Htok1 & Hhi11 & _ & Hpre1)".
     iDestruct (uart_out_auth_lb γd1 (g.(gdev).(duart) Uart1) with "Hout1")

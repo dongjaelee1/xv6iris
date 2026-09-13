@@ -152,7 +152,7 @@ Section UartTxInv.
   (* ---- the protected resource: the transmitter, at whatever trace it is at.
      The trace is EXISTENTIAL here because no reader of the lock predicts it --
      a writer learns the current value when it takes the lock, and every claim
-     it then makes about its own bytes is a [uart_sent_sub] (below), which is
+     it then makes about its own bytes is a [WpUart.out_chain] link, which is
      persistent and survives the release. *)
   Definition tx_res (γu : uart_names) : iProp Σ :=
     (∃ l : list (bv 8), uart_tx_own γu l)%I.
@@ -184,7 +184,7 @@ Section UartTxInv.
      THE COST IS BORNE BY THE CALLERS' TRACE CLAIM, not by this predicate:
      a driver that re-acquires per byte cannot claim a CONTIGUOUS
      [uart_sent], because another hart may interleave between two of its
-     bytes.  That is what [uart_sent_sub] below is for. *)
+     bytes.  That is what [WpUart.out_chain] is for (lane OUT-FUPD). *)
   (* THE PORT-INDEXED FORM, and the console port's abbreviation.  Every
      existing caller names [is_txlock]; the second port's transmitter -- the
      one printk and panic drive -- is [is_txlock_at Uart1], the same
@@ -230,52 +230,34 @@ Section UartTxInv.
   (*  Reading the accepted trace out of [dev_inv].                          *)
   (* ===================================================================== *)
 
-  (* WHAT A DRIVER THAT SLEEPS BETWEEN BYTES CAN CLAIM.  [uart_sent] records a
-     CONTIGUOUS accepted prefix, which is the right shape for a driver that
-     holds the transmitter across its whole output (uartputc_sync) and the
-     wrong one for a driver that parks in the middle of it: while uartwrite
-     sleeps, another hart's bytes may be accepted between two of its own.  So
-     the claim is SUBLIST -- the bytes went out, in order, possibly
-     interleaved.  Persistent, like [uart_sent] itself. *)
-  Definition uart_sent_sub (γu : uart_names) (bs : list (bv 8)) : iProp Σ :=
-    (∃ tr : list (bv 8), uart_sent γu tr ∗ ⌜ bs `sublist_of` tr ⌝)%I.
+  (* THE SUBLIST CLAIM IS RETIRED (lane OUT-FUPD, F4).  It said --
+     "these bytes went out, in order, possibly interleaved with another
+     hart's" -- was the whole trace vocabulary above the transmitter: what
+     uartputc_sync, consputc, uartwrite, consolewrite and filewrite handed
+     back.  Under the owner's redesign a writer does not RECEIVE a claim
+     about what came out, it BRINGS the justification for putting it out
+     ([WpUart.out_link] / [WpUart.out_chain], one link per byte, invoked at
+     the store), and the consequence lives in the console UART's own
+     invariant.  Nothing above the driver reads a trace any more, so the
+     definition, its free unit and its snoc step are gone with it.
 
-  Global Instance uart_sent_sub_persistent γu bs : Persistent (uart_sent_sub γu bs).
-  Proof. apply _. Qed.
+     WHAT STAYS is [uart_sent] itself, just below: the device's own
+     monotone record of the accepted sequence, which the THR leaf's ghost
+     step still produces and [UartAccepted]/[SystemUartAccepted] still read
+     at the ledger.
 
-  Lemma uart_sent_sub_nil γu (tr : list (bv 8)) :
-    uart_sent γu tr -∗ uart_sent_sub γu [].
-  Proof.
-    iIntros "H". iExists tr. iFrame "H". iPureIntro. apply stdpp.list_relations.sublist_nil_l.
-  Qed.
-
-  (* THE EMPTY CLAIM IS FREE, AND FROM NOTHING AT ALL -- no [dev_inv], no
-     invariant to open, no mask side condition, not even an allocated
-     authority.  [uart_sent γ l] is [own γ.(un_acc) (◯ML l)] and [◯ML []] is
-     the UNIT of [mono_listUR], so [own_unit] hands it over under a plain
-     [|==>].  ([uart_sent_sub_nil] above is the route for a holder who already
-     has a trace in hand; this is the route for one who has nothing.)
-
-     This is what lets a spec whose only use of the trace claim is to feed a
-     POSTCONDITION drop it from its precondition outright -- see SpecPanic.v,
-     which has no postcondition and therefore no use for [bs]. *)
-  Lemma uart_sent_sub_nil_free (γu : uart_names) :
-    ⊢ |==> uart_sent_sub γu [].
+     ...AND ITS FREE UNIT COMES HERE, from the retired [UartSentLoc.v]: the
+     mono-list's [◯ML []] is the algebra's unit, so [own_unit] hands the
+     empty record over under a plain [|==>], with no invariant to open and
+     no allocated authority.  Kept for a holder who has no trace in hand
+     at all; every producer above the driver now reaches [uart_sent]
+     through the THR leaf's own ghost step. *)
+  Lemma uart_sent_nil (γu : uart_names) : ⊢ |==> uart_sent γu [].
   Proof.
     iMod (own_unit (mono_listUR (leibnizO (bv 8))) γu.(un_acc)) as "H".
-    iModIntro. rewrite /uart_sent_sub. iExists []. iSplitL "H"; last first.
-    { iPureIntro. apply stdpp.list_relations.sublist_nil_l. }
-    rewrite /uart_sent -(mono_list_lb_nil_is_unit (leibnizO (bv 8))). done.
-  Qed.
-
-  (* the step: one more byte accepted at the END of a trace that already
-     contains the previous ones. *)
-  Lemma uart_sent_sub_snoc γu (bs l : list (bv 8)) (c : bv 8) :
-    bs `sublist_of` l ->
-    uart_sent γu (l ++ [c]) -∗ uart_sent_sub γu (bs ++ [c]).
-  Proof.
-    iIntros (Hsub) "H". iExists ((l ++ [c])%list). iFrame "H". iPureIntro.
-    apply stdpp.list_relations.sublist_app; [exact Hsub | reflexivity].
+    iModIntro.
+    rewrite /uart_sent -(mono_list_lb_nil_is_unit (leibnizO (bv 8))).
+    done.
   Qed.
 
   (* the [un_acc] twin of [uart_out_prefix]: a persistent record is a prefix
@@ -334,26 +316,6 @@ Section UartTxInv.
     iModIntro. iFrame "Hown". iPureIntro. by rewrite -Hacc.
   Qed.
 
-  (* and the version that re-links an EARLIER record to the current trace:
-     what a driver holding the token learns about the [uart_sent] it kept
-     across a sleep.  Everything it saw accepted is still a prefix of what has
-     been accepted now, so its sublist claim carries over to the trace it is
-     about to extend. *)
-  Lemma uart_tx_own_sent_sub_at (i : uart_id) (γu : uart_names)
-      (l : list (bv 8)) (bs : list (bv 8)) (E : coPset) :
-    ↑(uartN i) ⊆ E ->
-    uart_inv i γu -∗ uart_tx_own γu l -∗ uart_sent_sub γu bs ={E}=∗
-      uart_tx_own γu l ∗ ⌜ bs `sublist_of` l ⌝.
-  Proof.
-    iIntros (HE) "#Huinv Hown #Hsub".
-    iDestruct "Hsub" as (L) "[#HL %Hbs]".
-    iMod (uart_tx_own_sent_prefix_at i γu l L E HE with "Huinv Hown HL")
-      as "[Hown %Hpre]".
-    iModIntro. iFrame "Hown". iPureIntro.
-    destruct Hpre as [k ->].
-    apply (transitivity Hbs). apply stdpp.list_relations.sublist_inserts_r. reflexivity.
-  Qed.
-
   (* ---- the console-bundle instances, verbatim in their old statements ---- *)
   Lemma uartN_devN_console : (↑(uartN Uart0) : coPset) ⊆ ↑devN.
   Proof. rewrite /uartN. solve_ndisj. Qed.
@@ -380,18 +342,6 @@ Section UartTxInv.
     iDestruct (dev_inv_uart with "Hinv") as "#Huinv".
     iApply (uart_tx_own_sent_prefix_at Uart0 γu l L E
               (transitivity uartN_devN_console HE) with "Huinv Hown HL").
-  Qed.
-
-  Lemma uart_tx_own_sent_sub (γu : uart_names) (γd : disk_names)
-      (l : list (bv 8)) (bs : list (bv 8)) (E : coPset) :
-    ↑devN ⊆ E ->
-    dev_inv γu γd -∗ uart_tx_own γu l -∗ uart_sent_sub γu bs ={E}=∗
-      uart_tx_own γu l ∗ ⌜ bs `sublist_of` l ⌝.
-  Proof.
-    iIntros (HE) "#Hinv Hown #Hsub".
-    iDestruct (dev_inv_uart with "Hinv") as "#Huinv".
-    iApply (uart_tx_own_sent_sub_at Uart0 γu l bs E
-              (transitivity uartN_devN_console HE) with "Huinv Hown Hsub").
   Qed.
 
 

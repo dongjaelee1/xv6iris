@@ -227,7 +227,6 @@ Section UInitConsK.
        of_Fo    := pfam_triv (fun _ _ _ => True%I);
        of_Ft    := pfam_triv (fun _ _ _ => True%I);
        wf_Q     := fun _ => True%I;
-       wf_tr0   := [];
        nf_P     := P;
        nf_Pmiss := fun _ _ => True%I;
        nf_Farm  := Farm;

@@ -326,7 +326,12 @@ Qed.
     iIntros "Hcg Hpc Hinstr #Huinv HR Hacc Hcont".
     iApply (wp_sb_uart_uinv_s_sconf_at Uart0 γd off pc is_rvc rs2 rs1 imm m n R S b p
               Hoff Hcanon (eq_trans Hvpn_def (eq_sym uart_vpn_of_console)) Hpa
-              with "Hcg Hpc Hinstr Huinv HR Hacc Hcont").
+              with "Hcg Hpc Hinstr Huinv HR [Hacc] Hcont").
+    (* the primitive's ghost step is a fupd at [⊤ ∖ ↑uartN Uart0] (lane
+       OUT-FUPD); this corollary's is the landed basic update, and a basic
+       update is a fupd at any mask *)
+    iIntros (u u') "%Hw Hg Hcol HR".
+    iMod ("Hacc" $! u u' with "[//] Hg Hcol HR") as "$". done.
   Qed.
 
   (* The bundle-taking RESTATEMENT of the accessor leaf above, statement

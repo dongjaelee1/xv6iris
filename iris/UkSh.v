@@ -214,6 +214,90 @@ Definition ush_line_is (f : nat -> bv 8) (k len : nat) : Prop :=
   len = length echo_line
   /\ forall j : nat, (j < len)%nat -> f (k + j)%nat = echo_line !!! j.
 
+(* ===================================================================== *)
+(*  §4b  THE ^D REFUTATION (lane SH-LINE 2b, L2).                         *)
+(*                                                                        *)
+(*  [ConsoleInv.cons_swallow]'s [d + 1] arm, once the copy-out fault is    *)
+(*  eliminated ([UkRunSys.uk_read_nofault] under the lazy flag), says the  *)
+(*  swallowed byte was [C('D')] -- [cons_xlate b] is 4 -- and hands over   *)
+(*  its history's input TAG.  [UkSh.ush_tag_law] reads that tag as         *)
+(*  [⌜disc h⌝ ∨ T], and this is why the first disjunct is impossible: the  *)
+(*  discipline's content half says the cycle's input is a prefix of        *)
+(*  [echo_line]*, every byte of such a prefix is a byte OF [echo_line],    *)
+(*  and 0x04 is not one of the seventeen.  So [r = 0] on a read that       *)
+(*  swallowed a byte is the TAINT, and [gets] takes its taint branch.      *)
+(* ===================================================================== *)
+
+(* every byte of a [star_prefix] of [pat] is a byte of [pat] *)
+Lemma ush_elem_concat_replicate (pat : list (bv 8)) (n : nat) (x : bv 8) :
+  x ∈ concat (replicate n pat) -> x ∈ pat.
+Proof.
+  induction n as [| n IH]; cbn.
+  - intro H. by apply elem_of_nil in H.
+  - intro H. apply elem_of_app in H as [H | H]; [ exact H | exact (IH H) ].
+Qed.
+
+Lemma ush_star_prefix_elem (pat l : list (bv 8)) (x : bv 8) :
+  star_prefix pat l -> x ∈ l -> x ∈ pat.
+Proof.
+  rewrite /star_prefix. intros Hsp Hx. rewrite Hsp in Hx.
+  apply (ush_elem_concat_replicate pat (length l) x).
+  rewrite <- (take_drop (length l) (concat (replicate (length l) pat))).
+  apply elem_of_app. by left.
+Qed.
+
+(* ...and 0x04 is not one of [echo_line]'s seventeen *)
+Lemma ush_echo_line_no_ctrl_d (x : bv 8) :
+  x ∈ echo_line -> bv_unsigned x <> 4.
+Proof.
+  rewrite /echo_line. intros Hx Hv.
+  apply elem_of_list_fmap in Hx as (z & -> & Hz).
+  repeat (apply elem_of_cons in Hz as [-> | Hz];
+          [ vm_compute in Hv; discriminate Hv | ]).
+  by apply elem_of_nil in Hz.
+Qed.
+
+(* THE CYCLE THE LAST INPUT BYTE IS IN.  [cycles_of] folds the history
+   into its power cycles, the open one last; an [ObsUartIn Uart0] event extends
+   the most recent cycle (or starts one), so the byte's own cycle is a
+   segment whose input ENDS with it.  No [trace_shape] premise: the fold
+   does this whether or not the power is on. *)
+Lemma ush_elem_of_rev_head {A} (x : A) (l : list A) : x ∈ rev (x :: l).
+Proof.
+  cbn. apply elem_of_app. right. by apply elem_of_list_singleton.
+Qed.
+
+Lemma ush_cycles_snoc_in (h : list mobs) (b : bv 8) :
+  exists s0 : list mobs,
+    (s0 ++ [ObsUartIn Uart0 b])%list ∈ cycles_of (h ++ [ObsUartIn Uart0 b])%list.
+Proof.
+  rewrite /cycles_of cycles_rev_app.
+  destruct (cycles_rev h) as [| c cs] eqn:Hc.
+  - exists []. exact (ush_elem_of_rev_head ([] ++ [ObsUartIn Uart0 b])%list []).
+  - exists c. exact (ush_elem_of_rev_head (c ++ [ObsUartIn Uart0 b])%list cs).
+Qed.
+
+(* THE REFUTATION ITSELF, at the shape [cons_swallow]'s arm hands it: the
+   byte the history ends in translates to 0x04. *)
+Lemma disc_no_ctrl_d (h : list mobs) (b : bv 8) :
+  obs_ends_in Uart0 h b -> bv_unsigned (cons_xlate b) = 4 -> disc h -> False.
+Proof.
+  intros [h0 ->] Hx Hd.
+  (* 0x04 is not '\r', so [cons_xlate] is the identity on it *)
+  assert (Hb : bv_unsigned b = 4).
+  { destruct (decide (b = (mword_of_int 13 : mword 8))) as [-> | Hne].
+    - rewrite cons_xlate_cr in Hx. vm_compute in Hx. discriminate Hx.
+    - rewrite (cons_xlate_other b Hne) in Hx. exact Hx. }
+  destruct (ush_cycles_snoc_in h0 b) as (s0 & Hin).
+  apply elem_of_list_lookup in Hin as [i Hi].
+  pose proof (disc_seg'_proj _ (Forall_lookup_1 _ _ _ _ Hd Hi)) as Hseg.
+  rewrite /disc_seg ins_app ins_in in Hseg.
+  apply (ush_echo_line_no_ctrl_d b); [| exact Hb].
+  apply (ush_star_prefix_elem echo_line (ins s0 ++ [b]) b Hseg).
+  apply elem_of_app. right. by apply elem_of_list_singleton.
+Qed.
+
+
 Section UkSh.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.
@@ -802,6 +886,30 @@ Section UkSh.
 
 
   (* ===================================================================== *)
+  (* THE TAG'S READING, AS A PERSISTENT LAW SH'S ENTRY TAKES                *)
+  (* (lane SH-LINE 2b, L4; app-echo.md, "SH-LINE PHASE 1 LANDED",           *)
+  (* ruling (3)).                                                          *)
+  (*                                                                       *)
+  (* [RiscvPtsto.riscv_rx_tag] is a field of the machine's FIXED ghost      *)
+  (* state, tied to the application's own tag ([App.app_tag]) only by an    *)
+  (* equation in the top theorem's [boot_fixedGS] -- nothing below reads    *)
+  (* it.  So the reading is a PREMISE, threaded from [SystemAdequacy]'s     *)
+  (* [Hinit_boot] through init's pinned builder to sh's entry, exactly as   *)
+  (* [UInitSh.init_sh_slot] takes its claim law.                           *)
+  (*                                                                       *)
+  (* PERSISTENT, which it must be: sh's entry is built inside init's fork   *)
+  (* child, inside an [iLob] the parent re-enters.                         *)
+  (*                                                                       *)
+  (* STATED HERE rather than in [UConsLine.v] because [ush_rest] below      *)
+  (* consumes what it produces and this file is under that one.            *)
+  (* ===================================================================== *)
+  Definition ush_tag_law : iProp Σ :=
+    (□ (∀ h : list mobs, riscv_rx_tag h -∗ ⌜disc h⌝ ∨ T))%I.
+
+  Global Instance ush_tag_law_persistent : Persistent ush_tag_law.
+  Proof. rewrite /ush_tag_law. apply _. Qed.
+
+  (* ===================================================================== *)
   (* THE ONE HYPOTHESIS OF STAGE 2: SH'S CONSOLE READ, WITH THE RECEIPT     *)
   (* KEPT (lane SH-LINE 2b, R1').                                           *)
   (*                                                                       *)
@@ -908,6 +1016,106 @@ Section UkSh.
     iDestruct "Hw" as (dd dc hs sl) "(_ & _ & _ & _ & _ & _ & _ & _ & _ & Hp)".
     iExists (n + dc)%nat. iExact "Hp".
   Qed.
+
+  (* =================================================================== *)
+  (*  THE [r = 0] ROUND'S REFUTATION, IN ONE STEP (lane SH-LINE 2b, L2).   *)
+  (*                                                                      *)
+  (*  [gets] breaks on [cc < 1], and what it has to know there is whether  *)
+  (*  the ring's cursor moved anyway -- because if it did, the byte the    *)
+  (*  NEXT read delivers is not the one after the last one delivered, and  *)
+  (*  the line has a hole in it.  The cursor moves past an empty delivery  *)
+  (*  only on the swallowing arm, whose reason at [fault := False] is      *)
+  (*  [C('D')] -- and THAT is refuted into the taint: the swallowed byte's *)
+  (*  history carries the input tag, the tag law reads it as the           *)
+  (*  discipline or the taint, and a disciplined cycle's input is a prefix *)
+  (*  of [echo_line]*, in which 0x04 does not occur ([disc_no_ctrl_d]).    *)
+  (*                                                                      *)
+  (*  So there is no third thing for sh to walk: either nothing was        *)
+  (*  swallowed and the position is exactly where the loop left it, or the *)
+  (*  application is tainted and sh's continuation is the generic one.     *)
+  (*                                                                      *)
+  (*  IT IS AN IMPLICATION AND NOT A DISJUNCTION NOW (lane CONS-ROWS, B4   *)
+  (*  spent).  The old shape had to leave "nothing was swallowed" open,    *)
+  (*  because nothing in the landed contract said what a zero-length read  *)
+  (*  did to the cursor.  B4 does: at [dd = 0] against a POSITIVE request  *)
+  (*  the byte WAS popped, so the caller arrives here already knowing      *)
+  (*  [dc <> 0] -- and then the only arm left is [C('D')], and the only    *)
+  (*  reading of it is the taint.  A zero-length read at a positive        *)
+  (*  request IS the ^D-with-nothing-delivered arm.                        *)
+  (* =================================================================== *)
+  Lemma ush_swallow_taint (cnm : cons_names)
+      (sl : list (list mobs * bv 8)) (dc : nat) :
+    dc <> 0%nat ->
+    ush_tag_law -∗ ucons_swallow cnm False sl 0%nat dc -∗ T.
+  Proof.
+    intro Hdc. iIntros "#Hlaw Hsw". rewrite /ucons_swallow.
+    iDestruct "Hsw" as "[%He | [%He H]]"; [ exfalso; exact (Hdc He) | ].
+    iDestruct "H" as (h b) "(%Hen & _ & _ & Htg & Hwhy)".
+    iDestruct "Hwhy" as "[%Hd | %Hf]"; [ | exfalso; exact Hf ].
+    iDestruct ("Hlaw" $! h with "Htg") as "[%Hdisc | HT]"; [ | iExact "HT" ].
+    exfalso. exact (disc_no_ctrl_d h b Hen (proj2 Hd) Hdisc).
+  Qed.
+
+
+  (* =================================================================== *)
+  (*  §3  THE [gets] LOOP'S LINE INVARIANT                                *)
+  (*                                                                      *)
+  (*  [UkSh.wp_ksh_gets_loop] reads ONE byte per [read()] into the frame   *)
+  (*  slot at s0-81 and copies it to buf[i], so after [i] turns the buffer *)
+  (*  holds the ring's stored bytes at [n0 .. n0+i) and the position       *)
+  (*  stands at [n0 + i].  That is this predicate, and it is the whole of  *)
+  (*  what the loop gains.                                                *)
+  (*                                                                      *)
+  (*  [dc = d] ON EVERY TURN THE LOOP CONTINUES ON, which is why the       *)
+  (*  position is [n0 + i] and not [n0 + i + something].  The two rounds:   *)
+  (*                                                                       *)
+  (*   [r = 1] -- gets stored a byte and goes round again.  Then [d = 1],   *)
+  (*     and the swallowing arm needs [d = 0] once the copy-out fault is    *)
+  (*     eliminated, so [dc = 1] ([UserConsole.ucons_swallow_nofault_1]):   *)
+  (*     the window grows by exactly one byte, with its tag.                *)
+  (*                                                                       *)
+  (*   [r = 0] -- gets breaks on [r < 1].  Then [d = 0], and the cursor     *)
+  (*     may have moved by one: the byte the call swallowed is [C('D')].    *)
+  (*     [ush_swallow_taint] below is the whole refutation -- the byte's    *)
+  (*     tag reads as the discipline or the taint ([UkSh.ush_tag_law]),     *)
+  (*     and a history whose input ends in 0x04 is not disciplined          *)
+  (*     ([disc_no_ctrl_d]) -- so that round leaves the TAINT, and the      *)
+  (*     line stops being the shell's business.                             *)
+  (*                                                                       *)
+  (*  [r < 0] is not observable at the U tier: consoleread answers -1 only  *)
+  (*  when the process was killed, and a killed process is never resumed.   *)
+  (*                                                                      *)
+  (*  THE TAINT BRANCH IS ONE DISJUNCT AND CARRIES NO BYTES: after it the  *)
+  (*  line is [∃ bytes] and sh's continuation is the generic one           *)
+  (*  ([UkShFork.ushf_rest_of_body]'s taint case).                         *)
+  (* =================================================================== *)
+  Definition ush_gets_line (cnm : cons_names)
+      (n0 i : nat) (g : nat -> bv 8) : iProp Σ :=
+    ((∃ (hs : list (list mobs)) (sl : list (list mobs * bv 8)),
+        ⌜cons_window sl n0 i g hs⌝ ∗ ⌜cons_chain sl⌝ ∗
+        ucons_stored_lb cnm sl ∗
+        ([∗ list] hh ∈ hs, riscv_rx_tag hh) ∗
+        upos γp (n0 + i)%nat)
+     ∨ (T ∗ ush_pos))%I.
+
+  (* the loop ENTERS at the empty window, which costs nothing but the
+     position: [cons_window sl n0 0 g []] holds of any bound whose length
+     is [n0] ([ConsoleInv.cons_window_0]) *)
+  Lemma ush_gets_line_0 (cnm : cons_names)
+      (n0 : nat) (g : nat -> bv 8) (sl : list (list mobs * bv 8)) :
+    length sl = n0 ->
+    cons_chain sl ->
+    ucons_stored_lb cnm sl -∗ upos γp n0 -∗ ush_gets_line cnm n0 0%nat g.
+  Proof.
+    intros Hlen Hch. iIntros "#Hlb Hp". rewrite /ush_gets_line. iLeft.
+    iExists [], sl.
+    iSplitR; [ iPureIntro; exact (cons_window_0 sl n0 g Hlen) | ].
+    iSplitR; [ by iPureIntro | ].
+    iSplitR; [ iExact "Hlb" | ].
+    iSplitR; [ done | ].
+    rewrite Nat.add_0_r. iExact "Hp".
+  Qed.
+
 
   Definition ush_read_recv_leaf (cnm : cons_names) (l : list fdstate)
       : iProp Σ :=
@@ -4404,29 +4612,9 @@ Section UkSh.
     iApply (urun_gen N T h m pc avail Hal with "Hg HT Hrun").
   Qed.
 
-  (* ===================================================================== *)
-  (* THE TAG'S READING, AS A PERSISTENT LAW SH'S ENTRY TAKES                *)
-  (* (lane SH-LINE 2b, L4; app-echo.md, "SH-LINE PHASE 1 LANDED",           *)
-  (* ruling (3)).                                                          *)
-  (*                                                                       *)
-  (* [RiscvPtsto.riscv_rx_tag] is a field of the machine's FIXED ghost      *)
-  (* state, tied to the application's own tag ([App.app_tag]) only by an    *)
-  (* equation in the top theorem's [boot_fixedGS] -- nothing below reads    *)
-  (* it.  So the reading is a PREMISE, threaded from [SystemAdequacy]'s     *)
-  (* [Hinit_boot] through init's pinned builder to sh's entry, exactly as   *)
-  (* [UInitSh.init_sh_slot] takes its claim law.                           *)
-  (*                                                                       *)
-  (* PERSISTENT, which it must be: sh's entry is built inside init's fork   *)
-  (* child, inside an [iLob] the parent re-enters.                         *)
-  (*                                                                       *)
-  (* STATED HERE rather than in [UConsLine.v] because [ush_rest] below      *)
-  (* consumes what it produces and this file is under that one.            *)
-  (* ===================================================================== *)
-  Definition ush_tag_law : iProp Σ :=
-    (□ (∀ h : list mobs, riscv_rx_tag h -∗ ⌜disc h⌝ ∨ T))%I.
-
-  Global Instance ush_tag_law_persistent : Persistent ush_tag_law.
-  Proof. rewrite /ush_tag_law. apply _. Qed.
+  (* THE TAG'S READING ([ush_tag_law]) IS STATED ABOVE THE READ LEAF now
+     (lane SH-LINE 2b, R2): it is spent INSIDE [gets], on the byte the
+     read swallowed, so it has to be in scope there. *)
 
   (* ===================================================================== *)
   (* SH'S CONSOLE OPEN, AS TWO LEAF BODIES (lane SH-OPEN, H2).              *)

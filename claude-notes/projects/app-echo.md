@@ -53,20 +53,33 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   `sh_pay_state` proved at a named constant `sh_Rsh`; `Hsh_owed` is
   `sh_deps ∧ sh_pay_rest sh_Rsh`; `UConsLine`'s three Props are lemmas.
 - [ ] **SELF-KILL** (kernel; `-sup`, `lane/self-kill`; steps 1-4a, 4b' and P6
-  steps 1-2 LANDED 2026-09-15, `27869216e`, the notes below).  OWNER'S RULING
+  steps 1-2 LANDED, `27869216e`, the notes below).  OWNER'S RULING
   2026-09-13: THE KILL CREDENTIAL IS THE TARGET'S EXIT PAYLOAD AT -1 -- no
   separate predicate, no alive token; Q(-1) is supplied when a process may
   trap at a killing cause, the syscall precondition when it enters with the
   syscall cause; no ∧, no -1 wand at ecalls; `killed()` reports the flag.
   `riscv_kill_cred` survives ONLY as the application's taint, the antecedent
-  of each process's published payment wand.  REMAINING: P6b (`upay_neg`'s
-  deletion, the two-sided deposit `ukill_cred_at gn sc := if ukill_sc sc
-  then (□ riscv_kill_cred ∨ kill_owed gn) else emp`, `uexec_kill_arm_F` back
-  to `X W`, `SpecSetkilled`'s two-sided premise) -- BLOCKED 2026-09-15 on
-  `upay_neg` being the carrier of the generic family's constant payload
-  (parked patch, ten of twelve files compiling; a Fable review of the lane is
-  in progress at the owner's request before the next ruling); then step 5
-  (memset's null store).
+  of each process's published payment wand and a third-party killer's price.
+  A FABLE REVIEW of the lane (2026-09-15, at the owner's request) found the
+  repeated blockers were mechanism rulings made ahead of facts already in the
+  tree (the seven C facts: `p->killed` is monotone; `p->lock` is not held
+  from usertrap's second check to kexit; `setkilled` runs only on `myproc()`;
+  kexit needs the payload only at the ZOMBIE park; `my_pay` is knowledge not
+  the resource; THE KERNEL NEVER RESUMES A NON-LAZY PROCESS FROM A KILLING
+  TRAP -- vmfault's success arm needs an unmapped lazy page -- so the arm at
+  a killing cause is the slot alone and no ∧/refund was ever needed;
+  setkilled should hand `kill_shot` back).  REMAINING, from the DESIGN PAGE
+  (scratchpad `brief-self-kill-2.md`): P6b-carrier (the generic family's
+  constant payload rides a persistent `□ (riscv_kill_cred -∗ R)` in its six
+  signatures -- `upay_neg` kept exactly where it is honest and deleted from
+  `urun`, `upay_at`, the arms and the exit stubs), P6b-deposit (the
+  two-sided `ukill_cred_at gn sc := if ukill_sc sc then (□ riscv_kill_cred ∨
+  kill_owed gn) else emp`; `SpecSetkilled` two-sided, returning `kill_shot`),
+  then step 5 (memset's null store).  Withdrawn: R3's ∧, "upay_neg deleted
+  everywhere", "no accessor", "put taken_at back from proc_priv".  Blessed
+  pending the owner's word: the forking process's persistent child wand
+  `□ (riscv_kill_cred -∗ sfork_pay f (-1))` at the fork ecall, the one -1
+  wand at an ecall (free at the trivial payload).
 - [x] ~~**CONS-IO milestone A**~~ LANDED 2026-09-13 (`eef6a8dec` with SELF-KILL
   1-4a; the note below): the input resource, the shift as one fupd per
   accepted input over the two-resource `echo_link`, the log's high-water
@@ -88,13 +101,20 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   the owner's `688c4c1b7`; the note below): the kernel hands init a
   per-power-cycle exclusive token so the application's ledger adopts each
   era exactly once.
-- [ ] **ECHO-OUT** (application; `-disc`, `lane/echo-out`): PART 1+2a LANDED
-  2026-09-15 (`41fa2ec15`; the note below): `EchoOut.v` -- the ledger-anchored
-  claims at the era index, the stage machine's Iris side, the ledger's four
-  steps, adoption by the pin map, the choice list, `echo_phi` in the owner's
-  form, all proved.  REMAINING (part 3): section 7 (the wrapping onto the
-  landed links) and the `AppEcho` wiring, BLOCKED until CONS-IO milestone E
-  founds the claims at the power-on step (below).
+- [ ] **ECHO-OUT** (application; `-disc`, `lane/echo-out`): PARTS 1-3a LANDED
+  2026-09-15 (`3f8124641`; the notes below): the claims, the stage machine,
+  the ledger's steps, the seed at the power-on step, the tag with the
+  history's shape, and three TOTAL link families (`echo_write_link`,
+  `echo_write_link_blk`, `echo_read_link` with `led_acc`/`read_ret`) against
+  the landed kernel shapes.  BLOCKED (part 3b): `echo_happ_echo`, the era's
+  first-write link, and the `AppEcho` wiring (hence `echo_phi`'s restatement
+  and `Hphi`) on three gaps -- G1 `Happ_echo` has no obs-invariant handle so
+  the shift's links cannot reach the ledger; G2 `WpUart.echo_link` returns
+  the input claim unchanged so the chain-first window has no home and a second
+  echo before the append is not ruled out; G3 the era's first write is total
+  at the claim but not at the link (init holds nothing saying `acc = []`).  A
+  FABLE REVIEW of the three gaps is in progress before the next ruling
+  (scratchpad `brief-review-echo-out.md`; handover `echo-out-handover-4.md`).
 - [x] ~~**CONS-IO milestone E -- FOUND-AT-POWERON**~~ LANDED 2026-09-15
   (`a7f5e98a7`; the note below): `Hpow`'s power-on arm yields the era's
   founded claims; `app_xfer_boot_raw` back to two arguments; milestone D's
@@ -3287,6 +3307,30 @@ unused stays.  CONSTRAINT for ECHO-OUT part 3: `Hpow` is a plain `==∗` fired
 with `obsN` already open -- the era's linear seed must be bupd-mintable from
 the ledger's own state; nothing in `Hpow` may open an invariant.  Handover:
 scratchpad `cons-io-handover-7.md`.
+
+ECHO-OUT PART 3a LANDED (2026-09-15; `5ac07f800`+`3f8124641` on `600510a94`; 3
+files +555/-175; builds eo40-eo43 in `-disc`; audit the thirteen; lemma_diff
+CLEAN).  THE FOUNDING AT THE POWER-ON STEP: `echo_gn` gains two seed maps
+(`eg_oseed`/`eg_iseed`, `ghost_map nat unit`); `echo_led h` gains `seed_bank h`
+(the auths + `⌜seed_dom M (obs_boots h)⌝`); `echo_led_pow`'s ON arm inserts key
+`S (obs_boots h)` and yields `eout (S (obs_boots h)) [] [] ∗ ein … [] [] []`
+at `App.Hpow`'s exact shape; `eout_founded k : oseed k -∗ eout k [] []` (no
+longer `⊢`); the era slot's escrows flip to the seed at adoption; all three
+fresh-arm faces closed with no premise.  `echo_tag γ h := ⌜trace_shape h true⌝
+∗ (⌜disc h⌝ ∨ echo_taint γ)`.  SECTION 7 (`Section echo_links`, `Hout :
+riscv_out_res = eout`, `Hin : riscv_in_res = ein`): `led_acc` (the `obsN`
+accessor at `⊤ ∖ ↑uartN Uart0`), `echo_write_link k v P n0 b cs0 Φ` (per-byte
+`out_link Uart0 k b Φ` from `era_pin ∗ turn v P ∗ cs_lb v cs0 ∗ E_lb v n0` with
+`proc_upto cs0 (S n0) !! P = Some b`, returning `turn v (S P) ∗ cs_lb ∗ E_lb`
+or the taint), `echo_write_link_blk` (the block's first byte with the
+alternative index, `cs_lb v (cs0 ++ [a])`), `echo_read_link k ws Φ` returning
+`read_ret k ws` (the prefix fact `dl ++ ws ⊑ echoed pops` and, for a non-empty
+window, `era_pin ∗ cs_lb ∗ E_lb v (length (dl ++ ws))` with the `div 17 ≤ S
+(length cs0)` bound) -- all TOTAL.  NOT DONE: `echo_happ_echo`,
+`echo_write_link_first`, the `AppEcho` wiring (`echo_out`/`echo_in` still
+`emp`; `echo_R` still the taint counter; `echo_phi` still the per-cycle form;
+`Hphi` open) -- gaps G1/G2/G3 in the lane item.  Handover: scratchpad
+`echo-out-handover-4.md` (§3 is the important part).
 
 SELF-KILL P6 STEPS 1-2 LANDED (2026-09-15; `0b15f76d2`+`27869216e` on `d3e76970b`;
 26 files +981/-378; builds selfk51-selfk56 in `-sup`; audit the thirteen;

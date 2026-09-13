@@ -57,9 +57,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   predicate in the console UART's invariant, the store's view shift, the
   writers' contracts, the retirement of the sublist receipts (design:
   "OUT-FUPD PHASE 1 -- DESIGN" narrowed by "TWO UARTS").
-- [ ] **SH-LINE 2b R2/R3** (U-tier; `-tlw`, next): the line fact through
-  getcmd, `ush_rest` deleted; the composer `UShLine.v` with E4's dispatch;
-  closes `sh_pay_rest`.
+- [ ] **SH-LINE 2b R2/R3** (U-tier; R1'/(a)/(b) LANDED 2026-09-13; the rest
+  after KILL-PAY B2 and the E5 design): the line-boundary invariant on
+  `ush_pos`, the line fact through getcmd, `ush_rest` renamed, the composer
+  with E4's dispatch, `sh_rest_holds`; and E4's leftover `sh_pay_state`.
 - [ ] **E5** (after OUT-FUPD, KILL-PAY): the write leaves at the program's
   view shift (init's eighteen bytes, sh's prompt, echo's four writes; closes
   `udepw_law 16`); `Hphi` from the console invariant's predicate read
@@ -2622,6 +2623,56 @@ TX-RECEIPT's `tx_claim` so the two lanes merge by juxtaposition; the hart lines'
 `boot_hart_pre`, banners-before via `k_ledger_lb [banners]` on the `started`
 invariant; `boot_k_shape` deleted.  `BACKSPACE` is the int 0x100 (not byte 8):
 the "\b \b" triple is reachable only from `%c`, unused.
+
+SH-LINE 2b R1'/(a)/(b) LANDED (2026-09-13; four commits on KILL-PAY B1; 9 files
++1136/-662; builds shr33/shr34/shr42/shland1, audit = the thirteen, lemma_diff =
+10 moves/deletions).  R0: the read leaf's window sheds its `dd <= cap` guard
+and the buffer its slack byte -- B1 puts the swallow on its left arm at `dd =
+cap`, and the bound comes off `fileread_ret` once `r = -1` is routed to the
+leaf's own minus-one arm first (it does not give the bound outright).
+`ush_swallow_taint` is an implication off B4.  R1': `UkSh.ush_read_leaf` IS
+the receipt-keeping leaf, stated in `UkSh.v` (`ush_read_recv_leaf`,
+`ush_read_ans`, `ush_pos`) because gets is below UConsLine (which keeps the
+names as abbreviations); it takes the LEDGER and the POSITION and is premised
+on `ush_fd0p`, so it answers both arms and gets does not case split (a shut
+fd 0 answers -1 like a killed process).  `ush_read_leaf_of_win` is gone; the
+ONE discharge is `UShLine.ush_read_recv_leaf_holds` at `uprogSG_free`,
+threaded through `sh_uexec_slot`/`init_exec_sup_of_sh_slot`/
+`init_cons_sup_of_sh_slot`, paid at `echo_Hinit_boot`.  (a) `sh_deps` is
+write(16) alone (the console read pays from the lease); `Hsh_owed` is three
+entailments: `sh_deps`, `sh_pay_state Rsh 0` (E4's leftover: sh's static
+state out of the data below the frame), `sh_pay_rest Rsh`.  (b) `ush_rest`
+takes `⌜ukn_const N⌝`/`shk_code`/`ush_jtab` (the jump table moved into UkSh;
+`ush_jtab_of_rodata` PRODUCES it -- nothing did before); `sh_uexec_slot` pays
+all three.
+LEFT FOR THE NEXT SH-LINE ROUND (R2's consumer, R3, `sh_rest_holds`), each a
+DESIGN step first: (1) the LINE BOUNDARY -- `ush_disc_line_seg` needs "the
+input before this gets is a whole number of lines"; it is a loop invariant
+and wants a conjunct of `ush_pos` (`∃ q, n = 17 q` with the stored bytes
+below the cursor being `q` copies of `echo_line`, or the taint), founded at
+init's mint and kept by a gets that ended at '\n'; (2) STORED ≠ INPUT --
+`cons_window` speaks of the ring's committed bytes, `disc_seg` of the input;
+they agree only where nothing was dropped, which is E5's rate argument (at
+most one line outstanding, `consoleintr` drops nothing) -- the next round
+takes it as a NAMED premise owed by E5 (a window of stored bytes at a line
+boundary with disciplined tags is `echo_line` or the taint); (3) the -1 arm
+gets `□ riscv_kill_cred` (= the taint) from KILL-PAY B2; the shut-fd-0 arm
+is walked as code (sh exits).  `UConsLine.ush_disc_line`/`_seg`/
+`ush_line_full` are still unproved `Prop`s (cheap list algebra) until their
+consumer exists.  `Hsbrk` (`ushm_sbrk_never_fails`) stays a named hypothesis
+of `echo_adequacy_modulo_phi`; see SELF-KILL below.
+
+SELF-KILL -- DESIGN ITEM FOR THE OWNER (2026-09-13).  sh's forked child on a
+failed `sbrk` (`malloc` returns 0) stores through NULL and is killed (cause
+15, `vmfault` fails on a non-lazy page); O5 admits "$ " alone for it.  Under
+KILL-PAY the trap deposit at a killing cause is the kill credential (= the
+taint), which a verified child cannot pay, so today the theorem keeps
+`Hsbrk`, a memory-availability hypothesis for one allocation.  The honest
+alternative: a fault the process can PREDICT (a store to a page its own key
+does not map writable) is a self-inflicted death and needs no credential --
+nobody was killed behind their back -- so at such a cause the deposit is the
+process's own -1 exit payload paid outright.  A KILL-PAY follow-up; the
+owner decides which.
 
 KILL-PAY B1 LANDED (2026-09-13; `2f7e79109`; 10 files +333/-58; build killb11,
 audit = the thirteen, lemma_diff CLEAN).  The machine carries an ambient KILL

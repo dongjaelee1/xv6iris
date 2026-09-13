@@ -1059,11 +1059,11 @@ Section KexitPark.
        with <p->lock>'s and the park keeps ([SpecKexit.kexit_park_pay]) *)
     (∃ xsv : mword 32, p_xstate pj ↦₄{DfracOwn (1/2)} xsv) -∗
     (* ...AND THE INCARNATION'S TWO QUARTERS, split off the block with the
-       pair ([ProcInv.proc_priv_split_cwd]) and parked unchanged: a ZOMBIE
-       block holds what its process's block held ([SlotGen.gen_halves_priv]),
-       and the reaper is what reunites them with the deposit the parent's
-       entry carries. *)
-    gen_halves_priv pj pid (pv_gen (us_V U)) -∗
+       pair ([ProcInv.proc_priv_split_cwd]) and parked MINUS THE ONE-SHOT
+       MARKER: a ZOMBIE block holds the token-free core
+       ([SlotGen.gen_halves_at]), and the reaper is what reunites the two
+       halves with the deposit the parent's entry carries. *)
+    gen_halves_at pj pid (pv_gen (us_V U)) -∗
     (* ...AND THE EXIT DEPOSIT, which the park spends on the escrow, PAID AT
        THE STATUS THIS CALL STORES ([ProcGeom.xstate_of] of the argument the
        prologue moved into s4) *)
@@ -1794,6 +1794,16 @@ Section KexitRest.
     iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_split_cwd γf pj pid U)
                  with "Hpriv") as "[Hpriv [Href [Hfdone [Hgq [Hxb Hgh]]]]]".
     iClear "Hfdone".
+    (* ...AND THE INCARNATION'S ONE-SHOT MARKER COMES OFF THE BUNDLE HERE
+       (lane SELF-KILL, P6).  [SlotGen.gen_halves_priv] is the token-free
+       core plus [ChildTok.taken_at], and only the CORE crosses into the
+       ZOMBIE block ([SlotGen.gen_halves_dorm]'s ZOMBIE arm).  The marker
+       is DROPPED for now; P6's exit path is what puts it into
+       <p->lock>'s killed row in exchange for the death payment, and the
+       logic is affine so dropping it is sound in the meantime -- a marker
+       nobody holds is a row arm nobody can close, which only ever makes
+       the killed row HARDER to satisfy. *)
+    iDestruct (gen_halves_priv_split with "Hgh") as "[Hgh _]".
     (* THE BLOCK, NOT A QUARTER OF [p->pid].  begin_op, iput and end_op all
        take [proc_priv_bare] now, and [p->cwd] lives INSIDE it -- so the cell
        is borrowed for the two instructions that touch it (+0x50's load and

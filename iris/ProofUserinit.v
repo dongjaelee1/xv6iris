@@ -477,9 +477,11 @@ Section ProofUserinit.
        eighth stayed in <p->lock>'s payload at allocproc. *)
     iDestruct "Hpr" as "[_ Hpr]".
     iAssert (gen_halves_priv (proc_addr j) pid (pv_gen V))
-      with "[Hsg Hpr]" as "Hgh";
+      with "[Hsg Hpr Htaken]" as "Hgh";
       [iApply (gen_halves_priv_intro (proc_addr j) pid (pv_gen V)
-                 ltac:(lia) with "Hsg Hpr") |].
+                 ltac:(lia) with "Hsg Hpr [Htaken]");
+       iApply (ChildTok.taken_at_of _ gai with "[] Htaken");
+       iApply (ChildTok.gen_know_taken with "Hknow") |].
     (* [Hkfree] is KEPT: the paid park is anchored on the child's free
        kernel stack ([ProcDefs.kstack_free_at] spells it at [ks] below). *)
     iDestruct "Hks" as "#Hks".

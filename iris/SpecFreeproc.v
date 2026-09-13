@@ -250,7 +250,7 @@ Section SpecFreeproc.
      redeems ([ChildTok.gen_pay]); freeproc itself has no use for it, so it
      comes out here rather than being consumed. *)
   (* ...AND THE ZOMBIE BLOCK'S TWO HALVES COME OUT BESIDE THE ESCROW
-     ([SlotGen.gen_halves_priv]): they are what the reaper agrees against
+     ([SlotGen.gen_halves_at]): they are what the reaper agrees against
      the entry its own parent cell names ([WaitInv.gen_halves]), and
      reuniting them is what makes the WHOLES this function's premises
      ask for. *)
@@ -258,7 +258,7 @@ Section SpecFreeproc.
     proc_dormant pa ZOMBIE ⊢
       ∃ (V : pprivate) (pid : mword 32) (xsv : mword 32),
         fp_rest pa V pid ∗ ch_frag (pv_chg V) pa ∅ ∗
-        gen_halves_priv pa pid (pv_gen V) ∗
+        gen_halves_at pa pid (pv_gen V) ∗
         p_xstate pa ↦₄{DfracOwn (1/2)} xsv ∗
         exit_tok (pv_gen V) pid (xstate_val xsv) ∗
         fp_pt pa (pv_sz V) (Some (pv_upt V)) ∗

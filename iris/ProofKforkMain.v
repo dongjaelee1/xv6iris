@@ -788,17 +788,23 @@ Section KforkArms.
                 Mx2 (trap_res b) K (S lvl) eb ({["proc"]} ∪ lks)
                 ltac:(lia) ltac:(lia) Hd4 Hd3
                 with "Hsc Hown Htext Hpcx Hitb Hitinv Hireg Hirs Hpvx Hfdone
-                      Hpvcx [Hkq] Hcxb [Hsg14 Hpr14]").
+                      Hpvcx [Hkq] Hcxb [Hsg14 Hpr14 Htaken]").
       all: try lkbelow.
       { (* the pair, at the child block's own generation: [kfk_childV] is an
            [upd_*] chain that preserves [pv_gen] *)
         iExists Q. cbn [us_V]. rewrite /kfk_childV /V2 /V1. iFrame "Hkq Hmp". }
       { (* ...and the two quarters, at that same field -- with the pid the
-           bundle now names ([SlotGen.gen_halves_priv]), which is
-           allocproc's [1 <= pid_c <= PIDMAX] and nothing more *)
-        rewrite /SlotGen.gen_halves_priv. cbn [us_V].
-        rewrite /kfk_childV /V2 /V1.
-        iSplitR; [ iPureIntro; lia | ]. iFrame "Hsg14 Hpr14". }
+           bundle now names ([SlotGen.gen_halves_at]), which is allocproc's
+           [1 <= pid_c <= PIDMAX] and nothing more, AND THE CHILD'S ONE-SHOT
+           MARKER, which is the whole reason the bundle is where it is: it
+           is minted with the generation ([ChildTok.gen_alloc]) and this is
+           the block it rides until the child's exit spends it into
+           <p->lock>'s killed row. *)
+        cbn [us_V]. rewrite /kfk_childV /V2 /V1.
+        iApply (SlotGen.gen_halves_priv_intro npa pid_c (pv_gen (us_V Uc'))
+                  ltac:(lia) with "Hsg14 Hpr14 [Htaken]").
+        iApply (ChildTok.taken_at_of _ gac with "[] Htaken").
+        iApply (ChildTok.gen_know_taken with "Hknow"). }
       iApply wp_next_off_intro.
       iIntros (mf4) "%Hp4 Hsc4 Hown4 Hpc4 Hpvx4 Hpvcx4 Hirsp".
       destruct Hp4 as (Hthr4 & Hpid4).

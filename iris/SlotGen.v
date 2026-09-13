@@ -383,25 +383,26 @@ Section SlotGen.
      UNUSED slot has no registration at all.  The two arms of the same
      bundle now say the same thing about the cell from either side, and
      freeproc's [p->pid = 0] is where one becomes the other. *)
-  Definition gen_halves_priv pa pid g : iProp Σ :=
+  (* ...AND THE PART OF IT THAT IS PURE GHOST BOOKKEEPING, with no token:
+     what a ZOMBIE slot keeps ([gen_halves_dorm] below) and what the LIVE
+     bundle is built on.  Split out so that the one-shot marker the live
+     bundle also carries ([gen_halves_priv], in the section below) does NOT
+     ride the park: [kexit] hands the marker to <p->lock>'s killed row and
+     parks the rest. *)
+  Definition gen_halves_at pa pid g : iProp Σ :=
     (⌜bv_unsigned pid <> 0⌝ ∗
      slot_gen pa (DfracOwn (1/4)) g ∗ pid_reg pid (DfracOwn qeighth) g)%I.
 
-  (* what a holder of the bundle reads off it, and the only reason the
-     conjunct is there *)
-  Lemma gen_halves_priv_nz pa pid g :
-    gen_halves_priv pa pid g -∗ ⌜bv_unsigned pid <> 0⌝.
+  Lemma gen_halves_at_nz pa pid g :
+    gen_halves_at pa pid g -∗ ⌜bv_unsigned pid <> 0⌝.
   Proof. iIntros "(%Hnz & _ & _)". done. Qed.
 
-  (* ...and how the two sites that BUILD one discharge it: both hold
-     allocproc's [1 <= bv_unsigned pid <= PIDMAX]
-     ([SpecAllocproc.allocproc_post]). *)
-  Lemma gen_halves_priv_intro pa pid g :
+  Lemma gen_halves_at_intro pa pid g :
     bv_unsigned pid <> 0 ->
     slot_gen pa (DfracOwn (1/4)) g -∗ pid_reg pid (DfracOwn qeighth) g -∗
-    gen_halves_priv pa pid g.
+    gen_halves_at pa pid g.
   Proof.
-    intro Hnz. iIntros "Hsg Hpr". rewrite /gen_halves_priv.
+    intro Hnz. iIntros "Hsg Hpr". rewrite /gen_halves_at.
     iSplitR; [ iPureIntro; exact Hnz | ]. iFrame "Hsg Hpr".
   Qed.
 
@@ -415,12 +416,65 @@ Section SlotGen.
      store overwrites held 0, and 0 is registered to nothing.  freeproc's
      [p->pid = 0] is what establishes it, and the .bss carve is what founds
      it at boot. *)
+  (* THE ZOMBIE ARM IS THE TOKEN-FREE CORE, not the live bundle: a parked
+     process has already spent its one-shot marker into <p->lock>'s killed
+     row ([SpecKexit], lane SELF-KILL) and there is nothing for a dormant
+     slot to hold. *)
   Definition gen_halves_dorm pa pid g (st : mword 32) : iProp Σ :=
     (if bool_decide (st = ZOMBIE)
-     then gen_halves_priv pa pid g
+     then gen_halves_at pa pid g
      else ⌜bv_unsigned pid = 0⌝ ∗ slot_gen pa (DfracOwn 1) g)%I.
 
 End SlotGen.
+
+(* ===================================================================== *)
+(* THE LIVE BUNDLE, WHICH ALSO CARRIES THE INCARNATION'S ONE-SHOT MARKER. *)
+(*                                                                       *)
+(* [ChildTok.taken_at] is the exclusive token that makes -- the death     *)
+(* payment is taken ONCE -- a theorem: <p->lock>'s killed row is the flag *)
+(* is zero, or the payment is deposited, or it has been taken, and the    *)
+(* third arm IS this token.  It is minted with the generation             *)
+(* ([ChildTok.gen_alloc]) and lives HERE, in the bundle every process     *)
+(* block already carries as its last conjunct, because [kexit] -- the one *)
+(* party that spends it -- is also the one party that consumes the block. *)
+(*                                                                       *)
+(* A SECTION OF ITS OWN, so that the pid register's own users             *)
+(* (<pid_lock>, which has no [ChildTok.ctokG]) are not generalized over a *)
+(* class they never mention.                                             *)
+(* ===================================================================== *)
+Section SlotGenTok.
+  Context `{!wchG Σ}.
+  Context `{!ChildTok.ctokG Σ}.
+
+  Definition gen_halves_priv pa pid g : iProp Σ :=
+    (gen_halves_at pa pid g ∗ ChildTok.taken_at g)%I.
+
+  (* what a holder of the bundle reads off it *)
+  Lemma gen_halves_priv_nz pa pid g :
+    gen_halves_priv pa pid g -∗ ⌜bv_unsigned pid <> 0⌝.
+  Proof. iIntros "[H _]". iApply (gen_halves_at_nz with "H"). Qed.
+
+  (* ...and how the two sites that BUILD one discharge it: both hold
+     allocproc's [1 <= bv_unsigned pid <= PIDMAX]
+     ([SpecAllocproc.allocproc_post]) and the marker the mint handed out
+     ([ChildTok.gen_new]). *)
+  Lemma gen_halves_priv_intro pa pid g :
+    bv_unsigned pid <> 0 ->
+    slot_gen pa (DfracOwn (1/4)) g -∗ pid_reg pid (DfracOwn qeighth) g -∗
+    ChildTok.taken_at g -∗ gen_halves_priv pa pid g.
+  Proof.
+    intro Hnz. iIntros "Hsg Hpr Ht". rewrite /gen_halves_priv.
+    iSplitR "Ht"; [ iApply (gen_halves_at_intro pa pid g Hnz with "Hsg Hpr")
+                  | iExact "Ht" ].
+  Qed.
+
+  (* ...AND THE SPLIT [kexit] TAKES: the marker out, the rest into the park
+     ([gen_halves_dorm] at ZOMBIE is exactly [gen_halves_at]). *)
+  Lemma gen_halves_priv_split pa pid g :
+    gen_halves_priv pa pid g -∗ gen_halves_at pa pid g ∗ ChildTok.taken_at g.
+  Proof. iIntros "H". iExact "H". Qed.
+
+End SlotGenTok.
 
 (* ===================================================================== *)
 (* THE PID REGISTER'S DOMAIN FACT -- <pid_lock>'s payload carries it.    *)

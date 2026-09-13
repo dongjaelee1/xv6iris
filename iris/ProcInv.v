@@ -3261,7 +3261,11 @@ Section ProcInv.
        take into one.  The reaper reunites them with the deposit its own
        parent cell's entry carries ([WaitInv.gen_halves]) and hands the
        wholes to freeproc. *)
-    gen_halves_priv pa pid (pv_gen (us_V U)) -∗
+    (* ...WITHOUT THE ONE-SHOT MARKER (lane SELF-KILL, P6): a dying process
+       spends [ChildTok.taken_at] into <p->lock>'s killed row, so what
+       crosses into the ZOMBIE block is the TOKEN-FREE core and
+       [SlotGen.gen_halves_dorm]'s ZOMBIE arm is stated at exactly that. *)
+    gen_halves_at pa pid (pv_gen (us_V U)) -∗
     proc_dormant_noctx pa ZOMBIE.
   Proof.
     iIntros (Hof Hcwd) "(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp & %Hlz & Ho) Hgq Hsp Hir Hbs Hkst Hrow Hxs #Hmy HQ Hgh".

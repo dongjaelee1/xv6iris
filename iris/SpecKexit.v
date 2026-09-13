@@ -373,10 +373,12 @@ Section KexitSeals.
     Q (xstate_val xsv) -∗
     (* ...AND THE INCARNATION'S TWO HALVES, split off with the working
        directory like the pair above ([ProcInv.proc_priv_split_cwd]) and
-       parked unchanged: a ZOMBIE block holds what its process's block held
-       ([SlotGen.gen_halves_priv]), and the reaper is what reunites them
-       with the deposit the parent's entry carries. *)
-    gen_halves_priv (proc_addr j) pid (pv_gen (us_V U)) -∗
+       parked MINUS THE ONE-SHOT MARKER: a ZOMBIE block holds the
+       token-free core ([SlotGen.gen_halves_at]) because the marker is
+       what the dying process spends into <p->lock>'s killed row (lane
+       SELF-KILL, P6), and the reaper is what reunites the two halves with
+       the deposit the parent's entry carries. *)
+    gen_halves_at (proc_addr j) pid (pv_gen (us_V U)) -∗
     park_pay (proc_addr j) ZOMBIE.
   Proof.
     intros Hof Hcwd. rewrite /park_pay inv_dormant_ZOMBIE.

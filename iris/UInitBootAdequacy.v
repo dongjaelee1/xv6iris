@@ -104,19 +104,19 @@ Section EchoAdequacy.
       (Hsh_owed : forall (HR : riscvGS Σ) (GEN : GenId)
          `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
            HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ},
-         (* THREE SEPARATE COQ-LEVEL ENTAILMENTS under a COQ existential,
-            not one [iProp] conjunction under an Iris one.  Each is owed
-            whole by a different lane, and [echo_Hinit_boot] takes them as
-            Coq premises -- an Iris [∃] would have to be opened inside the
-            proofmode and its components could not be handed to a Coq
-            argument position at all.  Every one of them is at
+         (* TWO SEPARATE COQ-LEVEL ENTAILMENTS, not one [iProp] conjunction
+            under an Iris one.  Each is owed whole by a different lane --
+            E5's write(16) deposit and SH-LINE's tail -- and
+            [echo_Hinit_boot] takes them as Coq premises: an Iris [∃] would
+            have to be opened inside the proofmode and its components could
+            not be handed to a Coq argument position at all.  Both are at
             [UexecExecInst.uprogSG_free]: that is the acceptance test, and
-            it is readable here. *)
-         (* LANE SH-STATE SHRANK THIS.  The state payload is PROVED
-            ([UInitSh.sh_pay_state_holds]) and it fixes the family, so the
-            Coq existential over [Rsh] is gone with it and what is left is
-            two entailments at [UInitSh.sh_Rsh]: E5's write(16) deposit, and
-            SH-LINE's tail. *)
+            it is readable here.
+            THE FAMILY IS NAMED, not existentially quantified (lane
+            SH-STATE): the state payload is proved
+            ([UInitSh.sh_pay_state_holds]) and proving it is what fixes
+            [UInitSh.sh_Rsh], so the tail is owed at that family and no
+            other. *)
          (⊢ UkSh.sh_deps (PS := uprogSG_free))
          /\ (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh))
       (* ---- ...AND THE TRACE INVARIANT, which is E5's ---- *)

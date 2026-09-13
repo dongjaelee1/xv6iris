@@ -719,6 +719,13 @@ Definition ut_fork_in `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : 
      (* ...AND SO IS THE CHILD'S PID, on the generation's terms exactly:
         <allocpid> chooses it inside the call and the depositing process
         cannot name it ([UexecRet.uexec_fork_child_F]). *)
+     (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'): the
+        child's killed row publishes a wand from the application's TAINT
+        ([RiscvPtsto.riscv_kill_cred]) to the child's exit payload at -1,
+        allocproc founds it, and the FORKING PROCESS is the only party that
+        can supply it -- so it rides the deposit beside the slot.  A
+        generic child's payload is [fun _ => True] and the wand is free. *)
+     □ (riscv_kill_cred -∗ sfork_pay f (-1)) ∗
      ∀ (g' : gname) (pidc : mword 32),
        my_pay g' (sfork_pay f) -∗
        uslot (uvis_of (us_tf U (bump_tf tf (mword_of_int 0))) sts g' ∅ pidc))%I.
@@ -769,10 +776,12 @@ Proof.
   { rewrite (tf_resume_pc_bump tf (mword_of_int 0) Hle).
     rewrite (tf_resume_pc_bump tf' (mword_of_int 0) Hle').
     unfold tf_w. rewrite (tf_ueq_epc tf tf' Hu). reflexivity. }
-  rewrite /ut_fork_in. iIntros "H %Hc". iIntros (g' pidc) "Hp".
+  rewrite /ut_fork_in. iIntros "H %Hc".
   iDestruct ("H" with "[%]") as "H";
     [ split; [ exact (proj1 Hc)
              | rewrite (tf_ueq_num tf tf' Hu); exact (proj2 Hc) ] |].
+  iDestruct "H" as "[#Hkw H]". iSplitR; [ iExact "Hkw" | ].
+  iIntros (g' pidc) "Hp".
   iSpecialize ("H" $! g' pidc). iSpecialize ("H" with "Hp").
   rewrite !uvis_of_us_tf.
   iEval (rewrite (uslot_key_cong

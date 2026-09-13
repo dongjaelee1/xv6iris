@@ -231,13 +231,15 @@ Definition wp_consoleread_sconf_body
       (* ...AND A NEGATIVE ANSWER IS A KILL (lane KILL-PAY, K4(b)(ii)).
          There is exactly ONE exit that returns -1: the [killed(myproc())]
          test inside the wait loop, which fires only against a NONZERO
-         [p->killed] -- and [SchedCtx.proc_pub]'s killed row says a
-         nonzero flag was PAID FOR ([SpecKilled]'s post hands the row back
-         beside the value).  So the caller's -1 is not a bare failure
-         code: it carries the application's kill credential, which is what
-         lets a user-tier read leaf say what its own minus-one arm means.
-         The other exits all answer a count, hence the left disjunct. *)
-      (⌜(0 <= r)%Z⌝ ∨ □ riscv_kill_cred) -∗
+         [p->killed].  IT USED TO CARRY THE APPLICATION'S KILL CREDENTIAL
+         (KILL-PAY K4(b)), and that row is GONE (lane SELF-KILL, §4b'):
+         [SchedCtx]'s killed row is per-incarnation and LINEAR now -- the
+         payment for THIS incarnation's death -- so a reader can neither
+         copy it out nor relay it, and [killed()] reports the flag and
+         nothing else.  Nothing consumed the relayed credential
+         ([UkSh.ush_read_ans]'s minus-one arm was its only destination and
+         only [ush_read_ans_pos] is spent), so the row is dropped rather
+         than weakened to something vacuous. *)
       ⌜(Z.of_nat d <= Z.max 0 n)%Z⌝ -∗
       (* ...AND ON A NON-NEGATIVE RETURN THE RUN IS EXACTLY THAT LONG: the
          copy is one byte per round and a failing one-byte either_copyout

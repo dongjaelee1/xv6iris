@@ -179,6 +179,12 @@ Definition wp_sys_fork_sconf_body
      therefore say what its child's getpid(2) will answer. *)
   (∀ (g' : gname) (pidc : mword 32),
      my_pay g' Q -∗ uslot (uvis_of (kfork_child U) sts g' ∅ pidc)) -∗
+  (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'):
+     relayed straight to kfork, which relays it to allocproc, which founds
+     the child's killed row on it ([SchedCtx.kill_paid]'s live arm).  The
+     depositing process supplies it beside the slot
+     ([SpecSyscall.sysc_fork_in]). *)
+  □ (riscv_kill_cred -∗ Q (-1)) -∗
   proc_priv γf p pid U -∗
   (* THE PARENT'S DESCRIPTOR STATES.  fork's whole effect on descriptors is
      that the CHILD gets these -- [SpecKfork]'s copy loop retypes the child's

@@ -371,8 +371,39 @@ Section SlotGen.
      the other eighth rides <p->lock>'s public payload, where the killed
      row needs it to name the incarnation.  The NAME does not move, so
      every site that carries this bundle is untouched. *)
+  (* ...AND THE PID IS NOT 0, which is this bundle's own fact and not a
+     borrowed one: the second conjunct IS a registration, and every
+     registered pid is nonzero ([pid_reg_dom], which <pid_lock>'s payload
+     keeps).  It is stated HERE, pure, because the party that needs it --
+     a LIVE process about to write its own [p->killed]
+     ([SpecSetkilled], lane SELF-KILL) -- holds the block and no share of
+     the register's authority, so the domain fact is out of its reach.
+     THE MIRROR IS ONE DEFINITION DOWN: [gen_halves_dorm]'s non-ZOMBIE arm
+     claims [bv_unsigned pid = 0] for exactly the opposite reason -- an
+     UNUSED slot has no registration at all.  The two arms of the same
+     bundle now say the same thing about the cell from either side, and
+     freeproc's [p->pid = 0] is where one becomes the other. *)
   Definition gen_halves_priv pa pid g : iProp Σ :=
-    (slot_gen pa (DfracOwn (1/4)) g ∗ pid_reg pid (DfracOwn qeighth) g)%I.
+    (⌜bv_unsigned pid <> 0⌝ ∗
+     slot_gen pa (DfracOwn (1/4)) g ∗ pid_reg pid (DfracOwn qeighth) g)%I.
+
+  (* what a holder of the bundle reads off it, and the only reason the
+     conjunct is there *)
+  Lemma gen_halves_priv_nz pa pid g :
+    gen_halves_priv pa pid g -∗ ⌜bv_unsigned pid <> 0⌝.
+  Proof. iIntros "(%Hnz & _ & _)". done. Qed.
+
+  (* ...and how the two sites that BUILD one discharge it: both hold
+     allocproc's [1 <= bv_unsigned pid <= PIDMAX]
+     ([SpecAllocproc.allocproc_post]). *)
+  Lemma gen_halves_priv_intro pa pid g :
+    bv_unsigned pid <> 0 ->
+    slot_gen pa (DfracOwn (1/4)) g -∗ pid_reg pid (DfracOwn qeighth) g -∗
+    gen_halves_priv pa pid g.
+  Proof.
+    intro Hnz. iIntros "Hsg Hpr". rewrite /gen_halves_priv.
+    iSplitR; [ iPureIntro; exact Hnz | ]. iFrame "Hsg Hpr".
+  Qed.
 
   (* ...AND WHAT A DORMANT SLOT HOLDS ([ProcDefs.proc_dormant]).  A ZOMBIE
      is a parked process and carries exactly what its block carried; an

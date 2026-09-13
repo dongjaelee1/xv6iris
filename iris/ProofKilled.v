@@ -96,12 +96,13 @@ Section ProofKilled.
 
   Lemma wp_killed_sconf  (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
-    : wp_killed_sconf_body γs j γl m av n eb p b lks.
+      (Racc : gname -> mword 32 -> iProp Σ)
+    : wp_killed_sconf_body γs j γl m av n eb p b lks Racc.
   Proof.
     cbv beta delta [wp_killed_sconf_body].
     intros pcE ret_tgt Ha0 Hj Hgl Hn Hav Hfresh.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
-    iIntros "Hcg Hcpu #Htext Hpc #Hprocs Hcont".
+    iIntros "Hsh Hcg Hcpu #Htext Hpc #Hprocs Hcont".
     iDestruct (cpu_own_eb_agree with "Hcg Hcpu") as %Hbeq.
     iDestruct (procs_inv_lookup γs j γl Hgl with "Hprocs") as "#Hislock".
     (* ===================== PROLOGUE (32-byte frame, 4 slots) ============ *)
@@ -238,7 +239,16 @@ Section ProofKilled.
     iEval (rewrite Hp12) in "Hpc".
     (* ---- open the lock: p->killed is in the ALWAYS-RESIDENT row ---- *)
     iDestruct (proc_lock_res_elim γs γl (proc_addr j) with "HR") as (st ch) "(Hstate & Hpg & Hchan & Hpub & Hslot)".
-    iDestruct "Hpub" as (kl xs pid) "(Hkilled & Hxstate & (Hpidhalf & Hgen) & #Hkw & Htie)".
+    iDestruct "Hpub" as (kl xs pid) "(Hkilled & Hxstate & (Hpidhalf & Hgen) & Hrow)".
+    (* THE ACCESS, RUN HERE (lane SELF-KILL, §4b'; the owner's ruling that
+       killed() reports the flag and nothing else).  The killed row is
+       linear and per-incarnation, so it can neither be copied out nor
+       relayed: what the caller asked for happens inside this critical
+       section, at whatever generation the slot's row is keyed to, and
+       what leaves the lock is only the result. *)
+    iApply fupd_wp.
+    iMod (kill_paid_access pid kl Racc with "Hsh Hrow") as "[Hrow Hacc]".
+    iModIntro.
     (* +0x12: c.lw a5,40(s1) *)
     assert (Hmacq_s1 : macq !!! Regidx kl_s1 = proc_addr j).
     { rewrite (callee_saved_lookup Hcs_acq kl_s1 ltac:(vm_compute; reflexivity)).
@@ -313,10 +323,9 @@ Section ProofKilled.
         by (apply bv_eq; vm_compute; reflexivity).
       apply kv_addv_zero. }
     (* reassemble the lock resource: nothing moved, so the slots go back as-is *)
-    iAssert (proc_lock_res γs γl (proc_addr j)) with "[Hstate Hpg Hchan Hkilled Hxstate Hpidhalf Hgen Htie Hslot]" as "HR2".
+    iAssert (proc_lock_res γs γl (proc_addr j)) with "[Hstate Hpg Hchan Hkilled Hxstate Hpidhalf Hgen Hrow Hslot]" as "HR2".
     { iApply (proc_lock_res_intro γs γl (proc_addr j) st ch with "Hstate Hpg Hchan [-Hslot] Hslot").
-      iExists kl, xs, pid. iFrame "Hkilled Hxstate Hpidhalf Hgen Htie".
-      iExact "Hkw". }
+      iExists kl, xs, pid. iFrame "Hkilled Hxstate Hpidhalf Hgen Hrow". }
     (* ===================== release(&p->lock) ===================== *)
     (* the acquire handed the window index out as [trap_res b + N]; release
        wants it as [trap_res outb + N] with [outb = match n with O => eb
@@ -508,10 +517,9 @@ Section ProofKilled.
     iDestruct (cpu_own_transport CIDrel CIDe7 n eb p b ltac:(wp_next_chain)
                  with "Hcpu") as "Hcpu".
     iSpecialize ("Hcont" $! CIDe7 with "[%]"); [wp_next_chain|].
-    (* ...AND THE KILLED ROW, COPIED OUT BESIDE THE VALUE (lane KILL-PAY,
-       K2): it came out of [SchedCtx.proc_pub] at the same [kl] the answer
-       reports, and it is persistent, so the caller gets it for free. *)
-    iApply ("Hcont" $! E5 kl with "[%] Hkw Hcg Hcpu Hpc").
+    (* ...AND WHAT THE ACCESS PRODUCED, beside the value: it was run on the
+       row at the same [kl] the answer reports. *)
+    iApply ("Hcont" $! E5 kl with "[%] Hacc Hcg Hcpu Hpc").
     split; [| exact HE5a0].
     unfold callee_saved.
     split; [exact HE5csp|].

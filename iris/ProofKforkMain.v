@@ -570,10 +570,13 @@ Section KforkArms.
        [np->parent], and [kfork_post]'s pid arm hands it back moved. *)
     WaitInv.ch_frag (ProcDefs.pv_chg (us_V Up)) pme csP -∗
     proc_priv_nocwd γf npa pid_c Uc' -∗
-    (* THE CHILD'S GENERATION, WHOLE -- allocproc minted it, and this arm
-       is where the forking process's choice of payload is written onto it
-       and the three pieces cut ([ChildTok.gen_set] / [gen_split]). *)
-    ChildTok.gen_fresh (pv_gen (us_V Uc')) npa pid_c -∗
+    (* THE CHILD'S GENERATION, ALREADY CUT AND AT THE PAYLOAD THE FORKING
+       PROCESS CHOSE.  allocproc minted it at [Q] and split it there (lane
+       SELF-KILL, §4b'): the killed row it closes at the child's new pid is
+       per-incarnation and names the payload persistently, which is only
+       possible once the generation has been split.  So this arm receives
+       the three pieces and the taken token, and re-chooses nothing. *)
+    (∃ ga : gname, ChildTok.gen_new (pv_gen (us_V Uc')) npa pid_c ga Q) -∗
     (* ...AND THE CHILD SLOT'S TWO EXCLUSIVE GHOSTS, BOTH WHOLE, cut at the
        same point and 3/4 : 1/4 ([SlotGen.slot_gen_quarters]): the quarters
        close the child's block, the three quarters are the deposit
@@ -747,21 +750,16 @@ Section KforkArms.
          eventually exits ([ProcInv.proc_priv_core]).  It has to happen
          here, before [B4]'s [sd a0,336(s4)]: that store is what closes the
          block, and a block cannot be closed without the pair. *)
-      iApply fupd_wp.
-      (* THE CHILD'S ALIVE TOKEN comes out of the same row allocproc minted
-         (lane SELF-KILL §3a).  The fork row's CHOICE of what the child's
-         death costs is the next milestone's ([K'] and its payment rule
-         stay [emp] here, which is exactly the generic child's choice: a
-         process nobody gave a credential to costs nothing to kill).  The
-         token itself has no home in the child's block yet, so it is
-         DROPPED -- the milestone that gives [urun] its row is what routes
-         it to the child. *)
-      iDestruct (ChildTok.gen_fresh_split with "Hcgen") as (gac) "[Hcgen _]".
-      iMod (gen_set (pv_gen (us_V Uc')) npa pid_c gac (fun _ => True)%I
-              emp emp Q emp emp with "Hcgen") as "Hcgen".
-      iMod (gen_split with "Hcgen") as "(Htok & Hkq & #Hknow)".
+      (* NOTHING TO CHOOSE AND NOTHING TO SPLIT (lane SELF-KILL, §4b'):
+         allocproc minted the child's generation AT [Q] and cut it there,
+         because the killed row it closes at the child's new pid names the
+         payload persistently.  So the three pieces arrive as one row and
+         this arm only takes them apart.
+         THE CHILD'S TAKEN TOKEN comes out of the same row and goes into
+         the child's PRIVATE BLOCK ([ProcInv.proc_priv_core]), which is
+         where usertrap's exit path finds it when the kill is spent. *)
+      iDestruct "Hcgen" as (gac) "(Htok & Hkq & #Hknow & Htaken)".
       iDestruct (ChildTok.gen_know_my_pay with "Hknow") as "#Hmp".
-      iModIntro.
       (* ...AND THE TWO EXCLUSIVE GHOSTS, CUT THE SAME WAY AND AT THE SAME
          POINT, 3/4 : 1/4 ([SlotGen.slot_gen_quarters]).  The QUARTERS go
          into the child's block with the kernel's quarter of the generation
@@ -795,9 +793,12 @@ Section KforkArms.
       { (* the pair, at the child block's own generation: [kfk_childV] is an
            [upd_*] chain that preserves [pv_gen] *)
         iExists Q. cbn [us_V]. rewrite /kfk_childV /V2 /V1. iFrame "Hkq Hmp". }
-      { (* ...and the two quarters, at that same field *)
+      { (* ...and the two quarters, at that same field -- with the pid the
+           bundle now names ([SlotGen.gen_halves_priv]), which is
+           allocproc's [1 <= pid_c <= PIDMAX] and nothing more *)
         rewrite /SlotGen.gen_halves_priv. cbn [us_V].
-        rewrite /kfk_childV /V2 /V1. iFrame "Hsg14 Hpr14". }
+        rewrite /kfk_childV /V2 /V1.
+        iSplitR; [ iPureIntro; lia | ]. iFrame "Hsg14 Hpr14". }
       iApply wp_next_off_intro.
       iIntros (mf4) "%Hp4 Hsc4 Hown4 Hpc4 Hpvx4 Hpvcx4 Hirsp".
       destruct Hp4 as (Hthr4 & Hpid4).
@@ -988,7 +989,7 @@ Section KforkMain.
     cbv beta delta [wp_kfork_sconf_body]. cbn zeta.
     intros HK Hlvl Hbelow.
     iIntros "Hcg Hcpu #Htext Hpc #Hprocs #Hplock #Hwlock #Hftbl
-             #Hitbl #Hitinv #Hireg Henv #Hpav #Hworld #Htoken Hjslot #Hfdone Hpv Hpfrag Hrow Hcont".
+             #Hitbl #Hitinv #Hireg Henv #Hpav #Hworld #Htoken Hjslot #HKp #Hfdone Hpv Hpfrag Hrow Hcont".
     (* the SIE index the two lock-holding exits come back at *)
     iDestruct (cpu_own_eb_agree with "Hcg Hcpu") as %Hbeq.
     (* [B6.kfk_prologue] is still generic in the allocator's count; kfork
@@ -1012,9 +1013,9 @@ Section KforkMain.
                     pc_is (ret_pc (m !!! Regidx Rra)) -∗
                     kfork_post γf lvl eb pme b pid_p Up stsP csP Q
                       K mr (mr !!! Regidx Ra0) lks -∗
-                    WP (Loop : expr riscv_lang))%I))%I lks
+                    WP (Loop : expr riscv_lang))%I))%I lks Q
               HK Hlvl
-              with "Hcg Hcpu Htext Hpc Hprocs Hplock Hwlock Hftbl
+              with "HKp Hcg Hcpu Htext Hpc Hprocs Hplock Hwlock Hftbl
                     Hitbl Hitinv Henv Hpav Hpv Hpfrag HR0 [] [] [Hjslot]").
     all: try lkbelow.
     - (* ---- arm 1: allocproc found no free slot, +0x10a ---- *)

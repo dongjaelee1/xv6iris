@@ -1332,17 +1332,15 @@ Section ProofKwait.
        that rides the ZOMBIE block ([SpecFreeproc.fp_of_dormant_zombie]).
        The bundle is rebuilt below, before freeproc takes it. *)
     p_killed (proc_addr k) ↦₄ kl -∗
-    (* ...AND THE KILLED ROW THAT CAME OUT WITH IT (lane KILL-PAY, K2): the
-       three cells arrive apart, so the row [SchedCtx.proc_pub] carries
-       beside them has to arrive too, or the rebuild below cannot close.
-       Persistent, so the caller keeps its copy. *)
-    (⌜kl = (mword_of_int 0 : mword 32)⌝ ∨ □ riscv_kill_cred) -∗
     p_xstate (proc_addr k) ↦₄{DfracOwn (1/2)} xsw -∗
     p_pid (proc_addr k) ↦₄{DfracOwn (1/4)} pidc -∗
-    (* ...AND THE TIE THAT NAMES WHOSE ROW IT IS (lane SELF-KILL §1), out
-       with the cells for the same reason: the bundle is rebuilt below and
-       cannot close without it. *)
-    SchedCtx.pid_tie pidc -∗
+    (* ...AND THE KILLED ROW THAT CAME OUT WITH THEM (lane KILL-PAY, K2;
+       lane SELF-KILL §1/§4b'): the three cells arrive apart, so the row
+       [SchedCtx.proc_pub] carries beside them -- which names the
+       incarnation and says how its death was paid for -- has to arrive
+       too, or the rebuild below cannot close.  LINEAR now, so this reap
+       carries it rather than copying it. *)
+    SchedCtx.kill_paid pidc kl -∗
     proc_dormant (proc_addr k) ZOMBIE -∗
     hart_at_any (proc_addr k) -∗
     (* the slot's ALLOCATION MARKER: a ZOMBIE is dormant but ALLOCATED, so
@@ -1384,7 +1382,7 @@ Section ProofKwait.
     { apply locks_below_union_singleton; [vm_compute; lia |].
       lkbelow. }
     iIntros "Hcg Hown Hpay1 Hpay0 #Htext Hpc #Henv #Hplk #Hlkk Htokk Hstate Hpsg Hchan
-             Hkilled #Hkw Hxstate Hpidq Htie Hdorm Hpark #Hmk #Hlk Htok Hcols Hmyrow Hframe Hcont".
+             Hkilled Hxstate Hpidq Hkrow Hdorm Hpark #Hmk #Hlk Htok Hcols Hmyrow Hframe Hcont".
     (* ---- +0x60 sd x0,56(s1) : pp->parent = 0, out of wait_lock's table ---- *)
     iDestruct "Hcols" as (gz mz oz) "(Hps & Hch & Ho & Hci)".
     iDestruct (parents_own_length ps with "Hps") as %Hlen.
@@ -1469,7 +1467,7 @@ Section ProofKwait.
        parent redeems ([ChildTok.gen_pay]), and this walk hands it out with
        the answer. *)
     iDestruct (fp_of_dormant_zombie (proc_addr k) with "Hdorm")
-      as (Vc pidz xsv) "(Hrest & Hrow & [Hsg14 Hpr14] & Hxb & Hesc & Hpt & Htf)".
+      as (Vc pidz xsv) "(Hrest & Hrow & (%Hpidznz & Hsg14 & Hpr14) & Hxb & Hesc & Hpt & Htf)".
     (* ---- THE TWO SHARES OF EACH PUBLIC CELL MEET.  The reaper holds
        <p->lock>, so the half of [p->xstate] that rides <p->lock> and the
        half that rides the ZOMBIE block are one word -- which is what makes
@@ -1486,8 +1484,8 @@ Section ProofKwait.
     { rewrite /fp_rest.
       iFrame "Hrpid Hrfl Hrof Hrfd Hrsp Hrir Hrbs Hrkst Hrctx".
       iPureIntro. exact Hrpure. }
-    iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidq Htie]" as "Hpub".
-    { iExists kl, xsw, pidc. iFrame "Hkilled Hxstate Hpidq Htie". iExact "Hkw". }
+    iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidq Hkrow]" as "Hpub".
+    { iExists kl, xsw, pidc. iFrame "Hkilled Hxstate Hpidq Hkrow". }
     (* ---- THE TWO SHARES MEET, AND THE ENTRY LEAVES THE INVARIANT.  The
        entry the invariant carried for this slot and the quarters the
        ZOMBIE block carried are pieces of ONE generation
@@ -1821,7 +1819,7 @@ Section ProofKwait.
     intros sp0 spr HK Hk Hsp Hs1 Hs2 Hs7 Hcs Hchild Hpmenz Hbelow.
     iIntros "Hcg Hown Hpay1 Hpay0 #Htext Hpc #Henv #Hplk #Hlkk Htokk Hstate Hpsg Hchan Hpub
              Hdorm Hpark #Hmk #Hlk Htok Hcols Hmyrow Hpriv Hframe Hcont".
-    iDestruct "Hpub" as (kl xs pidc) "(Hkilled & Hxstate & Hpidhalf & #Hkw & Htie)".
+    iDestruct "Hpub" as (kl xs pidc) "(Hkilled & Hxstate & Hpidhalf & Hkrow)".
     (* ---- +0x40 lw s3,48(s1) : pid = pp->pid ---- *)
     assert (Hea40 : add_vec (rget (CID := CIDf) Mf Rs1)
                       (sign_extend' 64 (mword_of_int 48 : mword 12)) = p_pid (proc_addr k)).
@@ -1867,7 +1865,7 @@ Section ProofKwait.
       iApply (kw_reap γs γa γp γw γk mm F0 pme k K eb pidc kl xs ch ps γrow cs lks
                 HK Hk HF0sp HF0s1 HF0s3 HF0cs Hbelow Hchild Hpmenz
                 with "Hcg Hown Hpay1 Hpay0 Htext Hpc Henv Hplk Hlkk Htokk Hstate Hpsg Hchan
-                      Hkilled Hkw Hxstate Hpidhalf Htie Hdorm Hpark Hmk Hlk Htok Hcols Hmyrow Hframe
+                      Hkilled Hxstate Hpidhalf Hkrow Hdorm Hpark Hmk Hlk Htok Hcols Hmyrow Hframe
                       [Hcont Hpriv]").
       iIntros (CIDz) "%Hsz". iIntros (mf cs') "%Hcsf %Ha0 Hans Hcg Hown Hpc Hmyrow".
       iSpecialize ("Hcont" $! CIDz with "[%]"); [wp_next_chain |].
@@ -2156,8 +2154,8 @@ Section ProofKwait.
         iDestruct ("Hwz2" with "Hpsg") as "[Hpsg _]".
         (* the three public cells go back into <p->lock>'s payload: this arm
            reaps nothing, so the zombie stays a zombie. *)
-        iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Htie]" as "Hpub".
-        { iExists kl, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf Htie". iExact "Hkw". }
+        iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Hkrow]" as "Hpub".
+        { iExists kl, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf Hkrow". }
         iAssert (proc_lock_res γs γk (proc_addr k)) with "[Hstate Hpsg Hchan Hpub Hdorm Hpark]" as "HRk".
         { iApply (proc_lock_res_intro γs γk (proc_addr k) ZOMBIE ch
                     with "Hstate Hpsg Hchan Hpub [Hdorm Hpark]").
@@ -2196,7 +2194,7 @@ Section ProofKwait.
         iApply (kw_reap γs γa γp γw γk mm mco pme k K eb pidc kl xs ch ps γrow cs lks
                   HK Hk Hcosp Hcos1 Hcos3 Hcocs Hbelow Hchild Hpmenz
                   with "Hcg Hown Hpay1 Hpay0 Htext Hpc Henv Hplk Hlkk Htokk Hstate Hpsg Hchan
-                        Hkilled Hkw Hxstate Hpidhalf Htie Hdorm Hpark Hmk Hlk Htok Hcols Hmyrow Hframe
+                        Hkilled Hxstate Hpidhalf Hkrow Hdorm Hpark Hmk Hlk Htok Hcols Hmyrow Hframe
                         [Hcont Hpriv]").
         iIntros (CIDz) "%Hsz". iIntros (mf cs') "%Hcsf %Ha0 Hans Hcg Hown Hpc Hmyrow".
         iSpecialize ("Hcont" $! CIDz with "[%]"); [wp_next_chain |].
@@ -2894,10 +2892,18 @@ Section ProofKwait.
       assert (HT1 : kw_scan_regs T1 mm (proc_addr jj) addr NPROC)
         by (rewrite /T1; apply kw_scan_regs_ncs;
             [vm_compute; reflexivity | exact HT0]).
+      (* killed() ONLY REPORTS THE FLAG (lane SELF-KILL, §4b'): wait's scan
+         wants the number and nothing off the row, so the access it supplies
+         is the identity. *)
+      iAssert (∀ (gn : gname) (klv : mword 32),
+                 SchedCtx.kill_row gn klv ==∗ SchedCtx.kill_row gn klv ∗ emp)%I
+        as "Hkacc".
+      { iIntros (gn klv) "H". iModIntro. iSplitL "H"; [ iExact "H" | done ]. }
       iApply (Killed.wp_killed_sconf γs jj γl T1 (trap_res eb + (K - 10))%nat 1%nat eb
                 (proc_addr jj) false ({["wait_lock"]} ∪ lks)
+                (fun (_ : gname) (_ : mword 32) => emp)%I
                 HT1a0 Hjj Hgl kw_ilvl1 ltac:(pose proof (kw_K14 K HK); lia) Hfresh_proc
-                with "Hcg Hown Htext Hpc Hpinv").
+                with "Hkacc Hcg Hown Htext Hpc Hpinv").
       all: try lkbelow.
       iApply wp_next_off_intro. iIntros (mfk kl) "%Hkf _ Hcg Hown Hpc".
       destruct Hkf as (Hkcs & Hka0).

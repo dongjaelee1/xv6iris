@@ -418,10 +418,17 @@ Section ProofUserinit.
                  ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
     iDestruct (wp_next_shift (b := b) (CIDa := CID) (CIDb := CID6)
                  ltac:(wp_next_chain) with "Hcont") as "Hcont".
+    (* <init>'S PAYLOAD IS THE TRIVIAL ONE, and so is the wand that says how
+       a killer pays for it (lane SELF-KILL, §4b'): the first process was
+       forked by nobody and owes nobody anything at exit, so [Q (-1)] is
+       [True] and the taint buys it for free.  allocproc
+       founds [SchedCtx.kill_paid]'s live arm on this. *)
+    iAssert (□ (riscv_kill_cred -∗ (fun _ : Z => True)%I (-1)))%I as "#HKu".
+    { iModIntro. iIntros "_". done. }
     iApply (AP.wp_allocproc_sconf fsc_kalloc fsc_kpages γp γf γs R3 0%nat (K - 4)%nat b pj
-              on (Some (S np)) b lks
+              on (Some (S np)) b lks (fun _ : Z => True)%I
               Kap ltac:(lia) Hnb Hbelow
-              with "Hcg Hcpu Htext Hpc Hpinv Hlpid Hkenv Hpav").
+              with "HKu Hcg Hcpu Htext Hpc Hpinv Hlpid Hkenv Hpav").
     iIntros (CID7 Hq7 mr1) "%Hcsap Hpc Hpost".
     assert (Hpc0e : ret_pc (R3 !!! Regidx Rra : mword 64)
                     = mword_of_int (UI + 0x0e)) by (rewrite HR3ra; pcw).
@@ -440,7 +447,7 @@ Section ProofUserinit.
       "(%Hfacts & Hheld & Hhart & Hpriv & Hgen & Hsg & Hpr & Hfrag & Hrow & Hxb & #Hmk & Hfd & Hirs & Hbsl & Hks & Hkfree
         & Hctx & Hcg & Hcpu & Hpay & Hkenv & Hpav)".
     destruct U as [V M].
-    destruct Hfacts as (Hrv & Hj & Hgl & _ & _ & _ & Hcwd0 & Hrest & Hnc).
+    destruct Hfacts as (Hrv & Hj & Hgl & Hpidb & _ & _ & Hcwd0 & Hrest & Hnc).
     (* THE FIRST PROCESS'S GENERATION, CUT.  allocproc minted it whole at
        the TRIVIAL payload so that a forking parent could still choose one
        ([ChildTok.gen_set]); <init> has no parent, so nothing re-chooses it
@@ -450,14 +457,15 @@ Section ProofUserinit.
        and the persistent [my_pay] ride the park's boot rows
        ([ParkCap.park_child]) to forkret, which puts the first back into
        the block and hands the second to kexec("/init"). *)
-    iApply fupd_wp.
-    (* ...AND <init>'S ALIVE TOKEN comes out of the same row (lane SELF-KILL
-       §3a); it has no home in the block yet, so it is DROPPED here exactly
-       as the parent's quarter is. *)
-    iDestruct (ChildTok.gen_fresh_split with "Hgen") as (gai) "[Hgen _]".
-    iMod (gen_split with "Hgen") as "(_ & Hkq & #Hknow)".
+    (* NOTHING TO CUT (lane SELF-KILL, §4b'): allocproc minted <init>'s
+       generation at the trivial payload AND split it there, because the
+       killed row it closed at <init>'s pid names the payload persistently.
+       The PARENT'S QUARTER is dropped -- there is no parent -- and
+       <init>'S TAKEN TOKEN goes into the block with the kernel's quarter
+       ([ProcInv.proc_priv_core]), which is where usertrap's exit path
+       finds it. *)
+    iDestruct "Hgen" as (gai) "(_ & Hkq & #Hknow & Htaken)".
     iDestruct (ChildTok.gen_know_my_pay with "Hknow") as "#Hmp".
-    iModIntro.
     (* ...AND THE TWO EXCLUSIVE GHOSTS, SPLIT THE SAME WAY AND THE THREE
        QUARTERS DROPPED.  They are what a forking parent deposits under
        <wait_lock> for its child ([WaitInv.gen_halves]); <init> has no
@@ -469,7 +477,9 @@ Section ProofUserinit.
        eighth stayed in <p->lock>'s payload at allocproc. *)
     iDestruct "Hpr" as "[_ Hpr]".
     iAssert (gen_halves_priv (proc_addr j) pid (pv_gen V))
-      with "[Hsg Hpr]" as "Hgh"; [iFrame "Hsg Hpr" |].
+      with "[Hsg Hpr]" as "Hgh";
+      [iApply (gen_halves_priv_intro (proc_addr j) pid (pv_gen V)
+                 ltac:(lia) with "Hsg Hpr") |].
     (* [Hkfree] is KEPT: the paid park is anchored on the child's free
        kernel stack ([ProcDefs.kstack_free_at] spells it at [ks] below). *)
     iDestruct "Hks" as "#Hks".

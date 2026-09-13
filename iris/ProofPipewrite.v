@@ -2206,10 +2206,17 @@ Section ProofPipewrite.
             rewrite Hs3L1. apply add_vec_zero_l. }
           assert (Hlvl1 : (Z.of_nat 1%nat + 1 < 2 ^ 31)%Z) by (rewrite H31; lia).
           assert (Hav14 : (14 <= trap_res true + (av - 14))%nat) by lia.
+          (* killed() ONLY REPORTS THE FLAG (lane SELF-KILL, §4b'): the
+             access this caller supplies is the identity. *)
+          iAssert (∀ (gn : gname) (klv : mword 32),
+                     SchedCtx.kill_row gn klv ==∗ SchedCtx.kill_row gn klv ∗ emp)%I
+            as "Hkacc".
+          { iIntros (gn klv) "H". iModIntro. iSplitL "H"; [ iExact "H" | done ]. }
           iApply (Killed.wp_killed_sconf γs j γlp L3 (trap_res true + (av - 14))%nat 1%nat true (proc_addr j) false
                     ({["pipe"]} ∪ lks)
+                    (fun (_ : gname) (_ : mword 32) => emp)%I
                     Ha0L3 Hj Hjlp Hlvl1 Hav14 ltac:(lkbelow)
-                    with "Hcg Hown Htext Hpc Hpinv").
+                    with "Hkacc Hcg Hown Htext Hpc Hpinv").
           all: try lkbelow.
           iApply wp_next_off_intro. iIntros (K0 kl) "%Hkfacts _ Hcg Hown Hpc". rgall.
           destruct Hkfacts as [Hkcs Hka0].

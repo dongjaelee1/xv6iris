@@ -1036,13 +1036,12 @@ Section SpecFileread.
       (* ...AND WHY IT IS -1 (lane KILL-PAY, K4(b)(iii)).  consoleread
          answers -1 on exactly one exit -- the [killed] test inside its
          wait loop -- and fileread's own [n < 0] guard returns -1 before
-         the console is reached at all.  So a caller that asked for a
-         non-negative count and got -1 back HOLDS THE KILL CREDENTIAL:
-         somebody paid for the kill that tore it down
-         ([SchedCtx.kill_paid], relayed through [SpecConsoleread]'s post).
-         Without this row the U-tier read leaf's minus-one arm is a hole
-         in the discipline -- a -1 that means nothing. *)
-      (⌜(n < 0)%Z⌝ ∨ □ riscv_kill_cred) ∗
+         the console is reached at all.  THE KILL CREDENTIAL IS NO LONGER
+         RELAYED (lane SELF-KILL, §4b'): [SchedCtx]'s killed row is
+         per-incarnation and LINEAR, so [killed()] reports the flag and
+         nothing travels out of the row.  Nothing consumed the relay
+         ([UkSh.ush_read_ans]'s minus-one arm was its only destination and
+         only the position is spent), so the row is dropped. *)
       ∃ cur d' : nat, Rd cur d')
      ∨ ∃ (d dc cur : nat) (hs : list (list mobs))
          (sl : list (list mobs * bv 8)),
@@ -1142,12 +1141,10 @@ Section SpecFileread.
       (Rin : list (list mobs * bv 8) -> iProp Σ)
       (n : Z) (cur d' : nat)
       (M' : gmap Z (bv 8)) (addr : mword 64) :
-    (⌜(n < 0)%Z⌝ ∨ □ riscv_kill_cred) -∗
     Rd cur d' -∗
     console_receipt P Rd Rin n (mword_of_int (-1) : mword 64) M' addr.
   Proof.
-    iIntros "Hwhy Hrd". rewrite /console_receipt. iLeft. iSplitR; [done|].
-    iSplitL "Hwhy"; [ iExact "Hwhy" | ].
+    iIntros "Hrd". rewrite /console_receipt. iLeft. iSplitR; [done|].
     iExists cur, d'. iExact "Hrd".
   Qed.
 
@@ -1586,12 +1583,10 @@ Section SpecFileread.
       iIntros "H HP". iDestruct ("H" with "HP") as "[H _]".
       iMod (cons_acc_ret with "H") as (cur dc) "[HP Hrd]".
       iModIntro. iFrame "HP".
-      (* THE REASON THIS ONE IS -1 IS THE GUARD ITSELF (lane KILL-PAY,
-         K4(b)(iii)): the request was negative, so no kill is claimed and
-         none is owed.  A caller that asked for a non-negative count reads
-         the other disjunct. *)
-      iApply (console_receipt_m1 with "[] Hrd").
-      iLeft. iPureIntro. exact Hn.
+      (* THIS ONE IS -1 BECAUSE OF THE GUARD ITSELF: the request was
+         negative and the console was never reached.  Nothing is relayed
+         about it any more (lane SELF-KILL, §4b'). *)
+      iApply (console_receipt_m1 with "Hrd").
   Qed.
 
 End SpecFileread.

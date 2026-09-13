@@ -1123,11 +1123,6 @@ Section CrBodies.
          ⌜callee_saved m0 mf⌝ -∗
          ⌜uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P'⌝ -∗
          ⌜(-1 <= r <= Z.max 0 n)%Z⌝ -∗
-         (* WHY A NEGATIVE ANSWER IS NEGATIVE (lane KILL-PAY, K4(b)(ii)):
-            the only exit that answers -1 is the [killed] test's, and it
-            fires against a NONZERO flag, which [SchedCtx.proc_pub]'s
-            killed row says was paid for. *)
-         (⌜(0 <= r)%Z⌝ ∨ □ riscv_kill_cred) -∗
          cr_winO cn Wd ord fault Ment Mo (m0 !!! Regidx Ra1) n r hs -∗
          ⌜mf !!! Regidx Ra0 = (mword_of_int r : mword 64)⌝ -∗
          (* THE LEDGER'S TAGS, one per byte the run carries *)
@@ -1157,8 +1152,6 @@ Section CrBodies.
     (consoleread_stack <= av)%nat ->
     eb = true ->
     (true = false \/ pj = zero_reg -> (CID : CPU) = CID0) ->
-    (* the answer's reason, handed straight on to [cr_ret] *)
-    (⌜(0 <= r)%Z⌝ ∨ □ riscv_kill_cred) -∗
     kernel_text -∗
     sie_cap_gpr KT1 M (av - 12)%nat true pj -∗
     cpu_own 0%nat eb pj true lks -∗
@@ -1173,7 +1166,7 @@ Section CrBodies.
     WP (Loop : expr riscv_lang).
   Proof.
     intros pj Hm0sp HMsp HMa0 HMcs Hr Hav Heb Hcr.
-    iIntros "#Hwhy #Ht Hcg Hcnt Hpc Hpriv #Htags Hwin
+    iIntros "#Ht Hcg Hcnt Hpc Hpriv #Htags Hwin
              (K1 & K2 & K3 & K4 & K5 & K6 & K8 & K9) Hrest Hcont".
     assert (Hb1 : add_vec (pa_stk sp0 12%nat)
                     (zero_extend' 64 (concat_vec (mword_of_int 11 : mword 6) ('b"000")))
@@ -1468,7 +1461,7 @@ Section CrBodies.
     rewrite /cr_ret.
     iSpecialize ("Hcont" $! CIDr with "[%]"); [wp_next_chain|].
     iApply ("Hcont" $! E9 r (pv_upt (us_V U)) (us_M U) hs
-              with "[%] [%] [%] Hwhy Hwin [%] Htags Hcg Hcnt Hpc [Hpriv]").
+              with "[%] [%] [%] Hwin [%] Htags Hcg Hcnt Hpc [Hpriv]").
     - exact Hcs.
     - apply uptd_ext_sz_refl.
     - exact Hr.
@@ -1500,8 +1493,6 @@ Section CrBodies.
          ⌜ cr_cs_hi M m0 ⌝ -∗
          ⌜ uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P' ⌝ -∗
          ⌜ (-1 <= r <= Z.max 0 n)%Z ⌝ -∗
-         (* the answer's reason (lane KILL-PAY, K4(b)(ii)) *)
-         (⌜(0 <= r)%Z⌝ ∨ □ riscv_kill_cred) -∗
          ([∗ list] h ∈ hs, riscv_rx_tag h) -∗
          sie_cap_gpr KT1 M (av - 12)%nat true (proc_addr jp) -∗
          pc_is (mword_of_int (CR + 0xce)) -∗
@@ -1529,10 +1520,10 @@ Section CrBodies.
       (upd_usM (us_upt U P') Mo) Ment n lks.
   Proof.
     intro Hx. iIntros "H" (CIDx Hsx mf r P'' Mo' hs)
-      "%Hcs %Hex %Hr #Hwhy Hwin %Ha0 #Htags Hcg Hcnt Hpc Hpriv".
+      "%Hcs %Hex %Hr Hwin %Ha0 #Htags Hcg Hcnt Hpc Hpriv".
     iSpecialize ("H" $! CIDx with "[%]"); [exact Hsx|].
     iApply ("H" $! mf r P'' Mo' hs
-              with "[%] [%] [%] Hwhy Hwin [%] Htags Hcg Hcnt Hpc [Hpriv]").
+              with "[%] [%] [%] Hwin [%] Htags Hcg Hcnt Hpc [Hpriv]").
     - exact Hcs.
     - exact (uptd_ext_sz_trans _ _ P' _ Hx Hex).
     - exact Hr.
@@ -1555,11 +1546,11 @@ Section CrBodies.
     iIntros "#Ht Hsaved Hcont".
     rewrite /cr_epi_prop.
     iIntros (CIDe Hse M P' Mo r hs)
-      "Hwin %Hsp %Ha0 %Hcs %Hext %Hr #Hwhy #Htags Hcg Hpc Hcnt Hpriv Hrest".
+      "Hwin %Hsp %Ha0 %Hcs %Hext %Hr #Htags Hcg Hpc Hcnt Hpriv Hrest".
     iApply (cr_epi (CID := CIDe) CIDe cn Wd ord (cr_fault U (m0 !!! Regidx Ra1))
               jp m0 M av true sp0 pid (upd_usM (us_upt U P') Mo) (us_M U) n r hs lks
               Hm0sp Hsp Ha0 Hcs Hr Hav eq_refl ltac:(intros _; reflexivity)
-              with "Hwhy Ht Hcg Hcnt Hpc Hpriv Htags Hwin Hsaved Hrest").
+              with "Ht Hcg Hcnt Hpc Hpriv Htags Hwin Hsaved Hrest").
     iApply (cr_ret_shift (CID0 := CIDe) cn Wd ord (cr_fault U (m0 !!! Regidx Ra1))
               jp m0 av pid U (us_M U) Mo P' n lks Hext).
     iApply (wp_next_retarget CID CIDe true (proc_addr jp) _ ltac:(wp_next_chain)
@@ -1762,7 +1753,7 @@ Section ProofConsoleread.
     iEval (rewrite Hjce) in "Hpc".
     iSpecialize ("EPI" $! CIDj with "[%]"); [wp_next_chain|].
     iApply ("EPI" $! X4 P' Mo (n - nc) hs
-              with "Hwin [%] [%] [%] [%] [%] [] Htags Hcg Hpc Hcnt Hpriv Hrest").
+              with "Hwin [%] [%] [%] [%] [%] Htags Hcg Hpc Hcnt Hpriv Hrest").
     - rewrite /X4 upd_ne; [| reg_neq].
       rewrite (Hthr csp_rs1 ltac:(vm_compute; reflexivity)). exact Hsp.
     - rewrite /X4 upd_eq. reflexivity.
@@ -1779,9 +1770,6 @@ Section ProofConsoleread.
         rewrite (Hthr Rs11 ltac:(vm_compute; reflexivity)). exact Q11.
     - exact Hext.
     - lia.
-    (* the answer is [n - nc], which this block's own range row keeps
-       non-negative: no kill is claimed here (lane KILL-PAY, K4(b)(ii)) *)
-    - iLeft. iPureIntro. lia.
   Qed.
 
   (* THE FIVE EXITS, AS ONE NON-SEPARATING CONJUNCTION.  Exactly one is
@@ -3054,14 +3042,23 @@ Section ProofConsoleread.
     { apply (callee_saved_trans M mmp W2 (callee_saved_trans M W1 mmp HcsMW1 Hcsmp)).
       rewrite /W2. apply callee_saved_insert_r;
         [vm_compute; reflexivity | apply callee_saved_refl]. }
+    (* killed() ONLY REPORTS THE FLAG (lane SELF-KILL, §4b'): consoleread
+       branches on the number and relays nothing off the row, so the access
+       it supplies is the identity. *)
+    iAssert (∀ (gnk : gname) (klv : mword 32),
+               SchedCtx.kill_row gnk klv ==∗ SchedCtx.kill_row gnk klv ∗ emp)%I
+      as "Hkacc".
+    { iIntros (gnk klv) "H". iModIntro. iSplitL "H"; [ iExact "H" | done ]. }
     iApply (Killed.wp_killed_sconf γs jp γlp W2 (trap_res true + (av - 12))%nat 1%nat true
-              (proc_addr jp) false ({["cons"]} ∪ lks) HW2a0 Hjp Hjl cr_lvl1
+              (proc_addr jp) false ({["cons"]} ∪ lks)
+              (fun (_ : gname) (_ : mword 32) => emp)%I
+              HW2a0 Hjp Hjl cr_lvl1
               ltac:(assert (trap_res true = 90%nat) as -> by reflexivity;
                     lia)
               ltac:(lkbelow)
-              with "Hcg Hcnt Ht Hpc Hpinv").
+              with "Hkacc Hcg Hcnt Ht Hpc Hpinv").
     all: try lkbelow.
-    iApply wp_next_off_intro. iIntros (mkl kl) "[%Hcskl %Hkla0] #Hkw Hcg Hcnt Hpc". rgall.
+    iApply wp_next_off_intro. iIntros (mkl kl) "[%Hcskl %Hkla0] _ Hcg Hcnt Hpc". rgall.
     iEval (rewrite HW2ra) in "Hpc".
     assert (Hp50 : ret_pc (add_vec_int (mword_of_int (CR + 0x4c) : mword 64) 4)
                    = (mword_of_int (CR + 0x50) : mword 64)) by pcw.
@@ -3076,19 +3073,10 @@ Section ProofConsoleread.
     (* ---- +0x50 c.bnez a0 : killed? ---- *)
     destruct (neq_vec (sign_extend' 64 kl : mword 64) (zero_reg : mword 64)) eqn:Hkz.
     { (* ======= KILLED: release and return -1 at +0xc0 ======= *)
-      (* THE PRICE OF THE ANSWER (lane KILL-PAY, K4(b)(ii)).  This branch
-         is the one where the flag came back NONZERO, so [SpecKilled]'s
-         row is on its right arm: the application's kill credential.  It
-         is the whole reason this exit may answer -1 -- [cr_ret] carries
-         the reason beside the value. *)
-      iAssert (□ riscv_kill_cred)%I with "[]" as "#Hkc".
-      { iDestruct "Hkw" as "[%Hz0 | #Hc]"; [ | iExact "Hc" ].
-        exfalso.
-        assert (Hze : (zero_reg : mword 64)
-                      = sign_extend' 64 (mword_of_int 0 : mword 32))
-          by (apply bv_eq; vm_compute; reflexivity).
-        rewrite Hze in Hkz.
-        exact (cr_ne32 kl (mword_of_int 0 : mword 32) Hkz Hz0). }
+      (* THE ANSWER IS -1 BECAUSE THE FLAG WAS NONZERO, and that is all
+         this exit relays now (lane SELF-KILL, §4b'): the killed row is
+         per-incarnation and linear, [killed()] reports the flag, and the
+         credential the old K4(b) relay carried is gone with it. *)
       (* THE RECEIPT, CASHED HERE: this exit does not pass through
          [cr_mk_retx], so the [▷] the escrow's read costs is taken around
          THIS branch's own step. *)
@@ -3203,7 +3191,7 @@ Section ProofConsoleread.
       iDestruct "EX" as "[_ HEPI]".
       iSpecialize ("HEPI" $! CIDz with "[%]"); [wp_next_chain|].
       iApply ("HEPI" $! K4 P' Mo (-1)%Z hs
-                with "Hwin [%] [%] [%] [%] [%] [] Htags Hcg Hpc Hcnt Hpriv Hrest").
+                with "Hwin [%] [%] [%] [%] [%] Htags Hcg Hpc Hcnt Hpriv Hrest").
       - rewrite /K4 upd_ne; [| reg_neq].
         rewrite (callee_saved_lookup HcsMr csp_rs1 ltac:(vm_compute; reflexivity)). exact Hsp.
       - rewrite /K4 upd_eq. reflexivity.
@@ -3216,9 +3204,7 @@ Section ProofConsoleread.
           | rewrite (callee_saved_lookup HcsMr Rs11 ltac:(vm_compute; reflexivity)); exact Hcs11 ].
       - exact Hext.
       - split; [lia | pose proof (Z.le_max_l 0 n); lia].
-      (* THE ANSWER IS -1, AND THE CREDENTIAL IS WHY (lane KILL-PAY,
-         K4(b)(ii)) *)
-      - iRight. iExact "Hkc". }
+      }
     (* ======= NOT killed: sleep on &cons.r ======= *)
     iApply (wp_cbnez_fall_s_sconf (mword_of_int (CR + 0x50)) (mword_of_int 56 : mword 8)
               (Cregidx (mword_of_int 2)) Ra0 mkl (trap_res true + (av - 12))%nat false
@@ -3945,14 +3931,14 @@ Section ProofConsoleread.
       iIntros (CIDr) "%Hsr".
       iSpecialize ("Hcont" $! CIDr with "[%]"); [exact Hsr|].
       iIntros (mf r P' Mo hs)
-        "%Hcs %Hext %Hr #Hwhy Hwin %Ha0 #Htags Hcg Hcnt Hpc Hpriv".
+        "%Hcs %Hext %Hr Hwin %Ha0 #Htags Hcg Hcnt Hpc Hpriv".
       rewrite /cr_winO.
       iDestruct "Hwin" as (dw dcw bsw)
         "(%Hdwle & %Htie & %Hcb1 & %Hcb4 & %Hmoeq & %Htag & Hout)".
       subst Mo. rewrite /cr_out.
       iDestruct "Hout" as (cur sl) "(#Hsl & Hwd & Hco)".
       iApply ("Hcont" $! mf r P' dw dcw cur bsw hs sl
-                with "[%] [%] [%] Hwhy [%] [%] [%] [%] [%] [%] Htags Hsl Hwd Hco
+                with "[%] [%] [%] [%] [%] [%] [%] [%] [%] Htags Hsl Hwd Hco
                      Hcg Hcnt Hpc Hpriv").
       - exact Hcs.
       - exact Hext.

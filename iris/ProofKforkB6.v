@@ -272,7 +272,7 @@ Section KforkPrologue.
      4614 B in Delta at every step of that walk
      (optimization.md, fold block continuations). *)
   Definition kfk_pro_exit3
- (γw : gname) (γl : gname) (γf : gname) (γs : list gname) (m : regfile) (lvl : nat) (K : nat) (eb : bool) (pme : mword 64) (b : bool) (pid_p : mword 32) (Up : ustate) (stsP : list fdstate) (R : iProp Σ) (lks : gset string) (sp0 : mword 64) (ra0 : mword 64) (s00 : mword 64) (s10 : mword 64) (s50 : mword 64) (CID : CpuId) : iProp Σ :=
+ (γw : gname) (γl : gname) (γf : gname) (γs : list gname) (m : regfile) (lvl : nat) (K : nat) (eb : bool) (pme : mword 64) (b : bool) (pid_p : mword 32) (Up : ustate) (stsP : list fdstate) (R : iProp Σ) (lks : gset string) (sp0 : mword 64) (ra0 : mword 64) (s00 : mword 64) (s10 : mword 64) (s50 : mword 64) (Q : Z -> iProp Σ) (CID : CpuId) : iProp Σ :=
     (∀ (Mt : regfile) (npa : mword 64) (j : nat) (γl2 : gname)
         (pid_c : mword 32) (ch : mword 64) (Uc' : ustate)
         (tfsrc tfdst : mword 44),
@@ -341,10 +341,15 @@ Section KforkPrologue.
            arm ([SpecAllocproc.allocproc_post]): the incarnation is minted
            there, and the FORKING process is the party that chooses what
            its child's exit will owe -- so the name arrives here unspent
-           and [ProofKforkMain] does the [ChildTok.gen_set] and the split.
            At [Uc']'s field because every step between is an [upd_*] that
-           preserves it. *)
-        ChildTok.gen_fresh (pv_gen (us_V Uc')) npa pid_c -∗
+           preserves it.
+           ALREADY SPLIT, AND AT THE PAYLOAD THE FORKING PROCESS CHOSE
+           (lane SELF-KILL, §4b'): allocproc is what stores the child's
+           pid, so allocproc is what must close [SchedCtx]'s per-incarnation
+           killed row -- and closing it freezes the payload
+           ([ChildTok.gen_alloc]).  So the three pieces and the taken token
+           arrive here as one row and nothing re-chooses. *)
+        (∃ ga : gname, ChildTok.gen_new (pv_gen (us_V Uc')) npa pid_c ga Q) -∗
         (* ...AND THE CHILD SLOT'S TWO EXCLUSIVE GHOSTS, BOTH WHOLE, off
            the same arm: the forking process is the party that splits them
            ([SlotGen.slot_gen_quarters], [pid_reg_quarters]) -- a quarter
@@ -532,7 +537,11 @@ Section KforkPrologue.
  (γp γw γl γf : gname) (γs : list gname)
       (m : regfile) (lvl K : nat) (eb : bool) (pme : mword 64)
       (on : option nat) (b : bool) (pid_p : mword 32) (Up : ustate)
-      (stsP : list fdstate) (R : iProp Σ) (lks : gset string) :
+      (stsP : list fdstate) (R : iProp Σ) (lks : gset string)
+      (* THE CHILD'S EXIT PAYLOAD (lane SELF-KILL, §4b'): chosen by the
+         forking process and passed straight through to allocproc, which
+         mints the incarnation at it. *)
+      (Q : Z -> iProp Σ) :
     let sp0 : mword 64 := m !!! Regidx csp_rs1 in
     let ra0 : mword 64 := m !!! Regidx Rra in
     let s00 : mword 64 := m !!! Regidx Rs0 in
@@ -545,6 +554,10 @@ Section KforkPrologue.
        already held, but rank above "proc" follows by [locks_below_mono]
        and its own contract does not yet expose the premise. *)
     locks_below lks "proc" ->
+    (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'):
+       allocproc's premise, relayed.  [SchedCtx.kill_paid]'s live arm
+       publishes it and a tainted [kill(2)] cashes it. *)
+    □ (riscv_kill_cred -∗ Q (-1)) -∗
     sie_cap_gpr KT1 m K b pme -∗
     cpu_own lvl eb pme b lks -∗
     kernel_text -∗
@@ -603,12 +616,12 @@ Section KforkPrologue.
        the leaves run so far -- it was simply never surfaced. *)
     (∀ CIDh : CpuId,
        ⌜ b = false \/ pme = zero_reg -> (CIDh : CPU) = (CID0 : CPU) ⌝ -∗
-       wp_next (CID0 := CIDh) false pme (fun CID : CpuId => kfk_pro_exit3 γw γl γf γs m lvl K eb pme b pid_p Up stsP R lks sp0 ra0 s00 s10 s50 CID)) -∗
+       wp_next (CID0 := CIDh) false pme (fun CID : CpuId => kfk_pro_exit3 γw γl γf γs m lvl K eb pme b pid_p Up stsP R lks sp0 ra0 s00 s10 s50 Q CID)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros sp0 ra0 s00 s10 s50 HK Hlvl Hbelow.
     
-    iIntros "Hcg Hcpu #Htext Hpc #Hprocs #Hplock #Hwlock #Hftbl #Hitbl
+    iIntros "#HKp Hcg Hcpu #Htext Hpc #Hprocs #Hplock #Hwlock #Hftbl #Hitbl
              #Hitinv Henv #Hpav Hpv Hpfrag HR Hcont10a Hcont7c Hcont4a".
     set (K1 := (K - 8)%nat).
     (* =================================================================
@@ -810,9 +823,9 @@ Section KforkPrologue.
     assert (HM5ra : M5 !!! Regidx Rra = add_vec_int (mword_of_int (KF + 0x12) : mword 64) 4)
       by (rewrite /M5 upd_eq; reflexivity).
     iDestruct (cpu_own_transport CID8 CID10 lvl eb pme b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
-    iApply (Allocproc.wp_allocproc_core fsc_kalloc fsc_kpages γp γf γs M5 lvl K1 eb pme on None b lks
+    iApply (Allocproc.wp_allocproc_core fsc_kalloc fsc_kpages γp γf γs M5 lvl K1 eb pme on None b lks Q
               ltac:(lia) ltac:(lia) Hbelow
-              with "Hcg Hcpu Htext Hpc Hprocs Hplock Henv Hpav").
+              with "HKp Hcg Hcpu Htext Hpc Hprocs Hplock Henv Hpav").
     all: try lkbelow.
     iIntros (CID11 Hs11 mf6) "%HcsB Hpc Hpost".
     assert (Hpc16 : ret_pc (M5 !!! Regidx Rra) = mword_of_int (KF + 0x16))

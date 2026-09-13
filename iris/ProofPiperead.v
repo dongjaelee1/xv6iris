@@ -2644,10 +2644,17 @@ Section ProofPiperead.
         apply callee_saved_insert_r; [vm_compute; reflexivity|].
         apply callee_saved_insert_r; [vm_compute; reflexivity|].
         apply callee_saved_refl. }
+      (* killed() ONLY REPORTS THE FLAG (lane SELF-KILL, §4b'): the access
+         this caller supplies is the identity. *)
+      iAssert (∀ (gn : gname) (klv : mword 32),
+                 SchedCtx.kill_row gn klv ==∗ SchedCtx.kill_row gn klv ∗ emp)%I
+        as "Hkacc".
+      { iIntros (gn klv) "H". iModIntro. iSplitL "H"; [ iExact "H" | done ]. }
       iApply (Killed.wp_killed_sconf γs j γlp L3 (trap_res true + (av - 12))%nat 1%nat true pj false
                 ({["pipe"]} ∪ lks)
+                (fun (_ : gname) (_ : mword 32) => emp)%I
                 HL3a0 Hj Hjl pr_lvl1 ltac:(lia) ltac:(lkbelow)
-                with "Hcg Hown Htext Hpc Hpinv").
+                with "Hkacc Hcg Hown Htext Hpc Hpinv").
       all: try lkbelow.
       iApply wp_next_off_intro. iIntros (mk kl) "[%Hkcs %Hka0] _ Hcg Hown Hpc". rgall.
       iEval (rewrite HL3ra) in "Hpc".

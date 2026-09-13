@@ -145,6 +145,15 @@ Definition allocproc_post
     (pme : mword 64) (on : option nat) (op : option nat)
     (b : bool) (lks : gset string)
     (mr : regfile) (K : nat)
+    (* THE PAYLOAD THE CREATOR CHOOSES, AND ITS PAYMENT RULE (lane
+       SELF-KILL, §4b'; coordinator's ruling (A)).  allocproc mints the
+       incarnation AT these now rather than at the trivial payload for a
+       fork row to re-choose: [SchedCtx]'s killed row is per-incarnation
+       and allocproc is what stores the pid it is keyed at, so allocproc
+       has to close that row -- and the row names the generation
+       persistently, which is only possible once the generation has been
+       SPLIT, which freezes the payload.  See [ChildTok.gen_alloc]. *)
+    (Q : Z -> iProp Σ)
     (rv : mword 64) : iProp Σ :=
   ( (* --- no free slot: a0 = 0, every lock released, budget untouched.
 
@@ -212,7 +221,7 @@ Definition allocproc_post
           RECORDS, so every later reading says which token is this
           incarnation's.  Bundled into this row rather than added beside it
           so that every pass-through site keeps its arity. *)
-       gen_fresh (pv_gen (us_V U)) (proc_addr j) pid ∗
+       (∃ ga : gname, gen_new (pv_gen (us_V U)) (proc_addr j) pid ga Q) ∗
        (* ...AND THE TWO EXCLUSIVE GHOSTS THAT SAY THIS INCARNATION IS THE
           SLOT'S CURRENT ONE, BOTH WHOLE ([SlotGen]).  The generation's
           came out of the dormant block and was re-keyed here; the pid's
@@ -325,7 +334,7 @@ Definition wp_allocproc_sconf_body
     (γa : gname) (γk : gname * gname) (γp : gname) (γf : gname) 
     (γs : list gname) (m : regfile) (lvl K : nat) (eb : bool)
     (pme : mword 64) (on : option nat) (op : option nat)
-    (b : bool) (lks : gset string) :=
+    (b : bool) (lks : gset string) (Q : Z -> iProp Σ) :=
   let pcE : mword 64 := mword_of_int KernelSyms.allocproc in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   (* 4 slots for this frame, 44 for freeproc's -- the deepest callee now
@@ -342,6 +351,18 @@ Definition wp_allocproc_sconf_body
      [locks_below_mono] plus [locks_below_union_singleton] derive their
      order premises from this single bound; see ProofAllocproc.v. *)
   locks_below lks "proc" ->
+  (* ...AND HOW A KILLER PAYS FOR THE INCARNATION ABOUT TO BE MINTED (lane
+     SELF-KILL, §4b'; the owner's ruling of 2026-09-13).  [kill(2)] costs
+     the TARGET's exit payload at -1, and a killer holds none of the
+     target's resources -- so the killed row publishes this wand
+     ([SchedCtx.kill_paid]'s live arm) and a TAINTED process cashes it with
+     [RiscvPtsto.riscv_kill_cred], which is the application's taint on the
+     fixed record and the only thing left that names a kill.  The CREATOR
+     is the only party that can found it: <init>'s payload is
+     [fun _ => True] and the wand is trivial; a forked child's is the
+     forking process's choice, whose payload admits the taint on its taint
+     arm. *)
+  □ (riscv_kill_cred -∗ Q (-1)) -∗
   sie_cap_gpr KT1 m K b pme -∗
   cpu_own lvl eb pme b lks -∗
   kernel_text -∗ pc_is pcE -∗
@@ -354,7 +375,7 @@ Definition wp_allocproc_sconf_body
     ∀ (mr : regfile),
       ⌜ callee_saved m mr ⌝ -∗
       pc_is ret_tgt -∗
-      allocproc_post γa γk γf γs lvl eb pme on op b lks mr K
+      allocproc_post γa γk γf γs lvl eb pme on op b lks mr K Q
         (mr !!! Regidx (mword_of_int 10 : mword 5)) -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
@@ -369,7 +390,7 @@ Definition wp_allocproc_core_body
     (γa : gname) (γk : gname * gname) (γp : gname) (γf : gname) 
     (γs : list gname) (m : regfile) (lvl K : nat) (eb : bool)
     (pme : mword 64) (on : option nat) (op : option nat)
-    (b : bool) (lks : gset string) :=
+    (b : bool) (lks : gset string) (Q : Z -> iProp Σ) :=
   let pcE : mword 64 := mword_of_int KernelSyms.allocproc in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   (48 <= K)%nat ->
@@ -377,6 +398,18 @@ Definition wp_allocproc_core_body
   (* same order premise as the counted contract above -- "proc" is the
      lowest (only) rank this function itself acquires. *)
   locks_below lks "proc" ->
+  (* ...AND HOW A KILLER PAYS FOR THE INCARNATION ABOUT TO BE MINTED (lane
+     SELF-KILL, §4b'; the owner's ruling of 2026-09-13).  [kill(2)] costs
+     the TARGET's exit payload at -1, and a killer holds none of the
+     target's resources -- so the killed row publishes this wand
+     ([SchedCtx.kill_paid]'s live arm) and a TAINTED process cashes it with
+     [RiscvPtsto.riscv_kill_cred], which is the application's taint on the
+     fixed record and the only thing left that names a kill.  The CREATOR
+     is the only party that can found it: <init>'s payload is
+     [fun _ => True] and the wand is trivial; a forked child's is the
+     forking process's choice, whose payload admits the taint on its taint
+     arm. *)
+  □ (riscv_kill_cred -∗ Q (-1)) -∗
   sie_cap_gpr KT1 m K b pme -∗
   cpu_own lvl eb pme b lks -∗
   kernel_text -∗ pc_is pcE -∗
@@ -389,7 +422,7 @@ Definition wp_allocproc_core_body
     ∀ (mr : regfile),
       ⌜ callee_saved m mr ⌝ -∗
       pc_is ret_tgt -∗
-      allocproc_post γa γk γf γs lvl eb pme on op b lks mr K
+      allocproc_post γa γk γf γs lvl eb pme on op b lks mr K Q
         (mr !!! Regidx (mword_of_int 10 : mword 5)) -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
@@ -399,8 +432,8 @@ Module Type ALLOCPROC_GEN.
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (γa : gname) (γk : gname * gname) (γp : gname) (γf : gname) (γs : list gname) (m : regfile) (lvl K : nat) (eb : bool)
       (pme : mword 64) (on : option nat) (op : option nat)
-      (b : bool) (lks : gset string),
-      wp_allocproc_core_body γa γk γp γf γs m lvl K eb pme on op b lks.
+      (b : bool) (lks : gset string) (Q : Z -> iProp Σ),
+      wp_allocproc_core_body γa γk γp γf γs m lvl K eb pme on op b lks Q.
 End ALLOCPROC_GEN.
 
 Module Type ALLOCPROC.
@@ -408,6 +441,6 @@ Module Type ALLOCPROC.
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (γa : gname) (γk : gname * gname) (γp : gname) (γf : gname) (γs : list gname) (m : regfile) (lvl K : nat) (eb : bool)
       (pme : mword 64) (on : option nat) (op : option nat)
-      (b : bool) (lks : gset string),
-      wp_allocproc_sconf_body γa γk γp γf γs m lvl K eb pme on op b lks.
+      (b : bool) (lks : gset string) (Q : Z -> iProp Σ),
+      wp_allocproc_sconf_body γa γk γp γf γs m lvl K eb pme on op b lks Q.
 End ALLOCPROC.

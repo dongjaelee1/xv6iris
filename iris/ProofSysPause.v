@@ -1232,10 +1232,17 @@ Section SpBodies.
                     = add_vec_int (mword_of_int (KernelSyms.sys_pause + 0x4e) : mword 64) 4) by (rewrite /L1; apply upd_eq).
     assert (HL1a0 : L1 !!! Regidx (mword_of_int 10 : mword 5) = proc_addr j).
     { rewrite /L1 upd_ne; [| reg_neq]. rewrite Hmpa0. reflexivity. }
+    (* killed() ONLY REPORTS THE FLAG (lane SELF-KILL, §4b'): the access
+       this caller supplies is the identity. *)
+    iAssert (∀ (gn : gname) (klv : mword 32),
+               SchedCtx.kill_row gn klv ==∗ SchedCtx.kill_row gn klv ∗ emp)%I
+      as "Hkacc".
+    { iIntros (gn klv) "H". iModIntro. iSplitL "H"; [ iExact "H" | done ]. }
     iApply (Killed.wp_killed_sconf γs j γl L1 (trap_res true + (av - 8))%nat 1%nat eb (proc_addr j) false
               ({["time"]} ∪ lks)
+              (fun (_ : gname) (_ : mword 32) => emp)%I
               HL1a0 Hj Hjl Hn1 ltac:(lia) Hfresh_proc
-              with "Hcg Hown Htext Hpc Hpinv").
+              with "Hkacc Hcg Hown Htext Hpc Hpinv").
     all: try lkbelow.
     iApply wp_next_off_intro. iIntros (mfk kl) "%Hkf _ Hcg Hown Hpc".
     destruct Hkf as (Hkcs & Hka0).

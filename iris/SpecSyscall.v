@@ -428,9 +428,15 @@ Section SyscExec.
      process cannot name it and undertakes to be safe at whichever number
      comes out.  The kernel instantiates it at allocproc's
      ([SpecKfork]'s slot premise, kfork's [pid_c]). *)
+  (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'): the
+     child's killed row publishes a wand from the application's TAINT to
+     the child's exit payload at -1 and allocproc founds it, so the FORKING
+     process supplies it here beside the slot ([SpecUsertrap.ut_fork_in]'s
+     own conjunct, relayed). *)
   Definition sysc_fork_in (f : sfam) (U : ustate) (sts : list fdstate)
       : iProp Σ :=
     (⌜sysc_num (us_V U) = UsysMemOk.USYS_fork⌝ -∗
+       □ (riscv_kill_cred -∗ sfork_pay f (-1)) ∗
        ∀ (g' : gname) (pidc : mword 32),
          my_pay g' (sfork_pay f) -∗
          uslot (uvis_of (kfork_child U) sts g' ∅ pidc))%I.

@@ -1198,18 +1198,22 @@ Section UkSh.
         ucons_swallow cnm False sl dd dc ∗
         ush_at (n + dc)%nat)
      ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗
-        (* ...AND WHY IT IS -1 (lane KILL-PAY, K4(b)(iv)).  read(0) answers
-           -1 on exactly two grounds, and the leaf names both: the process
-           was KILLED, in which case the answer carries the application's
-           kill credential all the way from [SchedCtx.proc_pub]'s killed
-           row through consoleread's post and
-           [SpecFileread.console_receipt]; or fd 0 is SHUT, which is the
-           other arm of the leaf's own [ush_fd0p] and is walked as code
-           (sh exits).  A caller that has resolved [ush_fd0p] to the
-           console reads the credential out, and that credential IS the
-           application's taint -- so the line stops being the shell's
-           business exactly where a kill could have holed it. *)
-        (⌜ l !! 0%nat = Some FdClosed ⌝ ∨ □ riscv_kill_cred) ∗ ush_pos)
+        (* ...AND THE MINUS-ONE ARM SAYS NOTHING ABOUT WHY (lane SELF-KILL,
+           §4b'; the owner's ruling of 2026-09-13).  read(0) answers -1 on
+           exactly two grounds -- fd 0 is SHUT, or the process was KILLED
+           -- and this arm USED to name both, carrying the application's
+           kill credential from [SchedCtx.proc_pub]'s killed row through
+           consoleread's post ([SpecFileread.console_receipt], KILL-PAY
+           K4(b)).  That relay is WITHDRAWN: the killed row is
+           per-incarnation and LINEAR now -- it holds the payment for THIS
+           incarnation's death -- so a reader can neither copy it out nor
+           relay it and [killed()] reports the flag alone.  NOTHING SPENT
+           THE RELAY: this arm's only consumer is [ush_read_ans_pos], which
+           takes the position, so what goes is a row nobody read.  The fd-0
+           arm goes with it: it was one side of a disjunction whose other
+           side has no witness left, and a one-sided disjunction is no
+           claim. *)
+        ush_pos)
      ∨ (T ∗ ush_pos))%I.
 
   (* ...and the answer, weakened to the ONE thing the walk cannot do
@@ -1220,7 +1224,7 @@ Section UkSh.
     ush_read_ans cnm l r cap n g -∗ ush_pos.
   Proof.
     rewrite /ush_read_ans /ush_pos.
-    iIntros "[Hw | [(_ & _ & $) | [_ $]]]".
+    iIntros "[Hw | [(_ & $) | [_ $]]]".
     iDestruct "Hw" as (dd dc hs sl) "(_ & _ & _ & _ & _ & _ & _ & _ & _ & Hp)".
     iExists (n + dc)%nat. iExact "Hp".
   Qed.

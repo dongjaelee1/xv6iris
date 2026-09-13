@@ -814,7 +814,6 @@ Section UkFork.
        ([UexecRet.uexec_pay_dep]).  So the resource crosses HERE: a parent
        that lends its child a resource lends it at the fork.  At
        [fun _ => True] it costs nothing. *)
-    upay_neg Q -∗
     (* ...and the lend itself, which crosses on the same terms *)
     Rc -∗
     P (ukn_t N) (ukn_d N) (ukn_s N) -∗
@@ -832,6 +831,13 @@ Section UkFork.
     (* ...AND ITS OWN HALF OF ITS CHILDREN SET, for the cwd's reason: the
        set MOVES here, and an update needs both halves. *)
     UserChildren.uch (ukn_ch N) Sc -∗
+    (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'): the
+       child's killed row publishes a wand from the application's TAINT
+       ([RiscvPtsto.riscv_kill_cred]) to the child's exit payload at -1 and
+       allocproc founds it, so the FORKING PROGRAM supplies it here.  At
+       [Q := fun _ => True] -- what a program that wants nothing back
+       passes -- it is free. *)
+    □ (riscv_kill_cred -∗ Q (-1)) -∗
     urun N h m pc avail -∗
     ((∀ (h' : CpuId) (r : mword 64),
         ⌜r <> (mword_of_int 0 : mword 64)⌝ -∗
@@ -903,7 +909,13 @@ Section UkFork.
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hn Hal4. iIntros "#Hi Hpayc HRc HP Hsz Hstd HD Hcwd Hchf Hrun [Hpar Hchild]".
+    intros Hn Hal4. iIntros "#Hi HRc HP Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".
+    (* the child's LINEAR payment at the kill status is the boxed wand's
+       own body ([UexecSlot.upay_neg] IS [□ riscv_kill_cred -∗ Q (-1)]), so
+       the one premise serves both the child's run and the row's
+       publication (lane SELF-KILL, §4b'). *)
+    iAssert (upay_neg Q) with "[]" as "Hpayc";
+      [ rewrite /upay_neg; iIntros "#Hc"; iApply "Hkw"; iExact "Hc" | ].
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
     (* the caller's half pins the key's working directory *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
@@ -975,7 +987,8 @@ Section UkFork.
                   (sexit_pay_at (ukn_pay N) (sfam_pay Q)) with "Hmy Hpayv") | ].
     (* the PARENT keeps the descriptor authority it had -- fork does not
        touch the parent's table -- and the CHILD mints its own below. *)
-    iSplitL "Hpar HP Hsz Hstd HD Hcwd Hheap Hstk Hufd Hcwda Hcha Hchf".
+    iSplitL "Hpar HP Hsz Hstd HD Hcwd Hheap Hstk Hufd Hcwda Hcha Hchf";
+      [ | iSplitR; [ iModIntro; iExact "Hkw" | ] ].
     (* ---- the parent: same heap, r <> 0, and the children set grown by
        the child's generation ---- *)
     - iIntros "Hpayv" (r fdv' cw' cs') "%Hr %Hfv %Hcv Hans". subst fdv' cw'.
@@ -1128,8 +1141,8 @@ Section UkFork.
     iDestruct "Hch" as (Sc) "Hchf".
     iApply (wp_uk_ecall_fork N h m pc avail szv l D c Sc (fun _ => True%I)
               emp%I P
-              Hn Hal4 with "Hi [] [] HP Hsz Hstd HD Hcwd Hchf Hrun [Hpar Hchild]");
-      [ iIntros "_"; done | done | ].
+              Hn Hal4 with "Hi [] HP Hsz Hstd HD Hcwd Hchf [] Hrun [Hpar Hchild]");
+      [ done | iModIntro; iIntros "_"; done | ].
     iSplitL "Hpar".
     - iIntros (h' r) "%Hr Hans HP Hsz Hstd HD Hcwd Hrun".
       (* BOTH ARMS GIVE THE FRAGMENT BACK, and the token the pid arm mints
@@ -1176,7 +1189,7 @@ Section UkFork.
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     (* the child's payload, relayed -- see [wp_uk_ecall_fork] *)
-    upay_neg Q -∗
+
     (* ...and the parent's lend, relayed with it *)
     Rc -∗
     utext_all (ukn_t N) M0 pm0 -∗
@@ -1189,6 +1202,13 @@ Section UkFork.
     UserCwd.ucwd (ukn_cwd N) c -∗
     (* the caller's half of its children set -- see [wp_uk_ecall_fork] *)
     UserChildren.uch (ukn_ch N) Sc -∗
+    (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'): the
+       child's killed row publishes a wand from the application's TAINT
+       ([RiscvPtsto.riscv_kill_cred]) to the child's exit payload at -1 and
+       allocproc founds it, so the FORKING PROGRAM supplies it here.  At
+       [Q := fun _ => True] -- what a program that wants nothing back
+       passes -- it is free. *)
+    □ (riscv_kill_cred -∗ Q (-1)) -∗
     urun N h m pc avail -∗
     ((∀ (h' : CpuId) (r : mword 64),
         ⌜r <> (mword_of_int 0 : mword 64)⌝ -∗
@@ -1237,10 +1257,10 @@ Section UkFork.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hn Hal4.
-    iIntros "#Hi Hpayc HRc #Htext #Hargv Hsz Hstd HD Hcwd Hchf Hrun [Hpar Hchild]".
+    iIntros "#Hi HRc #Htext #Hargv Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".
     iApply (wp_uk_ecall_fork N h m pc avail szv l D c Sc Q Rc
               (fun γt0 γd0 γs0 => (utext_all γt0 M0 pm0 ∗ uargv γd0 av args)%I)
-              Hn Hal4 with "Hi Hpayc HRc [] Hsz Hstd HD Hcwd Hchf Hrun [Hpar Hchild]").
+              Hn Hal4 with "Hi HRc [] Hsz Hstd HD Hcwd Hchf Hkw Hrun [Hpar Hchild]").
     { iSplitR; [ iExact "Htext" | iExact "Hargv" ]. }
     iSplitL "Hpar".
     - iIntros (h' r) "%Hr Harm _ Hsz Hstd HD Hcwd Hrun".

@@ -318,6 +318,12 @@ Section Ut56.
     iDestruct "Hstval" as (st) "Hstval".
     (* the pid quarter, out of the process block *)
     iDestruct (ut_own_priv with "Hown") as "(Hpv & Hufr & Hch & Hsy & Hownback)".
+    (* ...AND THE FACT THAT THIS PROCESS IS LIVE (lane SELF-KILL, 4b'):
+       [setkilled] below re-closes <p->lock>'s killed row, whose FREE arm
+       claims a zero flag, so it must be told the slot it writes is not a
+       free one.  The block says so out of the registration it carries
+       ([ProcInv.proc_priv_pid_nz]). *)
+    iDestruct (proc_priv_pid_nz with "Hpv") as %Hpidnz.
     iDestruct (proc_priv_pid with "Hpv") as "(Hpid & Hpidback)".
     (* ---- +0x56: csrr a1,scause ---- *)
     iApply (wp_csrr_scause_s_sconf (mword_of_int (UT + 0x56)) Ra1 m nx
@@ -613,11 +619,17 @@ Section Ut56.
       by (rewrite /MC upd_ne; [exact HMBs1 | reg_neq]).
     assert (HcsMC : ut_cs m0 MC)
       by (rewrite /MC; apply ut_cs_insert; [vm_compute; reflexivity | exact HcsMB]).
+    (* the quarter of [p->pid] setkilled borrows, and the pid it names:
+       what ties this process's own liveness fact to the row <p->lock>
+       carries ([SpecSetkilled]'s note) *)
+    iDestruct (proc_priv_pid with "Hpv") as "(Hpid & Hpidback)".
     iApply (SK.wp_setkilled_sconf (un_s N) (un_j N) (un_l N) MC nx 0%nat false
-              (un_pj N) false lks HMCa0 Hj Hjl ltac:(vm_compute; reflexivity)
-              ltac:(lia) with "Hkc Hcg Hcpu Htext Hpc Hpi [-]").
+              (un_pj N) false lks pid HMCa0 Hj Hjl
+              ltac:(vm_compute; reflexivity)
+              ltac:(lia) Hpidnz with "Hkc Hpid Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
-    iApply wp_next_off_intro. iIntros (S1) "%HcsS1 Hcg Hcpu Hpc".
+    iApply wp_next_off_intro. iIntros (S1) "%HcsS1 Hcg Hcpu Hpc Hpid".
+    iDestruct ("Hpidback" with "Hpid") as "Hpv".
     assert (Hret82 : ret_pc (MC !!! Regidx Rra) = mword_of_int (UT + 0x82))
       by (rewrite HMCra; pcw).
     iEval (rewrite Hret82) in "Hpc".
@@ -1284,9 +1296,19 @@ Section UtE8.
       by (rewrite /M2 upd_ne; [exact HM1s1 | reg_neq]).
     assert (HcsM2 : ut_cs m0 M2)
       by (rewrite /M2; apply ut_cs_insert; [vm_compute; reflexivity | exact HcsM1]).
+    (* THE ACCESS killed() RUNS ON THE ROW (lane SELF-KILL, §4b'): at a
+       nonzero flag the row carries the taint that wrote it, and that is
+       what this exit cashes [UexecSlot.upay_neg] with.  Persistent, so the
+       row goes back untouched. *)
+    iAssert (∀ (gnk : gname) (klv : mword 32),
+               SchedCtx.kill_row gnk klv ==∗
+               SchedCtx.kill_row gnk klv ∗ SchedCtx.kill_why klv)%I as "Hkacc".
+    { iIntros (gnk klv) "H". iApply (SchedCtx.kill_why_access with "H"). }
     iApply (KI.wp_killed_sconf (un_s N) (un_j N) (un_l N) M2 nx 0%nat false
-              (un_pj N) false lks HM2a0 Hj Hjl ltac:(vm_compute; reflexivity)
-              ltac:(lia) with "Hcg Hcpu Htext Hpc Hpi [-]").
+              (un_pj N) false lks
+              (fun (_ : gname) (klv : mword 32) => SchedCtx.kill_why klv)
+              HM2a0 Hj Hjl ltac:(vm_compute; reflexivity)
+              ltac:(lia) with "Hkacc Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
     iApply wp_next_off_intro. iIntros (mf kl) "[%Hcskl %Hkla0] #Hkw Hcg Hcpu Hpc".
     assert (Hretee : ret_pc (M2 !!! Regidx Rra) = mword_of_int (UT + 0xf0))
@@ -1437,10 +1459,13 @@ Section UtE8.
          devintr handled, so that row is [emp] -- but [SpecKilled]'s post:
          this arm read a NONZERO flag, and the row the flag carries says
          somebody paid for it. *)
+      assert (Hknz : kl <> (mword_of_int 0 : mword 32)).
+      { intro Hz0. rewrite Hz0 in Hz. vm_compute in Hz. discriminate Hz. }
       iAssert (□ riscv_kill_cred)%I with "[]" as "#Hkcx".
-      { iDestruct "Hkw" as "[%Hz0 | #Hc]";
-          [ exfalso; rewrite Hz0 in Hz; vm_compute in Hz; discriminate Hz
-          | iExact "Hc" ]. }
+      { iDestruct "Hkw" as "[%Hz0 | Hacc]";
+          [ exfalso; exact (Hknz Hz0)
+          | iDestruct "Hacc" as (gn0) "Hacc";
+            iApply (SchedCtx.kill_why_cred kl Hknz with "Hacc") ]. }
       iDestruct (upay_neg_pay (sexit_pay fdep) with "Hkcx Hpayv") as "Hpayv".
       iApply (T.ut_kexit Rsys N U
                 (<[Regidx Rra := regval_into_reg

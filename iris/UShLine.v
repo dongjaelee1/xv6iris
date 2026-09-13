@@ -508,22 +508,16 @@ Section UShLine.
       (* the lazy flag, cashed on the key the call ran at *)
       pose proof (Hlazy Hlz) as Hlf.
       iEval (rewrite /console_receipt) in "Hrec".
-      iDestruct "Hrec" as "[(%Hm1 & #Hwhy & Hrd) | Hw]".
-      + (* THE KILLED ARM: the token comes back somewhere and there is no
-           window ([UkSh.ush_read_ans]'s middle disjunct).
-           ...AND IT REALLY IS THE KILLED ONE (lane KILL-PAY, K4(b)(iv)):
-           the receipt's minus-one arm says the answer is -1 because the
-           request was negative or because the credential was paid, and
-           sh's request is a [nat] -- so what comes out is the
-           credential. *)
+      iDestruct "Hrec" as "[(%Hm1 & Hrd) | Hw]".
+      + (* THE MINUS-ONE ARM: the token comes back somewhere and there is
+           no window ([UkSh.ush_read_ans]'s middle disjunct).  It no longer
+           says WHY (lane SELF-KILL, §4b'): the killed row is linear and
+           relays nothing. *)
         iDestruct "Hrd" as (cur dc) "Hrd".
         iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hrd] Hbuf Hrun");
           [ lia | exact Hgf | ].
         rewrite /UkSh.ush_read_ans /UkSh.ush_pos. iRight. iLeft.
         iSplitR; [ by iPureIntro | ].
-        iSplitR.
-        { iDestruct "Hwhy" as "[%Hneg | #Hc]"; [ | iRight; iExact "Hc" ].
-          exfalso. rewrite Hcnt in Hneg. lia. }
         rewrite /ush_rd_ret /UkSh.ush_at.
         iDestruct "Hrd" as "[(_ & Hp & Hl) | [#HT Hp]]".
         * iExists (n + dc)%nat. rewrite Hpay. iFrame "Hp Hl".
@@ -646,10 +640,6 @@ Section UShLine.
         [ lia | exact Hgf | ].
       rewrite /UkSh.ush_read_ans /UkSh.ush_pos /UkSh.ush_at. iRight. iLeft.
       iSplitR; [ by iPureIntro | ].
-      (* THE OTHER GROUND FOR A -1 (lane KILL-PAY, K4(b)(iv)): fd 0 is
-         SHUT, which is this arm of [UkSh.ush_fd0p] and costs no
-         credential. *)
-      iSplitR; [ iLeft; iPureIntro; exact Hcl | ].
       iExists n. iFrame "Hpos". rewrite Hpay. iExact "Hlease".
   Qed.
 

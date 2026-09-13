@@ -498,6 +498,12 @@ Section UserretClosed.
           (* THE CHILD'S PID IS ∀-BOUND, beside its generation: the process
              deposited a family over every number <allocpid> might choose
              and the kernel instantiates it ([UexecRet.uexec_fork_child_F]). *)
+          (* ...AND THE CHILD'S PAYMENT WAND, relayed unchanged (lane
+             SELF-KILL, §4b'): the deposit carries it and [ut_fork_in]
+             hands it to the kernel, which gives it to allocproc. *)
+          iEval (rewrite /uexec_fork_child_F) in "Hxin".
+          iDestruct "Hxin" as "[#Hkw Hxin]".
+          iSplitR; [ iExact "Hkw" | ].
           iIntros (g' pidc) "Hmp".
           rewrite /uexec_fork_child_F SpecUsertrap.uvis_of_us_tf.
           iSpecialize ("Hxin" $! g' pidc). iSpecialize ("Hxin" with "Hmp").

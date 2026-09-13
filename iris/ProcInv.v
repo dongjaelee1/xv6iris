@@ -1974,6 +1974,29 @@ Section ProcInv.
     iExact "Hrest".
   Qed.
 
+  (* ...AND THAT THE PID IS NOT 0, off the same block and at no cost.  A
+     LIVE process's block carries its own registration
+     ([SlotGen.gen_halves_priv]) and every registered pid is nonzero, so
+     the fact is the bundle's ([SlotGen.gen_halves_priv_nz]).
+     WHO WANTS IT: usertrap's fault arm, which calls [setkilled] on
+     [myproc()] and must tell the killed row's writer that the slot it is
+     about to re-close is a LIVE one ([SpecSetkilled], lane SELF-KILL) --
+     <p->lock>'s payload has a free arm at [p->pid = 0] and the C's own
+     guard (kkill refuses pid 0) is what keeps it at a zero flag. *)
+  Lemma proc_priv_core_pid_nz (pa : mword 64) (pid : mword 32) (U : ustate) :
+    proc_priv_core pa pid U -∗ ⌜bv_unsigned pid <> 0⌝.
+  Proof.
+    iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hgh)".
+    iApply (gen_halves_priv_nz with "Hgh").
+  Qed.
+
+  Lemma proc_priv_pid_nz (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) :
+    proc_priv γf pa pid U -∗ ⌜bv_unsigned pid <> 0⌝.
+  Proof.
+    iIntros "[Hc _]". iApply (proc_priv_core_pid_nz with "Hc").
+  Qed.
+
   (* The read-only trapframe-POINTER fraction: what [p->trapframe->aN] reads
      first.  Same discipline as [proc_priv_pid] and for the same reason --
      argraw should take the weakest premise (a bare fraction of one cell),

@@ -637,7 +637,8 @@ Proof. intros ->. rewrite /alp_pid_lock. apply bv_eq; vm_compute; reflexivity. Q
    generation, the slot re-keyed to it ([SlotGen.slot_gen_update], out of
    the whole the dormant block carried) and the pid registered to it. *)
 Definition ap_pid_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
-    (m : regfile) (k : nat) (av n : nat) (eb : bool) (p : mword 64) (lks : gset string) : iProp Σ :=
+    (m : regfile) (k : nat) (av n : nat) (eb : bool) (p : mword 64) (lks : gset string)
+    (Q : Z -> iProp Σ) : iProp Σ :=
   (∀ (mf : regfile) (pidn : mword 32) (γg : gname),
      ⌜ callee_saved m mf ⌝ -∗
      (* THE PID THE BLOCK CHOSE IS IN [1, PIDMAX].  It comes off the
@@ -655,9 +656,12 @@ Definition ap_pid_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !wchG Σ} `{GEN : 
      (* the fresh incarnation, whole and at the trivial payload -- a process
         nobody forked owes its parent nothing, and a fork REPLACES the
         payload before splitting ([ChildTok.gen_set]) *)
-     (* ...AND THE ALIVE TOKEN MINTED WITH IT (lane SELF-KILL §3a), bundled
-        into this row so the arity does not move *)
-     gen_fresh γg (proc_addr k) pidn -∗
+     (* ...AND THE TAKEN TOKEN MINTED WITH IT (lane SELF-KILL §3a/§4b'),
+        bundled into this row so the arity does not move.  The generation
+        arrives ALREADY SPLIT, at the payload the creator chose: see
+        [ChildTok.gen_alloc] for why the choice cannot wait for a fork
+        row any more. *)
+     (∃ ga : gname, gen_new γg (proc_addr k) pidn ga Q) -∗
      (* ...the slot, re-keyed to it: the whole this block was handed came
         out of the dormant block at the LAST incarnation's name *)
      slot_gen (proc_addr k) (DfracOwn 1) γg -∗
@@ -679,7 +683,8 @@ Section ProofAllocprocPid.
 
   Lemma wp_ap_pidsec `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (γp : gname) (m : regfile) (k : nat) (av n : nat) (eb : bool) (p : mword 64)
-      (lks : gset string) (pidi pidh : mword 32) (g0 : gname) :
+      (lks : gset string) (pidi pidh : mword 32) (g0 : gname)
+      (Q : Z -> iProp Σ) :
     (Z.of_nat n + 1 < 2 ^ 31)%Z ->
     (10 <= av)%nat ->
     (k < NPROC)%nat ->
@@ -700,7 +705,7 @@ Section ProofAllocprocPid.
     (* THE SLOT'S GENERATION, WHOLE, out of the dormant block: this block
        re-keys it to the incarnation it mints. *)
     slot_gen (proc_addr k) (DfracOwn 1) g0 -∗
-    wp_next false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks) -∗
+    wp_next false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks Q) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hn Hav Hk Hs1 Hbelow Hpid0.
@@ -882,7 +887,7 @@ Section ProofAllocprocPid.
         arm_pay KT1 n eb p -∗
         p_pid (proc_addr k) ↦₄{DfracOwn (1/4)} pidi -∗
         p_pid (proc_addr k) ↦₄{DfracOwn (1/2)} pidh -∗
-        wp_next (CID0 := CID) false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks) -∗
+        wp_next (CID0 := CID) false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks Q) -∗
         WP (Loop : expr riscv_lang)))%I with "[]" as "Hloop".
     { iLöb as "IH".
       iIntros (CIDl Hsl R nv) "%HR %HRa3 Hcg Hpc Hnp Hshares Hauth Hsg Hlocked Hcpu Hpay Hpidi Hpidh Hcont".
@@ -919,7 +924,7 @@ Section ProofAllocprocPid.
           arm_pay KT1 n eb p -∗
           p_pid (proc_addr k) ↦₄{DfracOwn (1/4)} pidi -∗
           p_pid (proc_addr k) ↦₄{DfracOwn (1/2)} pidh -∗
-          wp_next (CID0 := CID) false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks) -∗
+          wp_next (CID0 := CID) false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks Q) -∗
           WP (Loop : expr riscv_lang)))%I with "[]" as "Hbody".
       { iIntros (CIDm Hsm Rm) "(%HRm & %HRma3 & %HRma1) Hcg Hpc Hnp Hshares Hauth Hsg Hlocked Hcpu Hpay Hpidi Hpidh Hcont".
         (* +0x6c auipc a5,0x11 ; +0x70 addi a5,a5,-916 : q := proc *)
@@ -976,7 +981,7 @@ Section ProofAllocprocPid.
             arm_pay KT1 n eb p -∗
             p_pid (proc_addr k) ↦₄{DfracOwn (1/4)} pidi -∗
             p_pid (proc_addr k) ↦₄{DfracOwn (1/2)} pidh -∗
-            wp_next (CID0 := CID) false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks) -∗
+            wp_next (CID0 := CID) false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks Q) -∗
             WP (Loop : expr riscv_lang)))%I with "[]" as "Hscan".
         { iIntros (CIDs Hss fuel). iInduction fuel as [|fuel] "IHf".
           { iIntros (j Rj) "%Hfuel %Hj _ _ _ _ _ _ _ _ _ _ _ _ _". exfalso. exact (ap_fuel0 j Hfuel Hj). }
@@ -1175,7 +1180,7 @@ Section ProofAllocprocPid.
               assert (Hpk0 : bv_unsigned pk = 0)
                 by (rewrite -(proj2 Hpeq); exact Hpid0).
               iApply fupd_wp.
-              iMod (gen_alloc (proc_addr k) pidn) as (γg) "Hgen".
+              iMod (gen_alloc (proc_addr k) pidn Q) as (γg gan) "Hgen".
               iMod (slot_gen_update (proc_addr k) g0 γg with "Hsg") as "Hsg".
               iMod (pid_reg_insert PR pidn γg Hfree with "Hauth") as "[Hauth Hpr]".
               iModIntro.
@@ -1249,7 +1254,8 @@ Section ProofAllocprocPid.
               (* ---- hand back: the block's whole hart chain is entry -> acquire -> release ---- *)
               iSpecialize ("Hcont" $! CIDrel with "[%]"); [wp_next_chain |].
               iEval (rewrite /ap_pid_post) in "Hcont".
-              iApply ("Hcont" $! mrel pidn γg with "[%] [%] Hcg Hcpu Hpc Hpidi Hpidh Hgen Hsg Hpr").
+              iApply ("Hcont" $! mrel pidn γg with "[%] [%] Hcg Hcpu Hpc Hpidi Hpidh [Hgen] Hsg Hpr");
+                [ | | iExists gan; iExact "Hgen" ].
               * exact (callee_saved_trans _ _ _ HRrcs Hcsrel).
               * exact Hpidnb.
             + (* more slots to look at: back to +0x74 *)
@@ -1378,14 +1384,14 @@ Section ProofAllocproc.
       (γa : gname) (γk : gname * gname) (γp : gname) (γf : gname)
       (γs : list gname) (m : regfile) (lvl K : nat) (eb : bool)
       (pme : mword 64) (on : option nat) (op : option nat)
-      (b : bool) (lks : gset string)
-    : wp_allocproc_core_body γa γk γp γf γs m lvl K eb pme on op b lks.
+      (b : bool) (lks : gset string) (Q : Z -> iProp Σ)
+    : wp_allocproc_core_body γa γk γp γf γs m lvl K eb pme on op b lks Q.
   Proof.
     cbv beta delta [wp_allocproc_core_body].
     intros pcE ret_tgt HK Hlvl Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
-    iIntros "Hcg Hcpu #Htext Hpc #Hprocs #Hpidlk Henv Hpav Hcont".
+    iIntros "#HKp Hcg Hcpu #Htext Hpc #Hprocs #Hpidlk Henv Hpav Hcont".
     iDestruct (procs_inv_len γs with "Hprocs") as %Hlen.
     iAssert (procs_inv γs) as "#Hpinv". { iExact "Hprocs". }
     (* ================= PROLOGUE (32-byte frame, 4 slots) ================= *)
@@ -1723,7 +1729,7 @@ Section ProofAllocproc.
                      ∀ (mr : regfile),
                        ⌜ callee_saved m mr ⌝ -∗
                        pc_is ret_tgt -∗
-                       allocproc_post γa γk γf γs lvl eb pme on op b lks mr K
+                       allocproc_post γa γk γf γs lvl eb pme on op b lks mr K Q
                          (mr !!! Regidx ap_a0) -∗
                        WP (Loop : expr riscv_lang)) -∗
                    sie_cap_gpr KT1 Mk (K - 4)%nat b pme -∗
@@ -1880,7 +1886,17 @@ Section ProofAllocproc.
         iModIntro.
         iDestruct "Hrest" as (V pid0)
           "([%Hof [%Hcwd [%Hszb [%Hpid00 %Hlzv]]]] & Hpidhalf & Hfields & Hofiles & Hrow & Hsg & Hfrag)".
-        iDestruct "Hpub" as (kl xs pid1) "(Hkilled & Hxstate & Hpidinv & #Hkw & Htie)".
+        iDestruct "Hpub" as (kl xs pid1) "(Hkilled & Hxstate & Hpidinv & Hkrow0)".
+        (* THE UNUSED SLOT'S FLAG IS ZERO, and allocproc has to read it
+           (lane SELF-KILL, §4b'): it is about to found this payload's
+           killed row at a NEW pid, and what it founds it at is the flag
+           the slot already carries.  The two shares of the pid cell name
+           one word, the dormant block says that word is 0
+           ([ProcInv.proc_dormant_nofd]), and the row's two arms are purely
+           exclusive on exactly that. *)
+        iDestruct (ctx_word4_pointsto_agree with "Hpidinv Hpidhalf") as %Hpideq0.
+        assert (Hp1z : bv_unsigned pid1 = 0) by (rewrite Hpideq0; exact Hpid00).
+        iDestruct (kill_paid_flag pid1 kl Hp1z with "Hkrow0") as "#Hkfree".
         (* +0x38 .. +0xee: THE INLINED allocpid -- acquire(&pid_lock), the
            retry scan for a pid no slot holds, [p->pid = pid], release.  One
            block lemma ([wp_ap_pidsec] above), stated in the shape the
@@ -1890,7 +1906,7 @@ Section ProofAllocproc.
            the new pid.  p->lock (rank 9) is still held here, so the block's
            held set is [{["proc"]} ∪ lks], not bare [lks]. *)
         iApply (wp_ap_pidsec (CID := CIDf) γp L3 k (trap_res b + (K - 4))%nat (S lvl) eb pme
-                  ({["proc"]} ∪ lks) pid1 pid0 (pv_gen V)
+                  ({["proc"]} ∪ lks) pid1 pid0 (pv_gen V) Q
                   (ap_lvlS lvl Hlvl) ltac:(pose proof (ap_K14 K HK); lia) Hk HL3s1 (ap_below_nextpid lks Hbelow) Hpid00
                   with "Hcg Hcpu Htext Hpc Hpidlk Hpidinv Hpidhalf Hsg").
         iApply wp_next_off_intro. rewrite /ap_pid_post.
@@ -1903,11 +1919,29 @@ Section ProofAllocproc.
            as the whole used to.  The tie this function destructed off the
            UNUSED slot's payload above is that slot's own, at a pid cell
            holding 0 -- the free arm -- and is simply dropped. *)
-        iDestruct "Htie" as "_".
         iEval (rewrite pid_reg_rest_whole) in "Hpr".
         iDestruct "Hpr" as "[Hpr Hpr8]".
-        iAssert (pid_tie pidn) with "[Hpr8]" as "Htie".
-        { iApply (pid_tie_of_reg with "Hpr8"). }
+        (* ...AND THE NEW INCARNATION'S PAYMENT PUBLICATION, founded HERE
+           and nowhere else (lane SELF-KILL, §4b'; the coordinator's ruling
+           on the killer's route).  [SchedCtx.kill_paid]'s live arm carries
+           the persistent reading of the payload allocproc minted at and
+           the creator's wand from the application's supply to that payload
+           at -1 -- which is what a [kill(2)] by a generic process cashes.
+           The reading comes off the row allocproc is about to hand its
+           caller WITHOUT spending it ([ChildTok.gen_new_my_pay]); the wand
+           is this function's own premise. *)
+        iDestruct "Hgen" as (gan) "Hgen".
+        iDestruct (ChildTok.gen_new_my_pay with "Hgen") as "[#Hmp Hgen]".
+        iAssert (kill_paid pidn kl) with "[Hpr8]" as "Hkrow".
+        { iApply (kill_paid_of_reg pidn kl γg Q ltac:(lia)
+                    with "Hpr8 Hmp HKp").
+          (* the flag the slot already carried, and it is ZERO: [kkill]
+             refuses pid 0 (XV6_REV 64c58ba), so no writer can reach a slot
+             whose pid cell is 0 and an UNUSED slot's flag is what freeproc
+             and the .bss left. *)
+          iDestruct "Hkfree" as "%Hz". rewrite Hz. iApply kill_row_zero. }
+        iAssert (∃ ga : gname, gen_new γg (proc_addr k) pidn ga Q)%I
+          with "[Hgen]" as "Hgen"; [ iExists gan; iExact "Hgen" | ].
         assert (Hfa_s1 : mfa !!! Regidx ap_s1 = proc_addr k).
         { rewrite (callee_saved_lookup Hcsfa ap_s1 ltac:(vm_compute; reflexivity)). exact HL3s1. }
         assert (Hfa_csp : mfa !!! Regidx csp_rs1 = spd).
@@ -2136,11 +2170,10 @@ Section ProofAllocproc.
           iApply (FP.wp_freeproc_sconf (CID := CIDf) γp γa T2 k γl V γg pidn USED ch None None
                     (trap_res b + (K - 4))%nat eb pme (S lvl) ({["proc"]} ∪ lks)
                     ltac:(pose proof (ap_K44 K HK); lia) Hk (ap_lvlS lvl Hlvl) HT2a0
-                    with "Hcg Hcpu Htext Hpc Hpidlk [Hlocked Hstate Hpg Hchan Hkilled Hxstate Hpidinv Htie] [Hpidown Hfields Hofc Hofs Hspare Hirsp Hbsp Hkst Hctx] Hrow Hsg Hpr Hxb [Hpgcell] [Htfcell] Henvb").
+                    with "Hcg Hcpu Htext Hpc Hpidlk [Hlocked Hstate Hpg Hchan Hkilled Hxstate Hpidinv Hkrow] [Hpidown Hfields Hofc Hofs Hspare Hirsp Hbsp Hkst Hctx] Hrow Hsg Hpr Hxb [Hpgcell] [Htfcell] Henvb").
           all: try lkbelow.
           { rewrite /proc_held. iFrame "Hlocked Hstate Hpg Hchan".
-            iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv Htie".
-            iExact "Hkw". }
+            iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv Hkrow". }
           { rewrite /fp_rest. iSplitR.
             { iPureIntro. split; [exact Hof|]. split; [exact Hcwd|]. exact Hszb. }
             iFrame "Hpidown Hfields Hofc Hofs Hspare Hirsp Hbsp Hkst Hctx". }
@@ -2509,11 +2542,10 @@ Section ProofAllocproc.
           iApply (FP.wp_freeproc_sconf (CID := CIDf) γp γa U2 k γl V γg pidn USED ch None (Some (tfp, tfws))
                     (trap_res b + (K - 4))%nat eb pme (S lvl) ({["proc"]} ∪ lks)
                     ltac:(pose proof (ap_K44 K HK); lia) Hk (ap_lvlS lvl Hlvl) HU2a0
-                    with "Hcg Hcpu Htext Hpc Hpidlk [Hlocked Hstate Hpg Hchan Hkilled Hxstate Hpidinv Htie] [Hpidown Hfields Hofc Hofs Hspare Hirsp Hbsp Hkst Hctx] Hrow Hsg Hpr Hxb [Hpgcell] [Htfcell Htfpage] Henvb").
+                    with "Hcg Hcpu Htext Hpc Hpidlk [Hlocked Hstate Hpg Hchan Hkilled Hxstate Hpidinv Hkrow] [Hpidown Hfields Hofc Hofs Hspare Hirsp Hbsp Hkst Hctx] Hrow Hsg Hpr Hxb [Hpgcell] [Htfcell Htfpage] Henvb").
           all: try lkbelow.
           { rewrite /proc_held. iFrame "Hlocked Hstate Hpg Hchan".
-            iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv Htie".
-            iExact "Hkw". }
+            iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv Hkrow". }
           { rewrite /fp_rest. iSplitR.
             { iPureIntro. split; [exact Hof|]. split; [exact Hcwd|]. exact Hszb. }
             iFrame "Hpidown Hfields Hofc Hofs Hspare Hirsp Hbsp Hkst Hctx". }
@@ -3003,10 +3035,9 @@ Section ProofAllocproc.
           cbn [us_pt upd_usV us_V us_M upd_pt upd_gen pv_ofile pv_cwd pv_fdg pv_gen].
           split; [exact Hof|]. split; [exact Hcwd|].
           split; [exact Hrestlen|]. exact (ap_nodes_le (pt_nodes t) Hnodes). }
-        iSplitL "Hlocked Hstate Hpg Hchan Hkilled Hxstate Hpidinv Htie".
+        iSplitL "Hlocked Hstate Hpg Hchan Hkilled Hxstate Hpidinv Hkrow".
         { rewrite /proc_held. iFrame "Hlocked Hstate Hpg Hchan".
-          iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv Htie".
-          iExact "Hkw". }
+          iExists kl, xs, pidn. iFrame "Hkilled Hxstate Hpidinv Hkrow". }
         iFrame "Hkst".
         iFrame "Hpark Hpriv Hgen Hsg Hpr Hfrag Hrow Hxb Hmk Hspare Hirsp Hbsp Hks".
         iSplitL "Hc0 Hc1 Hcrest".
@@ -3267,15 +3298,16 @@ Section SealAllocproc.
       (γa : gname) (γk : gname * gname) (γp : gname) (γf : gname)
       (γs : list gname) (m : regfile) (lvl K : nat) (eb : bool)
       (pme : mword 64) (on : option nat) (op : option nat)
-      (b : bool) (lks : gset string)
-    : wp_allocproc_sconf_body γa γk γp γf γs m lvl K eb pme on op b lks.
+      (b : bool) (lks : gset string) (Q : Z -> iProp Σ)
+    : wp_allocproc_sconf_body γa γk γp γf γs m lvl K eb pme on op b lks Q.
   Proof.
     cbv beta delta [wp_allocproc_sconf_body].
     intros pcE ret_tgt HK Hlvl Hex Hbelow.
     destruct Hex as (nb & Hon & Hnb). subst on.
-    iIntros "Hcg Hcpu #Htext Hpc #Hprocs #Hpidlk Henv Hpav Hcont".
-    iApply (Core.wp_allocproc_core γa γk γp γf γs m lvl K eb pme (Some nb) op b lks HK Hlvl Hbelow
-              with "Hcg Hcpu Htext Hpc Hprocs Hpidlk Henv Hpav").
+    iIntros "#HKp Hcg Hcpu #Htext Hpc #Hprocs #Hpidlk Henv Hpav Hcont".
+    iApply (Core.wp_allocproc_core γa γk γp γf γs m lvl K eb pme (Some nb) op b lks Q
+              HK Hlvl Hbelow
+              with "HKp Hcg Hcpu Htext Hpc Hprocs Hpidlk Henv Hpav").
     all: try lkbelow.
     iIntros (CIDx Hsx mr) "%Hcs Hpc Hpost".
     iSpecialize ("Hcont" $! CIDx with "[%]"); [exact Hsx|].

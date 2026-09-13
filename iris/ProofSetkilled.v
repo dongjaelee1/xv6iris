@@ -69,12 +69,13 @@ Section ProofSetkilled.
 
   Lemma wp_setkilled_sconf  (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
-    : wp_setkilled_sconf_body γs j γl m av n eb p b lks.
+      (pidv : mword 32)
+    : wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv.
   Proof.
     cbv beta delta [wp_setkilled_sconf_body].
-    intros pcE ret_tgt Ha0 Hj Hgl Hn Hav Hno.
+    intros pcE ret_tgt Ha0 Hj Hgl Hn Hav Hpidnz Hno.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
-    iIntros "#Hkc Hcg Hcpu #Htext Hpc #Hprocs Hcont".
+    iIntros "#Hkc Hpidv Hcg Hcpu #Htext Hpc #Hprocs Hcont".
     iDestruct (cpu_own_eb_agree with "Hcg Hcpu") as %Hbeq.
     iDestruct (procs_inv_lookup γs j γl Hgl with "Hprocs") as "#Hislock".
     (* ===================== PROLOGUE (32-byte frame, 3 slots used) ======= *)
@@ -198,7 +199,13 @@ Section ProofSetkilled.
     iEval (rewrite Hp10) in "Hpc".
     (* ---- open the lock: p->killed is in the ALWAYS-RESIDENT row ---- *)
     iDestruct (proc_lock_res_elim γs γl (proc_addr j) with "HR") as (st ch) "(Hstate & Hpg & Hchan & Hpub & Hslot)".
-    iDestruct "Hpub" as (kl xs pid) "(Hkilled & Hxstate & (Hpidhalf & Hgen) & _ & Htie)".
+    iDestruct "Hpub" as (kl xs pid) "(Hkilled & Hxstate & Hpidq & Hrow)".
+    (* ---- THE TWO QUARTERS OF [p->pid] MEET.  The caller's quarter rides
+       its own block ([ProcInv.proc_priv_core]) and this one rides
+       <p->lock>'s payload; they are one cell, so the pid the caller
+       proved nonzero IS the pid the killed row is keyed at, and the row's
+       FREE arm (which claims a zero flag) is refuted before the store. *)
+    iDestruct (ctx_word4_pointsto_agree with "Hpidv Hpidq") as %<-.
     assert (Hmacq_s1 : macq !!! Regidx sk_s1 = proc_addr j).
     { rewrite (callee_saved_lookup Hcs_acq sk_s1 ltac:(vm_compute; reflexivity)).
       rewrite /B1 upd_ne; [| vm_compute; discriminate]. exact HA2s1. }
@@ -267,12 +274,15 @@ Section ProofSetkilled.
       apply kv_addv_zero. }
     (* reassemble the lock resource: [proc_pub] quantifies [killed], so the
        stored value need never be named. *)
-    iAssert (proc_lock_res γs γl (proc_addr j)) with "[Hstate Hpg Hchan Hkilled Hxstate Hpidhalf Hgen Htie Hslot]" as "HR2".
+    iAssert (proc_lock_res γs γl (proc_addr j)) with "[Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot]" as "HR2".
     { iApply (proc_lock_res_intro γs γl (proc_addr j) st ch with "Hstate Hpg Hchan [-Hslot] Hslot").
-      iExists _, xs, pid. iFrame "Hkilled Hxstate Hpidhalf Hgen Htie".
-      (* the flag is 1 from here on: the killed row is paid with the
-         application's credential (lane KILL-PAY, K2) *)
-      iRight. iExact "Hkc". }
+      iExists _, xs, pidv. iFrame "Hkilled Hxstate Hpidq".
+      (* the flag is 1 from here on, so the row must be re-closed on its
+         PAID arm -- and what pays is the price the slot itself publishes:
+         the target's payload at -1, bought with the application's TAINT
+         ([RiscvPtsto.riscv_kill_cred], lane SELF-KILL, §4b').  The side
+         condition is the caller's: the slot is LIVE. *)
+      iApply (kill_paid_kill pidv kl _ Hpidnz with "Hkc Hrow"). }
     (* ===================== release(&p->lock) ===================== *)
     (* the acquire handed the window index out as [trap_res b + N]; release
        wants it as [trap_res outb + N] with [outb = match n with O => eb
@@ -421,7 +431,7 @@ Section ProofSetkilled.
     iDestruct (cpu_own_transport CIDrel CIDe7 n eb p b ltac:(wp_next_chain)
                  with "Hcpu") as "Hcpu".
     iSpecialize ("Hcont" $! CIDe7 with "[%]"); [wp_next_chain|].
-    iApply ("Hcont" $! E3 with "[%] Hcg Hcpu Hpc").
+    iApply ("Hcont" $! E3 with "[%] Hcg Hcpu Hpc Hpidv").
     unfold callee_saved.
     split; [exact HE3csp|].
     split; [exact HE3s0|]. split; [exact HE3s1|].

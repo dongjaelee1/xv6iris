@@ -4899,13 +4899,17 @@ Section SyscallArms.
        dispatcher.  Nothing is minted here or below. *)
     iDestruct ("Hfin" with "[%]") as "Hjslot";
       [ rewrite Hnum; reflexivity | ].
+    (* ...AND THE CHILD'S PAYMENT WAND BESIDE IT (lane SELF-KILL, §4b'):
+       the depositing process supplied it and allocproc founds the child's
+       killed row on it. *)
+    iDestruct "Hjslot" as "[#Hjkw Hjslot]".
     iApply (SysFork.wp_sys_fork_sconf γp γw γft γf
               (fcn_procs fn)
 
               M 0%nat (av - 4)%nat true pj true pid U sts cs (sfork_pay fdep) ∅
               ltac:(lia) sysc_noff0b
               (locks_below_empty "wait_lock")
-              with "Hcg Hcpu Htext Hpc Hprocs' Hnextpid Hwl Hftable Hitable Hitinv Hireg Hkat Hpav Hworld Htoken Hfdone Hjslot Hpriv Hufrag Hrow").
+              with "Hcg Hcpu Htext Hpc Hprocs' Hnextpid Hwl Hftable Hitable Hitinv Hireg Hkat Hpav Hworld Htoken Hfdone Hjslot Hjkw Hpriv Hufrag Hrow").
     (* THE PARENT'S DESCRIPTOR STATES COME BACK AT THE VERY LIST THEY WENT
        IN AT: fork reads [p->ofile] and writes none of it, and what the CHILD
        got is that same list ([SpecKfork]'s post says so). *)

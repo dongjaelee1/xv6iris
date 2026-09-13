@@ -23,6 +23,11 @@
    either [proc_slots] guard -- which is exactly what the invariant's
    always-resident row is for.
 
+   (The postcondition is not quite empty any more: the caller's quarter of
+   [p->pid] is LENT to the call and handed back.  It says nothing about the
+   write -- it is what shows the slot being written is LIVE; see the
+   premise's note, lane SELF-KILL 4b'.)
+
    Making the write visible would mean giving [p->killed] a fraction that
    travels with the running thread (the [pid] discipline), and no consumer
    wants one: the only reader is killed(), which any hart may call on any
@@ -59,7 +64,8 @@ Import Defs.
 
 Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
      (γs : list gname) (j : nat) (γl : gname)
-    (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string) :=
+    (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
+    (pidv : mword 32) :=
   let pcE : mword 64 := mword_of_int KernelSyms.setkilled in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   (* the argument is proc j *)
@@ -69,6 +75,10 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
   (Z.of_nat n + 1 < 2 ^ 31)%Z ->
   (* 4 slots for this frame, 10 for acquire's / release's *)
   (14 <= av)%nat ->
+  (* THE TARGET IS A LIVE PROCESS (lane SELF-KILL, 4b').  See the resource
+     premise below for why the write needs it.  BEFORE the order premise,
+     which every caller leaves to its [lkbelow]. *)
+  bv_unsigned pidv <> 0 ->
   (* THE ORDER PREMISE for the one lock this function takes: everything the
      caller already holds ranks strictly BELOW "proc".  It composes across a
      call chain in a way the bare non-membership does not
@@ -86,6 +96,19 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
      cannot re-bundle the lock's payload without it.  PERSISTENT, so it is
      lent and not spent. *)
   □ riscv_kill_cred -∗
+  (* THE CALLER'S OWN QUARTER OF [p->pid], LENT (lane SELF-KILL, 4b').
+     [SchedCtx.kill_paid] has a FREE arm at [p->pid = 0] which claims the
+     flag is zero -- an invariant only because the C's writers cannot reach
+     a free slot ([kkill] refuses pid 0, XV6_REV 64c58ba) -- so a writer
+     that stores 1 must show the slot it re-closes is on the LIVE arm.
+     [kkill] shows it from its own [beq] against a nonzero argument;
+     setkilled writes unconditionally, and its ONE caller is usertrap's
+     fault arm on [myproc()], which holds the process's block and reads
+     the fact off it ([ProcInv.proc_priv_pid_nz], founded on the
+     registration the block carries).  The quarter is what ties that pid to
+     the one <p->lock>'s payload names ([ctx_word4_pointsto_agree]); it is
+     LENT, and comes back in the postcondition. *)
+  p_pid (proc_addr j) ↦₄{DfracOwn (1/4)} pidv -∗
   sie_cap_gpr KT1 m av b p -∗
   cpu_own n eb p b lks -∗
   kernel_text -∗ pc_is pcE -∗
@@ -96,6 +119,8 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
       sie_cap_gpr KT1 mf av b p -∗
       cpu_own n eb p b lks -∗
       pc_is ret_tgt -∗
+      (* the lent quarter, back *)
+      p_pid (proc_addr j) ↦₄{DfracOwn (1/4)} pidv -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
@@ -103,6 +128,7 @@ Module Type SETKILLED.
   Parameter wp_setkilled_sconf :
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
        (γs : list gname) (j : nat) (γl : gname)
-      (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string),
-      wp_setkilled_sconf_body γs j γl m av n eb p b lks.
+      (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
+      (pidv : mword 32),
+      wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv.
 End SETKILLED.

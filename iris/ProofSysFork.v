@@ -128,7 +128,7 @@ Section ProofSysFork.
     set (M2 := <[Regidx (mword_of_int 8 : mword 5) := regval_into_reg (add_vec (M1 !!! Regidx csp_rs1) (sign_extend' 64 (caddi4spn_imm nzimm_s0)))]> M1).
     iIntros "Hcg Hcpu #Htext Hpc #Hprocs #Hplock #Hwlock #Hftbl
              #Hitbl #Hitinv #Hireg Henv #Hpav #Hworld #Htoken #Hfdone Hjslot
-             Hpriv Hpfrag Hpchrow Hcont".
+             #Hjkw Hpriv Hpfrag Hpchrow Hcont".
     assert (Hcsp1 : M1 !!! Regidx csp_rs1 = sp') by (apply upd_eq).
     assert (Hpush : sp' = pa_stk (m !!! Regidx csp_rs1) 2).
     { unfold sp', pa_stk, add_vec_int, imm_entry.
@@ -215,7 +215,7 @@ Section ProofSysFork.
               Bj lvl (av - 2)%nat eb p b pid U sts csP Q lks
               ltac:(lia) Hlvl ltac:(lkbelow)
               with "Hcg Hcpu Htext Hpc Hprocs Hplock Hwlock Hftbl
-                    Hitbl Hitinv Hireg Henvn Hpav Hworld Htoken Hjslot Hfdone Hpriv Hpfrag
+                    Hitbl Hitinv Hireg Henvn Hpav Hworld Htoken Hjslot Hjkw Hfdone Hpriv Hpfrag
                     Hpchrow").
     iIntros (CID6 Hs6 MF) "%HcsMF Hpc Hpost".
     iDestruct "Hpost" as "(Hcg & Hcpu & Hpriv & Hpfrag & #Henv & Hrv)".

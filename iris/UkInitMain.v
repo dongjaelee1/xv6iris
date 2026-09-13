@@ -870,14 +870,18 @@ Section UkInitMain.
                                (mword_of_int 1 : mword 64));
                     vm_compute; reflexivity)
               ltac:(vm_compute; reflexivity)
-              with "[] [] [Hpos HQ] [] Hsz Hstd [] Hcwd Hch Hrun").
+              with "[] [Hpos HQ] [] Hsz Hstd [] Hcwd Hch [] Hrun").
     { iApply (uis_init_36c with "Hcode"). }
-    (* the child's payload row: the credential buys the taint, and the
-       taint IS the payload's right arm (lane KILL-PAY, K4(a)) *)
-    { iIntros "#Hc". iApply ucons_pay_taint. iApply Hkt. iExact "Hc". }
     { iFrame "Hpos HQ". }
     { iFrame "Hcode Hro Hargv". }
     { rewrite big_sepM_empty. done. }
+    (* THE CHILD'S PAYMENT WAND (lane SELF-KILL, §4b'): the application's
+       TAINT buys the payload's right arm, and the wand is what both the
+       child's own run and the child's KILLED ROW are founded on -- one
+       premise now, boxed, where it used to be the linear
+       [UexecSlot.upay_neg]. *)
+    { iModIntro. iIntros "#Hc". iApply ucons_pay_taint. iApply Hkt.
+      iExact "Hc". }
     assert (E36c : add_vec_int (mword_of_int 0x36c : mword 64) 4
                    = mword_of_int 0x370)
       by (apply bv_eq; vm_compute; reflexivity).

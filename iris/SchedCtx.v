@@ -67,6 +67,9 @@ Require Import ProcDefs.
 (* [SlotGen.pid_reg] / [qeighth] -- the killed row's tie (lane SELF-KILL, §1)
    names the incarnation by an eighth of its pid registration. *)
 Require Import SlotGen.
+(* [ChildTok.kill_owed] / [taken_at] -- the killed row is at the target's own
+   exit payload now (owner, 2026-09-13), so it is per-INCARNATION. *)
+Require Import ChildTok.
 Require Import SwtchCtx.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
@@ -216,55 +219,305 @@ Section SchedCtx.
      dormant arms out of it: an UNUSED slot's pid cell is 0 and 0 is
      registered to nothing ([SlotGen.pid_reg_dom]), so the carve costs the
      .bss nothing.  freeproc restores this arm at [p->pid = 0]. *)
-  Definition pid_tie (pid : mword 32) : iProp Σ :=
-    (⌜bv_unsigned pid = 0⌝ ∨ ∃ gn : gname, pid_reg pid (DfracOwn qeighth) gn)%I.
+  (* ...AND THE ROW IS PER-INCARNATION NOW, SO IT FOLDS INTO THE TIE (lane
+     SELF-KILL, §4b'; owner's ruling of 2026-09-13).  The credential a kill
+     costs is no longer a fact about the application but THE TARGET'S OWN
+     EXIT PAYLOAD AT -1 ([ChildTok.kill_owed]), and a payload belongs to a
+     generation -- so the row cannot be stated without the name the tie
+     carries, and the two are one conjunct.
+
+     THREE ARMS, AND THE THIRD IS WHY THE ROW IS LINEAR.  "The flag is
+     zero" is the founders' arm.  [kill_owed gn] is what a killer deposits
+     and what usertrap's exit path takes OUT, to pay [kexit(-1)] with.
+     What it leaves in the row's place is [taken_at gn] -- "killed and
+     spent" -- and that is what makes the take ONE-SHOT: the credential is
+     gone, the marker is exclusive, and the process cannot forge either. *)
+  (* ...AND A NONZERO FLAG CARRIES THE TAINT BESIDE THE PAYMENT, which is
+     an INVARIANT OF THE WRITERS and not a second price: the three parties
+     that ever store a nonzero [p->killed] -- [kkill], [sys_kill] and
+     [setkilled] -- all hold [RiscvPtsto.riscv_kill_cred] (it is what they
+     cash the row's published wand with), and allocproc founds a nonzero
+     row only at a flag that is already zero.  So "the flag is not zero"
+     entails "somebody tainted did it", and being PERSISTENT the fact is
+     relayable where the payment is not: it is what [killed()]'s accessor
+     hands usertrap's three [kexit(-1)] sites, which still cash
+     [UexecSlot.upay_neg] with it.
+     THIS CONJUNCT IS INTERIM.  P6 makes the deposit at a killing cause the
+     process's OWN [ChildTok.kill_owed] and [setkilled] stops taking the
+     taint -- at which point the entailment fails, the exits take the
+     payment out of the row instead, and this conjunct goes with
+     [upay_neg]. *)
+  Definition kill_row (gn : gname) (kl : mword 32) : iProp Σ :=
+    (⌜kl = (mword_of_int 0 : mword 32)⌝
+     ∨ (□ riscv_kill_cred ∗
+        (ChildTok.kill_owed gn ∨ ChildTok.taken_at gn)))%I.
+
+  (* WHOSE ROW IT IS, and the tie that says so: an eighth of the pid's
+     registration ([SlotGen.pid_reg]), which is the one resource in the
+     tree that answers "the CURRENT generation of this pid is [gn]".
+     GUARDED BY THE PID CELL, and that is what keeps the boot and the
+     dormant arms out of it: an UNUSED slot's pid cell is 0 and 0 is
+     registered to nothing ([SlotGen.pid_reg_dom]), so the carve costs the
+     .bss nothing.  freeproc restores this arm at [p->pid = 0]. *)
+  (* THE FREE ARM CARRIES THE FLAG TOO, and it has to: allocproc re-keys
+     this payload at a NEW pid, and to found the row there it must know the
+     flag it is founding it at.  An UNUSED slot's is zero -- freeproc's
+     [p->killed = 0] and the .bss both leave it so -- and saying so here is
+     what lets allocproc hand the fresh incarnation a row. *)
+  (* THE TWO ARMS ARE PURELY EXCLUSIVE, and that is what allocproc needs.
+     It re-keys this payload at a NEW pid and must found the row there at
+     the flag the slot already has -- so it has to READ that flag, and it
+     can only do that if the arm it is not on is refutable.  The slot it
+     is re-keying is UNUSED, whose pid cell is 0
+     ([ProcInv.proc_dormant_nofd]); the second arm says the pid is not 0,
+     so the first is the only one left and it is what allocproc reads. *)
+  (* ...AND AN UNUSED SLOT'S FLAG IS ZERO, which is an invariant only
+     because the KERNEL keeps it.  Upstream xv6's [kkill] compared
+     [p->pid == pid] with no test at all, so [kill(0)] set [p->killed = 1]
+     on the first UNUSED slot it walked -- whose pid cell is 0 -- and this
+     arm would have been false.  The owner fixed it: [kkill] refuses pid 0
+     (XV6_REV 64c58ba), so no writer can reach a free slot and allocproc
+     may read the flag off the slot it is about to re-key. *)
+  Definition kill_free (kl : mword 32) : iProp Σ :=
+    (⌜kl = (mword_of_int 0 : mword 32)⌝)%I.
+
+  Global Instance kill_free_persistent kl : Persistent (kill_free kl).
+  Proof. rewrite /kill_free. apply _. Qed.
+
+  Lemma kill_free_zero : ⊢ kill_free (mword_of_int 0 : mword 32).
+  Proof. rewrite /kill_free. by iPureIntro. Qed.
+  (* ...AND THE LIVE ARM PUBLISHES HOW A KILLER PAYS (lane SELF-KILL, 4b';
+     the owner's ruling of 2026-09-13).  A [kill(2)] costs the TARGET's
+     exit payload at -1, and the party that calls kill holds none of the
+     target's resources -- it scans the proc table and lands on whatever
+     slot the pid names.  So the row itself carries the price: the
+     persistent reading of the incarnation's payload, and a persistent WAND
+     from [RiscvPtsto.riscv_kill_cred] to that payload at -1.
+
+     AND [riscv_kill_cred] IS NO LONGER A KILL CREDENTIAL.  It is the
+     APPLICATION'S TAINT on the fixed record (echo instantiates it as
+     [AppEcho.echo_taint]; [App.Happ_kill] is where the supply buys it),
+     and after this lane it survives ONLY as the antecedent of this wand.
+     Nothing else asks for it: no verified program produces it, no payload
+     row carries a -1 wand ([UexecSlot.upay_neg] is gone), and the deposit
+     at a killing cause is the process's OWN [ChildTok.kill_owed].  So a
+     killer is necessarily a TAINTED process -- it runs on
+     [UexecExecInst.xv6_ssupply], which buys the taint from the
+     application's supply -- and what it buys with it is exactly the
+     target's [Q (-1)].
+
+     WHY THE ANTECEDENT IS THE AMBIENT AND NOT [AppInv.app_sup].  The row is
+     FOUNDED at allocproc out of the CREATOR's promise, and for a forked
+     child the creator is the forking PROCESS -- so the promise travels down
+     the fork deposit, through [UexecRet.uexec_fork_child_F], whose section
+     is [{!riscvGS} {!ufdG} {!ctokG}] and nothing else.  Naming [app_sup]
+     there would force [fileG] on 76 more files -- the whole U tier, every
+     verified program -- which is exactly what lane SUPPLY-SPLIT exists to
+     prevent.  [riscv_kill_cred] lives at [RiscvPtsto]'s altitude and both
+     ends can name it; [UexecSlot.upay_neg] was stated against it for the
+     same reason.
+
+     FOUNDED ONCE, AT ALLOCPROC, out of [SpecAllocproc]'s
+     [□ (riscv_kill_cred -∗ Q (-1))] premise: <init>'s payload is trivial
+     and kfork's comes from the forking process, whose payload admits the
+     taint on its taint arm.  Both conjuncts are PERSISTENT, so re-bundling
+     the lock's payload costs nothing and the row stays linear only in
+     [kill_row]. *)
+  Definition kill_paid (pid : mword 32) (kl : mword 32) : iProp Σ :=
+    ((⌜bv_unsigned pid = 0⌝ ∗ kill_free kl)
+     ∨ (⌜bv_unsigned pid <> 0⌝ ∗
+        ∃ (gn : gname) (Q : Z -> iProp Σ),
+          pid_reg pid (DfracOwn qeighth) gn ∗
+          ChildTok.my_pay gn Q ∗ □ (riscv_kill_cred -∗ Q (-1)) ∗
+          kill_row gn kl))%I.
 
   Definition proc_pub (pa : mword 64) : iProp Σ :=
     (∃ (kl xs pid : mword 32),
        p_killed pa ↦₄ kl ∗ p_xstate pa ↦₄{DfracOwn (1/2)} xs ∗
        p_pid pa ↦₄{DfracOwn (1/4)} pid ∗
-       (⌜kl = (mword_of_int 0 : mword 32)⌝ ∨ □ riscv_kill_cred) ∗
-       pid_tie pid)%I.
+       kill_paid pid kl)%I.
 
-  (* the killed row on its own, for the sites that carry it across a write *)
-  Definition kill_paid (kl : mword 32) : iProp Σ :=
-    (⌜kl = (mword_of_int 0 : mword 32)⌝ ∨ □ riscv_kill_cred)%I.
+  (* the row's three arms *)
+  Lemma kill_row_zero (gn : gname) : ⊢ kill_row gn (mword_of_int 0 : mword 32).
+  Proof. rewrite /kill_row. iLeft. done. Qed.
 
-  Global Instance kill_paid_persistent kl : Persistent (kill_paid kl).
-  Proof. rewrite /kill_paid. apply _. Qed.
+  Lemma kill_row_of_owed (gn : gname) (kl : mword 32) :
+    □ riscv_kill_cred -∗ ChildTok.kill_owed gn -∗ kill_row gn kl.
+  Proof.
+    rewrite /kill_row. iIntros "#Hc H". iRight.
+    iSplitR; [ iModIntro; iExact "Hc" | ]. iLeft. iExact "H".
+  Qed.
 
-  Lemma kill_paid_zero : ⊢ kill_paid (mword_of_int 0 : mword 32).
-  Proof. rewrite /kill_paid. iLeft. done. Qed.
+  Lemma kill_row_of_taken (gn : gname) (kl : mword 32) :
+    □ riscv_kill_cred -∗ ChildTok.taken_at gn -∗ kill_row gn kl.
+  Proof.
+    rewrite /kill_row. iIntros "#Hc H". iRight.
+    iSplitR; [ iModIntro; iExact "Hc" | ]. iRight. iExact "H".
+  Qed.
 
-  Lemma kill_paid_of_cred (kl : mword 32) : □ riscv_kill_cred -∗ kill_paid kl.
-  Proof. rewrite /kill_paid. iIntros "#H". iRight. iExact "H". Qed.
+  (* ...AND WHAT A NONZERO FLAG SAYS, relayed: somebody tainted wrote it.
+     This is what [killed()]'s accessor is instantiated at by usertrap's
+     three exits (see the note on [kill_row]). *)
+  Lemma kill_row_cred (gn : gname) (kl : mword 32) :
+    kl <> (mword_of_int 0 : mword 32) ->
+    kill_row gn kl -∗ □ riscv_kill_cred ∗ kill_row gn kl.
+  Proof.
+    intro Hnz. rewrite /kill_row.
+    iIntros "[%Hz | [#Hc H]]"; [ exfalso; exact (Hnz Hz) | ].
+    iSplitR; [ iModIntro; iExact "Hc" | ].
+    iRight. iSplitR; [ iModIntro; iExact "Hc" | ]. iExact "H".
+  Qed.
 
-  (* the tie's two arms.  An unused slot's cell is 0 and costs nothing; a
+  (* WHAT usertrap's THREE EXITS ASK [killed()]'s ACCESSOR FOR: at a
+     nonzero flag, the taint that wrote it (see the note on [kill_row]).
+     PERSISTENT at both branches, so the access is a duplication and the
+     row goes back untouched. *)
+  Definition kill_why (kl : mword 32) : iProp Σ :=
+    (if decide (kl = (mword_of_int 0 : mword 32))
+     then emp else □ riscv_kill_cred)%I.
+
+  Global Instance kill_why_persistent kl : Persistent (kill_why kl).
+  Proof. rewrite /kill_why. destruct (decide _); apply _. Qed.
+
+  Lemma kill_why_access (gn : gname) (klv : mword 32) :
+    kill_row gn klv ==∗ kill_row gn klv ∗ kill_why klv.
+  Proof.
+    rewrite /kill_why. iIntros "H".
+    destruct (decide (klv = (mword_of_int 0 : mword 32))) as [-> | Hne].
+    - iModIntro. iSplitL "H"; [ iExact "H" | done ].
+    - iDestruct (kill_row_cred gn klv Hne with "H") as "[#Hc H]".
+      iModIntro. iSplitL "H"; [ iExact "H" | iModIntro; iExact "Hc" ].
+  Qed.
+
+  Lemma kill_why_cred (kl : mword 32) :
+    kl <> (mword_of_int 0 : mword 32) -> kill_why kl -∗ □ riscv_kill_cred.
+  Proof.
+    intro Hne. rewrite /kill_why.
+    destruct (decide (kl = (mword_of_int 0 : mword 32))) as [He | _];
+      [ exfalso; exact (Hne He) | iIntros "$" ].
+  Qed.
+
+  (* ...and the tie's two.  An unused slot's cell is 0 and costs nothing; a
      live slot's is the eighth allocproc carved when it registered the
      pid. *)
-  Lemma pid_tie_zero (pid : mword 32) :
-    bv_unsigned pid = 0 -> ⊢ pid_tie pid.
-  Proof. intro H. rewrite /pid_tie. iLeft. iPureIntro. exact H. Qed.
+  Lemma kill_paid_zero (pid : mword 32) (kl : mword 32) :
+    bv_unsigned pid = 0 -> kl = (mword_of_int 0 : mword 32) ->
+    ⊢ kill_paid pid kl.
+  Proof.
+    intros H Hk. rewrite /kill_paid. iLeft.
+    iSplitR; [ iPureIntro; exact H | ]. rewrite Hk. iApply kill_free_zero.
+  Qed.
 
-  Lemma pid_tie_of_reg (pid : mword 32) (gn : gname) :
-    pid_reg pid (DfracOwn qeighth) gn -∗ pid_tie pid.
-  Proof. rewrite /pid_tie. iIntros "H". iRight. iExists gn. iExact "H". Qed.
+  Lemma kill_paid_of_reg (pid : mword 32) (kl : mword 32) (gn : gname)
+      (Q : Z -> iProp Σ) :
+    bv_unsigned pid <> 0 ->
+    pid_reg pid (DfracOwn qeighth) gn -∗ ChildTok.my_pay gn Q -∗
+    □ (riscv_kill_cred -∗ Q (-1)) -∗ kill_row gn kl -∗ kill_paid pid kl.
+  Proof.
+    intro Hnz. rewrite /kill_paid. iIntros "Hr #Hmy #Hw Hk". iRight.
+    iSplitR; [ iPureIntro; exact Hnz | ]. iExists gn, Q.
+    iSplitL "Hr"; [ iExact "Hr" | ].
+    iSplitR; [ iExact "Hmy" | ].
+    iSplitR; [ iModIntro; iExact "Hw" | ].
+    iExact "Hk".
+  Qed.
+
+  (* ...AND WHAT THE PUBLICATION IS FOR: a party that holds the
+     application's supply may re-close this payload at ANY flag, because
+     the wand buys the target's payload at -1 and [kill_row]'s paid arm is
+     exactly that payload.  This is [kkill]'s / [setkilled]'s / [sys_kill]'s
+     whole payment: they hold p->lock, write the flag, and rebuild the row
+     through this.  Whatever the row held before is DROPPED -- a second
+     kill of an already-killed process costs the same and says nothing
+     new. *)
+  (* THE SIDE CONDITION IS THE C's OWN GUARD: [kkill] refuses pid 0 (XV6_REV
+     64c58ba) and [setkilled] runs on a RUNNING process, so no writer ever
+     lands on a slot whose pid cell is 0 -- which is what keeps the free
+     arm's [⌜kl = 0⌝] an invariant and lets allocproc read the flag off the
+     slot it re-keys. *)
+  Lemma kill_paid_kill (pid : mword 32) (kl kl' : mword 32) :
+    bv_unsigned pid <> 0 ->
+    □ riscv_kill_cred -∗ kill_paid pid kl -∗ kill_paid pid kl'.
+  Proof.
+    intro Hpnz. rewrite /kill_paid. iIntros "#Hsup [[%Hz _] | [%Hnz Hr]]".
+    - exfalso. exact (Hpnz Hz).
+    - iDestruct "Hr" as (gn Q) "(Hr & #Hmy & #Hw & _)".
+      iRight. iSplitR; [ iPureIntro; exact Hnz | ].
+      iExists gn, Q.
+      iSplitL "Hr"; [ iExact "Hr" | ].
+      iSplitR; [ iExact "Hmy" | ].
+      iSplitR; [ iModIntro; iExact "Hw" | ].
+      iApply (kill_row_of_owed with "Hsup").
+      iApply (ChildTok.kill_owed_of with "Hmy"). iApply "Hw". iExact "Hsup".
+  Qed.
+
+  (* ...AND WHAT AN UNUSED SLOT'S PAYLOAD SAYS ABOUT THE FLAG: either it
+     is zero, or a killer with the application's supply set it while the
+     slot was free.  allocproc reads this off the slot it is about to
+     re-key and founds the new incarnation's row on whichever side it
+     lands. *)
+  Lemma kill_paid_flag (pid : mword 32) (kl : mword 32) :
+    bv_unsigned pid = 0 -> kill_paid pid kl -∗ kill_free kl.
+  Proof.
+    intro Hz. rewrite /kill_paid.
+    iIntros "[[_ Hf] | [%Hnz _]]"; [ iExact "Hf" | exfalso; exact (Hnz Hz) ].
+  Qed.
 
   (* ...AND WHAT A PARTY HOLDING A SHARE OF ITS OWN REGISTRATION READS OFF
-     IT: the tie is at ITS generation.  The share comes back -- the
-     conclusion is pure -- and the nonzero side condition is what the
+     IT: the row is at ITS generation.  Its share comes back -- the
+     agreement is pure -- and the nonzero side condition is what the
      caller's own registration already gives ([SlotGen.pid_reg_dom]). *)
-  Lemma pid_tie_agree (pid : mword 32) (dq : dfrac) (gn : gname) :
-    pid_tie pid -∗ pid_reg pid dq gn -∗
-    (⌜bv_unsigned pid = 0⌝ ∨ pid_reg pid (DfracOwn qeighth) gn) ∗
+  Lemma kill_paid_agree (pid : mword 32) (kl : mword 32) (dq : dfrac)
+      (gn : gname) :
+    kill_paid pid kl -∗ pid_reg pid dq gn -∗
+    ((⌜bv_unsigned pid = 0⌝ ∗ kill_free kl)
+     ∨ (∃ Q : Z -> iProp Σ,
+          pid_reg pid (DfracOwn qeighth) gn ∗ ChildTok.my_pay gn Q ∗
+          □ (riscv_kill_cred -∗ Q (-1)) ∗ kill_row gn kl)) ∗
     pid_reg pid dq gn.
   Proof.
-    rewrite /pid_tie. iIntros "[%Hz | Hr] Hmine".
-    - iFrame "Hmine". iLeft. iPureIntro. exact Hz.
-    - iDestruct "Hr" as (gn') "Hr".
+    rewrite /kill_paid. iIntros "[[%Hz #Hf] | [%Hnz Hr]] Hmine".
+    - iFrame "Hmine". iLeft. iSplitR; [ iPureIntro; exact Hz | ].
+      iExact "Hf".
+    - iDestruct "Hr" as (gn' Q) "(Hr & #Hmy & #Hw & Hk)".
       iDestruct (pid_reg_agree pid pid dq (DfracOwn qeighth) gn gn' eq_refl
                    with "Hmine Hr") as %Heq.
-      iFrame "Hmine". iRight. rewrite Heq. iExact "Hr".
+      iFrame "Hmine". iRight. rewrite Heq. iExists Q.
+      iSplitL "Hr"; [ iExact "Hr" | ].
+      iSplitR; [ iExact "Hmy" | ].
+      iSplitR; [ iModIntro; iExact "Hw" | ].
+      iExact "Hk".
+  Qed.
+
+  (* THE ONE-SHOT ACCESS [killed()] RUNS ON THE ROW INSIDE ITS CRITICAL
+     SECTION ([SpecKilled]; the owner's ruling of 2026-09-13 that killed()
+     reports the FLAG and nothing else).  The row is LINEAR and
+     per-incarnation now, so a reader can neither copy it out nor relay it:
+     what it can do is act on it under the lock and hand the caller
+     whatever the action produced.  usertrap's exit path instantiates
+     [Racc] at "hand me the payment"; every other caller at [emp].
+     THE FREE ARM IS AN ANSWER TOO: [killed()] is called on a proc pointer
+     and nothing in its contract says the slot is live, so a caller that
+     needs the payment must refute this side from its own registration. *)
+  Lemma kill_paid_access (pid kl : mword 32)
+      (Racc : gname -> mword 32 -> iProp Σ) :
+    (∀ (gn : gname) (klv : mword 32),
+       kill_row gn klv ==∗ kill_row gn klv ∗ Racc gn klv) -∗
+    kill_paid pid kl ==∗
+    kill_paid pid kl ∗ (kill_free kl ∨ ∃ gn : gname, Racc gn kl).
+  Proof.
+    rewrite /kill_paid. iIntros "Hsh [[%Hz #Hf] | [%Hnz Hr]]".
+    - iClear "Hsh". iModIntro. iSplitL "".
+      + iLeft. iSplitR; [ iPureIntro; exact Hz | ]. iExact "Hf".
+      + iLeft. iExact "Hf".
+    - iDestruct "Hr" as (gn Q) "(Hpr & #Hmy & #Hw & Hk)".
+      iMod ("Hsh" $! gn kl with "Hk") as "[Hk HR]".
+      iModIntro. iSplitR "HR".
+      + iRight. iSplitR; [ iPureIntro; exact Hnz | ]. iExists gn, Q.
+        iSplitL "Hpr"; [ iExact "Hpr" | ].
+        iSplitR; [ iExact "Hmy" | ].
+        iSplitR; [ iModIntro; iExact "Hw" | ]. iExact "Hk".
+      + iRight. iExists gn. iExact "HR".
   Qed.
 
   (* THE SLOT'S GENERATION IS NOT HERE.  A generation is a SAVED PREDICATE

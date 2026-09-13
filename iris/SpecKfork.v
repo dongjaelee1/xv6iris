@@ -366,6 +366,16 @@ Definition wp_kfork_sconf_body
      therefore say what its child's getpid(2) will answer. *)
   (∀ (g' : gname) (pidc : mword 32),
      my_pay g' Q -∗ uslot (uvis_of (kfork_child Up) stsP g' ∅ pidc)) -∗
+  (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'; the
+     owner's ruling of 2026-09-13).  A [kill(2)] costs the TARGET's exit
+     payload at -1, and the party that calls kill holds none of the
+     target's resources -- so the child's killed row
+     ([SchedCtx.kill_paid]'s live arm) publishes this wand and a TAINTED
+     killer cashes it with [RiscvPtsto.riscv_kill_cred].  allocproc founds
+     the row, so the FORKING process is the party that must supply the
+     wand: a verified parent proves it on its payload's taint arm, and the
+     generic slot's [Q] is [fun _ => True]. *)
+  □ (riscv_kill_cred -∗ Q (-1)) -∗
   (* THE STEADY ARM OF [FirstTok.first_tok], and the ONE thing fork cannot
      take out of the parent's block: the parent's token may be the EXCLUSIVE
      boot arm, and the child needs a token of its own.  [first_done] is

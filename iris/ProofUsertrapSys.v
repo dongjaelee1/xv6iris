@@ -215,10 +215,19 @@ Section UtSysBlock.
       by (rewrite /M1 upd_eq; pcw).
     assert (HcsM1 : ut_cs m0 M1)
       by (rewrite /M1; apply ut_cs_insert; [vm_compute; reflexivity | exact Hcs]).
+    (* THE ACCESS killed() RUNS ON THE ROW (lane SELF-KILL, §4b'): at a
+       nonzero flag the row carries the taint that wrote it, and that is
+       what this exit cashes [UexecSlot.upay_neg] with.  Persistent, so the
+       row goes back untouched. *)
+    iAssert (∀ (gnk : gname) (klv : mword 32),
+               SchedCtx.kill_row gnk klv ==∗
+               SchedCtx.kill_row gnk klv ∗ SchedCtx.kill_why klv)%I as "Hkacc".
+    { iIntros (gnk klv) "H". iApply (SchedCtx.kill_why_access with "H"). }
     iApply (KI.wp_killed_sconf (un_s N) (un_j N) (un_l N)
               M1 nx 0%nat false (un_pj N) false lks
+              (fun (_ : gname) (klv : mword 32) => SchedCtx.kill_why klv)
               HM1a0 Hj Hjl ltac:(vm_compute; reflexivity) ltac:(lia)
-              with "Hcg Hcpu Htext Hpc Hpi [-]").
+              with "Hkacc Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
     iApply wp_next_off_intro. iIntros (mf kl) "[%Hcskl %Hkla0] #Hkw Hcg Hcpu Hpc".
     assert (Hret94 : ret_pc (M1 !!! Regidx Rra) = mword_of_int (UT + 0x94))
@@ -314,10 +323,13 @@ Section UtSysBlock.
          beside its NONZERO answer ([SpecKilled]'s post, whose left arm is
          "the flag is zero" and is refuted by the branch this arm is
          on). *)
+      assert (Hknz : kl <> (mword_of_int 0 : mword 32)).
+      { intro Hz0. rewrite Hz0 in Hnz. vm_compute in Hnz. discriminate Hnz. }
       iAssert (□ riscv_kill_cred)%I with "[]" as "#Hkc".
-      { iDestruct "Hkw" as "[%Hz0 | #Hc]";
-          [ exfalso; rewrite Hz0 in Hnz; vm_compute in Hnz; discriminate Hnz
-          | iExact "Hc" ]. }
+      { iDestruct "Hkw" as "[%Hz0 | Hacc]";
+          [ exfalso; exact (Hknz Hz0)
+          | iDestruct "Hacc" as (gn0) "Hacc";
+            iApply (SchedCtx.kill_why_cred kl Hknz with "Hacc") ]. }
       iAssert (upay_neg (sexit_pay fdep)) with "[Hein]" as "Hpayw".
       { destruct (decide (scv = uecall_scause)) as [_ | Hc];
           [ | exfalso; exact (Hc Hscec) ].
@@ -658,6 +670,9 @@ Section UtSysBlock.
     2: { rewrite /sysc_fork_in. iIntros "%Hk". cbn [us_V] in Hk.
          iDestruct ("Hfin" with "[%]") as "Hj".
          { split; [ exact Hscec | rewrite usys_num_epc Hn0; exact Hk ]. }
+         (* ...AND THE CHILD'S PAYMENT WAND RIDES WITH THE SLOT (lane
+            SELF-KILL, §4b'), relayed unchanged. *)
+         iDestruct "Hj" as "[#Hjkw Hj]". iSplitR; [ iExact "Hjkw" | ].
          iIntros (g' pidc). iSpecialize ("Hj" $! g' pidc).
          rewrite (Hchild g' pidc). iExact "Hj". }
     (* THE PAYMENT, handed on unchanged for fork's reason: the row is keyed

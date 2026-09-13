@@ -2242,12 +2242,12 @@ Section BootCarveMain.
       iExists (mword_of_int 0 : mword 32), vxs, (mword_of_int 0 : mword 32).
       iSplitL "Hkl"; [iExact "Hkl" |]. iSplitL "Hxs2"; [iExact "Hxs2" |].
       iSplitL "Hpid2"; [iExact "Hpid2" |].
-      iSplitL; [iLeft; done |].
-      (* ...AND THE TIE, ON ITS FREE ARM (lane SELF-KILL, §1): the row's
-         eighth of the pid registration is owed only by a slot whose pid
-         cell is nonzero, and this cell is BSS.  Nothing is registered at
-         boot, so the carve costs the .bss nothing. *)
-      iApply (pid_tie_zero (mword_of_int 0 : mword 32) ltac:(vm_compute; reflexivity)). }
+      (* THE KILLED ROW, ON ITS FREE ARM (lane SELF-KILL, §1/§4b'): the row
+         is owed only by a slot whose pid cell is nonzero, and both this
+         cell and the killed flag are BSS.  Nothing is registered at boot,
+         so the carve costs the .bss nothing. *)
+      iApply (kill_paid_zero (mword_of_int 0 : mword 32) (mword_of_int 0 : mword 32)
+                ltac:(vm_compute; reflexivity) eq_refl). }
     iSplitL "Hpar"; [iExact "Hpar" |].
     iExact "Hpid3".
   Qed.

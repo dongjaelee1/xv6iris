@@ -195,6 +195,13 @@ Section ProofKkill.
   Lemma wp_kkill_loop `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
        (γs : list gname) (mb : regfile)
       (spd pidv pme : mword 64) (lvl av : nat) (eb : bool) (b : bool) (lks : gset string) :
+    (* THE C's OWN GUARD, RELAYED (XV6_REV 64c58ba): kkill returns -1 for
+       pid 0 before the scan starts, so every slot this loop can match has
+       a NONZERO pid -- which is what lets the write re-close
+       [SchedCtx.kill_paid] on its live arm ([kill_paid_kill]'s side
+       condition; the free arm's [⌜kl = 0⌝] is an invariant exactly because
+       no writer reaches a free slot). *)
+    pidv <> (zero_reg : mword 64) ->
     length γs = NPROC ->
     (Z.of_nat lvl + 1 < 2 ^ 31)%Z ->
     (10 <= av)%nat ->
@@ -225,7 +232,7 @@ Section ProofKkill.
       kernel_text -∗ pc_is (mword_of_int (KernelSyms.kkill + 0x22)) -∗
       WP (Loop : expr riscv_lang).
   Proof.
-    intros Hlen Hlvl Hav Hno.
+    intros Hpidnz Hlen Hlvl Hav Hno.
     iIntros "#Hkc #Hpinv Hqexit".
     (* BOUNDED loop: ordinary Coq induction on a [fuel] bounding the
        remaining iterations [NPROC - k].  The exit continuation is a
@@ -305,7 +312,7 @@ Section ProofKkill.
       iEval (rewrite Hpc28) in "Hpc".
       iDestruct (proc_lock_res_elim γs γk (proc_addr k) with "HR")
         as (st ch) "(Hpst & Hpg & Hpch & Hpub & Hslots)".
-      iDestruct "Hpub" as (kl xs pidc) "(Hkilled & Hxstate & Hpidhalf & #Hkw & Htie)".
+      iDestruct "Hpub" as (kl xs pidc) "(Hkilled & Hxstate & Hpidhalf & Hrow)".
       (* register facts through acquire *)
       assert (HcsMacq : callee_saved M Macq) by (eapply callee_saved_trans; [exact HcsM24 | exact Hpins]).
       assert (HA9 : Macq !!! Regidx Rs1 = proc_addr k)
@@ -353,6 +360,18 @@ Section ProofKkill.
       - (* ================= TAKEN: pid matches -> kill it ================= *)
         assert (Hcmp28r : eq_vec (rget (CID := CIDf) M28 Ra5) (rget (CID := CIDf) M28 Rs2) = true)
           by (rewrite Hrg2a_15 Hrg2a_18; exact Hcmp2a).
+        (* ...AND THIS SLOT'S PID IS NOT ZERO: the branch matched the
+           argument, and the argument is not zero (the C's guard, relayed
+           as [Hpidnz]).  It is what re-closes the killed row. *)
+        assert (Hpcnz : bv_unsigned pidc <> 0).
+        { intro Hz0.
+          assert (Hpz : pidc = (mword_of_int 0 : mword 32))
+            by (apply bv_eq; rewrite Hz0; vm_compute; reflexivity).
+          apply Hpidnz.
+          assert (Heqv : M28 !!! Regidx Ra5 = M28 !!! Regidx Rs2)
+            by (apply eq_vec_true_iff; exact Hcmp2a).
+          rewrite -HB18 -Heqv HB15 Hpz.
+          apply bv_eq; vm_compute; reflexivity. }
         iApply (wp_beq_taken_s_sconf (CID := CIDf) (mword_of_int (KernelSyms.kkill + 0x2a))
                   (mword_of_int 22 : mword 13) Rs2 Ra5 M28 (trap_res b + av)%nat false
                   ltac:(vm_compute; discriminate) ltac:(vm_compute; discriminate)
@@ -610,11 +629,13 @@ Section ProofKkill.
             by (apply bv_eq; vm_compute; reflexivity).
           iEval (rewrite Hpp66) in "Hpc".
           (* reassemble: SLEEPING -> RUNNABLE keeps both guards fixed *)
-          iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Htie]" as "Hpub".
-          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf Htie".
-            (* the flag is 1 here: the killed row is paid with the
-               credential (lane KILL-PAY, K2) *)
-            iRight. iExact "Hkc". }
+          iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Hrow]" as "Hpub".
+          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf".
+            (* the flag is 1 here, so the row must be re-closed on its PAID
+               arm -- and what pays is the price the slot itself publishes:
+               the target's payload at -1, bought with the application's
+               TAINT ([RiscvPtsto.riscv_kill_cred], lane SELF-KILL, §4b'). *)
+            iApply (kill_paid_kill pidc kl _ Hpcnz with "Hkc Hrow"). }
           iApply fupd_wp.
           iMod (proc_lock_res_wakeup γs γk (proc_addr k) st ch Hst_sl
                   with "Hpst Hpg Hpch Hpub Hslots") as "HR".
@@ -645,9 +666,9 @@ Section ProofKkill.
           assert (Hpp4c : add_vec_int (mword_of_int (KernelSyms.kkill + 0x48) : mword 64) 4 = mword_of_int (KernelSyms.kkill + 0x4c))
             by (apply bv_eq; vm_compute; reflexivity).
           iEval (rewrite Hpp4c) in "Hpc".
-          iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Htie]" as "Hpub".
-          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf Htie".
-            iRight. iExact "Hkc". }
+          iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Hrow]" as "Hpub".
+          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf".
+            iApply (kill_paid_kill pidc kl _ Hpcnz with "Hkc Hrow"). }
           iDestruct (proc_lock_res_intro γs γk (proc_addr k) st ch
                        with "Hpst Hpg Hpch Hpub Hslots") as "HR".
           iApply ("Hret0" $! M46 with "[%] Hcg Hpc Htok HR").
@@ -665,9 +686,9 @@ Section ProofKkill.
           by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hpp2e) in "Hpc".
         (* nothing moved: put the lock resource straight back *)
-        iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Htie]" as "Hpub".
-        { iExists kl, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf Htie".
-          iExact "Hkw". }
+        (* nothing was written: the row goes straight back, unchanged. *)
+        iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Hrow]" as "Hpub".
+        { iExists kl, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf Hrow". }
         iDestruct (proc_lock_res_intro γs γk (proc_addr k) st ch
                      with "Hpst Hpg Hpch Hpub Hslots") as "HR".
         (* +0x2e c.mv a0,s1 *)
@@ -1352,9 +1373,18 @@ Section ProofKkillMain.
     (* ===================== the scan ===================== *)
     iDestruct (cpu_own_transport CID CID12 n eb p b ltac:(wp_next_chain)
                  with "Hcpu") as "Hcpu".
+    (* THE C's GUARD, RELAYED INTO THE SCAN: this is the fall-through of
+       [+0x00 c.beqz a0], so the argument is not zero and no slot the loop
+       can match has a zero pid (lane SELF-KILL, §4b'). *)
+    assert (Hargnz : add_vec zero_reg (M2 !!! Regidx Ra0) <> (zero_reg : mword 64)).
+    { intro Hz0. apply (proj1 (eq_vec_false_iff _ _) Hpid0).
+      rewrite (rget_ne (CID := CID) m Ra0 ltac:(vm_compute; discriminate)).
+      rewrite -Hz0 add_vec_zero_l /M2 upd_ne;
+        [| vm_compute; discriminate].
+      rewrite /M1 upd_ne; [ reflexivity | vm_compute; discriminate ]. }
     iPoseProof (wp_kkill_loop (CID0 := CID12)  γs m (pa_stk sp0 6)
                   (add_vec zero_reg (M2 !!! Regidx Ra0)) p n (av - 6)%nat eb b lks
-                  Hlen Hn ltac:(lia) Hno with "Hkc Hprocs Hqexit") as "Hscan".
+                  Hargnz Hlen Hn ltac:(lia) Hno with "Hkc Hprocs Hqexit") as "Hscan".
     iApply ("Hscan" $! 0%nat M7 with "[%] [%] Hcg Hcpu Htext Hpc").
     - unfold NPROC; lia.
     - unfold kkl_regs.

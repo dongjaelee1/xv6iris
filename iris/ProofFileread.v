@@ -1884,7 +1884,7 @@ Section ProofFileread.
                                 Hkenv Hprocs").
                 all: try lkbelow.
                 iIntros (CIDcr Hscr mf r P' dcr dccr curcr bscr hscr slcr)
-                  "%Hcscr %Hupt %Hrr #Hwhycr %Hdcr %Htiecr %Hb1cr %Hb4cr %Hra0
+                  "%Hcscr %Hupt %Hrr %Hdcr %Htiecr %Hb1cr %Hb4cr %Hra0
                    %Htagcr #Htagsc
                    #Hlbcr Hwin Hout Hcg Hcnt Hpc
                    Hpriv".
@@ -2028,11 +2028,10 @@ Section ProofFileread.
                   { assert (Hm1 : r = (-1)%Z) by lia. rewrite Hm1.
                     (* WHY IT IS -1 (lane KILL-PAY, K4(b)(ii)): consoleread
                        answers below zero only where it found the process
-                       killed, and the credential comes back with the
-                       answer. *)
-                    iApply (console_receipt_m1 _ Rd Rin n curcr dccr with "[] Hrd").
-                    iDestruct "Hwhycr" as "[%Hge | #Hcr]";
-                      [ exfalso; lia | iRight; iExact "Hcr" ]. }
+                       killed; nothing about the reason is relayed any more
+                       (lane SELF-KILL, §4b'). *)
+                    iApply (console_receipt_m1 _ Rd Rin n curcr dccr
+                              with "Hrd"). }
                   assert (Hdb : Z.of_nat dcr = bv_unsigned (mword_of_int r : mword 64)).
                   { assert (H31 : (2 ^ 31)%Z = 2147483648%Z)
                       by (vm_compute; reflexivity).

@@ -1418,6 +1418,11 @@ Section BootAlloc.
          supplier.  It arrives as the WHOLE map, exactly as the raw row
          does, and is cut in step with it by [boot_led_all_split]. *)
       BootCarve.boot_led_all g ∗
+      (* THE ERA'S ADOPTION TOKEN (lane CONS-IO milestone D): [S gen_id] is
+         this era's number, and the token is the right to adopt it -- handed
+         on to <init> in the boot bundle and spent by the application's
+         ledger at the era's first verified write. *)
+      era_tok (Datatypes.S gen_id) ∗
       crash_inv ∗ gen_cert ∗
       (* A6.131: the era's image is the boot state's memory, as a pure fact *)
       ⌜era_img riscv_eraGS = g.(gimg)⌝.
@@ -1427,7 +1432,7 @@ Section BootAlloc.
        wrappers ([reg_pointsto]'s notation, the strans/sie/spp/spie splits)
        are sealed, so [iFrame] must unify them one at a time. *)
     iIntros "H". rewrite /power_boot_res.
-    iDestruct "H" as "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & H22 & H23 & H24 & H25 & H26)".
+    iDestruct "H" as "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & Het & H22 & H23 & H24 & H25 & H26)".
     rewrite /boot_reg_res /boot_raw_bytes /kmap_auth /kpt_unset /kptb_unset
             /hart_strans /hart_sie /hart_spp /hart_spie /hart_locks /hart_full
             /pstate_full /resv_frag /resv_fragb /uart_frag /plic_frag /virtio_frag
@@ -1464,6 +1469,7 @@ Section BootAlloc.
     iSplitL "H19"; [iExact "H19"|].
     iSplitL "H20"; [iExact "H20"|].
     iSplitL "H21"; [iExact "H21"|].
+    iSplitL "Het"; [iExact "Het"|].
     iSplitL "H22"; [iExact "H22"|].
     iSplitL "H23 H24 H25"; [| iExact "H26"].
     iSplitL "H23"; [iExact "H23"|].
@@ -1712,7 +1718,13 @@ Section BootAlloc.
          so all four of the array's words travel in
          [SpecConsoleintr.console_caps] instead. *)
       plic_inv γd γd1 ∗
-      wire_inv ∗ crash_inv ∗ gen_cert ∗
+      wire_inv ∗
+      (* THE ERA'S ADOPTION TOKEN (lane CONS-IO milestone D), straight
+         through from [power_boot_res]: this mint does not read it -- it is
+         the era's caller ([SystemAdequacy.xv6_boot_era]) that hands it to
+         <init> in the boot bundle. *)
+      era_tok (Datatypes.S gen_id) ∗
+      crash_inv ∗ gen_cert ∗
       (* --- one bundle per hart --- *)
       ([∗ list] c ∈ enum CPU,
          ∃ iv : mword 32,
@@ -1843,7 +1855,7 @@ Section BootAlloc.
     iDestruct (power_boot_res_unpack Rb g ndisk with "H") as
       "(Hregs & Hbytes & Hkauth & Hkfrags & Hkpt & Hkptb & Hstrans & Hsie & Hspp & Hspie &
         Hlkauth & Hpark & Hpst & Hresv & Huf & Hpf & Hvf & Hdimg & Hmir & #Hswlb &
-        HRb & Hled & #Hcinv & #Hcert & %Hera)".
+        HRb & Hled & Hetok & #Hcinv & #Hcert & %Hera)".
     (* DROPPED HERE: the lent resource this fupd carries is the CALLER's
        copy of the epoch's wrapper, already spent -- the caller split it
        off, unpacked it and handed the contents down as [Hdursnap].  At the
@@ -2331,6 +2343,7 @@ Section BootAlloc.
     iSplitR; [iExact "Hdev1" |].
     iSplitR; [iExact "Hplic" |].
     iSplitR; [iExact "Hwinv" |].
+    iSplitL "Hetok"; [iExact "Hetok" |].
     iSplitR; [iExact "Hcinv" |].
     iSplitR; [iExact "Hcert" |].
     iSplitL "Hres"; [iExact "Hres" |].

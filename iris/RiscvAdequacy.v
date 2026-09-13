@@ -129,6 +129,12 @@ Class riscvGpreS (Σ : gFunctors) := RiscvGpreS {
   riscv_pre_genGS :: mono_natG Σ;
   (* the generation REGISTRY (crash/power layer): gen -> era record *)
   riscv_pre_registryGS :: ghost_mapG Σ nat riscvEraGS;
+  (* the ERA-TOKEN map (lane CONS-IO milestone D) needs NO capacity field:
+     it is a second NAME at the registry's functor above, not a second
+     class ([RiscvPtsto]'s [riscv_eratok_name] paragraph says why -- a
+     second [ghost_mapG] field for a class the tree already carries is two
+     instance paths).  [riscv_power_adequacy] below mints the name at the
+     empty map and its auth rides in [power_interp] beside the registry's. *)
   (* the DISK IMAGE map (crash/power layer): capacity only -- the NAME is
      per-era ([riscvEraGS.era_disk_name]), minted afresh at every PowerOn at
      the preserved disk content.  [DiskImg.v] owns the class, so the era auth
@@ -595,6 +601,14 @@ Section power.
      ([∗ map] a ↦ _ ∈ g'.(gmem),
         ghost_map_elem (era_ts_name HE) a (DfracOwn 1)
           ((0%nat, TsoMemPa.ts_pay_none) : TsoMemPa.ts_elem)) ∗
+     (* THE ERA'S ADOPTION TOKEN (lane CONS-IO milestone D): the era
+        numbered [S gen], exclusive across the whole run, minted by the
+        PowerOn arm below in the same fupd that registers the era and handed
+        to the boot client, which passes it to <init> in the boot bundle.
+        FIXED-layer, like the two rows below it -- the map it is an element
+        of outlives every era, which is exactly what makes a second token
+        for [S gen] impossible ([RiscvPtsto.era_tok]). *)
+     era_tok (S gen) ∗
      crash_inv ∗
      gen_born gen ∗ gen_started gen ∗ era_registered gen HE ∗
      (* A6.131: the era's image, as the boot client's pure fact -- what a
@@ -622,8 +636,8 @@ Section power.
   Proof.
     rewrite /power_boot_res.
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 &
-              H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & HRb & H22 & H23 &
-              H24 & H25 & H26 & %H27)".
+              H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & HRb & H22 & Het &
+              H23 & H24 & H25 & H26 & %H27)".
     iSplitL "HRb"; [ iExact "HRb" | ].
     iSplitL "H1"; [ iExact "H1" | ].
     iSplitL "H2"; [ iExact "H2" | ].
@@ -647,6 +661,7 @@ Section power.
     iSplitL "H20"; [ iExact "H20" | ].
     iSplitR; [ done | ].
     iSplitL "H22"; [ iExact "H22" | ].
+    iSplitL "Het"; [ iExact "Het" | ].
     iSplitL "H23"; [ iExact "H23" | ].
     iSplitL "H24"; [ iExact "H24" | ].
     iSplitL "H25"; [ iExact "H25" | ].
@@ -762,7 +777,7 @@ Section power.
     iIntros "#Hcinv #Hoinv".
     iLöb as "IH".
     iApply wp_lift_step; first done.
-    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR) & Hobs)".
+    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR & Hbank) & Hobs)".
     iDestruct "HR" as (R) "(HRauth & %Hdom & Hera)".
     (* the history so far; the arm's event extends it below *)
     iDestruct "Hobs" as (h) "(%Htot & %Hwf & Hoauth)".
@@ -809,10 +824,14 @@ Section power.
       iMod "Hback" as "_". iModIntro.
       rewrite /start_count Hpw /= in Hdom.
       iEval (rewrite /start_count Hpw /=) in "Hsauth".
-      iSplitL "Hgauth Hsauth HRauth Htie Hoauth".
+      (* the era-token bank is FRAMED across a power loss, exactly as the
+         registry is: PowerOff bumps [ggen] and drops the power, so
+         [start_count] -- and hence both domains -- is unchanged. *)
+      iEval (rewrite /start_count Hpw /=) in "Hbank".
+      iSplitL "Hgauth Hsauth HRauth Htie Hbank Hoauth".
       { rewrite /state_interp /=.
         (* the trace conjunct, at the extended history *)
-        iSplitL "Hgauth Hsauth HRauth Htie"; last first.
+        iSplitL "Hgauth Hsauth HRauth Htie Hbank"; last first.
         { iDestruct (obs_interp_close _ _ _ _ _ _ h κs Hstep0 Hwf Htot
                        with "Hoauth") as "Hobs". iExact "Hobs". }
         unfold power_interp, start_count.
@@ -822,7 +841,7 @@ Section power.
            machine-side half is already at the right image.  This is exactly
            why the tie is a FIXED conjunct and not part of [era_interp]. *)
         rewrite /disk_fixed_interp.
-        iFrame "Hgauth Hsauth Htie".
+        iFrame "Hgauth Hsauth Htie Hbank".
         (* the era is dropped WHOLE, its image map with it: nothing is owed
            (the map's only reader was this era's own disk thread, and every
            fragment of it dies in this era's invariants).  The next PowerOn
@@ -967,6 +986,13 @@ Section power.
       { apply not_elem_of_dom. rewrite Hdom /start_count Hpw /=.
         rewrite Nat.add_0_r. apply not_in_set_seq_nat. }
       iMod (ghost_map_elem_persist with "HRelem") as "#HRelem".
+      (* THE ERA'S ADOPTION TOKEN (lane CONS-IO milestone D), minted in the
+         same fupd and off the same counter as the registration: with the
+         power off the bank's domain is [set_seq 1 (ggen + 0)], so the new
+         era's number [S ggen] is fresh BY CONSTRUCTION and this is the only
+         step of the machine that can insert into that map at all. *)
+      iEval (rewrite /start_count Hpw /= Nat.add_0_r) in "Hbank".
+      iMod (era_tok_mint HE g.(ggen) with "Hbank") as "[Hbank Hetok]".
       iDestruct (mono_nat_lb_own_get with "Hgauth") as "#Hbornlb".
       (* run the client's boot entailment over the fresh era *)
       iMod "Hback" as "_".
@@ -988,7 +1014,7 @@ Section power.
       iEval (rewrite big_sepM_fmap) in "Htsfrags2".
       iMod (Hboot HE g.(ggen) g2 Hbf Hpure with
               "Hoinv [Helems Hbytes Hkauth Hkfrags Hkpt Hkptb2 Hs Hsie Hspp Hspie Hlks Hpark Hpst HuF HpF HvF
-                Hdfrags Hmir Hresvfrags HRb Htsfrags2]")
+                Hdfrags Hmir Hresvfrags HRb Htsfrags2 Hetok]")
         as "(Hwps & Hwpu & Hwpd & Hwpp)".
       { rewrite /power_boot_res.
         (* the era's UART-name FUNCTION is [γu]; say so, or the framing has
@@ -1011,6 +1037,8 @@ Section power.
         iSplitL "HRb"; [iExact "HRb"|].
         (* the element half of the era's image (A6.81), beside it *)
         iSplitL "Htsfrags2"; [iExact "Htsfrags2" |].
+        (* the era's adoption token, minted above *)
+        iSplitL "Hetok"; [iExact "Hetok" |].
         iSplitR; [iExact "Hcinv"|].
         iSplitR; [iExact "Hbornlb"|].
         iSplitR; [|iSplitR; [iExact "HRelem" | iPureIntro; reflexivity]].
@@ -1018,11 +1046,11 @@ Section power.
       iModIntro.
       rewrite /start_count Hpw /= Nat.add_0_r in Hdom.
       iSplitL "Hgauth Hsauth HRauth Hauths Hh HuA HpA HvA Hdauth Htie Hresvauth
-               Htsauth2 Hlogmauth2 Hloglenauth2 Hviewauth2 Hivauths2 Hrvauths2 Hoauth".
+               Htsauth2 Hlogmauth2 Hloglenauth2 Hviewauth2 Hivauths2 Hrvauths2 Hbank Hoauth".
       { rewrite /state_interp /=.
         (* the trace conjunct, at the extended history *)
         iSplitL "Hgauth Hsauth HRauth Hauths Hh HuA HpA HvA Hdauth Htie Hresvauth
-                 Htsauth2 Hlogmauth2 Hloglenauth2 Hviewauth2 Hivauths2 Hrvauths2";
+                 Htsauth2 Hlogmauth2 Hloglenauth2 Hviewauth2 Hivauths2 Hrvauths2 Hbank";
           last first.
         { iDestruct (obs_interp_close _ _ _ _ _ _ h κs Hstep0 Hwf Htot
                        with "Hoauth") as "Hobs". iExact "Hobs". }
@@ -1034,7 +1062,10 @@ Section power.
            machine-side half is still at the right image ([Hdk2], applied to
            [Htie] at the step above, where the custody hook needed it). *)
         rewrite /disk_fixed_interp.
-        iFrame "Hgauth Hsauth Htie".
+        (* the bank came back from the mint at [S ggen]; the new state's
+           counter spells it [ggen + 1] *)
+        iEval (rewrite <- Hsg) in "Hbank".
+        iFrame "Hgauth Hsauth Htie Hbank".
         iExists (<[g.(ggen) := HE]> R). iFrame "HRauth".
         iSplitR.
         { iPureIntro.
@@ -1148,7 +1179,7 @@ End power.
    Everything except the crash predicate and the six gnames is resolved
    from [riscvGpreS]/[xv6G], exactly as the [set] did. *)
 Definition boot_fixedGS {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
-    (Hinv : invGS Σ) (γgen γstart γreg γdisk : gname) (ndisk : nat)
+    (Hinv : invGS Σ) (γgen γstart γreg γetok γdisk : gname) (ndisk : nat)
     (γswap : gname) (Pcp : iProp Σ)
     (* the trace layer (uart-trace.md): the history ghost's name, the run's
        whole trace, and the client's trace predicate *)
@@ -1203,7 +1234,7 @@ Definition boot_fixedGS {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
      between [riscvF_resvGS] and [riscvF_diskGS]), so the two positional
      runs of underscores are one longer each; the trace fields at the end
      are main's.  All resolve from [riscvGpreS]. *)
-  RiscvFixedGS Σ Hinv _ _ _ _ _ _ _ _ _ _ _ _ _ γgen γstart _ γreg
+  RiscvFixedGS Σ Hinv _ _ _ _ _ _ _ _ _ _ _ _ _ γgen γstart _ γreg γetok
     _ _ _ γdisk ndisk Pcp γswap _ γobs T Ptp _ γhist Tg HTg HTgt
     Kc HKc HKct Ores HOrest Ires HIrest CT c.
 
@@ -1268,7 +1299,7 @@ Lemma disk_proj_trace {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
          ▷ Pc γdisk γsw γreg γst c -∗
          ◇ (disk_img_auth_sized γdisk ndisk dk ∗
             ▷ Pc γdisk γsw γreg γst c ∗ ⌜Ppure dk⌝))
-    (Hinv : invGS Σ) (γgen γstart γreg γdisk γswap : gname)
+    (Hinv : invGS Σ) (γgen γstart γreg γetok γdisk γswap : gname)
     (γobs : gname) (T : list mobs) (Ptp : iProp Σ) (γhist : gname)
     (Tg : list mobs -> iProp Σ) (HTg : forall h, Persistent (Tg h))
     (HTgt : forall h, Timeless (Tg h))
@@ -1280,7 +1311,7 @@ Lemma disk_proj_trace {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl)) (c : CT)
     (g' : gstate) :
   ⊢ @power_interp Σ
-       (boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
+       (boot_fixedGS Hinv γgen γstart γreg γetok γdisk ndisk γswap
           (Pc γdisk γswap γreg γstart c) γobs T Ptp γhist Tg HTg HTgt
           Kc HKc HKct Ores HOrest Ires HIrest CT c) g' -∗
     ▷ Pc γdisk γswap γreg γstart c -∗
@@ -1316,7 +1347,7 @@ Lemma power_interp_era {Σ : gFunctors} `{!riscvFixedGS Σ}
   g.(gpow) = true ->
   power_interp g -∗ era_registered g.(ggen) E -∗ era_interp E g.
 Proof.
-  intros Hpw. iIntros "(_ & _ & _ & HR) #Hreg".
+  intros Hpw. iIntros "(_ & _ & _ & HR & _) #Hreg".
   iDestruct "HR" as (R) "(HRauth & _ & Hera)".
   iEval (rewrite Hpw) in "Hera".
   iDestruct "Hera" as (E') "(%Hlk & Hera)".
@@ -1334,7 +1365,7 @@ Qed.
 Lemma power_interp_resv_ok {Σ : gFunctors} `{!riscvFixedGS Σ} (g : gstate) :
   power_interp g -∗ ⌜g.(gpow) = true -> resv_ok g⌝.
 Proof.
-  iIntros "(_ & _ & _ & HR)". iDestruct "HR" as (R) "(_ & _ & Hera)".
+  iIntros "(_ & _ & _ & HR & _)". iDestruct "HR" as (R) "(_ & _ & Hera)".
   destruct (g.(gpow)) eqn:Hpw; last (iPureIntro; discriminate).
   (* A6.71: one more conjunct -- [tso_interp_at] sits between the durable
      disk's and the reservation mirror's, so the positional walk is one
@@ -1653,10 +1684,11 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
        trace, which is what the conclusion says. *)
     (phi : gstate -> list mobs -> Prop)
     (Hphi : forall (Hinv : invGS Σ)
-                   (γgen γstart γreg γdisk γswap γobs γhist : gname) (c : CT)
+                   (γgen γstart γreg γetok γdisk γswap γobs γhist : gname)
+                   (c : CT)
                    (T : list mobs) (g' : gstate) (h : list mobs),
        ⊢ @power_interp Σ
-            (boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
+            (boot_fixedGS Hinv γgen γstart γreg γetok γdisk ndisk γswap
                (Pc γdisk γswap γreg γstart c) γobs T (Pt γobs c) γhist
                (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
                (Ores c) (HOrest c) (Ires c) (HIrest c) CT c) g' -∗
@@ -1700,9 +1732,10 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
           it ALREADY APPLIED ([Rb c]) -- at an arbitrary [F] the record's
           client type is not [CT], so the applied form is the only one
           that can be stated there. *)
-       forall (Hinv : invGS Σ) (γgen γstart γreg γdisk γswap γobs γhist : gname)
+       forall (Hinv : invGS Σ)
+              (γgen γstart γreg γetok γdisk γswap γobs γhist : gname)
               (c : CT) (T : list mobs),
-       F = boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
+       F = boot_fixedGS Hinv γgen γstart γreg γetok γdisk ndisk γswap
              (Pc γdisk γswap γreg γstart c) γobs T (Pt γobs c) γhist
              (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
              (Ores c) (HOrest c) (Ires c) (HIrest c) CT c ->
@@ -1742,6 +1775,10 @@ Proof.
   iMod (mono_nat_own_alloc g.(ggen)) as (γgen) "[Hgauth _]".
   iMod (mono_nat_own_alloc (start_count g)) as (γstart) "[Hsauth _]".
   iMod (ghost_map_alloc_empty (K := nat) (V := riscvEraGS)) as (γreg) "HRauth".
+  (* THE ERA-TOKEN MAP, at the empty map beside the registry (lane CONS-IO
+     milestone D): its auth is [power_interp]'s bank and the PowerOn arm is
+     its only writer. *)
+  iMod (ghost_map_alloc_empty (K := nat) (V := riscvEraGS)) as (γetok) "HEauth".
   (* THE DURABLE DISK, minted ONCE at the powered-off machine's own image:
      the AUTH into [state_interp]'s fixed conjunct, the FULL fragments into
      the client's crash predicate.  Both survive every power cycle, which is
@@ -1781,14 +1818,15 @@ Proof.
      boot mints the first one ([wp_power_loop]'s PowerOn arm). *)
   (* the run's whole trace [κs] is a FIELD of the fixed record: that is what
      lets [state_interp] tie the history so far to the future *)
-  set (F := boot_fixedGS Hinv γgen γstart γreg γfdisk ndisk γswap
+  set (F := boot_fixedGS Hinv γgen γstart γreg γetok γfdisk ndisk γswap
               (Pc γfdisk γswap γreg γstart c) γobs κs (Pt γobs c) γhist
               (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
               (Ores c) (HOrest c) (Ires c) (HIrest c) CT c).
   (* the client's trace hook at the gnames just allocated.  [F] is a local
      DEFINITION, so this statement and the one the final observation below
      faces are convertible. *)
-  pose proof (Hphi Hinv γgen γstart γreg γfdisk γswap γobs γhist c κs) as Hph.
+  pose proof (Hphi Hinv γgen γstart γreg γetok γfdisk γswap γobs γhist c κs)
+    as Hph.
   iModIntro.
   iExists
     (fun (g' : gstate) (_ : nat) (κs' : list mobs) (_ : nat) =>
@@ -1797,13 +1835,17 @@ Proof.
     (fun _ : mval => True%I),
     (@state_interp_mono HasLc riscv_lang Σ (@riscv_irisGS Σ F)).
   cbv zeta beta.
-  iSplitL "Hgauth Hsauth HRauth HtieS HobA HobH".
-  { iSplitL "Hgauth Hsauth HRauth HtieS".
+  iSplitL "Hgauth Hsauth HRauth HEauth HtieS HobA HobH".
+  { iSplitL "Hgauth Hsauth HRauth HEauth HtieS".
     { (* the initial state interpretation: OFF, nothing ever started, no era
          and hence no image map -- but the FS tie IS there: it is fixed-layer,
          so it exists even with the power off. *)
       rewrite /power_interp /disk_fixed_interp.
       iFrame "Hgauth Hsauth HtieS".
+      iSplitR "HEauth"; last first.
+      { (* the era-token bank, empty: no era has started *)
+        rewrite /era_tok_bank. iExists ∅. iFrame "HEauth". iPureIntro.
+        rewrite dom_empty_L /start_count Hpow /= Nat.add_0_r Hgen0 /=. done. }
       iExists ∅. iFrame "HRauth".
       iSplitR.
       { iPureIntro. rewrite dom_empty_L /start_count Hpow /=.
@@ -1823,8 +1865,8 @@ Proof.
               Mof (Rb c) (Hswap γfdisk γswap γreg γstart c)
               (Hobs γfdisk γobs c)
               (fun HE gen g' Hbf Hp =>
-                 Hboot F HE gen g' Hbf Hp Hinv γgen γstart γreg γfdisk γswap
-                   γobs γhist c κs eq_refl)
+                 Hboot F HE gen g' Hbf Hp Hinv γgen γstart γreg γetok γfdisk
+                   γswap γobs γhist c κs eq_refl)
               with "Hcinv Hoinv"). }
   (* THE FINAL OBSERVATION, AND IT IS NOW TWO FACTS.
 
@@ -1915,9 +1957,10 @@ Corollary riscv_trace_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
                     (g' : gstate),
        boot_facts g' ->
        Ppure (v_disk (g'.(gdev).(dvirtio))) ->
-       forall (Hinv : invGS Σ) (γgen γstart γreg γdisk γswap γobs γhist : gname)
+       forall (Hinv : invGS Σ)
+              (γgen γstart γreg γetok γdisk γswap γobs γhist : gname)
               (c : unit) (T : list mobs),
-       F = boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
+       F = boot_fixedGS Hinv γgen γstart γreg γetok γdisk ndisk γswap
              (Pc γdisk γswap γreg γstart) γobs T (obs_ledger_at R γobs) γhist
              rx_tag_triv (@rx_tag_triv_persistent Σ)
              (@rx_tag_triv_timeless Σ)
@@ -1960,7 +2003,7 @@ Proof.
                             ltac:(iIntros "_"; iMod HR0 as "HR"; by iModIntro))
            (fun γdisk γobs _ => obs_ledger_at_step ndisk R HRt Hpow γdisk γobs)
            (fun _ h => P h)
-           ltac:(intros Hinv γgen γstart γreg γdisk γswap γobs γhist c T g' h;
+           ltac:(intros Hinv γgen γstart γreg γetok γdisk γswap γobs γhist c T g' h;
                  iIntros "_ Hauth _ _ HPt";
                  iApply (obs_ledger_at_phi R HRt P HR γobs h with "Hauth HPt"))
            Hgen0 Hpow0 Hboot).

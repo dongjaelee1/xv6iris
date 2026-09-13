@@ -322,6 +322,12 @@ Section UInitKernel.
        NARROW class, because this section binds [ctokG] without [xv6G]
        ([UserConsole.ucons_reader_eq] is the bridge). *)
     ucons_reader cn 0%nat -∗
+    (* ...AND THE ERA'S ADOPTION TOKEN (lane CONS-IO milestone D), beside
+       the reader token and travelling with it: the kernel's one per-era
+       exclusive, handed to <init> by the boot bundle and held by it.  It
+       is what the application's ledger will spend to adopt the era at the
+       first verified write; nothing on init's walk reads it. *)
+    era_tok (Datatypes.S gen_id) -∗
     (* THE PAY FACT, at the trivial payload: <init> has no parent, so its
        exit owes nobody anything -- userinit's choice, which the entry
        constructor writes into the record ([UkRun.ukn_pay]) and which
@@ -341,7 +347,7 @@ Section UInitKernel.
        it does not come back.  The bundle is spent once here, so a linear
        intro is what it wants; the destructuring [#(Hwr & Hwl15 & Hwl17)]
        the walk uses checks each conjunct on its own and is fine. *)
-    iIntros "Hdp #Hdep #Hxs Hdn Hrd #Hmp".
+    iIntros "Hdp #Hdep #Hxs Hdn Hrd Hetok #Hmp".
     iApply (uslot_of_urun_all W (2 + (4 + (12 + (12 + (4 + n0))))) (fun _ => True)%I
               Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp []").
     (* the payload at the trivial one -- <init> has no parent.  A WAND
@@ -378,7 +384,7 @@ Section UInitKernel.
               (ukn_pay_free_of_triv N (Hpayeq : UkRun.ukn_triv N))
               T Cns stc cn (uvis_sz W) h
               (tf_resume_gpr0 (uvis_tf W)) n0 Hne Hkt
-              with "Hdp [] Hxs [Hdn] [] [] Hszf [Hstd] [Hcwf] [Hchf] [Hrd] Hrun").
+              with "Hdp [] Hxs [Hdn] [] [] Hszf [Hstd] [Hcwf] [Hchf] [Hrd] [Hetok] Hrun").
     - iApply (init_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (init_img_text _ Hsub) Hx with "Ht").
     - iApply (init_cons_dance_at N T Cns stc with "Hdn").
@@ -391,6 +397,8 @@ Section UInitKernel.
     (* init's round starts at the token's own position, which at boot is
        the empty prefix ([UserConsole.uinit_tok_0]) *)
     - iApply (uinit_tok_0 cn T with "Hrd").
+    (* the era token, straight through to init's entry *)
+    - iExact "Hetok".
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -435,6 +443,9 @@ Section UInitKernel.
     (* the console reader token, passed straight through: see
        [init_uexec_slot] *)
     ucons_reader cn 0%nat -∗
+    (* ...and the era's adoption token beside it, likewise straight
+       through (lane CONS-IO milestone D) *)
+    era_tok (Datatypes.S gen_id) -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
   Proof.
     intros Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok_free Hlzf.
@@ -554,9 +565,17 @@ Section UInitKernel.
   (*  explicitly at the call, so the unification happens at one top-level   *)
   (*  application.                                                          *)
   (* ===================================================================== *)
+  (* ...AND THE ERA'S ADOPTION TOKEN RIDES THE SAME SLOT (lane CONS-IO
+     milestone D).  The bundle has ONE linear slot, and the token is the
+     third thing the boot hands <init>: it is minted by the PowerOn arm,
+     travels in the boot bundle beside [App.app_boot], and is what the
+     application's ledger spends to adopt the era at the first verified
+     write.  Beside the console lease rather than in [UkRun.urun]'s boot
+     row, because it is exactly as era-local as the lease is. *)
   Definition init_boot_pay (T Cns : iProp Σ) (cn : cons_names)
       (stc : fdstate) : iProp Σ :=
-    (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat)%I.
+    (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat ∗
+     era_tok (Datatypes.S gen_id))%I.
 
   Lemma init_boot_con (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
       (stc : fdstate) (cn : cons_names)
@@ -602,10 +621,10 @@ Section UInitKernel.
        statement's note. *)
     intros Hne Hkt Hroom Hlen Hl0 Hpsok.
     iIntros "#Hdp #Hdep #Hxs !>"
-      (W') "%Hok %Hcw %Hlz #Hmp [Hdn Hrd]".
+      (W') "%Hok %Hcw %Hlz #Hmp (Hdn & Hrd & Hetok)".
     iApply (init_slot_of_kexec T Cns stc cn na alen afun sts W' n0
               Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok Hlz
-              with "Hdp Hdep Hxs Hdn Hrd Hmp").
+              with "Hdp Hdep Hxs Hdn Hrd Hetok Hmp").
   Qed.
 
   (* ...and the two ways the application's boot resource builds the dance,

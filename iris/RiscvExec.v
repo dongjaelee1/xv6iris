@@ -778,7 +778,7 @@ Section WPExec.
     intros Hpres.
     iIntros "#(Hborn & Hstarted & Hrege) H".
     iApply wp_lift_step; first done.
-    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR) & Hobs)".
+    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR & Hbank) & Hobs)".
     iDestruct (mono_nat_lb_own_valid with "Hgauth Hborn") as %[_ Hbge].
     iDestruct (mono_nat_lb_own_valid with "Hsauth Hstarted") as %[_ Hsge].
     iDestruct "HR" as (R) "(HRauth & %Hdom & Hera)".
@@ -798,7 +798,7 @@ Section WPExec.
         as (-> & -> & [(Hlive & _) | (_ & -> & ->)]); [by exfalso|].
       iIntros "_". iMod "Hback" as "_". iModIntro.
       iEval (cbn [app]) in "Hobs".
-      iFrame "Hgauth Hsauth Htie Hobs".
+      iFrame "Hgauth Hsauth Htie Hbank Hobs".
       iSplitL "HRauth Hera".
       { iExists R. iFrame "HRauth Hera". iPureIntro. exact Hdom. }
       iSplitL; [|done].
@@ -867,7 +867,7 @@ Section WPExec.
     iDestruct (obs_interp_silent _ _ _ _ _ _ Hstep with "Hobs") as "Hobs".
     rewrite /state_interp /power_interp /disk_fixed_interp
       /era_interp /disk_dur_interp /disk_img_auth /=.
-    iFrame "Hgauth Hsauth Htie HWP Hobs".
+    iFrame "Hgauth Hsauth Htie Hbank HWP Hobs".
     iExists R. iFrame "HRauth".
     iSplitR; [iPureIntro; exact Hdom|].
     rewrite Hpw. iExists riscv_eraGS.
@@ -929,7 +929,7 @@ Section WPExec.
   Proof.
     iIntros "#(Hborn & Hstarted & Hrege) Hfrag H".
     iApply wp_lift_step; first done.
-    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR) & Hobs)".
+    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR & Hbank) & Hobs)".
     iDestruct (mono_nat_lb_own_valid with "Hgauth Hborn") as %[_ Hbge].
     iDestruct (mono_nat_lb_own_valid with "Hsauth Hstarted") as %[_ Hsge].
     iDestruct "HR" as (R) "(HRauth & %Hdom & Hera)".
@@ -949,7 +949,7 @@ Section WPExec.
         as (-> & -> & [(Hlive & _) | (_ & -> & ->)]); [by exfalso|].
       iIntros "_". iMod "Hback" as "_". iModIntro.
       iEval (cbn [app]) in "Hobs".
-      iFrame "Hgauth Hsauth Htie Hobs".
+      iFrame "Hgauth Hsauth Htie Hbank Hobs".
       iSplitL "HRauth Hera".
       { iExists R. iFrame "HRauth Hera". iPureIntro. exact Hdom. }
       iSplitL; [|done].
@@ -1025,7 +1025,7 @@ Section WPExec.
     iDestruct (obs_interp_silent _ _ _ _ _ _ Hstep with "Hobs") as "Hobs".
     rewrite /state_interp /power_interp /disk_fixed_interp
       /era_interp /disk_dur_interp /disk_img_auth /=.
-    iFrame "Hgauth Hsauth Htie HWP Hobs".
+    iFrame "Hgauth Hsauth Htie Hbank HWP Hobs".
     iExists R. iFrame "HRauth".
     iSplitR; [iPureIntro; exact Hdom|].
     rewrite Hpw. iExists riscv_eraGS.
@@ -1124,7 +1124,7 @@ Section WPDev.
   Proof.
     iIntros "#(Hborn & Hstarted & Hrege) H".
     iApply wp_lift_step; first done.
-    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR) & Hobs)".
+    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR & Hbank) & Hobs)".
     iDestruct (mono_nat_lb_own_valid with "Hgauth Hborn") as %[_ Hbge].
     iDestruct (mono_nat_lb_own_valid with "Hsauth Hstarted") as %[_ Hsge].
     iDestruct "HR" as (R) "(HRauth & %Hdom & Hera)".
@@ -1143,7 +1143,7 @@ Section WPDev.
         as (-> & -> & [ ([_ Hgg] & _) | (_ & -> & ->) ]); [exfalso; lia|].
       iIntros "_". iMod "Hback" as "_". iModIntro.
       iEval (cbn [app]) in "Hobs".
-      iFrame "Hgauth Hsauth Htie Hobs".
+      iFrame "Hgauth Hsauth Htie Hbank Hobs".
       iSplitL "HRauth Hera".
       { iExists R. iFrame "HRauth Hera". iPureIntro. exact Hdom. }
       iSplitL; [|done].
@@ -1191,7 +1191,7 @@ Section WPDev.
       as "Hobs".
     rewrite /state_interp /power_interp /disk_fixed_interp
       /era_interp /disk_dur_interp /disk_img_auth /=.
-    iFrame "Hgauth Hsauth Htie HWP Hobs".
+    iFrame "Hgauth Hsauth Htie Hbank HWP Hobs".
     iExists R. iFrame "HRauth".
     iSplitR; [iPureIntro; exact Hdom|].
     rewrite Hpw. iExists riscv_eraGS.
@@ -1267,7 +1267,7 @@ Section WPDev.
   Proof.
     iIntros "#(Hborn & Hstarted & Hrege) H".
     iApply wp_lift_step; first done.
-    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR) & Hobs)".
+    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR & Hbank) & Hobs)".
     iDestruct (mono_nat_lb_own_valid with "Hgauth Hborn") as %[_ Hbge].
     iDestruct (mono_nat_lb_own_valid with "Hsauth Hstarted") as %[_ Hsge].
     iDestruct "HR" as (R) "(HRauth & %Hdom & Hera)".
@@ -1286,7 +1286,7 @@ Section WPDev.
         as (-> & -> & -> & [ ([_ Hgg] & _) | (_ & ->) ]); [exfalso; lia|].
       iIntros "_". iMod "Hback" as "_". iModIntro.
       iEval (cbn [app]) in "Hobs".
-      iFrame "Hgauth Hsauth Htie Hobs".
+      iFrame "Hgauth Hsauth Htie Hbank Hobs".
       iSplitL "HRauth Hera".
       { iExists R. iFrame "HRauth Hera". iPureIntro. exact Hdom. }
       iSplitL; [|done].
@@ -1334,7 +1334,7 @@ Section WPDev.
     iDestruct (obs_interp_silent _ _ _ _ _ _ Hstep with "Hobs") as "Hobs".
     rewrite /state_interp /power_interp /disk_fixed_interp
       /era_interp /disk_dur_interp /disk_img_auth /=.
-    iFrame "Hgauth Hsauth' Htie' HWP Hobs".
+    iFrame "Hgauth Hsauth' Htie' Hbank HWP Hobs".
     iDestruct "Hdur'" as (dmap') "[Hdauth' %Hdview']".
     iExists R. iFrame "HRauth".
     iSplitR; [iPureIntro; exact Hdom|].
@@ -1361,7 +1361,7 @@ Section WPDev.
   Proof.
     iIntros "#(Hborn & Hstarted & Hrege) H".
     iApply wp_lift_step; first done.
-    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR) & Hobs)".
+    iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR & Hbank) & Hobs)".
     iDestruct (mono_nat_lb_own_valid with "Hgauth Hborn") as %[_ Hbge].
     iDestruct (mono_nat_lb_own_valid with "Hsauth Hstarted") as %[_ Hsge].
     iDestruct "HR" as (R) "(HRauth & %Hdom & Hera)".
@@ -1380,7 +1380,7 @@ Section WPDev.
         as (-> & -> & -> & [ ([_ Hgg] & _) | (_ & ->) ]); [exfalso; lia|].
       iIntros "_". iMod "Hback" as "_". iModIntro.
       iEval (cbn [app]) in "Hobs".
-      iFrame "Hgauth Hsauth Htie Hobs".
+      iFrame "Hgauth Hsauth Htie Hbank Hobs".
       iSplitL "HRauth Hera".
       { iExists R. iFrame "HRauth Hera". iPureIntro. exact Hdom. }
       iSplitL; [|done].
@@ -1414,7 +1414,7 @@ Section WPDev.
     iDestruct (obs_interp_silent _ _ _ _ _ _ Hstep with "Hobs") as "Hobs".
     rewrite /state_interp /power_interp /disk_fixed_interp
       /era_interp /disk_dur_interp /disk_img_auth /=.
-    iFrame "Hgauth Hsauth Htie HWP Hobs".
+    iFrame "Hgauth Hsauth Htie Hbank HWP Hobs".
     (* a PLIC step moves only registers: the image conjunct, the FS tie and
        the TSO conjunct are all FRAMED (the device state is literally
        unchanged, and so are image/cache/log/views) *)

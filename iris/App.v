@@ -498,6 +498,15 @@ Theorem xv6_app_adequacy Σ
          (* ...and (a) THE BOOT RESOURCE, LINEARLY, at the instance the
             record equation names *)
          ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot A c (S gen_id) r -∗
+           (* ...and (a') THE ERA'S ADOPTION TOKEN, beside the boot
+              resource (lane CONS-IO milestone D).  It is the KERNEL's, not
+              the transport's: [app_xfer_boot_raw] is untouched and the
+              application founds nothing here.  What it buys is the one
+              thing no per-era resource can say -- that this era is adopted
+              AT MOST ONCE in the whole run ([RiscvPtsto.era_tok_excl]) --
+              which is what makes the application's ledger able to insert
+              its era row and know no second writer can. *)
+           era_tok (S gen_id) -∗
            |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0)
     (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3), the SECOND thing this
        record owes the kernel about the console and [Hinit_boot]'s twin.
@@ -539,10 +548,11 @@ Theorem xv6_app_adequacy Σ
        record beside the application's durable claim at the same snapshot
        name) and the ledger side by side ---- *)
     (Hphi : forall (Hinv : invGS Σ)
-                   (γgen γstart γreg γd γsw γobs γhist : gname) (c : app_fixed A)
+                   (γgen γstart γreg γet γd γsw γobs γhist : gname)
+                   (c : app_fixed A)
                    (T : list mobs) (g' : gstate) (h : list mobs),
        ⊢ @power_interp Σ
-            (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
+            (boot_fixedGS Hinv γgen γstart γreg γet γd XV6_DISK_BYTES γsw
                (xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
                   γd γsw γreg γstart c)
                γobs T (obs_ledger_at (app_R A c) γobs) γhist
@@ -567,10 +577,10 @@ Proof.
      ledger was born with, by iota once the record's shape is destructed *)
   assert (Hperm : forall (HR : riscvGS Σ) (GEN : GenId) (HF : fileG Σ)
                          (r : app_names A) (i : uart_id) (γ : uart_names),
-      (exists (Hinv : invGS Σ) (γgen γstart γreg γd γsw γobs γhist : gname)
+      (exists (Hinv : invGS Σ) (γgen γstart γreg γet γd γsw γobs γhist : gname)
               (c : app_fixed A) (T : list mobs),
          riscv_fixedGS =
-           boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
+           boot_fixedGS Hinv γgen γstart γreg γet γd XV6_DISK_BYTES γsw
              (xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
                 γd γsw γreg γstart c)
              γobs T (obs_ledger_at (app_R A c) γobs) γhist
@@ -582,7 +592,8 @@ Proof.
          /\ (i = Uart0 -> FsCfg.fsc_uart = γ)) ->
       ⊢ obs_inv -∗ uart_obs_permit i γ).
   { intros HRg GEN HFi ri i γ
-      (Hi & Gg & Gs & Gr & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & Happ & Huart).
+      (Hi & Gg & Gs & Gr & Get & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & Happ &
+       Huart).
     refine (uart_obs_permit_ledger i (app_R A Gcl) (app_tag A Gcl)
               (app_out A Gcl) γ (HRt Gcl)
               _ _ _ (app_in A Gcl) _ (Htx HRg GEN HFi Gcl ri i γ Happ Huart)
@@ -671,9 +682,12 @@ Section AppTriv.
        application takes and does not use: its log claim is [emp] too *)
     @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in (app_triv Σ) c ->
     ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot (app_triv Σ) c (S gen_id) r -∗
+      (* ...and the era's adoption token, which the generic application
+         takes and does not use (lane CONS-IO milestone D) *)
+      era_tok (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Heq _ Hkc _ Hout Hin. iIntros "_ _". iModIntro.
+    intros Heq _ Hkc _ Hout Hin. iIntros "_ _ _". iModIntro.
     (* the rewrite goes BEFORE the [intros]: [r'] is typed at
        [app_names file_app], so rewriting under it is a dependent rewrite *)
     iApply init_boot_of_triv.
@@ -741,7 +755,7 @@ Proof.
                  iApply (SpecConsoleintr.cons_echo_shift_triv (XI := XI));
                  [ rewrite Hout; cbn [app_triv app_out]; reflexivity
                  | rewrite Hin; cbn [app_triv app_in]; reflexivity ])
-           ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
+           ltac:(intros Hinv γgen γstart γreg γet γd γsw γobs γhist c T g' h;
                  iIntros "_ _ _ _ _"; iModIntro; iPureIntro; exact Logic.I)
            Hgen0 Hpow0 _ n κs t2 g2 Hn)).
   rewrite Hdisk. exact fsimg_image_wf.

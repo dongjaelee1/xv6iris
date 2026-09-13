@@ -420,7 +420,7 @@ Qed.
 Lemma fs_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (cov : gset Z) (ls : Z) (CT N : Type)
     (app_fs : CT -> N -> FsAbsDefs.aview -> iProp Σ)
-    (Hinv : invGS Σ) (γgen γstart γreg γd γsw γobs γhist : gname) (c : CT)
+    (Hinv : invGS Σ) (γgen γstart γreg γet γd γsw γobs γhist : gname) (c : CT)
     (T : list mobs) (Tg : list mobs -> iProp Σ)
     (HTg : forall h, Persistent (Tg h)) (HTgt : forall h, Timeless (Tg h))
     (* the kill credential's slot (lane KILL-PAY, K1): carried by the
@@ -433,7 +433,7 @@ Lemma fs_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
     (g' : gstate) :
   ⊢ @power_interp Σ
-       (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
+       (boot_fixedGS Hinv γgen γstart γreg γet γd XV6_DISK_BYTES γsw
           (xv6_slot N app_fs cov ls γd γsw γreg γstart c)
           γobs T (obs_pred_at γobs) γhist Tg HTg HTgt
           Kc HKc HKct Ores HOrest Ires HIrest CT c) g' -∗
@@ -444,7 +444,7 @@ Proof.
            (xv6_slot N app_fs cov ls)
            (fs_boot_pure cov ls)
            (xv6_slot_project N app_fs cov ls)
-           Hinv γgen γstart γreg γd γsw γobs T (obs_pred_at γobs) γhist
+           Hinv γgen γstart γreg γet γd γsw γobs T (obs_pred_at γobs) γhist
            Tg HTg HTgt Kc HKc HKct Ores HOrest Ires HIrest c g').
 Qed.
 
@@ -472,7 +472,7 @@ Definition xv6_trace_pure (cov : gset Z) (ls : Z) (g : gstate) : Prop :=
 Lemma xv6_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (cov : gset Z) (ls : Z) (CT N : Type)
     (app_fs : CT -> N -> FsAbsDefs.aview -> iProp Σ)
-    (Hinv : invGS Σ) (γgen γstart γreg γd γsw γobs γhist : gname) (c : CT)
+    (Hinv : invGS Σ) (γgen γstart γreg γet γd γsw γobs γhist : gname) (c : CT)
     (T : list mobs) (Tg : list mobs -> iProp Σ)
     (HTg : forall h, Persistent (Tg h)) (HTgt : forall h, Timeless (Tg h))
     (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
@@ -483,7 +483,7 @@ Lemma xv6_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
     (g' : gstate) :
   ⊢ @power_interp Σ
-       (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
+       (boot_fixedGS Hinv γgen γstart γreg γet γd XV6_DISK_BYTES γsw
           (xv6_slot N app_fs cov ls γd γsw γreg γstart c)
           γobs T (obs_pred_at γobs) γhist Tg HTg HTgt
           Kc HKc HKct Ores HOrest Ires HIrest CT c) g' -∗
@@ -494,7 +494,7 @@ Proof.
   (* the era-side fact first: its conclusion is PURE, so [state_interp] is
      not spent and the disk projection still has it *)
   iDestruct (power_interp_resv_ok with "Hsi") as %Hresv.
-  iDestruct (fs_trace_hook Σ cov ls CT N app_fs Hinv γgen γstart γreg γd γsw
+  iDestruct (fs_trace_hook Σ cov ls CT N app_fs Hinv γgen γstart γreg γet γd γsw
                γobs γhist c T Tg HTg HTgt Kc HKc HKct Ores HOrest
                Ires HIrest g' with "Hsi HP") as ">%Hdisk".
   iModIntro. iPureIntro. split; [exact Hdisk | exact Hresv].
@@ -600,6 +600,13 @@ Section SystemBoot.
                   HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ} (r : N),
            @file_app Σ HF = MkAppcfg N A r ->
            ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ B (Datatypes.S gen_id) r -∗
+             (* ...AND THE ERA'S ADOPTION TOKEN BESIDE IT (lane CONS-IO
+                milestone D): the kernel's own per-era exclusive, minted by
+                the PowerOn arm and carried here on [power_boot_res].  It
+                is what lets the application's ledger know that this era is
+                adopted AT MOST ONCE -- a second adopter would need a
+                second [era_tok] at the same number, which no run has. *)
+             era_tok (Datatypes.S gen_id) -∗
              |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0)
       (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3), the second thing the
          application owes the kernel about the console and the twin of
@@ -834,7 +841,7 @@ Section SystemBoot.
       as (Hfd Hir Hpav Hbs Hwch HF γd γd1 γv cnm Rspent γi ξd)
       "(%Hdimg & %Hcnu & %Happ & #Htext & #Hdata &
         #Hpinned & #Hubw0 & #Hubw1 & #Hurw0 & #Hurw1 &
-        #Hstarted & Hprim & #Hdev & #Hdev1 & #Hplic & #Hwinv &
+        #Hstarted & Hprim & #Hdev & #Hdev1 & #Hplic & #Hwinv & Hetok &
         #Hcinv & #Hcert & Hharts & Hlk & Hgl & Hmdata & Hpark & Hpst & Hpavail & Hchb & Huart &
         Htok & Hhi & Hlgh & Hdlab & Huart1 & Htok1 & Hhi1 & Hlgh1 & Hdlab1 &
         Hcfg & Hclaim & Hcmauth & #Hdone & Hkpt & Hkptb & Hkmap & Hmir & Hpages & Hirauth &
@@ -854,8 +861,8 @@ Section SystemBoot.
        trace permit is built at, read before the supply goes down the boot
        hart's chain. *)
     iDestruct (fs_boot_supply_uart with "Hfs") as "[%Huart Hfs]".
-    iMod (Hinit_boot Hbs Hfd Hir Hpav Hwch HF rap Happ with "Happinv Hbres")
-      as "Hboot".
+    iMod (Hinit_boot Hbs Hfd Hir Hpav Hwch HF rap Happ
+            with "Happinv Hbres Hetok") as "Hboot".
     (* THE FILE SYSTEM'S BOOT KITS ARE NO LONGER DROPPED (stage (e)).
        [Hfs] is the ten configuration ties plus [fs_kit_icache] plus
        [fs_kit_fsinit_ghost], and [Hirauth] is the iref-slot authority
@@ -1322,6 +1329,13 @@ Theorem xv6_power_adequacy_gen Σ
             same mould: what turns [Hin_sup] into [WpUart.in_licence]. *)
          @riscv_in_res Σ (@riscv_fixedGS Σ HR) = Ires c ->
          ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot c (Datatypes.S gen_id) r -∗
+           (* ...AND THE ERA'S ADOPTION TOKEN (lane CONS-IO milestone D),
+              the KERNEL's own per-era exclusive rather than the
+              transport's: minted at this era's PowerOn and handed to
+              <init> beside the boot resource, so the application can adopt
+              the era at most once in the whole run
+              ([RiscvPtsto.era_tok], [RiscvPtsto.era_tok_excl]). *)
+           era_tok (Datatypes.S gen_id) -∗
            |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0)
     (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3), the SECOND thing the
        application owes the kernel about the console.  consoleintr echoes
@@ -1387,10 +1401,10 @@ Theorem xv6_power_adequacy_gen Σ
        in the era is stated at -- are exactly [Hinit_boot]'s shape. *)
     (Hperm : forall (HR : riscvGS Σ) (GEN : GenId) `{HF : !fileG Σ}
                     (r : app_names) (i : uart_id) (γ : uart_names),
-       (exists (Hinv : invGS Σ) (γgen γstart γreg γd γsw γobs γhist : gname)
+       (exists (Hinv : invGS Σ) (γgen γstart γreg γet γd γsw γobs γhist : gname)
                (c : CT) (T : list mobs),
           riscv_fixedGS =
-            boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
+            boot_fixedGS Hinv γgen γstart γreg γet γd XV6_DISK_BYTES γsw
               (xv6_slot app_names app_fs cov (FsImg.sb_logstart sb)
                  γd γsw γreg γstart c)
               γobs T (Pt γobs c) γhist (Tg c) (HTg c) (HTgt c)
@@ -1404,10 +1418,10 @@ Theorem xv6_power_adequacy_gen Σ
        (round C): the application reads its durable claim off it beside the
        file system's record and the ledger *)
     (Hphi : forall (Hinv : invGS Σ)
-                   (γgen γstart γreg γd γsw γobs γhist : gname) (c : CT)
+                   (γgen γstart γreg γet γd γsw γobs γhist : gname) (c : CT)
                    (T : list mobs) (g' : gstate) (h : list mobs),
        ⊢ @power_interp Σ
-            (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
+            (boot_fixedGS Hinv γgen γstart γreg γet γd XV6_DISK_BYTES γsw
                (xv6_slot app_names app_fs cov (FsImg.sb_logstart sb)
                   γd γsw γreg γstart c)
                γobs T (Pt γobs c) γhist (Tg c) (HTg c) (HTgt c)
@@ -1623,7 +1637,7 @@ Proof.
      minted.  [riscv_fixedGS (RiscvGS Σ F HE)] iota-reduces to [F] and
      [riscv_eraGS] to [HE], so §2's statement at the composed instance IS
      this obligation (crash.md's M0 gotcha, in the direction that works). *)
-  intros F HE gen g' Hbf Hpure Hi Gg Gs Gr Gt Gsw Gob Ghist Gcl GT Hfix.
+  intros F HE gen g' Hbf Hpure Hi Gg Gs Gr Get Gt Gsw Gob Ghist Gcl GT Hfix.
   (* THE RX-TAG EQUATION (lane APP-IFACE item (b)), read off the record
      BEFORE it is substituted away: the equation is a projection of the
      literal this theorem itself builds, so it is [reflexivity] once the
@@ -1680,7 +1694,7 @@ Proof.
   (* the UART thread's permit, at the record the era boots over *)
   intros HF r i γ Happ Huart.
   apply (Hperm _ gen HF r i γ).
-  exists Hi, Gg, Gs, Gr, Gt, Gsw, Gob, Ghist, Gcl, GT.
+  exists Hi, Gg, Gs, Gr, Get, Gt, Gsw, Gob, Ghist, Gcl, GT.
   split_and!; [reflexivity | exact Happ | exact Huart].
 Qed.
 
@@ -1702,10 +1716,10 @@ Theorem xv6_power_adequacy Σ
     (g : gstate) (sb : fs_sb) (nib : nat) (cov : gset Z)
     (phi : gstate -> Prop)
     (Hphi : forall (Hinv : invGS Σ)
-                   (γgen γstart γreg γd γsw γobs γhist : gname) (c : unit)
+                   (γgen γstart γreg γet γd γsw γobs γhist : gname) (c : unit)
                    (T : list mobs) (g' : gstate),
        ⊢ @power_interp Σ
-            (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
+            (boot_fixedGS Hinv γgen γstart γreg γet γd XV6_DISK_BYTES γsw
                (xv6_slot unit (fun _ _ _ => True%I) cov (FsImg.sb_logstart sb)
                   γd γsw γreg γstart c)
                γobs T (obs_pred_at γobs) γhist rx_tag_triv
@@ -1759,7 +1773,7 @@ Proof.
                   iIntros "_"; iSplit; iIntros "!>" (?????) "_"; by iModIntro)
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
                          Heq Htag Hkill Hgeni Hout Hin;
-                  iIntros "_ _"; iModIntro; iApply init_boot_of_triv;
+                  iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
                   | exact Hkill | exact Hout | exact Hin ])
             (* THE ECHO'S JUSTIFICATION, at the TRIVIAL output claim: every
@@ -1771,14 +1785,14 @@ Proof.
             (obs_pred_at_alloc_cl (fun _ : unit => True%I))
             (fun γd γobs _ => obs_pred_at_step XV6_DISK_BYTES γd γobs)
             _ (fun g _ => phi g)
-            ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
+            ltac:(intros Hinv γgen γstart γreg γet γd γsw γobs γhist c T g' h;
                   iIntros "Hsi _ _ HP _";
-                  iApply (Hphi Hinv γgen γstart γreg γd γsw γobs γhist c T g'
+                  iApply (Hphi Hinv γgen γstart γreg γet γd γsw γobs γhist c T g'
                             with "Hsi HP"))
             Hgen0 Hpow Himg n κs t2 g2 Hn).
   (* the permit at the trivial slot *)
   intros HR GEN HFi ri i γ
-         (Hi & Gg & Gs & Gr & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & _ & _).
+         (Hi & Gg & Gs & Gr & Get & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & _ & _).
   apply (uart_obs_permit_triv i γ); rewrite Heq; reflexivity.
 Qed.
 
@@ -1942,7 +1956,7 @@ Proof.
                client's own licences *)
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
                          Heq Htag Hkill Hgeni Hout Hin;
-                  iIntros "_ _"; iModIntro; iApply init_boot_of_sup;
+                  iIntros "_ _ _"; iModIntro; iApply init_boot_of_sup;
                   [ rewrite /out_licence Hout; iIntros "_"; iApply Hout_lic
                   | rewrite /in_licence Hin; iIntros "_"; iApply Hin_lic
                   | iApply app_sup_of_triv; rewrite Heq; intros r' av;
@@ -1954,13 +1968,13 @@ Proof.
                              ltac:(iIntros "_"; iMod HR0 as "HR"; by iModIntro))
             (fun γd γobs _ => obs_ledger_at_step XV6_DISK_BYTES R HRt Hpow γd γobs)
             _ (fun _ h => P h)
-            ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
+            ltac:(intros Hinv γgen γstart γreg γet γd γsw γobs γhist c T g' h;
                   iIntros "_ Hauth _ _ HPt";
                   iApply (obs_ledger_at_phi R HRt P HR γobs h with "Hauth HPt"))
             Hgen0 Hpow0 Himg).
   (* the permit at the ledger: the client's two wands *)
   intros HRg GEN HFi ri i γ
-         (Hi & Gg & Gs & Gr & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & _ & _).
+         (Hi & Gg & Gs & Gr & Get & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & _ & _).
   refine (uart_obs_permit_ledger i R Tg Ores γ HRt _ _ _ Ires _
             (Htx HRg GEN i γ) (Hrx HRg GEN i γ));
     rewrite Heq; reflexivity.
@@ -2210,10 +2224,10 @@ Qed.
 Corollary xv6_power_adequacy_xv6Σ (g : gstate)
     (phi : gstate -> Prop)
     (Hphi : forall (Hinv : invGS xv6Σ)
-                   (γgen γstart γreg γd γsw γobs γhist : gname) (c : unit)
+                   (γgen γstart γreg γet γd γsw γobs γhist : gname) (c : unit)
                    (T : list mobs) (g' : gstate),
        ⊢ @power_interp xv6Σ
-            (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
+            (boot_fixedGS Hinv γgen γstart γreg γet γd XV6_DISK_BYTES γsw
                (xv6_slot unit (fun _ _ _ => True%I) fsimg_cov
                   (FsImg.sb_logstart fsimg_sb) γd γsw γreg γstart c)
                γobs T (obs_pred_at γobs) γhist rx_tag_triv
@@ -2282,10 +2296,10 @@ Proof.
      this corollary used to pass, by conversion on the record literal. *)
   exact (xv6_power_adequacy_xv6Σ g
            (xv6_trace_pure fsimg_cov (FsImg.sb_logstart fsimg_sb))
-           (fun Hinv γgen γstart γreg γd γsw γobs γhist c T g' =>
+           (fun Hinv γgen γstart γreg γet γd γsw γobs γhist c T g' =>
               xv6_trace_hook xv6Σ fsimg_cov (FsImg.sb_logstart fsimg_sb)
                 unit unit (fun _ _ _ => True%I)
-                Hinv γgen γstart γreg γd γsw γobs γhist c T
+                Hinv γgen γstart γreg γet γd γsw γobs γhist c T
                 rx_tag_triv (@rx_tag_triv_persistent xv6Σ)
                 (@rx_tag_triv_timeless xv6Σ)
                 kill_cred_triv (@kill_cred_triv_persistent xv6Σ)
@@ -2440,7 +2454,7 @@ Proof.
                   iIntros "_"; iSplit; iIntros "!>" (?????) "_"; by iModIntro)
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
                          Heq Htag Hkill Hgeni Hout Hin;
-                  iIntros "_ _"; iModIntro; iApply init_boot_of_triv;
+                  iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
                   | exact Hkill | exact Hout | exact Hin ])
             (* THE ECHO'S JUSTIFICATION, at the TRIVIAL output claim: every
@@ -2452,11 +2466,11 @@ Proof.
             (obs_pred_at_alloc_cl (fun _ : unit => True%I))
             (fun γd γobs _ => obs_pred_at_step XV6_DISK_BYTES γd γobs)
             _ (fun g h => obs_wf h g)
-            ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
+            ltac:(intros Hinv γgen γstart γreg γet γd γsw γobs γhist c T g' h;
                   iIntros "_ _ %Hwf _ _"; iModIntro; iPureIntro; exact Hwf)
             Hgen0 Hpow0 _).
   { intros HR GEN HFi ri i γ
-           (Hi & Gg & Gs & Gr & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & _ & _).
+           (Hi & Gg & Gs & Gr & Get & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & _ & _).
     apply (uart_obs_permit_triv i γ); rewrite Heq; reflexivity. }
   rewrite Hdisk. exact fsimg_image_wf.
 Qed.

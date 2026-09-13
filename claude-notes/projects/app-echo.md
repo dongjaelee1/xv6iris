@@ -47,13 +47,13 @@ SH-OPEN, LAZY-FLAG, TEXT-LW, APP-IFACE, UNTAG, DISC-RATE, E4 SH-ECHO, E2
 INIT-BOOT (2026-09-13, `bde2b8659`), CLOSED-READ, DISC-SIMPLIFY (2026-09-13),
 CONS-ROWS (2026-09-13, `b3f64b406`).
 
-- [ ] **KILL-PAY** (kernel; `-sup`, `lane/kill-pay`; A, B1, B2, K4(b) LANDED;
-  K4(a) next, ruled -- the lease leaves the payload row, see "KILL-PAY
-  K4(b) LANDED"): a kill is paid with a persistent
-  credential that reaches every party the kill touches (design: "KILL-ARM"
-  below, plus the rulings: the 13/15 route is gated by the lazy bit; the -1
-  exit payload is a wand from the credential; the generic supply carries
-  it).  Trusted-statement diff for the owner at the end.
+- [x] ~~**KILL-PAY**~~ COMPLETE 2026-09-13 (A LAZY-ROW, B1, B2, K4(b), K4(a);
+  the LANDED notes below).  Open: SELF-KILL (owner).
+- [ ] **SH-STATE** (U-tier; `-tlw`, `lane/sh-state`): E4's leftover
+  `UInitSh.sh_pay_state Rsh 0` -- sh's static state and line buffer out of
+  the writable data below the frame -- discharged (or restated where the
+  `∀ W'` makes the size unprovable), plus `UConsLine`'s three unproved line
+  `Prop`s.
 - [ ] **OUT-FUPD** (kernel; main, next): the application-fixed output
   predicate in the console UART's invariant, the store's view shift, the
   writers' contracts, the retirement of the sublist receipts (design:

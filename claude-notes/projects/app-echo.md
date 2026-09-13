@@ -49,20 +49,25 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
 
 - [x] ~~**KILL-PAY**~~ COMPLETE 2026-09-13 (A LAZY-ROW, B1, B2, K4(b), K4(a);
   the LANDED notes below).  Open: SELF-KILL (owner).
-- [ ] **SH-STATE** (U-tier; `-tlw`, `lane/sh-state`): E4's leftover
-  `UInitSh.sh_pay_state Rsh 0` -- sh's static state and line buffer out of
-  the writable data below the frame -- discharged (or restated where the
-  `∀ W'` makes the size unprovable), plus `UConsLine`'s three unproved line
-  `Prop`s.
+- [x] ~~**SH-STATE**~~ LANDED 2026-09-13 (`65536f83f`; the note below):
+  `sh_pay_state` proved at a named constant `sh_Rsh`; `Hsh_owed` is
+  `sh_deps ∧ sh_pay_rest sh_Rsh`; `UConsLine`'s three Props are lemmas.
+- [ ] **SELF-KILL** (kernel; `-sup`, `lane/self-kill`; owner's rulings in
+  the KILL-PAY B2/K4 notes and the E5 note): the kill credential is a
+  linear parameter of the generation token chosen at fork, `killed()` is the
+  flag only, KILL-PAY B1's fixed-record credential is rolled back, and sh's
+  child may die at sbrk failure (the null store inside memset) paying Q(-1).
+- [ ] **CONS-IO** (kernel; `-tlw`, `lane/cons-io`; the E5 note): the input
+  resource, the shift as one fupd per accepted input, `read_link` at the
+  read receipt with `read_ok`, the licences.
 - [x] ~~**OUT-FUPD**~~ LANDED 2026-09-13 (`c6a5521ac`; the note below); the
   `AppEcho.echo_out` placeholder is ECHO-OUT's to replace.
 - [ ] **SH-LINE 2b R2/R3** (U-tier; R1'/(a)/(b) LANDED 2026-09-13; the rest
   after KILL-PAY B2 and the E5 design): the line-boundary invariant on
   `ush_pos`, the line fact through getcmd, `ush_rest` renamed, the composer
-  with E4's dispatch, `sh_rest_holds`; and E4's leftover `sh_pay_state`.
-- [ ] **E5** (design of record: "E5 -- THE OUTPUT CLAIM FOR ECHO" below;
-  lanes CONS-HALF -> ECHO-OUT -> WRITE-LEAF -> SH-LINE R2/R3 -> PHI, after
-  OUT-FUPD and K4 land).
+  with E4's dispatch, `sh_rest_holds` (`sh_pay_state` is SH-STATE's, landed).
+- [ ] **E5** (design of record: "E5 -- THE CONSOLE I/O CLAIM" below;
+  lanes CONS-IO -> ECHO-OUT -> IO-LEAF -> SH-LINE R2/R3 -> PHI).
 
 ## What is in `iris/AppEcho.v` today
 
@@ -2802,104 +2807,149 @@ CONSOLE ∧ slot = consoleread)` (from `ConsoleInv.devsw_read_val_other`/
 `UkSh.ush_read_ans`'s minus-one arm gains `□ riscv_kill_cred` and
 `UShLine.ush_read_recv_leaf_holds` relays it.
 
-E5 -- THE OUTPUT CLAIM FOR ECHO: DESIGN OF RECORD (coordinator, 2026-09-13;
-to be folded into app-echo.md at the next landing).  Builds on OUT-FUPD as
-landed on `lane/out-fupd`: the console UART's invariant carries the
-application's resource `riscv_out_res ho acc` at a movable witness history
-`ho` (`obs_hist_lb_o ho`), every store to the console pays `out_link`, a
-generic process pays from the LICENCE (`Happ_out_sup`), and the console echo
-pays from the boot-fixed builder `cons_echo_shift` (`Happ_echo`).
+SH-STATE LANDED (2026-09-13; `325f9cc7c`+`65536f83f` on `7b07a9cb5`; 6 files
++593/-44; builds shs18-shs21 in `-tlw`; audit the thirteen, lemma_diff
+CLEAN).  `UInitSh.sh_pay_state_holds` is proved and `Hsh_owed` is down to
+`sh_deps ∧ sh_pay_rest sh_Rsh` at a NAMED family (the Coq existential over
+`Rsh` is gone).  Two repairs made it provable.  (1) The wand was a `∀` over
+every key: it handed `usz γs (uvis_sz W')` while the loop carries sh's own
+break, and said nothing about the map holding sh's writable window; both
+enter as `UShKernel.sh_pay_key` (`uvis_sz W' = kexec_sz sh_elf`, and
+[0x2000,0x2098) of `elf_image` is in the map the payload gets), discharged
+by `sh_pay_key_of_kexec` from the `kexec_image_ok` + room bound
+`sh_slot_of_kexec` already has; the caller (`UInitSh.v:~761`) supplies it,
+so `UShKernel`'s payload premises stay identical.  (2) The conclusion is
+`|==>`: `ushl_dat` holds the lexer tables at DfracDiscarded and persisting is
+an update; `sh_uexec_slot` spends the wand with `iMod` inside a WP.  `Rsh` is
+CONSTANT (`usz γs (kexec_sz sh_elf)`), not the earlier existential: R3's
+three break bounds are closed at 0x5000.  `UConsLine.ush_disc_line`/`_seg`
+were FALSE as stated (q = 0, bs = echo_line ++ echo_line; machine-checked
+before the change) and gain the premise gets supplies ("no '\n' before the
+last byte"); all three are Lemmas now; `ush_line_full` unchanged.  Relocation
+asks flagged in the source (`UkShMain.v` §1 precedent): the `umap_window`
+family belongs beside `UserHeap.umap_split_at`; `concat_replicate_lookup`/
+`star_prefix_lookup`/`mod_sub_self` beside `EchoDisc.star_prefix_snoc`.
 
-THE TWO OBSTACLES the pure predicate could not clear and the resource must:
-(i) the IMPOSTOR: nothing but a resource says WHO may put the next
-transcript byte on the wire; (ii) STORED ≠ INPUT: the ring drops a byte when
-full and the transcript expects every input's echo, so the claim must know
-that the ring's committed sequence IS the input sequence -- which is true
-only under the rate discipline and is what sh's line proof needs too
-(SH-LINE's gap (2)).
+E5 -- THE CONSOLE I/O CLAIM: DESIGN OF RECORD (coordinator, 2026-09-13,
+REVISED after the owner's ruling "the ring doesn't matter, it's internal to
+the kernel; what matters at the syscall boundary is ownership of the UART
+input/output resources and fupd's to update them").  Supersedes the earlier
+ring-half version (CONS-HALF is DROPPED; nothing of the console ring --
+`cons_stored`, `cons_stored_lb`, the cursor, the window -- appears in the
+application's claim or in the boundary contract).
 
-THE SHAPE.  Echo's claim is a stage machine over the RING, not over the
-trace: `acc = D cs st ++ w`, where `st` is the console ring's committed
-sequence (the stored bytes), `D cs st` is the transcript DUE after the last
-stored byte's echo (`D cs [] = []`; `D cs (st ++ [c]) = D cs st ++ pending
-cs st ++ [echo_of c]`), and `pending cs st` is the process output owed at
-this stage (`u_prologue` at `st = []`; `line_alts !!! cs !!! (q-1)` when
-`length st = 17 q`; `[]` mid-line).  `w` is the prefix of `pending cs st`
-already written.  Facts: `sess_n cs (length st) = D cs st ++ pending cs st`
-at a line boundary and `= D cs st` mid-line, so `acc ⊑ sess_n cs (length
-st)`; and `length st <= length (ins (open_seg ho))` (every stored byte is an
-input) gives `acc ⊑ sess cs (ins (open_seg ho))` by `sess_n_mono` -- that is
-`good_out` at the drain, through `Htx`'s `⌜ho prefix_of h⌝` and
-`expected_rel_ins_prefix`/`expected_rel_out_mono` (the wire is a prefix of
-`acc` by `u_wire u = u_out u`).
+THE BOUNDARY.  The application OWNS two resources for the console UART, both
+kept in the UART's invariant `uart_inv Uart0` at a movable witness history
+`ho` (`obs_hist_lb_o`), both on the fixed record, timeless, founded at the
+transport (`app_xfer_boot_raw` as OUT-FUPD founded the output):
+  riscv_out_res ho acc     -- LANDED (OUT-FUPD): `acc` is every byte the
+                              kernel has stored to the console UART, in order;
+  riscv_in_res  ho pops dl -- NEW: `pops` is the log of inputs the kernel has
+                              ACCEPTED from the console UART, each as
+                              `(h, c, cs)` -- the history the byte was
+                              received at (`obs_ends_in Uart0 h c`, so the byte
+                              is input number `length (ins h)`), the byte, and
+                              the output the kernel put on the wire for it
+                              (`cons_echo c cs`: `[]`, `[echo_of c]`, or an
+                              erase's backspaces); `dl` is the list of inputs
+                              DELIVERED to processes by read, in delivery order,
+                              each `(h, c)` an entry of `pops`.
+The kernel updates them ONLY through fupds the application supplies, one per
+event at the boundary:
+  (W) a process WRITE: `out_link` per stored byte (LANDED; the write leaf
+      builds `cons_out_chain` from the program's own knowledge);
+  (E) an ACCEPTED INPUT: `cons_echo_shift`, restated as ONE fupd per accepted
+      byte fired from consoleintr with the invariant open: it appends
+      `(h, c, cs)` to `pops` -- the kernel proves `h` is strictly above every
+      history already in `pops` (so a byte is logged once and the log is in
+      arrival order) -- and then chains `out_link`s for `cs`.  The kernel keeps
+      the freedom to choose `cs` per arm (drop, store, erase); the log records
+      the choice, which is exactly what the read contract is stated over;
+  (R) a READ: row 5's console arm gains `read_link ws Φ`, fired by the
+      console read at its receipt, under cons.lock, with the invariant open:
+        read_link ws Φ := ∀ o pops dl, obs_hist_lb_o o -∗ in_res_at o pops dl -∗
+          ⌜read_ok pops dl ws⌝ ={⊤ ∖ ↑uartN Uart0}=∗
+          ∃ o', obs_hist_lb_o o' ∗ in_res_at o' pops (dl ++ ws) ∗ Φ
+      where `read_ok pops dl ws` is the kernel's PURE boundary fact: every
+      entry of `ws` is an entry of `pops` whose `cs = [echo_of c]`; the
+      histories of `dl ++ ws` strictly increase; and THE GAP CLAUSE: for
+      consecutive entries `(h1,_) (h2,_)` of `dl ++ ws` (and `h1 := []` before
+      the first), every log entry with `h1 < h < h2` has `cs = []`, or some
+      log entry in `(h1, h2]` is an erase character (`cons_erase c = true`).
+      That is the console's line discipline stated without the ring: a byte
+      the process does not get was dropped (no echo) or edited away.
+The LICENCE covers the generic process on all three: `out_licence` (landed),
+plus `in_licence := □ (∀ h pops dl e, riscv_in_res h pops dl ==∗
+riscv_in_res h (pops ++ [e]) dl)` and the read counterpart (append to `dl`);
+`xv6_ssupply := app_sup ∗ □ out_licence ∗ □ in_licence` (the kill conjunct is
+gone with KILL-PAY's fixed record, see SELF-KILL).  `Happ_echo` proves (E)
+from the application's claim; `Happ_in_sup`/`Happ_out_sup` prove the
+licences from `app_sup`.
 
-THE RESOURCE (per era, at echo's fixed part γ):
-  echo_out γ ho acc :=
-      echo_taint γ                                      (the licence's arm)
-    ∨ ∃ cn γo cs st w,
-        cons_stored_auth cn (1/2) st                    (HALF the ring's authority)
-      ∗ turn_auth γo (length w)                         (the writer's cursor)
-      ∗ ⌜acc = D cs st ++ w⌝ ∗ ⌜w prefix_of pending cs st⌝
-      ∗ ⌜Forall (fun c => c < length line_alts) cs⌝ ∗ ⌜length cs = length st `div` 17⌝
-      ∗ ⌜stored_are_inputs ho st⌝                       (the j-th stored byte's history has j+1 inputs, each disciplined -- or the taint above)
-  turn γo p := the exclusive fragment agreeing with `turn_auth γo p`.
-- THE ECHO (kernel, `cons_echo_shift`): consoleintr commits the byte to the
-  ring's GHOST at the echo point (before the physical store; it holds
-  cons.lock for the whole byte, so no reader sees the gap) and hands the
-  builder the kernel's half `cons_stored_auth cn (1/2) st` for the exchange:
-  the builder agrees `st`, learns from the tag `⌜disc hc⌝ ∨ taint` and
-  `stored_are_inputs` that `c` is input `length st + 1` (D2: the user typed
-  it after the echo of input `length st` was on the wire, and the wire is
-  below `acc`; D1 at a line boundary: `pending` is complete, so `w = pending`
-  and `acc = sess_n cs (length st)` exactly), appends `echo_of c`, commits
-  `st ++ [(hc, c)]` on both halves and resets `w := []`; the taint arm pays
-  through the licence.  `cons_echo`'s erase arms (^U/^H/DEL) are refuted by
-  the discipline (`disc_no_ctrl_d`'s siblings: 0x15/0x08/0x7f are not bytes
-  of `echo_line`), and the `cs = []` arm (a full ring) by
-  `stored_are_inputs` + the rate bound (at most one line outstanding).
-- A PROCESS WRITE (row 16, the U-tier write leaf): the program builds
-  `cons_out_chain M ua Q 0 n` from `turn γo p` and its knowledge that its
-  bytes are `pending cs st` at `p`; each link agrees `p`, appends, moves the
-  turn.  init (the banner, eighteen one-byte writes), sh ("$ ", "fork\n",
-  the child's "exec echo failed\n"), echo (four writes) each hold the turn
-  at their write sites; it travels in the WAIT-EXIT payloads (fork: parent
-  to child; exit/wait: child to parent) and is NOT lent during read (the
-  echo needs no turn).  At a block's start the first writer's byte pins
-  `cs !!! q` ('h'/'e'/'$'/'f' are pairwise distinct); the invariant's `cs`
-  is existential and agrees with `disc_seg'`'s by the wire's content.
-- THE FOUNDING: at the boot, not the transport -- the ring's half is a
-  kernel ghost of the era: `Hout_found : ∀ cn, cons_stored_auth cn (1/2) []
-  ==∗ app_out c [] [] ∗ app_obr c` where `app_obr c` (a new record field)
-  is init's `turn γo 0`, handed to `Hinit_boot` beside `app_boot`.  This
-  REPLACES OUT-FUPD's transport founding `O [] []` (and the `ghost_var` era
-  pair: agreement is by `cn`).  ConsoleInv holds the ring's authority at
-  HALF (`cons_res`), the other half minted for the application at the
-  console's boot mint.
-- SH'S LINE (SH-LINE's gaps (1) and (2)): the reader's window at cursor `n`
-  (`cons_window sl n 17 g hs`, the tags) plus `stored_are_inputs` read off
-  the invariant (sh's proof opens `uart_inv Uart0` at the receipt, a
-  fupd at ⊤) gives "stored byte `n + j` is input `n + j + 1`, disciplined",
-  hence `n = 17 q` and the window is `echo_line` -- the line-boundary
-  invariant on `ush_pos` is `∃ q, ⌜n = 17 q⌝` and nothing more; the bridge
-  is the invariant's pure conjunct, not a premise.
-- Hphi: the ledger `echo_R γ h` keeps the phase; at the end of the run the
-  crash slot gives `pristine ∨ taint` and the ledger's tx steps have
-  recorded, per cycle, `good_out` off `Htx`'s claim (`echo_R` gains the pure
-  conjunct `⌜Forall good_out (cycles_of h)⌝`-shaped: at a pop the claim at
-  `ho ⊑ h` lifts to the open segment; a push, an output on the other port
-  and a power event leave it).  `echo_phi h` follows with `echo_R_untainted`
-  where the disciplined branch is needed.
+ECHO'S CLAIM (application side, `EchoOut.v`), per era at the fixed part γ:
+`riscv_out_res ho acc ∗ riscv_in_res ho pops dl` are together
+  echo_taint γ  ∨  ∃ cs E w,  turn_auth γo (length w)
+      ∗ ⌜E = echoed pops⌝        (the entries with cs = [echo_of c], in order)
+      ∗ ⌜∀ j (h,c) ∈ E at j, length (ins h) = j + 1 ∧ disc h⌝
+                                 (E's j-th entry IS input j+1, disciplined)
+      ∗ ⌜acc = D cs E ++ w⌝ ∗ ⌜w prefix_of pending cs E⌝
+      ∗ ⌜Forall (< length line_alts) cs⌝ ∗ ⌜length cs = length E `div` 17⌝
+      ∗ ⌜dl prefix_of E⌝
+where `D cs E` is the transcript due after E's last echo (`D cs [] = []`;
+`D cs (E ++ [c]) = D cs E ++ pending cs E ++ [echo_of c]`), `pending cs E` the
+process output owed at this stage (`u_prologue` at `E = []`;
+`line_alts !!! cs !!! (q-1)` at `length E = 17 q`; `[]` mid-line), `w` the
+prefix of it already written, and `turn γo p` the writer's cursor (only the
+turn holder appends process output; mid-line `pending = []` forbids process
+bytes outright).  Consequences: `acc ⊑ sess_n cs (length E)`, hence
+`good_out` at the drain through `Htx`'s `⌜ho prefix_of h⌝`, `u_wire u =
+u_out u`, `expected_rel_ins_prefix`/`expected_rel_out_mono`.
+- (E) at the shift: the tag gives `disc h ∨ taint`; `disc h` with `wire(h)
+  ⊑ acc = D cs E ++ w` forces `length (ins h) = length E + 1` (D2: input m is
+  typed only after echo(m-1) is on the wire, and nothing but an echo can
+  extend `acc` past `D cs E ++ pending`; D1 at a line boundary: `pending` is
+  complete, so `w = pending`); a store arm appends `echo_of c` and resets
+  `w := []`; the erase arms are refuted (0x15/0x08/0x7f are not bytes of
+  `echo_line`); the drop arm (`cs = []`) is ACCEPTED and logged -- a drop
+  stalls the discipline (the user never sees echo(m), so never types m+1)
+  and the claim stays true; the taint arm pays through the licences.
+- (R) at the read: from `read_ok` and the discipline, every log entry
+  strictly between consecutive delivered inputs is refuted -- a `cs = []`
+  entry for input m contradicts `disc` of the later input m+1 (its echo is
+  on the wire, so `E` has it, so its `cs` was `[echo_of c]`), and an erase
+  character is not a line byte -- so `dl ++ ws` are CONSECUTIVE inputs
+  starting at input 1; with `dl prefix_of E` this is `ws = E` at
+  `[length dl, length dl + length ws)`, and a 17-byte window at a multiple
+  of 17 IS `echo_line`.  Sh's `read_link` puts that conclusion in Φ; the
+  line-boundary invariant on `ush_pos` is `∃ q, n = 17 q` and nothing more;
+  `cons_window`/`ucons_stored_lb`/the tags stay in the receipt but sh's
+  line proof no longer reads them.
+- (W): the program builds `cons_out_chain` from `turn γo p` and its knowledge
+  that its bytes are `pending cs E` at `p`; init (the banner), sh ("$ ",
+  "fork\n", the child's "exec echo failed\n"), echo (four writes) hold the
+  turn at their write sites; it travels in the WAIT-EXIT payloads (fork:
+  parent to child in `Rc`; exit/wait: child to parent through `exit_tok`/Q)
+  and is NOT lent during read.  SELF-KILL: the child dies holding the turn
+  and pays Q(-1) outright, returning it (alternative 2 of `line_alts`).
+- FOUNDING: the transport's, as OUT-FUPD landed (`O [] []` gains the input
+  resource at `[] []`); init's `turn γo 0` rides `app_boot`.
+- Hphi: the ledger `echo_R γ h` records `good_out` per cycle off `Htx`'s
+  claim at the pop; `echo_phi h` follows with `echo_R_untainted`.
 
-LANES, in order: OUT-FUPD lands; CONS-HALF (kernel: ConsoleInv at half
-authority + consoleintr's ghost commit at the echo; `cons_echo_shift` takes
-and returns the kernel's half; the boot founding `Hout_found`/`app_obr`;
-`Happ_boot` loses `O`); ECHO-OUT (application: `EchoOut.v` -- `D`,
-`pending`, `stored_are_inputs`, the resource, the echo builder, the licence
-arm, the founding); WRITE-LEAF (U-tier: the write leaf on the chain, the
-turn in the payloads, init's eighteen bytes, sh's prompt and diagnostics,
-echo's four writes; closes `sh_deps`' write(16)); SH-LINE R2/R3 (the line
-boundary off the invariant; the composer; `sh_rest_holds`); PHI (the ledger
-conjunct, `Hphi`, `echo_adequacy` closed).
+LANES, in order: CONS-IO (kernel: `riscv_in_res` on the fixed record and in
+`uart_inv`; the shift restated as (E) with the log-order proof; `read_link`
+at row 5's console arm fired at the receipt with `read_ok` proved from a
+per-entry kernel witness kept in `cons_res`; `in_licence`; `xv6_ssupply`;
+the transport founding; `Happ_in_sup`; the U tier's quiet read/write leaves
+pay from the licences unchanged) -> ECHO-OUT (application: `EchoOut.v`, the
+claim, `Happ_echo`, the licences from `app_sup`) -> IO-LEAF (U tier: the
+write leaf on `cons_out_chain`, the read leaf on `read_link`, the turn in the
+payloads, init's banner, sh's prompt and diagnostics, echo's four writes;
+closes `sh_deps`' write(16)) -> SH-LINE R2/R3 (the line boundary off Φ; the
+composer; `sh_rest_holds`) -> PHI (the ledger conjunct, `Hphi`,
+`echo_adequacy` closed).  CONS-IO and SELF-KILL touch different files (the
+read receipt vs the trap/exit path) and run in parallel.
+
 
 SH-LINE 2b R1'/(a)/(b) LANDED (2026-09-13; four commits on KILL-PAY B1; 9 files
 +1136/-662; builds shr33/shr34/shr42/shland1, audit = the thirteen, lemma_diff =

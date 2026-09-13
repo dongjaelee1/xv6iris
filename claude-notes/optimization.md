@@ -477,20 +477,28 @@ whose instance names every variable in scope, so there is nothing to keep. The
 an evar's instance, so COST is no longer a reason to hoist; re-elaboration
 against unresolved evars still is.
 
-**The predictor is HOW MANY closers one application splices, not whether it
-splices any.** One or two measure inside noise and are not worth hoisting; a
-leaf whose call sites spell out twenty of them costs seconds per site, because
-every pass the elaborator makes over the application re-runs all twenty. So read
-a long `ltac:` column as the bug, and hoisting one closer out of a short column
-as churn — measure before you touch a site with two.
+**Price the closer's OWN work, never the column's length.** The bill is what one
+closer costs times the passes the elaborator makes over the application, so:
 
-**A long column is a MISSING PREMISE, not a hoisting job.** When the closers are
-all decided by the same literals — a block's pcs, its immediates, its format's
-address and length — the fix is one `Definition … : Prop` bundling them and one
-`Ltac` that discharges it, so the lemma takes ONE premise and each site proves it
-in one `assert`. Twenty `assert`s per site is the same cost in a worse shape.
-Put the solver's `Ltac` outside the section, and give the arm that differs
-between sites its own `first […]` branch rather than forking the tactic.
+- Two closers that each `rewrite` over file-system-sized terms cost more than
+  twenty that each `vm_compute; discriminate` a register index. The worst site
+  measured in this tree spliced exactly two.
+- A closer that computes against a DUMPED image — a format's bytes out of the
+  read-only map, anything under `shd_lit`/`cat_lit` — is expensive per call, and
+  a column of those multiplies it.
+- Columns of trivial closers do not show up in the profile at all, and hoisting
+  one trivial closer (`lia` on `0 < 4`) measures inside noise. Do not sweep them.
+
+So a long `ltac:` column is a SMELL, not the finding; open the closers and ask
+what each one computes before touching the site.
+
+**When the column IS the bug, it is a missing premise, not a hoisting job.**
+Where the closers are all decided by the same literals — a block's pcs, its
+immediates, its format's address and length — give the lemma one
+`Definition … : Prop` bundling them and one `Ltac` that discharges it, so each
+site proves it in a single `assert`. Put the solver's `Ltac` outside the section,
+and give the arm that differs between sites its own `first […]` branch rather
+than forking the tactic.
 
 ## Conversion and `Qed`
 

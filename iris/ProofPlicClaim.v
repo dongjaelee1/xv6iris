@@ -381,11 +381,23 @@ Section ProofPlicClaim.
     change (<[Regidx csp_rs1 := regval_into_reg (add_vec (N7 !!! Regidx csp_rs1) (sign_extend' 64 (sign_extend' 12 imm_dealloc)))]> N7) with N8.
     (* ---- 0x1e: c.ret ---- *)
     assert (HN8ra : N8 !!! Regidx ra_idx = ra0).
-    { unfold N8, N7. repeat (rewrite upd_ne; [| vm_compute; discriminate]).
-      unfold N6. rewrite upd_eq. reflexivity. }
+    {
+      (* by [eq_trans], not [repeat rewrite]: [upd_ne]'s equation has [M !!! k]
+         on BOTH sides, so keyed matching delta-walks the whole register tower
+         at every attempt, and [repeat] pays one failing pass on top. *)
+      exact (eq_trans (upd_ne N7 (Regidx csp_rs1) (Regidx ra_idx) _
+                         ltac:(vm_compute; discriminate))
+            (eq_trans (upd_ne N6 (Regidx s0_idx) (Regidx ra_idx) _
+                         ltac:(vm_compute; discriminate))
+                      (upd_eq N5 (Regidx ra_idx) (regval_into_reg ra0)))). }
     assert (HN8a0 : N8 !!! Regidx a0_idx = cval).
-    { unfold N8, N7, N6. repeat (rewrite upd_ne; [| vm_compute; discriminate]).
-      unfold N5. rewrite upd_eq. reflexivity. }
+    { exact (eq_trans (upd_ne N7 (Regidx csp_rs1) (Regidx a0_idx) _
+                         ltac:(vm_compute; discriminate))
+            (eq_trans (upd_ne N6 (Regidx s0_idx) (Regidx a0_idx) _
+                         ltac:(vm_compute; discriminate))
+            (eq_trans (upd_ne N5 (Regidx ra_idx) (Regidx a0_idx) _
+                         ltac:(vm_compute; discriminate))
+                      (upd_eq N4 (Regidx a0_idx) (regval_into_reg cval))))). }
     iApply (wp_cret_s_sconf (mword_of_int (KernelSyms.plic_claim + 0x1e)) ra_idx N8 n false
               ltac:(vm_compute; discriminate)
               with "Hcg Hpc []").

@@ -480,8 +480,15 @@ Section ProofPlicinithart.
     change (<[Regidx csp_rs1 := regval_into_reg (add_vec (N10 !!! Regidx csp_rs1) (sign_extend' 64 (sign_extend' 12 imm_dealloc)))]> N10) with N11.
     (* ---- 0x34: c.ret ---- *)
     assert (HN11ra : N11 !!! Regidx ra_idx = ra0).
-    { unfold N11, N10. repeat (rewrite upd_ne; [| vm_compute; discriminate]).
-      unfold N9. rewrite upd_eq. reflexivity. }
+    {
+      (* by [eq_trans], not [repeat rewrite]: [upd_ne]'s equation has [M !!! k]
+         on BOTH sides, so keyed matching delta-walks the whole register tower
+         at every attempt, and [repeat] pays one failing pass on top. *)
+      exact (eq_trans (upd_ne N10 (Regidx csp_rs1) (Regidx ra_idx) _
+                         ltac:(vm_compute; discriminate))
+            (eq_trans (upd_ne N9 (Regidx s0_idx) (Regidx ra_idx) _
+                         ltac:(vm_compute; discriminate))
+                      (upd_eq N8 (Regidx ra_idx) (regval_into_reg ra0)))). }
     iApply (wp_cret_s_sconf (mword_of_int (KernelSyms.plicinithart + 0x34)) ra_idx N11 n false
               ltac:(vm_compute; discriminate)
               with "Hcg Hpc []").

@@ -410,18 +410,34 @@ Section UkCatMain.
                      ltac:(vm_compute; discriminate)).
       rewrite /m1. exact (upd_eq m (Regidx a2_idx) (regval_into_reg _)). }
     (* ---- fprintf(2, "cat: cannot open %s\n", argv[i]) ---- *)
+    (* the format's ten side conditions are PROVED HERE.  As [ltac:]s in the
+       argument list every pass the elaborator made over this application
+       re-ran all ten. *)
+    assert (Hcm0 : 0 <= cm_msg) by (unfold cm_msg; lia).
+    assert (Hcmhi : cm_msg + Z.of_nat cm_msg_len + 2 < 2 ^ 31)
+      by (unfold cm_msg, cm_msg_len; lia).
+    assert (Hcmq2 : (S (S cm_msg_q) < cm_msg_len)%nat)
+      by (unfold cm_msg_len, cm_msg_q; lia).
+    assert (Hcmpq : bv_unsigned (cm_lit cm_msg_q) = 37)
+      by (unfold cm_lit, cm_msg, cm_msg_q; vm_compute; reflexivity).
+    assert (Hcmps : bv_unsigned (cm_lit (S cm_msg_q)) = 115)
+      by (unfold cm_lit, cm_msg, cm_msg_q; vm_compute; reflexivity).
+    assert (Hcm1d : bv_unsigned (cm_lit (S (S cm_msg_q))) <> 100)
+      by (unfold cm_lit, cm_msg, cm_msg_q; vm_compute; discriminate).
+    assert (Hcm1u : bv_unsigned (cm_lit (S (S cm_msg_q))) <> 117)
+      by (unfold cm_lit, cm_msg, cm_msg_q; vm_compute; discriminate).
+    assert (Hcm1x : bv_unsigned (cm_lit (S (S cm_msg_q))) <> 120)
+      by (unfold cm_lit, cm_msg, cm_msg_q; vm_compute; discriminate).
+    assert (Hcm2set : (S (S (S cm_msg_q)) < cm_msg_len)%nat ->
+              bv_unsigned (cm_lit (S (S (S cm_msg_q)))) <> 100 /\
+              bv_unsigned (cm_lit (S (S (S cm_msg_q)))) <> 117 /\
+              bv_unsigned (cm_lit (S (S (S cm_msg_q)))) <> 120)
+      by (unfold cm_msg_len, cm_msg_q; intros HH; exfalso; lia).
     iApply (wp_kcat_fprintf_s N cm_msg cm_msg_len cm_msg_q cm_lit
               (ua_ptr g) (ua_len g) (ua_bytes g) h5 m5 n
-              ltac:(unfold cm_msg; lia)
-              ltac:(unfold cm_msg, cm_msg_len; lia)
-              ltac:(unfold cm_msg_len, cm_msg_q; lia)
-              ltac:(unfold cm_lit, cm_msg, cm_msg_q; vm_compute; reflexivity)
-              ltac:(unfold cm_lit, cm_msg, cm_msg_q; vm_compute; reflexivity)
+              Hcm0 Hcmhi Hcmq2 Hcmpq Hcmps
               (fun j Hj Hne => cm_nopct_ok j Hj Hne)
-              ltac:(unfold cm_lit, cm_msg, cm_msg_q; vm_compute; discriminate)
-              ltac:(unfold cm_lit, cm_msg, cm_msg_q; vm_compute; discriminate)
-              ltac:(unfold cm_lit, cm_msg, cm_msg_q; vm_compute; discriminate)
-              ltac:(unfold cm_msg_len, cm_msg_q; intros HH; exfalso; lia)
+              Hcm1d Hcm1u Hcm1x Hcm2set
               Hnz Ha1_5 Ha2_5
               with "Hdp Hcode Hstr Hsstr Hrun").
     iIntros (h6 m6) "_ Hrun".

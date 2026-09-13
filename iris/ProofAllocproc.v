@@ -829,8 +829,20 @@ Section ProofAllocprocPid.
     assert (HB6regs : ap_pid_regs m k B6).
     { split; [| split; [| split; [| split]]].
       - unfold B6, B5, B4, B3, B2, B1. peel_ne. exact Hacq_s1.
-      - unfold B6, B5, B4. peel_ne. rewrite upd_eq. reflexivity.
-      - unfold B6, B5, B4, B3. peel_ne. rewrite upd_eq. reflexivity.
+      - (* [eq_trans], not [peel_ne]: [upd_ne]'s equation has [M !!! k] on both
+           sides, so every keyed-match attempt delta-walks the register tower. *)
+        exact (eq_trans (upd_ne B5 (Regidx ap_a2) (Regidx ap_a0) _
+                           ltac:(vm_compute; discriminate))
+              (eq_trans (upd_ne B4 (Regidx ap_a2) (Regidx ap_a0) _
+                           ltac:(vm_compute; discriminate))
+                        (upd_eq B3 (Regidx ap_a0) (regval_into_reg ap_c1)))).
+      - exact (eq_trans (upd_ne B5 (Regidx ap_a2) (Regidx ap_a6) _
+                           ltac:(vm_compute; discriminate))
+              (eq_trans (upd_ne B4 (Regidx ap_a2) (Regidx ap_a6) _
+                           ltac:(vm_compute; discriminate))
+              (eq_trans (upd_ne B3 (Regidx ap_a0) (Regidx ap_a6) _
+                           ltac:(vm_compute; discriminate))
+                        (upd_eq B2 (Regidx ap_a6) (regval_into_reg ap_c1000))))).
       - rewrite /B6 upd_eq /B5 upd_eq. exact ap_procend_reloc.
       - unfold B6, B5, B4, B3, B2, B1. cs_ins. exact Hacq_cs. }
     (* +0x5a c.j +0x62 : into the loop *)
@@ -1332,7 +1344,16 @@ Section ProofAllocprocPid.
       assert (H31 : (2 ^ 31)%Z = 2147483648) by (vm_compute; reflexivity).
       rewrite H31. lia. }
     assert (HB6a3e : B6 !!! Regidx ap_a3 = sign_extend' 64 (nv0 : mword 32)).
-    { unfold B6, B5, B4, B3, B2. peel_ne. rewrite upd_eq. reflexivity. }
+    { exact (eq_trans (upd_ne B5 (Regidx ap_a2) (Regidx ap_a3) _
+                         ltac:(vm_compute; discriminate))
+            (eq_trans (upd_ne B4 (Regidx ap_a2) (Regidx ap_a3) _
+                         ltac:(vm_compute; discriminate))
+            (eq_trans (upd_ne B3 (Regidx ap_a0) (Regidx ap_a3) _
+                         ltac:(vm_compute; discriminate))
+            (eq_trans (upd_ne B2 (Regidx ap_a6) (Regidx ap_a3) _
+                         ltac:(vm_compute; discriminate))
+                      (upd_eq B1 (Regidx ap_a3)
+                         (regval_into_reg (sign_extend' 64 (nv0 : mword 32)))))))). }
     assert (HB6a3 : (1 <= bv_unsigned (B6 !!! Regidx ap_a3 : mword 64) <= PIDMAX)%Z).
     { rewrite HB6a3e (ap_sext_val nv0 Hnv31). exact Hnv0. }
     iApply ("Hloop" $! B6 nv0 with "[%] [%] Hcg Hpc Hnp Hshares Hauth Hsg Hlocked Hcpu Hpay Hpidi Hpidh Hcont").

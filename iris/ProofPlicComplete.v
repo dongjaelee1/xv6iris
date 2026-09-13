@@ -422,8 +422,17 @@ Section ProofPlicComplete.
     change (<[Regidx csp_rs1 := regval_into_reg (add_vec (N7 !!! Regidx csp_rs1) (sign_extend' 64 (caddi16sp_imm (mword_of_int 2 : mword 6))))]> N7) with N8.
     (* ---- 0x24: c.ret ---- *)
     assert (HN8ra : N8 !!! Regidx ra_idx = ra0).
-    { unfold N8, N7, N6. repeat (rewrite upd_ne; [| vm_compute; discriminate]).
-      unfold N5. rewrite upd_eq. reflexivity. }
+    {
+      (* by [eq_trans], not [repeat rewrite]: [upd_ne]'s equation has [M !!! k]
+         on BOTH sides, so keyed matching delta-walks the whole register tower
+         at every attempt, and [repeat] pays one failing pass on top. *)
+      exact (eq_trans (upd_ne N7 (Regidx csp_rs1) (Regidx ra_idx) _
+                         ltac:(vm_compute; discriminate))
+            (eq_trans (upd_ne N6 (Regidx s1_idx) (Regidx ra_idx) _
+                         ltac:(vm_compute; discriminate))
+            (eq_trans (upd_ne N5 (Regidx s0_idx) (Regidx ra_idx) _
+                         ltac:(vm_compute; discriminate))
+                      (upd_eq N4 (Regidx ra_idx) (regval_into_reg ra0))))). }
     iApply (wp_cret_s_sconf (mword_of_int (KernelSyms.plic_complete + 0x24)) ra_idx N8 n false
               ltac:(vm_compute; discriminate)
               with "Hcg Hpc []").

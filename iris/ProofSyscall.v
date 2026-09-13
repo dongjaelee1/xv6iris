@@ -3399,6 +3399,12 @@ Section SyscallArms.
        at the record this arm is holding.  A premise for [Hwf]'s reason. *)
     (pv_lazy (us_V U) = false ->
        lazy_free (ud_um (pv_upt (us_V U))) (uint (pv_sz (us_V U)))) ->
+    (* ...AND THE ANSWER IS IN RANGE (lane CONS-ROWS, B3).  Row 5 states
+       [SpecFileread.fileread_ret] at the key's own count, and the walk
+       has it off [SpecSysRead.sys_read_arms]' blanket: argfd's own -1
+       satisfies it ([SpecFileread.fileread_ret_m1]) and the descriptor
+       arm carries fileread's verbatim. *)
+    fileread_ret (sys_rw_count v2) r ->
     (* THE PAYLOAD IS ALREADY PEELED: what the process is handed back is
        the arm's payout alone, [SpecFileread.fileread_extra_core] -- the
        borrowed payload went back on the trap's own resume row
@@ -3411,12 +3417,17 @@ Section SyscallArms.
       (rf_ret f) r M' v1 -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
   Proof.
-    intros Hn Hv0 Hv1 Hv2 Hwf Hlzp. iIntros "H".
+    intros Hn Hv0 Hv1 Hv2 Hwf Hlzp Hret. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 5 Hn
               ltac:(vm_compute; discriminate)
               ltac:(vm_compute; discriminate)).
+    assert (Hretk : fileread_ret
+              (sys_rw_count (tf_w (uvis_tf (uvis_of U sts gn cs pid))
+                               (tf_arg_idx 2))) r).
+    { rewrite /uvis_of /tf_w. cbn [uvis_tf].
+      rewrite (list_lookup_total_correct _ _ _ Hv2). exact Hret. }
     iApply (spost_at_read_intro uslot f (uvis_of U sts gn cs pid)
-              (pv_upt (us_V U)) r M' sts' cw' cs'
+              (pv_upt (us_V U)) r M' sts' cw' cs' Hretk
               ltac:(rewrite /uvis_of; cbn [uvis_sz uvis_perm]; reflexivity)
               Hwf Hlzp).
     rewrite /uvis_of /tf_w. cbn [uvis_tf uvis_fd].
@@ -5740,6 +5751,14 @@ Section SyscallArms.
        stays behind -- it reads [pv_ofile V], a kernel array -- and nothing
        here needs it: the round carries [UsysMemOk.usys_mem_ok] and
        [usys_fd_ok] already. *)
+    (* THE ANSWER'S RANGE, off the contract's own blanket and BEFORE the
+       arms are spent: row 5 states it at the process's key (lane
+       CONS-ROWS, B3), and [SpecSysRead.sys_read_ret]'s two disjuncts are
+       argfd's -1 and fileread's verbatim clause. *)
+    iDestruct (sys_read_arms_ret with "Harms") as %Hsrret.
+    assert (Hfrret : fileread_ret (sys_rw_count v2) r).
+    { destruct Hsrret as [[Hm1 _] | (fdn & fvv & _ & Hfr)];
+        [ rewrite Hm1; apply fileread_ret_m1 | exact Hfr ]. }
     iDestruct (sys_read_arms_pay with "Harms") as "[Hpayv Hex]".
     iEval (rewrite Hfdk) in "Hex".
     (* [Hextz] is the SIZED extension the callee reports, and it is what
@@ -5820,7 +5839,7 @@ Section SyscallArms.
     iApply (sysc_exec_out_ne _ _ _ _ _ _ _ _ (sysc_num_ne7 _ _ Hnum eq_refl)).
     rewrite Hmfa0.
     iApply (sysc_out_read U sts gn cs pid fdep v0 v1 v2 r _ _ _ _
-              ltac:(rewrite Hnum; reflexivity) Hv0 Hv1 Hv2 Hptwf Hlzp
+              ltac:(rewrite Hnum; reflexivity) Hv0 Hv1 Hv2 Hptwf Hlzp Hfrret
               with "Hex").
   Qed.
 

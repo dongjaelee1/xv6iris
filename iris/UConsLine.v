@@ -80,6 +80,7 @@ Require Import UserCwd UserChildren.  (* [ucwd_any] / [uch_any] -- the two
 Require Import UexecSlot UexecRet.  (* [uvis] / [uslot] -- the taint's
                                generic slot, [UkRun.urun_gen]'s premise *)
 Require Import ConsoleInv.     (* [cons_window] / [cons_chain] / [CONSOLE] *)
+Require Import SpecFileread.   (* [fileread_ret]: the answer's range, B3 *)
 Require Import UserConsole.    (* [upos] / [ucons_stored_lb] / [ucons_pay] *)
 Require Import UCodeInit UkInit.  (* init's catalogs and its exec supply's shape *)
 Require Import UkSh.           (* [sh_buf] / [sh_nbuf] *)
@@ -342,17 +343,25 @@ Section UConsLine.
   (* =================================================================== *)
   (* WHAT THE COUNT IS, AND WHY IT IS NOT THE BUFFER'S LENGTH (lane
      SH-LINE 2b, phase 2).  The call asks for [cap] bytes and the caller
-     owns [k > cap] of them.  The strict inequality is LOAD-BEARING and is
-     not slack: [ConsoleInv.cons_swallow]'s copy-out reason is stated at
-     [dst + d], and a verified reader refutes it only where it OWNS the
-     byte ([UkRunSys.uk_read_nofault] off its own [ubytes]).  At [d = cap]
-     -- the call filled the whole request -- that address is one past the
-     request, so a caller whose buffer stops at the count cannot refute the
-     arm and the [False] instantiation below is unreachable.  The code has
-     no such exit (consoleread's copy loop breaks only with [n > 0], so
-     [d = cap -> dc = d]), but the landed contract does not say so, and the
-     honest price at this tier is one byte of slack in the caller's own
-     buffer. *)
+     owns [k > cap] of them.  The extra byte is what the copy-out reason
+     costs: [ConsoleInv.cons_swallow]'s fault arm is stated at [dst + d],
+     and a verified reader refutes it only where it OWNS the byte
+     ([UkRunSys.uk_read_nofault] off its own [ubytes]), so at [d = cap]
+     the address the arm names is one past the request and only a buffer
+     with a byte to spare refutes it.  The two CONTROL-FLOW ROWS below
+     (lane CONS-ROWS, B1/B4) are what makes that byte redundant -- at
+     [dd = cap] the cursor moved by exactly [dd], so the swallow is on its
+     left arm and there is nothing to refute -- and spending them, which
+     is what drops [cap < k] and the [dd <= cap] guard, is the consuming
+     U-tier lane's step, not this one's.
+     THE COUNT IS THE REQUEST, AND [Z.of_nat cap < 2 ^ 31] IS WHAT SAYS SO
+     (lane CONS-ROWS).  The kernel's rows are stated at the count the
+     trapframe's argument 2 reads as a 32-bit INT
+     ([SpecSysRead.sys_rw_count]), and [uint a2 = Z.of_nat cap] pins that
+     to [cap] only below the sign boundary -- above it the kernel reads a
+     different (possibly negative) request and the rows are about that one.
+     A caller asking for a whole 2 GB in one read() gets the weaker
+     contract; every reader in this tree asks for one byte. *)
   Definition ush_read_recv_leaf (N : uk_names Σ) (cn : cons_names)
       (γp : gname) (T : iProp Σ) (l : list fdstate) : iProp Σ :=
     (∀ (h : CpuId) (m : regfile) (pc : mword 64) (a : Z) (k cap n : nat)
@@ -363,6 +372,7 @@ Section UConsLine.
        ⌜uint (m !!! Regidx a1_idx) = a⌝ -∗
        ⌜uint (m !!! Regidx a2_idx) = Z.of_nat cap⌝ -∗
        ⌜(cap < k)%nat⌝ -∗
+       ⌜(Z.of_nat cap < 2 ^ 31)%Z⌝ -∗
        ⌜is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true⌝ -∗
        uinstr_is (ukn_t N) pc false (ECALL tt) -∗
        ubytes (ukn_d N) a k f -∗
@@ -399,7 +409,22 @@ Section UConsLine.
              and only an owned byte can refute it. *)
           ((∃ (dd dc : nat) (hs : list (list mobs))
               (sl : list (list mobs * bv 8)),
-              ⌜Z.of_nat dd = bv_unsigned r⌝ ∗ ⌜cons_chain sl⌝ ∗
+              ⌜Z.of_nat dd = bv_unsigned r⌝ ∗
+              (* THE CURSOR'S TWO CONTROL-FLOW ROWS AND THE ANSWER'S RANGE
+                 (lane CONS-ROWS, B1/B4/B3), relayed off
+                 [SpecFileread.console_receipt] and row 5 at this tier's
+                 own count.  A one-byte reader spends all three: [r = 1]
+                 gives [dd = 1 = cap], hence [dc = dd] -- the byte it was
+                 handed is the only one the call took; [r = 0] gives
+                 [dd = 0] against a positive request, hence [dc = dd + 1]
+                 -- the byte IS gone, and [ucons_swallow]'s left arm is
+                 refuted, so the reason on the right is readable; and
+                 [fileread_ret] is what turns the [blez] the caller ran
+                 into either of those two cases. *)
+              ⌜dd = cap -> dc = dd⌝ ∗
+              ⌜dd = 0%nat -> (0 < cap)%nat -> dc = (dd + 1)%nat⌝ ∗
+              ⌜fileread_ret (Z.of_nat cap) r⌝ ∗
+              ⌜cons_chain sl⌝ ∗
               ucons_stored_lb cn sl ∗
               ([∗ list] hh ∈ hs, riscv_rx_tag hh) ∗
               (⌜(dd <= cap)%nat⌝ -∗

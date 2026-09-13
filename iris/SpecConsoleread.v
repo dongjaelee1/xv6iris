@@ -217,6 +217,30 @@ Definition wp_consoleread_sconf_body
          mode.  The bound is kept because this contract is stated for the
          kernel caller, which does see the arm. *)
       ⌜(0 <= r)%Z -> r = Z.of_nat d⌝ -∗
+      (* ...AND WHERE THE REQUEST WAS FILLED, NOTHING EXTRA WAS POPPED
+         (app-echo.md, lane CONS-ROWS, B1).  The two exits that pop a byte
+         and do not deliver it both fire with the request still open: the
+         [C('D')] arm runs INSIDE the [n > 0] test, and the copy-out
+         failure breaks having delivered [target - n] with [n] still
+         positive.  So a call whose run is as long as its request -- and
+         that includes the empty request, whose loop never runs at all --
+         moved the cursor by exactly the run.  Without this row a one-byte
+         reader that got its byte still cannot rule out that the call ate
+         a second one, and the byte past the request is one it does not
+         own, so it cannot refute the swallow arm's copy-out reason
+         either. *)
+      ⌜Z.of_nat d = Z.max 0 n -> dc = d⌝ -∗
+      (* ...AND A NON-NEGATIVE RETURN THAT DELIVERED NOTHING AGAINST A
+         POSITIVE REQUEST DID POP ONE (B4).  The loop is entered ([n > 0]),
+         so it reached a byte; the exits that leave the run empty are the
+         [C('D')] arm with nothing delivered and the first byte's copy-out
+         failure, and both pop.  ([killed] also exits with an empty run,
+         which is why the guard [0 <= r] is here: that arm returns -1 and
+         pops nothing.)  A caller reading one byte at a time reads this
+         row as "r = 0 means the byte is gone", refutes
+         [ConsoleInv.cons_swallow]'s left arm with it, and takes the
+         reason off the right. *)
+      ⌜(0 <= r)%Z -> d = 0%nat -> (0 < n)%Z -> dc = (d + 1)%nat⌝ -∗
       ⌜mf !!! Regidx (mword_of_int 10 : mword 5) = (mword_of_int r : mword 64)⌝ -∗
       (* THE LEDGER: one tag per byte copied, in copy order, tied to the
          run's own source function.  Stated as a PURE clause beside a

@@ -330,9 +330,16 @@ Section CrBodies.
      tokenless reader popped in a gap one of this call's sleeps opened (the
      copy loop drops cons.lock at [cons.r == cons.w], and reading without
      the token is paid for with a PERSISTENT credential, so the kernel
-     cannot keep one out), and the run stops being consecutive.  The token
-     is put back at [n0] the moment that happens, which is why the caller's
-     [ConsoleInv.cons_out] is satisfiable on both.
+     cannot keep one out), and the run stops being consecutive.
+     THE CURSOR TRACKS THIS CALL'S POPS ON BOTH ARMS (lane CONS-ROWS): the
+     token comes back at [n0 + d] whether or not somebody read behind this
+     call's back, so what the caller is told the cursor did is always what
+     THIS call did.  What the marker takes away is the WINDOW -- the order
+     and the position of the bytes -- and that is what the right arm drops.
+     The alternative (rewinding the token to [n0] when the marker fires)
+     makes [SpecConsoleread]'s two control-flow rows unstatable, because
+     [ConsoleInv.cons_out] hands the token back at [cur + dc] and a caller
+     whose own cursor is below [d] could then only be answered at [dc = 0].
      AT [None] -- the tokenless caller itself -- there is nothing to earn:
      either it has not popped yet, or it has paid its credential into the
      escrow and the ring carries the marker. *)
@@ -347,37 +354,43 @@ Section CrBodies.
             cons_reader cn (n0 + d)%nat ∗ cons_stored_lb cn sl ∗
             ⌜cons_window sl n0 d bs hs⌝ ∗ ⌜cons_chain sl⌝)
          ∨ (∃ sl : list (list mobs * bv 8), cons_stored_lb cn sl) ∗
-           cons_reader cn n0 ∗ cons_dirty_lb cn)%I
+           cons_reader cn (n0 + d)%nat ∗ cons_dirty_lb cn)%I
     end.
 
   (* ...the same at an EXIT, where the two arms that pop a byte and do not
      deliver it have moved the cursor one past the run -- and which byte
      they swallowed is [ConsoleInv.cons_swallow]'s business.  [fault] is the
-     reason a copy-out can lose one, which this file only relays. *)
+     reason a copy-out can lose one, which this file only relays.
+     [dc] IS AN INDEX HERE, not an existential (lane CONS-ROWS): the two
+     control-flow rows of the contract's post relate it to [d] and to the
+     request, so the exit that fired has to be able to NAME it -- and each
+     exit does, at [d] or at [d + 1]. *)
   Definition cr_rout `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ)
-      (ord : option nat) (fault : nat -> Prop) (d : nat) (bs : nat -> bv 8)
+      (ord : option nat) (fault : nat -> Prop) (d dc : nat)
+      (bs : nat -> bv 8)
       (hs : list (list mobs)) : iProp Σ :=
     match ord with
     | None => ((∃ sl : list (list mobs * bv 8), cons_stored_lb cn sl) ∗
                (⌜d = 0%nat⌝ ∨ cons_dirty_lb cn))%I
     | Some n0 =>
-        ((∃ (dc : nat) (sl : list (list mobs * bv 8)),
+        ((∃ sl : list (list mobs * bv 8),
             cons_swallow cn (fault d) sl d dc ∗
             cons_reader cn (n0 + dc)%nat ∗ cons_stored_lb cn sl ∗
             ⌜cons_window sl n0 d bs hs⌝ ∗ ⌜cons_chain sl⌝)
          ∨ (∃ sl : list (list mobs * bv 8), cons_stored_lb cn sl) ∗
-           cons_reader cn n0 ∗ cons_dirty_lb cn)%I
+           cons_reader cn (n0 + dc)%nat ∗ cons_dirty_lb cn)%I
     end.
 
+  (* the four exits that pop nothing extra: the cursor is exactly the run *)
   Lemma cr_rout_of_racc `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ)
       (ord : option nat) (fault : nat -> Prop) (d : nat) (bs : nat -> bv 8)
       (hs : list (list mobs)) :
-    cr_racc cn Wd ord d bs hs -∗ cr_rout cn Wd ord fault d bs hs.
+    cr_racc cn Wd ord d bs hs -∗ cr_rout cn Wd ord fault d d bs hs.
   Proof.
     rewrite /cr_racc /cr_rout. destruct ord as [n0 |]; [| by iIntros "$"].
     iIntros "[Hcl | Hdt]"; [| iRight; iExact "Hdt"].
     iDestruct "Hcl" as (sl) "(Hrd & #Hsl & %Hwin & %Hch)".
-    iLeft. iExists d, sl. iFrame "Hrd Hsl".
+    iLeft. iExists sl. iFrame "Hrd Hsl".
     iSplitR; [iApply cons_swallow_eq |]. by iPureIntro.
   Qed.
 
@@ -388,9 +401,10 @@ Section CrBodies.
      around the [c.j] at +0x10c, which is the only reason this form and
      [cr_rout] are two definitions and not one. *)
   Definition cr_out `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ)
-      (ord : option nat) (fault : nat -> Prop) (d : nat) (bs : nat -> bv 8)
+      (ord : option nat) (fault : nat -> Prop) (d dc : nat)
+      (bs : nat -> bv 8)
       (hs : list (list mobs)) : iProp Σ :=
-    (∃ (dc cur : nat) (sl : list (list mobs * bv 8)),
+    (∃ (cur : nat) (sl : list (list mobs * bv 8)),
        cons_stored_lb cn sl ∗
        (⌜cons_window sl cur d bs hs⌝ ∗ ⌜cons_chain sl⌝
           ∗ cons_swallow cn (fault d) sl d dc
@@ -398,32 +412,38 @@ Section CrBodies.
        cons_out cn Wd ord cur dc)%I.
 
   Lemma cr_out_of_rout `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ)
-      (γc : gname) (ord : option nat) (fault : nat -> Prop) (d : nat)
+      (γc : gname) (ord : option nat) (fault : nat -> Prop) (d dc : nat)
       (bs : nat -> bv 8) (hs : list (list mobs)) :
     is_conslock cn Wd γc -∗ cr_price cn Wd ord -∗
-    cr_rout cn Wd ord fault d bs hs
-    ={⊤}=∗ ▷ cr_out cn Wd ord fault d bs hs.
+    cr_rout cn Wd ord fault d dc bs hs
+    ={⊤}=∗ ▷ cr_out cn Wd ord fault d dc bs hs.
   Proof.
     iIntros "#Hlk #Hpr H".
     iPoseProof (is_conslock_cred with "Hlk") as "#Hcinv".
     rewrite /cr_rout /cr_out.
     destruct ord as [n0 |].
     - iDestruct "H" as "[Hcl | (Hsl & Hrd & #Hdt)]".
-      + iDestruct "Hcl" as (dc sl) "(#Hsw & Hrd & #Hsl & %Hwin & %Hch)".
-        iModIntro. iNext. iExists dc, n0, sl. iFrame "Hsl".
+      + iDestruct "Hcl" as (sl) "(#Hsw & Hrd & #Hsl & %Hwin & %Hch)".
+        iModIntro. iNext. iExists n0, sl. iFrame "Hsl".
         iSplitR.
         { iLeft. iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iExact "Hsw". }
         rewrite /cons_out. iFrame "Hrd". iLeft. by iPureIntro.
-      + iMod (cons_cred_read cn Wd ⊤ ltac:(solve_ndisj) with "Hcinv Hdt")
+      + (* THE MARKED ARM ANSWERS AT THE CALL'S OWN ADVANCE (lane
+           CONS-ROWS).  The position is still the caller's own [n0] -- the
+           window is what the marker took, not the cursor -- and the
+           credential is what the caller is handed instead of the window,
+           which is the disjunct every reader of this arm goes generic on
+           ([UShLine.ush_rd_ret]'s right arm). *)
+        iMod (cons_cred_read cn Wd ⊤ ltac:(solve_ndisj) with "Hcinv Hdt")
           as "#Hc".
         iDestruct "Hsl" as (sl) "#Hsl".
-        iModIntro. iNext. iExists 0%nat, n0, sl. iFrame "Hsl".
+        iModIntro. iNext. iExists n0, sl. iFrame "Hsl".
         iSplitR; [iRight; iExact "Hc" |].
-        rewrite /cons_out Nat.add_0_r. iFrame "Hrd". iLeft. by iPureIntro.
+        rewrite /cons_out. iFrame "Hrd". iRight. iExact "Hc".
     - iDestruct "H" as "[Hsl _]". iDestruct "Hsl" as (sl) "#Hsl".
       iPoseProof (cr_price_none cn Wd with "Hpr") as "#Hc".
-      iModIntro. iNext. iExists 0%nat, 0%nat, sl. iFrame "Hsl".
+      iModIntro. iNext. iExists 0%nat, sl. iFrame "Hsl".
       iSplitR; [iRight; iExact "Hc" | by rewrite /cons_out].
   Qed.
 
@@ -496,19 +516,31 @@ Section CrBodies.
           { exact (cons_window_snoc sl n0 d src src' hs h b Hwin Hends Hlo Hhi). }
           { apply (cons_chain_prefix _ (st ++ pd)%list);
               [ exact (transitivity Hsnoc Hstpd) | exact Hch ]. }
-        * (* the ring went dirty while this call slept: put the token back
-             where the caller left it and stop promising order. *)
-          iMod (cons_cursor_update cn (n0 + d)%nat n0 with "Hcu Hrd")
-            as "[Hcu Hrd]".
+        * (* THE RING WENT DIRTY WHILE THIS CALL SLEPT: stop promising the
+             order, and MOVE THE CURSOR ON ANYWAY (lane CONS-ROWS).  The
+             ring's own marker is already on [cons_dirty_lb] here, so
+             [cons_res]'s row does not ask for [cur = nrd] and the cursor
+             is free of the committed count -- which lets it keep counting
+             THIS call's pops, so what the caller is told the cursor did is
+             still what this call did.  Rewinding it to [n0] instead is
+             what would make [SpecConsoleread]'s two control-flow rows
+             unstatable ([cr_racc]'s note). *)
+          iMod (cons_cursor_update cn (n0 + d)%nat (n0 + S d)%nat
+                  with "Hcu Hrd") as "[Hcu Hrd]".
           iModIntro. iSplitL "Ha Hcu Hhi".
-          { iExists (S cur), n0, st, pd, hh. iFrame "Ha Hcu Hhi".
+          { iExists (S cur), (n0 + S d)%nat, st, pd, hh. iFrame "Ha Hcu Hhi".
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iRight. iExact "Hdt". }
           iRight. iFrame "Hrd". iSplitR; [iExists st; iExact "Hstlb" |].
           iExact "Hdt".
-      + iModIntro. iSplitL "Ha Hcu Hhi".
-        { iExists (S cur), nrd, st, pd, hh. iFrame "Ha Hcu Hhi".
+      + (* ...and the same on a run that was already marked: the token is
+           at [n0 + d] and the pop carries it to [n0 + S d]. *)
+        iDestruct (cons_cursor_agree with "Hcu Hrd") as %Hnrd. subst nrd.
+        iMod (cons_cursor_update cn (n0 + d)%nat (n0 + S d)%nat
+                with "Hcu Hrd") as "[Hcu Hrd]".
+        iModIntro. iSplitL "Ha Hcu Hhi".
+        { iExists (S cur), (n0 + S d)%nat, st, pd, hh. iFrame "Ha Hcu Hhi".
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iRight. iExact "Hdt". }
@@ -564,7 +596,8 @@ Section CrBodies.
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iRight. iExact "Hdt". }
-        iRight. iFrame "Hpay". iSplitR; [iExists st; iExact "Hstlb" |].
+        iRight. rewrite Nat.add_0_r. iFrame "Hpay".
+        iSplitR; [iExists st; iExact "Hstlb" |].
         iExact "Hdt".
     - rewrite /cr_racc.
       iSplitL "Ha Hcu Hhi Hmk".
@@ -595,7 +628,7 @@ Section CrBodies.
     cr_ghost cn rr ww ee bs ts -∗ cr_racc cn Wd ord d src hs
     ={⊤}=∗
       cr_ghost cn (add_vec rr (mword_of_int 1 : mword 32)) ww ee bs ts ∗
-      cr_rout cn Wd ord fault d src hs.
+      cr_rout cn Wd ord fault d (S d) src hs.
   Proof.
     intros Hge Hts Hends Hwhy.
     iIntros "#Hlk #Hpr #Htag Hgh Hacc".
@@ -638,7 +671,7 @@ Section CrBodies.
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iLeft. by iPureIntro. }
-          iLeft. iExists (S d), sl.
+          iLeft. iExists sl.
           replace (n0 + S d)%nat with (S cur) by lia.
           iFrame "Hrd Hsl".
           iSplitR; [| by iPureIntro].
@@ -650,17 +683,22 @@ Section CrBodies.
           iSplitR; [by iPureIntro |].
           iSplitR; [iExact "Htag" |].
           iPureIntro. exact Hwhy.
-        * iMod (cons_cursor_update cn (n0 + d)%nat n0 with "Hcu Hrd")
-            as "[Hcu Hrd]".
+        * (* the marked ring, at a swallowing exit: the cursor still counts
+             this call's pops ([cr_pop]'s note at the same transition) *)
+          iMod (cons_cursor_update cn (n0 + d)%nat (n0 + S d)%nat
+                  with "Hcu Hrd") as "[Hcu Hrd]".
           iModIntro. iSplitL "Ha Hcu Hhi".
-          { iExists (S cur), n0, st, pd, hh. iFrame "Ha Hcu Hhi".
+          { iExists (S cur), (n0 + S d)%nat, st, pd, hh. iFrame "Ha Hcu Hhi".
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iRight. iExact "Hdt". }
           iRight. iFrame "Hrd". iSplitR; [iExists st; iExact "Hstlb" |].
           iExact "Hdt".
-      + iModIntro. iSplitL "Ha Hcu Hhi".
-        { iExists (S cur), nrd, st, pd, hh. iFrame "Ha Hcu Hhi".
+      + iDestruct (cons_cursor_agree with "Hcu Hrd") as %Hnrd. subst nrd.
+        iMod (cons_cursor_update cn (n0 + d)%nat (n0 + S d)%nat
+                with "Hcu Hrd") as "[Hcu Hrd]".
+        iModIntro. iSplitL "Ha Hcu Hhi".
+        { iExists (S cur), (n0 + S d)%nat, st, pd, hh. iFrame "Ha Hcu Hhi".
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iRight. iExact "Hdt". }
@@ -736,23 +774,37 @@ Section CrBodies.
        ⌜cons_tagged bs hs (Z.to_nat (n - nc))⌝ ∗
        cr_racc cn Wd ord (Z.to_nat (n - nc)) bs hs)%I.
 
+  (* THE CURSOR'S TWO CONTROL-FLOW ROWS RIDE HERE (lane CONS-ROWS, B1/B4),
+     beside the run's length and the return value, because that is where
+     [SpecConsoleread]'s post carries them and because every exit knows
+     both numbers.  They are what a reader that filled its request, or got
+     nothing back, needs in order to know whether the call ate a byte it
+     was not handed: the loop's [n > 0] test is what makes the first true
+     (both swallowing exits fire with the request still open) and what
+     makes the second true (an empty run against a positive request means
+     the loop reached a byte and one of the two swallowing exits fired).
+     The [killed] exit is the reason the second is guarded by [0 <= r]. *)
   Definition cr_winR `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ)
       (ord : option nat) (fault : nat -> Prop)
       (Ment Mo : gmap Z (bv 8)) (dst : mword 64)
       (n r : Z) (hs : list (list mobs)) : iProp Σ :=
-    (∃ (d : nat) (bs : nat -> bv 8),
+    (∃ (d dc : nat) (bs : nat -> bv 8),
        ⌜(Z.of_nat d <= Z.max 0 n)%Z⌝ ∗ ⌜(0 <= r)%Z -> r = Z.of_nat d⌝ ∗
+       ⌜Z.of_nat d = Z.max 0 n -> dc = d⌝ ∗
+       ⌜(0 <= r)%Z -> d = 0%nat -> (0 < n)%Z -> dc = (d + 1)%nat⌝ ∗
        ⌜Mo = umem_wr Ment dst d bs⌝ ∗ ⌜cons_tagged bs hs d⌝ ∗
-       cr_rout cn Wd ord fault d bs hs)%I.
+       cr_rout cn Wd ord fault d dc bs hs)%I.
 
   Definition cr_winO `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ)
       (ord : option nat) (fault : nat -> Prop)
       (Ment Mo : gmap Z (bv 8)) (dst : mword 64)
       (n r : Z) (hs : list (list mobs)) : iProp Σ :=
-    (∃ (d : nat) (bs : nat -> bv 8),
+    (∃ (d dc : nat) (bs : nat -> bv 8),
        ⌜(Z.of_nat d <= Z.max 0 n)%Z⌝ ∗ ⌜(0 <= r)%Z -> r = Z.of_nat d⌝ ∗
+       ⌜Z.of_nat d = Z.max 0 n -> dc = d⌝ ∗
+       ⌜(0 <= r)%Z -> d = 0%nat -> (0 < n)%Z -> dc = (d + 1)%nat⌝ ∗
        ⌜Mo = umem_wr Ment dst d bs⌝ ∗ ⌜cons_tagged bs hs d⌝ ∗
-       cr_out cn Wd ord fault d bs hs)%I.
+       cr_out cn Wd ord fault d dc bs hs)%I.
 
   Lemma cr_winO_of_winR `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ)
       (γc : gname) (ord : option nat) (fault : nat -> Prop)
@@ -763,10 +815,12 @@ Section CrBodies.
     ={⊤}=∗ ▷ cr_winO cn Wd ord fault Ment Mo dst n r hs.
   Proof.
     iIntros "#Hlk #Hpr H". rewrite /cr_winR /cr_winO.
-    iDestruct "H" as (d bs) "(%H1 & %H2 & %H3 & %H4 & Hr)".
-    iMod (cr_out_of_rout cn Wd γc ord fault d bs hs with "Hlk Hpr Hr") as "Hr".
-    iModIntro. iNext. iExists d, bs. iFrame "Hr". iPureIntro.
-    split_and!; [exact H1 | exact H2 | exact H3 | exact H4].
+    iDestruct "H" as (d dc bs) "(%H1 & %H2 & %Hb1 & %Hb4 & %H3 & %H4 & Hr)".
+    iMod (cr_out_of_rout cn Wd γc ord fault d dc bs hs with "Hlk Hpr Hr")
+      as "Hr".
+    iModIntro. iNext. iExists d, dc, bs. iFrame "Hr". iPureIntro.
+    split_and!;
+      [exact H1 | exact H2 | exact Hb1 | exact Hb4 | exact H3 | exact H4].
   Qed.
 
   Lemma cr_runR_intro `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ)
@@ -785,16 +839,21 @@ Section CrBodies.
   Lemma cr_winR_intro `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ)
       (ord : option nat) (fault : nat -> Prop)
       (Ment Mo : gmap Z (bv 8)) (dst : mword 64)
-      (n r : Z) (d : nat) (bs : nat -> bv 8) (hs : list (list mobs)) :
+      (n r : Z) (d dc : nat) (bs : nat -> bv 8) (hs : list (list mobs)) :
     (Z.of_nat d <= Z.max 0 n)%Z ->
     ((0 <= r)%Z -> r = Z.of_nat d) ->
+    (Z.of_nat d = Z.max 0 n -> dc = d) ->
+    ((0 <= r)%Z -> d = 0%nat -> (0 < n)%Z -> dc = (d + 1)%nat) ->
     Mo = umem_wr Ment dst d bs ->
     cons_tagged bs hs d ->
-    cr_rout cn Wd ord fault d bs hs -∗
+    cr_rout cn Wd ord fault d dc bs hs -∗
     cr_winR cn Wd ord fault Ment Mo dst n r hs.
   Proof.
-    intros H1 H2 H3 H4. rewrite /cr_winR. iIntros "H". iExists d, bs.
-    iFrame "H". iPureIntro. split_and!; [exact H1 | exact H2 | exact H3 | exact H4].
+    intros H1 H2 Hb1 Hb4 H3 H4. rewrite /cr_winR. iIntros "H".
+    iExists d, dc, bs.
+    iFrame "H". iPureIntro.
+    split_and!;
+      [exact H1 | exact H2 | exact Hb1 | exact Hb4 | exact H3 | exact H4].
   Qed.
 
   (* ---- THE ROUND, COMPOSED ONTO THE RUN -------------------------------
@@ -1950,11 +2009,20 @@ Section ProofConsoleread.
                       | rewrite -Hdb; exact (proj1 (Z.eqb_eq cbv 4) HD) ])
                 with "Hlk Hpr Htg Hgh Hacc") as "[Hgh Hrt]".
         iModIntro.
+        (* B1 IS VACUOUS HERE: this arm fired with [n > 0] and nothing
+           delivered, so the run is empty and the request is not
+           ([Hncpos], [HG]).  B4 is what this exit PAYS: the byte was
+           [C('D')] and the cursor is one past the run. *)
         iPoseProof (cr_winR_intro cn Wd ord (cr_fault U (m0 !!! Regidx Ra1))
                     (us_M U) Mo (m0 !!! Regidx Ra1) n
-                      (n - nc) (Z.to_nat (n - nc)) bsacc hs
+                      (n - nc) (Z.to_nat (n - nc)) (S (Z.to_nat (n - nc)))
+                      bsacc hs
                       ltac:(rewrite Z2Nat.id; lia)
                       ltac:(intros _; rewrite Z2Nat.id; lia)
+                      ltac:(intros Hcz; exfalso;
+                            pose proof (proj1 (Z.geb_le nc n) HG);
+                            rewrite Z2Nat.id in Hcz; lia)
+                      ltac:(intros _ _ _; lia)
                       Hmoeq Htagacc with "Hrt") as "Hwin".
         iApply ("HRETX" $! H9 P' Mo nc hs with "Hwin [%] [%] [%] [%] [%] [%] Htags
                   Hcg Hpc Hcnt Hpay Hlocked [Hrc Hwc Hec Hdat Hts Hgh] Hpriv [Hsl7 Hq10 Hq11 Hq12]").
@@ -2050,11 +2118,17 @@ Section ProofConsoleread.
       iSpecialize ("HRETX" $! CIDv with "[%]"); [wp_next_chain|].
       (* the push-back UNDID the pop, so the ghost never moved either *)
       iPoseProof (cr_rout_of_racc with "Hacc") as "Hrt".
+      (* the push-back UNDID the pop, so B1 is the identity; B4 is vacuous
+         because this arm needs [n < target] ([HG]) and so a non-empty
+         run. *)
       iPoseProof (cr_winR_intro cn Wd ord (cr_fault U (m0 !!! Regidx Ra1))
                     (us_M U) Mo (m0 !!! Regidx Ra1) n
-                    (n - nc) (Z.to_nat (n - nc)) bsacc hs
+                    (n - nc) (Z.to_nat (n - nc)) (Z.to_nat (n - nc)) bsacc hs
                     ltac:(rewrite Z2Nat.id; lia)
                     ltac:(intros _; rewrite Z2Nat.id; lia)
+                    ltac:(intros _; reflexivity)
+                    ltac:(intros _ Hdz _; exfalso;
+                          rewrite Z.geb_leb in HG; apply Z.leb_gt in HG; lia)
                     Hmoeq Htagacc with "Hrt") as "Hwin".
       iApply ("HRETX" $! E2 P' Mo nc hs with "Hwin [%] [%] [%] [%] [%] [%] Htags
                 Hcg Hpc Hcnt Hpay Hlocked [Hrc Hwc Hec Hdat Hts Hgh] Hpriv [Hsl7 Hq10 Hq11 Hq12]").
@@ -2458,11 +2532,16 @@ Section ProofConsoleread.
         iSpecialize ("HRETX" $! CIDv with "[%]"); [wp_next_chain|].
         iPoseProof (cr_rout_of_racc with "Hacc") as "Hrt".
         iEval (rewrite -Hstep2 -Hhs2) in "Hrt".
+        (* the round DELIVERED its byte before the break, so B1 is the
+           identity and B4 is vacuous: the run is at least one long. *)
         iPoseProof (cr_winR_intro cn Wd ord (cr_fault U (m0 !!! Regidx Ra1))
                     (us_M U) M'' (m0 !!! Regidx Ra1) n
-                      (n - (nc - 1)) (Z.to_nat (n - (nc - 1))) bs'' hs''
+                      (n - (nc - 1)) (Z.to_nat (n - (nc - 1)))
+                      (Z.to_nat (n - (nc - 1))) bs'' hs''
                       ltac:(rewrite Z2Nat.id; lia)
                       ltac:(intros _; rewrite Z2Nat.id; lia)
+                      ltac:(intros _; reflexivity)
+                      ltac:(intros _ Hdz _; exfalso; lia)
                       Hwr3 Htag3
                       with "Hrt") as "Hwin".
         iApply ("HRETX" $! G10 P'' M'' (nc - 1) hs''
@@ -2624,11 +2703,17 @@ Section ProofConsoleread.
             with "Hlk Hpr Htg Hgh Hacc") as "[Hgh Hrt]".
     iModIntro.
     iEval (rewrite -Hhs0) in "Hrt".
+    (* B1 IS VACUOUS: the failing copy-out is inside the [n > 0] test
+       ([Hncpos]), so the run stopped short of the request.  B4 is what
+       this exit pays -- the byte was popped and never delivered. *)
     iPoseProof (cr_winR_intro cn Wd ord (cr_fault U (m0 !!! Regidx Ra1))
                     (us_M U) M'' (m0 !!! Regidx Ra1) n
-                  (n - nc) (Z.to_nat (n - nc)) bsacc hs''
+                  (n - nc) (Z.to_nat (n - nc)) (S (Z.to_nat (n - nc)))
+                  bsacc hs''
                   ltac:(rewrite Z2Nat.id; lia)
                   ltac:(intros _; rewrite Z2Nat.id; lia)
+                  ltac:(intros Hcz; exfalso; rewrite Z2Nat.id in Hcz; lia)
+                  ltac:(intros _ _ _; lia)
                   Hwr0 Htag0
                   with "Hrt") as "Hwin".
     iApply ("HRETX" $! G7 P'' M'' nc hs''
@@ -2798,10 +2883,15 @@ Section ProofConsoleread.
          [cr_mk_retx], so the [▷] the escrow's read costs is taken around
          THIS branch's own step. *)
       iPoseProof (cr_rout_of_racc with "Hacc") as "Hrt".
+      (* nothing was popped in the round that found the process killed, so
+         B1 is the identity; B4 is guarded by [0 <= r] and this arm
+         answers -1, which is exactly why the guard is there. *)
       iPoseProof (cr_winR_intro cn Wd ord (cr_fault U (m0 !!! Regidx Ra1))
                     (us_M U) Mo (m0 !!! Regidx Ra1) n
-                    (-1)%Z (Z.to_nat (n - nc)) bsacc hs
+                    (-1)%Z (Z.to_nat (n - nc)) (Z.to_nat (n - nc)) bsacc hs
                     ltac:(rewrite Z2Nat.id; lia)
+                    ltac:(intros Hc; exfalso; lia)
+                    ltac:(intros _; reflexivity)
                     ltac:(intros Hc; exfalso; lia)
                     Hmoeq Htagacc with "Hrt") as "Hwin".
       iApply fupd_wp.
@@ -3294,11 +3384,18 @@ Section ProofConsoleread.
       iDestruct "EX" as "[HRETX _]".
       iSpecialize ("HRETX" $! CIDh with "[%]"); [wp_next_chain|].
       iPoseProof (cr_rout_of_racc with "Hacc") as "Hrt".
+      (* THE LOOP'S OWN EXIT POPS NOTHING EXTRA, which is B1's whole
+         content; B4 is vacuous, because reaching this test with [n > 0]
+         means the loop ran the request out ([HZ]) and the run is the
+         request. *)
       iPoseProof (cr_winR_intro cn Wd ord (cr_fault U (m0 !!! Regidx Ra1))
                     (us_M U) Mo (m0 !!! Regidx Ra1) n
-                    (n - nc) (Z.to_nat (n - nc)) bsacc hs
+                    (n - nc) (Z.to_nat (n - nc)) (Z.to_nat (n - nc)) bsacc hs
                     ltac:(rewrite Z2Nat.id; lia)
                     ltac:(intros _; rewrite Z2Nat.id; lia)
+                    ltac:(intros _; reflexivity)
+                    ltac:(intros _ Hdz Hnz; exfalso;
+                          pose proof (proj1 (Z.geb_le 0 nc) HZ); lia)
                     Hmoeq Htagacc with "Hrt") as "Hwin".
       iApply ("HRETX" $! M P' Mo nc hs with "Hwin [%] [%] [%] [%] [%] [%] Htags
                 Hcg Hpc Hcnt Hpay Hlocked Hres Hpriv Hrest").
@@ -3635,17 +3732,20 @@ Section ProofConsoleread.
       iSpecialize ("Hcont" $! CIDr with "[%]"); [exact Hsr|].
       iIntros (mf r P' Mo hs) "%Hcs %Hext %Hr Hwin %Ha0 #Htags Hcg Hcnt Hpc Hpriv".
       rewrite /cr_winO.
-      iDestruct "Hwin" as (dw bsw) "(%Hdwle & %Htie & %Hmoeq & %Htag & Hout)".
+      iDestruct "Hwin" as (dw dcw bsw)
+        "(%Hdwle & %Htie & %Hcb1 & %Hcb4 & %Hmoeq & %Htag & Hout)".
       subst Mo. rewrite /cr_out.
-      iDestruct "Hout" as (dc cur sl) "(#Hsl & Hwd & Hco)".
-      iApply ("Hcont" $! mf r P' dw dc cur bsw hs sl
-                with "[%] [%] [%] [%] [%] [%] [%] Htags Hsl Hwd Hco
+      iDestruct "Hout" as (cur sl) "(#Hsl & Hwd & Hco)".
+      iApply ("Hcont" $! mf r P' dw dcw cur bsw hs sl
+                with "[%] [%] [%] [%] [%] [%] [%] [%] [%] Htags Hsl Hwd Hco
                      Hcg Hcnt Hpc Hpriv").
       - exact Hcs.
       - exact Hext.
       - exact Hr.
       - exact Hdwle.
       - exact Htie.
+      - exact Hcb1.
+      - exact Hcb4.
       - exact Ha0.
       - exact Htag. }
     iAssert (cr_saved sp0 m) with "[Hf1 Hf2 Hf3 Hf4 Hf5 Hf6 Hf8 Hf9]" as "Hsaved".

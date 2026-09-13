@@ -235,6 +235,11 @@ Section UShLine.
     tf_w (uvis_tf W) (tf_arg_idx 2) = v2 ->
     uvis_fd W = sts ->
     spost_at X USYS_read f W r M' fdv' cw' cs' -∗
+    (* THE ANSWER'S RANGE COMES OUT WITH THE RECEIPT (lane CONS-ROWS, B3):
+       row 5 carries [SpecFileread.fileread_ret] at the key's own count, and
+       a process that has not tied [r] to its request can spend neither of
+       the receipt's control-flow rows. *)
+    ⌜fileread_ret (sys_rw_count v2) r⌝ ∗
     ∃ P : uptd,
       ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
       ⌜proc_pt_wf P⌝ ∗
@@ -336,6 +341,26 @@ Section UShLine.
   (* =================================================================== *)
   (*  S3  THE DISCHARGE (header)                                          *)
   (* =================================================================== *)
+  (* THE KERNEL'S COUNT IS THE CALLER'S REQUEST (lane CONS-ROWS).  The
+     trapframe's argument 2 reaches file.c as a 32-bit INT
+     ([SpecSysRead.sys_rw_count]) while the leaf names the request as a
+     [nat] read off the same word unsigned; the two agree exactly below the
+     sign boundary, which is [UConsLine.ush_read_recv_leaf]'s
+     [Z.of_nat cap < 2 ^ 31] premise.  Above it the kernel really is
+     answering a different request, so this is a bridge and not a
+     formality. *)
+  Lemma ush_count_is_cap (w : mword 64) (cap : nat) :
+    uint w = Z.of_nat cap -> (Z.of_nat cap < 2 ^ 31)%Z ->
+    sys_rw_count w = Z.of_nat cap.
+  Proof.
+    intros Hu Hlt. rewrite uint_unsigned in Hu.
+    change (2 ^ 31)%Z with 2147483648%Z in Hlt.
+    rewrite /sys_rw_count. unfold bv_signed.
+    rewrite trunc32_subrange subrange_31_0_unsigned Hu.
+    rewrite (Z.mod_small (Z.of_nat cap) 4294967296); [| lia].
+    assert (Hhm : bv_half_modulus 32 = 2147483648) by (vm_compute; reflexivity).
+    rewrite bv_swrap_small; [ reflexivity | rewrite Hhm; lia ].
+  Qed.
   (* the ledger comes back the way it went in: read moves no descriptor *)
   Lemma ush_std_cons_of (γfd : gname) (l : list fdstate) (wr : bool) :
     l !! 0%nat = Some (FdOpen true wr (FdDevice CONSOLE)) ->
@@ -356,7 +381,7 @@ Section UShLine.
     intros Hpay Hst Hts HPT.
     rewrite /UConsLine.ush_read_recv_leaf.
     iIntros (h m pc a k cap n f avail)
-      "%Hn %Ha0 %Ha1 %Ha2 %Hcapk %Hal #Hi Hbuf Hstd Hpos Hrun Hcont".
+      "%Hn %Ha0 %Ha1 %Ha2 %Hcapk %Hcap31 %Hal #Hi Hbuf Hstd Hpos Hrun Hcont".
     iDestruct "Hstd" as "[Hstd %Hrow]". destruct Hrow as [wr Hl0].
     iDestruct (ush_read_sup N γp T m pc l n wr Hpay Ha0 Hl0 Hst Hts HPT
                  with "Hpos") as "Hsb".
@@ -375,7 +400,12 @@ Section UShLine.
                  (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
                  (m !!! Regidx a2_idx) (uvis_fd W) r M' fdv' cw' cs'
                  Harg0 Harg1 Harg2 eq_refl with "Hpost")
-      as (P) "(%Hperm & %Hwf & %Hlazy & Hrec)".
+      as "[%Hfrret Hpost']".
+    iDestruct "Hpost'" as (P) "(%Hperm & %Hwf & %Hlazy & Hrec)".
+    (* the count the kernel answered IS the request the caller made *)
+    assert (Hcnt : sys_rw_count (m !!! Regidx a2_idx) = Z.of_nat cap)
+      by exact (ush_count_is_cap (m !!! Regidx a2_idx) cap Ha2 Hcap31).
+    rewrite Hcnt in Hfrret.
     iEval (rewrite (ush_fd_st_console (m !!! Regidx a0_idx) (uvis_fd W) l wr
                       Ha0 Htake Hl0) /fileread_extra_core;
            cbn [ush_read_fam xfam_rd rf_F rf_ret kf_xpay]) in "Hrec".
@@ -398,7 +428,7 @@ Section UShLine.
         [ iExists (n + dc)%nat; iExact "Hp" | iExact "Hp" ].
     - (* THE RECEIPT *)
       iDestruct "Hw" as (dd dc cur hs sl)
-        "(%Hdr & %Hhl & %Hled & #Htags & #Hlb & Hwin & Hrd)".
+        "(%Hdr & %Hb1 & %Hb4 & %Hhl & %Hled & #Htags & #Hlb & Hwin & Hrd)".
       rewrite /ush_rd_ret.
       iDestruct "Hrd" as "[[%Hcur Hp] | [#HT Hp]]"; last first.
       { (* the caller's own [Rd] came back tainted *)
@@ -414,7 +444,16 @@ Section UShLine.
       iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp] Hbuf Hrun");
         [ lia | exact Hgf | ].
       iLeft. iExists dd, dc, hs, sl.
-      iSplitR; [ by iPureIntro | ]. iSplitR; [ by iPureIntro | ].
+      iSplitR; [ by iPureIntro | ].
+      (* THE TWO CONTROL-FLOW ROWS AND THE RANGE, at the caller's own
+         request (lane CONS-ROWS): the receipt states them at the count
+         file.c read, which [Hcnt] says is [cap]. *)
+      iSplitR; [ iPureIntro; intros Hdc; apply Hb1;
+                 rewrite Hcnt Hdc; lia | ].
+      iSplitR; [ iPureIntro; intros Hd0 Hc0; apply Hb4;
+                 [ exact Hd0 | rewrite Hcnt; lia ] | ].
+      iSplitR; [ iPureIntro; exact Hfrret | ].
+      iSplitR; [ by iPureIntro | ].
       iSplitR; [ rewrite ucons_stored_lb_eq; iExact "Hlb" | ].
       iSplitR; [ iExact "Htags" | ].
       iSplitR "Hp"; [ | iExact "Hp" ].

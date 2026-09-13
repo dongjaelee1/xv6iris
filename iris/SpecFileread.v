@@ -973,14 +973,40 @@ Section SpecFileread.
      consoleread's, and it lands with consoleread's own (app-echo.md,
      "SH-LINE PHASE 2 -- THE SWALLOWED BYTE", lane CONS-SWALLOW W2/W3);
      this parameter is what carries the table to it. *)
+  (* [n] IS THE COUNT THE CALL ASKED FOR, and it is here for the two
+     control-flow rows below (app-echo.md, lane CONS-ROWS, B1/B4): what the
+     cursor did is a fact about how consoleread's loop EXITED, and which
+     exits are reachable is decided by the request.  [fileread_extra_core]
+     already carries the count, so relaying it costs the arm nothing. *)
   Definition console_receipt (P : uptd) (Rd : nat -> nat -> iProp Σ)
-      (r : mword 64)
+      (n : Z) (r : mword 64)
       (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
     ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
       ∃ cur d' : nat, Rd cur d')
      ∨ ∃ (d dc cur : nat) (hs : list (list mobs))
          (sl : list (list mobs * bv 8)),
-         ⌜Z.of_nat d = bv_unsigned r⌝ ∗ ⌜length hs = d⌝ ∗
+         ⌜Z.of_nat d = bv_unsigned r⌝ ∗
+         (* THE CURSOR'S TWO CONTROL-FLOW ROWS, relayed verbatim from
+            [SpecConsoleread]'s post (which says why they are true of the
+            code).  They sit HERE, above the window disjunction, because
+            they hold on the credential arm too: they are about which exit
+            fired, not about whether a second reader popped while this call
+            slept.  This IS the non-negative arm -- the [0 <= r] guard
+            consoleread's post carries is discharged by the equation above
+            -- so it does not appear.
+
+            THE FIRST is what a reader that filled its request needs: the
+            call popped exactly what it delivered, so nothing is missing
+            from the ring behind it and the byte one past the request --
+            which the caller does not own, and so cannot refute the
+            swallow's copy-out reason at -- was never touched.  THE SECOND
+            is what a reader that got nothing needs: against a positive
+            request the byte WAS popped, which refutes
+            [ConsoleInv.cons_swallow]'s left arm and sends the caller to
+            the reason on the right. *)
+         ⌜Z.of_nat d = Z.max 0 n -> dc = d⌝ ∗
+         ⌜d = 0%nat -> (0 < n)%Z -> dc = (d + 1)%nat⌝ ∗
+         ⌜length hs = d⌝ ∗
          (* THE PER-BYTE LEDGER, UNCONDITIONAL: the [j]th byte in the
             caller's buffer is the byte the [j]th tag's history ends in.
             True on every arm -- a concurrent reader can take away the
@@ -1031,10 +1057,10 @@ Section SpecFileread.
   (* the -1 arm, at every caller: whatever the caller asked for comes back,
      at a position and an advance it is not told *)
   Lemma console_receipt_m1 (P : uptd) (Rd : nat -> nat -> iProp Σ)
-      (cur d' : nat)
+      (n : Z) (cur d' : nat)
       (M' : gmap Z (bv 8)) (addr : mword 64) :
     Rd cur d' -∗
-    console_receipt P Rd (mword_of_int (-1) : mword 64) M' addr.
+    console_receipt P Rd n (mword_of_int (-1) : mword 64) M' addr.
   Proof.
     iIntros "Hrd". rewrite /console_receipt. iLeft. iSplitR; [done|].
     iExists cur, d'. iExact "Hrd".
@@ -1045,10 +1071,12 @@ Section SpecFileread.
      [UserPtTree.umem_wr_lookup_in] reads the [j]th byte back out of it
      under exactly the linearity the receipt is guarded by. *)
   Lemma console_receipt_of_run (P : uptd) (M : gmap Z (bv 8)) (addr : mword 64)
-      (r : mword 64) (d dc cur : nat) (bs : nat -> bv 8)
+      (n : Z) (r : mword 64) (d dc cur : nat) (bs : nat -> bv 8)
       (Rd : nat -> nat -> iProp Σ)
       (hs : list (list mobs)) (sl : list (list mobs * bv 8)) :
     Z.of_nat d = bv_unsigned r ->
+    (Z.of_nat d = Z.max 0 n -> dc = d) ->
+    (d = 0%nat -> (0 < n)%Z -> dc = (d + 1)%nat) ->
     cons_window sl cur d bs hs ->
     cons_chain sl ->
     ([∗ list] h ∈ hs, riscv_rx_tag h) -∗
@@ -1056,11 +1084,12 @@ Section SpecFileread.
     cons_swallow fsc_cons
       (~ uva_wmapped P (uint (add_vec_int addr (Z.of_nat d)))) sl d dc -∗
     Rd cur dc -∗
-    console_receipt P Rd r (umem_wr M addr d bs) addr.
+    console_receipt P Rd n r (umem_wr M addr d bs) addr.
   Proof.
-    intros Hd (Hsl & Hhl & Hwin) Hch.
+    intros Hd Hb1 Hb4 (Hsl & Hhl & Hwin) Hch.
     iIntros "Hts Hlb #Hsw Hrd".
     rewrite /console_receipt. iRight. iExists d, dc, cur, hs, sl.
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR.
     { iPureIntro. intros Hlin j Hj.
@@ -1083,20 +1112,25 @@ Section SpecFileread.
      ledger is the same on both arms -- it is a statement about each byte
      and not about the run. *)
   Lemma console_receipt_of_dirty (P : uptd) (M : gmap Z (bv 8)) (addr : mword 64)
-      (r : mword 64) (d dc cur : nat) (bs : nat -> bv 8)
+      (n : Z) (r : mword 64) (d dc cur : nat) (bs : nat -> bv 8)
       (Rd : nat -> nat -> iProp Σ)
       (hs : list (list mobs)) (sl : list (list mobs * bv 8)) :
     Z.of_nat d = bv_unsigned r ->
+    (* THE CONTROL-FLOW ROWS HOLD HERE TOO: which exit fired is not
+       something a second reader can change (lane CONS-ROWS, B1/B4). *)
+    (Z.of_nat d = Z.max 0 n -> dc = d) ->
+    (d = 0%nat -> (0 < n)%Z -> dc = (d + 1)%nat) ->
     cons_tagged bs hs d ->
     ([∗ list] h ∈ hs, riscv_rx_tag h) -∗
     cons_stored_lb fsc_cons sl -∗
     cons_dirty_cred app_sup -∗
     Rd cur dc -∗
-    console_receipt P Rd r (umem_wr M addr d bs) addr.
+    console_receipt P Rd n r (umem_wr M addr d bs) addr.
   Proof.
-    intros Hd [Hhl Htie].
+    intros Hd Hb1 Hb4 [Hhl Htie].
     iIntros "Hts Hlb #Hcred Hrd".
     rewrite /console_receipt. iRight. iExists d, dc, cur, hs, sl.
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR.
     { iPureIntro. intros Hlin j Hj.
@@ -1106,41 +1140,6 @@ Section SpecFileread.
     iFrame "Hts Hlb". iSplitR; [| iExact "Hrd"].
     iRight. iExact "Hcred".
   Qed.
-
-  (* THE PROGRAM-FACING SPELLING OF THE SAME WINDOW (app-echo.md, lane
-     CONS-CURSOR, C3).  [console_receipt] is stated at the kernel's RESUME
-     IMAGE, which no user-tier leaf can name -- a leaf hands its caller back
-     the BYTES it owns ([UkRun.ubytes] at a source function), not an image.
-     So this is the receipt read at that function: the [d] bytes the call
-     delivered are the stored sequence at [cur .. cur + d), their histories
-     carry the application's tag, the chain says they are consecutive input
-     events, and [Rd cur dc] is whatever the caller asked to be told about
-     the position and the advance -- for a lease holder, that [cur] is its
-     own cursor and the token is back at [cur + dc].  The bridge between the
-     two forms is the leaf's own (the resume image IS the caller's run,
-     written). *)
-  (* [P] and [addr] are the read's own table and destination, for the one
-     clause that needs them: the swallowed byte's reason
-     ([ConsoleInv.cons_swallow]).  A program refutes that clause from what
-     it owns of its own address space. *)
-  Definition console_recv (P : uptd) (addr : mword 64)
-      (Rd : nat -> nat -> iProp Σ) (d : nat)
-      (g : nat -> bv 8) : iProp Σ :=
-    (∃ (cur dc : nat) (hs : list (list mobs)) (sl : list (list mobs * bv 8)),
-       (* the per-byte ledger, on every arm *)
-       ⌜cons_tagged g hs d⌝ ∗
-       ([∗ list] hh ∈ hs, riscv_rx_tag hh) ∗
-       cons_stored_lb fsc_cons sl ∗
-       (* ...and the WINDOW where the position is: a reader that popped
-          while this call slept takes the order away and leaves the
-          credential ([console_receipt]'s note).  The cursor's extra step is
-          accounted for by the same [cons_swallow] the kernel receipt
-          carries. *)
-       (⌜cons_window sl cur d g hs⌝ ∗ ⌜cons_chain sl⌝
-          ∗ cons_swallow fsc_cons
-              (~ uva_wmapped P (uint (add_vec_int addr (Z.of_nat d)))) sl d dc
-        ∨ cons_dirty_cred app_sup) ∗
-       Rd cur dc)%I.
 
   (* THE ARM'S PAYOUT WITHOUT THE PAYLOAD.  This is what the PROCESS is
      told ([UexecExecInst.xv6_spost] at 5 reads exactly this), and it is
@@ -1161,7 +1160,7 @@ Section SpecFileread.
         (* UNIFORM: the receipt is paid at every caller now, because [Rd]
            is the caller's own choice of what to be told and the [None]
            arm -- which threw the window away -- is gone. *)
-        if decide (mj = CONSOLE) then console_receipt pt Rd r M' addr else emp
+        if decide (mj = CONSOLE) then console_receipt pt Rd n r M' addr else emp
     | FdOpen true _ FdPipe => emp
     (* A DESCRIPTOR THAT CANNOT BE READ RETURNS -1, and the post says so.
        fileread's first test is [f->readable == 0], and sys_read never
@@ -1288,7 +1287,7 @@ Section SpecFileread.
   Qed.
 
   Lemma fileread_extra_dev_console (pt : uptd) wb n F Rd P r M' addr :
-    P -∗ console_receipt pt Rd r M' addr -∗
+    P -∗ console_receipt pt Rd n r M' addr -∗
     fileread_extra pt (FdOpen true wb (FdDevice CONSOLE)) n F Rd P r M' addr.
   Proof.
     iIntros "HP H". rewrite /fileread_extra /fileread_extra_core.
@@ -1360,7 +1359,7 @@ Section SpecFileread.
     bv_unsigned (fc_major C) = CONSOLE ->
     eq_vec (zero_extend' 64 (fc_readable C : mword 8) : mword 64)
            (zero_reg : mword 64) = false ->
-    P -∗ console_receipt pt Rd r M' addr -∗
+    P -∗ console_receipt pt Rd n r M' addr -∗
     fileread_extra pt st n F Rd P r M' addr.
   Proof.
     intros Hok Ht Hmj Hrd.

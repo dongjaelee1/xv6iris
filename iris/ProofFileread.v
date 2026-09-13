@@ -1872,7 +1872,8 @@ Section ProofFileread.
                                 Hprocs").
                 all: try lkbelow.
                 iIntros (CIDcr Hscr mf r P' dcr dccr curcr bscr hscr slcr)
-                  "%Hcscr %Hupt %Hrr %Hdcr %Htiecr %Hra0 %Htagcr #Htagsc
+                  "%Hcscr %Hupt %Hrr %Hdcr %Htiecr %Hb1cr %Hb4cr %Hra0
+                   %Htagcr #Htagsc
                    #Hlbcr #Hwin Hout Hcg Hcnt Hpc
                    Hpriv".
                 (* the caller's own answer, at the position the ring's
@@ -2013,7 +2014,7 @@ Section ProofFileread.
                             Rd _ _ _ _ Hok Htyd Emj Hrdnz with "HP").
                   destruct (Z.le_gt_cases 0 r) as [H0 | H0]; last first.
                   { assert (Hm1 : r = (-1)%Z) by lia. rewrite Hm1.
-                    iApply (console_receipt_m1 _ Rd curcr dccr with "Hrd"). }
+                    iApply (console_receipt_m1 _ Rd n curcr dccr with "Hrd"). }
                   assert (Hdb : Z.of_nat dcr = bv_unsigned (mword_of_int r : mword 64)).
                   { assert (H31 : (2 ^ 31)%Z = 2147483648%Z)
                       by (vm_compute; reflexivity).
@@ -2030,11 +2031,12 @@ Section ProofFileread.
                   iDestruct "Hwin" as "[(%Hwincr & %Hchcr & #Hswcr) | Hcred]";
                     last first.
                   { iApply (console_receipt_of_dirty _ (us_M U) (m !!! Regidx Ra1)
-                              (mword_of_int r) dcr dccr curcr bscr Rd hscr slcr
-                              Hdb Htagcr with "Htagsc Hlbcr Hcred Hrd"). }
+                              n (mword_of_int r) dcr dccr curcr bscr Rd hscr slcr
+                              Hdb Hb1cr (Hb4cr H0) Htagcr
+                              with "Htagsc Hlbcr Hcred Hrd"). }
                   iApply (console_receipt_of_run _ (us_M U) (m !!! Regidx Ra1)
-                            (mword_of_int r) dcr dccr curcr bscr Rd hscr slcr
-                            Hdb Hwincr Hchcr
+                            n (mword_of_int r) dcr dccr curcr bscr Rd hscr slcr
+                            Hdb Hb1cr (Hb4cr H0) Hwincr Hchcr
                             with "Htagsc Hlbcr Hswcr Hrd"). }
           ++ (* --------- the major is OUT OF RANGE: return -1 ------------
                 The [bltu] is taken before the table is ever indexed, so the

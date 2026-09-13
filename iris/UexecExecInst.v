@@ -538,11 +538,14 @@ Section UexecExecInst.
      receipts, refunds and cursors it deposited:
        5   [SpecFileread.fileread_extra] at [SpecArgfd.fd_st_of_key], at the
            RESUME IMAGE [M'] and the buffer address argument 1 -- the
-           receipt names the bytes read() put in the caller's buffer; and 16
-           [SpecFilewrite.filewrite_extra] at the same key -- WITHOUT the
-           landed pure blanket ([fileread_ret] / [filewrite_ret]), which
-           reads [pv_ofile V], a kernel array no process can name, while the
-           round already carries [UsysMemOk.usys_mem_ok] / [usys_fd_ok];
+           receipt names the bytes read() put in the caller's buffer -- with
+           [SpecFileread.fileread_ret] in front of it, the return value's
+           range at the key's own count (lane CONS-ROWS, B3); and 16
+           [SpecFilewrite.filewrite_extra] at the same key, WITHOUT
+           [filewrite_ret], the round carrying [UsysMemOk.usys_fd_ok]
+           instead.  The SYSCALL's own blankets ([SpecSysRead.sys_read_ret]
+           / [SpecSysWrite]'s) stay behind either way: they read
+           [pv_ofile V], a kernel array no process can name;
        17/18/19/20  the contract's arms verbatim ([mknod_arms] /
            [unlink_arms] / [link_arms] / [mkdir_arms]).
        9/15  the contract's RECEIPT ([SpecSysChdir.chdir_receipt],
@@ -617,7 +620,19 @@ Section UexecExecInst.
           block: well-formedness from [ProcPtOwn.proc_ptm], and the claim
           from [ProcInv.proc_priv_core]'s invariant on
           [ProcDefs.pv_lazy]. *)
-       (∃ P : uptd,
+       (* ...AND THE RETURN VALUE IS IN RANGE (app-echo.md, lane CONS-ROWS,
+          B3).  [SpecFileread.fileread_ret] is [PipeInvDefs.pipe_rw_ret] --
+          -1, or a count between 0 and the request -- and it reads nothing
+          but the count the key carries at argument 2 and the answer, so
+          unlike the syscall's own blanket ([SpecSysRead.sys_read_ret],
+          which reads [pv_ofile V]) it is statable at the process's key.
+          The round's [UsysMemOk.usys_mem_ok] bounds the bytes WRITTEN and
+          says nothing about [r], so without this row a process cannot tie
+          its answer to its request at all -- and every reader of the
+          console receipt needs exactly that tie to spend the two
+          control-flow rows the receipt carries. *)
+       (⌜fileread_ret (sys_rw_count (xk_a W 2)) r⌝ ∗
+        ∃ P : uptd,
           ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
           ⌜ProcPtOwn.proc_pt_wf P⌝ ∗
           ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
@@ -1195,6 +1210,7 @@ Section UexecExecInst.
   Lemma spost_at_read_intro (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
       (P : uptd)
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
+    fileread_ret (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) r ->
     perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
     ProcPtOwn.proc_pt_wf P ->
     (uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)) ->
@@ -1203,8 +1219,8 @@ Section UexecExecInst.
       r M' (tf_w (uvis_tf W) (tf_arg_idx 1)) -∗
     spost_at X 5 f W r M' fdv' cw' cs'.
   Proof.
-    intros Hpm Hwf Hlz. iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
-    xv6_take. iExists P.
+    intros Hret Hpm Hwf Hlz. iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
+    xv6_take. iSplitR; [by iPureIntro |]. iExists P.
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iExact "H".
   Qed.

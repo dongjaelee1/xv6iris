@@ -112,10 +112,13 @@ Section EchoAdequacy.
             argument position at all.  Every one of them is at
             [UexecExecInst.uprogSG_free]: that is the acceptance test, and
             it is readable here. *)
-         exists Rsh : gname -> gname -> gname -> iProp Σ,
-           (⊢ UkSh.sh_deps (PS := uprogSG_free))
-           /\ (⊢ UInitSh.sh_pay_state Rsh 0%nat)
-           /\ (⊢ UInitSh.sh_pay_rest Rsh))
+         (* LANE SH-STATE SHRANK THIS.  The state payload is PROVED
+            ([UInitSh.sh_pay_state_holds]) and it fixes the family, so the
+            Coq existential over [Rsh] is gone with it and what is left is
+            two entailments at [UInitSh.sh_Rsh]: E5's write(16) deposit, and
+            SH-LINE's tail. *)
+         (⊢ UkSh.sh_deps (PS := uprogSG_free))
+         /\ (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh))
       (* ---- ...AND THE TRACE INVARIANT, which is E5's ---- *)
       (Hphi : forall (Hinv : invGS Σ)
                      (γgen γstart γreg γd γsw γobs γhist : gname)
@@ -224,13 +227,13 @@ Section EchoAdequacy.
          generation counter (lane OUT-FUPD), so there is nothing to move. *)
       rewrite <- Hgen in Heq, Htag, Hkill |- *.
       destruct (Hsh_owed HR GEN HBs HFd HIr HPav HWc HF)
-        as (Rsh & Hdeps & Hst & Hre).
+        as (Hdeps & Hre).
       iIntros "#Hinv Hb".
       (* [GEN] is IMPLICIT and fixed by unification -- from [Hw16] first
          and [Heq] after, both of which carry the record's own [GenId].
          Naming it here would pin the wrong one: the [GEN] this field
          binds is not the one [app_echo] was elaborated at. *)
-      iApply (echo_Hinit_boot HR GEN Rsh c r Hdeps Hst Hre
+      iApply (echo_Hinit_boot HR GEN c r Hdeps Hre
                 Heq Htag Hkill Hout with "Hinv Hb").
     - (* [Happ_echo]: at [AppEcho.echo_out]'s E5 placeholder the console's
          output claim is trivial, so the echo justifies itself. *)

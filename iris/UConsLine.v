@@ -116,28 +116,153 @@ Import Defs.
    contiguity of the STORED sequence is what [ConsoleInv.cons_window] /
    [cons_chain] carry, and contiguity of the INPUT sequence is E5's
    overflow argument, not this lane's. *)
-Definition ush_disc_line : Prop :=
+(* LANE SH-STATE PROVED THESE, AND REPAIRED THE FIRST TWO.  As landed they
+   were FALSE: nothing bounded the window to ONE line, and [q = 0] with
+   [bs = echo_line ++ echo_line] satisfies the premise while
+   [take 34 echo_line] is seventeen bytes long.  What is missing is exactly
+   what [gets] guarantees -- it stops at the FIRST '\n', so the only
+   newline in what it delivered is its LAST byte -- and that is the premise
+   added below.  (The third, [ush_line_full], was true as landed and is
+   unchanged.)
+
+   THE PERIODICITY LEMMAS ARE BELOW and are general facts about
+   [EchoDisc.star_prefix]; RELOCATION ASK: they belong in EchoDisc.v beside
+   [star_prefix_snoc], and are here only so that proving them costs the
+   line statements' own cone and not the discipline's. *)
+
+Lemma mod_sub_self (i p : nat) : (p <= i)%nat -> ((i - p) `mod` p = i `mod` p)%nat.
+Proof.
+  intro H. transitivity (((i - p) + 1 * p) `mod` p)%nat.
+  - symmetry. apply Nat.Div0.mod_add.
+  - f_equal. lia.
+Qed.
+
+Lemma concat_replicate_lookup {A} (N : nat) (pat : list A) (i : nat) :
+  (i < N * length pat)%nat ->
+  concat (replicate N pat) !! i = pat !! (i `mod` length pat)%nat.
+Proof.
+  revert i. induction N as [| N IH]; intros i Hi; [ cbn in Hi; lia | ].
+  rewrite replicate_S. cbn [concat].
+  destruct (decide (i < length pat)%nat) as [Hlt | Hge].
+  - rewrite lookup_app_l; [ | exact Hlt ].
+    rewrite (Nat.mod_small i (length pat) Hlt). reflexivity.
+  - rewrite lookup_app_r; [ | lia ].
+    rewrite IH; [ | cbn [Nat.mul] in Hi; lia ].
+    rewrite (mod_sub_self i (length pat) ltac:(lia)). reflexivity.
+Qed.
+
+(* a star prefix IS the periodic word, byte by byte *)
+Lemma star_prefix_lookup (pat l : list (bv 8)) (i : nat) :
+  star_prefix pat l -> (0 < length pat)%nat -> (i < length l)%nat ->
+  l !! i = pat !! (i `mod` length pat)%nat.
+Proof.
+  intros Hs Hp Hi.
+  pose proof (f_equal (fun z : list (bv 8) => z !! i) Hs) as Hl. cbn beta in Hl.
+  rewrite Hl. rewrite lookup_take; [ | exact Hi ].
+  apply concat_replicate_lookup. nia.
+Qed.
+
+(* '\n' occurs in [echo_line] ONLY as its last byte -- the fact both (1)
+   and (2) turn on, decided at the literal *)
+Lemma echo_line_no_early_nl_bool :
+  forallb (fun j : nat =>
+      negb (bool_decide (echo_line !! j = Some (Z_to_bv 8 10)))) (seq 0 16) = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma echo_line_nl_at (k : nat) :
+  (k < 17)%nat -> echo_line !! k = Some (Z_to_bv 8 10) -> k = 16%nat.
+Proof.
+  intros Hk H. destruct (Nat.eq_dec k 16%nat) as [Hk16 | Hne];
+    [ exact Hk16 | exfalso ].
+  assert (Hin : In k (seq 0 16)) by (apply in_seq; lia).
+  pose proof (proj1 (forallb_forall _ _) echo_line_no_early_nl_bool k Hin) as Hb.
+  apply negb_true_iff in Hb. exact (bool_decide_eq_false_1 _ Hb H).
+Qed.
+
+Lemma ush_disc_line :
   forall (q : nat) (bs : list (bv 8)),
     star_prefix echo_line (concat (replicate q echo_line) ++ bs) ->
+    (* ...AND THE WINDOW HOLDS AT MOST ONE LINE: the only '\n' in it is its
+       last byte, which is what [gets] stopping at the first one says. *)
+    (forall j : nat, (S j < length bs)%nat -> bs !! j <> Some (Z_to_bv 8 10)) ->
     bs = take (length bs) echo_line.
+Proof.
+  intros q bs Hsp Hnl.
+  pose proof echo_line_length as Hp.
+  assert (Hpos : (0 < length echo_line)%nat) by lia.
+  assert (HLlen : length (concat (replicate q echo_line))
+                  = (q * length echo_line)%nat)
+    by apply concat_replicate_length.
+  assert (Hpt : forall i : nat, (i < length bs)%nat ->
+            bs !! i = echo_line !! (i `mod` 17)%nat).
+  { intros i Hi.
+    assert (Hi2 : (length (concat (replicate q echo_line)) + i
+                   < length (concat (replicate q echo_line) ++ bs))%nat)
+      by (rewrite length_app; lia).
+    pose proof (star_prefix_lookup echo_line
+                  (concat (replicate q echo_line) ++ bs)
+                  (length (concat (replicate q echo_line)) + i)
+                  Hsp Hpos Hi2) as H.
+    rewrite lookup_app_r in H; [ | lia ].
+    replace (length (concat (replicate q echo_line)) + i
+             - length (concat (replicate q echo_line)))%nat with i in H by lia.
+    rewrite H. f_equal. rewrite HLlen Hp.
+    transitivity ((i + q * 17) `mod` 17)%nat;
+      [ f_equal; lia | apply Nat.Div0.mod_add ]. }
+  assert (Hlen : (length bs <= 17)%nat).
+  { destruct (Nat.le_gt_cases (length bs) 17%nat) as [Hle | Hgt];
+      [ exact Hle | exfalso ].
+    assert (H16i : (16 < length bs)%nat) by lia.
+    assert (H16 : bs !! 16%nat = Some (Z_to_bv 8 10))
+      by (rewrite (Hpt 16%nat H16i); reflexivity).
+    assert (H17 : (S 16 < length bs)%nat) by lia.
+    exact (Hnl 16%nat H17 H16). }
+  apply list_eq. intros i.
+  destruct (decide (i < length bs)%nat) as [Hi | Hi].
+  - rewrite (Hpt i Hi). rewrite lookup_take; [ | exact Hi ].
+    rewrite (Nat.mod_small i 17%nat ltac:(lia)). reflexivity.
+  - assert (Hn1 : bs !! i = None) by (apply lookup_ge_None_2; lia).
+    assert (Hn2 : take (length bs) echo_line !! i = None)
+      by (apply lookup_ge_None_2; rewrite length_take; lia).
+    rewrite Hn1 Hn2. reflexivity.
+Qed.
 
 (* ...and the same at the shape the call site has it in: the cycle's
    discipline, at a history whose input ends with the window. *)
-Definition ush_disc_line_seg : Prop :=
+Lemma ush_disc_line_seg :
   forall (h : list mobs) (q : nat) (bs : list (bv 8)),
     disc_seg h ->
     ins h = concat (replicate q echo_line) ++ bs ->
+    (forall j : nat, (S j < length bs)%nat -> bs !! j <> Some (Z_to_bv 8 10)) ->
     bs = take (length bs) echo_line.
+Proof.
+  intros h q bs Hd Hins Hnl.
+  apply (ush_disc_line q bs); [ | exact Hnl ].
+  rewrite <- Hins. exact Hd.
+Qed.
 
 (* (2) A PREFIX OF [echo_line] THAT ENDS IN '\n' IS [echo_line].  '\n' is
    [echo_line]'s last byte and occurs nowhere else in it, and '\n' is
    exactly what [gets] stops at -- so the two together say the line sh has
    in its buffer IS "echo hello world\n". *)
-Definition ush_line_full : Prop :=
+Lemma ush_line_full :
   forall bs0 : list (bv 8),
     let bs := bs0 ++ [Z_to_bv 8 10] in
     bs = take (length bs) echo_line ->
     bs = echo_line.
+Proof.
+  intros bs0. cbv zeta. intro Heq.
+  pose proof echo_line_length as Hp.
+  pose proof (f_equal length Heq) as HL.
+  rewrite length_take Hp length_app in HL. cbn [length] in HL.
+  assert (Hlast : (bs0 ++ [Z_to_bv 8 10]) !! (length bs0) = Some (Z_to_bv 8 10)).
+  { rewrite lookup_app_r; [ | lia ]. rewrite Nat.sub_diag. reflexivity. }
+  rewrite Heq in Hlast.
+  apply lookup_take_Some in Hlast as [Hlast _].
+  pose proof (echo_line_nl_at (length bs0) ltac:(lia) Hlast) as H16.
+  rewrite Heq length_app. cbn [length]. rewrite H16.
+  apply take_ge. rewrite Hp. lia.
+Qed.
 
 (* (3) ...AND THAT LINE LEXES, concretely.  [ushp_no_symbols] keeps
    [gettoken] in its default arm and [ushp_tokens] names the three tokens

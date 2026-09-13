@@ -69,6 +69,13 @@ Require Import UInitFd.  (* [ufd_head] / [ufd_head_row] -- init's own
 Require Import UkRun.
 Require Import UCodeInit UkInit.
 Require Import UkSh UShKernel.
+Require Import UkShParse.       (* the two lexer tables' addresses and
+                                   content functions, which sh's static
+                                   state is made of *)
+Require Import UkShLoop.        (* [ushl_dat] -- sh's opaque static state *)
+Require Import ElfFile.         (* [elf_image] / [elf_zero_byte] *)
+Require Import BlockWords.      (* [nth_byte_zero] *)
+Require User.ShData User.ShInstrs.
 Require Import PathElems.          (* [path_elems] *)
 Require Import ElfUser.
 Require Import ElfLoadable.        (* [sh_elf_loadable] *)
@@ -316,6 +323,114 @@ Qed.
 (* ===================================================================== *)
 (*  5.  THE INGREDIENTS                                                    *)
 (* ===================================================================== *)
+(* ===================================================================== *)
+(*  4b.  THE BYTES SH'S STATIC STATE IS MADE OF (lane SH-STATE)           *)
+(*                                                                        *)
+(*  sh's writable PT_LOAD is (vaddr 0x2000, filesz 0x10, memsz 0x98).      *)
+(*  The file half is the two lexer tables ([UkShParse.ushp_symbols] at     *)
+(*  0x2000, [ushp_whitespace] at 0x2008) and comes off the DUMP; the rest  *)
+(*  -- [freep] at 0x2010, sh's line buffer [UkSh.sh_buf] at 0x2020, the    *)
+(*  allocator's [base] cell at 0x2088 -- is .bss and comes off             *)
+(*  [ElfUser.sh_elf_zero_image].  Both halves are read through             *)
+(*  [ElfUser.sh_elf_image_concrete], the NAMED image equation, so nothing  *)
+(*  here reduces [sh_elf] (durable-notes, "Name the ELF-bytes equation").  *)
+(* ===================================================================== *)
+
+(* the two tables, in the [forallb]-over-[seq] shape [UkSh.ush_jrow_bytes_ok]
+   uses: ONE [vm_compute] over the 2532-entry dump, not fourteen *)
+Definition sh_tbl_ok : bool :=
+  forallb (fun j : nat =>
+      bool_decide (ShData.sh_data !! (ushp_symbols + Z.of_nat j)
+                   = Some (ushp_sym_f j))) (seq 0 7)
+  && forallb (fun j : nat =>
+      bool_decide (ShData.sh_data !! (ushp_whitespace + Z.of_nat j)
+                   = Some (ushp_ws_f j))) (seq 0 5)
+  && bool_decide (ShData.sh_data !! (ushp_symbols + 7) = Some ubyte0)
+  && bool_decide (ShData.sh_data !! (ushp_whitespace + 5) = Some ubyte0).
+
+Lemma sh_tbl_ok_true : sh_tbl_ok = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma sh_tbl_parts :
+  forallb (fun j : nat =>
+      bool_decide (ShData.sh_data !! (ushp_symbols + Z.of_nat j)
+                   = Some (ushp_sym_f j))) (seq 0 7) = true
+  /\ forallb (fun j : nat =>
+      bool_decide (ShData.sh_data !! (ushp_whitespace + Z.of_nat j)
+                   = Some (ushp_ws_f j))) (seq 0 5) = true
+  /\ bool_decide (ShData.sh_data !! (ushp_symbols + 7) = Some ubyte0) = true
+  /\ bool_decide (ShData.sh_data !! (ushp_whitespace + 5) = Some ubyte0) = true.
+Proof.
+  pose proof sh_tbl_ok_true as H. unfold sh_tbl_ok in H.
+  apply andb_true_iff in H as [H H4].
+  apply andb_true_iff in H as [H H3].
+  apply andb_true_iff in H as [H1 H2].
+  exact (conj H1 (conj H2 (conj H3 H4))).
+Qed.
+
+(* the dumped .data window IS part of the image *)
+Lemma sh_dat_img (a : Z) (b : bv 8) :
+  ShData.sh_data !! a = Some b -> elf_image ElfUser.sh_elf !! a = Some b.
+Proof.
+  intro Hb. rewrite ElfUser.sh_elf_image_concrete.
+  assert (Hn : ShInstrs.sh_bytes !! a = None).
+  { destruct (ShInstrs.sh_bytes !! a) as [c |] eqn:E; [ exfalso | reflexivity ].
+    pose proof (ShInstrs.sh_bytes_range a c E) as Hr.
+    pose proof (ShData.sh_data_range a b Hb) as Hr2.
+    unfold ShInstrs.sh_bytes_hi, ShInstrs.sh_bytes_lo,
+           ShData.sh_data_lo, ShData.sh_data_hi in *. lia. }
+  apply lookup_union_Some_l. rewrite lookup_union_r; [ exact Hb | exact Hn ].
+Qed.
+
+(* ...and the .bss window is zero *)
+Lemma sh_bss_img (a : Z) :
+  0x2010 <= a < 0x2098 -> elf_image ElfUser.sh_elf !! a = Some ubyte0.
+Proof.
+  intro Ha. rewrite ElfUser.sh_elf_image_concrete.
+  assert (Hn : (ShInstrs.sh_bytes ∪ ShData.sh_data) !! a = None).
+  { destruct ((ShInstrs.sh_bytes ∪ ShData.sh_data) !! a) as [c |] eqn:E;
+      [ exfalso | reflexivity ].
+    apply lookup_union_Some_raw in E as [E | [_ E]].
+    - pose proof (ShInstrs.sh_bytes_range a c E) as Hr.
+      unfold ShInstrs.sh_bytes_hi, ShInstrs.sh_bytes_lo in Hr. lia.
+    - pose proof (ShData.sh_data_range a c E) as Hr.
+      unfold ShData.sh_data_lo, ShData.sh_data_hi in Hr. lia. }
+  rewrite lookup_union_r; [ | exact Hn ].
+  apply lookup_map_seqZ_Some. split.
+  - unfold ElfUser.sh_bss_lo. lia.
+  - apply lookup_replicate_2. unfold ElfUser.sh_bss_lo, ElfUser.sh_bss_size. lia.
+Qed.
+
+Lemma moi0_bv0_64 : (mword_of_int 0 : mword 64) = bv_0 64.
+Proof. apply bv_eq. vm_compute. reflexivity. Qed.
+
+Lemma nth_byte_zero64 (j : nat) :
+  nth_byte (mword_of_int 0 : mword 64) j = ubyte0.
+Proof.
+  rewrite moi0_bv0_64 nth_byte_zero.
+  unfold ubyte0. apply bv_eq. vm_compute. reflexivity.
+Qed.
+
+(* a WINDOW of a map, in and out.  [UserHeap.umap_split_at]'s twin at a
+   half-open interval; RELOCATION ASK: it belongs beside that lemma, and
+   is local here only because moving it rebuilds the tier
+   ([UkShMain.v]'s SS1 note is the same case. *)
+Lemma umap_win_lookup (D : gmap Z (bv 8)) (lo hi a : Z) (b : bv 8) :
+  lo <= a < hi -> D !! a = Some b ->
+  base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D !! a = Some b.
+Proof.
+  intros Ha Hb. apply map_lookup_filter_Some.
+  split; [ exact Hb | cbn [fst]; exact Ha ].
+Qed.
+
+Lemma umap_win_lookup_out (D : gmap Z (bv 8)) (lo hi a : Z) (b : bv 8) :
+  ~ (lo <= a < hi) -> D !! a = Some b ->
+  base.filter (fun kv : Z * bv 8 => ~ (lo <= kv.1 < hi)) D !! a = Some b.
+Proof.
+  intros Ha Hb. apply map_lookup_filter_Some.
+  split; [ exact Hb | cbn [fst]; exact Ha ].
+Qed.
+
 Section UInitSh.
   (* THE KERNEL'S INSTANCE IS AMBIENT: [UexecExecInst] declares
      [uexecSG_xv6] and [uprogSG_gen] globally, and this file is where the
@@ -350,9 +465,21 @@ Section UInitSh.
      hypotheses -- so [sh_pay] itself is assembled from the parts rather
      than quoted twice ([sh_pay_of_parts]).  The tag's reading is E2's own
      and is proved from the theorem's [riscv_rx_tag = app_tag] equation. *)
+  (* LANE SH-STATE RESTATED THIS.  Two things were wrong with the [∀]-over-
+     every-key form: at an arbitrary key nothing pins [uvis_sz W'] to the
+     break a turn of the loop carries, and nothing puts sh's writable
+     window in the map -- so NO [Rsh] could satisfy it.  Both are the
+     entry's own reading of its key, and they enter as
+     [UShKernel.sh_pay_key] ([UShKernel.sh_pay_key_of_kexec] is the
+     discharge, off [kexec_image_ok] and the room bound).
+     ...AND THE CONCLUSION IS AN UPDATE: [UkShLoop.ushl_dat] holds the two
+     lexer tables at [DfracDiscarded], and persisting a [DfracOwn 1] byte
+     is a frame-preserving update.  The wand is spent inside a [WP]
+     ([UShKernel.sh_uexec_slot]), which absorbs it. *)
   Definition sh_pay_state (Rsh : gname -> gname -> gname -> iProp Σ)
       (n0 : nat) : iProp Σ :=
     (□ (∀ (W' : uvis) (γt γd γs : gname),
+          ⌜ UShKernel.sh_pay_key W' n0 ⌝ -∗
           usz γs (uvis_sz W') -∗
           ([∗ map] k ↦ b ∈ base.filter
                 (fun kv : Z * bv 8 =>
@@ -361,7 +488,7 @@ Section UInitSh.
                           - 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0)))))
                 (udata_lo (uvis_M W') (uvis_perm W') (uvis_sz W')),
              ubyte γd k b) -∗
-          ∃ f : nat -> bv 8, Rsh γt γd γs ∗ ubytes γd sh_buf sh_nbuf f))%I.
+          |==> ∃ f : nat -> bv 8, Rsh γt γd γs ∗ ubytes γd sh_buf sh_nbuf f))%I.
 
   Definition sh_pay_rest (Rsh : gname -> gname -> gname -> iProp Σ)
       : iProp Σ :=
@@ -372,6 +499,7 @@ Section UInitSh.
   Definition sh_pay (T : iProp Σ) (Rsh : gname -> gname -> gname -> iProp Σ)
       (n0 : nat) : iProp Σ :=
     (□ (∀ (W' : uvis) (γt γd γs : gname),
+          ⌜ UShKernel.sh_pay_key W' n0 ⌝ -∗
           usz γs (uvis_sz W') -∗
           ([∗ map] k ↦ b ∈ base.filter
                 (fun kv : Z * bv 8 =>
@@ -380,7 +508,7 @@ Section UInitSh.
                           - 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0)))))
                 (udata_lo (uvis_M W') (uvis_perm W') (uvis_sz W')),
              ubyte γd k b) -∗
-          ∃ f : nat -> bv 8, Rsh γt γd γs ∗ ubytes γd sh_buf sh_nbuf f)
+          |==> ∃ f : nat -> bv 8, Rsh γt γd γs ∗ ubytes γd sh_buf sh_nbuf f)
      (* ...AND THE TAIL AT EVERY POSITION GHOST: init mints a FRESH pair
         per child ([UserConsole.upos_alloc]), so what the application owes
         is sh's body at whichever name this round's pair got. *)
@@ -408,6 +536,197 @@ Section UInitSh.
 
   Global Instance sh_pay_persistent T Rsh n0 : Persistent (sh_pay T Rsh n0).
   Proof. rewrite /sh_pay. apply _. Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (* THE CARVE (lane SH-STATE): sh's static state and its line buffer,    *)
+  (* out of the writable data the entry hands over.                        *)
+  (* ------------------------------------------------------------------- *)
+  Lemma umap_window (g : gname) (D : gmap Z (bv 8)) (lo hi : Z) :
+    ([∗ map] k ↦ b ∈ D, ubyte g k b) -∗
+      ([∗ map] k ↦ b ∈ base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D,
+         ubyte g k b)
+      ∗ ([∗ map] k ↦ b ∈ base.filter (fun kv : Z * bv 8 => ~ (lo <= kv.1 < hi)) D,
+           ubyte g k b).
+  Proof.
+    iIntros "H".
+    rewrite -(big_sepM_union (fun k b => ubyte g k b)
+                (base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D)
+                (base.filter (fun kv : Z * bv 8 => ~ (lo <= kv.1 < hi)) D)
+                (map_disjoint_filter_complement _ D)).
+    rewrite (map_filter_union_complement (fun kv : Z * bv 8 => lo <= kv.1 < hi) D).
+    iExact "H".
+  Qed.
+
+  Lemma ubytes_of_window (g : gname) (D : gmap Z (bv 8)) (lo hi a : Z) (n : nat)
+      (f : nat -> bv 8) :
+    (forall j : nat, (j < n)%nat -> lo <= a + Z.of_nat j < hi) ->
+    (forall j : nat, (j < n)%nat -> D !! (a + Z.of_nat j) = Some (f j)) ->
+    ([∗ map] k ↦ b ∈ base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D,
+       ubyte g k b) -∗ ubytes g a n f.
+  Proof.
+    intros Hr HD. iIntros "H".
+    assert (Hlk : forall j : nat, (j < n)%nat ->
+              base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D
+                !! (a + Z.of_nat j) = Some (f j)).
+    { intros j Hj. apply umap_win_lookup; [ exact (Hr j Hj) | exact (HD j Hj) ]. }
+    iApply (ubytes_of_map g
+              (base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D) a n f Hlk
+              with "H").
+  Qed.
+
+  Lemma ustr_of_window (g : gname) (D : gmap Z (bv 8)) (lo hi a : Z) (len : nat)
+      (f : nat -> bv 8) :
+    (forall j : nat, (j < len)%nat -> f j <> ubyte0) ->
+    Z.of_nat len < 2 ^ 31 ->
+    (forall j : nat, (j <= len)%nat -> lo <= a + Z.of_nat j < hi) ->
+    (forall j : nat, (j < len)%nat -> D !! (a + Z.of_nat j) = Some (f j)) ->
+    D !! (a + Z.of_nat len) = Some ubyte0 ->
+    ([∗ map] k ↦ b ∈ base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D,
+       ubyteq g DfracDiscarded k b) -∗ ustr g DfracDiscarded a len f.
+  Proof.
+    intros Hne Hlen Hr HD Hnul. iIntros "#H".
+    assert (Hlk : forall j : nat, (j < len)%nat ->
+              base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D
+                !! (a + Z.of_nat j) = Some (f j)).
+    { intros j Hj. apply umap_win_lookup; [ apply Hr; lia | exact (HD j Hj) ]. }
+    assert (Hlk0 : base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D
+                     !! (a + Z.of_nat len) = Some ubyte0).
+    { apply umap_win_lookup; [ apply Hr; lia | exact Hnul ]. }
+    iApply (ustr_of_pmap g
+              (base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D)
+              a len f Hne Hlen Hlk Hlk0 with "H").
+  Qed.
+
+  (* THE [Rsh] SH'S STATE FIXES, at the CONSTANT break (lane SH-STATE).
+     [UkShLoop.ushl_R] uncurried, at the size [UShKernel.sh_pay_key] pins;
+     the three bounds [UkShFork.ushf_rest_of_body] asks of the break
+     ([8344 <= sz], [pgroundup sz = sz], [usz_ok (sz + 65536)]) are CLOSED
+     computations at [0x5000], which is why the existential form the
+     design of record carried is not needed. *)
+  Definition sh_Rsh : gname -> gname -> gname -> iProp Σ :=
+    fun _ γd γs => (UkShLoop.ushl_dat γd ∗ usz γs (kexec_sz ElfUser.sh_elf))%I.
+
+  Lemma sh_pay_state_holds : ⊢ sh_pay_state sh_Rsh 0%nat.
+  Proof.
+    rewrite /sh_pay_state /sh_Rsh.
+    destruct sh_tbl_parts as (Hsy & Hws & Hsy0 & Hws0).
+    iModIntro. iIntros (W' γt γd γs) "%Hkey Hszf HD".
+    destruct Hkey as [Hsz Hin]. rewrite <- Hsz.
+    set (D0 := base.filter
+          (fun kv : Z * bv 8 =>
+             kv.1 < uint (tf_resume_gpr0 (uvis_tf W') !!! Regidx csp_rs1)
+                    - 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + 0%nat)))))
+          (udata_lo (uvis_M W') (uvis_perm W') (uvis_sz W'))) in *.
+    assert (HD0 : forall (a : Z) (b : bv 8),
+              0x2000 <= a < 0x2098 -> elf_image ElfUser.sh_elf !! a = Some b ->
+              D0 !! a = Some b).
+    { intros a b Ha Hb. apply Hin;
+        [ unfold ShData.shRodataEnd, ShData.shMemEnd; lia | exact Hb ]. }
+    (* ---- window 1: the .data half, [0x2000, 0x2010) ---- *)
+    iDestruct (umap_window γd D0 0x2000 0x2010 with "HD") as "[Wdat HD]".
+    set (D1 := base.filter (fun kv : Z * bv 8 => ~ (0x2000 <= kv.1 < 0x2010)) D0)
+      in *.
+    assert (HD1 : forall (a : Z) (b : bv 8),
+              0x2010 <= a < 0x2098 -> elf_image ElfUser.sh_elf !! a = Some b ->
+              D1 !! a = Some b).
+    { intros a b Ha Hb. unfold D1. apply umap_win_lookup_out;
+        [ lia | apply HD0; [ lia | exact Hb ] ]. }
+    (* ---- window 2: [freep], [0x2010, 0x2018) ---- *)
+    iDestruct (umap_window γd D1 0x2010 0x2018 with "HD") as "[Wfp HD]".
+    set (D2 := base.filter (fun kv : Z * bv 8 => ~ (0x2010 <= kv.1 < 0x2018)) D1)
+      in *.
+    assert (HD2 : forall (a : Z) (b : bv 8),
+              0x2018 <= a < 0x2098 -> elf_image ElfUser.sh_elf !! a = Some b ->
+              D2 !! a = Some b).
+    { intros a b Ha Hb. unfold D2. apply umap_win_lookup_out;
+        [ lia | apply HD1; [ lia | exact Hb ] ]. }
+    (* ---- window 3: the line buffer, [0x2020, 0x2084) ---- *)
+    iDestruct (umap_window γd D2 sh_buf (sh_buf + 100) with "HD") as "[Wbuf HD]".
+    set (D3 := base.filter
+                 (fun kv : Z * bv 8 => ~ (sh_buf <= kv.1 < sh_buf + 100)) D2) in *.
+    assert (HD3 : forall (a : Z) (b : bv 8),
+              0x2084 <= a < 0x2098 -> elf_image ElfUser.sh_elf !! a = Some b ->
+              D3 !! a = Some b).
+    { intros a b Ha Hb. unfold D3. apply umap_win_lookup_out;
+        [ unfold sh_buf; lia | apply HD2; [ lia | exact Hb ] ]. }
+    (* ---- window 4: the allocator's [base] cell, [0x2088, 0x2098) ---- *)
+    iDestruct (umap_window γd D3 8328 (8328 + 16) with "HD") as "[Wbs _]".
+    (* ---- the lookups, run by run ---- *)
+    assert (Hsymb : forall j : nat, (j < 7)%nat ->
+              D0 !! (ushp_symbols + Z.of_nat j) = Some (ushp_sym_f j)).
+    { intros j Hj.
+      assert (Hin7 : In j (seq 0 7)) by (apply in_seq; lia).
+      pose proof (proj1 (forallb_forall _ _) Hsy j Hin7) as Hb.
+      apply HD0; [ unfold ushp_symbols; lia | ].
+      apply sh_dat_img. exact (bool_decide_eq_true_1 _ Hb). }
+    assert (Hsymn : D0 !! (ushp_symbols + Z.of_nat 7) = Some ubyte0).
+    { change (Z.of_nat 7) with 7. apply HD0; [ unfold ushp_symbols; lia | ].
+      apply sh_dat_img. exact (bool_decide_eq_true_1 _ Hsy0). }
+    assert (Hwsb : forall j : nat, (j < 5)%nat ->
+              D0 !! (ushp_whitespace + Z.of_nat j) = Some (ushp_ws_f j)).
+    { intros j Hj.
+      assert (Hin5 : In j (seq 0 5)) by (apply in_seq; lia).
+      pose proof (proj1 (forallb_forall _ _) Hws j Hin5) as Hb.
+      apply HD0; [ unfold ushp_whitespace; lia | ].
+      apply sh_dat_img. exact (bool_decide_eq_true_1 _ Hb). }
+    assert (Hwsn : D0 !! (ushp_whitespace + Z.of_nat 5) = Some ubyte0).
+    { change (Z.of_nat 5) with 5. apply HD0; [ unfold ushp_whitespace; lia | ].
+      apply sh_dat_img. exact (bool_decide_eq_true_1 _ Hws0). }
+    assert (Hfpb : forall j : nat, (j < 8)%nat ->
+              D1 !! (8208 + Z.of_nat j)
+              = Some (nth_byte (mword_of_int 0 : mword 64) j)).
+    { intros j Hj. rewrite nth_byte_zero64.
+      apply HD1; [ lia | apply sh_bss_img; lia ]. }
+    assert (Hbufb : forall j : nat, (j < sh_nbuf)%nat ->
+              D2 !! (sh_buf + Z.of_nat j) = Some ubyte0).
+    { intros j Hj. unfold sh_nbuf in Hj. apply HD2;
+        [ unfold sh_buf; lia | apply sh_bss_img; unfold sh_buf; lia ]. }
+    assert (Hbsb : forall j : nat, (j < 16)%nat ->
+              D3 !! (8328 + Z.of_nat j) = Some ubyte0).
+    { intros j Hj. apply HD3; [ lia | apply sh_bss_img; lia ]. }
+    (* ---- the window-range side conditions, HOISTED (durable-notes:
+           an inline [ltac:] runs against an evar) ---- *)
+    assert (Rws : forall j : nat, (j <= 5)%nat ->
+              0x2000 <= ushp_whitespace + Z.of_nat j < 0x2010)
+      by (intros j Hj; unfold ushp_whitespace; lia).
+    assert (Rsym : forall j : nat, (j <= 7)%nat ->
+              0x2000 <= ushp_symbols + Z.of_nat j < 0x2010)
+      by (intros j Hj; unfold ushp_symbols; lia).
+    assert (Rfp : forall j : nat, (j < 8)%nat ->
+              0x2010 <= 8208 + Z.of_nat j < 0x2018) by (intros j Hj; lia).
+    assert (Rbs : forall j : nat, (j < 16)%nat ->
+              8328 <= 8328 + Z.of_nat j < 8328 + 16) by (intros j Hj; lia).
+    assert (Rbuf : forall j : nat, (j < sh_nbuf)%nat ->
+              sh_buf <= sh_buf + Z.of_nat j < sh_buf + 100)
+      by (intros j Hj; unfold sh_nbuf in Hj; lia).
+    assert (L5 : Z.of_nat 5 < 2 ^ 31) by (vm_compute; reflexivity).
+    assert (L7 : Z.of_nat 7 < 2 ^ 31) by (vm_compute; reflexivity).
+    (* ---- persist the .data half and assemble ---- *)
+    iMod (uarea_persist γd
+            (base.filter (fun kv : Z * bv 8 => 0x2000 <= kv.1 < 0x2010) D0)
+            with "Wdat") as "#Wdatq".
+    iModIntro. iExists (fun _ : nat => ubyte0).
+    iSplitR "Wbuf".
+    - iSplitR "Hszf"; [ | iExact "Hszf" ].
+      rewrite /UkShLoop.ushl_dat.
+      iSplitR.
+      { iApply (ustr_of_window γd D0 0x2000 0x2010 ushp_whitespace 5 ushp_ws_f
+                  ushp_ws_f_nonul L5 Rws Hwsb Hwsn with "Wdatq"). }
+      iSplitR.
+      { iApply (ustr_of_window γd D0 0x2000 0x2010 ushp_symbols 7 ushp_sym_f
+                  ushp_sym_f_nonul L7 Rsym Hsymb Hsymn with "Wdatq"). }
+      iSplitL "Wfp".
+      { iPoseProof (ubytes_of_window γd D1 0x2010 0x2018 8208 8
+                      (nth_byte (mword_of_int 0 : mword 64))
+                      Rfp Hfpb with "Wfp") as "H".
+        rewrite /uword /uwordq /ubytes. iExact "H". }
+      iExists (fun _ : nat => ubyte0).
+      iApply (ubytes_of_window γd D3 8328 (8328 + 16) 8328 16
+                (fun _ : nat => ubyte0) Rbs Hbsb with "Wbs").
+    - iApply (ubytes_of_window γd D2 sh_buf (sh_buf + 100) sh_buf sh_nbuf
+                (fun _ : nat => ubyte0) Rbuf Hbufb with "Wbuf").
+  Qed.
+
 
   (* ------------------------------------------------------------------- *)
   (* INIT'S PINNED EXEC SLOT, as one persistent premise.                   *)
@@ -731,8 +1050,13 @@ Section UInitSh.
                     (init_sh_room alen n0 Halen Hn0) Hlen Hlzf) as Hsk.
       idtac "MARK-s4c-pose-ok".
       iApply (Hsk with "[] Hdep Hdp Htag [] [] Hcons Hgen' Hmp HQ Hps Hls").
-      - iModIntro. iIntros (γt γd γs) "Hsz Hlo".
-        iApply ("Hp1" $! W' γt γd γs with "Hsz Hlo").
+      - (* THE KEY'S OWN READING (lane SH-STATE): [sh_pay_state]'s wand
+           takes [UShKernel.sh_pay_key], and the two facts it is derived
+           from are the very ones handed to [sh_slot_of_kexec] above. *)
+        iModIntro. iIntros (γt γd γs) "Hsz Hlo".
+        iApply ("Hp1" $! W' γt γd γs with "[%] Hsz Hlo").
+        exact (UShKernel.sh_pay_key_of_kexec 1%nat alen afun fdv W' n0 Hok
+                 (init_sh_room alen n0 Halen Hn0)).
       - iIntros (N0). iApply ("Hp2" $! γp N0).
       - iExact "Hfd0". }
     iDestruct (pinned_exec_bundle fsc_fs uslot FsShPin.era0_sh_pins T

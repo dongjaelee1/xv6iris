@@ -505,12 +505,14 @@ Section EchoInitBoot.
       (HR : riscvGS Σ) (GEN : GenId)
       `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
         HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
-      (Rsh : gname -> gname -> gname -> iProp Σ)
       (γ : echo_fixed) (r : echo_names) :
     (* ---- the arc's remaining obligations, by lane ---- *)
+    (* [Rsh] IS NO LONGER A PARAMETER (lane SH-STATE): sh's state payload is
+       proved here ([UInitSh.sh_pay_state_holds]) and it fixes the family --
+       [UInitSh.sh_Rsh], the loop's own data at the break the exec'd key
+       pins.  What is still owed is the TAIL at that same family. *)
     (⊢ UkSh.sh_deps (PS := uprogSG_free)) ->
-    (⊢ UInitSh.sh_pay_state Rsh 0%nat) ->
-    (⊢ UInitSh.sh_pay_rest Rsh) ->
+    (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh) ->
     (* ---- and the two equations [Hinit_boot] hands over ---- *)
     @file_app Σ HF = MkAppcfg echo_names (echo_pred γ) r ->
     riscv_rx_tag = echo_tag γ ->
@@ -531,7 +533,7 @@ Section EchoInitBoot.
     ⊢ app_inv fsc_fs -∗ echo_boot γ r -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Hsh_deps Hsh_state Hsh_rest Heq Htag Hkill Hout.
+    intros Hsh_deps Hsh_rest Heq Htag Hkill Hout.
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)
@@ -595,12 +597,13 @@ Section EchoInitBoot.
     (* ---- the shell's slot, and the exec supply as a wand from the
            console credential ---- *)
     iAssert (UInitSh.init_sh_slot (echo_taint γ)
-               (UInitSh.sh_pay (echo_taint γ) Rsh 0%nat))%I as "#Hsh".
+               (UInitSh.sh_pay (echo_taint γ) UInitSh.sh_Rsh 0%nat))%I as "#Hsh".
     { rewrite /UInitSh.init_sh_slot /UInitSh.init_sh_slot_core.
       iSplitR; [ iExact "Hinv" | ]. iSplitR; [ iExact "Hfs" | ].
       iSplitR; [ iExact "Hmint" | ].
-      iApply (UInitSh.sh_pay_of_parts (echo_taint γ) Rsh 0%nat
-                with "[] [] Htg"); [ iApply Hsh_state | iApply Hsh_rest ]. }
+      iApply (UInitSh.sh_pay_of_parts (echo_taint γ) UInitSh.sh_Rsh 0%nat
+                with "[] [] Htg");
+        [ iApply UInitSh.sh_pay_state_holds | iApply Hsh_rest ]. }
     (* THE TWO READINGS OF THE SUPPLY, at Coq level: sh's read leaf is
        discharged from the console ring's dirty credential read AS THE
        TAINT and back ([AppEcho.echo_taint_of_sup] / [echo_sup_of_taint]),
@@ -617,7 +620,7 @@ Section EchoInitBoot.
     iAssert (UkInit.init_cons_sup fsc_cons (echo_taint γ)
                (init_cons_cred (echo_taint γ) r) init_cons_fd)%I as "#Hxs".
     { iApply (init_cons_sup_of_sh_slot γ r fsc_cons init_cons_fd
-                Rsh 0%nat Heq (fun k H => H)
+                UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
                 ltac:(vm_compute; discriminate)
                 ltac:(exists true; reflexivity)
                 (fun γp N l Hpq =>

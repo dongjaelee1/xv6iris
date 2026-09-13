@@ -246,6 +246,87 @@ Require Import Xv6Cameras.    (* [uartGhostG] -- the console ring's cameras *)
 Require Import UserConsole.   (* [ucons_pay] / [upos] -- sh's exit payload and
                                  its half of the console position pair *)
 
+(* ===================================================================== *)
+(* SS0' THE KEY THE STATE PAYLOAD IS APPLIED AT (lane SH-STATE).          *)
+(*                                                                        *)
+(* [UInitSh.sh_pay_state] is a [∀] over EVERY key, and at an arbitrary key *)
+(* neither half of sh's static state exists: the break the wand hands over *)
+(* is [uvis_sz W'] while a turn of the command loop carries sh's own       *)
+(* [kexec_sz sh_elf], and the writable window the state lives in --        *)
+(* [0x2000, 0x2098), the whole of the RW PT_LOAD -- need not be in the map *)
+(* at all.  Stating the wand without these two is stating something no     *)
+(* [Rsh] can satisfy, so they are PREMISES of it, and this is the pure     *)
+(* reading [sh_slot_of_kexec] already has off [kexec_image_ok] and the     *)
+(* room bound.                                                            *)
+(*                                                                        *)
+(* SPELLED AS "THE IMAGE IS IN THE MAP THE PAYLOAD IS HANDED", not as the  *)
+(* three facts it is derived from (the image inclusion, the RW page, the   *)
+(* cut): the producer reads exactly this and no permission vocabulary      *)
+(* reaches [UInitSh.v].                                                    *)
+(* ===================================================================== *)
+Definition sh_pay_key (W' : uvis) (n0 : nat) : Prop :=
+  uvis_sz W' = kexec_sz ElfUser.sh_elf
+  /\ (forall (a : Z) (b : bv 8),
+        ShData.shRodataEnd <= a < ShData.shMemEnd ->
+        elf_image ElfUser.sh_elf !! a = Some b ->
+        base.filter
+          (fun kv : Z * bv 8 =>
+             kv.1 < uint (tf_resume_gpr0 (uvis_tf W') !!! Regidx csp_rs1)
+                    - 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0)))))
+          (udata_lo (uvis_M W') (uvis_perm W') (uvis_sz W')) !! a = Some b).
+
+Lemma sh_pay_key_of_kexec (na : nat) (alen : nat -> nat)
+    (afun : nat -> nat -> bv 8) (sts : list fdstate) (W' : uvis) (n0 : nat) :
+  kexec_image_ok ElfUser.sh_elf na alen afun sts W' ->
+  kexec_sz ElfUser.sh_elf - PGSIZE
+    + 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0))))
+    <= kxc_sp_final (kexec_sz ElfUser.sh_elf) alen na ->
+  sh_pay_key W' n0.
+Proof.
+  intros Hok Hroom.
+  destruct sh_loads as (p0 & p1 & Hld & Hv0 & Hm0 & Hf0 & Hv1 & Hm1 & Hf1).
+  pose proof sh_kexec_sz as Hsz. pose proof sh_kexec_top as Htop.
+  rewrite Hsz in Hroom. unfold PGSIZE in Hroom.
+  unfold kexec_image_ok in Hok. cbv zeta in Hok. rewrite Hsz in Hok.
+  destruct Hok as (_ & Hszv & Hsp & _ & _ & Himg & _ & Hstk & Hperm & _ & _ & _).
+  destruct Hperm as (Hpg & _ & Hstpg).
+  set (spv := kxc_sp_final 0x5000 alen na) in *.
+  set (pi := uvis_perm W') in *.
+  pose proof (kxc_sp_final_gap 0x5000 alen na) as Hgap.
+  pose proof (kxc_sp_mono 0x5000 alen 0 na (Nat.le_0_l na)) as Hmono.
+  cbn [kxc_sp] in Hmono. fold spv in Hgap.
+  assert (Hspv : 0x4000 <= spv < 0x5000) by (clear -Hroom Hgap Hmono; lia).
+  assert (Hsp' : uint (tf_resume_gpr0 (uvis_tf W') !!! Regidx csp_rs1) = spv).
+  { rewrite csp_rs1_eq. unfold tf_resume_gpr0. rewrite tf_resume_gpr_sp.
+    change tf_sp_idx with kxc_tf_sp_idx. rewrite Hsp.
+    apply uint_moi. unfold Z64. clear -Hspv. lia. }
+  (* sh's RW PT_LOAD: one page at 0x2000 *)
+  assert (Hpg1 : pi !! kexec_pg 0x2000 = Some (kexec_seg_perm p1)).
+  { apply (Hpg 1%nat p1); [ rewrite Hld; reflexivity | ].
+    unfold kexec_seg_pages. rewrite Hld. cbn [take].
+    unfold kexec_sz_after. cbn [foldl]. unfold kx_grow, kx_uvmalloc.
+    rewrite Hv0 Hm0 Hv1 Hm1. unfold PGSIZE.
+    split; [ reflexivity | zclosed ]. }
+  assert (Hperm1 : kexec_seg_perm p1 = MkUperm false true)
+    by (unfold kexec_seg_perm; rewrite Hf1; reflexivity).
+  assert (Hwbss : forall a : Z, 0x2000 <= a < 0x3000 -> uw_addr pi a).
+  { intros a Ha. apply (uw_addr_of_perm pi a (MkUperm false true));
+      [| reflexivity ].
+    rewrite <- Hperm1. apply (sh_page_perm pi 0x2000 a);
+      [ exact Hpg1 | reflexivity | clear -Ha; lia | zle.. ]. }
+  split.
+  { rewrite Hszv Hsz. reflexivity. }
+  intros a b Ha Hab.
+  unfold ShData.shRodataEnd, ShData.shMemEnd in Ha.
+  apply map_lookup_filter_Some. split.
+  - apply map_lookup_filter_Some. split.
+    + apply map_lookup_filter_Some. split.
+      * exact (Himg a b Hab).
+      * cbn [fst]. apply Hwbss. clear -Ha; lia.
+    + cbn [fst]. rewrite Hszv. clear -Ha; lia.
+  - cbn [fst]. rewrite Hsp'. clear -Ha Hroom; lia.
+Qed.
+
 Section UShKernel.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.
@@ -368,7 +449,12 @@ Section UShKernel.
                         - 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0)))))
               (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)),
            ubyte γd k b) -∗
-        ∃ f : nat -> bv 8, R γt γd γs ∗ ubytes γd sh_buf sh_nbuf f) -∗
+        (* ...AND IT IS AN UPDATE (lane SH-STATE).  sh's static state holds
+           its two lexer tables at [DfracDiscarded] ([UkShLoop.ushl_dat]),
+           and a [DfracOwn 1] byte only becomes a read-only view through
+           [ghost_map_elem_persist] -- a frame-preserving update.  The wand
+           is spent inside a [WP], which absorbs it. *)
+        |==> ∃ f : nat -> bv 8, R γt γd γs ∗ ubytes γd sh_buf sh_nbuf f) -∗
     (* THE DEPOSIT SUPPLIER, the one obligation the ARM adds to an entry
        constructor: whoever hands sh a [UkRun.urun] says which syscall
        bundles it can pay and out of what.  (Before the fold this slot held
@@ -453,7 +539,7 @@ Section UShKernel.
     pose proof (ukn_const_of_eq N Q Hpayeq HQc) as Hti.
     rewrite Hpc.
     (* [R] and the line buffer, out of the data below the frame *)
-    iDestruct ("Hpay" $! (ukn_t N) (ukn_d N) (ukn_s N) with "Hszf Dlo")
+    iMod ("Hpay" $! (ukn_t N) (ukn_d N) (ukn_s N) with "Hszf Dlo")
       as (f) "[HR Hbs]".
     iPoseProof ("Hrest" $! N) as "#Hr".
     (* THE CONSOLE STATE AT THIS RECORD: the two leaves are [□]-quantified
@@ -520,6 +606,14 @@ Section UShKernel.
        [kexec_image_ok] instead of a premise (lane LAZY-FLAG, K4). *)
     uvis_lazy W' = false ->
     (* the payload, passed straight through: see [sh_uexec_slot] *)
+    (* the payload, passed straight through.  ITS [|==>] is lane SH-STATE's:
+       sh's static state holds the two lexer tables at [DfracDiscarded]
+       ([UkShLoop.ushl_dat]), so producing it out of [DfracOwn 1] bytes is
+       a frame-preserving update; [sh_uexec_slot] spends it with [iMod]
+       inside a [WP], which absorbs it.  ITS PURE PREMISE stops one level
+       up: [UInitSh.sh_pay_state] carries [sh_pay_key], and the caller
+       discharges it with [sh_pay_key_of_kexec] out of the very
+       [kexec_image_ok] and room bound it hands THIS lemma. *)
     □ (∀ γt γd γs : gname,
         usz γs (uvis_sz W') -∗
         ([∗ map] k ↦ b ∈ base.filter
@@ -528,7 +622,7 @@ Section UShKernel.
                         - 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0)))))
               (udata_lo (uvis_M W') (uvis_perm W') (uvis_sz W')),
            ubyte γd k b) -∗
-        ∃ f : nat -> bv 8, R γt γd γs ∗ ubytes γd sh_buf sh_nbuf f) -∗
+        |==> ∃ f : nat -> bv 8, R γt γd γs ∗ ubytes γd sh_buf sh_nbuf f) -∗
     (* the deposit supplier and the three deposits, passed straight
        through: see [sh_uexec_slot] and [UkSh.sh_deps] *)
     udep -∗

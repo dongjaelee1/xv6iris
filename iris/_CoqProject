@@ -267,6 +267,7 @@ UserMem.v
 UserFetch.v
 UserStepFull.v
 UmodeMem.v
+UserPermDenied.v
 UmodeText.v
 UmodeFetchX.v
 UmodeRegs.v

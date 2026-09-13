@@ -489,14 +489,21 @@ Section Apply.
       (* ...and the two bumped keys carry the SAME lazy bit: it is the
          row's own [lz'], bound outside *)
       - reflexivity. }
-    rewrite /uexec_arm_F /uexec_fork_parent_F /ufork_ans /uexec_ret_cont_F
-            /uexec_wait_F /uexec_ret_cont_gen. cbv zeta.
+    rewrite /uexec_arm_F /uexec_kill_arm_F /uexec_fork_parent_F /ufork_ans
+            /uexec_ret_cont_F /uexec_wait_F /uexec_ret_cont_gen. cbv zeta.
     destruct (decide (sc = uecall_scause)) as [_ | _];
       [ | (* the payment is at the FAMILY and reads no key row, so the
-             transparent arm transports exactly as its slot does *)
-        apply bi.wand_proper;
-        [ reflexivity
-        | exact (HS W W' Hg Hp HM Hpi Hsz Hfd Hcw Hgn Hch Hpid Hlz) ] ].
+             transparent arm transports exactly as its slot does -- and so
+             does the DELIBERATE side (lane SELF-KILL §3b), whose only key
+             row is the lazy bit the premises already relate *)
+        pose proof (HS W W' Hg Hp HM Hpi Hsz Hfd Hcw Hgn Hch Hpid Hlz) as HSW;
+        apply bi.or_proper;
+        [ apply bi.wand_proper; [ reflexivity | exact HSW ]
+        | apply bi.sep_proper;
+          [ reflexivity
+          | apply bi.and_proper;
+            [ apply bi.wand_proper; [ reflexivity | exact HSW ]
+            | reflexivity ] ] ] ].
     (* [Hfd] joins the other four: the returning arm's row reads the ENTRY
        descriptor view, so both sides have to name the same one before the
        trapframe transport can be the only difference left.  [Hcw] the
@@ -1274,6 +1281,10 @@ Section LoopApply.
              iApply ("Hret" with "Hpay").
     - (* ---- TRANSPARENT: interrupt, page fault, anything else ---- *)
       rewrite (uexec_arm_transparent sc (uvis_run W) f Hne).
+      (* THE ARM HAS TWO SIDES NOW (lane SELF-KILL §3b) and BOTH carry the
+         slot, so the resume path reads it off either without learning
+         which the process chose. *)
+      iDestruct (uexec_kill_arm_slot sc (uvis_run W) f with "Hret") as "Hret".
       destruct (uround_ok_transparent sc (uvis_tf (uvis_run W))
                   (uvis_M W) (uvis_M W') (uvis_perm W) (uvis_perm W')
                   (uvis_sz W) (uvis_sz W') (uvis_cwd W) (uvis_cwd W')

@@ -1035,6 +1035,10 @@ Section UkStorePostFetch.
               (uexec_ret_transparent _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false)
                  (utrap_scause_samo_ne
                     (register_lookup (R_bitvector_64 scause) rsx)))).
+    (* THE ARM HAS TWO SIDES NOW (lane SELF-KILL §3b) and this leaf gives
+       the LEFT one: a fault the kernel may still serve.  Unfolded HERE,
+       before the payment's rewrite, so that rewrite reaches the arm. *)
+    rewrite /UexecRet.uexec_kill_arm /UexecRet.uexec_kill_arm_F.
     (* THE PAYMENT AT THE FAULT ARM: a page fault is a kernel entry like
        any other, so the deposit is paid out of the copy the payload
        carries and the arm gives it back ([UexecRet.uexec_pay_dep]). *)
@@ -1049,7 +1053,7 @@ Section UkStorePostFetch.
     iSplitR.
     { iPoseProof Hkcw as "#Hkcw".
       iApply (ukill_cred_at_of_cred with "Hkcw"). }
-    iExact "Hret".
+    iLeft. iExact "Hret".
   Qed.
 
 End UkStorePostFetch.

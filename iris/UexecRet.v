@@ -1274,6 +1274,93 @@ Section UexecRet.
      deposit was made at: the kernel took [uexec_pay_dep]'s payload at the
      trap and gives it back to whatever resumes the process.  Exit alone
      has no arm to give it back through. *)
+
+  (* THE TRANSPARENT ARM HAS TWO SIDES, AND THE PROCESS PICKS ONE (lane
+     SELF-KILL, §3b).
+
+     LEFT is what every leaf has always given: "if you resume me, here is
+     my slot".  A page fault the kernel SERVES, a timer tick and a device
+     interrupt all come back through it, and so does a kill -- the kernel
+     simply drops the arm and cashes the deposit instead.
+
+     RIGHT is a DELIBERATE death: "here is my exit payload outright, and
+     here is my slot too if you resume me after all".  A process that
+     stores through a pointer its own key shows without W
+     ([UserPermDenied]) traps at cause 15, and it can pay its own exit at
+     that trap instead of presenting a credential it does not have.
+
+     THE RIGHT SIDE STILL CARRIES THE SLOT, and that is what keeps the
+     change to ONE definition.  The naive shape -- payload INSTEAD of slot
+     -- makes the arm useless to the kernel on the one path where the code
+     does resume after a killing cause (vmfault SERVES the page and
+     usertrap returns), so every consumer of the arm would have to be told
+     "this resume cannot happen", and that fact is only provable inside
+     usertrap.  An ADDITIVE conjunction says the same thing with no
+     obligation at all: the process proves BOTH sides from the SAME
+     resources, so the kernel takes the slot if it resumes and the payload
+     if it kills, and nothing is duplicated -- a payload the kernel never
+     took is still the process's.  Every existing consumer therefore reads
+     the arm exactly as before ([uexec_kill_arm_F_slot]), and only the kill
+     path looks at the other side.
+
+     WHAT THE PROCESS PROVES ON THE SLOT SIDE IS ITS OWN RE-FAULT.  A store
+     the key denies traps with the pc AT the store ([UkStore.
+     uk_store_fault_post_fetch]), so a process that were resumed would
+     execute the same store and trap again -- which is a Löb induction over
+     [Loop] and nothing more.  That is why the pair is provable at all. *)
+  (* GUARDED BY THE CAUSE, and that guard is not decoration: the branch
+     this arm sits on is EVERY non-ecall cause, and two of them -- the
+     delegated timer and external interrupts -- are causes the kernel
+     HANDLES and resumes from.  A process that declared its death final at
+     a timer tick would be resumed with no slot to resume into.
+     [ukill_sc] names exactly the causes usertrap kills at. *)
+  Definition uexec_kill_arm_F (X : uvis -d> iPropO Σ) (sc : mword 64)
+      (W : uvis) (f : sfam) : iProp Σ :=
+    ((uexec_pay_arm f -∗ X W)
+     ∨ (⌜ukill_sc sc⌝ ∗ ((uexec_pay_arm f -∗ X W) ∧ sexit_pay f (-1))))%I.
+
+  (* the left side, which is what every leaf but the deliberate one gives *)
+  Lemma uexec_kill_arm_F_resume (X : uvis -d> iPropO Σ) (sc : mword 64)
+      (W : uvis) (f : sfam) :
+    (uexec_pay_arm f -∗ X W) -∗ uexec_kill_arm_F X sc W f.
+  Proof. rewrite /uexec_kill_arm_F. iIntros "H". iLeft. iExact "H". Qed.
+
+  (* ...and the right side, at the cause that justifies it.  The premise is
+     an ADDITIVE conjunction: the same resources answer both readings. *)
+  Lemma uexec_kill_arm_F_final (X : uvis -d> iPropO Σ) (sc : mword 64)
+      (W : uvis) (f : sfam) :
+    ukill_sc sc ->
+    ((uexec_pay_arm f -∗ X W) ∧ sexit_pay f (-1)) -∗
+    uexec_kill_arm_F X sc W f.
+  Proof.
+    intros Hsc. rewrite /uexec_kill_arm_F. iIntros "H". iRight.
+    iSplitR; [ iPureIntro; exact Hsc | ]. iExact "H".
+  Qed.
+
+  (* WHAT EVERY EXISTING CONSUMER READS, and it is what makes this an
+     additive change: both sides carry the slot, so a party that only wants
+     to resume the process never learns there was a choice. *)
+  Lemma uexec_kill_arm_F_slot (X : uvis -d> iPropO Σ) (sc : mword 64)
+      (W : uvis) (f : sfam) :
+    uexec_kill_arm_F X sc W f -∗ (uexec_pay_arm f -∗ X W).
+  Proof.
+    rewrite /uexec_kill_arm_F.
+    iIntros "[H | (_ & H)]"; [ iExact "H" | iDestruct "H" as "[H _]"; iExact "H" ].
+  Qed.
+
+  (* ...AND WHAT THE KILL PATH READS: the process's own exit payload, where
+     it chose to pay outright, and otherwise the wand the kernel has always
+     cashed with the credential. *)
+  Lemma uexec_kill_arm_F_pay (X : uvis -d> iPropO Σ) (sc : mword 64)
+      (W : uvis) (f : sfam) :
+    uexec_kill_arm_F X sc W f -∗
+    (uexec_pay_arm f -∗ X W) ∨ sexit_pay f (-1).
+  Proof.
+    rewrite /uexec_kill_arm_F.
+    iIntros "[H | (_ & H)]";
+      [ iLeft; iExact "H" | iRight; iDestruct "H" as "[_ H]"; iExact "H" ].
+  Qed.
+
   Definition uexec_arm_F (X : uvis -d> iPropO Σ) (sc : mword 64) (W : uvis)
       (f : sfam) : iProp Σ :=
     (if decide (sc = uecall_scause) then
@@ -1284,7 +1371,7 @@ Section UexecRet.
        else if decide (n = USYS_wait) then
          (uexec_pay_arm f -∗ uexec_wait_F X n f W)
        else (uexec_pay_arm f -∗ uexec_ret_cont_F X n f W)
-     else (uexec_pay_arm f -∗ X W))%I.
+     else uexec_kill_arm_F X sc W f)%I.
 
   (* ...AND THE DEPOSIT ALONE: what the process owes at this trap.  [emp]
      off the returning arm -- exit returns nothing -- and [emp] at every
@@ -1396,8 +1483,10 @@ Section UexecRet.
           else (sbundle_at X n f W ∗
                 (uexec_pay_arm f -∗ uexec_ret_cont_F X n f W))
         (* ...and the transparent arm carries the KILL CREDENTIAL at a cause
-           the kernel cannot handle (lane KILL-PAY, K3(b)) *)
-        else (ukill_cred_at sc ∗ (uexec_pay_arm f -∗ X W))))%I.
+           the kernel cannot handle (lane KILL-PAY, K3(b)), over the arm the
+           process CHOSE -- resume-or-kill, or a deliberate death
+           ([uexec_kill_arm_F], lane SELF-KILL §3b) *)
+        else (ukill_cred_at sc ∗ uexec_kill_arm_F X sc W f)))%I.
 
   (* (B) the kernel obligation: its later-free BODY, and the guarded form *)
   Definition ukb_F (X : uvis -d> iPropO Σ) `{CID : CpuId} `{XI : TsoCtx.CurCtx}
@@ -1560,7 +1649,8 @@ Section UexecRet.
 
   Local Instance uslot_F_contractive : Contractive uslot_F.
   Proof.
-    rewrite /uslot_F /uvb_F /ukont_F /ukb_F /uexec_ret_F /uexec_fork_F
+    rewrite /uslot_F /uvb_F /ukont_F /ukb_F /uexec_ret_F /uexec_kill_arm_F
+            /uexec_fork_F
             /uexec_fork_parent_F /ufork_ans /uexec_ret_cont_F
             /uexec_wait_F /uwait_ans /uexec_ret_cont_gen.
     solve_contractive_wide.
@@ -1571,6 +1661,9 @@ Section UexecRet.
   (* the two halves at the fixpoint: [uexec_arm] is what the loop's round
      consumes, [uexec_dep] what it splits off and sends down *)
   Definition uexec_arm : mword 64 -> uvis -> sfam -> iProp Σ := uexec_arm_F uslot.
+  (* the transparent arm's two sides at the fixpoint (lane SELF-KILL §3b) *)
+  Definition uexec_kill_arm : mword 64 -> uvis -> sfam -> iProp Σ :=
+    uexec_kill_arm_F uslot.
   Definition uexec_dep : mword 64 -> uvis -> sfam -> iProp Σ := uexec_dep_F uslot.
   Definition ukb `{CID : CpuId} `{XI : TsoCtx.CurCtx} (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
       (Rut : uptd -> iProp Σ)
@@ -1912,19 +2005,49 @@ Section UexecRet.
     sc <> uecall_scause ->
     uexec_ret sc W ⊣⊢
     (∃ f : sfam, uexec_pay_dep sc W f ∗ ukill_cred_at sc ∗
-       (uexec_pay_arm f -∗ uslot W)).
+       uexec_kill_arm sc W f).
   Proof.
-    intros Hne. rewrite /uexec_ret /uexec_ret_F.
+    intros Hne. rewrite /uexec_ret /uexec_ret_F /uexec_kill_arm.
     destruct (decide (sc = uecall_scause)); [ contradiction | reflexivity ].
   Qed.
 
   Lemma uexec_arm_transparent (sc : mword 64) (W : uvis) (f : sfam) :
     sc <> uecall_scause ->
-    uexec_arm sc W f ⊣⊢ (uexec_pay_arm f -∗ uslot W).
+    uexec_arm sc W f ⊣⊢ uexec_kill_arm sc W f.
   Proof.
-    intros Hne. rewrite /uexec_arm /uexec_arm_F.
+    intros Hne. rewrite /uexec_arm /uexec_arm_F /uexec_kill_arm.
     destruct (decide (sc = uecall_scause)); [ contradiction | reflexivity ].
   Qed.
+
+  (* the two sides at the fixpoint, for the leaves that build one *)
+  Lemma uexec_kill_arm_resume (sc : mword 64) (W : uvis) (f : sfam) :
+    (uexec_pay_arm f -∗ uslot W) -∗ uexec_kill_arm sc W f.
+  Proof. exact (uexec_kill_arm_F_resume uslot sc W f). Qed.
+
+  Lemma uexec_kill_arm_final (sc : mword 64) (W : uvis) (f : sfam) :
+    ukill_sc sc ->
+    ((uexec_pay_arm f -∗ uslot W) ∧ sexit_pay f (-1)) -∗ uexec_kill_arm sc W f.
+  Proof. intro Hsc. exact (uexec_kill_arm_F_final uslot sc W f Hsc). Qed.
+
+  Lemma uexec_kill_arm_slot (sc : mword 64) (W : uvis) (f : sfam) :
+    uexec_kill_arm sc W f -∗ (uexec_pay_arm f -∗ uslot W).
+  Proof. exact (uexec_kill_arm_F_slot uslot sc W f). Qed.
+
+  Lemma uexec_kill_arm_pay (sc : mword 64) (W : uvis) (f : sfam) :
+    uexec_kill_arm sc W f -∗ (uexec_pay_arm f -∗ uslot W) ∨ sexit_pay f (-1).
+  Proof. exact (uexec_kill_arm_F_pay uslot sc W f). Qed.
+
+  (* WHAT THE KERNEL READS OFF THE RIGHT SIDE: at [uvis_lazy W = false] the
+     table's fill is empty, and that is the whole reason a deliberate fault
+     is final -- [SpecVmfault]'s contract answers 0 at every address, so
+     usertrap's [ut_d0] cannot resume.  Stated here, beside the arm, so the
+     kernel proof reads the justification off the resource rather than
+     re-deriving it. *)
+  Lemma uexec_kill_arm_cases (sc : mword 64) (W : uvis) (f : sfam) :
+    uexec_kill_arm sc W f -∗
+    (uexec_pay_arm f -∗ uslot W)
+    ∨ (⌜ukill_sc sc⌝ ∗ ((uexec_pay_arm f -∗ uslot W) ∧ sexit_pay f (-1))).
+  Proof. rewrite /uexec_kill_arm /uexec_kill_arm_F. iIntros "H". iExact "H". Qed.
 
   (* ------------------------------------------------------------------- *)
   (* THE SPLIT AND THE JOIN.  The loop splits the deposit off before the   *)
@@ -2093,7 +2216,8 @@ Section UexecRet.
   Proof.
     intros Hf. iIntros "#Hkc #Hpay #H". rewrite /uexec_arm /uexec_arm_F.
     destruct (decide (sc = uecall_scause));
-      [ | iIntros "HR"; iApply ("H" with "Hpay");
+      [ | rewrite /uexec_kill_arm_F; iLeft;
+          iIntros "HR"; iApply ("H" with "Hpay");
           iApply (uexec_pay_arm_const R f Hf with "Hkc HR") ].
     destruct (decide (usys_num (uvis_tf W) = USYS_exit)); [ done | ].
     (* THE RESUME KEY'S GENERATION IS THIS PROCESS'S, so the credential

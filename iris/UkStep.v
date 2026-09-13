@@ -791,6 +791,10 @@ Section UkArms.
     iApply (bi.equiv_entails_1_2 _ _
               (uexec_ret_transparent _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false)
                  (utrap_scause_intr_ne i (register_lookup (R_bitvector_64 scause) rsA)))).
+    (* THE ARM HAS TWO SIDES NOW (lane SELF-KILL §3b) and an interrupt gives
+       the LEFT one: the process is resumed.  Unfolded HERE, before the
+       payment's rewrite, so that rewrite reaches the arm. *)
+    rewrite /UexecRet.uexec_kill_arm /UexecRet.uexec_kill_arm_F.
     (* THE PAYMENT AT THE TRANSPARENT ARM: the deposit is paid out of the
        copy the payload carries, and the arm gives it back -- so the wand
        into the continuation is applied to what the RESUME returns, not to
@@ -810,7 +814,7 @@ Section UkArms.
     { iApply (ukill_cred_at_not _
                 (utrap_scause_intr_not_kill i
                    (register_lookup (R_bitvector_64 scause) rsA) Hi)). }
-    iIntros "Hpayv".
+    iLeft. iIntros "Hpayv".
     rewrite (uslot_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2).
     iDestruct ("Hkc" with "Hpayv") as "Hkc".
     iDestruct "Hkc" as "[_ Hkc]". iExact "Hkc".

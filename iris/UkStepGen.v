@@ -192,11 +192,14 @@ Section UkGen.
      usertrap cannot handle the deposit carries the application's kill
      credential, so the transparent arm the engine proves carries it too.
      [UexecRet.uexec_ret_transparent] is still the plain instance. *)
+  (* ...AND THE ARM HAS TWO SIDES (lane SELF-KILL §3b): the process either
+     hands back a slot to be resumed at, or declares the fault FINAL and
+     pays its exit outright.  [UexecRet.uexec_kill_arm_F] is the pair. *)
   Hypothesis Ret_transparent : forall (sc : mword 64) (W : uvis),
     sc <> uecall_scause ->
     RetF X sc W ⊣⊢
     (∃ f : sfam, uexec_pay_dep sc W f ∗ ukill_cred_at sc ∗
-       (uexec_pay_arm f -∗ X W)).
+       uexec_kill_arm_F X sc W f).
 
   (* the slot at a TRAP-OUT key is the continuation at the running state --
      UexecRet.[uslot_run]'s proof, at the hypothesis *)
@@ -559,6 +562,10 @@ Section UkGenArms.
     iApply (bi.equiv_entails_1_2 _ _
               (Ret_transparent _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false)
                  (utrap_scause_intr_ne i (register_lookup (R_bitvector_64 scause) rsA)))).
+    (* THE ARM HAS TWO SIDES NOW (lane SELF-KILL §3b) and an interrupt gives
+       the LEFT one: the process is resumed.  Unfolded HERE, before the
+       payment's rewrite, so that rewrite reaches the arm. *)
+    rewrite /UexecRet.uexec_kill_arm_F.
     (* THE PAYMENT AT THE TRANSPARENT ARM: the deposit is paid out of the
        payload's copy and the arm gives it back, so the wand into the
        continuation is applied to what the RESUME returns. *)
@@ -575,7 +582,7 @@ Section UkGenArms.
     { iApply (ukill_cred_at_not _
                 (UkStep.utrap_scause_intr_not_kill i
                    (register_lookup (R_bitvector_64 scause) rsA) Hi)). }
-    iIntros "Hpayv".
+    iLeft. iIntros "Hpayv".
     rewrite (ukc'_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2).
     iDestruct ("Hkc" with "Hpayv") as "Hkc".
     iDestruct "Hkc" as "[_ Hkc]". iExact "Hkc".
@@ -1930,7 +1937,7 @@ Section UkGenPlain.
     sc <> uecall_scause ->
     uexec_ret_F uslot sc W ⊣⊢
     (∃ f : sfam, uexec_pay_dep sc W f ∗ ukill_cred_at sc ∗
-       (uexec_pay_arm f -∗ uslot W)).
+       uexec_kill_arm_F uslot sc W f).
   Proof. exact (uexec_ret_transparent sc W). Qed.
 
   (* UkStep.v's exported ecall-driver type, spelled out once *)

@@ -32,10 +32,8 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
+Require Import UexecSlot.   (* [uvis] -- the key vocabulary *)
 Require Import UkRun UkRunLeaf UkRunSys.
-Require Import UexecSlot.   (* [upay_neg_of] -- the -1 payload is a WAND
-                               from the kill credential (lane KILL-PAY,
-                               K4(a)) *)
 Require Import UCodeInit.
 Require Import TsoCtx.
 Require User.InitSyms User.InitInstrs.
@@ -1365,13 +1363,9 @@ Section UkInit.
                     vm_compute; reflexivity)
               with "[] [Hpay] Hrun").
     { iApply (uis_init_374 with "Hcode"). }
-    (* AT A CONSTANT PAYLOAD THE TWO CONJUNCTS ARE ONE PROPOSITION, so the
-       ONE resource the program holds answers both ([UkRun.ukn_const]) --
-       outright on the left and through the credential on the right
-       ([UexecSlot.upay_neg_of]). *)
-    { iIntros "_".
-      rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)).
-      iSplit; [ iExact "Hpay" | iApply (upay_neg_of with "Hpay") ]. }
+    (* AT A CONSTANT PAYLOAD the one resource the program holds is exactly
+       what the exit leaf owes ([UkRun.ukn_const]). *)
+    { rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)). iExact "Hpay". }
   Qed.
 
   (* ===================================================================== *)

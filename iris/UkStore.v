@@ -1035,25 +1035,22 @@ Section UkStorePostFetch.
               (uexec_ret_transparent _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false)
                  (utrap_scause_samo_ne
                     (register_lookup (R_bitvector_64 scause) rsx)))).
-    (* THE ARM HAS TWO SIDES NOW (lane SELF-KILL §3b) and this leaf gives
-       the LEFT one: a fault the kernel may still serve.  Unfolded HERE,
-       before the payment's rewrite, so that rewrite reaches the arm. *)
     rewrite /UexecRet.uexec_kill_arm /UexecRet.uexec_kill_arm_F.
-    (* THE PAYMENT AT THE FAULT ARM: a page fault is a kernel entry like
-       any other, so the deposit is paid out of the copy the payload
-       carries and the arm gives it back ([UexecRet.uexec_pay_dep]). *)
-    iDestruct "Hret" as "(#Hmyp & Hpayv & Hret)".
+    (* THE DEPOSIT AT THE FAULT ARM IS THE PAY FACT ALONE (lane SELF-KILL,
+       P6): a page fault is not the exit ecall, so the payment row is free
+       ([UexecRet.uexec_pay_dep_ne]). *)
+    iDestruct "Hret" as "(#Hmyp & Hret)".
     iExists (sfam_at Qp sfam_pt).
-    rewrite /uexec_pay_arm (sexit_pay_at Qp sfam_pt).
-    iSplitL "Hpayv";
+    iSplitR;
       [ iApply (uexec_pay_dep_ne _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false) _ (sfam_at Qp sfam_pt)
                   (utrap_scause_samo_ne (register_lookup (R_bitvector_64 scause) rsx))
-                  (sexit_pay_at Qp sfam_pt) with "Hmyp Hpayv") | ].
-    (* THE KILL ROW, out of the fault witness (lane KILL-PAY, K3(b)) *)
+                  (sexit_pay_at Qp sfam_pt) with "Hmyp") | ].
+    (* THE KILL ROW, out of the fault witness: the application's taint
+       ([UexecRet.ukill_cred_at]) *)
     iSplitR.
     { iPoseProof Hkcw as "#Hkcw".
-      iApply (ukill_cred_at_of_cred with "Hkcw"). }
-    iLeft. iExact "Hret".
+      iApply (ukill_cred_at_of_cred _ with "Hkcw"). }
+    iExact "Hret".
   Qed.
 
 End UkStorePostFetch.
@@ -1567,17 +1564,15 @@ Section UkStore.
               ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hrut & Hfdr & Hkb & Hkc)".
       iFrame "Hrut Hfdr Hkb". iSplit.
-      - (* the RETIRE leg: the payment goes straight back into the
-           continuation *)
-        iDestruct "Hkc" as "(_ & Hpayv & Hkc)".
-        iDestruct ("Hkc" with "Hpayv") as "[Hkc _]".
+      - (* the RETIRE leg: the continuation's own side *)
+        iDestruct "Hkc" as "(_ & Hkc)".
+        iDestruct "Hkc" as "[Hkc _]".
         iIntros "Hb". rewrite /ukc.
         iApply ("Hkc" $! CIDo XIo C' pt' Rfd' Rut' HRut' with "[%] [%] [%] Hb");
           [ exact Hlo' | exact Hpm' | intros _; exact Hlf' ].
-      - (* the FAULT leg: the payment is handed to the kernel with the
-           slot, and the arm hands it back into the continuation *)
-        iDestruct "Hkc" as "(#Hmyp & Hpayv & Hkc)". iFrame "Hmyp Hpayv".
-        iIntros "Hpayv". iDestruct ("Hkc" with "Hpayv") as "[_ Hkc]".
+      - (* the FAULT leg: the slot goes to the kernel with the pay fact *)
+        iDestruct "Hkc" as "(#Hmyp & Hkc)". iFrame "Hmyp".
+        iDestruct "Hkc" as "[_ Hkc]".
         rewrite (uslot_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2). iExact "Hkc". }
     iPoseProof (uv_swp_fetch_uinstr (CID := CIDo) (XI := XIo) pt' Mp' t (uc_dqc C')
                   rsA pc is_rvc i Hinj Hui' LpcA LcpA (proj1 HmsokA) LmenvA

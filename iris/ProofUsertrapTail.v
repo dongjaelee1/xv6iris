@@ -334,16 +334,15 @@ Section UtRet2.
     (∀ n : Z,
        ut_sys_out n fdep scw (pv_tf (us_V U0)) U0 sts0 gn cs pid
          (pv_tf (us_V U) !!! tf_arg_idx 0) (us_M U) sts (pv_cwi (us_V U)) cs2) -∗
-    (* THE PAYMENT, CARRIED.  The process handed its payload over when it
-       trapped ([SpecUsertrap.ut_pay_in]); this tail either spends it on
-       [kexit(-1)] -- the killed arm below -- or hands it back to the loop
-       through the post's own row ([ut_pay_out]).  The fact is at the ENTRY
-       record's generation, which is the one every arm of this walk keeps
+    (* THE PAY FACT, CARRIED.  The process handed its knowledge over when
+       it trapped ([SpecUsertrap.ut_pay_in]); NOTHING travels beside it any
+       more (lane SELF-KILL, P6b) -- a kill is paid for by the KILLER, into
+       <p->lock>'s own killed row.  The fact is at the ENTRY record's
+       generation, which is the one every arm of this walk keeps
        ([SpecUsertrap.ut_gen_kept]), so the arms below carry it at the
        record they hold and the conversion at each hop is by the update's
        own definition. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗
@@ -356,7 +355,7 @@ Section UtRet2.
     
     destruct Hwf as (Hj & Hjl & Hlen & Hlg).
     iIntros "#Htext Hpc Hcg Hcpu Hclm Hsepc Hscause Hstval Hsret Hstvec Hq4
-             Hkptr #Htfk [#Hcaps Hown] Hframe Hxo Hfo Hwo Hso #Hmyp Hpayv Hcont".
+             Hkptr #Htfk [#Hcaps Hown] Hframe Hxo Hfo Hwo Hso #Hmyp Hcont".
     (* the boundary hands the trap resource back at the literal [∅] that
        [ut_res] pins -- depth 0 forces the held set empty, so this is a
        re-spelling, not an obligation. *)
@@ -717,8 +716,7 @@ Section UtRet2.
               (kvi_satp_word (ud_root (pv_upt (us_V U)))) (mepc_val uepc) scv stv mdv0 U
               with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                     Hhs Hpriv Hms Hscause Hstval Hsepc [Hstvec] Hpc [Hfile]
-                    Hmie Hmdl Hmenv Hhw Hmin [-Hxo Hfo Hwo Hso Hpayv] Hxo Hfo Hwo Hso
-                    Hpayv").
+                    Hmie Hmdl Hmenv Hhw Hmin [-Hxo Hfo Hwo Hso] Hxo Hfo Hwo Hso").
     - reflexivity.
     - exact Hrd.
     - (* [ut_fd_kept], straight off the premise: this tail re-closes the
@@ -878,16 +876,15 @@ Section UtRet.
     (∀ n : Z,
        ut_sys_out n fdep scw (pv_tf (us_V U0)) U0 sts0 gn cs pid
          (pv_tf (us_V U) !!! tf_arg_idx 0) (us_M U) sts (pv_cwi (us_V U)) cs2) -∗
-    (* THE PAYMENT, CARRIED.  The process handed its payload over when it
-       trapped ([SpecUsertrap.ut_pay_in]); this tail either spends it on
-       [kexit(-1)] -- the killed arm below -- or hands it back to the loop
-       through the post's own row ([ut_pay_out]).  The fact is at the ENTRY
-       record's generation, which is the one every arm of this walk keeps
+    (* THE PAY FACT, CARRIED.  The process handed its knowledge over when
+       it trapped ([SpecUsertrap.ut_pay_in]); NOTHING travels beside it any
+       more (lane SELF-KILL, P6b) -- a kill is paid for by the KILLER, into
+       <p->lock>'s own killed row.  The fact is at the ENTRY record's
+       generation, which is the one every arm of this walk keeps
        ([SpecUsertrap.ut_gen_kept]), so the arms below carry it at the
        record they hold and the conversion at each hop is by the update's
        own definition. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗
@@ -897,7 +894,7 @@ Section UtRet.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hso #Hmyp Hpayv Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hso #Hmyp Hcont".
     iDestruct "Hhold" as "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     iDestruct (ut_own_priv with "Hown") as "(Hpv & Hufr & Hch & Hsy & Hownback)".
     iDestruct (ut_epc_exists with "Hpv") as %Hepcx.
@@ -1061,7 +1058,7 @@ Section UtRet.
                              (ut_cs_of_callee_saved _ _ Hcspr)))
               Hmiev Hmenvv Hrdr Hepcw
               with "Htext Hpc Hcg Hcpu Hclm Hsepc Hscause Hstval Hsret Hstvec
-                    Hq4 Hkptr Htfk [Hown] Hframe Hxo Hfo Hwo Hso Hmyp Hpayv Hcont").
+                    Hq4 Hkptr Htfk [Hown] Hframe Hxo Hfo Hwo Hso Hmyp Hcont").
     rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
   Qed.
 
@@ -1167,16 +1164,15 @@ Section UtA6.
     (∀ n : Z,
        ut_sys_out n fdep scw (pv_tf (us_V U0)) U0 sts0 gn cs pid
          (pv_tf (us_V U) !!! tf_arg_idx 0) (us_M U) sts (pv_cwi (us_V U)) cs2) -∗
-    (* THE PAYMENT, CARRIED.  The process handed its payload over when it
-       trapped ([SpecUsertrap.ut_pay_in]); this tail either spends it on
-       [kexit(-1)] -- the killed arm below -- or hands it back to the loop
-       through the post's own row ([ut_pay_out]).  The fact is at the ENTRY
-       record's generation, which is the one every arm of this walk keeps
+    (* THE PAY FACT, CARRIED.  The process handed its knowledge over when
+       it trapped ([SpecUsertrap.ut_pay_in]); NOTHING travels beside it any
+       more (lane SELF-KILL, P6b) -- a kill is paid for by the KILLER, into
+       <p->lock>'s own killed row.  The fact is at the ENTRY record's
+       generation, which is the one every arm of this walk keeps
        ([SpecUsertrap.ut_gen_kept]), so the arms below carry it at the
        record they hold and the conversion at each hop is by the update's
        own definition. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗
@@ -1186,7 +1182,7 @@ Section UtA6.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hso #Hmyp Hpayv Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hso #Hmyp Hcont".
     iDestruct "Hhold" as "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     iAssert (procs_inv (un_s N)) with "[]" as "#Hpi".
     { iDestruct "Hcaps" as "($ & _)". }
@@ -1444,8 +1440,8 @@ Section UtA6.
                 mie_v menvcfg0 epw scw lks sts0 sts gn cs cs2 pid fdep
                 Hwf' ltac:(exact Hgenk) Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmfsp Hmfs1 Hcsmf
                 Hmiev Hmenvv Hrd
-                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hpayv Hcont] Hframe Hxo Hfo Hwo Hso
-                      Hmyp Hpayv Hcont").
+                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
+                      Hmyp Hcont").
       rewrite /ut_hold. iSplitL "Hcpu"; [iExact "Hcpu"|].
       iSplitL "Hcsrs"; [iExact "Hcsrs"|].
       iSplitL "Hclm"; [iExact "Hclm"|].
@@ -1550,16 +1546,15 @@ Section UtFa.
     (∀ n : Z,
        ut_sys_out n fdep scw (pv_tf (us_V U0)) U0 sts0 gn cs pid
          (pv_tf (us_V U) !!! tf_arg_idx 0) (us_M U) sts (pv_cwi (us_V U)) cs2) -∗
-    (* THE PAYMENT, CARRIED.  The process handed its payload over when it
-       trapped ([SpecUsertrap.ut_pay_in]); this tail either spends it on
-       [kexit(-1)] -- the killed arm below -- or hands it back to the loop
-       through the post's own row ([ut_pay_out]).  The fact is at the ENTRY
-       record's generation, which is the one every arm of this walk keeps
+    (* THE PAY FACT, CARRIED.  The process handed its knowledge over when
+       it trapped ([SpecUsertrap.ut_pay_in]); NOTHING travels beside it any
+       more (lane SELF-KILL, P6b) -- a kill is paid for by the KILLER, into
+       <p->lock>'s own killed row.  The fact is at the ENTRY record's
+       generation, which is the one every arm of this walk keeps
        ([SpecUsertrap.ut_gen_kept]), so the arms below carry it at the
        record they hold and the conversion at each hop is by the update's
        own definition. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗
@@ -1569,7 +1564,7 @@ Section UtFa.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hso #Hmyp Hpayv Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hso #Hmyp Hcont".
     iDestruct "Hhold" as "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     (* depth 0 forces the held set empty, which is what lets the yield arm
        hand [cpu_own ... ∅] to a contract that pins [∅] (SpecYield.v). *)
@@ -1626,8 +1621,8 @@ Section UtFa.
                 mie_v menvcfg0 epw scw lks sts0 sts gn cs cs2 pid fdep
                 Hwf' ltac:(exact Hgenk) Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp HM1sp HM1s1 HcsM1
                 Hmiev Hmenvv Hrd
-                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hpayv Hcont] Hframe Hxo Hfo Hwo Hso
-                      Hmyp Hpayv Hcont").
+                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
+                      Hmyp Hcont").
       rewrite /ut_hold. iSplitL "Hcpu"; [iExact "Hcpu"|].
       iSplitL "Hcsrs"; [iExact "Hcsrs"|].
       iSplitL "Hclm"; [iExact "Hclm"|].
@@ -1715,8 +1710,8 @@ Section UtFa.
                 mie_v menvcfg0 epw scw lks sts0 sts gn cs cs2 pid fdep
                 Hwf' ltac:(exact Hgenk) Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmfsp Hmfs1 Hcsmf
                 Hmiev Hmenvv Hrd
-                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hpayv Hcont] Hframe Hxo Hfo Hwo Hso
-                      Hmyp Hpayv Hcont").
+                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
+                      Hmyp Hcont").
       (* the yield arm came back at the literal [∅]; [lks = ∅] at depth 0
          makes that the set [ut_hold] names. *)
       rewrite /ut_hold Hlkempty. iSplitL "Hcpu"; [iExact "Hcpu"|].

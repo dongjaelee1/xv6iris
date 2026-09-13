@@ -168,8 +168,7 @@ Section UkGen.
   Definition ukcq' (Qp : Z -> iProp Σ) (π : gmap (mword 27) uperm)
       (M : gmap Z (bv 8)) (szv : Z) (fdv : list fdstate) (cw : Z)
       (gn : gname) (cs : gset gname) (pidv : mword 32) (m : regfile) (pc : mword 64) : iProp Σ :=
-    (my_pay gn Qp ∗ upay_neg Qp ∗
-     (upay_neg Qp -∗ ukc' π M szv fdv cw gn cs pidv m pc))%I.
+    (my_pay gn Qp ∗ ukc' π M szv fdv cw gn cs pidv m pc)%I.
 
   (* ---- THE TWO FACTS ---- *)
   (* GUARDED BY THE LAZY BIT (lane LAZY-FLAG, L6).  The primed bundle is
@@ -192,9 +191,10 @@ Section UkGen.
      usertrap cannot handle the deposit carries the application's kill
      credential, so the transparent arm the engine proves carries it too.
      [UexecRet.uexec_ret_transparent] is still the plain instance. *)
-  (* ...AND THE ARM HAS TWO SIDES (lane SELF-KILL §3b): the process either
-     hands back a slot to be resumed at, or declares the fault FINAL and
-     pays its exit outright.  [UexecRet.uexec_kill_arm_F] is the pair. *)
+  (* ...AND THE ROW IS TWO-SIDED (lane SELF-KILL, P6): either the
+     application's taint, or the process's own exit payment deposited
+     outright ([UexecRet.ukill_cred_at]).  The engine's own arm is the
+     slot alone. *)
   Hypothesis Ret_transparent : forall (sc : mword 64) (W : uvis),
     sc <> uecall_scause ->
     RetF X sc W ⊣⊢
@@ -295,7 +295,7 @@ Section UkGenObl.
      [UkStep.uk_paycont], of which this is the X-generic twin.  [Qp], not
      [Q]: this section's [Q] is the context predicate. *)
   Definition uk_paycont' (Qp : Z -> iProp Σ) (gn : gname) (K : iProp Σ) : iProp Σ :=
-    (my_pay gn Qp ∗ upay_neg Qp ∗ (upay_neg Qp -∗ K))%I.
+    (my_pay gn Qp ∗ K)%I.
 
   Definition uk_step_obl' (π : gmap (mword 27) uperm) (Kc : iProp Σ)
       (Qp : Z -> iProp Σ) (sz : Z)
@@ -362,7 +362,7 @@ Section UkGenObl.
        uvb_F' (CID := h) (XI := xi) C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗
        □ uk_step_obl' π Kc Qp sz fdv cw gn cs pidv M m pc -∗
        (* the payment rides the step's own later -- see [UkStep.uk_ih] *)
-       ▷ (my_pay gn Qp ∗ upay_neg Qp ∗ (upay_neg Qp -∗ Kc)) -∗
+       ▷ (my_pay gn Qp ∗ Kc) -∗
        WP (Loop : expr riscv_lang))%I.
 
   (* the payload the wrapper hands the closer at the cycle's tail *)
@@ -543,11 +543,11 @@ Section UkGenArms.
               ltac:(uv_trap_peel; exact Lpaddr)
               Htok ltac:(uv_trap_peel; exact Htlbok)
               with "Hany Hmm Hres Hctx []").
-    iIntros "Hframe Hctx ((#Hmyp & Hpayv & Hkc) & Hbak & Hfdr & Hkb)".
+    iIntros "Hframe Hctx ((#Hmyp & Hkc) & Hbak & Hfdr & Hkb)".
     iDestruct ("Hbak" with "Hctx") as "Hrut".
     iApply ("Hkb" $! (uvis_of_run m pc M π sz fdv cw gn cs pidv false)
               (utrap_scause (Interrupt i) (register_lookup (R_bitvector_64 scause) rsA))
-              (tval None) with "[%] [%] [%] [%] [%] [%] [%] [%] [Hframe Hrut Hfdr Hkc Hpayv]");
+              (tval None) with "[%] [%] [%] [%] [%] [%] [%] [%] [Hframe Hrut Hfdr Hkc]");
       [ reflexivity | reflexivity | reflexivity | reflexivity
       | reflexivity | reflexivity | reflexivity | reflexivity | ].
     iSplitL "Hframe Hrut".
@@ -562,29 +562,23 @@ Section UkGenArms.
     iApply (bi.equiv_entails_1_2 _ _
               (Ret_transparent _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false)
                  (utrap_scause_intr_ne i (register_lookup (R_bitvector_64 scause) rsA)))).
-    (* THE ARM HAS TWO SIDES NOW (lane SELF-KILL §3b) and an interrupt gives
-       the LEFT one: the process is resumed.  Unfolded HERE, before the
-       payment's rewrite, so that rewrite reaches the arm. *)
     rewrite /UexecRet.uexec_kill_arm_F.
-    (* THE PAYMENT AT THE TRANSPARENT ARM: the deposit is paid out of the
-       payload's copy and the arm gives it back, so the wand into the
-       continuation is applied to what the RESUME returns. *)
+    (* THE DEPOSIT AT THE TRANSPARENT ARM IS THE PAY FACT ALONE (lane
+       SELF-KILL, P6): an interrupt is not the exit ecall, so the row is
+       free ([UexecRet.uexec_pay_dep_ne]). *)
     iExists (sfam_at Qp sfam_pt).
-    rewrite /uexec_pay_arm (sexit_pay_at Qp sfam_pt).
-    iSplitL "Hpayv";
+    iSplitR;
       [ iApply (uexec_pay_dep_ne _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false) _ (sfam_at Qp sfam_pt)
                   (utrap_scause_intr_ne i
                      (register_lookup (R_bitvector_64 scause) rsA))
-                  (sexit_pay_at Qp sfam_pt) with "Hmyp Hpayv") | ].
+                  (sexit_pay_at Qp sfam_pt) with "Hmyp") | ].
     (* THE KILL ROW IS [emp] AT AN INTERRUPT (lane KILL-PAY, K3(b)): the
        dispatched cause is one devintr handles, so no kill can follow it. *)
     iSplitR.
     { iApply (ukill_cred_at_not _
                 (UkStep.utrap_scause_intr_not_kill i
                    (register_lookup (R_bitvector_64 scause) rsA) Hi)). }
-    iLeft. iIntros "Hpayv".
     rewrite (ukc'_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2).
-    iDestruct ("Hkc" with "Hpayv") as "Hkc".
     iDestruct "Hkc" as "[_ Hkc]". iExact "Hkc".
   Qed.
 
@@ -809,22 +803,22 @@ Section UkGenStepEngine.
       iNext. iIntros (rs3 rs2) "%Hag Hrw Hro (Hctx & Hresv & Hcl)".
       iApply ("Hcl" $! rs3 with "[%] Hrw Hro Hctx Hresv [Hpay3 Hbak Hfdv Hk]");
         [ exact (uv_tail_of RS rs2 rs3 Hag) | ].
-      iDestruct "Hpay3" as "(#Hmyp & Hpayv & Hkc)".
+      iDestruct "Hpay3" as "(#Hmyp & Hkc)".
       rewrite /uk_payload' /uk_paycont'.
       (* [Hfdv] is the [Rfd fdv] [uvb_elim'] handed out at the cycle's head;
          the payload carries it back to the next bundle.  NOT [Hfrag] --
          that name is taken twice below, by the fetch's [HWd] split. *)
-      iSplitL "Hkc Hpayv"; [ | iFrame "Hbak Hfdv Hk" ].
+      iSplitL "Hkc"; [ | iFrame "Hbak Hfdv Hk" ].
       (* the payment rides the payload and comes back out of the wand at
          whichever arm ends this step *)
-      iFrame "Hmyp Hpayv". iIntros "Hpayv".
-      iSplit; [ iApply ("Hkc" with "Hpayv") | ].
+      iFrame "Hmyp".
+      iSplit; [ iExact "Hkc" | ].
       rewrite /ukc'. iIntros (h' xi' C' pt' Rfd' Rut' HRut') "%HQ' %Hlo' %Hpm' %Hlf' Hb".
       rewrite /uk_ih'.
       iApply ("IH" $! h' xi' C' pt' Rfd' Rut' HRut' sz
-                with "[%] [%] [%] [%] Hb Hobl [Hmyp Hpayv Hkc]");
+                with "[%] [%] [%] [%] Hb Hobl [Hmyp Hkc]");
         [ exact HQ' | exact Hlo' | exact Hpm' | exact Hlf'
-        | iNext; iFrame "Hmyp Hpayv"; iExact "Hkc" ].
+        | iNext; iFrame "Hmyp"; iExact "Hkc" ].
   Qed.
 
 End UkGenStepEngine.
@@ -851,7 +845,7 @@ Section UkGenFunnel.
   Lemma wp_uk_step' (Kc : iProp Σ) (Qp : Z -> iProp Σ) (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗ □ uk_step_obl' π Kc Qp sz fdv cw gn cs pidv M m pc -∗
-    ▷ (my_pay gn Qp ∗ upay_neg Qp ∗ (upay_neg Qp -∗ Kc)) -∗ WP (Loop : expr riscv_lang).
+    ▷ (my_pay gn Qp ∗ Kc) -∗ WP (Loop : expr riscv_lang).
   Proof.
     intros Hal2.
     iIntros "Hb #Hobl Hpay3".
@@ -1136,17 +1130,17 @@ Section UkGenEcall.
     uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗
     (* the payment enters here and the return is behind it -- see
        [UkStep.wp_uk_ecall] *)
-    my_pay gn Qp -∗ upay_neg Qp -∗
-    (upay_neg Qp -∗ RetF X uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false)) -∗
+    my_pay gn Qp -∗
+    RetF X uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hui Hg.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
     pose proof (ui_al2 _ _ _ _ _ Hui0) as Hal2.
-    iIntros "Hb #Hmyp Hpayv Hret".
+    iIntros "Hb #Hmyp Hret".
     iApply (wp_uk_step' C pt Rfd Rut π sz Hlo Hpm HRut HQ0 Hlf0 _ Qp M m pc fdv cw gn cs pidv Hal2
-              with "Hb [] [Hmyp Hpayv Hret]").
-    2:{ iNext. iFrame "Hmyp Hpayv". iExact "Hret". }
+              with "Hb [] [Hmyp Hret]").
+    2:{ iNext. iFrame "Hmyp". iExact "Hret". }
     iModIntro.
     rewrite /uk_step_obl'.
     iIntros (R CIDo XIo C' pt' Rfd' Rut' HRut' Mp' t rs1 rsA usatp pcfg paddr)
@@ -1155,8 +1149,7 @@ Section UkGenEcall.
              ukb_F' (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv ∗
              RetF X uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hbak & Hfdr & Hkb & Hkc)".
-      iDestruct "Hkc" as "(_ & Hpayv & Hkc)".
-      iDestruct ("Hkc" with "Hpayv") as "Hkc".
+      iDestruct "Hkc" as "(_ & Hkc)".
       iDestruct "Hkc" as "[Hkc _]". iFrame "Hbak Hfdr Hkb". iExact "Hkc". }
     destruct (uk_instr_mapped π M Mp' pc false (ECALL tt) pt' sz
                 (loop_ok_wf C' pt' Hlo') Hpm' Hpure Hui)
@@ -1810,10 +1803,9 @@ Section UkGenRetire.
                 (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
               WP (Loop : expr riscv_lang)))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hbak & Hfdr & Hkb & Hkc)".
-      (* the step RETIRED: the payment goes straight back into the
-         continuation and nothing was deposited *)
-      iDestruct "Hkc" as "(_ & Hpayv & Hkc)".
-      iDestruct ("Hkc" with "Hpayv") as "Hkc".
+      (* the step RETIRED: the continuation's OTHER side is the one to
+         read, and nothing was deposited *)
+      iDestruct "Hkc" as "(_ & Hkc)".
       iDestruct "Hkc" as "[Hkc _]".
       iFrame "Hbak Hfdr Hkb". iIntros "Hb".
       rewrite /ukc'.
@@ -1961,8 +1953,8 @@ Section UkGenPlain.
          register_lookup (R_bitvector_64 PC) s.(sregs) = pc ->
          goodmb Du_r Du_w (execute (ECALL tt)) s ∅ = true) ->
       uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
-      my_pay gn Qp -∗ upay_neg Qp -∗
-      (upay_neg Qp -∗ uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false)) -∗
+      my_pay gn Qp -∗
+      uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
       WP (Loop : expr riscv_lang).
 
   (* inhabitant 1: upstream's own constant *)

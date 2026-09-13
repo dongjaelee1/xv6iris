@@ -546,8 +546,7 @@ Definition ut_exec_out `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI :
               (perm_of (ud_um (pv_upt (us_V U'))) (uint (pv_sz (us_V U'))))
               (uint (pv_sz (us_V U'))) (pv_lazy (us_V U'))
          /\ sts' = sts⌝                       (* failed: the returning shape at r = -1 *)
-      ∨ (upay_neg (sexit_pay f) -∗                        (* succeeded: the new image's *)
-           uslot (uvis_of U' sts' gn cs pid))))%I.       (* slot, on the payload *)
+      ∨ uslot (uvis_of U' sts' gn cs pid)))%I.         (* succeeded: the new image's slot *)
 
 (* ===================================================================== *)
 (* FORK'S ANSWER, COMING BACK: the parent's quarter of the child's        *)
@@ -868,17 +867,11 @@ Qed.
 Definition ut_kill_in `{!riscvGS Σ} (sc_v : mword 64) : iProp Σ :=
   ukill_cred_at sc_v.
 
-(* ...AND WHAT COMES BACK, at the same families: the payload at the kill
-   status, returned to whatever resumes the process.  A ROW OF
-   [usertrap_post] and UNGATED, for the IN row's reason -- every arm that
-   returns to user mode returns it, and the three that do not are the
-   three that spend it on [kexit(-1)].  ONE resource, two readers: on a
-   successful exec there is no old key to resume and this row is what
-   [ut_exec_out]'s success wand consumes instead. *)
-Definition ut_pay_out `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
-    {SG : uexecSG Σ}
-    (f : sfam) : iProp Σ :=
-  uexec_pay_arm f.
+(* THERE IS NOTHING COMING BACK (lane SELF-KILL, P6b).  The payload at the
+   kill status is the KILLER's price, paid into <p->lock>'s own killed row
+   ([SchedCtx.kill_row]) -- so [ut_pay_in] is the PERSISTENT pay fact
+   beside the exit ecall's payment, no arm is handed anything to give back,
+   and [usertrap_post] carries no payment row. *)
 
 (* the quiet readings, for the four non-ecall causes.  Only the OUT rows
    need one: a deposit going DOWN is simply dropped by an arm that owes
@@ -1033,7 +1026,7 @@ Proof.
       rewrite <- (tf_ueq_epc _ _ Hu). exact Hb2.
     + split; [| exact Hst]. rewrite HM Hpi Hsz Hlzq.
       exact (usys_mem_ok_ueq _ _ _ _ _ _ _ _ _ _ _ _ Hu Hm).
-  - iRight. iIntros "HQ". iDestruct ("Hs" with "HQ") as "Hs".
+  - iRight.
     iEval (rewrite (uslot_key_cong (uvis_of U' sts' gn cs pid)
                       (uvis_of U'' sts' gn cs pid)
                       (tf_ueq_resume_gpr0 _ _ Hu') (tf_ueq_resume_pc _ _ Hu')
@@ -1288,11 +1281,6 @@ Definition usertrap_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fi
        ut_sys_out n f sc_v (pv_tf (us_V U)) U sts gn cs pid
          (pv_tf (us_V U') !!! tf_arg_idx 0) (us_M U') sts'
          (pv_cwi (us_V U')) cs') -∗
-    (* ...AND THE PAYMENT, COMING BACK.  Ungated, for [ut_pay_in]'s reason:
-       every arm that returns to its caller returns it, and the three that
-       do not are the three that spend it on [kexit(-1)] -- those diverge
-       and owe this post nothing. *)
-    ut_pay_out f -∗
     WP (Loop : expr riscv_lang)).
 
 (* [R] IS A HART-INDEXED FAMILY, AND IT HAS TO BE.  usertrap is handed the

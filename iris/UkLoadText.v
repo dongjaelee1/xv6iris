@@ -778,17 +778,14 @@ Section UkLoadText.
               ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hrut & Hfdr & Hkb & Hkc)".
       iFrame "Hrut Hfdr Hkb". iSplit.
-      - (* the RETIRE leg: the payment goes straight back into the
-           continuation *)
-        iDestruct "Hkc" as "(_ & Hpayv & Hkc)".
-        iDestruct ("Hkc" with "Hpayv") as "[Hkc _]".
+      - (* the RETIRE leg: the continuation, at the pay fact alone *)
+        iDestruct "Hkc" as "(_ & [Hkc _])".
         iIntros "Hb". rewrite /ukc.
         iApply ("Hkc" $! CIDo XIo C' pt' Rfd' Rut' HRut' with "[%] [%] [%] Hb");
           [ exact Hlo' | exact Hpm' | intros _; exact Hlf' ].
-      - (* the FAULT leg: the payment is handed to the kernel with the slot,
-           and the arm hands it back into the continuation *)
-        iDestruct "Hkc" as "(#Hmyp & Hpayv & Hkc)". iFrame "Hmyp Hpayv".
-        iIntros "Hpayv". iDestruct ("Hkc" with "Hpayv") as "[_ Hkc]".
+      - (* the FAULT leg: the pay FACT is handed to the kernel with the slot,
+           and nothing travels beside it (lane SELF-KILL, P6b) *)
+        iDestruct "Hkc" as "(#Hmyp & [_ Hkc])". iFrame "Hmyp".
         rewrite (uslot_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2). iExact "Hkc". }
     iPoseProof (uv_swp_fetch_uinstr (CID := CIDo) (XI := XIo) pt' Mp' t (uc_dqc C')
                   rsA pc is_rvc i Hinj Hui' LpcA LcpA (proj1 HmsokA) LmenvA

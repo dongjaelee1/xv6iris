@@ -438,10 +438,10 @@ Section UInitBoot.
                  1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0
                  init_boot_pin_resolves init_elf_loadable
                  with "Hcl Hinv [] [] HPay") as (P Pmiss Fo R) "Hb".
-    - iModIntro. iIntros (W') "%Hok %Hcw %Hlz #Hp _ HP".
+    - iModIntro. iIntros (W') "%Hok %Hcw %Hlz #Hp HP".
       iApply ("Hcon" $! W' with "[%] [%] [%] Hp HP");
         [ exact Hok | exact Hcw | exact Hlz ].
-    - iModIntro. iIntros (W') "#HT #Hp _". iApply ("Hgen" $! W' with "HT Hp").
+    - iModIntro. iIntros (W') "#HT #Hp". iApply ("Hgen" $! W' with "HT Hp").
     - iExists P, Pmiss, Fo, R. iExact "Hb".
   Qed.
 
@@ -571,8 +571,8 @@ Section EchoInitBoot.
     iPoseProof LinkUserinit.UG.uexec_wp_gen as "#Hwp".
     iAssert (□ (∀ (R : iProp Σ) (W : uvis),
                   echo_taint γ -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
-                  R -∗ uslot W))%I as "#Hmint".
-    { iIntros "!>" (R W) "#Ht Hp HR".
+                  □ (riscv_kill_cred -∗ R) -∗ uslot W))%I as "#Hmint".
+    { iIntros "!>" (R W) "#Ht Hp #HR".
       iDestruct ("Hsup" with "Ht") as "#Hs".
       (* the kill credential IS the taint at this application (K1), and the
          generic slot's supply is the pair (§1c) *)
@@ -689,7 +689,8 @@ Section EchoInitBoot.
                  (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd)
               with "Hcl Hinv Hcon [] [Hdn]").
     - iIntros "!>" (W') "#Ht Hp".
-      iApply ("Hmint" $! True%I W' with "Ht Hp"). done.
+      iApply ("Hmint" $! True%I W' with "Ht Hp []").
+      iModIntro. iIntros "_". done.
     - iIntros "Hrd". rewrite /UInitKernel.init_boot_pay.
       iSplitL "Hdn"; [ iExact "Hdn" | ].
       rewrite ucons_reader_eq. iExact "Hrd".

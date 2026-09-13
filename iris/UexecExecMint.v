@@ -235,12 +235,18 @@ Section UexecExecMint.
      gates [UexecCond.cond_entry_slot] tries hold only at the trivial
      payload ([USyncKernel.sync_uexec_slot], [UEchoKernel.echo_uexec_slot]),
      so [uslot_mint] stays THE entry decider and this is its sibling. *)
+  (* ...AND THE PAYLOAD IS THE PERSISTENT CARRIER (lane SELF-KILL, P6b):
+     the family runs on [□ (riscv_kill_cred -∗ R)], the process's own
+     published payment wand, because a single LINEAR [R] cannot serve both
+     legs of a return.  It costs nothing HERE and nowhere else: this mint
+     is the tainted route and takes [riscv_kill_cred] already. *)
   Lemma uslot_mint_pay (R : iProp Σ) :
     app_sup -∗ □ riscv_kill_cred -∗ out_licence -∗ in_licence -∗ □ uexec_wp -∗
-    □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => R)%I -∗ R -∗ uslot W).
+    □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => R)%I -∗
+                   □ (riscv_kill_cred -∗ R) -∗ uslot W).
   Proof.
     iIntros "#Hsup #Hkc #Hlic #Hilic #Hgen".
-    iIntros "!>" (W) "#Hpay HR".
+    iIntros "!>" (W) "#Hpay #HR".
     iApply (UexecCond.cond_entry_slot_pay R W with "[] Hkc Hgen Hpay HR").
     rewrite /ssupply /= /xv6_ssupply. iModIntro.
     iSplit; [ iExact "Hsup"
@@ -258,10 +264,11 @@ Section UexecExecMint.
   Lemma uslot_mint_all :
     app_sup -∗ □ riscv_kill_cred -∗ out_licence -∗ in_licence -∗ □ uexec_wp -∗
     □ (∀ (R : iProp Σ) (W : uvis),
-         my_pay (uvis_gen W) (fun _ => R)%I -∗ R -∗ uslot W).
+         my_pay (uvis_gen W) (fun _ => R)%I -∗
+         □ (riscv_kill_cred -∗ R) -∗ uslot W).
   Proof.
     iIntros "#Hsup #Hkc #Hlic #Hilic #Hgen".
-    iIntros "!>" (R W) "#Hpay HR".
+    iIntros "!>" (R W) "#Hpay #HR".
     iApply (UexecCond.cond_entry_slot_pay R W with "[] Hkc Hgen Hpay HR").
     rewrite /ssupply /= /xv6_ssupply. iModIntro.
     iSplit; [ iExact "Hsup"

@@ -394,9 +394,6 @@ Definition uservec_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} `{GEN 
          gn cs pid
          (pv_tf (us_V U') !!! tf_arg_idx 0) (us_M U') sts'
          (pv_cwi (us_V U')) cs') -∗
-    (* ...AND THE PAYMENT, coming back: usertrap took it at the trap and
-       every arm that returns hands it back ([SpecUsertrap.ut_pay_out]). *)
-    ut_pay_out f -∗
     WP (Loop : expr riscv_lang)).
 Global Typeclasses Opaque uservec_post.
 

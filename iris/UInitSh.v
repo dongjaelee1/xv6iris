@@ -759,7 +759,8 @@ Section UInitSh.
      ∗ □ (∀ v : aview, app_pred app_run v -∗
                          app_pred app_run v ∗ (⌜echo_fs_pure v⌝ ∨ T))
      ∗ □ (∀ (R : iProp Σ) (W : uvis),
-            T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗ R -∗ uslot W)
+            T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
+            □ (riscv_kill_cred -∗ R) -∗ uslot W)
      ∗ Pay)%I.
 
   (* THE CONSOLE CREDENTIAL IS NOT HERE but a premise of the constructor
@@ -992,18 +993,18 @@ Section UInitSh.
        the resource it names ([UexecExecMint.uslot_mint_pay]).  The payload
        is literally the constant function at what the kill status names
        ([UserConsole.ucons_pay_eta]). *)
-    (* ...AND THE WAND IT ARRIVES AT IS THE KILL-STATUS ONE NOW (lane
-       KILL-PAY, K4(a)): what the kernel hands the taint arm is
-       [UexecRet.upay_neg] and not the payload, so the arm pays the
-       generic slot out of the TAINT it is already holding
-       ([UserConsole.ucons_pay_taint]) -- which is the whole reason a
-       tainted process needs no lease. *)
+    (* ...AND THE TAINT ARM IS HANDED NOTHING AT ALL NOW (lane SELF-KILL,
+       P6b): the generic family's constant payload is carried
+       PERSISTENTLY ([UexecExecMint.uslot_mint_all] at
+       [□ (riscv_kill_cred -∗ R)]), and the arm builds it out of the TAINT
+       it is already holding ([UserConsole.ucons_pay_taint]) -- which is
+       the whole reason a tainted process needs no lease. *)
     iAssert (□ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') (ucons_pay cn γp T) -∗
-                  upay_neg (ucons_pay cn γp T) -∗ uslot W'))%I as "#Hgen'".
-    { iModIntro. iIntros (W') "#HT #Hmp _".
-      iApply ("Hgen" $! (ucons_pay cn γp T (-1)) W' with "HT [Hmp] [HT]").
+                  uslot W'))%I as "#Hgen'".
+    { iModIntro. iIntros (W') "#HT #Hmp".
+      iApply ("Hgen" $! (ucons_pay cn γp T (-1)) W' with "HT [Hmp] []").
       - rewrite ucons_pay_eta. iExact "Hmp".
-      - iApply (ucons_pay_taint with "HT"). }
+      - iModIntro. iIntros "_". iApply (ucons_pay_taint with "HT"). }
     (* THE LINEAR HALF OF [Pay] IS THE POSITION: [UInitSh.sh_pay] is
        persistent, so what actually crosses [PinnedExec]'s one linear slot
        is [UserConsole.upos] at the pair init minted for this round.  The
@@ -1027,12 +1028,11 @@ Section UInitSh.
                   ⌜exec_args_of M (mword_of_int 0x1000 : mword 64)
                      na alen afun⌝ -∗
                   my_pay (uvis_gen W') (ucons_pay cn γp T) -∗
-                  upay_neg (ucons_pay cn γp T) -∗
                   (sh_pay T Rsh n0 ∗ upos γp np
                      ∗ ucons_pay cn γp T (-1)) -∗ uslot W'))%I as "#Hcon".
     { iModIntro.
       iIntros (na alen afun W')
-        "%Hok %Hcwd0 %Hlzf %Hargs #Hmp HQ [[#Hp1 [#Hp2 #Htag]] [Hps Hls]]".
+        "%Hok %Hcwd0 %Hlzf %Hargs #Hmp [[#Hp1 [#Hp2 #Htag]] [Hps Hls]]".
       destruct (init_args_det M na alen afun Hsav Hsro Hargs) as [-> Halen].
       idtac "MARK-s4b-args-det".
       (* STAGED, AND WITH BOTH CLASS ARGUMENTS GIVEN.  [sh_slot_of_kexec]
@@ -1049,7 +1049,7 @@ Section UInitSh.
                     (ucons_pay_const cn γp T) Hok Hcwd0
                     (init_sh_room alen n0 Halen Hn0) Hlen Hlzf) as Hsk.
       idtac "MARK-s4c-pose-ok".
-      iApply (Hsk with "[] Hdep Hdp Htag [] [] Hcons Hgen' Hmp HQ Hps Hls").
+      iApply (Hsk with "[] Hdep Hdp Htag [] [] Hcons Hgen' Hmp Hps Hls").
       - (* THE KEY'S OWN READING (lane SH-STATE): [sh_pay_state]'s wand
            takes [UShKernel.sh_pay_key], and the two facts it is derived
            from are the very ones handed to [sh_slot_of_kexec] above. *)

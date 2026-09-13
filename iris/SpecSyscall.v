@@ -461,32 +461,12 @@ Section SyscExec.
   Definition sysc_pay_in (f : sfam) (U : ustate) : iProp Σ :=
     upay_at (pv_gen (us_V U)) uecall_scause (pv_tf (us_V U)) f.
 
-  (* ...AND WHAT COMES BACK: the payload at the kill status.  UNGATED, for
-     the IN row's reason, and it is ONE resource with TWO readers: every
-     arm that resumes the caller takes it back through its own continuation
-     ([UexecRet.uexec_pay_arm]), and the exec-success arm spends it on the
-     NEW image's slot instead ([sysc_exec_out]'s right disjunct is a wand
-     from exactly this).  The two are exclusive -- a successful exec has no
-     old key to resume -- so nothing is duplicated. *)
-  Definition sysc_pay_out (f : sfam) : iProp Σ :=
-    uexec_pay_arm f.
-
-  (* THE ONE MOVE A RETURNING ARM MAKES WITH IT: the row is two-armed only
-     at exit, so at every other number what comes out is the payload at the
-     kill status -- which is exactly what the arm hands back.  [sysc_num]
-     and [UsysMemOk.usys_num] are one reading of one word, so the arm's own
-     table index is what discharges the guard. *)
-  Lemma sysc_pay_in_ret (f : sfam) (U : ustate) :
-    sysc_num (us_V U) <> UsysMemOk.USYS_exit ->
-    sysc_pay_in f U -∗ sysc_pay_out f.
-  Proof.
-    intros Hne. rewrite /sysc_pay_in /sysc_pay_out /upay_at /uexec_pay_arm.
-    iIntros "[_ H]".
-    destruct (decide (uecall_scause = uecall_scause)) as [_ | Hc];
-      [ | exfalso; exact (Hc eq_refl) ].
-    destruct (decide (usys_num (pv_tf (us_V U)) = UsysMemOk.USYS_exit))
-      as [He | _]; [ exfalso; exact (Hne He) | iExact "H" ].
-  Qed.
+  (* THERE IS NO ROW COMING BACK (lane SELF-KILL, P6b).  The payload at the
+     kill status is the KILLER's price and is paid into <p->lock>'s own
+     killed row ([SchedCtx.kill_row]), so nothing is handed down at a
+     returning number and nothing is handed back: [sysc_pay_in] is the
+     PERSISTENT pay fact beside the exit arm's payment, and every other
+     arm simply drops it. *)
 
   Lemma sysc_fork_in_ne (f : sfam) (U : ustate) (sts : list fdstate) :
     sysc_num (us_V U) <> UsysMemOk.USYS_fork -> ⊢ sysc_fork_in f U sts.
@@ -660,8 +640,7 @@ Section SyscExec.
       (gn : gname) (cs : gset gname) (pid : mword 32) : iProp Σ :=
     (⌜sysc_num (us_V U) = 7⌝ -∗
        (⌜sysc_exec_failed U U' sts sts'⌝
-        ∨ (upay_neg (sexit_pay f) -∗
-             uslot (uvis_of U' sts' gn cs pid))))%I.     (* the new image's slot *)
+        ∨ uslot (uvis_of U' sts' gn cs pid)))%I.       (* the new image's slot *)
 
   (* every other entry owes nothing *)
   Lemma sysc_exec_out_ne (f : sfam) (U U' : ustate) (sts sts' : list fdstate)
@@ -1003,9 +982,6 @@ Definition wp_syscall_sconf_body
       (* ...and WAIT'S: the set its children reading shrank to -- see
          [sysc_wait_out] *)
       sysc_wait_out U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
-      (* ...AND THE PAYMENT, coming back: this arm RETURNS, so the payload
-         the caller handed over goes back to it -- see [sysc_pay_out] *)
-      sysc_pay_out f -∗
       WP (Loop : expr riscv_lang))
    ∧ kstack_closer pj (m !!! Regidx csp_rs1) (trap_res true + av)) -∗
   WP (Loop : expr riscv_lang).

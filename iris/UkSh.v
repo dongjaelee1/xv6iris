@@ -610,11 +610,11 @@ Section UkSh.
     ⌜ m !!! Regidx x0_idx = zero_reg ⌝ ∗ urun N h m pc avail.
   Proof.
     iIntros "Hrun".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     iSplitR; [ iPureIntro; exact Hx0 | ].
     iExists xi, C, pt, Rfd, Rut, sz, M, pm, fdv, cw, gn, cs, pidv.
-    iFrame "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep Hb".
+    iFrame "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hb".
     iPureIntro. split_and!; [ exact Hlo | exact Hpm | exact Hlzf | exact HRut ].
   Qed.
 
@@ -861,9 +861,8 @@ Section UkSh.
      should not have to fund the payload at all.  So the payload is a
      PREMISE here: [True] at [UkRun.ukn_triv] and free, and at sh's own
      record the console lease it carries beside its position
-     ([UkSh.ush_at]).  The wand the row does carry is what the leaf's
-     [∧] answers on its other side, and [UexecSlot.upay_neg_of] is the one
-     step -- a payload in hand is a payload under any credential. *)
+     ([UkSh.ush_at]).  ONE conjunct, since P6b: the exit leaf owes the
+     payload at the status it exits with and nothing else. *)
   Lemma wp_ksh_exit (h : CpuId) (m : regfile) (avail : nat) :
     shk_code γt -∗
     ukn_pay N (-1) -∗
@@ -896,17 +895,10 @@ Section UkSh.
                     vm_compute; reflexivity)
               with "[] [Hpay] Hrun").
     { iApply (uis_shk_c88 with "Hcode"). }
-    (* AT A PAYLOAD THAT DOES NOT READ THE STATUS ONE RESOURCE ANSWERS
-       BOTH CONJUNCTS: sh's exit owes its parent the console reader token
-       ([UserConsole.ucons_pay]) and owes it at the kill status just the
-       same, so the additive [∧] is paid from the ONE copy the program
-       holds ([UkRun.ukn_const]) -- outright on the left, and through the
-       credential on the right ([UexecSlot.upay_neg_of]).  The wand that
-       comes IN is dropped: a process that reaches its own exit did not
-       need it. *)
-    { rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)).
-      iIntros "_". iSplit;
-        [ iExact "Hpay" | iApply (upay_neg_of with "Hpay") ]. }
+    (* AT A PAYLOAD THAT DOES NOT READ THE STATUS the one copy the program
+       holds is the one the leaf owes ([UkRun.ukn_const]): sh's exit owes
+       its parent the console reader token ([UserConsole.ucons_pay]). *)
+    { rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)). iExact "Hpay". }
   Qed.
 
 
@@ -1124,11 +1116,11 @@ Section UkSh.
   (* ...AND THE LEASE TRAVELS WITH IT (lane KILL-PAY, K4(a)).  sh used to
      be lent the console reader token INSIDE its exit payload, which lived
      in [UkRun.urun]'s own row: the run carried [ukn_pay N (-1)] and the
-     read's deposit was a wand from it (SH-LINE R1).  That row is a WAND
-     from the kill credential now ([UexecRet.upay_neg]) -- a killed process
-     pays nothing it cannot pay -- so the payload has nowhere to ride, and
-     the lease moves into the program's OWN hand, beside the half of the
-     position pair it already held.  The two positions agree
+     read's deposit was a wand from it (SH-LINE R1).  That row is GONE
+     (lane SELF-KILL, P6) -- a killed process pays nothing it cannot pay,
+     and the price of a kill is the KILLER's -- so the payload has nowhere
+     to ride, and the lease moves into the program's OWN hand, beside the
+     half of the position pair it already held.  The two positions agree
      ([UserConsole.upos_agree]): the payload's is existential and the
      program's is named, which is what makes a read's receipt a receipt at
      sh's own cursor.  sh spends the lease at its read (and gets it back)
@@ -4813,8 +4805,7 @@ Section UkSh.
   (* ===================================================================== *)
   Definition ush_gen_slot : iProp Σ :=
     (□ (∀ W : uvis,
-          T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ upay_neg (ukn_pay N) -∗
-          uslot W))%I.
+          T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W))%I.
 
   Global Instance ush_gen_slot_persistent : Persistent ush_gen_slot.
   Proof. rewrite /ush_gen_slot. apply _. Qed.

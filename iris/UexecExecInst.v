@@ -513,9 +513,9 @@ Section UexecExecInst.
        (* A PLAIN DEPOSIT AT [emp] (lane KILL-PAY, K4(a)).  R1's shape --
           read's deposit as a WAND from this process's exit payload, fed
           by the dispatcher off the payment row -- is SUPERSEDED, not
-          patched: the kill status is a WAND from the credential now
-          ([UexecRet.upay_neg]), so there is no payload for the dispatcher
-          to feed and none to feed it out of.  What pays the console arm
+          patched: nothing at the kill status travels the trap route any
+          more (lane SELF-KILL, P6), so there is no payload for the
+          dispatcher to feed and none to feed it out of.  What pays the console arm
           is the process's OWN hand: [ConsoleInv.cons_acc] at the reader
           token it carries beside its position ([UkSh.ush_at]), or the
           dirty credential a tokenless reader pays
@@ -628,11 +628,11 @@ Section UexecExecInst.
           [PieceFam.pfam] -- an AU beside its refund -- and a FAILED exec
           is a piece that never fired, so [PieceFam.pf_at_refund] hands
           [xf_Rs f] straight back.  It used to stay in the kernel's frame
-          ("a program cannot retry exec"); that is withdrawn, because with
-          the -1 payload a WAND from the kill credential
-          ([UexecSlot.upay_neg]) the resource a process SPENT into the
-          exec deposit is the only thing left to pay its own [exit(1)]
-          with when the exec comes back.  Guarded on the answer, because
+          ("a program cannot retry exec"); that is withdrawn, because no
+          run carries a payload at the kill status (lane SELF-KILL, P6)
+          and the resource a process SPENT into the exec deposit is the
+          only thing left to pay its own [exit(1)] with when the exec
+          comes back.  Guarded on the answer, because
           only the failing exec resumes at all -- the success arm's
           process is a different image and the wand is refuted there
           ([SpecKexec.exec_post_ok_recv]'s [r <> -1]). *)
@@ -810,13 +810,13 @@ Section UexecExecInst.
     rewrite /exec_slot_pre.
     iDestruct "Hslot" as "[Hsa Hsb]".
     iSplitL "Hsa".
-    - iIntros (av i ff nl W') "HP Ho %Hld %Him %Hcwq %Hlzq Hpy HQ".
+    - iIntros (av i ff nl W') "HP Ho %Hld %Him %Hcwq %Hlzq Hpy".
       iApply "Hup".
-      iApply ("Hsa" $! av i ff nl W' with "HP Ho [%] [%] [%] [%] Hpy HQ");
+      iApply ("Hsa" $! av i ff nl W' with "HP Ho [%] [%] [%] [%] Hpy");
         [ exact Hld | exact Him | exact Hcwq | exact Hlzq ].
-    - iIntros (av i a W') "HP Ho %Hnl %Hkk %Hcwq %Hlzq Hpy HQ".
+    - iIntros (av i a W') "HP Ho %Hnl %Hkk %Hcwq %Hlzq Hpy".
       iApply "Hup".
-      iApply ("Hsb" $! av i a W' with "HP Ho [%] [%] [%] [%] Hpy HQ");
+      iApply ("Hsb" $! av i a W' with "HP Ho [%] [%] [%] [%] Hpy");
         [ exact Hnl | exact Hkk | exact Hcwq | exact Hlzq ].
   Qed.
 
@@ -911,13 +911,23 @@ Section UexecExecInst.
      the pay fact AND [kf_xpay f (-1)] in at the resume key, and at a
      constant payload that resource is the [R] the next image's slot is
      minted from.  [R := True] is the trivial instance. *)
+  (* ...AND THE PAYLOAD IS PERSISTENT (lane SELF-KILL, P6b).  The exec
+     branch below must answer BOTH of [SpecKexec.exec_slot_pre]'s
+     [∗]-separated slot wands, and nothing hands the new image a payload
+     any more ([exec_slot_pre] lost its [Q (-1)] premise), so the resource
+     the generic family runs on arrives here as [□ R] -- which is the
+     caller's [□ (riscv_kill_cred -∗ R)] cashed against the taint it holds
+     ([UexecRet.uexec_dep_F_of_supply]).  The wand's antecedent is dropped
+     at this altitude and only here: this is [UexecSG]'s class field and
+     the class carries [ctokG] alone. *)
   Lemma xv6_sbundle_of_supply (X : uvis -d> iPropO Σ) (n : Z) (W : uvis)
       (R : iProp Σ) :
-    ⊢ my_pay (uvis_gen W) (fun _ => R)%I -∗ □ xv6_ssupply -∗
-      □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗ R -∗ X W') ==∗
+    ⊢ my_pay (uvis_gen W) (fun _ => R)%I -∗ □ xv6_ssupply -∗ □ R -∗
+      □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗ □ R -∗ X W') ==∗
       ∃ f : xfam, ⌜kf_xpay f = (fun _ => R)%I⌝ ∗ xv6_sbundle X n f W.
   Proof.
-    rewrite /xv6_ssupply. iIntros "#Hpay #(Hsup & Hkc & Hlic & Hilic) #Hs".
+    rewrite /xv6_ssupply.
+    iIntros "#Hpay #(Hsup & Hkc & Hlic & Hilic) #HR #Hs".
     destruct (decide (n = USYS_exec)) as [He | Hne].
     - iModIntro. iExists (xfam_at (fun _ => R)%I xfam_pt). iSplitR; [done |].
       rewrite /xv6_sbundle. destruct (decide (n = USYS_exec)) as [_ | Hc];
@@ -944,19 +954,14 @@ Section UexecExecInst.
       iSplitR; [iExact "Hcommit" |].
       rewrite /pf_at. cbn [pf_recv pf_refund]. iSplit; [| done].
       rewrite /sys_exec_slot_pre. iIntros (pl na alen afun) "_ _".
-      (* the generic family answers BOTH success arms' wands; the payload
-         at this record is the constant [fun _ => R], so the [Q (-1)] each
-         wand takes is the [R] the new image's slot runs on and is handed
-         straight to the credential. *)
-      (* ...AND THE PAYLOAD ARRIVES AS A WAND FROM THE KILL CREDENTIAL
-         (lane KILL-PAY, K4(a)): the generic slot holds the credential --
-         it is the second half of [xv6_ssupply] -- so it cashes the wand
-         and runs on the [R] behind it. *)
+      (* the generic family answers BOTH success arms' wands, out of the
+         one PERSISTENT copy of the payload this law is handed (lane
+         SELF-KILL, P6b): the wands are [∗]-separated, so a linear [R]
+         could answer only one of them, and the new image is handed no
+         payload by the kernel any more. *)
       rewrite /exec_slot_pre. iSplitR.
-      + iIntros (av' i ff nl W') "_ _ _ _ _ _ Hp HQ".
-        iDestruct ("HQ" with "Hkc") as "HQ". iApply ("Hs" with "Hp HQ").
-      + iIntros (av' i a W') "_ _ _ _ _ _ Hp HQ".
-        iDestruct ("HQ" with "Hkc") as "HQ". iApply ("Hs" with "Hp HQ").
+      + iIntros (av' i ff nl W') "_ _ _ _ _ _ Hp". iApply ("Hs" with "Hp HR").
+      + iIntros (av' i a W') "_ _ _ _ _ _ Hp". iApply ("Hs" with "Hp HR").
     - iApply (xv6_sbundle_of_supply_ne X n W (fun _ => R)%I Hne).
       rewrite /xv6_ssupply. iModIntro.
       iSplit; [ iExact "Hsup"

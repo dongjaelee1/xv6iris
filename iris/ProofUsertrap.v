@@ -949,7 +949,7 @@ Section UtDispatch.
       iEval (rewrite /ut_pay_in /upay_at) in "Hein".
       destruct (decide (sc = uecall_scause)) as [Hc | _];
         [ exfalso; exact (Hscne Hc) | ].
-      iDestruct "Hein" as "[#Hmyp Hpayv]".
+      iDestruct "Hein" as "[#Hmyp _]".
       (* ...AND RE-KEYED ONTO THE PROLOGUE'S RECORD, which is what the arms
          below run at: the prologue writes one trapframe word and no
          incarnation ([SpecUsertrap.ut_pro]'s own generation row). *)
@@ -1057,7 +1057,7 @@ Section UtDispatch.
                   (* the transparent arms' defining cause, off the dispatch's own
                      [c.li a5,8; bne] at +0x50 *)
                   Hscne
-                  with "Htext Hpc Hcg Hhold Hframe Hmyu Hpayv Hcont").
+                  with "Htext Hpc Hcg Hhold Hframe Hmyu Hcont").
       + (* no device: the two page-fault causes, then the fall-through *)
         (* ...AND THIS IS WHERE THE KILL ROW IS CASHED (lane KILL-PAY,
            K3(b)).  devintr answered 0, so the cause is neither of the two
@@ -1151,7 +1151,7 @@ Section UtDispatch.
                     (* the transparent arms' defining cause, off the dispatch's own
                        [c.li a5,8; bne] at +0x50 *)
                     Hscne
-                    with "Htext Hpc Hcg Hhold Hframe Hkc Hmyu Hpayv Hcont").
+                    with "Htext Hpc Hcg Hhold Hframe Hkc Hmyu Hcont").
         *
           iApply (wp_beq_fall_s_sconf (mword_of_int (UT + 0x48))
                     (mword_of_int 136 : mword 13) Ra5 Ra4 D6 nx false
@@ -1233,7 +1233,7 @@ Section UtDispatch.
                        (* the transparent arms' defining cause, off the dispatch's own
                           [c.li a5,8; bne] at +0x50 *)
                        Hscne
-                       with "Htext Hpc Hcg Hhold Hframe Hkc Hmyu Hpayv Hcont").
+                       with "Htext Hpc Hcg Hhold Hframe Hkc Hmyu Hcont").
           -- (* the unexpected-scause arm *)
              iApply (wp_beq_fall_s_sconf (mword_of_int (UT + 0x52))
                        (mword_of_int 126 : mword 13) Ra5 Ra4 D8 nx false
@@ -1258,7 +1258,7 @@ Section UtDispatch.
                        (* the transparent arms' defining cause, off the dispatch's own
                           [c.li a5,8; bne] at +0x50 *)
                        Hscne
-                       with "Htext Hpc Hcg Hhold Hframe Hkc Hmyu Hpayv Hcont").
+                       with "Htext Hpc Hcg Hhold Hframe Hkc Hmyu Hcont").
   Qed.
 
 End UtDispatch.

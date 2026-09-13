@@ -910,13 +910,7 @@ Section UkFork.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hn Hal4. iIntros "#Hi HRc HP Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".
-    (* the child's LINEAR payment at the kill status is the boxed wand's
-       own body ([UexecSlot.upay_neg] IS [□ riscv_kill_cred -∗ Q (-1)]), so
-       the one premise serves both the child's run and the row's
-       publication (lane SELF-KILL, §4b'). *)
-    iAssert (upay_neg Q) with "[]" as "Hpayc";
-      [ rewrite /upay_neg; iIntros "#Hc"; iApply "Hkw"; iExact "Hc" | ].
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     (* the caller's half pins the key's working directory *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     (* ...and its other half pins the key's children set, which is why the
@@ -955,10 +949,7 @@ Section UkFork.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv c gn Sc pidv false))
                    = USYS_fork).
@@ -975,23 +966,22 @@ Section UkFork.
        ([UexecSG.sfam_pay] / [sfork_pay_pay]). *)
     iExists (sfam_at (ukn_pay N) (sfam_pay Q)).
     rewrite (sfork_pay_at (ukn_pay N) (sfam_pay Q)) sfork_pay_pay.
-    (* THE PAYMENT, at the PARENT's own payload -- the child's is [Q], and
-       the two live in one value ([UexecSG.sfam_at]).  The run hands it
-       over and fork's parent arm hands it back. *)
-    rewrite /uexec_pay_arm (sexit_pay_at (ukn_pay N) (sfam_pay Q)).
-    iSplitL "Hpayv";
+    (* THE PAY FACT, at the PARENT's own payload -- the child's is [Q], and
+       the two live in one value ([UexecSG.sfam_at]).  Nothing travels
+       beside it (lane SELF-KILL, P6b). *)
+    iSplitR;
       [ iApply (uexec_pay_dep_ret USYS_fork m pc M pm sz fdv c gn Sc pidv
                   false _ (sfam_at (ukn_pay N) (sfam_pay Q))
                   ltac:(rewrite tf_of_num; exact Hn)
                   ltac:(unfold USYS_fork, USYS_exit; lia)
-                  (sexit_pay_at (ukn_pay N) (sfam_pay Q)) with "Hmy Hpayv") | ].
+                  (sexit_pay_at (ukn_pay N) (sfam_pay Q)) with "Hmy") | ].
     (* the PARENT keeps the descriptor authority it had -- fork does not
        touch the parent's table -- and the CHILD mints its own below. *)
     iSplitL "Hpar HP Hsz Hstd HD Hcwd Hheap Hstk Hufd Hcwda Hcha Hchf";
       [ | iSplitR; [ iModIntro; iExact "Hkw" | ] ].
     (* ---- the parent: same heap, r <> 0, and the children set grown by
        the child's generation ---- *)
-    - iIntros "Hpayv" (r fdv' cw' cs') "%Hr %Hfv %Hcv Hans". subst fdv' cw'.
+    - iIntros (r fdv' cw' cs') "%Hr %Hfv %Hcv Hans". subst fdv' cw'.
       (* FORK'S TWO ARMS, and the mirror moves on the second: both halves
          of the program's children variable are in hand -- the engine's
          inside the [urun] just destructed, the program's as a premise --
@@ -1027,7 +1017,7 @@ Section UkFork.
       iApply (urun_close_upd N M pm m (mword_of_int 10) r sz fdv c gn
                 cs2 pidv (add_vec_int pc 4) avail
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hpar" $! h' r with "[%] Harm HP Hsz Hstd HD Hcwd Hrun").
       exact Hr.
@@ -1069,7 +1059,7 @@ Section UkFork.
                 (mword_of_int 10)
                 (mword_of_int 0) sz fdv c g' ∅ pidc (add_vec_int pc 4) avail
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap' Hstk' Hufd' Hcwa' Hcha' Hmp Hpayc Hdep").
+                with "Hheap' Hstk' Hufd' Hcwa' Hcha' Hmp Hdep").
       iIntros (h') "Hrun".
       iApply ("Hchild" $! (MkUkNames γt' γd' γs' γfd' γc' γch' Q) h' g'
                 with "[%] Hmp HRc HP' Hsz' Hstd' Hfrag' Hcwf' Hchf' Hrun").

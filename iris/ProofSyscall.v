@@ -1842,11 +1842,6 @@ Section SyscallVocab.
         (* ...and WAIT'S: the set its children reading shrank to --
            see [SpecSyscall.sysc_wait_out] *)
         sysc_wait_out U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
-        (* ...AND THE PAYMENT, going back out: this arm RETURNS, so the
-           payload the caller handed over is handed back
-           ([SpecSyscall.sysc_pay_out]).  The one arm that does not is
-           [sys_exit], which never reaches this continuation. *)
-        sysc_pay_out f -∗
         WP (Loop : expr riscv_lang))%I).
 
   (* THE EXIT SLOT, as the dispatch sees it: the caller's return
@@ -1973,7 +1968,7 @@ Section SyscallVocab.
     (* ...and the PAYMENT, owed at every number: the exit arm forwards its
        ∧'s LEFT conjunct to [SpecSysExit] (which relays it to kexit, which
        parks it as the ZOMBIE escrow) and every other arm hands the RIGHT
-       one back out ([SpecSyscall.sysc_pay_out]) *)
+       one back out *)
     sysc_pay_in fdep U -∗
     WP (Loop : expr riscv_lang).
 
@@ -2116,14 +2111,11 @@ Section SyscallVocab.
        read at is the one its caller already stored into *)
     sysc_sys_out U sts gn cs pid f (pv_tf (us_V U') !!! tf_arg_idx 0)
       (us_M U') sts' (pv_cwi (us_V U')) cs' -∗
-    (* ...AND THE PAYMENT, carried the same way: this tail RETURNS, so the
-       payload goes back to the caller ([SpecSyscall.sysc_pay_out]) *)
-    sysc_pay_out f -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros HEsp Hrest Hav4 Hmem Hfdrow Hpiperow Ha0 Hupte Hszv Hlzv Hud Hfg Hcwi Hsbr Hfk Hchrow Hne2 Hchg Hgeng Hpidrow.
     set (sp0 := m !!! Regidx csp_rs1).
-    iIntros "Hcg Hcpu #Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hcont Hfo Hwo Hxo Hso Hpayv".
+    iIntros "Hcg Hcpu #Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hcont Hfo Hwo Hxo Hso".
     assert (Hb1 : pa_stk sp0 1 = add_vec (pa_stk sp0 4) (zero_extend' 64 (concat_vec (mword_of_int 3 : mword 6) ('b"000"))))
       by (apply (sysc_stk sp0 1 3); lia).
     assert (Hb2 : pa_stk sp0 2 = add_vec (pa_stk sp0 4) (zero_extend' 64 (concat_vec (mword_of_int 2 : mword 6) ('b"000"))))
@@ -2268,7 +2260,7 @@ Section SyscallVocab.
               (Hst3 (or_intror Hgood)) (Hst2 (or_intror Hgood)) (Hst1 (or_intror Hgood)).
       reflexivity. }
     iApply ("Hcont" $! T5 U' sts' cs'
-              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hcg Hcpu Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hxo Hso Hfo Hwo Hpayv").
+              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hcg Hcpu Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hxo Hso Hfo Hwo").
     { unfold callee_saved.
       split_and!.
       - exact HT5sp.
@@ -2908,12 +2900,10 @@ Section SyscallRet.
        word and nothing else, so the cwd inum the row is read at is [U']'s. *)
     sysc_sys_out U sts gn cs pid f (E !!! Regidx Ra0) (us_M U') sts'
       (pv_cwi (us_V U')) cs' -∗
-    (* ...AND THE PAYMENT, carried the same way *)
-    sysc_pay_out f -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros HEsp HEs2 Hrest Hav4 Hmem Hfdrow Hpiperow Ha0 Hupte Hszv Hlzv Hud Hfg Hcwi Hsbr Hfk Hchrow Hne2 Hchg Hgeng Hpidrow.
-    iIntros "Hcg Hcpu #Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hcont Hfo Hwo Hxo Hso Hpayv".
+    iIntros "Hcg Hcpu #Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hcont Hfo Hwo Hxo Hso".
     (* the stored word, as the store lemma spells it *)
     assert (Hrg : rget E Ra0 = E !!! Regidx Ra0) by (rgne; reflexivity).
     iEval (rewrite -Hrg) in "Hxo".
@@ -3054,7 +3044,7 @@ Section SyscallRet.
               ltac:(cbn [us_V us_tf upd_usV upd_tf pv_chg]; exact Hchg)
               ltac:(cbn [us_V us_tf upd_usV upd_tf pv_gen]; exact Hgeng)
               ltac:(cbn [us_V us_tf upd_usV upd_tf pv_tf]; exact Hpidstored)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir HR Hpriv Hufrag [Hrow] Hpc Hcont [Hfo] [Hwo] Hxo [Hso] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir HR Hpriv Hufrag [Hrow] Hpc Hcont [Hfo] [Hwo] Hxo [Hso]").
     (* the row is keyed on the ENTRY record's [pv_chg], which the a0 store
        does not move *)
     - iExact "Hrow".
@@ -3422,7 +3412,7 @@ Section SyscallArms.
     (* THE PAYLOAD IS ALREADY PEELED: what the process is handed back is
        the arm's payout alone, [SpecFileread.fileread_extra_core] -- the
        borrowed payload went back on the trap's own resume row
-       ([SpecSyscall.sysc_pay_out]). *)
+       (lane SELF-KILL, P6b: there is no payment row any more). *)
     (* THE TABLE IS THE PROCESS'S OWN, and the key's permission map is its
        projection by [UexecSlot.uvis_of]'s own definition -- which is the
        equation row 5's existential asks for (lane CONS-SWALLOW, W4). *)
@@ -3801,10 +3791,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ pj = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true pj _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf pj fn dqi ip pid U U sts sts gn cs cs lks av m mf fdep
               Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -3834,7 +3820,7 @@ Section SyscallArms.
                  [SpecSysGetpid]'s post says [a0 = sign_extend' 64 pid] and
                  the row is that reading, kept rather than dropped *)
               (sysc_ret_pid_of _ _ _ Hpidw)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] []").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -4132,10 +4118,6 @@ Section SyscallArms.
        [sysc_sbrk_ok_of_ok] above.  The one thing that row needs beyond
        [sys_sbrk_ok] is the lazy image's domain law, which is [proc_priv]'s
        ([sysc_priv_mem_dom], a pure read that does not spend the block). *)
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf pj fn dqi ip pid U
               (upd_usM (upd_usV U
                           (upd_lazy (upd_sz (upd_upt (us_V U) P') szv') lz')) M')
@@ -4180,7 +4162,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] []").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -4255,10 +4237,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U
               (upd_usM (us_upt U P') (umem_wr (us_M U) v0 dw (fun i => nth_byte xw i))) sts sts gn cs cs' lks av m mf fdep
               Hmfsp Hmfs2 Hmfrest ltac:(lia)
@@ -4297,7 +4275,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [Hans] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [Hans] [] []").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...AND WAIT'S ANSWER, which this arm alone owes: kwait's own, at the
@@ -4376,10 +4354,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ pj = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true pj _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf pj fn dqi ip pid U U sts sts gn cs cs ∅ av m mf fdep
               Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -4408,7 +4382,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] []").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -4481,10 +4455,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ pj = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true pj _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf pj fn dqi ip pid U U sts sts gn cs cs ∅ av m mf fdep
               Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -4513,7 +4483,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] []").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -4582,10 +4552,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U U sts sts gn cs cs ∅ av m mf fdep
               Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -4614,7 +4580,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] []").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -4794,10 +4760,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ pj = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true pj _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf pj fn dqi ip pid U (upd_usV U V')
               sts sts' gn cs cs ∅ av m mf fdep
               Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
@@ -4826,7 +4788,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] []").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -4969,10 +4931,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ pj = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true pj _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf pj fn dqi ip pid U U sts sts gn cs cs' ∅ av m mf fdep
               Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -5007,7 +4965,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [Hans] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [Hans] [] [] []").
     (* ...AND FORK'S ANSWER, which this arm alone owes.  It was already
        packed at [cs'] above, so there is nothing left to say. *)
     { iExact "Hans". }
@@ -5248,10 +5206,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U (MkUstate V' Mk)
               sts sts gn cs cs lks av m mf fdep
               Hmfsp Hmfs2 Hmfrest ltac:(lia)
@@ -5278,7 +5232,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] Hxo [Hrf] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] Hxo [Hrf]").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -5349,7 +5303,6 @@ Section SyscallArms.
     rewrite Hnum.
     destruct (decide (UsysMemOk.USYS_exit = USYS_exit)) as [_ | Hcne];
       [ | exfalso; exact (Hcne eq_refl) ].
-    iDestruct "HQ" as "[HQ _]".
     set (Qd := sexit_pay fdep).
     assert (Hpce : (mword_of_int (sysc_target 2) : mword 64)
                    = mword_of_int KernelSyms.sys_exit) by reflexivity.
@@ -5473,10 +5426,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U U
               sts sts gn cs cs ∅ av m mf fdep Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -5505,7 +5454,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] []").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -5656,10 +5605,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U
               (us_upt U P') sts sts gn cs cs ∅ av m mf fdep Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -5688,7 +5633,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Hex] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Hex]").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -5772,18 +5717,6 @@ Section SyscallArms.
        is a plain one now, so what goes down and comes back is [emp] and
        this arm's payment row is untouched by the call. *)
     iAssert (True)%I with "[]" as "Hnil"; [ done | ].
-    (* ---- THE PAYMENT ROW IS OPENED AND KEPT (lane KILL-PAY, K4(a)).
-       The dispatcher is entered past +0xca's killed check, which is the
-       OTHER path this resource pays ([ProofUsertrapTail.ut_kexit] at
-       status -1); this arm RETURNS, so it opens the row at its own number
-       ([SpecSyscall.sysc_pay_in_ret]) and what it gets is the WAND
-       ([UexecRet.upay_neg]).  It no longer goes down into the call: read's
-       deposit is plain, so the wand is simply carried across and handed
-       back at [sysc_pay_out]. ---- *)
-    iDestruct (sysc_pay_in_ret _ U
-                 ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
-    iEval (rewrite /sysc_pay_out /uexec_pay_arm) in "Hpayv".
     iApply (SysRead.wp_sys_read_sconf γf γs j γl (sysc_fread_names γcon fn)
               pid U sts v0 v1 v2 M (av - 4)%nat true true ∅
               (rf_F fdep) (rf_ret fdep) (rf_in fdep) True%I
@@ -5833,11 +5766,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment row was NOT lent to the call (lane KILL-PAY, K4(a)):
-       read's deposit is plain now, so what this arm hands back is the very
-       wand it opened above. *)
-    iAssert (sysc_pay_out fdep) with "[Hpayv]" as "Hpayv".
-    { rewrite /sysc_pay_out /uexec_pay_arm. iExact "Hpayv". }
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U
               (upd_usM (us_upt U P') (umem_wr (us_M U) v1 dw bsw)) sts sts gn cs cs ∅ av m mf fdep
               Hmfsp Hmfs2 Hmfrest ltac:(lia)
@@ -5878,7 +5806,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Hex] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Hex]").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -5958,10 +5886,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U
               (upd_usM (us_upt U P') (umem_wr (us_M U) v1 dw bsw)) sts sts gn cs cs ∅ av m mf fdep
               Hmfsp Hmfs2 Hmfrest ltac:(lia)
@@ -5996,7 +5920,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] []").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -6138,10 +6062,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U (MkUstate V' (us_M U))
               sts sts gn cs cs ∅ av m mf fdep Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -6174,7 +6094,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Hrcpt] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Hrcpt]").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -6282,10 +6202,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U
               (us_upt U P') sts sts gn cs cs ∅ av m mf fdep Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -6314,7 +6230,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Harms] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Harms]").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -6411,10 +6327,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U
               (us_upt U P') sts sts gn cs cs ∅ av m mf fdep Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -6443,7 +6355,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Harms] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Harms]").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -6602,10 +6514,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U (upd_usV U V')
               sts sts' gn cs cs ∅ av m mf fdep Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -6632,7 +6540,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd [Hir Hiru] Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd [Hir Hiru] Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] []").
     iApply (sysc_iref_join3 with "Hir Hiru").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
@@ -6905,10 +6813,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U (MkUstate V' M')
               sts sts' gn cs cs ∅ av m mf fdep Hmfsp Hmfs2 Hmfrest ltac:(lia)
               ltac:(assert (Hv0t : pv_tf (us_V U) !!! tf_arg_idx 0 = v0)
@@ -6941,7 +6845,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd [Hir Hiru] Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd [Hir Hiru] Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] []").
     iApply (sysc_iref_join3 with "Hir Hiru").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
@@ -7076,10 +6980,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U
               (us_upt U P') sts sts gn cs cs ∅ av m mf fdep Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -7108,7 +7008,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Harms] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Harms]").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -7217,10 +7117,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U
               (us_upt U P') sts sts gn cs cs ∅ av m mf fdep Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -7249,7 +7145,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Harms] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Harms]").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -7505,10 +7401,6 @@ Section SyscallArms.
     assert (Hcry : true = false \/ proc_addr j = zero_reg -> (CIDy : CPU) = (CID : CPU))
       by wp_next_chain.
     iDestruct (wp_next_retarget CID CIDy true (proc_addr j) _ Hcry with "Hcont") as "Hcont".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(rewrite Hnum; unfold UsysMemOk.USYS_exit; lia)
-                 with "Hdep") as "Hpayv".
     iApply (sysc_ret_tail (CID := CIDy) γf (proc_addr j) fn dqi ip pid U (MkUstate V' (us_M U))
               sts sts' gn cs cs ∅ av m mf fdep Hmfsp Hmfs2 Hmfrest ltac:(lia) (sysc_mem_ok_quiet _ _ _ _ eq_refl
                  (sysc_num_ne12 _ _ Hnum eq_refl))
@@ -7535,7 +7427,7 @@ Section SyscallArms.
               (* ...and getpid's answer: not this entry's number *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ Hnum);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Hrcpt] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [Hrcpt]").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)
@@ -7934,11 +7826,6 @@ Section SyscallArms.
       by wp_next_chain.
     iDestruct (cpu_own_transport CIDf CIDi 0%nat true (proc_addr j) true Hcrfi
                  with "Hcpu") as "Hcpu".
-    (* the payment, opened at this arm's own number and handed back:
-       this arm RETURNS ([SpecSyscall.sysc_pay_in_ret]). *)
-    iDestruct (sysc_pay_in_ret _ U ltac:(unfold UsysMemOk.USYS_exit;
-                           exact (sysc_num_ne2_range _ Hrange))
-                 with "Hdep") as "Hpayv".
     iApply (sysc_epilogue_tail (CID := CIDi) γf (proc_addr j) fn dqi ip pid U
               (us_tf U (<[tf_arg_idx 0 := rget G1 Ra4]> (pv_tf (us_V U))))
               sts sts gn cs cs ∅ av m G1 fdep HG1sp HG1rest ltac:(lia)
@@ -7970,7 +7857,7 @@ Section SyscallArms.
                  range, so certainly not getpid's *)
               ltac:(apply (sysc_ret_pid_ne _ _ _ _ eq_refl);
                     unfold UsysMemOk.USYS_getpid in *; lia)
-              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] [] Hpayv").
+              with "Hcg Hcpu Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir Henv Hpriv Hufrag Hrow Hpc Hcont [] [] [] []").
     (* fork answers nothing at this entry: not its number *)
     { iApply sysc_fork_out_ne. unfold UsysMemOk.USYS_fork in *; lia. }
     (* ...and wait answers nothing here either *)

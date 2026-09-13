@@ -505,31 +505,28 @@ Section UShKernel.
        uslot_mint_all]).  sh's console open is PINNED, so the taint has no
        bundle for row 15 and the preamble must be able to stop walking sh's
        code.  This is [UInitSh.init_sh_slot]'s third conjunct at [Q]. *)
-    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ upay_neg Q -∗ uslot W') -∗
-    (* THE PAY FACT, at sh's own payload, and THE PAYLOAD ITSELF beside
-       it: the run carries [Q (-1)] between traps, hands it to the kernel
-       at every entry and is handed it back at every resume
-       ([UkRun.uslot_of_urun_all]'s two rows).  The kernel is what puts it
-       here -- [SpecKexec.exec_slot_pre]'s wands at the exec init's pinned
-       bundle answers ([PinnedExec.pex_slot]). *)
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ uslot W') -∗
+    (* THE PAY FACT, at sh's own payload, and NOTHING BESIDE IT (lane
+       SELF-KILL, P6b): no run carries a payload between traps any more,
+       and what sh's exit owes crosses the exec as [PinnedExec]'s linear
+       [Pay] -- the lease below. *)
     my_pay (uvis_gen W) Q -∗
-    upay_neg Q -∗
     (* ...AND THE POSITION, the ONE linear resource init's pinned exec
        bundle hands sh through [PinnedExec]'s [Pay].  It goes into
        [UkSh.ush_pstate] and is what the read will move. *)
     upos γp n -∗
     (* ...AND THE LEASE BESIDE IT (lane KILL-PAY, K4(a)).  The console
-       reader token used to ride in [UkRun.urun]'s payload row; that row
-       is a WAND from the kill credential now, so the token crosses on
+       reader token used to ride in [UkRun.urun]'s payload row; no run
+       carries a payload at all since P6b, so the token crosses on
        [PinnedExec]'s [Pay] with the position and lands in
        [UkSh.ush_at]. *)
     Q (-1) -∗
     uslot W.
   Proof.
     intros HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf.
-    iIntros "#Hpay #Hdep #Hdp #Htag #Hrest #Hfd0 Hin #Hgen #Hmp HQ Hpos Hlease".
+    iIntros "#Hpay #Hdep #Hdp #Htag #Hrest #Hfd0 Hin #Hgen #Hmp Hpos Hlease".
     iApply (uslot_of_urun_all W (2 + (8 + (16 + (ush_Dbody + n0)))) Q
-              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp HQ").
+              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
     (* sh's own half of its children set travels in [UkSh.ush_pstate]
        beside the ledger and the cwd: fork1 MOVES the set, so the fragment
        goes down the chain index-free ([UserChildren.uch_any]). *)
@@ -639,9 +636,8 @@ Section UShKernel.
     (□ (∀ N : uk_names Σ, UkSh.ush_open_console_leaf N T)
      ∨ (□ (∀ N : uk_names Σ, UkSh.ush_open_absent_leaf N T K) ∗ K)
      ∨ T) -∗
-    □ (∀ W : uvis, T -∗ my_pay (uvis_gen W) Q -∗ upay_neg Q -∗ uslot W) -∗
+    □ (∀ W : uvis, T -∗ my_pay (uvis_gen W) Q -∗ uslot W) -∗
     my_pay (uvis_gen W') Q -∗
-    upay_neg Q -∗
     upos γp n -∗
     (* the lease, beside the position (lane KILL-PAY, K4(a)) *)
     Q (-1) -∗

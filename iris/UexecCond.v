@@ -354,11 +354,16 @@ Section UexecCond.
      the slot [PinnedExec.pex_slot]'s taint arm is answered by.
      [udep] is not needed: the generic tail pays every deposit out of
      [ssupply] alone ([UexecRet.uexec_wp_uslot]). *)
+  (* ...AND THE PAYLOAD IS THE PERSISTENT CARRIER (lane SELF-KILL, P6b):
+     the resource arrives as the process's own published payment wand
+     [□ (riscv_kill_cred -∗ R)], because both legs of the slot's every
+     return need it and nothing travels the trap route to hand it back.
+     Free here -- this branch already holds the taint. *)
   Lemma cond_entry_slot_pay (R : iProp Σ) (W : uvis) :
     □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
-    my_pay (uvis_gen W) (fun _ => R)%I -∗ R -∗ uslot W.
+    my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (riscv_kill_cred -∗ R) -∗ uslot W.
   Proof.
-    iIntros "#Hsup #Hkc #Hgen #Hpay HR".
+    iIntros "#Hsup #Hkc #Hgen #Hpay #HR".
     iApply (uexec_wp_uslot R W with "Hsup Hkc Hgen Hpay HR").
   Qed.
 

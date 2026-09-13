@@ -527,7 +527,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi Hrun Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -539,17 +539,14 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = n).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -575,9 +572,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -617,7 +613,7 @@ Section UkRunSys.
        [UexecRet.ukcq]'s own wand and the run keeps the copy *)
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r with "Hrun").
   Qed.
@@ -668,7 +664,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hcwd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     (* the key's cwd IS the one the caller's half is at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     iMod (udepw_mint N m pc _ M pm _ fdv c gn cs pidv
@@ -682,10 +678,7 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false))
                    = USYS_chdir).
@@ -693,7 +686,7 @@ Section UkRunSys.
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -708,9 +701,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -748,7 +740,7 @@ Section UkRunSys.
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r cw' with "[%] Hcwd Hrun").
     exact (usys_cwd_ok_chdir_fwd r c cw' Hcwrow).
@@ -834,7 +826,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -846,17 +838,14 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_open).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -874,9 +863,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -928,7 +916,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[Hh] Hrun").
       iLeft. iExists fd, rd, wr, t. iFrame "Hh". iPureIntro.
@@ -941,7 +929,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[Hstd] Hrun").
       iRight. iFrame "Hstd". iPureIntro. exact Hrm.
@@ -989,7 +977,7 @@ Section UkRunSys.
   Proof.
     intros Hn Harg Hstne Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hh0 Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1008,17 +996,14 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_dup).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -1036,9 +1021,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -1092,7 +1076,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[Hh1 Hh0] Hrun").
       iLeft. iExists fd1. iFrame "Hh1 Hh0". iPureIntro.
@@ -1105,7 +1089,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[Hstd Hh0] Hrun").
       iRight. iFrame "Hstd Hh0". iPureIntro. exact Hrm.
@@ -1139,7 +1123,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1151,17 +1135,14 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_dup).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -1179,9 +1160,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -1237,14 +1217,14 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun". iApply ("Hcont" $! h' r l' with "Hstd Hrun").
     - iModIntro.
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv fdv cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun". iApply ("Hcont" $! h' r l with "Hstd Hrun").
   Qed.
 
@@ -1303,7 +1283,7 @@ Section UkRunSys.
   Proof.
     intros Hn Harg Hlt Hrow Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     (* THE LEDGER READS THE VIEW, which is the whole argument: the source
        slot is CLOSED in the table, so dup's success arm copies [FdClosed]
        into a slot the scan already found closed and the list does not
@@ -1323,12 +1303,11 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_dup).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -1339,9 +1318,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -1379,7 +1357,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "Hstd Hrun").
     - (* the call failed: nothing moved at all *)
@@ -1387,7 +1365,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "Hstd Hrun").
   Qed.
@@ -1462,7 +1440,7 @@ Section UkRunSys.
   Proof.
     intros Hn Harg Hal4.
     iIntros "#Hi Hrun Hsb Hh Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1476,17 +1454,14 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_close).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -1504,9 +1479,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -1547,7 +1521,7 @@ Section UkRunSys.
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun". iApply ("Hcont" $! h' r with "[%] Hrun"). exact Hr0.
   Qed.
 
@@ -1574,7 +1548,7 @@ Section UkRunSys.
   Proof.
     intros Hn Harg Hs Hkl Hne Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1589,17 +1563,14 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_close).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -1617,9 +1588,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -1659,7 +1629,7 @@ Section UkRunSys.
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun". iApply ("Hcont" $! h' r with "[%] Hstd Hrun"). exact Hr0.
   Qed.
 
@@ -1705,7 +1675,7 @@ Section UkRunSys.
   Proof.
     intros Hn Ha1 Hcnt Hal4.
     iIntros "#Hi Hbs Hrun Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1719,17 +1689,14 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_read).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -1747,9 +1714,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -1836,7 +1802,7 @@ Section UkRunSys.
                pm pm sz sz fdv fdv cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r _ with "Hbs Hrun").
   Qed.
@@ -1863,7 +1829,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1875,17 +1841,14 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_exec).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -1903,9 +1866,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -1947,7 +1909,7 @@ Section UkRunSys.
                (mword_of_int (-1) : mword 64) Hx0 Hal4).
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' with "Hrun").
   Qed.
@@ -2007,7 +1969,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     (* the whole point of the leaf: the key's cwd IS the one the caller's
        bundle is stated at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
@@ -2022,17 +1984,14 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false)) = USYS_exec).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -2047,9 +2006,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "(%Hfp & #Href & Hdepn)".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     (* THE POST AT exec IS THE REFUND (lane KILL-PAY, K4(a), R-A): it used
        to be [emp] and is a wand from "the answer was -1" now
        ([UexecSG.spost_at_exec]), which is exactly the branch this leaf is
@@ -2092,7 +2050,7 @@ Section UkRunSys.
                (mword_of_int (-1) : mword 64) Hx0 Hal4).
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' with "Hcwd Hpayret Hrun").
   Qed.
@@ -2134,7 +2092,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hz Hal4.
     iIntros "#Hi Hrun Hsb Hch Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -2146,10 +2104,7 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_wait).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
@@ -2158,7 +2113,7 @@ Section UkRunSys.
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -2181,9 +2136,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow Hans _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -2234,7 +2188,7 @@ Section UkRunSys.
     rewrite (uslot_bump_run m pc M M pm pm sz sz fdv fdv cw cw' gn gn cs cs' pidv false false r Hx0 Hal4).
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r cs' with "Hans Hrun Hch").
   Qed.
@@ -2337,7 +2291,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hwin Hcapk Hcl Hdp Hop Hpp Hwt Hal4.
     iIntros "#Hi Hrun Hsb Hbuf Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -2358,10 +2312,7 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = n).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
@@ -2372,7 +2323,7 @@ Section UkRunSys.
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -2389,9 +2340,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -2461,7 +2411,7 @@ Section UkRunSys.
     iDestruct (urun_close_upd N (umem_write M (uint dst) d g) pm m
                  (mword_of_int 10) r sz fdv cw' gn cs pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)
-                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep [Hcont Hbuf]") as "Hkc";
+                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hbuf]") as "Hkc";
       [ iIntros (h'') "Hrun";
         iApply ("Hcont" $! h'' r d g with "[%] [%] Hrun Hbuf");
         [ exact Hdcap | intros j Hj; apply Hgf; lia ] | ].
@@ -2539,7 +2489,7 @@ Section UkRunSys.
     intros Hn Hal4.
     set (dst := m !!! Regidx (mword_of_int 10)).
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -2560,10 +2510,7 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_pipe).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
@@ -2582,7 +2529,7 @@ Section UkRunSys.
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -2600,9 +2547,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
        trapping key is at [false] -- the U tier's run is
@@ -2770,7 +2716,7 @@ Section UkRunSys.
     iDestruct (urun_close_upd N (umem_write M (uint dst) dd gg) pm m
                  (mword_of_int 10) r sz fdv' cw' gn cs pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)
-                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep [Hcont Hbuf Hhs]") as "Hkc";
+                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hbuf Hhs]") as "Hkc";
       [ iIntros (h'') "Hrun";
         iApply ("Hcont" $! h'' r gg with "Hhs Hrun Hbuf") | ].
     iDestruct (ukcq_ukc with "Hkc") as "Hkc".
@@ -2982,7 +2928,7 @@ Section UkRunSys.
       destruct (decide (USYS_read = USYS_read)) as [_ | Hc];
         [ | exfalso; exact (Hc eq_refl) ].
       rewrite Hcnt. reflexivity. }
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     (* THE KEY'S LOW THREE SLOTS ARE THE CALLER'S OWN LEDGER, which is both
        what the deposit is stated at and what makes row 5's arm readable *)
     iDestruct (ustd_agree (ukn_fd N) fdv l with "Hufd Hstd") as %Htake.
@@ -3021,15 +2967,14 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_read).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
     assert (Hw : usys_win USYS_read (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false))
                  = Some (dst, cap)).
     { cbn [uvis_tf uvis_of_run]. rewrite usyswin_tf_of. exact Hwin. }
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -3041,9 +2986,8 @@ Section UkRunSys.
       [ exfalso; vm_compute in He; discriminate | ].
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz')
       "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow Hpost".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
@@ -3097,7 +3041,7 @@ Section UkRunSys.
     iDestruct (urun_close_upd N (umem_write M (uint dst) d g) pm m
                  (mword_of_int 10) r sz fdv cw' gn cs pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)
-                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep [Hcont Hbuf Hstd Hpost]") as "Hkc".
+                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hbuf Hstd Hpost]") as "Hkc".
     { iIntros (h'') "Hrun".
       iApply ("Hcont" $! h'' r d g (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
                 _ _ _ _
@@ -3239,7 +3183,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     (* the key's cwd IS the one the caller's PINNED bundle is stated at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     (* ...and the key's low three slots ARE the caller's own ledger, which
@@ -3258,12 +3202,11 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false)) = USYS_open).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -3273,9 +3216,8 @@ Section UkRunSys.
       [ exfalso; vm_compute in He; discriminate | ].
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz')
       "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow Hpost".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
@@ -3315,7 +3257,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false)
                 _ _ _ _ with "[%] [%] [%] [%] [Hh] Hpost Hcwd Hrun").
@@ -3332,7 +3274,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false)
                 _ _ _ _ with "[%] [%] [%] [%] [Hstd] Hpost Hcwd Hrun").
@@ -3399,7 +3341,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     iDestruct "Hsb" as "[%Hfp Hsb]".
     iDestruct ("Hsb" $! M pm sz fdv gn cs pidv with "Hmy Hheap Hufd")
@@ -3413,12 +3355,11 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false)) = n).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -3427,9 +3368,8 @@ Section UkRunSys.
     destruct (decide (n = USYS_wait)) as [He | _]; [ exfalso; exact (H3 He) | ].
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz')
       "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow Hpost".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
@@ -3453,7 +3393,7 @@ Section UkRunSys.
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false) cs
               with "[%] [%] [%] [%] [Hpost] Hcwd Hrun").
@@ -3580,7 +3520,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     (* THE KEY'S LOW THREE SLOTS ARE THE CALLER'S OWN LEDGER, which is both
        what the deposit is stated at and what makes row 16's arm readable *)
     iDestruct (ustd_agree (ukn_fd N) fdv l with "Hufd Hstd") as %Htake.
@@ -3596,12 +3536,11 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = 16).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -3610,9 +3549,8 @@ Section UkRunSys.
     destruct (decide (16 = USYS_wait)) as [He | _]; [ discriminate He | ].
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz')
       "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow Hpost".
     (* THE LAZY BIT, THE CWD, THE GENERATION AND THE CHILDREN ALL CROSSED
@@ -3638,7 +3576,7 @@ Section UkRunSys.
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv cw gn cs pidv false) cw cs
               with "[%] [%] [%] [%] Hstd [Hpost] Hrun").
@@ -3722,7 +3660,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi #Himg Hrun Hcwd Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     (* the key's cwd IS the one the caller's PINNED bundle is stated at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     (* ...and the key's low three slots ARE the caller's own ledger, which
@@ -3750,12 +3688,11 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false)) = USYS_open).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -3765,9 +3702,8 @@ Section UkRunSys.
       [ exfalso; vm_compute in He; discriminate | ].
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz')
       "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow Hpost".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
@@ -3807,7 +3743,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false)
                 _ _ _ _ with "[%] [%] [%] [%] [%] [%] [Hh] Hpost Hcwd Hrun").
@@ -3827,7 +3763,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false)
                 _ _ _ _ with "[%] [%] [%] [%] [%] [%] [Hstd] Hpost Hcwd Hrun").
@@ -3873,7 +3809,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi #Himg Hrun Hcwd Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     (* ...AND THE IMAGE ROW ([wp_uk_ecall_open_recv_img]'s) *)
     iAssert (⌜ forall (a : Z) (b : bv 8),
@@ -3894,12 +3830,11 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false)) = n).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -3908,9 +3843,8 @@ Section UkRunSys.
     destruct (decide (n = USYS_wait)) as [He | _]; [ exfalso; exact (H3 He) | ].
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz')
       "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow Hpost".
     (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
@@ -3934,7 +3868,7 @@ Section UkRunSys.
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false) cs
               with "[%] [%] [%] [%] [%] [Hpost] Hcwd Hrun").
@@ -4043,7 +3977,7 @@ Section UkRunSys.
       change (2 ^ 38)%Z with 274877906944%Z. lia. }
     iIntros "#Hi Hrun Hsb Hsz Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut szk M pm fdv cw gn cs pidv)
-      "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+      "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     (* the key's break IS the program's *)
@@ -4079,10 +4013,7 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false))
                    = USYS_sbrk).
@@ -4090,7 +4021,7 @@ Section UkRunSys.
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
@@ -4108,9 +4039,8 @@ Section UkRunSys.
     iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_of_run].
-    iSplitL "Hpayv"; [ iFrame "Hmy Hpayv" | ].
+    iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros "Hpayv".
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow _".
     (* THE CWD CROSSED THE TRAP UNCHANGED -- chdir is the one row that moves
        it, and this is not it -- so the engine's half is re-keyed onto the
@@ -4183,7 +4113,7 @@ Section UkRunSys.
       iApply (urun_close_upd N M pm m (mword_of_int 10) r sz fdv cw' gn cs pidv
                 (add_vec_int pc 4) avail
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep [Hcont Hsz]").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hsz]").
       iIntros (h'') "Hrun".
       iApply ("Hcont" $! h'' r with "[Hsz] Hrun").
       iLeft. iSplitR; [ iPureIntro; exact Hr | ]. iExact "Hsz".
@@ -4270,7 +4200,7 @@ Section UkRunSys.
       iDestruct (urun_close_upd N (umem_grow M (sz + n)) pm' m
                    (mword_of_int 10) r (sz + n) fdv cw' gn cs pidv (add_vec_int pc 4) avail
                    ltac:(unfold unot_sp; vm_compute; discriminate)
-                   with "Hheap Hstk Hufd Hcwda Hcha Hmy Hpayv Hdep [Hcont Hsz Hrun']") as "Hkc".
+                   with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hsz Hrun']") as "Hkc".
       { iIntros (h'') "Hrun".
         iApply ("Hcont" $! h'' r with "[Hsz Hrun'] Hrun").
         iRight. iSplitR; [ iPureIntro; exact Hr | ]. iFrame "Hsz Hrun'". }
@@ -4291,21 +4221,19 @@ Section UkRunSys.
       (pc : mword 64) (avail : nat) :
     usysno m = USYS_exit ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
-    (* THE PAYMENT, TWO-ARMED.  What the program owes is not one payload
-       but the ADDITIVE conjunction of two: at the status it is exiting
-       with, and at -1 -- because usertrap's kill check runs BEFORE
-       [syscall()], so a process that trapped with the exit number may
-       still be torn down at -1.  The program supplies the WAND out of what
-       its run keeps ([UkRun.urun]'s [ukn_pay N (-1)]), which is what lets
-       one resource answer both conjuncts ([R ⊢ R ∧ R]); at [ukn_triv] it
-       is [True] and costs nothing. *)
-    (upay_neg (ukn_pay N) -∗
-       ukn_pay N (uexitst m) ∧ upay_neg (ukn_pay N)) -∗
+    (* THE PAYMENT, AND THERE IS ONLY ONE NOW (lane SELF-KILL, P6).  What
+       the program owes at its own exit is the payload at the status it is
+       exiting with, outright.  The second conjunct -- the payload at -1,
+       for the tear-down usertrap's kill check may perform BEFORE
+       [syscall()] -- is gone with the deposit that used to carry it: a
+       KILL is the KILLER's price, paid into <p->lock>'s own killed row
+       ([SchedCtx.kill_row]).  At [UkRun.ukn_triv] this is [True]. *)
+    ukn_pay N (uexitst m) -∗
     urun N h m pc avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hn. iIntros "#Hi Hpay Hrun".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iApply (UkStep.wp_uk_ecall C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc fdv cw gn cs pidv Hui
               (fun (s : mstate)
@@ -4314,32 +4242,28 @@ Section UkRunSys.
                  UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
                    s pc ltac:(vm_compute; reflexivity)
                    ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy Hpayv").
-    (* the engine hands the payment back into the return: what the leaf
-       proves is the deposit AT that payload ([UexecRet.uexec_pay_dep]) *)
-    iIntros "Hpayv".
+              with "Hb Hmy").
     rewrite (uexec_ret_ecall _ _ eq_refl).
     assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_exit).
     { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
     (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
        number is rewritten and the destructs below then reduce both copies
        at once *)
-    rewrite /uexec_pay_dep /upay_at /uexec_pay_arm.
+    rewrite /uexec_pay_dep /upay_at.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
     destruct (decide (USYS_exit = USYS_exit)) as [_ | Hne];
       [ | exfalso; exact (Hne eq_refl) ].
-    (* THE DEPOSIT: the run's own [my_pay], at the payload the record
-       names, and the two-armed payment out of what the run keeps.  Exit
-       has no arm, so nothing comes back. *)
+    (* THE DEPOSIT: the run's own [my_pay] and the payload at the status
+       this exit stores.  Exit has no arm, so nothing comes back. *)
     iExists (sfam_at (ukn_pay N) sfam_pt).
     rewrite (sexit_pay_at (ukn_pay N) sfam_pt).
     cbn [uvis_gen uvis_tf uvis_of_run].
     iSplitL; [ | done ].
     iFrame "Hmy".
     rewrite (uexitst_exit_xs m pc).
-    iApply ("Hpay" with "Hpayv").
+    iExact "Hpay".
   Qed.
 
 End UkRunSys.

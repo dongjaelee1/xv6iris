@@ -442,14 +442,28 @@ Class uexecSG (Σ : gFunctors) {sg_ctok : ctokG Σ} := {
      copy: at a constant predicate both conjuncts are the same [R].  The
      credential the law takes is therefore the R-carrying one -- a slot at
      any key GIVEN the payload back -- because that is the shape exec's
-     wands are answered at: the kernel relays [Q (-1)] to the new image
+     wands are answered at: the kernel relays the payload to the new image
      ([SpecKexec.exec_slot_pre], the EXEC-PAY row) and the new image's
      generic slot is minted from it.  [R := True] is the trivial instance
      and every existing caller takes it. *)
+  (* ...AND THE CARRIER IS PERSISTENT (lane SELF-KILL, P6b).  Nothing
+     travels the trap route any more -- the payload at the kill status is
+     the KILLER's price, paid into <p->lock>'s killed row -- so a single
+     LINEAR [R] can no longer serve both legs of a return (the arm builds
+     the successor's slot; the deposit at the exit ecall spends it), nor
+     both of exec's [∗]-separated slot wands.  The generic family is
+     reachable ONLY tainted ([UexecExecMint.uslot_mint_pay] takes
+     [RiscvPtsto.riscv_kill_cred], which is Persistent), so what it runs on
+     is the payload PERSISTENTLY, and every leg helps itself.
+     THE ANTECEDENT IS DROPPED HERE AND NOWHERE ELSE: the callers state the
+     carrier as [□ (riscv_kill_cred -∗ R)], but this class carries only
+     [ctokG] and cannot name the taint, so the field takes the cashed form
+     [□ R] and its one caller ([UexecRet.uexec_dep_F_of_supply]) cashes the
+     wand against the [□ riscv_kill_cred] it already holds. *)
   sbundle_of_supply : forall (X : uvis -d> iPropO Σ) (n : Z) (W : uvis)
       (R : iProp Σ),
-    ⊢ my_pay (uvis_gen W) (fun _ => R)%I -∗ □ ssupply -∗
-      □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗ R -∗ X W') ==∗
+    ⊢ my_pay (uvis_gen W) (fun _ => R)%I -∗ □ ssupply -∗ □ R -∗
+      □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗ □ R -∗ X W') ==∗
       ∃ f : sfam, ⌜sexit_pay f = (fun _ => R)%I⌝ ∗ sbundle_at X n f W;
 
   (* ===================================================================

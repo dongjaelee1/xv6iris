@@ -343,11 +343,7 @@ Section UInitKernel.
        the walk uses checks each conjunct on its own and is fine. *)
     iIntros "Hdp #Hdep #Hxs Hdn Hrd #Hmp".
     iApply (uslot_of_urun_all W (2 + (4 + (12 + (12 + (4 + n0))))) (fun _ => True)%I
-              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp []").
-    (* the payload at the trivial one -- <init> has no parent.  A WAND
-       from the kill credential now (lane KILL-PAY, K4(a)), free at
-       [True] *)
-    { iIntros "_". done. }
+              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
     (* init's own half of its children set travels with its cwd: nothing
        on init's walk READS it, but fork MOVES it, so the fragment goes
        down the chain index-free ([UserChildren.uch_any]). *)

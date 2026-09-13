@@ -103,9 +103,6 @@ Require Import UsysMemOk.   (* [uecall_scause] -- the transparent arms' defining
 Require Import SpecUsertrap UsertrapRes.
 Require Import UexecSG.    (* [sfam] -- the deposit's families, relayed with
                               the syscall channel's out row *)
-Require Import UexecSlot.       (* [upay_neg] -- the -1 payload is a
-                                   WAND from the kill credential (lane
-                                   KILL-PAY, K4(a)) *)
 Require Import UserPerm.   (* [perm_of_uptd_ext_sz] -- the fill is transparent *)
 Require Import ProofUsertrapParts.
 Require Import UsertrapAux.
@@ -279,13 +276,13 @@ Section Ut56.
        carried down as [SpecUsertrap.ut_kill_in] and cashed by the
        dispatcher, which is where [UexecRet.ukill_sc] is known. *)
     □ riscv_kill_cred -∗
-    (* THE PAYMENT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
+    (* THE PAY FACT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
        device interrupt, an unexpected cause -- and each of them reaches a
        killed check ([SpecUsertrap.ut_pay_in] is owed at every cause for
-       exactly that reason): the arm either spends the payload on
-       [kexit(-1)] or hands it back through the post's own row. *)
+       exactly that reason).  NOTHING travels beside the fact any more
+       (lane SELF-KILL, P6b): a kill is paid for by the KILLER, into
+       <p->lock>'s own killed row. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep) -∗
@@ -295,7 +292,7 @@ Section Ut56.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe #Hkc #Hmyp Hpayv Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe #Hkc #Hmyp Hcont".
     iDestruct (ua_hold_off Rsys N U _ sts cs with "Hhold") as
       "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     (* depth 0 forces the held set empty, so the printk / killed / setkilled
@@ -687,8 +684,8 @@ Section Ut56.
                    a transparent trap ran no syscall and answered nothing *)
                 ltac:(intros Hc; exfalso; exact (Hnec Hc)) Hav Hnx Htfpe Hksp Hm0sp HS1sp HS1s1 HcsS1'
               Hmiev Hmenvv Hrd
-              with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hpayv Hcont] Hframe Hxo Hfo Hwo Hso
-                    Hmyp Hpayv Hcont").
+              with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
+                    Hmyp Hcont").
     all: try lkbelow.
     iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu [-Hclm Hown] Hclm [-]").
     - rewrite /trap_csrs.
@@ -778,13 +775,13 @@ Section UtD0.
        carried down as [SpecUsertrap.ut_kill_in] and cashed by the
        dispatcher, which is where [UexecRet.ukill_sc] is known. *)
     □ riscv_kill_cred -∗
-    (* THE PAYMENT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
+    (* THE PAY FACT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
        device interrupt, an unexpected cause -- and each of them reaches a
        killed check ([SpecUsertrap.ut_pay_in] is owed at every cause for
-       exactly that reason): the arm either spends the payload on
-       [kexit(-1)] or hands it back through the post's own row. *)
+       exactly that reason).  NOTHING travels beside the fact any more
+       (lane SELF-KILL, P6b): a kill is paid for by the KILLER, into
+       <p->lock>'s own killed row. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep) -∗
@@ -794,7 +791,7 @@ Section UtD0.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe #Hkc #Hmyp Hpayv Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe #Hkc #Hmyp Hcont".
     iDestruct (ua_hold_off Rsys N U _ sts cs with "Hhold") as
       "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     (* depth 0 forces the held set empty, so the printk / killed / setkilled
@@ -1062,7 +1059,7 @@ Section UtD0.
                 mie_v menvcfg0 epv scv lks sts gn cs pid fdep
                 Hpk Hwf' Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmrsp Hmrs1 Hcsmr
                 Hmiev Hmenvv Hrd Hnec
-                with "Htext Hpc Hcg [-Hframe Hpayv Hcont] Hframe Hkc Hmyp Hpayv Hcont").
+                with "Htext Hpc Hcg [-Hframe Hcont] Hframe Hkc Hmyp Hcont").
       iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu Hcsrs Hclm [-]").
       rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
     - (* ---- vmfault backed a page: the [bnez] is taken, to +0xa6 ---- *)
@@ -1158,8 +1155,8 @@ Section UtD0.
                    a transparent trap ran no syscall and answered nothing *)
                 ltac:(intros Hc; exfalso; exact (Hnec Hc)) Hav Hnx HV'tfp Hksp Hm0sp Hmrsp Hmrs1 Hcsmr
                 Hmiev Hmenvv Hrd'
-                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hpayv Hcont] Hframe Hxo Hfo Hwo Hso
-                      Hmyp Hpayv Hcont").
+                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
+                      Hmyp Hcont").
       all: try lkbelow.
       iApply (ua_hold_on Rsys N (MkUstate V' (us_M U)) _ sts cs with "Hcpu Hcsrs Hclm [-]").
       rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
@@ -1226,13 +1223,13 @@ Section UtE8.
     ut_hold Rsys N U false lks sts cs pid -∗
     ut_frame ksp (m0 !!! Regidx Rra) (m0 !!! Regidx Rs0)
                  (m0 !!! Regidx Rs1) (m0 !!! Regidx Rs2) -∗
-    (* THE PAYMENT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
+    (* THE PAY FACT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
        device interrupt, an unexpected cause -- and each of them reaches a
        killed check ([SpecUsertrap.ut_pay_in] is owed at every cause for
-       exactly that reason): the arm either spends the payload on
-       [kexit(-1)] or hands it back through the post's own row. *)
+       exactly that reason).  NOTHING travels beside the fact any more
+       (lane SELF-KILL, P6b): a kill is paid for by the KILLER, into
+       <p->lock>'s own killed row. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
-    upay_neg (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep) -∗
@@ -1242,7 +1239,7 @@ Section UtE8.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe #Hmyp Hpayv Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe #Hmyp Hcont".
     iDestruct (ua_hold_off Rsys N U _ sts cs with "Hhold") as
       "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     (* depth 0 forces the held set empty, so the printk / killed / setkilled
@@ -1399,8 +1396,8 @@ Section UtE8.
                    a transparent trap ran no syscall and answered nothing *)
                 ltac:(intros Hc; exfalso; exact (Hnec Hc)) Hav Hnx Htfpe Hksp Hm0sp Hmfsp Hmfs1 Hcsmf
                 Hmiev Hmenvv Hrd
-                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hpayv Hcont] Hframe Hxo Hfo Hwo Hso
-                      Hmyp Hpayv Hcont").
+                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
+                      Hmyp Hcont").
       iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu Hcsrs Hclm [-]").
       rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
     - (* KILLED: fall through to +0xf2's [c.j +0xf6], then kexit(-1). *)

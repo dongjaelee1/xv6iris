@@ -455,10 +455,7 @@ Section UEchoKernel.
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
     iApply (uslot_of_urun_ro W 12 (fun _ => True)%I Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
-              with "Hdep Hpay []").
-    (* the payload at the trivial one -- a WAND from the kill credential
-       now (lane KILL-PAY, K4(a)), free at [True] *)
-    { iIntros "_". done. }
+              with "Hdep Hpay").
     (* echo makes no descriptor call, so its ledger is dropped here *)
     (* echo makes no descriptor call, no chdir and no fork, so its ledger,
        its working directory and its children set are all dropped here *)

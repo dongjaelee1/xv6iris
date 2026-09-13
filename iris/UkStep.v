@@ -504,17 +504,15 @@ Section UkObl.
      [ukc] quantified [sz] too -- now that the key carries the break, the
      obligation has to be at THE size, and saying so is what makes the
      caller's continuation usable here. *)
-  (* THE PAYMENT, PACKAGED WITH WHATEVER THE STEP CONTINUES INTO.  An
-     interrupt can trap between any two instructions and the kernel may
-     tear the process down there ([SpecUsertrap]'s killed check runs on
-     every arm), so the payload has to be in the ENGINE's hands at every
-     arm -- the run's own copy is inside the leaf's closure by then.  It
-     rides the payload as this triple: the process's knowledge of its
-     payload, the payload itself, and the continuation the payload is
-     handed BACK into ([UexecRet.uexec_pay_arm] is what the resume returns
-     and this wand is where it goes). *)
+  (* THE PAY FACT, PACKAGED WITH WHATEVER THE STEP CONTINUES INTO.  It used
+     to be a triple -- the fact, the payload at the kill status, and the
+     continuation the payload was handed back into -- because a trap could
+     take the payload at any instruction boundary.  Nothing is deposited at
+     such a trap any more (lane SELF-KILL, P6: a KILL is paid for by the
+     killer, into <p->lock>'s own killed row), so what the engine has to
+     carry is the persistent fact alone. *)
   Definition uk_paycont (Q : Z -> iProp Σ) (gn : gname) (K : iProp Σ) : iProp Σ :=
-    (my_pay gn Q ∗ upay_neg Q ∗ (upay_neg Q -∗ K))%I.
+    (my_pay gn Q ∗ K)%I.
 
   Definition uk_step_obl (π : gmap (mword 27) uperm) (Kc : iProp Σ)
       (Q : Z -> iProp Σ) (sz : Z)
@@ -585,7 +583,7 @@ Section UkObl.
           cycle's [▷], so nothing here needs the resource before the machine
           has stepped -- and a caller holding [UexecRet.ukcq] under a later
           hands it over verbatim. *)
-       ▷ (my_pay gn Q ∗ upay_neg Q ∗ (upay_neg Q -∗ Kc)) -∗
+       ▷ (my_pay gn Q ∗ Kc) -∗
        WP (Loop : expr riscv_lang))%I.
 
   (* the payload the wrapper hands the closer at the cycle's tail *)
@@ -772,11 +770,11 @@ Section UkArms.
               ltac:(uv_trap_peel; exact Lpaddr)
               Htok ltac:(uv_trap_peel; exact Htlbok)
               with "Hany Hmm Hres Hctx []").
-    iIntros "Hframe Hctx ((#Hmyp & Hpayv & Hkc) & Hbak & Hfdr & Hkb)".
+    iIntros "Hframe Hctx ((#Hmyp & Hkc) & Hbak & Hfdr & Hkb)".
     iDestruct ("Hbak" with "Hctx") as "Hrut".
     iApply ("Hkb" $! (uvis_of_run m pc M π sz fdv cw gn cs pidv false)
               (utrap_scause (Interrupt i) (register_lookup (R_bitvector_64 scause) rsA))
-              (tval None) with "[%] [%] [%] [%] [%] [%] [%] [%] [Hframe Hrut Hfdr Hkc Hpayv]");
+              (tval None) with "[%] [%] [%] [%] [%] [%] [%] [%] [Hframe Hrut Hfdr Hkc]");
       [ reflexivity | reflexivity | reflexivity | reflexivity
       | reflexivity | reflexivity | reflexivity | reflexivity | ].
     iSplitL "Hframe Hrut".
@@ -791,32 +789,24 @@ Section UkArms.
     iApply (bi.equiv_entails_1_2 _ _
               (uexec_ret_transparent _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false)
                  (utrap_scause_intr_ne i (register_lookup (R_bitvector_64 scause) rsA)))).
-    (* THE ARM HAS TWO SIDES NOW (lane SELF-KILL §3b) and an interrupt gives
-       the LEFT one: the process is resumed.  Unfolded HERE, before the
-       payment's rewrite, so that rewrite reaches the arm. *)
     rewrite /UexecRet.uexec_kill_arm /UexecRet.uexec_kill_arm_F.
-    (* THE PAYMENT AT THE TRANSPARENT ARM: the deposit is paid out of the
-       copy the payload carries, and the arm gives it back -- so the wand
-       into the continuation is applied to what the RESUME returns, not to
-       the copy just spent.  The family is the one the payload's payload
-       predicate names ([UexecSG.sfam_at] at [Q]), and the deposit's
-       [my_pay] is the run's own. *)
+    (* THE DEPOSIT AT THE TRANSPARENT ARM IS THE PAY FACT ALONE (lane
+       SELF-KILL, P6): an interrupt is not the exit ecall, so the row is
+       free ([UexecRet.uexec_pay_dep_ne]).  The family is the one the
+       payload's predicate names ([UexecSG.sfam_at] at [Q]). *)
     iExists (sfam_at Q sfam_pt).
-    rewrite /uexec_pay_arm (sexit_pay_at Q sfam_pt).
-    iSplitL "Hpayv";
+    iSplitR;
       [ iApply (uexec_pay_dep_ne _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false) _ (sfam_at Q sfam_pt)
                   (utrap_scause_intr_ne i
                      (register_lookup (R_bitvector_64 scause) rsA))
-                  (sexit_pay_at Q sfam_pt) with "Hmyp Hpayv") | ].
+                  (sexit_pay_at Q sfam_pt) with "Hmyp") | ].
     (* THE KILL ROW IS [emp] AT AN INTERRUPT (lane KILL-PAY, K3(b)): the
        dispatched cause is one devintr handles, so no kill can follow it. *)
     iSplitR.
     { iApply (ukill_cred_at_not _
                 (utrap_scause_intr_not_kill i
                    (register_lookup (R_bitvector_64 scause) rsA) Hi)). }
-    iLeft. iIntros "Hpayv".
     rewrite (uslot_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2).
-    iDestruct ("Hkc" with "Hpayv") as "Hkc".
     iDestruct "Hkc" as "[_ Hkc]". iExact "Hkc".
   Qed.
 
@@ -1048,24 +1038,23 @@ Section UkStepEngine.
         [ exact (uv_tail_of RS rs2 rs3 Hag) | ].
       (* the step is over, so the payment's later is spent and the three
          pieces are in hand *)
-      iDestruct "Hpay3" as "(#Hmyp & Hpayv & Hkc)".
+      iDestruct "Hpay3" as "(#Hmyp & Hkc)".
       rewrite /uk_payload /uk_paycont.
       (* [Hfdv] is the [Rfd fdv] [uvb_elim] handed out at the cycle's head;
          the payload carries it back to the next bundle.  NOT [Hfrag] --
          that name is taken twice below, by the fetch's [HWd] split. *)
-      iSplitL "Hkc Hpayv"; [ | iFrame "Hbak Hfdv Hk" ].
-      (* THE PAYMENT GOES INTO THE PAYLOAD AND COMES BACK OUT OF THE WAND:
-         whichever arm ends this step is handed it, and the one that
-         RESUMES (the retire arm below, or the trap's own arm) puts it back
-         into the continuation. *)
-      iFrame "Hmyp Hpayv". iIntros "Hpayv".
-      iSplit; [ iApply ("Hkc" with "Hpayv") | ].
+      iSplitL "Hkc"; [ | iFrame "Hbak Hfdv Hk" ].
+      (* THE CONTINUATION ANSWERS BOTH SIDES OF THE ADDITIVE CONJUNCTION out
+         of the ONE copy it is: whichever arm ends this step reads the one
+         it needs. *)
+      iFrame "Hmyp".
+      iSplit; [ iExact "Hkc" | ].
       rewrite /ukc. iIntros (h' xi' C' pt' Rfd' Rut' HRut') "%Hlo' %Hpm' %Hlz' Hb".
       rewrite /uk_ih.
       iApply ("IH" $! h' xi' C' pt' Rfd' Rut' HRut' sz
-                with "[%] [%] [%] Hb Hobl [Hmyp Hpayv Hkc]");
+                with "[%] [%] [%] Hb Hobl [Hmyp Hkc]");
         [ exact Hlo' | exact Hpm' | exact (Hlz' eq_refl)
-        | iNext; iFrame "Hmyp Hpayv"; iExact "Hkc" ].
+        | iNext; iFrame "Hmyp"; iExact "Hkc" ].
   Qed.
 
 End UkStepEngine.
@@ -1096,7 +1085,7 @@ Section UkFunnel.
   Lemma wp_uk_step (Kc : iProp Σ) (Q : Z -> iProp Σ) (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗ □ uk_step_obl π Kc Q sz fdv cw gn cs pidv M m pc -∗
-    ▷ (my_pay gn Q ∗ upay_neg Q ∗ (upay_neg Q -∗ Kc)) -∗ WP (Loop : expr riscv_lang).
+    ▷ (my_pay gn Q ∗ Kc) -∗ WP (Loop : expr riscv_lang).
   Proof.
     intros Hal2.
     iIntros "Hb #Hobl Hpay3".
@@ -1688,10 +1677,9 @@ Section UkRetire.
                 (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
               WP (Loop : expr riscv_lang)))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hbak & Hfdr & Hkb & Hkc)".
-      (* the step RETIRED, so the payment goes straight back into the
-         continuation and nothing was deposited *)
-      iDestruct "Hkc" as "(_ & Hpayv & Hkc)".
-      iDestruct ("Hkc" with "Hpayv") as "Hkc".
+      (* the step RETIRED, so the continuation's OTHER side is the one to
+         read: nothing was deposited and nothing comes back *)
+      iDestruct "Hkc" as "(_ & Hkc)".
       iDestruct "Hkc" as "[Hkc _]".
       iFrame "Hbak Hfdr Hkb". iIntros "Hb".
       rewrite /ukc.
@@ -2050,21 +2038,20 @@ Section UkEcall.
        register_lookup (R_bitvector_64 PC) s.(sregs) = pc ->
        goodmb Du_r Du_w (execute (ECALL tt)) s ∅ = true) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
-    (* THE PAYMENT ENTERS HERE AND THE RETURN IS BEHIND IT: an ecall traps
-       at once, so what the leaf owes is its return AT the payload -- the
-       deposit inside it is paid out of this very copy
-       ([UexecRet.uexec_pay_dep]). *)
-    my_pay gn Qp -∗ upay_neg Qp -∗
-    (upay_neg Qp -∗ uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false)) -∗
+    (* THE PAY FACT ENTERS HERE AND THE RETURN COMES WITH IT: an ecall traps
+       at once, so what the leaf owes is its return, whose deposit reads
+       this very fact ([UexecRet.uexec_pay_dep]). *)
+    my_pay gn Qp -∗
+    uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hui Hg.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
     pose proof (ui_al2 _ _ _ _ _ Hui0) as Hal2.
-    iIntros "Hb #Hmyp Hpayv Hret".
+    iIntros "Hb #Hmyp Hret".
     iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 _ Qp M m pc fdv cw gn cs pidv Hal2
-              with "Hb [] [Hmyp Hpayv Hret]").
-    2:{ iNext. iFrame "Hmyp Hpayv". iExact "Hret". }
+              with "Hb [] [Hmyp Hret]").
+    2:{ iNext. iFrame "Hmyp". iExact "Hret". }
     iModIntro.
     rewrite /uk_step_obl.
     iIntros (R CIDo XIo C' pt' Rfd' Rut' HRut' Mp' t rs1 rsA usatp pcfg paddr)
@@ -2073,8 +2060,7 @@ Section UkEcall.
              ukb (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false ∗
              uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hbak & Hfdr & Hkb & Hkc)".
-      iDestruct "Hkc" as "(_ & Hpayv & Hkc)".
-      iDestruct ("Hkc" with "Hpayv") as "Hkc".
+      iDestruct "Hkc" as "(_ & Hkc)".
       iDestruct "Hkc" as "[Hkc _]". iFrame "Hbak Hfdr Hkb". iExact "Hkc". }
     destruct (uk_instr_mapped π M Mp' pc false (ECALL tt) pt' sz
                 (loop_ok_wf C' pt' Hlo') Hpm' Hpure Hui)

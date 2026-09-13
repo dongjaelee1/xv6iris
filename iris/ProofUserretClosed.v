@@ -588,7 +588,7 @@ Section UserretClosed.
       "%Huptpt' %Hround' %Hfdkept %Hchkept %Hgenk2 %Hfdecall %Hpipecall %Hpidrow %Hpcret' %Hgprtie'
        %Hpttf %Hmapwf %Hsatpr %Hnorm' %Hptwf' %Hmm %Hretms %Hacc'
        Hhs' Hpriv' Hms' Hmie' Hmdl' Hmenv' Hstvec' #Hsenv' Hsc' Hstval' Hsepc'
-       Hupt' Hpc' Hgpr' Hures' #Hhw' #Hmin' #Hcreds' Hxo Hfo Hwo Hso Hpay".
+       Hupt' Hpc' Hgpr' Hures' #Hhw' #Hmin' #Hcreds' Hxo Hfo Hwo Hso".
     (* the three frozen CSRs, duplicated out of the residue for [user_cfg] *)
     iDestruct (UV.usertrap_res_csrs_open (CID := CID') pt' ksp U2 with "Hures'")
       as "[Hcsrs Hcback]".
@@ -692,8 +692,7 @@ Section UserretClosed.
                       (perm_of (ud_um (pv_upt (us_V U2))) (uint (pv_sz (us_V U2))))
                       (uint (pv_sz (us_V U2))) (pv_lazy (us_V U2))
                  /\ sts2 = uvis_fd W⌝
-              ∨ (uexec_pay_arm fdep -∗
-                   uslot (uvis_of U2 sts2 (uvis_gen W) cs2 (uvis_pid W)))))%I
+              ∨ uslot (uvis_of U2 sts2 (uvis_gen W) cs2 (uvis_pid W))))%I
       with "[Hxo]" as "Hxo".
     { iIntros "%Hg".
       assert (Hnf : ~ (sc = uecall_scause
@@ -728,7 +727,7 @@ Section UserretClosed.
                     key the deposit went down at -- which differs from the
                     round's run projection in none of [UexecSG.skey_eq]'s six
                     rows, exactly as it did on the way in. *)
-                 with "Hxo Hfo Hwo [Hso] Hpay Hret") as "Hslot";
+                 with "Hxo Hfo Hwo [Hso] Hret") as "Hslot";
       [ iIntros "%Hg"; destruct Hg as (Hgec & Hgex & Hgfk);
         (* THE ROW IS AT THE SET THE ROUND RESUMES AT, whatever it is: at
            wait that set is what the reap left and the trapped one is gone,

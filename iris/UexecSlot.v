@@ -356,36 +356,25 @@ Proof.
 Qed.
 
 (* ===================================================================== *)
-(* THE -1 PAYLOAD IS A WAND FROM THE KILL CREDENTIAL                      *)
-(* (app-echo.md, lane KILL-PAY, K4(a)).                                   *)
+(* THE -1 PAYLOAD IS NOT CARRIED HERE ANY MORE (app-echo.md, lane          *)
+(* SELF-KILL, P6).                                                        *)
 (*                                                                        *)
-(* A process owes its parent a payload if it is KILLED -- and under an     *)
-(* application's discipline a kill cannot happen, so charging the payload  *)
-(* outright charges for something that never occurs.  What it owes         *)
-(* instead is: IF the application's kill credential has been paid, THEN    *)
-(* the payload.  The credential is persistent and the wand is the whole    *)
-(* carrier -- the deposit ([UexecRet.upay_at]), the resume                 *)
-(* ([UexecRet.uexec_pay_arm]), the run's own row ([UkRun.urun]) and the    *)
-(* kernel's exec route ([SpecKexec.exec_slot_pre]) are all at this ONE     *)
-(* shape, so the token still simply cycles and no party has to             *)
-(* manufacture the payload out of nothing.                                 *)
+(* [upay_neg Q := □ riscv_kill_cred -∗ Q (-1)] used to be the whole        *)
+(* carrier of a process's payload at the kill status: the deposit          *)
+(* ([UexecRet.upay_at]), the resume, the run's own row ([UkRun.urun]) and  *)
+(* the kernel's exec route ([SpecKexec.exec_slot_pre]) were all at that    *)
+(* ONE shape, and usertrap's three [kexit(-1)] sites cashed it with the    *)
+(* credential they had just read off the killed row.                      *)
 (*                                                                        *)
-(* WHO CASHES IT: usertrap's three [kexit(-1)] sites, each of which has     *)
-(* just read a NONZERO [killed] flag and therefore holds the credential    *)
-(* ([SpecKilled]'s post).  WHAT IT COSTS a verified program: nothing --    *)
-(* every one of them runs at [UkRun.ukn_triv], where the payload is        *)
-(* [True].                                                                 *)
-(*                                                                        *)
-(* IT LIVES HERE, at the key vocabulary's altitude, because the LOWEST     *)
-(* consumer is [SpecKexec.exec_slot_pre] and SpecKexec is below            *)
-(* [UexecRet]; one spelling, and nothing above has to restate it.          *)
+(* THE OWNER'S RULING RETIRED IT.  The kill credential IS the target's     *)
+(* exit payload at -1, deposited in <p->lock>'s killed row by whoever      *)
+(* killed the process ([SchedCtx.kill_row]); a process torn down behind    *)
+(* its back never held anything to pay with, and a process that faults ON  *)
+(* PURPOSE will deposit its own payload at the trap (the two-sided         *)
+(* [UexecRet.ukill_cred_at] of P6b's second step).  Either way nothing     *)
+(* travels                                                                 *)
+(* into the kernel and back out again, so the row that carried it is       *)
+(* gone: the deposit at every non-exit trap is [emp] and the resume hands  *)
+(* nothing back.                                                          *)
 (* ===================================================================== *)
-Definition upay_neg `{!riscvGS Σ} (Q : Z -> iProp Σ) : iProp Σ :=
-  (□ riscv_kill_cred -∗ Q (-1))%I.
 
-Lemma upay_neg_of `{!riscvGS Σ} (Q : Z -> iProp Σ) : Q (-1) -∗ upay_neg Q.
-Proof. rewrite /upay_neg. iIntros "H _". iExact "H". Qed.
-
-Lemma upay_neg_pay `{!riscvGS Σ} (Q : Z -> iProp Σ) :
-  □ riscv_kill_cred -∗ upay_neg Q -∗ Q (-1).
-Proof. rewrite /upay_neg. iIntros "#Hk H". iApply ("H" with "Hk"). Qed.

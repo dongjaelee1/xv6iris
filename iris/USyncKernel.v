@@ -180,11 +180,7 @@ Section USyncKernel.
     intros Hpc Hsub Hx Hroom Hal8 Hdata Hfdlen Hstop Hpsok_free Hlzf.
     iIntros "#Hdep #Hpay".
     iApply (uslot_of_urun W 4 (fun _ => True)%I Hal8 ltac:(lia) Hdata Hfdlen
-              Hstop Hlzf with "Hdep Hpay []").
-    (* the payload at the trivial one -- and it is a WAND from the kill
-       credential now (lane KILL-PAY, K4(a)), which at [True] costs one
-       intro *)
-    { iIntros "_". done. }
+              Hstop Hlzf with "Hdep Hpay").
     (* sync makes no descriptor call, so its ledger is dropped here *)
     (* sync makes no descriptor call and no chdir, so its ledger and its
        working directory are both dropped here *)

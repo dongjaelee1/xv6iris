@@ -876,10 +876,9 @@ Section UkInitMain.
     { iFrame "Hcode Hro Hargv". }
     { rewrite big_sepM_empty. done. }
     (* THE CHILD'S PAYMENT WAND (lane SELF-KILL, §4b'): the application's
-       TAINT buys the payload's right arm, and the wand is what both the
-       child's own run and the child's KILLED ROW are founded on -- one
-       premise now, boxed, where it used to be the linear
-       [UexecSlot.upay_neg]. *)
+       TAINT buys the payload's right arm, and the wand is what the
+       child's KILLED ROW is founded on -- one boxed premise, where the
+       payload used to be carried linearly by the child's run. *)
     { iModIntro. iIntros "#Hc". iApply ucons_pay_taint. iApply Hkt.
       iExact "Hc". }
     assert (E36c : add_vec_int (mword_of_int 0x36c : mword 64) 4

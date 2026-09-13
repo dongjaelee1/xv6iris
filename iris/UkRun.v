@@ -669,13 +669,10 @@ Section UkRun.
   (* K4(a), ruling R-A).                                                    *)
   (*                                                                       *)
   (* [udepw_at] is used at exec and nowhere else, and an exec that FAILS    *)
-  (* comes back to a process whose [UkRun.urun] no longer carries the -1    *)
-  (* payload -- that row is a WAND from the kill credential now             *)
-  (* ([UexecSlot.upay_neg]).  The resource such a process spent into the    *)
-  (* exec deposit is therefore the only thing it has left to pay its own    *)
-  (* [exit(1)] with, and the kernel gives it back: the arm's post at exec   *)
-  (* is [UexecSG.spost_at_exec], a wand from "the answer was -1" to the     *)
-  (* family's own refund.                                                   *)
+  (* comes back to a process that has spent into the exec deposit the very  *)
+  (* resource its own [exit(1)] would need, so the kernel gives it back:    *)
+  (* the arm's post at exec is [UexecSG.spost_at_exec], a wand from "the    *)
+  (* answer was -1" to the family's own refund.                             *)
   (*                                                                       *)
   (* WHAT THE INDEX WOULD HAVE BEEN, and is not: the refund itself.  The    *)
   (* family is existential here -- a supplier hands a bundle at SOME [f] -- *)
@@ -888,16 +885,15 @@ Section UkRun.
           ([UexecRet.uexec_pay_dep]), and it is what an entry constructor
           receives and mints the record at. *)
        my_pay gn (ukn_pay N) ∗
-       (* ...AND THE PAYLOAD ITSELF, AT THE KILL STATUS.  Linear, and it
-          lives HERE rather than in the kernel's block because it is the
-          PROGRAM's between traps: a process that was lent a resource goes
-          on holding it while it runs.  Every kernel entry takes it
-          ([UexecRet.uexec_pay_dep]) and every resume hands it back
-          ([uexec_pay_arm]); the kernel spends it only on the kill path,
-          where the process's own continuation is never delivered and
-          nothing the program does could pay.  At [ukn_triv] it is [True]
-          and costs nothing. *)
-       upay_neg (ukn_pay N) ∗
+       (* THE PAYLOAD AT THE KILL STATUS IS NOT HERE ANY MORE (lane
+          SELF-KILL, P6).  The run used to carry [□ riscv_kill_cred -∗
+          ukn_pay N (-1)] between traps, hand it to the kernel at every
+          entry and take it back at every resume.  Nothing is deposited at
+          a trap now -- the price of a KILL is the killer's, paid into
+          <p->lock>'s own killed row ([SchedCtx.kill_row]) -- so the row is
+          gone and a program that owes a payload at its own [exit] takes it
+          as a premise of the exit leaf instead
+          ([UkRunSys.wp_uk_ecall_exit]). *)
        udep ∗
        uvb (CID := h) (XI := xi) C pt Rfd Rut sz pm fdv cw gn cs pidv false M m pc)%I.
 
@@ -964,25 +960,18 @@ Section UkRun.
     (* ...and the process's own knowledge of its exit payload, back at the
        same generation -- persistent, like the supplier below *)
     my_pay gn (ukn_pay N) -∗
-    (* ...AND THE PAYLOAD THE RUN KEEPS, which is what this close HANDS THE
-       ENGINE: the conclusion is the continuation WITH the payment beside it
-       ([UexecRet.ukcq]), because an interrupt can trap between any two
-       instructions and the kernel has to be paid there too.  The run the
-       continuation rebuilds is at the payload the engine HANDS BACK -- the
-       same predicate, by the family the deposit and the arm share. *)
-    upay_neg (ukn_pay N) -∗
     (* the deposit supplier and its law, back at the same key -- persistent,
        so a leaf that destructed [urun] hands the very copy it read *)
     udep -∗
     (∀ h : CpuId, urun N h m pc avail -∗ WP (Loop : expr riscv_lang)) -∗
     ukcq (ukn_pay N) pm M sz fdv cw gn cs pidv m pc.
   Proof.
-    iIntros "Hheap Hstk Hufd Hcwd Hch #Hmy Hpay #Hdep Hcont".
-    rewrite /ukcq. iFrame "Hmy Hpay". iIntros "Hpay".
+    iIntros "Hheap Hstk Hufd Hcwd Hch #Hmy #Hdep Hcont".
+    rewrite /ukcq. iFrame "Hmy".
     rewrite /ukc. iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzf Hb".
     iApply ("Hcont" $! h).
     iExists xi, C, pt, Rfd, Rut, sz, M, pm, fdv, cw, gn, cs, pidv.
-    iFrame "Hheap Hstk Hufd Hcwd Hch Hmy Hpay Hdep Hb". iPureIntro.
+    iFrame "Hheap Hstk Hufd Hcwd Hch Hmy Hdep Hb". iPureIntro.
     split_and!; [ exact Hlo | exact Hpm | exact (Hlzf eq_refl) | exact HRut ].
   Qed.
 
@@ -1015,14 +1004,13 @@ Section UkRun.
     ucwd_auth (ukn_cwd N) cw -∗
     uch_auth (ukn_ch N) cs -∗
     my_pay gn (ukn_pay N) -∗
-    upay_neg (ukn_pay N) -∗
     udep -∗
     (∀ h : CpuId, urun N h (<[Regidx rd := v]> m) pc' avail -∗
                   WP (Loop : expr riscv_lang)) -∗
     ukcq (ukn_pay N) pm M sz fdv cw gn cs pidv (<[Regidx rd := v]> m) pc'.
   Proof.
-    intros Hns. iIntros "Hheap Hstk Hufd Hcwd Hch #Hmy Hpay #Hdep Hcont".
-    iApply (urun_close with "Hheap [Hstk] Hufd Hcwd Hch Hmy Hpay Hdep Hcont").
+    intros Hns. iIntros "Hheap Hstk Hufd Hcwd Hch #Hmy #Hdep Hcont".
+    iApply (urun_close with "Hheap [Hstk] Hufd Hcwd Hch Hmy Hdep Hcont").
     rewrite (unot_sp_upd rd v m Hns). iExact "Hstk".
   Qed.
 
@@ -1050,16 +1038,22 @@ Section UkRun.
   Lemma urun_gen (N : uk_names Σ) (T : iProp Σ) (h : CpuId) (m : regfile)
       (pc : mword 64) (avail : nat) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
+    (* THE RUN CARRIES NO PAYLOAD (lane SELF-KILL, P6) and the TAINT ARM
+       ASKS FOR NONE (P6b): a tainted process runs on the generic family,
+       whose constant payload is carried PERSISTENTLY
+       ([UexecExecMint.uslot_mint_all] at [□ (riscv_kill_cred -∗ R)]) and
+       is built out of [T] itself ([UserConsole.ucons_pay_taint]).  So all
+       that crosses here is the taint and the key's own pay fact. *)
     □ (∀ W : uvis,
-         T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ upay_neg (ukn_pay N) -∗ uslot W) -∗
+         T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W) -∗
     T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
   Proof.
     intros Hal. iIntros "#Hgen HT Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
-      "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & Hpayv & #Hdep & Hb)".
+      "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     iDestruct ("Hgen" $! (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
-                 with "HT [] Hpayv") as "Hslot".
+                 with "HT []") as "Hslot".
     { cbn [uvis_gen uvis_of_run]. iExact "Hmy". }
     rewrite (uslot_run m pc M pm sz fdv cw gn cs pidv Hx0 Hal).
     iApply ("Hslot" $! h xi C pt Rfd Rut HRut with "[%] [%] [%] Hb");
@@ -1430,14 +1424,6 @@ Section UkRun.
        premise, exec through [SpecKexec.exec_slot_pre]'s wands, and
        userinit at the trivial payload. *)
     my_pay (uvis_gen W) Q -∗
-    (* ...AND THE PAYLOAD ITSELF, at the kill status.  A constructor is
-       where it enters, as the fact is: the run this builds carries it
-       between traps ([urun]'s own conjunct), hands it to the kernel at
-       every entry and is handed it back at every resume.  Whoever builds
-       the slot supplies it -- fork's child arm out of the payload the
-       parent chose, exec through [SpecKexec.exec_slot_pre]'s wands, and
-       userinit at the trivial payload, where it is [True]. *)
-    upay_neg Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)
@@ -1474,7 +1460,7 @@ Section UkRun.
     -∗ uslot W.
   Proof.
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
-    iIntros "#Hdep #Hpay Hpayv Hprog".
+    iIntros "#Hdep #Hpay Hprog".
     rewrite uslot_ukc /ukc Hlzf.
     iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
     set (sz := uvis_sz W).
@@ -1549,7 +1535,7 @@ Section UkRun.
     iSplitR; [ iPureIntro; exact HRut | ].
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
-    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hpayv Hdep".
+    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].
@@ -1598,14 +1584,6 @@ Section UkRun.
        premise, exec through [SpecKexec.exec_slot_pre]'s wands, and
        userinit at the trivial payload. *)
     my_pay (uvis_gen W) Q -∗
-    (* ...AND THE PAYLOAD ITSELF, at the kill status.  A constructor is
-       where it enters, as the fact is: the run this builds carries it
-       between traps ([urun]'s own conjunct), hands it to the kernel at
-       every entry and is handed it back at every resume.  Whoever builds
-       the slot supplies it -- fork's child arm out of the payload the
-       parent chose, exec through [SpecKexec.exec_slot_pre]'s wands, and
-       userinit at the trivial payload, where it is [True]. *)
-    upay_neg Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)
@@ -1639,7 +1617,7 @@ Section UkRun.
     -∗ uslot W.
   Proof.
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
-    iIntros "#Hdep #Hpay Hpayv Hprog". rewrite uslot_ukc /ukc Hlzf.
+    iIntros "#Hdep #Hpay Hprog". rewrite uslot_ukc /ukc Hlzf.
     iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
     set (sz := uvis_sz W).
     assert (Hwf : proc_pt_wf pt)
@@ -1689,7 +1667,7 @@ Section UkRun.
     iSplitR; [ iPureIntro; exact HRut | ].
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
-    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hpayv Hdep".
+    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].
@@ -1746,14 +1724,6 @@ Section UkRun.
        premise, exec through [SpecKexec.exec_slot_pre]'s wands, and
        userinit at the trivial payload. *)
     my_pay (uvis_gen W) Q -∗
-    (* ...AND THE PAYLOAD ITSELF, at the kill status.  A constructor is
-       where it enters, as the fact is: the run this builds carries it
-       between traps ([urun]'s own conjunct), hands it to the kernel at
-       every entry and is handed it back at every resume.  Whoever builds
-       the slot supplies it -- fork's child arm out of the payload the
-       parent chose, exec through [SpecKexec.exec_slot_pre]'s wands, and
-       userinit at the trivial payload, where it is [True]. *)
-    upay_neg Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)
@@ -1792,7 +1762,7 @@ Section UkRun.
     -∗ uslot W.
   Proof.
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
-    iIntros "#Hdep #Hpay Hpayv Hprog". rewrite uslot_ukc /ukc Hlzf.
+    iIntros "#Hdep #Hpay Hprog". rewrite uslot_ukc /ukc Hlzf.
     iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
     set (sz := uvis_sz W).
     assert (Hwf : proc_pt_wf pt)
@@ -1854,7 +1824,7 @@ Section UkRun.
     iSplitR; [ iPureIntro; exact HRut | ].
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
-    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hpayv Hdep".
+    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].

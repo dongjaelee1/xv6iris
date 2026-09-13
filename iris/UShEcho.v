@@ -891,7 +891,8 @@ Section UShEcho.
                          app_pred app_run v
                          ∗ (⌜FsEchoPin.era0_echo_pins v⌝ ∨ T))
      ∗ □ (∀ (R : iProp Σ) (W : uvis),
-            T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗ R -∗ uslot W))%I.
+            T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
+            □ (riscv_kill_cred -∗ R) -∗ uslot W))%I.
 
   Global Instance sh_echo_slot_persistent T : Persistent (sh_echo_slot T).
   Proof. rewrite /sh_echo_slot. apply _. Qed.
@@ -909,7 +910,8 @@ Section UShEcho.
                          app_pred app_run v
                          ∗ (⌜AppEcho.echo_fs_pure v⌝ ∨ T))
      ∗ □ (∀ (R : iProp Σ) (W : uvis),
-            T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗ R -∗ uslot W))%I.
+            T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
+            □ (riscv_kill_cred -∗ R) -∗ uslot W))%I.
 
   Lemma sh_echo_slot_of_fs_pure_holds (T : iProp Σ) :
     sh_echo_slot_of_fs_pure T -∗ sh_echo_slot T.
@@ -1265,12 +1267,10 @@ Section UShEcho.
                   ⌜exec_args_of M (mword_of_int (t + 8) : mword 64)
                      na alen afun⌝ -∗
                   my_pay (uvis_gen W') (fun _ : Z => True)%I -∗
-                  (* the -1 payload is a WAND from the kill credential now
-                     (lane KILL-PAY, K4(a)); at [True] it is dropped *)
-                  upay_neg (fun _ : Z => True)%I -∗ (emp : iProp Σ) -∗
+                  (emp : iProp Σ) -∗
                   uslot W'))%I as "#Hcon".
     { iModIntro.
-      iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf %Hargs #Hmp _ _".
+      iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf %Hargs #Hmp _".
       destruct (echo_args_det_holds M s0 t g na alen afun Himg Hbytes Hargs)
         as (Hna & Halen & _).
       subst na.
@@ -1281,9 +1281,10 @@ Section UShEcho.
     (* ---- THE TAINT ARM: the generic slot at the trivial payload ---- *)
     iAssert (□ (∀ W' : uvis, T -∗
                   my_pay (uvis_gen W') (fun _ : Z => True)%I -∗
-                  upay_neg (fun _ : Z => True)%I -∗ uslot W'))%I as "#Hgen'".
-    { iModIntro. iIntros (W') "#HT #Hmp _".
-      iApply ("Hgen" $! (True%I : iProp Σ) W' with "HT Hmp []"). done. }
+                  uslot W'))%I as "#Hgen'".
+    { iModIntro. iIntros (W') "#HT #Hmp".
+      iApply ("Hgen" $! (True%I : iProp Σ) W' with "HT Hmp []").
+      iModIntro. iIntros "_". done. }
     (* ---- THE BUNDLE ---- *)
     iDestruct (pinned_exec_bundle fsc_fs uslot FsEchoPin.era0_echo_pins T
                  FsImg.ROOTINO echo_pl

@@ -125,42 +125,11 @@ Import Defs.
    added below.  (The third, [ush_line_full], was true as landed and is
    unchanged.)
 
-   THE PERIODICITY LEMMAS ARE BELOW and are general facts about
-   [EchoDisc.star_prefix]; RELOCATION ASK: they belong in EchoDisc.v beside
-   [star_prefix_snoc], and are here only so that proving them costs the
-   line statements' own cone and not the discipline's. *)
-
-Lemma mod_sub_self (i p : nat) : (p <= i)%nat -> ((i - p) `mod` p = i `mod` p)%nat.
-Proof.
-  intro H. transitivity (((i - p) + 1 * p) `mod` p)%nat.
-  - symmetry. apply Nat.Div0.mod_add.
-  - f_equal. lia.
-Qed.
-
-Lemma concat_replicate_lookup {A} (N : nat) (pat : list A) (i : nat) :
-  (i < N * length pat)%nat ->
-  concat (replicate N pat) !! i = pat !! (i `mod` length pat)%nat.
-Proof.
-  revert i. induction N as [| N IH]; intros i Hi; [ cbn in Hi; lia | ].
-  rewrite replicate_S. cbn [concat].
-  destruct (decide (i < length pat)%nat) as [Hlt | Hge].
-  - rewrite lookup_app_l; [ | exact Hlt ].
-    rewrite (Nat.mod_small i (length pat) Hlt). reflexivity.
-  - rewrite lookup_app_r; [ | lia ].
-    rewrite IH; [ | cbn [Nat.mul] in Hi; lia ].
-    rewrite (mod_sub_self i (length pat) ltac:(lia)). reflexivity.
-Qed.
-
-(* a star prefix IS the periodic word, byte by byte *)
-Lemma star_prefix_lookup (pat l : list (bv 8)) (i : nat) :
-  star_prefix pat l -> (0 < length pat)%nat -> (i < length l)%nat ->
-  l !! i = pat !! (i `mod` length pat)%nat.
-Proof.
-  intros Hs Hp Hi.
-  pose proof (f_equal (fun z : list (bv 8) => z !! i) Hs) as Hl. cbn beta in Hl.
-  rewrite Hl. rewrite lookup_take; [ | exact Hi ].
-  apply concat_replicate_lookup. nia.
-Qed.
+   THE PERIODICITY LEMMAS THIS FILE READS -- [mod_sub_self],
+   [concat_replicate_lookup], [star_prefix_lookup] -- are general facts
+   about [EchoDisc.star_prefix] and now live THERE, beside
+   [star_prefix_snoc] (lane ECHO-PURE); they were here only so that proving
+   them cost the line statements' own cone and not the discipline's. *)
 
 (* '\n' occurs in [echo_line] ONLY as its last byte -- the fact both (1)
    and (2) turn on, decided at the literal *)

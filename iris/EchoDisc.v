@@ -145,6 +145,53 @@ Proof.
   rewrite concat_replicate_length. nia.
 Qed.
 
+(* ...and its iterate: [star_prefix] is prefix-closed outright, which is
+   what carries the discipline down to every earlier history. *)
+Lemma star_prefix_prefix (pat l l' : list (bv 8)) :
+  0 < length pat -> l' `prefix_of` l -> star_prefix pat l -> star_prefix pat l'.
+Proof.
+  intros Hp [z ->]. induction z as [|b z IH] using rev_ind; intros Hs.
+  - by rewrite app_nil_r in Hs.
+  - apply IH. rewrite app_assoc in Hs. exact (star_prefix_snoc _ _ _ Hp Hs).
+Qed.
+
+(* THE PERIODICITY OF A STAR PREFIX, byte by byte.  These three were proved
+   in [UConsLine.v] (lane SH-STATE) so that they would cost the line
+   statements' cone and not the discipline's; they are general facts about
+   [star_prefix] and their standing relocation ask is here, beside
+   [star_prefix_snoc], where lane ECHO-PURE put them. *)
+Lemma mod_sub_self (i p : nat) : (p <= i)%nat -> ((i - p) `mod` p = i `mod` p)%nat.
+Proof.
+  intro H. transitivity (((i - p) + 1 * p) `mod` p)%nat.
+  - symmetry. apply Nat.Div0.mod_add.
+  - f_equal. lia.
+Qed.
+
+Lemma concat_replicate_lookup {A} (N : nat) (pat : list A) (i : nat) :
+  (i < N * length pat)%nat ->
+  concat (replicate N pat) !! i = pat !! (i `mod` length pat)%nat.
+Proof.
+  revert i. induction N as [| N IH]; intros i Hi; [ cbn in Hi; lia | ].
+  rewrite replicate_S. cbn [concat].
+  destruct (decide (i < length pat)%nat) as [Hlt | Hge].
+  - rewrite lookup_app_l; [ | exact Hlt ].
+    rewrite (Nat.mod_small i (length pat) Hlt). reflexivity.
+  - rewrite lookup_app_r; [ | lia ].
+    rewrite IH; [ | cbn [Nat.mul] in Hi; lia ].
+    rewrite (mod_sub_self i (length pat) ltac:(lia)). reflexivity.
+Qed.
+
+(* a star prefix IS the periodic word, byte by byte *)
+Lemma star_prefix_lookup (pat l : list (bv 8)) (i : nat) :
+  star_prefix pat l -> (0 < length pat)%nat -> (i < length l)%nat ->
+  l !! i = pat !! (i `mod` length pat)%nat.
+Proof.
+  intros Hs Hp Hi.
+  pose proof (f_equal (fun z : list (bv 8) => z !! i) Hs) as Hl. cbn beta in Hl.
+  rewrite Hl. rewrite lookup_take; [ | exact Hi ].
+  apply concat_replicate_lookup. nia.
+Qed.
+
 (* D3: one power cycle's input keeps the CONTENT discipline.  This is the
    whole of the LANDED [AppEcho.disc_seg]; [UConsLine]'s line statements
    are written at it and are unchanged (section 5's projection). *)
@@ -159,6 +206,13 @@ Proof. exact (star_prefix_nil _). Qed.
 Lemma disc_seg_out (seg : list mobs) (b : bv 8) :
   disc_seg (seg ++ [ObsUartOut Uart0 b]) <-> disc_seg seg.
 Proof. rewrite /disc_seg ins_app ins_out app_nil_r. done. Qed.
+
+Lemma disc_seg_prefix (seg' seg : list mobs) :
+  seg' `prefix_of` seg -> disc_seg seg -> disc_seg seg'.
+Proof.
+  intros [k ->] Hd. rewrite /disc_seg ins_app in Hd.
+  eapply star_prefix_prefix; [exact echo_line_pos| |exact Hd]. by eexists.
+Qed.
 
 (* THE LANDED WHOLE-HISTORY PREDICATE, kept under its own name: everything
    already proved against it still means what it meant, and section 5's
@@ -632,6 +686,42 @@ Proof.
     [by constructor|].
   rewrite /disc Hc Hc' !Forall_app !Forall_singleton.
   intros [Hall Hseg]. split; [exact Hall|]. exact (disc_seg'_in _ _ Hseg).
+Qed.
+
+(* THE DISCIPLINE IS PREFIX-CLOSED, at ONE fact and with no [trace_shape]
+   premise: [cyc_step] extends the most recent cycle (or starts one) and
+   never touches an older one, so dropping the last event either drops a
+   whole cycle or shortens the open one -- and [disc_seg'] is closed under
+   both.  Every consumer that has to say "the history this log entry was
+   taken at is disciplined too" spends this and nothing else. *)
+Lemma Forall_rev_iff {A} (P : A -> Prop) (l : list A) :
+  Forall P (rev l) <-> Forall P l.
+Proof.
+  induction l as [|a l IH]; [done|]. cbn.
+  rewrite Forall_app Forall_singleton Forall_cons IH. tauto.
+Qed.
+
+Lemma disc_snoc (h : list mobs) (e : mobs) : disc (h ++ [e]) -> disc h.
+Proof.
+  rewrite /disc /cycles_of !Forall_rev_iff cycles_rev_app /=.
+  destruct e as [i b|i b| |]; cbn.
+  - destruct (cycles_rev h) as [|c cs]; [by intros _|].
+    rewrite !Forall_cons. intros [Hseg Hall]. split; [|exact Hall].
+    destruct i.
+    + exact (disc_seg'_in c b Hseg).
+    + apply (disc_seg'_other c (ObsUartIn Uart1 b) I). exact Hseg.
+  - destruct (cycles_rev h) as [|c cs]; [by intros _|].
+    rewrite !Forall_cons. intros [Hseg Hall]. split; [|exact Hall].
+    apply (disc_seg'_out c i b). exact Hseg.
+  - rewrite Forall_cons. by intros [_ ?].
+  - done.
+Qed.
+
+Lemma disc_prefix (h' h : list mobs) : h' `prefix_of` h -> disc h -> disc h'.
+Proof.
+  intros [k ->]. induction k as [|e k IH] using rev_ind; intros Hd.
+  - by rewrite app_nil_r in Hd.
+  - apply IH. rewrite app_assoc in Hd. exact (disc_snoc _ _ Hd).
 Qed.
 
 (* ====================================================================== *)

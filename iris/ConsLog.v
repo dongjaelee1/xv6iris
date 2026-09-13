@@ -110,3 +110,18 @@ Proof.
     + exfalso. apply lookup_ge_None_1 in Hj.
       apply lookup_lt_Some in H2. lia.
 Qed.
+
+(* ...and so is a read window's, which is the same fact at [hist_chain]'s
+   pair shape *)
+Lemma hist_chain_lt (l : list (list mobs * bv 8)) (i j : nat)
+      (h1 : list mobs) (c1 : bv 8) (h2 : list mobs) (c2 : bv 8) :
+  hist_chain l -> (i < j)%nat ->
+  l !! i = Some (h1, c1) -> l !! j = Some (h2, c2) -> hist_ext h1 h2.
+Proof.
+  intros Hchain Hij. revert h2 c2. induction Hij as [|j Hij IH]; intros h2 c2 H1 H2.
+  - by eapply Hchain.
+  - destruct (l !! j) as [[hm cm]|] eqn:Hj.
+    + eapply hist_ext_trans; [by apply (IH hm cm) | by eapply Hchain].
+    + exfalso. apply lookup_ge_None_1 in Hj.
+      apply lookup_lt_Some in H2. lia.
+Qed.

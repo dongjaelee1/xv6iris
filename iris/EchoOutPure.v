@@ -43,47 +43,14 @@ From stdpp Require Import ssreflect.
 Local Open Scope nat_scope.
 
 (* ====================================================================== *)
-(*  0.  BORROWED PERIODICITY LEMMAS                                        *)
+(*  0.  TWO BORROWED LEMMAS                                                *)
 (*                                                                        *)
-(*  [mod_sub_self], [concat_replicate_lookup] and [star_prefix_lookup] are *)
-(*  general facts about [EchoDisc.star_prefix] that SH-STATE had to prove  *)
-(*  in [UConsLine.v] -- far above this file -- so that they cost the line  *)
-(*  statements' cone and not the discipline's.  Their standing RELOCATION  *)
-(*  ASK is "beside [EchoDisc.star_prefix_snoc]"; these three copies are    *)
-(*  local ONLY until that move happens (lane ECHO-PURE, P3), at which      *)
-(*  point this section is deleted and the uses below point at EchoDisc.    *)
+(*  The periodicity lemmas this file reads ([star_prefix_lookup] and its   *)
+(*  two steps) are [EchoDisc]'s since lane ECHO-PURE moved them there.     *)
+(*  What is still borrowed is the cycle a history's last input lives in:   *)
+(*  it is an [ObsTrace]-level fact and belongs there, but the only copy    *)
+(*  today is [UkSh]'s, far above this file.                               *)
 (* ====================================================================== *)
-
-Lemma epu_mod_sub_self (i p : nat) : p <= i -> (i - p) `mod` p = i `mod` p.
-Proof.
-  intro H. transitivity (((i - p) + 1 * p) `mod` p).
-  - symmetry. apply Nat.Div0.mod_add.
-  - f_equal. lia.
-Qed.
-
-Lemma epu_concat_replicate_lookup {A} (N : nat) (pat : list A) (i : nat) :
-  i < N * length pat ->
-  concat (replicate N pat) !! i = pat !! (i `mod` length pat).
-Proof.
-  revert i. induction N as [| N IH]; intros i Hi; [ cbn in Hi; lia | ].
-  rewrite replicate_S. cbn [concat].
-  destruct (decide (i < length pat)) as [Hlt | Hge].
-  - rewrite lookup_app_l; [ | exact Hlt ].
-    rewrite (Nat.mod_small i (length pat) Hlt). reflexivity.
-  - rewrite lookup_app_r; [ | lia ].
-    rewrite IH; [ | cbn [Nat.mul] in Hi; lia ].
-    rewrite (epu_mod_sub_self i (length pat) ltac:(lia)). reflexivity.
-Qed.
-
-Lemma epu_star_prefix_lookup (pat l : list (bv 8)) (i : nat) :
-  star_prefix pat l -> 0 < length pat -> i < length l ->
-  l !! i = pat !! (i `mod` length pat).
-Proof.
-  intros Hs Hp Hi.
-  pose proof (f_equal (fun z : list (bv 8) => z !! i) Hs) as Hl. cbn beta in Hl.
-  rewrite Hl. rewrite lookup_take; [ | exact Hi ].
-  apply epu_concat_replicate_lookup. nia.
-Qed.
 
 (* ...and the cycle a history's last input lives in, copied from
    [UkSh.ush_cycles_snoc_in] for the same reason (that file is above this
@@ -160,7 +127,7 @@ Proof.
   { by rewrite lookup_app_r ?Nat.sub_diag. }
   assert (Hlt : k < length (ins h0 ++ [c]))
     by (rewrite length_app /=; lia).
-  pose proof (epu_star_prefix_lookup echo_line (ins h0 ++ [c]) k Hd
+  pose proof (star_prefix_lookup echo_line (ins h0 ++ [c]) k Hd
                 echo_line_pos Hlt) as Hp.
   rewrite Hlk in Hp. rewrite length_app /= Nat.add_sub.
   assert (Hr : k `mod` length echo_line < length echo_line)
@@ -464,6 +431,15 @@ Qed.
    proves [h] is strictly above every history already in [pops]"), and
    without it nothing refutes [m <= length E]: an adversary log that
    records the SAME input twice satisfies every other hypothesis. *)
+Lemma prefix_app_cancel {A} (k a b : list A) :
+  (k ++ a) `prefix_of` (k ++ b) -> a `prefix_of` b.
+Proof.
+  intros [z Hz]. exists z. rewrite -app_assoc in Hz. by apply app_inv_head in Hz.
+Qed.
+
+Lemma hist_ext_irrefl (h : list mobs) : hist_ext h h -> False.
+Proof. intros [_ Hl]. lia. Qed.
+
 Lemma D2_next_input (cs : list nat) (E : list (list mobs * bv 8))
       (w W : list (bv 8)) (h : list mobs) (c : bv 8) (m : nat) :
   E_byte E -> E_index E ->
@@ -474,7 +450,35 @@ Lemma D2_next_input (cs : list nat) (E : list (list mobs * bv 8))
   sess_n cs (m - 1) `prefix_of` W ->
   W `prefix_of` (D cs E ++ w) ->
   m = S (length E) /\ w = pending cs E.
-Proof. Admitted.
+Proof.
+  intros HEb HEi Hnew Hends Hm Hw Hlow Hup.
+  assert (Hm1 : 1 <= m).
+  { destruct Hends as [h0 ->]. rewrite -Hm ins_app ins_in length_app /=. lia. }
+  (* the discipline's lower bound and the claim's upper bound meet *)
+  assert (Hboth : sess_n cs (m - 1) `prefix_of` sess_n cs (length E)).
+  { etrans; [exact Hlow|]. etrans; [exact Hup|]. by apply D_stage_prefix. }
+  (* the input cannot have got AHEAD of the echo: [sess_n] grows per input *)
+  assert (Hle : m - 1 <= length E).
+  { destruct (decide (m - 1 <= length E)) as [?|Hgt]; [done|exfalso].
+    apply prefix_length in Hboth.
+    pose proof (sess_n_length_lt cs (length E) (m - 1) ltac:(lia)). lia. }
+  (* ...nor can it be one the log already has: the histories would agree *)
+  assert (Heq : m - 1 = length E).
+  { destruct (decide (m - 1 = length E)) as [?|Hne]; [done|exfalso].
+    assert (Hlt : m - 1 < length E) by lia.
+    destruct (lookup_lt_is_Some_2 E (m - 1) Hlt) as [x Hx].
+    destruct (HEi (m - 1) x Hx) as [Hxe Hxlen].
+    assert (Hxin : x ∈ E) by (by eapply elem_of_list_lookup_2).
+    destruct (Hnew x Hxin) as [Hpre Hlen'].
+    assert (Hsame : x.1 = h).
+    { eapply ins_hist_agree; [exact Hpre|exact Hxe|exact Hends|]. lia. }
+    rewrite Hsame in Hlen'. lia. }
+  split; [lia|].
+  apply (anti_symm prefix); [exact Hw|].
+  eapply (prefix_app_cancel (D cs E)).
+  rewrite (D_pending_sess cs E HEb) -Heq.
+  etrans; [exact Hlow|exact Hup].
+Qed.
 
 (* ====================================================================== *)
 (*  6.  F3 -- THE READ WINDOW IS A SLICE OF [E]                            *)
@@ -503,19 +507,97 @@ Qed.
 
 (* A FILTER KEEPS A STRICT ORDER ON THE INDICES.  The general step behind
    "[echoed pops] is history-ordered because [pops] is". *)
+Lemma epu_filter_cons_T {A} (P : A -> Prop) `{!forall x, Decision (P x)}
+      (a : A) (l : list A) : P a -> filter P (a :: l) = a :: filter P l.
+Proof. intro Hp. rewrite filter_cons. case_decide; [done|contradiction]. Qed.
+
+Lemma epu_filter_cons_F {A} (P : A -> Prop) `{!forall x, Decision (P x)}
+      (a : A) (l : list A) : ~ P a -> filter P (a :: l) = filter P l.
+Proof. intro Hp. rewrite filter_cons. case_decide; [contradiction|done]. Qed.
+
 Lemma filter_strict_order {A} (P : A -> Prop) `{!forall x, Decision (P x)}
       (R : A -> A -> Prop) (l : list A) :
   (forall i j x y, i < j -> l !! i = Some x -> l !! j = Some y -> R x y) ->
   (forall i j x y, i < j -> filter P l !! i = Some x ->
                    filter P l !! j = Some y -> R x y).
-Proof. Admitted.
+Proof.
+  induction l as [|a l IH]; intros Hl i j x y Hij Hx Hy.
+  { rewrite filter_nil in Hx. by rewrite lookup_nil in Hx. }
+  assert (Hl' : forall i j x y, i < j -> l !! i = Some x -> l !! j = Some y -> R x y).
+  { intros i' j' x' y' Hij' Hx' Hy'. by eapply (Hl (S i') (S j')); [lia| |]. }
+  destruct (decide (P a)) as [Hpa|Hpa].
+  - rewrite (epu_filter_cons_T P a l Hpa) in Hx, Hy.
+    destruct i as [|i].
+    + cbn in Hx. simplify_eq.
+      destruct j as [|j]; [lia|]. cbn in Hy.
+      assert (Hin : y ∈ l).
+      { apply elem_of_list_lookup_2 in Hy.
+        by apply elem_of_list_filter in Hy as [_ ?]. }
+      apply elem_of_list_lookup in Hin as [n Hn].
+      by eapply (Hl 0%nat (S n)); [lia| |].
+    + destruct j as [|j]; [lia|]. cbn in Hx, Hy.
+      apply (IH Hl' i j x y); [lia|exact Hx|exact Hy].
+  - rewrite (epu_filter_cons_F P a l Hpa) in Hx, Hy.
+    by eapply IH; [exact Hl'|exact Hij| |].
+Qed.
 
 Lemma echoed_order (pops : list log_entry) (i j : nat)
       (x y : list mobs * bv 8) :
   log_ok pops -> i < j ->
   echoed pops !! i = Some x -> echoed pops !! j = Some y ->
   hist_ext x.1 y.1.
-Proof. Admitted.
+Proof.
+  intros Hlog Hij Hx Hy.
+  rewrite /echoed list_lookup_fmap fmap_Some in Hx.
+  destruct Hx as (e1 & He1 & ->).
+  rewrite /echoed list_lookup_fmap fmap_Some in Hy.
+  destruct Hy as (e2 & He2 & ->). cbn.
+  eapply (filter_strict_order log_echoed
+            (fun a b => hist_ext (le_hist a) (le_hist b)) pops);
+    [ |exact Hij|exact He1|exact He2].
+  intros i' j' a b Hij' Ha Hb. by eapply log_ok_lt.
+Qed.
+
+(* ---- what refutes an entry in a gap ---- *)
+
+Lemma hist_ext_nil_of_ends (h : list mobs) (c : bv 8) :
+  obs_ends_in Uart0 h c -> hist_ext [] h.
+Proof.
+  intros [h0 ->]. split; [apply prefix_nil|]. rewrite length_app /=. lia.
+Qed.
+
+Lemma echoed_elem_inv (pops : list log_entry) (y : list mobs * bv 8) :
+  y ∈ echoed pops ->
+  exists e, e ∈ pops /\ log_echoed e /\ (le_hist e, le_byte e) = y.
+Proof.
+  rewrite /echoed. intros Hy. apply elem_of_list_fmap in Hy as (e & -> & He).
+  apply elem_of_list_filter in He as [Hec Hin]. by exists e.
+Qed.
+
+(* NO LOGGED BYTE IS AN ERASE CHARACTER, under the discipline -- which
+   kills the gap clause's second disjunct outright *)
+Lemma pops_no_erase (pops : list log_entry) :
+  log_ok pops -> (forall e, e ∈ pops -> disc_seg (le_hist e)) ->
+  forall e, e ∈ pops -> cons_erase (le_byte e) = false.
+Proof.
+  intros [Hends _] Hdisc e He.
+  eapply disc_seg_no_erase; [by apply Hdisc|by apply (proj1 (Hends e He))].
+Qed.
+
+(* ...so NO ECHOED ENTRY LIES STRICTLY INSIDE A GAP *)
+Lemma no_echoed_between (pops : list log_entry) (h1 h2 : list mobs)
+      (y : list mobs * bv 8) :
+  log_ok pops -> (forall e, e ∈ pops -> disc_seg (le_hist e)) ->
+  gap_ok pops h1 h2 ->
+  y ∈ echoed pops -> hist_ext h1 y.1 -> hist_ext y.1 h2 -> False.
+Proof.
+  intros Hlog Hdisc Hgap Hy H1 H2.
+  destruct (echoed_elem_inv pops y Hy) as (e & Hein & Hech & Heq).
+  assert (Hh : le_hist e = y.1) by (by rewrite -Heq).
+  destruct Hgap as [Hleft|(e' & He'in & _ & _ & Herase)].
+  - apply (log_echoed_nonnil e Hech). apply (Hleft e Hein); by rewrite Hh.
+  - rewrite (pops_no_erase pops Hlog Hdisc e' He'in) in Herase. discriminate.
+Qed.
 
 (* F3(a): THE CONSUMED INPUTS ARE AN INITIAL SEGMENT OF THE ECHOED ONES.
 
@@ -549,7 +631,76 @@ Lemma read_window_prefix (pops : list log_entry)
   (forall e, e ∈ pops -> disc_seg (le_hist e)) ->
   dl `prefix_of` echoed pops ->
   (dl ++ ws) `prefix_of` echoed pops.
-Proof. Admitted.
+Proof.
+  intros Hlog (Hin & Hchain & Hgap0 & Hgap) Hdisc Hdl.
+  (* the consumed list agrees with [echoed pops] index by index, by strong
+     induction on the index (the bound [N] is the induction's measure) *)
+  assert (Hpt : forall N k, k < N -> k < length (dl ++ ws) ->
+                  echoed pops !! k = (dl ++ ws) !! k).
+  { induction N as [|N IHN]; intros k HkN Hk; [lia|].
+    destruct ((dl ++ ws) !! k) as [p|] eqn:Hp;
+      [|exfalso; apply lookup_ge_None_1 in Hp; lia].
+    destruct (decide (k < length dl)) as [Hkl|Hkl].
+    { (* below [dl]: [dl] is already an initial segment *)
+      destruct Hdl as [z Hz]. rewrite Hz.
+      rewrite lookup_app_l; last exact Hkl.
+      rewrite lookup_app_l in Hp; last exact Hkl. exact Hp. }
+    (* at or above [dl]: [p] is an entry of [ws], hence an echoed entry *)
+    assert (Hpin : p ∈ ws).
+    { rewrite lookup_app_r in Hp; [|lia]. by eapply elem_of_list_lookup_2. }
+    destruct (Hin p Hpin) as (ep & Hepin & Hepeq & Hepech).
+    assert (HpE : p ∈ echoed pops).
+    { rewrite -Hepeq. by apply echoed_elem. }
+    apply elem_of_list_lookup in HpE as [n Hn].
+    assert (Hnk : n = k).
+    { destruct (decide (n < k)) as [Hlt|Hge].
+      - (* the same entry twice in the consumed list: the chain forbids it *)
+        exfalso. rewrite (IHN n ltac:(lia) ltac:(lia)) in Hn.
+        destruct p as [hp cp].
+        eapply hist_ext_irrefl, (hist_chain_lt _ n k); [exact Hchain|lia| |];
+          [exact Hn|exact Hp].
+      - destruct (decide (k < n)) as [Hlt|?]; [|lia]. exfalso.
+        (* an echoed entry sits strictly inside the gap the read left *)
+        assert (Hy : is_Some (echoed pops !! k)).
+        { apply lookup_lt_is_Some. apply lookup_lt_Some in Hn. lia. }
+        destruct Hy as [y Hy].
+        assert (Hyp : hist_ext y.1 p.1)
+          by (eapply echoed_order; [exact Hlog|exact Hlt|exact Hy|exact Hn]).
+        assert (HyE : y ∈ echoed pops) by (by eapply elem_of_list_lookup_2).
+        destruct k as [|k'].
+        + destruct p as [hp cp].
+          eapply (no_echoed_between pops [] hp y);
+            [exact Hlog|exact Hdisc|by eapply Hgap0|exact HyE| |exact Hyp].
+          destruct (echoed_elem_inv pops y HyE) as (ey & Heyin & _ & Heyeq).
+          rewrite -Heyeq /=.
+          eapply hist_ext_nil_of_ends.
+          by apply (proj1 (proj1 Hlog ey Heyin)).
+        + assert (Hp' : is_Some ((dl ++ ws) !! k')) by (apply lookup_lt_is_Some; lia).
+          destruct Hp' as [p' Hp'].
+          assert (HE' : echoed pops !! k' = Some p')
+            by (rewrite (IHN k' ltac:(lia) ltac:(lia)); exact Hp').
+          destruct p as [hp cp]. destruct p' as [hp' cp'].
+          eapply (no_echoed_between pops hp' hp y);
+            [exact Hlog|exact Hdisc|by eapply Hgap|exact HyE| |exact Hyp].
+          apply (echoed_order pops k' (S k') (hp', cp') y);
+            [exact Hlog|lia|exact HE'|exact Hy]. }
+    by rewrite Hnk in Hn. }
+  (* pointwise agreement over the whole consumed list IS the prefix *)
+  assert (Hle : length (dl ++ ws) <= length (echoed pops)).
+  { destruct (decide (length (dl ++ ws) = 0)) as [H0|Hne]; [lia|].
+    destruct ((dl ++ ws) !! (length (dl ++ ws) - 1)) as [p|] eqn:Hp;
+      [|apply lookup_ge_None_1 in Hp; lia].
+    pose proof (Hpt (length (dl ++ ws)) (length (dl ++ ws) - 1)
+                  ltac:(lia) ltac:(lia)) as Hq.
+    rewrite Hp in Hq. apply lookup_lt_Some in Hq. lia. }
+  assert (Heq : take (length (dl ++ ws)) (echoed pops) = dl ++ ws).
+  { apply list_eq. intros k.
+    destruct (decide (k < length (dl ++ ws))) as [Hk|Hk].
+    - rewrite lookup_take; [|exact Hk]. by eapply (Hpt (S k)); [lia|].
+    - rewrite lookup_take_ge; [|lia]. symmetry. apply lookup_ge_None_2. lia. }
+  exists (drop (length (dl ++ ws)) (echoed pops)).
+  by rewrite -{1}(take_drop (length (dl ++ ws)) (echoed pops)) Heq.
+Qed.
 
 (* F3(b): A SEVENTEEN-BYTE CONSUMED WINDOW AT A LINE BOUNDARY IS THE LINE.
    Stated over an abstract [E] so that ECHO-OUT may chain it off F3(a) with
@@ -561,7 +712,28 @@ Lemma read_window_line (E : list (list mobs * bv 8))
   length dl = length echo_line * q ->
   length ws = length echo_line ->
   snd <$> ws = echo_line.
-Proof. Admitted.
+Proof.
+  intros HE Hp Hdl Hws.
+  pose proof echo_line_length as HL.
+  apply list_eq. intros k.
+  destruct (decide (k < length echo_line)) as [Hk|Hk].
+  - destruct (lookup_lt_is_Some_2 ws k ltac:(lia)) as [x Hwk].
+    rewrite list_lookup_fmap Hwk /=.
+    assert (Hak : (dl ++ ws) !! (length dl + k) = Some x).
+    { rewrite lookup_app_r; [|lia].
+      by replace (length dl + k - length dl) with k by lia. }
+    assert (HEk : E !! (length dl + k) = Some x).
+    { destruct Hp as [z ->]. rewrite lookup_app_l; [exact Hak|].
+      by eapply lookup_lt_Some. }
+    assert (Hmod : (length dl + k) `mod` length echo_line = k).
+    { rewrite Hdl.
+      replace (length echo_line * q + k) with (k + q * length echo_line) by lia.
+      rewrite Nat.Div0.mod_add. by apply Nat.mod_small. }
+    rewrite (HE _ _ HEk) Hmod.
+    by rewrite (list_lookup_lookup_total_lt echo_line k Hk).
+  - rewrite list_lookup_fmap (lookup_ge_None_2 ws k ltac:(lia)) /=.
+    symmetry. apply lookup_ge_None_2. lia.
+Qed.
 
 (* F3(c): ...AND THAT IS WHAT THE PROCESS GOT, once no byte was swallowed.
    [d] is the number of bytes the read actually delivered; [Hd] is the "no

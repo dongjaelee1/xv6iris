@@ -465,7 +465,9 @@ Section ProofUserinit.
        there is no entry for its slot and nothing to hold them.  The
        quarters ride the park into its block, exactly as the pair does. *)
     rewrite slot_gen_quarters. iDestruct "Hsg" as "[_ Hsg]".
-    rewrite pid_reg_quarters. iDestruct "Hpr" as "[_ Hpr]".
+    (* the registration arrives already cut (lane SELF-KILL, §1): the row's
+       eighth stayed in <p->lock>'s payload at allocproc. *)
+    iDestruct "Hpr" as "[_ Hpr]".
     iAssert (gen_halves_priv (proc_addr j) pid (pv_gen V))
       with "[Hsg Hpr]" as "Hgh"; [iFrame "Hsg Hpr" |].
     (* [Hkfree] is KEPT: the paid park is anchored on the child's free

@@ -367,7 +367,7 @@ Section SpecFreeproc.
        entry carried ([WaitInv.gen_halves]), and allocproc's failure tails
        never split what allocproc gave them. *)
     slot_gen pa (DfracOwn 1) g -∗
-    pid_reg pid (DfracOwn 1) g -∗
+    pid_reg_rest pid g -∗
     (* ...AND THE SLOT'S HALF OF [p->xstate].  freeproc's [p->xstate = 0]
        is a write, so it needs the whole cell: <p->lock>'s half arrives
        inside [proc_held] ([SchedCtx.proc_pub]) and this is the block's.

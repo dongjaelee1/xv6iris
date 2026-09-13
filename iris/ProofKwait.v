@@ -1339,6 +1339,10 @@ Section ProofKwait.
     (⌜kl = (mword_of_int 0 : mword 32)⌝ ∨ □ riscv_kill_cred) -∗
     p_xstate (proc_addr k) ↦₄{DfracOwn (1/2)} xsw -∗
     p_pid (proc_addr k) ↦₄{DfracOwn (1/4)} pidc -∗
+    (* ...AND THE TIE THAT NAMES WHOSE ROW IT IS (lane SELF-KILL §1), out
+       with the cells for the same reason: the bundle is rebuilt below and
+       cannot close without it. *)
+    SchedCtx.pid_tie pidc -∗
     proc_dormant (proc_addr k) ZOMBIE -∗
     hart_at_any (proc_addr k) -∗
     (* the slot's ALLOCATION MARKER: a ZOMBIE is dormant but ALLOCATED, so
@@ -1380,7 +1384,7 @@ Section ProofKwait.
     { apply locks_below_union_singleton; [vm_compute; lia |].
       lkbelow. }
     iIntros "Hcg Hown Hpay1 Hpay0 #Htext Hpc #Henv #Hplk #Hlkk Htokk Hstate Hpsg Hchan
-             Hkilled #Hkw Hxstate Hpidq Hdorm Hpark #Hmk #Hlk Htok Hcols Hmyrow Hframe Hcont".
+             Hkilled #Hkw Hxstate Hpidq Htie Hdorm Hpark #Hmk #Hlk Htok Hcols Hmyrow Hframe Hcont".
     (* ---- +0x60 sd x0,56(s1) : pp->parent = 0, out of wait_lock's table ---- *)
     iDestruct "Hcols" as (gz mz oz) "(Hps & Hch & Ho & Hci)".
     iDestruct (parents_own_length ps with "Hps") as %Hlen.
@@ -1482,8 +1486,8 @@ Section ProofKwait.
     { rewrite /fp_rest.
       iFrame "Hrpid Hrfl Hrof Hrfd Hrsp Hrir Hrbs Hrkst Hrctx".
       iPureIntro. exact Hrpure. }
-    iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidq]" as "Hpub".
-    { iExists kl, xsw, pidc. iFrame "Hkilled Hxstate Hpidq". iExact "Hkw". }
+    iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidq Htie]" as "Hpub".
+    { iExists kl, xsw, pidc. iFrame "Hkilled Hxstate Hpidq Htie". iExact "Hkw". }
     (* ---- THE TWO SHARES MEET, AND THE ENTRY LEAVES THE INVARIANT.  The
        entry the invariant carried for this slot and the quarters the
        ZOMBIE block carried are pieces of ONE generation
@@ -1508,7 +1512,7 @@ Section ProofKwait.
        so it survives the release below, which is what lets the answer
        carry it out. *)
     iDestruct (children_inv_pid_all ps gz mz oz γrow pme cs (pv_gen Vc) pidc
-                 (DfracOwn (1/4)) Hpmenz Hmz with "Hci Hpr14")
+                 (DfracOwn qeighth) Hpmenz Hmz with "Hci Hpr14")
       as "(#Huniq & Hci & Hpr14)".
     iDestruct (children_inv_reap ps gz mz oz k pme γrow cs (pv_gen Vc)
                  Hpmenz Hchild Hmz with "Hci Hsg14")
@@ -1516,8 +1520,12 @@ Section ProofKwait.
     iDestruct "Hent" as (pide) "(Hpr34 & #Hgpid)".
     iDestruct "Hesc" as (pae Qe Qe') "(Hkq & Hmye & HQe)".
     iDestruct (ChildTok.gen_pid_kq_agree with "Hgpid Hkq") as %->.
-    iAssert (pid_reg pidc (DfracOwn 1) (pv_gen Vc)) with "[Hpr34 Hpr14]" as "Hpr".
-    { rewrite pid_reg_quarters. iFrame "Hpr34 Hpr14". }
+    (* the deposit's three quarters and the block's eighth are exactly what
+       freeproc takes now ([SlotGen.pid_reg_rest]); the third piece -- the
+       eighth in <p->lock>'s public payload -- travels there inside
+       [proc_held], and freeproc reunites the whole at [p->pid = 0]. *)
+    iAssert (pid_reg_rest pidc (pv_gen Vc)) with "[Hpr34 Hpr14]" as "Hpr".
+    { iFrame "Hpr34 Hpr14". }
     (* the escrow, back in one piece: the three agreements above were pure,
        so nothing of it was spent, and it is what the caller redeems
        ([ChildTok.gen_pay]). *)
@@ -1813,7 +1821,7 @@ Section ProofKwait.
     intros sp0 spr HK Hk Hsp Hs1 Hs2 Hs7 Hcs Hchild Hpmenz Hbelow.
     iIntros "Hcg Hown Hpay1 Hpay0 #Htext Hpc #Henv #Hplk #Hlkk Htokk Hstate Hpsg Hchan Hpub
              Hdorm Hpark #Hmk #Hlk Htok Hcols Hmyrow Hpriv Hframe Hcont".
-    iDestruct "Hpub" as (kl xs pidc) "(Hkilled & Hxstate & Hpidhalf & #Hkw)".
+    iDestruct "Hpub" as (kl xs pidc) "(Hkilled & Hxstate & Hpidhalf & #Hkw & Htie)".
     (* ---- +0x40 lw s3,48(s1) : pid = pp->pid ---- *)
     assert (Hea40 : add_vec (rget (CID := CIDf) Mf Rs1)
                       (sign_extend' 64 (mword_of_int 48 : mword 12)) = p_pid (proc_addr k)).
@@ -1859,7 +1867,7 @@ Section ProofKwait.
       iApply (kw_reap γs γa γp γw γk mm F0 pme k K eb pidc kl xs ch ps γrow cs lks
                 HK Hk HF0sp HF0s1 HF0s3 HF0cs Hbelow Hchild Hpmenz
                 with "Hcg Hown Hpay1 Hpay0 Htext Hpc Henv Hplk Hlkk Htokk Hstate Hpsg Hchan
-                      Hkilled Hkw Hxstate Hpidhalf Hdorm Hpark Hmk Hlk Htok Hcols Hmyrow Hframe
+                      Hkilled Hkw Hxstate Hpidhalf Htie Hdorm Hpark Hmk Hlk Htok Hcols Hmyrow Hframe
                       [Hcont Hpriv]").
       iIntros (CIDz) "%Hsz". iIntros (mf cs') "%Hcsf %Ha0 Hans Hcg Hown Hpc Hmyrow".
       iSpecialize ("Hcont" $! CIDz with "[%]"); [wp_next_chain |].
@@ -2148,8 +2156,8 @@ Section ProofKwait.
         iDestruct ("Hwz2" with "Hpsg") as "[Hpsg _]".
         (* the three public cells go back into <p->lock>'s payload: this arm
            reaps nothing, so the zombie stays a zombie. *)
-        iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf]" as "Hpub".
-        { iExists kl, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf". iExact "Hkw". }
+        iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Htie]" as "Hpub".
+        { iExists kl, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf Htie". iExact "Hkw". }
         iAssert (proc_lock_res γs γk (proc_addr k)) with "[Hstate Hpsg Hchan Hpub Hdorm Hpark]" as "HRk".
         { iApply (proc_lock_res_intro γs γk (proc_addr k) ZOMBIE ch
                     with "Hstate Hpsg Hchan Hpub [Hdorm Hpark]").
@@ -2188,7 +2196,7 @@ Section ProofKwait.
         iApply (kw_reap γs γa γp γw γk mm mco pme k K eb pidc kl xs ch ps γrow cs lks
                   HK Hk Hcosp Hcos1 Hcos3 Hcocs Hbelow Hchild Hpmenz
                   with "Hcg Hown Hpay1 Hpay0 Htext Hpc Henv Hplk Hlkk Htokk Hstate Hpsg Hchan
-                        Hkilled Hkw Hxstate Hpidhalf Hdorm Hpark Hmk Hlk Htok Hcols Hmyrow Hframe
+                        Hkilled Hkw Hxstate Hpidhalf Htie Hdorm Hpark Hmk Hlk Htok Hcols Hmyrow Hframe
                         [Hcont Hpriv]").
         iIntros (CIDz) "%Hsz". iIntros (mf cs') "%Hcsf %Ha0 Hans Hcg Hown Hpc Hmyrow".
         iSpecialize ("Hcont" $! CIDz with "[%]"); [wp_next_chain |].

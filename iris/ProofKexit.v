@@ -1445,7 +1445,7 @@ Section KexitPark.
     iDestruct (pstate_whole_split pj RUNNING) as "[_ Hwe]".
     iDestruct ("Hwe" with "[Hpg Hclm]") as "Hpg".
     { rewrite unclaimed_RUNNING. iFrame "Hpg Hclm". }
-    iDestruct "Hpub" as (kl xs pidv) "(Hkilled & Hxstate & (Hpidh & Hgen) & #Hkw)".
+    iDestruct "Hpub" as (kl xs pidv) "(Hkilled & Hxstate & (Hpidh & Hgen) & #Hkw & Htie)".
     (* +0x80 sw s4,44(s3) : p->xstate = status.
        THE WORD THE ESCROW IS KEYED AT.  [s4] holds this call's [status]
        argument, which on the exit route is argument 0 of the frame the
@@ -1636,11 +1636,11 @@ Section KexitPark.
        index-generic, so it just rides through at that index. *)
     iApply (Sched.wp_sched_sconf (CID := CIDa)  γs j γl ZOMBIE ch0 PD (trap_res b + av)%nat eb
               Hj Hgl park_ok_ZOMBIE ltac:(lia)
-              with "Hcg Htext Hpc Hprocs [Hlkp Hstate Hpg Hchan Hkilled Hxstate Hpidh Hgen]
+              with "Hcg Htext Hpc Hprocs [Hlkp Hstate Hpg Hchan Hkilled Hxstate Hpidh Hgen Htie]
                     [Hpriv Hgq Hsp Hir Hbs Hcloser Hrow Hxb Hgh HQ] Hpay Hcpuemp Hoc Htag Hvc").
     { rewrite /proc_held. iFrame "Hlkp Hstate Hpg Hchan".
       iExists kl, (trunc32 (rget (CID := CIDa) mlk (mword_of_int 20 : mword 5))), pidv.
-      iFrame "Hkilled Hxstate Hpidh Hgen". iExact "Hkw". }
+      iFrame "Hkilled Hxstate Hpidh Hgen Htie". iExact "Hkw". }
     { (* THE DONATION.  sched's [park_pay] is a CLOSER: at a park that never
          returns it hands back the whole stack region it was called with,
          because its own frame and tail are dead the instant the swtch

@@ -306,7 +306,7 @@ Section KforkArms.
        ([SpecFreeproc]).  Nothing was split off them -- the split is at the
        block assembly, which this arm never reaches. *)
     SlotGen.slot_gen npa (DfracOwn 1) (pv_gen (us_V Uc)) -∗
-    SlotGen.pid_reg pid_c (DfracOwn 1) (pv_gen (us_V Uc)) -∗
+    SlotGen.pid_reg_rest pid_c (pv_gen (us_V Uc)) -∗
     (* ...and the child slot's half of [p->xstate], which goes back into the
        UNUSED block with the row ([SpecFreeproc]) *)
     (∃ xsv : mword 32, p_xstate npa ↦₄{DfracOwn (1/2)} xsv) -∗
@@ -579,7 +579,7 @@ Section KforkArms.
        close the child's block, the three quarters are the deposit
        [ProofKforkB5.kfk_b5] makes under <wait_lock>. *)
     SlotGen.slot_gen npa (DfracOwn 1) (pv_gen (us_V Uc')) -∗
-    SlotGen.pid_reg pid_c (DfracOwn 1) (pv_gen (us_V Uc')) -∗
+    SlotGen.pid_reg_rest pid_c (pv_gen (us_V Uc')) -∗
     (* the child's descriptor-state fragments, minted with its block by
        allocproc AT [fdt0]: the scan retypes them one at a time, at the
        parent's own entries, and the whole table goes into the child's
@@ -773,7 +773,10 @@ Section KforkArms.
          whole. *)
       iEval (rewrite slot_gen_quarters) in "Hcsg".
       iDestruct "Hcsg" as "[Hsg34 Hsg14]".
-      iEval (rewrite pid_reg_quarters) in "Hcpr".
+      (* the registration arrives ALREADY CUT (lane SELF-KILL, §1): an
+         eighth of it stayed behind in <p->lock>'s public payload at
+         allocproc, so what the caller holds is [SlotGen.pid_reg_rest] --
+         the three quarters and the block's eighth, already a pair. *)
       iDestruct "Hcpr" as "[Hpr34 Hpr14]".
       (* the generation's two persistent readings, off the discarded half
          and the kernel quarter: the deposit carries them so that a reaper

@@ -300,7 +300,7 @@ Section ProofKkill.
       iEval (rewrite Hpc26) in "Hpc".
       iDestruct (proc_lock_res_elim γs γk (proc_addr k) with "HR")
         as (st ch) "(Hpst & Hpg & Hpch & Hpub & Hslots)".
-      iDestruct "Hpub" as (kl xs pidc) "(Hkilled & Hxstate & Hpidhalf & #Hkw)".
+      iDestruct "Hpub" as (kl xs pidc) "(Hkilled & Hxstate & Hpidhalf & #Hkw & Htie)".
       (* register facts through acquire *)
       assert (HcsMacq : callee_saved M Macq) by (eapply callee_saved_trans; [exact HcsM22 | exact Hpins]).
       assert (HA9 : Macq !!! Regidx Rs1 = proc_addr k)
@@ -605,8 +605,8 @@ Section ProofKkill.
             by (apply bv_eq; vm_compute; reflexivity).
           iEval (rewrite Hpp64) in "Hpc".
           (* reassemble: SLEEPING -> RUNNABLE keeps both guards fixed *)
-          iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf]" as "Hpub".
-          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf".
+          iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Htie]" as "Hpub".
+          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf Htie".
             (* the flag is 1 here: the killed row is paid with the
                credential (lane KILL-PAY, K2) *)
             iRight. iExact "Hkc". }
@@ -640,8 +640,8 @@ Section ProofKkill.
           assert (Hpp4a : add_vec_int (mword_of_int (KernelSyms.kkill + 0x46) : mword 64) 4 = mword_of_int (KernelSyms.kkill + 0x4a))
             by (apply bv_eq; vm_compute; reflexivity).
           iEval (rewrite Hpp4a) in "Hpc".
-          iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf]" as "Hpub".
-          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf".
+          iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Htie]" as "Hpub".
+          { iExists _, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf Htie".
             iRight. iExact "Hkc". }
           iDestruct (proc_lock_res_intro γs γk (proc_addr k) st ch
                        with "Hpst Hpg Hpch Hpub Hslots") as "HR".
@@ -660,8 +660,8 @@ Section ProofKkill.
           by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hpp2c) in "Hpc".
         (* nothing moved: put the lock resource straight back *)
-        iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf]" as "Hpub".
-        { iExists kl, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf".
+        iAssert (proc_pub (proc_addr k)) with "[Hkilled Hxstate Hpidhalf Htie]" as "Hpub".
+        { iExists kl, xs, pidc. iFrame "Hkilled Hxstate Hpidhalf Htie".
           iExact "Hkw". }
         iDestruct (proc_lock_res_intro γs γk (proc_addr k) st ch
                      with "Hpst Hpg Hpch Hpub Hslots") as "HR".

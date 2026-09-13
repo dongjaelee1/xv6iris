@@ -225,7 +225,7 @@ Definition allocproc_post
           hands both wholes straight to freeproc, which is what deregisters
           the pid. *)
        slot_gen (proc_addr j) (DfracOwn 1) (pv_gen (us_V U)) ∗
-       pid_reg pid (DfracOwn 1) (pv_gen (us_V U)) ∗
+       pid_reg_rest pid (pv_gen (us_V U)) ∗
        (* THE DESCRIPTOR-STATE FRAGMENTS, minted here with the block: this
           is the one function that chooses a process's [pv_fdg]
           ([ProcInv.proc_dormant_unused]), so it is the one place the

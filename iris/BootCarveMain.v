@@ -487,7 +487,11 @@ Qed.
 (* ---------------------------------------------------------------------- *)
 
 Section BootCarveMain.
-  Context `{!riscvGS Σ, !xv6G Σ}.
+  (* [wchG] is new here (lane SELF-KILL, §1): [SchedCtx.proc_pub]'s tie is an
+     eighth of [SlotGen.pid_reg], which lives at the wait-channel bundle's
+     name.  The boot founds it on the free arm, but the TYPE is still the
+     tie's. *)
+  Context `{!riscvGS Σ, !xv6G Σ, !wchG Σ}.
 
   (* ------------------------------------------------------------------ *)
   (* The LOCK TRIPLE, out of a [struct spinlock]'s own 24 bytes.         *)
@@ -2223,7 +2227,12 @@ Section BootCarveMain.
       iExists (mword_of_int 0 : mword 32), vxs, (mword_of_int 0 : mword 32).
       iSplitL "Hkl"; [iExact "Hkl" |]. iSplitL "Hxs2"; [iExact "Hxs2" |].
       iSplitL "Hpid2"; [iExact "Hpid2" |].
-      iLeft. done. }
+      iSplitL; [iLeft; done |].
+      (* ...AND THE TIE, ON ITS FREE ARM (lane SELF-KILL, §1): the row's
+         eighth of the pid registration is owed only by a slot whose pid
+         cell is nonzero, and this cell is BSS.  Nothing is registered at
+         boot, so the carve costs the .bss nothing. *)
+      iApply (pid_tie_zero (mword_of_int 0 : mword 32) ltac:(vm_compute; reflexivity)). }
     iSplitL "Hpar"; [iExact "Hpar" |].
     iExact "Hpid3".
   Qed.

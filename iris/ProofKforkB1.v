@@ -192,7 +192,7 @@ Section KforkB1Proof.
        allocproc minted for the slot -- the block this tail carries is the
        dormant one, whose [pv_gen] is junk. *)
     slot_gen (proc_addr j) (DfracOwn 1) g -∗
-    pid_reg pid (DfracOwn 1) g -∗
+    pid_reg_rest pid g -∗
     fp_pt (proc_addr j) (pv_sz V) (Some P) -∗
     fp_tf (proc_addr j) (Some (ud_tfp P, ws)) -∗
     wp_next (match lvl with O => eb | S _ => false end) pme (fun (CID : CpuId) =>

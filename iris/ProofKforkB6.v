@@ -351,7 +351,7 @@ Section KforkPrologue.
            into the child's block, three quarters into the deposit it makes
            under <wait_lock> ([WaitInv.gen_halves]). *)
         SlotGen.slot_gen npa (DfracOwn 1) (pv_gen (us_V Uc')) -∗
-        SlotGen.pid_reg pid_c (DfracOwn 1) (pv_gen (us_V Uc')) -∗
+        SlotGen.pid_reg_rest pid_c (pv_gen (us_V Uc')) -∗
         (* the child's descriptor-state fragments, out of allocproc with its
            block AT [fdt0] -- the copy loop retypes them at the parent's own
            entries and the whole table parks with the child. *)
@@ -464,7 +464,7 @@ Section KforkPrologue.
            itself ([ChildTok.gen_own]) is simply dropped: the name dies with
            the incarnation that never started. *)
         SlotGen.slot_gen npa (DfracOwn 1) (pv_gen (us_V Uc)) -∗
-        SlotGen.pid_reg pid_c (DfracOwn 1) (pv_gen (us_V Uc)) -∗
+        SlotGen.pid_reg_rest pid_c (pv_gen (us_V Uc)) -∗
         (* ...AND THE CHILD SLOT'S HALF OF [p->xstate], beside the row and
            on its footing ([kfk_pro_exit3]'s own conjunct): this exit frees
            the slot, so the half goes back into freeproc's UNUSED block

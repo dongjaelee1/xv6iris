@@ -253,7 +253,7 @@ Section ProofFreeproc.
     iApply fupd_wp.
     iMod (pstate_whole_update (proc_addr j) st UNUSED with "Hpsg") as "Hpsg".
     iModIntro.
-    iDestruct "Hpub" as (kl xs pid2) "(Hkilled & Hxstate & Hpid2 & _)".
+    iDestruct "Hpub" as (kl xs pid2) "(Hkilled & Hxstate & Hpid2 & _ & Htie)".
     iDestruct "Hfields" as "(Hsz & Hcwd & %Hnmlen & Hnm)".
     (* [proc_held] is stated at [proc_addr j] and the block at the [let]-bound
        [pa].  Convertible, but [iFrame]/[iSpecialize] want them SYNTACTICALLY
@@ -420,7 +420,7 @@ Section ProofFreeproc.
         p_sz pa ↦₈ pv_sz V -∗
         WP (Loop : expr riscv_lang)))%I
       with "[Hcont Hr24 Hr16 Hr8 Hr0 Hlk Hstate Hpsg Hchan Hkilled Hxstate Hpid Hpid2
-             Hcwd Hnm Hof Hunits Hspare Hkst Hctx Hrow Hsg Hpr]" as "ZERO".
+             Hcwd Hnm Hof Hunits Hspare Hkst Hctx Hrow Hsg Hpr Htie]" as "ZERO".
     { iIntros (CIDz Hsz0 me pgv).
       iIntros "(%Hmesp & %Hmes1 & %Hmethr) Hcg Hcpu Hpc Hpg Htf Hsz".
       (* release below spells the window index at its own exit arm; the two
@@ -554,6 +554,22 @@ Section ProofFreeproc.
          function the whole fragment, so the key goes out of the authority
          and the payload's domain fact is re-established against the list
          with slot [j] now holding 0 ([SlotGen.pid_reg_dom_delete]). *)
+      (* ...AND THE ROW'S EIGHTH COMES BACK FIRST (lane SELF-KILL, §1).
+         <p->lock>'s public payload kept an eighth of the registration so
+         that the killed row could name the incarnation it belongs to, and
+         the authority will not part with a key unless the whole fragment
+         is in one hand.  The tie's FREE arm is refuted right here: this
+         pid IS registered (the authority answers at its key) and
+         <pid_lock>'s own domain fact says no registered pid is 0. *)
+      iDestruct "Hpr" as "[Hpr34 Hpr8]".
+      iDestruct (pid_reg_lookup R pid (DfracOwn (3/4)) g with "Hauth Hpr34") as %Hreg.
+      assert (Hpnz : bv_unsigned pid <> 0)
+        by exact (proj1 (Hpdom _ (ex_intro _ g Hreg))).
+      iDestruct (pid_tie_agree pid (DfracOwn (3/4)) g with "Htie Hpr34")
+        as "[Htie8 Hpr34]".
+      iDestruct "Htie8" as "[%Hz | Htie8]"; [by destruct (Hpnz Hz) |].
+      iAssert (pid_reg pid (DfracOwn 1) g) with "[Hpr34 Hpr8 Htie8]" as "Hpr".
+      { rewrite pid_reg_rest_whole /pid_reg_rest. iFrame "Hpr34 Hpr8 Htie8". }
       iApply fupd_wp.
       iMod (pid_reg_delete R pid g with "Hauth Hpr") as "Hauth".
       iModIntro.
@@ -850,7 +866,11 @@ Section ProofFreeproc.
         (* freeproc CLEARS [p->killed], so the slot is founded back at the
            free arm of the killed row and nothing is owed (lane KILL-PAY,
            K2) *)
-        iLeft. done. }
+        iSplitL. { iLeft. done. }
+        (* ...and the tie goes back on ITS free arm, for the same store:
+           [p->pid = 0], and 0 is registered to nothing (lane SELF-KILL,
+           §1), so an UNUSED slot's payload owes no eighth. *)
+        iApply (pid_tie_zero (mword_of_int 0 : mword 32) ltac:(vm_compute; reflexivity)). }
       { (* proc_dormant pa UNUSED, at the emptied V *)
         iApply (fp_to_dormant_unused pa
                   (MkPPriv (zero_reg : mword 64) (pv_upt V) (pv_tf V)

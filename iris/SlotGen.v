@@ -67,6 +67,14 @@ Require Import ProcGeom.
 Require Import Xv6Cameras.
 Local Open Scope Z_scope.
 
+(* AN EIGHTH.  [Qp_scope]'s numerals stop at 4 (stdpp's [Qp.notations]
+   module defines 1, 2, 3 and 4 and nothing else), so the fraction the
+   killed row's tie needs has no literal at all -- [1/8] parses its [8] in
+   whatever scope is ambient and fails.  Spelled ONCE, here, and a
+   [Notation] rather than a [Definition] so [Qp] arithmetic and
+   [ghost_map]'s fraction lemmas see straight through it. *)
+Notation qeighth := ((1/4)/2)%Qp (only parsing).
+
 (* ===================================================================== *)
 (* THE ELEMENT, AND THE MAP THE BOOT MINT HANDS OUT.                     *)
 (* ===================================================================== *)
@@ -269,6 +277,53 @@ Section SlotGen.
       iEval (rewrite dfrac_op_own Qp.three_quarter_quarter) in "H". iExact "H".
   Qed.
 
+  (* ...AND THE QUARTER SPLITS AGAIN (lane SELF-KILL, §1).  The killed row
+     has to be able to NAME the incarnation whose row it is, and the only
+     resource that answers "which generation is CURRENT at this pid" is
+     this registration -- persistent readings cannot ([ChildTok.gen_pid] is
+     satisfied by every generation the pid ever had).  So the block's
+     quarter becomes two eighths: one stays in the block
+     ([gen_halves_priv]), one rides <p->lock>'s public payload
+     ([SchedCtx.pid_tie]).  The THREE QUARTERS under <wait_lock> are
+     untouched, and so is the boot -- an UNUSED slot has no registration at
+     all, which is what makes the tie's zero arm free. *)
+  Lemma pid_reg_eighths pid g :
+    pid_reg pid (DfracOwn (1/4)) g ⊣⊢
+    pid_reg pid (DfracOwn qeighth) g ∗ pid_reg pid (DfracOwn qeighth) g.
+  Proof.
+    rewrite /pid_reg. iSplit.
+    - iIntros "H".
+      iEval (rewrite -{1}(Qp.div_2 (1/4)%Qp)) in "H".
+      iDestruct "H" as "[H1 H2]". iFrame "H1 H2".
+    - iIntros "[H1 H2]".
+      iDestruct (ghost_map_elem_combine with "H1 H2") as "[H _]".
+      iEval (rewrite dfrac_op_own (Qp.div_2 (1/4)%Qp)) in "H". iExact "H".
+  Qed.
+
+  (* ...AND WHAT IS LEFT OVER WHEN THE PUBLIC PAYLOAD HAS TAKEN ITS EIGHTH
+     (lane SELF-KILL, §1).  A fresh registration is a WHOLE, and the three
+     parties that now share it are <wait_lock>'s three quarters, the
+     private block's eighth and <p->lock>'s eighth; the first two travel
+     together everywhere (allocproc hands them to its caller, kfork and
+     userinit split them, the reap puts them back), and [7/8] has no [Qp]
+     literal.  So they travel under a NAME rather than a fraction, and the
+     whole is this name plus the row's eighth. *)
+  Definition pid_reg_rest pid g : iProp Σ :=
+    (pid_reg pid (DfracOwn (3/4)) g ∗ pid_reg pid (DfracOwn qeighth) g)%I.
+
+  Global Instance pid_reg_rest_timeless pid g : Timeless (pid_reg_rest pid g).
+  Proof. apply _. Qed.
+
+  Lemma pid_reg_rest_whole pid g :
+    pid_reg pid (DfracOwn 1) g ⊣⊢
+    pid_reg_rest pid g ∗ pid_reg pid (DfracOwn qeighth) g.
+  Proof.
+    rewrite /pid_reg_rest pid_reg_quarters pid_reg_eighths.
+    iSplit.
+    - iIntros "[H3 [H1 H2]]". iFrame "H3 H1 H2".
+    - iIntros "[[H3 H1] H2]". iFrame "H3 H1 H2".
+  Qed.
+
   Lemma pid_reg_lookup R pid dq g :
     pid_reg_auth R -∗ pid_reg pid dq g -∗ ⌜R !! bv_unsigned pid = Some g⌝.
   Proof.
@@ -312,8 +367,12 @@ Section SlotGen.
      forked it ([WaitInv.gen_halves]) -- see [slot_gen_quarters] for why
      the split is uneven.  The NAME says halves because the two pieces of
      one ghost is what it is about; the fractions are quarters. *)
+  (* THE PID'S SHARE IS AN EIGHTH NOW, not a quarter (lane SELF-KILL §1):
+     the other eighth rides <p->lock>'s public payload, where the killed
+     row needs it to name the incarnation.  The NAME does not move, so
+     every site that carries this bundle is untouched. *)
   Definition gen_halves_priv pa pid g : iProp Σ :=
-    (slot_gen pa (DfracOwn (1/4)) g ∗ pid_reg pid (DfracOwn (1/4)) g)%I.
+    (slot_gen pa (DfracOwn (1/4)) g ∗ pid_reg pid (DfracOwn qeighth) g)%I.
 
   (* ...AND WHAT A DORMANT SLOT HOLDS ([ProcDefs.proc_dormant]).  A ZOMBIE
      is a parked process and carries exactly what its block carried; an

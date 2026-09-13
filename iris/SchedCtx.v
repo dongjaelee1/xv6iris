@@ -64,6 +64,9 @@ Require Export IrefSlots.
    image bytes by [M] beside it. *)
 Require Import ProcPtOwn CtxMorphTac.
 Require Import ProcDefs.
+(* [SlotGen.pid_reg] / [qeighth] -- the killed row's tie (lane SELF-KILL, §1)
+   names the incarnation by an eighth of its pid registration. *)
+Require Import SlotGen.
 Require Import SwtchCtx.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
@@ -193,11 +196,35 @@ Section SchedCtx.
      THE ZERO IS SPELLED AT THE CELL'S WIDTH: [p->killed] is an [int], so the
      word is [mword 32] and [RiscvLang.zero_reg] -- a 64-bit constant -- is
      not it. *)
+  (* WHICH INCARNATION THIS PAYLOAD BELONGS TO (lane SELF-KILL, §1).
+     Nothing here answered that until now, and the header above says why
+     the generation is not in the block's reach: the private block is
+     resident only on UNUSED/ZOMBIE ([proc_slots_at]), because sys_sbrk
+     writes [myproc()->sz] with no lock held.  So a LIVE slot's lock
+     payload knew the pid and nothing else -- and the killed row is about
+     to be per-incarnation, which needs a name.
+
+     THE TIE IS AN EIGHTH OF THE PID'S REGISTRATION ([SlotGen.pid_reg],
+     carved out of the block's quarter by [SlotGen.pid_reg_eighths]).  It
+     is the one resource in the tree that says "the CURRENT generation of
+     this pid is [gn]" -- persistent readings cannot, since a pid is
+     reused.  A party that holds a share of its own registration (every
+     live process does, in its block) agrees with this one and learns that
+     the row it just read is its own.
+
+     GUARDED BY THE PID CELL, and that is what keeps the boot and the
+     dormant arms out of it: an UNUSED slot's pid cell is 0 and 0 is
+     registered to nothing ([SlotGen.pid_reg_dom]), so the carve costs the
+     .bss nothing.  freeproc restores this arm at [p->pid = 0]. *)
+  Definition pid_tie (pid : mword 32) : iProp Σ :=
+    (⌜bv_unsigned pid = 0⌝ ∨ ∃ gn : gname, pid_reg pid (DfracOwn qeighth) gn)%I.
+
   Definition proc_pub (pa : mword 64) : iProp Σ :=
     (∃ (kl xs pid : mword 32),
        p_killed pa ↦₄ kl ∗ p_xstate pa ↦₄{DfracOwn (1/2)} xs ∗
        p_pid pa ↦₄{DfracOwn (1/4)} pid ∗
-       (⌜kl = (mword_of_int 0 : mword 32)⌝ ∨ □ riscv_kill_cred))%I.
+       (⌜kl = (mword_of_int 0 : mword 32)⌝ ∨ □ riscv_kill_cred) ∗
+       pid_tie pid)%I.
 
   (* the killed row on its own, for the sites that carry it across a write *)
   Definition kill_paid (kl : mword 32) : iProp Σ :=
@@ -211,6 +238,34 @@ Section SchedCtx.
 
   Lemma kill_paid_of_cred (kl : mword 32) : □ riscv_kill_cred -∗ kill_paid kl.
   Proof. rewrite /kill_paid. iIntros "#H". iRight. iExact "H". Qed.
+
+  (* the tie's two arms.  An unused slot's cell is 0 and costs nothing; a
+     live slot's is the eighth allocproc carved when it registered the
+     pid. *)
+  Lemma pid_tie_zero (pid : mword 32) :
+    bv_unsigned pid = 0 -> ⊢ pid_tie pid.
+  Proof. intro H. rewrite /pid_tie. iLeft. iPureIntro. exact H. Qed.
+
+  Lemma pid_tie_of_reg (pid : mword 32) (gn : gname) :
+    pid_reg pid (DfracOwn qeighth) gn -∗ pid_tie pid.
+  Proof. rewrite /pid_tie. iIntros "H". iRight. iExists gn. iExact "H". Qed.
+
+  (* ...AND WHAT A PARTY HOLDING A SHARE OF ITS OWN REGISTRATION READS OFF
+     IT: the tie is at ITS generation.  The share comes back -- the
+     conclusion is pure -- and the nonzero side condition is what the
+     caller's own registration already gives ([SlotGen.pid_reg_dom]). *)
+  Lemma pid_tie_agree (pid : mword 32) (dq : dfrac) (gn : gname) :
+    pid_tie pid -∗ pid_reg pid dq gn -∗
+    (⌜bv_unsigned pid = 0⌝ ∨ pid_reg pid (DfracOwn qeighth) gn) ∗
+    pid_reg pid dq gn.
+  Proof.
+    rewrite /pid_tie. iIntros "[%Hz | Hr] Hmine".
+    - iFrame "Hmine". iLeft. iPureIntro. exact Hz.
+    - iDestruct "Hr" as (gn') "Hr".
+      iDestruct (pid_reg_agree pid pid dq (DfracOwn qeighth) gn gn' eq_refl
+                   with "Hmine Hr") as %Heq.
+      iFrame "Hmine". iRight. rewrite Heq. iExact "Hr".
+  Qed.
 
   (* THE SLOT'S GENERATION IS NOT HERE.  A generation is a SAVED PREDICATE
      carrying the slot, the pid and the process's exit payload

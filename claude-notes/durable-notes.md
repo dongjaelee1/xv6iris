@@ -824,7 +824,7 @@ freshly built ELF.
 The proof side is derived from the spec-module shape
 ([`design/spec-modules.md`](design/spec-modules.md)), so **keeping a new proof in
 that shape is what keeps it visible** — no registration beyond `_CoqProject`.
-Four ways to be silently miscounted, all of them green builds:
+Five ways to be silently miscounted, all of them green builds:
 
 - **The proof functor needs its `: <MODTYPE>` ascription** — without it the
   `Link` still typechecks (the signature is checked at the consumer) and the
@@ -835,6 +835,11 @@ Four ways to be silently miscounted, all of them green builds:
 - **Spell the entry pc so the symbol is visible** — `pc_is (mword_of_int
   KernelSyms.<f>)`, or a `let pcE := … in` used as `pc_is pcE`. A `Notation`
   alias hides it and the function reads *partial*.
+- **The `Link` file must APPLY a functor, not BE the proof.** A `Link<F>.v` that
+  inlines the module body (`Module F : FSPEC.` … `End F.`) is sealed and green,
+  but it instantiates nothing, and the report counts only instantiations — so
+  the function reads *assumed*. `LinkPrputc.v` was that shape; the fix is the
+  ordinary one, a functor in `Proof<F>.v` and a one-line link.
 - **The scan is keyed off `iris/_CoqProject`**, so adding a file to `iris/` means
   adding it there. A file deliberately out of the build is descoped by commenting
   its row to a bare `# Foo.v`, which is the syntax `--check` recognizes; a

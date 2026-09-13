@@ -452,6 +452,17 @@ the real callee proofs, a callee-side spec/proof mismatch stays invisible, and
 `tools/proof_coverage.py` does not count the function as proven. `LinkBinit.v`
 and `LinkIinit.v` were both in that shape and were repaired.
 
+The other way to write a `Link` file that links nothing is to INLINE the proof
+in it — `Module F : FSPEC.` … a section of real lemmas … `End F.`, with no
+functor in `Proof<F>.v` and no application anywhere. Rocq accepts it and the
+seal is real, but the file is no longer a link: there is no `Module F := FProof
+…` for the report to find, so the function reads *assumed* (`module_status`
+searches instantiations only), the proof sits at the one altitude where
+`Require Import Link*` is legal, and every `Proof*.v` rule above is bypassed.
+`LinkPrputc.v` was that shape and was repaired: the adapter moved into
+`ProofPrputc.v` as `PrputcProof (UartPutc : UARTPUTC) : PRPUTC`, leaving the
+one-line `Module Prputc := PrputcProof UartPutc.`
+
 **`Require Import Link*` MAY APPEAR ONLY IN A `Link*.v`, AND THE COST OF
 BREAKING THAT IS PAID BY FILES THAT NEVER USE THE CLOSED FORM.** Applying a
 functor to a proven module at the bottom of the functor's *own* file is the

@@ -22,8 +22,9 @@
    THE CALLEE'S CONTRACT IS TAKEN AS AN INLINE HYPOTHESIS, not as
    [SpecUartPutc.wp_uartputc_sconf_body i ...].  The port-indexed spelling of
    that contract is a sibling lane's change and its argument ORDER is not this
-   proof's business: writing the premises out here keeps the body independent
-   of it, and leaves [LinkPrputc.v] as the one file that has to match.  The
+   proof's business: writing the premises out here keeps the BODY independent
+   of it, and confines the match to [up_adapt] in the sealed functor at the
+   bottom of this file ([LinkPrputc.v] is the ordinary one-line link).  The
    premises below are exactly what a port-generic uartputc_sync gives at
    [Uart1]: a0 pinned to [UartsFields.uart_index Uart1], the port's own
    invariant (NOT the console bundle [dev_inv]), the .data word its MMIO base
@@ -327,3 +328,88 @@ Section ProofPrputc.
   Qed.
 
 End ProofPrputc.
+
+
+(* ===================================================================== *)
+(* THE SEALED FUNCTOR: instantiate the callee's WP hypothesis with its     *)
+(* proven spec, discharging the PRPUTC Module Type.                        *)
+(*                                                                        *)
+(* [up_adapt] IS THE ONLY PLACE THAT NAMES uartputc_sync's ARGUMENT ORDER. *)
+(* It instantiates the callee at                                          *)
+(*                                                                        *)
+(*   - the PORT [Uart1] (its contract gained a [uart_id] parameter at      *)
+(*     XV6_REV 163d39b, with a0 pinned to [UartsFields.uart_index i]);     *)
+(*   - the payload [Phi := emp], whose justification chain is built from   *)
+(*     nothing ([WpUart.out_chain_triv] at [Uart1]);                       *)
+(*                                                                        *)
+(* and DROPS the payload that comes back.  That drop is the whole of the   *)
+(* owner's ruling in one line: the second port's wire is unconstrained, so *)
+(* what uartputc_sync proves about the byte is thrown away here and never  *)
+(* appears above.  (Iris is affine; dropping a persistent witness costs    *)
+(* nothing.)                                                               *)
+(* ===================================================================== *)
+
+Module PrputcProof (UartPutc : UARTPUTC) : PRPUTC.
+
+Section PrputcSealed.
+  Context `{!riscvGS Σ, !xv6G Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context {kt : ktier}.
+
+  Local Notation ra_idx := (mword_of_int 1 : mword 5).
+  Local Notation a0_idx := (mword_of_int 10 : mword 5).
+
+  Lemma up_adapt `{CID0 : CpuId} (γl1 : gname) (γ1 : uart_names)
+      (m0 : regfile) (K : nat) (n : nat) (eb : bool) (b : bool) (p : mword 64)
+      (lks : gset string) :
+    (18 <= K)%nat ->
+    m0 !!! Regidx a0_idx = (mword_of_int (uart_index Uart1) : mword 64) ->
+    (Z.of_nat n + 1 < 2 ^ 31)%Z ->
+    locks_below lks "uart1" ->
+    sie_cap_gpr kt m0 K b p -∗
+    cpu_own n eb p b lks -∗
+    kernel_text -∗
+    pc_is (mword_of_int KernelSyms.uartputc_sync : mword 64) -∗
+    uart_inv Uart1 γ1 -∗
+    uart_base_word Uart1 -∗
+    is_txlock_at Uart1 γl1 γ1 -∗
+    wp_next (CID0 := CID0) b p (fun (CID : CpuId) =>
+      ∀ mf : regfile,
+      sie_cap_gpr kt mf K b p -∗
+      cpu_own n eb p b lks -∗
+      pc_is (ret_pc (m0 !!! Regidx ra_idx)) -∗
+      ⌜ callee_saved m0 mf /\ mf !!! Regidx ra_idx = m0 !!! Regidx ra_idx ⌝ -∗
+      WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros HK Ha0 Hn Hbelow.
+    iIntros "Hcg Hcpu #Htext Hpc #Huinv #Hbase #Htxl Hcont".
+    (* THE KERNEL'S PORT OWES NOTHING (lane OUT-FUPD, the owner's ruling
+       that UART1's output is unconstrained): [WpUart.out_res_at Uart1] is
+       [emp], so [out_chain_triv] builds the callee's link out of the empty
+       payload and printk's path takes no justification at all. *)
+    iApply (UartPutc.wp_uartputc_sconf kt Uart1 (CID := CID0) γl1 γ1 m0 K emp%I
+              n eb b p lks HK Ha0 Hn Hbelow
+              with "Hcg Hcpu Htext Hpc Huinv Hbase Htxl []").
+    { iApply store_chain_of_out_chain.
+      iApply (out_chain_triv Uart1 _ _ emp%I eq_refl). done. }
+    iIntros (CID1 Hs1 mf) "Hcg Hcpu Hpc %Hcs _".
+    iSpecialize ("Hcont" $! CID1 with "[%]"); [exact Hs1|].
+    iApply ("Hcont" $! mf with "Hcg Hcpu Hpc [%]"). exact Hcs.
+  Qed.
+
+End PrputcSealed.
+
+  Definition wp_prputc_sconf `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
+      {kt : ktier} (m0 : regfile) (K : nat)
+      (n : nat) (eb : bool) (b : bool) (p : mword 64) (lks : gset string)
+      : wp_prputc_sconf_body kt m0 K n eb b p lks :=
+    (* eta-expanded so the adapter's own [CID0] stays genuinely polymorphic
+       per application (ProofConsputc.v's identical fix), rather than being
+       eagerly specialized to THIS definition's [CID]. *)
+    wp_prputc_sconf_gen
+      (fun `(CID0 : CpuId) γl1' γ1' m' K' n' eb' b' p' lks' =>
+         up_adapt (kt := kt) (CID0 := CID0) γl1' γ1' m' K' n' eb' b' p' lks')
+      m0 K n eb b p lks.
+
+End PrputcProof.

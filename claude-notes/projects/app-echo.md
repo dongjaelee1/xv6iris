@@ -101,13 +101,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   form, all proved.  REMAINING (part 3): section 7 (the wrapping onto the
   landed links) and the `AppEcho` wiring, BLOCKED until CONS-IO milestone E
   founds the claims at the power-on step (below).
-- [ ] **CONS-IO milestone E -- FOUND-AT-POWERON** (kernel; `-tlw`): `Hpow`'s
-  power-on arm yields the era's founded claims (the application mints a
-  per-era linear seed from its ledger there, so a founded claim cannot be
-  re-derived from nothing); `app_xfer_boot_raw` loses `O`/`I`; the kernel
-  carries the claims to the port founding in `power_boot_res`; milestone D's
-  `era_tok` REVERTED (unusable: the application's predicates are fixed
-  before the machine's ghost record exists).
+- [x] ~~**CONS-IO milestone E -- FOUND-AT-POWERON**~~ LANDED 2026-09-15
+  (`a7f5e98a7`; the note below): `Hpow`'s power-on arm yields the era's
+  founded claims; `app_xfer_boot_raw` back to two arguments; milestone D's
+  token reverted.  THE KERNEL SIDE OF E5 IS COMPLETE.
 - [x] ~~**ECHO-PURE**~~ LANDED 2026-09-13 (`c1781608b`; the note below): E5's
   pure half -- `ConsLog.v` (the boundary vocabulary), `EchoOutPure.v` (the
   stage machine and the four facts), `disc_prefix`.
@@ -3271,6 +3268,31 @@ hence milestone E (the founding at the power-on step with a linear seed).
 xv6_app Σ` is fixed before `HR`).  App-side items for part 3: `echo_tag` gains
 `⌜trace_shape h true⌝` (minted by `echo_R_rx`); `echo_led_tx` at Uart0 only.
 Handover: scratchpad `echo-out-handover-3.md`.
+
+CONS-IO MILESTONE E -- FOUND-AT-POWERON LANDED (2026-09-15; `a7f5e98a7` on
+`9fafc190f`; 11 files +430/-511; builds cio52-cio59 in `-tlw`; audit the
+thirteen; lemma_diff = D's seven + `app_xfer_boot_raw_out`, all justified).
+The transport founded nothing: `app_xfer_boot_raw` is a `□` over a bupd that
+returns its own input, so `app_out A c k [] []` was derivable unboundedly and
+the founded arm had to be pure -- which kills ECHO-OUT's `Hpro`/`Hunwritten`/
+`acc = [] -> P = 0`.  `App.Hpow`'s power-ON arm yields the era's two claims
+instead, at `S (obs_boots h)` of the PRE-event history: no `GenId` binder (the
+ledger spans eras), `obs_boots_app` makes it the boot count of the post-event
+history -- milestone C's stamp -- and the PowerOn arm ties it to the boot's
+`S gen` off `obs_wf` at `gpow = false`.  The yield rides D's route: `Hobs` ->
+`power_boot_res` -> `power_boot_res_unpack` -> `boot_shared_alloc` (two
+premises fewer) -> `uart_ghosts_alloc Uart0`.  `app_xfer_boot_raw A B` is back
+to two arguments; `app_xfer_boot_raw_out` and `xv6_trace_adequacy`'s vacuous
+`Hxfer` are DELETED; `xv6_boot_era` loses `O`/`I` and its two record equations;
+the `Rb` lend loses its two conjuncts; `obs_pred_at_step` (the trivial trace
+slot's hook) gains two founding premises, `⊢ emp` at the generic instance.
+MILESTONE D IS REVERTED in the same commit -- `era_tok`, its bank, the
+`power_interp` conjunct, `Hinit_boot`'s premise, `init_boot_pay`'s third
+conjunct, `wp_kinit_start`'s premise, the `boot_fixedGS` binder: nothing
+unused stays.  CONSTRAINT for ECHO-OUT part 3: `Hpow` is a plain `==∗` fired
+with `obsN` already open -- the era's linear seed must be bupd-mintable from
+the ledger's own state; nothing in `Hpow` may open an invariant.  Handover:
+scratchpad `cons-io-handover-7.md`.
 
 E5 DESIGN OF RECORD, REVISIONS 4-7 (coordinator, 2026-09-14; these amend the
 "E5 -- THE CONSOLE I/O CLAIM" note above and the RULINGS below; the kernel side

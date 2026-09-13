@@ -94,12 +94,20 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   the owner's `688c4c1b7`; the note below): the kernel hands init a
   per-power-cycle exclusive token so the application's ledger adopts each
   era exactly once.
-- [ ] **ECHO-OUT** (application; `-disc`, `lane/echo-out`): `EchoOut.v` (the
-  ledger-anchored claims at the era index, the stage machine's Iris side,
-  the ledger's four steps, `echo_phi` in the owner's form) -- proving its
-  last five ledger lemmas; then the section-7 wrapping onto the landed
-  links and the `AppEcho` wiring (`echo_out`/`echo_in` replace the `emp`
-  holes; `echo_boot` gains the turn; `echo_fixed` becomes a record).
+- [ ] **ECHO-OUT** (application; `-disc`, `lane/echo-out`): PART 1+2a LANDED
+  2026-09-15 (`41fa2ec15`; the note below): `EchoOut.v` -- the ledger-anchored
+  claims at the era index, the stage machine's Iris side, the ledger's four
+  steps, adoption by the pin map, the choice list, `echo_phi` in the owner's
+  form, all proved.  REMAINING (part 3): section 7 (the wrapping onto the
+  landed links) and the `AppEcho` wiring, BLOCKED until CONS-IO milestone E
+  founds the claims at the power-on step (below).
+- [ ] **CONS-IO milestone E -- FOUND-AT-POWERON** (kernel; `-tlw`): `Hpow`'s
+  power-on arm yields the era's founded claims (the application mints a
+  per-era linear seed from its ledger there, so a founded claim cannot be
+  re-derived from nothing); `app_xfer_boot_raw` loses `O`/`I`; the kernel
+  carries the claims to the port founding in `power_boot_res`; milestone D's
+  `era_tok` REVERTED (unusable: the application's predicates are fixed
+  before the machine's ghost record exists).
 - [x] ~~**ECHO-PURE**~~ LANDED 2026-09-13 (`c1781608b`; the note below): E5's
   pure half -- `ConsLog.v` (the boundary vocabulary), `EchoOutPure.v` (the
   stage machine and the four facts), `disc_prefix`.
@@ -3232,6 +3240,38 @@ inherits it.  With the owner's C guard (`kkill` refuses pid 0, 688c4c1b7) the
 free arm is the pure flag; `ProofKkill` was re-walked at that rebase.
 Handover: scratchpad `self-kill-handover.md`.
 
+ECHO-OUT PART 1+2a LANDED (2026-09-15; `41fa2ec15`, seven commits on `fc8098d8d`;
+`EchoOut.v` 2.6k lines + `EchoOutPure.v`; builds eo0-eo34 in `-disc`; audit the
+thirteen; lemma_diff CLEAN; nothing Admitted).  `EchoOut.v` is the echo
+application's console I/O claim, parametric in the taint: the two port claims
+`eout k ho acc`/`ein k ho pops dl` (taint ∨ founded ∨ paired: `era_pin k v ∗
+frag ∗ ⌜pure⌝`), the output stage `(cs, E, w)` and input stage `(E, owed)` tied
+in the ledger, the ledger `echo_led h` = the taint counter ∗ `era_inv` (a pin
+map keyed by the era number, `era_live` with the two half-pairs, the cursor
+`pcount` = process bytes in the era, `cs_auth`/`cs_lb`, `E_auth`/`E_lb`) ∗
+(`⌜Forall good_out (cycles_of h)⌝ ∨ T`).  THE LEDGER IS HISTORY-FREE: the
+same-cycle facts live in `eout_pure` at the claim's own witness, re-established
+by the echo from the input entries' era stamps (`open_seg_prefix_boots`) and
+lifted by the drain from `Htx`'s `ho ⊑ h`; no link compares a history against
+the ledger's.  Adoption is insert-if-absent by the pin map (`era_inv_get`);
+`cs_len_ok` + `eout_step_write_blk` take the alternative index at a block's
+first byte; the in claim's half is ESCROWED in the ledger while `ein` is
+founded.  Proved: `eout_step_echo` (D2 at the cycle segment, `D_app`,
+`pcount_echo`), `ein_step_append`/`_drop`, `eout_step_write`/`_blk`/`_first`
+(the strictness derived from `proc_upto cs0 (S n0) !! P = Some b`; the naive
+`proc_stream` law was FALSE at a completed continuation), `ein_step_read`,
+`ein_read_line`, `eout_drain` (generic in the segment), `echo_led_pow/tx/rx/phi`
+(`echo_led_phi` at `disc h -> Forall good_out (cycles_of h)`), the founding at
+every era, the licences, `sess_n_prefix_det`.  THE HOLE it found: `Happ_boot`
+is a `□` over a bupd that returns its only input, so a founded claim is
+derivable unboundedly from nothing and the three fresh-arm faces
+(`acc = [] -> P = 0`, `Hunwritten`, `Hpro`) are unprovable at the links --
+hence milestone E (the founding at the power-on step with a linear seed).
+`RiscvPtsto.era_tok` (milestone D) is unusable by the application (`A :
+xv6_app Σ` is fixed before `HR`).  App-side items for part 3: `echo_tag` gains
+`⌜trace_shape h true⌝` (minted by `echo_R_rx`); `echo_led_tx` at Uart0 only.
+Handover: scratchpad `echo-out-handover-3.md`.
+
 E5 DESIGN OF RECORD, REVISIONS 4-7 (coordinator, 2026-09-14; these amend the
 "E5 -- THE CONSOLE I/O CLAIM" note above and the RULINGS below; the kernel side
 is LANDED as CONS-IO A/B/C/D; the application side is lane ECHO-OUT):
@@ -3287,6 +3327,14 @@ strictness ("this continuation is not already complete") follow purely
 The Fable design review of 2026-09-14 (scratchpad `brief-review-echo.md`)
 drove R4'/R5/R6 and the turn's monotonicity; its dispositions are in the
 session scratchpad `e5-design.md` REVISION 6.
+(R8, 2026-09-15) THE FOUNDING MOVES TO THE POWER-ON STEP: `Happ_boot`'s `□`
+bupd returns its only input, so founded claims were derivable from nothing;
+now `Hpow`'s power-on arm yields `app_out A c (S k) [] [] ∗ app_in A c (S k)
+[] [] []` with a per-era LINEAR seed the application mints from its ledger
+(consumed at adoption), `app_xfer_boot_raw A B` loses `O`/`I`, the kernel
+carries the founded claims to the port founding in `power_boot_res`, and
+milestone D's kernel token is reverted (the application's predicates cannot
+name `riscvFixedGS` resources).  The ledger is history-free (R4 amended).
 
 RULINGS AFTER CONS-IO PHASE 1 (coordinator, 2026-09-13; the E5 note above is
 read with these): (1) the shift is CHAIN-FIRST, APPEND-LAST -- the echo's

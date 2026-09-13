@@ -136,6 +136,9 @@ Section EchoAdequacy.
                  (* ...and the output claim's (lane OUT-FUPD), which for
                     echo is E5's placeholder *)
                  (app_out app_echo c) (echo_Houtt c)
+                 (* ...and the input log's (lane CONS-IO), which for echo is
+                    E5's second placeholder *)
+                 (app_in app_echo c) (echo_Hinpt c)
                  (app_fixed app_echo) c) g' -∗
            ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
            ▷ xv6_slot (app_names app_echo) (app_pred app_echo) cov
@@ -181,11 +184,15 @@ Section EchoAdequacy.
        THREE MORE AGAIN since lane OUT-FUPD: [Houtt] is fixed the same way
        (it too is named in [Hphi]'s literal), so the two that become goals
        are [Happ_out_sup] and [Happ_echo]. *)
+    (* ONE MORE HOLE since lane CONS-IO: [Hinpt] is fixed by unification the
+       way [Houtt] is (it is named in [Hphi]'s literal above), so the only
+       new goal is [Happ_in_sup]. *)
     refine (xv6_app_adequacy Σ g sb nib cov app_echo
-              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
+              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
     - exact echo_Hbirth.
     - exact echo_Happ_kill.
     - exact echo_Happ_out_sup.
+    - exact echo_Happ_in_sup.
     - exact echo_HR0.
     - exact echo_Hpow.
     - (* POINTWISE, not as one term.  [echo_Htx]/[echo_Hrx] state the era
@@ -209,7 +216,7 @@ Section EchoAdequacy.
              [Hsh_owed] at that instance, and [echo_Hinit_boot] builds
              /init's slot from them without ever touching the supply. ---- *)
       
-      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen Hout.
+      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen Hout Hin.
       (* the record's [app_kill] field IS [AppEcho.echo_taint] (lane
          KILL-PAY, K1); [echo_Hinit_boot] is stated at the latter, and
          unification does not delta-unfold the record literal for it. *)
@@ -233,8 +240,9 @@ Section EchoAdequacy.
          and [Heq] after, both of which carry the record's own [GenId].
          Naming it here would pin the wrong one: the [GEN] this field
          binds is not the one [app_echo] was elaborated at. *)
+      cbn [app_echo app_in] in Hin.
       iApply (echo_Hinit_boot HR GEN c r Hdeps Hre
-                Heq Htag Hkill Hout with "Hinv Hb").
+                Heq Htag Hkill Hout Hin with "Hinv Hb").
     - (* [Happ_echo]: at [AppEcho.echo_out]'s E5 placeholder the console's
          output claim is trivial, so the echo justifies itself. *)
       exact echo_Happ_echo.

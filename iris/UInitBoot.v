@@ -530,10 +530,17 @@ Section EchoInitBoot.
        licence is free -- E5 replaces the placeholder and this line is
        where its price will be paid. *)
     @riscv_out_res Σ (@riscv_fixedGS Σ HR) = echo_out γ ->
+    (* ...AND THE INPUT LOG'S (lane CONS-IO), on the same mould and for the
+       same reason: the generic slot the taint arm buys carries an INPUT
+       LICENCE ([WpUart.in_licence]) too, because an unverified program may
+       [read(2)] fd 0 and because consoleintr files every accepted byte in
+       the console UART's log.  At [AppEcho.echo_in]'s E5 PLACEHOLDER the
+       claim is [emp], so this licence is free as well. *)
+    @riscv_in_res Σ (@riscv_fixedGS Σ HR) = echo_in γ ->
     ⊢ app_inv fsc_fs -∗ echo_boot γ r -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Hsh_deps Hsh_rest Heq Htag Hkill Hout.
+    intros Hsh_deps Hsh_rest Heq Htag Hkill Hout Hin.
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)
@@ -547,6 +554,11 @@ Section EchoInitBoot.
     iAssert (out_licence) as "#Hlic".
     { rewrite /out_licence Hot /out_res_triv.
       iIntros "!>" (h acc b) "_". by iModIntro. }
+    (* ...and the INPUT licence, free at [AppEcho.echo_in]'s placeholder for
+       the same reason (lane CONS-IO) *)
+    assert (Hit : @riscv_in_res Σ (@riscv_fixedGS Σ HR) = in_res_triv)
+      by (rewrite Hin; cbn [echo_in]; reflexivity).
+    iAssert (in_licence) as "#Hilic"; [by iApply in_licence_triv |].
     iIntros "#Hinv Hb". iModIntro.
     (* ---- the taint's supply, and the generic slot it buys ---- *)
     iAssert (□ (echo_taint γ -∗ app_sup))%I as "#Hsup".
@@ -562,7 +574,7 @@ Section EchoInitBoot.
          generic slot's supply is the pair (§1c) *)
       iAssert (□ riscv_kill_cred)%I as "#Hkc";
         [ rewrite Hkill; iModIntro; iExact "Ht" | ].
-      iApply (uslot_mint_all with "Hs Hkc Hlic Hwp Hp HR"). }
+      iApply (uslot_mint_all with "Hs Hkc Hlic Hilic Hwp Hp HR"). }
     (* ---- the pins law, and /init's own row out of it ---- *)
     iAssert (□ (∀ v : aview, AppCfg.app_pred AppCfg.app_run v -∗
                   AppCfg.app_pred AppCfg.app_run v ∗ (⌜echo_fs_pure v⌝ ∨ echo_taint γ)))%I

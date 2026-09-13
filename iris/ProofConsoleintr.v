@@ -71,6 +71,7 @@ From iris.base_logic.lib Require Import ghost_var invariants gen_heap.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvModelBytes.
+Require Import ConsLog.   (* [echo_of], [cons_erase], [cons_echo]: MOVED here, lane CONS-IO *)
 Require Import RiscvLang RiscvPtsto.
 Require Import ObsTrace.   (* [obs_ends_in Uart0]: the tag premise's byte *)
 Require Import RegFile.

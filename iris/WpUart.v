@@ -1965,6 +1965,16 @@ Section DevLoops.
     f_equiv. f_equiv. exact IH.
   Qed.
 
+  (* the single link's monotonicity, [out_chain_mono]'s base case, split
+     out because the input side's run bridge needs it on ONE link *)
+  Lemma out_link_mono (i : uart_id) (b : bv 8) (Φ Φ' : iProp Σ) :
+    (Φ -∗ Φ') -∗ out_link i b Φ -∗ out_link i b Φ'.
+  Proof.
+    iIntros "HΦ H" (o acc) "Hlb Hres".
+    iMod ("H" $! o acc with "Hlb Hres") as (o') "(Hlb' & Hres' & HP)".
+    iModIntro. iExists o'. iFrame "Hlb' Hres'". by iApply "HΦ".
+  Qed.
+
   Lemma out_chain_mono (i : uart_id) (bs : list (bv 8)) (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ out_chain i bs Φ -∗ out_chain i bs Φ'.
   Proof.
@@ -2170,6 +2180,37 @@ Section DevLoops.
       out_link Uart0 b (in_run h c (pre ++ [b]) bs Φ).
   Proof. by iIntros "[_ $]". Qed.
 
+  (* THE LOOP BRIDGE, [out_chain_app]'s twin: a writer that will put out
+     [bs1] now and may or may not go on to [bs2] spends the first half of
+     the run and keeps the rest.  This is what the kill-line loop carries
+     across its back edge -- one [consputc_bs] per glyph, the log closed at
+     whatever the loop actually emitted. *)
+  Lemma in_run_app (h : list mobs) (c : bv 8) (pre bs1 bs2 : list (bv 8))
+      (Φ : iProp Σ) :
+    in_run h c pre ((bs1 ++ bs2)%list) Φ -∗
+      out_chain Uart0 bs1 (in_run h c ((pre ++ bs1)%list) bs2 Φ).
+  Proof.
+    iIntros "H". iInduction bs1 as [| b bs1] "IH" forall (pre).
+    - by rewrite app_nil_r.
+    - cbn [out_chain app]. iDestruct (in_run_step with "H") as "H".
+      iApply (out_link_mono with "[] H"). iIntros "H".
+      iSpecialize ("IH" $! ((pre ++ [b])%list) with "H").
+      by rewrite -app_assoc.
+  Qed.
+
+  (* ...and the whole run spent, which is every arm but the kill loop *)
+  Lemma in_run_full (h : list mobs) (c : bv 8) (pre bs : list (bv 8))
+      (Φ : iProp Σ) :
+    in_run h c pre bs Φ -∗
+      out_chain Uart0 bs (in_append h c ((pre ++ bs)%list) Φ).
+  Proof.
+    iIntros "H".
+    iDestruct (in_run_app h c pre bs [] Φ with "[H]") as "H";
+      [by rewrite app_nil_r |].
+    iApply (out_chain_mono with "[] H"). iIntros "H".
+    iApply (in_run_stop with "H").
+  Qed.
+
   (* ==================================================================== *)
   (*  THE INPUT LICENCE (lane CONS-IO, C4): "this holder may log anything   *)
   (*  and deliver anything".                                               *)
@@ -2269,6 +2310,30 @@ Section DevLoops.
     rewrite /log_top (ConsLog.cl_top_snoc pops (h, c, cs)) /=. iFrame "Hhi0".
     iPureIntro.
     apply (ConsLog.cl_log_ok_snoc pops (h, c, cs) Hok Hends Hecho Hbelow).
+  Qed.
+
+  (* ...AND THE SAME WITH THE PORT INVARIANT OPENED HERE, which is the form
+     consoleintr uses: it holds [uart_inv Uart0 γ] (out of [dev_inv]) and
+     nothing else, and [uart_inv_body] is TIMELESS, so the whole append is
+     one [|={E}=>] with no machine step of its own -- the shape
+     [ProofMain]'s PLIC deposit already uses. *)
+  Lemma uart_inv_append (γ : uart_names) (hg : option (list mobs))
+      (h : list mobs) (c : bv 8) (cs : list (bv 8)) (Φ : iProp Σ) (E : coPset) :
+    ↑uartN Uart0 ⊆ E ->
+    ohist_ext hg h ->
+    obs_ends_in Uart0 h c ->
+    ConsLog.cons_echo c cs ->
+    uart_inv Uart0 γ -∗ uart_log_hi γ (1/2) hg -∗ in_append h c cs Φ
+      ={E}=∗ uart_log_hi γ (1/2) (Some h) ∗ Φ.
+  Proof.
+    intros HE Hx Hends Hecho. iIntros "#Hinv Hhi Hap".
+    iInv "Hinv" as ">Hbody" "Hclose".
+    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl)".
+    iMod (in_claim_append Uart0 γ hg h c cs Φ eq_refl Hx Hends Hecho
+            with "Hincl Hhi Hap") as "(Hincl & Hhi & HΦ)".
+    iMod ("Hclose" with "[Hu Hg Hcol Hincl]") as "_".
+    { iNext. iExists u. iFrame "Hu Hg Hcol Hincl". }
+    iModIntro. iFrame "Hhi HΦ".
   Qed.
 
   (* THE READ.  The caller advances the CONSUMED sequence [dl] by the

@@ -204,7 +204,7 @@ Section UexecExecMint.
      every key, and exit's deposit is a payment.  At the trivial payload,
      which is the only one a generic process has. *)
   Lemma uslot_mint :
-    app_sup -∗ □ riscv_kill_cred -∗ out_licence -∗ □ uexec_wp -∗
+    app_sup -∗ □ riscv_kill_cred -∗ out_licence -∗ in_licence -∗ □ uexec_wp -∗
     □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W).
   Proof.
     iIntros "#Hsup #Hkc #Hlic #Hilic #Hgen".

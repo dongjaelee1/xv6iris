@@ -547,8 +547,14 @@ Section ProofUartintr.
       WP (Loop : expr riscv_lang))%I with "[]" as "Loop".
     { iLöb as "IH".
       iIntros (CIDk M1) "%Hregs1 %Hls1 %Hla4 %Hla3 Hcg Hcnt Hpc Hfr Htok Hcont".
-      iDestruct "Htok" as (k hl) "[Htok Hhi]".
+      iDestruct "Htok" as (k hl) "[Htok Hmk]".
+      iDestruct "Hmk" as "[Hhi Hlgh]".
       iDestruct "Hhi" as (hh) "[Hhi %Hhle]".
+      (* ...AND THE LOG'S MARK (lane CONS-IO): the third half of the
+         writer's payload, on the ring mark's mould exactly.  It goes to
+         consoleintr with the byte and comes back at the byte's own
+         history, because EVERY arm of the switch logs. *)
+      iDestruct "Hlgh" as (hg) "[Hlgh %Hgle]".
       assert (Hlsr : forall (CID' : CpuId), rget (CID := CID') M1 Ra3 = uart_pa i 5)
         by (intros CID'; rgne; exact Hla3).
       assert (Hrhr : forall (CID' : CpuId), rget (CID := CID') M1 Ra4 = uart_pa i 0)
@@ -582,9 +588,10 @@ Section ProofUartintr.
                      ltac:(wp_next_chain) with "Hcont") as "Hcont".
         iApply (ui_tail γu m0 (<[Regidx Ra5 := regval_into_reg (rx_masked bt)]> M1)
                   av lvl eb pme sp0 b lks Hrx Hsp0 Hav
-                  with "Ht Hcg Hcnt Hpc Hfr [Htok Hhi] Hcont").
+                  with "Ht Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh] Hcont").
         iExists k, hl. rewrite /uart_rx_writer. iFrame "Htok".
-        iExists hh. iFrame "Hhi". by iPureIntro.
+        iSplitL "Hhi"; [iExists hh; iFrame "Hhi"; by iPureIntro |].
+        iExists hg. iFrame "Hlgh". by iPureIntro.
       - (* a byte came out.  What happens to it is decided by the PORT, and
            by nothing at run time: [uart_rx_word] says what `u->rx` holds. *)
         iIntros (bt c) "_ Hcg Hpc Hh".
@@ -666,13 +673,18 @@ Section ProofUartintr.
           assert (HH2regs : ui_regs m0 H2 (pa_stk sp0 4))
             by exact (ui_regs_cs m0 M1 H2 (pa_stk sp0 4) HcsH2 Hregs1).
           iDestruct (cpu_own_transport CIDk CIDj lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
+          (* THE LOG'S ORDER FACT, on the ring mark's mould exactly: the
+             log's high-water history is at or before the popper's anchor,
+             and the byte just popped is strictly after that anchor. *)
+          assert (Hgext : ObsTrace.ohist_ext hg h)
+            by exact (ObsTrace.ohist_ext_le_ext hg hl h Hgle Hanch).
           iApply (Consoleintr.wp_consoleintr_sconf γu γv H2 γs pme lvl (av - 4)%nat eb b lks
-                    h c hh
-                    ltac:(lia) HH2a0 Hlast Hhext
+                    h c hh hg
+                    ltac:(lia) HH2a0 Hlast Hhext Hgext
                     Hlen ltac:(lia) Hbelow
-                    with "Hcg Hcnt Ht Hpc Hpinv Hdinv Hccaps Htg Hlbh Hhi").
+                    with "Hcg Hcnt Ht Hpc Hpinv Hdinv Hccaps Htg Hlbh Hhi Hlgh").
           all: try lkbelow.
-          iIntros (CIDc Hsc Mf) "[%Hcsf %Hdomf] Hcg Hcnt Ht2 Hpc Hhi".
+          iIntros (CIDc Hsc Mf) "[%Hcsf %Hdomf] Hcg Hcnt Ht2 Hpc Hhi Hlgh".
           iEval (rewrite HH2ra) in "Hpc".
           assert (P5cr : ret_pc (add_vec_int (mword_of_int (KernelSyms.uartintr + 0x5a) : mword 64) 2)
                          = mword_of_int (KernelSyms.uartintr + 0x5c)) by pcw.
@@ -720,12 +732,17 @@ Section ProofUartintr.
           iDestruct (cpu_own_transport CIDc CIDw lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
           iDestruct (ui_ret_cont_shift CIDk CIDw γu m0 av lvl eb pme b lks
                        ltac:(wp_next_chain) with "Hcont") as "Hcont".
-          iApply ("IH" $! CIDw N1 with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi] Hcont").
+          iApply ("IH" $! CIDw N1
+                    with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh] Hcont").
           5: { iExists (S k), (Some h). rewrite /uart_rx_writer. iFrame "Htok".
                (* consoleintr's post no longer reports the echo (lane
-                  OUT-FUPD retires the receipt): only the mark. *)
+                  OUT-FUPD retires the receipt): only the two marks. *)
                iDestruct "Hhi" as (hh') "[Hhi %Hle']".
-               iExists hh'. iFrame "Hhi". by iPureIntro. }
+               iSplitL "Hhi"; [iExists hh'; iFrame "Hhi"; by iPureIntro |].
+               (* the LOG's mark comes back at THIS byte on every arm (lane
+                  CONS-IO): every arm of the switch logs. *)
+               iExists (Some h). iFrame "Hlgh".
+               iPureIntro. cbn. reflexivity. }
           * destruct HMfregs as (A2 & A18 & A19 & A20 & A21 & A22 & A23 & A24 & A25 & A26 & A27).
             unfold ui_regs. split_and!;
               (rewrite /N1 upd_ne; [| reg_neq]); (rewrite /N0 upd_ne; [| reg_neq]); assumption.
@@ -786,10 +803,17 @@ Section ProofUartintr.
           iDestruct (cpu_own_transport CIDk CIDz lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
           iDestruct (ui_ret_cont_shift CIDk CIDz γu m0 av lvl eb pme b lks
                        ltac:(wp_next_chain) with "Hcont") as "Hcont".
-          iApply ("IH" $! CIDz H1 with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi] Hcont").
+          iApply ("IH" $! CIDz H1
+                    with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh] Hcont").
           5: { iExists (S k), (Some h). rewrite /uart_rx_writer. iFrame "Htok".
-               iExists hh. iFrame "Hhi". iPureIntro.
-               exact (ObsTrace.ohist_le_of_ext hh h Hhext). }
+               iSplitL "Hhi";
+                 [ iExists hh; iFrame "Hhi"; iPureIntro;
+                   exact (ObsTrace.ohist_le_of_ext hh h Hhext) |].
+               (* AT [Uart1] NOTHING CONSUMES AND NOTHING LOGS: the port has
+                  no console, so its log mark never moves -- it is only
+                  re-anchored against the new pop. *)
+               iExists hg. iFrame "Hlgh". iPureIntro.
+               exact (ObsTrace.ohist_le_of_ext hg h Hgext). }
           * exact HH1regs.
           * exact HH1s1.
           * exact HH1a4.

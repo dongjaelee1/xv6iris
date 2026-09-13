@@ -1500,7 +1500,7 @@ Section ProofScheduler.
           by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hr76) in "Hpc".
         (* +0x72 jal swtch *)
-        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.scheduler + 0x76)) Rra (mword_of_int 1518 : mword 21)
+        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.scheduler + 0x76)) Rra (mword_of_int 1524 : mword 21)
                   M4 (av - 12)%nat false ltac:(vm_compute; discriminate) ltac:(rdok)
                   ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
         { iApply (schi_76 with "Htext"). }
@@ -1508,7 +1508,7 @@ Section ProofScheduler.
         iIntros "Hcg Hpc".
         set (Mc := <[Regidx Rra := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.scheduler + 0x76) : mword 64) 4)]> M4).
         change (<[Regidx Rra := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.scheduler + 0x76) : mword 64) 4)]> M4) with Mc.
-        assert (Hrsw : add_vec (mword_of_int (KernelSyms.scheduler + 0x76) : mword 64) (sign_extend' 64 (mword_of_int 1518 : mword 21))
+        assert (Hrsw : add_vec (mword_of_int (KernelSyms.scheduler + 0x76) : mword 64) (sign_extend' 64 (mword_of_int 1524 : mword 21))
                        = mword_of_int KernelSyms.swtch) by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hrsw) in "Hpc".
         (* the swtch call site's register facts *)

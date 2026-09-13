@@ -852,7 +852,7 @@ Section KexitLoop.
         iEval (rewrite Hpp42) in "Hpc".
         (* +0x42 jal ra,fileclose *)
         iApply (wp_jal_s_sconf (CID := CIDm) (mword_of_int (KX + 0x42))
-                  (mword_of_int 1 : mword 5) (mword_of_int 8412 : mword 21) M3e av b
+                  (mword_of_int 1 : mword 5) (mword_of_int 8418 : mword 21) M3e av b
                   ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
                   with "Hcg Hpc []").
         { iApply (kxi_42 with "Htext"). }
@@ -860,7 +860,7 @@ Section KexitLoop.
         set (M42 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
              (add_vec_int (mword_of_int (KX + 0x42) : mword 64) 4)]> M3e).
         assert (Hjfc : add_vec (mword_of_int (KX + 0x42) : mword 64)
-                         (sign_extend' 64 (mword_of_int 8412 : mword 21)) = mword_of_int KernelSyms.fileclose)
+                         (sign_extend' 64 (mword_of_int 8418 : mword 21)) = mword_of_int KernelSyms.fileclose)
           by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hjfc) in "Hpc".
         assert (HM42ra : M42 !!! Regidx (mword_of_int 1 : mword 5)
@@ -1811,7 +1811,7 @@ Section KexitRest.
     destruct (Hinumgeo inum Hinb) as [Hiblk Hiblog].
     (* +0x4c jal ra,begin_op *)
     iApply (wp_jal_s_sconf (CID := CID0) (mword_of_int (KX + 0x4c))
-              (mword_of_int 1 : mword 5) (mword_of_int 7192 : mword 21) M av b
+              (mword_of_int 1 : mword 5) (mword_of_int 7198 : mword 21) M av b
               ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
     { iApply (kxi_4c with "Htext"). }
@@ -1819,7 +1819,7 @@ Section KexitRest.
     set (Q0 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
          (add_vec_int (mword_of_int (KX + 0x4c) : mword 64) 4)]> M).
     assert (Hjbo : add_vec (mword_of_int (KX + 0x4c) : mword 64)
-                     (sign_extend' 64 (mword_of_int 7192 : mword 21)) = mword_of_int KernelSyms.begin_op)
+                     (sign_extend' 64 (mword_of_int 7198 : mword 21)) = mword_of_int KernelSyms.begin_op)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hjbo) in "Hpc".
     assert (HQ0ra : Q0 !!! Regidx (mword_of_int 1 : mword 5)
@@ -1887,7 +1887,7 @@ Section KexitRest.
       by (rewrite /Q1 upd_ne; [exact Hbo_s4 | vm_compute; discriminate]).
     (* +0x54 jal ra,iput *)
     iApply (wp_jal_s_sconf (CID := CID3) (mword_of_int (KX + 0x54))
-              (mword_of_int 1 : mword 5) (mword_of_int 4904 : mword 21) Q1 av b
+              (mword_of_int 1 : mword 5) (mword_of_int 4910 : mword 21) Q1 av b
               ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
     { iApply (kxi_54 with "Htext"). }
@@ -1895,7 +1895,7 @@ Section KexitRest.
     set (Q2 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
          (add_vec_int (mword_of_int (KX + 0x54) : mword 64) 4)]> Q1).
     assert (Hjip : add_vec (mword_of_int (KX + 0x54) : mword 64)
-                     (sign_extend' 64 (mword_of_int 4904 : mword 21)) = mword_of_int KernelSyms.iput)
+                     (sign_extend' 64 (mword_of_int 4910 : mword 21)) = mword_of_int KernelSyms.iput)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hjip) in "Hpc".
     assert (HQ2ra : Q2 !!! Regidx (mword_of_int 1 : mword 5)
@@ -1944,7 +1944,7 @@ Section KexitRest.
       exact HQ2s4. }
     (* +0x58 jal ra,end_op *)
     iApply (wp_jal_s_sconf (CID := CID5) (mword_of_int (KX + 0x58))
-              (mword_of_int 1 : mword 5) (mword_of_int 7320 : mword 21) mip av b
+              (mword_of_int 1 : mword 5) (mword_of_int 7326 : mword 21) mip av b
               ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
     { iApply (kxi_58 with "Htext"). }
@@ -1952,7 +1952,7 @@ Section KexitRest.
     set (Q3 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
          (add_vec_int (mword_of_int (KX + 0x58) : mword 64) 4)]> mip).
     assert (Hjeo : add_vec (mword_of_int (KX + 0x58) : mword 64)
-                     (sign_extend' 64 (mword_of_int 7320 : mword 21)) = mword_of_int KernelSyms.end_op)
+                     (sign_extend' 64 (mword_of_int 7326 : mword 21)) = mword_of_int KernelSyms.end_op)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hjeo) in "Hpc".
     assert (HQ3ra : Q3 !!! Regidx (mword_of_int 1 : mword 5)

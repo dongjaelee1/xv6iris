@@ -109,7 +109,7 @@ Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 (* ---- +0x28 jal fsinit ---- *)
 Lemma fkr_fsinit_tgt :
   add_vec (mword_of_int (FR + 0x28) : mword 64)
-    (sign_extend' 64 (mword_of_int 7250 : mword 21))
+    (sign_extend' 64 (mword_of_int 7256 : mword 21))
   = (mword_of_int KernelSyms.fsinit : mword 64).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
@@ -157,7 +157,7 @@ Proof. apply stk_push. apply bv_eq; vm_compute; reflexivity. Qed.
 (* ---- +0x52 jal kexec ---- *)
 Lemma fkr_kexec_tgt :
   add_vec (mword_of_int (FR + 0x52) : mword 64)
-    (sign_extend' 64 (mword_of_int 11946 : mword 21))
+    (sign_extend' 64 (mword_of_int 11952 : mword 21))
   = (mword_of_int KernelSyms.kexec : mword 64).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 

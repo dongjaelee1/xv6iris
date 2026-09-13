@@ -36,6 +36,7 @@ Require Import KernelDecode17.
 Require Import KernelDecode18.
 Require Import KernelDecode19.
 Require Import KernelDecode20.
+Require Import KernelDecode21.
 Require Import KernelDecode22.
 Require Import KernelDecode23.
 Require Import KernelDecode24.
@@ -218,9 +219,9 @@ Section CodeSched.
   Proof. mk_base (KernelSyms.sched + 0x6a) (mword_of_int 0x06048513 : mword 32)
     (mword_of_int (KernelSyms.sched + 0x6a) : mword 64) (ITYPE (mword_of_int 96 : mword 12, Regidx (mword_of_int 9), Regidx (mword_of_int 10), ADDI)) kd_06048513. Qed.
 
-  Lemma sdi_6e : kernel_text -∗ instr (mword_of_int (KernelSyms.sched + 0x6e) : mword 64) false (JAL (mword_of_int 1346 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.sched + 0x6e) (mword_of_int 0x542000ef : mword 32)
-    (mword_of_int (KernelSyms.sched + 0x6e) : mword 64) (JAL (mword_of_int 1346 : mword 21, Regidx (mword_of_int 1))) kd_542000ef. Qed.
+  Lemma sdi_6e : kernel_text -∗ instr (mword_of_int (KernelSyms.sched + 0x6e) : mword 64) false (JAL (mword_of_int 1352 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.sched + 0x6e) (mword_of_int 0x548000ef : mword 32)
+    (mword_of_int (KernelSyms.sched + 0x6e) : mword 64) (JAL (mword_of_int 1352 : mword 21, Regidx (mword_of_int 1))) kd_548000ef. Qed.
 
   Lemma sdi_72 : kernel_text -∗ instr (mword_of_int (KernelSyms.sched + 0x72) : mword 64) true (RTYPE (Regidx (mword_of_int 4), zreg, Regidx (mword_of_int 15), ADD)).
   Proof. mk_rvc (KernelSyms.sched + 0x72) (mword_of_int 0x8792 : mword 16)

@@ -20,6 +20,7 @@ Require Import KernelDecode00.
 Require Import KernelDecode01.
 Require Import KernelDecode04.
 Require Import KernelDecode05.
+Require Import KernelDecode06.
 Require Import KernelDecode07.
 Require Import KernelDecode09.
 Require Import KernelDecode10.
@@ -27,15 +28,13 @@ Require Import KernelDecode12.
 Require Import KernelDecode13.
 Require Import KernelDecode14.
 Require Import KernelDecode15.
-Require Import KernelDecode16.
-Require Import KernelDecode17.
 Require Import KernelDecode19.
 Require Import KernelDecode20.
 Require Import KernelDecode21.
 Require Import KernelDecode23.
+Require Import KernelDecode24.
+Require Import KernelDecode25.
 Require Import KernelDecode26.
-Require Import KernelDecode27.
-Require Import KernelDecode28.
 Require Import KernelDecode29.
 Local Open Scope Z_scope.
 Import Defs.
@@ -79,9 +78,9 @@ Section CodePipeclose.
   Proof. mk_rvc (KernelSyms.pipeclose + 0xe) (mword_of_int 0x892e : mword 16)
     (mword_of_int (KernelSyms.pipeclose + 0xe) : mword 64) (RTYPE (Regidx (mword_of_int 11), zreg, Regidx (mword_of_int 18), ADD)) kd_892e exec_execute_C_MV. Qed.
 
-  Lemma pci_10 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x10) : mword 64) false (JAL (mword_of_int 2082352 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipeclose + 0x10) (mword_of_int 0xe30fc0ef : mword 32)
-    (mword_of_int (KernelSyms.pipeclose + 0x10) : mword 64) (JAL (mword_of_int 2082352 : mword 21, Regidx (mword_of_int 1))) kd_e30fc0ef. Qed.
+  Lemma pci_10 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x10) : mword 64) false (JAL (mword_of_int 2082346 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipeclose + 0x10) (mword_of_int 0xe2afc0ef : mword 32)
+    (mword_of_int (KernelSyms.pipeclose + 0x10) : mword 64) (JAL (mword_of_int 2082346 : mword 21, Regidx (mword_of_int 1))) kd_e2afc0ef. Qed.
 
   Lemma pci_14 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x14) : mword 64) false (BTYPE (mword_of_int 46 : mword 13, zreg, Regidx (mword_of_int 18), BEQ)).
   Proof. mk_base (KernelSyms.pipeclose + 0x14) (mword_of_int 0x02090763 : mword 32)
@@ -95,9 +94,9 @@ Section CodePipeclose.
   Proof. mk_base (KernelSyms.pipeclose + 0x1c) (mword_of_int 0x21848513 : mword 32)
     (mword_of_int (KernelSyms.pipeclose + 0x1c) : mword 64) (ITYPE (mword_of_int 536 : mword 12, Regidx (mword_of_int 9), Regidx (mword_of_int 10), ADDI)) kd_21848513. Qed.
 
-  Lemma pci_20 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x20) : mword 64) false (JAL (mword_of_int 2087434 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipeclose + 0x20) (mword_of_int 0xa0bfd0ef : mword 32)
-    (mword_of_int (KernelSyms.pipeclose + 0x20) : mword 64) (JAL (mword_of_int 2087434 : mword 21, Regidx (mword_of_int 1))) kd_a0bfd0ef. Qed.
+  Lemma pci_20 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x20) : mword 64) false (JAL (mword_of_int 2087428 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipeclose + 0x20) (mword_of_int 0xa05fd0ef : mword 32)
+    (mword_of_int (KernelSyms.pipeclose + 0x20) : mword 64) (JAL (mword_of_int 2087428 : mword 21, Regidx (mword_of_int 1))) kd_a05fd0ef. Qed.
 
   Lemma pci_24 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x24) : mword 64) false (LOAD (mword_of_int 544 : mword 12, Regidx (mword_of_int 9), Regidx (mword_of_int 15), false, 4)).
   Proof. mk_base (KernelSyms.pipeclose + 0x24) (mword_of_int 0x2204a783 : mword 32)
@@ -119,9 +118,9 @@ Section CodePipeclose.
   Proof. mk_rvc (KernelSyms.pipeclose + 0x30) (mword_of_int 0x8526 : mword 16)
     (mword_of_int (KernelSyms.pipeclose + 0x30) : mword 64) (RTYPE (Regidx (mword_of_int 9), zreg, Regidx (mword_of_int 10), ADD)) kd_8526 exec_execute_C_MV. Qed.
 
-  Lemma pci_32 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x32) : mword 64) false (JAL (mword_of_int 2082454 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipeclose + 0x32) (mword_of_int 0xe96fc0ef : mword 32)
-    (mword_of_int (KernelSyms.pipeclose + 0x32) : mword 64) (JAL (mword_of_int 2082454 : mword 21, Regidx (mword_of_int 1))) kd_e96fc0ef. Qed.
+  Lemma pci_32 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x32) : mword 64) false (JAL (mword_of_int 2082448 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipeclose + 0x32) (mword_of_int 0xe90fc0ef : mword 32)
+    (mword_of_int (KernelSyms.pipeclose + 0x32) : mword 64) (JAL (mword_of_int 2082448 : mword 21, Regidx (mword_of_int 1))) kd_e90fc0ef. Qed.
 
   Lemma pci_36 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x36) : mword 64) true (LOAD (zero_extend' 12 (concat_vec (mword_of_int 3 : mword 6) ('b"000")), sp, Regidx (mword_of_int 1), false, 8)).
   Proof. mk_rvc (KernelSyms.pipeclose + 0x36) (mword_of_int 0x60e2 : mword 16)
@@ -155,9 +154,9 @@ Section CodePipeclose.
   Proof. mk_base (KernelSyms.pipeclose + 0x46) (mword_of_int 0x21c48513 : mword 32)
     (mword_of_int (KernelSyms.pipeclose + 0x46) : mword 64) (ITYPE (mword_of_int 540 : mword 12, Regidx (mword_of_int 9), Regidx (mword_of_int 10), ADDI)) kd_21c48513. Qed.
 
-  Lemma pci_4a : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x4a) : mword 64) false (JAL (mword_of_int 2087392 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipeclose + 0x4a) (mword_of_int 0x9e1fd0ef : mword 32)
-    (mword_of_int (KernelSyms.pipeclose + 0x4a) : mword 64) (JAL (mword_of_int 2087392 : mword 21, Regidx (mword_of_int 1))) kd_9e1fd0ef. Qed.
+  Lemma pci_4a : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x4a) : mword 64) false (JAL (mword_of_int 2087386 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipeclose + 0x4a) (mword_of_int 0x9dbfd0ef : mword 32)
+    (mword_of_int (KernelSyms.pipeclose + 0x4a) : mword 64) (JAL (mword_of_int 2087386 : mword 21, Regidx (mword_of_int 1))) kd_9dbfd0ef. Qed.
 
   Lemma pci_4e : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x4e) : mword 64) true (JAL (sign_extend' 21 (concat_vec (mword_of_int 2027 : mword 11) ('b"0")), zreg)).
   Proof. mk_rvc (KernelSyms.pipeclose + 0x4e) (mword_of_int 0xbfd9 : mword 16)
@@ -167,17 +166,17 @@ Section CodePipeclose.
   Proof. mk_rvc (KernelSyms.pipeclose + 0x50) (mword_of_int 0x8526 : mword 16)
     (mword_of_int (KernelSyms.pipeclose + 0x50) : mword 64) (RTYPE (Regidx (mword_of_int 9), zreg, Regidx (mword_of_int 10), ADD)) kd_8526 exec_execute_C_MV. Qed.
 
-  Lemma pci_52 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x52) : mword 64) false (JAL (mword_of_int 2082422 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipeclose + 0x52) (mword_of_int 0xe76fc0ef : mword 32)
-    (mword_of_int (KernelSyms.pipeclose + 0x52) : mword 64) (JAL (mword_of_int 2082422 : mword 21, Regidx (mword_of_int 1))) kd_e76fc0ef. Qed.
+  Lemma pci_52 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x52) : mword 64) false (JAL (mword_of_int 2082416 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipeclose + 0x52) (mword_of_int 0xe70fc0ef : mword 32)
+    (mword_of_int (KernelSyms.pipeclose + 0x52) : mword 64) (JAL (mword_of_int 2082416 : mword 21, Regidx (mword_of_int 1))) kd_e70fc0ef. Qed.
 
   Lemma pci_56 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x56) : mword 64) true (RTYPE (Regidx (mword_of_int 9), zreg, Regidx (mword_of_int 10), ADD)).
   Proof. mk_rvc (KernelSyms.pipeclose + 0x56) (mword_of_int 0x8526 : mword 16)
     (mword_of_int (KernelSyms.pipeclose + 0x56) : mword 64) (RTYPE (Regidx (mword_of_int 9), zreg, Regidx (mword_of_int 10), ADD)) kd_8526 exec_execute_C_MV. Qed.
 
-  Lemma pci_58 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x58) : mword 64) false (JAL (mword_of_int 2081830 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipeclose + 0x58) (mword_of_int 0xc26fc0ef : mword 32)
-    (mword_of_int (KernelSyms.pipeclose + 0x58) : mword 64) (JAL (mword_of_int 2081830 : mword 21, Regidx (mword_of_int 1))) kd_c26fc0ef. Qed.
+  Lemma pci_58 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x58) : mword 64) false (JAL (mword_of_int 2081824 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipeclose + 0x58) (mword_of_int 0xc20fc0ef : mword 32)
+    (mword_of_int (KernelSyms.pipeclose + 0x58) : mword 64) (JAL (mword_of_int 2081824 : mword 21, Regidx (mword_of_int 1))) kd_c20fc0ef. Qed.
 
   Lemma pci_5c : kernel_text -∗ instr (mword_of_int (KernelSyms.pipeclose + 0x5c) : mword 64) true (JAL (sign_extend' 21 (concat_vec (mword_of_int 2029 : mword 11) ('b"0")), zreg)).
   Proof. mk_rvc (KernelSyms.pipeclose + 0x5c) (mword_of_int 0xbfe9 : mword 16)

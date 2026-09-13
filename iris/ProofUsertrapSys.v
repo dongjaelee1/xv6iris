@@ -271,13 +271,13 @@ Section UtSysBlock.
       iEval (rewrite Hpca) in "Hpc".
       (* +0xca jal kexit *)
       iApply (wp_jal_s_sconf (mword_of_int (UT + 0xca)) Rra
-                (mword_of_int 2095516 : mword 21) K1 nx false
+                (mword_of_int 2095510 : mword 21) K1 nx false
                 ltac:(vm_compute; discriminate) ltac:(rdok)
                 ltac:(vm_compute; reflexivity) with "Hcg Hpc [] [-]").
       { iApply (uti_0ca with "Htext"). }
       iApply wp_next_off_intro. iIntros "Hcg Hpc".
       assert (Hkex : add_vec (mword_of_int (UT + 0xca) : mword 64)
-                       (sign_extend' 64 (mword_of_int 2095516 : mword 21))
+                       (sign_extend' 64 (mword_of_int 2095510 : mword 21))
                      = mword_of_int KernelSyms.kexit) by pcw.
       iEval (rewrite Hkex) in "Hpc".
       (* ---- THE DYING THREAD'S STACK CLOSER, BUILT HERE.  usertrap was

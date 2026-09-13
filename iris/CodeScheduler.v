@@ -222,9 +222,9 @@ Section CodeScheduler.
   Proof. mk_rvc (KernelSyms.scheduler + 0x74) (mword_of_int 0x8556 : mword 16)
     (mword_of_int (KernelSyms.scheduler + 0x74) : mword 64) (RTYPE (Regidx (mword_of_int 21), zreg, Regidx (mword_of_int 10), ADD)) kd_8556 exec_execute_C_MV. Qed.
 
-  Lemma schi_76 : kernel_text -∗ instr (mword_of_int (KernelSyms.scheduler + 0x76) : mword 64) false (JAL (mword_of_int 1518 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.scheduler + 0x76) (mword_of_int 0x5ee000ef : mword 32)
-    (mword_of_int (KernelSyms.scheduler + 0x76) : mword 64) (JAL (mword_of_int 1518 : mword 21, Regidx (mword_of_int 1))) kd_5ee000ef. Qed.
+  Lemma schi_76 : kernel_text -∗ instr (mword_of_int (KernelSyms.scheduler + 0x76) : mword 64) false (JAL (mword_of_int 1524 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.scheduler + 0x76) (mword_of_int 0x5f4000ef : mword 32)
+    (mword_of_int (KernelSyms.scheduler + 0x76) : mword 64) (JAL (mword_of_int 1524 : mword 21, Regidx (mword_of_int 1))) kd_5f4000ef. Qed.
 
   Lemma schi_7a : kernel_text -∗ instr (mword_of_int (KernelSyms.scheduler + 0x7a) : mword 64) true (RTYPE (Regidx (mword_of_int 4), zreg, Regidx (mword_of_int 15), ADD)).
   Proof. mk_rvc (KernelSyms.scheduler + 0x7a) (mword_of_int 0x8792 : mword 16)

@@ -1255,7 +1255,7 @@ Section ProofSched.
     (* ------------------------------------------------------------------ *)
     (* +0x6e: jal swtch, then the swtch(&p->context, &c->context) call.    *)
     (* ------------------------------------------------------------------ *)
-    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.sched + 0x6e)) (mword_of_int 1 : mword 5) (mword_of_int 1346 : mword 21)
+    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.sched + 0x6e)) (mword_of_int 1 : mword 5) (mword_of_int 1352 : mword 21)
               D14 (av - 6)%nat false ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
     { iApply (sdi_6e with "Htext"). }
@@ -1263,7 +1263,7 @@ Section ProofSched.
     iIntros "Hcg Hpc".
     set (Mc := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.sched + 0x6e) : mword 64) 4)]> D14).
     change (<[Regidx (mword_of_int 1 : mword 5) := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.sched + 0x6e) : mword 64) 4)]> D14) with Mc.
-    assert (Hpcsw : add_vec (mword_of_int (KernelSyms.sched + 0x6e) : mword 64) (sign_extend' 64 (mword_of_int 1346 : mword 21))
+    assert (Hpcsw : add_vec (mword_of_int (KernelSyms.sched + 0x6e) : mword 64) (sign_extend' 64 (mword_of_int 1352 : mword 21))
                     = mword_of_int KernelSyms.swtch) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpcsw) in "Hpc".
     (* call-site register facts. *)

@@ -3,6 +3,7 @@
    of its proof.
 
      int kkill(int pid) {
+       if (pid == 0) return -1;
        for (struct proc *p = proc; p < &proc[NPROC]; p++) {
          acquire(&p->lock);
          if (p->pid == pid) {
@@ -16,11 +17,12 @@
        return -1;
      }
 
-   @ KernelSyms.kkill = 0x800020b8, thirty-five instructions: a 48-byte
-   ra/s0/s1/s2/s3 frame (slot 0 is padding), s1 the proc[] cursor, s2 the
-   [pid] argument, s3 = &proc[NPROC] (which the linker places at
-   <tickslock>), acquire/release per slot, one shared release-and-return-0
-   block at +0x4a reached from both arms of the SLEEPING test.
+   @ KernelSyms.kkill = 0x800021a4, forty-three instructions: the [pid == 0]
+   guard at +0x00 branching to its own [c.li a0,-1 ; c.ret] tail at +0x68,
+   then a 48-byte ra/s0/s1/s2/s3 frame (slot 0 is padding), s1 the proc[]
+   cursor, s2 the [pid] argument, s3 = &proc[NPROC] (which the linker places
+   at <tickslock>), acquire/release per slot, one shared release-and-return-0
+   block at +0x4c reached from both arms of the SLEEPING test.
 
    THE POINT.  kkill is the second function -- with wakeup -- that walks
    procs it does not own, and like wakeup it reaches everything it touches

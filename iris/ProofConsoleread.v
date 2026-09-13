@@ -2427,7 +2427,7 @@ Section ProofConsoleread.
                    = mword_of_int (CR + 0xa8)) by pcw.
     iEval (rewrite Hpa8) in "Hpc".
     (* ---- +0xa8 jal either_copyout ---- *)
-    iApply (wp_jal_s_sconf (mword_of_int (CR + 0xa8)) Rra (mword_of_int 8512 : mword 21)
+    iApply (wp_jal_s_sconf (mword_of_int (CR + 0xa8)) Rra (mword_of_int 8518 : mword 21)
               G4 (trap_res true + (av - 12))%nat false ltac:(nz) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (cnri_0a8 with "Ht"). }
@@ -2435,7 +2435,7 @@ Section ProofConsoleread.
     set (G5 := <[Regidx Rra := regval_into_reg
         (add_vec_int (mword_of_int (CR + 0xa8) : mword 64) 4)]> G4).
     assert (Hjeco : add_vec (mword_of_int (CR + 0xa8) : mword 64)
-                      (sign_extend' 64 (mword_of_int 8512 : mword 21))
+                      (sign_extend' 64 (mword_of_int 8518 : mword 21))
                     = mword_of_int KernelSyms.either_copyout) by pcw.
     iEval (rewrite Hjeco) in "Hpc".
     assert (HG5a0 : G5 !!! Regidx Ra0 = (mword_of_int 1 : mword 64)).
@@ -3034,7 +3034,7 @@ Section ProofConsoleread.
                    = (mword_of_int (CR + 0x4c) : mword 64)) by pcw.
     iEval (rewrite Hp4c) in "Hpc".
     (* ---- +0x4c jal ra,killed ---- *)
-    iApply (wp_jal_s_sconf (mword_of_int (CR + 0x4c)) Rra (mword_of_int 8296 : mword 21)
+    iApply (wp_jal_s_sconf (mword_of_int (CR + 0x4c)) Rra (mword_of_int 8302 : mword 21)
               mmp (trap_res true + (av - 12))%nat false ltac:(nz) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (cnri_04c with "Ht"). }
@@ -3042,7 +3042,7 @@ Section ProofConsoleread.
     set (W2 := <[Regidx Rra := regval_into_reg
         (add_vec_int (mword_of_int (CR + 0x4c) : mword 64) 4)]> mmp).
     assert (Hjkl : add_vec (mword_of_int (CR + 0x4c) : mword 64)
-                     (sign_extend' 64 (mword_of_int 8296 : mword 21))
+                     (sign_extend' 64 (mword_of_int 8302 : mword 21))
                    = mword_of_int KernelSyms.killed) by pcw.
     iEval (rewrite Hjkl) in "Hpc".
     assert (HW2a0 : W2 !!! Regidx Ra0 = proc_addr jp)

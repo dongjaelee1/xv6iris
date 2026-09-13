@@ -2121,6 +2121,72 @@ Section DevLoops.
          obs_hist_lb_o o' ∗
          in_res_at Uart0 (default [] o') (pops ++ [(h, c, cs)]) dl ∗ Φ)%I.
 
+  (* THE ECHO'S OWN LINK: TWO RESOURCES, ONE OF THEM READ-ONLY (coordinator's
+     C2 amendment, 2026-09-13).  A plain [out_link] hands the application
+     only the OUTPUT claim, and with the bytes going out BEFORE the log
+     entry is filed that is not enough: at the store the application has to
+     decide that this byte is the echo of the NEXT input, and nothing but
+     the ORDER FACT -- every history already logged is strictly below [h] --
+     refutes a re-echo of an input it has already accounted for.  That fact
+     lives inside the port invariant (the log's high-water half against
+     [log_top pops]), so the echo's link is handed the input claim as well,
+     AT ITS OWN WITNESS AND UNCHANGED: only the output moves.
+
+     THE WRITE PATH IS UNTOUCHED.  [out_link] and [cons_out_chain] are what
+     a process's own [write(2)] spends, and a writer that is not answering
+     an input needs no order fact. *)
+  Definition echo_link (h : list mobs) (b : bv 8) (Φ : iProp Σ) : iProp Σ :=
+    (∀ (o o' : option (list mobs)) (acc : list (bv 8))
+       (pops : list ConsLog.log_entry) (dl : list (list mobs * bv 8)),
+       obs_hist_lb_o o -∗ out_res_at Uart0 (default [] o) acc -∗
+       obs_hist_lb_o o' -∗ in_res_at Uart0 (default [] o') pops dl -∗
+       ⌜forall e, e ∈ pops -> hist_ext (ConsLog.le_hist e) h⌝ -∗
+       (* ...AND THE WIRE BELOW THE ACCEPTED SEQUENCE, AT THE BYTE'S OWN
+          HISTORY (the coordinator's second C2 amendment).  The application
+          has to place the transcript it owes -- which the discipline pins
+          BELOW the wire as it stood when the byte was typed -- inside the
+          bytes the UART has accepted, and no other premise reaches from
+          one to the other.
+
+          THE WITNESS HISTORY IS [h] ITSELF and there is no separate [hc]:
+          [h] is exactly the point the discipline speaks at, the shift's
+          own [obs_hist_lb h] already witnesses its reality, and a later
+          history would give a LONGER wire, which is not what D2 wants.
+          The kernel proves it at the store from a persistent bound on the
+          drained prefix filed beside the byte's tag when it arrived -- see
+          [uart_col]'s column -- so no trace authority is needed at a CPU
+          MMIO step and the mask stays the open port invariant's. *)
+       ⌜obs_wire Uart0 (open_seg h) `prefix_of` acc⌝
+       ={⊤ ∖ ↑uartN Uart0}=∗
+       ∃ o'' : option (list mobs),
+         obs_hist_lb_o o'' ∗ out_res_at Uart0 (default [] o'') (acc ++ [b]) ∗
+         obs_hist_lb_o o' ∗ in_res_at Uart0 (default [] o') pops dl ∗ Φ)%I.
+
+  (* the per-byte chain of them, [out_chain]'s twin on the echo path *)
+  Fixpoint echo_chain (h : list mobs) (bs : list (bv 8)) (Φ : iProp Σ) : iProp Σ :=
+    match bs with
+    | [] => Φ
+    | b :: bs' => echo_link h b (echo_chain h bs' Φ)
+    end%I.
+
+  Lemma echo_link_mono (h : list mobs) (b : bv 8) (Φ Φ' : iProp Σ) :
+    (Φ -∗ Φ') -∗ echo_link h b Φ -∗ echo_link h b Φ'.
+  Proof.
+    iIntros "HΦ H" (o o' acc pops dl) "Hlb Hres Hlb' Hires %Hord %Hwire".
+    iMod ("H" $! o o' acc pops dl with "Hlb Hres Hlb' Hires [//] [//]")
+      as (o'') "(Hlb'' & Hres' & Hlb2 & Hires' & HP)".
+    iModIntro. iExists o''. iFrame "Hlb'' Hres' Hlb2 Hires'". by iApply "HΦ".
+  Qed.
+
+  Lemma echo_chain_mono (h : list mobs) (bs : list (bv 8)) (Φ Φ' : iProp Σ) :
+    (Φ -∗ Φ') -∗ echo_chain h bs Φ -∗ echo_chain h bs Φ'.
+  Proof.
+    iIntros "HΦ H". iInduction bs as [| b bs] "IH" forall (Φ Φ');
+      [by iApply "HΦ" |].
+    cbn [echo_chain]. iApply (echo_link_mono with "[HΦ] H").
+    iIntros "H". iApply ("IH" with "HΦ H").
+  Qed.
+
   (* THE ECHO RUN: the bytes FIRST, the log entry LAST, and the run is
      STOPPABLE at every prefix.
 
@@ -2146,7 +2212,7 @@ Section DevLoops.
     match bs with
     | [] => in_append h c pre Φ
     | b :: bs' => in_append h c pre Φ
-                  ∧ out_link Uart0 b (in_run h c (pre ++ [b]) bs' Φ)
+                  ∧ echo_link h b (in_run h c (pre ++ [b]) bs' Φ)
     end%I.
 
   (* the whole-run form, for an arm whose output is known: run to the end *)
@@ -2177,7 +2243,7 @@ Section DevLoops.
   Lemma in_run_step (h : list mobs) (c : bv 8) (pre : list (bv 8))
       (b : bv 8) (bs : list (bv 8)) (Φ : iProp Σ) :
     in_run h c pre (b :: bs) Φ -∗
-      out_link Uart0 b (in_run h c (pre ++ [b]) bs Φ).
+      echo_link h b (in_run h c (pre ++ [b]) bs Φ).
   Proof. by iIntros "[_ $]". Qed.
 
   (* THE LOOP BRIDGE, [out_chain_app]'s twin: a writer that will put out
@@ -2188,12 +2254,12 @@ Section DevLoops.
   Lemma in_run_app (h : list mobs) (c : bv 8) (pre bs1 bs2 : list (bv 8))
       (Φ : iProp Σ) :
     in_run h c pre ((bs1 ++ bs2)%list) Φ -∗
-      out_chain Uart0 bs1 (in_run h c ((pre ++ bs1)%list) bs2 Φ).
+      echo_chain h bs1 (in_run h c ((pre ++ bs1)%list) bs2 Φ).
   Proof.
     iIntros "H". iInduction bs1 as [| b bs1] "IH" forall (pre).
     - by rewrite app_nil_r.
-    - cbn [out_chain app]. iDestruct (in_run_step with "H") as "H".
-      iApply (out_link_mono with "[] H"). iIntros "H".
+    - cbn [echo_chain app]. iDestruct (in_run_step with "H") as "H".
+      iApply (echo_link_mono with "[] H"). iIntros "H".
       iSpecialize ("IH" $! ((pre ++ [b])%list) with "H").
       by rewrite -app_assoc.
   Qed.
@@ -2202,12 +2268,12 @@ Section DevLoops.
   Lemma in_run_full (h : list mobs) (c : bv 8) (pre bs : list (bv 8))
       (Φ : iProp Σ) :
     in_run h c pre bs Φ -∗
-      out_chain Uart0 bs (in_append h c ((pre ++ bs)%list) Φ).
+      echo_chain h bs (in_append h c ((pre ++ bs)%list) Φ).
   Proof.
     iIntros "H".
     iDestruct (in_run_app h c pre bs [] Φ with "[H]") as "H";
       [by rewrite app_nil_r |].
-    iApply (out_chain_mono with "[] H"). iIntros "H".
+    iApply (echo_chain_mono with "[] H"). iIntros "H".
     iApply (in_run_stop with "H").
   Qed.
 
@@ -2239,6 +2305,16 @@ Section DevLoops.
     iModIntro. iExists o. by iFrame "Hlb Hres HΦ".
   Qed.
 
+  (* the echo's link off the OUTPUT licence alone: the input claim is
+     passed straight back, so a licensed writer owes nothing for it *)
+  Lemma echo_link_of_licence (h : list mobs) (b : bv 8) (Φ : iProp Σ) :
+    out_licence -∗ Φ -∗ echo_link h b Φ.
+  Proof.
+    iIntros "#Hlic HΦ" (o o' acc pops dl) "#Hlb Hres #Hlb' Hires _ _".
+    iMod ("Hlic" $! (default [] o) acc b with "Hres") as "Hres".
+    iModIntro. iExists o. by iFrame "Hlb Hres Hlb' Hires HΦ".
+  Qed.
+
   Lemma in_run_of_licence (h : list mobs) (c : bv 8) (pre bs : list (bv 8))
       (Φ : iProp Σ) : in_licence -∗ out_licence -∗ Φ -∗ in_run h c pre bs Φ.
   Proof.
@@ -2247,7 +2323,7 @@ Section DevLoops.
       [by iApply (in_append_of_licence with "Hil HΦ") |].
     cbn [in_run]. iSplit.
     - by iApply (in_append_of_licence with "Hil HΦ").
-    - iApply (out_link_of_licence b with "Hol"). by iApply "IH".
+    - iApply (echo_link_of_licence h b with "Hol"). by iApply "IH".
   Qed.
 
   Lemma read_link_of_licence (ws : list (list mobs * bv 8)) (Φ : iProp Σ) :
@@ -2317,16 +2393,19 @@ Section DevLoops.
      nothing else, and [uart_inv_body] is TIMELESS, so the whole append is
      one [|={E}=>] with no machine step of its own -- the shape
      [ProofMain]'s PLIC deposit already uses. *)
+  (* AT [⊤] AND NOT AT AN ARBITRARY MASK: [in_append]'s own fupd is at
+     [⊤ ∖ ↑uartN Uart0] -- what the STORE leaf's open port invariant leaves,
+     which is what fixes it -- so the only mask this accessor can be stated
+     at is the one whose opening produces exactly that. *)
   Lemma uart_inv_append (γ : uart_names) (hg : option (list mobs))
-      (h : list mobs) (c : bv 8) (cs : list (bv 8)) (Φ : iProp Σ) (E : coPset) :
-    ↑uartN Uart0 ⊆ E ->
+      (h : list mobs) (c : bv 8) (cs : list (bv 8)) (Φ : iProp Σ) :
     ohist_ext hg h ->
     obs_ends_in Uart0 h c ->
     ConsLog.cons_echo c cs ->
     uart_inv Uart0 γ -∗ uart_log_hi γ (1/2) hg -∗ in_append h c cs Φ
-      ={E}=∗ uart_log_hi γ (1/2) (Some h) ∗ Φ.
+      ={⊤}=∗ uart_log_hi γ (1/2) (Some h) ∗ Φ.
   Proof.
-    intros HE Hx Hends Hecho. iIntros "#Hinv Hhi Hap".
+    intros Hx Hends Hecho. iIntros "#Hinv Hhi Hap".
     iInv "Hinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl)".
     iMod (in_claim_append Uart0 γ hg h c cs Φ eq_refl Hx Hends Hecho

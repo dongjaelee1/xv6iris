@@ -396,9 +396,19 @@ Section SpecFileread.
      ([ConsoleInv.devsw_read_val_is_console]: nothing but consoleinit ever
      writes [devsw], and it writes one entry), and
      [fileread_devsw_of_console] is where it is discharged. *)
+  (* ...AND THE DISJUNCTION IS EXCLUSIVE (lane KILL-PAY, K4(b)(i)).  The
+     null slot is a slot that is NOT the console's: [consoleinit] fills
+     [devsw[CONSOLE]] with a symbol that is not null, so a cell the code
+     found empty cannot be the console's cell.  Without the left arm's
+     [mj <> CONSOLE] the walk's [devsw[major].read == NULL] exit would
+     still have to answer for a console read -- and that exit returns -1
+     while paying nothing, which is exactly what
+     [console_receipt]'s -1 arm may no longer accept for free
+     ([fileread_extra_dev_m1]).  It is read off the table at
+     [fileread_devsw_of_console] ([ConsoleInv.devsw_read_val_other]). *)
   Definition fileread_dev_env (fn : fread_names) (mj : Z) : iProp Σ :=
     (if decide (0 <= mj <= NDEV_max)
-     then ⌜frn_rp fn mj = (zero_reg : mword 64)
+     then ⌜(mj <> CONSOLE /\ frn_rp fn mj = (zero_reg : mword 64))
            \/ (mj = CONSOLE
                 /\ frn_rp fn mj
                    = (mword_of_int KernelSyms.consoleread : mword 64))⌝ ∗
@@ -423,7 +433,7 @@ Section SpecFileread.
   Definition fileread_devsw (fn : fread_names) : iProp Σ :=
     (fileread_dev_caps fn ∗
      [∗ list] i ∈ seq 0 (Z.to_nat NDEV_max + 1),
-       ⌜frn_rp fn (Z.of_nat i) = (zero_reg : mword 64)
+       ⌜(Z.of_nat i <> CONSOLE /\ frn_rp fn (Z.of_nat i) = (zero_reg : mword 64))
          \/ (Z.of_nat i = CONSOLE
               /\ frn_rp fn (Z.of_nat i)
                  = (mword_of_int KernelSyms.consoleread : mword 64))⌝ ∗
@@ -458,10 +468,11 @@ Section SpecFileread.
     iModIntro. iIntros (k i Hk) "[Hr _]".
     iSplitR.
     { iPureIntro.
-      destruct (ConsoleInv.devsw_read_val_cases (Z.of_nat i)) as [H0 | H1];
-        [ by left
-        | right; split;
-          [ exact (ConsoleInv.devsw_read_val_is_console _ H1) | exact H1 ] ]. }
+      destruct (decide (Z.of_nat i = CONSOLE)) as [Hc | Hc];
+        [ right; split;
+          [ exact Hc | rewrite Hc; exact ConsoleInv.devsw_read_val_console ]
+        | left; split;
+          [ exact Hc | exact (ConsoleInv.devsw_read_val_other _ Hc) ] ]. }
     iExact "Hr".
   Qed.
 
@@ -488,7 +499,8 @@ Section SpecFileread.
        unresolved and the destructuring pattern then fails (durable-notes.md) *)
     iDestruct (big_sepL_lookup_acc
                  (fun (_ : nat) (jj : nat) =>
-                    (⌜frn_rp fn (Z.of_nat jj) = (zero_reg : mword 64)
+                    (⌜(Z.of_nat jj <> CONSOLE
+                        /\ frn_rp fn (Z.of_nat jj) = (zero_reg : mword 64))
                       \/ (Z.of_nat jj = CONSOLE
                            /\ frn_rp fn (Z.of_nat jj)
                               = (mword_of_int KernelSyms.consoleread : mword 64))⌝ ∗
@@ -982,10 +994,26 @@ Section SpecFileread.
       (n : Z) (r : mword 64)
       (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
     ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
+      (* ...AND WHY IT IS -1 (lane KILL-PAY, K4(b)(iii)).  consoleread
+         answers -1 on exactly one exit -- the [killed] test inside its
+         wait loop -- and fileread's own [n < 0] guard returns -1 before
+         the console is reached at all.  So a caller that asked for a
+         non-negative count and got -1 back HOLDS THE KILL CREDENTIAL:
+         somebody paid for the kill that tore it down
+         ([SchedCtx.kill_paid], relayed through [SpecConsoleread]'s post).
+         Without this row the U-tier read leaf's minus-one arm is a hole
+         in the discipline -- a -1 that means nothing. *)
+      (⌜(n < 0)%Z⌝ ∨ □ riscv_kill_cred) ∗
       ∃ cur d' : nat, Rd cur d')
      ∨ ∃ (d dc cur : nat) (hs : list (list mobs))
          (sl : list (list mobs * bv 8)),
          ⌜Z.of_nat d = bv_unsigned r⌝ ∗
+         (* ...AND THE RUN IS NO LONGER THAN THE REQUEST, relayed verbatim
+            from [SpecConsoleread]'s post.  It is what tells a caller
+            holding [fileread_ret]'s -1 alternative that THIS arm is not
+            the one it is on: [bv_unsigned] of the -1 word is 2^64-1, and
+            a run that long is not below a 32-bit request. *)
+         ⌜(Z.of_nat d <= Z.max 0 n)%Z⌝ ∗
          (* THE CURSOR'S TWO CONTROL-FLOW ROWS, relayed verbatim from
             [SpecConsoleread]'s post (which says why they are true of the
             code).  They sit HERE, above the window disjunction, because
@@ -1059,10 +1087,12 @@ Section SpecFileread.
   Lemma console_receipt_m1 (P : uptd) (Rd : nat -> nat -> iProp Σ)
       (n : Z) (cur d' : nat)
       (M' : gmap Z (bv 8)) (addr : mword 64) :
+    (⌜(n < 0)%Z⌝ ∨ □ riscv_kill_cred) -∗
     Rd cur d' -∗
     console_receipt P Rd n (mword_of_int (-1) : mword 64) M' addr.
   Proof.
-    iIntros "Hrd". rewrite /console_receipt. iLeft. iSplitR; [done|].
+    iIntros "Hwhy Hrd". rewrite /console_receipt. iLeft. iSplitR; [done|].
+    iSplitL "Hwhy"; [ iExact "Hwhy" | ].
     iExists cur, d'. iExact "Hrd".
   Qed.
 
@@ -1075,6 +1105,9 @@ Section SpecFileread.
       (Rd : nat -> nat -> iProp Σ)
       (hs : list (list mobs)) (sl : list (list mobs * bv 8)) :
     Z.of_nat d = bv_unsigned r ->
+    (* the run is no longer than the request -- [SpecConsoleread]'s own
+       row, relayed (lane KILL-PAY, K4(b)(iii)) *)
+    (Z.of_nat d <= Z.max 0 n)%Z ->
     (Z.of_nat d = Z.max 0 n -> dc = d) ->
     (d = 0%nat -> (0 < n)%Z -> dc = (d + 1)%nat) ->
     cons_window sl cur d bs hs ->
@@ -1086,11 +1119,12 @@ Section SpecFileread.
     Rd cur dc -∗
     console_receipt P Rd n r (umem_wr M addr d bs) addr.
   Proof.
-    intros Hd Hb1 Hb4 (Hsl & Hhl & Hwin) Hch.
+    intros Hd Hdmax Hb1 Hb4 (Hsl & Hhl & Hwin) Hch.
     iIntros "Hts Hlb #Hsw Hrd".
     rewrite /console_receipt. iRight. iExists d, dc, cur, hs, sl.
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [by iPureIntro |].
     iSplitR.
     { iPureIntro. intros Hlin j Hj.
       destruct (Hwin j Hj) as (h & b & Hsj & Hhj & Hends & Hbj).
@@ -1116,6 +1150,7 @@ Section SpecFileread.
       (Rd : nat -> nat -> iProp Σ)
       (hs : list (list mobs)) (sl : list (list mobs * bv 8)) :
     Z.of_nat d = bv_unsigned r ->
+    (Z.of_nat d <= Z.max 0 n)%Z ->
     (* THE CONTROL-FLOW ROWS HOLD HERE TOO: which exit fired is not
        something a second reader can change (lane CONS-ROWS, B1/B4). *)
     (Z.of_nat d = Z.max 0 n -> dc = d) ->
@@ -1127,11 +1162,12 @@ Section SpecFileread.
     Rd cur dc -∗
     console_receipt P Rd n r (umem_wr M addr d bs) addr.
   Proof.
-    intros Hd Hb1 Hb4 [Hhl Htie].
+    intros Hd Hdmax Hb1 Hb4 [Hhl Htie].
     iIntros "Hts Hlb #Hcred Hrd".
     rewrite /console_receipt. iRight. iExists d, dc, cur, hs, sl.
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [by iPureIntro |].
     iSplitR.
     { iPureIntro. intros Hlin j Hj.
       destruct (Htie j Hj) as (h & b & Hhj & Hends & Hbj).
@@ -1268,22 +1304,28 @@ Section SpecFileread.
      consumed the caller's [cons_acc] at [fileread_in]'s console arm, so the
      arm that pays nothing else still owes [Rd] -- at a position and an
      advance the caller is not told ([ConsoleInv.cons_acc_ret]: a lease
-     holder gets its own token back unmoved). *)
+     holder gets its own token back unmoved).
+
+     ...AND IT IS NOT THE CONSOLE'S (lane KILL-PAY, K4(b)(i)).  This is the
+     [devsw[major].read == NULL] exit, and the table's per-cell row is
+     EXCLUSIVE now ([fileread_dev_env]), so the cell the code found empty
+     is not [devsw[CONSOLE]].  The console's -1 comes from consoleread
+     itself, where the kill credential is, and only that one may take
+     [console_receipt]'s minus-one arm. *)
   Lemma fileread_extra_dev_m1 (pt : uptd) rb wb (mj : Z) n F Rd P M' addr :
+    mj <> CONSOLE ->
     fileread_in (FdOpen rb wb (FdDevice mj)) F Rd P -∗ P ==∗
     fileread_extra pt (FdOpen rb wb (FdDevice mj)) n F Rd P
         (mword_of_int (-1) : mword 64) M' addr.
   Proof.
+    intro Hne.
     rewrite /fileread_extra /fileread_extra_core /fileread_in.
     destruct rb;
       [ | iIntros "H HP"; iDestruct ("H" with "HP") as "H"; iModIntro;
           iFrame "H"; by iPureIntro ].
-    case_decide as Hmj;
-      [ | iIntros "H HP"; iDestruct ("H" with "HP") as "H"; iModIntro;
-          by iFrame "H" ].
-    iIntros "H HP". iDestruct ("H" with "HP") as "H".
-    iMod (cons_acc_ret with "H") as (cur dc) "[HP Hrd]".
-    iModIntro. iFrame "HP". iApply (console_receipt_m1 with "Hrd").
+    case_decide as Hmj; [ exfalso; exact (Hne Hmj) | ].
+    iIntros "H HP"; iDestruct ("H" with "HP") as "H"; iModIntro;
+      by iFrame "H".
   Qed.
 
   Lemma fileread_extra_dev_console (pt : uptd) wb n F Rd P r M' addr :
@@ -1325,12 +1367,13 @@ Section SpecFileread.
   Lemma fileread_extra_of_dev_m1 (pt : uptd) (inum : mword 32) (γo : gname) (C : fcontent)
       (st : fdstate) n F Rd P M' addr :
     fdstate_ok inum γo C st -> fc_type C = FD_DEVICE ->
+    bv_unsigned (fc_major C) <> CONSOLE ->
     fileread_in st F Rd P -∗ P ==∗
     fileread_extra pt st n F Rd P (mword_of_int (-1) : mword 64) M' addr.
   Proof.
-    intros Hok Ht.
+    intros Hok Ht Hne.
     destruct (fdstate_ok_device inum γo C st Hok Ht) as (rb & wb & ->).
-    iIntros "Hrd HP". iApply (fileread_extra_dev_m1 with "Hrd HP").
+    iIntros "Hrd HP". iApply (fileread_extra_dev_m1 _ _ _ _ _ _ _ _ _ _ Hne with "Hrd HP").
   Qed.
 
   (* the majors that pay nothing, at the same key *)
@@ -1470,7 +1513,13 @@ Section SpecFileread.
             by iFrame "H" ].
       iIntros "H HP". iDestruct ("H" with "HP") as "H".
       iMod (cons_acc_ret with "H") as (cur dc) "[HP Hrd]".
-      iModIntro. iFrame "HP". iApply (console_receipt_m1 with "Hrd").
+      iModIntro. iFrame "HP".
+      (* THE REASON THIS ONE IS -1 IS THE GUARD ITSELF (lane KILL-PAY,
+         K4(b)(iii)): the request was negative, so no kill is claimed and
+         none is owed.  A caller that asked for a non-negative count reads
+         the other disjunct. *)
+      iApply (console_receipt_m1 with "[] Hrd").
+      iLeft. iPureIntro. exact Hn.
   Qed.
 
 End SpecFileread.

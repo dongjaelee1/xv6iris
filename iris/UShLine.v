@@ -472,20 +472,28 @@ Section UShLine.
       (* the lazy flag, cashed on the key the call ran at *)
       pose proof (Hlazy Hlz) as Hlf.
       iEval (rewrite /console_receipt) in "Hrec".
-      iDestruct "Hrec" as "[[%Hm1 Hrd] | Hw]".
+      iDestruct "Hrec" as "[(%Hm1 & #Hwhy & Hrd) | Hw]".
       + (* THE KILLED ARM: the token comes back somewhere and there is no
-           window ([UkSh.ush_read_ans]'s middle disjunct) *)
+           window ([UkSh.ush_read_ans]'s middle disjunct).
+           ...AND IT REALLY IS THE KILLED ONE (lane KILL-PAY, K4(b)(iv)):
+           the receipt's minus-one arm says the answer is -1 because the
+           request was negative or because the credential was paid, and
+           sh's request is a [nat] -- so what comes out is the
+           credential. *)
         iDestruct "Hrd" as (cur dc) "Hrd".
         iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hrd] Hbuf Hrun");
           [ lia | exact Hgf | ].
         rewrite /UkSh.ush_read_ans /UkSh.ush_pos. iRight. iLeft.
         iSplitR; [ by iPureIntro | ].
+        iSplitR.
+        { iDestruct "Hwhy" as "[%Hneg | #Hc]"; [ | iRight; iExact "Hc" ].
+          exfalso. rewrite Hcnt in Hneg. lia. }
         rewrite /ush_rd_ret.
         iDestruct "Hrd" as "[[_ Hp] | [_ Hp]]";
           [ iExists (n + dc)%nat; iExact "Hp" | iExact "Hp" ].
       + (* THE RECEIPT *)
         iDestruct "Hw" as (dd dc cur hs sl)
-          "(%Hdr & %Hb1 & %Hb4 & %Hhl & %Hled & #Htags & #Hlb & Hwin & Hrd)".
+          "(%Hdr & %Hdmax & %Hb1 & %Hb4 & %Hhl & %Hled & #Htags & #Hlb & Hwin & Hrd)".
         rewrite /ush_rd_ret.
         iDestruct "Hrd" as "[[%Hcur Hp] | [#HT Hp]]"; last first.
         { (* the caller's own [Rd] came back tainted *)
@@ -497,11 +505,17 @@ Section UShLine.
         (* THE ANSWER'S RANGE (lane CONS-ROWS, B3), with the [r = -1]
            alternative routed to the minus-one arm: a receipt at -1 says
            nothing about a window and the leaf does not pretend it does. *)
+        (* ...AND THE -1 ALTERNATIVE IS REFUTED HERE, not routed (lane
+           KILL-PAY, K4(b)(iii)): this is the receipt's WINDOW arm, whose
+           run is as long as the answer's unsigned reading AND no longer
+           than the request -- and the -1 word reads 2^64-1, which is not
+           below a 32-bit count. *)
         destruct Hfrret as [Hm1 | (i0 & Hri & Hi0)].
-        { iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp] Hbuf Hrun");
-            [ lia | exact Hgf | ].
-          rewrite /UkSh.ush_read_ans /UkSh.ush_pos. iRight. iLeft.
-          iSplitR; [ by iPureIntro | ]. iExists (n + dc)%nat. iExact "Hp". }
+        { exfalso. rewrite Hm1 in Hdr. rewrite Hcnt in Hdmax.
+          assert (Hbu : bv_unsigned (mword_of_int (-1) : mword 64)
+                        = 18446744073709551615%Z)
+            by (vm_compute; reflexivity).
+          rewrite Hbu in Hdr. lia. }
         assert (Hi0u : bv_unsigned r = i0).
         { rewrite Hri. rewrite <- uint_unsigned.
           apply uint_moi. unfold Z64. lia. }
@@ -586,7 +600,12 @@ Section UShLine.
       iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hpos] Hbuf Hrun");
         [ lia | exact Hgf | ].
       rewrite /UkSh.ush_read_ans /UkSh.ush_pos. iRight. iLeft.
-      iSplitR; [ by iPureIntro | ]. iExists n. iExact "Hpos".
+      iSplitR; [ by iPureIntro | ].
+      (* THE OTHER GROUND FOR A -1 (lane KILL-PAY, K4(b)(iv)): fd 0 is
+         SHUT, which is this arm of [UkSh.ush_fd0p] and costs no
+         credential. *)
+      iSplitR; [ iLeft; iPureIntro; exact Hcl | ].
+      iExists n. iExact "Hpos".
   Qed.
 
   (* =================================================================== *)

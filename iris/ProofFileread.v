@@ -446,7 +446,8 @@ Section ProofFileread.
   Local Lemma fr_dev_in (fn' : fread_names) (Cf' : fcontent) :
     (dev_major Cf' <= NDEV_max)%Z ->
     fileread_dev_env fn' (dev_major Cf') -∗
-    ⌜frn_rp fn' (dev_major Cf') = (zero_reg : mword 64)
+    ⌜(dev_major Cf' <> CONSOLE
+       /\ frn_rp fn' (dev_major Cf') = (zero_reg : mword 64))
       \/ (dev_major Cf' = CONSOLE
            /\ frn_rp fn' (dev_major Cf')
               = (mword_of_int KernelSyms.consoleread : mword 64))⌝ ∗
@@ -464,7 +465,8 @@ Section ProofFileread.
 
   Local Lemma fr_dev_in_back (fn' : fread_names) (Cf' : fcontent) :
     (dev_major Cf' <= NDEV_max)%Z ->
-    ⌜frn_rp fn' (dev_major Cf') = (zero_reg : mword 64)
+    ⌜(dev_major Cf' <> CONSOLE
+       /\ frn_rp fn' (dev_major Cf') = (zero_reg : mword 64))
       \/ (dev_major Cf' = CONSOLE
            /\ frn_rp fn' (dev_major Cf')
               = (mword_of_int KernelSyms.consoleread : mword 64))⌝ -∗
@@ -1701,7 +1703,7 @@ Section ProofFileread.
                 [CONSOLE], which is what lets this arm recognise the call it
                 is about to make as a console read and pay for it
                 ([SpecFileread.fileread_dev_env]'s tie). *)
-             destruct Hrp as [Hrp0 | [Hmjc Hrpc]].
+             destruct Hrp as [[Hmjn Hrp0] | [Hmjc Hrpc]].
              ** (* ---- NULL: +0x90 taken -> +0xba, return -1 ---- *)
                 assert (Htgtc4 : add_vec (mword_of_int (FR + 0x96) : mword 64)
                           (sign_extend' 64 (sign_extend' 13
@@ -1756,8 +1758,11 @@ Section ProofFileread.
                 iSpecialize ("Hcont" $! CIDe with "[]"); [iPureIntro; wp_next_chain|].
                 assert (HVid : upd_usM (us_upt U (pv_upt (us_V U))) (us_M U) = U)
           by (rewrite us_upt_id; apply upd_usM_id).
-                iMod (fileread_extra_of_dev_m1 _ inumx γox Cf st n Fr Rd _ _ _ Hok Htyd
-                        with "Hau HP") as "Hex".
+                (* THE NULL SLOT IS NOT THE CONSOLE'S (lane KILL-PAY,
+                   K4(b)(i)): the table's per-cell row is exclusive, so
+                   this exit's -1 owes no console receipt. *)
+                iMod (fileread_extra_of_dev_m1 _ inumx γox Cf st n Fr Rd _ _ _
+                        Hok Htyd Hmjn with "Hau HP") as "Hex".
                 iApply ("Hcont" $! mfin (mword_of_int (-1)) (pv_upt (us_V U)) 0%nat (fun _ => bv_0 8)
                           with "[%] [%] [%] [%] [%] Hcg Hcnt [Hpc]
                                 [Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv]
@@ -1780,7 +1785,7 @@ Section ProofFileread.
                 { cbn [umem_wr]. rewrite HVid. iExact "Hpriv". }
                 { iApply (fr_env_out_dev fn st Cf inumx _ Hok Htyd).
                   iApply (fr_dev_in_back fn Cf Hin with "[%] Hslot Hconslk").
-                  by left. }
+                  left. split; [ exact Hmjn | exact Hrp0 ]. }
                 { iSplitR; [iPureIntro; apply fileread_ret_m1 |]. iExact "Hex". }
              ** (* ---- the console's read: the INDIRECT CALL at +0x94 ----
 
@@ -1872,7 +1877,7 @@ Section ProofFileread.
                                 Hprocs").
                 all: try lkbelow.
                 iIntros (CIDcr Hscr mf r P' dcr dccr curcr bscr hscr slcr)
-                  "%Hcscr %Hupt %Hrr %Hdcr %Htiecr %Hb1cr %Hb4cr %Hra0
+                  "%Hcscr %Hupt %Hrr #Hwhycr %Hdcr %Htiecr %Hb1cr %Hb4cr %Hra0
                    %Htagcr #Htagsc
                    #Hlbcr #Hwin Hout Hcg Hcnt Hpc
                    Hpriv".
@@ -2014,7 +2019,13 @@ Section ProofFileread.
                             Rd _ _ _ _ Hok Htyd Emj Hrdnz with "HP").
                   destruct (Z.le_gt_cases 0 r) as [H0 | H0]; last first.
                   { assert (Hm1 : r = (-1)%Z) by lia. rewrite Hm1.
-                    iApply (console_receipt_m1 _ Rd n curcr dccr with "Hrd"). }
+                    (* WHY IT IS -1 (lane KILL-PAY, K4(b)(ii)): consoleread
+                       answers below zero only where it found the process
+                       killed, and the credential comes back with the
+                       answer. *)
+                    iApply (console_receipt_m1 _ Rd n curcr dccr with "[] Hrd").
+                    iDestruct "Hwhycr" as "[%Hge | #Hcr]";
+                      [ exfalso; lia | iRight; iExact "Hcr" ]. }
                   assert (Hdb : Z.of_nat dcr = bv_unsigned (mword_of_int r : mword 64)).
                   { assert (H31 : (2 ^ 31)%Z = 2147483648%Z)
                       by (vm_compute; reflexivity).
@@ -2032,11 +2043,11 @@ Section ProofFileread.
                     last first.
                   { iApply (console_receipt_of_dirty _ (us_M U) (m !!! Regidx Ra1)
                               n (mword_of_int r) dcr dccr curcr bscr Rd hscr slcr
-                              Hdb Hb1cr (Hb4cr H0) Htagcr
+                              Hdb Hdcr Hb1cr (Hb4cr H0) Htagcr
                               with "Htagsc Hlbcr Hcred Hrd"). }
                   iApply (console_receipt_of_run _ (us_M U) (m !!! Regidx Ra1)
                             n (mword_of_int r) dcr dccr curcr bscr Rd hscr slcr
-                            Hdb Hb1cr (Hb4cr H0) Hwincr Hchcr
+                            Hdb Hdcr Hb1cr (Hb4cr H0) Hwincr Hchcr
                             with "Htagsc Hlbcr Hswcr Hrd"). }
           ++ (* --------- the major is OUT OF RANGE: return -1 ------------
                 The [bltu] is taken before the table is ever indexed, so the
@@ -2097,8 +2108,12 @@ Section ProofFileread.
              iSpecialize ("Hcont" $! CIDe with "[]"); [iPureIntro; wp_next_chain|].
              assert (HVid : upd_usM (us_upt U (pv_upt (us_V U))) (us_M U) = U)
           by (rewrite us_upt_id; apply upd_usM_id).
-             iMod (fileread_extra_of_dev_m1 _ inumx γox Cf st n Fr Rd _ _ _ Hok Htyd
-                     with "Hau HP") as "Hex".
+             (* AN OUT-OF-RANGE MAJOR IS NOT THE CONSOLE'S (lane
+                KILL-PAY, K4(b)(i)) *)
+             assert (Hmjnc : bv_unsigned (fc_major Cf) <> CONSOLE)
+               by (unfold CONSOLE; lia).
+             iMod (fileread_extra_of_dev_m1 _ inumx γox Cf st n Fr Rd _ _ _
+                     Hok Htyd Hmjnc with "Hau HP") as "Hex".
              iApply ("Hcont" $! mfin (mword_of_int (-1)) (pv_upt (us_V U)) 0%nat (fun _ => bv_0 8)
                        with "[%] [%] [%] [%] [%] Hcg Hcnt [Hpc]
                              [Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv]

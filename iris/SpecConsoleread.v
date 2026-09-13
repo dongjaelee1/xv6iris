@@ -206,6 +206,16 @@ Definition wp_consoleread_sconf_body
       (* the whole of what a device read promises: it delivered somewhere
          between "failed" and "all of it". *)
       ⌜(-1 <= r <= Z.max 0 n)%Z⌝ -∗
+      (* ...AND A NEGATIVE ANSWER IS A KILL (lane KILL-PAY, K4(b)(ii)).
+         There is exactly ONE exit that returns -1: the [killed(myproc())]
+         test inside the wait loop, which fires only against a NONZERO
+         [p->killed] -- and [SchedCtx.proc_pub]'s killed row says a
+         nonzero flag was PAID FOR ([SpecKilled]'s post hands the row back
+         beside the value).  So the caller's -1 is not a bare failure
+         code: it carries the application's kill credential, which is what
+         lets a user-tier read leaf say what its own minus-one arm means.
+         The other exits all answer a count, hence the left disjunct. *)
+      (⌜(0 <= r)%Z⌝ ∨ □ riscv_kill_cred) -∗
       ⌜(Z.of_nat d <= Z.max 0 n)%Z⌝ -∗
       (* ...AND ON A NON-NEGATIVE RETURN THE RUN IS EXACTLY THAT LONG: the
          copy is one byte per round and a failing one-byte either_copyout

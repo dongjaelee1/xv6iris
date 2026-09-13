@@ -1038,7 +1038,7 @@ Section UkSh.
        keep such a reader out ([ConsoleInv]'s "CONS-CURSOR RULING (7)").
        What it leaves is the dirty credential, which for a constraining
        application IS [T], and sh's continuation goes generic. *)
-  Definition ush_read_ans (cnm : cons_names) (r : mword 64)
+  Definition ush_read_ans (cnm : cons_names) (l : list fdstate) (r : mword 64)
       (cap n : nat) (g : nat -> bv 8) : iProp Σ :=
     ((∃ (dd dc : nat) (hs : list (list mobs))
         (sl : list (list mobs * bv 8)),
@@ -1052,18 +1052,30 @@ Section UkSh.
         ⌜ cons_window sl n dd g hs ⌝ ∗
         ucons_swallow cnm False sl dd dc ∗
         upos γp (n + dc)%nat)
-     ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗ ush_pos)
+     ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗
+        (* ...AND WHY IT IS -1 (lane KILL-PAY, K4(b)(iv)).  read(0) answers
+           -1 on exactly two grounds, and the leaf names both: the process
+           was KILLED, in which case the answer carries the application's
+           kill credential all the way from [SchedCtx.proc_pub]'s killed
+           row through consoleread's post and
+           [SpecFileread.console_receipt]; or fd 0 is SHUT, which is the
+           other arm of the leaf's own [ush_fd0p] and is walked as code
+           (sh exits).  A caller that has resolved [ush_fd0p] to the
+           console reads the credential out, and that credential IS the
+           application's taint -- so the line stops being the shell's
+           business exactly where a kill could have holed it. *)
+        (⌜ l !! 0%nat = Some FdClosed ⌝ ∨ □ riscv_kill_cred) ∗ ush_pos)
      ∨ (T ∗ ush_pos))%I.
 
   (* ...and the answer, weakened to the ONE thing the walk cannot do
      without: the position comes back.  This is what stands between R1'
      (the leaf sh runs on) and R2 (the line fact the loop accumulates). *)
-  Lemma ush_read_ans_pos (cnm : cons_names) (r : mword 64)
+  Lemma ush_read_ans_pos (cnm : cons_names) (l : list fdstate) (r : mword 64)
       (cap n : nat) (g : nat -> bv 8) :
-    ush_read_ans cnm r cap n g -∗ ush_pos.
+    ush_read_ans cnm l r cap n g -∗ ush_pos.
   Proof.
     rewrite /ush_read_ans /ush_pos.
-    iIntros "[Hw | [[_ $] | [_ $]]]".
+    iIntros "[Hw | [(_ & _ & $) | [_ $]]]".
     iDestruct "Hw" as (dd dc hs sl) "(_ & _ & _ & _ & _ & _ & _ & _ & _ & Hp)".
     iExists (n + dc)%nat. iExact "Hp".
   Qed.
@@ -1194,7 +1206,7 @@ Section UkSh.
           ⌜ (d <= cap)%nat ⌝ -∗
           ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
           ustd γfd l -∗
-          ush_read_ans cnm r cap n g -∗
+          ush_read_ans cnm l r cap n g -∗
           ubytes γd a k g -∗
           urun N h' (<[Regidx a0_idx := r]> m)
             (add_vec_int pc 4) avail -∗
@@ -1229,7 +1241,7 @@ Section UkSh.
        ⌜ (d <= cap)%nat ⌝ -∗
        ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
        ustd γfd l -∗
-       ush_read_ans cn ret cap n g -∗
+       ush_read_ans cn l ret cap n g -∗
        ubytes γd a k g -∗
        urun N h'
          (<[Regidx a0_idx := ret]>
@@ -2216,7 +2228,7 @@ Section UkSh.
        position it hands back.  R2 is where the window arm is accumulated
        into [UConsLine.ush_gets_line] and the [dc = 0] arm refuted into the
        taint ([UConsLine.ush_swallow_taint]). *)
-    iDestruct (ush_read_ans_pos cn ret 1%nat np g1 with "Hans") as "Hpos".
+    iDestruct (ush_read_ans_pos cn l ret 1%nat np g1 with "Hans") as "Hpos".
     rewrite Hra7.
     assert (Eret : ret_pc (mword_of_int 0xae6 : mword 64) = mword_of_int 0xae6)
       by (apply bv_eq; vm_compute; reflexivity).

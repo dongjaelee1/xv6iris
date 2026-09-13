@@ -1963,13 +1963,15 @@ Section ProcInv.
     p_pid pa ↦₄{DfracOwn (1/4)} pid ∗
     (p_pid pa ↦₄{DfracOwn (1/4)} pid -∗ proc_priv γf pa pid U).
   Proof.
-    iIntros "[(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp & Hc & Hft & Hgq & Hxs) Ho]".
+    iIntros "[(%Hszb & %Hbel & Hpid & Hrest) Ho]".
     assert (Hq : (1/2)%Qp = (1/4 + 1/4)%Qp) by compute_done.
     rewrite Hq ctx_word4_pointsto_frac_split.
     iDestruct "Hpid" as "[Hq1 Hq2]". iFrame "Hq1".
     iIntros "Hq1". rewrite /proc_priv /proc_priv_core Hq ctx_word4_pointsto_frac_split.
     iSplitR "Ho"; [|iFrame "Ho"].
-    iSplitR; [done|]. iSplitR; [done|]. iFrame.
+    iSplitR; [done|]. iSplitR; [done|].
+    iSplitL "Hq1 Hq2"; [iSplitL "Hq1"; [iExact "Hq1" | iExact "Hq2"] |].
+    iExact "Hrest".
   Qed.
 
   (* The read-only trapframe-POINTER fraction: what [p->trapframe->aN] reads
@@ -1999,14 +2001,20 @@ Section ProcInv.
     (p_trapframe pa ↦₈{DfracOwn (1/4)} page_base (ud_tfp (pv_upt (us_V U))) -∗
        proc_priv γf pa pid U).
   Proof.
-    iIntros "[(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp & Hc & Hft & Hgq & Hxs) Ho]".
+    iIntros "[(%Hszb & %Hbel & Hpid & Hf & Hpt & Hrest) Ho]".
     rewrite /proc_ptm_at. iDestruct "Hpt" as "(Hpg & Htfc & Hptt)".
     iDestruct (word_split14 with "Htfc") as "[Hq1 Hq2]".
     iSplitL "Hq1"; [iExact "Hq1"|].
     iIntros "Hq1". rewrite /proc_priv /proc_priv_core /proc_ptm_at.
     iDestruct (word_join14 with "Hq1 Hq2") as "Htfc".
     iSplitR "Ho"; [|iFrame "Ho"].
-    iSplitR; [done|]. iSplitR; [done|]. iFrame.
+    iSplitR; [done|]. iSplitR; [done|].
+    iSplitL "Hpid"; [iExact "Hpid" |].
+    iSplitL "Hf"; [iExact "Hf" |].
+    iSplitL "Hpg Htfc Hptt";
+      [ iSplitL "Hpg"; [iExact "Hpg" |];
+        iSplitL "Htfc"; [iExact "Htfc" |]; iExact "Hptt" |].
+    iExact "Hrest".
   Qed.
 
   (* THE WORKING DIRECTORY, borrowed and replaced.  kexit and sys_chdir are
@@ -2205,14 +2213,21 @@ Section ProcInv.
     (p_trapframe pa ↦₈{DfracOwn (1/4)} page_base (ud_tfp (pv_upt (us_V U))) -∗
      tf_page (ud_tfp (pv_upt (us_V U))) (pv_tf (us_V U)) -∗ proc_priv γf pa pid U).
   Proof.
-    iIntros "[(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp & Hc & Hft & Hgq & Hxs) Ho]".
+    iIntros "[(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp & Hrest) Ho]".
     rewrite /proc_ptm_at. iDestruct "Hpt" as "(Hpg & Htfc & Hptt)".
     iDestruct (word_split14 with "Htfc") as "[Hq1 Hq2]".
     iFrame "Hq1 Htfp".
     iIntros "Hq1 Htfp". rewrite /proc_priv /proc_priv_core /proc_ptm_at.
     iDestruct (word_join14 with "Hq1 Hq2") as "Htfc".
     iSplitR "Ho"; [|iFrame "Ho"].
-    iSplitR; [done|]. iSplitR; [done|]. iFrame.
+    iSplitR; [done|]. iSplitR; [done|].
+    iSplitL "Hpid"; [iExact "Hpid" |].
+    iSplitL "Hf"; [iExact "Hf" |].
+    iSplitL "Hpg Htfc Hptt";
+      [ iSplitL "Hpg"; [iExact "Hpg" |];
+        iSplitL "Htfc"; [iExact "Htfc" |]; iExact "Hptt" |].
+    iSplitL "Htfp"; [iExact "Htfp" |].
+    iExact "Hrest".
   Qed.
 
   (* THE WRITE TWIN, standing to [proc_priv_tf] as [tf_page_word_upd] stands
@@ -2404,12 +2419,14 @@ Section ProcInv.
     p_pid pa ↦₄{DfracOwn (1/4)} pid ∗
     (p_pid pa ↦₄{DfracOwn (1/4)} pid -∗ proc_priv_core pa pid U).
   Proof.
-    iIntros "(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp & Hc & Hft & Hgq & Hxs)".
+    iIntros "(%Hszb & %Hbel & Hpid & Hrest)".
     assert (Hq : (1/2)%Qp = (1/4 + 1/4)%Qp) by compute_done.
     rewrite Hq ctx_word4_pointsto_frac_split.
     iDestruct "Hpid" as "[Hq1 Hq2]". iFrame "Hq1".
     iIntros "Hq1". rewrite /proc_priv_core Hq ctx_word4_pointsto_frac_split.
-    iSplitR; [done|]. iSplitR; [done|]. iFrame.
+    iSplitR; [done|]. iSplitR; [done|].
+    iSplitL "Hq1 Hq2"; [iSplitL "Hq1"; [iExact "Hq1" | iExact "Hq2"] |].
+    iExact "Hrest".
   Qed.
 
   Lemma proc_priv_core_sz_maxsz (pa : mword 64) (pid : mword 32) (U : ustate) :
@@ -2443,13 +2460,20 @@ Section ProcInv.
     (p_trapframe pa ↦₈{DfracOwn (1/4)} page_base (ud_tfp (pv_upt (us_V U))) -∗
      tf_page (ud_tfp (pv_upt (us_V U))) (pv_tf (us_V U)) -∗ proc_priv_core pa pid U).
   Proof.
-    iIntros "(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp & Hc & Hft & Hgq & Hxs)".
+    iIntros "(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp & Hrest)".
     rewrite /proc_ptm_at. iDestruct "Hpt" as "(Hpg & Htfc & Hptt)".
     iDestruct (word_split14 with "Htfc") as "[Hq1 Hq2]".
     iFrame "Hq1 Htfp".
     iIntros "Hq1 Htfp". rewrite /proc_priv_core /proc_ptm_at.
     iDestruct (word_join14 with "Hq1 Hq2") as "Htfc".
-    iSplitR; [done|]. iSplitR; [done|]. iFrame.
+    iSplitR; [done|]. iSplitR; [done|].
+    iSplitL "Hpid"; [iExact "Hpid" |].
+    iSplitL "Hf"; [iExact "Hf" |].
+    iSplitL "Hpg Htfc Hptt";
+      [ iSplitL "Hpg"; [iExact "Hpg" |];
+        iSplitL "Htfc"; [iExact "Htfc" |]; iExact "Hptt" |].
+    iSplitL "Htfp"; [iExact "Htfp" |].
+    iExact "Hrest".
   Qed.
 
   Lemma proc_priv_core_addrspace (pa : mword 64) (pid : mword 32) (U : ustate) :

@@ -1763,6 +1763,16 @@ App.v
 # the pure-suffix point, the expected session transcript, D0-D3 and
 # [good_out].  Exported by AppEcho.v.
 EchoDisc.v
+# The console UART's ACCEPTED-INPUT LOG (lane E5): [echo_of], [cons_erase],
+# the log entry and the two pure boundary facts [read_ok]/[log_ok] the
+# kernel proves at a console read.  Iris-free; nothing of the kernel's ring
+# is in it.  SpecConsoleintr imports it for [echo_of]/[cons_erase].
+ConsLog.v
+# The PURE half of E5's application claim: the transcript stage machine
+# [D]/[pending] over the echoed inputs, and the four facts the Iris claim
+# applies (the stage is below the session, the next echo is the next input,
+# the read window is a slice of the echoed list, PHI's pure part).
+EchoOutPure.v
 # The ECHO application: its discipline, fixed part, ledger, tag, the
 # [taint or pins] predicate over the three era-0 pin files, the record
 # [app_echo], and every hypothesis of App.xv6_app_adequacy except

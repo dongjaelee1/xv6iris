@@ -848,22 +848,6 @@ Section echo_out.
   Context (T : iProp Σ) (γ : echo_gn).
   Context `{!Persistent T} `{!Timeless T}.
 
-  (* THE ERA'S ADOPTION TOKEN, ABSTRACTLY (REVISION 7(a); lane CONS-IO
-     milestone D).  The kernel mints ONE token per generation and lends it to
-     init in the boot bundle; it is what makes the era's ADOPTION -- the
-     first verified write, which inserts the era's ghosts into the ledger --
-     happen at most once.  Only its EXCLUSIVITY is used, and only against the
-     copy the ledger keeps for every era it has already adopted: that is what
-     makes the insert an INSERT-IF-ABSENT with no bound on the map's keys and
-     hence with no comparison of the ledger's history against anything.
-
-     It is a section parameter so that this file stays independent of the
-     kernel's construction; [AppEcho] discharges the hypothesis at the
-     instantiation. *)
-  Context (era_tok : nat -> iProp Σ).
-  Context (era_tok_excl : forall k, era_tok k -∗ era_tok k -∗ False).
-  Context (era_tok_timeless : forall k, Timeless (era_tok k)).
-  #[local] Existing Instance era_tok_timeless.
 
   (* ---- the era's ghosts, keyed by the ERA NUMBER ---- *)
 
@@ -1159,12 +1143,12 @@ Section echo_out.
     rewrite /era_slot. destruct P; destruct (length (o_E so)); apply _.
   Qed.
 
-  (* ONE ADOPTED ERA: its slot, and the TOKEN that was spent to adopt it.
-     Keeping the token is what makes the adoption's insert an
-     INSERT-IF-ABSENT: a second adopter at [k] brings the kernel's token for
-     [k] and the ledger already has it. *)
+  (* ONE ADOPTED ERA: its slot, and its PIN.  The pin is kept here as well
+     as handed out, so that a link that arrives with the era NUMBER and no
+     pin -- which is every link before the era's first write -- can still be
+     given one. *)
   Definition era_entry (k : nat) (v : era_pins) : iProp Σ :=
-    (era_tok k ∗ ∃ so si P, era_slot v so si P)%I.
+    (era_pin k v ∗ ∃ so si P, era_slot v so si P)%I.
 
   Global Instance era_entry_timeless k v : Timeless (era_entry k v).
   Proof. rewrite /era_entry. apply _. Qed.
@@ -1187,29 +1171,11 @@ Section echo_out.
     iIntros "#Hpin H". iDestruct "H" as (Mp) "[Hm Hbig]".
     iDestruct (ghost_map_lookup with "Hm Hpin") as %Hlk.
     iDestruct (big_sepM_lookup_acc _ _ k v Hlk with "Hbig") as "[Hent Hback]".
-    iDestruct "Hent" as "[Htok Hslot]".
+    iDestruct "Hent" as "[#Hpin' Hslot]".
     iDestruct "Hslot" as (so si P) "Hslot".
     iExists so, si, P. iFrame "Hslot".
     iIntros (so' si' P') "Hslot'". iExists Mp. iFrame "Hm".
-    iApply "Hback". iFrame "Htok". iExists so', si', P'. iFrame "Hslot'".
-  Qed.
-
-  (* ...and THE ADOPTION's own step (REVISION 7(c)): the era's ghosts go in
-     at [k] against its token, which the ledger then keeps. *)
-  Lemma era_inv_insert (k : nat) (v : era_pins) (so : ostage) (si : istage)
-      (P : nat) :
-    era_tok k -∗ era_slot v so si P -∗ era_inv ==∗ era_pin k v ∗ era_inv.
-  Proof.
-    iIntros "Htok Hslot H". iDestruct "H" as (Mp) "[Hm Hbig]".
-    destruct (Mp !! k) as [v' |] eqn:Hlk.
-    { iDestruct (big_sepM_lookup_acc _ _ k v' Hlk with "Hbig")
-        as "[[Htok' _] _]".
-      iDestruct (era_tok_excl k with "Htok Htok'") as "[]". }
-    iMod (ghost_map_insert_persist k v Hlk with "Hm") as "[Hm #Hpin]".
-    iModIntro. iFrame "Hpin". iExists (<[k := v]> Mp). iFrame "Hm".
-    iApply (big_sepM_insert _ _ k v Hlk).
-    iSplitR "Hbig"; [| iExact "Hbig"].
-    iFrame "Htok". iExists so, si, P. iFrame "Hslot".
+    iApply "Hback". iFrame "Hpin'". iExists so', si', P'. iFrame "Hslot'".
   Qed.
 
   (* THE ERA'S GHOSTS AT FULL OWNERSHIP (REVISION 7(b)): what the transport's
@@ -1257,6 +1223,44 @@ Section echo_out.
     - exact stage_tie_0.
     - constructor.
     - exact cs_len_ok_0.
+  Qed.
+
+  (* ...and THE ADOPTION, which is INSERT-IF-ABSENT and needs no token at
+     all: the pin map itself decides.  An era whose slot is already there is
+     used as it stands (there is exactly one [v] per era number, whoever got
+     there first); an era with no slot gets one, at the start of its stage
+     and with both escrows held.  The freshness obligation a [ghost_map]
+     insert carries IS the [None] branch's own case analysis.
+
+     This is where the coordinator's REVISION 7(a) token would have gone.
+     It cannot: the ledger is [App.app_R], and [A : xv6_app Σ] is fixed
+     BEFORE the machine's ghosts exist ([App.xv6_app_adequacy] takes [A] at
+     [riscvGpreS]), so no resource at [riscvFixedGS] can appear in it.  See
+     the handover: what the token was wanted for is [Hfresh], and that needs
+     an APPLICATION-level per-era token minted by the ledger's own power-on
+     step and routed into the founding. *)
+  Lemma era_inv_get (k : nat) :
+    era_inv ==∗
+      ∃ (v : era_pins) (so : ostage) (si : istage) (P : nat),
+        era_pin k v ∗ era_slot v so si P
+        ∗ (∀ so' si' P', era_slot v so' si' P' -∗ era_inv).
+  Proof.
+    iIntros "H". iDestruct "H" as (Mp) "[Hm Hbig]".
+    destruct (Mp !! k) as [v |] eqn:Hlk.
+    - iDestruct (big_sepM_lookup_acc _ _ k v Hlk with "Hbig")
+        as "[[#Hpin Hslot] Hback]".
+      iDestruct "Hslot" as (so si P) "Hslot".
+      iModIntro. iExists v, so, si, P. iFrame "Hpin Hslot".
+      iIntros (so' si' P') "Hslot'". iExists Mp. iFrame "Hm".
+      iApply "Hback". iFrame "Hpin". iExists so', si', P'. iFrame "Hslot'".
+    - iMod era_full_alloc as (v) "Hfull".
+      iDestruct (era_full_slot v with "Hfull") as "Hslot".
+      iMod (ghost_map_insert_persist k v Hlk with "Hm") as "[Hm #Hpin]".
+      iModIntro. iExists v, ostage0, istage0, 0%nat. iFrame "Hpin Hslot".
+      iIntros (so' si' P') "Hslot'". iExists (<[k := v]> Mp). iFrame "Hm".
+      iApply (big_sepM_insert _ _ k v Hlk).
+      iSplitR "Hbig"; [| iExact "Hbig"].
+      iFrame "Hpin". iExists so', si', P'. iFrame "Hslot'".
   Qed.
 
   (* ...and THE WHOLE LEDGER, which is what [AppEcho.echo_R] becomes. *)
@@ -1360,9 +1364,13 @@ Section echo_out.
       rewrite /sess /= sess_n_0. cbn [obs_wire]. apply prefix_nil.
   Qed.
 
+  (* ...AND THE KERNEL'S OWN PORT COSTS NOTHING: [good_out] reads the
+     CONSOLE's wire, so a byte on the other UART cannot falsify a cycle that
+     was good ([phi_step_io]).  That is why the caller owes the segment's
+     goodness only at [Uart0]. *)
   Lemma echo_led_tx (h : list mobs) (i : uart_id) (b : bv 8) :
     trace_shape h true ->
-    (T ∨ ⌜good_out (open_seg h ++ [ObsUartOut i b])⌝) -∗
+    (T ∨ ⌜i = Uart0 -> good_out (open_seg h ++ [ObsUartOut i b])⌝) -∗
     echo_led h ==∗ echo_led (h ++ [ObsUartOut i b]).
   Proof.
     intros Hsh. iIntros "Hgo (Hcnt & He & Hphi)".
@@ -1371,7 +1379,11 @@ Section echo_out.
     iModIntro. iFrame "Hcnt He".
     iDestruct "Hphi" as "[%Hg | HT]"; [| by iRight].
     iDestruct "Hgo" as "[HT | %Hgo]"; [by iRight |].
-    iLeft. iPureIntro. by apply phi_step_cons.
+    iLeft. iPureIntro. destruct i.
+    - exact (phi_step_cons h (ObsUartOut Uart0 b) Hsh eq_refl
+               (Hgo eq_refl) Hg).
+    - exact (phi_step_io h (ObsUartOut Uart1 b) Hsh eq_refl
+               (obs_wire_out_other Uart1 b ltac:(discriminate)) Hg).
   Qed.
 
   Lemma echo_led_rx (h : list mobs) (i : uart_id) (b : bv 8) :
@@ -2092,82 +2104,85 @@ Section echo_out.
       + iLeft. rewrite Hcs0. iFrame "Ht HElb Hcslb2".
   Qed.
 
-  (* (W'') THE ERA'S ADOPTION, which is its FIRST verified write (REVISION
-     7(c)).  The writer -- init -- brings the era's TOKEN and the era's
-     ghosts at FULL ownership, both out of the boot bundle the transport
-     founded, and the step files them in the ledger against the token: a
-     second adopter at [k] would need the same token, and the ledger keeps
-     the one it consumed.  The port's claim is in its FOUNDED arm here (a
-     PAIRED one would put [k] in the map already, which the token refutes),
-     so no correlation between [app_boot] and the claim is needed anywhere.
+  (* (W'') THE ERA'S FIRST WRITE, which is its ADOPTION.  The writer -- init,
+     at the first byte of the banner -- brings NO credentials: the era's
+     ghosts do not exist yet, and the ledger creates them here
+     ([era_inv_get]).  What comes back is the era's PIN -- persistent, and
+     from here on the name by which the claim and every later writer mean
+     the same era -- with the cursor at one and the two bounds at the start.
 
-     WHAT COMES BACK is the era's PIN -- persistent, and from here on the
-     name by which the claim and every writer mean the same era -- with the
-     cursor at one and the two bounds at the start. *)
-  Lemma eout_step_write_adopt (k : nat) (v : era_pins) (b : bv 8)
-      (ho hl : list mobs) (acc : list (bv 8)) :
+     [Hunwritten] IS THE ONE THING NOTHING IN THIS TREE CAN PROVE, and it is
+     the same hole as [eout_step_write]'s [Hfresh]: the output claim's
+     FOUNDED arm is PURE, so a claim that says [acc = []] is
+     indistinguishable from one whose half of an ALREADY-WRITTEN era's stage
+     was dropped.  The premise says the two cannot both happen, and it is
+     true at the one call site (init writes the banner's first byte before
+     anything else has been on the wire).  Closing it needs an
+     application-level per-era token: the ledger's own power-on step mints
+     one, and the transport's founding consumes it into the founded arm --
+     which is a change to [App.Hpow]'s yield and to
+     [SystemAdequacy.app_xfer_boot_raw]'s input.  The kernel's
+     [RiscvPtsto.era_tok] cannot serve: [A : xv6_app Σ] is fixed before the
+     machine's ghosts exist, so [app_R] and [app_out] cannot name it. *)
+  Lemma eout_step_write_first (k : nat) (b : bv 8) (ho hl : list mobs) :
     u_prologue !! 0%nat = Some b ->
-    era_tok k -∗ era_full v -∗
-    echo_led hl -∗ eout k ho acc ==∗
-      echo_led hl ∗ eout k ho (acc ++ [b])
-      ∗ ((era_pin k v ∗ turn v 1%nat ∗ cs_lb v [] ∗ E_lb v 0%nat) ∨ T).
+    (□ ∀ (v : era_pins) (P : nat),
+        era_pin k v -∗ turn_auth v P -∗ turn_auth v P ∗ ⌜P = 0%nat⌝) -∗
+    echo_led hl -∗ eout k ho [] ==∗
+      echo_led hl ∗ eout k ho [b]
+      ∗ ((∃ v : era_pins,
+            era_pin k v ∗ turn v 1%nat ∗ cs_lb v [] ∗ E_lb v 0%nat) ∨ T).
   Proof.
-    intros Hb. iIntros "Htok Hfull Hled Hcl".
+    intros Hb. iIntros "#Hunw Hled _".
     rewrite /echo_led. iDestruct "Hled" as "(Hcnt & Hera & Hphi)".
-    iDestruct "Hcl" as "[#HT | Hcl]".
-    { iModIntro. iFrame "Hcnt Hera Hphi".
-      iSplitR; [by iApply eout_of_taint | by iRight]. }
-    iDestruct "Hcl" as "[%Hfr | Hp]"; last first.
-    { (* a PAIRED claim would mean [k] is already adopted, and the ledger
-         then holds the token this writer is carrying *)
-      iDestruct "Hp" as (v2 so2) "(#Hpin2 & _ & _)".
-      iDestruct "Hera" as (Mp) "[Hm Hbig]".
-      iDestruct (ghost_map_lookup with "Hm Hpin2") as %Hlk.
-      iDestruct (big_sepM_lookup_acc _ _ k v2 Hlk with "Hbig")
-        as "[[Htok' _] _]".
-      iDestruct (era_tok_excl k with "Htok Htok'") as "[]". }
-    subst acc.
-    (* the era's ghosts, split into the ledger's slot and what comes back *)
-    rewrite /era_full.
-    iDestruct "Hfull" as "(Ho & Hi & Ht & Hcs & HE)".
-    iMod (ghost_var_update (MkO [] [] [b]) with "Ho") as "Ho".
-    iMod (ghost_var_update 1%nat with "Ht") as "Ht".
-    rewrite /out_auth /out_frag /in_auth /in_frag /turn /turn_auth
-            /cs_auth /E_auth.
-    iEval (rewrite -Qp.half_half) in "Ho".
-    iDestruct (ghost_var_split with "Ho") as "[Ho1 Ho2]".
-    iEval (rewrite -Qp.half_half) in "Hi".
-    iDestruct (ghost_var_split with "Hi") as "[Hi1 Hi2]".
-    iEval (rewrite -Qp.half_half) in "Ht".
-    iDestruct (ghost_var_split with "Ht") as "[Ht1 Ht2]".
+    iMod (era_inv_get k with "Hera") as (v so si P) "(#Hpin & Hslot & Hback)".
+    rewrite /era_slot.
+    iDestruct "Hslot" as "(Ho & Hi & Hoe & Hie & Hta & Hcs & HE & Hpures)".
+    iDestruct "Hpures" as "(%HP & %Htie & %Hcsb & %Hcsl)".
+    iDestruct ("Hunw" with "Hpin Hta") as "[Hta %HP0]".
+    destruct P as [| P']; [| discriminate HP0].
+    iDestruct "Hoe" as "[Hfrag Ht]".
+    destruct (pcount_zero _ _ _ (eq_sym HP)) as [HEnil Hwnil].
+    assert (Hcsnil : o_cs so = []).
+    { apply nil_length_inv.
+      destruct (cs_len_ok_inv so Hcsl) as [[_ Hq] | [Hne _]].
+      - rewrite Hq HEnil. cbn [length]. by rewrite Nat.Div0.div_0_l.
+      - exfalso. apply Hne. rewrite Hwnil HEnil. cbn [length].
+        split; [reflexivity | by rewrite Nat.Div0.mod_0_l]. }
+    iMod (out_update v so so (MkO (o_cs so) (o_E so) (o_w so ++ [b]))
+            with "Hfrag Ho") as "[Hfrag Ho]".
+    iMod (turn_update v 0%nat 0%nat 1%nat with "Ht Hta") as "[Ht Hta]".
     iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
     iDestruct (E_lb_get with "HE") as "[HE #HElb]".
-    iMod (era_inv_insert k v (MkO [] [] [b]) istage0 1%nat
-            with "Htok [Ho1 Hi1 Hi2 Ht1 Hcs HE] Hera") as "[#Hpin Hera]".
-    { rewrite /era_slot /out_auth /in_auth /in_frag.
-      cbn [o_cs o_E o_w length].
-      iFrame "Ho1 Hi1 Hi2 Ht1 Hcs HE". iPureIntro. split_and!.
-      - by rewrite /pcount /=.
-      - reflexivity.
-      - constructor.
-      - apply (cs_len_ok_intro [] [] [b]); [by intros [Hw _] |].
-        intros _. cbn [length]. by rewrite Nat.Div0.div_0_l. }
-    iModIntro. iFrame "Hcnt Hera Hphi".
-    iSplitL "Ho2".
-    - iRight. iRight. iExists v, (MkO [] [] [b]).
-      iFrame "Hpin Ho2". iPureIntro.
-      rewrite /eout_pure. cbn [o_cs o_E o_w]. split_and!.
-      + by rewrite D_nil.
-      + rewrite pending_nil. apply (prefix_snoc_lookup [] _ b);
-          [apply prefix_nil | exact Hb].
-      + intros j x Hx. destruct (epu_lookup_nil_absurd j x Hx).
-      + intros j x Hx. destruct (epu_lookup_nil_absurd j x Hx).
-      + constructor.
-      + constructor.
-      + constructor.
-      + cbn [length]. lia.
-      + by left.
-    - iLeft. iFrame "Hpin Ht2 Hcslb HElb".
+    iAssert (cs_lb v []) as "#Hcslb0". { rewrite -Hcsnil. iExact "Hcslb". }
+    iAssert (E_lb v 0%nat) as "#HElb0".
+    { rewrite /E_lb. iApply (mono_nat_lb_own_le 0%nat with "HElb"). lia. }
+    iModIntro. iSplitR "Hfrag Ht".
+    - iFrame "Hcnt Hphi".
+      iApply ("Hback" $! (MkO (o_cs so) (o_E so) (o_w so ++ [b])) si 1%nat).
+      rewrite /era_slot. cbn [o_cs o_E o_w].
+      iFrame "Ho Hi Hie Hta Hcs HE". iPureIntro. split_and!.
+      + rewrite pcount_write -HP. reflexivity.
+      + exact Htie.
+      + exact Hcsb.
+      + apply (cs_len_ok_write so b Hcsl). right; right. by rewrite HEnil.
+    - iSplitL "Hfrag".
+      + iRight. iRight.
+        iExists v, (MkO (o_cs so) (o_E so) (o_w so ++ [b])).
+        iFrame "Hpin Hfrag". iPureIntro.
+        rewrite /eout_pure. cbn [o_cs o_E o_w]. rewrite HEnil Hwnil.
+        split_and!.
+        * by rewrite D_nil.
+        * rewrite pending_nil. apply (prefix_snoc_lookup [] _ b);
+            [apply prefix_nil | exact Hb].
+        * intros j x Hx. destruct (epu_lookup_nil_absurd j x Hx).
+        * intros j x Hx. destruct (epu_lookup_nil_absurd j x Hx).
+        * exact Hcsb.
+        * constructor.
+        * constructor.
+        * cbn [length]. lia.
+        * by left.
+      + iLeft. iExists v. iFrame "Hpin Ht Hcslb0 HElb0".
   Qed.
 
   (* (R) THE READ.  [ws] is the window the read CONSUMED; [read_ok] is what

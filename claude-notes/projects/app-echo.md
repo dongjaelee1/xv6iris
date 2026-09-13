@@ -75,19 +75,20 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   release on the clean arm with the kernel's `read_ok`; the consumed list on
   the reader's lease; the exact log mirror; every consoleintr arm files its
   own entry; `fileread_in`'s `Rin`, `xfam.rf_in`, the receipt's `ws` row.
-- [ ] **CONS-IO milestone C -- ERA-INDEX** (kernel; `-tlw`, `lane/cons-io`;
-  owner-confirmed 2026-09-14): the application's claims and every
-  application-facing link indexed by the ERA NUMBER `S gen_id` (no fresh
-  name), and the kernel's stamp `⌜obs_boots h = S gen_id⌝` on every history
-  it hands the application (`Hpow`'s on-arm, `Htx`/`Hrx` with a `GenId`
-  binder, the receive column's per-byte entry, `cons_echo_shift`'s
-  premises); `app_out`/`app_in`/`app_boot A c k`, the founding `∀ k`.
-  Reason (the design review, 2026-09-14): a dead era's writer keeps its
-  linear turn inside that era's closed invariants and nothing can reclaim
-  it, so a writer's link lemma must be excluded from the current claim BY
-  THE INDEX; the same-cycle facts become pure from the stamps (a history
-  comparison against the ledger's is unprovable inside a link: the
-  observation authority is in the state interpretation).
+- [x] ~~**CONS-IO milestone C -- ERA-INDEX**~~ LANDED 2026-09-14 (`fee5831af`;
+  the note below): the claims and every application-facing link indexed by
+  the ERA NUMBER `S gen_id` (owner-confirmed), the kernel's stamp
+  `⌜obs_boots h = S gen_id⌝` on `Htx`/`Hrx`, the receive column and the
+  shift.  Reason (the design review, 2026-09-14): a dead era's writer keeps
+  its linear turn inside that era's closed invariants and nothing can
+  reclaim it, so a writer's link lemma is excluded from the current claim BY
+  THE INDEX; the same-cycle facts become pure from the stamps.
+- [ ] **ECHO-OUT** (application; `-disc`, `lane/echo-out`): `EchoOut.v` (the
+  ledger-anchored claims at the era index, the stage machine's Iris side,
+  the ledger's four steps, `echo_phi` in the owner's form) -- proving its
+  last five ledger lemmas; then the section-7 wrapping onto the landed
+  links and the `AppEcho` wiring (`echo_out`/`echo_in` replace the `emp`
+  holes; `echo_boot` gains the turn; `echo_fixed` becomes a record).
 - [x] ~~**ECHO-PURE**~~ LANDED 2026-09-13 (`c1781608b`; the note below): E5's
   pure half -- `ConsLog.v` (the boundary vocabulary), `EchoOutPure.v` (the
   stage machine and the four facts), `disc_prefix`.
@@ -3146,6 +3147,28 @@ contract (F6, discharged at ProofMain's mint).  `fileread_in` gains
 `cons_read_pay Rin`, `console_receipt`'s clean arm the consumed window and
 `Rin ws` at `sl'` (F5), `xfam` gains `rf_in` (LAST); the generic slot and sh
 pay from `in_licence` and claim nothing.
+
+CONS-IO MILESTONE C -- ERA-INDEX LANDED (2026-09-14; `fee5831af` on `c78bade99`;
+26 files +695/-457; builds cio40-cio45 in `-tlw`; audit the thirteen; lemma_diff
+CLEAN; nothing Admitted).  THE INDEX: `riscv_out_res`/`riscv_in_res` take the era
+number k FIRST; `out_res_at`/`in_res_at` take it explicitly and `out_claim_at`/
+`in_claim_at` -- hence `uart_col`, `uart_colE`, `uart_inv` and their forty carriers
+-- instantiate it at the AMBIENT `S gen_id`, which keeps `uart_inv`'s arity
+unchanged (price: an implicit `GenId` on `uart_inv`/`dev_inv`/`console_caps`/
+`store_ob`/`cons_echo_shift`, the pattern `dev_inv` already used).
+`out_link`/`out_chain`/`out_run`/`in_append`/`echo_link`/`echo_chain`/`in_run`/
+`read_link`/`cons_read_pay`/`cons_out_chain` (cursor renamed `j`) are at a BOUND
+k; both licences quantify over it; `App.app_out`/`app_in`/`app_boot` gain it;
+`Happ_boot : ∀ c k`; `app_xfer_boot_raw` UNCHANGED.  The transport's yield
+reaches the boot through the PowerOn arm's LEND, so `RiscvAdequacy.Rb` gains the
+generation (`Hswap` had it; `Hboot` gets `Rb c gen`) -- a trusted change.  THE
+STAMP: `wp_uart_step` hands `⌜obs_boots h = S gen_id⌝` (obs_wf's boot count at a
+live thread), relayed by `wp_uart_loop` to `uart_obs_permit` and so to `Htx`/`Hrx`
+(which gain a `GenId` binder); the rx push files it in `uart_col` beside the tag,
+`uart_col_pop` -> RHR leaf -> uartgetc -> uartintr -> consoleintr's contract, where
+`ct_mk_pay` spends it ONCE -- no arm lemma changed.  `Hpow` untouched (the fact is
+`obs_boots_app`); `read_link` carries no stamp.  ECHO-OUT replaces the `emp` holes
+at the new arity and re-proves the out/in/boot obligations at the index.
 
 RULINGS AFTER CONS-IO PHASE 1 (coordinator, 2026-09-13; the E5 note above is
 read with these): (1) the shift is CHAIN-FIRST, APPEND-LAST -- the echo's

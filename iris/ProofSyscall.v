@@ -3229,7 +3229,7 @@ Section SyscallArms.
        now, so the dispatcher has no payload to feed and lends [emp].  What
        pays the console arm is in the process's own hand. *)
     sysc_sys_in U sts gn cs pid f -∗
-    fileread_in (fd_st_of_key v0 sts) (rf_F f) (rf_ret f) True%I.
+    fileread_in (fd_st_of_key v0 sts) (rf_F f) (rf_ret f) (rf_in f) True%I.
   Proof.
     intros Hn Hv0. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 5 Hn ltac:(vm_compute; discriminate)
@@ -3428,7 +3428,7 @@ Section SyscallArms.
        equation row 5's existential asks for (lane CONS-SWALLOW, W4). *)
     fileread_extra_core (pv_upt (us_V U)) (fd_st_of_key v0 sts)
       (sys_rw_count v2) (rf_F f)
-      (rf_ret f) r M' v1 -∗
+      (rf_ret f) (rf_in f) r M' v1 -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
   Proof.
     intros Hn Hv0 Hv1 Hv2 Hwf Hlzp Hret. iIntros "H".
@@ -5744,7 +5744,9 @@ Section SyscallArms.
        ring's names and the credential are PINNED there ([fsc_cons],
        [AppInv.app_sup]), because the receipt this arm relays is stated at
        them. *)
-    iDestruct (syscall_env_console with "Henvc") as (γcon) "#Hci".
+    iDestruct (syscall_env_console with "Henvc") as "#Hcready".
+    iPoseProof (SpecFileread.console_ready_app_uart with "Hcready") as "#Huinv".
+    iDestruct "Hcready" as "[Hcr0 _]". iDestruct "Hcr0" as (γcon) "#Hci".
     iDestruct (sysc_fileread_env γf γcon (proc_addr j) fn with "Hfsenv Hsl")
       as "[Hfse Hback]".
     (* ---- THE CALLER'S INPUT IS THE PROCESS'S OWN DEPOSIT ----
@@ -5758,7 +5760,8 @@ Section SyscallArms.
       as %Hfdk.
     iDestruct (sysc_dep_read U sts gn cs pid fdep v0
                  ltac:(rewrite Hnum; reflexivity) Hv0 with "Hxin") as "Hdepr".
-    iAssert (sys_read_in (us_V U) v0 sts (rf_F fdep) (rf_ret fdep) True%I)
+    iAssert (sys_read_in (us_V U) v0 sts (rf_F fdep) (rf_ret fdep)
+               (rf_in fdep) True%I)
       with "[Hdepr]" as "Hsrin".
     { rewrite /sys_read_in Hfdk. iExact "Hdepr". }
     (* THE LENT RESOURCE IS NOTHING (lane KILL-PAY, K4(a)): read's deposit
@@ -5779,10 +5782,10 @@ Section SyscallArms.
     iEval (rewrite /sysc_pay_out /uexec_pay_arm) in "Hpayv".
     iApply (SysRead.wp_sys_read_sconf γf γs j γl (sysc_fread_names γcon fn)
               pid U sts v0 v1 v2 M (av - 4)%nat true true ∅
-              (rf_F fdep) (rf_ret fdep) True%I
+              (rf_F fdep) (rf_ret fdep) (rf_in fdep) True%I
               ltac:(lia) Hj Hgamma Hlen Hv0 Hv1 Hv2
               eq_refl eq_refl eq_refl
-              with "Hcg Hcpu Htext Hdata Hpc Hpanic Hpriv Hufrag Hkalloc Hprocs Hfse Hci Hsrin Hnil").
+              with "Hcg Hcpu Htext Hdata Hpc Hpanic Hpriv Hufrag Hkalloc Hprocs Hfse Hci Huinv Hsrin Hnil").
     iIntros (CIDy Hsy mf r P' dw bsw)
       "%Hcs %Hextz %Hdwle %Htie %Hmfa0 Hcg Hcpu Hpc Hpriv Hufrag _ Hout Harms".
     (* WHAT THE PROCESS GETS BACK: the arm's own payout, at the descriptor

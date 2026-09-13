@@ -559,6 +559,10 @@ Section EchoInitBoot.
     assert (Hit : @riscv_in_res Σ (@riscv_fixedGS Σ HR) = in_res_triv)
       by (rewrite Hin; cbn [echo_in]; reflexivity).
     iAssert (in_licence) as "#Hilic"; [by iApply in_licence_triv |].
+    (* ...and the same at Coq level, for sh's read leaf (lane CONS-IO,
+       milestone B, B4): [UShLine.ush_read_recv_leaf_holds]'s result is a
+       Coq-level [⊢], so its licence premise is one too. *)
+    assert (Hlicw : ⊢ in_licence) by (by iApply in_licence_triv).
     iIntros "#Hinv Hb". iModIntro.
     (* ---- the taint's supply, and the generic slot it buys ---- *)
     iAssert (□ (echo_taint γ -∗ app_sup))%I as "#Hsup".
@@ -637,7 +641,7 @@ Section EchoInitBoot.
                 ltac:(exists true; reflexivity)
                 (fun γp N l Hpq =>
                    UShLine.ush_read_recv_leaf_holds N γp (echo_taint γ) l
-                     Hpq Hstw Htsw _)
+                     Hpq Hstw Htsw _ Hlicw)
                 with "[] [] Hsh").
       - iApply (udep_free).
       - iApply Hsh_deps. }

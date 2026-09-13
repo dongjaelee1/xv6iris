@@ -775,8 +775,15 @@ Section ProofMain.
        afterwards would have nothing to pair. *)
     iAssert (SpecFileread.console_ready_app) as "#Hcready".
     { rewrite /SpecFileread.console_ready_app Hconsq.
-      iExists γcl. rewrite /ConsoleInv.console_inv.
-      iSplitR; [iExact "Hconslk" | iExact "Htbl"]. }
+      iSplitR.
+      - iExists γcl. rewrite /ConsoleInv.console_inv.
+        iSplitR; [iExact "Hconslk" | iExact "Htbl"].
+      (* ...AND THE CONSOLE PORT'S OWN INVARIANT (lane CONS-IO, milestone
+         B, ruling F6).  THIS is the one place the ring's names and the
+         UART's are both concrete -- [Hcnu : cn_uart cn = γd] is this
+         function's own premise -- so the read path never has to thread the
+         tie. *)
+      - rewrite Hcnu. iApply (WpUart.dev_inv_uart with "Hdev"). }
     iModIntro.
     (* ---- +0x4a auipc a0,0x6 / +0x4e addi a0,a0,476 : a0 := &"\n" ---- *)
     iApply (wp_auipc_s_sconf (mword_of_int (KernelSyms.main + 0x4a)) (mword_of_int 10 : mword 5)

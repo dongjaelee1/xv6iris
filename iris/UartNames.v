@@ -82,6 +82,18 @@ Record uart_names := UartNames {
   un_loghi  : gname;
   un_log    : gname;
   un_deliv  : gname;
+  (* un_logm   THE EXACT MIRROR of the log (lane CONS-IO, milestone B, the
+               coordinator's ruling on F4).  A [ghost_var] PAIR, not a
+               bound: one half sits in the port invariant's input claim
+               beside [un_log]'s authority, the other in
+               [ConsoleInv.cons_res].  A lower bound is not enough, because
+               the ring's gap accumulator quantifies over the log's entries
+               ABOVE the ring's top -- exactly the ones a bound cannot
+               exclude -- so the ring must be able to say [L = pops] and
+               not merely [L prefix_of pops].  Only consoleintr moves it,
+               and it holds cons.lock and the port invariant together when
+               it does.  APPENDED LAST. *)
+  un_logm   : gname;
 }.
 
 (* THE CONSOLE RING'S GHOST NAMES, here and not in [ConsoleInv.v] for the

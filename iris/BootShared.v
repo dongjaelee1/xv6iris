@@ -548,7 +548,7 @@ Section BootBssChain.
          ([∗ list] p ∈ ps, page_own p)).
   Proof.
     intro Hbf. pose proof (boot_mem_of_facts g Hbf) as Hmem.
-    iIntros "#Hcl Hfd Hir Hirf Hfda Hbss (Hsa & Hcu & Hchi & Hrdtok & Hclean) Hu0 Hu1 H".
+    iIntros "#Hcl Hfd Hir Hirf Hfda Hbss (Hsa & Hcu & Hchi & Hlm & Hrdtok & Hclean) Hu0 Hu1 H".
     (* THE FLAG CELLS ARE GONE.  This chain used to open with two 4-byte cuts
        for [panicked] and [panicking]; upstream d80e61c5 deleted both globals
        from printk.c, so there is no such symbol and nothing to carve.  .bss
@@ -613,7 +613,7 @@ Section BootBssChain.
                  (KernelSyms.cons + 164) ram_hi
                  ltac:(zlit) ltac:(zlit) ltac:(zlit) with "H") as "[Hring H]".
     iDestruct (boot_cons_res g cn Hmem ltac:(zlit) ltac:(zlit) ltac:(zlit) ltac:(zeq)
-                 with "Hcl Hring Hsa Hcu Hchi") as "Hring".
+                 with "Hcl Hring Hsa Hcu Hchi Hlm") as "Hring".
     iDestruct (bss_cut g (KernelSyms.cons + 164) KernelSyms.pr
                  (KernelSyms.pr + 24) ram_hi
                  ltac:(zlit) ltac:(zlit) ltac:(zlit) with "H") as "[Hlk2 H]".
@@ -2119,7 +2119,7 @@ Section BootAlloc.
                founds the port's output claim exactly here. *)
             ltac:(rewrite Hu0; reflexivity) with "Hores Hires") as (γd)
       "(Hacc & Hout & Htxa & Hdla & Htx & Hsent & Hdlab & Hcol & Hincl &
-        Htok & Hhi1 & Hhi2 & Hlgh & Hdvh & Hpre)".
+        Htok & Hhi1 & Hhi2 & Hlgh & Hdvh & Hlmh & Hpre)".
     (* ---- THE CONSOLE RING'S GHOSTS, beside the UART's and not before
        them: the ring's half of the receive side's HIGH-WATER MARK is one
        of the pair [uart_ghosts_alloc] just made, and the ring's names
@@ -2127,7 +2127,16 @@ Section BootAlloc.
        place (app-echo.md, lane CONS-CURSOR, C2).  The other half stays
        here and leaves for main's PLIC park. ---- *)
     iEval (rewrite /uart_rx_hi) in "Hhi1".
-    iMod (cons_ghosts_alloc γd with "Hhi1") as (cnm) "[%Hcnu Hcgb]".
+    (* ...AND THE TWO CONS-IO HALVES THAT USED TO BE DROPPED HERE
+       (milestone B, §2h): the consumed sequence goes into the ring's
+       READER TOKEN and the log's mirror into the ring's resource, both
+       through [cons_ghosts_alloc].  [uart_deliv] has no PLIC sink -- the
+       payload carries the pop token and the two high-water marks -- so
+       this is the whole of the thread and no other boot file moves. *)
+    iEval (rewrite /uart_deliv) in "Hdvh".
+    iEval (rewrite /uart_logm) in "Hlmh".
+    iMod (cons_ghosts_alloc γd with "Hhi1 Hdvh Hlmh")
+      as (cnm) "[%Hcnu Hcgb]".
     (* ---- the .bss, in address order.  It runs AFTER the two mints above
        because the console ring's resource now owns three of their ghost
        rows. ---- *)
@@ -2168,7 +2177,7 @@ Section BootAlloc.
             ltac:(rewrite Hu0; reflexivity)
             with "Hores1 Hires1") as (γd1)
       "(Hacc1 & Hout1 & Htxa1 & Hdla1 & Htx1 & Hsent1 & Hdlab1 & Hcol1 &
-        Hincl1 & Htok1 & Hhi11 & _ & Hlgh1 & _ & Hpre1)".
+        Hincl1 & Htok1 & Hhi11 & _ & Hlgh1 & _ & _ & Hpre1)".
     iDestruct (uart_out_auth_lb γd1 (g.(gdev).(duart) Uart1) with "Hout1")
       as "[Hout1 #Hlb1]".
     assert (Hacceq1 : uart_acc (g.(gdev).(duart) Uart1)

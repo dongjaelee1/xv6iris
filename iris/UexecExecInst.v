@@ -296,6 +296,20 @@ Section UexecExecInst.
        an explicit deposit; the kernel only relays it.  LAST, so every
        positional builder only gained a trailing argument. *)
     rf_ret   : nat -> nat -> iProp Σ;
+    (* ---- read (5), third piece: WHAT THE CALLER ASKS TO BE TOLD ABOUT
+       THE INPUT IT CONSUMED ---- (app-echo.md, lane CONS-IO, milestone B,
+       B4).  The application owns the console UART's accepted-input log and
+       the sequence delivered out of it ([RiscvPtsto.riscv_in_res]); a
+       console read moves the second, and it moves it through ONE fupd the
+       process supplies -- [WpUart.cons_read_pay (rf_in f)], carried on
+       read's deposit beside the ring's payment and fired by consoleread at
+       its final release.  [rf_in f ws] is what comes back, at the window
+       the call actually consumed, in [SpecFileread.console_receipt]'s
+       clean arm.  A generic process chooses [fun _ => True] and the
+       generic slot pays it from the input licence its supply already
+       holds ([FsAbsInvFire.fsabs_fileread_in]).
+       LAST, so every positional builder only gained a trailing argument. *)
+    rf_in    : list (list mobs * bv 8) -> iProp Σ;
   }.
 
   (* THE RE-KEYING ([UexecSG.sfam_at]): the same families at another
@@ -323,7 +337,8 @@ Section UexecExecInst.
        df_Fok   := df_Fok f; df_Fex := df_Fex f;
        kf_pay   := kf_pay f;
        kf_xpay  := Q;
-       rf_ret   := rf_ret f |}.
+       rf_ret   := rf_ret f;
+       rf_in    := rf_in f |}.
 
   (* THE RECORD AT EXEC'S FOUR AND THE TRIVIAL FAMILIES ELSEWHERE.  The
      eight other numbers' fields are spelled at exactly the families the
@@ -380,7 +395,11 @@ Section UexecExecInst.
           [xv6_sbundle_of_supply_ne] -- the generic slot's supply law, a
           FIELD of [UexecSG]'s class, stated at [□ ssupply] -- provable at
           n = 5. *)
-       rf_ret   := fun _ _ => True%I |}.
+       rf_ret   := fun _ _ => True%I;
+       (* ...AND IT CLAIMS NOTHING ABOUT WHAT IT READ EITHER, so read's
+          input link is payable out of [WpUart.in_licence] alone -- which
+          is what keeps [xv6_sbundle_of_supply_ne] provable at n = 5. *)
+       rf_in    := fun _ => True%I |}.
 
   (* ...AT THE TRIVIAL PAYLOAD, which is what every generic process forks
      with: a generic child's exit owes its parent nothing.  The four-argument
@@ -504,7 +523,7 @@ Section UexecExecInst.
           hands over -- [FsAbsInvFire.fsabs_fileread_in], unchanged and
           stated at ANY [P]). *)
        fileread_in (fd_st_of_key (xk_a W 0) (uvis_fd W)) (rf_F f) (rf_ret f)
-         True%I
+         (rf_in f) True%I
      else if decide (n = 9) then
        chdir_au_pre (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (cf_P f) (cf_Pmiss f) (cf_Fo f)
@@ -671,7 +690,8 @@ Section UexecExecInst.
           ⌜ProcPtOwn.proc_pt_wf P⌝ ∗
           ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
           fileread_extra_core P (fd_st_of_key (xk_a W 0) (uvis_fd W))
-            (sys_rw_count (xk_a W 2)) (rf_F f) (rf_ret f) r M' (xk_a W 1))
+            (sys_rw_count (xk_a W 2)) (rf_F f) (rf_ret f) (rf_in f) r M'
+            (xk_a W 1))
      else if decide (n = 9) then
        chdir_receipt (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (cf_P f) (cf_Pmiss f) (cf_Fo f) r cw'
@@ -858,7 +878,7 @@ Section UexecExecInst.
     destruct (decide (n = USYS_exec)) as [He | _];
       [ exfalso; exact (Hne He) | ].
     destruct (decide (n = 5)) as [_ | _];
-      [ iModIntro; iApply (fsabs_fileread_in with "Hsup") | ].
+      [ iModIntro; iApply (fsabs_fileread_in with "Hilic Hsup") | ].
     destruct (decide (n = 9)) as [_ | _];
       [ iModIntro; iApply fsabs_chdir_pre | ].
     destruct (decide (n = 15)) as [_ | _];
@@ -1117,7 +1137,7 @@ Section UexecExecInst.
   Lemma sbundle_at_read_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
     sbundle_at X 5 f W -∗
     fileread_in (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
-      (rf_F f) (rf_ret f) True%I.
+      (rf_F f) (rf_ret f) (rf_in f) True%I.
   Proof.
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_take. iExact "H".
@@ -1343,7 +1363,7 @@ Section UexecExecInst.
     (uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)) ->
     fileread_extra_core P (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (rf_F f) (rf_ret f)
-      r M' (tf_w (uvis_tf W) (tf_arg_idx 1)) -∗
+      (rf_in f) r M' (tf_w (uvis_tf W) (tf_arg_idx 1)) -∗
     spost_at X 5 f W r M' fdv' cw' cs'.
   Proof.
     intros Hret Hpm Hwf Hlz. iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.

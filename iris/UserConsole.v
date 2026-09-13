@@ -46,6 +46,7 @@ From stdpp Require Import list bitvector.definitions.
 From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import ghost_var own.
 From iris.algebra.lib Require Import mono_list.
+From iris.base_logic.lib Require Import mono_nat.   (* the ring's dirty marker *)
 Require Import SailStdpp.Base SailStdpp.Values.
 Require Import RiscvLang ObsTrace.   (* [mobs] -- what a tag's history is made of *)
 Require Import RiscvPtsto.           (* [riscv_rx_tag] -- the application's tag on
@@ -115,27 +116,55 @@ Section UserConsole.
   Proof. iIntros "H1 H2". iApply (ghost_var_update_halves with "H1 H2"). Qed.
 
   (* ---- the ring's two resources, at the narrow class ---- *)
-  (* THE READER TOKEN.  [ConsoleInv.cons_reader] spelled at [uartGhostG];
-     §3 proves them equal. *)
-  Definition ucons_reader (cn : cons_names) (n : nat) : iProp Σ :=
-    ghost_var cn.(cn_rd) (1/2) n.
-
-  (* ...AND THE BOUND ON THE STORED SEQUENCE a receipt hands out
+  (* THE BOUND ON THE STORED SEQUENCE a receipt hands out
      ([ConsoleInv.cons_stored_lb]): persistent, and any two of them agree
      on every index both have, which is what makes two successive reads'
-     windows parts of ONE sequence. *)
+     windows parts of ONE sequence.  It comes FIRST now, because the reader
+     token is built out of it. *)
   Definition ucons_stored_lb (cn : cons_names)
       (st : list (list mobs * bv 8)) : iProp Σ :=
     own cn.(cn_log) (◯ML (st : list (leibnizO (list mobs * bv 8)))).
 
-  Global Instance ucons_reader_timeless cn n : Timeless (ucons_reader cn n).
-  Proof. rewrite /ucons_reader. apply _. Qed.
   Global Instance ucons_stored_lb_persistent cn st :
     Persistent (ucons_stored_lb cn st).
   Proof. rewrite /ucons_stored_lb. apply _. Qed.
   Global Instance ucons_stored_lb_timeless cn st :
     Timeless (ucons_stored_lb cn st).
   Proof. rewrite /ucons_stored_lb. apply _. Qed.
+
+  (* THE READER TOKEN.  [ConsoleInv.cons_reader] spelled at [uartGhostG];
+     §3 proves them equal, and that proof is [reflexivity], so this must be
+     the ring's body CONJUNCT FOR CONJUNCT.
+
+     IT CARRIES THE BOUNDARY'S CONSUMED SEQUENCE (app-echo.md, lane
+     CONS-IO, milestone B, ruling F1): the lease is the exclusive right to
+     consume the console, so it is where "[dl] is the ring's consumed
+     prefix" can be said at all -- the ring itself cannot say it, because a
+     read pops byte by byte and links once, at its final release, with a
+     lock-releasing sleep in between.  The right disjunct is what a
+     TOKENLESS read leaves: it pops without linking, and the marker it sets
+     retires the correspondence for good. *)
+  Definition ucons_rdtok (cn : cons_names) (n : nat) : iProp Σ :=
+    ghost_var cn.(cn_rd) (1/2) n.
+  Definition ucons_deliv (cn : cons_names)
+      (dv : list (list mobs * bv 8)) : iProp Σ :=
+    ghost_var (un_deliv cn.(cn_uart)) (1/2) dv.
+  Definition ucons_dirty_lb (cn : cons_names) : iProp Σ :=
+    mono_nat_lb_own cn.(cn_dirty) 1%nat.
+
+  Definition ucons_dl (cn : cons_names) (n : nat) : iProp Σ :=
+    (∃ dv : list (list mobs * bv 8),
+       ucons_deliv cn dv ∗ ucons_stored_lb cn dv ∗
+       (⌜length dv = n⌝ ∨ ucons_dirty_lb cn))%I.
+
+  Definition ucons_reader (cn : cons_names) (n : nat) : iProp Σ :=
+    (ucons_rdtok cn n ∗ ucons_dl cn n)%I.
+
+  Global Instance ucons_reader_timeless cn n : Timeless (ucons_reader cn n).
+  Proof.
+    rewrite /ucons_reader /ucons_rdtok /ucons_dl /ucons_deliv
+            /ucons_stored_lb /ucons_dirty_lb. apply _.
+  Qed.
 
   (* ...AND THE SWALLOWED BYTE, at the narrow class too
      ([ConsoleInv.cons_swallow]).  consoleread's cursor moves by [d] or by

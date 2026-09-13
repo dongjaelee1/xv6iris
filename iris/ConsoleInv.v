@@ -100,6 +100,8 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import RiscvModelBytes.
 Require Import RiscvPtsto RiscvExtras.
 Require Import RiscvLang ObsTrace.   (* [mobs], [obs_ends_in Uart0]: the tag column's vocabulary *)
+Require Import ConsLog.   (* the boundary's pure vocabulary: [log_entry],
+                             [gap_ok], [read_ok], [log_echoed], [cons_erase] *)
 Require Import VcGen.   (* [trunc32_unsigned]/[trunc32_sext]: the ring index's wrap *)
 Require Import WpLock.
 Require Export UartNames.   (* [uart_names]: the receive side's ghost names;
@@ -315,6 +317,403 @@ Lemma cons_window_0 (l : list (list mobs * bv 8)) (n : nat)
   length l = n -> cons_window l n 0 bs [].
 Proof.
   intro Hl. split_and!; [lia | reflexivity | intros j Hj; exfalso; lia].
+Qed.
+
+(* ====================================================================== *)
+(*  WHAT THE RING KNOWS ABOUT THE INPUT LOG (app-echo.md, lane CONS-IO,   *)
+(*  milestone B, B2/B3).  Three pure clauses over the ring's own sequence *)
+(*  [R = st ++ pd] and the console UART's accepted-input log [L], and     *)
+(*  they are the WHOLE of what a read needs to prove [ConsLog.read_ok].   *)
+(* ====================================================================== *)
+
+(* the ring's TOP history, BY INDEX and never with [last]: the Sail imports
+   bring in [Stdlib.List.last], which takes a default and shadows stdpp's
+   ([ObsTrace.obs_ends_in_inj] documents the same trap). *)
+Definition cons_gtop (R : list (list mobs * bv 8)) : option (list mobs) :=
+  fst <$> (R !! (length R - 1)%nat).
+
+(* EVERY BYTE THE RING HOLDS IS A LOGGED, ECHOED INPUT.  This is
+   [read_ok]'s first clause at the window, and it is not derivable from
+   [cons_stored]: that gives [obs_ends_in] and nothing about the log.  It
+   is true because the only transition that puts a byte in the ring is
+   consoleintr's store arm, which echoes [echo_of c] before it stores. *)
+Definition cons_logged (L : list ConsLog.log_entry)
+    (R : list (list mobs * bv 8)) : Prop :=
+  forall p, p ∈ R ->
+    exists e, e ∈ L /\ (ConsLog.le_hist e, ConsLog.le_byte e) = p
+              /\ ConsLog.log_echoed e.
+
+(* ...AND BETWEEN ANY TWO CONSECUTIVE ONES THE LOG ACCOUNTS FOR THE GAP:
+   an input the ring does not hold was dropped without an echo, or an
+   erase character was typed.  [read_ok]'s clauses 3 and 4, at the ring's
+   own sequence rather than at a read's window -- a window is a stretch of
+   it, so the read reads its two clauses straight off. *)
+Definition cons_gaps_ok (L : list ConsLog.log_entry)
+    (R : list (list mobs * bv 8)) : Prop :=
+  (forall i h1 c1 h2 c2,
+     R !! i = Some (h1, c1) -> R !! S i = Some (h2, c2) ->
+     ConsLog.gap_ok L h1 h2)
+  /\ (forall h c, R !! 0%nat = Some (h, c) -> ConsLog.gap_ok L [] h).
+
+(* THE ACCUMULATOR, and the only state the ring keeps between calls: what
+   has been logged SINCE the ring's top entry.  [false] -- nothing with an
+   echo and no erase, so the next byte stored closes its gap on the LEFT
+   disjunct; [true] -- an erase character is up there, which closes it on
+   the RIGHT.  The two are maintained by consoleintr's four transitions: a
+   push resets it to [false] (the new top IS the log's top, so the clause
+   is vacuous), a pop sets it to [true] (the erase character it logs is
+   above the shortened ring), a drop logs [cs = []] and leaves it, a
+   commit does not touch the sequence at all. *)
+Definition cons_gp_ok (L : list ConsLog.log_entry)
+    (R : list (list mobs * bv 8)) (gp : bool) : Prop :=
+  if gp
+  then exists e, e ∈ L /\ hist_ext [] (ConsLog.le_hist e)
+                 /\ ohist_ext (cons_gtop R) (ConsLog.le_hist e)
+                 /\ ConsLog.cons_erase (ConsLog.le_byte e) = true
+  else forall e, e ∈ L -> ohist_ext (cons_gtop R) (ConsLog.le_hist e) ->
+                 ConsLog.le_echo e = [].
+
+Definition cons_log_ok (L : list ConsLog.log_entry)
+    (R : list (list mobs * bv 8)) (gp : bool) : Prop :=
+  cons_logged L R /\ cons_gaps_ok L R /\ cons_gp_ok L R gp.
+
+(* ...AND THE PENDING FORM consoleintr carries (ruling F2).  The ring's
+   transitions run in the arms and the log entry is appended when the
+   arm's echo has gone out, so between them the ring can hold a byte the
+   log does not.  [cons_res] is a LOCK PAYLOAD and need only hold when the
+   lock is free; the destructed ring [ProofConsoleintr.ct_gh] carries this
+   instead, indexed by the entry the call OWES.
+
+   ONLY THE ERASE ARMS OWE ONE.  A drop logs [cs = []] and touches no ring
+   entry, so its append is a plain step; a store echoes, appends and pushes
+   in ONE ghost step, where the new entry is the ring's own top and the
+   accumulator is vacuous.  But an erase POPS FIRST -- xv6 writes
+   [cons.e--] before it calls [consputc(BACKSPACE)], and the C('U') loop
+   does it once per glyph -- so between the first pop and the append the
+   ring is short of entries whose echoes are logged, and the only thing
+   that accounts for them is the erase character this call has not filed
+   yet.  Owing it sets the accumulator to [true] up front and the clause
+   is stated over EVERY legal echo, because the glyph count is not known
+   until the loop ends. *)
+Definition cons_owed (L : list ConsLog.log_entry)
+    (pe : option (list mobs * bv 8))
+    (R : list (list mobs * bv 8)) (gp : bool) : Prop :=
+  match pe with
+  | None => cons_log_ok L R gp
+  | Some (h, c) =>
+      gp = true /\
+      forall cs : list (bv 8), cons_log_ok (L ++ [(h, c, cs)]) R true
+  end.
+
+(* ...AND WHAT A READ TAKES OFF IT.  The window a console read consumed is
+   a stretch of the ring's own sequence ending where the call ended, so
+   [dl ++ ws] is a PREFIX of it -- and then every clause of
+   [ConsLog.read_ok] is one of the ring's, read at the same indices.  This
+   is the whole bridge; there is no prefix reasoning about the log, because
+   [cons_logm] pins [L] to the log exactly (ruling F4). *)
+(* ---- the four transitions, as pure list algebra ---------------------- *)
+
+Lemma cons_gtop_snoc (R : list (list mobs * bv 8)) (p : list mobs * bv 8) :
+  cons_gtop (R ++ [p]) = Some p.1.
+Proof.
+  rewrite /cons_gtop length_app. cbn [length].
+  replace (length R + 1 - 1)%nat with (length R) by lia.
+  rewrite lookup_app_r; [| lia]. by rewrite Nat.sub_diag.
+Qed.
+
+Lemma cons_gtop_elem (R : list (list mobs * bv 8)) (g : list mobs) :
+  cons_gtop R = Some g -> exists c : bv 8, (g, c) ∈ R.
+Proof.
+  rewrite /cons_gtop. destruct (R !! (length R - 1)%nat) as [[g' c]|] eqn:Hg;
+    [| discriminate].
+  cbn. intro He. injection He as <-. exists c. by eapply elem_of_list_lookup_2.
+Qed.
+
+(* every history the ring holds is at or below its top -- the chain says so *)
+Lemma cons_chain_below_gtop (R : list (list mobs * bv 8))
+    (i : nat) (h : list mobs) (c : bv 8) :
+  cons_chain R -> R !! i = Some (h, c) ->
+  ohist_le (Some h) (cons_gtop R) /\ (exists g : list mobs, cons_gtop R = Some g).
+Proof.
+  intros Hch Hi.
+  assert (Hlt : (i < length R)%nat) by (apply lookup_lt_Some in Hi; lia).
+  destruct (lookup_lt_is_Some_2 R (length R - 1)%nat ltac:(lia)) as [[g cg] Hg].
+  assert (Hgt : cons_gtop R = Some g) by (rewrite /cons_gtop Hg; reflexivity).
+  split; [| by exists g].
+  rewrite Hgt. cbn.
+  destruct (decide (i = length R - 1)%nat) as [-> | Hne].
+  - rewrite Hg in Hi. injection Hi as <- _. reflexivity.
+  - exact (proj1 (Hch i (length R - 1)%nat h g c cg Hi Hg ltac:(lia))).
+Qed.
+
+(* ...so a byte strictly above the ring's TOP is strictly above every one
+   of its entries *)
+Lemma cons_gtop_lift (R : list (list mobs * bv 8)) (h : list mobs)
+    (i : nat) (hi : list mobs) (ci : bv 8) :
+  cons_chain R -> ohist_ext (cons_gtop R) h -> R !! i = Some (hi, ci) ->
+  hist_ext hi h.
+Proof.
+  intros Hch Hx Hi.
+  destruct (cons_chain_below_gtop R i hi ci Hch Hi) as [Hle [g Hg]].
+  rewrite Hg in Hle, Hx. cbn in Hle, Hx.
+  destruct Hx as [Hp Hl]. split;
+    [ by etrans | apply prefix_length in Hle; lia ].
+Qed.
+
+(* A DROP: the entry logged has no echo, so it can sit anywhere and every
+   clause is unmoved. *)
+Lemma cons_log_ok_snoc_nil (L : list ConsLog.log_entry)
+    (R : list (list mobs * bv 8)) (gp : bool) (e : ConsLog.log_entry) :
+  ConsLog.le_echo e = [] ->
+  cons_log_ok L R gp -> cons_log_ok (L ++ [e]) R gp.
+Proof.
+  intros He (Hlg & [Hg1 Hg0] & Hgp).
+  assert (Hgap : forall h1 h2, ConsLog.gap_ok L h1 h2 ->
+                               ConsLog.gap_ok (L ++ [e]) h1 h2).
+  { intros h1 h2 [Hl | (e' & He' & Ha & Hb & Hc)].
+    - left. intros e0 H0 H1 H2. apply elem_of_app in H0 as [H0 | H0];
+        [ exact (Hl e0 H0 H1 H2) | apply elem_of_list_singleton in H0 as ->;
+          exact He ].
+    - right. exists e'. split_and!;
+        [ apply elem_of_app; by left | exact Ha | exact Hb | exact Hc ]. }
+  split_and!.
+  - intros p Hp. destruct (Hlg p Hp) as (e0 & H0 & H1 & H2).
+    exists e0. split_and!; [ apply elem_of_app; by left | exact H1 | exact H2 ].
+  - split; [ intros i h1 c1 h2 c2 H1 H2; exact (Hgap _ _ (Hg1 i h1 c1 h2 c2 H1 H2))
+           | intros h c H0; exact (Hgap _ _ (Hg0 h c H0)) ].
+  - destruct gp; cbn [cons_gp_ok] in Hgp |- *.
+    + destruct Hgp as (e' & He' & Hn & Ha & Hb). exists e'.
+      split_and!; [ apply elem_of_app; by left | exact Hn | exact Ha | exact Hb ].
+    + intros e0 H0 H1. apply elem_of_app in H0 as [H0 | H0];
+        [ exact (Hgp e0 H0 H1) | apply elem_of_list_singleton in H0 as ->;
+          exact He ].
+Qed.
+
+(* an arrival history is never empty -- it ENDS in the arrival.  Here and
+   not in [ObsTrace] so the lane's cone stops at this file (lane CONS-IO,
+   milestone B: the accumulator needs it at the very first byte ever
+   typed, where the gap's lower end is [[]]). *)
+Lemma cons_ends_in_nonnil (i : uart_id) (h : list mobs) (b : bv 8) :
+  obs_ends_in i h b -> hist_ext [] h.
+Proof.
+  intros [h0 ->]. split; [apply prefix_nil |].
+  rewrite length_app. cbn [length]. lia.
+Qed.
+
+(* the ring's top is below whatever its high-water mark is below *)
+Lemma cons_gtop_of_below (R : list (list mobs * bv 8))
+    (hh : option (list mobs)) (h : list mobs) :
+  cons_below R hh -> ohist_ext hh h -> ohist_ext (cons_gtop R) h.
+Proof.
+  intros Hb Hx. rewrite /cons_gtop.
+  destruct (R !! (length R - 1)%nat) as [[g cg]|] eqn:Hg; [| done].
+  cbn. specialize (Hb _ _ _ Hg). destruct hh as [hh0 |]; [| done].
+  cbn in Hb, Hx. destruct Hx as [Hp Hl]. split;
+    [ by etrans | apply prefix_length in Hb; lia ].
+Qed.
+
+(* an entry logged ABOVE a gap's upper end never lands inside it *)
+Lemma cons_gap_ok_snoc_above (L : list ConsLog.log_entry) (h1 h2 : list mobs)
+    (e : ConsLog.log_entry) :
+  hist_ext h2 (ConsLog.le_hist e) ->
+  ConsLog.gap_ok L h1 h2 -> ConsLog.gap_ok (L ++ [e])%list h1 h2.
+Proof.
+  intros Hab [Hl | (e' & He' & Ha & Hb & Hc)].
+  - left. intros e1 H1 H2 H3. apply elem_of_app in H1 as [H1 | H1];
+      [ exact (Hl e1 H1 H2 H3) |].
+    apply elem_of_list_singleton in H1 as ->. exfalso.
+    destruct H3 as [_ Hl3]. destruct Hab as [_ Hl2]. lia.
+  - right. exists e'. split_and!;
+      [ apply elem_of_app; by left | exact Ha | exact Hb | exact Hc ].
+Qed.
+
+(* AN ERASE OWES ITS CHARACTER (ruling F2).  The arm pops before it echoes,
+   so it flips the accumulator to [true] up front against the entry it has
+   not filed yet -- and the clause holds at EVERY legal echo, because the
+   C('U') loop's glyph count is not known until the loop ends. *)
+Lemma cons_log_ok_owe (L : list ConsLog.log_entry)
+    (R : list (list mobs * bv 8)) (gp : bool)
+    (h : list mobs) (c : bv 8) (cs : list (bv 8)) :
+  cons_chain R -> ohist_ext (cons_gtop R) h -> hist_ext [] h ->
+  ConsLog.cons_erase c = true ->
+  cons_log_ok L R gp -> cons_log_ok (L ++ [(h, c, cs)])%list R true.
+Proof.
+  intros Hch Hgt Hne Her (Hlg & [Hg1 Hg0] & _).
+  set (e0 := (h, c, cs) : ConsLog.log_entry).
+  assert (Hlift : forall (i : nat) (hi : list mobs) (ci : bv 8),
+                    R !! i = Some (hi, ci) -> hist_ext hi h)
+    by (intros i hi ci Hi; exact (cons_gtop_lift R h i hi ci Hch Hgt Hi)).
+  split_and!.
+  - intros p Hp. destruct (Hlg p Hp) as (e1 & H1 & H2 & H3). exists e1.
+    split_and!; [ apply elem_of_app; by left | exact H2 | exact H3 ].
+  - split.
+    + intros i h1 c1 h2 c2 H1 H2.
+      exact (cons_gap_ok_snoc_above L h1 h2 e0 (Hlift (S i) h2 c2 H2)
+               (Hg1 i h1 c1 h2 c2 H1 H2)).
+    + intros h0 c0 H0.
+      exact (cons_gap_ok_snoc_above L [] h0 e0 (Hlift 0%nat h0 c0 H0)
+               (Hg0 h0 c0 H0)).
+  - cbn [cons_gp_ok]. exists e0. split_and!;
+      [ apply elem_of_app; right; apply elem_of_list_singleton; reflexivity
+      | exact Hne | exact Hgt | exact Her ].
+Qed.
+
+(* A STORE: the byte is echoed, logged and pushed in ONE step, and that is
+   why the accumulator can be reset.  Doing it in two would expose a state
+   where the log's top is an ECHOED entry above the ring's top -- exactly
+   what [cons_gp_ok false] forbids -- so the arm's append and its ring
+   transition are one ghost step ([ProofConsoleintr.ct_gh_push]). *)
+Lemma cons_log_ok_push (L : list ConsLog.log_entry)
+    (R : list (list mobs * bv 8)) (gp : bool) (h : list mobs) (c : bv 8) :
+  cons_chain R ->
+  (forall e, e ∈ L -> hist_ext (ConsLog.le_hist e) h) ->
+  ohist_ext (cons_gtop R) h ->
+  cons_log_ok L R gp ->
+  cons_log_ok (L ++ [(h, c, [ConsLog.echo_of c])])%list (R ++ [(h, c)])%list false.
+Proof.
+  intros Hch Habove Hgt (Hlg & [Hg1 Hg0] & Hgp).
+  set (e0 := (h, c, [ConsLog.echo_of c]) : ConsLog.log_entry).
+  assert (He0h : ConsLog.le_hist e0 = h) by reflexivity.
+  (* every history the ring holds is strictly below the new one *)
+  assert (Hlift : forall (i : nat) (hi : list mobs) (ci : bv 8),
+                    R !! i = Some (hi, ci) -> hist_ext hi h)
+    by (intros i hi ci Hi; exact (cons_gtop_lift R h i hi ci Hch Hgt Hi)).
+  (* ...so the new entry never lands INSIDE a gap that ends in the ring *)
+  assert (Hgap : forall h1 h2, hist_ext h2 h -> ConsLog.gap_ok L h1 h2 ->
+                   ConsLog.gap_ok (L ++ [e0])%list h1 h2).
+  { intros h1 h2 Hh2 [Hl | (e' & He' & Ha & Hb & Hc)].
+    - left. intros e1 H1 H2 H3. apply elem_of_app in H1 as [H1 | H1];
+        [ exact (Hl e1 H1 H2 H3) |].
+      apply elem_of_list_singleton in H1 as ->. exfalso.
+      rewrite He0h in H3. destruct H3 as [_ Hlt3]. destruct Hh2 as [_ Hlt2]. lia.
+    - right. exists e'. split_and!;
+        [ apply elem_of_app; by left | exact Ha | exact Hb | exact Hc ]. }
+  (* the lookups of the extended ring *)
+  assert (Hlk : forall (i : nat) (x : list mobs * bv 8),
+                  (i < length R)%nat -> (R ++ [(h, c)])%list !! i = R !! i)
+    by (intros i x Hi; by rewrite lookup_app_l).
+  split_and!.
+  - (* LOGGED: the old entries keep their witness, and the new byte IS the
+       entry just appended *)
+    intros p Hp. apply elem_of_app in Hp as [Hp | Hp].
+    + destruct (Hlg p Hp) as (e1 & H1 & H2 & H3). exists e1.
+      split_and!; [ apply elem_of_app; by left | exact H2 | exact H3 ].
+    + apply elem_of_list_singleton in Hp as ->. exists e0.
+      split_and!; [ apply elem_of_app; right; apply elem_of_list_singleton;
+                    reflexivity | reflexivity | reflexivity ].
+  - split.
+    + (* the pairs INSIDE the ring, and the one that ENDS at the new byte *)
+      intros i h1 c1 h2 c2 H1 H2.
+      assert (Hi : (i < length R)%nat).
+      { apply lookup_lt_Some in H1. rewrite length_app in H1. cbn [length] in H1.
+        destruct (decide (i < length R)%nat) as [Hy | Hn]; [exact Hy | exfalso].
+        assert (i = length R) by lia. subst i.
+        rewrite lookup_app_r in H2; [| lia].
+        replace (S (length R) - length R)%nat with 1%nat in H2 by lia.
+        cbn in H2. discriminate. }
+      rewrite (Hlk i (h1, c1) Hi) in H1.
+      destruct (decide (S i < length R)%nat) as [Hs | Hs].
+      * rewrite (Hlk (S i) (h2, c2) Hs) in H2.
+        exact (Hgap h1 h2 (Hlift (S i) h2 c2 H2) (Hg1 i h1 c1 h2 c2 H1 H2)).
+      * assert (HSi : S i = length R) by lia.
+        rewrite lookup_app_r in H2; [| lia].
+        rewrite HSi Nat.sub_diag in H2. cbn in H2. injection H2 as <- <-.
+        (* THE NEW GAP, closed from the accumulator *)
+        assert (Hgti : cons_gtop R = Some h1).
+        { rewrite /cons_gtop. replace (length R - 1)%nat with i by lia.
+          by rewrite H1. }
+        destruct gp; cbn [cons_gp_ok] in Hgp.
+        -- destruct Hgp as (e' & He' & Hne & Hab & Her). right. exists e'.
+           split_and!; [ apply elem_of_app; by left
+                       | rewrite Hgti in Hab; exact Hab
+                       | right; exact (Habove e' He')
+                       | exact Her ].
+        -- left. intros e1 H1e H2e H3e. apply elem_of_app in H1e as [H1e | H1e].
+           ++ apply (Hgp e1 H1e). rewrite Hgti. exact H2e.
+           ++ apply elem_of_list_singleton in H1e as ->. exfalso.
+              rewrite He0h in H3e. destruct H3e as [_ Hlt]. lia.
+    + (* the FIRST entry: the ring's own, or the new byte if the ring was
+         empty (which is only ever true before the first byte ever typed) *)
+      intros h0 c0 H0.
+      destruct (decide (0 < length R)%nat) as [Hne | Hem].
+      * rewrite (Hlk 0%nat (h0, c0) Hne) in H0.
+        exact (Hgap [] h0 (Hlift 0%nat h0 c0 H0) (Hg0 h0 c0 H0)).
+      * assert (HR : R = []) by (destruct R; [reflexivity | cbn in Hem; lia]).
+        subst R. cbn in H0. injection H0 as <- <-.
+        assert (Hgt0 : cons_gtop (@nil (list mobs * bv 8)) = None) by reflexivity.
+        destruct gp; cbn [cons_gp_ok] in Hgp.
+        -- destruct Hgp as (e' & He' & Hne0 & _ & Her). right. exists e'.
+           split_and!; [ apply elem_of_app; by left | exact Hne0
+                       | right; exact (Habove e' He') | exact Her ].
+        -- left. intros e1 H1e H2e H3e. apply elem_of_app in H1e as [H1e | H1e].
+           ++ apply (Hgp e1 H1e). by rewrite Hgt0.
+           ++ apply elem_of_list_singleton in H1e as ->. exfalso.
+              rewrite He0h in H3e. destruct H3e as [_ Hlt]. lia.
+  - (* THE ACCUMULATOR IS RESET, and vacuously so: the new top IS the log's
+       top, and nothing is above it. *)
+    cbn [cons_gp_ok]. intros e1 H1 H2.
+    rewrite (cons_gtop_snoc R (h, c)) in H2. cbn in H2. exfalso.
+    apply elem_of_app in H1 as [H1 | H1].
+    + destruct (Habove e1 H1) as [_ Hl1]. destruct H2 as [_ Hl2]. lia.
+    + apply elem_of_list_singleton in H1 as ->. rewrite He0h in H2.
+      destruct H2 as [_ Hl2]. lia.
+Qed.
+
+(* AN ERASE'S POP: the ring loses its last entry.  Every clause but the
+   accumulator is a restriction, and the accumulator survives because the
+   ring's top only moves DOWN the chain -- which is why the erase arms owe
+   their character BEFORE they pop ([cons_owed] at [Some]). *)
+Lemma cons_log_ok_pop (L : list ConsLog.log_entry)
+    (R : list (list mobs * bv 8)) (p : list mobs * bv 8) :
+  cons_chain (R ++ [p])%list ->
+  cons_log_ok L (R ++ [p])%list true -> cons_log_ok L R true.
+Proof.
+  intros Hch (Hlg & [Hg1 Hg0] & Hgp).
+  assert (Hlk : forall (i : nat) (x : list mobs * bv 8),
+                  R !! i = Some x -> (R ++ [p])%list !! i = Some x)
+    by (intros i x Hi; rewrite lookup_app_l;
+        [ exact Hi | apply lookup_lt_Some in Hi; lia ]).
+  split_and!.
+  - intros q Hq. apply Hlg. apply elem_of_app. by left.
+  - split; [ intros i h1 c1 h2 c2 H1 H2;
+             exact (Hg1 i h1 c1 h2 c2 (Hlk i _ H1) (Hlk (S i) _ H2))
+           | intros h c H0; exact (Hg0 h c (Hlk 0%nat _ H0)) ].
+  - cbn [cons_gp_ok] in Hgp |- *.
+    destruct Hgp as (e & He & Hne & Hab & Her). exists e.
+    split_and!; [ exact He | exact Hne | | exact Her ].
+    rewrite (cons_gtop_snoc R p) in Hab. cbn in Hab.
+    rewrite /cons_gtop.
+    destruct (R !! (length R - 1)%nat) as [[g cg]|] eqn:Hg; [| done].
+    cbn. apply (hist_ext_trans g p.1 (ConsLog.le_hist e)); [| exact Hab].
+    assert (Hgl : (R ++ [p])%list !! (length R - 1)%nat = Some (g, cg))
+      by (apply Hlk; exact Hg).
+    assert (Hpl : (R ++ [p])%list !! (length R)%nat = Some p)
+      by (rewrite lookup_app_r; [ by rewrite Nat.sub_diag | lia ]).
+    assert (Hlen : (0 < length R)%nat)
+      by (apply lookup_lt_Some in Hg; lia).
+    destruct p as [ph pc].
+    exact (Hch (length R - 1)%nat (length R)%nat g ph cg pc Hgl Hpl ltac:(lia)).
+Qed.
+
+Lemma cons_read_ok_of (L : list ConsLog.log_entry)
+    (R dv ws : list (list mobs * bv 8)) :
+  cons_logged L R -> cons_gaps_ok L R -> cons_chain R ->
+  ((dv ++ ws)%list `prefix_of` R) ->
+  ConsLog.read_ok L dv ws.
+Proof.
+  intros Hlg [Hgap Hgap0] Hch Hpfx.
+  assert (Hlk : forall (i : nat) (x : list mobs * bv 8),
+                  (dv ++ ws)%list !! i = Some x -> R !! i = Some x)
+    by (intros i x Hi; exact (prefix_lookup_Some _ _ _ _ Hi Hpfx)).
+  split_and!.
+  - intros p Hp. apply Hlg.
+    apply (elem_of_prefix (dv ++ ws)%list R p); [| exact Hpfx].
+    apply elem_of_app. by right.
+  - intros i h1 c1 h2 c2 H1 H2.
+    exact (Hch i (S i) h1 h2 c1 c2 (Hlk i _ H1) (Hlk (S i) _ H2) ltac:(lia)).
+  - intros h c H0. exact (Hgap0 h c (Hlk 0%nat _ H0)).
+  - intros i h1 c1 h2 c2 H1 H2.
+    exact (Hgap i h1 c1 h2 c2 (Hlk i _ H1) (Hlk (S i) _ H2)).
 Qed.
 
 (* the chain survives taking a prefix, which is what lets a reader that
@@ -1170,8 +1569,40 @@ Section ConsoleInv.
      a hope about the process tree. *)
   Definition cons_cursor (cn : cons_names) (n : nat) : iProp Σ :=
     ghost_var cn.(cn_rd) (1/2) n.
-  Definition cons_reader (cn : cons_names) (n : nat) : iProp Σ :=
+  (* the LEASE HOLDER's half of the cursor.  It is one HALF of the reader
+     token now: the token also carries the boundary's consumed sequence
+     ([cons_dl] below, and [cons_reader] with it, after the dirty marker
+     it mentions). *)
+  Definition cons_rdtok (cn : cons_names) (n : nat) : iProp Σ :=
     ghost_var cn.(cn_rd) (1/2) n.
+
+  (* THE BOUNDARY'S CONSUMED SEQUENCE, the ring's spelling of
+     [WpUart.uart_deliv]'s other half (app-echo.md, lane CONS-IO,
+     milestone B).  Spelled here as the [ghost_var] at the uart's own name
+     for [cons_hi]'s reason: this file sits below [WpUart] and the two
+     unfold to one proposition.
+
+     IT DOES NOT LIVE IN THE RING (ruling F1).  [dl] advances once per
+     console read, at the FINAL RELEASE; the ring's consumed count [cur]
+     advances at every pop, and the copy loop RELEASES cons.lock between
+     the two (it sleeps at [cons.r == cons.w] with bytes already
+     delivered).  So "[dv] is [take cur st]" is false of the ring in the
+     middle of a read, and the half rides with the LEASE instead, where
+     the lag is nobody's business but the holder's. *)
+  Definition cons_deliv (cn : cons_names)
+      (dv : list (list mobs * bv 8)) : iProp Σ :=
+    ghost_var (un_deliv cn.(cn_uart)) (1/2) dv.
+
+  (* ...AND THE LOG'S EXACT MIRROR ([WpUart.uart_logm]'s other half), which
+     the RING does carry.  A PAIR AND NOT A BOUND (ruling F4): the gap
+     accumulator [cons_gp_ok] quantifies over the log entries ABOVE the
+     ring's top, and a [mono_list] lower bound cannot exclude one appended
+     after the bound was taken -- so the ring must be able to say [L] IS
+     the log.  Only consoleintr moves it, and it holds cons.lock and the
+     port invariant together when it does. *)
+  Definition cons_logm (cn : cons_names)
+      (L : list ConsLog.log_entry) : iProp Σ :=
+    ghost_var (un_logm cn.(cn_uart)) (1/2) L.
   (* the ring's half of the high-water mark.  THE SAME PROPOSITION as
      [WpUart.uart_rx_hi (cn_uart cn) (1/2)], spelled here because this file
      sits below [WpUart] and must not depend on it; the two unfold to one
@@ -1185,18 +1616,37 @@ Section ConsoleInv.
   Global Instance cons_stored_lb_timeless cn st :
     Timeless (cons_stored_lb cn st).
   Proof. rewrite /cons_stored_lb. apply _. Qed.
-  Global Instance cons_reader_timeless cn n : Timeless (cons_reader cn n).
-  Proof. rewrite /cons_reader. apply _. Qed.
+  Global Instance cons_rdtok_timeless cn n : Timeless (cons_rdtok cn n).
+  Proof. rewrite /cons_rdtok. apply _. Qed.
+  Global Instance cons_deliv_timeless cn dv : Timeless (cons_deliv cn dv).
+  Proof. rewrite /cons_deliv. apply _. Qed.
+  Global Instance cons_logm_timeless cn L : Timeless (cons_logm cn L).
+  Proof. rewrite /cons_logm. apply _. Qed.
 
+  (* THE CURSOR PAIR MOVES ALONE (ruling F1).  Its two halves are the ring's
+     and the lease's POSITION; the lease's other half -- the consumed
+     sequence -- moves once, at the release, and these two laws know
+     nothing about it. *)
   Lemma cons_cursor_agree cn n n' :
-    cons_cursor cn n -∗ cons_reader cn n' -∗ ⌜n = n'⌝.
+    cons_cursor cn n -∗ cons_rdtok cn n' -∗ ⌜n = n'⌝.
   Proof.
     iIntros "H1 H2". by iDestruct (ghost_var_agree with "H1 H2") as %->.
   Qed.
   Lemma cons_cursor_update cn n n' :
-    cons_cursor cn n -∗ cons_reader cn n ==∗
-      cons_cursor cn n' ∗ cons_reader cn n'.
+    cons_cursor cn n -∗ cons_rdtok cn n ==∗
+      cons_cursor cn n' ∗ cons_rdtok cn n'.
   Proof. iIntros "H1 H2". iApply (ghost_var_update_halves with "H1 H2"). Qed.
+
+  Lemma cons_deliv_agree cn dv dv' :
+    cons_deliv cn dv -∗ cons_deliv cn dv' -∗ ⌜dv = dv'⌝.
+  Proof.
+    iIntros "H1 H2". by iDestruct (ghost_var_agree with "H1 H2") as %->.
+  Qed.
+  Lemma cons_logm_agree cn L L' :
+    cons_logm cn L -∗ cons_logm cn L' -∗ ⌜L = L'⌝.
+  Proof.
+    iIntros "H1 H2". by iDestruct (ghost_var_agree with "H1 H2") as %->.
+  Qed.
 
   Lemma cons_stored_lb_get cn st :
     cons_stored_auth cn st -∗ cons_stored_auth cn st ∗ cons_stored_lb cn st.
@@ -1390,6 +1840,72 @@ Section ConsoleInv.
     iDestruct (mono_nat_lb_own_valid with "Ha Hlb") as %[_ Hle]. lia.
   Qed.
 
+  (* ---- THE LEASE, AND WHY IT CARRIES [dl] (ruling F1) ------------------
+
+     The boundary's [dl] is every input the read path has CONSUMED, and
+     what makes that sequence meaningful is EXCLUSIVITY: only the holder of
+     the reader token can say "the ring's consumed prefix and my [dl] are
+     the same list".  So the half of [WpUart.uart_deliv] the kernel owns
+     travels with the token rather than in the ring:
+
+       [cons_stored_lb cn dv] with [length dv = n] IS "[dv = take n st]" at
+       every later [st] -- two lower bounds on one [mono_list] agree on
+       every index both have -- so the holder knows where its window
+       begins without the ring having to say it, and the ring is free to
+       run ahead while the holder is mid-call.
+
+     The right disjunct is what a TOKENLESS read leaves behind: it pops
+     without advancing [dl], so once the marker is out the correspondence
+     is abandoned for good (the marker is monotone, and every later read
+     takes the credential arm and fires nothing).  That is exactly the
+     design's "[dl] freezes on the dirty arm".
+
+     [cons_reader] KEEPS ITS NAME AND ARITY, so every statement that
+     mentions it -- the boot's [cons_reader cn 0], sh's lease,
+     [UserConsole.ucons_reader] -- is textually unchanged. *)
+  Definition cons_dl (cn : cons_names) (n : nat) : iProp Σ :=
+    (∃ dv : list (list mobs * bv 8),
+       cons_deliv cn dv ∗ cons_stored_lb cn dv ∗
+       (⌜length dv = n⌝ ∨ cons_dirty_lb cn))%I.
+
+  Definition cons_reader (cn : cons_names) (n : nat) : iProp Σ :=
+    (cons_rdtok cn n ∗ cons_dl cn n)%I.
+
+  Global Instance cons_dl_timeless cn n : Timeless (cons_dl cn n).
+  Proof. rewrite /cons_dl /cons_deliv /cons_stored_lb /cons_dirty_lb. apply _. Qed.
+  Global Instance cons_reader_timeless cn n : Timeless (cons_reader cn n).
+  Proof. rewrite /cons_reader. apply _. Qed.
+
+  (* the two halves come apart at the first pop and go back together at the
+     final release, which is the whole of what [ProofConsoleread] does with
+     them *)
+  Lemma cons_reader_split (cn : cons_names) (n : nat) :
+    cons_reader cn n -∗ cons_rdtok cn n ∗ cons_dl cn n.
+  Proof. by iIntros "[$ $]". Qed.
+  Lemma cons_reader_join (cn : cons_names) (n : nat) :
+    cons_rdtok cn n -∗ cons_dl cn n -∗ cons_reader cn n.
+  Proof. iIntros "H1 H2". iFrame "H1 H2". Qed.
+
+  (* ...and the arm a read that found the ring MARKED rejoins on: it fired
+     nothing, so its [dl] is at whatever it was, and the marker is what
+     says so *)
+  Lemma cons_dl_dirty (cn : cons_names) (n m : nat) :
+    cons_dirty_lb cn -∗ cons_dl cn n -∗ cons_dl cn m.
+  Proof.
+    iIntros "#Hdt Hdl". iDestruct "Hdl" as (dv) "(Hdv & #Hlb & _)".
+    iExists dv. iFrame "Hdv Hlb". iRight. iExact "Hdt".
+  Qed.
+
+  Lemma cons_dl_clean (cn : cons_names) (n : nat) :
+    cons_clean_tok cn -∗ cons_dl cn n -∗
+      cons_clean_tok cn ∗ ∃ dv : list (list mobs * bv 8),
+        cons_deliv cn dv ∗ cons_stored_lb cn dv ∗ ⌜length dv = n⌝.
+  Proof.
+    iIntros "Htok Hdl". iDestruct "Hdl" as (dv) "(Hdv & #Hlb & [%Hl | #Hdt])".
+    - iFrame "Htok". iExists dv. iFrame "Hdv Hlb". by iPureIntro.
+    - iDestruct (cons_dirty_lb_clean cn with "Htok Hdt") as "[]".
+  Qed.
+
   (* THE ESCROW.  Its body is the one place [□ Wd] lives, and it is a
      disjunction the marker decides: clean (nobody has paid) or dirty (the
      marker is out and the credential is here).  Persistent by [inv], so it
@@ -1469,7 +1985,8 @@ Section ConsoleInv.
   Definition cons_res (cn : cons_names) : iProp Σ :=
     (∃ (r w e : mword 32) (bs : list (bv 8)) (ts : list (option (list mobs)))
        (cur nrd : nat) (st pd : list (list mobs * bv 8))
-       (hh : option (list mobs)),
+       (hh : option (list mobs))
+       (L0 : list ConsLog.log_entry) (gp : bool),
        a_cons_r ↦₄ r ∗
        a_cons_w ↦₄ w ∗
        a_cons_e ↦₄ e ∗
@@ -1483,6 +2000,12 @@ Section ConsoleInv.
        ⌜cons_below (st ++ pd) hh⌝ ∗
        cons_data bs ∗ cons_tags ts ∗
        cons_stored_auth cn st ∗ cons_cursor cn nrd ∗ cons_hi cn hh ∗
+       (* THE INPUT LOG, EXACTLY (app-echo.md, lane CONS-IO, milestone B).
+          [L0] IS the console UART's accepted-input log -- the mirror is a
+          pair, not a bound -- and the three clauses are what a read spends
+          to prove [ConsLog.read_ok] and what consoleintr's four
+          transitions maintain. *)
+       cons_logm cn L0 ∗ ⌜cons_log_ok L0 (st ++ pd) gp⌝ ∗
        (⌜cur = nrd⌝ ∨ cons_dirty_lb cn))%I.
 
   (* WHAT A CONSOLE READ COSTS ITS CALLER, AND WHAT IT HANDS BACK.  One
@@ -1608,7 +2131,8 @@ Section ConsoleInv.
 
   Global Instance cons_res_timeless cn : Timeless (cons_res cn).
   Proof.
-    rewrite /cons_res /cons_stored_auth /cons_cursor /cons_hi /cons_dirty_lb.
+    rewrite /cons_res /cons_stored_auth /cons_cursor /cons_hi /cons_logm
+            /cons_dirty_lb.
     apply _.
   Qed.
 
@@ -1629,18 +2153,32 @@ Section ConsoleInv.
      the ring's names record carries the uart's rather than a copy. *)
   Definition cons_ghosts_boot (cn : cons_names) : iProp Σ :=
     (cons_stored_auth cn [] ∗ cons_cursor cn 0%nat ∗ cons_hi cn None ∗
+     (* the log's mirror, at the empty log: the ring's half of the pair the
+        UART mint made (lane CONS-IO, milestone B) *)
+     cons_logm cn [] ∗
      cons_reader cn 0%nat ∗ cons_clean_tok cn)%I.
 
   (* The [un_rxhi] half is spelled as its [ghost_var] rather than as
      [WpUart.uart_rx_hi], because this file sits below [WpUart]; the two
      are one proposition ([cons_hi]'s note). *)
+  (* THE TWO NEW HALVES COME IN RAW (lane CONS-IO, milestone B, §2h): the
+     UART mint made them ([WpUart.uart_ghosts_alloc] at [Uart0]) and this
+     file sits below [WpUart], so they are spelled as their [ghost_var]s,
+     exactly as the high-water half above is.  The consumed sequence goes
+     into the READER TOKEN (ruling F1) and the log's mirror into the ring;
+     BootShared hands both over where it already hands the mark, and no
+     other boot file changes. *)
   Lemma cons_ghosts_alloc (γu : uart_names) :
-    ghost_var (un_rxhi γu) (1/2) (None : option (list mobs)) ==∗
+    ghost_var (un_rxhi γu) (1/2) (None : option (list mobs)) -∗
+    ghost_var (un_deliv γu) (1/2) (@nil (list mobs * bv 8)) -∗
+    ghost_var (un_logm γu) (1/2) (@nil ConsLog.log_entry) ==∗
       ∃ cn : cons_names, ⌜cn_uart cn = γu⌝ ∗ cons_ghosts_boot cn.
   Proof.
-    iIntros "Hhi".
+    iIntros "Hhi Hdv Hlm".
     iMod (own_alloc (●ML ([] : list (leibnizO (list mobs * bv 8)))))
       as (γl) "Hl"; [apply mono_list_auth_valid |].
+    iEval (rewrite {1}mono_list_auth_lb_op) in "Hl".
+    iDestruct "Hl" as "[Hl #Hlb]".
     iMod (ghost_var_alloc 0%nat) as (γr) "Hr".
     iEval (rewrite -Qp.half_half) in "Hr".
     iDestruct (ghost_var_split with "Hr") as "[Hr1 Hr2]".
@@ -1648,8 +2186,11 @@ Section ConsoleInv.
     iModIntro. iExists (ConsNames γu γl γr γk).
     iSplitR; [by iPureIntro |].
     rewrite /cons_ghosts_boot /cons_stored_auth /cons_cursor /cons_reader
-            /cons_hi /cons_clean_tok /=.
-    iFrame "Hl Hr1 Hhi Hr2 Hk".
+            /cons_rdtok /cons_dl /cons_deliv /cons_logm
+            /cons_stored_lb /cons_hi /cons_clean_tok /=.
+    iFrame "Hl Hr1 Hhi Hlm Hr2 Hk".
+    iExists []. iFrame "Hdv". iSplitR; [iExact "Hlb" |].
+    iLeft. by iPureIntro.
   Qed.
 
 End ConsoleInv.
@@ -1681,7 +2222,8 @@ Section ConsoleCtx.
       (ξ : CtxId) : iProp Σ :=
     (∃ (r w e : mword 32) (bs : list (bv 8)) (ts : list (option (list mobs)))
        (cur nrd : nat) (st pd : list (list mobs * bv 8))
-       (hh : option (list mobs)),
+       (hh : option (list mobs))
+       (L0 : list ConsLog.log_entry) (gp : bool),
        ctx_word4_pointsto ξ a_cons_r (DfracOwn 1) r ∗
        ctx_word4_pointsto ξ a_cons_w (DfracOwn 1) w ∗
        ctx_word4_pointsto ξ a_cons_e (DfracOwn 1) e ∗
@@ -1695,6 +2237,7 @@ Section ConsoleCtx.
        ⌜cons_below (st ++ pd) hh⌝ ∗
        cons_data_at ξ bs ∗ cons_tags ts ∗
        cons_stored_auth cn st ∗ cons_cursor cn nrd ∗ cons_hi cn hh ∗
+       cons_logm cn L0 ∗ ⌜cons_log_ok L0 (st ++ pd) gp⌝ ∗
        (⌜cur = nrd⌝ ∨ cons_dirty_lb cn))%I.
   Lemma cons_res_at_cur (cn : cons_names) :
     cons_res_at cn cur_ctx = cons_res cn.
@@ -1702,7 +2245,8 @@ Section ConsoleCtx.
   Global Instance cons_res_at_morph (cn : cons_names) :
     CtxMorph (cons_res_at cn).
   Proof.
-    rewrite /cons_res_at /cons_data_at /cons_dirty_lb. ctx_morph_solve.
+    rewrite /cons_res_at /cons_data_at /cons_logm /cons_dirty_lb.
+    ctx_morph_solve.
   Qed.
 
   (* THE WHOLE CREDENTIAL.  Persistent, singleton, and taken by value: a

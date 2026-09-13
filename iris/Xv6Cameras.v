@@ -384,6 +384,11 @@ Class uartGhostG (Σ : gFunctors) := UartGhostG {
      the same [option (list mobs)] camera. *)
   cons_ghost_inlogG :: inG Σ (mono_listR (leibnizO ConsLog.log_entry));
   cons_ghost_delivG :: ghost_varG Σ (list (list mobs * bv 8));
+  (* ...AND THE LOG'S EXACT MIRROR ([WpUart.uart_logm] /
+     [ConsoleInv.cons_logm], lane CONS-IO milestone B): a [ghost_var] over
+     the SAME list the [mono_list] above mirrors, because the ring needs
+     equality with the log and not a bound (see [UartNames.un_logm]). *)
+  cons_ghost_logmG :: ghost_varG Σ (list ConsLog.log_entry);
 }.
 
 Definition uartGhostΣ : gFunctors :=
@@ -395,7 +400,8 @@ Definition uartGhostΣ : gFunctors :=
      GFunctor (mono_listR (leibnizO (list mobs * bv 8)));
      ghost_varΣ nat;
      GFunctor (mono_listR (leibnizO ConsLog.log_entry));
-     ghost_varΣ (list (list mobs * bv 8)) ].
+     ghost_varΣ (list (list mobs * bv 8));
+     ghost_varΣ (list ConsLog.log_entry) ].
 
 Global Instance subG_uartGhostG Σ : subG uartGhostΣ Σ -> uartGhostG Σ.
 Proof. solve_inG. Qed.

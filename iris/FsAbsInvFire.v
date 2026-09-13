@@ -289,21 +289,32 @@ Section FsAbsInvFire.
      Nothing is duplicated: what the console arm owes is [∀ cur dc, |==>
      P ∗ True], and a [∀] over a constant is that constant -- the caller
      takes its [P] back at ONE position, the one the read landed on. *)
+  (* ...AND THE INPUT LICENCE PAYS THE CONSOLE ARM'S SECOND HALF (lane
+     CONS-IO, milestone B, B4).  Read's console deposit now carries the
+     boundary's input link as well as the ring's payment, and the generic
+     slot's supply already holds [WpUart.in_licence]
+     ([UexecExecInst.xv6_ssupply]'s fourth conjunct) -- so this arm costs
+     the generic process nothing new: it claims nothing about the window
+     ([rf_in] at [fun _ => True]) and the licence hands over a link at any
+     [ws] whatever. *)
   Lemma fsabs_fileread_in (st : fdstate) (P : iProp Σ) :
+    WpUart.in_licence -∗
     app_sup -∗ fileread_in st (pfam_triv (fun _ _ _ _ => True%I))
-                            (fun _ _ => True%I) P.
+                            (fun _ _ => True%I) (fun _ => True%I) P.
   Proof.
-    rewrite /fileread_in. iIntros "#Hsup HP".
+    rewrite /fileread_in. iIntros "#Hilic #Hsup HP".
     destruct st as [| rb wb ty]; [iExact "HP" |].
     destruct rb; [| iExact "HP"].
     destruct ty as [i γo | | ma].
     - iFrame "HP". iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
     - iExact "HP".
     - case_decide; [| iExact "HP"].
-      iApply (ConsoleInv.cons_acc_cred fsc_cons app_sup
-                (fun (_ _ : nat) => (P ∗ True)%I)).
-      + rewrite /ConsoleInv.cons_dirty_cred. iModIntro. iExact "Hsup".
-      + iIntros (cur dc). iModIntro. by iFrame "HP".
+      iSplitL "HP".
+      + iApply (ConsoleInv.cons_acc_cred fsc_cons app_sup
+                  (fun (_ _ : nat) => (P ∗ True)%I)).
+        * rewrite /ConsoleInv.cons_dirty_cred. iModIntro. iExact "Hsup".
+        * iIntros (cur dc). iModIntro. by iFrame "HP".
+      + iApply (WpUart.cons_read_pay_triv with "Hilic").
   Qed.
 
 

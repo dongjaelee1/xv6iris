@@ -105,6 +105,8 @@ Require Import ProcPtOwn.
 Require Import FdSlots ProcInv.
 Require Import FileInvDefs.
 Require Import ConsoleInv.
+Require Import WpUart.   (* [uart_inv], [cons_read_pay], [read_link]: E5's
+                            console I/O boundary, fired at the final release *)
 Require Import SchedCtx.
 Require Export SwtchCtx.
 From Kernel Require KernelSyms.
@@ -135,7 +137,17 @@ Definition wp_consoleread_sconf_body
        is a PARAMETER and the payment is a RESOURCE because the receipt
        names a window of the ring's stored sequence, and a post cannot name
        a number a premise hid under an existential. *)
-    (ord : option nat) :=
+    (ord : option nat)
+    (* WHAT THE PROCESS ASKS TO BE TOLD ABOUT THE INPUT IT CONSUMED
+       (app-echo.md, lane CONS-IO, milestone B, B3).  The application owns
+       the console UART's accepted-input log and the sequence delivered out
+       of it ([RiscvPtsto.riscv_in_res]); a read moves the second, and it
+       moves it through ONE fupd the process supplies,
+       [WpUart.cons_read_pay Rin], fired HERE -- at the final release, on
+       the CLEAN arm, where the ring's own account of the window is still
+       in hand.  [Rin ws] is what the process gets back, at the window it
+       actually consumed. *)
+    (Rin : list (list mobs * bv 8) -> iProp Σ) :=
   let pcE : mword 64 := mword_of_int KernelSyms.consoleread in
   let pj := proc_addr j in
   (* a1 = dst, the user destination the bytes are copied to *)
@@ -179,6 +191,16 @@ Definition wp_consoleread_sconf_body
      law has to pay for it.  What it does instead is RECORD the read, and
      the record is what the token holder reads off its own receipt. *)
   cons_pay cn Wd ord -∗
+  (* ...AND THE INPUT LINK IT SPENDS.  Consumed exactly once, on the clean
+     arm; a call that finds the ring MARKED drops it (its [dl] is frozen
+     and the caller's continuation is generic anyway). *)
+  WpUart.cons_read_pay Rin -∗
+  (* THE CONSOLE PORT'S OWN INVARIANT, which is where the boundary's two
+     resources live.  A new premise (ruling F6): the fire opens [uartN
+     Uart0] inside the WP, and neither [is_conslock] nor [console_caps]
+     reaches this function.  fileread supplies it from its own [dev_inv]
+     and the tie [cn_uart fsc_cons = fsc_uart]. *)
+  WpUart.uart_inv Uart0 (cn_uart cn) -∗
   proc_priv_core pj pid U -∗
   kalloc_env γa None -∗
   procs_inv γs -∗
@@ -310,6 +332,19 @@ Definition wp_consoleread_sconf_body
          ∗ cons_swallow cn
              (~ uva_wmapped (pv_upt (us_V U))
                   (uint (add_vec_int dst (Z.of_nat d)))) sl d dc
+         (* ...AND THE BOUNDARY'S ANSWER (lane CONS-IO, milestone B, B3).
+            On the clean arm the call fired the process's link at the
+            window it CONSUMED -- [dc] entries, delivered or swallowed --
+            and hands back what the process asked for at that window.
+            [sl'] and not [sl] (ruling F5): at [dc = d + 1] the swallowed
+            byte is one past [sl]'s end, so the row is stated at the bound
+            [cons_swallow] extends to. *)
+         ∗ (∃ (sl' ws : list (list mobs * bv 8)),
+              cons_stored_lb cn sl' ∗ ⌜sl `prefix_of` sl'⌝ ∗
+              ⌜length sl' = (cur + dc)%nat⌝ ∗ ⌜length ws = dc⌝ ∗
+              ⌜forall j : nat, (j < dc)%nat ->
+                 ws !! j = sl' !! (cur + j)%nat⌝ ∗
+              Rin ws)
        ∨ cons_dirty_cred Wd) -∗
       cons_out cn Wd ord cur dc -∗
       sie_cap_gpr KT1 mf av b pj -∗
@@ -327,7 +362,8 @@ Module Type CONSOLEREAD.
       (γc : gname) (cn : cons_names) (Wd : iProp Σ)
       (m : regfile) (av : nat) (eb : bool)
       (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string)
-      (ord : option nat),
+      (ord : option nat)
+      (Rin : list (list mobs * bv 8) -> iProp Σ),
       wp_consoleread_sconf_body γa γf γs j γlp γc cn Wd m av eb pid U n b lks
-        ord.
+        ord Rin.
 End CONSOLEREAD.

@@ -337,11 +337,23 @@ Section SpecFileread.
      also carries the UART's), because consoleread never touches the
      transmitter.  Persistent, so a caller pays for it once. *)
   Definition fileread_dev_caps (fn : fread_names) : iProp Σ :=
-    is_conslock fsc_cons app_sup (frn_cons fn).
+    (is_conslock fsc_cons app_sup (frn_cons fn) ∗
+     (* ...AND THE CONSOLE PORT'S INVARIANT (lane CONS-IO, milestone B,
+        ruling F6): consoleread fires the boundary's input link at its
+        final release and opens [uartN Uart0] to do it.  Persistent, and it
+        comes off [console_ready_app] with the table. *)
+     WpUart.uart_inv Uart0 (cn_uart fsc_cons))%I.
 
   Global Instance fileread_dev_caps_persistent fn :
     Persistent (fileread_dev_caps fn).
   Proof. apply _. Qed.
+
+  Lemma fileread_dev_caps_lock (fn : fread_names) :
+    fileread_dev_caps fn -∗ is_conslock fsc_cons app_sup (frn_cons fn).
+  Proof. by iIntros "[$ _]". Qed.
+  Lemma fileread_dev_caps_uart (fn : fread_names) :
+    fileread_dev_caps fn -∗ WpUart.uart_inv Uart0 (cn_uart fsc_cons).
+  Proof. by iIntros "[_ $]". Qed.
 
   (* ---- THE CONSOLE INVARIANT, PINNED, AND WHY THE PIN LIVES HERE ------
 
@@ -362,19 +374,33 @@ Section SpecFileread.
      stays existential -- nothing above the console names the cons lock's
      handle, and the read arm binds it once and builds its callee's names
      record around it. *)
+  (* ...AND THE CONSOLE PORT'S OWN INVARIANT RIDES WITH IT (app-echo.md,
+     lane CONS-IO, milestone B, ruling F6).  The console read fires the
+     application's input link at its final release, which opens [uartN
+     Uart0]; the ring's names carry the port's ([cn_uart]), and THIS is the
+     one era-level place where the ring's names and the UART's are both
+     concrete -- main mints the bundle holding [dev_inv γd γv] and
+     [cn_uart cn = γd].  Persistent, so it costs its carriers nothing and
+     no tie has to be threaded down the read path. *)
   Definition console_ready_app : iProp Σ :=
-    (∃ γ : gname, ConsoleInv.console_inv fsc_cons app_sup γ)%I.
+    ((∃ γ : gname, ConsoleInv.console_inv fsc_cons app_sup γ) ∗
+     WpUart.uart_inv Uart0 (cn_uart fsc_cons))%I.
 
   Global Instance console_ready_app_persistent : Persistent console_ready_app.
   Proof. rewrite /console_ready_app. apply _. Qed.
 
   Lemma console_ready_app_intro (γ : gname) :
-    ConsoleInv.console_inv fsc_cons app_sup γ -∗ console_ready_app.
-  Proof. iIntros "H". iExists γ. iExact "H". Qed.
+    ConsoleInv.console_inv fsc_cons app_sup γ -∗
+    WpUart.uart_inv Uart0 (cn_uart fsc_cons) -∗ console_ready_app.
+  Proof. iIntros "H #Hu". rewrite /console_ready_app. iFrame "Hu". iExists γ. iExact "H". Qed.
 
   (* ...and the devsw half alone, which is all most consumers want *)
   Lemma console_ready_app_devsw : console_ready_app -∗ ConsoleInv.devsw_table.
-  Proof. iIntros "H". iDestruct "H" as (γ) "[_ $]". Qed.
+  Proof. iIntros "[H _]". iDestruct "H" as (γ) "[_ $]". Qed.
+
+  Lemma console_ready_app_uart :
+    console_ready_app -∗ WpUart.uart_inv Uart0 (cn_uart fsc_cons).
+  Proof. by iIntros "[_ $]". Qed.
 
   (* ONE cell, and only when the major is in range.  The disjunction is the
      honest statement of what the kernel installs: [consoleinit] fills
@@ -456,13 +482,14 @@ Section SpecFileread.
     frn_rp fn = ConsoleInv.devsw_read_val ->
     frn_dqv fn = (fun _ => DfracDiscarded) ->
     ConsoleInv.console_inv fsc_cons app_sup (frn_cons fn) -∗
+    WpUart.uart_inv Uart0 (cn_uart fsc_cons) -∗
     fileread_devsw fn.
   Proof.
-    intros Hrp Hdq. iIntros "#Hci".
+    intros Hrp Hdq. iIntros "#Hci #Huinv".
     iDestruct (ConsoleInv.console_inv_conslock with "Hci") as "#Hlk".
     iDestruct (ConsoleInv.console_inv_devsw with "Hci") as "#Htbl".
     rewrite /fileread_devsw /fileread_dev_caps Hrp Hdq.
-    iSplitR; [iExact "Hlk" |].
+    iSplitR; [iSplitR; [iExact "Hlk" | iExact "Huinv"] |].
     rewrite /ConsoleInv.devsw_table.
     iApply (big_sepL_impl with "Htbl").
     iModIntro. iIntros (k i Hk) "[Hr _]".
@@ -900,7 +927,8 @@ Section SpecFileread.
      extra could not pay it back.  One match, [P] in every arm. *)
   Definition fileread_in (st : fdstate)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
-      (Rd : nat -> nat -> iProp Σ) (P : iProp Σ) : iProp Σ :=
+      (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ) (P : iProp Σ) : iProp Σ :=
     (P -∗
      match st with
      | FdOpen true _ (FdInode i γo) =>
@@ -908,6 +936,16 @@ Section SpecFileread.
      | FdOpen true _ (FdDevice mj) =>
          if decide (mj = CONSOLE)
          then cons_acc fsc_cons app_sup (fun cur dc => P ∗ Rd cur dc)
+              (* ...AND THE BOUNDARY'S INPUT LINK (app-echo.md, lane
+                 CONS-IO, milestone B, B4).  A console read moves the
+                 application's DELIVERED sequence, and it moves it through
+                 one fupd the process supplies -- so the console arm of
+                 read's deposit carries [WpUart.cons_read_pay Rin] beside
+                 the ring's own payment.  The generic slot pays it from the
+                 input licence its supply already holds
+                 ([FsAbsInvFire.fsabs_fileread_in]); a process that wants
+                 to be told what it read chooses a real [Rin]. *)
+              ∗ WpUart.cons_read_pay Rin
          else P
      | _ => P
      end)%I.
@@ -991,6 +1029,7 @@ Section SpecFileread.
      exits are reachable is decided by the request.  [fileread_extra_core]
      already carries the count, so relaying it costs the arm nothing. *)
   Definition console_receipt (P : uptd) (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
       (n : Z) (r : mword 64)
       (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
     ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
@@ -1079,17 +1118,33 @@ Section SpecFileread.
               destination, which is what [P] is here for. *)
            cons_swallow fsc_cons
              (~ uva_wmapped P (uint (add_vec_int addr (Z.of_nat d)))) sl d dc
+           (* ...AND THE BOUNDARY'S ANSWER (app-echo.md, lane CONS-IO,
+              milestone B, B4), relayed verbatim from [SpecConsoleread]'s
+              post.  On the clean arm the call fired the process's input
+              link at the window it CONSUMED -- [dc] entries, the [d]
+              delivered ones a prefix of them -- and hands back what the
+              process asked to be told about that window.  [sl'] and not
+              [sl] (ruling F5): the swallowed byte at [dc = d + 1] lies one
+              past [sl]'s end, so the row is stated at the bound
+              [cons_swallow] extends to. *)
+           ∗ (∃ (sl' ws : list (list mobs * bv 8)),
+                cons_stored_lb fsc_cons sl' ∗ ⌜sl `prefix_of` sl'⌝ ∗
+                ⌜length sl' = (cur + dc)%nat⌝ ∗ ⌜length ws = dc⌝ ∗
+                ⌜forall j : nat, (j < dc)%nat ->
+                   ws !! j = sl' !! (cur + j)%nat⌝ ∗
+                Rin ws)
           ∨ cons_dirty_cred app_sup) ∗
          Rd cur dc)%I.
 
   (* the -1 arm, at every caller: whatever the caller asked for comes back,
      at a position and an advance it is not told *)
   Lemma console_receipt_m1 (P : uptd) (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
       (n : Z) (cur d' : nat)
       (M' : gmap Z (bv 8)) (addr : mword 64) :
     (⌜(n < 0)%Z⌝ ∨ □ riscv_kill_cred) -∗
     Rd cur d' -∗
-    console_receipt P Rd n (mword_of_int (-1) : mword 64) M' addr.
+    console_receipt P Rd Rin n (mword_of_int (-1) : mword 64) M' addr.
   Proof.
     iIntros "Hwhy Hrd". rewrite /console_receipt. iLeft. iSplitR; [done|].
     iSplitL "Hwhy"; [ iExact "Hwhy" | ].
@@ -1103,6 +1158,7 @@ Section SpecFileread.
   Lemma console_receipt_of_run (P : uptd) (M : gmap Z (bv 8)) (addr : mword 64)
       (n : Z) (r : mword 64) (d dc cur : nat) (bs : nat -> bv 8)
       (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
       (hs : list (list mobs)) (sl : list (list mobs * bv 8)) :
     Z.of_nat d = bv_unsigned r ->
     (* the run is no longer than the request -- [SpecConsoleread]'s own
@@ -1116,11 +1172,18 @@ Section SpecFileread.
     cons_stored_lb fsc_cons sl -∗
     cons_swallow fsc_cons
       (~ uva_wmapped P (uint (add_vec_int addr (Z.of_nat d)))) sl d dc -∗
+    (* THE BOUNDARY'S ANSWER (lane CONS-IO, milestone B): what consoleread
+       fired the process's input link at, and what came back. *)
+    (∃ (sl' ws : list (list mobs * bv 8)),
+       cons_stored_lb fsc_cons sl' ∗ ⌜sl `prefix_of` sl'⌝ ∗
+       ⌜length sl' = (cur + dc)%nat⌝ ∗ ⌜length ws = dc⌝ ∗
+       ⌜forall j : nat, (j < dc)%nat -> ws !! j = sl' !! (cur + j)%nat⌝ ∗
+       Rin ws) -∗
     Rd cur dc -∗
-    console_receipt P Rd n r (umem_wr M addr d bs) addr.
+    console_receipt P Rd Rin n r (umem_wr M addr d bs) addr.
   Proof.
     intros Hd Hdmax Hb1 Hb4 (Hsl & Hhl & Hwin) Hch.
-    iIntros "Hts Hlb #Hsw Hrd".
+    iIntros "Hts Hlb #Hsw Hin Hrd".
     rewrite /console_receipt. iRight. iExists d, dc, cur, hs, sl.
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
@@ -1130,12 +1193,13 @@ Section SpecFileread.
       destruct (Hwin j Hj) as (h & b & Hsj & Hhj & Hends & Hbj).
       exists h, b. split_and!; [exact Hhj | exact Hends |].
       rewrite (umem_wr_lookup_in M addr d bs j Hj Hlin). by rewrite Hbj. }
-    iFrame "Hts Hlb". iSplitR; [| iExact "Hrd"].
+    iFrame "Hts Hlb". iSplitR "Hrd"; [| iExact "Hrd"].
     iLeft. iSplitR.
     { iPureIntro. intros j Hj.
       destruct (Hwin j Hj) as (h & b & Hsj & Hhj & Hends & _).
       exists h, b. split_and!; [exact Hhj | exact Hends | exact Hsj]. }
-    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |]. iExact "Hsw".
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [iExact "Hsw" | iExact "Hin"].
   Qed.
 
   (* ...AND THE ARM A CONCURRENT READER LEAVES.  The ring's marker was set
@@ -1148,6 +1212,7 @@ Section SpecFileread.
   Lemma console_receipt_of_dirty (P : uptd) (M : gmap Z (bv 8)) (addr : mword 64)
       (n : Z) (r : mword 64) (d dc cur : nat) (bs : nat -> bv 8)
       (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
       (hs : list (list mobs)) (sl : list (list mobs * bv 8)) :
     Z.of_nat d = bv_unsigned r ->
     (Z.of_nat d <= Z.max 0 n)%Z ->
@@ -1160,7 +1225,7 @@ Section SpecFileread.
     cons_stored_lb fsc_cons sl -∗
     cons_dirty_cred app_sup -∗
     Rd cur dc -∗
-    console_receipt P Rd n r (umem_wr M addr d bs) addr.
+    console_receipt P Rd Rin n r (umem_wr M addr d bs) addr.
   Proof.
     intros Hd Hdmax Hb1 Hb4 [Hhl Htie].
     iIntros "Hts Hlb #Hcred Hrd".
@@ -1188,6 +1253,7 @@ Section SpecFileread.
   Definition fileread_extra_core (pt : uptd) (st : fdstate) (n : Z)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
       (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
     match st with
     | FdOpen true _ (FdInode i γo) =>
@@ -1196,7 +1262,7 @@ Section SpecFileread.
         (* UNIFORM: the receipt is paid at every caller now, because [Rd]
            is the caller's own choice of what to be told and the [None]
            arm -- which threw the window away -- is gone. *)
-        if decide (mj = CONSOLE) then console_receipt pt Rd n r M' addr else emp
+        if decide (mj = CONSOLE) then console_receipt pt Rd Rin n r M' addr else emp
     | FdOpen true _ FdPipe => emp
     (* A DESCRIPTOR THAT CANNOT BE READ RETURNS -1, and the post says so.
        fileread's first test is [f->readable == 0], and sys_read never
@@ -1216,9 +1282,10 @@ Section SpecFileread.
      instead of off the untouched payment row. *)
   Definition fileread_extra (pt : uptd) (st : fdstate) (n : Z)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
-      (Rd : nat -> nat -> iProp Σ) (P : iProp Σ)
+      (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ) (P : iProp Σ)
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
-    (P ∗ fileread_extra_core pt st n F Rd r M' addr)%I.
+    (P ∗ fileread_extra_core pt st n F Rd Rin r M' addr)%I.
 
   (* ...and the whole post: the landed return clause, verbatim, PLUS the
      arm's extra.  Stating the blanket unconditionally rather than deriving
@@ -1226,54 +1293,55 @@ Section SpecFileread.
      form" true BY CONSTRUCTION -- there is nothing to check. *)
   Definition fileread_arms (pt : uptd) (st : fdstate) (n : Z)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
       (P : iProp Σ)
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
-    (⌜fileread_ret n r⌝ ∗ fileread_extra pt st n F Rd P r M' addr)%I.
+    (⌜fileread_ret n r⌝ ∗ fileread_extra pt st n F Rd Rin P r M' addr)%I.
 
-  Lemma fileread_arms_ret (pt : uptd) st n F Rd P r M' addr :
-    fileread_arms pt st n F Rd P r M' addr -∗ ⌜fileread_ret n r⌝.
+  Lemma fileread_arms_ret (pt : uptd) st n F Rd Rin P r M' addr :
+    fileread_arms pt st n F Rd Rin P r M' addr -∗ ⌜fileread_ret n r⌝.
   Proof. iIntros "[%H _]". by iPureIntro. Qed.
 
   (* the payload off the post, which is the dispatcher's whole business
      with it *)
-  Lemma fileread_extra_pay (pt : uptd) st n F Rd P r M' addr :
-    fileread_extra pt st n F Rd P r M' addr -∗
-    P ∗ fileread_extra_core pt st n F Rd r M' addr.
+  Lemma fileread_extra_pay (pt : uptd) st n F Rd Rin P r M' addr :
+    fileread_extra pt st n F Rd Rin P r M' addr -∗
+    P ∗ fileread_extra_core pt st n F Rd Rin r M' addr.
   Proof. by iIntros "$". Qed.
 
   (* ---- READING THE KEYED INPUT, BUILDING THE KEYED OUTPUT -------------
      One-liners, so that no walk ever has to unfold the two matches and
      every arm names the fact it is standing on. *)
 
-  Lemma fileread_in_inode wb i γo F Rd P :
-    fileread_in (FdOpen true wb (FdInode i γo)) F Rd P -∗ P -∗
+  Lemma fileread_in_inode wb i γo F Rd Rin P :
+    fileread_in (FdOpen true wb (FdInode i γo)) F Rd Rin P -∗ P -∗
     P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F.
   Proof. rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP"). Qed.
 
   (* [P] FIRST, before the arm's own payout: a caller [iApply]s these with
      the payload in hand and BUILDS the payout in the goal that is left,
      which is the shape the landed walks are written in. *)
-  Lemma fileread_extra_inode (pt : uptd) wb i γo n F Rd P r M' addr :
+  Lemma fileread_extra_inode (pt : uptd) wb i γo n F Rd Rin P r M' addr :
     P -∗ read_arms (fs_gamma_L fsc_fs) i γo n F r M' addr -∗
-    fileread_extra pt (FdOpen true wb (FdInode i γo)) n F Rd P r M' addr.
+    fileread_extra pt (FdOpen true wb (FdInode i γo)) n F Rd Rin P r M' addr.
   Proof. iIntros "HP H". rewrite /fileread_extra. iFrame "HP". iExact "H". Qed.
 
   (* ...and the two at a state the walk holds only through an EQUATION: a
      descriptor's shape is derived from its content, not matched on. *)
   Lemma fileread_in_inode_of (st : fdstate) (wb : bool) (i : Z) (γo : gname)
-      F Rd P :
+      F Rd Rin P :
     st = FdOpen true wb (FdInode i γo) ->
-    fileread_in st F Rd P -∗ P -∗
+    fileread_in st F Rd Rin P -∗ P -∗
     P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F.
   Proof.
     intros ->. rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP").
   Qed.
 
   Lemma fileread_extra_inode_of (pt : uptd) (st : fdstate) (wb : bool) (i : Z) (γo : gname)
-      n F Rd P r M' addr :
+      n F Rd Rin P r M' addr :
     st = FdOpen true wb (FdInode i γo) ->
     P -∗ read_arms (fs_gamma_L fsc_fs) i γo n F r M' addr -∗
-    fileread_extra pt st n F Rd P r M' addr.
+    fileread_extra pt st n F Rd Rin P r M' addr.
   Proof.
     intros ->. iIntros "HP H". rewrite /fileread_extra. iFrame "HP". iExact "H".
   Qed.
@@ -1281,8 +1349,8 @@ Section SpecFileread.
   (* the arms that pay nothing beyond the blanket -- a readable pipe and a
      readable non-console device.  The two that CANNOT be read pay the -1
      claim instead, so they are keyed at the exit's own return value. *)
-  Lemma fileread_extra_pipe (pt : uptd) wb n F Rd P r M' addr :
-    P -∗ fileread_extra pt (FdOpen true wb FdPipe) n F Rd P r M' addr.
+  Lemma fileread_extra_pipe (pt : uptd) wb n F Rd Rin P r M' addr :
+    P -∗ fileread_extra pt (FdOpen true wb FdPipe) n F Rd Rin P r M' addr.
   Proof.
     rewrite /fileread_extra /fileread_extra_core. iIntros "HP".
     by iFrame "HP".
@@ -1291,9 +1359,9 @@ Section SpecFileread.
   (* THE DEVICE ARM, SPLIT THREE WAYS.  Every major but the console still
      pays nothing; the console pays the receipt, so a caller that has not
      resolved the major can only get out at -1. *)
-  Lemma fileread_extra_dev_other (pt : uptd) wb (mj : Z) n F Rd P r M' addr :
+  Lemma fileread_extra_dev_other (pt : uptd) wb (mj : Z) n F Rd Rin P r M' addr :
     mj <> CONSOLE ->
-    P -∗ fileread_extra pt (FdOpen true wb (FdDevice mj)) n F Rd P r M' addr.
+    P -∗ fileread_extra pt (FdOpen true wb (FdDevice mj)) n F Rd Rin P r M' addr.
   Proof.
     intro Hmj. rewrite /fileread_extra /fileread_extra_core. iIntros "HP".
     iFrame "HP".
@@ -1312,10 +1380,10 @@ Section SpecFileread.
      is not [devsw[CONSOLE]].  The console's -1 comes from consoleread
      itself, where the kill credential is, and only that one may take
      [console_receipt]'s minus-one arm. *)
-  Lemma fileread_extra_dev_m1 (pt : uptd) rb wb (mj : Z) n F Rd P M' addr :
+  Lemma fileread_extra_dev_m1 (pt : uptd) rb wb (mj : Z) n F Rd Rin P M' addr :
     mj <> CONSOLE ->
-    fileread_in (FdOpen rb wb (FdDevice mj)) F Rd P -∗ P ==∗
-    fileread_extra pt (FdOpen rb wb (FdDevice mj)) n F Rd P
+    fileread_in (FdOpen rb wb (FdDevice mj)) F Rd Rin P -∗ P ==∗
+    fileread_extra pt (FdOpen rb wb (FdDevice mj)) n F Rd Rin P
         (mword_of_int (-1) : mword 64) M' addr.
   Proof.
     intro Hne.
@@ -1328,17 +1396,17 @@ Section SpecFileread.
       by iFrame "H".
   Qed.
 
-  Lemma fileread_extra_dev_console (pt : uptd) wb n F Rd P r M' addr :
-    P -∗ console_receipt pt Rd n r M' addr -∗
-    fileread_extra pt (FdOpen true wb (FdDevice CONSOLE)) n F Rd P r M' addr.
+  Lemma fileread_extra_dev_console (pt : uptd) wb n F Rd Rin P r M' addr :
+    P -∗ console_receipt pt Rd Rin n r M' addr -∗
+    fileread_extra pt (FdOpen true wb (FdDevice CONSOLE)) n F Rd Rin P r M' addr.
   Proof.
     iIntros "HP H". rewrite /fileread_extra /fileread_extra_core.
     iFrame "HP".
     case_decide as Hc; [iExact "H" | exfalso; by apply Hc].
   Qed.
 
-  Lemma fileread_extra_closed (pt : uptd) n F Rd P M' addr :
-    P -∗ fileread_extra pt FdClosed n F Rd P
+  Lemma fileread_extra_closed (pt : uptd) n F Rd Rin P M' addr :
+    P -∗ fileread_extra pt FdClosed n F Rd Rin P
            (mword_of_int (-1) : mword 64) M' addr.
   Proof.
     rewrite /fileread_extra /fileread_extra_core. iIntros "$". by iPureIntro.
@@ -1347,14 +1415,14 @@ Section SpecFileread.
   (* ...at the key the WALK holds after the [f->type] branch: the descriptor's
      TYPE, not a state shape it would have to re-derive. *)
   Lemma fileread_extra_of_pipe (pt : uptd) (inum : mword 32) (γo : gname) (C : fcontent)
-      (st : fdstate) n F Rd P r M' addr :
+      (st : fdstate) n F Rd Rin P r M' addr :
     fdstate_ok inum γo C st -> fc_type C = FD_PIPE ->
     (* PAST [f->readable == 0]: the walk's own boolean, which is what rules
        out the -1 arms of [fileread_extra_core] -- a write-end descriptor
        never reaches the type dispatch. *)
     eq_vec (zero_extend' 64 (fc_readable C : mword 8) : mword 64)
            (zero_reg : mword 64) = false ->
-    P -∗ fileread_extra pt st n F Rd P r M' addr.
+    P -∗ fileread_extra pt st n F Rd Rin P r M' addr.
   Proof.
     intros Hok Ht Hrd.
     destruct (fdstate_ok_pipe inum γo C st Hok Ht) as (rb & wb & Hst).
@@ -1365,25 +1433,25 @@ Section SpecFileread.
   Qed.
 
   Lemma fileread_extra_of_dev_m1 (pt : uptd) (inum : mword 32) (γo : gname) (C : fcontent)
-      (st : fdstate) n F Rd P M' addr :
+      (st : fdstate) n F Rd Rin P M' addr :
     fdstate_ok inum γo C st -> fc_type C = FD_DEVICE ->
     bv_unsigned (fc_major C) <> CONSOLE ->
-    fileread_in st F Rd P -∗ P ==∗
-    fileread_extra pt st n F Rd P (mword_of_int (-1) : mword 64) M' addr.
+    fileread_in st F Rd Rin P -∗ P ==∗
+    fileread_extra pt st n F Rd Rin P (mword_of_int (-1) : mword 64) M' addr.
   Proof.
     intros Hok Ht Hne.
     destruct (fdstate_ok_device inum γo C st Hok Ht) as (rb & wb & ->).
-    iIntros "Hrd HP". iApply (fileread_extra_dev_m1 _ _ _ _ _ _ _ _ _ _ Hne with "Hrd HP").
+    iIntros "Hrd HP". iApply (fileread_extra_dev_m1 _ _ _ _ _ _ _ _ _ _ _ Hne with "Hrd HP").
   Qed.
 
   (* the majors that pay nothing, at the same key *)
   Lemma fileread_extra_of_dev_other (pt : uptd) (inum : mword 32) (γo : gname)
-      (C : fcontent) (st : fdstate) n F Rd P r M' addr :
+      (C : fcontent) (st : fdstate) n F Rd Rin P r M' addr :
     fdstate_ok inum γo C st -> fc_type C = FD_DEVICE ->
     bv_unsigned (fc_major C) <> CONSOLE ->
     eq_vec (zero_extend' 64 (fc_readable C : mword 8) : mword 64)
            (zero_reg : mword 64) = false ->
-    P -∗ fileread_extra pt st n F Rd P r M' addr.
+    P -∗ fileread_extra pt st n F Rd Rin P r M' addr.
   Proof.
     intros Hok Ht Hmj Hrd.
     destruct (fdstate_ok_device inum γo C st Hok Ht) as (rb & wb & Hst).
@@ -1391,19 +1459,19 @@ Section SpecFileread.
     { exfalso. rewrite Hst in Hok. destruct Hok as (Hr & _ & _).
       rewrite Hr in Hrd. vm_compute in Hrd. discriminate. }
     rewrite Hst.
-    iApply (fileread_extra_dev_other pt wb _ n F Rd P r M' addr Hmj).
+    iApply (fileread_extra_dev_other pt wb _ n F Rd Rin P r M' addr Hmj).
   Qed.
 
   (* ...and the console's, at the key the walk holds after the [f->type]
      branch and the [devsw] load: the major it resolved IS [CONSOLE]. *)
   Lemma fileread_extra_of_dev_console (pt : uptd) (inum : mword 32) (γo : gname)
-      (C : fcontent) (st : fdstate) n F Rd P r M' addr :
+      (C : fcontent) (st : fdstate) n F Rd Rin P r M' addr :
     fdstate_ok inum γo C st -> fc_type C = FD_DEVICE ->
     bv_unsigned (fc_major C) = CONSOLE ->
     eq_vec (zero_extend' 64 (fc_readable C : mword 8) : mword 64)
            (zero_reg : mword 64) = false ->
-    P -∗ console_receipt pt Rd n r M' addr -∗
-    fileread_extra pt st n F Rd P r M' addr.
+    P -∗ console_receipt pt Rd Rin n r M' addr -∗
+    fileread_extra pt st n F Rd Rin P r M' addr.
   Proof.
     intros Hok Ht Hmj Hrd.
     destruct (fdstate_ok_device inum γo C st Hok Ht) as (rb & wb & Hst).
@@ -1411,7 +1479,7 @@ Section SpecFileread.
     { exfalso. rewrite Hst in Hok. destruct Hok as (Hr & _ & _).
       rewrite Hr in Hrd. vm_compute in Hrd. discriminate. }
     rewrite Hmj in Hst. rewrite Hst. iIntros "HP H".
-    iApply (fileread_extra_dev_console pt wb n F Rd P r M' addr with "HP H").
+    iApply (fileread_extra_dev_console pt wb n F Rd Rin P r M' addr with "HP H").
   Qed.
 
   (* THE INODE ARM'S KEY, in one step.  Past the [f->readable] test and the
@@ -1453,10 +1521,14 @@ Section SpecFileread.
   (* THE CONSOLE ARM'S ACCESSOR, read off the keyed input at the major the
      walk has just learned is [CONSOLE] ([fileread_dev_env]'s tie).  ONE
      step, so the walk never unfolds the [decide]. *)
-  Lemma fileread_in_dev_console (st : fdstate) (wb : bool) (mj : Z) F Rd P :
+  (* ...AND THE INPUT LINK COMES WITH IT (lane CONS-IO, milestone B): the
+     console arm is a PAIR now -- the ring's payment and the boundary's
+     one-shot -- and consoleread spends both. *)
+  Lemma fileread_in_dev_console (st : fdstate) (wb : bool) (mj : Z) F Rd Rin P :
     st = FdOpen true wb (FdDevice mj) -> mj = CONSOLE ->
-    fileread_in st F Rd P -∗ P -∗
-    cons_acc fsc_cons app_sup (fun cur dc => P ∗ Rd cur dc).
+    fileread_in st F Rd Rin P -∗ P -∗
+    cons_acc fsc_cons app_sup (fun cur dc => P ∗ Rd cur dc)
+    ∗ WpUart.cons_read_pay Rin.
   Proof.
     intros -> ->. rewrite /fileread_in.
     case_decide as Hc; [| exfalso; by apply Hc].
@@ -1467,13 +1539,13 @@ Section SpecFileread.
      the -1 claim itself, because an unreadable descriptor is exactly what
      that arm is keyed on -- and -1 is what this exit returns *)
   Lemma fileread_extra_unreadable (pt : uptd) (inum : mword 32) (γo : gname)
-      (C : fcontent) (st : fdstate) n F Rd P M' addr :
+      (C : fcontent) (st : fdstate) n F Rd Rin P M' addr :
     fdstate_ok inum γo C st ->
     (* the WORD the code tested, not a re-reading of it: the walk arrives
        with [beq a5,x0]'s own boolean *)
     eq_vec (zero_extend' 64 (fc_readable C : mword 8) : mword 64)
            (zero_reg : mword 64) = true ->
-    P -∗ fileread_extra pt st n F Rd P
+    P -∗ fileread_extra pt st n F Rd Rin P
            (mword_of_int (-1) : mword 64) M' addr.
   Proof.
     rewrite /fileread_extra /fileread_extra_core.
@@ -1491,10 +1563,10 @@ Section SpecFileread.
      point of the refund), the readable pipe and non-console device arms
      are [emp], and the two unreadable arms ask for exactly the -1 this
      exit returns. *)
-  Lemma fileread_extra_neg (pt : uptd) st n F Rd P M' addr :
+  Lemma fileread_extra_neg (pt : uptd) st n F Rd Rin P M' addr :
     (n < 0)%Z ->
-    fileread_in st F Rd P -∗ P ==∗
-    fileread_extra pt st n F Rd P (mword_of_int (-1) : mword 64) M' addr.
+    fileread_in st F Rd Rin P -∗ P ==∗
+    fileread_extra pt st n F Rd Rin P (mword_of_int (-1) : mword 64) M' addr.
   Proof.
     intros Hn. rewrite /fileread_in /fileread_extra /fileread_extra_core.
     destruct st as [| rb wb ty];
@@ -1511,7 +1583,7 @@ Section SpecFileread.
     - case_decide;
         [ | iIntros "H HP"; iDestruct ("H" with "HP") as "H"; iModIntro;
             by iFrame "H" ].
-      iIntros "H HP". iDestruct ("H" with "HP") as "H".
+      iIntros "H HP". iDestruct ("H" with "HP") as "[H _]".
       iMod (cons_acc_ret with "H") as (cur dc) "[HP Hrd]".
       iModIntro. iFrame "HP".
       (* THE REASON THIS ONE IS -1 IS THE GUARD ITSELF (lane KILL-PAY,
@@ -1538,10 +1610,13 @@ Section FilereadConsoleMorph.
     CtxMorph (λ ξ0 : TsoCtx.CtxId, console_ready_app (XI := ξ0)).
   Proof.
     iIntros (ξ ξ') "Hd H". rewrite /console_ready_app.
+    iDestruct "H" as "[H #Hu]".
     iDestruct "H" as (γ) "H".
     iMod (ConsoleInv.console_inv_morph fsc_cons app_sup γ ξ ξ' with "Hd H")
       as "[Hd H]".
-    iModIntro. iFrame "Hd". iExists γ. iExact "H".
+    (* the port invariant does not mention the context axis at all, so it
+       crosses unchanged (lane CONS-IO, milestone B) *)
+    iModIntro. iFrame "Hd Hu". iExists γ. iExact "H".
   Qed.
 
 End FilereadConsoleMorph.
@@ -1570,6 +1645,7 @@ Definition wp_fileread_sconf_body
        or generic caller with [fun _ _ => True], which is what the GENERIC
        slot's supply law pays ([FsAbsInvFire.fsabs_fileread_in]). *)
     (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
     (* THE CALLER'S EXIT PAYLOAD, BORROWED ACROSS THE CALL (app-echo.md,
        "SH-LINE RULING", R1).  The dispatcher holds it off the trap's
        payment row ([SpecSyscall.sysc_pay_in]); it lends it here, the
@@ -1636,7 +1712,7 @@ Definition wp_fileread_sconf_body
   (* ---- THE CALLER'S INPUT, KEYED ON [st] ([fileread_in]) ----
      The observation commit conjoined with the caller's refund on an open,
      readable inode descriptor, [emp] everywhere else. *)
-  fileread_in st F Rd P -∗
+  fileread_in st F Rd Rin P -∗
   (* ...AND THE PAYLOAD THE INPUT IS A WAND FROM, lent for the call and
      returned in the post. *)
   P -∗
@@ -1692,7 +1768,7 @@ Definition wp_fileread_sconf_body
          THIS post's own resume image and destination, so it can name the
          bytes -- its unspent return or its fault reading on an inode,
          nothing anywhere else. *)
-      fileread_arms (pv_upt (us_V U)) st n F Rd P r (umem_wr (us_M U) addr d bs) addr -∗
+      fileread_arms (pv_upt (us_V U)) st n F Rd Rin P r (umem_wr (us_M U) addr d bs) addr -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
@@ -1710,7 +1786,8 @@ Module Type FILEREAD.
       (pidv : mword 32) (U : ustate)
       (m : regfile) (K : nat) (eb : bool) (n : Z) (b : bool) (lks : gset string)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
       (P : iProp Σ),
       wp_fileread_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks F
-        Rd P.
+        Rd Rin P.
 End FILEREAD.

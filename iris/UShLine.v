@@ -92,6 +92,8 @@ Require Import AppCfg AppInv.      (* [app_sup] *)
 Require Import FsCfg.
 Require Import FsAbsDefs.
 Require Import ConsoleInv.         (* [cons_acc] / [cons_out] / [CONSOLE] *)
+Require Import WpUart.             (* [in_licence] / [cons_read_pay]: E5's
+                                      console I/O boundary (lane CONS-IO) *)
 Require Import UartNames.          (* [cons_names] *)
 Require Import UserConsole.        (* [upos] / [ucons_pay] *)
 Require Import UkSh.               (* [ush_narrow_count_le] *)
@@ -166,7 +168,11 @@ Section UShLine.
        df_Fex   := pfam_triv (fun _ _ _ _ => True%I);
        kf_pay   := fun _ => True%I;
        kf_xpay  := Q;
-       rf_ret   := Rd |}.
+       rf_ret   := Rd;
+       (* sh says nothing about the input's boundary account yet: the real
+          [read_link] arrives with SH-LINE R2/R3 (lane CONS-IO, milestone
+          B, and the coordinator's ruling (5)). *)
+       rf_in    := fun _ => True%I |}.
 
   (* WHAT SH ASKS TO BE TOLD.  A lease holder's choice: the window it was
      handed begins at ITS OWN position and its half of the pair comes back
@@ -221,7 +227,7 @@ Section UShLine.
   Lemma sbundle_at_read_intro_at (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
       (v0 : mword 64) (sts : list fdstate) :
     tf_w (uvis_tf W) (tf_arg_idx 0) = v0 -> uvis_fd W = sts ->
-    fileread_in (fd_st_of_key v0 sts) (rf_F f) (rf_ret f) True%I -∗
+    fileread_in (fd_st_of_key v0 sts) (rf_F f) (rf_ret f) (rf_in f) True%I -∗
     sbundle_at X USYS_read f W.
   Proof.
     intros H0 Hfd. iIntros "H".
@@ -251,7 +257,7 @@ Section UShLine.
       ⌜proc_pt_wf P⌝ ∗
       ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
       fileread_extra_core P (fd_st_of_key v0 sts) (sys_rw_count v2)
-        (rf_F f) (rf_ret f) r M' v1.
+        (rf_F f) (rf_ret f) (rf_in f) r M' v1.
   Proof.
     intros H0 H1 H2 Hfd. iIntros "H".
     rewrite -H0 -H1 -H2 -Hfd.
@@ -294,11 +300,19 @@ Section UShLine.
        K4(a)): read's deposit is a PLAIN one now ([UexecExecInst]'s row 5
        at [True]), so nothing is fed in and what pays
        [ConsoleInv.cons_acc] is what sh carries. *)
+    (* ...AND THE BOUNDARY'S INPUT LICENCE (lane CONS-IO, milestone B, B4).
+       Read's console deposit carries [WpUart.cons_read_pay (rf_in f)] as
+       well as the ring's payment, and sh's [rf_in] is [fun _ => True] --
+       SH-LINE R2/R3 is where a real one arrives -- so the licence pays it
+       outright ([WpUart.cons_read_pay_triv]).  Persistent, and it is built
+       once at the boot where the application's input claim is known
+       ([UInitBoot]'s [Hilic]). *)
+    WpUart.in_licence -∗
     upos γp n -∗
     ucons_pay fsc_cons γp T (-1) -∗
     udepwf_std N m pc USYS_read (ush_read_fam γp T n (ukn_pay N)) l.
   Proof.
-    intros Hpay Ha0 Hl0 Hst Hts HPT. iIntros "Hpos HP".
+    intros Hpay Ha0 Hl0 Hst Hts HPT. iIntros "#Hilic Hpos HP".
     rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
     iFrame "Hheap Hufd".
@@ -309,11 +323,13 @@ Section UShLine.
               (tf_of_arg0 m pc)
               (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)).
     rewrite (ush_fd_st_console (m !!! Regidx a0_idx) fdv l wr Ha0 Htake Hl0).
-    cbn [ush_read_fam xfam_rd rf_F rf_ret kf_xpay].
+    cbn [ush_read_fam xfam_rd rf_F rf_ret rf_in kf_xpay].
     rewrite /fileread_in.
     destruct (decide (CONSOLE = CONSOLE)) as [_ | Hc];
       [ | exfalso; exact (Hc eq_refl) ].
     iIntros "_".
+    (* the boundary's half first: sh claims nothing about the window yet *)
+    iSplitL; [| iApply (WpUart.cons_read_pay_triv with "Hilic")].
     iEval (rewrite /ucons_pay) in "HP".
     iDestruct "HP" as "[Hl | #HT]".
     - (* THE LEASE HOLDER'S ARM: the payload's token, at the position the
@@ -436,6 +452,11 @@ Section UShLine.
     (⊢ app_sup -∗ T) ->
     (⊢ T -∗ app_sup) ->
     Persistent T ->
+    (* the input licence, at Coq level for this lemma's own reason: its
+       result is a Coq-level [⊢] and the discharge site
+       ([UInitBoot]'s [echo_Hinit_boot]) proves it there (lane CONS-IO,
+       milestone B, B4). *)
+    (⊢ WpUart.in_licence) ->
     (* AT THE FREE INSTANCE, NAMED (durable-notes, the two-instances
        wedge): [UkRun.urun] carries [udep], so the leaf is PS-indexed, and
        the one that consumes it -- sh's entry -- is at
@@ -443,7 +464,7 @@ Section UShLine.
        find [uprogSG_gen].  The two are not convertible. *)
     ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T fsc_cons l.
   Proof.
-    intros Hpay Hst Hts HPT.
+    intros Hpay Hst Hts HPT Hlic.
     rewrite /UkSh.ush_read_recv_leaf.
     iIntros (h m pc a k cap n f avail)
       "%Hn %Ha0 %Ha1 %Ha2 %Hcapk %Hcap31 %Hfd0 %Hal #Hi Hbuf Hstd Hpos Hrun Hcont".
@@ -460,8 +481,9 @@ Section UShLine.
     iEval (rewrite Hpay) in "Hlease".
     destruct Hfd0 as [[wr Hl0] | Hcl].
     - (* ================= fd 0 IS THE CONSOLE ================= *)
+      iAssert (WpUart.in_licence) as "#Hilic"; [iApply Hlic |].
       iDestruct (ush_read_sup N γp T m pc l n wr Hpay Ha0 Hl0 Hst Hts HPT
-                   with "Hpos Hlease") as "Hsb".
+                   with "Hilic Hpos Hlease") as "Hsb".
       iApply (wp_uk_ecall_read_recv (PS := uprogSG_free) N h m pc
                 (bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0
                             : mword 32))
@@ -480,7 +502,7 @@ Section UShLine.
       rewrite Hcnt in Hfrret.
       iEval (rewrite (ush_fd_st_console (m !!! Regidx a0_idx) (uvis_fd W) l wr
                         Ha0 Htake Hl0) /fileread_extra_core;
-             cbn [ush_read_fam xfam_rd rf_F rf_ret kf_xpay]) in "Hrec".
+             cbn [ush_read_fam xfam_rd rf_F rf_ret rf_in kf_xpay]) in "Hrec".
       destruct (decide (CONSOLE = CONSOLE)) as [_ | Hc];
         [ | exfalso; exact (Hc eq_refl) ].
       (* the lazy flag, cashed on the key the call ran at *)
@@ -538,7 +560,10 @@ Section UShLine.
         { rewrite Hri. rewrite <- uint_unsigned.
           apply uint_moi. unfold Z64. lia. }
         assert (Hddcap : (dd <= cap)%nat) by lia.
-        iDestruct "Hwin" as "[(%Hwj & %Hsl & %Hch & #Hsw) | #Hdirty]"; last first.
+        (* the boundary's answer is DROPPED here: sh's [rf_in] is
+           [fun _ => True] until SH-LINE R2/R3 (lane CONS-IO, milestone B). *)
+        iDestruct "Hwin" as "[(%Hwj & %Hsl & %Hch & #Hsw & _) | #Hdirty]";
+          last first.
         { (* a tokenless reader popped while the call slept *)
           iAssert T as "#HT"; [ iApply Hst; iExact "Hdirty" | ].
           iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp Hl] Hbuf Hrun");

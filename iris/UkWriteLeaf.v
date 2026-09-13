@@ -143,7 +143,10 @@ Section UkWriteLeaf.
        df_Fex   := pfam_triv (fun _ _ _ _ => True%I);
        kf_pay   := fun _ => True%I;
        kf_xpay  := Xp;
-       rf_ret   := fun _ _ => True%I |}.
+       rf_ret   := fun _ _ => True%I;
+       (* the console's input link, at the trivial claim (lane CONS-IO,
+          milestone B): this program says nothing about what it read *)
+       rf_in    := fun _ => True%I |}.
 
   (* the payload row [UkRun.udepwf_std] asks for, by computation *)
   Lemma xfam_wr_pay (Q : nat -> iProp Σ) (Xp : Z -> iProp Σ) :

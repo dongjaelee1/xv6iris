@@ -576,9 +576,13 @@ Section BootCarveMain.
     cons_stored_auth cn [] -∗
     cons_cursor cn 0%nat -∗
     cons_hi cn None -∗
+    (* ...AND THE LOG'S MIRROR AT THE EMPTY LOG (lane CONS-IO, milestone B):
+       a fourth row from the same mint, and the ring is born knowing that
+       nothing has been typed. *)
+    cons_logm cn [] -∗
     cons_res cn.
   Proof.
-    intros Hmem Hlo Hbss Hhi Hal. iIntros "#Hcl H Hsa Hcu Hhi".
+    intros Hmem Hlo Hbss Hhi Hal. iIntros "#Hcl H Hsa Hcu Hhi Hlm".
     assert (Hal4 : forall k : Z, k mod 4 = 0 -> (KernelSyms.cons + k) mod 4 = 0)
       by (intros k Hk; rewrite Z.add_mod; [| lia]; rewrite Hal Hk; reflexivity).
     (* the four windows, in address order *)
@@ -633,8 +637,8 @@ Section BootCarveMain.
     rewrite /cons_res /a_cons_r /a_cons_w /a_cons_e.
     iExists (mword_of_int 0 : mword 32), (mword_of_int 0 : mword 32),
             (mword_of_int 0 : mword 32), bs, (replicate INPUT_BUF_SIZE None),
-            0%nat, 0%nat, [], [], None.
-    iFrame "Hr Hw He Hb Hsa Hcu Hhi".
+            0%nat, 0%nat, [], [], None, [], false.
+    iFrame "Hr Hw He Hb Hsa Hcu Hhi Hlm".
     iSplitR; [iPureIntro; exact Hlen |].
     iSplitR; [iPureIntro; apply length_replicate |].
     (* the coupling at an EMPTY ring: every distance is zero, so the row's
@@ -661,6 +665,17 @@ Section BootCarveMain.
     { iPureIntro. intros j h b Hj.
       rewrite lookup_nil in Hj. discriminate Hj. }
     iSplitR; [iApply cons_tags_none |].
+    (* THE LOG IS EMPTY AND SO IS THE RING, so all three of the input log's
+       clauses say nothing: nothing to be logged, no gaps between the
+       entries there are none of, and nothing echoed since a top that does
+       not exist (lane CONS-IO, milestone B). *)
+    iSplitR.
+    { iPureIntro. rewrite /cons_log_ok. split_and!.
+      - intros p Hp. exfalso. by apply elem_of_nil in Hp.
+      - split.
+        + intros i h1 c1 h2 c2 H1. rewrite lookup_nil in H1. discriminate H1.
+        + intros h c Hz. rewrite lookup_nil in Hz. discriminate Hz.
+      - cbn [cons_gp_ok]. intros e He. exfalso. by apply elem_of_nil in He. }
     (* NOBODY HAS READ BEHIND THE TOKEN HOLDER'S BACK: the ring is born
        clean, and the clean token that says so leaves with the reader. *)
     iLeft. by iPureIntro.

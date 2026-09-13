@@ -321,9 +321,10 @@ Section ProofSysRead.
       (v v1 v2 : mword 64)
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
       (Fr : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
-      (Rd : nat -> nat -> iProp Σ) (P : iProp Σ)
+      (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ) (P : iProp Σ)
     : wp_sys_read_sconf_body γf γs j γlp fn pidv U sts v v1 v2 m av eb b lks
-        Fr Rd P.
+        Fr Rd Rin P.
   Proof.
     cbv beta delta [wp_sys_read_sconf_body].
     intros pcE pj ret_tgt Hav Hj Hgs Hlens Harg0 Harg1 Harg2 Hrp Hdq Heb.
@@ -345,12 +346,12 @@ Section ProofSysRead.
        -- so it must be introduced with [#], not threaded. *)
     (* [HP] is the caller's exit payload, relayed to fileread (R1): the
        keyed input is a wand from it and both arms give it back. *)
-    iIntros "Hcg Hcpu #Htext #Hdata Hpc #Hpenv Hpriv Hufrag #Hkenv #Hprocs Henv #Hci Hin HP Hcont".
+    iIntros "Hcg Hcpu #Htext #Hdata Hpc #Hpenv Hpriv Hufrag #Hkenv #Hprocs Henv #Hci #Huinv Hin HP Hcont".
     (* THE DEVICE COLUMN, PROJECTED.  What the contract holds is the console
        invariant -- one persistent proposition out of [syscall_env]; what
        fileread asks for is the read column, and this is the projection.  It
        is persistent too, so nothing has to give it back. *)
-    iPoseProof (fileread_devsw_of_console fn Hrp Hdq with "Hci") as "#Hdev".
+    iPoseProof (fileread_devsw_of_console fn Hrp Hdq with "Hci Huinv") as "#Hdev".
     (* depth 0 forces the held set empty, so this body needs no order
        premise of its own -- every [locks_below] its callees raise is
        [locks_below ∅ _], which [lkbelow] closes outright. *)
@@ -813,7 +814,7 @@ Section ProofSysRead.
       { iApply (fileread_fs_env_out with "Henv"). }
       (* argfd answered NONE: the key is [FdClosed] and the arm is the landed
          blanket and nothing more. *)
-      { iApply (sys_read_arms_none (us_V U) v sts (sys_rw_count v2) Fr Rd _
+      { iApply (sys_read_arms_none (us_V U) v sts (sys_rw_count v2) Fr Rd _ _
                   (mword_of_int (-1) : mword 64) _ _ Hnone eq_refl with "HP"). }
     - (* ================= SUCCESS: the descriptor resolved ============= *)
       iDestruct "Hsucc" as (fd fv) "([%Hr %Hsome] & _ & Hfcell)".
@@ -956,14 +957,14 @@ Section ProofSysRead.
       (* THE KEYED INPUT, RELAYED: the caller's is at [sys_fd_st], this
          descriptor's row is what that key computes to, and the callee's is
          the same proposition at the same key. *)
-      iDestruct (sys_read_in_of (us_V U) v sts fd fv stf Fr Rd _ Hsome Hstq
+      iDestruct (sys_read_in_of (us_V U) v sts fd fv stf Fr Rd Rin _ Hsome Hstq
                    with "Hin") as "Hin".
       iDestruct (read_env_frame γf fn stf with "Henv Hdev") as "[Hfenv Hfback]".
       iDestruct (cpu_own_transport CID17 CID24 0%nat eb pj b 
                    ltac:(rewrite Hb; wp_next_chain) with "Hcpu") as "Hcpu".
       iApply (Fileread.wp_fileread_sconf γf γs j γlp kk qq stf fn pidv U
                 S4 (av - 6)%nat eb (sys_rw_count v2) b
-                _ Fr Rd P ltac:(lia) Hkk Hj Hgs Hlens
+                _ Fr Rd Rin P ltac:(lia) Hkk Hj Hgs Hlens
                 HS4a0' HS4a2 (sys_rw_count_range v2) Heb
                 with "Hcg Hcpu Htext Hdata Hpc Hpenv Href Hcore Hkenv Hprocs Hfenv Hrow Hin HP").
       all: try lkbelow.
@@ -1033,7 +1034,7 @@ Section ProofSysRead.
          sys_read relays fileread's return value untouched -- one match in
          the tree, not two. *)
       { iApply (sys_read_arms_of (us_V U) v sts fd fv stf (sys_rw_count v2)
-                  Fr Rd P rv _ _ Hsome Hstq with "Harms"). }
+                  Fr Rd _ P rv _ _ Hsome Hstq with "Harms"). }
   Qed.
 
 End ProofSysRead.

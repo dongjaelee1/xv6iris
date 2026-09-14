@@ -133,8 +133,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   U-tier dup row names its reasons on both arms.
 - [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad
   `brief-trap-rows-3.md`): T4(c) LANDED 2026-09-16 (`2a372a9d7`; the note
-  below); T4(b) (the reaping arm names the caller's own child; the pid
-  route with `init_pid_is`) phase 1b in flight.
+  below); T4(b) (the reaping arm names the caller's own child): two
+  obstacles ruled 2026-09-16 (the note below: the U tier sees numbers --
+  `un_ipid`/`ukn_ipid`, `ukn_pid`/`upid`); phase 1b in flight.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
@@ -3364,6 +3365,36 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+TRAP-ROWS-3 T4(b) -- TWO OBSTACLES, RULED (2026-09-16; attempt saved as
+scratchpad `t4b-wip.patch`, 15 files, green at tr101/tr102; handover
+`trap-rows-3-handover.md`).  Written and compiling below the U tier, with
+NO change to `SpecKwait`'s contract: `Xv6Cameras.ipidUR` on `wchG`;
+`SlotGen.init_pid_tok`/`init_pid_is` (persistent agreement);
+`UserChildren.gen_is_init g := ∃ p0, init_pid_is p0 ∗ gen_pid g p0`;
+`WaitInv.init_ident_at`, `orph_at_init_at ξ O := [∗ map] pa ↦ Sr ∈ O, ⌜Sr = ∅⌝ ∨
+init_ident_at ξ pa` (a BIG-OP, not a `□`-wand: `CtxMorph`'s transport is a
+`==∗` that spends its domination, so the payload must be structural);
+`kw_reap` borrows the caller's `slot_gen` quarter and produces `⌜γ' ∈ cs⌝ ∨
+gen_is_init gnr`; the kexit chain at `initproc ↦₈□ ip` + `init_ident ip`
+(`SpecReparent` unchanged).  OBSTACLE 1: `wchG` is not a class the U tier
+declares -- mentioning `gen_is_init` in `wait_ans` would put `Context
+{!wchG Σ}` in 54 files (IO-LEAF's whole working set); `ctokG` carries no
+canonical gname.  OBSTACLE 2: `urun` binds `pidv` existentially with no
+resource beside it, so the U tier cannot name its own pid.  RULED: the U
+tier sees NUMBERS -- `ut_caps` gains a pure `un_ipid : mword 32` tied
+kernel-side by `init_pid_is (un_ipid N)`; `wait_ans`'s reaping arm is
+`⌜γ' ∈ cs⌝ ∨ ⌜the caller's pid = ip⌝` for a pure parameter `ip` (produced by
+kwait from `gen_is_init` + agreement + `gen_pid`); `uwait_ans` gains the
+pure disjunct `⌜γ' ∈ Sc⌝ ∨ ⌜pidv = ip⌝`; `uk_names` gains `ukn_pid : gname`
+(`urun` carries `upid_auth (ukn_pid N) pidv`, the program holds `upid
+(ukn_pid N) p`; five construction sites) and a pure `ukn_ipid : mword 32`;
+the fork-side token on `wp_uk_ecall_fork`'s child arm is the PURE `⌜pidc <>
+ukn_ipid N'⌝` (refuted at the registration insert against init's persistent
+registration); `wp_uk_ecall_wait_null_live` hands the program `⌜γ' ∈ Sc⌝ ∨
+⌜p = ukn_ipid N⌝` against its `upid`.  The entry constructors handing out
+`upid` and the token are IO-LEAF's (one-line changes, reported).  Phase 1b
+in flight.
 
 IO-LEAF M3b(1) + M3c LANDED (2026-09-16; `19797bcf6`+`c9bf0cde9` on `81944dd7f`;
 9 sh files; builds io32-io37 in the main checkout; audit the thirteen;

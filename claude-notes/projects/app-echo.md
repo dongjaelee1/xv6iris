@@ -3632,6 +3632,32 @@ successor needs is in `checkpoint-2026-09-14-step3.md` and
 `handoff-2026-09-16/step3-interface.md` (the binding contract) plus the three
 `handoff-2026-09-16/brief-*.md`.
 
+INIT-DIAG LANDED (2026-09-14; the lane's `aff0a688b` in `-sup` cherry-picked
+as `bdd9faf7f`; NEW `iris/EchoLinksPro.v` (row after `EchoLinks.v`) and
+`iris/UInitDiag.v` (row after `UInitBanner.v`); build id-4 in `-sup`; audit
+the thirteen; lemma_diff CLEAN; no Admitted; nothing consumes them yet -- M6b
+proper wires them into init's die arms).  INIT'S TWO PAYABLE DIAGNOSTICS ARE
+PROLOGUE ALTERNATIVES THROUGH THE LINKS: `ewc_pro v n` (the round-open shape
+`wr_pro` as a credential; `ewc_owed_of_pro`, `ewc_ban_done_pro`), the per-byte
+family `ewc_pdiag v n a i` (byte 0 through `echo_links_pro` at `a`, the rest
+through `echo_links_w`; `echo_pdiag_step`), the end shape `ewc_pdiag_done_1 :
+ewc_pdiag v n 1 21 -∗ ewc_ban v n 0` (one more failed sub-round at the SAME
+count; a = 2 is terminal, the credential dropped), and on UInitBanner's mould
+`kinit_pro n`, `kinit_own_of_pro`, `kinit_banner_law_pro_holds`,
+`kinit_w1_of_link_pdiag`, and the two laws in `UkInit.kinit_banner_pay`'s
+shape (`kinit_execfail_law_holds` at 21 bytes leaving `kinit_ban n`,
+`kinit_forkfail_law_holds` at 18 leaving `emp`) -- exactly the `∃ Ch` that
+`UkInitPrintf.wp_kinit_printf_chain` consumes.  FINDINGS: (1) `wr_owed`'s two
+arms are NOT separable by anything init holds (`wr_owed_ambiguous`: both
+shapes at count 17 with prefix-comparable `cs`), so init must KEEP the
+`wr_pro` shape (`kinit_pro`) across its fork rather than `kinit_own`; the
+fork's refund (`UkFork.wp_uk_ecall_fork`'s -1 arm returns `Rc` whole) then
+pays "init: fork failed" directly.  (2) The three die lemmas
+`UkInitMain.wp_kinit_main_die_de/_df/_dw` all spend `udepw_law 16` through
+the free printf; `wp_kinit_fork`'s -1 arm DISCARDS the refunded `Rc`
+(UkInitMain.v ~937) -- M6b keeps it and threads `wp_kinit_printf_chain`.
+Report: `handoff-2026-09-16/init-diag-report.md`.
+
 IO-LEAF M6a(2) LANDED (2026-09-16; `61f015f7b`+`e8b61dc6a` on `61269a3c2`;
 EchoLinks.v, UInitBanner.v, UInitBoot.v, UInitKernel.v, UkInitMain.v; builds
 io53-io54 in the main checkout; audit the thirteen; lemma_diff 6 GONE (the

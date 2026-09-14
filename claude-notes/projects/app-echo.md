@@ -143,12 +143,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   `un_ipid`/`ukn_ipid`, `ukn_pid`/`upid`); HANDED OVER with the kernel side
   saved (`t4b-wip.patch`) and a five-step plan.
 - [ ] **TRAP-ROWS-4** (kernel; `-tlw`, `lane/trap-rows-4`; brief scratchpad
-  `brief-trap-rows-4.md`): LAUNCHED 2026-09-16: T4(b) from the plan --
-  milestone A (the boot end first, then the kernel patch, then the pure
-  parameters; `uwait_ans` keeps its arity via `uwait_ans_pid`; `upid` over
-  `Z` on the existing `ghost_varG Σ Z`; `ukn_ipid` a parameter of
-  `uslot_of_urun*`), milestone B (`ukn_pid`/`upid` + the entry
-  constructors) after IO-LEAF M5b.
+  `brief-trap-rows-4.md`): MILESTONE A LANDED 2026-09-16 (`5f04889b0`; the
+  note below: the boot end, the kernel invariant, the row at numbers);
+  MILESTONE B in flight (the pid number rides `sfam` as `sinit_pid`;
+  `ukn_pid`/`upid`; the fork-side token; the entry constructors).
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
@@ -3378,6 +3376,40 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+TRAP-ROWS-4 MILESTONE A LANDED (2026-09-16; `5f04889b0` on `212d0aec7`; 29
+files +1115/-174; builds tr104-tr109 in `-tlw`; audit the thirteen;
+lemma_diff CLEAN; no Admitted).  WAIT'S REAPING ARM NAMES THE CALLER'S OWN
+CHILD.  (e) THE BOOT END (the row was vacuous without it):
+`WaitInv.children_boot` splits (`children_boot_rows` + `init_pid_tok`);
+`ProofMain` routes the token to the group that calls userinit;
+`ProofUserinit` DISCARDS init's 3/4 of `slot_gen` and `pid_reg` instead of
+dropping them, writes the pid allocproc gave it and SEALS it -- `slot_gen ip
+(DfracOwn 1)` is now forever unobtainable at init's slot (allocproc can
+never re-key it, freeproc never deregister its pid; both true: init never
+exits, kexit panics on it).  (a) THE ROW AT NUMBERS: `wait_ans … pidv ip`
+gains two pure `mword 32` parameters and `⌜γ' ∈ cs ∨ pidv = ip⌝`; NO U-tier
+file carries `wchG` -- the ghost reading is kwait's own `wait_ans_gen`, and
+`wait_ans_of_gen` takes the step ONCE at `wp_kwait_sconf`'s exit from the
+caller's `gen_pid` (new third component of `ProcInv.proc_priv_slot_gen`) and
+the contract's `init_pid_is`.  (b) `uwait_ans` KEEPS ITS ARITY (`uwait_ans_pid`
+is the middle form), so `wp_kinit_wait`/`wp_kshr_wait`/`wp_uk_ecall_wait_null
+{,_live}` do not move; `UkInitMain.v` is three intro-pattern lines.  Init's
+identity: `WaitInv.init_gen ip p0` (context-free) rides `ut_caps`/
+`ut_park_caps`/`park_world`; `SpecSyscall.sysc_init_id dqi ip` is cell +
+identity as ONE row (the twenty framing syscall arms do not move).  (d) NOT
+YET: the fork half is cheap (`ukn_ipid N' := ipK`; the fork row reports `⌜pidc
+<> un_ipid N⌝`, refuter `init_gen_reg_ne` in the tree); the WAIT half could
+not be done as ruled -- `wp_uk_ecall_wait_null_live` reads `uslot W`'s wait
+row, indexed by `W : uvis` alone, so the number must be in the slot's own
+index.  RULED (milestone B): the number rides the SYSCALL FAMILY RECORD on
+FORK-REFUND's mould -- `sfam` gains `sinit_pid` (+ laws), `xfam` gains
+`kf_ipid`, the wait row reads `sinit_pid f`, every relay keeps its arity,
+`uvis` untouched; the kernel constructor takes `sinit_pid f = un_ipid N`; the
+U tier sets `sinit_pid := ukn_ipid N`; `wp_uk_ecall_wait_null_live`'s `_pid`
+twin hands `⌜γ' ∈ Sc⌝ ∨ ⌜p = ukn_ipid N⌝` against `upid (ukn_pid N) p`; the
+entry constructors' lines (UShKernel:584, UInitKernel:360, UEchoKernel:456,
+UEchoOut:794, USyncKernel:182) are B's.  Handover: `trap-rows-4-handover.md`.
 
 IO-LEAF M4b(1) LANDED (2026-09-16; `02b240e03` on `0a2a4befe`; UkShDiag.v only;
 builds dg1-dg3 in `-sup`; audit the thirteen; lemma_diff CLEAN; no Admitted).

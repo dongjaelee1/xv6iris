@@ -129,11 +129,14 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   below: the read on the era's link); M5b LANDED 2026-09-16 (`32d7b6bbf`;
   the note below: the credential rides the console lease; `Hsh_owed` DOWN
   TO TWO CONJUNCTS); M4b(1) LANDED 2026-09-16 (`02b240e03`; the note
-  below: the diagnostics tower carries `ksh_w1`); IN FLIGHT (main
-  checkout): M5(3) sh's `gets` on the enriched answer + M3b core (the
-  payload at the line boundary, the lend into echo), sh's wait redemption
-  after TRAP-ROWS-4; then M4b(2) the diagnostics' payment (the `%s` token
-  pinned by the parser; `ush_diag_leaf`'s shape), M6.
+  below: the diagnostics tower carries `ksh_w1`); M5(3) LANDED 2026-09-16
+  (`49cd3b5d1`; the note below: `ush_rest` deleted, the body handed the
+  line fact); NEXT (fresh agent, main checkout, brief v9): M6a the write
+  credential rides the lease's `Rd` with a persistent conversion for
+  init's rounds, then M3b core in OPAQUE terms (the child's `Rc`/`Q` as
+  opaque credentials with `□` conversions built at the top), sh's wait
+  redemption after TRAP-ROWS-5; then M4b(2) the diagnostics' payment,
+  M6b init's restart loop.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad
@@ -3388,6 +3391,43 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M5(3) LANDED (2026-09-16; `49cd3b5d1` on `ae7a46895`; 9 files
++1212/-285; builds io44-io51 in the main checkout; audit the thirteen;
+lemma_diff 4 GONE (`ush_read_ans_pos` superseded by `ush_read_ans_pm`;
+`ush_rest`/`ush_rest_l_of_rest`/`ush_rest_persistent` -- the obligation
+WITHOUT the line fact, nothing can take it any more) + 3 NEWAXIOM (section
+hypotheses discharged at `echo_Hinit_boot`; the unchanged audit proves it);
+no Admitted; `Hsh_owed` text unchanged).  SH'S GETS READS THE ERA'S LINE,
+AND THE BODY IS HANDED IT: `UkSh.ush_rest` is DELETED; `wp_ksh_loop` and
+`UInitSh.sh_pay_rest` take `ush_rest_l` (the line fact) -- SH-LINE 2b's
+obligation, met.  THE IDEA -- A LINE'S MIDDLE IS NOT A LINE BOUNDARY:
+`UShLine.ush_rd_pin γ n` gains `⌜ush_bnd n⌝` (`∃ q, n = q * 17`), so the
+lease payload cannot be reassembled mid-line, and between a line's first
+byte and its '\n' the shell holds the PIECES `ush_mid γ γp n := upos γp n ∗
+upos_a γp n ∗ ucons_reader n ∗ ∃ v, era_pin ∗ dl_cnt v (1/2) n`; the
+boundary round-trips INSIDE the payload, so UkInit/UkInitMain/UInitKernel
+did not change.  New in UkSh: `ush_bnd`, `ush_posb := (∃ n, ⌜ush_bnd n⌝ ∗
+ush_at n) ∨ (T ∗ ush_pos)`, a section parameter `Pm : nat -> iProp` with
+`ush_lease n := Pm n ∨ (T ∗ ush_pos)` and three laws (`ush_pm_of_at`,
+`ush_at_of_pm` at `ush_bnd n`, `ush_at_of_pm_taint`), `ush_gline_p`,
+`ush_gets_done`; `ush_read_ans`'s window arm gains `⌜0 < dd -> g 0 =
+echo_line !!! (n mod 17)⌝`, `⌜ush_fd0c l⌝` and `Pm (n + dc)`; its -1 arm gains
+`⌜l !! 0 = Some FdClosed⌝` and hands back `Pm n` (a mid-line -1 is the SHUT
+fd's, and a shut fd delivered no first byte either).  `sh_slot_of_kexec`/
+`sh_uexec_slot` gain `Pm` and four Coq-level laws guarded by `ukn_pay N = Q`,
+discharged at `echo_Hinit_boot` at `Pm := ush_mid γ`.  `ush_pstate`'s fourth
+conjunct is `ush_posb` (so `ushl_head`/`ush_pstate_at` take `T`; UkShCd a
+`Context (T)`).  Three walks became COMPUTED (the `blez` after the read,
+the '\n' and '\r' tests); `wp_ksh_getcmd` computes its return at its one
+input (a shut fd 0 leaves the loop); `wp_ksh_blank_entry` runs under the
+taint only.  AT THE LEND SITE (`UkShFork.v:319`, still `Rc := emp`) sh holds
+`⌜ush_bnd np0⌝ ∨ T`, `upos γp np0`, `ukn_pay N (-1)` -- NOT the turn: M3b core
+needs M6's strengthening of `Rd` first (one edit at two ends,
+UInitBanner/UInitBoot and UShLine; `ush_posb`'s left arm carries whatever
+`Rd` carries) and T4(b) for the wait.  Rebase trap: `git apply --3way`
+STAGES its result -- save patches with `git diff HEAD -- iris/`.  Handover:
+`io-leaf-handover.md`.
 
 TRAP-ROWS-4 B1a LANDED (2026-09-16; `31aff80ee` on `b992befc3`; 11 files
 +289/-32; builds tr110-tr114 in `-tlw`; audit the thirteen; lemma_diff

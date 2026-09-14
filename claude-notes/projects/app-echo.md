@@ -61,15 +61,12 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   `riscv_kill_cred` survives only as the application's taint; "require that
   taint implies Q, persistently" -- the forking process's child wand
   `□ (riscv_kill_cred -∗ sfork_pay f (-1))` at the fork ecall is blessed.
-  REMAINING: step 5 (memset's null store: widen
-  `UkStore.uk_store_fault_post_fetch`'s `(⊢ □ riscv_kill_cred)` premise to
-  `ukill_cred_at gn sc`'s RIGHT side off `UserPermDenied.u_fault_flavor_store_key`
-  and the child's trivial `ukn_pay N (-1)`; the resume arm from the engine's
-  Löb IH; `ushm_sbrk_never_fails` and the six `Hsbrk` signatures deleted;
-  `ushp_malloc_ty`'s null arm; `wp_kshp_execcmd` split before memset), and
+  STEP 5 LANDED 2026-09-16 (`b41a0075f`; the note below): memset's null
+  store, `ushm_sbrk_never_fails` and every `Hsbrk` gone.  REMAINING: only
   the optional use of setkilled's returned `kill_shot` after +0x56 (the
   not-killed branch after setkilled is provable with the slot, so nothing
-  depends on refuting it).
+  depends on refuting it).  The kill lane's remaining kernel work is
+  TRAP-ROWS (T1/T2/T3, `-tlw`).
 - [x] ~~**CONS-IO milestone A**~~ LANDED 2026-09-13 (`eef6a8dec` with SELF-KILL
   1-4a; the note below): the input resource, the shift as one fupd per
   accepted input over the two-resource `echo_link`, the log's high-water
@@ -3319,6 +3316,34 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+SELF-KILL STEP 5 LANDED (2026-09-16; `b41a0075f` on `d403be38f`; 12 files
++755/-137; builds selfk72-selfk84 in `-sup`; audit the thirteen; lemma_diff =
+1 GONE + 3 NEWAXIOM, all the point).  THE SH LANE'S LAST MEMORY ASSUMPTION IS
+GONE: `UkShMalloc.ushm_sbrk_never_fails` deleted, and the `Hsbrk` premise it
+rode on out of `UkShMain` (`wp_kshm_child_alloc`), `UkShFork` (4 signatures)
+and `UkShEcho` (2).  THE ENGINE gained a store leaf for a fault taken ON
+PURPOSE: `UkStore.wp_uk_store_denied` at a key that maps the page WITHOUT W
+(`uk_store_denied`, through `UserPermDenied.u_fault_flavor_store_key` -- VA 0
+is sh's own text, `ShSyms.getcmd = 0`).  The deposit's kill row is the RIGHT
+side of `UexecRet.ukill_cred_at` (`ChildTok.kill_owed`, the process's own -1
+payload) and the resume slot beside it is the engine's Löb hypothesis, so the
+leaf has no continuation.  Those two are ADDITIVE in `uk_step_obl`, so the
+price is the Coq-level `(⊢ Qp (-1))`, free at `ukn_triv`.  `uk_store_obl_base`/
+`_rvc` now guard their RETIRING continuation by `uk_store_retires`
+(`uk_store_disp`'s left disjunct, named), which the denied leaf refutes.  THE
+WALK: `UkRunMem.wp_uk_sb_denied` off a `UserHeap.utext` byte;
+`UkSh.wp_ksh_memset_null` (memset's prologue, then the store that dies);
+`UkShParse.ushp_malloc_ty`'s continuation is a disjunction (null, or the
+block); `UkShParseLex.wp_kshp_execcmd` splits there and walks 0x1e4..0x1ec
+into `memset(0,0,168)`.  What the parser files carry instead of `Hsbrk` is one
+section hypothesis `ushp_pay_free : (⊢ ukn_pay N (-1))`, discharged everywhere
+from `ukn_triv`: only sh's forked child parses.  `UkShRun`'s three `(⊢ ukn_pay
+N (-1))` premises are KILL-PAY K4(a)'s (the exit payload is a resource) and
+stay.  GENERALISATION NOTE: a deliberate fault at a LINEAR payload hits the
+additive `Kc ∧ ukc` in `UkStep.uk_step_obl` and would have to move that first
+(the design page's §D4).  Handover: scratchpad `self-kill-handover.md`
+(cont. 13).
 
 ECHO-OUT PART 4 ADDENDUM LANDED (2026-09-16; `f46053e5e` on `1b1847cd6`;
 EchoOut.v +431/-125; builds eo54-eo55 in `-disc`; audit the thirteen;

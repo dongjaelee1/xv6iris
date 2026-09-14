@@ -711,7 +711,10 @@ Section UserretClosed.
     iEval (rewrite /SpecUsertrap.ut_fork_out) in "Hfo".
     (* ...and wait's, on the same terms: the reap moved the row under the
        lock kwait holds, and this is what says where it left it. *)
-    iEval (rewrite /SpecUsertrap.ut_wait_out) in "Hwo".
+    (* ...with the reason ABSORBED: the U tier cannot name the incarnation,
+       so the row travels as the resume's pure [ut_live_out] instead
+       ([SpecUsertrap.ut_wait_out_forget], lane TRAP-ROWS, T4). *)
+    iDestruct (SpecUsertrap.ut_wait_out_forget with "Hwo") as "Hwo".
     (* ...AND THE EXEC ANSWER AT THE SET THE ROUND RESUMES AT: exec is not
        fork, so on that arm the set did not move and the row's slot is at
        the same key. *)

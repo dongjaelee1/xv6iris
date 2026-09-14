@@ -168,24 +168,70 @@ Proof. right. exists γ'. reflexivity. Qed.
 Section WaitAns.
   Context `{!ctokG Σ}.
 
-  Definition wait_ans (rv : mword 32) (xs : Z) (cs cs' : gset gname) : iProp Σ :=
-    (⌜rv = (mword_of_int (-1) : mword 32) /\ cs' = cs⌝
+  (* ...AND THE FAILING ARM CARRIES ITS REASON, at a NULL status pointer
+     (lane TRAP-ROWS, T4).  wait() returns -1 on THREE exits, not two:
+       * [!havekids] -- the caller's own children column is empty;
+       * [killed(p)] -- the caller is dead, and [killed()] hands back this
+         incarnation's one-shot;
+       * a failing [copyout] of the status word -- which happens with a
+         ZOMBIE child present and no shot at all.
+     The third is what the row is CONDITIONED on: it is guarded by
+     [addr != 0] in the C, and every wait leaf in the tree forces
+     [uint a1 = 0] ([UkRunSys.wp_uk_ecall_wait_null] / [_any],
+     [UkInit.wp_kinit_wait]), so at a null status pointer it is
+     unreachable and the other two are the whole story.
+     [nullst] IS THE GUARD, not a claim: a caller that passed a real
+     pointer gets the landed row back and nothing more.
+     BOTH INFORMATIVE DISJUNCTS ARE PERSISTENT, so a caller reads the
+     reason off without spending the arm. *)
+  (* THE REASON ITSELF, named once: the -1 arm's second conjunct, and the
+     only thing the three failing tails have to produce. *)
+  Definition wait_why (cs : gset gname) (gn : gname) (nullst : bool) : iProp Σ :=
+    (⌜nullst = false⌝ ∨ ⌜cs = (∅ : gset gname)⌝ ∨ kill_shot gn)%I.
+
+  Global Instance wait_why_persistent (cs : gset gname) (gn : gname) (b : bool) :
+    Persistent (wait_why cs gn b).
+  Proof. rewrite /wait_why. apply _. Qed.
+
+  Definition wait_ans (rv : mword 32) (xs : Z) (cs cs' : gset gname)
+      (gn : gname) (nullst : bool) : iProp Σ :=
+    (⌜rv = (mword_of_int (-1) : mword 32) /\ cs' = cs⌝ ∗ wait_why cs gn nullst
      ∨ ∃ γ' : gname,
          ⌜cs' = cs ∖ {[γ']}⌝ ∗ exit_tok γ' rv xs ∗ gen_uniq cs rv γ')%I.
 
   (* the pure row, which is all the twenty-odd relays between kwait and the
      program ever look at *)
-  Lemma wait_ans_reaped (rv : mword 32) (xs : Z) (cs cs' : gset gname) :
-    wait_ans rv xs cs cs' -∗ ⌜ch_reaped cs cs'⌝.
+  Lemma wait_ans_reaped (rv : mword 32) (xs : Z) (cs cs' : gset gname)
+      (gn : gname) (nullst : bool) :
+    wait_ans rv xs cs cs' gn nullst -∗ ⌜ch_reaped cs cs'⌝.
   Proof.
-    iIntros "[[_ %He] | (%γ' & %He & _)]"; iPureIntro.
+    iIntros "[[[_ %He] _] | (%γ' & %He & _)]"; iPureIntro.
     - left. exact He.
     - right. exists γ'. exact He.
   Qed.
 
-  (* the failing arm, for the three exits that reap nothing *)
-  Lemma wait_ans_neg (xs : Z) (cs : gset gname) :
-    ⊢ wait_ans (mword_of_int (-1) : mword 32) xs cs cs.
-  Proof. iLeft. iPureIntro. split; reflexivity. Qed.
+  (* the failing arm, for the three exits that reap nothing.  Each supplies
+     its OWN reason: the childless exit the empty column, the killed exit
+     the one-shot, the copyout exit the guard's refutation. *)
+  Lemma wait_ans_neg (xs : Z) (cs : gset gname) (gn : gname) (nullst : bool) :
+    wait_why cs gn nullst -∗
+    wait_ans (mword_of_int (-1) : mword 32) xs cs cs gn nullst.
+  Proof.
+    iIntros "Hwhy". iLeft. iSplitR; [ iPureIntro; split; reflexivity | ].
+    iExact "Hwhy".
+  Qed.
+
+  (* ...and the three ways to build that reason *)
+  Lemma wait_why_notnull (cs : gset gname) (gn : gname) (nullst : bool) :
+    nullst = false -> ⊢ wait_why cs gn nullst.
+  Proof. intros ->. rewrite /wait_why. by iLeft. Qed.
+
+  Lemma wait_why_empty (cs : gset gname) (gn : gname) (nullst : bool) :
+    cs = (∅ : gset gname) -> ⊢ wait_why cs gn nullst.
+  Proof. intro He. rewrite /wait_why. iRight. by iLeft. Qed.
+
+  Lemma wait_why_shot (cs : gset gname) (gn : gname) (nullst : bool) :
+    kill_shot gn -∗ wait_why cs gn nullst.
+  Proof. iIntros "H". rewrite /wait_why. iRight. iRight. iExact "H". Qed.
 
 End WaitAns.

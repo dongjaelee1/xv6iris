@@ -144,7 +144,8 @@ Definition wp_sys_wait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
          child's pid with its escrow -- at the status word this call
          copied out -- the pid uniqueness over the caller's children, and
          the reading at what the reap left it. *)
-      wait_ans rv (xstate_val xw) cs cs' -∗
+      wait_ans rv (xstate_val xw) cs cs' (pv_gen (us_V U))
+        (bool_decide (v0 = (zero_reg : mword 64))) -∗
       sie_cap_gpr KT1 mf av b pj -∗
       cpu_own 0%nat eb pj b lks -∗
       pc_is ret_tgt -∗

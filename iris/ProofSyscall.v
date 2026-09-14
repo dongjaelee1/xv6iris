@@ -4299,7 +4299,12 @@ Section SyscallArms.
        its reaping arm it carries the reaped child's escrow and the pid
        uniqueness that names the generation; there is nothing here to
        fabricate. *)
-    { iApply (sysc_wait_out_of U _ rv (xstate_val xw) cs cs' Ha0w with "Hans"). }
+    { (* the row's status-pointer reading is the arm's own argument word
+         (lane TRAP-ROWS, T4) *)
+      assert (Hv0w : v0 = pv_tf (us_V U) !!! tf_arg_idx 0)
+        by (symmetry; apply list_lookup_total_correct, Hv0).
+      iEval (rewrite Hv0w) in "Hans".
+      iApply (sysc_wait_out_of U _ rv (xstate_val xw) cs cs' Ha0w with "Hans"). }
     iApply (sysc_exec_out_ne _ _ _ _ _ _ _ _ (sysc_num_ne7 _ _ Hnum eq_refl)).
     iApply (sysc_sys_out_quiet U sts gn cs pid fdep _ _ _ _ _ _ Hnum
               ltac:(unfold sysc_num_nofs; lia)).

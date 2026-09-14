@@ -1005,9 +1005,26 @@ Section UexecRet.
      is READ and not chosen, exactly as fork's is: the row is
      [WaitInv.ch_frag] off the kernel's residue and kwait moves it under
      <wait_lock>. *)
-  Definition uwait_ans (r : mword 64) (cs cs' : gset gname) : iProp Σ :=
+  (* ...AT THE CALLER'S GENERATION AND ITS STATUS POINTER (lane TRAP-ROWS,
+     T4): what the kernel's own channels carry, because the -1 arm's reason
+     names the incarnation and is guarded on the null pointer. *)
+  Definition uwait_ans_at (r : mword 64) (cs cs' : gset gname)
+      (gn : gname) (nullst : bool) : iProp Σ :=
     (∃ (rv : mword 32) (xs : Z),
-       ⌜r = (sign_extend' 64 rv : mword 64)⌝ ∗ wait_ans rv xs cs cs')%I.
+       ⌜r = (sign_extend' 64 rv : mword 64)⌝ ∗
+       wait_ans rv xs cs cs' gn nullst)%I.
+
+  (* ...AND WHAT THE PROCESS SEES.  [urun] binds the process's own
+     generation with NO resource beside it (UkRun.v's note), so the U tier
+     cannot name it -- the reason is ABSORBED here and delivered instead as
+     the resume's own pure row ([SpecUsertrap.ut_live_out]). *)
+  Definition uwait_ans (r : mword 64) (cs cs' : gset gname) : iProp Σ :=
+    (∃ (gn : gname) (b : bool), uwait_ans_at r cs cs' gn b)%I.
+
+  Lemma uwait_ans_of (r : mword 64) (cs cs' : gset gname)
+      (gn : gname) (b : bool) :
+    uwait_ans_at r cs cs' gn b -∗ uwait_ans r cs cs'.
+  Proof. iIntros "H". iExists gn, b. iExact "H". Qed.
 
   (* the failing arm, at the word the [li -1] tails leave in a0 *)
   Lemma sext_neg1_64 :
@@ -1015,19 +1032,27 @@ Section UexecRet.
     = (mword_of_int (-1) : mword 64).
   Proof. apply bv_eq; vm_compute; reflexivity. Qed.
 
+  Lemma uwait_ans_at_neg1 (cs : gset gname) (gn : gname) (b : bool) :
+    (⌜b = false⌝ ∨ ⌜cs = (∅ : gset gname)⌝ ∨ ChildTok.kill_shot gn) -∗
+    uwait_ans_at (mword_of_int (-1) : mword 64) cs cs gn b.
+  Proof.
+    iIntros "Hwhy". iExists (mword_of_int (-1) : mword 32), 0%Z.
+    iSplitR; [iPureIntro; symmetry; exact sext_neg1_64 |].
+    iApply (wait_ans_neg with "Hwhy").
+  Qed.
+
   Lemma uwait_ans_neg1 (cs : gset gname) :
     ⊢ uwait_ans (mword_of_int (-1) : mword 64) cs cs.
   Proof.
-    iExists (mword_of_int (-1) : mword 32), 0%Z.
-    iSplitR; [iPureIntro; symmetry; exact sext_neg1_64 |].
-    iApply wait_ans_neg.
+    iExists inhabitant, false.
+    iApply uwait_ans_at_neg1. by iLeft.
   Qed.
 
   (* ...and the pure row, for the relays that only want the set's move *)
   Lemma uwait_ans_reaped (r : mword 64) (cs cs' : gset gname) :
     uwait_ans r cs cs' -∗ ⌜ch_reaped cs cs'⌝.
   Proof.
-    iIntros "H". iDestruct "H" as (rv xs) "[_ Ha]".
+    iIntros "H". iDestruct "H" as (gn b rv xs) "[_ Ha]".
     iApply (wait_ans_reaped with "Ha").
   Qed.
 

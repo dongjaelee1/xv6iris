@@ -326,7 +326,7 @@ Section UtRet2.
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
-      (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
+      (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 gn -∗
     (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3) *)
     ut_kill_out scw Wk -∗
     (* ...and the syscall channel's, relayed the same way: this tail moves
@@ -871,7 +871,7 @@ Section UtRet.
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
-      (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
+      (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 gn -∗
     (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3) *)
     ut_kill_out scw Wk -∗
     (* ...and the syscall channel's, relayed the same way: this tail moves
@@ -1175,7 +1175,7 @@ Section UtA6.
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
-      (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
+      (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 gn -∗
     (* ...AND THE UNTAKEN CONTINUATION, OR THE FACT THAT THERE IS NO RESUME
        (lane TRAP-ROWS, T3).  This arm is the second [killed()] check, so it
        is the one place the two can be told apart: the shot refutes the
@@ -1594,7 +1594,7 @@ Section UtFa.
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
-      (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
+      (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 gn -∗
     (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3) *)
     ut_kill_out scw Wk -∗
     (* ...and the syscall channel's, relayed the same way: this tail moves

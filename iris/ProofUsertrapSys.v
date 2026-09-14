@@ -1132,10 +1132,23 @@ Section UtSysBlock.
         cbn [us_V]. rewrite <- Hn0. rewrite usys_num_epc in Hc7. exact Hc7. }
       (* ...AND WAIT'S, on the same terms: one disjunction, one a0 word,
          one guard shorter by the cause ([SpecUsertrap.ut_wait_out]). *)
+      (* the row's two readings -- the caller's generation and its status
+         pointer -- are the dispatcher's own, across the prologue's one
+         trapframe write (lane TRAP-ROWS, T4) *)
+      assert (Ha0w : (<[tf_epc_idx := ret_pc epv]> (pv_tf (us_V U0)))
+                       !!! tf_arg_idx 0
+                     = pv_tf V1 !!! tf_arg_idx 0).
+      { rewrite list_lookup_total_insert_ne;
+          [ exact (Hargw 0%nat ltac:(lia))
+          | unfold tf_epc_idx, tf_arg_idx; lia ]. }
+      assert (Hgnw : pv_gen V1 = gn)
+        by (rewrite HV1gen Hgnq; exact Hpr6).
       iAssert (ut_wait_out scv (<[tf_epc_idx := ret_pc epv]> (pv_tf (us_V U0)))
-                 (pv_tf (us_V (MkUstate V2 M2)) !!! tf_arg_idx 0) cs csR)%I
+                 (pv_tf (us_V (MkUstate V2 M2)) !!! tf_arg_idx 0) cs csR gn)%I
         with "[Hwo]" as "Hwo".
-      { rewrite /ut_wait_out /sysc_wait_out. iIntros "%Hc".
+      { rewrite /ut_wait_out /sysc_wait_out.
+        cbn [us_V]. rewrite Ha0w. rewrite Hgnw.
+        iIntros "%Hc".
         iApply "Hwo". iPureIntro. destruct Hc as [_ Hc7].
         cbn [us_V]. rewrite <- Hn0. rewrite usys_num_epc in Hc7. exact Hc7. }
       iAssert (∀ n : Z, ut_sys_out n fdep scv (pv_tf (us_V U0)) U0 sts gn cs pid

@@ -385,7 +385,7 @@ Definition uservec_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} `{GEN 
       (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
     (* ...AND WAIT'S, forwarded the same way -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out sc_v (tf_of g (ret_pc sepc_v))
-      (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
+      (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' gn -∗
     (* ...AND THE UNTAKEN CONTINUATION, forwarded the same way (lane
        TRAP-ROWS, T3) -- [SpecUsertrap.ut_kill_out] *)
     ut_kill_out sc_v Wk -∗

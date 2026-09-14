@@ -516,9 +516,16 @@ Section SyscExec.
      The escrow the reap hands back and the pid uniqueness that identifies
      the generation ride in the same answer ([UexecRet.uwait_ans], which is
      kwait's own [UserChildren.wait_ans] at the a0 word). *)
+  (* ...AND IT CARRIES THE CALLER'S GENERATION AND ITS STATUS POINTER
+     (lane TRAP-ROWS, T4): the -1 arm's reason names the incarnation and is
+     guarded on the null pointer, and both are readings of data this row
+     already has. *)
   Definition sysc_wait_out (U : ustate) (r : mword 64)
       (cs cs' : gset gname) : iProp Σ :=
-    (⌜sysc_num (us_V U) = UsysMemOk.USYS_wait⌝ -∗ uwait_ans r cs cs')%I.
+    (⌜sysc_num (us_V U) = UsysMemOk.USYS_wait⌝ -∗
+       uwait_ans_at r cs cs' (pv_gen (us_V U))
+         (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0
+                       = (zero_reg : mword 64))))%I.
 
   Lemma sysc_wait_out_ne (U : ustate) (r : mword 64) (cs cs' : gset gname) :
     sysc_num (us_V U) <> UsysMemOk.USYS_wait -> ⊢ sysc_wait_out U r cs cs'.
@@ -533,9 +540,11 @@ Section SyscExec.
   Lemma sysc_wait_out_of (U : ustate) (r : mword 64) (rv : mword 32) (xs : Z)
       (cs cs' : gset gname) :
     r = (sign_extend' 64 rv : mword 64) ->
-    wait_ans rv xs cs cs' -∗ sysc_wait_out U r cs cs'.
+    wait_ans rv xs cs cs' (pv_gen (us_V U))
+      (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0 = (zero_reg : mword 64))) -∗
+    sysc_wait_out U r cs cs'.
   Proof.
-    intros ->. rewrite /sysc_wait_out /uwait_ans. iIntros "H %Hn".
+    intros ->. rewrite /sysc_wait_out /uwait_ans_at. iIntros "H %Hn".
     iExists rv, xs. iSplitR; [done | iExact "H"].
   Qed.
 

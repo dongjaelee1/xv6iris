@@ -245,7 +245,8 @@ Definition wp_kwait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
          the reaper holds both halves of the zombie's [p->xstate] and the
          escrow is keyed at what that cell reads
          ([ProcDefs.proc_dormant]'s ZOMBIE arm). *)
-      wait_ans rv (xstate_val xw) cs cs' -∗
+      wait_ans rv (xstate_val xw) cs cs' (pv_gen (us_V U))
+        (bool_decide (addr = (zero_reg : mword 64))) -∗
       sie_cap_gpr KT1 mf av b pj -∗
       cpu_own 0 eb pj b lks -∗
       pc_is ret_tgt -∗

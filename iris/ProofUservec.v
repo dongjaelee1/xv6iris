@@ -2013,6 +2013,11 @@ Section UservecAllPt.
       + cbn [us_V pv_tf upd_usM us_tf upd_usV upd_tf].
         unfold UsysMemOk.usys_num, tf_arg_idx, tf_of. reflexivity.
       + cbn [us_V pv_tf us_upt upd_upt upd_usV us_tf upd_tf]. reflexivity.
+      + (* ...and the STATUS POINTER the reason is guarded on, which the
+           save walk leaves where the entry frame had it (lane TRAP-ROWS,
+           T4) *)
+        cbn [us_V pv_tf upd_usM us_tf upd_usV upd_tf].
+        unfold tf_arg_idx, tf_epc_idx, tf_of. reflexivity.
     - (* ...AND THE UNTAKEN CONTINUATION, forwarded verbatim: this boundary
          moves neither the cause nor the key the pair was handed at
          (lane TRAP-ROWS, T3). *)

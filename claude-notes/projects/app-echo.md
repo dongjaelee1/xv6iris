@@ -125,8 +125,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   (the note below: init lends the credential at its fork; `init_boot_pay`
   gains `Rt`); M4a(3) LANDED 2026-09-16 (`2e0c78906`; the note below: the
   prompt paid by the link; the pair `sh_prompt_pay`); M3b(1) + M3c LANDED
-  2026-09-16 (`c9bf0cde9`; the note below); IN FLIGHT: M5 the read leaf
-  (brief v7; closes `Hsh_owed`'s third conjunct); then M3b core (the
+  2026-09-16 (`c9bf0cde9`); M5a LANDED 2026-09-16 (`5c48c3aa2`; the note
+  below: the read on the era's link); IN FLIGHT: M5b (the credential in the
+  console lease; closes `Hsh_owed`'s third conjunct); then M3b core (the
   payload at the line boundary, the lend into echo), sh's wait redemption
   after TRAP-ROWS-3 T4(b); M4b, M6 after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
@@ -3365,6 +3366,35 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M5a LANDED (2026-09-16; the lane's `529b2a853` cherry-picked onto
+`3f628acef` as `5c48c3aa2`; EchoLinks.v + UShLine.v; builds io38-io39 in the
+main checkout; audit the thirteen; lemma_diff CLEAN; no Admitted; `Hsh_owed`
+untouched).  SH'S CONSOLE READ IS PAID BY THE ERA'S OWN READ LINK.
+`EchoLinks` gains a SIXTH link `echo_link_rd_taint : □ ∀ k ws Φ, T -∗ (T -∗ Φ)
+-∗ read_link k ws Φ` (from `ein_sup_deliv` under `Hin`): sh's lease carries
+the era's `dl_cnt` half OR the taint, and on the taint arm the read must
+still move the boundary's `dl`.  `UShLine`: `xfam_rd`'s `rf_in` is a
+PARAMETER (was hard-wired `fun _ => True`, payable only while the input claim
+was `emp`); `ush_read_sup_era` = the access lemma with the boundary's half
+`echo_link_rd` at sh's own delivered count instead of `in_licence`;
+`ush_rd_byte_of_rows` (pure: the receipt's window row + boundary row +
+`ein_read_byte` give `g 0 = echo_line !!! (n mod 17)`; `echo_line_no_cr` for
+`cons_xlate`); `ush_read_recv_era` = the owed leaf `ush_read_recv_leaf` with
+`ush_rd_cred T v n := dl_cnt v (1/2) n ∨ T` beside the lease in and
+`ush_read_ans_era` out (the credential back at `n + dc`, the delivered byte
+in the line, `cs_lb`/`ps_lb`/`E_lb v (n+dc)`); its -1 arm REFUTED at an open
+readable console fd by T2's `uexec_live_ok`.  BLOCKER, RULED: putting the
+credential in `ush_at` needs it at sh's entry on EVERY round of init's loop,
+but it rides `init_exec_sup_pos`'s affine `Rt ∨ True` and only round 0 has one
+-> the half rides the SHELL'S EXIT PAYLOAD instead, the console lease that
+already round-trips through init's wait: `ucons_pay cn γ T Rd := fun _ => (∃
+n, ucons_reader cn n ∗ upos_a γ n ∗ Rd n) ∨ T` (the same existential as the
+cursor, `upos_agree` keeps the counts equal), `Rd 0` from `eturn`'s `dl_cnt`
+at the boot mint; `ush_at` unchanged; M5b in flight (UkInitMain/UkInit/
+UInitKernel/UInitBoot/UserConsole allowed), closing `Hsh_owed`'s THIRD
+conjunct.  The same slot is M6's route for the write-side turn's return.
+Handover: `io-leaf-handover.md`.
 
 TRAP-ROWS-3 T4(b) -- TWO OBSTACLES, RULED (2026-09-16; attempt saved as
 scratchpad `t4b-wip.patch`, 15 files, green at tr101/tr102; handover

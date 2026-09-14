@@ -128,11 +128,12 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   2026-09-16 (`c9bf0cde9`); M5a LANDED 2026-09-16 (`5c48c3aa2`; the note
   below: the read on the era's link); M5b LANDED 2026-09-16 (`32d7b6bbf`;
   the note below: the credential rides the console lease; `Hsh_owed` DOWN
-  TO TWO CONJUNCTS); IN FLIGHT: M4b(1) (`-sup`, `lane/io-leaf-diag`: the
-  diagnostics tower carries `ksh_w`, structural only); NEXT (fresh agent,
-  main checkout): M5(3) sh's `gets` on the enriched answer + M3b core (the
+  TO TWO CONJUNCTS); M4b(1) LANDED 2026-09-16 (`02b240e03`; the note
+  below: the diagnostics tower carries `ksh_w1`); IN FLIGHT (main
+  checkout): M5(3) sh's `gets` on the enriched answer + M3b core (the
   payload at the line boundary, the lend into echo), sh's wait redemption
-  after TRAP-ROWS-4; M4b(2) the diagnostics' payment, M6 after.
+  after TRAP-ROWS-4; then M4b(2) the diagnostics' payment (the `%s` token
+  pinned by the parser; `ush_diag_leaf`'s shape), M6.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad
@@ -3377,6 +3378,33 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M4b(1) LANDED (2026-09-16; `02b240e03` on `0a2a4befe`; UkShDiag.v only;
+builds dg1-dg3 in `-sup`; audit the thirteen; lemma_diff CLEAN; no Admitted).
+SH'S DIAGNOSTIC TOWER CARRIES THE PER-CALL WRITE OBLIGATION: `ksh_w1 fdv b
+Ci Co := ∀ ua, ksh_w N fdv ua 1 (ubyte γd (uint ua) b ∗ Ci) (ubyte γd (uint
+ua) b ∗ Co)` (ulib's `putc` writes one byte out of ITS OWN frame at an
+address no caller can name, so the buffer is quantified and the byte
+threaded through both halves; `kinit_w1` at sh); `ksh_w1_of_law :
+sh_deps -∗ ksh_w1 fdv b emp emp`.  Fifteen sites became `_chain` forms
+(`wp_kshd_putc`, the `vprintf*` family, `fprintf`/`fprintf_s`, `die`,
+`panic`), EVERY old statement kept verbatim as the corollary at
+`ksh_w1_of_law`; plain runs take `□ (∀ j, lo <= j < hi -> ksh_w1 …)` with
+the bounds outside the induction; `_sloop_chain`'s first round is LINEAR;
+the four `%s` lemmas take three families (prefix/argument/tail) with two
+re-indexing equations; `die`/`panic` at the concrete descriptor 2 hand the
+family's last token to the exit payload through `C3 flen -∗ ukn_pay N (-1)`
+-- M4b(2)'s payment slot.  Helpers gained output facts (`wp_kshd_vprintf_pro`
+`⌜fd = a0⌝`, `wp_kshd_fprintf_gen` `⌜a0' = a0⌝`).  `%s` TOKENS: every site
+holds its bytes as `shd_str`; panic's literal is pinned; the two runcmd arms
+get theirs EXISTENTIALLY out of `UkShRun.ush_diag_res` -- the parser does
+not yet pin the token handed to the diagnostic (`ush_line_is` pins the
+LINE).  M4b(2) receives: the three remaining `sh_deps` sites
+(`ush_diag_leaf_holds`, `wp_kshr_runcmd_final`, `wp_kshr_fork1_final`) at
+`UkShRun.ush_diag_leaf`'s shape, which must change to carry the obligation
+(a consumer move in UkShRun.v), the chain leaf quantifying `slen`/`sf` under
+the existential, and the turn at each site's stage (M3b core / M6).
+Handover: `io-leaf-diag-handover.md`.
 
 IO-LEAF M5b LANDED (2026-09-16; `32d7b6bbf` on `eddf42399`; 10 files; builds
 io40-io43 in the main checkout; audit the thirteen; lemma_diff 1 GONE

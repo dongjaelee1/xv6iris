@@ -764,7 +764,16 @@ Section UkStorePostFetch.
       (imm : mword 12) (sr1 sr2 : mword 5)
       (va wval : mword 64) (ib : mword 32) (t' : ptree)
       (usatp : mword 64) (pcfg : type_of_register pmpcfg_n)
-      (paddr : type_of_register pmpaddr_n) (rsE rs2 : regstate) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
+      (paddr : type_of_register pmpaddr_n) (rsE rs2 : regstate) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32)
+      (* THE STEP'S OWN LEFT SIDE (lane TRAP-ROWS, T3 / the IO-LEAF review).
+         [UkStep.uk_step_obl] hands this leaf [Kcx ∧ ukc]: the retiring
+         path's continuation on the left, the engine's re-entry slot on the
+         right.  The pair travels down HERE rather than being split at the
+         obligation, because the deposit this arm owes is itself an
+         ADDITIVE pair ([UexecRet.uexec_kill_arm_F]) -- so a LINEAR left
+         side (a process paying for its own death with its own exit
+         payload) reaches the credential without costing the slot. *)
+      (Kcx : iProp Σ) :
     ustore_width kk ->
     uv_redirect i o ->
     uv_exp i o = STORE (imm, Regidx sr2, Regidx sr1, kk) ->
@@ -795,7 +804,11 @@ Section UkStorePostFetch.
        beside the slot.  At a payload that is free at the kill status
        ([UkRun.ukn_pay_free_of_triv]) the right side costs exactly that
        persistent fact and nothing else. *)
-    (⊢ (ChildTok.my_pay gn Qp -∗
+    (* ...AND THE LEFT OF THE PAIR IS WHAT IT MAY SPEND (the IO-LEAF
+       review): [Kcx] is a RESOURCE here, so the payload's route works at
+       a LINEAR payload -- a forked child hands over [Qp (-1)] itself
+       rather than a proof that it is free. *)
+    (⊢ (Kcx ∗ ChildTok.my_pay gn Qp -∗
         (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)) ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     uva_inj pt Mp ->
@@ -831,7 +844,8 @@ Section UkStorePostFetch.
     uk_pt_pure pt sz M Mp ->
     gen_cert -∗ uv_amb -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
-          UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))) -∗
+          UkStep.uk_paycont Qp gn
+            (Kcx ∧ uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))) -∗
     resv_any cpu_id -∗
     TsoCtx.own_context XI -∗
     uv_bytes pt Mp t' -∗
@@ -1081,10 +1095,11 @@ Section UkStorePostFetch.
        the deposit premise and the right from the engine's Löb slot. *)
     iSplit.
     { iPoseProof Hkcw as "Hkcw".
-      iDestruct ("Hkcw" with "Hmyp") as "[#Hkl | Hkr]";
+      iDestruct "Hret" as "[Hkcx _]".
+      iDestruct ("Hkcw" with "[$Hkcx $Hmyp]") as "[#Hkl | Hkr]";
         [ iApply (ukill_cred_at_of_cred _ _ with "Hkl")
         | iApply (ukill_cred_at_of_owed _ _ with "Hkr") ]. }
-    iExact "Hret".
+    iDestruct "Hret" as "[_ Hret]". iExact "Hret".
   Qed.
 
 End UkStorePostFetch.
@@ -1112,7 +1127,11 @@ Section UkStoreObl.
       (i : instruction) (o : option instruction) (kk : Z) (imm : mword 12)
       (sr1 sr2 : mword 5) (va wval : mword 64)
       (t : ptree) (usatp : mword 64) (pcfg : type_of_register pmpcfg_n)
-      (paddr : type_of_register pmpaddr_n) (rs1 rsA : regstate) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
+      (paddr : type_of_register pmpaddr_n) (rs1 rsA : regstate) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32)
+      (* THE STEP'S OWN LEFT SIDE, carried whole to the fault leaf (lane
+         TRAP-ROWS, T3 / the IO-LEAF review) -- see
+         [uk_store_fault_post_fetch]. *)
+      (Kcx : iProp Σ) :
     uv_pre C pt Mp m pc t rs1 rsA usatp pcfg paddr ->
     uk_pt_pure pt sz M Mp ->
     udecode_base w i ->
@@ -1136,8 +1155,11 @@ Section UkStoreObl.
        refutes all three flavors ([UmodeMem.uva_canon],
        [UserPerm.lazy_free_wmapped], [UserPtTree.uleaf_ok_denied_excl]) and
        discharges this by [False]. *)
+    (* ...AND IT MAY SPEND THE PAIR'S LEFT SIDE (the IO-LEAF review): the
+       deposit is a RESOURCE, not a Coq-level [⊢ Qp (-1)], so a child that
+       dies at a LINEAR payload can pay for its own death. *)
     (u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va ->
-     ⊢ (ChildTok.my_pay gn Qp -∗
+     ⊢ (Kcx ∗ ChildTok.my_pay gn Qp -∗
         (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
@@ -1148,7 +1170,8 @@ Section UkStoreObl.
           ((⌜uk_store_retires pt Mp va kk⌝ -∗
             uvb C pt Rfd Rut sz π fdv cw gn cs pidv false (uM_store M (uint va) kk wval) m (add_vec_int pc 4) -∗
             WP (Loop : expr riscv_lang))
-           ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))) -∗
+           ∧ UkStep.uk_paycont Qp gn
+               (Kcx ∧ uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
     TsoCtx.own_context XI -∗
@@ -1242,7 +1265,7 @@ Section UkStoreObl.
       exists w_st. exact (conj Hl (conj Hchk (conj Hntx HMb))).
     - iApply (uk_store_fault_post_fetch C pt Rfd R Rut sz π M Mp m pc 4 kk i o imm sr1 sr2 va wval
               (zero_extend' 32 w) t' usatp pcfg paddr rs1 rs2 fdv cw gn cs pidv
-              Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
+              Kcx Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
               Hpins2
               (T2 _ _ u_in_PC ltac:(vm_compute; reflexivity) LpcA)
               (T2 _ _ u_in_hart ltac:(vm_compute; reflexivity) LhsA)
@@ -1273,7 +1296,11 @@ Section UkStoreObl.
       (i : instruction) (o : option instruction) (kk : Z) (imm : mword 12)
       (sr1 sr2 : mword 5) (va wval : mword 64)
       (t : ptree) (usatp : mword 64) (pcfg : type_of_register pmpcfg_n)
-      (paddr : type_of_register pmpaddr_n) (rs1 rsA : regstate) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
+      (paddr : type_of_register pmpaddr_n) (rs1 rsA : regstate) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32)
+      (* THE STEP'S OWN LEFT SIDE, carried whole to the fault leaf (lane
+         TRAP-ROWS, T3 / the IO-LEAF review) -- see
+         [uk_store_fault_post_fetch]. *)
+      (Kcx : iProp Σ) :
     uv_pre C pt Mp m pc t rs1 rsA usatp pcfg paddr ->
     uk_pt_pure pt sz M Mp ->
     udecode_rvc h i ->
@@ -1297,8 +1324,11 @@ Section UkStoreObl.
        refutes all three flavors ([UmodeMem.uva_canon],
        [UserPerm.lazy_free_wmapped], [UserPtTree.uleaf_ok_denied_excl]) and
        discharges this by [False]. *)
+    (* ...AND IT MAY SPEND THE PAIR'S LEFT SIDE (the IO-LEAF review): the
+       deposit is a RESOURCE, not a Coq-level [⊢ Qp (-1)], so a child that
+       dies at a LINEAR payload can pay for its own death. *)
     (u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va ->
-     ⊢ (ChildTok.my_pay gn Qp -∗
+     ⊢ (Kcx ∗ ChildTok.my_pay gn Qp -∗
         (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
@@ -1309,7 +1339,8 @@ Section UkStoreObl.
           ((⌜uk_store_retires pt Mp va kk⌝ -∗
             uvb C pt Rfd Rut sz π fdv cw gn cs pidv false (uM_store M (uint va) kk wval) m (add_vec_int pc 2) -∗
             WP (Loop : expr riscv_lang))
-           ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))) -∗
+           ∧ UkStep.uk_paycont Qp gn
+               (Kcx ∧ uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
     TsoCtx.own_context XI -∗
@@ -1408,7 +1439,7 @@ Section UkStoreObl.
       exists w_st. exact (conj Hl (conj Hchk (conj Hntx HMb))).
     - iApply (uk_store_fault_post_fetch C pt Rfd R Rut sz π M Mp m pc 2 kk i o imm sr1 sr2 va wval
               (zero_extend' 32 h) t' usatp pcfg paddr rs1 rs2 fdv cw gn cs pidv
-              Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
+              Kcx Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
               Hpins2
               (T2 _ _ u_in_PC ltac:(vm_compute; reflexivity) LpcA)
               (T2 _ _ u_in_hart ltac:(vm_compute; reflexivity) LhsA)
@@ -1573,7 +1604,7 @@ Section UkStore.
              in the map at all ([UptTree.upt_map_wf_not_tramp] / [_not_tf]).
        So a verified program pays NOTHING for the kill it cannot suffer. *)
     assert (Hkcf : u_fault_flavor (Store Data) (ud_tfp pt') (ud_um pt') va ->
-                   ⊢ (ChildTok.my_pay gn Qp -∗
+                   ⊢ ((True : iProp Σ) ∗ ChildTok.my_pay gn Qp -∗
                       (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)).
     { intros Hfl. exfalso.
       destruct (lazy_free_wmapped pt' sz (svpn_of va) q Hwf' Hlf'
@@ -1605,7 +1636,8 @@ Section UkStore.
                uvb (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false (uM_store M (uint va) k wval) m
                  (add_vec_int pc (if is_rvc then 2 else 4)) -∗
                WP (Loop : expr riscv_lang))
-              ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
+              ∧ UkStep.uk_paycont Qp gn
+                  (True ∧ uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hrut & Hfdr & Hkb & Hkc)".
       iFrame "Hrut Hfdr Hkb". iSplit.
       - (* the RETIRE leg: the continuation's own side.  The guard is free
@@ -1616,8 +1648,12 @@ Section UkStore.
         iIntros "_ Hb". rewrite /ukc.
         iApply ("Hkc" $! CIDo XIo C' pt' Rfd' Rut' HRut' with "[%] [%] [%] Hb");
           [ exact Hlo' | exact Hpm' | intros _; exact Hlf' ].
-      - (* the FAULT leg: the slot goes to the kernel with the pay fact *)
+      - (* the FAULT leg: the slot goes to the kernel with the pay fact.
+           THE PAIR'S LEFT SIDE IS EMPTY HERE (the IO-LEAF review): this
+           leaf's key says the page is WRITABLE, so the fault arm is
+           unreachable and the deposit it would owe is [True]. *)
         iDestruct "Hkc" as "(#Hmyp & Hkc)". iFrame "Hmyp".
+        iSplit; [done |].
         iDestruct "Hkc" as "[_ Hkc]".
         rewrite (uslot_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2). iExact "Hkc". }
     iPoseProof (uv_swp_fetch_uinstr (CID := CIDo) (XI := XIo) pt' Mp' t (uc_dqc C')
@@ -1626,12 +1662,14 @@ Section UkStore.
     destruct is_rvc.
     - iDestruct "Hf" as (h) "[[%HisRVC %Hdecrvc] Hbridge]".
       iApply (uk_store_obl_rvc C' pt' Rfd' R Rut' sz π M Mp' m pc h i o k imm rs1 rs2 va wval
-                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv Hpre Hpure Hdecrvc Hkw Hred Hg1 Hexp
+                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv (True : iProp Σ)
+                Hpre Hpure Hdecrvc Hkw Hred Hg1 Hexp
                 Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
     - iDestruct "Hf" as (w) "[[%HnRVC %Hdecbase] Hbridge]".
       iApply (uk_store_obl_base C' pt' Rfd' R Rut' sz π M Mp' m pc w i o k imm rs1 rs2 va wval
-                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv Hpre Hpure Hdecbase Hkw Hred Hg1 Hexp
+                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv (True : iProp Σ)
+                Hpre Hpure Hdecbase Hkw Hred Hg1 Hexp
                 Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
   Qed.
@@ -1723,18 +1761,23 @@ Section UkStore.
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - k ->
     is_aligned_vaddr (Virtaddr va) k = true ->
-    (* the payload at the kill status, free at a forked child's record *)
-    (⊢ (Qp (-1) : iProp Σ)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ChildTok.my_pay gn Qp -∗
+    (* THE PAYLOAD AT THE KILL STATUS, AS A RESOURCE (the IO-LEAF review).
+       It used to be the Coq-level [⊢ Qp (-1)] -- "the payload is free" --
+       which a child that dies at a LINEAR payload cannot supply.  It
+       travels as [UkStep.uk_step_obl]'s [Kc], the LEFT of the pair the
+       fault leaf is handed, so it reaches the credential without costing
+       the resume slot. *)
+    Qp (-1) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hden Hcanon Hpg Hal Hpay.
+    intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hden Hcanon Hpg Hal.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
     pose proof (ui_al2 _ _ _ _ _ Hui0) as Hal2.
-    iIntros "Hb #Hmy".
-    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 True%I Qp M m pc
-              fdv cw gn cs pidv Hal2 with "Hb [] [$Hmy]").
+    iIntros "Hb #Hmy Hpay".
+    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 (Qp (-1)) Qp M m pc
+              fdv cw gn cs pidv Hal2 with "Hb [] [$Hmy $Hpay]").
     iModIntro.
     rewrite /uk_step_obl.
     iIntros (R CIDo XIo C' pt' Rfd' Rut' HRut' Mp' t rs1s rsA usatp pcfg paddr)
@@ -1758,10 +1801,10 @@ Section UkStore.
       exact (uleaf_ok_denied_excl (Store Data) w_st Hchk Hd0). }
     (* THE PRICE, and it is the process's own ([ChildTok.kill_owed]) *)
     assert (Hkcf : u_fault_flavor (Store Data) (ud_tfp pt') (ud_um pt') va ->
-                   ⊢ (ChildTok.my_pay gn Qp -∗
+                   ⊢ (Qp (-1) ∗ ChildTok.my_pay gn Qp -∗
                       (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)).
-    { intros _. iIntros "#Hm". iRight.
-      iApply (ChildTok.kill_owed_of gn Qp with "Hm"). iApply Hpay. }
+    { intros _. iIntros "(Hp & #Hm)". iRight.
+      iApply (ChildTok.kill_owed_of gn Qp with "Hm Hp"). }
     iPoseProof "Hamb" as "(#Hhw & _ & _)".
     iPoseProof "Hhw" as (misa0 mseccfg0 pmar0 elp0)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
@@ -1774,7 +1817,8 @@ Section UkStore.
                uvb (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false (uM_store M (uint va) k wval) m
                  (add_vec_int pc (if is_rvc then 2 else 4)) -∗
                WP (Loop : expr riscv_lang))
-              ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
+              ∧ UkStep.uk_paycont Qp gn
+                  (Qp (-1) ∧ uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hrut & Hfdr & Hkb & Hkc)".
       iFrame "Hrut Hfdr Hkb". iSplit.
       - (* the RETIRE leg is UNREACHABLE and says so *)
@@ -1782,20 +1826,27 @@ Section UkStore.
       - (* the FAULT leg: the slot goes to the kernel with the pay fact,
            and the slot is the engine's own Löb hypothesis *)
         iDestruct "Hkc" as "(#Hmyp & Hkc)". iFrame "Hmyp".
-        iDestruct "Hkc" as "[_ Hkc]".
-        rewrite (uslot_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2). iExact "Hkc". }
+        (* the pair travels WHOLE: the credential comes off its left, the
+           slot off its right, and the leaf's own deposit is additive too
+           (lane TRAP-ROWS, T3) *)
+        iSplit.
+        + iDestruct "Hkc" as "[$ _]".
+        + iDestruct "Hkc" as "[_ Hkc]".
+          rewrite (uslot_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2). iExact "Hkc". }
     iPoseProof (uv_swp_fetch_uinstr (CID := CIDo) (XI := XIo) pt' Mp' t (uc_dqc C')
                   rsA pc is_rvc i Hinj Hui' LpcA LcpA (proj1 HmsokA) LmenvA
                   HpinsA Htok) as "Hf".
     destruct is_rvc.
     - iDestruct "Hf" as (h) "[[%HisRVC %Hdecrvc] Hbridge]".
       iApply (uk_store_obl_rvc C' pt' Rfd' R Rut' sz π M Mp' m pc h i o k imm rs1 rs2 va wval
-                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv Hpre Hpure Hdecrvc Hkw Hred Hg1 Hexp
+                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv (Qp (-1))
+                Hpre Hpure Hdecrvc Hkw Hred Hg1 Hexp
                 Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
     - iDestruct "Hf" as (w) "[[%HnRVC %Hdecbase] Hbridge]".
       iApply (uk_store_obl_base C' pt' Rfd' R Rut' sz π M Mp' m pc w i o k imm rs1 rs2 va wval
-                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv Hpre Hpure Hdecbase Hkw Hred Hg1 Hexp
+                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv (Qp (-1))
+                Hpre Hpure Hdecbase Hkw Hred Hg1 Hexp
                 Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
   Qed.
@@ -1894,19 +1945,20 @@ Section UkStore.
     wval = m !!! Regidx rs2 ->
     uk_store_denied va ->
     uva_canon va ->
-    (⊢ (Qp (-1) : iProp Σ)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ChildTok.my_pay gn Qp -∗
+    (* the payload at the kill status, as a RESOURCE (the IO-LEAF review) *)
+    Qp (-1) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hui Hva Hwval Hden Hcanon Hpay.
-    iIntros "Hb Hmy".
+    intros Hui Hva Hwval Hden Hcanon.
+    iIntros "Hb Hmy Hpay".
     iApply (wp_uk_store_denied M m pc fdv cw gn cs pidv false
               (STORE (imm, Regidx rs2, Regidx rs1, 1)) None
               imm rs1 rs2 1 va wval
               ustore_width_1 Hui ltac:(intro s; exact I) I eq_refl eq_refl
-              Hva Hwval Hden Hcanon (uinpage_byte va) (is_aligned_vaddr_1 va) Hpay
-              with "Hb Hmy").
+              Hva Hwval Hden Hcanon (uinpage_byte va) (is_aligned_vaddr_1 va)
+              with "Hb Hmy Hpay").
   Qed.
 
   Lemma wp_uk_csdsp (M : gmap Z (bv 8)) (m : regfile)

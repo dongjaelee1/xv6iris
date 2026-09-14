@@ -2115,13 +2115,15 @@ Section UkSh.
                (regval_into_reg (mword_of_int a : mword 64))). }
     (* ---- 0xa70..0xa76  the byte loop ---- *)
     (* ---- 0xa70  sb a1,0(a5) -- AND THIS IS WHERE THE PROCESS DIES ---- *)
+    (* the deposit is a RESOURCE at the leaf now (the IO-LEAF review); this
+       walk still has it for free, so it is one [iPoseProof] away. *)
+    iPoseProof Hpx as "Hpay".
     iApply (wp_uk_sb_denied N h9 m6 (mword_of_int 0xa70)
               (mword_of_int 0 : mword 12) a5_idx a1_idx a b0 nn
               ltac:(rewrite Ha5_6; replace (a + Z.of_nat 0) with a by lia;
                     rewrite (uint_moi a ltac:(unfold Z64; lia));
                     vm_compute uoff_i12; lia)
-              Hpx
-              with "[] Ht0 Hrun").
+              with "[] Ht0 Hrun Hpay").
     iApply (uis_shk_a70 with "Hcode").
   Qed.
 

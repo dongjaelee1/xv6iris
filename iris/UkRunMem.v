@@ -412,13 +412,18 @@ Section UkRunMem.
   Lemma wp_uk_sb_denied (N : uk_names Σ) (h : CpuId) (m : regfile) (pc : mword 64)
       (imm : mword 12) (rs1 rs2 : mword 5) (a : Z) (b0 : bv 8) (avail : nat) :
     a = uint (m !!! Regidx rs1) + uoff_i12 imm ->
-    (⊢ ukn_pay N (-1)) ->
     uinstr_is (ukn_t N) pc false (STORE (imm, Regidx rs2, Regidx rs1, 1)) -∗
     utext (ukn_t N) a b0 -∗
     urun N h m pc avail -∗
+    (* THE PAYLOAD AT THE KILL STATUS, AS A RESOURCE (the IO-LEAF review).
+       It used to be the Coq-level [⊢ ukn_pay N (-1)] -- "the payload is
+       free" -- which a child that dies at a LINEAR payload cannot supply;
+       a caller that still has the free payload derives this in one
+       [iPoseProof] ([UkRun.ukn_pay_free_of_triv]). *)
+    ukn_pay N (-1) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Ha Hpay. iIntros "#Hi #Ht Hrun".
+    intros Ha. iIntros "#Hi #Ht Hrun Hpay".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iDestruct (uheap_text with "Hheap Ht") as %(HM & Hx & Hbnd).
@@ -435,7 +440,7 @@ Section UkRunMem.
       exfalso. apply Hnw. exists q. exact (conj Hq Ew). }
     iApply (UkStore.wp_uk_sb_denied C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc
               fdv cw gn cs pidv imm rs1 rs2 (mword_of_int a) (m !!! Regidx rs2)
-              Hui Htgt eq_refl Hden Hcan Hpay with "Hb Hmy").
+              Hui Htgt eq_refl Hden Hcan with "Hb Hmy Hpay").
   Qed.
 
   Lemma wp_uk_ld (N : uk_names Σ) (h : CpuId) (m : regfile) (pc : mword 64)

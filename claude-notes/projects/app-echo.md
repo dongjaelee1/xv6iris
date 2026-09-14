@@ -119,9 +119,8 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   complete for round 0); M1(f) LANDED 2026-09-16 (`eab187afb`; the note
   below: fds 1-2 pinned, the banner free of the law); M2 LANDED 2026-09-16
   (`88127e629`; the note below: echo's writes through the link); TXT-ROW
-  (`-sup`, `lane/txt-row`: the text-half write leaf, discharges
-  `echo_wtxt`) and M3 (the shell's transport, main checkout, M3a/b/c; brief
-  v5) IN FLIGHT 2026-09-16; M4-M6 after.
+  LANDED 2026-09-16 (`a103f2e15`; the note below); M3 (the shell's
+  transport, main checkout, M3a/b/c; brief v5) IN FLIGHT; M4-M6 after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
@@ -3352,6 +3351,22 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+TXT-ROW LANDED (2026-09-16; `a103f2e15` on `ee1dbb690`; 4 files; builds tx1-tx4
+in `-sup`; audit the thirteen; lemma_diff 3 GONE in UEchoOut (`perm_of_mapped`/
+`lazy_free_mapped`/`lazy_free_rmapped`, moved down or already
+`UserPerm.perm_of_mapped_U`); no Admitted).  THE WRITE LEAF WITH THE SOURCE
+RUN IN THE TEXT HALF: `UkRunSys.wp_uk_ecall_write_chain_txt` beside `_buf`,
+taking `[∗ list] j ∈ seq 0 nb, utext (ukn_t N) (a1 + j) (f j)` (handed back)
+and giving the same `uva_rmapped` row, by `uheap_text_bytes` +
+`UserHeap.lazy_free_ux_addr` (a page the projection lists at all is a real
+user leaf: `perm_leaf` tests U and R); `_buf` and `wp_uk_ecall_write_chain`
+untouched.  `UkEcho.wp_kecho_write_chain_txt`; `UEchoOut.echo_wtxt_holds`
+in one `iApply`, and `kecho_w_of_link_txt`/`kecho_pay_of_link`/
+`echo_uexec_slot_at` lose the premise.  THE ENGINE OWES NOTHING FOR ECHO'S
+OUTPUT: `echo_uexec_slot_at`'s remaining premises are M3's two
+(`echo_out_argv`; echo's fd 1 is the console).  Handover: scratchpad
+`txt-row-handover.md`.
 
 IO-LEAF M2 LANDED (2026-09-16; `88127e629` on `7e816baa8`; UkEcho.v,
 UEchoKernel.v, new UEchoOut.v; +1262/-77; builds io14-io21 in the main

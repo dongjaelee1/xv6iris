@@ -119,8 +119,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   complete for round 0); M1(f) LANDED 2026-09-16 (`eab187afb`; the note
   below: fds 1-2 pinned, the banner free of the law); M2 LANDED 2026-09-16
   (`88127e629`; the note below: echo's writes through the link); TXT-ROW
-  LANDED 2026-09-16 (`a103f2e15`; the note below); M3 (the shell's
-  transport, main checkout, M3a/b/c; brief v5) IN FLIGHT; M4-M6 after.
+  LANDED 2026-09-16 (`a103f2e15`; the note below); M3a + M3b(1) LANDED
+  2026-09-16 (`85a10a883`; the note below); M3b(2) (echo's fd-1 row) in
+  flight; M3b core + M3c BLOCKED on TRAP-ROWS part 2 (the engine `Kc`
+  statements, T4, and the new T4(b) reaping-arm row); M4-M6 after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
@@ -3351,6 +3353,40 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M3a + M3b(1) LANDED (2026-09-16; `56f4fd855`+`85a10a883` on
+`1ddfa7f99`; 6 files +404/-222; builds io22-io24 in the main checkout;
+audit the thirteen; lemma_diff 2 GONE (`wp_uk_ecall_fork_any`,
+`wp_uk_ecall_wait_any`, authorised); no Admitted; trusted diff EMPTY).
+M3a -- SH FORKS AND WAITS ON THE REAL LEAVES: `wp_kshr_fork`/`_fork1`/
+`wp_kshr_fork1_final` take `(Sc : gset gname) (Q) (Rc)` plus `∀ x y, Q x = Q
+y` and report fork's two arms verbatim (`⌜r = -1⌝ ∗ uch Sc ∗ Rc` /
+`child_tok γ pidv Q ∗ uch (Sc ∪ {[γ]})`); the child's arm gives `⌜ukn_pay N'
+= Q⌝ ∗ my_pay γ' Q ∗ Rc`; `wp_kshr_fork1_tail`'s borrowed payload becomes
+`ukn_pay N (-1) ∨ ⌜a0 = 0⌝` (the tail runs in BOTH processes; only the parent
+sees -1 -- a prerequisite the survey did not name); `wp_kshr_wait` on
+`wp_uk_ecall_wait_null` at a named set reporting `uwait_ans`;
+`wp_kshf_fork` opens sh's set for the fork-wait window; the four sh-side
+`_any` corollaries keep their statements at `Q := True`, `Rc := emp`.
+GOTCHA: `⌜ukn_pay N' = Q⌝` is `ukn_triv`'s body and a hypothesis headed by
+`eq` is invisible to instance search (shelved instances surface as
+"incomplete proof") -- name the class once.  M3b(1) -- `UEchoOut.
+echo_out_argv` is a THEOREM off the exec channel: new `UShEchoOut.v` (above
+UEchoOut), `echo_out_argv_of_image` from `SpecKexec.kexec_image_ok` +
+`UShEcho.echo_key_args_holds` + two closed computations.  BLOCKED (M3b core
++ M3c are ONE milestone): the child's payload `Q` is the SAME `Q` echo's
+record is keyed at (fork mints `my_pay γ' Q`, `pex_slot_at` transports it),
+and a linear `Q` makes the Coq-level `(⊢ ukn_pay N (-1))` on the child's OWN
+PARSE PATH false (`UkShMain.v:605` -> `ushp_pay_free` ×3 -> `wp_ksh_memset_null`
+-> `UkRunMem.v:415`, still `(⊢ …)` on main) -> needs TRAP-ROWS part 2's four
+engine statements.  Also needed: T4 (sh cannot refute the reap-nothing arm
+without it) and a NEW kernel fact T4(b): `wait_ans`'s reaping arm gives `cs'
+= cs ∖ {[γ']}` and `gen_uniq cs rv γ'` but not `γ' ∈ cs` -- sh never reads the
+pid, so it cannot apply `gen_uniq_tok` as init does; in the C `reparent`
+moves orphans to `initproc` ONLY, so a non-init caller reaps only its own
+child: the row `γ' ∈ cs ∨ ⌜the caller is initproc⌝` (sent to TRAP-ROWS).
+Echo's fd-1 console row (`ufd_head_row12` through `UInitSh`/
+`sh_slot_of_kexec`) = M3b(2), unblocked.  Handover: `io-leaf-handover.md`.
 
 TXT-ROW LANDED (2026-09-16; `a103f2e15` on `ee1dbb690`; 4 files; builds tx1-tx4
 in `-sup`; audit the thirteen; lemma_diff 3 GONE in UEchoOut (`perm_of_mapped`/

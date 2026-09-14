@@ -123,11 +123,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   2026-09-16 (`85a10a883`); M4a(1) LANDED 2026-09-16 (`7f512a248`; the
   note below: sh's prompt through the link); M4a(2a) LANDED 2026-09-16
   (the note below: init lends the credential at its fork; `init_boot_pay`
-  gains `Rt`); NEXT (fresh agent, main checkout): M4a(3) sh's loop carries
-  `Rt ∨ True` and the prompt moves onto the link, then M3b core (the
-  three-arm entry row, the payloads, the lend into echo) + M3c (the
-  child's death), sh's wait redemption LAST after TRAP-ROWS-3; M4b-M6
-  after.
+  gains `Rt`); M4a(3) LANDED 2026-09-16 (`2e0c78906`; the note below: the
+  prompt paid by the link; the pair `sh_prompt_pay`); IN FLIGHT: M3b core
+  (the payloads, the lend into echo) + M3c (the child's death), sh's wait
+  redemption LAST after TRAP-ROWS-3 T4(b); M4b-M6 after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad
@@ -3363,6 +3362,34 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M4a(3) LANDED (2026-09-16; `2e0c78906` on `078401293`; 10 files;
+builds io29-io31 in the main checkout; audit the thirteen; lemma_diff CLEAN;
+no Admitted).  THE SHELL'S PROMPT IS PAID BY THE ERA'S OWN LINK: getcmd's
+`write(2, "$ ", 2)` at 0x10..0x1c, the '$' that resolves round 0, no longer
+spends `sh_deps`' flagged deposit.  DESIGN OF RECORD -- WHAT CROSSES IS A
+PAIR, NOT A TURN: init's walk names no era and sh's walk names no row 16,
+so they agree on `UShKernel.sh_prompt_pay := ∃ C, C ∗ □ (∀ N l, ⌜ush_fd2p l⌝
+-∗ shk_rodata (ukn_t N) -∗ ksh_w N 2 (moi sh_prompt_pv) 2 (ustd (ukn_fd N) l ∗
+C) (ustd (ukn_fd N) l))` -- an opaque credential plus the persistent
+conversion into the per-call obligation; `UShOut.sh_prompt_pay_of_ushpr`
+builds it from `era_pin ∗ ushpr v 0` + `echo_links`; `UInitBanner.
+kinit_banner0_pay_holds` INSTANTIATES `Rt` at it (so `init_boot_pay`,
+`echo_Hinit_boot`, `Hsh_owed` are UNCHANGED).  Route: banner's 18th byte ->
+`Rt` -> `UkInit.init_exec_sup_pos`'s new `(Rt ∨ True)` -> the child's exec ->
+`PinnedExec.Pay` -> `UShKernel.sh_prompt_at (take NSTD sts)` (in
+`sh_slot_of_kexec`/`sh_uexec_slot`, after the entry row) -> `wp_ksh_start` ->
+`UkSh.ush_prompt_in l` as an INPUT of `ush_loop_head` (every back edge
+supplies `ush_prompt_in_triv`, `UkShLoop.ushl_head_of_R` absorbs it -- the
+measured 80-mention thread was avoided; `ush_rest`/`ush_rest_l` unchanged)
+-> `wp_ksh_getcmd` branches once and spends it at 0x1c.  The fd-2 row is
+PURE (`ush_fd2p l`) and preserved by the console preamble's own opens
+(`ush_fd2p_cons`), so M3b(2)'s named-ledger entry row is now OPTIONAL.
+Strengthened premise (flagged): `init_exec_sup_of_sh_slot`/
+`init_cons_sup_of_sh_slot` take `st = FdOpen true true (FdDevice CONSOLE)`
+(was `∃ wr, …`; init's open IS O_RDWR); `UInitSh.ufd_head_rows` reads rows 0
+and 2 off one head.  NEXT: M3b core + M3c; the wait redemption last (T4(b)).
+Handover: `io-leaf-handover.md`.
 
 TRAP-ROWS-3 T4(c) LANDED (2026-09-16; `2a372a9d7` on `9d1efd787`; 9 files
 +322/-83; builds tr82-tr87 in `-tlw`; audit the thirteen; lemma_diff CLEAN;

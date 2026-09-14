@@ -1851,6 +1851,16 @@ Section UkInit.
      the same token refutes ([ChildTok.exit_tok_tok_ne]), so the shell is
      still in the set the call left and init loops.  None of that is
      sayable at [UserChildren.uch_any]. *)
+  (* ...AND THE ROW A RESUMING CALLER READS OFF ITS OWN -1 (lane M6b,
+     "DIE-DW CORRECTED").  A process that comes back from wait was not
+     killed (usertrap's second [killed] check exits it before the sret --
+     [SpecUsertrap.ut_live_out]), and at a null status pointer the copyout
+     exit cannot fire, so the ONLY -1 a user program ever sees is "my own
+     child set is empty" -- which is what [UkRunSys.wp_uk_ecall_wait_null_live]
+     hands over as [⌜ret = -1 -> cs' = ∅⌝].  init holds a token for the
+     shell it forked, so the arm is refuted at the wait head and init's
+     "init: wait returned an error" diagnostic is dead code
+     ([UkInitMain.wp_kinit_main_loop]). *)
   Lemma wp_kinit_wait (h : CpuId) (m : regfile) (avail : nat)
       (cs : gset gname) :
     uint (m !!! Regidx a0_idx) = 0 ->
@@ -1858,6 +1868,7 @@ Section UkInit.
     urun N h m (mword_of_int InitSyms.wait) avail -∗
     UserChildren.uch (ukn_ch N) cs -∗
     (∀ (h' : CpuId) (ret : mword 64) (cs' : gset gname),
+       ⌜ret = (mword_of_int (-1) : mword 64) -> cs' = (∅ : gset gname)⌝ -∗
        uwait_ans ret cs cs' -∗
        urun N h'
          (<[Regidx a0_idx := ret]>
@@ -1891,7 +1902,7 @@ Section UkInit.
       rewrite (upd_ne m (Regidx a7_idx) (Regidx a0_idx)
                  (mword_of_int 3 : mword 64) ltac:(vm_compute; discriminate)).
       exact Hz. }
-    iApply (wp_uk_ecall_wait_null N h1 m1 (mword_of_int 0x37c) avail cs
+    iApply (wp_uk_ecall_wait_null_live N h1 m1 (mword_of_int 0x37c) avail cs
               ltac:(unfold m1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 3 : mword 64));
                     vm_compute; reflexivity)
@@ -1904,7 +1915,7 @@ Section UkInit.
                  = mword_of_int 0x380)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E1.
-    iIntros (h2 ret cs') "Hans Hrun Hch".
+    iIntros (h2 ret cs') "%Hm1 Hans Hrun Hch".
     set (m2 := <[Regidx a0_idx := ret]> m1).
     assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
     { unfold m2, m1.
@@ -1921,7 +1932,7 @@ Section UkInit.
               with "[] Hrun").
     { iApply (uis_init_380 with "Hcode"). }
     iIntros (h3) "Hrun".
-    iApply ("Hcont" $! h3 ret cs' with "Hans Hrun Hch").
+    iApply ("Hcont" $! h3 ret cs' with "[%] Hans Hrun Hch"). exact Hm1.
   Qed.
 
 End UkInit.

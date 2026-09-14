@@ -8,7 +8,9 @@
 (*               two dups; the "init: starting sh" pointer into s2         *)
 (*   0x32        the RESTART loop head: printf, fork                        *)
 (*   0x44        the WAIT loop head: wait(0), and the two back edges        *)
-(*   0x84 0xaa 0x52   the three dying arms: printf a diagnostic, exit(1)    *)
+(*   0x84 0xaa       the two dying arms: printf a diagnostic, exit(1)      *)
+(*   0x52            "wait returned an error" -- REFUTED (M6b): a user     *)
+(*                   wait's -1 means "no children", and init has one       *)
 (*   0x96        the CHILD arm: exec("sh", argv), which only returns on     *)
 (*               failure, and then dies at 0xaa                             *)
 (* ===================================================================== *)
@@ -65,6 +67,23 @@ Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
 Require Import UartNames.    (* [cons_names] *)
 Require Import UserConsole.  (* [upos] / [upos_alloc] -- the console position
                                 pair init mints per child *)
+Require Import ProcGeom.     (* [PIDMAX] -- the bound wait's reaping arm
+                                puts on the pid it returns *)
+
+(* A REAPED PID IS A SMALL POSITIVE (lane M6b): wait's reaping arm returns a
+   pid in [1, PIDMAX], which sign-extends to itself and is not below zero --
+   so the [bge a0,x0] after init's wait is TAKEN on that arm, and the arm
+   where it is not taken is the -1 one.  Over plain [Z], for [lia]'s sake
+   (durable-notes: [lia] with an [mword] in context). *)
+Lemma pid_lt_Z31 (z : Z) : 1 <= z <= PIDMAX -> z < Z31.
+Proof. unfold PIDMAX, Z31. lia. Qed.
+
+Lemma pid_Z63 (z : Z) : 1 <= z <= PIDMAX -> 0 <= z < Z63.
+Proof. unfold PIDMAX, Z63. lia. Qed.
+
+Lemma pid_geb0 (z : Z) : 1 <= z <= PIDMAX -> Z.geb z 0 = true.
+Proof. unfold PIDMAX. intros H. apply Z.geb_le. lia. Qed.
+
 Section UkInitMain.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.
@@ -152,17 +171,22 @@ Section UkInitMain.
     repeat (rewrite upd_ne; [| vm_compute; discriminate ]);
     rewrite upd_eq; apply bv_eq; vm_compute; reflexivity.
 
-  (* init's four literals, by base.  Lengths: 18, 18, 21, 29. *)
+  (* init's three REACHABLE literals, by base.  Lengths: 18, 18, 21.  The
+     fourth, "init: wait returned an error\n" at 0x9c8, is dead code: a
+     user program's wait returns -1 only when its own child set is empty
+     ([UkInit.wp_kinit_wait]'s row), and init holds a token for the shell
+     it forked -- lane M6b, "DIE-DW CORRECTED". *)
   Local Notation LIT_START := 0x978.   (* "init: starting sh\n"            *)
   Local Notation LIT_FORK  := 0x990.   (* "init: fork failed\n"            *)
   Local Notation LIT_EXEC  := 0x9b0.   (* "init: exec sh failed\n"         *)
-  Local Notation LIT_WAIT  := 0x9c8.   (* "init: wait returned an error\n" *)
 
 
   (* --------------------------------------------------------------------- *)
-  (* THE THREE DYING ARMS.  Each is [printf(<literal>); exit(1)] and none    *)
+  (* THE TWO DYING ARMS.  Each is [printf(<literal>); exit(1)] and none      *)
   (* returns, so each is a WP with no continuation at all -- which is also   *)
   (* why they need no frame word and no register fact beyond the budget.     *)
+  (* (The third, 0x52's "init: wait returned an error", is refuted at the    *)
+  (* wait head: [wp_kinit_main_loop].)                                       *)
   (* --------------------------------------------------------------------- *)
   Lemma wp_kinit_main_die_df (N' : uk_names Σ) `{!ukn_const N'} (hdf : CpuId) (mdf0 : regfile) (n : nat) :
     (* the exit payload, out of the program's own hand (lane
@@ -386,118 +410,6 @@ Section UkInitMain.
     { iApply (uis_init_b8 with "Hcode"). }
     iIntros (hde6) "Hrun".
     iApply (wp_kinit_exit N' hde6 _ (12 + (12 + (4 + n))) with "Hcode Hpay Hrun").
-  Qed.
-
-  Lemma wp_kinit_main_die_dw (N' : uk_names Σ) `{!ukn_const N'} (hdw : CpuId) (mdw0 : regfile) (n : nat) :
-    (* the exit payload, out of the program's own hand (lane
-       KILL-PAY, K4(a)) *)
-    ukn_pay N' (-1) -∗
-    udepw_law 16 -∗
-    init_code (ukn_t N') -∗ init_rodata (ukn_t N') -∗
-    urun N' hdw mdw0 (mword_of_int 0x52) (12 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
-    iIntros "Hpay #Hwr #Hcode #Hro Hrun".
-    destruct init_syms_pins
-      as (_ & _ & Hprintf & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hexit).
-    assert (Hokdw : init_lit_ok 0x9c8 29%nat = true)
-      by (vm_compute; reflexivity).
-    iDestruct (init_lit_str (ukn_t N') 0x9c8 29%nat Hokdw ltac:(vm_compute; reflexivity)
-                 with "Hro") as "#Hstrdw".
-    (* ---- 0x52  auipc a0 ; 0x56  addi a0,a0,-1674 -- the literal ---- *)
-    assert (Eadw : add_vec (add_vec (mword_of_int 0x52 : mword 64)
-                     (auipc_off (mword_of_int 1 : mword 20)))
-                     (sign_extend' 64 (mword_of_int 2422 : mword 12))
-                   = mword_of_int 0x9c8)
-      by (apply bv_eq; vm_compute; reflexivity).
-    iApply (wp_uk_auipc N' hdw mdw0 (mword_of_int 0x52)
-              (mword_of_int 1 : mword 20) a0_idx
-              (add_vec (mword_of_int 0x52 : mword 64)
-                 (auipc_off (mword_of_int 1 : mword 20))) (12 + (12 + (4 + n)))
-              ltac:(unfold unot_sp; vm_compute; discriminate)
-              ltac:(vm_compute; discriminate) eq_refl with "[] Hrun").
-    { iApply (uis_init_52 with "Hcode"). }
-    assert (E52 : add_vec_int (mword_of_int 0x52 : mword 64) 4
-                 = mword_of_int 0x56)
-      by (apply bv_eq; vm_compute; reflexivity).
-    rewrite E52.
-    iIntros (hdw1) "Hrun".
-    set (dw1 := <[Regidx a0_idx := regval_into_reg
-                    (add_vec (mword_of_int 0x52 : mword 64)
-                       (auipc_off (mword_of_int 1 : mword 20)))]> mdw0).
-    iApply (wp_uk_addi N' hdw1 dw1 (mword_of_int 0x56)
-              (mword_of_int 2422 : mword 12) a0_idx a0_idx
-              (mword_of_int 0x9c8) (12 + (12 + (4 + n)))
-              ltac:(unfold unot_sp; vm_compute; discriminate)
-              ltac:(vm_compute; discriminate)
-              ltac:(rewrite (upd_eq mdw0 (Regidx a0_idx) (regval_into_reg _));
-                    exact (eq_sym Eadw))
-              with "[] Hrun").
-    { iApply (uis_init_56 with "Hcode"). }
-    assert (E56 : add_vec_int (mword_of_int 0x56 : mword 64) 4
-                 = mword_of_int 0x5a)
-      by (apply bv_eq; vm_compute; reflexivity).
-    rewrite E56.
-    iIntros (hdw2) "Hrun".
-    set (dw2 := <[Regidx a0_idx := regval_into_reg
-                    (mword_of_int 0x9c8 : mword 64)]> dw1).
-    (* ---- 0x5a  jal ra,0x7c0 <printf> ---- *)
-    iApply (wp_uk_jal N' hdw2 dw2 (mword_of_int 0x5a)
-              (mword_of_int 1894 : mword 21) ra_idx
-              (mword_of_int InitSyms.printf) (mword_of_int 0x5e) (12 + (12 + (4 + n)))
-              ltac:(unfold unot_sp; vm_compute; discriminate)
-              ltac:(vm_compute; discriminate)
-              ltac:(rewrite Hprintf; apply bv_eq; vm_compute; reflexivity)
-              ltac:(apply bv_eq; vm_compute; reflexivity)
-              ltac:(rewrite Hprintf; vm_compute; reflexivity)
-              with "[] Hrun").
-    { iApply (uis_init_5a with "Hcode"). }
-    iIntros (hdw3) "Hrun".
-    set (dw3 := <[Regidx ra_idx := regval_into_reg
-                    (mword_of_int 0x5e : mword 64)]> dw2).
-    assert (Hradw : dw3 !!! Regidx ra_idx
-                    = (mword_of_int 0x5e : mword 64))
-      by exact (upd_eq dw2 (Regidx ra_idx) (regval_into_reg _)).
-    assert (Ha0dw : dw3 !!! Regidx a0_idx = mword_of_int 0x9c8).
-    { rewrite /dw3 (upd_ne dw2 (Regidx ra_idx) (Regidx a0_idx) _
-                      ltac:(vm_compute; discriminate)).
-      rewrite /dw2. exact (upd_eq dw1 (Regidx a0_idx) (regval_into_reg _)). }
-    iApply (wp_kinit_printf N' 0x9c8 29%nat (init_lit 0x9c8) hdw3 dw3 n
-              ltac:(vm_compute; discriminate)
-              ltac:(vm_compute; reflexivity) ltac:(lia) (fun j Hj => init_lit_nopct 0x9c8 29%nat j Hokdw Hj) Ha0dw
-              with "Hwr Hcode Hstrdw Hrun").
-    iIntros (hdw4 dw4) "%Hcsdw Hrun".
-    assert (Eretdw : ret_pc (dw3 !!! Regidx ra_idx)
-                     = (mword_of_int 0x5e : mword 64))
-      by (rewrite Hradw; apply bv_eq; vm_compute; reflexivity).
-    rewrite Eretdw.
-    (* ---- 0x5e  c.li a0,1 ---- *)
-    iApply (wp_uk_cli N' hdw4 dw4 (mword_of_int 0x5e)
-              (mword_of_int 1 : mword 6) a0_idx (12 + (12 + (4 + n)))
-              ltac:(unfold unot_sp; vm_compute; discriminate)
-              ltac:(vm_compute; discriminate) with "[] Hrun").
-    { iApply (uis_init_5e with "Hcode"). }
-    assert (E5e : add_vec_int (mword_of_int 0x5e : mword 64) 2
-                 = mword_of_int 0x60)
-      by (apply bv_eq; vm_compute; reflexivity).
-    rewrite E5e.
-    iIntros (hdw5) "Hrun".
-    set (dw5 := <[Regidx a0_idx := regval_into_reg
-                    (sign_extend' 64 (mword_of_int 1 : mword 6)
-                     : mword 64)]> dw4).
-    (* ---- 0x60  jal ra,0x372 <exit> -- no continuation ---- *)
-    iApply (wp_uk_jal N' hdw5 dw5 (mword_of_int 0x60)
-              (mword_of_int 786 : mword 21) ra_idx
-              (mword_of_int InitSyms.exit) (mword_of_int 0x64) (12 + (12 + (4 + n)))
-              ltac:(unfold unot_sp; vm_compute; discriminate)
-              ltac:(vm_compute; discriminate)
-              ltac:(rewrite Hexit; apply bv_eq; vm_compute; reflexivity)
-              ltac:(apply bv_eq; vm_compute; reflexivity)
-              ltac:(rewrite Hexit; vm_compute; reflexivity)
-              with "[] Hrun").
-    { iApply (uis_init_60 with "Hcode"). }
-    iIntros (hdw6) "Hrun".
-    iApply (wp_kinit_exit N' hdw6 _ (12 + (12 + (4 + n))) with "Hcode Hpay Hrun").
   Qed.
 
 
@@ -1572,7 +1484,7 @@ Section UkInitMain.
       (* ---- wait(0) ---- *)
       iApply (wp_kinit_wait N Hpsok_free hw2 mw2 (12 + (12 + (4 + n))) cs Ha0w2
                 with "Hcode Hrun Hch").
-      iIntros (hw3 ret cs') "Hans Hrun Hch".
+      iIntros (hw3 ret cs') "%Hrow Hans Hrun Hch".
       assert (Eretw : ret_pc (mw2 !!! Regidx ra_idx)
                       = (mword_of_int 0x4a : mword 64))
         by (rewrite Hraw2; apply bv_eq; vm_compute; reflexivity).
@@ -1698,22 +1610,29 @@ Section UkInitMain.
           { iPureIntro. exact Hs1w3. }
           { iPureIntro. exact Hin'. }
           { iPureIntro. exact Hpnz. }
-        + (* wait itself failed: the diagnostic at 0x52 *)
-          iApply (wp_uk_btype0_later N hw4 mw3 (mword_of_int 0x4e)
-                    (mword_of_int 8182 : mword 13) a0_idx BGE false
-                    (add_vec (mword_of_int 0x4e : mword 64)
-                       (sign_extend' 64 (mword_of_int 8182 : mword 13)))
-                    (12 + (12 + (4 + n)))
-                    (eq_sym Hbge) eq_refl ltac:(discriminate)
-                    with "[] Hrun").
-          { iApply (uis_init_4e with "Hcode"). }
-          assert (E4e : add_vec_int (mword_of_int 0x4e : mword 64) 4
-                        = mword_of_int 0x52)
-            by (apply bv_eq; vm_compute; reflexivity).
-          iNext. rewrite E4e. iIntros (hw5) "Hrun".
-          iDestruct Hpayfree as "Hpay".
-          iApply (wp_kinit_main_die_dw N hw5 _ n
-                    with "Hpay Hwr Hcode Hro Hrun").
+        + (* wait itself failed -- IT CANNOT HAVE (lane M6b, "DIE-DW
+             CORRECTED").  The [bge a0,x0] was not taken, so wait returned
+             a negative.  On the reaping arm the pid is in [1, PIDMAX] and
+             sign-extends to a small positive, so that arm is out; on the
+             -1 arm the leaf's row says init's OWN child set is empty --
+             but the shell it forked is in it ([Hin]), and the -1 arm did
+             not move the set.  A killed init never comes back here at all
+             ([SpecUsertrap.ut_live_out]), so the diagnostic at 0x52 is
+             unreachable and needs no proof. *)
+          iDestruct "Hwa" as "[[[%Hm1 %Hcseq] _] | (%γ' & [%Hcseq %Hrngc] & _ & _ & _)]".
+          { exfalso.
+            assert (Hce : cs = (∅ : gset gname)).
+            { rewrite <- Hcseq. apply Hrow.
+              rewrite Hret Hm1. exact UexecRet.sext_neg1_64. }
+            rewrite Hce in Hin. set_solver. }
+          exfalso.
+          rewrite Ha0w3 Hret in Hbge.
+          rewrite (sext32_small rv (pid_lt_Z31 _ Hrngc)) in Hbge.
+          cbn [uv_btaken] in Hbge.
+          rewrite zero_reg_moi in Hbge.
+          rewrite (moi_ge_s (bv_unsigned rv) 0 (pid_Z63 _ Hrngc)
+                     ltac:(unfold Z63; lia)) in Hbge.
+          rewrite (pid_geb0 _ Hrngc) in Hbge. discriminate Hbge.
   Qed.
 
 

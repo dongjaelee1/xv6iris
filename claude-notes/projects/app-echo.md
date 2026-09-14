@@ -116,9 +116,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   2026-09-16 (the note below): init's exec-failure loop and terminal
   fork failure as prologue alternatives in EchoDisc/EchoOutPure; the
   EchoOut stage after part 5.
-- [ ] **TRAP-ROWS** (kernel; `-tlw`, `lane/trap-rows`): phase 1 in flight
-  (brief scratchpad `brief-trap-rows.md`): T1 the short console write's
-  reason; T2 the read's -1 arm carries the reader's killed fact and the
+- [ ] **TRAP-ROWS** (kernel; `-tlw`, `lane/trap-rows`; brief scratchpad
+  `brief-trap-rows.md`): T1 LANDED 2026-09-16 (`6eafdaa54`; the note below);
+  M2 = T2+T3+T4 in flight: T2 the read's -1 arm carries the reader's killed fact and the
   user-level read loses the kill case (owner 2026-09-16: "agreed with
   fixing the console read spec to never return -1 to userspace"); T3 the
   additive conjunction at a killing-cause trap; T4 wait's -1 arm (the
@@ -3337,6 +3337,30 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+TRAP-ROWS T1 LANDED (2026-09-16; `6eafdaa54` = the lane's `b82d19470` on
+`c33d42af6`, cherry-picked over a notes commit; 16 files +532/-108; build tr9
+in `-tlw`; audit the thirteen; lemma_diff CLEAN; no Admitted).  THE SHORT
+CONSOLE WRITE CARRIES A REASON, the twin of the read's swallow reason one
+test weaker: copyin has no PTE_R re-walk, so the predicate is the new
+`UserPtTree.uva_rmapped` (present and V&U), not `uva_wmapped`.
+`SpecCopyin.copyin_read` states both exits at once on
+`SpecCopyout.copyout_wrote`'s mould; `either_copyin_post`'s user -1 arm
+relays it; `SpecConsolewrite`'s post says `r < n -> some byte at or after r
+and before n is unreadable` -- THE OFFSET IS EXISTENTIAL (the chunk the
+break fired in is up to 32 bytes, walked a page at a time);
+`SpecFilewrite.write_cons_arms P ua` carries `write_cons_short P ua k n` on
+the short arm and `filewrite_extra`/`filewrite_arms` carry the writer's
+table as the read side carries the reader's (`filewrite_in` does not);
+`UexecExecInst` row 16 becomes row 5's twin (the table existential at the
+key's projection, with `proc_pt_wf` and the lazy claim), so a non-lazy
+process that owns its buffer refutes the arm from its own permission map.
+ONE cause for the short exit.  New below: `ProcPtOwn.upt_ad_view_um_vu`,
+`ProofCopyin.ci_fault_{vpn,leaf}`; ProofConsolewrite's `cw_ret` pins the
+reason's table at the CALL's entry descriptor (the loop's own grows every
+round) and `cw_loop` carries `uptd_ext` from it.  IO-LEAF receives the
+refutable short arm at row 16.  M2 (T2+T3+T4, with the engine's `Kc := Qp
+(-1)` restatement) in flight.
 
 IO-LEAF DESIGN REVIEWED (2026-09-16; Fable review scratchpad
 `tasks-review-io-leaf.md`; brief v2 D8 records the rulings).  D1 (`echo_links`,

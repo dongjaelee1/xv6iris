@@ -1,69 +1,65 @@
 (* EchoOut.v -- E5's APPLICATION CLAIM, THE IRIS HALF (lane ECHO-OUT).
 
-   Design of record: claude-notes/projects/app-echo.md, "E5 -- THE CONSOLE
-   I/O CLAIM: DESIGN OF RECORD", read with the coordinator's LEDGER-ANCHORED
-   ruling, its ERA-NUMBER index convergence and the review's S1/S2/S3/S4/S9
-   (2026-09-13), and the owner's correction to [echo_phi].
+   Design of record: the coordinator's E5 DESIGN PAGE of 2026-09-15
+   (scratchpad e5-design-page.md), section 2, which REPLACES the
+   ledger-anchored shape of REVISIONS 4-8: CLAIM-RESIDENT STATE, NO LEDGER
+   IN ANY LINK.
 
-   WHY THE STATE IS IN THE LEDGER AND NOT IN THE CLAIMS.  [App.Happ_boot] --
-   [SystemAdequacy.app_xfer_boot_raw] -- is fired ONCE PER POWER-ON, its only
-   input is the durable claim (which the same shift DUPLICATES), and it is a
-   plain [==∗], so no invariant may be opened inside it and no auth is
-   reachable there.  Therefore [app_out c k [] []] and [app_in c k [] [] []]
-   have to be re-mintable at EVERY era out of nothing: NO EXCLUSIVE GHOST AT
-   THE FIXED PART MAY APPEAR IN EITHER CLAIM, and pairing by an existential
-   name in the claim against a half in [app_boot] would never agree.  So the
-   claims are pure-plus-a-fragment and the pairing is done LAZILY BY THE
-   LEDGER at the era's first link.  The ledger is [AppEcho.echo_R], the
-   application's own resource inside the observation invariant; it persists
-   across power cycles and already sees every power event.
+   WHY THE STATE IS IN THE CLAIMS AND NOT IN THE LEDGER.  The two things
+   that forced the ledger-anchored shape are both gone.  [App.Happ_boot]
+   founds nothing any more (milestone E moved the founding to [App.Hpow],
+   which is the ONE step per era that runs the ledger and may mint linear
+   content), and [App.Happ_echo] is a CLOSED entailment with no observation
+   handle, so a link fired inside the echo shift cannot reach the ledger at
+   all.  So each era's authorities -- its cursor, its line choices, its
+   echoed list and its window counter -- live in the PORT CLAIMS, and the
+   ledger keeps only what is about the HISTORY: the taint counter, the era
+   map (whose authority is spent at [echo_led_pow] and nowhere else) and
+   the phi conjunct.
 
    THE INDEX IS THE ERA NUMBER [k := S gen_id] (ambient [RiscvLang.GenId]),
    not a ghost name: [riscv_out_res k ho acc], [riscv_in_res k ho pops dl],
-   every link at [k], [app_out/app_in/app_boot A c k], the founding [∀ k]
-   (lane CONS-IO).  The kernel STAMPS every history it hands the application
-   with [⌜obs_boots h = S gen_id⌝] -- on [Hpow]'s power-on arm, on
-   [Htx]/[Hrx], in the receive column's per-byte entry and as a premise of
-   [cons_echo_shift].  Consequences, all of them simplifications: the pin map
-   is keyed by [k]; adoption is INSERT-IF-ABSENT (no freshness token is
-   needed, and a second first-link of the same era finds the pin present and
-   uses it); a link at [k] knows [k = obs_boots h] purely, so no history is
+   every link at [k], [app_out/app_in/app_boot A c k].  The kernel STAMPS
+   every history it hands the application with [⌜obs_boots h = S gen_id⌝].
+   A link at [k] therefore knows [k = obs_boots h] purely, and no history is
    ever compared against the ledger's inside a link -- which is essential,
-   because the observation AUTHORITY lives in the state interpretation and
-   not in the observation invariant.
+   because the observation AUTHORITY lives in the state interpretation.
 
-   THE SHAPE.  Each port claim is one of
-     - the TAINT (what the licences pay through), or
-     - FRESH: nothing has happened in this era yet (the arm the transport
-       founds, from nothing; an input before the banner is undisciplined, so
-       the fresh arm can only be left through the taint or through a write),
-     - PAIRED: the era's persistent pin, one half of that era's OWN stage
-       ghost, and either the era's pure fact or [era_closed k].
-   [era_closed] is kept for the one case the lemmas admit but the proof tree
-   never produces: a link at [k] applied to a claim of a dead era.
+   THE SHAPE.  [eout k ho acc] is the TAINT (what the licences pay through)
+   or the era's PAIRED arm, which holds the era's pin and its four
+   authorities.  [ein k hi pops dl] is the taint, the SETTLED arm, or the
+   WINDOW arm -- the chain-first window, between the echo's store and the
+   [WpUart.in_append] that files its entry.
 
-   TWO STAGES, NOT ONE (review S1).  A write moves [o_w] with only the output
-   claim in hand and [WpUart.in_append] moves [pops] with only the input
-   claim in hand, so one shared ghost value could not stay in step -- and
-   putting one ghost's half in BOTH claims plus the ledger is three halves of
-   one [ghost_var], which is unsatisfiable and makes every lemma about the
-   paired state vacuous.  So: [gso] carries [(cs, E, w)], half in [eout] and
-   half in the ledger; [gsi] carries [(E, owed)], half in [ein] and half in
-   the ledger; each ghost has EXACTLY TWO halves, and [era_alloc] below is
-   the anti-vacuity witness that the paired state is inhabited.  The echo --
-   the only step that moves [E] -- holds both claims, because
-   [WpUart.echo_link] passes the input claim through.
+   THE WINDOW COUNTER AND THE KERNEL-LENT TOKEN (the page's section 1, K1).
+   [WpUart.echo_link] returns the input claim at exactly the [pops]/[dl] it
+   was handed, and [SpecConsoleintr.cons_echo_shift] is persistent, so the
+   application's spec has to be total over interleavings the kernel forbids
+   with cons.lock but never states.  The kernel therefore LENDS the
+   application its own per-era exclusive -- [riscv_win_res (S gen_id)],
+   which is [ewin] below -- on the PLIC payload beside the receive token; it
+   is a premise of the shift and comes back in [in_append]'s post.  One
+   [ghost_var nat] per era, [wcnt], carries it in QUARTERS: one in the
+   output claim (at [length (o_E so)]), one in the input claim, and a HALF
+   in the token.  The echo splits the half it is handed: a quarter stays in
+   the input claim's window arm (which therefore holds a half) and a quarter
+   travels to the append inside [ein_pend].  So
+     - the three shares the echo holds agree, which is what gives it
+       [seg_of (echoed pops) = o_E so] -- the tie the old [stage_tie] was;
+     - the quarter the append carries AGREES with the window arm's half, so
+       the append knows the arm is the one its own echo left;
+     - a SECOND link of the run meets the window arm holding a half, and
+       [1/4 + 1/2 + 1/2] is five quarters: [ghost_var_valid_2] refutes it.
 
-   THE CURSOR IS MONOTONE (review S2).  It counts the PROCESS bytes written
-   in this era ([pcount]), not the position inside the current continuation:
-   the echo sets [o_w := []] with the writer absent, so a cursor the shift
-   had to reset could never be moved.  [pcount] is unchanged by the echo
-   (which fires only at [w = pending cs E], exactly the bytes the echo folds
-   into [D]) and incremented by one at a write, so the shift never touches
-   it.
+   THE ERA'S FIRST WRITE needs no special step: [app_turn] (init's console
+   credential, minted beside the claims at [echo_led_pow] and carried to
+   [App.Hinit_boot] by the kernel) is the era's cursor at zero, and at
+   [P = 0] the paired claim's own [turn_auth] plus [pcount_zero] DERIVE
+   [o_E so = [] /\ o_w so = []], hence [acc = []].  There is no founded arm
+   to refute and no seed to spend.
 
    WHAT THE LINKS HAND THE PROGRAM (review S9).  A writer must prove
-   [pending cs E !! length w = Some b] without holding any stage half.  It
+   [pending cs E !! length w = Some b] without holding any authority.  It
    gets a PERSISTENT lower bound of the era's line choices ([cs_lb]) and its
    cursor; [proc_stream_pcount] turns the two into the byte owed, because the
    process bytes of an era are one stream and the cursor is a position in it.
@@ -110,17 +106,7 @@ Record ostage := MkO {
   o_E  : list (list mobs * bv 8);
   o_w  : list (bv 8);
 }.
-
-(* [i_owed] is the CHAIN-FIRST window (RULINGS AFTER CONS-IO PHASE 1, (1)):
-   between the echo's [out_link]s and the [in_append] that files the entry,
-   [i_E] is ONE ENTRY AHEAD of [echoed pops]. *)
-Record istage := MkI {
-  i_E    : list (list mobs * bv 8);
-  i_owed : bool;
-}.
-
 Definition ostage0 : ostage := MkO [] [] [].
-Definition istage0 : istage := MkI [] false.
 
 (* the OUTPUT claim's pure fact.
 
@@ -658,57 +644,30 @@ Proof.
   eapply (proc_upto_pcount_inv cs E w (S (length E)) b);
     [lia | exact Hstrict | by rewrite -HP].
 Qed.
+(* the INPUT claim's pure fact, in BOTH its arms (the settled one and the
+   chain-first window): the log's own account of the era, plus the two index
+   laws for the entries the log has echoed and the bound on the era's line
+   choices that a READER hands on to a later block-first WRITE.
 
-(* THE ARM THE TRANSPORT FOUNDS, at every era, from nothing: NOTHING HAS
-   BEEN ECHOED YET.  It is the successor of the first cut's [pops = [] /\
-   dl = []], and the reason it is stated over [echoed pops] and not over
-   [pops] is [ein_step_append]'s DROP arm: a dropped input ([cs = []]) does
-   not move [echoed], so the drop arm leaves this standing and needs no
-   ghost at all.  The era's input pairing is then taken at exactly one
-   place -- the first ECHO -- which is where the ledger's escrow hands it
-   over, and that single hand-over is what makes the two states of the
-   claim (founded / paired) line up with a PURE condition on the ledger's
-   own stage ([o_E so = []]).  See the handover's item 3 on why a claim
-   whose founded arm is pure and whose paired arm is exclusive can only be
-   made to work that way. *)
-Definition ein_fresh (k : nat) (pops : list log_entry)
-    (dl : list (list mobs * bv 8)) : Prop :=
-  log_ok pops
-  /\ (forall e, e ∈ pops -> disc_seg (open_seg (le_hist e)))
-  /\ (forall e, e ∈ pops -> obs_boots (le_hist e) = k)
-  /\ echoed pops = []
-  /\ dl = [].
+   IT IS THE SAME PROPOSITION IN BOTH ARMS.  What separates them is the
+   window counter -- [length (echoed pops)] in the settled arm, one more in
+   the window arm -- and nothing pure: the entry the window owes is named by
+   [ein_pend] below, which the echo hands to the append, and never by the
+   port's own claim.  That is what makes the DROP arm ([cs = []], which does
+   not move [echoed pops]) leave both arms exactly where they stood.
 
-(* the INPUT claim's pure fact, in the SETTLED state.  [i_owed si = false]
-   is not a side condition but the state this claim describes: the CHAIN-
-   FIRST window -- the echo on the wire, its log entry still owed -- belongs
-   to [ein_owed] below, which is what [eout_step_echo] hands the
-   [WpUart.in_append] that follows it in the same run.  So the port's own
-   claim is never seen mid-window, and there the log and the era's stage
-   agree exactly. *)
-Definition ein_pure (k : nat) (si : istage) (pops : list log_entry)
-    (dl : list (list mobs * bv 8)) : Prop :=
+   [E_index]/[E_byte] ARE HERE and not only in the output claim because
+   SH-LINE reads the line off the READ's window ([ein_read_line]) and holds
+   no output claim: [read_ret] exports them. *)
+Definition ein_pure (k : nat) (pops : list log_entry)
+    (dl : list (list mobs * bv 8)) (cs0 : list nat) : Prop :=
   log_ok pops
   /\ (forall e, e ∈ pops -> disc_seg (open_seg (le_hist e)))
   /\ (forall e, e ∈ pops -> obs_boots (le_hist e) = k)
   /\ dl `prefix_of` echoed pops
-  /\ i_owed si = false
-  /\ seg_of (echoed pops) = i_E si.
-
-(* ...and the OWED window's, naming the entry the append is about to file *)
-Definition ein_owed (k : nat) (si : istage) (pops : list log_entry)
-    (dl : list (list mobs * bv 8)) (x : list mobs * bv 8) : Prop :=
-  log_ok pops
-  /\ (forall e, e ∈ pops -> disc_seg (open_seg (le_hist e)))
-  /\ (forall e, e ∈ pops -> obs_boots (le_hist e) = k)
-  /\ dl `prefix_of` echoed pops
-  /\ i_owed si = true
-  /\ i_E si = seg_of (echoed pops) ++ [x].
-
-(* ...and the LEDGER's tie between them: one [E], and the owed window is the
-   only place the two may disagree. *)
-Definition stage_tie (so : ostage) (si : istage) : Prop :=
-  i_E si = o_E so.
+  /\ E_index (seg_of (echoed pops))
+  /\ E_byte (seg_of (echoed pops))
+  /\ ((length (echoed pops) `div` length echo_line) <= S (length cs0))%nat.
 
 Lemma epu_removelast_prefix {A} (l : list A) : removelast l `prefix_of` l.
 Proof.
@@ -751,16 +710,18 @@ Qed.
 
 Lemma echoed_nil : echoed [] = [].
 Proof. rewrite /echoed. by rewrite filter_nil. Qed.
-
-Lemma ein_pure_0 k : ein_pure k istage0 [] [].
+Lemma ein_pure_0 k : ein_pure k [] [] [].
 Proof.
-  rewrite /ein_pure /istage0. cbn [i_E i_owed]. split_and!.
+  rewrite /ein_pure. split_and!.
   - exact log_ok_nil.
   - intros e He. by apply elem_of_nil in He.
   - intros e He. by apply elem_of_nil in He.
   - apply prefix_nil.
-  - reflexivity.
-  - rewrite /seg_of echoed_nil. by rewrite fmap_nil.
+  - intros j x Hx. rewrite /seg_of echoed_nil fmap_nil in Hx.
+    destruct (epu_lookup_nil_absurd j x Hx).
+  - intros j x Hx. rewrite /seg_of echoed_nil fmap_nil in Hx.
+    destruct (epu_lookup_nil_absurd j x Hx).
+  - rewrite echoed_nil. cbn [length]. rewrite Nat.Div0.div_0_l. lia.
 Qed.
 
 (* ---- how the log's echoed slice moves at an append ---- *)
@@ -800,24 +761,9 @@ Lemma log_echoed_echo (h : list mobs) (c : bv 8) :
   log_echoed (h, c, [echo_of c]).
 Proof. by rewrite /log_echoed /le_echo /le_byte /=. Qed.
 
-Lemma ein_fresh_0 k : ein_fresh k [] [].
-Proof.
-  rewrite /ein_fresh. split_and!.
-  - exact log_ok_nil.
-  - intros e He. by apply elem_of_nil in He.
-  - intros e He. by apply elem_of_nil in He.
-  - exact echoed_nil.
-  - reflexivity.
-Qed.
-
-Lemma stage_tie_0 : stage_tie ostage0 istage0.
-Proof. reflexivity. Qed.
-
 (* AN OUTPUT CLAIM AT [acc = []] STANDS AT THE START OF ITS ERA.  Nothing
    but the empty stage has an empty transcript: the first echo folds the
-   whole PROLOGUE into [D], and the prologue is not empty.  This is what
-   refutes the PAIRED arm of a claim at [acc = []], and with it the last
-   case [eout_step_write_first] would otherwise have to leave open. *)
+   whole PROLOGUE into [D], and the prologue is not empty. *)
 Lemma eout_pure_nil_stage (k : nat) (ho : list mobs) (so : ostage) :
   eout_pure k ho so [] -> pcount (o_cs so) (o_E so) (o_w so) = 0%nat.
 Proof.
@@ -835,83 +781,93 @@ Proof.
     lia.
 Qed.
 
+(* THE ECHO'S OWN ENTRY IS NOT IN THE LOG, and that is a PURE fact about the
+   two histories: [WpUart.in_append]'s order premise puts every logged
+   history strictly below [h], the era stamps put the two in one cycle, and
+   an [open_seg] can only grow when the history does.  This is what refutes
+   the SETTLED arm at the append (an arm that says the entry has already
+   been filed) and it is [open_seg_prefix_boots] with the strictness kept. *)
+Lemma open_seg_hist_ext (h1 h2 : list mobs) :
+  hist_ext h1 h2 -> obs_boots h1 = obs_boots h2 ->
+  trace_shape h2 true -> hist_ext (open_seg h1) (open_seg h2).
+Proof.
+  intros [[k Hk] Hlt] Hb Hsh. subst h2.
+  assert (Hk0 : obs_boots k = 0%nat)
+    by (rewrite obs_boots_app in Hb; lia).
+  rewrite /trace_shape foldl_app in Hsh.
+  destruct (foldl obs_step (Some false) h1) as [st |] eqn:Hst; last first.
+  { rewrite epu_foldl_obs_step_none in Hsh. discriminate. }
+  destruct (epu_no_power_of_boots k st Hk0 Hsh) as [_ HF].
+  rewrite (open_seg_io h1 k HF). split; [by eexists |].
+  rewrite length_app. rewrite length_app in Hlt. lia.
+Qed.
+
 (* ====================================================================== *)
 (*  2.  THE GHOST NAMES AT THE FIXED PART                                  *)
 (* ====================================================================== *)
 
 (* [AppEcho.echo_fixed] becomes this record.  [eg_taint] is the landed
-   counter and nothing about it moves; the other two are ECHO-OUT's.  All
-   three are allocated by [AppEcho.echo_birth]. *)
+   counter and nothing about it moves; [eg_pin] is the ERA MAP, whose
+   AUTHORITY is spent at exactly one place -- the ledger's power-on step,
+   which allocates the era's ghosts and mints its pin.  No link touches it,
+   which is what lets every link run without the ledger. *)
 Record echo_gn := MkEchoGn {
   eg_taint : gname;   (* mono_nat: 0 while disciplined, 1 after -- LANDED *)
   eg_pin   : gname;   (* ghost_map nat era_pins: the era NUMBER's ghosts *)
-  (* THE ERA'S TWO LINEAR SEEDS (e5-design REVISION 8, the founding at the
-     power-on step).  One [ghost_map nat unit] per port: the ledger's own
-     power-on step INSERTS the key [S (obs_boots h)] and hands the elem out
-     inside the era's founded claim, and the era's adoption gives the elem
-     back to the ledger.  So a founded claim is no longer derivable from
-     nothing, and a SECOND founded claim at the same era is impossible --
-     the ledger already holds that era's elem.  The bound the map's auth
-     carries ([seed_dom] below) is what makes the insert legal: every key
-     ever inserted is at most [obs_boots h], and the era being founded is
-     [S] of it. *)
-  eg_oseed : gname;   (* ghost_map nat unit: the OUTPUT claim's seeds *)
-  eg_iseed : gname;   (* ghost_map nat unit: the INPUT claim's seeds  *)
 }.
 
-(* the ghosts of one era.  [ep_gcs] is the line choices as a mono_list, and
-   it is there only so that a WRITER can hold a persistent lower bound
-   (review S9): the stage halves are spoken for. *)
+(* the ghosts of ONE era.  ALL FOUR LIVE IN THE CLAIMS (the design page's
+   CLAIM-RESIDENT shape): the ledger holds none of them, and the pin below
+   is the persistent name by which a claim, a writer and a reader mean the
+   same era. *)
 Record era_pins := MkPins {
-  ep_gso : gname;
-  ep_gsi : gname;
-  ep_go  : gname;
-  ep_gcs : gname;
-  ep_gE  : gname;   (* mono_nat: the era's STAGE INDEX [length (o_E so)] *)
+  ep_go  : gname;   (* ghost_var nat: the era's PROCESS-BYTE CURSOR; the
+                       output claim holds one half as [turn_auth], a writer
+                       (init, through [app_turn]) the other *)
+  ep_gcs : gname;   (* mono_list nat: the era's line choices; the output
+                       claim holds the authority, everyone else a lower
+                       bound *)
+  ep_gE  : gname;   (* mono_list (list mobs * bv 8): the era's ECHOED LIST;
+                       the output claim holds the authority, the input claim
+                       a lower bound at the log's own slice *)
+  ep_gw  : gname;   (* ghost_var nat: the WINDOW COUNTER, in four quarters:
+                       one in the output claim, one in the input claim, two
+                       in the kernel-lent token [ewin] *)
 }.
 
-(* THE SEED MAPS' BOUND (e5-design REVISION 8).  Every era the ledger has
-   ever founded is at most the boot count of the ledger's own history, so
-   the era a POWER-ON starts -- [S (obs_boots h)] -- is absent from the map
-   and the insert is legal.  This is the ONLY thing in the ledger that reads
-   the history besides the taint counter and the phi conjunct, and no LINK
-   reads it: the seed maps' auths move at the power-on step and nowhere
-   else, so the ledger stays history-free where section 7 needs it to be. *)
-Definition seed_dom (M : gmap nat unit) (n : nat) : Prop :=
+(* THE ERA MAP'S BOUND.  Every era the ledger has ever founded is at most
+   the boot count of the ledger's own history, so the era a POWER-ON starts
+   -- [S (obs_boots h)] -- is absent from the map and the insert is legal.
+   This is the only thing in the ledger besides the taint counter and the
+   phi conjunct that reads the history, and no LINK reads it. *)
+Definition pin_dom {A : Type} (M : gmap nat A) (n : nat) : Prop :=
   forall k, is_Some (M !! k) -> (k <= n)%nat.
 
-Lemma seed_dom_empty (n : nat) : seed_dom ∅ n.
+Lemma pin_dom_empty {A : Type} (n : nat) : pin_dom (∅ : gmap nat A) n.
 Proof. intros k [x Hx]. by rewrite lookup_empty in Hx. Qed.
 
-Lemma seed_dom_absent (M : gmap nat unit) (n : nat) :
-  seed_dom M n -> M !! (S n) = None.
+Lemma pin_dom_absent {A : Type} (M : gmap nat A) (n : nat) :
+  pin_dom M n -> M !! (S n) = None.
 Proof.
   intros Hd. destruct (M !! S n) as [x |] eqn:Hx; [| reflexivity].
   exfalso. specialize (Hd (S n) (ex_intro _ x Hx)). lia.
 Qed.
 
-Lemma seed_dom_insert (M : gmap nat unit) (n : nat) :
-  seed_dom M n -> seed_dom (<[S n := tt]> M) (S n).
+Lemma pin_dom_insert {A : Type} (M : gmap nat A) (n : nat) (a : A) :
+  pin_dom M n -> pin_dom (<[S n := a]> M) (S n).
 Proof.
   intros Hd k Hk. destruct (decide (k = S n)) as [-> | Hne]; [lia |].
   rewrite lookup_insert_ne in Hk; [| lia]. specialize (Hd k Hk). lia.
 Qed.
 
-Lemma seed_dom_mono (M : gmap nat unit) (n m : nat) :
-  (n <= m)%nat -> seed_dom M n -> seed_dom M m.
-Proof. intros Hle Hd k Hk. specialize (Hd k Hk). lia. Qed.
-
 Class echoOutG (Σ : gFunctors) := EchoOutG {
   eo_mono_nat : mono_natG Σ;
-  eo_ostage   : ghost_varG Σ ostage;
-  eo_istage   : ghost_varG Σ istage;
   eo_turn     : ghost_varG Σ nat;
   eo_pin      : ghost_mapG Σ nat era_pins;
   eo_cs       : inG Σ (mono_listR (leibnizO nat));
-  eo_seed     : ghost_mapG Σ nat unit;
+  eo_El       : inG Σ (mono_listR (leibnizO (list mobs * bv 8)));
 }.
-#[global] Existing Instances eo_mono_nat eo_ostage eo_istage eo_turn
-  eo_pin eo_cs eo_seed.
+#[global] Existing Instances eo_mono_nat eo_turn eo_pin eo_cs eo_El.
 
 Section echo_out.
   Context {Σ : gFunctors} `{!echoOutG Σ}.
@@ -926,7 +882,7 @@ Section echo_out.
   (* ---- the era's ghosts, keyed by the ERA NUMBER ---- *)
 
   (* PERSISTENT: era [k]'s ghosts.  Keyed by the era NUMBER, so a claim at
-     [k] and the ledger agree on which ghosts they mean by function
+     [k] and a writer agree on which ghosts they mean by function
      application, and no injectivity obligation arises anywhere. *)
   Definition era_pin (k : nat) (v : era_pins) : iProp Σ :=
     ghost_map_elem (eg_pin γ) k DfracDiscarded v.
@@ -943,117 +899,10 @@ Section echo_out.
     iPureIntro. exact Heq.
   Qed.
 
-  (* ---- THE ERA'S TWO LINEAR SEEDS (e5-design REVISION 8) ----
-
-     [oseed k] / [iseed k] is era [k]'s exclusive right to be FOUNDED once
-     on that port.  The ledger's power-on step mints the pair for the era
-     the event starts and puts one in each founded claim; the era's
-     ADOPTION -- the first process byte for the output side, the first
-     ECHO for the input side -- hands the seed back to the ledger's own era
-     slot.  So:
-       - a founded claim is not derivable from nothing (it costs a seed);
-       - a founded claim beside an ADOPTED era is impossible (the ledger
-         holds that era's seed), which is exactly what the three fresh-arm
-         faces [acc = [] -> P = 0], [Hunwritten] and [Hpro] asked for;
-       - a SECOND founded claim at one era is impossible (two elems at one
-         key, both at [DfracOwn 1]). *)
-  Definition oseed (k : nat) : iProp Σ :=
-    ghost_map_elem (eg_oseed γ) k (DfracOwn 1) tt.
-  Definition iseed (k : nat) : iProp Σ :=
-    ghost_map_elem (eg_iseed γ) k (DfracOwn 1) tt.
-
-  Global Instance oseed_timeless k : Timeless (oseed k).
-  Proof. rewrite /oseed. apply _. Qed.
-  Global Instance iseed_timeless k : Timeless (iseed k).
-  Proof. rewrite /iseed. apply _. Qed.
-
-  Lemma oseed_excl k : oseed k -∗ oseed k -∗ False.
-  Proof.
-    rewrite /oseed. iIntros "H1 H2".
-    iDestruct (ghost_map_elem_ne with "H1 H2") as %Hne. done.
-  Qed.
-
-  Lemma iseed_excl k : iseed k -∗ iseed k -∗ False.
-  Proof.
-    rewrite /iseed. iIntros "H1 H2".
-    iDestruct (ghost_map_elem_ne with "H1 H2") as %Hne. done.
-  Qed.
-
-  (* the two stages, EACH with exactly two halves (review S1) *)
-  Definition out_frag (v : era_pins) (so : ostage) : iProp Σ :=
-    ghost_var (ep_gso v) (1/2) so.
-  Definition out_auth (v : era_pins) (so : ostage) : iProp Σ :=
-    ghost_var (ep_gso v) (1/2) so.
-  Definition in_frag (v : era_pins) (si : istage) : iProp Σ :=
-    ghost_var (ep_gsi v) (1/2) si.
-  Definition in_auth (v : era_pins) (si : istage) : iProp Σ :=
-    ghost_var (ep_gsi v) (1/2) si.
-
-  Global Instance out_frag_timeless v so : Timeless (out_frag v so).
-  Proof. rewrite /out_frag. apply _. Qed.
-  Global Instance out_auth_timeless v so : Timeless (out_auth v so).
-  Proof. rewrite /out_auth. apply _. Qed.
-  Global Instance in_frag_timeless v si : Timeless (in_frag v si).
-  Proof. rewrite /in_frag. apply _. Qed.
-  Global Instance in_auth_timeless v si : Timeless (in_auth v si).
-  Proof. rewrite /in_auth. apply _. Qed.
-
-  Lemma out_agree v so so' : out_frag v so -∗ out_auth v so' -∗ ⌜so = so'⌝.
-  Proof.
-    rewrite /out_frag /out_auth. iIntros "H1 H2".
-    iDestruct (ghost_var_agree with "H1 H2") as %Heq. iPureIntro. exact Heq.
-  Qed.
-
-  Lemma out_update v so so' so'' :
-    out_frag v so -∗ out_auth v so' ==∗ out_frag v so'' ∗ out_auth v so''.
-  Proof.
-    rewrite /out_frag /out_auth. iIntros "H1 H2".
-    iMod (ghost_var_update_halves so'' with "H1 H2") as "[H1 H2]".
-    iModIntro. iFrame "H1 H2".
-  Qed.
-
-  Lemma in_agree v si si' : in_frag v si -∗ in_auth v si' -∗ ⌜si = si'⌝.
-  Proof.
-    rewrite /in_frag /in_auth. iIntros "H1 H2".
-    iDestruct (ghost_var_agree with "H1 H2") as %Heq. iPureIntro. exact Heq.
-  Qed.
-
-  Lemma in_update v si si' si'' :
-    in_frag v si -∗ in_auth v si' ==∗ in_frag v si'' ∗ in_auth v si''.
-  Proof.
-    rewrite /in_frag /in_auth. iIntros "H1 H2".
-    iMod (ghost_var_update_halves si'' with "H1 H2") as "[H1 H2]".
-    iModIntro. iFrame "H1 H2".
-  Qed.
-
-  (* THREE HALVES OF ONE [ghost_var] ARE IMPOSSIBLE, and that is how the
-     ledger's ESCROWS refute a claim that arrives paired where the escrow
-     says it must be founded (and the other way round).  Each stage has
-     exactly two halves by construction, so any lemma that needed a third
-     is closed here rather than by a premise. *)
-  Lemma ghost_var_three_halves {A : Type} `{!ghost_varG Σ A}
-      (g : gname) (a1 a2 a3 : A) :
-    ghost_var g (1/2) a1 -∗ ghost_var g (1/2) a2 -∗ ghost_var g (1/2) a3 -∗
-    False.
-  Proof.
-    iIntros "H1 H2 H3".
-    iDestruct (ghost_var_valid_2 with "H1 H2") as %[_ <-].
-    iCombine "H1 H2" as "H".
-    iDestruct (ghost_var_valid_2 with "H H3") as %[Hq _].
-    iPureIntro. revert Hq. rewrite ?Qp.half_half. apply Qp.not_add_le_l.
-  Qed.
-
-  Lemma out_frag_excl3 v so1 so2 so3 :
-    out_frag v so1 -∗ out_frag v so2 -∗ out_auth v so3 -∗ False.
-  Proof. rewrite /out_frag /out_auth. iApply ghost_var_three_halves. Qed.
-
-  Lemma in_frag_excl3 v si1 si2 si3 :
-    in_frag v si1 -∗ in_frag v si2 -∗ in_auth v si3 -∗ False.
-  Proof. rewrite /in_frag /in_auth. iApply ghost_var_three_halves. Qed.
-
-  (* THE CURSOR: the era's process-byte count.  Half travels in the
-     programs' payloads (fork [Rc], exit/wait [Q]), half sits in the ledger,
-     and the ECHO NEVER TOUCHES IT ([pcount_echo]). *)
+  (* THE CURSOR: the era's process-byte count, in two halves.  The OUTPUT
+     CLAIM holds one ([turn_auth], always at the stage's own [pcount]); the
+     other travels in the programs' payloads (init's [app_turn], then fork
+     [Rc], exit/wait [Q]).  THE ECHO NEVER TOUCHES IT ([pcount_echo]). *)
   Definition turn (v : era_pins) (P : nat) : iProp Σ :=
     ghost_var (ep_go v) (1/2) P.
   Definition turn_auth (v : era_pins) (P : nat) : iProp Σ :=
@@ -1078,16 +927,8 @@ Section echo_out.
     iModIntro. iFrame "H1 H2".
   Qed.
 
-  (* ...and the cursor's own three-halves law, which is what refutes a
-     WRITER standing at [P = 0]: at zero the ledger escrows the era's turn,
-     so a writer holding one as well is a third half.  The era's first byte
-     goes through [eout_step_write_first], which is where the turn is born. *)
-  Lemma turn_excl3 v P1 P2 P3 :
-    turn v P1 -∗ turn v P2 -∗ turn_auth v P3 -∗ False.
-  Proof. rewrite /turn /turn_auth. iApply ghost_var_three_halves. Qed.
-
-  (* THE LINE CHOICES, as a monotone list: the ledger holds the authority,
-     a writer holds a persistent lower bound (review S9). *)
+  (* THE LINE CHOICES, as a monotone list: the output claim holds the
+     authority, a writer holds a persistent lower bound (review S9). *)
   Definition cs_auth (v : era_pins) (l : list nat) : iProp Σ :=
     own (ep_gcs v) (●ML (l : list (leibnizO nat))).
   Definition cs_lb (v : era_pins) (l : list nat) : iProp Σ :=
@@ -1127,93 +968,221 @@ Section echo_out.
     iPureIntro. by apply mono_list_both_valid_L in Hv.
   Qed.
 
-  (* THE ERA'S STAGE INDEX, monotone: the ledger holds the authority, a
-     writer holds a persistent lower bound.  This is the fourth name in
-     [era_pins] and the coordinator's ruling of 2026-09-14: it is what makes
-     [eout_step_write]'s strictness premise PURE.  With [E_lb v n0] and the
-     program's own [n0 = 17 q] (a line boundary) the byte the program owes
-     is inside block [q]'s alternative and nowhere else -- see the proof of
-     [eout_step_write], where [length E > n0] is refuted because the next
-     line's first echo folds block [q]'s WHOLE alternative into the stream
-     and the cursor could not still be indexing inside it. *)
-  Definition E_auth (v : era_pins) (n : nat) : iProp Σ :=
-    mono_nat_auth_own (ep_gE v) 1 n.
+  (* THE ERA'S ECHOED LIST, as a monotone list of ENTRIES (and no longer a
+     mono_nat of its length).  The OUTPUT claim holds the authority; the
+     INPUT claim holds a lower bound AT THE LOG'S OWN SLICE
+     ([seg_of (echoed pops)]), and that bound -- read against the authority
+     at the echo, and against the append's own carried bound at the append
+     -- is what ties the log to the era's stage now that no ledger sees
+     both.  A writer's [E_lb] is still just its LENGTH. *)
+  Definition Elist_auth (v : era_pins) (E : list (list mobs * bv 8)) : iProp Σ :=
+    own (ep_gE v) (●ML (E : list (leibnizO (list mobs * bv 8)))).
+  Definition Elist_lb (v : era_pins) (E : list (list mobs * bv 8)) : iProp Σ :=
+    own (ep_gE v) (◯ML (E : list (leibnizO (list mobs * bv 8)))).
+
+  Global Instance Elist_lb_persistent v E : Persistent (Elist_lb v E).
+  Proof. rewrite /Elist_lb. apply _. Qed.
+  Global Instance Elist_lb_timeless v E : Timeless (Elist_lb v E).
+  Proof. rewrite /Elist_lb. apply _. Qed.
+  Global Instance Elist_auth_timeless v E : Timeless (Elist_auth v E).
+  Proof. rewrite /Elist_auth. apply _. Qed.
+
+  Lemma Elist_lb_get v E : Elist_auth v E -∗ Elist_auth v E ∗ Elist_lb v E.
+  Proof.
+    rewrite /Elist_auth /Elist_lb. iIntros "H".
+    iDestruct (own_mono _ _ (◯ML (E : list (leibnizO (list mobs * bv 8))))
+                 with "H") as "#Hl"; [apply mono_list_included |].
+    iFrame "H Hl".
+  Qed.
+
+  Lemma Elist_auth_grow v E x :
+    Elist_auth v E ==∗ Elist_auth v (E ++ [x]) ∗ Elist_lb v (E ++ [x]).
+  Proof.
+    rewrite /Elist_auth /Elist_lb. iIntros "H".
+    iMod (own_update _ _
+            (●ML ((E ++ [x]) : list (leibnizO (list mobs * bv 8))))
+            with "H") as "H".
+    { apply mono_list_update. by eexists. }
+    iModIntro.
+    iDestruct (own_mono _ _
+                 (◯ML ((E ++ [x]) : list (leibnizO (list mobs * bv 8))))
+                 with "H") as "#Hl"; [apply mono_list_included |].
+    iFrame "H Hl".
+  Qed.
+
+  Lemma Elist_prefix v E E' :
+    Elist_auth v E -∗ Elist_lb v E' -∗ ⌜E' `prefix_of` E⌝.
+  Proof.
+    rewrite /Elist_auth /Elist_lb. iIntros "Ha Hl".
+    iDestruct (own_valid_2 with "Ha Hl") as %Hv.
+    iPureIntro. by apply mono_list_both_valid_L in Hv.
+  Qed.
+
+  (* TWO LOWER BOUNDS OF ONE ERA'S LIST ARE COMPARABLE, and that -- with the
+     two lengths, which the window counter supplies -- is the whole of the
+     append's tie to its own echo. *)
+  Lemma Elist_lb_cmp v E1 E2 :
+    Elist_lb v E1 -∗ Elist_lb v E2 -∗
+      ⌜E1 `prefix_of` E2 \/ E2 `prefix_of` E1⌝.
+  Proof.
+    rewrite /Elist_lb. iIntros "H1 H2".
+    iDestruct (own_valid_2 with "H1 H2") as %Hv.
+    iPureIntro. by apply mono_list_lb_op_valid_L in Hv.
+  Qed.
+
+  Lemma Elist_lb_weaken v E E' :
+    E' `prefix_of` E -> Elist_lb v E -∗ Elist_lb v E'.
+  Proof.
+    intros Hp. rewrite /Elist_lb. iApply own_mono.
+    apply mono_list_lb_mono. exact Hp.
+  Qed.
+
+  (* THE WRITER'S BOUND is the LENGTH of a lower bound, which is all a
+     program can name: it knows [17 q], never the entries. *)
   Definition E_lb (v : era_pins) (n : nat) : iProp Σ :=
-    mono_nat_lb_own (ep_gE v) n.
+    (∃ E : list (list mobs * bv 8), Elist_lb v E ∗ ⌜length E = n⌝)%I.
 
   Global Instance E_lb_persistent v n : Persistent (E_lb v n).
   Proof. rewrite /E_lb. apply _. Qed.
   Global Instance E_lb_timeless v n : Timeless (E_lb v n).
   Proof. rewrite /E_lb. apply _. Qed.
-  Global Instance E_auth_timeless v n : Timeless (E_auth v n).
-  Proof. rewrite /E_auth. apply _. Qed.
 
-  Lemma E_lb_get v n : E_auth v n -∗ E_auth v n ∗ E_lb v n.
+  Lemma E_lb_of_lb v E n :
+    (n <= length E)%nat -> Elist_lb v E -∗ E_lb v n.
   Proof.
-    rewrite /E_auth /E_lb. iIntros "H".
-    iDestruct (mono_nat_lb_own_get with "H") as "#Hl". iFrame "H Hl".
+    intros Hn. iIntros "H".
+    iDestruct (Elist_lb_weaken v E (take n E) (prefix_take E n) with "H")
+      as "H'".
+    iExists (take n E). iFrame "H'". iPureIntro. by rewrite length_take_le.
   Qed.
 
   (* THE LAW THE WRITE SPENDS: the lower bound never exceeds the length. *)
-  Lemma E_lb_le v n m : E_auth v n -∗ E_lb v m -∗ ⌜(m <= n)%nat⌝.
+  Lemma E_lb_le v E n : Elist_auth v E -∗ E_lb v n -∗ ⌜(n <= length E)%nat⌝.
   Proof.
-    rewrite /E_auth /E_lb. iIntros "Ha Hl".
-    iDestruct (mono_nat_lb_own_valid with "Ha Hl") as %[_ ?]. by iPureIntro.
+    iIntros "Ha Hl". iDestruct "Hl" as (E') "[Hl %Hlen]".
+    iDestruct (Elist_prefix with "Ha Hl") as %Hp.
+    iPureIntro. rewrite -Hlen. by apply prefix_length.
   Qed.
 
-  Lemma E_auth_grow v n m :
-    (n <= m)%nat -> E_auth v n ==∗ E_auth v m ∗ E_lb v m.
+  (* THE WINDOW COUNTER, in quarters (see the file header). *)
+  Definition wcnt (v : era_pins) (q : Qp) (n : nat) : iProp Σ :=
+    ghost_var (ep_gw v) q n.
+
+  Global Instance wcnt_timeless v q n : Timeless (wcnt v q n).
+  Proof. rewrite /wcnt. apply _. Qed.
+
+  Lemma wcnt_agree v q1 q2 n1 n2 :
+    wcnt v q1 n1 -∗ wcnt v q2 n2 -∗ ⌜n1 = n2⌝.
   Proof.
-    intros Hle. rewrite /E_auth /E_lb. iIntros "Ha".
-    by iMod (mono_nat_own_update m with "Ha") as "[$ $]"; [lia |].
+    rewrite /wcnt. iIntros "H1 H2".
+    iDestruct (ghost_var_agree with "H1 H2") as %Heq. iPureIntro. exact Heq.
+  Qed.
+
+  Lemma wcnt_split v q1 q2 n :
+    wcnt v (q1 + q2)%Qp n -∗ wcnt v q1 n ∗ wcnt v q2 n.
+  Proof. rewrite /wcnt. iApply ghost_var_split. Qed.
+
+  Lemma wcnt_join v q1 q2 n :
+    wcnt v q1 n -∗ wcnt v q2 n -∗ wcnt v (q1 + q2)%Qp n.
+  Proof.
+    rewrite /wcnt. iIntros "H1 H2". iCombine "H1 H2" as "H". iExact "H".
+  Qed.
+
+  Lemma wcnt_update3 v q1 q2 q3 n1 n2 n3 m :
+    (q1 + q2 + q3 = 1)%Qp ->
+    wcnt v q1 n1 -∗ wcnt v q2 n2 -∗ wcnt v q3 n3 ==∗
+      wcnt v q1 m ∗ wcnt v q2 m ∗ wcnt v q3 m.
+  Proof.
+    intros Hq. iIntros "H1 H2 H3".
+    iDestruct (wcnt_agree with "H1 H2") as %<-.
+    iDestruct (wcnt_agree with "H1 H3") as %<-.
+    iDestruct (wcnt_join v q2 q3 n1 with "H2 H3") as "H23".
+    rewrite /wcnt.
+    iMod (ghost_var_update_2 m with "H1 H23") as "[$ H23]";
+      [by rewrite Qp.add_assoc |].
+    iModIntro. iApply (wcnt_split v q2 q3 m with "H23").
+  Qed.
+
+  (* FIVE QUARTERS ARE IMPOSSIBLE, and that is what refutes a SECOND link of
+     the run: the window arm holds a half, the token another half, and the
+     output claim the last quarter. *)
+  Lemma wcnt_over v n1 n2 n3 :
+    wcnt v (1/4) n1 -∗ wcnt v (1/2) n2 -∗ wcnt v (1/2) n3 -∗ False.
+  Proof.
+    rewrite /wcnt. iIntros "H1 H2 H3".
+    iDestruct (ghost_var_agree with "H2 H3") as %<-.
+    iCombine "H2 H3" as "H".
+    iDestruct (ghost_var_valid_2 with "H H1") as %[Hq _].
+    iPureIntro. revert Hq. apply Qp.not_add_le_l.
   Qed.
 
   (* ====================================================================== *)
   (*  3.  THE TWO PORT CLAIMS, AT THE ERA NUMBER                            *)
   (* ====================================================================== *)
 
-  (* ...AND THE FOUNDED ARM HOLDS THE ERA'S SEED (e5-design REVISION 8).
-     It was PURE, and a pure arm is derivable from nothing -- which made a
-     claim "reset" to it irrefutable and left three faces open at the links
-     ([acc = [] -> P = 0], [Hunwritten], [Hpro]).  The seed is the era's
-     one-shot right to be founded on that port; the ledger mints it at the
-     power-on step and takes it back at the era's adoption. *)
+  (* THE OUTPUT CLAIM holds the era's FOUR AUTHORITIES (design page, section
+     2): the cursor's other half, the choice list, the echoed list, and one
+     quarter of the window counter at the stage's own length.  There is no
+     FRESH arm any more: the era's claims are founded ONCE, at the ledger's
+     power-on step ([echo_led_pow]), which is also where the pin is minted
+     and the cursor's writer-half leaves as [eturn]. *)
   Definition eout (k : nat) (ho : list mobs) (acc : list (bv 8)) : iProp Σ :=
     ( T
-    ∨ (⌜acc = []⌝ ∗ oseed k)
     ∨ ∃ (v : era_pins) (so : ostage),
-        era_pin k v ∗ out_frag v so ∗ ⌜eout_pure k ho so acc⌝)%I.
+        era_pin k v
+        ∗ turn_auth v (pcount (o_cs so) (o_E so) (o_w so))
+        ∗ cs_auth v (o_cs so)
+        ∗ Elist_auth v (o_E so)
+        ∗ wcnt v (1/4) (length (o_E so))
+        ∗ ⌜eout_pure k ho so acc /\ cs_len_ok so
+           /\ Forall (fun i => (i < length line_alts)%nat) (o_cs so)⌝)%I.
 
-  Definition ein (k : nat) (ho : list mobs) (pops : list log_entry)
+  (* THE INPUT CLAIM has TWO non-taint arms, and they differ only in the
+     window counter: SETTLED (the log and the era's echoed list agree) and
+     the chain-first WINDOW (the echo's byte is on the wire, its log entry
+     still owed, so the era's list is one ahead).  The window arm holds a
+     HALF -- its own quarter plus a quarter of the token the kernel lent the
+     shift -- so a second link of the run, which arrives holding the whole
+     half-token, meets five quarters. *)
+  Definition ein (k : nat) (hi : list mobs) (pops : list log_entry)
       (dl : list (list mobs * bv 8)) : iProp Σ :=
     ( T
-    ∨ (⌜ein_fresh k pops dl⌝ ∗ iseed k)
-    ∨ ∃ (v : era_pins) (si : istage),
-        era_pin k v ∗ in_frag v si ∗ ⌜ein_pure k si pops dl⌝)%I.
+    ∨ (∃ (v : era_pins) (n : nat) (cs0 : list nat),
+         era_pin k v ∗ wcnt v (1/4) n ∗ ⌜length (echoed pops) = n⌝
+         ∗ Elist_lb v (seg_of (echoed pops)) ∗ cs_lb v cs0
+         ∗ ⌜ein_pure k pops dl cs0⌝)
+    ∨ (∃ (v : era_pins) (n : nat) (cs0 : list nat),
+         era_pin k v ∗ wcnt v (1/2) n ∗ ⌜(length (echoed pops) + 1)%nat = n⌝
+         ∗ Elist_lb v (seg_of (echoed pops)) ∗ cs_lb v cs0
+         ∗ ⌜ein_pure k pops dl cs0⌝))%I.
+
+  (* THE ECHO WINDOW TOKEN -- [RiscvPtsto.riscv_win_res] once lane CONS-IO F
+     lands, and [App.app_win A c] on the record.  It rides the PLIC payload
+     beside the receive token, is a premise of [cons_echo_shift], and comes
+     back in [in_append]'s post.  ITS TAINT ARM is what a licence route and
+     an already-tainted era pay through: once the discipline is broken every
+     claim is free, and so is the token. *)
+  Definition ewin (k : nat) : iProp Σ :=
+    (T ∨ ∃ (v : era_pins) (n : nat), era_pin k v ∗ wcnt v (1/2) n)%I.
+
+  (* INIT'S CONSOLE CREDENTIAL for the era -- [App.app_turn A c], carried by
+     the kernel from [App.Hpow] to [App.Hinit_boot].  It is the era's cursor
+     at ZERO with the two bounds a write spends, which is exactly
+     [echo_write_link]'s argument list at [P = 0]: no special first-write
+     step exists, because at [P = 0] the claim's own [turn_auth] and
+     [pcount_zero] DERIVE [acc = []]. *)
+  Definition eturn (k : nat) : iProp Σ :=
+    (∃ v : era_pins,
+       era_pin k v ∗ turn v 0%nat ∗ cs_lb v [] ∗ E_lb v 0%nat)%I.
 
   Global Instance eout_timeless k ho acc : Timeless (eout k ho acc).
-  Proof. rewrite /eout. apply bi.or_timeless; [apply _|]. apply _. Qed.
-  Global Instance ein_timeless k ho pops dl : Timeless (ein k ho pops dl).
-  Proof. rewrite /ein. apply bi.or_timeless; [apply _|]. apply _. Qed.
-
-  (* ---- THE FOUNDING ([App.Hpow]'s POWER-ON ARM, lane CONS-IO milestone E)
-     ----
-     NO LONGER A [⊢].  The founded arm costs the era's seed, and the only
-     step that mints one is the ledger's own power-on step
-     ([echo_led_pow] below): that is what makes a founded claim
-     unforgeable, and what closes the three fresh-arm faces.  The TRANSPORT
-     ([App.Happ_boot]) founds nothing any more. *)
-  Lemma eout_founded k : oseed k -∗ eout k [] [].
-  Proof.
-    iIntros "Hs". rewrite /eout. iRight. iLeft. iFrame "Hs".
-    iPureIntro. reflexivity.
-  Qed.
-
-  Lemma ein_founded k : iseed k -∗ ein k [] [] [].
-  Proof.
-    iIntros "Hs". rewrite /ein. iRight. iLeft. iFrame "Hs".
-    iPureIntro. exact (ein_fresh_0 k).
-  Qed.
+  Proof. rewrite /eout. apply _. Qed.
+  Global Instance ein_timeless k hi pops dl : Timeless (ein k hi pops dl).
+  Proof. rewrite /ein. apply _. Qed.
+  Global Instance ewin_timeless k : Timeless (ewin k).
+  Proof. rewrite /ewin. apply _. Qed.
+  Global Instance eturn_timeless k : Timeless (eturn k).
+  Proof. rewrite /eturn. apply _. Qed.
 
   (* ---- THE LICENCES ([App.Happ_out_sup] / [Happ_in_sup]) ---- *)
   Lemma eout_of_taint k ho acc : T -∗ eout k ho acc.
@@ -1221,6 +1190,9 @@ Section echo_out.
 
   Lemma ein_of_taint k ho pops dl : T -∗ ein k ho pops dl.
   Proof. iIntros "HT". rewrite /ein. iLeft. iExact "HT". Qed.
+
+  Lemma ewin_of_taint k : T -∗ ewin k.
+  Proof. iIntros "HT". rewrite /ewin. iLeft. iExact "HT". Qed.
 
   Lemma eout_sup k ho acc b : T -∗ eout k ho acc ==∗ eout k ho (acc ++ [b]).
   Proof.
@@ -1243,234 +1215,109 @@ Section echo_out.
   Qed.
 
   (* ====================================================================== *)
-  (*  4.  THE LEDGER'S ERA MACHINE                                          *)
+  (*  4.  THE LEDGER                                                        *)
   (* ====================================================================== *)
 
-  (* THE LEDGER IS HISTORY-FREE, AND THERE IS NO "CURRENT ERA".
-
-     Everything an era's slot says is about its STAGE; the only facts that
-     mention a history -- the same-cycle ones -- travel in the port claims,
-     at the claim's OWN witness ([eout_pure]).  That is what makes section 7
-     possible: the ECHO's links fire at the consputc stores, long after the
-     history the byte arrived at, so a lemma that needed the ledger to be AT
-     that history could never be applied; and a lemma that needed the ledger
-     to know which era is current would have to compare the ledger's history
-     against the link's, which no link can do (the observation AUTHORITY
-     lives in the state interpretation).
-
-     So an era's slot is created at its ADOPTION and stays for good, a link
-     at [k] finds its era through the pin map and nothing else, and a stale
-     era's writer meets its own era's slot exactly as it did while the era
-     ran.  Nothing has to be retired at a power event, and [era_closed] --
-     the arm the first cut kept for a link at a dead era -- is gone.
-
-     THE TWO ESCROWS.  Each port claim has a FOUNDED arm (which the
-     transport must produce from nothing, so it cannot hold a ghost) and a
-     PAIRED arm (which holds one half of the era's stage).  The ledger
-     therefore holds the claim's half in escrow exactly while the claim may
-     still be founded, and hands it over in the step that leaves the founded
-     arm:
-       - the output claim leaves [acc = []] at the era's FIRST PROCESS BYTE,
-         which is [P = 0 -> P = 1] -- and that is the ADOPTION;
-       - the input claim leaves [echoed pops = []] at the era's FIRST ECHO,
-         which is [o_E so = [] -> o_E so = [x]].
-     The output escrow carries the era's TURN as well, because the first
-     write is also where the writer's cursor is born. *)
-  (* ...AND THE ESCROWS' OTHER SIDE IS THE ERA'S SEED (e5-design REVISION
-     8).  While the port's claim may still be FOUNDED the ledger holds its
-     half of the stage; once the claim has been ADOPTED the ledger holds
-     the era's SEED instead -- so a claim that arrives founded at an
-     adopted era meets its own seed in the ledger and is refuted.  That is
-     the one fact the three open faces asked for, and it is why the slot is
-     keyed by the era NUMBER as well as by its pin. *)
-  Definition era_slot (k : nat) (v : era_pins) (so : ostage) (si : istage)
-      (P : nat) : iProp Σ :=
-    (out_auth v so ∗ in_auth v si
-     ∗ (match P with
-        | 0%nat => out_frag v so ∗ turn v P
-        | S _ => oseed k
-        end)
-     ∗ (match length (o_E so) with
-        | 0%nat => in_frag v si
-        | S _ => iseed k
-        end)
-     ∗ turn_auth v P
-     ∗ cs_auth v (o_cs so)
-     ∗ E_auth v (length (o_E so))
-     ∗ ⌜P = pcount (o_cs so) (o_E so) (o_w so)⌝
-     ∗ ⌜stage_tie so si⌝
-     ∗ ⌜Forall (fun i => (i < length line_alts)%nat) (o_cs so)⌝
-     ∗ ⌜cs_len_ok so⌝)%I.
-
-  Global Instance era_slot_timeless k v so si P :
-    Timeless (era_slot k v so si P).
-  Proof.
-    rewrite /era_slot. destruct P; destruct (length (o_E so)); apply _.
-  Qed.
-
-  (* ONE ADOPTED ERA: its slot, and its PIN.  The pin is kept here as well
-     as handed out, so that a link that arrives with the era NUMBER and no
-     pin -- which is every link before the era's first write -- can still be
-     given one. *)
-  Definition era_entry (k : nat) (v : era_pins) : iProp Σ :=
-    (era_pin k v ∗ ∃ so si P, era_slot k v so si P)%I.
-
-  Global Instance era_entry_timeless k v : Timeless (era_entry k v).
-  Proof. rewrite /era_entry. apply _. Qed.
-
-  Definition era_inv : iProp Σ :=
+  (* WHAT IS LEFT OF IT.  The era machine is gone: an era's state is in its
+     claims, and no link opens the ledger at all.  What stays is what is
+     about the HISTORY -- the taint counter, the phi conjunct -- plus the
+     ERA MAP, whose authority is spent at exactly one place, the power-on
+     step below, which allocates the era's ghosts and mints its pin. *)
+  Definition pin_map (h : list mobs) : iProp Σ :=
     (∃ Mp : gmap nat era_pins,
-       ghost_map_auth (eg_pin γ) 1 Mp
-       ∗ ([∗ map] k ↦ v ∈ Mp, era_entry k v))%I.
+       ghost_map_auth (eg_pin γ) 1 Mp ∗ ⌜pin_dom Mp (obs_boots h)⌝)%I.
 
-  Global Instance era_inv_timeless : Timeless era_inv.
-  Proof. rewrite /era_inv. apply _. Qed.
+  Global Instance pin_map_timeless h : Timeless (pin_map h).
+  Proof. rewrite /pin_map. apply _. Qed.
 
-  (* THE ACCESSOR every link spends: the era's slot, and the promise to put
-     one back. *)
-  Lemma era_inv_acc (k : nat) (v : era_pins) :
-    era_pin k v -∗ era_inv -∗
-      ∃ so si P, era_slot k v so si P
-        ∗ (∀ so' si' P', era_slot k v so' si' P' -∗ era_inv).
+  (* an event that starts no era leaves the map exactly where it was *)
+  Lemma pin_map_step (h : list mobs) (e : mobs) :
+    obs_boots [e] = 0%nat -> pin_map h -∗ pin_map (h ++ [e]).
   Proof.
-    iIntros "#Hpin H". iDestruct "H" as (Mp) "[Hm Hbig]".
-    iDestruct (ghost_map_lookup with "Hm Hpin") as %Hlk.
-    iDestruct (big_sepM_lookup_acc _ _ k v Hlk with "Hbig") as "[Hent Hback]".
-    iDestruct "Hent" as "[#Hpin' Hslot]".
-    iDestruct "Hslot" as (so si P) "Hslot".
-    iExists so, si, P. iFrame "Hslot".
-    iIntros (so' si' P') "Hslot'". iExists Mp. iFrame "Hm".
-    iApply "Hback". iFrame "Hpin'". iExists so', si', P'. iFrame "Hslot'".
+    intros He. rewrite /pin_map obs_boots_app He Nat.add_0_r. by iIntros "$".
   Qed.
 
-  (* THE ERA'S GHOSTS AT FULL OWNERSHIP (REVISION 7(b)): what the transport's
-     founding allocates into [app_boot], and what its holder brings to the
-     era's first write. *)
+  (* ...and the POWER-ON mints the era's pin.  The insert is legal because
+     the map's bound says every era ever founded is at most [obs_boots h],
+     and this one is [S] of it. *)
+  Lemma pin_map_on (h : list mobs) (v : era_pins) :
+    pin_map h ==∗
+      pin_map (h ++ [ObsPowerOn]) ∗ era_pin (S (obs_boots h)) v.
+  Proof.
+    rewrite /pin_map /era_pin obs_boots_app. cbn [obs_boots].
+    rewrite Nat.add_1_r.
+    iIntros "H". iDestruct "H" as (Mp) "[Hm %Hd]".
+    iMod (ghost_map_insert_persist (S (obs_boots h)) v
+            (pin_dom_absent _ _ Hd) with "Hm") as "[Hm #Hpin]".
+    iModIntro. iFrame "Hpin". iExists _. iFrame "Hm".
+    iPureIntro. by apply pin_dom_insert.
+  Qed.
+
+  (* ---- THE ERA'S GHOSTS AT FULL OWNERSHIP, and their split into the two
+         claims, init's credential and the kernel's token ---- *)
   Definition era_full (v : era_pins) : iProp Σ :=
-    (ghost_var (ep_gso v) 1 ostage0 ∗ ghost_var (ep_gsi v) 1 istage0
-     ∗ ghost_var (ep_go v) 1 0%nat
-     ∗ own (ep_gcs v) (●ML ([] : list (leibnizO nat)))
-     ∗ mono_nat_auth_own (ep_gE v) 1 0%nat)%I.
+    (ghost_var (ep_go v) 1 0%nat ∗ cs_auth v [] ∗ Elist_auth v []
+     ∗ ghost_var (ep_gw v) 1 0%nat)%I.
 
   Global Instance era_full_timeless v : Timeless (era_full v).
   Proof. rewrite /era_full. apply _. Qed.
 
   Lemma era_full_alloc : ⊢ |==> ∃ v : era_pins, era_full v.
   Proof.
-    iMod (ghost_var_alloc ostage0) as (gso) "Ho".
-    iMod (ghost_var_alloc istage0) as (gsi) "Hi".
     iMod (ghost_var_alloc 0%nat) as (go) "Ht".
     iMod (own_alloc (●ML ([] : list (leibnizO nat)))) as (gcs) "Hcs";
       [apply mono_list_auth_valid |].
-    iMod (mono_nat_own_alloc 0%nat) as (gE) "[HE _]".
-    iModIntro. iExists (MkPins gso gsi go gcs gE).
-    rewrite /era_full /=. iFrame "Ho Hi Ht Hcs HE".
+    iMod (own_alloc (●ML ([] : list (leibnizO (list mobs * bv 8)))))
+      as (gE) "HE"; [apply mono_list_auth_valid |].
+    iMod (ghost_var_alloc 0%nat) as (gw) "Hw".
+    iModIntro. iExists (MkPins go gcs gE gw).
+    rewrite /era_full /cs_auth /Elist_auth /=. iFrame "Ht Hcs HE Hw".
   Qed.
 
-  (* ...and its split into the ledger's slot, which is the anti-vacuity
-     witness as well (review S1): the paired state is INHABITED. *)
-  Lemma era_full_slot (k : nat) (v : era_pins) :
-    era_full v -∗ era_slot k v ostage0 istage0 0%nat.
+  Lemma pcount_nil (cs : list nat) : pcount cs [] [] = 0%nat.
+  Proof. reflexivity. Qed.
+
+  Lemma seg_of_echoed_nil : seg_of (echoed []) = [].
+  Proof. by rewrite echoed_nil /seg_of fmap_nil. Qed.
+
+  (* THE FOUNDING, as a resource split: the era's four ghosts become the two
+     port claims at the start of their era, init's console credential, and
+     the kernel's window token. *)
+  Lemma era_full_split (k : nat) (v : era_pins) :
+    era_pin k v -∗ era_full v -∗
+      eout k [] [] ∗ ein k [] [] [] ∗ eturn k ∗ ewin k.
   Proof.
-    rewrite /era_full /era_slot /out_auth /in_auth /out_frag /in_frag
-            /turn /turn_auth /cs_auth /E_auth.
-    iIntros "(Ho & Hi & Ht & Hcs & HE)".
-    iEval (rewrite -Qp.half_half) in "Ho".
-    iDestruct (ghost_var_split with "Ho") as "[Ho1 Ho2]".
-    iEval (rewrite -Qp.half_half) in "Hi".
-    iDestruct (ghost_var_split with "Hi") as "[Hi1 Hi2]".
+    iIntros "#Hpin (Ht & Hcs & HE & Hw)".
     iEval (rewrite -Qp.half_half) in "Ht".
     iDestruct (ghost_var_split with "Ht") as "[Ht1 Ht2]".
-    cbn [o_cs o_E o_w ostage0 length].
-    iFrame "Ho1 Hi1 Ho2 Ht1 Hi2 Ht2 Hcs HE".
-    iPureIntro. split_and!.
-    - reflexivity.
-    - exact stage_tie_0.
-    - constructor.
-    - exact cs_len_ok_0.
+    iEval (rewrite -Qp.half_half) in "Hw".
+    iDestruct (ghost_var_split with "Hw") as "[Hw12 Hwh]".
+    iEval (rewrite -Qp.quarter_quarter) in "Hw12".
+    iDestruct (ghost_var_split with "Hw12") as "[Hw1 Hw2]".
+    iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
+    iDestruct (Elist_lb_get with "HE") as "[HE #HElb]".
+    iSplitL "Ht1 Hcs HE Hw1".
+    { rewrite /eout. iRight. iExists v, ostage0.
+      cbn [o_cs o_E o_w ostage0 length]. rewrite pcount_nil.
+      iFrame "Hpin Ht1 Hcs HE Hw1". iPureIntro. split_and!.
+      - exact (eout_pure_0 k []).
+      - exact cs_len_ok_0.
+      - constructor. }
+    iSplitL "Hw2".
+    { rewrite /ein. iRight. iLeft. iExists v, 0%nat, [].
+      rewrite seg_of_echoed_nil echoed_nil.
+      iFrame "Hpin Hw2 HElb Hcslb". iPureIntro.
+      split; [reflexivity | exact (ein_pure_0 k)]. }
+    iSplitL "Ht2".
+    { rewrite /eturn. iExists v. iFrame "Hpin Ht2 Hcslb".
+      iApply (E_lb_of_lb v [] 0%nat); [cbn; lia | iExact "HElb"]. }
+    rewrite /ewin. iRight. iExists v, 0%nat. iFrame "Hpin Hwh".
   Qed.
-
-  (* ...and THE ADOPTION, which is INSERT-IF-ABSENT and needs no token at
-     all: the pin map itself decides.  An era whose slot is already there is
-     used as it stands (there is exactly one [v] per era number, whoever got
-     there first); an era with no slot gets one, at the start of its stage
-     and with both escrows held.  The freshness obligation a [ghost_map]
-     insert carries IS the [None] branch's own case analysis.
-
-     This is where the coordinator's REVISION 7(a) token would have gone.
-     It cannot: the ledger is [App.app_R], and [A : xv6_app Σ] is fixed
-     BEFORE the machine's ghosts exist ([App.xv6_app_adequacy] takes [A] at
-     [riscvGpreS]), so no resource at [riscvFixedGS] can appear in it.  See
-     the handover: what the token was wanted for is [Hfresh], and that needs
-     an APPLICATION-level per-era token minted by the ledger's own power-on
-     step and routed into the founding. *)
-  Lemma era_inv_get (k : nat) :
-    era_inv ==∗
-      ∃ (v : era_pins) (so : ostage) (si : istage) (P : nat),
-        era_pin k v ∗ era_slot k v so si P
-        ∗ (∀ so' si' P', era_slot k v so' si' P' -∗ era_inv).
-  Proof.
-    iIntros "H". iDestruct "H" as (Mp) "[Hm Hbig]".
-    destruct (Mp !! k) as [v |] eqn:Hlk.
-    - iDestruct (big_sepM_lookup_acc _ _ k v Hlk with "Hbig")
-        as "[[#Hpin Hslot] Hback]".
-      iDestruct "Hslot" as (so si P) "Hslot".
-      iModIntro. iExists v, so, si, P. iFrame "Hpin Hslot".
-      iIntros (so' si' P') "Hslot'". iExists Mp. iFrame "Hm".
-      iApply "Hback". iFrame "Hpin". iExists so', si', P'. iFrame "Hslot'".
-    - iMod era_full_alloc as (v) "Hfull".
-      iDestruct (era_full_slot k v with "Hfull") as "Hslot".
-      iMod (ghost_map_insert_persist k v Hlk with "Hm") as "[Hm #Hpin]".
-      iModIntro. iExists v, ostage0, istage0, 0%nat. iFrame "Hpin Hslot".
-      iIntros (so' si' P') "Hslot'". iExists (<[k := v]> Mp). iFrame "Hm".
-      iApply (big_sepM_insert _ _ k v Hlk).
-      iSplitR "Hbig"; [| iExact "Hbig"].
-      iFrame "Hpin". iExists so', si', P'. iFrame "Hslot'".
-  Qed.
-
-  (* ---- THE SEED BANK: the two maps' authorities, bounded by the ledger's
-         own boot count (e5-design REVISION 8) ---- *)
-  Definition seed_bank (h : list mobs) : iProp Σ :=
-    (∃ Mo Mi : gmap nat unit,
-       ghost_map_auth (eg_oseed γ) 1 Mo ∗ ghost_map_auth (eg_iseed γ) 1 Mi
-       ∗ ⌜seed_dom Mo (obs_boots h)⌝ ∗ ⌜seed_dom Mi (obs_boots h)⌝)%I.
-
-  Global Instance seed_bank_timeless h : Timeless (seed_bank h).
-  Proof. rewrite /seed_bank. apply _. Qed.
-
-  (* an event that starts no era leaves the bank exactly where it was *)
-  Lemma seed_bank_step (h : list mobs) (e : mobs) :
-    obs_boots [e] = 0%nat -> seed_bank h -∗ seed_bank (h ++ [e]).
-  Proof.
-    intros He. rewrite /seed_bank obs_boots_app He Nat.add_0_r. by iIntros "$".
-  Qed.
-
-  (* ...and the POWER-ON mints the era's pair.  The insert is legal because
-     the bank's bound says every founded era is at most [obs_boots h], and
-     this one is [S] of it. *)
-  Lemma seed_bank_on (h : list mobs) :
-    seed_bank h ==∗
-      seed_bank (h ++ [ObsPowerOn]) ∗ oseed (S (obs_boots h))
-      ∗ iseed (S (obs_boots h)).
-  Proof.
-    rewrite /seed_bank /oseed /iseed obs_boots_app.
-    cbn [obs_boots]. rewrite Nat.add_1_r.
-    iIntros "H". iDestruct "H" as (Mo Mi) "(Ho & Hi & %Hdo & %Hdi)".
-    iMod (ghost_map_insert (S (obs_boots h)) tt (seed_dom_absent _ _ Hdo)
-            with "Ho") as "[Ho Heo]".
-    iMod (ghost_map_insert (S (obs_boots h)) tt (seed_dom_absent _ _ Hdi)
-            with "Hi") as "[Hi Hei]".
-    iModIntro. iFrame "Heo Hei". iExists _, _. iFrame "Ho Hi".
-    iPureIntro. split; by apply seed_dom_insert.
-  Qed.
-
-  (* ...and the ADOPTION is the elem coming back: nothing about the auth
-     moves, which is why no link ever touches the bank. *)
 
   (* ...and THE WHOLE LEDGER, which is what [AppEcho.echo_R] becomes. *)
   Definition echo_led (h : list mobs) : iProp Σ :=
     (mono_nat_auth_own (eg_taint γ) 1 (if decide (disc h) then 0%nat else 1%nat)
-     ∗ era_inv ∗ seed_bank h
+     ∗ pin_map h
      ∗ (⌜Forall good_out (cycles_of h)⌝ ∨ T))%I.
 
   Global Instance echo_led_timeless h : Timeless (echo_led h).
@@ -1481,18 +1328,13 @@ Section echo_out.
   Lemma echo_led_init :
     mono_nat_auth_own (eg_taint γ) 1 0%nat -∗
     ghost_map_auth (eg_pin γ) 1 (∅ : gmap nat era_pins) -∗
-    ghost_map_auth (eg_oseed γ) 1 (∅ : gmap nat unit) -∗
-    ghost_map_auth (eg_iseed γ) 1 (∅ : gmap nat unit) -∗
     echo_led [].
   Proof.
-    iIntros "Ht Hm Ho Hi". rewrite /echo_led /era_inv /seed_bank.
+    iIntros "Ht Hm". rewrite /echo_led /pin_map.
     rewrite decide_True; [| exact disc_nil].
     iFrame "Ht".
     iSplitL "Hm".
-    { iExists ∅. iFrame "Hm". by rewrite big_sepM_empty. }
-    iSplitL "Ho Hi".
-    { iExists ∅, ∅. iFrame "Ho Hi". iPureIntro.
-      split; apply seed_dom_empty. }
+    { iExists ∅. iFrame "Hm". iPureIntro. apply pin_dom_empty. }
     iLeft. iPureIntro. rewrite /cycles_of /cycles_rev /=. constructor.
   Qed.
   (* ====================================================================== *)
@@ -1555,35 +1397,42 @@ Section echo_out.
     rewrite Forall_singleton. exact Hgo.
   Qed.
 
+  (* THE POWER STEP -- AND THE FOUNDING OF THE ERA'S CLAIMS, ITS CURSOR AND
+     ITS TOKEN (design page, section 2).  This is [App.Hpow]'s shape exactly:
+     the on-arm allocates the era's four ghosts, mints its pin in the era map
+     and splits the ghosts into the two port claims, init's console
+     credential and the kernel's window token, at the era number
+     [S (obs_boots h)] -- which [ObsTrace.obs_boots_app] makes the boot count
+     of the POST-event history, i.e. the number the kernel's own stamp reads
+     at every history of the new era.
 
-  (* THE POWER STEP -- AND THE FOUNDING OF THE ERA'S TWO CLAIMS (lane
-     CONS-IO milestone E, e5-design REVISION 8).  This is [App.Hpow]'s
-     shape exactly: the on-arm mints the era's two seeds out of the bank
-     and hands them out inside the founded claims, at the era number
-     [S (obs_boots h)] -- which [ObsTrace.obs_boots_app] makes the boot
-     count of the POST-event history, i.e. the number the kernel's own
-     stamp reads at every history of the new era. *)
+     THIS IS THE ONLY STEP THAT TOUCHES THE ERA MAP'S AUTHORITY, which is
+     what lets every link run without the ledger. *)
   Lemma echo_led_pow (h : list mobs) (on : bool) :
     echo_led h ==∗
       echo_led (h ++ [if on then ObsPowerOff else ObsPowerOn])
       ∗ (if on then emp
-         else eout (S (obs_boots h)) [] [] ∗ ein (S (obs_boots h)) [] [] []).
+         else eout (S (obs_boots h)) [] [] ∗ ein (S (obs_boots h)) [] [] []
+              ∗ eturn (S (obs_boots h)) ∗ ewin (S (obs_boots h))).
   Proof.
-    iIntros "(Ht & He & Hsb & Hphi)". rewrite /echo_led.
+    iIntros "(Ht & Hpm & Hphi)". rewrite /echo_led.
     rewrite (decide_ext _ (disc h) 0%nat 1%nat (disc_power h on)).
     destruct on.
-    - iDestruct (seed_bank_step h ObsPowerOff eq_refl with "Hsb") as "Hsb".
-      iModIntro. iSplitR ""; [| done]. iFrame "Ht He Hsb".
+    - iDestruct (pin_map_step h ObsPowerOff eq_refl with "Hpm") as "Hpm".
+      iModIntro. iSplitR ""; [| done]. iFrame "Ht Hpm".
       rewrite cycles_of_off. iExact "Hphi".
-    - iMod (seed_bank_on h with "Hsb") as "(Hsb & Hso & Hsi)".
-      iModIntro. iSplitR "Hso Hsi".
-      + iFrame "Ht He Hsb".
+    - iMod era_full_alloc as (v) "Hfull".
+      iMod (pin_map_on h v with "Hpm") as "[Hpm #Hpin]".
+      iDestruct (era_full_split (S (obs_boots h)) v with "Hpin Hfull")
+        as "(Hout & Hin & Hturn & Hwin)".
+      iModIntro. iSplitR "Hout Hin Hturn Hwin".
+      + iFrame "Ht Hpm".
         rewrite cycles_of_on.
         iDestruct "Hphi" as "[%Hg | HT]"; [| by iRight].
         iLeft. iPureIntro. apply Forall_app. split; [exact Hg |].
         apply Forall_singleton. exists []. split; [constructor |].
         rewrite /sess /= sess_n_0. cbn [obs_wire]. apply prefix_nil.
-      + iSplitL "Hso"; [by iApply eout_founded | by iApply ein_founded].
+      + iFrame "Hout Hin Hturn Hwin".
   Qed.
 
   (* ...AND THE KERNEL'S OWN PORT COSTS NOTHING: [good_out] reads the
@@ -1595,11 +1444,11 @@ Section echo_out.
     (T ∨ ⌜i = Uart0 -> good_out (open_seg h ++ [ObsUartOut i b])⌝) -∗
     echo_led h ==∗ echo_led (h ++ [ObsUartOut i b]).
   Proof.
-    intros Hsh. iIntros "Hgo (Hcnt & He & Hsb & Hphi)".
-    iDestruct (seed_bank_step h (ObsUartOut i b) eq_refl with "Hsb") as "Hsb".
+    intros Hsh. iIntros "Hgo (Hcnt & Hpm & Hphi)".
+    iDestruct (pin_map_step h (ObsUartOut i b) eq_refl with "Hpm") as "Hpm".
     rewrite /echo_led.
     rewrite (decide_ext _ (disc h) 0%nat 1%nat (disc_out h i b Hsh)).
-    iModIntro. iFrame "Hcnt He Hsb".
+    iModIntro. iFrame "Hcnt Hpm".
     iDestruct "Hphi" as "[%Hg | HT]"; [| by iRight].
     iDestruct "Hgo" as "[HT | %Hgo]"; [by iRight |].
     iLeft. iPureIntro. destruct i.
@@ -1615,8 +1464,8 @@ Section echo_out.
       echo_led (h ++ [ObsUartIn i b])
       ∗ (⌜disc (h ++ [ObsUartIn i b])⌝ ∨ mono_nat_lb_own (eg_taint γ) 1).
   Proof.
-    intros Hsh. iIntros "(Hcnt & He & Hsb & Hphi)".
-    iDestruct (seed_bank_step h (ObsUartIn i b) eq_refl with "Hsb") as "Hsb".
+    intros Hsh. iIntros "(Hcnt & Hpm & Hphi)".
+    iDestruct (pin_map_step h (ObsUartIn i b) eq_refl with "Hpm") as "Hpm".
     iAssert (⌜Forall good_out (cycles_of (h ++ [ObsUartIn i b]))⌝ ∨ T)%I
       with "[Hphi]" as "Hphi".
     { iDestruct "Hphi" as "[%Hg | HT]"; [| by iRight].
@@ -1628,10 +1477,10 @@ Section echo_out.
       { destruct i;
           [ exact (disc_in h b Hsh Hd')
           | exact (proj1 (disc_other h (ObsUartIn Uart1 b) eq_refl I Hsh) Hd') ]. }
-      iModIntro. iFrame "Hcnt He Hsb Hphi". iLeft. iPureIntro. exact Hd'.
+      iModIntro. iFrame "Hcnt Hpm Hphi". iLeft. iPureIntro. exact Hd'.
     - iMod (mono_nat_own_update 1%nat with "Hcnt") as "[Hcnt #Hlb]";
         [destruct (decide (disc h)); lia |].
-      iModIntro. iFrame "Hcnt He Hsb Hphi". iRight. iExact "Hlb".
+      iModIntro. iFrame "Hcnt Hpm Hphi". iRight. iExact "Hlb".
   Qed.
 
   (* PHI's read at the end of the run, in the OWNER's form: the guard is the
@@ -1642,7 +1491,7 @@ Section echo_out.
     (T -∗ mono_nat_lb_own (eg_taint γ) 1) -∗
     echo_led h -∗ ⌜disc h -> Forall good_out (cycles_of h)⌝.
   Proof.
-    iIntros "HTT (Hcnt & _ & _ & [%Hg | HT'])".
+    iIntros "HTT (Hcnt & _ & [%Hg | HT'])".
     { iPureIntro. by intros _. }
     iDestruct ("HTT" with "HT'") as "Hlb".
     iDestruct (mono_nat_lb_own_valid with "Hcnt Hlb") as %[_ Hle].
@@ -1654,68 +1503,62 @@ Section echo_out.
   (*  6.  THE STEPS THE LINKS SPEND                                         *)
   (* ====================================================================== *)
 
-  (* THE LEDGER'S HISTORY IS NOT THE LINK'S.  Every step below takes the
-     ledger at an ARBITRARY [hl] and gives it back there: the ledger is
-     history-free except for its taint counter and its [phi] conjunct, and
-     no link moves either.  That is what lets section 7 open [obsN] inside a
-     link -- the echo's links fire at the consputc STORES, at a history the
-     shift cannot name, and no link may compare a history against the
-     ledger's, because the observation AUTHORITY lives in the state
-     interpretation. *)
+  (* NO STEP TAKES THE LEDGER.  Every authority an era has is in its claims,
+     so a link opens the port invariant and nothing else -- which is what
+     makes [App.Happ_echo] a CLOSED entailment (design page, F1). *)
 
-  (* THE TAINT, READ OFF THE LEDGER.  A link that meets an UNDISCIPLINED
-     ledger is free: the counter is already up, so the taint is minted and
-     every claim's taint arm absorbs the step.  [T_of_lb] is the converse of
-     the [T -∗ lb] the callers already hand over, and [AppEcho] discharges
-     it by [iIntros "$"] -- [echo_taint] IS that lower bound. *)
-  Context (T_of_lb : mono_nat_lb_own (eg_taint γ) 1 -∗ T).
+  (* THE APPEND THE ECHO OWES, handed from [eout_step_echo] to
+     [ein_step_append] inside the shift's own proof (it is not a port claim
+     and the kernel never sees it).  It carries
+       - a QUARTER of the window counter, split off the half the kernel lent
+         the shift: it agrees with the half the window arm holds, which is
+         how the append knows the arm is the one its own echo left;
+       - a lower bound of the era's echoed list ENDING IN ITS OWN ENTRY, so
+         that comparing it against the arm's bound (same monotone list, one
+         entry shorter) says the arm owes exactly [(open_seg h, c)];
+       - the two index laws for that list and the choice bound, which is
+         what the settled arm the append rebuilds needs. *)
+  Definition ein_pend (k : nat) (h : list mobs) (c : bv 8) : iProp Σ :=
+    (T ∨ ∃ (v : era_pins) (n : nat) (El : list (list mobs * bv 8))
+           (cs0 : list nat),
+        era_pin k v ∗ wcnt v (1/4) n
+        ∗ Elist_lb v (El ++ [(open_seg h, c)]) ∗ cs_lb v cs0
+        ∗ ⌜(length El + 1)%nat = n⌝
+        ∗ ⌜E_index (El ++ [(open_seg h, c)])⌝
+        ∗ ⌜E_byte (El ++ [(open_seg h, c)])⌝
+        ∗ ⌜(n `div` length echo_line <= S (length cs0))%nat⌝)%I.
 
-  Lemma led_taint (hl : list mobs) :
-    ¬ disc hl -> echo_led hl -∗ echo_led hl ∗ T.
-  Proof.
-    intros Hd. rewrite /echo_led (decide_False _ _ Hd).
-    iIntros "(Hcnt & He & Hsb & Hphi)".
-    iDestruct (mono_nat_lb_own_get with "Hcnt") as "#Hlb".
-    iDestruct (T_of_lb with "Hlb") as "#HT".
-    iFrame "Hcnt He Hsb Hphi HT".
-  Qed.
+  Global Instance ein_pend_timeless k h c : Timeless (ein_pend k h c).
+  Proof. rewrite /ein_pend. apply _. Qed.
 
-  (* the input claim OPENED at the era's pin, in the CHAIN-FIRST window.
-     [WpUart.in_run] is chain-first and append-last, and the application
-     chains the two steps itself, so this is what [eout_step_echo] hands
-     [ein_step_append].  It is NOT [ein]: between the echo and the append
-     the log is one entry behind the era's stage, and the port's own claim
-     has no arm for that -- which is exactly what keeps [ein]'s two arms
-     lined up with the ledger's escrow ([era_slot]). *)
-  Definition ein_op (k : nat) (h : list mobs) (c : bv 8)
-      (pops : list log_entry) (dl : list (list mobs * bv 8)) : iProp Σ :=
-    (T ∨ ∃ (v : era_pins) (si : istage),
-        era_pin k v ∗ in_frag v si
-        ∗ ⌜ein_owed k si pops dl (open_seg h, c)⌝)%I.
+  (* (E) THE ECHO SHIFT's core step, at the STORE arm: the byte goes out, the
+     era's echoed list gains the entry, and the input claim comes back AT THE
+     SAME [pops]/[dl] -- which is what [WpUart.echo_link] demands -- in its
+     WINDOW arm.  The cursor is UNTOUCHED ([pcount_echo]), which is what lets
+     this close with the writer absent (review S2).
 
-  (* (E) THE ECHO SHIFT's core step, at the STORE arm: the byte goes out,
-     the era's stage gains the entry and the input claim is opened for the
-     append that follows.  The cursor is UNTOUCHED ([pcount_echo]), which is
-     what lets this close with the writer absent (review S2).
+     WHAT IT IS HANDED AND WHY.  [ewin k] is the kernel's per-era token
+     ([riscv_win_res (S gen_id)], a premise of [cons_echo_shift] once lane
+     CONS-IO F lands).  Its half plus the two claims' quarters are the whole
+     of the window counter, so the three values AGREE: the era's echoed list
+     is exactly as long as the log's echoed slice, and the input claim's
+     lower bound then pins [seg_of (echoed pops) = o_E so].  That is the tie
+     the old ledger's [stage_tie] was, and it is what re-establishes the
+     output claim's same-cycle facts at the new witness [h]: the log's
+     entries are below [h] ([Hord]) and carry the era's stamp, and two
+     histories of one era with the machine on lie in one cycle
+     ([EchoOutPure.open_seg_prefix_boots]).
 
-     WHAT THE ECHO RE-ESTABLISHES, and how.  The output claim's same-cycle
-     facts are stated at the claim's OWN witness, and this step moves that
-     witness to [h] -- so it has to show that every entry the era has
-     already echoed is a prefix of THIS cycle's segment.  It reads that off
-     the INPUT side: the log's entries are below [h] ([Hord]) and carry the
-     era's stamp ([ein_pure]), and two histories of one era with the machine
-     on lie in one cycle ([EchoOutPure.open_seg_prefix_boots]).
+     A SECOND FIRING IS REFUTED, not handled: it arrives with the token's
+     half again and meets the window arm's half beside the output claim's
+     quarter -- five quarters ([wcnt_over]).
 
-     THE ONE CALLER-OWED PREMISE.  [Hlt] says the echoes the era has
-     already LOGGED answer inputs strictly below this one; it holds at every
-     call site -- [SpecConsoleintr.cons_echo_shift] fires once per accepted
-     byte, at the history the byte arrived at.  The SECOND premise the first
-     cut needed ([Hpro]: nothing of the era on the wire while nothing is
-     logged) is GONE: the input claim's founded arm now holds the era's
-     SEED, and the ledger's escrow holds that seed exactly when the era's
-     stage is non-empty, so the two cannot both be. *)
+     THE ONE CALLER-OWED PREMISE.  [Hlt] says the echoes the era has already
+     LOGGED answer inputs strictly below this one; it holds at every call
+     site -- [SpecConsoleintr.cons_echo_shift] fires once per accepted byte,
+     at the history the byte arrived at. *)
   Lemma eout_step_echo (k : nat) (h : list mobs) (c : bv 8)
-      (ho hi hl : list mobs) (acc : list (bv 8))
+      (ho hi : list mobs) (acc : list (bv 8))
       (pops : list log_entry) (dl : list (list mobs * bv 8)) :
     disc h ->
     trace_shape h true ->
@@ -1724,97 +1567,50 @@ Section echo_out.
     obs_wire Uart0 (open_seg h) `prefix_of` acc ->
     (forall e, e ∈ pops -> hist_ext (le_hist e) h) ->
     (length (echoed pops) < length (ins (open_seg h)))%nat ->
-    □ (T -∗ mono_nat_lb_own (eg_taint γ) 1) -∗
-    echo_led hl -∗ eout k ho acc -∗ ein k hi pops dl ==∗
-      echo_led hl ∗ eout k h (acc ++ [echo_of c]) ∗ ein_op k h c pops dl.
+    ewin k -∗ eout k ho acc -∗ ein k hi pops dl ==∗
+      eout k h (acc ++ [echo_of c]) ∗ ein k hi pops dl ∗ ein_pend k h c.
   Proof.
     intros Hdisc Hsh Hk Hends Hwire Hord Hlt. subst k.
-    iIntros "#HTT Hled Hout Hin".
-    (* an UNDISCIPLINED ledger pays outright *)
-    destruct (decide (disc hl)) as [Hdl | Hdl]; last first.
-    { iDestruct (led_taint hl Hdl with "Hled") as "[Hled #HT]".
-      iModIntro. iFrame "Hled". iSplitR.
-      - by iApply eout_of_taint.
-      - rewrite /ein_op. by iLeft. }
+    iIntros "Hwin Hout Hin".
+    (* ANY taint -- the token's, either claim's -- pays outright *)
+    iAssert (□ (T -∗ eout (obs_boots h) h (acc ++ [echo_of c])
+                    ∗ ein (obs_boots h) hi pops dl
+                    ∗ ein_pend (obs_boots h) h c))%I as "#Htaint".
+    { iIntros "!> #HT". iSplitR; [by iApply eout_of_taint |].
+      iSplitR; [by iApply ein_of_taint | by iLeft]. }
+    iDestruct "Hwin" as "[#HT | Hwin]"; [iModIntro; by iApply "Htaint" |].
+    iDestruct "Hout" as "[#HT | Hout]"; [iModIntro; by iApply "Htaint" |].
+    iDestruct "Hin" as "[#HT | Hin]"; [iModIntro; by iApply "Htaint" |].
+    iDestruct "Hwin" as (vw nw) "[#Hpinw Hww]".
+    iDestruct "Hout" as (v so) "(#Hpin & Hta & Hcs & HE & Hwo & %Hall)".
+    iDestruct (era_pin_agree with "Hpinw Hpin") as %->.
+    destruct Hall as (Hpure & Hcsl & Hcsb).
+    destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hcsb' & Hdsc & Hpre1
+                       & Hpre2 & Hpre3).
+    (* A SECOND FIRING meets the window arm: five quarters *)
+    iDestruct "Hin" as "[Hs | Hwn]"; last first.
+    { iDestruct "Hwn" as (v2 n2 cs2) "(#Hpin2 & Hw2 & _)".
+      iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
+      iDestruct (wcnt_over with "Hwo Hw2 Hww") as "[]". }
+    iDestruct "Hs" as (v2 n2 cs0)
+      "(#Hpin2 & Hwi & %Hn2 & #HElbi & #Hcslbi & %Hpi)".
+    iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
+    destruct Hpi as (Hlog & Hdsc2 & Hstamp & Hdlp & Hidxi & Hbytei & Hbndi).
+    (* THE THREE AGREEING SHARES, and with them the tie to the log *)
+    iDestruct (wcnt_agree with "Hwo Hwi") as %Hoi.
+    iDestruct (wcnt_agree with "Hwo Hww") as %How.
+    iDestruct (Elist_prefix with "HE HElbi") as %Hprefi.
+    assert (Hseg : seg_of (echoed pops) = o_E so).
+    { apply prefix_length_eq; [exact Hprefi |].
+      rewrite seg_of_length. lia. }
+    (* the byte's own facts, as in the landed proof *)
     pose proof (disc_seg'_open_seg h Hsh Hdisc) as Hd'.
     pose proof (disc_seg'_proj _ Hd') as Hdseg.
     pose proof (open_seg_ends_in h c Hends) as Hends'.
     destruct (disc_seg'_pt_last (open_seg h) c Hd' Hends')
       as (cs' & Hcs'b & Hlow').
-    assert (Hm1 : (1 <= length (ins (open_seg h)))%nat).
-    { destruct Hends' as [h0 Hh0]. rewrite Hh0 ins_app ins_in length_app /=.
-      lia. }
-    rewrite /echo_led !(decide_True 0%nat 1%nat Hdl).
-    iDestruct "Hled" as "(Hcnt & Hera & Hsb & Hphi)".
-    (* under the discipline the taint is impossible *)
-    iAssert (□ (T -∗ mono_nat_auth_own (eg_taint γ) 1 0%nat -∗ False))%I
-      as "#Hno".
-    { iIntros "!> HT Hc". iDestruct ("HTT" with "HT") as "#Hlb".
-      iDestruct (mono_nat_lb_own_valid with "Hc Hlb") as %[_ Hle]. lia. }
-    iDestruct "Hout" as "[HT | Hout]".
-    { iDestruct ("Hno" with "HT Hcnt") as "[]". }
-    (* the founded OUTPUT arm is refuted: the discipline already put the
-       prologue on the wire, and an empty [acc] cannot hold it *)
-    iDestruct "Hout" as "[[%Hnil _] | Hp]".
-    { rewrite Hnil in Hwire. apply prefix_nil_inv in Hwire.
-      rewrite Hwire in Hlow'. apply prefix_nil_inv in Hlow'.
-      by destruct (sess_n_nonnil cs' (length (ins (open_seg h)) - 1) Hlow'). }
-    iDestruct "Hp" as (v so) "(#Hpin & Hfrag & %Hpure)".
-    iDestruct (era_inv_acc (obs_boots h) v with "Hpin Hera")
-      as (so2 si P) "[Hslot Hback]".
-    rewrite /era_slot.
-    iDestruct "Hslot" as "(Ho & Hi & Hoe & Hie & Hta & Hcs & HE & Hpures)".
-    iDestruct (out_agree with "Hfrag Ho") as %Heqso. subst so2.
-    iDestruct "Hpures" as "(%HP & %Htie & %Hcsb & %Hcsl)".
-    destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hcsb' & Hdsc & _ & _ & _).
-    (* the input claim's half, and the log's tie to the era's stage *)
-    iDestruct "Hin" as "[HT | Hin]".
-    { iDestruct ("Hno" with "HT Hcnt") as "[]". }
-    iAssert (in_frag v si ∗ iseed (obs_boots h)
-             ∗ ⌜i_E si = seg_of (echoed pops)⌝ ∗ ⌜log_ok pops⌝
-             ∗ ⌜forall e, e ∈ pops -> disc_seg (open_seg (le_hist e))⌝
-             ∗ ⌜forall e, e ∈ pops -> obs_boots (le_hist e) = obs_boots h⌝
-             ∗ ⌜dl `prefix_of` echoed pops⌝
-             ∗ ⌜(length (o_E so) < length (ins (open_seg h)))%nat⌝
-             ∗ in_auth v si)%I
-      with "[Hin Hie Hi]"
-      as "(Hifrag & Hisd & %Hie1 & %Hlog & %Hdsc2 & %Hstamp & %Hdlp & %HElt
-           & Hi)".
-    { iDestruct "Hin" as "[[%Hfr Hisd] | Hp2]".
-      - destruct Hfr as (Hlog & Hdsc2 & Hstamp & Hech & Hdlnil).
-        (* nothing logged: the claim is still FOUNDED, so it holds the era's
-           input seed -- and the ledger holds that seed exactly while the
-           era's stage is NOT empty.  So the stage is empty. *)
-        destruct (length (o_E so)) as [| nE] eqn:HL; last first.
-        { iDestruct (iseed_excl with "Hisd Hie") as "[]". }
-        assert (HEnil : o_E so = []) by (by apply nil_length_inv).
-        iFrame "Hie Hisd Hi". iPureIntro. split_and!.
-        + rewrite /stage_tie in Htie. rewrite Htie HEnil Hech.
-          by rewrite /seg_of fmap_nil.
-        + exact Hlog.
-        + exact Hdsc2.
-        + exact Hstamp.
-        + rewrite Hdlnil. apply prefix_nil.
-        + lia.
-      - iDestruct "Hp2" as (v2 si2) "(#Hpin2 & Hifrag & %Hp3)".
-        iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
-        iDestruct (in_agree with "Hifrag Hi") as %Heqsi. subst si2.
-        destruct Hp3 as (Hlog & Hdsc2 & Hstamp & Hdlp & Hno2 & Hseg).
-        (* the claim is PAIRED, so the ledger's escrow is spent and the era's
-           stage is non-empty: at an empty stage the escrowed half beside the
-           claim's would be three halves of one ghost *)
-        assert (HEltp : (length (o_E so) < length (ins (open_seg h)))%nat).
-        { rewrite /stage_tie in Htie. rewrite -Htie -Hseg seg_of_length.
-          exact Hlt. }
-        destruct (length (o_E so)) as [| nE] eqn:HL.
-        { iDestruct (in_frag_excl3 with "Hifrag Hie Hi") as "[]". }
-        iFrame "Hifrag Hie Hi". iPureIntro. split_and!;
-          [by rewrite Hseg | exact Hlog | exact Hdsc2 | exact Hstamp
-           | exact Hdlp |].
-        exact HEltp. }
-    (* THE SAME-CYCLE FACTS, re-established at [h] off the INPUT side *)
     assert (Hprefixes : Forall (fun x => x.1 `prefix_of` open_seg h) (o_E so)).
-    { rewrite /stage_tie in Htie. rewrite -Htie Hie1.
+    { rewrite -Hseg.
       apply Forall_lookup_2. intros j x Hx.
       rewrite /seg_of list_lookup_fmap in Hx.
       destruct (echoed pops !! j) as [y |] eqn:Hy; [| discriminate].
@@ -1850,139 +1646,218 @@ Section echo_out.
                 (length (ins (open_seg h)))
                 Hbyte Hidx Hnew' Hends' eq_refl Hwpre Hlow Hup)
       as [Hmeq Hweq].
-    (* the cursor is not at zero: the prologue is owed before the first echo *)
-    destruct P as [| P'].
-    { exfalso. destruct (pcount_zero _ _ _ (eq_sym HP)) as [HEnil Hwnil].
-      rewrite HEnil pending_nil Hwnil in Hweq.
-      pose proof u_prologue_pos as Hp. rewrite -Hweq in Hp. cbn in Hp. lia. }
-    (* the byte's own facts *)
-    assert (Hbc : c = echo_line !!! ((length (o_E so) `mod` length echo_line)%nat)).
+    assert (Hbc : c = echo_line
+                        !!! ((length (o_E so) `mod` length echo_line)%nat)).
     { rewrite (disc_seg_last_byte (open_seg h) c Hdseg Hends').
       by rewrite Hmeq Nat.sub_succ Nat.sub_0_r. }
-    iMod (out_update v so so
-            (MkO (o_cs so) (o_E so ++ [(open_seg h, c)]) [])
-            with "Hfrag Ho") as "[Hfrag Ho]".
-    iMod (in_update v si si (MkI (i_E si ++ [(open_seg h, c)]) true)
-            with "Hifrag Hi") as "[Hifrag Hi]".
-    iMod (E_auth_grow v (length (o_E so))
-            (length (o_E so ++ [(open_seg h, c)]))
-            ltac:(rewrite length_app /=; lia) with "HE") as "[HE _]".
-    iModIntro. iSplitR "Hfrag Hifrag".
-    - iFrame "Hcnt Hsb Hphi".
-      iApply ("Hback" $! (MkO (o_cs so) (o_E so ++ [(open_seg h, c)]) [])
-                      (MkI (i_E si ++ [(open_seg h, c)]) true) (S P')).
-      rewrite /era_slot. cbn [o_cs o_E o_w i_E i_owed].
-      rewrite length_app. cbn [length].
+    (* the two INDEX LAWS at the new entry, which the receipt carries on *)
+    assert (Hidx2 : E_index (o_E so ++ [(open_seg h, c)])).
+    { intros jj y Hy.
+      destruct (decide (jj < length (o_E so))%nat) as [Hj | Hj].
+      { rewrite lookup_app_l in Hy; [| lia]. by apply Hidx. }
+      rewrite lookup_app_r in Hy; [| lia].
+      assert (Hjj : jj = length (o_E so)).
+      { apply lookup_lt_Some in Hy. cbn [length] in Hy. lia. }
+      subst jj. rewrite Nat.sub_diag in Hy. cbn in Hy.
+      injection Hy as <-. cbn [fst snd]. split; [exact Hends' | lia]. }
+    assert (Hbyte2 : E_byte (o_E so ++ [(open_seg h, c)])).
+    { intros jj y Hy.
+      destruct (decide (jj < length (o_E so))%nat) as [Hj | Hj].
+      { rewrite lookup_app_l in Hy; [| lia]. by apply Hbyte. }
+      rewrite lookup_app_r in Hy; [| lia].
+      assert (Hjj : jj = length (o_E so)).
+      { apply lookup_lt_Some in Hy. cbn [length] in Hy. lia. }
+      subst jj. rewrite Nat.sub_diag in Hy. cbn in Hy.
+      injection Hy as <-. cbn [snd]. exact Hbc. }
+    (* the CHOICE BOUND the append will hand on, off the new stage's
+       [cs_len_ok] *)
+    pose proof (cs_len_ok_echo so (open_seg h, c) Hcsb Hweq Hcsl) as Hcsl2.
+    assert (Hbnd2 : (S (length (o_E so)) `div` length echo_line
+                     <= S (length (o_cs so)))%nat).
+    { pose proof echo_line_length as HLL.
+      destruct (cs_len_ok_inv (MkO (o_cs so) (o_E so ++ [(open_seg h, c)]) [])
+                  Hcsl2) as [[_ Hq] | [_ Hq]];
+        cbn [o_cs o_E o_w] in Hq; rewrite length_app in Hq;
+        cbn [length] in Hq;
+        replace (length (o_E so) + 1)%nat with (S (length (o_E so))) in Hq
+          by lia; lia. }
+    (* the ghost moves *)
+    iMod (Elist_auth_grow v (o_E so) (open_seg h, c) with "HE")
+      as "[HE #HElb2]".
+    iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
+    iMod (wcnt_update3 v (1/4) (1/4) (1/2) (length (o_E so)) n2 nw
+            (S (length (o_E so)))
+            ltac:(by rewrite Qp.quarter_quarter Qp.half_half)
+            with "Hwo Hwi Hww") as "(Hwo & Hwi & Hww)".
+    iDestruct (wcnt_split v (1/4) (1/4) (S (length (o_E so)))
+                 with "[Hww]") as "[Hwa Hwp]".
+    { rewrite Qp.quarter_quarter. iExact "Hww". }
+    iDestruct (wcnt_join v (1/4) (1/4) (S (length (o_E so)))
+                 with "Hwi Hwa") as "Hwarm".
+    iEval (rewrite Qp.quarter_quarter) in "Hwarm".
+    iModIntro.
+    iSplitL "Hta Hcs HE Hwo".
+    { rewrite /eout. iRight.
+      iExists v, (MkO (o_cs so) (o_E so ++ [(open_seg h, c)]) []).
+      cbn [o_cs o_E o_w]. rewrite length_app. cbn [length].
       replace (length (o_E so) + 1)%nat with (S (length (o_E so))) by lia.
-      iFrame "Ho Hi Hoe Hisd Hta Hcs HE". iPureIntro. split_and!.
-      + rewrite (pcount_echo (o_cs so) (o_E so) (open_seg h, c) (o_w so) Hweq).
-        exact HP.
-      + rewrite /stage_tie. cbn [i_E o_E].
-        rewrite /stage_tie in Htie. by rewrite Htie.
-      + exact Hcsb.
-      + exact (cs_len_ok_echo so (open_seg h, c) Hcsb Hweq Hcsl).
-    - iSplitL "Hfrag".
-      + iRight. iRight.
-        iExists v, (MkO (o_cs so) (o_E so ++ [(open_seg h, c)]) []).
-        iFrame "Hpin Hfrag". iPureIntro.
-        rewrite /eout_pure. cbn [o_cs o_E o_w]. split_and!.
-        * rewrite Hacc Hweq (D_app (o_cs so) (o_E so) (open_seg h, c)).
+      rewrite (pcount_echo (o_cs so) (o_E so) (open_seg h, c) (o_w so) Hweq).
+      iFrame "Hpin Hta Hcs HE Hwo". iPureIntro. split_and!.
+      - rewrite /eout_pure. cbn [o_cs o_E o_w]. split_and!.
+        + rewrite Hacc Hweq (D_app (o_cs so) (o_E so) (open_seg h, c)).
           cbn [snd]. by rewrite app_nil_r app_assoc.
-        * apply prefix_nil.
-        * intros jj y Hy.
-          destruct (decide (jj < length (o_E so))%nat) as [Hj | Hj].
-          { rewrite lookup_app_l in Hy; [| lia]. by apply Hidx. }
-          rewrite lookup_app_r in Hy; [| lia].
-          assert (Hjj : jj = length (o_E so)).
-          { apply lookup_lt_Some in Hy. cbn [length] in Hy. lia. }
-          subst jj. rewrite Nat.sub_diag in Hy. cbn in Hy.
-          injection Hy as <-. cbn [fst snd]. split; [exact Hends' | lia].
-        * intros jj y Hy.
-          destruct (decide (jj < length (o_E so))%nat) as [Hj | Hj].
-          { rewrite lookup_app_l in Hy; [| lia]. by apply Hbyte. }
-          rewrite lookup_app_r in Hy; [| lia].
-          assert (Hjj : jj = length (o_E so)).
-          { apply lookup_lt_Some in Hy. cbn [length] in Hy. lia. }
-          subst jj. rewrite Nat.sub_diag in Hy. cbn in Hy.
-          injection Hy as <-. cbn [snd]. exact Hbc.
-        * exact Hcsb'.
-        * rewrite Forall_app. split; [exact Hdsc |].
+        + apply prefix_nil.
+        + exact Hidx2.
+        + exact Hbyte2.
+        + exact Hcsb'.
+        + rewrite Forall_app. split; [exact Hdsc |].
           rewrite Forall_singleton. cbn. exact Hdseg.
-        * rewrite Forall_app. split; [exact Hprefixes |].
+        + rewrite Forall_app. split; [exact Hprefixes |].
           rewrite Forall_singleton. cbn [fst]. reflexivity.
-        * rewrite length_app. cbn [length]. lia.
-        * by right.
-      + iRight. iExists v, (MkI (i_E si ++ [(open_seg h, c)]) true).
-        iFrame "Hpin Hifrag". iPureIntro.
-        rewrite /ein_owed. cbn [i_E i_owed]. split_and!;
-          [exact Hlog | exact Hdsc2 | exact Hstamp | exact Hdlp
-           | reflexivity |].
-        by rewrite Hie1.
+        + rewrite length_app. cbn [length]. lia.
+        + by right.
+      - exact Hcsl2.
+      - exact Hcsb. }
+    iSplitL "Hwarm".
+    { rewrite /ein. iRight. iRight.
+      iExists v, (S (length (o_E so))), cs0.
+      iFrame "Hpin Hwarm HElbi Hcslbi". iPureIntro. split.
+      - lia.
+      - rewrite /ein_pure. by split_and!. }
+    rewrite /ein_pend. iRight.
+    iExists v, (S (length (o_E so))), (o_E so), (o_cs so).
+    iFrame "Hpin Hwp HElb2 Hcslb". iPureIntro. split_and!.
+    - lia.
+    - exact Hidx2.
+    - exact Hbyte2.
+    - exact Hbnd2.
   Qed.
 
-  (* ...and the LOG's side, fired after the chain ([WpUart.in_append]).  The
-     ECHOED arm takes the window [eout_step_echo] opened; the DROP arm takes
-     the port's own claim, because the kernel may stop the run before the
-     echo ([WpUart.in_run]'s left conjunct) and then no window was opened. *)
-  Lemma ein_step_append (k : nat) (h hl : list mobs) (c : bv 8)
+  (* ...and the LOG's side, fired after the chain ([WpUart.in_append]).  It
+     takes the window the echo opened and the port's own claim, files the
+     entry, returns the claim SETTLED and gives the kernel its token back
+     (which is [in_append]'s post once lane CONS-IO F lands).
+
+     IT IS TOTAL OVER THE THREE ARMS.  The WINDOW arm is the one its own echo
+     left: the arm's half and the receipt's quarter agree, so the arm's log
+     is one shorter than the receipt's bound and the two bounds -- prefixes
+     of one monotone list -- say the arm owes exactly [(open_seg h, c)].  The
+     SETTLED arm is REFUTED: the two bounds then have the SAME length, so the
+     entry would already be in [pops], and [in_append]'s own order premise
+     plus the era stamps put every logged history's segment STRICTLY below
+     [open_seg h] ([open_seg_hist_ext]).  The TAINT arm pays outright, token
+     included. *)
+  Lemma ein_step_append (k : nat) (h hi : list mobs) (c : bv 8)
       (pops : list log_entry) (dl : list (list mobs * bv 8)) :
     disc h ->
     trace_shape h true ->
     obs_boots h = k ->
     obs_ends_in Uart0 h c ->
     (forall e, e ∈ pops -> hist_ext (le_hist e) h) ->
-    echo_led hl -∗ ein_op k h c pops dl ==∗
-      echo_led hl ∗ ein k h (pops ++ [(h, c, [echo_of c])]) dl.
+    ein_pend k h c -∗ ein k hi pops dl ==∗
+      ein k h (pops ++ [(h, c, [echo_of c])]) dl ∗ ewin k.
   Proof.
-    intros Hdisc Hsh Hk Hends Hord. subst k. iIntros "Hled Hop".
-    iDestruct "Hop" as "[#HT | Hp]".
-    { iModIntro. iFrame "Hled". by iApply ein_of_taint. }
-    iDestruct "Hp" as (v si) "(#Hpin & Hifrag & %Howed)".
-    destruct Howed as (Hlog & Hdsc & Hstamp & Hdlp & Hno & Hie1).
-    rewrite /echo_led. iDestruct "Hled" as "(Hcnt & Hera & Hsb & Hphi)".
-    iDestruct (era_inv_acc (obs_boots h) v with "Hpin Hera")
-      as (so si2 P) "[Hslot Hback]".
-    rewrite /era_slot.
-    iDestruct "Hslot" as "(Ho & Hi & Hoe & Hie & Hta & Hcs & HE & Hpures)".
-    iDestruct (in_agree with "Hifrag Hi") as %Heqsi. subst si2.
-    iDestruct "Hpures" as "(%HP & %Htie & %Hcsb & %Hcsl)".
-    (* the era's stage is not empty here, so the ledger's escrow is spent *)
-    assert (HEne : length (o_E so) = S (length (seg_of (echoed pops)))).
-    { rewrite /stage_tie in Htie. rewrite -Htie Hie1 length_app /=. lia. }
-    destruct (length (o_E so)) as [| nE] eqn:HL; [exfalso; lia |].
-    iMod (in_update v si si (MkI (i_E si) false) with "Hifrag Hi")
-      as "[Hifrag Hi]".
-    iModIntro. iSplitR "Hifrag".
-    - iFrame "Hcnt Hsb Hphi".
-      iApply ("Hback" $! so (MkI (i_E si) false) P).
-      rewrite /era_slot HL.
-      iFrame "Ho Hi Hoe Hie Hta Hcs HE". iPureIntro. split_and!.
-      + exact HP.
-      + rewrite /stage_tie. cbn [i_E]. by rewrite /stage_tie in Htie.
-      + exact Hcsb.
-      + exact Hcsl.
-    - iRight. iRight. iExists v, (MkI (i_E si) false).
-      iFrame "Hpin Hifrag". iPureIntro.
-      rewrite /ein_pure. cbn [i_E i_owed]. split_and!.
-      + apply cl_log_ok_snoc; [exact Hlog | exact Hends | | ].
-        * rewrite /le_byte /le_echo /=. by right; left.
-        * intros e' He'. by apply Hord.
-      + intros e He. apply elem_of_app in He as [He | He];
-          [by apply Hdsc |].
-        apply elem_of_list_singleton in He as ->.
-        rewrite /le_hist /=. exact (disc_seg_open_seg h Hsh Hdisc).
-      + intros e He. apply elem_of_app in He as [He | He];
-          [by apply Hstamp |].
-        apply elem_of_list_singleton in He as ->. by rewrite /le_hist /=.
-      + rewrite (echoed_snoc_yes pops (h, c, [echo_of c])
+    intros Hdisc Hsh Hk Hends Hord. subst k. iIntros "Hpend Hin".
+    iDestruct "Hpend" as "[#HT | Hpd]".
+    { iModIntro. iSplitL "Hin";
+        [by iApply ein_of_taint | by iApply ewin_of_taint]. }
+    iDestruct "Hpd" as (v n El cs0)
+      "(#Hpin & Hwq & #HElbp & #Hcslbp & %Hlen & %Hidxp & %Hbytep & %Hbndp)".
+    iDestruct "Hin" as "[#HT | [Hs | Hwn]]".
+    { iModIntro. iSplitL "Hwq";
+        [by iApply ein_of_taint | by iApply ewin_of_taint]. }
+    - (* THE SETTLED ARM IS REFUTED: the entry would already be logged, and
+         [in_append]'s own order premise puts every logged history's segment
+         STRICTLY below this one *)
+      iDestruct "Hs" as (v2 n2 cs2)
+        "(#Hpin2 & Hw2 & %Hn2 & #HElb2 & #Hcslb2 & %Hp2)".
+      iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
+      iDestruct (wcnt_agree with "Hwq Hw2") as %Hnn.
+      destruct Hp2 as (Hlog & Hdsc & Hstamp & Hdlp & Hidx2 & Hbyte2 & Hbnd2).
+      iDestruct (Elist_lb_cmp with "HElb2 HElbp") as %Hcmp.
+      iExFalso.
+      assert (Hlens : length (seg_of (echoed pops))
+                      = length (El ++ [(open_seg h, c)])).
+      { rewrite seg_of_length length_app. cbn [length]. lia. }
+      assert (Hseg : seg_of (echoed pops) = El ++ [(open_seg h, c)]).
+      { destruct Hcmp as [Hc | Hc]; [apply prefix_length_eq; [exact Hc | lia]
+                                    | symmetry; apply prefix_length_eq;
+                                      [exact Hc | lia]]. }
+      assert (Hlk : seg_of (echoed pops) !! (length El)
+                    = Some (open_seg h, c)).
+      { rewrite Hseg lookup_app_r; [| lia].
+        by rewrite Nat.sub_diag. }
+      rewrite /seg_of list_lookup_fmap in Hlk.
+      destruct (echoed pops !! length El) as [y |] eqn:Hy; [| discriminate].
+      destruct y as [yh yb]. cbn in Hlk. injection Hlk as Hlk1 Hlk2.
+      assert (Hyin : (yh, yb) ∈ echoed pops)
+        by (by eapply elem_of_list_lookup_2).
+      destruct (echoed_elem_inv pops (yh, yb) Hyin) as (e & He & _ & Hye).
+      assert (Hoseg : open_seg (le_hist e) = open_seg h).
+      { injection Hye as Hye1 Hye2. by rewrite Hye1. }
+      destruct (open_seg_hist_ext (le_hist e) h (Hord e He)
+                  (Hstamp e He) Hsh) as [_ Hlt2].
+      rewrite Hoseg in Hlt2. iPureIntro. lia.
+    - (* THE WINDOW ARM is the one this receipt's own echo left: the arm's
+         half and the receipt's quarter AGREE *)
+      iDestruct "Hwn" as (v2 n2 cs2)
+        "(#Hpin2 & Hw2 & %Hn2 & #HElb2 & #Hcslb2 & %Hp2)".
+      iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
+      iDestruct (wcnt_agree with "Hwq Hw2") as %Hnn.
+      destruct Hp2 as (Hlog & Hdsc & Hstamp & Hdlp & Hidx2 & Hbyte2 & Hbnd2).
+      iDestruct (Elist_lb_cmp with "HElb2 HElbp") as %Hcmp.
+      assert (Hlens : length (seg_of (echoed pops)) = length El).
+      { rewrite seg_of_length. lia. }
+      assert (Hseg : seg_of (echoed pops) = El).
+      { destruct Hcmp as [Hc | Hc].
+        - destruct Hc as [z Hz]. symmetry.
+          destruct (app_inj_1 El (seg_of (echoed pops))
+                      [(open_seg h, c)] z ltac:(lia) Hz) as [Heq _].
+          exact Heq.
+        - exfalso. apply prefix_length in Hc.
+          rewrite length_app in Hc. cbn [length] in Hc. lia. }
+      (* the new log slice, and the entry it files *)
+      assert (Hech : echoed (pops ++ [(h, c, [echo_of c])])
+                     = echoed pops ++ [(h, c)]).
+      { rewrite (echoed_snoc_yes pops (h, c, [echo_of c])
                    (log_echoed_echo h c)).
-        destruct Hdlp as [z ->]. eexists. by rewrite -app_assoc.
-      + reflexivity.
-      + rewrite (echoed_snoc_yes pops (h, c, [echo_of c])
-                   (log_echoed_echo h c)).
-        rewrite seg_of_app Hie1. by rewrite /seg_of /le_hist /le_byte /=.
+        by rewrite /le_hist /le_byte /=. }
+      assert (Hsegn : seg_of (echoed (pops ++ [(h, c, [echo_of c])]))
+                      = El ++ [(open_seg h, c)]).
+      { by rewrite Hech seg_of_app Hseg. }
+      assert (Hlenn : length (echoed (pops ++ [(h, c, [echo_of c])])) = n).
+      { rewrite Hech length_app. cbn [length].
+        rewrite -seg_of_length Hseg. lia. }
+      (* the fractions: the arm's half plus the receipt's quarter, split
+         back into the settled arm's quarter and the kernel's token *)
+      iDestruct (wcnt_join v (1/4) (1/2) n with "Hwq [Hw2]") as "Hw".
+      { rewrite Hnn. iExact "Hw2". }
+      iDestruct (wcnt_split v (1/4) (1/2) n with "Hw") as "[Hwi Hwt]".
+      iModIntro. iSplitL "Hwi".
+      + rewrite /ein. iRight. iLeft. iExists v, n, cs0.
+        rewrite Hsegn. iFrame "Hpin Hwi HElbp Hcslbp". iPureIntro.
+        split; [exact Hlenn |]. rewrite /ein_pure Hech. split_and!.
+        * apply cl_log_ok_snoc; [exact Hlog | exact Hends | | ].
+          { rewrite /le_byte /le_echo /=. by right; left. }
+          { intros e' He'. by apply Hord. }
+        * intros e He. apply elem_of_app in He as [He | He];
+            [by apply Hdsc |].
+          apply elem_of_list_singleton in He as ->.
+          rewrite /le_hist /=. exact (disc_seg_open_seg h Hsh Hdisc).
+        * intros e He. apply elem_of_app in He as [He | He];
+            [by apply Hstamp |].
+          apply elem_of_list_singleton in He as ->. by rewrite /le_hist /=.
+        * destruct Hdlp as [z ->]. eexists. by rewrite -app_assoc.
+        * rewrite -Hech Hsegn. exact Hidxp.
+        * rewrite -Hech Hsegn. exact Hbytep.
+        * rewrite -Hech Hlenn. exact Hbndp.
+      + rewrite /ewin. iRight. iExists v, n. iFrame "Hpin Hwt".
   Qed.
 
+  (* ...and the DROP arm ([cs = []], and the run that stops before echoing):
+     no window was opened, the token was never split, and [echoed pops] does
+     not move -- so BOTH arms of the claim stand exactly where they were and
+     the caller hands the kernel back the very token it was lent. *)
   Lemma ein_step_append_drop (k : nat) (h : list mobs) (c : bv 8)
       (hi : list mobs) (pops : list log_entry)
       (dl : list (list mobs * bv 8)) :
@@ -1993,121 +1868,77 @@ Section echo_out.
     (forall e, e ∈ pops -> hist_ext (le_hist e) h) ->
     ein k hi pops dl -∗ ein k h (pops ++ [(h, c, [])]) dl.
   Proof.
-    intros Hdisc Hsh Hk Hends Hord. iIntros "Hin".
-    assert (Hlog' : forall (l : list log_entry), log_ok l ->
-              (forall e, e ∈ l -> hist_ext (le_hist e) h) ->
-              log_ok (l ++ [(h, c, [])])).
-    { intros l Hl Ho. apply cl_log_ok_snoc; [exact Hl | exact Hends | | ].
-      - rewrite /le_byte /le_echo /=. by left.
-      - intros e' He'. by apply Ho. }
-    assert (Hdsc' : forall (l : list log_entry),
-              (forall e, e ∈ l -> disc_seg (open_seg (le_hist e))) ->
-              forall e, e ∈ l ++ [(h, c, [])] ->
-                disc_seg (open_seg (le_hist e))).
-    { intros l Hd e He. apply elem_of_app in He as [He | He];
-        [by apply Hd |].
-      apply elem_of_list_singleton in He as ->.
-      rewrite /le_hist /=. exact (disc_seg_open_seg h Hsh Hdisc). }
-    assert (Hst' : forall (l : list log_entry),
-              (forall e, e ∈ l -> obs_boots (le_hist e) = k) ->
-              forall e, e ∈ l ++ [(h, c, [])] -> obs_boots (le_hist e) = k).
-    { intros l Hd e He. apply elem_of_app in He as [He | He];
-        [by apply Hd |].
-      apply elem_of_list_singleton in He as ->. by rewrite /le_hist /=. }
-    assert (Hech' : echoed (pops ++ [(h, c, [])]) = echoed pops)
+    intros Hdisc Hsh Hk Hends Hord. subst k. iIntros "Hin".
+    assert (Hech : echoed (pops ++ [(h, c, [])]) = echoed pops)
       by (apply echoed_snoc_no, log_echoed_nil_no).
-    iDestruct "Hin" as "[#HT | [[%Hfr Hsd] | Hp]]".
+    assert (Hpure' : forall cs0, ein_pure (obs_boots h) pops dl cs0 ->
+              ein_pure (obs_boots h) (pops ++ [(h, c, [])]) dl cs0).
+    { intros cs0 (Hlog & Hdsc & Hstamp & Hdlp & Hidx & Hbyte & Hbnd).
+      rewrite /ein_pure Hech. split_and!.
+      - apply cl_log_ok_snoc; [exact Hlog | exact Hends | | ].
+        + rewrite /le_byte /le_echo /=. by left.
+        + intros e' He'. by apply Hord.
+      - intros e He. apply elem_of_app in He as [He | He]; [by apply Hdsc |].
+        apply elem_of_list_singleton in He as ->.
+        rewrite /le_hist /=. exact (disc_seg_open_seg h Hsh Hdisc).
+      - intros e He. apply elem_of_app in He as [He | He];
+          [by apply Hstamp |].
+        apply elem_of_list_singleton in He as ->. by rewrite /le_hist /=.
+      - exact Hdlp.
+      - exact Hidx.
+      - exact Hbyte.
+      - exact Hbnd. }
+    iDestruct "Hin" as "[#HT | [Hs | Hwn]]".
     - by iApply ein_of_taint.
-    - destruct Hfr as (Hlog & Hdsc & Hstamp & Hech & Hdlnil).
-      iRight. iLeft. iFrame "Hsd". iPureIntro. rewrite /ein_fresh. split_and!.
-      + by apply Hlog'.
-      + by apply Hdsc'.
-      + by apply Hst'.
-      + by rewrite Hech'.
-      + exact Hdlnil.
-    - iDestruct "Hp" as (v si) "(#Hpin & Hifrag & %Hp3)".
-      iRight. iRight. iExists v, si. iFrame "Hpin Hifrag".
-      destruct Hp3 as (Hlog & Hdsc & Hstamp & Hdlp & Hno & Hseg).
-      iPureIntro. rewrite /ein_pure. split_and!.
-      + by apply Hlog'.
-      + by apply Hdsc'.
-      + by apply Hst'.
-      + by rewrite Hech'.
-      + exact Hno.
-      + by rewrite Hech'.
+    - iDestruct "Hs" as (v n cs0) "(#Hpin & Hw & %Hn & #HElb & #Hcslb & %Hp)".
+      rewrite /ein. iRight. iLeft. iExists v, n, cs0.
+      rewrite Hech. iFrame "Hpin Hw HElb Hcslb". iPureIntro.
+      split; [exact Hn | by apply Hpure'].
+    - iDestruct "Hwn" as (v n cs0)
+        "(#Hpin & Hw & %Hn & #HElb & #Hcslb & %Hp)".
+      rewrite /ein. iRight. iRight. iExists v, n, cs0.
+      rewrite Hech. iFrame "Hpin Hw HElb Hcslb". iPureIntro.
+      split; [exact Hn | by apply Hpure'].
   Qed.
 
   (* (W) THE WRITE, INSIDE A BLOCK.  What the writer brings: the era's pin,
      its cursor, a PERSISTENT lower bound of the line choices and one of the
      era's STAGE INDEX (review S9), and the Coq-level fact that its byte is
-     the [P]-th of the era's process stream up to stage [S n0].  What it
-     gets back: the cursor advanced and the two bounds, so the next write is
-     paid the same way.
+     the [P]-th of the era's process stream up to stage [S n0].  What it gets
+     back: the cursor advanced and the two bounds, so the next write is paid
+     the same way.
 
-     THE STRICTNESS IS NOT A PREMISE.  With [E_lb v n0] the ledger EXPOSES
-     the stage index, and [write_stage_byte] derives both the stage
-     ([length E = n0]) and the strictness from
-     [proc_upto cs0 (S n0) !! P = Some b] alone.
-
-     THE CHOICE LIST IS NOT MOVED HERE.  [Hdiv] asks the writer's lower
-     bound to reach block [n0 / 17], and the ledger's own [cs_len_ok] says
-     the list is one SHORT of that exactly at a block's first byte -- so
-     this form is simply not applicable there, and [eout_step_write_blk]
-     below is.
-
-     THE FRESHNESS PREMISE IS GONE (e5-design REVISION 8).  It used to say
-     [acc = [] -> P = 0], and nothing in the tree could prove it: the
-     output claim's FOUNDED arm was PURE, so a claim that says [acc = []]
-     was indistinguishable from one whose half of an already-written era's
-     stage had been dropped.  Two things close it now.  The WRITER's own
-     [turn v P] refutes [P = 0] outright -- at zero the ledger escrows the
-     era's turn, and a third half of one [ghost_var] is impossible -- and
-     at [P = S _] the ledger holds the era's SEED, which is exactly what
-     the founded arm would have to hold as well. *)
+     THE ERA'S FIRST BYTE GOES THROUGH THIS LEMMA TOO, at [P = 0] with
+     [n0 = 0] and [cs0 = []]: the claim's own [turn_auth] agrees with the
+     writer's cursor, [pcount_zero] gives [o_E so = [] /\ o_w so = []], and
+     the transcript is then [D cs [] ++ [] = []].  So [acc = []] is DERIVED
+     from the writer's credential and nothing has to refute a claim at
+     [acc <> []]: there is no separate adoption step and no seed. *)
   Lemma eout_step_write (k : nat) (v : era_pins) (P n0 : nat) (b : bv 8)
-      (cs0 : list nat) (ho hl : list mobs) (acc : list (bv 8)) :
+      (cs0 : list nat) (ho : list mobs) (acc : list (bv 8)) :
     ((n0 `div` length echo_line) <= length cs0)%nat ->
     proc_upto cs0 (S n0) !! P = Some b ->
     era_pin k v -∗ turn v P -∗ cs_lb v cs0 -∗ E_lb v n0 -∗
-    echo_led hl -∗ eout k ho acc ==∗
-      echo_led hl ∗ eout k ho (acc ++ [b])
+    eout k ho acc ==∗
+      eout k ho (acc ++ [b])
       ∗ ((turn v (S P) ∗ cs_lb v cs0 ∗ E_lb v n0) ∨ T).
   Proof.
     intros Hdiv Hb.
-    iIntros "#Hpin Ht #Hcslb #HElb Hled Hcl".
-    rewrite /echo_led. iDestruct "Hled" as "(Hcnt & Hera & Hsb & Hphi)".
-    iDestruct (era_inv_acc k v with "Hpin Hera") as (so si Pl) "[Hslot Hback]".
-    rewrite /era_slot.
-    iDestruct "Hslot" as "(Ho & Hi & Hoe & Hie & Hta & Hcs & HE & Hpures)".
-    iDestruct (turn_agree with "Ht Hta") as %Heqp. subst Pl.
-    iDestruct "Hpures" as "(%HP & %Htie & %Hcsb & %Hcsl)".
-    (* A WRITER CANNOT STAND AT ZERO: the ledger escrows the era's turn
-       until its first byte, and the era's first byte is
-       [eout_step_write_first]'s. *)
-    destruct P as [| P'].
-    { iDestruct "Hoe" as "[_ Hto]".
-      iDestruct (turn_excl3 with "Ht Hto Hta") as "[]". }
-    (* the TAINT arm pays outright and moves nothing *)
-    iDestruct "Hcl" as "[#HT | Hcl]".
-    { iModIntro. iSplitR "".
-      - iFrame "Hcnt Hsb Hphi". iApply ("Hback" $! so si (S P')).
-        rewrite /era_slot. iFrame "Ho Hi Hoe Hie Hta Hcs HE".
-        iPureIntro. by split_and!.
-      - iSplitR; [by iApply eout_of_taint | by iRight]. }
-    (* ...otherwise the claim is PAIRED: its founded arm would hold the
-       era's seed, which the ledger already holds at an adopted era *)
-    iDestruct "Hcl" as "[[%Hfr Hsd] | Hp]".
-    { iDestruct (oseed_excl with "Hsd Hoe") as "[]". }
-    iDestruct "Hp" as (v2 so2) "(#Hpin2 & Hfrag & %Hpure)".
+    iIntros "#Hpin Ht #Hcslb #HElb Hcl".
+    iDestruct "Hcl" as "[#HT | Hp]".
+    { iModIntro.
+      iSplitR; [by iApply eout_of_taint | by iRight]. }
+    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & HE & Hwo & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
-    iDestruct (out_agree with "Hfrag Ho") as %->.
+    destruct Hall as (Hpure & Hcsl & Hcsb).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hcsb' & Hdsc & Hpre1
                        & Hpre2 & Hpre3).
+    iDestruct (turn_agree with "Ht Hta") as %HP.
     iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (E_lb_le with "HE HElb") as %Hn0.
-    destruct (write_stage_byte cs0 (o_cs so) (o_E so) (o_w so) n0 (S P') b
+    destruct (write_stage_byte cs0 (o_cs so) (o_E so) (o_w so) n0 P b
                 Hcsp Hdiv Hn0 HP Hb) as [HlenE Hnext].
-    (* the choice list stays put: at a block's first byte the ledger's list
+    (* the choice list stays put: at a block's first byte the claim's list
        is one short of what [Hdiv] asks for *)
     assert (Hcase : o_w so <> []
                     \/ (length (o_E so) `mod` length echo_line)%nat <> 0%nat
@@ -2131,24 +1962,14 @@ Section echo_out.
       { destruct ((length (o_E so) `div` length echo_line)%nat) as [| q'];
           [lia | lia]. }
       rewrite -HlenE in Hdiv. lia. }
-    iMod (out_update v so so (MkO (o_cs so) (o_E so) (o_w so ++ [b]))
-            with "Hfrag Ho") as "[Hfrag Ho]".
-    iMod (turn_update v (S P') (S P') (S (S P')) with "Ht Hta") as "[Ht Hta]".
-    iModIntro.
-    iSplitR "Hfrag Ht".
-    - iFrame "Hcnt Hsb Hphi".
-      iApply ("Hback" $! (MkO (o_cs so) (o_E so) (o_w so ++ [b])) si
-                      (S (S P'))).
-      rewrite /era_slot. cbn [o_cs o_E o_w].
-      iFrame "Ho Hi Hoe Hie Hta Hcs HE".
-      iPureIntro. split_and!;
-        [| exact Htie | exact Hcsb | exact (cs_len_ok_write so b Hcsl Hcase)].
-      rewrite pcount_write. by rewrite HP.
-    - iSplitL "Hfrag".
-      + iRight. iRight.
-        iExists v, (MkO (o_cs so) (o_E so) (o_w so ++ [b])).
-        iFrame "Hpin Hfrag". iPureIntro.
-        rewrite /eout_pure. cbn [o_cs o_E o_w]. split_and!.
+    iMod (turn_update v P (pcount (o_cs so) (o_E so) (o_w so)) (S P)
+            with "Ht Hta") as "[Ht Hta]".
+    iModIntro. iSplitR "Ht".
+    - rewrite /eout. iRight.
+      iExists v, (MkO (o_cs so) (o_E so) (o_w so ++ [b])).
+      cbn [o_cs o_E o_w]. rewrite pcount_write -HP.
+      iFrame "Hpin Hta Hcs HE Hwo". iPureIntro. split_and!.
+      + rewrite /eout_pure. cbn [o_cs o_E o_w]. split_and!.
         * by rewrite Hacc app_assoc.
         * by apply prefix_snoc_lookup.
         * exact Hidx.
@@ -2158,21 +1979,23 @@ Section echo_out.
         * exact Hpre1.
         * exact Hpre2.
         * exact Hpre3.
-      + iLeft. iFrame "Ht Hcslb HElb".
+      + exact (cs_len_ok_write so b Hcsl Hcase).
+      + exact Hcsb.
+    - iLeft. iFrame "Ht Hcslb HElb".
   Qed.
 
   (* (W') THE WRITE AT A BLOCK'S FIRST BYTE (REVISION 7(d)).  The choice of
      continuation is the PROGRAM's knowledge -- sh knows whether it is about
-     to print "hello world" or the exec failure -- and it is readable off
-     the wire because the four alternatives begin with four distinct bytes
+     to print "hello world" or the exec failure -- and it is readable off the
+     wire because the four alternatives begin with four distinct bytes
      ([EchoOutPure.line_alts_head_det]).  So the writer supplies the
      alternative's INDEX beside its first byte, and the step files it: the
-     ledger's list grows from [q-1] to [q] at stage [17 q], and every later
-     byte of the block goes through [eout_step_write] against the lower
-     bound this returns.  The PROLOGUE (block 0) is not a choice and grows
-     nothing -- which is why [0 < n0] is a premise here. *)
+     claim's list grows from [q-1] to [q] at stage [17 q], and every later
+     byte of the block goes through [eout_step_write] against the lower bound
+     this returns.  The PROLOGUE (block 0) is not a choice and grows nothing
+     -- which is why [0 < n0] is a premise here. *)
   Lemma eout_step_write_blk (k : nat) (v : era_pins) (P n0 a : nat)
-      (b : bv 8) (cs0 : list nat) (ho hl : list mobs) (acc : list (bv 8)) :
+      (b : bv 8) (cs0 : list nat) (ho : list mobs) (acc : list (bv 8)) :
     (0 < n0)%nat ->
     (n0 `mod` length echo_line)%nat = 0%nat ->
     ((n0 `div` length echo_line) <= S (length cs0))%nat ->
@@ -2180,8 +2003,8 @@ Section echo_out.
     (a < length line_alts)%nat ->
     line_alts !!! a !! 0%nat = Some b ->
     era_pin k v -∗ turn v P -∗ cs_lb v cs0 -∗ E_lb v n0 -∗
-    echo_led hl -∗ eout k ho acc ==∗
-      echo_led hl ∗ eout k ho (acc ++ [b])
+    eout k ho acc ==∗
+      eout k ho (acc ++ [b])
       ∗ ((turn v (S P) ∗ cs_lb v (cs0 ++ [a]) ∗ E_lb v n0) ∨ T).
   Proof.
     intros Hpos Hmod Hdiv HPeq Halt Hhead.
@@ -2190,41 +2013,21 @@ Section echo_out.
                    = n0 `div` length echo_line - 1)%nat).
     { assert (Hn1 : n0 = ((n0 - 1) + 1)%nat) by lia.
       rewrite {2}Hn1. apply div_succ_of_mod0. rewrite -Hn1. exact Hmod. }
-    iIntros "#Hpin Ht #Hcslb #HElb Hled Hcl".
-    rewrite /echo_led. iDestruct "Hled" as "(Hcnt & Hera & Hsb & Hphi)".
-    iDestruct (era_inv_acc k v with "Hpin Hera") as (so si Pl) "[Hslot Hback]".
-    rewrite /era_slot.
-    iDestruct "Hslot" as "(Ho & Hi & Hoe & Hie & Hta & Hcs & HE & Hpures)".
-    iDestruct (turn_agree with "Ht Hta") as %Heqp. subst Pl.
-    iDestruct "Hpures" as "(%HP & %Htie & %Hcsb & %Hcsl)".
-    (* the TAINT arm pays outright and moves nothing *)
-    iDestruct "Hcl" as "[#HT | Hcl]".
-    { iModIntro. iSplitR "".
-      - iFrame "Hcnt Hsb Hphi". iApply ("Hback" $! so si P).
-        rewrite /era_slot. iFrame "Ho Hi Hoe Hie Hta Hcs HE".
-        iPureIntro. by split_and!.
-      - iSplitR; [by iApply eout_of_taint | by iRight]. }
-    (* the era's cursor is past the prologue, so the ledger holds the era's
-       SEED -- and the founded arm would have to hold it too *)
-    assert (HPpos : (0 < P)%nat).
-    { rewrite HPeq. destruct n0 as [| n0']; [lia |].
-      rewrite /proc_upto (proc_upto_from_S cs0 0%nat n0') length_app.
-      pose proof u_prologue_pos as Hu.
-      change (pending_n cs0 0%nat) with u_prologue. lia. }
-    destruct P as [| P']; [lia |].
-    iDestruct "Hcl" as "[[%Hfr Hsd] | Hp]".
-    { iDestruct (oseed_excl with "Hsd Hoe") as "[]". }
-    iDestruct "Hp" as (v2 so2) "(#Hpin2 & Hfrag & %Hpure)".
+    iIntros "#Hpin Ht #Hcslb #HElb Hcl".
+    iDestruct "Hcl" as "[#HT | Hp]".
+    { iModIntro.
+      iSplitR; [by iApply eout_of_taint | by iRight]. }
+    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & HE & Hwo & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
-    iDestruct (out_agree with "Hfrag Ho") as %->.
+    destruct Hall as (Hpure & Hcsl & Hcsb).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hcsb' & Hdsc & Hpre1
                        & Hpre2 & Hpre3).
+    iDestruct (turn_agree with "Ht Hta") as %HP.
     iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (E_lb_le with "HE HElb") as %Hn0.
     (* the stream up to stage [n0] is the same under the writer's bound *)
     assert (Hstream : proc_upto cs0 n0 = proc_upto (o_cs so) n0).
-    { apply (proc_upto_cs_prefix_pred cs0 (o_cs so) n0 Hcsp).
-      lia. }
+    { apply (proc_upto_cs_prefix_pred cs0 (o_cs so) n0 Hcsp). lia. }
     (* the era's stage is exactly [n0]: a further echo would have folded this
        block's WHOLE alternative into the stream, past the cursor *)
     assert (HlenE : length (o_E so) = n0).
@@ -2249,7 +2052,7 @@ Section echo_out.
         rewrite -(proc_upto_length (o_cs so) (o_E so)) in HP.
         rewrite HlenE -Hstream in HP. lia. }
       by apply nil_length_inv. }
-    (* the ledger's list is one short, so the writer's bound IS the list *)
+    (* the claim's list is one short, so the writer's bound IS the list *)
     destruct (cs_len_ok_inv so Hcsl) as [[_ Hq] | [Hne _]]; last first.
     { exfalso. apply Hne. split; [exact Hwnil | by rewrite HlenE]. }
     rewrite HlenE in Hq.
@@ -2278,30 +2081,18 @@ Section echo_out.
     { symmetry. apply (pcount_cs_prefix (o_cs so) (o_cs so ++ [a]) (o_E so));
         [by eexists |].
       rewrite HlenE. lia. }
-    iMod (out_update v so so (MkO (o_cs so ++ [a]) (o_E so) [b])
-            with "Hfrag Ho") as "[Hfrag Ho]".
-    iMod (turn_update v (S P') (S P') (S (S P')) with "Ht Hta")
-      as "[Ht Hta]".
+    assert (Hpc2 : pcount (o_cs so ++ [a]) (o_E so) [b] = S P).
+    { rewrite /pcount HPc. cbn [length]. rewrite /pcount Hwnil in HP.
+      cbn [length] in HP. lia. }
+    iMod (turn_update v P (pcount (o_cs so) (o_E so) (o_w so)) (S P)
+            with "Ht Hta") as "[Ht Hta]".
     iMod (cs_auth_grow v (o_cs so) a with "Hcs") as "[Hcs #Hcslb2]".
-    iModIntro.
-    iSplitR "Hfrag Ht".
-    - iFrame "Hcnt Hsb Hphi".
-      iApply ("Hback" $! (MkO (o_cs so ++ [a]) (o_E so) [b]) si (S (S P'))).
-      rewrite /era_slot. cbn [o_cs o_E o_w].
-      iFrame "Ho Hi Hoe Hie Hta Hcs HE".
-      iPureIntro. split_and!.
-      + rewrite /pcount HPc. cbn [length]. rewrite /pcount Hwnil in HP.
-        cbn [length] in HP. lia.
-      + exact Htie.
-      + rewrite Forall_app. split; [exact Hcsb |].
-        by rewrite Forall_singleton.
-      + apply (cs_len_ok_blk so a b); [by rewrite HlenE | lia | exact Hwnil
-                                      | exact Hcsl].
-    - iSplitL "Hfrag".
-      + iRight. iRight.
-        iExists v, (MkO (o_cs so ++ [a]) (o_E so) [b]).
-        iFrame "Hpin Hfrag". iPureIntro.
-        rewrite /eout_pure. cbn [o_cs o_E o_w]. split_and!.
+    iModIntro. iSplitR "Ht".
+    - rewrite /eout. iRight.
+      iExists v, (MkO (o_cs so ++ [a]) (o_E so) [b]).
+      cbn [o_cs o_E o_w]. rewrite Hpc2.
+      iFrame "Hpin Hta Hcs HE Hwo". iPureIntro. split_and!.
+      + rewrite /eout_pure. cbn [o_cs o_E o_w]. split_and!.
         * rewrite Hacc Hwnil app_nil_r HD. reflexivity.
         * apply (prefix_snoc_lookup [] _ b); [apply prefix_nil |].
           by rewrite -Hpend.
@@ -2313,121 +2104,58 @@ Section echo_out.
         * exact Hpre1.
         * exact Hpre2.
         * exact Hpre3.
-      + iLeft. rewrite Hcs0. iFrame "Ht HElb Hcslb2".
-  Qed.
-
-  (* (W'') THE ERA'S FIRST WRITE, which is its ADOPTION.  The writer -- init,
-     at the first byte of the banner -- brings NO credentials: the era's
-     ghosts do not exist yet, and the ledger creates them here
-     ([era_inv_get]).  What comes back is the era's PIN -- persistent, and
-     from here on the name by which the claim and every later writer mean
-     the same era -- with the cursor at one and the two bounds at the start.
-
-     [Hunwritten] IS GONE (e5-design REVISION 8).  It used to say that no
-     era with this number had ever been written, and nothing in the tree
-     could prove it: the founded arm was PURE.  The founded arm now holds
-     the era's SEED, and the ledger holds that same seed at every ADOPTED
-     era, so the two states are separated by the logic:
-       - a founded claim at an adopted era ([P = S _]) meets its own seed
-         and is refuted;
-       - a PAIRED claim at [acc = []] puts the era's cursor at zero
-         ([eout_pure_nil_stage]), where the ledger still escrows the
-         claim's own half -- three halves of one [ghost_var].
-     So the era this reaches is unadopted, and this step is its adoption:
-     the seed goes into the ledger's slot and the writer takes the escrowed
-     half and the era's turn. *)
-  Lemma eout_step_write_first (k : nat) (b : bv 8) (ho hl : list mobs) :
-    u_prologue !! 0%nat = Some b ->
-    echo_led hl -∗ eout k ho [] ==∗
-      echo_led hl ∗ eout k ho [b]
-      ∗ ((∃ v : era_pins,
-            era_pin k v ∗ turn v 1%nat ∗ cs_lb v [] ∗ E_lb v 0%nat) ∨ T).
-  Proof.
-    intros Hb. iIntros "Hled Hcl".
-    rewrite /echo_led. iDestruct "Hled" as "(Hcnt & Hera & Hsb & Hphi)".
-    (* the TAINT arm pays outright and touches no era *)
-    iDestruct "Hcl" as "[#HT | Hcl]".
-    { iModIntro. iFrame "Hcnt Hera Hsb Hphi".
-      iSplitR; [by iApply eout_of_taint | by iRight]. }
-    iMod (era_inv_get k with "Hera") as (v so si P) "(#Hpin & Hslot & Hback)".
-    rewrite /era_slot.
-    iDestruct "Hslot" as "(Ho & Hi & Hoe & Hie & Hta & Hcs & HE & Hpures)".
-    iDestruct "Hpures" as "(%HP & %Htie & %Hcsb & %Hcsl)".
-    (* the PAIRED arm at [acc = []] is refuted by the escrow *)
-    iDestruct "Hcl" as "[[_ Hsd] | Hp]"; last first.
-    { iDestruct "Hp" as (v2 so2) "(#Hpin2 & Hfrag & %Hpure)".
-      iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
-      iDestruct (out_agree with "Hfrag Ho") as %->.
-      assert (HP0 : P = 0%nat)
-        by (rewrite HP; exact (eout_pure_nil_stage k ho so Hpure)).
-      destruct P as [| P']; [| discriminate HP0].
-      iDestruct "Hoe" as "[Hof _]".
-      iDestruct (out_frag_excl3 with "Hfrag Hof Ho") as "[]". }
-    (* ...and the founded arm at an ADOPTED era is refuted by its own seed *)
-    destruct P as [| P']; last first.
-    { iDestruct (oseed_excl with "Hsd Hoe") as "[]". }
-    iDestruct "Hoe" as "[Hfrag Ht]".
-    destruct (pcount_zero _ _ _ (eq_sym HP)) as [HEnil Hwnil].
-    assert (Hcsnil : o_cs so = []).
-    { apply nil_length_inv.
-      destruct (cs_len_ok_inv so Hcsl) as [[_ Hq] | [Hne _]].
-      - rewrite Hq HEnil. cbn [length]. by rewrite Nat.Div0.div_0_l.
-      - exfalso. apply Hne. rewrite Hwnil HEnil. cbn [length].
-        split; [reflexivity | by rewrite Nat.Div0.mod_0_l]. }
-    iMod (out_update v so so (MkO (o_cs so) (o_E so) (o_w so ++ [b]))
-            with "Hfrag Ho") as "[Hfrag Ho]".
-    iMod (turn_update v 0%nat 0%nat 1%nat with "Ht Hta") as "[Ht Hta]".
-    iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
-    iDestruct (E_lb_get with "HE") as "[HE #HElb]".
-    iAssert (cs_lb v []) as "#Hcslb0". { rewrite -Hcsnil. iExact "Hcslb". }
-    iAssert (E_lb v 0%nat) as "#HElb0".
-    { rewrite /E_lb. iApply (mono_nat_lb_own_le 0%nat with "HElb"). lia. }
-    iModIntro. iSplitR "Hfrag Ht".
-    - iFrame "Hcnt Hsb Hphi".
-      iApply ("Hback" $! (MkO (o_cs so) (o_E so) (o_w so ++ [b])) si 1%nat).
-      rewrite /era_slot. cbn [o_cs o_E o_w].
-      iFrame "Ho Hi Hsd Hie Hta Hcs HE". iPureIntro. split_and!.
-      + rewrite pcount_write -HP. reflexivity.
-      + exact Htie.
-      + exact Hcsb.
-      + apply (cs_len_ok_write so b Hcsl). right; right. by rewrite HEnil.
-    - iSplitL "Hfrag".
-      + iRight. iRight.
-        iExists v, (MkO (o_cs so) (o_E so) (o_w so ++ [b])).
-        iFrame "Hpin Hfrag". iPureIntro.
-        rewrite /eout_pure. cbn [o_cs o_E o_w]. rewrite HEnil Hwnil.
-        split_and!.
-        * by rewrite D_nil.
-        * rewrite pending_nil. apply (prefix_snoc_lookup [] _ b);
-            [apply prefix_nil | exact Hb].
-        * intros j x Hx. destruct (epu_lookup_nil_absurd j x Hx).
-        * intros j x Hx. destruct (epu_lookup_nil_absurd j x Hx).
-        * exact Hcsb.
-        * constructor.
-        * constructor.
-        * cbn [length]. lia.
-        * by left.
-      + iLeft. iExists v. iFrame "Hpin Ht Hcslb0 HElb0".
+      + apply (cs_len_ok_blk so a b); [by rewrite HlenE | lia | exact Hwnil
+                                      | exact Hcsl].
+      + rewrite Forall_app. split; [exact Hcsb |].
+        by rewrite Forall_singleton.
+    - iLeft. rewrite Hcs0. iFrame "Ht HElb Hcslb2".
   Qed.
 
   (* (R) THE READ.  [ws] is the window the read CONSUMED; [read_ok] is what
      [WpUart.read_link] hands over.  What it gives back: the pure prefix fact
-     SH-LINE turns into the line, and -- for a reader that will go on to
-     write, which is sh -- the era's pin and the two bounds (review S9),
-     the stage one at the window's far end, which at a line boundary is the
-     [17 q] the writer needs, and the CHOICE bound the block-first write
-     asks for.
+     SH-LINE turns into the line, THE TWO INDEX LAWS for the log's echoed
+     slice (which is what [ein_read_line] needs and no reader could otherwise
+     supply), and -- for a reader that will go on to write, which is sh --
+     the era's pin and the two bounds (review S9), the stage one at the
+     window's far end, which at a line boundary is the [17 q] the writer
+     needs, and the CHOICE bound the block-first write asks for.
 
-     THE EMPTY WINDOW HAS NO CREDENTIALS, and cannot: a read that consumed
-     nothing may meet a claim still in its FOUNDED arm, which holds no
-     ghost.  SH-LINE reads seventeen bytes, so it takes the third
-     disjunct. *)
-  Lemma ein_step_read (k : nat) (hi hl : list mobs) (pops : list log_entry)
+     NOTHING MOVES: the claim is rebuilt in the arm it arrived in (the window
+     arm's counter and the settled arm's alike), so this is an entailment and
+     not an update. *)
+  (* the read's whole pure account, shared by the two non-taint arms: they
+     carry the SAME [ein_pure], so the read never has to know which one it
+     met. *)
+  Lemma ein_read_pure (k : nat) (pops : list log_entry)
+      (dl ws : list (list mobs * bv 8)) (cs0 : list nat) :
+    read_ok pops dl ws -> ein_pure k pops dl cs0 ->
+    (dl ++ ws) `prefix_of` echoed pops
+    /\ ein_pure k pops (dl ++ ws) cs0
+    /\ ((length (dl ++ ws)) `div` length echo_line <= S (length cs0))%nat.
+  Proof.
+    intros Hread (Hlog & Hdisc & Hstamp & Hdlp & Hidx & Hbyte & Hbnd).
+    assert (Hnoer : forall e, e ∈ pops -> cons_erase (le_byte e) = false).
+    { intros e He. eapply disc_seg_no_erase; [by apply Hdisc |].
+      apply open_seg_ends_in. by apply (proj1 (proj1 Hlog e He)). }
+    assert (Hpref : (dl ++ ws) `prefix_of` echoed pops)
+      by (eapply read_window_prefix;
+          [exact Hlog | exact Hread | exact Hnoer | exact Hdlp]).
+    split; [exact Hpref |]. split.
+    - rewrite /ein_pure. split_and!;
+        [exact Hlog | exact Hdisc | exact Hstamp | exact Hpref | exact Hidx
+         | exact Hbyte | exact Hbnd].
+    - etrans; [| exact Hbnd]. apply Nat.Div0.div_le_mono.
+      by apply prefix_length.
+  Qed.
+
+  Lemma ein_step_read (k : nat) (hi : list mobs) (pops : list log_entry)
       (dl ws : list (list mobs * bv 8)) :
     read_ok pops dl ws ->
-    echo_led hl -∗ ein k hi pops dl ==∗
-      echo_led hl ∗ ein k hi pops (dl ++ ws)
+    ein k hi pops dl -∗
+      ein k hi pops (dl ++ ws)
       ∗ (T ∨ ⌜(dl ++ ws) `prefix_of` echoed pops⌝
+              ∗ ⌜E_index (seg_of (echoed pops))⌝
+              ∗ ⌜E_byte (seg_of (echoed pops))⌝
               ∗ (⌜ws = []⌝
                  ∨ ∃ (v : era_pins) (cs0 : list nat),
                      era_pin k v ∗ cs_lb v cs0
@@ -2435,87 +2163,56 @@ Section echo_out.
                      ∗ ⌜((length (dl ++ ws)) `div` length echo_line
                          <= S (length cs0))%nat⌝)).
   Proof.
-    intros Hread. iIntros "Hled Hcl".
-    iDestruct "Hcl" as "[#HT | [[%Hfr Hsd] | Hp]]".
-    - iModIntro. iFrame "Hled".
-      iSplitR; [by iApply ein_of_taint | by iLeft].
-    - (* FOUNDED: nothing has been echoed, so the window is empty *)
-      destruct Hfr as (Hlog & Hdisc & Hstamp & Hech & Hdlnil).
-      assert (Hws : ws = []).
-      { destruct ws as [| p ws']; [done | exfalso].
-        destruct Hread as (Hin & _).
-        destruct (Hin p ltac:(apply elem_of_cons; by left))
-          as (e & He & Hpe & Hech').
-        assert (Hp : p ∈ echoed pops)
-          by (rewrite -Hpe; by apply echoed_elem).
-        rewrite Hech in Hp. by apply elem_of_nil in Hp. }
-      subst ws. subst dl. rewrite app_nil_r.
-      iModIntro. iFrame "Hled". iSplitL "Hsd".
-      + iRight. iLeft. iFrame "Hsd". iPureIntro. by rewrite /ein_fresh.
-      + iRight. iSplit; [| iLeft; by iPureIntro].
-        iPureIntro. apply prefix_nil.
-    - (* PAIRED *)
-      iDestruct "Hp" as (v si) "(#Hpin & Hfrag & %Hpure)".
-      rewrite /echo_led. iDestruct "Hled" as "(Hcnt & Hera & Hsb & Hphi)".
-      iDestruct (era_inv_acc k v with "Hpin Hera")
-        as (so si2 P) "[Hslot Hback]".
-      rewrite /era_slot.
-      iDestruct "Hslot" as
-        "(Ho & Hi & Hoe & Hie & Hta & Hcs & HE & Hpures)".
-      iDestruct (in_agree with "Hfrag Hi") as %Heqs. subst si2.
-      iDestruct "Hpures" as "(%HP & %Htie & %Hcsb & %Hcsl)".
-      destruct Hpure as (Hlog & Hdisc & Hstamp & Hdlp & Hno & Hseg).
-      assert (Hnoer : forall e, e ∈ pops -> cons_erase (le_byte e) = false).
-      { intros e He. eapply disc_seg_no_erase; [by apply Hdisc |].
-        apply open_seg_ends_in. by apply (proj1 (proj1 Hlog e He)). }
-      assert (Hpref : (dl ++ ws) `prefix_of` echoed pops)
-        by (eapply read_window_prefix; [exact Hlog | exact Hread
-                                       | exact Hnoer | exact Hdlp]).
-      iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
-      iDestruct (E_lb_get with "HE") as "[HE #HElb]".
-      assert (Hlenle : (length (dl ++ ws) <= length (o_E so))%nat).
-      { apply prefix_length in Hpref.
-        assert (Hsl : length (echoed pops) = length (seg_of (echoed pops)))
-          by (by rewrite seg_of_length).
-        rewrite Hseg in Hsl. rewrite /stage_tie in Htie. rewrite -Htie. lia. }
-      iAssert (E_lb v (length (dl ++ ws))) as "#HElb2".
-      { rewrite /E_lb.
-        iApply (mono_nat_lb_own_le (length (dl ++ ws)) with "HElb"). lia. }
-      (* THE CHOICE BOUND the block-first write asks for *)
-      assert (Hcsbnd : ((length (dl ++ ws)) `div` length echo_line
-                        <= S (length (o_cs so)))%nat).
-      { pose proof echo_line_length as HLL.
-        assert (Hmono : ((length (dl ++ ws)) `div` length echo_line
-                         <= length (o_E so) `div` length echo_line)%nat)
-          by (apply Nat.Div0.div_le_mono; lia).
-        destruct (cs_len_ok_inv so Hcsl) as [[_ Hq] | [_ Hq]]; lia. }
-      iModIntro. iSplitR "Hfrag".
-      + iFrame "Hcnt Hsb Hphi". iApply ("Hback" $! so si P).
-        rewrite /era_slot. iFrame "Ho Hi Hoe Hie Hta Hcs HE".
-        iPureIntro. by split_and!.
-      + iSplitL "Hfrag".
-        * iRight. iRight. iExists v, si. iFrame "Hpin Hfrag".
-          iPureIntro. by split_and!.
-        * iRight. iSplit; [by iPureIntro |]. iRight.
-          iExists v, (o_cs so). iFrame "Hpin Hcslb HElb2".
-          by iPureIntro.
+    intros Hread. iIntros "Hcl".
+    iDestruct "Hcl" as "[#HT | [Hs | Hwn]]".
+    - iSplitR; [by iApply ein_of_taint | by iLeft].
+    - iDestruct "Hs" as (v n cs0) "(#Hpin & Hw & %Hn & #HElb & #Hcslb & %Hp)".
+      pose proof Hp as Hp2.
+      destruct Hp2 as (_ & _ & _ & _ & Hidx & Hbyte & _).
+      destruct (ein_read_pure k pops dl ws cs0 Hread Hp)
+        as (Hpref & Hp' & Hbnd').
+      iSplitL "Hw".
+      { rewrite /ein. iRight. iLeft. iExists v, n, cs0.
+        iFrame "Hpin Hw HElb Hcslb". iPureIntro. by split. }
+      iRight. iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+      iSplitR; [by iPureIntro |].
+      iRight. iExists v, cs0. iFrame "Hpin Hcslb". iSplitR "".
+      + iApply (E_lb_of_lb v (seg_of (echoed pops)) (length (dl ++ ws)));
+          [rewrite seg_of_length; by apply prefix_length | iExact "HElb"].
+      + by iPureIntro.
+    - iDestruct "Hwn" as (v n cs0)
+        "(#Hpin & Hw & %Hn & #HElb & #Hcslb & %Hp)".
+      pose proof Hp as Hp2.
+      destruct Hp2 as (_ & _ & _ & _ & Hidx & Hbyte & _).
+      destruct (ein_read_pure k pops dl ws cs0 Hread Hp)
+        as (Hpref & Hp' & Hbnd').
+      iSplitL "Hw".
+      { rewrite /ein. iRight. iRight. iExists v, n, cs0.
+        iFrame "Hpin Hw HElb Hcslb". iPureIntro. by split. }
+      iRight. iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+      iSplitR; [by iPureIntro |].
+      iRight. iExists v, cs0. iFrame "Hpin Hcslb". iSplitR "".
+      + iApply (E_lb_of_lb v (seg_of (echoed pops)) (length (dl ++ ws)));
+          [rewrite seg_of_length; by apply prefix_length | iExact "HElb"].
+      + by iPureIntro.
   Qed.
 
-  (* ...and the LINE, which is what SH-LINE reads off it. *)
-  Lemma ein_read_line (k : nat) (si : istage) (pops : list log_entry)
+  (* ...and the LINE, which is what SH-LINE reads off it.  Its [E_byte]
+     premise is now an EXPORT of the read ([read_ret]), which is what the
+     landed shape (stated over the input stage's own [i_E]) could not be. *)
+  Lemma ein_read_line (pops : list log_entry)
       (dl ws : list (list mobs * bv 8)) (q : nat) :
-    ein_pure k si pops dl ->
-    E_byte (i_E si) ->
+    E_byte (seg_of (echoed pops)) ->
     (dl ++ ws) `prefix_of` echoed pops ->
     length dl = (length echo_line * q)%nat ->
     length ws = length echo_line ->
     snd <$> ws = echo_line.
   Proof.
-    intros (_ & _ & _ & _ & _ & Hseg) HE Hp Hdl Hws.
+    intros HE Hp Hdl Hws.
     rewrite -(seg_of_snd ws).
-    apply (read_window_line (i_E si) (seg_of dl) (seg_of ws) q).
+    apply (read_window_line (seg_of (echoed pops)) (seg_of dl) (seg_of ws) q).
     - exact HE.
-    - rewrite -seg_of_app -Hseg. destruct Hp as [z Hz]. rewrite Hz.
+    - rewrite -seg_of_app. destruct Hp as [z Hz]. rewrite Hz.
       exists (seg_of z). by rewrite seg_of_app.
     - by rewrite seg_of_length.
     - by rewrite seg_of_length.
@@ -2525,8 +2222,7 @@ Section echo_out.
      WITNESS [ho]; [App.Htx] supplies [ho `prefix_of` h] and the era stamp at
      [h], the claim carries the stamp at [ho], and
      [EchoOutPure.open_seg_prefix_boots] puts the two segments in one cycle.
-     [EchoOutPure.good_out_of_stage] then turns the stage into [good_out].
-     THE LEDGER IS NOT NEEDED HERE AT ALL. *)
+     [EchoOutPure.good_out_of_stage] then turns the stage into [good_out]. *)
   Lemma eout_drain (k : nat) (h ho : list mobs)
       (acc : list (bv 8)) (seg : list mobs) :
     trace_shape h true ->
@@ -2538,64 +2234,39 @@ Section echo_out.
   Proof.
     intros Hsh Hk Hpre Hins Hwire. subst k. rewrite /eout.
     iIntros "Hcl".
-    iDestruct "Hcl" as "[#HT | [[%Hnil Hsd] | Hp]]".
+    iDestruct "Hcl" as "[#HT | Hp]".
     - iSplitR; [iLeft; iExact "HT" | iLeft; iExact "HT"].
-    - iSplitL "Hsd".
-      + iRight. iLeft. iFrame "Hsd". by iPureIntro.
-      + iRight. iPureIntro.
-        assert (Hw : obs_wire Uart0 seg = []).
-        { rewrite Hnil in Hwire. by apply prefix_nil_inv in Hwire. }
-        exists []. split; [constructor |].
-        rewrite /sess Hw. apply prefix_nil.
-    - iDestruct "Hp" as (v so) "(#Hpin & Hfrag & %Hpure)".
-      pose proof Hpure as Hpure2.
-      destruct Hpure2 as (Hacc & Hw & Hidx & Hbyte & Hcs' & Hdsc & Hpre1
+    - iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & HE & Hwo & %Hall)".
+      pose proof Hall as Hall2.
+      destruct Hall2 as (Hpure & Hcsl & Hcsb).
+      destruct Hpure as (Hacc & Hwp & Hidx & Hbyte & Hcs' & Hdsc & Hpre1
                          & Hpre2 & Hpre3).
-      iSplitL "Hfrag".
-      { iRight. iRight. iExists v, so. iFrame "Hpin Hfrag".
-        by iPureIntro. }
+      iSplitL "Hta Hcs HE Hwo".
+      { iRight. iExists v, so. iFrame "Hpin Hta Hcs HE Hwo". by iPureIntro. }
       iRight. iPureIntro.
       assert (Hlen : (length (o_E so) <= length (ins seg))%nat).
       { rewrite Hins. destruct Hpre3 as [HEnil | Hbo].
         - rewrite HEnil. cbn [length]. lia.
         - etrans; [exact Hpre2 |]. apply prefix_length, ins_prefix_of.
-          apply open_seg_prefix_boots; [exact Hpre | by rewrite Hbo | exact Hsh]. }
-      apply (good_out_of_stage (o_cs so) (o_E so) (o_w so) seg Hcs' Hbyte Hw).
+          apply open_seg_prefix_boots;
+            [exact Hpre | by rewrite Hbo | exact Hsh]. }
+      apply (good_out_of_stage (o_cs so) (o_E so) (o_w so) seg Hcs' Hbyte Hwp).
       + rewrite -Hacc. exact Hwire.
       + exact Hlen.
   Qed.
 
   (* ==================================================================== *)
   (*  7.  THE LINKS: the claims wrapped onto the kernel's own console      *)
-  (*      contracts (lane ECHO-OUT part 3, C)                              *)
+  (*      contracts                                                       *)
   (*                                                                      *)
   (*  A link runs at [⊤ ∖ ↑uartN Uart0] -- the store's device node opens   *)
-  (*  the port invariant and the ghost step runs inside it -- and [obsN]   *)
-  (*  is disjoint from [uartN], so a link MAY open the observation         *)
-  (*  invariant and reach the application's ledger.  What it may NOT do is *)
-  (*  compare a history against the ledger's: the observation AUTHORITY    *)
-  (*  lives in the state interpretation, and no link holds it.  That is    *)
-  (*  why the ledger is history-free and every same-cycle fact travels in  *)
-  (*  the claim's own witness.                                            *)
+  (*  the port invariant and the ghost step runs inside it.  IT OPENS      *)
+  (*  NOTHING ELSE: every authority the era has is in the claim the link   *)
+  (*  is handed, so no link reaches the application's ledger and           *)
+  (*  [App.Happ_echo] stays a CLOSED entailment.                           *)
   (* ==================================================================== *)
   Section echo_links.
     Context `{HRg : !riscvGS Σ}.
-
-    (* THE LEDGER ACCESSOR a link spends.  [AppEcho] builds it from
-       [RiscvPtsto.obs_inv] and the record's own obs-predicate equation
-       ([RiscvAdequacy.obs_ledger_at (app_R A c) γobs]); stated here as a
-       parameter so that this file stays below the record.  The ledger's
-       HISTORY is existentially bound and given back unchanged: no link
-       moves it, and no link may read it against its own. *)
-    Definition led_acc : iProp Σ :=
-      (□ |={⊤ ∖ ↑uartN Uart0, ⊤ ∖ ↑uartN Uart0 ∖ ↑obsN}=>
-          ∃ hl : list mobs,
-            echo_led hl
-            ∗ (echo_led hl ={⊤ ∖ ↑uartN Uart0 ∖ ↑obsN, ⊤ ∖ ↑uartN Uart0}=∗
-                 True))%I.
-
-    Global Instance led_acc_persistent : Persistent led_acc.
-    Proof. rewrite /led_acc. apply _. Qed.
 
     (* the two record equations, as section parameters: [App.Happ_echo] and
        [App.Hinit_boot] hand them over at the [boot_fixedGS] literal *)
@@ -2611,41 +2282,38 @@ Section echo_out.
       in_res_at Uart0 kk hh pp dd = ein kk hh pp dd.
     Proof. rewrite /in_res_at. by rewrite Hin. Qed.
 
-    (* (W) THE WRITE LINK, INSIDE A BLOCK.  What IO-LEAF spends per byte:
-       the era's pin, its cursor and the two persistent bounds, plus the
-       Coq-level fact that the byte is the [P]-th of the era's process
-       stream up to stage [S n0].  What it gets back in [Φ] is the cursor
-       advanced and the same two bounds -- or the taint, if the ledger was
-       already off the discipline when the byte went out.
+    (* (W) THE WRITE LINK, INSIDE A BLOCK.  What IO-LEAF spends per byte: the
+       era's pin, its cursor and the two persistent bounds, plus the
+       Coq-level fact that the byte is the [P]-th of the era's process stream
+       up to stage [S n0].  What it gets back in [Φ] is the cursor advanced
+       and the same two bounds -- or the taint, if the claim was already off
+       the discipline when the byte went out.
+
+       INIT'S FIRST BANNER BYTE IS THIS LINK at [P = 0], [n0 = 0],
+       [cs0 = []]: [app_turn] ([eturn]) is exactly its argument list.
 
        THE WITNESS IS NOT MOVED: a process byte answers no input, so the
-       claim stays at the history it was read at ([out_link] lets the
-       writer choose, and choosing [o] is what keeps the claim's
-       same-cycle facts where they are). *)
+       claim stays at the history it was read at. *)
     Lemma echo_write_link (k : nat) (v : era_pins) (P n0 : nat) (b : bv 8)
         (cs0 : list nat) (Φ : iProp Σ) :
       ((n0 `div` length echo_line) <= length cs0)%nat ->
       proc_upto cs0 (S n0) !! P = Some b ->
-      led_acc -∗ era_pin k v -∗ turn v P -∗ cs_lb v cs0 -∗ E_lb v n0 -∗
+      era_pin k v -∗ turn v P -∗ cs_lb v cs0 -∗ E_lb v n0 -∗
       (((turn v (S P) ∗ cs_lb v cs0 ∗ E_lb v n0) ∨ T) -∗ Φ) -∗
       out_link Uart0 k b Φ.
     Proof.
       intros Hdiv Hb.
-      iIntros "#Hacc #Hpin Ht #Hcslb #HElb HΦ" (o acc) "#Hlb Hres".
+      iIntros "#Hpin Ht #Hcslb #HElb HΦ" (o acc) "#Hlb Hres".
       rewrite !out_res_at0.
-      iMod "Hacc" as (hl) "[Hled Hcl]".
-      iMod (eout_step_write k v P n0 b cs0 (default [] o) hl acc Hdiv Hb
-              with "Hpin Ht Hcslb HElb Hled Hres")
-        as "(Hled & Hres & Hret)".
-      iMod ("Hcl" with "Hled") as "_".
+      iMod (eout_step_write k v P n0 b cs0 (default [] o) acc Hdiv Hb
+              with "Hpin Ht Hcslb HElb Hres") as "(Hres & Hret)".
       iModIntro. iExists o. rewrite out_res_at0. iFrame "Hlb Hres".
       by iApply "HΦ".
     Qed.
 
     (* (W') THE WRITE LINK AT A BLOCK'S FIRST BYTE.  The alternative's INDEX
-       is the program's own knowledge (sh knows whether it is about to print
-       "hello world" or the exec failure) and the step files it, so the
-       bound that comes back has grown by one. *)
+       is the program's own knowledge and the step files it, so the bound
+       that comes back has grown by one. *)
     Lemma echo_write_link_blk (k : nat) (v : era_pins) (P n0 a : nat)
         (b : bv 8) (cs0 : list nat) (Φ : iProp Σ) :
       (0 < n0)%nat ->
@@ -2654,19 +2322,16 @@ Section echo_out.
       P = length (proc_upto cs0 n0) ->
       (a < length line_alts)%nat ->
       line_alts !!! a !! 0%nat = Some b ->
-      led_acc -∗ era_pin k v -∗ turn v P -∗ cs_lb v cs0 -∗ E_lb v n0 -∗
+      era_pin k v -∗ turn v P -∗ cs_lb v cs0 -∗ E_lb v n0 -∗
       (((turn v (S P) ∗ cs_lb v (cs0 ++ [a]) ∗ E_lb v n0) ∨ T) -∗ Φ) -∗
       out_link Uart0 k b Φ.
     Proof.
       intros Hpos Hmod Hdiv HPeq Halt Hhead.
-      iIntros "#Hacc #Hpin Ht #Hcslb #HElb HΦ" (o acc) "#Hlb Hres".
+      iIntros "#Hpin Ht #Hcslb #HElb HΦ" (o acc) "#Hlb Hres".
       rewrite !out_res_at0.
-      iMod "Hacc" as (hl) "[Hled Hcl]".
-      iMod (eout_step_write_blk k v P n0 a b cs0 (default [] o) hl acc
+      iMod (eout_step_write_blk k v P n0 a b cs0 (default [] o) acc
               Hpos Hmod Hdiv HPeq Halt Hhead
-              with "Hpin Ht Hcslb HElb Hled Hres")
-        as "(Hled & Hres & Hret)".
-      iMod ("Hcl" with "Hled") as "_".
+              with "Hpin Ht Hcslb HElb Hres") as "(Hres & Hret)".
       iModIntro. iExists o. rewrite out_res_at0. iFrame "Hlb Hres".
       by iApply "HΦ".
     Qed.
@@ -2674,13 +2339,16 @@ Section echo_out.
     (* (R) THE READ LINK.  [ws] is the window the read CONSUMED and
        [ConsLog.read_ok] is the kernel's whole pure account of it.  What the
        reader gets back, at the log the invariant actually held: the PREFIX
-       fact SH-LINE turns into the line, and -- for a non-empty window -- the
-       era's pin with the two bounds a later WRITE spends, the stage one at
-       the window's far end (which at a line boundary is the [17 q] the
-       block-first write asks for) and the CHOICE bound beside it. *)
+       fact and the two INDEX LAWS SH-LINE turns into the line
+       ([ein_read_line]), and -- for a non-empty window -- the era's pin with
+       the two bounds a later WRITE spends, the stage one at the window's far
+       end (which at a line boundary is the [17 q] the block-first write asks
+       for) and the CHOICE bound beside it. *)
     Definition read_ret (k : nat) (ws : list (list mobs * bv 8)) : iProp Σ :=
       (T ∨ ∃ (pops : list log_entry) (dl : list (list mobs * bv 8)),
          ⌜read_ok pops dl ws⌝ ∗ ⌜(dl ++ ws) `prefix_of` echoed pops⌝
+         ∗ ⌜E_index (seg_of (echoed pops))⌝
+         ∗ ⌜E_byte (seg_of (echoed pops))⌝
          ∗ (⌜ws = []⌝
             ∨ ∃ (v : era_pins) (cs0 : list nat),
                 era_pin k v ∗ cs_lb v cs0 ∗ E_lb v (length (dl ++ ws))
@@ -2689,19 +2357,64 @@ Section echo_out.
 
     Lemma echo_read_link (k : nat) (ws : list (list mobs * bv 8))
         (Φ : iProp Σ) :
-      led_acc -∗ (read_ret k ws -∗ Φ) -∗ read_link k ws Φ.
+      (read_ret k ws -∗ Φ) -∗ read_link k ws Φ.
     Proof.
-      iIntros "#Hacc HΦ" (o pops dl) "#Hlb Hres %Hread".
+      iIntros "HΦ" (o pops dl) "#Hlb Hres %Hread".
       rewrite !in_res_at0.
-      iMod "Hacc" as (hl) "[Hled Hcl]".
-      iMod (ein_step_read k (default [] o) hl pops dl ws Hread
-              with "Hled Hres") as "(Hled & Hres & Hret)".
-      iMod ("Hcl" with "Hled") as "_".
+      iDestruct (ein_step_read k (default [] o) pops dl ws Hread with "Hres")
+        as "(Hres & Hret)".
       iModIntro. iExists o. rewrite in_res_at0. iFrame "Hlb Hres".
       iApply "HΦ". rewrite /read_ret.
-      iDestruct "Hret" as "[HT | [%Hpref Hrest]]"; [by iLeft |].
-      iRight. iExists pops, dl. iFrame "Hrest". by iPureIntro.
+      iDestruct "Hret" as "[HT | (%Hpref & %Hidx & %Hbyte & Hrest)]";
+        [by iLeft |].
+      iRight. iExists pops, dl. iFrame "Hrest". iPureIntro. by split_and!.
     Qed.
+
+    (* ==================================================================== *)
+    (*  THE TWO KERNEL STATEMENTS LANE CONS-IO F CHANGES, AS LOCAL COPIES.   *)
+    (*                                                                      *)
+    (*  F gives [RiscvPtsto] the field [riscv_win_res : nat -> iProp Σ] (the *)
+    (*  application's per-era echo window token, riding the PLIC payload     *)
+    (*  beside the receive token), adds it as a premise of                   *)
+    (*  [SpecConsoleintr.cons_echo_shift] and returns it in                  *)
+    (*  [WpUart.in_append]'s post.  Nothing else about the console contracts *)
+    (*  moves: [WpUart.echo_link], [out_link] and [read_link] above are the  *)
+    (*  landed ones.                                                        *)
+    (*                                                                      *)
+    (*  These two definitions are those statements with [riscv_win_res]      *)
+    (*  ALREADY at [ewin] -- which is what [App.Happ_echo]'s new equation     *)
+    (*  [riscv_win_res = app_win A c] will say -- so that part 4's totality  *)
+    (*  argument is checkable against the real shape and part 5 has          *)
+    (*  something to build [echo_happ_echo] on.  THEY ARE REPLACED BY        *)
+    (*  [WpUart.in_append] AND [SpecConsoleintr.cons_echo_shift] AT F'S      *)
+    (*  LANDING, and nothing outside this file may use them.                 *)
+    (* ==================================================================== *)
+    Definition in_append_F (k : nat) (h : list mobs) (c : bv 8)
+        (cs : list (bv 8)) (Φ : iProp Σ) : iProp Σ :=
+      (∀ (o : option (list mobs)) (pops : list log_entry)
+         (dl : list (list mobs * bv 8)),
+         obs_hist_lb_o o -∗ in_res_at Uart0 k (default [] o) pops dl -∗
+         ⌜forall e, e ∈ pops -> hist_ext (le_hist e) h⌝
+         ={⊤ ∖ ↑uartN Uart0}=∗
+         ∃ o' : option (list mobs),
+           obs_hist_lb_o o' ∗
+           in_res_at Uart0 k (default [] o') (pops ++ [(h, c, cs)]) dl
+           ∗ ewin k ∗ Φ)%I.
+
+    Fixpoint in_run_F (k : nat) (h : list mobs) (c : bv 8)
+        (pre bs : list (bv 8)) (Φ : iProp Σ) : iProp Σ :=
+      match bs with
+      | [] => in_append_F k h c pre Φ
+      | b :: bs' => in_append_F k h c pre Φ
+                    ∧ echo_link k h b (in_run_F k h c (pre ++ [b]) bs' Φ)
+      end%I.
+
+    Definition cons_echo_shift_F (g : nat) : iProp Σ :=
+      (□ ∀ (h : list mobs) (c : bv 8) (cs : list (bv 8)) (Φ : iProp Σ),
+          ⌜obs_ends_in Uart0 h c⌝ -∗ ⌜obs_boots h = S g⌝ -∗
+          ⌜cons_echo c cs⌝ -∗
+          riscv_rx_tag h -∗ obs_hist_lb h -∗ ewin (S g) -∗ Φ -∗
+          in_run_F (S g) h c [] cs Φ)%I.
   End echo_links.
 
 End echo_out.

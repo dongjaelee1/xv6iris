@@ -36,6 +36,10 @@ Require Import UmodeArith.  (* [zext8_moi] -- the byte in a1, at the width
 Require Import RegFile.
 Require Import UexecSlot.   (* [uvis] -- the key vocabulary *)
 Require Import UserHeap.    (* [ubyte] -- the byte putc spills into its frame *)
+Require Import UserPerm.    (* [perm_of] / [lazy_free] -- the rows the write
+                               leaf hands back with the short arm's reason *)
+Require Import ProcPtOwn.   (* [proc_pt_wf] *)
+Require Import UserPtTree.  (* [uva_rmapped] *)
 Require Import UkRun UkRunLeaf UkRunSys.
 Require Import UCodeInit.
 Require Import TsoCtx.
@@ -1304,6 +1308,21 @@ Section UkInit.
     iApply ("Hcont" $! h' ret with "Hbuf [$HCo $HR] Hrun").
   Qed.
 
+  (* ...AND WHAT THE BOOT HANDS <init> SO THAT ONE STRING MAY BE JUSTIFIED
+     (lane IO-LEAF): give it the descriptor table and it gives back a
+     per-byte family for the [len] bytes [f], the family's start token, and
+     the table.  LINEAR -- it carries the era's credential, which is spent
+     once -- and quantified over the LEDGER because which row fd 1 is at is
+     decided inside init's own console prologue, long after the boot, and
+     the application's side has to answer for every row it can be. *)
+  Definition kinit_banner_pay (len : nat) (f : nat -> bv 8) : iProp Σ :=
+    (∀ l : list fdstate,
+       UserFd.ustd γfd l -∗
+       ∃ Ch : nat -> iProp Σ,
+         □ (∀ j : nat, ⌜(j < len)%nat⌝ -∗
+              kinit_w1 (mword_of_int 1 : mword 64) (f j) (Ch j) (Ch (S j)))
+         ∗ Ch 0%nat ∗ (Ch len -∗ UserFd.ustd γfd l))%I.
+
   (* ...AND THE SAME STUB WITH THE OUTPUT CHAIN AND THE POST                *)
   (* (app-echo.md, lane IO-LEAF, first half; the leaf is                    *)
   (* [UkRunSys.wp_uk_ecall_write_chain]).                                   *)
@@ -1316,19 +1335,34 @@ Section UkInit.
   (* was pushed.  Both stubs stand: the quiet one keeps working from the    *)
   (* licence, and IO-LEAF's second half swaps the call only where /init has *)
   (* a claim to make.                                                       *)
+  (* ...AND IT CARRIES THE CALLER'S SOURCE RUN (lane IO-LEAF), which is
+     what makes the post's SHORT arm refutable: see
+     [UkRunSys.wp_uk_ecall_write_chain_buf].  The run and the two rows go
+     straight through. *)
   Lemma wp_kinit_write_chain (h : CpuId) (m : regfile) (avail : nat)
-      (fdep : sfam) (l : list fdstate) :
+      (fdep : sfam) (l : list fdstate)
+      (dq : dfrac) (nb : nat) (fb : nat -> bv 8) :
     init_code γt -∗
     urun N h m (mword_of_int InitSyms.write) avail -∗
     udepwf_std N (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
       (add_vec_int (mword_of_int InitSyms.write : mword 64) 2) 16 fdep l -∗
     UserFd.ustd γfd l -∗
+    ubytesq γd dq (uint (m !!! Regidx a1_idx)) nb fb -∗
     (∀ (h' : CpuId) (ret : mword 64) (W : uvis) (cw' : Z) (cs' : gset gname),
        ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx a0_idx⌝ -∗
        ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx a1_idx⌝ -∗
        ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx a2_idx⌝ -∗
        ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       ⌜uvis_lazy W = false⌝ -∗
+       ⌜ forall (P : uptd) (j : nat),
+           ProcPtOwn.proc_pt_wf P ->
+           perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
+           lazy_free (ud_um P) (uvis_sz W) ->
+           (j < nb)%nat ->
+           UserPtTree.uva_rmapped P
+             (uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))) ⌝ -∗
        UserFd.ustd γfd l -∗
+       ubytesq γd dq (uint (m !!! Regidx a1_idx)) nb fb -∗
        spost_at uslot 16 fdep W ret (uvis_M W) (uvis_fd W) cw' cs' -∗
        urun N h'
          (<[Regidx a0_idx := ret]>
@@ -1337,7 +1371,7 @@ Section UkInit.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode Hrun Hsb Hstd Hcont".
+    iIntros "#Hcode Hrun Hsb Hstd Hbuf Hcont".
     destruct init_syms_pins as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hwrite & _). rewrite Hwrite.
     (* ---- 0x392  c.li a7,16 ---- *)
     iApply (wp_uk_cli N h m (mword_of_int 0x392)
@@ -1357,19 +1391,28 @@ Section UkInit.
     iIntros (h1) "Hrun".
     set (m1 := <[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m).
     (* ---- 0x394  ecall -- THE CHAIN-PAYING WRITE ---- *)
-    iApply (wp_uk_ecall_write_chain N h1 m1 (mword_of_int 0x394) avail fdep l
+    (* the buffer address is the CALLER's a1: the stub writes a7 and then
+       a0, and neither is a1 *)
+    assert (Ha1m1 : m1 !!! Regidx a1_idx = m !!! Regidx a1_idx)
+      by exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx)
+                  (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)).
+    rewrite <- Ha1m1.
+    iApply (wp_uk_ecall_write_chain_buf N h1 m1 (mword_of_int 0x394) avail
+              fdep l dq nb fb
               ltac:(unfold m1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx)
                                (mword_of_int 16 : mword 64));
                     vm_compute; reflexivity)
               ltac:(vm_compute; reflexivity)
-              with "[] Hrun Hsb Hstd").
+              with "[] Hrun Hsb Hstd Hbuf").
     { iApply (uis_init_394 with "Hcode"). }
     assert (E394 : add_vec_int (mword_of_int 0x394 : mword 64) 4
                    = mword_of_int 0x398)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E394.
-    iIntros (h2 ret W cw' cs') "%Ha0 %Ha1 %Ha2 %Htk Hstd Hpost Hrun".
+    iIntros (h2 ret W cw' cs')
+      "%Ha0 %Ha1 %Ha2 %Htk %Hlz %Hnf Hstd Hbuf Hpost Hrun".
+    rewrite Ha1m1.
     set (m2 := <[Regidx a0_idx := ret]> m1).
     (* ---- 0x398  c.jr ra ---- *)
     assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
@@ -1389,7 +1432,8 @@ Section UkInit.
     iIntros (h3) "Hrun".
     (* the three argument words are the CALLER's: the stub writes a7 and
        then a0, and neither is a0/a1/a2 before the bump *)
-    iApply ("Hcont" $! h3 ret W cw' cs' with "[%] [%] [%] [%] Hstd Hpost Hrun").
+    iApply ("Hcont" $! h3 ret W cw' cs'
+              with "[%] [%] [%] [%] [%] [%] Hstd Hbuf Hpost Hrun").
     { rewrite Ha0 /m1.
       exact (upd_ne m (Regidx a7_idx) (Regidx a0_idx)
                (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)). }
@@ -1400,6 +1444,8 @@ Section UkInit.
       exact (upd_ne m (Regidx a7_idx) (Regidx a2_idx)
                (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)). }
     { exact Htk. }
+    { exact Hlz. }
+    { rewrite <- Ha1m1. exact Hnf. }
   Qed.
 
 

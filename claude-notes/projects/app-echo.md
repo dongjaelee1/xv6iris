@@ -117,8 +117,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   cone's per-byte family, the banner site); M1(e) LANDED 2026-09-16
   (`9250b2e81`; the note below: `UInitBanner.kinit_banner0_holds`; M1
   complete for round 0); M1(f) LANDED 2026-09-16 (`eab187afb`; the note
-  below: fds 1-2 pinned, the banner free of the law); M2 (echo's writes) IN
-  FLIGHT in the main checkout; M3-M6 after TRAP-ROWS M2 part 2.
+  below: fds 1-2 pinned, the banner free of the law); M2 LANDED 2026-09-16
+  (`88127e629`; the note below: echo's writes through the link); TXT-ROW
+  (`-sup`) and M3 (the shell's transport, main checkout) next; M4-M6 after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
@@ -3349,6 +3350,41 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M2 LANDED (2026-09-16; `88127e629` on `7e816baa8`; UkEcho.v,
+UEchoKernel.v, new UEchoOut.v; +1262/-77; builds io14-io21 in the main
+checkout; audit the thirteen; lemma_diff CLEAN; no Admitted).  ECHO'S FOUR
+CONSOLE WRITES GO THROUGH THE ERA'S WRITE LINK.  Echo's share of `line_alts
+!!! 0` is its first TWELVE bytes (the prompt is sh's, after wait): argv[1]
+(0..4; the block-first byte files `a = 0`), " " (5, .rodata), argv[2]
+(6..10), "\n" (11, .rodata).  `UkEcho`: the walk at an abstract PER-CALL
+obligation `kecho_w ua nb Ci Co` (echo's writes are runs, not bytes),
+`kecho_pay args k i Ci Cend` recursing on the argv scan's own `k`,
+`kecho_pay_all` ADDITIVE so main's `argc <= 1` branch and its scan are both
+answered from one supply; `kecho_w_of_law`/`kecho_pay_of_law` = the old
+behaviour at the flagged deposit, so `UEchoKernel.echo_uexec_slot`,
+`UexecCond.echo_gate_slot`, `UShEcho` keep their statements and UkShEcho.v
+needed no change; the section payload is `ukn_const` (was `ukn_triv`),
+`wp_kecho_exit` takes `ukn_pay N (-1)` as a resource, `wp_kecho_write_chain`
+takes the caller's source run.  `UEchoOut` (above UkWriteLeaf, UInitBanner's
+job at echo): `echo_stage ps0 cs0 n0 P` (`n0 = S (length cs0) * 17`, `P =
+length (proc_upto ps0 cs0 n0)`, `pro_pin`), `ech v ps0 cs0 n0 P p := (turn v
+(P+p) ∗ ps_lb ∗ cs_lb v (echcs cs0 p) ∗ E_lb v n0) ∨ T`, the exit payload
+`echq := fun _ => ech … 12` (status-independent), `ech_step`/`ech_chain`
+(the additive node is why one copy answers cursor and step),
+`kecho_pay_of_link` from four PERSISTENT things (links, era pin, `uargv`,
+`echo_rodata`), `echo_uexec_slot_at` = the entry constructor at the era's
+stage.  OWED: (1) `echo_wtxt` -- the short-arm row for echo's two .rodata
+literals: `wp_uk_ecall_write_chain_buf` reads it off `uheap_ubytes_w` (the
+WRITABLE half) so it does not cover text; the true text half is proved
+(`lazy_free_rmapped`) but only the leaf can hand it out -> lane TXT-ROW adds
+`wp_uk_ecall_write_chain_txt` beside `_buf`; (2) M3's: `echo_out_argv args`
+(argc = 3, argv[1..2] the line's tokens -- sh's parse) and `take NSTD
+(uvis_fd W) !! 1 = Some console` (the child inherits init's pinned table via
+the exec channel).  On `echo_uexec_slot_at` NO row spends `udepw_law 16`.
+Two traps recorded: `vmbuild.sh` from the repo root only; a bare
+`` `{!ctokG Σ} `` beside `xv6G Σ` is a SECOND camera (copy UInitBanner's
+context list).  Handover: scratchpad `io-leaf-handover.md`.
 
 IO-LEAF M1(f) LANDED (2026-09-16; `eab187afb` on `8367785f1`; 7 files
 +330/-199; builds fd1-fd2 in `-sup`; audit the thirteen; lemma_diff 4 GONE

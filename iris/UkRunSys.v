@@ -3492,15 +3492,39 @@ Section UkRunSys.
   (* descriptor and no directory -- with the ledger agreement taken where   *)
   (* both halves are in one hand.                                          *)
   (* ------------------------------------------------------------------- *)
-  Lemma wp_uk_ecall_write_chain (N : uk_names Σ) (h : CpuId)
+  (* ...AND THE SAME LEAF WITH THE CALLER'S SOURCE RUN IN HAND (lane        *)
+  (* IO-LEAF; the twin of [wp_uk_ecall_read_recv]'s no-fault row, one test  *)
+  (* weaker).                                                              *)
+  (*                                                                       *)
+  (* WHY IT IS OWED.  Row 16's post carries the SHORT arm and its reason    *)
+  (* (lane TRAP-ROWS, T1): a count below the request says that some byte of *)
+  (* the run at or after the cursor is on a page the kernel could not READ  *)
+  (* through ([SpecFilewrite.write_cons_short]).  A program threading a     *)
+  (* per-byte cursor through the chain CANNOT LIVE WITH THAT ARM -- it hands *)
+  (* back the cursor UNMOVED while the program's own string index has       *)
+  (* advanced -- and it cannot refute it either: the refutation needs       *)
+  (* [UserHeap.uw_addr (uvis_perm W)] at the buffer, and [uvis_perm W] is   *)
+  (* bound by [UkRun.urun]'s existentials.  THIS LEAF CAN: its key IS       *)
+  (* [UexecSlot.uvis_of_run] at the very map the heap it destructs is at,   *)
+  (* exactly as the READ leaf's own row is handed out from there.           *)
+  (*                                                                       *)
+  (* THE RUN IS A PREMISE and comes straight back: 16 writes no user byte.  *)
+  (* [nb] is the CALLER's, not the request's -- a caller refutes the arm    *)
+  (* only as far as the run it owns, and at [nb = 0] this is exactly the    *)
+  (* buffer-free leaf below, which is how the two stubs that hold no run    *)
+  (* ([UkSh]'s, [UkEcho]'s) keep their statements.                          *)
+  (* ------------------------------------------------------------------- *)
+  Lemma wp_uk_ecall_write_chain_buf (N : uk_names Σ) (h : CpuId)
       (m : regfile) (pc : mword 64) (avail : nat) (fdep : sfam)
-      (l : list fdstate) :
+      (l : list fdstate) (dq : dfrac) (nb : nat) (f : nat -> bv 8) :
     usysno m = 16 ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     udepwf_std N m pc 16 fdep l -∗
     UserFd.ustd (ukn_fd N) l -∗
+    UserHeap.ubytesq (ukn_d N) dq
+      (uint (m !!! Regidx (mword_of_int 11))) nb f -∗
     (∀ (h' : CpuId) (r : mword 64) (W : uvis) (cw' : Z) (cs' : gset gname),
        (* THE TRAPPING KEY'S THREE ARGUMENT WORDS ARE THE CALLER'S OWN *)
        ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx (mword_of_int 10)⌝ -∗
@@ -3509,8 +3533,28 @@ Section UkRunSys.
        (* ...AND ITS LEDGER IS THE CALLER'S OWN TOO: without this row "fd 1
           is the console" says nothing about the arm this call took *)
        ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       (* ...AND ITS LAZY BIT IS [false], definitional at this leaf (the U
+          tier's run is at an empty fill, [UexecRet.ukcq]) and handed back
+          because the POST is where it is spent: row 16's [∃ P] carries
+          [uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)]. *)
+       ⌜uvis_lazy W = false⌝ -∗
+       (* ...AND EVERY BYTE OF THE SOURCE RUN IS READABLE-MAPPED IN ANY
+          TABLE THE KEY'S PROJECTION ADMITS.  Stated POSITIVELY, as the
+          read side's is: the consumer eliminates
+          [SpecFilewrite.write_cons_short] by contradiction. *)
+       ⌜ forall (P : uptd) (j : nat),
+           ProcPtOwn.proc_pt_wf P ->
+           perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
+           lazy_free (ud_um P) (uvis_sz W) ->
+           (j < nb)%nat ->
+           UserPtTree.uva_rmapped P
+             (uint (add_vec_int (m !!! Regidx (mword_of_int 11))
+                      (Z.of_nat j))) ⌝ -∗
        (* the ledger comes straight back: write moves no descriptor *)
        UserFd.ustd (ukn_fd N) l -∗
+       (* ...and so does the source run *)
+       UserHeap.ubytesq (ukn_d N) dq
+         (uint (m !!! Regidx (mword_of_int 11))) nb f -∗
        (* THE POST, AT THE TRAPPING KEY *)
        spost_at uslot 16 fdep W r (uvis_M W) (uvis_fd W) cw' cs' -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
@@ -3519,8 +3563,37 @@ Section UkRunSys.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hn Hal4.
-    iIntros "#Hi Hrun Hsb Hstd Hcont".
+    iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    (* THE SOURCE RUN'S PAGES ARE WRITABLE -- hence readable-mapped in any
+       table the key's projection admits -- taken HERE because this is the
+       one place where the heap the process owns and the key's own
+       permission map are the same term. *)
+    iDestruct (uheap_ubytes_run (ukn_t N) (ukn_d N) (ukn_s N) M pm sz dq
+                 (uint (m !!! Regidx (mword_of_int 11))) nb f
+                 with "Hheap Hbuf") as %Hbnd.
+    iDestruct (uheap_ubytes_w (ukn_t N) (ukn_d N) (ukn_s N) M pm sz dq
+                 (uint (m !!! Regidx (mword_of_int 11))) nb f
+                 with "Hheap Hbuf") as %Hwacc.
+    assert (Hnf : forall (P : uptd) (j : nat),
+              ProcPtOwn.proc_pt_wf P -> perm_of (ud_um P) sz = pm ->
+              lazy_free (ud_um P) sz -> (j < nb)%nat ->
+              UserPtTree.uva_rmapped P
+                (uint (add_vec_int (m !!! Regidx (mword_of_int 11))
+                         (Z.of_nat j)))).
+    { intros P j Hwf Hpmp Hlf Hjn.
+      destruct (Hbnd j Hjn) as [_ Hrange].
+      assert (Hlin : uint (add_vec_int (m !!! Regidx (mword_of_int 11))
+                            (Z.of_nat j))
+                     = (uint (m !!! Regidx (mword_of_int 11)) + Z.of_nat j)%Z).
+      { change (2 ^ 38) with 274877906944 in Hrange.
+        rewrite !uint_unsigned in Hrange |- *.
+        apply uint_add_vec_int_small; lia. }
+      rewrite Hlin.
+      apply UserPtTree.uva_rmapped_of_wmapped.
+      apply (UserHeap.lazy_free_uw_addr P sz
+               (uint (m !!! Regidx (mword_of_int 11)) + Z.of_nat j)%Z Hwf Hlf);
+        [ exact Hrange | rewrite Hpmp; exact (Hwacc j Hjn) ]. }
     (* THE KEY'S LOW THREE SLOTS ARE THE CALLER'S OWN LEDGER, which is both
        what the deposit is stated at and what makes row 16's arm readable *)
     iDestruct (ustd_agree (ukn_fd N) fdv l with "Hufd Hstd") as %Htake.
@@ -3579,13 +3652,53 @@ Section UkRunSys.
               with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv cw gn cs pidv false) cw cs
-              with "[%] [%] [%] [%] Hstd [Hpost] Hrun").
+              with "[%] [%] [%] [%] [%] [%] Hstd Hbuf [Hpost] Hrun").
     { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg0 m pc). }
     { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg1 m pc). }
     { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg2 m pc). }
     { rewrite (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false). exact Htake. }
+    { reflexivity. }
+    { cbn [uvis_perm uvis_sz uvis_of_run]. exact Hnf. }
     rewrite (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false).
     cbn [uvis_M uvis_of_run]. iExact "Hpost".
+  Qed.
+
+  (* ...AND THE BUFFER-FREE LEAF, which is the one above at [nb = 0]: a
+     caller that holds no run of its own -- every write stub in the tree
+     until lane IO-LEAF -- learns nothing about which bytes the kernel
+     could read, and asks for nothing.  Both stand, and the two program
+     stubs that still pay their chain from the flagged deposit
+     ([UkSh.wp_ksh_write_chain], [UkEcho.wp_kecho_write_chain]) are stated
+     at this one. *)
+  Lemma wp_uk_ecall_write_chain (N : uk_names Σ) (h : CpuId)
+      (m : regfile) (pc : mword 64) (avail : nat) (fdep : sfam)
+      (l : list fdstate) :
+    usysno m = 16 ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    udepwf_std N m pc 16 fdep l -∗
+    UserFd.ustd (ukn_fd N) l -∗
+    (∀ (h' : CpuId) (r : mword 64) (W : uvis) (cw' : Z) (cs' : gset gname),
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx (mword_of_int 10)⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx (mword_of_int 11)⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx (mword_of_int 12)⌝ -∗
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       UserFd.ustd (ukn_fd N) l -∗
+       spost_at uslot 16 fdep W r (uvis_M W) (uvis_fd W) cw' cs' -∗
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
+         (add_vec_int pc 4) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hn Hal4. iIntros "#Hi Hrun Hsb Hstd Hcont".
+    iApply (wp_uk_ecall_write_chain_buf N h m pc avail fdep l (DfracOwn 1)
+              0%nat (fun _ => bv_0 8) Hn Hal4 with "Hi Hrun Hsb Hstd []").
+    { by rewrite /UserHeap.ubytesq. }
+    iIntros (h' r W cw' cs') "%Ha0 %Ha1 %Ha2 %Htk _ _ Hstd _ Hpost Hrun".
+    iApply ("Hcont" $! h' r W cw' cs'
+              with "[%] [%] [%] [%] Hstd Hpost Hrun");
+      assumption.
   Qed.
 
 

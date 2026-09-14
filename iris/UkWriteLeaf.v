@@ -400,4 +400,59 @@ Section UkWriteLeaf.
     - exfalso. destruct Hr as [_ Hlt]. lia.
   Qed.
 
+  (* =================================================================== *)
+  (*  S6  THE SHORT ARM IS REFUTABLE (lane IO-LEAF; lane TRAP-ROWS T1's     *)
+  (*      deliverable, CASHED)                                             *)
+  (*                                                                      *)
+  (*  S5 above pays a cursor and reads it back at "the count consolewrite  *)
+  (*  reached", which is all a caller can say while the SHORT arm stands.  *)
+  (*  A caller threading a per-byte cursor cannot live with that arm: it   *)
+  (*  hands the cursor back UNMOVED while the program's own string index   *)
+  (*  has advanced, so every byte after a short write is stuck on an arm   *)
+  (*  nothing refutes.                                                     *)
+  (*                                                                      *)
+  (*  T1 gave the arm its REASON -- a byte of the run at or after the      *)
+  (*  cursor is on a page the kernel could not read through                *)
+  (*  ([SpecFilewrite.write_cons_short], [UserPtTree.uva_rmapped]) -- and  *)
+  (*  [UkRunSys.wp_uk_ecall_write_chain_buf] hands out the fact that       *)
+  (*  refutes it for the caller's OWN run.  This is the two put together:  *)
+  (*  a console write of a run the caller owns returns the FULL count and  *)
+  (*  the caller's own cursor at it.  Nothing else in the post survives,   *)
+  (*  and nothing else is wanted.                                         *)
+  (* =================================================================== *)
+  Lemma uwrite_no_short (Q : nat -> iProp Σ) (Xp : Z -> iProp Σ)
+      (W : uvis) (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate)
+      (cw' : Z) (cs' : gset gname) (l : list fdstate) (i : nat) (rb : bool)
+      (nb : nat) :
+    bv_signed (trunc32 (tf_w (uvis_tf W) (tf_arg_idx 0))) = Z.of_nat i ->
+    (i < NSTD)%nat ->
+    take NSTD (uvis_fd W) = l ->
+    l !! i = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2)) = Z.of_nat nb ->
+    (* the two rows the buffer-carrying leaf hands back *)
+    uvis_lazy W = false ->
+    (forall (P : uptd) (j : nat),
+       ProcPtOwn.proc_pt_wf P ->
+       perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
+       lazy_free (ud_um P) (uvis_sz W) ->
+       (j < nb)%nat ->
+       UserPtTree.uva_rmapped P
+         (uint (add_vec_int (tf_w (uvis_tf W) (tf_arg_idx 1)) (Z.of_nat j)))) ->
+    spost_at uslot 16 (xfam_wr Q Xp) W r M' fdv' cw' cs' -∗
+    ⌜r = (mword_of_int (Z.of_nat nb) : mword 64)⌝ ∗ Q nb.
+  Proof.
+    intros H0 Hi Htake Hli Hcnt Hlz Hnf. iIntros "H".
+    iDestruct (uwrite_post_cons Q Xp W r M' fdv' cw' cs' l i rb
+                 H0 Hi Htake Hli with "H") as (P) "(%Hperm & %Hwf & %Hlf & H)".
+    rewrite Hcnt.
+    iDestruct "H" as "[[%Hr Hq] | [Hs | %Hr]]".
+    - destruct Hr as [-> _]. iSplitR; [by iPureIntro |].
+      by rewrite Nat2Z.id.
+    - (* THE SHORT ARM, refuted at the offset its reason exhibits *)
+      iDestruct "Hs" as (k) "(%Hr & %Hlt & %Hsh & _)".
+      exfalso. destruct Hsh as (d & Hkd & Hdn & Hno).
+      apply Hno. apply (Hnf P d Hwf Hperm (Hlf Hlz)). lia.
+    - exfalso. destruct Hr as [_ Hlt]. lia.
+  Qed.
+
 End UkWriteLeaf.

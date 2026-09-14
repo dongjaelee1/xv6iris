@@ -107,8 +107,8 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   eight dependents; `Hphi` closed from `echo_led_phi`.  BLOCKER RULED
   2026-09-16 (the note below): sh's read leaf becomes a third owed
   entailment of `Hsh_owed`; landing with `Hphi` closed.
-- [ ] **FORK-REFUND** (kernel; main checkout, `lane/fork-refund`): LAUNCHED
-  2026-09-16 (the note below): fork's -1 arm returns `Rc`.
+- [x] ~~**FORK-REFUND**~~ LANDED 2026-09-16 (`e58f284a2`; the note below):
+  fork's -1 arm returns `Rc`; `sfork_lend` on `sfam`.
 - [ ] **IO-LEAF** (programs): SURVEYED and REVIEWED 2026-09-16 (the notes
   below); brief v2 + D8 ready; launches after TRAP-ROWS M2, FORK-REFUND,
   PROLOGUE-ALTS.
@@ -3337,6 +3337,28 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+FORK-REFUND LANDED (2026-09-16; `e58f284a2` on `174da0e13`; 19 files +334/-105;
+builds fr1-fr6 in the main checkout; audit the thirteen; lemma_diff CLEAN;
+no Admitted).  A FORK THAT CREATES NO CHILD GIVES BACK WHAT THE PARENT LENT
+IT: `Rc` is a FIELD OF `sfam` (`UexecSG.sfork_lend`; `sfam_pay Q Rc`,
+`sfork_lend_pay/_pt/_at`), for `sfork_pay`'s own mechanical reason --
+`uexec_ret_F_split` tears fork's deposit from fork's arm and carries them past
+each other, so a resource handed down by the child's leg and back by the
+failing leg must travel with the one value both carry.  Every relay keeps
+its ARITY (`ut_fork_in/out`, `sysc_fork_in/out`, `uexec_arm_F`/`uexec_dep_F`/
+`uexec_ret_F` change bodies only); `SpecSysFork`/`SpecKfork`, not
+family-indexed, take `Rc`.  The lend rides BESIDE the child's continuation
+(`Rc ∗ (Rc -∗ slot)`), the only shape the kernel can refund from without
+building a child.  kfork's three exits: refund at `kfork_arm1` (allocproc,
++0x10a) and `kfork_arm2` (uvmcopy, +0x7c), spend at `kfork_arm3`; the
+capstone carries `Rc` in the abstract `R` the prologue hands whichever
+closure runs.  The row: `UkFork.wp_uk_ecall_fork`/`_argv`'s -1 arm is `⌜r =
+-1⌝ ∗ uch Sc ∗ Rc`; `wp_uk_ecall_fork_any` untouched (IO-LEAF deletes the
+`_any` wrappers).  TERMS: the refund is observed only on an actual resume --
+a killed parent's lend is covered by its payload's taint arm.  No consumer
+of the refund exists yet; IO-LEAF threads it to "init: fork failed" and sh's
+"fork".  Handover: scratchpad `fork-refund-handover.md`.
 
 TRAP-ROWS T1 LANDED (2026-09-16; `6eafdaa54` = the lane's `b82d19470` on
 `c33d42af6`, cherry-picked over a notes commit; 16 files +532/-108; build tr9

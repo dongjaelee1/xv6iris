@@ -591,6 +591,31 @@ Section echo_links.
   Lemma ewc_open_taint v n : T -∗ ewc_open v n.
   Proof. iIntros "HT". rewrite /ewc_open. by iRight. Qed.
 
+  (* ...AND THE THREE AS ONE FAMILY, indexed by how many of the shell's two
+     prompt bytes are out (lane IO-LEAF, M6a(1)/M6a(3)): [0] the boundary
+     itself, [1] the '$' written, [2] the whole prompt written.  What the
+     shell's command loop carries beside its cursor is this at [0], what
+     its prompt leaves is this at [2], and the read of the next line takes
+     [2] at [n] back to [0] at [n + 17] ([ewc_read]). *)
+  Definition ewc_pr (v : era_pins) (n : nat) (p : nat) : iProp Σ :=
+    match p with
+    | O => ewc_owed v n
+    | S O => ewc_sp v n
+    | _ => ewc_open v n
+    end.
+
+  Global Instance ewc_pr_timeless v n p : Timeless (ewc_pr v n p).
+  Proof. rewrite /ewc_pr. destruct p as [| [| p]]; apply _. Qed.
+
+  (* ...WITH THE ERA'S PIN BESIDE IT, which is the shape a program below
+     the application holds: the shell's loop names no [v], so the pin
+     travels inside and every step re-reads it ([EchoOut.era_pin_agree]). *)
+  Definition ewc_cred (k : nat) (n p : nat) : iProp Σ :=
+    (∃ v : era_pins, era_pin γ k v ∗ ewc_pr v n p)%I.
+
+  Global Instance ewc_cred_timeless k n p : Timeless (ewc_cred k n p).
+  Proof. rewrite /ewc_cred. apply _. Qed.
+
   (* ...AND THE ONE PLACE THE CREDENTIAL IS BORN: round 0, at count 0,
      with no round and no line resolved and the writer eighteen banner
      bytes in.  [UInitBanner] is what supplies it. *)

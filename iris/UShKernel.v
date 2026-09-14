@@ -425,6 +425,22 @@ Section UShKernel.
   Qed.
 
   (* ------------------------------------------------------------------- *)
+  (* SS1c THE PROMPT AT EVERY LINE BOUNDARY (lane IO-LEAF, M6a(3)).       *)
+  (* [sh_prompt_pay] is round 0's credential WITH its conversion; what the *)
+  (* command loop needs at every later prompt is the conversion ALONE, at  *)
+  (* an abstract credential family [Wc n p] -- the era's write credential  *)
+  (* at line boundary [n] with [p] prompt bytes out -- which the loop      *)
+  (* carries beside its cursor and moves with the read.  Quantified over   *)
+  (* the record and given sh's own .rodata, exactly as the pair's law is.  *)
+  (* ------------------------------------------------------------------- *)
+  Definition sh_prompt_law (Wc : nat -> nat -> iProp Σ) : iProp Σ :=
+    (□ (∀ N : uk_names Σ,
+          shk_rodata (ukn_t N) -∗ UkSh.ush_prompt_law N Wc))%I.
+
+  Global Instance sh_prompt_law_persistent Wc : Persistent (sh_prompt_law Wc).
+  Proof. rewrite /sh_prompt_law. apply _. Qed.
+
+  (* ------------------------------------------------------------------- *)
   (* SS2 THE DEPOSIT (header (1), (2)).                                   *)
   (* ------------------------------------------------------------------- *)
   Lemma sh_uexec_slot (R : gname -> gname -> gname -> iProp Σ)
@@ -453,6 +469,13 @@ Section UShKernel.
          three laws are Coq-level and guarded by the record's payload
          equation: this file names no era. *)
       (Pm : nat -> iProp Σ)
+      (* ...AND THE ERA'S WRITE CREDENTIAL AS THE LOOP CARRIES IT (lane
+         IO-LEAF, M6a(3)): at line boundary [n] with [p] prompt bytes out,
+         with the ONE law the read owes it -- the credential the prompt
+         left at [n] is the boundary credential at [n + 17] once the line
+         is read, on the pieces the read leaves.  Unguarded: it names no
+         payload. *)
+      (Wc : nat -> nat -> iProp Σ)
       (Hrl : forall (N : uk_names Σ) (l : list fdstate),
          ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
@@ -462,6 +485,10 @@ Section UShKernel.
          ⊢ Pm i -∗ UkSh.ush_at N γp i)
       (Hpm3 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q -> ⊢ T -∗ Pm i -∗ UkSh.ush_at N γp i)
+      (Hwc : forall n : nat,
+         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
+           Pm (n + length EchoDisc.echo_line)%nat
+           ∗ Wc (n + length EchoDisc.echo_line)%nat 0%nat)
       (W : uvis) (n0 n : nat) :
     (* ...AND THE CURSOR THE ENTRY IS HANDED IS AT A LINE BOUNDARY (lane
        IO-LEAF, M5(3)): the shell's first [gets] reads a line only if the
@@ -469,8 +496,9 @@ Section UShKernel.
        PAYLOAD /init lends -- that is what makes it round-trip through the
        restart loop -- so the reading is Coq-level and guarded, exactly as
        the leaf's is. *)
-    (forall N : uk_names Σ,
-       ukn_pay N = Q -> ⊢ UkSh.ush_at N γp n -∗ UkSh.ush_posb N γp T) ->
+    (forall (N : uk_names Σ) (l : list fdstate),
+       ukn_pay N = Q ->
+       ⊢ UkSh.ush_at N γp n -∗ UkSh.ush_posb N γp T Wc l 0%nat) ->
     (forall x y : Z, Q x = Q y) ->
     tf_resume_pc (uvis_tf W) = (mword_of_int ShSyms.start : mword 64) ->
     shk_img_sub (uvis_M W) ->
@@ -560,8 +588,12 @@ Section UShKernel.
        turns those into [⌜disc h⌝] -- which refutes the ^D swallow
        ([UConsLine.disc_no_ctrl_d]) and gives the line its content. *)
     UkSh.ush_tag_law T -∗
+    (* ...AND THE PROMPT'S LAW AT EVERY LINE BOUNDARY (SS1c), quantified
+       over the record because the entry allocates it; [wp_ksh_start] gets
+       it at this record against sh's own .rodata. *)
+    sh_prompt_law Wc -∗
     (∀ N : uk_names Σ,
-       ush_rest_l N γp T (R (ukn_t N) (ukn_d N) (ukn_s N))) -∗
+       ush_rest_l N γp T Wc (R (ukn_t N) (ukn_d N) (ukn_s N))) -∗
     (* THE ENTRY'S ONE DESCRIPTOR ROW, at its three arms
        ([UkSh.ush_fd0]).  Persistent, and the walk reads none of the three
        -- which is what makes the CLOSED arm this same application. *)
@@ -603,7 +635,8 @@ Section UShKernel.
     uslot W.
   Proof.
     intros Hbd HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf.
-    iIntros "#Hpay #Hdep #Hdp #Htag #Hrest #Hfd0 Hpr Hin #Hgen #Hmp Hpos Hlease".
+    iIntros "#Hpay #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 Hpr Hin #Hgen #Hmp Hpos
+             Hlease".
     iApply (uslot_of_urun_all W (2 + (8 + (16 + (ush_Dbody + n0)))) Q
               Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
     (* sh's own half of its children set travels in [UkSh.ush_pstate]
@@ -635,16 +668,19 @@ Section UShKernel.
     iAssert (shk_rodata (ukn_t N)) as "#Hro".
     { iApply (shk_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (shk_img_data _ Hsub) Hx with "Ht"). }
-    iApply (wp_ksh_start N γp T Hpsok_free Pm
+    iApply (wp_ksh_start N γp T Hpsok_free Wc Pm
               (fun i => Hpm1 N i Hpayeq)
               (fun i Hb => Hpm2 N i Hpayeq Hb)
               (fun i => Hpm3 N i Hpayeq)
+              Hwc
               cn
               (fun l0 => Hrl N l0 Hpayeq)
               (R (ukn_t N) (ukn_d N) (ukn_s N)) K h _ f n0
               (take NSTD (uvis_fd W))
-              with "Hdp Htag Hr [] [] Hro Hgen' Hfd0 [Hpr] Hin [Hstd] [Hcwf]
+              with "Hdp Htag [] Hr [] [] Hro Hgen' Hfd0 [Hpr] Hin [Hstd] [Hcwf]
                     [Hchf] [Hpos Hlease] HR Hbs [Hrun]").
+    - (* the prompt's law at this record, against sh's own .rodata (SS1c) *)
+      iApply ("Hplaw" $! N with "Hro").
     - iApply (shk_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (shk_img_text _ Hsub) Hx with "Ht").
     - (* runcmd's JUMP TABLE, off the same image (lane SH-LINE 2b, (b)):
@@ -658,7 +694,7 @@ Section UShKernel.
     - rewrite <- Hcwd0. iExact "Hcwf".
     - iApply (uch_any_of with "Hchf").
     - (* THE BOUNDARY, READ OFF THE PAYLOAD (lane IO-LEAF, M5(3)) *)
-      iApply (Hbd N Hpayeq).
+      iApply (Hbd N (take NSTD (uvis_fd W)) Hpayeq).
       rewrite /UkSh.ush_at. iFrame "Hpos". rewrite Hpayeq. iExact "Hlease".
     - iExact "Hrun".
   Qed.
@@ -673,6 +709,13 @@ Section UShKernel.
       (* the read leaf sh runs on and the lease's three laws, passed
          straight through: see [sh_uexec_slot] *)
       (Pm : nat -> iProp Σ)
+      (* ...AND THE ERA'S WRITE CREDENTIAL AS THE LOOP CARRIES IT (lane
+         IO-LEAF, M6a(3)): at line boundary [n] with [p] prompt bytes out,
+         with the ONE law the read owes it -- the credential the prompt
+         left at [n] is the boundary credential at [n + 17] once the line
+         is read, on the pieces the read leaves.  Unguarded: it names no
+         payload. *)
+      (Wc : nat -> nat -> iProp Σ)
       (Hrl : forall (N : uk_names Σ) (l : list fdstate),
          ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
@@ -682,13 +725,18 @@ Section UShKernel.
          ⊢ Pm i -∗ UkSh.ush_at N γp i)
       (Hpm3 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q -> ⊢ T -∗ Pm i -∗ UkSh.ush_at N γp i)
+      (Hwc : forall n : nat,
+         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
+           Pm (n + length EchoDisc.echo_line)%nat
+           ∗ Wc (n + length EchoDisc.echo_line)%nat 0%nat)
       (na : nat)
       (alen : nat -> nat) (afun : nat -> nat -> bv 8) (sts : list fdstate)
       (W' : uvis) (n0 n : nat) :
     (* the cursor's boundary, passed straight through: see
        [sh_uexec_slot] *)
-    (forall N : uk_names Σ,
-       ukn_pay N = Q -> ⊢ UkSh.ush_at N γp n -∗ UkSh.ush_posb N γp T) ->
+    (forall (N : uk_names Σ) (l : list fdstate),
+       ukn_pay N = Q ->
+       ⊢ UkSh.ush_at N γp n -∗ UkSh.ush_posb N γp T Wc l 0%nat) ->
     (forall x y : Z, Q x = Q y) ->
     kexec_image_ok sh_elf na alen afun sts W' ->
     (* THE WORKING DIRECTORY, passed straight through: see
@@ -728,8 +776,11 @@ Section UShKernel.
     UkSh.sh_deps -∗
     (* the tag's reading, passed straight through: see [sh_uexec_slot] *)
     UkSh.ush_tag_law T -∗
+    (* ...and the prompt's law at every boundary, passed straight through:
+       see [sh_uexec_slot] and SS1c *)
+    sh_prompt_law Wc -∗
     (∀ N : uk_names Σ,
-       ush_rest_l N γp T (R (ukn_t N) (ukn_d N) (ukn_s N))) -∗
+       ush_rest_l N γp T Wc (R (ukn_t N) (ukn_d N) (ukn_s N))) -∗
     (* the entry row, the pay fact, the payload and the position, all four
        passed straight through: see [sh_uexec_slot] *)
     UkSh.ush_fd0 T (take NSTD sts) -∗
@@ -836,7 +887,8 @@ Section UShKernel.
     (* the entry row is stated at the EXEC'ING process's table, which is
        the one the image fact says the new key carries *)
     rewrite <- Hfd.
-    iApply (sh_uexec_slot R γp cn T K Q Pm Hrl Hpm1 Hpm2 Hpm3 W' n0 n Hbd).
+    iApply (sh_uexec_slot R γp cn T K Q Pm Wc Hrl Hpm1 Hpm2 Hpm3 Hwc W' n0 n
+              Hbd).
     - exact HQc.
     - rewrite Hpc. exact sh_start_pc.
     - exact (shk_img_sub_of_elf M Himg).

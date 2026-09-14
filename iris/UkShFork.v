@@ -113,6 +113,9 @@ Section UkShFork.
      the arm be read without threading a resource. *)
   Context (T : iProp Σ).
   Context `{HT : !Persistent T}.
+  (* ...and the era's write credential the loop carries beside its cursor
+     (lane IO-LEAF, M6a(3)), opaque here for the same reason *)
+  Context (Wc : nat -> nat -> iProp Σ).
   (* the fields, under the names the engine has always used *)
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).
@@ -153,9 +156,9 @@ Section UkShFork.
   Local Notation s6_idx := (mword_of_int 22 : mword 5).
 
   Local Notation ush_std := (UkSh.ush_std N).
-  Local Notation ush_pstate := (UkSh.ush_pstate N γp T).
+  Local Notation ush_pstate := (UkSh.ush_pstate N γp T Wc).
   Local Notation ushl_dat := (UkShLoop.ushl_dat γd).
-  Local Notation ushl_head := (UkShLoop.ushl_head N γp T).
+  Local Notation ushl_head := (UkShLoop.ushl_head N γp T Wc).
 
   (* ===================================================================== *)
   (* §1 THE TWO CATALOG BRIDGES THE CHILD NEEDS.                            *)
@@ -224,7 +227,7 @@ Section UkShFork.
      [wp_kshf_fork_any] the index-free arm the body takes. *)
   Definition ushf_pstate_at (l : list fdstate) (c : Z) : iProp Σ :=
     (ush_std l ∗ UserCwd.ucwd γcwd c ∗ UserChildren.uch_any γch
-     ∗ UkSh.ush_posb N γp T)%I.
+     ∗ UkSh.ush_posb N γp T Wc l 0%nat)%I.
 
   Lemma ushf_pstate_of_at (l : list fdstate) (c : Z) :
     ushf_pstate_at l c -∗ ush_pstate l.
@@ -462,7 +465,8 @@ Section UkShFork.
       + iApply (ushf_pstate_of_at l cw).
         rewrite /ushf_pstate_at /UkSh.ush_std.
         iFrame "Hustd Hcwd Hch".
-        iApply (UkSh.ush_posb_of N γp T np0 with "Hbnd0 [Hpos Hlease]").
+        iApply (UkSh.ush_posb_of N γp T Wc l 0%nat np0
+                  with "Hbnd0 [Hpos Hlease]").
         rewrite /UkSh.ush_at. iFrame "Hpos Hlease".
     - (* ================= THE CHILD: parse, run, exec =================== *)
       iIntros (N' hA mA γ') "%Hti' %HcsA %Ha0A _ _ #Hcode' Hpay Hsz Hustd Hcwd
@@ -646,7 +650,7 @@ Section UkShFork.
                       bv_unsigned (f (S (S k))) = 32))
       as [(Hck & Hck1 & Hck2) | Hne].
     - (* ================= the line is a [cd] command =================== *)
-      iApply (UkShCd.wp_kshc_cd N γp T Hpsok_free h m f k (k + len)%nat l sz n
+      iApply (UkShCd.wp_kshc_cd N γp T Wc Hpsok_free h m f k (k + len)%nat l sz n
                 Hregs Hs1 Ha5 ltac:(lia) Hnul Hck Hck1 Hck2
                 with "Hdp Hhead Hcode Hro Hpcode [%] Hstd Hdat Hsz Hbuf Hrun").
       exact Hfd0.
@@ -975,7 +979,7 @@ Section UkShFork.
        taint, and a tainted process does not run sh's code any more: the
        body hands its run to the generic slot. *)
     UkSh.ush_gen_slot N T -∗
-    UkSh.ush_rest_l N γp T (UkShLoop.ushl_R N sz).
+    UkSh.ush_rest_l N γp T Wc (UkShLoop.ushl_R N sz).
   Proof.
     intros Hlex Hszlo Hszal Hszok.
     (* the generic slot is a [□] behind a definition; unfolding it before

@@ -383,7 +383,7 @@ Section UInitBanner.
     iIntros "#Hlk Ht". rewrite /kinit_own.
     iDestruct "Ht" as (v) "[#Hpin Hc]".
     iApply (UShOut.sh_prompt_pay_of_ushpr T γ v n with "Hpin Hlk [Hc]").
-    rewrite /UShOut.ushpr. iExact "Hc".
+    rewrite /EchoLinks.ewc_pr. iExact "Hc".
   Qed.
 
   (* ...AT WHATEVER ROUND THE CREDENTIAL NAMES.  /init's walk carries an

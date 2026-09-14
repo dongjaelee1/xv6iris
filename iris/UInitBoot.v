@@ -381,6 +381,9 @@ Section UInitBoot.
       (* ...and the mid-line pieces of the same lease (lane IO-LEAF,
          M5(3)), passed straight through *)
       (Pm : gname -> nat -> iProp Σ)
+      (* ...and the era's write credential as the command loop carries it
+         (lane IO-LEAF, M6a(3)), passed straight through *)
+      (Wc : nat -> nat -> iProp Σ)
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat) :
     file_app = MkAppcfg echo_names (echo_pred γ) r ->
     (forall k : Z, free_num k -> @psok Σ uprogSG_free k) ->
@@ -404,26 +407,32 @@ Section UInitBoot.
     (forall (γp : gname) (N : uk_names Σ) (i : nat),
        ukn_pay N = ucons_pay cn γp (echo_taint γ) Rd ->
        ⊢ echo_taint γ -∗ Pm γp i -∗ UkSh.ush_at N γp i) ->
-    (forall (γp : gname) (N : uk_names Σ) (i : nat),
+    (forall (γp : gname) (n : nat),
+       ⊢ Pm γp (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
+         Pm γp (n + length EchoDisc.echo_line)%nat
+         ∗ Wc (n + length EchoDisc.echo_line)%nat 0%nat) ->
+    (forall (γp : gname) (N : uk_names Σ) (l : list fdstate) (i : nat),
        ukn_pay N = ucons_pay cn γp (echo_taint γ) Rd ->
        ⊢ UkSh.ush_at N γp i -∗
-         UkSh.ush_posb N γp (echo_taint γ)) ->
+         UkSh.ush_posb N γp (echo_taint γ) Wc l 0%nat) ->
     udep (PS := uprogSG_free) -∗ UkSh.sh_deps (PS := uprogSG_free) -∗
-    UInitSh.init_sh_slot (echo_taint γ) (UInitSh.sh_pay (echo_taint γ) Rsh n0) -∗
+    UShKernel.sh_prompt_law (PS := uprogSG_free) Wc -∗
+    UInitSh.init_sh_slot (echo_taint γ)
+      (UInitSh.sh_pay (echo_taint γ) Wc Rsh n0) -∗
     UkInit.init_cons_sup cn (echo_taint γ)
       (init_cons_cred (echo_taint γ) r) st
       (UShKernel.sh_prompt_pay (PS := uprogSG_free)) Rd.
   Proof.
-    intros Heq Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hbd.
-    iIntros "#Hdep #Hdp #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
+    intros Heq Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hwc Hbd.
+    iIntros "#Hdep #Hdp #Hplaw #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
     - iIntros "!> #Hcns".
       iDestruct "Hcore" as "#Hcore'".
       (* [Persistent K] is an INSTANCE binder there, so it is not passed
          positionally; [cons_never_persistent] answers it. *)
       iApply (UInitSh.init_exec_sup_of_sh_slot (echo_taint γ) cn st
-                (cons_never r) Rd Pm Rsh n0 Hpsok_free Hn0 Hst Hrl
-                Hpm1 Hpm2 Hpm3 Hbd
-                with "Hdep Hdp [] Hcore'").
+                (cons_never r) Rd Pm Wc Rsh n0 Hpsok_free Hn0 Hst Hrl
+                Hpm1 Hpm2 Hpm3 Hwc Hbd
+                with "Hdep Hdp Hplaw [] Hcore'").
       iApply (ush_cons_in_of_Cns γ r Heq with "[] Hcns").
       iDestruct "Hcore'" as "(#Hinv & _)". iExact "Hinv".
     - iIntros "!> #HT".
@@ -688,11 +697,15 @@ Section EchoInitBoot.
     (* ---- the shell's slot, and the exec supply as a wand from the
            console credential ---- *)
     iAssert (UInitSh.init_sh_slot (echo_taint γ)
-               (UInitSh.sh_pay (echo_taint γ) UInitSh.sh_Rsh 0%nat))%I as "#Hsh".
+               (UInitSh.sh_pay (echo_taint γ)
+                  (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+                  UInitSh.sh_Rsh 0%nat))%I as "#Hsh".
     { rewrite /UInitSh.init_sh_slot /UInitSh.init_sh_slot_core.
       iSplitR; [ iExact "Hinv" | ]. iSplitR; [ iExact "Hfs" | ].
       iSplitR; [ iExact "Hmint" | ].
-      iApply (UInitSh.sh_pay_of_parts (echo_taint γ) UInitSh.sh_Rsh 0%nat
+      iApply (UInitSh.sh_pay_of_parts (echo_taint γ)
+                (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+                UInitSh.sh_Rsh 0%nat
                 with "[] [] Htg");
         [ iApply UInitSh.sh_pay_state_holds | iApply Hsh_rest ]. }
     (* THE TWO READINGS OF THE SUPPLY, at Coq level: the console ring's
@@ -751,25 +764,42 @@ Section EchoInitBoot.
           UkSh.ush_at N γp i)
       by (intros γp N i Hpeq;
           exact (UShLine.ush_at_of_mid_taint γ (echo_taint γ) N γp i Hpeq)).
+    (* ...AND THE WRITE CREDENTIAL'S STEP AT THE READ, and the boundary law
+       with the loop's credential slot beside it (lane IO-LEAF, M6a(3)); the
+       credential family is [EchoLinks.ewc_cred] at this era. *)
+    assert (Hsh_wc :
+      forall (γp : gname) (n : nat),
+        ⊢ UShLine.ush_mid γ γp (n + length EchoDisc.echo_line)%nat -∗
+          EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id) n 2%nat -∗
+          UShLine.ush_mid γ γp (n + length EchoDisc.echo_line)%nat
+          ∗ EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id) (n + length EchoDisc.echo_line)%nat 0%nat)
+      by (intros γp n; exact (UShLine.ush_mid_wc_read γ (echo_taint γ) γp n)).
     assert (Hsh_bd :
-      forall (γp : gname) (N : uk_names Σ) (i : nat),
+      forall (γp : gname) (N : uk_names Σ) (l : list fdstate) (i : nat),
         ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ)
                       (UShLine.ush_rd_pin γ) ->
         ⊢ UkSh.ush_at N γp i -∗
-          UkSh.ush_posb N γp (echo_taint γ))
-      by (intros γp N i Hpeq;
-          exact (UShLine.ush_posb_of_at γ (echo_taint γ) N γp i Hpeq)).
+          UkSh.ush_posb N γp (echo_taint γ) (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id)) l 0%nat)
+      by (intros γp N l i Hpeq;
+          exact (UShLine.ush_posb_of_at γ (echo_taint γ) N γp (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id)) l i
+                   Hpeq)).
+    (* ...AND THE PROMPT'S LAW AT EVERY LINE BOUNDARY, off the links *)
+    iAssert (UShKernel.sh_prompt_law (PS := uprogSG_free) (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id)))%I
+      as "#Hplaw".
+    { iApply (UShOut.sh_prompt_law_holds (echo_taint γ) γ (PS := uprogSG_free)
+                with "Hlks"). }
     iAssert (UkInit.init_cons_sup fsc_cons (echo_taint γ)
                (init_cons_cred (echo_taint γ) r) init_cons_fd
                (UShKernel.sh_prompt_pay (PS := uprogSG_free))
                (UShLine.ush_rd_pin γ))%I as "#Hxs".
     { iApply (init_cons_sup_of_sh_slot γ r fsc_cons init_cons_fd
                 (UShLine.ush_rd_pin γ) (UShLine.ush_mid γ)
+                (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
                 UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
                 ltac:(vm_compute; discriminate)
                 ltac:(reflexivity)
-                Hsh_rdleaf Hsh_pm1 Hsh_pm2 Hsh_pm3 Hsh_bd
-                with "[] [] Hsh").
+                Hsh_rdleaf Hsh_pm1 Hsh_pm2 Hsh_pm3 Hsh_wc Hsh_bd
+                with "[] [] Hplaw Hsh").
       - iApply (udep_free).
       - iApply Hsh_deps. }
     (* ---- THE CONSOLE DANCE, at whichever arm the VIEW decided

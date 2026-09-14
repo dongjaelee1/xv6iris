@@ -191,15 +191,11 @@ Section UShOut.
   (*  this file's: [ewc_owed] is either shape and [ewc_open] is what      *)
   (*  the pair of bytes leaves behind.                                    *)
   (* =================================================================== *)
-  Definition ushpr (v : era_pins) (n : nat) (p : nat) : iProp Σ :=
-    match p with
-    | O => EchoLinks.ewc_owed T v n
-    | S O => EchoLinks.ewc_sp T v n
-    | _ => EchoLinks.ewc_open T v n
-    end.
-
-  Global Instance ushpr_timeless v n p : Timeless (ushpr v n p).
-  Proof. rewrite /ushpr. destruct p as [| [| p]]; apply _. Qed.
+  (* THE FAMILY IS [EchoLinks.ewc_pr] NOW (lane IO-LEAF, M6a(3)): the
+     shell's loop carries it with the era's pin beside it
+     ([EchoLinks.ewc_cred]), and the read side ([UShLine]) has to name the
+     same constant, so it lives where both can see it. *)
+  Local Notation ushpr := (EchoLinks.ewc_pr T).
 
   (* =================================================================== *)
   (*  S2  ONE BYTE, THROUGH THE ERA'S LINKS                               *)
@@ -442,6 +438,43 @@ Section UShOut.
               (UserFd.ustd (ukn_fd N) l) with "[] []").
     - iIntros "[$ _]".
     - iApply (ksh_w_of_link_prompt N v n l rb Hl2 with "Hpin Hlk Hro").
+  Qed.
+
+  (* =================================================================== *)
+  (*  S6  THE SAME CALL AT THE LOOP'S OWN CREDENTIAL (lane IO-LEAF,       *)
+  (*      M6a(3)): the era's pin travels INSIDE the credential, because   *)
+  (*      the command loop names no [v]; the call reads it out and puts   *)
+  (*      it back.  This is what [UShKernel.sh_prompt_law] is built from. *)
+  (* =================================================================== *)
+  Lemma ksh_w_of_link_cred (N : uk_names Σ) (n : nat) (l : list fdstate)
+      (rb : bool) :
+    l !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    echo_links T γ -∗
+    shk_rodata (ukn_t N) -∗
+    UkSh.ksh_w N (mword_of_int 2 : mword 64)
+      (mword_of_int sh_prompt_pv) 2%nat
+      (UserFd.ustd (ukn_fd N) l ∗ EchoLinks.ewc_cred T γ (S gen_id) n 0%nat)
+      (UserFd.ustd (ukn_fd N) l ∗ EchoLinks.ewc_cred T γ (S gen_id) n 2%nat).
+  Proof.
+    intros Hl2. iIntros "#Hlk #Hro" (h m avail)
+      "%Ha0 %Ha1 %Ha2 #Hcode [Hstd Hc] Hrun Hcont".
+    rewrite /EchoLinks.ewc_cred. iDestruct "Hc" as (v) "[#Hpin Hc]".
+    iApply (ksh_w_of_link_prompt N v n l rb Hl2
+              with "Hpin Hlk Hro [%] [%] [%] Hcode [$Hstd $Hc] Hrun [Hcont]");
+      [ exact Ha0 | exact Ha1 | exact Ha2 | ].
+    iIntros (h' ret) "[Hstd Hc] Hrun".
+    iApply ("Hcont" $! h' ret with "[$Hstd Hc] Hrun").
+    iExists v. iFrame "Hpin Hc".
+  Qed.
+
+  Lemma sh_prompt_law_holds :
+    echo_links T γ -∗
+    UShKernel.sh_prompt_law (EchoLinks.ewc_cred T γ (S gen_id)).
+  Proof.
+    iIntros "#Hlk". rewrite /UShKernel.sh_prompt_law.
+    iIntros "!>" (N) "#Hro". rewrite /UkSh.ush_prompt_law.
+    iIntros "!>" (n l) "%Hfd2". destruct Hfd2 as [rb Hl2].
+    iApply (ksh_w_of_link_cred N n l rb Hl2 with "Hlk Hro").
   Qed.
 
 End UShOut.

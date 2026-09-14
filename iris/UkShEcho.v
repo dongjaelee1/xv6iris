@@ -943,13 +943,13 @@ Section UkShEcho.
   (* [T] IS A PARAMETER (lane IO-LEAF, M5(3)): the fourth conjunct is the
      cursor AT A LINE BOUNDARY now, whose other arm is the taint. *)
   Definition ush_pstate_at (N : uk_names Σ) (gp : gname) (T : iProp Σ)
-      (l : list fdstate) (c : Z) : iProp Σ :=
+      (Wc : nat -> nat -> iProp Σ) (l : list fdstate) (c : Z) : iProp Σ :=
     (UkSh.ush_std N l ∗ UserCwd.ucwd (ukn_cwd N) c
-     ∗ UserChildren.uch_any (ukn_ch N) ∗ UkSh.ush_posb N gp T)%I.
+     ∗ UserChildren.uch_any (ukn_ch N) ∗ UkSh.ush_posb N gp T Wc l 0%nat)%I.
 
   Lemma ush_pstate_of_at (N : uk_names Σ) (gp : gname) (T : iProp Σ)
-      (l : list fdstate) (c : Z) :
-    ush_pstate_at N gp T l c -∗ UkSh.ush_pstate N gp T l.
+      (Wc : nat -> nat -> iProp Σ) (l : list fdstate) (c : Z) :
+    ush_pstate_at N gp T Wc l c -∗ UkSh.ush_pstate N gp T Wc l.
   Proof.
     rewrite /ush_pstate_at /UkSh.ush_pstate.
     iIntros "(Hstd & Hcwd & Hch & Hpos)". iFrame "Hstd Hch Hpos".
@@ -961,8 +961,9 @@ Section UkShEcho.
      fork arm threads through both processes' entry and back out of the
      parent's ([UkShFork.wp_kshf_fork]). *)
   Definition ush_echo_round_carry (N : uk_names Σ) (gp : gname)
-      (T : iProp Σ) (l : list fdstate) (sz : Z) (f : nat -> bv 8) : iProp Σ :=
-    (ush_pstate_at N gp T l FsImg.ROOTINO
+      (T : iProp Σ) (Wc : nat -> nat -> iProp Σ) (l : list fdstate) (sz : Z)
+      (f : nat -> bv 8) : iProp Σ :=
+    (ush_pstate_at N gp T Wc l FsImg.ROOTINO
      ∗ UkShLoop.ushl_dat (ukn_d N) ∗ usz (ukn_s N) sz
      ∗ ubytes (ukn_d N) UkSh.sh_buf UkSh.sh_nbuf f)%I.
 

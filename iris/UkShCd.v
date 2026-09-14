@@ -157,6 +157,9 @@ Section UkShCd.
      state carries the cursor AT A LINE BOUNDARY, whose other arm is the
      taint.  This arm proves nothing about it and takes it opaquely. *)
   Context (T : iProp Σ).
+  (* ...and the era's write credential the loop carries beside its cursor
+     (lane IO-LEAF, M6a(3)), opaque here for the same reason *)
+  Context (Wc : nat -> nat -> iProp Σ).
   (* the fields, under the names the engine has always used *)
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).
@@ -204,7 +207,7 @@ Section UkShCd.
   (* ---- what the other files of the lane define, at this file's own
          ghost names ---- *)
   Local Notation ush_std := (UkSh.ush_std N).
-  Local Notation ush_pstate := (UkSh.ush_pstate N γp T).
+  Local Notation ush_pstate := (UkSh.ush_pstate N γp T Wc).
   Local Notation ush_loop_head := (UkSh.ush_loop_head N γp).
   Local Notation urun_x0 := (UkShParse.urun_x0 N).
   Local Notation wp_kshp_strlen := (UkShParse.wp_kshp_strlen N).
@@ -212,7 +215,7 @@ Section UkShCd.
   Local Notation shd_str_of_ustr := (UkShDiag.shd_str_of_ustr γt γd).
   Local Notation shd_str_to_ustr := (UkShDiag.shd_str_to_ustr γt γd).
   Local Notation ushl_dat := (UkShLoop.ushl_dat γd).
-  Local Notation ushl_head := (UkShLoop.ushl_head N γp T).
+  Local Notation ushl_head := (UkShLoop.ushl_head N γp T Wc).
 (*ALIASES-END*)
 
   (* ===================================================================== *)

@@ -1466,6 +1466,79 @@ Section UkSh.
     iApply (ksh_w_frame with "HC Hw").
   Qed.
 
+  (* ===================================================================== *)
+  (* THE CREDENTIAL AT EVERY LINE BOUNDARY (lane IO-LEAF, M6a(3)).          *)
+  (*                                                                       *)
+  (* [ush_promptw] above is round 0's: one opaque credential and its       *)
+  (* conversion, spent on the FIRST prompt.  The command loop prints a     *)
+  (* prompt at EVERY turn, and what pays each one is the era's write       *)
+  (* credential at the line boundary the turn stands on -- a FAMILY        *)
+  (* [Wc n p], the credential at boundary [n] with [p] of the prompt's two *)
+  (* bytes out, which this file cannot read (it names no era) and carries  *)
+  (* opaquely beside its cursor, exactly as it carries [Pm].  Two laws are *)
+  (* all the loop needs of it: the prompt's call takes [0] to [2]          *)
+  (* ([ush_prompt_law], quantified over the ledger because the preamble    *)
+  (* may move it; [UShOut.ksh_w_of_link_cred] is the one discharge), and   *)
+  (* the read of a line takes [2] at [n] to [0] at [n + 17] on the pieces  *)
+  (* the read leaves ([ush_wc_read], below, with [Pm]).                    *)
+  (* ===================================================================== *)
+  Context (Wc : nat -> nat -> iProp Σ).
+
+  Definition ush_prompt_law : iProp Σ :=
+    (□ (∀ (n : nat) (l : list fdstate),
+          ⌜ ush_fd2p l ⌝ -∗
+          ksh_w (mword_of_int 2) (mword_of_int sh_prompt_pv) 2%nat
+            (ustd γfd l ∗ Wc n 0%nat) (ustd γfd l ∗ Wc n 2%nat)))%I.
+
+  Global Instance ush_prompt_law_persistent : Persistent ush_prompt_law.
+  Proof. rewrite /ush_prompt_law. apply _. Qed.
+
+  (* ...AS THE LOOP CARRIES IT: with the row the law asks for, or nothing.
+     The right disjunct is sh's ENTRY (the credential enters the loop
+     through the lend -- M6a(3)'s step 3 -- and until then the entry
+     supplies nothing here) and the arms that drop it: a shut fd 0 leaves
+     the loop, and the fork arm's re-entry waits on the child's payload
+     (M3b core).  Indexed by the ledger for [ush_prompt_in]'s reason: the
+     console preamble may move it ([ush_wcp_cons]). *)
+  Definition ush_wcp (l : list fdstate) (n p : nat) : iProp Σ :=
+    ((⌜ ush_fd2p l ⌝ ∗ Wc n p) ∨ True)%I.
+
+  Lemma ush_wcp_triv (l : list fdstate) (n p : nat) : ⊢ ush_wcp l n p.
+  Proof. rewrite /ush_wcp. by iRight. Qed.
+
+  Lemma ush_wcp_cons (l : list fdstate) (k n p : nat) :
+    length l = NSTD ->
+    ush_wcp l n p -∗
+    ush_wcp (<[k := FdOpen true true (FdDevice CONSOLE)]> l) n p.
+  Proof.
+    intros Hlen. rewrite /ush_wcp.
+    iIntros "[[%Hfd2 Hc] | _]"; [ | by iRight ].
+    iLeft. iFrame "Hc". iPureIntro. exact (ush_fd2p_cons l k Hlen Hfd2).
+  Qed.
+
+  (* THE PROMPT'S CALL, AT WHICHEVER ARM THE WALK IS ON: the loop's
+     credential through its law, else the entry's through its own, else
+     the flagged deposit.  What comes back is the loop's slot two bytes
+     on. *)
+  Lemma ksh_w_of_wcp (l : list fdstate) (n : nat) :
+    sh_deps -∗
+    ush_prompt_law -∗
+    ush_prompt_in l -∗
+    ush_wcp l n 0%nat -∗
+    ksh_w (mword_of_int 2) (mword_of_int sh_prompt_pv) 2%nat
+      (ustd γfd l) (ustd γfd l ∗ ush_wcp l n 2%nat).
+  Proof.
+    iIntros "#Hdp #Hlaw Hpr [[%Hfd2 Hc] | _]"; last first.
+    { iApply (ksh_w_mono _ _ _ (ustd γfd l) (ustd γfd l) with "[] [Hpr]").
+      - iIntros "$". iApply ush_wcp_triv.
+      - iApply (ksh_w_of_prompt_in l with "Hdp Hpr"). }
+    iDestruct ("Hlaw" $! n l with "[%]") as "Hw"; [ exact Hfd2 | ].
+    iApply (ksh_w_mono _ _ _ (ustd γfd l) (ustd γfd l ∗ Wc n 2%nat)
+              with "[] [Hc Hw]").
+    - iIntros "[$ Hc]". rewrite /ush_wcp. iLeft. iFrame "Hc". by iPureIntro.
+    - iApply (ksh_w_frame with "Hc Hw").
+  Qed.
+
 
   (* ===================================================================== *)
   (* THE TAG'S READING, AS A PERSISTENT LAW SH'S ENTRY TAKES                *)
@@ -1586,34 +1659,63 @@ Section UkSh.
   (*  OR THE TAINT, for [ush_fd0]'s reason: under the taint sh proves        *)
   (*  nothing about its input and the number says nothing.                   *)
   (* ===================================================================== *)
-  Definition ush_posb : iProp Σ :=
-    ((∃ n : nat, ⌜ush_bnd n⌝ ∗ ush_at n)
+  (* ...AND THE ERA'S WRITE CREDENTIAL AT THAT BOUNDARY BESIDE IT (lane
+     IO-LEAF, M6a(3)), at the SAME number: the prompt this turn prints is
+     paid at the boundary the cursor stands on, and nothing else ties the
+     two counts together.  [p] is how many prompt bytes are out -- the
+     process state carries [0]; the read is entered at [2]. *)
+  Definition ush_posb (l : list fdstate) (p : nat) : iProp Σ :=
+    ((∃ n : nat, ⌜ush_bnd n⌝ ∗ ush_at n ∗ ush_wcp l n p)
      ∨ (T ∗ ush_pos))%I.
 
-  Lemma ush_pos_of_posb : ush_posb -∗ ush_pos.
+  Lemma ush_pos_of_posb (l : list fdstate) (p : nat) :
+    ush_posb l p -∗ ush_pos.
   Proof.
     rewrite /ush_posb /ush_pos. iIntros "[H | [_ $]]".
-    iDestruct "H" as (n) "[_ H]". iExists n. iExact "H".
+    iDestruct "H" as (n) "(_ & H & _)". iExists n. iExact "H".
   Qed.
 
   (* the two arms as ONE existential -- the shape a walk that has to keep
-     going on either of them takes *)
-  Lemma ush_posb_at :
-    ush_posb -∗
+     going on either of them takes.  The credential is dropped here; the
+     fork site, which reads the boundary this way, will LEND it instead
+     (M6a(3)'s step 3). *)
+  Lemma ush_posb_at (l : list fdstate) (p : nat) :
+    ush_posb l p -∗
     ∃ n : nat, (⌜ush_bnd n⌝ ∨ T) ∗ ush_at n.
   Proof.
     rewrite /ush_posb /ush_pos. iIntros "[H | [#HT H]]".
-    - iDestruct "H" as (n) "[%Hn H]". iExists n. iFrame "H".
+    - iDestruct "H" as (n) "(%Hn & H & _)". iExists n. iFrame "H".
       iLeft. by iPureIntro.
     - iDestruct "H" as (n) "H". iExists n. iFrame "H". iRight. iExact "HT".
   Qed.
 
-  Lemma ush_posb_of (n : nat) :
-    (⌜ush_bnd n⌝ ∨ T) -∗ ush_at n -∗ ush_posb.
+  Lemma ush_posb_of (l : list fdstate) (p n : nat) :
+    (⌜ush_bnd n⌝ ∨ T) -∗ ush_at n -∗ ush_posb l p.
   Proof.
     rewrite /ush_posb /ush_pos. iIntros "[%Hn | #HT] H".
-    - iLeft. iExists n. iSplitR; [ by iPureIntro | iExact "H" ].
+    - iLeft. iExists n. iSplitR; [ by iPureIntro | ].
+      iFrame "H". iApply ush_wcp_triv.
     - iRight. iFrame "HT". iExists n. iExact "H".
+  Qed.
+
+  Lemma ush_posb_of_wc (l : list fdstate) (p n : nat) :
+    ush_bnd n -> ush_at n -∗ ush_wcp l n p -∗ ush_posb l p.
+  Proof.
+    intro Hn. iIntros "H Hc". rewrite /ush_posb. iLeft. iExists n.
+    iSplitR; [ by iPureIntro | ]. iFrame "H Hc".
+  Qed.
+
+  (* ...and it rides the console preamble's back edge, for the slot's own
+     reason ([ush_wcp_cons]) *)
+  Lemma ush_posb_cons (l : list fdstate) (k p : nat) :
+    length l = NSTD ->
+    ush_posb l p -∗
+    ush_posb (<[k := FdOpen true true (FdDevice CONSOLE)]> l) p.
+  Proof.
+    intro Hlen. rewrite /ush_posb. iIntros "[H | H]"; [ | iRight; iExact "H" ].
+    iLeft. iDestruct "H" as (n) "(%Hn & H & Hc)". iExists n.
+    iSplitR; [ by iPureIntro | ]. iFrame "H".
+    iApply (ush_wcp_cons l k n p Hlen with "Hc").
   Qed.
 
   (* ===================================================================== *)
@@ -1651,6 +1753,16 @@ Section UkSh.
      count no longer says anything. *)
   Hypothesis ush_at_of_pm_taint : forall n : nat, ⊢ T -∗ Pm n -∗ ush_at n.
 
+  (* ...AND WHAT A LINE'S READ DOES TO THE WRITE CREDENTIAL (lane IO-LEAF,
+     M6a(3)): the one the prompt left at boundary [n] is the boundary
+     credential at [n + 17] once the line is read, on the pieces the read
+     leaves -- and the pieces come back untouched.  [UShLine.ush_mid_wc_read]
+     is the one discharge. *)
+  Hypothesis ush_wc_read :
+    forall n : nat,
+      ⊢ Pm (n + length echo_line)%nat -∗ Wc n 2%nat -∗
+        Pm (n + length echo_line)%nat ∗ Wc (n + length echo_line)%nat 0%nat.
+
   Lemma ush_pos_of_pm (n : nat) : T -∗ Pm n -∗ ush_pos.
   Proof.
     iIntros "#HT H". rewrite /ush_pos. iExists n.
@@ -1662,8 +1774,8 @@ Section UkSh.
     iIntros "#HT [H | [_ $]]". iApply (ush_pos_of_pm n with "HT H").
   Qed.
 
-  Lemma ush_lease_of_posb :
-    ush_posb -∗
+  Lemma ush_lease_of_posb (l : list fdstate) (p : nat) :
+    ush_posb l p -∗
     ∃ n : nat, (⌜ush_bnd n⌝ ∨ T) ∗ ush_lease n.
   Proof.
     iIntros "H". iDestruct (ush_posb_at with "H") as (n) "[#Hb H]".
@@ -1900,61 +2012,81 @@ Section UkSh.
 
   (* ...and the entry from a command-loop turn, which is where the
      boundary comes from *)
+  (* ...ENTERED AT THE PROMPT'S END (lane IO-LEAF, M6a(3)): the credential
+     the prompt left rides beside the line, untouched, to the exit that
+     spends it ([ush_gets_done_line]). *)
   Lemma ush_gets_line_of_posb (l : list fdstate) (f : nat -> bv 8) :
-    ush_posb -∗ ∃ n0 : nat, ush_gets_line l n0 0%nat f.
+    ush_posb l 2%nat -∗
+    ∃ n0 : nat, ush_gets_line l n0 0%nat f ∗ ush_wcp l n0 2%nat.
   Proof.
     iIntros "H". rewrite /ush_posb.
     iDestruct "H" as "[H | [#HT H]]"; last first.
-    { iExists 0%nat. rewrite /ush_gets_line. iRight. iFrame "HT H". }
-    iDestruct "H" as (n) "[%Hn H]".
+    { iExists 0%nat. rewrite /ush_gets_line.
+      iSplitL; [ iRight; iFrame "HT H" | iApply ush_wcp_triv ]. }
+    iDestruct "H" as (n) "(%Hn & H & Hc)".
     iDestruct (ush_pm_of_at n with "H") as "[H | H]".
-    - iExists n. iApply (ush_gets_line_0 l n f Hn with "H").
-    - iExists 0%nat. rewrite /ush_gets_line. iRight. iExact "H".
+    - iExists n. iFrame "Hc". iApply (ush_gets_line_0 l n f Hn with "H").
+    - iExists 0%nat. rewrite /ush_gets_line.
+      iSplitL "H"; [ iRight; iExact "H" | iApply ush_wcp_triv ].
   Qed.
 
   (* ...AND WHAT THE LOOP LEAVES: nothing read at all, or exactly one
      line.  There is no third outcome on the untainted arm -- the walk
      stops on '\n' (the line's byte 16), on a shut fd 0 (which delivers no
      first byte either), or on the taint. *)
-  Definition ush_gets_done (i : nat) (f : nat -> bv 8) : iProp Σ :=
+  Definition ush_gets_done (l : list fdstate) (i : nat) (f : nat -> bv 8)
+      : iProp Σ :=
     (((⌜i = 0%nat⌝ ∨ ⌜i = length echo_line /\ ush_line_is f 0%nat i⌝)
-      ∗ ush_posb)
+      ∗ ush_posb l 0%nat)
      ∨ (T ∗ ush_pos))%I.
 
   (* the three ways out of the loop, as one constructor each *)
-  Lemma ush_gets_done_0 (n0 : nat) (f : nat -> bv 8) :
-    ush_bnd n0 -> Pm n0 -∗ ush_gets_done 0%nat f.
+  (* NOTHING READ: the credential the prompt left is DROPPED -- this is the
+     arm getcmd answers [-1] on, and sh exits with the lease. *)
+  Lemma ush_gets_done_0 (l : list fdstate) (n0 : nat) (f : nat -> bv 8) :
+    ush_bnd n0 -> Pm n0 -∗ ush_gets_done l 0%nat f.
   Proof.
     intro Hn0. iIntros "H". rewrite /ush_gets_done. iLeft.
     iSplitR; [ iLeft; by iPureIntro | ].
-    iApply (ush_posb_of n0 with "[] [H]");
+    iApply (ush_posb_of l 0%nat n0 with "[] [H]");
       [ iLeft; by iPureIntro | iApply (ush_at_of_pm n0 Hn0 with "H") ].
   Qed.
 
-  Lemma ush_gets_done_line (n0 : nat) (f : nat -> bv 8) :
+  (* ONE LINE READ: the credential the prompt left becomes the NEXT
+     boundary's, on the pieces the read leaves ([ush_wc_read]) -- which is
+     what makes the next turn's prompt payable (lane IO-LEAF, M6a(3)). *)
+  Lemma ush_gets_done_line (l : list fdstate) (n0 : nat) (f : nat -> bv 8) :
     ush_bnd n0 ->
     ush_line_is f 0%nat (length echo_line) ->
-    Pm (n0 + length echo_line)%nat -∗ ush_gets_done (length echo_line) f.
+    ush_wcp l n0 2%nat -∗
+    Pm (n0 + length echo_line)%nat -∗ ush_gets_done l (length echo_line) f.
   Proof.
-    intros Hn0 Hli. iIntros "H". rewrite /ush_gets_done. iLeft.
+    intros Hn0 Hli. iIntros "Hwc H". rewrite /ush_gets_done. iLeft.
     iSplitR; [ iRight; iPureIntro; split; [ reflexivity | exact Hli ] | ].
     pose proof (ush_bnd_step n0 Hn0) as Hb.
-    iApply (ush_posb_of (n0 + length echo_line)%nat with "[] [H]");
-      [ iLeft; by iPureIntro
-      | iApply (ush_at_of_pm (n0 + length echo_line)%nat Hb with "H") ].
+    iDestruct "Hwc" as "[[%Hfd2 Hc] | _]"; last first.
+    { iApply (ush_posb_of l 0%nat (n0 + length echo_line)%nat with "[] [H]");
+        [ iLeft; by iPureIntro
+        | iApply (ush_at_of_pm (n0 + length echo_line)%nat Hb with "H") ]. }
+    iDestruct (ush_wc_read n0 with "H Hc") as "[H Hc]".
+    iApply (ush_posb_of_wc l 0%nat (n0 + length echo_line)%nat Hb
+              with "[H] [Hc]").
+    - iApply (ush_at_of_pm (n0 + length echo_line)%nat Hb with "H").
+    - rewrite /ush_wcp. iLeft. iFrame "Hc". by iPureIntro.
   Qed.
 
-  Lemma ush_gets_done_taint (i : nat) (f : nat -> bv 8) :
-    T -∗ ush_pos -∗ ush_gets_done i f.
+  Lemma ush_gets_done_taint (l : list fdstate) (i : nat) (f : nat -> bv 8) :
+    T -∗ ush_pos -∗ ush_gets_done l i f.
   Proof.
     iIntros "#HT H". rewrite /ush_gets_done. iRight. iFrame "HT H".
   Qed.
 
-  Lemma ush_posb_taint : T -∗ ush_pos -∗ ush_posb.
+  Lemma ush_posb_taint (l : list fdstate) (p : nat) :
+    T -∗ ush_pos -∗ ush_posb l p.
   Proof. iIntros "#HT H". rewrite /ush_posb. iRight. iFrame "HT H". Qed.
 
-  Lemma ush_gets_done_pos (i : nat) (f : nat -> bv 8) :
-    ush_gets_done i f -∗ ush_pos.
+  Lemma ush_gets_done_pos (l : list fdstate) (i : nat) (f : nat -> bv 8) :
+    ush_gets_done l i f -∗ ush_pos.
   Proof.
     rewrite /ush_gets_done. iIntros "[[_ H] | [_ $]]".
     iApply (ush_pos_of_posb with "H").
@@ -1962,8 +2094,9 @@ Section UkSh.
 
   (* ...and the NUL [gets] plants past the line does not disturb it: the
      line's own bytes are all BELOW the index it is planted at. *)
-  Lemma ush_gets_done_set (i : nat) (f : nat -> bv 8) (b : bv 8) :
-    ush_gets_done i f -∗ ush_gets_done i (ush_set f i b).
+  Lemma ush_gets_done_set (l : list fdstate) (i : nat) (f : nat -> bv 8)
+      (b : bv 8) :
+    ush_gets_done l i f -∗ ush_gets_done l i (ush_set f i b).
   Proof.
     rewrite /ush_gets_done. iIntros "[[#Hi H] | [#HT H]]";
       [ | iRight; iFrame "HT H" ].
@@ -3110,6 +3243,9 @@ Section UkSh.
     ubyte γd (spz - 81) bc -∗
     ustd γfd l -∗
     ush_gets_line l n0 i f -∗
+    (* ...and the credential the prompt left, riding beside the line
+       untouched to the exit that spends it (lane IO-LEAF, M6a(3)) *)
+    ush_wcp l n0 2%nat -∗
     urun N h mc (mword_of_int 0xad0) nn -∗
     (∀ (h' : CpuId) (mc' : regfile) (i2 : nat) (g : nat -> bv 8) (bc' : bv 8),
        ⌜ (i2 < Nb)%nat ⌝ -∗
@@ -3119,7 +3255,7 @@ Section UkSh.
        ubytes γd a Nb g -∗
        ubyte γd (spz - 81) bc' -∗
        ustd γfd l -∗
-       ush_gets_done i2 g -∗
+       ush_gets_done l i2 g -∗
        urun N h' mc' (mword_of_int 0xb00) nn -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
@@ -3128,7 +3264,7 @@ Section UkSh.
       intros i h mc f bc nn HN Hi HNlen Ha0 Ha64 HN31 Hsz0 Hsz1
              Hs0 Hs1 Hs2 Hs4 Hs5 Hs6.
     { assert (HF : False) by lia. destruct HF. }
-    iIntros "#Hdp #Hlaw #Hcode Hbs Hb Hstd Hpos Hrun Hcont".
+    iIntros "#Hdp #Hlaw #Hcode Hbs Hb Hstd Hpos Hwc Hrun Hcont".
     (* ---- 0xad0  c.mv s8,s1 ---- *)
     iApply (wp_uk_cmv N h mc (mword_of_int 0xad0) s8_idx s1_idx
               (mword_of_int (Z.of_nat i)) nn
@@ -3242,7 +3378,7 @@ Section UkSh.
         [ lia | exact Hs8_3 | exact P13 | ].
       rewrite /ush_gets_line.
       iDestruct "Hpos" as "[[%Hp Hpm] | [#HT Hp]]"; last first.
-      { iApply (ush_gets_done_taint i f with "HT Hp"). }
+      { iApply (ush_gets_done_taint l i f with "HT Hp"). }
       destruct Hp as (_ & Hi17 & _ & _). exfalso. lia. }
     assert (Ead8 : add_vec_int (mword_of_int 0xad8 : mword 64) 4
                    = mword_of_int 0xadc)
@@ -3444,15 +3580,15 @@ Section UkSh.
       iDestruct "Hans" as "[(%Hgt & _ & _ & _) | [(_ & %Hcl & Hpm) | [#HT Hp]]]".
       { exfalso. lia. }
       { iDestruct "Hrows" as "[%Hp | #HT]"; last first.
-        { iApply (ush_gets_done_taint i f with "HT [Hpm]").
+        { iApply (ush_gets_done_taint l i f with "HT [Hpm]").
           iApply (ush_pos_of_pm (n0 + i)%nat with "HT Hpm"). }
         destruct Hp as (Hbnd & _ & Hfdc & _).
         assert (Hi0 : i = 0%nat).
         { destruct i as [| i']; [ reflexivity | exfalso ].
           exact (ush_fd0c_not_closed l (Hfdc ltac:(lia)) Hcl). }
         subst i. rewrite Nat.add_0_r.
-        iApply (ush_gets_done_0 n0 f Hbnd with "Hpm"). }
-      { iApply (ush_gets_done_taint i f with "HT Hp"). } }
+        iApply (ush_gets_done_0 l n0 f Hbnd with "Hpm"). }
+      { iApply (ush_gets_done_taint l i f with "HT Hp"). } }
     assert (Eae6 : add_vec_int (mword_of_int 0xae6 : mword 64) 4
                    = mword_of_int 0xaea)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -3659,7 +3795,7 @@ Section UkSh.
       rewrite Eafe. iIntros (h16) "Hrun".
       iApply ("Hcont" $! h16 _ (i + 1)%nat
                 (ush_set f i (nth_byte (m9 !!! Regidx a5_idx) 0))
-                (g1 0%nat) with "[] [] [] Hbs Hb Hstd [Hans] Hrun").
+                (g1 0%nat) with "[] [] [] Hbs Hb Hstd [Hans Hwc] Hrun").
       { iPureIntro. lia. }
       { iPureIntro.
         replace (Z.of_nat (i + 1)) with (Z.of_nat i + 1) by lia.
@@ -3679,9 +3815,9 @@ Section UkSh.
       assert (Hb10 : bz = 10)
         by (symmetry in Htk8v; apply Z.eqb_eq in Htk8v; exact Htk8v).
       iDestruct "Hans" as "[(%Hby & %Hfdc & Hpm) | [#HT Hp]]"; last first.
-      { iApply (ush_gets_done_taint (i + 1)%nat _ with "HT Hp"). }
+      { iApply (ush_gets_done_taint l (i + 1)%nat _ with "HT Hp"). }
       iDestruct "Hrows" as "[%Hp | #HT]"; last first.
-      { iApply (ush_gets_done_taint (i + 1)%nat _ with "HT [Hpm]").
+      { iApply (ush_gets_done_taint l (i + 1)%nat _ with "HT [Hpm]").
         iApply (ush_pos_of_pm (n0 + i + 1)%nat with "HT Hpm"). }
       destruct Hp as (Hbnd & Hi17 & _ & Hbytes).
       rewrite (ush_bnd_mod n0 i Hbnd Hi17) in Hby.
@@ -3702,8 +3838,8 @@ Section UkSh.
       rewrite Hlen.
       replace (n0 + i + 1)%nat with (n0 + length echo_line)%nat
         by (rewrite <- Hlen; lia).
-      iApply (ush_gets_done_line n0 (ush_set f i (g1 0%nat)) Hbnd Hli
-                with "Hpm"). }
+      iApply (ush_gets_done_line l n0 (ush_set f i (g1 0%nat)) Hbnd Hli
+                with "Hwc Hpm"). }
     assert (Eaf8 : add_vec_int (mword_of_int 0xaf8 : mword 64) 2
                    = mword_of_int 0xafa)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -3805,7 +3941,7 @@ Section UkSh.
                       exact Hs5)
                 ltac:(rewrite (PCall s6_idx ltac:(vm_compute; reflexivity));
                       exact Hs6)
-                with "Hdp Hlaw Hcode Hbs Hb Hstd [Hans] Hrun").
+                with "Hdp Hlaw Hcode Hbs Hb Hstd [Hans] Hwc Hrun").
       { (* ROUND AGAIN: the byte was neither '\n' nor '\r', so it was not
            the line's last -- [i] is below 16 and the line grows by one. *)
         assert (Hnb : nth_byte (m9 !!! Regidx a5_idx) 0%nat = g1 0%nat)
@@ -3874,9 +4010,9 @@ Section UkSh.
     { symmetry in Htkcv. apply negb_false_iff in Htkcv.
       apply Z.eqb_eq in Htkcv. exact Htkcv. }
     iDestruct "Hans" as "[(%Hby & _ & Hpm) | [#HT Hp]]"; last first.
-    { iApply (ush_gets_done_taint (i + 1)%nat _ with "HT Hp"). }
+    { iApply (ush_gets_done_taint l (i + 1)%nat _ with "HT Hp"). }
     iDestruct "Hrows" as "[%Hp | #HT]"; last first.
-    { iApply (ush_gets_done_taint (i + 1)%nat _ with "HT [Hpm]").
+    { iApply (ush_gets_done_taint l (i + 1)%nat _ with "HT [Hpm]").
       iApply (ush_pos_of_pm (n0 + i + 1)%nat with "HT Hpm"). }
     destruct Hp as (Hbnd & Hi17 & _ & _).
     rewrite (ush_bnd_mod n0 i Hbnd Hi17) in Hby.
@@ -3974,11 +4110,13 @@ Section UkSh.
     shk_code γt -∗
     ubytes γd a Nb f -∗
     ustd γfd l -∗
-    ush_posb -∗
+    (* AT THE PROMPT'S END (lane IO-LEAF, M6a(3)): the credential the
+       prompt left rides in, and comes out at the next boundary *)
+    ush_posb l 2%nat -∗
     urun N h m (mword_of_int ShSyms.gets) (12 + nn) -∗
     ((∃ (g : nat -> bv 8) (i2 : nat),
         ⌜ (i2 < Nb)%nat /\ g i2 = ubyte0 ⌝ ∗ ubytes γd a Nb g ∗
-        ustd γfd l ∗ ush_gets_done i2 g) -∗
+        ustd γfd l ∗ ush_gets_done l i2 g) -∗
        ∀ (h' : CpuId) (m' : regfile),
          ⌜ ucallee_saved m m' ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + nn) -∗
@@ -4331,7 +4469,7 @@ Section UkSh.
     (* THE LINE BEGINS AT A BOUNDARY, which is what the command loop
        carries round its cycle ([ush_posb]) and what makes the byte the
        first read delivers the line's FIRST byte (lane IO-LEAF, M5(3)). *)
-    iDestruct (ush_gets_line_of_posb l f with "Hpos") as (n0) "Hpos".
+    iDestruct (ush_gets_line_of_posb l f with "Hpos") as (n0) "[Hpos Hwc]".
     iApply (wp_ksh_gets_loop a Nb spz l n0 Hfd0 Nb 0%nat h18 m8 f
               (nth_byte v11 7) nn
               ltac:(lia) ltac:(lia) HNle Halo ltac:(unfold Z64; lia) HN31
@@ -4375,7 +4513,7 @@ Section UkSh.
                     exact (upd_eq m6 (Regidx s6_idx)
                              (regval_into_reg (mword_of_int (spz - 81)
                                                : mword 64))))
-              with "Hdp Hlaw Hcode Hbs Hbc Hstd Hpos Hrun").
+              with "Hdp Hlaw Hcode Hbs Hbc Hstd Hpos Hwc Hrun").
     iIntros (h19 mc i2 g bc2) "%Hi2 %Hs8c %Hpk Hbs Hbc Hstd Hpos Hrun".
     iDestruct ("Hclc" $! bc2 with "Hbc") as "Hw11".
     (* ---- 0xb00  c.add s8,s8,s7 ---- *)
@@ -4748,7 +4886,7 @@ Section UkSh.
     { iExists (ush_set g i2 (nth_byte (q0 !!! Regidx x0_idx) 0)), i2.
       iSplitR; [ iPureIntro; split; [ lia | exact Hnul ] | ].
       iFrame "Hbs Hstd".
-      iApply (ush_gets_done_set i2 g (nth_byte (q0 !!! Regidx x0_idx) 0)
+      iApply (ush_gets_done_set l i2 g (nth_byte (q0 !!! Regidx x0_idx) 0)
                 with "Hpos"). }
     iPureIntro. intros r Hr.
     destruct (Z.eq_dec (uint r) 2) as [Eq1 | Eq1].
@@ -4980,6 +5118,9 @@ Section UkSh.
     ush_fd0p l ->
     sh_deps -∗
     ush_tag_law -∗
+    (* ...and the prompt's law at every line boundary (lane IO-LEAF,
+       M6a(3)) *)
+    ush_prompt_law -∗
     shk_code γt -∗
     ubytes γd a Nb f -∗
     ustd γfd l -∗
@@ -4988,7 +5129,9 @@ Section UkSh.
        resolves round 0 of the transcript, and every later turn enters on
        the right disjunct. *)
     ush_prompt_in l -∗
-    ush_posb -∗
+    (* ...AND THE LOOP'S OWN, at the boundary the cursor stands on (lane
+       IO-LEAF, M6a(3)); the read moves both to the next one *)
+    ush_posb l 0%nat -∗
     urun N h m (mword_of_int ShSyms.getcmd) (4 + (12 + nn)) -∗
     (* ONE ∀ AND NOT AN ∃ UNDER A ∀ (lane IO-LEAF, M5(3)): the return
        value is a fact ABOUT THE LINE, so the line and the registers have
@@ -5004,18 +5147,31 @@ Section UkSh.
          m' !!! Regidx a0_idx = (mword_of_int (-1) : mword 64) ⌝ -∗
        ubytes γd a Nb g -∗
        ustd γfd l -∗
-       ush_gets_done i2 g -∗
+       ush_gets_done l i2 g -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (12 + nn)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 HNle HN31 Hfd0.
     assert (HN0 : (0 < Nb)%nat) by (pose proof echo_line_length; lia).
-    iIntros "#Hdp #Hlaw #Hcode Hbs Hstd Hpr Hpos Hrun Hcont".
-    (* THE ONE BRANCH: which of the two payments answers the prompt is
-       decided here, once, and the walk below spends the obligation both
-       arms produce ([ksh_w_of_prompt_in]). *)
-    iDestruct (ksh_w_of_prompt_in l with "Hdp Hpr") as "Hw".
+    iIntros "#Hdp #Hlaw #Hplaw #Hcode Hbs Hstd Hpr Hpos Hrun Hcont".
+    (* THE ONE BRANCH: which of the three payments answers the prompt is
+       decided here, once, and the walk below spends the obligation every
+       arm produces ([ksh_w_of_wcp]); what the call hands back beside the
+       ledger is the boundary at the prompt's end, which is what [gets] is
+       entered with. *)
+    iAssert (ksh_w (mword_of_int 2) (mword_of_int sh_prompt_pv) 2%nat
+               (ustd γfd l) (ustd γfd l ∗ ush_posb l 2%nat))%I
+      with "[Hpr Hpos]" as "Hw".
+    { rewrite /ush_posb. iDestruct "Hpos" as "[Hb | [#HT Hp]]"; last first.
+      { iApply (ksh_w_mono _ _ _ (ustd γfd l) (ustd γfd l) with "[Hp] [Hpr]").
+        - iIntros "$". iRight. iFrame "HT Hp".
+        - iApply (ksh_w_of_prompt_in l with "Hdp Hpr"). }
+      iDestruct "Hb" as (n) "(%Hbnd & Hat & Hwc)".
+      iApply (ksh_w_mono _ _ _ (ustd γfd l) (ustd γfd l ∗ ush_wcp l n 2%nat)
+                with "[Hat] [Hpr Hwc]").
+      - iIntros "[$ Hwc]". iLeft. iExists n. iFrame "Hat Hwc". by iPureIntro.
+      - iApply (ksh_w_of_wcp l n with "Hdp Hplaw Hpr Hwc"). }
     rewrite shp_getcmd.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     iDestruct (urun_ubytes_bnd h m _ (4 + (12 + nn)) (DfracOwn 1) a Nb f
@@ -5316,7 +5472,7 @@ Section UkSh.
     { exact Ha0_9. }
     { exact Ha1_9. }
     { exact Ha2_9. }
-    iIntros (h14 rw) "Hstd Hrun". rewrite Hra9.
+    iIntros (h14 rw) "[Hstd Hpos] Hrun". rewrite Hra9.
     assert (Er20 : ret_pc (mword_of_int 0x20 : mword 64) = mword_of_int 0x20)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Er20.
@@ -6282,7 +6438,7 @@ Section UkSh.
      boundary to the next and nothing else in a turn touches it. *)
   Definition ush_pstate (l : list fdstate) : iProp Σ :=
     (ush_std l ∗ UserCwd.ucwd_any γcwd ∗ UserChildren.uch_any γch
-     ∗ ush_posb)%I.
+     ∗ ush_posb l 0%nat)%I.
 
   (* the loop head, and the abstract rest of main's body ------------------ *)
   (* Both are indexed by the two states, because both are re-entered: the
@@ -6876,6 +7032,7 @@ Section UkSh.
   Local Lemma wp_ksh_loop (R : iProp Σ) (l : list fdstate) :
     sh_deps -∗
     ush_tag_law -∗
+    ush_prompt_law -∗
     ush_rest_l R -∗ shk_code γt -∗ ush_jtab γt -∗ ush_loop_head R l.
   Proof.
     assert (Hbf : sh_buf = 8224) by (vm_compute; reflexivity).
@@ -6883,7 +7040,7 @@ Section UkSh.
     assert (Hnbz : Z.of_nat sh_nbuf = 100) by (vm_compute; reflexivity).
     assert (Hnble : (length echo_line < sh_nbuf)%nat)
       by (rewrite echo_line_length; vm_compute; lia).
-    iIntros "#Hdp #Hlaw #Hrest #Hcode #Hjt".
+    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt".
     iLöb as "IH".
     iIntros (h m f n0) "%Hregs %Hfd0 Hpr Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
@@ -6964,7 +7121,7 @@ Section UkSh.
     iApply (wp_ksh_getcmd h3 m3 sh_buf sh_nbuf f l n Ha0_3 Ha1_3
               Hnble ltac:(rewrite Hnbz; unfold Z31; lia)
               Hfd0
-              with "Hdp Hlaw Hcode Hbs Hustd Hpr Hpos Hrun").
+              with "Hdp Hlaw Hplaw Hcode Hbs Hustd Hpr Hpos Hrun").
     iIntros (h4 mR g i2) "%Hgi %HcsR %Ha0m Hbs Hustd Hpos Hrun".
     replace (4 + (12 + n))%nat with (16 + n)%nat by lia.
     rewrite Hra3.
@@ -6988,7 +7145,7 @@ Section UkSh.
     (* sh's OWN exit: the payload it owes its parent is the lease it has
        been carrying since its entry (lane KILL-PAY, K4(a)) *)
     { iIntros (h5) "Hrun".
-      iDestruct (ush_gets_done_pos i2 g with "Hpos") as "Hpos".
+      iDestruct (ush_gets_done_pos l i2 g with "Hpos") as "Hpos".
       iDestruct (ush_pos_pay with "Hpos") as "Hpay".
       iApply (wp_ksh_die h5 mR (16 + n) with "Hcode Hpay Hrun"). }
     assert (E940 : add_vec_int (mword_of_int 0x940 : mword 64) 4
@@ -7002,12 +7159,13 @@ Section UkSh.
        fact is PURE, so it rides the rest of the turn persistently while
        the cursor goes back into the process state. *)
     iAssert ((⌜i2 = length echo_line
-               /\ ush_line_is g 0%nat (length echo_line)⌝ ∨ T) ∗ ush_posb)%I
+               /\ ush_line_is g 0%nat (length echo_line)⌝ ∨ T)
+              ∗ ush_posb l 0%nat)%I
       with "[Hpos]" as "[#Hline Hpos]".
     { rewrite /ush_gets_done.
       iDestruct "Hpos" as "[[#Hi Hp] | [#HT Hp]]"; last first.
       { iSplitR; [ iRight; iExact "HT" | ].
-        iApply (ush_posb_taint with "HT Hp"). }
+        iApply (ush_posb_taint l 0%nat with "HT Hp"). }
       iFrame "Hp".
       iDestruct "Hi" as "[%H0 | %Hl]"; last first.
       { iLeft. iPureIntro. destruct Hl as [Hi17 Hli].
@@ -7319,6 +7477,7 @@ Section UkSh.
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
     sh_deps -∗
     ush_tag_law -∗
+    ush_prompt_law -∗
     ush_rest_l R -∗
     shk_code γt -∗
     ush_jtab γt -∗
@@ -7330,7 +7489,7 @@ Section UkSh.
     urun N h m (mword_of_int 0x914) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hlaw #Hrest #Hcode #Hjt %Hfd0 Hpr Hstd HR Hbs Hrun".
+    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt %Hfd0 Hpr Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
     (* ---- 0x914  li s3,100 ---- *)
     iApply (wp_uk_li N h m (mword_of_int 0x914)
@@ -7479,7 +7638,7 @@ Section UkSh.
                  (regval_into_reg (mword_of_int 99 : mword 64))).
       - exact (upd_eq m5 (Regidx s6_idx)
                  (regval_into_reg (mword_of_int 32 : mword 64))). }
-    iDestruct (wp_ksh_loop R l with "Hdp Hlaw Hrest Hcode Hjt") as "Hhead".
+    iDestruct (wp_ksh_loop R l with "Hdp Hlaw Hplaw Hrest Hcode Hjt") as "Hhead".
     iApply ("Hhead" $! h7 m6 f n0 with "[%] [%] Hpr Hstd HR Hbs Hrun");
       [ exact Hregs | exact Hfd0 ].
   Qed.
@@ -7534,6 +7693,7 @@ Section UkSh.
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
     sh_deps -∗
     ush_tag_law -∗
+    ush_prompt_law -∗
     ush_rest_l R -∗
     shk_code γt -∗
     ush_jtab γt -∗
@@ -7552,13 +7712,13 @@ Section UkSh.
     ush_std l -∗
     UserCwd.ucwd γcwd FsImg.ROOTINO -∗
     UserChildren.uch_any γch -∗
-    ush_posb -∗
+    ush_posb l 0%nat -∗
     R -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x900) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hlaw #Hrest #Hcode #Hjt #Hro #Hgen".
+    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen".
     set (n := (16 + (ush_Dbody + n0))%nat).
     iLöb as "IH" forall (h m l).
     iIntros "%Hs1 %Hs2 %Hfd0 Hpr Hin Hstd Hcwd Hch Hpos HR Hbs Hrun".
@@ -7637,6 +7797,7 @@ Section UkSh.
     iIntros (h4 ret) "Hal Hin Hcwd Hrun".
     iAssert (∃ l' : list fdstate,
                ustd γfd l' ∗ ⌜ush_fd0p l'⌝ ∗ ush_prompt_in l' ∗
+               ush_posb l' 0%nat ∗
                ((∃ fd : nat,
                    ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
                     /\ (fd < NOFILE)%nat⌝ ∗
@@ -7645,7 +7806,7 @@ Section UkSh.
                    \/ (exists k : nat,
                          ret = (mword_of_int (Z.of_nat k) : mword 64)
                          /\ (k < NSTD)%nat)⌝))%I
-      with "[Hal Hpr]" as "(%l' & Hstd & %Hfd0' & Hpr & Hfdh)".
+      with "[Hal Hpr Hpos]" as "(%l' & Hstd & %Hfd0' & Hpr & Hpos & Hfdh)".
     { iDestruct "Hal" as "[Hal | [%Hrm Hstd]]".
       - iDestruct "Hal" as (fd) "[%Hr Hal]".
         destruct (fd_lowest_closed l) as [k |] eqn:Hk.
@@ -7659,6 +7820,8 @@ Section UkSh.
           iSplitR; [ iPureIntro; exact (ush_fd0p_cons l k Hlen Hk Hfd0) | ].
           iSplitL "Hpr";
             [ iApply (ush_prompt_in_cons l k Hlen with "Hpr") | ].
+          iSplitL "Hpos";
+            [ iApply (ush_posb_cons l k 0%nat Hlen with "Hpos") | ].
           iRight. iPureIntro. right. exists k.
           split; [ rewrite <- Hfk; exact (proj1 Hr) | ].
           rewrite <- Hlen. exact (fd_lowest_closed_bound l k Hk).
@@ -7667,10 +7830,10 @@ Section UkSh.
             as "(_ & Hstd & Hh)".
           iExists l. iFrame "Hstd".
           iSplitR; [ by iPureIntro | ].
-          iFrame "Hpr".
+          iFrame "Hpr Hpos".
           iLeft. iExists fd. iFrame "Hh". iPureIntro. exact Hr.
       - iExists l. iFrame "Hstd". iSplitR; [ by iPureIntro | ].
-        iFrame "Hpr".
+        iFrame "Hpr Hpos".
         iRight. iPureIntro. left. exact Hrm. }
     rewrite HraC.
     assert (Eret : ret_pc (mword_of_int 0x908 : mword 64) = mword_of_int 0x908)
@@ -7719,7 +7882,7 @@ Section UkSh.
          the row that ledger satisfies *)
       iIntros (h5) "Hrun".
       iApply (wp_ksh_cmd_head R h5 mD f n0 l'
-                with "Hdp Hlaw Hrest Hcode Hjt [%] Hpr [Hstd Hcwd Hch Hpos]
+                with "Hdp Hlaw Hplaw Hrest Hcode Hjt [%] Hpr [Hstd Hcwd Hch Hpos]
                       HR Hbs Hrun");
         [ exact Hfd0' | ].
       rewrite /ush_pstate /ush_std. iFrame "Hstd".
@@ -7801,7 +7964,7 @@ Section UkSh.
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Eret2.
     iApply (wp_ksh_cmd_head R h8 _ f n0 l'
-              with "Hdp Hlaw Hrest Hcode Hjt [%] Hpr [Hstd Hcwd Hch Hpos]
+              with "Hdp Hlaw Hplaw Hrest Hcode Hjt [%] Hpr [Hstd Hcwd Hch Hpos]
                     HR Hbs Hrun");
       [ exact Hfd0' | ].
     rewrite /ush_pstate /ush_std. iFrame "Hstd".
@@ -7821,6 +7984,7 @@ Section UkSh.
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
     sh_deps -∗
     ush_tag_law -∗
+    ush_prompt_law -∗
     ush_rest_l R -∗
     shk_code γt -∗
     ush_jtab γt -∗
@@ -7839,14 +8003,14 @@ Section UkSh.
     ush_std l -∗
     UserCwd.ucwd γcwd FsImg.ROOTINO -∗
     UserChildren.uch_any γch -∗
-    ush_posb -∗
+    ush_posb l 0%nat -∗
     R -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int ShSyms.main)
       (8 + (16 + (ush_Dbody + n0))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hlaw #Hrest #Hcode #Hjt #Hro #Hgen %Hfd0 Hpr Hin Hstd Hcwd Hch Hpos
+    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen %Hfd0 Hpr Hin Hstd Hcwd Hch Hpos
              HR Hbs Hrun".
     set (n := (16 + (ush_Dbody + n0))%nat).
     rewrite shp_main.
@@ -8062,7 +8226,7 @@ Section UkSh.
        [bge s1,a0] at 0x90c is what tells a descriptor above the standard
        streams from one that landed on a closed standard stream. *)
     iApply (wp_ksh_console R K he _ f n0 l
-              with "Hdp Hlaw Hrest Hcode Hjt Hro Hgen [] [] [%] Hpr Hin Hstd Hcwd Hch
+              with "Hdp Hlaw Hplaw Hrest Hcode Hjt Hro Hgen [] [] [%] Hpr Hin Hstd Hcwd Hch
                     Hpos HR Hbs Hrun");
       [ | | exact Hfd0 ].
     - (* s1 is O_RDWR, off the [c.li] at 0x8f6 *)
@@ -8095,6 +8259,9 @@ Section UkSh.
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
     sh_deps -∗
     ush_tag_law -∗
+    (* ...and the prompt's law at every line boundary (lane IO-LEAF,
+       M6a(3)), from the entry ([UShKernel.sh_prompt_law]) *)
+    ush_prompt_law -∗
     ush_rest_l R -∗
     shk_code γt -∗
     (* runcmd's jump table, which the BODY needs and only the entry can
@@ -8126,14 +8293,14 @@ Section UkSh.
     ush_std l -∗
     UserCwd.ucwd γcwd FsImg.ROOTINO -∗
     UserChildren.uch_any γch -∗
-    ush_posb -∗
+    ush_posb l 0%nat -∗
     R -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int ShSyms.start)
       (2 + (8 + (16 + (ush_Dbody + n0)))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hlaw #Hrest #Hcode #Hjt #Hro #Hgen #Hfd0 Hpr Hin Hstd Hcwd Hch Hpos
+    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen #Hfd0 Hpr Hin Hstd Hcwd Hch Hpos
              HR Hbs Hrun".
     (* THE TAINT ARM GOES GENERIC AT ONCE, and this is the ONE place it can:
        every walk below is sh's own code, and sh's console open is PINNED --
@@ -8247,7 +8414,7 @@ Section UkSh.
        [uinstr_is] hypotheses holding the literal into the context. *)
     rewrite <- ?shp_main.
     iApply (wp_ksh_main R K h5 _ f n0 l
-              with "Hdp Hlaw Hrest Hcode Hjt Hro Hgen [%] Hpr Hin Hstd Hcwd Hch Hpos
+              with "Hdp Hlaw Hplaw Hrest Hcode Hjt Hro Hgen [%] Hpr Hin Hstd Hcwd Hch Hpos
                     HR Hbs Hrun").
     exact Hfd0.
   Qed.

@@ -549,27 +549,56 @@ Section UShLine.
     iApply (ucons_pay_taint with "HT").
   Qed.
 
+  (* THE WRITE CREDENTIAL'S STEP AT A READ (lane IO-LEAF, M6a(3)).  A line
+     read leaves the pieces at [n + 17] carrying the writer's bound there,
+     and that bound is exactly what takes the credential the prompt left
+     ([EchoLinks.ewc_pr] at [2]) to the next boundary's ([0]):
+     [EchoLinks.ewc_read].  The pieces come back untouched -- the bound is
+     persistent -- so this is the ONE law [UkSh]'s loop needs about the
+     credential beyond the prompt's own ([UkSh.ush_wc_read]). *)
+  Lemma ush_mid_wc_read (γ : echo_gn) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (γp : gname) (n : nat) :
+    ush_mid γ γp (n + length echo_line)%nat -∗
+    EchoLinks.ewc_cred T γ (S gen_id) n 2%nat -∗
+    ush_mid γ γp (n + length echo_line)%nat
+    ∗ EchoLinks.ewc_cred T γ (S gen_id) (n + length echo_line)%nat 0%nat.
+  Proof.
+    iIntros "(Hpos & Hpa & Hrd0 & Hcred) Hc".
+    iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE)".
+    rewrite /EchoLinks.ewc_cred. iDestruct "Hc" as (v') "[#Hpin' Hc]".
+    iDestruct (era_pin_agree with "Hpin Hpin'") as %<-.
+    iSplitR "Hc".
+    { rewrite /ush_mid. iFrame "Hpos Hpa Hrd0". iExists v. iFrame "Hpin Hdl HE". }
+    iExists v. iFrame "Hpin".
+    iEval (cbn [EchoLinks.ewc_pr]) in "Hc". cbn [EchoLinks.ewc_pr].
+    iApply (EchoLinks.ewc_read T v n with "HE Hc").
+  Qed.
+
   (* ...AND THE BOUNDARY THE ENTRY READS OFF THE PAYLOAD IT IS HANDED: the
      fact is inside [ush_rd_pin], which is what makes it round-trip
      through /init's restart loop ([UserConsole.uinit_lend] /
      [uinit_redeem]) rather than being re-established per round. *)
+  (* ...AND WITHOUT A CREDENTIAL IN THE LOOP'S SLOT (lane IO-LEAF, M6a(3)):
+     what the payload carries is the READ side; the write credential
+     enters the loop through [Rc] (M6a(3)'s step 3) and not through here. *)
   Lemma ush_posb_of_at (γ : echo_gn) (T : iProp Σ) `{!Persistent T}
-      (N : uk_names Σ) (γp : gname) (n : nat) :
+      (N : uk_names Σ) (γp : gname) (Wc : nat -> nat -> iProp Σ)
+      (l : list fdstate) (n : nat) :
     ukn_pay N = ucons_pay fsc_cons γp T (ush_rd_pin γ) ->
-    ⊢ UkSh.ush_at N γp n -∗ UkSh.ush_posb N γp T.
+    ⊢ UkSh.ush_at N γp n -∗ UkSh.ush_posb N γp T Wc l 0%nat.
   Proof.
     intro Hpay. rewrite /UkSh.ush_at.
     iIntros "[Hpos Hlease]".
     iEval (rewrite Hpay /ucons_pay) in "Hlease".
     iDestruct "Hlease" as "[Hl | #HT]"; last first.
-    { iApply (UkSh.ush_posb_of N γp T n with "[] [Hpos]").
+    { iApply (UkSh.ush_posb_of N γp T Wc l 0%nat n with "[] [Hpos]").
       - iRight. iExact "HT".
       - rewrite /UkSh.ush_at. iFrame "Hpos". rewrite Hpay.
         iApply (ucons_pay_taint with "HT"). }
     iDestruct "Hl" as (n') "(Hrd0 & Hpa & Hcred)".
     iDestruct (upos_agree γp n n' with "Hpos Hpa") as %<-.
     iDestruct "Hcred" as "[%Hbnd Hcred]".
-    iApply (UkSh.ush_posb_of N γp T n with "[] [Hpos Hrd0 Hpa Hcred]").
+    iApply (UkSh.ush_posb_of N γp T Wc l 0%nat n with "[] [Hpos Hrd0 Hpa Hcred]").
     - iLeft. by iPureIntro.
     - rewrite /UkSh.ush_at. iFrame "Hpos". rewrite Hpay.
       iApply (ucons_pay_tok fsc_cons γp T (ush_rd_pin γ) n (-1)

@@ -3402,6 +3402,71 @@ is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
 
+IO-LEAF WRITE-CLOSED LANDED (2026-09-14; the lane's `0173644ed` in `-sup`
+cherry-picked as `c3fb395bd`; NEW `iris/UkWriteClosed.v` + a `_CoqProject`
+row after `UkWriteLeaf.v`; builds wc-1/wc-2 in `-sup`, io59 in the main
+checkout; lemma_diff CLEAN; no Admitted; nothing consumes it yet).  THE WRITE
+OBLIGATION AT A CLOSED DESCRIPTOR NEEDS NO DEPOSIT: the kernel's write
+contract `SpecFilewrite.filewrite_in` is a `match` on the descriptor state
+whose `FdClosed` arm is `emp` (argfd fails, -1, nothing printed), selected at
+the key by `SpecArgfd.fd_st_of_key` and relayed by
+`UkWriteLeaf.sbundle_at_write_intro_at`, exactly as `UShLine.ush_read_sup_closed`
+already uses for read.  `ksh_w_of_closed N fdw ua nb l i : bv_signed (trunc32
+fdw) = Z.of_nat i -> i < NSTD -> l !! i = Some FdClosed -> ⊢ UkSh.ksh_w N fdw
+ua nb (ustd l) (ustd l)` and `kinit_w1_of_closed` (its init twin at
+`UkInit.kinit_w1`), plus `uwrite_sup_closed` and the two witnesses at init's
+all-closed head ledger `ufd_l0` (`ksh_w_of_closed_l0` at fd 2,
+`kinit_w1_of_closed_l0` at fd 1) -- the audit's blocker (2) and the guard step
+3 needs on init's closed-fd head arm.  Report:
+`handoff-2026-09-16/write-closed-report.md`.
+
+IO-LEAF M6a(3) REVIEWED (2026-09-14; read-only Fable review, `handoff-2026-09-16/
+review-m6a3.md`).  Confirms the design and every argument order; its blocking
+finding (`ush_rest_l` takes `Wc`, so `sh_pay_rest` must quantify it) was
+already in the landing.  RECORD: (2) `Wc n 0 := ewc_owed` is NOT the prompt's
+shape once a child has RUN: after a successful echo the child recorded `a =
+0` and wrote twelve bytes, so sh's "$ " is two ordinary `W` bytes at "block
+chosen, cursor at P_blk + 12, cs ++ [0]" -- a shape `ewc_pr` has no index
+for; `ush_prompt_law`'s abstraction survives (`Wc n 2 = ewc_open` holds on
+both routes) and M3b core widens `ewc_owed` (a third arm) and
+`echo_prompt_dollar` at EchoLinks, UkSh untouched.  (3) `ush_wcp`'s left arm
+is UNINHABITED until step 3 (every producer today takes the `True` arm), so
+the `∨ True` inventory grows by one at the prompt site (`ush_prompt_in`,
+`sh_prompt_at`, `ush_wcp`) -- all three die at step 3; the review agrees the
+entry cannot supply `Wc np 0` before it.  (Q3) STEP 3's SHAPE, concretely:
+`Rd n := ush_rd_pin γ n ∗ (kinit_ban n ∨ ⌜stc = FdClosed⌝)` built at
+`UInitBoot` where `stc = init_cons_fd` is known, `Rd 0` whole from
+`kinit_ban0_of_eturn`; `Bn` leaves `init_boot_pay` and `kinit_round0` dies;
+init's head opens the token, converts `ban n` to `kinit_own n = Wc n 0` by
+`kinit_banner_law_holds` on the console arm and writes its banner through
+`kinit_w1_of_closed` on the closed arm; `Rc := Pm n ∗ (Wc n 0 ∨ ⌜stc =
+FdClosed⌝)` at `Pm := ush_mid γ` (the GUARDED arm replaces every `∨ True`:
+`kinit_round0`, the six `Rt ∨ True`, `ush_prompt_in`, `sh_prompt_at`,
+`ush_wcp`'s right arm); `Q := ucons_pay cn γ T Rd` unchanged in form;
+`init_exec_sup_pos` takes `Pm n -∗ (Wc n 0 ∨ guard) -∗`; `sh_slot_of_kexec`
+takes the raw bundle (D8(iii)); `ush_posb l p := (∃ n, ⌜bnd n⌝ ∗ Pm n ∗
+slot) ∨ (T ∗ ush_pos)` with `Context (Pm)` moved above it; `ush_at_of_pm`
+is FALSE at the new `Rd` and is replaced by two exit assemblers (`Pm n -∗ Wb
+n -∗ ukn_pay N (-1)` after "fork\n" -- M3b core's, `Wb n` = the banner
+credential at `n`, reached from `Wc n 0` by `echo_link_blk` at a = 3 then
+four `W` -- and `⌜closed⌝ -∗ Pm n -∗ ukn_pay N (-1)` for sh's exit, which
+is reachable only on the all-closed ledger); `die_df` pays "init: fork
+failed\n" from the refunded `Rc` through `echo_link_pro` at a = 2 (needs
+`ewc_owed_round_start`: `wr_blk` is refutable at a round start); `Rd n`
+must NOT get a prompt-shaped arm (a banner right after "$ " is in no
+alternative; on the console arm sh never exits normally).  `sh_pay_rest`
+then quantifies `Wc` AND `Pm`: plan its final shape once.  (Q4) `die_dw`:
+the kill-row route (`SpecSetkilled` returning `□ (kill_shot gn -∗
+riscv_kill_cred)`) is FALSE for init as the rows stand -- init's payload is
+the trivial `fun _ => True`, so `kill_owed gn_init` is free -- and making it
+derivable needs THREE kernel-side items (an exclusive `init_tok` payload,
+`kill_row` remembering the taint-paid arm, a reader leaf refuting
+`taken_at` for a live caller).  OWNER QUESTION: leave `die_dw` on the free
+write law as ONE narrowed owed hypothesis ("init's diagnostic write after
+being killed is free", unreachable under the discipline since nothing
+calls `kill(1)`) and delete the rest of `sh_deps`, or reopen the kernel
+rows.  Minor: `UShOut`'s `Context (γp)` is dead.
+
 IO-LEAF M6a(3) STEPS 1-2 LANDED (2026-09-14 -- every commit in this tree is
 dated 2026-09-14; the "2026-09-16" in the notes below is the previous
 session's date; order by commit; `a43341d28` + `b39fd4d48` on `800d6e567`; 13

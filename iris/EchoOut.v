@@ -932,6 +932,24 @@ Class echoOutG (Σ : gFunctors) := EchoOutG {
 }.
 #[global] Existing Instances eo_mono_nat eo_turn eo_pin eo_cs eo_El.
 
+(* THE FUNCTOR BUNDLE, and the standard [subG] instance (lane ECHO-OUT part
+   5).  [AppEcho] and everything above it takes [echoOutG Σ] as a section
+   context; a CLOSED corollary that instantiates
+   [App.xv6_app_adequacy] at a CONCRETE [Σ] discharges the class from its own
+   bundle by this instance -- exactly as every other Iris library does.  The
+   only closed corollaries in the tree today are the TRIVIAL application's
+   ([SystemAdequacy.xv6_trace_adequacy] and its siblings, at [xv6Σ]), which
+   never mention this class, so nothing in the tree needs [echoOutΣ] yet;
+   it exists so that the echo's closed theorem can be stated without
+   re-opening this file. *)
+Definition echoOutΣ : gFunctors :=
+  #[ mono_natΣ; ghost_varΣ nat; ghost_mapΣ nat era_pins;
+     GFunctor (mono_listR (leibnizO nat));
+     GFunctor (mono_listR (leibnizO (list mobs * bv 8))) ].
+
+Global Instance subG_echoOutΣ {Σ} : subG echoOutΣ Σ -> echoOutG Σ.
+Proof. solve_inG. Qed.
+
 Section echo_out.
   Context {Σ : gFunctors} `{!echoOutG Σ}.
   (* THE TAINT, ABSTRACTLY.  [AppEcho.echo_taint] is [mono_nat_lb_own

@@ -384,4 +384,49 @@ Section UInitFd.
     - iDestruct "Hl" as (l) "Hl". iExists l. iFrame "Hl". iModIntro.
       iIntros (γ) "H". iApply (ufd_head_taint with "Ht H").
   Qed.
+
+  (* THE ROW BEHIND THE HEAD, AS A PURE FACT (lane IO-LEAF, step 3).  Which
+     of the three arms a ledger is at is decidable from the list itself,
+     and the walk between /init's banner and its fork needs to say WHICH
+     arm without holding the head as a disjunction: the credential the
+     banner leaves is prompt-shaped on the console arm and banner-owed on
+     the closed one, and the two must be lent to the shell at the SAME
+     ledger the shell will inherit.  Persistent, so a ledger opened this
+     way carries its arm to wherever it is closed again. *)
+  Definition ufd_row (T : iProp Σ) (st : fdstate) (l : list fdstate)
+      : iProp Σ :=
+    (⌜l = ufd_l3 st⌝ ∨ ⌜l = ufd_l0⌝ ∨ T)%I.
+
+  Global Instance ufd_row_persistent T `{!Persistent T} st l :
+    Persistent (ufd_row T st l).
+  Proof. rewrite /ufd_row. apply _. Qed.
+
+  Lemma ufd_head_open_row (T : iProp Σ) `{!Persistent T} (st : fdstate)
+      (γfd : gname) :
+    ufd_head T st γfd -∗
+    ∃ l : list fdstate,
+      ustd γfd l ∗ ufd_row T st l
+      ∗ □ (∀ γ : gname, ustd γ l -∗ ufd_head T st γ).
+  Proof.
+    rewrite /ufd_head /ufd_headL /ufd_row.
+    iIntros "[H | [H | [Hl #Ht]]]".
+    - iExists (ufd_l3 st). iFrame "H". iSplitR; [ iLeft; done | ].
+      iModIntro. iIntros (γ) "H". iApply (ufd_head_l3 T st γ with "H").
+    - iExists ufd_l0. iFrame "H". iSplitR; [ iRight; iLeft; done | ].
+      iModIntro. iIntros (γ) "H". iApply (ufd_head_closed with "H").
+    - iDestruct "Hl" as (l) "Hl". iExists l. iFrame "Hl".
+      iSplitR; [ iRight; iRight; iExact "Ht" | ].
+      iModIntro. iIntros (γ) "H". iApply (ufd_head_taint with "Ht H").
+  Qed.
+
+  (* ...and back: a ledger at its row is the head *)
+  Lemma ufd_head_of_row (T : iProp Σ) `{!Persistent T} (st : fdstate)
+      (γfd : gname) (l : list fdstate) :
+    ufd_row T st l -∗ ustd γfd l -∗ ufd_head T st γfd.
+  Proof.
+    rewrite /ufd_row. iIntros "[-> | [-> | #Ht]] H".
+    - iApply (ufd_head_l3 T st γfd with "H").
+    - iApply (ufd_head_closed with "H").
+    - iApply (ufd_head_taint with "Ht H").
+  Qed.
 End UInitFd.

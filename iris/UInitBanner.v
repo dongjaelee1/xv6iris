@@ -85,8 +85,6 @@ Require Import EchoDisc.
 Require Import EchoOutPure.
 Require Import EchoOut.
 Require Import EchoLinks.
-Require Import UShOut.              (* [sh_prompt_pay_of_ushpr]: what the
-                                       shell will SPEND the credential on *)
 Require Import TsoCtx.
 Require User.InitSyms.
 Local Open Scope Z_scope.
@@ -375,47 +373,30 @@ Section UInitBanner.
     iApply ("Hm" with "Hrt").
   Qed.
 
-  (* ...and what /init's banner leaves behind IS the shell's prompt pair,
-     at the round's own count. *)
-  Lemma sh_prompt_pay_of_kinit_own (n : nat) :
-    echo_links T γ -∗ kinit_own n -∗ UShKernel.sh_prompt_pay.
-  Proof.
-    iIntros "#Hlk Ht". rewrite /kinit_own.
-    iDestruct "Ht" as (v) "[#Hpin Hc]".
-    iApply (UShOut.sh_prompt_pay_of_ushpr T γ v n with "Hpin Hlk [Hc]").
-    rewrite /EchoLinks.ewc_pr. iExact "Hc".
-  Qed.
+  (* WHAT THE BANNER LEAVES BEHIND IS THE SHELL'S PROMPT CREDENTIAL AT THE
+     SAME COUNT (lane IO-LEAF, step 3): [kinit_own n] IS the credential
+     family the shell's command loop carries at a boundary with no prompt
+     byte out ([EchoLinks.ewc_cred] at [p = 0]) -- the two spellings are
+     one proposition once [ewc_pr] is unfolded at 0, and the top
+     ([UInitBoot]) instantiates init's [Wc] at that family.  So the law
+     above is [UkInitMain.kinit_ban_law] at [Wb := kinit_ban], with no
+     further conversion. *)
+  Lemma kinit_own_is_cred (n : nat) :
+    kinit_own n ⊣⊢ EchoLinks.ewc_cred T γ (S gen_id) n 0%nat.
+  Proof. rewrite /kinit_own /EchoLinks.ewc_cred /EchoLinks.ewc_pr. done. Qed.
 
-  (* ...AT WHATEVER ROUND THE CREDENTIAL NAMES.  /init's walk carries an
-     opaque [iProp] and the conversion of it into the payment, so the
-     restart loop pays through the link at every round it is handed one
-     (lane IO-LEAF, M6a(2)); the count lives inside. *)
-  Definition kinit_ban_any : iProp Σ := (∃ n : nat, kinit_ban n)%I.
-
-  Global Instance kinit_ban_any_timeless : Timeless kinit_ban_any.
-  Proof. rewrite /kinit_ban_any. apply _. Qed.
-
-  Lemma kinit_ban_any_of_eturn :
-    eturn γ (S gen_id) -∗ kinit_dl0 ∗ kinit_ban_any.
-  Proof.
-    iIntros "Hturn".
-    iDestruct (kinit_ban0_of_eturn with "Hturn") as "[$ Hban]".
-    rewrite /kinit_ban_any. by iExists 0%nat.
-  Qed.
-
-  Lemma kinit_prompt_law_holds :
+  Lemma kinit_ban_law_holds :
     echo_links T γ -∗
-    □ (∀ N : uk_names Σ,
-         kinit_ban_any -∗
-         UkInitMain.kinit_banner0 N stc_cons UShKernel.sh_prompt_pay).
+    □ (∀ (n : nat) (N : uk_names Σ),
+         kinit_ban n -∗
+         UkInitMain.kinit_banner0 N stc_cons
+           (EchoLinks.ewc_cred T γ (S gen_id) n 0%nat)).
   Proof.
-    iIntros "#Hlk".
-    iDestruct (kinit_banner_law_holds with "Hlk") as "#Hlaw".
-    iIntros "!>" (N) "Hban". iDestruct "Hban" as (n) "Hban".
-    iApply (kinit_banner0_mono N (kinit_own n) UShKernel.sh_prompt_pay
-              with "[] [Hban]"); last first.
+    iIntros "#Hlk". iDestruct (kinit_banner_law_holds with "Hlk") as "#Hlaw".
+    iIntros "!>" (n N) "Hban".
+    iApply (kinit_banner0_mono N (kinit_own n) with "[] [Hban]"); last first.
     { iApply ("Hlaw" $! n N with "Hban"). }
-    iIntros "Ht". iApply (sh_prompt_pay_of_kinit_own n with "Hlk Ht").
+    iIntros "Ht". rewrite <- kinit_own_is_cred. iExact "Ht".
   Qed.
 
 End UInitBanner.

@@ -400,6 +400,28 @@ Section UserConsole.
       iApply (ucons_pay_taint cn γ T Rd xs with "HT").
   Qed.
 
+  (* ...AND THE SAME MINT WITH A CREDENTIAL RIDING THE TOKEN (lane IO-LEAF,
+     step 3).  The payload family is a PAIR at every count -- the lease's
+     read pieces and a credential the application owns beside them -- and
+     the lend hands the shell the pieces on the payload and the credential
+     SEPARATELY, at the count the position pair was minted at: that is the
+     one place the two numbers can be tied.  The taint arm mints a pair
+     that means nothing and hands the taint where the credential would be. *)
+  Lemma uinit_lend_c (cn : cons_names) (T : iProp Σ) `{!Persistent T}
+      (Rd C : nat -> iProp Σ) (xs : Z) :
+    uinit_tok cn T (fun n => Rd n ∗ C n)%I ==∗
+    ∃ (γ : gname) (n : nat), ucons_pay cn γ T Rd xs ∗ upos γ n ∗ (C n ∨ T).
+  Proof.
+    rewrite /uinit_tok. iIntros "[Hl | #HT]".
+    - iDestruct "Hl" as (n) "[Hr [Hd Hc]]".
+      iMod (upos_alloc n) as (γ) "[Hp Hpa]".
+      iModIntro. iExists γ, n. iFrame "Hp". iSplitR "Hc"; [ | by iLeft ].
+      iApply (ucons_pay_tok cn γ T Rd n xs with "Hr Hpa Hd").
+    - iMod (upos_alloc 0%nat) as (γ) "[Hp _]".
+      iModIntro. iExists γ, 0%nat. iFrame "Hp". iSplitR; [ | by iRight ].
+      iApply (ucons_pay_taint cn γ T Rd xs with "HT").
+  Qed.
+
   (* ...AND THE REDEEM, at the wait that reaps the shell: the escrow's
      payload comes back at the status the child exited with
      ([ChildTok.gen_pay]), and what init reads off it is the token again --

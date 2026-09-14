@@ -7691,13 +7691,18 @@ Section UkShDiagLeaf.
   Lemma wp_kshr_fork1_final (N : uk_names Σ) `{!ukn_const N}
       (P : gname -> gname -> gname -> iProp Σ) `{FP : !Forkable P}
       (szv : Z) (l : list fdstate) (D : gmap nat fdstate)
-      (h : CpuId) (m : regfile) (n : nat) (cw : Z) :
+      (h : CpuId) (m : regfile) (n : nat) (cw : Z)
+      (* the three binders [UkShRun.wp_kshr_fork] opens (lane IO-LEAF, M3a) *)
+      (Sc : gset gname) (Q : Z -> iProp Σ) (Rc : iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
     UkSh.sh_deps -∗
     shk_code (ukn_t N) -∗ shk_rodata (ukn_t N) -∗ P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
     UserFd.ustd (ukn_fd N) l -∗
     UserCwd.ucwd (ukn_cwd N) cw -∗
-    UserChildren.uch_any (ukn_ch N) -∗
+    UserChildren.uch (ukn_ch N) Sc -∗
     ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
+    Rc -∗
+    □ (riscv_kill_cred -∗ Q (-1)) -∗
     (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)): fork1's [-1] arm
        panics and a panic ends in [exit].  The returning arm hands it
        straight back. *)
@@ -7707,10 +7712,15 @@ Section UkShDiagLeaf.
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
+        ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
+            UserChildren.uch (ukn_ch N) Sc ∗ Rc)
+         ∨ ∃ (γ : gname) (pidv : mword 32),
+             ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             child_tok γ pidv Q ∗
+             UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
         UserFd.ustd (ukn_fd N) l -∗
         UserCwd.ucwd (ukn_cwd N) cw -∗
-        UserChildren.uch_any (ukn_ch N) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
         (* ...and back, unspent: fork1 returned *)
         ukn_pay N (-1) -∗
@@ -7718,21 +7728,18 @@ Section UkShDiagLeaf.
           (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)))
           (2 + (ush_Dg + n)) -∗
         WP (Loop : expr riscv_lang)) ∗
-     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile),
-        (* THE CHILD'S PAYLOAD IS TRIVIAL, and it is the one place in sh's
-           walk that is: sh FORKS at [fun _ => True]
-           ([UkFork.wp_uk_ecall_fork_any]'s child arm gives the equation),
-           because what sh's children owe it is nothing -- sh's OWN payload
-           is the console reader token and the rest of this walk is stated
-           at [UkRun.ukn_const].  The arm hands the class on and every leaf
-           below it, exit included, resolves it. *)
-        ⌜ ukn_triv N' ⌝ -∗
+     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname),
+        (* THE CHILD'S PAYLOAD IS THE ONE THE CALLER CHOSE; at
+           [Q := fun _ => True] the equation is [UkRun.ukn_triv]. *)
+        ⌜ ukn_pay N' = Q ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝ -∗
+        my_pay γ' Q -∗
+        Rc -∗
         shk_code (ukn_t N') -∗ P (ukn_t N') (ukn_d N') (ukn_s N') -∗ usz (ukn_s N') szv -∗
         UserFd.ustd (ukn_fd N') l -∗
         UserCwd.ucwd (ukn_cwd N') cw -∗
-        UserChildren.uch_any (ukn_ch N') -∗
+        UserChildren.uch (ukn_ch N') ∅ -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N') fd st) -∗
         urun N' h' m'
           (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)))
@@ -7741,7 +7748,7 @@ Section UkShDiagLeaf.
     WP (Loop : expr riscv_lang).
   Proof.
     exact (wp_kshr_fork1 ush_Dg ush_diag_leaf_holds
-             N P szv l D h m n cw).
+             N P szv l D h m n cw Sc Q Rc).
   Qed.
 
   Lemma wp_kshr_fork1_final_any (N : uk_names Σ) `{!ukn_const N}

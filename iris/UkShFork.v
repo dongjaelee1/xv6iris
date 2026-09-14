@@ -303,9 +303,16 @@ Section UkShFork.
     (* ---- fork1() ---- *)
     replace (16 + (80 + n))%nat with (2 + (UkShDiag.ush_Dg + (66 + n)))%nat
       by (unfold UkShDiag.ush_Dg; lia).
+    (* THE CHILDREN SET IS OPENED FOR THE FORK-WAIT WINDOW (lane IO-LEAF,
+       M3a) and closed again at the loop head: the fork MINTS the token at
+       the generation that joined it, and the wait REPORTS what the reap
+       left.  The payload and the lend are still the trivial ones -- sh's
+       child's walk is at [UkRun.ukn_triv] until M3b opens them. *)
+    iDestruct "Hch" as (Sc) "Hch".
     iApply (UkShDiag.wp_kshr_fork1_final N (ushf_pay f)
-              sz l ∅ h1 m1 (66 + n) cw
-              with "Hdp Hcode Hro [Hdat Hbuf] Hsz Hustd Hcwd Hch []
+              sz l ∅ h1 m1 (66 + n) cw Sc (fun _ => True%I) emp%I
+              ltac:(intros x y; reflexivity)
+              with "Hdp Hcode Hro [Hdat Hbuf] Hsz Hustd Hcwd Hch [] [] []
                     Hlease Hrun").
     { rewrite /ushf_pay.
       iSplitR; [ iExact "Hcode" | ].
@@ -313,6 +320,8 @@ Section UkShFork.
       iSplitR; [ iExact "Hjt" | ].
       iFrame "Hdat Hbuf". }
     { rewrite big_sepM_empty. done. }
+    { done. }
+    { iModIntro. iIntros "_". done. }
     rewrite Hra_1.
     assert (Eret : ret_pc (mword_of_int 0x930 : mword 64)
                    = mword_of_int 0x930)
@@ -322,8 +331,24 @@ Section UkShFork.
        child it forks runs [runcmd] under fresh ghost names. *)
     iSplitL "Hhead Hpos".
     - (* ================= THE PARENT: reap, and round again ============= *)
-      iIntros (hA mA rA) "%HrA %HcsA %Ha0A Hpay Hsz Hustd Hcwd Hch _ Hlease Hrun".
+      iIntros (hA mA rA) "%HrA %HcsA %Ha0A Hans Hpay Hsz Hustd Hcwd _ Hlease Hrun".
       iDestruct "Hpay" as "(_ & _ & _ & Hdat & Hbuf)".
+      (* WHAT THE FORK LEFT IN sh's HAND.  On the failing arm the set is the
+         one it had and the lend came back; on the pid arm the set grew by
+         the child's generation and sh holds the quarter its wait would
+         redeem.  At the TRIVIAL payload there is nothing to redeem, so the
+         token is dropped here and the wait runs at whichever set it is --
+         keeping it is lane IO-LEAF M3b's step, and it needs two facts this
+         tree does not have yet (TRAP-ROWS T4's "a null-status wait that
+         returns -1 has no children", and "the generation the reap named is
+         in the caller's own column"). *)
+      iAssert (∃ Sw : gset gname, UserChildren.uch (ukn_ch N) Sw)%I
+        with "[Hans]" as "Hchx".
+      { iDestruct "Hans" as "[(_ & Hf & _) | Hpid]".
+        - iExists Sc. iExact "Hf".
+        - iDestruct "Hpid" as (γ pidv) "(_ & _ & Hf)".
+          iExists (Sc ∪ {[γ]}). iExact "Hf". }
+      iDestruct "Hchx" as (Sw) "Hch".
       (* ---- 0x930  c.beqz a0,0x9c0 -- NOT taken: this is the parent ---- *)
       iApply (wp_uk_cbeqz N hA mA (mword_of_int 0x930)
                 (mword_of_int 72 : mword 8) (mword_of_int 2 : mword 3) a0_idx
@@ -382,9 +407,10 @@ Section UkShFork.
         by exact (upd_eq mB (Regidx ra_idx) _).
       (* ---- wait((int * )0) ---- *)
       iApply (UkShRun.wp_kshr_wait Hpsok_free N hD mC
-                (2 + (UkShDiag.ush_Dg + (66 + n))) Ha0_C
+                (2 + (UkShDiag.ush_Dg + (66 + n))) Sw Ha0_C
                 with "Hcode Hrun Hch").
-      iIntros (hE ret) "Hrun Hch".
+      iIntros (hE ret Sw') "_ Hrun Hch".
+      iDestruct (UserChildren.uch_any_of with "Hch") as "Hch".
       rewrite Hra_C.
       assert (Eret2 : ret_pc (mword_of_int 0x938 : mword 64)
                       = mword_of_int 0x938)
@@ -430,7 +456,9 @@ Section UkShFork.
         rewrite /ushf_pstate_at /UkSh.ush_std /UkSh.ush_pos /UkSh.ush_at.
         iFrame "Hustd Hcwd Hch". iExists np0. iFrame "Hpos Hlease".
     - (* ================= THE CHILD: parse, run, exec =================== *)
-      iIntros (N' hA mA) "%Hti' %HcsA %Ha0A #Hcode' Hpay Hsz Hustd Hcwd Hch _ Hrun".
+      iIntros (N' hA mA γ') "%Hti' %HcsA %Ha0A _ _ #Hcode' Hpay Hsz Hustd Hcwd
+                             Hch _ Hrun".
+      iDestruct (UserChildren.uch_any_of with "Hch") as "Hch".
       (* THE POSITION DOES NOT CROSS sh's OWN FORK: the pair is sh's, the
          child runs [runcmd] and never reads the console at a named
          position, and a ghost half cannot be copied.  The parent keeps it
@@ -438,7 +466,12 @@ Section UkShFork.
          above). *)
       (* the child's payload is TRIVIAL ([UkFork.wp_uk_ecall_fork_any]'s
          arm); sh's own walk is at the weaker class either way *)
-      pose proof (ukn_const_of_triv N' Hti') as Hcst'.
+      (* the equation the fork arm now gives is [UkRun.ukn_triv]'s BODY, and
+         a hypothesis whose head is [eq] is invisible to instance search --
+         so the class is named here, once, for [UkShMain]'s section
+         variables to pick up. *)
+      pose proof (Hti' : UkRun.ukn_triv N') as Htiv'.
+      pose proof (ukn_const_of_triv N' Htiv') as Hcst'.
       iDestruct "Hpay" as "(_ & #Hro' & #Hjt' & Hdat & Hbuf)".
       (* ---- 0x930  c.beqz a0,0x9c0 -- TAKEN: this is the child ---- *)
       iApply (wp_uk_cbeqz N' hA mA (mword_of_int 0x930)

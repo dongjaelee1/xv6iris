@@ -1076,94 +1076,18 @@ Section UkFork.
   Qed.
 
   (* ===================================================================== *)
-  (* §5b FORK FOR A PROGRAM THAT DOES NOT TRACK ITS CHILDREN.              *)
+  (* §5b FORK FOR A PROGRAM THAT DOES NOT TRACK ITS CHILDREN -- DELETED    *)
+  (* (lane IO-LEAF, M3a).                                                  *)
   (*                                                                       *)
-  (* [UserFd.ustd_any]'s mold, one tier up.  The fragment still has to     *)
-  (* come IN -- the engine's half lives inside [urun] and the set MOVES at *)
-  (* the trap, so an update needs both halves -- but a caller that will    *)
-  (* never redeem a token neither names the set nor keeps what the trap    *)
-  (* mints: the payload is [fun _ => True], the parent's                   *)
-  (* [ChildTok.child_tok] is dropped at the arm that produces it, and so   *)
-  (* is the child's [ChildTok.my_pay].  What each arm hands back is the    *)
-  (* index-free fragment the caller handed in                              *)
-  (* ([UserChildren.uch_any]), which costs the statement one resource and  *)
-  (* no binder.                                                            *)
-  (*                                                                       *)
-  (* [⌜r <> 0⌝] STAYS: init and sh both branch on it, and it is the one    *)
-  (* thing about the return value an untracking caller reads.              *)
-  (*                                                                       *)
-  (* AND THE LEND IS [emp] HERE (lane FORK-REFUND), so the general leaf's  *)
-  (* refund on the -1 arm is [emp] too and this statement does not name it *)
-  (* -- it is dropped where the fragment is rebuilt, exactly as the token  *)
-  (* is.  A caller that wants a real lend back takes the general leaf.     *)
+  (* [wp_uk_ecall_fork_any] was the leaf above with all three of the        *)
+  (* caller's binders hard-wired -- the child's payload at [fun _ => True], *)
+  (* the lend at [emp], the children set behind an existential -- and the   *)
+  (* token the pid arm mints DROPPED.  Its one caller was sh                *)
+  (* ([UkShRun.wp_kshr_fork]), and sh's console credential travels on       *)
+  (* exactly those three, so it now takes the leaf itself and passes the    *)
+  (* trivial values where it wants nothing back.  A wrapper that can only   *)
+  (* be used by throwing the answer away is not a shape worth keeping.      *)
   (* ===================================================================== *)
-  Lemma wp_uk_ecall_fork_any (N : uk_names Σ) (h : CpuId) (m : regfile)
-      (pc : mword 64) (avail : nat) (szv : Z) (l : list fdstate)
-      (D : gmap nat fdstate) (c : Z)
-      (P : gname -> gname -> gname -> iProp Σ) `{FP : !Forkable P} :
-    usysno m = USYS_fork ->
-    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
-    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
-    P (ukn_t N) (ukn_d N) (ukn_s N) -∗
-    usz (ukn_s N) szv -∗
-    UserFd.ustd (ukn_fd N) l -∗
-    ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
-    UserCwd.ucwd (ukn_cwd N) c -∗
-    UserChildren.uch_any (ukn_ch N) -∗
-    urun N h m pc avail -∗
-    ((∀ (h' : CpuId) (r : mword 64),
-        ⌜r <> (mword_of_int 0 : mword 64)⌝ -∗
-        P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
-        UserFd.ustd (ukn_fd N) l -∗
-        ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
-        UserCwd.ucwd (ukn_cwd N) c -∗
-        UserChildren.uch_any (ukn_ch N) -∗
-        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
-          (add_vec_int pc 4) avail -∗
-        WP (Loop : expr riscv_lang)) ∗
-     (∀ (N' : uk_names Σ) (h' : CpuId),
-        (* THE CHILD'S PAYLOAD IS THE TRIVIAL ONE at this statement: a
-           caller that will not redeem a token forks at [fun _ => True],
-           and the record the arm mints says so ([UkRun.ukn_pay]). *)
-        ⌜ ukn_pay N' = (fun _ => True)%I ⌝ -∗
-        P (ukn_t N') (ukn_d N') (ukn_s N') -∗ usz (ukn_s N') szv -∗
-        UserFd.ustd (ukn_fd N') l -∗
-        ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N') fd st) -∗
-        UserCwd.ucwd (ukn_cwd N') c -∗
-        UserChildren.uch_any (ukn_ch N') -∗
-        urun N' h'
-          (<[Regidx (mword_of_int 10) := (mword_of_int 0 : mword 64)]> m)
-          (add_vec_int pc 4) avail -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
-    intros Hn Hal4.
-    iIntros "#Hi HP Hsz Hstd HD Hcwd Hch Hrun [Hpar Hchild]".
-    (* the index-free fragment is opened here and closed on both arms:
-       the leaf below mints the child's half at a NAMED set and moves the
-       parent's, so the set has to be a name for the length of the call *)
-    iDestruct "Hch" as (Sc) "Hchf".
-    iApply (wp_uk_ecall_fork N h m pc avail szv l D c Sc (fun _ => True%I)
-              emp%I P
-              Hn Hal4 with "Hi [] HP Hsz Hstd HD Hcwd Hchf [] Hrun [Hpar Hchild]");
-      [ done | iModIntro; iIntros "_"; done | ].
-    iSplitL "Hpar".
-    - iIntros (h' r) "%Hr Hans HP Hsz Hstd HD Hcwd Hrun".
-      (* BOTH ARMS GIVE THE FRAGMENT BACK, and the token the pid arm mints
-         is dropped: a caller at this statement has said it will not
-         redeem one. *)
-      iAssert (UserChildren.uch_any (ukn_ch N)) with "[Hans]" as "Hch".
-      { iDestruct "Hans" as "[(_ & Hf & _) | Hpid]".
-        - iApply (uch_any_of with "Hf").
-        - iDestruct "Hpid" as (γ pidv) "(_ & _ & Hf)".
-          iApply (uch_any_of with "Hf"). }
-      iApply ("Hpar" $! h' r with "[%] HP Hsz Hstd HD Hcwd Hch Hrun").
-      exact Hr.
-    - iIntros (N' h' γ') "%Hpeq _ _ HP Hsz Hstd HD Hcwd Hchf' Hrun".
-      iApply ("Hchild" $! N' h' with "[%] HP Hsz Hstd HD Hcwd [Hchf'] Hrun");
-        [ exact Hpeq | ].
-      iApply (uch_any_of with "Hchf'").
-  Qed.
 
   (* ===================================================================== *)
   (* §6 A WORKED SHAPE: init's fork.                                       *)

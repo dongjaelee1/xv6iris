@@ -106,6 +106,7 @@ Require Import UkSh.
 Require Import TsoCtx.
 Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
+Require Import UexecRet.  (* [uwait_ans] -- what the wait leaf answers *)
 Local Open Scope Z_scope.
 Import Defs.
 
@@ -809,22 +810,27 @@ Section UkShRun.
   (* sh calls [wait] with a0 = 0 at all three of its call sites, so the      *)
   (* row's null-guard arm is the one that fires and the heap crosses         *)
   (* untouched -- the quiet shape, at a syscall that is not quiet.           *)
-  (* ...AND IT CARRIES sh's OWN HALF OF ITS CHILDREN SET, index-free for
-     the fork site's reason: wait MOVES the set (the reap takes the reaped
-     generation out of it) and the move needs both halves, but sh never
-     asks which children it has, so what goes in and comes back is
-     [UserChildren.uch_any] ([UkRunSys.wp_uk_ecall_wait_any]). *)
-  Lemma wp_kshr_wait (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile) (avail : nat) :
+  (* ...AND IT CARRIES sh's OWN HALF OF ITS CHILDREN SET, AT A NAME (lane
+     IO-LEAF, M3a): wait MOVES the set (the reap takes the reaped
+     generation out of it) and the move needs both halves.  sh used to
+     hand the index-free fragment to [UkRunSys.wp_uk_ecall_wait_any],
+     which DISCARDED the answer; the reaped child's escrow is what pays
+     sh back, so the answer is reported here and the wrapper is gone.
+     [wp_kshr_wait0] below is the index-free arm runcmd's LIST still
+     takes -- it reaps a child it forked for its side effects. *)
+  Lemma wp_kshr_wait (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
+      (avail : nat) (Sc : gset gname) :
     uint (m !!! Regidx a0_idx) = 0 ->
     shk_code (ukn_t N) -∗
     urun N h m (mword_of_int ShSyms.wait) avail -∗
-    UserChildren.uch_any (ukn_ch N) -∗
-    (∀ (h' : CpuId) (ret : mword 64),
+    UserChildren.uch (ukn_ch N) Sc -∗
+    (∀ (h' : CpuId) (ret : mword 64) (Sc' : gset gname),
+       uwait_ans ret Sc Sc' -∗
        urun N h'
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 3 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       UserChildren.uch_any (ukn_ch N) -∗
+       UserChildren.uch (ukn_ch N) Sc' -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
@@ -850,7 +856,7 @@ Section UkShRun.
     { rewrite /m1 (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
                      ltac:(vm_compute; discriminate)). exact Ha0. }
     (* ---- 0xc90  ecall -- the wait row at a null status pointer ---- *)
-    iApply (wp_uk_ecall_wait_any N h1 m1 (mword_of_int 0xc90) avail
+    iApply (wp_uk_ecall_wait_null N h1 m1 (mword_of_int 0xc90) avail Sc
               ltac:(rewrite /m1 /usysno
                       (upd_eq m (Regidx a7_idx) (mword_of_int 3 : mword 64));
                     vm_compute; reflexivity)
@@ -863,7 +869,7 @@ Section UkShRun.
     assert (E1 : add_vec_int (mword_of_int 0xc90 : mword 64) 4
                  = mword_of_int 0xc94)
       by (apply bv_eq; vm_compute; reflexivity).
-    rewrite E1. iIntros (h2 ret) "Hrun Hch".
+    rewrite E1. iIntros (h2 ret Sc') "Hans Hrun Hch".
     set (m2 := <[Regidx a0_idx := ret]> m1).
     assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
     { unfold m2, m1.
@@ -879,7 +885,8 @@ Section UkShRun.
               ltac:(rewrite Hra; reflexivity)
               with "[] Hrun").
     { iApply (uis_shk_c94 with "Hcode"). }
-    iIntros (h3) "Hrun". iApply ("Hcont" $! h3 ret with "Hrun Hch").
+    iIntros (h3) "Hrun".
+    iApply ("Hcont" $! h3 ret Sc' with "Hans Hrun Hch").
   Qed.
 
   (* ---- exec @0xcbe, SYS_exec = 7 -- THE ARM THAT RETURNS --------------- *)
@@ -957,44 +964,68 @@ Section UkShRun.
      working directory ([UkFork.wp_uk_ecall_fork_any] at [cwv]), so the
      VALUE crosses the fork and the arm can name it.  [wp_kshr_fork_any]
      below is the index-free corollary every other caller still takes. *)
+  (* THE THREE BINDERS THE GENERAL LEAF OPENS (lane IO-LEAF, M3a).  sh used
+     to fork through [UkFork.wp_uk_ecall_fork_any], which hard-wired the
+     child's payload at [fun _ => True], the lend at [emp] and the
+     children set at an existential, and DROPPED the token the pid arm
+     mints.  The console credential travels on exactly those three, so the
+     wrapper is gone and the values are the caller's; a caller that wants
+     none of it passes [∅ / fun _ => True / emp] and gets back what the
+     wrapper used to give. *)
   Lemma wp_kshr_fork (N : uk_names Σ) `{!ukn_const N} (P : gname -> gname -> gname -> iProp Σ)
       `{FP : !Forkable P} (szv : Z) (l : list fdstate) (D : gmap nat fdstate)
-      (h : CpuId) (m : regfile) (avail : nat) (cw : Z) :
+      (h : CpuId) (m : regfile) (avail : nat) (cw : Z)
+      (Sc : gset gname) (Q : Z -> iProp Σ) (Rc : iProp Σ) :
+    (* the child's own walk is stated at [UkRun.ukn_const], so the payload
+       the parent chooses has to be status-independent
+       ([UserConsole.ucons_pay_const]'s mould) *)
+    (forall x y : Z, Q x = Q y) ->
     shk_code (ukn_t N) -∗ P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
     UserFd.ustd (ukn_fd N) l -∗
     UserCwd.ucwd (ukn_cwd N) cw -∗
-    (* ...AND sh's OWN HALF OF ITS CHILDREN SET, index-free for the cwd's
-       reason: fork MOVES the set and an update needs both halves, but sh
-       never asks which children it has, so the token the pid arm mints is
-       dropped at the leaf ([UkFork.wp_uk_ecall_fork_any]). *)
-    UserChildren.uch_any (ukn_ch N) -∗
+    (* ...AND sh's OWN HALF OF ITS CHILDREN SET, AT A NAME: fork MOVES the
+       set and an update needs both halves, and the pid arm has to say
+       which generation joined it -- which is what makes the token the
+       parent keeps redeemable at the wait. *)
+    UserChildren.uch (ukn_ch N) Sc -∗
     ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
+    (* WHAT THE PARENT LENDS THE CHILD, and HOW A KILLER PAYS FOR IT *)
+    Rc -∗
+    □ (riscv_kill_cred -∗ Q (-1)) -∗
     urun N h m (mword_of_int ShSyms.fork) avail -∗
     ((∀ (h' : CpuId) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
+        (* FORK'S TWO ARMS, verbatim from the leaf: it FAILED, and what was
+           lent comes back (lane FORK-REFUND); or it returned the child's
+           pid, and the parent gets the quarter a later wait() redeems
+           beside the set grown by that child's generation. *)
+        ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
+            UserChildren.uch (ukn_ch N) Sc ∗ Rc)
+         ∨ ∃ (γ : gname) (pidv : mword 32),
+             ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             child_tok γ pidv Q ∗
+             UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
         UserFd.ustd (ukn_fd N) l -∗
         UserCwd.ucwd (ukn_cwd N) cw -∗
-        UserChildren.uch_any (ukn_ch N) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
         urun N h'
           (<[Regidx a0_idx := r]>
              (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m))
           (ret_pc (m !!! Regidx ra_idx)) avail -∗
         WP (Loop : expr riscv_lang)) ∗
-     (∀ (N' : uk_names Σ) (h' : CpuId),
-        (* THE CHILD'S PAYLOAD IS TRIVIAL, and it is the one place in sh's
-           walk that is: sh FORKS at [fun _ => True]
-           ([UkFork.wp_uk_ecall_fork_any]'s child arm gives the equation),
-           because what sh's children owe it is nothing -- sh's OWN payload
-           is the console reader token and the rest of this walk is stated
-           at [UkRun.ukn_const].  The arm hands the class on and every leaf
-           below it, exit included, resolves it. *)
-        ⌜ ukn_triv N' ⌝ -∗
+     (∀ (N' : uk_names Σ) (h' : CpuId) (γ' : gname),
+        (* THE CHILD'S PAYLOAD IS THE ONE THE PARENT CHOSE, as an equation
+           on the record this arm mints, and the child gets what it was
+           lent.  At [Q := fun _ => True] this is [UkRun.ukn_triv] and the
+           arm reads exactly as it did before. *)
+        ⌜ ukn_pay N' = Q ⌝ -∗
+        my_pay γ' Q -∗
+        Rc -∗
         shk_code (ukn_t N') -∗ P (ukn_t N') (ukn_d N') (ukn_s N') -∗ usz (ukn_s N') szv -∗
         UserFd.ustd (ukn_fd N') l -∗
         UserCwd.ucwd (ukn_cwd N') cw -∗
-        UserChildren.uch_any (ukn_ch N') -∗
+        UserChildren.uch (ukn_ch N') ∅ -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N') fd st) -∗
         urun N' h'
           (<[Regidx a0_idx := (mword_of_int 0 : mword 64)]>
@@ -1003,7 +1034,8 @@ Section UkShRun.
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode HP Hsz Hstd Hcwd Hch HD Hrun [Hpar Hchi]".
+    intros HQc.
+    iIntros "#Hcode HP Hsz Hstd Hcwd Hch HD HRc #Hkw Hrun [Hpar Hchi]".
     rewrite shr_fork.
     iApply (wp_uk_cli N h m (mword_of_int 0xc7e)
               (mword_of_int 1 : mword 6) a7_idx avail
@@ -1020,7 +1052,8 @@ Section UkShRun.
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E0 Em. iIntros (h1) "Hrun".
     set (m1 := <[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m).
-    iApply (wp_uk_ecall_fork_any N h1 m1 (mword_of_int 0xc80) avail szv l D cw
+    iApply (wp_uk_ecall_fork N h1 m1 (mword_of_int 0xc80) avail szv l D cw
+              Sc Q Rc
               (fun gt gd gs => (shk_code gt ∗ P gt gd gs)%I)
               (FP := forkable_sep (fun gt _ _ => shk_code gt) P
                        forkable_shk_code FP)
@@ -1028,7 +1061,7 @@ Section UkShRun.
                       (upd_eq m (Regidx a7_idx) (mword_of_int 1 : mword 64));
                     vm_compute; reflexivity)
               ltac:(vm_compute; reflexivity)
-              with "[] [HP] Hsz Hstd HD Hcwd Hch Hrun").
+              with "[] HRc [HP] Hsz Hstd HD Hcwd Hch Hkw Hrun").
     { iApply (uis_shk_c80 with "Hcode"). }
     { iSplitR; [ iExact "Hcode" | iExact "HP" ]. }
     assert (E1 : add_vec_int (mword_of_int 0xc80 : mword 64) 4
@@ -1046,7 +1079,7 @@ Section UkShRun.
                   (mword_of_int 1 : mword 64)
                   ltac:(vm_compute; discriminate))). }
     iSplitL "Hpar".
-    - iIntros (hp r) "%Hr [#Hcp HP] Hsz Hstd HD Hcwd Hch Hrun".
+    - iIntros (hp r) "%Hr Hans [#Hcp HP] Hsz Hstd HD Hcwd Hrun".
       iApply (wp_uk_cjr N hp (<[Regidx a0_idx := r]> m1)
                 (mword_of_int 0xc84) ra_idx
                 (ret_pc (m !!! Regidx ra_idx)) avail
@@ -1055,12 +1088,12 @@ Section UkShRun.
                 with "[] Hrun").
       { iApply (uis_shk_c84 with "Hcp"). }
       iIntros (hp2) "Hrun".
-      iApply ("Hpar" $! hp2 r with "[%] HP Hsz Hstd Hcwd Hch HD Hrun").
+      iApply ("Hpar" $! hp2 r with "[%] Hans HP Hsz Hstd Hcwd HD Hrun").
       exact Hr.
-    - iIntros (N' hc) "%Hpeq [#Hck HP] Hsz Hstd HD Hcwd Hch Hrun".
-      pose proof (Hpeq : UkRun.ukn_triv N') as Hti'.
-      (* ...and the weaker class the rest of sh's walk is stated at *)
-      pose proof (ukn_const_of_triv N' Hti') as Hcst'.
+    - iIntros (N' hc γ') "%Hpeq Hmy HRc [#Hck HP] Hsz Hstd HD Hcwd Hch Hrun".
+      (* the weaker class the rest of sh's walk is stated at: the record
+         the arm minted is keyed at [Q], and [Q] does not read the status *)
+      pose proof (ukn_const_of_eq N' Q Hpeq HQc) as Hcst'.
       iApply (wp_uk_cjr N' hc
                 (<[Regidx a0_idx := (mword_of_int 0 : mword 64)]> m1)
                 (mword_of_int 0xc84) ra_idx
@@ -1070,7 +1103,8 @@ Section UkShRun.
                 with "[] Hrun").
       { iApply (uis_shk_c84 with "Hck"). }
       iIntros (hc2) "Hrun".
-      iApply ("Hchi" $! N' hc2 with "[%] Hck HP Hsz Hstd Hcwd Hch HD Hrun").
+      iApply ("Hchi" $! N' hc2 γ'
+                with "[%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch HD Hrun").
       exact Hpeq.
   Qed.
 
@@ -1114,15 +1148,27 @@ Section UkShRun.
   Proof.
     iIntros "#Hcode HP Hsz Hstd Hcwd Hch HD Hrun [Hpar Hchi]".
     iDestruct "Hcwd" as (cw) "Hcwd".
-    iApply (wp_kshr_fork N P szv l D h m avail cw
-              with "Hcode HP Hsz Hstd Hcwd Hch HD Hrun").
+    (* the index-free fragment is opened here and closed on both arms, and
+       the three binders are at the values the deleted wrapper hard-wired *)
+    iDestruct "Hch" as (Sc) "Hch".
+    iApply (wp_kshr_fork N P szv l D h m avail cw Sc (fun _ => True%I) emp%I
+              ltac:(intros x y; reflexivity)
+              with "Hcode HP Hsz Hstd Hcwd Hch HD [] [] Hrun").
+    { done. }
+    { iModIntro. iIntros "_". done. }
     iSplitL "Hpar".
-    - iIntros (h' r) "%Hr HP Hsz Hstd Hcwd Hch HD Hrun".
+    - iIntros (h' r) "%Hr Hans HP Hsz Hstd Hcwd HD Hrun".
+      iAssert (UserChildren.uch_any (ukn_ch N)) with "[Hans]" as "Hch".
+      { iDestruct "Hans" as "[(_ & Hf & _) | Hpid]".
+        - iApply (uch_any_of with "Hf").
+        - iDestruct "Hpid" as (γ pidv) "(_ & _ & Hf)".
+          iApply (uch_any_of with "Hf"). }
       iApply ("Hpar" $! h' r with "[%] HP Hsz Hstd [Hcwd] Hch HD Hrun");
         [ exact Hr | iApply (ucwd_any_of with "Hcwd") ].
-    - iIntros (N' h') "%Hpeq #Hck HP Hsz Hstd Hcwd Hch HD Hrun".
-      iApply ("Hchi" $! N' h' with "[%] Hck HP Hsz Hstd [Hcwd] Hch HD Hrun");
-        [ exact Hpeq | iApply (ucwd_any_of with "Hcwd") ].
+    - iIntros (N' h' γ') "%Hpeq _ _ #Hck HP Hsz Hstd Hcwd Hch HD Hrun".
+      iApply ("Hchi" $! N' h' with "[%] Hck HP Hsz Hstd [Hcwd] [Hch] HD Hrun");
+        [ exact Hpeq | iApply (ucwd_any_of with "Hcwd")
+        | iApply (uch_any_of with "Hch") ].
   Qed.
 
   (* ===================================================================== *)
@@ -1242,7 +1288,14 @@ Section UkShRun.
        resource comes straight back out of the continuation below.  Two
        exclusive branches, one resource. *)
     uword (ukn_d N) (uint sp0 - 16) vs0 -∗
-    ukn_pay N (-1) -∗
+    (* ...OR THE FACT THAT THE PANIC IS UNREACHABLE (lane IO-LEAF, M3a).
+       The tail runs in BOTH processes and only the parent can see -1, so
+       the CHILD -- whose a0 is 0 on the nose -- pays nothing here.  It used
+       to pay for free because its record was trivial; once the child's
+       payload is the parent's choice, the disjunct is what stands in for
+       [UkRun.ukn_pay_free_of_triv]. *)
+    (ukn_pay N (-1)
+     ∨ ⌜ mt !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝) -∗
     urun N h mt (mword_of_int 0x74) (Dg + n) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ forall q : mword 5, uint q <> 1 -> uint q <> 2 -> uint q <> 8 ->
@@ -1251,7 +1304,8 @@ Section UkShRun.
        ⌜ m' !!! Regidx s0_idx = vs0 ⌝ -∗
        ⌜ m' !!! Regidx csp_rs1 = sp0 ⌝ -∗
        (* ...and back, unspent: fork1 returned *)
-       ukn_pay N (-1) -∗
+       (ukn_pay N (-1)
+        ∨ ⌜ mt !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝) -∗
        urun N h' m' (ret_pc vra) (2 + (Dg + n)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
@@ -1302,8 +1356,17 @@ Section UkShRun.
                   = mword_of_int 0x7a)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E76. iIntros (h2) "Hrun".
-    destruct (uv_btaken BEQ (t1 !!! Regidx a0_idx) (t1 !!! Regidx a5_idx)).
+    assert (Ha5_1 : t1 !!! Regidx a5_idx
+                    = (sign_extend' 64 (mword_of_int 63 : mword 6) : mword 64))
+      by exact (upd_eq mt (Regidx a5_idx) _).
+    destruct (uv_btaken BEQ (t1 !!! Regidx a0_idx) (t1 !!! Regidx a5_idx))
+      eqn:Hbt.
     { (* ---- fork returned -1: panic("fork") ---- *)
+      (* ...WHICH IS THE PARENT, so the payload's second disjunct is dead *)
+      iDestruct "Hpayv" as "[Hpayv | %Hz0]"; last first.
+      { exfalso.
+        rewrite (Ht1 a0_idx ltac:(vm_compute; discriminate)) Hz0 Ha5_1 in Hbt.
+        vm_compute in Hbt. discriminate Hbt. }
       (* 0x82  auipc a0,0x1 *)
       iApply (wp_uk_auipc N h2 t1 (mword_of_int 0x82)
                 (mword_of_int 1 : mword 20) a0_idx
@@ -1469,59 +1532,70 @@ Section UkShRun.
   Lemma wp_kshr_fork1 (N : uk_names Σ) `{!ukn_const N}
       (P : gname -> gname -> gname -> iProp Σ) `{FP : !Forkable P}
       (szv : Z) (l : list fdstate) (D : gmap nat fdstate)
-      (h : CpuId) (m : regfile) (n : nat) (cw : Z) :
+      (h : CpuId) (m : regfile) (n : nat) (cw : Z)
+      (* the three binders [wp_kshr_fork] opens (lane IO-LEAF, M3a) *)
+      (Sc : gset gname) (Q : Z -> iProp Σ) (Rc : iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
     UkSh.sh_deps -∗
     shk_code (ukn_t N) -∗ shk_rodata (ukn_t N) -∗ P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
     UserFd.ustd (ukn_fd N) l -∗
     UserCwd.ucwd (ukn_cwd N) cw -∗
-    (* the caller's half of its children set, index-free -- see
+    (* the caller's half of its children set, at a name -- see
        [wp_kshr_fork] *)
-    UserChildren.uch_any (ukn_ch N) -∗
+    UserChildren.uch (ukn_ch N) Sc -∗
     (* the caller's descriptors, which BOTH processes come back holding --
        see [UkFork.wp_uk_ecall_fork].  This is what PIPE's six closes and
        REDIR's close-and-reopen are paid for with. *)
     ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
+    (* what the caller lends its child, and how a killer pays for it *)
+    Rc -∗
+    □ (riscv_kill_cred -∗ Q (-1)) -∗
     (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)): fork1's [-1] arm
        panics, and a panic ends in [exit].  The RETURNING arm hands it
        straight back, on the parent's continuation below; the CHILD's tail
-       runs at a trivial record and pays its own
-       ([UkRun.ukn_pay_free_of_triv]). *)
+       never reaches the panic ([wp_kshr_fork1_tail]'s second disjunct). *)
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.fork1) (2 + (Dg + n)) -∗
     ((∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
+        (* fork's answer, relayed -- see [wp_kshr_fork] *)
+        ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
+            UserChildren.uch (ukn_ch N) Sc ∗ Rc)
+         ∨ ∃ (γ : gname) (pidv : mword 32),
+             ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             child_tok γ pidv Q ∗
+             UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
         UserFd.ustd (ukn_fd N) l -∗
         UserCwd.ucwd (ukn_cwd N) cw -∗
-        UserChildren.uch_any (ukn_ch N) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
         (* ...and the payload back, unspent: fork1 returned *)
         ukn_pay N (-1) -∗
         urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + (Dg + n)) -∗
         WP (Loop : expr riscv_lang)) ∗
-     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile),
-        (* THE CHILD'S PAYLOAD IS TRIVIAL, and it is the one place in sh's
-           walk that is: sh FORKS at [fun _ => True]
-           ([UkFork.wp_uk_ecall_fork_any]'s child arm gives the equation),
-           because what sh's children owe it is nothing -- sh's OWN payload
-           is the console reader token and the rest of this walk is stated
-           at [UkRun.ukn_const].  The arm hands the class on and every leaf
-           below it, exit included, resolves it. *)
-        ⌜ ukn_triv N' ⌝ -∗
+     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname),
+        (* THE CHILD'S PAYLOAD IS THE ONE THE CALLER CHOSE, and it gets
+           what it was lent ([wp_kshr_fork]).  At [Q := fun _ => True] the
+           equation is [UkRun.ukn_triv] and the arm reads as before. *)
+        ⌜ ukn_pay N' = Q ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝ -∗
+        my_pay γ' Q -∗
+        Rc -∗
         shk_code (ukn_t N') -∗ P (ukn_t N') (ukn_d N') (ukn_s N') -∗ usz (ukn_s N') szv -∗
         UserFd.ustd (ukn_fd N') l -∗
         UserCwd.ucwd (ukn_cwd N') cw -∗
-        UserChildren.uch_any (ukn_ch N') -∗
+        UserChildren.uch (ukn_ch N') ∅ -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N') fd st) -∗
         urun N' h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + (Dg + n)) -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hcode #Hro HP Hsz Hstd Hcwd Hch HD Hpayv Hrun [Hpar Hchi]".
+    intros HQc.
+    iIntros "#Hdp #Hcode #Hro HP Hsz Hstd Hcwd Hch HD HRc #Hkw Hpayv Hrun
+             [Hpar Hchi]".
     rewrite shr_fork1.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     remember (m !!! Regidx csp_rs1) as sp0 eqn:Hsp0.
@@ -1658,8 +1732,8 @@ Section UkShRun.
                              (fun _ gd _ => uword gd (uint sp0 - 16) vs0)
                              (forkable_uword (uint sp0 - 8) vra)
                              (forkable_uword (uint sp0 - 16) vs0))))
-              szv l D h5 m3 (Dg + n) cw
-              with "Hcode [HP Hw8 Hw0] Hsz Hstd Hcwd Hch HD Hrun").
+              szv l D h5 m3 (Dg + n) cw Sc Q Rc HQc
+              with "Hcode [HP Hw8 Hw0] Hsz Hstd Hcwd Hch HD HRc Hkw Hrun").
     { iFrame "Hro HP Hw8 Hw0". }
     rewrite Hret3.
     (* the register file both arms resume under, and its sp *)
@@ -1718,15 +1792,21 @@ Section UkShRun.
        trivial record and pays its own (lane KILL-PAY, K4(a)) *)
     iSplitL "Hpar Hpayv".
     - (* ---- THE PARENT ---- *)
-      iIntros (hp r) "%Hr (_ & HP & Hw8 & Hw0) Hsz Hstd Hcwd Hch HD Hrun".
+      iIntros (hp r) "%Hr Hans (_ & HP & Hw8 & Hw0) Hsz Hstd Hcwd HD Hrun".
       iApply (wp_kshr_fork1_tail N hp
                 (<[Regidx a0_idx := r]>
                    (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m3))
                 sp0 vra vs0 n Hal8 Hlo (Hspf r)
-                with "Hdp Hcode Hro Hw8 Hw0 Hpayv Hrun").
+                with "Hdp Hcode Hro Hw8 Hw0 [Hpayv] Hrun").
+      { by iLeft. }
       iIntros (hp2 m') "%Hq %Hra %Hs0 %Hsps Hpayv Hrun".
+      (* the parent's a0 IS the return value, and it is not 0 -- so what
+         comes back is the payload and not the tail's dead disjunct *)
+      iAssert (ukn_pay N (-1)) with "[Hpayv]" as "Hpayv".
+      { iDestruct "Hpayv" as "[$ | %Hz0]". exfalso. apply Hr.
+        rewrite <- Hz0. symmetry. exact (upd_eq _ (Regidx a0_idx) r). }
       iApply ("Hpar" $! hp2 m' r
-                with "[%] [%] [%] HP Hsz Hstd Hcwd Hch HD Hpayv [Hrun]").
+                with "[%] [%] [%] Hans HP Hsz Hstd Hcwd HD Hpayv [Hrun]").
       + exact Hr.
       + exact (fun q => Hback r m' q Hq Hra Hs0 Hsps).
       + rewrite (Hq a0_idx ltac:(vm_compute; lia) ltac:(vm_compute; lia)
@@ -1734,20 +1814,22 @@ Section UkShRun.
         exact (upd_eq _ (Regidx a0_idx) r).
       + iExact "Hrun".
     - (* ---- THE CHILD, under fresh names ---- *)
-      iIntros (N' hc) "%Hti' #Hck (#Hcro & HP & Hw8 & Hw0) Hsz Hstd Hcwd Hch HD Hrun".
-      pose proof (ukn_const_of_triv N' Hti') as Hcst'.
-      (* THE CHILD'S RECORD IS TRIVIAL, so its own tail's payload is free
-         (lane KILL-PAY, K4(a)); the parent's copy stays with the parent. *)
-      iDestruct (ukn_pay_free_of_triv N' Hti') as "Hpayc".
+      iIntros (N' hc γ') "%Hpeq Hmy HRc #Hck (#Hcro & HP & Hw8 & Hw0) Hsz Hstd
+                          Hcwd Hch HD Hrun".
+      pose proof (ukn_const_of_eq N' Q Hpeq HQc) as Hcst'.
+      (* THE CHILD NEVER PANICS: its a0 is 0 on the nose, which is what
+         stands in for the trivial record's free payload. *)
       iApply (wp_kshr_fork1_tail N' hc
                 (<[Regidx a0_idx := (mword_of_int 0 : mword 64)]>
                    (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m3))
                 sp0 vra vs0 n Hal8 Hlo (Hspf (mword_of_int 0 : mword 64))
-                with "Hdp Hck Hcro Hw8 Hw0 Hpayc Hrun").
+                with "Hdp Hck Hcro Hw8 Hw0 [] Hrun").
+      { iRight. iPureIntro.
+        exact (upd_eq _ (Regidx a0_idx) (mword_of_int 0 : mword 64)). }
       iIntros (hc2 m') "%Hq %Hra %Hs0 %Hsps _ Hrun".
-      iApply ("Hchi" $! N' hc2 m'
-                with "[%] [%] [%] Hck HP Hsz Hstd Hcwd Hch HD [Hrun]").
-      + exact Hti'.
+      iApply ("Hchi" $! N' hc2 m' γ'
+                with "[%] [%] [%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch HD [Hrun]").
+      + exact Hpeq.
       + exact (fun q => Hback (mword_of_int 0 : mword 64) m' q Hq Hra Hs0 Hsps).
       + rewrite (Hq a0_idx ltac:(vm_compute; lia) ltac:(vm_compute; lia)
                    ltac:(vm_compute; lia) ltac:(vm_compute; lia)).
@@ -1814,19 +1896,32 @@ Section UkShRun.
   Proof.
     iIntros "#Hdp #Hcode #Hro HP Hsz Hstd Hcwd Hch HD Hpayv Hrun [Hpar Hchi]".
     iDestruct "Hcwd" as (cw) "Hcwd".
-    iApply (wp_kshr_fork1 N P szv l D h m n cw
-              with "Hdp Hcode Hro HP Hsz Hstd Hcwd Hch HD Hpayv Hrun").
+    (* both index-free fragments are opened here and closed on both arms,
+       and the three binders are at the trivial values *)
+    iDestruct "Hch" as (Sc) "Hch".
+    iApply (wp_kshr_fork1 N P szv l D h m n cw Sc (fun _ => True%I) emp%I
+              ltac:(intros x y; reflexivity)
+              with "Hdp Hcode Hro HP Hsz Hstd Hcwd Hch HD [] [] Hpayv Hrun").
+    { done. }
+    { iModIntro. iIntros "_". done. }
     iSplitL "Hpar".
-    - iIntros (h' m' r) "%Hr %Hcs %Ha0 HP Hsz Hstd Hcwd Hch HD Hpayv Hrun".
+    - iIntros (h' m' r) "%Hr %Hcs %Ha0 Hans HP Hsz Hstd Hcwd HD Hpayv Hrun".
+      iAssert (UserChildren.uch_any (ukn_ch N)) with "[Hans]" as "Hch".
+      { iDestruct "Hans" as "[(_ & Hf & _) | Hpid]".
+        - iApply (uch_any_of with "Hf").
+        - iDestruct "Hpid" as (γ pidv) "(_ & _ & Hf)".
+          iApply (uch_any_of with "Hf"). }
       iApply ("Hpar" $! h' m' r
                 with "[%] [%] [%] HP Hsz Hstd [Hcwd] Hch HD Hpayv Hrun");
         [ exact Hr | exact Hcs | exact Ha0
         | iApply (ucwd_any_of with "Hcwd") ].
-    - iIntros (N' h' m') "%Hpeq %Hcs %Ha0 #Hck HP Hsz Hstd Hcwd Hch HD Hrun".
+    - iIntros (N' h' m' γ') "%Hpeq %Hcs %Ha0 _ _ #Hck HP Hsz Hstd Hcwd Hch HD
+                             Hrun".
       iApply ("Hchi" $! N' h' m'
-                with "[%] [%] [%] Hck HP Hsz Hstd [Hcwd] Hch HD Hrun");
+                with "[%] [%] [%] Hck HP Hsz Hstd [Hcwd] [Hch] HD Hrun");
         [ exact Hpeq | exact Hcs | exact Ha0
-        | iApply (ucwd_any_of with "Hcwd") ].
+        | iApply (ucwd_any_of with "Hcwd")
+        | iApply (uch_any_of with "Hch") ].
   Qed.
 
   (* ===================================================================== *)
@@ -2474,8 +2569,11 @@ Section UkShRun.
       vm_compute. reflexivity. }
     assert (Hra2 : m2 !!! Regidx ra_idx = (mword_of_int ret : mword 64))
       by exact (upd_eq m1 (Regidx ra_idx) _).
-    iApply (wp_kshr_wait N h2 m2 avail Ha0_2 with "Hcode Hrun Hch").
-    iIntros (h3 ret') "Hrun Hch". rewrite Hra2 Hrp.
+    iDestruct "Hch" as (Sc) "Hch".
+    iApply (wp_kshr_wait N h2 m2 avail Sc Ha0_2 with "Hcode Hrun Hch").
+    iIntros (h3 ret' Sc') "_ Hrun Hch".
+    iDestruct (uch_any_of with "Hch") as "Hch".
+    rewrite Hra2 Hrp.
     iApply ("Hcont" $! h3 _ with "[%] Hrun Hch").
     intros q Hq.
     rewrite (upd_ne _ (Regidx a0_idx) (Regidx q) ret'

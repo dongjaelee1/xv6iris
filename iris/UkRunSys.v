@@ -2239,34 +2239,14 @@ Section UkRunSys.
     iApply ("Hcont" $! h' r cs' with "Hans Hrun Hch").
   Qed.
 
-  (* ...AND THE INDEX-FREE FORM.  A program that hands its children to a
-     call whose answer it does not read carries [UserChildren.uch_any]:
-     the set goes in and comes back existentially, so the leaf's move
-     costs the caller no binder.  init and sh call this one. *)
-  Lemma wp_uk_ecall_wait_any (N : uk_names Σ) (h : CpuId) (m : regfile)
-      (pc : mword 64) (avail : nat) :
-    usysno m = USYS_wait ->
-    uint (m !!! Regidx (mword_of_int 10)) = 0 ->
-    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
-    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
-    urun N h m pc avail -∗
-    udepw N m pc USYS_wait -∗
-    uch_any (ukn_ch N) -∗
-    (∀ (h' : CpuId) (r : mword 64),
-       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
-         (add_vec_int pc 4) avail -∗
-       uch_any (ukn_ch N) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
-    intros Hn Hz Hal4. iIntros "#Hi Hrun Hsb Hch Hcont".
-    iDestruct "Hch" as (Sc) "Hch".
-    iApply (wp_uk_ecall_wait_null N h m pc avail Sc Hn Hz Hal4
-              with "Hi Hrun Hsb Hch").
-    iIntros (h' r Sc') "_ Hrun Hch".
-    iApply ("Hcont" $! h' r with "Hrun [Hch]").
-    iApply (uch_any_of with "Hch").
-  Qed.
+  (* ...AND THE INDEX-FREE FORM -- DELETED (lane IO-LEAF, M3a).
+     [wp_uk_ecall_wait_any] took the set behind an existential and
+     DISCARDED the answer, which is the one thing a reaping parent wants:
+     the escrow its child's exit parked.  init never used it and sh's one
+     call site ([UkShRun.wp_kshr_wait]) now takes the leaf above at a
+     named set; a caller that does not read the answer opens its own
+     existential and closes it with [UserChildren.uch_any_of], which is
+     all the wrapper ever did. *)
 
 
   (* ------------------------------------------------------------------- *)

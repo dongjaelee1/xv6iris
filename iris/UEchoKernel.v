@@ -461,22 +461,31 @@ Section UEchoKernel.
        its working directory and its children set are all dropped here *)
     iIntros (N h) "%Hpayeq %Hsz Hszf #Ht _ _ _ #HA Hrun".
     pose proof (Hpayeq : UkRun.ukn_triv N) as Hti.
+    (* the walk is stated at a STATUS-INDEPENDENT payload now (lane
+       IO-LEAF, M2); the trivial one is one ([UkRun.ukn_const_of_triv]) *)
+    pose proof (ukn_const_of_triv N Hti) as Htc.
     rewrite Hpc.
     iApply (wp_kecho_start N h (tf_resume_gpr0 (uvis_tf W))
               (uvis_av W)
               (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W))) 0
+              emp%I
               ltac:(rewrite echo_args_length;
                     rewrite (Z2Nat.id (uvis_argc W) Hargc0);
                     unfold uvis_argc; symmetry; apply moi_of_uint)
               ltac:(unfold uvis_av; symmetry; apply moi_of_uint)
-              with "[] [] [] Hrun").
-    (* echo's one deposit, at this round's own record *)
-    { iApply "Hwr". }
+              with "[] [] [] [] Hrun").
+    (* echo's one deposit, at this round's own record: the walk's per-write
+       obligation, paid from the flagged deposit at the trivial cursor --
+       which is what echo did before lane IO-LEAF and what a process
+       entering on the generic path still does *)
+    { iApply (kecho_pay_all_of_law N _ _ (ukn_pay_free_of_triv N Hti)
+                with "Hwr"). }
     { iApply (echo_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W) Hsub Hx
                 with "Ht"). }
     { iApply (echo_uargv_of_area (ukn_d N) (uvis_M W) (uvis_perm W) (uvis_sz W)
                 (uvis_av W) (uint (uvis_sp W)) (uvis_argc W)
                 Hsp0 Hargs Havd Havs with "HA"). }
+    { done. }
   Qed.
 
 End UEchoKernel.

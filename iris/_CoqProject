@@ -2161,3 +2161,7 @@ UkWriteLeaf.v
 # every file of init's walk sits below the file system -- the UShLine
 # mould.
 UInitBanner.v
+# ...AND WHAT PAYS FOR echo's FOUR WRITES (lane IO-LEAF, M2), for the same
+# reason and on the same mould: the era's write link becomes the per-call
+# obligation echo's argv walk spends (UkEcho.kecho_pay_all).
+UEchoOut.v

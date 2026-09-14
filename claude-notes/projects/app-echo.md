@@ -111,9 +111,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   fork's -1 arm returns `Rc`; `sfork_lend` on `sfam`.
 - [ ] **IO-LEAF** (programs; main checkout, `lane/io-leaf`): SURVEYED and
   REVIEWED 2026-09-16 (the notes below); M1 LAUNCHED 2026-09-16 (brief v3
-  scratchpad `brief-io-leaf.md`): init's banner ROUND 0 through the chain
-  leaf, a new `EchoLinks.v` (D1's persistent law), `Tn` concrete; M2-M6
-  after TRAP-ROWS M2 and PROLOGUE-ALTS-2.
+  scratchpad `brief-io-leaf.md`): M1(a,b) LANDED 2026-09-16 (`f4b03abd7`;
+  the note below: `EchoLinks.v`, `Tn` concrete); M1(c,d) in flight (init's
+  banner round 0; the write leaf's ownership row in UkRunSys); M2-M6 after
+  TRAP-ROWS M2 and PROLOGUE-ALTS-2.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
@@ -3340,6 +3341,33 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M1(a,b) LANDED (2026-09-16; `f4b03abd7` on `249b751c2`; 5 files
++234/-38; builds io1-io3 in the main checkout; audit the thirteen; lemma_diff
+CLEAN; no Admitted).  THE CONSOLE LINKS AS ONE PERSISTENT LAW: new
+`iris/EchoLinks.v` (between EchoOut and AppEcho): `echo_links := echo_link_w
+∗ echo_link_blk ∗ echo_link_taint ∗ echo_link_rd` (each `EchoOut` link boxed,
+its Coq premises as `⌜⌝` wands, at the landed PROLOGUE-ALTS signatures),
+four projections, `Persistent`, and `echo_links_holds : ⊢ echo_links` in a
+sub-section assuming the record's four equations; `echo_write_link_pro`'s
+conjunct to be added when PROLOGUE-ALTS-2 lands it.  INIT'S TURN MADE
+CONCRETE: `UInitKernel.init_boot_pay`'s third conjunct and
+`UkInitMain.wp_kinit_start`'s premise are `EchoOut.eturn γe (S gen_id)` (was
+an opaque `Tn`); both files take `` `{!echoOutG Σ} `` and an implicit `{γe :
+echo_gn}`.  `echo_Hinit_boot`/`Hsh_owed` untouched.  FINDING that stopped
+(c)/(d): the short-write arm at row 16 cannot be refuted from the U tier
+yet -- `UkRunSys.wp_uk_ecall_write_chain`'s post does not tie `W` to a heap
+the caller owns (the read side has the twin row off `uk_read_nofault`; the
+write side never got one because no program consumed the write post).  The
+fix (~15 lines): the leaf takes the caller's `ubytes` of the source buffer
+(handed back) and its post gains `⌜uvis_lazy W = false⌝` and `⌜∀ P j, wf P
+-> perm_of … = uvis_perm W -> lazy_free … -> j < cnt -> uva_rmapped P (a1 +
+j)⌝` by `uheap_ubytes_w` + `lazy_free_uw_addr` + `uva_rmapped_of_wmapped`.
+Also: init's write buffer is putc's own STACK byte (`sb a1,-17(s0)`), not
+rodata; the banner site sits inside `wp_kinit_main_loop`'s Löb, so round 0
+takes an affine `(eturn-bundle at the round start) ∨ True` premise on that
+quarter, collapsing to the real bundle at M6.  Handover: scratchpad
+`io-leaf-handover.md`.
 
 PROLOGUE-ALTS LANDED (2026-09-16; `f5d63cbfa`+`d1b189277`+`833300de0` on
 `1bb1702af`; 3 files (EchoDisc, EchoOutPure, EchoOut); builds pa1-pa4 in

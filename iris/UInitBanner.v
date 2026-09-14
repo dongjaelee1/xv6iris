@@ -299,7 +299,8 @@ Section UInitBanner.
      hands it straight back, at the era's own pin, and /init's boot bundle
      puts it where the lease is minted. *)
   Definition kinit_dl0 : iProp Σ :=
-    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ dl_cnt v (1/2) 0%nat)%I.
+    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ dl_cnt v (1/2) 0%nat
+                     ∗ E_lb v 0%nat)%I.
 
   (* THE ERA'S TURN AT STAGE 0 IS ROUND 0's BANNER-OWED CREDENTIAL.  Both
      halves of [EchoOut.eturn] come apart here: the write half becomes
@@ -310,7 +311,7 @@ Section UInitBanner.
   Proof.
     iIntros "Hturn".
     iDestruct "Hturn" as (v) "(#Hpin & Htn & Hdl & #Hcs & #Hps & #HE)".
-    iSplitL "Hdl"; [ rewrite /kinit_dl0; iExists v; iFrame "Hpin Hdl" | ].
+    iSplitL "Hdl"; [ rewrite /kinit_dl0; iExists v; iFrame "Hpin Hdl HE" | ].
     rewrite /kinit_ban. iExists v. iFrame "Hpin".
     rewrite /EchoLinks.ewc_ban. iLeft. iExists [], [], 0%nat.
     rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE".

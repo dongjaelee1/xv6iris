@@ -114,8 +114,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   scratchpad `brief-io-leaf.md`): M1(a,b) LANDED 2026-09-16 (`f4b03abd7`;
   the note below: `EchoLinks.v`, `Tn` concrete); M1(c,d) LANDED 2026-09-16
   (`e3d97238a`; the note below: the write leaf's ownership row, the printf
-  cone's per-byte family, the banner site); M1(e) in flight (the conversion
-  above UkWriteLeaf); M2-M6 after TRAP-ROWS M2.
+  cone's per-byte family, the banner site); M1(e) LANDED 2026-09-16
+  (`9250b2e81`; the note below: `UInitBanner.kinit_banner0_holds`; M1
+  complete for round 0); M2 (echo's writes) next; M3-M6 after TRAP-ROWS M2.
 - [ ] **DUP-ROW** (kernel; `-sup`, `lane/dup-row`): phase 1 done 2026-09-16
   (the note below), phase 2 (gate, rebase) in flight: the U-tier dup row
   names its two reasons; init refutes them from its own ledger.
@@ -3347,6 +3348,33 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M1(e) LANDED (2026-09-16; `9250b2e81` on `94f8d7c72`; 4 files; builds
+io10-io13 in the main checkout; audit the thirteen; lemma_diff CLEAN; no
+Admitted).  THE ERA'S CREDENTIAL BECOMES /INIT'S BANNER PAYMENT -- M1 IS
+COMPLETE FOR ROUND 0.  New `iris/UInitBanner.v` (after UkWriteLeaf):
+`kinit_banner0_holds : (⊢ udepw_law 16) -> echo_links T γ -∗ eturn γ (S
+gen_id) -∗ ∀ N, UkInitMain.kinit_banner0 N` (one byte through
+`echo_link_w`/`echo_link_taint`, the deposit by `uwrite_chain_sup`, the post
+by `uwrite_no_short`; `proc_upto0_banner` = `proc_upto_round_banner_open` at
+`pre := []`, `j := 0`; putc's frame byte split in two halves, one captured by
+the deposit's closure, one buying the `uva_rmapped` row, rejoined at the
+post).  `UInitKernel.init_boot_pay`'s third conjunct is `∀ N', kinit_banner0
+N'` (linear under a ∀: the reader picks one); `wp_kinit_start` takes
+`kinit_banner0 -∗` and supplies the REAL arm of `kinit_round0`;
+`UkInitMain`/`UInitKernel` drop EchoOut/echoOutG again -- THE U TIER NAMES
+NOTHING OF THE APPLICATION.  `echo_Hinit_boot`'s statement unchanged (its
+proof applies `kinit_banner0_holds` with `echo_links_holds`).  WHICH ROWS
+STILL SPEND `udepw_law 16`: `kinit_banner0_holds` cases on `l !! 1`; only
+`Some (FdOpen rb true (FdDevice CONSOLE))` pays with the link; read-only,
+inode, other-device, closed and `None` (fd 1 outside the ledger -- the U
+tier never learns `length l = NSTD`) pay with the law.  DUP-ROW removes them
+by pinning `l !! 1 = Some init_cons_fd`; the `(⊢ udepw_law 16)` premise goes
+with them; `Hsh_owed`'s `sh_deps` survives until the die arms and
+`init_deps` are off it (M4/M6).  OPEN FOR M6: rounds k > 0 print through the
+flagged deposit (the Löb hypothesis re-enters the restart head with
+`iRight`) until the turn returns through the child's payload (M3).
+Handover: scratchpad `io-leaf-handover.md`.
 
 TRAP-ROWS M2 PART 1 LANDED (2026-09-16; `52b0d4cd7`+`ea01ef696` on `80f33b290`;
 26 files +849/-335; builds tr10-tr45 in `-tlw`; audit the thirteen;

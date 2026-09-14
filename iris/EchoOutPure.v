@@ -206,14 +206,14 @@ Qed.
    as [EchoDisc.alt_blk] indexes it ([line_alts !!! (cs !!! (q-1))], with
    [q = n / 17]); mid-line it is nothing.  It reads only [n], because
    [sess_n] does. *)
-Definition pending_n (cs : list nat) (n : nat) : list (bv 8) :=
-  if decide (n = 0) then u_prologue
+Definition pending_n (ps cs : list nat) (n : nat) : list (bv 8) :=
+  if decide (n = 0) then pro_of ps
   else if decide (n `mod` length echo_line = 0)
-       then line_alts !!! (cs !!! (n `div` length echo_line - 1))
+       then alt_cont ps cs (n `div` length echo_line - 1)
        else [].
 
-Definition pending (cs : list nat) (E : list (list mobs * bv 8)) : list (bv 8) :=
-  pending_n cs (length E).
+Definition pending (ps cs : list nat) (E : list (list mobs * bv 8))
+  : list (bv 8) := pending_n ps cs (length E).
 
 (* THE TRANSCRIPT DUE AFTER E's LAST ECHO.  The note's law is a RIGHT
    append ([D cs (E ++ [(h,c)]) = D cs E ++ pending cs E ++ [echo_of c]]),
@@ -222,24 +222,82 @@ Definition pending (cs : list nat) (E : list (list mobs * bv 8)) : list (bv 8) :
    definition is structural on [E] FROM THE LEFT with the stage index as an
    accumulator: [cbn] reduces it on every [x :: E'], and the note's law is
    [D_app] below, one line off [D_from_app]. *)
-Fixpoint D_from (cs : list nat) (k : nat) (E : list (list mobs * bv 8))
+Fixpoint D_from (ps cs : list nat) (k : nat) (E : list (list mobs * bv 8))
   : list (bv 8) :=
   match E with
   | [] => []
-  | x :: E' => pending_n cs k ++ [echo_of x.2] ++ D_from cs (S k) E'
+  | x :: E' => pending_n ps cs k ++ [echo_of x.2] ++ D_from ps cs (S k) E'
   end.
 
-Definition D (cs : list nat) (E : list (list mobs * bv 8)) : list (bv 8) :=
-  D_from cs 0 E.
+Definition D (ps cs : list nat) (E : list (list mobs * bv 8)) : list (bv 8) :=
+  D_from ps cs 0 E.
 
-Lemma D_nil cs : D cs [] = [].
+Lemma D_nil ps cs : D ps cs [] = [].
 Proof. reflexivity. Qed.
 
-Lemma pending_nil cs : pending cs [] = u_prologue.
+Lemma pending_nil ps cs : pending ps cs [] = pro_of ps.
 Proof. reflexivity. Qed.
 
-Lemma D_from_app cs k E1 E2 :
-  D_from cs k (E1 ++ E2) = D_from cs k E1 ++ D_from cs (k + length E1) E2.
+(* the two extension laws the stage spends: a block STRICTLY BELOW the
+   current stage reads a round that has settled, so a lower bound of [ps]
+   already determines it. *)
+Lemma pending_n_ps_ext ps ps' cs k :
+  ps `prefix_of` ps' ->
+  (pro_idx cs (k `div` length echo_line) < pro_rounds ps)%nat ->
+  pending_n ps cs k = pending_n ps' cs k.
+Proof.
+  intros Hp Hr. rewrite /pending_n. case_decide as H0.
+  { subst k. apply (pro_of_from_done_ext 0%nat); [exact Hp |].
+    move: Hr. by rewrite Nat.Div0.div_0_l. }
+  case_decide as Hm; [| done].
+  rewrite /alt_cont. f_equal. case_decide as H3; [| done].
+  pose proof echo_line_length as HL.
+  assert (Hq : (1 <= k `div` length echo_line)%nat).
+  { destruct (decide (k `div` length echo_line = 0)%nat) as [Hd | Hd]; [| lia].
+    exfalso. pose proof (Nat.div_mod_eq k (length echo_line)) as Hdm.
+    rewrite Hd Hm in Hdm. lia. }
+  assert (Hs : S (pro_idx cs (k `div` length echo_line - 1))
+               = pro_idx cs (k `div` length echo_line)).
+  { replace (k `div` length echo_line)%nat
+      with (S (k `div` length echo_line - 1))%nat at 2 by lia.
+    symmetry. apply pro_idx_S3.
+    replace (S (k `div` length echo_line - 1) - 1)%nat
+      with (k `div` length echo_line - 1)%nat by lia.
+    exact H3. }
+  rewrite Hs. by apply pro_of_from_done_ext.
+Qed.
+
+Lemma pending_n_ps_mono ps ps' cs k :
+  ps `prefix_of` ps' -> pending_n ps cs k `prefix_of` pending_n ps' cs k.
+Proof.
+  intros Hp. rewrite /pending_n. case_decide as H0.
+  { by apply pro_of_mono. }
+  case_decide as Hm; [| reflexivity].
+  rewrite /alt_cont. apply prefix_app. case_decide as H3; [| reflexivity].
+  by apply pro_of_from_mono.
+Qed.
+
+Lemma D_from_pending_ext ps ps' cs k E :
+  (forall j, (k <= j)%nat -> (j < k + length E)%nat ->
+     pending_n ps cs j = pending_n ps' cs j) ->
+  D_from ps cs k E = D_from ps' cs k E.
+Proof.
+  revert k. induction E as [| x E IH]; intros k Hj; [done |].
+  cbn [D_from length]. rewrite (Hj k ltac:(lia) ltac:(cbn [length]; lia)).
+  f_equal. f_equal. apply IH. intros j H1 H2. apply Hj; cbn [length]; lia.
+Qed.
+
+Lemma D_ps_ext ps ps' cs E :
+  ps `prefix_of` ps' -> pro_pin ps cs (length E) -> D ps cs E = D ps' cs E.
+Proof.
+  intros Hp Hpin. rewrite /D. apply D_from_pending_ext.
+  intros j _ Hj. apply (pending_n_ps_ext ps ps' cs j Hp).
+  apply (pro_pin_at ps cs (length E) j Hpin). lia.
+Qed.
+
+Lemma D_from_app ps cs k E1 E2 :
+  D_from ps cs k (E1 ++ E2)
+  = D_from ps cs k E1 ++ D_from ps cs (k + length E1) E2.
 Proof.
   revert k. induction E1 as [|x E1 IH]; intros k; cbn.
   - by rewrite Nat.add_0_r.
@@ -249,8 +307,8 @@ Proof.
 Qed.
 
 (* THE NOTE'S LAW, verbatim *)
-Lemma D_app cs E x :
-  D cs (E ++ [x]) = D cs E ++ pending cs E ++ [echo_of x.2].
+Lemma D_app ps cs E x :
+  D ps cs (E ++ [x]) = D ps cs E ++ pending ps cs E ++ [echo_of x.2].
 Proof.
   rewrite /D /pending D_from_app /=. by rewrite ?app_nil_r.
 Qed.
@@ -317,8 +375,8 @@ Qed.
 (* [sess_n] grows by at least one byte per input.  This is what refutes
    "the input got ahead of the echo" in F2, and [EchoDisc.sess_n_mono] is
    only the non-strict half. *)
-Lemma sess_n_length_step cs n :
-  length (sess_n cs n) < length (sess_n cs (S n)).
+Lemma sess_n_length_step ps cs n :
+  length (sess_n ps cs n) < length (sess_n ps cs (S n)).
 Proof.
   rewrite /sess_n !length_app !length_take.
   pose proof echo_line_length as HL.
@@ -331,8 +389,8 @@ Proof.
     lia.
 Qed.
 
-Lemma sess_n_length_lt cs n m :
-  n < m -> length (sess_n cs n) < length (sess_n cs m).
+Lemma sess_n_length_lt ps cs n m :
+  n < m -> length (sess_n ps cs n) < length (sess_n ps cs m).
 Proof.
   intros Hnm. induction Hnm as [|m Hnm IH].
   - apply sess_n_length_step.
@@ -351,8 +409,8 @@ Proof.
   by eapply lookup_lt_Some.
 Qed.
 
-Lemma D_pending_sess (cs : list nat) (E : list (list mobs * bv 8)) :
-  E_byte E -> D cs E ++ pending cs E = sess_n cs (length E).
+Lemma D_pending_sess (ps cs : list nat) (E : list (list mobs * bv 8)) :
+  E_byte E -> D ps cs E ++ pending ps cs E = sess_n ps cs (length E).
 Proof.
   induction E as [|x E IH] using rev_ind; intros HE.
   - by rewrite D_nil pending_nil /= sess_n_0.
@@ -375,14 +433,14 @@ Proof.
                 ++ [echo_line !!! (n `mod` length echo_line)] ++ K
               = take (S (n `mod` length echo_line)) echo_line ++ K).
     { intros K. by rewrite app_assoc Htk. }
-    rewrite D_app (app_assoc (D cs E) (pending cs E) [echo_of x.2]).
+    rewrite D_app (app_assoc (D ps cs E) (pending ps cs E) [echo_of x.2]).
     rewrite (IH (E_byte_app_l _ _ HE)) Hb /pending Hlen.
     destruct (div_mod_succ n (length echo_line) echo_line_pos)
       as [(Hm & Hd & Hr)|(Hm & Hd)].
     + (* a line just completed: the echo closes [echo_line] and the
          continuation of line [n / 17] is what is owed next *)
-      assert (Hp : pending_n cs (S n)
-                   = line_alts !!! (cs !!! (n `div` length echo_line))).
+      assert (Hp : pending_n ps cs (S n)
+                   = alt_cont ps cs (n `div` length echo_line)).
       { rewrite /pending_n. case_decide as H1; [exfalso; lia|].
         case_decide as H2; [|exfalso; exact (H2 Hm)].
         by rewrite Hd Nat.sub_succ Nat.sub_0_r. }
@@ -391,19 +449,19 @@ Proof.
       replace (S (length echo_line - 1)) with (length echo_line) by lia.
       by rewrite take_ge; [|lia].
     + (* mid-line: nothing is owed, and the echo extends the take *)
-      assert (Hp : pending_n cs (S n) = []).
+      assert (Hp : pending_n ps cs (S n) = []).
       { rewrite /pending_n. case_decide as H1; [exfalso; lia|].
         case_decide as H2; [exfalso; rewrite Hm in H2; lia|done]. }
       rewrite Hp /sess_n Hm Hd app_nil_r -!app_assoc. by rewrite Htk.
 Qed.
 
 (* F1, AS THE CLAIM USES IT *)
-Lemma D_stage_prefix (cs : list nat) (E : list (list mobs * bv 8))
+Lemma D_stage_prefix (ps cs : list nat) (E : list (list mobs * bv 8))
       (w : list (bv 8)) :
-  E_byte E -> w `prefix_of` pending cs E ->
-  (D cs E ++ w) `prefix_of` sess_n cs (length E).
+  E_byte E -> w `prefix_of` pending ps cs E ->
+  (D ps cs E ++ w) `prefix_of` sess_n ps cs (length E).
 Proof.
-  intros HE Hw. rewrite -(D_pending_sess cs E HE).
+  intros HE Hw. rewrite -(D_pending_sess ps cs E HE).
   by apply prefix_app, Hw.
 Qed.
 
@@ -452,28 +510,28 @@ Qed.
 Lemma hist_ext_irrefl (h : list mobs) : hist_ext h h -> False.
 Proof. intros [_ Hl]. lia. Qed.
 
-Lemma D2_next_input (cs : list nat) (E : list (list mobs * bv 8))
+Lemma D2_next_input (ps cs : list nat) (E : list (list mobs * bv 8))
       (w W : list (bv 8)) (h : list mobs) (c : bv 8) (m : nat) :
   E_byte E -> E_index E ->
   (forall x, x ∈ E -> hist_ext x.1 h) ->
   obs_ends_in Uart0 h c ->
   length (ins h) = m ->
-  w `prefix_of` pending cs E ->
-  sess_n cs (m - 1) `prefix_of` W ->
-  W `prefix_of` (D cs E ++ w) ->
-  m = S (length E) /\ w = pending cs E.
+  w `prefix_of` pending ps cs E ->
+  sess_n ps cs (m - 1) `prefix_of` W ->
+  W `prefix_of` (D ps cs E ++ w) ->
+  m = S (length E) /\ w = pending ps cs E.
 Proof.
   intros HEb HEi Hnew Hends Hm Hw Hlow Hup.
   assert (Hm1 : 1 <= m).
   { destruct Hends as [h0 ->]. rewrite -Hm ins_app ins_in length_app /=. lia. }
   (* the discipline's lower bound and the claim's upper bound meet *)
-  assert (Hboth : sess_n cs (m - 1) `prefix_of` sess_n cs (length E)).
+  assert (Hboth : sess_n ps cs (m - 1) `prefix_of` sess_n ps cs (length E)).
   { etrans; [exact Hlow|]. etrans; [exact Hup|]. by apply D_stage_prefix. }
   (* the input cannot have got AHEAD of the echo: [sess_n] grows per input *)
   assert (Hle : m - 1 <= length E).
   { destruct (decide (m - 1 <= length E)) as [?|Hgt]; [done|exfalso].
     apply prefix_length in Hboth.
-    pose proof (sess_n_length_lt cs (length E) (m - 1) ltac:(lia)). lia. }
+    pose proof (sess_n_length_lt ps cs (length E) (m - 1) ltac:(lia)). lia. }
   (* ...nor can it be one the log already has: the histories would agree *)
   assert (Heq : m - 1 = length E).
   { destruct (decide (m - 1 = length E)) as [?|Hne]; [done|exfalso].
@@ -487,8 +545,8 @@ Proof.
     rewrite Hsame in Hlen'. lia. }
   split; [lia|].
   apply (anti_symm prefix); [exact Hw|].
-  eapply (prefix_app_cancel (D cs E)).
-  rewrite (D_pending_sess cs E HEb) -Heq.
+  eapply (prefix_app_cancel (D ps cs E)).
+  rewrite (D_pending_sess ps cs E HEb) -Heq.
   etrans; [exact Hlow|exact Hup].
 Qed.
 
@@ -783,20 +841,33 @@ Qed.
    BOUNDED choice list, while [D] and [sess_n] index [cs] with the same
    total [!!!] and agree out of range.  [length cs = length E / 17] is not
    needed at all, for the same reason. *)
-Lemma good_out_of_stage (cs : list nat) (E : list (list mobs * bv 8))
+Lemma good_out_of_stage (ps cs : list nat) (E : list (list mobs * bv 8))
       (w : list (bv 8)) (seg : list mobs) :
+  Forall (fun a => a < length pro_alts) ps ->
   Forall (fun i => i < length line_alts) cs ->
   E_byte E ->
-  w `prefix_of` pending cs E ->
-  obs_wire Uart0 seg `prefix_of` (D cs E ++ w) ->
+  pro_pin ps cs (length E) ->
+  w `prefix_of` pending ps cs E ->
+  obs_wire Uart0 seg `prefix_of` (D ps cs E ++ w) ->
   length E <= length (ins seg) ->
   good_out seg.
 Proof.
-  intros Hcs HE Hw Hwire Hlen.
-  exists cs. split; [exact Hcs|].
+  intros Hps Hcs HE Hpin Hw Hwire Hlen.
+  (* THE WITNESS IS THE STAGE'S RESOLUTION PADDED WITH ONE TERMINATED ROUND:
+     the stage may be standing mid-prologue, and [expected_rel] quantifies
+     over a SETTLED one.  Padding moves no round the stage has read. *)
+  set (ps' := (ps ++ replicate (S (length (ins seg))) 0%nat)%list).
+  assert (Hpp : ps `prefix_of` ps') by (rewrite /ps'; by eexists).
+  exists ps', cs. split.
+  { apply pro_ok_pad; [exact Hps |].
+    pose proof echo_line_length as HL.
+    apply Nat.Div0.div_le_upper_bound. nia. }
+  split; [exact Hcs|].
   rewrite /sess. etrans; [exact Hwire|].
-  etrans; [exact (D_stage_prefix cs E w HE Hw)|].
-  by apply sess_n_mono.
+  rewrite (D_ps_ext ps ps' cs E Hpp Hpin).
+  etrans; [| by apply (sess_n_mono ps' cs (length E) (length (ins seg)))].
+  apply (D_stage_prefix ps' cs E w HE).
+  etrans; [exact Hw |]. rewrite /pending. by apply pending_n_ps_mono.
 Qed.
 
 (* WHAT IS NO LONGER HERE: [echo_phi_of_good_out], the weakening from
@@ -868,70 +939,229 @@ Proof. by rewrite !list_lookup_total_alt lookup_drop. Qed.
 Lemma cs_ok_drop cs n : cs_ok cs -> cs_ok (drop n cs).
 Proof. intros H i. rewrite lookup_total_drop. apply H. Qed.
 
-Lemma alt_blk_drop cs n i : alt_blk (drop n cs) i = alt_blk cs (n + i).
-Proof. rewrite /alt_blk. by rewrite lookup_total_drop. Qed.
+(* THE ROUND POINTER MOVES WITH THE DROP: dropping [n] lines drops the
+   [pro_idx cs n] prologue rounds those lines opened. *)
+Lemma pro_idx_add cs n i :
+  pro_idx cs (n + i) = (pro_idx cs n + pro_idx (drop n cs) i)%nat.
+Proof.
+  induction i as [| i IH]; [rewrite Nat.add_0_r; cbn [pro_idx]; lia |].
+  rewrite Nat.add_succ_r !pro_idx_S IH lookup_total_drop.
+  case_decide; lia.
+Qed.
 
-Lemma alt_seq_cons cs q :
-  alt_seq cs (S q) = alt_blk cs 0 ++ alt_seq (drop 1 cs) q.
+Lemma alt_blk_drop ps cs n i :
+  alt_blk (pro_from (pro_idx cs n) ps) (drop n cs) i = alt_blk ps cs (n + i).
+Proof.
+  rewrite /alt_blk /alt_cont !lookup_total_drop. f_equal. f_equal.
+  case_decide as H3; [| done].
+  rewrite pro_from_add pro_idx_add. f_equal. f_equal. lia.
+Qed.
+
+Lemma alt_seq_cons ps cs q :
+  alt_seq ps cs (S q)
+  = alt_blk ps cs 0 ++ alt_seq (pro_from (pro_idx cs 1) ps) (drop 1 cs) q.
 Proof.
   rewrite /alt_seq.
   replace (List.seq 0 (S q)) with (0 :: List.seq 1 q) by reflexivity.
   rewrite fmap_cons concat_cons. f_equal.
   rewrite -List.seq_shift -list_fmap_compose.
   f_equal. apply list_fmap_ext.
-  intros i x Hx. rewrite /compose. by rewrite (alt_blk_drop cs 1 x).
+  intros i x Hx. rewrite /compose. by rewrite (alt_blk_drop ps cs 1 x).
 Qed.
 
-Lemma alt_blk_length cs i : 0 < length (alt_blk cs i).
+Lemma alt_blk_length ps cs i : 0 < length (alt_blk ps cs i).
 Proof.
   rewrite /alt_blk length_app. pose proof echo_line_length. lia.
 Qed.
 
+Lemma alt_seq_cons_assoc ps cs q (t : list (bv 8)) :
+  alt_seq ps cs (S q) ++ t
+  = echo_line ++ (alt_cont ps cs 0%nat
+                  ++ (alt_seq (pro_from (pro_idx cs 1%nat) ps) (drop 1 cs) q ++ t)).
+Proof.
+  rewrite alt_seq_cons /alt_blk.
+  rewrite -(app_assoc echo_line (alt_cont ps cs 0%nat)
+              (alt_seq (pro_from (pro_idx cs 1%nat) ps) (drop 1 cs) q)).
+  rewrite -(app_assoc echo_line
+              (alt_cont ps cs 0%nat
+               ++ alt_seq (pro_from (pro_idx cs 1%nat) ps) (drop 1 cs) q) t).
+  by rewrite -(app_assoc (alt_cont ps cs 0%nat)
+                 (alt_seq (pro_from (pro_idx cs 1%nat) ps) (drop 1 cs) q) t).
+Qed.
+
+(* whatever follows a block on the wire begins with [echo_line]'s first
+   byte: it is either the next block (which begins with the echo) or the
+   line in progress (a prefix of [echo_line]). *)
+Lemma alt_seq_app_head ps cs q (t : list (bv 8)) (b : bv 8) :
+  t `prefix_of` echo_line ->
+  (alt_seq ps cs q ++ t) !! 0%nat = Some b -> echo_line !! 0%nat = Some b.
+Proof.
+  intros Ht Hb. destruct q as [| q].
+  - rewrite alt_seq_0 app_nil_l in Hb.
+    eapply prefix_lookup_Some; [exact Hb | exact Ht].
+  - rewrite alt_seq_cons -app_assoc /alt_blk -app_assoc in Hb.
+    rewrite lookup_app_l in Hb; [exact Hb |].
+    pose proof echo_line_length. lia.
+Qed.
+
+(* THE BLOCK STEP: two continuations below ONE wire are the same
+   continuation.  The LINE choice comes off ONE byte ([line_alts_head_det]:
+   'h', 'e', '$', 'f' are distinct); when that choice is the shell's own
+   fork panic the RESTART'S PROLOGUE comes off PREFIX-FREENESS
+   ([EchoDisc.pro_of_prefix_free]), which also FORCES the unprimed round
+   settled -- that is how the stage learns its own prologue is complete. *)
+Lemma alt_cont_prefix_det (ps ps' cs cs' : list nat) (X X' : list (bv 8)) :
+  cs_ok cs -> cs_ok cs' ->
+  Forall (fun a => (a < length pro_alts)%nat) ps ->
+  Forall (fun a => (a < length pro_alts)%nat) ps' ->
+  (cs' !!! 0%nat = 3%nat -> (1 < pro_rounds ps')%nat) ->
+  (forall b, X !! 0%nat = Some b -> echo_line !! 0%nat = Some b) ->
+  (alt_cont ps' cs' 0%nat ++ X') `prefix_of` (alt_cont ps cs 0%nat ++ X) ->
+  cs' !!! 0%nat = cs !!! 0%nat
+  /\ (cs !!! 0%nat = 3%nat -> (1 < pro_rounds ps)%nat)
+  /\ alt_cont ps' cs' 0%nat = alt_cont ps cs 0%nat
+  /\ X' `prefix_of` X.
+Proof.
+  intros Hcs Hcs' Hps Hps' Hset HX Hp.
+  rewrite /alt_cont -!app_assoc in Hp.
+  assert (Hp0 : 0 < length (line_alts !!! (cs' !!! 0%nat))).
+  { destruct (line_alts !!! (cs' !!! 0%nat)) as [| z zs] eqn:Hz;
+      [ exfalso; exact (line_alts_nonnil _ (Hcs' 0%nat) Hz) | cbn; lia ]. }
+  assert (Hq0 : 0 < length (line_alts !!! (cs !!! 0%nat))).
+  { destruct (line_alts !!! (cs !!! 0%nat)) as [| z zs] eqn:Hz;
+      [ exfalso; exact (line_alts_nonnil _ (Hcs 0%nat) Hz) | cbn; lia ]. }
+  assert (Hhd : cs' !!! 0%nat = cs !!! 0%nat).
+  { apply line_alts_head_det; [apply Hcs' | apply Hcs |].
+    destruct (lookup_lt_is_Some_2 (line_alts !!! (cs' !!! 0%nat)) 0 Hp0)
+      as [z Hz].
+    assert (Hz1 : (line_alts !!! (cs' !!! 0%nat)
+                    ++ ((if decide (cs' !!! 0%nat = 3%nat)
+                         then pro_of (pro_from (S (pro_idx cs' 0%nat)) ps')
+                         else []) ++ X')) !! 0 = Some z)
+      by (rewrite lookup_app_l; [exact Hz | lia]).
+    assert (Hz2 : (line_alts !!! (cs !!! 0%nat)
+                    ++ ((if decide (cs !!! 0%nat = 3%nat)
+                         then pro_of (pro_from (S (pro_idx cs 0%nat)) ps)
+                         else []) ++ X)) !! 0 = Some z)
+      by (eapply prefix_lookup_Some; [exact Hz1 | exact Hp]).
+    rewrite lookup_app_l in Hz2; [| lia]. by rewrite Hz Hz2. }
+  rewrite Hhd in Hp. apply prefix_app_inv in Hp.
+  cbn [pro_idx] in Hp |- *. rewrite Hhd.
+  case_decide as H3.
+  - assert (Hd' : pro_done (pro_from 1%nat ps')).
+    { apply pro_from_done, Hset. by rewrite Hhd. }
+    pose proof (pro_from_Forall _ 1%nat ps Hps) as HFA.
+    pose proof (pro_from_Forall _ 1%nat ps' Hps') as HFB.
+    assert (Hcmp : pro_of (pro_from 1%nat ps') `prefix_of` pro_of (pro_from 1%nat ps)).
+    { destruct (prefix_weak_total (pro_of (pro_from 1%nat ps'))
+                  (pro_of (pro_from 1%nat ps))
+                  (pro_of (pro_from 1%nat ps) ++ X)
+                  ltac:(etrans; [apply prefix_app_r; reflexivity | exact Hp])
+                  ltac:(apply prefix_app_r; reflexivity)) as [H | H]; [exact H |].
+      (* the other way round: either the stage's own prologue has settled
+         (and then they are the same), or it stands open at a banner -- and
+         the byte the wire has there is [echo_line]'s, which no alternative
+         begins with ([EchoDisc.pro_of_not_done_next]). *)
+      destruct (decide (pro_done (pro_from 1%nat ps))) as [HdA | HdA].
+      - destruct (pro_of_prefix_free (pro_from 1%nat ps') (pro_from 1%nat ps)
+                    HFB HFA HdA H) as [_ Heq]. by rewrite Heq.
+      - exfalso.
+        assert (Hne : pro_of (pro_from 1%nat ps) <> pro_of (pro_from 1%nat ps')).
+        { intros Heq. apply HdA.
+          destruct (pro_of_prefix_free (pro_from 1%nat ps) (pro_from 1%nat ps')
+                      HFA HFB Hd' ltac:(rewrite Heq; reflexivity)) as [Hd _].
+          exact Hd. }
+        assert (Hlt : (length (pro_of (pro_from 1%nat ps))
+                       < length (pro_of (pro_from 1%nat ps')))%nat).
+        { pose proof (prefix_length _ _ H) as Hle.
+          destruct (decide (length (pro_of (pro_from 1%nat ps))
+                            = length (pro_of (pro_from 1%nat ps')))%nat)
+            as [Heq | Hne2]; [| lia].
+          exfalso. apply Hne. apply (prefix_length_eq _ _ H). lia. }
+        destruct (lookup_lt_is_Some_2 (pro_of (pro_from 1%nat ps'))
+                    (length (pro_of (pro_from 1%nat ps))) Hlt) as [b Hb].
+        assert (HBAX : pro_of (pro_from 1%nat ps')
+                       `prefix_of` (pro_of (pro_from 1%nat ps) ++ X))
+          by (etrans; [apply prefix_app_r; reflexivity | exact Hp]).
+        assert (Hbx : (pro_of (pro_from 1%nat ps) ++ X)
+                        !! length (pro_of (pro_from 1%nat ps)) = Some b)
+          by (eapply prefix_lookup_Some; [exact Hb | exact HBAX]).
+        rewrite lookup_app_r in Hbx; [| lia].
+        rewrite Nat.sub_diag in Hbx.
+        destruct (pro_of_not_done_next (pro_from 1%nat ps) (pro_from 1%nat ps')
+                    b HFB HdA H Hb) as (aa & Haa & Hah).
+        exact (pro_alts_head_ne_echo aa b Haa Hah (HX b Hbx)). }
+    destruct (pro_of_prefix_free (pro_from 1%nat ps) (pro_from 1%nat ps')
+                HFA HFB Hd' Hcmp) as [Hd Heq].
+    rewrite Heq in Hp. apply prefix_app_inv in Hp.
+    split; [by rewrite ?Hhd |].
+    split; [intros _; by apply pro_from_done |].
+    split; [| exact Hp].
+    rewrite /alt_cont Hhd. cbn [pro_idx]. by rewrite Heq.
+  - rewrite !app_nil_l in Hp.
+    split; [by rewrite ?Hhd |]. split; [by intros ? |].
+    split; [| exact Hp].
+    rewrite /alt_cont Hhd. case_decide as H4; [by destruct (H3 H4) | reflexivity].
+Qed.
+
 (* THE STEP: two block sequences below one wire have the same blocks. *)
 Lemma alt_seq_prefix_det (q' : nat) :
-  forall (cs cs' : list nat) (q : nat) (t' t : list (bv 8)),
+  forall (ps ps' cs cs' : list nat) (q : nat) (t' t : list (bv 8)),
+    Forall (fun a => (a < length pro_alts)%nat) ps ->
+    Forall (fun a => (a < length pro_alts)%nat) ps' ->
+    (pro_idx cs' q' < pro_rounds ps')%nat ->
+    (0 < pro_rounds ps)%nat ->
     cs_ok cs -> cs_ok cs' ->
     t' `prefix_of` echo_line -> t `prefix_of` echo_line ->
-    (alt_seq cs' q' ++ t') `prefix_of` (alt_seq cs q ++ t) ->
-    q' <= q /\ alt_seq cs' q' = alt_seq cs q'.
+    (alt_seq ps' cs' q' ++ t') `prefix_of` (alt_seq ps cs q ++ t) ->
+    (q' <= q)%nat /\ (pro_idx cs q' < pro_rounds ps)%nat
+    /\ alt_seq ps' cs' q' = alt_seq ps cs q'.
 Proof.
-  induction q' as [| n IH]; intros cs cs' q t' t Hcs Hcs' Ht' Ht Hpre.
-  { split; [lia | reflexivity]. }
+  induction q' as [| n IH];
+    intros ps ps' cs cs' q t' t Hps Hps' Hlt' Hpos Hcs Hcs' Ht' Ht Hpre.
+  { split; [lia |]. split; [cbn [pro_idx]; lia | reflexivity]. }
   pose proof echo_line_length as HL.
   assert (Hp' : 0 < length (line_alts !!! (cs' !!! 0%nat))).
   { destruct (line_alts !!! (cs' !!! 0%nat)) as [| z zs] eqn:Hz;
       [ exfalso; exact (line_alts_nonnil _ (Hcs' 0%nat) Hz) | cbn; lia ]. }
   destruct q as [| p].
   { exfalso.
-    rewrite alt_seq_0 app_nil_l alt_seq_cons -app_assoc in Hpre.
+    rewrite alt_seq_0 app_nil_l alt_seq_cons_assoc in Hpre.
     apply prefix_length in Hpre. apply prefix_length in Ht.
-    rewrite /alt_blk !length_app in Hpre. lia. }
-  rewrite alt_seq_cons -app_assoc in Hpre.
-  rewrite (alt_seq_cons cs p) -app_assoc in Hpre.
-  rewrite /alt_blk -!app_assoc in Hpre.
-  apply prefix_app_cancel in Hpre.
-  (* the alternatives' first bytes agree, so the choices do *)
-  assert (Hhd : cs' !!! 0%nat = cs !!! 0%nat).
-  { apply line_alts_head_det; [apply Hcs' | apply Hcs |].
-    assert (Hp : 0 < length (line_alts !!! (cs !!! 0%nat))).
-    { destruct (line_alts !!! (cs !!! 0%nat)) as [| z zs] eqn:Hz;
-        [ exfalso; exact (line_alts_nonnil _ (Hcs 0%nat) Hz) | cbn; lia ]. }
-    destruct (lookup_lt_is_Some_2 (line_alts !!! (cs' !!! 0%nat)) 0 Hp')
-      as [z Hz].
-    assert (Hz1 : (line_alts !!! (cs' !!! 0%nat)
-                    ++ (alt_seq (drop 1 cs') n ++ t')) !! 0 = Some z)
-      by (rewrite lookup_app_l; [exact Hz | lia]).
-    assert (Hz2 : (line_alts !!! (cs !!! 0%nat)
-                    ++ (alt_seq (drop 1 cs) p ++ t)) !! 0 = Some z)
-      by (eapply prefix_lookup_Some; [exact Hz1 | exact Hpre]).
-    rewrite lookup_app_l in Hz2; [| lia].
-    by rewrite Hz Hz2. }
-  rewrite Hhd in Hpre. apply prefix_app_cancel in Hpre.
-  destruct (IH (drop 1 cs) (drop 1 cs') p t' t
-              (cs_ok_drop _ _ Hcs) (cs_ok_drop _ _ Hcs') Ht' Ht Hpre)
-    as [Hle Heq].
-  split; [lia |].
-  rewrite alt_seq_cons (alt_seq_cons cs n) Heq /alt_blk Hhd. reflexivity.
+    rewrite /alt_cont !length_app in Hpre. lia. }
+  rewrite !alt_seq_cons_assoc in Hpre.
+  apply prefix_app_inv in Hpre.
+  assert (Hset : cs' !!! 0%nat = 3%nat -> (1 < pro_rounds ps')%nat).
+  { intros H3. eapply Nat.le_lt_trans; [| exact Hlt'].
+    rewrite -(pro_idx_S3 cs' 0%nat H3). apply pro_idx_mono. lia. }
+  destruct (alt_cont_prefix_det ps ps' cs cs' _ _ Hcs Hcs' Hps Hps' Hset
+              (fun b Hb => alt_seq_app_head _ _ p t b Ht Hb) Hpre)
+    as (Hhd & Hround1 & Hcont & Hrest).
+  assert (Hidx1 : pro_idx cs' 1%nat = pro_idx cs 1%nat).
+  { rewrite !pro_idx_S. by rewrite Hhd. }
+  assert (Hlt1 : (pro_idx cs 1%nat < pro_rounds ps)%nat).
+  { destruct (decide (cs !!! 0%nat = 3%nat)) as [H3 | H3].
+    - rewrite (pro_idx_S3 cs 0%nat H3). cbn [pro_idx]. by apply Hround1.
+    - rewrite (pro_idx_Sne cs 0%nat H3). cbn [pro_idx]. lia. }
+  destruct (IH (pro_from (pro_idx cs 1%nat) ps) (pro_from (pro_idx cs' 1%nat) ps')
+              (drop 1 cs) (drop 1 cs') p t' t
+              (pro_from_Forall _ _ ps Hps) (pro_from_Forall _ _ ps' Hps'))
+    as (Hle & Hrd & Heq).
+  { rewrite pro_rounds_from.
+    pose proof (pro_idx_add cs' 1%nat n) as Hadd.
+    replace (1 + n)%nat with (S n) in Hadd by lia. lia. }
+  { rewrite pro_rounds_from. lia. }
+  { by apply cs_ok_drop. }
+  { by apply cs_ok_drop. }
+  { exact Ht'. }
+  { exact Ht. }
+  { exact Hrest. }
+  split; [lia |]. split.
+  { pose proof (pro_idx_add cs 1%nat n) as Hadd.
+    replace (1 + n)%nat with (S n) in Hadd by lia.
+    rewrite pro_rounds_from in Hrd. lia. }
+  rewrite alt_seq_cons (alt_seq_cons ps cs n) Heq /alt_blk Hcont.
+  reflexivity.
 Qed.
 
 (* ...AND THE SESSION TRANSCRIPTS THEMSELVES.  This is what lets lane
@@ -949,34 +1179,56 @@ Proof.
   rewrite Nat.mul_succ_r in Hs. lia.
 Qed.
 
-Lemma sess_n_prefix_det (cs cs' : list nat) (i j : nat) :
+Lemma sess_n_prefix_det (ps ps' cs cs' : list nat) (i j : nat) :
+  Forall (fun a => (a < length pro_alts)%nat) ps ->
+  pro_ok ps' cs' (i `div` length echo_line) ->
   Forall (fun x => x < length line_alts) cs ->
   Forall (fun x => x < length line_alts) cs' ->
-  sess_n cs' i `prefix_of` sess_n cs j ->
-  i <= j /\ sess_n cs' i = sess_n cs i.
+  pro_pin ps cs j ->
+  sess_n ps' cs' i `prefix_of` sess_n ps cs j ->
+  (i <= j)%nat /\ pro_ok ps cs (i `div` length echo_line)
+  /\ sess_n ps' cs' i = sess_n ps cs i.
 Proof.
-  intros Hcs Hcs' Hpre.
+  intros Hps [Hps' Hlt'] Hcs Hcs' Hpin Hpre.
   pose proof (cs_ok_of_Forall _ Hcs) as Hok.
   pose proof (cs_ok_of_Forall _ Hcs') as Hok'.
   pose proof echo_line_length as HL.
-  (* [sess_n] is [u_prologue ++ (blocks ++ partial line)]: cancel the
-     prologue and compare the block sequences *)
-  rewrite /sess_n in Hpre. apply prefix_app_cancel in Hpre.
+  assert (Hd' : pro_done ps') by (apply pro_done_rounds; lia).
+  (* the PROLOGUES: below one wire, and the primed one is settled, so they
+     are the same prologue and the unprimed one is settled too *)
+  assert (Hpre0 : pro_of ps' `prefix_of` pro_of ps).
+  { destruct (decide (j = 0%nat)) as [-> | Hj].
+    - rewrite sess_n_0 in Hpre. etrans; [| exact Hpre].
+      rewrite /sess_n. by apply prefix_app_r.
+    - assert (Hd : pro_done ps).
+      { apply pro_done_rounds.
+        pose proof (pro_pin_at ps cs j 0%nat Hpin ltac:(lia)) as H0.
+        rewrite Nat.Div0.div_0_l in H0. cbn [pro_idx] in H0. lia. }
+      assert (H1 : pro_of ps' `prefix_of` sess_n ps cs j).
+      { etrans; [| exact Hpre]. rewrite /sess_n. by apply prefix_app_r. }
+      assert (H2 : pro_of ps `prefix_of` sess_n ps cs j)
+        by (rewrite /sess_n; by apply prefix_app_r).
+      destruct (prefix_weak_total _ _ _ H1 H2) as [H | H]; [exact H |].
+      destruct (pro_of_prefix_free ps' ps Hps' Hps Hd H) as [_ Heq].
+      by rewrite Heq. }
+  destruct (pro_of_prefix_free ps ps' Hps Hps' Hd' Hpre0) as [Hdps Heq0].
+  rewrite /sess_n Heq0 in Hpre. apply prefix_app_inv in Hpre.
   assert (Ht' : take (i `mod` length echo_line) echo_line `prefix_of` echo_line)
     by apply prefix_take.
   assert (Ht : take (j `mod` length echo_line) echo_line `prefix_of` echo_line)
     by apply prefix_take.
-  destruct (alt_seq_prefix_det (i `div` length echo_line) cs cs'
-              (j `div` length echo_line) _ _ Hok Hok' Ht' Ht Hpre)
-    as [Hqle Hqeq].
-  assert (Hsess : sess_n cs' i = sess_n cs i)
-    by (rewrite /sess_n Hqeq; reflexivity).
-  split; [| exact Hsess].
+  destruct (alt_seq_prefix_det (i `div` length echo_line) ps ps' cs cs'
+              (j `div` length echo_line) _ _ Hps Hps' Hlt'
+              ltac:(by apply pro_done_rounds) Hok Hok' Ht' Ht Hpre)
+    as (Hqle & Hround & Hqeq).
+  assert (Hsess : sess_n ps' cs' i = sess_n ps cs i)
+    by (rewrite /sess_n Heq0 Hqeq; reflexivity).
+  split; [| split; [by split | exact Hsess]].
   destruct (decide (i `div` length echo_line < j `div` length echo_line))
     as [Hlt | Hnlt].
   - pose proof (div_lt_of_div_lt i j (length echo_line) ltac:(lia) Hlt). lia.
   - assert (Hqe : i `div` length echo_line = j `div` length echo_line) by lia.
-    rewrite Hqeq Hqe in Hpre. apply prefix_app_cancel in Hpre.
+    rewrite Hqeq Hqe in Hpre. apply prefix_app_inv in Hpre.
     apply prefix_length in Hpre. rewrite !length_take in Hpre.
     pose proof (Nat.div_mod_eq i (length echo_line)) as Hi.
     pose proof (Nat.div_mod_eq j (length echo_line)) as Hj.
@@ -1004,30 +1256,32 @@ Qed.
    the claim's. *)
 Lemma disc_seg'_pt_last (seg : list mobs) (c : bv 8) :
   disc_seg' seg -> obs_ends_in Uart0 seg c ->
-  exists cs' : list nat,
-    Forall (fun x => x < length line_alts) cs'
-    /\ sess_n cs' (length (ins seg) - 1) `prefix_of` obs_wire Uart0 seg.
+  exists ps' cs' : list nat,
+    pro_ok ps' cs' ((length (ins seg) - 1) `div` length echo_line)
+    /\ Forall (fun x => x < length line_alts) cs'
+    /\ sess_n ps' cs' (length (ins seg) - 1) `prefix_of` obs_wire Uart0 seg.
 Proof.
-  intros [Hd (cs & Hlen & Hf & Hall)] [seg0 ->].
-  exists cs. split; [exact Hf |].
+  intros [Hd (ps & cs & Hlen & Hf & Hall)] [seg0 ->].
+  exists ps, cs.
   assert (Hip : in_pres (seg0 ++ [ObsUartIn Uart0 c]) !! (length (ins seg0))
                 = Some seg0).
   { rewrite in_pres_in lookup_app_r in_pres_length ?Nat.sub_diag //. }
-  specialize (Hall _ _ Hip). rewrite /disc_pt in Hall.
+  destruct (Hall _ _ Hip) as [Hok Hpt]. rewrite /disc_pt in Hpt.
   rewrite ins_app ins_in length_app /=.
-  replace (length (ins seg0) + 1 - 1) with (length (ins seg0)) by lia.
-  etrans; [exact Hall |]. rewrite obs_wire_app. by eexists.
+  replace (length (ins seg0) + 1 - 1)%nat with (length (ins seg0)) by lia.
+  split; [exact Hok |]. split; [exact Hf |].
+  etrans; [exact Hpt |]. rewrite obs_wire_app. by eexists.
 Qed.
 
 (* [sess_n] is never empty: it begins with the prologue *)
 Lemma u_prologue_pos : 0 < length u_prologue.
 Proof. vm_compute. lia. Qed.
 
-Lemma sess_n_nonnil (cs : list nat) (n : nat) : sess_n cs n <> [].
+Lemma sess_n_nonnil (ps cs : list nat) (n : nat) : sess_n ps cs n <> [].
 Proof.
   rewrite /sess_n. intros H.
   apply (f_equal length) in H. rewrite !length_app /= in H.
-  pose proof u_prologue_pos. lia.
+  pose proof (pro_of_pos ps). lia.
 Qed.
 
 (* ====================================================================== *)

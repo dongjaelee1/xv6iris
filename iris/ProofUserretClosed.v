@@ -762,7 +762,12 @@ Section UserretClosed.
                  Hpipecall
                  (* ...and getpid's answer, from the same three hops and at
                     the same trapframe pair -- [SpecUsertrap.ut_ret_pid] *)
-                 Hpidrow Hround'
+                 Hpidrow
+                 (* ...AND WHAT THE RESUME PROVES, at the U tier's spelling
+                    (lane TRAP-ROWS, T2(iii)) *)
+                 ltac:(intro Hec;
+                       exact (SpecUsertrap.uexec_live_ok_of_live _ _ _ _ _ Hec Hlv))
+                 Hround'
                  (* ...AND THE SYSCALL'S ARMED POST, back under the arm's own
                     [∀ r], AT THE FAMILIES THE DEPOSIT WAS MADE AT ([fdep],
                     the witness the split handed out).  It comes off

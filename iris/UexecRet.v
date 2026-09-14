@@ -1247,6 +1247,45 @@ Section UexecRet.
     iApply ("H" with "Hp HRc").
   Qed.
 
+  (* WHAT A RESUME PROVES ABOUT THE CONSOLE READ (lane TRAP-ROWS, T2(iii)).
+     See [uexec_ret_cont_gen]'s own note for why it is true; the shape here
+     is the U tier's: the count is the a2 word read as a C [int]
+     ([SpecSysRead.sys_rw_count]'s spelling), the descriptor is the a0 word
+     read as an index into the caller's own table
+     ([SpecArgfd.fd_st_of_key]'s two cases, split out so that neither
+     definition has to travel down here), and CONSOLE is major 1
+     ([ConsoleInv.CONSOLE]). *)
+  Definition uexec_live_ok (n : Z) (tf : list (mword 64))
+      (sts : list fdstate) (r : mword 64) : Prop :=
+    n = USYS_read ->
+    (0 <= bv_signed (trunc32 (tf_w tf (tf_arg_idx 2))))%Z ->
+    forall rb : bool,
+      (0 <= usys_argfd tf < Z.of_nat NOFILE)%Z ->
+      sts !! Z.to_nat (usys_argfd tf) = Some (FdOpen true rb (FdDevice 1)) ->
+      r <> (mword_of_int (-1) : mword 64).
+
+  (* free at every number but the read *)
+  Lemma uexec_live_ok_ne (n : Z) (tf : list (mword 64))
+      (sts : list fdstate) (r : mword 64) :
+    n <> USYS_read -> uexec_live_ok n tf sts r.
+  Proof. intros Hne Hn. exfalso. exact (Hne Hn). Qed.
+
+  (* ...and it reads two trapframe words and nothing else, so it transports
+     across a re-key like the other pure rows ([UexecSG.skey_eq] fixes both) *)
+  Lemma uexec_live_ok_cong (n : Z) (tf1 tf2 : list (mword 64))
+      (sts : list fdstate) (r : mword 64) :
+    tf_w tf1 (tf_arg_idx 0) = tf_w tf2 (tf_arg_idx 0) ->
+    tf_w tf1 (tf_arg_idx 2) = tf_w tf2 (tf_arg_idx 2) ->
+    uexec_live_ok n tf1 sts r -> uexec_live_ok n tf2 sts r.
+  Proof.
+    intros Ha0 Ha2 H Hn Hc rb Hlt Hfd.
+    rewrite <- Ha2 in Hc.
+    rewrite /tf_w in Ha0.
+    rewrite /usys_argfd in Hlt, Hfd.
+    rewrite <- Ha0 in Hlt, Hfd.
+    exact (H Hn Hc rb Hlt Hfd).
+  Qed.
+
   (* the returning arm's CONTINUATION: the four pure rows, the syscall's
      armed post [spost_at] -- what the process gets back for the bundle it
      deposited -- and the next slot at the bumped key.
@@ -1305,6 +1344,23 @@ Section UexecRet.
           from [SpecSysGetpid]'s own post.  LAST among the pure rows, so
           every existing intro pattern keeps working. *)
        ⌜usys_ret_pid n r (uvis_pid W)⌝ -∗
+       (* ...AND WHAT THE RESUME ITSELF PROVES (lane TRAP-ROWS, T2(iii)).
+          A process that comes back HERE was not killed, and usertrap's
+          second [killed] check is where that is cashed: at a zero flag
+          <p->lock>'s row holds the UNFIRED one-shot
+          ([SchedCtx.kill_paid_shot_nz]), which refutes the [kill_shot]
+          disjunct of [SpecFileread.console_receipt]'s -1 arm.  With the
+          shot gone the arm has exactly one cause left, fileread's [n < 0]
+          sign guard, and a caller that asked for a non-negative count has
+          ruled that out too -- so AT AN OPEN READABLE CONSOLE DESCRIPTOR
+          the read did not return -1.  [SpecUsertrap.ut_live_out] is this
+          at the kernel's own spelling and [ProofUserretClosed] is the one
+          hop between them.
+          READ AT THE TRAPPING KEY's descriptor view and argument words,
+          which is what the caller holds.  The descriptor is named by INDEX
+          rather than through [SpecArgfd.fd_st_of_key]: that lives above
+          this file, and a program holds its table as a list. *)
+       ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r⌝ -∗
        (* ...AND THE CHILDREN SET, off the same return value: the row the
           number's own answer carries -- pure and quiet at the twenty
           entries that keep the reading, [uwait_ans] at wait, which reaps. *)
@@ -2023,6 +2079,8 @@ Section UexecRet.
            ⌜usys_cwd_ok n r (uvis_cwd W) cw'⌝ -∗
            ⌜usys_gen_ok n (uvis_gen W) g'⌝ -∗
            ⌜usys_ret_pid n r (uvis_pid W)⌝ -∗
+           (* ...and what the resume proves (lane TRAP-ROWS, T2(iii)) *)
+           ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r⌝ -∗
            uwait_ans r (uvis_ch W) cs' -∗
            spost_at uslot n f W r M' fdv' cw' cs' -∗
            uslot (bump W r M' π' szv' fdv' cw' g' cs' lz')))
@@ -2049,6 +2107,8 @@ Section UexecRet.
            ⌜usys_cwd_ok n r (uvis_cwd W) cw'⌝ -∗
            ⌜usys_gen_ok n (uvis_gen W) g'⌝ -∗
            ⌜usys_ret_pid n r (uvis_pid W)⌝ -∗
+           (* ...and what the resume proves (lane TRAP-ROWS, T2(iii)) *)
+           ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r⌝ -∗
            ⌜usys_ch_ok n r (uvis_ch W) cs'⌝ -∗
            spost_at uslot n f W r M' fdv' cw' cs' -∗
            uslot (bump W r M' π' szv' fdv' cw' g' cs' lz'))))).
@@ -2349,11 +2409,11 @@ Section UexecRet.
        process reads neither: the answer is dropped like the receipt. *)
     destruct (decide (usys_num (uvis_tf W) = USYS_wait)).
     { rewrite /uexec_wait_F /uexec_ret_cont_gen.
-      iIntros (r M' π' szv' fdv' cw' g' cs' lz' _ _ _ _ Hg _) "_ _".
+      iIntros (r M' π' szv' fdv' cw' g' cs' lz' _ _ _ _ Hg _ _) "_ _".
       rewrite (usys_gen_ok_quiet _ _ _ Hg). iApply ("H" with "[] HR").
       cbn [uvis_gen bump bump_at]. iExact "Hpay". }
     rewrite /uexec_ret_cont_F /uexec_ret_cont_gen.
-    iIntros (r M' π' szv' fdv' cw' g' cs' lz' _ _ _ _ Hg _ _) "_".
+    iIntros (r M' π' szv' fdv' cw' g' cs' lz' _ _ _ _ Hg _ _ _) "_".
     rewrite (usys_gen_ok_quiet _ _ _ Hg). iApply ("H" with "[] HR").
     cbn [uvis_gen bump bump_at]. iExact "Hpay".
   Qed.

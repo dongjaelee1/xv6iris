@@ -751,6 +751,22 @@ Proof.
   split_and!; [ exact He | exact Hn | exact Hc | exists rb; exact Hfd | exact Hm1 ].
 Qed.
 
+(* ...AND THE SAME ROW AT THE U TIER'S SPELLING (lane TRAP-ROWS, T2(iii)).
+   [UexecRet.uexec_live_ok] names the descriptor by INDEX, because
+   [SpecArgfd.fd_st_of_key] lives above that file; this is the one hop
+   between the two, and it is the [decide] in [fd_st_of_key] itself. *)
+Lemma uexec_live_ok_of_live (sc_v : mword 64) (tf : list (mword 64))
+    (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
+  sc_v = uecall_scause ->
+  ut_live_out sc_v tf sts r cs' ->
+  UexecRet.uexec_live_ok (usys_num tf) tf sts r.
+Proof.
+  intros He H Hn Hc rb Hlt Hfd.
+  refine (H He Hn Hc rb _).
+  rewrite /fd_st_of_key. rewrite decide_True; [| exact Hlt].
+  rewrite Hfd. reflexivity.
+Qed.
+
 (* the row is FREE at a non-ecall cause: both clauses are guarded on it *)
 Lemma ut_live_out_ne (sc_v : mword 64) (tf : list (mword 64))
     (sts : list fdstate) (r : mword 64) (cs' : gset gname) :

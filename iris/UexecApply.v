@@ -525,10 +525,10 @@ Section Apply.
          sets and no trapframe word, so it transports on the nose. *)
       destruct (decide (usys_num (uvis_tf W') = USYS_wait)) as [_ | _].
       { iSplit.
-        + iIntros "H" (r M' pi' szv' fdv' cw' gn' cs' lz') "%Hmo %Hfo %Hpo %Hco %Hgo %Hpio Hcho Hsp".
+        + iIntros "H" (r M' pi' szv' fdv' cw' gn' cs' lz') "%Hmo %Hfo %Hpo %Hco %Hgo %Hpio %Hlo Hcho Hsp".
           rewrite -(Hb r M' pi' szv' fdv' cw' gn' cs').
           iApply ("H" $! r M' pi' szv' fdv' cw' gn' cs'
-                    with "[%] [%] [%] [%] [%] [%] [Hcho] [Hsp]").
+                    with "[%] [%] [%] [%] [%] [%] [%] [Hcho] [Hsp]").
           * exact (usys_mem_ok_args _ (uvis_tf W') (uvis_tf W) r _ _ _ _ _ _ _ _
                      (eq_sym Ha0) (eq_sym Ha1) (eq_sym Ha2) Hmo).
           * exact (usys_fd_ok_arg_cong _ (uvis_tf W') (uvis_tf W) _ _ _
@@ -538,14 +538,15 @@ Section Apply.
           * exact Hco.
           * exact Hgo.
           * exact Hpio.
+          * exact (uexec_live_ok_cong _ _ _ _ _ (eq_sym Ha0) (eq_sym Ha2) Hlo).
           * iExact "Hcho".
           * iEval (rewrite (spost_at_cong S (usys_num (uvis_tf W')) f W' W r
                               M' fdv' cw' cs' (skey_eq_sym W W' Hsk))) in "Hsp".
             iExact "Hsp".
-        + iIntros "H" (r M' pi' szv' fdv' cw' gn' cs' lz') "%Hmo %Hfo %Hpo %Hco %Hgo %Hpio Hcho Hsp".
+        + iIntros "H" (r M' pi' szv' fdv' cw' gn' cs' lz') "%Hmo %Hfo %Hpo %Hco %Hgo %Hpio %Hlo Hcho Hsp".
           rewrite (Hb r M' pi' szv' fdv' cw' gn' cs').
           iApply ("H" $! r M' pi' szv' fdv' cw' gn' cs'
-                    with "[%] [%] [%] [%] [%] [%] [Hcho] [Hsp]").
+                    with "[%] [%] [%] [%] [%] [%] [%] [Hcho] [Hsp]").
           * exact (usys_mem_ok_args _ (uvis_tf W) (uvis_tf W') r _ _ _ _ _ _ _ _
                      Ha0 Ha1 Ha2 Hmo).
           * exact (usys_fd_ok_arg_cong _ (uvis_tf W) (uvis_tf W') _ _ _
@@ -555,15 +556,16 @@ Section Apply.
           * exact Hco.
           * exact Hgo.
           * exact Hpio.
+          * exact (uexec_live_ok_cong _ _ _ _ _ Ha0 Ha2 Hlo).
           * iExact "Hcho".
           * iEval (rewrite (spost_at_cong S (usys_num (uvis_tf W')) f W W' r
                               M' fdv' cw' cs' Hsk)) in "Hsp". iExact "Hsp". } 
     (* the returning arms: the row transports by SS3 *)
       iSplit.
-      + iIntros "H" (r M' pi' szv' fdv' cw' gn' cs' lz') "%Hmo %Hfo %Hpo %Hco %Hgo %Hpio %Hcho Hsp".
+      + iIntros "H" (r M' pi' szv' fdv' cw' gn' cs' lz') "%Hmo %Hfo %Hpo %Hco %Hgo %Hpio %Hlo %Hcho Hsp".
         rewrite -(Hb r M' pi' szv' fdv' cw' gn' cs').
         iApply ("H" $! r M' pi' szv' fdv' cw' gn' cs'
-                  with "[%] [%] [%] [%] [%] [%] [%] [Hsp]").
+                  with "[%] [%] [%] [%] [%] [%] [%] [%] [Hsp]").
         * exact (usys_mem_ok_args _ (uvis_tf W') (uvis_tf W) r _ _ _ _ _ _ _ _
                    (eq_sym Ha0) (eq_sym Ha1) (eq_sym Ha2) Hmo).
         * exact (usys_fd_ok_arg_cong _ (uvis_tf W') (uvis_tf W) _ _ _
@@ -577,16 +579,17 @@ Section Apply.
            and neither does the pid's *)
         * exact Hgo.
         * exact Hpio.
+        * exact (uexec_live_ok_cong _ _ _ _ _ (eq_sym Ha0) (eq_sym Ha2) Hlo).
         * exact Hcho.
         (* ...and the armed post transports by the SAME key rows the
            deposit does ([UexecSG.skey_eq]) *)
         * iEval (rewrite (spost_at_cong S (usys_num (uvis_tf W')) f W' W r
                             M' fdv' cw' cs' (skey_eq_sym W W' Hsk))) in "Hsp".
           iExact "Hsp".
-      + iIntros "H" (r M' pi' szv' fdv' cw' gn' cs' lz') "%Hmo %Hfo %Hpo %Hco %Hgo %Hpio %Hcho Hsp".
+      + iIntros "H" (r M' pi' szv' fdv' cw' gn' cs' lz') "%Hmo %Hfo %Hpo %Hco %Hgo %Hpio %Hlo %Hcho Hsp".
         rewrite (Hb r M' pi' szv' fdv' cw' gn' cs').
         iApply ("H" $! r M' pi' szv' fdv' cw' gn' cs'
-                  with "[%] [%] [%] [%] [%] [%] [%] [Hsp]").
+                  with "[%] [%] [%] [%] [%] [%] [%] [%] [Hsp]").
         * exact (usys_mem_ok_args _ (uvis_tf W) (uvis_tf W') r _ _ _ _ _ _ _ _
                    Ha0 Ha1 Ha2 Hmo).
         * exact (usys_fd_ok_arg_cong _ (uvis_tf W) (uvis_tf W') _ _ _
@@ -596,6 +599,7 @@ Section Apply.
         * exact Hco.
         * exact Hgo.
         * exact Hpio.
+        * exact (uexec_live_ok_cong _ _ _ _ _ Ha0 Ha2 Hlo).
         * exact Hcho.
         * iEval (rewrite (spost_at_cong S (usys_num (uvis_tf W')) f W W' r
                             M' fdv' cw' cs' Hsk)) in "Hsp". iExact "Hsp".
@@ -877,6 +881,10 @@ Section LoopApply.
        ([UsysMemOk.usys_ret_pid_ne]). *)
     usys_ret_pid (usys_num (uvis_tf (uvis_run W)))
       (uvis_tf W' !!! tf_arg_idx 0) (uvis_pid W) ->
+    (* ...AND WHAT THE RESUME ITSELF PROVES (lane TRAP-ROWS, T2(iii)), read
+       at the same outgoing a0 word -- [UexecRet.uexec_live_ok]. *)
+    uexec_live_ok (usys_num (uvis_tf (uvis_run W))) (uvis_tf (uvis_run W))
+      (uvis_fd W) (uvis_tf W' !!! tf_arg_idx 0) ->
     (* ...and the resume key's pid is the trapped key's, exactly as its
        generation is: nothing re-numbers the caller, so the loop builds the
        resume key at the pid it resumed the process with. *)
@@ -908,13 +916,15 @@ Section LoopApply.
        ⌜usys_cwd_ok (usys_num (uvis_tf (uvis_run W))) r' (uvis_cwd W) cw'⌝ -∗
        ⌜usys_gen_ok (usys_num (uvis_tf (uvis_run W))) (uvis_gen W) gn'⌝ -∗
        ⌜usys_ret_pid (usys_num (uvis_tf (uvis_run W))) r' (uvis_pid W)⌝ -∗
+       ⌜uexec_live_ok (usys_num (uvis_tf (uvis_run W))) (uvis_tf (uvis_run W))
+                      (uvis_fd W) r'⌝ -∗
        CH r' cs' -∗
        spost_at S (usys_num (uvis_tf (uvis_run W))) f (uvis_run W) r'
          M' fdv' cw' cs' -∗
        S (bump (uvis_run W) r' M' π' szv' fdv' cw' gn' cs' lz')) -∗
     S W'.
   Proof.
-    intros Hl Hgn [Hb1 Hb2] Hm Hfdrow Hpiperow Hcwrow Hpidrow Hpidk.
+    intros Hl Hgn [Hb1 Hb2] Hm Hfdrow Hpiperow Hcwrow Hpidrow Hliverow Hpidk.
     iIntros "Hch Hsp Hret".
     (* the two length side conditions the bump's readers take *)
     assert (Hla : (tf_arg_idx 0 < length (uvis_tf (uvis_run W)))%nat)
@@ -953,10 +963,11 @@ Section LoopApply.
     iDestruct ("Hret" $! r (uvis_M W') (uvis_perm W') (uvis_sz W')
                  (uvis_fd W') (uvis_cwd W') (uvis_gen W') (uvis_ch W')
                  (uvis_lazy W')
-                 with "[%] [%] [%] [%] [%] [%] Hch Hsp") as "Hs";
+                 with "[%] [%] [%] [%] [%] [%] [%] Hch Hsp") as "Hs";
       [ exact Hm | rewrite <- Ha0; exact Hfdrow
       | rewrite <- Ha0; exact Hpiperow | exact Hcwrow
-      | exact Hgn | rewrite <- Ha0; exact Hpidrow | ].
+      | exact Hgn | rewrite <- Ha0; exact Hpidrow
+      | rewrite <- Ha0; exact Hliverow | ].
     assert (Hp1 : tf_resume_pc (bump_tf (uvis_tf (uvis_run W)) r)
                   = tf_resume_pc (uvis_tf W')).
     { rewrite (tf_resume_pc_bump (uvis_tf (uvis_run W)) r Hle).
@@ -1023,6 +1034,15 @@ Section LoopApply.
     (sc = uecall_scause ->
        usys_ret_pid (usys_num (uvis_tf (uvis_run W)))
          (uvis_tf W' !!! tf_arg_idx 0) (uvis_pid W)) ->
+    (* ...AND WHAT THE RESUME ITSELF PROVES (lane TRAP-ROWS, T2(iii)), on
+       the same terms and by the same route: usertrap's second [killed]
+       check refuted the read's one-shot, so at an open readable console
+       descriptor the answer is not -1 -- [SpecUsertrap.ut_live_out], off
+       [SpecUservec]'s post.  Guarded on the ecall like the pid row; the
+       transparent arm answers nothing. *)
+    (sc = uecall_scause ->
+       uexec_live_ok (usys_num (uvis_tf (uvis_run W))) (uvis_tf (uvis_run W))
+         (uvis_fd W) (uvis_tf W' !!! tf_arg_idx 0)) ->
     (* THE CWD ROWS RIDE INSIDE THE ROUND: [uround_ok] relates the key's
        [uvis_cwd] on both sides, so nothing here has to be told about it
        separately -- the transparent arm pins it, the returning arm reads
@@ -1093,7 +1113,7 @@ Section LoopApply.
     (if decide (sc = uecall_scause) then uexec_arm sc W f
      else uslot (uvis_run W)) -∗ uslot W'.
   Proof.
-    intros Hl Hgn Hpidk Hch Hfd Hfdrow Hpiperow Hpidrow Hr.
+    intros Hl Hgn Hpidk Hch Hfd Hfdrow Hpiperow Hpidrow Hliverow Hr.
     iIntros "Hxo Hfo Hwo Hsp Hret".
     destruct (decide (sc = uecall_scause)) as [Hec | Hne].
     - (* ---- ECALL ---- *)
@@ -1137,7 +1157,8 @@ Section LoopApply.
                        ⌜usys_ch_ok (usys_num (uvis_tf (uvis_run W))) r'
                           (uvis_ch W) cs2⌝%I)
                     Hl Hgn Hb Hm
-                    (Hfdrow Hec) (Hpiperow Hec) Hc (Hpidrow Hec) Hpidk
+                    (Hfdrow Hec) (Hpiperow Hec) Hc (Hpidrow Hec)
+                    (Hliverow Hec) Hpidk
                     with "[] [Hsp] [Hret]").
           (* the children row: this arm is not one of the two that move it *)
           { iPureIntro. exact Hchq. }
@@ -1264,7 +1285,8 @@ Section LoopApply.
                        (fun (r' : mword 64) (cs2 : gset gname) =>
                           uwait_ans r' (uvis_ch W) cs2)
                        Hl Hgn Hb Hm
-                       (Hfdrow Hec) (Hpiperow Hec) Hc (Hpidrow Hec) Hpidk
+                       (Hfdrow Hec) (Hpiperow Hec) Hc (Hpidrow Hec)
+                    (Hliverow Hec) Hpidk
                        with "[Hwo] [Hsp] [Hret]").
              { iApply "Hwo". iPureIntro. split; [exact Hec | exact Hwt]. }
              { iExact "Hsp". }
@@ -1277,7 +1299,8 @@ Section LoopApply.
                           ⌜usys_ch_ok (usys_num (uvis_tf (uvis_run W))) r'
                              (uvis_ch W) cs2⌝%I)
                        Hl Hgn Hb Hm
-                       (Hfdrow Hec) (Hpiperow Hec) Hc (Hpidrow Hec) Hpidk
+                       (Hfdrow Hec) (Hpiperow Hec) Hc (Hpidrow Hec)
+                    (Hliverow Hec) Hpidk
                        with "[] [Hsp] [Hret]").
              { iPureIntro. exact Hchq. }
              { iExact "Hsp". }
@@ -1347,6 +1370,12 @@ Section LoopApply.
     (sc = uecall_scause ->
        usys_ret_pid (usys_num (tf_of g (ret_pc sepc_v)))
          (pv_tf (us_V U') !!! tf_arg_idx 0) (uvis_pid W)) ->
+    (* ...and WHAT THE RESUME PROVES, forwarded the same way (lane
+       TRAP-ROWS, T2(iii)) -- see [uexec_ret_round_slot] *)
+    (sc = uecall_scause ->
+       uexec_live_ok (usys_num (tf_of g (ret_pc sepc_v)))
+         (tf_of g (ret_pc sepc_v)) (uvis_fd W)
+         (pv_tf (us_V U') !!! tf_arg_idx 0)) ->
     (* ...and the round's cwd ends are the key's and the RECORD's: the
        inum rides inside the block, so the resumed key's [uvis_cwd] is
        [pv_cwi (us_V U')] by [uvis_of] itself -- no view to choose *)
@@ -1386,13 +1415,14 @@ Section LoopApply.
      else uslot (uvis_run W)) -∗
     uslot (uvis_of U' fdv' (uvis_gen W) cs' (uvis_pid W)).
   Proof.
-    intros Hl -> -> Hfd Hchrow Hfdrow Hpiperow Hpidrow Hr.
+    intros Hl -> -> Hfd Hchrow Hfdrow Hpiperow Hpidrow Hliverow Hr.
     (* THE RESUME KEY IS BUILT AT THE TRAPPED KEY'S OWN GENERATION -- no
        entry re-incarnates its caller -- AND AT ITS OWN PID, for the same
        reason -- and at the set the loop passes. *)
     exact (uexec_ret_round_slot sc W
              (uvis_of U' fdv' (uvis_gen W) cs' (uvis_pid W))
-             f Hl eq_refl eq_refl Hchrow Hfd Hfdrow Hpiperow Hpidrow Hr).
+             f Hl eq_refl eq_refl Hchrow Hfd Hfdrow Hpiperow Hpidrow
+             Hliverow Hr).
   Qed.
 
   (* ------------------------------------------------------------------ *)

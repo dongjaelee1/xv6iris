@@ -1477,6 +1477,7 @@ EchoOut.v
 EchoLinks.v
 EchoLinksPro.v
 EchoLinksLine.v
+EchoLinksBan.v
 AppEcho.v
 
 FsAbsUnlinkFire.v

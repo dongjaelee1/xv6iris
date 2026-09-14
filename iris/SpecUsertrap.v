@@ -685,29 +685,30 @@ Qed.
    Both are read at the ENTRY trapframe and the ENTRY descriptor index --
    the key the deposit went down at -- because that is what the process's
    own returning arm is indexed by. *)
-(* WAIT'S HALF IS NOT HERE, AND THE REASON IS A GAP IN THE KERNEL'S OWN
-   ARM (lane TRAP-ROWS, T4).  The intended second clause was
-     [sc_v = uecall_scause -> usys_num tf = USYS_wait ->
-      uint (tf !!! tf_arg_idx 0) = 0 -> r = -1 -> cs' = ∅],
-   and it is TRUE but not derivable: refuting [r = -1] on
-   [UserChildren.wait_ans]'s REAPING arm needs the reaped child's pid to be
-   something other than -1, and nothing in the tree says so.  What a slot's
-   generation carries is [SlotGen.gen_halves_at] (SlotGen.v:393), i.e.
-   [bv_unsigned pid <> 0] and nothing more; the bound that would settle it,
-   [1 <= nextpid <= PIDMAX], lives in <pid_lock>'s payload
-   ([PidLock.nextpid_res_at], PidLock.v:127) and never travels to the
-   process block.  So the wait row's reason has to ride the ARM, where the
-   two exits are told apart by the reaping arm's own [ChildTok.exit_tok] --
-   see the lane's report.  The [cs'] parameter is kept so that clause can be
-   added here without re-cutting the route. *)
+(* WAIT'S HALF IS HERE NOW (lane TRAP-ROWS-3, T4(c)).  It was written as a
+   gap: refuting [r = -1] on [UserChildren.wait_ans]'s REAPING arm needs the
+   reaped child's pid to be something other than -1, and the block's
+   registration carried only [bv_unsigned pid <> 0].  The registration now
+   carries the RANGE <allocpid> hands out ([SlotGen.gen_halves_at],
+   [1 <= pid <= PIDMAX]), so [UserChildren.sext32_rng_not_neg1] kills the
+   reaping arm at a -1 return and [UserChildren.wait_ans_m1] hands back the
+   failing arm's reason.  With the null status pointer killing the copyout
+   exit and +0xa6's unfired one-shot killing the killed exit, a -1 means the
+   caller's children column was EMPTY -- and the reap-nothing arm's set did
+   not move, so the caller's own reading is [∅]. *)
 Definition ut_live_out (sc_v : mword 64) (tf : list (mword 64))
     (sts : list fdstate) (r : mword 64) (cs' : gset gname) : Prop :=
-  sc_v = uecall_scause -> usys_num tf = USYS_read ->
-  (0 <= sys_rw_count (tf !!! tf_arg_idx 2))%Z ->
-  forall rb : bool,
-    fd_st_of_key (tf !!! tf_arg_idx 0) sts
-      = FdOpen true rb (FdDevice CONSOLE) ->
-    r <> (mword_of_int (-1) : mword 64).
+  (sc_v = uecall_scause -> usys_num tf = USYS_read ->
+   (0 <= sys_rw_count (tf !!! tf_arg_idx 2))%Z ->
+   forall rb : bool,
+     fd_st_of_key (tf !!! tf_arg_idx 0) sts
+       = FdOpen true rb (FdDevice CONSOLE) ->
+     r <> (mword_of_int (-1) : mword 64))
+  /\
+  (sc_v = uecall_scause -> usys_num tf = USYS_wait ->
+   uint (tf !!! tf_arg_idx 0) = 0%Z ->
+   r = (mword_of_int (-1) : mword 64) ->
+   cs' = (∅ : gset gname)).
 
 (* THE TWO GUARDS, NAMED AND DECIDABLE.  usertrap's +0xa6 block proves the
    row by REFUTING each guard against the unfired one-shot, and a refutation
@@ -741,14 +742,30 @@ Global Instance ut_live_read_g_dec sc_v tf sts r :
   Decision (ut_live_read_g sc_v tf sts r).
 Proof. rewrite /ut_live_read_g. apply _. Defined.
 
-(* ...and the row, out of the refutation *)
+(* ...AND WAIT'S GUARD, the same way: the four facts +0xa6 has to have as
+   Coq cases before it can spend the unfired one-shot on the wait clause. *)
+Definition ut_live_wait_g (sc_v : mword 64) (tf : list (mword 64))
+    (r : mword 64) : Prop :=
+  sc_v = uecall_scause /\ usys_num tf = USYS_wait
+  /\ uint (tf !!! tf_arg_idx 0) = 0%Z
+  /\ r = (mword_of_int (-1) : mword 64).
+
+Global Instance ut_live_wait_g_dec sc_v tf r :
+  Decision (ut_live_wait_g sc_v tf r).
+Proof. rewrite /ut_live_wait_g. apply _. Defined.
+
+(* ...and the row, out of the two refutations *)
 Lemma ut_live_out_of (sc_v : mword 64) (tf : list (mword 64))
     (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
   ~ ut_live_read_g sc_v tf sts r ->
+  (ut_live_wait_g sc_v tf r -> cs' = (∅ : gset gname)) ->
   ut_live_out sc_v tf sts r cs'.
 Proof.
-  intros Hr He Hn Hc rb Hfd Hm1. apply Hr.
-  split_and!; [ exact He | exact Hn | exact Hc | exists rb; exact Hfd | exact Hm1 ].
+  intros Hr Hw. split.
+  - intros He Hn Hc rb Hfd Hm1. apply Hr.
+    split_and!; [ exact He | exact Hn | exact Hc | exists rb; exact Hfd | exact Hm1 ].
+  - intros He Hn Ha0 Hm1. apply Hw.
+    split_and!; [ exact He | exact Hn | exact Ha0 | exact Hm1 ].
 Qed.
 
 (* ...AND THE SAME ROW AT THE U TIER'S SPELLING (lane TRAP-ROWS, T2(iii)).
@@ -759,25 +776,34 @@ Lemma uexec_live_ok_of_live (sc_v : mword 64) (tf : list (mword 64))
     (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
   sc_v = uecall_scause ->
   ut_live_out sc_v tf sts r cs' ->
-  UexecRet.uexec_live_ok (usys_num tf) tf sts r.
+  UexecRet.uexec_live_ok (usys_num tf) tf sts r cs'.
 Proof.
-  intros He H Hn Hc rb Hlt Hfd.
-  refine (H He Hn Hc rb _).
-  rewrite /fd_st_of_key. rewrite decide_True; [| exact Hlt].
-  rewrite Hfd. reflexivity.
+  intros He H. split.
+  - intros Hn Hc rb Hlt Hfd.
+    refine (proj1 H He Hn Hc rb _).
+    rewrite /fd_st_of_key. rewrite decide_True; [| exact Hlt].
+    rewrite Hfd. reflexivity.
+  - intros Hn Ha0 Hm1. exact (proj2 H He Hn Ha0 Hm1).
 Qed.
 
 (* the row is FREE at a non-ecall cause: both clauses are guarded on it *)
 Lemma ut_live_out_ne (sc_v : mword 64) (tf : list (mword 64))
     (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
   sc_v <> uecall_scause -> ut_live_out sc_v tf sts r cs'.
-Proof. intros Hne Hc. exfalso. exact (Hne Hc). Qed.
+Proof.
+  intro Hne. split; [intro Hc | intro Hc]; exfalso; exact (Hne Hc).
+Qed.
 
-(* ...and at any number that is not the read *)
+(* ...and at any number that is neither the read nor the wait *)
 Lemma ut_live_out_num (sc_v : mword 64) (tf : list (mword 64))
     (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
-  usys_num tf <> USYS_read -> ut_live_out sc_v tf sts r cs'.
-Proof. intros Hr _ Hn. exfalso. exact (Hr Hn). Qed.
+  usys_num tf <> USYS_read -> usys_num tf <> USYS_wait ->
+  ut_live_out sc_v tf sts r cs'.
+Proof.
+  intros Hr Hw. split.
+  - intros _ Hn. exfalso. exact (Hr Hn).
+  - intros _ Hn. exfalso. exact (Hw Hn).
+Qed.
 
 (* the two readings the row is stated at do not move across the save walk,
    so the row transports like [ut_wait_out_cong] does *)
@@ -788,9 +814,11 @@ Lemma ut_live_out_cong (sc_v : mword 64) (tf1 tf2 : list (mword 64))
   tf1 !!! tf_arg_idx 2 = tf2 !!! tf_arg_idx 2 ->
   ut_live_out sc_v tf1 sts r1 cs' -> ut_live_out sc_v tf2 sts r2 cs'.
 Proof.
-  intros Hn Hr Ha0 Ha2 H1. subst r2.
-  intros He Hnum Hcnt rb Hfd. rewrite <- Ha0 in Hfd. rewrite <- Ha2 in Hcnt.
-  exact (H1 He ltac:(rewrite Hn; exact Hnum) Hcnt rb Hfd).
+  intros Hn Hr Ha0 Ha2 H1. subst r2. split.
+  - intros He Hnum Hcnt rb Hfd. rewrite <- Ha0 in Hfd. rewrite <- Ha2 in Hcnt.
+    exact (proj1 H1 He ltac:(rewrite Hn; exact Hnum) Hcnt rb Hfd).
+  - intros He Hnum Ha Hm1. rewrite <- Ha0 in Ha.
+    exact (proj2 H1 He ltac:(rewrite Hn; exact Hnum) Ha Hm1).
 Qed.
 
 (* [uint a1 = 0] is the null pointer the wait clause is conditioned on, in

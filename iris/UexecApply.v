@@ -538,7 +538,7 @@ Section Apply.
           * exact Hco.
           * exact Hgo.
           * exact Hpio.
-          * exact (uexec_live_ok_cong _ _ _ _ _ (eq_sym Ha0) (eq_sym Ha2) Hlo).
+          * exact (uexec_live_ok_cong _ _ _ _ _ _ (eq_sym Ha0) (eq_sym Ha2) Hlo).
           * iExact "Hcho".
           * iEval (rewrite (spost_at_cong S (usys_num (uvis_tf W')) f W' W r
                               M' fdv' cw' cs' (skey_eq_sym W W' Hsk))) in "Hsp".
@@ -556,7 +556,7 @@ Section Apply.
           * exact Hco.
           * exact Hgo.
           * exact Hpio.
-          * exact (uexec_live_ok_cong _ _ _ _ _ Ha0 Ha2 Hlo).
+          * exact (uexec_live_ok_cong _ _ _ _ _ _ Ha0 Ha2 Hlo).
           * iExact "Hcho".
           * iEval (rewrite (spost_at_cong S (usys_num (uvis_tf W')) f W W' r
                               M' fdv' cw' cs' Hsk)) in "Hsp". iExact "Hsp". } 
@@ -579,7 +579,7 @@ Section Apply.
            and neither does the pid's *)
         * exact Hgo.
         * exact Hpio.
-        * exact (uexec_live_ok_cong _ _ _ _ _ (eq_sym Ha0) (eq_sym Ha2) Hlo).
+        * exact (uexec_live_ok_cong _ _ _ _ _ _ (eq_sym Ha0) (eq_sym Ha2) Hlo).
         * exact Hcho.
         (* ...and the armed post transports by the SAME key rows the
            deposit does ([UexecSG.skey_eq]) *)
@@ -599,7 +599,7 @@ Section Apply.
         * exact Hco.
         * exact Hgo.
         * exact Hpio.
-        * exact (uexec_live_ok_cong _ _ _ _ _ Ha0 Ha2 Hlo).
+        * exact (uexec_live_ok_cong _ _ _ _ _ _ Ha0 Ha2 Hlo).
         * exact Hcho.
         * iEval (rewrite (spost_at_cong S (usys_num (uvis_tf W')) f W W' r
                             M' fdv' cw' cs' Hsk)) in "Hsp". iExact "Hsp".
@@ -884,7 +884,7 @@ Section LoopApply.
     (* ...AND WHAT THE RESUME ITSELF PROVES (lane TRAP-ROWS, T2(iii)), read
        at the same outgoing a0 word -- [UexecRet.uexec_live_ok]. *)
     uexec_live_ok (usys_num (uvis_tf (uvis_run W))) (uvis_tf (uvis_run W))
-      (uvis_fd W) (uvis_tf W' !!! tf_arg_idx 0) ->
+      (uvis_fd W) (uvis_tf W' !!! tf_arg_idx 0) (uvis_ch W') ->
     (* ...and the resume key's pid is the trapped key's, exactly as its
        generation is: nothing re-numbers the caller, so the loop builds the
        resume key at the pid it resumed the process with. *)
@@ -917,7 +917,7 @@ Section LoopApply.
        ⌜usys_gen_ok (usys_num (uvis_tf (uvis_run W))) (uvis_gen W) gn'⌝ -∗
        ⌜usys_ret_pid (usys_num (uvis_tf (uvis_run W))) r' (uvis_pid W)⌝ -∗
        ⌜uexec_live_ok (usys_num (uvis_tf (uvis_run W))) (uvis_tf (uvis_run W))
-                      (uvis_fd W) r'⌝ -∗
+                      (uvis_fd W) r' cs'⌝ -∗
        CH r' cs' -∗
        spost_at S (usys_num (uvis_tf (uvis_run W))) f (uvis_run W) r'
          M' fdv' cw' cs' -∗
@@ -1042,7 +1042,7 @@ Section LoopApply.
        transparent arm answers nothing. *)
     (sc = uecall_scause ->
        uexec_live_ok (usys_num (uvis_tf (uvis_run W))) (uvis_tf (uvis_run W))
-         (uvis_fd W) (uvis_tf W' !!! tf_arg_idx 0)) ->
+         (uvis_fd W) (uvis_tf W' !!! tf_arg_idx 0) (uvis_ch W')) ->
     (* THE CWD ROWS RIDE INSIDE THE ROUND: [uround_ok] relates the key's
        [uvis_cwd] on both sides, so nothing here has to be told about it
        separately -- the transparent arm pins it, the returning arm reads
@@ -1375,7 +1375,7 @@ Section LoopApply.
     (sc = uecall_scause ->
        uexec_live_ok (usys_num (tf_of g (ret_pc sepc_v)))
          (tf_of g (ret_pc sepc_v)) (uvis_fd W)
-         (pv_tf (us_V U') !!! tf_arg_idx 0)) ->
+         (pv_tf (us_V U') !!! tf_arg_idx 0) cs') ->
     (* ...and the round's cwd ends are the key's and the RECORD's: the
        inum rides inside the block, so the resumed key's [uvis_cwd] is
        [pv_cwi (us_V U')] by [uvis_of] itself -- no view to choose *)

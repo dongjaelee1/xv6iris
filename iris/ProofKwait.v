@@ -1772,7 +1772,11 @@ Section ProofKwait.
               with "[%] [%] [Hesc] Hcgf Hownf Hpcf Hmyrow").
     { exact Hcsf. }
     { exact Ha0f. }
-    { iRight. iExists (pv_gen Vc). iSplitR; [done |].
+    { iRight. iExists (pv_gen Vc).
+      (* ...AND THE REAPED PID'S RANGE, straight off the ZOMBIE block's own
+         registration ([SlotGen.gen_halves_at], lane TRAP-ROWS-3 T4(c)):
+         it is what makes the two arms disjoint at the return value. *)
+      iSplitR; [ iPureIntro; exact (conj eq_refl Hpidznz) |].
       iFrame "Hesc". iExact "Huniq". }
   Qed.
 

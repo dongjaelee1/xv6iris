@@ -1553,7 +1553,7 @@ Section UkInitMain.
            shell's behalf next round -- and the token is simply dropped. *)
         assert (Hs1ret : (sign_extend' 64 pidsh : mword 64) = ret).
         { rewrite <- Hs1w3, <- Ha0w3. apply eq_vec_true_iff. exact Hbeq. }
-        iDestruct "Hwa" as "[[[%Hm1 %Hcseq] _] | (%γ' & %Hcseq & Hesc & #Huq)]".
+        iDestruct "Hwa" as "[[[%Hm1 %Hcseq] _] | (%γ' & [%Hcseq %Hrngc] & Hesc & #Huq)]".
         { (* NOTHING WAS REAPED AND THE [beq] AGAINST s1 WAS TAKEN, so the
              shell's pid is -1 -- which the fork arm refuted on the way in.
              The arm matters: taking it would re-enter the restart head
@@ -1615,7 +1615,7 @@ Section UkInitMain.
           iAssert (⌜γsh ∈ cs'⌝ ∗ UserChildren.uch γch cs' ∗
                    child_tok γsh pidsh (ucons_pay cn γ T))%I
             with "[Hwa Hch Htok]" as "(%Hin' & Hch & Htok)".
-          { iDestruct "Hwa" as "[[[%Hm1 %Hcseq] _] | (%γ' & %Hcseq & Hesc & _)]".
+          { iDestruct "Hwa" as "[[[%Hm1 %Hcseq] _] | (%γ' & [%Hcseq %Hrngc] & Hesc & _)]".
             - iFrame "Hch Htok". iPureIntro. rewrite Hcseq. exact Hin.
             - iDestruct (exit_tok_tok_ne γ' γsh rv pidsh xs (ucons_pay cn γ T)
                            ltac:(intro Hc; apply Hs1ne;

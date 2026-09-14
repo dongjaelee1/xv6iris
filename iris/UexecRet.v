@@ -1255,35 +1255,54 @@ Section UexecRet.
      ([SpecArgfd.fd_st_of_key]'s two cases, split out so that neither
      definition has to travel down here), and CONSOLE is major 1
      ([ConsoleInv.CONSOLE]). *)
+  (* ...AND WAIT'S CLAUSE BESIDE IT (lane TRAP-ROWS-3, T4(c)): at a NULL
+     status pointer a -1 means the caller's children column was EMPTY, and
+     the reap-nothing arm does not move the reading, so what the resume
+     hands back is the caller's OWN set at [∅].  A program holding a
+     [ChildTok.child_tok] for a child it forked reads its set as nonempty
+     and refutes the whole -1 arm with this.  The status pointer is the a0
+     word ([SpecSysWait]'s [addr]); [uint] is how the leaves already read
+     it ([UkRunSys.wp_uk_ecall_wait_null]'s premise). *)
   Definition uexec_live_ok (n : Z) (tf : list (mword 64))
-      (sts : list fdstate) (r : mword 64) : Prop :=
-    n = USYS_read ->
-    (0 <= bv_signed (trunc32 (tf_w tf (tf_arg_idx 2))))%Z ->
-    forall rb : bool,
-      (0 <= usys_argfd tf < Z.of_nat NOFILE)%Z ->
-      sts !! Z.to_nat (usys_argfd tf) = Some (FdOpen true rb (FdDevice 1)) ->
-      r <> (mword_of_int (-1) : mword 64).
+      (sts : list fdstate) (r : mword 64) (cs' : gset gname) : Prop :=
+    (n = USYS_read ->
+     (0 <= bv_signed (trunc32 (tf_w tf (tf_arg_idx 2))))%Z ->
+     forall rb : bool,
+       (0 <= usys_argfd tf < Z.of_nat NOFILE)%Z ->
+       sts !! Z.to_nat (usys_argfd tf) = Some (FdOpen true rb (FdDevice 1)) ->
+       r <> (mword_of_int (-1) : mword 64))
+    /\
+    (n = USYS_wait ->
+     uint (tf_w tf (tf_arg_idx 0)) = 0%Z ->
+     r = (mword_of_int (-1) : mword 64) ->
+     cs' = (∅ : gset gname)).
 
-  (* free at every number but the read *)
+  (* free at every number but the read and the wait *)
   Lemma uexec_live_ok_ne (n : Z) (tf : list (mword 64))
-      (sts : list fdstate) (r : mword 64) :
-    n <> USYS_read -> uexec_live_ok n tf sts r.
-  Proof. intros Hne Hn. exfalso. exact (Hne Hn). Qed.
+      (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
+    n <> USYS_read -> n <> USYS_wait -> uexec_live_ok n tf sts r cs'.
+  Proof.
+    intros Hr Hw. split; [intro Hn; exfalso; exact (Hr Hn)
+                         | intro Hn; exfalso; exact (Hw Hn)].
+  Qed.
 
   (* ...and it reads two trapframe words and nothing else, so it transports
      across a re-key like the other pure rows ([UexecSG.skey_eq] fixes both) *)
   Lemma uexec_live_ok_cong (n : Z) (tf1 tf2 : list (mword 64))
-      (sts : list fdstate) (r : mword 64) :
+      (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
     tf_w tf1 (tf_arg_idx 0) = tf_w tf2 (tf_arg_idx 0) ->
     tf_w tf1 (tf_arg_idx 2) = tf_w tf2 (tf_arg_idx 2) ->
-    uexec_live_ok n tf1 sts r -> uexec_live_ok n tf2 sts r.
+    uexec_live_ok n tf1 sts r cs' -> uexec_live_ok n tf2 sts r cs'.
   Proof.
-    intros Ha0 Ha2 H Hn Hc rb Hlt Hfd.
-    rewrite <- Ha2 in Hc.
-    rewrite /tf_w in Ha0.
-    rewrite /usys_argfd in Hlt, Hfd.
-    rewrite <- Ha0 in Hlt, Hfd.
-    exact (H Hn Hc rb Hlt Hfd).
+    intros Ha0 Ha2 H. split.
+    - intros Hn Hc rb Hlt Hfd.
+      rewrite <- Ha2 in Hc.
+      rewrite /tf_w in Ha0.
+      rewrite /usys_argfd in Hlt, Hfd.
+      rewrite <- Ha0 in Hlt, Hfd.
+      exact (proj1 H Hn Hc rb Hlt Hfd).
+    - intros Hn Ha Hm1. rewrite <- Ha0 in Ha.
+      exact (proj2 H Hn Ha Hm1).
   Qed.
 
   (* the returning arm's CONTINUATION: the four pure rows, the syscall's
@@ -1360,7 +1379,7 @@ Section UexecRet.
           which is what the caller holds.  The descriptor is named by INDEX
           rather than through [SpecArgfd.fd_st_of_key]: that lives above
           this file, and a program holds its table as a list. *)
-       ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r⌝ -∗
+       ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r cs'⌝ -∗
        (* ...AND THE CHILDREN SET, off the same return value: the row the
           number's own answer carries -- pure and quiet at the twenty
           entries that keep the reading, [uwait_ans] at wait, which reaps. *)
@@ -2080,7 +2099,7 @@ Section UexecRet.
            ⌜usys_gen_ok n (uvis_gen W) g'⌝ -∗
            ⌜usys_ret_pid n r (uvis_pid W)⌝ -∗
            (* ...and what the resume proves (lane TRAP-ROWS, T2(iii)) *)
-           ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r⌝ -∗
+           ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r cs'⌝ -∗
            uwait_ans r (uvis_ch W) cs' -∗
            spost_at uslot n f W r M' fdv' cw' cs' -∗
            uslot (bump W r M' π' szv' fdv' cw' g' cs' lz')))
@@ -2108,7 +2127,7 @@ Section UexecRet.
            ⌜usys_gen_ok n (uvis_gen W) g'⌝ -∗
            ⌜usys_ret_pid n r (uvis_pid W)⌝ -∗
            (* ...and what the resume proves (lane TRAP-ROWS, T2(iii)) *)
-           ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r⌝ -∗
+           ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r cs'⌝ -∗
            ⌜usys_ch_ok n r (uvis_ch W) cs'⌝ -∗
            spost_at uslot n f W r M' fdv' cw' cs' -∗
            uslot (bump W r M' π' szv' fdv' cw' g' cs' lz'))))).

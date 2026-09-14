@@ -2119,7 +2119,16 @@ Section UkRunSys.
      and the pid uniqueness that makes the returned number identify it, so
      a program holding [ChildTok.child_tok] for a child it forked redeems
      the payload here ([ChildTok.gen_uniq_tok], then [ChildTok.gen_pay]). *)
-  Lemma wp_uk_ecall_wait_null (N : uk_names Σ) (h : CpuId) (m : regfile)
+  (* ...AND THE ROW A RESUMING CALLER PROVES ABOUT ITS OWN -1 (lane
+     TRAP-ROWS-3, T4(c)).  A process that comes BACK here was not killed
+     ([SpecUsertrap.ut_live_out]'s header), and at a null status pointer
+     the copyout exit cannot fire either -- so the only -1 left is the
+     childless one, and the reap-nothing arm does not move the reading.
+     The caller therefore reads a -1 as ITS OWN SET IS EMPTY, which is
+     what a program holding [ChildTok.child_tok] for a child it forked
+     refutes.  This is the whole point of the row; the leaf below is the
+     same call with the row dropped, for the callers that do not read it. *)
+  Lemma wp_uk_ecall_wait_null_live (N : uk_names Σ) (h : CpuId) (m : regfile)
       (pc : mword 64) (avail : nat) (Sc : gset gname) :
     usysno m = USYS_wait ->
     uint (m !!! Regidx (mword_of_int 10)) = 0 ->
@@ -2129,6 +2138,7 @@ Section UkRunSys.
     udepw N m pc USYS_wait -∗
     uch (ukn_ch N) Sc -∗
     (∀ (h' : CpuId) (r : mword 64) (Sc' : gset gname),
+       ⌜r = (mword_of_int (-1) : mword 64) -> Sc' = (∅ : gset gname)⌝ -∗
        uwait_ans r Sc Sc' -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
@@ -2236,7 +2246,38 @@ Section UkRunSys.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
-    iApply ("Hcont" $! h' r cs' with "Hans Hrun Hch").
+    iApply ("Hcont" $! h' r cs' with "[%] Hans Hrun Hch").
+    (* THE ROW, OFF THE RESUME'S OWN PURE CONJUNCT.  [Hliverow]'s wait
+       clause is guarded on the null status pointer, which is this leaf's
+       own premise ([Ha0]). *)
+    exact (proj2 Hliverow eq_refl Ha0).
+  Qed.
+
+  (* ...and the same call with the row DROPPED, which is what the callers
+     that do not read it take ([UkInit.wp_kinit_wait],
+     [UkShRun.wp_kshr_wait]).  Stated verbatim as it always was. *)
+  Lemma wp_uk_ecall_wait_null (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (avail : nat) (Sc : gset gname) :
+    usysno m = USYS_wait ->
+    uint (m !!! Regidx (mword_of_int 10)) = 0 ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    udepw N m pc USYS_wait -∗
+    uch (ukn_ch N) Sc -∗
+    (∀ (h' : CpuId) (r : mword 64) (Sc' : gset gname),
+       uwait_ans r Sc Sc' -∗
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
+         (add_vec_int pc 4) avail -∗
+       uch (ukn_ch N) Sc' -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hn Hz Hal4. iIntros "#Hi Hrun Hsb Hch Hcont".
+    iApply (wp_uk_ecall_wait_null_live N h m pc avail Sc Hn Hz Hal4
+              with "Hi Hrun Hsb Hch").
+    iIntros (h' r Sc') "_ Hans Hrun Hch".
+    iApply ("Hcont" $! h' r Sc' with "Hans Hrun Hch").
   Qed.
 
   (* ...AND THE INDEX-FREE FORM -- DELETED (lane IO-LEAF, M3a).
@@ -2944,7 +2985,7 @@ Section UkRunSys.
           fd is closed, or not the console, or whose count is negative, HAS
           no such fact.  [UexecRet.uexec_live_ok] names the descriptor by
           index, which is the form a program holding its own table wants. *)
-       ⌜uexec_live_ok USYS_read (uvis_tf W) (uvis_fd W) r⌝ -∗
+       ⌜uexec_live_ok USYS_read (uvis_tf W) (uvis_fd W) r cs'⌝ -∗
        (* the ledger comes straight back: read moves no descriptor *)
        UserFd.ustd (ukn_fd N) l -∗
        (* THE POST, AT THE TRAPPING KEY AND THE RESUME IMAGE *)

@@ -37,11 +37,14 @@
 (* own projection) and the escrow's payment law, both of which have the   *)
 (* key in hand.                                                           *)
 (* ===================================================================== *)
-From Stdlib Require Import ZArith.
-From stdpp Require Import gmap.
+From Stdlib Require Import ZArith Lia.
+From stdpp Require Import gmap bitvector.definitions.
 From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import own ghost_var.
 Require Import SailStdpp.Base SailStdpp.Values.
+Require Import Riscv.rv64d_types Riscv.rv64d.  (* [sign_extend'] *)
+Require Import RiscvExtras.  (* [sext32_64_moi] & co -- the reaped pid's word *)
+Require Import ProcGeom.  (* [PIDMAX] -- kernel/param.h, the reaped pid's range *)
 Require Import ChildTok.   (* [exit_tok] / [gen_uniq] -- what a reap answers
                               with beside the set it moved *)
 Local Open Scope Z_scope.
@@ -165,6 +168,32 @@ Proof. right. exists γ'. reflexivity. Qed.
 (* [1, PIDMAX], so a caller that reads a nonnegative result knows it is   *)
 (* on the second arm without holding anything. *)
 (* ===================================================================== *)
+(* THE TWO ARMS ARE DISJOINT AT THE RETURN VALUE, as a pure fact about the
+   word: [PIDMAX] is 1000, so a pid in [1, PIDMAX] sign-extends to a small
+   POSITIVE 64-bit word, while a failing wait returns the all-ones one.
+   This is what [SlotGen.gen_halves_at]'s range buys (lane TRAP-ROWS-3,
+   T4(c)). *)
+Lemma sext32_rng_not_neg1 (w : mword 32) :
+  (1 <= bv_unsigned w <= PIDMAX)%Z ->
+  (sign_extend' 64 w : mword 64) <> (mword_of_int (-1) : mword 64).
+Proof.
+  intros Hw Hm1.
+  unfold PIDMAX in Hw.
+  assert (H31 : (2 ^ 31)%Z = 2147483648) by (vm_compute; reflexivity).
+  assert (H64 : (2 ^ 64)%Z = 18446744073709551616) by (vm_compute; reflexivity).
+  pose proof (bv_unsigned_in_range _ w) as [Hr0 _].
+  assert (Hval : bv_unsigned (sign_extend' 64 w : mword 64) = bv_unsigned w).
+  { rewrite sext32_64_moi moi64_unsigned. unfold bv_signed.
+    assert (Hsw : bv_swrap 32 (bv_unsigned w) = bv_unsigned w).
+    { apply bv_swrap_small.
+      assert (Hhm : bv_half_modulus 32 = 2147483648) by (vm_compute; reflexivity).
+      rewrite Hhm. lia. }
+    rewrite Hsw. apply bvw64_small. rewrite H64. lia. }
+  assert (Hm : bv_unsigned (mword_of_int (-1) : mword 64)
+               = 18446744073709551615%Z) by (vm_compute; reflexivity).
+  rewrite Hm1 Hm in Hval. lia.
+Qed.
+
 Section WaitAns.
   Context `{!ctokG Σ}.
 
@@ -193,11 +222,21 @@ Section WaitAns.
     Persistent (wait_why cs gn b).
   Proof. rewrite /wait_why. apply _. Qed.
 
+  (* ...AND THE REAPING ARM SAYS THE RETURNED PID IS A REAL PID (lane
+     TRAP-ROWS-3, T4(c)).  [rv] is the ZOMBIE's [p->pid], read off its own
+     block, and every block's registration now carries the range
+     <allocpid> hands out ([SlotGen.gen_halves_at]).  It is what makes the
+     TWO ARMS DISJOINT AT THE RETURN VALUE -- the header above has claimed
+     that since the row was written, and until now nothing proved it: the
+     word the reap leaves in a0 is [sign_extend' 64 rv], and refuting
+     [= -1] needs the upper bound as well as the nonzero.  A caller that
+     sees -1 is therefore on the FAILING arm and may read its reason. *)
   Definition wait_ans (rv : mword 32) (xs : Z) (cs cs' : gset gname)
       (gn : gname) (nullst : bool) : iProp Σ :=
     (⌜rv = (mword_of_int (-1) : mword 32) /\ cs' = cs⌝ ∗ wait_why cs gn nullst
      ∨ ∃ γ' : gname,
-         ⌜cs' = cs ∖ {[γ']}⌝ ∗ exit_tok γ' rv xs ∗ gen_uniq cs rv γ')%I.
+         ⌜cs' = cs ∖ {[γ']} /\ (1 <= bv_unsigned rv <= PIDMAX)%Z⌝ ∗
+         exit_tok γ' rv xs ∗ gen_uniq cs rv γ')%I.
 
   (* the pure row, which is all the twenty-odd relays between kwait and the
      program ever look at *)
@@ -205,9 +244,30 @@ Section WaitAns.
       (gn : gname) (nullst : bool) :
     wait_ans rv xs cs cs' gn nullst -∗ ⌜ch_reaped cs cs'⌝.
   Proof.
-    iIntros "[[[_ %He] _] | (%γ' & %He & _)]"; iPureIntro.
+    iIntros "[[[_ %He] _] | (%γ' & [%He _] & _)]"; iPureIntro.
     - left. exact He.
     - right. exists γ'. exact He.
+  Qed.
+
+  (* ...AND THE ARM A -1 RETURN IS ON.  [PIDMAX] is 1000, so a reaped pid
+     sign-extends to a small positive word and never to the -1 a failing
+     wait returns: at [r = -1] the reaping arm is unreachable and what is
+     left is the failing arm, with its reason.  This is the whole point of
+     the range on the registration, and it is what
+     [SpecUsertrap.ut_live_out]'s wait clause is proved from. *)
+  (* AT A -1 RETURN THE WHOLE ANSWER IS PERSISTENT, which is what lets
+     usertrap's +0xa6 block read the reason off the syscall channel and put
+     the channel back -- the [Hrwhy] idiom the console read already uses
+     ([SpecFileread.console_receipt_m1_why]). *)
+  Lemma wait_ans_m1 (rv : mword 32) (xs : Z) (cs cs' : gset gname)
+      (gn : gname) (nullst : bool) :
+    (sign_extend' 64 rv : mword 64) = (mword_of_int (-1) : mword 64) ->
+    wait_ans rv xs cs cs' gn nullst -∗
+    ⌜rv = (mword_of_int (-1) : mword 32) /\ cs' = cs⌝ ∗ wait_why cs gn nullst.
+  Proof.
+    intro Hm1. iIntros "[[%Hf #Hwhy] | (%γ' & [_ %Hrng] & _)]".
+    - iSplitR; [ iPureIntro; exact Hf | ]. iExact "Hwhy".
+    - exfalso. exact (sext32_rng_not_neg1 rv Hrng Hm1).
   Qed.
 
   (* the failing arm, for the three exits that reap nothing.  Each supplies

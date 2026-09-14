@@ -389,13 +389,28 @@ Section SlotGen.
      bundle also carries ([gen_halves_priv], in the section below) does NOT
      ride the park: [kexit] hands the marker to <p->lock>'s killed row and
      parks the rest. *)
+  (* ...AND IT IS THE WHOLE RANGE, NOT JUST THE NONZERO (lane TRAP-ROWS-3,
+     T4(c)).  <allocpid> hands out every pid in [1, PIDMAX]
+     ([PidLock.nextpid_res_at]'s counter bound, which allocproc's scan
+     turns into a fact about the pid it stores -- [SpecAllocproc]'s post
+     reports it), and BOTH sites that build this bundle
+     ([gen_halves_priv_intro]'s note) already hold that bound.  Carrying
+     only [pid <> 0] was what made kwait's answer unable to say that a
+     REAPED pid is not the -1 a failing wait returns: the sign-extended
+     word a reap puts in a0 is [sign_extend' 64 pid], and refuting
+     [= -1] needs an UPPER bound too.  [UserChildren.wait_ans]'s reaping
+     arm is where it is spent. *)
   Definition gen_halves_at pa pid g : iProp Σ :=
-    (⌜bv_unsigned pid <> 0⌝ ∗
+    (⌜(1 <= bv_unsigned pid <= PIDMAX)%Z⌝ ∗
      slot_gen pa (DfracOwn (1/4)) g ∗ pid_reg pid (DfracOwn qeighth) g)%I.
+
+  Lemma gen_halves_at_rng pa pid g :
+    gen_halves_at pa pid g -∗ ⌜(1 <= bv_unsigned pid <= PIDMAX)%Z⌝.
+  Proof. iIntros "(%Hr & _ & _)". done. Qed.
 
   Lemma gen_halves_at_nz pa pid g :
     gen_halves_at pa pid g -∗ ⌜bv_unsigned pid <> 0⌝.
-  Proof. iIntros "(%Hnz & _ & _)". done. Qed.
+  Proof. iIntros "(%Hr & _ & _)". iPureIntro. lia. Qed.
 
   (* THE REGISTRATION EIGHTH, LENT.  It is the one resource in the tree
      that answers -- the CURRENT generation of this pid is [g] -- and that
@@ -413,7 +428,7 @@ Section SlotGen.
   Qed.
 
   Lemma gen_halves_at_intro pa pid g :
-    bv_unsigned pid <> 0 ->
+    (1 <= bv_unsigned pid <= PIDMAX)%Z ->
     slot_gen pa (DfracOwn (1/4)) g -∗ pid_reg pid (DfracOwn qeighth) g -∗
     gen_halves_at pa pid g.
   Proof.
@@ -469,12 +484,16 @@ Section SlotGenTok.
     gen_halves_priv pa pid g -∗ ⌜bv_unsigned pid <> 0⌝.
   Proof. iIntros "[H _]". iApply (gen_halves_at_nz with "H"). Qed.
 
+  Lemma gen_halves_priv_rng pa pid g :
+    gen_halves_priv pa pid g -∗ ⌜(1 <= bv_unsigned pid <= PIDMAX)%Z⌝.
+  Proof. iIntros "[H _]". iApply (gen_halves_at_rng with "H"). Qed.
+
   (* ...and how the two sites that BUILD one discharge it: both hold
      allocproc's [1 <= bv_unsigned pid <= PIDMAX]
      ([SpecAllocproc.allocproc_post]) and the marker the mint handed out
      ([ChildTok.gen_new]). *)
   Lemma gen_halves_priv_intro pa pid g :
-    bv_unsigned pid <> 0 ->
+    (1 <= bv_unsigned pid <= PIDMAX)%Z ->
     slot_gen pa (DfracOwn (1/4)) g -∗ pid_reg pid (DfracOwn qeighth) g -∗
     ChildTok.taken_at g -∗ gen_halves_priv pa pid g.
   Proof.

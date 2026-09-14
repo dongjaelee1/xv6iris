@@ -1360,6 +1360,48 @@ Section UtA6.
       - iSplitR.
         + iModIntro. iIntros "%Hc". exfalso. exact (Hgr Hc).
         + iExact "Hso". }
+    (* WAIT'S REASON, HOISTED OFF THE ANSWER THE SAME WAY (lane TRAP-ROWS-3,
+       T4(c)).  At a -1 return the reaping arm is refuted by the reaped
+       pid's own range ([SlotGen.gen_halves_at], spent in
+       [UserChildren.wait_ans_m1]) and what is left is the failing arm,
+       which is wholly PERSISTENT -- so the channel is rebuilt from its
+       own reason and goes back untouched. *)
+    iAssert ((□ (⌜ut_live_wait_g scw
+                    (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
+                    (pv_tf (us_V U) !!! tf_arg_idx 0)⌝ -∗
+                 ⌜cs2 = cs⌝ ∗ wait_why cs (pv_gen (us_V U)) true)) ∗
+             ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
+               (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 gn)%I
+      with "[Hwo]" as "(#Hwwhy & Hwo)".
+    { destruct (decide (ut_live_wait_g scw
+                          (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
+                          (pv_tf (us_V U) !!! tf_arg_idx 0))) as [Hgw | Hgw].
+      - pose proof Hgw as Hgw2.
+        destruct Hgw2 as (Hge & Hgn & Hga0 & Hgm1).
+        assert (Hnull : bool_decide ((<[tf_epc_idx := ret_pc epw]>
+                                        (pv_tf (us_V U0))) !!! tf_arg_idx 0
+                                     = (zero_reg : mword 64)) = true)
+          by (apply bool_decide_eq_true_2; exact (zero_reg_of_uint _ Hga0)).
+        iDestruct ("Hwo" with "[%]") as "Hw"; [ exact (conj Hge Hgn) | ].
+        rewrite Hnull.
+        iDestruct "Hw" as (rv xs) "[%Hr Ha]".
+        assert (Hsm1 : (sign_extend' 64 rv : mword 64)
+                       = (mword_of_int (-1) : mword 64))
+          by (rewrite <- Hr; exact Hgm1).
+        iDestruct (wait_ans_m1 rv xs cs cs2 gn true Hsm1 with "Ha")
+          as "[%Hf #Hwhy]".
+        destruct Hf as (Hrm & Hcse).
+        iEval (rewrite (Hgna Hge)) in "Hwhy".
+        iSplitR.
+        + iModIntro. iIntros "_". iSplitR; [ iPureIntro; exact Hcse | ].
+          iExact "Hwhy".
+        + iIntros "_". rewrite Hnull. iExists rv, xs.
+          iSplitR; [ iPureIntro; exact Hr | ].
+          rewrite Hrm Hcse. iApply wait_ans_neg.
+          iEval (rewrite <- (Hgna Hge)) in "Hwhy". iExact "Hwhy".
+      - iSplitR.
+        + iModIntro. iIntros "%Hc". exfalso. exact (Hgw Hc).
+        + iExact "Hwo". }
     iAssert (∀ (pidr klr : mword 32),
                p_pid (proc_addr (un_j N)) ↦₄{DfracOwn (1/4)} pidr -∗
                SchedCtx.kill_paid pidr klr -∗
@@ -1405,14 +1447,40 @@ Section UtA6.
                            (pv_gen (us_V U)) Hpidnz with "Hr Hrg Hsh")
                 as "(Hr & Hrg & %Hne)". destruct (Hne Hkz).
           - iFrame "Hr Hrg". iPureIntro. exact Hgr. }
+        (* ...AND THE SAME REFUTATION FOR THE WAIT CLAUSE (lane
+           TRAP-ROWS-3, T4(c)).  At a null status pointer the failing arm's
+           reason has three disjuncts; the guard kills the first, this
+           zero flag kills the shot, and what is left is the caller's own
+           children column at [∅] -- which the reap-nothing arm did not
+           move. *)
+        iAssert (⌜ut_live_wait_g scw
+                     (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
+                     (pv_tf (us_V U) !!! tf_arg_idx 0) ->
+                   cs2 = (∅ : gset gname)⌝ ∗
+                 SchedCtx.kill_paid pid klr ∗
+                 pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)))%I
+          with "[Hr Hrg]" as "(%Hnw & Hr & Hrg)".
+        { destruct (decide (ut_live_wait_g scw
+                              (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
+                              (pv_tf (us_V U) !!! tf_arg_idx 0)))
+            as [Hgw | Hgw].
+          - iDestruct ("Hwwhy" with "[%]") as "[%Hcse Hwhy]"; [ exact Hgw | ].
+            rewrite /wait_why.
+            iDestruct "Hwhy" as "[%Hbf | [%Hemp | #Hsh]]".
+            + exfalso. discriminate Hbf.
+            + iFrame "Hr Hrg". iPureIntro. intros _. rewrite Hcse. exact Hemp.
+            + iDestruct (SchedCtx.kill_paid_shot_nz pid klr (DfracOwn qeighth)
+                           (pv_gen (us_V U)) Hpidnz with "Hr Hrg Hsh")
+                as "(Hr & Hrg & %Hne)". destruct (Hne Hkz).
+          - iFrame "Hr Hrg". iPureIntro. intro Hc. exfalso. exact (Hgw Hc). }
         rewrite /ut_resume_in /ut_kill_out.
         destruct (decide (scw = UsysMemOk.uecall_scause)) as [_ | _].
         + iFrame "Hq Hr Hs Hqp Hrg". iSplitR; [ by iIntros "_" | ].
-          iIntros "_". iPureIntro. exact (ut_live_out_of _ _ _ _ _ Hnr).
+          iIntros "_". iPureIntro. exact (ut_live_out_of _ _ _ _ _ Hnr Hnw).
         + iDestruct "Hres" as "[Hslot | #Hsh]".
           * iFrame "Hq Hr Hs Hqp Hrg". iSplitL "Hslot".
             { iIntros "_". iExact "Hslot". }
-            iIntros "_". iPureIntro. exact (ut_live_out_of _ _ _ _ _ Hnr).
+            iIntros "_". iPureIntro. exact (ut_live_out_of _ _ _ _ _ Hnr Hnw).
           * iDestruct (SchedCtx.kill_paid_shot_nz pid klr (DfracOwn qeighth)
                          (pv_gen (us_V U)) Hpidnz with "Hr Hrg Hsh")
               as "(_ & _ & %Hne)". exfalso. exact (Hne Hkz).

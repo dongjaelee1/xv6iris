@@ -152,7 +152,13 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   the counter's exact-value half rides the COUNTED regime `procs_avail
   (Some n)` and is whole in the payload after userinit's park (shape A), so
   allocproc's two corollaries are its two existing regimes; the fork-side
-  token `⌜pidc <> 1⌝`; the wait leaf's `_pid` twin).
+  token `⌜pidc <> 1⌝`; the wait leaf's `_pid` twin).  TRAP-ROWS-4 HANDED
+  OVER 2026-09-16 (`trap-rows-4-B-handover.md`: the ten-item plan, the
+  `procs_avail_at` corollary trick since `Some n` is the free-slot count,
+  two checks for the successor).
+- [ ] **TRAP-ROWS-5** (kernel; `-tlw`, `lane/trap-rows-5`): LAUNCHED
+  2026-09-16: B1b from the plan -- init's pid = 1, the fork-side token,
+  the wait leaf's `_pid` twin.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.

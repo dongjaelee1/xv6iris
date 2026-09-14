@@ -816,9 +816,11 @@ Section echo_links_line.
   Proof.
     rewrite /EchoLinks.ewc_ban. iIntros "[Hl | #HT]"; last by iApply ewc_line_taint.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
+    assert (H18 : length u_banner = 18%nat) by (vm_compute; reflexivity).
+    rewrite H18 in Hw. cbn [EchoLinks.wr_banp] in Hw. destruct Hw as (ps' & -> & Hw).
     iApply ewc_line_of_pro. rewrite /ewc_pro.
-    iLeft. iExists ps, cs, (P + length u_banner)%nat.
-    iFrame "Htn Hps Hcs HE". iPureIntro. exact (wr_ban_pro ps cs n P Hw).
+    iLeft. iExists (ps' ++ [3%nat]), cs, (P + length u_banner)%nat.
+    iFrame "Htn Hps Hcs HE". iPureIntro. exact (wr_ban_done ps' cs n P Hw).
   Qed.
 
   (* =================================================================== *)

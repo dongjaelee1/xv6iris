@@ -158,20 +158,33 @@ Definition cs_len_ok (so : ostage) : Prop :=
 
 (* ---- the three moves of [cs_len_ok], as pure arithmetic ---- *)
 
-(* [pending] is EMPTY exactly mid-line: at a block boundary the stage owes
-   the prologue or a whole alternative, and neither is empty. *)
+(* [pending] is EMPTY mid-line, and at the head of the transcript while
+   the boot round has no letter filed ([EchoDisc.pro_of_nil]); at every
+   OTHER block boundary the stage owes a whole line alternative, which is
+   never empty. *)
 Lemma pending_nonnil (ps cs : list nat) (E : list (list mobs * bv 8)) :
   Forall (fun i => (i < length line_alts)%nat) cs ->
+  (0 < length E)%nat ->
   (length E `mod` length echo_line = 0)%nat ->
   pending ps cs E <> [].
 Proof.
-  intros HF Hm. rewrite /pending /pending_n.
-  case_decide as H0.
-  - pose proof (pro_of_pos ps) as Hpos. intros Hc.
-    rewrite Hc in Hpos. cbn in Hpos. lia.
-  - rewrite decide_True; [| exact Hm]. rewrite /alt_cont. intros Hc.
-    apply app_eq_nil in Hc as [Hc _].
-    exact (line_alts_nonnil _ (cs_ok_of_Forall _ HF _) Hc).
+  intros HF Hpos Hm. rewrite /pending /pending_n.
+  case_decide as H0; [lia |].
+  rewrite decide_True; [| exact Hm]. rewrite /alt_cont. intros Hc.
+  apply app_eq_nil in Hc as [Hc _].
+  exact (line_alts_nonnil _ (cs_ok_of_Forall _ HF _) Hc).
+Qed.
+
+(* ...so an EMPTY [pending] at a block boundary means the boot block, and
+   there the choice list's two readings coincide (both are [0]) *)
+Lemma pending_nil_inv (ps cs : list nat) (E : list (list mobs * bv 8)) :
+  Forall (fun i => (i < length line_alts)%nat) cs ->
+  (length E `mod` length echo_line = 0)%nat ->
+  pending ps cs E = [] -> length E = 0%nat.
+Proof.
+  intros HF Hm Hnil.
+  destruct (decide (length E = 0%nat)) as [? | Hne]; [done | exfalso].
+  exact (pending_nonnil ps cs E HF ltac:(lia) Hm Hnil).
 Qed.
 
 Lemma cs_len_ok_inv (so : ostage) :
@@ -256,9 +269,12 @@ Proof.
   intros HF Hw Hc.
   assert (Hq : length (o_cs so)
                = (length (o_E so) `div` length echo_line)%nat).
-  { destruct (cs_len_ok_inv so Hc) as [[[Hw' Hm] _] | [_ Hq]]; [| exact Hq].
-    exfalso. apply (pending_nonnil (o_ps so) (o_cs so) (o_E so) HF Hm).
-    by rewrite -Hw. }
+  { destruct (cs_len_ok_inv so Hc) as [[[Hw' Hm] Hq] | [_ Hq]]; [| exact Hq].
+    (* an empty block at a boundary is the boot block with nothing filed:
+       both readings of the list's length are zero there *)
+    pose proof (pending_nil_inv (o_ps so) (o_cs so) (o_E so) HF Hm
+                  ltac:(by rewrite -Hw)) as Hz.
+    rewrite Hz in Hq |- *. rewrite Nat.Div0.div_0_l in Hq |- *. lia. }
   apply cs_len_ok_intro; rewrite length_app; cbn [length]; rewrite Hq.
   - intros [_ Hm]. by apply div_succ_of_mod0.
   - intros Hne. apply div_succ_of_modn0. intros Hm. by apply Hne.
@@ -862,19 +878,6 @@ Proof.
   apply pcount_from_ext, (cs_ext_pred ps0 ps cs0 cs (length E) Hps Hcs Hpin Hn).
 Qed.
 
-(* the cursor at zero pins the stage: [pending_n ps cs 0] is [u_prologue], which
-   is not empty, so an echoed input already costs bytes *)
-Lemma pcount_zero ps cs E w :
-  pcount ps cs E w = 0%nat -> E = [] /\ w = [].
-Proof.
-  rewrite /pcount. intros H0.
-  assert (Hw : w = []) by (apply nil_length_inv; lia).
-  destruct E as [| x E]; [by split |]. exfalso.
-  cbn [pcount_from] in H0.
-  assert (Hp0 : pending_n ps cs 0%nat = pro_of ps) by reflexivity.
-  rewrite Hp0 in H0. pose proof (pro_of_pos ps). lia.
-Qed.
-
 (* [w] stays a prefix once the byte it is owed is appended *)
 Lemma prefix_snoc_lookup {A} (w l : list A) (b : A) :
   w `prefix_of` l -> l !! length w = Some b -> (w ++ [b]) `prefix_of` l.
@@ -936,18 +939,21 @@ Qed.
    banner at the head of EVERY round: round 0 at boot, and one more each
    time the shell dies on its own [fork1] panic ([line_alts !!! 3]) or its
    child fails to exec ([pro_alts !!! 1], which re-enters the SAME round).
-   [echo_write_link] asks for [proc_upto ps0 cs0 (S n0) !! P = Some b]; this
-   discharges it at an ARBITRARY round, off two facts the loop has: the
-   block's SHAPE (its panic line, if any, and then this round's prologue --
-   [EchoOutPure.pending_n_round_pre] supplies it from the round-opening
-   premise) and the round's resolution so far, which while the round is open
-   is a block of [1]s ([EchoDisc.pro_open_replicate]).  No [vm_compute]: [j]
-   and the round index are variables. *)
+   The banner is the LETTER [pro_alts !!! 3]: its first byte files it
+   ([echo_write_link_pro] at [a = 3]) and the rest go through
+   [echo_write_link], which asks for [proc_upto ps0 cs0 (S n0) !! P = Some
+   b].  This discharges that at an ARBITRARY round, off two facts the loop
+   has: the block's SHAPE (its panic line, if any, and then this round's
+   prologue -- [EchoOutPure.pending_n_round_pre] supplies it from the
+   round-opening premise) and the round's resolution so far, which after
+   [j] failed sub-rounds and the banner's first byte is [pro_fail j ++ [3]]
+   ([EchoDisc.pro_fail]).  No [vm_compute]: [j] and the round index are
+   variables. *)
 Lemma proc_upto_round_banner (ps cs : list nat) (n j i : nat)
       (pre : list (bv 8)) (b : bv 8) :
   pending_n ps cs n
   = pre ++ pro_of (pro_from (pro_idx cs (n `div` length echo_line)) ps) ->
-  pro_from (pro_idx cs (n `div` length echo_line)) ps = replicate j 1%nat ->
+  pro_from (pro_idx cs (n `div` length echo_line)) ps = pro_fail j ++ [3%nat] ->
   u_banner !! i = Some b ->
   proc_upto ps cs (S n)
     !! (length (proc_upto ps cs n) + length pre + pro_round * j + i)%nat
@@ -959,7 +965,7 @@ Proof.
     with (length (proc_upto ps cs n) + (length pre + (pro_round * j + i)))%nat
     by lia.
   rewrite (lookup_app_shift (proc_upto ps cs n)) (lookup_app_shift pre).
-  by apply pro_of_replicate_banner.
+  by apply pro_of_fail_banner.
 Qed.
 
 (* ...and the same with the block's shape read off the round-opening premise
@@ -967,7 +973,7 @@ Qed.
 Lemma proc_upto_round_banner_open (ps cs : list nat) (n j i : nat) (b : bv 8) :
   (n `mod` length echo_line)%nat = 0%nat ->
   (n = 0%nat \/ cs !!! (n `div` length echo_line - 1)%nat = 3%nat) ->
-  pro_from (pro_idx cs (n `div` length echo_line)) ps = replicate j 1%nat ->
+  pro_from (pro_idx cs (n `div` length echo_line)) ps = pro_fail j ++ [3%nat] ->
   u_banner !! i = Some b ->
   proc_upto ps cs (S n)
     !! (length (proc_upto ps cs n)
@@ -983,18 +989,22 @@ Qed.
 (* ANTI-VACUITY.  The prologue-choice link's premises are SATISFIABLE AT
    ROUND 1 -- the round init opens after the shell's own [fork1] panic.  One
    line has been echoed and took [line_alts !!! 3] ("fork\n"), the boot
-   round settled with the prompt ([ps0 = [0]]), and the writer stands at the
-   choice byte 43 process bytes into the era: 20 for [u_prologue], 5 for the
-   panic line and 18 for the new round's banner. *)
+   round settled with the banner and the prompt ([ps0 = [3; 0]]), and the
+   writer stands at the round's first byte 25 process bytes into the era:
+   20 for [u_prologue] and 5 for the panic line.  Both letters a round may
+   open with are available there: init's banner ([a = 3]) and, if init's
+   console is shut, the shell's bare prompt ([a = 0]). *)
 Lemma pro_choice_round1_live :
   (17 `mod` length echo_line)%nat = 0%nat
   /\ (17%nat = 0%nat
       \/ [3%nat] !!! (17 `div` length echo_line - 1)%nat = 3%nat)
   /\ ((17 `div` length echo_line) <= length [3%nat])%nat
-  /\ pro_pin [0%nat] [3%nat] 17
-  /\ ~ pro_done (pro_from (pro_idx [3%nat] (17 `div` length echo_line)) [0%nat])
-  /\ length (proc_upto [0%nat] [3%nat] (S 17)) = 43%nat
-  /\ (0 < length pro_alts)%nat
+  /\ pro_pin [3%nat; 0%nat] [3%nat] 17
+  /\ ~ pro_done (pro_from (pro_idx [3%nat] (17 `div` length echo_line))
+                   [3%nat; 0%nat])
+  /\ length (proc_upto [3%nat; 0%nat] [3%nat] (S 17)) = 25%nat
+  /\ (3 < length pro_alts)%nat
+  /\ (exists b : bv 8, pro_alts !!! 3%nat !! 0%nat = Some b)
   /\ (exists b : bv 8, pro_alts !!! 0%nat !! 0%nat = Some b).
 Proof.
   pose proof echo_line_length as HL. split_and!.
@@ -1004,11 +1014,13 @@ Proof.
   - intros q Hq. rewrite HL in Hq.
     assert (q = 0%nat) by lia. subst q. vm_compute. lia.
   - rewrite HL.
-    assert (Hz : pro_from (pro_idx [3%nat] (17 `div` 17)) [0%nat] = [])
+    assert (Hz : pro_from (pro_idx [3%nat] (17 `div` 17)) [3%nat; 0%nat] = [])
       by (by vm_compute).
     rewrite Hz. intros H. by apply Exists_nil in H.
   - by vm_compute.
   - rewrite pro_alts_length. lia.
+  - destruct (pro_alts !!! 3%nat) as [| c t] eqn:Hz;
+      [ vm_compute in Hz; discriminate | exists c; reflexivity ].
   - destruct (pro_alts !!! 0%nat) as [| c t] eqn:Hz;
       [ vm_compute in Hz; discriminate | exists c; reflexivity ].
 Qed.
@@ -1037,6 +1049,35 @@ Definition ein_pure (k : nat) (pops : list log_entry)
   /\ E_index (seg_of (echoed pops))
   /\ E_byte (seg_of (echoed pops))
   /\ ((length (echoed pops) `div` length echo_line) <= S (length cs0))%nat.
+
+(* WHAT THE INPUT CLAIM KNOWS OF THE WRITER'S STAGE at its log's [m]
+   echoed entries (PROLOGUE-ALTS-3, the discipline lemma): the two choice
+   lists it carries are bounded, every block strictly below [m] reads a
+   settled round, and the line list reaches the last completed line.  It is
+   deposited by the echo off the output claim and handed to the reader by
+   the read, beside a lower bound of the cursor at [length (proc_upto ps0
+   cs0 m)] -- together they say "the writer has written every block the
+   log's echoes answer". *)
+Definition rd_stage (ps0 cs0 : list nat) (m : nat) : Prop :=
+  Forall (fun a => (a < length pro_alts)%nat) ps0
+  /\ Forall (fun i => (i < length line_alts)%nat) cs0
+  /\ pro_pin ps0 cs0 m
+  /\ ((m - 1) `div` length echo_line <= length cs0)%nat.
+
+Lemma rd_stage_0 : rd_stage [] [] 0%nat.
+Proof.
+  rewrite /rd_stage. split_and!; [constructor | constructor | |].
+  - intros q Hq. lia.
+  - cbn. lia.
+Qed.
+
+Lemma rd_stage_le (ps0 cs0 : list nat) (m m' : nat) :
+  (m' <= m)%nat -> rd_stage ps0 cs0 m -> rd_stage ps0 cs0 m'.
+Proof.
+  intros Hle (Hps & Hcs & Hpin & Hbnd). split_and!; [exact Hps | exact Hcs | |].
+  - intros q Hq. apply Hpin. lia.
+  - etrans; [| exact Hbnd]. apply Nat.Div0.div_le_mono. lia.
+Qed.
 
 Lemma epu_removelast_prefix {A} (l : list A) : removelast l `prefix_of` l.
 Proof.
@@ -1149,7 +1190,7 @@ Proof.
                    ++ ([echo_of y.2] ++ D_from (o_ps so) (o_cs so) 1%nat E1))
       by reflexivity.
     assert (Hup : (0 < length (D (o_ps so) (o_cs so) (y :: E1)))%nat).
-    { rewrite HD length_app. pose proof (pro_of_pos (o_ps so)). lia. }
+    { rewrite HD !length_app. cbn [length]. lia. }
     lia.
 Qed.
 
@@ -1353,33 +1394,66 @@ Section echo_out.
     iPureIntro. exact Heq.
   Qed.
 
-  (* THE CURSOR: the era's process-byte count, in two halves.  The OUTPUT
-     CLAIM holds one ([turn_auth], always at the stage's own [pcount]); the
-     other travels in the programs' payloads (init's [app_turn], then fork
-     [Rc], exit/wait [Q]).  THE ECHO NEVER TOUCHES IT ([pcount_echo]). *)
+  (* THE CURSOR: the era's process-byte count, in two halves of a MONOTONE
+     counter.  The OUTPUT CLAIM holds one ([turn_auth], always at the
+     stage's own [pcount]); the other travels in the programs' payloads
+     (init's [app_turn], then fork [Rc], exit/wait [Q]).  THE ECHO NEVER
+     TOUCHES IT ([pcount_echo]).  A monotone counter and not a ghost
+     variable, so that the claim can PUBLISH a persistent lower bound of it
+     ([turn_lb]) -- the echo deposits one into the input claim, the read
+     hands it to the reader, and a holder of the writer's half compares
+     ([turn_lb_le]) without opening any claim.  That comparison is what
+     refutes an untainted read at a prompt the writer has not written
+     ([EchoLinks.ewc_owed_read_refute]). *)
   Definition turn (v : era_pins) (P : nat) : iProp Σ :=
-    ghost_var (ep_go v) (1/2) P.
+    mono_nat_auth_own (ep_go v) (1/2) P.
   Definition turn_auth (v : era_pins) (P : nat) : iProp Σ :=
-    ghost_var (ep_go v) (1/2) P.
+    mono_nat_auth_own (ep_go v) (1/2) P.
+  Definition turn_lb (v : era_pins) (m : nat) : iProp Σ :=
+    mono_nat_lb_own (ep_go v) m.
 
   Global Instance turn_timeless v P : Timeless (turn v P).
   Proof. rewrite /turn. apply _. Qed.
   Global Instance turn_auth_timeless v P : Timeless (turn_auth v P).
   Proof. rewrite /turn_auth. apply _. Qed.
+  Global Instance turn_lb_timeless v m : Timeless (turn_lb v m).
+  Proof. rewrite /turn_lb. apply _. Qed.
+  Global Instance turn_lb_persistent v m : Persistent (turn_lb v m).
+  Proof. rewrite /turn_lb. apply _. Qed.
 
   Lemma turn_agree v P P' : turn v P -∗ turn_auth v P' -∗ ⌜P = P'⌝.
   Proof.
     rewrite /turn /turn_auth. iIntros "H1 H2".
-    iDestruct (ghost_var_agree with "H1 H2") as %Heq. iPureIntro. exact Heq.
+    iDestruct (mono_nat_auth_own_agree with "H1 H2") as %[_ Heq].
+    iPureIntro. exact Heq.
   Qed.
 
+  (* the cursor only advances *)
   Lemma turn_update v P P' P'' :
+    (P <= P'')%nat ->
     turn v P -∗ turn_auth v P' ==∗ turn v P'' ∗ turn_auth v P''.
   Proof.
-    rewrite /turn /turn_auth. iIntros "H1 H2".
-    iMod (ghost_var_update_halves P'' with "H1 H2") as "[H1 H2]".
-    iModIntro. iFrame "H1 H2".
+    intros Hle. rewrite /turn /turn_auth. iIntros "H1 H2".
+    iDestruct (mono_nat_auth_own_agree with "H1 H2") as %[_ <-].
+    iAssert (mono_nat_auth_own (ep_go v) 1 P) with "[H1 H2]" as "H".
+    { iEval (rewrite -Qp.half_half). iSplitL "H1"; [iExact "H1" | iExact "H2"]. }
+    iMod (mono_nat_own_update P'' with "H") as "[H _]"; [exact Hle |].
+    iModIntro. iEval (rewrite -Qp.half_half) in "H". iDestruct "H" as "[H1 H2]".
+    iFrame "H1 H2".
   Qed.
+
+  Lemma turn_lb_get v P : turn_auth v P -∗ turn_lb v P.
+  Proof. rewrite /turn_auth /turn_lb. iApply mono_nat_lb_own_get. Qed.
+
+  Lemma turn_lb_le v P m : turn v P -∗ turn_lb v m -∗ ⌜(m <= P)%nat⌝.
+  Proof.
+    rewrite /turn /turn_lb. iIntros "H1 H2".
+    iDestruct (mono_nat_lb_own_valid with "H1 H2") as %[_ Hle].
+    iPureIntro. exact Hle.
+  Qed.
+
+  Lemma turn_lb_weaken v m m' : (m' <= m)%nat -> turn_lb v m -∗ turn_lb v m'.
+  Proof. intros Hle. rewrite /turn_lb. by iApply mono_nat_lb_own_le. Qed.
 
   (* THE LINE CHOICES, as a monotone list: the output claim holds the
      authority, a writer holds a persistent lower bound (review S9). *)
@@ -1529,6 +1603,24 @@ Section echo_out.
     iPureIntro. by apply mono_list_lb_op_valid_L in Hv.
   Qed.
 
+  (* ...and the same for the two choice lists: what lets a holder of the
+     writer's bounds line them up with the bounds a read hands out *)
+  Lemma cs_lb_cmp v l1 l2 :
+    cs_lb v l1 -∗ cs_lb v l2 -∗ ⌜l1 `prefix_of` l2 \/ l2 `prefix_of` l1⌝.
+  Proof.
+    rewrite /cs_lb. iIntros "H1 H2".
+    iDestruct (own_valid_2 with "H1 H2") as %Hv.
+    iPureIntro. by apply mono_list_lb_op_valid_L in Hv.
+  Qed.
+
+  Lemma ps_lb_cmp v l1 l2 :
+    ps_lb v l1 -∗ ps_lb v l2 -∗ ⌜l1 `prefix_of` l2 \/ l2 `prefix_of` l1⌝.
+  Proof.
+    rewrite /ps_lb. iIntros "H1 H2".
+    iDestruct (own_valid_2 with "H1 H2") as %Hv.
+    iPureIntro. by apply mono_list_lb_op_valid_L in Hv.
+  Qed.
+
   Lemma Elist_lb_weaken v E E' :
     E' `prefix_of` E -> Elist_lb v E -∗ Elist_lb v E'.
   Proof.
@@ -1674,12 +1766,16 @@ Section echo_out.
          era_pin k v ∗ wcnt v (1/4) n ∗ dl_cnt v (1/2) (length dl)
          ∗ ⌜length (echoed pops) = n⌝
          ∗ Elist_lb v (seg_of (echoed pops)) ∗ cs_lb v cs0 ∗ ps_lb v ps0
-         ∗ ⌜ein_pure k pops dl cs0⌝)
+         ∗ ⌜ein_pure k pops dl cs0⌝
+         ∗ turn_lb v (length (proc_upto ps0 cs0 (length (echoed pops))))
+         ∗ ⌜rd_stage ps0 cs0 (length (echoed pops))⌝)
     ∨ (∃ (v : era_pins) (n : nat) (cs0 ps0 : list nat),
          era_pin k v ∗ wcnt v (1/2) n ∗ dl_cnt v (1/2) (length dl)
          ∗ ⌜(length (echoed pops) + 1)%nat = n⌝
          ∗ Elist_lb v (seg_of (echoed pops)) ∗ cs_lb v cs0 ∗ ps_lb v ps0
-         ∗ ⌜ein_pure k pops dl cs0⌝))%I.
+         ∗ ⌜ein_pure k pops dl cs0⌝
+         ∗ turn_lb v (length (proc_upto ps0 cs0 (length (echoed pops))))
+         ∗ ⌜rd_stage ps0 cs0 (length (echoed pops))⌝))%I.
 
   (* THE ECHO WINDOW TOKEN -- [RiscvPtsto.riscv_win_res] once lane CONS-IO F
      lands, and [App.app_win A c] on the record.  It rides the PLIC payload
@@ -1795,7 +1891,8 @@ Section echo_out.
   (* ---- THE ERA'S GHOSTS AT FULL OWNERSHIP, and their split into the two
          claims, init's credential and the kernel's token ---- *)
   Definition era_full (v : era_pins) : iProp Σ :=
-    (ghost_var (ep_go v) 1 0%nat ∗ cs_auth v [] ∗ ps_auth v [] ∗ Elist_auth v []
+    (mono_nat_auth_own (ep_go v) 1 0%nat ∗ cs_auth v [] ∗ ps_auth v []
+     ∗ Elist_auth v []
      ∗ ghost_var (ep_gw v) 1 0%nat ∗ ghost_var (ep_gdl v) 1 0%nat)%I.
 
   Global Instance era_full_timeless v : Timeless (era_full v).
@@ -1803,7 +1900,7 @@ Section echo_out.
 
   Lemma era_full_alloc : ⊢ |==> ∃ v : era_pins, era_full v.
   Proof.
-    iMod (ghost_var_alloc 0%nat) as (go) "Ht".
+    iMod (mono_nat_own_alloc 0%nat) as (go) "[Ht _]".
     iMod (own_alloc (●ML ([] : list (leibnizO nat)))) as (gcs) "Hcs";
       [apply mono_list_auth_valid |].
     iMod (own_alloc (●ML ([] : list (leibnizO nat)))) as (gps) "Hps";
@@ -1831,8 +1928,10 @@ Section echo_out.
       eout k [] [] ∗ ein k [] [] [] ∗ eturn k ∗ ewin k.
   Proof.
     iIntros "#Hpin (Ht & Hcs & Hps & HE & Hw & Hdl)".
+    iAssert (turn_lb v 0%nat) as "#Htlb0".
+    { rewrite /turn_lb. iApply (mono_nat_lb_own_get with "Ht"). }
     iEval (rewrite -Qp.half_half) in "Ht".
-    iDestruct (ghost_var_split with "Ht") as "[Ht1 Ht2]".
+    iDestruct "Ht" as "[Ht1 Ht2]".
     iEval (rewrite -Qp.half_half) in "Hdl".
     iDestruct (ghost_var_split with "Hdl") as "[Hdl1 Hdl2]".
     iEval (rewrite -Qp.half_half) in "Hw".
@@ -1853,8 +1952,10 @@ Section echo_out.
     iSplitL "Hw2 Hdl1".
     { rewrite /ein. iRight. iLeft. iExists v, 0%nat, [], [].
       rewrite seg_of_echoed_nil echoed_nil. cbn [length].
-      iFrame "Hpin Hw2 Hdl1 HElb Hcslb Hpslb". iPureIntro.
-      split; [reflexivity | exact (ein_pure_0 k)]. }
+      change (length (proc_upto [] [] 0)) with 0%nat.
+      iFrame "Hpin Hw2 Hdl1 HElb Hcslb Hpslb Htlb0".
+      iPureIntro.
+      split; [reflexivity | split; [exact (ein_pure_0 k) | exact rd_stage_0]]. }
     iSplitL "Ht2 Hdl2".
     { rewrite /eturn. iExists v. iFrame "Hpin Ht2 Hdl2 Hcslb Hpslb".
       iApply (E_lb_of_lb v [] 0%nat); [cbn; lia | iExact "HElb"]. }
@@ -2071,7 +2172,9 @@ Section echo_out.
         ∗ ⌜(length El + 1)%nat = n⌝
         ∗ ⌜E_index (El ++ [(open_seg h, c)])⌝
         ∗ ⌜E_byte (El ++ [(open_seg h, c)])⌝
-        ∗ ⌜(n `div` length echo_line <= S (length cs0))%nat⌝)%I.
+        ∗ ⌜(n `div` length echo_line <= S (length cs0))%nat⌝
+        ∗ turn_lb v (length (proc_upto ps0 cs0 n))
+        ∗ ⌜rd_stage ps0 cs0 n⌝)%I.
 
   Global Instance ein_pend_timeless k h c : Timeless (ein_pend k h c).
   Proof. rewrite /ein_pend. apply _. Qed.
@@ -2091,17 +2194,17 @@ Section echo_out.
     iDestruct "Hin" as "[#HT | [Hs | Hwn]]".
     - iSplitR; [by iApply ein_of_taint | by iLeft].
     - iDestruct "Hs" as (v n cs0 ps0)
-        "(#Hpin & Hwc & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp)".
+        "(#Hpin & Hwc & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp & #Htlb & %Hrs)".
       iSplitL "Hwc Hdl".
       { rewrite /ein. iRight. iLeft. iExists v, n, cs0, ps0.
-        iFrame "Hpin Hwc Hdl HElb Hcslb Hpslb". by iPureIntro. }
+        iFrame "Hpin Hwc Hdl HElb Hcslb Hpslb Htlb". by iPureIntro. }
       iRight. iPureIntro.
       exact (echoed_lt_ins k h c pops dl cs0 Hsh Hk Hends Hord Hp).
     - iDestruct "Hwn" as (v n cs0 ps0)
-        "(#Hpin & Hwc & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp)".
+        "(#Hpin & Hwc & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp & #Htlb & %Hrs)".
       iSplitL "Hwc Hdl".
       { rewrite /ein. iRight. iRight. iExists v, n, cs0, ps0.
-        iFrame "Hpin Hwc Hdl HElb Hcslb Hpslb". by iPureIntro. }
+        iFrame "Hpin Hwc Hdl HElb Hcslb Hpslb Htlb". by iPureIntro. }
       iRight. iPureIntro.
       exact (echoed_lt_ins k h c pops dl cs0 Hsh Hk Hends Hord Hp).
   Qed.
@@ -2168,7 +2271,8 @@ Section echo_out.
       iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
       iDestruct (wcnt_over with "Hwo Hw2 Hww") as "[]". }
     iDestruct "Hs" as (v2 n2 cs0 ps0i)
-      "(#Hpin2 & Hwi & Hdli & %Hn2 & #HElbi & #Hcslbi & #Hpslbi & %Hpi)".
+      "(#Hpin2 & Hwi & Hdli & %Hn2 & #HElbi & #Hcslbi & #Hpslbi & %Hpi
+        & #Htlbi & %Hrsi)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     destruct Hpi as (Hlog & Hdsc2 & Hstamp & Hdlp & Hidxi & Hbytei & Hbndi).
     (* THE THREE AGREEING SHARES, and with them the tie to the log *)
@@ -2258,6 +2362,41 @@ Section echo_out.
         cbn [length] in Hq;
         replace (length (o_E so) + 1)%nat with (S (length (o_E so))) in Hq
           by lia; lia. }
+    (* THE STAGE THE INPUT CLAIM IS TOLD (PROLOGUE-ALTS-3): every block up
+       to and including the one this echo closes reads a settled round --
+       [sess_n_prefix_det] has just settled the round the block reads --
+       and the cursor stands at the end of that block's stream *)
+    assert (Hpin2 : pro_pin (o_ps so) (o_cs so) (S (length (o_E so)))).
+    { intros q Hq.
+      destruct (decide (length echo_line * q < length (o_E so))%nat)
+        as [Hltq | Hgeq]; [by apply Hpin |].
+      pose proof echo_line_length as HLL.
+      assert (Heq17 : (length echo_line * q = length (o_E so))%nat) by lia.
+      assert (Hqe : (length (o_E so) `div` length echo_line)%nat = q).
+      { rewrite -Heq17 Nat.mul_comm. apply Nat.div_mul. lia. }
+      rewrite -Hqe. destruct Hokso as [_ Hokso].
+      rewrite Hmeq Nat.sub_succ Nat.sub_0_r in Hokso. exact Hokso. }
+    assert (Hcsq : (length (o_E so) `div` length echo_line
+                    <= length (o_cs so))%nat).
+    { destruct (cs_len_ok_inv so Hcsl) as [[[Hw0 Hm0] Hq0] | [_ Hq0]];
+        [| lia].
+      pose proof (pending_nil_inv (o_ps so) (o_cs so) (o_E so) Hcsb Hm0
+                    ltac:(by rewrite -Hweq)) as Hz.
+      rewrite Hz Nat.Div0.div_0_l. lia. }
+    assert (Hrs2 : rd_stage (o_ps so) (o_cs so) (S (length (o_E so)))).
+    { split_and!; [exact Hpsb | exact Hcsb' | exact Hpin2 |].
+      cbn [Nat.sub]. rewrite Nat.sub_0_r. exact Hcsq. }
+    assert (Hstg : pcount (o_ps so) (o_cs so) (o_E so) (o_w so)
+                   = length (proc_upto (o_ps so) (o_cs so)
+                               (S (length (o_E so))))).
+    { rewrite -(pcount_echo (o_ps so) (o_cs so) (o_E so) (open_seg h, c)
+                 (o_w so) Hweq).
+      rewrite /pcount Nat.add_0_r.
+      replace (S (length (o_E so))) with (length (o_E so ++ [(open_seg h, c)]))
+        by (rewrite length_app; cbn [length]; lia).
+      by rewrite proc_upto_length. }
+    iDestruct (turn_lb_get with "Hta") as "#Htlb2".
+    rewrite Hstg. iEval (rewrite -Hstg) in "Hta".
     (* the ghost moves *)
     iMod (Elist_auth_grow v (o_E so) (open_seg h, c) with "HE")
       as "[HE #HElb2]".
@@ -2312,16 +2451,17 @@ Section echo_out.
     iSplitL "Hwarm Hdli".
     { rewrite /ein. iRight. iRight.
       iExists v, (S (length (o_E so))), cs0, ps0i.
-      iFrame "Hpin Hwarm Hdli HElbi Hcslbi Hpslbi". iPureIntro. split.
+      iFrame "Hpin Hwarm Hdli HElbi Hcslbi Hpslbi Htlbi". iPureIntro. split.
       - lia.
-      - rewrite /ein_pure. by split_and!. }
+      - split; [rewrite /ein_pure; by split_and! | exact Hrsi]. }
     rewrite /ein_pend. iRight.
     iExists v, (S (length (o_E so))), (o_E so), (o_cs so), (o_ps so).
-    iFrame "Hpin Hwp HElb2 Hcslb Hpslb". iPureIntro. split_and!.
+    iFrame "Hpin Hwp HElb2 Hcslb Hpslb Htlb2". iPureIntro. split_and!.
     - lia.
     - exact Hidx2.
     - exact Hbyte2.
     - exact Hbnd2.
+    - exact Hrs2.
   Qed.
 
   (* ...and the LOG's side, fired after the chain ([WpUart.in_append]).  It
@@ -2354,7 +2494,7 @@ Section echo_out.
         [by iApply ein_of_taint | by iApply ewin_of_taint]. }
     iDestruct "Hpd" as (v n El cs0 ps0)
       "(#Hpin & Hwq & #HElbp & #Hcslbp & #Hpslbp & %Hlen & %Hidxp & %Hbytep
-        & %Hbndp)".
+        & %Hbndp & #Htlbp & %Hrsp)".
     iDestruct "Hin" as "[#HT | [Hs | Hwn]]".
     { iModIntro. iSplitL "Hwq";
         [by iApply ein_of_taint | by iApply ewin_of_taint]. }
@@ -2362,7 +2502,8 @@ Section echo_out.
          [in_append]'s own order premise puts every logged history's segment
          STRICTLY below this one *)
       iDestruct "Hs" as (v2 n2 cs2 ps2)
-        "(#Hpin2 & Hw2 & Hdl2 & %Hn2 & #HElb2 & #Hcslb2 & #Hpslb2 & %Hp2)".
+        "(#Hpin2 & Hw2 & Hdl2 & %Hn2 & #HElb2 & #Hcslb2 & #Hpslb2 & %Hp2
+          & #Htlb2 & %Hrs2)".
       iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
       iDestruct (wcnt_agree with "Hwq Hw2") as %Hnn.
       destruct Hp2 as (Hlog & Hdsc & Hstamp & Hdlp & Hidx2 & Hbyte2 & Hbnd2).
@@ -2393,7 +2534,8 @@ Section echo_out.
     - (* THE WINDOW ARM is the one this receipt's own echo left: the arm's
          half and the receipt's quarter AGREE *)
       iDestruct "Hwn" as (v2 n2 cs2 ps2)
-        "(#Hpin2 & Hw2 & Hdl2 & %Hn2 & #HElb2 & #Hcslb2 & #Hpslb2 & %Hp2)".
+        "(#Hpin2 & Hw2 & Hdl2 & %Hn2 & #HElb2 & #Hcslb2 & #Hpslb2 & %Hp2
+          & #Htlb2 & %Hrs2)".
       iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
       iDestruct (wcnt_agree with "Hwq Hw2") as %Hnn.
       destruct Hp2 as (Hlog & Hdsc & Hstamp & Hdlp & Hidx2 & Hbyte2 & Hbnd2).
@@ -2427,8 +2569,10 @@ Section echo_out.
       iDestruct (wcnt_split v (1/4) (1/2) n with "Hw") as "[Hwi Hwt]".
       iModIntro. iSplitL "Hwi Hdl2".
       + rewrite /ein. iRight. iLeft. iExists v, n, cs0, ps0.
-        rewrite Hsegn. iFrame "Hpin Hwi Hdl2 HElbp Hcslbp Hpslbp". iPureIntro.
-        split; [exact Hlenn |]. rewrite /ein_pure Hech. split_and!.
+        rewrite Hsegn Hlenn. iFrame "Hpin Hwi Hdl2 HElbp Hcslbp Hpslbp Htlbp".
+        iPureIntro.
+        split; [reflexivity |]. split; [| exact Hrsp].
+        rewrite /ein_pure Hech. split_and!.
         * apply cl_log_ok_snoc; [exact Hlog | exact Hends | | ].
           { rewrite /le_byte /le_echo /=. by right; left. }
           { intros e' He'. by apply Hord. }
@@ -2483,15 +2627,15 @@ Section echo_out.
     iDestruct "Hin" as "[#HT | [Hs | Hwn]]".
     - by iApply ein_of_taint.
     - iDestruct "Hs" as (v n cs0 ps0)
-        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp)".
+        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp & #Htlb & %Hrs)".
       rewrite /ein. iRight. iLeft. iExists v, n, cs0, ps0.
-      rewrite Hech. iFrame "Hpin Hw Hdl HElb Hcslb Hpslb". iPureIntro.
-      split; [exact Hn | by apply Hpure'].
+      rewrite Hech. iFrame "Hpin Hw Hdl HElb Hcslb Hpslb Htlb". iPureIntro.
+      split; [exact Hn | split; [by apply Hpure' | exact Hrs]].
     - iDestruct "Hwn" as (v n cs0 ps0)
-        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp)".
+        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp & #Htlb & %Hrs)".
       rewrite /ein. iRight. iRight. iExists v, n, cs0, ps0.
-      rewrite Hech. iFrame "Hpin Hw Hdl HElb Hcslb Hpslb". iPureIntro.
-      split; [exact Hn | by apply Hpure'].
+      rewrite Hech. iFrame "Hpin Hw Hdl HElb Hcslb Hpslb Htlb". iPureIntro.
+      split; [exact Hn | split; [by apply Hpure' | exact Hrs]].
   Qed.
 
   (* (W) THE WRITE, INSIDE A BLOCK.  What the writer brings: the era's pin,
@@ -2558,7 +2702,7 @@ Section echo_out.
           [lia | lia]. }
       rewrite -HlenE in Hdiv. lia. }
     iMod (turn_update v P (pcount (o_ps so) (o_cs so) (o_E so) (o_w so)) (S P)
-            with "Ht Hta") as "[Ht Hta]".
+            ltac:(lia) with "Ht Hta") as "[Ht Hta]".
     iModIntro. iSplitR "Ht".
     - rewrite /eout. iRight.
       iExists v, (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])).
@@ -2702,7 +2846,7 @@ Section echo_out.
     { rewrite /pcount HPc. cbn [length]. rewrite /pcount Hwnil in HP.
       cbn [length] in HP. lia. }
     iMod (turn_update v P (pcount (o_ps so) (o_cs so) (o_E so) (o_w so)) (S P)
-            with "Ht Hta") as "[Ht Hta]".
+            ltac:(lia) with "Ht Hta") as "[Ht Hta]".
     iMod (cs_auth_grow v (o_cs so) a with "Hcs") as "[Hcs #Hcslb2]".
     iDestruct (ps_lb_get with "Hps") as "[Hps #Hpslb2]".
     iModIntro. iSplitR "Ht".
@@ -2965,11 +3109,16 @@ Section echo_out.
       by rewrite (lookup_app_shift
                     (pro_of (pro_from (pro_idx (o_cs so)
                        (n0 `div` length echo_line)) (o_ps so)))). }
-    (* ---- and the block is not empty, so the choice list stays put ---- *)
-    assert (Hwnil : o_w so <> []).
-    { rewrite Hweq -Hpseq.
+    (* ---- and the choice list stays put: the block is not empty, or it
+            is the boot block ---- *)
+    assert (Hcase : o_w so <> []
+                    \/ (length (o_E so) `mod` length echo_line)%nat <> 0%nat
+                    \/ length (o_E so) = 0%nat).
+    { destruct (decide (n0 = 0%nat)) as [Hz | Hnz].
+      { right; right. by rewrite HlenE. }
+      left. rewrite Hweq -Hpseq.
       pose proof (pending_nonnil (o_ps so) (o_cs so) (o_E so) Hcsb
-                    ltac:(rewrite HlenE; exact Hmod)) as Hne.
+                    ltac:(lia) ltac:(rewrite HlenE; exact Hmod)) as Hne.
       rewrite /pending HlenE in Hne. exact Hne. }
     (* ---- the transcript and the cursor do not read the new entry ---- *)
     assert (HD : D (o_ps so ++ [a]) (o_cs so) (o_E so)
@@ -2993,7 +3142,7 @@ Section echo_out.
     { rewrite /pcount HPc (length_app (o_w so) [b]). cbn [length].
       rewrite -(proc_upto_length (o_ps so) (o_cs so) (o_E so)). lia. }
     iMod (turn_update v P (pcount (o_ps so) (o_cs so) (o_E so) (o_w so)) (S P)
-            with "Ht Hta") as "[Ht Hta]".
+            ltac:(lia) with "Ht Hta") as "[Ht Hta]".
     iMod (ps_auth_grow v (o_ps so) a with "Hps") as "[Hps #Hpslb2]".
     iModIntro. iSplitR "Ht".
     - rewrite /eout. iRight.
@@ -3017,7 +3166,7 @@ Section echo_out.
         * exact Hpre3.
       + apply (cs_len_ok_write
                  (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so)) b);
-          [exact Hcsl | by left].
+          [exact Hcsl | exact Hcase].
       + apply (ps_len_ok_pro so a b);
           [ rewrite /ps_round HlenE; exact HRle
           | rewrite /ps_round HlenE; exact Hndps
@@ -3079,55 +3228,67 @@ Section echo_out.
               ∨ ∃ cs0 ps0 : list nat,
                   cs_lb v cs0 ∗ ps_lb v ps0 ∗ E_lb v (n + length ws)%nat
                   ∗ ⌜((n + length ws) `div` length echo_line
-                      <= S (length cs0))%nat⌝)).
+                      <= S (length cs0))%nat⌝
+                  ∗ turn_lb v (length (proc_upto ps0 cs0 (n + length ws)))
+                  ∗ ⌜rd_stage ps0 cs0 (n + length ws)⌝)).
   Proof.
     intros Hread. iIntros "#Hpinr Hdlr Hcl".
     iDestruct "Hcl" as "[#HT | [Hs | Hwn]]".
     - iModIntro. iSplitR; [by iApply ein_of_taint |]. iLeft. by iFrame "Hdlr".
     - iDestruct "Hs" as (v2 n2 cs0 ps0)
-        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp)".
+        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp & #Htlb & %Hrs)".
       iDestruct (era_pin_agree with "Hpin Hpinr") as %->.
       iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
       pose proof Hp as Hp2.
       destruct Hp2 as (_ & _ & _ & _ & Hidx & Hbyte & _).
       destruct (ein_read_pure k pops dl ws cs0 Hread Hp)
         as (Hpref & Hp' & Hbnd').
+      assert (Hwle : (n + length ws <= length (echoed pops))%nat).
+      { pose proof (prefix_length _ _ Hpref) as HL.
+        rewrite length_app in HL. lia. }
       iMod (dl_cnt_update v (length dl) n (n + length ws)%nat
               with "Hdl Hdlr") as "[Hdl Hdlr]".
       iModIntro. iSplitL "Hw Hdl".
       { rewrite /ein. iRight. iLeft. iExists v, n2, cs0, ps0.
-        rewrite length_app Hdleq. iFrame "Hpin Hw Hdl HElb Hcslb Hpslb".
-        iPureIntro. by split. }
+        rewrite length_app Hdleq. iFrame "Hpin Hw Hdl HElb Hcslb Hpslb Htlb".
+        iPureIntro. by split_and!. }
       iRight. iFrame "Hdlr".
       iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
       iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
       iRight. iExists cs0, ps0. iFrame "Hcslb Hpslb". iSplitR "".
       + iApply (E_lb_of_lb v (seg_of (echoed pops)) (n + length ws)%nat);
-          [rewrite seg_of_length; pose proof (prefix_length _ _ Hpref) as HL;
-           rewrite length_app in HL; lia | iExact "HElb"].
-      + iPureIntro. rewrite -Hdleq -length_app. exact Hbnd'.
+          [rewrite seg_of_length; lia | iExact "HElb"].
+      + iSplitR; [iPureIntro; rewrite -Hdleq -length_app; exact Hbnd' |].
+        iSplitR; [| iPureIntro; exact (rd_stage_le _ _ _ _ Hwle Hrs)].
+        iApply (turn_lb_weaken with "Htlb").
+        apply prefix_length, proc_upto_mono. exact Hwle.
     - iDestruct "Hwn" as (v2 n2 cs0 ps0)
-        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp)".
+        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & #Hpslb & %Hp & #Htlb & %Hrs)".
       iDestruct (era_pin_agree with "Hpin Hpinr") as %->.
       iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
       pose proof Hp as Hp2.
       destruct Hp2 as (_ & _ & _ & _ & Hidx & Hbyte & _).
       destruct (ein_read_pure k pops dl ws cs0 Hread Hp)
         as (Hpref & Hp' & Hbnd').
+      assert (Hwle : (n + length ws <= length (echoed pops))%nat).
+      { pose proof (prefix_length _ _ Hpref) as HL.
+        rewrite length_app in HL. lia. }
       iMod (dl_cnt_update v (length dl) n (n + length ws)%nat
               with "Hdl Hdlr") as "[Hdl Hdlr]".
       iModIntro. iSplitL "Hw Hdl".
       { rewrite /ein. iRight. iRight. iExists v, n2, cs0, ps0.
-        rewrite length_app Hdleq. iFrame "Hpin Hw Hdl HElb Hcslb Hpslb".
-        iPureIntro. by split. }
+        rewrite length_app Hdleq. iFrame "Hpin Hw Hdl HElb Hcslb Hpslb Htlb".
+        iPureIntro. by split_and!. }
       iRight. iFrame "Hdlr".
       iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
       iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
       iRight. iExists cs0, ps0. iFrame "Hcslb Hpslb". iSplitR "".
       + iApply (E_lb_of_lb v (seg_of (echoed pops)) (n + length ws)%nat);
-          [rewrite seg_of_length; pose proof (prefix_length _ _ Hpref) as HL;
-           rewrite length_app in HL; lia | iExact "HElb"].
-      + iPureIntro. rewrite -Hdleq -length_app. exact Hbnd'.
+          [rewrite seg_of_length; lia | iExact "HElb"].
+      + iSplitR; [iPureIntro; rewrite -Hdleq -length_app; exact Hbnd' |].
+        iSplitR; [| iPureIntro; exact (rd_stage_le _ _ _ _ Hwle Hrs)].
+        iApply (turn_lb_weaken with "Htlb").
+        apply prefix_length, proc_upto_mono. exact Hwle.
   Qed.
 
   (* ...and the LINE, which is what SH-LINE reads off it.  Its [E_byte]
@@ -3364,7 +3525,9 @@ Section echo_out.
                 ∨ ∃ cs0 ps0 : list nat,
                     cs_lb v cs0 ∗ ps_lb v ps0 ∗ E_lb v (n + length ws)%nat
                     ∗ ⌜((n + length ws) `div` length echo_line
-                        <= S (length cs0))%nat⌝))%I.
+                        <= S (length cs0))%nat⌝
+                    ∗ turn_lb v (length (proc_upto ps0 cs0 (n + length ws)))
+                    ∗ ⌜rd_stage ps0 cs0 (n + length ws)⌝))%I.
 
     Lemma echo_read_link (k : nat) (v : era_pins) (n : nat)
         (ws : list (list mobs * bv 8)) (Φ : iProp Σ) :

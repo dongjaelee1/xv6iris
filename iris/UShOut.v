@@ -127,10 +127,10 @@ Proof. vm_compute. lia. Qed.
 
 (* ROUND 0's stream, before and after the choice: eighteen banner bytes,
    then -- once alternative 0 is filed -- the prompt's two. *)
-Lemma sh_pro_stage : length (proc_upto [] [] (S 0%nat)) = 18%nat.
+Lemma sh_pro_stage : length (proc_upto [3%nat] [] (S 0%nat)) = 18%nat.
 Proof. vm_compute. reflexivity. Qed.
 
-Lemma sh_space_stream : proc_upto [0%nat] [] (S 0%nat) !! 19%nat = Some sh_space_b.
+Lemma sh_space_stream : proc_upto [3%nat; 0%nat] [] (S 0%nat) !! 19%nat = Some sh_space_b.
 Proof. vm_compute. reflexivity. Qed.
 
 Lemma sh_pro_open :

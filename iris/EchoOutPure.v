@@ -1358,15 +1358,21 @@ Proof.
   etrans; [exact Hpt |]. rewrite obs_wire_app. by eexists.
 Qed.
 
-(* [sess_n] is never empty: it begins with the prologue *)
+(* [sess_n] is never empty once round 0 has settled: it begins with the
+   prologue, and a settled prologue has at least its ending letter's bytes
+   (an OPEN round with nothing filed predicts nothing, so the resolution
+   has to be settled) *)
 Lemma u_prologue_pos : 0 < length u_prologue.
 Proof. vm_compute. lia. Qed.
 
-Lemma sess_n_nonnil (ps cs : list nat) (n : nat) : sess_n ps cs n <> [].
+Lemma sess_n_nonnil (ps cs : list nat) (n : nat) :
+  Forall (fun a => (a < length pro_alts)%nat) ps -> pro_done ps ->
+  sess_n ps cs n <> [].
 Proof.
-  rewrite /sess_n. intros H.
+  intros HF Hd. rewrite /sess_n. intros H.
   apply (f_equal length) in H. rewrite !length_app /= in H.
-  pose proof (pro_of_pos ps). lia.
+  assert (Hne : ps <> []) by (intros ->; by apply Exists_nil in Hd).
+  pose proof (pro_of_pos ps HF Hne). lia.
 Qed.
 
 (* ====================================================================== *)

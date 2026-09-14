@@ -243,49 +243,82 @@ Definition u_prologue : list (bv 8) :=
   sb "init: starting sh"%string ++ nlb ++ sb "$ "%string.
 
 (* THE PROLOGUE ALTERNATIVES, RULED BY THE OWNER (2026-09-16: "allow these
-   errors in the top-level trace theorem").  init's outer loop prints the
-   banner and forks; after each banner the wire continues with ONE OF
-     0  "$ "                       sh runs: the session begins
+   errors in the top-level trace theorem"; 2026-09-14: "the banner is
+   optional ... a trace without a banner in a given era has to be possible
+   anyway").  A prologue round is a SEQUENCE OF LETTERS, each a console
+   write of init's or the shell's, and the round's transcript is the
+   concatenation of their bytes:
+     0  "$ "                       sh runs: the session begins.  ENDS the
+                                   round.
      1  "init: exec sh failed\n"   the child could not exec (user/init.c:35);
                                    it exits, init's wait reaps it and the
-                                   outer loop prints the banner AGAIN
+                                   outer loop runs AGAIN.  CONTINUES.
      2  "init: fork failed\n"      init could not fork (user/init.c:30); it
                                    exits and kexit panics (kernel/proc.c:339)
                                    on the OTHER port, so no PROCESS ever
-                                   writes this wire again
-   ALTERNATIVE 1 IS THE ONLY ONE THAT CONTINUES.  Their first bytes are
-   '$', 'i', 'i' -- NOT pairwise distinct, so [line_alts_head_det]'s
-   one-byte reading does not carry over; what they are is PAIRWISE
-   PREFIX-FREE (the two diagnostics part at byte 6, "init: e" against
-   "init: f"), and that whole-block reading is what pins the resolution off
-   the wire ([pro_of_prefix_free]).  A later ruling changes this ONE list.
+                                   writes this wire again.  ENDS the round.
+     3  "init: starting sh\n"      init's banner (user/init.c:27), printed at
+                                   the head of every turn of its outer loop
+                                   WHEN ITS CONSOLE IS OPEN.  CONTINUES.
+   THE BANNER IS A LETTER AND NOT A PREFIX OF THE OTHERS because init's
+   console open can fail (the kernel's open contract admits a full file
+   table) while the shell's own opens succeed: init then prints nothing at
+   all and the round is "$ " alone -- the resolution [[0]] -- where a
+   round with the banner is [[3; 0]].  The good run is [[3; 0]]; one exec
+   failure and a restart is [[3; 1; 3; 0]]; the fork failure is [[3; 2]].
+
+   WHY THE LETTERS ARE FILED ONE AT A TIME.  A writer's knowledge of the
+   round is a persistent LOWER BOUND of the resolution ([EchoOut.ps_lb]),
+   and a lower bound is worth exactly the bytes of the letters it names
+   ([pro_of_mono]): an open round predicts NOTHING beyond them.  An
+   alternative whose transcript RETRACTED a default (a "prompt without the
+   banner" filed against a round that predicted the banner) would make a
+   stale bound predict bytes the wire will never carry, and then no link
+   stated at a lower bound could be proved.  So the banner is what init
+   files when it writes its first banner byte, and nothing is predicted
+   before that.
+
+   Their first bytes are '$', 'i', 'i', 'i' -- NOT pairwise distinct, so
+   [line_alts_head_det]'s one-byte reading does not carry over; what they
+   are is PAIRWISE PREFIX-FREE (the three diagnostics part at byte 6,
+   "init: e" / "init: f" / "init: s"), and that whole-block reading is
+   what pins the resolution off the wire ([pro_of_prefix_free]).  A later
+   ruling changes this ONE list.
 
    NOT HERE: "init: wait returned an error\n" (user/init.c:47).  That arm is
    REFUTED and not admitted -- kwait returns -1 only for a caller with no
    children or a killed one, and init holds the shell's generation. *)
-Definition pro_alts : list (list (bv 8)) := [ u_prompt; u_execfail; u_forkfail ].
+Definition pro_alts : list (list (bv 8)) :=
+  [ u_prompt; u_execfail; u_forkfail; u_banner ].
 
-Lemma pro_alts_length : length pro_alts = 3.
+Lemma pro_alts_length : length pro_alts = 4.
 Proof. reflexivity. Qed.
 
-(* THE PROLOGUE FOR A RESOLUTION [ps]: one banner per round, then that
-   round's alternative; a round that took alternative 1 is followed by
-   another round.  OUT OF CHOICES the prologue is the bare banner, so
-   [pro_of] is MONOTONE under append ([pro_of_snoc]) -- which is exactly
-   what a writer's mono_list LOWER BOUND of [ps] is worth -- and a COMPLETE
-   prologue is one whose [ps] has already left alternative 1 ([pro_done]).
-   [pro_of] reads exactly ONE round: it discards the tail at the first
-   non-1 entry, so the r-th round's prologue is [pro_of (pro_from r ps)]. *)
+(* the letters that CONTINUE a round: the exec failure and the banner *)
+Definition pro_cont (a : nat) : Prop := a = 1%nat \/ a = 3%nat.
+
+Global Instance pro_cont_dec a : Decision (pro_cont a).
+Proof. rewrite /pro_cont. apply _. Defined.
+
+(* THE PROLOGUE FOR A RESOLUTION [ps]: the letters' bytes, in order, up to
+   and including the first letter that ENDS the round; what follows it
+   belongs to the next round.  OUT OF LETTERS the prologue is what has been
+   filed and nothing more, so [pro_of] is MONOTONE under append
+   ([pro_of_snoc]) -- which is exactly what a writer's mono_list LOWER
+   BOUND of [ps] is worth -- and a COMPLETE prologue is one whose [ps] has
+   an ending letter ([pro_done]).  [pro_of] reads exactly ONE round: it
+   discards the tail at the first ending letter, so the r-th round's
+   prologue is [pro_of (pro_from r ps)]. *)
 Definition pro_more (a : nat) (t : list (bv 8)) : list (bv 8) :=
-  if decide (a = 1%nat) then t else [].
+  if decide (pro_cont a) then t else [].
 
 Fixpoint pro_of (ps : list nat) : list (bv 8) :=
   match ps with
-  | [] => u_banner
-  | a :: ps' => u_banner ++ pro_alts !!! a ++ pro_more a (pro_of ps')
+  | [] => []
+  | a :: ps' => pro_alts !!! a ++ pro_more a (pro_of ps')
   end.
 
-Definition pro_done (ps : list nat) : Prop := Exists (fun a => a <> 1%nat) ps.
+Definition pro_done (ps : list nat) : Prop := Exists (fun a => ~ pro_cont a) ps.
 
 Global Instance pro_done_dec ps : Decision (pro_done ps).
 Proof. rewrite /pro_done. apply _. Defined.
@@ -294,7 +327,7 @@ Proof. rewrite /pro_done. apply _. Defined.
 Fixpoint pro_tail (ps : list nat) : list nat :=
   match ps with
   | [] => []
-  | a :: ps' => if decide (a = 1%nat) then pro_tail ps' else ps'
+  | a :: ps' => if decide (pro_cont a) then pro_tail ps' else ps'
   end.
 
 Fixpoint pro_from (r : nat) (ps : list nat) : list nat :=
@@ -303,37 +336,96 @@ Fixpoint pro_from (r : nat) (ps : list nat) : list nat :=
   | S r' => pro_from r' (pro_tail ps)
   end.
 
-(* how many rounds [ps] has SETTLED: one per non-1 entry *)
+(* how many rounds [ps] has SETTLED: one per ending letter *)
 Fixpoint pro_rounds (ps : list nat) : nat :=
   match ps with
   | [] => 0%nat
-  | a :: ps' => ((if decide (a = 1%nat) then 0 else 1) + pro_rounds ps')%nat
+  | a :: ps' => ((if decide (pro_cont a) then 0 else 1) + pro_rounds ps')%nat
   end.
 
-(* one round of the restart loop, in wire bytes: banner + the diagnostic *)
+(* one failed sub-round of the restart loop, in wire bytes: banner + the
+   exec diagnostic *)
 Definition pro_round : nat := (length u_banner + length u_execfail)%nat.
 
-Lemma pro_more_1 (t : list (bv 8)) : pro_more 1%nat t = t.
-Proof. rewrite /pro_more. reflexivity. Qed.
+(* [j] FAILED SUB-ROUNDS: banner, exec failure, banner, exec failure, ...
+   -- the open round init's restart head stands in *)
+Definition pro_fail (j : nat) : list nat := concat (replicate j [3%nat; 1%nat]).
 
-Lemma pro_more_ne (a : nat) (t : list (bv 8)) : a <> 1%nat -> pro_more a t = [].
+Lemma pro_more_cont (a : nat) (t : list (bv 8)) : pro_cont a -> pro_more a t = t.
+Proof. intros H. rewrite /pro_more. by rewrite decide_True. Qed.
+
+Lemma pro_more_1 (t : list (bv 8)) : pro_more 1%nat t = t.
+Proof. apply pro_more_cont. by left. Qed.
+
+Lemma pro_more_3 (t : list (bv 8)) : pro_more 3%nat t = t.
+Proof. apply pro_more_cont. by right. Qed.
+
+Lemma pro_more_ne (a : nat) (t : list (bv 8)) : ~ pro_cont a -> pro_more a t = [].
 Proof. intros H. rewrite /pro_more. by rewrite decide_False. Qed.
+
+Lemma pro_cont_ne (a : nat) : a <> 1%nat -> a <> 3%nat -> ~ pro_cont a.
+Proof. intros H1 H3 [H | H]; [exact (H1 H) | exact (H3 H)]. Qed.
 
 Lemma u_banner_pos : (0 < length u_banner)%nat.
 Proof. vm_compute. lia. Qed.
 
-Lemma pro_of_good : pro_of [0%nat] = u_prologue.
+Lemma pro_of_nil : pro_of [] = [].
+Proof. reflexivity. Qed.
+
+Lemma pro_of_cons (a : nat) (ps : list nat) :
+  pro_of (a :: ps) = pro_alts !!! a ++ pro_more a (pro_of ps).
+Proof. reflexivity. Qed.
+
+Lemma pro_of_good : pro_of [3%nat; 0%nat] = u_prologue.
 Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
-Lemma pro_of_banner ps : exists t, pro_of ps = u_banner ++ t.
+(* ...and the banner-less good run, the ruling's own case *)
+Lemma pro_of_good_noban : pro_of [0%nat] = u_prompt.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* every letter is at least two bytes *)
+Lemma pro_alts_nonnil (a : nat) : (a < length pro_alts)%nat -> pro_alts !!! a <> [].
 Proof.
-  destruct ps as [| a ps]; [exists []; by rewrite app_nil_r | by eexists].
+  rewrite pro_alts_length. intros Ha.
+  destruct a as [|[|[|[|a]]]]; try lia; vm_compute; discriminate.
 Qed.
 
-Lemma pro_of_pos ps : (0 < length (pro_of ps))%nat.
+Lemma pro_of_pos (ps : list nat) :
+  Forall (fun a => (a < length pro_alts)%nat) ps -> ps <> [] ->
+  (0 < length (pro_of ps))%nat.
 Proof.
-  destruct (pro_of_banner ps) as [t ->]. rewrite length_app.
-  pose proof u_banner_pos. lia.
+  intros HF Hne. destruct ps as [| a ps]; [done |].
+  rewrite Forall_cons in HF. destruct HF as [Ha _].
+  cbn [pro_of]. rewrite length_app.
+  destruct (pro_alts !!! a) as [| z zs] eqn:Hz;
+    [ exfalso; exact (pro_alts_nonnil a Ha Hz) | cbn; lia ].
+Qed.
+
+(* the letters of an OPEN round all continue it *)
+Lemma pro_open_cont (ps : list nat) : ~ pro_done ps -> Forall pro_cont ps.
+Proof.
+  induction ps as [| c ps IH]; intros Hnd; [done |].
+  rewrite Forall_cons. split.
+  - destruct (decide (pro_cont c)) as [? | Hne]; [done |].
+    exfalso. apply Hnd. rewrite /pro_done. by apply Exists_cons; left.
+  - apply IH. intros H. apply Hnd. rewrite /pro_done Exists_cons. by right.
+Qed.
+
+(* ...so [pro_of] is a HOMOMORPHISM on it: filing anything after an open
+   round appends the bytes *)
+Lemma pro_of_open_app (ps z : list nat) :
+  ~ pro_done ps -> pro_of (ps ++ z) = pro_of ps ++ pro_of z.
+Proof.
+  intros Hnd. pose proof (pro_open_cont ps Hnd) as HF. clear Hnd.
+  induction ps as [| c ps IH]; [done |].
+  rewrite Forall_cons in HF. destruct HF as [Hc HF].
+  cbn [app pro_of]. rewrite !(pro_more_cont c _ Hc).
+  rewrite (IH HF). by rewrite app_assoc.
+Qed.
+
+Lemma pro_of_singleton (a : nat) : pro_of [a] = pro_alts !!! a.
+Proof.
+  cbn [pro_of]. rewrite /pro_more. case_decide; by rewrite app_nil_r.
 Qed.
 
 (* ---- [pro_of] is monotone in the resolution ---- *)
@@ -341,9 +433,9 @@ Qed.
 Lemma pro_of_snoc ps a : pro_of ps `prefix_of` pro_of (ps ++ [a]).
 Proof.
   induction ps as [| c ps IH]; cbn [pro_of app].
-  - by eexists.
-  - destruct (decide (c = 1%nat)) as [-> | Hc].
-    + rewrite !pro_more_1. by apply prefix_app, prefix_app.
+  - apply prefix_nil.
+  - destruct (decide (pro_cont c)) as [Hc | Hc].
+    + rewrite !(pro_more_cont c _ Hc). by apply prefix_app.
     + rewrite !(pro_more_ne c _ Hc). reflexivity.
 Qed.
 
@@ -360,8 +452,8 @@ Proof.
   intros [z ->]. induction ps as [| a ps IH]; intros Hd.
   - by apply Exists_nil in Hd.
   - rewrite /pro_done Exists_cons in Hd.
-    cbn [app pro_of]. destruct (decide (a = 1%nat)) as [-> | Ha].
-    + rewrite !pro_more_1.
+    cbn [app pro_of]. destruct (decide (pro_cont a)) as [Ha | Ha].
+    + rewrite !(pro_more_cont a _ Ha).
       destruct Hd as [Hne | Hd]; [done |]. by rewrite (IH Hd).
     + by rewrite !(pro_more_ne a _ Ha).
 Qed.
@@ -390,6 +482,10 @@ Proof.
   rewrite Forall_cons. intros [Ha Hps]. case_decide; [by apply IH | exact Hps].
 Qed.
 
+(* a settled round stays settled under extension *)
+Lemma pro_done_mono ps ps' : ps `prefix_of` ps' -> pro_done ps -> pro_done ps'.
+Proof. intros [z ->] Hd. rewrite /pro_done Exists_app. by left. Qed.
+
 (* ---- how many rounds a resolution has settled ---- *)
 
 Lemma pro_rounds_tail ps : pro_rounds (pro_tail ps) = (pro_rounds ps - 1)%nat.
@@ -402,7 +498,9 @@ Lemma pro_done_rounds ps : pro_done ps <-> (0 < pro_rounds ps)%nat.
 Proof.
   rewrite /pro_done. induction ps as [| a ps IH]; cbn [pro_rounds].
   - split; [by intros ?%Exists_nil | lia].
-  - rewrite Exists_cons IH. case_decide as Ha; [subst a |]; lia.
+  - rewrite Exists_cons IH. case_decide as Ha.
+    + split; [intros [H | H]; [by destruct (H Ha) | lia] | intros H; right; lia].
+    + split; [intros _; lia | intros _; by left].
 Qed.
 
 Lemma pro_from_done r ps : pro_done (pro_from r ps) <-> (r < pro_rounds ps)%nat.
@@ -422,15 +520,24 @@ Qed.
 Lemma pro_rounds_replicate_0 d : pro_rounds (replicate d 0%nat) = d.
 Proof.
   induction d as [| d IH]; cbn [replicate pro_rounds]; [done |].
-  rewrite IH. repeat case_decide; lia.
+  rewrite IH. case_decide as H; [| lia]. exfalso. by destruct H.
 Qed.
 
-Lemma pro_rounds_group (k t : nat) (z : list nat) :
-  t <> 1%nat -> pro_rounds (replicate k 1%nat ++ [t] ++ z) = S (pro_rounds z).
+(* an open round's letters count no round, and the ending letter after
+   them counts one *)
+Lemma pro_rounds_open (g : list nat) : Forall pro_cont g -> pro_rounds g = 0%nat.
 Proof.
-  intros Ht. induction k as [| k IH]; cbn [replicate app pro_rounds].
-  - repeat case_decide; lia.
-  - rewrite IH. repeat case_decide; lia.
+  induction g as [| a g IH]; [done |].
+  rewrite Forall_cons. intros [Ha Hg]. cbn [pro_rounds].
+  rewrite decide_True; [| exact Ha]. by rewrite IH.
+Qed.
+
+Lemma pro_rounds_group (g : list nat) (t : nat) (z : list nat) :
+  Forall pro_cont g -> ~ pro_cont t ->
+  pro_rounds (g ++ [t] ++ z) = S (pro_rounds z).
+Proof.
+  intros Hg Ht. rewrite !pro_rounds_app (pro_rounds_open g Hg).
+  cbn [pro_rounds]. rewrite decide_False; [lia | exact Ht].
 Qed.
 
 Lemma pro_of_from_done_ext r ps ps' :
@@ -441,20 +548,15 @@ Proof.
   by apply pro_from_done.
 Qed.
 
-(* ---- the three alternatives are PAIRWISE PREFIX-FREE ---- *)
-
-Lemma pro_alts_nonnil (a : nat) : (a < length pro_alts)%nat -> pro_alts !!! a <> [].
-Proof.
-  rewrite pro_alts_length. intros Ha.
-  destruct a as [|[|[|a]]]; try lia; vm_compute; discriminate.
-Qed.
+(* ---- the four letters are PAIRWISE PREFIX-FREE ---- *)
 
 Lemma pro_alts_prefix_det (a b : nat) :
   (a < length pro_alts)%nat -> (b < length pro_alts)%nat ->
   pro_alts !!! a `prefix_of` pro_alts !!! b -> a = b.
 Proof.
   rewrite pro_alts_length. intros Ha Hb.
-  destruct a as [|[|[|a]]]; destruct b as [|[|[|b]]]; try lia; try reflexivity;
+  destruct a as [|[|[|[|a]]]]; destruct b as [|[|[|[|b]]]]; try lia;
+    try reflexivity;
     intros H; exfalso; revert H; apply (bool_decide_unpack _); vm_compute; exact I.
 Qed.
 
@@ -473,11 +575,10 @@ Proof.
   rewrite /pro_done Exists_cons in Hd.
   destruct ps as [| a t].
   { exfalso. cbn [pro_of] in Hp.
-    rewrite -{2}(app_nil_r u_banner) in Hp.
-    apply prefix_app_inv, prefix_nil_inv, app_eq_nil in Hp as [Hnil _].
+    apply prefix_nil_inv, app_eq_nil in Hp as [Hnil _].
     exact (pro_alts_nonnil a' Ha' Hnil). }
   rewrite Forall_cons in HF. destruct HF as [Ha HF].
-  cbn [pro_of] in Hp |- *. apply prefix_app_inv in Hp.
+  cbn [pro_of] in Hp |- *.
   assert (Hcmp : pro_alts !!! a' `prefix_of` pro_alts !!! a
                  \/ pro_alts !!! a `prefix_of` pro_alts !!! a').
   { eapply prefix_weak_total;
@@ -487,19 +588,19 @@ Proof.
   { destruct Hcmp as [Hc | Hc];
       [ by apply pro_alts_prefix_det | symmetry; by apply pro_alts_prefix_det ]. }
   subst a'. apply prefix_app_inv in Hp.
-  destruct (decide (a = 1%nat)) as [-> | Ha1].
-  - rewrite !pro_more_1 in Hp |- *.
-    destruct Hd as [Hc | Hd]; [done |].
+  destruct (decide (pro_cont a)) as [Hc | Hc].
+  - rewrite !(pro_more_cont a _ Hc) in Hp |- *.
+    destruct Hd as [Hne | Hd]; [done |].
     destruct (IH t HF HF' Hd Hp) as [Hdt Heq].
     split; [by apply Exists_cons; right | by rewrite Heq].
-  - rewrite !(pro_more_ne a _ Ha1) in Hp |- *.
+  - rewrite !(pro_more_ne a _ Hc) in Hp |- *.
     split; [by apply Exists_cons; left | reflexivity].
 Qed.
 
-(* AN UNSETTLED PROLOGUE ENDS AT A BANNER, so the byte any longer prologue
-   has just past it is the first byte of one of the three alternatives --
-   and none of those is [echo_line]'s.  This is what refutes "the stage's
-   prologue is still open while a disciplined byte arrives". *)
+(* AN UNSETTLED PROLOGUE ENDS AT A LETTER BOUNDARY, so the byte any longer
+   prologue has just past it is the first byte of one of the four letters
+   -- and none of those is [echo_line]'s.  This is what refutes "the
+   stage's prologue is still open while a disciplined byte arrives". *)
 Lemma lookup_app_shift {A} (u v : list A) (n : nat) :
   (u ++ v) !! (length u + n)%nat = v !! n.
 Proof.
@@ -512,7 +613,7 @@ Lemma pro_alts_head_ne_echo (a : nat) (b : bv 8) :
   echo_line !! 0%nat = Some b -> False.
 Proof.
   rewrite pro_alts_length. intros Ha Hb Hc.
-  destruct a as [|[|[|a]]]; try lia; vm_compute in Hb; injection Hb as Hb;
+  destruct a as [|[|[|[|a]]]]; try lia; vm_compute in Hb; injection Hb as Hb;
     subst b; vm_compute in Hc; injection Hc as Hc; discriminate.
 Qed.
 
@@ -525,45 +626,40 @@ Lemma pro_of_not_done_next (P P' : list nat) (b : bv 8) :
 Proof.
   revert P'. induction P as [| c P IH]; intros P' HF' Hnd Hpre Hlk.
   - destruct P' as [| a t'].
-    { exfalso. cbn [pro_of] in Hlk.
-      rewrite lookup_ge_None_2 in Hlk; [discriminate | lia]. }
+    { exfalso. cbn [pro_of] in Hlk. discriminate. }
     rewrite Forall_cons in HF'. destruct HF' as [Ha HF'].
     exists a. split; [exact Ha |].
-    cbn [pro_of] in Hlk.
-    replace (length u_banner) with (length u_banner + 0)%nat in Hlk by lia.
-    rewrite lookup_app_shift in Hlk.
+    cbn [pro_of length] in Hlk.
     rewrite lookup_app_l in Hlk; [exact Hlk |].
     destruct (pro_alts !!! a) as [| z zs] eqn:Hz;
       [ exfalso; exact (pro_alts_nonnil a Ha Hz) | cbn; lia ].
-  - assert (Hc1 : c = 1%nat).
-    { destruct (decide (c = 1%nat)) as [? | Hne]; [done |].
+  - assert (Hc1 : pro_cont c).
+    { destruct (decide (pro_cont c)) as [? | Hne]; [done |].
       exfalso. apply Hnd. rewrite /pro_done. by apply Exists_cons; left. }
-    subst c.
     assert (HndP : ~ pro_done P).
     { intros H. apply Hnd. rewrite /pro_done Exists_cons. by right. }
     destruct P' as [| a t'].
-    { exfalso. cbn [pro_of] in Hpre. rewrite pro_more_1 in Hpre.
-      rewrite -{2}(app_nil_r u_banner) in Hpre.
-      apply prefix_app_inv, prefix_nil_inv, app_eq_nil in Hpre as [Hnil _].
-      exact (pro_alts_nonnil 1%nat ltac:(rewrite pro_alts_length; lia) Hnil). }
+    { exfalso. cbn [pro_of] in Hpre. rewrite (pro_more_cont c _ Hc1) in Hpre.
+      apply prefix_nil_inv, app_eq_nil in Hpre as [Hnil _].
+      assert (Hcb : (c < length pro_alts)%nat)
+        by (destruct Hc1 as [-> | ->]; rewrite pro_alts_length; lia).
+      exact (pro_alts_nonnil c Hcb Hnil). }
     rewrite Forall_cons in HF'. destruct HF' as [Ha HF'].
-    cbn [pro_of] in Hpre, Hlk. rewrite pro_more_1 in Hpre, Hlk.
-    apply prefix_app_inv in Hpre.
-    assert (Haa : a = 1%nat).
-    { destruct (prefix_weak_total (pro_alts !!! 1%nat) (pro_alts !!! a)
+    cbn [pro_of] in Hpre, Hlk. rewrite (pro_more_cont c _ Hc1) in Hpre, Hlk.
+    assert (Hcb : (c < length pro_alts)%nat)
+      by (destruct Hc1 as [-> | ->]; rewrite pro_alts_length; lia).
+    assert (Haa : a = c).
+    { destruct (prefix_weak_total (pro_alts !!! c) (pro_alts !!! a)
                   (pro_alts !!! a ++ pro_more a (pro_of t'))
                   ltac:(etrans; [apply prefix_app_r; reflexivity | exact Hpre])
                   ltac:(apply prefix_app_r; reflexivity)) as [H | H].
-      - symmetry. apply pro_alts_prefix_det;
-          [rewrite pro_alts_length; lia | exact Ha | exact H].
-      - apply pro_alts_prefix_det;
-          [exact Ha | rewrite pro_alts_length; lia | exact H]. }
-    subst a. rewrite pro_more_1 in Hpre, Hlk. apply prefix_app_inv in Hpre.
+      - symmetry. apply pro_alts_prefix_det; [exact Hcb | exact Ha | exact H].
+      - apply pro_alts_prefix_det; [exact Ha | exact Hcb | exact H]. }
+    subst a. rewrite (pro_more_cont c _ Hc1) in Hpre, Hlk.
+    apply prefix_app_inv in Hpre.
     apply (IH t' HF' HndP Hpre).
-    rewrite (length_app u_banner (pro_alts !!! 1%nat ++ pro_of P)) in Hlk.
-    rewrite (lookup_app_shift u_banner) in Hlk.
-    rewrite (length_app (pro_alts !!! 1%nat) (pro_of P)) in Hlk.
-    rewrite (lookup_app_shift (pro_alts !!! 1%nat)) in Hlk.
+    rewrite (length_app (pro_alts !!! c) (pro_of P)) in Hlk.
+    rewrite (lookup_app_shift (pro_alts !!! c)) in Hlk.
     exact Hlk.
 Qed.
 
@@ -682,25 +778,17 @@ Proof.
 Qed.
 
 (* THE CHOICE BYTE EXTENDS AN OPEN ROUND.  [pro_of] of an unresolved
-   resolution ends at the banner, so filing the round's alternative appends
-   its bytes -- the first of which is the byte the writer is putting out. *)
+   resolution ends at a letter boundary, so filing the round's next letter
+   appends its bytes -- the first of which is the byte the writer is
+   putting out. *)
 Lemma pro_of_snoc_head (ps : list nat) (a : nat) (b : bv 8) :
   ~ pro_done ps -> pro_alts !!! a !! 0%nat = Some b ->
   (pro_of ps ++ [b]) `prefix_of` pro_of (ps ++ [a]).
 Proof.
-  intros Hnd Hb. induction ps as [| c ps IH]; cbn [pro_of app].
-  - apply prefix_app.
-    apply (prefix_app_r [b] (pro_alts !!! a)).
-    destruct (pro_alts !!! a) as [| z zs] eqn:Hz; [discriminate |].
-    cbn in Hb. injection Hb as <-. by eexists.
-  - assert (Hc1 : c = 1%nat).
-    { destruct (decide (c = 1%nat)) as [? | Hne]; [done |].
-      exfalso. apply Hnd. rewrite /pro_done. by apply Exists_cons; left. }
-    subst c. rewrite !pro_more_1.
-    rewrite -(app_assoc u_banner (pro_alts !!! 1%nat ++ pro_of ps) [b]).
-    rewrite -(app_assoc (pro_alts !!! 1%nat) (pro_of ps) [b]).
-    apply prefix_app, prefix_app, IH.
-    intros H. apply Hnd. rewrite /pro_done Exists_cons. by right.
+  intros Hnd Hb. rewrite (pro_of_open_app ps [a] Hnd) pro_of_singleton.
+  apply prefix_app.
+  destruct (pro_alts !!! a) as [| z zs] eqn:Hz; [discriminate |].
+  cbn in Hb. injection Hb as <-. by eexists.
 Qed.
 
 (* ...and dropping SETTLED rounds commutes with filing the open one's. *)
@@ -734,24 +822,25 @@ Qed.
 Lemma pro_from_nil (r : nat) : pro_from r [] = [].
 Proof. induction r as [| r IH]; [done |]. by cbn [pro_from pro_tail]. Qed.
 
-(* FILING THE OPEN ROUND'S ALTERNATIVE CLOSES IT: nothing is left over, so
-   the resolution never runs ahead of the wire.  ([pro_tail] of an open
-   [ps] is [[]], and appending one entry leaves exactly that.) *)
+(* FILING A LETTER AT AN OPEN ROUND LEAVES NOTHING OVER: the round is
+   either still open (a continuing letter) or closed by exactly that
+   letter, so the resolution never runs ahead of the wire.  ([pro_tail]
+   of an open [ps] is [[]], and appending one entry leaves exactly that.) *)
 Lemma pro_tail_open_snoc (ps : list nat) (a : nat) :
   ~ pro_done ps -> pro_tail (ps ++ [a]) = [].
 Proof.
   induction ps as [| c ps IH]; intros Hnd.
   - cbn [app pro_tail]. by case_decide.
-  - assert (Hc1 : c = 1%nat).
-    { destruct (decide (c = 1%nat)) as [? | Hne]; [done |].
+  - assert (Hc1 : pro_cont c).
+    { destruct (decide (pro_cont c)) as [? | Hne]; [done |].
       exfalso. apply Hnd. rewrite /pro_done. by apply Exists_cons; left. }
-    subst c. cbn [app pro_tail].
+    cbn [app pro_tail]. rewrite decide_True; [| exact Hc1].
     apply IH. intros H. apply Hnd. rewrite /pro_done Exists_cons. by right.
 Qed.
 
-(* AN OPEN PROLOGUE GROWS STRICTLY when its alternative is filed -- the
-   alternative is non-empty, so at least its first byte is new.  This is
-   what makes the resolution READABLE OFF THE LENGTH of what was written. *)
+(* AN OPEN PROLOGUE GROWS STRICTLY when a letter is filed -- every letter
+   is non-empty, so at least its first byte is new.  This is what makes
+   the resolution READABLE OFF THE LENGTH of what was written. *)
 Lemma pro_of_open_snoc_lt (ps : list nat) (a : nat) :
   ~ pro_done ps -> (a < length pro_alts)%nat ->
   (length (pro_of ps) < length (pro_of (ps ++ [a])))%nat.
@@ -779,40 +868,81 @@ Proof.
   pose proof (pro_of_open_snoc_lt ps a Hnd Ha). lia.
 Qed.
 
-(* THE BANNER OF THE j-TH FAILED SUB-ROUND.  An OPEN prologue is
-   [(banner ++ "init: exec sh failed\n")^j ++ banner], so its (j+1)-st
-   banner starts at [pro_round * j] -- the ONE arithmetic fact init's
-   restart loop needs, at an arbitrary j and with no [vm_compute]. *)
+(* ...and a settled extension of an open round is STRICTLY longer *)
+Lemma pro_of_open_done_lt (ps ps' : list nat) :
+  ~ pro_done ps -> pro_done ps' -> ps `prefix_of` ps' ->
+  Forall (fun a => (a < length pro_alts)%nat) ps' ->
+  (length (pro_of ps) < length (pro_of ps'))%nat.
+Proof.
+  intros Hnd Hd [z ->] HF.
+  destruct z as [| a z].
+  { exfalso. rewrite app_nil_r in Hd. exact (Hnd Hd). }
+  apply Forall_app in HF as [_ HF]. rewrite Forall_cons in HF.
+  destruct HF as [Ha _].
+  pose proof (pro_of_open_snoc_lt ps a Hnd Ha) as Hlt.
+  assert (Hp : pro_of (ps ++ [a]) `prefix_of` pro_of (ps ++ a :: z)).
+  { apply pro_of_mono. exists z. by rewrite -app_assoc. }
+  apply prefix_length in Hp. lia.
+Qed.
+
+(* THE BANNER OF THE j-TH FAILED SUB-ROUND.  An OPEN prologue with [j]
+   failures behind it is [(banner ++ "init: exec sh failed\n")^j], so the
+   banner init files next starts at [pro_round * j] -- the ONE arithmetic
+   fact init's restart loop needs, at an arbitrary j and with no
+   [vm_compute]. *)
 Lemma pro_alts_1 : pro_alts !!! 1%nat = u_execfail.
 Proof. reflexivity. Qed.
 
-Lemma pro_of_replicate_banner (j i : nat) (b : bv 8) :
-  u_banner !! i = Some b ->
-  pro_of (replicate j 1%nat) !! (pro_round * j + i)%nat = Some b.
+Lemma pro_alts_3 : pro_alts !!! 3%nat = u_banner.
+Proof. reflexivity. Qed.
+
+Lemma pro_fail_0 : pro_fail 0 = [].
+Proof. reflexivity. Qed.
+
+Lemma pro_fail_S (j : nat) : pro_fail (S j) = pro_fail j ++ [3%nat; 1%nat].
+Proof. rewrite /pro_fail. apply concat_replicate_S. Qed.
+
+Lemma pro_fail_cont (j : nat) : Forall pro_cont (pro_fail j).
 Proof.
-  revert i b. induction j as [| j IH]; intros i b Hb.
-  - cbn [replicate pro_of]. by rewrite Nat.mul_0_r Nat.add_0_l.
-  - cbn [replicate pro_of]. rewrite pro_more_1.
-    replace (pro_round * S j + i)%nat
-      with (length u_banner
-            + (length (pro_alts !!! 1%nat) + (pro_round * j + i)))%nat;
-      last by (rewrite pro_alts_1 /pro_round; lia).
-    rewrite (lookup_app_shift u_banner).
-    rewrite (lookup_app_shift (pro_alts !!! 1%nat)).
-    by apply IH.
+  induction j as [| j IH]; [constructor |].
+  rewrite pro_fail_S Forall_app. split; [exact IH |].
+  constructor; [by right | constructor; [by left | constructor]].
 Qed.
 
-(* an OPEN resolution IS a block of [1]s, which is the shape the banner
-   lemma above reads *)
-Lemma pro_open_replicate (ps : list nat) :
-  ~ pro_done ps -> ps = replicate (length ps) 1%nat.
+Lemma pro_fail_bound (j : nat) :
+  Forall (fun a => (a < length pro_alts)%nat) (pro_fail j).
 Proof.
-  induction ps as [| c ps IH]; intros Hnd; [done |].
-  assert (Hc1 : c = 1%nat).
-  { destruct (decide (c = 1%nat)) as [? | Hne]; [done |].
-    exfalso. apply Hnd. rewrite /pro_done. by apply Exists_cons; left. }
-  subst c. cbn [length replicate]. f_equal. apply IH.
-  intros H. apply Hnd. rewrite /pro_done Exists_cons. by right.
+  eapply Forall_impl; [exact (pro_fail_cont j) |].
+  intros a [-> | ->]; rewrite pro_alts_length; lia.
+Qed.
+
+Lemma pro_done_cont (g : list nat) : Forall pro_cont g -> ~ pro_done g.
+Proof.
+  intros HF Hd. rewrite /pro_done Exists_exists in Hd.
+  destruct Hd as (a & Ha & Hne). apply Hne.
+  exact (proj1 (Forall_forall _ _) HF a Ha).
+Qed.
+
+Lemma pro_done_fail (j : nat) : ~ pro_done (pro_fail j).
+Proof. exact (pro_done_cont _ (pro_fail_cont j)). Qed.
+
+Lemma pro_of_fail_length (j : nat) :
+  length (pro_of (pro_fail j)) = (pro_round * j)%nat.
+Proof.
+  induction j as [| j IH]; [reflexivity |].
+  rewrite pro_fail_S (pro_of_open_app _ _ (pro_done_fail j)) length_app IH.
+  assert (H31 : length (pro_of [3%nat; 1%nat]) = pro_round).
+  { rewrite /pro_round. vm_compute. reflexivity. }
+  rewrite H31. lia.
+Qed.
+
+Lemma pro_of_fail_banner (j i : nat) (b : bv 8) :
+  u_banner !! i = Some b ->
+  pro_of (pro_fail j ++ [3%nat]) !! (pro_round * j + i)%nat = Some b.
+Proof.
+  intros Hb.
+  rewrite (pro_of_open_app _ _ (pro_done_fail j)) pro_of_singleton pro_alts_3.
+  rewrite -pro_of_fail_length lookup_app_shift. exact Hb.
 Qed.
 
 Lemma pro_idx_app_le (cs z : list nat) (q : nat) :
@@ -974,7 +1104,7 @@ Qed.
    terminated round turns the stage's condition into the claim's. *)
 Lemma pro_pin_ok ps cs n a :
   pro_pin ps cs n -> Forall (fun x => (x < length pro_alts)%nat) ps ->
-  a <> 1%nat -> (a < length pro_alts)%nat ->
+  ~ pro_cont a -> (a < length pro_alts)%nat ->
   pro_ok (ps ++ [a]) cs (n `div` length echo_line).
 Proof.
   intros Hp HF Hne Ha. split.
@@ -1248,15 +1378,46 @@ Proof.
 Qed.
 
 (* ---- the PROLOGUE candidates: the CANONICAL resolutions ----
-   [bounded_lists 3 L] would be 3^L and would put the literals below out of
-   [vm_compute]'s reach.  Every bounded resolution has, round by round, the
-   prologue of a canonical one -- [replicate k 1 ++ [0]] (the round ended in
-   the prompt) or [replicate k 1 ++ [2]] (it ended in the fork diagnostic) --
-   and both the number of rounds and each [k] are bounded by the segment
-   ([pro_canon], [sess_n_pro_len]), so the search is finite. *)
+   [bounded_lists 4 L] would be 4^L and would put the literals below out of
+   [vm_compute]'s reach.  A settled round IS its letters -- the continuing
+   ones, then one ending letter -- and every letter costs at least two wire
+   bytes, so both the number of rounds and each round's length are bounded
+   by the segment ([pro_canon], [sess_n_pro_len]), and the search is
+   finite. *)
+Fixpoint cont_lists (n : nat) : list (list nat) :=
+  match n with
+  | O => [[]]
+  | S n' => (fun p => p.1 :: p.2) <$>
+              (List.list_prod [1%nat; 3%nat] (cont_lists n'))
+  end.
+
+Lemma elem_of_cont_lists (n : nat) (g : list nat) :
+  g ∈ cont_lists n <-> length g = n /\ Forall pro_cont g.
+Proof.
+  revert g. induction n as [|n IH]; intros g; cbn [cont_lists].
+  - rewrite elem_of_list_singleton. split.
+    + intros ->. split; [done|constructor].
+    + intros [Hl _]. by apply nil_length_inv.
+  - rewrite elem_of_list_fmap. split.
+    + intros ([c g'] & -> & Hp). cbn.
+      apply elem_of_list_In in Hp. apply in_prod_iff in Hp as [Hc Hg].
+      apply elem_of_list_In in Hg. apply IH in Hg as [Hl Hf].
+      split; [by rewrite /= Hl|]. rewrite Forall_cons. split; [| exact Hf].
+      apply elem_of_list_In in Hc. rewrite /pro_cont.
+      apply elem_of_cons in Hc as [-> | Hc]; [by left |].
+      apply elem_of_list_singleton in Hc. by right.
+    + intros [Hl Hf]. destruct g as [|c g']; [done|].
+      rewrite Forall_cons in Hf. destruct Hf as [Hc Hf].
+      exists (c, g'). split; [done|].
+      apply elem_of_list_In, in_prod_iff. split.
+      * apply elem_of_list_In. destruct Hc as [-> | ->];
+          [apply elem_of_list_here | by apply elem_of_list_further, elem_of_list_here].
+      * apply elem_of_list_In, IH. split; [by injection Hl|exact Hf].
+Qed.
+
 Definition pro_grp_cands (m : nat) : list (list nat) :=
-  mjoin ((fun k => [replicate k 1%nat ++ [0%nat];
-                    replicate k 1%nat ++ [2%nat]]) <$> List.seq 0 (S m)).
+  mjoin ((fun k => mjoin ((fun g => [g ++ [0%nat]; g ++ [2%nat]])
+                          <$> cont_lists k)) <$> List.seq 0 (S m)).
 
 Fixpoint pro_cands (rounds m : nat) : list (list nat) :=
   match rounds with
@@ -1265,15 +1426,19 @@ Fixpoint pro_cands (rounds m : nat) : list (list nat) :=
              List.list_prod (pro_grp_cands m) (pro_cands r m)
   end.
 
-Lemma elem_of_pro_grp_cands (m k t : nat) :
-  (k <= m)%nat -> (t = 0%nat \/ t = 2%nat) ->
-  (replicate k 1%nat ++ [t]) ∈ pro_grp_cands m.
+Lemma elem_of_pro_grp_cands (m : nat) (g : list nat) (t : nat) :
+  Forall pro_cont g -> (length g <= m)%nat -> (t = 0%nat \/ t = 2%nat) ->
+  (g ++ [t]) ∈ pro_grp_cands m.
 Proof.
-  intros Hk Ht. rewrite /pro_grp_cands elem_of_list_join.
-  exists [replicate k 1%nat ++ [0%nat]; replicate k 1%nat ++ [2%nat]]. split.
-  - destruct Ht as [-> | ->];
-      [ apply elem_of_list_here | by apply elem_of_list_further, elem_of_list_here ].
-  - apply elem_of_list_fmap. exists k. split; [reflexivity |].
+  intros Hg Hk Ht. rewrite /pro_grp_cands elem_of_list_join.
+  exists (mjoin ((fun g => [g ++ [0%nat]; g ++ [2%nat]]) <$> cont_lists (length g))).
+  split.
+  - rewrite elem_of_list_join. exists [g ++ [0%nat]; g ++ [2%nat]]. split.
+    + destruct Ht as [-> | ->];
+        [ apply elem_of_list_here | by apply elem_of_list_further, elem_of_list_here ].
+    + apply elem_of_list_fmap. exists g. split; [reflexivity |].
+      apply elem_of_cont_lists. by split.
+  - apply elem_of_list_fmap. exists (length g). split; [reflexivity |].
     apply elem_of_list_In, in_seq. lia.
 Qed.
 
@@ -1285,14 +1450,19 @@ Proof.
   apply elem_of_list_In, in_prod; by apply elem_of_list_In.
 Qed.
 
+Lemma pro_cont_bound (a : nat) : pro_cont a -> (a < length pro_alts)%nat.
+Proof. intros [-> | ->]; rewrite pro_alts_length; lia. Qed.
+
 Lemma pro_grp_cands_Forall m g :
   g ∈ pro_grp_cands m -> Forall (fun a => (a < length pro_alts)%nat) g.
 Proof.
   rewrite /pro_grp_cands elem_of_list_join. intros (l & Hg & Hl).
   apply elem_of_list_fmap in Hl as (k & -> & _).
-  assert (Hrep : Forall (fun a => (a < length pro_alts)%nat) (replicate k 1%nat)).
-  { apply Forall_forall. intros x Hx.
-    apply elem_of_replicate in Hx as [-> _]. rewrite pro_alts_length. lia. }
+  rewrite elem_of_list_join in Hg. destruct Hg as (l2 & Hg & Hl2).
+  apply elem_of_list_fmap in Hl2 as (g0 & -> & Hg0).
+  apply elem_of_cont_lists in Hg0 as [_ Hc].
+  assert (Hrep : Forall (fun a => (a < length pro_alts)%nat) g0).
+  { eapply Forall_impl; [exact Hc |]. exact pro_cont_bound. }
   apply elem_of_cons in Hg as [-> | Hg];
     [| apply elem_of_list_singleton in Hg; rewrite Hg];
     (apply Forall_app; split; [exact Hrep |];
@@ -1314,50 +1484,57 @@ Qed.
 Lemma pro_cands_nonempty (R m : nat) : exists g, g ∈ pro_cands R m.
 Proof.
   induction R as [| R IH]; [exists []; by apply elem_of_list_singleton |].
-  destruct IH as [g Hg]. exists ((replicate 0 1%nat ++ [0%nat]) ++ g).
+  destruct IH as [g Hg]. exists (([] ++ [0%nat]) ++ g).
   apply elem_of_pro_cands_app; [| exact Hg].
-  apply elem_of_pro_grp_cands; [lia | by left].
+  apply elem_of_pro_grp_cands; [constructor | cbn; lia | by left].
 Qed.
 
 (* ---- the canonical form of one round, and of a whole resolution ---- *)
 
+(* a settled resolution starts with a round: continuing letters, then an
+   ending one, then the rest *)
 Lemma pro_of_first_group (ps : list nat) :
   Forall (fun a => (a < length pro_alts)%nat) ps -> pro_done ps ->
-  exists (k t : nat),
-    (t = 0%nat \/ t = 2%nat) /\ (k <= length (pro_of ps))%nat
-    /\ pro_of ps = pro_of (replicate k 1%nat ++ [t]).
+  exists (g : list nat) (t : nat) (z : list nat),
+    ps = g ++ [t] ++ z /\ Forall pro_cont g /\ (t = 0%nat \/ t = 2%nat)
+    /\ (length g <= length (pro_of ps))%nat.
 Proof.
   induction ps as [| a ps IH]; intros HF Hd.
   { by apply Exists_nil in Hd. }
   rewrite Forall_cons in HF. destruct HF as [Ha HF].
   rewrite /pro_done Exists_cons in Hd.
-  destruct (decide (a = 1%nat)) as [Ha1 | Hne].
-  - subst a. destruct Hd as [Hc | Hd]; [done |].
-    destruct (IH HF Hd) as (k & t & Ht & Hk & Heq).
-    exists (S k), t. split; [exact Ht |]. split.
-    + cbn [pro_of]. rewrite pro_more_1 !length_app.
-      pose proof u_banner_pos as Hb. rewrite /u_banner length_app in Hb. lia.
-    + cbn [pro_of replicate app]. rewrite !pro_more_1. by rewrite Heq.
-  - exists 0%nat, a. rewrite pro_alts_length in Ha.
-    split; [lia |]. split; [lia |].
-    cbn [replicate app pro_of]. by rewrite !(pro_more_ne a _ Hne).
+  destruct (decide (pro_cont a)) as [Hc | Hne].
+  - destruct Hd as [Hn | Hd]; [done |].
+    destruct (IH HF Hd) as (g & t & z & Heq & Hg & Ht & Hk).
+    exists (a :: g), t, z. split; [by rewrite Heq |]. split; [by constructor |].
+    split; [exact Ht |].
+    cbn [pro_of length]. rewrite (pro_more_cont a _ Hc) length_app.
+    destruct (pro_alts !!! a) as [| y ys] eqn:Hy;
+      [ exfalso; exact (pro_alts_nonnil a Ha Hy) | cbn [length]; lia ].
+  - exists [], a, ps. split; [reflexivity |]. split; [constructor |].
+    split; [| cbn; lia].
+    rewrite pro_alts_length in Ha. rewrite /pro_cont in Hne.
+    destruct a as [|[|[|[|a]]]]; [by left | exfalso; apply Hne; by left
+                                 | by right | exfalso; apply Hne; by right | lia].
 Qed.
 
-Lemma pro_tail_group (k t : nat) (z : list nat) :
-  t <> 1%nat -> pro_tail (replicate k 1%nat ++ [t] ++ z) = z.
+Lemma pro_tail_group (g : list nat) (t : nat) (z : list nat) :
+  Forall pro_cont g -> ~ pro_cont t -> pro_tail (g ++ [t] ++ z) = z.
 Proof.
-  intros Ht. induction k as [| k IH]; cbn [replicate app pro_tail].
+  intros Hg Ht. induction g as [| a g IH]; cbn [app pro_tail].
   - by rewrite decide_False.
-  - exact IH.
+  - rewrite Forall_cons in Hg. destruct Hg as [Ha Hg].
+    rewrite decide_True; [| exact Ha]. by apply IH.
 Qed.
 
-Lemma pro_of_group_app (k t : nat) (z : list nat) :
-  t <> 1%nat ->
-  pro_of (replicate k 1%nat ++ [t] ++ z) = pro_of (replicate k 1%nat ++ [t]).
+Lemma pro_of_group_app (g : list nat) (t : nat) (z : list nat) :
+  Forall pro_cont g -> ~ pro_cont t ->
+  pro_of (g ++ [t] ++ z) = pro_of (g ++ [t]).
 Proof.
-  intros Ht. induction k as [| k IH]; cbn [replicate app pro_of].
+  intros Hg Ht. induction g as [| a g IH]; cbn [app pro_of].
   - by rewrite !(pro_more_ne t _ Ht).
-  - by rewrite !pro_more_1 IH.
+  - rewrite Forall_cons in Hg. destruct Hg as [Ha Hg].
+    by rewrite !(pro_more_cont a _ Ha) IH.
 Qed.
 
 Lemma pro_canon (R m : nat) : forall ps : list nat,
@@ -1373,20 +1550,21 @@ Proof.
     split; [reflexivity |]. intros r Hr. lia. }
   destruct (Hb 0%nat ltac:(lia)) as [Hr0 Hm0]. cbn [pro_from] in Hm0.
   assert (Hd : pro_done ps) by (apply (pro_from_done 0%nat ps); exact Hr0).
-  destruct (pro_of_first_group ps HF Hd) as (k & t & Ht & Hk & Heq).
-  assert (Htne : t <> 1%nat) by (destruct Ht as [-> | ->]; done).
+  destruct (pro_of_first_group ps HF Hd) as (g & t & z & Heq & Hg & Ht & Hk).
+  assert (Htne : ~ pro_cont t) by (destruct Ht as [-> | ->]; intros [H | H]; lia).
   destruct (IH (pro_tail ps) (pro_tail_Forall _ _ HF))
     as (ps1 & Hin1 & Hrd1 & Hag1).
   { intros r Hr. destruct (Hb (S r) ltac:(lia)) as [H1 H2].
     cbn [pro_from] in H2. rewrite pro_rounds_tail. split; [lia | exact H2]. }
-  exists ((replicate k 1%nat ++ [t]) ++ ps1). split.
+  exists ((g ++ [t]) ++ ps1). split.
   { apply elem_of_pro_cands_app; [| exact Hin1].
-    apply elem_of_pro_grp_cands; [lia | exact Ht]. }
+    apply elem_of_pro_grp_cands; [exact Hg | lia | exact Ht]. }
   split.
-  { rewrite -app_assoc pro_rounds_group; [by rewrite Hrd1 | exact Htne]. }
+  { rewrite -app_assoc pro_rounds_group; [by rewrite Hrd1 | exact Hg | exact Htne]. }
   intros r Hr. destruct r as [| r].
-  - cbn [pro_from]. rewrite -app_assoc (pro_of_group_app k t ps1 Htne). by rewrite -Heq.
-  - cbn [pro_from]. rewrite -app_assoc (pro_tail_group k t ps1 Htne).
+  - cbn [pro_from]. rewrite -app_assoc (pro_of_group_app g t ps1 Hg Htne).
+    rewrite Heq (pro_of_group_app g t z Hg Htne). reflexivity.
+  - cbn [pro_from]. rewrite -app_assoc (pro_tail_group g t ps1 Hg Htne).
     apply Hag1. lia.
 Qed.
 
@@ -1559,45 +1737,58 @@ Definition demo_seg : list mobs :=
 
 Lemma demo_disc_seg' : disc_seg' demo_seg.
 Proof.
-  eapply (disc_seg'_intro _ [0%nat] []);
+  eapply (disc_seg'_intro _ [3%nat; 0%nat] []);
     apply (bool_decide_unpack _); vm_compute; exact I.
 Qed.
 
-(* ...AND AT THE THREE FAILURE OPENINGS.  These are the literals that say
-   the owner's ruling of 2026-09-16 did not make the discipline vacuous:
-   the shell that had to be started twice, the fork that failed, and the
-   shell that died on its own fork panic after a completed line. *)
+(* ...AND AT THE FOUR OTHER OPENINGS.  These are the literals that say the
+   owner's rulings of 2026-09-16 and 2026-09-14 did not make the discipline
+   vacuous: the shell that had to be started twice, the fork that failed,
+   the shell that died on its own fork panic after a completed line, and
+   the shell whose init printed no banner at all. *)
 Definition demo_seg_exec : list mobs :=
-  ((fun b => ObsUartOut Uart0 b) <$> pro_of [1%nat; 0%nat])
+  ((fun b => ObsUartOut Uart0 b) <$> pro_of [3%nat; 1%nat; 3%nat; 0%nat])
   ++ [ObsUartIn Uart0 (Z_to_bv 8 101%Z)].
 
 Lemma demo_disc_seg'_exec : disc_seg' demo_seg_exec.
 Proof.
-  eapply (disc_seg'_intro _ [1%nat; 0%nat] []);
+  eapply (disc_seg'_intro _ [3%nat; 1%nat; 3%nat; 0%nat] []);
     apply (bool_decide_unpack _); vm_compute; exact I.
 Qed.
 
 Definition demo_seg_fork : list mobs :=
-  ((fun b => ObsUartOut Uart0 b) <$> pro_of [2%nat])
+  ((fun b => ObsUartOut Uart0 b) <$> pro_of [3%nat; 2%nat])
   ++ [ObsUartIn Uart0 (Z_to_bv 8 101%Z)].
 
 Lemma demo_disc_seg'_fork : disc_seg' demo_seg_fork.
 Proof.
-  eapply (disc_seg'_intro _ [2%nat] []);
+  eapply (disc_seg'_intro _ [3%nat; 2%nat] []);
     apply (bool_decide_unpack _); vm_compute; exact I.
 Qed.
 
 (* one whole line typed and echoed, the shell's fork1 panic, and init's
    restart -- the block whose alternative is 3 re-enters the prologue *)
 Definition demo_seg_panic : list mobs :=
-  ((fun b => ObsUartOut Uart0 b) <$> pro_of [0%nat])
+  ((fun b => ObsUartOut Uart0 b) <$> pro_of [3%nat; 0%nat])
   ++ mjoin ((fun b => [ObsUartIn Uart0 b; ObsUartOut Uart0 b]) <$> echo_line)
   ++ ((fun b => ObsUartOut Uart0 b) <$> (line_alts !!! 3%nat
-        ++ pro_of (pro_from 1%nat [0%nat; 0%nat]))).
+        ++ pro_of (pro_from 1%nat [3%nat; 0%nat; 3%nat; 0%nat]))).
 
 Lemma demo_disc_seg'_panic : disc_seg' demo_seg_panic.
 Proof.
-  eapply (disc_seg'_intro _ [0%nat; 0%nat] [3%nat]);
+  eapply (disc_seg'_intro _ [3%nat; 0%nat; 3%nat; 0%nat] [3%nat]);
+    apply (bool_decide_unpack _); vm_compute; exact I.
+Qed.
+
+(* THE BANNER-LESS OPENING (the ruling of 2026-09-14): init's console open
+   failed, it printed nothing, and the shell's "$ " is the round's first
+   byte *)
+Definition demo_seg_noban : list mobs :=
+  ((fun b => ObsUartOut Uart0 b) <$> u_prompt) ++ [ObsUartIn Uart0 (Z_to_bv 8 101%Z)].
+
+Lemma demo_disc_seg'_noban : disc_seg' demo_seg_noban.
+Proof.
+  eapply (disc_seg'_intro _ [0%nat] []);
     apply (bool_decide_unpack _); vm_compute; exact I.
 Qed.
 
@@ -1774,28 +1965,35 @@ Proof.
   exists [0%nat], []. apply (bool_decide_unpack _). vm_compute. exact I.
 Qed.
 
-(* ...and it is not vacuous either: the four schedules the section above
-   exhibits -- the good run, one exec failure, the fork failure, and the
-   shell that died on its own fork panic and was restarted -- satisfy it. *)
+(* ...and it is not vacuous either: the five schedules the section above
+   exhibits -- the good run, one exec failure, the fork failure, the shell
+   that died on its own fork panic and was restarted, and the banner-less
+   opening -- satisfy it. *)
 Lemma demo_good_out : good_out demo_seg.
 Proof.
-  exists [0%nat], []. apply (bool_decide_unpack _). vm_compute. exact I.
+  exists [3%nat; 0%nat], []. apply (bool_decide_unpack _). vm_compute. exact I.
 Qed.
 
 Lemma demo_good_out_exec : good_out demo_seg_exec.
 Proof.
-  exists [1%nat; 0%nat], []. apply (bool_decide_unpack _). vm_compute. exact I.
+  exists [3%nat; 1%nat; 3%nat; 0%nat], [].
+  apply (bool_decide_unpack _). vm_compute. exact I.
 Qed.
 
 Lemma demo_good_out_fork : good_out demo_seg_fork.
 Proof.
-  exists [2%nat], []. apply (bool_decide_unpack _). vm_compute. exact I.
+  exists [3%nat; 2%nat], []. apply (bool_decide_unpack _). vm_compute. exact I.
 Qed.
 
 Lemma demo_good_out_panic : good_out demo_seg_panic.
 Proof.
-  exists [0%nat; 0%nat], [3%nat].
+  exists [3%nat; 0%nat; 3%nat; 0%nat], [3%nat].
   apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.
+
+Lemma demo_good_out_noban : good_out demo_seg_noban.
+Proof.
+  exists [0%nat], []. apply (bool_decide_unpack _). vm_compute. exact I.
 Qed.
 
 (* AT AN INPUT POINT THE TWO BOUNDS MEET.  The discipline says the expected

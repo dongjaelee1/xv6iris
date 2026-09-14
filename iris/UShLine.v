@@ -1084,7 +1084,7 @@ Section UShLine.
                    Hdd0 Hddc Hwinf Hpre2 Hwsj Hbyte Hpref Hdl). }
         iDestruct "Hrest" as "[%Hws0 | Hbb]".
         { iLeft. iPureIntro. rewrite <- Hlws, Hws0. reflexivity. }
-        iRight. iDestruct "Hbb" as (cs0 ps0) "(#Hcs & #Hps & #HE & %Hbd)".
+        iRight. iDestruct "Hbb" as (cs0 ps0) "(#Hcs & #Hps & #HE & %Hbd & _)".
         iExists v, cs0, ps0. iFrame "Hpin Hcs Hps".
         iEval (rewrite Hlws) in "HE". iFrame "HE".
         iPureIntro. rewrite <- Hlws. exact Hbd. }

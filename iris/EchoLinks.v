@@ -137,20 +137,9 @@ Proof. vm_compute. reflexivity. Qed.
 (*  pins the stage its second prompt byte is written at.                 *)
 (* ===================================================================== *)
 Lemma pro_of_open_snoc_eq (ps : list nat) (a : nat) :
-  ~ pro_done ps -> a <> 1%nat ->
+  ~ pro_done ps ->
   pro_of (ps ++ [a]) = pro_of ps ++ pro_alts !!! a.
-Proof.
-  intros Hnd Ha. induction ps as [| c ps IH]; cbn [pro_of app].
-  - rewrite (pro_more_ne a (pro_of [])); [| exact Ha].
-    by rewrite app_nil_r.
-  - assert (Hc1 : c = 1%nat).
-    { destruct (decide (c = 1%nat)) as [? | Hne]; [done |].
-      exfalso. apply Hnd. rewrite /pro_done. by apply Exists_cons; left. }
-    subst c. rewrite !pro_more_1.
-    rewrite IH; last first.
-    { intros H. apply Hnd. rewrite /pro_done Exists_cons. by right. }
-    by rewrite !app_assoc.
-Qed.
+Proof. intros Hnd. by rewrite (pro_of_open_app ps [a] Hnd) pro_of_singleton. Qed.
 
 (* ...AND THE BLOCK AT A ROUND'S HEAD ENDS IN THAT PROLOGUE, whether the
    round is the transcript's first ([n = 0], the block IS the prologue) or
@@ -191,30 +180,33 @@ Lemma pending_n_round_snoc (ps cs : list nat) (n a : nat) :
   (n `mod` length echo_line)%nat = 0%nat ->
   (n = 0%nat \/ cs !!! (n `div` length echo_line - 1)%nat = 3%nat) ->
   ~ pro_done (pro_from (pro_idx cs (n `div` length echo_line)) ps) ->
-  a <> 1%nat ->
   (pro_idx cs (n `div` length echo_line) <= pro_rounds ps)%nat ->
   pending_n (ps ++ [a]) cs n = pending_n ps cs n ++ pro_alts !!! a.
 Proof.
-  intros Hm Hr Hnd Ha Hle.
+  intros Hm Hr Hnd Hle.
   destruct (pending_n_round_shape ps cs n Hm Hr) as [pre Hpre].
   rewrite !Hpre.
   rewrite (pro_from_snoc_le (pro_idx cs (n `div` length echo_line)) ps a Hle).
-  rewrite (pro_of_open_snoc_eq _ a Hnd Ha).
+  rewrite (pro_of_open_snoc_eq _ a Hnd).
   by rewrite app_assoc.
 Qed.
 
 
 (* ===================================================================== *)
-(*  THE ROUND'S BANNER, STILL OWED (lane IO-LEAF, M6a(2)).               *)
+(*  THE ROUND'S BANNER, STILL OWED (lane IO-LEAF, M6a(2); PROLOGUE-ALTS-3). *)
 (*                                                                       *)
-(*  [wr_pro] is where the round's CHOICE byte goes, and eighteen bytes    *)
-(*  before it stands /init, owing the round's banner.  That is the shape  *)
-(*  the console lease carries between a child's exit and the fork that    *)
-(*  follows it -- /init's own loop head -- and the one thing it needs     *)
-(*  beyond [wr_pro]'s side conditions is WHICH open prologue it is in:    *)
-(*  [j] failed sub-rounds, so the banner starts [pro_round * j] bytes     *)
-(*  into the round's block.  [EchoOut.proc_upto_round_banner_open]        *)
-(*  (PROLOGUE-ALTS-2) is what reads the bytes off it.                     *)
+(*  [wr_pro] is where the round's next LETTER goes, and at the head of    *)
+(*  a round that letter is /init's banner ([EchoDisc.pro_alts !!! 3]) --  *)
+(*  or, when /init's console is shut and it prints nothing, the shell's   *)
+(*  bare prompt ([pro_alts !!! 0]).  That is the shape the console lease  *)
+(*  carries between a child's exit and the fork that follows it --        *)
+(*  /init's own loop head -- and the one thing it says beyond [wr_pro]'s  *)
+(*  side conditions is WHICH open prologue it is in: [j] failed           *)
+(*  sub-rounds ([EchoDisc.pro_fail j]), so the banner starts             *)
+(*  [pro_round * j] bytes into the round's block.  The banner's first     *)
+(*  byte FILES the letter ([echo_link_pro] at [a = 3]); the other         *)
+(*  seventeen are ordinary writes against the bound that returns          *)
+(*  ([EchoOut.proc_upto_round_banner_open]).                              *)
 (* ===================================================================== *)
 Definition wr_pre (cs : list nat) (n : nat) : list (bv 8) :=
   if decide (n = 0%nat) then [] else line_alts !!! 3%nat.
@@ -225,57 +217,88 @@ Definition wr_ban (ps cs : list nat) (n P : nat) : Prop :=
   /\ (n `div` length echo_line)%nat = length cs
   /\ (n = 0%nat \/ cs !!! (n `div` length echo_line - 1)%nat = 3%nat)
   /\ (exists j : nat,
-        pro_from (pro_idx cs (n `div` length echo_line)) ps = replicate j 1%nat
+        pro_from (pro_idx cs (n `div` length echo_line)) ps = pro_fail j
         /\ P = (length (proc_upto ps cs n) + length (wr_pre cs n)
                 + pro_round * j)%nat).
 
-Lemma pro_of_replicate_length (j : nat) :
-  length (pro_of (replicate j 1%nat))
-  = (pro_round * j + length u_banner)%nat.
-Proof.
-  assert (Hb : length u_banner = 18%nat) by (vm_compute; reflexivity).
-  assert (He : length u_execfail = 21%nat) by (vm_compute; reflexivity).
-  assert (Ha : length (pro_alts !!! 1%nat) = 21%nat)
-    by (vm_compute; reflexivity).
-  assert (Hr : pro_round = 39%nat) by (vm_compute; reflexivity).
-  induction j as [| j IH].
-  - cbn [replicate pro_of]. lia.
-  - replace (replicate (S j) 1%nat) with (1%nat :: replicate j 1%nat)
-      by reflexivity.
-    change (pro_of (1%nat :: replicate j 1%nat))
-      with (u_banner ++ pro_alts !!! 1%nat
-            ++ pro_more 1%nat (pro_of (replicate j 1%nat))).
-    rewrite pro_more_1 (length_app u_banner)
-            (length_app (pro_alts !!! 1%nat)) IH. lia.
-Qed.
-
-Lemma pro_done_replicate (j : nat) : ~ pro_done (replicate j 1%nat).
-Proof.
-  rewrite /pro_done Exists_exists. intros (a & Ha & Hne).
-  apply elem_of_list_In, elem_of_replicate in Ha. by destruct Ha as [-> _].
-Qed.
-
-(* THE BANNER IS THE LAST EIGHTEEN BYTES OF THE ROUND'S BLOCK, so an
-   /init standing at its head is a [wr_pro] eighteen bytes on. *)
+(* THE BANNER-OWED CREDENTIAL IS THE ROUND'S CHOICE SHAPE: the open round
+   predicts nothing past its [j] failed sub-rounds, so the cursor stands
+   exactly at the round's next letter. *)
 Lemma wr_ban_pro (ps cs : list nat) (n P : nat) :
-  wr_ban ps cs n P -> wr_pro ps cs n (P + length u_banner)%nat.
+  wr_ban ps cs n P -> wr_pro ps cs n P.
 Proof.
   intros (Hpin & Hm & Hdv & Hr & (j & Hopen & HP)).
   rewrite /wr_pro. split_and!; try assumption.
-  - rewrite Hopen. exact (pro_done_replicate j).
+  - rewrite Hopen. exact (pro_done_fail j).
   - rewrite proc_upto_snoc length_app.
     rewrite (pending_n_round_pre ps cs n Hm Hr) length_app.
-    rewrite Hopen pro_of_replicate_length HP /wr_pre. lia.
+    rewrite Hopen pro_of_fail_length HP /wr_pre. lia.
 Qed.
 
+(* ...and the shape the banner's first byte leaves: the letter filed, the
+   cursor one in.  The stream below [n] does not read the new letter. *)
+Lemma wr_ban_low (ps cs : list nat) (n P : nat) :
+  wr_ban ps cs n P -> proc_upto (ps ++ [3%nat]) cs n = proc_upto ps cs n.
+Proof.
+  intros (Hpin & _ & _ & _ & _).
+  symmetry. rewrite /proc_upto. apply proc_upto_from_ext.
+  intros k _ Hk. apply (pending_n_ps_ext ps (ps ++ [3%nat]) cs k);
+    [by eexists | apply (pro_pin_at ps cs n k Hpin); lia].
+Qed.
+
+Lemma wr_ban_filed (ps cs : list nat) (n P : nat) :
+  wr_ban ps cs n P ->
+  exists j : nat,
+    pro_from (pro_idx cs (n `div` length echo_line)) (ps ++ [3%nat])
+    = pro_fail j ++ [3%nat]
+    /\ P = (length (proc_upto (ps ++ [3%nat]) cs n) + length (wr_pre cs n)
+            + pro_round * j)%nat.
+Proof.
+  intros Hw. pose proof Hw as (Hpin & Hm & Hdv & Hr & (j & Hopen & HP)).
+  exists j. split.
+  - rewrite (pro_from_snoc_le _ ps 3%nat (pro_pin_idx_le ps cs n Hpin)).
+    by rewrite Hopen.
+  - by rewrite (wr_ban_low ps cs n P Hw).
+Qed.
+
+(* every banner byte is where the stream of the FILED round says *)
 Lemma wr_ban_byte (ps cs : list nat) (n P i : nat) (b : bv 8) :
   wr_ban ps cs n P -> u_banner !! i = Some b ->
-  proc_upto ps cs (S n) !! (P + i)%nat = Some b.
+  proc_upto (ps ++ [3%nat]) cs (S n) !! (P + i)%nat = Some b.
 Proof.
-  intros (Hpin & Hm & Hdv & Hr & (j & Hopen & HP)) Hb.
+  intros Hw Hb. pose proof Hw as (Hpin & Hm & Hdv & Hr & _).
+  destruct (wr_ban_filed ps cs n P Hw) as (j & Hopen & HP).
   rewrite HP /wr_pre.
-  exact (proc_upto_round_banner_open ps cs n j i b Hm Hr Hopen Hb).
+  exact (proc_upto_round_banner_open (ps ++ [3%nat]) cs n j i b Hm Hr Hopen Hb).
 Qed.
+
+(* ...and after the eighteenth the round is at its prompt: [wr_pro] with
+   the banner filed, eighteen bytes on *)
+Lemma wr_ban_done (ps cs : list nat) (n P : nat) :
+  wr_ban ps cs n P -> wr_pro (ps ++ [3%nat]) cs n (P + length u_banner)%nat.
+Proof.
+  intros Hw. pose proof Hw as (Hpin & Hm & Hdv & Hr & (j & Hopen & HP)).
+  assert (Hle : (pro_idx cs (n `div` length echo_line) <= pro_rounds ps)%nat)
+    by exact (pro_pin_idx_le ps cs n Hpin).
+  assert (Hnd : ~ pro_done (pro_from (pro_idx cs (n `div` length echo_line)) ps))
+    by (rewrite Hopen; exact (pro_done_fail j)).
+  rewrite /wr_pro. split_and!.
+  - exact (pro_pin_mono ps (ps ++ [3%nat]) cs n ltac:(by eexists) Hpin).
+  - exact Hm.
+  - exact Hdv.
+  - exact Hr.
+  - rewrite (pro_from_snoc_le _ ps 3%nat Hle) Hopen.
+    apply pro_done_cont. rewrite Forall_app. split; [exact (pro_fail_cont j) |].
+    constructor; [by right | constructor].
+  - rewrite proc_upto_snoc (wr_ban_low ps cs n P Hw) length_app.
+    rewrite (pending_n_round_snoc ps cs n 3%nat Hm Hr Hnd Hle).
+    rewrite length_app (pending_n_round_pre ps cs n Hm Hr) length_app.
+    rewrite Hopen pro_of_fail_length pro_alts_3 HP /wr_pre. lia.
+Qed.
+
+Lemma wr_ban_head (b : bv 8) :
+  u_banner !! 0%nat = Some b -> pro_alts !!! 3%nat !! 0%nat = Some b.
+Proof. by rewrite pro_alts_3. Qed.
 
 Lemma wr_ban_round0 : wr_ban [] [] 0%nat 0%nat.
 Proof.
@@ -325,8 +348,7 @@ Proof.
   assert (Hup : proc_upto (ps ++ [0%nat]) cs (S n)
                 = proc_upto ps cs (S n) ++ u_prompt).
   { rewrite !proc_upto_snoc Hlow.
-    rewrite (pending_n_round_snoc ps cs n 0%nat Hm Hr Hnd
-               ltac:(lia) Hle) wr_pro_alts_0.
+    rewrite (pending_n_round_snoc ps cs n 0%nat Hm Hr Hnd Hle) wr_pro_alts_0.
     by rewrite app_assoc. }
   assert (Hlen : length (proc_upto (ps ++ [0%nat]) cs (S n)) = S (S P)).
   { rewrite Hup length_app wr_prompt_len. lia. }
@@ -438,6 +460,145 @@ Proof.
     assert (Hji : j = (n + (j - n))%nat) by lia.
     rewrite Hji -Nat.Div0.add_mod_idemp_l Hm Nat.add_0_l in Hm2.
     rewrite Nat.mod_small in Hm2; lia.
+Qed.
+
+(* ===================================================================== *)
+(*  THE DISCIPLINE LEMMA (PROLOGUE-ALTS-3, deliverable 3): AN UNTAINTED    *)
+(*  INPUT AT LINE [n] MEANS THE PROMPT OF LINE [n] WAS WRITTEN.            *)
+(*                                                                       *)
+(*  The claim says so (an echo at block [n] folds the WHOLE block --      *)
+(*  prompt included -- into the transcript, [EchoOut.D_app]), and the     *)
+(*  read hands the reader the two things that let it be spent without    *)
+(*  opening any claim: a persistent lower bound of the writer's cursor at *)
+(*  the end of the stream of every block the log's echoes closed          *)
+(*  ([EchoOut.turn_lb]) and the stage facts that make that stream         *)
+(*  computable from the reader's own bounds ([EchoOut.rd_stage]).  A      *)
+(*  holder of the WRITER's half whose credential says the block's prompt  *)
+(*  is not yet out ([wr_owed]: the round's letter or the line's block     *)
+(*  still to come) then has a cursor strictly BELOW that bound, and       *)
+(*  [EchoOut.turn_lb_le] refutes it.  In xv6 terms: the shell whose fd 2  *)
+(*  is shut never printed its prompt, so no disciplined line arrives on   *)
+(*  its fd 0 -- a read that delivers one is the taint.                    *)
+(* ===================================================================== *)
+
+(* THE LINE'S BLOCK IS OWED, and the reader's echoes closed it: the block  *)
+(* is a whole alternative, of which the writer has at most [d] bytes out.  *)
+Lemma wr_blk_read_refute (ps cs ps0 cs0 : list nat) (n P m d : nat) :
+  wr_blk ps cs n P ->
+  cs `prefix_of` cs0 ->
+  (d < length (line_alts !!! (cs0 !!! length cs)))%nat ->
+  (n < m)%nat -> rd_stage ps0 cs0 m ->
+  (ps `prefix_of` ps0 \/ ps0 `prefix_of` ps) ->
+  (length (proc_upto ps0 cs0 m) <= P + d)%nat -> False.
+Proof.
+  intros (Hpin & Hm & Hdv & HP) Hcs Hd Hnm (HFps0 & HFcs0 & Hpin0 & Hbnd0) Hps Hle.
+  pose proof echo_line_length as HL.
+  assert (Hn : n = (length echo_line * S (length cs))%nat).
+  { pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
+    rewrite Hdv in Hdm. lia. }
+  destruct Hcs as [z Hz].
+  (* the reader's pin, read at the writer's own line list *)
+  assert (Hpin0c : pro_pin ps0 cs n).
+  { intros q Hq.
+    assert (Hqc : (q <= length cs)%nat) by nia.
+    rewrite -(pro_idx_app_le cs z q Hqc) -Hz. apply Hpin0. lia. }
+  assert (Hb1 : ((n - 1) `div` length echo_line <= length cs)%nat).
+  { assert (H' : ((n - 1) `div` length echo_line < S (length cs))%nat)
+      by (apply Nat.Div0.div_lt_upper_bound; lia).
+    lia. }
+  (* the stream below the block is the writer's *)
+  assert (Hlow : proc_upto ps0 cs0 n = proc_upto ps cs n).
+  { destruct Hps as [Hps | Hps].
+    - symmetry.
+      exact (proc_upto_cs_prefix_pred ps ps0 cs cs0 n Hps ltac:(by eexists)
+               Hpin Hb1).
+    - transitivity (proc_upto ps0 cs n).
+      + symmetry.
+        exact (proc_upto_cs_prefix_pred ps0 ps0 cs cs0 n ltac:(reflexivity)
+                 ltac:(by eexists) Hpin0c Hb1).
+      + exact (proc_upto_cs_prefix_pred ps0 ps cs cs n Hps ltac:(reflexivity)
+                 Hpin0c Hb1). }
+  (* the block the reader's echoes closed is a whole alternative *)
+  assert (Hpend : (length (line_alts !!! (cs0 !!! length cs))
+                   <= length (pending_n ps0 cs0 n))%nat).
+  { rewrite /pending_n decide_False; [| lia].
+    rewrite decide_True; [| exact Hm]. rewrite /alt_cont.
+    assert (Hq1 : (n `div` length echo_line - 1)%nat = length cs)
+      by (rewrite Hdv; lia).
+    rewrite Hq1 length_app. apply Nat.le_add_r. }
+  assert (Hmono : (length (proc_upto ps0 cs0 (S n))
+                   <= length (proc_upto ps0 cs0 m))%nat)
+    by (apply prefix_length, proc_upto_mono; lia).
+  rewrite proc_upto_snoc length_app Hlow in Hmono. lia.
+Qed.
+
+(* ...AND EITHER SHAPE OF AN UNWRITTEN PROMPT: the round's letter still  *)
+(* to come, or the line's block.                                          *)
+Lemma wr_owed_read_refute (ps cs ps0 cs0 : list nat) (n P m : nat) :
+  wr_owed ps cs n P ->
+  (n < m)%nat -> rd_stage ps0 cs0 m ->
+  (ps `prefix_of` ps0 \/ ps0 `prefix_of` ps) ->
+  (cs `prefix_of` cs0 \/ cs0 `prefix_of` cs) ->
+  (length (proc_upto ps0 cs0 m) <= P)%nat -> False.
+Proof.
+  intros Hw Hnm Hrs Hps Hcs Hle.
+  pose proof Hrs as (HFps0 & HFcs0 & Hpin0 & Hbnd0).
+  pose proof echo_line_length as HL.
+  assert (Hqle : (n `div` length echo_line <= length cs0)%nat).
+  { etrans; [| exact Hbnd0]. apply Nat.Div0.div_le_mono. lia. }
+  destruct Hw as [Hw | Hw]; last first.
+  { (* the block owed: its first byte is unwritten *)
+    pose proof Hw as (Hpin & Hm & Hdv & HP).
+    assert (Hcs' : cs `prefix_of` cs0).
+    { destruct Hcs as [Hc | Hc]; [exact Hc |].
+      apply prefix_length in Hc. exfalso. lia. }
+    assert (Hd0 : (0 < length (line_alts !!! (cs0 !!! length cs)))%nat).
+    { destruct (line_alts !!! (cs0 !!! length cs)) as [| y ys] eqn:Hy;
+        [| cbn; lia].
+      exfalso. exact (line_alts_nonnil _ (cs_ok_of_Forall _ HFcs0 _) Hy). }
+    exact (wr_blk_read_refute ps cs ps0 cs0 n P m 0 Hw Hcs' Hd0 Hnm Hrs Hps
+             ltac:(lia)). }
+  (* the prologue open: the reader's round is settled, so its prologue is
+     strictly longer than the writer's *)
+  pose proof Hw as (Hpin & Hm & Hdv & Hr & Hnd & HP).
+  assert (Hcs' : cs `prefix_of` cs0).
+  { destruct Hcs as [Hc | Hc]; [exact Hc |].
+    pose proof (prefix_length _ _ Hc) as Hlc.
+    rewrite (prefix_length_eq _ _ Hc ltac:(lia)). reflexivity. }
+  destruct Hcs' as [z Hz].
+  assert (Hidx : pro_idx cs0 (n `div` length echo_line)
+                 = pro_idx cs (n `div` length echo_line)).
+  { rewrite Hz. apply pro_idx_app_le. lia. }
+  assert (Hdone0 : pro_done (pro_from (pro_idx cs (n `div` length echo_line)) ps0)).
+  { apply pro_from_done. rewrite -Hidx. exact (pro_pin_at ps0 cs0 m n Hpin0 Hnm). }
+  destruct Hps as [Hps | Hps]; last first.
+  { apply Hnd. exact (pro_done_mono _ _ (pro_from_mono _ _ _ Hps) Hdone0). }
+  assert (Hlow : proc_upto ps cs n = proc_upto ps0 cs0 n).
+  { apply (proc_upto_cs_prefix_pred ps ps0 cs cs0 n Hps ltac:(by eexists) Hpin).
+    assert (H' : ((n - 1) `div` length echo_line <= n `div` length echo_line)%nat)
+      by (apply Nat.Div0.div_le_mono; lia).
+    lia. }
+  assert (Hr0 : n = 0%nat \/ cs0 !!! (n `div` length echo_line - 1)%nat = 3%nat).
+  { destruct (decide (n = 0%nat)) as [-> | Hn0]; [by left | right].
+    destruct Hr as [Hr | Hr]; [done |].
+    assert (Hq1 : (1 <= length cs)%nat).
+    { destruct (decide (length cs = 0)%nat) as [Hd | Hd]; [| lia].
+      exfalso. pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
+      rewrite Hdv Hd Hm in Hdm. lia. }
+    rewrite Hz (lookup_total_prefix cs (cs ++ z) (n `div` length echo_line - 1)%nat
+                  ltac:(by eexists) ltac:(rewrite Hdv; lia)).
+    exact Hr. }
+  assert (Hlt : (length (pending_n ps cs n) < length (pending_n ps0 cs0 n))%nat).
+  { rewrite (pending_n_round_pre ps cs n Hm Hr) (pending_n_round_pre ps0 cs0 n Hm Hr0).
+    rewrite !length_app Hidx.
+    pose proof (pro_of_open_done_lt _ _ Hnd Hdone0 (pro_from_mono _ _ _ Hps)
+                  (pro_from_Forall _ _ _ HFps0)).
+    lia. }
+  assert (Hmono : (length (proc_upto ps0 cs0 (S n))
+                   <= length (proc_upto ps0 cs0 m))%nat)
+    by (apply prefix_length, proc_upto_mono; lia).
+  rewrite HP proc_upto_snoc length_app Hlow in Hle.
+  rewrite proc_upto_snoc length_app in Hmono. lia.
 Qed.
 
 Section echo_links.
@@ -617,32 +778,43 @@ Section echo_links.
   Proof. rewrite /ewc_cred. apply _. Qed.
 
   (* ...AND THE ONE PLACE THE CREDENTIAL IS BORN: round 0, at count 0,
-     with no round and no line resolved and the writer eighteen banner
-     bytes in.  [UInitBanner] is what supplies it. *)
-  Lemma wr_owed_round0 : wr_owed [] [] 0%nat 18%nat.
+     with the banner filed, no line resolved and the writer eighteen banner
+     bytes in.  [UInitBanner] is what supplies it, from [wr_ban_round0]. *)
+  Lemma wr_owed_round0 : wr_owed [3%nat] [] 0%nat 18%nat.
   Proof.
     left. rewrite /wr_pro. split_and!.
     - intros q Hq. lia.
     - vm_compute. reflexivity.
     - vm_compute. reflexivity.
     - by left.
-    - vm_compute. intro H. inversion H.
+    - cbn [pro_idx pro_from]. intros H.
+      apply Exists_cons in H as [H | H]; [apply H; by right | by apply Exists_nil in H].
     - vm_compute. reflexivity.
   Qed.
 
   (* =================================================================== *)
-  (*  /INIT'S BANNER, AT AN ARBITRARY ROUND (lane IO-LEAF, M6a(2)).       *)
+  (*  /INIT'S BANNER, AT AN ARBITRARY ROUND (lane IO-LEAF, M6a(2);        *)
+  (*  PROLOGUE-ALTS-3).                                                   *)
   (*                                                                     *)
   (*  The credential at [wr_ban] with [i] of the banner's eighteen bytes  *)
-  (*  already out.  Every byte is an ORDINARY write -- the round's choice *)
-  (*  is still open and the banner is the tail of the block the open      *)
-  (*  prologue already owes -- so the whole walk is [echo_link_w], and    *)
-  (*  what it ends at is [wr_pro]: the prompt's own shape.  That is how   *)
-  (*  the credential gets from /init's loop head to the shell it forks,   *)
-  (*  round 0 and every restart alike.                                    *)
+  (*  already out.  The FIRST byte files the banner letter                *)
+  (*  ([echo_link_pro] at [a = 3]), so from then on the writer's bound    *)
+  (*  names the letter ([ps ++ [3]]) and every later byte is an ORDINARY  *)
+  (*  write of what the letter owes ([echo_link_w]); what the walk ends   *)
+  (*  at is [wr_pro]: the prompt's own shape.  That is how the credential *)
+  (*  gets from /init's loop head to the shell it forks, round 0 and      *)
+  (*  every restart alike.  At [i = 0] the same credential pays the       *)
+  (*  shell's bare prompt instead ([ewc_ban_owed]): the ruling that the   *)
+  (*  banner is optional.                                                 *)
   (* =================================================================== *)
+  Definition wr_banp (ps cs : list nat) (n P i : nat) : Prop :=
+    match i with
+    | O => wr_ban ps cs n P
+    | S _ => exists ps' : list nat, ps = ps' ++ [3%nat] /\ wr_ban ps' cs n P
+    end.
+
   Definition ewc_ban (v : era_pins) (n : nat) (i : nat) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_ban ps cs n P⌝ ∗ turn v (P + i)%nat ∗ ps_lb v ps
+    ((∃ ps cs P : _, ⌜wr_banp ps cs n P i⌝ ∗ turn v (P + i)%nat ∗ ps_lb v ps
         ∗ cs_lb v cs ∗ E_lb v n) ∨ T)%I.
 
   Global Instance ewc_ban_timeless v n i : Timeless (ewc_ban v n i).
@@ -660,23 +832,48 @@ Section echo_links.
   Proof.
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
     iDestruct (echo_links_w with "Hlk") as "#Hw".
+    iDestruct (echo_links_pro with "Hlk") as "#Hpro".
     iDestruct (echo_links_taint with "Hlk") as "#Ht".
     rewrite /ewc_ban. iDestruct "Hc" as "[Hl | #HT]"; last first.
     { iApply ("Ht" $! k b Φ with "HT [HΦ]").
       iIntros "#HT'". iApply "HΦ". by iRight. }
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    pose proof (wr_ban_byte ps cs n P i b Hw Hb) as Hby.
-    pose proof Hw as (Hpin & Hm & Hdv & Hr & _).
-    iApply ("Hw" $! k v (P + i)%nat n b ps cs Φ
-              with "[%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-    { lia. }
-    { exact Hpin. }
-    { exact Hby. }
-    iIntros "Hres". iApply "HΦ".
-    iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-    iLeft. iExists ps, cs, P.
-    replace (P + S i)%nat with (S (P + i))%nat by lia.
-    iFrame "Htn' Hps' Hcs' HE'". by iPureIntro.
+    destruct i as [| i].
+    - (* the first byte FILES the banner letter *)
+      cbn [wr_banp] in Hw.
+      pose proof (wr_ban_pro ps cs n P Hw) as Hpr.
+      pose proof Hw as (Hpin & Hm & Hdv & Hr & _).
+      destruct Hpr as (_ & _ & _ & _ & Hnd & HP).
+      rewrite Nat.add_0_r.
+      iApply ("Hpro" $! k v P n 3%nat b ps cs Φ
+                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
+      { exact Hm. }
+      { exact Hr. }
+      { lia. }
+      { exact Hpin. }
+      { exact Hnd. }
+      { exact HP. }
+      { rewrite pro_alts_length. lia. }
+      { exact (wr_ban_head b Hb). }
+      iIntros "Hres". iApply "HΦ".
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
+      iLeft. iExists (ps ++ [3%nat]), cs, P.
+      replace (P + 1)%nat with (S P) by lia.
+      iFrame "Htn' Hps' Hcs' HE'". iPureIntro. cbn [wr_banp]. by exists ps.
+    - (* every later byte is an ordinary write of the filed letter *)
+      cbn [wr_banp] in Hw. destruct Hw as (ps' & -> & Hw).
+      pose proof (wr_ban_byte ps' cs n P (S i) b Hw Hb) as Hby.
+      pose proof Hw as (Hpin & Hm & Hdv & Hr & _).
+      iApply ("Hw" $! k v (P + S i)%nat n b (ps' ++ [3%nat]) cs Φ
+                with "[%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
+      { lia. }
+      { exact (pro_pin_mono ps' (ps' ++ [3%nat]) cs n ltac:(by eexists) Hpin). }
+      { exact Hby. }
+      iIntros "Hres". iApply "HΦ".
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
+      iLeft. iExists (ps' ++ [3%nat]), cs, P.
+      replace (P + S (S i))%nat with (S (P + S i))%nat by lia.
+      iFrame "Htn' Hps' Hcs' HE'". iPureIntro. cbn [wr_banp]. by exists ps'.
   Qed.
 
   (* ...AND WHAT THE EIGHTEENTH BYTE LEAVES: the prompt's own credential
@@ -687,9 +884,37 @@ Section echo_links.
     rewrite /ewc_ban /ewc_owed.
     iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    iLeft. iExists ps, cs, (P + length u_banner)%nat.
+    assert (H18 : length u_banner = 18%nat) by (vm_compute; reflexivity).
+    rewrite H18 in Hw. cbn [wr_banp] in Hw. destruct Hw as (ps' & -> & Hw).
+    iLeft. iExists (ps' ++ [3%nat]), cs, (P + length u_banner)%nat.
     iFrame "Htn Hps Hcs HE". iPureIntro. left.
+    exact (wr_ban_done ps' cs n P Hw).
+  Qed.
+
+  (* ...AND WHAT THE BANNER-OWED CREDENTIAL IS BEFORE ANY BYTE (the ruling
+     of 2026-09-14): the round's choice shape, so the shell's bare prompt
+     pays from it exactly as from [wr_pro] -- [echo_prompt_dollar] at this
+     arm files [pro_alts !!! 0] with no banner before it. *)
+  Lemma ewc_ban_pro (v : era_pins) (n : nat) :
+    ewc_ban v n 0%nat -∗
+    ((∃ ps cs P : _, ⌜wr_pro ps cs n P⌝ ∗ turn v P ∗ ps_lb v ps
+        ∗ cs_lb v cs ∗ E_lb v n) ∨ T).
+  Proof.
+    rewrite /ewc_ban.
+    iIntros "[Hl | #HT]"; last by iRight.
+    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
+    cbn [wr_banp] in Hw. rewrite Nat.add_0_r.
+    iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". iPureIntro.
     exact (wr_ban_pro ps cs n P Hw).
+  Qed.
+
+  Lemma ewc_ban_owed (v : era_pins) (n : nat) :
+    ewc_ban v n 0%nat -∗ ewc_owed v n.
+  Proof.
+    iIntros "Hc". iDestruct (ewc_ban_pro with "Hc") as "[Hl | #HT]";
+      rewrite /ewc_owed; last by iRight.
+    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
+    iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". iPureIntro. by left.
   Qed.
 
   (* =================================================================== *)
@@ -787,6 +1012,22 @@ Section echo_links.
     by iPureIntro.
   Qed.
 
+  (* THE SHELL'S '$' FROM THE BANNER-OWED SHAPE (PROLOGUE-ALTS-3): /init
+     printed nothing -- its console was shut -- and lent the shell the
+     credential at the round's head; the '$' is then the round's first
+     byte and files the bare prompt.  [EchoLinksBan.echo_prompt_dollar_ban]
+     is this at the tight shapes of [EchoLinksLine]. *)
+  Lemma echo_prompt_dollar_ban (k : nat) (v : era_pins) (n : nat) (b : bv 8)
+      (Φ : iProp Σ) :
+    b = u_prompt !!! 0%nat ->
+    era_pin γ k v -∗ echo_links -∗ ewc_ban v n 0%nat -∗ (ewc_sp v n -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+  Proof.
+    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iApply (echo_prompt_dollar k v n b Φ Hb with "Hpin Hlk [Hc] HΦ").
+    by iApply ewc_ban_owed.
+  Qed.
+
   (* ...AND WHAT A LINE'S READ DOES TO IT: nothing at all to the cursor
      ([EchoOut.pcount_echo]), and everything to the shape -- the line just
      echoed owes its block, so the credential is back at [wr_blk] and the
@@ -803,7 +1044,49 @@ Section echo_links.
     iPureIntro. right. exact (wr_open_read ps cs n P Hw).
   Qed.
 
-  (* ================================================================== *)
+  (* =================================================================== *)
+  (*  THE DISCIPLINE LEMMA, AS THE SHELL SPENDS IT: a credential that     *)
+  (*  says the boundary's prompt is not out, and a read at that boundary  *)
+  (*  that delivered a byte, are together the taint.  Everything is       *)
+  (*  handed back, so the caller keeps whatever arm it was on.            *)
+  (* =================================================================== *)
+  Lemma ewc_owed_read_refute (k : nat) (v : era_pins) (n : nat)
+      (ws : list (list mobs * bv 8)) :
+    (0 < length ws)%nat ->
+    ewc_owed v n -∗ read_ret T k v n ws -∗
+    T ∗ ewc_owed v n ∗ read_ret T k v n ws.
+  Proof.
+    intros Hws. iIntros "Hc Hr".
+    rewrite /ewc_owed. iDestruct "Hc" as "[Hl | #HT]"; last first.
+    { iSplitR; [iExact "HT" |]. iSplitR "Hr"; [by iRight | iExact "Hr"]. }
+    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
+    rewrite /read_ret. iDestruct "Hr" as "[[#HT Hdl] | [Hdlr Hfacts]]".
+    { iSplitR; [iExact "HT" |]. iSplitL "Htn".
+      - iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". by iPureIntro.
+      - iLeft. iSplitR; [iExact "HT" | iExact "Hdl"]. }
+    iDestruct "Hfacts" as (pops dl)
+      "(%Hrok & %Hdl & %Hpref & %Hidx & %Hbyte & Hrest)".
+    iDestruct "Hrest" as "[%Hws0 | Hbb]".
+    { exfalso. rewrite Hws0 in Hws. cbn in Hws. lia. }
+    iDestruct "Hbb" as (cs0 ps0) "(#Hcs0 & #Hps0 & #HE0 & %Hbd & #Htlb & %Hrs)".
+    iDestruct (ps_lb_cmp with "Hps Hps0") as %Hpsc.
+    iDestruct (cs_lb_cmp with "Hcs Hcs0") as %Hcsc.
+    iDestruct (turn_lb_le with "Htn Htlb") as %Hle.
+    iExFalso. iPureIntro.
+    exact (wr_owed_read_refute ps cs ps0 cs0 n P (n + length ws) Hw
+             ltac:(lia) Hrs Hpsc Hcsc Hle).
+  Qed.
+
+  Lemma ewc_owed_read_taint (k : nat) (v : era_pins) (n : nat)
+      (ws : list (list mobs * bv 8)) :
+    (0 < length ws)%nat ->
+    ewc_owed v n -∗ read_ret T k v n ws -∗ T.
+  Proof.
+    intros Hws. iIntros "Hc Hr".
+    iDestruct (ewc_owed_read_refute k v n ws Hws with "Hc Hr") as "($ & _ & _)".
+  Qed.
+
+  (* =================================================================== *)
   (*  ...AND THE LAW HOLDS, under the record's four equations.  This is  *)
   (*  the one place in the arc where the application's claims and the    *)
   (*  kernel's console contracts are the same object, and it is exactly  *)

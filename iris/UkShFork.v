@@ -306,8 +306,11 @@ Section UkShFork.
     (* THE CHILDREN SET IS OPENED FOR THE FORK-WAIT WINDOW (lane IO-LEAF,
        M3a) and closed again at the loop head: the fork MINTS the token at
        the generation that joined it, and the wait REPORTS what the reap
-       left.  The payload and the lend are still the trivial ones -- sh's
-       child's walk is at [UkRun.ukn_triv] until M3b opens them. *)
+       left.  THE PAYLOAD AND THE LEND ARE CHOSEN HERE (lane IO-LEAF,
+       M3b): nothing below this line hard-wires them any more -- the
+       child's walk takes the EQUATION and whatever it is lent -- so when
+       sh holds the era's credential at the line boundary (lane IO-LEAF,
+       M5) this is the one place that changes. *)
     iDestruct "Hch" as (Sc) "Hch".
     iApply (UkShDiag.wp_kshr_fork1_final N (ushf_pay f)
               sz l ∅ h1 m1 (66 + n) cw Sc (fun _ => True%I) emp%I
@@ -464,14 +467,19 @@ Section UkShFork.
          position, and a ghost half cannot be copied.  The parent keeps it
          ([UkSh.ush_pstate]'s fourth conjunct is on the parent's arm
          above). *)
-      (* the child's payload is TRIVIAL ([UkFork.wp_uk_ecall_fork_any]'s
-         arm); sh's own walk is at the weaker class either way *)
-      (* the equation the fork arm now gives is [UkRun.ukn_triv]'s BODY, and
+      (* the child's payload is the one chosen at the fork above; at the
+         trivial choice the arm's equation IS [UkRun.ukn_triv]'s body, and
          a hypothesis whose head is [eq] is invisible to instance search --
          so the class is named here, once, for [UkShMain]'s section
          variables to pick up. *)
       pose proof (Hti' : UkRun.ukn_triv N') as Htiv'.
       pose proof (ukn_const_of_triv N' Htiv') as Hcst'.
+      (* ...and the three things the child's walk takes as premises now
+         (lane IO-LEAF, M3b): its free exit row, its exec supply at its
+         own payload, and the wand a killer pays it with. *)
+      iDestruct (uxsup_at_triv N' with "Hxs") as "#Hxs'".
+      iAssert (□ (riscv_kill_cred -∗ UkRun.ukn_pay N' (-1)))%I as "#Hkw'".
+      { rewrite Htiv'. iModIntro. iIntros "_". done. }
       iDestruct "Hpay" as "(_ & #Hro' & #Hjt' & Hdat & Hbuf)".
       (* ---- 0x930  c.beqz a0,0x9c0 -- TAKEN: this is the child ---- *)
       iApply (wp_uk_cbeqz N' hA mA (mword_of_int 0x930)
@@ -510,8 +518,9 @@ Section UkShFork.
                 ltac:(unfold sh_buf; lia)
                 ltac:(unfold sh_buf, sh_nbuf, Z64 in *; lia)
                 ltac:(unfold sh_buf, sh_nbuf in *; lia)
-                Hszlo Hszal Hszok
-                with "Hdp Hcode' Hxs [] [] Hjt' Hline Hws Hsy Hustd [Hcwd] Hch Hfresh Hrun").
+                Hszlo Hszal Hszok (ukn_pay_free_of_triv N' Htiv')
+                with "Hdp Hcode' Hxs' Hkw' [] [] Hjt' Hline Hws Hsy Hustd
+                      [Hcwd] Hch Hfresh Hrun").
       + iApply (ushf_code_shp with "Hcode'").
       + iApply (ushf_rodata_shp with "Hro'").
       + iApply (UserCwd.ucwd_any_of with "Hcwd").

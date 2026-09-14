@@ -91,15 +91,15 @@ Section UkShMain.
      CLASS so that it reaches the exit ecall without an argument at every
      call site ([UkRun.ukn_triv]). *)
   Context `{Hpay : !ukn_const N}.
-  (* ...AND THE CHILD'S PAYLOAD IS TRIVIAL, which is a strictly stronger
-     fact and the one [UkShRun.wp_kshr_runcmd]'s exec arm needs: the
+  (* THE CHILD'S PAYLOAD IS NOT TRIVIAL ANY MORE (lane IO-LEAF, M3b).
+     There used to be a second class here, [UkRun.ukn_triv N], because the
      generic exec supply [UkRun.uxsup] is the exec bundle at the trivial
-     payload ([UkRun.uxsup_at] is the payload-general form), and this file walks
-     the process sh FORKED -- [UkFork.wp_uk_ecall_fork_any]'s child arm
-     gives the equation.  sh's OWN payload is not trivial (it holds the
-     console reader token), which is why the two classes are both here
-     and only this side has the second. *)
-  Context `{Htriv : !ukn_triv N}.
+     payload and this file walks the process sh FORKED.  A child that has
+     to ECHO A LINE cannot be at the trivial payload: what it owes its
+     parent is the era's credential at the alternative it took.  So the
+     two things the class was used for -- the free exit row and the exec
+     supply -- are PREMISES of the two lemmas below, at whatever payload
+     sh chose for its child. *)
   (* the fields, under the names the engine has always used *)
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).
@@ -528,11 +528,18 @@ Section UkShMain.
     ushp_tokens len f 0 toks ->
     (length toks < 10)%nat ->
     0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
+    (* THE PAYLOAD IS FREE AT THIS RECORD (lane IO-LEAF, M3b): a premise
+       now, where it used to be [UkRun.ukn_pay_free_of_triv] off the
+       file's own class. *)
+    (⊢ ukn_pay N (-1)) ->
     UkSh.sh_deps -∗
     shk_code γt -∗
-    (* the exec deposit's supplier -- [UkRun.uxsup], see
-       [UkShRun.wp_kshr_runcmd]: this walk reaches runcmd's EXEC arm *)
-    uxsup -∗
+    (* the exec deposit's supplier -- [UkRun.uxsup_at] at THIS record's
+       own payload, see [UkShRun.wp_kshr_runcmd]: this walk reaches
+       runcmd's EXEC arm, and its forks run at the same payload. *)
+    uxsup_at (ukn_pay N) -∗
+    (* ...and how a killer pays for a forked child (lane IO-LEAF, M3b) *)
+    □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
     shp_code γt -∗ shp_rodata γt -∗ ush_jtab γt -∗
     ustr γd (DfracOwn 1) s0 len f -∗
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
@@ -546,8 +553,9 @@ Section UkShMain.
       (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38.
-    iIntros "#Hdp #Hcode #Hxs #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hrun".
+    intros Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38 Hpx.
+    iIntros "#Hdp #Hcode #Hxs #Hkw #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd
+             Hch HM Hrun".
     (* the line's own bytes are non-NUL, which is what makes each token a
        string once the cut lands *)
     iDestruct (ustr_nonul with "Hline") as %Hnn0.
@@ -602,7 +610,7 @@ Section UkShMain.
           apply bv_eq; vm_compute; reflexivity).
     (* ---- parsecmd ---- *)
     iApply (UkShParseCmd.wp_kshp_parser N UMalloc (usz γs szv)
-              Hmalloc (ukn_pay_free_of_triv N Htriv)
+              Hmalloc Hpx
               h2 m2 dw dv s0 len f toks
               (8 + (UkShDiag.ush_Dg + n))
               Ha0_2 Hns Htoks Htlen Hs0 Hs64
@@ -640,15 +648,15 @@ Section UkShMain.
                                 (ushp_nulfold toks (ushp_ext len f)) toks))
             + (2 + (UkShDiag.ush_Dg + (60 + n))))%nat
       by (cbn [ush_ht]; lia).
-    (* runcmd is stated at the record's OWN exec payload now; this file's
-       record is the forked child's, which pays nothing. *)
-    iDestruct (uxsup_at_triv N with "Hxs") as "#Hxs'".
+    (* runcmd is stated at the record's OWN exec payload, and since lane
+       IO-LEAF's M3b its forks are at that payload too -- so the one
+       supply this walk carries is the one it hands on. *)
     iApply (UkShDiag.wp_kshr_runcmd_final Hpsok_free
               (UExec (ush_args s0 (ushp_nulfold toks (ushp_ext len f)) toks))
               ltac:(cbn [ush_simple]; exact I)
               N h4 m4 p szv ld (60 + n)
-              (ukn_pay_free_of_triv N Htriv) Ha0_4
-              with "Hdp Hcode Hxs' Hxs Hjt Htree Hsz Hstd Hcwd Hch Hrun").
+              Hpx Ha0_4
+              with "Hdp Hcode Hxs Hkw Hjt Htree Hsz Hstd Hcwd Hch Hrun").
   Qed.
 
   (* ===================================================================== *)
@@ -682,11 +690,18 @@ Section UkShMain.
     8344 <= sz ->
     UserPtTree.pgroundup sz = sz ->
     usz_ok (sz + 65536) ->
+    (* THE PAYLOAD IS FREE AT THIS RECORD (lane IO-LEAF, M3b): a premise
+       now, where it used to be [UkRun.ukn_pay_free_of_triv] off the
+       file's own class. *)
+    (⊢ ukn_pay N (-1)) ->
     UkSh.sh_deps -∗
     shk_code γt -∗
-    (* the exec deposit's supplier -- [UkRun.uxsup], see
-       [UkShRun.wp_kshr_runcmd]: this walk reaches runcmd's EXEC arm *)
-    uxsup -∗
+    (* the exec deposit's supplier -- [UkRun.uxsup_at] at THIS record's
+       own payload, see [UkShRun.wp_kshr_runcmd]: this walk reaches
+       runcmd's EXEC arm, and its forks run at the same payload. *)
+    uxsup_at (ukn_pay N) -∗
+    (* ...and how a killer pays for a forked child (lane IO-LEAF, M3b) *)
+    □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
     shp_code γt -∗ shp_rodata γt -∗ ush_jtab γt -∗
     ustr γd (DfracOwn 1) s0 len f -∗
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
@@ -699,14 +714,16 @@ Section UkShMain.
       (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38 Hszlo Hszal Hszok.
-    iIntros "#Hdp #Hcode #Hxs #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hrun".
+    intros Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hpx.
+    iIntros "#Hdp #Hcode #Hxs #Hkw #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd
+             Hch HM Hrun".
     iApply (wp_kshm_child (UkShMalloc.ushm_fresh N sz) (sz + 65536)
               (UkShMalloc.ushm_malloc_ok_holds N Hpsok_free sz
                  Hszlo Hszal Hszok)
               h m dw dv s0 len f toks ld n
-              Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38
-              with "Hdp Hcode Hxs Hpcode Hpro Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hrun").
+              Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38 Hpx
+              with "Hdp Hcode Hxs Hkw Hpcode Hpro Hjt Hline Hws Hsy Hstd Hcwd
+                    Hch HM Hrun").
   Qed.
 
 End UkShMain.

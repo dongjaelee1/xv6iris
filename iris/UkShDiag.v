@@ -7655,27 +7655,28 @@ Section UkShDiagLeaf.
   (* --------------------------------------------------------------------- *)
   (* AT ONE CLASS ([ukn_const]), like every other lemma of sh's walk: the
      exec supply names THIS record's own payload ([UkRun.uxsup_at]), so
-     runcmd no longer asks its caller to be trivial.  A caller whose
-     record is trivial -- sh's forked child is, by
-     [UkFork.wp_uk_ecall_fork_any]'s arm -- passes [UkRun.uxsup]. *)
+     runcmd no longer asks its caller to be trivial -- and since lane
+     IO-LEAF's M3b the forks inside it are at THAT payload too, so the
+     second, trivial supply is gone and a kill wand stands in its place. *)
   Lemma wp_kshr_runcmd_final (c : ushcmd) :
     ush_simple c ->
     forall (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile) (t szv : Z)
            (ld : list fdstate) (n : nat),
       (* THE PAYLOAD IS FREE AT THIS RECORD (lane KILL-PAY, K4(a), ruling
          R-B): this walk ends in [exit] and every process that runs
-         [runcmd] is sh's FORKED CHILD, at [UkRun.ukn_triv] --
-         [UkRun.ukn_pay_free_of_triv] discharges it. *)
+         [runcmd] is sh's FORKED CHILD.  It is a PREMISE and no longer a
+         class: since lane IO-LEAF's M3b the child's payload is the one
+         sh chose for it. *)
       (⊢ ukn_pay N (-1)) ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       (* the three deposits sh owes, passed straight through to the
          diagnostic leaf this lemma discharges ([UkSh.sh_deps]) *)
       UkSh.sh_deps -∗
       shk_code (ukn_t N) -∗
-      (* the exec deposit's two suppliers -- see [wp_kshr_runcmd]: this
-         record's own payload, and the trivial one its forks run at *)
+      (* the exec deposit's supplier -- see [wp_kshr_runcmd]: this
+         record's own payload, which is its forked children's too *)
       uxsup_at (ukn_pay N) -∗
-      uxsup -∗
+      □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
       ush_jtab (ukn_t N) -∗ ush_cmd (ukn_d N) t c -∗ usz (ukn_s N) szv -∗
       UserFd.ustd (ukn_fd N) ld -∗
       UserCwd.ucwd_any (ukn_cwd N) -∗
@@ -7686,8 +7687,8 @@ Section UkShDiagLeaf.
   Proof. exact (wp_kshr_runcmd ush_Dg Hpsok_free ush_diag_leaf_holds c). Qed.
 
   (* CWD-INDEXED (lane E4): [UkShRun.wp_kshr_fork1]'s value-preserving
-     form at sh's own diagnostic leaf; [wp_kshr_fork1_final_any] below is
-     the index-free corollary the body still takes. *)
+     form at sh's own diagnostic leaf.  ([wp_kshr_fork1_final_any], the
+     index-free corollary, is gone -- see the note below.) *)
   Lemma wp_kshr_fork1_final (N : uk_names Σ) `{!ukn_const N}
       (P : gname -> gname -> gname -> iProp Σ) `{FP : !Forkable P}
       (szv : Z) (l : list fdstate) (D : gmap nat fdstate)
@@ -7751,60 +7752,9 @@ Section UkShDiagLeaf.
              N P szv l D h m n cw Sc Q Rc).
   Qed.
 
-  Lemma wp_kshr_fork1_final_any (N : uk_names Σ) `{!ukn_const N}
-      (P : gname -> gname -> gname -> iProp Σ) `{FP : !Forkable P}
-      (szv : Z) (l : list fdstate) (D : gmap nat fdstate)
-      (h : CpuId) (m : regfile) (n : nat) :
-    UkSh.sh_deps -∗
-    shk_code (ukn_t N) -∗ shk_rodata (ukn_t N) -∗ P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
-    UserFd.ustd (ukn_fd N) l -∗
-    UserCwd.ucwd_any (ukn_cwd N) -∗
-    UserChildren.uch_any (ukn_ch N) -∗
-    ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
-    (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)): fork1's [-1] arm
-       panics and a panic ends in [exit].  The returning arm hands it
-       straight back. *)
-    ukn_pay N (-1) -∗
-    urun N h m (mword_of_int ShSyms.fork1) (2 + (ush_Dg + n)) -∗
-    ((∀ (h' : CpuId) (m' : regfile) (r : mword 64),
-        ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
-        ⌜ ucallee_saved m m' ⌝ -∗
-        ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
-        P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
-        UserFd.ustd (ukn_fd N) l -∗
-        UserCwd.ucwd_any (ukn_cwd N) -∗
-        UserChildren.uch_any (ukn_ch N) -∗
-        ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
-        (* ...and back, unspent: fork1 returned *)
-        ukn_pay N (-1) -∗
-        urun N h' m'
-          (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)))
-          (2 + (ush_Dg + n)) -∗
-        WP (Loop : expr riscv_lang)) ∗
-     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile),
-        (* THE CHILD'S PAYLOAD IS TRIVIAL, and it is the one place in sh's
-           walk that is: sh FORKS at [fun _ => True]
-           ([UkFork.wp_uk_ecall_fork_any]'s child arm gives the equation),
-           because what sh's children owe it is nothing -- sh's OWN payload
-           is the console reader token and the rest of this walk is stated
-           at [UkRun.ukn_const].  The arm hands the class on and every leaf
-           below it, exit included, resolves it. *)
-        ⌜ ukn_triv N' ⌝ -∗
-        ⌜ ucallee_saved m m' ⌝ -∗
-        ⌜ m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝ -∗
-        shk_code (ukn_t N') -∗ P (ukn_t N') (ukn_d N') (ukn_s N') -∗ usz (ukn_s N') szv -∗
-        UserFd.ustd (ukn_fd N') l -∗
-        UserCwd.ucwd_any (ukn_cwd N') -∗
-        UserChildren.uch_any (ukn_ch N') -∗
-        ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N') fd st) -∗
-        urun N' h' m'
-          (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)))
-          (2 + (ush_Dg + n)) -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
-    exact (wp_kshr_fork1_any ush_Dg ush_diag_leaf_holds
-             N P szv l D h m n).
-  Qed.
+  (* [wp_kshr_fork1_final_any] IS GONE (lane IO-LEAF, M3b): it had no
+     callers and it hard-wired the child's payload at [fun _ => True].
+     [UkShRun.wp_kshr_fork1_any] is the index-free corollary, and it
+     forks at the caller's OWN payload. *)
 
 End UkShDiagLeaf.

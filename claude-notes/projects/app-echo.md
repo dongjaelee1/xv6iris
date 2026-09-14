@@ -109,9 +109,11 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   entailment of `Hsh_owed`; landing with `Hphi` closed.
 - [x] ~~**FORK-REFUND**~~ LANDED 2026-09-16 (`e58f284a2`; the note below):
   fork's -1 arm returns `Rc`; `sfork_lend` on `sfam`.
-- [ ] **IO-LEAF** (programs): SURVEYED and REVIEWED 2026-09-16 (the notes
-  below); brief v2 + D8 ready; launches after TRAP-ROWS M2, FORK-REFUND,
-  PROLOGUE-ALTS.
+- [ ] **IO-LEAF** (programs; main checkout, `lane/io-leaf`): SURVEYED and
+  REVIEWED 2026-09-16 (the notes below); M1 LAUNCHED 2026-09-16 (brief v3
+  scratchpad `brief-io-leaf.md`): init's banner ROUND 0 through the chain
+  leaf, a new `EchoLinks.v` (D1's persistent law), `Tn` concrete; M2-M6
+  after TRAP-ROWS M2 and PROLOGUE-ALTS-2.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.

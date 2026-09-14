@@ -3393,6 +3393,44 @@ is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
 
+ENDGAME AUDIT (2026-09-16; read-only; scratchpad `endgame-audit.md`; tree at
+a72323b79 = M6a(1), which the audit fetched from the lane and which has since
+landed).  THE FREE WRITE LAW `udepw_law 16` IS SPENT AT ONLY FOUR LEAVES:
+`UkSh.ksh_w_of_law` (:1369), `ksh_w_of_prompt_in`'s right arm (:1462),
+`UkShDiag.ksh_w1_of_law` (:459), `UkInit.kinit_w1_of_law` (:1309); all 82
+`sh_deps` mentions are pass-throughs; `UkSh.wp_ksh_read`'s (:2087) is a dead
+premise deletable today.  REFUTE, DON'T PAY: `die_dw` ("init: wait returned
+an error") has no `pro_alts`/`line_alts` entry, so no link can pay it --
+thread `wp_uk_ecall_wait_null_live`'s row into `UkInit.wp_kinit_wait` (:1836,
+row-less today) and contradict `cs' = ∅` against `⌜γsh ∈ cs⌝` at
+`UkInitMain.v:1644`; likewise sh's "open %s failed" (excluded by
+`ush_simple`) and "cannot cd %s" (refutable from the line fact).  PAYABLE
+SITES map to `echo_link_pro` a=1/2 (init's exec/fork failures), `_blk` a=1/3
+(sh's child's "exec echo failed", sh's "fork"), `_pro` a=0 / `_blk` a=2 (the
+prompt).  M6a(1) already pays the prompt at every boundary; what is missing
+is ROUTING (`sh_prompt_pay_of_ushpr` drops the post with `iIntros "[$ _]"`;
+`ush_prompt_in` is entry-only).  `∨ True` INVENTORY with file:line in the
+audit, incl. the fork lend `UkShFork.v:320` (`Q := True`, `Rc := emp`) and six
+Coq-level `(⊢ ukn_pay N (-1))` premises (`UkShMain.v:534/706`,
+`UkShRun.v:2554/2592/2894`, `UkShDiag.v:8622`).  `ush_read_ans_of_era`
+(`UShLine.v:795`) DISCARDS the era's `cs_lb`/`ps_lb`/`E_lb` at the window's
+far end -- exactly what blocks spending `ewc_read` at the boundary.  TWO NEW
+BLOCKERS: (1) `sh_pay_rest` quantifies `T` internally over every `Persistent
+T`, but its discharger needs `UkSh.ush_gen_slot N T` ("the taint buys a
+generic slot"), false for arbitrary `T` -- RULED: restate `sh_pay_rest` at the
+application's taint (the two laws as premises inside the `∀ T`, or `T` fixed
+to `echo_taint c` in `Hsh_owed`'s second conjunct -- a trusted change,
+report it OLD/NEW); (2) `ksh_w` at a CLOSED/non-console descriptor has no
+discharge (only the free law and the console-pinned link); init's `ufd_l0`
+head arm reaches it -- RULED: derive `ksh_w_of_closed` from the write
+syscall's closed-fd arm (a write to a closed fd returns -1 and prints
+nothing), the same answer as the three-arm entry row's closed arm.  ORDER:
+M6a(2) routing -> M6b (`die_dw` deleted + the round-k banner) -> M3b core ->
+M4b(2) -> R3; M3b core and M4b(2) collide on UkShDiag/Run/Fork/Main/Echo and
+must be SERIALISED; R3 collides with M6a(2) only in UInitSh.v.  The
+thirteen audit assumptions are all statement-level; none touches
+`udepw_law`.
+
 IO-LEAF M6a(1) LANDED (2026-09-16; `a72323b79` on `3d3f4bbfb`; EchoLinks.v
 +464, UShOut.v, UInitBanner.v; build io52 in the main checkout; audit the
 thirteen; lemma_diff 1 GONE (`UShOut.ushps`, carried by the credential's

@@ -145,8 +145,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
 - [ ] **TRAP-ROWS-4** (kernel; `-tlw`, `lane/trap-rows-4`; brief scratchpad
   `brief-trap-rows-4.md`): MILESTONE A LANDED 2026-09-16 (`5f04889b0`; the
   note below: the boot end, the kernel invariant, the row at numbers);
-  MILESTONE B in flight (the pid number rides `sfam` as `sinit_pid`;
-  `ukn_pid`/`upid`; the fork-side token; the entry constructors).
+  B1a LANDED 2026-09-16 (`31aff80ee`; the note below: `ukn_pid`/`upid`, the
+  constructors); B1b in flight (RULED: init's pid pinned to the literal 1
+  via an optional exact-value ghost on the pid counter; the fork-side
+  token `⌜pidc <> 1⌝`; the wait leaf's `_pid` twin).
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
@@ -3376,6 +3378,35 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+TRAP-ROWS-4 B1a LANDED (2026-09-16; `31aff80ee` on `b992befc3`; 11 files
++289/-32; builds tr110-tr114 in `-tlw`; audit the thirteen; lemma_diff
+CLEAN; no Admitted).  A RUNNING PROCESS CAN NAME ITS OWN PID:
+`UserChildren.UserPid` -- `upid_auth`/`upid` over Z at `bv_unsigned pidv`
+(`ghost_varG Σ Z`, the class the tier already has; no update law -- a pid
+never moves); `uk_names` gains `ukn_pid : gname` and the pure `ukn_ipid :
+mword 32` AFTER `ukn_pay` (positional `MkUkNames` gained trailing
+arguments); the three `uslot_of_urun*` gain an `ipid` parameter, mint the
+pair at the key's own pid and hand the program `upid (ukn_pid N)
+(bv_unsigned (uvis_pid W))` after `uch`; `UkFork`'s child arm mints the
+child's pair at `pidc`.  THE DESIGN POINT: `urun_ids N cs pidv` bundles the
+children and pid authorities into ONE conjunct in `uch_auth`'s position, so
+the ~200 leaves that destructure `urun` positionally cost nothing; the
+three that read a half use `urun_ids_ch`/`urun_ids_pid`.  Every outside line:
+UShKernel:584/589, UInitKernel:369/374, UEchoKernel:456/462, UEchoOut:794/
+797, USyncKernel:182/187, UkInitMain:946, UkShRun:1093 (one `_` each);
+`sh_slot_of_kexec`'s arity unchanged.  B1b DESIGNED (`sfam_ip` re-keying)
+but ONE OBLIGATION HAS NO PARTY: the kernel owes the wait arm at the family
+the PROCESS deposited, so it needs `⌜sinit_pid f = un_ipid N⌝`, and neither
+side learns the other's number (the deposit is U->K, the arm K->U).  RULED:
+PIN INIT'S PID TO THE LITERAL 1 (the C: `nextpid` starts at 1, userinit's
+allocproc is the first allocation) -- `allocproc`'s spec gains an OPTIONAL
+exact-value ghost on the pid counter (`nextpid_is n` -> `⌜pid = n⌝ ∗
+nextpid_is (n+1)`; callers without it keep the old post); `ProofMain` mints
+`nextpid_is 1` at the seal; `ProofUserinit` learns `pid = 1`; everything
+downstream at the literal (`⌜pidc <> 1⌝`, `uwait_ans_pid … 1`); `sinit_pid`/
+`kf_ipid`/`sfam_ip`/`ukn_ipid` unnecessary.  If any allocation precedes
+userinit, the lane stops.  Handover: `trap-rows-4-B-handover.md`.
 
 TRAP-ROWS-4 MILESTONE A LANDED (2026-09-16; `5f04889b0` on `212d0aec7`; 29
 files +1115/-174; builds tr104-tr109 in `-tlw`; audit the thirteen;

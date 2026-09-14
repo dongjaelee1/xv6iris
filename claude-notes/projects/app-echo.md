@@ -117,9 +117,8 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   cone's per-byte family, the banner site); M1(e) LANDED 2026-09-16
   (`9250b2e81`; the note below: `UInitBanner.kinit_banner0_holds`; M1
   complete for round 0); M2 (echo's writes) next; M3-M6 after TRAP-ROWS M2.
-- [ ] **DUP-ROW** (kernel; `-sup`, `lane/dup-row`): phase 1 done 2026-09-16
-  (the note below), phase 2 (gate, rebase) in flight: the U-tier dup row
-  names its two reasons; init refutes them from its own ledger.
+- [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
+  U-tier dup row names its reasons on both arms.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
@@ -3348,6 +3347,27 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+DUP-ROW LANDED (2026-09-16; `18f1ab44e` on `7102d9de0`; 6 files +238/-80;
+builds dr0-dr4 in `-sup`; audit the thirteen; lemma_diff CLEAN; no Admitted).
+`UsysMemOk.usys_fd_ok`'s dup row says WHY on BOTH arms.  -1: `(∀ fd st,
+usys_argfd tf = fd -> sts !! fd = Some st -> st = FdClosed) ∨
+fd_lowest_closed sts = None` (the argument is not an open descriptor of the
+caller, at a nat index -- close's reason -- or the table is full); success:
+`sts !! Z.to_nat (usys_argfd tf) <> Some FdClosed`.  Exhaustive in the C:
+`argfd` rejects only out-of-range/null, `fdalloc` only a full scan, `argint`
+is void, `filedup` cannot fail.  THE KERNEL SPEC NEEDED NOTHING --
+`SpecSysDup.sys_dup_post` always named both reasons; `ProofSyscall.
+sysc_dup_priv` was discarding them.  U tier: `UkRunSys.wp_uk_ecall_dup`'s -1
+arm carries `fd_lowest_closed l = None` on the PROGRAM's ledger (the leaf
+discharges the first reason inside, holding `st <> FdClosed`);
+`wp_uk_ecall_dup_closed` now NAMES the -1; `UkInit.wp_kinit_dup_cons`/
+`_closed` relay both.  FDS 1/2 STILL UNPINNED, not the row's fault: IO-LEAF
+threads the named ledger from the open through both dups
+(`wp_kinit_dup_cons` at `ufd_l1`/`ufd_l2`; `ufd_scan1`/`2` kill the -1 arm by
+`congruence`; `init_cons_alloc1`/`2` give 1 and 2) and gives `ufd_head` a
+console arm at `ufd_l3` -- lane IO-LEAF M1(f).  Handover: scratchpad
+`dup-row-handover.md`.
 
 IO-LEAF M1(e) LANDED (2026-09-16; `9250b2e81` on `94f8d7c72`; 4 files; builds
 io10-io13 in the main checkout; audit the thirteen; lemma_diff CLEAN; no

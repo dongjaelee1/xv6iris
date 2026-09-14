@@ -230,6 +230,9 @@ Section UInitKernel.
 
   Lemma init_uexec_slot (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
       (stc : fdstate) (cn : cons_names)
+      (* the era's turn, an opaque [iProp] threaded the way [T] is
+         (lane CONS-IO milestone F) *)
+      (Tn : iProp Σ)
       (W : uvis) (n0 : nat) :
     stc <> FdClosed ->
     (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
@@ -322,6 +325,14 @@ Section UInitKernel.
        NARROW class, because this section binds [ctokG] without [xv6G]
        ([UserConsole.ucons_reader_eq] is the bridge). *)
     ucons_reader cn 0%nat -∗
+    (* ...AND THE ERA'S TURN (lane CONS-IO milestone F), beside the reader
+       token and travelling with it: the APPLICATION's own per-era
+       credential, minted at the power-on step, carried by the boot
+       ([App.Hinit_boot]) and handed to <init> here.  An OPAQUE [iProp]
+       threaded the way [T] is -- nothing at this altitude may name the
+       application's record -- and nothing on init's walk reads it: lane
+       IO-LEAF spends it at init's first banner byte. *)
+    Tn -∗
     (* THE PAY FACT, at the trivial payload: <init> has no parent, so its
        exit owes nobody anything -- userinit's choice, which the entry
        constructor writes into the record ([UkRun.ukn_pay]) and which
@@ -341,7 +352,7 @@ Section UInitKernel.
        it does not come back.  The bundle is spent once here, so a linear
        intro is what it wants; the destructuring [#(Hwr & Hwl15 & Hwl17)]
        the walk uses checks each conjunct on its own and is fine. *)
-    iIntros "Hdp #Hdep #Hxs Hdn Hrd #Hmp".
+    iIntros "Hdp #Hdep #Hxs Hdn Hrd Htn #Hmp".
     iApply (uslot_of_urun_all W (2 + (4 + (12 + (12 + (4 + n0))))) (fun _ => True)%I
               Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
     (* init's own half of its children set travels with its cwd: nothing
@@ -372,9 +383,9 @@ Section UInitKernel.
     rewrite Hpc.
     iApply (wp_kinit_start N Hpsok_free
               (ukn_pay_free_of_triv N (Hpayeq : UkRun.ukn_triv N))
-              T Cns stc cn (uvis_sz W) h
+              T Cns stc cn Tn (uvis_sz W) h
               (tf_resume_gpr0 (uvis_tf W)) n0 Hne Hkt
-              with "Hdp [] Hxs [Hdn] [] [] Hszf [Hstd] [Hcwf] [Hchf] [Hrd] Hrun").
+              with "Hdp [] Hxs [Hdn] [] [] Hszf [Hstd] [Hcwf] [Hchf] [Hrd] [Htn] Hrun").
     - iApply (init_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (init_img_text _ Hsub) Hx with "Ht").
     - iApply (init_cons_dance_at N T Cns stc with "Hdn").
@@ -387,13 +398,16 @@ Section UInitKernel.
     (* init's round starts at the token's own position, which at boot is
        the empty prefix ([UserConsole.uinit_tok_0]) *)
     - iApply (uinit_tok_0 cn T with "Hrd").
+    (* the era's turn, straight through to init's entry (lane CONS-IO
+       milestone F) *)
+    - iExact "Htn".
   Qed.
 
   (* ------------------------------------------------------------------- *)
   (* SS2 THE BRIDGE from the kernel's image fact.                          *)
   (* ------------------------------------------------------------------- *)
   Lemma init_slot_of_kexec (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names)
+      (stc : fdstate) (cn : cons_names) (Tn : iProp Σ)
       (na : nat) (alen : nat -> nat)
       (afun : nat -> nat -> bv 8) (sts : list fdstate)
       (W' : uvis) (n0 : nat) :
@@ -431,6 +445,9 @@ Section UInitKernel.
     (* the console reader token, passed straight through: see
        [init_uexec_slot] *)
     ucons_reader cn 0%nat -∗
+    (* ...and the era's turn beside it, likewise straight through (lane
+       CONS-IO milestone F) *)
+    Tn -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
   Proof.
     intros Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok_free Hlzf.
@@ -509,7 +526,7 @@ Section UInitKernel.
               0x3000 <= spv - 8 * Z.of_nat (2 + (4 + (12 + (12 + (4 + n0)))))
                         + Z.of_nat j < spv)
       by (intros j Hj; clear -Hj Hroom; lia).
-    iApply (init_uexec_slot T Cns stc cn W' n0 Hne Hkt).
+    iApply (init_uexec_slot T Cns stc cn Tn W' n0 Hne Hkt).
     - rewrite Hpc. exact init_start_pc.
     - exact (init_img_sub_of_elf M Himg).
     - exact Hx.
@@ -550,12 +567,20 @@ Section UInitKernel.
   (*  explicitly at the call, so the unification happens at one top-level   *)
   (*  application.                                                          *)
   (* ===================================================================== *)
+  (* ...AND THE ERA'S TURN RIDES THE SAME SLOT (lane CONS-IO milestone F).
+     The bundle has ONE linear slot and the turn is the third thing the boot
+     hands <init>: it is the APPLICATION's per-era credential, minted at the
+     power-on step, carried through [App.Hinit_boot], and spent by the
+     application's own ledger at init's first verified write.  Beside the
+     console lease rather than in [UkRun.urun]'s boot row, because it is
+     exactly as era-local as the lease is; an opaque [iProp] threaded the
+     way [T] is. *)
   Definition init_boot_pay (T Cns : iProp Σ) (cn : cons_names)
-      (stc : fdstate) : iProp Σ :=
-    (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat)%I.
+      (stc : fdstate) (Tn : iProp Σ) : iProp Σ :=
+    (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat ∗ Tn)%I.
 
   Lemma init_boot_con (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names)
+      (stc : fdstate) (cn : cons_names) (Tn : iProp Σ)
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (n0 : nat) :
     stc <> FdClosed ->
@@ -590,7 +615,7 @@ Section UInitKernel.
          ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗
          ⌜uvis_lazy W' = false⌝ -∗
          my_pay (uvis_gen W') (fun _ => True)%I -∗
-         init_boot_pay T Cns cn stc -∗ uslot W').
+         init_boot_pay T Cns cn stc Tn -∗ uslot W').
   Proof.
     (* THE BUNDLE IS NEVER TAKEN APART: it goes in through the box and
        straight out into [init_slot_of_kexec]'s own linear premise.  No
@@ -598,10 +623,10 @@ Section UInitKernel.
        statement's note. *)
     intros Hne Hkt Hroom Hlen Hl0 Hpsok.
     iIntros "#Hdp #Hdep #Hxs !>"
-      (W') "%Hok %Hcw %Hlz #Hmp [Hdn Hrd]".
-    iApply (init_slot_of_kexec T Cns stc cn na alen afun sts W' n0
+      (W') "%Hok %Hcw %Hlz #Hmp (Hdn & Hrd & Htn)".
+    iApply (init_slot_of_kexec T Cns stc cn Tn na alen afun sts W' n0
               Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok Hlz
-              with "Hdp Hdep Hxs Hdn Hrd Hmp").
+              with "Hdp Hdep Hxs Hdn Hrd Htn Hmp").
   Qed.
 
   (* ...and the two ways the application's boot resource builds the dance,

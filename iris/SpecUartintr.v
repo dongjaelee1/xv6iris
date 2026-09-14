@@ -183,14 +183,14 @@ Definition wp_uartintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
      is DONE with the byte, not whether it is popped: at [Uart1] the hook is
      null and the byte is dropped on the floor.  devintr hands the token over
      out of plic_claim's post and takes it back for plic_complete. *)
-  uart_rx_writer gu k hl -∗
+  uart_rx_writer i gu k hl -∗
   wp_next b pme (fun (CID : CpuId) =>
     ∀ mf : regfile,
       ⌜ callee_saved m mf /\ (forall r : regidx, r ∈ dom (rf_to_gmap mf)) ⌝ -∗
       sie_cap_gpr KT1 mf av b pme -∗
       cpu_own lvl eb pme b lks -∗
       pc_is ret_tgt -∗
-      (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_writer gu k' hl') -∗
+      (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_writer i gu k' hl') -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

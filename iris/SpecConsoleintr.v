@@ -211,11 +211,26 @@ Section EchoShift.
      is PURE from the stamp -- a comparison of the byte's history against
      the ledger's own is unprovable inside a link, because the observation
      authority lives in the state interpretation and no link holds it. *)
+  (* THE ECHO WINDOW TOKEN (lane CONS-IO milestone F), and it is the ONE
+     linear thing this persistent builder takes.  The shift is [□] and its
+     run is SPLIT -- the bytes go out through [WpUart.echo_link] and the log
+     entry is filed later through [WpUart.in_append] -- so an application
+     that claims a transcript has to answer for interleavings cons.lock
+     forbids but no premise here states (a second echo of one byte, an echo
+     after the append, two appends).  Nothing pure refutes them and nothing
+     the application owns crosses the two fupds: both port claims are read
+     out of the invariant and put straight back.  So the KERNEL lends the
+     application ITS OWN per-era exclusive here
+     ([RiscvPtsto.riscv_win_res], on the PLIC payload beside the receive
+     token) and the run's [in_append] hands it back: one firing per accepted
+     byte, provable from the application's own ghost state.  It is at the
+     era's index for the reason the claims are. *)
   Definition cons_echo_shift `{XI : CurCtx} : iProp Σ :=
     (□ ∀ (h : list mobs) (c : bv 8) (cs : list (bv 8)) (Φ : iProp Σ),
         ⌜obs_ends_in Uart0 h c⌝ -∗ ⌜obs_boots h = S gen_id⌝ -∗
         ⌜cons_echo c cs⌝ -∗
-        riscv_rx_tag h -∗ obs_hist_lb h -∗ Φ -∗ in_run (S gen_id) h c [] cs Φ)%I.
+        riscv_rx_tag h -∗ obs_hist_lb h -∗ riscv_win_res (S gen_id) -∗
+        Φ -∗ in_run (S gen_id) h c [] cs Φ)%I.
 
   Global Instance cons_echo_shift_persistent `{XI : CurCtx} :
     Persistent (cons_echo_shift (XI := XI)).
@@ -228,8 +243,8 @@ Section EchoShift.
     riscv_out_res = out_res_triv -> riscv_in_res = in_res_triv ->
     ⊢ cons_echo_shift (XI := XI).
   Proof.
-    intros Hout Hin. iIntros "!>" (h c cs Φ) "_ _ _ _ _ HΦ".
-    iApply (in_run_of_licence with "[] [] HΦ").
+    intros Hout Hin. iIntros "!>" (h c cs Φ) "_ _ _ _ _ Hwin HΦ".
+    iApply (in_run_of_licence with "[] [] Hwin HΦ").
     - by iApply in_licence_triv.
     - rewrite /out_licence Hout /out_res_triv.
       iIntros "!>" (k' h' acc b) "_". by iModIntro.
@@ -378,6 +393,14 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
      Like the ring's mark, it is a RESOURCE and not a pure premise: nothing
      else can say which of two histories came first. *)
   uart_log_hi γu (1/2) hg -∗
+  (* THE ECHO WINDOW TOKEN (lane CONS-IO milestone F), the fourth thing the
+     PLIC payload carries and the only one that is not the kernel's own: the
+     application's per-era exclusive, which [cons_echo_shift] takes and the
+     arm's append gives back.  It comes IN with the byte and goes OUT
+     unconditionally, on every arm, because every arm logs -- so uartintr
+     re-assembles the payload with it and the next byte's call has it
+     again. *)
+  riscv_win_res (S gen_id) -∗
   wp_next b pme (fun (CID : CpuId) =>
   ∀ Mf : regfile,
       ⌜ callee_saved m Mf /\ (forall r : regidx, r ∈ dom (rf_to_gmap Mf)) ⌝ -∗
@@ -401,6 +424,9 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
       (* ...AND THE LOG'S MARK, AT THIS BYTE.  No existential and no
          disjunction: the byte was logged, on every arm. *)
       uart_log_hi γu (1/2) (Some hb) -∗
+      (* ...AND THE ECHO WINDOW TOKEN, BACK (lane CONS-IO milestone F): the
+         append that closed this byte's log entry returned it. *)
+      riscv_win_res (S gen_id) -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

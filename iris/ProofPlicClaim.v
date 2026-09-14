@@ -265,9 +265,9 @@ Section ProofPlicClaim.
               a0_idx a5_idx (mword_of_int 4 : mword 12) N4 (n - 2)%nat plic_claim_ret_ok
               emp%I
               (fun cv => ((⌜ cv = Z_to_bv 32 (Z.of_N (uart_irq_id Uart0)) ⌝ -∗
-                             plic_payload_uart γd) ∗
+                             plic_payload_uart Uart0 γd) ∗
                           (⌜ cv = Z_to_bv 32 (Z.of_N (uart_irq_id Uart1)) ⌝ -∗
-                             plic_payload_uart γd1))%I)
+                             plic_payload_uart Uart1 γd1))%I)
               ltac:(rewrite HN4a5; exact (ph_geom_range _ (ph_sclaim_geom _ Hhart)))
               ltac:(rewrite HN4a5; exact (ph_geom_align _ (ph_sclaim_geom _ Hhart)))
               ltac:(rewrite HN4a5; exact (ph_geom_canon _ (ph_sclaim_geom _ Hhart)))

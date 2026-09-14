@@ -1366,10 +1366,14 @@ Section BootAlloc.
      rather than fixed: adequacy chooses it, this file only carries it.  It
      is the LAST conjunct on both sides, so nothing above moved and the
      proof is still one [iExact]. *)
-  Lemma power_boot_res_unpack (Rb : (Z -> bv 8) -> iProp Σ)
+  (* ...AND SO IS [Tn], THE ERA'S TURN (lane CONS-IO milestone F): the
+     APPLICATION's per-era credential for <init>, an opaque [iProp] this
+     file only carries -- it is [App.app_turn A c (S gen_id)] at the
+     adequacy that chooses it, and nothing below names the application. *)
+  Lemma power_boot_res_unpack (Rb : (Z -> bv 8) -> iProp Σ) (Tn : iProp Σ)
       (g : gstate) (ndisk : nat) :
     power_boot_res riscv_eraGS gen_id boot_D NPROC ndisk
-      (fun dk => FsCrash.mirror_of (FsCrash.fs_blocks dk)) Rb g ⊢
+      (fun dk => FsCrash.mirror_of (FsCrash.fs_blocks dk)) Rb Tn g ⊢
       ([∗ list] c ∈ enum CPU, boot_reg_res_at c (g.(gregs) c)) ∗
       boot_raw_bytes g ∗
       kmap_auth kmap_M0 ∗
@@ -1428,6 +1432,11 @@ Section BootAlloc.
          them again. *)
       out_res_at Uart0 (S gen_id) [] [] ∗
       in_res_at Uart0 (S gen_id) [] [] [] ∗
+      (* ...AND THE ERA'S ECHO WINDOW TOKEN AND ITS TURN (lane CONS-IO
+         milestone F), the power-on step's other two yields: the token goes
+         into the console port's PLIC payload at main's deposit, the turn
+         into <init>'s boot bundle. *)
+      Tn ∗ win_at Uart0 (S gen_id) ∗
       crash_inv ∗ gen_cert ∗
       (* A6.131: the era's image is the boot state's memory, as a pure fact *)
       ⌜era_img riscv_eraGS = g.(gimg)⌝.
@@ -1437,7 +1446,7 @@ Section BootAlloc.
        wrappers ([reg_pointsto]'s notation, the strans/sie/spp/spie splits)
        are sealed, so [iFrame] must unify them one at a time. *)
     iIntros "H". rewrite /power_boot_res.
-    iDestruct "H" as "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & H22 & Hores & Hires & H23 & H24 & H25 & H26)".
+    iDestruct "H" as "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & H22 & Hores & Hires & Htn & Hwin & H23 & H24 & H25 & H26)".
     rewrite /boot_reg_res /boot_raw_bytes /kmap_auth /kpt_unset /kptb_unset
             /hart_strans /hart_sie /hart_spp /hart_spie /hart_locks /hart_full
             /pstate_full /resv_frag /resv_fragb /uart_frag /plic_frag /virtio_frag
@@ -1477,6 +1486,8 @@ Section BootAlloc.
     iSplitL "H22"; [iExact "H22"|].
     iSplitL "Hores"; [iExact "Hores"|].
     iSplitL "Hires"; [iExact "Hires"|].
+    iSplitL "Htn"; [iExact "Htn"|].
+    iSplitL "Hwin"; [iExact "Hwin"|].
     iSplitL "H23 H24 H25"; [| iExact "H26"].
     iSplitL "H23"; [iExact "H23"|].
     iSplitL "H24"; [iExact "H24"|].
@@ -1609,6 +1620,13 @@ Section BootAlloc.
          epoch).  Threading it now is what keeps the change to the audited
          cone's spine one commit of its own. *)
       (Rb : (Z -> bv 8) -> iProp Σ)
+      (* THE ERA'S TURN (lane CONS-IO milestone F), the application's own
+         per-era credential for <init>.  Like [Rb] it arrives on
+         [power_boot_res] and this fupd only CARRIES it: it is handed out
+         below, and the era's caller ([SystemAdequacy.xv6_boot_era]) gives
+         it to [App.Hinit_boot] beside the boot resource.  An opaque
+         [iProp], because nothing at this altitude names the application. *)
+      (Tn : iProp Σ)
       (* THE EPOCH'S OWN GHOST NAMES (durable-disk BT-3).  This fupd does
          not read the snapshot itself -- it hands it straight to
          [FsCfgSnap.fs_cfg_alloc_snap], which reads [snap_ok] off it.  The
@@ -1658,7 +1676,7 @@ Section BootAlloc.
       (LogDefs.fs_restrict Pb
          (LogDefs.fs_home_set cov (FsImg.sb_logstart sb))) S -∗
     power_boot_res riscv_eraGS gen_id boot_D NPROC ndisk
-      (fun dk => FsCrash.mirror_of (FsCrash.fs_blocks dk)) Rb g
+      (fun dk => FsCrash.mirror_of (FsCrash.fs_blocks dk)) Rb Tn g
     ={⊤}=∗ ∃ (HFd : fdslotG Σ) (HIr : irefslotG Σ) (HPav : pavG Σ)
              (HBs : bioslotG Σ) (HWch : wchG Σ)
              (HF : fileG Σ) (γd : uart_names) (γd1 : uart_names)
@@ -1717,7 +1735,12 @@ Section BootAlloc.
          so all four of the array's words travel in
          [SpecConsoleintr.console_caps] instead. *)
       plic_inv γd γd1 ∗
-      wire_inv ∗ crash_inv ∗ gen_cert ∗
+      wire_inv ∗
+      (* THE ERA'S TURN, straight through from [power_boot_res] (lane
+         CONS-IO milestone F): this mint does not read it -- the era's
+         caller hands it to <init> in the boot bundle. *)
+      Tn ∗
+      crash_inv ∗ gen_cert ∗
       (* --- one bundle per hart --- *)
       ([∗ list] c ∈ enum CPU,
          ∃ iv : mword 32,
@@ -1758,6 +1781,10 @@ Section BootAlloc.
          ([WpUart.in_claim_at]), and it is what licenses consoleintr's one
          append per accepted byte. *)
       uart_log_hi γd (1/2) None ∗
+      (* ...AND THE ERA'S ECHO WINDOW TOKEN (lane CONS-IO milestone F),
+         which main parks in that same payload: the application's per-era
+         exclusive, minted at the power-on step and carried here. *)
+      riscv_win_res (Datatypes.S gen_id) ∗
       (∃ b0 : bool, uart_dlab_is γd (DfracOwn (1/2)) b0) ∗
       (* ---- AND THE SAME FOUR ROWS AT THE SECOND PORT.  [uartinit] runs
          [uartinitone] at BOTH ports, so both need the transmitter token,
@@ -1845,10 +1872,10 @@ Section BootAlloc.
     destruct Hbf' as (Hpow & Hin & Hmemf & Hregsf & Hu0 & Hp0 & Hv0' & _).
     destruct Hv0' as (v0 & Hv0).
     iIntros "Hok #Hxfer #Hseamg Hdursnap H".
-    iDestruct (power_boot_res_unpack Rb g ndisk with "H") as
+    iDestruct (power_boot_res_unpack Rb Tn g ndisk with "H") as
       "(Hregs & Hbytes & Hkauth & Hkfrags & Hkpt & Hkptb & Hstrans & Hsie & Hspp & Hspie &
         Hlkauth & Hpark & Hpst & Hresv & Huf & Hpf & Hvf & Hdimg & Hmir & #Hswlb &
-        HRb & Hled & Hores & Hires & #Hcinv & #Hcert & %Hera)".
+        HRb & Hled & Hores & Hires & Htn & Hwin & #Hcinv & #Hcert & %Hera)".
     (* DROPPED HERE: the lent resource this fupd carries is the CALLER's
        copy of the epoch's wrapper, already spent -- the caller split it
        off, unpacked it and handed the contents down as [Hdursnap].  At the
@@ -2337,6 +2364,7 @@ Section BootAlloc.
     iSplitR; [iExact "Hdev1" |].
     iSplitR; [iExact "Hplic" |].
     iSplitR; [iExact "Hwinv" |].
+    iSplitL "Htn"; [iExact "Htn" |].
     iSplitR; [iExact "Hcinv" |].
     iSplitR; [iExact "Hcert" |].
     iSplitL "Hres"; [iExact "Hres" |].
@@ -2353,6 +2381,7 @@ Section BootAlloc.
     iSplitL "Htok"; [iExact "Htok" |].
     iSplitL "Hhi2"; [iExact "Hhi2" |].
     iSplitL "Hlgh"; [iExact "Hlgh" |].
+    iSplitL "Hwin"; [iExact "Hwin" |].
     iSplitL "Hdlab";
       [iExists (uart_dlab (g.(gdev).(duart) Uart0)); iExact "Hdlab" |].
     iSplitL "Htx1 Hsent1".

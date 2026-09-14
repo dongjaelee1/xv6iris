@@ -92,14 +92,14 @@ Definition wp_plic_complete_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `
      caller owes it here.  [SpecPlicClaim]'s post is where it came from. *)
   (⌜ rget m0 (mword_of_int 10 : mword 5)
      = (mword_of_int (Z.of_N (uart_irq_id Uart0)) : mword 64) ⌝ -∗
-     plic_payload_uart γd) -∗
+     plic_payload_uart Uart0 γd) -∗
   (* ...and the SECOND port's, on the arm that completes 12.  uartintr pops
      port 1's FIFO too, so its writer came out of plic_claim and has to go
      back here; the two wands mirror [SpecPlicClaim]'s two post arms and at
      most one of them is ever satisfiable. *)
   (⌜ rget m0 (mword_of_int 10 : mword 5)
      = (mword_of_int (Z.of_N (uart_irq_id Uart1)) : mword 64) ⌝ -∗
-     plic_payload_uart γd1) -∗
+     plic_payload_uart Uart1 γd1) -∗
   ( ∀ m' : regfile,
     sie_cap_gpr KT1 m' n false p -∗
     pc_is ret_tgt -∗

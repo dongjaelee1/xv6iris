@@ -139,6 +139,9 @@ Section EchoAdequacy.
                  (* ...and the input log's (lane CONS-IO), which for echo is
                     E5's second placeholder *)
                  (app_in app_echo c) (echo_Hinpt c)
+                 (* ...and the echo window token's (lane CONS-IO milestone
+                    F), which for echo is E5's third placeholder *)
+                 (app_win app_echo c) (echo_Hwint c)
                  (app_fixed app_echo) c) g' -∗
            ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
            ▷ xv6_slot (app_names app_echo) (app_pred app_echo) cov
@@ -187,8 +190,11 @@ Section EchoAdequacy.
     (* ONE MORE HOLE since lane CONS-IO: [Hinpt] is fixed by unification the
        way [Houtt] is (it is named in [Hphi]'s literal above), so the only
        new goal is [Happ_in_sup]. *)
+    (* ONE MORE HOLE AGAIN since lane CONS-IO milestone F: [Hwint] is fixed
+       by unification the way [Hinpt] is (it is named in [Hphi]'s literal
+       above), so the hole list is one longer and no new goal appears. *)
     refine (xv6_app_adequacy Σ g sb nib cov app_echo
-              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
+              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
     - exact echo_Hbirth.
     - exact echo_Happ_kill.
     - exact echo_Happ_out_sup.
@@ -216,7 +222,8 @@ Section EchoAdequacy.
              [Hsh_owed] at that instance, and [echo_Hinit_boot] builds
              /init's slot from them without ever touching the supply. ---- *)
       
-      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen Hout Hin.
+      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen Hout Hin
+             Hwin.
       (* the record's [app_kill] field IS [AppEcho.echo_taint] (lane
          KILL-PAY, K1); [echo_Hinit_boot] is stated at the latter, and
          unification does not delta-unfold the record literal for it. *)
@@ -235,14 +242,18 @@ Section EchoAdequacy.
       rewrite <- Hgen in Heq, Htag, Hkill |- *.
       destruct (Hsh_owed HR GEN HBs HFd HIr HPav HWc HF)
         as (Hdeps & Hre).
-      iIntros "#Hinv Hb".
       (* [GEN] is IMPLICIT and fixed by unification -- from [Hw16] first
          and [Heq] after, both of which carry the record's own [GenId].
          Naming it here would pin the wrong one: the [GEN] this field
          binds is not the one [app_echo] was elaborated at. *)
       cbn [app_echo app_in] in Hin.
+      (* ...and the window token's field IS [AppEcho.echo_win] (lane
+         CONS-IO milestone F), on [app_in]'s mould *)
+      cbn [app_echo app_win] in Hwin.
+      iIntros "#Hinv Hb Hturn".
       iApply (echo_Hinit_boot HR GEN c r Hdeps Hre
-                Heq Htag Hkill Hout Hin with "Hinv Hb").
+                Heq Htag Hkill Hout Hin Hwin with "Hinv Hb [Hturn]").
+      cbn [app_echo app_turn]. iExact "Hturn".
     - (* [Happ_echo]: at [AppEcho.echo_out]'s E5 placeholder the console's
          output claim is trivial, so the echo justifies itself. *)
       exact echo_Happ_echo.

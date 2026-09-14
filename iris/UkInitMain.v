@@ -2372,6 +2372,11 @@ Section UkInitMain.
      ROOTINO]. *)
   Lemma wp_kinit_start (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
       (stc : fdstate) (cn : cons_names)
+      (* THE ERA'S TURN (lane CONS-IO milestone F): the application's own
+         per-era console credential, handed to <init> by the boot bundle
+         ([UInitKernel.init_boot_pay]) and HELD here.  An opaque [iProp],
+         threaded the way [T] is. *)
+      (Tn : iProp Σ)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
     (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
@@ -2402,12 +2407,23 @@ Section UkInitMain.
        or the taint, which init lends to each shell it forks
        ([UserConsole.uinit_lend]). *)
     uinit_tok cn T -∗
+    (* THE ERA'S TURN, beside the console lease and travelling with it
+       (lane CONS-IO milestone F): the kernel carries one per power cycle
+       from the application's power-on step to <init>
+       ([App.Hinit_boot] -> [UInitKernel.init_boot_pay]) and never looks
+       inside it.  <init> is the era's first verified writer, so this is
+       where the application's own ledger will spend it -- lane IO-LEAF, at
+       init's first banner byte.  Nothing in init's walk reads it yet. *)
+    Tn -∗
     urun N h m (mword_of_int InitSyms.start)
       (2 + (4 + (12 + (12 + (4 + n))))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hne Hkt.
-    iIntros "#(Hwr & Hwl15 & Hwl17) #Hcode #Hxs Hcl #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
+    iIntros "#(Hwr & Hwl15 & Hwl17) #Hcode #Hxs Hcl #Hro #Hargv Hsz Hstd Hcwd Hch Htk Htn Hrun".
+    (* the turn is HELD, not read: lane IO-LEAF spends it at init's first
+       verified write.  Nothing on this walk mentions it. *)
+    iClear "Htn".
     destruct init_syms_pins
       as (Hstart & Hmain & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _).
     rewrite Hstart.

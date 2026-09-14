@@ -537,10 +537,20 @@ Section EchoInitBoot.
        the console UART's log.  At [AppEcho.echo_in]'s E5 PLACEHOLDER the
        claim is [emp], so this licence is free as well. *)
     @riscv_in_res Σ (@riscv_fixedGS Σ HR) = echo_in γ ->
+    (* ...AND THE ECHO WINDOW TOKEN'S (lane CONS-IO milestone F), the two
+       claims' twin: at [AppEcho.echo_win]'s placeholder the token is [emp]
+       too, so the shift's new premise costs this discharge nothing. *)
+    @riscv_win_res Σ (@riscv_fixedGS Σ HR) = echo_win γ ->
     ⊢ app_inv fsc_fs -∗ echo_boot γ (S gen_id) r -∗
+      (* ...AND THE ERA'S TURN (lane CONS-IO milestone F), the application's
+         own per-era credential, handed over beside the boot resource.
+         Echo does not read it here: it rides the bundle's one linear slot
+         ([UInitKernel.init_boot_pay]) into <init>'s entry, where lane
+         ECHO-OUT's ledger will spend it. *)
+      echo_turn γ (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Hsh_deps Hsh_rest Heq Htag Hkill Hout Hin.
+    intros Hsh_deps Hsh_rest Heq Htag Hkill Hout Hin Hwin.
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)
@@ -563,7 +573,7 @@ Section EchoInitBoot.
        milestone B, B4): [UShLine.ush_read_recv_leaf_holds]'s result is a
        Coq-level [⊢], so its licence premise is one too. *)
     assert (Hlicw : ⊢ in_licence) by (by iApply in_licence_triv).
-    iIntros "#Hinv Hb". iModIntro.
+    iIntros "#Hinv Hb Hturn". iModIntro.
     (* ---- the taint's supply, and the generic slot it buys ---- *)
     iAssert (□ (echo_taint γ -∗ app_sup))%I as "#Hsup".
     { rewrite /app_sup. rewrite Heq. cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
@@ -673,9 +683,11 @@ Section EchoInitBoot.
                   my_pay (uvis_gen W') (fun _ => True)%I -∗
                   UInitKernel.init_boot_pay (PS := uprogSG_free)
                     (echo_taint γ) (init_cons_cred (echo_taint γ) r)
-                    fsc_cons init_cons_fd -∗ uslot W'))%I as "#Hcon".
+                    fsc_cons init_cons_fd (echo_turn γ (S gen_id))
+                    -∗ uslot W'))%I as "#Hcon".
     { iApply (UInitKernel.init_boot_con (PS := uprogSG_free) (echo_taint γ)
                 (init_cons_cred (echo_taint γ) r) init_cons_fd fsc_cons
+                (echo_turn γ (S gen_id))
                 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
                 init_cons_fd_ne Hktaint
                 (init_boot_room 0%nat
@@ -686,14 +698,16 @@ Section EchoInitBoot.
       - iApply (udep_free). }
     iApply (init_boot_bundle_of_pinned (echo_taint γ)
               (UInitKernel.init_boot_pay (PS := uprogSG_free) (echo_taint γ)
-                 (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd)
-              with "Hcl Hinv Hcon [] [Hdn]").
+                 (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd
+                 (echo_turn γ (S gen_id)))
+              with "Hcl Hinv Hcon [] [Hdn Hturn]").
     - iIntros "!>" (W') "#Ht Hp".
       iApply ("Hmint" $! True%I W' with "Ht Hp []").
       iModIntro. iIntros "_". done.
     - iIntros "Hrd". rewrite /UInitKernel.init_boot_pay.
       iSplitL "Hdn"; [ iExact "Hdn" | ].
-      rewrite ucons_reader_eq. iExact "Hrd".
+      iSplitL "Hrd"; [ rewrite ucons_reader_eq; iExact "Hrd" | ].
+      iExact "Hturn".
   Qed.
 
 End EchoInitBoot.

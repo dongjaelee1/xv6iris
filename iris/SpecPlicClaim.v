@@ -118,7 +118,7 @@ Definition wp_plic_claim_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CI
        popper of the receive FIFO. *)
     (⌜ m' !!! Regidx a0_idx
        = (mword_of_int (Z.of_N (uart_irq_id Uart0)) : mword 64) ⌝ -∗
-       plic_payload_uart γd) -∗
+       plic_payload_uart Uart0 γd) -∗
     (* ...AND THE SECOND PORT'S, on the arm that returns 12.  The two are
        separate wands rather than one quantified over the port because a
        caller's two branches are separate proofs; at most one of them is
@@ -126,7 +126,7 @@ Definition wp_plic_claim_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CI
        the id it actually took. *)
     (⌜ m' !!! Regidx a0_idx
        = (mword_of_int (Z.of_N (uart_irq_id Uart1)) : mword 64) ⌝ -∗
-       plic_payload_uart γd1) -∗
+       plic_payload_uart Uart1 γd1) -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

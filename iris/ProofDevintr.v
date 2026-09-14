@@ -302,9 +302,9 @@ Section ProofDevintr.
        are different -- the guards are mutually exclusive, so each arm
        discharges the other by [discriminate]. *)
     (⌜ irq = (mword_of_int (Z.of_N (uart_irq_id Uart0)) : mword 64) ⌝ -∗
-       plic_payload_uart γu) -∗
+       plic_payload_uart Uart0 γu) -∗
     (⌜ irq = (mword_of_int (Z.of_N (uart_irq_id Uart1)) : mword 64) ⌝ -∗
-       plic_payload_uart γu1) -∗
+       plic_payload_uart Uart1 γu1) -∗
     pa_stk sp0 1 ↦₈[KT1] ra0 -∗
     pa_stk sp0 2 ↦₈[KT1] s00 -∗
     pa_stk sp0 3 ↦₈[KT1] s10 -∗

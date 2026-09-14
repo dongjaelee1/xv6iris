@@ -729,6 +729,36 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
   riscv_in_res_timeless :
     forall (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
            (dl : list (list mobs * bv 8)), Timeless (riscv_in_res k h pops dl);
+  (* THE ECHO WINDOW TOKEN (claude-notes/projects/app-echo.md, "E5 -- THE
+     APPLICATION CLAIM", lane CONS-IO milestone F).  The application's own
+     PER-ERA EXCLUSIVE, lent to the kernel and carried by it to the one
+     place the application cannot reach: consoleintr's echo.
+
+     WHY IT EXISTS.  [SpecConsoleintr.cons_echo_shift] is PERSISTENT and
+     [WpUart.in_run] is split in two ([WpUart.echo_link] stores the byte,
+     [WpUart.in_append] files the log entry), so the application's spec has
+     to be total over interleavings the kernel forbids with cons.lock but
+     never states -- two echoes of one byte, an echo after the append, an
+     append twice.  Nothing pure refutes them and nothing the application
+     owns crosses the gap on its own: [App.app_out]/[App.app_in] are read
+     out of the port invariant and put straight back.  So the kernel LENDS
+     the application one linear thing per era and hands it to the shift:
+     the first firing of a run stores it where the second firing would have
+     to find it, and the append hands it back.
+
+     WHERE IT RIDES: the PLIC payload, beside the receive token and the
+     log's high-water half ([WpUart.uart_rx_writer]) -- the one carrier
+     that reaches consoleintr and comes back at every interrupt, at the
+     CONSOLE port only ([WpUart.win_at] is [emp] at [Uart1]).  It is
+     MINTED by [App.Hpow]'s power-on arm (the application's own ledger
+     step, once per era, [App.app_win]) and carried to the boot's deposit
+     on [RiscvAdequacy.power_boot_res], exactly as the two claims are.
+
+     ERA-INDEXED and TIMELESS for [riscv_out_res]'s reasons; NOT
+     persistent -- it is an exclusive, and duplicating it would defeat the
+     whole point.  The trivial application sets it to [win_res_triv]. *)
+  riscv_win_res : nat -> iProp Σ;
+  riscv_win_res_timeless : forall k : nat, Timeless (riscv_win_res k);
   (* THE APPLICATION'S FIXED PART (claude-notes/projects/app-instances.md
      §6 ruling 1, round D0).  The machine no longer owns a counter: the
      application declares whatever [Type] its fixed part has, and its BIRTH
@@ -751,6 +781,8 @@ Global Existing Instance riscv_kill_cred_persistent.
 Global Existing Instance riscv_kill_cred_timeless.
 Global Existing Instance riscv_out_res_timeless.
 Global Existing Instance riscv_in_res_timeless.
+(* ...and the echo window token's (lane CONS-IO milestone F) *)
+Global Existing Instance riscv_win_res_timeless.
 
 Class riscvGS (Σ : gFunctors) := RiscvGS {
   riscv_fixedGS :: riscvFixedGS Σ;
@@ -1054,6 +1086,14 @@ Global Instance in_res_triv_timeless {Σ : gFunctors} (k : nat) (h : list mobs)
     (pops : list ConsLog.log_entry) (dl : list (list mobs * bv 8)) :
   Timeless (in_res_triv (Σ := Σ) k h pops dl).
 Proof. rewrite /in_res_triv. apply _. Qed.
+
+(* ...and the echo window token's (lane CONS-IO milestone F): the generic
+   application has no echo discipline to protect, so it lends the kernel
+   nothing and every route that returns the token returns [emp]. *)
+Definition win_res_triv {Σ : gFunctors} : nat -> iProp Σ := fun _ => emp%I.
+Global Instance win_res_triv_timeless {Σ : gFunctors} (k : nat) :
+  Timeless (win_res_triv (Σ := Σ) k).
+Proof. rewrite /win_res_triv. apply _. Qed.
 
 (* the TRIVIAL trace predicate -- the client's half and nothing about it.
    What a client that states no trace property fills the slot with. *)

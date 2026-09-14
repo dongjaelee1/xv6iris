@@ -302,7 +302,7 @@ Section UiCont.
 
   (* the caller's continuation, named once *)
   Definition ui_ret_cont `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
-      (γu : uart_names) (m0 : regfile)
+      (i : uart_id) (γu : uart_names) (m0 : regfile)
       (av lvl : nat) (eb : bool) (pme : mword 64) (b : bool) (lks : gset string) : iProp Σ :=
     (wp_next (CID0 := CID0) b pme (fun (CID : CpuId) =>
        ∀ mf : regfile,
@@ -311,17 +311,17 @@ Section UiCont.
          cpu_own lvl eb pme b lks -∗
          pc_is (ret_pc (m0 !!! Regidx Rra)) -∗
          (∃ (k' : nat) (hl' : option (list mobs)),
-            uart_rx_writer γu k' hl') -∗
+            uart_rx_writer i γu k' hl') -∗
          WP (Loop : expr riscv_lang)))%I.
 
   (* re-anchor it at a hart reached mid-block.  Through the named definition
      [wp_next_shift]'s direct idiom cannot infer [K], so unfold first. *)
   Lemma ui_ret_cont_shift `{GEN : GenId} `{XI : CurCtx} (CIDa CIDb : CpuId)
-      (γu : uart_names) (m0 : regfile)
+      (i : uart_id) (γu : uart_names) (m0 : regfile)
       (av lvl : nat) (eb : bool) (pme : mword 64) (b : bool) (lks : gset string) :
     (b = false \/ pme = zero_reg -> (CIDb : CPU) = (CIDa : CPU)) ->
-    ui_ret_cont (CID0 := CIDa) γu m0 av lvl eb pme b lks -∗
-    ui_ret_cont (CID0 := CIDb) γu m0 av lvl eb pme b lks.
+    ui_ret_cont (CID0 := CIDa) i γu m0 av lvl eb pme b lks -∗
+    ui_ret_cont (CID0 := CIDb) i γu m0 av lvl eb pme b lks.
   Proof. intros Hs. rewrite /ui_ret_cont. exact (wp_next_shift Hs). Qed.
 
 End UiCont.
@@ -345,7 +345,7 @@ Section ProofUartintr.
   (* ------------------------------------------------------------------ *)
   (*  THE EPILOGUE: +0x76 -> return.                                      *)
   (* ------------------------------------------------------------------ *)
-  Lemma ui_tail `{CID0 : CpuId} (γu : uart_names)
+  Lemma ui_tail `{CID0 : CpuId} (i : uart_id) (γu : uart_names)
       (m0 M : regfile) (av lvl : nat) (eb : bool) (pme : mword 64)
       (sp0 : mword 64) (b : bool) (lks : gset string) :
     ui_regs m0 M (pa_stk sp0 4) ->
@@ -356,8 +356,8 @@ Section ProofUartintr.
     cpu_own lvl eb pme b lks -∗
     pc_is (mword_of_int (KernelSyms.uartintr + 0x76)) -∗
     ui_frame sp0 m0 -∗
-    (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_writer γu k' hl') -∗
-    ui_ret_cont γu m0 av lvl eb pme b lks -∗
+    (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_writer i γu k' hl') -∗
+    ui_ret_cont i γu m0 av lvl eb pme b lks -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hregs Hsp0 Hav.
@@ -514,8 +514,8 @@ Section ProofUartintr.
       cpu_own (CID := CIDe) lvl eb pme b lks -∗
       pc_is (mword_of_int (KernelSyms.uartintr + 0x46)) -∗
       ui_frame sp0 m0 -∗
-      (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer γu k hl) -∗
-      ui_ret_cont (CID0 := CIDe) γu m0 av lvl eb pme b lks -∗
+      (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer i γu k hl) -∗
+      ui_ret_cont (CID0 := CIDe) i γu m0 av lvl eb pme b lks -∗
       WP (Loop : expr riscv_lang).
   Proof.
     intros Hsp0 Hlen Hlvl Hav Hbelow.
@@ -542,13 +542,13 @@ Section ProofUartintr.
       cpu_own (CID := CIDk) lvl eb pme b lks -∗
       pc_is (mword_of_int (KernelSyms.uartintr + 0x46)) -∗
       ui_frame sp0 m0 -∗
-      (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer γu k hl) -∗
-      ui_ret_cont (CID0 := CIDk) γu m0 av lvl eb pme b lks -∗
+      (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer i γu k hl) -∗
+      ui_ret_cont (CID0 := CIDk) i γu m0 av lvl eb pme b lks -∗
       WP (Loop : expr riscv_lang))%I with "[]" as "Loop".
     { iLöb as "IH".
       iIntros (CIDk M1) "%Hregs1 %Hls1 %Hla4 %Hla3 Hcg Hcnt Hpc Hfr Htok Hcont".
       iDestruct "Htok" as (k hl) "[Htok Hmk]".
-      iDestruct "Hmk" as "[Hhi Hlgh]".
+      iDestruct "Hmk" as "(Hhi & Hlgh & Hwin)".
       iDestruct "Hhi" as (hh) "[Hhi %Hhle]".
       (* ...AND THE LOG'S MARK (lane CONS-IO): the third half of the
          writer's payload, on the ring mark's mould exactly.  It goes to
@@ -570,7 +570,7 @@ Section ProofUartintr.
                 ltac:(pcw) ltac:(pcw) ltac:(pcw) ltac:(pcw) ltac:(pcw) ltac:(pcw)
                 ltac:(vm_compute; reflexivity)
                 with "Hcg Hpc [] [] [] [] [] Huinv Hdlab Htok
-                      [Hcnt Hfr Hcont Hhi Hlgh]").
+                      [Hcnt Hfr Hcont Hhi Hlgh Hwin]").
       { iApply (uii2_46 with "Ht"). }
       { iEval (rewrite -UG.ug_cr7). iApply (uii2_4a with "Ht"). }
       { iApply (uii2_4c with "Ht"). }
@@ -585,14 +585,15 @@ Section ProofUartintr.
         { destruct Hregs1 as (A2 & A18 & A19 & A20 & A21 & A22 & A23 & A24 & A25 & A26 & A27).
           unfold ui_regs. split_and!; (rewrite upd_ne; [| reg_neq]); assumption. }
         iDestruct (cpu_own_transport CIDk CIDg lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
-        iDestruct (ui_ret_cont_shift CIDk CIDg γu m0 av lvl eb pme b lks
+        iDestruct (ui_ret_cont_shift CIDk CIDg i γu m0 av lvl eb pme b lks
                      ltac:(wp_next_chain) with "Hcont") as "Hcont".
-        iApply (ui_tail γu m0 (<[Regidx Ra5 := regval_into_reg (rx_masked bt)]> M1)
+        iApply (ui_tail i γu m0 (<[Regidx Ra5 := regval_into_reg (rx_masked bt)]> M1)
                   av lvl eb pme sp0 b lks Hrx Hsp0 Hav
-                  with "Ht Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh] Hcont").
+                  with "Ht Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh Hwin] Hcont").
         iExists k, hl. rewrite /uart_rx_writer. iFrame "Htok".
         iSplitL "Hhi"; [iExists hh; iFrame "Hhi"; by iPureIntro |].
-        iExists hg. iFrame "Hlgh". by iPureIntro.
+        iSplitL "Hlgh"; [iExists hg; iFrame "Hlgh"; by iPureIntro |].
+        iExact "Hwin".
       - (* a byte came out.  What happens to it is decided by the PORT, and
            by nothing at run time: [uart_rx_word] says what `u->rx` holds. *)
         iIntros (bt c) "_ Hcg Hpc Hh".
@@ -684,9 +685,11 @@ Section ProofUartintr.
                     h c hh hg
                     ltac:(lia) HH2a0 Hlast Hbts Hhext Hgext
                     Hlen ltac:(lia) Hbelow
-                    with "Hcg Hcnt Ht Hpc Hpinv Hdinv Hccaps Htg Hlbh Hwlb Hhi Hlgh").
+                    with "Hcg Hcnt Ht Hpc Hpinv Hdinv Hccaps Htg Hlbh Hwlb Hhi Hlgh
+                          [Hwin]").
           all: try lkbelow.
-          iIntros (CIDc Hsc Mf) "[%Hcsf %Hdomf] Hcg Hcnt Ht2 Hpc Hhi Hlgh".
+          { iApply (win_at_uart0 with "Hwin"). }
+          iIntros (CIDc Hsc Mf) "[%Hcsf %Hdomf] Hcg Hcnt Ht2 Hpc Hhi Hlgh Hwin".
           iEval (rewrite HH2ra) in "Hpc".
           assert (P5cr : ret_pc (add_vec_int (mword_of_int (KernelSyms.uartintr + 0x5a) : mword 64) 2)
                          = mword_of_int (KernelSyms.uartintr + 0x5c)) by pcw.
@@ -732,10 +735,10 @@ Section ProofUartintr.
           change (<[Regidx Ra3 := regval_into_reg (uart_pa Uart0 5)]> N0) with N1.
           (* --- back to the loop head --- *)
           iDestruct (cpu_own_transport CIDc CIDw lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
-          iDestruct (ui_ret_cont_shift CIDk CIDw γu m0 av lvl eb pme b lks
+          iDestruct (ui_ret_cont_shift CIDk CIDw Uart0 γu m0 av lvl eb pme b lks
                        ltac:(wp_next_chain) with "Hcont") as "Hcont".
           iApply ("IH" $! CIDw N1
-                    with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh] Hcont").
+                    with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh Hwin] Hcont").
           5: { iExists (S k), (Some h). rewrite /uart_rx_writer. iFrame "Htok".
                (* consoleintr's post no longer reports the echo (lane
                   OUT-FUPD retires the receipt): only the two marks. *)
@@ -743,8 +746,12 @@ Section ProofUartintr.
                iSplitL "Hhi"; [iExists hh'; iFrame "Hhi"; by iPureIntro |].
                (* the LOG's mark comes back at THIS byte on every arm (lane
                   CONS-IO): every arm of the switch logs. *)
-               iExists (Some h). iFrame "Hlgh".
-               iPureIntro. cbn. reflexivity. }
+               iSplitL "Hlgh";
+                 [ iExists (Some h); iFrame "Hlgh"; iPureIntro; cbn; reflexivity |].
+               (* ...AND THE ECHO WINDOW TOKEN, back into the payload (lane
+                  CONS-IO milestone F): the append the arm fired returned
+                  it, so the next byte's call has it again. *)
+               iApply (win_at_uart0_intro with "Hwin"). }
           * destruct HMfregs as (A2 & A18 & A19 & A20 & A21 & A22 & A23 & A24 & A25 & A26 & A27).
             unfold ui_regs. split_and!;
               (rewrite /N1 upd_ne; [| reg_neq]); (rewrite /N0 upd_ne; [| reg_neq]); assumption.
@@ -803,19 +810,23 @@ Section ProofUartintr.
           { iApply (uii2_58 with "Ht"). }
           iNext. iIntros (CIDz Hsz) "Hcg Hpc". iEval (rewrite Jb46) in "Hpc".
           iDestruct (cpu_own_transport CIDk CIDz lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
-          iDestruct (ui_ret_cont_shift CIDk CIDz γu m0 av lvl eb pme b lks
+          iDestruct (ui_ret_cont_shift CIDk CIDz Uart1 γu m0 av lvl eb pme b lks
                        ltac:(wp_next_chain) with "Hcont") as "Hcont".
           iApply ("IH" $! CIDz H1
-                    with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh] Hcont").
+                    with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh Hwin] Hcont").
           5: { iExists (S k), (Some h). rewrite /uart_rx_writer. iFrame "Htok".
                iSplitL "Hhi";
                  [ iExists hh; iFrame "Hhi"; iPureIntro;
                    exact (ObsTrace.ohist_le_of_ext hh h Hhext) |].
                (* AT [Uart1] NOTHING CONSUMES AND NOTHING LOGS: the port has
                   no console, so its log mark never moves -- it is only
-                  re-anchored against the new pop. *)
-               iExists hg. iFrame "Hlgh". iPureIntro.
-               exact (ObsTrace.ohist_le_of_ext hg h Hgext). }
+                  re-anchored against the new pop.  The window token is
+                  [emp] here for the same reason (lane CONS-IO milestone
+                  F), and travels back unread. *)
+               iSplitL "Hlgh";
+                 [ iExists hg; iFrame "Hlgh"; iPureIntro;
+                   exact (ObsTrace.ohist_le_of_ext hg h Hgext) |].
+               iExact "Hwin". }
           * exact HH1regs.
           * exact HH1s1.
           * exact HH1a4.
@@ -850,8 +861,8 @@ Section ProofUartintr.
     cpu_own lvl eb pme b lks -∗
     pc_is (mword_of_int (KernelSyms.uartintr + 0x2e)) -∗
     ui_frame sp0 m0 -∗
-    (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer γu k hl) -∗
-    ui_ret_cont γu m0 av lvl eb pme b lks -∗
+    (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer i γu k hl) -∗
+    ui_ret_cont i γu m0 av lvl eb pme b lks -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hregs Hidx Hsp0 Hlen Hlvl Hav Hbelow.
@@ -978,7 +989,7 @@ Section ProofUartintr.
         (rewrite /S3 upd_ne; [| reg_neq]); (rewrite /S2 upd_ne; [| reg_neq]);
         (rewrite /S1 upd_ne; [| reg_neq]); (rewrite /S0 upd_ne; [| reg_neq]); assumption. }
     iDestruct (cpu_own_transport CID0 CID8 lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
-    iDestruct (ui_ret_cont_shift CID0 CID8 γu m0 av lvl eb pme b lks
+    iDestruct (ui_ret_cont_shift CID0 CID8 i γu m0 av lvl eb pme b lks
                  ltac:(wp_next_chain) with "Hcont") as "Hcont".
     iPoseProof (ui_rx i γu γv γs m0 av lvl eb pme sp0 b lks Hsp0 Hlen Hlvl Hav Hbelow) as "Rx".
     iApply ("Rx" $! CID8 S7 with "[%] [%] [%] [%] Ht Huinv Hpinv Hdlab Hbw Hrw Hcaps Hcg Hcnt Hpc Hfr Htok Hcont");
@@ -997,7 +1008,7 @@ Section ProofUartintr.
     cbv beta delta [wp_uartintr_sconf_body].
     intros pcE ret_tgt Ha0 Hlen Hlvl Hav Hbelow.
     iIntros "Hcg Hcnt #Ht Hpc #Hbw #Hrw #Hdlab #Huinv #Hpinv #Hcaps Htok Hcont".
-    iAssert (ui_ret_cont γu m av lvl eb pme b lks) with "[Hcont]" as "Hcont".
+    iAssert (ui_ret_cont i γu m av lvl eb pme b lks) with "[Hcont]" as "Hcont".
     { iExact "Hcont". }
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
     assert (Hspm : m !!! Regidx csp_rs1 = sp0) by reflexivity.
@@ -1271,7 +1282,7 @@ Section ProofUartintr.
       { iApply (uii2_2c with "Ht"). }
       iIntros (CIDF HsF) "Hcg Hpc". iEval (rewrite P2e) in "Hpc".
       iDestruct (cpu_own_transport CID CIDF lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
-      iDestruct (ui_ret_cont_shift CID CIDF γu m av lvl eb pme b lks
+      iDestruct (ui_ret_cont_shift CID CIDF i γu m av lvl eb pme b lks
                    ltac:(wp_next_chain) with "Hcont") as "Hcont".
       iApply (ui_rx_setup i γu γv γs m B2 av lvl eb pme sp0 b lks
                 HB2regs HB2s1 Hspm Hlen Hlvl Hav Hbelow
@@ -1413,7 +1424,7 @@ Section ProofUartintr.
       { iApply (uii2_74 with "Ht"). }
       iIntros (CIDW9 HsW9). iNext. iIntros "Hcg Hpc". iEval (rewrite Jrel) in "Hpc".
       iDestruct (cpu_own_transport CIDW8 CIDW9 lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
-      iDestruct (ui_ret_cont_shift CID CIDW9 γu m av lvl eb pme b lks
+      iDestruct (ui_ret_cont_shift CID CIDW9 i γu m av lvl eb pme b lks
                    ltac:(wp_next_chain) with "Hcont") as "Hcont".
       iApply (ui_rx_setup i γu γv γs m Mw av lvl eb pme sp0 b lks
                 HregsW HMws1 Hspm Hlen Hlvl Hav Hbelow

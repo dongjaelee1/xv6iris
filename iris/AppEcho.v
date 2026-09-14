@@ -1432,6 +1432,18 @@ Section EchoApp.
                        list (list mobs * bv 8) -> iProp Σ :=
     fun _ _ _ _ _ => emp%I.
 
+  (* ...AND THE ERA'S TURN AND ITS ECHO WINDOW TOKEN (lane CONS-IO
+     milestone F), two more HOLES on [echo_out]'s mould.  The real ones are
+     the ledger's per-era ghosts: the turn is what <init> spends to open the
+     era's transcript, the token is the ½ share the echo's window arm holds
+     while the log entry is owed.  As [emp] every obligation below them is
+     vacuous ([echo_Hwint], [echo_Hpow]'s two new yields,
+     [echo_Happ_echo]'s new equation); they are here so the record
+     TYPECHECKS at [App.MkApp]'s new arity, and ECHO-OUT part 5 replaces
+     all four lines together. *)
+  Definition echo_turn : echo_fixed -> nat -> iProp Σ := fun _ _ => emp%I.
+  Definition echo_win : echo_fixed -> nat -> iProp Σ := fun _ _ => emp%I.
+
   Definition app_echo : xv6_app Σ :=
     MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R echo_tag
           (* THE KILL CREDENTIAL IS THE TAINT (app-echo.md, lane KILL-PAY,
@@ -1441,7 +1453,7 @@ Section EchoApp.
              what a party a kill touched may keep is the fact the taint
              already states.  [echo_taint_of_sup] is [Happ_kill]. *)
           echo_taint
-          echo_out echo_in echo_phi.
+          echo_out echo_in echo_turn echo_win echo_phi.
 
   (* ---- THE BIRTH STEP ---- *)
   Lemma echo_Hbirth : ⊢ |==> ∃ c : app_fixed app_echo, app_cl app_echo c.
@@ -1488,6 +1500,12 @@ Section EchoApp.
     Timeless (app_in app_echo c k h pops dl).
   Proof. cbn [app_echo app_fixed app_in echo_in] in c |- *. apply _. Qed.
 
+  (* the echo window token's timelessness (lane CONS-IO milestone F),
+     vacuous at the [emp] placeholder *)
+  Lemma echo_Hwint (c : app_fixed app_echo) (k : nat) :
+    Timeless (app_win app_echo c k).
+  Proof. cbn [app_echo app_fixed app_win echo_win] in c |- *. apply _. Qed.
+
   Lemma echo_Happ_in_sup (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r
       ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
@@ -1529,10 +1547,18 @@ Section EchoApp.
       app_R app_echo c (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
       (if on then emp
        else app_out app_echo c (S (obs_boots h)) [] [] ∗
-            app_in app_echo c (S (obs_boots h)) [] [] []).
+            app_in app_echo c (S (obs_boots h)) [] [] [] ∗
+            (* ...and the era's turn and its window token (lane CONS-IO
+               milestone F), both [emp] placeholders until ECHO-OUT part 5:
+               this is where the era's LINEAR seed will be minted out of the
+               ledger, one copy for <init> and one for the kernel to lend to
+               consoleintr's shift. *)
+            app_turn app_echo c (S (obs_boots h)) ∗
+            app_win app_echo c (S (obs_boots h))).
   Proof.
     intros _.
-    cbn [app_echo app_fixed app_R app_out echo_out app_in echo_in] in c |- *.
+    cbn [app_echo app_fixed app_R app_out echo_out app_in echo_in
+         app_turn echo_turn app_win echo_win] in c |- *.
     iIntros "H". iMod (echo_R_pow c h on with "H") as "H". iModIntro.
     iSplitL "H"; [iExact "H" |]. destruct on; by repeat iSplitR.
   Qed.
@@ -1588,9 +1614,14 @@ Section EchoApp.
     @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out app_echo c ->
     @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in app_echo c ->
     @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag app_echo c ->
+    (* ...and the window token's (lane CONS-IO milestone F), which the
+       placeholder route takes and does not read: at [echo_win] the token is
+       [emp], so the shift's new premise is free and the triv route hands it
+       straight back through the append. *)
+    @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win app_echo c ->
     ⊢ ∀ (GEN : GenId) (XI : CurCtx), @cons_echo_shift Σ HR GEN XI.
   Proof.
-    intros Hout Hin _.
+    intros Hout Hin _ _.
     assert (Hot : @riscv_out_res Σ (@riscv_fixedGS Σ HR) = out_res_triv)
       by (rewrite Hout; cbn [app_echo app_out echo_out]; reflexivity).
     assert (Hit : @riscv_in_res Σ (@riscv_fixedGS Σ HR) = in_res_triv)

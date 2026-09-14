@@ -955,6 +955,32 @@ Section DevLoops.
       (dl : list (list mobs * bv 8)) : ⊢ in_res_at Uart1 k ho pops dl.
   Proof. done. Qed.
 
+  (* THE ECHO WINDOW TOKEN AT A PORT (lane CONS-IO milestone F), on
+     [out_res_at]/[in_res_at]'s mould and for their reason: the token is the
+     APPLICATION's per-era exclusive ([RiscvPtsto.riscv_win_res]) and the
+     application says nothing about the kernel's own port, so [Uart1]
+     carries [emp].  Unlike the two claims it lives in NO invariant: it
+     rides the PLIC payload ([uart_rx_writer] below), which is what carries
+     it to consoleintr's shift and back. *)
+  Definition win_at (iu : uart_id) (k : nat) : iProp Σ :=
+    match iu with Uart0 => riscv_win_res k | Uart1 => emp end%I.
+
+  Global Instance win_at_timeless iu k : Timeless (win_at iu k).
+  Proof. rewrite /win_at. destruct iu; apply _. Qed.
+
+  Lemma win_at_uart1 (k : nat) : ⊢ win_at Uart1 k.
+  Proof. done. Qed.
+
+  (* the console port's, in both directions: [win_at Uart0] IS the field, and
+     these two lines are what let a proof at a DESTRUCTED port hand the token
+     to a spec stated at the field ([SpecConsoleintr]'s contract) and take it
+     back into the payload. *)
+  Lemma win_at_uart0 (k : nat) : win_at Uart0 k -∗ riscv_win_res k.
+  Proof. iIntros "H". iExact "H". Qed.
+
+  Lemma win_at_uart0_intro (k : nat) : riscv_win_res k -∗ win_at Uart0 k.
+  Proof. iIntros "H". iExact "H". Qed.
+
   (* THE LOG'S HIGH-WATER HISTORY, in two halves, and the EXACT TWIN of
      [uart_rx_hi]: one half rides [uart_rx_writer] in the PLIC payload
      beside the receive token, the other sits in the port invariant's input
@@ -1582,14 +1608,27 @@ Section DevLoops.
      NUL, an erase) as much as on the store.  At [Uart1] there is no
      consumer and no log, so it never moves and stays at [None], exactly as
      the ring's mark does. *)
-  Definition uart_rx_writer (γ : uart_names) (k : nat)
+  (* ...AND THE RIGHT TO ECHO WHAT WAS POPPED (lane CONS-IO milestone F).
+     A FOURTH conjunct, and the only one that is not the kernel's own: the
+     APPLICATION's per-era echo window token
+     ([RiscvPtsto.riscv_win_res], [win_at] above).  consoleintr's shift is
+     persistent and its run is split across two fupds, so the application
+     needs one linear thing per era to tell a first firing from a second,
+     and this payload is the one carrier that reaches consoleintr and comes
+     back at every interrupt.  At [Uart1] there is no console discipline
+     and [win_at] is [emp], exactly as the two port claims are -- which is
+     what keeps [SpecUartintr]'s port-generic writer premise suppliable at
+     the kernel's own port.  It is at the ERA's index [S gen_id]: the token
+     is minted by the era's power-on step and dies with the era. *)
+  Definition uart_rx_writer (iu : uart_id) (γ : uart_names) (k : nat)
       (hl : option (list mobs)) : iProp Σ :=
     (uart_rx_tok γ k hl ∗
      (∃ hh : option (list mobs), uart_rx_hi γ (1/2) hh ∗ ⌜ohist_le hh hl⌝) ∗
-     (∃ hg : option (list mobs), uart_log_hi γ (1/2) hg ∗ ⌜ohist_le hg hl⌝))%I.
+     (∃ hg : option (list mobs), uart_log_hi γ (1/2) hg ∗ ⌜ohist_le hg hl⌝) ∗
+     win_at iu (S gen_id))%I.
 
-  Definition plic_payload_uart (γ : uart_names) : iProp Σ :=
-    (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer γ k hl)%I.
+  Definition plic_payload_uart (iu : uart_id) (γ : uart_names) : iProp Σ :=
+    (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer iu γ k hl)%I.
 
   (* WHICH PORT'S GHOSTS A TRACKED UART SOURCE NAMES.  The one place the two
      bundles are told apart; everything below is stated through it, so no
@@ -1599,7 +1638,7 @@ Section DevLoops.
 
   Definition plic_payload (γ γ1 : uart_names) (i : N) : iProp Σ :=
     (match uart_of_irq i with
-     | Some j => plic_payload_uart (plic_unames γ γ1 j)
+     | Some j => plic_payload_uart j (plic_unames γ γ1 j)
      | None => emp
      end)%I.
   Definition plic_preinit (γ γ1 : uart_names) (i : N) : iProp Σ :=
@@ -1633,20 +1672,20 @@ Section DevLoops.
   (* ONE PORT'S SLOT, PORT-FREE: the shape the accessors and the two movers
      are stated at, so the second port costs no cloned lemma.  [cl] is that
      source's service bit. *)
-  Definition plic_uslot (γu : uart_names) (cl : bool) : iProp Σ :=
+  Definition plic_uslot (iu : uart_id) (γu : uart_names) (cl : bool) : iProp Σ :=
     (uart_preinit γu
-     ∨ (uart_inited γu ∗ if cl then emp else plic_payload_uart γu))%I.
+     ∨ (uart_inited γu ∗ if cl then emp else plic_payload_uart iu γu))%I.
 
   Lemma plic_slot_to_uslot (γ γ1 : uart_names) (p : plic_state) (j : uart_id) :
     plic_slot γ γ1 p (uart_irq_id j) -∗
-    plic_uslot (plic_unames γ γ1 j) (p_claimed p (uart_irq_id j)).
+    plic_uslot j (plic_unames γ γ1 j) (p_claimed p (uart_irq_id j)).
   Proof.
     rewrite /plic_slot /plic_uslot /plic_preinit /plic_inited /plic_payload
             uart_of_irq_id. iIntros "H". iExact "H".
   Qed.
 
   Lemma plic_uslot_to_slot (γ γ1 : uart_names) (p : plic_state) (j : uart_id) :
-    plic_uslot (plic_unames γ γ1 j) (p_claimed p (uart_irq_id j)) -∗
+    plic_uslot j (plic_unames γ γ1 j) (p_claimed p (uart_irq_id j)) -∗
     plic_slot γ γ1 p (uart_irq_id j).
   Proof.
     rewrite /plic_slot /plic_uslot /plic_preinit /plic_inited /plic_payload
@@ -1666,8 +1705,8 @@ Section DevLoops.
   (* ...so the big-op IS the two UART slots, in both directions. *)
   Lemma plic_slots_eq (γ γ1 : uart_names) (p : plic_state) :
     plic_slots γ γ1 p ⊣⊢
-      plic_uslot γ  (p_claimed p (uart_irq_id Uart0)) ∗
-      plic_uslot γ1 (p_claimed p (uart_irq_id Uart1)).
+      plic_uslot Uart0 γ  (p_claimed p (uart_irq_id Uart0)) ∗
+      plic_uslot Uart1 γ1 (p_claimed p (uart_irq_id Uart1)).
   Proof.
     rewrite /plic_slots /plic_tracked. iSplit.
     - iIntros "(H0 & H1 & _)".
@@ -1688,24 +1727,24 @@ Section DevLoops.
      proofmode needs these three to see its disjunction; they are also where
      the PRE-STATE IS REFUTED, which is the whole content of "a caller
      holding [uart_inited] never meets the left arm". *)
-  Lemma plic_uslot_cases (γu : uart_names) (cl : bool) :
-    plic_uslot γu cl -∗
+  Lemma plic_uslot_cases (iu : uart_id) (γu : uart_names) (cl : bool) :
+    plic_uslot iu γu cl -∗
       uart_preinit γu
-      ∨ (uart_inited γu ∗ if cl then emp else plic_payload_uart γu).
+      ∨ (uart_inited γu ∗ if cl then emp else plic_payload_uart iu γu).
   Proof. rewrite /plic_uslot. iIntros "H". iExact "H". Qed.
 
-  Lemma plic_uslot_intro (γu : uart_names) (cl : bool) :
+  Lemma plic_uslot_intro (iu : uart_id) (γu : uart_names) (cl : bool) :
     uart_inited γu -∗
-    (if cl then emp else plic_payload_uart γu) -∗
-    plic_uslot γu cl.
+    (if cl then emp else plic_payload_uart iu γu) -∗
+    plic_uslot iu γu cl.
   Proof.
     iIntros "#Hin Hpay". rewrite /plic_uslot. iRight.
     iSplitR; [iExact "Hin"|]. iExact "Hpay".
   Qed.
 
-  Lemma plic_uslot_elim (γu : uart_names) (cl : bool) :
-    uart_inited γu -∗ plic_uslot γu cl -∗
-    (if cl then emp else plic_payload_uart γu).
+  Lemma plic_uslot_elim (iu : uart_id) (γu : uart_names) (cl : bool) :
+    uart_inited γu -∗ plic_uslot iu γu cl -∗
+    (if cl then emp else plic_payload_uart iu γu).
   Proof.
     iIntros "#Hin Hu".
     iDestruct (plic_uslot_cases with "Hu") as "[Hpre | [_ Hpay]]".
@@ -1772,7 +1811,7 @@ Section DevLoops.
       plic_slots γ γ1 (snd (plic_claim p c)) ∗
       (∀ j : uart_id,
          ⌜ fst (plic_claim p c) = Z_to_bv 32 (Z.of_N (uart_irq_id j)) ⌝ -∗
-         plic_payload_uart (plic_unames γ γ1 j)).
+         plic_payload_uart j (plic_unames γ γ1 j)).
   Proof.
     intros Hok. iIntros "#Hin0 #Hin1 H".
     rewrite plic_slots_eq. iDestruct "H" as "[H0 H1]".
@@ -1804,7 +1843,7 @@ Section DevLoops.
       rewrite plic_slots_eq Ha Hcl1.
       iSplitR "Hpay".
       { iSplitR "H1"; [| iExact "H1"].
-        iApply (plic_uslot_intro γ true with "Hin0"). done. }
+        iApply (plic_uslot_intro Uart0 γ true with "Hin0"). done. }
       iIntros (j Hv). destruct j; [iExact "Hpay"|].
       exfalso. rewrite Hfst Hi0 in Hv.
       apply (f_equal bv_unsigned) in Hv. vm_compute in Hv. discriminate.
@@ -1820,7 +1859,7 @@ Section DevLoops.
         rewrite plic_slots_eq Ha Hcl0.
         iSplitR "Hpay".
         { iSplitL "H0"; [iExact "H0"|].
-          iApply (plic_uslot_intro γ1 true with "Hin1"). done. }
+          iApply (plic_uslot_intro Uart1 γ1 true with "Hin1"). done. }
         iIntros (j Hv). destruct j; [| iExact "Hpay"].
         exfalso. rewrite Hfst Hi1 in Hv.
         apply (f_equal bv_unsigned) in Hv. vm_compute in Hv. discriminate.
@@ -1845,7 +1884,7 @@ Section DevLoops.
   Lemma plic_slots_complete (γ γ1 : uart_names) (p : plic_state) (i : N) :
     uart_inited γ -∗ uart_inited γ1 -∗ plic_slots γ γ1 p -∗
     (∀ j : uart_id, ⌜ i = uart_irq_id j ⌝ -∗
-       plic_payload_uart (plic_unames γ γ1 j)) -∗
+       plic_payload_uart j (plic_unames γ γ1 j)) -∗
     plic_slots γ γ1 (plic_complete p i).
   Proof.
     iIntros "#Hin0 #Hin1 H Hpay".
@@ -1861,7 +1900,7 @@ Section DevLoops.
         by (apply plic_complete_claimed_ne; vm_compute; discriminate).
       rewrite plic_slots_eq Hf Hcl1.
       iSplitR "H1"; [| iExact "H1"].
-      iApply (plic_uslot_intro γ false with "Hin0").
+      iApply (plic_uslot_intro Uart0 γ false with "Hin0").
       iApply ("Hpay" $! Uart0). done.
     - destruct (decide (i = uart_irq_id Uart1)) as [Hi1|Hn1].
       + subst i. rewrite plic_slots_eq. iDestruct "H" as "[H0 H1]".
@@ -1875,7 +1914,7 @@ Section DevLoops.
           by (apply plic_complete_claimed_ne; vm_compute; discriminate).
         rewrite plic_slots_eq Hf Hcl0.
         iSplitL "H0"; [iExact "H0"|].
-        iApply (plic_uslot_intro γ1 false with "Hin1").
+        iApply (plic_uslot_intro Uart1 γ1 false with "Hin1").
         iApply ("Hpay" $! Uart1). done.
       + (* a completion of anything else leaves both service bits alone *)
         iApply (plic_slots_stable γ γ1 p (plic_complete p i)
@@ -2188,6 +2227,13 @@ Section DevLoops.
      strictly above every history already logged: that is what makes the
      log arrival-ordered and what makes a byte logged ONCE (a second append
      at [h] would need [hist_ext h h]).  It does NOT move [dl]. *)
+  (* ...AND IT HANDS THE ECHO WINDOW TOKEN BACK (lane CONS-IO milestone F).
+     The run's token went in at the SHIFT ([SpecConsoleintr.cons_echo_shift]
+     takes [RiscvPtsto.riscv_win_res (S gen_id)]), which is what lets the
+     application tell the run's FIRST firing from a second; the append is
+     the run's last step, so it is where the loan is repaid -- to the arm,
+     which returns it to the PLIC payload it came from.  A licence route
+     hands back exactly what it was given ([in_append_of_licence]). *)
   Definition in_append (k : nat) (h : list mobs) (c : bv 8) (cs : list (bv 8))
       (Φ : iProp Σ) : iProp Σ :=
     (∀ (o : option (list mobs)) (pops : list ConsLog.log_entry)
@@ -2197,7 +2243,8 @@ Section DevLoops.
        ={⊤ ∖ ↑uartN Uart0}=∗
        ∃ o' : option (list mobs),
          obs_hist_lb_o o' ∗
-         in_res_at Uart0 k (default [] o') (pops ++ [(h, c, cs)]) dl ∗ Φ)%I.
+         in_res_at Uart0 k (default [] o') (pops ++ [(h, c, cs)]) dl ∗
+         riscv_win_res k ∗ Φ)%I.
 
   (* THE ECHO'S OWN LINK: TWO RESOURCES, ONE OF THEM READ-ONLY (coordinator's
      C2 amendment, 2026-09-13).  A plain [out_link] hands the application
@@ -2380,13 +2427,20 @@ Section DevLoops.
   Global Instance in_licence_persistent : Persistent in_licence.
   Proof. rewrite /in_licence. apply _. Qed.
 
+  (* THE TOKEN IS TAKEN AND GIVEN STRAIGHT BACK (lane CONS-IO milestone F).
+     A licensed appender has no discipline to protect, so it reads nothing
+     off the window token -- but the append's post owes one, and the only
+     honest source is the caller's own: the licence route may not MINT one
+     (that would let any holder of the supply forge the application's
+     per-era exclusive).  [cons_echo_shift_triv] hands it the token the
+     shift was given. *)
   Lemma in_append_of_licence (k : nat) (h : list mobs) (c : bv 8)
       (cs : list (bv 8))
-      (Φ : iProp Σ) : in_licence -∗ Φ -∗ in_append k h c cs Φ.
+      (Φ : iProp Σ) : in_licence -∗ riscv_win_res k -∗ Φ -∗ in_append k h c cs Φ.
   Proof.
-    iIntros "[#Hap _] HΦ" (o pops dl) "#Hlb Hres _".
+    iIntros "[#Hap _] Hwin HΦ" (o pops dl) "#Hlb Hres _".
     iMod ("Hap" $! k (default [] o) pops dl (h, c, cs) with "Hres") as "Hres".
-    iModIntro. iExists o. by iFrame "Hlb Hres HΦ".
+    iModIntro. iExists o. by iFrame "Hlb Hres Hwin HΦ".
   Qed.
 
   (* the echo's link off the OUTPUT licence alone: the input claim is
@@ -2399,15 +2453,20 @@ Section DevLoops.
     iModIntro. iExists o. by iFrame "Hlb Hres Hlb' Hires HΦ".
   Qed.
 
+  (* ...AND THE RUN'S TOKEN CROSSES IT UNREAD.  The run is a CONJUNCTION at
+     every step, so the one token justifies both branches: whichever exit
+     the caller picks, the append it reaches returns the very token handed
+     in here (lane CONS-IO milestone F). *)
   Lemma in_run_of_licence (k : nat) (h : list mobs) (c : bv 8) (pre bs : list (bv 8))
-      (Φ : iProp Σ) : in_licence -∗ out_licence -∗ Φ -∗ in_run k h c pre bs Φ.
+      (Φ : iProp Σ) :
+    in_licence -∗ out_licence -∗ riscv_win_res k -∗ Φ -∗ in_run k h c pre bs Φ.
   Proof.
-    iIntros "#Hil #Hol HΦ".
+    iIntros "#Hil #Hol Hwin HΦ".
     iInduction bs as [| b bs] "IH" forall (pre);
-      [by iApply (in_append_of_licence with "Hil HΦ") |].
+      [by iApply (in_append_of_licence with "Hil Hwin HΦ") |].
     cbn [in_run]. iSplit.
-    - by iApply (in_append_of_licence with "Hil HΦ").
-    - iApply (echo_link_of_licence k h b with "Hol"). by iApply "IH".
+    - by iApply (in_append_of_licence with "Hil Hwin HΦ").
+    - iApply (echo_link_of_licence k h b with "Hol"). by iApply ("IH" with "Hwin").
   Qed.
 
   Lemma read_link_of_licence (k : nat) (ws : list (list mobs * bv 8))
@@ -2480,7 +2539,11 @@ Section DevLoops.
       ={⊤ ∖ ↑uartN iu}=∗
       in_claim_at iu γ ∗ uart_log_hi γ (1/2) (Some h) ∗
       uart_logm γ (1/2) ((L ++ [(h, c, cs)])%list) ∗
-      ⌜forall e, e ∈ L -> hist_ext (ConsLog.le_hist e) h⌝ ∗ Φ.
+      ⌜forall e, e ∈ L -> hist_ext (ConsLog.le_hist e) h⌝ ∗
+      (* ...AND THE ECHO WINDOW TOKEN, BACK (lane CONS-IO milestone F): the
+         run's loan is repaid at its last step, and the arm hands it on to
+         the exit, which puts it back in the PLIC payload. *)
+      riscv_win_res (S gen_id) ∗ Φ.
   Proof.
     intros -> Hx Hends Hecho. iIntros "Hcl Hhi Hlm Hap".
     iDestruct "Hcl" as (o pops dl)
@@ -2495,13 +2558,14 @@ Section DevLoops.
     { apply (ConsLog.cl_log_ok_last_ext pops h Hok).
       intros el Hel. rewrite Hagr /log_top Hel /= in Hx. exact Hx. }
     iEval (rewrite Hagr) in "Hhi".
-    iMod ("Hap" $! o pops dl with "Hlb Hres [%]") as (o') "(#Hlb' & Hres' & HΦ)";
+    iMod ("Hap" $! o pops dl with "Hlb Hres [%]")
+      as (o') "(#Hlb' & Hres' & Hwin & HΦ)";
       [exact Hbelow |].
     iMod (ghost_var_update_halves (Some h) with "Hhi Hhi0") as "[Hhi Hhi0]".
     iMod (in_log_auth_snoc γ pops (h, c, cs) with "Hau") as "Hau".
     iMod (ghost_var_update_halves ((pops ++ [(h, c, cs)])%list)
             with "Hlm Hlm0") as "[Hlm Hlm0]".
-    iModIntro. iFrame "HΦ".
+    iModIntro. iFrame "Hwin HΦ".
     iSplitR "Hhi Hlm"; [| iFrame "Hhi Hlm"; iPureIntro; exact Hbelow].
     iExists o', ((pops ++ [(h, c, cs)])%list), dl.
     iFrame "Hlb' Hres' Hdv Hau Hlm0".
@@ -2529,17 +2593,19 @@ Section DevLoops.
     in_append (S gen_id) h c cs Φ
       ={⊤}=∗ uart_log_hi γ (1/2) (Some h) ∗
              uart_logm γ (1/2) ((L ++ [(h, c, cs)])%list) ∗
-             ⌜forall e, e ∈ L -> hist_ext (ConsLog.le_hist e) h⌝ ∗ Φ.
+             ⌜forall e, e ∈ L -> hist_ext (ConsLog.le_hist e) h⌝ ∗
+             (* ...and the window token, back (lane CONS-IO milestone F) *)
+             riscv_win_res (S gen_id) ∗ Φ.
   Proof.
     intros Hx Hends Hecho. iIntros "#Hinv Hhi Hlm Hap".
     iInv "Hinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl)".
     iMod (in_claim_append Uart0 γ hg h c cs L Φ eq_refl Hx Hends Hecho
             with "Hincl Hhi Hlm Hap")
-      as "(Hincl & Hhi & Hlm & %Hbelow & HΦ)".
+      as "(Hincl & Hhi & Hlm & %Hbelow & Hwin & HΦ)".
     iMod ("Hclose" with "[Hu Hg Hcol Hincl]") as "_".
     { iNext. iExists u. iFrame "Hu Hg Hcol Hincl". }
-    iModIntro. iFrame "Hhi Hlm HΦ". iPureIntro. exact Hbelow.
+    iModIntro. iFrame "Hhi Hlm Hwin HΦ". iPureIntro. exact Hbelow.
   Qed.
 
   (* THE READ.  The caller advances the CONSUMED sequence [dl] by the
@@ -2877,29 +2943,34 @@ Section DevLoops.
      is weakened by that: a claim hands out the payload only from an
      OUT-of-service slot, and this branch leaves the slot exactly as an
      in-service one must look. *)
-  Lemma plic_uslot_deposit (γu : uart_names) (cl : bool)
+  (* ...AND THE ECHO WINDOW TOKEN GOES IN WITH THEM (lane CONS-IO milestone
+     F).  It is the era's, minted by the application's power-on step and
+     carried here by the boot ([RiscvAdequacy.power_boot_res]); at [Uart1]
+     it is [emp] and the second port's deposit pays nothing. *)
+  Lemma plic_uslot_deposit (iu : uart_id) (γu : uart_names) (cl : bool)
       (k : nat) (hl hh hg : option (list mobs)) :
     ohist_le hh hl ->
     (* ...AND THE LOG'S MARK (lane CONS-IO), on the ring mark's mould *)
     ohist_le hg hl ->
-    plic_uslot γu cl -∗ uart_rx_tok γu k hl -∗ uart_rx_hi γu (1/2) hh -∗
-    uart_log_hi γu (1/2) hg
-      ==∗ uart_inited γu ∗ plic_uslot γu cl.
+    plic_uslot iu γu cl -∗ uart_rx_tok γu k hl -∗ uart_rx_hi γu (1/2) hh -∗
+    uart_log_hi γu (1/2) hg -∗ win_at iu (S gen_id)
+      ==∗ uart_inited γu ∗ plic_uslot iu γu cl.
   Proof.
-    iIntros (Hle Hleg) "Hu Htok Hhi Hlg".
+    iIntros (Hle Hleg) "Hu Htok Hhi Hlg Hwin".
     iDestruct (plic_uslot_cases with "Hu") as "[Hpre | [#Hin Hrest]]".
     - iMod (uart_preinit_fire with "Hpre") as "#Hin".
       iModIntro. iSplitR; [iExact "Hin" |].
-      iApply (plic_uslot_intro γu cl with "Hin").
+      iApply (plic_uslot_intro iu γu cl with "Hin").
       destruct cl; [done|].
       rewrite /plic_payload_uart /uart_rx_writer.
       iExists k, hl. iFrame "Htok".
       iSplitL "Hhi"; [iExists hh; iFrame "Hhi"; iPureIntro; exact Hle |].
-      iExists hg. iFrame "Hlg". iPureIntro. exact Hleg.
+      iSplitL "Hlg"; [iExists hg; iFrame "Hlg"; iPureIntro; exact Hleg |].
+      iExact "Hwin".
     - (* the deposit has already run: the slot's own payload is the token's
          partner, so this one is spare and is simply dropped *)
       iModIntro. iSplitR; [iExact "Hin" |].
-      iApply (plic_uslot_intro γu cl with "Hin"). iExact "Hrest".
+      iApply (plic_uslot_intro iu γu cl with "Hin"). iExact "Hrest".
   Qed.
 
   Lemma uart_rx_tok_deposit E (γ γ1 : uart_names) (j : uart_id)
@@ -2909,16 +2980,20 @@ Section DevLoops.
     ohist_le hg hl ->
     plic_inv γ γ1 -∗ uart_rx_tok (plic_unames γ γ1 j) k hl -∗
     uart_rx_hi (plic_unames γ γ1 j) (1/2) hh -∗
-    uart_log_hi (plic_unames γ γ1 j) (1/2) hg
+    uart_log_hi (plic_unames γ γ1 j) (1/2) hg -∗
+    (* ...and the era's echo window token, [emp] at the second port
+       (lane CONS-IO milestone F) *)
+    win_at j (S gen_id)
       ={E}=∗ uart_inited (plic_unames γ γ1 j).
   Proof.
-    iIntros (Hmask Hle Hleg) "#Hpinv Htok Hhi Hlg".
+    iIntros (Hmask Hle Hleg) "#Hpinv Htok Hhi Hlg Hwin".
     iInv "Hpinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (p) "(Hp & %Hpok & Hslots)".
     rewrite plic_slots_eq.
     destruct j; cbn [plic_unames];
       [ iDestruct "Hslots" as "[Hu Hw]" | iDestruct "Hslots" as "[Hw Hu]" ];
-      (iMod (plic_uslot_deposit _ _ k hl hh hg Hle Hleg with "Hu Htok Hhi Hlg")
+      (iMod (plic_uslot_deposit _ _ _ k hl hh hg Hle Hleg
+               with "Hu Htok Hhi Hlg Hwin")
          as "[#Hin Hu]";
        iMod ("Hclose" with "[Hp Hu Hw]") as "_";
        [ iNext; iExists p; iFrame "Hp"; iSplitR; [iPureIntro; exact Hpok|];

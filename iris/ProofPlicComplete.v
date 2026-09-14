@@ -304,10 +304,10 @@ Section ProofPlicComplete.
               (mword_of_int 4 : mword 12) N4 (n - 4)%nat
               ((⌜ rget m0 a0_idx
                   = (mword_of_int (Z.of_N (uart_irq_id Uart0)) : mword 64) ⌝ -∗
-                  plic_payload_uart γd) ∗
+                  plic_payload_uart Uart0 γd) ∗
                (⌜ rget m0 a0_idx
                   = (mword_of_int (Z.of_N (uart_irq_id Uart1)) : mword 64) ⌝ -∗
-                  plic_payload_uart γd1))%I emp%I
+                  plic_payload_uart Uart1 γd1))%I emp%I
               ltac:(rewrite HN4a5; exact (ph_geom_range _ (ph_sclaim_geom _ Hhart)))
               ltac:(rewrite HN4a5; exact (ph_geom_align _ (ph_sclaim_geom _ Hhart)))
               ltac:(rewrite HN4a5; exact (ph_geom_canon _ (ph_sclaim_geom _ Hhart)))

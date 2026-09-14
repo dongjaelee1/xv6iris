@@ -218,10 +218,30 @@ Record xv6_app (Σ : gFunctors) := MkApp {
      index is the same generation number. *)
   app_in    : app_fixed -> nat -> list mobs -> list ConsLog.log_entry ->
               list (list mobs * bv 8) -> iProp Σ;
+  (* THE ERA'S CONSOLE TURN (app-echo.md, "E5 -- THE APPLICATION CLAIM",
+     lane CONS-IO milestone F): what <init> is handed at the era's boot,
+     beside [app_boot].  The kernel neither reads it nor mints it: [Hpow]'s
+     power-on arm yields it once per era, the boot carries it
+     ([RiscvAdequacy.power_boot_res] -> [Hinit_boot] ->
+     [UInitKernel.init_boot_pay] -> [UkInitMain.wp_kinit_start]) and <init>
+     holds it.  It is the application's own resource, so it can be the
+     linear right to speak first on the console -- which is exactly what an
+     echo discipline needs and what nothing per-era can say by itself. *)
+  app_turn  : app_fixed -> nat -> iProp Σ;
+  (* ...AND THE ERA'S ECHO WINDOW TOKEN (same lane), its twin on the KERNEL
+     side: yielded by the same arm and LENT to the kernel, which parks it on
+     the console port's PLIC payload and hands it to consoleintr's shift
+     ([SpecConsoleintr.cons_echo_shift]); the shift's own append gives it
+     back.  It is what makes a PERSISTENT shift with a SPLIT run provable at
+     an application that claims a transcript: the run's first firing stores
+     the token's own share where a second firing would have to find it.
+     The machine's ambient copy is [RiscvPtsto.riscv_win_res], fixed to this
+     field by [Hinit_boot]'s and [Happ_echo]'s equations. *)
+  app_win   : app_fixed -> nat -> iProp Σ;
   (* the conclusion, over the operational state and the run's trace *)
   app_phi   : gstate -> list mobs -> Prop;
 }.
-Arguments MkApp {Σ} _ _ _ _ _ _ _ _ _ _ _.
+Arguments MkApp {Σ} _ _ _ _ _ _ _ _ _ _ _ _ _.
 Arguments app_fixed {Σ} _. Arguments app_cl {Σ} _ _.
 Arguments app_names {Σ} _. Arguments app_pred {Σ} _ _ _ _.
 Arguments app_boot {Σ} _ _ _ _.
@@ -229,6 +249,7 @@ Arguments app_R {Σ} _ _ _. Arguments app_tag {Σ} _ _ _.
 Arguments app_kill {Σ} _ _.
 Arguments app_out {Σ} _ _ _ _ _.
 Arguments app_in {Σ} _ _ _ _ _ _.
+Arguments app_turn {Σ} _ _ _. Arguments app_win {Σ} _ _ _.
 Arguments app_phi {Σ} _ _ _.
 
 (* THE GENERIC APPLICATION: no fixed part, nothing claimed, nothing read *)
@@ -236,6 +257,9 @@ Definition app_triv (Σ : gFunctors) : xv6_app Σ :=
   MkApp unit (fun _ => True%I) unit (fun _ _ _ => True%I) (fun _ _ _ => emp%I)
         (fun _ _ => emp%I) (fun _ _ => True%I) (fun _ => True%I)
         (fun _ _ _ _ => emp%I) (fun _ _ _ _ _ => emp%I)
+        (* the turn and the echo window token: the generic application has
+           no console discipline, so both are [emp] (lane CONS-IO F) *)
+        (fun _ _ => emp%I) (fun _ _ => emp%I)
         (fun _ _ => True).
 
 (* ---------------------------------------------------------------------- *)
@@ -314,6 +338,12 @@ Theorem xv6_app_adequacy Σ
                     (pops : list ConsLog.log_entry)
                     (dl : list (list mobs * bv 8)),
        Timeless (app_in A c k h pops dl))
+    (* ...AND THE ECHO WINDOW TOKEN'S TIMELESSNESS (lane CONS-IO milestone
+       F).  The token rides the console port's PLIC payload
+       ([WpUart.uart_rx_writer]), whose slot is opened by a device leaf that
+       strips its later, so the machine's field owes this instance exactly
+       as the two claims do. *)
+    (Hwint : forall (c : app_fixed A) (k : nat), Timeless (app_win A c k))
     (* ...AND WHAT HOLDING THE SUPPLY ENTITLES A PROCESS TO ON THE INPUT
        SIDE ([Happ_out_sup]'s twin, at the same price).  ONE obligation,
        TWO conjuncts, because the kernel's generic supply has to pay for
@@ -359,7 +389,16 @@ Theorem xv6_app_adequacy Σ
          app_R A c (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
          (if on then emp
           else app_out A c (S (obs_boots h)) [] [] ∗
-               app_in A c (S (obs_boots h)) [] [] []))
+               app_in A c (S (obs_boots h)) [] [] [] ∗
+               (* ...AND THE ERA'S TURN AND ITS ECHO WINDOW TOKEN (lane
+                  CONS-IO milestone F).  The same arm and the same reason:
+                  this is the one step of the machine that runs the
+                  application's ledger exactly once per era, so it is the
+                  only place a per-era LINEAR thing can be minted.  The
+                  kernel carries the turn to <init> and the token to
+                  consoleintr's shift; neither is derivable anywhere else. *)
+               app_turn A c (S (obs_boots h)) ∗
+               app_win A c (S (obs_boots h))))
     (* the two UART-arm wands, at any value of the fixed part: the era
        instance's [riscv_client] is the one the boot's record carries, and
        the record's client type is [app_fixed A] only at that literal *)
@@ -529,9 +568,18 @@ Theorem xv6_app_adequacy Σ
          (* ...and (b''') THE INPUT-LOG EQUATION (lane CONS-IO), the output
             claim's twin and true for the same reason *)
          @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in A c ->
+         (* ...and (b'''') THE WINDOW-TOKEN EQUATION (lane CONS-IO milestone
+            F), the two claims' twin and true for the same reason: the
+            machine's ambient echo window token IS this record's field. *)
+         @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win A c ->
          (* ...and (a) THE BOOT RESOURCE, LINEARLY, at the instance the
             record equation names *)
          ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot A c (S gen_id) r -∗
+           (* ...and (a') THE ERA'S TURN beside it (lane CONS-IO milestone
+              F): the application's own per-era credential, minted at the
+              power-on step and carried here by the kernel.  <init> holds
+              it; lane IO-LEAF spends it at the era's first banner byte. *)
+           app_turn A c (S gen_id) -∗
            |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0)
     (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3), the SECOND thing this
        record owes the kernel about the console and [Hinit_boot]'s twin.
@@ -563,6 +611,13 @@ Theorem xv6_app_adequacy Σ
             ambient claims and both must be this record's. *)
          @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in A c ->
          @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag A c ->
+         (* ...AND THE ECHO WINDOW TOKEN'S (lane CONS-IO milestone F): the
+            shift TAKES the era's token, so the machine's ambient one has to
+            be this record's [app_win].  It is what makes the entailment
+            still CLOSED with a persistent shift over a split run: the
+            application answers a firing out of a resource it owns, not out
+            of a handle on the observation. *)
+         @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win A c ->
          (* AT EVERY ERA (milestone C): the shift is era-indexed and takes
             the era stamp on the byte's history, so the obligation is
             quantified over the generation as it is over the context. *)
@@ -583,6 +638,7 @@ Theorem xv6_app_adequacy Σ
                (app_tag A c) (Htagp c) (Htagt c)
                (app_kill A c) (Hkillp c) (Hkillt c)
                (app_out A c) (Houtt c) (app_in A c) (Hinpt c)
+               (app_win A c) (Hwint c)
                (app_fixed A) c) g' -∗
          ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
          ▷ xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
@@ -611,6 +667,7 @@ Proof.
              (app_tag A c) (Htagp c) (Htagt c)
              (app_kill A c) (Hkillp c) (Hkillt c)
              (app_out A c) (Houtt c) (app_in A c) (Hinpt c)
+             (app_win A c) (Hwint c)
              (app_fixed A) c
          /\ @file_app Σ HF = MkAppcfg (app_names A) (app_pred A c) r
          /\ (i = Uart0 -> FsCfg.fsc_uart = γ)) ->
@@ -625,7 +682,8 @@ Proof.
   exact (xv6_power_adequacy_gen Σ g sb nib cov
            (app_fixed A) (app_cl A) Hbirth
            (app_names A) (app_pred A) (app_boot A)
-           (app_out A) Houtt (app_in A) Hinpt Happ_boot Happ_init
+           (app_out A) Houtt (app_in A) Hinpt
+           (app_win A) Hwint (app_turn A) Happ_boot Happ_init
            (app_tag A) Htagp Htagt
            (app_kill A) Hkillp Hkillt Happ_kill
            Happ_out_sup Happ_in_sup Hinit_boot
@@ -635,7 +693,8 @@ Proof.
               obs_ledger_at_alloc_cl (app_R A c) γobs (app_cl A c) (HR0 c))
            (fun γd γobs c =>
               obs_ledger_at_step XV6_DISK_BYTES (app_R A c) (HRt c)
-                (app_out A c) (app_in A c) (Hpow c) γd γobs)
+                (app_out A c) (app_in A c) (app_turn A c) (app_win A c)
+                (Hpow c) γd γobs)
            Hperm (app_phi A) Hphi Hgen0 Hpow0 Himg).
 Qed.
 
@@ -703,10 +762,15 @@ Section AppTriv.
     (* ...and the input-log equation (lane CONS-IO), which the generic
        application takes and does not use: its log claim is [emp] too *)
     @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in (app_triv Σ) c ->
+    (* ...and the echo window token's (lane CONS-IO milestone F), which the
+       generic application takes and does not use: its token is [emp] *)
+    @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win (app_triv Σ) c ->
     ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot (app_triv Σ) c (S gen_id) r -∗
+      (* ...and the era's turn, likewise taken and not used *)
+      app_turn (app_triv Σ) c (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Heq _ Hkc _ Hout Hin. iIntros "_ _". iModIntro.
+    intros Heq _ Hkc _ Hout Hin _. iIntros "_ _ _". iModIntro.
     (* the rewrite goes BEFORE the [intros]: [r'] is typed at
        [app_names file_app], so rewriting under it is a dependent rewrite *)
     iApply init_boot_of_triv.
@@ -755,10 +819,14 @@ Proof.
            ltac:(intros c r; cbn [app_triv app_out];
                  iIntros "_ !>" (k h acc b) "_"; by iModIntro)
            ltac:(intros c k h pops dl; cbn [app_triv app_in]; apply _)
+           (* the echo window token's timelessness (lane CONS-IO milestone
+              F), vacuous at the generic application's [emp] *)
+           ltac:(intros c k; cbn [app_triv app_win]; apply _)
            ltac:(intros c r; cbn [app_triv app_in];
                  iIntros "_"; iSplit; iIntros "!>" (?????) "_"; by iModIntro)
            app_triv_R0
-           ltac:(intros c h on dk _; cbn [app_triv app_R app_out app_in];
+           ltac:(intros c h on dk _;
+                 cbn [app_triv app_R app_out app_in app_turn app_win];
                  iIntros "_"; iModIntro; iSplitR; [done |];
                  destruct on; by repeat iSplitR)
            ltac:(intros HR GEN HFi c r i γ _ _; cbn [app_triv app_R];
@@ -772,7 +840,7 @@ Proof.
            ltac:(intros c; exact (app_triv_init c _))
            app_triv_init_boot
            (* the echo justifies itself at the trivial output claim *)
-           ltac:(intros HR c Hout Hin _; iIntros (GEN XI);
+           ltac:(intros HR c Hout Hin _ _; iIntros (GEN XI);
                  iApply (SpecConsoleintr.cons_echo_shift_triv (XI := XI));
                  [ rewrite Hout; cbn [app_triv app_out]; reflexivity
                  | rewrite Hin; cbn [app_triv app_in]; reflexivity ])

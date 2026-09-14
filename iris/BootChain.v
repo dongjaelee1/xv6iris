@@ -450,6 +450,11 @@ Section BootPrimary.
        the same PLIC payload: it is what licenses consoleintr's one log
        append per accepted byte. *)
     uart_log_hi γd (1/2) None -∗
+    (* ...and the era's ECHO WINDOW TOKEN beside them (lane CONS-IO
+       milestone F): the application's per-era exclusive, carried from the
+       power-on step by [RiscvAdequacy.power_boot_res] and parked in the
+       same payload, where consoleintr's shift finds it. *)
+    riscv_win_res (Datatypes.S gen_id) -∗
     uart_dlab_is γd (DfracOwn (1/2)) b0 -∗
     (* ---- THE SECOND PORT (bump 163d39b), forwarded whole.  [uart_inv Uart1]
        and the CONCRETE [plic_inv γd γd1] are [BootShared]'s exports beside
@@ -485,7 +490,7 @@ Section BootPrimary.
     intros Hreset Hz Hprun Hlen Hlive Hcnu Himg.
     iIntros "#Htext #Hdata Hres Hthr #Hstarted Hprim #Hecho Hlk Hgl Hfirst Hnext Hpark Hpst Hpav Hchb
              Hfs Hmir Hirslot Hirauth #Hcert #Hseam
-             #Hdev #Hwire Hinitb Htx Hsent Hlb Htok Hhi Hlgh Hdlab
+             #Hdev #Hwire Hinitb Htx Hsent Hlb Htok Hhi Hlgh Hwin Hdlab
              #Huinv1 #Hplic #Hpinned #Hubw0 #Hurw0 #Hubw1 #Hurw1
              Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Hdlab1
              Hcfg Hclaim Hcmauth #Hdone Hkpt Hkptb Hkmap Hpages".
@@ -503,7 +508,7 @@ Section BootPrimary.
               with "Hcap Hctx Hcpu Hg Htext Hdata Hpc Hstarted Hprim [] Hecho Hlk Hgl
                     Hfirst Hnext Hpark Hpst Hpav Hchb Hfs Hmir Hirslot Hirauth
                     Hcert Hseam
-                    Hdev Hwire Hinitb Htx Hsent Hlb Htok Hhi Hlgh Hdlab
+                    Hdev Hwire Hinitb Htx Hsent Hlb Htok Hhi Hlgh Hwin Hdlab
                     Huinv1 Hplic Hpinned Hubw0 Hurw0 Hubw1 Hurw1
                     Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Hdlab1
                     Hcfg Hclaim Hcmauth Hdone Htimc Hraw Hkpt Hkptb Hkmap Hpages").

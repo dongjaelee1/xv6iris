@@ -305,6 +305,17 @@ Lemma in_res_triv_founded (Σ : gFunctors) (k : nat) :
   ⊢ @in_res_triv Σ k [] [] [].
 Proof. rewrite /in_res_triv. iEmpIntro. Qed.
 
+(* ...and the ECHO WINDOW TOKEN's (lane CONS-IO milestone F), on the same
+   mould: at the generic application the token is [emp], so the era's mint
+   costs the trivial slot nothing.  The turn is discharged inline at [emp]
+   ([bi.emp_valid] is [iEmpIntro] there too). *)
+Lemma win_res_triv_founded (Σ : gFunctors) (k : nat) :
+  ⊢ @win_res_triv Σ k.
+Proof. rewrite /win_res_triv. iEmpIntro. Qed.
+
+Lemma turn_triv_founded (Σ : gFunctors) (k : nat) : ⊢ (emp : iProp Σ)%I.
+Proof. iEmpIntro. Qed.
+
 (* THE DURABLE CLAIM AT A NAMED INSTANCE.  [AppDur.app_dur_raw] closes the
    instance existentially, which is right for the SLOT (nothing outside it
    names the instance) and wrong for the LEND, whose boot resource is at
@@ -416,12 +427,15 @@ Lemma fs_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (Ires : nat -> list mobs -> list ConsLog.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
+    (* ...and the echo window token's slot (lane CONS-IO milestone F),
+       carried like [Ires] and read by no hook here *)
+    (Wres : nat -> iProp Σ) (HWrest : forall k, Timeless (Wres k))
     (g' : gstate) :
   ⊢ @power_interp Σ
        (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
           (xv6_slot N app_fs cov ls γd γsw γreg γstart c)
           γobs T (obs_pred_at γobs) γhist Tg HTg HTgt
-          Kc HKc HKct Ores HOrest Ires HIrest CT c) g' -∗
+          Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest CT c) g' -∗
     ▷ xv6_slot N app_fs cov ls γd γsw γreg γstart c -∗
     ◇ ⌜fs_boot_pure cov ls (v_disk (g'.(gdev).(dvirtio)))⌝.
 Proof.
@@ -430,7 +444,7 @@ Proof.
            (fs_boot_pure cov ls)
            (xv6_slot_project N app_fs cov ls)
            Hinv γgen γstart γreg γd γsw γobs T (obs_pred_at γobs) γhist
-           Tg HTg HTgt Kc HKc HKct Ores HOrest Ires HIrest c g').
+           Tg HTg HTgt Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest c g').
 Qed.
 
 (* ...AND A [phi] THAT IS NOT ABOUT THE DISK AT ALL, beside it.
@@ -466,12 +480,15 @@ Lemma xv6_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (Ires : nat -> list mobs -> list ConsLog.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
+    (* ...and the echo window token's slot (lane CONS-IO milestone F),
+       carried like [Ires] and read by no hook here *)
+    (Wres : nat -> iProp Σ) (HWrest : forall k, Timeless (Wres k))
     (g' : gstate) :
   ⊢ @power_interp Σ
        (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
           (xv6_slot N app_fs cov ls γd γsw γreg γstart c)
           γobs T (obs_pred_at γobs) γhist Tg HTg HTgt
-          Kc HKc HKct Ores HOrest Ires HIrest CT c) g' -∗
+          Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest CT c) g' -∗
     ▷ xv6_slot N app_fs cov ls γd γsw γreg γstart c -∗
     ◇ ⌜xv6_trace_pure cov ls g'⌝.
 Proof.
@@ -481,7 +498,7 @@ Proof.
   iDestruct (power_interp_resv_ok with "Hsi") as %Hresv.
   iDestruct (fs_trace_hook Σ cov ls CT N app_fs Hinv γgen γstart γreg γd γsw
                γobs γhist c T Tg HTg HTgt Kc HKc HKct Ores HOrest
-               Ires HIrest g' with "Hsi HP") as ">%Hdisk".
+               Ires HIrest Wres HWrest g' with "Hsi HP") as ">%Hdisk".
   iModIntro. iPureIntro. split; [exact Hdisk | exact Hresv].
 Qed.
 
@@ -537,6 +554,13 @@ Section SystemBoot.
       (* ...ERA-INDEXED (lane CONS-IO milestone C): this era's number is
          [S gen_id], and the three are read at it and nowhere else. *)
       (B : nat -> N -> iProp Σ)
+      (* THE ERA'S TURN (lane CONS-IO milestone F): the APPLICATION's own
+         per-era credential for <init>, minted at the power-on step and
+         carried here on [power_boot_res] beside the two claims.  An opaque
+         [iProp] already applied at this era's number -- the system theorem
+         instantiates it at [App.app_turn A c (S gen_id)] -- because nothing
+         at this altitude may name the application's record. *)
+      (Tn : iProp Σ)
       (* NO PORT-CLAIM PARAMETERS (lane CONS-IO milestone E).  The era's
          two claims used to be produced by the transport at the clone and
          carried here by the lend, with two equations ([Houteq]/[Hineq])
@@ -582,6 +606,13 @@ Section SystemBoot.
                   HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ} (r : N),
            @file_app Σ HF = MkAppcfg N A r ->
            ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ B (Datatypes.S gen_id) r -∗
+             (* ...AND THE ERA'S TURN BESIDE IT (lane CONS-IO milestone F):
+                the application's own per-era credential, carried from the
+                power-on step and handed to <init> in the boot bundle's one
+                linear slot ([UInitKernel.init_boot_pay]).  What it buys is
+                what no per-era resource can say on its own -- that THIS
+                era's console turn is <init>'s, once. *)
+             Tn -∗
              |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0)
       (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3), the second thing the
          application owes the kernel about the console and the twin of
@@ -677,7 +708,7 @@ Section SystemBoot.
          and the mint founds the console port's invariant clause from it. *)
       (fun dk => ∃ (gt : gname) (r : N),
          P_fs_lend_at gt cov (FsImg.sb_logstart sb) dk ∗
-         ▷ app_dur_at A gt r ∗ B (Datatypes.S gen_id) r)%I g
+         ▷ app_dur_at A gt r ∗ B (Datatypes.S gen_id) r)%I Tn g
     ={⊤}=∗
       ([∗ list] c ∈ enum CPU,
          WP (LoopE gen_id c : expr riscv_lang) @ ⊤) ∗
@@ -798,14 +829,14 @@ Section SystemBoot.
        they ride [power_boot_res] straight into the mint, which unpacks and
        consumes them at [Uart0]. *)
     iMod (boot_shared_alloc (XI := ξ0) g XV6_DISK_BYTES (fss_sb S) (fs_nib S) cov
-            S Pb (MkAppcfg N A rap) (fun _ => emp)%I gsn gln gtn Hbf Hbundle
+            S Pb (MkAppcfg N A rap) (fun _ => emp)%I Tn gsn gln gtn Hbf Hbundle
             with "Hok Hxfer Hseamg Hdursnap Hres")
       as (Hfd Hir Hpav Hbs Hwch HF γd γd1 γv cnm Rspent γi ξd)
       "(%Hdimg & %Hcnu & %Happ & #Htext & #Hdata &
         #Hpinned & #Hubw0 & #Hubw1 & #Hurw0 & #Hurw1 &
-        #Hstarted & Hprim & #Hdev & #Hdev1 & #Hplic & #Hwinv &
+        #Hstarted & Hprim & #Hdev & #Hdev1 & #Hplic & #Hwinv & Hturn &
         #Hcinv & #Hcert & Hharts & Hlk & Hgl & Hmdata & Hpark & Hpst & Hpavail & Hchb & Huart &
-        Htok & Hhi & Hlgh & Hdlab & Huart1 & Htok1 & Hhi1 & Hlgh1 & Hdlab1 &
+        Htok & Hhi & Hlgh & Hwin & Hdlab & Huart1 & Htok1 & Hhi1 & Hlgh1 & Hdlab1 &
         Hcfg & Hclaim & Hcmauth & #Hdone & Hkpt & Hkptb & Hkmap & Hmir & Hpages & Hirauth &
         Hirslot & Hfs)".
     (* THE FIRST PROCESS'S EXEC BUNDLE, off [Hinit_boot] at the era's own
@@ -823,8 +854,8 @@ Section SystemBoot.
        trace permit is built at, read before the supply goes down the boot
        hart's chain. *)
     iDestruct (fs_boot_supply_uart with "Hfs") as "[%Huart Hfs]".
-    iMod (Hinit_boot Hbs Hfd Hir Hpav Hwch HF rap Happ with "Happinv Hbres")
-      as "Hboot".
+    iMod (Hinit_boot Hbs Hfd Hir Hpav Hwch HF rap Happ
+            with "Happinv Hbres Hturn") as "Hboot".
     (* THE FILE SYSTEM'S BOOT KITS ARE NO LONGER DROPPED (stage (e)).
        [Hfs] is the ten configuration ties plus [fs_kit_icache] plus
        [fs_kit_fsinit_ghost], and [Hirauth] is the iref-slot authority
@@ -874,12 +905,12 @@ Section SystemBoot.
     iDestruct (dev_inv_disk with "Hdev") as "#Hvinv".
     iDestruct (dev_inv_perm with "Hdev") as "#Hqinv".
     iModIntro.
-    iSplitL "Hthr0 Hprim Hh0 Hhrest Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Hdlab Htx1 Htok1 Hhi1 Hlgh1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
+    iSplitL "Hthr0 Hprim Hh0 Hhrest Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Hwin Hdlab Htx1 Htok1 Hhi1 Hlgh1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
              Hpages".
     { iApply (big_sepL_cpu_glue
                 (fun c => WP (LoopE gen_id c : expr riscv_lang) @ ⊤
 )%I).
-      iSplitL "Hthr0 Hprim Hh0 Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Hdlab Htx1 Htok1 Hhi1 Hlgh1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
+      iSplitL "Hthr0 Hprim Hh0 Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Hwin Hdlab Htx1 Htok1 Hhi1 Hlgh1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
                Hpages".
       { (* THE BOOT HART: the arm that consumes the whole supply. *)
         (* AT [HF] EXPLICITLY, not by resolution.  [SpecMain.MAIN]'s
@@ -959,6 +990,9 @@ Section SystemBoot.
         iSpecialize ("HP" with "Hhi").
         (* ...and the LOG's high-water half beside it (lane CONS-IO) *)
         iSpecialize ("HP" with "Hlgh").
+        (* ...and the era's ECHO WINDOW TOKEN beside it (lane CONS-IO
+           milestone F), which main parks in the same PLIC payload *)
+        iSpecialize ("HP" with "Hwin").
         iSpecialize ("HP" with "Hdlab").
         (* ---- THE SECOND PORT'S THIRTEEN ROWS (bump 163d39b).  Two
            invariants -- UART1's own, and the PLIC's at the two CONCRETE
@@ -1174,6 +1208,17 @@ Theorem xv6_power_adequacy_gen Σ
                      (pops : list ConsLog.log_entry)
                      (dl : list (list mobs * bv 8)),
        Timeless (Ires c k h pops dl))
+    (* ...AND THE ECHO WINDOW TOKEN (lane CONS-IO milestone F), the third
+       claim family and the fixed record's new field: the application's own
+       per-era exclusive, which the kernel carries on the console's PLIC
+       payload to consoleintr's shift and which the shift's append hands
+       back.  [App.xv6_app]'s [app_win]. *)
+    (Wres : CT -> nat -> iProp Σ)
+    (HWrest : forall (c : CT) (k : nat), Timeless (Wres c k))
+    (* ...and the ERA'S TURN, which is no field at all: the application's
+       per-era credential for <init>, produced by the same power-on step and
+       delivered to [Hinit_boot] below.  [App.xv6_app]'s [app_turn]. *)
+    (Tnn : CT -> nat -> iProp Σ)
     (* THE TRANSPORT (app-instances.md round C, section 1; section 6 ruling
        5): a copy of the claim can be made at fresh instance names without
        spending the original, under the later every crossing hands it over
@@ -1290,7 +1335,15 @@ Theorem xv6_power_adequacy_gen Σ
          (* ...and (b''') THE INPUT-LOG EQUATION (lane CONS-IO), on the
             same mould: what turns [Hin_sup] into [WpUart.in_licence]. *)
          @riscv_in_res Σ (@riscv_fixedGS Σ HR) = Ires c ->
+         (* ...and (b'''') THE WINDOW-TOKEN EQUATION (lane CONS-IO milestone
+            F), the two claims' twin and true for the same reason: the
+            machine's ambient echo window token IS this application's. *)
+         @riscv_win_res Σ (@riscv_fixedGS Σ HR) = Wres c ->
          ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot c (Datatypes.S gen_id) r -∗
+           (* ...AND THE ERA'S TURN (lane CONS-IO milestone F), beside the
+              boot resource: the application's own per-era credential,
+              minted at the power-on step and handed to <init>. *)
+           Tnn c (Datatypes.S gen_id) -∗
            |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0)
     (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3), the SECOND thing the
        application owes the kernel about the console.  consoleintr echoes
@@ -1312,6 +1365,10 @@ Theorem xv6_power_adequacy_gen Σ
             accepted byte as well as justifying its echo. *)
          @riscv_in_res Σ (@riscv_fixedGS Σ HR) = Ires c ->
          @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = Tg c ->
+         (* ...AND THE WINDOW TOKEN'S (lane CONS-IO milestone F): the shift
+            TAKES the era's token, so the machine's ambient one must be this
+            application's -- which is what makes the entailment closed. *)
+         @riscv_win_res Σ (@riscv_fixedGS Σ HR) = Wres c ->
          ⊢ ∀ (GEN : GenId) (XI : CurCtx), @cons_echo_shift Σ HR GEN XI)
     (* THE TRACE INVARIANT, PASSED THROUGH TO
        [RiscvAdequacy.riscv_power_adequacy] (whose header is the full
@@ -1353,7 +1410,13 @@ Theorem xv6_power_adequacy_gen Σ
                 (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
               (if on then emp
                else Ores c (Datatypes.S (obs_boots h)) [] [] ∗
-                    Ires c (Datatypes.S (obs_boots h)) [] [] [])))
+                    Ires c (Datatypes.S (obs_boots h)) [] [] [] ∗
+                    (* ...AND THE ERA'S WINDOW TOKEN AND ITS TURN (lane
+                       CONS-IO milestone F), the same arm's other two
+                       yields: the token is lent to the kernel on the
+                       console's PLIC payload, the turn goes to <init>. *)
+                    Tnn c (Datatypes.S (obs_boots h)) ∗
+                    Wres c (Datatypes.S (obs_boots h)))))
     (* ...AND SINCE lane APP-IFACE item (c) (review-echo-plan finding 3) IT
        IS STATED AT THE ERA'S OWN UART NAMES.  It used to be quantified over
        an ARBITRARY [γ : uart_names], and a ledger's tx/rx wands inherit that
@@ -1372,7 +1435,7 @@ Theorem xv6_power_adequacy_gen Σ
                  γd γsw γreg γstart c)
               γobs T (Pt γobs c) γhist (Tg c) (HTg c) (HTgt c)
               (Kc c) (HKc c) (HKct c) (Ores c) (HOrest c)
-              (Ires c) (HIrest c) CT c
+              (Ires c) (HIrest c) (Wres c) (HWrest c) CT c
           /\ @file_app Σ HF = MkAppcfg app_names (app_fs c) r
           /\ (i = Uart0 -> FsCfg.fsc_uart = γ)) ->
        ⊢ obs_inv -∗ uart_obs_permit i γ)
@@ -1389,7 +1452,7 @@ Theorem xv6_power_adequacy_gen Σ
                   γd γsw γreg γstart c)
                γobs T (Pt γobs c) γhist (Tg c) (HTg c) (HTgt c)
                (Kc c) (HKc c) (HKct c) (Ores c) (HOrest c)
-               (Ires c) (HIrest c) CT c) g' -∗
+               (Ires c) (HIrest c) (Wres c) (HWrest c) CT c) g' -∗
          ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
          ▷ xv6_slot app_names app_fs cov (FsImg.sb_logstart sb)
              γd γsw γreg γstart c -∗
@@ -1597,7 +1660,8 @@ Proof.
            (* THE TRACE SLOT AND THE TRACE HOOK, threaded straight through:
               this layer fixes the crash predicate but says nothing about the
               trace, so both pass down unexamined. *)
-           Pt Tg HTg HTgt Kc HKc HKct Ores HOrest Ires HIrest HPt Hobs phi Hphi
+           Pt Tg HTg HTgt Kc HKc HKct Ores HOrest Ires HIrest
+           Wres HWrest Tnn HPt Hobs phi Hphi
            Hgen0 Hpow _ n κs t2 g2 Hn).
   (* the per-era boot entailment, at the era instance the power thread just
      minted.  [riscv_fixedGS (RiscvGS Σ F HE)] iota-reduces to [F] and
@@ -1629,6 +1693,10 @@ Proof.
   (* ...AND THE INPUT LOG'S (lane CONS-IO), off the same literal *)
   assert (Hinfix : @riscv_in_res Σ F = Ires Gcl)
     by (rewrite Hfix; reflexivity).
+  (* ...AND THE ECHO WINDOW TOKEN'S (lane CONS-IO milestone F), off the same
+     literal and for the same reason *)
+  assert (Hwinfix : @riscv_win_res Σ F = Wres Gcl)
+    by (rewrite Hfix; reflexivity).
   subst F.
   (* THE RECORD'S SHAPE, substituted: every projection below reduces, which
      is what makes the crash slot's value -- and hence the seam -- visible
@@ -1647,11 +1715,12 @@ Proof.
      [riscv_client], so they are terms here, not holes *)
   refine (@xv6_boot_era Σ (RiscvGS Σ _ HE) _ Hufd _ _ _ _ _ _ gen g' sb nib cov
             app_names (app_fs Gcl) (app_boot Gcl)
+            (Tnn Gcl (Datatypes.S gen))
             (app_xfer_raw_of_boot _ _ (Happ_boot Gcl (Datatypes.S gen)))
             (fun HBs HFd HIr HPav HWc HF r Hr =>
                Hinit_boot (RiscvGS Σ _ HE) gen HBs HFd HIr HPav HWc HF Gcl r
-                 Hr Htagfix Hkillfix Hgenfix Houtfix Hinfix)
-            (Happ_echo (RiscvGS Σ _ HE) Gcl Houtfix Hinfix Htagfix)
+                 Hr Htagfix Hkillfix Hgenfix Houtfix Hinfix Hwinfix)
+            (Happ_echo (RiscvGS Σ _ HE) Gcl Houtfix Hinfix Htagfix Hwinfix)
             Hbf Hpure Hcovin Hlogsub Hls2 _ _).
   (* the descriptor class comes back as a GOAL here rather than being
      shelved, because the application is explicit ([@]); it is the section's
@@ -1694,6 +1763,7 @@ Theorem xv6_power_adequacy Σ
                (@kill_cred_triv_timeless Σ)
                out_res_triv (@out_res_triv_timeless _)
                in_res_triv (@in_res_triv_timeless _)
+               win_res_triv (@win_res_triv_timeless _)
                unit c) g' -∗
          ▷ xv6_slot unit (fun _ _ _ => True%I) cov (FsImg.sb_logstart sb)
              γd γsw γreg γstart c -∗
@@ -1722,6 +1792,11 @@ Proof.
                  (pops : list ConsLog.log_entry)
                  (dl : list (list mobs * bv 8)) =>
                @in_res_triv_timeless _ k h pops dl)
+            (* the window token and the turn, both trivial at the generic
+               application (lane CONS-IO milestone F) *)
+            (fun _ : unit => win_res_triv)
+            (fun (_ : unit) (k : nat) => @win_res_triv_timeless _ k)
+            (fun (_ : unit) (_ : nat) => emp%I)
             ltac:(intros c k; apply app_xfer_boot_raw_triv;
                   intros r av; reflexivity)
             ltac:(intros c; cbv beta; iModIntro; iExists ();
@@ -1738,20 +1813,22 @@ Proof.
             ltac:(intros ci ri; rewrite /in_res_triv;
                   iIntros "_"; iSplit; iIntros "!>" (?????) "_"; by iModIntro)
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
-                         Heq Htag Hkill Hgeni Hout Hin;
-                  iIntros "_ _"; iModIntro; iApply init_boot_of_triv;
+                         Heq Htag Hkill Hgeni Hout Hin Hwin;
+                  iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
                   | exact Hkill | exact Hout | exact Hin ])
             (* THE ECHO'S JUSTIFICATION, at the TRIVIAL output claim: every
                link is free, so the echo justifies itself. *)
-            ltac:(intros HRi ci Houti Hini Htagi; iIntros (GEN XI);
+            ltac:(intros HRi ci Houti Hini Htagi Hwini; iIntros (GEN XI);
                   iApply (cons_echo_shift_triv (XI := XI));
                   [ exact Houti | exact Hini ])
             (fun γobs _ => obs_pred_at γobs)
             (obs_pred_at_alloc_cl (fun _ : unit => True%I))
             (fun γd γobs _ =>
                obs_pred_at_step XV6_DISK_BYTES out_res_triv in_res_triv
-                 (out_res_triv_founded Σ) (in_res_triv_founded Σ) γd γobs)
+                 (fun _ => emp%I) win_res_triv
+                 (out_res_triv_founded Σ) (in_res_triv_founded Σ)
+                 (turn_triv_founded Σ) (win_res_triv_founded Σ) γd γobs)
             _ (fun g _ => phi g)
             ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
                   iIntros "Hsi _ _ HP _";
@@ -1918,6 +1995,16 @@ Proof.
             (fun _ _ _ => emp%I)
             (fun _ : unit => Ores) (fun _ : unit => HOrest)
             (fun _ : unit => Ires) (fun _ : unit => HIrest)
+            (* THE WINDOW TOKEN AND THE TURN ARE TRIVIAL AT THIS PACKAGED
+               THEOREM (lane CONS-IO milestone F).  Its client runs the
+               GENERIC application in user space and states a trace
+               property; it owns no echo discipline that a per-era exclusive
+               could protect, so the machine's token is [emp] and the era's
+               turn with it.  A client that wants them uses
+               [App.xv6_app_adequacy], where the record supplies both. *)
+            (fun _ : unit => win_res_triv)
+            (fun (_ : unit) (k : nat) => @win_res_triv_timeless Σ k)
+            (fun (_ : unit) (_ : nat) => emp%I)
             (* THE TRANSPORT IS THE CLIENT'S at this theorem: it is what
                founds the client's own output claim per era. *)
             ltac:(intros c k; apply app_xfer_boot_raw_triv;
@@ -1935,19 +2022,30 @@ Proof.
             (* the first process's slot, on the GENERIC supply and the
                client's own licences *)
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
-                         Heq Htag Hkill Hgeni Hout Hin;
-                  iIntros "_ _"; iModIntro; iApply init_boot_of_sup;
+                         Heq Htag Hkill Hgeni Hout Hin Hwin;
+                  iIntros "_ _ _"; iModIntro; iApply init_boot_of_sup;
                   [ rewrite /out_licence Hout; iIntros "_"; iApply Hout_lic
                   | rewrite /in_licence Hin; iIntros "_"; iApply Hin_lic
                   | iApply app_sup_of_triv; rewrite Heq; intros r' av;
                     reflexivity
                   | rewrite Hkill /kill_cred_triv; iModIntro; done ])
-            (fun HRi (_ : unit) => Hecho HRi)
+            (fun HRi (_ : unit) (Hoi : _) (Hii : _) (Hti : _) (_ : _) =>
+               Hecho HRi Hoi Hii Hti)
             (fun γobs _ => obs_ledger_at R γobs)
             (fun γobs _ => obs_ledger_at_alloc_cl R γobs True%I
                              ltac:(iIntros "_"; iMod HR0 as "HR"; by iModIntro))
             (fun γd γobs _ =>
-               obs_ledger_at_step XV6_DISK_BYTES R HRt Ores Ires Hpow γd γobs)
+               obs_ledger_at_step XV6_DISK_BYTES R HRt Ores Ires
+                 (fun _ => emp%I) win_res_triv
+                 ltac:(intros h on dk Hsh; iIntros "HR";
+                       iMod (Hpow h on dk Hsh with "HR") as "[HR Hf]";
+                       iModIntro; iSplitL "HR"; [iExact "HR" |];
+                       destruct on; [done |];
+                       iDestruct "Hf" as "[Ho Hi]";
+                       iSplitL "Ho"; [iExact "Ho" |];
+                       iSplitL "Hi"; [iExact "Hi" |];
+                       rewrite /win_res_triv; by iSplitR)
+                 γd γobs)
             _ (fun _ h => P h)
             ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
                   iIntros "_ Hauth _ _ HPt";
@@ -2217,6 +2315,7 @@ Corollary xv6_power_adequacy_xv6Σ (g : gstate)
                (@kill_cred_triv_timeless xv6Σ)
                out_res_triv (@out_res_triv_timeless _)
                in_res_triv (@in_res_triv_timeless _)
+               win_res_triv (@win_res_triv_timeless _)
                unit c) g' -∗
          ▷ xv6_slot unit (fun _ _ _ => True%I) fsimg_cov
              (FsImg.sb_logstart fsimg_sb) γd γsw γreg γstart c -∗
@@ -2286,7 +2385,8 @@ Proof.
                 kill_cred_triv (@kill_cred_triv_persistent xv6Σ)
                 (@kill_cred_triv_timeless xv6Σ)
                 out_res_triv (@out_res_triv_timeless xv6Σ)
-                in_res_triv (@in_res_triv_timeless xv6Σ) g')
+                in_res_triv (@in_res_triv_timeless xv6Σ)
+                win_res_triv (@win_res_triv_timeless xv6Σ) g')
            Hgen0 Hpow Hdisk).
 Qed.
 
@@ -2419,6 +2519,11 @@ Proof.
                  (pops : list ConsLog.log_entry)
                  (dl : list (list mobs * bv 8)) =>
                @in_res_triv_timeless _ k h pops dl)
+            (* the window token and the turn, both trivial at the generic
+               application (lane CONS-IO milestone F) *)
+            (fun _ : unit => win_res_triv)
+            (fun (_ : unit) (k : nat) => @win_res_triv_timeless _ k)
+            (fun (_ : unit) (_ : nat) => emp%I)
             ltac:(intros c k; apply app_xfer_boot_raw_triv;
                   intros r av; reflexivity)
             ltac:(intros c; cbv beta; iModIntro; iExists ();
@@ -2435,20 +2540,22 @@ Proof.
             ltac:(intros ci ri; rewrite /in_res_triv;
                   iIntros "_"; iSplit; iIntros "!>" (?????) "_"; by iModIntro)
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
-                         Heq Htag Hkill Hgeni Hout Hin;
-                  iIntros "_ _"; iModIntro; iApply init_boot_of_triv;
+                         Heq Htag Hkill Hgeni Hout Hin Hwin;
+                  iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
                   | exact Hkill | exact Hout | exact Hin ])
             (* THE ECHO'S JUSTIFICATION, at the TRIVIAL output claim: every
                link is free, so the echo justifies itself. *)
-            ltac:(intros HRi ci Houti Hini Htagi; iIntros (GEN XI);
+            ltac:(intros HRi ci Houti Hini Htagi Hwini; iIntros (GEN XI);
                   iApply (cons_echo_shift_triv (XI := XI));
                   [ exact Houti | exact Hini ])
             (fun γobs _ => obs_pred_at γobs)
             (obs_pred_at_alloc_cl (fun _ : unit => True%I))
             (fun γd γobs _ =>
                obs_pred_at_step XV6_DISK_BYTES out_res_triv in_res_triv
-                 (out_res_triv_founded xv6Σ) (in_res_triv_founded xv6Σ) γd γobs)
+                 (fun _ => emp%I) win_res_triv
+                 (out_res_triv_founded xv6Σ) (in_res_triv_founded xv6Σ)
+                 (turn_triv_founded xv6Σ) (win_res_triv_founded xv6Σ) γd γobs)
             _ (fun g h => obs_wf h g)
             ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
                   iIntros "_ _ %Hwf _ _"; iModIntro; iPureIntro; exact Hwf)

@@ -3702,6 +3702,60 @@ GOTCHA recorded in durable-notes: a transitive `Require` can vanish under a
 sibling's edit (UInitBoot lost UShOut through UInitBanner).  Reports:
 `handoff-2026-09-16/step3-sh-report.md`.
 
+PROLOGUE-ALTS-3 LANDED (2026-09-14; the lane's `7c269ea8f`+`58b586b52`+
+`39544b6af` in `-tlw` cherry-picked onto `33064d938` as `…b65275c81`; 10
+files +1327/-462; NEW `EchoLinksBan.v` (row after `EchoLinksLine.v`);
+builds pa3-1..pa3-5 in `-tlw`; audit the thirteen; lemma_diff 7 GONE
+(`pro_of_banner` FALSE now; `pro_of_replicate_banner`/`pro_open_replicate`/
+`pro_of_replicate_length`/`pro_done_replicate`/`pro_of_replicate_snoc`
+replaced by the `pro_fail` family; `pcount_zero` false at `ps = []`, no
+consumer); no Admitted, no `∨ True`).  THE BANNER IS A LETTER, NOT A PREFIX:
+the owner's ruling (a prologue round may be "$ " alone) is implemented by
+making init's banner the FOURTH prologue alternative and an open round with
+nothing filed predict NOTHING.  TRUSTED DIFF (EchoDisc), OLD:
+`pro_alts := [u_prompt; u_execfail; u_forkfail]`; `pro_more a t := if
+decide (a = 1) then t else []`; `pro_of [] = u_banner`, `pro_of (a :: ps') =
+u_banner ++ pro_alts !!! a ++ pro_more a (pro_of ps')`; `pro_done ps :=
+Exists (fun a => a <> 1) ps`.  NEW: `pro_alts := [u_prompt; u_execfail;
+u_forkfail; u_banner]`; `pro_cont a := a = 1 \/ a = 3`; `pro_more a t := if
+decide (pro_cont a) then t else []`; `pro_of [] = []`, `pro_of (a :: ps') =
+pro_alts !!! a ++ pro_more a (pro_of ps')`; `pro_done ps := Exists (fun a =>
+~ pro_cont a) ps`.  `expected_rel` and `disc_pt` textually unchanged.  The
+good run is `[3; 0]`, the banner-less round `[0]`, exec failure + restart
+`[3; 1; 3; 0]`, fork failure `[3; 2]`; anti-vacuity witnesses `demo_*` for all
+five machine transcripts.  WHY THIS SHAPE: a writer's knowledge of `ps` is a
+persistent LOWER BOUND, so `pro_of` must be monotone in it; a default banner
+at `pro_of []` beside a banner-less alternative breaks every link stated at
+a bound, and a banner glued as a prefix onto letters 0-2 leaves init unable
+to write it before a choice it does not yet know.  OWNER QUESTION (open):
+the predicate is WIDER than the ruling's literal shape -- per round it
+admits every word in {1,3}*{0,2}, e.g. `[3; 3; 0]` (two banners) and `[1; 0]`
+(an exec diagnostic with no banner), which the machine never produces.  The
+theorem is weaker by that much and not vacuous; tightening = a
+well-formedness conjunct on `ps` through `pro_ok` plus a premise on
+`echo_link_pro`.  Ruling wanted: leave it (shortest honest path) or tighten.
+WHAT STEP 4 RECEIVES: `EchoLinks.wr_ban`'s open prologue is `pro_fail j :=
+concat (replicate j [3; 1])`, `wr_ban_pro : wr_ban ps cs n P -> wr_pro ps cs n
+P` (the banner is an unfiled letter at the banner-owed shape), `wr_banp`/
+`ewc_ban v n i` re-cut so byte 0 goes through `echo_link_pro` at a = 3;
+`echo_prompt_dollar_ban : b = u_prompt !!! 0 -> era_pin -∗ echo_links -∗
+ewc_ban v n 0 -∗ (ewc_sp v n -∗ Φ) -∗ out_link Uart0 k b Φ` (pay '$' from the
+banner-owed shape; the tight twin in `EchoLinksBan` ends in `ewc_sp_t`),
+`ewc_ban_owed`/`EchoLinksBan.ewc_ban_line` (collapse the top's disjunction);
+THE DISCIPLINE LEMMA: `read_ret`'s non-empty arm now carries `turn_lb v
+(length (proc_upto ps0 cs0 (n + length ws))) ∗ ⌜rd_stage ps0 cs0 (n + length
+ws)⌝` (deposited by `eout_step_echo`; `turn`/`turn_auth` are
+`mono_nat_auth_own` halves now, `turn_lb` the bound), and
+`ewc_owed_read_taint : 0 < length ws -> ewc_owed v n -∗ read_ret T k v n ws -∗
+T` / `EchoLinksBan.ewc_line_read_taint` / `ewc_ban_read_taint` (an untainted
+read at an unwritten prompt is refuted).  `echo_write_link_pro` UNCHANGED
+(with "an open round predicts nothing" its stage is the next letter's for
+every `a`).  EchoLinksPro follows the letter: `wr_pdiag`'s open prologue is
+`pro_fail j ++ [3; a]`, `ewc_pro`'s body is `wr_pban` (`wr_pro` plus "the
+open round is `pro_fail j ++ [3]`"), every Iris statement UInitDiag consumes
+unchanged.  Reports: `handoff-2026-09-16/prologue-alts-3-report.md`,
+`-report-2.md`, `-report-3.md`.
+
 IO-LEAF M6a(2) LANDED (2026-09-16; `61f015f7b`+`e8b61dc6a` on `61269a3c2`;
 EchoLinks.v, UInitBanner.v, UInitBoot.v, UInitKernel.v, UkInitMain.v; builds
 io53-io54 in the main checkout; audit the thirteen; lemma_diff 6 GONE (the

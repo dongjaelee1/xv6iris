@@ -22,49 +22,26 @@ two halves of step 3).
 * Landings: `git push origin lane/io-leaf:main` after the full gate; notes only
   from `/shared/xv6iris-2-notes` (branch `notes`, `git push origin HEAD:main`).
 
-## 2. What is on main (origin/main = eab906990 code)
+## 2. What is on main (origin/main = b65275c81 code)
 
 * M6a(3) steps 1-2, WRITE-CLOSED, SH-LINE-CRED, the `_CoqProject` strip,
-  INIT-DIAG (`bdd9faf7f`: `EchoLinksPro.v`, `UInitDiag.v`), and IO-LEAF STEP 3
-  (`a583457a6` init side, `a860c399d` shell side, `eab906990` the glue) --
-  app-echo.md's "INIT-DIAG LANDED" and "IO-LEAF STEP 3 LANDED" notes are the
-  record (two trusted changes, OLD/NEW there and in the commit messages).
-  Audit md5 unchanged (57f7327206c4b276d05035342fea8ecf); `Hsh_owed`'s text
-  unchanged.
+  INIT-DIAG (`bdd9faf7f`), IO-LEAF STEP 3 (`a583457a6`, `a860c399d`,
+  `eab906990`) and PROLOGUE-ALTS-3 (`…b65275c81`, three commits) -- the
+  "LANDED" notes of 2026-09-14 in app-echo.md are the record; three trusted
+  changes (`init_boot_pay`, `sh_pay_rest`, EchoDisc's `pro_alts`/`pro_of`),
+  OLD/NEW in the notes and the commit messages.  Audit md5 unchanged
+  (57f7327206c4b276d05035342fea8ecf); `Hsh_owed`'s text unchanged.
 
-## 3. In flight -- one lane
+## 3. In flight -- nothing
 
-### PROLOGUE-ALTS-3 -- checkout `/shared/xv6iris-2-tlw`, branch `lane/prologue-alts-3`
-Brief: `brief-prologue-alts-3.md`; reports `prologue-alts-3-report.md` and
-`-report-2.md` (in the coordinator's scratchpad until landed, then in
-`handoff-2026-09-16/`).  DONE AND GREEN on `9a1d2e638` (commits `da61f6275`,
-`fcd6e6c08` = new `EchoLinksBan.v`, `5612d819d` = the EchoLinksPro fix); the
-lane is rebasing onto `eab906990` (re-applying its three one-line fixes in
-UShLine.v/UShOut.v/EchoLinksLine.v), full build pa3-5, gate, report-3.
-Then the coordinator cherry-picks it from `-notes` and lands.
+All lanes have landed; every checkout is free (`-disc` on `lane/step3-sh`,
+`-tlw` on `lane/prologue-alts-3`, `-sup` on `lane/init-diag`, all merged;
+the main checkout on `lane/io-leaf-3` = main).  OPEN OWNER QUESTIONS: (i)
+the trace predicate's WIDENING by PROLOGUE-ALTS-3 (app-echo.md's
+"PROLOGUE-ALTS-3 LANDED": leave or tighten); (ii) `die_dw` (a killed init),
+unchanged.
 
-TRUSTED DIFF IT CARRIES (EchoDisc): the banner becomes a fourth prologue
-LETTER (`pro_alts := [u_prompt; u_execfail; u_forkfail; u_banner]`,
-`pro_cont a := a = 1 \/ a = 3`, `pro_of [] = []`, `pro_of (a :: ps') =
-pro_alts !!! a ++ pro_more a (pro_of ps')`, `pro_done ps := Exists (fun a =>
-~ pro_cont a) ps`); `expected_rel`/`disc_pt` textually unchanged.  Good run
-`[3;0]`, banner-less `[0]`, exec failure + restart `[3;1;3;0]`, fork failure
-`[3;2]`.  OWNER QUESTION (report it): the predicate is WIDER than the ruling's
-literal shape -- it admits every word in {1,3}*{0,2} per round, e.g. `[3;3;0]`
-(two banners) and `[1;0]` (exec diagnostic without a banner), which the
-machine never produces.  Sound (weaker theorem, not vacuous: anti-vacuity
-witnesses `demo_*` for all five machine transcripts), and the lane's reason
-for the shape is that a writer's knowledge of `ps` is a persistent LOWER
-BOUND, so `pro_of` must be monotone -- a default banner at `pro_of []` breaks
-every link stated at a bound.  Tightening = a well-formedness conjunct on
-`ps` through `pro_ok` plus a premise on `echo_link_pro`; the owner decides
-whether it is worth doing.  What step 4 receives: `EchoLinks.echo_prompt_
-dollar_ban` / `EchoLinksBan.echo_prompt_dollar_ban` (pay '$' from the
-banner-owed shape), `EchoLinks.ewc_owed_read_taint` / `EchoLinksBan.ewc_line_
-read_taint` / `ewc_ban_read_taint` (an untainted read at an unwritten prompt
-is refuted), `ewc_ban_owed`/`ewc_ban_line` (collapse the top's disjunction).
-
-## 4. Then (unchanged plan; PROLOGUE-ALTS-3 lands first)
+## 4. Then (unchanged plan)
 
 Step 4 = M3b core + the wait redemption + PROLOGUE-ALTS-3's two lemmas
 consumed -> every `∨ True` named in `step3-interface.md` dies

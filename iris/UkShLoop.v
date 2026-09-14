@@ -132,14 +132,19 @@ Section UkShLoop.
 
   (* the loop head, at the resources and the budget main's body forces on
      it -- i.e. what [UkSh.ush_loop_head] has to become *)
-  Definition ushl_head (l : list fdstate) (sz : Z) : iProp Σ :=
+  (* [T] IS A PARAMETER (lane IO-LEAF, M5(3)): the process state carries
+     the cursor AT A LINE BOUNDARY now ([UkSh.ush_posb]), and the arm a
+     tainted turn is at names the application's [T].  This file proves
+     nothing about the taint, so it takes it opaquely rather than binding
+     it as a section variable. *)
+  Definition ushl_head (T : iProp Σ) (l : list fdstate) (sz : Z) : iProp Σ :=
     (∀ (h : CpuId) (m : regfile) (f : nat -> bv 8) (n : nat),
        ⌜ UkSh.ush_regs m ⌝ -∗
        (* ...and the row the console preamble established (lane SH-OPEN):
           fd 0 is the console device, or it is closed.  PURE, and carried
           unchanged by the whole of the command loop. *)
        ⌜ UkSh.ush_fd0p l ⌝ -∗
-       UkSh.ush_pstate N γp l -∗
+       UkSh.ush_pstate N γp T l -∗
        ushl_dat γd -∗ usz γs sz -∗
        ubytes γd sh_buf sh_nbuf f -∗
        urun N h m (mword_of_int 0x938) (16 + (80 + n)) -∗
@@ -161,8 +166,8 @@ Section UkShLoop.
      and no later one -- so a turn of the loop re-enters on the right
      disjunct and this shell-level head, which is what every arm of main's
      body discharges, does not mention it at all. *)
-  Lemma ushl_head_of_R (l : list fdstate) (sz : Z) :
-    UkSh.ush_loop_head N γp (ushl_R sz) l -∗ ushl_head l sz.
+  Lemma ushl_head_of_R (T : iProp Σ) (l : list fdstate) (sz : Z) :
+    UkSh.ush_loop_head N γp T (ushl_R sz) l -∗ ushl_head T l sz.
   Proof.
     iIntros "H" (h m f n) "%Hregs %Hfd0 Hstd Hdat Hsz Hbuf Hrun".
     iApply ("H" $! h m f n with "[%//] [%//] [] Hstd [$Hdat $Hsz] Hbuf Hrun").

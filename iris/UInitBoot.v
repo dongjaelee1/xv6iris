@@ -378,6 +378,9 @@ Section UInitBoot.
          IO-LEAF, M5), passed straight through: see
          [UInitSh.init_exec_sup_of_sh_slot] *)
       (Rd : nat -> iProp Σ) `{!forall i : nat, Timeless (Rd i)}
+      (* ...and the mid-line pieces of the same lease (lane IO-LEAF,
+         M5(3)), passed straight through *)
+      (Pm : gname -> nat -> iProp Σ)
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat) :
     file_app = MkAppcfg echo_names (echo_pred γ) r ->
     (forall k : Z, free_num k -> @psok Σ uprogSG_free k) ->
@@ -387,21 +390,39 @@ Section UInitBoot.
        [UInitSh.init_exec_sup_of_sh_slot] *)
     (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
        ukn_pay N = ucons_pay cn γp (echo_taint γ) Rd ->
-       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp (echo_taint γ) cn l) ->
+       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp (echo_taint γ)
+           (Pm γp) cn l) ->
+    (* the lease's three laws and the cursor's boundary, passed straight
+       through: see [UInitSh.init_exec_sup_of_sh_slot] *)
+    (forall (γp : gname) (N : uk_names Σ) (i : nat),
+       ukn_pay N = ucons_pay cn γp (echo_taint γ) Rd ->
+       ⊢ UkSh.ush_at N γp i -∗
+         UkSh.ush_lease N γp (echo_taint γ) (Pm γp) i) ->
+    (forall (γp : gname) (N : uk_names Σ) (i : nat),
+       ukn_pay N = ucons_pay cn γp (echo_taint γ) Rd -> UkSh.ush_bnd i ->
+       ⊢ Pm γp i -∗ UkSh.ush_at N γp i) ->
+    (forall (γp : gname) (N : uk_names Σ) (i : nat),
+       ukn_pay N = ucons_pay cn γp (echo_taint γ) Rd ->
+       ⊢ echo_taint γ -∗ Pm γp i -∗ UkSh.ush_at N γp i) ->
+    (forall (γp : gname) (N : uk_names Σ) (i : nat),
+       ukn_pay N = ucons_pay cn γp (echo_taint γ) Rd ->
+       ⊢ UkSh.ush_at N γp i -∗
+         UkSh.ush_posb N γp (echo_taint γ)) ->
     udep (PS := uprogSG_free) -∗ UkSh.sh_deps (PS := uprogSG_free) -∗
     UInitSh.init_sh_slot (echo_taint γ) (UInitSh.sh_pay (echo_taint γ) Rsh n0) -∗
     UkInit.init_cons_sup cn (echo_taint γ)
       (init_cons_cred (echo_taint γ) r) st
       (UShKernel.sh_prompt_pay (PS := uprogSG_free)) Rd.
   Proof.
-    intros Heq Hpsok_free Hn0 Hst Hrl.
+    intros Heq Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hbd.
     iIntros "#Hdep #Hdp #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
     - iIntros "!> #Hcns".
       iDestruct "Hcore" as "#Hcore'".
       (* [Persistent K] is an INSTANCE binder there, so it is not passed
          positionally; [cons_never_persistent] answers it. *)
       iApply (UInitSh.init_exec_sup_of_sh_slot (echo_taint γ) cn st
-                (cons_never r) Rd Rsh n0 Hpsok_free Hn0 Hst Hrl
+                (cons_never r) Rd Pm Rsh n0 Hpsok_free Hn0 Hst Hrl
+                Hpm1 Hpm2 Hpm3 Hbd
                 with "Hdep Hdp [] Hcore'").
       iApply (ush_cons_in_of_Cns γ r Heq with "[] Hcns").
       iDestruct "Hcore'" as "(#Hinv & _)". iExact "Hinv".
@@ -700,19 +721,54 @@ Section EchoInitBoot.
         ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ)
                       (UShLine.ush_rd_pin γ) ->
         ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp (echo_taint γ)
-            fsc_cons l).
+            (UShLine.ush_mid γ γp) fsc_cons l).
     { intros γp N l Hpeq.
       exact (UShLine.ush_read_recv_leaf_holds γ (echo_taint γ) N γp l
                Hpeq Hstw Htsw Hlkc). }
+    (* ...AND THE LEASE'S THREE LAWS AND THE CURSOR'S BOUNDARY (lane
+       IO-LEAF, M5(3)), at the same one instance. *)
+    assert (Hsh_pm1 :
+      forall (γp : gname) (N : uk_names Σ) (i : nat),
+        ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ)
+                      (UShLine.ush_rd_pin γ) ->
+        ⊢ UkSh.ush_at N γp i -∗
+          UkSh.ush_lease N γp (echo_taint γ) (UShLine.ush_mid γ γp) i)
+      by (intros γp N i Hpeq;
+          exact (UShLine.ush_mid_of_at γ (echo_taint γ) N γp i Hpeq)).
+    assert (Hsh_pm2 :
+      forall (γp : gname) (N : uk_names Σ) (i : nat),
+        ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ)
+                      (UShLine.ush_rd_pin γ) -> UkSh.ush_bnd i ->
+        ⊢ UShLine.ush_mid γ γp i -∗
+          UkSh.ush_at N γp i)
+      by (intros γp N i Hpeq Hb;
+          exact (UShLine.ush_at_of_mid γ (echo_taint γ) N γp i Hpeq Hb)).
+    assert (Hsh_pm3 :
+      forall (γp : gname) (N : uk_names Σ) (i : nat),
+        ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ)
+                      (UShLine.ush_rd_pin γ) ->
+        ⊢ echo_taint γ -∗ UShLine.ush_mid γ γp i -∗
+          UkSh.ush_at N γp i)
+      by (intros γp N i Hpeq;
+          exact (UShLine.ush_at_of_mid_taint γ (echo_taint γ) N γp i Hpeq)).
+    assert (Hsh_bd :
+      forall (γp : gname) (N : uk_names Σ) (i : nat),
+        ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ)
+                      (UShLine.ush_rd_pin γ) ->
+        ⊢ UkSh.ush_at N γp i -∗
+          UkSh.ush_posb N γp (echo_taint γ))
+      by (intros γp N i Hpeq;
+          exact (UShLine.ush_posb_of_at γ (echo_taint γ) N γp i Hpeq)).
     iAssert (UkInit.init_cons_sup fsc_cons (echo_taint γ)
                (init_cons_cred (echo_taint γ) r) init_cons_fd
                (UShKernel.sh_prompt_pay (PS := uprogSG_free))
                (UShLine.ush_rd_pin γ))%I as "#Hxs".
     { iApply (init_cons_sup_of_sh_slot γ r fsc_cons init_cons_fd
-                (UShLine.ush_rd_pin γ) UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
+                (UShLine.ush_rd_pin γ) (UShLine.ush_mid γ)
+                UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
                 ltac:(vm_compute; discriminate)
                 ltac:(reflexivity)
-                Hsh_rdleaf
+                Hsh_rdleaf Hsh_pm1 Hsh_pm2 Hsh_pm3 Hsh_bd
                 with "[] [] Hsh").
       - iApply (udep_free).
       - iApply Hsh_deps. }
@@ -779,7 +835,10 @@ Section EchoInitBoot.
       iSplitL "Hdn"; [ iExact "Hdn" | ].
       iSplitL "Hrd"; [ rewrite ucons_reader_eq; iExact "Hrd" | ].
       iSplitL "Hdl".
-      { rewrite /UShLine.ush_rd_pin /UInitBanner.kinit_dl0. iExact "Hdl". }
+      { (* ...and the count it is at IS a line boundary: it is ZERO (lane
+           IO-LEAF, M5(3)). *)
+        rewrite /UShLine.ush_rd_pin /UInitBanner.kinit_dl0.
+        iSplitR; [ iPureIntro; exact UkSh.ush_bnd_0 | iExact "Hdl" ]. }
       (* THE ERA'S CREDENTIAL BECOMES /init's BANNER PAYMENT (lane IO-LEAF,
          M1(e)).  This is the one place where the application's claim and
          the kernel's console contracts are the same object AND row 16's

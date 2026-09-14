@@ -499,10 +499,18 @@ Section UInitSh.
              ubyte γd k b) -∗
           |==> ∃ f : nat -> bv 8, Rsh γt γd γs ∗ ubytes γd sh_buf sh_nbuf f))%I.
 
+  (* ...AND IT IS QUANTIFIED OVER THE TAINT (lane IO-LEAF, M5(3)).  The
+     body's obligation carries the line fact -- "the line in the buffer is
+     [EchoDisc.echo_line], or the taint" -- and the cursor's boundary
+     beside it, both of which name the application's [T].  What the TOP
+     theorem owes is stated before any era is in scope ([Hsh_owed]), so the
+     [T] is universally quantified here and instantiated at the era where
+     [sh_pay] is built. *)
   Definition sh_pay_rest (Rsh : gname -> gname -> gname -> iProp Σ)
       : iProp Σ :=
-    (∀ (γp : gname) (N : uk_names Σ),
-       ush_rest (PS := uprogSG_free) N γp
+    (∀ (γp : gname) (N : uk_names Σ) (T : iProp Σ),
+       ⌜ Persistent T ⌝ -∗
+       ush_rest_l (PS := uprogSG_free) N γp T
          (Rsh (ukn_t N) (ukn_d N) (ukn_s N)))%I.
 
   Definition sh_pay (T : iProp Σ) (Rsh : gname -> gname -> gname -> iProp Σ)
@@ -522,7 +530,7 @@ Section UInitSh.
         per child ([UserConsole.upos_alloc]), so what the application owes
         is sh's body at whichever name this round's pair got. *)
      ∗ (∀ (γp : gname) (N : uk_names Σ),
-          ush_rest (PS := uprogSG_free) N γp
+          ush_rest_l (PS := uprogSG_free) N γp T
             (Rsh (ukn_t N) (ukn_d N) (ukn_s N)))
      (* ...AND THE TAG'S READING (lane SH-LINE 2b, L4).  How a tagged input
         history is READ -- as the discipline or as the taint -- is a fact
@@ -534,13 +542,14 @@ Section UInitSh.
         working (durable-notes, "Shaping a change so the sweep is small"). *)
      ∗ UkSh.ush_tag_law T)%I.
 
-  Lemma sh_pay_of_parts (T : iProp Σ)
+  Lemma sh_pay_of_parts (T : iProp Σ) `{!Persistent T}
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat) :
     sh_pay_state Rsh n0 -∗ sh_pay_rest Rsh -∗ UkSh.ush_tag_law T -∗
     sh_pay T Rsh n0.
   Proof.
     iIntros "#Hst #Hre #Htg". rewrite /sh_pay /sh_pay_state /sh_pay_rest.
-    iSplitR; [ iExact "Hst" | ]. iSplitR; [ iExact "Hre" | iExact "Htg" ].
+    iSplitR; [ iExact "Hst" | ]. iSplitR; [ | iExact "Htg" ].
+    iIntros (γp N). iApply ("Hre" $! γp N T). by iPureIntro.
   Qed.
 
   Global Instance sh_pay_persistent T Rsh n0 : Persistent (sh_pay T Rsh n0).
@@ -905,6 +914,12 @@ Section UInitSh.
          through /init's wait.  A parameter for [T]'s reason -- this file
          names no era. *)
       (Rd : nat -> iProp Σ) `{!forall i : nat, Timeless (Rd i)}
+      (* ...AND THE SAME CREDENTIAL WITH THE TOKEN AND THE CURSOR BESIDE
+         IT (lane IO-LEAF, M5(3)): what a shell holds in the MIDDLE of a
+         line, where the payload's own boundary row is false.  Indexed by
+         the position ghost for [Rd]'s reason -- init mints a fresh pair
+         per child. *)
+      (Pm : gname -> nat -> iProp Σ)
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat) :
     (* the numbers sh admits -- THE FREE ONES (lane SUPPLY-SPLIT) *)
     (* AT THE FREE INSTANCE, NAMED AND NOT RESOLVED (lane SUPPLY-SPLIT's
@@ -949,7 +964,26 @@ Section UInitSh.
        exactly as [sh_pay]'s tail is. *)
     (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
        ukn_pay N = ucons_pay cn γp T Rd ->
-       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T cn l) ->
+       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T (Pm γp) cn l) ->
+    (* ...AND THE LEASE IN THE PIECES A LINE'S MIDDLE LEAVES IT IN, with
+       its three laws and the boundary the payload carries (lane IO-LEAF,
+       M5(3)).  All four are Coq-level for the leaf's own reason: this file
+       names no era, and the one discharge ([UShLine]'s [ush_mid]) is where
+       the record's equations are. *)
+    (forall (γp : gname) (N : uk_names Σ) (i : nat),
+       ukn_pay N = ucons_pay cn γp T Rd ->
+       ⊢ UkSh.ush_at N γp i -∗
+         UkSh.ush_lease N γp T (Pm γp) i) ->
+    (forall (γp : gname) (N : uk_names Σ) (i : nat),
+       ukn_pay N = ucons_pay cn γp T Rd -> UkSh.ush_bnd i ->
+       ⊢ Pm γp i -∗ UkSh.ush_at N γp i) ->
+    (forall (γp : gname) (N : uk_names Σ) (i : nat),
+       ukn_pay N = ucons_pay cn γp T Rd ->
+       ⊢ T -∗ Pm γp i -∗ UkSh.ush_at N γp i) ->
+    (forall (γp : gname) (N : uk_names Σ) (i : nat),
+       ukn_pay N = ucons_pay cn γp T Rd ->
+       ⊢ UkSh.ush_at N γp i -∗
+         UkSh.ush_posb N γp T) ->
     udep (PS := uprogSG_free) -∗
     (* ...AND THE THREE DEPOSITS SH OWES: read(5), open(15), write(16), the
        CLAIM numbers sh calls ([UkSh.sh_deps]).  They cross the exec with
@@ -994,7 +1028,7 @@ Section UInitSh.
     UkInit.init_exec_sup_lend cn T st
       (UShKernel.sh_prompt_pay (PS := uprogSG_free)) Rd.
   Proof.
-    intros Hpsok_free Hn0 Hst Hrl. subst st.
+    intros Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hbd. subst st.
     iIntros "#Hdep #Hdp #Hcons (#Hinv & #Hcl0 & #Hgen & #Hpay)".
     (* E4: what crosses is the WHOLE pins law and each consumer projects *)
     iDestruct (sh_pins_of_fs_pure T with "Hcl0") as "#Hcl".
@@ -1106,8 +1140,9 @@ Section UInitSh.
          INSTANTIATED lemma with no goal in play; the [iApply] then has
          only the resource list to do. *)
       pose proof (sh_slot_of_kexec (SG := uexecSG_xv6) (PS := uprogSG_free)
-                    Hpsok_free Rsh γp cn T K (ucons_pay cn γp T Rd) (Hrl γp)
-                    1%nat alen afun fdv W' n0 np
+                    Hpsok_free Rsh γp cn T K (ucons_pay cn γp T Rd)
+                    (Pm γp) (Hrl γp) (Hpm1 γp) (Hpm2 γp) (Hpm3 γp)
+                    1%nat alen afun fdv W' n0 np (fun N0 => Hbd γp N0 np)
                     (ucons_pay_const cn γp T Rd) Hok Hcwd0
                     (init_sh_room alen n0 Halen Hn0) Hlen Hlzf) as Hsk.
       idtac "MARK-s4c-pose-ok".

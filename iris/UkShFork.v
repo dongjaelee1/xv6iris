@@ -153,9 +153,9 @@ Section UkShFork.
   Local Notation s6_idx := (mword_of_int 22 : mword 5).
 
   Local Notation ush_std := (UkSh.ush_std N).
-  Local Notation ush_pstate := (UkSh.ush_pstate N γp).
+  Local Notation ush_pstate := (UkSh.ush_pstate N γp T).
   Local Notation ushl_dat := (UkShLoop.ushl_dat γd).
-  Local Notation ushl_head := (UkShLoop.ushl_head N γp).
+  Local Notation ushl_head := (UkShLoop.ushl_head N γp T).
 
   (* ===================================================================== *)
   (* §1 THE TWO CATALOG BRIDGES THE CHILD NEEDS.                            *)
@@ -224,7 +224,7 @@ Section UkShFork.
      [wp_kshf_fork_any] the index-free arm the body takes. *)
   Definition ushf_pstate_at (l : list fdstate) (c : Z) : iProp Σ :=
     (ush_std l ∗ UserCwd.ucwd γcwd c ∗ UserChildren.uch_any γch
-     ∗ UkSh.ush_pos N γp)%I.
+     ∗ UkSh.ush_posb N γp T)%I.
 
   Lemma ushf_pstate_of_at (l : list fdstate) (c : Z) :
     ushf_pstate_at l c -∗ ush_pstate l.
@@ -276,8 +276,12 @@ Section UkShFork.
        [UkSh.ush_at] is the position AND sh's exit payload, and fork1's
        [-1] arm panics -- which is an [exit] and has to pay.  fork1 hands
        it back on the returning arm and the pair is repacked below. *)
-    iEval (rewrite /UkSh.ush_pos /UkSh.ush_at) in "Hpos".
-    iDestruct "Hpos" as (np0) "[Hpos Hlease]".
+    (* ...AND THE BOUNDARY COMES OUT WITH IT (lane IO-LEAF, M5(3)): the
+       cursor is at a line boundary or the turn is tainted, and either way
+       the pair is repacked at the SAME number below. *)
+    iDestruct (UkSh.ush_posb_at with "Hpos") as (np0) "[#Hbnd0 Hpos]".
+    iEval (rewrite /UkSh.ush_at) in "Hpos".
+    iDestruct "Hpos" as "[Hpos Hlease]".
     assert (Hlen31 : Z.of_nat len < 2 ^ 31)
       by (unfold sh_nbuf in Hkl; lia).
     (* ---- 0x92c  jal ra,fork1 ---- *)
@@ -456,8 +460,10 @@ Section UkShFork.
       + exact HregsD.
       + exact Hfd0.
       + iApply (ushf_pstate_of_at l cw).
-        rewrite /ushf_pstate_at /UkSh.ush_std /UkSh.ush_pos /UkSh.ush_at.
-        iFrame "Hustd Hcwd Hch". iExists np0. iFrame "Hpos Hlease".
+        rewrite /ushf_pstate_at /UkSh.ush_std.
+        iFrame "Hustd Hcwd Hch".
+        iApply (UkSh.ush_posb_of N γp T np0 with "Hbnd0 [Hpos Hlease]").
+        rewrite /UkSh.ush_at. iFrame "Hpos Hlease".
     - (* ================= THE CHILD: parse, run, exec =================== *)
       iIntros (N' hA mA γ') "%Hti' %HcsA %Ha0A _ _ #Hcode' Hpay Hsz Hustd Hcwd
                              Hch _ Hrun".
@@ -640,7 +646,7 @@ Section UkShFork.
                       bv_unsigned (f (S (S k))) = 32))
       as [(Hck & Hck1 & Hck2) | Hne].
     - (* ================= the line is a [cd] command =================== *)
-      iApply (UkShCd.wp_kshc_cd N γp Hpsok_free h m f k (k + len)%nat l sz n
+      iApply (UkShCd.wp_kshc_cd N γp T Hpsok_free h m f k (k + len)%nat l sz n
                 Hregs Hs1 Ha5 ltac:(lia) Hnul Hck Hck1 Hck2
                 with "Hdp Hhead Hcode Hro Hpcode [%] Hstd Hdat Hsz Hbuf Hrun").
       exact Hfd0.

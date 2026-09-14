@@ -116,6 +116,10 @@ Section UkShFork.
   (* ...and the era's write credential the loop carries beside its cursor
      (lane IO-LEAF, M6a(3)), opaque here for the same reason *)
   Context (Wc : nat -> nat -> iProp Σ).
+  (* ...the banner-owed credential and the lease's pieces beside it (step
+     3), opaque here for the same reason *)
+  Context (Wb : nat -> iProp Σ).
+  Context (Pm : nat -> iProp Σ).
   (* the fields, under the names the engine has always used *)
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).
@@ -156,9 +160,9 @@ Section UkShFork.
   Local Notation s6_idx := (mword_of_int 22 : mword 5).
 
   Local Notation ush_std := (UkSh.ush_std N).
-  Local Notation ush_pstate := (UkSh.ush_pstate N γp T Wc).
+  Local Notation ush_pstate := (UkSh.ush_pstate N γp T Wc Wb Pm).
   Local Notation ushl_dat := (UkShLoop.ushl_dat γd).
-  Local Notation ushl_head := (UkShLoop.ushl_head N γp T Wc).
+  Local Notation ushl_head := (UkShLoop.ushl_head N γp T Wc Wb Pm).
 
   (* ===================================================================== *)
   (* §1 THE TWO CATALOG BRIDGES THE CHILD NEEDS.                            *)
@@ -227,7 +231,7 @@ Section UkShFork.
      [wp_kshf_fork_any] the index-free arm the body takes. *)
   Definition ushf_pstate_at (l : list fdstate) (c : Z) : iProp Σ :=
     (ush_std l ∗ UserCwd.ucwd γcwd c ∗ UserChildren.uch_any γch
-     ∗ UkSh.ush_posb N γp T Wc l 0%nat)%I.
+     ∗ UkSh.ush_posb N γp T Wc Wb Pm l 0%nat)%I.
 
   Lemma ushf_pstate_of_at (l : list fdstate) (c : Z) :
     ushf_pstate_at l c -∗ ush_pstate l.
@@ -254,6 +258,10 @@ Section UkShFork.
     8344 <= sz ->
     UserPtTree.pgroundup sz = sz ->
     usz_ok (sz + 65536) ->
+    (* the lease's two laws the fork arm spends (lane IO-LEAF, step 3):
+       premises of the obligation, see [UkSh.ush_rest_l] *)
+    (forall i : nat, ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i) ->
+    (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ UkSh.ush_at N γp i) ->
     UkSh.sh_deps -∗
     ushl_head l sz -∗
     shk_code γt -∗
@@ -271,7 +279,7 @@ Section UkShFork.
     urun N h m (mword_of_int 0x92c) (16 + (80 + n)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hszlo Hszal Hszok.
+    intros Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hszlo Hszal Hszok Hpm1 Hpm2.
     iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hjt %Hfd0 Hstd Hdat Hsz Hbuf Hrun".
     destruct Hregs as (Hs2 & Hs3 & Hs4 & Hs5 & Hs6).
     iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpos)".
@@ -282,7 +290,13 @@ Section UkShFork.
     (* ...AND THE BOUNDARY COMES OUT WITH IT (lane IO-LEAF, M5(3)): the
        cursor is at a line boundary or the turn is tainted, and either way
        the pair is repacked at the SAME number below. *)
-    iDestruct (UkSh.ush_posb_at with "Hpos") as (np0) "[#Hbnd0 Hpos]".
+    (* ...ASSEMBLED FROM THE PIECES (lane IO-LEAF, step 3): the loop holds
+       [Pm] and the credential slot, not the payload; the payload is put
+       together here on its AFFINE arm (the slot is dropped) and taken
+       apart again below.  Step 4 rewrites this site: the fork LENDS the
+       credential. *)
+    iDestruct (UkSh.ush_posb_at N γp T Wc Wb Pm Hpm2 l 0%nat with "Hpos")
+      as (np0) "[#Hbnd0 Hpos]".
     iEval (rewrite /UkSh.ush_at) in "Hpos".
     iDestruct "Hpos" as "[Hpos Hlease]".
     assert (Hlen31 : Z.of_nat len < 2 ^ 31)
@@ -465,7 +479,7 @@ Section UkShFork.
       + iApply (ushf_pstate_of_at l cw).
         rewrite /ushf_pstate_at /UkSh.ush_std.
         iFrame "Hustd Hcwd Hch".
-        iApply (UkSh.ush_posb_of N γp T Wc l 0%nat np0
+        iApply (UkSh.ush_posb_of N γp T Wc Wb Pm Hpm1 l 0%nat np0
                   with "Hbnd0 [Hpos Hlease]").
         rewrite /UkSh.ush_at. iFrame "Hpos Hlease".
     - (* ================= THE CHILD: parse, run, exec =================== *)
@@ -555,6 +569,10 @@ Section UkShFork.
     8344 <= sz ->
     UserPtTree.pgroundup sz = sz ->
     usz_ok (sz + 65536) ->
+    (* the lease's two laws the fork arm spends (lane IO-LEAF, step 3):
+       premises of the obligation, see [UkSh.ush_rest_l] *)
+    (forall i : nat, ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i) ->
+    (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ UkSh.ush_at N γp i) ->
     UkSh.sh_deps -∗
     ushl_head l sz -∗
     shk_code γt -∗
@@ -571,12 +589,13 @@ Section UkShFork.
     urun N h m (mword_of_int 0x92c) (16 + (80 + n)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hszlo Hszal Hszok.
+    intros Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hszlo Hszal Hszok Hpm1 Hpm2.
     iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hjt %Hfd0 Hstd Hdat Hsz Hbuf Hrun".
     iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpos)".
     iDestruct "Hcwd" as (cw) "Hcwd".
     iApply (wp_kshf_fork h m f k len toks sz l n cw
               Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hszlo Hszal Hszok
+              Hpm1 Hpm2
               with "Hdp Hhead Hcode Hxs Hro Hjt [%] [Hustd Hcwd Hch Hpos]
                     Hdat Hsz Hbuf Hrun").
     { exact Hfd0. }
@@ -621,6 +640,10 @@ Section UkShFork.
     8344 <= sz ->
     UserPtTree.pgroundup sz = sz ->
     usz_ok (sz + 65536) ->
+    (* the lease's two laws the fork arm spends (lane IO-LEAF, step 3):
+       premises of the obligation, see [UkSh.ush_rest_l] *)
+    (forall i : nat, ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i) ->
+    (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ UkSh.ush_at N γp i) ->
     UkSh.sh_deps -∗
     ushl_head l sz -∗
     shk_code γt -∗
@@ -635,7 +658,7 @@ Section UkShFork.
     urun N h m (mword_of_int 0x97a) (16 + (80 + n)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hregs Hs1 Ha5 Hnn Hnul Hkl Hns Htoks Htlen Hszlo Hszal Hszok.
+    intros Hregs Hs1 Ha5 Hnn Hnul Hkl Hns Htoks Htlen Hszlo Hszal Hszok Hpm1 Hpm2.
     iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hpcode #Hjt %Hfd0 Hstd Hdat Hsz Hbuf Hrun".
     assert (Hz0 : bv_unsigned ubyte0 = 0) by (vm_compute; reflexivity).
     assert (Hbr : forall j : nat, 0 <= bv_unsigned (f j) < Z64).
@@ -650,7 +673,7 @@ Section UkShFork.
                       bv_unsigned (f (S (S k))) = 32))
       as [(Hck & Hck1 & Hck2) | Hne].
     - (* ================= the line is a [cd] command =================== *)
-      iApply (UkShCd.wp_kshc_cd N γp T Wc Hpsok_free h m f k (k + len)%nat l sz n
+      iApply (UkShCd.wp_kshc_cd N γp T Wc Wb Pm Hpsok_free h m f k (k + len)%nat l sz n
                 Hregs Hs1 Ha5 ltac:(lia) Hnul Hck Hck1 Hck2
                 with "Hdp Hhead Hcode Hro Hpcode [%] Hstd Hdat Hsz Hbuf Hrun").
       exact Hfd0.
@@ -839,7 +862,7 @@ Section UkShFork.
           iIntros (h5) "Hrun".
           iApply (wp_kshf_fork_any h5 m2 f k len toks sz l n
                     Hregs2 Hs1_2 Hns Htoks Htlen Hnn Hnul Hkl
-                    Hszlo Hszal Hszok
+                    Hszlo Hszal Hszok Hpm1 Hpm2
                     with "Hdp Hhead Hcode Hxs Hro Hjt [%] Hstd Hdat Hsz Hbuf Hrun").
           exact Hfd0.
         * (* ---- 0x982  bne a5,s3 -- TAKEN ---- *)
@@ -860,7 +883,7 @@ Section UkShFork.
           iIntros (h3) "Hrun".
           iApply (wp_kshf_fork_any h3 m1 f k len toks sz l n
                     Hregs1 Hs1_1 Hns Htoks Htlen Hnn Hnul Hkl
-                    Hszlo Hszal Hszok
+                    Hszlo Hszal Hszok Hpm1 Hpm2
                     with "Hdp Hhead Hcode Hxs Hro Hjt [%] Hstd Hdat Hsz Hbuf Hrun").
           exact Hfd0.
       + (* ---- 0x97a  bne a5,s5 -- TAKEN ---- *)
@@ -881,7 +904,7 @@ Section UkShFork.
         iIntros (h1) "Hrun".
         iApply (wp_kshf_fork_any h1 m f k len toks sz l n
                   Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl
-                  Hszlo Hszal Hszok
+                  Hszlo Hszal Hszok Hpm1 Hpm2
                   with "Hdp Hhead Hcode Hxs Hro Hjt [%] Hstd Hdat Hsz Hbuf Hrun").
         exact Hfd0.
   Qed.
@@ -979,7 +1002,7 @@ Section UkShFork.
        taint, and a tainted process does not run sh's code any more: the
        body hands its run to the generic slot. *)
     UkSh.ush_gen_slot N T -∗
-    UkSh.ush_rest_l N γp T Wc (UkShLoop.ushl_R N sz).
+    UkSh.ush_rest_l N γp T Wc Wb Pm (UkShLoop.ushl_R N sz).
   Proof.
     intros Hlex Hszlo Hszal Hszok.
     (* the generic slot is a [□] behind a definition; unfolding it before
@@ -993,7 +1016,7 @@ Section UkShFork.
        pays them and the discharger no longer takes them as premises --
        which is what makes [UInitSh.sh_pay_rest], a [∀] over every record,
        provable at all.  [.rodata] rides in with the table. *)
-    iModIntro. iIntros (l) "%Hc #Hcode #Hjt Hhead".
+    iModIntro. iIntros (l) "%Hc %Hpm1 %Hpm2 #Hcode #Hjt Hhead".
     iDestruct (ush_jtab_ro γt with "Hjt") as "#Hro".
     iIntros (h m f k i2 n) "%Hregs %Hs1 %Ha5 %Hi2 %Hfd0 Hline Hstd [Hdat Hsz] Hbuf Hrun".
     destruct Hi2 as [[Hki2 Hi2n] Hnul2].
@@ -1012,7 +1035,7 @@ Section UkShFork.
     destruct (Hlex f k len Hline) as (Hns & toks & Htoks & Htlen).
     iApply (wp_kshm_body h m f k len toks sz l n
               Hregs Hs1 Ha5 Hnn Hnul ltac:(lia) Hns Htoks Htlen
-              Hszlo Hszal Hszok
+              Hszlo Hszal Hszok Hpm1 Hpm2
               with "Hdp [Hhead] Hcode Hxs Hro [] Hjt [%] Hstd Hdat Hsz Hbuf Hrun").
     - iApply (UkShLoop.ushl_head_of_R N γp with "Hhead").
     - iApply (ushf_code_shp with "Hcode").

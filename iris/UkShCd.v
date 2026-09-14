@@ -160,6 +160,10 @@ Section UkShCd.
   (* ...and the era's write credential the loop carries beside its cursor
      (lane IO-LEAF, M6a(3)), opaque here for the same reason *)
   Context (Wc : nat -> nat -> iProp Σ).
+  (* ...the banner-owed credential and the lease's pieces beside it (step
+     3), opaque here for the same reason *)
+  Context (Wb : nat -> iProp Σ).
+  Context (Pm : nat -> iProp Σ).
   (* the fields, under the names the engine has always used *)
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).
@@ -207,7 +211,7 @@ Section UkShCd.
   (* ---- what the other files of the lane define, at this file's own
          ghost names ---- *)
   Local Notation ush_std := (UkSh.ush_std N).
-  Local Notation ush_pstate := (UkSh.ush_pstate N γp T Wc).
+  Local Notation ush_pstate := (UkSh.ush_pstate N γp T Wc Wb Pm).
   Local Notation ush_loop_head := (UkSh.ush_loop_head N γp).
   Local Notation urun_x0 := (UkShParse.urun_x0 N).
   Local Notation wp_kshp_strlen := (UkShParse.wp_kshp_strlen N).
@@ -215,7 +219,7 @@ Section UkShCd.
   Local Notation shd_str_of_ustr := (UkShDiag.shd_str_of_ustr γt γd).
   Local Notation shd_str_to_ustr := (UkShDiag.shd_str_to_ustr γt γd).
   Local Notation ushl_dat := (UkShLoop.ushl_dat γd).
-  Local Notation ushl_head := (UkShLoop.ushl_head N γp T Wc).
+  Local Notation ushl_head := (UkShLoop.ushl_head N γp T Wc Wb Pm).
 (*ALIASES-END*)
 
   (* ===================================================================== *)

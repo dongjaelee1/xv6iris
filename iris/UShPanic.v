@@ -85,6 +85,8 @@ Require Import UkWriteLeaf.        (* the supply and the post, at row 16 *)
 Require Import UCodeShK.           (* [shk_ro] / [shk_rodata] / [uis_shk_*] *)
 Require Import UkSh.               (* [ksh_w] / [wp_ksh_write_chain_txt] *)
 Require Import UkShDiag.           (* [ksh_w1]: the diagnostic tower's byte *)
+Require Import UkWriteClosed.      (* [ksh_w_of_closed]: the prompt on a
+                                      closed fd 2 (step 3) *)
 Require Import UShKernel.          (* [sh_prompt_law] *)
 Require Import UShOut.             (* the prompt's pure half and its call *)
 Require Import EchoDisc.
@@ -602,8 +604,14 @@ Section UShPanic.
   Proof.
     iIntros "#Hlk". rewrite /UShKernel.sh_prompt_law.
     iIntros "!>" (N) "#Hro". rewrite /UkSh.ush_prompt_law.
-    iIntros "!>" (n l) "%Hfd2". destruct Hfd2 as [rb Hl2].
-    iApply (ksh_w_of_link_lcred N n l rb Hl2 with "Hlk Hro").
+    iModIntro. iSplitL "".
+    - iIntros (n l) "%Hfd2". destruct Hfd2 as [rb Hl2].
+      iApply (ksh_w_of_link_lcred N n l rb Hl2 with "Hlk Hro").
+    - (* the closed arm (step 3): see [UShOut.sh_prompt_law_holds] *)
+      iIntros (l) "%Hcl".
+      iApply (UkWriteClosed.ksh_w_of_closed N (mword_of_int 2)
+                (mword_of_int sh_prompt_pv) 2%nat l 2%nat
+                UShOut.sh_fd2_signed ltac:(unfold NSTD; lia) Hcl).
   Qed.
 
 End UShPanic.

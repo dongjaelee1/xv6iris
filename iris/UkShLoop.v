@@ -139,8 +139,10 @@ Section UkShLoop.
      it as a section variable. *)
   (* ...AND [Wc] TOO (lane IO-LEAF, M6a(3)): the era's write credential
      the command loop carries beside its cursor, opaque here for [T]'s
-     reason. *)
+     reason -- and, at step 3, the banner-owed credential [Wb] and the
+     lease's pieces [Pm] that the loop holds in its place. *)
   Definition ushl_head (T : iProp Σ) (Wc : nat -> nat -> iProp Σ)
+      (Wb : nat -> iProp Σ) (Pm : nat -> iProp Σ)
       (l : list fdstate) (sz : Z) : iProp Σ :=
     (∀ (h : CpuId) (m : regfile) (f : nat -> bv 8) (n : nat),
        ⌜ UkSh.ush_regs m ⌝ -∗
@@ -148,7 +150,7 @@ Section UkShLoop.
           fd 0 is the console device, or it is closed.  PURE, and carried
           unchanged by the whole of the command loop. *)
        ⌜ UkSh.ush_fd0p l ⌝ -∗
-       UkSh.ush_pstate N γp T Wc l -∗
+       UkSh.ush_pstate N γp T Wc Wb Pm l -∗
        ushl_dat γd -∗ usz γs sz -∗
        ubytes γd sh_buf sh_nbuf f -∗
        urun N h m (mword_of_int 0x938) (16 + (80 + n)) -∗
@@ -164,19 +166,19 @@ Section UkShLoop.
   (* ...and then [UkSh.ush_loop_head] AT that [R] IS [ushl_head]: the same
      four binders, the same budget ([UkSh.ush_Dbody] is 80), and the two
      halves of [ushl_R] uncurried. *)
-  (* ...AND THE PROMPT'S PAYMENT IS NOT AMONG THEM (lane IO-LEAF, M4a).
-     [UkSh.ush_loop_head] takes the era's credential as an AFFINE input --
-     the '$' that resolves round 0 of the transcript is the FIRST prompt
-     and no later one -- so a turn of the loop re-enters on the right
-     disjunct and this shell-level head, which is what every arm of main's
-     body discharges, does not mention it at all. *)
+  (* ...AND THE PROMPT'S PAYMENT RIDES INSIDE THE PROCESS STATE (lane
+     IO-LEAF, M6a(3), step 3): the era's credential is in [UkSh.ush_posb]'s
+     slot beside the cursor, so this shell-level head -- which is what
+     every arm of main's body discharges -- names nothing beyond the
+     state. *)
   Lemma ushl_head_of_R (T : iProp Σ) (Wc : nat -> nat -> iProp Σ)
+      (Wb : nat -> iProp Σ) (Pm : nat -> iProp Σ)
       (l : list fdstate) (sz : Z) :
-    UkSh.ush_loop_head N γp T Wc (ushl_R sz) l -∗ ushl_head T Wc l sz.
+    UkSh.ush_loop_head N γp T Wc Wb Pm (ushl_R sz) l -∗
+    ushl_head T Wc Wb Pm l sz.
   Proof.
     iIntros "H" (h m f n) "%Hregs %Hfd0 Hstd Hdat Hsz Hbuf Hrun".
-    iApply ("H" $! h m f n with "[%//] [%//] [] Hstd [$Hdat $Hsz] Hbuf Hrun").
-    iApply UkSh.ush_prompt_in_triv.
+    iApply ("H" $! h m f n with "[%//] [%//] Hstd [$Hdat $Hsz] Hbuf Hrun").
   Qed.
 
 End UkShLoop.

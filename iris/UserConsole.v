@@ -325,6 +325,19 @@ Section UserConsole.
     T -∗ ucons_pay cn γ T Rd xs.
   Proof. iIntros "HT". rewrite /ucons_pay. by iRight. Qed.
 
+  (* ...and the payload at a WEAKER credential family, pointwise: what
+     the lender converts the exit family's lease to before handing it to
+     a child (lane IO-LEAF, step 3). *)
+  Lemma ucons_pay_mono (cn : cons_names) (γ : gname) (T : iProp Σ)
+      (Rd Rd' : nat -> iProp Σ) (xs : Z) :
+    □ (∀ n : nat, Rd n -∗ Rd' n) -∗
+    ucons_pay cn γ T Rd xs -∗ ucons_pay cn γ T Rd' xs.
+  Proof.
+    iIntros "#Hm". rewrite /ucons_pay. iIntros "[Hl | HT]"; [ | by iRight ].
+    iDestruct "Hl" as (n) "(Hr & Hp & Hd)". iLeft. iExists n.
+    iFrame "Hr Hp". iApply ("Hm" with "Hd").
+  Qed.
+
   (* ...and what init reads off it at the reap: the token at a position it
      does not know, or the taint.  The payload's half of the pair is
      DROPPED -- the child that held the other half is gone, so nothing

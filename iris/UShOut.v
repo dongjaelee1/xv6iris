@@ -82,6 +82,8 @@ Require Import WpUart.
 Require Import UkWriteLeaf.        (* the supply and the post, at row 16 *)
 Require Import UCodeShK.           (* [shk_ro] / [shk_rodata] *)
 Require Import UkSh.               (* [ksh_w] / [wp_ksh_write_chain_txt] *)
+Require Import UkWriteClosed.      (* [ksh_w_of_closed]: the prompt on a
+                                      closed fd 2 (step 3) *)
 Require Import UShKernel.          (* [sh_prompt_pay]: the PAIR sh's entry
                                       takes -- the credential and the
                                       conversion of it into this call *)
@@ -144,6 +146,10 @@ Proof. vm_compute. reflexivity. Qed.
 
 Lemma sh_pro_pin (ps cs : list nat) : pro_pin ps cs 0%nat.
 Proof. intros q Hq. lia. Qed.
+
+(* fd 2, as the kernel narrows it *)
+Lemma sh_fd2_signed : bv_signed (trunc32 (mword_of_int 2 : mword 64)) = Z.of_nat 2.
+Proof. vm_compute. reflexivity. Qed.
 
 Lemma sh_count2 :
   sys_rw_count (mword_of_int (Z.of_nat 2%nat) : mword 64) = Z.of_nat 2%nat.
@@ -467,14 +473,22 @@ Section UShOut.
     iExists v. iFrame "Hpin Hc".
   Qed.
 
+  (* ...AND ITS CLOSED ARM (lane IO-LEAF, step 3): a prompt on a closed
+     fd 2 writes nothing and needs nothing ([UkWriteClosed.ksh_w_of_closed]
+     -- the kernel's write contract's [FdClosed] arm is [emp]). *)
   Lemma sh_prompt_law_holds :
     echo_links T γ -∗
     UShKernel.sh_prompt_law (EchoLinks.ewc_cred T γ (S gen_id)).
   Proof.
     iIntros "#Hlk". rewrite /UShKernel.sh_prompt_law.
     iIntros "!>" (N) "#Hro". rewrite /UkSh.ush_prompt_law.
-    iIntros "!>" (n l) "%Hfd2". destruct Hfd2 as [rb Hl2].
-    iApply (ksh_w_of_link_cred N n l rb Hl2 with "Hlk Hro").
+    iModIntro. iSplitL "".
+    - iIntros (n l) "%Hfd2". destruct Hfd2 as [rb Hl2].
+      iApply (ksh_w_of_link_cred N n l rb Hl2 with "Hlk Hro").
+    - iIntros (l) "%Hcl".
+      iApply (UkWriteClosed.ksh_w_of_closed N (mword_of_int 2)
+                (mword_of_int sh_prompt_pv) 2%nat l 2%nat
+                sh_fd2_signed ltac:(unfold NSTD; lia) Hcl).
   Qed.
 
 End UShOut.

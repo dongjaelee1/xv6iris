@@ -130,10 +130,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
-- [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`): LAUNCHED
-  2026-09-16 (brief scratchpad `brief-trap-rows-3.md`): T4(c) the pid range
-  on the block's registration (the wait clause of `ut_live_out`); T4(b)
-  the reaping arm names the caller's own child (orphans only at init).
+- [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad
+  `brief-trap-rows-3.md`): T4(c) LANDED 2026-09-16 (`2a372a9d7`; the note
+  below); T4(b) (the reaping arm names the caller's own child; the pid
+  route with `init_pid_is`) phase 1b in flight.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
@@ -3363,6 +3363,34 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+TRAP-ROWS-3 T4(c) LANDED (2026-09-16; `2a372a9d7` on `9d1efd787`; 9 files
++322/-83; builds tr82-tr87 in `-tlw`; audit the thirteen; lemma_diff CLEAN;
+no Admitted).  A WAIT THAT ANSWERS -1 AT A NULL STATUS POINTER HAS NO
+CHILDREN, derivably: `SlotGen.gen_halves_at pa pid g` carries `⌜1 <=
+bv_unsigned pid <= PIDMAX⌝` (was `pid <> 0`; both build sites discharged it
+by `lia` off `allocproc_post`'s own bound); `UserChildren.wait_ans`'s reaping
+arm carries `(1 <= bv_unsigned rv <= PIDMAX)` beside `cs' = cs ∖ {[γ']}`
+(`wait_ans_m1`: at `sext rv = -1` the reaping arm dies and what is left is
+wholly persistent); `SpecUsertrap.ut_live_out` is a conjunction, second
+clause `usys_num tf = USYS_wait -> uint (arg 0) = 0 -> r = -1 -> cs' = ∅`;
+`UexecRet.uexec_live_ok` gains `cs'`; `ut_a6` repeats the `Hrwhy` idiom at
+`Hwo`; `UkRunSys.wp_uk_ecall_wait_null_live` hands the program `⌜r = -1 ->
+Sc' = ∅⌝` before `uwait_ans` (`wp_uk_ecall_wait_null` keeps its statement, so
+`wp_kinit_wait`/`wp_kshr_wait` are untouched).  T4(b) SURVEYED, RULED: the
+kernel half = only killing the right disjunct (`children_inv_reap` already
+gives `g ∈ cs ∨ g ∈ orph_row O pj`); the orphan-at-init conjunct in the
+IMPLICATION form `∀ pa g, ⌜g ∈ orph_row O pa⌝ -> ctx_word_pointsto ξ initproc
+DfracDiscarded pa` (a bare `∃ ip` cannot be minted at `wait_res_alloc`, which
+runs before userinit writes the cell); init's pid = 1 is NOT derivable
+(`allocproc_post` never relates the pid to `nextpid`'s incoming value) -> the
+U-tier spelling is a persistent ghost AGREEMENT `init_pid_is p0` minted at
+userinit (ProofUserinit discards instead of drops init's shares), kfork's
+child arm carries `∃ p0, init_pid_is p0 ∗ ⌜pidc <> p0⌝` (refuted at the
+registration insert against init's persistent registration), the reaping
+arm gains `⌜γ' ∈ cs⌝ ∨ (∃ p0, init_pid_is p0 ∗ ⌜caller pid = p0⌝)`; a
+process holding its fork-side token gets `γ' ∈ Sc`.  Phase 1b in flight.
+Handover: `trap-rows-3-handover.md`.
 
 IO-LEAF M4a(2a) LANDED (2026-09-16; the lane's `7e4d0b4c4` cherry-picked
 onto `28918db6a`; 5 files; build io28 in the main checkout; audit the

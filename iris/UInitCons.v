@@ -867,16 +867,15 @@ Section UInitCons.
       !! 0%nat = Some init_cons_fd.
   Proof. reflexivity. Qed.
 
-  (* ...AND THE CLOSED ARM HAS NO TRACKED DUP LEAF.  There fd 0 is CLOSED,
-     and [UkRunSys.wp_uk_ecall_dup] takes [st <> FdClosed] as a PREMISE, so
-     init's two dups on that arm cannot go through it.  The row itself says
-     the call fails and nothing moves ([UsysMemOk.usys_fd_ok]'s dup failure
-     arm gives [fdv' = fdv]), so what is missing is a `dup at a CLOSED
-     descriptor` leaf returning [-1] with the LEDGER UNCHANGED.  Until it
-     exists the CLOSED arm's dups run through
-     [UkRunSys.wp_uk_ecall_dup_untracked], whose post is a ledger at a state
-     it does not name -- and the head's CLOSED arm below is stated at
-     [init_cons_l0], which is what the missing leaf would deliver. *)
+  (* ...AND THE CLOSED ARM HAS ITS OWN DUP LEAF.  There fd 0 is CLOSED, and
+     [UkRunSys.wp_uk_ecall_dup] takes [st <> FdClosed] as a PREMISE, so
+     init's two dups on that arm cannot go through it.  They go through
+     [UkRunSys.wp_uk_ecall_dup_closed], which delivers the LEDGER UNCHANGED
+     -- at [init_cons_l0], the list the head's CLOSED arm below is stated at
+     -- and, since lane DUP-ROW, the RETURN VALUE too: the dup row's success
+     arm now carries `the source was open' and a closed source refutes it,
+     so the call provably returned [-1].  /init reads neither dup result, so
+     only the ledger half is consumed. *)
   Lemma init_cons_l0_row0 : init_cons_l0 !! 0%nat = Some FdClosed.
   Proof. reflexivity. Qed.
 

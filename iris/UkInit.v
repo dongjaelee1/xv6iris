@@ -851,7 +851,13 @@ Section UkInit.
        ((∃ fd1 : nat,
            ⌜ret = (mword_of_int (Z.of_nat fd1) : mword 64)
             /\ (fd1 < NOFILE)%nat⌝ ∗ ualloc γfd l fd1 st)
-        ∨ (⌜ret = (mword_of_int (-1) : mword 64)⌝ ∗ ustd γfd l)) -∗
+        (* ...OR IT FAILED, AND THE LEDGER SAYS WHY: the source is OPEN
+           ([Hne]), so the only reason left in [UsysMemOk]'s dup row is a
+           FULL TABLE -- which the ledger reports as `no closed slot'.  A
+           caller whose ledger has one refutes this arm by computation;
+           /init's does, right after its console open. *)
+        ∨ (⌜ret = (mword_of_int (-1) : mword 64)
+            /\ fd_lowest_closed l = None⌝ ∗ ustd γfd l)) -∗
        urun N h'
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 10 : mword 64)]> m))
@@ -905,7 +911,8 @@ Section UkInit.
     iAssert (((∃ fd1 : nat,
                  ⌜ret = (mword_of_int (Z.of_nat fd1) : mword 64)
                   /\ (fd1 < NOFILE)%nat⌝ ∗ ualloc γfd l fd1 st)
-              ∨ (⌜ret = (mword_of_int (-1) : mword 64)⌝ ∗ ustd γfd l)))%I
+              ∨ (⌜ret = (mword_of_int (-1) : mword 64)
+                  /\ fd_lowest_closed l = None⌝ ∗ ustd γfd l)))%I
       with "[Hal]" as "Hans".
     { iDestruct "Hal" as "[Hs | Hf]".
       - iDestruct "Hs" as (fd1) "(%Hr & Ha & _)".
@@ -938,11 +945,11 @@ Section UkInit.
   (* returned ([UInitCons.v]'s finding (a)), so this arm is walked, and what *)
   (* it has to establish is that the LEDGER DID NOT MOVE.                    *)
   (*                                                                        *)
-  (* WHAT THE ROW GIVES AND WHAT IT DOES NOT: the LEDGER comes back at the   *)
-  (* very list it went in at, and nothing is claimed about the return value  *)
-  (* ([UkRunSys.wp_uk_ecall_dup_closed]'s note -- the dup row carries no     *)
-  (* guard for a closed source).  That is all /init needs: its C reads       *)
-  (* neither dup result.                                                     *)
+  (* WHAT THE ROW GIVES: the LEDGER comes back at the very list it went in   *)
+  (* at, AND the call is known to have returned -1 -- the dup row's success  *)
+  (* arm now carries `the source was open', which a closed source refutes    *)
+  (* ([UkRunSys.wp_uk_ecall_dup_closed]).  /init needs only the first half:  *)
+  (* its C reads neither dup result.                                         *)
   (* --------------------------------------------------------------------- *)
   Lemma wp_kinit_dup_closed (h : CpuId) (m : regfile) (avail : nat)
       (l : list fdstate) (fd0 : nat) :
@@ -953,6 +960,7 @@ Section UkInit.
     urun N h m (mword_of_int InitSyms.dup) avail -∗
     ustd γfd l -∗
     (∀ (h' : CpuId) (ret : mword 64),
+       ⌜ret = (mword_of_int (-1) : mword 64)⌝ -∗
        ustd γfd l -∗
        urun N h'
          (<[Regidx a0_idx := ret]>
@@ -1002,7 +1010,7 @@ Section UkInit.
                  = mword_of_int 0x3f0)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E1.
-    iIntros (h2 ret) "Hstd Hrun".
+    iIntros (h2 ret) "%Hret Hstd Hrun".
     set (m2 := <[Regidx a0_idx := ret]> m1).
     (* ---- 0x3f0  c.jr ra ---- *)
     assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
@@ -1020,7 +1028,7 @@ Section UkInit.
               with "[] Hrun").
     { iApply (uis_init_3f0 with "Hcode"). }
     iIntros (h3) "Hrun".
-    iApply ("Hcont" $! h3 ret with "Hstd Hrun").
+    iApply ("Hcont" $! h3 ret with "[] Hstd Hrun"); by iPureIntro.
   Qed.
 
   (* --------------------------------------------------------------------- *)
@@ -1144,7 +1152,7 @@ Section UkInit.
     - (* CLOSED: the source is a closed standard stream *)
       iApply (wp_kinit_dup_closed h m avail ufd_l0 0%nat Harg
                 ltac:(unfold NSTD; lia) ufd_l0_row0 with "Hcode Hrun H").
-      iIntros (h' ret) "Hstd Hrun".
+      iIntros (h' ret) "_ Hstd Hrun".
       iApply ("Hcont" $! h' ret with "[Hstd] Hrun").
       iApply (ufd_head_closed with "Hstd").
     - (* TAINT: nothing is named, so the untracked leaf is the honest one *)

@@ -4663,20 +4663,58 @@ Section SyscallArms.
     rewrite /sys_dup_post /sysc_fd_ok /usys_fd_ok Hnum.
     destruct (decide (10 = USYS_close)) as [Hcc | _]; [discriminate Hcc |].
     destruct (decide (10 = USYS_dup)) as [_ | Hdd]; [| exfalso; exact (Hdd eq_refl)].
-    iIntros "[[[%Hr _] [Hp Hfr]] | [Hb | Hc]]".
-    - iExists (us_V U), sts. iFrame "Hp Hfr". iPureIntro.
-      split_and!; [reflexivity | reflexivity | reflexivity | reflexivity | reflexivity
-                  | reflexivity | apply uptd_ext_sz_refl | reflexivity
-                  | reflexivity |].
-      (* nothing was installed: the row's right disjunct *)
-      by right.
-    - iDestruct "Hb" as (fd0 fv) "[[%Hr _] [Hp Hfr]]".
+    iIntros "[[[%Hr %Hnone] [Hp Hfr]] | [Hb | Hc]]".
+    - (* ARGFD SAID NO, AND THE ROW NOW CARRIES WHY.  [arg_fd] rejects an
+         index outside [0, NOFILE) and a null [p->ofile] slot and nothing
+         else, so at an index the STATE LIST has a row for the slot must be
+         closed -- which is [proc_priv_states_agree] read in the
+         null-implies-closed direction. *)
+      iDestruct (proc_priv_states_agree with "Hp Hfr") as %Hag.
+      iDestruct (fd_frags_len with "Hfr") as %Hstlen.
       iExists (us_V U), sts. iFrame "Hp Hfr". iPureIntro.
       split_and!; [reflexivity | reflexivity | reflexivity | reflexivity | reflexivity
                   | reflexivity | apply uptd_ext_sz_refl | reflexivity
                   | reflexivity |].
-      (* nothing was installed: the row's right disjunct *)
-      by right.
+      (* nothing was installed: the row's right disjunct, at its FIRST
+         reason *)
+      right. split_and!; [exact Hr | reflexivity |]. left.
+      intros fd st Hidx Hst.
+      unfold usys_argfd in Hidx. rewrite Harg in Hidx.
+      unfold arg_fd in Hnone. cbv zeta in Hnone. rewrite Hidx in Hnone.
+      destruct (decide (0 <= Z.of_nat fd < Z.of_nat NOFILE)) as [Hrng | Hrng].
+      + rewrite Nat2Z.id in Hnone.
+        destruct (pv_ofile (us_V U) !! fd) as [fv0 |] eqn:Hlk.
+        * destruct (decide (fv0 = (zero_reg : mword 64))) as [-> | Hnz];
+            [| discriminate Hnone].
+          exact (proj1 (Hag fd _ st Hlk Hst) eq_refl).
+        * (* the array is full length, so an in-range index is never a miss *)
+          exfalso.
+          destruct (lookup_lt_is_Some_2 (pv_ofile (us_V U)) fd
+                      ltac:(rewrite Hoflen; lia)) as [w Hw].
+          rewrite Hw in Hlk. discriminate Hlk.
+      + (* out of range: the STATE LIST has no such row either *)
+        exfalso. apply lookup_lt_Some in Hst. lia.
+    - (* THE TABLE WAS FULL, AND THE ROW NOW CARRIES THAT TOO: [fd_frees]
+         answered the empty list, so no cell of [p->ofile] is null, so no
+         row of the state list is [FdClosed]. *)
+      iDestruct "Hb" as (fd0 fv) "[[%Hr [%Ha %Hfrees]] [Hp Hfr]]".
+      iDestruct (proc_priv_states_agree with "Hp Hfr") as %Hag.
+      iDestruct (fd_frags_len with "Hfr") as %Hstlen.
+      iExists (us_V U), sts. iFrame "Hp Hfr". iPureIntro.
+      split_and!; [reflexivity | reflexivity | reflexivity | reflexivity | reflexivity
+                  | reflexivity | apply uptd_ext_sz_refl | reflexivity
+                  | reflexivity |].
+      (* nothing was installed: the row's right disjunct, at its SECOND
+         reason *)
+      right. split_and!; [exact Hr | reflexivity |]. right.
+      destruct (fd_lowest_closed sts) as [k |] eqn:Hk; [| reflexivity].
+      exfalso.
+      pose proof (fd_lowest_closed_is_closed sts k Hk) as Hcl.
+      pose proof (lookup_lt_Some sts k FdClosed Hcl) as Hklt.
+      destruct (lookup_lt_is_Some_2 (pv_ofile (us_V U)) k
+                  ltac:(rewrite Hoflen; lia)) as [w Hw].
+      exact (fd_frees_nil (pv_ofile (us_V U)) k w Hfrees Hw
+               (proj2 (Hag k w FdClosed Hw Hcl) eq_refl)).
     - iDestruct "Hc" as (fd0 fd1 fv l) "[[%Hr [%Ha [%Hfl %Hcl]]] [Hp Hfr]]".
       destruct (arg_fd_lookup v (pv_ofile (us_V U)) fd0 fv Ha)
         as (Hfd0N & _ & _ & _).
@@ -4697,6 +4735,29 @@ Section SyscallArms.
                          apply list_lookup_insert_ne; lia)
                    ltac:(intros jj Hjj; apply list_lookup_insert_ne; lia)
                    with "Hp Hfr") as %Hleast.
+      (* ...AND THE SOURCE WAS OPEN, read off the same two resources while
+         they are still in hand: [arg_fd] returned a NON-NULL cell, and the
+         agreement turns that into `not [FdClosed]' at the state list.  Both
+         resources are ONE INSERT past the table the row is about and the
+         insert is at [fd1], never at the source ([SpecSysDup.dup_src_ne_dst]
+         -- the source's cell is non-null and the destination's was free), so
+         the two lookups at [fd0] are the row's own. *)
+      assert (Hne01 : fd0 <> fd1)
+        by exact (dup_src_ne_dst v (pv_ofile (us_V U)) fd0 fd1 fv l Ha Hfl).
+      iDestruct (proc_priv_states_agree with "Hp Hfr") as %Hag.
+      iDestruct (fd_frags_len with "Hfr") as %Hstlen.
+      destruct (lookup_lt_is_Some_2 sts fd0
+                  ltac:(rewrite length_insert in Hstlen;
+                        rewrite Hstlen; exact Hfd0N)) as [st0 Hst0].
+      assert (Hagfd0 : fv = (zero_reg : mword 64) <-> st0 = FdClosed).
+      { refine (Hag fd0 fv st0 _ _).
+        - cbn [us_V pv_ofile upd_ofile].
+          rewrite list_lookup_insert_ne; [| exact (not_eq_sym Hne01) ].
+          destruct (arg_fd_lookup v _ fd0 fv Ha) as (_ & Hlk & _ & _).
+          exact Hlk.
+        - rewrite list_lookup_insert_ne;
+            [ exact Hst0 | exact (not_eq_sym Hne01) ]. }
+      destruct (arg_fd_lookup v _ fd0 fv Ha) as (_ & _ & Hnz & _).
       iExists (upd_ofile (us_V U) fd1 fv), (<[fd1 := sts !!! fd0]> sts).
       iFrame "Hp Hfr". iPureIntro.
       split_and!; [reflexivity | reflexivity | reflexivity | reflexivity | reflexivity
@@ -4708,9 +4769,13 @@ Section SyscallArms.
          is one of sixteen values, so reading it back is the identity -- and
          [usys_argfd] IS how [argfd] computed its index
          ([SpecArgfd.arg_fd_index]). *)
-      left. exists fd1. split_and!; [exact Hr | exact Hleast |].
-      unfold usys_argfd. rewrite Harg (arg_fd_index v _ fd0 fv Ha) Nat2Z.id.
-      reflexivity.
+      assert (Hidx : Z.to_nat (usys_argfd (pv_tf (us_V U))) = fd0).
+      { unfold usys_argfd.
+        rewrite Harg (arg_fd_index v _ fd0 fv Ha). exact (Nat2Z.id fd0). }
+      left. exists fd1. split_and!; [exact Hr | exact Hleast | | ].
+      + rewrite Hidx Hst0. intros Hc. injection Hc as Hc.
+        exact (Hnz (proj2 Hagfd0 Hc)).
+      + rewrite Hidx. reflexivity.
   Qed.
 
   (* THE SEVENTH ARM: k = 10, [sys_dup].  Beyond [proc_priv] it wants only the

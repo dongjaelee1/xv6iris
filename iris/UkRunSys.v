@@ -438,7 +438,7 @@ Section UkRunSys.
     intros Hnc Hrow. iIntros "Hufd Hstd". unfold usys_fd_ok in Hrow.
     destruct (decide (n = USYS_close)) as [Hc | _]; [ contradiction (Hnc Hc) | ].
     destruct (decide (n = USYS_dup)) as [_ | _].
-    { destruct Hrow as [(fd1 & _ & Hcl & ->) | [_ ->]];
+    { destruct Hrow as [(fd1 & _ & Hcl & _ & ->) | (_ & -> & _)];
         [| iModIntro; iFrame "Hufd"; by iExists l ].
       (* the copied state may itself be CLOSED -- dup's row does not say the
          argument was open -- and then the table did not move at all *)
@@ -968,7 +968,16 @@ Section UkRunSys.
            ⌜r = (mword_of_int (Z.of_nat fd1) : mword 64)
             /\ (fd1 < NOFILE)%nat⌝ ∗
            ualloc (ukn_fd N) l fd1 st ∗ ufd_own (ukn_fd N) (ustd_after l st) fd0 st)
-        ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
+        (* ...OR IT FAILED, AND THE LEDGER SAYS WHY.  [UsysMemOk]'s dup row
+           gives two reasons for a -1 and the caller's own claim refutes
+           the first (the source is OPEN, [Hstne]), so what is left is THE
+           TABLE WAS FULL -- and a full table has no closed slot in its
+           standard-stream prefix either, which is the form the caller can
+           read.  A caller whose ledger holds a CLOSED standard stream
+           therefore refutes this arm by computation, which is what lets
+           /init pin fds 1 and 2 at the console. *)
+        ∨ (⌜r = (mword_of_int (-1) : mword 64)
+            /\ fd_lowest_closed l = None⌝ ∗
            ustd (ukn_fd N) l ∗ ufd_own (ukn_fd N) l fd0 st)) -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
@@ -986,6 +995,9 @@ Section UkRunSys.
        open, and at which state -- which is what dup's row copies. *)
     iDestruct (ufd_own_agree with "Hufd Hstd Hh0") as %[Hsrc _].
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
+    (* ...and the LEDGER against the same authority, which is what turns the
+       row's `no closed slot in the table' into `none in the prefix' *)
+    iDestruct (ustd_agree (ukn_fd N) fdv l with "Hufd Hstd") as %Htake.
     (* ...and the slot the copy lands in is never the source's, which is
        what lets the claim come back at the ledger the copy left *)
     iDestruct (ufd_own_ne_lowest (ukn_fd N) l fd0 st Hstne with "Hstd Hh0") as %Hnel.
@@ -1059,10 +1071,12 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     (* THE ROW'S ARGUMENT INDEX IS THE CALLER'S [fd0]: the row reads a0 of
        the trapframe as a C [int], and [tf_of] puts the register there. *)
+    assert (Haiz : usys_argfd (tf_of m pc) = Z.of_nat fd0).
+    { unfold usys_argfd. cbn [tf_of]. exact Harg. }
     assert (Hai : Z.to_nat (usys_argfd (tf_of m pc)) = fd0).
-    { unfold usys_argfd. cbn [tf_of]. rewrite Harg. exact (Nat2Z.id fd0). }
+    { rewrite Haiz. exact (Nat2Z.id fd0). }
     iApply uslot_bupd.
-    destruct Hfdok as [(fd1 & Hr & Hcl & ->) | [Hrm ->]].
+    destruct Hfdok as [(fd1 & Hr & Hcl & _ & ->) | (Hrm & -> & Hwhy)].
     - (* DUPLICATED.  [Hai] turns the row's copied state into the caller's
          own [st] ([Hsrc], off the claim), and the destination slot was the
          LOWEST free one, which the ledger reads as a number. *)
@@ -1082,8 +1096,21 @@ Section UkRunSys.
       iLeft. iExists fd1. iFrame "Hh1 Hh0". iPureIntro.
       split; [ exact Hr | ].
       rewrite <- Hfdlen. exact (fd_least_closed_lt _ _ Hcl).
-    - (* the table was full, or the argument was not an open descriptor:
-         nothing moved, and both resources come straight back *)
+    - (* THE TABLE WAS FULL -- the row's OTHER reason for a -1, `the
+         argument is not an open descriptor', is refuted by the caller's own
+         claim ([Hsrc] at [Hstne]).  So no slot of the table is closed, and
+         in particular none of the prefix the LEDGER is: [fd_lowest_closed]
+         of an append answers the prefix first ([FdSlots]), so a closed slot
+         in the prefix would have been the table's own answer.  Nothing
+         moved, and both resources come straight back. *)
+      assert (Hnone : fd_lowest_closed l = None).
+      { destruct Hwhy as [Hno | Hfull].
+        - exfalso. exact (Hstne (Hno fd0 st Haiz Hsrc)).
+        - rewrite <- Htake.
+          destruct (fd_lowest_closed (take NSTD fdv)) as [k |] eqn:Hk;
+            [| reflexivity ].
+          exfalso. rewrite <- (take_drop NSTD fdv) in Hfull.
+          rewrite fd_lowest_closed_app Hk in Hfull. discriminate Hfull. }
       iModIntro.
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv fdv cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
       iApply ukcq_ukc.
@@ -1092,7 +1119,7 @@ Section UkRunSys.
                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[Hstd Hh0] Hrun").
-      iRight. iFrame "Hstd Hh0". iPureIntro. exact Hrm.
+      iRight. iFrame "Hstd Hh0". iPureIntro. split; [ exact Hrm | exact Hnone ].
   Qed.
 
 
@@ -1197,7 +1224,7 @@ Section UkRunSys.
       [ | exfalso; exact (Hc eq_refl) ].
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd1 & Hr & Hcl & ->) | [Hrm ->]].
+    destruct Hfdok as [(fd1 & Hr & Hcl & _ & ->) | (Hrm & -> & _)].
     - iAssert (|==> ufd_auth (ukn_fd N)
                  (<[fd1 := fdv !!! Z.to_nat (usys_argfd (tf_of m pc))]> fdv) ∗
                  ∃ l' : list fdstate, ustd (ukn_fd N) l')%I
@@ -1240,20 +1267,18 @@ Section UkRunSys.
   (* the ledger back at a state IT DOES NOT NAME, and what the CLOSED arm   *)
   (* of init's head has to say is that the ledger did not move at all.      *)
   (*                                                                       *)
-  (* WHAT THE ROW GIVES, AND WHAT IT DOES NOT.  [UsysMemOk.usys_fd_ok]'s    *)
-  (* dup row is a disjunction and its SUCCESS arm is NOT refuted by the     *)
-  (* source being closed: the arm says the lowest free slot became a COPY   *)
-  (* of the argument's state, and a copy of [FdClosed] is [FdClosed], so    *)
-  (* the insert lands on a slot the scan already found closed and the list  *)
-  (* is unchanged ([UserFd.ufd_alloc_least_closed], the landed lemma that   *)
-  (* says exactly this).  So the TABLE not moving is a theorem on BOTH      *)
-  (* arms -- but [r = -1] is NOT: xv6 returns -1 because [argfd] rejects a  *)
-  (* null [p->ofile] slot, and the row does not carry that guard the way    *)
-  (* close's row carries its own.  This leaf therefore promises the ledger  *)
-  (* and says nothing about [r], which is all /init needs (it drops both    *)
-  (* dup results).  Tightening the row to name [-1] is a KERNEL change --   *)
-  (* [UsysMemOk], [UsysMemOkSpec] and [ProofSyscall]'s arm 10 -- and is not *)
-  (* this lane's.                                                           *)
+  (* WHAT THE ROW GIVES.  [UsysMemOk.usys_fd_ok]'s dup row is a            *)
+  (* disjunction and BOTH arms are now decided here.  The TABLE does not    *)
+  (* move on either: the success arm says the lowest free slot became a     *)
+  (* COPY of the argument's state, and a copy of [FdClosed] is [FdClosed],  *)
+  (* so the insert lands on a slot the scan already found closed and the    *)
+  (* list is unchanged ([UserFd.ufd_alloc_least_closed]).  And [r = -1] is  *)
+  (* a theorem too, which it was NOT before lane DUP-ROW: the success arm   *)
+  (* now carries `the source was open' -- [argfd] let the call past, and it *)
+  (* rejects a null [p->ofile] slot -- so a CLOSED source REFUTES that arm  *)
+  (* outright and only the failure arm is left.  /init drops both dup       *)
+  (* results, so it does not need this; the leaf states it because it is    *)
+  (* what the code does and the row can now say it.                         *)
   (*                                                                       *)
   (* THE WALK IS [wp_uk_ecall_dup_untracked]'s, with the ledger READ        *)
   (* against the authority before the trap ([UserFd.ustd_agree]) instead of *)
@@ -1274,7 +1299,11 @@ Section UkRunSys.
     udepw N m pc USYS_dup -∗
     ustd (ukn_fd N) l -∗
     (∀ (h' : CpuId) (r : mword 64),
-       (* THE LEDGER, UNCHANGED -- the whole content of the leaf *)
+       (* THE CALL FAILED: [argfd] rejects a null slot, and the row's
+          success arm -- which now carries `the source was open' -- is
+          refuted by the caller's own [Hrow]. *)
+       ⌜r = (mword_of_int (-1) : mword 64)⌝ -∗
+       (* ...AND THE LEDGER, UNCHANGED *)
        ustd (ukn_fd N) l -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
@@ -1347,27 +1376,18 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     assert (Hai : Z.to_nat (usys_argfd (tf_of m pc)) = fd0).
     { unfold usys_argfd. cbn [tf_of]. rewrite Harg. exact (Nat2Z.id fd0). }
-    destruct Hfdok as [(fd1 & Hr & Hcl & ->) | [Hrm ->]].
-    - (* THE COPY IS A COPY OF [FdClosed], so the insert is the identity *)
-      rewrite Hai (list_lookup_total_correct fdv fd0 FdClosed Htk).
-      iDestruct (ufd_alloc_least_closed (ukn_fd N) fdv fd1 Hcl with "Hufd")
-        as "Hufd".
-      rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
-                 (<[fd1 := FdClosed]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
-      iApply ukcq_ukc.
-      iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-                ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
-      iIntros (h') "Hrun".
-      iApply ("Hcont" $! h' r with "Hstd Hrun").
-    - (* the call failed: nothing moved at all *)
+    destruct Hfdok as [(fd1 & Hr & Hcl & Hop & ->) | (Hrm & -> & _)].
+    - (* REFUTED: the success arm says the source was OPEN and the caller's
+         own ledger says it was CLOSED. *)
+      exfalso. rewrite Hai in Hop. exact (Hop Htk).
+    - (* the call failed: nothing moved at all, and the row names the -1 *)
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv fdv cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
       iIntros (h') "Hrun".
-      iApply ("Hcont" $! h' r with "Hstd Hrun").
+      iApply ("Hcont" $! h' r with "[] Hstd Hrun"). by iPureIntro.
   Qed.
 
   (* ------------------------------------------------------------------- *)

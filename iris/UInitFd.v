@@ -165,11 +165,25 @@ Section UInitFd.
                 keep that true whichever way they go -- a dup lands on the
                 LOWEST CLOSED slot, which is never slot 0 while slot 0 is
                 open ([ufd_after_row0]), and a dup that FAILS moves nothing.
-                THAT IS WHY THE LIST IS EXISTENTIAL: [UsysMemOk]'s dup row
-                has a failure arm no caller can rule out (the table could be
-                full), so "fds 0, 1 and 2 all carry the console" is NOT a
-                theorem of /init's code -- "fd 0 does" is, and it is what
-                sh reads its line from;
+
+                WHY THE LIST IS STILL EXISTENTIAL, AND WHAT WOULD CHANGE IT.
+                It is no longer the ROW's fault: since lane DUP-ROW
+                [UsysMemOk.usys_fd_ok]'s dup failure arm carries its reason,
+                and after the console open /init's ledger has slot 0 OPEN
+                and slots 1 and 2 CLOSED, which refutes both disjuncts --
+                so neither dup can fail and
+                [UkRunSys.wp_uk_ecall_dup]/[UkInit.wp_kinit_dup_cons] hand
+                back [UserFd.ualloc] at the NAMED ledger, landing at 1 and
+                then 2 by [ufd_scan1]/[ufd_scan2].  What is left is the
+                THREADING: this head is entered at [ufd_l1] BEFORE the dups
+                ([UkInitMain]'s open site) and the dups are walked inside
+                [UkInitMain.wp_kinit_main_from_1e], so pinning fds 1 and 2
+                means carrying the named ledger from the open through both
+                dups and giving this predicate a console arm at [ufd_l3].
+                That is lane IO-LEAF's, not this one's -- until it lands,
+                "fds 0, 1 and 2 all carry the console" is not yet a theorem
+                of /init's code, "fd 0 does" is, and it is what sh reads its
+                line from;
        CLOSED   the mknod failed, or the second open failed at [filealloc] /
                 [fdalloc] -- about which /init proves nothing (app-echo.md,
                 "OPEN-PIN FINDINGS", FACT 3).  fd 0 is still closed, both

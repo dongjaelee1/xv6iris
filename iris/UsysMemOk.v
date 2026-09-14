@@ -432,13 +432,65 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
            still cannot say which one it got back, which is what sh's REDIR
            turns on.  [UserFd.ufd_dup] is the consumer. *)
         fd_least_closed sts fd1 /\
+        (* ...AND THE SOURCE WAS OPEN.  [argfd] let the call past, and it
+           rejects a null [p->ofile] slot, so a dup that RETURNED A
+           DESCRIPTOR was reading an open one.  Without this the success
+           arm is not refutable by a caller whose source is CLOSED -- a
+           copy of [FdClosed] lands on a slot the scan already found
+           closed, so the table does not move and nothing else in the arm
+           gives the caller a contradiction -- and such a caller could not
+           name the [-1] the kernel actually returns.  /init's failed-open
+           arm is exactly that caller ([UkRunSys.wp_uk_ecall_dup_closed]).
+
+           NO NEGATIVE-INDEX HAZARD, unlike the failure arm's first reason:
+           on THIS arm [arg_fd] succeeded, so the argument is in
+           [0, NOFILE) and [Z.to_nat] is faithful -- which is why it is
+           stated at the total index directly and not under a [nat]
+           premise. *)
+        sts !! Z.to_nat (usys_argfd tf) <> Some FdClosed /\
         sts' = <[fd1 := sts !!! Z.to_nat (usys_argfd tf)]> sts)
-     (* ...OR THE CALL FAILED, AND THE ROW SAYS SO BY NAMING [-1].  An
-        unguarded [sts' = sts] here would be useless to a caller: it would
-        permit "returned a descriptor and changed nothing", which sys_dup
-        never does, and a caller holding [r] could not tell the two arms
-        apart.  Both failure exits of sys_dup return -1. *)
-     \/ (r = (mword_of_int (-1) : mword 64) /\ sts' = sts))
+     (* ...OR THE CALL FAILED, AND THE ROW SAYS SO BY NAMING [-1] AND WHY.
+        An unguarded [sts' = sts] here would be useless to a caller: it
+        would permit "returned a descriptor and changed nothing", which
+        sys_dup never does, and a caller holding [r] could not tell the two
+        arms apart.  Both failure exits of sys_dup return -1.
+
+        AND THERE ARE EXACTLY TWO OF THEM, which is what lets the arm carry
+        a reason a caller can REFUTE.  sys_dup is [argfd; fdalloc; filedup]
+        and nothing else: [argint] cannot fail, [argfd] rejects exactly an
+        index outside [0, NOFILE) and a null [p->ofile] slot, [fdalloc]
+        fails exactly when its scan finds no null slot, and [filedup] never
+        fails.  So a dup that returned -1 did so because
+
+          - THE ARGUMENT IS NOT AN OPEN DESCRIPTOR of the caller.  Stated
+            at a [nat] index rather than on [usys_argfd] directly, for the
+            same reason close's row is: [Z.to_nat] of a NEGATIVE argument
+            is 0, and dup(-1) must not be licensed to say anything about
+            slot 0.  An out-of-range index leaves the premise vacuous,
+            which is right -- that is a failure the caller reads off the
+            number alone and needs no table for;
+          - ...OR THE TABLE IS FULL: the scan found no closed slot at all,
+            which is [fd_lowest_closed] answering [None].
+
+        WHY THE FAILURE ARM AND NOT THE SUCCESS ARM.  The success arm is
+        left exactly as it was; what a caller needs to pin its descriptors
+        is the ability to REFUTE -1, and that is this arm's business.
+
+        [ProofSyscall]'s arm 10 proves both disjuncts from
+        [SpecSysDup.sys_dup_post]'s own two failure arms -- which say
+        [arg_fd ... = None] and [fd_frees ... = []] on p->ofile's POINTERS
+        -- read at the state list through
+        [ProcInv.proc_priv_states_agree].
+
+        THE DRIVING CONSUMER is /init: after [open("console", O_RDWR)]
+        returns fd 0 its ledger has slot 0 OPEN and slots 1 and 2 CLOSED,
+        which refutes both disjuncts, so neither of its two dups can fail
+        and fds 1 and 2 are the console. *)
+     \/ (r = (mword_of_int (-1) : mword 64) /\ sts' = sts
+         /\ ((forall (fd : nat) (st : fdstate),
+                 usys_argfd tf = Z.of_nat fd -> sts !! fd = Some st ->
+                 st = FdClosed)
+              \/ fd_lowest_closed sts = None)))
   else if decide (n = USYS_open) then
     (* open(path, omode): the returned descriptor becomes OPEN at some type
        and mode.  Both are existential HERE and both are pinnable: the mode
@@ -676,7 +728,7 @@ Proof.
   { destruct H as [H _].
     destruct (decide (uint r = 0)); subst; [ apply length_insert | reflexivity ]. }
   destruct (decide (n = USYS_dup)) as [_ | _].
-  { destruct H as [(fd1 & _ & _ & ->) | [_ ->]];
+  { destruct H as [(fd1 & _ & _ & _ & ->) | (_ & -> & _)];
       [apply length_insert | reflexivity]. }
   destruct (decide (n = USYS_open)) as [_ | _].
   { destruct H as [(fd & rd & wr & t & _ & _ & ->) | [_ ->]];

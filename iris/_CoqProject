@@ -2153,3 +2153,11 @@ UInitBoot.v
 UInitBootAdequacy.v
 
 UkWriteLeaf.v
+# ...AND WHAT PAYS FOR /init's BANNER (lane IO-LEAF, M1(e)): the one place
+# where the era's credential (EchoOut.eturn, carried by the boot) becomes
+# the per-byte payment init's restart head spends
+# (UkInit.kinit_banner_pay).  It sits HERE, above UkWriteLeaf and
+# EchoLinks, because the conversion needs row 16's concrete reading and
+# every file of init's walk sits below the file system -- the UShLine
+# mould.
+UInitBanner.v

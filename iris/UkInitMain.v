@@ -65,12 +65,6 @@ Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
 Require Import UartNames.    (* [cons_names] *)
 Require Import UserConsole.  (* [upos] / [upos_alloc] -- the console position
                                 pair init mints per child *)
-(* THE APPLICATION'S OWN PER-ERA CONSOLE CREDENTIAL (lane IO-LEAF).  The
-   boot hands <init> [EchoOut.eturn] -- the era's pin, its cursor at zero,
-   the reader's half of the delivered count and the three lower bounds --
-   and this file's entry lemma is where it lands.  Naming it costs no
-   cycle: [EchoOut] requires nothing above [SpecConsoleintr]. *)
-Require Import EchoOut.
 Section UkInitMain.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.
@@ -79,12 +73,6 @@ Section UkInitMain.
   (* ...and the children set's ([Xv6Cameras.uchG]), which [UkRun.urun]
      carries beside the cwd's *)
   Context `{!ghost_varG Σ (gset gname)}.
-  (* ...AND THE ERA'S GHOSTS (lane IO-LEAF), for the one premise that names
-     them: <init>'s entry takes the application's console credential
-     ([EchoOut.eturn]) concretely, not as an opaque [iProp].  The era
-     number is the boot's own ([S gen_id]). *)
-  Context `{!echoOutG Σ}.
-  Context {γe : EchoOut.echo_gn}.
   Context (N : uk_names Σ).
   (* WHAT THE WALK NEEDS OF THE PAYLOAD is that it does not read the exit
      status ([UkRun.ukn_const]), as a CLASS so that it reaches the exit
@@ -2514,33 +2502,33 @@ Section UkInitMain.
        ([UserConsole.uinit_lend]). *)
     uinit_tok cn T -∗
     (* THE ERA'S TURN, beside the console lease and travelling with it
-       (lane CONS-IO milestone F): the kernel carries one per power cycle
-       from the application's power-on step to <init>
-       ([App.Hinit_boot] -> [UInitKernel.init_boot_pay]).  <init> is the
-       era's first verified writer, so this is where the application's own
-       ledger spends it -- lane IO-LEAF, at init's first banner byte.  Its
-       conjuncts ARE [EchoOut.echo_write_link]'s argument list at [P = 0],
-       which is why nothing weaker would do.
+       (lane CONS-IO milestone F), AS THE BANNER'S PAYMENT (lane IO-LEAF).
+       The kernel carries one credential per power cycle from the
+       application's power-on step to <init> ([App.Hinit_boot] ->
+       [UInitKernel.init_boot_pay]), and <init> is the era's first verified
+       writer -- so this is where it arrives and round 0's banner is what
+       spends it.
 
-       IT IS STILL DROPPED HERE, and the reason is an ORDERING one, not a
-       missing law: what the restart head spends is
-       [UkInit.kinit_banner_pay] (below), and turning [eturn] into that
-       needs row 16's CONCRETE reading ([UkWriteLeaf]), which lives ABOVE
-       every file of init's walk.  So the conversion is one lemma in a file
-       above [UkWriteLeaf] -- the [UShLine] mould -- and until it lands the
-       restart head takes the payment's TRIVIAL arm and round 0's banner
-       goes out on the flagged deposit like every other round's. *)
-    EchoOut.eturn γe (S gen_id) -∗
+       IT IS NOT [EchoOut.eturn] HERE, and that is an ORDERING fact rather
+       than a choice: turning the era's cursor into a console chain needs
+       row 16's CONCRETE reading ([UkWriteLeaf]), which sits ABOVE every
+       file of init's walk -- so what crosses this line is the WAND
+       [UkInit.kinit_banner_pay] ("give me the descriptor table and I give
+       you a per-byte family for the eighteen bytes"), proved from [eturn]
+       and the era's links in [UInitBanner], the [UShLine] mould. *)
+    kinit_banner0 -∗
     urun N h m (mword_of_int InitSyms.start)
       (2 + (4 + (12 + (12 + (4 + n))))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hcode #Hxs Hcl #Hro #Hargv Hsz Hstd Hcwd Hch Htk Htn Hrun".
-    (* the turn is HELD, not spent: see the statement's note.  What travels
-       to the restart head is the payment's trivial arm. *)
-    iClear "Htn".
-    iAssert (kinit_round0) as "Hb0"; [ rewrite /kinit_round0; by iRight | ].
+    (* the payment travels to the restart head, where ROUND 0 spends it
+       byte by byte ([wp_kinit_banner]); the Löb hypothesis re-enters that
+       head with the trivial arm, because the turn does not come back to
+       <init> until the child's exit payload carries it (M3-M6). *)
+    iAssert (kinit_round0) with "[Htn]" as "Hb0";
+      [ rewrite /kinit_round0; by iLeft | ].
     destruct init_syms_pins
       as (Hstart & Hmain & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _).
     rewrite Hstart.

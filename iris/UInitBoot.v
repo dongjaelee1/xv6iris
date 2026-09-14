@@ -98,6 +98,10 @@ Require Import UkRun.             (* [udepw_law] -- the named deposits *)
 Require Import UkInit.            (* [init_deps] / [init_cons_sup] *)
 Require Import UexecExecMint.     (* [udepw_law_of_sup] / [udep_free] *)
 Require Import UInitKernel.       (* [init_slot_of_kexec] / the dance *)
+Require Import EchoLinks.         (* [echo_links] -- E5's four links as one
+                                     persistent law *)
+Require Import UInitBanner.       (* [kinit_banner0_holds] -- the era's
+                                     credential as init's banner payment *)
 Require Import UInitCons.         (* [init_cons_fd] / [init_cons_cred] *)
 Require Import UInitConsK.        (* the two arms' discharges at echo's era *)
 Require Import UInitSh.           (* [init_cons_sup_of_sh_slot] *)
@@ -722,11 +726,11 @@ Section EchoInitBoot.
                   ⌜uvis_lazy W' = false⌝ -∗
                   my_pay (uvis_gen W') (fun _ => True)%I -∗
                   UInitKernel.init_boot_pay (PS := uprogSG_free)
-                    (γe := γ) (echo_taint γ)
+                    (echo_taint γ)
                     (init_cons_cred (echo_taint γ) r)
                     fsc_cons init_cons_fd
                     -∗ uslot W'))%I as "#Hcon".
-    { iApply (UInitKernel.init_boot_con (PS := uprogSG_free) (γe := γ)
+    { iApply (UInitKernel.init_boot_con (PS := uprogSG_free)
                 (echo_taint γ)
                 (init_cons_cred (echo_taint γ) r) init_cons_fd fsc_cons
                 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
@@ -738,7 +742,7 @@ Section EchoInitBoot.
       - iModIntro. iExact "Hdp".
       - iApply (udep_free). }
     iApply (init_boot_bundle_of_pinned (echo_taint γ)
-              (UInitKernel.init_boot_pay (PS := uprogSG_free) (γe := γ)
+              (UInitKernel.init_boot_pay (PS := uprogSG_free)
                  (echo_taint γ)
                  (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd)
               with "Hcl Hinv Hcon [] [Hdn Hturn]").
@@ -748,7 +752,15 @@ Section EchoInitBoot.
     - iIntros "Hrd". rewrite /UInitKernel.init_boot_pay.
       iSplitL "Hdn"; [ iExact "Hdn" | ].
       iSplitL "Hrd"; [ rewrite ucons_reader_eq; iExact "Hrd" | ].
-      iExact "Hturn".
+      (* THE ERA'S CREDENTIAL BECOMES /init's BANNER PAYMENT (lane IO-LEAF,
+         M1(e)).  This is the one place where the application's claim and
+         the kernel's console contracts are the same object AND row 16's
+         concrete reading is in scope, which is why the conversion lives
+         above [UkWriteLeaf] and reaches <init>'s walk as a premise. *)
+      iApply (UInitBanner.kinit_banner0_holds (echo_taint γ) γ
+                (PS := uprogSG_free) Hsh_deps with "[] [Hturn]").
+      + iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin).
+      + rewrite /echo_turn. iExact "Hturn".
   Qed.
 
 End EchoInitBoot.

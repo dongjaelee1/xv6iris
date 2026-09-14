@@ -92,9 +92,6 @@ Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
 Require Import UartNames.    (* [cons_names] *)
 Require Import UserConsole.  (* [ucons_reader] / [uinit_tok] -- the console
                                 reader token at the narrow class *)
-Require Import EchoOut.      (* [eturn] -- the application's own per-era
-                                console credential, which the boot bundle
-                                carries to <init> (lane IO-LEAF) *)
 Local Open Scope Z_scope.
 Import Defs.
 
@@ -182,10 +179,6 @@ Section UInitKernel.
   (* the console ring's cameras, at the narrow class: this section binds no
      whole-system bundle ([UserConsole.v]'s header). *)
   Context `{!uartGhostG Σ}.
-  (* ...AND THE ERA'S GHOSTS (lane IO-LEAF): the boot bundle's third
-     linear passenger is [EchoOut.eturn], not an opaque [iProp]. *)
-  Context `{!echoOutG Σ}.
-  Context {γe : EchoOut.echo_gn}.
   Context {SG : uexecSG Σ}.
   Context `{PS : uprogSG Σ}.
 
@@ -329,16 +322,21 @@ Section UInitKernel.
        NARROW class, because this section binds [ctokG] without [xv6G]
        ([UserConsole.ucons_reader_eq] is the bridge). *)
     ucons_reader cn 0%nat -∗
-    (* ...AND THE ERA'S TURN (lane CONS-IO milestone F, CONCRETE since
-       lane IO-LEAF), beside the reader token and travelling with it: the
-       APPLICATION's own per-era credential, minted at the power-on step,
-       carried by the boot ([App.Hinit_boot]) and handed to <init> here.
-       It is [EchoOut.eturn] and not an opaque [iProp], because the
-       program that SPENDS it sits BELOW this constructor and no program
-       can turn an opaque premise into a console chain; naming it costs no
-       cycle ([EchoOut] requires nothing above [SpecConsoleintr]) and
-       nothing of the application's RECORD is named here. *)
-    EchoOut.eturn γe (S gen_id) -∗
+    (* ...AND THE ERA'S TURN (lane CONS-IO milestone F), beside the reader
+       token and travelling with it: the APPLICATION's own per-era
+       credential, minted at the power-on step, carried by the boot
+       ([App.Hinit_boot]) and handed to <init> here.  IT ARRIVES AS THE
+       BANNER'S PAYMENT (lane IO-LEAF) and not as an opaque [iProp]: no
+       program can turn an opaque premise into a console chain, and this
+       tier cannot name the application's claim either
+       ([UkInit.kinit_w1]'s header), so what crosses is the WAND -- give
+       it <init>'s descriptor table and it gives back a per-byte family
+       for the banner's eighteen bytes.  QUANTIFIED OVER THE RECORD
+       because the boot bundle is built before [UkRun.uslot_of_urun_all]
+       names one; it is LINEAR (the credential is spent once), and a
+       linear resource may be handed under a [∀] precisely because the
+       reader picks ONE record. *)
+    (∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N') -∗
     (* THE PAY FACT, at the trivial payload: <init> has no parent, so its
        exit owes nobody anything -- userinit's choice, which the entry
        constructor writes into the record ([UkRun.ukn_pay]) and which
@@ -404,9 +402,9 @@ Section UInitKernel.
     (* init's round starts at the token's own position, which at boot is
        the empty prefix ([UserConsole.uinit_tok_0]) *)
     - iApply (uinit_tok_0 cn T with "Hrd").
-    (* the era's turn, straight through to init's entry (lane CONS-IO
-       milestone F) *)
-    - iExact "Htn".
+    (* the era's turn, at the record the entry carve just named (lane
+       CONS-IO milestone F / IO-LEAF) *)
+    - iApply ("Htn" $! N).
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -453,7 +451,7 @@ Section UInitKernel.
     ucons_reader cn 0%nat -∗
     (* ...and the era's turn beside it, likewise straight through (lane
        CONS-IO milestone F / IO-LEAF) *)
-    EchoOut.eturn γe (S gen_id) -∗
+    (∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N') -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
   Proof.
     intros Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok_free Hlzf.
@@ -584,7 +582,7 @@ Section UInitKernel.
   Definition init_boot_pay (T Cns : iProp Σ) (cn : cons_names)
       (stc : fdstate) : iProp Σ :=
     (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat
-     ∗ EchoOut.eturn γe (S gen_id))%I.
+     ∗ ∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N')%I.
 
   Lemma init_boot_con (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
       (stc : fdstate) (cn : cons_names)

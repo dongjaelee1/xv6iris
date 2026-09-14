@@ -109,8 +109,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   entailment of `Hsh_owed`; landing with `Hphi` closed.
 - [ ] **FORK-REFUND** (kernel; main checkout, `lane/fork-refund`): LAUNCHED
   2026-09-16 (the note below): fork's -1 arm returns `Rc`.
-- [ ] **IO-LEAF** (programs): SURVEYED 2026-09-16 (the note below); brief
-  v2 ready; launches after part 5, TRAP-ROWS, FORK-REFUND, PROLOGUE-ALTS.
+- [ ] **IO-LEAF** (programs): SURVEYED and REVIEWED 2026-09-16 (the notes
+  below); brief v2 + D8 ready; launches after TRAP-ROWS M2, FORK-REFUND,
+  PROLOGUE-ALTS.
 - [ ] **PROLOGUE-ALTS** (pure; `-sup`, `lane/prologue-alts`): LAUNCHED
   2026-09-16 (the note below): init's exec-failure loop and terminal
   fork failure as prologue alternatives in EchoDisc/EchoOutPure; the
@@ -3336,6 +3337,30 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF DESIGN REVIEWED (2026-09-16; Fable review scratchpad
+`tasks-review-io-leaf.md`; brief v2 D8 records the rulings).  D1 (`echo_links`,
+one persistent link law in `sh_deps`' mould) SOUND AND SIMPLEST: a sibling
+section under `riscvGS`, `echo_links_holds` inside the equation section,
+`read_ret` moved out of it; `Tn` is already `eturn γ (S gen_id)` at the top,
+opaque only at `wp_kinit_start`/`init_boot_pay`.  D2 needs an ENGINE
+restatement: `wp_uk_store_denied` applies `wp_uk_step` at `Kc := True` and
+takes `(⊢ Qp (-1))`; with `Kc := Qp (-1)` the child's linear turn pays the
+left of `Kc ∧ ukc` and the Löb slot is the right, one copy -- RULED: TRAP-ROWS
+M2 delivers it with T3 (UkStore ×3, UkRunMem:415).  D3 CORRECTED: every
+`line_alts` entry ends in "$ " written by SH after wait, so a child's payload
+is at the alternative's end MINUS 2 and the null-store death records no
+choice; sh's child `Q` is a three-arm `∃ a`; init's `Q` is an existential
+over round-start stages (RULED yes); the entry constructors take the raw
+bundle, not `Q (-1)`.  D5/D6: M1 = ROUND 0 ONLY (RULED); the printf tower
+threaded with an abstract per-byte family `Ch : nat -> iProp`; a taint route
+for the write link (`echo_write_link_taint`) is needed and added to the plan.
+Costs named: a LINEAR payload through the 14 signatures step 5 touched and
+the three `ushp_pay_free` hypotheses (restated as resource premises); the
+`_any` fork/wait wrappers deleted; `sh_exec_sup_echo` stage-parameterised.
+Two pure lemmas are PROLOGUE-ALTS' (a banner lemma at a round start after
+sh's "fork\n"; `echo_write_link_pro`'s `¬ pro_done` on the writer's own `ps0`).
+No owner question remained.
 
 ECHO-OUT PART 5 LANDED (2026-09-16; `14de1df6b` + `cc76a5907` on `7b9760e66`; 12
 files +522/-613; builds eo56-eo66 in `-disc`; audit the thirteen; lemma_diff

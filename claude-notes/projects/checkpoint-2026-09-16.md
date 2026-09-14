@@ -91,7 +91,11 @@ and `Hsh_owed` untouched.
 
 ## 3. The two findings that decide the next lane's shape (IO-LEAF handover)
 
-(a) `die_dw` ("init: wait returned an error") CANNOT be deleted, contrary to
+(a) [CORRECTED 2026-09-14: WRONG -- a killed process never returns to user
+mode (usertrap's post-syscall `killed` check), and the `_pid` wait row of
+T4(c) already says a resuming caller's -1 means ITS OWN SET IS EMPTY; see
+app-echo.md "DIE-DW CORRECTED".  The original text follows.]
+`die_dw` ("init: wait returned an error") CANNOT be deleted, contrary to
 the audit's hope: the -1 reason is `⌜nullst = false⌝ ∨ ⌜cs = ∅⌝ ∨ kill_shot gn`;
 the first two arms die (init's set is non-empty; `nullst` is exposed by
 `uwait_ans_at`), but a KILLED init is real — a killed process runs on to its

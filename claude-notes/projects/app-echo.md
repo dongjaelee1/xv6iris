@@ -3758,6 +3758,31 @@ open round is `pro_fail j ++ [3]`"), every Iris statement UInitDiag consumes
 unchanged.  Reports: `handoff-2026-09-16/prologue-alts-3-report.md`,
 `-report-2.md`, `-report-3.md`.
 
+DIE-DW CORRECTED (2026-09-14; owner: "how can a killed init print anything?").
+The M6a(2) finding (a) -- "a KILLED init is real -- a killed process runs on
+to its next trap and does print", so `wp_kinit_main_die_dw` stays -- WAS
+WRONG.  In xv6 a process whose kill flag is set never returns to user mode:
+usertrap's second `killed(p)` check after `syscall()` exits it before the
+sret (the T2 ruling of 2026-09-16, already the kernel's spec:
+`SpecUsertrap.ut_live_out`, "a process that comes BACK here was not
+killed").  So wait's -1 arm at user level has ONE live reason, "my own child
+set is empty", and TRAP-ROWS-3 T4(c) already states it: the `_pid` twin
+`UkRunSys.wp_uk_ecall_wait_null_pid` hands the caller `⌜r = -1 -> Sc' = ∅⌝`
+(`UkRunSys.v:~2334`), written "for a program holding `ChildTok.child_tok`
+for a child it forked" to refute.  Init IS that program: at its wait it holds
+`child_tok γsh pidsh …` with `γsh ∈ cs` and the -1 arm of `uwait_ans` gives
+`cs' = cs`.  Today `UkInit.wp_kinit_wait` calls the row-DROPPED twin
+`wp_uk_ecall_wait_null` (the comment there: "the leaf below is the same call
+with the row dropped, for the callers that do not read it"), which is the
+only reason the arm survives.  M6b RECIPE: `wp_kinit_wait` takes
+`UserChildren.upid (ukn_pid N) 1` (init's pid is the literal 1, B1b) and
+calls the `_pid` twin; in `wp_kinit_main_loop`'s "wait itself failed" arm
+(UkInitMain.v ~1700) derive `cs = ∅` from the row and `Hcseq`, contradict
+`Hin`; DELETE `wp_kinit_main_die_dw` and the `0x9c8` literal's 29-byte
+family.  Init's free write law then has exactly the two payable arms
+`die_de`/`die_df` left (INIT-DIAG's laws), and nothing about `die_dw` is an
+owner question any more.
+
 IO-LEAF M6a(2) LANDED (2026-09-16; `61f015f7b`+`e8b61dc6a` on `61269a3c2`;
 EchoLinks.v, UInitBanner.v, UInitBoot.v, UInitKernel.v, UkInitMain.v; builds
 io53-io54 in the main checkout; audit the thirteen; lemma_diff 6 GONE (the

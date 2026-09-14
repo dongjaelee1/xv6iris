@@ -41,11 +41,10 @@ two halves of step 3).
 
 All lanes have landed; every checkout is free (`-disc` on `lane/step3-sh`,
 `-tlw` on `lane/prologue-alts-3`, `-sup` on `lane/init-diag`, all merged;
-the main checkout on `lane/io-leaf-3` = main).  ONE OPEN OWNER QUESTION:
-`die_dw` (a killed init prints "init: wait returned an error", which no
-transcript admits) -- narrow the free law to that one arm, or a kernel row
-relating the kill shot to the taint (`open-row-survey.md` is the map if
-kernel rows reopen).  The predicate widening is RULED (§1), not open.
+the main checkout on `lane/io-leaf-3` = main).  NO OPEN OWNER QUESTION.
+The predicate widening is RULED (§1).  `die_dw` is NOT a question but an
+M6b work item (owner, 2026-09-14: "how can a killed init print anything?"
+-- it cannot): see app-echo.md "DIE-DW CORRECTED".
 
 ## 3b. Where the next agent starts
 
@@ -75,6 +74,7 @@ consumed -> every `∨ True` named in `step3-interface.md` dies
 arm); M6b (init's diagnostics through the link, INIT-DIAG's files);
 M4b(2); delete `sh_deps`; SH-LINE R3 (three prerequisites, serialised after
 M3b core); the closed theorem; the trusted-surface document; the post-Qed
-redesign.  Owner question still open: `die_dw` (a killed init) -- narrow the
-free law to that one arm or reopen kernel rows (`open-row-survey.md` is the
-map if reopened).
+redesign.  M6b includes DELETING `die_dw`: init's wait moves to the `_pid`
+twin (`UkRunSys.wp_uk_ecall_wait_null_pid`, whose -1 row is `Sc' = ∅`) and
+the arm is refuted against init's live child token (app-echo.md "DIE-DW
+CORRECTED"); the same twin is what the shell's wait redemption takes.

@@ -161,6 +161,12 @@ TRAP-ROWS-5's `_pid` rows (`wp_kshr_wait`'s `_pid` twin owed in UkShRun.v).
 - Explanations to the owner in plain CSL/xv6 terms, every term defined; every
   trusted-statement change reported OLD/NEW.
 - 2026-09-16: no more workers/subagents; checkpoint on quiescence.
+  SUPERSEDED 2026-09-14 (later session): "use subagents to run tasks in
+  parallel, to the extent that you have multiple independent things".
+- 2026-09-14: THE BANNER IS OPTIONAL in the transcript ("it's not
+  important ... a trace without a banner in a given era has to be possible
+  anyway") -- a banner-less prologue round is admitted (PROLOGUE-ALTS-3);
+  no kernel row for init's console open.
 
 Coordinator's rulings of record (2026-09-16): route B for the read leaf
 (owed, then closed); the credential crosses as "an opaque resource plus a

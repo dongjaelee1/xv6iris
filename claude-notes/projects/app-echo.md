@@ -3402,8 +3402,28 @@ is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
 
-OPEN-ROW FOUND AND LAUNCHED (2026-09-14; kernel lane in `-tlw`, branch
-`lane/open-row`; report `handoff-2026-09-16/open-row-report.md` when done).
+OPEN-ROW WITHDRAWN -- RULED 2026-09-14 (owner): "we can make the banner
+optional; it's not important ... a trace without a banner in a given era
+has to be possible anyway".  The kernel lane below was stopped before any
+edit (`-tlw` clean).  THE RULING: init's banner is OPTIONAL in the
+transcript predicate -- a fourth prologue alternative, "$ " with no banner
+(lane PROLOGUE-ALTS-3, `-tlw`, `lane/prologue-alts-3`): the prefix
+relation already admitted the empty wire; it now also admits a round that
+opens with the shell's prompt and no banner, which is what happens when
+<init>'s console open fails and the shell's succeeds.  CONSEQUENCES: no
+ledger/credential correlation is needed at init's lend -- init lends the
+credential in whichever shape it holds (prompt-shaped after a banner that
+reached the wire, banner-owed otherwise) and the shell's prompt pays either
+(the prologue link at 0, the block link at 2, or the NEW prologue link at
+3 from the banner-owed shape); closed descriptors keep the credential
+unchanged (`UkWriteClosed`).  The one artifact left: the same failure arm
+lets the shell's third open fail with fd 0 open and fd 2 closed; there the
+DISCIPLINE closes it -- a typed byte with no prompt on the wire breaks
+`disc_pt`, so the read taints -- which needs one claim-level lemma
+("an untainted input at line k implies prompt k was written",
+PROLOGUE-ALTS-3's third deliverable).  The record of the finding follows.
+
+OPEN-ROW FOUND (2026-09-14; superseded by the ruling above).
 THE ENDGAME'S CRITICAL PATH HAS ONE MORE KERNEL ROW.  `SpecSysOpen`'s
 failure arm is uninformative by its own header ("ret = -1 -- residue
 returned per arm; the value does not say which arm fired ... the two

@@ -2165,3 +2165,10 @@ UInitBanner.v
 # reason and on the same mould: the era's write link becomes the per-call
 # obligation echo's argv walk spends (UkEcho.kecho_pay_all).
 UEchoOut.v
+# ...AND WHAT SH OWES THAT PAYMENT (lane IO-LEAF, M3): echo's entry at the
+# era's stage takes its argument vector as a NAMED premise stated against
+# the transcript's alternative (UEchoOut.echo_out_argv), and the shell's
+# parser pins the same three strings against the input line
+# (UShEcho.echo_key_args).  This is the one file where the two readings
+# meet, and it is above both because UShEcho.v sits below UEchoOut.v.
+UShEchoOut.v

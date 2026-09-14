@@ -2153,6 +2153,12 @@ UInitBoot.v
 UInitBootAdequacy.v
 
 UkWriteLeaf.v
+# ...AND THE WRITE OBLIGATION AT A CLOSED DESCRIPTOR (lane IO-LEAF, the
+# endgame audit's blocker): sh's ksh_w and init's kinit_w1 met by the write
+# syscall's own closed-fd arm (row 16 at FdClosed is emp), with no deposit.
+# Above UkWriteLeaf (row 16's reading), UkSh and UkInit (the two
+# obligations); below the application.
+UkWriteClosed.v
 # ...AND WHAT PAYS FOR /init's BANNER (lane IO-LEAF, M1(e)): the one place
 # where the era's credential (EchoOut.eturn, carried by the boot) becomes
 # the per-byte payment init's restart head spends

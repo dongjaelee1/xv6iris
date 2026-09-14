@@ -15,9 +15,11 @@
 (*                                  nothing follows on this wire.          *)
 (*                                                                       *)
 (*  Both start where /init's banner leaves the era's write credential:    *)
-(*  the round's prologue OPEN with the next byte its choice byte, the     *)
-(*  pure shape [EchoLinks.wr_pro].  This file states that credential      *)
-(*  EXACTLY ([ewc_pro]: [EchoLinks.ewc_owed] is the disjunction with      *)
+(*  the round's prologue OPEN after the banner LETTER with the next byte  *)
+(*  its choice byte, the pure shape [wr_pban] ([EchoLinks.wr_pro] plus    *)
+(*  the open prologue's shape [pro_fail j ++ [3]]).  This file states     *)
+(*  that credential EXACTLY ([ewc_pro]: [EchoLinks.ewc_owed] is the       *)
+(*  disjunction with                                                      *)
 (*  [wr_blk], which is what /init lends the shell but MORE than the       *)
 (*  banner leaves and, as [wr_owed_ambiguous] shows, not recoverable      *)
 (*  from it), the family of the diagnostic's bytes on their way out       *)
@@ -83,19 +85,19 @@ Proof.
 Qed.
 
 (* ===================================================================== *)
-(*  THE OPEN ROUND WITH ITS ALTERNATIVE FILED.  An open prologue is a     *)
-(*  block of [1]s ([EchoDisc.pro_open_replicate]); filing [a] after it    *)
-(*  appends the alternative's bytes and -- when [a] is the exec failure,   *)
-(*  the one alternative that CONTINUES -- the next banner after them.     *)
+(*  THE OPEN ROUND WITH ITS BANNER AND ITS ALTERNATIVE FILED.  An open     *)
+(*  prologue at init's restart head is [j] failed sub-rounds              *)
+(*  ([EchoDisc.pro_fail j] = banner, exec failure, ...) and then the      *)
+(*  banner LETTER init has just written ([pro_alts !!! 3]); filing [a]    *)
+(*  after it appends the alternative's bytes ([pro_of_open_app]).         *)
 (* ===================================================================== *)
-Lemma pro_of_replicate_snoc (j a : nat) :
-  pro_of (replicate j 1%nat ++ [a])
-  = pro_of (replicate j 1%nat) ++ pro_alts !!! a ++ pro_more a u_banner.
+Lemma pro_of_fail_snoc (j a : nat) :
+  pro_of (pro_fail j ++ [3%nat; a])
+  = pro_of (pro_fail j) ++ u_banner ++ pro_alts !!! a.
 Proof.
-  induction j as [| j IH].
-  - cbn [replicate app pro_of]. reflexivity.
-  - rewrite replicate_S. cbn [app pro_of].
-    rewrite !pro_more_1 IH. by rewrite !app_assoc.
+  rewrite (pro_of_open_app _ _ (pro_done_fail j)).
+  cbn [pro_of]. rewrite pro_alts_3 (pro_more_cont 3%nat _ ltac:(by right)).
+  rewrite /pro_more. case_decide; by rewrite app_nil_r.
 Qed.
 
 (* the round-opening block, spelt with [EchoLinks.wr_pre] *)
@@ -107,9 +109,29 @@ Lemma pending_n_round_wr_pre (ps cs : list nat) (n : nat) :
 Proof. intros Hm Hr. rewrite /wr_pre. exact (pending_n_round_pre ps cs n Hm Hr). Qed.
 
 (* ===================================================================== *)
+(*  THE ROUND-OPEN SHAPE AFTER A BANNER: [wr_pro] whose open prologue is  *)
+(*  [pro_fail j ++ [3]] -- what the eighteenth banner byte leaves         *)
+(*  ([EchoLinks.wr_ban_done] + [wr_ban_filed]) and what the diagnostics   *)
+(*  start from.  A bare [wr_pro] says only that the round is open (any    *)
+(*  word over the continuing letters), which is not enough to place the   *)
+(*  diagnostic's bytes.                                                   *)
+(* ===================================================================== *)
+Definition wr_pban (ps cs : list nat) (n P : nat) : Prop :=
+  wr_pro ps cs n P
+  /\ (exists j : nat,
+        pro_from (pro_idx cs (n `div` length echo_line)) ps = pro_fail j ++ [3%nat]).
+
+Lemma wr_pban_of_ban (ps cs : list nat) (n P : nat) :
+  wr_ban ps cs n P -> wr_pban (ps ++ [3%nat]) cs n (P + length u_banner)%nat.
+Proof.
+  intros Hw. split; [exact (wr_ban_done ps cs n P Hw) |].
+  destruct (wr_ban_filed ps cs n P Hw) as (j & Hj & _). by exists j.
+Qed.
+
+(* ===================================================================== *)
 (*  THE SHAPE: alternative [a] filed at the round's open prologue, [i] of *)
 (*  its bytes out.  [wr_ban]'s conjuncts with the open prologue now       *)
-(*  [replicate j 1 ++ [a]] and the cursor past the [j]-th sub-round, the  *)
+(*  [pro_fail j ++ [3; a]] and the cursor past the [j]-th sub-round, the  *)
 (*  banner and [i] bytes of the alternative.                              *)
 (* ===================================================================== *)
 Definition wr_pdiag (ps cs : list nat) (n P a i : nat) : Prop :=
@@ -119,7 +141,7 @@ Definition wr_pdiag (ps cs : list nat) (n P a i : nat) : Prop :=
   /\ (n = 0%nat \/ cs !!! (n `div` length echo_line - 1)%nat = 3%nat)
   /\ (exists j : nat,
         pro_from (pro_idx cs (n `div` length echo_line)) ps
-        = replicate j 1%nat ++ [a]
+        = pro_fail j ++ [3%nat; a]
         /\ P = (length (proc_upto ps cs n) + length (wr_pre cs n)
                 + pro_round * j + length u_banner + i)%nat).
 
@@ -130,47 +152,46 @@ Lemma wr_pdiag_byte (ps cs : list nat) (n P a i : nat) (b : bv 8) :
 Proof.
   intros (Hpin & Hm & Hdv & Hr & (j & Hj & HP)) Hb.
   rewrite proc_upto_snoc (pending_n_round_wr_pre ps cs n Hm Hr) Hj
-          pro_of_replicate_snoc HP.
+          pro_of_fail_snoc HP.
   replace (length (proc_upto ps cs n) + length (wr_pre cs n)
            + pro_round * j + length u_banner + i)%nat
     with (length (proc_upto ps cs n)
           + (length (wr_pre cs n)
-             + (length (pro_of (replicate j 1%nat)) + i)))%nat
-    by (rewrite pro_of_replicate_length; lia).
+             + (length (pro_of (pro_fail j)) + (length u_banner + i))))%nat
+    by (rewrite pro_of_fail_length; lia).
   rewrite (lookup_app_shift (proc_upto ps cs n)) (lookup_app_shift (wr_pre cs n))
-          (lookup_app_shift (pro_of (replicate j 1%nat))).
-  by apply lookup_app_l_Some.
+          (lookup_app_shift (pro_of (pro_fail j))) (lookup_app_shift u_banner).
+  exact Hb.
 Qed.
 
-(* THE CHOICE BYTE: filing [a] at [wr_pro] is this shape one byte in.  The
-   same step as [EchoLinks.wr_pro_dollar] at [a = 0], for any [a]. *)
+(* THE CHOICE BYTE: filing [a] at the round-open shape after a banner is
+   this shape one byte in.  The same step as [EchoLinks.wr_pro_dollar] at
+   [a = 0], for any [a]. *)
 Lemma wr_pdiag_1_of_pro (ps cs : list nat) (n P a : nat) :
-  wr_pro ps cs n P -> wr_pdiag (ps ++ [a]) cs n (S P) a 1%nat.
+  wr_pban ps cs n P -> wr_pdiag (ps ++ [a]) cs n (S P) a 1%nat.
 Proof.
-  intros (Hpin & Hm & Hdv & Hr & Hnd & HP).
+  intros ((Hpin & Hm & Hdv & Hr & Hnd & HP) & (j & Hj)).
   assert (Hle : (pro_idx cs (n `div` length echo_line) <= pro_rounds ps)%nat)
     by exact (pro_pin_idx_le ps cs n Hpin).
   assert (Hpre : ps `prefix_of` (ps ++ [a])) by by eexists.
-  assert (Hopen : exists j : nat,
-            pro_from (pro_idx cs (n `div` length echo_line)) ps
-            = replicate j 1%nat)
-    by (eexists; exact (pro_open_replicate _ Hnd)).
-  destruct Hopen as [j Hj].
   (* the stream below [n] does not read the new choice *)
   assert (Hlow : proc_upto (ps ++ [a]) cs n = proc_upto ps cs n).
   { symmetry. rewrite /proc_upto. apply proc_upto_from_ext.
     intros k _ Hk. apply (pending_n_ps_ext ps (ps ++ [a]) cs k Hpre).
     apply (pro_pin_at ps cs n k Hpin). lia. }
+  assert (H3 : length (pro_of (pro_fail j ++ [3%nat])) = (pro_round * j + length u_banner)%nat).
+  { rewrite (pro_of_open_app _ _ (pro_done_fail j)) pro_of_singleton pro_alts_3.
+    rewrite length_app pro_of_fail_length. reflexivity. }
   rewrite /wr_pdiag. split_and!.
   - exact (pro_pin_mono ps (ps ++ [a]) cs n Hpre Hpin).
   - exact Hm.
   - exact Hdv.
   - exact Hr.
   - exists j. split.
-    + rewrite (pro_from_snoc_le _ ps a Hle). by rewrite Hj.
+    + rewrite (pro_from_snoc_le _ ps a Hle) Hj. by rewrite -app_assoc.
     + rewrite Hlow HP proc_upto_snoc (length_app (proc_upto ps cs n))
               (pending_n_round_wr_pre ps cs n Hm Hr) (length_app (wr_pre cs n))
-              Hj pro_of_replicate_length. lia.
+              Hj H3. lia.
 Qed.
 
 (* EVERY LATER BYTE moves the cursor by one and nothing else. *)
@@ -196,7 +217,7 @@ Proof.
   assert (Hrd : pro_round = 39%nat) by (vm_compute; reflexivity).
   rewrite /wr_ban. split_and!; try assumption.
   exists (S j). split.
-  - rewrite Hj. by rewrite replicate_S_end.
+  - rewrite Hj. by rewrite pro_fail_S.
   - rewrite HP Hi Hb Ha Hrd. lia.
 Qed.
 
@@ -205,15 +226,17 @@ Qed.
 (*  boundary the two arms of [wr_owed] are BOTH inhabited, at the same    *)
 (*  count and at prefix-comparable line choices: after one line whose     *)
 (*  block was the shell's fork panic, the round is open ([wr_pro] at      *)
-(*  [cs = [3]]); after one line whose block is still owed, it is not      *)
-(*  ([wr_blk] at [cs = []]).  Nothing /init holds -- it names no line     *)
-(*  choice, and the era's two bounds are persistent lower bounds, so      *)
-(*  [cs_lb v [3]] and [cs_lb v []] sit side by side -- separates them.    *)
-(*  So a holder of [ewc_owed] cannot get [ewc_pro] back; the credential   *)
-(*  that /init keeps for its fork's refund must be [ewc_pro] itself.      *)
+(*  [cs = [3]], nothing of the new round predicted); after one line whose *)
+(*  block is still owed, it is not ([wr_blk] at [cs = []]).  Nothing      *)
+(*  /init holds -- it names no line choice, and the era's two bounds are  *)
+(*  persistent lower bounds, so [cs_lb v [3]] and [cs_lb v []] sit side   *)
+(*  by side -- separates them.  So a holder of [ewc_owed] cannot get      *)
+(*  [ewc_pro] back; the credential that /init keeps for its fork's refund *)
+(*  must be [ewc_pro] itself.                                             *)
 (* ===================================================================== *)
 Lemma wr_owed_ambiguous :
-  wr_pro [0%nat] [3%nat] 17%nat 43%nat /\ wr_blk [0%nat] [] 17%nat 20%nat.
+  wr_pro [3%nat; 0%nat] [3%nat] 17%nat 25%nat
+  /\ wr_blk [3%nat; 0%nat] [] 17%nat 20%nat.
 Proof.
   split.
   - rewrite /wr_pro. split_and!.
@@ -243,7 +266,7 @@ Section echo_links_pro.
   (*  and what its two diagnostics start from.                            *)
   (* =================================================================== *)
   Definition ewc_pro (v : era_pins) (n : nat) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_pro ps cs n P⌝ ∗ turn v P ∗ ps_lb v ps
+    ((∃ ps cs P : _, ⌜wr_pban ps cs n P⌝ ∗ turn v P ∗ ps_lb v ps
         ∗ cs_lb v cs ∗ E_lb v n) ∨ T)%I.
 
   Global Instance ewc_pro_timeless v n : Timeless (ewc_pro v n).
@@ -260,7 +283,7 @@ Section echo_links_pro.
     iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE".
-    iPureIntro. by left.
+    iPureIntro. left. exact (proj1 Hw).
   Qed.
 
   (* ...and is EXACTLY what the eighteenth banner byte leaves
@@ -271,9 +294,11 @@ Section echo_links_pro.
     rewrite /EchoLinks.ewc_ban /ewc_pro.
     iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    iLeft. iExists ps, cs, (P + length u_banner)%nat.
+    assert (H18 : length u_banner = 18%nat) by (vm_compute; reflexivity).
+    rewrite H18 in Hw. cbn [EchoLinks.wr_banp] in Hw. destruct Hw as (ps' & -> & Hw).
+    iLeft. iExists (ps' ++ [3%nat]), cs, (P + length u_banner)%nat.
     iFrame "Htn Hps Hcs HE". iPureIntro.
-    exact (wr_ban_pro ps cs n P Hw).
+    exact (wr_pban_of_ban ps' cs n P Hw).
   Qed.
 
   (* =================================================================== *)
@@ -330,7 +355,7 @@ Section echo_links_pro.
         iIntros "#HT'". iApply "HΦ". by iRight. }
       iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
       pose proof (wr_pdiag_1_of_pro ps cs n P a Hw) as Hw'.
-      destruct Hw as (Hpin & Hm & Hdv & Hr & Hnd & HP).
+      destruct Hw as ((Hpin & Hm & Hdv & Hr & Hnd & HP) & _).
       iApply ("Hpro" $! k v P n a b ps cs Φ
                 with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
       { exact Hm. }

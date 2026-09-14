@@ -88,7 +88,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   the owner's `688c4c1b7`; the note below): the kernel hands init a
   per-power-cycle exclusive token so the application's ledger adopts each
   era exactly once.
-- [ ] **ECHO-OUT** (application; `-disc`, `lane/echo-out`): PARTS 1-4 LANDED
+- [x] ~~**ECHO-OUT**~~ (application; `-disc`, `lane/echo-out`): ALL PARTS
+  LANDED; part 5 2026-09-16 (`cc76a5907`; the note below): the record wired
+  to EchoOut, `Hphi` CLOSED, `Hsh_owed` gains the read-leaf conjunct.
+  Earlier: PARTS 1-4 LANDED
   2026-09-15 (`a007ec892`; the notes below).  Part 4 = the CLAIM-RESIDENT
   re-cut from the design page (the era's authorities live in the output
   claim; the input claim carries a settled arm and a WINDOW arm guarded by
@@ -3333,6 +3336,39 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+ECHO-OUT PART 5 LANDED (2026-09-16; `14de1df6b` + `cc76a5907` on `7b9760e66`; 12
+files +522/-613; builds eo56-eo66 in `-disc`; audit the thirteen; lemma_diff
+7 deletions all justified; no Admitted).  THE ECHO APPLICATION STOPS CLAIMING
+NOTHING: `AppEcho`'s four holes are `EchoOut`'s `eout`/`ein`/`eturn`/`ewin` at
+the taint, `echo_R` is `echo_led`, `echo_tag` is `etag`, the fixed part is
+`EchoOut.echo_gn` (the taint counter AND the era map, born together by
+`echo_birth`).  Every obligation is an `EchoOut` lemma: `HR0` = `echo_led_init`,
+`Hpow` = `echo_led_pow` (allocates the era's ghosts, mints its pin, splits the
+four shares), the licences off `eout_sup`/`ein_sup_log`/`ein_sup_deliv`, `Hrx`
+= `echo_led_rx`, `Happ_echo` = `echo_happ_echo` at the four equations; `Htx` is
+`eout_drain` at `open_seg h ++ [ObsUartOut Uart0 b]` then `echo_led_tx`.
+`echo_phi` IS THE OWNER'S WHOLE-HISTORY FORM `disc h -> Forall good_out
+(cycles_of h)` (old: `Forall (fun seg => disc_seg' seg -> good_out seg)
+(cycles_of h)`), and `UInitBootAdequacy.echo_adequacy_modulo_phi` LOSES
+`Hphi` -- the ledger decides it (`obs_ledger_at_phi` at `echo_Hphi_R`/
+`echo_led_phi`); premises now `Hsh_owed`, `Hgen0`, `Hpow0`, `Himg`, `Hdk`,
+`Hsb`, `Hcov`.  `EchoOut.echoOutG` REPLACES the bare `mono_natG` binder in
+AppEcho's four sections and UInitCons's (it carries `mono_natG`; the taint
+must be at that instance) and is added to the seven other dependents;
+`echoOutΣ` + `subG_echoOutΣ` in EchoOut for the closed theorem; no concrete-Σ
+bundle changed.  ROUTE (B) AS RULED: `UShLine.ush_read_sup` and
+`ush_read_recv_leaf_holds` DELETED (the flat `in_licence` is false at `ein`;
+neither had a true statement left) and the leaf is the THIRD CONJUNCT OF
+`Hsh_owed`, verbatim:
+  `forall (c : app_fixed app_echo) (γp : gname) (N : uk_names Σ) (l : list
+  fdstate), ukn_pay N = ucons_pay fsc_cons γp (echo_taint c) -> ⊢
+  UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp (echo_taint c) fsc_cons l`
+owned by IO-LEAF (D5/D6).  `in_licence_triv`/`cons_read_pay_triv` stay (the
+generic slot uses them).  Also gone: `AppEcho.echo_phase`/`echo_R_pow`/
+`echo_R_tx` (the real ledger steps are EchoOut's), `echo_phi_disc`,
+`EchoOutPure.echo_phi_of_good_out`.  Handover: scratchpad
+`echo-out-handover-6.md` (§2 = what IO-LEAF receives from `eturn`).
 
 TRAP-ROWS PHASE 1 ACCEPTED (2026-09-16; `-tlw`, `lane/trap-rows`; builds tr1-tr5;
 handover `trap-rows-handover.md`).  T1 GREEN AS STATEMENTS (15 files): the

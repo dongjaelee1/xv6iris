@@ -132,12 +132,14 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   below: the diagnostics tower carries `ksh_w1`); M5(3) LANDED 2026-09-16
   (`49cd3b5d1`; the note below: `ush_rest` deleted, the body handed the
   line fact); M6a(1) LANDED 2026-09-16 (`a72323b79`; the note below: the
-  credential at an arbitrary boundary, the prompt at every one); IN FLIGHT
-  (main checkout, brief v9, RULED (A)): M6a(2) init's walk pays its banner
-  from the lease at every round (the persistent conversion; `Rt`
-  collapses; init's files allowed), sh's side without `∨ True`, then M3b
-  core in OPAQUE terms, sh's wait redemption after TRAP-ROWS-5; then
-  M4b(2) the diagnostics' payment, M6b the die arms.
+  credential at an arbitrary boundary, the prompt at every one); M6a(2)
+  LANDED 2026-09-16 (`e8b61dc6a`; the note below: init's walk pays its
+  banner from a credential and a persistent conversion at any round; two
+  findings: `die_dw` stays, `Rc <> Q (-1)` across the fork).  QUIESCED.
+  NEXT (see the checkpoint): the handover's four steps (`ush_mid` +
+  `E_lb`; the `Wc`/`Wc'` routing; `Rc <> Q (-1)` + the diagnostics through
+  the link; M3b core + the wait redemption), then M6b, M4b(2), delete
+  `sh_deps`, SH-LINE R3, the closed theorem.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad
@@ -3392,6 +3394,43 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M6a(2) LANDED (2026-09-16; `61f015f7b`+`e8b61dc6a` on `61269a3c2`;
+EchoLinks.v, UInitBanner.v, UInitBoot.v, UInitKernel.v, UkInitMain.v; builds
+io53-io54 in the main checkout; audit the thirteen; lemma_diff 6 GONE (the
+round-0-only forms `ushps`, `kinit_turn0`, `kinit_banner0_holds`, `bnr_ushpr`,
+`kinit_banner0_pay_holds`, `proc_upto0_banner`, `pro_pin_zero`, superseded by
+the arbitrary-round forms); no Admitted).  /INIT'S WALK PAYS ITS BANNER FROM
+A CREDENTIAL AND A PERSISTENT CONVERSION, AT AN ARBITRARY ROUND: the fourth
+shape `wr_ban` (the round's banner owed, `j` failed sub-rounds in),
+`wr_ban_byte`/`wr_ban_pro`/`wr_ban_round0`, `ewc_ban`/`echo_banner_step`/
+`ewc_ban_done`; `UInitBanner` round-agnostic (`kinit_ban n`, `kinit_own n`,
+`kinit_banner_law_holds`).  TRUSTED DIFF: `init_boot_pay T Cns cn stc Rt Bn Rd
+:= … ∗ Rd 0 ∗ Bn ∗ □ (∀ N', Bn -∗ kinit_banner0 N' stc Rt)` (was `∀ N',
+kinit_banner0 N' stc Rt`); `kinit_ban_law stc Bn Rt := □ (Bn -∗ kinit_banner0
+stc Rt)` rides beside `init_deps` through the seven walk lemmas (persistent,
+so the Löb hypothesis keeps it); `kinit_round0 Bn := Bn ∨ True`; `Bn :=
+kinit_ban_any = ∃ n, kinit_ban n` (init's walk names no round); `Rt` STAYS
+(the prompt pair the shell spends).  Round 0's banner pays through the link;
+round k > 0's is payable at the same law and waits only for a credential at
+the restart head.  TWO FINDINGS: (a) `die_dw` CANNOT be deleted -- the -1
+reason's third arm, a KILLED init, is real (a killed process runs on to its
+next trap and prints); deleting it needs a kernel row relating the shot to
+the taint (none exists); all three die arms stay for M6b.  (b) A SHAPE
+MISMATCH ACROSS THE FORK: init LENDS the credential at the round's prompt
+(`wr_pro`), a child HANDS BACK the credential at the next round's banner
+(`wr_ban`) -- different propositions at the same count, and `Rd` is one
+family in both directions; so the placeholder-free shape is `Rc <> Q (-1)`
+(D8(iii)): `Rc` = the pieces + the prompt credential, `Q = ucons_pay … Rd`
+with `Rd` the banner credential, `uinit_lend` minting the pair across the
+two shapes, `ush_at` unbundled (the payload assembled only where sh exits
+or forks).  FOUR-STEP ORDER in the handover: `ush_mid` + `E_lb`; the
+`Wc`/`Wc'` routing (`ush_prompt_law` already proved); `Rc <> Q (-1)` + the two
+diagnostics through the link (every `∨ True` arm then dead); M3b core + the
+wait redemption on TRAP-ROWS-5's `_pid` rows.  Handover: `io-leaf-handover.md`.
+
+ALL LANES QUIESCED 2026-09-16 (the owner's instruction: no more subagents;
+checkpoint).  The checkpoint is `claude-notes/projects/checkpoint-2026-09-16.md`.
 
 POST-QED REDESIGN -- DESIGN STUDY DONE (2026-09-16; read-only Fable review;
 scratchpad `post-qed-redesign.md`, sent to the owner; design only, the

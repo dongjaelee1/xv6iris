@@ -3334,6 +3334,59 @@ is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
 
+TRAP-ROWS PHASE 1 ACCEPTED (2026-09-16; `-tlw`, `lane/trap-rows`; builds tr1-tr5;
+handover `trap-rows-handover.md`).  T1 GREEN AS STATEMENTS (15 files): the
+short console write's reason is EXISTENTIAL over the 32-byte chunk,
+`write_cons_short P ua k n := ∃ d, k <= d < n ∧ ~ uva_rmapped P (ua + d)`
+(`uva_rmapped` = walkaddr's V&U test, weaker than `uva_wmapped`: copyin has
+no PTE_R re-walk); `copyin_read` twins `copyout_wrote`; `either_copyin_post`
+and consolewrite's post carry it; `filewrite_extra`/row 16 gain `P` as row 5
+has (`filewrite_in` does not); ONE cause for the short exit.  T2: the read's
+-1 arm has TWO causes at the console key -- fileread's own `n < 0` guard and
+consoleread's `killed()` -- so the arm carries `(⌜n < 0⌝ ∨ kill_shot gn)`,
+persistent; the refutation lives in `ut_a6` (`ProofUsertrapTail.v:1080`,
+trap.c:81-82, the check AFTER `syscall()`) inside `Rout`'s closure with a new
+`SchedCtx.kill_paid_shot_nz`; RULED (b): a PURE row `ut_live_out` on
+`usertrap_post` ("a read at an open readable console fd with count >= 0
+returns r <> -1"), relayed to the engine -- `console_receipt` keeps one
+shape; at such an fd the surviving -1 cause is `n < 0`, not a closed fd.
+T3: the resume post is `usertrap_post` (`ukb_F` has no arms): `ut_kill_in :=
+ukill_cred_at ∧ uslot W`, a new `ut_kill_out` row beside `ut_exec_out`
+returns the untaken slot, `ut_d0`'s vmfault success arm takes the right side
+(today it DISCARDS the credential by affinity); the ∧ is free at all five
+producers (`iSplit`).  T4: wait has a THIRD -1 exit (copyout of the status
+word fails, `proc.c:399-406`); RULED (b): condition on the null status
+pointer (every wait leaf forces `a1 = 0`); "no children" = the caller's
+`children_own` column empty (orphans are a SECOND column;
+`children_inv_empty` was written for this and is dead code); the kill
+disjunct absorbed below `urun` at UexecRet's `USYS_wait` arm (the U tier
+cannot name `gn`); init's die arm refuted by `γsh ∈ cs`.  ORDER: M1 = T1's two
+proofs (`ProofCopyin`, `ProofConsolewrite.cw_loop`) landed alone (whole-tree
+cone), M2 = T2+T3+T4 (UexecRet/SpecUsertrap cone, ~1 h builds).
+
+PROLOGUE-ALTS PHASE 1 ACCEPTED (2026-09-16; statements in scratchpad
+`prologue-alts-phase1-stmts.v`; handover `prologue-alts-handover.md`).  THE
+SHAPE: a resolution list `ps : list nat` over `pro_alts = [ "$ "; "init: exec
+sh failed\n"; "init: fork failed\n" ]`, `pro_of ps` (monotone under append:
+an unresolved `ps` owes only the banner), `pro_done ps`; `sess_n ps cs n`,
+`expected_rel`, `disc_seg'` quantify over a COMPLETE `ps`; `pending_n` changes
+in one branch; the claim records the index in a SECOND mono_list `ps` beside
+`cs` (not a counter, not an extension of `cs`), and prefix-freeness
+(`pro_alts_prefix_det`, `pro_done_of_prefix`) replaces head-distinctness;
+decidability by the canonical enumeration `pro_cands` (each round costs 39
+wire bytes); `echo_write_link_pro` at byte 19 of a round; the good run's
+transcript is byte-for-byte unchanged.  D1 admits input after the
+fork-failed prologue (sound: after init exits, `panic` prints on Uart1 and
+spins with no `panicked` gate on consputc, consoleintr keeps echoing, and no
+18th byte is admitted since no continuation appears) -- CORRECTS the stale
+note that "panic prints nothing".  RULED IN SCOPE: `line_alts !!! 3`
+("fork\ninit: starting sh\n$ ") hard-codes a successful restart after sh's
+`fork1` panic and is FALSE for the same reason; alternative 3 becomes
+"fork\n" and the transcript re-enters a fresh prologue block (ROUNDS: one
+flat `ps`, round groups split at the first non-1 entry; a phase-1b statement
+report first).  Phase 2 items 1-2 (EchoDisc/EchoOutPure) after 1b; item 3
+(EchoOut's stage) after ECHO-OUT part 5 lands.
+
 ECHO-OUT PART 5 -- RULING ON THE BLOCKER (2026-09-16).  The wiring (nine
 files: AppEcho's four claims/ledger/tag at EchoOut's, the owner's `echo_phi`,
 `echoOutG` in the eight dependents, `UInitBootAdequacy.Hphi` CLOSED) is

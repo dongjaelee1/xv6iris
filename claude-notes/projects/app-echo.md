@@ -116,9 +116,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   (`e3d97238a`; the note below: the write leaf's ownership row, the printf
   cone's per-byte family, the banner site); M1(e) LANDED 2026-09-16
   (`9250b2e81`; the note below: `UInitBanner.kinit_banner0_holds`; M1
-  complete for round 0); M2 (echo's writes) IN FLIGHT in the main checkout;
-  M1(f) (pin init's fds 1-2 after DUP-ROW; `-sup`, `lane/io-leaf-fd`) IN
-  FLIGHT; M3-M6 after TRAP-ROWS M2 part 2.
+  complete for round 0); M1(f) LANDED 2026-09-16 (`eab187afb`; the note
+  below: fds 1-2 pinned, the banner free of the law); M2 (echo's writes) IN
+  FLIGHT in the main checkout; M3-M6 after TRAP-ROWS M2 part 2.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
@@ -3349,6 +3349,27 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M1(f) LANDED (2026-09-16; `eab187afb` on `8367785f1`; 7 files
++330/-199; builds fd1-fd2 in `-sup`; audit the thirteen; lemma_diff 4 GONE
+(`ufd_std_at`/`ufd_head_at`/`ufd_head_l1`, the existential console arm's
+helpers; `wp_kinit_dup_head` -> `wp_kinit_dup_headL`); no Admitted).  /INIT'S
+FDS 1 AND 2 ARE THE CONSOLE, AND THE BANNER IS FREE.  `UInitFd`'s head is
+`ufd_headL T γfd l := ustd γfd l ∨ ustd γfd ufd_l0 ∨ (ustd_any γfd ∗ T)` at
+a NAMED ledger: `ufd_head1` = it at `ufd_l1` (before the dups), `ufd_head` =
+it at `ufd_l3` (after them).  `uki_open2`'s post is `ufd_head1`;
+`wp_kinit_dup_headL`'s -1 arm dies against the caller's own scan (DUP-ROW's
+row), so each dup provably lands at 1 then 2.  `kinit_banner_pay stc len f`
+is at `ufd_l3 stc` (not `∀ l`); `kinit_banner0`/`kinit_round0` take `stc`;
+`wp_kinit_banner`'s round-0 arm splits on the head -- console arm spends
+the payment, closed/taint arms print through the flagged deposit.
+`UInitBanner.kinit_banner0_holds` LOSES its `(⊢ udepw_law 16)` premise and
+its six-row case split (read-only, inode, other-device, closed, None gone):
+`echo_links T γ -∗ eturn γ (S gen_id) -∗ ∀ N, kinit_banner0 N stc_cons`.
+`echo_Hinit_boot` and `ufd_head_row` unchanged in statement (UInitSh/
+UConsLine/UkSh untouched).  STILL OWED: `Hsh_owed`'s `sh_deps` (the die
+arms + `init_deps`, M4/M6); rounds k > 0 (M6).  Handover: scratchpad
+`io-leaf-fd-handover.md`.
 
 DUP-ROW LANDED (2026-09-16; `18f1ab44e` on `7102d9de0`; 6 files +238/-80;
 builds dr0-dr4 in `-sup`; audit the thirteen; lemma_diff CLEAN; no Admitted).

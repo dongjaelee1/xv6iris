@@ -37,7 +37,24 @@ two halves of step 3).
   OLD/NEW in the notes and the commit messages.  Audit md5 unchanged
   (57f7327206c4b276d05035342fea8ecf); `Hsh_owed`'s text unchanged.
 
-## 3. In flight -- nothing
+## 3. In flight -- STEP 4 (launched 2026-09-14, third session)
+
+Two lanes, spawned from the coordinator's main checkout (`lane/io-leaf-3`):
+* STEP4-SH in `-disc`, branch `lane/step4-sh` -- M3b core + the wait
+  redemption + PROLOGUE-ALTS-3's two lemmas consumed, then M4b(2); brief
+  `handoff-2026-09-16/brief-step4-sh.md`, report to scratchpad
+  `step4-sh-report.md`.
+* M6B-INIT in `-sup`, branch `lane/m6b-init` -- init's two diagnostics
+  through INIT-DIAG's laws, `die_dw` deleted on the `_pid` row, the
+  round-open lend family `Wp`; brief `brief-m6b-init.md`, report
+  `m6b-init-report.md`.
+Both may touch UInitSh.v/UInitBoot.v minimally; the coordinator merges those
+two files by hand, then the one-line kill of `UkInit.init_rd_cred`'s `∨ True`
+once the shell's exits all hand back `Wb n`.  If this session dies: the lanes
+die with it; their checkouts keep the uncommitted edits; re-spawn with the
+saved briefs plus "inspect git status/diff first and continue".
+
+## 3-old. (before the launch) In flight -- nothing
 
 All lanes have landed; every checkout is free (`-disc` on `lane/step3-sh`,
 `-tlw` on `lane/prologue-alts-3`, `-sup` on `lane/init-diag`, all merged;

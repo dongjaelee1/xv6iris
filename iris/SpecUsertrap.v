@@ -129,6 +129,10 @@ Require Import ChildTok.   (* [child_tok] -- fork's answer to the parent *)
 Require Import UexecSG.        (* [uexecSG]: [sbundle] / [spost] / [skey_eq] *)
 Require Import UexecApply.     (* [uslot_key_cong] -- the slot across the re-key *)
 Require Import UexecExecInst.  (* the class INSTANCE: the process's exec bundle *)
+Require Import SpecSysRead.    (* [sys_rw_count] -- the read's count, for [ut_live_out] *)
+Require Import SpecArgfd.      (* [fd_st_of_key] -- the descriptor the read names *)
+Require Import ConsoleInv.     (* [CONSOLE] -- the device the read row is about *)
+Require Import StackOwn.       (* [uint_zero_reg] *)
 Require Import FirstTok.       (* [fsabs_env] -- what the loop mints the bundle from *)
 From Kernel Require KernelSyms.
 Require Import ProcAvail.
@@ -648,6 +652,137 @@ Proof.
   rewrite /ut_wait_out. iIntros "H %Hc".
   iDestruct ("H" with "[%]") as "H"; [exact Hc |].
   iApply (uwait_ans_of with "H").
+Qed.
+
+(* ===================================================================== *)
+(* WHAT THE RESUMING PROCESS LEARNS FROM ITS OWN SURVIVAL (lane            *)
+(* TRAP-ROWS, T2(iii) and T4).                                            *)
+(* ===================================================================== *)
+(* A PURE row, and it has to be: what the two kernel rows carry is the
+   incarnation's kill one-shot, and [UkRun.urun] binds the process's own
+   generation with no resource beside it -- the U tier cannot name it, so
+   the reason is absorbed at this boundary
+   ([ut_wait_out_forget], [UexecRet.uwait_ans]'s header) and what comes out
+   instead is what the shot's REFUTATION proves.
+     THE REFUTATION HAPPENS AT +0xa6.  usertrap's second [killed] check is
+   the one place a shot can be contradicted: at a zero flag <p->lock>'s row
+   holds the UNFIRED one-shot ([SchedCtx.kill_paid_shot_nz]), and
+   [ChildTok.kill_pend] is linear, so no refuter can be carried out of that
+   critical section.  A process that RESUMES therefore knows the shot was
+   never fired, and each of the two rows collapses to its other disjunct:
+
+     * THE READ.  At an open readable CONSOLE descriptor and a non-negative
+       count, [SpecFileread.console_receipt]'s -1 arm has exactly two
+       exits -- fileread's [n < 0] sign guard and consoleread's [killed]
+       test.  The shot is gone and the guard is refuted by the count, so
+       the surviving -1 cause AT AN OPEN READABLE CONSOLE FD IS [n < 0],
+       NOT A CLOSED FD: the arm is unreachable and the answer is not -1.
+     * WAIT.  At a NULL status pointer the failing arm's reason
+       ([UserChildren.wait_why]) has three disjuncts and the null pointer
+       kills the copyout one, so with the shot gone a -1 means the caller's
+       children column was EMPTY.
+
+   Both are read at the ENTRY trapframe and the ENTRY descriptor index --
+   the key the deposit went down at -- because that is what the process's
+   own returning arm is indexed by. *)
+(* WAIT'S HALF IS NOT HERE, AND THE REASON IS A GAP IN THE KERNEL'S OWN
+   ARM (lane TRAP-ROWS, T4).  The intended second clause was
+     [sc_v = uecall_scause -> usys_num tf = USYS_wait ->
+      uint (tf !!! tf_arg_idx 0) = 0 -> r = -1 -> cs' = ∅],
+   and it is TRUE but not derivable: refuting [r = -1] on
+   [UserChildren.wait_ans]'s REAPING arm needs the reaped child's pid to be
+   something other than -1, and nothing in the tree says so.  What a slot's
+   generation carries is [SlotGen.gen_halves_at] (SlotGen.v:393), i.e.
+   [bv_unsigned pid <> 0] and nothing more; the bound that would settle it,
+   [1 <= nextpid <= PIDMAX], lives in <pid_lock>'s payload
+   ([PidLock.nextpid_res_at], PidLock.v:127) and never travels to the
+   process block.  So the wait row's reason has to ride the ARM, where the
+   two exits are told apart by the reaping arm's own [ChildTok.exit_tok] --
+   see the lane's report.  The [cs'] parameter is kept so that clause can be
+   added here without re-cutting the route. *)
+Definition ut_live_out (sc_v : mword 64) (tf : list (mword 64))
+    (sts : list fdstate) (r : mword 64) (cs' : gset gname) : Prop :=
+  sc_v = uecall_scause -> usys_num tf = USYS_read ->
+  (0 <= sys_rw_count (tf !!! tf_arg_idx 2))%Z ->
+  forall rb : bool,
+    fd_st_of_key (tf !!! tf_arg_idx 0) sts
+      = FdOpen true rb (FdDevice CONSOLE) ->
+    r <> (mword_of_int (-1) : mword 64).
+
+(* THE TWO GUARDS, NAMED AND DECIDABLE.  usertrap's +0xa6 block proves the
+   row by REFUTING each guard against the unfired one-shot, and a refutation
+   needs the guard as a Coq case, not as an Iris hypothesis -- see
+   [ProofUsertrapTail.ut_a6]. *)
+Definition ut_live_fd_g (tf : list (mword 64)) (sts : list fdstate) : Prop :=
+  exists rb : bool,
+    fd_st_of_key (tf !!! tf_arg_idx 0) sts = FdOpen true rb (FdDevice CONSOLE).
+
+Global Instance ut_live_fd_g_dec (tf : list (mword 64)) (sts : list fdstate) :
+  Decision (ut_live_fd_g tf sts).
+Proof.
+  rewrite /ut_live_fd_g.
+  destruct (decide (fd_st_of_key (tf !!! tf_arg_idx 0) sts
+                    = FdOpen true true (FdDevice CONSOLE))) as [H1 | H1];
+    [ left; exists true; exact H1 | ].
+  destruct (decide (fd_st_of_key (tf !!! tf_arg_idx 0) sts
+                    = FdOpen true false (FdDevice CONSOLE))) as [H2 | H2];
+    [ left; exists false; exact H2 | ].
+  right. intros [rb Hrb]. destruct rb; [ exact (H1 Hrb) | exact (H2 Hrb) ].
+Defined.
+
+Definition ut_live_read_g (sc_v : mword 64) (tf : list (mword 64))
+    (sts : list fdstate) (r : mword 64) : Prop :=
+  sc_v = uecall_scause /\ usys_num tf = USYS_read
+  /\ (0 <= sys_rw_count (tf !!! tf_arg_idx 2))%Z
+  /\ ut_live_fd_g tf sts
+  /\ r = (mword_of_int (-1) : mword 64).
+
+Global Instance ut_live_read_g_dec sc_v tf sts r :
+  Decision (ut_live_read_g sc_v tf sts r).
+Proof. rewrite /ut_live_read_g. apply _. Defined.
+
+(* ...and the row, out of the refutation *)
+Lemma ut_live_out_of (sc_v : mword 64) (tf : list (mword 64))
+    (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
+  ~ ut_live_read_g sc_v tf sts r ->
+  ut_live_out sc_v tf sts r cs'.
+Proof.
+  intros Hr He Hn Hc rb Hfd Hm1. apply Hr.
+  split_and!; [ exact He | exact Hn | exact Hc | exists rb; exact Hfd | exact Hm1 ].
+Qed.
+
+(* the row is FREE at a non-ecall cause: both clauses are guarded on it *)
+Lemma ut_live_out_ne (sc_v : mword 64) (tf : list (mword 64))
+    (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
+  sc_v <> uecall_scause -> ut_live_out sc_v tf sts r cs'.
+Proof. intros Hne Hc. exfalso. exact (Hne Hc). Qed.
+
+(* ...and at any number that is not the read *)
+Lemma ut_live_out_num (sc_v : mword 64) (tf : list (mword 64))
+    (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
+  usys_num tf <> USYS_read -> ut_live_out sc_v tf sts r cs'.
+Proof. intros Hr _ Hn. exfalso. exact (Hr Hn). Qed.
+
+(* the two readings the row is stated at do not move across the save walk,
+   so the row transports like [ut_wait_out_cong] does *)
+Lemma ut_live_out_cong (sc_v : mword 64) (tf1 tf2 : list (mword 64))
+    (sts : list fdstate) (r1 r2 : mword 64) (cs' : gset gname) :
+  usys_num tf1 = usys_num tf2 -> r1 = r2 ->
+  tf1 !!! tf_arg_idx 0 = tf2 !!! tf_arg_idx 0 ->
+  tf1 !!! tf_arg_idx 2 = tf2 !!! tf_arg_idx 2 ->
+  ut_live_out sc_v tf1 sts r1 cs' -> ut_live_out sc_v tf2 sts r2 cs'.
+Proof.
+  intros Hn Hr Ha0 Ha2 H1. subst r2.
+  intros He Hnum Hcnt rb Hfd. rewrite <- Ha0 in Hfd. rewrite <- Ha2 in Hcnt.
+  exact (H1 He ltac:(rewrite Hn; exact Hnum) Hcnt rb Hfd).
+Qed.
+
+(* [uint a1 = 0] is the null pointer the wait clause is conditioned on, in
+   the form the kernel's own row reads it at *)
+Lemma zero_reg_of_uint (x : mword 64) : uint x = 0%Z -> x = (zero_reg : mword 64).
+Proof.
+  intro H. apply bv_eq. rewrite <- !uint_unsigned.
+  rewrite uint_zero_reg. exact H.
 Qed.
 
 Lemma ut_wait_out_quiet `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
@@ -1420,6 +1555,12 @@ Definition usertrap_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fi
        [ut_wait_out] *)
     ut_wait_out sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U)))
       (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' gn -∗
+    (* ...AND WHAT A RESUME ITSELF PROVES (lane TRAP-ROWS, T2(iii) / T4):
+       the two rows above answer at the incarnation, the process cannot
+       name it, and this is what survives the refutation -- see
+       [ut_live_out]. *)
+    ⌜ut_live_out sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U)))
+        sts (pv_tf (us_V U') !!! tf_arg_idx 0) cs'⌝ -∗
     (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3): at a non-ecall
        cause the process handed the kernel the additive pair, and a resume
        means the kernel took the RIGHT side and owes it back -- at the key

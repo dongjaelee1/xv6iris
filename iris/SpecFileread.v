@@ -1158,6 +1158,39 @@ Section SpecFileread.
     iExists cur, d'. iExact "Hrd".
   Qed.
 
+  (* ...AND THE REASON, READ OFF WITHOUT SPENDING THE ARM (lane TRAP-ROWS,
+     T2(ii)).  Both disjuncts are persistent, so the receipt comes straight
+     back; the READING arm is refuted at [r = -1] by its own run bound --
+     [bv_unsigned] of the -1 word is 2^64-1 and the run is at most the
+     request, which is a 32-bit signed count ([SpecSysRead.sys_rw_count_lt]
+     at the caller).  This is what lets usertrap's second [killed] check
+     refute its own resume branch: at a zero flag the shot is impossible,
+     so the reason can only be the sign guard, and a caller that asked for
+     a non-negative count has ruled that out too. *)
+  Lemma console_receipt_m1_why (gn : gname) (P : uptd) (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
+      (n : Z) (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) :
+    (n < 2 ^ 31)%Z ->
+    r = (mword_of_int (-1) : mword 64) ->
+    console_receipt gn P Rd Rin n r M' addr -∗
+    (⌜(n < 0)%Z⌝ ∨ ChildTok.kill_shot gn) ∗
+    console_receipt gn P Rd Rin n r M' addr.
+  Proof.
+    intros Hnb Hr. rewrite /console_receipt.
+    iIntros "[ (%Hm1 & #Hwhy & Hrd) | Hrun ]".
+    - iSplitR "Hrd"; [ iExact "Hwhy" | ].
+      iLeft. iSplitR; [by iPureIntro |].
+      iSplitR; [iExact "Hwhy" |]. iExact "Hrd".
+    - iDestruct "Hrun" as (d dc cur hs sl) "(%Hd & %Hle & _)".
+      exfalso. rewrite Hr in Hd.
+      assert (Hm : bv_unsigned (mword_of_int (-1) : mword 64)
+                   = 18446744073709551615%Z)
+        by (vm_compute; reflexivity).
+      rewrite Hm in Hd.
+      change (2 ^ 31)%Z with 2147483648%Z in Hnb.
+      lia.
+  Qed.
+
   (* THE ONE STEP FROM consoleread's POST.  Its ledger is over the run's
      SOURCE function [bs]; the image is [umem_wr M dst d bs], and
      [UserPtTree.umem_wr_lookup_in] reads the [j]th byte back out of it
@@ -1315,6 +1348,25 @@ Section SpecFileread.
     fileread_extra gn pt st n F Rd Rin P r M' addr -∗
     P ∗ fileread_extra_core gn pt st n F Rd Rin r M' addr.
   Proof. by iIntros "$". Qed.
+
+  (* ...and the same at the arm the dispatcher's row 5 is stated at *)
+  Lemma fileread_extra_core_m1_why (gn : gname) (pt : uptd) (rb : bool) (n : Z)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
+      (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
+      (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) :
+    (n < 2 ^ 31)%Z ->
+    r = (mword_of_int (-1) : mword 64) ->
+    fileread_extra_core gn pt (FdOpen true rb (FdDevice CONSOLE)) n F Rd Rin r M' addr -∗
+    (⌜(n < 0)%Z⌝ ∨ ChildTok.kill_shot gn) ∗
+    fileread_extra_core gn pt (FdOpen true rb (FdDevice CONSOLE)) n F Rd Rin r M' addr.
+  Proof.
+    intros Hnb Hr. rewrite /fileread_extra_core.
+    destruct (decide (CONSOLE = CONSOLE)) as [_ | Hne];
+      [| exfalso; exact (Hne eq_refl)].
+    iApply (console_receipt_m1_why gn pt Rd Rin n r M' addr Hnb Hr).
+  Qed.
+
 
   (* ---- READING THE KEYED INPUT, BUILDING THE KEYED OUTPUT -------------
      One-liners, so that no walk ever has to unfold the two matches and

@@ -1721,7 +1721,7 @@ Section UservecAllPt.
     iIntros (pt' mf ms' usatp uepc sc' stval' mdv0 U2 sts2 cs2)
       "%Huptpt2 %Hrd2 %Hfdk2 %Hchk2 %Hgenk2 %Hfde2 %Hpipe2 %Hpidr2 %Hpcret
        %Hmask %Hpttf %Haccwf %Hmapwf %Hretms %Hsconf2 %Hcalleesaved %Htpcid %Ha0usatp %Hsatprooted
-       Hhs2 Hpriv2 Hms2 Hsc2 Hstval2 Hsepc2 Hstvec2 Hpc2 Hfile2 Hmie3 Hmdl3 Hmenv3 #Hhw2 #Hmin2 Hures2 Hxo2 Hfo2 Hwo2 Hko2 Hso2".
+       Hhs2 Hpriv2 Hms2 Hsc2 Hstval2 Hsepc2 Hstvec2 Hpc2 Hfile2 Hmie3 Hmdl3 Hmenv3 #Hhw2 #Hmin2 Hures2 Hxo2 Hfo2 Hwo2 %Hlv2 Hko2 Hso2".
     (* x0 IS ZERO in the file usertrap handed back -- the one fact the
        register-file tie below needs of the base ([UexecRet.userret_gpr_x0]). *)
     iDestruct (gpr_file_x0 mf (mword_of_int 0) ltac:(vm_compute; reflexivity)
@@ -1879,7 +1879,7 @@ Section UservecAllPt.
                 (purely iota) conversion is checked. *)
              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hhs3 Hpriv3 Hms3 Hmie4 Hmdl4 Hmenv4 Hstvec2 Hsenv3 Hsc2 Hstval2 Hsepc3
                     [Hupt3] Hpc3 Hfile3 Hures3 Hhw2 Hmin2 Hcreds2 [Hxo2] [Hfo2] [Hwo2]
-                    [Hko2] [Hso2]").
+                    [%] [Hko2] [Hso2]").
     - (* the descriptor the residue is keyed at IS the one handed over *)
       reflexivity.
     - (* THE ROUND, read at the machine that trapped.  usertrap's [tf0] is
@@ -2017,6 +2017,17 @@ Section UservecAllPt.
            save walk leaves where the entry frame had it (lane TRAP-ROWS,
            T4) *)
         cbn [us_V pv_tf upd_usM us_tf upd_usV upd_tf].
+        unfold tf_arg_idx, tf_epc_idx, tf_of. reflexivity.
+    - (* ...AND WHAT A RESUME PROVES, across the same two moves: the row's
+         three readings are the entry frame's own, and the save walk moves
+         none of them (lane TRAP-ROWS, T2(iii)). *)
+      revert Hlv2. apply SpecUsertrap.ut_live_out_cong.
+      + cbn [us_V pv_tf upd_usM us_tf upd_usV upd_tf].
+        unfold UsysMemOk.usys_num, tf_arg_idx, tf_of. reflexivity.
+      + cbn [us_V pv_tf us_upt upd_upt upd_usV us_tf upd_tf]. reflexivity.
+      + cbn [us_V pv_tf upd_usM us_tf upd_usV upd_tf].
+        unfold tf_arg_idx, tf_epc_idx, tf_of. reflexivity.
+      + cbn [us_V pv_tf upd_usM us_tf upd_usV upd_tf].
         unfold tf_arg_idx, tf_epc_idx, tf_of. reflexivity.
     - (* ...AND THE UNTAKEN CONTINUATION, forwarded verbatim: this boundary
          moves neither the cause nor the key the pair was handed at

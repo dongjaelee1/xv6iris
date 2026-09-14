@@ -700,6 +700,9 @@ Section Ut56.
                    a transparent trap ran no syscall and answered nothing *)
                 ltac:(intros Hc; exfalso; exact (Hnec Hc)) Hav Hnx Htfpe Hksp Hm0sp HS1sp HS1s1 HcsS1'
               Hmiev Hmenvv Hrd
+              (* the row is free at a non-ecall cause (lane TRAP-ROWS,
+                 T2(iii)) *)
+              ltac:(intros Hcec; exfalso; exact (Hnec Hcec))
               (* THE PAIR'S LEFT SIDE WENT TO setkilled (lane TRAP-ROWS,
                  T3), so what this arm still has is the one-shot setkilled
                  handed back -- which is what refutes the killed check's
@@ -1186,6 +1189,9 @@ Section UtD0.
                    a transparent trap ran no syscall and answered nothing *)
                 ltac:(intros Hc; exfalso; exact (Hnec Hc)) Hav Hnx HV'tfp Hksp Hm0sp Hmrsp Hmrs1 Hcsmr
                 Hmiev Hmenvv Hrd'
+                (* the row is free at a non-ecall cause (lane TRAP-ROWS,
+                   T2(iii)) *)
+                ltac:(intros Hcec; exfalso; exact (Hnec Hcec))
                 (* THE KERNEL SERVED THE FAULT, so it takes the pair's RIGHT
                    side and owes it back on the resume (lane TRAP-ROWS, T3).
                    This is the arm that used to drop the credential. *)
@@ -1434,6 +1440,9 @@ Section UtE8.
                    a transparent trap ran no syscall and answered nothing *)
                 ltac:(intros Hc; exfalso; exact (Hnec Hc)) Hav Hnx Htfpe Hksp Hm0sp Hmfsp Hmfs1 Hcsmf
                 Hmiev Hmenvv Hrd
+                (* the row is free at a non-ecall cause (lane TRAP-ROWS,
+                   T2(iii)) *)
+                ltac:(apply ut_live_out_ne; exact Hnec)
                 with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hko Hso Hcont]
                       Hframe Hxo Hfo Hwo Hko Hso Hmyp Hcont").
       iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu Hcsrs Hclm [-]").

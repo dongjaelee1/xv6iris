@@ -1408,6 +1408,39 @@ Section UexecExecInst.
     iSplitR; [by iPureIntro |]. iExact "H".
   Qed.
 
+  (* ...AND THE READ ROW'S REASON, READ OFF THE POST WITHOUT SPENDING IT
+     (lane TRAP-ROWS, T2(ii)).  Both disjuncts are persistent, so the post
+     comes straight back; usertrap's second [killed] check refutes the
+     right one against <p->lock>'s own row and is left with the sign
+     guard. *)
+  Lemma spost_at_read_why (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
+      (rb : bool) (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate)
+      (cw' : Z) (cs' : gset gname) :
+    fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W)
+      = FdOpen true rb (FdDevice ConsoleInv.CONSOLE) ->
+    r = (mword_of_int (-1) : mword 64) ->
+    spost_at X 5 f W r M' fdv' cw' cs' -∗
+    (⌜(sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2)) < 0)%Z⌝
+     ∨ ChildTok.kill_shot (uvis_gen W)) ∗
+    spost_at X 5 f W r M' fdv' cw' cs'.
+  Proof.
+    intros Hfd Hr.
+    pose proof (sys_rw_count_lt (tf_w (uvis_tf W) (tf_arg_idx 2))) as Hlt.
+    iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
+    xv6_take.
+    iDestruct "H" as "(%Hret & %P & %Hpm & %Hwf & %Hlz & Hcore)".
+    rewrite Hfd.
+    iDestruct (fileread_extra_core_m1_why (uvis_gen W) P rb
+                 (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2)))
+                 (rf_F f) (rf_ret f) (rf_in f) r M'
+                 (tf_w (uvis_tf W) (tf_arg_idx 1)) Hlt Hr
+                 with "Hcore") as "(#Hwhy & Hcore)".
+    iSplitR "Hcore"; [ iExact "Hwhy" | ].
+    iSplitR; [by iPureIntro |]. iExists P.
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [by iPureIntro |]. iExact "Hcore".
+  Qed.
+
   (* ...and chdir's, at the working directory the call RESUMES at: the arm
      the dispatcher splits ([SpecSysChdir.chdir_arms_split]) hands the
      kernel half back and this the process's. *)

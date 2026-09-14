@@ -1198,6 +1198,9 @@ Section UtSysBlock.
                 ltac:(rewrite Htfg HV1upt; exact Htfpe) Hksp Hm0sp
                 Hmgsp Hmgs1 Hcsmg
                 Hmiev Hmenvv Hrda
+                (* the key's generation is the block's, at the ecall cause
+                   (lane TRAP-ROWS, T2(ii)) *)
+                ltac:(intros _; rewrite Hgnq; symmetry; exact Hgen2)
                 with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hri Hso Hcont]
                       Hframe Hxo Hfo Hwo Hri Hso Hmy2 Hcont").
       all: try lkbelow.

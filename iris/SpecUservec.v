@@ -386,6 +386,10 @@ Definition uservec_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} `{GEN 
     (* ...AND WAIT'S, forwarded the same way -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out sc_v (tf_of g (ret_pc sepc_v))
       (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' gn -∗
+    (* ...AND WHAT A RESUME PROVES, forwarded the same way (lane TRAP-ROWS,
+       T2(iii) / T4) -- [SpecUsertrap.ut_live_out] *)
+    ⌜ut_live_out sc_v (tf_of g (ret_pc sepc_v)) sts
+        (pv_tf (us_V U') !!! tf_arg_idx 0) cs'⌝ -∗
     (* ...AND THE UNTAKEN CONTINUATION, forwarded the same way (lane
        TRAP-ROWS, T3) -- [SpecUsertrap.ut_kill_out] *)
     ut_kill_out sc_v Wk -∗

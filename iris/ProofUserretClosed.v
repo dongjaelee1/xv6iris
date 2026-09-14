@@ -620,7 +620,7 @@ Section UserretClosed.
       "%Huptpt' %Hround' %Hfdkept %Hchkept %Hgenk2 %Hfdecall %Hpipecall %Hpidrow %Hpcret' %Hgprtie'
        %Hpttf %Hmapwf %Hsatpr %Hnorm' %Hptwf' %Hmm %Hretms %Hacc'
        Hhs' Hpriv' Hms' Hmie' Hmdl' Hmenv' Hstvec' #Hsenv' Hsc' Hstval' Hsepc'
-       Hupt' Hpc' Hgpr' Hures' #Hhw' #Hmin' #Hcreds' Hxo Hfo Hwo Hko Hso".
+       Hupt' Hpc' Hgpr' Hures' #Hhw' #Hmin' #Hcreds' Hxo Hfo Hwo %Hlv Hko Hso".
     (* ...AND THE UNTAKEN SIDE COMES BACK (lane TRAP-ROWS, T3): at a
        non-ecall cause the kernel resumed, so it took the slot and owes it,
        and that is what the round transports to the resumed key. *)

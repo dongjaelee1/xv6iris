@@ -62,21 +62,23 @@
    supply says the claim is trivially true, which [taint ∨ pins] is only
    after the taint is minted.
 
-   THE TWO OPEN HYPOTHESES, and which lane closes each.  Every other
+   THE ONE OPEN HYPOTHESIS, and which lane closes it.  Every other
    hypothesis of [App.xv6_app_adequacy] is a lemma in section 6 below, at
-   the theorem's own binder with [A := app_echo].  The two that are not:
+   the theorem's own binder with [A := app_echo].  The one that is not
+   ([Hphi]'s entry is kept for the record: it was open until lane ECHO-OUT
+   part 5):
 
      [Hinit_boot] -- LANE E2 (ARM-c (1b), INIT-BOOT).  Echo's own PINNED
        exec bundle at "/init": [PinnedExec.pinned_exec_bundle] over the
        era-0 pins, with [UInitKernel.init_slot_of_kexec] as the slot piece
        and the taint arm paid by [echo_sup_of_taint].  Mirrors [UInitSh],
        which is the same construction at /sh.
-     [Hphi] -- LANE E5 (the output side).  [echo_phi] IS [True] HERE, and
-       that is a placeholder, not a claim: at [True] the whole theorem
-       would say SAFETY AND NOTHING ELSE.  E5 writes the real conclusion
-       ([good_out]: every power cycle's output is a prefix of the console
-       stream its input calls for), and [Hphi] at it reads the durable
-       claim's taint arm against [echo_R_untainted].
+     [Hphi] -- CLOSED (lane ECHO-OUT part 5).  [echo_phi] is the real
+       conclusion -- if the input kept the discipline for the whole run,
+       every power cycle's output is a prefix of the console stream its
+       input calls for ([EchoDisc.good_out]) -- and the obligation is read
+       off the LEDGER by [echo_R_phi]/[echo_Hphi_R] here and discharged at
+       [UInitBootAdequacy], which is where the adequacy literal lives.
 
    WHAT IS DELIBERATELY NOT HERE: a theorem.  [Hphi] at the placeholder
    would go through, but [Hinit_boot] is open, and a theorem taking it as
@@ -86,7 +88,7 @@
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Import mono_nat own.
+From iris.base_logic.lib Require Import mono_nat own ghost_var ghost_map.
 From iris.algebra.lib Require Import mono_list.
 Require Import RiscvLang.        (* [mobs] *)
 Require Import ObsTrace.         (* [cycles_of], [open_seg], [trace_shape] *)
@@ -133,6 +135,12 @@ Require Import AppCfg.           (* [MkAppcfg]: ...and the record it equates *)
 Require Import FsCfg.            (* [fsc_uart]: the era's own UART names *)
 Require Import App.              (* [xv6_app], [MkApp] and the theorem whose
                                     binders the dischargers are stated at *)
+(* THE APPLICATION CLAIM'S IRIS HALF (lane ECHO-OUT).  Every field this file
+   used to fill with a placeholder -- the two port claims, the era's turn,
+   the echo window token -- and the LEDGER itself are [EchoOut]'s now, at
+   the taint this file defines; what stays here is the fixed part, the
+   durable predicate and the record. *)
+Require Import EchoOut.
 (* THE DISCIPLINE AND THE CLAIM, as pure combinatorics.  EXPORTED: the
    landed names ([echo_line], [star_prefix], [ins], [disc_seg], [disc]) are
    read unqualified by [UConsLine.v], and moving them out must not move
@@ -169,72 +177,78 @@ Local Open Scope Z_scope.
 (*      discipline                                                         *)
 (* ====================================================================== *)
 
-(* THE FIXED PART'S TYPE (app-instances.md section 6 ruling 1): the taint
-   counter's ghost name.  The machine's record carries one value of it for
-   the whole run ([RiscvPtsto.riscv_client]), born by [echo_birth]. *)
-Definition echo_fixed : Type := gname.
+(* THE FIXED PART'S TYPE (app-instances.md section 6 ruling 1): the TAINT
+   COUNTER's ghost name and the ERA MAP's ([EchoOut.echo_gn]).  It was the
+   counter's name alone until lane ECHO-OUT part 5; the era map is what the
+   ledger's power-on step mints an era's pin in, and it has to be born with
+   the counter because the machine's record carries ONE value of the fixed
+   part for the whole run ([RiscvPtsto.riscv_client]), born by
+   [echo_birth]. *)
+Definition echo_fixed : Type := EchoOut.echo_gn.
 
 Section EchoLedger.
-  Context `{!mono_natG Σ}.
-
-  (* what the birth step yields: the counter, whole, at 0 *)
-  Definition echo_cl (γ : echo_fixed) : iProp Σ :=
-    mono_nat_auth_own γ 1 0%nat.
-
-  (* THE BIRTH STEP: run first by the power theorem, before the crash slot,
-     so both the crash predicate and the ledger can name the counter *)
-  Lemma echo_birth : ⊢ |==> ∃ γ : echo_fixed, echo_cl γ.
-  Proof.
-    iMod (mono_nat_own_alloc 0%nat) as (γ) "[Ha _]".
-    iModIntro. iExists γ. iExact "Ha".
-  Qed.
-
-  (* the counter's value at a history: 0 while disciplined, 1 after *)
-  Definition echo_phase (h : list mobs) : nat :=
-    if decide (disc h) then 0%nat else 1%nat.
-
-  Definition echo_R (γcl : echo_fixed) (h : list mobs) : iProp Σ :=
-    mono_nat_auth_own γcl 1 (echo_phase h).
-
-  Global Instance echo_R_timeless γcl h : Timeless (echo_R γcl h).
-  Proof. rewrite /echo_R. apply _. Qed.
+  (* ONE class, and it REPLACES the bare [mono_natG] this section used to
+     take (lane ECHO-OUT part 5).  [EchoOut.echoOutG] CARRIES [mono_natG]
+     ([eo_mono_nat]), so a second binder beside it would be the
+     duplicate-class trap ([Xv6Cameras]'s note): the taint below has to be
+     the SAME [mono_nat_lb_own] the ledger's counter conjunct is stated at,
+     or [EchoOut.echo_led_phi]'s premise is unsuppliable. *)
+  Context `{!echoOutG Σ}.
 
   (* THE TAINT, ONCE.  The ledger's counter has left 0 and can never come
      back, so its lower bound at 1 is a PERMANENT, PERSISTENT fact: "the
      console input has broken the discipline at some point in this run".
-     It is stated here and used in all three places that name it -- the
-     input tag's right arm, the predicate's left arm, and the supply
-     [echo_sup_of_taint] the generic user-execution slot is minted on --
-     so the three cannot drift apart. *)
+     It is stated here and used in all the places that name it -- the input
+     tag's right arm, the predicate's left arm, the supply
+     [echo_sup_of_taint] the generic user-execution slot is minted on, and
+     -- since lane ECHO-OUT -- the TAINT ARM of every claim [EchoOut]
+     states, which this file passes in as that file's [T]. *)
   Definition echo_taint (γcl : echo_fixed) : iProp Σ :=
-    mono_nat_lb_own γcl 1.
+    mono_nat_lb_own (eg_taint γcl) 1.
 
   Global Instance echo_taint_persistent γcl : Persistent (echo_taint γcl).
   Proof. rewrite /echo_taint. apply _. Qed.
   Global Instance echo_taint_timeless γcl : Timeless (echo_taint γcl).
   Proof. rewrite /echo_taint. apply _. Qed.
 
+  (* what the birth step yields: the counter, whole, at 0, AND the era map
+     empty -- [EchoOut.echo_led_init]'s two arguments, which is what makes
+     the ledger's first state derivable from the birth alone. *)
+  Definition echo_cl (γcl : echo_fixed) : iProp Σ :=
+    (mono_nat_auth_own (eg_taint γcl) 1 0%nat
+     ∗ ghost_map_auth (eg_pin γcl) 1 (∅ : gmap nat era_pins))%I.
+
+  (* THE BIRTH STEP: run first by the power theorem, before the crash slot,
+     so both the crash predicate and the ledger can name the counter *)
+  Lemma echo_birth : ⊢ |==> ∃ γ : echo_fixed, echo_cl γ.
+  Proof.
+    iMod (mono_nat_own_alloc 0%nat) as (γt) "[Ha _]".
+    iMod (ghost_map_alloc (∅ : gmap nat era_pins)) as (γp) "[Hm _]".
+    iModIntro. iExists (MkEchoGn γt γp). rewrite /echo_cl /=. iFrame "Ha Hm".
+  Qed.
+
+  (* THE LEDGER is [EchoOut.echo_led] at this file's taint (lane ECHO-OUT
+     part 5).  It was the taint counter alone; it keeps that counter, and
+     adds the ERA MAP's authority -- spent at the power-on step and nowhere
+     else -- and the PHI conjunct the conclusion is read off. *)
+  Definition echo_R (γcl : echo_fixed) (h : list mobs) : iProp Σ :=
+    EchoOut.echo_led (echo_taint γcl) γcl h.
+
+  Global Instance echo_R_timeless γcl h : Timeless (echo_R γcl h).
+  Proof. rewrite /echo_R. apply _. Qed.
+
   (* THE INPUT TAG (app-echo.md lane L5), this application's entry in the
      machine's ambient tag slot ([RiscvPtsto.riscv_rx_tag], set by
      [App.xv6_app_adequacy] from [App.app_tag]): of every byte the
-     environment pushed, either the history up to and including it kept the
-     console discipline, or the taint is already a permanent fact.
-     Persistent in both arms, which is what lets the UART's receive column
-     hand a copy to every reader of the byte. *)
-  (* ...AND IT CARRIES THE HISTORY'S SHAPE (lane ECHO-OUT part 3, B).  The
-     three steps the echo shift spends -- [EchoOut.eout_step_echo],
-     [ein_step_append] and [ein_step_append_drop] -- all need
-     [trace_shape h true] ([EchoOutPure.disc_seg'_open_seg],
-     [disc_seg_open_seg], [open_seg_prefix_boots]), and
-     [SpecConsoleintr.cons_echo_shift] does not hand it over: it is not
-     derivable from the byte's own premises.  It IS the application's to
-     supply, because [echo_R_rx] -- the one producer of the tag -- is fired
-     with exactly that fact in hand about the PRE-arrival history, and
-     [ObsTrace.trace_shape_snoc] carries it across the input event.
-     Every landed consumer projects only the SECOND conjunct
-     ([UkSh.ush_tag_law]), so nothing else moves. *)
+     environment pushed, the history's SHAPE (lane ECHO-OUT part 3, B), and
+     either the history up to and including it kept the console discipline
+     or the taint is already a permanent fact.  Persistent in both arms,
+     which is what lets the UART's receive column hand a copy to every
+     reader of the byte.
+     IT IS [EchoOut.etag] AT THE TAINT, which is the form
+     [App.Happ_echo]'s tag equation is discharged at. *)
   Definition echo_tag (γcl : echo_fixed) (h : list mobs) : iProp Σ :=
-    (⌜trace_shape h true⌝ ∗ (⌜disc h⌝ ∨ echo_taint γcl))%I.
+    EchoOut.etag (echo_taint γcl) h.
 
   Global Instance echo_tag_persistent γcl h : Persistent (echo_tag γcl h).
   Proof. rewrite /echo_tag. apply _. Qed.
@@ -247,36 +261,31 @@ Section EchoLedger.
   Lemma echo_R_untainted γcl h :
     disc h -> echo_R γcl h -∗ echo_taint γcl -∗ False.
   Proof.
-    intros Hd. iIntros "Ha Hlb".
-    rewrite /echo_R /echo_taint /echo_phase decide_True; last exact Hd.
+    intros Hd. iIntros "H Hlb".
+    rewrite /echo_R /EchoOut.echo_led /echo_taint decide_True; last exact Hd.
+    iDestruct "H" as "(Ha & _ & _)".
     iDestruct (mono_nat_lb_own_valid with "Ha Hlb") as %[_ Hle]. lia.
   Qed.
 
-  (* birth: the counter arrives at 0 out of the birth step's yield, and the
-     empty history is disciplined -- exactly [App.xv6_app_adequacy]'s [HR0] *)
+  (* THE CONCLUSION, READ OFF THE LEDGER (lane ECHO-OUT part 5, [Hphi]'s
+     one ingredient): [EchoOut.echo_led_phi] with the taint supplied by
+     DEFINITION -- [echo_taint] IS the lower bound that lemma asks for, so
+     its premise is the identity. *)
+  Lemma echo_R_phi (γcl : echo_fixed) (h : list mobs) :
+    echo_R γcl h ⊢ ⌜disc h -> Forall good_out (cycles_of h)⌝.
+  Proof.
+    rewrite /echo_R. iIntros "H".
+    iApply (EchoOut.echo_led_phi (echo_taint γcl) γcl h with "[] H").
+    rewrite /echo_taint. iIntros "$".
+  Qed.
+
+  (* birth: the ledger arrives out of the birth step's yield -- exactly
+     [App.xv6_app_adequacy]'s [HR0] *)
   Lemma echo_R_alloc γcl :
     echo_cl γcl ⊢ |==> echo_R γcl [].
   Proof.
-    iIntros "H". rewrite /echo_cl /echo_R /echo_phase decide_True; last exact disc_nil.
-    by iModIntro.
-  Qed.
-
-  (* a power event moves nothing *)
-  Lemma echo_R_pow (γcl : gname) (h : list mobs) (on : bool) :
-    echo_R γcl h ==∗ echo_R γcl (h ++ [if on then ObsPowerOff else ObsPowerOn]).
-  Proof.
-    iIntros "H". rewrite /echo_R /echo_phase.
-    rewrite (decide_ext _ (disc h) 0%nat 1%nat (disc_power h on)). by iModIntro.
-  Qed.
-
-  (* an output byte moves nothing *)
-  Lemma echo_R_tx γcl h i b :
-    trace_shape h true ->
-    echo_R γcl h ==∗ echo_R γcl (h ++ [ObsUartOut i b]).
-  Proof.
-    intros Hsh. iIntros "H". rewrite /echo_R /echo_phase.
-    rewrite (decide_ext _ (disc h) 0%nat 1%nat (disc_out h i b Hsh)).
-    by iModIntro.
+    rewrite /echo_cl /echo_R. iIntros "[Ht Hm]". iModIntro.
+    iApply (EchoOut.echo_led_init (echo_taint γcl) γcl with "Ht Hm").
   Qed.
 
   (* an input byte: still disciplined (0 stays), the first bad byte (0 -> 1),
@@ -288,26 +297,12 @@ Section EchoLedger.
     echo_R γcl h ==∗
       echo_R γcl (h ++ [ObsUartIn i b]) ∗ echo_tag γcl (h ++ [ObsUartIn i b]).
   Proof.
-    intros Hsh. iIntros "H". rewrite /echo_R /echo_tag /echo_taint /echo_phase.
-    assert (Hsh' : trace_shape (h ++ [ObsUartIn i b]) true).
-    { eapply trace_shape_snoc; [exact Hsh | reflexivity]. }
-    destruct (decide (disc (h ++ [ObsUartIn i b]))) as [Hd'|Hd'].
-    - rewrite decide_True; last first.
-      { (* the console's byte can break the discipline; the OTHER port's
-           cannot be seen by it at all *)
-        destruct i;
-          [ exact (disc_in h b Hsh Hd')
-          | exact (proj1 (disc_other h (ObsUartIn Uart1 b) eq_refl I Hsh) Hd') ]. }
-      iModIntro. iFrame "H". iSplitR; [by iPureIntro |].
-      iLeft. iPureIntro. exact Hd'.
-    - (* off the discipline: the counter is at 1 either way, and its lower
-         bound is the taint *)
-      (* the destruct above already reduced the RHS's [decide] to 1; the
-         LHS's is 0 or 1 and both are below it *)
-      iMod (mono_nat_own_update 1%nat with "H") as "[H #Hlb]";
-        [destruct (decide (disc h)); lia|].
-      iModIntro. iFrame "H". iSplitR; [by iPureIntro |].
-      iRight. iExact "Hlb".
+    intros Hsh. iIntros "H". rewrite /echo_R.
+    iMod (EchoOut.echo_led_rx (echo_taint γcl) γcl h i b Hsh with "H")
+      as "[H Htg]".
+    iModIntro. iFrame "H". rewrite /echo_tag /EchoOut.etag.
+    iSplitR; [| iExact "Htg"].
+    iPureIntro. eapply trace_shape_snoc; [exact Hsh | reflexivity].
   Qed.
 End EchoLedger.
 
@@ -349,7 +344,7 @@ Section EchoPred.
      persistent "made at [i]".  ([mono_nat] cannot carry the inum, and the
      inum is the whole point: it is what ties the walk's terminal cursor
      at one view to the observation's row at another.) *)
-  Context `{!mono_natG Σ, !inG Σ (mono_listR (leibnizO Z))}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
 
   (* ---------------------------------------------------------------- *)
   (*  3a.  THE CONSOLE FLAG                                             *)
@@ -1271,7 +1266,7 @@ Proof.
 Qed.
 
 Section EchoInit.
-  Context `{!mono_natG Σ, !inG Σ (mono_listR (leibnizO Z))}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
 
   (* ...as the era-0 obligation's shape: the claim at the founded state's
      view, at the one instance, under the update.  It takes the RIGHT
@@ -1355,38 +1350,32 @@ End EchoInit.
 (*  5.  THE CONCLUSION                                                     *)
 (* ====================================================================== *)
 
-(* THE CONCLUSION, at last: every power cycle whose input kept the console
-   discipline emitted, on the CONSOLE's wire, a PREFIX of the session
-   transcript that cycle's input calls for ([EchoDisc.good_out]) -- and
-   nothing else, because the kernel's own messages go to the other UART.
-   It was [True] until 2026-09-12, and at [True] the whole theorem said
-   SAFETY AND NOTHING ELSE.
+(* THE CONCLUSION, at last: if the console input kept the discipline for the
+   WHOLE run, then every power cycle emitted, on the CONSOLE's wire, a
+   PREFIX of the session transcript that cycle's input calls for
+   ([EchoDisc.good_out]) -- and nothing else, because the kernel's own
+   messages go to the other UART.  It was [True] until 2026-09-12, and at
+   [True] the whole theorem said SAFETY AND NOTHING ELSE.
+
+   THE GUARD IS THE WHOLE HISTORY'S, NOT THE CYCLE'S (the owner's ruling,
+   lane ECHO-OUT part 5: "there's no per-cycle form -- once we get taint in
+   one era, it's tainted forever").  Until part 5 this was the PER-CYCLE
+   form [Forall (fun seg => disc_seg' seg -> good_out seg) (cycles_of h)],
+   which the ledger cannot pay: the taint is a run-wide monotone counter,
+   so what the ledger holds is "the input was disciplined THROUGHOUT, or
+   the taint" -- and that is exactly the implication below
+   ([EchoOut.echo_led_phi]).
 
    [App.app_phi] takes the operational state as well; echo's conclusion
    reads only the trace, so the state argument is dropped -- the durable
    half of the claim is [echo_pred] in the crash slot, not here.
 
-   THE OBLIGATION IS OPEN.  [Hphi] -- the hypothesis of
-   [App.xv6_app_adequacy] that this must be proved at -- IS NOT PROVED BY
-   THIS FILE AND NOT BY THE LANE THAT WROTE THIS DEFINITION.  It needs the
-   application-fixed output predicate in the console UART's invariant,
-   paid at every store by the writer's own view shift (lane OUT-FUPD), and
-   the ledger's reading of it; the proof is E5's, and it reads the ledger
-   against [echo_R_untainted] on the crash slot's taint arm.  There is
-   deliberately NO lemma here that looks like it discharges [Hphi]. *)
+   THE OBLIGATION IS CLOSED (lane ECHO-OUT part 5).  [App.xv6_app_adequacy]'s
+   [Hphi] is discharged at [UInitBootAdequacy] from [echo_R_phi] above, via
+   [RiscvAdequacy.obs_ledger_at_phi]: the ledger is a pure reading, so the
+   crash slot and the power interpretation are dropped. *)
 Definition echo_phi : gstate -> list mobs -> Prop :=
-  fun _ h => Forall (fun seg => disc_seg' seg -> good_out seg) (cycles_of h).
-
-(* what the conclusion says once the discipline held: the claim, per cycle,
-   with no hypothesis left in front of it *)
-Lemma echo_phi_disc (g : gstate) (h : list mobs) :
-  disc h -> echo_phi g h -> Forall good_out (cycles_of h).
-Proof.
-  rewrite /disc /echo_phi. intros Hd Hphi.
-  apply Forall_lookup. intros i seg Hi.
-  eapply Forall_lookup_1 in Hphi; [|exact Hi].
-  apply Hphi. by eapply Forall_lookup_1 in Hd; [|exact Hi].
-Qed.
+  fun _ h => disc h -> Forall good_out (cycles_of h).
 
 (* ====================================================================== *)
 (*  6.  THE RECORD, AND THE OBLIGATIONS DISCHARGED AT ITS FIELDS           *)
@@ -1400,49 +1389,43 @@ Qed.
 (* ====================================================================== *)
 
 Section EchoApp.
-  Context `{!mono_natG Σ, !inG Σ (mono_listR (leibnizO Z))}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
 
-  (* THE OUTPUT CLAIM IS A HOLE, AND IT IS THE ONE THE NEXT LANE CLOSES.
-     E5 -- "THE OUTPUT SIDE" of app-echo.md -- is what instantiates it: the
-     echo application's real claim is that the accepted bytes are the
-     expected reply to the input read so far ([EchoDisc.good_out]), held as
-     a RESOURCE so that only the discipline's own writer may extend it, with
-     a taint arm for a process holding the generic supply.  There is NO
-     honest placeholder for that: [emp] claims nothing, so every obligation
-     below is vacuous at it, and none of the three ([echo_Houtt],
-     [echo_Happ_out_sup], [echo_Happ_echo]) says anything about the echo.
-     It is here only so that the record TYPECHECKS at [App.MkApp]'s new
-     arity; E5 replaces this line and re-proves the three. *)
-  (* ...NOW WITH THE ERA INDEX AS ITS SECOND ARGUMENT (lane CONS-IO
-     milestone C): [app_out A c k ho acc].  Still a hole. *)
-  Definition echo_out :
-      echo_fixed -> nat -> list mobs -> list (bv 8) -> iProp Σ :=
-    fun _ _ _ _ => emp%I.
+  (* ---- THE FOUR CLAIMS, AT [EchoOut]'S (lane ECHO-OUT part 5).  They
+         were [emp] placeholders until here; each is that file's claim at
+         THIS file's taint, which is the [T] every one of its taint arms is
+         stated at. ---- *)
 
-  (* ...AND THE INPUT LOG'S PLACEHOLDER (lane CONS-IO), on [echo_out]'s
-     mould and equally a HOLE.  The real claim is the second half of E5's
-     boundary: the accepted inputs are the session's, in order, and the
-     ones a process has been given are a prefix of the echoed ones.  As
-     [emp] every obligation below it is vacuous ([echo_Hinpt],
-     [echo_Happ_in_sup], [echo_Happ_echo], [echo_Htx]'s input arm say
-     nothing); it is here only so that the record TYPECHECKS at
-     [App.MkApp]'s new arity, and ECHO-OUT replaces both lines together. *)
-  Definition echo_in : echo_fixed -> nat -> list mobs ->
-                       list ConsLog.log_entry ->
-                       list (list mobs * bv 8) -> iProp Σ :=
-    fun _ _ _ _ _ => emp%I.
+  (* THE OUTPUT CLAIM: the taint, or the era's paired arm holding the four
+     authorities -- the cursor, the line choices, the echoed list and a
+     quarter of the window counter -- with the pure account of the accepted
+     bytes ([EchoOut.eout_pure]) that [eout_drain] turns into
+     [EchoDisc.good_out]. *)
+  Definition echo_out (γ : echo_fixed) :
+      nat -> list mobs -> list (bv 8) -> iProp Σ :=
+    EchoOut.eout (echo_taint γ) γ.
 
-  (* ...AND THE ERA'S TURN AND ITS ECHO WINDOW TOKEN (lane CONS-IO
-     milestone F), two more HOLES on [echo_out]'s mould.  The real ones are
-     the ledger's per-era ghosts: the turn is what <init> spends to open the
-     era's transcript, the token is the ½ share the echo's window arm holds
-     while the log entry is owed.  As [emp] every obligation below them is
-     vacuous ([echo_Hwint], [echo_Hpow]'s two new yields,
-     [echo_Happ_echo]'s new equation); they are here so the record
-     TYPECHECKS at [App.MkApp]'s new arity, and ECHO-OUT part 5 replaces
-     all four lines together. *)
-  Definition echo_turn : echo_fixed -> nat -> iProp Σ := fun _ _ => emp%I.
-  Definition echo_win : echo_fixed -> nat -> iProp Σ := fun _ _ => emp%I.
+  (* THE INPUT LOG: the taint, the SETTLED arm, or the chain-first WINDOW
+     arm -- the instant between the echo's store and the [WpUart.in_append]
+     that files its entry. *)
+  Definition echo_in (γ : echo_fixed) :
+      nat -> list mobs -> list ConsLog.log_entry ->
+      list (list mobs * bv 8) -> iProp Σ :=
+    EchoOut.ein (echo_taint γ) γ.
+
+  (* THE ERA'S TURN: <init>'s console credential, the era's cursor at ZERO
+     with the two bounds a write spends -- literally
+     [EchoOut.echo_write_link]'s argument list at [P = 0].  It takes no
+     taint arm: it is MINTED once per era by the ledger's power-on step and
+     nothing else may produce one. *)
+  Definition echo_turn (γ : echo_fixed) : nat -> iProp Σ :=
+    EchoOut.eturn γ.
+
+  (* THE ECHO WINDOW TOKEN: the half-share of the era's window counter the
+     kernel parks on the console port's PLIC payload and hands to
+     consoleintr's shift; the shift's own append gives it back. *)
+  Definition echo_win (γ : echo_fixed) : nat -> iProp Σ :=
+    EchoOut.ewin (echo_taint γ) γ.
 
   Definition app_echo : xv6_app Σ :=
     MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R echo_tag
@@ -1518,7 +1501,13 @@ Section EchoApp.
                app_in app_echo c k h pops (dl ++ ws)).
   Proof.
     cbn [app_echo app_fixed app_names app_in echo_in] in c, r |- *.
-    iIntros "_". iSplit; iIntros "!>" (?????) "_"; by iModIntro.
+    iIntros "#Hs".
+    iDestruct (echo_taint_of_sup c r with "Hs") as "#Ht". iSplit.
+    - iIntros "!>" (k h pops dl e) "Hi".
+      iApply (EchoOut.ein_sup_log (echo_taint c) c k h pops dl e with "Ht Hi").
+    - iIntros "!>" (k h pops dl ws) "Hi".
+      iApply (EchoOut.ein_sup_deliv (echo_taint c) c k h pops dl ws
+                with "Ht Hi").
   Qed.
 
   Lemma echo_Happ_out_sup (c : app_fixed app_echo) (r : app_names app_echo) :
@@ -1527,19 +1516,21 @@ Section EchoApp.
              app_out app_echo c k h acc ==∗ app_out app_echo c k h (acc ++ [b])).
   Proof.
     cbn [app_echo app_fixed app_names app_out echo_out] in c, r |- *.
-    iIntros "_ !>" (k h acc b) "_". by iModIntro.
+    iIntros "#Hs".
+    iDestruct (echo_taint_of_sup c r with "Hs") as "#Ht".
+    iIntros "!>" (k h acc b) "Ho".
+    iApply (EchoOut.eout_sup (echo_taint c) c k h acc b with "Ht Ho").
   Qed.
 
   Lemma echo_HR0 (c : app_fixed app_echo) :
     app_cl app_echo c ⊢ |==> app_R app_echo c [].
   Proof. cbn [app_echo app_fixed app_cl app_R] in c |- *. exact (echo_R_alloc c). Qed.
 
-  (* ...AND THE ERA'S TWO PORT CLAIMS ON THE ON-ARM (lane CONS-IO milestone
-     E, e5-design REVISION 8).  Both are the [emp] placeholders until
-     ECHO-OUT part 3, so the yield is free here; when the real claims land,
-     this is where the era's LINEAR seed is minted out of the ledger and
-     put into the founded arms, and the adoption at <init>'s first banner
-     byte consumes it. *)
+  (* ...AND THE ERA'S FOUR YIELDS ON THE ON-ARM (lane CONS-IO milestone E,
+     e5-design REVISION 8; the claims are real since lane ECHO-OUT part 5).
+     This is where the era's ghosts are allocated, its pin is minted in the
+     ledger's era map, and the four shares are split out:
+     [EchoOut.echo_led_pow] is exactly this obligation's shape. *)
   Lemma echo_Hpow (c : app_fixed app_echo) (h : list mobs) (on : bool)
       (dk : Z -> bv 8) :
     trace_shape h on ->
@@ -1557,10 +1548,9 @@ Section EchoApp.
             app_win app_echo c (S (obs_boots h))).
   Proof.
     intros _.
-    cbn [app_echo app_fixed app_R app_out echo_out app_in echo_in
+    cbn [app_echo app_fixed app_R echo_R app_out echo_out app_in echo_in
          app_turn echo_turn app_win echo_win] in c |- *.
-    iIntros "H". iMod (echo_R_pow c h on with "H") as "H". iModIntro.
-    iSplitL "H"; [iExact "H" |]. destruct on; by repeat iSplitR.
+    iApply (EchoOut.echo_led_pow (echo_taint c) c h on).
   Qed.
 
   (* the two UART arms, at the theorem's literal shape: the device ghosts
@@ -1597,36 +1587,70 @@ Section EchoApp.
            uart_ghosts γ u' ∗ app_R app_echo c (h ++ [ObsUartOut i b])%list).
   Proof.
     intros _ _.
-    cbn [app_echo app_fixed app_R app_out echo_out app_in echo_in] in c |- *.
-    iIntros "!>" (h b u u' ho hi pops dl) "_ _ %Hsh _ _ _ _ _ Ho Hi Hg Hled".
-    iMod (echo_R_tx c h i b Hsh with "Hled") as "Hled".
+    cbn [app_echo app_fixed app_R echo_R app_out echo_out app_in echo_in]
+      in c |- *.
+    iIntros "!>" (h b u u' ho hi pops dl)
+      "%Htxp %Hlp %Hsh %Hwi %Hwo %Hbt %Hpo %Hpi Ho Hi Hg Hled".
+    (* THE GOODNESS OF THE DRAINED SEGMENT, at the console and nowhere else
+       (handover 5 §7b).  [EchoOut.eout_drain] reads the claim at its own
+       witness [ho] and returns it untouched; its two arithmetic premises
+       are that an OUTPUT adds no input, and that the wire extended by this
+       byte is a prefix of what the port has accepted. *)
+    iAssert (|==> (if i is Uart0
+                   then EchoOut.eout (echo_taint c) c (S gen_id) ho (uart_acc u)
+                   else emp)
+                  ∗ (echo_taint c
+                     ∨ ⌜i = Uart0 ->
+                        good_out (open_seg h ++ [ObsUartOut i b])⌝))%I
+      with "[Ho]" as ">[Ho Hgo]".
+    { destruct i; last first.
+      { iModIntro. iFrame "Ho". iRight. iPureIntro. discriminate. }
+      (* AN OUTPUT ADDS NO INPUT, so the drained segment sits in the claim's
+         own cycle *)
+      assert (Hins : ins (open_seg h ++ [ObsUartOut Uart0 b])
+                     = ins (open_seg h))
+        by (by rewrite ins_app ins_out app_nil_r).
+      (* ...AND THE WIRE, EXTENDED BY THIS BYTE, IS A PREFIX OF WHAT THE
+         PORT HAS ACCEPTED: [uart_acc u = uart_acc u' = u_out u' ++ u_tx u']
+         and [u_out u' = u_out u ++ [b]] *)
+      assert (Hpre : obs_wire Uart0 (open_seg h ++ [ObsUartOut Uart0 b])
+                     `prefix_of` uart_acc u).
+      { rewrite obs_wire_app Hwi Hwo.
+        replace (obs_wire Uart0 [ObsUartOut Uart0 b]) with [b] by reflexivity.
+        rewrite -(DevModel.uart_tx_pop_acc u b u' Htxp) /DevModel.uart_acc
+                (DevModel.uart_tx_pop_out u b u' Htxp).
+        exists (u_tx u'). by rewrite -app_assoc. }
+      iDestruct (EchoOut.eout_drain (echo_taint c) c (S gen_id) h ho
+                   (uart_acc u) (open_seg h ++ [ObsUartOut Uart0 b])
+                   Hsh Hbt Hpo Hins Hpre with "Ho") as "[Ho Hgo]".
+      iModIntro. iFrame "Ho".
+      iDestruct "Hgo" as "[HT | %Hg]"; [by iLeft |].
+      iRight. iPureIntro. by intros _. }
+    iMod (EchoOut.echo_led_tx (echo_taint c) c h i b Hsh with "Hgo Hled")
+      as "Hled".
     iModIntro. iFrame "Ho Hi Hg Hled".
   Qed.
 
-  (* THE ECHO'S JUSTIFICATION, VACUOUS AT THE PLACEHOLDER (lane OUT-FUPD).
-     At [echo_out] the machine's output claim is [RiscvPtsto.out_res_triv],
-     so every link of consputc's chain is free and the echo justifies
-     itself.  E5 replaces this with the real argument: the transcript's
-     next expected byte IS the echo of the input byte that just arrived,
-     which is what [EchoDisc.expected_rel] says and what the tag at [h]
-     lets this shift read. *)
+  (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3; REAL since lane ECHO-OUT
+     part 5).  [EchoOut.echo_happ_echo] is the proof: the tag's disciplined
+     arm gives the shift the history's shape and its discipline, the
+     kernel-lent window token pays the store, and the taint arm answers
+     every firing after the discipline has broken.  All this file does is
+     hand it the FOUR record equations at the [boot_fixedGS] literal. *)
   Lemma echo_Happ_echo (HR : riscvGS Σ) (c : app_fixed app_echo) :
     @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out app_echo c ->
     @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in app_echo c ->
     @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag app_echo c ->
-    (* ...and the window token's (lane CONS-IO milestone F), which the
-       placeholder route takes and does not read: at [echo_win] the token is
-       [emp], so the shift's new premise is free and the triv route hands it
-       straight back through the append. *)
+    (* ...and the window token's (lane CONS-IO milestone F): the shift TAKES
+       the era's token, and the echo's own store is what splits it. *)
     @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win app_echo c ->
     ⊢ ∀ (GEN : GenId) (XI : CurCtx), @cons_echo_shift Σ HR GEN XI.
   Proof.
-    intros Hout Hin _ _.
-    assert (Hot : @riscv_out_res Σ (@riscv_fixedGS Σ HR) = out_res_triv)
-      by (rewrite Hout; cbn [app_echo app_out echo_out]; reflexivity).
-    assert (Hit : @riscv_in_res Σ (@riscv_fixedGS Σ HR) = in_res_triv)
-      by (rewrite Hin; cbn [app_echo app_in echo_in]; reflexivity).
-    iIntros (GEN XI). iApply (@cons_echo_shift_triv Σ HR GEN XI Hot Hit).
+    cbn [app_echo app_fixed app_out echo_out app_in echo_in
+         app_tag echo_tag app_win echo_win] in c |- *.
+    intros Hout Hin Htag Hwin.
+    iApply (EchoOut.echo_happ_echo (echo_taint c) c (HRg := HR)
+              Hout Hin Htag Hwin).
   Qed.
 
   Lemma echo_Hrx `{!uartGhostG Σ} `{HF : !fileG Σ}
@@ -1683,5 +1707,19 @@ Section EchoApp.
     intros Himg Hdk Hsb Hcov c.
     cbn [app_echo app_fixed app_names app_pred] in c |- *.
     exact (echo_init_img c _ XV6_DISK_BYTES sb nib cov Himg Hdk Hsb Hcov).
+  Qed.
+
+  (* ---- THE CONCLUSION'S ONE INGREDIENT (lane ECHO-OUT part 5).  [Hphi]
+         itself is discharged at [UInitBootAdequacy] -- this file does not
+         carry the adequacy cone's [boot_fixedGS] literal -- and what it
+         needs from here is that the LEDGER ALONE decides [app_phi], which
+         is [RiscvAdequacy.obs_ledger_at_phi]'s premise exactly.  The crash
+         slot and the power interpretation are dropped: the taint is a fact
+         about the TRACE, and the ledger holds it. ---- *)
+  Lemma echo_Hphi_R (c : app_fixed app_echo) (g : gstate) (h : list mobs) :
+    app_R app_echo c h ⊢ ⌜app_phi app_echo g h⌝.
+  Proof.
+    cbn [app_echo app_fixed app_R app_phi echo_phi] in c |- *.
+    exact (echo_R_phi c h).
   Qed.
 End EchoApp.

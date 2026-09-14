@@ -97,6 +97,11 @@ Require Import FsConsPin.
 Require Import PinnedObs.
 Require Import PinnedOpen.
 Require Import AppEcho.
+Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
+                                      and its ledger are stated at (lane
+                                      ECHO-OUT part 5).  It CARRIES
+                                      [mono_natG], so it is the taint's one
+                                      instance here too. *)
 Require Import UInitCons.
 Require Import UConsOpen.   (* the shared console open: the dead walk, the
                                two suppliers, the two key-level rows *)
@@ -184,6 +189,10 @@ Section UInitConsK.
      would be a second instance that prints alike, which is exactly what
      makes [UInitCons.init_cons_laws_echo]'s record equation unusable. *)
   Context `{!inG Σ (mono_listR (leibnizO Z))}.
+  (* the echo claims' class (lane ECHO-OUT part 5): [AppEcho.echo_taint] and
+     everything built over it is stated at [EchoOut.echoOutG] now, not at a
+     bare [mono_natG]. *)
+  Context `{!echoOutG Σ}.
 
   Local Notation ra_idx := (mword_of_int 1 : mword 5).
   Local Notation a0_idx := (mword_of_int 10 : mword 5).

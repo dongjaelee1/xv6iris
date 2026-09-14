@@ -80,6 +80,11 @@ Require Import PathElems.          (* [path_elems] *)
 Require Import ElfUser.
 Require Import ElfLoadable.        (* [sh_elf_loadable] *)
 Require Import AppEcho.            (* [echo_fs_pure] -- the WHOLE pins law
+Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
+                                      and its ledger are stated at (lane
+                                      ECHO-OUT part 5).  It CARRIES
+                                      [mono_natG], so it is the taint's one
+                                      instance here too. *)
                                       sh is handed (lane E4: its own exec of
                                       /echo needs [FsEchoPin.era0_echo_pins],
                                       which is one of its conjuncts).  A PURE
@@ -444,6 +449,10 @@ Section UInitSh.
   (* the console ring's cameras: the POSITION init lends sh across the exec
      is stated over them ([UserConsole.upos]) *)
   Context `{!uartGhostG Σ}.
+  (* the echo claims' class (lane ECHO-OUT part 5): [AppEcho.echo_taint] and
+     everything built over it is stated at [EchoOut.echoOutG] now, not at a
+     bare [mono_natG]. *)
+  Context `{!echoOutG Σ}.
 
   (* ------------------------------------------------------------------- *)
   (* sh's ENTRY PAYLOAD, as init holds it.                                 *)

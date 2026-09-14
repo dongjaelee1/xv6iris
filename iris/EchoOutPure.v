@@ -26,8 +26,7 @@
      F2  the next echo is the next input  ([D2_next_input])
      F3  the read window is a slice of E  ([read_window_prefix],
                                            [read_window_line])
-     F4  PHI's pure part                  ([good_out_of_stage],
-                                           [echo_phi_of_good_out]) *)
+     F4  PHI's pure part                  ([good_out_of_stage]) *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import list bitvector.definitions.
 Require Import SailStdpp.Operators_mwords.
@@ -800,15 +799,15 @@ Proof.
   by apply sess_n_mono.
 Qed.
 
-(* [AppEcho.echo_phi g h] is [Forall (fun seg => disc_seg' seg -> good_out
-   seg) (cycles_of h)] -- the GUARDED form, not [Forall good_out ...] -- so
-   PHI's pure part is a weakening and nothing more.  (Stated here rather
-   than cited, because [AppEcho] is above this file and this lane may not
-   import it; the body is copied, not the name.) *)
-Lemma echo_phi_of_good_out (h : list mobs) :
-  Forall good_out (cycles_of h) ->
-  Forall (fun seg => disc_seg' seg -> good_out seg) (cycles_of h).
-Proof. rewrite !Forall_forall. intros H seg Hin _. by apply H. Qed.
+(* WHAT IS NO LONGER HERE: [echo_phi_of_good_out], the weakening from
+   [Forall good_out (cycles_of h)] to the PER-CYCLE GUARDED form
+   [Forall (fun seg => disc_seg' seg -> good_out seg) (cycles_of h)].
+   [AppEcho.echo_phi] WAS that guarded form; since lane ECHO-OUT part 5 it
+   is the owner's WHOLE-HISTORY implication [disc h -> Forall good_out
+   (cycles_of h)] ("there is no per-cycle form -- once we get taint in one
+   era, it's tainted forever"), which the ledger pays directly
+   ([EchoOut.echo_led_phi]).  Nothing bridges to the guarded shape any
+   more, and nothing ever used this lemma. *)
 
 (* ====================================================================== *)
 (*  8.  THE CHOICES ARE READABLE OFF THE WIRE                              *)

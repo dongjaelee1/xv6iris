@@ -57,19 +57,31 @@ Require Import TsoCtx.             (* [CurCtx] *)
 Require Import UexecSG.            (* [uprogSG] *)
 Require Import UexecExecInst.      (* [uprogSG_free] -- /init's own instance *)
 Require Import UkRun.              (* [udepw_law] *)
-Require Import UkSh.               (* [sh_deps] *)
+Require Import UkSh.               (* [sh_deps] / [ush_read_recv_leaf] *)
+Require Import UserConsole.        (* [ucons_pay]: the payload the owed read
+                                      leaf is stated at (lane ECHO-OUT
+                                      part 5) *)
+Require Import FsCfg.              (* [fsc_cons]: ...and the era's console
+                                      ring it names *)
 Require Import UInitSh.            (* [sh_pay_state] / [sh_pay_rest] *)
 Require Import App.                (* [xv6_app_adequacy] and the record *)
 Require Import AppEcho.            (* [app_echo] and its obligations *)
+Require Import EchoOut.            (* [echoOutG]: the class the record's four
+                                      claims and its ledger are stated at
+                                      (lane ECHO-OUT part 5) *)
 Require Import UInitBoot.          (* [echo_Hinit_boot] -- E2's discharge *)
 (* ===================================================================== *)
 (*  6.  THE ADEQUACY STATEMENT E2 CLOSES (B3)                             *)
 (*                                                                       *)
 (*  [App.xv6_app_adequacy] at [AppEcho.app_echo], with every obligation   *)
-(*  of the record discharged EXCEPT [Hphi] (E5's) and what the rest of    *)
-(*  the arc still owes on the shell's side.  Those are the hypotheses     *)
-(*  below and there are no others: the console dance, the boot bundle and *)
-(*  /init's own entry are closed here.                                    *)
+(*  of the record discharged and only what the rest of the arc still owes *)
+(*  ON THE SHELL'S SIDE left as a hypothesis.  [Hphi] WAS one of them and *)
+(*  IS NOT ANY MORE (lane ECHO-OUT part 5): the conclusion is read off    *)
+(*  the application's own ledger by [AppEcho.echo_Hphi_R] through         *)
+(*  [RiscvAdequacy.obs_ledger_at_phi], so the theorem's hypothesis list   *)
+(*  is one shorter and its CONCLUSION is [AppEcho.echo_phi] -- "if the    *)
+(*  console input kept the discipline, every power cycle's output is a    *)
+(*  prefix of the transcript its input calls for".                        *)
 (* ===================================================================== *)
 Section EchoAdequacy.
   Context {Σ : gFunctors}.
@@ -77,7 +89,12 @@ Section EchoAdequacy.
             !fdslotGpreS Σ, !irefslotGpreS Σ, !bioslotGpreS Σ, !wchGpreS Σ}.
   Context `{!ufdG Σ}.
   Context `{!inG Σ (mono_listR (leibnizO Z))}.
+  (* the echo claims' class (lane ECHO-OUT part 5) *)
+  Context `{!echoOutG Σ}.
 
+  (* THE NAME IS KEPT, and it is now a misnomer in one direction only: the
+     theorem is no longer modulo [Hphi] -- lane ECHO-OUT part 5 closed it --
+     but it IS still modulo the shell's two owed entailments below. *)
   Theorem echo_adequacy_modulo_phi
       (g : gstate) (sb : FsImg.fs_sb) (nib : nat) (cov : gset Z)
       (* ---- WHAT THE ARC STILL OWES ON THE SHELL'S SIDE, by lane: the
@@ -85,7 +102,9 @@ Section EchoAdequacy.
              nothing else now -- read(5) pays from the console LEASE
              (SH-LINE 2b, R1') and open(15) is PINNED (SH-OPEN)), which is
              /init's own write deposit too (E5), sh's static state out of
-             the data below the frame (E4), and sh's tail (SH-LINE 2b).
+             the data below the frame (E4), sh's tail (SH-LINE 2b), and --
+             since lane ECHO-OUT part 5 -- sh's CONSOLE READ LEAF itself
+             (IO-LEAF; see the third conjunct).
              Quantified
              over the era's classes for [Hinit_boot]'s own reason: they
              are born by the boot mint. ---- *)
@@ -104,7 +123,7 @@ Section EchoAdequacy.
       (Hsh_owed : forall (HR : riscvGS Σ) (GEN : GenId)
          `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
            HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ},
-         (* TWO SEPARATE COQ-LEVEL ENTAILMENTS, not one [iProp] conjunction
+         (* THREE SEPARATE COQ-LEVEL ENTAILMENTS, not one [iProp] conjunction
             under an Iris one.  Each is owed whole by a different lane --
             E5's write(16) deposit and SH-LINE's tail -- and
             [echo_Hinit_boot] takes them as Coq premises: an Iris [∃] would
@@ -118,36 +137,30 @@ Section EchoAdequacy.
             [UInitSh.sh_Rsh], so the tail is owed at that family and no
             other. *)
          (⊢ UkSh.sh_deps (PS := uprogSG_free))
-         /\ (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh))
-      (* ---- ...AND THE TRACE INVARIANT, which is E5's ---- *)
-      (Hphi : forall (Hinv : invGS Σ)
-                     (γgen γstart γreg γd γsw γobs γhist : gname)
-                     (c : app_fixed app_echo)
-                     (T : list mobs) (g' : gstate) (h : list mobs),
-         ⊢ @power_interp Σ
-              (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
-                 (xv6_slot (app_names app_echo) (app_pred app_echo) cov
-                    (FsImg.sb_logstart sb) γd γsw γreg γstart c)
-                 γobs T (obs_ledger_at (app_R app_echo c) γobs) γhist
-                 (app_tag app_echo c) (echo_Htagp c) (echo_Htagt c)
-                 (* ...and the kill credential's slot (lane KILL-PAY, K1),
-                    which for echo is the taint *)
-                 (app_kill app_echo c) (echo_Hkillp c) (echo_Hkillt c)
-                 (* ...and the output claim's (lane OUT-FUPD), which for
-                    echo is E5's placeholder *)
-                 (app_out app_echo c) (echo_Houtt c)
-                 (* ...and the input log's (lane CONS-IO), which for echo is
-                    E5's second placeholder *)
-                 (app_in app_echo c) (echo_Hinpt c)
-                 (* ...and the echo window token's (lane CONS-IO milestone
-                    F), which for echo is E5's third placeholder *)
-                 (app_win app_echo c) (echo_Hwint c)
-                 (app_fixed app_echo) c) g' -∗
-           ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
-           ▷ xv6_slot (app_names app_echo) (app_pred app_echo) cov
-               (FsImg.sb_logstart sb) γd γsw γreg γstart c -∗
-           ▷ obs_ledger_at (app_R app_echo c) γobs -∗
-           ◇ ⌜app_phi app_echo g' h⌝)
+         /\ (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh)
+         (* ...AND A THIRD, sh's CONSOLE READ LEAF (lane ECHO-OUT part 5;
+            owned by lane IO-LEAF).  It was DISCHARGED inside
+            [UInitBoot.echo_Hinit_boot] until part 5, by
+            [UShLine.ush_read_recv_leaf_holds] out of the boundary's flat
+            input licence [WpUart.in_licence].  At [AppEcho.echo_in]'s REAL
+            claim that licence is FALSE: [EchoOut.ein]'s two non-taint arms
+            pin the delivered sequence and its count, so moving [dl] needs
+            the READER's half of [EchoOut.dl_cnt] and only the taint arm is
+            free -- while the payload's LEASE arm
+            ([UserConsole.ucons_pay]) carries no taint.  Lane IO-LEAF puts
+            the era's pin and that half on sh's lease and runs the leaf
+            through [EchoOut.echo_read_link], whose [WpUart.read_link]
+            hands over [⌜ConsLog.read_ok pops dl ws⌝].
+            IT IS THE DELETED LEMMA'S STATEMENT VERBATIM, quantified over
+            the FIXED PART as well because the taint it is stated at is the
+            record's ([app_kill app_echo c]), which this field's own binder
+            introduces. *)
+         /\ (forall (c : app_fixed app_echo) (γp : gname)
+                    (N : UkRun.uk_names Σ) (l : list FdSlots.fdstate),
+               UkRun.ukn_pay N
+                 = UserConsole.ucons_pay FsCfg.fsc_cons γp (echo_taint c) ->
+               ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp
+                   (echo_taint c) FsCfg.fsc_cons l))
       (Hgen0 : g.(ggen) = 0%nat) (Hpow0 : g.(gpow) = false)
       (Himg : fs_boot_image_wf (v_disk (g.(gdev).(dvirtio))) XV6_DISK_BYTES
                 sb nib cov)
@@ -231,17 +244,16 @@ Section EchoAdequacy.
       (* ...and the [app_out] field IS [AppEcho.echo_out], for the same
          reason (lane OUT-FUPD) *)
       cbn [app_echo app_out] in Hout.
-      (* THE TWO LAYERS MEET HERE, and this is the only place they have to.
-         [Heq] arrives carrying [app_echo] at the record's PRE-structure
-         counter; [echo_Hinit_boot] -- and every [AppInv] law its proof
-         uses -- is at the FIXED layer's.  [Hgen] says they are the same
-         term at this instance, so one [rewrite] puts the equation where
-         the laws are. *)
-      (* [Hout] is NOT in this list: the output claim's equation names no
-         generation counter (lane OUT-FUPD), so there is nothing to move. *)
-      rewrite <- Hgen in Heq, Htag, Hkill |- *.
+      (* THE TWO LAYERS NO LONGER HAVE TO MEET (lane ECHO-OUT part 5).  Until
+         part 5 [Heq]/[Htag]/[Hkill] arrived carrying [AppEcho.echo_taint]
+         at the record's PRE-STRUCTURE [mono_natG] while [echo_Hinit_boot]
+         and every [AppInv] law its proof uses were at the FIXED layer's,
+         and [Hgen] was rewritten to reconcile them.  The taint is stated at
+         [EchoOut.echoOutG]'s own [eo_mono_nat] now -- a class this section
+         binds ONCE and hands to both sides -- so there is nothing left to
+         move and [Hgen] is a premise this discharge does not read. *)
       destruct (Hsh_owed HR GEN HBs HFd HIr HPav HWc HF)
-        as (Hdeps & Hre).
+        as (Hdeps & Hre & Hrdleaf).
       (* [GEN] is IMPLICIT and fixed by unification -- from [Hw16] first
          and [Heq] after, both of which carry the record's own [GenId].
          Naming it here would pin the wrong one: the [GEN] this field
@@ -251,13 +263,23 @@ Section EchoAdequacy.
          CONS-IO milestone F), on [app_in]'s mould *)
       cbn [app_echo app_win] in Hwin.
       iIntros "#Hinv Hb Hturn".
-      iApply (echo_Hinit_boot HR GEN c r Hdeps Hre
+      iApply (echo_Hinit_boot HR GEN c r Hdeps Hre (Hrdleaf c)
                 Heq Htag Hkill Hout Hin Hwin with "Hinv Hb [Hturn]").
       cbn [app_echo app_turn]. iExact "Hturn".
     - (* [Happ_echo]: at [AppEcho.echo_out]'s E5 placeholder the console's
          output claim is trivial, so the echo justifies itself. *)
       exact echo_Happ_echo.
-    - exact Hphi.
+    - (* ---- [Hphi]: CLOSED (lane ECHO-OUT part 5).  The conclusion is a
+             PURE reading of the application's trace ledger, so the crash
+             slot and the power interpretation are dropped and what is left
+             is [RiscvAdequacy.obs_ledger_at_phi] at [echo_Hphi_R] -- the
+             ledger's own [EchoOut.echo_led_phi], whose taint premise is
+             [AppEcho.echo_taint] by definition. ---- *)
+      intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h.
+      iIntros "_ Hauth _ _ Hled".
+      iApply (obs_ledger_at_phi (app_R app_echo c) (echo_HRt c)
+                (app_phi app_echo g') (fun h' => echo_Hphi_R c g' h')
+                γobs h with "Hauth Hled").
     - exact Hgen0.
     - exact Hpow0.
     - exact Himg.

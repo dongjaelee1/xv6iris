@@ -101,9 +101,19 @@ Require Import UInitKernel.       (* [init_slot_of_kexec] / the dance *)
 Require Import UInitCons.         (* [init_cons_fd] / [init_cons_cred] *)
 Require Import UInitConsK.        (* the two arms' discharges at echo's era *)
 Require Import UInitSh.           (* [init_cons_sup_of_sh_slot] *)
-Require Import UShLine.           (* [ush_read_recv_leaf_holds] -- the ONE
-                                     discharge of sh's console read leaf *)
+Require Import UShLine.           (* sh's console read-leaf file.  Its
+                                     discharge [ush_read_recv_leaf_holds]
+                                     is GONE (lane ECHO-OUT part 5): the
+                                     leaf is a premise here now.  The
+                                     [Require] stays because the cone it
+                                     brings is what this file's own
+                                     statements elaborate against. *)
 Require Import AppEcho.           (* [echo_boot] / [echo_taint] *)
+Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
+                                      and its ledger are stated at (lane
+                                      ECHO-OUT part 5).  It CARRIES
+                                      [mono_natG], so it is the taint's one
+                                      instance here too. *)
 Require Import UserConsole.       (* [ucons_reader_eq] *)
 Require Import UserFd.            (* [NSTD] *)
 Require Import UexecWp.           (* [uexec_wp] *)
@@ -200,6 +210,11 @@ Section UInitBoot.
      the elaboration explodes (durable-notes, "A lemma's binder list must
      match the definition it is about"). *)
   Context `{!inG Σ (mono_listR (leibnizO Z))}.
+  (* the echo claims' class (lane ECHO-OUT part 5): [AppEcho.echo_taint] and
+     everything built over it is stated at [EchoOut.echoOutG] now, not at a
+     bare [mono_natG] -- and that class CARRIES [mono_natG], which is why
+     the note above still holds: there is exactly one binder for it here. *)
+  Context `{!echoOutG Σ}.
   (* ...and the rest of [UInitSh.v]'s list, because this file now carries
      its era-specific seam.  COPIED VERBATIM from that file: a shorter
      list is what makes Coq synthesise an instance and blow the
@@ -473,6 +488,8 @@ Section EchoInitBoot.
   Context {Σ : gFunctors}.
   Context `{HX : !xv6G Σ, HU : !ufdG Σ}.
   Context `{!inG Σ (mono_listR (leibnizO Z))}.
+  (* the echo claims' class (lane ECHO-OUT part 5), as in the section above *)
+  Context `{!echoOutG Σ}.
 
   (* ===================================================================== *)
   (*  WHICH DEPOSIT INSTANCE THIS ASSEMBLY RUNS AT, and why it is written   *)
@@ -513,6 +530,22 @@ Section EchoInitBoot.
        pins.  What is still owed is the TAIL at that same family. *)
     (⊢ UkSh.sh_deps (PS := uprogSG_free)) ->
     (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh) ->
+    (* ...AND SH'S READ LEAF (lane ECHO-OUT part 5; owned by lane IO-LEAF).
+       It was DISCHARGED here until part 5, by
+       [UShLine.ush_read_recv_leaf_holds] out of the boundary's flat input
+       licence -- and that licence is FALSE at [AppEcho.echo_in]'s real
+       claim ([EchoOut.ein] pins the delivered sequence and its count, so
+       moving [dl] needs the READER's half of [EchoOut.dl_cnt]).  Sh's
+       lease does not carry that half yet; IO-LEAF puts it there and runs
+       the leaf through [EchoOut.echo_read_link].  So it arrives here as a
+       Coq-level premise, on [sh_deps]'s mould and at the shape
+       [UInitSh.init_cons_sup_of_sh_slot] asks for -- VERBATIM the
+       statement the deleted lemma proved, quantified over the POSITION
+       GHOST because /init mints a fresh pair per child. *)
+    (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
+       ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ) ->
+       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp (echo_taint γ)
+           fsc_cons l) ->
     (* ---- and the two equations [Hinit_boot] hands over ---- *)
     @file_app Σ HF = MkAppcfg echo_names (echo_pred γ) r ->
     riscv_rx_tag = echo_tag γ ->
@@ -550,29 +583,34 @@ Section EchoInitBoot.
       echo_turn γ (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Hsh_deps Hsh_rest Heq Htag Hkill Hout Hin Hwin.
+    intros Hsh_deps Hsh_rest Hsh_rdleaf Heq Htag Hkill Hout Hin Hwin.
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)
     assert (Hktaint : ⊢ □ riscv_kill_cred -∗ echo_taint γ).
     { rewrite Hkill. iIntros "#H". iExact "H". }
-    (* ...AND THE OUTPUT LICENCE IS FREE at [AppEcho.echo_out]'s E5
-       placeholder (lane OUT-FUPD): the claim is [emp] there, so the
-       generic slot's console write costs nothing yet. *)
-    assert (Hot : @riscv_out_res Σ (@riscv_fixedGS Σ HR) = out_res_triv)
-      by (rewrite Hout; cbn [echo_out]; reflexivity).
-    iAssert (out_licence) as "#Hlic".
-    { rewrite /out_licence Hot /out_res_triv.
-      iIntros "!>" (k h acc b) "_". by iModIntro. }
-    (* ...and the INPUT licence, free at [AppEcho.echo_in]'s placeholder for
-       the same reason (lane CONS-IO) *)
-    assert (Hit : @riscv_in_res Σ (@riscv_fixedGS Σ HR) = in_res_triv)
-      by (rewrite Hin; cbn [echo_in]; reflexivity).
-    iAssert (in_licence) as "#Hilic"; [by iApply in_licence_triv |].
-    (* ...and the same at Coq level, for sh's read leaf (lane CONS-IO,
-       milestone B, B4): [UShLine.ush_read_recv_leaf_holds]'s result is a
-       Coq-level [⊢], so its licence premise is one too. *)
-    assert (Hlicw : ⊢ in_licence) by (by iApply in_licence_triv).
+    (* ...AND THE OUTPUT LICENCE IS THE TAINT'S (lane ECHO-OUT part 5).  It
+       was free while [AppEcho.echo_out] was [emp]; the claim is real now,
+       so the generic slot's console write is paid out of the TAINT ARM --
+       which is exactly what [App.Happ_out_sup] says and what
+       [EchoOut.eout_sup] proves.  A wand from the credential, because the
+       only holder of a generic slot is one the taint has already accounted
+       for. *)
+    iAssert (□ (echo_taint γ -∗ out_licence))%I as "#Hlic".
+    { iIntros "!> #Ht". rewrite /out_licence Hout /echo_out.
+      iIntros "!>" (k h acc b) "Ho".
+      iApply (EchoOut.eout_sup (echo_taint γ) γ k h acc b with "Ht Ho"). }
+    (* ...and the INPUT licence, on the same mould and for the same reason
+       (lane CONS-IO / ECHO-OUT part 5): both conjuncts out of
+       [EchoOut.ein_sup_log] / [ein_sup_deliv]. *)
+    iAssert (□ (echo_taint γ -∗ in_licence))%I as "#Hilic".
+    { iIntros "!> #Ht". rewrite /in_licence Hin /echo_in. iSplit.
+      - iIntros "!>" (k h pops dl e) "Hi".
+        iApply (EchoOut.ein_sup_log (echo_taint γ) γ k h pops dl e
+                  with "Ht Hi").
+      - iIntros "!>" (k h pops dl ws) "Hi".
+        iApply (EchoOut.ein_sup_deliv (echo_taint γ) γ k h pops dl ws
+                  with "Ht Hi"). }
     iIntros "#Hinv Hb Hturn". iModIntro.
     (* ---- the taint's supply, and the generic slot it buys ---- *)
     iAssert (□ (echo_taint γ -∗ app_sup))%I as "#Hsup".
@@ -588,7 +626,9 @@ Section EchoInitBoot.
          generic slot's supply is the pair (§1c) *)
       iAssert (□ riscv_kill_cred)%I as "#Hkc";
         [ rewrite Hkill; iModIntro; iExact "Ht" | ].
-      iApply (uslot_mint_all with "Hs Hkc Hlic Hilic Hwp Hp HR"). }
+      iDestruct ("Hlic" with "Ht") as "#Hlc".
+      iDestruct ("Hilic" with "Ht") as "#Hilc".
+      iApply (uslot_mint_all with "Hs Hkc Hlc Hilc Hwp Hp HR"). }
     (* ---- the pins law, and /init's own row out of it ---- *)
     iAssert (□ (∀ v : aview, AppCfg.app_pred AppCfg.app_run v -∗
                   AppCfg.app_pred AppCfg.app_run v ∗ (⌜echo_fs_pure v⌝ ∨ echo_taint γ)))%I
@@ -619,7 +659,8 @@ Section EchoInitBoot.
     (* ---- the tag's reading: E2's own, off the theorem's equation ---- *)
     iAssert (UkSh.ush_tag_law (echo_taint γ)) as "#Htg".
     { rewrite /UkSh.ush_tag_law. iIntros "!>" (h) "Hr".
-      rewrite Htag /echo_tag. iDestruct "Hr" as "[_ Hr]". iExact "Hr". }
+      rewrite Htag /echo_tag /EchoOut.etag.
+      iDestruct "Hr" as "[_ Hr]". iExact "Hr". }
     (* ---- the shell's slot, and the exec supply as a wand from the
            console credential ---- *)
     iAssert (UInitSh.init_sh_slot (echo_taint γ)
@@ -630,11 +671,12 @@ Section EchoInitBoot.
       iApply (UInitSh.sh_pay_of_parts (echo_taint γ) UInitSh.sh_Rsh 0%nat
                 with "[] [] Htg");
         [ iApply UInitSh.sh_pay_state_holds | iApply Hsh_rest ]. }
-    (* THE TWO READINGS OF THE SUPPLY, at Coq level: sh's read leaf is
-       discharged from the console ring's dirty credential read AS THE
-       TAINT and back ([AppEcho.echo_taint_of_sup] / [echo_sup_of_taint]),
-       and [UShLine.ush_read_recv_leaf_holds] takes them as Coq premises
-       because its result is a Coq-level [⊢]. *)
+    (* THE TWO READINGS OF THE SUPPLY, at Coq level: the console ring's
+       dirty credential read AS THE TAINT and back
+       ([AppEcho.echo_taint_of_sup] / [echo_sup_of_taint]).  They were
+       sh's read leaf's premises until lane ECHO-OUT part 5 made that leaf
+       an owed one; [UInitSh.init_cons_sup_of_sh_slot] still reads them
+       through [UkInit.init_cons_sup]'s own body. *)
     assert (Htsw : ⊢ echo_taint γ -∗ app_sup).
     { rewrite /app_sup. rewrite Heq.
       cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
@@ -649,9 +691,7 @@ Section EchoInitBoot.
                 UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
                 ltac:(vm_compute; discriminate)
                 ltac:(exists true; reflexivity)
-                (fun γp N l Hpq =>
-                   UShLine.ush_read_recv_leaf_holds N γp (echo_taint γ) l
-                     Hpq Hstw Htsw _ Hlicw)
+                Hsh_rdleaf
                 with "[] [] Hsh").
       - iApply (udep_free).
       - iApply Hsh_deps. }

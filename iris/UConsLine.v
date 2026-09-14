@@ -85,6 +85,11 @@ Require Import UkShParse.      (* [ushp_no_symbols] / [ushp_tokens] *)
 Require Import UkShLoop.       (* [ush_line_lexable] -- the lowest file that
                                   sees both the LINE and the LEXER *)
 Require Import AppEcho.        (* [echo_line] / [star_prefix] / [disc_seg] *)
+Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
+                                      and its ledger are stated at (lane
+                                      ECHO-OUT part 5).  It CARRIES
+                                      [mono_natG], so it is the taint's one
+                                      instance here too. *)
 Require Import UexecSG.
 Require FsImg.
 Local Open Scope Z_scope.
@@ -293,6 +298,10 @@ Section UConsLine.
   Context `{!ctokG Σ}.
   Context {SG : uexecSG Σ}.
   Context `{PS : uprogSG Σ}.
+  (* the echo claims' class (lane ECHO-OUT part 5): [AppEcho.echo_taint] and
+     everything built over it is stated at [EchoOut.echoOutG] now, not at a
+     bare [mono_natG]. *)
+  Context `{!echoOutG Σ}.
 
   Local Notation a0_idx := (mword_of_int 10 : mword 5).
   Local Notation a1_idx := (mword_of_int 11 : mword 5).

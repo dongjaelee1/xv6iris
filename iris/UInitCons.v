@@ -101,6 +101,11 @@ Require Import PinnedObs.
 Require Import PinnedOpen.
 Require Import AppEcho.            (* [echo_taint], [cons_made], [cons_tok],
                                       [echo_pred], [echo_cons_law] *)
+Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
+                                      and its ledger are stated at (lane
+                                      ECHO-OUT part 5).  It CARRIES
+                                      [mono_natG], so it is the taint's one
+                                      instance here too. *)
 Require FsImg.
 Import Defs.
 
@@ -210,7 +215,12 @@ Section UInitCons.
             !irefslotG Σ, !pavG Σ, !wchG Σ}.
   Context `{GEN : GenId}.
   Context `{!ufdG Σ}.
-  Context `{!mono_natG Σ, !inG Σ (mono_listR (leibnizO Z))}.
+  (* the echo claims' class (lane ECHO-OUT part 5): it REPLACES the bare
+     [mono_natG] binder this section used to take -- [EchoOut.echoOutG]
+     carries [mono_natG] ([eo_mono_nat]) and [AppEcho.echo_taint] is stated
+     at THAT instance, so a second binder beside it would be the
+     duplicate-class trap. *)
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
 
   (* =================================================================== *)
   (*  3.  INIT'S PINNED OPEN BUNDLE                                       *)

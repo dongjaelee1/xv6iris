@@ -67,6 +67,9 @@ Require Import UInitFd.  (* [ufd_head] / [ufd_head_row] -- init's own
                             descriptor head, and the row sh's entry reads
                             off it against the lent authority *)
 Require Import UkRun.
+Require Import UkRunExecRef.    (* [udepw_at_refR] / [sbundle_pay_refR]: the
+                                   exec deposit at the LEND's own refund
+                                   (lane M6b) *)
 Require Import UCodeInit UkInit.
 Require Import UkSh UShKernel.
 Require Import UkShParse.       (* the two lexer tables' addresses and
@@ -103,6 +106,10 @@ Require Import FsImgCheck.         (* [fname_sh] *)
 Require Import FsShPin.            (* [era0_sh_pins] / [sh_path] / [SH_INO] *)
 Require Import FsAbsDefs.          (* [aview] / [arun] / [AFile] *)
 Require Import PinnedExec.
+Require Import PieceFam.           (* [pfam] / [MkPfam] -- the exec deposit's
+                                      one-shot piece, named by the refund
+                                      twin below (lane M6b) *)
+Require Import FsBytesGamma.       (* [fs_gamma_L] -- likewise *)
 Require Import UexecExecInst.      (* [sbundle_exec_intro] -- THE INSTANCE *)
 Require Import Xv6Cameras.         (* [uartGhostG] *)
 Require Import UartNames.          (* [cons_names] *)
@@ -921,6 +928,32 @@ Section UInitSh.
   (* ------------------------------------------------------------------- *)
   (* THE ASSEMBLY: init's pinned bundle pays its exec supply.              *)
   (* ------------------------------------------------------------------- *)
+  (* [UexecExecInst.sbundle_pay_exec_intro_ref] with the refund's
+     consequence a parameter (lane M6b): the same deposit, its refund wand
+     stated at whatever the supplier wants back instead of the record's
+     exit payload.  Same proof. *)
+  Lemma sbundle_pay_exec_intro_refR (X : uvis -d> iPropO Σ) (W : uvis)
+      (Q : Z -> iProp Σ) (R : iProp Σ)
+      (P Pmiss : nat -> Z -> iProp Σ)
+      (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) (Rs : iProp Σ) :
+    □ (Rs -∗ R) -∗
+    my_pay (uvis_gen W) Q -∗
+    sys_exec_au_pre (MkPfam X Rs) (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+      Q P Pmiss Fo
+      (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) -∗
+    sbundle_pay_refR X Q R W.
+  Proof.
+    iIntros "#Hrf Hmp H". rewrite /sbundle_pay_refR.
+    iExists (xfam_at Q (xfam_exec P Pmiss Fo Rs)).
+    iSplitR; [ done | ].
+    iSplitR; [ iExact "Hrf" | ].
+    rewrite /sbundle_at /= /xv6_sbundle.
+    destruct (decide (USYS_exec = USYS_exec)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    rewrite /exec_sbundle /=. iFrame "Hmp". iExact "H".
+  Qed.
+
   Lemma init_exec_sup_of_sh_slot (T : iProp Σ) `{!Persistent T} `{!Timeless T}
       (cn : cons_names) (st : fdstate) (K : iProp Σ) `{!Persistent K}
       (* ...AND THE APPLICATION'S PER-POSITION CREDENTIAL (lane IO-LEAF,
@@ -947,6 +980,11 @@ Section UInitSh.
       (* ...AND THE BANNER-OWED CREDENTIAL (step 3): the loop's closed
          arm, and the exit family's own arm. *)
       (Wb : nat -> iProp Σ) `{HWb : !forall i : nat, Timeless (Wb i)}
+      (* ...AND THE ROUND-OPEN CREDENTIAL /init lends on the console row
+         (lane M6b): what the banner leaves and what pays init's two
+         diagnostics; the shell's entry converts it to the prompt
+         credential ([Hpw] below). *)
+      (Wp : nat -> iProp Σ)
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat) :
     (* the numbers sh admits -- THE FREE ONES (lane SUPPLY-SPLIT) *)
     (* AT THE FREE INSTANCE, NAMED AND NOT RESOLVED (lane SUPPLY-SPLIT's
@@ -1028,6 +1066,11 @@ Section UInitSh.
        ⊢ upos γp i -∗ ucons_pay cn γp T Rdl (-1) -∗
          UkSh.ush_wcp Wc Wb l i 0%nat -∗
          UkSh.ush_posb N γp T Wc Wb (Pm γp) l 0%nat) ->
+    (* ...AND THE LEND'S CONVERSION AT THE SHELL'S ENTRY (lane M6b): the
+       round-open credential is the prompt credential at the same count
+       with no prompt byte out (top: [UInitDiag.kinit_own_of_pro] +
+       [UInitBanner.kinit_own_is_cred]).  Coq-level like the entry law. *)
+    (forall n : nat, ⊢ Wp n -∗ Wc n 0%nat) ->
     udep (PS := uprogSG_free) -∗
     (* ...AND THE THREE DEPOSITS SH OWES: read(5), open(15), write(16), the
        CLAIM numbers sh calls ([UkSh.sh_deps]).  They cross the exec with
@@ -1072,9 +1115,9 @@ Section UInitSh.
        both-console row, banner-owed on the closed one -- which sh's
        entry puts in its loop's own slot ([UkSh.ush_wcp]).  This is the
        ONE place the two ends meet. *)
-    UkInit.init_exec_sup_lend cn T st Wc Wb Rdl.
+    UkInit.init_exec_sup_lend cn T st Wp Wb Rdl.
   Proof.
-    intros Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hbd. subst st.
+    intros Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hbd Hpw. subst st.
     iIntros "#Hdep #Hdp #Hplaw #Hcons (#Hinv & #Hcl0 & #Hgen & #Hpay)".
     (* E4: what crosses is the WHOLE pins law and each consumer projects *)
     iDestruct (sh_pins_of_fs_pure T with "Hcl0") as "#Hcl".
@@ -1084,7 +1127,7 @@ Section UInitSh.
        ([UserFd.ufd_auth_len]) rather than off the ledger. *)
     iModIntro. iIntros (γp np N m pc l)
       "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease".
-    rewrite /udepw_at_ref. iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
+    rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
     (* ---- the two image readings, off the lent heap ---- *)
     iAssert (⌜uimg_sub UCodeInit.init_ro M⌝)%I as %Hsro.
     { iIntros (a b Hb).
@@ -1106,28 +1149,17 @@ Section UInitSh.
        gets its ledger from its own run -- and its row ([UInitFd.ufd_row])
        is what sh's entry is told about slot 0. *)
     iDestruct (ustd_agree (ukn_fd N) fdv l with "Hufd Hstd") as %Hl.
-    iClear "Hstd".
     iAssert (UkSh.ush_fd0 T (take NSTD fdv)) with "[Hrow]" as "#Hfd0".
     { rewrite Hl /UInitFd.ufd_row. iDestruct "Hrow" as "[%Hr1 | [%Hr2 | HT]]".
       - iLeft. iPureIntro. left. exists true. rewrite Hr1. exact (ufd_l3_row0 _).
       - iLeft. iPureIntro. right. rewrite Hr2. exact ufd_l0_row0.
       - iRight. iExact "HT". }
-    (* ...AND THE CREDENTIAL, AT THE SAME LEDGER (step 3): /init lent it
-       correlated with the row ([UkInit.init_lend_cred]), so it lands in
-       the loop's slot on the arm the row names -- the both-console arm
-       (/init's two dups pinned fds 1 and 2 to the descriptor its open
-       installed, so fd 2 IS the console, which is what
-       [UShOut.ksh_w_of_link_prompt] asks of sh's table), the closed arm
-       (slot 2 of the all-closed ledger), or the affine one. *)
-    iAssert (UkSh.ush_wcp Wc Wb (take NSTD fdv) np 0%nat)
-      with "[Hcred]" as "Hwcp".
-    { rewrite Hl /UkInit.init_lend_cred /UkSh.ush_wcp.
-      iDestruct "Hcred" as "[[%Hl3 Hc] | [[%Hl0 Hb] | _]]".
-      - iLeft. iFrame "Hc". iPureIntro. rewrite Hl3. split.
-        + exists true. exact (ufd_l3_row0 _).
-        + exists true. exact (ufd_l3_row2 _).
-      - iRight. iLeft. iFrame "Hb". iPureIntro. rewrite Hl0. exact ufd_l0_row2.
-      - iRight. by iRight. }
+    (* THE CREDENTIAL AND THE LEDGER STAY AT THE LEND'S OWN SHAPE UNTIL THE
+       EXEC HAS SUCCEEDED (lane M6b): they go into the deposit as they are,
+       so that a FAILED exec refunds them as they are
+       ([UkInit.init_lend_ref]) -- the shell's slot converts the credential
+       where it is built ([Hcon] below), and the refund wand hands the four
+       back without looking at them. *)
     iFrame "Hheap Hufd".
     (* ---- sh's constructor, at every key the image fact admits ---- *)
     (* THE PAYLOAD RIDES WITH THE PAY FACT ([SpecKexec.exec_slot_pre]): the
@@ -1177,11 +1209,35 @@ Section UInitSh.
                   my_pay (uvis_gen W') (ucons_pay cn γp T (UkInit.init_rd Rdl Wb)) -∗
                   (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
                      ∗ ucons_pay cn γp T Rdl (-1)
-                     ∗ UkSh.ush_wcp Wc Wb (take NSTD fdv) np 0%nat) -∗ uslot W'))%I
+                     ∗ (UserFd.ustd (ukn_fd N) l
+                        ∗ UkInit.init_lend_cred
+                            (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
+                            Wp Wb l np)) -∗ uslot W'))%I
       as "#Hcon".
     { iModIntro.
       iIntros (na alen afun W')
-        "%Hok %Hcwd0 %Hlzf %Hargs #Hmp [[#Hp1 [#Hp2 #Htag]] [Hps [Hls Hwcp]]]".
+        "%Hok %Hcwd0 %Hlzf %Hargs #Hmp [[#Hp1 [#Hp2 #Htag]] [Hps [Hls [Hstd' Hcred]]]]".
+      (* ...AND THE CREDENTIAL, AT THE SAME LEDGER (step 3; M6b): /init
+         lent it correlated with the row ([UkInit.init_lend_cred]), so it
+         lands in the loop's slot on the arm the row names -- the
+         both-console arm (/init's two dups pinned fds 1 and 2 to the
+         descriptor its open installed, so fd 2 IS the console, which is
+         what [UShOut.ksh_w_of_link_prompt] asks of sh's table), through
+         the lend's conversion [Hpw]; the closed arm (slot 2 of the
+         all-closed ledger); or the affine one.  The old record's ledger
+         fragment is dropped: the process that execs is replaced. *)
+      iAssert (UkSh.ush_wcp Wc Wb (take NSTD fdv) np 0%nat)
+        with "[Hcred]" as "Hwcp".
+      { rewrite Hl /UkInit.init_lend_cred /UkSh.ush_wcp.
+        iDestruct "Hcred" as "[[%Hl3 Hc] | [[%Hl0 Hb] | _]]".
+        - iLeft. iSplitR.
+          + iPureIntro. rewrite Hl3. split.
+            * exists true. exact (ufd_l3_row0 _).
+            * exists true. exact (ufd_l3_row2 _).
+          + iPoseProof (Hpw np) as "Hpw'". iApply ("Hpw'" with "Hc").
+        - iRight. iLeft. iFrame "Hb". iPureIntro. rewrite Hl0. exact ufd_l0_row2.
+        - iRight. by iRight. }
+      iClear "Hstd'".
       destruct (init_args_det M na alen afun Hsav Hsro Hargs) as [-> Halen].
       idtac "MARK-s4b-args-det".
       (* STAGED, AND WITH BOTH CLASS ARGUMENTS GIVEN.  [sh_slot_of_kexec]
@@ -1218,14 +1274,17 @@ Section UInitSh.
                  FsShPin.SH_INO ElfUser.sh_elf 1%nat
                  (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
                     ∗ ucons_pay cn γp T Rdl (-1)
-                    ∗ UkSh.ush_wcp Wc Wb (take NSTD fdv) np 0%nat)%I
+                    ∗ (UserFd.ustd (ukn_fd N) l
+                       ∗ UkInit.init_lend_cred
+                           (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
+                           Wp Wb l np))%I
                  (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
                  M (mword_of_int 0x9a8) (mword_of_int 0x1000) fdv
                  init_sh_pin_resolves sh_elf_loadable
                  (init_sh_path_of M Hsro)
-                 with "Hcl Hinv Hcon Hgen' [Hpos Hlease Hwcp]")
+                 with "Hcl Hinv Hcon Hgen' [Hpos Hlease Hstd Hcred]")
       as (P Pmiss Fo) "Hb".
-    { iFrame "Hpay Hpos Hlease Hwcp". }
+    { iFrame "Hpay Hpos Hlease Hstd Hcred". }
     assert (Ea0 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv FsImg.ROOTINO gn cs pidv false))
                     (tf_arg_idx 0) = (mword_of_int 0x9a8 : mword 64))
       by (etransitivity; [ exact (tf_of_arg0 m pc) | exact Ha0 ]).
@@ -1237,22 +1296,25 @@ Section UInitSh.
        it is what the kernel hands the new image's slot -- so the bundle is
        introduced AT that payload rather than re-keyed afterwards.  init's
        own is the trivial one ([Hpeq], userinit's choice). *)
-    (* THE REFUND'S ONE CONSEQUENCE (lane KILL-PAY, K4(a), ruling R-A):
-       what init's child put into this deposit is [PinnedExec]'s [Pay] --
-       sh's entry payload, the position, THE LEASE and the credential slot
-       -- and the lease pays what this record's exit owes at the pair
-       family's affine arm ([UkInit.init_pay_of_lend]; [UserConsole.
-       ucons_pay] does not read the status).  So a FAILED exec leaves the
-       child able to pay its own [exit(1)], which is exactly what the
-       diagnostic arm needs. *)
-    iApply (sbundle_pay_exec_intro_ref uslot
+    (* THE REFUND IS THE LEND ITSELF (lane KILL-PAY, K4(a), ruling R-A;
+       lane M6b): what init's child put into this deposit is
+       [PinnedExec]'s [Pay] -- sh's entry payload, the position, the lease,
+       the ledger and the credential -- and a FAILED exec hands the last
+       four back at the shapes they went in at ([UkInit.init_lend_ref]),
+       which is what pays the child's diagnostic through the link and then
+       its own [exit(1)] ([UkInitMain.wp_kinit_main_die_de]).  The wand
+       drops only [sh_pay], which is persistent anyway. *)
+    iApply (sbundle_pay_exec_intro_refR uslot
               (uvis_of_run m pc M pm sz fdv FsImg.ROOTINO gn cs pidv false)
-              (ukn_pay N) P Pmiss Fo
+              (ukn_pay N) _ P Pmiss Fo
               (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
                  ∗ ucons_pay cn γp T Rdl (-1)
-                 ∗ UkSh.ush_wcp Wc Wb (take NSTD fdv) np 0%nat)%I).
-    { rewrite Hpeq. iIntros "!> (_ & _ & Hl & _)".
-      iApply (UkInit.init_pay_of_lend cn γp T Rdl Wb (-1) with "Hl"). }
+                 ∗ (UserFd.ustd (ukn_fd N) l
+                    ∗ UkInit.init_lend_cred
+                        (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
+                        Wp Wb l np))%I).
+    { iIntros "!> (_ & Hps & Hls & Hstd & Hcred)".
+      rewrite /UkInit.init_lend_ref. iFrame "Hstd Hps Hls Hcred". }
     { cbn [uvis_gen uvis_of_run]. iExact "Hmpay". }
     rewrite Hpeq Ea0 Ea1. iExact "Hb".
   Qed.

@@ -100,6 +100,10 @@ Require Import UexecExecMint.     (* [udepw_law_of_sup] / [udep_free] *)
 Require Import UInitKernel.       (* [init_slot_of_kexec] / the dance *)
 Require Import EchoLinks.         (* [echo_links] -- E5's four links as one
                                      persistent law *)
+Require Import UInitDiag.         (* [kinit_pro] and the three laws /init's
+                                     walk is handed (lane M6b): the banner's
+                                     leaving the round-open credential, and
+                                     the two diagnostics paid from it *)
 Require Import UInitBanner.       (* [kinit_banner0_holds] -- the era's
                                      credential as init's banner payment *)
 Require Import UInitCons.         (* [init_cons_fd] / [init_cons_cred] *)
@@ -388,6 +392,9 @@ Section UInitBoot.
       (* ...and the banner-owed credential (step 3), passed straight
          through *)
       (Wb : nat -> iProp Σ) `{HWb : !forall i : nat, Timeless (Wb i)}
+      (* ...and the round-open credential /init lends on the console row
+         (lane M6b), passed straight through *)
+      (Wp : nat -> iProp Σ)
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat) :
     file_app = MkAppcfg echo_names (echo_pred γ) r ->
     (forall k : Z, free_num k -> @psok Σ uprogSG_free k) ->
@@ -423,23 +430,26 @@ Section UInitBoot.
        ⊢ upos γp i -∗ ucons_pay cn γp (echo_taint γ) Rdl (-1) -∗
          UkSh.ush_wcp Wc Wb l i 0%nat -∗
          UkSh.ush_posb N γp (echo_taint γ) Wc Wb (Pm γp) l 0%nat) ->
+    (* the lend's conversion at the shell's entry (lane M6b), passed
+       straight through *)
+    (forall n : nat, ⊢ Wp n -∗ Wc n 0%nat) ->
     udep (PS := uprogSG_free) -∗ UkSh.sh_deps (PS := uprogSG_free) -∗
     UShKernel.sh_prompt_law (PS := uprogSG_free) Wc -∗
     UInitSh.init_sh_slot (echo_taint γ)
       (UInitSh.sh_pay (echo_taint γ) Wc Wb Pm Rsh n0) -∗
     UkInit.init_cons_sup cn (echo_taint γ)
       (init_cons_cred (echo_taint γ) r) st
-      Wc Wb Rdl.
+      Wp Wb Rdl.
   Proof.
-    intros Heq Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hbd.
+    intros Heq Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hbd Hpw.
     iIntros "#Hdep #Hdp #Hplaw #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
     - iIntros "!> #Hcns".
       iDestruct "Hcore" as "#Hcore'".
       (* [Persistent K] is an INSTANCE binder there, so it is not passed
          positionally; [cons_never_persistent] answers it. *)
       iApply (UInitSh.init_exec_sup_of_sh_slot (echo_taint γ) cn st
-                (cons_never r) Rdl Pm Wc Wb Rsh n0 Hpsok_free Hn0 Hst
-                Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hbd
+                (cons_never r) Rdl Pm Wc Wb Wp Rsh n0 Hpsok_free Hn0 Hst
+                Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hbd Hpw
                 with "Hdep Hdp Hplaw [] Hcore'").
       iApply (ush_cons_in_of_Cns γ r Heq with "[] Hcns").
       iDestruct "Hcore'" as "(#Hinv & _)". iExact "Hinv".
@@ -821,20 +831,34 @@ Section EchoInitBoot.
       as "#Hplaw".
     { iApply (UShOut.sh_prompt_law_holds (echo_taint γ) γ (PS := uprogSG_free)
                 with "Hlks"). }
+    (* THE ROUND-OPEN CREDENTIAL IS THE PROMPT CREDENTIAL AT THE SHELL'S
+       ENTRY (lane M6b): [UInitDiag.kinit_pro n] is one arm of
+       [UInitBanner.kinit_own n], which IS [EchoLinks.ewc_cred] at
+       [p = 0]. *)
+    assert (Hpw : forall n : nat,
+              ⊢ UInitDiag.kinit_pro (echo_taint γ) γ n -∗
+                EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id) n 0%nat).
+    { intros n. iIntros "H".
+      iDestruct (UInitDiag.kinit_own_of_pro (echo_taint γ) γ n with "H") as "H".
+      rewrite <- (UInitBanner.kinit_own_is_cred (echo_taint γ) γ n). iExact "H". }
+    (* THE FAMILIES, ONCE MORE (M6b): the round-open credential /init keeps
+       across its fork is [UInitDiag.kinit_pro], and the banner leaves it
+       ([kinit_banner_law_pro_holds]). *)
     iAssert (UkInit.init_cons_sup fsc_cons (echo_taint γ)
                (init_cons_cred (echo_taint γ) r) init_cons_fd
-               (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+               (UInitDiag.kinit_pro (echo_taint γ) γ)
                (UInitBanner.kinit_ban (echo_taint γ) γ)
                (UShLine.ush_rd_pin γ))%I as "#Hxs".
     { iApply (init_cons_sup_of_sh_slot γ r fsc_cons init_cons_fd
                 (UShLine.ush_rd_pin γ) (UShLine.ush_mid γ)
                 (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
                 (UInitBanner.kinit_ban (echo_taint γ) γ)
+                (UInitDiag.kinit_pro (echo_taint γ) γ)
                 UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
                 ltac:(vm_compute; discriminate)
                 ltac:(reflexivity)
                 Hsh_rdleaf Hsh_pm1 Hsh_pm2 Hsh_pm3 Hsh_pmwb Hsh_wc
-                Hsh_bd
+                Hsh_bd Hpw
                 with "[] [] Hplaw Hsh").
       - iApply (udep_free).
       - iApply Hsh_deps. }
@@ -868,14 +892,14 @@ Section EchoInitBoot.
                     (echo_taint γ)
                     (init_cons_cred (echo_taint γ) r)
                     fsc_cons init_cons_fd
-                    (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+                    (UInitDiag.kinit_pro (echo_taint γ) γ)
                     (UInitBanner.kinit_ban (echo_taint γ) γ)
                     (UShLine.ush_rd_pin γ)
                     -∗ uslot W'))%I as "#Hcon".
     { iApply (UInitKernel.init_boot_con (PS := uprogSG_free)
                 (echo_taint γ)
                 (init_cons_cred (echo_taint γ) r) init_cons_fd
-                (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+                (UInitDiag.kinit_pro (echo_taint γ) γ)
                 (UInitBanner.kinit_ban (echo_taint γ) γ)
                 (UShLine.ush_rd_pin γ)
                 fsc_cons
@@ -891,7 +915,7 @@ Section EchoInitBoot.
               (UInitKernel.init_boot_pay (PS := uprogSG_free)
                  (echo_taint γ)
                  (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd
-                 (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+                 (UInitDiag.kinit_pro (echo_taint γ) γ)
                  (UInitBanner.kinit_ban (echo_taint γ) γ)
                  (UShLine.ush_rd_pin γ))
               with "Hcl Hinv Hcon [] [Hdn Hturn]").
@@ -902,8 +926,15 @@ Section EchoInitBoot.
       iDestruct (UInitBanner.kinit_ban0_of_eturn (echo_taint γ) γ
                    with "[Hturn]")
         as "[Hdl Hbn]"; [ rewrite /echo_turn; iExact "Hturn" | ].
-      iDestruct (UInitBanner.kinit_ban_law_holds (echo_taint γ) γ
+      (* THE THREE LAWS (lane M6b): the banner leaves the round-open
+         credential, and the two diagnostics are paid from it -- all
+         closed under the era's links ([UInitDiag]). *)
+      iDestruct (UInitDiag.kinit_banner_law_pro_holds (echo_taint γ) γ
                    (PS := uprogSG_free) with "Hlks") as "#Hblaw".
+      iDestruct (UInitDiag.kinit_execfail_law_holds (echo_taint γ) γ
+                   (PS := uprogSG_free) with "Hlks") as "#Hxlaw".
+      iDestruct (UInitDiag.kinit_forkfail_law_holds (echo_taint γ) γ
+                   (PS := uprogSG_free) with "Hlks") as "#Hflaw".
       iSplitL "Hdn"; [ iExact "Hdn" | ].
       iSplitL "Hrd"; [ rewrite ucons_reader_eq; iExact "Hrd" | ].
       iSplitL "Hdl".
@@ -921,7 +952,10 @@ Section EchoInitBoot.
          payment has ONE row to answer for and [Hsh_deps] is not a premise
          of it any more.  [Hsh_deps] still stands above -- init's three die
          arms and [UkInit.init_deps] spend it (M4/M6). *)
-      iSplitL "Hbn"; [ iExact "Hbn" | ]. iExact "Hblaw".
+      iSplitL "Hbn"; [ iExact "Hbn" | ].
+      iSplitR; [ iExact "Hblaw" | ].
+      rewrite /UkInitMain.kinit_diag_law.
+      iSplitR; [ iExact "Hxlaw" | iExact "Hflaw" ].
   Qed.
 
 End EchoInitBoot.

@@ -229,7 +229,7 @@ Section UInitKernel.
   Qed.
 
   Lemma init_uexec_slot (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (Wc : nat -> nat -> iProp Σ) (Wb Rdl : nat -> iProp Σ)
+      (stc : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
       `{HRdl : !forall i : nat, Timeless (Rdl i)} `{HWb : !forall i : nat, Timeless (Wb i)}
       (cn : cons_names)
       (W : uvis) (n0 : nat) :
@@ -308,7 +308,7 @@ Section UInitKernel.
        which credential the shell it execs is handed is decided by /init's
        OWN mknod, mid-walk, so the supply is assembled there and not
        here. *)
-    UkInit.init_cons_sup cn T Cns stc Wc Wb Rdl -∗
+    UkInit.init_cons_sup cn T Cns stc Wp Wb Rdl -∗
     (* ...AND THE CONSOLE DANCE, at whichever arm the application's boot
        resource decided ([App.app_boot]; [AppEcho.echo_boot] is
        [cons_key r ∨ ∃ i, cons_made r i], and THE ARM IS DECIDED BY THE
@@ -355,10 +355,14 @@ Section UInitKernel.
        conversion of it into the payment at any count and any record, so
        /init's restart loop keeps the conversion and pays whenever the
        lease comes back with one.  What the payment's last byte leaves is
-       the shell's prompt credential at the same count ([Wc n 0]). *)
+       the round-open credential at the same count ([Wp n], lane M6b). *)
     Wb 0%nat -∗
     □ (∀ (n : nat) (N' : uk_names Σ),
-         Wb n -∗ UkInitMain.kinit_banner0 N' stc (Wc n 0%nat)) -∗
+         Wb n -∗ UkInitMain.kinit_banner0 N' stc (Wp n)) -∗
+    (* ...AND THE TWO DIAGNOSTICS' CONVERSIONS (lane M6b), persistent for
+       the same reason: "init: exec sh failed" and "init: fork failed" are
+       paid from the round-open credential the banner leaves. *)
+    UkInitMain.kinit_diag_law stc Wp Wb -∗
     (* THE PAY FACT, at the trivial payload: <init> has no parent, so its
        exit owes nobody anything -- userinit's choice, which the entry
        constructor writes into the record ([UkRun.ukn_pay]) and which
@@ -378,7 +382,7 @@ Section UInitKernel.
        it does not come back.  The bundle is spent once here, so a linear
        intro is what it wants; the destructuring [#(Hwr & Hwl15 & Hwl17)]
        the walk uses checks each conjunct on its own and is fine. *)
-    iIntros "Hdp #Hdep #Hxs Hdn Hrd Hrd0 Hbn #Hblaw #Hmp".
+    iIntros "Hdp #Hdep #Hxs Hdn Hrd Hrd0 Hbn #Hblaw #Hdlaw #Hmp".
     iApply (uslot_of_urun_all W (2 + (4 + (12 + (12 + (4 + n0))))) (fun _ => True)%I
               Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
     (* init's own half of its children set travels with its cwd: nothing
@@ -409,13 +413,14 @@ Section UInitKernel.
     rewrite Hpc.
     iApply (wp_kinit_start N Hpsok_free
               (ukn_pay_free_of_triv N (Hpayeq : UkRun.ukn_triv N))
-              T Cns stc Wc Wb Rdl cn (uvis_sz W) h
+              T Cns stc Wp Wb Rdl cn (uvis_sz W) h
               (tf_resume_gpr0 (uvis_tf W)) n0 Hne Hkt
-              with "Hdp [] [] Hxs [Hdn] [] [] Hszf [Hstd] [Hcwf] [Hchf]
+              with "Hdp [] [] [] Hxs [Hdn] [] [] Hszf [Hstd] [Hcwf] [Hchf]
                     [Hrd Hrd0 Hbn] Hrun").
     - (* the banner's conversion, at the record the entry carve just named *)
       rewrite /UkInitMain.kinit_ban_law. iModIntro. iIntros (k) "Hb".
       iApply ("Hblaw" $! k N with "Hb").
+    - iExact "Hdlaw".
     - iApply (init_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (init_img_text _ Hsub) Hx with "Ht").
     - iApply (init_cons_dance_at N T Cns stc with "Hdn").
@@ -435,7 +440,7 @@ Section UInitKernel.
   (* SS2 THE BRIDGE from the kernel's image fact.                          *)
   (* ------------------------------------------------------------------- *)
   Lemma init_slot_of_kexec (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (Wc : nat -> nat -> iProp Σ) (Wb Rdl : nat -> iProp Σ)
+      (stc : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
       `{HRdl : !forall i : nat, Timeless (Rdl i)} `{HWb : !forall i : nat, Timeless (Wb i)}
       (cn : cons_names)
       (na : nat) (alen : nat -> nat)
@@ -470,7 +475,7 @@ Section UInitKernel.
        [init_uexec_slot] and [UkInit.init_deps] *)
     UkInit.init_deps T -∗
     (* the pay fact, passed straight through: see [init_uexec_slot] *)
-    udep -∗ UkInit.init_cons_sup cn T Cns stc Wc Wb Rdl -∗
+    udep -∗ UkInit.init_cons_sup cn T Cns stc Wp Wb Rdl -∗
     init_cons_dance_all T Cns stc -∗
     (* the console reader token, passed straight through: see
        [init_uexec_slot] *)
@@ -489,10 +494,12 @@ Section UInitKernel.
        conversion of it into the payment at any count and any record, so
        /init's restart loop keeps the conversion and pays whenever the
        lease comes back with one.  What the payment's last byte leaves is
-       the shell's prompt credential at the same count ([Wc n 0]). *)
+       the round-open credential at the same count ([Wp n], lane M6b). *)
     Wb 0%nat -∗
     □ (∀ (n : nat) (N' : uk_names Σ),
-         Wb n -∗ UkInitMain.kinit_banner0 N' stc (Wc n 0%nat)) -∗
+         Wb n -∗ UkInitMain.kinit_banner0 N' stc (Wp n)) -∗
+    (* ...and the two diagnostics' conversions (lane M6b), likewise *)
+    UkInitMain.kinit_diag_law stc Wp Wb -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
   Proof.
     intros Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok_free Hlzf.
@@ -571,7 +578,7 @@ Section UInitKernel.
               0x3000 <= spv - 8 * Z.of_nat (2 + (4 + (12 + (12 + (4 + n0)))))
                         + Z.of_nat j < spv)
       by (intros j Hj; clear -Hj Hroom; lia).
-    iApply (init_uexec_slot T Cns stc Wc Wb Rdl cn W' n0 Hne Hkt).
+    iApply (init_uexec_slot T Cns stc Wp Wb Rdl cn W' n0 Hne Hkt).
     - rewrite Hpc. exact init_start_pc.
     - exact (init_img_sub_of_elf M Himg).
     - exact Hx.
@@ -621,7 +628,7 @@ Section UInitKernel.
      exactly as era-local as the lease is; an opaque [iProp] threaded the
      way [T] is. *)
   (* ...AND THE CREDENTIAL THE BANNER HANDS ON (lane IO-LEAF, M4a(2), step
-     3) is [Wc n 0], a family: what the payment's last byte leaves behind at
+     3; M6b) is [Wp n], a family: what the payment's last byte leaves behind at
      line boundary [n] is the APPLICATION's to say, and this tier cannot
      name it. *)
   (* ...AND ITS THIRD CONJUNCT (lane IO-LEAF, M5) is the application's own
@@ -634,15 +641,20 @@ Section UInitKernel.
      which the pair carries beside the read half and every later round
      gets back from the shell it reaped. *)
   Definition init_boot_pay (T Cns : iProp Σ) (cn : cons_names)
-      (stc : fdstate) (Wc : nat -> nat -> iProp Σ) (Wb Rdl : nat -> iProp Σ)
+      (stc : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
       : iProp Σ :=
     (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat ∗ Rdl 0%nat
      ∗ Wb 0%nat
      ∗ □ (∀ (n : nat) (N' : uk_names Σ),
-            Wb n -∗ UkInitMain.kinit_banner0 N' stc (Wc n 0%nat)))%I.
+            Wb n -∗ UkInitMain.kinit_banner0 N' stc (Wp n))
+     (* ...AND THE TWO DIAGNOSTICS' CONVERSIONS (lane M6b), LAST: "init:
+        exec sh failed" (21 bytes, leaving the next sub-round's [Wb n]) and
+        "init: fork failed" (18 bytes, leaving nothing), both paid from the
+        round-open credential [Wp n] the banner leaves. *)
+     ∗ UkInitMain.kinit_diag_law stc Wp Wb)%I.
 
   Lemma init_boot_con (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (Wc : nat -> nat -> iProp Σ) (Wb Rdl : nat -> iProp Σ)
+      (stc : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
       `{HRdl : !forall i : nat, Timeless (Rdl i)} `{HWb : !forall i : nat, Timeless (Wb i)}
       (cn : cons_names)
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
@@ -673,13 +685,13 @@ Section UInitKernel.
        wands").  With the [□] written down, the intro is structural and no
        search runs; the caller pays the box once
        ([UInitBoot.init_deps_of_sup]). *)
-    □ UkInit.init_deps T -∗ udep -∗ UkInit.init_cons_sup cn T Cns stc Wc Wb Rdl -∗
+    □ UkInit.init_deps T -∗ udep -∗ UkInit.init_cons_sup cn T Cns stc Wp Wb Rdl -∗
     □ (∀ W' : uvis,
          ⌜kexec_image_ok ElfUser.init_elf na alen afun sts W'⌝ -∗
          ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗
          ⌜uvis_lazy W' = false⌝ -∗
          my_pay (uvis_gen W') (fun _ => True)%I -∗
-         init_boot_pay T Cns cn stc Wc Wb Rdl -∗ uslot W').
+         init_boot_pay T Cns cn stc Wp Wb Rdl -∗ uslot W').
   Proof.
     (* THE BUNDLE IS NEVER TAKEN APART: it goes in through the box and
        straight out into [init_slot_of_kexec]'s own linear premise.  No
@@ -687,10 +699,10 @@ Section UInitKernel.
        statement's note. *)
     intros Hne Hkt Hroom Hlen Hl0 Hpsok.
     iIntros "#Hdp #Hdep #Hxs !>"
-      (W') "%Hok %Hcw %Hlz #Hmp (Hdn & Hrd & Hrd0 & Hbn & #Hblaw)".
-    iApply (init_slot_of_kexec T Cns stc Wc Wb Rdl cn na alen afun sts W' n0
+      (W') "%Hok %Hcw %Hlz #Hmp (Hdn & Hrd & Hrd0 & Hbn & #Hblaw & #Hdlaw)".
+    iApply (init_slot_of_kexec T Cns stc Wp Wb Rdl cn na alen afun sts W' n0
               Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok Hlz
-              with "Hdp Hdep Hxs Hdn Hrd Hrd0 Hbn Hblaw Hmp").
+              with "Hdp Hdep Hxs Hdn Hrd Hrd0 Hbn Hblaw Hdlaw Hmp").
   Qed.
 
   (* ...and the two ways the application's boot resource builds the dance,

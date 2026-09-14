@@ -41,6 +41,8 @@ Require Import UserPerm.    (* [perm_of] / [lazy_free] -- the rows the write
 Require Import ProcPtOwn.   (* [proc_pt_wf] *)
 Require Import UserPtTree.  (* [uva_rmapped] *)
 Require Import UkRun UkRunLeaf UkRunSys.
+Require Import UkRunExecRef.  (* [udepw_at_refR] -- the exec deposit at a
+                                 supplier-named refund (lane M6b) *)
 Require Import UCodeInit.
 Require Import TsoCtx.
 Require User.InitSyms User.InitInstrs.
@@ -1675,19 +1677,46 @@ Section UkInit.
     iExists n. iFrame "Hr Hp Hd". by iRight.
   Qed.
 
-  (* the credential the lend carries, AT THE LEDGER the child inherits *)
+  (* the credential the lend carries, AT THE LEDGER the child inherits.
+     ON THE CONSOLE ROW IT IS THE ROUND-OPEN SHAPE [Wp n] (lane M6b; top:
+     [UInitDiag.kinit_pro]) and not the shell's prompt credential: the
+     prompt credential is the disjunction the shell is lent ([wr_owed]'s
+     two arms), and nothing /init holds separates them
+     ([EchoLinksPro.wr_owed_ambiguous]) -- so what a FAILED fork refunds
+     and what a FAILED exec refunds would be unpayable at that shape.  The
+     round-open shape pays both diagnostics through the links
+     ([UkInitMain.kinit_diag_law]) and converts to the prompt credential
+     at the shell's entry ([UInitSh.init_exec_sup_of_sh_slot]'s [Wp n -∗
+     Wc n 0]).
+     THE THIRD ARM IS [True], NOT [T]: it is built where the token's
+     credential arm is [init_rd_cred]'s affine arm ([UkInitMain.
+     wp_kinit_banner]), which has neither a credential nor the taint in
+     hand; it dies with [init_rd_cred]'s [∨ True]. *)
   Definition init_lend_cred (st : fdstate)
-      (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ)
+      (Wp Wb : nat -> iProp Σ)
       (l : list fdstate) (n : nat) : iProp Σ :=
-    ((⌜l = ufd_l3 st⌝ ∗ Wc n 0%nat)
+    ((⌜l = ufd_l3 st⌝ ∗ Wp n)
      ∨ (⌜l = ufd_l0⌝ ∗ Wb n)
-     ∨ True)%I.   (* AFFINE -- step 4 kills it *)
+     ∨ True)%I.   (* AFFINE -- dies with [init_rd_cred]'s arm *)
 
   Lemma init_lend_cred_triv (st : fdstate)
-      (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ)
+      (Wp Wb : nat -> iProp Σ)
       (l : list fdstate) (n : nat) :
-    ⊢ init_lend_cred st Wc Wb l n.
+    ⊢ init_lend_cred st Wp Wb l n.
   Proof. rewrite /init_lend_cred. iRight. by iRight. Qed.
+
+  (* WHAT A FAILED exec REFUNDS (lane M6b): the lend as it went in --
+     the child's ledger, the position, the lease and the credential at
+     that ledger.  The exec supply below puts exactly this into the
+     deposit and names it as the refund ([UkRunExecRef.udepw_at_refR]),
+     so the child that comes back from a failed exec holds what pays
+     "init: exec sh failed" and then its own exit
+     ([UkInitMain.wp_kinit_main_die_de]). *)
+  Definition init_lend_ref (cn : cons_names) (T : iProp Σ) (st : fdstate)
+      (Wp Wb Rdl : nat -> iProp Σ) (γfd' : gname)
+      (l : list fdstate) (γ : gname) (n : nat) : iProp Σ :=
+    (UserFd.ustd γfd' l ∗ upos γ n ∗ ucons_pay cn γ T Rdl (-1)
+     ∗ init_lend_cred st Wp Wb l n)%I.
 
   (*  THE DESCRIPTOR ROW IS THE LEDGER AND ITS ARM, not the head as a
       disjunction: sh's entry is told one thing about its table -- fd 0 is
@@ -1698,7 +1727,7 @@ Section UkInit.
       crosses at the SAME ledger ([init_lend_cred]), which is what lets
       the shell's entry put it in the slot its own prompt reads. *)
   Definition init_exec_sup_pos (cn : cons_names) (T : iProp Σ) (st : fdstate)
-      (Wc : nat -> nat -> iProp Σ) (Wb Rdl : nat -> iProp Σ)
+      (Wp Wb Rdl : nat -> iProp Σ)
       (γ : gname) (n : nat) : iProp Σ :=
     (∀ (N' : uk_names Σ) (m : regfile) (pc : mword 64) (l : list fdstate),
        ⌜ ukn_pay N' = ucons_pay cn γ T (init_rd Rdl Wb) ⌝ -∗
@@ -1708,7 +1737,7 @@ Section UkInit.
        init_argv (ukn_d N') -∗
        UserFd.ustd (ukn_fd N') l -∗
        UInitFd.ufd_row T st l -∗
-       init_lend_cred st Wc Wb l n -∗
+       init_lend_cred st Wp Wb l n -∗
        upos γ n -∗
        (* ...AND THE LEASE ITSELF (lane KILL-PAY, K4(a)), at the READ
           family: the console reader token used to ride in the child's own
@@ -1717,15 +1746,21 @@ Section UkInit.
           [PinnedExec]'s [Pay] beside the position and lands in the
           shell's loop as its PIECES ([UkSh.ush_posb]). *)
        ucons_pay cn γ T Rdl (-1) -∗
-       udepw_at_ref N' m pc FsImg.ROOTINO)%I.
+       (* ...AND THE REFUND IS THE LEND ITSELF (lane M6b), ledger included:
+          a failed exec hands the four back at the shapes they went in at,
+          which is what the diagnostic and the exit after it are paid
+          from.  [UkRun.udepw_at_ref] could only name the record's own
+          exit payload, and the credential does not fit in that family. *)
+       udepw_at_refR N' m pc FsImg.ROOTINO
+         (init_lend_ref cn T st Wp Wb Rdl (ukn_fd N') l γ n))%I.
 
   Definition init_exec_sup_lend (cn : cons_names) (T : iProp Σ)
-      (st : fdstate) (Wc : nat -> nat -> iProp Σ) (Wb Rdl : nat -> iProp Σ)
+      (st : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
       : iProp Σ :=
-    (□ (∀ (γ : gname) (n : nat), init_exec_sup_pos cn T st Wc Wb Rdl γ n))%I.
+    (□ (∀ (γ : gname) (n : nat), init_exec_sup_pos cn T st Wp Wb Rdl γ n))%I.
 
-  Global Instance init_exec_sup_lend_persistent cn T st Wc Wb Rdl :
-    Persistent (init_exec_sup_lend cn T st Wc Wb Rdl).
+  Global Instance init_exec_sup_lend_persistent cn T st Wp Wb Rdl :
+    Persistent (init_exec_sup_lend cn T st Wp Wb Rdl).
   Proof. rewrite /init_exec_sup_lend. apply _. Qed.
 
   (* ...AND THE SAME SUPPLY AS A WAND FROM THE CONSOLE CREDENTIAL (lane E2).
@@ -1737,18 +1772,18 @@ Section UkInit.
      pays it under the taint (where the shell proves nothing anyway).
      Both halves are [□], so the restart loop applies them per round. *)
   Definition init_cons_sup (cn : cons_names) (T Cns : iProp Σ)
-      (st : fdstate) (Wc : nat -> nat -> iProp Σ) (Wb Rdl : nat -> iProp Σ)
+      (st : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
       : iProp Σ :=
-    (□ (Cns -∗ init_exec_sup_lend cn T st Wc Wb Rdl) ∗ □ (T -∗ Cns))%I.
+    (□ (Cns -∗ init_exec_sup_lend cn T st Wp Wb Rdl) ∗ □ (T -∗ Cns))%I.
 
-  Global Instance init_cons_sup_persistent cn T Cns st Wc Wb Rdl :
-    Persistent (init_cons_sup cn T Cns st Wc Wb Rdl).
+  Global Instance init_cons_sup_persistent cn T Cns st Wp Wb Rdl :
+    Persistent (init_cons_sup cn T Cns st Wp Wb Rdl).
   Proof. rewrite /init_cons_sup. apply _. Qed.
 
   Lemma init_cons_sup_taint (cn : cons_names) (T Cns : iProp Σ)
-      (st : fdstate) (Wc : nat -> nat -> iProp Σ) (Wb Rdl : nat -> iProp Σ) :
-    init_cons_sup cn T Cns st Wc Wb Rdl -∗ T -∗
-    init_exec_sup_lend cn T st Wc Wb Rdl.
+      (st : fdstate) (Wp Wb Rdl : nat -> iProp Σ) :
+    init_cons_sup cn T Cns st Wp Wb Rdl -∗ T -∗
+    init_exec_sup_lend cn T st Wp Wb Rdl.
   Proof.
     iIntros "[#Hw #Ht] HT". iApply "Hw". iApply ("Ht" with "HT").
   Qed.
@@ -1760,7 +1795,11 @@ Section UkInit.
      is resolved from.  init's [c] is [FsImg.ROOTINO] at every call site,
      but the leaf is stated at a variable one -- nothing here depends on
      which inum it is. *)
-  Lemma wp_kinit_exec (h : CpuId) (m : regfile) (avail : nat) (c : Z) :
+  (* ...AND AT A SUPPLIER-NAMED REFUND (lane M6b): what a failed exec hands
+     back is whatever the deposit's own wand says -- for /init's child the
+     lend itself ([init_lend_ref]), not the record's exit payload. *)
+  Lemma wp_kinit_exec (h : CpuId) (m : regfile) (avail : nat) (c : Z)
+      (R : iProp Σ) :
     init_code γt -∗
     urun N h m (mword_of_int InitSyms.exec) avail -∗
     (* the program's half of its working directory *)
@@ -1770,16 +1809,16 @@ Section UkInit.
        [UkRun.udepw]'s left disjunct excludes it by construction.  The
        caller hands it in, at the key the ecall traps from and at the one
        working directory it answers for. *)
-    udepw_at_ref N
+    udepw_at_refR N
       (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> m)
-      (mword_of_int 0x3ac) c -∗
+      (mword_of_int 0x3ac) c R -∗
     (* exec only comes back when it FAILED, and then it returns -1 -- AND
        IT IS REFUNDED (lane KILL-PAY, K4(a), ruling R-A): what the process
-       spent into the deposit comes back, which is what pays the [exit(1)]
-       the diagnostic below ends in. *)
+       spent into the deposit comes back, at the shape the supplier named,
+       which is what pays the diagnostic and the [exit(1)] it ends in. *)
     (∀ h' : CpuId,
        UserCwd.ucwd γcwd c -∗
-       ukn_pay N (-1) -∗
+       R -∗
        urun N h'
          (<[Regidx a0_idx := (mword_of_int (-1) : mword 64)]>
             (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> m))
@@ -1805,7 +1844,7 @@ Section UkInit.
     rewrite E0 Em.
     iIntros (h1) "Hrun".
     set (m1 := <[Regidx a7_idx := (mword_of_int 7 : mword 64)]> m).
-    iApply (wp_uk_ecall_exec_at_cwd N h1 m1 (mword_of_int 0x3ac) avail c
+    iApply (wp_uk_ecall_exec_at_cwd_refR N h1 m1 (mword_of_int 0x3ac) avail c R
               ltac:(unfold m1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 7 : mword 64));
                     vm_compute; reflexivity)

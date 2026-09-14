@@ -1536,7 +1536,7 @@ Section UkInitMain.
       (* the answer, opened once for the three arms below: the return value
          is an [int] sign-extended, and either nothing was reaped or a
          generation left the set with its escrow. *)
-      iDestruct "Hans" as (pidw ipw gnw bnw rv xs) "[%Hret Hwa]".
+      iDestruct "Hans" as (pidw gnw bnw rv xs) "[%Hret Hwa]".
       (* ---- 0x4a  beq a0,s1,0x32 -- BACK EDGE to the restart head ---- *)
       assert (Etgt4a : add_vec (mword_of_int 0x4a : mword 64)
                          (sign_extend' 64 (mword_of_int 8168 : mword 13))

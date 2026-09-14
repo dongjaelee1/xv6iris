@@ -180,7 +180,6 @@ Section USyncKernel.
     intros Hpc Hsub Hx Hroom Hal8 Hdata Hfdlen Hstop Hpsok_free Hlzf.
     iIntros "#Hdep #Hpay".
     iApply (uslot_of_urun W 4 (fun _ => True)%I
-              (mword_of_int 0 : mword 32) (* B1a: nothing reads [ukn_ipid] yet *)
               Hal8 ltac:(lia) Hdata Hfdlen
               Hstop Hlzf with "Hdep Hpay").
     (* sync makes no descriptor call, so its ledger is dropped here *)

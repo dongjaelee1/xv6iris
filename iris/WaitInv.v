@@ -765,25 +765,48 @@ Section WaitInv.
      [TsoCtx.CtxMorph]'s solver walks the payload STRUCTURALLY, and a named
      context-free conjunct in the middle of it is exactly the shape that
      sends the search off ([ctx_morph_const_pay]'s note). *)
+  (* AT THE LITERAL 1 (lane TRAP-ROWS-4, B1b): <init>'s pid IS 1 -- the C
+     carves [int nextpid = 1] and userinit's allocproc is the first
+     allocation in the boot order -- and userinit seals it there
+     ([ProofUserinit]).  Pinning the number HERE rather than closing it
+     existentially is what lets the SYSCALL layer, which relays this row
+     and not the record it came off, hand kwait the [init_pid_is] its
+     contract wants at a number the U tier can also name. *)
   Definition init_ident_at (ξ : CtxId) (ip : mword 64) : iProp Σ :=
     (ctx_word_pointsto ξ (mword_of_int KernelSyms.initproc : mword 64)
        DfracDiscarded ip ∗
-     ∃ (g : gname) (p0 : mword 32),
-       slot_gen ip DfracDiscarded g ∗ gen_pid g p0 ∗ init_pid_is p0)%I.
+     ∃ g : gname,
+       slot_gen ip DfracDiscarded g ∗
+       gen_pid g (mword_of_int 1 : mword 32) ∗
+       init_pid_is (mword_of_int 1 : mword 32))%I.
 
   Definition init_ident (ip : mword 64) : iProp Σ := init_ident_at cur_ctx ip.
 
   (* ...and the two halves joined, which is what every kexit-chain caller
      does: it holds the persistent cell already and the ghost half comes
      off its capability record. *)
-  Lemma init_ident_at_of_gen (ξ : CtxId) (ip : mword 64) (p0 : mword 32) :
+  Lemma init_ident_at_of_gen (ξ : CtxId) (ip : mword 64) :
     ctx_word_pointsto ξ (mword_of_int KernelSyms.initproc : mword 64)
       DfracDiscarded ip -∗
-    init_gen ip p0 -∗ init_ident_at ξ ip.
+    init_gen ip (mword_of_int 1 : mword 32) -∗ init_ident_at ξ ip.
   Proof.
     iIntros "#Hc (%g & #Hsg & #Hgp & #Hi & _)". rewrite /init_ident_at.
-    iFrame "Hc". iExists g, p0. iFrame "Hsg Hgp Hi".
+    iFrame "Hc". iExists g. iFrame "Hsg Hgp Hi".
   Qed.
+
+  (* ...AND THE READING ALLOCPROC'S INSERT IS REFUTED AGAINST (lane
+     TRAP-ROWS-4, B1b): <init>'s registration is PERMANENT, so a candidate
+     the pid scan proved free is not 1.  [ProofUserinit] hands this to
+     [ProcAvail.procs_avail_seal], which is how every later allocproc gets
+     it without gaining a premise. *)
+  Lemma init_gen_reg (ip : mword 64) :
+    init_gen ip (mword_of_int 1 : mword 32) -∗ SlotGen.init_reg.
+  Proof. iIntros "(%g & _ & _ & _ & #Hreg)". iExists g. iExact "Hreg". Qed.
+
+  (* the reading the syscall layer relays to kwait's contract *)
+  Lemma init_ident_pid_is (ξ : CtxId) (ip : mword 64) :
+    init_ident_at ξ ip -∗ init_pid_is (mword_of_int 1 : mword 32).
+  Proof. iIntros "[_ (%g & _ & _ & $)]". Qed.
 
   Global Instance init_ident_at_persistent ξ ip : Persistent (init_ident_at ξ ip).
   Proof. rewrite /init_ident_at. apply _. Qed.
@@ -801,9 +824,9 @@ Section WaitInv.
     slot_gen pme (DfracOwn (1/4)) gn -∗
     slot_gen pme (DfracOwn (1/4)) gn ∗ gen_is_init gn.
   Proof.
-    iIntros "[#Hip (%g & %p0 & #Hsg & #Hgp & #Hi)] Hsgq".
+    iIntros "[#Hip (%g & #Hsg & #Hgp & #Hi)] Hsgq".
     iDestruct (slot_gen_agree with "Hsg Hsgq") as %<-.
-    iFrame "Hsgq". iExists p0. iFrame "Hi Hgp".
+    iFrame "Hsgq". iExists (mword_of_int 1 : mword 32). iFrame "Hi Hgp".
   Qed.
 
   (* ONE ROW PER ENTRY OF THE ORPHAN MAP, and not a [□]-wand over an
@@ -1845,8 +1868,15 @@ Section WaitInvBoot.
       iSplitL "Hf"; [iExists γ0; iExact "Hf" | iExact "Hrows"].
   Qed.
 
+  (* ...AND THE PID COUNTER'S BOOT-ERA TOKEN BESIDE IT (lane TRAP-ROWS-4,
+     B1b).  It is minted HERE and nowhere else, because it lives at a name
+     this instance carries ([Xv6Cameras.npid_name]) and a fresh [own_alloc]
+     elsewhere could never be shown to be at that name.  It is handed out
+     SEPARATELY rather than folded into [children_boot]: it rides the proc
+     ledger's counted regime ([ProcAvail.procs_avail_at _ true]), not the
+     children map, and the boot routes the two to different groups. *)
   Lemma children_res_alloc :
-    ⊢ |==> ∃ _ : wchG Σ, children_boot.
+    ⊢ |==> ∃ _ : wchG Σ, children_boot ∗ SlotGen.nextpid_pend.
   Proof.
     iMod (ghost_map_alloc (∅ : gmap gname (mword 64 * gset gname))) as (γ) "[Ha _]".
     iMod (ch_rows_alloc γ NPROC 0 ∅ ltac:(lia)
@@ -1865,10 +1895,16 @@ Section WaitInvBoot.
                              ((mword_of_int 0 : mword 32) : leibnizO (mword 32)))
                      : ipidUR)) as (γip) "Hip";
       [ done | ].
-    iModIntro. iExists (WchG Σ _ _ _ _ _ γ γo γsg γpr γip).
+    (* ...and the pid counter's boot-era token, whole *)
+    iMod (own_alloc (Some (to_dfrac_agree (DfracOwn 1)
+                             ((mword_of_int 0 : mword 32) : leibnizO (mword 32)))
+                     : ipidUR)) as (γnp) "Hnp";
+      [ done | ].
+    iModIntro. iExists (WchG Σ _ _ _ _ _ γ γo γsg γpr γip γnp).
     rewrite /children_boot /children_boot_rows /children_res_boot
             /children_own_at /orphans_own
-            /pid_reg_auth /slot_gen /init_pid_tok.
+            /pid_reg_auth /slot_gen /init_pid_tok /SlotGen.nextpid_pend.
+    iSplitR "Hnp"; [| iExact "Hnp"].
     iSplitL "Hip"; [iExact "Hip" |].
     iSplitL "Ha"; [iExists m'; iFrame "Ha"; iPureIntro; exact Hok |].
     iSplitL "Ho"; [iExact "Ho" |].

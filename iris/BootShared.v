@@ -1759,7 +1759,7 @@ Section BootAlloc.
          [procs_avail (Some (S k))] and hands back [Some k]).  Threaded to
          [main] through [BootChain.boot_hart_primary]; main carries it to
          the userinit call site. *)
-      procs_avail (Some NPROC) ∗
+      procs_avail_at (Some NPROC) true ∗
       (* THE CHILDREN MAP AND ITS NPROC ROWS, at the canonical name minted
          above -- see [WaitInv.children_res_alloc]. *)
       WaitInv.children_boot ∗
@@ -2092,7 +2092,7 @@ Section BootAlloc.
        ([ProcAvail.v]).  Minted here, with the ghost name handed out
        existentially, for [InodeRef.iref_name_alloc]'s reason: a class that
        carries a gname cannot be a functor constraint adequacy assumes. *)
-    iMod procs_avail_alloc as (Hpav) "Hprocsavail".
+    iMod procs_avail_alloc as (Hpav) "Hprocscore".
     (* THE AUTHORITY IS KEPT NOW.  [FileInv.ftable_res] holds it -- the
        table is where the one-unit-per-reference conservation law is checked
        -- and nothing else in the tree can make it. *)
@@ -2117,7 +2117,16 @@ Section BootAlloc.
            Nothing can install a row later -- kfork seals the child's
            residue before it takes the lock -- so all NPROC are born here
            ([WaitInv.children_res_alloc]). ---- *)
-    iMod WaitInv.children_res_alloc as (Hwch) "Hchb".
+    iMod WaitInv.children_res_alloc as (Hwch) "[Hchb Hnpend]".
+    (* THE COUNTED PROC LEDGER, PAIRED UP (lane TRAP-ROWS-4, B1b): the
+       authority came out of [procs_avail_alloc] above and the pid
+       counter's boot-era token out of the line just above -- it lives at
+       a name the [wchG] instance carries, so it can only be minted where
+       that instance is.  Together they are the COUNTED regime, and the
+       [true] index is what userinit's allocproc reads <init>'s pid off. *)
+    iAssert (procs_avail_at (Some NPROC) true) with "[Hprocscore Hnpend]"
+      as "Hprocsavail".
+    { rewrite /procs_avail_at. iFrame "Hprocscore Hnpend". }
     (* THE SUPPLY, IN ITS THREE SHARES, AND NOTHING IS DROPPED ANY MORE.
        [IREFSLOTS = NPROC*(1 + IREFSPARE) + NFILE + IREFBOOT]: the proc
        layer's share and the FILE TABLE'S both go through

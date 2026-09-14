@@ -104,7 +104,7 @@ Definition wp_sys_wait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
     (pid : mword 32) (U : ustate) (v0 : mword 64) (cs : gset gname)
     (* <init>'s pid, as a number -- kwait's parameter, relayed
        (lane TRAP-ROWS-3/4, T4(b)) *)
-    (ipid : mword 32) :=
+    :=
   let pcE : mword 64 := mword_of_int KernelSyms.sys_wait in
   let pj := proc_addr j in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
@@ -130,7 +130,11 @@ Definition wp_sys_wait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
   ch_frag (pv_chg (us_V U)) pj cs -∗
   (* ...and who <init> is, as a number -- kwait's premise, relayed
      ([SpecKwait]; lane TRAP-ROWS-3/4, T4(b)) *)
-  SlotGen.init_pid_is ipid -∗
+  (* AT THE LITERAL 1 (lane TRAP-ROWS-4, B1b): <init>'s pid is <nextpid>'s
+     carved value.  The relay that supplies it is
+     [WaitInv.init_ident_pid_is], off the syscall layer's own
+     [SpecSyscall.sysc_init_id] row. *)
+  SlotGen.init_pid_is (mword_of_int 1 : mword 32) -∗
   wp_next b pj (fun (CID : CpuId) =>
   (* kwait's window, verbatim: the only write is copyout's four-byte
      [xstate] at [v0], the syscall's own argument 0, and only when
@@ -151,7 +155,7 @@ Definition wp_sys_wait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
          copied out -- the pid uniqueness over the caller's children, and
          the reading at what the reap left it. *)
       wait_ans rv (xstate_val xw) cs cs' (pv_gen (us_V U))
-        (bool_decide (v0 = (zero_reg : mword 64))) pid ipid -∗
+        (bool_decide (v0 = (zero_reg : mword 64))) pid -∗
       sie_cap_gpr KT1 mf av b pj -∗
       cpu_own 0%nat eb pj b lks -∗
       pc_is ret_tgt -∗
@@ -167,7 +171,6 @@ Module Type SYSWAIT.
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (γa γp γf γw : gname) (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
-      (pid : mword 32) (U : ustate) (v0 : mword 64) (cs : gset gname)
-      (ipid : mword 32),
-      wp_sys_wait_sconf_body γa γp γf γw γs j γl m av eb b lks pid U v0 cs ipid.
+      (pid : mword 32) (U : ustate) (v0 : mword 64) (cs : gset gname),
+      wp_sys_wait_sconf_body γa γp γf γw γs j γl m av eb b lks pid U v0 cs.
 End SYSWAIT.

@@ -509,9 +509,10 @@ Section UserretClosed.
           iEval (rewrite /uexec_fork_child_F) in "Hxin".
           iDestruct "Hxin" as "(#Hkw & HRc & Hxin)".
           iSplitR; [ iExact "Hkw" | ]. iFrame "HRc".
-          iIntros (g' pidc) "Hmp HRc".
+          iIntros (g' pidc) "%Hne Hmp HRc".
           rewrite /uexec_fork_child_F SpecUsertrap.uvis_of_us_tf.
-          iSpecialize ("Hxin" $! g' pidc). iSpecialize ("Hxin" with "Hmp HRc").
+          iSpecialize ("Hxin" $! g' pidc).
+          iSpecialize ("Hxin" with "[%] Hmp HRc"); [ exact Hne | ].
           iEval (rewrite (uslot_key_cong
                             (bump_at W (mword_of_int 0) (uvis_M W) (uvis_perm W)
                                (uvis_sz W) (uvis_fd W) (uvis_cwd W) g' ∅ pidc
@@ -714,7 +715,7 @@ Section UserretClosed.
     (* ...with the reason ABSORBED: the U tier cannot name the incarnation,
        so the row travels as the resume's pure [ut_live_out] instead
        ([SpecUsertrap.ut_wait_out_forget], lane TRAP-ROWS, T4). *)
-    iDestruct (SpecUsertrap.ut_wait_out_forget with "Hwo") as "Hwo".
+    iDestruct (SpecUsertrap.ut_wait_out_pid with "Hwo") as "Hwo".
     (* ...AND THE EXEC ANSWER AT THE SET THE ROUND RESUMES AT: exec is not
        fork, so on that arm the set did not move and the row's slot is at
        the same key. *)

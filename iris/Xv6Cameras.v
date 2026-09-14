@@ -1155,7 +1155,20 @@ Class wchG (Σ : gFunctors) :=
          worph_name : gname;
          wsg_name : gname;
          wpr_name : gname;
-         wip_name : gname }.
+         wip_name : gname;
+         (* THE PID COUNTER'S BOOT-ERA TOKEN (lane TRAP-ROWS-4, B1b).  A
+            SECOND NAME AT [ipidUR] and no new functor: the token is a
+            one-shot -- WHOLE while <nextpid> is still the 1 the .data
+            carve pinned, DISCARDED forever after the first <allocpid>
+            store -- so the value it agrees at is junk and only the
+            dfrac matters.  It rides the proc ledger's COUNTED regime
+            ([ProcAvail.procs_avail_at]); the payload <pid_lock> protects
+            carries "either the counter is still 1 and no slot holds pid
+            1, or this has been shot" ([PidLock.nextpid_res_at]).  That is
+            what lets userinit read <init>'s pid off the counter as the
+            LITERAL 1 while every later caller of allocproc, which holds
+            only the sealed regime, re-establishes the payload for free. *)
+         npid_name : gname }.
 Global Instance wchG_preS `{!wchG Σ} : wchGpreS Σ :=
   {| wch_pre_inG := wch_inG; worph_pre_inG := worph_inG;
      wsg_pre_inG := wsg_inG; wpr_pre_inG := wpr_inG;

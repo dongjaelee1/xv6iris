@@ -402,7 +402,7 @@ Section BootPrimary.
     ([∗ list] i ∈ seq 0 NPROC, pstate_full i UNUSED) -∗
     (* the proc table's counted regime, straight through from
        [BootShared.boot_shared_alloc] to main -- see [SpecMain]'s own row *)
-    procs_avail (Some NPROC) -∗
+    procs_avail_at (Some NPROC) true -∗
     (* THE CHILDREN MAP AND ITS NPROC ROWS, minted in the boot fupd at the
        canonical name ([WaitInv.children_res_alloc]) because a row has to
        be spellable in [ProcDefs.proc_dormant].  Main pairs the authority

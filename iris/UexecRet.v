@@ -1012,10 +1012,10 @@ Section UexecRet.
      TRAP-ROWS-3/4, T4(b)): the caller's own and <init>'s.  PURE, so they
      ride here exactly as [nullst] does. *)
   Definition uwait_ans_at (r : mword 64) (cs cs' : gset gname)
-      (gn : gname) (nullst : bool) (pidv ip : mword 32) : iProp Σ :=
+      (gn : gname) (nullst : bool) (pidv : mword 32) : iProp Σ :=
     (∃ (rv : mword 32) (xs : Z),
        ⌜r = (sign_extend' 64 rv : mword 64)⌝ ∗
-       wait_ans rv xs cs cs' gn nullst pidv ip)%I.
+       wait_ans rv xs cs cs' gn nullst pidv)%I.
 
   (* ...AND WHAT A PROCESS THAT CAN NAME ITS OWN PID SEES: the reason and
      the status pointer absorbed, the two pids kept.  THE MIDDLE FORM, and
@@ -1023,8 +1023,8 @@ Section UexecRet.
      do not want the row ([UkInit.wp_kinit_wait], [UkShRun.wp_kshr_wait])
      do not move (lane TRAP-ROWS-3, T4(c)'s trick). *)
   Definition uwait_ans_pid (r : mword 64) (cs cs' : gset gname)
-      (pidv ip : mword 32) : iProp Σ :=
-    (∃ (gn : gname) (b : bool), uwait_ans_at r cs cs' gn b pidv ip)%I.
+      (pidv : mword 32) : iProp Σ :=
+    (∃ (gn : gname) (b : bool), uwait_ans_at r cs cs' gn b pidv)%I.
 
   (* ...AND WHAT THE PROCESS SEES.  [urun] binds the process's own
      generation with NO resource beside it (UkRun.v's note), so the U tier
@@ -1033,17 +1033,17 @@ Section UexecRet.
      are absorbed with it, for the same reason and until the run carries a
      handle on its own ([UkRun.ukn_pid]). *)
   Definition uwait_ans (r : mword 64) (cs cs' : gset gname) : iProp Σ :=
-    (∃ (pidv ip : mword 32), uwait_ans_pid r cs cs' pidv ip)%I.
+    (∃ pidv : mword 32, uwait_ans_pid r cs cs' pidv)%I.
 
   Lemma uwait_ans_of_pid (r : mword 64) (cs cs' : gset gname)
-      (pidv ip : mword 32) :
-    uwait_ans_pid r cs cs' pidv ip -∗ uwait_ans r cs cs'.
-  Proof. iIntros "H". iExists pidv, ip. iExact "H". Qed.
+      (pidv : mword 32) :
+    uwait_ans_pid r cs cs' pidv -∗ uwait_ans r cs cs'.
+  Proof. iIntros "H". iExists pidv. iExact "H". Qed.
 
   Lemma uwait_ans_of (r : mword 64) (cs cs' : gset gname)
-      (gn : gname) (b : bool) (pidv ip : mword 32) :
-    uwait_ans_at r cs cs' gn b pidv ip -∗ uwait_ans r cs cs'.
-  Proof. iIntros "H". iExists pidv, ip, gn, b. iExact "H". Qed.
+      (gn : gname) (b : bool) (pidv : mword 32) :
+    uwait_ans_at r cs cs' gn b pidv -∗ uwait_ans r cs cs'.
+  Proof. iIntros "H". iExists pidv, gn, b. iExact "H". Qed.
 
   (* the failing arm, at the word the [li -1] tails leave in a0 *)
   Lemma sext_neg1_64 :
@@ -1052,9 +1052,9 @@ Section UexecRet.
   Proof. apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma uwait_ans_at_neg1 (cs : gset gname) (gn : gname) (b : bool)
-      (pidv ip : mword 32) :
+      (pidv : mword 32) :
     (⌜b = false⌝ ∨ ⌜cs = (∅ : gset gname)⌝ ∨ ChildTok.kill_shot gn) -∗
-    uwait_ans_at (mword_of_int (-1) : mword 64) cs cs gn b pidv ip.
+    uwait_ans_at (mword_of_int (-1) : mword 64) cs cs gn b pidv.
   Proof.
     iIntros "Hwhy". iExists (mword_of_int (-1) : mword 32), 0%Z.
     iSplitR; [iPureIntro; symmetry; exact sext_neg1_64 |].
@@ -1064,8 +1064,7 @@ Section UexecRet.
   Lemma uwait_ans_neg1 (cs : gset gname) :
     ⊢ uwait_ans (mword_of_int (-1) : mword 64) cs cs.
   Proof.
-    iExists (mword_of_int 0 : mword 32), (mword_of_int 0 : mword 32),
-            inhabitant, false.
+    iExists (mword_of_int 0 : mword 32), inhabitant, false.
     iApply uwait_ans_at_neg1. by iLeft.
   Qed.
 
@@ -1073,9 +1072,39 @@ Section UexecRet.
   Lemma uwait_ans_reaped (r : mword 64) (cs cs' : gset gname) :
     uwait_ans r cs cs' -∗ ⌜ch_reaped cs cs'⌝.
   Proof.
-    iIntros "H". iDestruct "H" as (pidv ip gn b rv xs) "[_ Ha]".
+    iIntros "H". iDestruct "H" as (pidv gn b rv xs) "[_ Ha]".
     iApply (wait_ans_reaped with "Ha").
   Qed.
+
+  (* ...AND WHAT A PROCESS THAT KNOWS IT IS NOT <INIT> READS OFF THE MIDDLE
+     FORM (lane TRAP-ROWS-4, B1b).  The reaping arm's second disjunct is
+     [pidv = 1]; a forked child holds [pidv <> 1] off its own fork
+     ([UkFork.wp_uk_ecall_fork]'s child arm), so what is left is
+     [γ' ∈ cs] -- the generation it reaped WAS one of its own children,
+     which is exactly what a [ChildTok.child_tok] is redeemed against.
+     The -1 case is excluded by the returned word: a reaped pid is in
+     [1, PIDMAX] and sign-extends to a small positive. *)
+  Lemma uwait_ans_pid_mine (r : mword 64) (cs cs' : gset gname)
+      (pidv : mword 32) :
+    pidv <> (mword_of_int 1 : mword 32) ->
+    r <> (mword_of_int (-1) : mword 64) ->
+    uwait_ans_pid r cs cs' pidv -∗
+    ∃ (γ' : gname) (rv : mword 32) (xs : Z),
+      ⌜r = (sign_extend' 64 rv : mword 64) /\ cs' = cs ∖ {[γ']} /\
+       γ' ∈ cs /\ (1 <= bv_unsigned rv <= PIDMAX)%Z⌝ ∗
+      exit_tok γ' rv xs ∗ gen_uniq cs rv γ'.
+  Proof.
+    intros Hne Hm1.
+    iIntros "(%gn & %b & %rv & %xs & %Hr & [[%Hf _] | (%γ' & %Hrng & %Hoci & Hesc & Huniq)])".
+    - exfalso. apply Hm1. rewrite Hr (proj1 Hf). exact sext_neg1_64.
+    - iExists γ', rv, xs. iFrame "Hesc Huniq". iPureIntro.
+      split; [ exact Hr | ].
+      split; [ exact (proj1 Hrng) | ].
+      split; [ destruct Hoci as [Hin | Heq];
+                 [ exact Hin | exfalso; exact (Hne Heq) ] | ].
+      exact (proj2 Hrng).
+  Qed.
+
 
   (* the parent's arm: a NONZERO return, the key it trapped at bumped, and
      fork's answer at that return value. *)
@@ -1171,6 +1200,14 @@ Section UexecRet.
     (□ (riscv_kill_cred -∗ Q (-1)) ∗
      Rc ∗
      ∀ (g' : gname) (pidc : mword 32),
+       (* THE CHILD IS NOT <INIT> (lane TRAP-ROWS-4, B1b).  <init>'s pid is
+          the literal 1 and it is registered forever ([SlotGen.init_reg]),
+          so <allocpid>'s scan -- which proves its candidate is a key the
+          pid register does NOT have -- refutes it.  The KERNEL owes this
+          ([SpecAllocproc.allocproc_post]'s uncounted arm); the child
+          spends it on wait's reaping arm, where it is what turns "my
+          child, or I am <init>" into "my child". *)
+       ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
        my_pay g' Q -∗
        Rc -∗
        (* THE CHILD INHERITS THE BIT.  uvmcopy copies the parent's leaves at
@@ -1203,6 +1240,8 @@ Section UexecRet.
         feeds it to the wand below to build the child. *)
      sfork_lend f ∗
      (∀ (fdv' : list fdstate) (cw' : Z) (g' : gname) (pidc : mword 32),
+        (* THE CHILD IS NOT <INIT> -- see [uexec_fork_child_F] above *)
+        ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
         my_pay g' (sfork_pay f) -∗
         (* THE CHILD'S TABLE IS THE PARENT'S.  fork() copies it --
            [np->ofile[i] = filedup(p->ofile[i])] -- and this is the arm
@@ -1237,6 +1276,7 @@ Section UexecRet.
     □ (riscv_kill_cred -∗ Q (-1)) -∗
     Rc -∗
     (∀ (fdv' : list fdstate) (cw' : Z) (g' : gname) (pidc : mword 32),
+       ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
        my_pay g' Q -∗
        ⌜fdv' = uvis_fd W⌝ -∗ ⌜cw' = uvis_cwd W⌝ -∗
        Rc -∗
@@ -1245,9 +1285,9 @@ Section UexecRet.
     uexec_fork_child_F X W Q Rc.
   Proof.
     iIntros "#Hk HRc H". rewrite /uexec_fork_child_F.
-    iSplitR; [ iExact "Hk" | ]. iFrame "HRc". iIntros (g' pidc) "Hp HRc".
-    iApply ("H" $! (uvis_fd W) (uvis_cwd W) g' pidc with "Hp [%] [%] HRc");
-      reflexivity.
+    iSplitR; [ iExact "Hk" | ]. iFrame "HRc". iIntros (g' pidc) "%Hne Hp HRc".
+    iApply ("H" $! (uvis_fd W) (uvis_cwd W) g' pidc with "[%] Hp [%] [%] HRc");
+      [ exact Hne | reflexivity | reflexivity ].
   Qed.
 
   Lemma uexec_fork_child_to (X : uvis -d> iPropO Σ) (W : uvis)
@@ -1256,6 +1296,7 @@ Section UexecRet.
     □ (riscv_kill_cred -∗ Q (-1)) ∗
     Rc ∗
     (∀ (fdv' : list fdstate) (cw' : Z) (g' : gname) (pidc : mword 32),
+       ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
        my_pay g' Q -∗
        ⌜fdv' = uvis_fd W⌝ -∗ ⌜cw' = uvis_cwd W⌝ -∗
        Rc -∗
@@ -1264,8 +1305,8 @@ Section UexecRet.
   Proof.
     rewrite /uexec_fork_child_F. iIntros "(#Hk & HRc & H)".
     iSplitR; [ iExact "Hk" | ]. iFrame "HRc".
-    iIntros (fdv' cw' g' pidc) "Hp -> -> HRc".
-    iApply ("H" with "Hp HRc").
+    iIntros (fdv' cw' g' pidc) "%Hne Hp -> -> HRc".
+    iApply ("H" with "[%] Hp HRc"). exact Hne.
   Qed.
 
   (* WHAT A RESUME PROVES ABOUT THE CONSOLE READ (lane TRAP-ROWS, T2(iii)).
@@ -1437,10 +1478,17 @@ Section UexecRet.
      wait writes the exit status into the caller's buffer, so the image,
      the descriptor view and the receipt are all read exactly as they are
      at every other returning entry. *)
+  (* AT THE CALLER'S OWN PID AND AT <INIT>'S LITERAL (lane TRAP-ROWS-4,
+     B1b): the row the process gets back is the MIDDLE form, so a process
+     that can name its own pid ([UkRun.ukn_pid]'s fragment) reads the
+     reaping arm's disjunct as "the generation I reaped was mine, unless I
+     AM <init>" -- and a forked child refutes the second half against the
+     [pidc <> 1] its own fork handed it. *)
   Definition uexec_wait_F (X : uvis -d> iPropO Σ) (n : Z) (f : sfam)
       (W : uvis) : iProp Σ :=
     uexec_ret_cont_gen X n f W
-      (fun (r : mword 64) (cs' : gset gname) => uwait_ans r (uvis_ch W) cs').
+      (fun (r : mword 64) (cs' : gset gname) =>
+         uwait_ans_pid r (uvis_ch W) cs' (uvis_pid W)).
 
   (* THE ARM WITHOUT THE DEPOSIT -- today's return, read at the fixpoint
      variable.  The trap loop's round is stated over this
@@ -2097,6 +2145,8 @@ Section UexecRet.
         (* ...AND THE LEND, BESIDE THE CHILD'S LEG (lane FORK-REFUND) *)
         sfork_lend f ∗
         (∀ (fdv' : list fdstate) (cw' : Z) (g' : gname) (pidc : mword 32),
+           (* THE CHILD IS NOT <INIT> (lane TRAP-ROWS-4, B1b) *)
+           ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
            my_pay g' (sfork_pay f) -∗
            ⌜fdv' = uvis_fd W⌝ -∗
            ⌜cw' = uvis_cwd W⌝ -∗
@@ -2121,7 +2171,7 @@ Section UexecRet.
            ⌜usys_ret_pid n r (uvis_pid W)⌝ -∗
            (* ...and what the resume proves (lane TRAP-ROWS, T2(iii)) *)
            ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r cs'⌝ -∗
-           uwait_ans r (uvis_ch W) cs' -∗
+           uwait_ans_pid r (uvis_ch W) cs' (uvis_pid W) -∗
            spost_at uslot n f W r M' fdv' cw' cs' -∗
            uslot (bump W r M' π' szv' fdv' cw' g' cs' lz')))
      else
@@ -2377,7 +2427,7 @@ Section UexecRet.
          rewrite /uexec_fork_child_F HfRk HfRl;
          iSplitR; [ iModIntro; iIntros "_"; done | ];
          iSplitR; [ done | ];
-         iIntros (g' pidc) "Hp _"; iApply "Halltriv";
+         iIntros (g' pidc) "%Hne Hp _"; iApply "Halltriv";
          cbn [uvis_gen bump bump_at]; iExact "Hp" ]] |].
     (* THE MINT NAMES THE PAYLOAD NOW ([UexecSG.sbundle_of_supply], R1):
        this inhabitant's is the constant [fun _ => R], and the family that

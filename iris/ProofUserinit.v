@@ -426,7 +426,7 @@ Section ProofUserinit.
     iAssert (□ (riscv_kill_cred -∗ (fun _ : Z => True)%I (-1)))%I as "#HKu".
     { iModIntro. iIntros "_". done. }
     iApply (AP.wp_allocproc_sconf fsc_kalloc fsc_kpages γp γf γs R3 0%nat (K - 4)%nat b pj
-              on (Some (S np)) b lks (fun _ : Z => True)%I
+              on (Some (S np)) true b lks (fun _ : Z => True)%I
               Kap ltac:(lia) Hnb Hbelow
               with "HKu Hcg Hcpu Htext Hpc Hpinv Hlpid Hkenv Hpav").
     iIntros (CID7 Hq7 mr1) "%Hcsap Hpc Hpost".
@@ -447,7 +447,16 @@ Section ProofUserinit.
       "(%Hfacts & Hheld & Hhart & Hpriv & Hgen & Hsg & Hpr & Hfrag & Hrow & Hxb & #Hmk & Hfd & Hirs & Hbsl & Hks & Hkfree
         & Hctx & Hcg & Hcpu & Hpay & Hkenv & Hpav)".
     destruct U as [V M].
-    destruct Hfacts as (Hrv & Hj & Hgl & Hpidb & _ & _ & Hcwd0 & Hrest & Hnc).
+    destruct Hfacts as (Hrv & Hj & Hgl & Hpidb & Hpid1 & _ & _ & Hcwd0 & Hrest & Hnc).
+    (* <INIT>'S PID IS THE LITERAL 1 (lane TRAP-ROWS-4, B1b).  The ledger
+       this contract takes carries the pid counter's boot-era token, so the
+       allocproc call above read the counter -- still the 1 the .data carve
+       pinned -- off <pid_lock>'s payload and took it on its first
+       candidate.  Everything below this line therefore names the literal,
+       which is what the whole wait row downstream is stated at. *)
+    cbn [pav_boot] in Hpid1.
+    assert (Hpidlit : pid = (mword_of_int 1 : mword 32))
+      by (apply bv_eq; rewrite Hpid1; vm_compute; reflexivity).
     (* THE FIRST PROCESS'S GENERATION, CUT.  allocproc minted it whole at
        the TRIVIAL payload so that a forking parent could still choose one
        ([ChildTok.gen_set]); <init> has no parent, so nothing re-chooses it
@@ -496,6 +505,12 @@ Section ProofUserinit.
     iAssert (WaitInv.init_gen (proc_addr j) pid) as "#Hig".
     { rewrite /WaitInv.init_gen. iExists (pv_gen V).
       iFrame "Hsgd Hgpid Hipis Hprd". }
+    (* ...AND THE SAME READING AT THE LITERAL (lane TRAP-ROWS-4, B1b),
+       which is the form every row downstream is stated at:
+       [UsertrapRes.ut_caps], [SyscParkEnv.park_world] and this contract's
+       own post. *)
+    iAssert (WaitInv.init_gen (proc_addr j) (mword_of_int 1 : mword 32))
+      as "#Higl"; [ rewrite -Hpidlit; iExact "Hig" | ].
     iAssert (gen_halves_priv (proc_addr j) pid (pv_gen V))
       with "[Hsg Hpr Htaken]" as "Hgh";
       [iApply (gen_halves_priv_intro (proc_addr j) pid (pv_gen V)
@@ -796,7 +811,12 @@ Section ProofUserinit.
        basic update -- unlike [kalloc_env_at_seal] two lines up, which [iMod]
        eliminates against a bare [WP] on its own. *)
     iApply fupd_wp.
-    iMod (procs_avail_seal ⊤ np with "Hpav") as "#Hpav".
+    (* THE SEAL TAKES <INIT>'S REGISTRATION WITH IT (lane TRAP-ROWS-4,
+       B1b): userinit is the one party that holds both the counted ledger
+       and the identity it has just sealed, so this is where every later
+       allocproc gets the reading that refutes the candidate 1. *)
+    iDestruct (WaitInv.init_gen_reg (proc_addr j) with "Higl") as "#Hir".
+    iMod (procs_avail_seal_spent ⊤ np with "Hir Hpav") as "#Hpav".
     iModIntro.
     (* ================================================================= *)
     (* THE PAID PARK.  The record [N] names the first process's trap-loop  *)
@@ -812,9 +832,9 @@ Section ProofUserinit.
     (* ================================================================= *)
     iAssert (∃ iv1 : mword 64,
                (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ iv1 ∗
-               WaitInv.init_gen iv1 pid)%I
+               WaitInv.init_gen iv1 (mword_of_int 1 : mword 32))%I
       as (iv1) "[#Hip1 #Hig1]".
-    { iExists (proc_addr j). iFrame "Hinitproc Hig". }
+    { iExists (proc_addr j). iFrame "Hinitproc Higl". }
     iDestruct (procs_inv_len with "Hpinv") as %Hnproc.
     iAssert (⌜fs_geom_ok⌝)%I as %Hgeomok.
     { iPoseProof "Hpersist" as "Hp".
@@ -825,7 +845,7 @@ Section ProofUserinit.
     pose (N := MkUtNames γft γf γw γs j γl pd pav pu
                  γtl
                  iv1 DfracDiscarded
- ks pid pid).
+ ks pid).
     assert (Hwf : ut_wf N).
     { split_and!; [exact Hj | exact Hgl | exact Hnproc | exact (fgo_loggeom Hgeomok)]. }
     iAssert (park_env N) as "#Henv".
@@ -855,7 +875,7 @@ Section ProofUserinit.
         iDestruct "Hdcaps" as "(#Hd1 & #Hd2 & #Hd3 & #Hd4 & #Hd5 & #Hd6 & #Hd7)".
         iFrame "Hd1 Hd2 Hd3 Hd4 Hd5 Hd6 Hcready Hwire Htramp Hpav".
         iSplitR; [iExists γp; iExact "Hlpid"|].
-        iSplitR; [iExists iv1, pid; iFrame "Hip1 Hig1"|].
+        iSplitR; [iExists iv1; iFrame "Hip1 Hig1"|].
         iExact "Hd7". }
       iSplitR; [iExists γp; iExact "Hlpid"|].
       iSplitR; [iExact "Hpav"|].
@@ -1147,7 +1167,7 @@ Section ProofUserinit.
     - split; [| exact HP4ra].
       unfold callee_saved. split_and!; assumption.
     - iExact "Hkenv".
-    - iExists (proc_addr j). iFrame "Hinitproc". iExists pid. iExact "Hig".
+    - iExists (proc_addr j). iFrame "Hinitproc". iExact "Higl".
   Qed.
 
 End ProofUserinit.

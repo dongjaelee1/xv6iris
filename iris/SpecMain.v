@@ -645,7 +645,7 @@ Section SpecMain.
        [SpecUserinit.wp_userinit_sconf_body] takes [procs_avail (Some (S k))]
        and it is what refutes allocproc's empty-table arm, which userinit
        does not test (claude-notes/kernel-defects.md). *)
-    procs_avail (Some NPROC) -∗
+    procs_avail_at (Some NPROC) true -∗
     (* THE CHILDREN MAP AND ITS NPROC ROWS, minted in the boot fupd at the
        canonical name ([WaitInv.children_res_alloc]) because a row has to
        be spellable in [ProcDefs.proc_dormant].  Main pairs the authority

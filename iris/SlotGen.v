@@ -568,6 +568,104 @@ Section SlotGen.
     exact (proj1 (Qp.lt_nge _ _) Hlt Hd).
   Qed.
 
+  (* ------------------------------------------------------------------ *)
+  (* THE PID COUNTER'S BOOT-ERA TOKEN (lane TRAP-ROWS-4, B1b).            *)
+  (* ------------------------------------------------------------------ *)
+  (* WHAT IT IS FOR.  <init>'s pid is the LITERAL 1 -- the C carves
+     [int nextpid = 1], userinit's allocproc is the first allocation in
+     the boot order and <started> is published after it -- and the whole
+     wait row downstream names that literal.  Nothing OUTSIDE <pid_lock>
+     can see the counter, so the fact has to be a conjunct of the lock's
+     own payload, and a payload conjunct has to be RE-ESTABLISHABLE by
+     every party that opens the lock.  Hence a ONE-SHOT rather than an
+     exact-value mirror:
+
+       [nextpid_pend]  -- WHOLE, exclusive, minted once at boot beside the
+          children map and carried by the proc ledger's COUNTED regime
+          ([ProcAvail.procs_avail_at _ true]).  It is what REFUTES the
+          payload's right disjunct, so its holder reads "the counter is
+          still 1 and no slot holds pid 1" off the lock.
+       [nextpid_shot]  -- DISCARDED, hence PERSISTENT, and carried by every
+          sealed ledger ([ProcAvail.procs_avail None]).  It is what a
+          token-less caller re-establishes the payload with.
+
+     An exact-value mirror cannot work here and the reason is worth
+     recording: updating a two-half value ghost needs BOTH halves, so a
+     caller without the tracked half could not move the payload off the
+     tracked side at all -- the "uncounted caller keeps the old post"
+     corollary would be false as stated.  A one-shot inverts that: the
+     untracked side is the PERSISTENT one, so it is free.
+       THE VALUE IS JUNK.  Only the dfrac carries information; the token
+     is reused from [ipidUR] at a second name ([Xv6Cameras.npid_name]) so
+     that no new functor joins the bundle. *)
+  Definition nextpid_pend : iProp Σ :=
+    own npid_name (Some (to_dfrac_agree (DfracOwn 1)
+                           ((mword_of_int 0 : mword 32) : leibnizO (mword 32)))
+                   : ipidUR).
+
+  Definition nextpid_shot : iProp Σ :=
+    own npid_name (Some (to_dfrac_agree DfracDiscarded
+                           ((mword_of_int 0 : mword 32) : leibnizO (mword 32)))
+                   : ipidUR).
+
+  Global Instance nextpid_shot_persistent : Persistent nextpid_shot.
+  Proof. rewrite /nextpid_shot. apply _. Qed.
+  Global Instance nextpid_shot_timeless : Timeless nextpid_shot.
+  Proof. rewrite /nextpid_shot. apply _. Qed.
+  Global Instance nextpid_pend_timeless : Timeless nextpid_pend.
+  Proof. rewrite /nextpid_pend. apply _. Qed.
+
+  (* THE EXCLUSION, which is what the counted caller reads the counter's
+     value with: a pending token and a shot cannot both exist. *)
+  Lemma nextpid_pend_shot : nextpid_pend -∗ nextpid_shot -∗ False.
+  Proof.
+    iIntros "H1 H2".
+    iDestruct (own_valid_2 with "H1 H2") as %Hv.
+    rewrite -Some_op Some_valid dfrac_agree_op_valid_L in Hv.
+    destruct Hv as [Hd _].
+    apply dfrac_valid_own_discarded in Hd.
+    iPureIntro. apply (proj1 (Qp.lt_nge _ _) Hd). done.
+  Qed.
+
+  (* ...and the one-way step allocproc takes at its store to <nextpid> *)
+  Lemma nextpid_shoot : nextpid_pend ==∗ nextpid_shot.
+  Proof.
+    rewrite /nextpid_pend /nextpid_shot. iApply own_update.
+    apply option_update. apply dfrac_agree_persist.
+  Qed.
+
+  (* ------------------------------------------------------------------ *)
+  (* <INIT>'S REGISTRATION, AS A READING (lane TRAP-ROWS-4, B1b).         *)
+  (* ------------------------------------------------------------------ *)
+  (* The persistent quarter of <init>'s pid registration, at the LITERAL
+     pid userinit sealed it at.  It is what refutes a fresh allocation's
+     candidate: allocproc's scan proves its candidate is a key the
+     register does NOT have, and this says 1 is a key it DOES.  A sealed
+     proc ledger carries it ([ProcAvail.procs_avail None]) -- userinit
+     supplies it at the seal, which is the one moment both are in one
+     hand -- so kfork's allocproc gains no premise it does not already
+     hold.  PERSISTENT, hence free to relay. *)
+  Definition init_reg : iProp Σ :=
+    (∃ g : gname, pid_reg (mword_of_int 1 : mword 32) DfracDiscarded g)%I.
+
+  Global Instance init_reg_persistent : Persistent init_reg.
+  Proof. rewrite /init_reg /pid_reg. apply _. Qed.
+  Global Instance init_reg_timeless : Timeless init_reg.
+  Proof. rewrite /init_reg /pid_reg. apply _. Qed.
+
+  (* THE REFUTATION ITSELF, at allocproc's insert. *)
+  Lemma init_reg_ne (R : gmap Z gname) (pidc : mword 32) :
+    R !! bv_unsigned pidc = None ->
+    pid_reg_auth R -∗ init_reg -∗ ⌜bv_unsigned pidc <> 1⌝.
+  Proof.
+    intro Hfree. iIntros "Ha (%g & #Hreg)".
+    iDestruct (pid_reg_lookup with "Ha Hreg") as %Hl.
+    iPureIntro. intro He.
+    assert (Hone : bv_unsigned (mword_of_int 1 : mword 32) = 1)
+      by (vm_compute; reflexivity).
+    rewrite Hone in Hl. rewrite -He in Hl. rewrite Hl in Hfree. discriminate.
+  Qed.
+
 End SlotGen.
 
 (* ===================================================================== *)

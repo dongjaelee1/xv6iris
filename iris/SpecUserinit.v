@@ -253,7 +253,10 @@ Definition wp_userinit_sconf_body
      [fsc_kalloc] -- [ProofMain] builds the bundle out of [kinit]'s own
      post at exactly that name -- so nothing upstream loses generality. *)
   kalloc_env_at fsc_kalloc fsc_kpages on -∗
-  procs_avail (Some (S np)) -∗
+  (* AT THE BOOT-ERA INDEX (lane TRAP-ROWS-4, B1b): the ledger carries the
+     pid counter's token, which is what lets the allocproc call below read
+     <init>'s pid off <pid_lock>'s payload as the LITERAL 1. *)
+  procs_avail_at (Some (S np)) true -∗
   (* the one global cell userinit writes *)
   (mword_of_int KernelSyms.initproc : mword 64) ↦₈ v0 -∗
   (* ...AND <INIT>'S SAVED-PID CELL, WHOLE AND AT A JUNK VALUE (lane
@@ -307,7 +310,7 @@ Definition wp_userinit_sconf_body
          but it is stated here because it is what makes that record's row
          non-vacuous. *)
       (∃ v : mword 64, (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ v ∗
-         ∃ p0 : mword 32, WaitInv.init_gen v p0) -∗
+         WaitInv.init_gen v (mword_of_int 1 : mword 32)) -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

@@ -1391,18 +1391,18 @@ Section UtA6.
           by (apply bool_decide_eq_true_2; exact (zero_reg_of_uint _ Hga0)).
         iDestruct ("Hwo" with "[%]") as "Hw"; [ exact (conj Hge Hgn) | ].
         rewrite Hnull.
-        iDestruct "Hw" as (ipw rv xs) "[%Hr Ha]".
+        iDestruct "Hw" as (rv xs) "[%Hr Ha]".
         assert (Hsm1 : (sign_extend' 64 rv : mword 64)
                        = (mword_of_int (-1) : mword 64))
           by (rewrite <- Hr; exact Hgm1).
-        iDestruct (wait_ans_m1 rv xs cs cs2 gn true pid ipw Hsm1 with "Ha")
+        iDestruct (wait_ans_m1 rv xs cs cs2 gn true pid Hsm1 with "Ha")
           as "[%Hf #Hwhy]".
         destruct Hf as (Hrm & Hcse).
         iEval (rewrite (Hgna Hge)) in "Hwhy".
         iSplitR.
         + iModIntro. iIntros "_". iSplitR; [ iPureIntro; exact Hcse | ].
           iExact "Hwhy".
-        + iIntros "_". rewrite Hnull. iExists ipw, rv, xs.
+        + iIntros "_". rewrite Hnull. iExists rv, xs.
           iSplitR; [ iPureIntro; exact Hr | ].
           rewrite Hrm Hcse. iApply wait_ans_neg.
           iEval (rewrite <- (Hgna Hge)) in "Hwhy". iExact "Hwhy".

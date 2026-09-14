@@ -2128,8 +2128,20 @@ Section UkRunSys.
      what a program holding [ChildTok.child_tok] for a child it forked
      refutes.  This is the whole point of the row; the leaf below is the
      same call with the row dropped, for the callers that do not read it. *)
-  Lemma wp_uk_ecall_wait_null_live (N : uk_names Σ) (h : CpuId) (m : regfile)
-      (pc : mword 64) (avail : nat) (Sc : gset gname) :
+  (* ...AND THE ONE PLACE THE RUN'S PID IS LEGIBLE (lane TRAP-ROWS-4, B1b).
+     The answer's reaping arm names the CALLER'S OWN pid
+     ([UexecRet.uwait_ans_pid] at [uvis_pid W]), and the only party that
+     can tie that number to anything is this leaf: [urun] carries the pid
+     AUTHORITY ([UkRun.urun_ids]) and the program carries the fragment, and
+     they meet here and nowhere else.  So the proof is written ONCE, over a
+     READER the caller supplies -- a one-shot accessor on the authority,
+     spent exactly where the run is open -- and the two leaves below are
+     its two instances: [wp_uk_ecall_wait_null_live] at the trivial reader
+     (its statement verbatim as it always was) and
+     [wp_uk_ecall_wait_null_pid] at the program's own fragment. *)
+  Lemma wp_uk_ecall_wait_null_gen (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (avail : nat) (Sc : gset gname)
+      (P : mword 32 -> iProp Σ) :
     usysno m = USYS_wait ->
     uint (m !!! Regidx (mword_of_int 10)) = 0 ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
@@ -2137,9 +2149,13 @@ Section UkRunSys.
     urun N h m pc avail -∗
     udepw N m pc USYS_wait -∗
     uch (ukn_ch N) Sc -∗
-    (∀ (h' : CpuId) (r : mword 64) (Sc' : gset gname),
+    (∀ pidv : mword 32,
+       UserChildren.upid_auth (ukn_pid N) (bv_unsigned pidv) -∗
+       UserChildren.upid_auth (ukn_pid N) (bv_unsigned pidv) ∗ P pidv) -∗
+    (∀ (h' : CpuId) (r : mword 64) (Sc' : gset gname) (pidv : mword 32),
+       P pidv -∗
        ⌜r = (mword_of_int (-1) : mword 64) -> Sc' = (∅ : gset gname)⌝ -∗
-       uwait_ans r Sc Sc' -∗
+       uwait_ans_pid r Sc Sc' pidv -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        uch (ukn_ch N) Sc' -∗
@@ -2147,8 +2163,14 @@ Section UkRunSys.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hn Hz Hal4.
-    iIntros "#Hi Hrun Hsb Hch Hcont".
+    iIntros "#Hi Hrun Hsb Hch Hrd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    (* THE READER IS SPENT HERE, where the run is open: the pid authority
+       is LENT out of the identity conjunct and put straight back, so
+       nothing else in the proof sees the difference. *)
+    iDestruct (urun_ids_pid with "Hcha") as "[Hpida Hidsp]".
+    iDestruct ("Hrd" $! pidv with "Hpida") as "[Hpida HP]".
+    iDestruct ("Hidsp" with "Hpida") as "Hcha".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -2251,11 +2273,83 @@ Section UkRunSys.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
-    iApply ("Hcont" $! h' r cs' with "[%] Hans Hrun Hch").
+    iApply ("Hcont" $! h' r cs' pidv with "HP [%] Hans Hrun Hch").
     (* THE ROW, OFF THE RESUME'S OWN PURE CONJUNCT.  [Hliverow]'s wait
        clause is guarded on the null status pointer, which is this leaf's
        own premise ([Ha0]). *)
     exact (proj2 Hliverow eq_refl Ha0).
+  Qed.
+
+  (* THE ROW AS IT ALWAYS WAS, at the trivial reader: the pid is absorbed
+     back into [UexecRet.uwait_ans] and the caller sees the statement it
+     has always seen. *)
+  Lemma wp_uk_ecall_wait_null_live (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (avail : nat) (Sc : gset gname) :
+    usysno m = USYS_wait ->
+    uint (m !!! Regidx (mword_of_int 10)) = 0 ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    udepw N m pc USYS_wait -∗
+    uch (ukn_ch N) Sc -∗
+    (∀ (h' : CpuId) (r : mword 64) (Sc' : gset gname),
+       ⌜r = (mword_of_int (-1) : mword 64) -> Sc' = (∅ : gset gname)⌝ -∗
+       uwait_ans r Sc Sc' -∗
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
+         (add_vec_int pc 4) avail -∗
+       uch (ukn_ch N) Sc' -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hn Hz Hal4. iIntros "#Hi Hrun Hsb Hch Hcont".
+    iApply (wp_uk_ecall_wait_null_gen N h m pc avail Sc (fun _ => emp)%I
+              Hn Hz Hal4 with "Hi Hrun Hsb Hch [] [Hcont]").
+    { iIntros (pidv) "H". by iFrame "H". }
+    iIntros (h' r Sc' pidv) "_ %Hm1 Hans Hrun Hch".
+    iApply ("Hcont" $! h' r Sc' with "[%] [Hans] Hrun Hch");
+      [ exact Hm1 | iApply (uwait_ans_of_pid with "Hans") ].
+  Qed.
+
+  (* ...AND THE ROW A PROCESS THAT CAN NAME ITS OWN PID READS (lane
+     TRAP-ROWS-4, B1b).  It hands the program the MIDDLE form
+     ([UexecRet.uwait_ans_pid]) at a pid it has just been told is its own,
+     and gives its fragment back.  A process that also knows its pid is
+     not 1 -- a forked child does, off [UkFork.wp_uk_ecall_fork]'s child
+     arm -- then reads the reaping arm as "the generation I reaped was one
+     of MY children" ([UexecRet.uwait_ans_pid_mine]), which is what
+     redeems a [ChildTok.child_tok]. *)
+  Lemma wp_uk_ecall_wait_null_pid (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (avail : nat) (Sc : gset gname) (p : Z) :
+    usysno m = USYS_wait ->
+    uint (m !!! Regidx (mword_of_int 10)) = 0 ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    udepw N m pc USYS_wait -∗
+    uch (ukn_ch N) Sc -∗
+    UserChildren.upid (ukn_pid N) p -∗
+    (∀ (h' : CpuId) (r : mword 64) (Sc' : gset gname) (pidv : mword 32),
+       ⌜bv_unsigned pidv = p⌝ -∗
+       UserChildren.upid (ukn_pid N) p -∗
+       ⌜r = (mword_of_int (-1) : mword 64) -> Sc' = (∅ : gset gname)⌝ -∗
+       uwait_ans_pid r Sc Sc' pidv -∗
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
+         (add_vec_int pc 4) avail -∗
+       uch (ukn_ch N) Sc' -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hn Hz Hal4. iIntros "#Hi Hrun Hsb Hch Hpid Hcont".
+    iApply (wp_uk_ecall_wait_null_gen N h m pc avail Sc
+              (fun pidv => ⌜bv_unsigned pidv = p⌝ ∗
+                           UserChildren.upid (ukn_pid N) p)%I
+              Hn Hz Hal4 with "Hi Hrun Hsb Hch [Hpid] [Hcont]").
+    { iIntros (pidv) "Ha".
+      iDestruct (UserChildren.upid_agree with "Ha Hpid") as %Heq.
+      iFrame "Ha Hpid". iPureIntro. exact Heq. }
+    iIntros (h' r Sc' pidv) "[%Heq Hpid] %Hm1 Hans Hrun Hch".
+    iApply ("Hcont" $! h' r Sc' pidv with "[%] Hpid [%] Hans Hrun Hch");
+      [ exact Heq | exact Hm1 ].
   Qed.
 
   (* ...and the same call with the row DROPPED, which is what the callers

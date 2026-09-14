@@ -76,6 +76,10 @@ Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvPtsto.
 Require Import KallocInv.   (* [avail_dec] / [avail_sub] / [avail_zero] *)
 Require Import ProcGeom.    (* [NPROC], [proc_addr] *)
+Require Import Xv6Cameras.  (* [wchG]: the pid counter's boot token lives here *)
+(* [SlotGen.nextpid_pend] / [nextpid_shot] / [init_reg] -- the two things the
+   COUNTED regime carries beyond the authority (lane TRAP-ROWS-4, B1b). *)
+Require Import SlotGen.
 Local Open Scope Z_scope.
 
 (* ===================================================================== *)
@@ -183,30 +187,148 @@ Section ProcAvail.
   Qed.
 
   (* ---- THE TWO REGIMES ---- *)
-  Definition procs_avail (on : option nat) : iProp Σ :=
+  (* THE AUTHORITY HALF, which is all the regime used to be. *)
+  Definition pav_core (on : option nat) : iProp Σ :=
     match on with
     | Some n => ∃ U : gset nat, own pav_name (● U) ∗ ⌜(n <= pav_free U)%nat⌝
     | None   => inv pavN (∃ U : gset nat, own pav_name (● U))
     end%I.
 
+  (* ...AND WHAT A SEALED LEDGER ALSO CARRIES (lane TRAP-ROWS-4, B1b), both
+     PERSISTENT: the pid counter's shot and <init>'s permanent
+     registration.  Together they are exactly what an allocproc call with
+     no boot token needs at <pid_lock>: the shot re-establishes the
+     payload's two marks, and the registration refutes the candidate 1.
+     They live HERE because [procs_avail None] is the observable every such
+     caller already holds -- see the ruling recorded in
+     claude-notes/projects/app-echo.md (shape (A)). *)
+  Definition npid_done : iProp Σ := (nextpid_shot ∗ init_reg)%I.
+
+  Global Instance npid_done_persistent : Persistent npid_done.
+  Proof. rewrite /npid_done. apply _. Qed.
+
+  (* THE LEDGER, INDEXED BY WHETHER THE BOOT TOKEN IS STILL IN IT.  The
+     index is a BOOLEAN and not the counter's value: the value is read off
+     <pid_lock>'s payload, which the token is what unlocks, so nothing
+     outside has to mirror it.  At [None] the index is IGNORED -- the boot
+     era is over there by construction -- which is what keeps
+     [procs_avail None] persistent. *)
+  Definition procs_avail_at (on : option nat) (t : bool) : iProp Σ :=
+    (pav_core on ∗
+     match on with
+     | Some _ => if t then nextpid_pend else npid_done
+     | None   => npid_done
+     end)%I.
+
+  (* IS THE BOOT-ERA TOKEN ACTUALLY IN THIS LEDGER?  At [None] the index
+     says nothing, so the answer is [false] there whatever it reads. *)
+  Definition pav_boot (on : option nat) (t : bool) : bool :=
+    match on with Some _ => t | None => false end.
+
+  (* ...and the token itself, off the ledger and at that reading.  This is
+     what allocproc's pid section takes ([ProofAllocproc.wp_ap_pidsec]). *)
+  Lemma procs_avail_at_tok (on : option nat) (t : bool) :
+    procs_avail_at on t -∗
+    pav_core on ∗ (if pav_boot on t then nextpid_pend else npid_done).
+  Proof. destruct on; iIntros "[$ $]". Qed.
+
+  (* ...AND WHAT COMES BACK OUT OF A CALL THAT SPENT THE TOKEN.  allocproc
+     SHOOTS the boot token at its store to <nextpid> -- that is what puts
+     the payload's marks back -- and in the boot era it cannot yet
+     re-establish [init_reg]: the registration it just made is WHOLE, and
+     only userinit, three stores later, discards a share of it.  So the
+     ledger comes back in this weaker shape and the caller closes it with
+     an [init_reg] of its own ([pav_of_spent]) or seals it
+     ([procs_avail_seal_spent]).  At [None] it is entirely persistent, so
+     an uncounted caller loses nothing at all. *)
+  Definition pav_spent (on : option nat) : iProp Σ :=
+    (pav_core on ∗ nextpid_shot)%I.
+
+  Lemma pav_of_spent (on : option nat) :
+    init_reg -∗ pav_spent on -∗ procs_avail_at on false.
+  Proof.
+    iIntros "#Hir [$ #Hshot]". rewrite /npid_done.
+    destruct on; iFrame "Hshot Hir".
+  Qed.
+
+  (* ...AND THE OLD NAME, WHOSE ARITY DOES NOT MOVE.  The ~17 files that
+     only thread or weaken the ledger never see the index (lane
+     TRAP-ROWS-3's corollary trick, used here for the third time). *)
+  Definition procs_avail (on : option nat) : iProp Σ :=
+    (∃ t : bool, procs_avail_at on t)%I.
+
+  Global Instance procs_avail_at_None_persistent t :
+    Persistent (procs_avail_at None t).
+  Proof. rewrite /procs_avail_at /pav_core. apply _. Qed.
+
   Global Instance procs_avail_None_persistent : Persistent (procs_avail None).
-  Proof. apply _. Qed.
+  Proof. rewrite /procs_avail. apply _. Qed.
+
+  (* at [None] the index says nothing, which is the corollary every
+     uncounted caller takes *)
+  Lemma procs_avail_None_at (t : bool) :
+    procs_avail None ⊣⊢ procs_avail_at None t.
+  Proof.
+    rewrite /procs_avail. iSplit.
+    - iIntros "(%t0 & H)". iExact "H".
+    - iIntros "H". iExists t. iExact "H".
+  Qed.
+
+  (* ...and the one-directional form a caller applies *)
+  Lemma procs_avail_at_None (t : bool) :
+    procs_avail None -∗ procs_avail_at None t.
+  Proof. iIntros "H". by iApply (procs_avail_None_at t). Qed.
 
   (* boot -> steady state.  Irreversible: the authority goes into the
-     invariant and the count is gone. *)
-  Lemma procs_avail_seal (E : coPset) (n : nat) :
-    procs_avail (Some n) ={E}=∗ procs_avail None.
+     invariant and the count is gone.  IT ALSO SHOOTS THE BOOT TOKEN and
+     takes <init>'s registration, which is what makes every later
+     allocproc's payload obligation free: userinit is the one party that
+     holds both at once. *)
+  Lemma procs_avail_seal_at (E : coPset) (n : nat) (t : bool) :
+    init_reg -∗ procs_avail_at (Some n) t ={E}=∗ procs_avail None.
   Proof.
-    iIntros "(%U & Ha & _)".
-    iApply (inv_alloc pavN E (∃ U : gset nat, own pav_name (● U))).
-    iApply bi.later_intro. iExists U. iFrame "Ha".
+    iIntros "#Hir [Hc Ht]".
+    iAssert (|==> nextpid_shot)%I with "[Ht]" as ">#Hshot".
+    { destruct t.
+      - iApply (nextpid_shoot with "Ht").
+      - iDestruct "Ht" as "[#Hs _]". iModIntro. iExact "Hs". }
+    iDestruct "Hc" as "(%U & Ha & _)".
+    iAssert (|={E}=> inv pavN (∃ U : gset nat, own pav_name (● U)))%I
+      with "[Ha]" as ">#Hinv".
+    { iApply (inv_alloc pavN E (∃ U : gset nat, own pav_name (● U))).
+      iApply bi.later_intro. iExists U. iFrame "Ha". }
+    iModIntro. iExists false. rewrite /procs_avail_at /pav_core /npid_done.
+    iFrame "Hinv Hshot Hir".
+  Qed.
+
+  Lemma procs_avail_seal (E : coPset) (n : nat) :
+    init_reg -∗ procs_avail (Some n) ={E}=∗ procs_avail None.
+  Proof.
+    iIntros "#Hir (%t & H)". iApply (procs_avail_seal_at E n t with "Hir H").
+  Qed.
+
+  (* ...and the form userinit actually takes: the ledger allocproc handed
+     back, closed with the registration userinit has just discarded. *)
+  Lemma procs_avail_seal_spent (E : coPset) (n : nat) :
+    init_reg -∗ pav_spent (Some n) ={E}=∗ procs_avail None.
+  Proof.
+    iIntros "#Hir H".
+    iDestruct (pav_of_spent (Some n) with "Hir H") as "H".
+    iApply (procs_avail_seal_at E n false with "Hir H").
   Qed.
 
   (* WEAKENING the count -- what a caller with a budget to spare threads on. *)
+  Lemma procs_avail_le_at (n m : nat) (t : bool) :
+    (m <= n)%nat -> procs_avail_at (Some n) t -∗ procs_avail_at (Some m) t.
+  Proof.
+    iIntros (Hle) "[(%U & Ha & %Hn) $]". iExists U. iFrame "Ha". iPureIntro. lia.
+  Qed.
+
   Lemma procs_avail_le (n m : nat) :
     (m <= n)%nat -> procs_avail (Some n) -∗ procs_avail (Some m).
   Proof.
-    iIntros (Hle) "(%U & Ha & %Hn)". iExists U. iFrame "Ha". iPureIntro. lia.
+    iIntros (Hle) "(%t & H)". iExists t.
+    iApply (procs_avail_le_at n m t Hle with "H").
   Qed.
 
   (* ---- THE REFUTATION.  This is the whole point of the counted regime:
@@ -256,7 +378,7 @@ Section ProcAvail.
     ([∗ list] j ∈ seq 0 NPROC, pslot_used j) -∗
     False.
   Proof.
-    iIntros "(%U & Ha & %Hn) Hall".
+    iIntros "(%t & (%U & Ha & %Hn) & _) Hall".
     iDestruct (pslot_used_all_auth U with "Ha Hall") as %Hsub.
     rewrite (pav_free_full U Hsub) in Hn. lia.
   Qed.
@@ -266,20 +388,30 @@ Section ProcAvail.
      caller's count, if it has one, to be 0.  The counted caller then
      refutes the whole arm from its own [Some (S k)] premise, and never
      sees it. *)
+  Lemma procs_avail_zero_at (on : option nat) (t : bool) :
+    ([∗ list] j ∈ seq 0 NPROC, pslot_used j) -∗
+    procs_avail_at on t -∗ ⌜avail_zero on⌝ ∗ procs_avail_at on t.
+  Proof.
+    iIntros "#Hall Hav". destruct on as [n|]; [| by iFrame].
+    destruct n as [|k]; [ by iFrame |].
+    iExFalso. iApply (procs_avail_full k with "[Hav] Hall").
+    iExists t. iExact "Hav".
+  Qed.
+
   Lemma procs_avail_zero (on : option nat) :
     ([∗ list] j ∈ seq 0 NPROC, pslot_used j) -∗
     procs_avail on -∗ ⌜avail_zero on⌝ ∗ procs_avail on.
   Proof.
-    iIntros "#Hall Hav". destruct on as [n|]; [| by iFrame].
-    destruct n as [|k]; [ by iFrame |].
-    iExFalso. iApply (procs_avail_full k with "Hav Hall").
+    iIntros "#Hall (%t & Hav)".
+    iDestruct (procs_avail_zero_at on t with "Hall Hav") as "[$ Hav]".
+    iExists t. iExact "Hav".
   Qed.
 
 
   (* ---- THE MINT.  Both regimes: the counted one updates the authority it
      holds, the sealed one opens the invariant. ---- *)
   Lemma pslot_mint_some (n j : nat) :
-    procs_avail (Some n) ==∗ procs_avail (avail_dec (Some n)) ∗ pslot_used j.
+    pav_core (Some n) ==∗ pav_core (avail_dec (Some n)) ∗ pslot_used j.
   Proof.
     iIntros "(%U & Ha & %Hn)".
     iMod (own_update _ _ (● (U ∪ {[j]}) ⋅ ◯ ({[j]} ∪ U : gset nat)) with "Ha")
@@ -296,7 +428,7 @@ Section ProcAvail.
 
   Lemma pslot_mint_none (E : coPset) (j : nat) :
     ↑pavN ⊆ E ->
-    procs_avail None ={E}=∗ pslot_used j.
+    pav_core None ={E}=∗ pslot_used j.
   Proof.
     iIntros (HE) "#Hinv".
     iInv "Hinv" as (U) ">Ha" "Hclose".
@@ -312,10 +444,12 @@ Section ProcAvail.
   Qed.
 
   (* the uniform statement the allocator's proof uses: at either regime the
-     marker can be minted, and the count (if any) drops by one. *)
-  Lemma pslot_mint (E : coPset) (on : option nat) (j : nat) :
+     marker can be minted, and the count (if any) drops by one.  AT THE
+     AUTHORITY ALONE (lane TRAP-ROWS-4, B1b): by the time allocproc mints
+     the marker its ledger has been split and the boot-era token is gone. *)
+  Lemma pslot_mint_core (E : coPset) (on : option nat) (j : nat) :
     ↑pavN ⊆ E ->
-    procs_avail on ={E}=∗ procs_avail (avail_dec on) ∗ pslot_used j.
+    pav_core on ={E}=∗ pav_core (avail_dec on) ∗ pslot_used j.
   Proof.
     iIntros (HE) "Hav". destruct on as [n|].
     - iMod (pslot_mint_some n j with "Hav") as "[$ $]". done.
@@ -324,6 +458,33 @@ Section ProcAvail.
       iModIntro. iSplitR; [iExact "Hav" | iExact "Hu"].
   Qed.
 
+  Lemma pav_spent_mint (E : coPset) (on : option nat) (j : nat) :
+    ↑pavN ⊆ E ->
+    pav_spent on ={E}=∗ pav_spent (avail_dec on) ∗ pslot_used j.
+  Proof.
+    iIntros (HE) "[Hc #Hs]".
+    iMod (pslot_mint_core E on j HE with "Hc") as "[$ $]".
+    iModIntro. iExact "Hs".
+  Qed.
+
+  Lemma pslot_mint_at (E : coPset) (on : option nat) (t : bool) (j : nat) :
+    ↑pavN ⊆ E ->
+    procs_avail_at on t ={E}=∗ procs_avail_at (avail_dec on) t ∗ pslot_used j.
+  Proof.
+    iIntros (HE) "[Hc Htok]".
+    iMod (pslot_mint_core E on j HE with "Hc") as "[Hc $]".
+    iModIntro. rewrite /procs_avail_at. iFrame "Hc".
+    destruct on as [n|]; cbn [avail_dec]; iExact "Htok".
+  Qed.
+
+  Lemma pslot_mint (E : coPset) (on : option nat) (j : nat) :
+    ↑pavN ⊆ E ->
+    procs_avail on ={E}=∗ procs_avail (avail_dec on) ∗ pslot_used j.
+  Proof.
+    iIntros (HE) "(%t & Hav)".
+    iMod (pslot_mint_at E on t j HE with "Hav") as "[H $]".
+    iModIntro. iExists t. iExact "H".
+  Qed.
 End ProcAvail.
 
 (* ===================================================================== *)
@@ -331,8 +492,12 @@ End ProcAvail.
 (*  OUTSIDE the section, over the FUNCTOR half only, because it is what    *)
 (*  creates the name-carrying instance ([FdSlots.fd_slots_alloc]'s shape). *)
 (* ===================================================================== *)
+(* THE AUTHORITY HALF ONLY (lane TRAP-ROWS-4, B1b): the counted regime's
+   other conjunct is the pid counter's boot token, which lives at a name
+   [WaitInv.children_res_alloc] mints, so the boot pairs the two up itself
+   ([BootShared]). *)
 Lemma procs_avail_alloc `{!riscvGS Σ, !pavGpreS Σ} :
-  ⊢ |==> ∃ _ : pavG Σ, procs_avail (Some NPROC).
+  ⊢ |==> ∃ _ : pavG Σ, pav_core (Some NPROC).
 Proof.
   iMod (own_alloc (● (∅ : gset nat))) as (γ) "Ha".
   { by apply auth_auth_valid. }

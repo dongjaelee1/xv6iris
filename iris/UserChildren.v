@@ -378,19 +378,26 @@ Section WaitAns.
      the two meet: it holds the caller's registration and the sealed pid,
      and hands this arm the equation ([ProofKwait.kw_reap]).  Both
      disjuncts are PURE, hence persistent. *)
+  (* AT THE LITERAL 1 (lane TRAP-ROWS-4, B1b).  <init>'s pid is not a
+     parameter any more: the C carves [int nextpid = 1], userinit's
+     allocproc is the FIRST allocation in the boot order and <started> is
+     published after it, so <init>'s pid IS 1 and both sides of this row
+     name the same number.  [ip] used to ride here beside [pidv] because
+     neither side could name the other's; with the literal there is
+     nothing left to tie. *)
   Definition wait_ans (rv : mword 32) (xs : Z) (cs cs' : gset gname)
-      (gn : gname) (nullst : bool) (pidv ip : mword 32) : iProp Σ :=
+      (gn : gname) (nullst : bool) (pidv : mword 32) : iProp Σ :=
     (⌜rv = (mword_of_int (-1) : mword 32) /\ cs' = cs⌝ ∗ wait_why cs gn nullst
      ∨ ∃ γ' : gname,
          ⌜cs' = cs ∖ {[γ']} /\ (1 <= bv_unsigned rv <= PIDMAX)%Z⌝ ∗
-         ⌜γ' ∈ cs \/ pidv = ip⌝ ∗
+         ⌜γ' ∈ cs \/ pidv = (mword_of_int 1 : mword 32)⌝ ∗
          exit_tok γ' rv xs ∗ gen_uniq cs rv γ')%I.
 
   (* the pure row, which is all the twenty-odd relays between kwait and the
      program ever look at *)
   Lemma wait_ans_reaped (rv : mword 32) (xs : Z) (cs cs' : gset gname)
-      (gn : gname) (nullst : bool) (pidv ip : mword 32) :
-    wait_ans rv xs cs cs' gn nullst pidv ip -∗ ⌜ch_reaped cs cs'⌝.
+      (gn : gname) (nullst : bool) (pidv : mword 32) :
+    wait_ans rv xs cs cs' gn nullst pidv -∗ ⌜ch_reaped cs cs'⌝.
   Proof.
     iIntros "[[[_ %He] _] | (%γ' & [%He _] & _ & _ & _)]"; iPureIntro.
     - left. exact He.
@@ -408,9 +415,9 @@ Section WaitAns.
      the channel back -- the [Hrwhy] idiom the console read already uses
      ([SpecFileread.console_receipt_m1_why]). *)
   Lemma wait_ans_m1 (rv : mword 32) (xs : Z) (cs cs' : gset gname)
-      (gn : gname) (nullst : bool) (pidv ip : mword 32) :
+      (gn : gname) (nullst : bool) (pidv : mword 32) :
     (sign_extend' 64 rv : mword 64) = (mword_of_int (-1) : mword 64) ->
-    wait_ans rv xs cs cs' gn nullst pidv ip -∗
+    wait_ans rv xs cs cs' gn nullst pidv -∗
     ⌜rv = (mword_of_int (-1) : mword 32) /\ cs' = cs⌝ ∗ wait_why cs gn nullst.
   Proof.
     intro Hm1. iIntros "[[%Hf #Hwhy] | (%γ' & [_ %Hrng] & _ & _ & _)]".
@@ -422,9 +429,9 @@ Section WaitAns.
      its OWN reason: the childless exit the empty column, the killed exit
      the one-shot, the copyout exit the guard's refutation. *)
   Lemma wait_ans_neg (xs : Z) (cs : gset gname) (gn : gname) (nullst : bool)
-      (pidv ip : mword 32) :
+      (pidv : mword 32) :
     wait_why cs gn nullst -∗
-    wait_ans (mword_of_int (-1) : mword 32) xs cs cs gn nullst pidv ip.
+    wait_ans (mword_of_int (-1) : mword 32) xs cs cs gn nullst pidv.
   Proof.
     iIntros "Hwhy". iLeft. iSplitR; [ iPureIntro; split; reflexivity | ].
     iExact "Hwhy".
@@ -485,10 +492,10 @@ Section WaitAnsGen.
      registration says which pid its generation was given, and the sealed
      pid says which pid <init> was given. *)
   Lemma wait_ans_of_gen (rv : mword 32) (xs : Z) (cs cs' : gset gname)
-      (gn : gname) (nullst : bool) (pidme ipid : mword 32) :
-    gen_pid gn pidme -∗ init_pid_is ipid -∗
+      (gn : gname) (nullst : bool) (pidme : mword 32) :
+    gen_pid gn pidme -∗ init_pid_is (mword_of_int 1 : mword 32) -∗
     wait_ans_gen rv xs cs cs' gn nullst -∗
-    wait_ans rv xs cs cs' gn nullst pidme ipid.
+    wait_ans rv xs cs cs' gn nullst pidme.
   Proof.
     iIntros "#Hgp #Hi [Hneg | (%γ' & %Hrng & Hoci & Hesc & Huniq)]".
     - iLeft. iExact "Hneg".

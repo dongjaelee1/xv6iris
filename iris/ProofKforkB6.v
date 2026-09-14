@@ -293,10 +293,17 @@ Section KforkPrologue.
            [SpecAllocproc.allocproc_post]: this exit is the only place both
            it and the record are in hand, and [SpecKfork.kfork_post]'s pid
            arm is what it is carried for. *)
+        (* ...AND IT IS NOT <INIT>'S (lane TRAP-ROWS-4, B1b).  <init>'s pid
+           is the literal 1 and its registration is permanent, so the pid
+           scan that chose this one refutes it -- kfork runs at
+           [ProcAvail.procs_avail None], which is where the reading comes
+           from ([SpecAllocproc.allocproc_post]'s uncounted arm).  It is
+           what [UexecRet.uexec_fork_child_F]'s wand owes the child. *)
         ⌜ npa = proc_addr j /\ (j < NPROC)%nat /\ γs !! j = Some γl2 /\
           pv_ofile (us_V Uc') = replicate NOFILE (zero_reg : mword 64) /\
           pv_cwd (us_V Uc') = (zero_reg : mword 64) /\
-          (1 <= bv_unsigned pid_c <= PIDMAX)%Z ⌝ -∗
+          (1 <= bv_unsigned pid_c <= PIDMAX)%Z /\
+          pid_c <> (mword_of_int 1 : mword 32) ⌝ -∗
         (* WHAT THE CHILD ALREADY SHARES WITH THE PARENT, and it is exactly
            the part of the child's record a SLOT reads: [np->sz = p->sz] is
            the store at +0x40, the image is the parent's page for page (the
@@ -823,9 +830,14 @@ Section KforkPrologue.
     assert (HM5ra : M5 !!! Regidx Rra = add_vec_int (mword_of_int (KF + 0x12) : mword 64) 4)
       by (rewrite /M5 upd_eq; reflexivity).
     iDestruct (cpu_own_transport CID8 CID10 lvl eb pme b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
-    iApply (Allocproc.wp_allocproc_core fsc_kalloc fsc_kpages γp γf γs M5 lvl K1 eb pme on None b lks Q
+    (* THE LEDGER IS SEALED HERE (lane TRAP-ROWS-4, B1b), so the index is
+       [false] and what allocproc reads off it is <init>'s permanent
+       registration -- which is what makes the found arm report
+       [bv_unsigned pid <> 1]. *)
+    iDestruct (procs_avail_at_None false with "Hpav") as "#Hpavf".
+    iApply (Allocproc.wp_allocproc_core fsc_kalloc fsc_kpages γp γf γs M5 lvl K1 eb pme on None false b lks Q
               ltac:(lia) ltac:(lia) Hbelow
-              with "HKp Hcg Hcpu Htext Hpc Hprocs Hplock Henv Hpav").
+              with "HKp Hcg Hcpu Htext Hpc Hprocs Hplock Henv Hpavf").
     all: try lkbelow.
     iIntros (CID11 Hs11 mf6) "%HcsB Hpc Hpost".
     assert (Hpc16 : ret_pc (M5 !!! Regidx Rra) = mword_of_int (KF + 0x16))
@@ -887,7 +899,12 @@ Section KforkPrologue.
       iDestruct "Hp2" as (j γl2 ch pid_c Uc root tfp ks rest nc)
         "(%Hpures & Hheld & Hhart & Hcpriv & Hcgen & Hcsg & Hcpr & Hcfrag & Hcrow & Hcxb & #Hmk & Hfdsp & Hirsp & Hbslp & Hks & Hkstk & Hctx & Hcg & Hcpu & Harmpay & Henv' & _)".
       destruct Uc as [Vc Mc].
-      destruct Hpures as (Hrv & HjN & Hgamma & Hpidc & HVcupt & HVcof & HVccwd & Hrestlen & Hncle).
+      destruct Hpures as (Hrv & HjN & Hgamma & Hpidc & Hpidne & HVcupt & HVcof & HVccwd & Hrestlen & Hncle).
+      (* the uncounted regime's reading, at the word: kfork holds
+         [procs_avail None], so allocproc reported [bv_unsigned pid <> 1] *)
+      cbn [pav_boot] in Hpidne.
+      assert (Hpidnew : pid_c <> (mword_of_int 1 : mword 32)).
+      { intro He. apply Hpidne. rewrite He. vm_compute. reflexivity. }
       assert (HBa0 : mf6 !!! Regidx Ra0 = proc_addr j) by exact Hrv.
       set (npa := proc_addr j).
       assert (Hnpanz : npa <> (zero_reg : mword 64)) by (apply proc_addr_nonzero; exact HjN).
@@ -1583,7 +1600,8 @@ Section KforkPrologue.
                       | cbn [upd_lazy upd_pt upd_sz pv_ofile pv_fdg]; exact HVcof
                       | cbn [upd_lazy upd_pt upd_sz pv_cwd pv_fdg]; exact HVccwd
                       (* [split_and!] splits the interval too *)
-                      | exact (proj1 Hpidc) | exact (proj2 Hpidc)].
+                      | exact (proj1 Hpidc) | exact (proj2 Hpidc)
+                      | exact Hpidnew].
         * split_and!; [reflexivity | reflexivity |
                        cbn [upd_lazy upd_pt upd_sz pv_upt pv_fdg]; exact Hpermc |
                        cbn [upd_lazy pv_lazy]; reflexivity].

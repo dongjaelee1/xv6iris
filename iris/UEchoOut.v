@@ -792,7 +792,6 @@ Section UEchoOut.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
     iApply (uslot_of_urun_ro W 12 (echq v ps0 cs0 n0 P)
-              (mword_of_int 0 : mword 32) (* B1a: nothing reads [ukn_ipid] yet *)
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
               with "Hdep Hpay").

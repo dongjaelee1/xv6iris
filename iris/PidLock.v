@@ -122,13 +122,36 @@ Section PidLock.
      register is what makes pid uniqueness among live processes a
      RESOURCE -- two halves at one pid agree on the generation
      ([SlotGen.pid_reg_agree]) -- which is what kwait's answer stands on. *)
+  (* ...AND THE BOOT ERA'S TWO MARKS (lane TRAP-ROWS-4, B1b), one beside
+     the counter and one beside the 64 values.  Each is
+     [<the boot fact> ∨ SlotGen.nextpid_shot], and together they say:
+
+       EITHER <nextpid> IS STILL THE 1 THE .data CARVE PINNED AND NO SLOT
+       HOLDS PID 1 -- so the very next <allocpid> hands out 1 on its FIRST
+       candidate, with no retry -- OR THE BOOT-ERA TOKEN HAS BEEN SHOT.
+
+     That is what pins <init>'s pid to the literal 1: userinit's allocproc
+     is the only caller that holds [SlotGen.nextpid_pend] (it rides the
+     proc ledger's counted regime, [ProcAvail.procs_avail_at _ true]),
+     the token REFUTES the right disjunct, and the left one gives the
+     value and kills the retry branch.  That same call then shoots the
+     token at its store to <nextpid> and puts the shot back here.
+       EVERY OTHER PARTY IS UNAFFECTED.  A caller that does not write
+     <nextpid> -- freeproc, whose [p->pid = 0] cannot make a zero equal to
+     1 -- hands whichever disjunct it received straight back; a caller
+     that does (an uncounted allocproc) holds the shot already, off
+     [ProcAvail.procs_avail None].  The marks are CONTEXT-FREE, so the
+     payload is still a [TsoCtx.CtxMorph]. *)
   Definition nextpid_res_at (ξ : TsoCtx.CtxId) : iProp Σ :=
     ((∃ v : mword 32, TsoCtx.ctx_word4_pointsto ξ alp_nextpid (DfracOwn 1) v ∗
-                      ⌜1 <= bv_unsigned v <= PIDMAX⌝) ∗
+                      ⌜1 <= bv_unsigned v <= PIDMAX⌝ ∗
+                      (⌜bv_unsigned v = 1⌝ ∨ SlotGen.nextpid_shot)) ∗
      (∃ (pids : list (mword 32)) (R : gmap Z gname),
         ⌜length pids = NPROC /\ pid_reg_dom R pids⌝ ∗
         ([∗ list] j ↦ p ∈ pids, pid_lock_share_at ξ (proc_addr j) p) ∗
-        pid_reg_auth R))%I.
+        pid_reg_auth R ∗
+        (⌜Forall (fun q : mword 32 => bv_unsigned q <> 1) pids⌝
+         ∨ SlotGen.nextpid_shot)))%I.
   Definition nextpid_res : iProp Σ := nextpid_res_at TsoCtx.cur_ctx.
 
   Global Instance nextpid_res_at_morph : TsoCtx.CtxMorph nextpid_res_at.
@@ -159,11 +182,14 @@ Section PidLock.
   (* the ambient spelling, opened: what allocproc's critical section holds *)
   Lemma nextpid_res_open :
     nextpid_res ⊣⊢
-      (∃ v : mword 32, alp_nextpid ↦₄ v ∗ ⌜1 <= bv_unsigned v <= PIDMAX⌝) ∗
+      (∃ v : mword 32, alp_nextpid ↦₄ v ∗ ⌜1 <= bv_unsigned v <= PIDMAX⌝ ∗
+                       (⌜bv_unsigned v = 1⌝ ∨ SlotGen.nextpid_shot)) ∗
       (∃ (pids : list (mword 32)) (R : gmap Z gname),
          ⌜length pids = NPROC /\ pid_reg_dom R pids⌝ ∗
          ([∗ list] j ↦ p ∈ pids, pid_lock_share (proc_addr j) p) ∗
-         pid_reg_auth R).
+         pid_reg_auth R ∗
+         (⌜Forall (fun q : mword 32 => bv_unsigned q <> 1) pids⌝
+          ∨ SlotGen.nextpid_shot)).
   Proof. rewrite /nextpid_res /nextpid_res_at /pid_lock_share. reflexivity. Qed.
 
 End PidLock.

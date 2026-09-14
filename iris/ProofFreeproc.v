@@ -528,7 +528,7 @@ Section ProofFreeproc.
       assert (Hacq_thr : fr_thr mm macq) by exact (fr_thr_cs mm Z3 macq Hcsacq HZ3thr).
       (* the lock's quarter of THIS slot's pid cell, out of its payload,
          AND the pid register whose key this store is about to free *)
-      iDestruct "HR" as "[Hnp (%pids & %R & [%Hplen %Hpdom] & Hshares & Hauth)]".
+      iDestruct "HR" as "[Hnp (%pids & %R & [%Hplen %Hpdom] & Hshares & Hauth & Hmark)]".
       assert (Hsj : is_Some (pids !! j)) by (apply lookup_lt_is_Some_2; rewrite Hplen; exact Hj).
       destruct Hsj as [pid3 Hsj].
       iDestruct (big_sepL_insert_acc _ pids j pid3 Hsj with "Hshares") as "[Hshj Hshback]".
@@ -576,15 +576,31 @@ Section ProofFreeproc.
       iApply fupd_wp.
       iMod (pid_reg_delete R pid g with "Hauth Hpr") as "Hauth".
       iModIntro.
-      iAssert nextpid_res with "[Hnp Hshares Hauth]" as "HR".
+      iAssert nextpid_res with "[Hnp Hshares Hauth Hmark]" as "HR".
       { rewrite /nextpid_res /nextpid_res_at. iFrame "Hnp".
         iExists (<[j := (mword_of_int 0 : mword 32)]> pids),
                 (delete (bv_unsigned pid) R).
-        iFrame "Hshares Hauth". iPureIntro. split.
-        - rewrite length_insert. exact Hplen.
-        - apply (pid_reg_dom_delete R pids j pid (mword_of_int 0 : mword 32)
-                   Hpdom).
-          rewrite (proj2 Hpeq). exact Hsj. }
+        iFrame "Hshares Hauth". iSplitR.
+        { iPureIntro. split.
+          - rewrite length_insert. exact Hplen.
+          - apply (pid_reg_dom_delete R pids j pid (mword_of_int 0 : mword 32)
+                     Hpdom).
+            rewrite (proj2 Hpeq). exact Hsj. }
+        (* THE BOOT ERA'S SECOND MARK SURVIVES THE STORE (lane TRAP-ROWS-4,
+           B1b): freeproc writes a ZERO into a pid cell, and zero is not 1,
+           so "no slot holds pid 1" is preserved verbatim.  The sealed side
+           is persistent and goes straight back. *)
+        iDestruct "Hmark" as "[%Hall | #Hs]"; [| iRight; iExact "Hs" ].
+        iLeft. iPureIntro.
+        assert (Hjlt : (j < length pids)%nat)
+          by (apply lookup_lt_is_Some_1; exists pid3; exact Hsj).
+        apply Forall_lookup. intros i q Hi.
+        destruct (decide (i = j)) as [-> | Hij].
+        - rewrite list_lookup_insert in Hi; [| exact Hjlt ].
+          injection Hi as <-. vm_compute. discriminate.
+        - rewrite list_lookup_insert_ne in Hi;
+            [| exact (fun Hc => Hij (eq_sym Hc)) ].
+          exact (Forall_lookup_1 _ _ _ _ Hall Hi). }
       assert (Hq3a : add_vec_int (mword_of_int (FR + 0x36) : mword 64) 4 = mword_of_int (FR + 0x3a))
         by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hq3a) in "Hpc".

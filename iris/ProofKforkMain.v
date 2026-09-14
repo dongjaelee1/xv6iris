@@ -542,6 +542,11 @@ Section KforkArms.
        [SpecKfork.kfork_post]'s pid disjunct, and hence what makes fork's
        return to the PARENT nonzero. *)
     (1 <= bv_unsigned pid_c <= PIDMAX)%Z ->
+    (* ...AND IT IS NOT <INIT>'S (lane TRAP-ROWS-4, B1b), which is what the
+       child's leg of the program's fork obligation
+       ([UexecRet.uexec_fork_child_F]) is owed and what a forked child
+       spends on wait's reaping arm. *)
+    pid_c <> (mword_of_int 1 : mword 32) ->
     (* WHAT THE CHILD ALREADY SHARES WITH THE PARENT ([ProofKforkB6]'s exit
        clause of the same name): the size uvmcopy was run at, the image it
        copied and the permission view it rebuilt.  With the trapframe the
@@ -652,7 +657,10 @@ Section KforkArms.
     (* ...and the lend the slot is built from, which this arm feeds to the
        wand below rather than refunding: the child exists. *)
     Rc -∗
+    (* THE CHILD IS NOT <INIT> -- see [SpecKfork]'s own row (lane
+       TRAP-ROWS-4, B1b) *)
     (∀ (γ : gname) (pidc : mword 32),
+       ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
        my_pay γ Q -∗ Rc -∗ uslot (uvis_of (kfork_child Up) stsP γ ∅ pidc)) -∗
     wp_next b pme (fun (CID : CpuId) =>
       ∀ mr : regfile,
@@ -665,7 +673,7 @@ Section KforkArms.
   Proof.
     intros HK Hlvl Hbeq Hmsp Hmra Hms0 Hms1 Hms5 HMtsp HMts4 HMts5
       HMta5 HMta4 HMta3 Htfsrc Htfdst HMtthr Hnpa HjN Hgamma
-      Hofnull Hcwdnull Hpidc Hshsz Hshimg Hshperm Hshlz Hbelow.
+      Hofnull Hcwdnull Hpidc Hpidne Hshsz Hshimg Hshperm Hshlz Hbelow.
     subst tfsrc tfdst.
     iIntros "#Htext #Hprocs Hcg Hcpu Hpc Hframe Hpv Hpfrag Hprow HCpriv Hcgen Hcsg Hcpr Hcfrag Hcrow Hcxb #Hmk
              Hheld Hhart Hfd Hbsl Hkst Hctxex Hpay Hkalloc #Hwlock #Hft
@@ -905,7 +913,8 @@ Section KforkArms.
          one is instantiated: [pid_c] is the number <allocpid> chose, the
          one [kfork_post]'s success arm returns and the one the park keys
          the child's slot at ([ParkCap.park_cap] passes [un_pid N]). *)
-      iSpecialize ("Hjslot" $! (pv_gen Vc4) pid_c with "Hmp HRc").
+      iSpecialize ("Hjslot" $! (pv_gen Vc4) pid_c with "[%] Hmp HRc");
+        [ exact Hpidne | ].
       iApply (B5.kfk_b5 γs γf γw γl γl2 j mf4 K lvl eb b
                 pme ks pid_c (MkUstate Vc4 ((us_M Uc'))) stsP
                 ∅
@@ -1096,7 +1105,7 @@ Section KforkMain.
       iIntros "Hcg #Ht Hpc Hframe Hpv Hpfrag HCp Hcgen Hcsg Hcpr Hcfrag Hcrow Hcxb #Hmk Hheld Hhart Hfd Hirs Hbsl Hkst Hctx Hpay Hcpu
                Hke #Hwl #Hft #Hit #Hiti HR".
       iDestruct "HR" as "(Hrow & HRc & HR)".
-      destruct Hpures as (Hnpa & HjN & Hgamma & Hofn & Hcwdn & Hpidc).
+      destruct Hpures as (Hnpa & HjN & Hgamma & Hofn & Hcwdn & Hpidc & Hpidne).
       destruct Hshare as (Hshsz & Hshimg & Hshperm & Hshlz).
       destruct Htfs as (Htfsrc & Htfdst).
       iApply (kfork_arm3 (CID0 := CID3) γf γw γl γs
@@ -1107,7 +1116,7 @@ Section KforkMain.
                 (wpk_K_ge56 K HK) Hlvl Hbeq
                 eq_refl eq_refl eq_refl eq_refl eq_refl
                 HMtsp HMts4 HMts5 HMta5 HMta4 HMta3 Htfsrc Htfdst HMtthr
-                Hnpa HjN Hgamma Hofn Hcwdn Hpidc Hshsz Hshimg Hshperm Hshlz ltac:(lkbelow)
+                Hnpa HjN Hgamma Hofn Hcwdn Hpidc Hpidne Hshsz Hshimg Hshperm Hshlz ltac:(lkbelow)
                 with "Ht Hprocs Hcg Hcpu Hpc Hframe Hpv Hpfrag Hrow HCp Hcgen Hcsg Hcpr Hcfrag Hcrow Hcxb Hmk Hheld Hhart
                       Hfd Hbsl Hkst Hctx Hpay Hke Hwl Hft Hit Hiti Hireg Hirs Hfdone Hworld Htoken HRc Hjslot
                       [HR]").

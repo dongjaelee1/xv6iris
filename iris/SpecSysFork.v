@@ -185,7 +185,9 @@ Definition wp_sys_fork_sconf_body
      to the wand below on the success path and refunds it on the -1 arm,
      where no child was created.  sys_fork neither reads nor moves it. *)
   Rc -∗
+  (* THE CHILD IS NOT <INIT> -- see [SpecKfork]'s own row *)
   (∀ (g' : gname) (pidc : mword 32),
+     ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
      my_pay g' Q -∗ Rc -∗ uslot (uvis_of (kfork_child U) sts g' ∅ pidc)) -∗
   (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'):
      relayed straight to kfork, which relays it to allocproc, which founds

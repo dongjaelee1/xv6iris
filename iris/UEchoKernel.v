@@ -454,7 +454,6 @@ Section UEchoKernel.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
     iApply (uslot_of_urun_ro W 12 (fun _ => True)%I
-              (mword_of_int 0 : mword 32) (* B1a: nothing reads [ukn_ipid] yet *)
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
               with "Hdep Hpay").

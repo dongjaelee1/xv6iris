@@ -3521,9 +3521,8 @@ Section ProofKwaitMain.
   Lemma wp_kwait_sconf `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (γa γp γf γw : gname) (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (eb : bool) (b : bool)
-      (pid : mword 32) (U : ustate) (lks : gset string) (cs : gset gname)
-      (ipid : mword 32) :
-    wp_kwait_sconf_body γa γp γf γw γs j γl m av eb b pid U lks cs ipid.
+      (pid : mword 32) (U : ustate) (lks : gset string) (cs : gset gname) :
+    wp_kwait_sconf_body γa γp γf γw γs j γl m av eb b pid U lks cs.
   Proof.
     cbv beta delta [wp_kwait_sconf_body].
     (* [Hbelow] is SpecKwait.v's own new LAST Coq premise -- see

@@ -4232,12 +4232,11 @@ Section SyscallArms.
     iDestruct "Hip" as "[Hipc #Hid]".
     iAssert (sysc_init_id dqi ip) with "[Hipc]" as "Hip";
       [ iFrame "Hipc"; iExact "Hid" | ].
-    iAssert (∃ p0 : mword 32, SlotGen.init_pid_is p0)%I as (p0) "#Hipis".
-    { iDestruct "Hid" as "[_ Hg]". iDestruct "Hg" as (gz p1) "(_ & _ & Hi)".
-      iExists p1. iExact "Hi". }
+    (* AT THE LITERAL 1 (lane TRAP-ROWS-4, B1b): the identity row is pinned
+       there ([WaitInv.init_ident_at]), so there is no number to close. *)
+    iDestruct (WaitInv.init_ident_pid_is with "Hid") as "#Hipis".
     (* ---- the call ---- *)
     iApply (SysWait.wp_sys_wait_sconf fsc_kalloc γp γf γw' γs j γl M (av - 4)%nat true true lks pid U v0 cs
-              p0
               Hj Hgamma Hv0 ltac:(lia) eq_refl
               with "Hcg Hcpu Htext Hdata Hpc Hprocs Hwaitlk Hkalloc Hnextpid Hpriv Hrow Hipis").
     iIntros (CIDy Hsy mf P' rv dw xw cs')
@@ -4314,7 +4313,7 @@ Section SyscallArms.
       assert (Hv0w : v0 = pv_tf (us_V U) !!! tf_arg_idx 0)
         by (symmetry; apply list_lookup_total_correct, Hv0).
       iEval (rewrite Hv0w) in "Hans".
-      iApply (sysc_wait_out_of U _ rv (xstate_val xw) cs cs' pid p0 Ha0w
+      iApply (sysc_wait_out_of U _ rv (xstate_val xw) cs cs' pid Ha0w
                 with "Hans"). }
     iApply (sysc_exec_out_ne _ _ _ _ _ _ _ _ (sysc_num_ne7 _ _ Hnum eq_refl)).
     iApply (sysc_sys_out_quiet U sts gn cs pid fdep _ _ _ _ _ _ Hnum

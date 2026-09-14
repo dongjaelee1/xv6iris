@@ -717,7 +717,8 @@ Section UtSysBlock.
             and not inside it, so the dispatcher can refund it. *)
          iDestruct "Hj" as "(#Hjkw & HjRc & Hj)".
          iSplitR; [ iExact "Hjkw" | ]. iFrame "HjRc".
-         iIntros (g' pidc). iSpecialize ("Hj" $! g' pidc).
+         iIntros (g' pidc) "%Hne". iSpecialize ("Hj" $! g' pidc).
+         iSpecialize ("Hj" with "[%]"); [ exact Hne | ].
          rewrite (Hchild g' pidc). iExact "Hj". }
     (* THE PAYMENT, handed on unchanged for fork's reason: the row is keyed
        at the block's generation and reads the number and argument 0 of the

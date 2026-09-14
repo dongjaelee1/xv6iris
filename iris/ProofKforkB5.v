@@ -313,7 +313,7 @@ Section ProofKforkB5.
     (* -------------------------------------------------------------- *)
     iDestruct (park_world_open with "Hworld") as (γtl pd pav pu)
       "(#Hdcaps & #Hextra & #Hwire & #Htramp & #Hipx)".
-    iDestruct "Hipx" as (iv1 ip0) "[#Hip1 #Hig1]".
+    iDestruct "Hipx" as (iv1) "[#Hip1 #Hig1]".
     iDestruct (SchedCtx.procs_inv_len with "Hpinv") as %Hnproc.
     iAssert (⌜FsReady.fs_geom_ok⌝)%I as %Hgeomok.
     { iDestruct "Hfdone" as "(_ & #Hrdy & _)". iApply (FsReady.fs_ready_geom with "Hrdy"). }
@@ -324,7 +324,7 @@ Section ProofKforkB5.
     pose (N := MkUtNames γft γf γw γs j γl pd pav pu
                  γtl
                  iv1 DfracDiscarded
- ks pid_c ip0).
+ ks pid_c).
     assert (Hwf : ut_wf N).
     { split_and!; [exact Hj | exact Hgl | exact Hnproc | exact (FsReady.fgo_loggeom Hgeomok)]. }
     iAssert (park_env N) as "#Henv".

@@ -502,14 +502,12 @@ Section UsertrapRes.
     un_dqi : dfrac;
     un_ks  : mword 64;                (* the kernel stack's BASE             *)
     un_pid : mword 32;
-    (* <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-3/4, T4(b)).  PURE, and it
-       is what lets wait's answer say whose child the reaped zombie was
-       ([UserChildren.wait_ans]'s reaping arm is stated at two [mword 32]
-       parameters, the caller's pid and this one).  Tied to the ghost by
-       [ut_caps]'s [WaitInv.init_gen] row, which userinit seals
-       ([ProofUserinit]) and every later record inherits ([ProofKforkB5]:
-       a child's record carries its parent's number). *)
-    un_ipid : mword 32;
+    (* NO FIELD FOR <INIT>'S PID (lane TRAP-ROWS-4, B1b).  B1a carried one
+       here on the way to pinning wait's reaping arm at a number; the pin
+       is now the LITERAL 1 -- the C carves [int nextpid = 1] and
+       userinit's allocproc is the first allocation in the boot order --
+       so [ut_caps]'s row is [WaitInv.init_gen (un_ip N) 1] and there is
+       nothing left for a record to choose. *)
   }.
 
   (* the running process's [struct proc] address, and the fileclose
@@ -608,9 +606,9 @@ Section UsertrapRes.
       devintr_caps_any fsc_uart fsc_disk fsc_dlock γtl γs pd pav pu ∗
       sysc_park_extra γtl ∗
       wire_inv ∗ kmap_at tramp_vpn tramp_ppn KP_rx ∗
-      (∃ (ip : mword 64) (p0 : mword 32),
+      (∃ ip : mword 64,
          (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ ip ∗
-         WaitInv.init_gen ip p0).
+         WaitInv.init_gen ip (mword_of_int 1 : mword 32)).
   Proof.
     iIntros "H". iDestruct "H" as (γtl pd pav pu)
       "(#Hdev & #Hcc & #Hgeom & #Hdlk & #Htl & #Hpi & #Hcr & #Hnp & #Hpav & #Hwire & #Hkmap & #Hip & #Hu1)".
@@ -695,7 +693,7 @@ Section UsertrapRes.
         rides the park for nothing.  kexit rejoins the two
         ([WaitInv.init_ident_at_of_gen]); kwait spends the [init_pid_is]
         inside it. *)
-     WaitInv.init_gen (un_ip N) (un_ipid N) ∗
+     WaitInv.init_gen (un_ip N) (mword_of_int 1 : mword 32) ∗
      (* ...AND THE SHARE THAT ROW IS USABLE AT.  Both parkers build the
         record at [DfracDiscarded] ([ut_park_caps] pins it and is where
         this comes from); the trap loop needs to KNOW it, because
@@ -762,7 +760,7 @@ Section UsertrapRes.
      park_world (un_s N) ∗
      (* ...and <init>'s ghost identity, which the parker holds and the
         resumer cannot re-derive (lane TRAP-ROWS-3/4, T4(b)) *)
-     WaitInv.init_gen (un_ip N) (un_ipid N))%I.
+     WaitInv.init_gen (un_ip N) (mword_of_int 1 : mword 32))%I.
 
   Global Instance ut_park_caps_persistent N : Persistent (ut_park_caps N).
   Proof. rewrite /ut_park_caps. apply _. Qed.
@@ -780,7 +778,8 @@ Section UsertrapRes.
      TRAP-ROWS-3/4, T4(b)). *)
   Lemma ut_caps_init (N : ut_names) :
     ut_caps N -∗
-    ⌜un_dqi N = DfracDiscarded⌝ ∗ WaitInv.init_gen (un_ip N) (un_ipid N).
+    ⌜un_dqi N = DfracDiscarded⌝ ∗
+    WaitInv.init_gen (un_ip N) (mword_of_int 1 : mword 32).
   Proof.
     rewrite /ut_caps.
     iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
@@ -2154,7 +2153,7 @@ Proof.
      DISCARDED word agrees with itself across contexts
      ([TsoCtx.ctx_word_pointsto_agree]), so the ghost -- which is
      context-free -- rides straight over. *)
-  iDestruct "Hipw0" as (ipw p0w) "[#Hipc0 #Higw]".
+  iDestruct "Hipw0" as (ipw) "[#Hipc0 #Higw]".
   iDestruct "Hipx" as (ipx) "#Hipcx".
   iDestruct (ctx_word_pointsto_agree cur_ctx Xc with "Hipc0 Hipcx") as %<-.
   (* THE SECOND PORT'S ROW travels with the parked world -- it is the one
@@ -2194,7 +2193,7 @@ Proof.
     iSplitR; [iExact "Hpav"|].
     iSplitR; [iExact "Hwire"|].
     iSplitR; [iExact "Hkmap"|].
-    iSplitR; [iExists ipw, p0w; iFrame "Hipcx Higw" | iExact "Hu1"]. }
+    iSplitR; [iExists ipw; iFrame "Hipcx Higw" | iExact "Hu1"]. }
   rewrite /ut_caps.
   iSplitR; [iExact "Hprocs"|].
   iSplitR; [iApply (fs_ready_data with "Hfs")|].
@@ -2232,7 +2231,7 @@ Proof.
   iIntros "(_ & #Hprocs & _ & #Hdev & #Hwl & #Hft & _ & #Hpw & _) (#Hnp & _ & #Htl & #Hcr)".
   iDestruct "Hdev" as "(_ & #Hcc & _)".
   iDestruct (park_world_open with "Hpw") as (γtl0 pd0 pav0 pu0) "(_ & _ & _ & _ & #Hipx)".
-  iDestruct "Hipx" as (ipw p0w) "[#Hipc _]".
+  iDestruct "Hipx" as (ipw) "[#Hipc _]".
   rewrite /park_globals. iFrame "Hprocs Hwl Hft Hcc Hcr Htl Hnp".
   iExists ipw. iExact "Hipc".
 Qed.

@@ -1090,7 +1090,8 @@ Section LoopApply.
        ecall; every other arm refutes the guard. *)
     (⌜sc = uecall_scause
       /\ usys_num (uvis_tf (uvis_run W)) = USYS_wait⌝ -∗
-     uwait_ans (uvis_tf W' !!! tf_arg_idx 0) (uvis_ch W) (uvis_ch W')) -∗
+     uwait_ans_pid (uvis_tf W' !!! tf_arg_idx 0) (uvis_ch W) (uvis_ch W')
+       (uvis_pid W)) -∗
     (* ...AND THE ARMED POST the deposit bought, at the value the round
        bound.  Owed only on the RETURNING arm -- exit hands nothing back and
        fork pays no receipt (what its deposit buys is the CHILD's
@@ -1283,7 +1284,7 @@ Section LoopApply.
                 already says. *)
              iApply (uexec_ret_F_returning uslot uslot_key_cong W W' f r
                        (fun (r' : mword 64) (cs2 : gset gname) =>
-                          uwait_ans r' (uvis_ch W) cs2)
+                          uwait_ans_pid r' (uvis_ch W) cs2 (uvis_pid W))
                        Hl Hgn Hb Hm
                        (Hfdrow Hec) (Hpiperow Hec) Hc (Hpidrow Hec)
                     (Hliverow Hec) Hpidk
@@ -1402,7 +1403,8 @@ Section LoopApply.
     (* ...and WAIT'S, forwarded the same way *)
     (⌜sc = uecall_scause
       /\ usys_num (tf_of g (ret_pc sepc_v)) = USYS_wait⌝ -∗
-     uwait_ans (pv_tf (us_V U') !!! tf_arg_idx 0) (uvis_ch W) cs') -∗
+     uwait_ans_pid (pv_tf (us_V U') !!! tf_arg_idx 0) (uvis_ch W) cs'
+       (uvis_pid W)) -∗
     (⌜sc = uecall_scause
       /\ usys_num (tf_of g (ret_pc sepc_v)) <> USYS_exit
       /\ usys_num (tf_of g (ret_pc sepc_v)) <> USYS_fork⌝ -∗

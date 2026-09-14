@@ -384,7 +384,13 @@ Definition wp_kfork_sconf_body
      this copy ([kfork_post]'s -1 arm), and on the success path it feeds
      this copy to the wand.  A caller that lends nothing passes [emp]. *)
   Rc -∗
+  (* THE CHILD IS NOT <INIT> (lane TRAP-ROWS-4, B1b): <init>'s pid is the
+     literal 1, permanently registered, and the pid scan inside allocproc
+     is what refutes the candidate -- kfork holds [procs_avail None] and
+     that is where the refutation comes from
+     ([SpecAllocproc.allocproc_post]'s uncounted arm). *)
   (∀ (g' : gname) (pidc : mword 32),
+     ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
      my_pay g' Q -∗ Rc -∗ uslot (uvis_of (kfork_child Up) stsP g' ∅ pidc)) -∗
   (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'; the
      owner's ruling of 2026-09-13).  A [kill(2)] costs the TARGET's exit

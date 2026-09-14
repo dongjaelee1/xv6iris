@@ -1338,10 +1338,14 @@ Section ProofMain.
        word arrives at the pinned value the loader left ([BootShared]'s
        carve), so the invariant the scan keeps has an inhabitant. *)
     { rewrite /nextpid_res_at /pid_lock_share. iSplitL "Hnpid".
-      { iExists (mword_of_int 1 : mword 32). iFrame "Hnpid". iPureIntro.
+      { iExists (mword_of_int 1 : mword 32). iFrame "Hnpid".
         assert (Hv : bv_unsigned (mword_of_int 1 : mword 32) = 1)
           by (vm_compute; reflexivity).
-        rewrite Hv. unfold PIDMAX. lia. }
+        iSplitR; [ iPureIntro; rewrite Hv; unfold PIDMAX; lia | ].
+        (* ...AND THE BOOT ERA'S FIRST MARK (lane TRAP-ROWS-4, B1b): the
+           .data word IS the 1 the loader left, which is what makes
+           <init>'s pid the literal 1. *)
+        iLeft. iPureIntro. exact Hv. }
       (* THE PID REGISTER ENTERS THE PAYLOAD HERE, empty: nothing has been
          handed out, and the .bss carve pinned every pid cell at 0, so the
          domain fact holds vacuously ([SlotGen.pid_reg_dom_empty]). *)
@@ -1349,9 +1353,17 @@ Section ProofMain.
               (∅ : gmap Z gname).
       iFrame "Hpreg". iSplitR.
       { iPureIntro. split; [apply length_replicate | apply pid_reg_dom_empty]. }
-      iDestruct (pid_shares_gather NPROC 0 (mword_of_int 0 : mword 32)
-                   with "Hpshare") as "Hpshare".
-      iApply (big_sepL_mono with "Hpshare"). iIntros (i v _) "Hs". iExact "Hs". }
+      iSplitL.
+      { iDestruct (pid_shares_gather NPROC 0 (mword_of_int 0 : mword 32)
+                     with "Hpshare") as "Hpshare".
+        iApply (big_sepL_mono with "Hpshare"). iIntros (i v _) "Hs". iExact "Hs". }
+      (* ...AND THE BOOT ERA'S SECOND MARK (lane TRAP-ROWS-4, B1b): the
+         .bss carve pinned every pid cell at 0, so no slot holds pid 1 and
+         the first <allocpid> takes its first candidate with no retry. *)
+      iLeft. iPureIntro.
+      apply Forall_lookup. intros i q Hi.
+      apply lookup_replicate in Hi as [-> _].
+      vm_compute. discriminate. }
     iDestruct ("Hcgb" with "Hrun") as "Hcg".
     iDestruct "Hpid0" as (γp) "#Hpidlock".
     (* ---- ASSEMBLY 2c: the wait_lock, and it is the SAME move.  procinit
@@ -1655,7 +1667,7 @@ Section ProofMain.
        group actually applies ([SpecUserinit.USERINIT]) does not take it, so
        it is dropped at the call below; swapping the two contracts is then a
        local edit.  See claude-notes/projects/main-boot.md §G3. *)
-    procs_avail (Some NPROC) -∗
+    procs_avail_at (Some NPROC) true -∗
     (* NO CHILDREN ROWS HERE.  They were deposited into the slots' dormant
        blocks two groups back, at [SpecProcinit.procs_inv_alloc]'s third
        pass, and userinit takes none: the row the first process is parked
@@ -2066,8 +2078,8 @@ Section ProofMain.
            as [K_allocproc < nb] rather than a round number, and the two
            config ties ride down to namei's root corner. ---- *)
     (* one slot is all userinit needs, and NPROC of them is what boot minted *)
-    iDestruct (procs_avail_le NPROC 1 ltac:(unfold NPROC; lia) with "Hpavail")
-      as "Hpavail".
+    iDestruct (procs_avail_le_at NPROC 1 true ltac:(unfold NPROC; lia)
+                 with "Hpavail") as "Hpavail".
     (* ================================================================= *)
     (* STAGE (f)'S TRANSPORT SITE, AT main+0x9e.                          *)
     (*                                                                    *)

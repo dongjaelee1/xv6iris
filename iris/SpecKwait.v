@@ -182,7 +182,7 @@ Definition wp_kwait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
     (* <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-3/4, T4(b)): what the
        reaping arm's second disjunct is stated against.  PURE, and tied to
        the ghost by the [SlotGen.init_pid_is] premise below. *)
-    (ipid : mword 32) :=
+    :=
   let pcE : mword 64 := mword_of_int KernelSyms.kwait in
   let pj := proc_addr j in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
@@ -226,7 +226,8 @@ Definition wp_kwait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
      there.  This persistent row is the name, and it is what lets the
      answer below be stated at pure numbers rather than at a ghost the U
      tier could never carry. *)
-  SlotGen.init_pid_is ipid -∗
+  (* AT THE LITERAL 1 (lane TRAP-ROWS-4, B1b) -- see [SpecSysWait]'s note *)
+  SlotGen.init_pid_is (mword_of_int 1 : mword 32) -∗
   wp_next b pj (fun (CID : CpuId) =>
     (* THE ONLY THING kwait WRITES IS THE FOUR-BYTE EXIT STATUS, AT [addr],
        AND ONLY WHEN [addr <> 0].  [d] is the count copyout actually placed
@@ -258,7 +259,7 @@ Definition wp_kwait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
          escrow is keyed at what that cell reads
          ([ProcDefs.proc_dormant]'s ZOMBIE arm). *)
       wait_ans rv (xstate_val xw) cs cs' (pv_gen (us_V U))
-        (bool_decide (addr = (zero_reg : mword 64))) pid ipid -∗
+        (bool_decide (addr = (zero_reg : mword 64))) pid -∗
       sie_cap_gpr KT1 mf av b pj -∗
       cpu_own 0 eb pj b lks -∗
       pc_is ret_tgt -∗
@@ -280,7 +281,6 @@ Module Type KWAIT.
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (γa γp γf γw : gname) (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (eb : bool) (b : bool)
-      (pid : mword 32) (U : ustate) (lks : gset string) (cs : gset gname)
-      (ipid : mword 32),
-      wp_kwait_sconf_body γa γp γf γw γs j γl m av eb b pid U lks cs ipid.
+      (pid : mword 32) (U : ustate) (lks : gset string) (cs : gset gname),
+      wp_kwait_sconf_body γa γp γf γw γs j γl m av eb b pid U lks cs.
 End KWAIT.

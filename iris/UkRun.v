@@ -151,19 +151,17 @@ Record uk_names (Σ : gFunctors) := MkUkNames {
      [urun] pinned to [bv_unsigned (uvis_pid W)] and the fragment is what
      an entry constructor hands over -- [ukn_cwd]'s twin, one value wide.
      It is independently what makes getpid(2)'s answer sayable. *)
-  ukn_pid : gname;
-  (* ...AND <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-4, B).  PURE, because
-     the kernel's seal is a [Xv6Cameras.wchG] ghost and this tier carries
-     no such class (T4(b)'s ruling).  Two rows spend it: wait's reaping arm
-     ([UkRunSys.wp_uk_ecall_wait_null_live]'s [⌜p = ukn_ipid N⌝] disjunct,
-     read against the fragment above) and fork's child arm
-     ([UkFork.wp_uk_ecall_fork]'s [⌜pidc <> ukn_ipid N'⌝], which is what a
-     forked child spends to refute the first).  An entry constructor takes
-     it as a parameter and fork's child arm inherits it from the kernel's
-     own answer. *)
-  ukn_ipid : mword 32
+  (* NO FIELD FOR <INIT>'S PID (lane TRAP-ROWS-4, B1b).  B1a carried a
+     pure [ukn_ipid] here on the way to pinning wait's reaping arm at a
+     number; the pin is now the LITERAL 1 -- the C carves
+     [int nextpid = 1] and userinit's allocproc is the first allocation --
+     so the two rows that would have read it,
+     [UkRunSys.wp_uk_ecall_wait_null_pid]'s [⌜p = 1⌝] disjunct and
+     [UkFork.wp_uk_ecall_fork]'s [⌜pidc <> 1⌝], name the literal and an
+     entry constructor has nothing left to choose. *)
+  ukn_pid : gname
 }.
-Global Arguments MkUkNames {_} _ _ _ _ _ _ _ _ _.
+Global Arguments MkUkNames {_} _ _ _ _ _ _ _ _.
 Global Arguments ukn_t {_} _.
 Global Arguments ukn_d {_} _.
 Global Arguments ukn_s {_} _.
@@ -172,7 +170,6 @@ Global Arguments ukn_cwd {_} _.
 Global Arguments ukn_ch {_} _.
 Global Arguments ukn_pay {_} _.
 Global Arguments ukn_pid {_} _.
-Global Arguments ukn_ipid {_} _.
 
 (* THE TRIVIAL PAYLOAD, AS A CLASS.  A program whose exit owes its parent
    nothing has to be able to SAY so at its exit ecall
@@ -1475,14 +1472,7 @@ Section UkRun.
   (* would drop.                                                          *)
   (* ------------------------------------------------------------------- *)
   Lemma uslot_of_urun_all (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
-      (* <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-4, B): what the record
-         this constructor mints records at [UkRun.ukn_ipid], and what
-         wait's reaping arm is read against.  A PARAMETER and not a
-         [UexecSlot.uvis] field: the key is the kernel's index for a
-         process's whole execution and every [bump]/[skey_eq] law is
-         stated over it, while this number is fixed once, by the party
-         that builds the entry. *)
-      (ipid : mword 32) :
+ :
     uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) mod 8 = 0 ->
     8 * Z.of_nat avail
       <= uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) ->
@@ -1624,7 +1614,7 @@ Section UkRun.
       unfold f. rewrite Hb'. reflexivity. }
     iDestruct (ubytes_of_map γd _ base (8 * avail) f Hf with "Dmid") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid ipid) h
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid) h
                    with "[%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf Dlo Dtop");
       [ reflexivity | exact Hsz | ].
     iApply "Hprog".
@@ -1637,7 +1627,7 @@ Section UkRun.
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
-    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid ipid)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     rewrite /uvb /uvb_F /user_ptm_inv_x.
@@ -1646,14 +1636,7 @@ Section UkRun.
   Qed.
 
   Lemma uslot_of_urun (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
-      (* <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-4, B): what the record
-         this constructor mints records at [UkRun.ukn_ipid], and what
-         wait's reaping arm is read against.  A PARAMETER and not a
-         [UexecSlot.uvis] field: the key is the kernel's index for a
-         process's whole execution and every [bump]/[skey_eq] law is
-         stated over it, while this number is fixed once, by the party
-         that builds the entry. *)
-      (ipid : mword 32) :
+ :
     (* the resume sp is word-aligned -- what [ustack] now asserts, and the
        one place it is an obligation rather than a consequence, since it is
        a fact about the process the kernel set up *)
@@ -1778,7 +1761,7 @@ Section UkRun.
       unfold f. unfold D, base in *. rewrite Hb. reflexivity. }
     iDestruct (ubytes_of_map γd D base (8 * avail) f Hf with "Hd") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid ipid) h
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid) h
                    with "[%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf");
       [ reflexivity | exact Hsz | ].
     iApply "Hprog".
@@ -1791,7 +1774,7 @@ Section UkRun.
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
-    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid ipid)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     rewrite /uvb /uvb_F /user_ptm_inv_x.
@@ -1815,14 +1798,7 @@ Section UkRun.
   (* decide whether two argv slots point at the same string.               *)
   (* ------------------------------------------------------------------- *)
   Lemma uslot_of_urun_ro (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
-      (* <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-4, B): what the record
-         this constructor mints records at [UkRun.ukn_ipid], and what
-         wait's reaping arm is read against.  A PARAMETER and not a
-         [UexecSlot.uvis] field: the key is the kernel's index for a
-         process's whole execution and every [bump]/[skey_eq] law is
-         stated over it, while this number is fixed once, by the party
-         that builds the entry. *)
-      (ipid : mword 32) :
+ :
     uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) mod 8 = 0 ->
     8 * Z.of_nat avail
       <= uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) ->
@@ -1957,7 +1933,7 @@ Section UkRun.
                  (base.filter (fun kv : Z * bv 8 => kv.1 < uint sp) D)
                  base (8 * avail) f Hf with "Dlo") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid ipid) h
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid) h
                    with "[%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf Dhi");
       [ reflexivity | exact Hsz | ].
     iApply "Hprog".
@@ -1970,7 +1946,7 @@ Section UkRun.
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
-    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid ipid)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     rewrite /uvb /uvb_F /user_ptm_inv_x.

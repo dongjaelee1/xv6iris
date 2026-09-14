@@ -463,6 +463,12 @@ Section SyscExec.
           [sysc_fork_out]. *)
        sfork_lend f ∗
        ∀ (g' : gname) (pidc : mword 32),
+         (* THE CHILD IS NOT <INIT> (lane TRAP-ROWS-4, B1b): <init>'s pid
+            is the literal 1 and its registration is permanent, so the pid
+            scan that chose this one refutes it
+            ([SlotGen.init_reg_ne], through
+            [SpecAllocproc.allocproc_post]'s uncounted arm). *)
+         ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
          my_pay g' (sfork_pay f) -∗
          sfork_lend f -∗
          uslot (uvis_of (kfork_child U) sts g' ∅ pidc))%I.
@@ -543,10 +549,9 @@ Section SyscExec.
   Definition sysc_wait_out (U : ustate) (r : mword 64)
       (cs cs' : gset gname) (pidv : mword 32) : iProp Σ :=
     (⌜sysc_num (us_V U) = UsysMemOk.USYS_wait⌝ -∗
-       ∃ ip : mword 32,
-         uwait_ans_at r cs cs' (pv_gen (us_V U))
-           (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0
-                         = (zero_reg : mword 64))) pidv ip)%I.
+       uwait_ans_at r cs cs' (pv_gen (us_V U))
+         (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0
+                       = (zero_reg : mword 64))) pidv)%I.
 
   Lemma sysc_wait_out_ne (U : ustate) (r : mword 64) (cs cs' : gset gname)
       (pidv : mword 32) :
@@ -561,15 +566,15 @@ Section SyscExec.
      fabricate -- the escrow and the uniqueness are resources, so the only
      way to this row is the call's own post. *)
   Lemma sysc_wait_out_of (U : ustate) (r : mword 64) (rv : mword 32) (xs : Z)
-      (cs cs' : gset gname) (pidv ip : mword 32) :
+      (cs cs' : gset gname) (pidv : mword 32) :
     r = (sign_extend' 64 rv : mword 64) ->
     wait_ans rv xs cs cs' (pv_gen (us_V U))
       (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0 = (zero_reg : mword 64)))
-      pidv ip -∗
+      pidv -∗
     sysc_wait_out U r cs cs' pidv.
   Proof.
     intros ->. rewrite /sysc_wait_out /uwait_ans_at. iIntros "H %Hn".
-    iExists ip, rv, xs. iSplitR; [done | iExact "H"].
+    iExists rv, xs. iSplitR; [done | iExact "H"].
   Qed.
 
   (* ...AND THE PURE HALF, for the twenty entries that keep the set.  fork

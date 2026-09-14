@@ -605,7 +605,6 @@ Section UShKernel.
     intros Hbd HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf.
     iIntros "#Hpay #Hdep #Hdp #Htag #Hrest #Hfd0 Hpr Hin #Hgen #Hmp Hpos Hlease".
     iApply (uslot_of_urun_all W (2 + (8 + (16 + (ush_Dbody + n0)))) Q
-              (mword_of_int 0 : mword 32) (* B1a: nothing reads [ukn_ipid] yet *)
               Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
     (* sh's own half of its children set travels in [UkSh.ush_pstate]
        beside the ledger and the cwd: fork1 MOVES the set, so the fragment

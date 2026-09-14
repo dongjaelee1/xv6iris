@@ -620,9 +620,8 @@ Definition ut_wait_out `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI :
     (cs cs' : gset gname) (gn : gname) (pidv : mword 32)
     : iProp Σ :=
   (⌜sc_v = uecall_scause /\ usys_num tf = USYS_wait⌝ -∗
-     ∃ ip : mword 32,
-       uwait_ans_at r cs cs' gn
-         (bool_decide (tf !!! tf_arg_idx 0 = (zero_reg : mword 64))) pidv ip)%I.
+     uwait_ans_at r cs cs' gn
+       (bool_decide (tf !!! tf_arg_idx 0 = (zero_reg : mword 64))) pidv)%I.
 
 Lemma ut_wait_out_cong `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
@@ -652,8 +651,28 @@ Lemma ut_wait_out_forget `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI
      uwait_ans r cs cs').
 Proof.
   rewrite /ut_wait_out. iIntros "H %Hc".
-  iDestruct ("H" with "[%]") as (ip) "H"; [exact Hc |].
+  iDestruct ("H" with "[%]") as "H"; [exact Hc |].
   iApply (uwait_ans_of with "H").
+Qed.
+
+(* ...AND THE FORM THE RESUME ACTUALLY DELIVERS (lane TRAP-ROWS-4, B1b).
+   The pid is NOT absorbed any more: [UexecRet.uexec_wait_F] is stated at
+   [UexecRet.uwait_ans_pid] at the key's own pid, because a process that
+   can name its pid ([UkRun.ukn_pid]) is what makes the reaping arm's
+   disjunct spendable.  The generation and the status-pointer guard are
+   still absorbed -- those the U tier genuinely cannot name. *)
+Lemma ut_wait_out_pid `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
+    {SG : uexecSG Σ}
+    (sc_v : mword 64) (tf : list (mword 64)) (r : mword 64)
+    (cs cs' : gset gname) (gn : gname) (pidv : mword 32) :
+  ut_wait_out sc_v tf r cs cs' gn pidv -∗
+  (⌜sc_v = uecall_scause /\ usys_num tf = USYS_wait⌝ -∗
+     uwait_ans_pid r cs cs' pidv).
+Proof.
+  rewrite /ut_wait_out. iIntros "H %Hc".
+  iDestruct ("H" with "[%]") as "H"; [exact Hc |].
+  iExists gn, (bool_decide (tf !!! tf_arg_idx 0 = (zero_reg : mword 64))).
+  iExact "H".
 Qed.
 
 (* ===================================================================== *)
@@ -933,6 +952,8 @@ Definition ut_fork_in `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : 
         child -- fork's failing arm refunds it ([ut_fork_out]). *)
      sfork_lend f ∗
      ∀ (g' : gname) (pidc : mword 32),
+       (* THE CHILD IS NOT <INIT> -- see [SpecSyscall]'s fork row *)
+       ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
        my_pay g' (sfork_pay f) -∗
        sfork_lend f -∗
        uslot (uvis_of (us_tf U (bump_tf tf (mword_of_int 0))) sts g' ∅ pidc))%I.
@@ -988,8 +1009,9 @@ Proof.
     [ split; [ exact (proj1 Hc)
              | rewrite (tf_ueq_num tf tf' Hu); exact (proj2 Hc) ] |].
   iDestruct "H" as "(#Hkw & HRc & H)". iSplitR; [ iExact "Hkw" | ].
-  iFrame "HRc". iIntros (g' pidc) "Hp HRc".
-  iSpecialize ("H" $! g' pidc). iSpecialize ("H" with "Hp HRc").
+  iFrame "HRc". iIntros (g' pidc) "%Hne Hp HRc".
+  iSpecialize ("H" $! g' pidc). iSpecialize ("H" with "[%] Hp HRc");
+    [ exact Hne | ].
   rewrite !uvis_of_us_tf.
   iEval (rewrite (uslot_key_cong
                     (MkUvis (bump_tf tf (mword_of_int 0)) (us_M U)

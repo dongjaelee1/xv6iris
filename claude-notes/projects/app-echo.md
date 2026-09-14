@@ -97,11 +97,14 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   claim; the input claim carries a settled arm and a WINDOW arm guarded by
   the kernel-lent token's share; no seeds, no escrow, no adoption, no ledger
   in any link; all five steps and all four link families proved; 58
-  deletions).  REMAINING: `echo_happ_echo` (against the local copy of the
-  shift until CONS-IO F lands -- in progress), then part 5 after F: the
-  `AppEcho` wiring (`echo_out := eout`, `echo_in := ein`, `echo_win`,
-  `echo_turn`, `echo_R` over `echo_led`, `echo_phi := fun _ h => disc h ->
-  Forall good_out (cycles_of h)`), `Hphi` closed from `echo_led_phi`.
+  deletions).  ADDENDUM LANDED 2026-09-16 (`f46053e5e`; the note below):
+  `echo_happ_echo` closed against F's landed shift, the local copies gone,
+  `dl_cnt` (the reader's delivered count, half in the in claim, half in
+  `eturn`), `Hlt` derived from the log's order alone.  PART 5 IN FLIGHT
+  (2026-09-16): `echoOutΣ`/`subG`; the `AppEcho` wiring (`echo_out := eout`,
+  `echo_in := ein`, `echo_win`, `echo_turn`, `echo_R` over `echo_led`,
+  `echo_phi := fun _ h => disc h -> Forall good_out (cycles_of h)`); the
+  eight dependents; `Hphi` closed from `echo_led_phi`.
 - [x] ~~**CONS-IO milestone F**~~ LANDED 2026-09-15 (`b0e667795`; the note
   below): the echo window token `riscv_win_res` (a fifth application-chosen
   predicate) lent in consoleintr's contract and returned by the append,
@@ -3306,6 +3309,40 @@ unused stays.  CONSTRAINT for ECHO-OUT part 3: `Hpow` is a plain `==∗` fired
 with `obsN` already open -- the era's linear seed must be bupd-mintable from
 the ledger's own state; nothing in `Hpow` may open an invariant.  Handover:
 scratchpad `cons-io-handover-7.md`.
+
+OWNER RULING 2026-09-16 (TRAP-ROWS T2, corrected): a killed reader never
+returns to user mode -- consoleread returns -1 only when `killed(p)` is set,
+and usertrap's second `if(killed(p)) exit(-1)` after `syscall()` exits it
+before the sret.  The fix is kernel-spec only: consoleread's -1 arm carries
+the persistent "flag is set" fact (`kill_shot gn`); usertrap's post-syscall
+check uses it to refute the resume branch; the user-level read spec's -1 case
+is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
+changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
+with fixing the console read spec to never return -1 to userspace."
+
+ECHO-OUT PART 4 ADDENDUM LANDED (2026-09-16; `f46053e5e` on `1b1847cd6`;
+EchoOut.v +431/-125; builds eo54-eo55 in `-disc`; audit the thirteen;
+lemma_diff = 3 GONE, the local copies `in_append_F`/`in_run_F`/
+`cons_echo_shift_F`, replaced by F's landed contracts which matched them
+verbatim; nothing Admitted).  THE SHIFT IS CLOSED: `echo_happ_echo : ⊢ ∀ GEN
+XI, cons_echo_shift` under the section's four equations `Hout`/`Hin`/`Htag`/
+`Hwin : riscv_win_res = ewin` -- `App.Happ_echo`'s obligation, ready for
+AppEcho.  THE READER KEEPS ITS PLACE: the era gains a fourth ghost `ep_gdl`
+(`dl_cnt v q n`, the delivered count in halves); the in claim's two non-taint
+arms hold `dl_cnt v (1/2) (length dl)`, `eturn` carries the other half at 0,
+and `ein_step_read` agrees and moves both INSIDE the link, so `echo_read_link k
+v n ws Φ` takes `dl_cnt v (1/2) n` and `read_ret` returns it at `n + length ws`
+beside `⌜length dl = n⌝`, `⌜(dl ++ ws) prefix_of echoed pops⌝`, `E_index`/
+`E_byte` of `seg_of (echoed pops)`, and (for `ws ≠ []`) `cs_lb v cs0 ∗ E_lb v (n
++ length ws)` with the line-count bound; `ein_read_byte` places a read byte
+in the line by the reader's own count (sh's `gets` needs no history).  `Hlt`
+(the log's last entry strictly below the new byte's segment) is DERIVED by
+`echoed_lt_ins` + `prefix_snoc_lt` from `in_append`'s order premise and the
+per-entry stamps; `ein_lt` returns the taint instead on the tainted arm.
+`echo_Htx` is NOT a gap (handover §7b).  NEXT (part 5, in flight): `echoOutΣ` +
+`subG`; AppEcho's four holes, `echo_R`/`echo_tag`, the owner's `echo_phi`;
+the eight dependents; `Hphi` closed.  Handover: scratchpad
+`echo-out-handover-5.md` §7.
 
 CONS-IO MILESTONE F LANDED (2026-09-15; `b0e667795` on `4363635b5`; 23 files
 +883/-284; builds cio60-cio64 in `-tlw`; audit the thirteen; lemma_diff CLEAN;

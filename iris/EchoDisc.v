@@ -681,6 +681,13 @@ Proof.
   by rewrite -list_lookup_total_alt.
 Qed.
 
+Lemma pro_idx_app_le (cs z : list nat) (q : nat) :
+  (q <= length cs)%nat -> pro_idx (cs ++ z) q = pro_idx cs q.
+Proof.
+  intros Hq. symmetry. apply (pro_idx_ext cs (cs ++ z) q); [| lia].
+  intros j Hj. rewrite !list_lookup_total_alt lookup_app_l; [done | lia].
+Qed.
+
 Lemma alt_seq_ext ps cs1 cs2 q :
   (forall j, (j < q)%nat -> cs1 !!! j = cs2 !!! j) ->
   alt_seq ps cs1 q = alt_seq ps cs2 q.

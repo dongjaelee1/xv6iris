@@ -681,6 +681,44 @@ Proof.
   by rewrite -list_lookup_total_alt.
 Qed.
 
+(* THE CHOICE BYTE EXTENDS AN OPEN ROUND.  [pro_of] of an unresolved
+   resolution ends at the banner, so filing the round's alternative appends
+   its bytes -- the first of which is the byte the writer is putting out. *)
+Lemma pro_of_snoc_head (ps : list nat) (a : nat) (b : bv 8) :
+  ~ pro_done ps -> pro_alts !!! a !! 0%nat = Some b ->
+  (pro_of ps ++ [b]) `prefix_of` pro_of (ps ++ [a]).
+Proof.
+  intros Hnd Hb. induction ps as [| c ps IH]; cbn [pro_of app].
+  - apply prefix_app.
+    apply (prefix_app_r [b] (pro_alts !!! a)).
+    destruct (pro_alts !!! a) as [| z zs] eqn:Hz; [discriminate |].
+    cbn in Hb. injection Hb as <-. by eexists.
+  - assert (Hc1 : c = 1%nat).
+    { destruct (decide (c = 1%nat)) as [? | Hne]; [done |].
+      exfalso. apply Hnd. rewrite /pro_done. by apply Exists_cons; left. }
+    subst c. rewrite !pro_more_1.
+    rewrite -(app_assoc u_banner (pro_alts !!! 1%nat ++ pro_of ps) [b]).
+    rewrite -(app_assoc (pro_alts !!! 1%nat) (pro_of ps) [b]).
+    apply prefix_app, prefix_app, IH.
+    intros H. apply Hnd. rewrite /pro_done Exists_cons. by right.
+Qed.
+
+(* ...and dropping SETTLED rounds commutes with filing the open one's. *)
+Lemma pro_tail_snoc (ps : list nat) (a : nat) :
+  (0 < pro_rounds ps)%nat -> pro_tail (ps ++ [a]) = pro_tail ps ++ [a].
+Proof.
+  induction ps as [| c ps IH]; cbn [pro_rounds pro_tail app]; [lia |].
+  case_decide as Hc; [| done]. intros H. by apply IH.
+Qed.
+
+Lemma pro_from_snoc_le (r : nat) (ps : list nat) (a : nat) :
+  (r <= pro_rounds ps)%nat -> pro_from r (ps ++ [a]) = pro_from r ps ++ [a].
+Proof.
+  revert ps. induction r as [| r IH]; intros ps Hr; [done |].
+  cbn [pro_from]. rewrite pro_tail_snoc; [| lia].
+  apply IH. rewrite pro_rounds_tail. lia.
+Qed.
+
 Lemma pro_idx_app_le (cs z : list nat) (q : nat) :
   (q <= length cs)%nat -> pro_idx (cs ++ z) q = pro_idx cs q.
 Proof.

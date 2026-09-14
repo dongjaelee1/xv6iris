@@ -44,10 +44,8 @@ Two lanes, spawned from the coordinator's main checkout (`lane/io-leaf-3`):
   redemption + PROLOGUE-ALTS-3's two lemmas consumed, then M4b(2); brief
   `handoff-2026-09-16/brief-step4-sh.md`, report to scratchpad
   `step4-sh-report.md`.
-* M6B-INIT in `-sup`, branch `lane/m6b-init` -- init's two diagnostics
-  through INIT-DIAG's laws, `die_dw` deleted on the `_pid` row, the
-  round-open lend family `Wp`; brief `brief-m6b-init.md`, report
-  `m6b-init-report.md`.
+* M6B-INIT -- LANDED (`a7d47ccef`+`290f05cf0`, app-echo.md "M6b LANDED");
+  `-sup` is free again.
 Both may touch UInitSh.v/UInitBoot.v minimally; the coordinator merges those
 two files by hand, then the one-line kill of `UkInit.init_rd_cred`'s `∨ True`
 once the shell's exits all hand back `Wb n`.  If this session dies: the lanes

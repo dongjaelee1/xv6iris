@@ -3783,6 +3783,34 @@ family.  Init's free write law then has exactly the two payable arms
 `die_de`/`die_df` left (INIT-DIAG's laws), and nothing about `die_dw` is an
 owner question any more.
 
+M6b LANDED (2026-09-14; lane M6B-INIT's `b48cb3199`+`6d87c8558` in `-sup`,
+cherry-picked as `a7d47ccef`+`290f05cf0` on `e9477f988`; 7 files, NEW
+`iris/UkRunExecRef.v` (row after `UkRunSys.v`); build m6b-4 in `-sup` on the
+identical iris tree; audit the thirteen; lemma_diff 2 GONE (`LIT_WAIT`,
+`wp_kinit_main_die_dw`); no Admitted).  (A) `die_dw` DELETED:
+`UkInit.wp_kinit_wait` calls `UkRunSys.wp_uk_ecall_wait_null_live` (its row
+`⌜ret = -1 -> cs' = ∅⌝` is what refutes the arm against `γsh ∈ cs`; the
+`_pid` twin was not needed -- init's entry constructor drops its pid
+fragment).  (B) INIT'S TWO DIAGNOSTICS PAY THROUGH THE LINKS: the lend's
+console arm is the ROUND-OPEN family `Wp n` (top `UInitDiag.kinit_pro`; the
+shell's entry converts it with `(forall n, ⊢ Wp n -∗ Wc n 0)` from
+`kinit_own_of_pro` + `kinit_own_is_cred`); `UkInitMain.kinit_diag_law stc Wp
+Wb` bundles the two persistent conversions (top `kinit_execfail_law_holds`
+leaving `Wb n`, `kinit_forkfail_law_holds` leaving `emp`); `wp_kinit_fork`'s
+-1 arm keeps the refunded lend; the exec-failed child's `exit(1)` pays the
+pair with a REAL `Wb n`.  FINDING: the exec refund could not carry the
+credential through `udepw_at_ref` (pinned at `ukn_pay N (-1)`), so a NEW
+leaf file `UkRunExecRef.v` (`sbundle_pay_refR`, `udepw_at_refR`,
+`wp_uk_ecall_exec_at_cwd_refR`, refund parametric) avoids editing
+UexecSG/UkRun/UkRunSys (cones of 70-134 files).  TRUSTED DIFF:
+`UInitKernel.init_boot_pay T Cns cn stc Wp Wb Rdl := … ∗ Wb 0 ∗ □ (∀ n N', Wb
+n -∗ kinit_banner0 N' stc (Wp n)) ∗ kinit_diag_law stc Wp Wb` (was `… (Wc :
+nat -> nat -> iProp) … (Wc n 0)`, no diag law); `Hsh_owed` unchanged.  `∨
+True` LEFT in init: `UkInit.init_rd_cred` and `init_lend_cred`'s third arm --
+ONE obligation, every shell exit hands back `Wb n` (lane STEP4-SH).
+`udepw_law 16` still spent on the closed-ledger and affine arms of
+`die_de`/`die_df`/the banner.  Report: `handoff-2026-09-16/m6b-init-report.md`.
+
 IO-LEAF M6a(2) LANDED (2026-09-16; `61f015f7b`+`e8b61dc6a` on `61269a3c2`;
 EchoLinks.v, UInitBanner.v, UInitBoot.v, UInitKernel.v, UkInitMain.v; builds
 io53-io54 in the main checkout; audit the thirteen; lemma_diff 6 GONE (the

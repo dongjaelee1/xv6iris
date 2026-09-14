@@ -102,14 +102,12 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   `AppEcho` wiring (`echo_out := eout`, `echo_in := ein`, `echo_win`,
   `echo_turn`, `echo_R` over `echo_led`, `echo_phi := fun _ h => disc h ->
   Forall good_out (cycles_of h)`), `Hphi` closed from `echo_led_phi`.
-- [ ] **CONS-IO milestone F** (kernel; `-tlw`; the design page's §1): the
-  echo window token `riscv_win_res` (a fifth application-chosen predicate)
-  lent in consoleintr's contract and returned by the append, riding the PLIC
-  payload; `app_turn`/`app_win` on the record; `Hpow`'s four-part yield;
-  `Hinit_boot`'s turn premise.  ACCEPTED BY THE OWNER AS A WORKAROUND
-  (2026-09-15) with post-Qed debt: redesign what an application is and the
-  app-kernel interaction in the adequacy statement, and a SINGLE IO resource
-  instead of separate I and O claims with a lent token.
+- [x] ~~**CONS-IO milestone F**~~ LANDED 2026-09-15 (`b0e667795`; the note
+  below): the echo window token `riscv_win_res` (a fifth application-chosen
+  predicate) lent in consoleintr's contract and returned by the append,
+  riding the PLIC payload; `app_turn`/`app_win` on the record; `Hpow`'s
+  four-part yield; `Hinit_boot`'s turn premise.  ACCEPTED BY THE OWNER AS A
+  WORKAROUND (2026-09-15) with the post-Qed debt below.
 - [ ] **POST-QED REDESIGN** (owner, 2026-09-15; do not start before the
   theorem closes): (a) the notion of an application and the app-kernel
   interaction in terms of adequacy; (b) one IO invariant/resource instead of
@@ -3308,6 +3306,32 @@ unused stays.  CONSTRAINT for ECHO-OUT part 3: `Hpow` is a plain `==∗` fired
 with `obsN` already open -- the era's linear seed must be bupd-mintable from
 the ledger's own state; nothing in `Hpow` may open an invariant.  Handover:
 scratchpad `cons-io-handover-7.md`.
+
+CONS-IO MILESTONE F LANDED (2026-09-15; `b0e667795` on `4363635b5`; 23 files
++883/-284; builds cio60-cio64 in `-tlw`; audit the thirteen; lemma_diff CLEAN;
+nothing Admitted).  THE ECHO WINDOW TOKEN: `RiscvPtsto.riscv_win_res : nat ->
+iProp Σ` (timeless; `win_res_triv`), the application's per-era exclusive that
+makes the persistent two-phase echo obligation total: it rides the PLIC
+payload beside the receive token (`uart_rx_writer iu γ k hl` gains `win_at iu
+(S gen_id)`; `plic_payload_uart`/`plic_uslot` gain the PORT index, since a
+bundle cannot name its port -- the PLIC invariant is now era-indexed), reaches
+consoleintr's contract after `uart_log_hi`'s half, is a premise of
+`cons_echo_shift` after `obs_hist_lb h` and returns in `in_append`'s post
+(`in_claim_append`/`uart_inv_append` hand it to the arm's exit; the licence
+routes take one and return the same one -- a licence may NOT mint it);
+`ct_pay`'s builder is linear in the token, riding `ct_mark`, no arm-lemma
+statement changed.  THE TURN: `App.app_turn`/`app_win : app_fixed -> nat ->
+iProp Σ`, `Hwint`; `Hpow`'s on-arm yields `app_out ∗ app_in ∗ app_turn ∗
+app_win` at `S (obs_boots h)`; `Hinit_boot` takes `app_turn A c (S gen_id)`
+and the equation `riscv_win_res = app_win A c`; `Happ_echo` gains that equation
+and STAYS CLOSED.  The turn is an opaque `iProp` two tiers below App
+(`power_boot_res`'s `Tn`, `wp_power_loop`, `riscv_power_adequacy`,
+`xv6_power_adequacy_gen`, `xv6_boot_era`, `boot_shared_alloc` carry it as a
+parameter) down to `UInitKernel.init_boot_pay`'s fourth conjunct and
+`UkInitMain.wp_kinit_start` (held, `iClear`ed until IO-LEAF); `boot_fixedGS`
+gains `Wres`/`HWrest`.  AppEcho's `echo_turn`/`echo_win := fun _ _ => emp`,
+`echo_Hpow` yields four `emp`s, `echo_Happ_echo` through the triv route --
+ECHO-OUT part 5 replaces them.  Handover: scratchpad `cons-io-handover-8.md`.
 
 SELF-KILL P6b LANDED (2026-09-15; `d03988128`+`a33bf1a3d` on `f24ec51af`; 51 files
 +1252/-1545; builds selfk57-selfk71 in `-sup`; audit the thirteen; lemma_diff =

@@ -1475,6 +1475,7 @@ ConsLog.v
 EchoOutPure.v
 EchoOut.v
 EchoLinks.v
+EchoLinksPro.v
 EchoLinksLine.v
 AppEcho.v
 
@@ -1527,6 +1528,7 @@ UInitBootAdequacy.v
 UkWriteLeaf.v
 UkWriteClosed.v
 UInitBanner.v
+UInitDiag.v
 UShOut.v
 UShPanic.v
 UEchoOut.v

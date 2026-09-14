@@ -84,8 +84,13 @@ Require Import EchoOutPure.
    is where the _CoqProject entry has always said the links belong. *)
 Require Import RiscvPtsto.       (* [obsN], [obs_hist_lb_o], [riscv_out_res],
                                     [riscv_in_res], [riscvGS] *)
-Require Import WpUart.           (* [out_link], [read_link], [out_res_at],
-                                    [in_res_at], [uartN] *)
+Require Import WpUart.           (* [out_link], [read_link], [in_append],
+                                    [in_run], [out_res_at], [in_res_at],
+                                    [uartN] *)
+Require Import TsoCtx.           (* [CurCtx]: the echo obligation's context *)
+Require Import SpecConsoleintr.  (* [cons_echo_shift], which is what
+                                    [App.Happ_echo] asks of the
+                                    application *)
 (* as in EchoDisc / EchoOutPure: the Sail imports leave string_scope on top
    and [++] would elaborate as String.append. *)
 Local Open Scope list_scope.
@@ -802,6 +807,56 @@ Proof.
   rewrite length_app. rewrite length_app in Hlt. lia.
 Qed.
 
+(* A PREFIX THAT STOPS SHORT OF THE LAST EVENT. *)
+Lemma prefix_snoc_lt {A : Type} (l1 l2 : list A) (x : A) :
+  l1 `prefix_of` (l2 ++ [x]) -> (length l1 <= length l2)%nat ->
+  l1 `prefix_of` l2.
+Proof.
+  intros Hp Hlen.
+  assert (Hl1 : l1 = take (length l1) l2).
+  { rewrite -(take_app_le l2 [x] (length l1) Hlen).
+    destruct Hp as [z Hz]. rewrite Hz. by rewrite take_app_length. }
+  rewrite Hl1. apply prefix_take.
+Qed.
+
+(* THE ECHO'S ONE CALLER-OWED PREMISE, AND WHERE IT COMES FROM.  [Hlt] says
+   the echoes the era has already LOGGED answer inputs strictly below this
+   one.  It is not a fact the claim states: it is the ORDER PREMISE the
+   kernel hands the echo, read against the log's own index law.  The last
+   logged entry's segment is a STRICT prefix of this one
+   ([open_seg_hist_ext]) and this one ENDS in the input, so the entry's
+   segment stops short of that input and carries strictly fewer of them. *)
+Lemma echoed_lt_ins (k : nat) (h : list mobs) (c : bv 8)
+    (pops : list log_entry) (dl : list (list mobs * bv 8)) (cs0 : list nat) :
+  trace_shape h true -> obs_boots h = k -> obs_ends_in Uart0 h c ->
+  (forall e, e ∈ pops -> hist_ext (le_hist e) h) ->
+  ein_pure k pops dl cs0 ->
+  (length (echoed pops) < length (ins (open_seg h)))%nat.
+Proof.
+  intros Hsh Hk Hends Hord (Hlog & Hdsc & Hstamp & Hdlp & Hidx & Hbyte & Hbnd).
+  destruct (open_seg_ends_in h c Hends) as [h0 Hh0].
+  assert (Hlen0 : length (ins (open_seg h)) = S (length (ins h0))).
+  { rewrite Hh0 ins_app ins_in length_app. cbn [length]. lia. }
+  destruct (decide (length (echoed pops) = 0%nat)) as [Hz | Hz]; [lia |].
+  destruct (lookup_lt_is_Some_2 (echoed pops)
+              ((length (echoed pops) - 1)%nat) ltac:(lia)) as [y Hy].
+  assert (Hsy : seg_of (echoed pops) !! ((length (echoed pops) - 1)%nat)
+                = Some (open_seg y.1, y.2))
+    by (by rewrite /seg_of list_lookup_fmap Hy).
+  destruct (Hidx _ _ Hsy) as [_ Hylen]. cbn [fst] in Hylen.
+  assert (Hyin : y ∈ echoed pops) by (by eapply elem_of_list_lookup_2).
+  destruct (echoed_elem_inv pops y Hyin) as (e & He & _ & Hye).
+  assert (Hoe : open_seg (le_hist e) = open_seg y.1) by (by rewrite -Hye).
+  destruct (open_seg_hist_ext (le_hist e) h (Hord e He)
+              (eq_trans (Hstamp e He) (eq_sym Hk)) Hsh) as [Hpre Hlt2].
+  rewrite Hoe Hh0 in Hpre. rewrite Hoe Hh0 length_app in Hlt2.
+  cbn [length] in Hlt2.
+  pose proof (prefix_snoc_lt (open_seg y.1) h0 (ObsUartIn Uart0 c) Hpre
+                ltac:(lia)) as Hp0.
+  pose proof (prefix_length _ _ (ins_prefix_of _ _ Hp0)) as Hle.
+  rewrite Hylen in Hle. lia.
+Qed.
+
 (* ====================================================================== *)
 (*  2.  THE GHOST NAMES AT THE FIXED PART                                  *)
 (* ====================================================================== *)
@@ -833,6 +888,14 @@ Record era_pins := MkPins {
   ep_gw  : gname;   (* ghost_var nat: the WINDOW COUNTER, in four quarters:
                        one in the output claim, one in the input claim, two
                        in the kernel-lent token [ewin] *)
+  ep_gdl : gname;   (* ghost_var nat: the DELIVERED COUNT, in two halves --
+                       one in the input claim at [length dl], one in the
+                       READER's hand.  A read hands its half over and gets
+                       it back advanced, and the agreement inside the link
+                       is what tells the reader WHERE in the line its window
+                       fell: [read_link] hides the invariant's [dl], and
+                       [ein_read_line]/[ein_read_byte] cannot run without
+                       it. *)
 }.
 
 (* THE ERA MAP'S BOUND.  Every era the ledger has ever founded is at most
@@ -1103,6 +1166,29 @@ Section echo_out.
     iModIntro. iApply (wcnt_split v q2 q3 m with "H23").
   Qed.
 
+  (* THE DELIVERED COUNT, in two halves: the input claim's and the
+     reader's. *)
+  Definition dl_cnt (v : era_pins) (q : Qp) (n : nat) : iProp Σ :=
+    ghost_var (ep_gdl v) q n.
+
+  Global Instance dl_cnt_timeless v q n : Timeless (dl_cnt v q n).
+  Proof. rewrite /dl_cnt. apply _. Qed.
+
+  Lemma dl_cnt_agree v q1 q2 n1 n2 :
+    dl_cnt v q1 n1 -∗ dl_cnt v q2 n2 -∗ ⌜n1 = n2⌝.
+  Proof.
+    rewrite /dl_cnt. iIntros "H1 H2".
+    iDestruct (ghost_var_agree with "H1 H2") as %Heq. iPureIntro. exact Heq.
+  Qed.
+
+  Lemma dl_cnt_update v n1 n2 m :
+    dl_cnt v (1/2) n1 -∗ dl_cnt v (1/2) n2 ==∗
+      dl_cnt v (1/2) m ∗ dl_cnt v (1/2) m.
+  Proof.
+    rewrite /dl_cnt. iIntros "H1 H2".
+    by iMod (ghost_var_update_halves m with "H1 H2") as "[$ $]".
+  Qed.
+
   (* FIVE QUARTERS ARE IMPOSSIBLE, and that is what refutes a SECOND link of
      the run: the window arm holds a half, the token another half, and the
      output claim the last quarter. *)
@@ -1148,11 +1234,13 @@ Section echo_out.
       (dl : list (list mobs * bv 8)) : iProp Σ :=
     ( T
     ∨ (∃ (v : era_pins) (n : nat) (cs0 : list nat),
-         era_pin k v ∗ wcnt v (1/4) n ∗ ⌜length (echoed pops) = n⌝
+         era_pin k v ∗ wcnt v (1/4) n ∗ dl_cnt v (1/2) (length dl)
+         ∗ ⌜length (echoed pops) = n⌝
          ∗ Elist_lb v (seg_of (echoed pops)) ∗ cs_lb v cs0
          ∗ ⌜ein_pure k pops dl cs0⌝)
     ∨ (∃ (v : era_pins) (n : nat) (cs0 : list nat),
-         era_pin k v ∗ wcnt v (1/2) n ∗ ⌜(length (echoed pops) + 1)%nat = n⌝
+         era_pin k v ∗ wcnt v (1/2) n ∗ dl_cnt v (1/2) (length dl)
+         ∗ ⌜(length (echoed pops) + 1)%nat = n⌝
          ∗ Elist_lb v (seg_of (echoed pops)) ∗ cs_lb v cs0
          ∗ ⌜ein_pure k pops dl cs0⌝))%I.
 
@@ -1173,7 +1261,21 @@ Section echo_out.
      [pcount_zero] DERIVE [acc = []]. *)
   Definition eturn (k : nat) : iProp Σ :=
     (∃ v : era_pins,
-       era_pin k v ∗ turn v 0%nat ∗ cs_lb v [] ∗ E_lb v 0%nat)%I.
+       era_pin k v ∗ turn v 0%nat ∗ dl_cnt v (1/2) 0%nat
+       ∗ cs_lb v [] ∗ E_lb v 0%nat)%I.
+
+  (* THE TAG -- [App.app_tag A c], and [AppEcho.echo_tag γ] with the taint
+     abstracted, which is what [Happ_echo]'s tag equation says.  It is what
+     the kernel hands the shift about the history the byte arrived at: the
+     machine is on, and either the console is still disciplined or the
+     application has already been paid off. *)
+  Definition etag (h : list mobs) : iProp Σ :=
+    (⌜trace_shape h true⌝ ∗ (⌜disc h⌝ ∨ T))%I.
+
+  Global Instance etag_persistent h : Persistent (etag h).
+  Proof. rewrite /etag. apply _. Qed.
+  Global Instance etag_timeless h : Timeless (etag h).
+  Proof. rewrite /etag. apply _. Qed.
 
   Global Instance eout_timeless k ho acc : Timeless (eout k ho acc).
   Proof. rewrite /eout. apply _. Qed.
@@ -1257,7 +1359,7 @@ Section echo_out.
          claims, init's credential and the kernel's token ---- *)
   Definition era_full (v : era_pins) : iProp Σ :=
     (ghost_var (ep_go v) 1 0%nat ∗ cs_auth v [] ∗ Elist_auth v []
-     ∗ ghost_var (ep_gw v) 1 0%nat)%I.
+     ∗ ghost_var (ep_gw v) 1 0%nat ∗ ghost_var (ep_gdl v) 1 0%nat)%I.
 
   Global Instance era_full_timeless v : Timeless (era_full v).
   Proof. rewrite /era_full. apply _. Qed.
@@ -1270,8 +1372,9 @@ Section echo_out.
     iMod (own_alloc (●ML ([] : list (leibnizO (list mobs * bv 8)))))
       as (gE) "HE"; [apply mono_list_auth_valid |].
     iMod (ghost_var_alloc 0%nat) as (gw) "Hw".
-    iModIntro. iExists (MkPins go gcs gE gw).
-    rewrite /era_full /cs_auth /Elist_auth /=. iFrame "Ht Hcs HE Hw".
+    iMod (ghost_var_alloc 0%nat) as (gdl) "Hdl".
+    iModIntro. iExists (MkPins go gcs gE gw gdl).
+    rewrite /era_full /cs_auth /Elist_auth /=. iFrame "Ht Hcs HE Hw Hdl".
   Qed.
 
   Lemma pcount_nil (cs : list nat) : pcount cs [] [] = 0%nat.
@@ -1287,9 +1390,11 @@ Section echo_out.
     era_pin k v -∗ era_full v -∗
       eout k [] [] ∗ ein k [] [] [] ∗ eturn k ∗ ewin k.
   Proof.
-    iIntros "#Hpin (Ht & Hcs & HE & Hw)".
+    iIntros "#Hpin (Ht & Hcs & HE & Hw & Hdl)".
     iEval (rewrite -Qp.half_half) in "Ht".
     iDestruct (ghost_var_split with "Ht") as "[Ht1 Ht2]".
+    iEval (rewrite -Qp.half_half) in "Hdl".
+    iDestruct (ghost_var_split with "Hdl") as "[Hdl1 Hdl2]".
     iEval (rewrite -Qp.half_half) in "Hw".
     iDestruct (ghost_var_split with "Hw") as "[Hw12 Hwh]".
     iEval (rewrite -Qp.quarter_quarter) in "Hw12".
@@ -1303,13 +1408,13 @@ Section echo_out.
       - exact (eout_pure_0 k []).
       - exact cs_len_ok_0.
       - constructor. }
-    iSplitL "Hw2".
+    iSplitL "Hw2 Hdl1".
     { rewrite /ein. iRight. iLeft. iExists v, 0%nat, [].
-      rewrite seg_of_echoed_nil echoed_nil.
-      iFrame "Hpin Hw2 HElb Hcslb". iPureIntro.
+      rewrite seg_of_echoed_nil echoed_nil. cbn [length].
+      iFrame "Hpin Hw2 Hdl1 HElb Hcslb". iPureIntro.
       split; [reflexivity | exact (ein_pure_0 k)]. }
-    iSplitL "Ht2".
-    { rewrite /eturn. iExists v. iFrame "Hpin Ht2 Hcslb".
+    iSplitL "Ht2 Hdl2".
+    { rewrite /eturn. iExists v. iFrame "Hpin Ht2 Hdl2 Hcslb".
       iApply (E_lb_of_lb v [] 0%nat); [cbn; lia | iExact "HElb"]. }
     rewrite /ewin. iRight. iExists v, 0%nat. iFrame "Hpin Hwh".
   Qed.
@@ -1531,6 +1636,36 @@ Section echo_out.
   Global Instance ein_pend_timeless k h c : Timeless (ein_pend k h c).
   Proof. rewrite /ein_pend. apply _. Qed.
 
+  (* ...and the claim's side of it: the pure fact is in both non-taint arms,
+     so the echo's caller reads it off whatever arm it meets, and a tainted
+     claim owes nothing. *)
+  Lemma ein_lt (k : nat) (h : list mobs) (c : bv 8) (hi : list mobs)
+      (pops : list log_entry) (dl : list (list mobs * bv 8)) :
+    trace_shape h true -> obs_boots h = k -> obs_ends_in Uart0 h c ->
+    (forall e, e ∈ pops -> hist_ext (le_hist e) h) ->
+    ein k hi pops dl -∗
+      ein k hi pops dl
+      ∗ (T ∨ ⌜(length (echoed pops) < length (ins (open_seg h)))%nat⌝).
+  Proof.
+    intros Hsh Hk Hends Hord. iIntros "Hin".
+    iDestruct "Hin" as "[#HT | [Hs | Hwn]]".
+    - iSplitR; [by iApply ein_of_taint | by iLeft].
+    - iDestruct "Hs" as (v n cs0)
+        "(#Hpin & Hwc & Hdl & %Hn & #HElb & #Hcslb & %Hp)".
+      iSplitL "Hwc Hdl".
+      { rewrite /ein. iRight. iLeft. iExists v, n, cs0.
+        iFrame "Hpin Hwc Hdl HElb Hcslb". by iPureIntro. }
+      iRight. iPureIntro.
+      exact (echoed_lt_ins k h c pops dl cs0 Hsh Hk Hends Hord Hp).
+    - iDestruct "Hwn" as (v n cs0)
+        "(#Hpin & Hwc & Hdl & %Hn & #HElb & #Hcslb & %Hp)".
+      iSplitL "Hwc Hdl".
+      { rewrite /ein. iRight. iRight. iExists v, n, cs0.
+        iFrame "Hpin Hwc Hdl HElb Hcslb". by iPureIntro. }
+      iRight. iPureIntro.
+      exact (echoed_lt_ins k h c pops dl cs0 Hsh Hk Hends Hord Hp).
+  Qed.
+
   (* (E) THE ECHO SHIFT's core step, at the STORE arm: the byte goes out, the
      era's echoed list gains the entry, and the input claim comes back AT THE
      SAME [pops]/[dl] -- which is what [WpUart.echo_link] demands -- in its
@@ -1593,7 +1728,7 @@ Section echo_out.
       iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
       iDestruct (wcnt_over with "Hwo Hw2 Hww") as "[]". }
     iDestruct "Hs" as (v2 n2 cs0)
-      "(#Hpin2 & Hwi & %Hn2 & #HElbi & #Hcslbi & %Hpi)".
+      "(#Hpin2 & Hwi & Hdli & %Hn2 & #HElbi & #Hcslbi & %Hpi)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     destruct Hpi as (Hlog & Hdsc2 & Hstamp & Hdlp & Hidxi & Hbytei & Hbndi).
     (* THE THREE AGREEING SHARES, and with them the tie to the log *)
@@ -1718,10 +1853,10 @@ Section echo_out.
         + by right.
       - exact Hcsl2.
       - exact Hcsb. }
-    iSplitL "Hwarm".
+    iSplitL "Hwarm Hdli".
     { rewrite /ein. iRight. iRight.
       iExists v, (S (length (o_E so))), cs0.
-      iFrame "Hpin Hwarm HElbi Hcslbi". iPureIntro. split.
+      iFrame "Hpin Hwarm Hdli HElbi Hcslbi". iPureIntro. split.
       - lia.
       - rewrite /ein_pure. by split_and!. }
     rewrite /ein_pend. iRight.
@@ -1770,7 +1905,7 @@ Section echo_out.
          [in_append]'s own order premise puts every logged history's segment
          STRICTLY below this one *)
       iDestruct "Hs" as (v2 n2 cs2)
-        "(#Hpin2 & Hw2 & %Hn2 & #HElb2 & #Hcslb2 & %Hp2)".
+        "(#Hpin2 & Hw2 & Hdl2 & %Hn2 & #HElb2 & #Hcslb2 & %Hp2)".
       iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
       iDestruct (wcnt_agree with "Hwq Hw2") as %Hnn.
       destruct Hp2 as (Hlog & Hdsc & Hstamp & Hdlp & Hidx2 & Hbyte2 & Hbnd2).
@@ -1801,7 +1936,7 @@ Section echo_out.
     - (* THE WINDOW ARM is the one this receipt's own echo left: the arm's
          half and the receipt's quarter AGREE *)
       iDestruct "Hwn" as (v2 n2 cs2)
-        "(#Hpin2 & Hw2 & %Hn2 & #HElb2 & #Hcslb2 & %Hp2)".
+        "(#Hpin2 & Hw2 & Hdl2 & %Hn2 & #HElb2 & #Hcslb2 & %Hp2)".
       iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
       iDestruct (wcnt_agree with "Hwq Hw2") as %Hnn.
       destruct Hp2 as (Hlog & Hdsc & Hstamp & Hdlp & Hidx2 & Hbyte2 & Hbnd2).
@@ -1833,9 +1968,9 @@ Section echo_out.
       iDestruct (wcnt_join v (1/4) (1/2) n with "Hwq [Hw2]") as "Hw".
       { rewrite Hnn. iExact "Hw2". }
       iDestruct (wcnt_split v (1/4) (1/2) n with "Hw") as "[Hwi Hwt]".
-      iModIntro. iSplitL "Hwi".
+      iModIntro. iSplitL "Hwi Hdl2".
       + rewrite /ein. iRight. iLeft. iExists v, n, cs0.
-        rewrite Hsegn. iFrame "Hpin Hwi HElbp Hcslbp". iPureIntro.
+        rewrite Hsegn. iFrame "Hpin Hwi Hdl2 HElbp Hcslbp". iPureIntro.
         split; [exact Hlenn |]. rewrite /ein_pure Hech. split_and!.
         * apply cl_log_ok_snoc; [exact Hlog | exact Hends | | ].
           { rewrite /le_byte /le_echo /=. by right; left. }
@@ -1890,14 +2025,15 @@ Section echo_out.
       - exact Hbnd. }
     iDestruct "Hin" as "[#HT | [Hs | Hwn]]".
     - by iApply ein_of_taint.
-    - iDestruct "Hs" as (v n cs0) "(#Hpin & Hw & %Hn & #HElb & #Hcslb & %Hp)".
+    - iDestruct "Hs" as (v n cs0)
+        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & %Hp)".
       rewrite /ein. iRight. iLeft. iExists v, n, cs0.
-      rewrite Hech. iFrame "Hpin Hw HElb Hcslb". iPureIntro.
+      rewrite Hech. iFrame "Hpin Hw Hdl HElb Hcslb". iPureIntro.
       split; [exact Hn | by apply Hpure'].
     - iDestruct "Hwn" as (v n cs0)
-        "(#Hpin & Hw & %Hn & #HElb & #Hcslb & %Hp)".
+        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & %Hp)".
       rewrite /ein. iRight. iRight. iExists v, n, cs0.
-      rewrite Hech. iFrame "Hpin Hw HElb Hcslb". iPureIntro.
+      rewrite Hech. iFrame "Hpin Hw Hdl HElb Hcslb". iPureIntro.
       split; [exact Hn | by apply Hpure'].
   Qed.
 
@@ -2148,53 +2284,70 @@ Section echo_out.
       by apply prefix_length.
   Qed.
 
-  Lemma ein_step_read (k : nat) (hi : list mobs) (pops : list log_entry)
-      (dl ws : list (list mobs * bv 8)) :
+  Lemma ein_step_read (k : nat) (v : era_pins) (n : nat) (hi : list mobs)
+      (pops : list log_entry) (dl ws : list (list mobs * bv 8)) :
     read_ok pops dl ws ->
-    ein k hi pops dl -∗
+    era_pin k v -∗ dl_cnt v (1/2) n -∗ ein k hi pops dl ==∗
       ein k hi pops (dl ++ ws)
-      ∗ (T ∨ ⌜(dl ++ ws) `prefix_of` echoed pops⌝
-              ∗ ⌜E_index (seg_of (echoed pops))⌝
-              ∗ ⌜E_byte (seg_of (echoed pops))⌝
-              ∗ (⌜ws = []⌝
-                 ∨ ∃ (v : era_pins) (cs0 : list nat),
-                     era_pin k v ∗ cs_lb v cs0
-                     ∗ E_lb v (length (dl ++ ws))
-                     ∗ ⌜((length (dl ++ ws)) `div` length echo_line
-                         <= S (length cs0))%nat⌝)).
+      ∗ ((T ∗ dl_cnt v (1/2) n)
+         ∨ dl_cnt v (1/2) (n + length ws)%nat
+           ∗ ⌜length dl = n⌝
+           ∗ ⌜(dl ++ ws) `prefix_of` echoed pops⌝
+           ∗ ⌜E_index (seg_of (echoed pops))⌝
+           ∗ ⌜E_byte (seg_of (echoed pops))⌝
+           ∗ (⌜ws = []⌝
+              ∨ ∃ cs0 : list nat,
+                  cs_lb v cs0 ∗ E_lb v (n + length ws)%nat
+                  ∗ ⌜((n + length ws) `div` length echo_line
+                      <= S (length cs0))%nat⌝)).
   Proof.
-    intros Hread. iIntros "Hcl".
+    intros Hread. iIntros "#Hpinr Hdlr Hcl".
     iDestruct "Hcl" as "[#HT | [Hs | Hwn]]".
-    - iSplitR; [by iApply ein_of_taint | by iLeft].
-    - iDestruct "Hs" as (v n cs0) "(#Hpin & Hw & %Hn & #HElb & #Hcslb & %Hp)".
+    - iModIntro. iSplitR; [by iApply ein_of_taint |]. iLeft. by iFrame "Hdlr".
+    - iDestruct "Hs" as (v2 n2 cs0)
+        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & %Hp)".
+      iDestruct (era_pin_agree with "Hpin Hpinr") as %->.
+      iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
       pose proof Hp as Hp2.
       destruct Hp2 as (_ & _ & _ & _ & Hidx & Hbyte & _).
       destruct (ein_read_pure k pops dl ws cs0 Hread Hp)
         as (Hpref & Hp' & Hbnd').
-      iSplitL "Hw".
-      { rewrite /ein. iRight. iLeft. iExists v, n, cs0.
-        iFrame "Hpin Hw HElb Hcslb". iPureIntro. by split. }
-      iRight. iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
-      iSplitR; [by iPureIntro |].
-      iRight. iExists v, cs0. iFrame "Hpin Hcslb". iSplitR "".
-      + iApply (E_lb_of_lb v (seg_of (echoed pops)) (length (dl ++ ws)));
-          [rewrite seg_of_length; by apply prefix_length | iExact "HElb"].
-      + by iPureIntro.
-    - iDestruct "Hwn" as (v n cs0)
-        "(#Hpin & Hw & %Hn & #HElb & #Hcslb & %Hp)".
+      iMod (dl_cnt_update v (length dl) n (n + length ws)%nat
+              with "Hdl Hdlr") as "[Hdl Hdlr]".
+      iModIntro. iSplitL "Hw Hdl".
+      { rewrite /ein. iRight. iLeft. iExists v, n2, cs0.
+        rewrite length_app Hdleq. iFrame "Hpin Hw Hdl HElb Hcslb".
+        iPureIntro. by split. }
+      iRight. iFrame "Hdlr".
+      iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+      iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+      iRight. iExists cs0. iFrame "Hcslb". iSplitR "".
+      + iApply (E_lb_of_lb v (seg_of (echoed pops)) (n + length ws)%nat);
+          [rewrite seg_of_length; pose proof (prefix_length _ _ Hpref) as HL;
+           rewrite length_app in HL; lia | iExact "HElb"].
+      + iPureIntro. rewrite -Hdleq -length_app. exact Hbnd'.
+    - iDestruct "Hwn" as (v2 n2 cs0)
+        "(#Hpin & Hw & Hdl & %Hn & #HElb & #Hcslb & %Hp)".
+      iDestruct (era_pin_agree with "Hpin Hpinr") as %->.
+      iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
       pose proof Hp as Hp2.
       destruct Hp2 as (_ & _ & _ & _ & Hidx & Hbyte & _).
       destruct (ein_read_pure k pops dl ws cs0 Hread Hp)
         as (Hpref & Hp' & Hbnd').
-      iSplitL "Hw".
-      { rewrite /ein. iRight. iRight. iExists v, n, cs0.
-        iFrame "Hpin Hw HElb Hcslb". iPureIntro. by split. }
-      iRight. iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
-      iSplitR; [by iPureIntro |].
-      iRight. iExists v, cs0. iFrame "Hpin Hcslb". iSplitR "".
-      + iApply (E_lb_of_lb v (seg_of (echoed pops)) (length (dl ++ ws)));
-          [rewrite seg_of_length; by apply prefix_length | iExact "HElb"].
-      + by iPureIntro.
+      iMod (dl_cnt_update v (length dl) n (n + length ws)%nat
+              with "Hdl Hdlr") as "[Hdl Hdlr]".
+      iModIntro. iSplitL "Hw Hdl".
+      { rewrite /ein. iRight. iRight. iExists v, n2, cs0.
+        rewrite length_app Hdleq. iFrame "Hpin Hw Hdl HElb Hcslb".
+        iPureIntro. by split. }
+      iRight. iFrame "Hdlr".
+      iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+      iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+      iRight. iExists cs0. iFrame "Hcslb". iSplitR "".
+      + iApply (E_lb_of_lb v (seg_of (echoed pops)) (n + length ws)%nat);
+          [rewrite seg_of_length; pose proof (prefix_length _ _ Hpref) as HL;
+           rewrite length_app in HL; lia | iExact "HElb"].
+      + iPureIntro. rewrite -Hdleq -length_app. exact Hbnd'.
   Qed.
 
   (* ...and the LINE, which is what SH-LINE reads off it.  Its [E_byte]
@@ -2216,6 +2369,28 @@ Section echo_out.
       exists (seg_of z). by rewrite seg_of_app.
     - by rewrite seg_of_length.
     - by rewrite seg_of_length.
+  Qed.
+
+  (* ...AND THE PER-BYTE FORM, which is what sh's [gets] reads: one byte at
+     a time, placed by the reader's own delivered count.  [read_ret]'s
+     [⌜length dl = n⌝] is what makes [n] usable here at all -- the link
+     hides the invariant's [dl]. *)
+  Lemma ein_read_byte (pops : list log_entry)
+      (dl ws : list (list mobs * bv 8)) (n : nat) (x : list mobs * bv 8) :
+    E_byte (seg_of (echoed pops)) ->
+    (dl ++ ws) `prefix_of` echoed pops ->
+    length dl = n ->
+    ws !! 0%nat = Some x ->
+    x.2 = echo_line !!! (n `mod` length echo_line)%nat.
+  Proof.
+    intros HE Hp Hdl Hx.
+    assert (Hlk : (dl ++ ws) !! n = Some x).
+    { rewrite lookup_app_r; [| lia]. rewrite Hdl Nat.sub_diag. exact Hx. }
+    assert (Hek : echoed pops !! n = Some x)
+      by (by eapply prefix_lookup_Some).
+    assert (Hsk : seg_of (echoed pops) !! n = Some (open_seg x.1, x.2))
+      by (by rewrite /seg_of list_lookup_fmap Hek).
+    pose proof (HE n _ Hsk) as Hb. cbn [snd] in Hb. exact Hb.
   Qed.
 
   (* (L) THE DRAIN ([App.Htx]).  The claim's own same-cycle facts are at its
@@ -2272,6 +2447,8 @@ Section echo_out.
        [App.Hinit_boot] hand them over at the [boot_fixedGS] literal *)
     Context (Hout : @riscv_out_res Σ (@riscv_fixedGS Σ HRg) = eout).
     Context (Hin : @riscv_in_res Σ (@riscv_fixedGS Σ HRg) = ein).
+    Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HRg) = etag).
+    Context (Hwin : @riscv_win_res Σ (@riscv_fixedGS Σ HRg) = ewin).
 
     Lemma out_res_at0 (kk : nat) (hh : list mobs) (aa : list (bv 8)) :
       out_res_at Uart0 kk hh aa = eout kk hh aa.
@@ -2344,77 +2521,206 @@ Section echo_out.
        the two bounds a later WRITE spends, the stage one at the window's far
        end (which at a line boundary is the [17 q] the block-first write asks
        for) and the CHOICE bound beside it. *)
-    Definition read_ret (k : nat) (ws : list (list mobs * bv 8)) : iProp Σ :=
-      (T ∨ ∃ (pops : list log_entry) (dl : list (list mobs * bv 8)),
-         ⌜read_ok pops dl ws⌝ ∗ ⌜(dl ++ ws) `prefix_of` echoed pops⌝
-         ∗ ⌜E_index (seg_of (echoed pops))⌝
-         ∗ ⌜E_byte (seg_of (echoed pops))⌝
-         ∗ (⌜ws = []⌝
-            ∨ ∃ (v : era_pins) (cs0 : list nat),
-                era_pin k v ∗ cs_lb v cs0 ∗ E_lb v (length (dl ++ ws))
-                ∗ ⌜((length (dl ++ ws)) `div` length echo_line
-                    <= S (length cs0))%nat⌝))%I.
+    Definition read_ret (k : nat) (v : era_pins) (n : nat)
+        (ws : list (list mobs * bv 8)) : iProp Σ :=
+      ((T ∗ dl_cnt v (1/2) n)
+       ∨ dl_cnt v (1/2) (n + length ws)%nat
+         ∗ ∃ (pops : list log_entry) (dl : list (list mobs * bv 8)),
+             ⌜read_ok pops dl ws⌝ ∗ ⌜length dl = n⌝
+             ∗ ⌜(dl ++ ws) `prefix_of` echoed pops⌝
+             ∗ ⌜E_index (seg_of (echoed pops))⌝
+             ∗ ⌜E_byte (seg_of (echoed pops))⌝
+             ∗ (⌜ws = []⌝
+                ∨ ∃ cs0 : list nat,
+                    cs_lb v cs0 ∗ E_lb v (n + length ws)%nat
+                    ∗ ⌜((n + length ws) `div` length echo_line
+                        <= S (length cs0))%nat⌝))%I.
 
-    Lemma echo_read_link (k : nat) (ws : list (list mobs * bv 8))
-        (Φ : iProp Σ) :
-      (read_ret k ws -∗ Φ) -∗ read_link k ws Φ.
+    Lemma echo_read_link (k : nat) (v : era_pins) (n : nat)
+        (ws : list (list mobs * bv 8)) (Φ : iProp Σ) :
+      era_pin k v -∗ dl_cnt v (1/2) n -∗ (read_ret k v n ws -∗ Φ) -∗
+      read_link k ws Φ.
     Proof.
-      iIntros "HΦ" (o pops dl) "#Hlb Hres %Hread".
+      iIntros "#Hpin Hdlr HΦ" (o pops dl) "#Hlb Hres %Hread".
       rewrite !in_res_at0.
-      iDestruct (ein_step_read k (default [] o) pops dl ws Hread with "Hres")
-        as "(Hres & Hret)".
+      iMod (ein_step_read k v n (default [] o) pops dl ws Hread
+              with "Hpin Hdlr Hres") as "(Hres & Hret)".
       iModIntro. iExists o. rewrite in_res_at0. iFrame "Hlb Hres".
       iApply "HΦ". rewrite /read_ret.
-      iDestruct "Hret" as "[HT | (%Hpref & %Hidx & %Hbyte & Hrest)]";
-        [by iLeft |].
-      iRight. iExists pops, dl. iFrame "Hrest". iPureIntro. by split_and!.
+      iDestruct "Hret" as "[Ht | (Hdlr & %Hdl & %Hpref & %Hidx & %Hbyte
+                                 & Hrest)]"; [by iLeft |].
+      iRight. iFrame "Hdlr". iExists pops, dl. iFrame "Hrest".
+      iPureIntro. by split_and!.
     Qed.
 
-    (* ==================================================================== *)
-    (*  THE TWO KERNEL STATEMENTS LANE CONS-IO F CHANGES, AS LOCAL COPIES.   *)
-    (*                                                                      *)
-    (*  F gives [RiscvPtsto] the field [riscv_win_res : nat -> iProp Σ] (the *)
-    (*  application's per-era echo window token, riding the PLIC payload     *)
-    (*  beside the receive token), adds it as a premise of                   *)
-    (*  [SpecConsoleintr.cons_echo_shift] and returns it in                  *)
-    (*  [WpUart.in_append]'s post.  Nothing else about the console contracts *)
-    (*  moves: [WpUart.echo_link], [out_link] and [read_link] above are the  *)
-    (*  landed ones.                                                        *)
-    (*                                                                      *)
-    (*  These two definitions are those statements with [riscv_win_res]      *)
-    (*  ALREADY at [ewin] -- which is what [App.Happ_echo]'s new equation     *)
-    (*  [riscv_win_res = app_win A c] will say -- so that part 4's totality  *)
-    (*  argument is checkable against the real shape and part 5 has          *)
-    (*  something to build [echo_happ_echo] on.  THEY ARE REPLACED BY        *)
-    (*  [WpUart.in_append] AND [SpecConsoleintr.cons_echo_shift] AT F'S      *)
-    (*  LANDING, and nothing outside this file may use them.                 *)
-    (* ==================================================================== *)
-    Definition in_append_F (k : nat) (h : list mobs) (c : bv 8)
-        (cs : list (bv 8)) (Φ : iProp Σ) : iProp Σ :=
-      (∀ (o : option (list mobs)) (pops : list log_entry)
-         (dl : list (list mobs * bv 8)),
-         obs_hist_lb_o o -∗ in_res_at Uart0 k (default [] o) pops dl -∗
-         ⌜forall e, e ∈ pops -> hist_ext (le_hist e) h⌝
-         ={⊤ ∖ ↑uartN Uart0}=∗
-         ∃ o' : option (list mobs),
-           obs_hist_lb_o o' ∗
-           in_res_at Uart0 k (default [] o') (pops ++ [(h, c, cs)]) dl
-           ∗ ewin k ∗ Φ)%I.
+    (* THE KERNEL'S TOKEN IS THE APPLICATION'S, by [App.Happ_echo]'s fourth
+       equation (lane CONS-IO milestone F).  [riscv_win_res (S gen_id)] on
+       [SpecConsoleintr.cons_echo_shift]'s premise and [riscv_win_res k] in
+       [WpUart.in_append]'s post are [ewin] -- the window counter's half,
+       which the echo splits and the append gives back. *)
+    Lemma win_res0 (kk : nat) : riscv_win_res kk = ewin kk.
+    Proof. by rewrite Hwin. Qed.
 
-    Fixpoint in_run_F (k : nat) (h : list mobs) (c : bv 8)
-        (pre bs : list (bv 8)) (Φ : iProp Σ) : iProp Σ :=
-      match bs with
-      | [] => in_append_F k h c pre Φ
-      | b :: bs' => in_append_F k h c pre Φ
-                    ∧ echo_link k h b (in_run_F k h c (pre ++ [b]) bs' Φ)
-      end%I.
+    (* ================================================================== *)
+    (*  THE ECHO SHIFT ITSELF -- [App.Happ_echo], a CLOSED entailment.     *)
+    (*                                                                    *)
+    (*  It is the totality table of part 4's report, run as a proof: the   *)
+    (*  taint arms (the tag's, the token's, either claim's), the window    *)
+    (*  arm's five quarters, the settled arm's tie at the echo and its     *)
+    (*  refutation at the append, and the DROP arm at every early stop of  *)
+    (*  the run.  Nothing here opens an invariant of the application's:    *)
+    (*  every authority the era has arrives inside the claim the link      *)
+    (*  hands over.                                                       *)
+    (* ================================================================== *)
 
-    Definition cons_echo_shift_F (g : nat) : iProp Σ :=
-      (□ ∀ (h : list mobs) (c : bv 8) (cs : list (bv 8)) (Φ : iProp Σ),
-          ⌜obs_ends_in Uart0 h c⌝ -∗ ⌜obs_boots h = S g⌝ -∗
-          ⌜cons_echo c cs⌝ -∗
-          riscv_rx_tag h -∗ obs_hist_lb h -∗ ewin (S g) -∗ Φ -∗
-          in_run_F (S g) h c [] cs Φ)%I.
+    (* ---- the licence route: once tainted, every link of the run is free,
+            the kernel's token included ---- *)
+    Lemma echo_link_of_taint (k : nat) (h : list mobs) (b : bv 8)
+        (Φ : iProp Σ) :
+      T -∗ Φ -∗ echo_link k h b Φ.
+    Proof.
+      iIntros "#HT HΦ" (o o' acc pops dl)
+        "#Hlb Hres #Hlb' Hires %Hord %Hwire".
+      iModIntro. iExists o. rewrite !out_res_at0 !in_res_at0.
+      iSplitR "HΦ"; [iExact "Hlb" |].
+      iSplitR "HΦ"; [by iApply eout_of_taint |].
+      iSplitR "HΦ"; [iExact "Hlb'" |].
+      iSplitR "HΦ"; [by iApply ein_of_taint | iExact "HΦ"].
+    Qed.
+
+    Lemma in_append_of_taint (k : nat) (h : list mobs) (c : bv 8)
+        (cs : list (bv 8)) (Φ : iProp Σ) :
+      T -∗ Φ -∗ in_append k h c cs Φ.
+    Proof.
+      iIntros "#HT HΦ" (o pops dl) "#Hlb Hres %Hord".
+      iModIntro. iExists o. rewrite !in_res_at0 Hwin.
+      iSplitR "HΦ"; [iExact "Hlb" |].
+      iSplitR "HΦ"; [by iApply ein_of_taint |].
+      iSplitR "HΦ"; [by iApply ewin_of_taint | iExact "HΦ"].
+    Qed.
+
+    Lemma in_run_of_taint (k : nat) (h : list mobs) (c : bv 8)
+        (bs : list (bv 8)) :
+      forall (pre : list (bv 8)) (Φ : iProp Σ),
+        T -∗ Φ -∗ in_run k h c pre bs Φ.
+    Proof.
+      induction bs as [| b bs IH]; iIntros (pre Φ) "#HT HΦ".
+      - by iApply in_append_of_taint.
+      - cbn [in_run]. iSplit.
+        + by iApply in_append_of_taint.
+        + iApply (echo_link_of_taint with "HT [HΦ]").
+          by iApply (IH (pre ++ [b]) Φ with "HT HΦ").
+    Qed.
+
+    (* ---- the disciplined route, one lemma per arm of [in_run] ---- *)
+
+    (* THE APPEND AFTER AN EARLY STOP: the kernel took [in_run]'s left
+       conjunct, so nothing was echoed and the entry is [(h, c, [])].  The
+       token was never split and goes straight back. *)
+    Lemma in_append_drop (k : nat) (h : list mobs) (c : bv 8)
+        (Φ : iProp Σ) :
+      disc h -> trace_shape h true -> obs_boots h = k ->
+      obs_ends_in Uart0 h c ->
+      obs_hist_lb h -∗ ewin k -∗ Φ -∗ in_append k h c [] Φ.
+    Proof.
+      intros Hdisc Hsh Hk Hends.
+      iIntros "#Hlbh Hwin HΦ" (o pops dl) "#Hlb Hres %Hord".
+      iEval (rewrite in_res_at0) in "Hres".
+      iDestruct (ein_step_append_drop k h c (default [] o) pops dl
+                   Hdisc Hsh Hk Hends Hord with "Hres") as "Hres".
+      iModIntro. iExists (Some h). cbn [obs_hist_lb_o from_option id].
+      rewrite in_res_at0 Hwin.
+      iSplitR "Hres Hwin HΦ"; [iExact "Hlbh" |].
+      iSplitR "Hwin HΦ"; [iExact "Hres" |].
+      iSplitL "Hwin"; [iExact "Hwin" | iExact "HΦ"].
+    Qed.
+
+    (* ...AND AFTER THE ECHO: the receipt names the entry, the claim's
+       window arm owes exactly it, and the token comes back. *)
+    Lemma in_append_echo (k : nat) (h : list mobs) (c : bv 8)
+        (Φ : iProp Σ) :
+      disc h -> trace_shape h true -> obs_boots h = k ->
+      obs_ends_in Uart0 h c ->
+      obs_hist_lb h -∗ ein_pend k h c -∗ Φ -∗
+      in_append k h c [echo_of c] Φ.
+    Proof.
+      intros Hdisc Hsh Hk Hends.
+      iIntros "#Hlbh Hpend HΦ" (o pops dl) "#Hlb Hres %Hord".
+      iEval (rewrite in_res_at0) in "Hres".
+      iMod (ein_step_append k h (default [] o) c pops dl
+              Hdisc Hsh Hk Hends Hord with "Hpend Hres") as "[Hres Hwin]".
+      iModIntro. iExists (Some h). cbn [obs_hist_lb_o from_option id].
+      rewrite in_res_at0 Hwin.
+      iSplitR "Hres Hwin HΦ"; [iExact "Hlbh" |].
+      iSplitR "Hwin HΦ"; [iExact "Hres" |].
+      iSplitL "Hwin"; [iExact "Hwin" | iExact "HΦ"].
+    Qed.
+
+    (* THE ECHO'S OWN LINK.  The caller-owed premise [Hlt] is read off the
+       input claim it is handed ([ein_lt]) -- a tainted claim owes nothing
+       and pays through the taint arms instead. *)
+    Lemma echo_link_echo (k : nat) (h : list mobs) (c : bv 8)
+        (Φ : iProp Σ) :
+      disc h -> trace_shape h true -> obs_boots h = k ->
+      obs_ends_in Uart0 h c ->
+      obs_hist_lb h -∗ ewin k -∗ (ein_pend k h c -∗ Φ) -∗
+      echo_link k h (echo_of c) Φ.
+    Proof.
+      intros Hdisc Hsh Hk Hends.
+      iIntros "#Hlbh Hwin HΦ" (o o' acc pops dl)
+        "#Hlb Hres #Hlb' Hires %Hord %Hwire".
+      iEval (rewrite out_res_at0) in "Hres".
+      iEval (rewrite in_res_at0) in "Hires".
+      iDestruct (ein_lt k h c (default [] o') pops dl Hsh Hk Hends Hord
+                   with "Hires") as "[Hires Hlt]".
+      iDestruct "Hlt" as "[#HT | %Hlt]".
+      { iModIntro. iExists o. rewrite !out_res_at0 !in_res_at0.
+        iSplitR "HΦ"; [iExact "Hlb" |].
+        iSplitR "HΦ"; [by iApply eout_of_taint |].
+        iSplitR "HΦ"; [iExact "Hlb'" |].
+        iSplitR "HΦ"; [by iApply ein_of_taint |].
+        iApply "HΦ". rewrite /ein_pend. by iLeft. }
+      iMod (eout_step_echo k h c (default [] o) (default [] o') acc pops dl
+              Hdisc Hsh Hk Hends Hwire Hord Hlt
+              with "Hwin Hres Hires") as "(Hres & Hires & Hpend)".
+      iModIntro. iExists (Some h). cbn [obs_hist_lb_o from_option id].
+      rewrite out_res_at0 in_res_at0.
+      iSplitR "Hres Hires Hpend HΦ"; [iExact "Hlbh" |].
+      iSplitR "Hires Hpend HΦ"; [iExact "Hres" |].
+      iSplitR "Hires Hpend HΦ"; [iExact "Hlb'" |].
+      iSplitR "Hpend HΦ"; [iExact "Hires" |].
+      by iApply "HΦ".
+    Qed.
+
+    (* [App.Happ_echo], modulo lane CONS-IO F's two contracts. *)
+    Lemma echo_happ_echo :
+      ⊢ ∀ (GEN : GenId) (XI : CurCtx),
+          @SpecConsoleintr.cons_echo_shift Σ HRg GEN XI.
+    Proof.
+      iIntros (GEN XI).
+      rewrite /SpecConsoleintr.cons_echo_shift Htag Hwin.
+      iIntros "!>" (h c cs Φ) "%Hends %Hk %Hcs #Htg #Hlbh Hwin HΦ".
+      iDestruct "Htg" as "[%Hsh [%Hdisc | #HT]]"; last first.
+      { (* THE TAINT ROUTE, at every arm and every length of the run *)
+        by iApply (in_run_of_taint with "HT HΦ"). }
+      destruct Hcs as [Hnil | [Hech | [Herase _]]].
+      - (* A DROPPED BYTE is an accepted byte: the log records it at [cs = []] *)
+        subst cs. cbn [in_run].
+        by iApply (in_append_drop with "Hlbh Hwin HΦ").
+      - (* THE ECHO: the byte first, the entry last, stoppable before either *)
+        subst cs. cbn [in_run]. iSplit.
+        + by iApply (in_append_drop with "Hlbh Hwin HΦ").
+        + iApply (echo_link_echo (S gen_id) h c with "Hlbh Hwin [HΦ]");
+            [exact Hdisc | exact Hsh | exact Hk | exact Hends |].
+          iIntros "Hpend". cbn [in_run].
+          by iApply (in_append_echo with "Hlbh Hpend HΦ").
+      - (* THE ERASE ARMS cannot fire under the discipline *)
+        exfalso.
+        pose proof (disc_seg_no_erase (open_seg h) c
+                      (disc_seg_open_seg h Hsh Hdisc)
+                      (open_seg_ends_in h c Hends)) as Hno.
+        rewrite Hno in Herase. discriminate.
+    Qed.
   End echo_links.
 
 End echo_out.

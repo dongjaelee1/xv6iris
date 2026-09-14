@@ -146,8 +146,12 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   `brief-trap-rows-4.md`): MILESTONE A LANDED 2026-09-16 (`5f04889b0`; the
   note below: the boot end, the kernel invariant, the row at numbers);
   B1a LANDED 2026-09-16 (`31aff80ee`; the note below: `ukn_pid`/`upid`, the
-  constructors); B1b in flight (RULED: init's pid pinned to the literal 1
-  via an optional exact-value ghost on the pid counter; the fork-side
+  constructors); B1b in flight (RULED: init's pid pinned to the literal 1;
+  VERIFIED in the tree's boot order -- `nextpid` carved at 1, allocproc's
+  only callers are userinit and kfork, `started` published after userinit;
+  the counter's exact-value half rides the COUNTED regime `procs_avail
+  (Some n)` and is whole in the payload after userinit's park (shape A), so
+  allocproc's two corollaries are its two existing regimes; the fork-side
   token `⌜pidc <> 1⌝`; the wait leaf's `_pid` twin).
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after

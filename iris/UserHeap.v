@@ -137,6 +137,65 @@ Proof.
   rewrite Heq in Hfin. exact Hfin.
 Qed.
 
+(* ...AND THE SAME READING ONE TEST WEAKER (lane TXT-ROW).  A .rodata
+   source run is X and NOT W, so the reading above says nothing about it --
+   and it does not have to.  A page the PROJECTION LISTS AT ALL is a real
+   user leaf, because [perm_leaf] tests U and R and nothing else, and under
+   [lazy_free] the fill cannot have supplied the entry (every live page is
+   mapped); V comes off [proc_pt_wf].  So "the process can fetch here"
+   already refutes a failing copyIN, which is exactly what the write leaf's
+   short arm needs of a source run in the text half
+   ([UkRunSys.wp_uk_ecall_write_chain_txt]).  Same range premise, same
+   [lazy_free], one weaker test on the permission side. *)
+Lemma lazy_free_ux_addr (P : uptd) (sz a : Z) :
+  ProcPtOwn.proc_pt_wf P -> lazy_free (ud_um P) sz ->
+  0 <= a < 2 ^ 38 ->
+  ux_addr (perm_of (ud_um P) sz) a -> uva_rmapped P a.
+Proof.
+  intros Hwf Hlf Ha (q & Hq & _).
+  unfold uperm_at in Hq.
+  assert (Hpos : 0 < 4096) by lia.
+  pose proof (Z.mod_pos_bound a 4096 Hpos) as Hmb.
+  assert (H64 : 0 <= a < Z64) by (unfold Z64; lia).
+  assert (Hu : uint (mword_of_int a : mword 64) = a) by (apply uint_moi; exact H64).
+  assert (Hlt : uint (mword_of_int a : mword 64) < 274877906944).
+  { rewrite Hu. lia. }
+  assert (H12 : 0 <= 12) by lia.
+  assert (Hv : bv_unsigned (svpn_of (mword_of_int a : mword 64)) = a / 4096).
+  { rewrite (svpn_of_unsigned_lo (mword_of_int a : mword 64) Hlt).
+    rewrite Hu. rewrite (Z.shiftr_div_pow2 a 12 H12).
+    change (2 ^ 12) with 4096. reflexivity. }
+  (* THE ENTRY IS A LEAF'S OWN BITS: the fill supplies nothing here *)
+  assert (Hleaf : exists w : mword 64,
+             ud_um P !! svpn_of (mword_of_int a : mword 64) = Some w /\ PtTree.pte_vu w).
+  { destruct (ud_um P !! svpn_of (mword_of_int a : mword 64)) as [w |] eqn:Hp.
+    - exists w. split; [ reflexivity | ].
+      destruct (perm_of_mapped_U (ud_um P) sz
+                  (svpn_of (mword_of_int a : mword 64)) q w Hq Hp) as [Hbu _].
+      destruct (uleaf_wf_lt w
+                  (proc_pt_wf_uleaf_wf P (svpn_of (mword_of_int a : mword 64))
+                     w Hwf Hp)) as [_ Hval].
+      exact (pte_vu_of_valid_u w Hval Hbu).
+    - exfalso. rewrite perm_of_lookup Hp in Hq.
+      destruct (bool_decide
+                  (svpn_of (mword_of_int a : mword 64) ∈ live_pages sz))
+        eqn:Hb; [ | discriminate Hq ].
+      apply bool_decide_eq_true in Hb.
+      apply Hlf, elem_of_dom in Hb.
+      destruct Hb as [x Hx]. rewrite Hp in Hx. discriminate Hx. }
+  destruct Hleaf as (w & Hl & Hvu).
+  assert (Hj : (Z.to_nat (a mod 4096) < 4096)%nat) by lia.
+  pose proof (uva_rmapped_page P (svpn_of (mword_of_int a : mword 64)) w
+                (Z.to_nat (a mod 4096)) Hl Hvu Hj) as Hfin.
+  assert (Heq : bv_unsigned (svpn_of (mword_of_int a : mword 64)) * 4096
+                + Z.of_nat (Z.to_nat (a mod 4096)) = a).
+  { rewrite Hv. rewrite (Z2Nat.id (a mod 4096) (proj1 Hmb)).
+    assert (Hne : 4096 <> 0) by lia.
+    pose proof (Z.div_mod a 4096 Hne) as Hdm.
+    rewrite Z.mul_comm in Hdm. symmetry. exact Hdm. }
+  rewrite Heq in Hfin. exact Hfin.
+Qed.
+
 (* THE SPLIT, made once at allocation.  Text is "executable and not
    writable" so the two halves are disjoint by construction; in xv6 that
    costs nothing, because exec maps text R+X and everything else R+W and no

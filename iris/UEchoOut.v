@@ -37,9 +37,10 @@
 (*  [UserHeap.ubytesq] and reads the row off [uheap_ubytes_w] -- the      *)
 (*  WRITABLE half -- so it answers for argv and NOT for the literals.     *)
 (*  The literals' leaf is [echo_wtxt] below: the same leaf with the run   *)
-(*  in the text half, OWED BY THE ENGINE and taken here as a named        *)
-(*  premise.  Everything the application side of it needs is proved:      *)
-(*  [lazy_free_rmapped] is the reading that makes it true.                *)
+(*  in the text half ([UkRunSys.wp_uk_ecall_write_chain_txt], through     *)
+(*  echo's own stub [UkEcho.wp_kecho_write_chain_txt]).  It was a named   *)
+(*  premise until lane TXT-ROW; [echo_wtxt_holds] discharges it, and the  *)
+(*  reading that makes it true is [UserHeap.lazy_free_ux_addr].           *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -208,75 +209,13 @@ Proof. vm_compute. reflexivity. Qed.
 Lemma echo_nl_ro : echo_ro !! UkEcho.echo_nl_ptr = Some echo_nl_b.
 Proof. vm_compute. reflexivity. Qed.
 
-(* THE READING THAT MAKES THE TEXT LEAF TRUE (the twin of
-   [UserHeap.lazy_free_uw_addr], ONE TEST WEAKER on the permission side).
-   A page the projection lists at all is a real user leaf -- [perm_leaf]
-   tests U and R -- and under [lazy_free] the FILL cannot have supplied
-   it, so the entry is that leaf's own bits; V comes off [proc_pt_wf].
-   Hence "the process can execute here" already refutes a failing copyin,
-   which is what a .rodata buffer needs and what the WRITABLE reading
-   cannot give it. *)
-Lemma perm_of_mapped (um : gmap (mword 27) (mword 64)) (sz : Z)
-    (p : mword 27) (q : uperm) (w : mword 64) :
-  perm_of um sz !! p = Some q -> um !! p = Some w ->
-  pte_bit w 4 = true /\ pte_bit w 1 = true.
-Proof.
-  intros Hq Hp. rewrite perm_of_lookup Hp in Hq.
-  unfold perm_leaf in Hq.
-  destruct (pte_bit w 4) eqn:E4; destruct (pte_bit w 1) eqn:E1;
-    cbn in Hq; try discriminate; by split.
-Qed.
-
-Lemma lazy_free_mapped (P : uptd) (sz : Z) (p : mword 27) (q : uperm) :
-  proc_pt_wf P -> lazy_free (ud_um P) sz ->
-  perm_of (ud_um P) sz !! p = Some q ->
-  exists w : mword 64, ud_um P !! p = Some w /\ pte_vu w.
-Proof.
-  intros Hwf Hlf Hq.
-  destruct (ud_um P !! p) as [w |] eqn:Hp.
-  - exists w. split; [ reflexivity | ].
-    destruct (perm_of_mapped (ud_um P) sz p q w Hq Hp) as [Hu _].
-    destruct (uleaf_wf_lt w (proc_pt_wf_uleaf_wf P p w Hwf Hp)) as [_ Hv].
-    exact (pte_vu_of_valid_u w Hv Hu).
-  - exfalso.
-    rewrite perm_of_lookup Hp in Hq.
-    destruct (bool_decide (p ∈ live_pages sz)) eqn:Hb; [ | discriminate Hq ].
-    apply bool_decide_eq_true in Hb.
-    apply Hlf, elem_of_dom in Hb.
-    destruct Hb as [x Hx]. rewrite Hp in Hx. discriminate Hx.
-Qed.
-
-Lemma lazy_free_rmapped (P : uptd) (sz a : Z) :
-  proc_pt_wf P -> lazy_free (ud_um P) sz ->
-  0 <= a < 2 ^ 38 ->
-  ux_addr (perm_of (ud_um P) sz) a -> uva_rmapped P a.
-Proof.
-  intros Hwf Hlf Ha (q & Hq & _).
-  unfold uperm_at in Hq.
-  assert (Hpos : 0 < 4096) by lia.
-  pose proof (Z.mod_pos_bound a 4096 Hpos) as Hmb.
-  assert (H64 : 0 <= a < Z64) by (unfold Z64; change (2 ^ 38) with 274877906944 in Ha; lia).
-  assert (Hu : uint (mword_of_int a : mword 64) = a) by (apply uint_moi; exact H64).
-  assert (Hlt : uint (mword_of_int a : mword 64) < 274877906944).
-  { rewrite Hu. change (2 ^ 38) with 274877906944 in Ha. lia. }
-  assert (H12 : 0 <= 12) by lia.
-  assert (Hv : bv_unsigned (svpn_of (mword_of_int a : mword 64)) = a / 4096).
-  { rewrite (svpn_of_unsigned_lo (mword_of_int a : mword 64) Hlt).
-    rewrite Hu. rewrite (Z.shiftr_div_pow2 a 12 H12).
-    change (2 ^ 12) with 4096. reflexivity. }
-  destruct (lazy_free_mapped P sz (svpn_of (mword_of_int a : mword 64)) q
-              Hwf Hlf Hq) as (w & Hl & Hvu).
-  assert (Hj : (Z.to_nat (a mod 4096) < 4096)%nat) by lia.
-  pose proof (uva_rmapped_page P (svpn_of (mword_of_int a : mword 64)) w
-                (Z.to_nat (a mod 4096)) Hl Hvu Hj) as Hfin.
-  assert (Heq : bv_unsigned (svpn_of (mword_of_int a : mword 64)) * 4096
-                + Z.of_nat (Z.to_nat (a mod 4096)) = a).
-  { rewrite Hv. rewrite (Z2Nat.id (a mod 4096) (proj1 Hmb)).
-    assert (Hne : 4096 <> 0) by lia.
-    pose proof (Z.div_mod a 4096 Hne) as Hdm.
-    rewrite Z.mul_comm in Hdm. symmetry. exact Hdm. }
-  rewrite Heq in Hfin. exact Hfin.
-Qed.
+(* THE READING THAT MAKES THE TEXT LEAF TRUE now LIVES IN THE ENGINE
+   ([UserHeap.lazy_free_ux_addr], the twin of [UserHeap.lazy_free_uw_addr]
+   one test weaker on the permission side; lane TXT-ROW).  It was proved
+   here while [echo_wtxt] was a premise, because that is where the need for
+   it was visible; it had to move down for the leaf that hands the row out
+   ([UkRunSys.wp_uk_ecall_write_chain_txt]) to use it, and nothing in this
+   file refers to it any more. *)
 
 (* THE KERNEL'S COUNT IS THE CALLER'S REQUEST ([UShLine.ush_count_is_cap]
    at echo's own shape): argument 2 reaches file.c as a 32-bit INT and the
@@ -551,11 +490,14 @@ Section UEchoOut.
   (*  ([UserHeap.lazy_free_uw_addr]).  echo's separator and its newline   *)
   (*  are .rodata: X and NOT W, filed under the TEXT gname, and no        *)
   (*  [ubytesq] of them exists.  The row is still true and one test       *)
-  (*  weaker -- [lazy_free_rmapped] above IS the reading -- but only the  *)
-  (*  LEAF can hand it out, because the key's permission map is bound by  *)
-  (*  [UkRun.urun]'s existentials there and nowhere else.  So this is the *)
-  (*  same leaf with the run in the text half, stated at echo's own stub  *)
-  (*  and taken as a premise until it lands.                              *)
+  (*  weaker -- [UserHeap.lazy_free_ux_addr] IS the reading -- but only  *)
+  (*  the LEAF can hand it out, because the key's permission map is bound *)
+  (*  by [UkRun.urun]'s existentials there and nowhere else.  So this is  *)
+  (*  the same leaf with the run in the text half, stated at echo's own   *)
+  (*  stub -- AND IT NOW LANDS (lane TXT-ROW): the engine's own text leaf *)
+  (*  is [UkRunSys.wp_uk_ecall_write_chain_txt] and echo's stub over it   *)
+  (*  is [UkEcho.wp_kecho_write_chain_txt], so what was a premise is      *)
+  (*  [echo_wtxt_holds] below and no caller carries it any more.          *)
   (* =================================================================== *)
   Definition echo_wtxt : Prop :=
     forall (N : uk_names Σ) (h : CpuId) (m : regfile) (avail : nat)
@@ -590,11 +532,18 @@ Section UEchoOut.
            WP (Loop : expr riscv_lang)) -∗
         WP (Loop : expr riscv_lang).
 
+  (* ...AND IT IS DISCHARGED (lane TXT-ROW).  One [iApply]: echo's write
+     stub over the engine's text leaf IS this statement. *)
+  Lemma echo_wtxt_holds : echo_wtxt.
+  Proof.
+    intros N h m avail fdep l nb fb.
+    iApply (UkEcho.wp_kecho_write_chain_txt N h m avail fdep l nb fb).
+  Qed.
+
   (* THE TWO LITERAL CALLS, at one byte each *)
   Lemma kecho_w_of_link_txt (N : uk_names Σ) (v : era_pins)
       (ps0 cs0 : list nat) (n0 P p : nat)
       (l : list fdstate) (rb : bool) (ua : Z) (b : bv 8) :
-    echo_wtxt ->
     echo_stage ps0 cs0 n0 P ->
     l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     line_alts !!! 0%nat !! p = Some b ->
@@ -606,7 +555,8 @@ Section UEchoOut.
       (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P p)
       (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P (S p)).
   Proof.
-    intros Htxt Hst Hl1 Hline Hrange.
+    intros Hst Hl1 Hline Hrange.
+    pose proof echo_wtxt_holds as Htxt.
     change (2 ^ 38) with 274877906944 in Hrange.
     iIntros "#Hpin #Hlk #Hb" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd Hc] Hrun Hcont".
@@ -714,7 +664,6 @@ Section UEchoOut.
   Lemma kecho_pay_of_link (N : uk_names Σ) (v : era_pins)
       (ps0 cs0 : list nat) (n0 P : nat) (av : Z) (args : list uarg)
       (l : list fdstate) (rb : bool) :
-    echo_wtxt ->
     echo_stage ps0 cs0 n0 P ->
     echo_out_argv args ->
     l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
@@ -727,7 +676,7 @@ Section UEchoOut.
       (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P 0%nat)
       (ukn_pay N (-1)).
   Proof.
-    intros Htxt Hst (Hlen & Hg1p & Hg2p) Hl1 Hpayeq.
+    intros Hst (Hlen & Hg1p & Hg2p) Hl1 Hpayeq.
     iIntros "#Hpin #Hlk #Hro #Hargv".
     rewrite /kecho_pay_all. iSplit.
     - iIntros "%Hsmall". exfalso. lia.
@@ -749,7 +698,7 @@ Section UEchoOut.
                   with "Hpin Hlk Hs1").
       + (* write(1, " ", 1) *)
         iApply (kecho_w_of_link_txt N v ps0 cs0 n0 P 5%nat l rb
-                  echo_sep_ptr echo_sep_b Htxt Hst Hl1 echo_sep_line
+                  echo_sep_ptr echo_sep_b Hst Hl1 echo_sep_line
                   ltac:(unfold echo_sep_ptr;
                         change (2 ^ 38) with 274877906944; lia)
                   with "Hpin Hlk [Hro]").
@@ -775,7 +724,7 @@ Section UEchoOut.
                     (ech v ps0 cs0 n0 P 12%nat) with "[] []").
           { iIntros "[_ $]". }
           iApply (kecho_w_of_link_txt N v ps0 cs0 n0 P 11%nat l rb
-                    echo_nl_ptr echo_nl_b Htxt Hst Hl1 echo_nl_line
+                    echo_nl_ptr echo_nl_b Hst Hl1 echo_nl_line
                     ltac:(unfold echo_nl_ptr;
                           change (2 ^ 38) with 274877906944; lia)
                     with "Hpin Hlk [Hro]").
@@ -797,7 +746,6 @@ Section UEchoOut.
   (* =================================================================== *)
   Lemma echo_uexec_slot_at (W : uvis) (v : era_pins)
       (ps0 cs0 : list nat) (n0 P : nat) (rb : bool) :
-    echo_wtxt ->
     echo_stage ps0 cs0 n0 P ->
     echo_out_argv
       (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W))) ->
@@ -837,7 +785,7 @@ Section UEchoOut.
     ech v ps0 cs0 n0 P 0%nat -∗
     uslot W.
   Proof.
-    intros Htxt Hst Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
+    intros Hst Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
            Havd Havs Hfdlen Hstop Hlzf.
     iIntros "#Hpin #Hlk #Hdep Hpay Hc".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
@@ -861,7 +809,7 @@ Section UEchoOut.
               with "[] [] [] [Hstd Hc] Hrun").
     { iApply (kecho_pay_of_link N v ps0 cs0 n0 P (uvis_av W)
                 (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W)))
-                (take NSTD (uvis_fd W)) rb Htxt Hst Hargv1 Hl1 Hpayeq
+                (take NSTD (uvis_fd W)) rb Hst Hargv1 Hl1 Hpayeq
                 with "Hpin Hlk [] []").
       - iApply (echo_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                   Hsub2 Hx with "Ht").

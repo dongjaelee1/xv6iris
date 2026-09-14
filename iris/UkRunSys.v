@@ -329,6 +329,32 @@ Section UkRunSys.
     apply Hk. lia.
   Qed.
 
+  (* ...AND THE SAME RUN IN THE TEXT HALF (lane TXT-ROW).  A .rodata source
+     run is filed under [ukn_t] and its pages are X-and-NOT-W, so
+     [uheap_ubytes_w] says nothing about it.  [UserHeap.uheap_text] does:
+     an image byte's page is FETCHABLE and its address canonical.  This is
+     that clause read along a run -- the two facts the buffer-carrying leaf
+     gets from [uheap_ubytes_run] and [uheap_ubytes_w] together, in one
+     pass, because the text invariant states both at the same byte. *)
+  Lemma uheap_text_bytes (γt γd γs : gname) (M : gmap Z (bv 8))
+      (pmv : gmap (mword 27) uperm) (sz : Z) (a : Z) (nb : nat)
+      (f : nat -> bv 8) :
+    uheap γt γd γs M pmv sz -∗
+    ([∗ list] j ∈ seq 0 nb, utext γt (a + Z.of_nat j)%Z (f j)) -∗
+    ⌜ forall j : nat, (j < nb)%nat ->
+        ux_addr pmv (a + Z.of_nat j)%Z /\ 0 <= a + Z.of_nat j < 2 ^ 38 ⌝.
+  Proof.
+    iInduction nb as [| kb IH] "IH"; iIntros "Hheap Hbs".
+    { iPureIntro. intros j Hj. exfalso. lia. }
+    iEval (rewrite seq_S big_sepL_app /=) in "Hbs".
+    iDestruct "Hbs" as "[Hlo [Hhi _]]".
+    iDestruct ("IH" with "Hheap Hlo") as %Hk.
+    iDestruct (uheap_text with "Hheap Hhi") as %(_ & Hx & Hc).
+    iPureIntro. intros j Hj.
+    destruct (decide (j = kb)) as [-> | Hne]; [ exact (conj Hx Hc) | ].
+    apply Hk. lia.
+  Qed.
+
   (* ===================================================================== *)
   (* THE NO-FAULT LEMMA (app-echo.md, lane LAZY-FLAG, K5/L6).               *)
   (*                                                                       *)
@@ -3719,6 +3745,165 @@ Section UkRunSys.
     iApply ("Hcont" $! h' r W cw' cs'
               with "[%] [%] [%] [%] Hstd Hpost Hrun");
       assumption.
+  Qed.
+
+
+  (* ------------------------------------------------------------------- *)
+  (* ...AND THE SAME LEAF WITH THE SOURCE RUN IN THE TEXT HALF (lane        *)
+  (* TXT-ROW).                                                             *)
+  (*                                                                       *)
+  (* WHY A SECOND ONE.  [wp_uk_ecall_write_chain_buf] reads the row that    *)
+  (* refutes the short arm off [uheap_ubytes_w] -- the caller owns this     *)
+  (* byte, so its page is WRITABLE, so a copyin could read it               *)
+  (* ([UserHeap.lazy_free_uw_addr]).  A program that prints a STRING        *)
+  (* LITERAL has no such byte: .rodata is X-and-NOT-W and is filed under    *)
+  (* the TEXT gname, and no [ubytesq] of it exists.  echo's separator       *)
+  (* (0x930) and its newline (0x938) are exactly that                       *)
+  (* ([UCodeEcho.echo_ro]).                                                *)
+  (*                                                                       *)
+  (* THE ROW IS STILL TRUE AND ONE TEST WEAKER.  [UserHeap.uheap_text]      *)
+  (* puts a text byte's page in [UserHeap.ux_addr] of the key's permission  *)
+  (* map, and a page the projection lists AT ALL is a real user leaf --     *)
+  (* [perm_leaf] tests U and R -- so under [lazy_free] the fetchable page   *)
+  (* is readable-mapped too ([UserHeap.lazy_free_ux_addr]).  As with the    *)
+  (* buffer leaf, only HERE can it be handed out: the key's permission map  *)
+  (* is bound by [UkRun.urun]'s existentials, and no caller can name it.    *)
+  (*                                                                       *)
+  (* THE RUN IS PERSISTENT ([utext] is [↪□]), so it comes back for free and *)
+  (* the walk never has to give it up; everything else -- the four          *)
+  (* register rows, the ledger row, the lazy bit and the post -- is         *)
+  (* [wp_uk_ecall_write_chain_buf]'s, word for word.  [nb = 0] is the       *)
+  (* buffer-free leaf again, so the two stubs that hold no run keep their   *)
+  (* statements and [wp_uk_ecall_write_chain] is untouched.                 *)
+  (* ------------------------------------------------------------------- *)
+  Lemma wp_uk_ecall_write_chain_txt (N : uk_names Σ) (h : CpuId)
+      (m : regfile) (pc : mword 64) (avail : nat) (fdep : sfam)
+      (l : list fdstate) (nb : nat) (f : nat -> bv 8) :
+    usysno m = 16 ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    udepwf_std N m pc 16 fdep l -∗
+    UserFd.ustd (ukn_fd N) l -∗
+    ([∗ list] j ∈ seq 0 nb,
+       UserHeap.utext (ukn_t N)
+         (uint (m !!! Regidx (mword_of_int 11)) + Z.of_nat j)%Z (f j)) -∗
+    (∀ (h' : CpuId) (r : mword 64) (W : uvis) (cw' : Z) (cs' : gset gname),
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx (mword_of_int 10)⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx (mword_of_int 11)⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx (mword_of_int 12)⌝ -∗
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       ⌜uvis_lazy W = false⌝ -∗
+       ⌜ forall (P : uptd) (j : nat),
+           ProcPtOwn.proc_pt_wf P ->
+           perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
+           lazy_free (ud_um P) (uvis_sz W) ->
+           (j < nb)%nat ->
+           UserPtTree.uva_rmapped P
+             (uint (add_vec_int (m !!! Regidx (mword_of_int 11))
+                      (Z.of_nat j))) ⌝ -∗
+       UserFd.ustd (ukn_fd N) l -∗
+       ([∗ list] j ∈ seq 0 nb,
+          UserHeap.utext (ukn_t N)
+            (uint (m !!! Regidx (mword_of_int 11)) + Z.of_nat j)%Z (f j)) -∗
+       spost_at uslot 16 fdep W r (uvis_M W) (uvis_fd W) cw' cs' -∗
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
+         (add_vec_int pc 4) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hn Hal4.
+    iIntros "#Hi Hrun Hsb Hstd #Hbs Hcont".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    (* THE SOURCE RUN'S PAGES ARE FETCHABLE -- hence readable-mapped in any
+       table the key's projection admits -- taken HERE for the buffer
+       leaf's reason: this is the one place where the heap the process owns
+       and the key's own permission map are the same term. *)
+    iDestruct (uheap_text_bytes (ukn_t N) (ukn_d N) (ukn_s N) M pm sz
+                 (uint (m !!! Regidx (mword_of_int 11))) nb f
+                 with "Hheap Hbs") as %Hbnd.
+    assert (Hnf : forall (P : uptd) (j : nat),
+              ProcPtOwn.proc_pt_wf P -> perm_of (ud_um P) sz = pm ->
+              lazy_free (ud_um P) sz -> (j < nb)%nat ->
+              UserPtTree.uva_rmapped P
+                (uint (add_vec_int (m !!! Regidx (mword_of_int 11))
+                         (Z.of_nat j)))).
+    { intros P j Hwf Hpmp Hlf Hjn.
+      destruct (Hbnd j Hjn) as [Hxacc Hrange].
+      assert (Hlin : uint (add_vec_int (m !!! Regidx (mword_of_int 11))
+                            (Z.of_nat j))
+                     = (uint (m !!! Regidx (mword_of_int 11)) + Z.of_nat j)%Z).
+      { change (2 ^ 38) with 274877906944 in Hrange.
+        rewrite !uint_unsigned in Hrange |- *.
+        apply uint_add_vec_int_small; lia. }
+      rewrite Hlin.
+      apply (UserHeap.lazy_free_ux_addr P sz
+               (uint (m !!! Regidx (mword_of_int 11)) + Z.of_nat j)%Z Hwf Hlf);
+        [ exact Hrange | rewrite Hpmp; exact Hxacc ]. }
+    (* THE KEY'S LOW THREE SLOTS ARE THE CALLER'S OWN LEDGER *)
+    iDestruct (ustd_agree (ukn_fd N) fdv l with "Hufd Hstd") as %Htake.
+    iDestruct "Hsb" as "[%Hfp Hsb]".
+    iDestruct ("Hsb" $! M pm sz fdv cw gn cs pidv with "[%] Hmy Hheap Hufd")
+      as "(Hheap & Hufd & Hdepn)"; [ exact Htake | ].
+    iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
+    iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
+    iApply (UkStep.wp_uk_ecall C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc fdv cw gn cs pidv Hui
+              (fun (s : mstate)
+                   (Hp : register_lookup cur_privilege s.(sregs) = User)
+                   (Hc : register_lookup (R_bitvector_64 PC) s.(sregs) = pc) =>
+                 UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
+                   s pc ltac:(vm_compute; reflexivity)
+                   ltac:(vm_compute; reflexivity) Hp Hc)
+              with "Hb Hmy").
+    rewrite (uexec_ret_ecall _ _ eq_refl).
+    assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = 16).
+    { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
+    rewrite /uexec_pay_dep /upay_at.
+    rewrite Hnum. cbv zeta.
+    destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
+      [ | exfalso; exact (Hpne eq_refl) ].
+    destruct (decide (16 = USYS_exit)) as [He | _]; [ discriminate He | ].
+    destruct (decide (16 = USYS_fork)) as [He | _]; [ discriminate He | ].
+    destruct (decide (16 = USYS_wait)) as [He | _]; [ discriminate He | ].
+    iExists fdep. rewrite Hfp.
+    cbn [uvis_gen uvis_of_run].
+    iSplitR; [ iFrame "Hmy" | ].
+    iSplitL "Hdepn"; [ iExact "Hdepn" | ].
+    iIntros (r M' pm' sz' fdv' cw' gn' cs' lz')
+      "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow Hpost".
+    assert (Hlzq : lz' = false)
+      by (refine (usys_mem_ok_lazy _ _ _ _ _ _ _ _ _ _ _ _ Hok);
+          vm_compute; discriminate).
+    subst lz'.
+    assert (Hcw : cw' = cw)
+      by (refine (usys_cwd_ok_quiet _ _ _ _ _ Hcwrow); vm_compute; discriminate).
+    assert (Hgn : gn' = gn) by exact (usys_gen_ok_quiet _ _ _ Hgnrow).
+    assert (Hch : cs' = cs) by exact (usys_ch_ok_quiet _ _ _ _ Hchrow).
+    subst gn' cs' cw'.
+    destruct (usys_mem_ok_quiet 16 _ r _ _ _ _ _ _ _ _
+                ltac:(discriminate) ltac:(discriminate) ltac:(discriminate)
+                ltac:(discriminate) ltac:(discriminate) ltac:(discriminate) Hok)
+      as [-> [-> ->]].
+    pose proof (usys_fd_ok_quiet 16 _ r _ _
+                  ltac:(discriminate) ltac:(discriminate)
+                  ltac:(discriminate) ltac:(discriminate) Hfdok) as ->.
+    cbn [uvis_M uvis_perm uvis_of_run].
+    rewrite (uslot_bump_run m pc M M pm pm sz sz fdv fdv cw cw gn gn cs cs pidv false false r Hx0 Hal4).
+    iApply ukcq_ukc.
+    iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+    iIntros (h') "Hrun".
+    iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv cw gn cs pidv false) cw cs
+              with "[%] [%] [%] [%] [%] [%] Hstd Hbs [Hpost] Hrun").
+    { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg0 m pc). }
+    { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg1 m pc). }
+    { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg2 m pc). }
+    { rewrite (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false). exact Htake. }
+    { reflexivity. }
+    { cbn [uvis_perm uvis_sz uvis_of_run]. exact Hnf. }
+    rewrite (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false).
+    cbn [uvis_M uvis_of_run]. iExact "Hpost".
   Qed.
 
 

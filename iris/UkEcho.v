@@ -1190,6 +1190,119 @@ Section UkEcho.
   Qed.
 
 
+  (* ...AND THE SAME STUB WITH THE SOURCE RUN IN THE TEXT HALF (lane
+     TXT-ROW).  echo's separator (0x930) and its newline (0x938) are
+     .rodata -- X and NOT W, filed under [γt] ([UCodeEcho.echo_ro]) -- so
+     no [ubytesq] of them exists and [wp_kecho_write_chain] above cannot
+     carry them.  The leaf underneath is
+     [UkRunSys.wp_uk_ecall_write_chain_txt], whose row is the buffer
+     leaf's one test weaker, and the run is PERSISTENT so the walk keeps
+     it: the two rows and the post come through unchanged. *)
+  Lemma wp_kecho_write_chain_txt (h : CpuId) (m : regfile) (avail : nat)
+      (fdep : sfam) (l : list fdstate) (nb : nat) (fb : nat -> bv 8) :
+    echo_code γt -∗
+    urun N h m (mword_of_int EchoSyms.write) avail -∗
+    udepwf_std N (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+      (add_vec_int (mword_of_int EchoSyms.write : mword 64) 2) 16 fdep l -∗
+    UserFd.ustd γfd l -∗
+    ([∗ list] j ∈ seq 0 nb,
+       utext γt (uint (m !!! Regidx a1_idx) + Z.of_nat j)%Z (fb j)) -∗
+    (∀ (h' : CpuId) (ret : mword 64) (W : uvis) (cw' : Z) (cs' : gset gname),
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx a0_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx a1_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx a2_idx⌝ -∗
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       ⌜uvis_lazy W = false⌝ -∗
+       ⌜ forall (P : uptd) (j : nat),
+           ProcPtOwn.proc_pt_wf P ->
+           perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
+           lazy_free (ud_um P) (uvis_sz W) ->
+           (j < nb)%nat ->
+           UserPtTree.uva_rmapped P
+             (uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))) ⌝ -∗
+       UserFd.ustd γfd l -∗
+       spost_at uslot 16 fdep W ret (uvis_M W) (uvis_fd W) cw' cs' -∗
+       urun N h'
+         (<[Regidx a0_idx := ret]>
+            (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
+         (ret_pc (m !!! Regidx ra_idx)) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    iIntros "#Hcode Hrun Hsb Hstd #Hbs Hcont".
+    destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite). rewrite Hwrite.
+    (* ---- 0x352  c.li a7,16 ---- *)
+    iApply (wp_uk_cli N h m (mword_of_int 0x352)
+              (mword_of_int 16 : mword 6) a7_idx avail
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; discriminate) with "[] Hrun").
+    { iApply (uis_echo_352 with "Hcode"). }
+    assert (E352 : add_vec_int (mword_of_int 0x352 : mword 64) 2
+                   = mword_of_int 0x354)
+      by (apply bv_eq; vm_compute; reflexivity).
+    assert (Em : <[Regidx a7_idx
+                   := regval_into_reg (sign_extend' 64 (mword_of_int 16 : mword 6)
+                                       : mword 64)]> m
+                 = <[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+      by (f_equal; apply bv_eq; vm_compute; reflexivity).
+    rewrite E352 Em.
+    iIntros (h1) "Hrun".
+    set (m1 := <[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m).
+    (* ---- 0x354  ecall -- THE CHAIN-PAYING WRITE ---- *)
+    assert (Ha1m1 : m1 !!! Regidx a1_idx = m !!! Regidx a1_idx)
+      by exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx)
+                  (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)).
+    rewrite <- Ha1m1.
+    iApply (wp_uk_ecall_write_chain_txt N h1 m1 (mword_of_int 0x354) avail
+              fdep l nb fb
+              ltac:(unfold m1, usysno;
+                    rewrite (upd_eq m (Regidx a7_idx)
+                               (mword_of_int 16 : mword 64));
+                    vm_compute; reflexivity)
+              ltac:(vm_compute; reflexivity)
+              with "[] Hrun Hsb Hstd Hbs").
+    { iApply (uis_echo_354 with "Hcode"). }
+    assert (E354 : add_vec_int (mword_of_int 0x354 : mword 64) 4
+                   = mword_of_int 0x358)
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite E354.
+    iIntros (h2 ret W cw' cs')
+      "%Ha0 %Ha1 %Ha2 %Htk %Hlz %Hnf Hstd _ Hpost Hrun".
+    rewrite Ha1m1.
+    set (m2 := <[Regidx a0_idx := ret]> m1).
+    (* ---- 0x358  c.jr ra ---- *)
+    assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
+    { unfold m2, m1.
+      exact (eq_trans
+               (upd_ne m1 (Regidx a0_idx) (Regidx ra_idx) ret
+                  ltac:(vm_compute; discriminate))
+               (upd_ne m (Regidx a7_idx) (Regidx ra_idx)
+                  (mword_of_int 16 : mword 64)
+                  ltac:(vm_compute; discriminate))). }
+    iApply (wp_uk_cjr N h2 m2 (mword_of_int 0x358) ra_idx
+              (ret_pc (m !!! Regidx ra_idx)) avail
+              ltac:(vm_compute; discriminate)
+              ltac:(rewrite Hra; reflexivity)
+              with "[] Hrun").
+    { iApply (uis_echo_358 with "Hcode"). }
+    iIntros (h3) "Hrun".
+    iApply ("Hcont" $! h3 ret W cw' cs'
+              with "[%] [%] [%] [%] [%] [%] Hstd Hpost Hrun").
+    { rewrite Ha0 /m1.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a0_idx)
+               (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)). }
+    { rewrite Ha1 /m1.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx)
+               (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)). }
+    { rewrite Ha2 /m1.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a2_idx)
+               (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)). }
+    { exact Htk. }
+    { exact Hlz. }
+    { rewrite <- Ha1m1. exact Hnf. }
+  Qed.
+
+
 
   (* ===================================================================== *)
   (*  WHAT THE WALK SPENDS PER WRITE (lane IO-LEAF, M2).                    *)

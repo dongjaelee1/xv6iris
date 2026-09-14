@@ -3783,6 +3783,47 @@ family.  Init's free write law then has exactly the two payable arms
 `die_de`/`die_df` left (INIT-DIAG's laws), and nothing about `die_dw` is an
 owner question any more.
 
+IO-LEAF STEP 4 LANDED (2026-09-14; lane STEP4-SH's `06f61205b`+`ee1a0276e`
+in `-disc`, cherry-picked as `2426ca438`+`7da574e81` on `e4376a1c6`; 20
+files; NEW `iris/UShEchoPay.v`; builds s4-5/s4-8 in `-disc` on the identical
+iris tree; audit the thirteen; lemma_diff 7 GONE (`UShEcho.sh_exec_sup_of_
+echo_slot{,_holds,_closed}`, `UkShCd.wp_kshc_cd` (the cd arm is REFUTED from
+the line fact), `UkShFork.ushf_pstate_at/_of_at/wp_kshf_fork_any`) + 3
+NEWAXIOM (`UkSh.ush_wb_wc`, `ush_wc_blk_line`, `ush_wb_read` -- section
+hypotheses discharged at `echo_Hinit_boot`); no Admitted).  (A) THE FORK
+LENDS, THE WAIT REDEEMS: sh's `Wc` is the TIGHT family `EchoLinksLine.
+ewc_lcred` (index 3 NEW = the line's block owed, nothing chosen); the console
+arm lends the child `Rc := Wc np 3`, the child runs the PAID echo entry
+(`UEchoOut.echo_uexec_slot_at`, assembled in `UShEchoPay` with the refund
+through `UkRunExecRef.udepw_at_refR`), `UkShRun.wp_kshr_wait_pid` (the
+`_pid` twin) refutes wait's -1 against the live token and the reaping arm
+redeems the payload (`gen_pay_timeless`) into the slot; PROLOGUE-ALTS-3
+consumed: `ush_wcp_cons` at k = 2 through `ush_wb_wc`, `ush_gets_done_line`'s
+closed arm REFUTED through `ush_wb_read` (the reader's receipt `rd_res`
+rides in `ush_mid`).  The loop state pins the cwd at `FsImg.ROOTINO` and
+carries `upid_any` (R3's prerequisite (2) done); `ush_rest_l`'s inner state
+is `ush_bstate` (slot 3) -- a change INSIDE the trusted obligation's cone,
+`sh_pay_rest`'s text unchanged.  (B) M4b(2): fork1's panic is the CALLER's
+(`wp_kshr_fork1` takes `Pex` and a panic continuation); `UkShDiag.
+ush_panic_law Wc Wb` / `ush_execfail_law Cr Cd` with the paid walks
+`wp_kshd_panic_paid`/`wp_kshd_execfail_paid`, discharged at the links
+(`UShPanic.ush_panic_law_holds`, `ush_execfail_law_holds`,
+`ksh_w1_of_link_blk`); "fork\n" pays from the lend and exits on `Wb np`;
+"exec echo failed\n" pays from the refund (`ushf_child_law_holds_at`, PINNED
+`(PS := uprogSG_free)` -- unpinned the final `iApply` hung 40 min); "open %s
+failed" unreachable on the paid walk, "cannot cd" refuted.  `∨ True` LEFT:
+`ush_wcp`'s third arm (producers: init's `init_lend_cred` affine arm; the
+wait re-entry when the reaped generation is not the forked one -- killer:
+exec-seam rows `uvis_ch W' = ∅`, `uvis_pid W' = pidv` on `SpecKexec.
+exec_slot_pre`/`PinnedExec.pinned_exec_bundle`, which UkInitMain:954 drops),
+`init_rd_cred` (init side), `ush_wcp_triv` at `ush_gets_done_line`'s affine
+arm; the fork's PID sub-arm (`sign_extend' 64 pidv = -1`) still pays on the
+free law -- killer: a pid-range row (`bv_unsigned pidv < 2^31`) in
+`UkFork.wp_uk_ecall_fork`'s parent post.  `sh_deps` spenders left: §5 of
+the report (the prompt's True arm, getcmd's taint arm, the pid sub-arm, the
+affine/taint fork arm, the GENERIC runner/diag lemmas, the entry's hand-off).
+Report: `handoff-2026-09-16/step4-sh-report.md`.
+
 M6b LANDED (2026-09-14; lane M6B-INIT's `b48cb3199`+`6d87c8558` in `-sup`,
 cherry-picked as `a7d47ccef`+`290f05cf0` on `e9477f988`; 7 files, NEW
 `iris/UkRunExecRef.v` (row after `UkRunSys.v`); build m6b-4 in `-sup` on the

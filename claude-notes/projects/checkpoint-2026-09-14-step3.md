@@ -40,10 +40,8 @@ two halves of step 3).
 ## 3. In flight -- STEP 4 (launched 2026-09-14, third session)
 
 Two lanes, spawned from the coordinator's main checkout (`lane/io-leaf-3`):
-* STEP4-SH in `-disc`, branch `lane/step4-sh` -- M3b core + the wait
-  redemption + PROLOGUE-ALTS-3's two lemmas consumed, then M4b(2); brief
-  `handoff-2026-09-16/brief-step4-sh.md`, report to scratchpad
-  `step4-sh-report.md`.
+* STEP4-SH -- LANDED (`2426ca438`+`7da574e81`, app-echo.md "IO-LEAF STEP 4
+  LANDED"); `-disc` is free again.
 * M6B-INIT -- LANDED (`a7d47ccef`+`290f05cf0`, app-echo.md "M6b LANDED");
   `-sup` is free again.
 Both may touch UInitSh.v/UInitBoot.v minimally; the coordinator merges those

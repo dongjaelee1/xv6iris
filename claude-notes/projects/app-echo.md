@@ -126,12 +126,13 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   gains `Rt`); M4a(3) LANDED 2026-09-16 (`2e0c78906`; the note below: the
   prompt paid by the link; the pair `sh_prompt_pay`); M3b(1) + M3c LANDED
   2026-09-16 (`c9bf0cde9`); M5a LANDED 2026-09-16 (`5c48c3aa2`; the note
-  below: the read on the era's link); IN FLIGHT: M5b (main checkout: the
-  credential in the console lease; closes `Hsh_owed`'s third conjunct) and
-  M4b(1) (`-sup`, `lane/io-leaf-diag`: the diagnostics tower carries
-  `ksh_w`, structural only); then M3b core (the payload at the line
-  boundary, the lend into echo), sh's wait redemption after TRAP-ROWS-4;
-  M4b(2) the diagnostics' payment, M6 after.
+  below: the read on the era's link); M5b LANDED 2026-09-16 (`32d7b6bbf`;
+  the note below: the credential rides the console lease; `Hsh_owed` DOWN
+  TO TWO CONJUNCTS); IN FLIGHT: M4b(1) (`-sup`, `lane/io-leaf-diag`: the
+  diagnostics tower carries `ksh_w`, structural only); NEXT (fresh agent,
+  main checkout): M5(3) sh's `gets` on the enriched answer + M3b core (the
+  payload at the line boundary, the lend into echo), sh's wait redemption
+  after TRAP-ROWS-4; M4b(2) the diagnostics' payment, M6 after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad
@@ -3376,6 +3377,36 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M5b LANDED (2026-09-16; `32d7b6bbf` on `eddf42399`; 10 files; builds
+io40-io43 in the main checkout; audit the thirteen; lemma_diff 1 GONE
+(`UShLine.ush_rd_cred`, superseded); no Admitted).  `Hsh_owed` IS DOWN TO
+TWO CONJUNCTS: the read leaf `∀ c γp N l, ukn_pay N = ucons_pay … -> ⊢
+ush_read_recv_leaf …` is DELETED from the theorem's hypotheses;
+`echo_Hinit_boot` discharges it with `UShLine.ush_read_recv_leaf_holds` at
+`Rd := ush_rd_pin γ`.  NEW: `UserConsole.ucons_pay cn γ T Rd := fun _ => (∃
+n, ucons_reader cn n ∗ upos_a γ n ∗ Rd n) ∨ T` and `uinit_tok cn T Rd := (∃
+n, ucons_reader cn n ∗ Rd n) ∨ T` (was without `Rd`); `init_boot_pay` gains
+`Rd` and a fourth conjunct `Rd 0` (split off `eturn` in
+`UInitBanner.kinit_dl0`; the banner never spent it).  WHY IT WORKS: `Rd n`
+under the SAME existential as `upos_a γ n` makes the era's delivered count
+and the ring's cursor the same number (`upos_agree`), and the credential
+ROUND-TRIPS (`uinit_lend` at every fork, `uinit_redeem` at every wait) so
+round k > 0's shell gets one exactly as round 0's; UkSh/UShKernel and the
+sh walk are UNCHANGED (the credential arrives inside `ukn_pay N (-1)`, which
+`ush_at` already carries, and the leaf unfolds it).  `UShLine`: `ush_rd_ret`
+returns the lease in pieces; `ush_read_sup_era` pays both halves off the one
+lease (taint arm via `cons_dirty_cred` + `echo_link_rd_taint`);
+`ush_read_recv_era` walks it at an answer carrying the delivered byte placed
+in `echo_line` by sh's own count and `cs_lb`/`ps_lb`/`E_lb v (n+dc)`;
+`ush_read_ans_of_era` weakens to the landed `ush_read_ans` (sh's `gets` still
+consumes the weakened one -- wiring the enriched answer in is next).  M6
+CONFIRMED FREE: the write-side turn's return fits the same `Rd` slot
+(strengthen `Rd n` to carry `∃ ps cs P, round_start ∗ turn v P ∗ ps_lb ∗
+cs_lb ∗ E_lb v n` -- the round-start conjunct existential since the stage is
+not a function of the count alone); nothing in UserConsole/UkInit/
+UkInitMain/UInitKernel/UInitSh/UConsLine moves, only the two ends.
+Handover: `io-leaf-handover.md`.
 
 IO-LEAF M5a LANDED (2026-09-16; the lane's `529b2a853` cherry-picked onto
 `3f628acef` as `5c48c3aa2`; EchoLinks.v + UShLine.v; builds io38-io39 in the

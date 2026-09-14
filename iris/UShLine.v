@@ -30,6 +30,18 @@
 (*      [UInitBootAdequacy]'s [Hsh_owed] through                           *)
 (*      [UInitBoot.echo_Hinit_boot]; lane IO-LEAF pays it.  Section S2     *)
 (*      below carries the full argument.                                   *)
+(*                                                                        *)
+(*  S5/S6/S7  THE READ SIDE ON THE ERA'S OWN LINK (lane IO-LEAF, M5).     *)
+(*      S5 rebuilds the access lemma at [EchoLinks.echo_link_rd] -- the    *)
+(*      console deposit's boundary half is the era's read link at sh's     *)
+(*      cursor now, not the licence -- and proves the bridge the survey    *)
+(*      called for: the byte the call delivered IS                         *)
+(*      [EchoDisc.echo_line] at sh's own delivered count.  S6 is the LEAF  *)
+(*      on that deposit, [ush_read_recv_era]: [ush_read_recv_leaf] with    *)
+(*      the era's credential beside the lease and the era's answer beside  *)
+(*      the ring's, with the [-1] arm refuted at the console descriptor    *)
+(*      by TRAP-ROWS T2.  S7 says what is still between it and the owed    *)
+(*      statement, and it is a TRANSPORT question, not a proof one.        *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -80,9 +92,48 @@ Require Import UartNames.          (* [cons_names] *)
 Require Import UserConsole.        (* [upos] / [ucons_pay] *)
 Require Import UkSh.               (* [ush_narrow_count_le] *)
 Require Import UConsLine.          (* [ush_read_recv_leaf] / [ush_std_cons] *)
+(* THE ERA'S READ SIDE (lane IO-LEAF, M5).  [EchoOut] is the application's
+   CLAIM and [EchoLinks] the program-side law built on it; this file names
+   neither the boot record nor its four equations -- the law arrives as a
+   premise, exactly as [UkSh.sh_deps] does.  [EchoOut] requires nothing
+   above [SpecConsoleintr], so there is no cycle with the U tier. *)
+Require Import ConsLog.            (* [log_entry] / [read_ok] *)
+Require Import EchoDisc.           (* [echo_line] *)
+Require Import EchoOutPure.        (* [E_byte] / [echoed] *)
+Require Import EchoOut.            (* [era_pin] / [dl_cnt] / [read_ret] *)
+Require Import EchoLinks.          (* [echo_links] and its two read
+                                      projections *)
 Require Import TsoCtx.
 Local Open Scope Z_scope.
 Import Defs.
+
+(* ===================================================================== *)
+(*  THE RING'S TRANSLATION IS THE IDENTITY ON THE LINE (lane IO-LEAF, M5) *)
+(*                                                                       *)
+(*  What a program reads out of its buffer is [ConsoleInv.cons_xlate] of  *)
+(*  the byte the ring stored ([ConsoleInv.cons_window]'s last clause),    *)
+(*  and what the era's input claim places in [EchoDisc.echo_line] is the  *)
+(*  STORED byte ([EchoOut.ein_read_byte]).  The two are the same byte     *)
+(*  exactly because the line carries no carriage return -- 0x0d is the    *)
+(*  one byte [cons_xlate] moves, and the seventeen of [echo_line] are     *)
+(*  "echo hello world\n".  A closed computation, in the [forallb]-over-   *)
+(*  [seq] shape [UkSh.ush_jrow_bytes] uses.                               *)
+(* ===================================================================== *)
+Lemma echo_line_no_cr_bool :
+  forallb (fun i : nat =>
+             bool_decide (cons_xlate (echo_line !!! i) = echo_line !!! i))
+    (seq 0 17) = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma echo_line_no_cr (i : nat) :
+  (i < length echo_line)%nat ->
+  cons_xlate (echo_line !!! i) = echo_line !!! i.
+Proof.
+  rewrite echo_line_length. intro Hi.
+  pose proof (proj1 (forallb_forall _ _) echo_line_no_cr_bool i
+                ltac:(apply in_seq; lia)) as H.
+  exact (bool_decide_eq_true_1 _ H).
+Qed.
 
 Section UShLine.
   (* THE KERNEL'S INSTANCE IS AMBIENT ([UInitSh.v]'s header): no local
@@ -96,6 +147,11 @@ Section UShLine.
   Context `{GEN : GenId} `{XI : CurCtx}.
   Context `{!ghost_varG Σ Z}.
   Context `{!ghost_varG Σ (gset gname)}.
+  (* the era's own cameras (lane IO-LEAF, M5).  A NARROW class beside the
+     bundle, on [UShOut.v]'s and [UInitBanner.v]'s context list: the
+     application's ghosts are not [Xv6G.xv6G]'s and binding a second copy
+     of a bundle class is what makes the kernel's instance invisible. *)
+  Context `{!echoOutG Σ}.
 
   Local Notation a0_idx := (mword_of_int 10 : mword 5).
   Local Notation a1_idx := (mword_of_int 11 : mword 5).
@@ -108,7 +164,13 @@ Section UShLine.
      trivial ones everywhere else: a deposit is read at ONE number
      ([UexecExecInst.xv6_sbundle] is a match on it), so the rest of the
      record is inert.  [UInitConsK.xfam_mknod] is the mold. *)
-  Definition xfam_rd (Q : Z -> iProp Σ) (Rd : nat -> nat -> iProp Σ) : xfam :=
+  (* [Rin] IS A PARAMETER NOW (lane IO-LEAF, M5): read's console deposit
+     carries [WpUart.cons_read_pay (S gen_id) (rf_in f)] beside the ring's
+     own payment, and what sh asks to be told about the window it CONSUMED
+     is the era's [EchoOut.read_ret] -- not [True], which was only ever
+     payable while the application's input claim was [emp]. *)
+  Definition xfam_rd (Q : Z -> iProp Σ) (Rd : nat -> nat -> iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ) : xfam :=
     {| xf_P     := fun _ _ => True%I;
        xf_Pmiss := fun _ _ => True%I;
        xf_Fo    := pfam_triv (fun _ _ _ => True%I);
@@ -154,10 +216,7 @@ Section UShLine.
        kf_lend  := emp%I;
        kf_xpay  := Q;
        rf_ret   := Rd;
-       (* sh says nothing about the input's boundary account yet: the real
-          [read_link] arrives with SH-LINE R2/R3 (lane CONS-IO, milestone
-          B, and the coordinator's ruling (5)). *)
-       rf_in    := fun _ => True%I |}.
+       rf_in    := Rin |}.
 
   (* WHAT SH ASKS TO BE TOLD.  A lease holder's choice: the window it was
      handed begins at ITS OWN position and its half of the pair comes back
@@ -183,9 +242,13 @@ Section UShLine.
      the ecall leaves take [UexecSG.sfam], and an [xfam]-typed argument is
      checked before the instance evar is resolved and so does not
      convert. *)
+  Definition ush_read_fam_at (γp : gname) (T : iProp Σ) (n : nat)
+      (Rin : list (list mobs * bv 8) -> iProp Σ) (Q : Z -> iProp Σ) : sfam :=
+    xfam_rd Q (ush_rd_ret γp T n) Rin.
+
   Definition ush_read_fam (γp : gname) (T : iProp Σ) (n : nat)
       (Q : Z -> iProp Σ) : sfam :=
-    xfam_rd Q (ush_rd_ret γp T n).
+    ush_read_fam_at γp T n (fun _ => True%I) Q.
 
   (* =================================================================== *)
   (*  S1b  THE TWO KEY-LEVEL ROWS, IN THE PROCESS'S DIRECTION             *)
@@ -347,18 +410,24 @@ Section UShLine.
   (* ...AND THE SUPPLY AT THAT ARM, which costs nothing at all: the shut
      descriptor's bundle is [P -∗ P], so the call spends no token and the
      caller keeps the position it came in with. *)
+  (* AT ANY [Rin] (lane IO-LEAF, M5): the shut descriptor's arm of
+     [SpecFileread.fileread_in] is [P -∗ P] and reads no boundary link at
+     all, so the closed arm of the leaf costs the same whether the caller
+     asked to be told about its window or not. *)
   Lemma ush_read_sup_closed (N : uk_names Σ) (γp : gname) (T : iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
       (m : regfile) (pc : mword 64) (l : list fdstate) (n : nat) :
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = 0 ->
     l !! 0%nat = Some FdClosed ->
-    ⊢ udepwf_std N m pc USYS_read (ush_read_fam γp T n (ukn_pay N)) l.
+    ⊢ udepwf_std N m pc USYS_read
+        (ush_read_fam_at γp T n Rin (ukn_pay N)) l.
   Proof.
     intros Ha0 Hl0.
     rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
     iFrame "Hheap Hufd".
     iApply (sbundle_at_read_intro_at uslot
-              (ush_read_fam γp T n (ukn_pay N))
+              (ush_read_fam_at γp T n Rin (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               (m !!! Regidx a0_idx) fdv
               (tf_of_arg0 m pc)
@@ -366,6 +435,504 @@ Section UShLine.
     rewrite (ush_fd_st_closed (m !!! Regidx a0_idx) fdv l Ha0 Htake Hl0).
     rewrite /fileread_in. iIntros "HP". iExact "HP".
   Qed.
+
+  (* =================================================================== *)
+  (*  S5  THE ERA'S READ LINK AS SH'S DEPOSIT (lane IO-LEAF, M5)          *)
+  (*                                                                     *)
+  (*  S2 says why the flat input licence is FALSE at the echo             *)
+  (*  application's real input claim, and what has to replace it: the     *)
+  (*  READER's half of [EchoOut.dl_cnt] at sh's own cursor, spent through *)
+  (*  [EchoOut.echo_read_link].  That is the whole of this section.  It   *)
+  (*  is the DEPOSIT half of the leaf; what is still owed above it is the *)
+  (*  TRANSPORT -- how the half reaches sh's lease every round -- and the *)
+  (*  header of [UkSh.ush_at] says where that stands.                     *)
+  (* =================================================================== *)
+
+  (* WHAT SH ASKS TO BE TOLD ABOUT THE WINDOW IT CONSUMED.  [EchoOut.
+     read_ret] is the era's own answer: the delivered count moved to the
+     window's far end, the prefix fact, and the two index laws SH-LINE
+     turns into the line.  The RIGHT disjunct is the arm an already
+     TAINTED era answers on -- there the reader holds no half of the count
+     and the link is free ([EchoLinks.echo_link_rd_taint]), so the answer
+     can only be the taint itself.
+     ONE definition and not two, because [WpUart.cons_read_pay] quantifies
+     the window INSIDE: the program deposits ONE link and is told which
+     window it got in the receipt. *)
+  Definition ush_rd_in (T : iProp Σ) (v : era_pins) (n : nat)
+      (ws : list (list mobs * bv 8)) : iProp Σ :=
+    (read_ret T (S gen_id) v n ws ∨ T)%I.
+
+  Definition ush_read_fam_era (T : iProp Σ) (v : era_pins) (γp : gname)
+      (n : nat) (Q : Z -> iProp Σ) : sfam :=
+    ush_read_fam_at γp T n (ush_rd_in T v n) Q.
+
+  (* =================================================================== *)
+  (*  THE ACCESS LEMMA, REBUILT ON THE ERA'S LINK.                        *)
+  (*                                                                     *)
+  (*  Two payments, side by side, exactly as [SpecFileread.fileread_in]'s *)
+  (*  console arm asks for them: the RING's ([ConsoleInv.cons_acc]), paid *)
+  (*  by the reader lease sh carries -- unchanged from the landed shape   *)
+  (*  -- and the BOUNDARY's ([WpUart.cons_read_pay]), which used to be    *)
+  (*  bought outright from [WpUart.in_licence] and is now the era's read  *)
+  (*  link at sh's own delivered count.                                   *)
+  (*                                                                     *)
+  (*  THE CREDENTIAL IS A DISJUNCTION and it has to be: the lease's own   *)
+  (*  taint arm carries no count, and an era that is already off the      *)
+  (*  discipline has no count to carry -- [EchoLinks.echo_link_rd_taint]  *)
+  (*  is what moves the boundary's [dl] there.                            *)
+  (* =================================================================== *)
+  Lemma ush_read_sup_era (γ : echo_gn) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (v : era_pins)
+      (N : uk_names Σ) (γp : gname)
+      (m : regfile) (pc : mword 64) (l : list fdstate) (n : nat) (wr : bool) :
+    (* the descriptor is fd 0, and fd 0 is the console *)
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = 0 ->
+    l !! 0%nat = Some (FdOpen true wr (FdDevice CONSOLE)) ->
+    (* E2's two readings of the supply *)
+    (⊢ app_sup -∗ T) ->
+    (⊢ T -∗ app_sup) ->
+    echo_links T γ -∗
+    era_pin γ (S gen_id) v -∗
+    (dl_cnt v (1/2) n ∨ T) -∗
+    upos γp n -∗
+    ucons_pay fsc_cons γp T (-1) -∗
+    udepwf_std N m pc USYS_read
+      (ush_read_fam_era T v γp n (ukn_pay N)) l.
+  Proof.
+    intros Ha0 Hl0 Hst Hts.
+    iIntros "#Hlk #Hpin Hdl Hpos HP".
+    iDestruct (echo_links_rd with "Hlk") as "#Hrdl".
+    iDestruct (echo_links_rd_taint with "Hlk") as "#Hrdt".
+    rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
+    iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
+    iFrame "Hheap Hufd".
+    iApply (sbundle_at_read_intro_at uslot
+              (ush_read_fam_era T v γp n (ukn_pay N))
+              (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+              (m !!! Regidx a0_idx) fdv
+              (tf_of_arg0 m pc)
+              (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)).
+    rewrite (ush_fd_st_console (m !!! Regidx a0_idx) fdv l wr Ha0 Htake Hl0).
+    cbn [ush_read_fam_era ush_read_fam_at xfam_rd
+         rf_F rf_ret rf_in kf_xpay].
+    rewrite /fileread_in.
+    destruct (decide (CONSOLE = CONSOLE)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    iIntros "_".
+    iSplitR "Hdl"; last first.
+    { (* THE BOUNDARY'S HALF: the era's read link at sh's own count, or --
+         if the era is already tainted -- the free route. *)
+      iIntros (ws).
+      iDestruct "Hdl" as "[Hdl | #HT]".
+      - iApply ("Hrdl" $! (S gen_id) v n ws with "Hpin Hdl").
+        iIntros "Hret". rewrite /ush_rd_in. iLeft. iExact "Hret".
+      - iApply ("Hrdt" $! (S gen_id) ws with "HT").
+        iIntros "#HT'". rewrite /ush_rd_in. iRight. iExact "HT'". }
+    (* THE RING'S HALF, unchanged from the landed shape *)
+    iEval (rewrite /ucons_pay) in "HP".
+    iDestruct "HP" as "[Hl | #HT]".
+    - (* THE LEASE HOLDER'S ARM: the payload's token, at the position the
+         program holds ([UserConsole.upos_agree]) *)
+      iDestruct "Hl" as (n') "[Hrd0 Hpa]".
+      iDestruct (upos_agree γp n n' with "Hpos Hpa") as %<-.
+      iEval (rewrite ucons_reader_eq) in "Hrd0".
+      iApply (cons_acc_reader fsc_cons app_sup n with "Hrd0 [Hpos Hpa]").
+      iIntros (cur dc) "Hout". rewrite /cons_out.
+      iDestruct "Hout" as "[Hrd' [%Hcur | #Hdirty]]".
+      + (* nobody read behind its back: the window is at its own position,
+           and BOTH halves move ([upos_update]) *)
+        subst cur.
+        iMod (upos_update γp n (n + dc)%nat with "Hpos Hpa") as "[Hpos Hpa]".
+        iModIntro. iSplitR "Hpos Hpa Hrd'"; [ done | ].
+        rewrite /ush_rd_ret. iLeft. iSplitR; [ done | ]. iFrame "Hpos".
+        rewrite /ucons_pay. iLeft. iExists (n + dc)%nat.
+        iEval (rewrite ucons_reader_eq). iFrame "Hrd' Hpa".
+      + (* a tokenless reader popped while the call slept *)
+        iAssert T as "#HT"; [ iApply Hst; iExact "Hdirty" | ].
+        iModIntro. iSplitR "Hpos"; [ done | ].
+        rewrite /ush_rd_ret. iRight. iFrame "HT". iExists n. iExact "Hpos".
+    - (* THE TAINTED ARM: the payload holds no token any more *)
+      iApply (cons_acc_cred fsc_cons app_sup with "[] [Hpos]").
+      + rewrite /cons_dirty_cred. iModIntro. iApply Hts. iExact "HT".
+      + iIntros (cur dc). iModIntro. iSplitR "Hpos"; [ done | ].
+        rewrite /ush_rd_ret. iRight. iFrame "HT". iExists n. iExact "Hpos".
+  Qed.
+
+  (* =================================================================== *)
+  (*  THE BYTE THE READ DELIVERED IS THE LINE'S, AT SH'S OWN COUNT        *)
+  (*  (the survey's §4(a)/(b), as a lemma).                               *)
+  (*                                                                     *)
+  (*  Three rows of one receipt meet here.  The WINDOW row                *)
+  (*  ([ConsoleInv.cons_window]) says the [j]th byte the call DELIVERED   *)
+  (*  is the ring's stored entry at [cur + j] and the caller's buffer     *)
+  (*  byte is its translation.  The BOUNDARY row says the window the call *)
+  (*  CONSUMED is that same stored run read at the bound                  *)
+  (*  [ConsoleInv.cons_swallow] extends to, so the two agree wherever a   *)
+  (*  byte was delivered.  And [EchoOut.ein_read_byte] places that byte   *)
+  (*  in [EchoDisc.echo_line] BY THE READER'S OWN DELIVERED COUNT, which  *)
+  (*  [EchoOut.read_ret] pins to [n].                                     *)
+  (*                                                                     *)
+  (*  STATED AT INDEX 0 AND NOT AT EVERY [j], because that is the only    *)
+  (*  index the era's law reaches: [ein_read_byte] is at the count the    *)
+  (*  window STARTS at, and sh's [gets] reads at [cap = 1] precisely so   *)
+  (*  that the byte it copies is that one ([UkSh.v]'s §3).                *)
+  (* =================================================================== *)
+  Lemma ush_rd_byte_of_rows
+      (sl sl' ws dl : list (list mobs * bv 8)) (hs : list (list mobs))
+      (pops : list ConsLog.log_entry)
+      (n dd dc : nat) (g : nat -> bv 8) :
+    (0 < dd)%nat -> (dd <= dc)%nat ->
+    cons_window sl n dd g hs ->
+    sl `prefix_of` sl' ->
+    (forall j : nat, (j < dc)%nat -> ws !! j = sl' !! (n + j)%nat) ->
+    E_byte (seg_of (echoed pops)) ->
+    (dl ++ ws) `prefix_of` echoed pops ->
+    length dl = n ->
+    g 0%nat = echo_line !!! (n `mod` length echo_line)%nat.
+  Proof.
+    intros Hdd Hdc Hwin Hpre Hws HE Hpr Hdl.
+    destruct Hwin as (_ & _ & Hwj).
+    destruct (Hwj 0%nat Hdd) as (h & b & Hsl & _ & _ & Hg).
+    assert (Hsl' : sl' !! (n + 0)%nat = Some (h, b))
+      by (eapply prefix_lookup_Some; [ exact Hsl | exact Hpre ]).
+    assert (Hw0 : ws !! 0%nat = Some (h, b))
+      by (rewrite (Hws 0%nat ltac:(lia)); exact Hsl').
+    pose proof (ein_read_byte pops dl ws n (h, b) HE Hpr Hdl Hw0) as Hb.
+    cbn [snd] in Hb.
+    rewrite Hg Hb.
+    apply echo_line_no_cr.
+    rewrite echo_line_length. apply Nat.mod_upper_bound. lia.
+  Qed.
+
+  (* =================================================================== *)
+  (*  S6  THE LEAF, ON THE ERA'S CREDENTIAL (lane IO-LEAF, M5)            *)
+  (*                                                                     *)
+  (*  [UkSh.ush_read_recv_leaf] with two things added and nothing taken   *)
+  (*  away: the ERA'S READ CREDENTIAL beside the lease on the way in, and *)
+  (*  the era's own answer beside the ring's on the way out.  What it     *)
+  (*  proves is the whole of the read side of E5 -- that the application's *)
+  (*  input claim can be moved by sh's own [read(0, .., 1)] and that what *)
+  (*  comes back places the byte in [EchoDisc.echo_line] at sh's own      *)
+  (*  count.                                                              *)
+  (*                                                                     *)
+  (*  WHAT IT IS NOT: the discharge of [UInitBootAdequacy]'s third        *)
+  (*  [Hsh_owed] conjunct.  That statement takes no credential, so it can *)
+  (*  only become a theorem once the credential is IN [UkSh.ush_at] --    *)
+  (*  and the credential has to reach sh's lease on EVERY round of        *)
+  (*  /init's loop, not only the first.  S7 below says exactly where      *)
+  (*  that stands.                                                        *)
+  (* =================================================================== *)
+
+  (* the reader's half of the era's delivered count at sh's own cursor --
+     or the taint, which is what a lease on its own taint arm carries and
+     what an already-broken era leaves *)
+  Definition ush_rd_cred (T : iProp Σ) (v : era_pins) (n : nat) : iProp Σ :=
+    (dl_cnt v (1/2) n ∨ T)%I.
+
+  (* WHAT THE READ TELLS SH ABOUT THE ERA, beside what [UkSh.ush_read_ans]
+     tells it about the ring: the credential back at the window's far end,
+     the DELIVERED BYTE placed in the line by sh's own count, and -- when
+     the window was not empty -- the two bounds a later WRITE spends. *)
+  Definition ush_rd_era_win (T : iProp Σ) (v : era_pins) (n dd dc : nat)
+      (g : nat -> bv 8) : iProp Σ :=
+    (T
+     ∨ (dl_cnt v (1/2) (n + dc)%nat
+        ∗ ⌜(0 < dd)%nat ->
+            g 0%nat = echo_line !!! (n `mod` length echo_line)%nat⌝
+        ∗ (⌜dc = 0%nat⌝
+           ∨ ∃ cs0 ps0 : list nat,
+               cs_lb v cs0 ∗ ps_lb v ps0 ∗ E_lb v (n + dc)%nat
+               ∗ ⌜((n + dc) `div` length echo_line
+                   <= S (length cs0))%nat⌝)))%I.
+
+  Definition ush_read_ans_era (T : iProp Σ) (v : era_pins)
+      (N : uk_names Σ) (γp : gname) (cnm : cons_names) (r : mword 64)
+      (cap n : nat) (g : nat -> bv 8) : iProp Σ :=
+    ((∃ (dd dc : nat) (hs : list (list mobs))
+         (sl : list (list mobs * bv 8)),
+        ⌜ Z.of_nat dd = bv_unsigned r ⌝ ∗
+        ⌜ (dd <= cap)%nat ⌝ ∗
+        ⌜ dd = cap -> dc = dd ⌝ ∗
+        ⌜ dd = 0%nat -> (0 < cap)%nat -> dc = (dd + 1)%nat ⌝ ∗
+        ⌜ cons_chain sl ⌝ ∗
+        ucons_stored_lb cnm sl ∗
+        ([∗ list] hh ∈ hs, riscv_rx_tag hh) ∗
+        ⌜ cons_window sl n dd g hs ⌝ ∗
+        ucons_swallow cnm False sl dd dc ∗
+        UkSh.ush_at N γp (n + dc)%nat ∗
+        ush_rd_era_win T v n dd dc g)
+     ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗
+        ∃ n' : nat, UkSh.ush_at N γp n' ∗ ush_rd_cred T v n')
+     ∨ (T ∗ ∃ n' : nat, UkSh.ush_at N γp n'))%I.
+
+  Lemma ush_read_recv_era (γ : echo_gn) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (v : era_pins)
+      (N : uk_names Σ) (γp : gname) (l : list fdstate) :
+    ukn_pay N = ucons_pay fsc_cons γp T ->
+    (⊢ app_sup -∗ T) ->
+    (⊢ T -∗ app_sup) ->
+    echo_links T γ -∗
+    era_pin γ (S gen_id) v -∗
+    ∀ (h : CpuId) (m : regfile) (pc : mword 64) (a : Z) (k cap n : nat)
+      (f : nat -> bv 8) (avail : nat),
+      ⌜ usysno m = USYS_read ⌝ -∗
+      ⌜ bv_signed (trunc32 (m !!! Regidx a0_idx)) = 0 ⌝ -∗
+      ⌜ uint (m !!! Regidx a1_idx) = a ⌝ -∗
+      ⌜ uint (m !!! Regidx a2_idx) = Z.of_nat cap ⌝ -∗
+      ⌜ (cap <= k)%nat ⌝ -∗
+      ⌜ (Z.of_nat cap < 2 ^ 31)%Z ⌝ -∗
+      ⌜ UkSh.ush_fd0p l ⌝ -∗
+      ⌜ is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ⌝ -∗
+      uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+      ubytes (ukn_d N) a k f -∗
+      ustd (ukn_fd N) l -∗
+      UkSh.ush_at N γp n -∗
+      ush_rd_cred T v n -∗
+      urun (PS := uprogSG_free) N h m pc avail -∗
+      (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8),
+         ⌜ (d <= cap)%nat ⌝ -∗
+         ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
+         ustd (ukn_fd N) l -∗
+         ush_read_ans_era T v N γp fsc_cons r cap n g -∗
+         ubytes (ukn_d N) a k g -∗
+         urun (PS := uprogSG_free) N h'
+           (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
+         WP (Loop : expr riscv_lang)) -∗
+      WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hpay Hst Hts.
+    iIntros "#Hlk #Hpin".
+    iIntros (h m pc a k cap n f avail)
+      "%Hn %Ha0 %Ha1 %Ha2 %Hcapk %Hcap31 %Hfd0 %Hal #Hi Hbuf Hstd Hpos Hdl Hrun Hcont".
+    subst a.
+    pose proof (UkSh.ush_narrow_count_le (m !!! Regidx a2_idx) cap Ha2) as Hbnd.
+    assert (Hcnt : sys_rw_count (m !!! Regidx a2_idx) = Z.of_nat cap)
+      by exact (ush_count_is_cap (m !!! Regidx a2_idx) cap Ha2 Hcap31).
+    change (2 ^ 31)%Z with 2147483648%Z in Hcap31.
+    (* THE LEASE, OUT OF THE PROGRAM'S OWN HAND: [UkSh.ush_at] is the
+       position AND the record's payload, and THIS record's payload is the
+       console's ([Hpay]). *)
+    iDestruct "Hpos" as "[Hpos Hlease]".
+    iEval (rewrite Hpay) in "Hlease".
+    destruct Hfd0 as [[wr Hl0] | Hcl].
+    - (* ================= fd 0 IS THE CONSOLE ================= *)
+      iDestruct (ush_read_sup_era γ T v N γp m pc l n wr Ha0 Hl0 Hst Hts
+                   with "Hlk Hpin Hdl Hpos Hlease") as "Hsb".
+      iApply (wp_uk_ecall_read_recv (PS := uprogSG_free) N h m pc
+                (bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0
+                            : mword 32))
+                k f avail (ush_read_fam_era T v γp n (ukn_pay N)) l
+                Hn eq_refl ltac:(lia) Hal
+                with "Hi Hrun Hsb Hstd Hbuf").
+      iIntros (h' r d g W M' fdv' cw' cs')
+        "%Hd %Hgf %Hlin %HM %Hnf %Harg0 %Harg1 %Harg2 %Htake %Hlz %Hlive
+         Hstd Hpost Hrun Hbuf".
+      (* the post, at the key's own projections *)
+      iDestruct (spost_at_read_elim_at uslot
+                   (ush_read_fam_era T v γp n (ukn_pay N)) W
+                   (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+                   (m !!! Regidx a2_idx) (uvis_fd W) r M' fdv' cw' cs'
+                   Harg0 Harg1 Harg2 eq_refl with "Hpost")
+        as "[%Hfrret Hpost']".
+      iDestruct "Hpost'" as (P) "(%Hperm & %Hwf & %Hlazy & Hrec)".
+      rewrite Hcnt in Hfrret.
+      (* THE ANSWER IS NOT -1 AT AN OPEN READABLE CONSOLE DESCRIPTOR
+         (lane TRAP-ROWS, T2(iii)), which is what makes the credential's
+         round trip possible at all: the -1 arm of the receipt hands back
+         no window and the boundary link with it. *)
+      assert (Hfdw : uvis_fd W !! 0%nat
+                     = Some (FdOpen true wr (FdDevice CONSOLE))).
+      { pose proof Hl0 as Hl0'. rewrite <- Htake in Hl0'.
+        rewrite lookup_take in Hl0'; [ exact Hl0' | unfold NSTD; lia ]. }
+      assert (Hcgz : (0 <= bv_signed
+                        (trunc32 (tf_w (uvis_tf W) (tf_arg_idx 2))))%Z).
+      { rewrite Harg2. rewrite /sys_rw_count in Hcnt. lia. }
+      assert (Hargfd : usys_argfd (uvis_tf W) = 0%Z).
+      { rewrite /usys_argfd.
+        replace (uvis_tf W !!! tf_arg_idx 0) with (m !!! Regidx a0_idx)
+          by (symmetry; exact Harg0).
+        exact Ha0. }
+      assert (Hne1 : r <> (mword_of_int (-1) : mword 64)).
+      { apply (proj1 Hlive eq_refl Hcgz wr).
+        - rewrite Hargfd. unfold NOFILE. lia.
+        - rewrite Hargfd. exact Hfdw. }
+      iEval (rewrite (ush_fd_st_console (m !!! Regidx a0_idx) (uvis_fd W) l wr
+                        Ha0 Htake Hl0) /fileread_extra_core;
+             cbn [ush_read_fam_era ush_read_fam_at xfam_rd
+                  rf_F rf_ret rf_in kf_xpay]) in "Hrec".
+      destruct (decide (CONSOLE = CONSOLE)) as [_ | Hc];
+        [ | exfalso; exact (Hc eq_refl) ].
+      pose proof (Hlazy Hlz) as Hlf.
+      iEval (rewrite /console_receipt) in "Hrec".
+      iDestruct "Hrec" as "[(%Hm1 & _ & _) | Hw]";
+        [ exfalso; exact (Hne1 Hm1) | ].
+      (* THE RECEIPT *)
+      iDestruct "Hw" as (dd dc cur hs sl)
+        "(%Hdr & %Hdmax & %Hb1 & %Hb4 & %Hhl & %Hled & #Htags & #Hlb
+          & Hwin & Hrd)".
+      rewrite /ush_rd_ret.
+      iDestruct "Hrd" as "[(%Hcur & Hp & Hl) | [#HT Hp]]"; last first.
+      { (* the caller's own [Rd] came back tainted *)
+        iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp] Hbuf Hrun");
+          [ lia | exact Hgf | ].
+        rewrite /ush_read_ans_era /UkSh.ush_at.
+        iRight. iRight. iFrame "HT".
+        iDestruct "Hp" as (n') "Hp". iExists n'. iFrame "Hp".
+        rewrite Hpay. iApply (ucons_pay_taint with "HT"). }
+      subst cur.
+      destruct Hfrret as [Hm1 | (i0 & Hri & Hi0)];
+        [ exfalso; exact (Hne1 Hm1) | ].
+      assert (Hi0u : bv_unsigned r = i0).
+      { rewrite Hri. rewrite <- uint_unsigned.
+        apply uint_moi. unfold Z64. lia. }
+      assert (Hddcap : (dd <= cap)%nat) by lia.
+      iDestruct "Hwin" as "[(%Hwj & %Hsl & %Hch & #Hsw & Hbnd) | #Hdirty]";
+        last first.
+      { (* a tokenless reader popped while the call slept *)
+        iAssert T as "#HT"; [ iApply Hst; iExact "Hdirty" | ].
+        iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp Hl] Hbuf Hrun");
+          [ lia | exact Hgf | ].
+        rewrite /ush_read_ans_era /UkSh.ush_at.
+        iRight. iRight. iFrame "HT". iExists (n + dc)%nat. iFrame "Hp".
+        rewrite Hpay. iApply (ucons_pay_taint with "HT"). }
+      (* THE BOUNDARY'S ANSWER, KEPT (lane IO-LEAF, M5): the window the
+         call CONSUMED, and the era's own account of it. *)
+      iDestruct "Hbnd" as (sl2 ws)
+        "(#Hlb2 & %Hpre2 & %Hlen2 & %Hlws & %Hwsj & Hrin)".
+      assert (Hwinf : cons_window sl n dd g hs).
+      { split_and!; [ lia | exact Hhl | ].
+        intros j Hj.
+        destruct (Hwj j Hj) as (hj & bj & Hhj & Hej & Hsj).
+        exists hj, bj. split_and!; [ exact Hsj | exact Hhj | exact Hej | ].
+        destruct (Hled ltac:(intros i Hi; apply Hlin; lia) j Hj)
+          as (hj' & bj' & Hhj' & Hej' & Hmj').
+        assert (Hhe : hj' = hj)
+          by (rewrite Hhj in Hhj'; by injection Hhj' as Hhj'').
+        subst hj'.
+        assert (Hbe : bj' = bj)
+          by exact (proj2 (obs_ends_in_inj _ _ hj bj' bj Hej' Hej)).
+        subst bj'.
+        rewrite (HM j ltac:(lia)) in Hmj'. by injection Hmj' as Hmj''. }
+      assert (Hddc : (dd <= dc)%nat).
+      { pose proof (prefix_length _ _ Hpre2) as Hle. lia. }
+      iAssert (ush_rd_era_win T v n dd dc g) with "[Hrin]" as "Hera".
+      { rewrite /ush_rd_era_win /ush_rd_in.
+        iDestruct "Hrin" as "[Hret | #HT]"; [ | by iLeft ].
+        rewrite /read_ret.
+        iDestruct "Hret" as "[[#HT _] | [Hdlr Hfacts]]"; [ by iLeft | ].
+        iDestruct "Hfacts" as (pops dl)
+          "(%Hrok & %Hdl & %Hpref & %Hidx & %Hbyte & Hrest)".
+        iRight. iEval (rewrite Hlws) in "Hdlr". iFrame "Hdlr".
+        iSplitR.
+        { iPureIntro. intro Hdd0.
+          exact (ush_rd_byte_of_rows sl sl2 ws dl hs pops n dd dc g
+                   Hdd0 Hddc Hwinf Hpre2 Hwsj Hbyte Hpref Hdl). }
+        iDestruct "Hrest" as "[%Hws0 | Hbb]".
+        { iLeft. iPureIntro. rewrite <- Hlws, Hws0. reflexivity. }
+        iRight. iDestruct "Hbb" as (cs0 ps0) "(Hcs & Hps & HE & %Hbd)".
+        iExists cs0, ps0. iEval (rewrite Hlws) in "HE".
+        iFrame "Hcs Hps HE".
+        iPureIntro. rewrite <- Hlws. exact Hbd. }
+      iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp Hl Hera] Hbuf Hrun");
+        [ lia | exact Hgf | ].
+      rewrite /ush_read_ans_era. iLeft.
+      iExists dd, dc, hs, sl.
+      iSplitR; [ by iPureIntro | ].
+      iSplitR; [ iPureIntro; exact Hddcap | ].
+      iSplitR; [ iPureIntro; intros Hdc; apply Hb1;
+                 rewrite Hcnt Hdc; lia | ].
+      iSplitR; [ iPureIntro; intros Hd0 Hc0; apply Hb4;
+                 [ exact Hd0 | rewrite Hcnt; lia ] | ].
+      iSplitR; [ by iPureIntro | ].
+      iSplitR; [ rewrite ucons_stored_lb_eq; iExact "Hlb" | ].
+      iSplitR; [ iExact "Htags" | ].
+      iSplitR; [ iPureIntro; exact Hwinf | ].
+      iSplitR "Hp Hl Hera"; last first.
+      { iFrame "Hera". rewrite /UkSh.ush_at. iFrame "Hp".
+        rewrite Hpay. iExact "Hl". }
+      destruct (Nat.eq_dec dd cap) as [Hde | Hdne].
+      { assert (Hdcdd : dc = dd)
+          by (apply Hb1; rewrite Hcnt Hde; lia).
+        rewrite Hdcdd. iApply ucons_swallow_refl. }
+      iApply (ucons_swallow_mono fsc_cons
+                (~ uva_wmapped P (uint (add_vec_int (m !!! Regidx a1_idx)
+                                          (Z.of_nat dd)))) False sl dd dc
+                ltac:(intro Hno;
+                      exact (Hno (Hnf P dd Hwf Hperm Hlf ltac:(lia))))
+                with "[]").
+      rewrite ucons_swallow_eq. iExact "Hsw".
+    - (* ================= fd 0 IS SHUT ================= *)
+      iDestruct (ush_read_sup_closed N γp T (ush_rd_in T v n) m pc l n
+                   Ha0 Hcl) as "Hsb".
+      iApply (wp_uk_ecall_read_recv (PS := uprogSG_free) N h m pc
+                (bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0
+                            : mword 32))
+                k f avail
+                (ush_read_fam_at γp T n (ush_rd_in T v n) (ukn_pay N)) l
+                Hn eq_refl ltac:(lia) Hal
+                with "Hi Hrun Hsb Hstd Hbuf").
+      iIntros (h' r d g W M' fdv' cw' cs')
+        "%Hd %Hgf %Hlin %HM %Hnf %Harg0 %Harg1 %Harg2 %Htake %Hlz %Hlive
+         Hstd Hpost Hrun Hbuf".
+      iDestruct (spost_at_read_elim_at uslot
+                   (ush_read_fam_at γp T n (ush_rd_in T v n) (ukn_pay N)) W
+                   (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+                   (m !!! Regidx a2_idx) (uvis_fd W) r M' fdv' cw' cs'
+                   Harg0 Harg1 Harg2 eq_refl with "Hpost")
+        as "[%Hfrret Hpost']".
+      iDestruct "Hpost'" as (P) "(%Hperm & %Hwf & %Hlazy & Hrec)".
+      iEval (rewrite (ush_fd_st_closed (m !!! Regidx a0_idx) (uvis_fd W) l
+                        Ha0 Htake Hcl) /fileread_extra_core) in "Hrec".
+      iDestruct "Hrec" as "%Hm1".
+      iApply ("Hcont" $! h' r d g
+                with "[%] [%] Hstd [Hpos Hlease Hdl] Hbuf Hrun");
+        [ lia | exact Hgf | ].
+      rewrite /ush_read_ans_era /UkSh.ush_at. iRight. iLeft.
+      iSplitR; [ by iPureIntro | ].
+      iExists n. iFrame "Hdl Hpos". rewrite Hpay. iExact "Hlease".
+  Qed.
+
+  (* =================================================================== *)
+  (*  S7  WHAT THE LEAF ABOVE IS STILL SHORT OF, AND WHY IT IS NOT A      *)
+  (*      MATTER OF PROOF (lane IO-LEAF, M5; REPORTED, not worked round). *)
+  (*                                                                     *)
+  (*  [ush_read_recv_era] is [UkSh.ush_read_recv_leaf] plus one premise:  *)
+  (*  [ush_rd_cred T v n], the reader's half of [EchoOut.dl_cnt] at sh's  *)
+  (*  own cursor.  To turn it into the OWED statement -- a Coq-level      *)
+  (*  [⊢ UkSh.ush_read_recv_leaf ...], which takes no credential -- the   *)
+  (*  half has to sit INSIDE [UkSh.ush_at], beside the lease and the      *)
+  (*  cursor.  That much is mechanical (a [Rrd : nat -> iProp] section    *)
+  (*  parameter of [UkSh]'s section, instantiated here).                  *)
+  (*                                                                     *)
+  (*  WHAT IS NOT MECHANICAL is where [Rrd n] comes from at sh's ENTRY.   *)
+  (*  [UShKernel.sh_uexec_slot] mints [ush_at n] out of [UserConsole.upos *)
+  (*  γp n] and the record's payload, and both of those reach it through  *)
+  (*  [PinnedExec]'s linear [Pay] on EVERY round of /init's restart loop, *)
+  (*  because the console lease round-trips: /init lends it at the fork   *)
+  (*  ([UserConsole.uinit_lend]) and reaps it from the shell's exit       *)
+  (*  payload ([uinit_redeem]).  The era's credential does NOT            *)
+  (*  round-trip.  It travels on [UkInit.init_exec_sup_pos]'s [Rt], which *)
+  (*  is AFFINE ([Rt ∨ True]) precisely because only ROUND 0 has one:     *)
+  (*  [UkInitMain.wp_kinit_banner]'s post hands [Rt] back on round 0's    *)
+  (*  console arm and [True] everywhere else, and                          *)
+  (*  [UkInitMain.wp_kinit_main_loop]'s back edge says so in as many      *)
+  (*  words ("the turn does not come back to init until lane M6").  So a  *)
+  (*  round-[k] shell is exec'd with fd 0 STILL the console and no        *)
+  (*  credential at all, and at that entry [ush_at] cannot be minted --   *)
+  (*  the leaf's premise is unpayable there, and there is no free         *)
+  (*  fallback left on the read side ([WpUart.in_licence] is FALSE at the *)
+  (*  real input claim: that is what S2 says).                            *)
+  (*                                                                     *)
+  (*  THE FIX IS THE PAYLOAD, NOT THE LINK.  The reader's half has to go  *)
+  (*  back to /init the way the lease does -- in the shell's own EXIT     *)
+  (*  payload, which is [UserConsole.ucons_pay fsc_cons γp T] and is      *)
+  (*  chosen at [UkInitMain.wp_kinit_fork] ([UkFork.wp_uk_ecall_fork]'s   *)
+  (*  [Q]).  That is decision D3's -- sh's own payload keeps [ucons_pay]  *)
+  (*  and gains the turn conjunct -- read on the READ side, and it is the *)
+  (*  one step that makes round [k > 0] payable.  It is OUTSIDE M5's file *)
+  (*  list (it moves [UkInitMain.v] and [UInitKernel.v]), so it is        *)
+  (*  reported and not attempted here.                                    *)
+  (* =================================================================== *)
 
   (* =================================================================== *)
   (*  THE DISCHARGE OF [UkSh.ush_read_leaf] IS GONE TOO -- see S2 above.   *)

@@ -11,7 +11,7 @@
 (*  today ([UkSh.sh_deps], [UkInit.init_deps]) -- as ONE PERSISTENT       *)
 (*  RESOURCE a program takes as a premise and spends per byte:            *)
 (*                                                                       *)
-(*    [echo_links T γ] -- the five links as closed [□] wands, mentioning  *)
+(*    [echo_links T γ] -- the six links as closed [□] wands, mentioning   *)
 (*      the era's ghosts ([era_pin], [turn], [ps_lb], [cs_lb], [E_lb],    *)
 (*      [dl_cnt], [read_ret]) and the kernel's own console contracts      *)
 (*      ([WpUart.out_link] / [read_link]) and NOTHING of the record;      *)
@@ -24,10 +24,11 @@
 (*  [EchoOut.v] is the claim.  A sibling file also keeps the two lanes    *)
 (*  that touch them apart.                                               *)
 (*                                                                       *)
-(*  THE BUNDLE IS NOT CLOSED, and the five PROJECTIONS below are what     *)
-(*  every consumer goes through, so a sixth link costs the consumers      *)
+(*  THE BUNDLE IS NOT CLOSED, and the six PROJECTIONS below are what      *)
+(*  every consumer goes through, so a seventh link costs the consumers    *)
 (*  nothing -- the fifth, [echo_link_pro] (PROLOGUE-ALTS-2's choice       *)
-(*  byte), arrived exactly that way.                                     *)
+(*  byte), and the sixth, [echo_link_rd_taint] (lane IO-LEAF, M5),        *)
+(*  arrived exactly that way.                                            *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -125,9 +126,19 @@ Section echo_links.
         (read_ret T k v n ws -∗ Φ) -∗
         read_link k ws Φ)%I.
 
+  (* THE READ SIDE'S TAINT ROUTE, [echo_link_taint]'s twin and needed for
+     the same reason (lane IO-LEAF, M5): what sh's lease carries is the
+     era's delivered-count half OR the taint, and on the taint arm the
+     read must still be able to move the boundary's [dl].
+     [EchoOut.ein_sup_deliv] is exactly that move, and it is the READ half
+     of what [App.Happ_in_sup] gives the licence route. *)
+  Definition echo_link_rd_taint : iProp Σ :=
+    (□ ∀ (k : nat) (ws : list (list mobs * bv 8)) (Φ : iProp Σ),
+        T -∗ (T -∗ Φ) -∗ read_link k ws Φ)%I.
+
   Definition echo_links : iProp Σ :=
     (echo_link_w ∗ echo_link_blk ∗ echo_link_pro ∗ echo_link_taint
-     ∗ echo_link_rd)%I.
+     ∗ echo_link_rd ∗ echo_link_rd_taint)%I.
 
   Global Instance echo_link_w_persistent : Persistent echo_link_w.
   Proof. rewrite /echo_link_w. apply _. Qed.
@@ -139,20 +150,24 @@ Section echo_links.
   Proof. rewrite /echo_link_taint. apply _. Qed.
   Global Instance echo_link_rd_persistent : Persistent echo_link_rd.
   Proof. rewrite /echo_link_rd. apply _. Qed.
+  Global Instance echo_link_rd_taint_persistent : Persistent echo_link_rd_taint.
+  Proof. rewrite /echo_link_rd_taint. apply _. Qed.
   Global Instance echo_links_persistent : Persistent echo_links.
   Proof. rewrite /echo_links. apply _. Qed.
 
   (* ---- the five projections, which is all a consumer ever uses ---- *)
   Lemma echo_links_w : echo_links -∗ echo_link_w.
-  Proof. by iIntros "($ & _ & _ & _ & _)". Qed.
+  Proof. by iIntros "($ & _ & _ & _ & _ & _)". Qed.
   Lemma echo_links_blk : echo_links -∗ echo_link_blk.
-  Proof. by iIntros "(_ & $ & _ & _ & _)". Qed.
+  Proof. by iIntros "(_ & $ & _ & _ & _ & _)". Qed.
   Lemma echo_links_pro : echo_links -∗ echo_link_pro.
-  Proof. by iIntros "(_ & _ & $ & _ & _)". Qed.
+  Proof. by iIntros "(_ & _ & $ & _ & _ & _)". Qed.
   Lemma echo_links_taint : echo_links -∗ echo_link_taint.
-  Proof. by iIntros "(_ & _ & _ & $ & _)". Qed.
+  Proof. by iIntros "(_ & _ & _ & $ & _ & _)". Qed.
   Lemma echo_links_rd : echo_links -∗ echo_link_rd.
-  Proof. by iIntros "(_ & _ & _ & _ & $)". Qed.
+  Proof. by iIntros "(_ & _ & _ & _ & $ & _)". Qed.
+  Lemma echo_links_rd_taint : echo_links -∗ echo_link_rd_taint.
+  Proof. by iIntros "(_ & _ & _ & _ & _ & $)". Qed.
 
   (* ================================================================== *)
   (*  ...AND THE LAW HOLDS, under the record's four equations.  This is  *)
@@ -169,8 +184,8 @@ Section echo_links.
     Lemma echo_links_holds : ⊢ echo_links.
     Proof.
       rewrite /echo_links /echo_link_w /echo_link_blk /echo_link_pro
-              /echo_link_taint /echo_link_rd.
-      iSplit; [| iSplit; [| iSplit; [| iSplit]]].
+              /echo_link_taint /echo_link_rd /echo_link_rd_taint.
+      iSplit; [| iSplit; [| iSplit; [| iSplit; [| iSplit]]]].
       - iIntros "!>" (k v P n0 b ps0 cs0 Φ) "%Hdiv %Hpin0 %Hb".
         iIntros "Hpin Ht Hps Hcs HE HΦ".
         iApply (echo_write_link with "Hpin Ht Hps Hcs HE HΦ");
@@ -189,6 +204,12 @@ Section echo_links.
         iApply (echo_write_link_taint T γ with "HT HΦ"); try assumption.
       - iIntros "!>" (k v n ws Φ) "Hpin Hdl HΦ".
         iApply (echo_read_link with "Hpin Hdl HΦ"); try assumption.
+      - iIntros "!>" (k ws Φ) "#HT HΦ".
+        iIntros (o pops dl) "#Hlb Hres _".
+        rewrite /in_res_at Hin.
+        iMod (ein_sup_deliv T γ k (default [] o) pops dl ws
+                with "HT Hres") as "Hres".
+        iModIntro. iExists o. iFrame "Hlb Hres". by iApply "HΦ".
     Qed.
   End echo_links_holds.
 

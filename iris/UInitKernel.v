@@ -336,7 +336,7 @@ Section UInitKernel.
        names one; it is LINEAR (the credential is spent once), and a
        linear resource may be handed under a [∀] precisely because the
        reader picks ONE record. *)
-    (∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N') -∗
+    (∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N' stc) -∗
     (* THE PAY FACT, at the trivial payload: <init> has no parent, so its
        exit owes nobody anything -- userinit's choice, which the entry
        constructor writes into the record ([UkRun.ukn_pay]) and which
@@ -451,7 +451,7 @@ Section UInitKernel.
     ucons_reader cn 0%nat -∗
     (* ...and the era's turn beside it, likewise straight through (lane
        CONS-IO milestone F / IO-LEAF) *)
-    (∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N') -∗
+    (∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N' stc) -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
   Proof.
     intros Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok_free Hlzf.
@@ -582,7 +582,7 @@ Section UInitKernel.
   Definition init_boot_pay (T Cns : iProp Σ) (cn : cons_names)
       (stc : fdstate) : iProp Σ :=
     (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat
-     ∗ ∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N')%I.
+     ∗ ∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N' stc)%I.
 
   Lemma init_boot_con (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
       (stc : fdstate) (cn : cons_names)

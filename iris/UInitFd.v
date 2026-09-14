@@ -66,6 +66,25 @@ Proof. reflexivity. Qed.
 Lemma ufd_l3_row0 (st : fdstate) : ufd_l3 st !! 0%nat = Some st.
 Proof. reflexivity. Qed.
 
+(* ...AND ROWS 1 AND 2, which is what lane IO-LEAF M1(f) bought: the two
+   dups land at 1 and 2 by the ledger's own scan, so the exit ledger says
+   all three standard streams carry the descriptor the open installed.
+   [ufd_l3_row1] is what /init's banner reads ([UInitBanner]). *)
+Lemma ufd_l3_row1 (st : fdstate) : ufd_l3 st !! 1%nat = Some st.
+Proof. reflexivity. Qed.
+
+Lemma ufd_l3_row2 (st : fdstate) : ufd_l3 st !! 2%nat = Some st.
+Proof. reflexivity. Qed.
+
+Lemma ufd_l1_len (st : fdstate) : length (ufd_l1 st) = NSTD.
+Proof. reflexivity. Qed.
+
+Lemma ufd_l2_len (st : fdstate) : length (ufd_l2 st) = NSTD.
+Proof. reflexivity. Qed.
+
+Lemma ufd_l3_len (st : fdstate) : length (ufd_l3 st) = NSTD.
+Proof. reflexivity. Qed.
+
 (* ===================================================================== *)
 (*  2.  THE THREE SCANS                                                   *)
 (*                                                                        *)
@@ -91,6 +110,28 @@ Proof.
   intro Hne. destruct st as [| rd wr t]; [ exfalso; exact (Hne eq_refl) |].
   reflexivity.
 Qed.
+
+(* ...and the FOURTH scan, which is what says the prologue is DONE: after
+   the two dups every standard slot is open, so a third [dup] would find
+   nothing.  /init does not make one; the fact is here because the head's
+   console arm is now stated at this ledger. *)
+Lemma ufd_scan3 (st : fdstate) :
+  st <> FdClosed -> fd_lowest_closed (ufd_l3 st) = None.
+Proof.
+  intro Hne. destruct st as [| rd wr t]; [ exfalso; exact (Hne eq_refl) |].
+  reflexivity.
+Qed.
+
+(* THE TWO DUP STEPS, as LEDGER equations: [UserFd.ustd_after] at the scan
+   each dup runs, which is what turns the tracked leaf's answer into the
+   next named ledger. *)
+Lemma ufd_after_l1 (st : fdstate) :
+  st <> FdClosed -> ustd_after (ufd_l1 st) st = ufd_l2 st.
+Proof. intro Hne. rewrite /ustd_after (ufd_scan1 st Hne). reflexivity. Qed.
+
+Lemma ufd_after_l2 (st : fdstate) :
+  st <> FdClosed -> ustd_after (ufd_l2 st) st = ufd_l3 st.
+Proof. intro Hne. rewrite /ustd_after (ufd_scan2 st Hne). reflexivity. Qed.
 
 Section UInitFd.
   Context `{!ufdG Σ}.
@@ -149,41 +190,26 @@ Section UInitFd.
   (*  [T] IS A PARAMETER: the taint is an application's notion and the       *)
   (*  program tier names no application ([UConsLine.v:202]).                 *)
   (* ===================================================================== *)
-  (* THE ROW SH-LINE READS ([UConsLine.ush_std_cons]): the ledger, with slot
-     0 carrying the console descriptor.  The ledger's OTHER slots are not in
-     it, and that is deliberate -- see [ufd_head]. *)
-  Definition ufd_std_at (γfd : gname) (st : fdstate) (l : list fdstate)
-      : iProp Σ :=
-    (ustd γfd l ∗ ⌜l !! 0%nat = Some st⌝)%I.
+  (* INIT'S HEAD, AT A NAMED LEDGER: THREE ARMS, and ONE predicate from the
+     second open to the fork.  The two dups MOVE it -- from [ufd_l1] to
+     [ufd_l2] to [ufd_l3] -- and the two names below are the two ledgers
+     /init's code actually stops at.
 
-  (* INIT'S HEAD: THREE ARMS, and ONE predicate from the second open to the
-     fork -- it is CLOSED UNDER THE TWO DUPS, so there is no `after the
-     first dup' shape and no stage index.
+       CONSOLE  the second open reached the device node, and the ledger is
+                the NAMED one: [ufd_l1 st] before the dups, [ufd_l3 st]
+                after them.
 
-       CONSOLE  the second open reached the device node: slot 0 carries it,
-                at a ledger this predicate does not name.  The two dups
-                keep that true whichever way they go -- a dup lands on the
-                LOWEST CLOSED slot, which is never slot 0 while slot 0 is
-                open ([ufd_after_row0]), and a dup that FAILS moves nothing.
-
-                WHY THE LIST IS STILL EXISTENTIAL, AND WHAT WOULD CHANGE IT.
-                It is no longer the ROW's fault: since lane DUP-ROW
-                [UsysMemOk.usys_fd_ok]'s dup failure arm carries its reason,
-                and after the console open /init's ledger has slot 0 OPEN
-                and slots 1 and 2 CLOSED, which refutes both disjuncts --
-                so neither dup can fail and
-                [UkRunSys.wp_uk_ecall_dup]/[UkInit.wp_kinit_dup_cons] hand
-                back [UserFd.ualloc] at the NAMED ledger, landing at 1 and
-                then 2 by [ufd_scan1]/[ufd_scan2].  What is left is the
-                THREADING: this head is entered at [ufd_l1] BEFORE the dups
-                ([UkInitMain]'s open site) and the dups are walked inside
-                [UkInitMain.wp_kinit_main_from_1e], so pinning fds 1 and 2
-                means carrying the named ledger from the open through both
-                dups and giving this predicate a console arm at [ufd_l3].
-                That is lane IO-LEAF's, not this one's -- until it lands,
-                "fds 0, 1 and 2 all carry the console" is not yet a theorem
-                of /init's code, "fd 0 does" is, and it is what sh reads its
-                line from;
+                WHY THE LIST IS NAMED AND NOT EXISTENTIAL (lane IO-LEAF,
+                M1(f)).  It used to be existential with only slot 0 pinned,
+                because a failing [dup] was not refutable.  Lane DUP-ROW
+                made it one: [UsysMemOk.usys_fd_ok]'s dup failure arm now
+                carries its REASON, and at a ledger whose slot 0 is open
+                and whose slots 1 and 2 are closed both disjuncts are
+                refuted -- so neither of /init's dups can fail, and
+                [UkInit.wp_kinit_dup_cons] hands back [UserFd.ualloc] at
+                the named ledger, landing at 1 and then 2 by [ufd_scan1] /
+                [ufd_scan2].  "fds 0, 1 and 2 all carry the console" IS now
+                a theorem of /init's code;
        CLOSED   the mknod failed, or the second open failed at [filealloc] /
                 [fdalloc] -- about which /init proves nothing (app-echo.md,
                 "OPEN-PIN FINDINGS", FACT 3).  fd 0 is still closed, both
@@ -192,14 +218,23 @@ Section UInitFd.
 
      [T] IS A PARAMETER: the taint is an application's notion and the
      program tier names no application ([UConsLine.v:202]). *)
-  Definition ufd_head (T : iProp Σ) (st : fdstate) (γfd : gname) : iProp Σ :=
-    ((∃ l : list fdstate, ufd_std_at γfd st l)
-     ∨ ustd γfd ufd_l0
-     ∨ (ustd_any γfd ∗ T))%I.
+  Definition ufd_headL (T : iProp Σ) (γfd : gname) (l : list fdstate)
+      : iProp Σ :=
+    (ustd γfd l ∨ ustd γfd ufd_l0 ∨ (ustd_any γfd ∗ T))%I.
 
-  (* A DUP NEVER LANDS ON SLOT 0 WHILE SLOT 0 IS OPEN, which is the whole of
-     why the console arm survives the two dups: the scan takes the lowest
-     CLOSED slot ([FdSlots.fd_lowest_closed_is_closed]). *)
+  (* the head BEFORE the two dups -- what the second open hands over
+     ([UkInit.uki_open2]) and what [UkInitMain.wp_kinit_main_from_1e]
+     walks the dups from *)
+  Definition ufd_head1 (T : iProp Σ) (st : fdstate) (γfd : gname) : iProp Σ :=
+    ufd_headL T γfd (ufd_l1 st).
+
+  (* ...and the head AFTER them, which is what the fork carries to sh and
+     what /init's own banner is paid at *)
+  Definition ufd_head (T : iProp Σ) (st : fdstate) (γfd : gname) : iProp Σ :=
+    ufd_headL T γfd (ufd_l3 st).
+
+  (* A DUP NEVER LANDS ON SLOT 0 WHILE SLOT 0 IS OPEN: the scan takes the
+     lowest CLOSED slot ([FdSlots.fd_lowest_closed_is_closed]). *)
   Lemma ufd_after_row0 (l : list fdstate) (st : fdstate) :
     st <> FdClosed -> l !! 0%nat = Some st ->
     ustd_after l st !! 0%nat = Some st.
@@ -212,46 +247,74 @@ Section UInitFd.
     - by rewrite list_lookup_insert_ne.
   Qed.
 
-  Lemma ufd_head_at (T : iProp Σ) (st : fdstate) (γfd : gname)
-      (l : list fdstate) :
-    l !! 0%nat = Some st -> ustd γfd l -∗ ufd_head T st γfd.
+  (* the three arms of the generic head, and the ledger it is at *)
+  Lemma ufd_headL_at (T : iProp Σ) (γfd : gname) (l : list fdstate) :
+    ustd γfd l -∗ ufd_headL T γfd l.
+  Proof. iIntros "H". rewrite /ufd_headL. by iLeft. Qed.
+
+  Lemma ufd_headL_closed (T : iProp Σ) (γfd : gname) (l : list fdstate) :
+    ustd γfd ufd_l0 -∗ ufd_headL T γfd l.
+  Proof. iIntros "H". rewrite /ufd_headL. iRight. by iLeft. Qed.
+
+  Lemma ufd_headL_taint (T : iProp Σ) (γfd : gname) (l l' : list fdstate) :
+    T -∗ ustd γfd l' -∗ ufd_headL T γfd l.
   Proof.
-    intro Hrow. iIntros "H". rewrite /ufd_head. iLeft. iExists l.
-    rewrite /ufd_std_at. iFrame "H". by iPureIntro.
+    iIntros "Ht H". rewrite /ufd_headL. iRight. iRight.
+    iSplitL "H"; [ by iExists l' | iExact "Ht" ].
+  Qed.
+
+  Lemma ufd_headL_ledger (T : iProp Σ) (γfd : gname) (l : list fdstate) :
+    ufd_headL T γfd l -∗ ustd_any γfd.
+  Proof.
+    rewrite /ufd_headL /ustd_any.
+    iIntros "[H | [H | [H _]]]";
+      [ by iExists l | by iExists _ | iExact "H" ].
   Qed.
 
   (* the two ledgers the console arm is ENTERED at: right after the second
      open (slot 0 alone) and after both dups (all three) *)
-  Lemma ufd_head_l1 (T : iProp Σ) (st : fdstate) (γfd : gname) :
-    ustd γfd (ufd_l1 st) -∗ ufd_head T st γfd.
-  Proof. iApply (ufd_head_at T st γfd (ufd_l1 st) (ufd_l1_row0 st)). Qed.
+  Lemma ufd_head1_l1 (T : iProp Σ) (st : fdstate) (γfd : gname) :
+    ustd γfd (ufd_l1 st) -∗ ufd_head1 T st γfd.
+  Proof. rewrite /ufd_head1. iApply (ufd_headL_at T γfd (ufd_l1 st)). Qed.
+
+  Lemma ufd_head1_closed (T : iProp Σ) (st : fdstate) (γfd : gname) :
+    ustd γfd ufd_l0 -∗ ufd_head1 T st γfd.
+  Proof. rewrite /ufd_head1. iApply (ufd_headL_closed T γfd (ufd_l1 st)). Qed.
+
+  Lemma ufd_head1_taint (T : iProp Σ) (st : fdstate) (γfd : gname)
+      (l : list fdstate) :
+    T -∗ ustd γfd l -∗ ufd_head1 T st γfd.
+  Proof. rewrite /ufd_head1. iApply (ufd_headL_taint T γfd (ufd_l1 st) l). Qed.
 
   Lemma ufd_head_l3 (T : iProp Σ) (st : fdstate) (γfd : gname) :
     ustd γfd (ufd_l3 st) -∗ ufd_head T st γfd.
-  Proof. iApply (ufd_head_at T st γfd (ufd_l3 st) (ufd_l3_row0 st)). Qed.
+  Proof. rewrite /ufd_head. iApply (ufd_headL_at T γfd (ufd_l3 st)). Qed.
+
+  (* the two FOLDINGS the walk needs: [ufd_head1] IS the generic head at
+     [ufd_l1] and [ufd_head] IS it at [ufd_l3], but the proofmode wants the
+     step said out loud ([UkInitMain.wp_kinit_main_from_1e]). *)
+  Lemma ufd_head1_to_l1 (T : iProp Σ) (st : fdstate) (γfd : gname) :
+    ufd_head1 T st γfd -∗ ufd_headL T γfd (ufd_l1 st).
+  Proof. rewrite /ufd_head1. by iIntros "$". Qed.
+
+  Lemma ufd_head_of_l3 (T : iProp Σ) (st : fdstate) (γfd : gname) :
+    ufd_headL T γfd (ufd_l3 st) -∗ ufd_head T st γfd.
+  Proof. rewrite /ufd_head. by iIntros "$". Qed.
 
   Lemma ufd_head_closed (T : iProp Σ) (st : fdstate) (γfd : gname) :
     ustd γfd ufd_l0 -∗ ufd_head T st γfd.
-  Proof. iIntros "H". rewrite /ufd_head. iRight. by iLeft. Qed.
+  Proof. rewrite /ufd_head. iApply (ufd_headL_closed T γfd (ufd_l3 st)). Qed.
 
   Lemma ufd_head_taint (T : iProp Σ) (st : fdstate) (γfd : gname)
       (l : list fdstate) :
     T -∗ ustd γfd l -∗ ufd_head T st γfd.
-  Proof.
-    iIntros "Ht H". rewrite /ufd_head. iRight. iRight.
-    iSplitL "H"; [ by iExists l | iExact "Ht" ].
-  Qed.
+  Proof. rewrite /ufd_head. iApply (ufd_headL_taint T γfd (ufd_l3 st) l). Qed.
 
   (* ...and the ledger every arm carries, which is what the untracked
      leaves and the exec supply read out of it. *)
   Lemma ufd_head_ledger (T : iProp Σ) (st : fdstate) (γfd : gname) :
     ufd_head T st γfd -∗ ustd_any γfd.
-  Proof.
-    rewrite /ufd_head /ufd_std_at /ustd_any.
-    iIntros "[H | [H | [H _]]]";
-      [ iDestruct "H" as (l) "[H _]"; by iExists l
-      | by iExists _ | iExact "H" ].
-  Qed.
+  Proof. rewrite /ufd_head. iApply (ufd_headL_ledger T γfd (ufd_l3 st)). Qed.
 
   (* ...AND THE ROW THE HEAD CARRIES, READ AGAINST THE PROCESS'S OWN
      AUTHORITY.  A consumer that holds the descriptor AUTHORITY (the exec
@@ -268,11 +331,33 @@ Section UInitFd.
     (⌜take NSTD fdv !! 0%nat = Some st⌝
      ∨ ⌜take NSTD fdv !! 0%nat = Some FdClosed⌝ ∨ T).
   Proof.
-    rewrite /ufd_head /ufd_std_at.
+    rewrite /ufd_head /ufd_headL.
     iIntros "Ha [H | [H | [_ HT]]]".
-    - iDestruct "H" as (l) "[Hl %Hrow]".
-      iDestruct (ustd_agree with "Ha Hl") as %->.
-      iFrame "Ha". iLeft. by iPureIntro.
+    - iDestruct (ustd_agree with "Ha H") as %->.
+      iFrame "Ha". iLeft. iPureIntro. exact (ufd_l3_row0 st).
+    - iDestruct (ustd_agree with "Ha H") as %->.
+      iFrame "Ha". iRight. iLeft. iPureIntro. exact ufd_l0_row0.
+    - iFrame "Ha". iRight. iRight. iExact "HT".
+  Qed.
+
+  (* ...AND ROWS 1 AND 2 BESIDE IT (lane IO-LEAF, M1(f)): on the console arm
+     the two dups landed there, so the whole of /init's standard triple is
+     the descriptor the open installed.  Stated separately so that
+     [ufd_head_row]'s three-arm shape -- which is what [UkSh.ush_fd0] is --
+     does not change. *)
+  Lemma ufd_head_row12 (T : iProp Σ) (st : fdstate) (γfd : gname)
+      (fdv : list fdstate) :
+    ufd_auth γfd fdv -∗ ufd_head T st γfd -∗
+    ufd_auth γfd fdv ∗
+    ((⌜take NSTD fdv !! 1%nat = Some st⌝
+      ∗ ⌜take NSTD fdv !! 2%nat = Some st⌝)
+     ∨ ⌜take NSTD fdv !! 0%nat = Some FdClosed⌝ ∨ T).
+  Proof.
+    rewrite /ufd_head /ufd_headL.
+    iIntros "Ha [H | [H | [_ HT]]]".
+    - iDestruct (ustd_agree with "Ha H") as %->.
+      iFrame "Ha". iLeft. iSplit; iPureIntro;
+        [ exact (ufd_l3_row1 st) | exact (ufd_l3_row2 st) ].
     - iDestruct (ustd_agree with "Ha H") as %->.
       iFrame "Ha". iRight. iLeft. iPureIntro. exact ufd_l0_row0.
     - iFrame "Ha". iRight. iRight. iExact "HT".
@@ -290,10 +375,10 @@ Section UInitFd.
     ∃ l : list fdstate,
       ustd γfd l ∗ □ (∀ γ : gname, ustd γ l -∗ ufd_head T st γ).
   Proof.
-    rewrite /ufd_head /ufd_std_at.
+    rewrite /ufd_head /ufd_headL.
     iIntros "[H | [H | [Hl #Ht]]]".
-    - iDestruct "H" as (l) "[H %Hrow]". iExists l. iFrame "H". iModIntro.
-      iIntros (γ) "H". iApply (ufd_head_at T st γ l Hrow with "H").
+    - iExists (ufd_l3 st). iFrame "H". iModIntro.
+      iIntros (γ) "H". iApply (ufd_head_l3 T st γ with "H").
     - iExists ufd_l0. iFrame "H". iModIntro. iIntros (γ) "H".
       iApply (ufd_head_closed with "H").
     - iDestruct "Hl" as (l) "Hl". iExists l. iFrame "Hl". iModIntro.

@@ -18,15 +18,21 @@
 (*  abstractly and the payment is proved here, exactly the way sh's read  *)
 (*  leaf reaches [UkSh] from [UShLine].                                   *)
 (*                                                                       *)
-(*  TWO ARMS, and the second is not slack.  /init's ledger head           *)
-(*  ([UInitFd.ufd_head]) pins SLOT 0 only, because a failing [dup] is not *)
-(*  refutable -- so "fd 1 is the console" is NOT a theorem of init's      *)
-(*  code, and the payment has to answer for every row fd 1 can be at.  On *)
-(*  the console row the era's write link pays each byte and the cursor    *)
-(*  moves; on every other row the FLAGGED DEPOSIT pays and nothing is     *)
-(*  said (the cursor does not move either, which is exactly right: at a   *)
-(*  closed or read-only descriptor no byte reaches the wire).  Lane       *)
-(*  DUP-ROW is what will retire the second arm.                          *)
+(*  ONE ARM (lane IO-LEAF, M1(f)).  There used to be two: /init's ledger  *)
+(*  head pinned SLOT 0 only, because a failing [dup] was not refutable,   *)
+(*  so "fd 1 is the console" was not a theorem of init's code and the     *)
+(*  payment had to answer for every row fd 1 could be at -- read-only,    *)
+(*  inode, other-device, closed, and absent -- each of which spent the    *)
+(*  FREE WRITE LAW ([UkRun.udepw_law] 16), which is why this lemma took   *)
+(*  [(⊢ udepw_law 16)] as a premise.  Lane DUP-ROW gave the dup row its   *)
+(*  reason and M1(f) carried the NAMED ledger through both dups, so the   *)
+(*  payment is now asked for at [UInitFd.ufd_l3] of the console           *)
+(*  descriptor, whose row 1 IS the console ([UInitFd.ufd_l3_row1]).  The  *)
+(*  five other rows are gone and so is the premise: the era's write link  *)
+(*  pays each byte and the cursor moves, on the one row there is.  (The   *)
+(*  head's CLOSED and TAINT arms never ask for the payment at all --      *)
+(*  [UkInitMain.wp_kinit_banner] prints through the flagged deposit       *)
+(*  there, as it does on every round after the first.)                    *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -73,6 +79,7 @@ Require Import FsAbsDefs.
 Require Import WpUart.
 Require Import UkWriteLeaf.        (* the supply and the post, at row 16 *)
 Require Import UCodeInit.
+Require Import UInitFd.            (* [ufd_l3] / [ufd_l3_row1] *)
 Require Import UkInit UkInitLit UkInitMain.
 Require Import EchoDisc.
 Require Import EchoOutPure.
@@ -289,56 +296,35 @@ Section UInitBanner.
   (* =================================================================== *)
   (*  S3  THE PAYMENT                                                     *)
   (* =================================================================== *)
+  (* THE CONSOLE DESCRIPTOR /init's OPEN INSTALLS.  Spelt out rather than
+     taken from [UInitCons.init_cons_fd]: that file is the application's
+     side of the console prologue and this one only needs the fdstate. *)
+  Local Notation stc_cons := (FdOpen true true (FdDevice CONSOLE)).
+
   Lemma kinit_banner0_holds :
-    (⊢ udepw_law 16) ->
     echo_links T γ -∗
     eturn γ (S gen_id) -∗
-    ∀ N : uk_names Σ, UkInitMain.kinit_banner0 N.
+    ∀ N : uk_names Σ, UkInitMain.kinit_banner0 N stc_cons.
   Proof.
-    intros Hlaw.
     iIntros "#Hlk Hturn" (N).
     iDestruct (echo_links_w with "Hlk") as "#Hw".
     iDestruct (echo_links_taint with "Hlk") as "#Ht".
-    iDestruct Hlaw as "#Hwr".
     rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
-    iIntros (l) "Hl".
-    destruct (l !! 1%nat) as [st |] eqn:Hl1;
-      [ destruct st as [| rb wb fk] | ].
-    - (* fd 1 is CLOSED: the write reaches no wire and says nothing *)
-      iExists (fun _ => UserFd.ustd (ukn_fd N) l)%I.
-      iSplitR; [| iSplitL "Hl"; [ iExact "Hl" | by iIntros "$" ] ].
-      iIntros "!>" (j) "_".
-      iIntros (h m avail) "_ _ #Hcode Hbuf Hl Hrun Hcont".
-      iApply (UkInit.wp_kinit_write N h m avail with "Hwr Hcode Hrun").
-      iIntros (h' ret) "Hrun".
-      iApply ("Hcont" $! h' ret with "Hbuf Hl Hrun").
-    - (* fd 1 is OPEN: the console arm if it is a writable CONSOLE device *)
-      destruct (decide (wb = true /\ fk = FdDevice CONSOLE))
-        as [[-> ->] | Hne].
-      + iDestruct "Hturn" as (v) "(#Hpin & Htn & _ & #Hcs & #Hps & #HE)".
-        iExists (fun i => UserFd.ustd (ukn_fd N) l ∗ bnr v i)%I.
-        iSplitR "Htn Hl".
-        { iIntros "!>" (j) "%Hj".
-          iApply (kinit_w1_of_link N v l rb j (init_lit LIT_START j)
-                    Hl1 (proc_upto0_banner j Hj) with "Hpin Hw Ht"). }
-        iSplitL.
-        { iFrame "Hl". rewrite /bnr. iLeft. iFrame "Htn Hps Hcs HE". }
-        by iIntros "[$ _]".
-      + iExists (fun _ => UserFd.ustd (ukn_fd N) l)%I.
-        iSplitR; [| iSplitL "Hl"; [ iExact "Hl" | by iIntros "$" ] ].
-        iIntros "!>" (j) "_".
-        iIntros (h m avail) "_ _ #Hcode Hbuf Hl Hrun Hcont".
-        iApply (UkInit.wp_kinit_write N h m avail with "Hwr Hcode Hrun").
-        iIntros (h' ret) "Hrun".
-        iApply ("Hcont" $! h' ret with "Hbuf Hl Hrun").
-    - (* fd 1 is not even a standard slot of this ledger *)
-      iExists (fun _ => UserFd.ustd (ukn_fd N) l)%I.
-      iSplitR; [| iSplitL "Hl"; [ iExact "Hl" | by iIntros "$" ] ].
-      iIntros "!>" (j) "_".
-      iIntros (h m avail) "_ _ #Hcode Hbuf Hl Hrun Hcont".
-      iApply (UkInit.wp_kinit_write N h m avail with "Hwr Hcode Hrun").
-      iIntros (h' ret) "Hrun".
-      iApply ("Hcont" $! h' ret with "Hbuf Hl Hrun").
+    iIntros "Hl".
+    (* THE ONE ROW: after the two dups fd 1 carries what the open installed
+       ([UInitFd.ufd_l3_row1]), and what the open installed is the console
+       device, read/write. *)
+    iDestruct "Hturn" as (v) "(#Hpin & Htn & _ & #Hcs & #Hps & #HE)".
+    iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons) ∗ bnr v i)%I.
+    iSplitR "Htn Hl".
+    { iIntros "!>" (j) "%Hj".
+      iApply (kinit_w1_of_link N v (ufd_l3 stc_cons) true j
+                (init_lit LIT_START j)
+                (ufd_l3_row1 stc_cons) (proc_upto0_banner j Hj)
+                with "Hpin Hw Ht"). }
+    iSplitL.
+    { iFrame "Hl". rewrite /bnr. iLeft. iFrame "Htn Hps Hcs HE". }
+    by iIntros "[$ _]".
   Qed.
 
 End UInitBanner.

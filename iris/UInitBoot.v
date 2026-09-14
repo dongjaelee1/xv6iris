@@ -757,8 +757,13 @@ Section EchoInitBoot.
          the kernel's console contracts are the same object AND row 16's
          concrete reading is in scope, which is why the conversion lives
          above [UkWriteLeaf] and reaches <init>'s walk as a premise. *)
+      (* ...AND IT NO LONGER SPENDS THE FREE WRITE LAW (lane IO-LEAF,
+         M1(f)): /init's two dups pin fds 1 and 2 to the console, so the
+         payment has ONE row to answer for and [Hsh_deps] is not a premise
+         of it any more.  [Hsh_deps] still stands above -- init's three die
+         arms and [UkInit.init_deps] spend it (M4/M6). *)
       iApply (UInitBanner.kinit_banner0_holds (echo_taint γ) γ
-                (PS := uprogSG_free) Hsh_deps with "[] [Hturn]").
+                (PS := uprogSG_free) with "[] [Hturn]").
       + iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin).
       + rewrite /echo_turn. iExact "Hturn".
   Qed.

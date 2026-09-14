@@ -927,19 +927,18 @@ Section UInitCons.
   Proof. iIntros "H". iApply (ufd_head_ledger with "H"). Qed.
 
   (* ...AND WHAT SH-LINE READS OFF THE CONSOLE ARM: row 0 is an OPEN
-     READABLE CONSOLE DEVICE ([UConsLine.ush_std_cons]'s own shape).  The
-     ledger is EXISTENTIAL because /init cannot rule out a failing dup
-     ([UInitFd.ufd_head]'s note); what it CAN say is the row sh reads its
-     line from. *)
+     READABLE CONSOLE DEVICE ([UConsLine.ush_std_cons]'s own shape).  Since
+     lane IO-LEAF M1(f) the ledger is NAMED -- [init_cons_l3], where the
+     two dups landed at 1 and 2 -- so the existential here has exactly one
+     witness; the shape is kept because it is what sh's entry consumes. *)
   Lemma init_std_cons_of_head (γcl : echo_fixed) (γfd : gname) :
     init_cons_head γcl γfd -∗
     (∃ l : list fdstate, init_std_cons γfd l)
     ∨ ustd γfd init_cons_l0 ∨ (ustd_any γfd ∗ echo_taint γcl).
   Proof.
-    rewrite /init_cons_head /ufd_head /ufd_std_at /init_std_cons.
+    rewrite /init_cons_head /ufd_head /ufd_headL.
     iIntros "[H | H]"; [| by iRight ].
-    iDestruct "H" as (l) "[H %Hr]". iLeft. iExists l. iFrame "H".
-    iPureIntro. exists true. exact Hr.
+    iLeft. iExists init_cons_l3. iApply (init_std_cons_l3 with "H").
   Qed.
 
   (* =================================================================== *)

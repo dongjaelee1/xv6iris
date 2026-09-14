@@ -989,16 +989,19 @@ Section UkInitMain.
   (*                                                                       *)
   (*  WHAT THE PAYMENT IS ([UkInit.kinit_banner_pay]): a wand from init's   *)
   (*  own descriptor table to a per-byte family for the eighteen bytes,     *)
-  (*  the family's start token, and the table back.  The application's      *)
-  (*  side answers for EVERY row fd 1 can be at -- /init cannot rule out a  *)
-  (*  failing [dup] ([UInitFd.ufd_head]'s note), so "the banner reached the *)
-  (*  console" is not a theorem of its code and the payment has to be       *)
-  (*  stated so that it is not needed.                                     *)
+  (*  the family's start token, and the table back -- AT THE ONE LEDGER     *)
+  (*  the console arm of the head is at ([UInitFd.ufd_l3 stc]), where fd 1  *)
+  (*  is the descriptor the second open installed.  It used to be under a   *)
+  (*  [∀ l] and the application's side had to answer for EVERY row fd 1     *)
+  (*  could be at, because a failing [dup] was not refutable; lane DUP-ROW  *)
+  (*  and lane IO-LEAF M1(f) made it one, and [wp_kinit_banner] below is    *)
+  (*  where the head's other two arms opt out of the payment altogether.    *)
   (* ===================================================================== *)
-  Definition kinit_banner0 : iProp Σ :=
-    UkInit.kinit_banner_pay N 18%nat (init_lit LIT_START).
+  Definition kinit_banner0 (stc : fdstate) : iProp Σ :=
+    UkInit.kinit_banner_pay N stc 18%nat (init_lit LIT_START).
 
-  Definition kinit_round0 : iProp Σ := (kinit_banner0 ∨ True)%I.
+  Definition kinit_round0 (stc : fdstate) : iProp Σ :=
+    (kinit_banner0 stc ∨ True)%I.
 
   (* ...AND THE BANNER ITSELF, both ways round: with the payment through
      the per-byte family, without it through the flagged deposit.  ONE
@@ -1011,7 +1014,7 @@ Section UkInitMain.
     udepw_law 16 -∗
     init_code γt -∗
     utext_str γt LIT_START 18%nat (init_lit LIT_START) -∗
-    kinit_round0 -∗
+    kinit_round0 stc -∗
     ufd_head T stc γfd -∗
     urun N h m (mword_of_int InitSyms.printf) (12 + (12 + (4 + n))) -∗
     (∀ (h' : CpuId) (m' : regfile),
@@ -1025,27 +1028,44 @@ Section UkInitMain.
     iIntros "#Hwr #Hcode #Hstr Hb0 Hstd Hrun Hcont".
     assert (HokS : init_lit_ok LIT_START 18%nat = true)
       by (vm_compute; reflexivity).
-    iDestruct "Hb0" as "[Hb0 | _]".
-    - (* ROUND 0: the era's credential pays, byte by byte *)
-      iDestruct (ufd_head_open T stc γfd with "Hstd") as (lst) "[Hlst #Hback]".
-      iDestruct ("Hb0" $! lst with "Hlst") as (Ch) "(#Hw & HCh & Hgive)".
-      iApply (wp_kinit_printf_chain N LIT_START 18%nat (init_lit LIT_START)
-                Ch h m n
-                ltac:(vm_compute; discriminate)
-                ltac:(vm_compute; reflexivity) ltac:(lia)
-                (fun j Hj => init_lit_nopct LIT_START 18%nat j HokS Hj) Ha0
-                with "Hw Hcode Hstr HCh Hrun").
-      iIntros (h' m') "%Hcs HCh Hrun".
-      iApply ("Hcont" $! h' m' with "[%] [Hgive HCh] Hrun"); [ exact Hcs | ].
-      iApply ("Hback" $! γfd). iApply ("Hgive" with "HCh").
-    - (* every other round: the flagged deposit, and nothing is said *)
+    iDestruct "Hb0" as "[Hb0 | _]"; last first.
+    { (* every other round: the flagged deposit, and nothing is said *)
       iApply (wp_kinit_printf N LIT_START 18%nat (init_lit LIT_START) h m n
                 ltac:(vm_compute; discriminate)
                 ltac:(vm_compute; reflexivity) ltac:(lia)
                 (fun j Hj => init_lit_nopct LIT_START 18%nat j HokS Hj) Ha0
                 with "Hwr Hcode Hstr Hrun").
       iIntros (h' m') "%Hcs Hrun".
-      iApply ("Hcont" $! h' m' with "[%] Hstd Hrun"); exact Hcs.
+      iApply ("Hcont" $! h' m' with "[%] Hstd Hrun"); exact Hcs. }
+    (* ROUND 0, AND WHICH ARM OF THE HEAD IT IS ON (lane IO-LEAF, M1(f)).
+       The payment is asked for at the ONE ledger /init's prologue leaves
+       on the console arm ([UInitFd.ufd_l3 stc]), where fd 1 IS the
+       console -- so the application's side has one row to answer for and
+       not six.  On the other two arms fd 0 never opened (or the
+       application is tainted): the banner reaches no wire, the payment is
+       not spent, and the flagged deposit prints exactly as it does on
+       every later round. *)
+    rewrite /ufd_head /ufd_headL.
+    iDestruct "Hstd" as "[Hl3 | Hrest]"; last first.
+    { iApply (wp_kinit_printf N LIT_START 18%nat (init_lit LIT_START) h m n
+                ltac:(vm_compute; discriminate)
+                ltac:(vm_compute; reflexivity) ltac:(lia)
+                (fun j Hj => init_lit_nopct LIT_START 18%nat j HokS Hj) Ha0
+                with "Hwr Hcode Hstr Hrun").
+      iIntros (h' m') "%Hcs Hrun".
+      iApply ("Hcont" $! h' m' with "[%] [Hrest] Hrun"); [ exact Hcs | ].
+      by iRight. }
+    (* ROUND 0 ON THE CONSOLE ARM: the era's credential pays, byte by byte *)
+    iDestruct ("Hb0" with "Hl3") as (Ch) "(#Hw & HCh & Hgive)".
+    iApply (wp_kinit_printf_chain N LIT_START 18%nat (init_lit LIT_START)
+              Ch h m n
+              ltac:(vm_compute; discriminate)
+              ltac:(vm_compute; reflexivity) ltac:(lia)
+              (fun j Hj => init_lit_nopct LIT_START 18%nat j HokS Hj) Ha0
+              with "Hw Hcode Hstr HCh Hrun").
+    iIntros (h' m') "%Hcs HCh Hrun".
+    iApply ("Hcont" $! h' m' with "[%] [Hgive HCh] Hrun"); [ exact Hcs | ].
+    iLeft. iApply ("Hgive" with "HCh").
   Qed.
 
   Lemma wp_kinit_main_loop (T : iProp Σ) `{!Persistent T} `{!Timeless T}
@@ -1085,7 +1105,7 @@ Section UkInitMain.
            hypothesis supplies nothing, which is why rounds k > 0 still
            print through the flagged deposit until the turn comes back
            through the child's exit payload (M3-M6). *)
-        kinit_round0 -∗
+        kinit_round0 stc -∗
         urun N h m (mword_of_int 0x32) (12 + (12 + (4 + n))) -∗
         WP (Loop : expr riscv_lang))
      ∧ (∀ (h : CpuId) (m : regfile) (cs : gset gname)
@@ -1635,8 +1655,13 @@ Section UkInitMain.
        so a pinned bundle can read them. *)
     init_exec_sup_lend cn T stc -∗
     init_rodata γt -∗ init_argv γd -∗ usz γs szv -∗
-    (* THE HEAD, as the console test left it; the two dups below keep it *)
-    ufd_head T stc γfd -∗
+    (* THE HEAD, as the console test left it -- BEFORE the two dups, so its
+       console arm is the named ledger [UInitFd.ufd_l1 stc].  The two dups
+       below MOVE it, to [ufd_l2 stc] and then to [ufd_l3 stc] (lane
+       IO-LEAF, M1(f)): each lands where the ledger's own scan says, and
+       neither can fail, so what leaves this walk says fds 0, 1 AND 2 all
+       carry the descriptor the second open installed. *)
+    ufd_head1 T stc γfd -∗
     UserCwd.ucwd γcwd FsImg.ROOTINO -∗
     UserChildren.uch_any γch -∗
     (* THE CONSOLE INPUT, on its way to the restart head: the reader token
@@ -1645,7 +1670,7 @@ Section UkInitMain.
     uinit_tok cn T -∗
     (* ...AND ROUND 0'S BANNER PAYMENT, on its way to the restart head
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
-    kinit_round0 -∗
+    kinit_round0 stc -∗
     urun N h m (mword_of_int 0x1e) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
@@ -1690,9 +1715,15 @@ Section UkInitMain.
                       ltac:(vm_compute; discriminate)).
       rewrite /mq1 (upd_eq m (Regidx a0_idx) (regval_into_reg _)).
       vm_compute; reflexivity. }
-    iApply (wp_kinit_dup_head N Hpsok_free T stc hq2 mq2 (12 + (12 + (4 + n)))
-              Hne Ha0q2 with "Hcode Hrun Hstd").
+    (* the FIRST dup: the ledger's scan says slot 1 ([UInitFd.ufd_scan1]),
+       and [<[1 := stc]> (ufd_l1 stc)] IS [ufd_l2 stc] *)
+    iDestruct (ufd_head1_to_l1 T stc γfd with "Hstd") as "Hstd".
+    iApply (wp_kinit_dup_headL N Hpsok_free T stc (ufd_l1 stc) 1%nat
+              hq2 mq2 (12 + (12 + (4 + n)))
+              Hne (ufd_l1_row0 stc) (ufd_scan1 stc Hne) Ha0q2
+              with "Hcode Hrun Hstd").
     iIntros (hq3 r1) "Hstd Hrun".
+    change (<[1%nat := stc]> (ufd_l1 stc)) with (ufd_l2 stc).
     assert (Eq2 : ret_pc (mq2 !!! Regidx ra_idx)
                   = (mword_of_int 0x24 : mword 64))
       by (rewrite Hraq2; apply bv_eq; vm_compute; reflexivity).
@@ -1736,9 +1767,15 @@ Section UkInitMain.
                       ltac:(vm_compute; discriminate)).
       rewrite /mq4 (upd_eq mq3 (Regidx a0_idx) (regval_into_reg _)).
       vm_compute; reflexivity. }
-    iApply (wp_kinit_dup_head N Hpsok_free T stc hq5 mq5 (12 + (12 + (4 + n)))
-              Hne Ha0q5 with "Hcode Hrun Hstd").
+    (* ...and the SECOND: slot 2 ([UInitFd.ufd_scan2]), landing at
+       [ufd_l3 stc] -- which is exactly [UInitFd.ufd_head]'s console arm *)
+    iApply (wp_kinit_dup_headL N Hpsok_free T stc (ufd_l2 stc) 2%nat
+              hq5 mq5 (12 + (12 + (4 + n)))
+              Hne (ufd_l2_row0 stc) (ufd_scan2 stc Hne) Ha0q5
+              with "Hcode Hrun Hstd").
     iIntros (hq6 r2) "Hstd Hrun".
+    change (<[2%nat := stc]> (ufd_l2 stc)) with (ufd_l3 stc).
+    iDestruct (ufd_head_of_l3 T stc γfd with "Hstd") as "Hstd".
     assert (Eq5 : ret_pc (mq5 !!! Regidx ra_idx)
                   = (mword_of_int 0x2a : mword 64))
       by (rewrite Hraq5; apply bv_eq; vm_compute; reflexivity).
@@ -1834,7 +1871,7 @@ Section UkInitMain.
     uinit_tok cn T -∗
     (* ...AND ROUND 0'S BANNER PAYMENT, on its way to the restart head
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
-    kinit_round0 -∗
+    kinit_round0 stc -∗
     urun N h m (mword_of_int 0x74) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
@@ -1979,7 +2016,7 @@ Section UkInitMain.
     uinit_tok cn T -∗
     (* ...AND ROUND 0'S BANNER PAYMENT, on its way to the restart head
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
-    kinit_round0 -∗
+    kinit_round0 stc -∗
     urun N h m (mword_of_int 0x64) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
@@ -2159,7 +2196,7 @@ Section UkInitMain.
     uinit_tok cn T -∗
     (* ...AND ROUND 0'S BANNER PAYMENT, on its way to the restart head
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
-    kinit_round0 -∗
+    kinit_round0 stc -∗
     urun N h m (mword_of_int InitSyms.main)
       (4 + (12 + (12 + (4 + n)))) -∗
     WP (Loop : expr riscv_lang).
@@ -2405,7 +2442,7 @@ Section UkInitMain.
       iDestruct ("Hw" with "HC") as "#Hxsl".
       iApply (wp_kinit_main_from_1e T stc cn szv hm11 mm7 n Hne Hkt
                 with "[$Hwr $Hwl15 $Hwl17] Hcode Hxsl Hro Hargv Hsz [Hstd] Hcwd Hch Htk Hb0 Hrun").
-      iApply (ufd_head_l1 with "Hstd").
+      iApply (ufd_head1_l1 with "Hstd").
     - (* THE CALL RETURNED [-1] -- the pin missed, or the node is there and
          the allocation failed (FACT 3) -- so the branch is TAKEN. *)
       assert (Hblt0 : uv_btaken BLT (mm7 !!! Regidx a0_idx) zero_reg = true)
@@ -2448,7 +2485,7 @@ Section UkInitMain.
         iApply (wp_kinit_main_from_1e T stc cn szv hm11 mm7 n Hne Hkt
                   with "[$Hwr $Hwl15 $Hwl17] Hcode Hxsl Hro Hargv Hsz [Hstd] Hcwd Hch Htk Hb0 Hrun").
         iDestruct "Hstd" as (l) "Hstd".
-        iApply (ufd_head_taint with "HT Hstd").
+        iApply (ufd_head1_taint with "HT Hstd").
   Qed.
 
 
@@ -2516,7 +2553,7 @@ Section UkInitMain.
        [UkInit.kinit_banner_pay] ("give me the descriptor table and I give
        you a per-byte family for the eighteen bytes"), proved from [eturn]
        and the era's links in [UInitBanner], the [UShLine] mould. *)
-    kinit_banner0 -∗
+    kinit_banner0 stc -∗
     urun N h m (mword_of_int InitSyms.start)
       (2 + (4 + (12 + (12 + (4 + n))))) -∗
     WP (Loop : expr riscv_lang).
@@ -2527,7 +2564,7 @@ Section UkInitMain.
        byte by byte ([wp_kinit_banner]); the Löb hypothesis re-enters that
        head with the trivial arm, because the turn does not come back to
        <init> until the child's exit payload carries it (M3-M6). *)
-    iAssert (kinit_round0) with "[Htn]" as "Hb0";
+    iAssert (kinit_round0 stc) with "[Htn]" as "Hb0";
       [ rewrite /kinit_round0; by iLeft | ].
     destruct init_syms_pins
       as (Hstart & Hmain & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _).

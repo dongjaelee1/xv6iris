@@ -449,7 +449,12 @@ Section UkInit.
        UserCwd.ucwd γcwd FsImg.ROOTINO -∗
        uki_open2_in T -∗
        (∀ (h' : CpuId) (ret : mword 64),
-          ufd_head T stc γfd -∗
+          (* THE HEAD BEFORE THE TWO DUPS (lane IO-LEAF, M1(f)): the console
+             arm is the NAMED ledger the open left, [UInitFd.ufd_l1 stc],
+             and not `some list whose slot 0 is [stc]'.  Carrying the name
+             through the two dups at 0x20 and 0x26 is what pins fds 1 and
+             2 ([UkInitMain.wp_kinit_main_from_1e]). *)
+          ufd_head1 T stc γfd -∗
           UserCwd.ucwd γcwd FsImg.ROOTINO -∗
           urun N h'
             (<[Regidx a0_idx := ret]>
@@ -1058,7 +1063,7 @@ Section UkInit.
     { iDestruct "Hin" as "[H | [H _]]"; [ by iExists ufd_l0 | iExact "H" ]. }
     iIntros (h' ret) "Hstd Hrun".
     iApply ("Hcont" $! h' ret with "[Hstd] Hcwd Hrun").
-    iDestruct "Hstd" as (l) "H". iApply (ufd_head_taint with "Ht H").
+    iDestruct "Hstd" as (l) "H". iApply (ufd_head1_taint with "Ht H").
   Qed.
 
   (* the node exists: the PINNED open at the resolving pin.  Its taint arm
@@ -1080,9 +1085,9 @@ Section UkInit.
     iIntros (h' ret) "Hans Hcwd Hrun".
     iApply ("Hcont" $! h' ret with "[Hans] Hcwd Hrun").
     iDestruct "Hans" as "[[_ H] | [[_ H] | [H Ht]]]".
-    - iApply (ufd_head_l1 with "H").
-    - iApply (ufd_head_closed with "H").
-    - iDestruct "H" as (l) "H". iApply (ufd_head_taint with "Ht H").
+    - iApply (ufd_head1_l1 with "H").
+    - iApply (ufd_head1_closed with "H").
+    - iDestruct "H" as (l) "H". iApply (ufd_head1_taint with "Ht H").
   Qed.
 
   (* the mknod failed and handed the credential back: the MISS pin again,
@@ -1104,28 +1109,35 @@ Section UkInit.
     iIntros (h' ret) "Hans Hcwd Hrun".
     iApply ("Hcont" $! h' ret with "[Hans] Hcwd Hrun").
     iDestruct "Hans" as "[(_ & H & _) | [H Ht]]".
-    - iApply (ufd_head_closed with "H").
-    - iDestruct "H" as (l) "H". iApply (ufd_head_taint with "Ht H").
+    - iApply (ufd_head1_closed with "H").
+    - iDestruct "H" as (l) "H". iApply (ufd_head1_taint with "Ht H").
   Qed.
 
   (* --------------------------------------------------------------------- *)
-  (* dup(0), ON THE HEAD -- ONE lemma for both of /init's dups and all three *)
-  (* arms.  The head is CLOSED under it: on the console arm the copy lands   *)
-  (* on the lowest CLOSED slot, which is never slot 0                        *)
-  (* ([UInitFd.ufd_after_row0]), and a dup that FAILS moves nothing; on the  *)
+  (* dup(0), ON THE HEAD AT A NAMED LEDGER -- ONE lemma for both of /init's  *)
+  (* dups and all three arms, and the step that PINS fds 1 and 2 (lane       *)
+  (* IO-LEAF, M1(f)).                                                        *)
+  (*                                                                        *)
+  (* The caller names the ledger the console arm is at and the slot its own  *)
+  (* scan reaches, and the head comes back at [<[k := st]> l].  THE FAILURE  *)
+  (* ARM DIES HERE: since lane DUP-ROW [wp_kinit_dup_cons]'s -1 arm carries  *)
+  (* `fd_lowest_closed l = None', which [Hk] refutes -- so on the console    *)
+  (* arm the dup PROVABLY lands, and it lands where the ledger says.  On the *)
   (* closed arm both dups fail on a closed descriptor and the ledger does    *)
   (* not move; on the taint arm the untracked leaf moves the authority and   *)
   (* names nothing.                                                          *)
   (* --------------------------------------------------------------------- *)
-  Lemma wp_kinit_dup_head (T : iProp Σ) (stc : fdstate)
-      (h : CpuId) (m : regfile) (avail : nat) :
+  Lemma wp_kinit_dup_headL (T : iProp Σ) (stc : fdstate) (l : list fdstate)
+      (k : nat) (h : CpuId) (m : regfile) (avail : nat) :
     stc <> FdClosed ->
+    l !! 0%nat = Some stc ->
+    fd_lowest_closed l = Some k ->
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat 0 ->
     init_code γt -∗
     urun N h m (mword_of_int InitSyms.dup) avail -∗
-    ufd_head T stc γfd -∗
+    ufd_headL T γfd l -∗
     (∀ (h' : CpuId) (ret : mword 64),
-       ufd_head T stc γfd -∗
+       ufd_headL T γfd (<[k := stc]> l) -∗
        urun N h'
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 10 : mword 64)]> m))
@@ -1133,33 +1145,33 @@ Section UkInit.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hne Harg.
+    intros Hne Hrow Hk Harg.
     iIntros "#Hcode Hrun Hhd Hcont".
-    rewrite /ufd_head /ufd_std_at.
-    iDestruct "Hhd" as "[H | [H | [H Ht]]]".
+    rewrite /ufd_headL.
+    iDestruct "Hhd" as "[Hstd | [H | [H Ht]]]".
     - (* CONSOLE: the TRACKED leaf, and the ledger decides where it lands *)
-      iDestruct "H" as (l) "[Hstd %Hrow]".
       iApply (wp_kinit_dup_cons h m avail l 0%nat stc Harg Hne
                 ltac:(unfold NSTD; lia) Hrow with "Hcode Hrun Hstd").
       iIntros (h' ret) "Hal Hrun".
       iApply ("Hcont" $! h' ret with "[Hal] Hrun").
-      iDestruct "Hal" as "[Hs | [_ Hl]]".
-      + iDestruct "Hs" as (fd1) "[_ Ha]".
-        iDestruct (ualloc_ledger with "Ha") as "Hl".
-        iApply (ufd_head_at T stc γfd (ustd_after l stc)
-                  (ufd_after_row0 l stc Hne Hrow) with "Hl").
-      + iApply (ufd_head_at T stc γfd l Hrow with "Hl").
+      iDestruct "Hal" as "[Hs | [%Hf Hl]]"; last first.
+      { (* the table cannot be full: the caller's own scan found slot [k] *)
+        exfalso. destruct Hf as [_ Hf]. rewrite Hk in Hf. discriminate. }
+      iDestruct "Hs" as (fd1) "[_ Ha]".
+      iDestruct (ualloc_ledger with "Ha") as "Hl".
+      rewrite /ustd_after Hk. by iLeft.
     - (* CLOSED: the source is a closed standard stream *)
       iApply (wp_kinit_dup_closed h m avail ufd_l0 0%nat Harg
                 ltac:(unfold NSTD; lia) ufd_l0_row0 with "Hcode Hrun H").
       iIntros (h' ret) "_ Hstd Hrun".
       iApply ("Hcont" $! h' ret with "[Hstd] Hrun").
-      iApply (ufd_head_closed with "Hstd").
+      iRight. by iLeft.
     - (* TAINT: nothing is named, so the untracked leaf is the honest one *)
       iApply (wp_kinit_dup h m avail with "Hcode Hrun H").
       iIntros (h' ret) "Hstd Hrun".
       iApply ("Hcont" $! h' ret with "[Ht Hstd] Hrun").
-      iDestruct "Hstd" as (l) "Hstd". iApply (ufd_head_taint with "Ht Hstd").
+      iDestruct "Hstd" as (l') "Hstd".
+      iRight. iRight. iSplitL "Hstd"; [ by iExists l' | iExact "Ht" ].
   Qed.
 
   (* ...and write's.  16's branch is the write chain at a key whose
@@ -1320,16 +1332,25 @@ Section UkInit.
      (lane IO-LEAF): give it the descriptor table and it gives back a
      per-byte family for the [len] bytes [f], the family's start token, and
      the table.  LINEAR -- it carries the era's credential, which is spent
-     once -- and quantified over the LEDGER because which row fd 1 is at is
-     decided inside init's own console prologue, long after the boot, and
-     the application's side has to answer for every row it can be. *)
-  Definition kinit_banner_pay (len : nat) (f : nat -> bv 8) : iProp Σ :=
-    (∀ l : list fdstate,
-       UserFd.ustd γfd l -∗
-       ∃ Ch : nat -> iProp Σ,
-         □ (∀ j : nat, ⌜(j < len)%nat⌝ -∗
-              kinit_w1 (mword_of_int 1 : mword 64) (f j) (Ch j) (Ch (S j)))
-         ∗ Ch 0%nat ∗ (Ch len -∗ UserFd.ustd γfd l))%I.
+     once.
+
+     AT ONE LEDGER, AND NOT UNDER A [∀ l] (lane IO-LEAF, M1(f)).  It used
+     to be quantified over every list, because which row fd 1 was at was
+     not decided by /init's code and the application's side had to answer
+     for every row it could be -- which is what made the free write law
+     ([UkRun.udepw_law] 16) a premise of the payment's proof.  It is
+     decided now: the console arm of /init's head is the NAMED ledger
+     [UInitFd.ufd_l3 stc], where the open landed at 0 and the two dups at
+     1 and 2, so the payment is asked for at THAT list and its fd 1 is the
+     console.  The other two arms of the head never ask for it -- they
+     print through the flagged deposit ([UkInitMain.wp_kinit_banner]). *)
+  Definition kinit_banner_pay (stc : fdstate) (len : nat) (f : nat -> bv 8)
+      : iProp Σ :=
+    (UserFd.ustd γfd (ufd_l3 stc) -∗
+     ∃ Ch : nat -> iProp Σ,
+       □ (∀ j : nat, ⌜(j < len)%nat⌝ -∗
+            kinit_w1 (mword_of_int 1 : mword 64) (f j) (Ch j) (Ch (S j)))
+       ∗ Ch 0%nat ∗ (Ch len -∗ UserFd.ustd γfd (ufd_l3 stc)))%I.
 
   (* ...AND THE SAME STUB WITH THE OUTPUT CHAIN AND THE POST                *)
   (* (app-echo.md, lane IO-LEAF, first half; the leaf is                    *)

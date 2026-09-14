@@ -306,7 +306,7 @@ Section UInitKernel.
        which credential the shell it execs is handed is decided by /init's
        OWN mknod, mid-walk, so the supply is assembled there and not
        here. *)
-    UkInit.init_cons_sup cn T Cns stc -∗
+    UkInit.init_cons_sup cn T Cns stc Rt -∗
     (* ...AND THE CONSOLE DANCE, at whichever arm the application's boot
        resource decided ([App.app_boot]; [AppEcho.echo_boot] is
        [cons_key r ∨ ∃ i, cons_made r i], and THE ARM IS DECIDED BY THE
@@ -444,7 +444,7 @@ Section UInitKernel.
        [init_uexec_slot] and [UkInit.init_deps] *)
     UkInit.init_deps T -∗
     (* the pay fact, passed straight through: see [init_uexec_slot] *)
-    udep -∗ UkInit.init_cons_sup cn T Cns stc -∗
+    udep -∗ UkInit.init_cons_sup cn T Cns stc Rt -∗
     init_cons_dance_all T Cns stc -∗
     (* the console reader token, passed straight through: see
        [init_uexec_slot] *)
@@ -617,7 +617,7 @@ Section UInitKernel.
        wands").  With the [□] written down, the intro is structural and no
        search runs; the caller pays the box once
        ([UInitBoot.init_deps_of_sup]). *)
-    □ UkInit.init_deps T -∗ udep -∗ UkInit.init_cons_sup cn T Cns stc -∗
+    □ UkInit.init_deps T -∗ udep -∗ UkInit.init_cons_sup cn T Cns stc Rt -∗
     □ (∀ W' : uvis,
          ⌜kexec_image_ok ElfUser.init_elf na alen afun sts W'⌝ -∗
          ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗

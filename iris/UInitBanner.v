@@ -85,6 +85,8 @@ Require Import EchoDisc.
 Require Import EchoOutPure.
 Require Import EchoOut.
 Require Import EchoLinks.
+Require Import UShOut.              (* [sh_prompt_pay_of_ushpr]: what the
+                                       shell will SPEND the credential on *)
 Require Import TsoCtx.
 Require User.InitSyms.
 Local Open Scope Z_scope.
@@ -336,6 +338,59 @@ Section UInitBanner.
     { iFrame "Hl". rewrite /bnr. iLeft. iFrame "Htn Hps Hcs HE". }
     iIntros "[$ Hbnd]". rewrite /kinit_turn0.
     iExists v. iFrame "Hpin Hbnd".
+  Qed.
+
+  (* =================================================================== *)
+  (*  S4  THE CREDENTIAL, AS THE SHELL WILL SPEND IT (lane IO-LEAF,       *)
+  (*      M4a(3)).                                                        *)
+  (*                                                                     *)
+  (*  /init's walk carries what the banner leaves behind OPAQUELY --      *)
+  (*  [UkInit.init_exec_sup_pos]'s [Rt] -- because init may name no era   *)
+  (*  and sh's walk may name no era either.  So the two ends have to      *)
+  (*  agree on ONE proposition, and this is where it is chosen: the pair  *)
+  (*  [UShKernel.sh_prompt_pay], the cursor at stage 18 together with the *)
+  (*  conversion of it into sh's prompt call                              *)
+  (*  ([UShOut.ksh_w_of_link_prompt]).  Nothing new is OWED by this: the  *)
+  (*  conversion is proved, and it is proved here rather than one file    *)
+  (*  down because row 16's concrete reading lives above the file system. *)
+  (* =================================================================== *)
+  (* [kinit_banner_pay]'s [Rt] occurs POSITIVELY (it is what the last
+     byte's continuation hands back), so a payment that leaves one
+     credential behind leaves any consequence of it behind. *)
+  Lemma kinit_banner0_mono (N : uk_names Σ) (Rt Rt' : iProp Σ) :
+    (Rt -∗ Rt') -∗
+    UkInitMain.kinit_banner0 N stc_cons Rt -∗
+    UkInitMain.kinit_banner0 N stc_cons Rt'.
+  Proof.
+    iIntros "Hm H".
+    rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
+    iIntros "Hl". iDestruct ("H" with "Hl") as (Ch) "(#Hst & H0 & Hfin)".
+    iExists Ch. iFrame "Hst H0".
+    iIntros "HC". iDestruct ("Hfin" with "HC") as "[$ Hrt]".
+    iApply ("Hm" with "Hrt").
+  Qed.
+
+  (* ...and what /init's banner leaves behind IS [UShOut]'s cursor at the
+     prompt's first byte: eighteen bytes out, no resolution filed, the
+     round's stream still the banner's.  A CONVERSION, not a lemma with
+     content -- the two definitions are the same proposition. *)
+  Lemma bnr_ushpr (v : era_pins) : bnr v 18%nat = UShOut.ushpr T v 0%nat.
+  Proof. reflexivity. Qed.
+
+  Lemma kinit_banner0_pay_holds :
+    echo_links T γ -∗
+    eturn γ (S gen_id) -∗
+    ∀ N : uk_names Σ,
+      UkInitMain.kinit_banner0 N stc_cons UShKernel.sh_prompt_pay.
+  Proof.
+    iIntros "#Hlk Hturn" (N).
+    iApply (kinit_banner0_mono N kinit_turn0 UShKernel.sh_prompt_pay
+              with "[] [Hturn]"); last first.
+    { iApply (kinit_banner0_holds with "Hlk Hturn"). }
+    iIntros "Ht". rewrite /kinit_turn0.
+    iDestruct "Ht" as (v) "[#Hpin Hbnr]".
+    iApply (UShOut.sh_prompt_pay_of_ushpr T γ v with "Hpin Hlk [Hbnr]").
+    rewrite <- (bnr_ushpr v). iExact "Hbnr".
   Qed.
 
 End UInitBanner.

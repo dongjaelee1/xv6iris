@@ -372,6 +372,59 @@ Section UShKernel.
   (* ------------------------------------------------------------------- *)
 
   (* ------------------------------------------------------------------- *)
+  (* SS1b WHAT PAYS FOR SH'S PROMPT (lane IO-LEAF, M4a).                   *)
+  (*                                                                      *)
+  (* sh's "$ " is the byte that RESOLVES round 0 of the application's      *)
+  (* transcript, so what pays for it is the era's own write link and not   *)
+  (* the flagged deposit -- and neither this file nor sh's walk may name   *)
+  (* an era.  What crosses instead is a PAIR: an abstract credential [C]   *)
+  (* -- /init's, lent at its fork and carried over the exec by             *)
+  (* [PinnedExec]'s [Pay] -- and a persistent conversion from it into the  *)
+  (* per-call obligation sh's walk spends ([UkSh.ksh_w] at fd 2, sh's      *)
+  (* .rodata literal and two bytes).  The conversion is quantified over    *)
+  (* the NAME RECORD, because this entry allocates it, and over the        *)
+  (* LEDGER, because sh's console preamble may move the ledger between the *)
+  (* entry and the first prompt.  [UShOut.ksh_w_of_link_prompt] is the ONE *)
+  (* thing that discharges it.                                            *)
+  (* ------------------------------------------------------------------- *)
+  Definition sh_prompt_pay : iProp Σ :=
+    (∃ C : iProp Σ,
+       C ∗ □ (∀ (N : uk_names Σ) (l : list fdstate),
+                ⌜ UkSh.ush_fd2p l ⌝ -∗
+                shk_rodata (ukn_t N) -∗
+                UkSh.ksh_w N (mword_of_int 2)
+                  (mword_of_int UkSh.sh_prompt_pv) 2%nat
+                  (ustd (ukn_fd N) l ∗ C) (ustd (ukn_fd N) l)))%I.
+
+  (* ...AND THE ROW IT ASKS FOR, beside it: sh's fd 2 IS the console.  The
+     entry is where that row can be read -- it is /init's own pinned table,
+     inherited through the exec channel ([UInitFd.ufd_head_row12]) -- and
+     the walk below carries it as a pure fact from here to the prompt.
+     AFFINE: a shell entered without the credential (the closed arm, the
+     taint) prints its prompt through the flagged deposit, as every shell
+     did before. *)
+  Definition sh_prompt_at (l : list fdstate) : iProp Σ :=
+    ((⌜ UkSh.ush_fd2p l ⌝ ∗ sh_prompt_pay) ∨ True)%I.
+
+  Lemma sh_prompt_at_triv (l : list fdstate) : ⊢ sh_prompt_at l.
+  Proof. rewrite /sh_prompt_at. by iRight. Qed.
+
+  (* ...AS THE WALK TAKES IT, once the record is allocated and sh's own
+     read-only image is in hand. *)
+  Lemma sh_prompt_in_of_at (N : uk_names Σ) (l : list fdstate) :
+    shk_rodata (ukn_t N) -∗
+    sh_prompt_at l -∗
+    UkSh.ush_prompt_in N l.
+  Proof.
+    rewrite /sh_prompt_at /UkSh.ush_prompt_in /UkSh.ush_promptw.
+    iIntros "#Hro [[%Hfd2 Hp] | _]"; [ | by iRight ].
+    iDestruct "Hp" as (C) "[HC #Hlaw]".
+    iLeft. iSplitR; [ by iPureIntro | ].
+    iExists C. iFrame "HC". iModIntro.
+    iIntros (l0) "%Hl0". iApply ("Hlaw" $! N l0 with "[%] Hro"). exact Hl0.
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
   (* SS2 THE DEPOSIT (header (1), (2)).                                   *)
   (* ------------------------------------------------------------------- *)
   Lemma sh_uexec_slot (R : gname -> gname -> gname -> iProp Σ)
@@ -490,6 +543,9 @@ Section UShKernel.
        ([UkSh.ush_fd0]).  Persistent, and the walk reads none of the three
        -- which is what makes the CLOSED arm this same application. *)
     UkSh.ush_fd0 T (take NSTD (uvis_fd W)) -∗
+    (* ...AND WHAT PAYS FOR SH'S PROMPT, with the ledger row it asks for
+       (SS1b).  AFFINE, and spent on the FIRST prompt only. *)
+    sh_prompt_at (take NSTD (uvis_fd W)) -∗
     (* ...AND THE STATE OF THE CONSOLE NODE (lane SH-OPEN, H3).  Which of
        the two PINNED opens sh's preamble makes is decided here: the node
        is there (and the leaf is a consequence of the persistent flag
@@ -524,7 +580,7 @@ Section UShKernel.
     uslot W.
   Proof.
     intros HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf.
-    iIntros "#Hpay #Hdep #Hdp #Htag #Hrest #Hfd0 Hin #Hgen #Hmp Hpos Hlease".
+    iIntros "#Hpay #Hdep #Hdp #Htag #Hrest #Hfd0 Hpr Hin #Hgen #Hmp Hpos Hlease".
     iApply (uslot_of_urun_all W (2 + (8 + (16 + (ush_Dbody + n0)))) Q
               Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
     (* sh's own half of its children set travels in [UkSh.ush_pstate]
@@ -550,21 +606,27 @@ Section UShKernel.
     (* ...and the taint's continuation at this record's own payload *)
     iAssert (UkSh.ush_gen_slot N T) as "#Hgen'".
     { rewrite /UkSh.ush_gen_slot Hpayeq. iExact "Hgen". }
+    (* sh's OWN READ-ONLY IMAGE, off the same text: the jump table, the
+       "console" literal the pinned open resolves and the prompt's two
+       bytes all live in it, so it is read out once here. *)
+    iAssert (shk_rodata (ukn_t N)) as "#Hro".
+    { iApply (shk_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
+                (shk_img_data _ Hsub) Hx with "Ht"). }
     iApply (wp_ksh_start N γp T Hpsok_free cn
               (fun l0 => Hrl N l0 Hpayeq)
               (R (ukn_t N) (ukn_d N) (ukn_s N)) K h _ f n0
               (take NSTD (uvis_fd W))
-              with "Hdp Hr [] [] [] Hgen' Hfd0 Hin [Hstd] [Hcwf] [Hchf]
+              with "Hdp Hr [] [] Hro Hgen' Hfd0 [Hpr] Hin [Hstd] [Hcwf] [Hchf]
                     [Hpos Hlease] HR Hbs [Hrun]").
     - iApply (shk_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (shk_img_text _ Hsub) Hx with "Ht").
     - (* runcmd's JUMP TABLE, off the same image (lane SH-LINE 2b, (b)):
          [UkSh.ush_rest] takes it now, so the entry is where it is paid. *)
-      iApply (UkSh.ush_jtab_of_rodata (ukn_t N) with "[]").
-      iApply (shk_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
-                (shk_img_data _ Hsub) Hx with "Ht").
-    - iApply (shk_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
-                (shk_img_data _ Hsub) Hx with "Ht").
+      iApply (UkSh.ush_jtab_of_rodata (ukn_t N) with "Hro").
+    - (* ...AND THE PROMPT'S PAYMENT AT THIS RECORD (SS1b): the conversion
+         is quantified over the record precisely because the entry
+         allocates it, and sh's own .rodata is what the literal lives in. *)
+      iApply (sh_prompt_in_of_at N (take NSTD (uvis_fd W)) with "Hro Hpr").
     - rewrite /UkSh.ush_std. iExact "Hstd".
     - rewrite <- Hcwd0. iExact "Hcwf".
     - iApply (uch_any_of with "Hchf").
@@ -631,6 +693,9 @@ Section UShKernel.
     (* the entry row, the pay fact, the payload and the position, all four
        passed straight through: see [sh_uexec_slot] *)
     UkSh.ush_fd0 T (take NSTD sts) -∗
+    (* ...and the prompt's payment beside it, passed straight through: see
+       [sh_uexec_slot] and SS1b *)
+    sh_prompt_at (take NSTD sts) -∗
     (* the console node's state and the taint's continuation, both passed
        straight through: see [sh_uexec_slot] *)
     (□ (∀ N : uk_names Σ, UkSh.ush_open_console_leaf N T)

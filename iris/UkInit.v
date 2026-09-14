@@ -1636,8 +1636,17 @@ Section UkInit.
       the same three.  So the head is what crosses here: the supply reads
       the row off it against the lent authority and spends the ledger,
       which is right -- the process that execs is replaced. *)
+  (*  ...AND THE ERA'S CREDENTIAL BESIDE THEM (lane IO-LEAF, M4a(3)).
+      /init's banner ends holding the era's cursor at stage 18 and lends it
+      to the child at the fork ([UkInitMain.wp_kinit_fork]'s [Rc]); the
+      child spends it HERE, into the same [Pay] the position and the lease
+      cross on, and what it buys is sh's PROMPT -- the '$' that resolves
+      round 0 of the transcript.  [Rt] is a PARAMETER for the reason every
+      application-side proposition is one in this file: init's walk cannot
+      name an era.  AFFINE ([Rt ∨ True]), so a round that has no
+      credential to lend still execs its shell. *)
   Definition init_exec_sup_pos (cn : cons_names) (T : iProp Σ) (st : fdstate)
-      (γ : gname) (n : nat) : iProp Σ :=
+      (Rt : iProp Σ) (γ : gname) (n : nat) : iProp Σ :=
     (∀ (N' : uk_names Σ) (m : regfile) (pc : mword 64),
        ⌜ ukn_pay N' = ucons_pay cn γ T ⌝ -∗
        ⌜ m !!! Regidx a0_idx = (mword_of_int 0x9a8 : mword 64) ⌝ -∗
@@ -1646,6 +1655,7 @@ Section UkInit.
        init_argv (ukn_d N') -∗
        UInitFd.ufd_head T st (ukn_fd N') -∗
        upos γ n -∗
+       (Rt ∨ True) -∗
        (* ...AND THE LEASE ITSELF (lane KILL-PAY, K4(a)).  The console
           reader token used to ride in the child's own payload row and
           reach sh through [UexecRet]'s deposit; that row is a WAND from
@@ -1655,11 +1665,11 @@ Section UkInit.
        udepw_at_ref N' m pc FsImg.ROOTINO)%I.
 
   Definition init_exec_sup_lend (cn : cons_names) (T : iProp Σ)
-      (st : fdstate) : iProp Σ :=
-    (□ (∀ (γ : gname) (n : nat), init_exec_sup_pos cn T st γ n))%I.
+      (st : fdstate) (Rt : iProp Σ) : iProp Σ :=
+    (□ (∀ (γ : gname) (n : nat), init_exec_sup_pos cn T st Rt γ n))%I.
 
-  Global Instance init_exec_sup_lend_persistent cn T st :
-    Persistent (init_exec_sup_lend cn T st).
+  Global Instance init_exec_sup_lend_persistent cn T st Rt :
+    Persistent (init_exec_sup_lend cn T st Rt).
   Proof. rewrite /init_exec_sup_lend. apply _. Qed.
 
   (* ...AND THE SAME SUPPLY AS A WAND FROM THE CONSOLE CREDENTIAL (lane E2).
@@ -1671,16 +1681,16 @@ Section UkInit.
      pays it under the taint (where the shell proves nothing anyway).
      Both halves are [□], so the restart loop applies them per round. *)
   Definition init_cons_sup (cn : cons_names) (T Cns : iProp Σ)
-      (st : fdstate) : iProp Σ :=
-    (□ (Cns -∗ init_exec_sup_lend cn T st) ∗ □ (T -∗ Cns))%I.
+      (st : fdstate) (Rt : iProp Σ) : iProp Σ :=
+    (□ (Cns -∗ init_exec_sup_lend cn T st Rt) ∗ □ (T -∗ Cns))%I.
 
-  Global Instance init_cons_sup_persistent cn T Cns st :
-    Persistent (init_cons_sup cn T Cns st).
+  Global Instance init_cons_sup_persistent cn T Cns st Rt :
+    Persistent (init_cons_sup cn T Cns st Rt).
   Proof. rewrite /init_cons_sup. apply _. Qed.
 
   Lemma init_cons_sup_taint (cn : cons_names) (T Cns : iProp Σ)
-      (st : fdstate) :
-    init_cons_sup cn T Cns st -∗ T -∗ init_exec_sup_lend cn T st.
+      (st : fdstate) (Rt : iProp Σ) :
+    init_cons_sup cn T Cns st Rt -∗ T -∗ init_exec_sup_lend cn T st Rt.
   Proof.
     iIntros "[#Hw #Ht] HT". iApply "Hw". iApply ("Ht" with "HT").
   Qed.

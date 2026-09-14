@@ -870,6 +870,30 @@ Section UInitSh.
     - rewrite init_sh_pl_len. apply Hro. exact Hb2.
   Qed.
 
+  (* THE HEAD'S ROWS 0 AND 2 AT ONCE (lane IO-LEAF, M4a(3)).
+     [UInitFd.ufd_head_row] and [UInitFd.ufd_head_row12] each SPEND the
+     head, and this constructor needs BOTH readings: row 0 is what sh's
+     entry is told ([UkSh.ush_fd0]) and row 2 is what its prompt's payment
+     asks for ([UShOut.ksh_w_of_link_prompt]).  So they are read off the
+     one head together, at the same three arms.  (The two lemmas above
+     stay: they are what every other consumer takes.) *)
+  Lemma ufd_head_rows (T : iProp Σ) (st : fdstate) (γfd : gname)
+      (fdv : list fdstate) :
+    ufd_auth γfd fdv -∗ ufd_head T st γfd -∗
+    ufd_auth γfd fdv ∗
+    ((⌜take NSTD fdv !! 0%nat = Some st⌝ ∗ ⌜take NSTD fdv !! 2%nat = Some st⌝)
+     ∨ ⌜take NSTD fdv !! 0%nat = Some FdClosed⌝ ∨ T).
+  Proof.
+    rewrite /ufd_head /ufd_headL.
+    iIntros "Ha [H | [H | [_ HT]]]".
+    - iDestruct (ustd_agree with "Ha H") as %->.
+      iFrame "Ha". iLeft. iSplit; iPureIntro;
+        [ exact (ufd_l3_row0 st) | exact (ufd_l3_row2 st) ].
+    - iDestruct (ustd_agree with "Ha H") as %->.
+      iFrame "Ha". iRight. iLeft. iPureIntro. exact ufd_l0_row0.
+    - iFrame "Ha". iRight. iRight. iExact "HT".
+  Qed.
+
   (* ------------------------------------------------------------------- *)
   (* THE ASSEMBLY: init's pinned bundle pays its exec supply.              *)
   (* ------------------------------------------------------------------- *)
@@ -901,8 +925,12 @@ Section UInitSh.
        ([UkInit.init_exec_sup_pos]) and reads against the lent authority
        ([UInitFd.ufd_head_row]).  The only thing left for the caller to say
        is that the head's OWN state is the console one, which is what the
-       pinned open's receipt gives it. *)
-    (exists wr : bool, st = FdOpen true wr (FdDevice ConsoleInv.CONSOLE)) ->
+       pinned open's receipt gives it.
+       AT BOTH BITS (lane IO-LEAF, M4a(3)): /init's open is [O_RDWR], and
+       the WRITABLE one is what sh's prompt asks of fd 2
+       ([UShOut.ksh_w_of_link_prompt]).  It was [exists wr, ...] while only
+       fd 0's READABLE bit was read off it. *)
+    st = FdOpen true true (FdDevice ConsoleInv.CONSOLE) ->
     (* ...AND THE READ LEAF SH RUNS ON (lane SH-LINE 2b, R1').  sh's
        [gets] runs on the RECEIPT-KEEPING console read now, and its supply
        is the reader lease inside sh's own exit payload -- which is the
@@ -951,9 +979,16 @@ Section UInitSh.
        [UkRun.udepw_at_ref] (lane KILL-PAY, K4(a), ruling R-A), whose one
        disjunct is the bundle itself -- it names no [psok], so there is no
        [uprogSG] instance left to pin. *)
-    UkInit.init_exec_sup_lend cn T st.
+    (* ...AND WHAT IT LENDS BESIDE THE POSITION AND THE LEASE (lane
+       IO-LEAF, M4a(3)): the era's credential, as the PAIR sh's entry
+       spends it at -- [UShKernel.sh_prompt_pay], an abstract credential
+       and the persistent conversion of it into sh's prompt call.  This is
+       the ONE place the two ends meet: /init's walk carries it opaquely
+       ([UkInit.init_exec_sup_pos]'s [Rt]) and sh's entry reads it. *)
+    UkInit.init_exec_sup_lend cn T st
+      (UShKernel.sh_prompt_pay (PS := uprogSG_free)).
   Proof.
-    intros Hpsok_free Hn0 Hst Hrl.
+    intros Hpsok_free Hn0 Hst Hrl. subst st.
     iIntros "#Hdep #Hdp #Hcons (#Hinv & #Hcl0 & #Hgen & #Hpay)".
     (* E4: what crosses is the WHOLE pins law and each consumer projects *)
     iDestruct (sh_pins_of_fs_pure T with "Hcl0") as "#Hcl".
@@ -962,7 +997,7 @@ Section UInitSh.
        needs is [length fdv = NOFILE], which comes off the LENT authority
        ([UserFd.ufd_auth_len]) rather than off the ledger. *)
     iModIntro. iIntros (γp np N m pc)
-      "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hhd Hpos Hlease".
+      "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hhd Hpos Hrt Hlease".
     rewrite /udepw_at_ref. iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
     (* ---- the two image readings, off the lent heap ---- *)
     iAssert (⌜uimg_sub UCodeInit.init_ro M⌝)%I as %Hsro.
@@ -983,13 +1018,23 @@ Section UInitSh.
        that same authority ([UInitFd.ufd_head_row]).  The head is spent
        here: the process that execs is replaced, and the new image gets its
        ledger from its own run. *)
-    iDestruct (ufd_head_row T st (ukn_fd N) fdv with "Hufd Hhd")
+    iDestruct (ufd_head_rows T (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
+                 (ukn_fd N) fdv with "Hufd Hhd")
       as "[Hufd #Hrow]".
     iAssert (UkSh.ush_fd0 T (take NSTD fdv)) as "#Hfd0".
-    { iDestruct "Hrow" as "[%Hr1 | [%Hr2 | HT]]".
-      - destruct Hst as [wr ->]. iLeft. iPureIntro. left. exists wr. exact Hr1.
+    { iDestruct "Hrow" as "[[%Hr1 _] | [%Hr2 | HT]]".
+      - iLeft. iPureIntro. left. exists true. exact Hr1.
       - iLeft. iPureIntro. right. exact Hr2.
       - iRight. iExact "HT". }
+    (* ...AND THE ROW SH'S PROMPT ASKS FOR, off the same head (lane
+       IO-LEAF, M4a(3)): /init's two dups pinned fds 1 and 2 to the
+       descriptor its open installed ([UInitFd.ufd_head_row12]), so on the
+       console arm fd 2 IS the console -- which is exactly what
+       [UShOut.ksh_w_of_link_prompt] asks of sh's table.  On the other two
+       arms there is no row and sh prints its prompt as it always did. *)
+    iAssert ((⌜UkSh.ush_fd2p (take NSTD fdv)⌝ ∨ True)%I) as "#Hrow2".
+    { iDestruct "Hrow" as "[[_ %Hr2] | [_ | _]]"; [ | by iRight | by iRight ].
+      iLeft. iPureIntro. exists true. exact Hr2. }
     iFrame "Hheap Hufd".
     (* ---- sh's constructor, at every key the image fact admits ---- *)
     (* THE PAYLOAD RIDES WITH THE PAY FACT ([SpecKexec.exec_slot_pre]): the
@@ -1038,10 +1083,12 @@ Section UInitSh.
                      na alen afun⌝ -∗
                   my_pay (uvis_gen W') (ucons_pay cn γp T) -∗
                   (sh_pay T Rsh n0 ∗ upos γp np
-                     ∗ ucons_pay cn γp T (-1)) -∗ uslot W'))%I as "#Hcon".
+                     ∗ ucons_pay cn γp T (-1)
+                     ∗ (UShKernel.sh_prompt_pay (PS := uprogSG_free) ∨ True)) -∗ uslot W'))%I
+      as "#Hcon".
     { iModIntro.
       iIntros (na alen afun W')
-        "%Hok %Hcwd0 %Hlzf %Hargs #Hmp [[#Hp1 [#Hp2 #Htag]] [Hps Hls]]".
+        "%Hok %Hcwd0 %Hlzf %Hargs #Hmp [[#Hp1 [#Hp2 #Htag]] [Hps [Hls Hpr]]]".
       destruct (init_args_det M na alen afun Hsav Hsro Hargs) as [-> Halen].
       idtac "MARK-s4b-args-det".
       (* STAGED, AND WITH BOTH CLASS ARGUMENTS GIVEN.  [sh_slot_of_kexec]
@@ -1058,7 +1105,7 @@ Section UInitSh.
                     (ucons_pay_const cn γp T) Hok Hcwd0
                     (init_sh_room alen n0 Halen Hn0) Hlen Hlzf) as Hsk.
       idtac "MARK-s4c-pose-ok".
-      iApply (Hsk with "[] Hdep Hdp Htag [] [] Hcons Hgen' Hmp Hps Hls").
+      iApply (Hsk with "[] Hdep Hdp Htag [] [] [Hpr] Hcons Hgen' Hmp Hps Hls").
       - (* THE KEY'S OWN READING (lane SH-STATE): [sh_pay_state]'s wand
            takes [UShKernel.sh_pay_key], and the two facts it is derived
            from are the very ones handed to [sh_slot_of_kexec] above. *)
@@ -1067,18 +1114,29 @@ Section UInitSh.
         exact (UShKernel.sh_pay_key_of_kexec 1%nat alen afun fdv W' n0 Hok
                  (init_sh_room alen n0 Halen Hn0)).
       - iIntros (N0). iApply ("Hp2" $! γp N0).
-      - iExact "Hfd0". }
+      - iExact "Hfd0".
+      - (* THE PROMPT'S PAYMENT, with the row it asks for (lane IO-LEAF,
+           M4a(3)): the credential came over the exec in [PinnedExec]'s
+           [Pay] and the row is /init's own table, read off the head
+           above.  Either half missing is the right disjunct -- sh then
+           prints its prompt through the flagged deposit. *)
+        rewrite /UShKernel.sh_prompt_at.
+        iDestruct "Hrow2" as "[%Hfd2 | _]"; [ | by iRight ].
+        iDestruct "Hpr" as "[Hpr | _]"; [ | by iRight ].
+        iLeft. iFrame "Hpr". by iPureIntro. }
     iDestruct (pinned_exec_bundle fsc_fs uslot FsShPin.era0_sh_pins T
                  FsImg.ROOTINO init_sh_pl [FsImg.ROOTINO; FsShPin.SH_INO]
                  FsShPin.SH_INO ElfUser.sh_elf 1%nat
                  (sh_pay T Rsh n0 ∗ upos γp np
-                    ∗ ucons_pay cn γp T (-1))%I
+                    ∗ ucons_pay cn γp T (-1)
+                    ∗ (UShKernel.sh_prompt_pay (PS := uprogSG_free) ∨ True))%I
                  (ucons_pay cn γp T)
                  M (mword_of_int 0x9a8) (mword_of_int 0x1000) fdv
                  init_sh_pin_resolves sh_elf_loadable
                  (init_sh_path_of M Hsro)
-                 with "Hcl Hinv Hcon Hgen' [Hpos Hlease]") as (P Pmiss Fo) "Hb".
-    { iFrame "Hpay Hpos Hlease". }
+                 with "Hcl Hinv Hcon Hgen' [Hpos Hlease Hrt]")
+      as (P Pmiss Fo) "Hb".
+    { iFrame "Hpay Hpos Hlease Hrt". }
     assert (Ea0 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv FsImg.ROOTINO gn cs pidv false))
                     (tf_arg_idx 0) = (mword_of_int 0x9a8 : mword 64))
       by (etransitivity; [ exact (tf_of_arg0 m pc) | exact Ha0 ]).
@@ -1099,8 +1157,9 @@ Section UInitSh.
     iApply (sbundle_pay_exec_intro_ref uslot
               (uvis_of_run m pc M pm sz fdv FsImg.ROOTINO gn cs pidv false)
               (ukn_pay N) P Pmiss Fo
-              (sh_pay T Rsh n0 ∗ upos γp np ∗ ucons_pay cn γp T (-1))%I).
-    { rewrite Hpeq. iIntros "!> (_ & _ & $)". }
+              (sh_pay T Rsh n0 ∗ upos γp np ∗ ucons_pay cn γp T (-1)
+                 ∗ (UShKernel.sh_prompt_pay (PS := uprogSG_free) ∨ True))%I).
+    { rewrite Hpeq. iIntros "!> (_ & _ & $ & _)". }
     { cbn [uvis_gen uvis_of_run]. iExact "Hmpay". }
     rewrite Hpeq Ea0 Ea1. iExact "Hb".
   Qed.

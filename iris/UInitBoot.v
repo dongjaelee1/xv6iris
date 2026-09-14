@@ -378,7 +378,7 @@ Section UInitBoot.
     file_app = MkAppcfg echo_names (echo_pred γ) r ->
     (forall k : Z, free_num k -> @psok Σ uprogSG_free k) ->
     8 * Z.of_nat (2 + (8 + (16 + (UkSh.ush_Dbody + n0)))) <= 0xFE0 ->
-    (exists wr : bool, st = FdOpen true wr (FdDevice ConsoleInv.CONSOLE)) ->
+    st = FdOpen true true (FdDevice ConsoleInv.CONSOLE) ->
     (* the read leaf sh runs on, passed straight through: see
        [UInitSh.init_exec_sup_of_sh_slot] *)
     (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
@@ -387,7 +387,8 @@ Section UInitBoot.
     udep (PS := uprogSG_free) -∗ UkSh.sh_deps (PS := uprogSG_free) -∗
     UInitSh.init_sh_slot (echo_taint γ) (UInitSh.sh_pay (echo_taint γ) Rsh n0) -∗
     UkInit.init_cons_sup cn (echo_taint γ)
-      (init_cons_cred (echo_taint γ) r) st.
+      (init_cons_cred (echo_taint γ) r) st
+      (UShKernel.sh_prompt_pay (PS := uprogSG_free)).
   Proof.
     intros Heq Hpsok_free Hn0 Hst Hrl.
     iIntros "#Hdep #Hdp #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
@@ -690,11 +691,12 @@ Section EchoInitBoot.
       cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
       iIntros "#Hs". iApply (echo_taint_of_sup γ r with "Hs"). }
     iAssert (UkInit.init_cons_sup fsc_cons (echo_taint γ)
-               (init_cons_cred (echo_taint γ) r) init_cons_fd)%I as "#Hxs".
+               (init_cons_cred (echo_taint γ) r) init_cons_fd
+               (UShKernel.sh_prompt_pay (PS := uprogSG_free)))%I as "#Hxs".
     { iApply (init_cons_sup_of_sh_slot γ r fsc_cons init_cons_fd
                 UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
                 ltac:(vm_compute; discriminate)
-                ltac:(exists true; reflexivity)
+                ltac:(reflexivity)
                 Hsh_rdleaf
                 with "[] [] Hsh").
       - iApply (udep_free).
@@ -729,12 +731,12 @@ Section EchoInitBoot.
                     (echo_taint γ)
                     (init_cons_cred (echo_taint γ) r)
                     fsc_cons init_cons_fd
-                    (UInitBanner.kinit_turn0 (echo_taint γ) γ)
+                    (UShKernel.sh_prompt_pay (PS := uprogSG_free))
                     -∗ uslot W'))%I as "#Hcon".
     { iApply (UInitKernel.init_boot_con (PS := uprogSG_free)
                 (echo_taint γ)
                 (init_cons_cred (echo_taint γ) r) init_cons_fd
-                (UInitBanner.kinit_turn0 (echo_taint γ) γ) fsc_cons
+                (UShKernel.sh_prompt_pay (PS := uprogSG_free)) fsc_cons
                 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
                 init_cons_fd_ne Hktaint
                 (init_boot_room 0%nat
@@ -747,7 +749,7 @@ Section EchoInitBoot.
               (UInitKernel.init_boot_pay (PS := uprogSG_free)
                  (echo_taint γ)
                  (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd
-                 (UInitBanner.kinit_turn0 (echo_taint γ) γ))
+                 (UShKernel.sh_prompt_pay (PS := uprogSG_free)))
               with "Hcl Hinv Hcon [] [Hdn Hturn]").
     - iIntros "!>" (W') "#Ht Hp".
       iApply ("Hmint" $! True%I W' with "Ht Hp []").
@@ -765,7 +767,7 @@ Section EchoInitBoot.
          payment has ONE row to answer for and [Hsh_deps] is not a premise
          of it any more.  [Hsh_deps] still stands above -- init's three die
          arms and [UkInit.init_deps] spend it (M4/M6). *)
-      iApply (UInitBanner.kinit_banner0_holds (echo_taint γ) γ
+      iApply (UInitBanner.kinit_banner0_pay_holds (echo_taint γ) γ
                 (PS := uprogSG_free) with "[] [Hturn]").
       + iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin).
       + rewrite /echo_turn. iExact "Hturn".

@@ -518,7 +518,7 @@ Section UkInitMain.
   (* neither.                                                                *)
   (* --------------------------------------------------------------------- *)
   Lemma wp_kinit_main_child (T : iProp Σ) (stc : fdstate) (cn : cons_names)
-      (γ : gname) (np : nat)
+      (Rt : iProp Σ) (γ : gname) (np : nat)
       (N' : uk_names Σ) (h : CpuId) (m : regfile) (n : nat) :
     (* THE CHILD'S RECORD IS KEYED AT SH'S PAYLOAD, which is what its exec
        hands the new image ([UkInit.init_exec_sup_pos]) and what a KILL
@@ -533,7 +533,7 @@ Section UkInitMain.
        supply, at its own two argument registers and at the one working
        directory it ever has, and it is LENT the heap and the fd authority
        so a pinned bundle can read them. *)
-    init_exec_sup_lend cn T stc -∗
+    init_exec_sup_lend cn T stc Rt -∗
     init_rodata (ukn_t N') -∗
     (* ...AND THE ARGUMENT VECTOR, at the child's own data name: the
        supplier reads init's sixteen persisted .data bytes back into facts
@@ -565,6 +565,12 @@ Section UkInitMain.
        [PinnedExec]'s linear [Pay].  On the FAILING arm the child still
        holds them, which is what pays its own [exit(1)]. *)
     ucons_pay cn γ T (-1) -∗
+    (* ...AND THE ERA'S CREDENTIAL, lent at the same fork (lane IO-LEAF,
+       M4a(3)).  It goes into the same [Pay] and buys sh's PROMPT; AFFINE,
+       so a round without one execs its shell all the same, and a FAILING
+       exec simply drops it -- what the diagnostic arm needs is the lease,
+       which the refund hands back. *)
+    (Rt ∨ True) -∗
     urun N' h m (mword_of_int 0x96) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
@@ -573,7 +579,8 @@ Section UkInitMain.
        read the exit status ([UserConsole.ucons_pay_const]) *)
     pose proof (ukn_const_of_eq N' (ucons_pay cn γ T) Hpeq
                   (ucons_pay_const cn γ T)) as Hcst'.
-    iIntros "#(Hwr & Hwl15 & Hwl17) #Hcode #Hxs #Hro #Hargv Hcwd Hstd Hpos Hlease Hrun".
+    iIntros "#(Hwr & Hwl15 & Hwl17) #Hcode #Hxs #Hro #Hargv Hcwd Hstd Hpos
+             Hlease Hrt Hrun".
     destruct init_syms_pins
       as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hexec & _ & _).
     (* ---- 0x96  auipc a1,0x1 ---- *)
@@ -674,10 +681,10 @@ Section UkInitMain.
        are pinned by the four instructions above, and the working
        directory is the one the fragment names. *)
     iApply (wp_kinit_exec N' hc5 mc5 (12 + (12 + (4 + n))) FsImg.ROOTINO
-              with "Hcode Hrun Hcwd [Hstd Hpos Hlease]").
+              with "Hcode Hrun Hcwd [Hstd Hpos Hlease Hrt]").
     { iApply ("Hxs" $! γ np N' (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> mc5)
                 (mword_of_int 0x3ac)
-                with "[%] [%] [%] Hro Hargv Hstd Hpos Hlease").
+                with "[%] [%] [%] Hro Hargv Hstd Hpos Hrt Hlease").
       - exact Hpeq.
       - rewrite (upd_ne mc5 (Regidx a7_idx) (Regidx a0_idx)
                    (mword_of_int 7 : mword 64)
@@ -1103,7 +1110,7 @@ Section UkInitMain.
        supply, at its own two argument registers and at the one working
        directory it ever has, and it is LENT the heap and the fd authority
        so a pinned bundle can read them. *)
-    init_exec_sup_lend cn T stc -∗
+    init_exec_sup_lend cn T stc Rt -∗
     init_rodata γt -∗
     init_argv γd -∗
     ((∀ (h : CpuId) (m : regfile),
@@ -1367,9 +1374,11 @@ Section UkInitMain.
           { iPureIntro. set_solver. }
           { iPureIntro. exact Hpnz. }
       + (* ------------- the CHILD: r = 0 ------------- *)
-        (* the credential /init lent this round is dropped by the child's
-           own walk here: it execs sh, and sh's entry takes it in lane
-           IO-LEAF M4a(3) -- [UShKernel.sh_slot_of_kexec]'s raw bundle. *)
+        (* the credential /init lent this round crosses the child's exec
+           with the position and the lease (lane IO-LEAF, M4a(3)): the
+           exec supply is a wand from all three, and what they land in is
+           [PinnedExec]'s linear [Pay] -- which is what sh's entry
+           constructor reads ([UShKernel.sh_prompt_at]). *)
         iIntros (N' hc)
           "%Hpeq (#Hck & #Hrk & #Hak) Hsz Hstd Hpos Hlease Hrt Hcwd Hrun".
         (* the child's walk runs at ITS payload's class, which is the
@@ -1436,9 +1445,9 @@ Section UkInitMain.
                   with "[] Hrun").
         { iApply (uis_init_42 with "Hck"). }
         iIntros (hc3) "Hrun".
-        iApply (wp_kinit_main_child T stc cn γ np N' hc3 mc1 n Hpeq
+        iApply (wp_kinit_main_child T stc cn Rt γ np N' hc3 mc1 n Hpeq
                   with "[$Hwr $Hwl15 $Hwl17] Hck Hxs Hrk Hak Hcwd Hstd
-                        Hpos Hlease Hrun").
+                        Hpos Hlease Hrt Hrun").
     - (* ==================== the WAIT head @0x44 ==================== *)
       iIntros (h m cs γ γsh pidsh) "%Hs2 %Hs1 %Hin %Hpnz Hsz Hstd Hcwd Hch Htok Hrun".
       (* ---- 0x44  c.li a0,0 -- the NULL status pointer ---- *)
@@ -1673,7 +1682,7 @@ Section UkInitMain.
        supply, at its own two argument registers and at the one working
        directory it ever has, and it is LENT the heap and the fd authority
        so a pinned bundle can read them. *)
-    init_exec_sup_lend cn T stc -∗
+    init_exec_sup_lend cn T stc Rt -∗
     init_rodata γt -∗ init_argv γd -∗ usz γs szv -∗
     (* THE HEAD, as the console test left it -- BEFORE the two dups, so its
        console arm is the named ledger [UInitFd.ufd_l1 stc].  The two dups
@@ -1879,7 +1888,7 @@ Section UkInitMain.
     (⊢ □ riscv_kill_cred -∗ T) ->
     init_deps T -∗
     init_code γt -∗
-    init_exec_sup_lend cn T stc -∗
+    init_exec_sup_lend cn T stc Rt -∗
     init_rodata γt -∗ init_argv γd -∗ usz γs szv -∗
     uki_open2 N T stc -∗
     uki_open2_in N T -∗
@@ -2019,7 +2028,7 @@ Section UkInitMain.
        ([UkInit.init_cons_sup]): which credential the shell is handed is
        decided by the mknod below, so the supply is only assembled after
        it -- see [UkInit.init_cons_sup]'s note. *)
-    init_cons_sup cn T Cns stc -∗
+    init_cons_sup cn T Cns stc Rt -∗
     (* ...and THE MKNOD STEP the first open left, whichever of the three
        things it is ([UkInit.uki_mknod_hit_leaf]) *)
     uki_mknod_hit_leaf N T Cns stc -∗
@@ -2147,7 +2156,7 @@ Section UkInitMain.
     (* THE SECOND OPEN AND THE EXEC SUPPLY COME OUT OF THE SAME ANSWER: the
        node exists (the pinned open, and the flag as the credential), the
        mknod failed (the SEAL, and the dead walk again), or the taint. *)
-    iAssert (uki_open2 N T stc ∗ init_exec_sup_lend cn T stc)%I
+    iAssert (uki_open2 N T stc ∗ init_exec_sup_lend cn T stc Rt)%I
       with "[Hans]" as "[Hop2 #Hxsl]".
     { iDestruct "Hxs" as "#[Hw Ht]".
       iDestruct "Hans" as "[[Hc HC] | [[%K' (Habs & HK & HC)] | #HT]]".
@@ -2199,7 +2208,7 @@ Section UkInitMain.
     (* ...AS A WAND FROM THE CONSOLE CREDENTIAL ([UkInit.init_cons_sup]),
        because which credential the shell gets is decided by the dance
        below and not at /init's entry. *)
-    init_cons_sup cn T Cns stc -∗
+    init_cons_sup cn T Cns stc Rt -∗
     (* THE CONSOLE DANCE, at whichever arm the application's boot resource
        decided ([UkInit.init_cons_dance]): the miss route's two leaves WITH
        their credential, or the flag route's pinned open and its
@@ -2501,7 +2510,7 @@ Section UkInitMain.
                   with "[] Hrun").
         { iApply (uis_init_1a with "Hcode"). }
         rewrite E1a. iIntros (hm11) "Hrun".
-        iDestruct (init_cons_sup_taint cn T Cns stc with "Hxs HT") as "#Hxsl".
+        iDestruct (init_cons_sup_taint cn T Cns stc Rt with "Hxs HT") as "#Hxsl".
         iApply (wp_kinit_main_from_1e T stc Rt cn szv hm11 mm7 n Hne Hkt
                   with "[$Hwr $Hwl15 $Hwl17] Hcode Hxsl Hro Hargv Hsz [Hstd] Hcwd Hch Htk Hb0 Hrun").
         iDestruct "Hstd" as (l) "Hstd".
@@ -2548,7 +2557,7 @@ Section UkInitMain.
        so a pinned bundle can read them. *)
     (* ...AS A WAND FROM THE CONSOLE CREDENTIAL: see
        [UkInit.init_cons_sup]. *)
-    init_cons_sup cn T Cns stc -∗
+    init_cons_sup cn T Cns stc Rt -∗
     init_cons_dance N T Cns stc -∗
     init_rodata γt -∗ init_argv γd -∗ usz γs szv -∗
     ustd γfd ufd_l0 -∗

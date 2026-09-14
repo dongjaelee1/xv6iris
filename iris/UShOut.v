@@ -82,6 +82,9 @@ Require Import WpUart.
 Require Import UkWriteLeaf.        (* the supply and the post, at row 16 *)
 Require Import UCodeShK.           (* [shk_ro] / [shk_rodata] *)
 Require Import UkSh.               (* [ksh_w] / [wp_ksh_write_chain_txt] *)
+Require Import UShKernel.          (* [sh_prompt_pay]: the PAIR sh's entry
+                                      takes -- the credential and the
+                                      conversion of it into this call *)
 Require Import EchoDisc.
 Require Import EchoOutPure.
 Require Import EchoOut.
@@ -101,7 +104,10 @@ Local Open Scope list_scope.
 (*  the ROUND-0 stream at 18 and 19 are those two -- all four facts are   *)
 (*  closed computations on the literals.                                 *)
 (* ===================================================================== *)
-Definition sh_prompt_pv : Z := 0x1280.
+(* ...AND THE ADDRESS IS [UkSh]'s (lane IO-LEAF, M4a(3)): sh's walk needs
+   it in a REGISTER fact at the call and this file needs it in a statement,
+   so it is named once, below both. *)
+Local Notation sh_prompt_pv := UkSh.sh_prompt_pv.
 Definition sh_dollar_b : bv 8 := Z_to_bv 8 0x24.
 Definition sh_space_b  : bv 8 := Z_to_bv 8 0x20.
 
@@ -431,6 +437,38 @@ Section UShOut.
                  ltac:(rewrite Hka1; exact Hnf)
                  with "Hpost") as "[_ HQ]".
     iApply ("Hcont" $! h' ret with "[$Hstd $HQ] Hrun").
+  Qed.
+
+  (* =================================================================== *)
+  (*  S5  THE PAIR THAT CROSSES INTO SH (lane IO-LEAF, M4a(3))            *)
+  (*                                                                     *)
+  (*  Everything above is about ONE ledger and ONE era pin; what /init    *)
+  (*  hands the shell is neither -- it is an opaque credential and a      *)
+  (*  persistent conversion of it, because init's walk may not name an    *)
+  (*  era and sh's walk may not name row 16.  [UShKernel.sh_prompt_pay]   *)
+  (*  is that pair, and this is the one thing that builds it: the era's   *)
+  (*  cursor at stage 18 (which is what /init's banner leaves behind --   *)
+  (*  [UInitBanner.kinit_turn0], [ushpr] at [p = 0] verbatim) beside the  *)
+  (*  conversion above, quantified over the record the entry allocates    *)
+  (*  and over the ledger sh's console preamble leaves.                   *)
+  (* =================================================================== *)
+  Lemma sh_prompt_pay_of_ushpr (v : era_pins) :
+    era_pin γ (S gen_id) v -∗
+    echo_links T γ -∗
+    ushpr v 0%nat -∗
+    UShKernel.sh_prompt_pay.
+  Proof.
+    iIntros "#Hpin #Hlk Hc". rewrite /UShKernel.sh_prompt_pay.
+    iExists (ushpr v 0%nat). iFrame "Hc". iModIntro.
+    iIntros (N l) "%Hfd2 #Hro".
+    destruct Hfd2 as [rb Hl2].
+    iApply (UkSh.ksh_w_mono N (mword_of_int 2)
+              (mword_of_int sh_prompt_pv) 2%nat
+              (UserFd.ustd (ukn_fd N) l ∗ ushpr v 0%nat)
+              (UserFd.ustd (ukn_fd N) l ∗ ushpr v 2%nat)
+              (UserFd.ustd (ukn_fd N) l) with "[] []").
+    - iIntros "[$ _]".
+    - iApply (ksh_w_of_link_prompt N v l rb Hl2 with "Hpin Hlk Hro").
   Qed.
 
 End UShOut.

@@ -155,11 +155,18 @@ Section UkShLoop.
   (* ...and then [UkSh.ush_loop_head] AT that [R] IS [ushl_head]: the same
      four binders, the same budget ([UkSh.ush_Dbody] is 80), and the two
      halves of [ushl_R] uncurried. *)
+  (* ...AND THE PROMPT'S PAYMENT IS NOT AMONG THEM (lane IO-LEAF, M4a).
+     [UkSh.ush_loop_head] takes the era's credential as an AFFINE input --
+     the '$' that resolves round 0 of the transcript is the FIRST prompt
+     and no later one -- so a turn of the loop re-enters on the right
+     disjunct and this shell-level head, which is what every arm of main's
+     body discharges, does not mention it at all. *)
   Lemma ushl_head_of_R (l : list fdstate) (sz : Z) :
     UkSh.ush_loop_head N γp (ushl_R sz) l -∗ ushl_head l sz.
   Proof.
     iIntros "H" (h m f n) "%Hregs %Hfd0 Hstd Hdat Hsz Hbuf Hrun".
-    iApply ("H" $! h m f n with "[%//] [%//] Hstd [$Hdat $Hsz] Hbuf Hrun").
+    iApply ("H" $! h m f n with "[%//] [%//] [] Hstd [$Hdat $Hsz] Hbuf Hrun").
+    iApply UkSh.ush_prompt_in_triv.
   Qed.
 
 End UkShLoop.

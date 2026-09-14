@@ -200,6 +200,43 @@ Proof.
 Qed.
 
 (* ===================================================================== *)
+(* THE PROMPT'S SOURCE RUN AND THE ROW ITS PAYMENT ASKS FOR               *)
+(* (lane IO-LEAF, M4a).                                                   *)
+(*                                                                        *)
+(* getcmd's [write(2, "$ ", 2)] at 0x10..0x1c takes its buffer out of sh's *)
+(* OWN .rodata: 0x12's [auipc a1,0x1] and 0x16's [addi a1,a1,622] compute  *)
+(* 0x1280, and the two bytes there are "$ " ([UCodeShK.shk_ro]).  The      *)
+(* address is named here because the walk needs it in a REGISTER fact and  *)
+(* the payment ([UShOut.ksh_w_of_link_prompt]) needs it in a statement.    *)
+(* ===================================================================== *)
+Definition sh_prompt_pv : Z := 0x1280.
+
+(* ...AND THE ROW: sh's fd 2 IS the console.  PURE, for [ush_fd0p]'s       *)
+(* reason -- it is what the command loop carries -- and preserved by the   *)
+(* console preamble's own opens ([ush_fd2p_cons]), which is what lets the  *)
+(* prompt's payment enter at sh's ENTRY ledger and still be spendable at   *)
+(* the ledger the preamble left.                                          *)
+Definition ush_fd2p (l : list fdstate) : Prop :=
+  exists rb : bool, l !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)).
+
+(* THE PREAMBLE PRESERVES IT, at either of the two ways an open can land:
+   on slot 2 itself, where what it installs IS the console device, or
+   anywhere else, where the row is untouched.  (Unlike [ush_fd0p_cons]
+   this needs nothing about the scan: both cases go through.) *)
+Lemma ush_fd2p_cons (l : list fdstate) (k : nat) :
+  length l = NSTD ->
+  ush_fd2p l ->
+  ush_fd2p (<[k := FdOpen true true (FdDevice CONSOLE)]> l).
+Proof.
+  intros Hlen [rb Hc].
+  destruct (decide (k = 2%nat)) as [-> | Hne].
+  - exists true.
+    rewrite list_lookup_insert;
+      [ reflexivity | rewrite Hlen; unfold NSTD; lia ].
+  - exists rb. rewrite list_lookup_insert_ne; [ exact Hc | exact Hne ].
+Qed.
+
+(* ===================================================================== *)
 (* WHAT SH'S LINE IS, AS A PURE PROPOSITION (lane SH-LINE 2b, L3).        *)
 (*                                                                        *)
 (* [UkShFork.ushf_lexable] was "every line the user could type lexes",     *)
@@ -1225,6 +1262,84 @@ Section UkSh.
     iIntros (h' ret) "HCo Hrun".
     iApply ("Hcont" $! h' ret with "[Hm HCo] Hrun").
     iApply ("Hm" with "HCo").
+  Qed.
+
+  (* ...AND IT FRAMES: a caller that HOLDS the input half a payment asks
+     for hands it over once and is left with the obligation at the rest.
+     This is how the prompt's payment reaches the walk -- the credential
+     is linear and the conversion is not, so the two travel separately and
+     meet here. *)
+  Lemma ksh_w_frame (fdw ua : mword 64) (nb : nat) (Ci Co C : iProp Σ) :
+    C -∗ ksh_w fdw ua nb (Ci ∗ C) Co -∗ ksh_w fdw ua nb Ci Co.
+  Proof.
+    iIntros "HC Hw" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode HCi Hrun Hcont".
+    iApply ("Hw" $! h m avail with "[%] [%] [%] Hcode [$HCi $HC] Hrun Hcont");
+      [ exact Ha0 | exact Ha1 | exact Ha2 ].
+  Qed.
+
+  (* ===================================================================== *)
+  (* WHAT PAYS FOR THE PROMPT (lane IO-LEAF, M4a).                          *)
+  (*                                                                       *)
+  (* sh's "$ " is the byte that RESOLVES round 0 of the application's       *)
+  (* transcript, so it is paid for by the era's own write link and not by   *)
+  (* the flagged deposit -- but this file sits below the file system and    *)
+  (* below the application, and can say neither.  What it CAN say is the    *)
+  (* per-call obligation the walk spends ([ksh_w] at fd 2, sh's .rodata     *)
+  (* and two bytes) together with the LINEAR credential that unlocks it,    *)
+  (* which is exactly what /init lends sh at its fork.  The pair is         *)
+  (* [ush_promptw]: an abstract [C] the holder cannot read and a persistent *)
+  (* conversion from it, quantified over the ledger because sh's console    *)
+  (* preamble may move the ledger between the entry and the prompt.         *)
+  (* [UShOut.ksh_w_of_link_prompt] is the ONE thing that discharges it.     *)
+  (* ===================================================================== *)
+  Definition ush_promptw : iProp Σ :=
+    (∃ C : iProp Σ,
+       C ∗ □ (∀ l : list fdstate,
+                ⌜ ush_fd2p l ⌝ -∗
+                ksh_w (mword_of_int 2) (mword_of_int sh_prompt_pv) 2%nat
+                  (ustd γfd l ∗ C) (ustd γfd l)))%I.
+
+  (* ...AS THE WALK CARRIES IT: the payment AND the row it asks for, or
+     nothing at all.  AFFINE, and that is what makes it a second parameter
+     beside the loop's invariant [R] rather than part of it: [R] is handed
+     back on the back edge and this is spent on the FIRST prompt, so every
+     later turn of the loop re-enters on the right disjunct.  (The taint
+     and the closed-fd arms of sh's entry re-enter on it too.) *)
+  Definition ush_prompt_in (l : list fdstate) : iProp Σ :=
+    ((⌜ ush_fd2p l ⌝ ∗ ush_promptw) ∨ True)%I.
+
+  Lemma ush_prompt_in_triv (l : list fdstate) : ⊢ ush_prompt_in l.
+  Proof. rewrite /ush_prompt_in. by iRight. Qed.
+
+  (* ...AND IT RIDES THE CONSOLE PREAMBLE'S BACK EDGE: what the preamble
+     does to the ledger is install the console device at the slot its own
+     scan found, which [ush_fd2p] survives ([ush_fd2p_cons]) and
+     [ush_promptw] -- quantified over the ledger -- does not see. *)
+  Lemma ush_prompt_in_cons (l : list fdstate) (k : nat) :
+    length l = NSTD ->
+    ush_prompt_in l -∗
+    ush_prompt_in (<[k := FdOpen true true (FdDevice CONSOLE)]> l).
+  Proof.
+    intros Hlen. rewrite /ush_prompt_in.
+    iIntros "[[%Hfd2 Hp] | _]"; [ | by iRight ].
+    iLeft. iFrame "Hp". iPureIntro. exact (ush_fd2p_cons l k Hlen Hfd2).
+  Qed.
+
+  (* THE PROMPT'S CALL, AT WHICHEVER ARM THE WALK IS ON.  Both arms end at
+     the same obligation -- the ledger in and the ledger back -- so the
+     walk below branches once, here, and not at the call. *)
+  Lemma ksh_w_of_prompt_in (l : list fdstate) :
+    sh_deps -∗
+    ush_prompt_in l -∗
+    ksh_w (mword_of_int 2) (mword_of_int sh_prompt_pv) 2%nat
+      (ustd γfd l) (ustd γfd l).
+  Proof.
+    iIntros "#Hdp [[%Hfd2 Hp] | _]"; last first.
+    { iApply (ksh_w_of_law (mword_of_int 2) (mword_of_int sh_prompt_pv) 2%nat
+                (ustd γfd l) (ustd γfd l) ltac:(reflexivity) with "Hdp"). }
+    iDestruct "Hp" as (C) "[HC #Hlaw]".
+    iDestruct ("Hlaw" $! l with "[%]") as "Hw"; [ exact Hfd2 | ].
+    iApply (ksh_w_frame with "HC Hw").
   Qed.
 
 
@@ -4290,6 +4405,11 @@ Section UkSh.
     shk_code γt -∗
     ubytes γd a Nb f -∗
     ustd γfd l -∗
+    (* WHAT PAYS FOR THE PROMPT, or nothing (lane IO-LEAF, M4a).  AFFINE,
+       and spent here: the first turn of sh's loop is the one whose '$'
+       resolves round 0 of the transcript, and every later turn enters on
+       the right disjunct. *)
+    ush_prompt_in l -∗
     ush_pos -∗
     urun N h m (mword_of_int ShSyms.getcmd) (4 + (12 + nn)) -∗
     ((∃ (g : nat -> bv 8) (i2 : nat),
@@ -4302,7 +4422,11 @@ Section UkSh.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 HN0 HN31 Hfd0.
-    iIntros "#Hdp #Hcode Hbs Hstd Hpos Hrun Hcont".
+    iIntros "#Hdp #Hcode Hbs Hstd Hpr Hpos Hrun Hcont".
+    (* THE ONE BRANCH: which of the two payments answers the prompt is
+       decided here, once, and the walk below spends the obligation both
+       arms produce ([ksh_w_of_prompt_in]). *)
+    iDestruct (ksh_w_of_prompt_in l with "Hdp Hpr") as "Hw".
     rewrite shp_getcmd.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     iDestruct (urun_ubytes_bnd h m _ (4 + (12 + nn)) (DfracOwn 1) a Nb f
@@ -4561,8 +4685,49 @@ Section UkSh.
     assert (Hra9 : n9 !!! Regidx ra_idx = mword_of_int 0x20)
       by exact (upd_eq n8 (Regidx ra_idx)
                   (regval_into_reg (mword_of_int 0x20 : mword 64))).
-    iApply (wp_ksh_write h13 n9 (12 + nn) with "Hdp Hcode Hrun").
-    iIntros (h14 rw) "Hrun". rewrite Hra9.
+    (* ---- THE PROMPT'S THREE ARGUMENTS, as the payment asks for them:
+           fd 2, sh's own .rodata literal, two bytes.  a2 was set at 0x10
+           and survives; a1 is the auipc/addi pair at 0x12/0x16; a0 is
+           a2's copy at 0x1a. ---- *)
+    assert (Ha2_7 : n7 !!! Regidx a2_idx = (mword_of_int 2 : mword 64)).
+    { rewrite (Hn7 a2_idx ltac:(vm_compute; discriminate)).
+      rewrite (Hn6 a2_idx ltac:(vm_compute; discriminate)).
+      exact (upd_eq n4 (Regidx a2_idx)
+               (regval_into_reg (mword_of_int 2 : mword 64))). }
+    assert (Ha1_6 : n6 !!! Regidx a1_idx
+                    = add_vec (mword_of_int 0x12 : mword 64)
+                        (auipc_off (mword_of_int 1 : mword 20)))
+      by exact (upd_eq n5 (Regidx a1_idx)
+                  (regval_into_reg
+                     (add_vec (mword_of_int 0x12 : mword 64)
+                        (auipc_off (mword_of_int 1 : mword 20))))).
+    assert (Ha2_9 : n9 !!! Regidx a2_idx
+                    = (mword_of_int (Z.of_nat 2%nat) : mword 64)).
+    { rewrite (Hn9 a2_idx ltac:(vm_compute; discriminate)).
+      rewrite (Hn8 a2_idx ltac:(vm_compute; discriminate)).
+      exact Ha2_7. }
+    assert (Ha0_9 : n9 !!! Regidx a0_idx = (mword_of_int 2 : mword 64)).
+    { rewrite (Hn9 a0_idx ltac:(vm_compute; discriminate)).
+      etransitivity;
+        [ exact (upd_eq n7 (Regidx a0_idx)
+                   (regval_into_reg
+                      (add_vec zero_reg (n7 !!! Regidx a2_idx)))) | ].
+      rewrite Ha2_7. exact (moi_add_zero_l 2). }
+    assert (Ha1_9 : n9 !!! Regidx a1_idx
+                    = (mword_of_int sh_prompt_pv : mword 64)).
+    { rewrite (Hn9 a1_idx ltac:(vm_compute; discriminate)).
+      rewrite (Hn8 a1_idx ltac:(vm_compute; discriminate)).
+      etransitivity;
+        [ exact (upd_eq n6 (Regidx a1_idx)
+                   (regval_into_reg
+                      (add_vec (n6 !!! Regidx a1_idx)
+                         (sign_extend' 64 (mword_of_int 622 : mword 12))))) | ].
+      rewrite Ha1_6. apply bv_eq; vm_compute; reflexivity. }
+    iApply ("Hw" $! h13 n9 (12 + nn)%nat with "[%] [%] [%] Hcode Hstd Hrun").
+    { exact Ha0_9. }
+    { exact Ha1_9. }
+    { exact Ha2_9. }
+    iIntros (h14 rw) "Hstd Hrun". rewrite Hra9.
     assert (Er20 : ret_pc (mword_of_int 0x20 : mword 64) = mword_of_int 0x20)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Er20.
@@ -5524,10 +5689,17 @@ Section UkSh.
      conjunct of [ush_pstate] because it is NOT preserved by everything a
      turn does: a REDIR reopens fd 0 onto a file, and it does so in the
      forked CHILD, which takes [ush_pstate] and not this. *)
+  (* ...AND WHAT PAYS FOR THE PROMPT, or nothing (lane IO-LEAF, M4a).  An
+     INPUT of the head and not a conjunct of [R]: [R] is what a turn hands
+     back on the back edge, and the era's credential is spent once, on the
+     '$' that resolves round 0 of the transcript.  So every re-entry from
+     the body supplies the right disjunct ([ush_prompt_in_triv]) and only
+     sh's ENTRY can supply the left one. *)
   Definition ush_loop_head (R : iProp Σ) (l : list fdstate) : iProp Σ :=
     (∀ (h : CpuId) (m : regfile) (f : nat -> bv 8) (n : nat),
        ⌜ ush_regs m ⌝ -∗
        ⌜ ush_fd0p l ⌝ -∗
+       ush_prompt_in l -∗
        ush_pstate l -∗
        R -∗
        ubytes γd sh_buf sh_nbuf f -∗
@@ -6112,7 +6284,7 @@ Section UkSh.
     assert (Hnbz : Z.of_nat sh_nbuf = 100) by (vm_compute; reflexivity).
     iIntros "#Hdp #Hrest #Hcode #Hjt".
     iLöb as "IH".
-    iIntros (h m f n0) "%Hregs %Hfd0 Hstd HR Hbs Hrun".
+    iIntros (h m f n0) "%Hregs %Hfd0 Hpr Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
     pose proof Hregs as (Hs2 & Hs3 & Hs4 & Hs5 & Hs6).
     (* ---- 0x938  c.mv a1,s3 ---- *)
@@ -6191,7 +6363,7 @@ Section UkSh.
     iApply (wp_ksh_getcmd h3 m3 sh_buf sh_nbuf f l n Ha0_3 Ha1_3
               ltac:(rewrite Hnb; lia) ltac:(rewrite Hnbz; unfold Z31; lia)
               Hfd0
-              with "Hdp Hcode Hbs Hustd Hpos Hrun").
+              with "Hdp Hcode Hbs Hustd Hpr Hpos Hrun").
     iIntros "Hbs" (h4 mR) "%HcsR Hrun".
     replace (4 + (12 + n))%nat with (16 + n)%nat by lia.
     rewrite Hra3.
@@ -6331,8 +6503,8 @@ Section UkSh.
       destruct tk76.
       { (* a blank line: round the command loop again *)
         iNext. iIntros (hh1) "Hrun".
-        iApply ("IH" $! hh1 mm g n0 with "[] [] Hstd HR Hbs Hrun");
-          iPureIntro; [ exact Hrm | exact Hfd0 ]. }
+        iApply ("IH" $! hh1 mm g n0 with "[%] [%] [] Hstd HR Hbs Hrun");
+          [ exact Hrm | exact Hfd0 | iApply ush_prompt_in_triv ]. }
       iNext.
       assert (E976 : add_vec_int (mword_of_int 0x976 : mword 64) 4
                      = mword_of_int 0x97a)
@@ -6491,13 +6663,14 @@ Section UkSh.
     shk_code γt -∗
     ush_jtab γt -∗
     ⌜ ush_fd0p l ⌝ -∗
+    ush_prompt_in l -∗
     ush_pstate l -∗
     R -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x914) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hrest #Hcode #Hjt %Hfd0 Hstd HR Hbs Hrun".
+    iIntros "#Hdp #Hrest #Hcode #Hjt %Hfd0 Hpr Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
     (* ---- 0x914  li s3,100 ---- *)
     iApply (wp_uk_li N h m (mword_of_int 0x914)
@@ -6647,8 +6820,8 @@ Section UkSh.
       - exact (upd_eq m5 (Regidx s6_idx)
                  (regval_into_reg (mword_of_int 32 : mword 64))). }
     iDestruct (wp_ksh_loop R l with "Hdp Hrest Hcode Hjt") as "Hhead".
-    iApply ("Hhead" $! h7 m6 f n0 with "[] [] Hstd HR Hbs Hrun");
-      iPureIntro; [ exact Hregs | exact Hfd0 ].
+    iApply ("Hhead" $! h7 m6 f n0 with "[%] [%] Hpr Hstd HR Hbs Hrun");
+      [ exact Hregs | exact Hfd0 ].
   Qed.
 
   (* THE BRANCH THAT SAYS THE DESCRIPTOR IS NOT A STANDARD STREAM.  s1
@@ -6708,6 +6881,12 @@ Section UkSh.
     ⌜m !!! Regidx s1_idx = (mword_of_int 2 : mword 64)⌝ -∗
     ⌜m !!! Regidx s2_idx = (mword_of_int sh_cons_pv : mword 64)⌝ -∗
     ⌜ ush_fd0p l ⌝ -∗
+    (* ...AND THE PROMPT'S PAYMENT, WHICH RIDES THE BACK EDGE (lane
+       IO-LEAF, M4a).  The preamble may MOVE the ledger -- it opens the
+       console onto a closed standard stream -- so what the command loop
+       is entered with is the payment at the ledger the last open left
+       ([ush_prompt_in_cons]). *)
+    ush_prompt_in l -∗
     ush_cons_in K -∗
     ush_std l -∗
     UserCwd.ucwd γcwd FsImg.ROOTINO -∗
@@ -6721,7 +6900,7 @@ Section UkSh.
     iIntros "#Hdp #Hrest #Hcode #Hjt #Hro #Hgen".
     set (n := (16 + (ush_Dbody + n0))%nat).
     iLöb as "IH" forall (h m l).
-    iIntros "%Hs1 %Hs2 %Hfd0 Hin Hstd Hcwd Hch Hpos HR Hbs Hrun".
+    iIntros "%Hs1 %Hs2 %Hfd0 Hpr Hin Hstd Hcwd Hch Hpos HR Hbs Hrun".
     (* ---- 0x900  c.mv a1,s1 ---- *)
     iApply (wp_uk_cmv N h m (mword_of_int 0x900) a1_idx s1_idx
               (add_vec zero_reg (m !!! Regidx s1_idx)) n
@@ -6796,7 +6975,7 @@ Section UkSh.
        the fall-through of one of the two branches. *)
     iIntros (h4 ret) "Hal Hin Hcwd Hrun".
     iAssert (∃ l' : list fdstate,
-               ustd γfd l' ∗ ⌜ush_fd0p l'⌝ ∗
+               ustd γfd l' ∗ ⌜ush_fd0p l'⌝ ∗ ush_prompt_in l' ∗
                ((∃ fd : nat,
                    ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
                     /\ (fd < NOFILE)%nat⌝ ∗
@@ -6805,7 +6984,7 @@ Section UkSh.
                    \/ (exists k : nat,
                          ret = (mword_of_int (Z.of_nat k) : mword 64)
                          /\ (k < NSTD)%nat)⌝))%I
-      with "[Hal]" as "(%l' & Hstd & %Hfd0' & Hfdh)".
+      with "[Hal Hpr]" as "(%l' & Hstd & %Hfd0' & Hpr & Hfdh)".
     { iDestruct "Hal" as "[Hal | [%Hrm Hstd]]".
       - iDestruct "Hal" as (fd) "[%Hr Hal]".
         destruct (fd_lowest_closed l) as [k |] eqn:Hk.
@@ -6817,6 +6996,8 @@ Section UkSh.
           iExists (<[k := FdOpen true true (FdDevice CONSOLE)]> l).
           iFrame "Hstd".
           iSplitR; [ iPureIntro; exact (ush_fd0p_cons l k Hlen Hk Hfd0) | ].
+          iSplitL "Hpr";
+            [ iApply (ush_prompt_in_cons l k Hlen with "Hpr") | ].
           iRight. iPureIntro. right. exists k.
           split; [ rewrite <- Hfk; exact (proj1 Hr) | ].
           rewrite <- Hlen. exact (fd_lowest_closed_bound l k Hk).
@@ -6825,8 +7006,10 @@ Section UkSh.
             as "(_ & Hstd & Hh)".
           iExists l. iFrame "Hstd".
           iSplitR; [ by iPureIntro | ].
+          iFrame "Hpr".
           iLeft. iExists fd. iFrame "Hh". iPureIntro. exact Hr.
       - iExists l. iFrame "Hstd". iSplitR; [ by iPureIntro | ].
+        iFrame "Hpr".
         iRight. iPureIntro. left. exact Hrm. }
     rewrite HraC.
     assert (Eret : ret_pc (mword_of_int 0x908 : mword 64) = mword_of_int 0x908)
@@ -6875,7 +7058,8 @@ Section UkSh.
          the row that ledger satisfies *)
       iIntros (h5) "Hrun".
       iApply (wp_ksh_cmd_head R h5 mD f n0 l'
-                with "Hdp Hrest Hcode Hjt [%] [Hstd Hcwd Hch Hpos] HR Hbs Hrun");
+                with "Hdp Hrest Hcode Hjt [%] Hpr [Hstd Hcwd Hch Hpos]
+                      HR Hbs Hrun");
         [ exact Hfd0' | ].
       rewrite /ush_pstate /ush_std. iFrame "Hstd".
       iSplitL "Hcwd"; [ iApply (ucwd_any_of with "Hcwd") | ].
@@ -6899,9 +7083,9 @@ Section UkSh.
     { (* fd <= 2 -- round again, on the Löb hypothesis, at the new ledger,
          the new row and the console state that came back *)
       iNext. iIntros (h6) "Hrun".
-      iApply ("IH" $! h6 mD l' with "[] [] [] Hin Hstd Hcwd Hch Hpos
+      iApply ("IH" $! h6 mD l' with "[%] [%] [%] Hpr Hin Hstd Hcwd Hch Hpos
                                       HR Hbs Hrun");
-        iPureIntro; [ exact Hs1D | exact Hs2D | exact Hfd0' ]. }
+        [ exact Hs1D | exact Hs2D | exact Hfd0' ]. }
     iNext.
     assert (E90c : add_vec_int (mword_of_int 0x90c : mword 64) 4
                    = mword_of_int 0x910)
@@ -6956,7 +7140,8 @@ Section UkSh.
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Eret2.
     iApply (wp_ksh_cmd_head R h8 _ f n0 l'
-              with "Hdp Hrest Hcode Hjt [%] [Hstd Hcwd Hch Hpos] HR Hbs Hrun");
+              with "Hdp Hrest Hcode Hjt [%] Hpr [Hstd Hcwd Hch Hpos]
+                    HR Hbs Hrun");
       [ exact Hfd0' | ].
     rewrite /ush_pstate /ush_std. iFrame "Hstd".
     iSplitL "Hcwd"; [ iApply (ucwd_any_of with "Hcwd") | ].
@@ -6980,6 +7165,10 @@ Section UkSh.
     shk_rodata γt -∗
     ush_gen_slot -∗
     ⌜ ush_fd0p l ⌝ -∗
+    (* ...AND WHAT PAYS FOR THE PROMPT (lane IO-LEAF, M4a): sh's entry is
+       the ONE place the era's credential can enter, and the preamble
+       below carries it to the command loop. *)
+    ush_prompt_in l -∗
     ush_cons_in K -∗
     (* THE PROCESS STATE, SPLIT: the console preamble is the one walk in sh
        that needs the WORKING DIRECTORY AT A NAMED INUM (a pin is about a
@@ -6995,7 +7184,8 @@ Section UkSh.
       (8 + (16 + (ush_Dbody + n0))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hrest #Hcode #Hjt #Hro #Hgen %Hfd0 Hin Hstd Hcwd Hch Hpos HR Hbs Hrun".
+    iIntros "#Hdp #Hrest #Hcode #Hjt #Hro #Hgen %Hfd0 Hpr Hin Hstd Hcwd Hch Hpos
+             HR Hbs Hrun".
     set (n := (16 + (ush_Dbody + n0))%nat).
     rewrite shp_main.
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom].
@@ -7210,8 +7400,8 @@ Section UkSh.
        [bge s1,a0] at 0x90c is what tells a descriptor above the standard
        streams from one that landed on a closed standard stream. *)
     iApply (wp_ksh_console R K he _ f n0 l
-              with "Hdp Hrest Hcode Hjt Hro Hgen [] [] [%] Hin Hstd Hcwd Hch Hpos
-                    HR Hbs Hrun");
+              with "Hdp Hrest Hcode Hjt Hro Hgen [] [] [%] Hpr Hin Hstd Hcwd Hch
+                    Hpos HR Hbs Hrun");
       [ | | exact Hfd0 ].
     - (* s1 is O_RDWR, off the [c.li] at 0x8f6 *)
       iPureIntro.
@@ -7260,6 +7450,13 @@ Section UkSh.
        the ledger the preamble's own opens left.  Under the CONSOLE arm fd 0
        is the console device whether init's open succeeded or sh's did. *)
     ush_fd0 l -∗
+    (* ...AND WHAT PAYS FOR SH'S PROMPT (lane IO-LEAF, M4a).  This is where
+       the era's credential enters sh: /init lends it at the fork, the
+       child carries it across the exec ([PinnedExec]'s [Pay]) and sh's
+       entry constructor hands it here, with the ONE ledger row it asks
+       for.  AFFINE -- a shell that is entered without it prints its
+       prompt through the flagged deposit, as every shell did before. *)
+    ush_prompt_in l -∗
     (* ...AND THE STATE OF THE CONSOLE NODE, which is what decides which of
        the two pinned opens the preamble makes (lane SH-OPEN, H1/H3). *)
     ush_cons_in K -∗
@@ -7273,7 +7470,8 @@ Section UkSh.
       (2 + (8 + (16 + (ush_Dbody + n0)))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hrest #Hcode #Hjt #Hro #Hgen #Hfd0 Hin Hstd Hcwd Hch Hpos HR Hbs Hrun".
+    iIntros "#Hdp #Hrest #Hcode #Hjt #Hro #Hgen #Hfd0 Hpr Hin Hstd Hcwd Hch Hpos
+             HR Hbs Hrun".
     (* THE TAINT ARM GOES GENERIC AT ONCE, and this is the ONE place it can:
        every walk below is sh's own code, and sh's console open is PINNED --
        under the taint there is no pin and no bundle to pay row 15 with.  So
@@ -7386,7 +7584,7 @@ Section UkSh.
        [uinstr_is] hypotheses holding the literal into the context. *)
     rewrite <- ?shp_main.
     iApply (wp_ksh_main R K h5 _ f n0 l
-              with "Hdp Hrest Hcode Hjt Hro Hgen [%] Hin Hstd Hcwd Hch Hpos
+              with "Hdp Hrest Hcode Hjt Hro Hgen [%] Hpr Hin Hstd Hcwd Hch Hpos
                     HR Hbs Hrun").
     exact Hfd0.
   Qed.

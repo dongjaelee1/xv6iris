@@ -1411,6 +1411,14 @@ unification discover that sends conversion into `pstring_hex_bytes
 InitElfRaw.init_elf_hex` and the kernel's stack overflows at `Qed`.  Use the
 named equation (`UInitBoot.init_bytes_elf`, `FsShPin.sh_bytes_elf`) and rewrite.
 
+## A `Require` you rely on can vanish under a sibling's edit
+
+A file that names `Foo.bar` without its own `Require Import Foo` compiles
+only while some import brings `Foo` in transitively; when that importer
+drops its dependency the failure lands in YOUR file ("The reference
+Foo.bar was not found in the current environment") after a rebase that
+conflicted nowhere.  Every file requires what it names.
+
 ## A dirty bottom-of-tree file can produce bogus "Cannot find library" failures (2026-09-12)
 
 `vmbuild.sh` deletes every dirty file's `.vo` and regenerates `CoqMakefile`; when a

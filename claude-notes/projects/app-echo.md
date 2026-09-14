@@ -3624,13 +3624,9 @@ bare file rows and the six deliberately descoped `# Foo.v` rows.  No prose
 comments -- "ditch all that useless commentary from _CoqProject".  Every lane
 adding a file adds a bare row.  (`b7c49dea2` stripped 2195 -> 1533 lines.)
 
-CHECKPOINT 2026-09-14 (session limit) -- IO-LEAF STEP 3 IN FLIGHT: the init
-side is a LOCAL WIP commit c74734d65 on lane/io-leaf (not pushed; the tree
-does not build until the glue), lane STEP3-SH's uncommitted edits sit in
--disc, PROLOGUE-ALTS-3's in -tlw, INIT-DIAG's in -sup.  Everything a
-successor needs is in `checkpoint-2026-09-14-step3.md` and
-`handoff-2026-09-16/step3-interface.md` (the binding contract) plus the three
-`handoff-2026-09-16/brief-*.md`.
+CHECKPOINT 2026-09-14 (session limit) -- IO-LEAF STEP 3 IN FLIGHT (SUPERSEDED
+the same day: INIT-DIAG and step 3 LANDED, see the two notes above;
+`checkpoint-2026-09-14-step3.md` carries the state of play).
 
 INIT-DIAG LANDED (2026-09-14; the lane's `aff0a688b` in `-sup` cherry-picked
 as `bdd9faf7f`; NEW `iris/EchoLinksPro.v` (row after `EchoLinks.v`) and
@@ -3657,6 +3653,54 @@ pays "init: fork failed" directly.  (2) The three die lemmas
 the free printf; `wp_kinit_fork`'s -1 arm DISCARDS the refunded `Rc`
 (UkInitMain.v ~937) -- M6b keeps it and threads `wp_kinit_printf_chain`.
 Report: `handoff-2026-09-16/init-diag-report.md`.
+
+IO-LEAF STEP 3 LANDED (2026-09-14; `a583457a6` init side + `a860c399d` shell
+side (lane STEP3-SH's `791e7216d` in `-disc`) + `eab906990` the glue, on
+`9a1d2e638`; 17 files; builds s3-2 in `-disc`, io62-io65 in the main
+checkout; audit the thirteen; lemma_diff 19 GONE (the contract's deletions:
+`ush_promptw`/`ush_prompt_in*`/`ksh_w_of_prompt_in`/`ush_lease_of_posb`,
+`sh_prompt_at*`/`sh_prompt_in_of_at`/`sh_prompt_pay`, `ush_posb_of_at`,
+`sh_prompt_pay_of_ushpr`, `kinit_round0`, `kinit_ban_any*`/
+`kinit_prompt_law_holds`/`sh_prompt_pay_of_kinit_own`) + 1 NEWAXIOM
+(`UkSh.ush_at_of_pm_wb`, a section hypothesis discharged at
+`echo_Hinit_boot`); no Admitted).  THE LOOP HOLDS THE LEASE'S PIECES AND
+INIT LENDS THE CREDENTIAL AT THE LEDGER THE SHELL INHERITS: the exit family
+is the pair `UkInit.init_rd Rdl Wb n := Rdl n ∗ (Wb n ∨ True)`
+(`UShLine.ush_rd_x` is it at the era's read side); the loop's credential
+slot `UkSh.ush_wcp Wc Wb l n p` has the both-console arm (`Wc n p`), the
+closed arm (`Wb n`, carried unchanged through the prompt by
+`UkWriteClosed.ksh_w_of_closed`) and the affine arm; the shell's cursor is
+`ush_posb` over the pieces `Pm` with the entry law `UShLine.ush_posb_of_lend`
+(`upos ∗ lend ∗ ush_wcp -∗ ush_posb`); init's banner opens the token and pays
+through `UkInitMain.kinit_ban_law stc Wc Wb := □ ∀ n, Wb n -∗ kinit_banner0
+stc (Wc n 0)`, its fork lends `UkInit.init_lend_cred stc Wc Wb l n :=
+(⌜l = ufd_l3 stc⌝ ∗ Wc n 0) ∨ (⌜l = ufd_l0⌝ ∗ Wb n) ∨ True` beside the lease
+at the lend family; `UInitSh.init_exec_sup_of_sh_slot` reads init's row off
+the lent ledger (`UserFd.ustd_agree`) and lands the credential in `ush_wcp`
+on the arm the row names; the lend pays the child's own exit at the pair's
+affine arm (`UkInit.init_pay_of_lend`).  Top: `Wc := EchoLinks.ewc_cred`,
+`Wb := UInitBanner.kinit_ban`, `Rdl := UShLine.ush_rd_pin`, the boot payment
+`kinit_ban0_of_eturn`, the law `kinit_ban_law_holds`.  TWO TRUSTED CHANGES
+(OLD/NEW in the commit messages): `UInitKernel.init_boot_pay T Cns cn stc Wc
+Wb Rdl := … ∗ Rdl 0 ∗ Wb 0 ∗ □ (∀ n N', Wb n -∗ kinit_banner0 N' stc (Wc n
+0))` (was `… ∗ Rd 0 ∗ Bn ∗ □ (∀ N', Bn -∗ kinit_banner0 N' stc Rt)`);
+`UInitSh.sh_pay_rest Rsh := ∀ γp N T Wc Wb Pm, ⌜Persistent T⌝ -∗ ush_rest_l N
+γp T Wc Wb Pm (Rsh …)` (was `∀ γp N T Wc`), and `ush_rest_l`'s body gained
+the two lease laws as pure premises (`⌜∀ i, ⊢ ush_at i -∗ ush_lease i⌝ -∗
+⌜∀ i, ush_bnd i -> ⊢ Pm i -∗ ush_at i⌝ -∗`: the fork arm's payload assembly
+cannot supply them for an opaque `Pm`; lane STEP3-SH's D1).  `Hsh_owed`'s
+text unchanged.  LANE DECISIONS OF RECORD: `ush_prompt_law` gained a
+closed-fd-2 conjunct (UkWriteClosed imports UkSh, so `ksh_w_of_closed`
+reaches `ksh_w_of_wcp` only as a law; discharged in UShOut/UShPanic);
+`Timeless (Rdl i)`/`(Wb i)` are NAMED instance binders (`HRdl`/`HWb`).  THE
+`∨ True` ARMS LEFT, by name: `UkSh.ush_wcp`'s third arm, `UkInit.init_rd_cred`
+(= `ush_rd_x`'s right arm), `UkInit.init_lend_cred`'s third arm -- step 4
+kills all three (`ush_wcp_cons` at k = 2 through PROLOGUE-ALTS-3's
+`Wb n -∗ Wc n 0`; `ush_gets_done_line`'s closed arm through its discipline
+lemma; the fork arm's re-entry and the wait redemption produce `Wb n`).
+GOTCHA recorded in durable-notes: a transitive `Require` can vanish under a
+sibling's edit (UInitBoot lost UShOut through UInitBanner).  Reports:
+`handoff-2026-09-16/step3-sh-report.md`.
 
 IO-LEAF M6a(2) LANDED (2026-09-16; `61f015f7b`+`e8b61dc6a` on `61269a3c2`;
 EchoLinks.v, UInitBanner.v, UInitBoot.v, UInitKernel.v, UkInitMain.v; builds

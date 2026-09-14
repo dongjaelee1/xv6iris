@@ -198,22 +198,27 @@ Section UInitBanner.
   Definition kbn_fam (N : uk_names Σ) (Q : nat -> iProp Σ) : sfam :=
     xfam_wr Q (ukn_pay N).
 
-  Definition bnr (v : era_pins) (i : nat) : iProp Σ :=
-    ((turn v i ∗ ps_lb v [] ∗ cs_lb v [] ∗ E_lb v 0%nat) ∨ T)%I.
+  (* WHAT THE WALK CARRIES, at the round the credential names (lane
+     IO-LEAF, M6a(2)): the era's cursor [i] banner bytes into the round's
+     own block, or the taint.  Round 0 is this at [n = 0]; a restart round
+     is this at whatever count the shell that died left behind.  The shape
+     is [EchoLinks]'s, so nothing about the prologue's arithmetic lives in
+     this file any more. *)
+  Definition bnr (v : era_pins) (n : nat) (i : nat) : iProp Σ :=
+    EchoLinks.ewc_ban T v n i.
 
-  Lemma kinit_w1_of_link (N : uk_names Σ) (v : era_pins)
+  Lemma kinit_w1_of_link (N : uk_names Σ) (v : era_pins) (n : nat)
       (l : list fdstate) (rb : bool) (i : nat) (b : bv 8) :
     l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
-    proc_upto [] [] 1%nat !! i = Some b ->
+    u_banner !! i = Some b ->
     era_pin γ (S gen_id) v -∗
-    echo_link_w T γ -∗
-    echo_link_taint T -∗
+    echo_links T γ -∗
     UkInit.kinit_w1 N (mword_of_int 1 : mword 64) b
-      (UserFd.ustd (ukn_fd N) l ∗ bnr v i)
-      (UserFd.ustd (ukn_fd N) l ∗ bnr v (S i)).
+      (UserFd.ustd (ukn_fd N) l ∗ bnr v n i)
+      (UserFd.ustd (ukn_fd N) l ∗ bnr v n (S i)).
   Proof.
     intros Hli Hb.
-    iIntros "#Hpin #Hw #Ht" (h m avail) "%Ha0 %Ha2 #Hcode Hbuf [Hl Hbnd] Hrun Hcont".
+    iIntros "#Hpin #Hlk" (h m avail) "%Ha0 %Ha2 #Hcode Hbuf [Hl Hbnd] Hrun Hcont".
     (* the two halves *)
     iDestruct (ubyte_split with "Hbuf") as "[Hb1 Hb2]".
     set (ua := m !!! Regidx a1_idx).
@@ -221,7 +226,7 @@ Section UInitBanner.
        the byte, and the era's cursor before and after this byte *)
     set (Q := (fun k : nat =>
                  ubyteq (ukn_d N) (DfracOwn (1/2)) (uint ua) b
-                 ∗ match k with O => bnr v i | _ => bnr v (S i) end)%I).
+                 ∗ match k with O => bnr v n i | _ => bnr v n (S i) end)%I).
     assert (Ham1 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
                      !!! Regidx a1_idx = ua)
       by exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx) _
@@ -267,17 +272,9 @@ Section UInitBanner.
         { pose proof (HM 0%nat ltac:(lia)) as HM0.
           cbn in HM0. rewrite HM0 in Hb'. by injection Hb'. }
         subst b'.
-        iDestruct "Hbnd" as "[(Htn & Hps & Hcs & HE) | #HT]".
-        + iApply ("Hw" $! (S gen_id) v i 0%nat b [] [] (Q 1%nat)
-                    with "[%] [%] [%] Hpin Htn Hps Hcs HE [Hb1]").
-          { vm_compute. lia. }
-          { apply pro_pin_zero. }
-          { exact Hb. }
-          iIntros "Hres". rewrite /Q. iFrame "Hb1".
-          rewrite /bnr. iExact "Hres".
-        + iApply ("Ht" $! (S gen_id) b (Q 1%nat) with "HT [Hb1]").
-          iIntros "#HT'". rewrite /Q. iFrame "Hb1".
-          rewrite /bnr. by iRight. }
+        iApply (EchoLinks.echo_banner_step T γ (S gen_id) v n i b (Q 1%nat)
+                  Hb with "Hpin Hlk Hbnd [Hb1]").
+        iIntros "Hres". rewrite /Q. iFrame "Hb1". rewrite /bnr. iExact "Hres". }
     { iApply (ubytesq_of_one with "Hb2"). }
     iIntros (h' ret W cw' cs') "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hl Hb2 Hpost Hrun".
     (* THE POST: the short arm is refuted from the run the caller owns *)
@@ -296,62 +293,81 @@ Section UInitBanner.
   Qed.
 
   (* =================================================================== *)
-  (*  S3  THE PAYMENT                                                     *)
+  (*  S3  THE PAYMENT, AT AN ARBITRARY ROUND                              *)
   (* =================================================================== *)
   (* THE CONSOLE DESCRIPTOR /init's OPEN INSTALLS.  Spelt out rather than
      taken from [UInitCons.init_cons_fd]: that file is the application's
      side of the console prologue and this one only needs the fdstate. *)
   Local Notation stc_cons := (FdOpen true true (FdDevice CONSOLE)).
 
-  (* ...AND WHAT THE LAST BYTE LEAVES BEHIND (lane IO-LEAF, M4a(2)): the
-     era's cursor eighteen bytes on, at the pin the boot's credential was
-     minted at, or the taint.  M1 dropped it; /init lends it to the shell
-     it forks, whose FIRST WRITE -- the prompt -- is the byte that resolves
-     round 0 of the prologue ([UShOut.ushpr] at [p = 0] is this, verbatim).
-     The pin rides with it because it is what the link is keyed by and
-     nothing below the era can produce one. *)
-  Definition kinit_turn0 : iProp Σ :=
-    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ bnr v 18%nat)%I.
+  (* THE TWO CREDENTIALS THE BANNER STANDS BETWEEN, at a count and with
+     the era's pin beside them (nothing below this file can produce one).
+     [kinit_ban n] is /init's own loop head -- the round's banner owed --
+     and [kinit_own n] is what the eighteenth byte leaves: the PROMPT's
+     credential, which is what /init lends the shell it forks. *)
+  Definition kinit_ban (n : nat) : iProp Σ :=
+    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ EchoLinks.ewc_ban T v n 0%nat)%I.
+
+  Definition kinit_own (n : nat) : iProp Σ :=
+    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ EchoLinks.ewc_owed T v n)%I.
+
+  Global Instance kinit_ban_timeless n : Timeless (kinit_ban n).
+  Proof. rewrite /kinit_ban. apply _. Qed.
+  Global Instance kinit_own_timeless n : Timeless (kinit_own n).
+  Proof. rewrite /kinit_own. apply _. Qed.
 
   (* ...AND THE READER'S HALF OF THE DELIVERED COUNT, SPLIT OFF HERE (lane
      IO-LEAF, M5).  [EchoOut.eturn] carries FIVE things and the banner
      spends four of them; the fifth is the reader's half of the era's
      delivered count, which is not the writer's business at all -- it is
      the credential the SHELL needs to read the console, and it travels on
-     the console lease ([UserConsole.ucons_pay]'s [Rd]) rather than on the
-     turn.  So the payment hands it straight back, at the era's own pin,
-     and /init's boot bundle puts it where the lease is minted. *)
+     the console lease ([UserConsole.ucons_pay]'s [Rd]).  So the payment
+     hands it straight back, at the era's own pin, and /init's boot bundle
+     puts it where the lease is minted. *)
   Definition kinit_dl0 : iProp Σ :=
     (∃ v : era_pins, era_pin γ (S gen_id) v ∗ dl_cnt v (1/2) 0%nat)%I.
 
-  Lemma kinit_banner0_holds :
-    echo_links T γ -∗
-    eturn γ (S gen_id) -∗
-    kinit_dl0
-    ∗ ∀ N : uk_names Σ, UkInitMain.kinit_banner0 N stc_cons kinit_turn0.
+  (* THE ERA'S TURN AT STAGE 0 IS ROUND 0's BANNER-OWED CREDENTIAL.  Both
+     halves of [EchoOut.eturn] come apart here: the write half becomes
+     [kinit_ban 0] ([EchoLinks.wr_ban_round0] is the shape) and the read
+     half [kinit_dl0]. *)
+  Lemma kinit_ban0_of_eturn :
+    eturn γ (S gen_id) -∗ kinit_dl0 ∗ kinit_ban 0%nat.
   Proof.
-    iIntros "#Hlk Hturn".
-    iDestruct (echo_links_w with "Hlk") as "#Hw".
-    iDestruct (echo_links_taint with "Hlk") as "#Ht".
-    (* THE ONE ROW: after the two dups fd 1 carries what the open installed
-       ([UInitFd.ufd_l3_row1]), and what the open installed is the console
-       device, read/write. *)
+    iIntros "Hturn".
     iDestruct "Hturn" as (v) "(#Hpin & Htn & Hdl & #Hcs & #Hps & #HE)".
     iSplitL "Hdl"; [ rewrite /kinit_dl0; iExists v; iFrame "Hpin Hdl" | ].
-    iIntros (N).
+    rewrite /kinit_ban. iExists v. iFrame "Hpin".
+    rewrite /EchoLinks.ewc_ban. iLeft. iExists [], [], 0%nat.
+    rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE".
+    iPureIntro. exact EchoLinks.wr_ban_round0.
+  Qed.
+
+  (* THE BANNER AS A PERSISTENT CONVERSION (lane IO-LEAF, M6a(2)).  What
+     /init's walk holds is the credential, and what it needs is the
+     payment; the conversion between them is closed under the era's links,
+     so it is a [□] and /init's restart loop spends it at EVERY round. *)
+  Lemma kinit_banner_law_holds :
+    echo_links T γ -∗
+    □ (∀ (n : nat) (N : uk_names Σ),
+         kinit_ban n -∗ UkInitMain.kinit_banner0 N stc_cons (kinit_own n)).
+  Proof.
+    iIntros "#Hlk !>" (n N) "Hban".
     rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
     iIntros "Hl".
-    iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons) ∗ bnr v i)%I.
-    iSplitR "Htn Hl".
+    iDestruct "Hban" as (v) "[#Hpin Hbnr]".
+    iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons) ∗ bnr v n i)%I.
+    iSplitR "Hbnr Hl".
     { iIntros "!>" (j) "%Hj".
-      iApply (kinit_w1_of_link N v (ufd_l3 stc_cons) true j
+      iApply (kinit_w1_of_link N v n (ufd_l3 stc_cons) true j
                 (init_lit LIT_START j)
-                (ufd_l3_row1 stc_cons) (proc_upto0_banner j Hj)
-                with "Hpin Hw Ht"). }
-    iSplitL.
-    { iFrame "Hl". rewrite /bnr. iLeft. iFrame "Htn Hps Hcs HE". }
-    iIntros "[$ Hbnd]". rewrite /kinit_turn0.
-    iExists v. iFrame "Hpin Hbnd".
+                (ufd_l3_row1 stc_cons) (init_banner_bytes j Hj)
+                with "Hpin Hlk"). }
+    iSplitL; [ iFrame "Hl Hbnr" | ].
+    iIntros "[$ Hbnd]". rewrite /kinit_own. iExists v. iFrame "Hpin".
+    iApply (EchoLinks.ewc_ban_done T v n with "[Hbnd]").
+    rewrite /bnr.
+    by replace (length u_banner) with 18%nat by (vm_compute; reflexivity).
   Qed.
 
   (* =================================================================== *)
@@ -362,8 +378,8 @@ Section UInitBanner.
   (*  [UkInit.init_exec_sup_pos]'s [Rt] -- because init may name no era   *)
   (*  and sh's walk may name no era either.  So the two ends have to      *)
   (*  agree on ONE proposition, and this is where it is chosen: the pair  *)
-  (*  [UShKernel.sh_prompt_pay], the cursor at stage 18 together with the *)
-  (*  conversion of it into sh's prompt call                              *)
+  (*  [UShKernel.sh_prompt_pay], the cursor at the round's prompt         *)
+  (*  together with the conversion of it into sh's prompt call            *)
   (*  ([UShOut.ksh_w_of_link_prompt]).  Nothing new is OWED by this: the  *)
   (*  conversion is proved, and it is proved here rather than one file    *)
   (*  down because row 16's concrete reading lives above the file system. *)
@@ -384,20 +400,15 @@ Section UInitBanner.
     iApply ("Hm" with "Hrt").
   Qed.
 
-  (* ...and what /init's banner leaves behind IS [UShOut]'s cursor at the
-     prompt's first byte: eighteen bytes out, no resolution filed, the
-     round's stream still the banner's.  Round 0 at count 0 is
-     [EchoLinks.wr_pro]'s shape -- the round's prologue alternative is
-     still open and the shell's '$' is what files it -- so the credential
-     the shell will spend at EVERY prompt (lane IO-LEAF, M6a) is exactly
-     this one at [n = 0]. *)
-  Lemma bnr_ushpr (v : era_pins) :
-    bnr v 18%nat -∗ UShOut.ushpr T v 0%nat 0%nat.
+  (* ...and what /init's banner leaves behind IS the shell's prompt pair,
+     at the round's own count. *)
+  Lemma sh_prompt_pay_of_kinit_own (n : nat) :
+    echo_links T γ -∗ kinit_own n -∗ UShKernel.sh_prompt_pay.
   Proof.
-    rewrite /bnr /UShOut.ushpr /EchoLinks.ewc_owed.
-    iIntros "[(Htn & Hps & Hcs & HE) | #HT]"; [| by iRight ].
-    iLeft. iExists [], [], 18%nat. iFrame "Htn Hps Hcs HE".
-    iPureIntro. exact EchoLinks.wr_owed_round0.
+    iIntros "#Hlk Ht". rewrite /kinit_own.
+    iDestruct "Ht" as (v) "[#Hpin Hc]".
+    iApply (UShOut.sh_prompt_pay_of_ushpr T γ v n with "Hpin Hlk [Hc]").
+    rewrite /UShOut.ushpr. iExact "Hc".
   Qed.
 
   Lemma kinit_banner0_pay_holds :
@@ -408,16 +419,14 @@ Section UInitBanner.
         UkInitMain.kinit_banner0 N stc_cons UShKernel.sh_prompt_pay.
   Proof.
     iIntros "#Hlk Hturn".
-    iDestruct (kinit_banner0_holds with "Hlk Hturn") as "[Hdl Hb]".
+    iDestruct (kinit_ban0_of_eturn with "Hturn") as "[Hdl Hban]".
+    iDestruct (kinit_banner_law_holds with "Hlk") as "#Hlaw".
     iSplitL "Hdl"; [ iExact "Hdl" | ].
     iIntros (N).
-    iApply (kinit_banner0_mono N kinit_turn0 UShKernel.sh_prompt_pay
-              with "[] [Hb]"); last first.
-    { iApply "Hb". }
-    iIntros "Ht". rewrite /kinit_turn0.
-    iDestruct "Ht" as (v) "[#Hpin Hbnr]".
-    iApply (UShOut.sh_prompt_pay_of_ushpr T γ v 0%nat with "Hpin Hlk [Hbnr]").
-    iApply (bnr_ushpr v with "Hbnr").
+    iApply (kinit_banner0_mono N (kinit_own 0%nat) UShKernel.sh_prompt_pay
+              with "[] [Hban]"); last first.
+    { iApply ("Hlaw" $! 0%nat N with "Hban"). }
+    iIntros "Ht". iApply (sh_prompt_pay_of_kinit_own 0%nat with "Hlk Ht").
   Qed.
 
 End UInitBanner.

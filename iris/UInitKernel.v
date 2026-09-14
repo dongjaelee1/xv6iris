@@ -229,7 +229,7 @@ Section UInitKernel.
   Qed.
 
   Lemma init_uexec_slot (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names)
+      (stc : fdstate) (Rt : iProp Σ) (cn : cons_names)
       (W : uvis) (n0 : nat) :
     stc <> FdClosed ->
     (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
@@ -336,7 +336,7 @@ Section UInitKernel.
        names one; it is LINEAR (the credential is spent once), and a
        linear resource may be handed under a [∀] precisely because the
        reader picks ONE record. *)
-    (∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N' stc) -∗
+    (∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N' stc Rt) -∗
     (* THE PAY FACT, at the trivial payload: <init> has no parent, so its
        exit owes nobody anything -- userinit's choice, which the entry
        constructor writes into the record ([UkRun.ukn_pay]) and which
@@ -387,7 +387,7 @@ Section UInitKernel.
     rewrite Hpc.
     iApply (wp_kinit_start N Hpsok_free
               (ukn_pay_free_of_triv N (Hpayeq : UkRun.ukn_triv N))
-              T Cns stc cn (uvis_sz W) h
+              T Cns stc Rt cn (uvis_sz W) h
               (tf_resume_gpr0 (uvis_tf W)) n0 Hne Hkt
               with "Hdp [] Hxs [Hdn] [] [] Hszf [Hstd] [Hcwf] [Hchf] [Hrd] [Htn] Hrun").
     - iApply (init_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
@@ -411,7 +411,7 @@ Section UInitKernel.
   (* SS2 THE BRIDGE from the kernel's image fact.                          *)
   (* ------------------------------------------------------------------- *)
   Lemma init_slot_of_kexec (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names)
+      (stc : fdstate) (Rt : iProp Σ) (cn : cons_names)
       (na : nat) (alen : nat -> nat)
       (afun : nat -> nat -> bv 8) (sts : list fdstate)
       (W' : uvis) (n0 : nat) :
@@ -451,7 +451,7 @@ Section UInitKernel.
     ucons_reader cn 0%nat -∗
     (* ...and the era's turn beside it, likewise straight through (lane
        CONS-IO milestone F / IO-LEAF) *)
-    (∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N' stc) -∗
+    (∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N' stc Rt) -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
   Proof.
     intros Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok_free Hlzf.
@@ -530,7 +530,7 @@ Section UInitKernel.
               0x3000 <= spv - 8 * Z.of_nat (2 + (4 + (12 + (12 + (4 + n0)))))
                         + Z.of_nat j < spv)
       by (intros j Hj; clear -Hj Hroom; lia).
-    iApply (init_uexec_slot T Cns stc cn W' n0 Hne Hkt).
+    iApply (init_uexec_slot T Cns stc Rt cn W' n0 Hne Hkt).
     - rewrite Hpc. exact init_start_pc.
     - exact (init_img_sub_of_elf M Himg).
     - exact Hx.
@@ -579,13 +579,16 @@ Section UInitKernel.
      console lease rather than in [UkRun.urun]'s boot row, because it is
      exactly as era-local as the lease is; an opaque [iProp] threaded the
      way [T] is. *)
+  (* ...AND THE CREDENTIAL THE BANNER HANDS ON (lane IO-LEAF, M4a(2)) is
+     [Rt], a parameter: what the payment's last byte leaves behind is the
+     APPLICATION's to say, and this tier cannot name it. *)
   Definition init_boot_pay (T Cns : iProp Σ) (cn : cons_names)
-      (stc : fdstate) : iProp Σ :=
+      (stc : fdstate) (Rt : iProp Σ) : iProp Σ :=
     (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat
-     ∗ ∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N' stc)%I.
+     ∗ ∀ N' : uk_names Σ, UkInitMain.kinit_banner0 N' stc Rt)%I.
 
   Lemma init_boot_con (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names)
+      (stc : fdstate) (Rt : iProp Σ) (cn : cons_names)
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (n0 : nat) :
     stc <> FdClosed ->
@@ -620,7 +623,7 @@ Section UInitKernel.
          ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗
          ⌜uvis_lazy W' = false⌝ -∗
          my_pay (uvis_gen W') (fun _ => True)%I -∗
-         init_boot_pay T Cns cn stc -∗ uslot W').
+         init_boot_pay T Cns cn stc Rt -∗ uslot W').
   Proof.
     (* THE BUNDLE IS NEVER TAKEN APART: it goes in through the box and
        straight out into [init_slot_of_kexec]'s own linear premise.  No
@@ -629,7 +632,7 @@ Section UInitKernel.
     intros Hne Hkt Hroom Hlen Hl0 Hpsok.
     iIntros "#Hdp #Hdep #Hxs !>"
       (W') "%Hok %Hcw %Hlz #Hmp (Hdn & Hrd & Htn)".
-    iApply (init_slot_of_kexec T Cns stc cn na alen afun sts W' n0
+    iApply (init_slot_of_kexec T Cns stc Rt cn na alen afun sts W' n0
               Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok Hlz
               with "Hdp Hdep Hxs Hdn Hrd Htn Hmp").
   Qed.

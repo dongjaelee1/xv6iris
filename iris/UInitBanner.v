@@ -301,10 +301,20 @@ Section UInitBanner.
      side of the console prologue and this one only needs the fdstate. *)
   Local Notation stc_cons := (FdOpen true true (FdDevice CONSOLE)).
 
+  (* ...AND WHAT THE LAST BYTE LEAVES BEHIND (lane IO-LEAF, M4a(2)): the
+     era's cursor eighteen bytes on, at the pin the boot's credential was
+     minted at, or the taint.  M1 dropped it; /init lends it to the shell
+     it forks, whose FIRST WRITE -- the prompt -- is the byte that resolves
+     round 0 of the prologue ([UShOut.ushpr] at [p = 0] is this, verbatim).
+     The pin rides with it because it is what the link is keyed by and
+     nothing below the era can produce one. *)
+  Definition kinit_turn0 : iProp Σ :=
+    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ bnr v 18%nat)%I.
+
   Lemma kinit_banner0_holds :
     echo_links T γ -∗
     eturn γ (S gen_id) -∗
-    ∀ N : uk_names Σ, UkInitMain.kinit_banner0 N stc_cons.
+    ∀ N : uk_names Σ, UkInitMain.kinit_banner0 N stc_cons kinit_turn0.
   Proof.
     iIntros "#Hlk Hturn" (N).
     iDestruct (echo_links_w with "Hlk") as "#Hw".
@@ -324,7 +334,8 @@ Section UInitBanner.
                 with "Hpin Hw Ht"). }
     iSplitL.
     { iFrame "Hl". rewrite /bnr. iLeft. iFrame "Htn Hps Hcs HE". }
-    by iIntros "[$ _]".
+    iIntros "[$ Hbnd]". rewrite /kinit_turn0.
+    iExists v. iFrame "Hpin Hbnd".
   Qed.
 
 End UInitBanner.

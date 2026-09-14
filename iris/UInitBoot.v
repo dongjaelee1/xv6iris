@@ -729,10 +729,12 @@ Section EchoInitBoot.
                     (echo_taint γ)
                     (init_cons_cred (echo_taint γ) r)
                     fsc_cons init_cons_fd
+                    (UInitBanner.kinit_turn0 (echo_taint γ) γ)
                     -∗ uslot W'))%I as "#Hcon".
     { iApply (UInitKernel.init_boot_con (PS := uprogSG_free)
                 (echo_taint γ)
-                (init_cons_cred (echo_taint γ) r) init_cons_fd fsc_cons
+                (init_cons_cred (echo_taint γ) r) init_cons_fd
+                (UInitBanner.kinit_turn0 (echo_taint γ) γ) fsc_cons
                 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
                 init_cons_fd_ne Hktaint
                 (init_boot_room 0%nat
@@ -744,7 +746,8 @@ Section EchoInitBoot.
     iApply (init_boot_bundle_of_pinned (echo_taint γ)
               (UInitKernel.init_boot_pay (PS := uprogSG_free)
                  (echo_taint γ)
-                 (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd)
+                 (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd
+                 (UInitBanner.kinit_turn0 (echo_taint γ) γ))
               with "Hcl Hinv Hcon [] [Hdn Hturn]").
     - iIntros "!>" (W') "#Ht Hp".
       iApply ("Hmint" $! True%I W' with "Ht Hp []").

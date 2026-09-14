@@ -747,6 +747,7 @@ Section UkInitMain.
 (* even walk its return.                                                   *)
   (* --------------------------------------------------------------------- *)
   Lemma wp_kinit_fork (T : iProp Σ) `{!Persistent T} (stc : fdstate)
+      (Rt : iProp Σ)
       (cn : cons_names) (γ : gname) (np : nat)
       (szv : Z) (h : CpuId) (m : regfile) (avail : nat)
       (Sc : gset gname) :
@@ -770,6 +771,13 @@ Section UkInitMain.
        holds them in [UkSh.ush_at] thereafter. *)
     ucons_pay cn γ T (-1) -∗
     upos γ np -∗
+    (* ...AND THE ERA'S CREDENTIAL, LENT ON THE SAME CHANNEL (lane IO-LEAF,
+       M4a(2)): what round 0's banner left behind travels to the shell
+       beside the lease, because sh's own first write -- the prompt -- is
+       the byte that RESOLVES the round.  Affine ([wp_kinit_banner]'s post),
+       so every other round lends nothing and the shell prints through the
+       flagged deposit there. *)
+    (Rt ∨ True) -∗
     (* THE LEDGER.  fork copies the descriptor table, so the child wakes
        on the parent's, and the child is the arm that execs sh -- which
        needs a ledger of its own to hand on.  [UkFork.wp_uk_ecall_fork]
@@ -814,9 +822,10 @@ Section UkInitMain.
         (init_code (ukn_t N') ∗ init_rodata (ukn_t N') ∗ init_argv (ukn_d N'))
           -∗ usz (ukn_s N') szv -∗
         ufd_head T stc (ukn_fd N') -∗
-        (* ...AND THE POSITION AND THE LEASE IT WAS LENT *)
+        (* ...AND THE POSITION, THE LEASE AND THE CREDENTIAL IT WAS LENT *)
         upos γ np -∗
         ucons_pay cn γ T (-1) -∗
+        (Rt ∨ True) -∗
         UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
         urun N' h'
           (<[Regidx a0_idx := (mword_of_int 0 : mword 64)]>
@@ -826,7 +835,7 @@ Section UkInitMain.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hkt.
-    iIntros "#Hcode #Hro #Hargv Hsz HQ Hpos Hstd Hcwd Hch Hrun [Hpar Hchi]".
+    iIntros "#Hcode #Hro #Hargv Hsz HQ Hpos Hrt Hstd Hcwd Hch Hrun [Hpar Hchi]".
     (* the list the head is at, and the arm's way back -- usable at EITHER
        ghost name, which is what the child's half needs *)
     iDestruct (ufd_head_open with "Hstd") as (l) "[Hstd #Hback]".
@@ -862,7 +871,7 @@ Section UkInitMain.
        [emp]. *)
     iApply (wp_uk_ecall_fork N h1 mf1 (mword_of_int 0x36c) avail szv
               l ∅ FsImg.ROOTINO Sc (ucons_pay cn γ T)
-              (upos γ np ∗ ucons_pay cn γ T (-1))%I
+              (upos γ np ∗ ucons_pay cn γ T (-1) ∗ (Rt ∨ True))%I
               (fun gt gd _ =>
                  (init_code gt ∗ init_rodata gt ∗ init_argv gd)%I)
               ltac:(unfold mf1, usysno;
@@ -870,9 +879,9 @@ Section UkInitMain.
                                (mword_of_int 1 : mword 64));
                     vm_compute; reflexivity)
               ltac:(vm_compute; reflexivity)
-              with "[] [Hpos HQ] [] Hsz Hstd [] Hcwd Hch [] Hrun").
+              with "[] [Hpos HQ Hrt] [] Hsz Hstd [] Hcwd Hch [] Hrun").
     { iApply (uis_init_36c with "Hcode"). }
-    { iFrame "Hpos HQ". }
+    { iFrame "Hpos HQ Hrt". }
     { iFrame "Hcode Hro Hargv". }
     { rewrite big_sepM_empty. done. }
     (* THE CHILD'S PAYMENT WAND (lane SELF-KILL, §4b'): the application's
@@ -925,7 +934,7 @@ Section UkInitMain.
          child execs, and nothing before the exec allocates. *)
       (* the child's own children fragment is [∅] and init's child execs
          before it forks, so nothing here reads it *)
-      iIntros (N' hc γ') "%Hpeq _ [Hpos Hlease] Hpay Hsz Hstd _ Hcwd _ Hrun".
+      iIntros (N' hc γ') "%Hpeq _ (Hpos & Hlease & Hrt) Hpay Hsz Hstd _ Hcwd _ Hrun".
       set (mk := <[Regidx a0_idx := (mword_of_int 0 : mword 64)]> mf1).
       assert (Hrak : mk !!! Regidx ra_idx = m !!! Regidx ra_idx).
       { rewrite /mk (upd_ne mf1 (Regidx a0_idx) (Regidx ra_idx) _
@@ -940,7 +949,7 @@ Section UkInitMain.
       { iApply (uis_init_370 with "Hck"). }
       iIntros (hc2) "Hrun".
       iApply ("Hchi" $! N' hc2
-                with "[%] [] Hsz [Hstd] Hpos Hlease Hcwd Hrun").
+                with "[%] [] Hsz [Hstd] Hpos Hlease Hrt Hcwd Hrun").
       { exact Hpeq. }
       { iFrame "Hck Hrk Hak". }
       { iApply ("Hback" with "Hstd"). }
@@ -997,11 +1006,11 @@ Section UkInitMain.
   (*  and lane IO-LEAF M1(f) made it one, and [wp_kinit_banner] below is    *)
   (*  where the head's other two arms opt out of the payment altogether.    *)
   (* ===================================================================== *)
-  Definition kinit_banner0 (stc : fdstate) : iProp Σ :=
-    UkInit.kinit_banner_pay N stc 18%nat (init_lit LIT_START).
+  Definition kinit_banner0 (stc : fdstate) (Rt : iProp Σ) : iProp Σ :=
+    UkInit.kinit_banner_pay N stc 18%nat (init_lit LIT_START) Rt.
 
-  Definition kinit_round0 (stc : fdstate) : iProp Σ :=
-    (kinit_banner0 stc ∨ True)%I.
+  Definition kinit_round0 (stc : fdstate) (Rt : iProp Σ) : iProp Σ :=
+    (kinit_banner0 stc Rt ∨ True)%I.
 
   (* ...AND THE BANNER ITSELF, both ways round: with the payment through
      the per-byte family, without it through the flagged deposit.  ONE
@@ -1009,17 +1018,23 @@ Section UkInitMain.
      at the same post and the walk below the printf is four hundred lines
      long. *)
   Lemma wp_kinit_banner (T : iProp Σ) `{!Persistent T} (stc : fdstate)
-      (h : CpuId) (m : regfile) (n : nat) :
+      (Rt : iProp Σ) (h : CpuId) (m : regfile) (n : nat) :
     m !!! Regidx a0_idx = mword_of_int LIT_START ->
     udepw_law 16 -∗
     init_code γt -∗
     utext_str γt LIT_START 18%nat (init_lit LIT_START) -∗
-    kinit_round0 stc -∗
+    kinit_round0 stc Rt -∗
     ufd_head T stc γfd -∗
     urun N h m (mword_of_int InitSyms.printf) (12 + (12 + (4 + n))) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
        ufd_head T stc γfd -∗
+       (* ...AND WHAT THE PAYMENT LEFT BEHIND (lane IO-LEAF, M4a(2)): on
+          round 0's console arm the credential the banner's last byte
+          returned, and on the other three arms nothing.  AFFINE, exactly
+          as [kinit_round0] is on the way in -- the two arms rejoin here
+          and the walk below reads it only where it has one. *)
+       (Rt ∨ True) -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (12 + (4 + n))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
@@ -1036,7 +1051,8 @@ Section UkInitMain.
                 (fun j Hj => init_lit_nopct LIT_START 18%nat j HokS Hj) Ha0
                 with "Hwr Hcode Hstr Hrun").
       iIntros (h' m') "%Hcs Hrun".
-      iApply ("Hcont" $! h' m' with "[%] Hstd Hrun"); exact Hcs. }
+      iApply ("Hcont" $! h' m' with "[%] Hstd [] Hrun");
+        [ exact Hcs | by iRight ]. }
     (* ROUND 0, AND WHICH ARM OF THE HEAD IT IS ON (lane IO-LEAF, M1(f)).
        The payment is asked for at the ONE ledger /init's prologue leaves
        on the console arm ([UInitFd.ufd_l3 stc]), where fd 1 IS the
@@ -1053,8 +1069,8 @@ Section UkInitMain.
                 (fun j Hj => init_lit_nopct LIT_START 18%nat j HokS Hj) Ha0
                 with "Hwr Hcode Hstr Hrun").
       iIntros (h' m') "%Hcs Hrun".
-      iApply ("Hcont" $! h' m' with "[%] [Hrest] Hrun"); [ exact Hcs | ].
-      by iRight. }
+      iApply ("Hcont" $! h' m' with "[%] [Hrest] [] Hrun");
+        [ exact Hcs | by iRight | by iRight ]. }
     (* ROUND 0 ON THE CONSOLE ARM: the era's credential pays, byte by byte *)
     iDestruct ("Hb0" with "Hl3") as (Ch) "(#Hw & HCh & Hgive)".
     iApply (wp_kinit_printf_chain N LIT_START 18%nat (init_lit LIT_START)
@@ -1064,12 +1080,13 @@ Section UkInitMain.
               (fun j Hj => init_lit_nopct LIT_START 18%nat j HokS Hj) Ha0
               with "Hw Hcode Hstr HCh Hrun").
     iIntros (h' m') "%Hcs HCh Hrun".
-    iApply ("Hcont" $! h' m' with "[%] [Hgive HCh] Hrun"); [ exact Hcs | ].
-    iLeft. iApply ("Hgive" with "HCh").
+    iDestruct ("Hgive" with "HCh") as "[Hl Hrt]".
+    iApply ("Hcont" $! h' m' with "[%] [Hl] [Hrt] Hrun");
+      [ exact Hcs | by iLeft | by iLeft ].
   Qed.
 
   Lemma wp_kinit_main_loop (T : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names) (szv : Z) (n : nat) :
+      (stc : fdstate) (Rt : iProp Σ) (cn : cons_names) (szv : Z) (n : nat) :
     (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
        K4(a)).  The child's exit payload is a WAND from the credential
        now, and [UserConsole.ucons_pay]'s right arm is [T], so this is
@@ -1105,7 +1122,7 @@ Section UkInitMain.
            hypothesis supplies nothing, which is why rounds k > 0 still
            print through the flagged deposit until the turn comes back
            through the child's exit payload (M3-M6). *)
-        kinit_round0 stc -∗
+        kinit_round0 stc Rt -∗
         urun N h m (mword_of_int 0x32) (12 + (12 + (4 + n))) -∗
         WP (Loop : expr riscv_lang))
      ∧ (∀ (h : CpuId) (m : regfile) (cs : gset gname)
@@ -1180,9 +1197,9 @@ Section UkInitMain.
       { rewrite <- Ha0l1.
         exact (upd_ne ml1 (Regidx ra_idx) (Regidx a0_idx) _
                  ltac:(vm_compute; discriminate)). }
-      iApply (wp_kinit_banner T stc hl2 ml2 n Ha0l2
+      iApply (wp_kinit_banner T stc Rt hl2 ml2 n Ha0l2
                 with "Hwr Hcode HstrS Hb0 Hstd Hrun").
-      iIntros (hl3 ml3) "%Hcsl Hstd Hrun".
+      iIntros (hl3 ml3) "%Hcsl Hstd Hrt Hrun".
       assert (Eretl : ret_pc (ml2 !!! Regidx ra_idx)
                       = (mword_of_int 0x38 : mword 64))
         by (rewrite Hral2; apply bv_eq; vm_compute; reflexivity).
@@ -1228,9 +1245,9 @@ Section UkInitMain.
          CURRENT position and builds the shell's exit payload out of the
          token, leaving init the program half to lend. *)
       iMod (uinit_lend cn T (-1) with "Htk") as (γ np) "[HQ Hpos]".
-      iApply (wp_kinit_fork T stc cn γ np szv hl4 ml4 (12 + (12 + (4 + n))) Sc
-                Hkt
-                with "Hcode Hro Hargv Hsz HQ Hpos Hstd Hcwd Hch Hrun").
+      iApply (wp_kinit_fork T stc Rt cn γ np szv hl4 ml4
+                (12 + (12 + (4 + n))) Sc Hkt
+                with "Hcode Hro Hargv Hsz HQ Hpos Hrt Hstd Hcwd Hch Hrun").
       rewrite Eretf.
       iSplitR "".
       + (* ------------- the PARENT: r <> 0 ------------- *)
@@ -1350,8 +1367,11 @@ Section UkInitMain.
           { iPureIntro. set_solver. }
           { iPureIntro. exact Hpnz. }
       + (* ------------- the CHILD: r = 0 ------------- *)
+        (* the credential /init lent this round is dropped by the child's
+           own walk here: it execs sh, and sh's entry takes it in lane
+           IO-LEAF M4a(3) -- [UShKernel.sh_slot_of_kexec]'s raw bundle. *)
         iIntros (N' hc)
-          "%Hpeq (#Hck & #Hrk & #Hak) Hsz Hstd Hpos Hlease Hcwd Hrun".
+          "%Hpeq (#Hck & #Hrk & #Hak) Hsz Hstd Hpos Hlease Hrt Hcwd Hrun".
         (* the child's walk runs at ITS payload's class, which is the
            shell's ([UserConsole.ucons_pay_const]) *)
         pose proof (ukn_const_of_eq N' (ucons_pay cn γ T) Hpeq
@@ -1634,7 +1654,7 @@ Section UkInitMain.
   (* succeeded, and the [c.j] at 0x82 when the mknod repair arm has run.     *)
   (* --------------------------------------------------------------------- *)
   Lemma wp_kinit_main_from_1e (T : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names)
+      (stc : fdstate) (Rt : iProp Σ) (cn : cons_names)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
     (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
@@ -1670,7 +1690,7 @@ Section UkInitMain.
     uinit_tok cn T -∗
     (* ...AND ROUND 0'S BANNER PAYMENT, on its way to the restart head
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
-    kinit_round0 stc -∗
+    kinit_round0 stc Rt -∗
     urun N h m (mword_of_int 0x1e) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
@@ -1823,7 +1843,7 @@ Section UkInitMain.
     assert (Hs2q8 : mq8 !!! Regidx s2_idx = mword_of_int LIT_START)
       by exact (upd_eq mq7 (Regidx s2_idx) (regval_into_reg _)).
     (* ---- 0x32: the restart head, and main never comes back ---- *)
-    iDestruct (wp_kinit_main_loop T stc cn szv n Hkt
+    iDestruct (wp_kinit_main_loop T stc Rt cn szv n Hkt
                  with "[$Hwr $Hwl15 $Hwl17] Hcode Hxs Hro Hargv")
       as "[Hloop _]".
     iApply ("Hloop" $! hq8 mq8 with "[] Hsz Hstd Hcwd Hch Htk Hb0 Hrun").
@@ -1847,7 +1867,7 @@ Section UkInitMain.
   (* with a0 dropped, so the head's three arms are what leaves here.          *)
   (* --------------------------------------------------------------------- *)
   Lemma wp_kinit_main_repair_tail (T : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names)
+      (stc : fdstate) (Rt : iProp Σ) (cn : cons_names)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
     (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
@@ -1871,7 +1891,7 @@ Section UkInitMain.
     uinit_tok cn T -∗
     (* ...AND ROUND 0'S BANNER PAYMENT, on its way to the restart head
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
-    kinit_round0 stc -∗
+    kinit_round0 stc Rt -∗
     urun N h m (mword_of_int 0x74) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
@@ -1978,12 +1998,12 @@ Section UkInitMain.
               with "[] Hrun").
     { iApply (uis_init_82 with "Hcode"). }
     iIntros (hr8) "Hrun".
-    iApply (wp_kinit_main_from_1e T stc cn szv hr8 mr7 n Hne Hkt
+    iApply (wp_kinit_main_from_1e T stc Rt cn szv hr8 mr7 n Hne Hkt
               with "[$Hwr $Hwl15 $Hwl17] Hcode Hxs Hro Hargv Hsz Hstd Hcwd Hch Htk Hb0 Hrun").
   Qed.
 
   Lemma wp_kinit_main_repair (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names)
+      (stc : fdstate) (Rt : iProp Σ) (cn : cons_names)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
     (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
@@ -2016,7 +2036,7 @@ Section UkInitMain.
     uinit_tok cn T -∗
     (* ...AND ROUND 0'S BANNER PAYMENT, on its way to the restart head
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
-    kinit_round0 stc -∗
+    kinit_round0 stc Rt -∗
     urun N h m (mword_of_int 0x64) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
@@ -2140,7 +2160,7 @@ Section UkInitMain.
       - iSplitR;
           [ iApply (uki_open2_taint_arm N T stc with "Hwl15 HT") | ].
         iApply ("Hw" with "[]"). iApply ("Ht" with "HT"). }
-    iApply (wp_kinit_main_repair_tail T stc cn szv hr4 _ n Hne Hkt
+    iApply (wp_kinit_main_repair_tail T stc Rt cn szv hr4 _ n Hne Hkt
               with "[$Hwr $Hwl15 $Hwl17] Hcode Hxsl Hro Hargv Hsz Hop2 Hin Hcwd Hch Htk Hb0 Hrun").
   Qed.
 
@@ -2157,7 +2177,7 @@ Section UkInitMain.
   (* which one the kernel takes.                                             *)
   (* --------------------------------------------------------------------- *)
   Lemma wp_kinit_main (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names)
+      (stc : fdstate) (Rt : iProp Σ) (cn : cons_names)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
     (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
@@ -2196,7 +2216,7 @@ Section UkInitMain.
     uinit_tok cn T -∗
     (* ...AND ROUND 0'S BANNER PAYMENT, on its way to the restart head
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
-    kinit_round0 stc -∗
+    kinit_round0 stc Rt -∗
     urun N h m (mword_of_int InitSyms.main)
       (4 + (12 + (12 + (4 + n)))) -∗
     WP (Loop : expr riscv_lang).
@@ -2440,7 +2460,7 @@ Section UkInitMain.
       rewrite E1a. iIntros (hm11) "Hrun".
       iDestruct "Hxs" as "#[Hw _]".
       iDestruct ("Hw" with "HC") as "#Hxsl".
-      iApply (wp_kinit_main_from_1e T stc cn szv hm11 mm7 n Hne Hkt
+      iApply (wp_kinit_main_from_1e T stc Rt cn szv hm11 mm7 n Hne Hkt
                 with "[$Hwr $Hwl15 $Hwl17] Hcode Hxsl Hro Hargv Hsz [Hstd] Hcwd Hch Htk Hb0 Hrun").
       iApply (ufd_head1_l1 with "Hstd").
     - (* THE CALL RETURNED [-1] -- the pin missed, or the node is there and
@@ -2455,7 +2475,7 @@ Section UkInitMain.
                 with "[] Hrun").
       { iApply (uis_init_1a with "Hcode"). }
       iIntros (hm11) "Hrun".
-      iApply (wp_kinit_main_repair T Cns stc cn szv hm11 mm7 n Hne Hkt
+      iApply (wp_kinit_main_repair T Cns stc Rt cn szv hm11 mm7 n Hne Hkt
                 with "[$Hwr $Hwl15 $Hwl17] Hcode Hxs Hmk Hro Hargv Hsz [Hstd] Hcwd Hch Htk Hb0 Hrun").
       rewrite /uki_open2_in. by iLeft.
     - (* THE TAINT: nothing is known about the return value, so both ways
@@ -2469,7 +2489,7 @@ Section UkInitMain.
                   with "[] Hrun").
         { iApply (uis_init_1a with "Hcode"). }
         iIntros (hm11) "Hrun".
-        iApply (wp_kinit_main_repair T Cns stc cn szv hm11 mm7 n Hne Hkt
+        iApply (wp_kinit_main_repair T Cns stc Rt cn szv hm11 mm7 n Hne Hkt
                   with "[$Hwr $Hwl15 $Hwl17] Hcode Hxs Hmk Hro Hargv Hsz [Hstd] Hcwd Hch Htk Hb0 Hrun").
         rewrite /uki_open2_in. iRight. iFrame "Hstd HT".
       + iApply (wp_uk_btype0 N hm10 mm7 (mword_of_int 0x1a)
@@ -2482,7 +2502,7 @@ Section UkInitMain.
         { iApply (uis_init_1a with "Hcode"). }
         rewrite E1a. iIntros (hm11) "Hrun".
         iDestruct (init_cons_sup_taint cn T Cns stc with "Hxs HT") as "#Hxsl".
-        iApply (wp_kinit_main_from_1e T stc cn szv hm11 mm7 n Hne Hkt
+        iApply (wp_kinit_main_from_1e T stc Rt cn szv hm11 mm7 n Hne Hkt
                   with "[$Hwr $Hwl15 $Hwl17] Hcode Hxsl Hro Hargv Hsz [Hstd] Hcwd Hch Htk Hb0 Hrun").
         iDestruct "Hstd" as (l) "Hstd".
         iApply (ufd_head1_taint with "HT Hstd").
@@ -2507,7 +2527,7 @@ Section UkInitMain.
      and E2 discharges it there, exactly as it discharges [uvis_cwd W =
      ROOTINO]. *)
   Lemma wp_kinit_start (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names)
+      (stc : fdstate) (Rt : iProp Σ) (cn : cons_names)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
     (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
@@ -2553,7 +2573,7 @@ Section UkInitMain.
        [UkInit.kinit_banner_pay] ("give me the descriptor table and I give
        you a per-byte family for the eighteen bytes"), proved from [eturn]
        and the era's links in [UInitBanner], the [UShLine] mould. *)
-    kinit_banner0 stc -∗
+    kinit_banner0 stc Rt -∗
     urun N h m (mword_of_int InitSyms.start)
       (2 + (4 + (12 + (12 + (4 + n))))) -∗
     WP (Loop : expr riscv_lang).
@@ -2564,7 +2584,7 @@ Section UkInitMain.
        byte by byte ([wp_kinit_banner]); the Löb hypothesis re-enters that
        head with the trivial arm, because the turn does not come back to
        <init> until the child's exit payload carries it (M3-M6). *)
-    iAssert (kinit_round0 stc) with "[Htn]" as "Hb0";
+    iAssert (kinit_round0 stc Rt) with "[Htn]" as "Hb0";
       [ rewrite /kinit_round0; by iLeft | ].
     destruct init_syms_pins
       as (Hstart & Hmain & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _).
@@ -2677,7 +2697,7 @@ Section UkInitMain.
               with "[] Hrun").
     { iApply (uis_init_c4 with "Hcode"). }
     iIntros (hs4) "Hrun".
-    iApply (wp_kinit_main T Cns stc cn szv hs4 _ n Hne Hkt
+    iApply (wp_kinit_main T Cns stc Rt cn szv hs4 _ n Hne Hkt
               with "[$Hwr $Hwl15 $Hwl17] Hcode Hxs Hcl Hro Hargv Hsz Hstd Hcwd Hch Htk Hb0 Hrun").
   Qed.
 

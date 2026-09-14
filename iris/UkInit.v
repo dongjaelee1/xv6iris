@@ -1344,13 +1344,20 @@ Section UkInit.
      1 and 2, so the payment is asked for at THAT list and its fd 1 is the
      console.  The other two arms of the head never ask for it -- they
      print through the flagged deposit ([UkInitMain.wp_kinit_banner]). *)
+  (* ...AND WHAT COMES BACK WITH THE TABLE (lane IO-LEAF, M4a(2)): the
+     family's LAST token, as whatever the supplier says it is worth.  M1
+     dropped it here -- the third component was the table alone -- and the
+     credential died with the banner; [Rt] is the parameter that lets the
+     supplier hand it on, and /init lends it to the shell it forks.  An
+     OPAQUE [iProp], for [kinit_w1]'s reason: this tier cannot name the
+     application's claim, and a parameter is all it needs. *)
   Definition kinit_banner_pay (stc : fdstate) (len : nat) (f : nat -> bv 8)
-      : iProp Σ :=
+      (Rt : iProp Σ) : iProp Σ :=
     (UserFd.ustd γfd (ufd_l3 stc) -∗
      ∃ Ch : nat -> iProp Σ,
        □ (∀ j : nat, ⌜(j < len)%nat⌝ -∗
             kinit_w1 (mword_of_int 1 : mword 64) (f j) (Ch j) (Ch (S j)))
-       ∗ Ch 0%nat ∗ (Ch len -∗ UserFd.ustd γfd (ufd_l3 stc)))%I.
+       ∗ Ch 0%nat ∗ (Ch len -∗ UserFd.ustd γfd (ufd_l3 stc) ∗ Rt))%I.
 
   (* ...AND THE SAME STUB WITH THE OUTPUT CHAIN AND THE POST                *)
   (* (app-echo.md, lane IO-LEAF, first half; the leaf is                    *)

@@ -136,7 +136,15 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   `brief-trap-rows-3.md`): T4(c) LANDED 2026-09-16 (`2a372a9d7`; the note
   below); T4(b) (the reaping arm names the caller's own child): two
   obstacles ruled 2026-09-16 (the note below: the U tier sees numbers --
-  `un_ipid`/`ukn_ipid`, `ukn_pid`/`upid`); phase 1b in flight.
+  `un_ipid`/`ukn_ipid`, `ukn_pid`/`upid`); HANDED OVER with the kernel side
+  saved (`t4b-wip.patch`) and a five-step plan.
+- [ ] **TRAP-ROWS-4** (kernel; `-tlw`, `lane/trap-rows-4`; brief scratchpad
+  `brief-trap-rows-4.md`): LAUNCHED 2026-09-16: T4(b) from the plan --
+  milestone A (the boot end first, then the kernel patch, then the pure
+  parameters; `uwait_ans` keeps its arity via `uwait_ans_pid`; `upid` over
+  `Z` on the existing `ghost_varG Σ Z`; `ukn_ipid` a parameter of
+  `uslot_of_urun*`), milestone B (`ukn_pid`/`upid` + the entry
+  constructors) after IO-LEAF M5b.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.

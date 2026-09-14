@@ -116,7 +116,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   (`e3d97238a`; the note below: the write leaf's ownership row, the printf
   cone's per-byte family, the banner site); M1(e) LANDED 2026-09-16
   (`9250b2e81`; the note below: `UInitBanner.kinit_banner0_holds`; M1
-  complete for round 0); M2 (echo's writes) next; M3-M6 after TRAP-ROWS M2.
+  complete for round 0); M2 (echo's writes) IN FLIGHT in the main checkout;
+  M1(f) (pin init's fds 1-2 after DUP-ROW; `-sup`, `lane/io-leaf-fd`) IN
+  FLIGHT; M3-M6 after TRAP-ROWS M2 part 2.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):

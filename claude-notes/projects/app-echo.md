@@ -120,9 +120,11 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   below: fds 1-2 pinned, the banner free of the law); M2 LANDED 2026-09-16
   (`88127e629`; the note below: echo's writes through the link); TXT-ROW
   LANDED 2026-09-16 (`a103f2e15`; the note below); M3a + M3b(1) LANDED
-  2026-09-16 (`85a10a883`; the note below); M3b(2) (echo's fd-1 row) in
-  flight; M3b core + M3c BLOCKED on TRAP-ROWS part 2 (the engine `Kc`
-  statements, T4, and the new T4(b) reaping-arm row); M4-M6 after.
+  2026-09-16 (`85a10a883`); M4a(1) LANDED 2026-09-16 (`7f512a248`; the
+  note below: sh's prompt through the link); M4a(2) (the turn handed out
+  of init's banner payment to the fork) in flight; M3b(2) deferred into
+  M3b core; M3b core + M3c after TRAP-ROWS part 2 (at its final rebase)
+  and TRAP-ROWS-3 (T4(c) pid range, T4(b)); M4b-M6 after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
@@ -3353,6 +3355,40 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M4a(1) LANDED (2026-09-16; `7f512a248` on `d847aa0d5`; UkSh.v + new
+UShOut.v; build io26 in the main checkout; audit the thirteen; lemma_diff
+CLEAN; no Admitted; trusted diff EMPTY).  SH'S PROMPT, PAID BY THE ERA'S
+WRITE LINK: the two-byte `write(2, "$ ", 2)` at `getcmd`'s head, with '$' the
+byte that RESOLVES round 0 of the prologue.  `UkSh.wp_ksh_write_chain_txt`
+(TXT-ROW's leaf at sh: every literal sh writes is .rodata -- the prompt at
+0x1280, three panic strings, two "%s" formats); `UkSh.ksh_w`/`ksh_w_of_law`/
+`ksh_w_mono` (the per-CALL obligation, `kecho_w`'s twin, with THE DESCRIPTOR
+A PARAMETER: sh's prompt and diagnostics go to fd 2); `UShOut.v` (above
+UkWriteLeaf): `ushpr` (the prompt's cursor family; the resolution list grows
+in `ps`, not `cs`), `ushpr_step` ('$' via `echo_link_pro` at `a = 0`, stage
+18, `n0 = 0`, `cs0 = []`, `ps0 = []`; ' ' via `echo_link_w` at `ps0 = [0]`, stage
+19; taint via `echo_link_taint`), `ushpr_chain`, `ksh_w_of_link_prompt`; all
+nine pure facts closed `vm_compute`s.  No write site has moved yet
+(`ksh_w_of_law` keeps the flagged deposit).  TWO WALLS, RULED: (a) M3b(2)
+(echo's fd-1 row from sh's table) is NOT a theorem of sh's walk -- sh's
+console preamble (`while (open("console") >= 0) if (fd >= 3) {close; break}`)
+has a third outcome, open failed at allocation with the ledger left
+wherever it reached; what works is the arm where init's banner went out:
+init's head is the named ledger `ufd_l3 st`, `fd_lowest_closed (ufd_l3 st) =
+None`, sh's open lands ABOVE the standard streams and the ledger never moves
+-> sh's entry row becomes the three-arm named-ledger row `⌜l = ufd_l3 st⌝ ∨
+⌜l !! 0 = FdClosed⌝ ∨ T` (`ush_fd0`/`UInitSh.v:988`/`sh_slot_of_kexec`), the
+closed arm answered by the leaf's closed-fd arm (no law) and the taint arm
+by the taint link; DEFERRED into M3b core, which rewrites
+`sh_slot_of_kexec` anyway.  (b) M4a's transport: the bundle at stage 18 is
+dropped INSIDE `UkInit.kinit_banner_pay` (its third component returns only
+the head), not at the fork site -> `kinit_banner_pay stc len f Rt` returns
+`ustd … ∗ Rt` (`Rt` a parameter: UkInit names no era), threaded through
+`kinit_banner0`/`kinit_round0`/the restart head to the fork; this CHANGES
+`init_boot_pay`'s third conjunct (trusted diff), `kinit_banner0_holds` and
+UInitBoot's supply -- RULED: do it (M4a(2)), files UkInit/UInitBanner/
+UInitKernel/UInitBoot now allowed.  Handover: `io-leaf-handover.md`.
 
 IO-LEAF M3a + M3b(1) LANDED (2026-09-16; `56f4fd855`+`85a10a883` on
 `1ddfa7f99`; 6 files +404/-222; builds io22-io24 in the main checkout;

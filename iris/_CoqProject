@@ -2,10 +2,6 @@
 -R ../model-xv6iris Riscv
 -R ../kernel-rocq Kernel
 -R ../user-rocq User
-# SailStdpp.ConcurrencyInterfaceBuiltins and SailStdpp.Base (which pulls in
-# Prompt_monad) both bind ">>=" etc. to their own monad's `bind`; harmless but
-# noisy once both are in scope (as they are throughout this proof), so silence
-# the resulting "notation was already used" warning project-wide.
 -arg -w
 -arg -notation-overridden
 SetShrink.v
@@ -257,8 +253,6 @@ TfUser.v
 UsysMemOk.v
 UexecWp.v
 UexecSlot.v
-# UexecSG = the per-syscall DEPOSIT class the trap contract's returning arm
-# is stated over (the process's bundle in, the syscall's armed post back).
 UexecSG.v
 UserStep.v
 UserTrap.v
@@ -286,10 +280,6 @@ WpUmodeLoad.v
 WpUmodeTextLoad.v
 UCodeSync.v
 UkStep.v
-# UkStepGen = UkStep's SS3/SS5/SS8 (and its retire funnel) with the SLOT
-# FAMILY as a Context parameter -- the compiled receipt for upstream ask
-# (4).  It RECOVERS UkStep's own wp_uk_ecall by [exact] at
-# (uexec_ret_F, uslot); landing the ask in place deletes this file.
 UkStepGen.v
 UkLeaf.v
 UkBranch.v
@@ -306,34 +296,12 @@ UkSync.v
 USyncKernel.v
 UkEcho.v
 UEchoKernel.v
-# UShKernel = sh's slot ([sh_uexec_slot], via UkRun.uslot_of_urun_all +
-# UkSh.wp_ksh_start, with UkSh's read-leaf
-# Hypothesis discharged) and the bridge from the kernel's image fact
-# ([sh_slot_of_kexec], off SpecKexec.kexec_image_ok at ElfUser.sh_elf).
 UShKernel.v
-# UInitKernel = init's slot ([init_uexec_slot], via UkRun.uslot_of_urun +
-# UkInitMain.wp_kinit_start) and the bridge from the kernel's image fact
-# ([init_slot_of_kexec], off SpecKexec.kexec_image_ok at ElfUser.init_elf).
-# It requires UShKernel for the entry geometry it shares -- and because
-# init's exec target is sh.
 UInitKernel.v
 UkAbi.v
 UexecCond.v
 UCodeEcho.v
-# TOMBSTONE (owner ruling, 2026-08-31): the FIRST-GENERATION sh proof --
-# UCodeSh.v, USpecSh.v, USpecShParse.v and the eleven UProofSh*.v files
-# (33k lines, zero Admitted/Axiom, closing at wp_sh_execs_echo) -- is
-# DELETED on port, per the precedent (4f088971f).  The port's stack is
-# UCodeShK.v/UCodeShP.v + UkSh.v/UkShParse.v/UkShRun.v; the pure parser
-# vocabulary was transposed into UkShParse.v (ushp_*), and the image
-# inclusion is UCodeShK.v's shk_img_sub, bridged to the exec contract's
-# own image conjunct in UShKernel.v (shk_img_sub_of_elf).
-# Design of record: claude-notes/completed/user-sh.md.
 UCodeInit.v
-# CAT.  The first verified program whose SYSCALLS WRITE ITS MEMORY: its
-# inner loop is read(fd, buf, 512) into a 512-byte global, and the theorem
-# holds whatever the kernel puts there and however much of it it fills.
-# Also the first to reach vprintf's %s arm.
 UCodeCat.v
 UkCat.v
 UkCatPutc.v
@@ -343,19 +311,7 @@ UkCatVprintfS.v
 UkCatFprintf.v
 UkCatCat.v
 UkCatMain.v
-# The register-index arithmetic every returning function proof needs to
-# state and discharge a [ucallee_saved] post.  Program-independent, and
-# not Iris at all.
 UkProgAbi.v
-# INIT ON THE SEPARATION-LOGIC HEAP.  The syscall stub layer so far: the
-# four quiet-row entries (open/mknod/dup/write), exit, exec's failure arm,
-# and wait at the NULL status pointer init passes.  What is left is the
-# printf cone, main's two unbounded loops and start; the fork call site is
-# the one seam, and UkFork.v's [wp_uk_ecall_fork] is what closes it.
-#   ONE FILE PER FUNCTION, deliberately: init's proof is big enough that a
-# single file makes the edit-compile cycle the bottleneck.  UkInit.v is
-# the syscall stub layer, and each function of the printf cone gets its
-# own.
 UkInit.v
 UkInitPutc.v
 UkInitLit.v
@@ -486,8 +442,6 @@ WpSconfSfence.v
 WpPushOffCsr.v
 CodeMycpu.v
 ProcGeom.v
-# the two exclusive generation ghosts (the slot's current incarnation and
-# the pid register); [WaitInv] carries their halves and exports them.
 SlotGen.v
 WaitInv.v
 KernelBaseDecode.v
@@ -535,36 +489,10 @@ WpLockAt.v
 ArrCursor.v
 FdSlots.v
 
-# the PROGRAM's own view of its descriptor table (γfd): the authority
-# rides inside [UkRun.urun], the handles are what a user-level proof carries.
-# Distinct from FdSlots' kernel/process split -- see UserFd.v's header.
 UserFd.v
-# UInitFd = /init's console ledger rows, at an ABSTRACT descriptor state:
-# the four ledgers its prologue passes through, the three [fdalloc] scans
-# that decide which descriptor each call returns, the source claim its two
-# dups hand in, and INIT'S HEAD -- the three arms (CONSOLE / CLOSED /
-# TAINT) its fork hands the shell.  Below both tiers that name them: the
-# program walk (UkInit, UkInitMain) instantiates the descriptor at a
-# section variable, the application (UInitCons) at the console device.
 UInitFd.v
-# ...and the PROGRAM's own working directory (the cwd), one ghost variable
-# split in half: the engine's half rides inside [UkRun.urun] at the key's
-# [uvis_cwd], the program's half is what a proof carries and hands to the
-# syscall that reads it.  See UserCwd.v's header.
 UserCwd.v
-# ...and the PROGRAM's own set of live children, as their GENERATIONS --
-# the same split at a [gset gname]: the engine's half rides inside
-# [UkRun.urun] at the key's [uvis_ch], the program's half is what a proof
-# carries so it can say which children it has.  See UserChildren.v's header.
 UserChildren.v
-# THE ITABLE ENTRY, IN THREE LAYERS.  IcacheRefDefs is the entry's
-# geometry, the cache's constants ([icfg]) and the algebra's boot
-# literals -- what sixty-odd files want and nothing more; IcacheRef is
-# the reference predicate proper; IcacheHeld re-keys it by the pointer a
-# register holds and carries the [CtxMorph] transports.  Each re-exports
-# the one below, so a consumer still names exactly one of them -- but
-# naming the RIGHT one is what keeps [EscrowDefs] (three field
-# projections) off the back of nine hundred lines of splits and carves.
 IcacheRefDefs.v
 IcacheRef.v
 IcacheHeld.v
@@ -824,14 +752,6 @@ BlkmapDefs.v
 InodeInv.v
 DirView.v
 FsTree.v
-# DELETED (fs-syscall-specs, THE DVIEW RETIREMENT, 2026-08-30): DirViewG.v
-# (the per-directory contents ghost [dview] and its per-file twin [fview])
-# and DirViewLend.v (M1, the cancellable lend [dv_ride]/[dv_pin] and its
-# registry-keyed column).  Both files are GONE, not off-build: what they
-# carried is a reading of the era fragment every payload arm already holds
-# ([FsStateEra.dir_entries_era_node] / [FsTree.fn_file_bytes]), the camera
-# and the two gnames went with them, and the era walk replaced the one
-# contract that fired them.
 SpecBalloc.v
 SpecBmap.v
 CodeBmap.v
@@ -911,16 +831,8 @@ FsStateBitmap.v
 FsState.v
 PieceFam.v
 FsAbsDefs.v
-# AppCfg = the application's predicate on the abstract state's VIEW, as a
-# class record ([appcfg Σ], app-instances.md sections 1-2); a field of
-# [fileG] below, bound as a section class from InodeRegion up to it
 AppCfg.v
-# AppInv = the application's running invariant: half of the abstract map's
-# authority beside its claim, and the one ghost move on the map
-# (app-instances.md section 2); below InodeRegion, whose movers open it
 AppInv.v
-# AppDur = the application's DURABLE instance: its claim beside the snapshot,
-#   tied by the guest half of the snapshot's map authority (round C)
 AppDur.v
 FsAbsDelta.v
 FsBytesGamma.v
@@ -1071,11 +983,6 @@ CodeArgstr.v
 ProofArgstr.v
 LinkArgstr.v
 
-# ArgPath = THE PATH ARGUMENT OF A PATH-TAKING SYSCALL, read off the
-# caller's own image: [arg_path_of M pv pl] (the shape plus the tie to the
-# bytes), its [bview] suppliers off argstr's buffer, and the uniqueness
-# that makes the guarded-forall form a ONE-PATH obligation.  A pure leaf
-# shared by exec, open and mknod; see its header.
 ArgPath.v
 SpecEitherCopyout.v
 SpecEitherCopyin.v
@@ -1091,11 +998,6 @@ ProofUartwrite.v
 LinkUartwrite.v
 W32Arith.v
 ConsoleInv.v
-# UserConsole = the PROGRAM side of the console reader's cursor: the
-# position pair [upos]/[upos_a] (UserChildren.v's mold), the reader token
-# and the stored-sequence bound spelled at the narrow ghost class a user
-# program binds, and [ucons_pay] -- the exit payload a shell that reads
-# the console owes its parent.  See its header.
 UserConsole.v
 CodeConsolewrite.v
 CodeConsoleread.v
@@ -1169,16 +1071,7 @@ BootShared.v
 CodeBalloc.v
 CodeBfree.v
 SystemAdequacy.v
-# --- BEGIN out of the coq_makefile build: the assumption audit ---
-# SystemAssumptions.v is `Print Assumptions` on the system theorem.  It is a
-# real, compiled file -- `make audit` builds it, and CI runs it after the iris
-# build and puts its output in the run's step summary -- but it is deliberately
-# NOT a coq_makefile target: the statement measured 95 s of SystemAdequacy.v's
-# 98.6 s, on the strictly serial build tail, i.e. ~30 % of a clean build's wall
-# clock on every build.  The commented row below is what says that omission is
-# on purpose; see the file's own header and claude-notes/optimization.md.
 # SystemAssumptions.v
-# --- END out of the coq_makefile build ---
 CodeSysDup.v
 SpecSysDup.v
 ProofSysDup.v
@@ -1332,17 +1225,6 @@ ProofNamexRoot.v
 LinkNamexRoot.v
 ProofNamei.v
 LinkNamei.v
-# OFF THE BUILD (fs-syscall-specs, THE DVIEW RETIREMENT): the dv-FIRING trace
-# trio.  [SpecNameiTr.nx_hop] lent [DirViewG.dv_half] at every hop, and that
-# ghost is deleted -- the era walk (SpecNamexEra/SpecNameiEra + the nameiparent
-# and relative-start wrappers, sealed by LinkNamexEra/LinkNameiEra) is the
-# consumed form everywhere, so these statements have no client and no ghost to
-# fire.  R10: they are RETIRED, not edited -- the source is kept exactly as it
-# sealed (Print Assumptions LinkNameiTr.NameiTr.wp_namei_tr = the five platform
-# externs + funext, 2026-08-21) and will not compile again, because the column
-# it fires is gone.  SpecNameiTr.v itself STAYS on the build: its
-# [inode_held_at] is the era cone's own vocabulary (see its header's tombstone
-# for the two definitions and the contract that left it).
 # SpecNamexTr.v
 # ProofNamexTr.v
 # LinkNamexTr.v
@@ -1430,16 +1312,10 @@ ProofKexecB3.v
 ProofKexecC.v
 ProofKexecD.v
 SysExecDefs.v
-# sys_exec's blocks, split off from the composition (ProofSysExec.v, which
-# is up beside the contract it seals): everything that does not name [Kexec].
 ProofSysExecParts.v
 SpecSysFstat.v
 SpecSysRead.v
 SpecSysWrite.v
-# create's legs as commits and fires (round E2, lane E2-C): the authority-
-# shaped commits of the create family (moved down from FsAbsMknodFire so
-# SpecCreate's bundle can name them), the arm/dots/unarm fires under the
-# armed registry.  Below SpecCreate; FsAbsMknodFire re-exports it.
 FsAbsCreateFire.v
 SpecCreate.v
 CreateBudget.v
@@ -1469,13 +1345,6 @@ EnvMorph.v
 FirstTok.v
 FsSyscalls.v
 LinkFsSyscalls.v
-# THE NON-AU sys_open / sys_mknod / sys_unlink WALKS ARE GONE (round E2,
-# lane E2-X): the dispatch runs all three on their AU contracts
-# (LinkSyscall.v), so the landed walks and their links had no client.
-# SpecSysOpen / SpecSysUnlink stay as the frames their AU specs restate --
-# as do the parts/tails/budget layers, which the AU proofs use as lemma
-# libraries.  sys_mknod has ONE contract now (SpecSysMknod.v, listed with
-# the abstract-state layer it stands on).
 SysLinkBudget.v
 SpecSysLink.v
 ProofSysLinkParts.v
@@ -1493,8 +1362,6 @@ LogDefs.v
 TxPin.v
 ProcDefs.v
 BioDefs.v
-# the generation as a saved predicate (the child token / exit escrow);
-# [Xv6Cameras.ctokG] is its capacity, so it sits just below the bundle.
 ChildTok.v
 Xv6Cameras.v
 Xv6G.v
@@ -1527,9 +1394,6 @@ FsCollect.v
 FsCollectImg.v
 FsCollectAll.v
 LogSnapLaw.v
-# the banked receipt itself: a leaf over FsCrash + FsDurSnap, listed here
-# beside the WAL's other parked laws because LogInv requires it (the
-# owner-ruled banking, fs-syscall-specs lane Y).
 FsFlushedCore.v
 FsDurSyscall.v
 FsAbs.v
@@ -1552,28 +1416,14 @@ ProofNparWrapEra.v
 LinkNparWrapEra.v
 SysReadDefs.v
 FsAbsMknodFire.v
-# sys_mknod's ONE contract, its proof and its link.  The stable corollary
-# is DERIVED inside the proof file (no second walk, no second seal); its
-# arms cannot key on the fetched string, and SpecSysMknod's closing note
-# has the obstruction in full.
 SpecSysMknod.v
 ProofSysMknod.v
 LinkSysMknod.v
 
-# fs-syscall-specs lane P: the era-0 /init pins, re-derived on the abstract
-# state (the port the banner of claude-notes/projects/namei-pinned-lookup.md
-# asks for).  A LEAF, like every consumer of FsImgCheck -- nothing requires it.
 FsInitPin.v
 SysOpenDefs.v
 FsAbsStart.v
 
-# sys_sync's durability receipt.  FsFlushedCore builds [flushed b D] out of
-# the crash record's mono-list history (no new ghost, no arity moved) and is
-# a LEAF over FsCrash + FsDurSnap -- deliberately BELOW LogInv, which banks
-# it as a conjunct of log_res (see that file's header for why the receipt
-# cannot sit above the WAL).  FsFlushed re-exports it and adds the per-node
-# composition over FsDurSyscall's certificates.  sys_sync's own contract
-# states the receipt at these leaves; its row is listed above.
 FsAbsOpenFire.v
 ProofSysOpenBits.v
 ProofSysOpenShared.v
@@ -1584,258 +1434,51 @@ ProofSysOpenJoin.v
 ProofSysOpenWalk.v
 ProofSysOpen.v
 
-# fs-syscall-specs lane P, transport half: the era-0 identification that
-# closes lane P GAP (1) -- the map the boot mint founds the era at IS
-# era0_D, at the one era-0 premise (this era's disk is mkfs's image).  Also
-# a LEAF: its import cone is FsInitPin's own and nothing requires it.
 FsInitPinBoot.v
 SysUnlinkDefs.v
 FsAbsReadFire.v
-# ...and lane W's O_CREATE ARM itself, which the carry unlocks.
-# ProofSysOpenCreArm is the SHIM: the blocks from the join down are
-# parametric in the four caller predicates, so the create arm runs them at
-# shim predicates and converts the armed post afterwards.
-# ProofSysOpenEntryC is +0x38..+0x48 and ARM A-FAIL; ProofSysOpenFull
-# is the entry with the +0x36 branch mirrored, and it SEALS
-# SpecSysOpen.SYSOPEN -- ONE parameter, keyed on om_create, with the plain
-# arm applied from ProofSysOpen's own functor, so there is one proof of
-# that arm in the tree and not two, and ProofSysOpen's functor is
-# unascribed.
 ProofSysOpenCreArm.v
 ProofSysOpenEntryC.v
 ProofSysOpenFull.v
 LinkSysOpen.v
 FsAbsWriteFire.v
-# fs-syscall-specs, THE CONSOLE-WRITE LANE: init.c's printf path, and the
-# campaign's last device-side gap on init.  Since lane OUT-FUPD the
-# observable is not a RECEIPT the callee hands back but a JUSTIFICATION the
-# caller brings: consolewrite takes SpecConsolewrite.cons_out_chain, one
-# view-shift node per byte over the caller's own cursor family, and returns
-# that cursor at the count it pushed.  Hence the LOCATED trio
-# (UartSentLoc.v, SpecUartwriteLoc.v, ProofUartwriteLoc.v,
-# LinkUartwriteLoc.v) is gone: there is one uartwrite contract again, and
-# the chain flattens onto it.  ProofFilewrite's device arm calls
-# consolewrite at every major -- and therefore asks for the chain at every
-# major -- and LinkFilewrite closes the chain, so init.c's printf path is
-# proved end to end over the standing assumptions and nothing else.
 SpecConsolewrite.v
 ProofConsolewrite.v
 LinkConsolewrite.v
 
-# The era-0 SHELL pins: FsInitPin's /init pair (path pin, content pin,
-# arun walk) and FsInitPinBoot's boot transport, replayed at inum 13 with
-# ElfUser.sh_elf's bytes -- what a verified /init answers kexec's contract
-# with at its exec("/sh").  A THIRD LEAF over the same cone: it reuses
-# both files' generic layers and restates nothing, so only its own two
-# dinode vm_eq's compute.
 FsShPin.v
-# ...and the same three sentences for ECHO, at inum 4 with ElfUser.echo_elf's
-# bytes -- what a verified /sh answers kexec's contract with at the console
-# line "echo hello world", and the third pin of the echo application's claim.
-# A FOURTH LEAF over the same cone, on FsShPin's mold.
 FsEchoPin.v
-# FsConsPin = THE CONSOLE DEVICE NODE, which is NOT in the tracked image:
-# the two states its inum can be in (ABSENT -- no "console" entry in the
-# root, which is what era 0 is -- and PRESENT AT AN INUM), the boot
-# transport of the era-0 state, the file pin GENERALISED over the three
-# binaries, and the pure delta algebra an arm / create / unarm / trunc
-# moves both by.  A FIFTH LEAF over the same cone; nothing in iProp.
 FsConsPin.v
-# kexec's ONE contract: the walk, one observation of the file, and the
-# caller's own u-mode WP for the program observed (SpecKexec.v's header).
-# KexecDefs.v, far below, is the vocabulary leaf it is stated over.
 SpecKexec.v
-# InitBoot = the FIRST PROCESS'S EXEC BUNDLE: kexec's caller-side bundle at
-# "/init" with the slot piece at UexecRet.uslot, plus the path constant
-# forkret's boot arm calls kexec at.  The kernel never mints a slot -- this
-# bundle is what the system theorem asks its application for (Hinit_boot),
-# what userinit's park captures, and what forkret's boot arm spends.
 InitBoot.v
-# THE PURE LOADER ALGEBRA the exec proofs' loop invariants consume: the
-# image inclusion laws ([uimg_sub] over [elf_image]), the loadseg window,
-# the [sz] chain ([kexec_sz_after] = [elf_mem_end], hence [kexec_sz]) and
-# the stack page's zero fill / [kexec_args_at].  iris-free (no proofmode);
-# it sits HERE rather than beside ElfBridge.v only because [kxc_sp] /
-# [kexec_args_at] / [loads_ascending] have no home below KexecDefs*.v.
 KexecImageAlg.v
-# ElfLoadable = the two verified images are files xv6's exec loads
-# ([kexec_loadable] at ElfUser.sh_elf / init_elf), through the computable
-# twin of the acceptance predicate.  A leaf that pays the one vm_compute
-# the *Kernel.v entry constructors deliberately never pay.
 ElfLoadable.v
 KexecBridge.v
 SpecSysExec.v
-# PinnedObs = THE PINNED OBSERVATION FAMILY, once and syscall-agnostically:
-# the walk cursor, the terminal observation and the step that identifies the
-# observed node, all read off the application's claim law by opening
-# AppInv.app_inv inside each fire.  Every "walk a path, observe the node"
-# bundle is this lemma plus that syscall's own piece; PinnedExec is the
-# first instance.
 PinnedObs.v
-# PinnedExec = a verified program's OWN exec deposit, from a PIN on the
-# abstract view: the walk cursor and the terminal observation read the
-# application's claim by opening AppInv.app_inv inside each fire, and the
-# slot piece answers with the exec'd program's kernel-side constructor.
-# Generic in the pin, the taint, the payload and the slot predicate; init's
-# exec of /sh and sh's of /echo are its instances.
 PinnedExec.v
-# PinnedOpen = the SECOND instantiation of PinnedObs, at open's two pieces:
-# the bundle at the argument's path (PATH-ARGS) and the reading of open's
-# receipt at a DEVICE pin -- the descriptor is the pinned device's major,
-# the file and directory arms are refuted, and the walk may still miss.
-# What it does NOT supply is open's TRUNCATION commit: that piece's step is
-# owed at every file row in the view, which no pin-carrying claim can pay.
 PinnedOpen.v
-# UexecExecInst = the kernel-side instance of UexecSG's [uexecSG] and
-# [uprogSG]: [sbundle X 7 W] := some [sys_exec_au_pre] at the trapping key's
-# image, argv pointer (trapframe argument 1) and descriptor view, [emp] at
-# every other number, [spost] [emp] everywhere, and [ssupply] the
-# application-side fs invariant [FirstTok.fsabs_env] -- which is why it sits
-# above FsAbsInvFire (the supply law's exec case IS that mint).
 UexecExecInst.v
-# UInitSh = init's OWN exec deposit, PAID: [init_sh_slot] (the file-system
-# invariant, the duplicating claim law at FsShPin.era0_sh_pins, the taint's
-# generic slot and sh's entry payload), [init_args_det] (init's argument
-# vector is a constant of its image, so na = 1 and alen 0 = 2 -- which is
-# what prices sh's frames), and the assembly into UkInit.init_exec_sup.
-# ABOVE UexecExecInst because the last step is [sbundle_exec_intro], which
-# is the kernel's INSTANCE of UexecSG -- the u-tier files below state
-# everything over the class.
-# UexecExecMint = the generic mint: the loop's slot at every key, from the
-# invariant and UexecCond.cond_entry_slot with both premises discharged from
-# the instance.
 UexecExecMint.v
 ProofSysExec.v
 LinkSysExec.v
-# THE CHUNK LOOP, AND THE SEAL IT CLOSES (lane W, FILEWRITE-AU).
-#   ProofFilewriteAU is ProofFilewrite's walk on the inode arm only, with
-# FsAbsWriteFire.wrf_awrite_fire in place of the ireg_top_retag; the three
-# Link files below make SYSWRITE_AU_ERA (and its stable corollary) an
-# unconditional theorem, WITHOUT LinkConsolewrite's Axiom -- the device arm
-# is refuted by the contract's premise rather than walked.
-# INIT STAGE 1 (bare tier, echo/sync mold): init.c on the Uk engine --
-# start + main prologue + the console preamble with BOTH arms of the
-# open(...) < 0 test, up to the restart loop head at 0x32, which the two
-# theorems take as a hypothesis.  The header records the three lane
-# findings (fork/exec rows; the unbounded-loop discipline; wait s window row).
-# UkInitPrintf.v is what the loop head 0x32 calls FIRST: ulib's
-# printf -> vprintf -> putc -> write, for init's one static literal.  The
-# %-conversion tree (0x516 and 0x53c..0x794) is REFUTED from the literal's
-# own bytes, not proved: [uki_fmt]'s last clause says no byte is a percent
-# sign, so vprintf's pending-% register is an invariant zero.
-# UkInitLoop.v walks init's RESTART LOOP itself -- 0x32..0xb8, both heads
-# (0x32 and 0x44) under ONE iLoeb over their conjunction, fork's BOTH
-# continuations, exec's -1 arm, and the three dying arms -- and so
-# DISCHARGES UkInit.v's [uki_loop_head].  What is left of stage 1 is the
-# single Prop [uki_wait_ok]: that wait's window row, based at the NULL
-# status pointer init passes, does not overwrite the loaded image.  It is
-# false as the row stands (finding (3)) and true of the kernel, so the
-# three theorems that take it are conditional; everything below them is
-# not.  Read the header before extending.
-# THE EXEC COMPOSITION.
-#   ProofKexecA is phase A with the namei call at SpecNameiEra's era walk
-# and the header oracle ANSWERED rather than relayed; ProofKexec composes it
-# with the shared blocks B..D at
-# [Q := KexecBridge.exec_built_Q (kxc_fb datl dnf) ef ...], where the one
-# paying site is discharged by exec_built_Q_intro and the exit is converted
-# twice (kxau_close_fail below +0x090, kxau_close at the receipt above it).
-# LinkKexec closes the functor over LinkNameiEra beside LinkNamei.
 ProofKexecA.v
 ProofKexec.v
 LinkKexec.v
 
-# THE CONSOLE TRACE CONNECTION (fs-syscall-specs; claude-notes/projects/
-# uart-trace.md, the SAFETY direction).
-#   UartAccepted is the pure leaf beside ObsTrace: the device invariant
-# [u_wire <= u_out] as a step invariant of the language, and the TIE it
-# gives -- every ObsUartOut byte of the current power cycle is a byte the
-# kernel ACCEPTED, in order ([run_out_accepted]).  UartSentResidue, the
-# Iris-to-pure step for the LOCATED receipt, went with the receipt (lane
-# OUT-FUPD).  SystemUartAccepted states the whole thing beside adequacy's
-# own conclusion at the real image.
 UartAccepted.v
 SystemUartAccepted.v
-# APPLICATIONS (claude-notes/design/applications.md): the record and the
-# whole-system theorem at one ([App.xv6_app_adequacy]).
 App.v
 
-# The echo application's console DISCIPLINE and OUTPUT CLAIM as pure
-# combinatorics over the observation trace (no Iris): the boot messages,
-# the pure-suffix point, the expected session transcript, D0-D3 and
-# [good_out].  Exported by AppEcho.v.
 EchoDisc.v
-# The console UART's ACCEPTED-INPUT LOG (lane E5): [echo_of], [cons_erase],
-# the log entry and the two pure boundary facts [read_ok]/[log_ok] the
-# kernel proves at a console read.  Iris-free; nothing of the kernel's ring
-# is in it.  SpecConsoleintr imports it for [echo_of]/[cons_erase].
 ConsLog.v
-# The PURE half of E5's application claim: the transcript stage machine
-# [D]/[pending] over the echoed inputs, and the four facts the Iris claim
-# applies (the stage is below the session, the next echo is the next input,
-# the read window is a slice of the echoed list, PHI's pure part).
 EchoOutPure.v
-# E5's application claim, THE IRIS HALF (lane ECHO-OUT): the two console
-# port claims (taint / fresh / paired), the ghost names at the fixed part,
-# the LEDGER-ANCHORED era machine the claims are pinned to, and the four
-# links stated at the mask the kernel's own links run at.  Below AppEcho
-# and abstract in the taint, so that the claims may be read without the
-# era-0 pin cone.
 EchoOut.v
-# The four links of E5's claim as ONE PERSISTENT LAW (lane IO-LEAF, D1):
-# the write link, its block-first and taint variants, and the read link,
-# packaged as closed [] wands a PROGRAM can hold as a premise the way it
-# holds a write deposit today, plus the entailment that proves them under
-# the boot record's four equations.  Above EchoOut and below AppEcho: the
-# statements name the era's ghosts and the kernel's console contracts,
-# never the record.
 EchoLinks.v
-# ...AND THE CREDENTIAL ACROSS ONE TURN WITH A CHILD, AND ACROSS SH'S OWN
-# FORK PANIC (lane SH-LINE-CRED): the block family, the prompt after a
-# child, the panic that opens the next round's banner; the TIGHT shapes
-# (wr_tail).  Above EchoLinks, below everything that spends it.
 EchoLinksLine.v
-# The ECHO application: its discipline, fixed part, ledger, tag, the
-# [taint or pins] predicate over the three era-0 pin files, the record
-# [app_echo], and every hypothesis of App.xv6_app_adequacy except
-# [Hinit_boot] and [Hphi] discharged as a lemma at its fields.  It sits
-# HERE, above App.v, because the record and those dischargers are stated at
-# [App.xv6_app] and at the theorem's own binders.
 AppEcho.v
 
-# The stage-1 init program proof (first Uk generation) is GONE as of
-# 2026-08-30: UkInit.v was replaced by the urun port below, and its two
-# companions UkInitPrintf.v / UkInitLoop.v are deleted rather than kept
-# off-build -- their engine (UexecRet's [ukc], UkStep/UkLeaf/UkStore) is
-# not what the port runs on, and `git show 812cc9880:iris/UkInitLoop.v`
-# is a better reference than a file the coverage gate has to be told to
-# ignore.  What is worth re-reading there: the 212-instruction structural
-# refutation of vprintf's format tree from the literal's own bytes, and
-# the double-headed loop induction that closes 0x32 and 0x44 under one
-# iLoeb.
-
-# fs-syscall-specs lane W: THE UNLINK WALK.  FsAbsUnlinkFire is the fire
-# leaf (FsAbsMknodFire / FsAbsOpenFire / FsAbsWriteFire are the one-per-
-# syscall precedent): the four fire points of sys_unlink's two-instant
-# contract, plus the abs_of wrap of the landed dir_entries_unlink_eq, the
-# count-lowered bridge at both iupdates, and the isdirempty bridge in both
-# directions.
-#   ProofSysUnlinkShared is the shared layer (the hoisted projections, the
-# name tie, the fire sites' pure side conditions) and the five blocks are
-# the walk.  ProofSysUnlinkParts, ProofSysUnlinkTails (every exit block) and
-# ProofSysUnlinkPure's top-level pure layer sit below them.  ProofSysUnlink
-# seals SpecSysUnlink.SYSUNLINK -- its one parameter wp_sys_unlink -- and
-# LinkSysUnlink makes it unconditional: assumption set = resv_matches,
-# resv_is_valid, funext, i.e. LinkNamexEra's, with nothing new entering the
-# cone.
 FsAbsUnlinkFire.v
-# app round E2, lane E2-L: LINK IN PLACE.  SpecSysLink gains the three
-# commits (the target's count up, the parent's entry, and the undo -- which
-# IS SysUnlinkDefs's utgt_commit_at, reused from the statement leaf) and
-# FsAbsLinkFire is the fire
-# leaf for the first two, beside the abs_of wraps of the landed
-# dir_entries_dirlink_ins and of the count-raised record.  It sits here,
-# below FsAbsUnlinkFire, because the undo's fire is uf_utgt_fire itself;
-# ProofSysLink/ProofSysLinkTails (listed far above) consume it.
 FsAbsLinkFire.v
 FsAbsInvFire.v
 ProofSysUnlinkShared.v
@@ -1846,153 +1489,12 @@ ProofSysUnlinkW5F.v
 ProofSysUnlinkW5D.v
 ProofSysUnlink.v
 LinkSysUnlink.v
-# fs-syscall-specs lane SH-TO-URUN, STAGES 1-2: the shell's program proof
-# on the urun engine.  UCodeShK.v is a SECOND code catalog over the SAME
-# dump as UCodeSh.v -- generated at [--prog shk] (tools/ucode_shk.txt) so
-# the first-generation sh proofs (UProofSh*.v, still on-build over WpUmode*
-# and UmodeIo's io-protocol) keep [sh_text_sub] / [ui_sh_*] / [sh_code]
-# while the port gets [shk_text_sub] / [uis_shk_*] / [shk_code] over the
-# same ShInstrs.sh_bytes.  It covers 192 instructions in 10 functions:
-# start, main, getcmd, memset, gets and the open/close/exit/write/read
-# stubs.  IT IS NO LONGER THE LANE'S COMPILE-TIME BUDGET.  A catalog used
-# to cost ~22 s fixed plus ~1.9 s PER INSTRUCTION (192 instr = 320 s), and
-# that is why this note used to say the parser's ~500 more belonged in a
-# SECOND catalog file; the whole of it was ONE inline [ltac:] in [uis_run]
-# (see the tactic's own comment, and optimization.md's "unshelve hoist").
-# Hoisted, this file is 10.6 s and an instruction costs ~0.03 s, so a
-# 700-instruction catalog would be well under a minute -- split it for
-# readability if you like, but not for the build.
-#   UkRunBr.v is the ONE branch leaf UkRunLeaf.v does not have and should
-# ([wp_uk_btype0], the base branch against x0, whose value is not readable
-# off the register file) -- a six-line re-thread of an existing UkBranch
-# leaf.  RELOCATION ASK: it belongs beside [wp_uk_btype] in UkRunLeaf.v.
-# The file's other leaf, [wp_uk_btype_later], is GONE from here: init's
-# loops needed the same rule and it now lives in UkRunLeaf.v, which is
-# where both always belonged.
-#   UkSh.v is the walk: the quiet-row stub shape once ([wp_ksh_qstub],
-# instantiated at open, close and write), exit, start, main's prologue, the
-# console preamble (an iLoeb whose invariant is EMPTY -- its branches are
-# case split on the abstract [uv_btaken] boolean, so the walk never learns
-# what fd the kernel returned), and the COMMAND LOOP: getcmd -> write +
-# memset + gets -> read, the leading-blank scan, and a second iLoeb whose
-# invariant is the BUFFER plus five register constants.  The scan
-# terminates on the NUL gets plants, which is the one place a fact about
-# memory decides control flow.  ONE Hypothesis, [ush_read_leaf]: the
-# general window ecall leaf, which UkRunSys.v does not have yet; it is
-# spelled at [wp_uk_ecall_wait_null]'s idiom and every lemma that depends
-# on it says so and carries it as an explicit argument.  memset and the
-# scan do not.  The walk stops at 0x97a, taken as [ush_rest] -- an abstract
-# continuation that takes the LOOP HEAD as its own premise, because the
-# rest of main's body falls back into it.  Audit = the standing three,
-# zero Admitted.
-#   STAGE 5 grows the catalog to 326 instructions in 18 functions (runcmd,
-# fork1 and the fork/exec/pipe/wait/dup/chdir stubs join it) and adds
-# UkShRun.v, the COMMAND TREE walk: runcmd's prologue and its 0x1398 jump
-# table, the five arms (EXEC, REDIR, PIPE, LIST, BACK) and fork1.  The
-# recursion is ORDINARY STRUCTURAL INDUCTION on a finite tree -- the node
-# predicate [ush_cmd] is a premise, not a parse, and stage 4 is what builds
-# one -- with the stack budget [6 * ush_ht c] words, one 48-byte frame per
-# level.  [ush_cmd] is PERSISTENT (every byte DfracDiscarded), which is
-# what lets it cross a fork as a [UkFork.Forkable] payload; the three
-# forking arms carry it, the jump table and (PIPE) the two fd words over.
-# ONE Hypothesis, [ush_diag_leaf]: the diagnostic subtree -- panic and the
-# two fprintf-and-die tails -- at its three entry pcs; UkShDiag.v below
-# DISCHARGES it.  FOUR lane leaves, all RELOCATION ASKS:
-# [wp_uk_cldq]/[wp_uk_clwq]/
-# [wp_uk_lwuq] are UkRunMem's compressed loads and lwu at a DFRAC (their
-# proofs already are), and [wp_uk_clw_text] is a real gap -- a four-byte
-# load out of the TEXT half, which the jump table needs and which
-# [wp_uk_lbu_text] only does one byte wide.  Audit = the standing three,
-# zero Admitted, zero new Axiom.
-#   THE DIAGNOSTIC SUBTREE (ask 7) is UkShDiag.v: panic (0x4a, 11
-# instructions) on top of fprintf (0x10aa, 17), vprintf (0xdea, 250) and
-# putc (0xd2e, 12), and it discharges [ush_diag_leaf] -- so
-# [wp_kshr_runcmd_final] and [wp_kshr_fork1_final] are UNCONDITIONAL and
-# the runcmd cone has no Hypothesis left.  IT IS UPSTREAM'S WALK AT SH'S
-# ADDRESSES: sh and cat contain the same ulib printf, byte for byte, with
-# sh's copies exactly 0x8da above cat's, so UkCatLit/UkCatPutc/
-# UkCatVprintf/UkCatVprintfS/UkCatFprintf port as an address shift.  The
-# one real generalisation is [shd_str]/[wp_shd_lbu], which abstract the
-# '%s' argument over WHICH HALF of the heap holds it -- cat's is a heap
-# string, sh's panic prints a .rodata literal -- so the '%s' arm is proved
-# once for both instead of twice.  Audit = the standing three.
-# ---------------------------------------------------------------------
-# SH'S COMMAND-TREE RUNNER IS ON-BUILD, AT THE SCOPE ITS RESOURCES REACH.
-#
-# UkShRun.v walks [runcmd] and [fork1] for a tree that is [ush_simple] --
-# no REDIRECT and no PIPE node.  Those two arms are the two that MOVE THE
-# DESCRIPTOR TABLE (REDIR is close-then-open, each half of a PIPE is
-# close/dup/close/close), a descriptor move is spent against the program-
-# side LEDGER ([UserFd.ustd] / [UkSh.ush_std]), and the walk carries the
-# ledger only to FRAME it -- so the two arms are REFUTED from the premise
-# rather than assumed away: [ush_cmd] pins the node's type word, so the
-# jump table's rows 2 and 3 are as dead as its DEFAULT row.  It is the
-# scope stage 4 already hands over (a line with no symbol byte parses to a
-# single EXEC node), and the fd-row port is what takes the premise off.
-# The deleted walks are recoverable: `git show 60a91c01b:iris/UkShRun.v`.
-#
-# THE ONE THING THE ENGINE OWES IT: a FOUR-BYTE LOAD OUT OF THE TEXT HALF.
-# runcmd's jump table at 0x1398 and nulterminate's at 0x13b0 are .rodata,
-# which shares the executable segment's pages, so the heap files them
-# under the TEXT gname; [UkLoad.uk_load_ok] demands a WRITABLE target page
-# (text bytes are stamped and outside the walker's map --
-# claude-notes/projects/icache.md) and the tier's one text reader,
-# [UkRunMem.wp_uk_lbu_text], is width-1 all the way down
-# (WpUmodeTextLoad.v).  So UkShRun.v and UkShParse.v each carry the SAME
-# statement as a named Hypothesis ([wp_uk_clw_text] / [ushp_clw_text_ok])
-# and one engine leaf discharges both.
-# ---------------------------------------------------------------------
 UCodeShK.v
 UkRunBr.v
 UkSh.v
 UkShRun.v
 UkShDiag.v
 
-# ... STAGE 4: the parser.  UCodeShP.v is a THIRD catalog over the same
-# dump (tools/ucode_shp.txt, [--prog shp]) -- 564 instructions in eleven
-# functions: parsecmd, parseline, parsepipe, parseexec, parseredirs,
-# nulterminate, peek, gettoken, execcmd, strlen, strchr.  It is a file of
-# its own for the MEASURED reason recorded above: the catalog's cost is
-# linear in instructions, ~22 s fixed plus ~1.9 s each, and it came in at
-# 18 min 58 s serially -- 4 % over what that law predicts for 564.  Folding
-# it into UCodeShK.v would make one 756-instruction file (~24 min) that
-# every stage-1/2 edit rebuilds.  [shp_code] and [shk_code] are the SAME
-# proposition ([utext_img g ShInstrs.sh_bytes]); UkShParse.v's
-# [ushp_code_shk] is the one-line bridge.
-#   STAGE 4'S WALK IS SIX FILES (split 2026-09-05, for ITERATION COST: the
-# monolith was 14 900 lines and ~2 min 30 s, which every one-line edit
-# anywhere in the parser paid in full).  The cuts are at the call graph's
-# own joints -- UkShParse.v the BASE (pure vocabulary, byte/register
-# algebra, [ushp_sstr], strchr, strlen, the frame runs, the TREE PREDICATE
-# and [ushp_malloc_ty]), then UkShParseLex.v (peek, the token tables,
-# execcmd), UkShParseTok.v (gettoken), UkShParseRedir.v (parseredirs),
-# UkShParseExec.v (parseexec, the argument loop) and UkShParseCmd.v
-# (parsepipe, parseline, nulterminate, parsecmd and THE THEOREM).  Each
-# downstream file opens with a block of [Local Notation X := (Mod.X γt γd
-# γs γfd)] -- one per name it uses -- so the bodies are unchanged text
-# despite the Section discharge, and the aliases carry [rewrite /X] and
-# [unfold X] through as well.  The cost is ~20 s of prelude per file, so
-# the SUM is longer; the WORST single file is 1 min 52 s and four of the
-# six are under 30 s, which is the trade.
-#   Landed across the six: the pure vocabulary
-# ([ushp_skipws]/[ushp_toklen]/[ushp_tokens]/[ushp_find], USpecShParse.v's
-# and USpecSh.v's predicates transposed from [list (bv 8)] onto the index
-# functions [ubytes]/[ustr] carry), the TREE PREDICATE [ushp_tree] that is
-# stages 5-6's interface, the two-word frame proven once
-# ([wp_kshp_pro2]/[wp_kshp_epi2], shared by both walks and by strchr's
-# three exits), and the two leaf walks the lexer and parsecmd sit on:
-# [wp_kshp_strchr] and [wp_kshp_strlen], both parametric in the string and
-# both closing their loop by bounded Rocq induction on the [ustr]
-# resource's own terminator rather than an iLoeb.  THE PARSER THEOREM
-# [wp_kshp_parser] is at the foot of the file, over TWO named Hypotheses:
-# [ushp_malloc_ok] (stage 3's allocator -- DISCHARGED, see UkShMalloc.v)
-# and [ushp_clw_text_ok] (the engine's width-4 text load, above).
-# Audit = the standing three, zero Admitted, zero Axiom.
-#   THE ALLOCATOR'S STATE IS THREADED, not assumed away: the parser calls
-# malloc exactly ONCE per line (execcmd is the only constructor a
-# symbol-free line reaches), so [UMalloc] goes in and [UMalloc'] comes
-# out, both ABSTRACT here -- which is what lets stage 3 pick the scope of
-# its own theorem without stage 4 having an opinion about it.
 UCodeShP.v
 UkShParse.v
 UkShParseLex.v
@@ -2001,195 +1503,31 @@ UkShParseRedir.v
 UkShParseExec.v
 UkShParseCmd.v
 
-# ... STAGE 3: the ALLOCATOR.  UCodeShM.v is a FOURTH catalog over the same
-# dump (tools/ucode_shm.txt, [--prog shm]) -- 150 instructions in four
-# functions: malloc, free, sbrk and the usys.S stub sys_sbrk.  Same measured
-# reason for the split as stage 4's: nothing else rebuilds when the
-# allocator's walk moves, and this file builds in parallel with the other
-# three.  [shm_code] is the SAME proposition as [shk_code]/[shp_code]
-# ([utext_img g ShInstrs.sh_bytes]) and UkShMalloc.v carries the bridges.
-#   UkShMalloc.v is stage 3's walk.  It runs on [UkRunSys.wp_uk_ecall_sbrk],
-# the consumer leaf that landed with the sbrk RETURN-VALUE row, and it is
-# FIRST-CALL SCOPED ([freep == 0]) exactly as the first-generation stack's
-# [wp_sh_malloc_first_body] was: [freep == 0] is what turns K&R's circular
-# search into a straight line, since the list starts empty, so not one back
-# edge of the loop is taken.  [wp_kshm_malloc_first] is UNCONDITIONAL --
-# BOTH arms of sbrk are walked, because morecore checks the -1 -- and what
-# it hands back on the success arm is the natural separation-logic spec:
-# the request's bytes, OWNED, at an address 16-aligned and in range.
-#   [ushm_malloc_ok_holds] is the adapter to stage 4's contract, and the
-# ONE assumption left is [ushm_sbrk_never_fails], stated on the ROW'S OWN
-# ANSWER so it cannot be used anywhere else.  What it replaces is
-# "ninety-one instructions of C behave"; what it says is "the kernel has
-# sixteen pages", which is the gap sh's own UNCHECKED malloc leaves.
 UCodeShM.v
 UkShMalloc.v
 
-# ... STAGE 6: main's body, and the seam between the two lanes.  UkShMain.v
-# is the only file that imports BOTH stage 4's parser and stage 5's runner:
-# what one BUILDS ([UkShParse.ushp_tree], owned, argv as index pairs into the
-# line) is what the other CONSUMES ([UkShRun.ush_cmd], discarded, argv as
-# [UserHeap.uarg]s), and the NUL-cut the parser publishes is exactly what
-# turns one into the other.  [wp_kshm_child] is the walk over an ABSTRACT
-# allocator; [wp_kshm_child_alloc] is it at the concrete one, so the only
-# things left on the far side of the seam are the engine's width-4 text
-# load and stage 3's named sbrk assumption -- and the break the theorem
-# hands [runcmd] is the one the allocator moved it to.
-# ... THE LOOP'S INTERFACE, once main's body is walked.  UkShLoop.v is two
-# definitions and a one-line accessor: [ushl_dat] (the two static lexer
-# tables, and the allocator's untouched first-call state) and [ushl_head]
-# (the loop head at [16 + (80 + n)] -- fork1's 2, the diagnostic subtree's
-# 28, the parser's 60, the runner's 8).  It is a file of its own only so
-# that the cd arm and the fork arm can be stated against the same interface
-# without one requiring the other; it is what [UkSh.ush_loop_head] has to
-# become.
-# ... THE [cd] BUILTIN.  UkShCd.v walks 0x97a..0x9be -- the three byte
-# tests, [strlen], the NUL that chops the newline, [chdir] and the one
-# diagnostic in sh that COMES BACK.  That last is why UkShDiag's string
-# predicate carries a dfrac: the argument is BORROWED out of the line
-# buffer at [DfracOwn 1] and given back, because the command loop rewrites
-# that buffer on its next turn.  [chdir] itself is three instructions on
-# the QUIET row -- the row is about what a syscall WRITES into user memory
-# and chdir writes none, and the working directory rides inside [urun]
-# existentially, so moving it needs no premise here.  The arm is stated at
-# the budget it wants ([16 + (10 + (12 + (4 + n)))], fprintf's 26-word
-# frame included); [UkSh.ush_rest] hands [16 + n], so joining the two is a
-# re-cut of the loop head's budget, which belongs with the fork arm.
 UkShLoop.v
 UkShCd.v
 UkShMain.v
-# ... AND MAIN'S BODY, WHOLE.  UkShFork.v walks the fork arm (0x92c..0x938:
-# fork1, the child/parent split, wait) and then JOINS it to the cd arm as
-# [wp_kshm_body], 0x97a onwards -- the three byte tests dispatch, and the
-# two arms are the two lemmas.  The dispatch is DECIDED BEFORE ANYTHING IS
-# WALKED, because the cd arm's own walk begins at those three tests.
-# What crosses the fork is a [Forkable] payload -- the text and its jump
-# table, [UkShLoop.ushl_dat], and the line buffer -- and the parent gets it
-# all back, which is exactly the address-space copy fork performs.  The
-# break is NOT in it: [usz] is a ghost var, not bytes, so fork1's own leaf
-# hands it to the child.
-#   [wp_kshm_body] IS [UkSh.ush_rest]'s shape modulo two things: the loop
-# head's budget and carried resources ([UkShLoop.ushl_head] instead of
-# [UkSh.ush_loop_head]), and the LEXABILITY premise, which the command loop
-# cannot supply about a line the user typed -- that second one is stage 5's
-# [ush_simple] scope and not this file's.
 UkShFork.v
-# UConsLine = SH-LINE'S STATEMENTS: the shapes the lane's phase 2 rewires
-# to, typechecked before the sweep -- the ledger that knows fd 0 is the
-# console, sh's read leaf with the receipt KEPT, the [gets] loop's line
-# invariant, the two pure facts that discharge [UkShFork.ushf_lexable],
-# and init's LINEAR exec supply for the child it lends the console to.
-# Its header records the two things the tree does not have yet: a payload
-# that crosses exec, and a pinned open that says fd 0 is the console.
 UConsLine.v
-# UkShEcho = E4 SH-ECHO's u-TIER HALF (statements): the ONE command the
-# disciplined line parses to ([echo_cmd], over [UkShMain.ush_args] at the
-# three tokens the literal line lexes to -- PROVED by vm_compute), sh's
-# PINNED exec supply at the root ([sh_exec_sup_echo], on
-# [UkInit.init_exec_sup_pos]'s mould), the cwd-indexed exec stub and the
-# specialised EXEC arm and child dispatch.  It adds no cone: nothing below
-# it requires it, and the payment lives in UShEcho.v at the top.
 UkShEcho.v
-# UInitCons = OPEN-PIN'S STATEMENTS: init's console prologue.  The pin
-# resolves at the console's PRESENT state, the pinned open bundle at init's
-# own path argument and the reading of open's receipt (fd 0 is the CONSOLE
-# device) are PROVED; the ledger rows, init's four-armed head and the mknod
-# step's families are stated.  On UConsLine's mold; above AppEcho and
-# PinnedOpen, whose claim law and bundle it instantiates.
 UInitCons.v
-# UConsOpen = THE CONSOLE OPEN, FACTORED (lane SH-OPEN): everything about
-# the two pinned open bundles at "console" that is not the CALLER's -- the
-# dead walk that gives the absence credential back, the two udepwf_at
-# suppliers over an arbitrary read-only image and literal base, the two
-# key-level open rows, and the receipt's ledger arm.  /init (UInitConsK)
-# and /sh (UShConsK) are two instantiations.
 UConsOpen.v
-# UInitConsK = OPEN-PIN'S LAST STEP: /init's three console leaf BODIES
-# (UkInit.uki_open_absent_leaf / uki_open_console_leaf / uki_mknod_leaf)
-# DISCHARGED at echo's era -- the three udepwf_at suppliers at the pinned
-# xfams, the three walks through UkRunSys's receipt-keeping ecall leaves,
-# and init_cons_leaves_echo out of the era's record equation.  UInitSh's
-# sibling one syscall over; needs both UkInit and UInitCons, which cannot
-# see each other.
 UInitConsK.v
-# UShConsK = SH-OPEN'S LAST STEP: sh's TWO console leaf BODIES
-# (UkSh.ush_open_console_leaf / ush_open_absent_leaf) DISCHARGED at echo's
-# era, on UConsOpen's two suppliers at sh's own literal (UkSh.sh_cons_pv =
-# 0x1378 in UCodeShK.shk_ro) and its own three-instruction stub at
-# ShSyms.open.  UInitConsK's twin one program over; the ABSENT arm runs on
-# a PERSISTENT absence law, which E2 owes (AppEcho.cons_never).
 UShConsK.v
 
-# UShEcho = E4 SH-ECHO's APPLICATION HALF (statements): the /echo pin
-# resolved at the child's cwd and [kexec_loadable echo_elf] (both PROVED),
-# the two readings of sh's own node that price echo's arguments, echo's
-# entry at the EXEC channel ([echo_slot_of_kexec] -- the piece sh's lane
-# never needed, since [UEchoKernel.echo_uexec_slot] is key-level), the
-# assembly through [PinnedExec.pinned_exec_bundle], and echo's post over
-# its transcript against E5's named write receipt.  Above UexecExecInst,
-# UkShEcho and AppEcho, as UInitSh is one level up.
 UShEcho.v
-# UShLine = SH-LINE 2b's PAYMENT: sh's console read SUPPLIED (the linear
-# per-call deposit out of the exit payload's reader token -- [ush_read_sup])
-# and the receipt-keeping leaf [UConsLine.ush_read_recv_leaf] DISCHARGED on
-# [UkRunSys.wp_uk_ecall_read_recv].  Above UkShEcho and UConsLine and on
-# UConsOpen's mold: both need [UexecExecInst]'s instance in scope, which
-# UkSh.v and UShKernel.v (where [uexecSG] is abstract) do not have.
 UShLine.v
 
-# UInitSh must sit above AppEcho and UInitCons: E4 has sh receive the
-# WHOLE pins law (AppEcho.echo_fs_pure, /echo among them) rather than only
-# /sh's, and SH-OPEN has it receive UInitCons's console credential.
 UInitSh.v
-# UInitBoot = E2 (ARM-c (1b)): the first process's exec bundle for a
-# CONSTRAINING application -- /init's pin at "/init" resolved, and
-# InitBoot.init_boot_bundle assembled out of PinnedExec's BOOT shape
-# (SpecKexec.exec_au_pre at a literal path and a literal argument vector,
-# which is what forkret's kexec("/init") is) rather than out of the
-# syscall shape UInitSh uses.
 UInitBoot.v
-# UInitBootAdequacy = E2's B3: App.xv6_app_adequacy at AppEcho.app_echo,
-# with Hinit_boot discharged by UInitBoot.echo_Hinit_boot and only Hphi
-# (E5's) and the shell's owed pieces left as named hypotheses.  SEPARATE
-# from UInitBoot.v because it needs the ADEQUACY cone (RiscvAdequacy,
-# SystemAdequacy, FsCfgBoot, iris.program_logic.adequacy), and that cone
-# does not mix with the u-tier's sbundle wand towers: importing it into
-# UInitBoot.v elaborates without bound (54 GB in 64 s, measured).
 UInitBootAdequacy.v
 
 UkWriteLeaf.v
-# ...AND THE WRITE OBLIGATION AT A CLOSED DESCRIPTOR (lane IO-LEAF, the
-# endgame audit's blocker): sh's ksh_w and init's kinit_w1 met by the write
-# syscall's own closed-fd arm (row 16 at FdClosed is emp), with no deposit.
-# Above UkWriteLeaf (row 16's reading), UkSh and UkInit (the two
-# obligations); below the application.
 UkWriteClosed.v
-# ...AND WHAT PAYS FOR /init's BANNER (lane IO-LEAF, M1(e)): the one place
-# where the era's credential (EchoOut.eturn, carried by the boot) becomes
-# the per-byte payment init's restart head spends
-# (UkInit.kinit_banner_pay).  It sits HERE, above UkWriteLeaf and
-# EchoLinks, because the conversion needs row 16's concrete reading and
-# every file of init's walk sits below the file system -- the UShLine
-# mould.
 UInitBanner.v
-# ...AND WHAT PAYS FOR SH'S PROMPT (lane IO-LEAF, M4a), on the same mould
-# and above UkWriteLeaf for the same reason: sh's "$ " is the byte that
-# RESOLVES round 0 of the prologue, so it goes through the era's prologue
-# link and the ' ' after it through the plain one.
 UShOut.v
-# ...AND WHAT PAYS FOR SH'S PANIC LINE AND ITS PROMPT AFTER A CHILD (lane
-# SH-LINE-CRED), on UShOut's mould: the diagnostic tower's per-byte
-# obligation at fd 2 through the era's link, the prompt call at the widened
-# boundary credential.  Above UShOut, UkShDiag and EchoLinksLine.
 UShPanic.v
-# ...AND WHAT PAYS FOR echo's FOUR WRITES (lane IO-LEAF, M2), for the same
-# reason and on the same mould: the era's write link becomes the per-call
-# obligation echo's argv walk spends (UkEcho.kecho_pay_all).
 UEchoOut.v
-# ...AND WHAT SH OWES THAT PAYMENT (lane IO-LEAF, M3): echo's entry at the
-# era's stage takes its argument vector as a NAMED premise stated against
-# the transcript's alternative (UEchoOut.echo_out_argv), and the shell's
-# parser pins the same three strings against the input line
-# (UShEcho.echo_key_args).  This is the one file where the two readings
-# meet, and it is above both because UShEcho.v sits below UEchoOut.v.
 UShEchoOut.v

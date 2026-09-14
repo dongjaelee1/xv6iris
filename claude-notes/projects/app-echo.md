@@ -160,9 +160,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   OVER 2026-09-16 (`trap-rows-4-B-handover.md`: the ten-item plan, the
   `procs_avail_at` corollary trick since `Some n` is the free-slot count,
   two checks for the successor).
-- [ ] **TRAP-ROWS-5** (kernel; `-tlw`, `lane/trap-rows-5`): LAUNCHED
-  2026-09-16: B1b from the plan -- init's pid = 1, the fork-side token,
-  the wait leaf's `_pid` twin.
+- [x] ~~**TRAP-ROWS-5**~~ LANDED 2026-09-16 (`274483946`; the note below):
+  init's pid = 1, the fork-side token `⌜pidc <> 1⌝`, the wait leaf's `_pid`
+  twin.  THE KERNEL ROWS ARE COMPLETE; `-tlw` is free.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
@@ -3392,6 +3392,37 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+TRAP-ROWS-5 B1b LANDED (2026-09-16; the lane's `1a7682370` cherry-picked onto
+`fac361cd9` as `274483946`; 43 files +1035/-296; builds tr115-tr121 in `-tlw`;
+audit the thirteen; lemma_diff CLEAN; no Admitted).  INIT'S PID IS THE
+LITERAL 1.  The two checks: userinit's park does NOT hold the pid lock at
+the seal (it need not: the payload is re-established inside allocproc at
+its own store); a failing allocproc's no-slot arm never touches `nextpid`
+(the C scans first, allocpid only at `found`), the two freeproc tails come
+back with the token spent.  DEVIATION FROM SHAPE (A), forced: the mirror
+is a ONE-SHOT, not an exact value (updating a two-half value ghost needs
+both halves; a one-shot's untracked side is the persistent one, hence
+free): the index is a `bool`, the value read off `<pid_lock>`'s payload,
+which gains `⌜nextpid = 1⌝ ∨ shot` and `⌜no slot holds pid 1⌝ ∨ shot` (the
+second kills allocpid's retry branch in the boot era); `procs_avail None`
+carries `SlotGen.init_reg` (`∃ g, pid_reg 1 □ g`) refuting kfork's
+candidate -- no caller of allocproc gains a premise it did not hold.
+TRUSTED DIFF: `SpecAllocproc` gains `tk`, premise `procs_avail_at op tk`,
+found arm `if pav_boot op tk then pid = 1 else pid <> 1`, returns
+`pav_spent`; `ProcAvail.pav_core`/`procs_avail_at`/`procs_avail := ∃ t, …`
+(arity unmoved); `ukn_ipid`/`un_ipid` DELETED (and `uslot_of_urun*`'s `ipid`
+parameter); `wait_ans`/`uwait_ans_at`/`uwait_ans_pid` lose `ip`;
+`init_ident_at` pinned; the fork rows gain `⌜pidc <> 1⌝`;
+`UkRunSys.wp_uk_ecall_wait_null_pid` new, `_live`/`_null` verbatim as
+instances of a `_gen`.  Outside lines: UShKernel:606, UInitKernel:368,
+UEchoKernel:455, UEchoOut:793, USyncKernel:181, UkInitMain:1539; UkShRun
+untouched.  WHAT IO-LEAF RECEIVES: the child arm gives `∃ p, ⌜p <> 1⌝ ∗ upid
+(ukn_pid N') p`; `wp_uk_ecall_wait_null_pid … Sc p` + `UexecRet.
+uwait_ans_pid_mine` (`pidv <> 1`, `r <> -1`) give `⌜γ' ∈ Sc ∧ Sc' = Sc ∖ {[γ']}⌝
+∗ exit_tok γ' rv xs ∗ gen_uniq Sc rv γ'`; at `Sc = {[γ]}` this pins `γ' = γ`
+with no pid comparison; `wp_kshr_wait` needs a `_pid` twin (UkShRun).  THE
+KERNEL ROWS ARE COMPLETE.  Handover: `trap-rows-5-handover.md`.
 
 ENDGAME AUDIT (2026-09-16; read-only; scratchpad `endgame-audit.md`; tree at
 a72323b79 = M6a(1), which the audit fetched from the lane and which has since

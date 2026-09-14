@@ -98,7 +98,19 @@ Section SpecEitherCopyin.
       (pid : mword 32) (U : ustate) (dst src : mword 64) (len : nat)
       (src_bytes : nat -> bv 8) (r : mword 64) : iProp Σ :=
     (if user
-     then ⌜r = (mword_of_int 0 : mword 64) \/ r = (mword_of_int (-1) : mword 64)⌝ ∗
+     (* ...AND THE FAILING EXIT CARRIES ITS REASON (lane TRAP-ROWS, T1).
+        [SpecCopyin.copyin_read]'s -1 arm, relayed at the ENTRY descriptor
+        the caller named: a byte of the requested run whose page copyin
+        could not reach, walkaddr having answered 0 and vmfault having
+        declined.  The twin of [SpecEitherCopyout.either_copyout_ran]'s
+        [~ uva_wmapped] relay, one test weaker because copyin has no PTE_R
+        re-walk.  WHICH byte is existential: copyin walks whole pages and
+        the failing round may have copied a prefix of its own run first. *)
+     then ⌜r = (mword_of_int 0 : mword 64)
+           \/ (r = (mword_of_int (-1) : mword 64)
+               /\ exists d : nat, (d < len)%nat
+                    /\ ~ uva_rmapped (pv_upt (us_V U))
+                         (uint (add_vec_int src (Z.of_nat d))))⌝ ∗
      (* THE IMAGE DOES NOT MOVE.  either_copyin only READS user memory, and
         the pages copyin faults in on the way were ALREADY in the block's
         view -- as lazy pages reading 0 -- so vmfault does not move it

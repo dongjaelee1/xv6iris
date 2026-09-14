@@ -296,13 +296,26 @@ Section CwBodies.
          receipt used to be.  The image and the user base are gone with it:
          what the bytes mean is settled inside the shifts the caller
          supplied, so this layer names neither. *)
-      (Q : nat -> iProp Σ) : iProp Σ :=
+      (Q : nat -> iProp Σ)
+      (* THE TABLE THE SHORT-WRITE REASON IS STATED AT (lane TRAP-ROWS, T1),
+         and it is FIXED at the whole call's entry descriptor: the loop's own
+         [U] grows at every round, and a reason reported at a grown table is
+         the STRONGER fact, so pinning it here is what lets each round hand
+         its verdict down by [UserPtTree.uva_rmapped_mono]. *)
+      (Pe : uptd) : iProp Σ :=
     (wp_next (CID0 := CID0) true (proc_addr jp) (fun (CID : CpuId) =>
        (* the image does not move: either_copyin is same-[U] *)
        ∀ (mf : regfile) (r : Z) (P' : uptd),
          ⌜callee_saved m0 mf⌝ -∗
          ⌜uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P'⌝ -∗
          ⌜(0 <= r <= Z.max 0 n)%Z⌝ -∗
+         (* THE SHORT ANSWER'S REASON (lane TRAP-ROWS, T1), the local
+            mirror of [SpecConsolewrite]'s new row. *)
+         ⌜(r < n)%Z ->
+          exists d : nat, (r <= Z.of_nat d)%Z /\ (Z.of_nat d < n)%Z /\
+            ~ uva_rmapped Pe
+                (uint (add_vec_int (m0 !!! Regidx (mword_of_int 11 : mword 5))
+                         (Z.of_nat d)))⌝ -∗
          ⌜mf !!! Regidx Ra0 = (mword_of_int r : mword 64)⌝ -∗
          sie_cap_gpr KT1 mf av true (proc_addr jp) -∗
          cpu_own 0%nat eb (proc_addr jp) true lks -∗
@@ -316,19 +329,22 @@ Section CwBodies.
      extension and the record compose, so the exit weakens along the loop. *)
   Lemma cw_ret_weaken `{CID0 : CpuId} `{XI : CurCtx} (jp : nat) (m0 : regfile) (av : nat)
       (eb : bool) (pid : mword 32) (U : ustate) (P1 : uptd) (n : Z) (lks : gset string)
-      (Q : nat -> iProp Σ) :
+      (Q : nat -> iProp Σ) (Pe : uptd) :
     uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P1 ->
-    cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q -∗
-    cw_ret (CID0 := CID0) jp m0 av eb pid (us_upt U P1) n lks Q.
+    cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
+    cw_ret (CID0 := CID0) jp m0 av eb pid (us_upt U P1) n lks Q Pe.
   Proof.
     intro Hext. rewrite /cw_ret /wp_next.
     iIntros "H" (CID) "%Hg".
     iSpecialize ("H" $! CID with "[%]"); [exact Hg|].
-    iIntros (mf r P') "%Hcs %Hx %Hr %Ha0".
-    iApply ("H" $! mf r P' with "[%] [%] [%] [%]").
+    iIntros (mf r P') "%Hcs %Hx %Hr %Hsh %Ha0".
+    iApply ("H" $! mf r P' with "[%] [%] [%] [%] [%]").
     - exact Hcs.
     - exact (uptd_ext_sz_trans _ _ _ _ Hext Hx).
     - exact Hr.
+    - (* the reason is stated at the CALL's entry descriptor, which this
+         weakening does not move (lane TRAP-ROWS, T1) *)
+      exact Hsh.
     - exact Ha0.
   Qed.
 
@@ -338,13 +354,20 @@ Section CwBodies.
   Lemma cw_epi `{CID : CpuId} `{XI : CurCtx} (CID0 : CPU)
       (jp : nat) (m0 M : regfile) (av : nat) (eb : bool)
       (sp0 : mword 64) (pid : mword 32) (U : ustate) (n r : Z) (lks : gset string)
-      (Q : nat -> iProp Σ) :
+      (Q : nat -> iProp Σ) (Pe : uptd) :
     let pj := proc_addr jp in
     m0 !!! Regidx csp_rs1 = sp0 ->
     M !!! Regidx csp_rs1 = pa_stk sp0 16%nat ->
     M !!! Regidx Rs1 = (mword_of_int r : mword 64) ->
     cw_cs_hi M m0 ->
     (0 <= r <= Z.max 0 n)%Z ->
+    (* THE SHORT ANSWER'S REASON (lane TRAP-ROWS, T1), carried as a Coq
+       premise from whichever exit reached here. *)
+    ((r < n)%Z ->
+     exists d : nat, (r <= Z.of_nat d)%Z /\ (Z.of_nat d < n)%Z /\
+       ~ uva_rmapped Pe
+           (uint (add_vec_int (m0 !!! Regidx (mword_of_int 11 : mword 5))
+                    (Z.of_nat d)))) ->
     (consolewrite_stack <= av)%nat ->
     eb = true ->
     (true = false \/ pj = zero_reg -> (CID : CPU) = CID0) ->
@@ -355,10 +378,10 @@ Section CwBodies.
     proc_priv_core pj pid U -∗
     cw_saved sp0 m0 -∗ cw_rest sp0 -∗
     Q (Z.to_nat r) -∗
-    cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q -∗
+    cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros pj Hm0sp HMsp HMs1 HMcs Hr Hav Heb Hcr.
+    intros pj Hm0sp HMsp HMs1 HMcs Hr Hshort Hav Heb Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv (Hk1 & Hk2 & Hk3) Hrest Hrcpt Hcont".
     assert (Hb1 : add_vec (pa_stk sp0 16%nat)
                     (zero_extend' 64 (concat_vec (mword_of_int 15 : mword 6) ('b"000")))
@@ -496,10 +519,11 @@ Section CwBodies.
                  with "Hcnt") as "Hcnt".
     rewrite /cw_ret.
     iSpecialize ("Hcont" $! CID6 with "[%]"); [wp_next_chain|].
-    iApply ("Hcont" $! E5 r (pv_upt (us_V U)) with "[%] [%] [%] [%] Hcg Hcnt Hpc [Hpriv] Hrcpt").
+    iApply ("Hcont" $! E5 r (pv_upt (us_V U)) with "[%] [%] [%] [%] [%] Hcg Hcnt Hpc [Hpriv] Hrcpt").
     - exact Hcs.
     - apply uptd_ext_sz_refl.
     - exact Hr.
+    - exact Hshort.
     - exact HE5a0.
     - (* the round trip that moved nothing: [us_upt_id] folds the
          descriptor write, and there is no image write left to fold. *)
@@ -533,13 +557,20 @@ Section CwBodies.
   Lemma cw_exit_done `{CID : CpuId} `{XI : CurCtx} (CID0 : CPU)
       (jp : nat) (m0 M : regfile) (av : nat) (eb : bool)
       (sp0 : mword 64) (pid : mword 32) (U : ustate) (n r : Z) (lks : gset string)
-      (Q : nat -> iProp Σ) :
+      (Q : nat -> iProp Σ) (Pe : uptd) :
     let pj := proc_addr jp in
     m0 !!! Regidx csp_rs1 = sp0 ->
     M !!! Regidx csp_rs1 = pa_stk sp0 16%nat ->
     M !!! Regidx Rs1 = (mword_of_int r : mword 64) ->
     M !!! Regidx Rs11 = m0 !!! Regidx Rs11 ->
     (0 <= r <= Z.max 0 n)%Z ->
+    (* THE SHORT ANSWER'S REASON (lane TRAP-ROWS, T1), carried as a Coq
+       premise from whichever exit reached here. *)
+    ((r < n)%Z ->
+     exists d : nat, (r <= Z.of_nat d)%Z /\ (Z.of_nat d < n)%Z /\
+       ~ uva_rmapped Pe
+           (uint (add_vec_int (m0 !!! Regidx (mword_of_int 11 : mword 5))
+                    (Z.of_nat d)))) ->
     (consolewrite_stack <= av)%nat ->
     eb = true ->
     (forall i, (i < 4)%nat ->
@@ -552,10 +583,10 @@ Section CwBodies.
     proc_priv_core pj pid U -∗
     cw_saved sp0 m0 -∗ cw_spill sp0 m0 -∗ cw_buf sp0 -∗
     Q (Z.to_nat r) -∗
-    cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q -∗
+    cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros pj Hm0sp HMsp HMs1 HMs11 Hr Hav Heb Hal Hcr.
+    intros pj Hm0sp HMsp HMs1 HMs11 Hr Hshort Hav Heb Hal Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv Hsaved Hspill Hbuf Hrcpt Hcont".
     rewrite /cw_spill.
     iDestruct "Hspill" as "(S4 & S5 & S6 & S7 & S8 & S9 & S10 & S11 & S12)".
@@ -748,8 +779,8 @@ Section CwBodies.
     { iApply (cnwi_80 with "Ht"). }
     iIntros (CIDj Hsj). iApply bi.later_intro. iIntros "Hcg Hpc".
     iEval (rewrite Hjt) in "Hpc".
-    iApply (cw_epi (CID := CIDj) CID0 jp m0 R8 av eb sp0 pid U n r lks Q
-              Hm0sp HR8sp Hs1v Hhi Hr Hav Heb ltac:(wp_next_chain)
+    iApply (cw_epi (CID := CIDj) CID0 jp m0 R8 av eb sp0 pid U n r lks Q Pe
+              Hm0sp HR8sp Hs1v Hhi Hr Hshort Hav Heb ltac:(wp_next_chain)
               with "Ht Hcg Hcnt Hpc Hpriv Hsaved Hrest Hrcpt Hcont").
   Qed.
   (* =================================================================== *)
@@ -758,13 +789,20 @@ Section CwBodies.
   Lemma cw_exit_break `{CID : CpuId} `{XI : CurCtx} (CID0 : CPU)
       (jp : nat) (m0 M : regfile) (av : nat) (eb : bool)
       (sp0 : mword 64) (pid : mword 32) (U : ustate) (n r : Z) (lks : gset string)
-      (Q : nat -> iProp Σ) :
+      (Q : nat -> iProp Σ) (Pe : uptd) :
     let pj := proc_addr jp in
     m0 !!! Regidx csp_rs1 = sp0 ->
     M !!! Regidx csp_rs1 = pa_stk sp0 16%nat ->
     M !!! Regidx Rs1 = (mword_of_int r : mword 64) ->
     M !!! Regidx Rs11 = m0 !!! Regidx Rs11 ->
     (0 <= r <= Z.max 0 n)%Z ->
+    (* THE SHORT ANSWER'S REASON (lane TRAP-ROWS, T1), carried as a Coq
+       premise from whichever exit reached here. *)
+    ((r < n)%Z ->
+     exists d : nat, (r <= Z.of_nat d)%Z /\ (Z.of_nat d < n)%Z /\
+       ~ uva_rmapped Pe
+           (uint (add_vec_int (m0 !!! Regidx (mword_of_int 11 : mword 5))
+                    (Z.of_nat d)))) ->
     (consolewrite_stack <= av)%nat ->
     eb = true ->
     (forall i, (i < 4)%nat ->
@@ -777,10 +815,10 @@ Section CwBodies.
     proc_priv_core pj pid U -∗
     cw_saved sp0 m0 -∗ cw_spill sp0 m0 -∗ cw_buf sp0 -∗
     Q (Z.to_nat r) -∗
-    cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q -∗
+    cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros pj Hm0sp HMsp HMs1 HMs11 Hr Hav Heb Hal Hcr.
+    intros pj Hm0sp HMsp HMs1 HMs11 Hr Hshort Hav Heb Hal Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv Hsaved Hspill Hbuf Hrcpt Hcont".
     rewrite /cw_spill.
     iDestruct "Hspill" as "(S4 & S5 & S6 & S7 & S8 & S9 & S10 & S11 & S12)".
@@ -961,8 +999,8 @@ Section CwBodies.
     iDestruct (cw_rest_of sp0 m0 Hal with "[S4 S5 S6 S7 S8 S9 S10 S11 S12] Hbuf")
       as "Hrest".
     { rewrite /cw_spill. iFrame "S4 S5 S6 S7 S8 S9 S10 S11 S12". }
-    iApply (cw_epi (CID := CIDl8) CID0 jp m0 R8 av eb sp0 pid U n r lks Q
-              Hm0sp HR8sp Hs1v Hhi Hr Hav Heb ltac:(wp_next_chain)
+    iApply (cw_epi (CID := CIDl8) CID0 jp m0 R8 av eb sp0 pid U n r lks Q Pe
+              Hm0sp HR8sp Hs1v Hhi Hr Hshort Hav Heb ltac:(wp_next_chain)
               with "Ht Hcg Hcnt Hpc Hpriv Hsaved Hrest Hrcpt Hcont").
   Qed.
   (* =================================================================== *)
@@ -982,12 +1020,16 @@ Section CwBodies.
       (Q : nat -> iProp Σ)
       (* RULING A: the image the chain's byte equations are stated at.  The
          user BASE is already a binder here -- it is [src]. *)
-      (Mu : gmap Z (bv 8)) :
+      (Mu : gmap Z (bv 8))
+      (* the short-write reason's fixed table (lane TRAP-ROWS, T1) *)
+      (Pe : uptd) :
     (jp < NPROC)%nat -> γs !! jp = Some γlp -> length γs = NPROC ->
     (n < 2 ^ 31)%Z ->
     (consolewrite_stack <= av)%nat ->
     eb = true ->
     m0 !!! Regidx csp_rs1 = sp0 ->
+    (* the user buffer this loop walks IS the one the post names (T1) *)
+    m0 !!! Regidx (mword_of_int 11 : mword 5) = src ->
     (forall k, (k < 4)%nat ->
        is_aligned_paddr (Physaddr (pa_stk sp0 (16 - k))) 8 = true) ->
     forall (CID : CpuId) (M : regfile) (U : ustate) (i : Z),
@@ -998,6 +1040,11 @@ Section CwBodies.
          image, so this is a loop invariant that holds by conversion at the
          back edge -- [us_M (us_upt U P) = us_M U]. *)
       us_M U = Mu ->
+      (* ...AND THE ROUND'S DESCRIPTOR EXTENDS THE CALL'S (lane TRAP-ROWS,
+         T1).  The loop grows [U]'s table at every copy; the short-write
+         reason is reported at whatever table the failing round had, and
+         this is what carries it back down to [Pe]. *)
+      uptd_ext Pe (pv_upt (us_V U)) ->
       cw_regs M (pa_stk sp0 16%nat) sp0 src n i ->
       M !!! Regidx Rs11 = m0 !!! Regidx Rs11 ->
       (true = false \/ proc_addr jp = zero_reg -> (CID : CPU) = CID0) ->
@@ -1030,11 +1077,11 @@ Section CwBodies.
          [nn] of its nodes -- so it rides the spatial context and not the
          intuitionistic one. *)
       cons_out_chain (S gen_id) Mu src Q (Z.to_nat i) (Z.to_nat (n - i)) -∗
-      cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q -∗
+      cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
       WP (Loop : expr riscv_lang).
   Proof.
-    intros Hj Hjlp Hlens Hn31 Hav Heb Hm0sp Hal.
-    induction mrem as [| mrem IH]; intros CID M U i Hi Hrem HMu Hregs Hs11 Hcr Hbelow.
+    intros Hj Hjlp Hlens Hn31 Hav Heb Hm0sp Hsrc Hal.
+    induction mrem as [| mrem IH]; intros CID M U i Hi Hrem HMu Hpext Hregs Hs11 Hcr Hbelow.
     { (* fuel 0 is unreachable: the head is entered only with [i < n] *)
       exfalso. lia. }
     iIntros "#Ht Hcg Hcnt Hpc Hpriv #Hkenv #Hdinv #Hupin #Htxl #Hpinv
@@ -1180,6 +1227,11 @@ Section CwBodies.
         by (rewrite /B6 upd_ne; [exact HB5a1 | reg_neq]).
       assert (HB6a3 : B6 !!! Regidx Ra3 = (mword_of_int nn : mword 64))
         by (rewrite /B6 upd_ne; [exact HB5a3 | reg_neq]).
+      (* the user source this round copies from, as an offset of the call's
+         own buffer (lane TRAP-ROWS, T1) *)
+      assert (HB6src : B6 !!! Regidx Ra2 = add_vec_int src i)
+        by (rewrite /B6 upd_ne;
+            [ rewrite HB5a2; apply add_vec_moi_comm | reg_neq ]).
       assert (HB6ra : B6 !!! Regidx Rra
                       = add_vec_int (mword_of_int (CW + 0x46) : mword 64) 4)
         by (rewrite /B6 upd_eq; reflexivity).
@@ -1473,13 +1525,19 @@ Section CwBodies.
           { iApply (cnwi_5c with "Ht"). }
           iApply bi.later_intro. iIntros (CIDce Hsce) "Hcg Hpc".
           iEval (rewrite Htgt) in "Hpc".
-          iDestruct (cw_ret_weaken (CID0 := CID0) jp m0 av eb pid U P1 n lks Q Hext1
+          iDestruct (cw_ret_weaken (CID0 := CID0) jp m0 av eb pid U P1 n lks Q Pe Hext1
                        with "Hcont") as "Hcont".
           iDestruct (cons_out_chain_cursor with "Hrcpt'") as "Hrcpt'".
           iApply (cw_exit_done (CID := CIDce) CID0 jp m0 F1 av eb sp0 pid
-                    (us_upt U P1) n (nn + i)%Z lks Q
+                    (us_upt U P1) n (nn + i)%Z lks Q Pe
                     Hm0sp ltac:(destruct HF1regs as (Y1 & _); exact Y1)
-                    HF1s1 HF1s11 ltac:(lia) Hav Heb Hal ltac:(wp_next_chain)
+                    HF1s1 HF1s11 ltac:(lia)
+                    (* the loop RAN OUT: [r = n], so there is no short
+                       answer and the reason is vacuous. *)
+                    ltac:(intro Hlt; exfalso;
+                          rewrite Z.geb_leb in Hdone; apply Z.leb_le in Hdone;
+                          lia)
+                    Hav Heb Hal ltac:(wp_next_chain)
                     with "Ht Hcg Hcnt Hpc Hpriv Hsaved Hspill Hbuf Hrcpt' Hcont").
         + (* another turn: fall through to the head at +0x60 *)
           assert (Hlt : (nn + i < n)%Z)
@@ -1493,19 +1551,22 @@ Section CwBodies.
           assert (Pbk : add_vec_int (mword_of_int (CW + 0x5c) : mword 64) 4
                         = mword_of_int (CW + 0x60)) by pcw.
           iEval (rewrite Pbk) in "Hpc".
-          iDestruct (cw_ret_weaken (CID0 := CID0) jp m0 av eb pid U P1 n _ Q Hext1
+          iDestruct (cw_ret_weaken (CID0 := CID0) jp m0 av eb pid U P1 n _ Q Pe Hext1
                        with "Hcont") as "Hcont".
           iApply (IH CIDce F1 (us_upt U P1) (nn + i)%Z
                     ltac:(lia) ltac:(lia)
                     (* the image tie survives the descriptor's move by
                        conversion: [us_M (us_upt U P1)] IS [us_M U]. *)
                     HMu
+                    (* ...and the descriptor's move composes (T1) *)
+                    ltac:(apply (uptd_ext_trans Pe (pv_upt (us_V U)) P1 Hpext);
+                          destruct Hext1 as (He & _); exact He)
                     HF1regs HF1s11 ltac:(wp_next_chain) Hbelow
                     with "Ht Hcg Hcnt Hpc Hpriv Hkenv Hdinv Hupin Htxl Hpinv
                           Hsaved Hspill Hbuf Hrcpt' Hcont").
       - (* the copy failed: the branch IS taken, and [i] is the answer *)
         assert (Heqt : eq_vec (rget mf1 Ra0) (rget mf1 Rs8) = true).
-        { rgne. rgne. rewrite Hrm1. rewrite Cs8. exact cw_eqv_m1_m1. }
+        { rgne. rgne. rewrite (proj1 Hrm1). rewrite Cs8. exact cw_eqv_m1_m1. }
         assert (Htgtb : add_vec (mword_of_int (CW + 0x4a) : mword 64)
                           (sign_extend' 64 (mword_of_int 60 : mword 13))
                         = mword_of_int (CW + 0x86)) by pcw.
@@ -1520,12 +1581,36 @@ Section CwBodies.
         { rewrite /cw_buf H32 (bytes_own_app (KTR := KT1)).
           iDestruct (bytes_own_of_name (KTR := KT1) nnN buf fb' with "Hb1") as "Hb1".
           iSplitL "Hb1"; [iExact "Hb1" | iExact "Hb2"]. }
-        iDestruct (cw_ret_weaken (CID0 := CID0) jp m0 av eb pid U P1 n lks Q Hext1
+        iDestruct (cw_ret_weaken (CID0 := CID0) jp m0 av eb pid U P1 n lks Q Pe Hext1
                      with "Hcont") as "Hcont".
         iDestruct (cons_out_chain_cursor with "Hrcpt") as "Hrcpt".
         iApply (cw_exit_break (CID := CIDc8) CID0 jp m0 mf1 av eb sp0 pid
-                  (us_upt U P1) n i lks Q
-                  Hm0sp Csp Cs1 Hs11c ltac:(lia) Hav Heb Hal ltac:(wp_next_chain)
+                  (us_upt U P1) n i lks Q Pe
+                  Hm0sp Csp Cs1 Hs11c ltac:(lia)
+                  (* THE SHORT ANSWER'S REASON (lane TRAP-ROWS, T1).
+                     [Hrm1]'s right half is the failing byte at
+                     [src + i + d] for some [d < nn], reported at the
+                     ROUND's own descriptor; [i + d] is below [n] because
+                     [nn <= n - i], and the round's descriptor extends the
+                     call's, so the verdict carries down to [Pe]
+                     ([UserPtTree.uva_rmapped_mono]). *)
+                  ltac:(intros _;
+                        destruct Hrm1 as (_ & d & Hdlt & Hnr);
+                        exists (Z.to_nat i + d)%nat;
+                        assert (Haddr :
+                          add_vec_int (m0 !!! Regidx (mword_of_int 11 : mword 5))
+                            (Z.of_nat (Z.to_nat i + d))
+                          = add_vec_int (B6 !!! Regidx Ra2) (Z.of_nat d))
+                          by (rewrite Hsrc HB6src -add_vec_int_nat_assoc
+                                      (Z2Nat.id i ltac:(lia)); reflexivity);
+                        split_and!;
+                        [ rewrite Nat2Z.inj_add (Z2Nat.id i ltac:(lia)); lia
+                        | rewrite Nat2Z.inj_add (Z2Nat.id i ltac:(lia)); lia
+                        | rewrite Haddr; intro Hr'; apply Hnr;
+                          apply (uva_rmapped_mono Pe (pv_upt (us_V U)) _
+                                   (proj2 (proj2 Hpext)));
+                          exact Hr' ])
+                  Hav Heb Hal ltac:(wp_next_chain)
                   with "Ht Hcg Hcnt Hpc Hpriv Hsaved Hspill Hbuf Hrcpt Hcont"). }
     (* ---------------------------------------------------------------- *)
     (*  +0x60 .. +0x6c -- THE HEAD: nn := min 32 (n - i)                  *)
@@ -1835,7 +1920,12 @@ Section CwBodies.
         all: try done. }
       iDestruct (cons_out_chain_cursor with "Hrcpt0") as "Hrcpt0".
       iApply (cw_epi (CID := CID8) CID jp m A2 av eb sp0 pid U n 0 lks Q
-                Hspm HA2sp HA2s1 HA2hi ltac:(lia) Hav Heb ltac:(wp_next_chain)
+                (pv_upt (us_V U))
+                Hspm HA2sp HA2s1 HA2hi ltac:(lia)
+                (* [n <= 0], so the loop never ran and [0 < n] is false:
+                   the short-write reason is vacuous here. *)
+                ltac:(intro Hlt; exfalso; lia)
+                Hav Heb ltac:(wp_next_chain)
                 with "Ht Hcg Hcnt Hpc Hpriv Hsaved Hrest Hrcpt0 [Hcont]").
       (* [n <= 0]: the loop never runs, so [cw_epi] here never touches a
          lock and does not want [Hbelow]. *)
@@ -2142,13 +2232,15 @@ Section CwBodies.
                 (* RULING A: the chain's byte equations are stated at the
                    image the caller lent; the base is [src], already passed
                    above. *)
-                (us_M U)
+                (us_M U) (pv_upt (us_V U))
                 Hj Hjlp Hlens ltac:(exact (proj2 Hnr))
-                Hav Heb Hspm Hal
+                Hav Heb Hspm eq_refl Hal
                 CIDg9 G8 U 0 ltac:(split; [apply Z.le_refl | exact Hnpos])
                 ltac:(rewrite Z.sub_0_r; reflexivity)
                 (* the image tie, at entry: reflexivity *)
                 eq_refl
+                (* ...and the descriptor has not moved yet (T1) *)
+                (uptd_ext_refl (pv_upt (us_V U)))
                 HA9regs HA9s11 ltac:(wp_next_chain) Hbelow
                 with "Ht Hcg Hcnt Hpc Hpriv Hkenv Hdinv Hupin Htxl Hpinv
                       Hsaved Hspill [Hbuf] [Hrcpt0] [Hcont]").

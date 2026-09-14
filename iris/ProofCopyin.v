@@ -123,6 +123,8 @@ Require Import HartTp WpNext.
 Require Import WpLock.
 Require Import ByteCursor ByteBuf UserBits.
 Require Import PtreeType.
+Require Import PtTree.   (* [pte_vu]: the V&U test a failing walkaddr refutes *)
+Require Import UptTree.  (* [upt_ad_view]: the walk's map vs the user map *)
 Require Import UserPtTree.
 Require Import CpuOwn.
 Require Import KvmSpec.
@@ -625,6 +627,68 @@ Section ProofCopyin.
      EXIT -∗
      WP (Loop : expr riscv_lang))%I.
 
+  (* ------------------------------------------------------------------ *)
+  (* WHY THE -1 ARM FAILED, as a fact about the ENTRY table (lane          *)
+  (* TRAP-ROWS, T1).  [ProofCopyout.co_fault_vpn] / [co_fault_leaf] are    *)
+  (* the mould and this is the same argument with the W test dropped:      *)
+  (* copyin has no [( *pte & PTE_R)] re-walk, so the only verdict a        *)
+  (* failing round has is walkaddr's, and the predicate it refutes is      *)
+  (* [UserPtTree.uva_rmapped].  Three steps join the byte to the page: the *)
+  (* entry table's leaves are all still in the round's grown one           *)
+  (* ([uva_rmapped_mono]), the byte's page is the one the round walked     *)
+  (* ([ProcPtOwn.svpn_of_pgd]), and the leaf the WALK sees is an A/D       *)
+  (* variant of the one the map records ([ProcPtOwn.upt_ad_view_um_vu]).   *)
+  (* ------------------------------------------------------------------ *)
+  Local Lemma ci_fault_vpn (P Pc : uptd) (szv srcva va0 : mword 64) :
+    va0 = and_vec srcva (mword_of_int (-4096) : mword 64) ->
+    uptd_ext_sz szv P Pc -> proc_pt_wf Pc -> uva_rmapped P (uint srcva) ->
+    exists w : mword 64,
+      Pc.(ud_um) !! svpn_of va0 = Some w
+      /\ pte_vu w /\ (uint va0 < 2 ^ 38)%Z.
+  Proof.
+    intros -> Hext Hwf Hrm.
+    destruct Hext as ((_ & _ & Hsub) & _).
+    pose proof (uva_rmapped_mono P Pc (uint srcva) Hsub Hrm) as Hrc.
+    pose proof (uva_mapped_below_maxva Pc (uint srcva) (proj1 Hwf)
+                  (uva_mapped_of_rmapped Pc (uint srcva) Hrc)) as Hbel.
+    destruct Hrc as (vpn & w & j & Hl & Hvu & Hj & Heq).
+    rewrite uint_unsigned in Heq.
+    assert (Hva0 : (uint (and_vec srcva (mword_of_int (-4096) : mword 64))
+                    = bv_unsigned vpn * 4096)%Z).
+    { rewrite uint_unsigned pgd_unsigned Heq.
+      rewrite (Z.add_comm (bv_unsigned vpn * 4096) (Z.of_nat j)).
+      rewrite Z_mod_plus_full (Z.mod_small (Z.of_nat j) 4096 ltac:(lia)). lia. }
+    rewrite uint_unsigned in Hbel.
+    assert (Hlt : (uint (and_vec srcva (mword_of_int (-4096) : mword 64))
+                   < 2 ^ 38)%Z) by lia.
+    assert (Hvpn : svpn_of (and_vec srcva (mword_of_int (-4096) : mword 64)) = vpn).
+    { apply bv_eq. pose proof (svpn_of_pgd srcva Hlt) as Hs.
+      rewrite Hva0 in Hs. lia. }
+    exists w. rewrite Hvpn. split_and!; [exact Hl | exact Hvu | exact Hlt].
+  Qed.
+
+  (* walkaddr's whole failure disjunction, refuted at once *)
+  Local Lemma ci_fault_leaf (P Pc : uptd) (szv srcva va0 : mword 64)
+      (m_ad : gmap (mword 27) (mword 64)) :
+    va0 = and_vec srcva (mword_of_int (-4096) : mword 64) ->
+    uptd_ext_sz szv P Pc -> proc_pt_wf Pc ->
+    upt_ad_view Pc.(ud_tfp) Pc.(ud_um) m_ad ->
+    ((2 ^ 38 <= uint va0)%Z
+     \/ m_ad !! svpn_of va0 = None
+     \/ (exists w, m_ad !! svpn_of va0 = Some w /\ ~ pte_vu w)) ->
+    ~ uva_rmapped P (uint srcva).
+  Proof.
+    intros Hva0 Hext Hwf Hview Hwhy Hrm.
+    destruct (ci_fault_vpn P Pc szv srcva va0 Hva0 Hext Hwf Hrm)
+      as (w0 & Hl & Hvu & Hbel).
+    destruct (upt_ad_view_um_vu Pc.(ud_tfp) Pc.(ud_um) m_ad
+                _ w0 Hview (proj1 Hwf) Hl Hvu) as (w & Hm & Hvu').
+    destruct Hwhy as [Hmx | [Hnone | (wy & Hsy & Hnvu)]].
+    - lia.
+    - rewrite Hnone in Hm. discriminate.
+    - rewrite Hsy in Hm. injection Hm as <-. exact (Hnvu Hvu').
+  Qed.
+
   (* ================================================================== *)
   (*  THE LOOP (+0x56 head, +0x2c body), by induction on FUEL.           *)
   (* ================================================================== *)
@@ -673,7 +737,10 @@ Section ProofCopyin.
       ⌜(res = (mword_of_int 0 : mword 64)
         /\ forall j, (j < len)%nat ->
              M !! uint (add_vec_int srcva0 (Z.of_nat j)) = Some (g j))
-       \/ res = (mword_of_int (-1) : mword 64)⌝ -∗
+       \/ (res = (mword_of_int (-1) : mword 64)
+           /\ exists d : nat, (d < len)%nat
+                /\ ~ uva_rmapped P
+                     (uint (add_vec_int srcva0 (Z.of_nat d))))⌝ -∗
       ⌜uptd_ext_sz szv P P'⌝ -∗
       sie_cap_gpr KT1 mj (K - 12) b p -∗
       cpu_own lvl eb p b lks -∗
@@ -707,7 +774,10 @@ Section ProofCopyin.
       ⌜(res = (mword_of_int 0 : mword 64)
         /\ forall j, (j < len)%nat ->
              M !! uint (add_vec_int srcva0 (Z.of_nat j)) = Some (g j))
-       \/ res = (mword_of_int (-1) : mword 64)⌝ -∗
+       \/ (res = (mword_of_int (-1) : mword 64)
+           /\ exists d : nat, (d < len)%nat
+                /\ ~ uva_rmapped P
+                     (uint (add_vec_int srcva0 (Z.of_nat d))))⌝ -∗
       ⌜uptd_ext_sz szv P P'⌝ -∗
       sie_cap_gpr KT1 mj (K - 12) b p -∗
       cpu_own lvl eb p b lks -∗
@@ -1257,7 +1327,7 @@ Section ProofCopyin.
     assert (Hmws11 : mw !!! Regidx Rs11 = v11).
     { rewrite (callee_saved_lookup Hwcs Rs11 ltac:(vm_compute; reflexivity)). lkp. }
     (* ---- +0x62 c.bnez a0 : the walkaddr verdict ---- *)
-    destruct Hwv as [(Ha0z & _) | (w & Hsome & Hvu & Hvab & Ha0v)].
+    destruct Hwv as [(Ha0z & Hwhy) | (w & Hsome & Hvu & Hvab & Ha0v)].
     2:{ (* ================= MAPPED: borrow the page ==================== *)
       destruct (upt_ad_view_vu Pc.(ud_tfp) Pc.(ud_um) m_ad (svpn_of va0) w Hview Hsome Hvu)
         as (w0 & Hl0 & Hppn).
@@ -1551,7 +1621,15 @@ Section ProofCopyin.
     - lkp.
     - lkp.
     - rewrite /V6 upd_eq. reflexivity.
-    - right; reflexivity.
+    - (* THE FAILING EXIT'S REASON (lane TRAP-ROWS, T1).  The round gave up
+         at the cursor, so the byte the caller may not read is [srcva0 +
+         done] -- and it may not, because walkaddr's verdict at this
+         round's own descriptor refutes [uva_rmapped] there, and the map
+         only grows between the entry descriptor and this one. *)
+      right. split; [reflexivity |].
+      exists done. split; [lia |].
+      rewrite -Hcureq.
+      exact (ci_fault_leaf P Pc szv cur va0 m_ad eq_refl Hext Hwf Hview Hwhy).
     - exact Hext.
   Qed.
 
@@ -1946,7 +2024,11 @@ Section ProofCopyin.
     iApply ("Hcont" $! mf P' g with "Hcg Hcnt Hpc Hpt Hdst [%] [%] [%]").
     - exact Hcs.
     - exact Hjext.
-    - rewrite Hfa0. exact Hres.
+    - (* the loop's own answer IS [SpecCopyin.copyin_read] (lane TRAP-ROWS,
+         T1): the success arm is [copyin_got] at the caller's [srcva], and
+         the failing arm names the byte whose page the walk could not
+         reach, at the ENTRY descriptor. *)
+      rewrite Hfa0. rewrite /copyin_read /copyin_got. exact Hres.
   Qed.
 
 End ProofCopyin.

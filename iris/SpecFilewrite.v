@@ -674,11 +674,30 @@ Section SpecFilewrite.
      every one of them at its store -- so what comes back is its own
      payload at the count consolewrite reached, exactly as the inode arm's
      [write_arms_at] hands back [Q] at the chunk cursor. *)
-  Definition write_cons_arms (Q : nat -> iProp Σ)
+  (* ...AND THE SHORT ARM CARRIES ITS REASON (lane TRAP-ROWS, T1), which
+     is the twin of the read's swallow reason ([SpecFileread.
+     console_receipt]'s [~ uva_wmapped]).  consolewrite's loop has one
+     break -- [either_copyin(...) == -1] -- so a count below the request
+     says that a byte of the run at or after the cursor is on a page the
+     kernel could not READ through: present-and-V&U is what walkaddr
+     tests and copyin has no PTE_R re-walk, so the predicate is
+     [UserPtTree.uva_rmapped] and not [uva_wmapped].
+     [P] IS THE WRITER'S OWN TABLE, the entry descriptor the call ran at,
+     exactly as it is on the read side; [ua] is the buffer this contract
+     already names.  THE OFFSET IS EXISTENTIAL AND NOT THE CURSOR: the
+     chunk the break fired in is up to 32 bytes wide and copyin walks it
+     one page at a time.  The U tier refutes the arm from its own
+     permission map, which knows every byte of its buffer; this layer only
+     exposes the fact. *)
+  Definition write_cons_short (P : uptd) (ua : mword 64) (k : nat) (n : Z) : Prop :=
+    exists d : nat, (Z.of_nat k <= Z.of_nat d)%Z /\ (Z.of_nat d < n)%Z /\
+      ~ uva_rmapped P (uint (add_vec_int ua (Z.of_nat d))).
+
+  Definition write_cons_arms (P : uptd) (ua : mword 64) (Q : nat -> iProp Σ)
       (n : Z) (r : mword 64) : iProp Σ :=
     ((⌜r = (mword_of_int n : mword 64) /\ 0 <= n⌝ ∗ Q (Z.to_nat n))
      ∨ (∃ k : nat, ⌜r = (mword_of_int (Z.of_nat k) : mword 64)⌝ ∗
-                   ⌜Z.of_nat k < n⌝ ∗ Q k)
+                   ⌜Z.of_nat k < n⌝ ∗ ⌜write_cons_short P ua k n⌝ ∗ Q k)
      ∨ ⌜r = (mword_of_int (-1) : mword 64) /\ n < 0⌝)%I.
 
   (* NO PERSISTENCE INSTANCE any more, and that is the point: [Q] is the
@@ -687,12 +706,12 @@ Section SpecFilewrite.
      Nothing in the tree needed the instance for the console arm; the inode
      arm's [write_arms_at] has none either. *)
 
-  Lemma write_cons_arms_ret Q n r :
-    write_cons_arms Q n r -∗ ⌜filewrite_ret n r⌝.
+  Lemma write_cons_arms_ret P ua Q n r :
+    write_cons_arms P ua Q n r -∗ ⌜filewrite_ret n r⌝.
   Proof.
     iIntros "[[%Hr _] | [H | %Hr]]".
     - iPureIntro. destruct Hr as [-> Hn]. by apply filewrite_ret_all.
-    - iDestruct "H" as (k) "(%Hr & %Hlt & _)". iPureIntro.
+    - iDestruct "H" as (k) "(%Hr & %Hlt & _ & _)". iPureIntro.
       rewrite /filewrite_ret /pipe_rw_ret. right.
       exists (Z.of_nat k). split; [exact Hr | lia].
     - iPureIntro. destruct Hr as [-> _]. apply filewrite_ret_m1.
@@ -701,8 +720,8 @@ Section SpecFilewrite.
   (* satisfiability at the degenerate count: the caller's own cursor at 0,
      which the chain hands back for free ([SpecConsolewrite.
      cons_out_chain_0]) *)
-  Lemma write_cons_arms_zero (Q : nat -> iProp Σ) :
-    Q 0%nat -∗ write_cons_arms Q 0 (mword_of_int 0 : mword 64).
+  Lemma write_cons_arms_zero (P : uptd) (ua : mword 64) (Q : nat -> iProp Σ) :
+    Q 0%nat -∗ write_cons_arms P ua Q 0 (mword_of_int 0 : mword 64).
   Proof.
     iIntros "H". iLeft. iSplitR; [iPureIntro; split; [done | lia]|].
     iExact "H".
@@ -711,16 +730,19 @@ Section SpecFilewrite.
   (* THE CALLEE'S POST, IN THE ARMS' VOCABULARY.  The FD_DEVICE arm relays
      consolewrite's return value untouched -- no offset, no re-read, no
      clamp -- so [r] IS the count the cursor is read at. *)
-  Lemma write_cons_arms_of_cursor (Q : nat -> iProp Σ) (n r : Z) :
+  Lemma write_cons_arms_of_cursor (P : uptd) (ua : mword 64)
+      (Q : nat -> iProp Σ) (n r : Z) :
     (0 <= n)%Z -> (0 <= r <= n)%Z ->
-    Q (Z.to_nat r) -∗ write_cons_arms Q n (mword_of_int r : mword 64).
+    ((r < n)%Z -> write_cons_short P ua (Z.to_nat r) n) ->
+    Q (Z.to_nat r) -∗ write_cons_arms P ua Q n (mword_of_int r : mword 64).
   Proof.
-    iIntros (Hn Hr) "H".
+    iIntros (Hn Hr Hsh) "H".
     destruct (Z.eq_dec r n) as [-> | Hne].
     - iLeft. iSplitR; [by iPureIntro|]. iExact "H".
     - iRight. iLeft. iExists (Z.to_nat r).
       iSplitR; [iPureIntro; by rewrite Z2Nat.id; [| lia]|].
-      iSplitR; [iPureIntro; rewrite Z2Nat.id; lia|]. iExact "H".
+      iSplitR; [iPureIntro; rewrite Z2Nat.id; lia|].
+      iSplitR; [iPureIntro; apply Hsh; lia|]. iExact "H".
   Qed.
 
   (* =================================================================== *)
@@ -779,7 +801,13 @@ Section SpecFilewrite.
   (* WHAT THE ARM PAYS BEYOND THE LANDED BLANKET, at the same key.  Split
      out from [filewrite_arms] so [SpecSysWrite] can reuse it under its own
      blanket ([sys_write_ret]) without restating the match. *)
-  Definition filewrite_extra (st : fdstate) (n : Z)
+  (* [P] IS THE WRITER'S OWN PAGE TABLE (lane TRAP-ROWS, T1), and it rides
+     here for the same reason [SpecFileread.fileread_extra_core]'s does:
+     the console arm's short return is a fact about which of the caller's
+     buffer bytes the kernel could read, and that is a fact about this
+     table and nothing else.  The other arms neither have one nor need
+     one. *)
+  Definition filewrite_extra (P : uptd) (st : fdstate) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
       (r : mword 64) : iProp Σ :=
     match st with
@@ -787,7 +815,7 @@ Section SpecFilewrite.
         write_arms_at (fs_gamma_L fsc_fs) i γo n M ua Q r
     | FdOpen _ true (FdDevice ma) =>
         if decide (ma = ConsoleInv.CONSOLE)
-        then write_cons_arms Q n r
+        then write_cons_arms P ua Q n r
         else emp
     | _ => emp
     end%I.
@@ -796,13 +824,13 @@ Section SpecFilewrite.
      arm's extra.  Stating the blanket unconditionally rather than deriving
      it per arm is what makes "the unified contract implies each landed
      form" true BY CONSTRUCTION -- there is nothing to check. *)
-  Definition filewrite_arms (st : fdstate) (n : Z)
+  Definition filewrite_arms (P : uptd) (st : fdstate) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
       (r : mword 64) : iProp Σ :=
-    (⌜filewrite_ret n r⌝ ∗ filewrite_extra st n M ua Q r)%I.
+    (⌜filewrite_ret n r⌝ ∗ filewrite_extra P st n M ua Q r)%I.
 
-  Lemma filewrite_arms_ret st n M ua Q r :
-    filewrite_arms st n M ua Q r -∗ ⌜filewrite_ret n r⌝.
+  Lemma filewrite_arms_ret P st n M ua Q r :
+    filewrite_arms P st n M ua Q r -∗ ⌜filewrite_ret n r⌝.
   Proof. iIntros "[%H _]". by iPureIntro. Qed.
 
   (* ---- READING THE KEYED INPUT, BUILDING THE KEYED OUTPUT -------------
@@ -822,15 +850,15 @@ Section SpecFilewrite.
     cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n).
   Proof. by iIntros "$". Qed.
 
-  Lemma filewrite_extra_inode rb i γo n M ua Q r :
+  Lemma filewrite_extra_inode P rb i γo n M ua Q r :
     write_arms_at (fs_gamma_L fsc_fs) i γo n M ua Q r -∗
-    filewrite_extra (FdOpen rb true (FdInode i γo)) n M ua Q r.
+    filewrite_extra P (FdOpen rb true (FdInode i γo)) n M ua Q r.
   Proof. by iIntros "$". Qed.
 
-  Lemma filewrite_extra_cons rb (mj : Z) n M ua Q r :
+  Lemma filewrite_extra_cons P rb (mj : Z) n M ua Q r :
     mj = ConsoleInv.CONSOLE ->
-    write_cons_arms Q n r -∗
-    filewrite_extra (FdOpen rb true (FdDevice mj)) n M ua Q r.
+    write_cons_arms P ua Q n r -∗
+    filewrite_extra P (FdOpen rb true (FdDevice mj)) n M ua Q r.
   Proof.
     intros Hmj. rewrite /filewrite_extra.
     case_decide as Hc; [by iIntros "$" | by exfalso].
@@ -838,28 +866,28 @@ Section SpecFilewrite.
 
   (* a device at any OTHER major writes no receipt: the cell is null there
      (nothing but consoleinit fills the table) and the arm is a -1 *)
-  Lemma filewrite_extra_dev_other rb wb (mj : Z) n M ua Q r :
+  Lemma filewrite_extra_dev_other P rb wb (mj : Z) n M ua Q r :
     mj <> ConsoleInv.CONSOLE ->
-    ⊢ filewrite_extra (FdOpen rb wb (FdDevice mj)) n M ua Q r.
+    ⊢ filewrite_extra P (FdOpen rb wb (FdDevice mj)) n M ua Q r.
   Proof.
     intros Hne. rewrite /filewrite_extra. destruct wb; [| done].
     case_decide as Hc; [by exfalso | done].
   Qed.
 
-  Lemma filewrite_extra_pipe rb wb n M ua Q r :
-    ⊢ filewrite_extra (FdOpen rb wb FdPipe) n M ua Q r.
+  Lemma filewrite_extra_pipe P rb wb n M ua Q r :
+    ⊢ filewrite_extra P (FdOpen rb wb FdPipe) n M ua Q r.
   Proof. rewrite /filewrite_extra. by destruct wb. Qed.
 
   (* the [f->writable == 0] early return: no arm of the match is armed
      there, because every armed one is a WRITABLE descriptor *)
-  Lemma filewrite_extra_unwritable (inum : mword 32) (γo : gname)
+  Lemma filewrite_extra_unwritable (P : uptd) (inum : mword 32) (γo : gname)
       (C : fcontent) (st : fdstate) n M ua Q r :
     fdstate_ok inum γo C st ->
     (* the WORD the code tested, not a re-reading of it: the walk arrives
        with [beq a5,x0]'s own boolean *)
     eq_vec (zero_extend' 64 (fc_writable C : mword 8) : mword 64)
            (zero_reg : mword 64) = true ->
-    ⊢ filewrite_extra st n M ua Q r.
+    ⊢ filewrite_extra P st n M ua Q r.
   Proof.
     destruct st as [| rb wb ty]; [by iIntros |].
     destruct wb; [| rewrite /filewrite_extra; by iIntros].
@@ -890,10 +918,10 @@ Section SpecFilewrite.
     simpl. iExact "Hc".
   Qed.
 
-  Lemma filewrite_extra_neg st n M ua Q :
+  Lemma filewrite_extra_neg P st n M ua Q :
     (n < 0)%Z ->
     filewrite_in st n M ua Q -∗
-    filewrite_extra st n M ua Q (mword_of_int (-1) : mword 64).
+    filewrite_extra P st n M ua Q (mword_of_int (-1) : mword 64).
   Proof.
     intros Hn. destruct st as [| rb wb ty]; [by iIntros |].
     destruct wb; [| by iIntros].
@@ -907,10 +935,10 @@ Section SpecFilewrite.
   (* ...and at a NON-console major nothing is armed, so the chain is simply
      dropped: what the caller justified was pushed (or not) by a callee this
      layer cannot name, and there is nothing true left to say about it. *)
-  Lemma filewrite_extra_dev_drop rb (mj : Z) n M ua Q r :
+  Lemma filewrite_extra_dev_drop P rb (mj : Z) n M ua Q r :
     mj <> ConsoleInv.CONSOLE ->
     filewrite_in (FdOpen rb true (FdDevice mj)) n M ua Q -∗
-    filewrite_extra (FdOpen rb true (FdDevice mj)) n M ua Q r.
+    filewrite_extra P (FdOpen rb true (FdDevice mj)) n M ua Q r.
   Proof.
     intros Hne. rewrite /filewrite_extra.
     case_decide as Hc; [by exfalso | by iIntros "_"].
@@ -1042,7 +1070,7 @@ Definition wp_filewrite_sconf_body
          descriptor selects proved: the chunk arms and the cursor at the
          stop position on an inode, the accepted-trace receipt on the
          console, nothing anywhere else. *)
-      filewrite_arms st n (us_M U) uaddr Q r -∗
+      filewrite_arms (pv_upt (us_V U)) st n (us_M U) uaddr Q r -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

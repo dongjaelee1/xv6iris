@@ -1038,7 +1038,7 @@ Section ProofFetchaddr.
                   ((rv = (mword_of_int 0 : mword 64)
                     /\ copyin_got (us_M U) addr 8 dst_new)
                    \/ rv = (mword_of_int (-1) : mword 64))).
-        { destruct Hret as [[H0 Hgot] | H1].
+        { destruct Hret as [[H0 Hgot] | [H1 _]].
           - exists (mword_of_int 0 : mword 64), (mword_of_int 0 : mword 64). rewrite H0.
             split; [apply bv_eq; vm_compute; reflexivity|].
             split; [apply bv_eq; vm_compute; reflexivity|].

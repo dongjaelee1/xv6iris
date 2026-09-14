@@ -342,6 +342,75 @@ Proof.
   by rewrite Z_to_bv_bv_unsigned.
 Qed.
 
+(* ===================================================================== *)
+(*  THE ADDRESSES A COPYIN CAN READ (lane TRAP-ROWS, T1).                 *)
+(*                                                                       *)
+(*  The twin of [uva_wmapped], ONE TEST WEAKER.  copyin (kernel/vm.c) has *)
+(*  no [( *pte & PTE_R)] re-walk -- copyout's [( *pte & PTE_W) == 0]      *)
+(*  guard has no mirror on the read side -- so the ONLY test a failing    *)
+(*  copyin performs is walkaddr's, which is "the map has a leaf at this   *)
+(*  vpn and that leaf passes V&U" ([SpecWalkaddr]'s failure reason).      *)
+(*  Hence the predicate a failing copyin refutes is this one: present,    *)
+(*  and user-reachable, with nothing said about R or W.                   *)
+(*                                                                       *)
+(*  Spelled exactly like [uva_mapped] and [uva_wmapped] -- PAGE * 4096 +  *)
+(*  OFFSET, no [svpn_of], no wrap reasoning -- so the three are compared  *)
+(*  by decomposition and a failing copyin's clause is read at the         *)
+(*  caller's own byte address.                                           *)
+(* ===================================================================== *)
+Definition uva_rmapped (P : uptd) (va : Z) : Prop :=
+  exists (vpn : mword 27) (w : mword 64) (j : nat),
+    P.(ud_um) !! vpn = Some w /\ pte_vu w /\ (j < 4096)%nat /\
+    va = bv_unsigned vpn * 4096 + Z.of_nat j.
+
+Lemma uva_rmapped_of_wmapped (P : uptd) (va : Z) :
+  uva_wmapped P va -> uva_rmapped P va.
+Proof.
+  intros (vpn & w & j & Hl & Hvu & _ & Hj & Hva).
+  exists vpn, w, j. split_and!; [exact Hl | exact Hvu | exact Hj | exact Hva].
+Qed.
+
+Lemma uva_mapped_of_rmapped (P : uptd) (va : Z) :
+  uva_rmapped P va -> uva_mapped P va.
+Proof.
+  intros (vpn & w & j & Hl & _ & Hj & Hva).
+  exists vpn, w, j. split_and!; [exact Hl | exact Hj | exact Hva].
+Qed.
+
+(* THE MAP ONLY GROWS, so a byte a copyin can read at the table it was
+   HANDED it can still read at any table that extends it -- which is what
+   lets a failure reported at the round's own (already grown) descriptor be
+   restated at the ENTRY descriptor the caller named.  [ProcPtOwn.uptd_ext]
+   is the submap relation this reads. *)
+Lemma uva_rmapped_mono (P P' : uptd) (va : Z) :
+  P.(ud_um) ⊆ P'.(ud_um) -> uva_rmapped P va -> uva_rmapped P' va.
+Proof.
+  intros Hsub (vpn & w & j & Hl & Hvu & Hj & Hva).
+  exists vpn, w, j.
+  split_and!; [exact (lookup_weaken _ _ _ _ Hl Hsub) | exact Hvu | exact Hj
+               | exact Hva].
+Qed.
+
+(* ...and the vpn a readable address decomposes at is the one the address
+   divides down to, which is how a verdict walkaddr reported at the PAGE
+   base [va0 = PGROUNDDOWN va] reaches the byte. *)
+Lemma uva_rmapped_page (P : uptd) (vpn : mword 27) (w : mword 64) (j : nat) :
+  P.(ud_um) !! vpn = Some w -> pte_vu w -> (j < 4096)%nat ->
+  uva_rmapped P (bv_unsigned vpn * 4096 + Z.of_nat j).
+Proof. intros Hl Hvu Hj. by exists vpn, w, j. Qed.
+
+Lemma uva_rmapped_vpn (P : uptd) (va : Z) :
+  uva_rmapped P va ->
+  exists w : mword 64,
+    P.(ud_um) !! Z_to_bv 27 (va / 4096) = Some w /\ pte_vu w.
+Proof.
+  intros (vpn & w & j & Hl & Hvu & Hj & ->).
+  exists w. split; [| exact Hvu].
+  rewrite (Z.div_add_l (bv_unsigned vpn) 4096 (Z.of_nat j) ltac:(lia)).
+  rewrite (Z.div_small (Z.of_nat j) 4096 ltac:(lia)) Z.add_0_r.
+  by rewrite Z_to_bv_bv_unsigned.
+Qed.
+
 (* NO ALIASING, at byte granularity: distinct user vas name distinct
    bytes.  [ProcPtOwn.um_inj] read through [uva_pa]. *)
 Definition uva_pa_inj (P : uptd) : Prop :=

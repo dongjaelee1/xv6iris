@@ -701,9 +701,22 @@ Section UexecExecInst.
          (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)
          (of_Fo f) (of_Ft f) (uvis_fd W) r fdv'
      else if decide (n = 16) then
-       filewrite_extra (fd_st_of_key (xk_a W 0) (uvis_fd W))
-         (sys_rw_count (xk_a W 2)) (uvis_M W) (xk_a W 1)
-         (wf_Q f) r
+       (* ...AND ROW 16 IS ROW 5's TWIN NOW (lane TRAP-ROWS, T1): the
+          console arm's SHORT return is a fact about which of the caller's
+          buffer bytes the kernel could read through the process's page
+          table ([SpecFilewrite.write_cons_arms]'s reason), and the key
+          carries no table -- only the permission map it projects to.  So
+          the table is existential at the key's own projection, exhibited
+          with the well-formedness and the lazy-bit claim exactly as read's
+          is, which is what lets a process that owns its buffer and is not
+          lazy refute the short arm. *)
+       (∃ P : uptd,
+          ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
+          ⌜ProcPtOwn.proc_pt_wf P⌝ ∗
+          ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
+          filewrite_extra P (fd_st_of_key (xk_a W 0) (uvis_fd W))
+            (sys_rw_count (xk_a W 2)) (uvis_M W) (xk_a W 1)
+            (wf_Q f) r)
      else if decide (n = 17) then
        mknod_arms (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (uvis_M W) (xk_a W 0)
@@ -1406,14 +1419,20 @@ Section UexecExecInst.
   Qed.
 
   Lemma spost_at_write_intro (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
+      (P : uptd)
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
-    filewrite_extra (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
+    perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
+    ProcPtOwn.proc_pt_wf P ->
+    (uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)) ->
+    filewrite_extra P (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (uvis_M W)
       (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f) r -∗
     spost_at X 16 f W r M' fdv' cw' cs'.
   Proof.
-    iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
-    xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
+    intros Hpm Hwf Hlz. iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
+    xv6_skip. xv6_skip. xv6_skip. xv6_take. iExists P.
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [by iPureIntro |]. iExact "H".
   Qed.
 
   Lemma spost_at_mknod_intro (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)

@@ -281,6 +281,21 @@ Definition wp_consolewrite_sconf_body
       ⌜callee_saved m mf⌝ -∗
       ⌜uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P'⌝ -∗
       ⌜(0 <= r <= Z.max 0 n)%Z⌝ -∗
+      (* ...AND A SHORT ANSWER CARRIES ITS REASON (lane TRAP-ROWS, T1).
+         The loop has exactly ONE break -- [either_copyin(...) == -1] -- so
+         a return below the request happened because a byte of the run at
+         or after the cursor is on a page the kernel could not read
+         through.  Relayed from [SpecEitherCopyin.either_copyin_post]'s
+         failing arm and restated at the ENTRY descriptor
+         ([UserPtTree.uva_rmapped_mono] across the rounds' extensions).
+         THE OFFSET IS NOT THE CURSOR: the chunk the break happened in is
+         up to 32 bytes wide and copyin walks it a page at a time, so what
+         the code gives is "some byte at or after [r] and before [n]".  A
+         caller that owns its whole buffer refutes the arm anyway. *)
+      ⌜(r < n)%Z ->
+       exists d : nat, (r <= Z.of_nat d)%Z /\ (Z.of_nat d < n)%Z /\
+         ~ uva_rmapped (pv_upt (us_V U))
+             (uint (add_vec_int uaddr (Z.of_nat d)))⌝ -∗
       ⌜mf !!! Regidx (mword_of_int 10 : mword 5) = (mword_of_int r : mword 64)⌝ -∗
       sie_cap_gpr KT1 mf av b pj -∗
       cpu_own 0%nat eb pj b lks -∗

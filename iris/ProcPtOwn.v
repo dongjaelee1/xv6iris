@@ -1988,6 +1988,29 @@ Qed.
    V|U" or "not writable" AT [m_ad] refutes it.  The tramp/tf leaves cannot
    be in [um] at all ([UptTree.upt_map_wf_not_tramp] / [_not_tf]), which is
    why the well-formedness premise is here. *)
+(* ...AND THE SAME AT THE V&U TEST ALONE (lane TRAP-ROWS, T1).  copyin has
+   no PTE_R re-walk, so a failing copyin refutes only walkaddr's test and
+   the bridge it needs is this one, [upt_ad_view_um_vu_w] minus the W. *)
+Lemma upt_ad_view_um_vu (tfp : mword 44) (um m_ad : gmap (mword 27) (mword 64))
+    (vpn : mword 27) (w0 : mword 64) :
+  upt_ad_view tfp um m_ad -> upt_map_wf um ->
+  um !! vpn = Some w0 -> pte_vu w0 ->
+  exists w, m_ad !! vpn = Some w /\ pte_vu w.
+Proof.
+  intros (Hnone & Hsome) Hwf Hl Hvu.
+  destruct (m_ad !! vpn) as [w |] eqn:Hm.
+  - destruct (Hsome vpn w Hm) as (w1 & a & d & Hleaf & ->).
+    assert (Hw1 : w1 = w0).
+    { destruct Hleaf as [(He & _) | [(He & _) | Hl1]].
+      - exfalso. exact (upt_map_wf_not_tramp um vpn w0 Hwf Hl He).
+      - exfalso. exact (upt_map_wf_not_tf um vpn w0 Hwf Hl He).
+      - rewrite Hl1 in Hl. injection Hl as Hl. exact Hl. }
+    subst w1. exists (pte_set_ad w0 a d).
+    split; [ reflexivity | apply (pte_vu_set_ad w0 a d); exact Hvu ].
+  - exfalso. destruct (proj1 (Hnone vpn) Hm) as (_ & _ & Hun).
+    rewrite Hun in Hl. discriminate.
+Qed.
+
 Lemma upt_ad_view_um_vu_w (tfp : mword 44) (um m_ad : gmap (mword 27) (mword 64))
     (vpn : mword 27) (w0 : mword 64) :
   upt_ad_view tfp um m_ad -> upt_map_wf um ->

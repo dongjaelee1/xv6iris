@@ -3786,7 +3786,7 @@ Section ProofFilewrite.
            WRITABLE descriptor, which [fdstate_ok] refutes here. *)
         rewrite /filewrite_arms.
         iSplitR; [iPureIntro; apply filewrite_ret_m1 |].
-        iApply (filewrite_extra_unwritable inumx γox Cf st n (us_M U) uaddr
+        iApply (filewrite_extra_unwritable _ inumx γox Cf st n (us_M U) uaddr
                   Q (mword_of_int (-1)) Hok Hwrz). }
     - (* ===============================================================
          WRITABLE.  [fw_wbool_of_fall] turns the FALL into the boolean
@@ -4008,7 +4008,7 @@ Section ProofFilewrite.
              same cursor; the console arm's NEG disjunct is pure. *)
           rewrite /filewrite_arms.
           iSplitR; [iPureIntro; apply filewrite_ret_m1 |].
-          iApply (filewrite_extra_neg st n (us_M U) uaddr Q Hneg
+          iApply (filewrite_extra_neg _ st n (us_M U) uaddr Q Hneg
                     with "Hfin"). } }
       (* ---- 0 <= n : [Hn0] is now a fact of the code, not a premise ---- *)
       assert (Hn0 : (0 <= n)%Z) by lia.
@@ -4562,7 +4562,7 @@ Section ProofFilewrite.
                   - exfalso. rewrite /dev_major (Hpin Hc) in Hwp0.
                     apply (f_equal (@bv_unsigned 64)) in Hwp0.
                     by vm_compute in Hwp0.
-                  - iApply (filewrite_extra_dev_other rd true
+                  - iApply (filewrite_extra_dev_other _ rd true
                               (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q
                               (mword_of_int (-1)) Hnc). }
              ** (* ---- consolewrite: the INDIRECT CALL at +0x7e ---- *)
@@ -4673,7 +4673,10 @@ Section ProofFilewrite.
                    the block back at a fresh image -- and the CALLER'S OWN
                    CURSOR at the count it pushed (lane OUT-FUPD). *)
                 iIntros (CIDcw Hscw mf r P')
-                  "%Hcscw %Hupt %Hrr %Hra0 Hcg Hcnt Hpc Hpriv Hrcpt".
+                  "%Hcscw %Hupt %Hrr %Hshort %Hra0 Hcg Hcnt Hpc Hpriv Hrcpt".
+                (* the short-write reason arrives at the CALLEE's register
+                   file; [HE2a1] is the same buffer this contract names *)
+                rewrite HE2a1 in Hshort.
                 assert (Hpc80 : ret_pc (E2 !!! Regidx Rra) = mword_of_int (FW + 0x88)).
                 { rewrite HE2ra. apply bv_eq; vm_compute; reflexivity. }
                 iEval (rewrite Hpc80) in "Hpc".
@@ -4741,11 +4744,19 @@ Section ProofFilewrite.
                   - assert (Hmaxn : Z.max 0 n = n) by lia.
                     assert (Hrn : (0 <= r <= n)%Z) by (rewrite Hmaxn in Hrr; lia).
                     rewrite Hc.
-                    iApply (filewrite_extra_cons rd ConsoleInv.CONSOLE n (us_M U)
+                    iApply (filewrite_extra_cons (pv_upt (us_V U)) rd
+                              ConsoleInv.CONSOLE n (us_M U)
                               uaddr Q (mword_of_int r) eq_refl).
-                    iApply (write_cons_arms_of_cursor Q n r Hn0 Hrn with "Hrcpt").
+                    (* THE SHORT ARM'S REASON (lane TRAP-ROWS, T1), relayed
+                       verbatim from consolewrite's post at the same table
+                       and the same buffer. *)
+                    iApply (write_cons_arms_of_cursor (pv_upt (us_V U)) uaddr
+                              Q n r Hn0 Hrn
+                              ltac:(intro Hlt; rewrite /write_cons_short Z2Nat.id;
+                                    [ exact (Hshort Hlt) | lia ])
+                              with "Hrcpt").
                   - iClear "Hrcpt".
-                    iApply (filewrite_extra_dev_other rd true
+                    iApply (filewrite_extra_dev_other _ rd true
                               (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q
                               (mword_of_int r) Hnc). }
           ++ (* ---------- OUT OF RANGE: the [bltu] is taken to +0x126 ------- *)
@@ -4816,7 +4827,7 @@ Section ProofFilewrite.
              { rewrite /filewrite_arms.
                iSplitR; [iPureIntro; apply filewrite_ret_m1 |].
                rewrite Hstd.
-               iApply (filewrite_extra_dev_other rd true
+               iApply (filewrite_extra_dev_other _ rd true
                          (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q
                          (mword_of_int (-1)) Hnconr). }
         * (* ---- +0x2a c.li a4,2 ; +0x2c bne a5,a4 -> +0x10a (panic) ---- *)

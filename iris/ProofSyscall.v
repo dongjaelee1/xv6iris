@@ -3494,15 +3494,25 @@ Section SyscallArms.
     pv_tf (us_V U) !! tf_arg_idx 0 = Some v0 ->
     pv_tf (us_V U) !! tf_arg_idx 1 = Some v1 ->
     pv_tf (us_V U) !! tf_arg_idx 2 = Some v2 ->
-    filewrite_extra (fd_st_of_key v0 sts) (sys_rw_count v2) (us_M U) v1
-      (wf_Q f) r -∗
+    (* ...AND THE TABLE IS THE PROCESS'S OWN, with the same three facts row
+       5 exhibits (lane TRAP-ROWS, T1): [ProcPtOwn.proc_ptm_wf] is the
+       caller's step for [Hwf], and [ProcInv.proc_priv_core]'s own
+       invariant on [ProcDefs.pv_lazy] is the lazy claim. *)
+    ProcPtOwn.proc_pt_wf (pv_upt (us_V U)) ->
+    (pv_lazy (us_V U) = false ->
+       lazy_free (ud_um (pv_upt (us_V U))) (uint (pv_sz (us_V U)))) ->
+    filewrite_extra (pv_upt (us_V U)) (fd_st_of_key v0 sts) (sys_rw_count v2)
+      (us_M U) v1 (wf_Q f) r -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
   Proof.
-    intros Hn Hv0 Hv1 Hv2. iIntros "H".
+    intros Hn Hv0 Hv1 Hv2 Hwf Hlz. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 16 Hn
               ltac:(vm_compute; discriminate)
               ltac:(vm_compute; discriminate)).
-    iApply (spost_at_write_intro uslot f (uvis_of U sts gn cs pid) r M' sts' cw' cs').
+    iApply (spost_at_write_intro uslot f (uvis_of U sts gn cs pid)
+              (pv_upt (us_V U)) r M' sts' cw' cs'
+              ltac:(rewrite /uvis_of; cbn [uvis_sz uvis_perm]; reflexivity)
+              Hwf Hlz).
     rewrite /uvis_of /tf_w. cbn [uvis_tf uvis_fd uvis_M].
     rewrite (list_lookup_total_correct _ _ _ Hv0)
             (list_lookup_total_correct _ _ _ Hv1)
@@ -5498,6 +5508,10 @@ Section SyscallArms.
     iDestruct (proc_priv_tf with "Hpriv") as "(Htfc & Htfp & Hpvback)".
     iDestruct (tf_page_length with "Htfp") as "%Htflen".
     iDestruct ("Hpvback" with "Htfc Htfp") as "Hpriv".
+    (* the two facts row 16's table existential asks for (lane TRAP-ROWS,
+       T1), read off the block exactly as read's arm reads them *)
+    iDestruct (proc_priv_pt_wf with "Hpriv") as "%Hptwf".
+    iDestruct (proc_priv_lazy with "Hpriv") as "%Hlzp".
     destruct (lookup_lt_is_Some_2 (pv_tf (us_V U)) (tf_arg_idx 0)
                 ltac:(rewrite Htflen; unfold TFWORDS, tf_arg_idx; lia)) as [v0 Hv0].
     destruct (lookup_lt_is_Some_2 (pv_tf (us_V U)) (tf_arg_idx 1)
@@ -5641,7 +5655,8 @@ Section SyscallArms.
     iApply (sysc_exec_out_ne _ _ _ _ _ _ _ _ (sysc_num_ne7 _ _ Hnum eq_refl)).
     rewrite Hmfa0.
     iApply (sysc_out_write U sts gn cs pid fdep v0 v1 v2 r _ _ _ _
-              ltac:(rewrite Hnum; reflexivity) Hv0 Hv1 Hv2 with "Hex").
+              ltac:(rewrite Hnum; reflexivity) Hv0 Hv1 Hv2 Hptwf Hlzp
+              with "Hex").
   Qed.
 
   Lemma sysc_arm_read (γf : gname) (γw : gname) (pj : mword 64)

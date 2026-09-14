@@ -217,6 +217,43 @@ Proof.
   unfold add_vec_int. apply bv_eq. rewrite !add_vec64_unsigned. f_equal. ring.
 Qed.
 
+(* ===================================================================== *)
+(*  WHAT THE TWO EXITS SAY, IN ONE PREDICATE (lane TRAP-ROWS, T1).        *)
+(*                                                                       *)
+(*  [SpecCopyout.copyout_wrote] is the mould, and the two are twins: the  *)
+(*  success exit names the bytes, and the FAILURE exit names A REASON --  *)
+(*  a byte of the run whose page the copy could not reach.  copyin's only *)
+(*  failing test is walkaddr's, taken again after vmfault declined, so    *)
+(*  the reason is [~ uva_rmapped] (present and V&U) and not               *)
+(*  [~ uva_wmapped]: there is no PTE_R re-walk on this side.              *)
+(*                                                                       *)
+(*  IT IS STATED AT THE ENTRY DESCRIPTOR [P], not at the grown [P'], and  *)
+(*  that is the useful direction: the map only grows                      *)
+(*  ([UserPtTree.uva_rmapped_mono]), so "not readable at the table the    *)
+(*  round had" implies "not readable at the table the call was handed",   *)
+(*  which is the one the caller can name and refute against.              *)
+(*                                                                       *)
+(*  WHICH byte is EXISTENTIAL and has to be: copyin walks whole pages, so *)
+(*  the round that fails may have copied a prefix of its own page run     *)
+(*  first.  The consumer refutes the arm from its own permission map,     *)
+(*  which knows every byte of its buffer, so the existential costs it     *)
+(*  nothing.                                                             *)
+(* ===================================================================== *)
+Definition copyin_read (P : uptd) (M : gmap Z (bv 8)) (srcva : mword 64)
+    (len : nat) (dst_new : nat -> bv 8) (res : mword 64) : Prop :=
+  (res = (mword_of_int 0 : mword 64) /\ copyin_got M srcva len dst_new)
+  \/ (res = (mword_of_int (-1) : mword 64)
+      /\ exists d : nat, (d < len)%nat
+           /\ ~ uva_rmapped P (uint (add_vec_int srcva (Z.of_nat d)))).
+
+(* the shape every caller that says nothing about the reason still reads *)
+Lemma copyin_read_ret (P : uptd) (M : gmap Z (bv 8)) (srcva : mword 64)
+    (len : nat) (dst_new : nat -> bv 8) (res : mword 64) :
+  copyin_read P M srcva len dst_new res ->
+  (res = (mword_of_int 0 : mword 64) /\ copyin_got M srcva len dst_new)
+  \/ res = (mword_of_int (-1) : mword 64).
+Proof. intros [[H1 H2] | [H1 _]]; [ by left | by right ]. Qed.
+
 Definition wp_copyin_sconf_mem_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (ktb : ktier) `{!KtierLe ktb KT1} (γa : gname) (mm : regfile)
     (P : uptd) (M : gmap Z (bv 8)) (szv : mword 64) (len : nat)
@@ -250,9 +287,7 @@ Definition wp_copyin_sconf_mem_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GEN
     ([∗ list] j ∈ seq 0 len, (pa_add dst j) ↦ₘ[ktb] dst_new j) -∗
     ⌜callee_saved mm mr⌝ -∗
     ⌜uptd_ext_sz szv P P'⌝ -∗
-    ⌜ (mr !!! Regidx (mword_of_int 10) = mword_of_int 0
-       /\ copyin_got M srcva len dst_new)
-      \/ mr !!! Regidx (mword_of_int 10) = mword_of_int (-1) ⌝ -∗
+    ⌜ copyin_read P M srcva len dst_new (mr !!! Regidx (mword_of_int 10)) ⌝ -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

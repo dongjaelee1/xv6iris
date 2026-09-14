@@ -200,7 +200,15 @@ Section UkWriteLeaf.
     uvis_fd W = sts ->
     uvis_M W = Mv ->
     spost_at X 16 f W r M' fdv' cw' cs' -∗
-    filewrite_extra (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) r.
+    (* THE TABLE COMES OUT WITH THE ARM (lane TRAP-ROWS, T1), exactly as it
+       does on the read side ([UShLine.spost_at_read_elim_at]): the short
+       console write's reason is a fact about the process's page table and
+       the key carries only the projection. *)
+    ∃ P : uptd,
+      ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
+      ⌜ProcPtOwn.proc_pt_wf P⌝ ∗
+      ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
+      filewrite_extra P (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) r.
   Proof.
     intros H0 H1 H2 Hfd HM. iIntros "H".
     rewrite -H0 -H1 -H2 -Hfd -HM.
@@ -287,7 +295,12 @@ Section UkWriteLeaf.
     take NSTD (uvis_fd W) = l ->
     l !! i = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     spost_at uslot 16 (xfam_wr Q Xp) W r M' fdv' cw' cs' -∗
-    write_cons_arms Q (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) r.
+    ∃ P : uptd,
+      ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
+      ⌜ProcPtOwn.proc_pt_wf P⌝ ∗
+      ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
+      write_cons_arms P (tf_w (uvis_tf W) (tf_arg_idx 1)) Q
+        (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) r.
   Proof.
     intros H0 Hi Htake Hli. iIntros "H".
     iDestruct (spost_at_write_elim_at uslot (xfam_wr Q Xp) W
@@ -296,6 +309,9 @@ Section UkWriteLeaf.
                  (tf_w (uvis_tf W) (tf_arg_idx 2))
                  (uvis_fd W) (uvis_M W) r M' fdv' cw' cs'
                  eq_refl eq_refl eq_refl eq_refl eq_refl with "H") as "H".
+    iDestruct "H" as (P) "(%Hperm & %Hwf & %Hlz & H)".
+    iExists P. iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [by iPureIntro |].
     rewrite (uwr_fd_st_dev (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W)
                l i rb CONSOLE H0 Hi Htake Hli).
     cbn [xfam_wr wf_Q].
@@ -368,13 +384,13 @@ Section UkWriteLeaf.
   Proof.
     intros H0 Hi Htake Hli Hcnt. iIntros "H".
     iDestruct (uwrite_post_cons uwr_demo_Q Xp W r M' fdv' cw' cs' l i rb
-                 H0 Hi Htake Hli with "H") as "H".
+                 H0 Hi Htake Hli with "H") as (P) "(_ & _ & _ & H)".
     rewrite Hcnt /write_cons_arms /uwr_demo_Q.
     iDestruct "H" as "[[%Hr %Hq] | [Hs | %Hr]]".
     - destruct Hr as [-> _]. iSplit.
       + iPureIntro. apply filewrite_ret_all. lia.
       + iExists 2%nat. iPureIntro. split; [ reflexivity | lia ].
-    - iDestruct "Hs" as (k) "(%Hr & %Hlt & %Hq)". subst r. iSplit.
+    - iDestruct "Hs" as (k) "(%Hr & %Hlt & %Hsh & %Hq)". subst r. iSplit.
       + iPureIntro. rewrite /filewrite_ret /pipe_rw_ret. right.
         exists (Z.of_nat k). split; [ reflexivity | lia ].
       + iExists k. iPureIntro. split; [ reflexivity | lia ].

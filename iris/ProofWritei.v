@@ -3033,7 +3033,7 @@ Section WriteiLoop.
             iSplitR; [iPureIntro; exact (uptd_ext_sz_trans _ _ _ _ HextI Hx)|].
             iSplitR; [iPureIntro; discriminate|].
             iSplitR; [iPureIntro; intros _; exact Hgg|].
-            iSplitR; [iPureIntro; destruct Hr as [H0 | Hm1];
+            iSplitR; [iPureIntro; destruct Hr as [H0 | [Hm1 _]];
                       [left; exact H0
                       | right; split; [reflexivity | exact Hm1]]|].
             iSplitL "Hw"; [iExact "Hw"|]. iExact "Hpriv".

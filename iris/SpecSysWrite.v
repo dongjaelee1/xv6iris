@@ -186,7 +186,7 @@ Section SpecSysWrite.
       (sts : list fdstate) (n : Z) (M : gmap Z (bv 8)) (ua : mword 64)
       (Q : nat -> iProp Σ) (r : mword 64) : iProp Σ :=
     (⌜sys_write_ret V v n r⌝ ∗
-     filewrite_extra (sys_fd_st v (pv_ofile V) sts) n M ua Q r)%I.
+     filewrite_extra (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n M ua Q r)%I.
 
   Lemma sys_write_arms_ret V v sts n M ua Q r :
     sys_write_arms V v sts n M ua Q r -∗ ⌜sys_write_ret V v n r⌝.
@@ -197,7 +197,7 @@ Section SpecSysWrite.
      why the blanket cannot). *)
   Lemma sys_write_arms_extra V v sts n M ua Q r :
     sys_write_arms V v sts n M ua Q r -∗
-    filewrite_extra (sys_fd_st v (pv_ofile V) sts) n M ua Q r.
+    filewrite_extra (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n M ua Q r.
   Proof. iIntros "[_ $]". Qed.
 
   (* ---- the key, read at the two shapes the walk reaches it in --------
@@ -232,7 +232,7 @@ Section SpecSysWrite.
       (r : mword 64) :
     arg_fd v (pv_ofile V) = Some (fd, fv) ->
     sts !! fd = Some st ->
-    filewrite_arms st n M ua Q r -∗ sys_write_arms V v sts n M ua Q r.
+    filewrite_arms (pv_upt V) st n M ua Q r -∗ sys_write_arms V v sts n M ua Q r.
   Proof.
     intros Hsome Hst. rewrite /sys_write_arms /sys_fd_st Hsome Hst /=.
     iIntros "[%Hret $]". iPureIntro. right. by exists fd, fv.

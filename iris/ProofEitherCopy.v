@@ -1667,12 +1667,19 @@ Section ProofEitherCopyin.
          (It used to drop the fact -- "its caller owns no user memory to
          state them against" -- which stopped being true once writei and
          consolewrite began threading [proc_priv_core].) *)
+      (* ...AND THE FAILING EXIT'S REASON (lane TRAP-ROWS, T1), relayed
+         verbatim from [SpecCopyin.copyin_read]'s -1 arm: it is already
+         stated at the ENTRY descriptor this contract names. *)
       assert (Hret : mr !!! Regidx Ra0 = (mword_of_int 0 : mword 64)
-                     \/ mr !!! Regidx Ra0 = (mword_of_int (-1) : mword 64))
-        by (destruct Hgot as [(Hz & _) | Hm]; [by left | by right]).
+                     \/ (mr !!! Regidx Ra0 = (mword_of_int (-1) : mword 64)
+                         /\ exists d : nat, (d < len)%nat
+                              /\ ~ uva_rmapped (pv_upt (us_V U))
+                                   (uint (add_vec_int src (Z.of_nat d)))))
+        by (destruct Hgot as [(Hz & _) | (Hm & Hd)];
+            [by left | right; split; [exact Hm | exact Hd]]).
       assert (Hgot0 : mr !!! Regidx Ra0 = (mword_of_int 0 : mword 64) ->
                       copyin_got (us_M U) src len dst_new).
-      { intros Hz. destruct Hgot as [(_ & Hg) | Hm]; [exact Hg |].
+      { intros Hz. destruct Hgot as [(_ & Hg) | (Hm & _)]; [exact Hg |].
         (* the [-1] exit is refuted by the hypothesis, not answered *)
         exfalso. rewrite Hm in Hz.
         apply (f_equal (@bv_unsigned 64)) in Hz.

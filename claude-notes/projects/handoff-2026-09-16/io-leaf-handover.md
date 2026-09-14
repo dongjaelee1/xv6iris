@@ -1,12 +1,38 @@
 # lane IO-LEAF -- handover
 # (M1, M2, M3a, M3b(1), M4a(1), M4a(2a), M4a(3), M3b-core-part-1, M3c,
-#  M5a, M5b, M5(3), M6a(1), M6a(2)a, M6a(2)b LANDED.
+#  M5a, M5b, M5(3), M6a(1), M6a(2)a, M6a(2)b, M6a(3)a, M6a(3)b LANDED.
 #  `Hsh_owed` HAS TWO CONJUNCTS.)
 
-Checkout `/shared/xv6iris-2`, branch `lane/io-leaf` = `e8b61dc6a`
-on `origin/main` = `61269a3c2` (TRAP-ROWS-5 + a notes commit).  NOT pushed.
-VM tree green at exactly this state (io54: COMPILED=5 EXIT=0).
-Logs `io1`..`io54` used; **next free `io55`.**
+Checkout `/shared/xv6iris-2`, branch `lane/io-leaf` = `b39fd4d48` =
+`origin/main` (pushed).  VM tree green at exactly this state (io58:
+COMPILED=27 EXIT=0).  Logs `io1`..`io58` used; **next free `io59`.**
+
+## M6a(3) STEPS 1-2 LANDED (2026-09-14; the four steps below are now 3-4)
+
+**M6a(3)a `a43341d28`** -- `E_lb v n` rides the lease pieces (`ush_mid`,
+`ush_rd_pin`, `ush_rd_in`; `kinit_dl0` at 0).  **M6a(3)b `b39fd4d48`** --
+`UkSh` takes `Wc : nat -> nat -> iProp` beside `Pm` (the credential at
+boundary `n` with `p` prompt bytes out; the instance is
+`EchoLinks.ewc_cred T γ (S gen_id)`, `ewc_pr` the 0/1/2 family), the
+persistent `ush_prompt_law` (0 -> 2 at the prompt; `UShKernel.sh_prompt_law
+Wc`, `UShOut.sh_prompt_law_holds`) and the Coq-level `ush_wc_read` (2 at `n`
+-> 0 at `n+17` on `Pm (n+17)`; `UShLine.ush_mid_wc_read`); the loop's slot
+`ush_wcp l n p := (⌜ush_fd2p l⌝ ∗ Wc n p) ∨ True` inside `ush_posb l p`,
+`ush_pstate` at p = 0, getcmd -> `ush_posb l 2` -> gets ->
+`ush_gets_done_line` spends the read law.  THE `∨ True` IS THE ENTRY (step
+3's): see the as-landed note in app-echo.md.  `ush_rest_l` gained `Wc` (it
+quantifies the loop head), hence `sh_pay T Wc Rsh n0` and `sh_pay_rest`'s
+`∀ Wc`.  Arg-order trap: `UkShCd`/`UkShFork` declare `Wc` BEFORE their
+`Hpsok_free` (calls: `N γp T Wc Hpsok_free …`), `UkSh` after it
+(`wp_ksh_start N γp T Hpsok_free Wc Pm Hpm1 Hpm2 Hpm3 Hwc cn Hrl …`).
+
+STEP 3 NOW: at the entry `sh_slot_of_kexec` takes `Pm n ∗ Wc n 0` (the raw
+pieces + the boundary credential, `Rc`) instead of `Q (-1)`, and `ush_posb`'s
+slot loses its `∨ True`; init's lend `uinit_lend` mints the pair across the
+two shapes; `Rd n` (in `Q`) carries the BANNER credential; the exit on a
+shut fd 0 and init's closed-fd head arm are the two arms to settle first
+(the reviewer's Q3 in scratchpad `review-m6a3.md`, if present).
+
 
 **THREE TRAPS, all paid:**
 * `git apply --3way` STAGES its result -- save rebase patches with

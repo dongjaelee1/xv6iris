@@ -121,7 +121,9 @@ TRAP-ROWS-5's `_pid` rows (`wp_kshr_wait`'s `_pid` twin owed in UkShRun.v).
 1. IO-LEAF next milestone = the four steps above (the handover
    `io-leaf-handover.md` is exact; the brief `brief-io-leaf.md` v9 + a new
    scope block on the same mould). Serialise with M4b(2): they collide on
-   UkShDiag/Run/Fork/Main/Echo.
+   UkShDiag/Run/Fork/Main/Echo.  STEPS 1-2 LANDED 2026-09-14 (`a43341d28`,
+   `b39fd4d48`; app-echo.md's M6a(3) note); steps 3-4 remain.  SH-LINE R3
+   (item 5) is NOT a side task: see app-echo.md's "SH-LINE R3 SURVEYED".
 2. M6b: init's restart loop — round k > 0's banner is already payable at the
    landed law and waits only for a credential at the restart head (a child's
    exit payload carrying `wr_ban`, step 3 above); `die_df`/`die_de` through

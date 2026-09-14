@@ -135,11 +135,14 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   credential at an arbitrary boundary, the prompt at every one); M6a(2)
   LANDED 2026-09-16 (`e8b61dc6a`; the note below: init's walk pays its
   banner from a credential and a persistent conversion at any round; two
-  findings: `die_dw` stays, `Rc <> Q (-1)` across the fork).  QUIESCED.
-  NEXT (see the checkpoint): the handover's four steps (`ush_mid` +
-  `E_lb`; the `Wc`/`Wc'` routing; `Rc <> Q (-1)` + the diagnostics through
-  the link; M3b core + the wait redemption), then M6b, M4b(2), delete
-  `sh_deps`, SH-LINE R3, the closed theorem.
+  findings: `die_dw` stays, `Rc <> Q (-1)` across the fork); M6a(3) STEPS
+  1-2 LANDED 2026-09-14 (`a43341d28`+`b39fd4d48`; the note below: `E_lb` on
+  the lease pieces; the loop carries `Wc` at every boundary and the read
+  moves it; `sh_pay_rest` quantifies `Wc`).  NEXT: step 3 (`Rc <> Q (-1)` +
+  init's two diagnostics through the link; every `∨ True` then dead), step
+  4 (M3b core + the wait redemption), then M6b, M4b(2), delete `sh_deps`,
+  SH-LINE R3 (its three prerequisites -- the R3 note below), the closed
+  theorem.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad
@@ -209,6 +212,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   after KILL-PAY B2 and the E5 design): the line-boundary invariant on
   `ush_pos`, the line fact through getcmd, `ush_rest` renamed, the composer
   with E4's dispatch, `sh_rest_holds` (`sh_pay_state` is SH-STATE's, landed).
+  R2 LANDED as IO-LEAF M5(3).  R3 SURVEYED 2026-09-14 (the note below): not
+  closable with the shell files frozen -- `uxsup` is underivable, so R3 IS
+  the pinned composer, after `ush_gen_slot` moves inside `ush_rest_l`'s `□`
+  and `ush_pstate`'s cwd is pinned at the root; after M3b core.
 - [ ] **E5** (design of record: "E5 -- THE CONSOLE I/O CLAIM" below;
   lanes CONS-IO + ECHO-PURE + WRITE-LEAF (parallel) -> ECHO-OUT -> IO-LEAF
   (the read leaf, the turn, the programs' write sites) -> SH-LINE R2/R3 -> PHI).
@@ -3394,6 +3401,90 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M6a(3) STEPS 1-2 LANDED (2026-09-14 -- every commit in this tree is
+dated 2026-09-14; the "2026-09-16" in the notes below is the previous
+session's date; order by commit; `a43341d28` + `b39fd4d48` on `800d6e567`; 13
+files; builds io55-io58 in the main checkout; audit the thirteen; lemma_diff
+1 GONE (`UShOut.ushpr_timeless`, superseded by `EchoLinks.ewc_pr_timeless`)
++ 1 NEWAXIOM (`UkSh.ush_wc_read`, a section hypothesis discharged at
+`echo_Hinit_boot`); no Admitted).  THE SHELL'S COMMAND LOOP CARRIES THE ERA'S
+WRITE CREDENTIAL AT EVERY LINE BOUNDARY, AND THE READ MOVES IT.  Step 1:
+`UShLine.ush_mid`, `ush_rd_pin` and `ush_rd_in` carry `E_lb v n` under their
+era existential (`ush_read_recv_era` hands the pieces back at the far end
+with the receipt's bound, or the one they went in with when the window was
+empty; `UInitBanner.kinit_dl0` supplies it at 0 out of `eturn`).  Step 2:
+the credential family is `EchoLinks.ewc_pr v n p` (M6a(1)'s three shapes
+indexed by the prompt bytes out, 0/1/2) with the pin beside it, `ewc_cred k
+n p := ∃ v, era_pin γ k v ∗ ewc_pr v n p` (`UShOut.ushpr` is a notation for
+`ewc_pr T`); `UkSh` takes a section parameter `Wc : nat -> nat -> iProp`
+beside `Pm` with two laws -- the persistent `ush_prompt_law := □ ∀ n l,
+⌜ush_fd2p l⌝ -∗ ksh_w 2 "$ " 2 (ustd l ∗ Wc n 0) (ustd l ∗ Wc n 2)` (routed
+as `UShKernel.sh_prompt_law Wc := □ ∀ N, shk_rodata (ukn_t N) -∗
+UkSh.ush_prompt_law N Wc`, proved by `UShOut.sh_prompt_law_holds` from
+`ksh_w_of_link_cred` = M6a(1)'s `ksh_w_of_link_prompt` with the pin read
+out of the credential) and the Coq-level `ush_wc_read : ∀ n, Pm (n+17) -∗ Wc
+n 2 -∗ Pm (n+17) ∗ Wc (n+17) 0` (discharged by `UShLine.ush_mid_wc_read`
+from `ewc_read` + `era_pin_agree`; routed like the `Pm` laws through
+`sh_uexec_slot`/`sh_slot_of_kexec` -> `init_exec_sup_of_sh_slot` ->
+`init_cons_sup_of_sh_slot` -> `echo_Hinit_boot`, at `Wc := ewc_cred
+(echo_taint γ) γ (S gen_id)`).  THE LOOP'S SLOT: `UkSh.ush_posb l p := (∃
+n, ⌜ush_bnd n⌝ ∗ ush_at n ∗ ush_wcp l n p) ∨ (T ∗ ush_pos)` with `ush_wcp l
+n p := (⌜ush_fd2p l⌝ ∗ Wc n p) ∨ True` -- the credential at the SAME count
+as the cursor (nothing else ties them), indexed by the ledger for
+`ush_prompt_in`'s reason (`ush_posb_cons` rides the console preamble);
+`ush_pstate` carries it at p = 0; getcmd's prompt branches ONCE
+(`ksh_w_of_wcp`: the loop's credential through the law, else the entry's
+`ush_prompt_in`, else the free law) and hands gets `ush_posb l 2`; gets
+carries `ush_wcp l n0 2` untouched beside the line and `ush_gets_done_line`
+spends `ush_wc_read` at the '\n', so the NEXT turn's prompt is payable from
+the loop's own credential.  THE `∨ True` IN `ush_wcp` IS SH'S ENTRY: init's
+banner credential (`kinit_ban_any = ∃ n, …`) and the lease token
+(`uinit_tok = (∃ n, …) ∨ T`) have unrelated existential counts, so `Wc np
+0` at the lease's np cannot be supplied before step 3 (`Rc ≠ Q (-1)`: the
+lend hands sh the raw pieces `Pm n ∗ Wc n 0`); `ush_prompt_in`/
+`sh_prompt_pay` stay the entry route (round 0's prompt) until then, and the
+fork arm and the shut-fd-0 exit re-enter/leave on the True arm.  Consumer
+sweep: `ush_rest_l N γp T Wc R` (it quantifies the loop head), so
+`UInitSh.sh_pay T Wc Rsh n0` and `sh_pay_rest` quantifies `Wc` beside `T`;
+`UkShLoop.ushl_head T Wc l sz`; `UkShCd`/`UkShFork` bind `Context (Wc)`
+(BEFORE their `Hpsok_free`, so positional calls insert it there; in `UkSh`
+it comes AFTER `Hpsok_free`); `UkShEcho.ush_pstate_at N gp T Wc l c`.
+TRUSTED DIFF: `Hsh_owed`'s text, `echo_Hinit_boot`'s statement and
+`init_boot_pay` unchanged; `UInitSh.sh_pay_rest Rsh` reads `∀ γp N T Wc,
+⌜Persistent T⌝ -∗ ush_rest_l N γp T Wc (Rsh …)` (was without `Wc`: the owed
+conjunct is quantified over one more family).  NEXT: step 3 (`Rc ≠ Q (-1)`
++ init's two diagnostics through the link; every `∨ True` then dead), step
+4 (M3b core + the wait redemption).  Handover: `io-leaf-handover.md`.
+
+SH-LINE R3 SURVEYED (2026-09-14; read-only; scratchpad `r3-report.md`; no
+edit, no build).  THE SECOND CONJUNCT OF `Hsh_owed` CANNOT BE CLOSED WITH
+THE SHELL FILES FROZEN, and not for a collision reason: (A) `UkRun.uxsup`
+(the GENERIC exec supply, "this process may exec any path") has no producer
+and cannot have one -- exec is a CLAIM number (`UexecSG.free_num` excludes
+it) and the only mint, `app_sup`, is the taint at echo -- while
+`UkShFork.ushf_rest_of_body` (the only proof of `ush_rest_l`) spends it on
+the DISCIPLINED arm; so the discharger is not the generic body but "the
+composer with E4's dispatch" (main's body from 0x97a with the child arm at
+`UkShEcho.wp_kshm_child_echo_holds` and the parent at wait + the loop head,
+at `sh_exec_sup_echo`), which E4's note says nothing reaches yet; (B)
+`UkSh.ush_gen_slot N T` is per-RECORD and buildable only where the
+record's constant payload is paid by the taint (`uslot_mint_all`), so any
+`∀ N` restatement of `sh_pay_rest` is unprovable -- the fix is SH-LINE
+2b(b)'s precedent: `ush_gen_slot` INSIDE `ush_rest_l`'s `□`, paid by
+`wp_ksh_loop`, `sh_pay_rest`'s text untouched; (C) E4's pinned dispatch is
+at `ucwd (ukn_cwd N) ROOTINO` but `ush_rest_l`'s body receives `ush_pstate`
+with `ucwd_any` (a half ghost var whose value is gone), so the composer at
+the current interface is unprovable: pin `ush_pstate`'s cwd at the root
+(sh's `cd` arm is refuted by the line fact; the taint leaves before it).
+RULED: R3 = (1) `ush_gen_slot` into `ush_rest_l`'s `□`; (2) `ucwd_any` ->
+`ucwd ROOTINO` in `ush_pstate` through UkShFork/UkShCd/UkShEcho/UShKernel;
+(3) the pinned composer in a new file above UkShEcho/UkShFork with
+`wp_kshf_fork` taking an abstract child continuation; (4) then
+`UShRest.sh_rest_holds : (⊢ sh_deps) -> ⊢ udep -∗ sh_echo_slot T -∗
+sh_pay_rest sh_Rsh` from `UShEcho.sh_exec_sup_of_echo_slot_closed`, the
+conjunct deleted at `echo_Hinit_boot`/`UInitBootAdequacy`.  Serialise AFTER
+M3b core: both re-cut `wp_kshf_fork`'s child arm.
 
 IO-LEAF M6a(2) LANDED (2026-09-16; `61f015f7b`+`e8b61dc6a` on `61269a3c2`;
 EchoLinks.v, UInitBanner.v, UInitBoot.v, UInitKernel.v, UkInitMain.v; builds

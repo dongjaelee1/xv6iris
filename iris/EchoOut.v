@@ -306,6 +306,229 @@ Proof.
   lia.
 Qed.
 
+(* THE LEDGER'S LENGTH LAW FOR THE PROLOGUE RESOLUTION -- the TWIN of
+   [cs_len_ok], and what makes the prologue's CHOICE readable off the
+   cursor.  [cs_len_ok] pins how many LINE alternatives have been filed by
+   the writer's position; this pins how much of the OPEN ROUND's resolution
+   has been.  Without it a claim whose current round is already SETTLED --
+   [pro_of] one alternative longer, so [pending_n] longer and the writer's
+   [o_w] a proper prefix of it -- is a perfectly consistent state, and the
+   prologue-choice write cannot tell it from the one it is actually in.
+
+   THE ROUND A STAGE STANDS IN is [ps_round]: one per line that took
+   [line_alts !!! 3] (the shell's own fork panic), round 0 at the head of
+   the transcript.  A block OPENS that round only at those two places
+   ([ps_opens]); every other block owes no prologue at all, which is why the
+   second conjunct is guarded -- unguarded it is simply false.
+
+   THE TWO CONJUNCTS.
+   (A) NOTHING IS FILED FOR A ROUND THAT HAS NOT OPENED: past the current
+       round the resolution is empty.  This is what makes the block-first
+       write that OPENS the next round ([line_alts !!! 3]) find it open.
+   (B) EVERY ENTRY THE ROUND HAS IS ON THE WIRE: a prefix of the resolution
+       that gives a SHORTER prologue than the stage's own was passed by the
+       writer strictly.  Since an open prologue ends at a banner and filing
+       an alternative appends at least its first byte
+       ([EchoDisc.pro_of_open_snoc_lt]), this says exactly "the round is
+       settled only once the writer has written past the block's banner",
+       and it is what reconciles a writer's [~ pro_done] with the claim. *)
+Definition ps_round (so : ostage) : nat :=
+  pro_idx (o_cs so) (length (o_E so) `div` length echo_line).
+
+Definition ps_opens (so : ostage) : Prop :=
+  length (o_E so) = 0%nat
+  \/ ((length (o_E so) `mod` length echo_line)%nat = 0%nat
+      /\ o_cs so !!! (length (o_E so) `div` length echo_line - 1)%nat = 3%nat).
+
+Definition ps_len_ok (so : ostage) : Prop :=
+  pro_from (S (ps_round so)) (o_ps so) = []
+  /\ (ps_opens so ->
+      forall ps' : list nat, ps' `prefix_of` o_ps so ->
+        pro_of (pro_from (ps_round so) ps')
+          <> pro_of (pro_from (ps_round so) (o_ps so)) ->
+        (length (pending_n ps' (o_cs so) (length (o_E so)))
+         < length (o_w so))%nat).
+
+(* the rounds a stage has NOT opened are empty in it, and stay empty as the
+   index moves up -- the one consequence of (A) the three moves spend *)
+Lemma ps_len_ok_empty_above (so : ostage) (R : nat) :
+  ps_len_ok so -> (ps_round so <= R)%nat -> pro_from (S R) (o_ps so) = [].
+Proof.
+  intros [HA _] HR.
+  replace (S R) with (S (ps_round so) + (R - ps_round so))%nat by lia.
+  rewrite -pro_from_add HA. apply pro_from_nil.
+Qed.
+
+Lemma ps_len_ok_0 : ps_len_ok ostage0.
+Proof.
+  rewrite /ps_len_ok /ps_round /ostage0. cbn [o_ps o_cs o_E o_w]. split.
+  - apply pro_from_nil.
+  - intros _ ps' Hp Hne. exfalso. apply Hne.
+    by rewrite (prefix_nil_inv ps' Hp).
+Qed.
+
+(* ---- the three moves, as [cs_len_ok_echo]/[_write]/[_blk] are ---- *)
+
+(* A WRITE INSIDE THE BLOCK moves neither the round nor the resolution, and
+   only lengthens what has been written. *)
+Lemma ps_len_ok_write (so : ostage) (b : bv 8) :
+  ps_len_ok so ->
+  ps_len_ok (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])).
+Proof.
+  intros [HA HB]. rewrite /ps_len_ok /ps_round /ps_opens in HA, HB |- *.
+  cbn [o_ps o_cs o_E o_w] in HA, HB |- *. split; [exact HA |].
+  intros Ho ps' Hp Hne. rewrite (length_app (o_w so) [b]). cbn [length].
+  pose proof (HB Ho ps' Hp Hne). lia.
+Qed.
+
+(* A WRITE AT A BLOCK'S FIRST BYTE may OPEN a round -- exactly when the
+   alternative it files is 3 -- and (A) says that round is untouched. *)
+Lemma ps_len_ok_blk (so : ostage) (a : nat) (b : bv 8) :
+  (length (o_E so) `mod` length echo_line)%nat = 0%nat ->
+  (0 < length (o_E so))%nat ->
+  length (o_cs so) = (length (o_E so) `div` length echo_line - 1)%nat ->
+  ps_len_ok so ->
+  ps_len_ok (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]).
+Proof.
+  pose proof echo_line_length as HL. intros Hm Hpos Hq Hok.
+  pose proof Hok as [HA HB].
+  rewrite /ps_len_ok /ps_round /ps_opens in HA, HB |- *.
+  cbn [o_ps o_cs o_E o_w] in HA, HB |- *.
+  assert (HD1 : (1 <= length (o_E so) `div` length echo_line)%nat).
+  { destruct (decide (length (o_E so) `div` length echo_line = 0)%nat)
+      as [Hd | Hd]; [| lia].
+    exfalso.
+    pose proof (Nat.div_mod_eq (length (o_E so)) (length echo_line)) as Hdm.
+    rewrite Hd Hm in Hdm. lia. }
+  assert (Hold : pro_idx (o_cs so) (length (o_E so) `div` length echo_line)
+                 = pro_idx (o_cs so)
+                     (length (o_E so) `div` length echo_line - 1)%nat).
+  { replace (length (o_E so) `div` length echo_line)%nat
+      with (S (length (o_E so) `div` length echo_line - 1))%nat at 1 by lia.
+    apply pro_idx_Sne.
+    rewrite list_lookup_total_alt
+      (lookup_ge_None_2 (o_cs so)
+         (length (o_E so) `div` length echo_line - 1)%nat ltac:(lia)).
+    by vm_compute. }
+  assert (Hnew : (pro_idx (o_cs so) (length (o_E so) `div` length echo_line)
+                  <= pro_idx (o_cs so ++ [a])
+                       (length (o_E so) `div` length echo_line))%nat).
+  { rewrite Hold.
+    replace (length (o_E so) `div` length echo_line)%nat
+      with (S (length (o_E so) `div` length echo_line - 1))%nat at 2 by lia.
+    rewrite pro_idx_S
+      (pro_idx_app_le (o_cs so) [a]
+         (length (o_E so) `div` length echo_line - 1)%nat ltac:(lia)).
+    lia. }
+  split.
+  - apply (ps_len_ok_empty_above so); [exact Hok |].
+    rewrite /ps_round. exact Hnew.
+  - intros Ho ps' Hp Hne. exfalso.
+    destruct Ho as [Hz | [_ H3]]; [lia |].
+    assert (Ha3 : a = 3%nat).
+    { rewrite list_lookup_total_alt lookup_app_r in H3; [| lia].
+      rewrite Hq Nat.sub_diag in H3. by cbn in H3. }
+    assert (Heq : pro_idx (o_cs so ++ [a])
+                    (length (o_E so) `div` length echo_line)
+                  = S (pro_idx (o_cs so) (length (o_E so) `div` length echo_line))).
+    { rewrite Hold
+        -(pro_idx_app_le (o_cs so) [a]
+            (length (o_E so) `div` length echo_line - 1)%nat ltac:(lia)).
+      replace (length (o_E so) `div` length echo_line)%nat
+        with (S (length (o_E so) `div` length echo_line - 1))%nat at 1 by lia.
+      apply pro_idx_S3. exact H3. }
+    rewrite Heq in Hne. apply Hne.
+    assert (Hnil : pro_from
+                     (S (pro_idx (o_cs so)
+                           (length (o_E so) `div` length echo_line))) (o_ps so)
+                   = []) by exact HA.
+    assert (Hnil' : pro_from
+                      (S (pro_idx (o_cs so)
+                            (length (o_E so) `div` length echo_line))) ps' = []).
+    { apply prefix_nil_inv. rewrite -Hnil. by apply pro_from_mono. }
+    by rewrite Hnil Hnil'.
+Qed.
+
+(* THE ECHO closes a line; when the line it closes took alternative 3 the
+   round it opens is, again, one the resolution has not touched. *)
+Lemma ps_len_ok_echo (so : ostage) (x : list mobs * bv 8) :
+  ps_len_ok so ->
+  ps_len_ok (MkO (o_ps so) (o_cs so) (o_E so ++ [x]) []).
+Proof.
+  pose proof echo_line_length as HL. intros Hok. pose proof Hok as [HA HB].
+  rewrite /ps_len_ok /ps_round /ps_opens in HA, HB |- *.
+  cbn [o_ps o_cs o_E o_w] in HA, HB |- *.
+  rewrite (length_app (o_E so) [x]). cbn [length].
+  assert (Hmono : (pro_idx (o_cs so) (length (o_E so) `div` length echo_line)
+                   <= pro_idx (o_cs so)
+                        ((length (o_E so) + 1) `div` length echo_line))%nat).
+  { apply pro_idx_mono. apply Nat.Div0.div_le_mono. lia. }
+  split.
+  - apply (ps_len_ok_empty_above so); [exact Hok |]. rewrite /ps_round.
+    exact Hmono.
+  - intros Ho ps' Hp Hne. exfalso.
+    destruct Ho as [Hz | [Hm H3]]; [lia |].
+    assert (Hd : (length (o_E so) `div` length echo_line
+                  = (length (o_E so) + 1) `div` length echo_line - 1)%nat)
+      by (by apply div_succ_of_mod0).
+    assert (Hq1 : (1 <= (length (o_E so) + 1) `div` length echo_line)%nat).
+    { destruct (decide ((length (o_E so) + 1) `div` length echo_line = 0)%nat)
+        as [Hz | Hz]; [| lia].
+      exfalso.
+      pose proof (Nat.div_mod_eq (length (o_E so) + 1) (length echo_line)) as Hdm.
+      rewrite Hz Hm in Hdm. lia. }
+    assert (Heq : pro_idx (o_cs so) ((length (o_E so) + 1) `div` length echo_line)
+                  = S (pro_idx (o_cs so)
+                         (length (o_E so) `div` length echo_line))).
+    { rewrite Hd.
+      replace ((length (o_E so) + 1) `div` length echo_line)%nat
+        with (S ((length (o_E so) + 1) `div` length echo_line - 1))%nat at 1
+        by lia.
+      apply pro_idx_S3. exact H3. }
+    rewrite Heq in Hne. apply Hne.
+    assert (Hnil : pro_from
+                     (S (pro_idx (o_cs so)
+                           (length (o_E so) `div` length echo_line))) (o_ps so)
+                   = []) by exact HA.
+    assert (Hnil' : pro_from
+                      (S (pro_idx (o_cs so)
+                            (length (o_E so) `div` length echo_line))) ps' = []).
+    { apply prefix_nil_inv. rewrite -Hnil. by apply pro_from_mono. }
+    by rewrite Hnil Hnil'.
+Qed.
+
+(* ...AND THE FOURTH MOVE, the one the prologue-choice write makes: filing
+   the open round's alternative CLOSES it (nothing is left over, so (A)
+   holds again) and puts its first byte on the wire (so (B) does). *)
+Lemma ps_len_ok_pro (so : ostage) (a : nat) (b : bv 8) :
+  (ps_round so <= pro_rounds (o_ps so))%nat ->
+  ~ pro_done (pro_from (ps_round so) (o_ps so)) ->
+  o_w so = pending (o_ps so) (o_cs so) (o_E so) ->
+  ps_len_ok so ->
+  ps_len_ok (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b])).
+Proof.
+  intros Hle Hnd Hw [HA HB].
+  rewrite /ps_len_ok /ps_round /ps_opens in HA, HB, Hle, Hnd |- *.
+  cbn [o_ps o_cs o_E o_w] in HA, HB, Hle, Hnd |- *. split.
+  - replace (S (pro_idx (o_cs so) (length (o_E so) `div` length echo_line)))
+      with (pro_idx (o_cs so) (length (o_E so) `div` length echo_line) + 1)%nat
+      by lia.
+    rewrite -pro_from_add (pro_from_snoc_le _ (o_ps so) a Hle).
+    cbn [pro_from]. by apply pro_tail_open_snoc.
+  - intros Ho ps' Hp Hne. rewrite (length_app (o_w so) [b]). cbn [length].
+    destruct (decide (length ps' <= length (o_ps so))%nat) as [Hlen | Hlen].
+    + assert (Hp2 : ps' `prefix_of` o_ps so).
+      { destruct (prefix_weak_total ps' (o_ps so) (o_ps so ++ [a]) Hp
+                    ltac:(by eexists)) as [H | H]; [exact H |].
+        rewrite (prefix_length_eq _ _ H ltac:(lia)). reflexivity. }
+      pose proof (prefix_length _ _ (pending_n_ps_mono ps' (o_ps so) (o_cs so)
+                    (length (o_E so)) Hp2)) as Hlp.
+      rewrite -/(pending (o_ps so) (o_cs so) (o_E so)) -Hw in Hlp. lia.
+    + rewrite (prefix_length_eq ps' (o_ps so ++ [a]) Hp) in Hne;
+        last by (rewrite (length_app (o_ps so) [a]); cbn [length]; lia).
+      by destruct (Hne eq_refl).
+Qed.
+
 (* E's entries, read off the log: the ECHOED ones with their histories
    projected to the cycle.  [EchoOutPure.echoed] keeps the raw histories --
    which is what [read_window_prefix] is stated over -- and this is its
@@ -483,6 +706,13 @@ Proof.
   rewrite /alt_cont (Hlk (k `div` length echo_line - 1)%nat ltac:(lia)).
   by rewrite (pro_idx_ext cs0 cs (k `div` length echo_line) Hlk
                 (k `div` length echo_line - 1)%nat ltac:(lia)).
+Qed.
+
+(* a LOWER BOUND reads the same choice wherever it reaches *)
+Lemma lookup_total_prefix (cs0 cs : list nat) (i : nat) :
+  cs0 `prefix_of` cs -> (i < length cs0)%nat -> cs !!! i = cs0 !!! i.
+Proof.
+  intros [z ->] Hi. rewrite !list_lookup_total_alt lookup_app_l; [done | lia].
 Qed.
 
 Lemma pending_n_cs_prefix ps0 ps cs0 cs k :
@@ -697,6 +927,92 @@ Proof.
   eapply (proc_upto_pcount_inv ps cs E w (S (length E)) b);
     [lia | exact Hstrict | by rewrite -HP].
 Qed.
+
+(* ====================================================================== *)
+(*  1c.  THE BANNER OF AN ARBITRARY PROLOGUE ROUND                         *)
+(* ====================================================================== *)
+
+(* WHAT INIT'S RESTART LOOP PAYS THE WRITE LINK WITH.  Init prints the
+   banner at the head of EVERY round: round 0 at boot, and one more each
+   time the shell dies on its own [fork1] panic ([line_alts !!! 3]) or its
+   child fails to exec ([pro_alts !!! 1], which re-enters the SAME round).
+   [echo_write_link] asks for [proc_upto ps0 cs0 (S n0) !! P = Some b]; this
+   discharges it at an ARBITRARY round, off two facts the loop has: the
+   block's SHAPE (its panic line, if any, and then this round's prologue --
+   [EchoOutPure.pending_n_round_pre] supplies it from the round-opening
+   premise) and the round's resolution so far, which while the round is open
+   is a block of [1]s ([EchoDisc.pro_open_replicate]).  No [vm_compute]: [j]
+   and the round index are variables. *)
+Lemma proc_upto_round_banner (ps cs : list nat) (n j i : nat)
+      (pre : list (bv 8)) (b : bv 8) :
+  pending_n ps cs n
+  = pre ++ pro_of (pro_from (pro_idx cs (n `div` length echo_line)) ps) ->
+  pro_from (pro_idx cs (n `div` length echo_line)) ps = replicate j 1%nat ->
+  u_banner !! i = Some b ->
+  proc_upto ps cs (S n)
+    !! (length (proc_upto ps cs n) + length pre + pro_round * j + i)%nat
+  = Some b.
+Proof.
+  intros Hshape Hopen Hb.
+  rewrite proc_upto_snoc Hshape Hopen.
+  replace (length (proc_upto ps cs n) + length pre + pro_round * j + i)%nat
+    with (length (proc_upto ps cs n) + (length pre + (pro_round * j + i)))%nat
+    by lia.
+  rewrite (lookup_app_shift (proc_upto ps cs n)) (lookup_app_shift pre).
+  by apply pro_of_replicate_banner.
+Qed.
+
+(* ...and the same with the block's shape read off the round-opening premise
+   itself, which is the form the loop applies. *)
+Lemma proc_upto_round_banner_open (ps cs : list nat) (n j i : nat) (b : bv 8) :
+  (n `mod` length echo_line)%nat = 0%nat ->
+  (n = 0%nat \/ cs !!! (n `div` length echo_line - 1)%nat = 3%nat) ->
+  pro_from (pro_idx cs (n `div` length echo_line)) ps = replicate j 1%nat ->
+  u_banner !! i = Some b ->
+  proc_upto ps cs (S n)
+    !! (length (proc_upto ps cs n)
+        + length (if decide (n = 0%nat) then [] else line_alts !!! 3%nat)
+        + pro_round * j + i)%nat
+  = Some b.
+Proof.
+  intros Hm Ho Hopen Hb.
+  apply (proc_upto_round_banner ps cs n j i _ b);
+    [by apply pending_n_round_pre | exact Hopen | exact Hb].
+Qed.
+
+(* ANTI-VACUITY.  The prologue-choice link's premises are SATISFIABLE AT
+   ROUND 1 -- the round init opens after the shell's own [fork1] panic.  One
+   line has been echoed and took [line_alts !!! 3] ("fork\n"), the boot
+   round settled with the prompt ([ps0 = [0]]), and the writer stands at the
+   choice byte 43 process bytes into the era: 20 for [u_prologue], 5 for the
+   panic line and 18 for the new round's banner. *)
+Lemma pro_choice_round1_live :
+  (17 `mod` length echo_line)%nat = 0%nat
+  /\ (17%nat = 0%nat
+      \/ [3%nat] !!! (17 `div` length echo_line - 1)%nat = 3%nat)
+  /\ ((17 `div` length echo_line) <= length [3%nat])%nat
+  /\ pro_pin [0%nat] [3%nat] 17
+  /\ ~ pro_done (pro_from (pro_idx [3%nat] (17 `div` length echo_line)) [0%nat])
+  /\ length (proc_upto [0%nat] [3%nat] (S 17)) = 43%nat
+  /\ (0 < length pro_alts)%nat
+  /\ (exists b : bv 8, pro_alts !!! 0%nat !! 0%nat = Some b).
+Proof.
+  pose proof echo_line_length as HL. split_and!.
+  - by rewrite HL.
+  - right. by rewrite HL.
+  - rewrite HL. cbn [length]. vm_compute (17 `div` 17)%nat. lia.
+  - intros q Hq. rewrite HL in Hq.
+    assert (q = 0%nat) by lia. subst q. vm_compute. lia.
+  - rewrite HL.
+    assert (Hz : pro_from (pro_idx [3%nat] (17 `div` 17)) [0%nat] = [])
+      by (by vm_compute).
+    rewrite Hz. intros H. by apply Exists_nil in H.
+  - by vm_compute.
+  - rewrite pro_alts_length. lia.
+  - destruct (pro_alts !!! 0%nat) as [| c t] eqn:Hz;
+      [ vm_compute in Hz; discriminate | exists c; reflexivity ].
+Qed.
+
 (* the INPUT claim's pure fact, in BOTH its arms (the settled one and the
    chain-first window): the log's own account of the era, plus the two index
    laws for the entries the log has echoed and the bound on the era's line
@@ -1341,7 +1657,7 @@ Section echo_out.
         ∗ ps_auth v (o_ps so)
         ∗ Elist_auth v (o_E so)
         ∗ wcnt v (1/4) (length (o_E so))
-        ∗ ⌜eout_pure k ho so acc /\ cs_len_ok so
+        ∗ ⌜eout_pure k ho so acc /\ cs_len_ok so /\ ps_len_ok so
            /\ Forall (fun i => (i < length line_alts)%nat) (o_cs so)⌝)%I.
 
   (* THE INPUT CLAIM has TWO non-taint arms, and they differ only in the
@@ -1532,6 +1848,7 @@ Section echo_out.
       iFrame "Hpin Ht1 Hcs Hps HE Hw1". iPureIntro. split_and!.
       - exact (eout_pure_0 k []).
       - exact cs_len_ok_0.
+      - exact ps_len_ok_0.
       - constructor. }
     iSplitL "Hw2 Hdl1".
     { rewrite /ein. iRight. iLeft. iExists v, 0%nat, [], [].
@@ -1842,7 +2159,7 @@ Section echo_out.
     iDestruct "Hwin" as (vw nw) "[#Hpinw Hww]".
     iDestruct "Hout" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hwo & %Hall)".
     iDestruct (era_pin_agree with "Hpinw Hpin") as %->.
-    destruct Hall as (Hpure & Hcsl & Hcsb).
+    destruct Hall as (Hpure & Hcsl & Hpsl & Hcsb).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
                        & Hpre1 & Hpre2 & Hpre3).
     (* A SECOND FIRING meets the window arm: five quarters *)
@@ -1990,6 +2307,7 @@ Section echo_out.
         + rewrite length_app. cbn [length]. lia.
         + by right.
       - exact Hcsl2.
+      - exact (ps_len_ok_echo so (open_seg h, c) Hpsl).
       - exact Hcsb. }
     iSplitL "Hwarm Hdli".
     { rewrite /ein. iRight. iRight.
@@ -2206,7 +2524,7 @@ Section echo_out.
       iSplitR; [by iApply eout_of_taint | by iRight]. }
     iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hwo & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
-    destruct Hall as (Hpure & Hcsl & Hcsb).
+    destruct Hall as (Hpure & Hcsl & Hpsl & Hcsb).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
                        & Hpre1 & Hpre2 & Hpre3).
     iDestruct (turn_agree with "Ht Hta") as %HP.
@@ -2259,6 +2577,7 @@ Section echo_out.
         * exact Hpre2.
         * exact Hpre3.
       + exact (cs_len_ok_write so b Hcsl Hcase).
+      + exact (ps_len_ok_write so b Hpsl).
       + exact Hcsb.
     - iLeft. iFrame "Ht Hpslb Hcslb HElb".
   Qed.
@@ -2299,7 +2618,7 @@ Section echo_out.
       iSplitR; [by iApply eout_of_taint | by iRight]. }
     iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hwo & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
-    destruct Hall as (Hpure & Hcsl & Hcsb).
+    destruct Hall as (Hpure & Hcsl & Hpsl & Hcsb).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
                        & Hpre1 & Hpre2 & Hpre3).
     iDestruct (turn_agree with "Ht Hta") as %HP.
@@ -2407,9 +2726,305 @@ Section echo_out.
         * exact Hpre3.
       + apply (cs_len_ok_blk so a b); [by rewrite HlenE | lia | exact Hwnil
                                       | exact Hcsl].
+      + apply (ps_len_ok_blk so a b);
+          [by rewrite HlenE | lia | by rewrite HlenE | exact Hpsl].
       + rewrite Forall_app. split; [exact Hcsb |].
         by rewrite Forall_singleton.
     - iLeft. rewrite Hcs0. iFrame "Ht HElb Hcslb2 Hpslb".
+  Qed.
+
+  (* (W-pro) THE WRITE AT A PROLOGUE ROUND'S CHOICE BYTE -- byte 19 of the
+     round, the one just past its banner.  Init has printed the banner and
+     forked; the byte it puts out next is the first of "$ " (the child
+     execs and sh prompts), of "init: exec sh failed\n" (the child could
+     not exec, so the round runs again) or of "init: fork failed\n" (the
+     round, and the wire, end there).  Which one is INIT'S OWN knowledge,
+     and the step FILES it: the claim's resolution list grows by one and
+     the bound that comes back has the entry in it -- the exact twin of
+     what [eout_step_write_blk] does for a LINE alternative.
+
+     THE ROUND-OPENING PREMISE IS NOT DECORATION.  A block whose line took
+     an alternative other than 3 owes no prologue at all, and this link
+     must not fire there; [n0 = 0] is the boot round and
+     [cs0 !!! (n0/17 - 1) = 3] the round init opens after the shell's own
+     fork panic.
+
+     WHAT RECONCILES THE WRITER WITH THE CLAIM.  The writer knows only
+     [~ pro_done] of ITS OWN [ps0]; the claim holds the authority, and a
+     resolution whose round has ALREADY settled has a longer [pending_n]
+     with the writer's [o_w] a proper prefix of it.  [ps_len_ok] is what
+     rules that out: (B) says every entry the round has is already on the
+     wire, so at the writer's cursor the two resolutions have the same
+     prologue, hence ([EchoDisc.pro_of_prefix_free]) the claim's round is
+     open too, and ([EchoDisc.pro_of_open_app_inj]) the two lists are
+     EQUAL -- which is what makes [ps_lb v (ps0 ++ [a])] payable.
+
+     AT [n0 = 0], [cs0 = []] THIS IS PHASE 1'S FORM exactly:
+     [P = length (pro_of ps0)] and [~ pro_done ps0]. *)
+  Lemma eout_step_write_pro (k : nat) (v : era_pins) (P n0 a : nat)
+      (b : bv 8) (ps0 cs0 : list nat) (ho : list mobs) (acc : list (bv 8)) :
+    (n0 `mod` length echo_line)%nat = 0%nat ->
+    (n0 = 0%nat \/ cs0 !!! (n0 `div` length echo_line - 1)%nat = 3%nat) ->
+    ((n0 `div` length echo_line) <= length cs0)%nat ->
+    pro_pin ps0 cs0 n0 ->
+    ~ pro_done (pro_from (pro_idx cs0 (n0 `div` length echo_line)) ps0) ->
+    P = length (proc_upto ps0 cs0 (S n0)) ->
+    (a < length pro_alts)%nat ->
+    pro_alts !!! a !! 0%nat = Some b ->
+    era_pin k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ E_lb v n0 -∗
+    eout k ho acc ==∗
+      eout k ho (acc ++ [b])
+      ∗ ((turn v (S P) ∗ ps_lb v (ps0 ++ [a]) ∗ cs_lb v cs0 ∗ E_lb v n0) ∨ T).
+  Proof.
+    intros Hmod Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead.
+    pose proof echo_line_length as HLL.
+    iIntros "#Hpin Ht #Hpslb #Hcslb #HElb Hcl".
+    iDestruct "Hcl" as "[#HT | Hp]".
+    { iModIntro. iSplitR; [by iApply eout_of_taint | by iRight]. }
+    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hwo & %Hall)".
+    iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
+    destruct Hall as (Hpure & Hcsl & Hpsl & Hcsb).
+    destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
+                       & Hpre1 & Hpre2 & Hpre3).
+    iDestruct (turn_agree with "Ht Hta") as %HP.
+    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
+    iDestruct (E_lb_le with "HE HElb") as %Hn0.
+    (* ---- the writer's own list is bounded, and its round index is the
+           claim's ---- *)
+    assert (Hpsb0 : Forall (fun x => (x < length pro_alts)%nat) ps0).
+    { pose proof Hpsp as Hq. destruct Hq as [z Hz]. pose proof Hpsb as Hpsb2.
+      rewrite Hz in Hpsb2. by apply Forall_app in Hpsb2 as [? _]. }
+    assert (Hidxeq : pro_idx (o_cs so) (n0 `div` length echo_line)
+                     = pro_idx cs0 (n0 `div` length echo_line)).
+    { symmetry. apply (pro_idx_ext cs0 (o_cs so) (n0 `div` length echo_line));
+        [| lia].
+      intros j Hj. symmetry.
+      apply (lookup_total_prefix cs0 (o_cs so) j Hcsp). lia. }
+    rewrite -Hidxeq in Hnd.
+    assert (HopenC : n0 = 0%nat
+                     \/ o_cs so !!! (n0 `div` length echo_line - 1)%nat = 3%nat).
+    { destruct (decide (n0 = 0%nat)) as [Hz | Hne]; [by left | right].
+      assert (Hd1 : (1 <= n0 `div` length echo_line)%nat).
+      { destruct (decide (n0 `div` length echo_line = 0)%nat) as [Hd | Hd];
+          [| lia].
+        exfalso. pose proof (Nat.div_mod_eq n0 (length echo_line)) as Hdm.
+        rewrite Hd Hmod in Hdm. lia. }
+      destruct Hopen as [Hz | H3]; [by destruct (Hne Hz) |].
+      rewrite (lookup_total_prefix cs0 (o_cs so) _ Hcsp); [exact H3 | lia]. }
+    (* ---- the stream and the block below the writer's cursor ---- *)
+    assert (Hstream : proc_upto ps0 cs0 n0 = proc_upto (o_ps so) (o_cs so) n0).
+    { apply (proc_upto_cs_prefix_pred ps0 (o_ps so) cs0 (o_cs so) n0
+               Hpsp Hcsp Hpin0).
+      assert (Hle3 : ((n0 - 1) `div` length echo_line
+                      <= n0 `div` length echo_line)%nat)
+        by (apply Nat.Div0.div_le_mono; lia).
+      lia. }
+    assert (Hpend0 : pending_n ps0 cs0 n0 = pending_n ps0 (o_cs so) n0)
+      by (apply (pending_n_cs_ext ps0 cs0 (o_cs so) n0 Hcsp Hdiv)).
+    assert (Hpmono : pending_n ps0 (o_cs so) n0
+                     `prefix_of` pending_n (o_ps so) (o_cs so) n0)
+      by (by apply pending_n_ps_mono).
+    assert (HPval : P = (length (proc_upto ps0 cs0 n0)
+                         + length (pending_n ps0 cs0 n0))%nat).
+    { rewrite HPeq proc_upto_snoc.
+      by rewrite (length_app (proc_upto ps0 cs0 n0) (pending_n ps0 cs0 n0)). }
+    rewrite /pcount in HP.
+    rewrite -(proc_upto_length (o_ps so) (o_cs so) (o_E so)) in HP.
+    (* ---- the era's stage IS [n0]: a further echo would have folded this
+           block into the stream, and the round it read would be SETTLED,
+           which the writer's own [~ pro_done] refutes ---- *)
+    assert (HlenE : length (o_E so) = n0).
+    { destruct (decide (length (o_E so) = n0)) as [? | Hne]; [done | exfalso].
+      assert (HSn : (S n0 <= length (o_E so))%nat) by lia.
+      pose proof (proc_upto_mono (o_ps so) (o_cs so) (S n0) (length (o_E so)) HSn)
+        as Hpre.
+      apply prefix_length in Hpre.
+      rewrite (proc_upto_snoc (o_ps so) (o_cs so) n0)
+              (length_app (proc_upto (o_ps so) (o_cs so) n0)
+                 (pending_n (o_ps so) (o_cs so) n0)) -Hstream in Hpre.
+      pose proof (prefix_length _ _ Hpmono) as Hlp. rewrite -Hpend0 in Hlp.
+      assert (Hpe : pending_n ps0 (o_cs so) n0
+                    = pending_n (o_ps so) (o_cs so) n0).
+      { apply prefix_length_eq; [exact Hpmono | rewrite -Hpend0; lia]. }
+      pose proof (pending_n_round_det ps0 (o_ps so) (o_cs so) n0 Hmod HopenC Hpe)
+        as Hpro.
+      assert (Hdone : pro_done (pro_from
+                        (pro_idx (o_cs so) (n0 `div` length echo_line))
+                        (o_ps so))).
+      { apply pro_from_done.
+        apply (pro_pin_at (o_ps so) (o_cs so) (length (o_E so)) n0 Hpin). lia. }
+      apply Hnd.
+      destruct (pro_of_prefix_free
+                  (pro_from (pro_idx (o_cs so) (n0 `div` length echo_line)) ps0)
+                  (pro_from (pro_idx (o_cs so) (n0 `div` length echo_line))
+                     (o_ps so))
+                  ltac:(by apply pro_from_Forall)
+                  ltac:(by apply pro_from_Forall)
+                  Hdone ltac:(rewrite -Hpro; reflexivity)) as [Hd _].
+      exact Hd. }
+    (* ---- so the writer stands at the END of the block's OPEN prologue ---- *)
+    assert (Hlenw : length (o_w so) = length (pending_n ps0 cs0 n0)).
+    { rewrite HlenE -Hstream in HP. lia. }
+    assert (Hweq : o_w so = pending_n ps0 (o_cs so) n0).
+    { assert (Hw1 : o_w so `prefix_of` pending_n (o_ps so) (o_cs so) n0)
+        by (rewrite -HlenE; exact Hwpre).
+      assert (Hlen2 : length (o_w so) = length (pending_n ps0 (o_cs so) n0))
+        by (rewrite -Hpend0; exact Hlenw).
+      destruct (prefix_weak_total (o_w so) (pending_n ps0 (o_cs so) n0)
+                  (pending_n (o_ps so) (o_cs so) n0) Hw1 Hpmono) as [H | H].
+      - apply prefix_length_eq; [exact H | lia].
+      - symmetry. apply prefix_length_eq; [exact H | lia]. }
+    assert (Hopens : ps_opens so).
+    { rewrite /ps_opens HlenE.
+      destruct HopenC as [Hz | H3]; [by left | by right]. }
+    (* ---- the CLAIM'S round is the writer's, still open, and its
+           resolution is the writer's list ---- *)
+    pose proof Hpsl as [HpsA HpsB].
+    assert (Hproeq : pro_of (pro_from
+                       (pro_idx (o_cs so) (n0 `div` length echo_line)) ps0)
+                     = pro_of (pro_from
+                         (pro_idx (o_cs so) (n0 `div` length echo_line))
+                         (o_ps so))).
+    { destruct (decide (pro_of (pro_from
+                          (pro_idx (o_cs so) (n0 `div` length echo_line)) ps0)
+                        = pro_of (pro_from
+                            (pro_idx (o_cs so) (n0 `div` length echo_line))
+                            (o_ps so)))) as [Heq | Hne]; [exact Heq | exfalso].
+      pose proof (HpsB Hopens ps0 Hpsp) as Hlt.
+      rewrite /ps_round HlenE in Hlt.
+      pose proof (Hlt Hne) as Hlt2. rewrite Hpend0 in Hlenw. lia. }
+    assert (Hndps : ~ pro_done (pro_from
+                      (pro_idx (o_cs so) (n0 `div` length echo_line))
+                      (o_ps so))).
+    { intros Hdone. apply Hnd.
+      destruct (pro_of_prefix_free
+                  (pro_from (pro_idx (o_cs so) (n0 `div` length echo_line)) ps0)
+                  (pro_from (pro_idx (o_cs so) (n0 `div` length echo_line))
+                     (o_ps so))
+                  ltac:(by apply pro_from_Forall)
+                  ltac:(by apply pro_from_Forall)
+                  Hdone ltac:(rewrite -Hproeq; reflexivity)) as [Hd _].
+      exact Hd. }
+    assert (Hround0 : (pro_idx (o_cs so) (n0 `div` length echo_line)
+                       <= pro_rounds ps0)%nat).
+    { rewrite Hidxeq. by apply (pro_pin_round_le ps0 cs0 n0 Hmod Hopen Hpin0). }
+    assert (Hpseq : o_ps so = ps0).
+    { pose proof Hpsp as Hq. destruct Hq as [z Hz]. pose proof Hpsb as Hpsb2.
+      rewrite Hz in Hpsb2.
+      assert (Hzb : Forall (fun x => (x < length pro_alts)%nat) z)
+        by (by apply Forall_app in Hpsb2 as [_ ?]).
+      pose proof Hproeq as Hpe2. rewrite Hz in Hpe2.
+      rewrite (pro_from_app_le _ ps0 z Hround0) in Hpe2.
+      assert (Hzn : z = []).
+      { apply (pro_of_open_app_inj _ z Hnd Hzb). by rewrite -Hpe2. }
+      rewrite Hz Hzn. by rewrite app_nil_r. }
+    assert (HRle : (pro_idx (o_cs so) (n0 `div` length echo_line)
+                    <= pro_rounds (o_ps so))%nat) by (rewrite Hpseq; exact Hround0).
+    (* ---- the byte the block owes at the writer's position ---- *)
+    assert (Hshape2 : pending_n (o_ps so ++ [a]) (o_cs so) n0
+                      = (if decide (n0 = 0%nat) then [] else line_alts !!! 3%nat)
+                        ++ pro_of (pro_from (pro_idx (o_cs so)
+                             (n0 `div` length echo_line)) (o_ps so ++ [a])))
+      by (apply pending_n_round_pre; [exact Hmod | exact HopenC]).
+    assert (Hshape : pending_n (o_ps so) (o_cs so) n0
+                     = (if decide (n0 = 0%nat) then [] else line_alts !!! 3%nat)
+                       ++ pro_of (pro_from (pro_idx (o_cs so)
+                            (n0 `div` length echo_line)) (o_ps so)))
+      by (apply pending_n_round_pre; [exact Hmod | exact HopenC]).
+    assert (Hpendb : pending_n (o_ps so ++ [a]) (o_cs so) n0 !! length (o_w so)
+                     = Some b).
+    { pose proof (pro_of_snoc_head
+                    (pro_from (pro_idx (o_cs so)
+                       (n0 `div` length echo_line)) (o_ps so)) a b Hndps Hhead)
+        as Hph.
+      assert (Hpre3' :
+        ((if decide (n0 = 0%nat) then [] else line_alts !!! 3%nat)
+         ++ (pro_of (pro_from (pro_idx (o_cs so)
+                       (n0 `div` length echo_line)) (o_ps so)) ++ [b]))
+        `prefix_of` pending_n (o_ps so ++ [a]) (o_cs so) n0).
+      { rewrite Hshape2 (pro_from_snoc_le _ (o_ps so) a HRle).
+        by apply prefix_app. }
+      assert (Hwl : length (o_w so)
+                    = (length (if decide (n0 = 0%nat)
+                               then [] else line_alts !!! 3%nat)
+                       + length (pro_of (pro_from (pro_idx (o_cs so)
+                           (n0 `div` length echo_line)) (o_ps so))))%nat).
+      { rewrite Hweq -Hpseq Hshape.
+        by rewrite (length_app
+                      (if decide (n0 = 0%nat) then [] else line_alts !!! 3%nat)
+                      (pro_of (pro_from (pro_idx (o_cs so)
+                         (n0 `div` length echo_line)) (o_ps so)))). }
+      rewrite Hwl. eapply prefix_lookup_Some; [| exact Hpre3'].
+      rewrite (lookup_app_shift
+                 (if decide (n0 = 0%nat) then [] else line_alts !!! 3%nat)).
+      replace (length (pro_of (pro_from (pro_idx (o_cs so)
+                 (n0 `div` length echo_line)) (o_ps so))))
+        with (length (pro_of (pro_from (pro_idx (o_cs so)
+                 (n0 `div` length echo_line)) (o_ps so))) + 0)%nat by lia.
+      by rewrite (lookup_app_shift
+                    (pro_of (pro_from (pro_idx (o_cs so)
+                       (n0 `div` length echo_line)) (o_ps so)))). }
+    (* ---- and the block is not empty, so the choice list stays put ---- *)
+    assert (Hwnil : o_w so <> []).
+    { rewrite Hweq -Hpseq.
+      pose proof (pending_nonnil (o_ps so) (o_cs so) (o_E so) Hcsb
+                    ltac:(rewrite HlenE; exact Hmod)) as Hne.
+      rewrite /pending HlenE in Hne. exact Hne. }
+    (* ---- the transcript and the cursor do not read the new entry ---- *)
+    assert (HD : D (o_ps so ++ [a]) (o_cs so) (o_E so)
+                 = D (o_ps so) (o_cs so) (o_E so)).
+    { symmetry. apply (D_ps_ext (o_ps so) (o_ps so ++ [a]) (o_cs so) (o_E so));
+        [by eexists | exact Hpin]. }
+    assert (HPc : pcount_from (o_ps so ++ [a]) (o_cs so) 0%nat (o_E so)
+                  = pcount_from (o_ps so) (o_cs so) 0%nat (o_E so)).
+    { symmetry.
+      apply (pcount_cs_prefix (o_ps so) (o_ps so ++ [a]) (o_cs so) (o_cs so)
+               (o_E so)); [by eexists | reflexivity | exact Hpin |].
+      rewrite HlenE.
+      assert (Hle2 : (length cs0 <= length (o_cs so))%nat)
+        by (by apply prefix_length).
+      assert (Hle3 : ((n0 - 1) `div` length echo_line
+                      <= n0 `div` length echo_line)%nat)
+        by (apply Nat.Div0.div_le_mono; lia).
+      lia. }
+    assert (Hpc2 : pcount (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b])
+                   = S P).
+    { rewrite /pcount HPc (length_app (o_w so) [b]). cbn [length].
+      rewrite -(proc_upto_length (o_ps so) (o_cs so) (o_E so)). lia. }
+    iMod (turn_update v P (pcount (o_ps so) (o_cs so) (o_E so) (o_w so)) (S P)
+            with "Ht Hta") as "[Ht Hta]".
+    iMod (ps_auth_grow v (o_ps so) a with "Hps") as "[Hps #Hpslb2]".
+    iModIntro. iSplitR "Ht".
+    - rewrite /eout. iRight.
+      iExists v, (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b])).
+      cbn [o_ps o_cs o_E o_w]. rewrite Hpc2.
+      iFrame "Hpin Hta Hcs Hps HE Hwo". iPureIntro. split_and!.
+      + rewrite /eout_pure. cbn [o_ps o_cs o_E o_w]. split_and!.
+        * rewrite Hacc HD. by rewrite app_assoc.
+        * apply prefix_snoc_lookup.
+          { etrans; [exact Hwpre |]. rewrite /pending.
+            by apply pending_n_ps_mono; eexists. }
+          { rewrite /pending HlenE. exact Hpendb. }
+        * exact Hidx.
+        * exact Hbyte.
+        * rewrite Forall_app. split; [exact Hpsb | by rewrite Forall_singleton].
+        * apply (pro_pin_mono (o_ps so) (o_ps so ++ [a])); [by eexists | exact Hpin].
+        * exact Hcsb'.
+        * exact Hdsc.
+        * exact Hpre1.
+        * exact Hpre2.
+        * exact Hpre3.
+      + apply (cs_len_ok_write
+                 (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so)) b);
+          [exact Hcsl | by left].
+      + apply (ps_len_ok_pro so a b);
+          [ rewrite /ps_round HlenE; exact HRle
+          | rewrite /ps_round HlenE; exact Hndps
+          | rewrite /pending HlenE Hweq; by rewrite -Hpseq
+          | exact (conj HpsA HpsB) ].
+      + exact Hcsb.
+    - iLeft. rewrite -Hpseq. iFrame "Ht Hpslb2 Hcslb HElb".
   Qed.
 
   (* (R) THE READ.  [ws] is the window the read CONSUMED; [read_ok] is what
@@ -2578,7 +3193,7 @@ Section echo_out.
     - iSplitR; [iLeft; iExact "HT" | iLeft; iExact "HT"].
     - iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hwo & %Hall)".
       pose proof Hall as Hall2.
-      destruct Hall2 as (Hpure & Hcsl & Hcsb).
+      destruct Hall2 as (Hpure & Hcsl & Hpsl & Hcsb).
       destruct Hpure as (Hacc & Hwp & Hidx & Hbyte & Hpsb & Hpin & Hcs' & Hdsc
                          & Hpre1 & Hpre2 & Hpre3).
       iSplitL "Hta Hcs Hps HE Hwo".
@@ -2692,6 +3307,37 @@ Section echo_out.
       rewrite !out_res_at0.
       iMod (eout_step_write_blk k v P n0 a b ps0 cs0 (default [] o) acc
               Hpos Hmod Hdiv Hpin0 HPeq Halt Hhead
+              with "Hpin Ht Hpslb Hcslb HElb Hres") as "(Hres & Hret)".
+      iModIntro. iExists o. rewrite out_res_at0. iFrame "Hlb Hres".
+      by iApply "HΦ".
+    Qed.
+
+    (* (W-pro) THE WRITE LINK AT A PROLOGUE ROUND'S CHOICE BYTE.  Init's
+       own knowledge of which of the three alternatives it is taking, filed
+       into the claim; the bound that comes back has the entry in it, and
+       the rest of the alternative goes out through [echo_write_link]
+       against that bound.  At [n0 = 0], [cs0 = []] this is exactly the
+       era's FIRST choice, at [P = length (pro_of ps0)]. *)
+    Lemma echo_write_link_pro (k : nat) (v : era_pins) (P n0 a : nat)
+        (b : bv 8) (ps0 cs0 : list nat) (Φ : iProp Σ) :
+      (n0 `mod` length echo_line)%nat = 0%nat ->
+      (n0 = 0%nat \/ cs0 !!! (n0 `div` length echo_line - 1)%nat = 3%nat) ->
+      ((n0 `div` length echo_line) <= length cs0)%nat ->
+      pro_pin ps0 cs0 n0 ->
+      ~ pro_done (pro_from (pro_idx cs0 (n0 `div` length echo_line)) ps0) ->
+      P = length (proc_upto ps0 cs0 (S n0)) ->
+      (a < length pro_alts)%nat ->
+      pro_alts !!! a !! 0%nat = Some b ->
+      era_pin k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ E_lb v n0 -∗
+      (((turn v (S P) ∗ ps_lb v (ps0 ++ [a]) ∗ cs_lb v cs0 ∗ E_lb v n0) ∨ T)
+       -∗ Φ) -∗
+      out_link Uart0 k b Φ.
+    Proof.
+      intros Hmod Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead.
+      iIntros "#Hpin Ht #Hpslb #Hcslb #HElb HΦ" (o acc) "#Hlb Hres".
+      rewrite !out_res_at0.
+      iMod (eout_step_write_pro k v P n0 a b ps0 cs0 (default [] o) acc
+              Hmod Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead
               with "Hpin Ht Hpslb Hcslb HElb Hres") as "(Hres & Hret)".
       iModIntro. iExists o. rewrite out_res_at0. iFrame "Hlb Hres".
       by iApply "HΦ".

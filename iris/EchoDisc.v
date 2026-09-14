@@ -719,6 +719,102 @@ Proof.
   apply IH. rewrite pro_rounds_tail. lia.
 Qed.
 
+(* THE SAME, FOR A WHOLE BLOCK OF CHOICES: once the first [r] rounds have
+   settled, dropping them commutes with filing anything at all. *)
+Lemma pro_from_app_le (r : nat) (ps z : list nat) :
+  (r <= pro_rounds ps)%nat -> pro_from r (ps ++ z) = pro_from r ps ++ z.
+Proof.
+  intros Hr. induction z as [| a z IH] using rev_ind.
+  - by rewrite !app_nil_r.
+  - rewrite app_assoc (pro_from_snoc_le r (ps ++ z) a); last first.
+    { rewrite pro_rounds_app. lia. }
+    rewrite IH. by rewrite -app_assoc.
+Qed.
+
+Lemma pro_from_nil (r : nat) : pro_from r [] = [].
+Proof. induction r as [| r IH]; [done |]. by cbn [pro_from pro_tail]. Qed.
+
+(* FILING THE OPEN ROUND'S ALTERNATIVE CLOSES IT: nothing is left over, so
+   the resolution never runs ahead of the wire.  ([pro_tail] of an open
+   [ps] is [[]], and appending one entry leaves exactly that.) *)
+Lemma pro_tail_open_snoc (ps : list nat) (a : nat) :
+  ~ pro_done ps -> pro_tail (ps ++ [a]) = [].
+Proof.
+  induction ps as [| c ps IH]; intros Hnd.
+  - cbn [app pro_tail]. by case_decide.
+  - assert (Hc1 : c = 1%nat).
+    { destruct (decide (c = 1%nat)) as [? | Hne]; [done |].
+      exfalso. apply Hnd. rewrite /pro_done. by apply Exists_cons; left. }
+    subst c. cbn [app pro_tail].
+    apply IH. intros H. apply Hnd. rewrite /pro_done Exists_cons. by right.
+Qed.
+
+(* AN OPEN PROLOGUE GROWS STRICTLY when its alternative is filed -- the
+   alternative is non-empty, so at least its first byte is new.  This is
+   what makes the resolution READABLE OFF THE LENGTH of what was written. *)
+Lemma pro_of_open_snoc_lt (ps : list nat) (a : nat) :
+  ~ pro_done ps -> (a < length pro_alts)%nat ->
+  (length (pro_of ps) < length (pro_of (ps ++ [a])))%nat.
+Proof.
+  intros Hnd Ha.
+  destruct (pro_alts !!! a) as [| c bs] eqn:Hz;
+    [ exfalso; exact (pro_alts_nonnil a Ha Hz) |].
+  assert (Hb : pro_alts !!! a !! 0%nat = Some c) by (by rewrite Hz).
+  pose proof (pro_of_snoc_head ps a c Hnd Hb) as Hpre.
+  apply prefix_length in Hpre. rewrite (length_app (pro_of ps) [c]) in Hpre.
+  cbn [length] in Hpre. lia.
+Qed.
+
+(* ...hence an OPEN prologue determines its resolution: nothing can be
+   appended without moving the bytes. *)
+Lemma pro_of_open_app_inj (ps z : list nat) :
+  ~ pro_done ps -> Forall (fun a => (a < length pro_alts)%nat) z ->
+  pro_of (ps ++ z) = pro_of ps -> z = [].
+Proof.
+  intros Hnd HF Heq. destruct z as [| a z]; [done | exfalso].
+  rewrite Forall_cons in HF. destruct HF as [Ha _].
+  assert (Hp : pro_of (ps ++ [a]) `prefix_of` pro_of (ps ++ a :: z)).
+  { apply pro_of_mono. exists z. by rewrite -app_assoc. }
+  apply prefix_length in Hp. rewrite Heq in Hp.
+  pose proof (pro_of_open_snoc_lt ps a Hnd Ha). lia.
+Qed.
+
+(* THE BANNER OF THE j-TH FAILED SUB-ROUND.  An OPEN prologue is
+   [(banner ++ "init: exec sh failed\n")^j ++ banner], so its (j+1)-st
+   banner starts at [pro_round * j] -- the ONE arithmetic fact init's
+   restart loop needs, at an arbitrary j and with no [vm_compute]. *)
+Lemma pro_alts_1 : pro_alts !!! 1%nat = u_execfail.
+Proof. reflexivity. Qed.
+
+Lemma pro_of_replicate_banner (j i : nat) (b : bv 8) :
+  u_banner !! i = Some b ->
+  pro_of (replicate j 1%nat) !! (pro_round * j + i)%nat = Some b.
+Proof.
+  revert i b. induction j as [| j IH]; intros i b Hb.
+  - cbn [replicate pro_of]. by rewrite Nat.mul_0_r Nat.add_0_l.
+  - cbn [replicate pro_of]. rewrite pro_more_1.
+    replace (pro_round * S j + i)%nat
+      with (length u_banner
+            + (length (pro_alts !!! 1%nat) + (pro_round * j + i)))%nat;
+      last by (rewrite pro_alts_1 /pro_round; lia).
+    rewrite (lookup_app_shift u_banner).
+    rewrite (lookup_app_shift (pro_alts !!! 1%nat)).
+    by apply IH.
+Qed.
+
+(* an OPEN resolution IS a block of [1]s, which is the shape the banner
+   lemma above reads *)
+Lemma pro_open_replicate (ps : list nat) :
+  ~ pro_done ps -> ps = replicate (length ps) 1%nat.
+Proof.
+  induction ps as [| c ps IH]; intros Hnd; [done |].
+  assert (Hc1 : c = 1%nat).
+  { destruct (decide (c = 1%nat)) as [? | Hne]; [done |].
+    exfalso. apply Hnd. rewrite /pro_done. by apply Exists_cons; left. }
+  subst c. cbn [length replicate]. f_equal. apply IH.
+  intros H. apply Hnd. rewrite /pro_done Exists_cons. by right.
+Qed.
+
 Lemma pro_idx_app_le (cs z : list nat) (q : nat) :
   (q <= length cs)%nat -> pro_idx (cs ++ z) q = pro_idx cs q.
 Proof.

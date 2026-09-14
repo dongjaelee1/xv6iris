@@ -277,6 +277,91 @@ Proof.
   by apply pro_of_from_mono.
 Qed.
 
+(* THE ROUND-OPENING BLOCK'S SHAPE.  A block that OPENS a prologue round --
+   the head of the transcript ([n = 0]), or a line whose continuation was
+   the shell's own fork panic ([line_alts !!! 3]) -- owes the panic line, if
+   any, and then THAT ROUND'S PROLOGUE.  Every OTHER block owes no prologue
+   at all, which is why the round-opening disjunction is a premise and not
+   decoration: without it the equation below is simply false. *)
+Lemma pending_n_round_pre (ps cs : list nat) (n : nat) :
+  (n `mod` length echo_line)%nat = 0%nat ->
+  (n = 0%nat \/ cs !!! (n `div` length echo_line - 1)%nat = 3%nat) ->
+  pending_n ps cs n
+  = (if decide (n = 0%nat) then [] else line_alts !!! 3%nat)
+    ++ pro_of (pro_from (pro_idx cs (n `div` length echo_line)) ps).
+Proof.
+  intros Hm Hopen. rewrite /pending_n. case_decide as H0.
+  - subst n. rewrite Nat.Div0.div_0_l. by cbn [pro_idx pro_from app].
+  - rewrite decide_True; [| exact Hm].
+    assert (H3 : cs !!! (n `div` length echo_line - 1)%nat = 3%nat).
+    { destruct Hopen as [Hn | H3]; [by destruct (H0 Hn) | exact H3]. }
+    pose proof echo_line_length as HL.
+    assert (Hq : (1 <= n `div` length echo_line)%nat).
+    { destruct (decide (n `div` length echo_line = 0)%nat) as [Hd | Hd]; [| lia].
+      exfalso. pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
+      rewrite Hd Hm in Hdm. lia. }
+    assert (Hs : S (pro_idx cs (n `div` length echo_line - 1))
+                 = pro_idx cs (n `div` length echo_line)).
+    { replace (n `div` length echo_line)%nat
+        with (S (n `div` length echo_line - 1))%nat at 2 by lia.
+      symmetry. apply pro_idx_S3.
+      replace (S (n `div` length echo_line - 1) - 1)%nat
+        with (n `div` length echo_line - 1)%nat by lia.
+      exact H3. }
+    rewrite /alt_cont H3 Hs. reflexivity.
+Qed.
+
+(* A ROUND-OPENING BLOCK STANDS AT A ROUND THE STAGE HAS ALREADY REACHED:
+   the block below it is settled ([pro_pin]) and this one is the next, so
+   the round's index never runs past what the resolution has resolved.  This
+   is the LOWER bound on [pro_rounds] the prologue-choice write pairs with
+   the upper bound its own [~ pro_done] gives. *)
+Lemma pro_pin_round_le (ps cs : list nat) (n : nat) :
+  (n `mod` length echo_line)%nat = 0%nat ->
+  (n = 0%nat \/ cs !!! (n `div` length echo_line - 1)%nat = 3%nat) ->
+  pro_pin ps cs n ->
+  (pro_idx cs (n `div` length echo_line) <= pro_rounds ps)%nat.
+Proof.
+  pose proof echo_line_length as HL. intros Hm Ho Hpin.
+  destruct (decide (n = 0%nat)) as [-> | Hn0].
+  { rewrite Nat.Div0.div_0_l. cbn [pro_idx]. lia. }
+  assert (H3 : cs !!! (n `div` length echo_line - 1)%nat = 3%nat).
+  { destruct Ho as [Hz | H3]; [by destruct (Hn0 Hz) | exact H3]. }
+  assert (Hq : (1 <= n `div` length echo_line)%nat).
+  { destruct (decide (n `div` length echo_line = 0)%nat) as [Hd | Hd]; [| lia].
+    exfalso. pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
+    rewrite Hd Hm in Hdm. lia. }
+  assert (Hs : S (pro_idx cs (n `div` length echo_line - 1))
+               = pro_idx cs (n `div` length echo_line)).
+  { replace (n `div` length echo_line)%nat
+      with (S (n `div` length echo_line - 1))%nat at 2 by lia.
+    symmetry. apply pro_idx_S3.
+    replace (S (n `div` length echo_line - 1) - 1)%nat
+      with (n `div` length echo_line - 1)%nat by lia.
+    exact H3. }
+  rewrite -Hs.
+  assert (Hlt : (length echo_line * (n `div` length echo_line - 1) < n)%nat).
+  { pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
+    rewrite Hm Nat.add_0_r in Hdm. nia. }
+  pose proof (Hpin (n `div` length echo_line - 1)%nat Hlt). lia.
+Qed.
+
+(* ...so two resolutions that owe the SAME round-opening block agree on that
+   round's prologue.  This is the fact the prologue-choice write reconciles
+   its own [ps0] against the claim's authority with. *)
+Lemma pending_n_round_det (ps ps' cs : list nat) (n : nat) :
+  (n `mod` length echo_line)%nat = 0%nat ->
+  (n = 0%nat \/ cs !!! (n `div` length echo_line - 1)%nat = 3%nat) ->
+  pending_n ps cs n = pending_n ps' cs n ->
+  pro_of (pro_from (pro_idx cs (n `div` length echo_line)) ps)
+  = pro_of (pro_from (pro_idx cs (n `div` length echo_line)) ps').
+Proof.
+  intros Hm Hopen Heq.
+  rewrite (pending_n_round_pre ps cs n Hm Hopen) in Heq.
+  rewrite (pending_n_round_pre ps' cs n Hm Hopen) in Heq.
+  by apply app_inv_head in Heq.
+Qed.
+
 Lemma D_from_pending_ext ps ps' cs k E :
   (forall j, (k <= j)%nat -> (j < k + length E)%nat ->
      pending_n ps cs j = pending_n ps' cs j) ->

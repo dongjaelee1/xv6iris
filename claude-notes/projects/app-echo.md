@@ -131,12 +131,13 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   TO TWO CONJUNCTS); M4b(1) LANDED 2026-09-16 (`02b240e03`; the note
   below: the diagnostics tower carries `ksh_w1`); M5(3) LANDED 2026-09-16
   (`49cd3b5d1`; the note below: `ush_rest` deleted, the body handed the
-  line fact); NEXT (fresh agent, main checkout, brief v9): M6a the write
-  credential rides the lease's `Rd` with a persistent conversion for
-  init's rounds, then M3b core in OPAQUE terms (the child's `Rc`/`Q` as
-  opaque credentials with `□` conversions built at the top), sh's wait
-  redemption after TRAP-ROWS-5; then M4b(2) the diagnostics' payment,
-  M6b init's restart loop.
+  line fact); M6a(1) LANDED 2026-09-16 (`a72323b79`; the note below: the
+  credential at an arbitrary boundary, the prompt at every one); IN FLIGHT
+  (main checkout, brief v9, RULED (A)): M6a(2) init's walk pays its banner
+  from the lease at every round (the persistent conversion; `Rt`
+  collapses; init's files allowed), sh's side without `∨ True`, then M3b
+  core in OPAQUE terms, sh's wait redemption after TRAP-ROWS-5; then
+  M4b(2) the diagnostics' payment, M6b the die arms.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad
@@ -3391,6 +3392,40 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M6a(1) LANDED (2026-09-16; `a72323b79` on `3d3f4bbfb`; EchoLinks.v
++464, UShOut.v, UInitBanner.v; build io52 in the main checkout; audit the
+thirteen; lemma_diff 1 GONE (`UShOut.ushps`, carried by the credential's
+own `ps_lb`); no Admitted; trusted diff EMPTY).  THE ERA'S WRITE CREDENTIAL
+AT A LINE BOUNDARY, AND SH'S PROMPT AT EVERY ONE.  What a holder of the
+credential may do at a boundary is NOT a function of the count (the stage
+depends on which alternatives the transcript took; the prologue rounds
+are free): `EchoLinks` has the three pure shapes at an ARBITRARY round --
+`wr_pro ps cs n P` (a round-opening boundary, `¬ pro_done` of the current
+round, `P = |proc_upto ps cs (S n)|`; round 0 = `[] [] 0 18`), `wr_blk` (a
+line block's first byte, `n/17 = S |cs|`), `wr_open` (a settled round), `wr_owed
+:= wr_pro ∨ wr_blk` -- and the steps `wr_pro_dollar` ('$' files `ps ++ [0]`),
+`wr_blk_dollar` ('$' files `cs ++ [2]`), `wr_open_read` (a read of a line
+moves `wr_open` to `wr_blk` at `n + 17`); `ewc_owed`/`ewc_sp`/`ewc_open` (the
+credential as an iProp, each with `∨ T`), `echo_prompt_dollar`/
+`echo_prompt_space` (the two link steps: `_pro` at a = 0 OR `_blk` at a = 2,
+then `_w`), `ewc_read`.  New pure: `pro_of_open_snoc_eq` (filing an OPEN
+round's alternative APPENDS it), `pending_n_round_shape/_snoc`,
+`proc_upto_gap`.  `UShOut.ushpr` is indexed by the boundary, so
+`ksh_w_of_link_prompt`/`sh_prompt_pay_of_ushpr` hold at EVERY prompt;
+`UInitBanner.bnr_ushpr` is a wand.  M6a's HEADLINE NEEDS INIT'S WALK: `Rd 0`
+and the banner payment reach init at the same time and the turn is
+exclusive, so putting the turn in `Rd 0` forces `wp_kinit_main_loop`'s
+`kinit_round0` premise to become the PERSISTENT conversion `□ (∀ n N', Rd n
+-∗ kinit_banner0 N' stc (Rd n))` threaded through ~8 init lemmas (not one
+line).  RULED (A): do the restructure now (no affine `∨ True` in the lease
+-- that would be one more placeholder deferring the same work to M6b);
+init pays its banner from the lease at every round; `Rt` collapses;
+`die_dw` deleted if refutable via T4; sh's side without the `∨ True`
+(`ush_mid` gains `E_lb v n`; `Wc`/`Wc'` beside `Pm`).  Trap: the sync deletes
+the `.vo` of every edited file -- rebuild a touched dependency with `make -f
+CoqMakefile -j8 A.vo` on the VM before `rocq-warm check B.v`.  Handover:
+`io-leaf-handover.md`.
 
 IO-LEAF M5(3) LANDED (2026-09-16; `49cd3b5d1` on `ae7a46895`; 9 files
 +1212/-285; builds io44-io51 in the main checkout; audit the thirteen;

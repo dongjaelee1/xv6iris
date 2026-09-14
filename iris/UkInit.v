@@ -31,8 +31,11 @@ Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuil
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
+Require Import UmodeArith.  (* [zext8_moi] -- the byte in a1, at the width
+                                the store leaves it *)
 Require Import RegFile.
 Require Import UexecSlot.   (* [uvis] -- the key vocabulary *)
+Require Import UserHeap.    (* [ubyte] -- the byte putc spills into its frame *)
 Require Import UkRun UkRunLeaf UkRunSys.
 Require Import UCodeInit.
 Require Import TsoCtx.
@@ -1223,6 +1226,84 @@ Section UkInit.
     iIntros (h3) "Hrun".
     iApply ("Hcont" $! h3 ret with "Hrun").
   Qed.
+  (* ===================================================================== *)
+  (*  THE PRINTF CONE'S PER-BYTE WRITE OBLIGATION (lane IO-LEAF).           *)
+  (*                                                                       *)
+  (*  ulib's [putc] is one [write(fd, &c, 1)], and the whole cone above it  *)
+  (*  -- vprintf's loop, printf -- is that call repeated.  A caller that    *)
+  (*  wants to SAY something about the bytes carries [Ci] into each one and *)
+  (*  takes [Co] out, and supplies THIS instead of the flagged deposit.     *)
+  (*                                                                       *)
+  (*  IT NAMES NOTHING BUT THE PROGRAM TIER'S OWN VOCABULARY -- the byte    *)
+  (*  putc spilled into its frame, the run, [Ci], [Co] -- and that is       *)
+  (*  forced: this cone sits BELOW the file system and cannot name row      *)
+  (*  16's reading at all ([UkWriteLeaf]'s header).  The CONCRETE discharge *)
+  (*  -- the console chain, the era's write link, the short arm's           *)
+  (*  refutation ([UkWriteLeaf.uwrite_no_short]) -- is stated above         *)
+  (*  [UkWriteLeaf] and reaches the walk as a premise, exactly the way      *)
+  (*  sh's read leaf reaches [UkSh] from [UShLine].                         *)
+  (*                                                                       *)
+  (*  THE BYTE IS PUTC'S OWN and comes straight back: 16 writes no user     *)
+  (*  byte, and the frame word putc borrowed has to be whole again before   *)
+  (*  it gives the stack back.                                             *)
+  (* ===================================================================== *)
+  (* the byte a caller puts in a1 IS the byte putc spills, read at the
+     width the store leaves it ([RiscvModelBytes.nth_byte] at 0) *)
+  Lemma nth_byte0_moi (b : bv 8) :
+    nth_byte (mword_of_int (bv_unsigned b) : mword 64) 0%nat = b.
+  Proof.
+    rewrite <- zext8_moi. apply bv_eq.
+    rewrite /nth_byte bv_extract_unsigned zext8_unsigned.
+    change (8 * N.of_nat 0)%N with 0%N.
+    rewrite Z.shiftr_0_r. apply bv_wrap_small. apply bv_unsigned_in_range.
+  Qed.
+
+  Definition kinit_w1 (fdv : mword 64) (b : bv 8) (Ci Co : iProp Σ) : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (avail : nat),
+       (* the descriptor and the count are the caller's to fix: which arm
+          of [SpecFilewrite.filewrite_in] row 16 asks for is decided by
+          argument 0's ledger row, and putc's call is one byte wide *)
+       ⌜m !!! Regidx a0_idx = fdv⌝ -∗
+       ⌜m !!! Regidx a2_idx = (mword_of_int 1 : mword 64)⌝ -∗
+       init_code γt -∗
+       ubyte γd (uint (m !!! Regidx a1_idx)) b -∗
+       Ci -∗
+       urun N h m (mword_of_int InitSyms.write) avail -∗
+       (∀ (h' : CpuId) (ret : mword 64),
+          ubyte γd (uint (m !!! Regidx a1_idx)) b -∗
+          Co -∗
+          urun N h'
+            (<[Regidx a0_idx := ret]>
+               (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
+            (ret_pc (m !!! Regidx ra_idx)) avail -∗
+          WP (Loop : expr riscv_lang)) -∗
+       WP (Loop : expr riscv_lang))%I.
+
+  (* ...AND THE TRIVIAL ONE: the flagged deposit pays row 16 and the post
+     is thrown away, which is what every caller of the cone did before
+     lane IO-LEAF and what init's three DIE arms still do. *)
+  Lemma kinit_w1_of_law (fdv : mword 64) (b : bv 8) :
+    udepw_law 16 -∗ kinit_w1 fdv b emp emp.
+  Proof.
+    iIntros "#Hwr" (h m avail) "_ _ #Hcode Hbuf _ Hrun Hcont".
+    iApply (wp_kinit_write h m avail with "Hwr Hcode Hrun").
+    iIntros (h' ret) "Hrun".
+    iApply ("Hcont" $! h' ret with "Hbuf [] Hrun"). done.
+  Qed.
+
+  (* ...and it FRAMES: whatever else a caller wants to carry across the
+     call rides beside [Ci]/[Co] untouched, which is how the ledger the
+     console arm reads its row from travels with the cursor. *)
+  Lemma kinit_w1_frame (fdv : mword 64) (b : bv 8) (Ci Co R : iProp Σ) :
+    kinit_w1 fdv b Ci Co -∗ kinit_w1 fdv b (Ci ∗ R) (Co ∗ R).
+  Proof.
+    iIntros "Hw" (h m avail) "%Ha0 %Ha2 #Hcode Hbuf [HCi HR] Hrun Hcont".
+    iApply ("Hw" $! h m avail with "[%] [%] Hcode Hbuf HCi Hrun");
+      [ exact Ha0 | exact Ha2 | ].
+    iIntros (h' ret) "Hbuf HCo Hrun".
+    iApply ("Hcont" $! h' ret with "Hbuf [$HCo $HR] Hrun").
+  Qed.
+
   (* ...AND THE SAME STUB WITH THE OUTPUT CHAIN AND THE POST                *)
   (* (app-echo.md, lane IO-LEAF, first half; the leaf is                    *)
   (* [UkRunSys.wp_uk_ecall_write_chain]).                                   *)

@@ -97,24 +97,37 @@ Section UkInitPrintf.
   (*   sp0-48 a2   sp0-56 a1   sp0-64 --   sp0-72 ra   sp0-80 s0            *)
   (*   sp0-88 ap   sp0-96 --                                                 *)
   (* --------------------------------------------------------------------- *)
-  Lemma wp_kinit_printf (a : Z) (len : nat) (f : nat -> mword 8)
-      (h : CpuId) (m : regfile) (n : nat) :
+  (* ...AND IT CARRIES THE CALLER'S PER-BYTE FAMILY (lane IO-LEAF).  init's
+     format strings contain no '%', so [printf(fmt)] IS [write(1, fmt,
+     strlen fmt)] one byte at a time, and [Ch i] is "the first [i] bytes of
+     this string have been accounted for".  What moves it on is the
+     caller's own obligation ([UkInit.kinit_w1]), boxed; the flagged
+     deposit is the instance that says nothing, and [wp_kinit_printf] below
+     is this lemma at exactly that instance. *)
+  Lemma wp_kinit_printf_chain (a : Z) (len : nat) (f : nat -> mword 8)
+      (Ch : nat -> iProp Σ) (h : CpuId) (m : regfile) (n : nat) :
     0 <= a -> a + Z.of_nat len + 2 < 2 ^ 31 ->
     (0 < len)%nat ->
     (forall j : nat, (j < len)%nat -> bv_unsigned (f j) <> 37) ->
     m !!! Regidx a0_idx = mword_of_int a ->
-    udepw_law 16 -∗
+    (* THE DESCRIPTOR IS FIXED HERE, and that is printf's whole difference
+       from vprintf: [c.li a0,1] at 0x7e4.  init's banner goes to fd 1. *)
+    □ (∀ j : nat, ⌜(j < len)%nat⌝ -∗
+         UkInit.kinit_w1 N (mword_of_int 1 : mword 64)
+           (f j) (Ch j) (Ch (S j))) -∗
     init_code γt -∗
     utext_str γt a len f -∗
+    Ch 0%nat -∗
     urun N h m (mword_of_int InitSyms.printf) (12 + (12 + (4 + n))) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
+       Ch len -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (12 + (4 + n))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Habnd Hlen Hpct Ha0r.
-    iIntros "#Hwr #Hcode #Hstr Hrun Hcont".
+    iIntros "#Hw #Hcode #Hstr HCh Hrun Hcont".
     destruct init_syms_pins
       as (_ & _ & Hprintf & Hvprintf & _ & _ & _ & _ & _ & _ & _ & _ & _).
     rewrite Hprintf.
@@ -481,9 +494,15 @@ Section UkInitPrintf.
       exact (upd_ne mq5 (Regidx ra_idx) (Regidx a1_idx) _
                ltac:(vm_compute; discriminate)). }
     (* ---- vprintf(1, fmt, ap) ---- *)
-    iApply (wp_kinit_vprintf N a len f h15 mq6 n
-              Ha0 Habnd Hlen Hpct Ha1q6 with "Hwr Hcode Hstr Hrun").
-    iIntros (h16 mq7) "%Hcs Hrun".
+    assert (Ha0q6 : mq6 !!! Regidx a0_idx = (mword_of_int 1 : mword 64)).
+    { rewrite /mq6 (upd_ne mq5 (Regidx ra_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+      rewrite /mq5 (upd_eq mq4 (Regidx a0_idx) (regval_into_reg _)).
+      apply bv_eq; vm_compute; reflexivity. }
+    iApply (wp_kinit_vprintf N a len f (mword_of_int 1 : mword 64) Ch h15 mq6 n
+              Ha0 Habnd Hlen Hpct Ha1q6 Ha0q6
+              with "Hw Hcode Hstr HCh Hrun").
+    iIntros (h16 mq7) "%Hcs HCh Hrun".
     assert (Eret : ret_pc (mq6 !!! Regidx ra_idx)
                    = (mword_of_int 0x7ea : mword 64))
       by (rewrite Hraq6; apply bv_eq; vm_compute; reflexivity).
@@ -586,7 +605,7 @@ Section UkInitPrintf.
               with "[] Hrun").
     { iApply (uis_init_7f0 with "Hcode"). }
     iIntros (h20) "Hrun".
-    iApply ("Hcont" $! h20 mq10 with "[] Hrun").
+    iApply ("Hcont" $! h20 mq10 with "[] HCh Hrun").
     iPureIntro. intros r Hr.
     assert (Kne : forall (q : mword 5) (z : Z),
                uint q = z -> uint r <> z -> Regidx r <> Regidx q).
@@ -633,6 +652,38 @@ Section UkInitPrintf.
       rewrite /mq9. exact (upd_eq mq8 (Regidx s0_idx) (regval_into_reg _)).
     - apply Huntouched; lia.
     - apply Huntouched; lia.
+  Qed.
+
+  (* ...AND THE ONE THAT SAYS NOTHING, which is the statement every caller
+     of the cone had before lane IO-LEAF and the one init's three DIE arms
+     still use: the flagged deposit pays row 16 at every byte and the post
+     is thrown away. *)
+  Lemma wp_kinit_printf (a : Z) (len : nat) (f : nat -> mword 8)
+      (h : CpuId) (m : regfile) (n : nat) :
+    0 <= a -> a + Z.of_nat len + 2 < 2 ^ 31 ->
+    (0 < len)%nat ->
+    (forall j : nat, (j < len)%nat -> bv_unsigned (f j) <> 37) ->
+    m !!! Regidx a0_idx = mword_of_int a ->
+    udepw_law 16 -∗
+    init_code γt -∗
+    utext_str γt a len f -∗
+    urun N h m (mword_of_int InitSyms.printf) (12 + (12 + (4 + n))) -∗
+    (∀ (h' : CpuId) (m' : regfile),
+       ⌜ ucallee_saved m m' ⌝ -∗
+       urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (12 + (4 + n))) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Ha0 Habnd Hlen Hpct Ha0r.
+    iIntros "#Hwr #Hcode #Hstr Hrun Hcont".
+    iApply (wp_kinit_printf_chain a len f (fun _ => emp)%I h m n
+              Ha0 Habnd Hlen Hpct Ha0r with "[] Hcode Hstr [] Hrun").
+    { iIntros "!>" (j) "_".
+      iApply (UkInit.kinit_w1_of_law N (mword_of_int 1 : mword 64) (f j)
+                with "Hwr"). }
+    { done. }
+    iIntros (h' m') "%Hcs _ Hrun".
+    iApply ("Hcont" $! h' m' with "[%] Hrun"). exact Hcs.
   Qed.
 
 

@@ -876,26 +876,34 @@ Section UkInitVprintf.
   (* ONE ROUND, 0x52c -> 0x528.  It owns no frame word: putc's four are     *)
   (* BELOW sp, and the twelve vprintf spilled are untouched here.            *)
   (* --------------------------------------------------------------------- *)
+  (* ...AND THE ROUND CARRIES THE CALLER'S OWN PER-BYTE OBLIGATION (lane
+     IO-LEAF): [Ci] goes in, [Co] comes out, and [b0] -- the byte this
+     round hands putc -- is what the obligation is about.  The flagged
+     deposit is the instance that says nothing
+     ([UkInit.kinit_w1_of_law]). *)
   Lemma wp_kinit_vprintf_step (m0 : regfile) (sp0 fd : mword 64) (a : Z)
-      (i : nat) (b0 b1 : mword 8) (h : CpuId) (m : regfile) (n : nat) :
+      (i : nat) (b0 b1 : mword 8) (Ci Co : iProp Σ)
+      (h : CpuId) (m : regfile) (n : nat) :
     0 <= a -> a + Z.of_nat i + 2 < 2 ^ 31 ->
     bv_unsigned b0 <> 37 ->
     vp_inv m0 m sp0 a fd i ->
     m !!! Regidx s1_idx = mword_of_int (bv_unsigned b0) ->
-    udepw_law 16 -∗
+    UkInit.kinit_w1 N fd b0 Ci Co -∗
     init_code γt -∗
     utext γt (a + Z.of_nat (S i)) b1 -∗
+    Ci -∗
     urun N h m (mword_of_int 0x52c) (4 + n) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ vp_inv m0 m' sp0 a fd (S i) ⌝ -∗
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned b1) ⌝ -∗
+       Co -∗
        urun N h' m' (mword_of_int 0x528) (4 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Habnd Hpct Hinv Hs1.
     destruct Hinv as (Hsp & Hs0 & Hs2 & Hs3 & Hs4 & Hs5 & Hs6 & Hfr).
-    iIntros "#Hwr #Hcode #Hb1 Hrun Hcont".
+    iIntros "Hw1 #Hcode #Hb1 HCi Hrun Hcont".
     assert (Hb0 : 0 <= bv_unsigned b0 < 256).
     { pose proof (bv_unsigned_in_range 8 b0) as HH.
       assert (Em8 : bv_modulus 8 = 256) by (vm_compute; reflexivity).
@@ -1027,9 +1035,27 @@ Section UkInitVprintf.
                  := regval_into_reg (mword_of_int 0x514 : mword 64)]> m3).
     assert (Hra4 : m4 !!! Regidx ra_idx = (mword_of_int 0x514 : mword 64))
       by exact (upd_eq m3 (Regidx ra_idx) (regval_into_reg _)).
-    (* ---- putc(fd, c) ---- *)
-    iApply (wp_kinit_putc N h6 m4 n with "Hwr Hcode Hrun").
-    iIntros (h7 m5) "%Hcs Hrun".
+    (* ---- putc(fd, c) -- THE BYTE IS s1's, moved into a1 at 0x50c ---- *)
+    assert (Hbyte : nth_byte (m4 !!! Regidx a1_idx) 0%nat = b0).
+    { assert (Ha1m4 : m4 !!! Regidx a1_idx
+                      = (mword_of_int (bv_unsigned b0) : mword 64)).
+      { rewrite /m4 (upd_ne m3 (Regidx ra_idx) (Regidx a1_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /m3 (upd_ne m2 (Regidx a0_idx) (Regidx a1_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /m2 (upd_eq m1 (Regidx a1_idx) (regval_into_reg _)).
+        rewrite Hs1_1. apply add_vec_zero_l. }
+      rewrite Ha1m4. apply UkInit.nth_byte0_moi. }
+    assert (Hfdm4 : m4 !!! Regidx a0_idx = fd).
+    { rewrite /m4 (upd_ne m3 (Regidx ra_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m3 (upd_eq m2 (Regidx a0_idx) (regval_into_reg _)).
+      rewrite /m2 (upd_ne m1 (Regidx a1_idx) (Regidx s6_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite Hs6_1. apply add_vec_zero_l. }
+    iApply (wp_kinit_putc N fd b0 Ci Co h6 m4 n Hfdm4 Hbyte
+              with "Hw1 Hcode HCi Hrun").
+    iIntros (h7 m5) "%Hcs HCo Hrun".
     assert (Eret : ret_pc (m4 !!! Regidx ra_idx) = (mword_of_int 0x514 : mword 64))
       by (rewrite Hra4; apply bv_eq; vm_compute; reflexivity).
     rewrite Eret.
@@ -1183,7 +1209,7 @@ Section UkInitVprintf.
     iIntros (h13) "Hrun".
     set (m10 := <[Regidx s1_idx
                   := regval_into_reg (zero_extend' 64 b1 : mword 64)]> m9).
-    iApply ("Hcont" $! h13 m10 with "[] [] Hrun").
+    iApply ("Hcont" $! h13 m10 with "[] [] HCo Hrun").
     { iPureIntro.
       exact (vp_inv_upd m0 m9 sp0 a fd (S i) s1_idx _
                ltac:(vm_compute; reflexivity) Hinv9). }
@@ -1204,8 +1230,14 @@ Section UkInitVprintf.
   (* [utext_str] carries its length.  init's two loops in main are the       *)
   (* unbounded ones.                                                         *)
   (* --------------------------------------------------------------------- *)
+  (* ...AND THE LOOP CARRIES A PER-BYTE FAMILY (lane IO-LEAF).  [Ch i] is
+     "the first [i] bytes of this string have been accounted for"; the
+     obligation that moves it one byte on is BOXED, because a string is
+     more than one byte and the caller's law is persistent (the era's
+     write link is; so is the flagged deposit).  EchoOut is not named
+     here and cannot be: this cone sits below the file system. *)
   Lemma wp_kinit_vprintf_loop (m0 : regfile) (sp0 fd : mword 64) (a : Z)
-      (len : nat) (f : nat -> mword 8) (k : nat) :
+      (len : nat) (f : nat -> mword 8) (Ch : nat -> iProp Σ) (k : nat) :
     0 <= a -> a + Z.of_nat len + 2 < 2 ^ 31 ->
     (forall j : nat, (j < len)%nat -> bv_unsigned (f j) <> 37) ->
     m0 !!! Regidx csp_rs1 = sp0 ->
@@ -1215,9 +1247,11 @@ Section UkInitVprintf.
       (i + S k)%nat = len ->
       vp_inv m0 m sp0 a fd i ->
       m !!! Regidx s1_idx = mword_of_int (bv_unsigned (f i)) ->
-      udepw_law 16 -∗
+      □ (∀ j : nat, ⌜(j < len)%nat⌝ -∗
+           UkInit.kinit_w1 N fd (f j) (Ch j) (Ch (S j))) -∗
       init_code γt -∗
       utext_str γt a len f -∗
+      Ch i -∗
       uword γd (uint sp0 - 8) (m0 !!! Regidx ra_idx) -∗
       uword γd (uint sp0 - 16) (m0 !!! Regidx s0_idx) -∗
       uword γd (uint sp0 - 24) (m0 !!! Regidx s1_idx) -∗
@@ -1233,6 +1267,7 @@ Section UkInitVprintf.
       urun N h m (mword_of_int 0x52c) (4 + n) -∗
       (∀ (h' : CpuId) (m' : regfile),
          ⌜ ucallee_saved m0 m' ⌝ -∗
+         Ch len -∗
          urun N h' m' (ret_pc (m0 !!! Regidx ra_idx)) (12 + (4 + n)) -∗
          WP (Loop : expr riscv_lang)) -∗
       WP (Loop : expr riscv_lang).
@@ -1240,17 +1275,19 @@ Section UkInitVprintf.
     intros Ha0 Habnd Hpct Hsp0 Hal8 Hlo.
     induction k as [| k IH ];
       intros i h m n Hik Hinv Hs1;
-      iIntros "#Hwr #Hcode #Hstr Hwra Hws0 Hws1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw11 Hw12 Hrun Hcont";
+      iIntros "#Hw #Hcode #Hstr HCh Hwra Hws0 Hws1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw11 Hw12 Hrun Hcont";
       iDestruct (utext_str_nonul with "Hstr") as %Hnn;
       assert (Hilt : (i < len)%nat) by lia.
     - (* the LAST character: the byte after it is the terminator *)
       assert (Ei : (S i)%nat = len) by lia.
       iDestruct (utext_str_nul with "Hstr") as "#Hnul".
-      iApply (wp_kinit_vprintf_step m0 sp0 fd a i (f i) ubyte0 h m n
+      iApply (wp_kinit_vprintf_step m0 sp0 fd a i (f i) ubyte0
+                (Ch i) (Ch (S i)) h m n
                 Ha0 ltac:(lia) (Hpct i Hilt) Hinv Hs1
-                with "Hwr Hcode [] Hrun").
+                with "[] Hcode [] HCh Hrun").
+      { iApply ("Hw" $! i with "[%]"). exact Hilt. }
       { rewrite Ei. iExact "Hnul". }
-      iIntros (h1 m1) "%Hinv1 %Hs11 Hrun".
+      iIntros (h1 m1) "%Hinv1 %Hs11 HCo Hrun".
       (* ---- 0x528  beqz s1,0x6fc -- TAKEN: this was the terminator ---- *)
       assert (Ht : true = uv_btaken BEQ (m1 !!! Regidx s1_idx) zero_reg).
       { rewrite Hs11. cbn [uv_btaken].
@@ -1268,16 +1305,21 @@ Section UkInitVprintf.
       { iApply (uis_init_528 with "Hcode"). }
       iIntros (h2) "Hrun".
       destruct Hinv1 as (Hsp1 & _ & _ & _ & _ & _ & _ & Hfr1).
+      rewrite Ei.
       iApply (wp_kinit_vprintf_epi h2 m1 m0 sp0 (4 + n)
                 Hsp1 Hsp0 Hal8 Hlo Hfr1
-                with "Hcode Hwra Hws0 Hws1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw11 Hw12 Hrun Hcont").
+                with "Hcode Hwra Hws0 Hws1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw11 Hw12 Hrun [HCo Hcont]").
+      iIntros (h3 m2) "%Hcs Hrun".
+      iApply ("Hcont" $! h3 m2 with "[%] HCo Hrun"). exact Hcs.
     - (* a BODY character: the byte after it is one too *)
       assert (Hslt : (S i < len)%nat) by lia.
       iDestruct (utext_str_byte γt a len f (S i) Hslt with "Hstr") as "#Hb1".
-      iApply (wp_kinit_vprintf_step m0 sp0 fd a i (f i) (f (S i)) h m n
+      iApply (wp_kinit_vprintf_step m0 sp0 fd a i (f i) (f (S i))
+                (Ch i) (Ch (S i)) h m n
                 Ha0 ltac:(lia) (Hpct i Hilt) Hinv Hs1
-                with "Hwr Hcode Hb1 Hrun").
-      iIntros (h1 m1) "%Hinv1 %Hs11 Hrun".
+                with "[] Hcode Hb1 HCh Hrun").
+      { iApply ("Hw" $! i with "[%]"). exact Hilt. }
+      iIntros (h1 m1) "%Hinv1 %Hs11 HCh Hrun".
       (* ---- 0x528  beqz s1,0x6fc -- NOT taken: a body byte is not NUL ---- *)
       assert (Hnz : bv_unsigned (f (S i)) <> 0).
       { intro He. apply (Hnn (S i) Hslt). apply bv_eq.
@@ -1310,7 +1352,7 @@ Section UkInitVprintf.
       rewrite E528.
       iIntros (h2) "Hrun".
       iApply (IH (S i) h2 m1 n ltac:(lia) Hinv1 Hs11
-                with "Hwr Hcode Hstr Hwra Hws0 Hws1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw11 Hw12 Hrun Hcont").
+                with "Hw Hcode Hstr HCh Hwra Hws0 Hws1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw11 Hw12 Hrun Hcont").
   Qed.
 
 
@@ -1324,23 +1366,28 @@ Section UkInitVprintf.
   (* so re-admitting it later is a branch, not a rewrite.                    *)
   (* --------------------------------------------------------------------- *)
   Lemma wp_kinit_vprintf (a : Z) (len : nat) (f : nat -> mword 8)
+      (fdv : mword 64) (Ch : nat -> iProp Σ)
       (h : CpuId) (m : regfile) (n : nat) :
     0 <= a -> a + Z.of_nat len + 2 < 2 ^ 31 ->
     (0 < len)%nat ->
     (forall j : nat, (j < len)%nat -> bv_unsigned (f j) <> 37) ->
     m !!! Regidx a1_idx = mword_of_int a ->
-    udepw_law 16 -∗
+    m !!! Regidx a0_idx = fdv ->
+    □ (∀ j : nat, ⌜(j < len)%nat⌝ -∗
+         UkInit.kinit_w1 N fdv (f j) (Ch j) (Ch (S j))) -∗
     init_code γt -∗
     utext_str γt a len f -∗
+    Ch 0%nat -∗
     urun N h m (mword_of_int InitSyms.vprintf) (12 + (4 + n)) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
+       Ch len -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (4 + n)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Ha0 Habnd Hlen Hpct Ha1.
-    iIntros "#Hwr #Hcode #Hstr Hrun Hcont".
+    intros Ha0 Habnd Hlen Hpct Ha1 Ha0r.
+    iIntros "#Hw #Hcode #Hstr HCh Hrun Hcont".
     iDestruct (utext_str_nonul with "Hstr") as %Hnn.
     destruct init_syms_pins
       as (_ & _ & _ & Hvprintf & _ & _ & _ & _ & _ & _ & _ & _ & _).
@@ -1998,11 +2045,21 @@ Section UkInitVprintf.
                  ltac:(vm_compute; discriminate)).
       reflexivity. }
     assert (Hk0 : (0 + S (len - 1))%nat = len) by lia.
+    (* the descriptor vprintf was called at is the caller's own a0 *)
+    assert (Hfdv0 : add_vec zero_reg (mp3 !!! Regidx a0_idx) = fdv).
+    { rewrite /mp3 (upd_ne mp2 (Regidx s1_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+      rewrite /mp2 (upd_ne mp1 (Regidx s0_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+      rewrite /mp1 (upd_ne m (Regidx csp_rs1) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+      rewrite Ha0r. apply add_vec_zero_l. }
+    rewrite Hfdv0 in Hinv0.
     iApply (wp_kinit_vprintf_loop m sp0
-              (add_vec zero_reg (mp3 !!! Regidx a0_idx)) a len f (len - 1)%nat
+              fdv a len f Ch (len - 1)%nat
               Ha0 Habnd Hpct Hsp Hal8 Hlo 0%nat h22 mp11 n
               Hk0 Hinv0 Hs1z
-              with "Hwr Hcode Hstr Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw9 Hw10 Hw11 Hw12 Hrun Hcont").
+              with "Hw Hcode Hstr HCh Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw9 Hw10 Hw11 Hw12 Hrun Hcont").
   Qed.
 
 

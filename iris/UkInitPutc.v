@@ -108,17 +108,30 @@ Section UkInitPutc.
   (* ...AND THE WRITE DEPOSIT (lane SUPPLY-SPLIT, P4), threaded: putc is
      one ecall of write(16), a CLAIM number, so the whole printf chain
      carries the deposit rather than routing through [UkRun.udep]. *)
-  Lemma wp_kinit_putc (h : CpuId) (m : regfile) (n : nat) :
-    udepw_law 16 -∗
+  (* ...AS THE PER-BYTE OBLIGATION [UkInit.kinit_w1] (lane IO-LEAF), which
+     is that deposit generalised in what the caller may SAY about the byte:
+     [Ci] goes in, [Co] comes out, and the flagged deposit is the instance
+     that says nothing ([UkInit.kinit_w1_of_law]).  THE BYTE IS THE LOW ONE
+     OF a1 -- [sb a1,-17(s0)] is what putc does with it -- and it never
+     leaves putc's frame, so the obligation is the only thing the caller
+     has to know about this walk. *)
+  Lemma wp_kinit_putc (fdv : mword 64) (b : bv 8) (Ci Co : iProp Σ)
+      (h : CpuId) (m : regfile) (n : nat) :
+    m !!! Regidx a0_idx = fdv ->
+    nth_byte (m !!! Regidx a1_idx) 0%nat = b ->
+    UkInit.kinit_w1 N fdv b Ci Co -∗
     init_code γt -∗
+    Ci -∗
     urun N h m (mword_of_int InitSyms.putc) (4 + n) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
+       Co -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hwr #Hcode Hrun Hcont".
+    intros Hfd Hb.
+    iIntros "Hw1 #Hcode HCi Hrun Hcont".
     destruct init_syms_pins
       as (_ & _ & _ & _ & Hputc & _ & _ & _ & _ & _ & _ & Hwrite & _).
     rewrite Hputc.
@@ -259,8 +272,15 @@ Section UkInitPutc.
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E422.
     iIntros (h5) "Hrun".
-    (* ...and the frame word is whole again, at SOME value *)
-    iDestruct ("Hwbc" with "Hb7") as "Hwb".
+    (* THE BYTE STAYS OUT OF THE FRAME WORD UNTIL THE WRITE HAS RUN (lane
+       IO-LEAF): [UkInit.kinit_w1] is stated over the byte the call is
+       about, so the word is only made whole again on the way out. *)
+    assert (Ha1m2 : m2 !!! Regidx a1_idx = m !!! Regidx a1_idx).
+    { rewrite /m2 (upd_ne m1 (Regidx s0_idx) (Regidx a1_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m1. exact (upd_ne m (Regidx csp_rs1) (Regidx a1_idx) _
+                            ltac:(vm_compute; discriminate)). }
+    rewrite Ha1m2 Hb.
     (* ---- 0x426  c.li a2,1 ---- *)
     iApply (wp_uk_cli N h5 m2 (mword_of_int 0x426)
               (mword_of_int 1 : mword 6) a2_idx n
@@ -313,9 +333,49 @@ Section UkInitPutc.
                  := regval_into_reg (mword_of_int 0x430 : mword 64)]> m4).
     assert (Hra5 : m5 !!! Regidx ra_idx = (mword_of_int 0x430 : mword 64))
       by exact (upd_eq m4 (Regidx ra_idx) (regval_into_reg _)).
-    (* ---- write(fd, sp0-17, 1) -- the QUIET row: no heap effect at all ---- *)
-    iApply (wp_kinit_write N h8 m5 n with "Hwr Hcode Hrun").
-    iIntros (h9 ret) "Hrun".
+    (* ---- write(fd, sp0-17, 1) -- the caller's own per-byte obligation ---- *)
+    assert (Ha1m5 : uint (m5 !!! Regidx a1_idx) = (uint sp0 - 17)%Z).
+    { assert (Ha1m4 : m5 !!! Regidx a1_idx
+                      = add_vec sp0
+                          (sign_extend' 64 (mword_of_int 4079 : mword 12))).
+      { rewrite /m5 (upd_ne m4 (Regidx ra_idx) (Regidx a1_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /m4 (upd_eq m3 (Regidx a1_idx) (regval_into_reg _)).
+        by rewrite Hs03. }
+      rewrite Ha1m4.
+      rewrite <- (umoi_add_i12 sp0 (mword_of_int 4079 : mword 12)
+                    (uint sp0 - 17)%Z ltac:(rewrite Hoff17; lia)).
+      apply uint_moi. unfold Z64.
+      rewrite !uint_unsigned. rewrite uint_unsigned in Hlo.
+      clear -Hlo HR. lia. }
+    rewrite <- Ha1m5.
+    (* the descriptor is the caller's own a0 -- putc writes sp, s0, a2, a1
+       and ra and none of them is a0 -- and the count is the [c.li a2,1] *)
+    assert (Ha0m5 : m5 !!! Regidx a0_idx = fdv).
+    { rewrite <- Hfd.
+      rewrite /m5 (upd_ne m4 (Regidx ra_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m4 (upd_ne m3 (Regidx a1_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m3 (upd_ne m2 (Regidx a2_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m2 (upd_ne m1 (Regidx s0_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m1. exact (upd_ne m (Regidx csp_rs1) (Regidx a0_idx) _
+                            ltac:(vm_compute; discriminate)). }
+    assert (Ha2m5 : m5 !!! Regidx a2_idx = (mword_of_int 1 : mword 64)).
+    { rewrite /m5 (upd_ne m4 (Regidx ra_idx) (Regidx a2_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m4 (upd_ne m3 (Regidx a1_idx) (Regidx a2_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m3 (upd_eq m2 (Regidx a2_idx) (regval_into_reg _)).
+      apply bv_eq; vm_compute; reflexivity. }
+    iApply ("Hw1" $! h8 m5 n with "[%] [%] Hcode Hb7 HCi Hrun");
+      [ exact Ha0m5 | exact Ha2m5 | ].
+    iIntros (h9 ret) "Hb7 HCo Hrun".
+    rewrite Ha1m5.
+    (* ...and the frame word is whole again, at SOME value *)
+    iDestruct ("Hwbc" with "Hb7") as "Hwb".
     assert (Eret : ret_pc (m5 !!! Regidx ra_idx) = (mword_of_int 0x430 : mword 64))
       by (rewrite Hra5; apply bv_eq; vm_compute; reflexivity).
     rewrite Eret.
@@ -453,7 +513,7 @@ Section UkInitPutc.
               with "[] Hrun").
     { iApply (uis_init_436 with "Hcode"). }
     iIntros (h13) "Hrun".
-    iApply ("Hcont" $! h13 m9 with "[] Hrun").
+    iApply ("Hcont" $! h13 m9 with "[] HCo Hrun").
     iPureIntro. intros r Hr.
     destruct (decide (Regidx r = Regidx csp_rs1)) as [Hrsp | Hrsp].
     { rewrite Hrsp /m9 (upd_eq m8 (Regidx csp_rs1) (regval_into_reg sp0)).

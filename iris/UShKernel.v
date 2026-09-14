@@ -448,7 +448,17 @@ Section UShKernel.
       (Hwc : forall n : nat,
          ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
            Pm (n + length EchoDisc.echo_line)%nat
-           ∗ Wc (n + length EchoDisc.echo_line)%nat 0%nat)
+           ∗ Wc (n + length EchoDisc.echo_line)%nat 3%nat)
+      (* ...AND THE THREE CONVERSIONS OF STEP 4, Coq-level like [Hwc]: the
+         banner-owed credential is the prompt's once the console reaches
+         fd 2 ([UkSh.ush_wb_wc]); a block owed with nothing chosen is a
+         boundary credential ([ush_wc_blk_line]); a line read at an
+         unwritten prompt is the taint ([ush_wb_read]). *)
+      (Hwbwc : forall n : nat, ⊢ Wb n -∗ Wc n 0%nat)
+      (Hwbl : forall n : nat, ⊢ Wc n 3%nat -∗ Wc n 0%nat)
+      (Hwbr : forall n : nat,
+         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wb n -∗
+           Pm (n + length EchoDisc.echo_line)%nat ∗ T)
       (W : uvis) (n0 n : nat) :
     (* THE ENTRY LAW (lane IO-LEAF, step 3): the raw lend -- the position's
        program half and the lease at the lend family -- and the loop's
@@ -605,7 +615,7 @@ Section UShKernel.
     (* sh's own half of its children set travels in [UkSh.ush_pstate]
        beside the ledger and the cwd: fork1 MOVES the set, so the fragment
        goes down the chain index-free ([UserChildren.uch_any]). *)
-    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd Hcwf Hchf _ Dlo _ Hrun".
+    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd Hcwf Hchf Hpidf Dlo _ Hrun".
     (* THE RECORD'S PAYLOAD IS SH'S, and it is CONSTANT: that is the whole
        of what the walk below needs of it ([UkRun.ukn_const]). *)
     pose proof (ukn_const_of_eq N Q Hpayeq HQc) as Hti.
@@ -631,18 +641,19 @@ Section UShKernel.
     iAssert (shk_rodata (ukn_t N)) as "#Hro".
     { iApply (shk_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (shk_img_data _ Hsub) Hx with "Ht"). }
-    iApply (wp_ksh_start N γp T Hpsok_free Wc Wb Pm
+    iApply (wp_ksh_start N γp T Hpsok_free Wc Wb Hwbwc Hwbl Pm
               (fun i => Hpm1 N i Hpayeq)
               (fun i Hb => Hpm2 N i Hpayeq Hb)
               (fun i => Hpm3 N i Hpayeq)
               (fun i Hb => Hpmwb N i Hpayeq Hb)
+              Hwbr
               Hwc
               cn
               (fun l0 => Hrl N l0 Hpayeq)
               (R (ukn_t N) (ukn_d N) (ukn_s N)) K h _ f n0
               (take NSTD (uvis_fd W))
               with "Hdp Htag [] Hr [] [] Hro Hgen' Hfd0 Hin [Hstd] [Hcwf]
-                    [Hchf] [Hpos Hlease Hwcp] HR Hbs [Hrun]").
+                    [Hchf] [Hpidf] [Hpos Hlease Hwcp] HR Hbs [Hrun]").
     - (* the prompt's law at this record, against sh's own .rodata (SS1c) *)
       iApply ("Hplaw" $! N with "Hro").
     - iApply (shk_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
@@ -653,6 +664,8 @@ Section UShKernel.
     - rewrite /UkSh.ush_std. iExact "Hstd".
     - rewrite <- Hcwd0. iExact "Hcwf".
     - iApply (uch_any_of with "Hchf").
+    - (* ...and sh's own pid, as a handle (step 4) *)
+      rewrite /UserChildren.upid_any. iExists _. iExact "Hpidf".
     - (* THE LOOP'S CURSOR, OUT OF THE RAW LEND AND THE CREDENTIAL SLOT
          (lane IO-LEAF, step 3) *)
       iApply (Hbd N (take NSTD (uvis_fd W)) n Hpayeq with "Hpos Hlease Hwcp").
@@ -693,7 +706,17 @@ Section UShKernel.
       (Hwc : forall n : nat,
          ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
            Pm (n + length EchoDisc.echo_line)%nat
-           ∗ Wc (n + length EchoDisc.echo_line)%nat 0%nat)
+           ∗ Wc (n + length EchoDisc.echo_line)%nat 3%nat)
+      (* ...AND THE THREE CONVERSIONS OF STEP 4, Coq-level like [Hwc]: the
+         banner-owed credential is the prompt's once the console reaches
+         fd 2 ([UkSh.ush_wb_wc]); a block owed with nothing chosen is a
+         boundary credential ([ush_wc_blk_line]); a line read at an
+         unwritten prompt is the taint ([ush_wb_read]). *)
+      (Hwbwc : forall n : nat, ⊢ Wb n -∗ Wc n 0%nat)
+      (Hwbl : forall n : nat, ⊢ Wc n 3%nat -∗ Wc n 0%nat)
+      (Hwbr : forall n : nat,
+         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wb n -∗
+           Pm (n + length EchoDisc.echo_line)%nat ∗ T)
       (na : nat)
       (alen : nat -> nat) (afun : nat -> nat -> bv 8) (sts : list fdstate)
       (W' : uvis) (n0 n : nat) :
@@ -851,7 +874,7 @@ Section UShKernel.
        the one the image fact says the new key carries *)
     rewrite <- Hfd.
     iApply (sh_uexec_slot R γp cn T K Q Ql Pm Wc Wb Hrl Hpm1 Hpm2 Hpm3 Hpmwb
-              Hwc W' n0 n Hbd).
+              Hwc Hwbwc Hwbl Hwbr W' n0 n Hbd).
     - exact HQc.
     - rewrite Hpc. exact sh_start_pc.
     - exact (shk_img_sub_of_elf M Himg).

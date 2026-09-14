@@ -1216,115 +1216,17 @@ Section UShEcho.
   Qed.
 
   (* =================================================================== *)
-  (*  7.  THE ASSEMBLY: sh's pinned bundle pays its exec supply            *)
+  (*  7.  THE ASSEMBLY -- MOVED (lane IO-LEAF, step 4).                    *)
   (*                                                                      *)
-  (*  [UInitSh.init_exec_sup_of_sh_slot] at /echo.  The taint arm is       *)
-  (*  [UexecExecMint.uslot_mint_all] (the generic slot at a constant       *)
-  (*  payload -- here the trivial one), the resolving arm is               *)
-  (*  [echo_slot_of_kexec] above, and the bundle is                        *)
-  (*  [PinnedExec.pinned_exec_bundle] at                                   *)
-  (*  [Pin := FsEchoPin.era0_echo_pins], [cw := FsImg.ROOTINO],            *)
-  (*  [pl := echo_pl], [hops := [ROOTINO; ECHO_INO]],                      *)
-  (*  [f := ElfUser.echo_elf], [nl := 1], [Pay := emp],                    *)
-  (*  [Q := fun _ => True].                                                *)
+  (*  [sh_exec_sup_of_echo_slot] / [_holds] / [_closed] -- sh's pinned    *)
+  (*  bundle paying its exec supply at the TRIVIAL payload and the FREE   *)
+  (*  write law -- are gone: the shell's forked child runs /echo on the   *)
+  (*  PAID entry now ([UEchoOut.echo_uexec_slot_at]), at the payload sh's *)
+  (*  fork chose, and that assembly needs the era's links, which sit above *)
+  (*  this file.  It is [UShEchoPay.sh_exec_sup_echo_wq_holds].  The       *)
+  (*  generic entry at the exec channel ([echo_slot_of_kexec], section 6)  *)
+  (*  stays as the anti-vacuity witness of echo's own constructor.        *)
   (* =================================================================== *)
-  Definition sh_exec_sup_of_echo_slot : Prop :=
-    forall (T : iProp Σ) (HP : Persistent T) (HT : Timeless T),
-      (* the ONE obligation still open at this seam: echo's entry at the
-         exec channel ([echo_slot_of_kexec] above, section 6). *)
-      echo_slot_of_kexec ->
-      ⊢ udep -∗ udepw_law 16 -∗ sh_echo_slot T -∗
-        UkShEcho.sh_exec_sup_echo.
-
-  Lemma sh_exec_sup_of_echo_slot_holds : sh_exec_sup_of_echo_slot.
-  Proof.
-    intros T HP HT Hslot.
-    iIntros "#Hdep #Hwr (#Hinv & #Hcl & #Hgen)".
-    iModIntro. iIntros (N' m pc s0 t g) "%Hpeq %Ha0 %Ha1 %Hbytes #Hcmd".
-    rewrite /udepw_at_ref. iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
-    (* the node, read ONCE off the lent heap *)
-    iAssert (⌜ echo_node_img M s0 t g ⌝)%I as %Himg.
-    { iApply (echo_node_img_of_cmd with "Hheap Hcmd"). }
-    (* ...and the table's length, off the lent authority *)
-    iDestruct (ufd_auth_len with "Hufd") as %Hlen.
-    iFrame "Hheap Hufd".
-    (* ---- THE RESOLVING ARM: echo's own entry, at the pinned image ---- *)
-    iAssert (□ (∀ (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-                  (W' : uvis),
-                  ⌜kexec_image_ok ElfUser.echo_elf na alen afun fdv W'⌝ -∗
-                  (* THE TWO ROWS [SpecKexec.exec_slot_pre] carries, in
-                     [PinnedExec.pex_slot]'s own order (beside
-                     [kexec_image_ok], before the argument fact): the
-                     resumed key's working directory is the caller's -- the
-                     child sh forked is at the ROOT, which is the directory
-                     this pin resolves /echo from -- and its lazy bit is
-                     [false] because exec's image is EAGER (lane
-                     LAZY-FLAG's K4).  echo's entry needs only the second;
-                     the cwd row is read and not used, since echo opens
-                     nothing. *)
-                  ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗
-                  ⌜uvis_lazy W' = false⌝ -∗
-                  ⌜exec_args_of M (mword_of_int (t + 8) : mword 64)
-                     na alen afun⌝ -∗
-                  my_pay (uvis_gen W') (fun _ : Z => True)%I -∗
-                  (emp : iProp Σ) -∗
-                  uslot W'))%I as "#Hcon".
-    { iModIntro.
-      iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf %Hargs #Hmp _".
-      destruct (echo_args_det_holds M s0 t g na alen afun Himg Hbytes Hargs)
-        as (Hna & Halen & _).
-      subst na.
-      iApply (Hslot 3%nat alen afun fdv W' Hok
-                (echo_room alen (Halen 0%nat ltac:(lia))
-                   (Halen 1%nat ltac:(lia)) (Halen 2%nat ltac:(lia)))
-                Hlen Hlzf with "Hwr Hdep Hmp"). }
-    (* ---- THE TAINT ARM: the generic slot at the trivial payload ---- *)
-    iAssert (□ (∀ W' : uvis, T -∗
-                  my_pay (uvis_gen W') (fun _ : Z => True)%I -∗
-                  uslot W'))%I as "#Hgen'".
-    { iModIntro. iIntros (W') "#HT #Hmp".
-      iApply ("Hgen" $! (True%I : iProp Σ) W' with "HT Hmp []").
-      iModIntro. iIntros "_". done. }
-    (* ---- THE BUNDLE ---- *)
-    iDestruct (pinned_exec_bundle fsc_fs uslot FsEchoPin.era0_echo_pins T
-                 FsImg.ROOTINO echo_pl
-                 [FsImg.ROOTINO; FsEchoPin.ECHO_INO] FsEchoPin.ECHO_INO
-                 ElfUser.echo_elf 1%nat (emp : iProp Σ)
-                 (fun _ : Z => True)%I
-                 M (mword_of_int s0) (mword_of_int (t + 8)) fdv
-                 sh_echo_pin_resolves echo_elf_loadable
-                 (sh_echo_path_of_holds M s0 t g Himg Hbytes)
-                 with "Hcl Hinv Hcon Hgen' []") as (P Pmiss Fo) "Hb";
-      [ done | ].
-    assert (Ea0 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv
-                                  FsImg.ROOTINO gn cs pidv false))
-                    (tf_arg_idx 0) = (mword_of_int s0 : mword 64))
-      by (etransitivity; [ exact (tf_of_arg0 m pc) | exact Ha0 ]).
-    assert (Ea1 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv
-                                  FsImg.ROOTINO gn cs pidv false))
-                    (tf_arg_idx 1) = (mword_of_int (t + 8) : mword 64))
-      by (etransitivity; [ exact (tf_of_arg1 m pc) | exact Ha1 ]).
-    (* THE REFUND'S ONE CONSEQUENCE (lane KILL-PAY, K4(a), ruling R-A):
-       echo's caller is sh's forked child at [UkRun.ukn_triv], whose exit
-       owes nothing, so whatever a failed exec hands back pays it. *)
-    iApply (sbundle_pay_exec_intro_ref uslot
-              (uvis_of_run m pc M pm sz fdv FsImg.ROOTINO gn cs pidv false)
-              (ukn_pay N') P Pmiss Fo (emp : iProp Σ)).
-    { rewrite Hpeq. iIntros "!> _". done. }
-    { cbn [uvis_gen uvis_of_run]. iExact "Hmpay". }
-    rewrite Hpeq Ea0 Ea1. iExact "Hb".
-  Qed.
-
-  (* ...AND THE SAME ASSEMBLY WITH NOTHING OPEN.  [echo_slot_of_kexec] is
-     proved above, so the pinned supply sh's child runs on is a theorem of
-     the claim alone; this is also the anti-vacuity check on section 6's
-     premise (a caller can actually supply it). *)
-  Lemma sh_exec_sup_of_echo_slot_closed (T : iProp Σ)
-      (HP : Persistent T) (HT : Timeless T) :
-    ⊢ udep -∗ udepw_law 16 -∗ sh_echo_slot T -∗ UkShEcho.sh_exec_sup_echo.
-  Proof.
-    exact (sh_exec_sup_of_echo_slot_holds T HP HT echo_slot_of_kexec_holds).
-  Qed.
 
   (* =================================================================== *)
   (*  8.  S3 -- ECHO'S OUTPUT                                             *)

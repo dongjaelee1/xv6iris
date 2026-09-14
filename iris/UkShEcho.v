@@ -42,6 +42,7 @@ Require Import UserPtTree.
 Require Import UmodeArith UmodeAbi.
 Require Import UserPerm.
 Require Import UserHeap UkRun UkRunLeaf UkRunSys.
+Require Import UkRunExecRef.  (* [udepw_at_refR] / [wp_uk_ecall_exec_at_cwd_refR]: the exec refund at the supplier's shape (step 4) *)
 Require Import UkRunMem.   (* [uoff_c8]: the c.ld offset the 0xce load names *)
 Require Import FdSlots UserFd UserCwd UserChildren.
 Require Import UCodeShK.
@@ -444,21 +445,37 @@ Section UkShEcho.
   (* equation ([UkRun.ukn_triv]); so [Q := fun _ => True] throughout and   *)
   (* the taint arm's generic slot is [UexecExecMint.uslot_mint_all] at it. *)
   (* =================================================================== *)
-  Definition sh_exec_sup_echo : iProp Σ :=
+  (* AT THE CHILD'S PAID PAYLOAD (lane IO-LEAF, step 4): the process that
+     execs is the one sh FORKED, and its payload is the one sh CHOSE at the
+     fork ([UkShFork.ushf_wq] -- the credential after echo's block, or the
+     block still owed) -- so [Q] is a parameter, and so is what the child
+     was LENT ([Cr], the block credential the paid entry is built on).
+     [UShEcho.sh_exec_sup_of_echo_slot] is the one discharge. *)
+  Definition sh_exec_sup_echo (Q : Z -> iProp Σ) (Cr : iProp Σ) : iProp Σ :=
     (□ (∀ (N' : uk_names Σ) (m : regfile) (pc : mword 64)
-          (s0 t : Z) (g : nat -> bv 8),
-          ⌜ ukn_pay N' = (fun _ => True)%I ⌝ -∗
+          (s0 t : Z) (g : nat -> bv 8) (ld : list fdstate),
+          ⌜ ukn_pay N' = Q ⌝ -∗
           (* argv[0]'s string, which is the PATH exec resolves... *)
           ⌜ m !!! Regidx a0_idx = (mword_of_int s0 : mword 64) ⌝ -∗
           (* ...and [&argv[0]], which is the VECTOR it reads *)
           ⌜ m !!! Regidx a1_idx = (mword_of_int (t + 8) : mword 64) ⌝ -∗
           ⌜ echo_argv_bytes g ⌝ -∗
+          (* ...AND THE CHILD'S fd 1 IS THE CONSOLE (step 4): echo's paid
+             entry writes on it, and the fact is about the TABLE the exec
+             channel carries verbatim -- so the ledger fragment goes in
+             here, where the deposit meets the table's authority *)
+          ⌜ UkSh.ush_fd1p ld ⌝ -∗
+          UserFd.ustd (ukn_fd N') ld -∗
           ush_cmd (ukn_d N') t (echo_cmd s0 g) -∗
-          (* AT THE REFUNDING DEPOSIT (lane KILL-PAY, K4(a), ruling R-A);
-             this record is trivial, so what comes back is [True]. *)
-          udepw_at_ref N' m pc FsImg.ROOTINO))%I.
+          Cr -∗
+          (* AT THE REFUND THE SUPPLIER NAMES ([UkRunExecRef.udepw_at_refR]):
+             a failed exec hands the ledger fragment and the lend back
+             whole, which is what the diagnostic's exit pays with *)
+          udepw_at_refR N' m pc FsImg.ROOTINO
+            (UserFd.ustd (ukn_fd N') ld ∗ Cr)))%I.
 
-  Global Instance sh_exec_sup_echo_persistent : Persistent sh_exec_sup_echo.
+  Global Instance sh_exec_sup_echo_persistent Q Cr :
+    Persistent (sh_exec_sup_echo Q Cr).
   Proof. rewrite /sh_exec_sup_echo. apply _. Qed.
 
   (* THE CWD-INDEXED EXEC STUB.  [UkShRun.wp_kshr_exec] takes the ∀-cwd
@@ -468,17 +485,20 @@ Section UkShEcho.
      directory beside it -- [UkInit.wp_kinit_exec] is the same lemma at
      init's three pcs.  Everything else is [wp_kshr_exec] verbatim: a
      successful exec never comes back, so the only continuation is -1. *)
-  Definition wp_kshr_exec_at_cwd : Prop :=
+  Definition wp_kshr_exec_at_cwd (R : iProp Σ) : Prop :=
     forall (N : uk_names Σ) (Hc : ukn_const N) (h : CpuId) (m : regfile)
            (c : Z) (avail : nat),
       ⊢ shk_code (ukn_t N) -∗
         urun N h m (mword_of_int ShSyms.exec) avail -∗
         UserCwd.ucwd (ukn_cwd N) c -∗
-        udepw_at_ref N
+        udepw_at_refR N
           (<[Regidx (mword_of_int 17 : mword 5) := (mword_of_int 7 : mword 64)]> m)
-          (mword_of_int 0xcc0) c -∗
+          (mword_of_int 0xcc0) c R -∗
         (∀ h' : CpuId,
            UserCwd.ucwd (ukn_cwd N) c -∗
+           (* ...AND THE REFUND (step 4), at the shape the supplier named
+              ([UkRunExecRef.wp_uk_ecall_exec_at_cwd_refR]) *)
+           R -∗
            urun N h'
              (<[Regidx a0_idx := (mword_of_int (-1) : mword 64)]>
                 (<[Regidx (mword_of_int 17 : mword 5)
@@ -504,25 +524,34 @@ Section UkShEcho.
   (* on its own branch).  Taken as a premise here, and the seam is named   *)
   (* in the report.                                                        *)
   (* =================================================================== *)
-  Definition wp_kshr_exec_echo : Prop :=
-    forall (N : uk_names Σ) (Hc : ukn_triv N) (h : CpuId) (m : regfile)
+  (* AT THE PAID PAYLOAD (step 4): the record is CONSTANT-paid at [Q]
+     ([UkRun.ukn_const], sh's choice is status-independent) and holds what
+     it was lent; a failed exec's diagnostic exits on the refund. *)
+  Definition wp_kshr_exec_echo (Q : Z -> iProp Σ) (Cr : iProp Σ) : Prop :=
+    forall (N : uk_names Σ) (Hc : ukn_const N) (h : CpuId) (m : regfile)
            (t szv s0 : Z) (g : nat -> bv 8) (ld : list fdstate) (n : nat),
+      ukn_pay N = Q ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       echo_argv_bytes g ->
+      UkSh.ush_fd1p ld ->
       ⊢ UkSh.sh_deps -∗
         shk_code (ukn_t N) -∗
-        sh_exec_sup_echo -∗
+        sh_exec_sup_echo Q Cr -∗
+        (* ...and what the lend pays at the exit of a child whose exec
+           FAILED (step 4; M4b(2) pays the diagnostic from it first) *)
+        □ (Cr -∗ Q (-1)) -∗
         ush_jtab (ukn_t N) -∗
         ush_cmd (ukn_d N) t (echo_cmd s0 g) -∗
         usz (ukn_s N) szv -∗
         UserFd.ustd (ukn_fd N) ld -∗
         UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
         UserChildren.uch_any (ukn_ch N) -∗
+        Cr -∗
         urun N h m (mword_of_int ShSyms.runcmd)
           (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
         WP (Loop : expr riscv_lang).
 
-  Lemma wp_kshr_exec_at_cwd_holds : wp_kshr_exec_at_cwd.
+  Lemma wp_kshr_exec_at_cwd_holds (R : iProp Σ) : wp_kshr_exec_at_cwd R.
   Proof.
     intros N Hc h m c avail.
     iIntros "#Hcode Hrun Hcwd Hsbx Hcont".
@@ -545,7 +574,7 @@ Section UkShEcho.
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E0 Em. iIntros (h1) "Hrun".
     set (m1 := <[Regidx a7_idx := (mword_of_int 7 : mword 64)]> m).
-    iApply (wp_uk_ecall_exec_at_cwd N h1 m1 (mword_of_int 0xcc0) avail c
+    iApply (wp_uk_ecall_exec_at_cwd_refR N h1 m1 (mword_of_int 0xcc0) avail c R
               ltac:(rewrite /m1 /usysno
                       (upd_eq m (Regidx a7_idx) (mword_of_int 7 : mword 64));
                     vm_compute; reflexivity)
@@ -555,10 +584,8 @@ Section UkShEcho.
     assert (E1 : add_vec_int (mword_of_int 0xcc0 : mword 64) 4
                  = mword_of_int 0xcc4)
       by (apply bv_eq; vm_compute; reflexivity).
-    (* the failed exec's refund is DROPPED here (lane KILL-PAY, K4(a),
-       ruling R-A): sh's forked child runs at [UkRun.ukn_triv] and its
-       exit owes nothing, so the row is [True]. *)
-    rewrite E1. iIntros (h2) "Hcwd _ Hrun".
+    (* the failed exec's refund goes on to the continuation (step 4) *)
+    rewrite E1. iIntros (h2) "Hcwd Hpay Hrun".
     set (m2 := <[Regidx a0_idx := (mword_of_int (-1) : mword 64)]> m1).
     assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
     { unfold m2, m1.
@@ -574,14 +601,14 @@ Section UkShEcho.
               ltac:(rewrite Hra; reflexivity)
               with "[] Hrun").
     { iApply (uis_shk_cc4 with "Hcode"). }
-    iIntros (h3) "Hrun". iApply ("Hcont" $! h3 with "Hcwd Hrun").
+    iIntros (h3) "Hrun". iApply ("Hcont" $! h3 with "Hcwd Hpay Hrun").
   Qed.
 
   (* ---- the specialised EXEC arm, PROVED ------------------------------- *)
-  Lemma wp_kshr_exec_echo_holds : wp_kshr_exec_echo.
+  Lemma wp_kshr_exec_echo_holds (Q : Z -> iProp Σ) (Cr : iProp Σ) :
+    wp_kshr_exec_echo Q Cr.
   Proof.
-    intros N Hcst h m t szv s0 g ld n Ha0 Hbytes.
-    pose proof (ukn_const_of_triv N Hcst) as Hcc.
+    intros N Hcc h m t szv s0 g ld n Hpeq Ha0 Hbytes Hfd1.
     (* THE BUNDLE-INTRO HANG (durable-notes, "iIntros #H on a bundle of
        wands"), at [UkSh.sh_deps]: [iIntros "#Hdp"] on the three
        [UkRun.udepw_law]s sends the [Persistent] search down [udepw]'s wand
@@ -591,7 +618,7 @@ Section UkShEcho.
        that is needed and no [Persistent] instance is ever asked for.
        [sh_exec_sup_echo] is introduced linearly for the same reason and
        its box stripped by an explicit unfold where it is spent. *)
-    iIntros "Hdp #Hcode Hexs #Hjt #Htree Hsz Hstd Hcwd Hch Hrun".
+    iIntros "Hdp #Hcode Hexs #Hcq #Hjt #Htree Hsz Hstd Hcwd Hch Hcr Hrun".
     rewrite /sh_exec_sup_echo. iDestruct "Hexs" as "#Hexs".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
     iDestruct (echo_cmd_addr with "Htree") as %[Htr Ht8].
@@ -708,29 +735,35 @@ Section UkShEcho.
        evar for [iApply] to solve makes the proofmode unify against
        [UkRun.udepw_at]'s whole ∀-chain, which does not terminate at this
        altitude (durable-notes, "A compile that never finishes"). *)
-    iAssert (udepw_at_ref N
+    iAssert (udepw_at_refR N
                (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> k3)
-               (mword_of_int 0xcc0) FsImg.ROOTINO)
-      with "[]" as "Hdepx".
+               (mword_of_int 0xcc0) FsImg.ROOTINO
+               (UserFd.ustd (ukn_fd N) ld ∗ Cr))
+      with "[Hstd Hcr]" as "Hdepx".
     { iApply ("Hexs" $! N
                 (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> k3)
-                (mword_of_int 0xcc0) s0 t g
-                with "[%] [%] [%] [%] Htree").
-      - exact Hcst.
+                (mword_of_int 0xcc0) s0 t g ld
+                with "[%] [%] [%] [%] [%] Hstd Htree Hcr").
+      - exact Hpeq.
       - (* [echo_off 0] IS 0; the supply names the token's base, the load
            named its offset from the node, and the two are the same [Z]. *)
         assert (Hoff0 : s0 + Z.of_nat (echo_off 0%nat) = s0)
           by (cbn [echo_off]; lia).
         rewrite <- Hoff0. exact Hka0.
       - exact Hka1.
-      - exact Hbytes. }
+      - exact Hbytes.
+      - exact Hfd1. }
     (* the budget is a [nat] and the cwd a [Z]; [wp_kshr_exec_at_cwd] is a
        [Definition ... : Prop], so its argument scopes are not visible at
        elaboration and the [%nat] has to be written. *)
-    iApply (wp_kshr_exec_at_cwd_holds N Hcc h5 k3 FsImg.ROOTINO
+    iApply (wp_kshr_exec_at_cwd_holds (UserFd.ustd (ukn_fd N) ld ∗ Cr)
+              N Hcc h5 k3 FsImg.ROOTINO
               ((2 + (UkShDiag.ush_Dg + n))%nat)
               with "Hcode Hrun Hcwd Hdepx").
-    rewrite Hrk3. iIntros (h6) "Hcwd Hrun".
+    rewrite Hrk3. iIntros (h6) "Hcwd [Hstd Hcr] Hrun".
+    (* the exit payload, out of the lend (M4b(2) writes the diagnostic
+       through the links from it first) *)
+    iDestruct ("Hcq" with "Hcr") as "Hpay". iEval (rewrite <- Hpeq) in "Hpay".
     (* ---- 0xda: "exec %s failed" -- THE DIAGNOSTIC CUT ---- *)
     set (k4 := <[Regidx a0_idx := (mword_of_int (-1) : mword 64)]>
                  (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> k3)).
@@ -746,11 +779,10 @@ Section UkShEcho.
       rewrite Hs1_k. apply uint_moi. unfold Z64. lia. }
     replace (2 + (UkShDiag.ush_Dg + n))%nat
       with (UkShDiag.ush_Dg + (2 + n))%nat by lia.
-    iDestruct (ukn_pay_free_of_triv N Hcst) as "Hpayf".
     iApply (UkShDiag.ush_diag_leaf_holds N h6 k4 0xda (2 + n)
               ltac:(right; left; split;
                     [ reflexivity | rewrite Hs1_k4; exact Ht8 ])
-              with "Hdp Hcode Hro [] Hpayf Hrun").
+              with "Hdp Hcode Hro [] Hpay Hrun").
     { rewrite /ush_diag_res.
       destruct (decide ((0xda : Z) = 0xda)) as [_ | Hne];
         [ | exfalso; exact (Hne eq_refl) ].
@@ -778,20 +810,23 @@ Section UkShEcho.
   (* it does today.  The disjunction is [UConsLine.ush_rest_line]'s, and   *)
   (* the case split belongs to the body that holds it (SH-LINE 2b).        *)
   (* =================================================================== *)
-  Definition wp_kshm_child_echo : Prop :=
-    forall (N : uk_names Σ) (Ht : ukn_triv N)
+  Definition wp_kshm_child_echo (Q : Z -> iProp Σ) (Cr : iProp Σ) : Prop :=
+    forall (N : uk_names Σ) (Hc : ukn_const N)
            (h : CpuId) (m : regfile) (dw dv : dfrac)
            (s0 : Z) (len : nat) (f : nat -> bv 8) (sz : Z)
            (ld : list fdstate) (n : nat),
+      ukn_pay N = Q ->
       m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
       UConsLine.ush_line_is f 0%nat len ->
       0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
       8344 <= sz ->
       UserPtTree.pgroundup sz = sz ->
       usz_ok (sz + 65536) ->
+      UkSh.ush_fd1p ld ->
       ⊢ UkSh.sh_deps -∗
         shk_code (ukn_t N) -∗
-        sh_exec_sup_echo -∗
+        sh_exec_sup_echo Q Cr -∗
+        □ (Cr -∗ Q (-1)) -∗
         shp_code (ukn_t N) -∗ shp_rodata (ukn_t N) -∗ ush_jtab (ukn_t N) -∗
         ustr (ukn_d N) (DfracOwn 1) s0 len f -∗
         ustr (ukn_d N) dw ushp_whitespace 5 ushp_ws_f -∗
@@ -800,14 +835,16 @@ Section UkShEcho.
         UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
         UserChildren.uch_any (ukn_ch N) -∗
         UkShMalloc.ushm_fresh N sz -∗
+        Cr -∗
         urun N h m (mword_of_int 0x9c0)
           (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
         WP (Loop : expr riscv_lang).
 
-  Lemma wp_kshm_child_echo_holds : wp_kshm_child_echo.
+  Lemma wp_kshm_child_echo_holds (Q : Z -> iProp Σ) (Cr : iProp Σ) :
+    wp_kshm_child_echo Q Cr.
   Proof.
-    intros N Ht h m dw dv s0 len f sz ld n
-      Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok.
+    intros N Hc h m dw dv s0 len f sz ld n
+      Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1.
     (* the ONE line the discipline admits, as the parser's own premises *)
     destruct (ush_line_toks_holds f 0%nat len Hline) as (Hlen17 & Hns0 & Htoks0).
     assert (Hns : ushp_no_symbols len f) by exact Hns0.
@@ -819,7 +856,7 @@ Section UkShEcho.
     (* [sh_deps] and the pinned supply LINEARLY, as in
        [wp_kshr_exec_echo_holds]: both are spent exactly once, at the arm
        below, and introducing either with [#] does not return here. *)
-    iIntros "Hdp #Hcode Hexs #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hrun".
+    iIntros "Hdp #Hcode Hexs #Hcq #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
     (* the line's own bytes are non-NUL, which is what makes each token a
        string once the cut lands *)
     iDestruct (ustr_nonul with "Hline") as %Hnn0.
@@ -876,7 +913,11 @@ Section UkShEcho.
     (* the exit payload goes down the parser's walk (lane IO-LEAF, M3c):
        [malloc] can return NULL and the store through it kills this
        process.  This walk still has it for free. *)
-    iPoseProof (ukn_pay_free_of_triv N Ht) as "Hpay".
+    (* the exit resource down the parser's walk is the LEND (step 4): the
+       law [Hcq] pays the exit where the walk dies, and the lend comes back
+       on the arm where the allocation succeeded, for the exec below *)
+    iAssert (□ (Cr -∗ ukn_pay N (-1)))%I as "#Hpxw".
+    { iIntros "!> Hc". rewrite Hpeq. iApply ("Hcq" with "Hc"). }
     iApply (UkShParseCmd.wp_kshp_parser N (UkShMalloc.ushm_fresh N sz)
               (usz (ukn_s N) (sz + 65536))
               (UkShMalloc.ushm_malloc_ok_holds N Hpsok_free sz
@@ -884,9 +925,9 @@ Section UkShEcho.
               h2 m2 dw dv s0 len f echo_toks
               (8 + (UkShDiag.ush_Dg + n))
               Ha0_2 Hns Htoks Htlen Hs0 Hs64
-              with "Hpcode Hpro Hline Hws Hsy HM Hpay Hrun").
+              with "Hpcode Hpro Hline Hws Hsy HM Hpxw Hcr Hrun").
     iIntros (p) "%Hparses Hnode Hline %Hcut Hws Hsy".
-    iIntros (h3 m3) "%Hcs3 %Ha0_3 Hsz _ Hrun".
+    iIntros (h3 m3) "%Hcs3 %Ha0_3 Hsz Hcr Hrun".
     rewrite Hra_2.
     (* ---- 0x9c6  jal ra,runcmd ---- *)
     iApply (wp_uk_jal N h3 m3 (mword_of_int 0x9c6)
@@ -919,10 +960,45 @@ Section UkShEcho.
        generic supply appears anywhere in this walk. *)
     replace (60 + (8 + (UkShDiag.ush_Dg + n)))%nat
       with (6 + (2 + (UkShDiag.ush_Dg + (60 + n))))%nat by lia.
-    iApply (wp_kshr_exec_echo_holds N _ h4 m4 p (sz + 65536) s0
+    iApply (wp_kshr_exec_echo_holds Q Cr N _ h4 m4 p (sz + 65536) s0
               (ushp_nulfold echo_toks (ushp_ext len f)) ld ((60 + n)%nat)
-              Ha0_4 Hbytes
-              with "Hdp Hcode Hexs Hjt Htree Hsz Hstd Hcwd Hch Hrun").
+              Hpeq Ha0_4 Hbytes Hfd1
+              with "Hdp Hcode Hexs Hcq Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
+  Qed.
+
+  (* =================================================================== *)
+  (* S3b THE BODY'S CHILD LAW, DISCHARGED (lane IO-LEAF, step 4).         *)
+  (*                                                                      *)
+  (* [UkShFork.ushf_child_law] is the dispatch above at the payload sh's   *)
+  (* fork chose -- [ushf_wq np], the credential after echo's block or the  *)
+  (* block still owed -- and the lend [Wc np 3], for every boundary [np].  *)
+  (* The exec supply at that payload is the one thing it needs, and it is  *)
+  (* the application's to give ([UShEcho.sh_exec_sup_of_echo_slot]).       *)
+  (* =================================================================== *)
+  Definition sh_exec_sup_echo_wq (Wc : nat -> nat -> iProp Σ) : iProp Σ :=
+    (□ (∀ np : nat,
+          sh_exec_sup_echo (fun _ : Z => UkShFork.ushf_wq Wc np) (Wc np 3%nat)))%I.
+
+  Global Instance sh_exec_sup_echo_wq_persistent Wc :
+    Persistent (sh_exec_sup_echo_wq Wc).
+  Proof. rewrite /sh_exec_sup_echo_wq. apply _. Qed.
+
+  Lemma ushf_child_law_holds (Wc : nat -> nat -> iProp Σ) :
+    sh_exec_sup_echo_wq Wc -∗ UkShFork.ushf_child_law Wc.
+  Proof.
+    iIntros "#Hsup". rewrite /UkShFork.ushf_child_law.
+    iIntros "!>" (N' h m dw dv s0 len g sz ld n np)
+      "%Hpeq %Hs1 %Hline %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
+       Hdp #Hcode #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
+    pose proof (ukn_const_of_eq N' _ Hpeq (fun x y => eq_refl)) as Hc.
+    iApply (wp_kshm_child_echo_holds (fun _ : Z => UkShFork.ushf_wq Wc np)
+              (Wc np 3%nat) N' Hc h m dw dv s0 len g sz ld n
+              Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok
+              (proj1 (proj2 Hrows))
+              with "Hdp Hcode [] [] Hpcode Hpro Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun").
+    - iApply ("Hsup" $! np).
+    - (* a failed exec's child exits on the block it was lent *)
+      iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iLeft. iExact "Hc".
   Qed.
 
   (* =================================================================== *)
@@ -942,21 +1018,25 @@ Section UkShEcho.
   (* =================================================================== *)
   (* [T] IS A PARAMETER (lane IO-LEAF, M5(3)): the fourth conjunct is the
      cursor AT A LINE BOUNDARY now, whose other arm is the taint. *)
+  (* ...AND THE PID ROW BESIDE THE CHILDREN SET (step 4), and the cwd
+     PINNED at the root in [UkSh.ush_pstate] itself now (SH-LINE R3(2)):
+     the index below is kept for E4's round, and is the root. *)
   Definition ush_pstate_at (N : uk_names Σ) (gp : gname) (T : iProp Σ)
       (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ) (Pm : nat -> iProp Σ)
       (l : list fdstate) (c : Z) : iProp Σ :=
     (UkSh.ush_std N l ∗ UserCwd.ucwd (ukn_cwd N) c
      ∗ UserChildren.uch_any (ukn_ch N)
+     ∗ UserChildren.upid_any (ukn_pid N)
      ∗ UkSh.ush_posb N gp T Wc Wb Pm l 0%nat)%I.
 
   Lemma ush_pstate_of_at (N : uk_names Σ) (gp : gname) (T : iProp Σ)
       (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ) (Pm : nat -> iProp Σ)
-      (l : list fdstate) (c : Z) :
-    ush_pstate_at N gp T Wc Wb Pm l c -∗ UkSh.ush_pstate N gp T Wc Wb Pm l.
+      (l : list fdstate) :
+    ush_pstate_at N gp T Wc Wb Pm l FsImg.ROOTINO -∗
+    UkSh.ush_pstate N gp T Wc Wb Pm l.
   Proof.
     rewrite /ush_pstate_at /UkSh.ush_pstate.
-    iIntros "(Hstd & Hcwd & Hch & Hpos)". iFrame "Hstd Hch Hpos".
-    iApply (UserCwd.ucwd_any_of with "Hcwd").
+    iIntros "(Hstd & Hcwd & Hch & Hpid & Hpos)". iFrame "Hstd Hcwd Hch Hpid Hpos".
   Qed.
 
   (* WHAT CROSSES THE ROUND, named once: the loop head's own resources are

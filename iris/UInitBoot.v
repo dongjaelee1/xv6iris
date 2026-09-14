@@ -39,6 +39,7 @@ From Stdlib Require Import ZArith List.
 From stdpp Require Import gmap list bitvector.definitions.
 From iris.base_logic Require Import iprop.
 From iris.base_logic.lib Require Import ghost_map ghost_var invariants.
+From iris.base_logic.lib Require Import mono_nat.   (* [mono_nat_lb_own_get]: the era's turn at 0 is the reader's receipt residue (step 4) *)
 (* [mono_list] AND [ghost_var] ARE REQUIRED HERE FOR A REASON, and so is
    [TsoCtx] below: a [Context] binder naming a class whose defining module
    is not in scope does not fail -- the backtick generalisation invents a
@@ -110,6 +111,10 @@ Require Import UInitCons.         (* [init_cons_fd] / [init_cons_cred] *)
 Require Import UInitConsK.        (* the two arms' discharges at echo's era *)
 Require Import UInitSh.           (* [init_cons_sup_of_sh_slot] *)
 Require Import UShOut.            (* [sh_prompt_law_holds] *)
+Require Import UShPanic.          (* [sh_prompt_law_holds_line]: the prompt's law at the tight family (step 4) *)
+Require Import EchoLinksPro.      (* [ewc_pro]: the round-open shape /init lends *)
+Require Import EchoLinksLine.     (* [ewc_lcred]: the loop's tight credential family (step 4) *)
+Require Import EchoLinksBan.      (* [ewc_ban_line]: the banner-owed credential is a boundary credential *)
 Require Import UShLine.           (* sh's console read-leaf file.  Its
                                      discharge [ush_read_recv_leaf_holds]
                                      is GONE (lane ECHO-OUT part 5): the
@@ -424,7 +429,13 @@ Section UInitBoot.
     (forall (γp : gname) (n : nat),
        ⊢ Pm γp (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
          Pm γp (n + length EchoDisc.echo_line)%nat
-         ∗ Wc (n + length EchoDisc.echo_line)%nat 0%nat) ->
+         ∗ Wc (n + length EchoDisc.echo_line)%nat 3%nat) ->
+    (* the three conversions of step 4, passed straight through *)
+    (forall n : nat, ⊢ Wb n -∗ Wc n 0%nat) ->
+    (forall n : nat, ⊢ Wc n 3%nat -∗ Wc n 0%nat) ->
+    (forall (γp : gname) (n : nat),
+       ⊢ Pm γp (n + length EchoDisc.echo_line)%nat -∗ Wb n -∗
+         Pm γp (n + length EchoDisc.echo_line)%nat ∗ echo_taint γ) ->
     (forall (γp : gname) (N : uk_names Σ) (l : list fdstate) (i : nat),
        ukn_pay N = ucons_pay cn γp (echo_taint γ) (UkInit.init_rd Rdl Wb) ->
        ⊢ upos γp i -∗ ucons_pay cn γp (echo_taint γ) Rdl (-1) -∗
@@ -441,7 +452,7 @@ Section UInitBoot.
       (init_cons_cred (echo_taint γ) r) st
       Wp Wb Rdl.
   Proof.
-    intros Heq Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hbd Hpw.
+    intros Heq Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw.
     iIntros "#Hdep #Hdp #Hplaw #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
     - iIntros "!> #Hcns".
       iDestruct "Hcore" as "#Hcore'".
@@ -449,7 +460,7 @@ Section UInitBoot.
          positionally; [cons_never_persistent] answers it. *)
       iApply (UInitSh.init_exec_sup_of_sh_slot (echo_taint γ) cn st
                 (cons_never r) Rdl Pm Wc Wb Wp Rsh n0 Hpsok_free Hn0 Hst
-                Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hbd Hpw
+                Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw
                 with "Hdep Hdp Hplaw [] Hcore'").
       iApply (ush_cons_in_of_Cns γ r Heq with "[] Hcns").
       iDestruct "Hcore'" as "(#Hinv & _)". iExact "Hinv".
@@ -715,20 +726,21 @@ Section EchoInitBoot.
     (* ---- the shell's slot, and the exec supply as a wand from the
            console credential ---- *)
     (* THE FAMILIES, ONCE (step 3): the write credential is the era's at
-       a line boundary ([EchoLinks.ewc_cred]), the banner-owed one is
+       a line boundary ([EchoLinksLine.ewc_lcred], the TIGHT family --
+       step 4), the banner-owed one is
        /init's round head ([UInitBanner.kinit_ban]), the lend is the
        lease's read side ([UShLine.ush_rd_pin]) and the exit family the
        pair of the last two ([UShLine.ush_rd_x] = [UkInit.init_rd]). *)
     iAssert (UInitSh.init_sh_slot (echo_taint γ)
                (UInitSh.sh_pay (echo_taint γ)
-                  (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+                  (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id))
                   (UInitBanner.kinit_ban (echo_taint γ) γ) (UShLine.ush_mid γ)
                   UInitSh.sh_Rsh 0%nat))%I as "#Hsh".
     { rewrite /UInitSh.init_sh_slot /UInitSh.init_sh_slot_core.
       iSplitR; [ iExact "Hinv" | ]. iSplitR; [ iExact "Hfs" | ].
       iSplitR; [ iExact "Hmint" | ].
       iApply (UInitSh.sh_pay_of_parts (echo_taint γ)
-                (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+                (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id))
                 (UInitBanner.kinit_ban (echo_taint γ) γ) (UShLine.ush_mid γ)
                 UInitSh.sh_Rsh 0%nat
                 with "[] [] Htg");
@@ -803,44 +815,73 @@ Section EchoInitBoot.
                    N γp i Hpeq Hb)).
     (* ...AND THE WRITE CREDENTIAL'S STEP AT THE READ, and the boundary law
        with the loop's credential slot beside it (lane IO-LEAF, M6a(3)); the
-       credential family is [EchoLinks.ewc_cred] at this era. *)
+       credential family is [EchoLinksLine.ewc_lcred] at this era (step 4);
+       the read leaves the BLOCK-OWED credential (index 3). *)
     assert (Hsh_wc :
       forall (γp : gname) (n : nat),
         ⊢ UShLine.ush_mid γ γp (n + length EchoDisc.echo_line)%nat -∗
-          EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id) n 2%nat -∗
+          EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id) n 2%nat -∗
           UShLine.ush_mid γ γp (n + length EchoDisc.echo_line)%nat
-          ∗ EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id) (n + length EchoDisc.echo_line)%nat 0%nat)
-      by (intros γp n; exact (UShLine.ush_mid_wc_read γ (echo_taint γ) γp n)).
+          ∗ EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id) (n + length EchoDisc.echo_line)%nat 3%nat)
+      by (intros γp n; exact (UShLine.ush_mid_wc_read_t γ (echo_taint γ) γp n)).
     assert (Hsh_bd :
       forall (γp : gname) (N : uk_names Σ) (l : list fdstate) (i : nat),
         ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ)
                       (UShLine.ush_rd_x γ (UInitBanner.kinit_ban (echo_taint γ) γ)) ->
         ⊢ upos γp i -∗
           ucons_pay fsc_cons γp (echo_taint γ) (UShLine.ush_rd_pin γ) (-1) -∗
-          UkSh.ush_wcp (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+          UkSh.ush_wcp (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id))
             (UInitBanner.kinit_ban (echo_taint γ) γ) l i 0%nat -∗
           UkSh.ush_posb N γp (echo_taint γ)
-            (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+            (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id))
             (UInitBanner.kinit_ban (echo_taint γ) γ) (UShLine.ush_mid γ γp) l 0%nat)
       by (intros γp N l i Hpeq;
           exact (UShLine.ush_posb_of_lend γ (echo_taint γ) N γp
-                   (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+                   (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id))
                    (UInitBanner.kinit_ban (echo_taint γ) γ) l i Hpeq)).
     (* ...AND THE PROMPT'S LAW AT EVERY LINE BOUNDARY, off the links *)
-    iAssert (UShKernel.sh_prompt_law (PS := uprogSG_free) (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id)))%I
+    iAssert (UShKernel.sh_prompt_law (PS := uprogSG_free) (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id)))%I
       as "#Hplaw".
-    { iApply (UShOut.sh_prompt_law_holds (echo_taint γ) γ (PS := uprogSG_free)
+    { iApply (UShPanic.sh_prompt_law_holds_line (echo_taint γ) γ (PS := uprogSG_free)
                 with "Hlks"). }
     (* THE ROUND-OPEN CREDENTIAL IS THE PROMPT CREDENTIAL AT THE SHELL'S
        ENTRY (lane M6b): [UInitDiag.kinit_pro n] is one arm of
-       [UInitBanner.kinit_own n], which IS [EchoLinks.ewc_cred] at
-       [p = 0]. *)
+       [UInitBanner.kinit_own n]; at the tight family (step 4) the
+       round-open shape is [EchoLinksLine.ewc_line]'s own first arm. *)
     assert (Hpw : forall n : nat,
               ⊢ UInitDiag.kinit_pro (echo_taint γ) γ n -∗
-                EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id) n 0%nat).
+                EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id) n 0%nat).
     { intros n. iIntros "H".
-      iDestruct (UInitDiag.kinit_own_of_pro (echo_taint γ) γ n with "H") as "H".
-      rewrite <- (UInitBanner.kinit_own_is_cred (echo_taint γ) γ n). iExact "H". }
+      rewrite /UInitDiag.kinit_pro /EchoLinksLine.ewc_lcred.
+      iDestruct "H" as (v) "[#Hpin Hc]". iExists v. iFrame "Hpin".
+      cbn [EchoLinksLine.ewc_lpr]. iApply (EchoLinksLine.ewc_line_of_pro (echo_taint γ) v n).
+      rewrite /EchoLinksPro.ewc_pro /EchoLinksLine.ewc_pro.
+      iDestruct "Hc" as "[Hl | #HT]"; [ | iRight; iExact "HT" ].
+      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
+      iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE".
+      iPureIntro. exact (proj1 Hw). }
+    (* ...AND THE THREE CONVERSIONS OF STEP 4, at the tight family: the
+       banner-owed credential is a boundary credential ([EchoLinksBan.
+       ewc_ban_line]); a block owed is one too ([EchoLinksLine.
+       ewc_lcred_blk_line]); a line read at an unwritten prompt is the
+       taint ([UShLine.ush_wb_read_holds]). *)
+    assert (Hsh_wbwc : forall n : nat,
+              ⊢ UInitBanner.kinit_ban (echo_taint γ) γ n -∗
+                EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id) n 0%nat).
+    { intros n. iIntros "H". rewrite /UInitBanner.kinit_ban /EchoLinksLine.ewc_lcred.
+      iDestruct "H" as (v) "[#Hpin Hc]". iExists v. iFrame "Hpin".
+      cbn [EchoLinksLine.ewc_lpr].
+      iApply (EchoLinksBan.ewc_ban_line (echo_taint γ) v n with "Hc"). }
+    assert (Hsh_wbl : forall n : nat,
+              ⊢ EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id) n 3%nat -∗
+                EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id) n 0%nat)
+      by (intros n; exact (EchoLinksLine.ewc_lcred_blk_line (echo_taint γ) γ (S gen_id) n)).
+    assert (Hsh_wbr : forall (γp : gname) (n : nat),
+              ⊢ UShLine.ush_mid γ γp (n + length EchoDisc.echo_line)%nat -∗
+                UInitBanner.kinit_ban (echo_taint γ) γ n -∗
+                UShLine.ush_mid γ γp (n + length EchoDisc.echo_line)%nat ∗ echo_taint γ).
+    { intros γp n. rewrite /UInitBanner.kinit_ban.
+      exact (UShLine.ush_wb_read_holds γ (echo_taint γ) γp n). }
     (* THE FAMILIES, ONCE MORE (M6b): the round-open credential /init keeps
        across its fork is [UInitDiag.kinit_pro], and the banner leaves it
        ([kinit_banner_law_pro_holds]). *)
@@ -851,14 +892,14 @@ Section EchoInitBoot.
                (UShLine.ush_rd_pin γ))%I as "#Hxs".
     { iApply (init_cons_sup_of_sh_slot γ r fsc_cons init_cons_fd
                 (UShLine.ush_rd_pin γ) (UShLine.ush_mid γ)
-                (EchoLinks.ewc_cred (echo_taint γ) γ (S gen_id))
+                (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id))
                 (UInitBanner.kinit_ban (echo_taint γ) γ)
                 (UInitDiag.kinit_pro (echo_taint γ) γ)
                 UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
                 ltac:(vm_compute; discriminate)
                 ltac:(reflexivity)
                 Hsh_rdleaf Hsh_pm1 Hsh_pm2 Hsh_pm3 Hsh_pmwb Hsh_wc
-                Hsh_bd Hpw
+                Hsh_wbwc Hsh_wbl Hsh_wbr Hsh_bd Hpw
                 with "[] [] Hplaw Hsh").
       - iApply (udep_free).
       - iApply Hsh_deps. }
@@ -923,6 +964,21 @@ Section EchoInitBoot.
       iApply ("Hmint" $! True%I W' with "Ht Hp []").
       iModIntro. iIntros "_". done.
     - iIntros "Hrd". rewrite /UInitKernel.init_boot_pay.
+      (* THE READER'S RECEIPT RESIDUE AT COUNT ZERO (step 4): the era's
+         own turn -- the writer's cursor at 0 and the two empty bounds --
+         is the receipt of the nothing read so far, at the era's pin *)
+      iAssert (∃ v0 : era_pins, era_pin γ (S gen_id) v0 ∗ UShLine.rd_res v0 0%nat)%I
+        with "[Hturn]" as "(%v0 & #Hpin0 & #Hres0)".
+      { rewrite /echo_turn /EchoOut.eturn.
+        iDestruct "Hturn" as (v0) "(#Hpin0 & Htn & _ & #Hcs0 & #Hps0 & _)".
+        iExists v0. iFrame "Hpin0". rewrite /UShLine.rd_res.
+        iExists [], []. iEval (rewrite /EchoOut.turn) in "Htn".
+        iDestruct (mono_nat_lb_own_get with "Htn") as "#Hlb0".
+        assert (E0 : length (proc_upto [] [] 0%nat) = 0%nat)
+          by (vm_compute; reflexivity).
+        rewrite E0. iFrame "Hlb0 Hps0 Hcs0". iPureIntro.
+        rewrite /EchoOut.rd_stage. split_and!;
+          [ constructor | constructor | exact (UShOut.sh_pro_pin [] []) | cbn; lia ]. }
       iDestruct (UInitBanner.kinit_ban0_of_eturn (echo_taint γ) γ
                    with "[Hturn]")
         as "[Hdl Hbn]"; [ rewrite /echo_turn; iExact "Hturn" | ].
@@ -941,7 +997,10 @@ Section EchoInitBoot.
       { (* ...and the count it is at IS a line boundary: it is ZERO (lane
            IO-LEAF, M5(3)). *)
         rewrite /UShLine.ush_rd_pin /UInitBanner.kinit_dl0.
-        iSplitR; [ iPureIntro; exact UkSh.ush_bnd_0 | iExact "Hdl" ]. }
+        iSplitR; [ iPureIntro; exact UkSh.ush_bnd_0 | ].
+        iDestruct "Hdl" as (v) "(#Hpin & Hdl & #HE)".
+        iDestruct (era_pin_agree with "Hpin0 Hpin") as %<-.
+        iExists v0. iFrame "Hpin0 Hdl HE Hres0". }
       (* THE ERA'S CREDENTIAL BECOMES /init's BANNER PAYMENT (lane IO-LEAF,
          M1(e)).  This is the one place where the application's claim and
          the kernel's console contracts are the same object AND row 16's

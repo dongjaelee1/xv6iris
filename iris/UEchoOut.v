@@ -661,13 +661,17 @@ Section UEchoOut.
      entry -- so this lemma is as persistent as [UInitBanner]'s payment is
      linear, and for the same reason: init's credential is spent once, and
      echo's is spent by the walk. *)
+  (* AT ANY EXIT PAYLOAD THE END OF THE BLOCK PAYS (lane IO-LEAF, step 4):
+     the record's payload is the one sh's fork chose, and what echo's last
+     byte leaves -- the cursor twelve bytes on -- pays it through a
+     persistent wand ([echq] is the identity case). *)
   Lemma kecho_pay_of_link (N : uk_names Σ) (v : era_pins)
       (ps0 cs0 : list nat) (n0 P : nat) (av : Z) (args : list uarg)
       (l : list fdstate) (rb : bool) :
     echo_stage ps0 cs0 n0 P ->
     echo_out_argv args ->
     l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
-    ukn_pay N = echq v ps0 cs0 n0 P ->
+    □ (ech v ps0 cs0 n0 P 12%nat -∗ ukn_pay N (-1)) -∗
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
     echo_rodata (ukn_t N) -∗
@@ -676,8 +680,8 @@ Section UEchoOut.
       (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P 0%nat)
       (ukn_pay N (-1)).
   Proof.
-    intros Hst (Hlen & Hg1p & Hg2p) Hl1 Hpayeq.
-    iIntros "#Hpin #Hlk #Hro #Hargv".
+    intros Hst (Hlen & Hg1p & Hg2p) Hl1.
+    iIntros "#Hq #Hpin #Hlk #Hro #Hargv".
     rewrite /kecho_pay_all. iSplit.
     - iIntros "%Hsmall". exfalso. lia.
     - iIntros "_".
@@ -716,13 +720,12 @@ Section UEchoOut.
                     (ua_ptr g2) 5%nat (ua_bytes g2) Hst Hl1
                     ltac:(intros j Hj; apply Hb2; lia)
                     with "Hpin Hlk Hs2").
-        * (* write(1, "\n", 1) -- and its cursor IS the exit's payload *)
-          rewrite Hpayeq /echq.
+        * (* write(1, "\n", 1) -- and its cursor pays the exit *)
           iApply (kecho_w_mono N (mword_of_int echo_nl_ptr) 1%nat
                     (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P 11%nat)
                     (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P (S 11))
-                    (ech v ps0 cs0 n0 P 12%nat) with "[] []").
-          { iIntros "[_ $]". }
+                    (ukn_pay N (-1)) with "[] []").
+          { iIntros "[_ Hc]". iApply ("Hq" with "Hc"). }
           iApply (kecho_w_of_link_txt N v ps0 cs0 n0 P 11%nat l rb
                     echo_nl_ptr echo_nl_b Hst Hl1 echo_nl_line
                     ltac:(unfold echo_nl_ptr;
@@ -744,8 +747,12 @@ Section UEchoOut.
   (*  line's own stage.  The entry LEND -- the cursor at offset zero --   *)
   (*  is what sh's fork/exec channel carries in (lane IO-LEAF, M3).       *)
   (* =================================================================== *)
+  (* ...AT THE PAYLOAD THE FORKING SHELL CHOSE (step 4): constant, and
+     paid by the block's end through the wand.  [echq] is the case
+     [Q := fun _ => ech v ps0 cs0 n0 P 12]. *)
   Lemma echo_uexec_slot_at (W : uvis) (v : era_pins)
-      (ps0 cs0 : list nat) (n0 P : nat) (rb : bool) :
+      (ps0 cs0 : list nat) (n0 P : nat) (rb : bool) (Q : Z -> iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
     echo_stage ps0 cs0 n0 P ->
     echo_out_argv
       (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W))) ->
@@ -778,25 +785,26 @@ Section UEchoOut.
     (forall (p : mword 27) (q : uperm), uvis_perm W !! p = Some q ->
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     uvis_lazy W = false ->
+    □ (ech v ps0 cs0 n0 P 12%nat -∗ Q (-1)) -∗
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
     udep -∗
-    my_pay (uvis_gen W) (echq v ps0 cs0 n0 P) -∗
+    my_pay (uvis_gen W) Q -∗
     ech v ps0 cs0 n0 P 0%nat -∗
     uslot W.
   Proof.
-    intros Hst Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
+    intros HQc Hst Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
            Havd Havs Hfdlen Hstop Hlzf.
-    iIntros "#Hpin #Hlk #Hdep Hpay Hc".
+    iIntros "#Hq #Hpin #Hlk #Hdep Hpay Hc".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
-    iApply (uslot_of_urun_ro W 12 (echq v ps0 cs0 n0 P)
+    iApply (uslot_of_urun_ro W 12 Q
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
               with "Hdep Hpay").
     iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd _ _ _ #HA Hrun".
-    pose proof (ukn_const_of_eq N _ Hpayeq (fun x y => eq_refl)) as Htc.
+    pose proof (ukn_const_of_eq N _ Hpayeq HQc) as Htc.
     rewrite Hpc.
     iApply (wp_kecho_start N h (tf_resume_gpr0 (uvis_tf W))
               (uvis_av W)
@@ -810,8 +818,9 @@ Section UEchoOut.
               with "[] [] [] [Hstd Hc] Hrun").
     { iApply (kecho_pay_of_link N v ps0 cs0 n0 P (uvis_av W)
                 (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W)))
-                (take NSTD (uvis_fd W)) rb Hst Hargv1 Hl1 Hpayeq
-                with "Hpin Hlk [] []").
+                (take NSTD (uvis_fd W)) rb Hst Hargv1 Hl1
+                with "[] Hpin Hlk [] []").
+      { rewrite Hpayeq. iExact "Hq". }
       - iApply (echo_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                   Hsub2 Hx with "Ht").
       - iApply (echo_uargv_of_area (ukn_d N) (uvis_M W) (uvis_perm W)

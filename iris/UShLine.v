@@ -105,6 +105,7 @@ Require Import ConsLog.            (* [log_entry] / [read_ok] *)
 Require Import EchoDisc.           (* [echo_line] *)
 Require Import EchoOutPure.        (* [E_byte] / [echoed] *)
 Require Import EchoOut.            (* [era_pin] / [dl_cnt] / [read_ret] *)
+Require Import EchoLinksLine.      (* [ewc_lcred]: the loop's tight family (step 4) *)
 Require Import EchoLinks.          (* [echo_links] and its two read
                                       projections *)
 Require Import TsoCtx.
@@ -481,10 +482,30 @@ Section UShLine.
      the payload and not the pieces that carries the fact, because the
      pieces are what a shell holds IN THE MIDDLE of a line, where it is
      false ([UkSh.ush_lease] is the mid-line form). *)
+  (* THE READER'S RECEIPT RESIDUE (lane IO-LEAF, step 4): what the era's
+     read link hands back at a window's far end, beyond the delivered
+     count -- the reader's two bounds on the transcript's resolution and
+     the WRITER'S cursor bound at the stream those bounds compute
+     ([EchoOut.read_ret]'s trailing conjuncts, PROLOGUE-ALTS-3).  It is what
+     refutes a credential that still owes the round's banner at a
+     boundary the reader is past ([EchoLinks.wr_owed_read_refute]):
+     [ush_wb_read_holds] below.  Persistent, so it rides the pieces and the
+     lease's read side for free; at the boot it is the era's own turn at
+     count 0 ([UInitBoot]). *)
+  Definition rd_res (v : era_pins) (n : nat) : iProp Σ :=
+    (∃ ps0 cs0 : list nat,
+       ⌜rd_stage ps0 cs0 n⌝ ∗ turn_lb v (length (proc_upto ps0 cs0 n))
+       ∗ ps_lb v ps0 ∗ cs_lb v cs0)%I.
+
+  Global Instance rd_res_persistent v n : Persistent (rd_res v n).
+  Proof. rewrite /rd_res. apply _. Qed.
+  Global Instance rd_res_timeless v n : Timeless (rd_res v n).
+  Proof. rewrite /rd_res. apply _. Qed.
+
   Definition ush_rd_pin (γ : echo_gn) (n : nat) : iProp Σ :=
     (⌜UkSh.ush_bnd n⌝
      ∗ ∃ v : era_pins, era_pin γ (S gen_id) v ∗ dl_cnt v (1/2) n
-                       ∗ E_lb v n)%I.
+                       ∗ E_lb v n ∗ rd_res v n)%I.
 
   Global Instance ush_rd_pin_timeless γ n : Timeless (ush_rd_pin γ n).
   Proof. rewrite /ush_rd_pin. apply _. Qed.
@@ -523,7 +544,7 @@ Section UShLine.
   Definition ush_mid (γ : echo_gn) (γp : gname) (n : nat) : iProp Σ :=
     (upos γp n ∗ upos_a γp n ∗ ucons_reader fsc_cons n
      ∗ ∃ v : era_pins, era_pin γ (S gen_id) v ∗ dl_cnt v (1/2) n
-                       ∗ E_lb v n)%I.
+                       ∗ E_lb v n ∗ rd_res v n)%I.
 
   (* the payload comes apart into the pieces: the credential slot of the
      exit family is DROPPED (nothing in the loop holds it) *)
@@ -604,14 +625,67 @@ Section UShLine.
     ∗ EchoLinks.ewc_cred T γ (S gen_id) (n + length echo_line)%nat 0%nat.
   Proof.
     iIntros "(Hpos & Hpa & Hrd0 & Hcred) Hc".
-    iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE)".
+    iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE & #Hres)".
     rewrite /EchoLinks.ewc_cred. iDestruct "Hc" as (v') "[#Hpin' Hc]".
     iDestruct (era_pin_agree with "Hpin Hpin'") as %<-.
     iSplitR "Hc".
-    { rewrite /ush_mid. iFrame "Hpos Hpa Hrd0". iExists v. iFrame "Hpin Hdl HE". }
+    { rewrite /ush_mid. iFrame "Hpos Hpa Hrd0". iExists v. iFrame "Hpin Hdl HE Hres". }
     iExists v. iFrame "Hpin".
     iEval (cbn [EchoLinks.ewc_pr]) in "Hc". cbn [EchoLinks.ewc_pr].
     iApply (EchoLinks.ewc_read T v n with "HE Hc").
+  Qed.
+
+  (* ...AND THE SAME AT THE LOOP'S TIGHT FAMILY (step 4;
+     [EchoLinksLine.ewc_lcred], what the top instantiates [Wc] at): the read
+     leaves the BLOCK-OWED credential at the next boundary (index 3). *)
+  Lemma ush_mid_wc_read_t (γ : echo_gn) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (γp : gname) (n : nat) :
+    ush_mid γ γp (n + length echo_line)%nat -∗
+    EchoLinksLine.ewc_lcred T γ (S gen_id) n 2%nat -∗
+    ush_mid γ γp (n + length echo_line)%nat
+    ∗ EchoLinksLine.ewc_lcred T γ (S gen_id) (n + length echo_line)%nat 3%nat.
+  Proof.
+    iIntros "(Hpos & Hpa & Hrd0 & Hcred) Hc".
+    iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE & #Hres)".
+    iSplitR "Hc".
+    { rewrite /ush_mid. iFrame "Hpos Hpa Hrd0". iExists v. iFrame "Hpin Hdl HE Hres". }
+    iApply (EchoLinksLine.ewc_lcred_read T γ (S gen_id) n v with "Hpin HE Hc").
+  Qed.
+
+  (* THE DISCIPLINE LEMMA AT THE PIECES (step 4; [UkSh.ush_wb_read]'s
+     discharge).  A shell whose fd 2 is closed printed no prompt, so the
+     era still owes the round's banner at boundary [n]
+     ([UInitBanner.kinit_ban n], spelled out here); the pieces a whole
+     line's read leaves at [n + 17] carry the reader's receipt of that
+     line, whose writer-cursor bound is at least the stream through the
+     block the line closed -- strictly more than a banner-owed cursor at
+     [n] can be ([EchoLinks.wr_owed_read_refute]).  So the credential's
+     untainted arm is refuted and what is left is the taint. *)
+  Lemma ush_wb_read_holds (γ : echo_gn) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (γp : gname) (n : nat) :
+    ush_mid γ γp (n + length echo_line)%nat -∗
+    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ EchoLinks.ewc_ban T v n 0%nat) -∗
+    ush_mid γ γp (n + length echo_line)%nat ∗ T.
+  Proof.
+    iIntros "(Hpos & Hpa & Hrd0 & Hcred) Hb".
+    iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE & #Hres)".
+    iDestruct "Hb" as (v') "[#Hpin' Hb]".
+    iDestruct (era_pin_agree with "Hpin Hpin'") as %<-.
+    iSplitR "Hb".
+    { rewrite /ush_mid. iFrame "Hpos Hpa Hrd0". iExists v. iFrame "Hpin Hdl HE Hres". }
+    rewrite /EchoLinks.ewc_ban.
+    iDestruct "Hb" as "[Hl | #HT]"; [ | iExact "HT" ].
+    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & _)".
+    iDestruct "Hres" as (ps0 cs0) "(%Hrd & #Htlb & #Hps0 & #Hcs0)".
+    iDestruct (turn_lb_le v (P + 0)%nat _ with "Htn Htlb") as %Hle.
+    iDestruct (ps_lb_cmp v ps ps0 with "Hps Hps0") as %Hpsc.
+    iDestruct (cs_lb_cmp v cs cs0 with "Hcs Hcs0") as %Hcsc.
+    iExFalso. iPureIntro.
+    pose proof echo_line_length as HL.
+    exact (EchoLinks.wr_owed_read_refute ps cs ps0 cs0 n P
+             (n + length echo_line)%nat
+             (or_introl (EchoLinks.wr_ban_pro ps cs n P Hw))
+             ltac:(lia) Hrd Hpsc Hcsc ltac:(lia)).
   Qed.
 
   (* =================================================================== *)
@@ -660,7 +734,7 @@ Section UShLine.
      window it got in the receipt. *)
   Definition ush_rd_in (T : iProp Σ) (γ : echo_gn) (n : nat)
       (ws : list (list mobs * bv 8)) : iProp Σ :=
-    ((∃ v : era_pins, era_pin γ (S gen_id) v ∗ E_lb v n
+    ((∃ v : era_pins, era_pin γ (S gen_id) v ∗ E_lb v n ∗ rd_res v n
         ∗ read_ret T (S gen_id) v n ws)
      ∨ T)%I.
 
@@ -724,13 +798,13 @@ Section UShLine.
     - (* THE LEASE HOLDER'S ARM: the token, both halves of the position
          pair, and the era's credential beside them, all at ONE number. *)
       iDestruct "Hl" as "(Hpos & Hpa & Hrd0 & Hcred)".
-      iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE)".
+      iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE & #Hres)".
       iSplitR "Hdl"; last first.
       { (* THE BOUNDARY'S HALF: the era's read link at sh's own count *)
         iIntros (ws).
         iApply ("Hrdl" $! (S gen_id) v n ws with "Hpin Hdl").
         iIntros "Hret". rewrite /ush_rd_in. iLeft. iExists v.
-        iFrame "Hpin HE Hret". }
+        iFrame "Hpin HE Hres Hret". }
       iEval (rewrite ucons_reader_eq) in "Hrd0".
       iApply (cons_acc_reader fsc_cons app_sup n with "Hrd0 [Hpos Hpa]").
       iIntros (cur dc) "Hout". rewrite /cons_out.
@@ -1055,7 +1129,7 @@ Section UShLine.
         { iRight. iFrame "HT". rewrite /UkSh.ush_pos /UkSh.ush_at.
           iExists (n + dc)%nat. iFrame "Hp". rewrite Hpay.
           iApply (ucons_pay_taint with "HT"). }
-        iDestruct "Hret" as (v) "(#Hpin & #HE0 & Hret)".
+        iDestruct "Hret" as (v) "(#Hpin & #HE0 & #Hres0 & Hret)".
         rewrite /read_ret.
         iDestruct "Hret" as "[[#HT _] | [Hdlr Hfacts]]".
         { iRight. iFrame "HT". rewrite /UkSh.ush_pos /UkSh.ush_at.
@@ -1075,9 +1149,21 @@ Section UShLine.
             rewrite Hdc0 Nat.add_0_r. iExact "HE0".
           - iDestruct "Hbb" as (cs0 ps0) "(_ & _ & HE & _)".
             iEval (rewrite Hlws) in "HE". iExact "HE". }
+        (* ...AND THE RECEIPT'S RESIDUE AT THE FAR END (step 4): off the
+           receipt where a byte was delivered, the one the lease went in
+           with where the window was empty *)
+        iAssert (rd_res v (n + dc)%nat) as "#Hresn".
+        { iDestruct "Hrest" as "[%Hws0 | Hbb]".
+          - assert (Hdc0 : dc = 0%nat)
+              by (rewrite <- Hlws, Hws0; reflexivity).
+            rewrite Hdc0 Nat.add_0_r. iExact "Hres0".
+          - iDestruct "Hbb" as (cs0 ps0) "(#Hcs & #Hps & _ & _ & #Htlb & %Hrds)".
+            rewrite /rd_res. iExists ps0, cs0.
+            iEval (rewrite Hlws) in "Htlb". iFrame "Htlb Hps Hcs".
+            iPureIntro. rewrite <- Hlws. exact Hrds. }
         iLeft. iSplitR "Hdlr Hrdt Hpa Hp"; last first.
         { rewrite /ush_mid. iFrame "Hp Hpa Hrdt".
-          iExists v. iFrame "Hpin Hdlr HEn". }
+          iExists v. iFrame "Hpin Hdlr HEn Hresn". }
         iRight. iSplitR.
         { iPureIntro. intro Hdd0.
           exact (ush_rd_byte_of_rows sl sl2 ws dl hs pops n dd dc g

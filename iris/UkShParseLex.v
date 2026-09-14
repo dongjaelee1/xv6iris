@@ -1702,7 +1702,7 @@ Section UkShParseLex.
   Lemma shpp_memset : ShSyms.memset = 0xa5c.
   Proof. unfold ShSyms.memset. reflexivity. Qed.
 
-  Lemma wp_kshp_execcmd (h : CpuId) (m : regfile) (s0 : Z) (nn : nat) :
+  Lemma wp_kshp_execcmd {Pex : iProp Σ} (h : CpuId) (m : regfile) (s0 : Z) (nn : nat) :
     shp_code γt -∗
     UMalloc -∗
     (* THE EXIT PAYLOAD, CARRIED (lane IO-LEAF, M3c).  [malloc] can return
@@ -1712,7 +1712,12 @@ Section UkShParseLex.
        [ushp_pay_free : (⊢ ukn_pay N (-1))], which a child forked at a
        LINEAR payload cannot satisfy; so it is a resource, carried in and
        handed back on the arm where the allocation succeeded. *)
-    ukn_pay N (-1) -∗
+    (* ...AT AN ABSTRACT EXIT RESOURCE (lane IO-LEAF, step 4): a child
+       forked at a payload of its own holds what it was LENT and a law
+       that turns the lend into its exit payload; the walk carries the lend
+       and spends the law only where it dies. *)
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
     urun N h m (mword_of_int ShSyms.execcmd) (4 + (10 + nn)) -∗
     (∀ (h' : CpuId) (m' : regfile) (p : Z),
        ⌜ ucallee_saved m m' ⌝ -∗
@@ -1720,12 +1725,12 @@ Section UkShParseLex.
        ⌜ 0 < p /\ p mod 16 = 0 /\ p + 168 < 2 ^ 38 ⌝ -∗
        ushp_exec_pre s0 p [] -∗
        UMalloc' -∗
-       ukn_pay N (-1) -∗
+       Pex -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (10 + nn)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode HM Hpay Hrun Hcont".
+    iIntros "#Hcode HM #Hpx Hpay Hrun Hcont".
     iDestruct (ushp_code_shk γt with "Hcode") as "#Hkcode".
     rewrite shpp_execcmd.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -1995,7 +2000,8 @@ Section UkShParseLex.
       iApply (wp_ksh_memset_null N h10 m9 0 168%nat btx (8 + nn)
                 ltac:(lia) ltac:(vm_compute; reflexivity)
                 Ha0_9 Ha2_9 ltac:(lia) ltac:(unfold Z31; lia)
-                with "Hkcode Ht0 Hpay Hrun").
+                with "Hkcode Ht0 [Hpay] Hrun").
+      iApply ("Hpx" with "Hpay").
     }
     destruct Hpb as [ Hp0 [ Hp16 Hpsz ] ].
     assert (H38 : (2:Z) ^ 38 = 274877906944) by (vm_compute; reflexivity).

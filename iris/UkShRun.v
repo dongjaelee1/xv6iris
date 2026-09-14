@@ -889,6 +889,92 @@ Section UkShRun.
     iApply ("Hcont" $! h3 ret Sc' with "Hans Hrun Hch").
   Qed.
 
+  (* ...AND THE SAME CALL READ AGAINST sh's OWN PID (lane IO-LEAF, step 4):
+     the row a process that can name its pid takes
+     ([UkRunSys.wp_uk_ecall_wait_null_pid]) -- the middle form of the
+     answer ([UexecRet.uwait_ans_pid]) at the pid the row pinned, and the
+     kernel's row that a -1 leaves NO children -- which is what lets the
+     parent refute the failing arm against the token of the child it just
+     forked, and read the reaping arm as its own child's
+     ([UexecRet.uwait_ans_pid_mine]).  The fragment comes back untouched:
+     a process's pid never moves. *)
+  Lemma wp_kshr_wait_pid (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
+      (avail : nat) (Sc : gset gname) (p : Z) :
+    uint (m !!! Regidx a0_idx) = 0 ->
+    shk_code (ukn_t N) -∗
+    urun N h m (mword_of_int ShSyms.wait) avail -∗
+    UserChildren.uch (ukn_ch N) Sc -∗
+    UserChildren.upid (ukn_pid N) p -∗
+    (∀ (h' : CpuId) (ret : mword 64) (Sc' : gset gname) (pidv : mword 32),
+       ⌜bv_unsigned pidv = p⌝ -∗
+       UserChildren.upid (ukn_pid N) p -∗
+       ⌜ret = (mword_of_int (-1) : mword 64) -> Sc' = (∅ : gset gname)⌝ -∗
+       uwait_ans_pid ret Sc Sc' pidv -∗
+       urun N h'
+         (<[Regidx a0_idx := ret]>
+            (<[Regidx a7_idx := (mword_of_int 3 : mword 64)]> m))
+         (ret_pc (m !!! Regidx ra_idx)) avail -∗
+       UserChildren.uch (ukn_ch N) Sc' -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Ha0. iIntros "#Hcode Hrun Hch Hpid Hcont".
+    rewrite shr_wait.
+    (* ---- 0xc8e  c.li a7,3 ---- *)
+    iApply (wp_uk_cli N h m (mword_of_int 0xc8e)
+              (mword_of_int 3 : mword 6) a7_idx avail
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; discriminate) with "[] Hrun").
+    { iApply (uis_shk_c8e with "Hcode"). }
+    assert (Em : <[Regidx a7_idx
+                   := regval_into_reg (sign_extend' 64
+                        (mword_of_int 3 : mword 6) : mword 64)]> m
+                 = <[Regidx a7_idx := (mword_of_int 3 : mword 64)]> m)
+      by (f_equal; apply bv_eq; vm_compute; reflexivity).
+    assert (E0 : add_vec_int (mword_of_int 0xc8e : mword 64) 2
+                 = mword_of_int 0xc90)
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite E0 Em. iIntros (h1) "Hrun".
+    set (m1 := <[Regidx a7_idx := (mword_of_int 3 : mword 64)]> m).
+    assert (Ha0_1 : uint (m1 !!! Regidx a0_idx) = 0).
+    { rewrite /m1 (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)). exact Ha0. }
+    (* ---- 0xc90  ecall -- the wait row at a null status pointer, at sh's
+       own pid ---- *)
+    iApply (wp_uk_ecall_wait_null_pid N h1 m1 (mword_of_int 0xc90) avail Sc p
+              ltac:(rewrite /m1 /usysno
+                      (upd_eq m (Regidx a7_idx) (mword_of_int 3 : mword 64));
+                    vm_compute; reflexivity)
+              Ha0_1
+              ltac:(vm_compute; reflexivity)
+              with "[] Hrun [] Hch Hpid").
+    { iApply (uis_shk_c90 with "Hcode"). }
+    { iApply udepw_of_psok; [ apply Hpsok_free; free_lit | ];
+      (discriminate || assumption || (vm_compute; discriminate)). }
+    assert (E1 : add_vec_int (mword_of_int 0xc90 : mword 64) 4
+                 = mword_of_int 0xc94)
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite E1. iIntros (h2 ret Sc' pidv) "%Hpv Hpid %Hm1 Hans Hrun Hch".
+    set (m2 := <[Regidx a0_idx := ret]> m1).
+    assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
+    { unfold m2, m1.
+      exact (eq_trans
+               (upd_ne m1 (Regidx a0_idx) (Regidx ra_idx) ret
+                  ltac:(vm_compute; discriminate))
+               (upd_ne m (Regidx a7_idx) (Regidx ra_idx)
+                  (mword_of_int 3 : mword 64)
+                  ltac:(vm_compute; discriminate))). }
+    iApply (wp_uk_cjr N h2 m2 (mword_of_int 0xc94) ra_idx
+              (ret_pc (m !!! Regidx ra_idx)) avail
+              ltac:(vm_compute; discriminate)
+              ltac:(rewrite Hra; reflexivity)
+              with "[] Hrun").
+    { iApply (uis_shk_c94 with "Hcode"). }
+    iIntros (h3) "Hrun".
+    iApply ("Hcont" $! h3 ret Sc' pidv with "[%] Hpid [%] Hans Hrun Hch");
+      [ exact Hpv | exact Hm1 ].
+  Qed.
+
   (* ---- exec @0xcbe, SYS_exec = 7 -- THE ARM THAT RETURNS --------------- *)
   (* A successful exec never comes back to this WP: the new program's is     *)
   (* minted from the new image.  So the stub's ONLY continuation is the      *)

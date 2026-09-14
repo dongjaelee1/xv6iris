@@ -954,6 +954,17 @@ Section UInitSh.
     rewrite /exec_sbundle /=. iFrame "Hmp". iExact "H".
   Qed.
 
+  (* /init's all-closed ledger is the closed-arm shape at zero opens
+     (step 4) *)
+  Lemma ufd_l0_lcl : UkSh.ush_lcl UInitFd.ufd_l0 0%nat.
+  Proof.
+    split; [ intros i Hi; lia | ].
+    intros i [_ Hi]. unfold NSTD in Hi.
+    destruct i as [| [| [| i]]];
+      [ exact UInitFd.ufd_l0_row0 | vm_compute; reflexivity
+      | exact UInitFd.ufd_l0_row2 | lia ].
+  Qed.
+
   Lemma init_exec_sup_of_sh_slot (T : iProp Σ) `{!Persistent T} `{!Timeless T}
       (cn : cons_names) (st : fdstate) (K : iProp Σ) `{!Persistent K}
       (* ...AND THE APPLICATION'S PER-POSITION CREDENTIAL (lane IO-LEAF,
@@ -1057,7 +1068,14 @@ Section UInitSh.
     (forall (γp : gname) (n : nat),
        ⊢ Pm γp (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
          Pm γp (n + length EchoDisc.echo_line)%nat
-         ∗ Wc (n + length EchoDisc.echo_line)%nat 0%nat) ->
+         ∗ Wc (n + length EchoDisc.echo_line)%nat 3%nat) ->
+    (* ...AND THE THREE CONVERSIONS OF STEP 4 ([UShKernel.sh_uexec_slot]'s
+       [Hwbwc] / [Hwbl] / [Hwbr]), passed straight through *)
+    (forall n : nat, ⊢ Wb n -∗ Wc n 0%nat) ->
+    (forall n : nat, ⊢ Wc n 3%nat -∗ Wc n 0%nat) ->
+    (forall (γp : gname) (n : nat),
+       ⊢ Pm γp (n + length EchoDisc.echo_line)%nat -∗ Wb n -∗
+         Pm γp (n + length EchoDisc.echo_line)%nat ∗ T) ->
     (* ...AND THE ENTRY LAW (step 3): the raw lend and the loop's
        credential slot make the loop's cursor ([UShLine.ush_posb_of_lend]
        is the one discharge). *)
@@ -1117,7 +1135,8 @@ Section UInitSh.
        ONE place the two ends meet. *)
     UkInit.init_exec_sup_lend cn T st Wp Wb Rdl.
   Proof.
-    intros Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hbd Hpw. subst st.
+    intros Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw.
+    subst st.
     iIntros "#Hdep #Hdp #Hplaw #Hcons (#Hinv & #Hcl0 & #Hgen & #Hpay)".
     (* E4: what crosses is the WHOLE pins law and each consumer projects *)
     iDestruct (sh_pins_of_fs_pure T with "Hcl0") as "#Hcl".
@@ -1231,11 +1250,15 @@ Section UInitSh.
       { rewrite Hl /UkInit.init_lend_cred /UkSh.ush_wcp.
         iDestruct "Hcred" as "[[%Hl3 Hc] | [[%Hl0 Hb] | _]]".
         - iLeft. iSplitR.
-          + iPureIntro. rewrite Hl3. split.
+          + iPureIntro. rewrite Hl3. split_and!.
             * exists true. exact (ufd_l3_row0 _).
+            * exists true. exact (ufd_l3_row1 _).
             * exists true. exact (ufd_l3_row2 _).
           + iPoseProof (Hpw np) as "Hpw'". iApply ("Hpw'" with "Hc").
-        - iRight. iLeft. iFrame "Hb". iPureIntro. rewrite Hl0. exact ufd_l0_row2.
+        - (* the all-closed ledger, with none of the preamble's opens landed
+             yet (step 4: [UkSh.ush_lcl] at 0) *)
+          iRight. iLeft. iFrame "Hb". iPureIntro. rewrite Hl0.
+          split; [ | lia ]. exists 0%nat. split; [ lia | exact ufd_l0_lcl ].
         - iRight. by iRight. }
       iClear "Hstd'".
       destruct (init_args_det M na alen afun Hsav Hsro Hargs) as [-> Halen].
@@ -1252,7 +1275,7 @@ Section UInitSh.
                     Hpsok_free Rsh γp cn T K (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
                     (ucons_pay cn γp T Rdl)
                     (Pm γp) Wc Wb (Hrl γp) (Hpm1 γp) (Hpm2 γp) (Hpm3 γp)
-                    (Hpmwb γp) (Hwc γp)
+                    (Hpmwb γp) (Hwc γp) Hwbwc Hwbl (Hwbr γp)
                     1%nat alen afun fdv W' n0 np
                     (fun N0 l0 n1 => Hbd γp N0 l0 n1)
                     (ucons_pay_const cn γp T (UkInit.init_rd Rdl Wb)) Hok Hcwd0

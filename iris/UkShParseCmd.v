@@ -142,7 +142,7 @@ Section UkShParseCmd.
   (* lemmas take the whole prologue and the whole epilogue.                 *)
   (* ===================================================================== *)
 
-  Lemma wp_kshp_parsepipe (h : CpuId) (m : regfile) (dq dw dv : dfrac)
+  Lemma wp_kshp_parsepipe {Pex : iProp Σ} (h : CpuId) (m : regfile) (dq dw dv : dfrac)
       (ps s0 : Z) (len off : nat) (f : nat -> bv 8) (w0 : mword 64)
       (toks : list (nat * nat)) (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int ps ->
@@ -163,7 +163,12 @@ Section UkShParseCmd.
     UMalloc -∗
     (* the exit payload, carried for the NULL-store death arm
        ([UkShParseLex.wp_kshp_execcmd]; lane IO-LEAF, M3c) *)
-    ukn_pay N (-1) -∗
+    (* ...AT AN ABSTRACT EXIT RESOURCE (lane IO-LEAF, step 4): a child
+       forked at a payload of its own holds what it was LENT and a law
+       that turns the lend into its exit payload; the walk carries the lend
+       and spends the law only where it dies. *)
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
     urun N h m (mword_of_int ShSyms.parsepipe)
       (6 + (16 + (24 + nn))) -∗
     (∀ p : Z,
@@ -177,14 +182,14 @@ Section UkShParseCmd.
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
            UMalloc' -∗
-           ukn_pay N (-1) -∗
+           Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (6 + (16 + (24 + nn))) -∗
            WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM Hpay Hrun Hcont".
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
     rewrite shpp_parsepipe.
     assert (Elen0 : (len + ushp_skipws (len - len) len f)%nat = len)
       by (rewrite Nat.sub_diag; cbn [ushp_skipws]; lia).
@@ -339,7 +344,7 @@ Section UkShParseCmd.
     iApply (wp_kshp_parseexec h5 m5 dq dw dv ps s0 len off f w0 toks nn
               Ha0_5 Ha1_5 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64
               Hps0 Hps8 Hpssz
-              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpay Hrun").
+              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpx Hpay Hrun").
     iIntros (p) "%Hpsz Hnode Hcur Hstr Hws Hsy".
     iIntros (h6 m6) "%Hcs56 %Ha0_6 HM' Hpay Hrun".
     rewrite Eret5.
@@ -640,7 +645,7 @@ Section UkShParseCmd.
 
 
   (* ---- parseline, the same shape with TWO refuted guards -------------- *)
-  Lemma wp_kshp_parseline (h : CpuId) (m : regfile) (dq dw dv : dfrac)
+  Lemma wp_kshp_parseline {Pex : iProp Σ} (h : CpuId) (m : regfile) (dq dw dv : dfrac)
       (ps s0 : Z) (len off : nat) (f : nat -> bv 8) (w0 : mword 64)
       (toks : list (nat * nat)) (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int ps ->
@@ -661,7 +666,12 @@ Section UkShParseCmd.
     UMalloc -∗
     (* the exit payload, carried for the NULL-store death arm
        ([UkShParseLex.wp_kshp_execcmd]; lane IO-LEAF, M3c) *)
-    ukn_pay N (-1) -∗
+    (* ...AT AN ABSTRACT EXIT RESOURCE (lane IO-LEAF, step 4): a child
+       forked at a payload of its own holds what it was LENT and a law
+       that turns the lend into its exit payload; the walk carries the lend
+       and spends the law only where it dies. *)
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
     urun N h m (mword_of_int ShSyms.parseline)
       (6 + (6 + (16 + (24 + nn)))) -∗
     (∀ p : Z,
@@ -675,14 +685,14 @@ Section UkShParseCmd.
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
            UMalloc' -∗
-           ukn_pay N (-1) -∗
+           Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (6 + (6 + (16 + (24 + nn)))) -∗
            WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM Hpay Hrun Hcont".
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
     rewrite shpp_parseline.
     assert (Elen0 : (len + ushp_skipws (len - len) len f)%nat = len)
       by (rewrite Nat.sub_diag; cbn [ushp_skipws]; lia).
@@ -818,7 +828,7 @@ Section UkShParseCmd.
     iApply (wp_kshp_parsepipe h4 m4 dq dw dv ps s0 len off f w0 toks nn
               Ha0_4 Ha1_4 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64
               Hps0 Hps8 Hpssz
-              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpay Hrun").
+              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpx Hpay Hrun").
     iIntros (p) "%Hpsz Hnode Hcur Hstr Hws Hsy".
     iIntros (h5 m5) "%Hcs45 %Ha0_5 HM' Hpay Hrun".
     rewrite Eret4.
@@ -2497,7 +2507,7 @@ Section UkShParseCmd.
 
   (* ---- parsecmd, the whole function ------------------------------------ *)
   (* TAINT: [ushp_malloc_ok] (through execcmd).  Nothing else. *)
-  Lemma wp_kshp_parsecmd (h : CpuId) (m : regfile) (dw dv : dfrac)
+  Lemma wp_kshp_parsecmd {Pex : iProp Σ} (h : CpuId) (m : regfile) (dw dv : dfrac)
       (s0 : Z) (len : nat) (f : nat -> bv 8) (toks : list (nat * nat))
       (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int s0 ->
@@ -2513,7 +2523,12 @@ Section UkShParseCmd.
     UMalloc -∗
     (* the exit payload, carried for the NULL-store death arm
        ([UkShParseLex.wp_kshp_execcmd]; lane IO-LEAF, M3c) *)
-    ukn_pay N (-1) -∗
+    (* ...AT AN ABSTRACT EXIT RESOURCE (lane IO-LEAF, step 4): a child
+       forked at a payload of its own holds what it was LENT and a law
+       that turns the lend into its exit payload; the walk carries the lend
+       and spends the law only where it dies. *)
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
     urun N h m (mword_of_int ShSyms.parsecmd)
       (8 + (6 + (6 + (16 + (24 + nn))))) -∗
     (∀ p : Z,
@@ -2525,14 +2540,14 @@ Section UkShParseCmd.
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
            UMalloc' -∗
-           ukn_pay N (-1) -∗
+           Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (8 + (6 + (6 + (16 + (24 + nn))))) -∗
            WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Hnosym Htoks Htlen Hs0 Hs64.
-    iIntros "#Hcode #Hro Hstr Hws Hsy HM Hpay Hrun Hcont".
+    iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
     rewrite shpp_parsecmd.
     iDestruct (ustr_len with "Hstr") as %Hlen31.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -2902,7 +2917,7 @@ Section UkShParseCmd.
               ltac:(f_equal; lia)
               Hnosym Htoks Htlen ltac:(lia) ltac:(lia)
               Hcur0 Hcur8 Hcurz
-              with "Hcode Hro Lcur Hstr Hws Hsy HM Hpay Hrun").
+              with "Hcode Hro Lcur Hstr Hws Hsy HM Hpx Hpay Hrun").
     iIntros (p) "%Hpsz Hnode Lcur Hstr Hws Hsy".
     iIntros (h15 m13) "%Hcs1213 %Ha0_13 HM' Hpay Hrun".
     rewrite Eret12.
@@ -3397,7 +3412,7 @@ Section UkShParseCmd.
     - cbn [ushp_nulfold]. exact (IH _ i Hi).
   Qed.
 
-  Theorem wp_kshp_parser (h : CpuId) (m : regfile) (dw dv : dfrac)
+  Theorem wp_kshp_parser {Pex : iProp Σ} (h : CpuId) (m : regfile) (dw dv : dfrac)
       (s0 : Z) (len : nat) (f : nat -> bv 8) (toks : list (nat * nat))
       (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int s0 ->
@@ -3413,7 +3428,12 @@ Section UkShParseCmd.
     UMalloc -∗
     (* the exit payload, carried for the NULL-store death arm
        ([UkShParseLex.wp_kshp_execcmd]; lane IO-LEAF, M3c) *)
-    ukn_pay N (-1) -∗
+    (* ...AT AN ABSTRACT EXIT RESOURCE (lane IO-LEAF, step 4): a child
+       forked at a payload of its own holds what it was LENT and a law
+       that turns the lend into its exit payload; the walk carries the lend
+       and spends the law only where it dies. *)
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
     urun N h m (mword_of_int ShSyms.parsecmd) (60 + nn) -∗
     (∀ p : Z,
        ⌜ ushp_parses s0 len f p (UshpExec toks) ⌝ -∗
@@ -3427,17 +3447,17 @@ Section UkShParseCmd.
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
            UMalloc' -∗
-           ukn_pay N (-1) -∗
+           Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (60 + nn) -∗
            WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Hnosym Htoks Htlen Hs0 Hs64.
-    iIntros "#Hcode #Hro Hstr Hws Hsy HM Hpay Hrun Hcont".
+    iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
     iApply (wp_kshp_parsecmd h m dw dv s0 len f toks nn
               Ha0 Hnosym Htoks Htlen Hs0 Hs64
-              with "Hcode Hro Hstr Hws Hsy HM Hpay Hrun").
+              with "Hcode Hro Hstr Hws Hsy HM Hpx Hpay Hrun").
     iIntros (p) "Hnode Hline Hws Hsy".
     iApply ("Hcont" $! p with "[] Hnode Hline [] Hws Hsy").
     - iPureIntro. exists toks. split; [ exact Htoks | ].

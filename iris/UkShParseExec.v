@@ -1071,7 +1071,7 @@ Section UkShParseExec.
      four separate runs over §4b's two, at the SLOT ADDRESSES rather than at
      consecutive indexes.
      TAINT: [ushp_malloc_ok], through [execcmd]. *)
-  Lemma wp_kshp_parseexec (h : CpuId) (m : regfile) (dq dw dv : dfrac)
+  Lemma wp_kshp_parseexec {Pex : iProp Σ} (h : CpuId) (m : regfile) (dq dw dv : dfrac)
       (ps s0 : Z) (len off : nat) (f : nat -> bv 8) (w0 : mword 64)
       (toks : list (nat * nat)) (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int ps ->
@@ -1092,7 +1092,12 @@ Section UkShParseExec.
     UMalloc -∗
     (* the exit payload, carried for the NULL-store death arm below
        ([UkShParseLex.wp_kshp_execcmd]; lane IO-LEAF, M3c) *)
-    ukn_pay N (-1) -∗
+    (* ...AT AN ABSTRACT EXIT RESOURCE (lane IO-LEAF, step 4): a child
+       forked at a payload of its own holds what it was LENT and a law
+       that turns the lend into its exit payload; the walk carries the lend
+       and spends the law only where it dies. *)
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
     urun N h m (mword_of_int ShSyms.parseexec) (16 + (24 + nn)) -∗
     (∀ p : Z,
        ⌜ p + 168 < Z64 ⌝ -∗
@@ -1105,14 +1110,14 @@ Section UkShParseExec.
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
            UMalloc' -∗
-           ukn_pay N (-1) -∗
+           Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (16 + (24 + nn)) -∗
            WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM Hpay Hrun Hcont".
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
     rewrite shpp_parseexec.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     set (sp0 := m !!! Regidx csp_rs1) in *.
@@ -1528,7 +1533,7 @@ Section UkShParseExec.
                  (regval_into_reg (mword_of_int 0x5c6 : mword 64))).
       apply bv_eq; vm_compute; reflexivity. }
     rewrite <- shpp_execcmd.
-    iApply (wp_kshp_execcmd h13 m10 s0 (10 + nn) with "Hcode HM Hpay Hrun").
+    iApply (wp_kshp_execcmd h13 m10 s0 (10 + nn) with "Hcode HM Hpx Hpay Hrun").
     iIntros (h14 m11 p) "%Hcs1011 %Ha0_11 %Hpb Hnode HM' Hpay Hrun".
     rewrite Eret10.
     destruct Hpb as [ Hp0 [ Hp16 Hpsz ] ].

@@ -438,11 +438,18 @@ Section echo_links_line.
     (ewc_pro v n ∨ (∃ a : nat, ⌜(a < 3)%nat⌝ ∗ ewc_post v n a))%I.
 
   (* ...indexed by the prompt bytes out, [EchoLinks.ewc_pr]'s twin *)
+  (* ...AND A FOURTH INDEX (lane IO-LEAF, step 4): [3] is the line's
+     BLOCK OWED with nothing chosen -- what the read of a line leaves and
+     what the shell's fork LENDS its child ([ewc_blk] at [i = 0], the index
+     [a] unread).  It is kept apart from [0] because [ewc_line] is a
+     disjunction the fork cannot undo: a block-owed credential IS an
+     [ewc_line] ([ewc_line_of_blk0]), the converse is false. *)
   Definition ewc_lpr (v : era_pins) (n p : nat) : iProp Σ :=
     match p with
     | O => ewc_line v n
     | S O => ewc_sp_t v n
-    | _ => ewc_open_t v n
+    | S (S O) => ewc_open_t v n
+    | _ => ewc_blk v n 0%nat 0%nat
     end.
 
   (* ...with the era's pin beside it, [EchoLinks.ewc_cred]'s twin: the
@@ -465,7 +472,7 @@ Section echo_links_line.
   Global Instance ewc_line_timeless v n : Timeless (ewc_line v n).
   Proof. rewrite /ewc_line. apply _. Qed.
   Global Instance ewc_lpr_timeless v n p : Timeless (ewc_lpr v n p).
-  Proof. rewrite /ewc_lpr. destruct p as [| [| p]]; apply _. Qed.
+  Proof. rewrite /ewc_lpr. destruct p as [| [| [| p]]]; apply _. Qed.
   Global Instance ewc_lcred_timeless k n p : Timeless (ewc_lcred k n p).
   Proof. rewrite /ewc_lcred. apply _. Qed.
 
@@ -482,9 +489,9 @@ Section echo_links_line.
   Proof. iIntros "HT". rewrite /ewc_line. iLeft. by iApply ewc_pro_taint. Qed.
   Lemma ewc_lpr_taint v n p : T -∗ ewc_lpr v n p.
   Proof.
-    iIntros "HT". rewrite /ewc_lpr. destruct p as [| [| p]];
+    iIntros "HT". rewrite /ewc_lpr. destruct p as [| [| [| p]]];
       [ by iApply ewc_line_taint | by iApply ewc_sp_t_taint
-      | by iApply ewc_open_t_taint ].
+      | by iApply ewc_open_t_taint | by iApply ewc_blk_taint ].
   Qed.
 
   (* ---- the tight shapes imply [EchoLinks]'s loose ones ---- *)
@@ -754,24 +761,58 @@ Section echo_links_line.
     iFrame "Htn Hps Hcs HE'". iPureIntro. exact (wr_open_read_t ps cs n P Hw).
   Qed.
 
-  (* ...and, at the loop's family, [UkSh.ush_wc_read]'s content *)
+  (* ...and, at the loop's family, [UkSh.ush_wc_read]'s content: the read
+     of a line leaves the BLOCK-OWED shape at the next boundary (index [3],
+     step 4), not the widened one -- the fork needs to know the block is
+     still owed. *)
   Lemma ewc_lpr_read (v : era_pins) (n : nat) :
     E_lb v (n + length echo_line)%nat -∗ ewc_lpr v n 2%nat -∗
-    ewc_lpr v (n + length echo_line)%nat 0%nat.
+    ewc_lpr v (n + length echo_line)%nat 3%nat.
   Proof.
     iIntros "#HE' Hc". cbn [ewc_lpr].
-    iApply (ewc_line_of_blk0 v _ 0%nat).
     iApply (ewc_read_t v n 0%nat with "HE' Hc").
   Qed.
 
   Lemma ewc_lcred_read (k n : nat) (v : era_pins) :
     era_pin γ k v -∗ E_lb v (n + length echo_line)%nat -∗
-    ewc_lcred k n 2%nat -∗ ewc_lcred k (n + length echo_line)%nat 0%nat.
+    ewc_lcred k n 2%nat -∗ ewc_lcred k (n + length echo_line)%nat 3%nat.
   Proof.
     iIntros "#Hpin #HE' Hc". rewrite /ewc_lcred.
     iDestruct "Hc" as (v') "[#Hpin' Hc]".
     iDestruct (era_pin_agree with "Hpin Hpin'") as %<-.
     iExists v. iFrame "Hpin". iApply (ewc_lpr_read with "HE' Hc").
+  Qed.
+
+  (* ...and the block-owed shape IS a boundary credential: nobody wrote,
+     and the shell's '$' is the block's first byte ([ewc_post] at [a = 2]).
+     This is what the [cd] arm and a fork that returned -1 re-enter the
+     loop head with ([UkSh.ush_wc_blk_line]'s content). *)
+  Lemma ewc_lpr_blk_line (v : era_pins) (n : nat) :
+    ewc_lpr v n 3%nat -∗ ewc_lpr v n 0%nat.
+  Proof. cbn [ewc_lpr]. iApply (ewc_line_of_blk0 v n 0%nat). Qed.
+
+  Lemma ewc_lcred_blk_line (k n : nat) :
+    ewc_lcred k n 3%nat -∗ ewc_lcred k n 0%nat.
+  Proof.
+    rewrite /ewc_lcred. iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
+    iExists v. iFrame "Hpin". iApply (ewc_lpr_blk_line with "Hc").
+  Qed.
+
+  (* ...the taint inhabits the pinned family too, at any pin *)
+  Lemma ewc_lcred_taint (k n p : nat) (v : era_pins) :
+    era_pin γ k v -∗ T -∗ ewc_lcred k n p.
+  Proof.
+    iIntros "#Hpin #HT". rewrite /ewc_lcred. iExists v. iFrame "Hpin".
+    iApply (ewc_lpr_taint with "HT").
+  Qed.
+
+  (* ...the block written by echo ([a = 0]) is the loop's boundary
+     credential: what sh's forked child hands back through its exit *)
+  Lemma ewc_lcred_of_post (k n : nat) (v : era_pins) :
+    era_pin γ k v -∗ ewc_post v n 0%nat -∗ ewc_lcred k n 0%nat.
+  Proof.
+    iIntros "#Hpin Hc". rewrite /ewc_lcred. iExists v. iFrame "Hpin".
+    cbn [ewc_lpr]. iApply (ewc_line_of_post v n 0%nat ltac:(lia) with "Hc").
   Qed.
 
   (* =================================================================== *)
@@ -869,6 +910,32 @@ Section echo_links_line.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     rewrite Nat.add_0_r. iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE".
     by iPureIntro.
+  Qed.
+
+  (* ...and the LEND's other end, pinned: what sh's fork hands its child
+     is the turn bundle at the stage echo's paid entry asks for
+     ([UEchoOut.echo_uexec_slot_at], through [wr_blk_t_stage]) *)
+  Lemma ewc_lcred_blk_lend (k n : nat) :
+    ewc_lcred k n 3%nat -∗
+    ∃ v : era_pins,
+      era_pin γ k v
+      ∗ ((∃ ps cs P : _, ⌜wr_blk_t ps cs n P⌝ ∗ turn v P ∗ ps_lb v ps
+            ∗ cs_lb v cs ∗ E_lb v n) ∨ T).
+  Proof.
+    rewrite /ewc_lcred. iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
+    iExists v. iFrame "Hpin". cbn [ewc_lpr].
+    iApply (ewc_blk_0_lend v n 0%nat with "Hc").
+  Qed.
+
+  (* ...or the shell's own panic line's first byte ([a = 3]): the fork
+     that failed pays "fork\n" from the block it was owed *)
+  Lemma ewc_lcred_blk_panic (k n : nat) :
+    ewc_lcred k n 3%nat -∗
+    ∃ v : era_pins, era_pin γ k v ∗ ewc_panic v n 0%nat.
+  Proof.
+    rewrite /ewc_lcred. iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
+    iExists v. iFrame "Hpin". cbn [ewc_lpr]. rewrite /ewc_panic.
+    iApply (ewc_blk_0 v n 0%nat 3%nat with "Hc").
   Qed.
 
 End echo_links_line.

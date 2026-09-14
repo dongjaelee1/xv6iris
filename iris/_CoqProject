@@ -1781,6 +1781,14 @@ EchoOutPure.v
 # and abstract in the taint, so that the claims may be read without the
 # era-0 pin cone.
 EchoOut.v
+# The four links of E5's claim as ONE PERSISTENT LAW (lane IO-LEAF, D1):
+# the write link, its block-first and taint variants, and the read link,
+# packaged as closed [] wands a PROGRAM can hold as a premise the way it
+# holds a write deposit today, plus the entailment that proves them under
+# the boot record's four equations.  Above EchoOut and below AppEcho: the
+# statements name the era's ghosts and the kernel's console contracts,
+# never the record.
+EchoLinks.v
 # The ECHO application: its discipline, fixed part, ledger, tag, the
 # [taint or pins] predicate over the three era-0 pin files, the record
 # [app_echo], and every hypothesis of App.xv6_app_adequacy except

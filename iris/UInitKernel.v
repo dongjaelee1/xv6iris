@@ -92,6 +92,9 @@ Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
 Require Import UartNames.    (* [cons_names] *)
 Require Import UserConsole.  (* [ucons_reader] / [uinit_tok] -- the console
                                 reader token at the narrow class *)
+Require Import EchoOut.      (* [eturn] -- the application's own per-era
+                                console credential, which the boot bundle
+                                carries to <init> (lane IO-LEAF) *)
 Local Open Scope Z_scope.
 Import Defs.
 
@@ -179,6 +182,10 @@ Section UInitKernel.
   (* the console ring's cameras, at the narrow class: this section binds no
      whole-system bundle ([UserConsole.v]'s header). *)
   Context `{!uartGhostG Σ}.
+  (* ...AND THE ERA'S GHOSTS (lane IO-LEAF): the boot bundle's third
+     linear passenger is [EchoOut.eturn], not an opaque [iProp]. *)
+  Context `{!echoOutG Σ}.
+  Context {γe : EchoOut.echo_gn}.
   Context {SG : uexecSG Σ}.
   Context `{PS : uprogSG Σ}.
 
@@ -230,9 +237,6 @@ Section UInitKernel.
 
   Lemma init_uexec_slot (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
       (stc : fdstate) (cn : cons_names)
-      (* the era's turn, an opaque [iProp] threaded the way [T] is
-         (lane CONS-IO milestone F) *)
-      (Tn : iProp Σ)
       (W : uvis) (n0 : nat) :
     stc <> FdClosed ->
     (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
@@ -325,14 +329,16 @@ Section UInitKernel.
        NARROW class, because this section binds [ctokG] without [xv6G]
        ([UserConsole.ucons_reader_eq] is the bridge). *)
     ucons_reader cn 0%nat -∗
-    (* ...AND THE ERA'S TURN (lane CONS-IO milestone F), beside the reader
-       token and travelling with it: the APPLICATION's own per-era
-       credential, minted at the power-on step, carried by the boot
-       ([App.Hinit_boot]) and handed to <init> here.  An OPAQUE [iProp]
-       threaded the way [T] is -- nothing at this altitude may name the
-       application's record -- and nothing on init's walk reads it: lane
-       IO-LEAF spends it at init's first banner byte. *)
-    Tn -∗
+    (* ...AND THE ERA'S TURN (lane CONS-IO milestone F, CONCRETE since
+       lane IO-LEAF), beside the reader token and travelling with it: the
+       APPLICATION's own per-era credential, minted at the power-on step,
+       carried by the boot ([App.Hinit_boot]) and handed to <init> here.
+       It is [EchoOut.eturn] and not an opaque [iProp], because the
+       program that SPENDS it sits BELOW this constructor and no program
+       can turn an opaque premise into a console chain; naming it costs no
+       cycle ([EchoOut] requires nothing above [SpecConsoleintr]) and
+       nothing of the application's RECORD is named here. *)
+    EchoOut.eturn γe (S gen_id) -∗
     (* THE PAY FACT, at the trivial payload: <init> has no parent, so its
        exit owes nobody anything -- userinit's choice, which the entry
        constructor writes into the record ([UkRun.ukn_pay]) and which
@@ -383,7 +389,7 @@ Section UInitKernel.
     rewrite Hpc.
     iApply (wp_kinit_start N Hpsok_free
               (ukn_pay_free_of_triv N (Hpayeq : UkRun.ukn_triv N))
-              T Cns stc cn Tn (uvis_sz W) h
+              T Cns stc cn (uvis_sz W) h
               (tf_resume_gpr0 (uvis_tf W)) n0 Hne Hkt
               with "Hdp [] Hxs [Hdn] [] [] Hszf [Hstd] [Hcwf] [Hchf] [Hrd] [Htn] Hrun").
     - iApply (init_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
@@ -407,7 +413,7 @@ Section UInitKernel.
   (* SS2 THE BRIDGE from the kernel's image fact.                          *)
   (* ------------------------------------------------------------------- *)
   Lemma init_slot_of_kexec (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names) (Tn : iProp Σ)
+      (stc : fdstate) (cn : cons_names)
       (na : nat) (alen : nat -> nat)
       (afun : nat -> nat -> bv 8) (sts : list fdstate)
       (W' : uvis) (n0 : nat) :
@@ -446,8 +452,8 @@ Section UInitKernel.
        [init_uexec_slot] *)
     ucons_reader cn 0%nat -∗
     (* ...and the era's turn beside it, likewise straight through (lane
-       CONS-IO milestone F) *)
-    Tn -∗
+       CONS-IO milestone F / IO-LEAF) *)
+    EchoOut.eturn γe (S gen_id) -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
   Proof.
     intros Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok_free Hlzf.
@@ -526,7 +532,7 @@ Section UInitKernel.
               0x3000 <= spv - 8 * Z.of_nat (2 + (4 + (12 + (12 + (4 + n0)))))
                         + Z.of_nat j < spv)
       by (intros j Hj; clear -Hj Hroom; lia).
-    iApply (init_uexec_slot T Cns stc cn Tn W' n0 Hne Hkt).
+    iApply (init_uexec_slot T Cns stc cn W' n0 Hne Hkt).
     - rewrite Hpc. exact init_start_pc.
     - exact (init_img_sub_of_elf M Himg).
     - exact Hx.
@@ -576,11 +582,12 @@ Section UInitKernel.
      exactly as era-local as the lease is; an opaque [iProp] threaded the
      way [T] is. *)
   Definition init_boot_pay (T Cns : iProp Σ) (cn : cons_names)
-      (stc : fdstate) (Tn : iProp Σ) : iProp Σ :=
-    (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat ∗ Tn)%I.
+      (stc : fdstate) : iProp Σ :=
+    (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat
+     ∗ EchoOut.eturn γe (S gen_id))%I.
 
   Lemma init_boot_con (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (cn : cons_names) (Tn : iProp Σ)
+      (stc : fdstate) (cn : cons_names)
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (n0 : nat) :
     stc <> FdClosed ->
@@ -615,7 +622,7 @@ Section UInitKernel.
          ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗
          ⌜uvis_lazy W' = false⌝ -∗
          my_pay (uvis_gen W') (fun _ => True)%I -∗
-         init_boot_pay T Cns cn stc Tn -∗ uslot W').
+         init_boot_pay T Cns cn stc -∗ uslot W').
   Proof.
     (* THE BUNDLE IS NEVER TAKEN APART: it goes in through the box and
        straight out into [init_slot_of_kexec]'s own linear premise.  No
@@ -624,7 +631,7 @@ Section UInitKernel.
     intros Hne Hkt Hroom Hlen Hl0 Hpsok.
     iIntros "#Hdp #Hdep #Hxs !>"
       (W') "%Hok %Hcw %Hlz #Hmp (Hdn & Hrd & Htn)".
-    iApply (init_slot_of_kexec T Cns stc cn Tn na alen afun sts W' n0
+    iApply (init_slot_of_kexec T Cns stc cn na alen afun sts W' n0
               Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok Hlz
               with "Hdp Hdep Hxs Hdn Hrd Htn Hmp").
   Qed.

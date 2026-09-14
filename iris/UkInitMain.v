@@ -65,6 +65,12 @@ Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
 Require Import UartNames.    (* [cons_names] *)
 Require Import UserConsole.  (* [upos] / [upos_alloc] -- the console position
                                 pair init mints per child *)
+(* THE APPLICATION'S OWN PER-ERA CONSOLE CREDENTIAL (lane IO-LEAF).  The
+   boot hands <init> [EchoOut.eturn] -- the era's pin, its cursor at zero,
+   the reader's half of the delivered count and the three lower bounds --
+   and this file's entry lemma is where it lands.  Naming it costs no
+   cycle: [EchoOut] requires nothing above [SpecConsoleintr]. *)
+Require Import EchoOut.
 Section UkInitMain.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.
@@ -73,6 +79,12 @@ Section UkInitMain.
   (* ...and the children set's ([Xv6Cameras.uchG]), which [UkRun.urun]
      carries beside the cwd's *)
   Context `{!ghost_varG Σ (gset gname)}.
+  (* ...AND THE ERA'S GHOSTS (lane IO-LEAF), for the one premise that names
+     them: <init>'s entry takes the application's console credential
+     ([EchoOut.eturn]) concretely, not as an opaque [iProp].  The era
+     number is the boot's own ([S gen_id]). *)
+  Context `{!echoOutG Σ}.
+  Context {γe : EchoOut.echo_gn}.
   Context (N : uk_names Σ).
   (* WHAT THE WALK NEEDS OF THE PAYLOAD is that it does not read the exit
      status ([UkRun.ukn_const]), as a CLASS so that it reaches the exit
@@ -2382,11 +2394,14 @@ Section UkInitMain.
      ROOTINO]. *)
   Lemma wp_kinit_start (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
       (stc : fdstate) (cn : cons_names)
-      (* THE ERA'S TURN (lane CONS-IO milestone F): the application's own
-         per-era console credential, handed to <init> by the boot bundle
-         ([UInitKernel.init_boot_pay]) and HELD here.  An opaque [iProp],
-         threaded the way [T] is. *)
-      (Tn : iProp Σ)
+      (* THE ERA'S TURN (lane CONS-IO milestone F, made CONCRETE by lane
+         IO-LEAF): the application's own per-era console credential,
+         handed to <init> by the boot bundle
+         ([UInitKernel.init_boot_pay]) and HELD here.  It used to be an
+         opaque [iProp] threaded the way [T] is; it is
+         [EchoOut.eturn γe (S gen_id)] now, because the U tier is where
+         it gets SPENT -- a program cannot turn an opaque premise into a
+         console chain. *)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
     (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
@@ -2420,11 +2435,13 @@ Section UkInitMain.
     (* THE ERA'S TURN, beside the console lease and travelling with it
        (lane CONS-IO milestone F): the kernel carries one per power cycle
        from the application's power-on step to <init>
-       ([App.Hinit_boot] -> [UInitKernel.init_boot_pay]) and never looks
-       inside it.  <init> is the era's first verified writer, so this is
-       where the application's own ledger will spend it -- lane IO-LEAF, at
-       init's first banner byte.  Nothing in init's walk reads it yet. *)
-    Tn -∗
+       ([App.Hinit_boot] -> [UInitKernel.init_boot_pay]).  <init> is the
+       era's first verified writer, so this is where the application's own
+       ledger spends it -- lane IO-LEAF, at init's first banner byte.  Its
+       five conjuncts ARE [EchoOut.echo_write_link]'s argument list at
+       [P = 0], which is why nothing weaker would do.  Nothing in init's
+       walk reads it yet. *)
+    EchoOut.eturn γe (S gen_id) -∗
     urun N h m (mword_of_int InitSyms.start)
       (2 + (4 + (12 + (12 + (4 + n))))) -∗
     WP (Loop : expr riscv_lang).

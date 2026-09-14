@@ -722,12 +722,13 @@ Section EchoInitBoot.
                   ⌜uvis_lazy W' = false⌝ -∗
                   my_pay (uvis_gen W') (fun _ => True)%I -∗
                   UInitKernel.init_boot_pay (PS := uprogSG_free)
-                    (echo_taint γ) (init_cons_cred (echo_taint γ) r)
-                    fsc_cons init_cons_fd (echo_turn γ (S gen_id))
+                    (γe := γ) (echo_taint γ)
+                    (init_cons_cred (echo_taint γ) r)
+                    fsc_cons init_cons_fd
                     -∗ uslot W'))%I as "#Hcon".
-    { iApply (UInitKernel.init_boot_con (PS := uprogSG_free) (echo_taint γ)
+    { iApply (UInitKernel.init_boot_con (PS := uprogSG_free) (γe := γ)
+                (echo_taint γ)
                 (init_cons_cred (echo_taint γ) r) init_cons_fd fsc_cons
-                (echo_turn γ (S gen_id))
                 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
                 init_cons_fd_ne Hktaint
                 (init_boot_room 0%nat
@@ -737,9 +738,9 @@ Section EchoInitBoot.
       - iModIntro. iExact "Hdp".
       - iApply (udep_free). }
     iApply (init_boot_bundle_of_pinned (echo_taint γ)
-              (UInitKernel.init_boot_pay (PS := uprogSG_free) (echo_taint γ)
-                 (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd
-                 (echo_turn γ (S gen_id)))
+              (UInitKernel.init_boot_pay (PS := uprogSG_free) (γe := γ)
+                 (echo_taint γ)
+                 (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd)
               with "Hcl Hinv Hcon [] [Hdn Hturn]").
     - iIntros "!>" (W') "#Ht Hp".
       iApply ("Hmint" $! True%I W' with "Ht Hp []").

@@ -121,10 +121,13 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   (`88127e629`; the note below: echo's writes through the link); TXT-ROW
   LANDED 2026-09-16 (`a103f2e15`; the note below); M3a + M3b(1) LANDED
   2026-09-16 (`85a10a883`); M4a(1) LANDED 2026-09-16 (`7f512a248`; the
-  note below: sh's prompt through the link); M4a(2) (the turn handed out
-  of init's banner payment to the fork) in flight; M3b(2) deferred into
-  M3b core; M3b core + M3c after TRAP-ROWS part 2 (at its final rebase)
-  and TRAP-ROWS-3 (T4(c) pid range, T4(b)); M4b-M6 after.
+  note below: sh's prompt through the link); M4a(2a) LANDED 2026-09-16
+  (the note below: init lends the credential at its fork; `init_boot_pay`
+  gains `Rt`); NEXT (fresh agent, main checkout): M4a(3) sh's loop carries
+  `Rt ∨ True` and the prompt moves onto the link, then M3b core (the
+  three-arm entry row, the payloads, the lend into echo) + M3c (the
+  child's death), sh's wait redemption LAST after TRAP-ROWS-3; M4b-M6
+  after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`): LAUNCHED
@@ -3360,6 +3363,34 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M4a(2a) LANDED (2026-09-16; the lane's `7e4d0b4c4` cherry-picked
+onto `28918db6a`; 5 files; build io28 in the main checkout; audit the
+thirteen; lemma_diff CLEAN; no Admitted).  /INIT LENDS THE ERA'S CREDENTIAL
+AT ITS FORK.  The drop was inside `UkInit.kinit_banner_pay` (its third
+component returned only the head): it gains `Rt` -- `kinit_banner_pay stc len
+f Rt := ustd γfd (ufd_l3 stc) -∗ ∃ Ch, □ (per-byte step) ∗ Ch 0 ∗ (Ch len -∗
+ustd γfd (ufd_l3 stc) ∗ Rt)` -- opaque at the U tier, threaded through
+`kinit_banner0 stc Rt`/`kinit_round0 stc Rt`/`wp_kinit_banner` (post `Rt ∨
+True`, affine as the premise is)/the restart head/`_from_1e`/`_repair_tail`/
+`_repair`/`wp_kinit_main`/`wp_kinit_start`/`wp_kinit_fork`, where the lend is
+`Rc := upos γ np ∗ ucons_pay cn γ T (-1) ∗ (Rt ∨ True)`.
+`UInitBanner.kinit_turn0 := ∃ v, era_pin γ (S gen_id) v ∗ bnr v 18` is the
+concrete value = `UShOut.ushpr` at `p = 0` verbatim.  TRUSTED DIFF:
+`UInitKernel.init_boot_pay (T Cns) (cn) (stc) (Rt : iProp Σ)` -- third
+conjunct `∀ N', kinit_banner0 N' stc Rt` (was without `Rt`); `wp_kinit_start`
+gains `(Rt : iProp Σ)`; `echo_Hinit_boot`/`Hsh_owed` untouched (`Rt :=
+kinit_turn0` inside the proof).  STOPPED GREEN before M4a(3): init's child
+arm HOLDS `Rt ∨ True` and drops it; sh's loop must carry the affine `(Rt ∨
+True)` as a SECOND parameter (it cannot ride the loop invariant `R`, handed
+back on the back edge, since the turn does not come home until M6), with
+`wp_ksh_getcmd` branching left -> `ksh_w_of_link_prompt`, right ->
+`ksh_w_of_law`; `ush_rest`/`ush_rest_l`/`ush_loop_head`/`ushl_head` have ~80
+mentions across thirteen files (UkSh 51, UShLine 13, UkShFork 12, UkShLoop
+9, UShKernel 6, UConsLine 9, UkShCd 7, UkShRun 3, UInitSh 3, UkShMain,
+UkShEcho, UkShParse, UInitBoot) at ~2 h a build.  Handover:
+`io-leaf-handover.md` (the M4a(3) plan; M3b core + M3c unblocked, sh's wait
+redemption last).
 
 TRAP-ROWS M2 PART 2 LANDED (2026-09-16; `48dc134db`..`b289999e7`, five commits
 cherry-picked from the lane's `90e8f1b0b` onto `6385d5f87`; 22 files

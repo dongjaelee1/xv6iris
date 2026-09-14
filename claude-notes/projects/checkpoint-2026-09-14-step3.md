@@ -44,7 +44,19 @@ Two lanes, spawned from the coordinator's main checkout (`lane/io-leaf-3`):
   LANDED"); `-disc` is free again.
 * M6B-INIT -- LANDED (`a7d47ccef`+`290f05cf0`, app-echo.md "M6b LANDED");
   `-sup` is free again.
-Both may touch UInitSh.v/UInitBoot.v minimally; the coordinator merges those
+* RESIDUALS in `-disc`, branch `lane/residuals` (launched after step 4 landed):
+  (A) the fork's pid sub-arm refuted from the leaf's pid-range row, (B) the
+  exec-seam rows (`uvis_ch W' = ∅`, `uvis_pid W' = pidv`) into sh's entry,
+  (C) every `∨ True` killed (`init_rd_cred`, `init_lend_cred`'s third arm,
+  `ush_wcp`'s third arm, the affine assemblers), (D) `sh_deps` made
+  taint-conditional and `Hsh_owed`'s FIRST conjunct deleted (TRUSTED; the
+  audit md5 changes); brief `brief-residuals.md`, report `residuals-report.md`.
+* R3-SURVEY in `-sup` (READ-ONLY): what closes `sh_pay_rest` after step 4;
+  brief `brief-r3-survey.md`, report `r3-survey-2.md`.
+* TRUSTED-SURFACE in `-tlw` (READ-ONLY): the refreshed trusted-surface
+  document as of 7da574e81; brief `brief-trusted-surface.md`, report
+  `trusted-surface-2026-09-14b.md`.
+Both step-4 lanes could touch UInitSh.v/UInitBoot.v minimally; the coordinator merges those
 two files by hand, then the one-line kill of `UkInit.init_rd_cred`'s `∨ True`
 once the shell's exits all hand back `Wb n`.  If this session dies: the lanes
 die with it; their checkouts keep the uncommitted edits; re-spawn with the

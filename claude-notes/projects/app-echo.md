@@ -3393,6 +3393,39 @@ is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
 
+POST-QED REDESIGN -- DESIGN STUDY DONE (2026-09-16; read-only Fable review;
+scratchpad `post-qed-redesign.md`, sent to the owner; design only, the
+redesign itself after Qed per the owner).  ESSENTIAL (from the landed
+tree): the tag/taint; ONE console claim at one witness read by `Htx`; the
+era index + kernel stamps; a per-era linear turn carried to init; the
+reader's delivered-count half riding the console lease's `Rd`; the "opaque
+resource + □ conversion" pairs; `echo_links` as one persistent law.
+ACCIDENTAL: two claims at two witnesses; the window token/`wcnt`/`ewin`/
+`app_win`/the PLIC carry (17 files); three licences; six `Hinit_boot`
+equations; the affine `Rt` residue; six routed lease parameters.  KEY
+FINDING: "one atomic ghost event per accepted byte" is NOT realizable --
+`acc` moves one THR store at a time and `consolewrite` holds no cons.lock,
+so a process byte can land between two echo bytes; the run stays
+chain-first/append-last.  THE SINGLE IO INVARIANT: one field
+`riscv_cons_res : nat -> list mobs -> cons_hist -> iProp` over `cons_hist =
+(acc, log, dl, arm)`, one clause `cons_claim_at`, one link family `cons_link
+k ev Φ` (events Out/Open/Byte/Close/Read), one licence, one `Happ_cons_sup`;
+the lent token becomes a KERNEL-OWNED ghost half `uart_arm γ (1/2)` in the
+token's PLIC slot, "`ch_arm H = None`" a pure premise the kernel proves.
+WHAT AN APPLICATION IS: a data record (chosen: `app_phi`, fixed part, fs
+claim, ledger; read: tag/taint/`app_cons`; handed to init: `app_boot`,
+`app_turn`), a `Class xv6_app_laws`, a closed `echo_adequacy` with no
+`Hsh_owed`; one `cons_cred` record replaces `echo_Hinit_boot` and the routed
+hypotheses.  MIGRATION: R1 pure (~8 builds) -> R2 kernel (CONS-IO A+B+C+F's
+cone re-cut ONCE, ~30 full builds, unsplittable) -> R3 application (~10) ->
+R4 interface/program tier (~12 at ~2 h) -> R5 optional.  KEPT: the
+claim-resident state, `cs_len_ok`/`ps_len_ok`, the stage machine, EchoDisc,
+the kernel rows, FORK-REFUND, `read_ret`/`dl_cnt`/`Rd`/`ush_mid`, the pairs,
+`echo_links`.  UNDONE AT COST: the three-claim `Htx` and its ~40 carriers;
+`eout_step_echo`/`ein_step_append` rewritten.  OWNER QUESTIONS (its §5): a
+kernel-owned `uart_arm` half vs a linear echo obligation; retire `Hsh_owed`
+through the scheduled lanes or fold it into R4; may R1 start before Qed.
+
 TRAP-ROWS-5 B1b LANDED (2026-09-16; the lane's `1a7682370` cherry-picked onto
 `fac361cd9` as `274483946`; 43 files +1035/-296; builds tr115-tr121 in `-tlw`;
 audit the thirteen; lemma_diff CLEAN; no Admitted).  INIT'S PID IS THE

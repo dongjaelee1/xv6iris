@@ -803,12 +803,15 @@ Section EchoInitBoot.
                     (init_cons_cred (echo_taint γ) r)
                     fsc_cons init_cons_fd
                     (UShKernel.sh_prompt_pay (PS := uprogSG_free))
+                    (UInitBanner.kinit_ban_any (echo_taint γ) γ)
                     (UShLine.ush_rd_pin γ)
                     -∗ uslot W'))%I as "#Hcon".
     { iApply (UInitKernel.init_boot_con (PS := uprogSG_free)
                 (echo_taint γ)
                 (init_cons_cred (echo_taint γ) r) init_cons_fd
-                (UShKernel.sh_prompt_pay (PS := uprogSG_free)) fsc_cons
+                (UShKernel.sh_prompt_pay (PS := uprogSG_free))
+                (UInitBanner.kinit_ban_any (echo_taint γ) γ)
+                fsc_cons
                 (UShLine.ush_rd_pin γ)
                 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
                 init_cons_fd_ne Hktaint
@@ -823,15 +826,18 @@ Section EchoInitBoot.
                  (echo_taint γ)
                  (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd
                  (UShKernel.sh_prompt_pay (PS := uprogSG_free))
+                 (UInitBanner.kinit_ban_any (echo_taint γ) γ)
                  (UShLine.ush_rd_pin γ))
               with "Hcl Hinv Hcon [] [Hdn Hturn]").
     - iIntros "!>" (W') "#Ht Hp".
       iApply ("Hmint" $! True%I W' with "Ht Hp []").
       iModIntro. iIntros "_". done.
     - iIntros "Hrd". rewrite /UInitKernel.init_boot_pay.
-      iDestruct (UInitBanner.kinit_banner0_pay_holds (echo_taint γ) γ
-                   (PS := uprogSG_free) with "Hlks [Hturn]")
+      iDestruct (UInitBanner.kinit_ban_any_of_eturn (echo_taint γ) γ
+                   with "[Hturn]")
         as "[Hdl Hbn]"; [ rewrite /echo_turn; iExact "Hturn" | ].
+      iDestruct (UInitBanner.kinit_prompt_law_holds (echo_taint γ) γ
+                   (PS := uprogSG_free) with "Hlks") as "#Hblaw".
       iSplitL "Hdn"; [ iExact "Hdn" | ].
       iSplitL "Hrd"; [ rewrite ucons_reader_eq; iExact "Hrd" | ].
       iSplitL "Hdl".
@@ -849,7 +855,7 @@ Section EchoInitBoot.
          payment has ONE row to answer for and [Hsh_deps] is not a premise
          of it any more.  [Hsh_deps] still stands above -- init's three die
          arms and [UkInit.init_deps] spend it (M4/M6). *)
-      iExact "Hbn".
+      iSplitL "Hbn"; [ iExact "Hbn" | ]. iExact "Hblaw".
   Qed.
 
 End EchoInitBoot.

@@ -131,32 +131,6 @@ Section UInitBanner.
     apply Z.eqb_eq in H. f_equal. by apply bv_eq.
   Qed.
 
-  (* ...AND WHAT THE WRITE LINK ASKS FOR AT ROUND 0.  No [vm_compute] on
-     the stream: [EchoOut.proc_upto_round_banner_open] is the arbitrary-
-     round lemma (lane PROLOGUE-ALTS-2) and round 0 is it at [pre := []],
-     [j := 0], where every offset it adds is zero. *)
-  Lemma proc_upto0_banner (i : nat) :
-    (i < 18)%nat -> proc_upto [] [] 1%nat !! i = Some (init_lit LIT_START i).
-  Proof.
-    intros Hi.
-    pose proof (proc_upto_round_banner_open [] [] 0%nat 0%nat i
-                  (init_lit LIT_START i)
-                  ltac:(vm_compute; reflexivity)
-                  (or_introl eq_refl)
-                  ltac:(vm_compute; reflexivity)
-                  (init_banner_bytes i Hi)) as H.
-    revert H.
-    replace (length (proc_upto [] [] 0%nat)
-             + length (if decide (0%nat = 0%nat) then []
-                       else line_alts !!! 3%nat)
-             + pro_round * 0 + i)%nat with i
-      by (vm_compute; reflexivity).
-    by intros H.
-  Qed.
-
-  Lemma pro_pin_zero (ps cs : list nat) : pro_pin ps cs 0%nat.
-  Proof. intros q Hq. lia. Qed.
-
   (* the frame byte, in two halves: the deposit's closure needs one to
      read the image ([UkRunSys.uheap_ubytes_wat] at a map the closure
      binds) and the leaf needs the other to buy the [uva_rmapped] row *)
@@ -411,22 +385,36 @@ Section UInitBanner.
     rewrite /UShOut.ushpr. iExact "Hc".
   Qed.
 
-  Lemma kinit_banner0_pay_holds :
-    echo_links T γ -∗
-    eturn γ (S gen_id) -∗
-    kinit_dl0
-    ∗ ∀ N : uk_names Σ,
-        UkInitMain.kinit_banner0 N stc_cons UShKernel.sh_prompt_pay.
+  (* ...AT WHATEVER ROUND THE CREDENTIAL NAMES.  /init's walk carries an
+     opaque [iProp] and the conversion of it into the payment, so the
+     restart loop pays through the link at every round it is handed one
+     (lane IO-LEAF, M6a(2)); the count lives inside. *)
+  Definition kinit_ban_any : iProp Σ := (∃ n : nat, kinit_ban n)%I.
+
+  Global Instance kinit_ban_any_timeless : Timeless kinit_ban_any.
+  Proof. rewrite /kinit_ban_any. apply _. Qed.
+
+  Lemma kinit_ban_any_of_eturn :
+    eturn γ (S gen_id) -∗ kinit_dl0 ∗ kinit_ban_any.
   Proof.
-    iIntros "#Hlk Hturn".
-    iDestruct (kinit_ban0_of_eturn with "Hturn") as "[Hdl Hban]".
+    iIntros "Hturn".
+    iDestruct (kinit_ban0_of_eturn with "Hturn") as "[$ Hban]".
+    rewrite /kinit_ban_any. by iExists 0%nat.
+  Qed.
+
+  Lemma kinit_prompt_law_holds :
+    echo_links T γ -∗
+    □ (∀ N : uk_names Σ,
+         kinit_ban_any -∗
+         UkInitMain.kinit_banner0 N stc_cons UShKernel.sh_prompt_pay).
+  Proof.
+    iIntros "#Hlk".
     iDestruct (kinit_banner_law_holds with "Hlk") as "#Hlaw".
-    iSplitL "Hdl"; [ iExact "Hdl" | ].
-    iIntros (N).
-    iApply (kinit_banner0_mono N (kinit_own 0%nat) UShKernel.sh_prompt_pay
+    iIntros "!>" (N) "Hban". iDestruct "Hban" as (n) "Hban".
+    iApply (kinit_banner0_mono N (kinit_own n) UShKernel.sh_prompt_pay
               with "[] [Hban]"); last first.
-    { iApply ("Hlaw" $! 0%nat N with "Hban"). }
-    iIntros "Ht". iApply (sh_prompt_pay_of_kinit_own 0%nat with "Hlk Ht").
+    { iApply ("Hlaw" $! n N with "Hban"). }
+    iIntros "Ht". iApply (sh_prompt_pay_of_kinit_own n with "Hlk Ht").
   Qed.
 
 End UInitBanner.

@@ -3402,6 +3402,34 @@ is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
 
+OPEN-ROW FOUND AND LAUNCHED (2026-09-14; kernel lane in `-tlw`, branch
+`lane/open-row`; report `handoff-2026-09-16/open-row-report.md` when done).
+THE ENDGAME'S CRITICAL PATH HAS ONE MORE KERNEL ROW.  `SpecSysOpen`'s
+failure arm is uninformative by its own header ("ret = -1 -- residue
+returned per arm; the value does not say which arm fired ... the two
+table-full arms"), so <init>'s console open at boot -- at the all-closed
+ledger, node present -- has a SPEC-ADMITTED failure (`filealloc` at a full
+`ftable`).  On that arm <init> keeps `ufd_l0`, prints nothing and lends
+nothing, while the SHELL's own opens succeed (the node is there): sh prints
+"$ " and reads lines with NO banner on the wire.  The transcript predicate
+has no such alternative; today the path is "paid" only by `sh_deps` (the
+free write law), and the era's credential cannot follow it (the count moves
+under a credential no one converted).  So step 3 of M6a(3) (`Rc ≠ Q (-1)`,
+every `∨ True` gone) is BLOCKED on refuting it, and no interim owed
+hypothesis is acceptable: any statement excluding the arm is FALSE in
+general (a full table) and would make the theorem vacuous.  THE REAL
+MACHINE cannot take it (at <init>'s first open nothing is open), so the row
+is a COUNTED REGIME for the global file table on TRAP-ROWS-5's mould
+(`files_avail (Some n)` minted at boot at 0, riding <init>'s park, spent
+after its second open; `filealloc` cannot fail at `Some n < NFILE`;
+`sys_open`'s found-node failure refuted for a caller holding it;
+`UkInit.uki_open_console_leaf`/`uki_open2` lose their -1 arms).  The
+fd-table half is already refutable at the U tier (`ufd_l0` has free slots).
+The same refutation is what makes <init>'s all-closed ledger COINCIDE with
+`cons_never` (the console absent) in the proof, which is what step 3's
+closed-arm lend needs (the credential rides unconverted where nothing
+reaches the wire).  "The kernel rows are complete" was wrong by this row.
+
 IO-LEAF WRITE-CLOSED LANDED (2026-09-14; the lane's `0173644ed` in `-sup`
 cherry-picked as `c3fb395bd`; NEW `iris/UkWriteClosed.v` + a `_CoqProject`
 row after `UkWriteLeaf.v`; builds wc-1/wc-2 in `-sup`, io59 in the main

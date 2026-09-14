@@ -112,10 +112,11 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
 - [ ] **IO-LEAF** (programs): SURVEYED and REVIEWED 2026-09-16 (the notes
   below); brief v2 + D8 ready; launches after TRAP-ROWS M2, FORK-REFUND,
   PROLOGUE-ALTS.
-- [ ] **PROLOGUE-ALTS** (pure; `-sup`, `lane/prologue-alts`): LAUNCHED
-  2026-09-16 (the note below): init's exec-failure loop and terminal
-  fork failure as prologue alternatives in EchoDisc/EchoOutPure; the
-  EchoOut stage after part 5.
+- [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
+  init's exec-failure loop, terminal fork failure, and the restart after
+  sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
+- [ ] **PROLOGUE-ALTS-2** (application; `-sup`, `lane/prologue-alts-2`):
+  LAUNCHED 2026-09-16: `ps_len_ok`, `echo_write_link_pro`, the banner lemma.
 - [ ] **TRAP-ROWS** (kernel; `-tlw`, `lane/trap-rows`; brief scratchpad
   `brief-trap-rows.md`): T1 LANDED 2026-09-16 (`6eafdaa54`; the note below);
   M2 = T2+T3+T4 in flight: T2 the read's -1 arm carries the reader's killed fact and the
@@ -3337,6 +3338,43 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+PROLOGUE-ALTS LANDED (2026-09-16; `f5d63cbfa`+`d1b189277`+`833300de0` on
+`1bb1702af`; 3 files (EchoDisc, EchoOutPure, EchoOut); builds pa1-pa4 in
+`-sup`; audit the thirteen; lemma_diff CLEAN; no Admitted).  INIT'S FAILURE
+DIAGNOSTICS ENTER THE DISCIPLINE, AND THE SHELL'S OWN FORK PANIC RE-ENTERS
+THE PROLOGUE.  Trusted definitions (EchoDisc): `pro_alts = [ "$ "; "init:
+exec sh failed\n"; "init: fork failed\n" ]`; `pro_of ps` for a resolution
+list `ps` (recurses while the choice is 1, the exec failure, and stops at
+the first non-1; an unresolved `ps` owes only the banner); `pro_tail`/
+`pro_from r ps`/`pro_rounds`/`pro_idx cs i` (rounds; the round a block reads
+is the number of 3s before it); `line_alts !!! 3 = "fork\n"` (WAS "fork\n
+init: starting sh\n$ " -- a hard-coded successful restart, FALSE when the
+restart's fork/exec fails); `alt_cont ps cs i` appends `pro_of (pro_from (S
+(pro_idx cs i)) ps)` at alternative 3; `sess_n ps cs n = pro_of ps ++ alt_seq
+ps cs (n/17) ++ take (n mod 17) echo_line`; `pro_ok ps cs q` (every round the
+first q lines enter is settled); `expected_rel` and `disc_seg'` quantify a
+COMPLETE `ps` (`pro_ok` inside the per-input clause -- once per segment made
+`disc_seg' []` false); `good_out`'s body, `disc`, `disc_seg` and the ten
+closure laws UNCHANGED.  Prefix-freeness (`pro_alts_prefix_det`,
+`pro_done_of_prefix`) replaces head-distinctness for the prologue choice
+('$','i','i'); the line choice is still head-pinned.  The load-bearing new
+argument: an OPEN prologue is a prefix of a settled one, refuted by the byte
+past the banner (`pro_of_not_done_next` + `pro_alts_head_ne_echo`).
+Decidability by the canonical enumeration `pro_cands` (each round costs 39
+wire bytes), not `bounded_lists 3`.  Four vm_compute witnesses: the good
+run (unchanged), one exec failure, the fork failure, a typed line + "fork\n"
++ restart.  THE CLAIM: `era_pins` gains `ep_gps` (a second mono_list; `ps_lb`
+etc. twins of `cs_*`), `ostage` gains `o_ps`, `eout_pure` gains `Forall (<
+length pro_alts) (o_ps so)` and `pro_pin (o_ps so) (o_cs so) (length (o_E
+so))`; `echo_write_link`/`_blk`/`read_ret`/`eturn` carry `ps_lb`; NEW
+`echo_write_link_taint : T -∗ (T -∗ Φ) -∗ out_link Uart0 k b Φ`; a writer's
+lower bounds are worth a PREFIX of the process stream (`proc_upto_prefix_S`).
+OWED (lane PROLOGUE-ALTS-2, launched): `ps_len_ok` in `eout_pure` (the
+current round is settled iff the writer wrote past the banner; `cs_len_ok`'s
+twin), `echo_write_link_pro` (the choice link at byte 19 of ANY round, with
+the round-opening premise `n0 = 0 ∨ cs0 !!! (n0/17-1) = 3`), the
+arbitrary-round banner lemma.  Handover: scratchpad `prologue-alts-handover.md`.
 
 FORK-REFUND LANDED (2026-09-16; `e58f284a2` on `174da0e13`; 19 files +334/-105;
 builds fr1-fr6 in the main checkout; audit the thirteen; lemma_diff CLEAN;

@@ -779,11 +779,7 @@ Section UkShEcho.
   (* the case split belongs to the body that holds it (SH-LINE 2b).        *)
   (* =================================================================== *)
   Definition wp_kshm_child_echo : Prop :=
-    forall (Hsbrk : forall (N' : uk_names Σ) (sz n : Z) (r : mword 64),
-              UkShMalloc.ushm_sbrk_ans N' sz n r -∗
-              ⌜ r = (mword_of_int sz : mword 64) ⌝ ∗
-              UkShMalloc.ushm_sbrk_ans N' sz n r)
-           (N : uk_names Σ) (Ht : ukn_triv N)
+    forall (N : uk_names Σ) (Ht : ukn_triv N)
            (h : CpuId) (m : regfile) (dw dv : dfrac)
            (s0 : Z) (len : nat) (f : nat -> bv 8) (sz : Z)
            (ld : list fdstate) (n : nat),
@@ -810,7 +806,7 @@ Section UkShEcho.
 
   Lemma wp_kshm_child_echo_holds : wp_kshm_child_echo.
   Proof.
-    intros Hsbrk N Ht h m dw dv s0 len f sz ld n
+    intros N Ht h m dw dv s0 len f sz ld n
       Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok.
     (* the ONE line the discipline admits, as the parser's own premises *)
     destruct (ush_line_toks_holds f 0%nat len Hline) as (Hlen17 & Hns0 & Htoks0).
@@ -879,8 +875,9 @@ Section UkShEcho.
     (* ---- parsecmd ---- *)
     iApply (UkShParseCmd.wp_kshp_parser N (UkShMalloc.ushm_fresh N sz)
               (usz (ukn_s N) (sz + 65536))
-              (UkShMalloc.ushm_malloc_ok_holds N Hpsok_free (Hsbrk N) sz
+              (UkShMalloc.ushm_malloc_ok_holds N Hpsok_free sz
                  Hszlo Hszal Hszok)
+              (ukn_pay_free_of_triv N Ht)
               h2 m2 dw dv s0 len f echo_toks
               (8 + (UkShDiag.ush_Dg + n))
               Ha0_2 Hns Htoks Htlen Hs0 Hs64

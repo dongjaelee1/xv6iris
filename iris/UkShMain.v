@@ -509,12 +509,13 @@ Section UkShMain.
          shp_code γt -∗
          UMalloc -∗
          urun N h m (mword_of_int ShSyms.malloc) (10 + avail) -∗
-         (∀ (h' : CpuId) (m' : regfile) (p : Z) (g : nat -> bv 8),
+         (∀ (h' : CpuId) (m' : regfile),
             ⌜ ucallee_saved m m' ⌝ -∗
-            ⌜ m' !!! Regidx (mword_of_int 10) = mword_of_int p ⌝ -∗
-            ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ -∗
-            ubytes γd p (Z.to_nat nbytes) g -∗
-            usz γs szv -∗
+            (⌜ m' !!! Regidx (mword_of_int 10) = (mword_of_int 0 : mword 64) ⌝
+             ∨ (∃ (p : Z) (g : nat -> bv 8),
+                  ⌜ m' !!! Regidx (mword_of_int 10) = mword_of_int p ⌝ ∗
+                  ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ ∗
+                  ubytes γd p (Z.to_nat nbytes) g ∗ usz γs szv)) -∗
             urun N h' m' (ret_pc (m !!! Regidx (mword_of_int 1)))
               (10 + avail) -∗
             WP (Loop : expr riscv_lang)) -∗
@@ -601,7 +602,7 @@ Section UkShMain.
           apply bv_eq; vm_compute; reflexivity).
     (* ---- parsecmd ---- *)
     iApply (UkShParseCmd.wp_kshp_parser N UMalloc (usz γs szv)
-              Hmalloc
+              Hmalloc (ukn_pay_free_of_triv N Htriv)
               h2 m2 dw dv s0 len f toks
               (8 + (UkShDiag.ush_Dg + n))
               Ha0_2 Hns Htoks Htlen Hs0 Hs64
@@ -658,19 +659,16 @@ Section UkShMain.
   (* [UkShMalloc.ushm_fresh], the [freep] cell holding zero, the sixteen    *)
   (* bytes of [base] and the break -- so the only thing left on the far     *)
   (* side of the seam is the one place stage 3 had to name an assumption    *)
-  (* ([Hsbrk]: the 64 KiB [sbrk] that [morecore] issues succeeds; sh does    *)
-  (* not test malloc, so nothing below this line can branch on the           *)
-  (* failure).                                                               *)
+  (* -- and since lane SELF-KILL's step 5 there is NOTHING there: the        *)
+  (* allocator's failure arm is carried all the way up and ends in the       *)
+  (* child's own death at [memset]'s first store, so the assumption          *)
+  (* [ushm_sbrk_never_fails] is gone.                                        *)
   (*                                                                        *)
   (* THE BREAK MOVES ACROSS THE PARSE, and the statement says where to:     *)
   (* the run [runcmd] and [exec] see is at [sz + 65536], because the        *)
   (* allocator asked the kernel for sixteen pages on the way through.       *)
   (* ===================================================================== *)
   Lemma wp_kshm_child_alloc
-      (Hsbrk : forall (sz n : Z) (r : mword 64),
-         UkShMalloc.ushm_sbrk_ans N sz n r -∗
-         ⌜ r = (mword_of_int sz : mword 64) ⌝ ∗
-         UkShMalloc.ushm_sbrk_ans N sz n r)
       (h : CpuId) (m : regfile) (dw dv : dfrac)
       (s0 : Z) (len : nat) (f : nat -> bv 8) (toks : list (nat * nat))
       (sz : Z) (ld : list fdstate) (n : nat) :
@@ -704,7 +702,7 @@ Section UkShMain.
     intros Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38 Hszlo Hszal Hszok.
     iIntros "#Hdp #Hcode #Hxs #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hrun".
     iApply (wp_kshm_child (UkShMalloc.ushm_fresh N sz) (sz + 65536)
-              (UkShMalloc.ushm_malloc_ok_holds N Hpsok_free Hsbrk sz
+              (UkShMalloc.ushm_malloc_ok_holds N Hpsok_free sz
                  Hszlo Hszal Hszok)
               h m dw dv s0 len f toks ld n
               Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38

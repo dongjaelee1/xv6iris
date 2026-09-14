@@ -115,8 +115,12 @@ Section UkShParseExec.
   (* stage 4's one Hypothesis, at the type the base file names *)
   Context (UMalloc UMalloc' : iProp Σ).
   Hypothesis ushp_malloc_ok : ushp_malloc_ty UMalloc UMalloc'.
+  (* ...and the payload the contract's FAILURE arm costs (lane SELF-KILL,
+     step 5): free at the forked child's trivial record, which is the only
+     process that parses. *)
+  Hypothesis ushp_pay_free : (⊢ ukn_pay N (-1)).
 
-  Local Notation wp_kshp_execcmd := (UkShParseLex.wp_kshp_execcmd N UMalloc UMalloc' ushp_malloc_ok).
+  Local Notation wp_kshp_execcmd := (UkShParseLex.wp_kshp_execcmd N UMalloc UMalloc' ushp_malloc_ok ushp_pay_free).
 (*ALIASES-END*)
   (* ===================================================================== *)
   (* §11 parseexec @0x590 -- the ARGUMENT LOOP.                             *)

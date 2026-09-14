@@ -3536,6 +3536,19 @@ Section UkShParse.
   (* iris/UkShMalloc.v: what discharges this is FIRST-CALL, [freep == 0])    *)
   (* without stage 4 having an opinion about it.                            *)
   (* ===================================================================== *)
+  (* THE CONTRACT HAS A FAILURE ARM (lane SELF-KILL, step 5).  It used to
+     have none, and the gap was closed by a named assumption in stage 3
+     ("the 64 KiB [sbrk] [morecore] issues succeeds") -- because sh's
+     constructors do not TEST [malloc]: [execcmd] goes straight into
+     [memset(cmd, 0, 168)], so a NULL return is a FAULT in the shell rather
+     than a branch, and nothing the caller could be handed would let it
+     continue.  What it is handed on that arm is the run at the return
+     address with [a0 = 0] and NOTHING else -- no bytes, no moved break --
+     which is exactly enough to walk into [memset]'s first store and be
+     KILLED there ([UkSh.wp_ksh_memset_null]).  So the arm is usable by the
+     very code it is for after all, and the assumption is gone.  The two
+     arms are ONE continuation at a disjunction, which is the shape the
+     allocator's own leaf hands out ([UkShMalloc.wp_kshm_malloc_first]). *)
   Definition ushp_malloc_ty (UM UM' : iProp Σ) : Prop :=
     forall (h : CpuId) (m : regfile) (nbytes : Z) (avail : nat),
       m !!! Regidx a0_idx = mword_of_int nbytes ->
@@ -3543,12 +3556,13 @@ Section UkShParse.
       shp_code γt -∗
       UM -∗
       urun N h m (mword_of_int ShSyms.malloc) (10 + avail) -∗
-      (∀ (h' : CpuId) (m' : regfile) (p : Z) (g : nat -> bv 8),
+      (∀ (h' : CpuId) (m' : regfile),
          ⌜ ucallee_saved m m' ⌝ -∗
-         ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
-         ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ -∗
-         ubytes γd p (Z.to_nat nbytes) g -∗
-         UM' -∗
+         (⌜ m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝
+          ∨ (∃ (p : Z) (g : nat -> bv 8),
+               ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ ∗
+               ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ ∗
+               ubytes γd p (Z.to_nat nbytes) g ∗ UM')) -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
          WP (Loop : expr riscv_lang)) -∗
       WP (Loop : expr riscv_lang).

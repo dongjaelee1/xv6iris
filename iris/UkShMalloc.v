@@ -26,17 +26,15 @@
 (* inserts it with [free] and cuts the request off its end.  A second      *)
 (* call is a different theorem, not a weaker one.                          *)
 (*                                                                        *)
-(* WHAT IS ASSUMED, AND IT IS SMALLER THAN WHAT IT REPLACES.  [sbrk] can  *)
+(* NOTHING IS ASSUMED ANY MORE (lane SELF-KILL, step 5).  [sbrk] can      *)
 (* fail: [growproc] calls [kalloc] and [kalloc] can return NULL, so        *)
 (* [UkRunSys.wp_uk_ecall_sbrk] has a -1 arm and no caller can wish it      *)
 (* away.  [morecore] CHECKS it and returns 0, and sh's constructors do     *)
 (* NOT check malloc, so a NULL return is a fault in sh rather than a       *)
-(* branch -- which is why [UkShParse.ushp_malloc_ok] has no failure arm.   *)
-(* The failure is therefore excluded by a named premise on THIS walk,      *)
-(* [ushm_sbrk_ok], and the trade is the point: what used to be assumed     *)
-(* was "the allocator works"; what is assumed now is "a 64 KiB [sbrk]      *)
-(* succeeds", which is a fact about the kernel having memory and not one   *)
-(* about ninety-one instructions of C.                                     *)
+(* branch.  This file used to exclude the failure by a named premise       *)
+(* ([ushm_sbrk_never_fails]); [UkShParse.ushp_malloc_ok] now HAS a         *)
+(* failure arm, the fault it leads to is walked                            *)
+(* ([UkSh.wp_ksh_memset_null]), and the premise is gone.                   *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap bitvector.definitions.
@@ -1242,10 +1240,9 @@ Section UkShMalloc.
   (* BOTH ARMS OF [sbrk] ARE HERE.  [morecore] checks the -1 and malloc     *)
   (* returns 0, so the theorem is UNCONDITIONAL: a failure arm that hands   *)
   (* back 0 and the break where it was, and a success arm that hands back   *)
-  (* the request's bytes.  The assumption that the failure does not happen  *)
-  (* is not made here at all; it is made once, in the adapter that          *)
-  (* discharges [UkShParse.ushp_malloc_ok], whose contract has no failure   *)
-  (* arm because sh's constructors do not test malloc.                     *)
+  (* the request's bytes.  Both are carried all the way up now              *)
+  (* ([UkShParse.ushp_malloc_ty] has the failure arm since lane SELF-KILL's *)
+  (* step 5), so no assumption is made about the failure anywhere.          *)
   (*                                                                        *)
   (* THE ALLOCATOR'S LEFTOVER IS DROPPED, deliberately: the remains of the  *)
   (* 64 KiB chunk and the two headers that name them stay inside the        *)
@@ -3563,33 +3560,22 @@ Section UkShMalloc.
 
 
   (* ===================================================================== *)
-  (* §6 THE ADAPTER -- what stage 4's [ushp_malloc_ok] becomes, and the ONE *)
-  (* assumption that is left.                                              *)
+  (* §6 THE ADAPTER -- what stage 4's [ushp_malloc_ok] becomes.             *)
   (*                                                                        *)
-  (* [UkShParse]'s malloc contract has NO FAILURE ARM, and that is not an   *)
-  (* oversight in the contract: sh's constructors do not test malloc        *)
-  (* ([execcmd] goes straight into [memset(cmd, 0, 168)]), so a NULL return *)
-  (* is a FAULT in the shell rather than a branch, and a contract with a    *)
-  (* failure arm would be unusable by the very code it is for.  The         *)
-  (* allocator's own theorem above HAS both arms; what closes the gap is    *)
-  (* the single named Hypothesis below.                                    *)
+  (* THERE IS NO ASSUMPTION LEFT HERE (lane SELF-KILL, step 5).  This file  *)
+  (* used to carry one -- [ushm_sbrk_never_fails], "the 64 KiB [sbrk]       *)
+  (* [morecore] issues succeeds" -- because [UkShParse]'s malloc contract   *)
+  (* had no failure arm, and it had none because sh's constructors do not   *)
+  (* test [malloc]: [execcmd] goes straight into [memset(cmd, 0, 168)], so  *)
+  (* a NULL return is a FAULT in the shell rather than a branch.            *)
   (*                                                                        *)
-  (* WHAT IS BEING ASSUMED, EXACTLY: that the 64 KiB [sbrk] [morecore]      *)
-  (* issues SUCCEEDS.  It can fail -- [growproc] calls [kalloc] and         *)
-  (* [kalloc] can return NULL -- so this is a real assumption and not a     *)
-  (* theorem, and it is stated on the ROW'S OWN ANSWER so that it cannot be *)
-  (* used anywhere else: the only way to instantiate it is to be HOLDING an *)
-  (* [ushm_sbrk_ans], which only the leaf hands out.                        *)
-  (*                                                                        *)
-  (* AND WHAT IT REPLACES.  Before this file, stage 4 assumed               *)
-  (* [ushp_malloc_ok] -- that ninety-one instructions of C behave.  After   *)
-  (* it, the assumption is that the kernel has sixteen pages.  That is the  *)
-  (* whole point of the stage.                                             *)
+  (* The contract now HAS that arm, and what it hands its caller is the run *)
+  (* at the return address with [a0 = 0] and nothing else -- which is       *)
+  (* exactly enough to walk into [memset]'s first store and DIE there       *)
+  (* ([UkSh.wp_ksh_memset_null]).  So the allocator's own two arms are      *)
+  (* carried all the way up and the assumption is gone: the theorem now     *)
+  (* says what really happens when the kernel is out of pages.              *)
   (* ===================================================================== *)
-  Hypothesis ushm_sbrk_never_fails :
-    forall (sz n : Z) (r : mword 64),
-      ushm_sbrk_ans sz n r -∗
-      ⌜ r = (mword_of_int sz : mword 64) ⌝ ∗ ushm_sbrk_ans sz n r.
 
   (* THE ALLOCATOR'S STATE BEFORE ITS FIRST CALL.  This is what
      [UkShParse.UMalloc] is instantiated at: the [freep] cell holding zero,
@@ -3612,12 +3598,19 @@ Section UkShMalloc.
       shp_code γt -∗
       ushm_fresh sz -∗
       urun N h m (mword_of_int ShSyms.malloc) (10 + avail) -∗
-      (∀ (h' : CpuId) (m' : regfile) (p : Z) (g : nat -> bv 8),
+      (* THE TWO ARMS, as one continuation at a disjunction (lane
+         SELF-KILL, step 5).  The NULL arm is [sbrk] having returned -1:
+         [morecore] returned 0 and so did [malloc], the break did not move,
+         and what is handed back is the run at the return address with
+         [a0 = 0] and nothing else -- enough to walk into [memset]'s first
+         store and be killed there ([UkSh.wp_ksh_memset_null]). *)
+      (∀ (h' : CpuId) (m' : regfile),
          ⌜ ucallee_saved m m' ⌝ -∗
-         ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
-         ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ -∗
-         ubytes γd p (Z.to_nat nbytes) g -∗
-         usz γs (sz + 65536) -∗
+         (⌜ m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝
+          ∨ (∃ (p : Z) (g : nat -> bv 8),
+               ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ ∗
+               ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ ∗
+               ubytes γd p (Z.to_nat nbytes) g ∗ usz γs (sz + 65536))) -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
          WP (Loop : expr riscv_lang)) -∗
       WP (Loop : expr riscv_lang).
@@ -3629,21 +3622,11 @@ Section UkShMalloc.
               Ha0 Hnb0 Hnbhi Hszlo Hszal Hszok
               with "Hmcode Hfreep Hbase Hsz Hrun").
     iIntros (h' m' r) "%Hcs %Ha0' Hans Hrun".
-    iDestruct "Hans" as "[[-> Hbad] | (%q & %g & -> & %Hqb & Hsz & Hbytes)]".
-    - (* REFUTED by the assumption: [sbrk] did not fail *)
-      iDestruct (ushm_sbrk_never_fails sz 65536 (mword_of_int (-1))
-                   with "Hbad") as "[%Hc _]".
-      exfalso.
-      assert (Hu1 : uint (mword_of_int (-1) : mword 64)
-                    = 18446744073709551615)
-        by (vm_compute; reflexivity).
-      assert (Hszhi : sz + 65536 < 2 ^ 38).
-      { pose proof (pgroundup_ge (sz + 65536) ltac:(lia)) as Hge.
-        unfold usz_ok in Hszok.
-        change (2 ^ 38)%Z with 274877906944%Z. lia. }
-      rewrite Hc (uint_moi sz ltac:(unfold Z64; lia)) in Hu1. lia.
-    - iApply ("Hcont" $! h' m' q g with "[%] [%] [%] Hbytes Hsz Hrun");
-        [ exact Hcs | exact Ha0' | exact Hqb ].
+    iApply ("Hcont" $! h' m' with "[%] [Hans] Hrun"); [ exact Hcs | ].
+    iDestruct "Hans" as "[[-> _] | (%q & %g & -> & %Hqb & Hsz & Hbytes)]".
+    - iLeft. iPureIntro. exact Ha0'.
+    - iRight. iExists q, g. iFrame "Hbytes Hsz".
+      iSplitR; [ iPureIntro; exact Ha0' | iPureIntro; exact Hqb ].
   Qed.
 
 End UkShMalloc.

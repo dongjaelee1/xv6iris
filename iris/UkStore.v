@@ -69,6 +69,7 @@ Require Import UmodeText.
 Require Import FdSlots.      (* [fdstate] -- the key's descriptor view *)
 Require Import TsoCtx.   (* [CurCtx]: ambient, per the WpUmode* precedent *)
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
+Require Import UserPermDenied.  (* the DENIED leaf: a page without W faults *)
 Local Open Scope Z_scope.
 Import Defs.
 Set Printing Depth 40.
@@ -84,13 +85,23 @@ Local Ltac uv_trap_peel :=
    image has the window's bytes), or it is not mapped at all and the
    access faults.  Under the LAZY key BOTH arms are live -- a page can be
    writable in the projection because [perm_of]'s fill put it there. *)
+(* the RETIRING side of it, NAMED (lane SELF-KILL, step 5).  The obligation
+   below hands its caller a continuation for each side, and the retiring
+   one is an [uvb] at the STORED image -- which a store that never retires
+   cannot supply.  Naming the side lets the obligation GUARD that
+   continuation by it: [wp_uk_store_later] ignores the guard (it holds
+   there), and the denied leaf REFUTES it. *)
+Definition uk_store_retires (pt : uptd) (M : gmap Z (bv 8)) (va : mword 64)
+    (kk : Z) : Prop :=
+  exists w_st : mword 64,
+    ud_um pt !! svpn_of va = Some w_st /\ uleaf_ok (Store Data) w_st /\
+    ~ uva_text pt (uint va) /\
+    (forall j : nat, (j < Z.to_nat kk)%nat ->
+       exists bb : bv 8, M !! (uint va + Z.of_nat j) = Some bb).
+
 Definition uk_store_disp (pt : uptd) (M : gmap Z (bv 8)) (va : mword 64)
     (kk : Z) : Prop :=
-  (exists w_st : mword 64,
-     ud_um pt !! svpn_of va = Some w_st /\ uleaf_ok (Store Data) w_st /\
-     ~ uva_text pt (uint va) /\
-     (forall j : nat, (j < Z.to_nat kk)%nat ->
-        exists bb : bv 8, M !! (uint va + Z.of_nat j) = Some bb))
+  uk_store_retires pt M va kk
   \/ u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va.
 
 (* the lazy relation survives a store to a MAPPED window: the two images
@@ -768,7 +779,24 @@ Section UkStorePostFetch.
        all three flavors at [uvis_lazy W = false] and discharges this
        premise vacuously, which is exactly how a verified program pays
        nothing. *)
-    (⊢ (□ riscv_kill_cred : iProp Σ)) ->
+    (* ...AND IT IS TWO-SIDED (lane SELF-KILL, step 5).  A process may be
+       entitled to the kill it is about to suffer either by the
+       APPLICATION'S TAINT -- the generic route, which is what an
+       unverified program's arbitrary fault is charged -- or by depositing
+       ITS OWN exit payload at -1 ([ChildTok.kill_owed]), which is what a
+       verified program that faults ON PURPOSE does: sh's forked child
+       stores through the NULL [malloc] returned it and pays for its own
+       death with no taint at all.  The premise is an entailment FROM the
+       process's own [ChildTok.my_pay] -- the persistent fact the deposit
+       carries anyway ([UkStep.uk_paycont]) -- rather than a resource,
+       because the resource could not get here: the engine hands this leaf
+       the resume slot and the step's continuation as an ADDITIVE pair
+       ([UkStep.uk_step_obl]'s [Kc ∧ ukc]), so nothing linear can ride
+       beside the slot.  At a payload that is free at the kill status
+       ([UkRun.ukn_pay_free_of_triv]) the right side costs exactly that
+       persistent fact and nothing else. *)
+    (⊢ (ChildTok.my_pay gn Qp -∗
+        (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)) ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     uva_inj pt Mp ->
     match o with
@@ -1049,8 +1077,10 @@ Section UkStorePostFetch.
        two-sided deposit, which is the tainted route's (lane SELF-KILL,
        P6b; [UexecRet.ukill_cred_at]) *)
     iSplitR.
-    { iPoseProof Hkcw as "#Hkcw".
-      iApply (ukill_cred_at_of_cred _ _ with "Hkcw"). }
+    { iPoseProof Hkcw as "Hkcw".
+      iDestruct ("Hkcw" with "Hmyp") as "[#Hkl | Hkr]";
+        [ iApply (ukill_cred_at_of_cred _ _ with "Hkl")
+        | iApply (ukill_cred_at_of_owed _ _ with "Hkr") ]. }
     iExact "Hret".
   Qed.
 
@@ -1104,14 +1134,16 @@ Section UkStoreObl.
        [UserPerm.lazy_free_wmapped], [UserPtTree.uleaf_ok_denied_excl]) and
        discharges this by [False]. *)
     (u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va ->
-     ⊢ (□ riscv_kill_cred : iProp Σ)) ->
+     ⊢ (ChildTok.my_pay gn Qp -∗
+        (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     is_aligned_vaddr (Virtaddr va) kk = true ->
     gen_cert -∗ uv_amb -∗
     uv_fetch_bridge (uc_dqc C) pt Mp rsA t (F_Base w) -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
-          ((uvb C pt Rfd Rut sz π fdv cw gn cs pidv false (uM_store M (uint va) kk wval) m (add_vec_int pc 4) -∗
+          ((⌜uk_store_retires pt Mp va kk⌝ -∗
+            uvb C pt Rfd Rut sz π fdv cw gn cs pidv false (uM_store M (uint va) kk wval) m (add_vec_int pc 4) -∗
             WP (Loop : expr riscv_lang))
            ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))) -∗
     resv_any cpu_id -∗
@@ -1202,7 +1234,9 @@ Section UkStoreObl.
               Hagd2 Htok' Hpure
               with "Hcert Hamb [Hk] Hany Hctx Hmm Hres Hrw Hro").
       iIntros "HR". iDestruct ("Hk" with "HR") as "(Hrut & Hfdr & Hkb & Hkc)".
-      iDestruct "Hkc" as "[Hkc _]". iFrame "Hrut Hfdr Hkb Hkc".
+      iDestruct "Hkc" as "[Hkc _]". iFrame "Hrut Hfdr Hkb".
+      iIntros "Hbb". iApply ("Hkc" with "[%] Hbb").
+      exists w_st. exact (conj Hl (conj Hchk (conj Hntx HMb))).
     - iApply (uk_store_fault_post_fetch C pt Rfd R Rut sz π M Mp m pc 4 kk i o imm sr1 sr2 va wval
               (zero_extend' 32 w) t' usatp pcfg paddr rs1 rs2 fdv cw gn cs pidv
               Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
@@ -1261,14 +1295,16 @@ Section UkStoreObl.
        [UserPerm.lazy_free_wmapped], [UserPtTree.uleaf_ok_denied_excl]) and
        discharges this by [False]. *)
     (u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va ->
-     ⊢ (□ riscv_kill_cred : iProp Σ)) ->
+     ⊢ (ChildTok.my_pay gn Qp -∗
+        (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     is_aligned_vaddr (Virtaddr va) kk = true ->
     gen_cert -∗ uv_amb -∗
     uv_fetch_bridge (uc_dqc C) pt Mp rsA t (F_RVC h) -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
-          ((uvb C pt Rfd Rut sz π fdv cw gn cs pidv false (uM_store M (uint va) kk wval) m (add_vec_int pc 2) -∗
+          ((⌜uk_store_retires pt Mp va kk⌝ -∗
+            uvb C pt Rfd Rut sz π fdv cw gn cs pidv false (uM_store M (uint va) kk wval) m (add_vec_int pc 2) -∗
             WP (Loop : expr riscv_lang))
            ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))) -∗
     resv_any cpu_id -∗
@@ -1364,7 +1400,9 @@ Section UkStoreObl.
               Hagd2 Htok' Hpure
               with "Hcert Hamb [Hk] Hany Hctx Hmm Hres Hrw Hro").
       iIntros "HR". iDestruct ("Hk" with "HR") as "(Hrut & Hfdr & Hkb & Hkc)".
-      iDestruct "Hkc" as "[Hkc _]". iFrame "Hrut Hfdr Hkb Hkc".
+      iDestruct "Hkc" as "[Hkc _]". iFrame "Hrut Hfdr Hkb".
+      iIntros "Hbb". iApply ("Hkc" with "[%] Hbb").
+      exists w_st. exact (conj Hl (conj Hchk (conj Hntx HMb))).
     - iApply (uk_store_fault_post_fetch C pt Rfd R Rut sz π M Mp m pc 2 kk i o imm sr1 sr2 va wval
               (zero_extend' 32 h) t' usatp pcfg paddr rs1 rs2 fdv cw gn cs pidv
               Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
@@ -1532,7 +1570,8 @@ Section UkStore.
              in the map at all ([UptTree.upt_map_wf_not_tramp] / [_not_tf]).
        So a verified program pays NOTHING for the kill it cannot suffer. *)
     assert (Hkcf : u_fault_flavor (Store Data) (ud_tfp pt') (ud_um pt') va ->
-                   ⊢ (□ riscv_kill_cred : iProp Σ)).
+                   ⊢ (ChildTok.my_pay gn Qp -∗
+                      (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)).
     { intros Hfl. exfalso.
       destruct (lazy_free_wmapped pt' sz (svpn_of va) q Hwf' Hlf'
                   ltac:(rewrite Hpm'; exact Hq) Hqw) as (w0 & Hw0 & _ & _).
@@ -1559,16 +1598,19 @@ Section UkStore.
                         LsatpA & LpcfgA & LpaddrA & LmiA & Hx0).
     (* the continuation at THIS table, out of the table-generic one *)
     iAssert (R -∗ (TsoCtx.own_context (CID := CIDo) XIo -∗ Rut' pt') ∗ Rfd' fdv ∗ ukb C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false ∗
-             ((uvb (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false (uM_store M (uint va) k wval) m
+             ((⌜uk_store_retires pt' Mp' va k⌝ -∗
+               uvb (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false (uM_store M (uint va) k wval) m
                  (add_vec_int pc (if is_rvc then 2 else 4)) -∗
                WP (Loop : expr riscv_lang))
               ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hrut & Hfdr & Hkb & Hkc)".
       iFrame "Hrut Hfdr Hkb". iSplit.
-      - (* the RETIRE leg: the continuation's own side *)
+      - (* the RETIRE leg: the continuation's own side.  The guard is free
+           here -- this leaf's key says the page is WRITABLE -- so it is
+           dropped. *)
         iDestruct "Hkc" as "(_ & Hkc)".
         iDestruct "Hkc" as "[Hkc _]".
-        iIntros "Hb". rewrite /ukc.
+        iIntros "_ Hb". rewrite /ukc.
         iApply ("Hkc" $! CIDo XIo C' pt' Rfd' Rut' HRut' with "[%] [%] [%] Hb");
           [ exact Hlo' | exact Hpm' | intros _; exact Hlf' ].
       - (* the FAULT leg: the slot goes to the kernel with the pay fact *)
@@ -1624,6 +1666,135 @@ Section UkStore.
               Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hsok Hcanon Hpg Hal HMb
               with "Hb [Hcont]").
     iApply bi.later_intro. iExact "Hcont".
+  Qed.
+
+  (* ===================================================================== *)
+  (* THE DENIED STORE -- A FAULT THE PROCESS TAKES ON PURPOSE.              *)
+  (*                                                                       *)
+  (* [wp_uk_store] above is the store a verified program MEANS to retire:   *)
+  (* its key says the page is writable, so the fault arm is refuted and the *)
+  (* kill row costs nothing.  This is the other one.  The key says the page *)
+  (* is mapped and NOT writable -- sh's forked child stores through the     *)
+  (* NULL [malloc] returned it, and VA 0 is sh's own TEXT page -- so the    *)
+  (* walk goes THROUGH the fault arm and the process is killed              *)
+  (* (kernel/trap.c prints "unexpected scause" and calls [setkilled]).      *)
+  (*                                                                       *)
+  (* WHAT IT COSTS, AND WHY THAT IS THE HONEST PRICE.  Cause 15 is a        *)
+  (* [ukill_sc] cause, so the deposit carries [UexecRet.ukill_cred_at] --   *)
+  (* and its RIGHT side is the process's OWN exit payload at -1             *)
+  (* ([ChildTok.kill_owed]).  A process that faults where its own           *)
+  (* permission map told it it would is not being killed behind its back:   *)
+  (* it is exiting, at status -1, and it pays exactly what its exit owes.   *)
+  (* At a trivial payload ([UkRun.ukn_pay_free_of_triv]) that is free,      *)
+  (* which is why the premise below is Coq-level.                           *)
+  (*                                                                       *)
+  (* THERE IS NO CONTINUATION.  The process never runs another instruction: *)
+  (* the fault arm's resume slot comes from the engine's own Löb hypothesis *)
+  (* ([UkStep.uk_step_obl]'s [ukc] conjunct, [UexecRet.uslot_run]), and the *)
+  (* RETIRING conjunct beside it is refuted from the key -- a store-denied  *)
+  (* leaf is not a store-ok one ([UserPtTree.uleaf_ok_denied_excl]).        *)
+  (* ===================================================================== *)
+  (* the store's leaf DENIAL, on the KEY: [uk_store_ok]'s mirror *)
+  Definition uk_store_denied (va : mword 64) : Prop :=
+    exists q : uperm, uperm_at π va = Some q /\ up_W q = false.
+
+  Lemma wp_uk_store_denied (M : gmap Z (bv 8)) (m : regfile)
+      (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname)
+      (cs : gset gname) (pidv : mword 32) (is_rvc : bool)
+      (i : instruction) (o : option instruction)
+      (imm : mword 12) (rs1 rs2 : mword 5) (k : Z)
+      (va wval : mword 64) :
+    ustore_width k ->
+    uk_instr π M pc is_rvc i ->
+    uv_redirect i o ->
+    match o with
+    | Some _ => forall (s : mstate) (mb : PtBytes.pamap),
+                  goodmb Du_r Du_w (execute i) s mb = true
+    | None => True
+    end ->
+    is_lpad_instruction i = false ->
+    uv_exp i o = STORE (imm, Regidx rs2, Regidx rs1, k) ->
+    va = add_vec (m !!! Regidx rs1) (sign_extend' 64 imm) ->
+    wval = m !!! Regidx rs2 ->
+    uk_store_denied va ->
+    uva_canon va ->
+    Z.rem (uint va) 4096 <= 4096 - k ->
+    is_aligned_vaddr (Virtaddr va) k = true ->
+    (* the payload at the kill status, free at a forked child's record *)
+    (⊢ (Qp (-1) : iProp Σ)) ->
+    uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
+    ChildTok.my_pay gn Qp -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hden Hcanon Hpg Hal Hpay.
+    pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
+    pose proof (ui_al2 _ _ _ _ _ Hui0) as Hal2.
+    iIntros "Hb #Hmy".
+    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 True%I Qp M m pc
+              fdv cw gn cs pidv Hal2 with "Hb [] [$Hmy]").
+    iModIntro.
+    rewrite /uk_step_obl.
+    iIntros (R CIDo XIo C' pt' Rfd' Rut' HRut' Mp' t rs1s rsA usatp pcfg paddr)
+      "%Hlo' %Hpm' %Hlf' %Hpure %Hpre #Hamb Hk Hany Hrw Hro Hctx Hmm Hres".
+    pose proof (uk_instr_mapped π M Mp' pc _ i pt' sz
+                  (loop_ok_wf C' pt' Hlo') Hpm' Hpure Hui) as Hui'.
+    pose proof (loop_ok_wf C' pt' Hlo') as Hwf'.
+    (* THE DISPATCH IS THE FAULT ARM, out of the key alone
+       ([UserPermDenied.u_fault_flavor_store_key]) *)
+    assert (Hfl : u_fault_flavor (Store Data) (ud_tfp pt') (ud_um pt') va)
+      by exact (u_fault_flavor_store_key pt' sz π va Hwf' Hpm' Hcanon Hden).
+    assert (Hdisp : uk_store_disp pt' Mp' va k) by (right; exact Hfl).
+    (* ...AND THE RETIRING SIDE IS REFUTED: the same leaf cannot be both
+       store-denied (off the key's cleared W bit) and store-ok *)
+    assert (Hnrt : ~ uk_store_retires pt' Mp' va k).
+    { intros (w_st & Hl & Hchk & _ & _).
+      destruct Hden as (q & Hq & Hnw).
+      destruct (uperm_at_notW_denied pt' sz va q Hwf'
+                  ltac:(rewrite Hpm'; exact Hq) Hnw) as (w0 & Hw0 & Hd0).
+      rewrite Hl in Hw0. injection Hw0 as <-.
+      exact (uleaf_ok_denied_excl (Store Data) w_st Hchk Hd0). }
+    (* THE PRICE, and it is the process's own ([ChildTok.kill_owed]) *)
+    assert (Hkcf : u_fault_flavor (Store Data) (ud_tfp pt') (ud_um pt') va ->
+                   ⊢ (ChildTok.my_pay gn Qp -∗
+                      (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)).
+    { intros _. iIntros "#Hm". iRight.
+      iApply (ChildTok.kill_owed_of gn Qp with "Hm"). iApply Hpay. }
+    iPoseProof "Hamb" as "(#Hhw & _ & _)".
+    iPoseProof "Hhw" as (misa0 mseccfg0 pmar0 elp0)
+      "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
+        #Hcert & _)".
+    pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
+                        HgagA & LstvecA & LmieA & LmdlA & LmedlA & LmenvA &
+                        LsatpA & LpcfgA & LpaddrA & LmiA & Hx0).
+    iAssert (R -∗ (TsoCtx.own_context (CID := CIDo) XIo -∗ Rut' pt') ∗ Rfd' fdv ∗ ukb C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false ∗
+             ((⌜uk_store_retires pt' Mp' va k⌝ -∗
+               uvb (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false (uM_store M (uint va) k wval) m
+                 (add_vec_int pc (if is_rvc then 2 else 4)) -∗
+               WP (Loop : expr riscv_lang))
+              ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
+    { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hrut & Hfdr & Hkb & Hkc)".
+      iFrame "Hrut Hfdr Hkb". iSplit.
+      - (* the RETIRE leg is UNREACHABLE and says so *)
+        iIntros "%Hrt". exfalso. exact (Hnrt Hrt).
+      - (* the FAULT leg: the slot goes to the kernel with the pay fact,
+           and the slot is the engine's own Löb hypothesis *)
+        iDestruct "Hkc" as "(#Hmyp & Hkc)". iFrame "Hmyp".
+        iDestruct "Hkc" as "[_ Hkc]".
+        rewrite (uslot_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2). iExact "Hkc". }
+    iPoseProof (uv_swp_fetch_uinstr (CID := CIDo) (XI := XIo) pt' Mp' t (uc_dqc C')
+                  rsA pc is_rvc i Hinj Hui' LpcA LcpA (proj1 HmsokA) LmenvA
+                  HpinsA Htok) as "Hf".
+    destruct is_rvc.
+    - iDestruct "Hf" as (h) "[[%HisRVC %Hdecrvc] Hbridge]".
+      iApply (uk_store_obl_rvc C' pt' Rfd' R Rut' sz π M Mp' m pc h i o k imm rs1 rs2 va wval
+                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv Hpre Hpure Hdecrvc Hkw Hred Hg1 Hexp
+                Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
+                with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
+    - iDestruct "Hf" as (w) "[[%HnRVC %Hdecbase] Hbridge]".
+      iApply (uk_store_obl_base C' pt' Rfd' R Rut' sz π M Mp' m pc w i o k imm rs1 rs2 va wval
+                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv Hpre Hpure Hdecbase Hkw Hred Hg1 Hexp
+                Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
+                with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -1705,6 +1876,34 @@ Section UkStore.
                     subst j; exists bb;
                     rewrite Z.add_0_r; exact Hbb)
               with "Hb Hcont").
+  Qed.
+
+  (* ...AND ITS DENIED TWIN (lane SELF-KILL, step 5): the same instruction
+     at a page the key maps WITHOUT W.  No image byte is named -- nothing is
+     written -- and there is no continuation, because the process is killed.
+     This is the shape sh's child's [memset(0, 0, 168)] takes at its first
+     store. *)
+  Lemma wp_uk_sb_denied (M : gmap Z (bv 8)) (m : regfile)
+      (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) (imm : mword 12) (rs1 rs2 : mword 5)
+      (va wval : mword 64) :
+    uk_instr π M pc false (STORE (imm, Regidx rs2, Regidx rs1, 1)) ->
+    va = add_vec (m !!! Regidx rs1) (sign_extend' 64 imm) ->
+    wval = m !!! Regidx rs2 ->
+    uk_store_denied va ->
+    uva_canon va ->
+    (⊢ (Qp (-1) : iProp Σ)) ->
+    uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
+    ChildTok.my_pay gn Qp -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hui Hva Hwval Hden Hcanon Hpay.
+    iIntros "Hb Hmy".
+    iApply (wp_uk_store_denied M m pc fdv cw gn cs pidv false
+              (STORE (imm, Regidx rs2, Regidx rs1, 1)) None
+              imm rs1 rs2 1 va wval
+              ustore_width_1 Hui ltac:(intro s; exact I) I eq_refl eq_refl
+              Hva Hwval Hden Hcanon (uinpage_byte va) (is_aligned_vaddr_1 va) Hpay
+              with "Hb Hmy").
   Qed.
 
   Lemma wp_uk_csdsp (M : gmap Z (bv 8)) (m : regfile)

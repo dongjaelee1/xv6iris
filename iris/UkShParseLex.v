@@ -138,14 +138,15 @@ Section UkShParseLex.
   (* thing it calls is [free] or [sbrk], 16 bytes (2 words) each, so it is  *)
   (* [10 + avail] -- not a round number.                                    *)
   (*                                                                       *)
-  (* WHAT IT DOES NOT SAY, and why that is honest rather than convenient:   *)
-  (* THERE IS NO FAILURE ARM.  sh's constructors do not test malloc's       *)
-  (* result -- [execcmd] goes straight into [memset(cmd, 0, 168)] -- so a   *)
-  (* NULL return is a FAULT in sh, not a branch, and a contract with a NULL *)
-  (* arm would be unusable by the very code it is for.  The first           *)
-  (* generation drew the line in the same place and named it: its           *)
-  (* [wp_sh_malloc_first_body] is FIRST-CALL-ONLY ([freep == 0], so the     *)
-  (* [morecore] path), which is the only call sh's parse of one line makes. *)
+  (* IT HAS A FAILURE ARM SINCE lane SELF-KILL's step 5, and that is what   *)
+  (* retired the sh lane's last memory assumption.  sh's constructors do    *)
+  (* not test malloc's result -- [execcmd] goes straight into               *)
+  (* [memset(cmd, 0, 168)] -- so a NULL return is a FAULT in sh and not a   *)
+  (* branch; what the arm hands the caller is therefore not a way to        *)
+  (* continue but the run at [a0 = 0], which walks into memset's first      *)
+  (* store and DIES ([UkSh.wp_ksh_memset_null]).  The allocator's own       *)
+  (* theorem is FIRST-CALL-ONLY ([freep == 0], so the [morecore] path),     *)
+  (* which is the only call sh's parse of one line makes.                   *)
   (*                                                                       *)
   (* WHAT IT TAINTS, TODAY: exactly one lemma, [wp_kshp_execcmd] in §7,     *)
   (* which is the only caller of a constructor this file has.  Everything   *)
@@ -159,6 +160,17 @@ Section UkShParseLex.
   (* stage 4's one Hypothesis, at the type the base file names *)
   Context (UMalloc UMalloc' : iProp Σ).
   Hypothesis ushp_malloc_ok : ushp_malloc_ty UMalloc UMalloc'.
+
+  (* ...AND THE ONE FACT THE FAILURE ARM COSTS (lane SELF-KILL, step 5).
+     On the NULL arm the walk stores through the null pointer and the
+     kernel KILLS the process, and the deposit at a killing cause is the
+     process's own exit payload at -1 ([UexecRet.ukill_cred_at]'s right
+     side).  A Coq-level premise rather than a resource, because it is
+     FREE at the record of every process that runs this code: [execcmd] is
+     reached only from [parsecmd], and only sh's FORKED CHILD parses, at a
+     trivial payload ([UkRun.ukn_pay_free_of_triv]).  Exactly the shape
+     [UkShRun]'s exit walks already take. *)
+  Hypothesis ushp_pay_free : (⊢ ukn_pay N (-1)).
 
   (* ===================================================================== *)
   (* §8 peek @0x448 -- 40 instructions, an EIGHT-word frame, one scan.      *)
@@ -1864,8 +1876,113 @@ Section UkShParseLex.
     (* ---- malloc(168) -- THE HYPOTHESIS, and this lemma's only taint ---- *)
     iApply (ushp_malloc_ok h5 m4 168 nn Ha0_4 ltac:(lia)
               ltac:(lia) with "Hcode HM Hrun").
-    iIntros (h6 m5 p g) "%Hcs45 %Ha0_5 %Hpb Hbs HM' Hrun".
+    iIntros (h6 m5) "%Hcs45 Hans Hrun".
     rewrite Eret1.
+    iDestruct "Hans" as
+      "[%Ha0_5 | (%p & %g & %Ha0_5 & %Hpb & Hbs & HM')]".
+    { (* ===================================================================
+         THE NULL ARM (lane SELF-KILL, step 5): [malloc] returned 0 because
+         [sbrk] failed, [execcmd] does NOT test the result, and the four
+         instructions below walk straight into [memset(0, 0, 168)].  Its
+         first store goes through the null pointer -- VA 0 is sh's own
+         first text byte ([ShSyms.getcmd = 0]), mapped X-and-not-W -- so
+         the machine takes a store page fault, the kernel prints
+         "unexpected scause" and kills the process, and the child pays for
+         its own death with its exit payload at -1.  Nothing comes back:
+         this branch has no continuation.
+         =================================================================== *)
+      (* ---- 0x1e4  c.mv s1,a0 ---- *)
+      iApply (wp_uk_cmv N h6 m5 (mword_of_int 0x1e4) s1_idx a0_idx
+                (mword_of_int 0) (10 + nn)
+                ltac:(unfold unot_sp; vm_compute; discriminate)
+                ltac:(vm_compute; discriminate)
+                ltac:(rewrite Ha0_5; symmetry; exact (ushp_mv_val 0))
+                with "[] Hrun").
+      { iApply (uis_shp_1e4 with "Hcode"). }
+      rewrite (ushp_pc_step 0x1e4 2). iIntros (h7) "Hrun".
+      set (m6 := <[Regidx s1_idx
+                   := regval_into_reg (mword_of_int 0 : mword 64)]> m5).
+      assert (Hm6 : forall q : mword 5, Regidx q <> Regidx s1_idx ->
+                      m6 !!! Regidx q = m5 !!! Regidx q)
+        by (intros q Hq; exact (upd_ne m5 (Regidx s1_idx) (Regidx q) _ Hq)).
+      assert (Hs1_6 : m6 !!! Regidx s1_idx = mword_of_int 0)
+        by exact (upd_eq m5 (Regidx s1_idx)
+                    (regval_into_reg (mword_of_int 0 : mword 64))).
+      (* ---- 0x1e6  li a2,168 ---- *)
+      iApply (wp_uk_li N h7 m6 (mword_of_int 0x1e6)
+                (mword_of_int 168 : mword 12) a2_idx (mword_of_int 168) (10 + nn)
+                ltac:(unfold unot_sp; vm_compute; discriminate)
+                ltac:(vm_compute; discriminate)
+                ltac:(rewrite E168; symmetry; exact (ushp_mv_val 168))
+                with "[] Hrun").
+      { iApply (uis_shp_1e6 with "Hcode"). }
+      rewrite (ushp_pc_step 0x1e6 4). iIntros (h8) "Hrun".
+      set (m7 := <[Regidx a2_idx
+                   := regval_into_reg (mword_of_int 168 : mword 64)]> m6).
+      assert (Hm7 : forall q : mword 5, Regidx q <> Regidx a2_idx ->
+                      m7 !!! Regidx q = m6 !!! Regidx q)
+        by (intros q Hq; exact (upd_ne m6 (Regidx a2_idx) (Regidx q) _ Hq)).
+      (* ---- 0x1ea  c.li a1,0 ---- *)
+      iApply (wp_uk_cli N h8 m7 (mword_of_int 0x1ea)
+                (mword_of_int 0 : mword 6) a1_idx (10 + nn)
+                ltac:(unfold unot_sp; vm_compute; discriminate)
+                ltac:(vm_compute; discriminate)
+                with "[] Hrun").
+      { iApply (uis_shp_1ea with "Hcode"). }
+      rewrite (ushp_pc_step 0x1ea 2). iIntros (h9) "Hrun".
+      set (m8 := <[Regidx a1_idx
+                   := regval_into_reg
+                        (sign_extend' 64 (mword_of_int 0 : mword 6)
+                         : mword 64)]> m7).
+      assert (Hm8 : forall q : mword 5, Regidx q <> Regidx a1_idx ->
+                      m8 !!! Regidx q = m7 !!! Regidx q)
+        by (intros q Hq; exact (upd_ne m7 (Regidx a1_idx) (Regidx q) _ Hq)).
+      (* ---- 0x1ec  jal a5c <memset> ---- *)
+      iApply (wp_uk_jal N h9 m8 (mword_of_int 0x1ec)
+                (mword_of_int 2160 : mword 21) ra_idx
+                (mword_of_int 0xa5c) (mword_of_int 0x1f0) (10 + nn)
+                ltac:(unfold unot_sp; vm_compute; discriminate)
+                ltac:(vm_compute; discriminate)
+                ltac:(apply bv_eq; vm_compute; reflexivity)
+                ltac:(apply bv_eq; vm_compute; reflexivity)
+                ltac:(vm_compute; reflexivity)
+                with "[] Hrun").
+      { iApply (uis_shp_1ec with "Hcode"). }
+      iIntros (h10) "Hrun".
+      set (m9 := <[Regidx ra_idx
+                   := regval_into_reg (mword_of_int 0x1f0 : mword 64)]> m8).
+      assert (Hm9 : forall q : mword 5, Regidx q <> Regidx ra_idx ->
+                      m9 !!! Regidx q = m8 !!! Regidx q)
+        by (intros q Hq; exact (upd_ne m8 (Regidx ra_idx) (Regidx q) _ Hq)).
+      assert (Ha1_9 : m9 !!! Regidx a1_idx = (mword_of_int 0 : mword 64)).
+      { rewrite (Hm9 a1_idx ltac:(vm_compute; discriminate)).
+        rewrite (upd_eq m7 (Regidx a1_idx)
+                   (regval_into_reg
+                      (sign_extend' 64 (mword_of_int 0 : mword 6) : mword 64))).
+        apply bv_eq; vm_compute; reflexivity. }
+      assert (Ha0_9 : m9 !!! Regidx a0_idx = mword_of_int 0).
+      { rewrite (Hm9 a0_idx ltac:(vm_compute; discriminate)).
+        rewrite (Hm8 a0_idx ltac:(vm_compute; discriminate)).
+        rewrite (Hm7 a0_idx ltac:(vm_compute; discriminate)).
+        rewrite (Hm6 a0_idx ltac:(vm_compute; discriminate)). exact Ha0_5. }
+      assert (Ha2_9 : m9 !!! Regidx a2_idx = mword_of_int (Z.of_nat 168)).
+      { rewrite (Hm9 a2_idx ltac:(vm_compute; discriminate)).
+        rewrite (Hm8 a2_idx ltac:(vm_compute; discriminate)).
+        rewrite (upd_eq m6 (Regidx a2_idx)
+                   (regval_into_reg (mword_of_int 168 : mword 64))).
+        now f_equal. }
+      assert (Eret2 : ret_pc (m9 !!! Regidx ra_idx) = mword_of_int 0x1f0).
+      { rewrite (upd_eq m8 (Regidx ra_idx)
+                   (regval_into_reg (mword_of_int 0x1f0 : mword 64))).
+        apply bv_eq; vm_compute; reflexivity. }
+      rewrite <- shpp_memset.
+      (* ---- memset(0, 0, 168): the FIRST store faults and the child dies -- *)
+      iDestruct (ush_text0 γt with "Hkcode") as (btx) "#Ht0".
+      iApply (wp_ksh_memset_null N h10 m9 0 168%nat btx (8 + nn)
+                ushp_pay_free ltac:(lia) ltac:(vm_compute; reflexivity)
+                Ha0_9 Ha2_9 ltac:(lia) ltac:(unfold Z31; lia)
+                with "Hkcode Ht0 Hrun").
+    }
     destruct Hpb as [ Hp0 [ Hp16 Hpsz ] ].
     assert (H38 : (2:Z) ^ 38 = 274877906944) by (vm_compute; reflexivity).
     assert (Hp64 : 0 <= p < Z64)

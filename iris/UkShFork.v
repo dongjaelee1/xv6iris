@@ -235,10 +235,6 @@ Section UkShFork.
   Qed.
 
   Lemma wp_kshf_fork
-      (Hsbrk : forall (N' : uk_names Σ) (sz n : Z) (r : mword 64),
-         UkShMalloc.ushm_sbrk_ans N' sz n r -∗
-         ⌜ r = (mword_of_int sz : mword 64) ⌝ ∗
-         UkShMalloc.ushm_sbrk_ans N' sz n r)
       (h : CpuId) (m : regfile) (f : nat -> bv 8) (k len : nat)
       (toks : list (nat * nat)) (sz : Z) (l : list fdstate) (n : nat)
       (cw : Z) :
@@ -473,7 +469,7 @@ Section UkShFork.
       replace (2 + (UkShDiag.ush_Dg + (66 + n)))%nat
         with (60 + (8 + (UkShDiag.ush_Dg + n)))%nat
         by (unfold UkShDiag.ush_Dg; lia).
-      iApply (UkShMain.wp_kshm_child_alloc N' Hpsok_free (Hsbrk N')
+      iApply (UkShMain.wp_kshm_child_alloc N' Hpsok_free
                 hB mA DfracDiscarded DfracDiscarded
                 (sh_buf + Z.of_nat k) len (fun j : nat => f (k + j)%nat)
                 toks sz l n
@@ -492,10 +488,6 @@ Section UkShFork.
      take: the three byte tests decide nothing about the working
      directory. *)
   Lemma wp_kshf_fork_any
-      (Hsbrk : forall (N' : uk_names Σ) (sz n : Z) (r : mword 64),
-         UkShMalloc.ushm_sbrk_ans N' sz n r -∗
-         ⌜ r = (mword_of_int sz : mword 64) ⌝ ∗
-         UkShMalloc.ushm_sbrk_ans N' sz n r)
       (h : CpuId) (m : regfile) (f : nat -> bv 8) (k len : nat)
       (toks : list (nat * nat)) (sz : Z) (l : list fdstate) (n : nat) :
     UkSh.ush_regs m ->
@@ -531,7 +523,7 @@ Section UkShFork.
     iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hjt %Hfd0 Hstd Hdat Hsz Hbuf Hrun".
     iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpos)".
     iDestruct "Hcwd" as (cw) "Hcwd".
-    iApply (wp_kshf_fork Hsbrk h m f k len toks sz l n cw
+    iApply (wp_kshf_fork h m f k len toks sz l n cw
               Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hszlo Hszal Hszok
               with "Hdp Hhead Hcode Hxs Hro Hjt [%] [Hustd Hcwd Hch Hpos]
                     Hdat Hsz Hbuf Hrun").
@@ -560,10 +552,6 @@ Section UkShFork.
   (* second is stage 5's [ush_simple] scope and not this file's.            *)
   (* ===================================================================== *)
   Lemma wp_kshm_body
-      (Hsbrk : forall (N' : uk_names Σ) (sz n : Z) (r : mword 64),
-         UkShMalloc.ushm_sbrk_ans N' sz n r -∗
-         ⌜ r = (mword_of_int sz : mword 64) ⌝ ∗
-         UkShMalloc.ushm_sbrk_ans N' sz n r)
       (h : CpuId) (m : regfile) (f : nat -> bv 8) (k len : nat)
       (toks : list (nat * nat)) (sz : Z) (l : list fdstate) (n : nat) :
     UkSh.ush_regs m ->
@@ -797,7 +785,7 @@ Section UkShFork.
                     with "[] Hrun").
           { iApply (uis_shk_98a with "Hcode"). }
           iIntros (h5) "Hrun".
-          iApply (wp_kshf_fork_any Hsbrk h5 m2 f k len toks sz l n
+          iApply (wp_kshf_fork_any h5 m2 f k len toks sz l n
                     Hregs2 Hs1_2 Hns Htoks Htlen Hnn Hnul Hkl
                     Hszlo Hszal Hszok
                     with "Hdp Hhead Hcode Hxs Hro Hjt [%] Hstd Hdat Hsz Hbuf Hrun").
@@ -818,7 +806,7 @@ Section UkShFork.
                     with "[] Hrun").
           { iApply (uis_shk_982 with "Hcode"). }
           iIntros (h3) "Hrun".
-          iApply (wp_kshf_fork_any Hsbrk h3 m1 f k len toks sz l n
+          iApply (wp_kshf_fork_any h3 m1 f k len toks sz l n
                     Hregs1 Hs1_1 Hns Htoks Htlen Hnn Hnul Hkl
                     Hszlo Hszal Hszok
                     with "Hdp Hhead Hcode Hxs Hro Hjt [%] Hstd Hdat Hsz Hbuf Hrun").
@@ -839,7 +827,7 @@ Section UkShFork.
                   with "[] Hrun").
         { iApply (uis_shk_97a with "Hcode"). }
         iIntros (h1) "Hrun".
-        iApply (wp_kshf_fork_any Hsbrk h1 m f k len toks sz l n
+        iApply (wp_kshf_fork_any h1 m f k len toks sz l n
                   Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl
                   Hszlo Hszal Hszok
                   with "Hdp Hhead Hcode Hxs Hro Hjt [%] Hstd Hdat Hsz Hbuf Hrun").
@@ -921,10 +909,6 @@ Section UkShFork.
      walk does not continue in sh's code at all ([UkSh.ush_gen_run]). *)
 
   Lemma ushf_rest_of_body
-      (Hsbrk : forall (N' : uk_names Σ) (sz n : Z) (r : mword 64),
-         UkShMalloc.ushm_sbrk_ans N' sz n r -∗
-         ⌜ r = (mword_of_int sz : mword 64) ⌝ ∗
-         UkShMalloc.ushm_sbrk_ans N' sz n r)
       (sz : Z) :
     (* THE LINE THE DISCIPLINE ADMITS LEXES.  Closed at the literal
        ([UConsLine.ush_echo_tokens] is the computation); E4's
@@ -974,7 +958,7 @@ Section UkShFork.
     iDestruct ("Hl" $! len with "[%] [%]") as %Hline;
       [ exact Hnn | exact Hnul | ].
     destruct (Hlex f k len Hline) as (Hns & toks & Htoks & Htlen).
-    iApply (wp_kshm_body Hsbrk h m f k len toks sz l n
+    iApply (wp_kshm_body h m f k len toks sz l n
               Hregs Hs1 Ha5 Hnn Hnul ltac:(lia) Hns Htoks Htlen
               Hszlo Hszal Hszok
               with "Hdp [Hhead] Hcode Hxs Hro [] Hjt [%] Hstd Hdat Hsz Hbuf Hrun").

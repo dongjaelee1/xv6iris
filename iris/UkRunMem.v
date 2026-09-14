@@ -391,6 +391,53 @@ Section UkRunMem.
     iApply (urun_close with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep"). iApply ("Hcont" with "Hw").
   Qed.
 
+  (* ===================================================================== *)
+  (* THE BYTE STORE THAT DIES (lane SELF-KILL, step 5).                     *)
+  (*                                                                       *)
+  (* [wp_uk_sb] above reads the page's W bit off OWNERSHIP -- hold the byte *)
+  (* and the page is writable.  This one reads the DENIAL off the other     *)
+  (* half of the same heap: a TEXT byte is on a page the two-heap invariant *)
+  (* keeps X-and-not-W ([UserHeap.uheap_text] / [uheap_text_nw]), so a      *)
+  (* store to it faults with cause 15 and the kernel kills the process.     *)
+  (* There is NO continuation and NO byte: nothing is written, and the      *)
+  (* process never runs again.                                             *)
+  (*                                                                       *)
+  (* WHAT IT COSTS: the process's own exit payload at the kill status,      *)
+  (* which is free at a forked child's record                              *)
+  (* ([UkRun.ukn_pay_free_of_triv]) -- a Coq-level premise, exactly as      *)
+  (* [UkShRun]'s exit walks take it.  sh's forked child stores through the  *)
+  (* NULL [malloc] returned it, and VA 0 is sh's own first text byte        *)
+  (* ([ShSyms.getcmd = 0]).                                                 *)
+  (* ===================================================================== *)
+  Lemma wp_uk_sb_denied (N : uk_names Σ) (h : CpuId) (m : regfile) (pc : mword 64)
+      (imm : mword 12) (rs1 rs2 : mword 5) (a : Z) (b0 : bv 8) (avail : nat) :
+    a = uint (m !!! Regidx rs1) + uoff_i12 imm ->
+    (⊢ ukn_pay N (-1)) ->
+    uinstr_is (ukn_t N) pc false (STORE (imm, Regidx rs2, Regidx rs1, 1)) -∗
+    utext (ukn_t N) a b0 -∗
+    urun N h m pc avail -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Ha Hpay. iIntros "#Hi #Ht Hrun".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
+    iDestruct (uheap_text with "Hheap Ht") as %(HM & Hx & Hbnd).
+    iDestruct (uheap_text_nw with "Hheap Ht") as %Hnw.
+    destruct (ucanon_of_bound a Hbnd) as [Hua Hcan].
+    assert (Htgt : (mword_of_int a : mword 64)
+                   = add_vec (m !!! Regidx rs1) (sign_extend' 64 imm))
+      by exact (umoi_add_i12 _ imm a Ha).
+    (* the key's W bit is CLEAR: the page is mapped (it is executable) and
+       [uheap]'s text half says it is not writable *)
+    assert (Hden : UkStore.uk_store_denied pm (mword_of_int a : mword 64)).
+    { destruct Hx as (q & Hq & _). exists q. split; [ exact Hq | ].
+      destruct (up_W q) eqn:Ew; [ | reflexivity ].
+      exfalso. apply Hnw. exists q. exact (conj Hq Ew). }
+    iApply (UkStore.wp_uk_sb_denied C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc
+              fdv cw gn cs pidv imm rs1 rs2 (mword_of_int a) (m !!! Regidx rs2)
+              Hui Htgt eq_refl Hden Hcan Hpay with "Hb Hmy").
+  Qed.
+
   Lemma wp_uk_ld (N : uk_names Σ) (h : CpuId) (m : regfile) (pc : mword 64)
       (imm : mword 12) (rs1 rd : mword 5) (dq : dfrac) (a : Z) (w : mword 64)
       (avail : nat) :

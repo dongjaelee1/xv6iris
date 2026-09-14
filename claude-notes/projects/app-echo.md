@@ -118,8 +118,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
-- [ ] **PROLOGUE-ALTS-2** (application; `-sup`, `lane/prologue-alts-2`):
-  LAUNCHED 2026-09-16: `ps_len_ok`, `echo_write_link_pro`, the banner lemma.
+- [x] ~~**PROLOGUE-ALTS-2**~~ LANDED 2026-09-16 (`ca914ff85`; the note
+  below): `ps_len_ok`, `echo_write_link_pro`, the arbitrary-round banner
+  lemma.  `-sup` is free.
 - [ ] **TRAP-ROWS** (kernel; `-tlw`, `lane/trap-rows`; brief scratchpad
   `brief-trap-rows.md`): T1 LANDED 2026-09-16 (`6eafdaa54`; the note below);
   M2 = T2+T3+T4 in flight: T2 the read's -1 arm carries the reader's killed fact and the
@@ -3341,6 +3342,33 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+PROLOGUE-ALTS-2 LANDED (2026-09-16; `ca914ff85` on `ef245363f`; 3 files
++832/-5; builds pb1-pb2 in `-sup`; audit the thirteen; lemma_diff CLEAN; no
+Admitted).  THE PROLOGUE'S CHOICE BYTE IS PAYABLE.  `eout` gains a fourth
+pure conjunct `ps_len_ok`, the twin of `cs_len_ok`: (A) `pro_from (S
+(ps_round so)) (o_ps so) = []` -- nothing is filed for a round that has not
+opened -- and (B), at a ROUND-OPENING block (`ps_opens`: `length E = 0`, or
+`17 | length E` with `cs !!! (length E/17 - 1) = 3`), any prefix of the
+resolution giving a SHORTER prologue was passed by the writer STRICTLY.  The
+handover's proposed iff was FALSE both ways (at the choice byte `o_w` IS the
+whole pending and the round is open; one byte later the round is settled
+and `o_w` is not); (A) is new and is what (B) needs at the two moves that
+OPEN a round.  Moves `ps_len_ok_write`/`_blk`/`_echo`/`_pro`;
+`eout_step_write`/`_blk`/`eout_step_echo`, the four links and `read_ret` keep
+their statements verbatim.  `eout_step_write_pro`/`echo_write_link_pro` at
+byte 19 of an ARBITRARY round (eight premises: `17 | n0`; `n0 = 0 ∨ cs0 !!!
+(n0/17-1) = 3`; `n0/17 <= length cs0`; `pro_pin ps0 cs0 n0`; `¬ pro_done
+(pro_from (pro_idx cs0 (n0/17)) ps0)`; `P = length (proc_upto ps0 cs0 (S
+n0))`; `a < length pro_alts`; `pro_alts !!! a !! 0 = Some b`; returns `turn v
+(S P) ∗ ps_lb v (ps0 ++ [a]) ∗ cs_lb ∗ E_lb ∨ T`); reconciliation: (B) ->
+same prologue -> `pro_of_prefix_free` -> `pro_of_open_app_inj` -> `o_ps so =
+ps0`, which pays `ps_lb v (ps0 ++ [a])`.  `proc_upto_round_banner(_open)`
+gives the banner byte at an arbitrary round and an arbitrary count j of
+failed execs (`pro_round * j`), no vm_compute; `pro_choice_round1_live` is
+the round-1 anti-vacuity witness.  `EchoLinks.v`'s FIFTH conjunct
+(`echo_link_pro`) is IO-LEAF's to add.  Handover: scratchpad
+`prologue-alts-2-handover.md`.
 
 IO-LEAF M1(a,b) LANDED (2026-09-16; `f4b03abd7` on `249b751c2`; 5 files
 +234/-38; builds io1-io3 in the main checkout; audit the thirteen; lemma_diff

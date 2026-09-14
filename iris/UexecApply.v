@@ -492,9 +492,14 @@ Section Apply.
     rewrite /uexec_arm_F /uexec_kill_arm_F /uexec_fork_parent_F /ufork_ans
             /uexec_ret_cont_F /uexec_wait_F /uexec_ret_cont_gen. cbv zeta.
     destruct (decide (sc = uecall_scause)) as [_ | _];
-      [ | (* the transparent arm IS the slot (lane SELF-KILL, P6), so it
-             transports exactly as the slot does *)
-        exact (HS W W' Hg Hp HM Hpi Hsz Hfd Hcw Hgn Hch Hpid Hlz) ].
+      [ | (* the transparent arm is the PAIR now (lane TRAP-ROWS, T3): the
+             right side transports as the slot does and the left is a
+             function of the key's generation alone, which the two keys
+             share ([Hgn]). *)
+        rewrite Hgn;
+        apply bi.and_proper;
+        [ reflexivity
+        | exact (HS W W' Hg Hp HM Hpi Hsz Hfd Hcw Hgn Hch Hpid Hlz) ] ].
     (* [Hfd] joins the other four: the returning arm's row reads the ENTRY
        descriptor view, so both sides have to name the same one before the
        trapframe transport can be the only difference left.  [Hcw] the
@@ -652,6 +657,21 @@ Section Apply.
     length (uvis_tf W) = TFWORDS ->
     (uexec_arm sc W f : iProp Σ) ⊣⊢ uexec_arm sc (uvis_run W) f.
   Proof. exact (uexec_arm_F_run uslot uslot_key_cong sc W f). Qed.
+
+  (* ...AND THE SLOT ALONE ACROSS THE SAME STEP (lane TRAP-ROWS, T3): the
+     additive pair travels to usertrap and the untaken side comes back at
+     the key it was handed at, so the loop moves a bare slot between the
+     trapped key and its run projection exactly as it moves the arm. *)
+  Lemma uslot_run_cong (W : uvis) :
+    length (uvis_tf W) = TFWORDS ->
+    (uslot W : iProp Σ) ⊣⊢ uslot (uvis_run W).
+  Proof.
+    intro Hl.
+    apply (uslot_key_cong W (uvis_run W)
+             (eq_sym (uvis_run_gpr W)) (eq_sym (uvis_run_pc W))
+             eq_refl eq_refl eq_refl eq_refl eq_refl eq_refl eq_refl eq_refl
+             eq_refl).
+  Qed.
 
 End Apply.
 
@@ -1064,14 +1084,21 @@ Section LoopApply.
        spost_at uslot (usys_num (uvis_tf (uvis_run W))) f (uvis_run W)
          (uvis_tf W' !!! tf_arg_idx 0) (uvis_M W') (uvis_fd W')
          (uvis_cwd W') (uvis_ch W')) -∗
-    uexec_arm sc W f -∗ uslot W'.
+    (* ...AND THE PROCESS'S OWN ARM -- OR, AT A NON-ECALL CAUSE, THE SLOT
+       ALONE (lane TRAP-ROWS, T3).  The additive pair the process offers at
+       a killing cause goes DOWN to usertrap with the deposit, because only
+       the kernel knows which side it takes; what comes back on the resume
+       path is the untaken side ([SpecUsertrap.ut_kill_out]), and that is
+       what the round transports to the resumed key. *)
+    (if decide (sc = uecall_scause) then uexec_arm sc W f
+     else uslot (uvis_run W)) -∗ uslot W'.
   Proof.
     intros Hl Hgn Hpidk Hch Hfd Hfdrow Hpiperow Hpidrow Hr.
     iIntros "Hxo Hfo Hwo Hsp Hret".
-    (* STEP A: the trapped key and its run projection are the same key *)
-    iEval (rewrite (uexec_arm_run sc W f Hl)) in "Hret".
     destruct (decide (sc = uecall_scause)) as [Hec | Hne].
     - (* ---- ECALL ---- *)
+      (* STEP A: the trapped key and its run projection are the same key *)
+      iEval (rewrite (uexec_arm_run sc W f Hl)) in "Hret".
       rewrite (uexec_arm_ecall sc (uvis_run W) f Hec).
       rewrite Hec in Hr.
       destruct (uround_ok_ecall (uvis_tf (uvis_run W)) (uvis_M W) (uvis_M W')
@@ -1256,11 +1283,9 @@ Section LoopApply.
              { iExact "Hsp". }
              iExact "Hret".
     - (* ---- TRANSPARENT: interrupt, page fault, anything else ---- *)
-      rewrite (uexec_arm_transparent sc (uvis_run W) f Hne).
-      (* THE ARM HAS TWO SIDES NOW (lane SELF-KILL §3b) and BOTH carry the
-         slot, so the resume path reads it off either without learning
-         which the process chose. *)
-      iDestruct (uexec_kill_arm_slot sc (uvis_run W) f with "Hret") as "Hret".
+      (* THE SLOT ARRIVES DIRECTLY (lane TRAP-ROWS, T3): the pair went down
+         to usertrap and the kernel handed back the side it did not take,
+         so all that is left here is the key congruence. *)
       destruct (uround_ok_transparent sc (uvis_tf (uvis_run W))
                   (uvis_M W) (uvis_M W') (uvis_perm W) (uvis_perm W')
                   (uvis_sz W) (uvis_sz W') (uvis_cwd W) (uvis_cwd W')
@@ -1355,7 +1380,10 @@ Section LoopApply.
        spost_at uslot (usys_num (tf_of g (ret_pc sepc_v))) f
          (uvis_run W) (pv_tf (us_V U') !!! tf_arg_idx 0)
          (us_M U') fdv' (pv_cwi (us_V U')) cs') -∗
-    uexec_arm sc W f -∗
+    (* the process's arm at an ecall, the untaken slot at any other cause
+       (lane TRAP-ROWS, T3) *)
+    (if decide (sc = uecall_scause) then uexec_arm sc W f
+     else uslot (uvis_run W)) -∗
     uslot (uvis_of U' fdv' (uvis_gen W) cs' (uvis_pid W)).
   Proof.
     intros Hl -> -> Hfd Hchrow Hfdrow Hpiperow Hpidrow Hr.

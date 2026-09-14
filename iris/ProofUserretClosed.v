@@ -382,8 +382,6 @@ Section UserretClosed.
        it at the unexpected-scause arm -- the one place setkilled runs.
        AT THE BLOCK'S GENERATION, which the trap route's own pin says is
        the key's ([Hgen0]). *)
-    iDestruct (uexec_dep_F_kill uslot sc W fdep with "Hdep") as "[Hkin Hdep]".
-    iEval (rewrite -Hgen0) in "Hkin".
     iDestruct "Hdep" as "[Hpay Hxin]".
     (* THE PAYMENT IS THE ONE ROW WITH NO GUARD, so it is split off here
        rather than in the case analysis below: the process owes it at every
@@ -579,10 +577,36 @@ Section UserretClosed.
         + (* not fork, so the fork row is vacuous *)
           rewrite /SpecUsertrap.ut_fork_in. iIntros "%Hg". exfalso.
           apply Hnfk. rewrite <- (uvis_run_num W). exact (proj2 Hg). }
+    (* ---- THE PAIR GOES DOWN WHOLE (lane TRAP-ROWS, T3).  At a non-ecall
+           cause the arm the process handed over IS the additive conjunction
+           of its -1 deposit and its resume slot, and only the KERNEL knows
+           which side it takes -- so the whole arm crosses, and the untaken
+           side comes back on usertrap's resume row
+           ([SpecUsertrap.ut_kill_out]).  At an ecall the row is [emp] and
+           the arm stays here for the round.  THE KEY IS THE LOOP'S OWN
+           ([uvis_run W]): the rows carry it opaque, so nothing has to be
+           transported across the save walk. ---- *)
+    iAssert (SpecUsertrap.ut_kill_in fdep sc (uvis_run W)
+               (pv_gen (us_V (us_upt U0 pt))) ∗
+             (if decide (sc = uecall_scause) then uexec_arm sc W fdep
+              else emp))%I with "[Hret]" as "[Hkin Hret]".
+    { rewrite /SpecUsertrap.ut_kill_in.
+      destruct (decide (sc = uecall_scause)) as [Hec | Hne].
+      - iSplitR; [ iSplitR; [ | done ];
+                   iPureIntro; cbn [uvis_run uvis_of_run uvis_gen];
+                   exact (eq_sym Hgen0)
+                 | iExact "Hret" ].
+      - iSplitL; [ | done ].
+        iSplitR; [ iPureIntro; cbn [uvis_run uvis_of_run uvis_gen];
+                   exact (eq_sym Hgen0) | ].
+        iEval (rewrite (uexec_arm_run sc W fdep Hlen)) in "Hret".
+        rewrite (uexec_arm_transparent sc (uvis_run W) fdep Hne).
+        iExact "Hret". }
     (* ---- one round.  [Hret] -- the linear return user execution handed
            back -- is FRAMED across the crossing (R-a / K8). ---- *)
     iApply (UV.wp_uservec_pt C pt (fun _ : uptd => emp%I) j ksp
               (us_upt U0 pt) (uvis_fd W) (uvis_gen W) (uvis_ch W) (uvis_pid W) fdep
+              (uvis_run W)
               (uvis_M W)
               (tf_resume_gpr0 (uvis_tf W))
               ms_v sc stv (tf_w (uvis_tf W) tf_epc_idx)
@@ -595,7 +619,15 @@ Section UserretClosed.
       "%Huptpt' %Hround' %Hfdkept %Hchkept %Hgenk2 %Hfdecall %Hpipecall %Hpidrow %Hpcret' %Hgprtie'
        %Hpttf %Hmapwf %Hsatpr %Hnorm' %Hptwf' %Hmm %Hretms %Hacc'
        Hhs' Hpriv' Hms' Hmie' Hmdl' Hmenv' Hstvec' #Hsenv' Hsc' Hstval' Hsepc'
-       Hupt' Hpc' Hgpr' Hures' #Hhw' #Hmin' #Hcreds' Hxo Hfo Hwo Hso".
+       Hupt' Hpc' Hgpr' Hures' #Hhw' #Hmin' #Hcreds' Hxo Hfo Hwo Hko Hso".
+    (* ...AND THE UNTAKEN SIDE COMES BACK (lane TRAP-ROWS, T3): at a
+       non-ecall cause the kernel resumed, so it took the slot and owes it,
+       and that is what the round transports to the resumed key. *)
+    iAssert (if decide (sc = uecall_scause) then uexec_arm sc W fdep
+             else uslot (uvis_run W))%I with "[Hret Hko]" as "Hret".
+    { rewrite /SpecUsertrap.ut_kill_out.
+      destruct (decide (sc = uecall_scause)) as [_ | _];
+        [ iExact "Hret" | iExact "Hko" ]. }
     (* the three frozen CSRs, duplicated out of the residue for [user_cfg] *)
     iDestruct (UV.usertrap_res_csrs_open (CID := CID') pt' ksp U2 with "Hures'")
       as "[Hcsrs Hcback]".

@@ -1076,7 +1076,10 @@ Section UkStorePostFetch.
     (* THE KILL ROW, out of the fault witness -- the LEFT side of the
        two-sided deposit, which is the tainted route's (lane SELF-KILL,
        P6b; [UexecRet.ukill_cred_at]) *)
-    iSplitR.
+    (* THE PAIR (lane TRAP-ROWS, T3): [iSplit], not [iSplitR] -- the two
+       sides come out of ONE copy of the leaf's resources, the left from
+       the deposit premise and the right from the engine's Löb slot. *)
+    iSplit.
     { iPoseProof Hkcw as "Hkcw".
       iDestruct ("Hkcw" with "Hmyp") as "[#Hkl | Hkr]";
         [ iApply (ukill_cred_at_of_cred _ _ with "Hkl")

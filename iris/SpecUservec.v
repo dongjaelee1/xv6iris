@@ -234,7 +234,10 @@ Definition uservec_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} `{GEN 
     (sepc_v sc_v : mword 64)
     (* the deposit's FAMILIES, read by the syscall channel's out row below
        -- see [SpecUsertrap.ut_sys_out] *)
-    (f : sfam) : iProp Σ :=
+    (f : sfam)
+    (* THE KEY THE KILL PAIR WAS HANDED AT (lane TRAP-ROWS, T3), relayed
+       opaque -- see [SpecUsertrap.usertrap_post]. *)
+    (Wk : uvis) : iProp Σ :=
   ( ∀ (pt' : uptd) (mf : regfile) (ms' usatp uepc sc' stval' mdv0 : mword 64)
       (U' : ustate)
       (* the round may have moved the descriptor states; the post names
@@ -383,6 +386,9 @@ Definition uservec_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} `{GEN 
     (* ...AND WAIT'S, forwarded the same way -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out sc_v (tf_of g (ret_pc sepc_v))
       (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
+    (* ...AND THE UNTAKEN CONTINUATION, forwarded the same way (lane
+       TRAP-ROWS, T3) -- [SpecUsertrap.ut_kill_out] *)
+    ut_kill_out sc_v Wk -∗
     (* ...AND THE SYSCALL CHANNEL'S, forwarded at this boundary's own entry
        key -- the same one the deposit went down at
        ([wp_uservec_pt_body]'s pre row below) -- and read at the a0 word of
@@ -411,6 +417,9 @@ Definition wp_uservec_pt_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} 
     (* the deposit's FAMILIES, relayed to usertrap's own row -- see
        [SpecUsertrap.wp_usertrap_body] *)
     (f : sfam)
+    (* ...and the key the kill pair was handed at, relayed opaque
+       (lane TRAP-ROWS, T3) *)
+    (Wk : uvis)
     (* THE DELIVERED FRAME, AT NAMED VALUES AND A NAMED IMAGE.
        [user_trap_frame] is definitionally the ∃ over [user_trap_frame_at],
        so the five data are the same premise with names -- which is what
@@ -527,10 +536,10 @@ Definition wp_uservec_pt_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} 
     (ProcDefs.upd_usM (ProcInv.us_tf U (tf_of g (ret_pc sepc_v))) M) -∗
   (* ...and THE KILL ROW, owed at every cause and read only at the ones
      usertrap kills at ([SpecUsertrap.ut_kill_in]) *)
-  ut_kill_in (pv_gen (us_V U)) sc_v -∗
+  ut_kill_in f sc_v Wk (pv_gen (us_V U)) -∗
   wp_next true (proc_addr j) (fun CID' : CpuId =>
     uservec_post (CID := CID') (URes CID') C pt vksp U M g sts gn cs pid
-      sepc_v sc_v f) -∗
+      sepc_v sc_v f Wk) -∗
   WP (Loop : expr riscv_lang).
 
 Require Import UserFd.   (* [ufdG] -- the class a minted user slot needs *)
@@ -547,7 +556,7 @@ Module Type USERVEC.
       (C : ucfg) (pt : uptd) (Rut : uptd -> iProp Σ)
       (j : nat) (vksp : mword 64) (U : ustate) (sts : list fdstate)
       (gn : gname) (cs : gset gname) (pid : mword 32)
-      (f : sfam) (M : gmap Z (bv 8))
+      (f : sfam) (Wk : uvis) (M : gmap Z (bv 8))
       (g : regfile) (ms_v sc_v stval_v sepc_v : mword 64),
       (* THE BARE RESIDUE, not [usertrap_res] and not even the parked form.
          [usertrap_res] and this spec's own [user_trap_frame] premise claim
@@ -563,5 +572,5 @@ Module Type USERVEC.
          the same two moves in reverse.  See
          claude-notes/projects/uservec.md. *)
       wp_uservec_pt_body (fun h : CpuId => usertrap_res_bare (CID := h))
-        C pt Rut j vksp U sts gn cs pid f M g ms_v sc_v stval_v sepc_v.
+        C pt Rut j vksp U sts gn cs pid f Wk M g ms_v sc_v stval_v sepc_v.
 End USERVEC.

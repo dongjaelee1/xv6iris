@@ -920,7 +920,8 @@ Section UkLoadPostFetch.
     (* THE KILL ROW, out of the fault witness -- the LEFT side of the
        two-sided deposit, which is the tainted route's (lane SELF-KILL,
        P6b; [UexecRet.ukill_cred_at]) *)
-    iSplitR.
+    (* THE PAIR (lane TRAP-ROWS, T3) *)
+    iSplit.
     { iPoseProof Hkcw as "#Hkcw".
       iApply (ukill_cred_at_of_cred _ _ with "Hkcw"). }
     iExact "Hret".

@@ -779,7 +779,7 @@ Section UtDispatch.
       (m0 m : regfile) (av nx : nat)
       (ep sc st : mword 64)
       (mie_v menvcfg0 : mword 64) (sts : list fdstate) (gn : gname)
-      (cs : gset gname) (pid : mword 32) (fdep : sfam) :
+      (cs : gset gname) (pid : mword 32) (fdep : sfam) (Wk : UexecSlot.uvis) :
     printk_gen_contract (kt := KT1) (fsc_printk) (fsc_uart) (fsc_disk) ->
     (* THE PROLOGUE'S MOVE (milestone J1a): [U0] is the state usertrap was
        entered at and [U] the one the +0x28..+0x2e block handed on, so the
@@ -822,10 +822,10 @@ Section UtDispatch.
        the fall-through below, where [SpecDevintr.devintr_ret]'s zero
        answer and the ecall test together say the cause is a
        [UexecRet.ukill_sc] one. *)
-    ut_kill_in (pv_gen (us_V U0)) sc -∗
+    ut_kill_in fdep sc Wk (pv_gen (us_V U0)) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') SY.syscall_env) pt ksp m0
-                     mie_v menvcfg0 U0 sts gn cs pid ep sc fdep) -∗
+                     mie_v menvcfg0 U0 sts gn cs pid ep sc fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hpk Hpro Hwf Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hma0 Hcs Hmiev Hmenvv.
@@ -930,7 +930,7 @@ Section UtDispatch.
       assert (Hscec : sc = (uecall_scause : mword 64)).
       { apply eq_vec_true_iff in Hsys. rewrite HD2a4 HD2a5 in Hsys. exact Hsys. }
       iApply (S.ut_90 N U0 U pt ksp m0 D2 av nx
-                mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep
+                mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
                 Hwf' Hav Hnx Htfpe Hksp Hm0sp HD2sp HD2s1 HD2a0 HcsD2
                 Hmiev Hmenvv Hpro Hscec
                 with "Htext Hpc Hcg Hhold Hframe Hxin Hfin Hein Hcont").
@@ -1049,15 +1049,23 @@ Section UtDispatch.
         { iApply (ud_hold N U ep sc st sts cs pid with
                     "Hih Hcpu Hclm Hep Hsc Hst Hstv Hq Hsret Hkpt [Hown]").
           rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"]. }
+        (* THE PAIR'S RIGHT SIDE IS ALL A HANDLED INTERRUPT NEEDS (lane
+           TRAP-ROWS, T3): the kernel serves the device and resumes, so it
+           owes the slot back and never touches the (here empty) deposit. *)
+        iDestruct (ut_kill_in_pair fdep sc Wk (pv_gen (us_V U0)) Hscne
+                     with "Hkin") as "[%Hgw Hkp]".
+        iDestruct (bi.and_elim_r with "Hkp") as "Hko".
+        iAssert (ut_kill_out sc Wk)%I with "[Hko]" as "Hkor".
+        { iApply (ut_kill_out_of_slot_ne _ _ Hscne with "Hko"). }
         iApply (A.ut_e8 SY.syscall_env N U0 U pt ksp m0 D4 av nx
-                  mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep
+                  mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
                   Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
                   Hav Hnx Htfpe Hksp Hm0sp HD4sp HD4s1 HcsD4
                   Hmiev Hmenvv (ut_round_entry ep sc U0 U Hscne Hpro)
                   (* the transparent arms' defining cause, off the dispatch's own
                      [c.li a5,8; bne] at +0x50 *)
                   Hscne
-                  with "Htext Hpc Hcg Hhold Hframe Hmyu Hcont").
+                  with "Htext Hpc Hcg Hhold Hframe Hmyu Hkor Hcont").
       + (* no device: the two page-fault causes, then the fall-through *)
         (* ...AND THIS IS WHERE THE KILL ROW IS CASHED (lane KILL-PAY,
            K3(b)).  devintr answered 0, so the cause is neither of the two
@@ -1072,10 +1080,16 @@ Section UtDispatch.
         (* THE ROW IS TWO-SIDED AND LINEAR NOW (lane SELF-KILL, P6b): what
            comes out is the application's TAINT or the process's OWN
            payload at -1, and setkilled takes either. *)
-        iAssert (□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U)))%I
+        (* ...AND THE RESUME SLOT COMES WITH IT (lane TRAP-ROWS, T3): what
+           the process handed over is the additive PAIR, and the two arms
+           below are the ones that decide which side the kernel takes. *)
+        iAssert ((□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U)))
+                 ∧ UexecRet.uslot Wk)%I
           with "[Hkin]" as "Hkc".
         { rewrite (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))).
-          rewrite /ut_kill_in /ukill_cred_at.
+          iDestruct (ut_kill_in_pair fdep sc Wk (pv_gen (us_V U0))
+                       (proj1 Hkill) with "Hkin") as "[%Hgw Hkin]".
+          rewrite /ukill_cred_at.
           destruct (decide (ukill_sc sc)) as [_ | Hn];
             [ iExact "Hkin" | exfalso; exact (Hn Hkill) ]. }
         iApply (wp_cbnez_fall_s_sconf (mword_of_int (UT + 0x40))
@@ -1149,7 +1163,7 @@ Section UtDispatch.
                       "Hih Hcpu Hclm Hep Hsc Hst Hstv Hq Hsret Hkpt [Hown]").
             rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"]. }
           iApply (A.ut_d0 SY.syscall_env N U0 U pt ksp m0 D6 av nx
-                    mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep
+                    mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
                     Hpk Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
                     Hav Hnx Htfpe Hksp Hm0sp HD6sp HD6s1 HcsD6
                     Hmiev Hmenvv (ut_round_entry ep sc U0 U Hscne Hpro)
@@ -1231,7 +1245,7 @@ Section UtDispatch.
                          "Hih Hcpu Hclm Hep Hsc Hst Hstv Hq Hsret Hkpt [Hown]").
                rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"]. }
              iApply (A.ut_d0 SY.syscall_env N U0 U pt ksp m0 D8 av nx
-                       mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep
+                       mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
                        Hpk Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
                        Hav Hnx Htfpe Hksp Hm0sp HD8sp HD8s1 HcsD8
                        Hmiev Hmenvv (ut_round_entry ep sc U0 U Hscne Hpro)
@@ -1256,7 +1270,7 @@ Section UtDispatch.
                          "Hih Hcpu Hclm Hep Hsc Hst Hstv Hq Hsret Hkpt [Hown]").
                rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"]. }
              iApply (A.ut_56 SY.syscall_env N U0 U pt ksp m0 D8 av nx
-                       mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep
+                       mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
                        Hpk Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
                        Hav Hnx Htfpe Hksp Hm0sp HD8sp HD8s1 HcsD8
                        Hmiev Hmenvv (ut_round_entry ep sc U0 U Hscne Hpro)
@@ -1452,10 +1466,10 @@ Section UtSeal.
       (ms_v sc_v stval_v sepc_v ksp : mword 64)
       (mie_v mdv0 menvcfg0 : mword 64) (U : ustate) (sts : list fdstate)
       (gn : gname) (cs : gset gname) (pid : mword 32)
-      (fdep : sfam) :
+      (fdep : sfam) (Wk : UexecSlot.uvis) :
     wp_usertrap_body (fun h : CpuId => usertrap_res (CID := h))
       pt j m ms_v sc_v stval_v sepc_v ksp mie_v mdv0 menvcfg0 U sts gn cs pid
-      fdep.
+      fdep Wk.
   Proof.
     cbv beta delta [wp_usertrap_body].
     intros pcE pj Hms Hj Hsp Htp Hmiev Hmask Hmenvv.
@@ -1476,7 +1490,7 @@ Section UtSeal.
                     Hmie Hmdl Hmenv Hgpr Htc Htrap Henv [Hcont Hxin Hfin Hein Hkin]").
     iIntros (M V') "%HMsp %HMs1 %HMa0 %HcsM %HuptV %HtfV %HszV %HcwiV %HgenV %HlzV Hpc Hcg Hcpu Hclm Hraw Henv Hfr".
     iApply (ut_dispatch N (MkUstate V Mu) (MkUstate V' Mu) pt ksp m M av (av - 4)%nat sepc_v sc_v stval_v
-              mie_v menvcfg0 sts gn cs pid fdep
+              mie_v menvcfg0 sts gn cs pid fdep Wk
               (ut_printk (fsc_printk) (fsc_uart) (fsc_disk))
               (conj HtfV (conj HuptV (conj HszV (conj eq_refl
                  (conj HcwiV (conj HgenV HlzV))))))

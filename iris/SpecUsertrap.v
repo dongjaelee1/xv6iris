@@ -879,9 +879,115 @@ Qed.
    [xv6G] is bound rather than [ctokG] itself: the bundle carries the
    class as a FIELD instance and two of them in one scope print
    identically (durable-notes). *)
-Definition ut_kill_in `{!riscvGS Σ, !xv6G Σ} (gn : gname) (sc_v : mword 64)
-    : iProp Σ :=
-  ukill_cred_at gn sc_v.
+(* ...AND IT IS THE WHOLE PAIR NOW (lane TRAP-ROWS, T3; the owner's ruling
+   of 2026-09-16).  What comes down is not the deposit alone but the
+   ADDITIVE conjunction the process offered at the trap -- the -1 deposit
+   AND the resume slot -- because the two are proved from one copy of the
+   process's resources and the KERNEL is the party that decides which one
+   it takes: setkilled takes the left, a served vmfault takes the right and
+   hands it back through [ut_kill_out].  At the ecall cause there is no
+   pair and nothing is owed. *)
+Definition ut_kill_in `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
+    {SG : uexecSG Σ}
+    (f : sfam) (sc_v : mword 64) (W : uvis) (gn : gname) : iProp Σ :=
+  (* ...AND THE KEY'S GENERATION IS THE BLOCK'S, carried as a PURE conjunct
+     rather than a Coq premise: the key is opaque to the kernel, and this is
+     the one thing setkilled has to know about it -- which row its charge
+     lands on. *)
+  (⌜uvis_gen W = gn⌝ ∗
+   (if decide (sc_v = uecall_scause) then emp
+    else uexec_kill_arm sc_v W f))%I.
+
+(* ...AND WHAT COMES BACK ON THE RESUME PATH: the slot the kernel did NOT
+   take.  The twin of [ut_exec_out]'s success disjunct, at the key the pair
+   was handed over at -- the U-mode loop's round transports it to the
+   resumed key the same way it used to transport the arm's
+   ([UexecApply.uslot_key_cong]). *)
+Definition ut_kill_out `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
+    {SG : uexecSG Σ}
+    (sc_v : mword 64) (W : uvis) : iProp Σ :=
+  (if decide (sc_v = uecall_scause) then emp else uslot W)%I.
+
+(* ...AND WHAT AN ARM ON THE WAY TO THE RESUME MUST STILL HOLD: the slot it
+   owes the process if it resumes -- OR the fact that it cannot resume.
+   The second disjunct is what [setkilled] leaves behind: the unexpected-
+   scause arm spends the pair's LEFT side on the kill and keeps the
+   incarnation's one-shot instead ([SpecSetkilled] returns it), and the
+   killed check the arm falls into is then refuted against the row
+   ([SchedCtx.kill_paid_shot_nz]).  Without this disjunct that arm would
+   owe a slot it has just paid away. *)
+Definition ut_resume_in `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
+    {SG : uexecSG Σ}
+    (sc_v : mword 64) (W : uvis) (gn : gname) : iProp Σ :=
+  (if decide (sc_v = uecall_scause) then emp
+   else (uslot W ∨ ChildTok.kill_shot gn))%I.
+
+Section UtKillRows.
+  Context `{!riscvGS Σ, !xv6G Σ, !fileG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx} {SG : uexecSG Σ}.
+
+  Lemma ut_kill_in_ecall (f : sfam) (W : uvis) (gn : gname) :
+    uvis_gen W = gn -> ⊢ ut_kill_in f uecall_scause W gn.
+  Proof.
+    intro Hg. rewrite /ut_kill_in. iSplitR; [ by iPureIntro | ].
+    case_decide as Hc; [ done | exfalso; by apply Hc ].
+  Qed.
+
+  Lemma ut_kill_out_ecall (W : uvis) : ⊢ ut_kill_out uecall_scause W.
+  Proof. rewrite /ut_kill_out. case_decide as Hc; [ done | exfalso; by apply Hc ]. Qed.
+
+  Lemma ut_resume_in_ecall (W : uvis) (gn : gname) :
+    ⊢ ut_resume_in uecall_scause W gn.
+  Proof. rewrite /ut_resume_in. case_decide as Hc; [ done | exfalso; by apply Hc ]. Qed.
+
+  (* the pair's two sides, at the cause that has one *)
+  Lemma ut_kill_in_pair (f : sfam) (sc_v : mword 64) (W : uvis) (gn : gname) :
+    sc_v <> uecall_scause ->
+    ut_kill_in f sc_v W gn -∗
+    ⌜uvis_gen W = gn⌝ ∗ (ukill_cred_at gn sc_v ∧ uslot W).
+  Proof.
+    intro Hne. rewrite /ut_kill_in.
+    destruct (decide (sc_v = uecall_scause)) as [Hc | _]; [ by exfalso | ].
+    iIntros "[%Hg H]". iSplitR; [ by iPureIntro | ].
+    rewrite -Hg. rewrite /uexec_kill_arm /uexec_kill_arm_F. iExact "H".
+  Qed.
+
+  (* ...and the resume row, built from either of the two things an arm may
+     be carrying *)
+  Lemma ut_resume_in_of_slot (sc_v : mword 64) (W : uvis) (gn : gname) :
+    sc_v <> uecall_scause -> uslot W -∗ ut_resume_in sc_v W gn.
+  Proof.
+    intro Hne. rewrite /ut_resume_in.
+    destruct (decide (sc_v = uecall_scause)) as [Hc | _];
+      [ exfalso; exact (Hne Hc) | ]. iIntros "H". iLeft. iExact "H".
+  Qed.
+
+  Lemma ut_resume_in_of_shot (sc_v : mword 64) (W : uvis) (gn : gname) :
+    ChildTok.kill_shot gn -∗ ut_resume_in sc_v W gn.
+  Proof.
+    rewrite /ut_resume_in.
+    destruct (decide (sc_v = uecall_scause)) as [_ | _];
+      [ by iIntros "_" | ]. iIntros "H". iRight. iExact "H".
+  Qed.
+
+  Lemma ut_kill_out_of_slot_ne (sc_v : mword 64) (W : uvis) :
+    sc_v <> uecall_scause -> uslot W -∗ ut_kill_out sc_v W.
+  Proof.
+    intro Hne. rewrite /ut_kill_out.
+    destruct (decide (sc_v = uecall_scause)) as [Hc | _];
+      [ exfalso; exact (Hne Hc) | ]. by iIntros "$".
+  Qed.
+
+  (* ...and the resume row, out of the two things an arm may be carrying *)
+  Lemma ut_kill_out_of_slot (sc_v : mword 64) (W : uvis) (gn : gname) :
+    ut_resume_in sc_v W gn -∗
+    (ChildTok.kill_shot gn -∗ False) -∗
+    ut_kill_out sc_v W.
+  Proof.
+    rewrite /ut_resume_in /ut_kill_out. case_decide as Hc; [ by iIntros "_ _" | ].
+    iIntros "[H | Hs] Hno"; [ iExact "H" | iDestruct ("Hno" with "Hs") as %[] ].
+  Qed.
+End UtKillRows.
 
 (* THERE IS NOTHING COMING BACK (lane SELF-KILL, P6b).  The payload at the
    kill status is the KILLER's price, paid into <p->lock>'s own killed row
@@ -1157,7 +1263,12 @@ Definition usertrap_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fi
     (* THE DEPOSIT'S FAMILIES, read by the syscall channel's out row below:
        what comes back is a post at the very receipts the process deposited
        at ([UexecSG.v]'s header). *)
-    (f : sfam) : iProp Σ :=
+    (f : sfam)
+    (* THE KEY THE KILL PAIR WAS HANDED AT (lane TRAP-ROWS, T3).  OPAQUE:
+       the kernel never reads it, it only gives back the side it did not
+       take, and the party that knows which key its own arm was at is the
+       U-mode loop -- the save walk's trapframe is not that key. *)
+    (Wk : uvis) : iProp Σ :=
   let ret_tgt : mword 64 := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   ( ∀ (pt' : uptd) (mf : regfile)
       (ms' usatp uepc sc' stval' mdv0 : mword 64) (U' : ustate)
@@ -1289,6 +1400,11 @@ Definition usertrap_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fi
        [ut_wait_out] *)
     ut_wait_out sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U)))
       (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
+    (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3): at a non-ecall
+       cause the process handed the kernel the additive pair, and a resume
+       means the kernel took the RIGHT side and owes it back -- at the key
+       it was handed at, which the U-mode round transports. *)
+    ut_kill_out sc_v Wk -∗
     (* ...AND THE SYSCALL CHANNEL'S, at the same entry frame and read at the
        a0 word the round left -- [ut_sys_out].  The dispatcher produces it,
        the four tails relay it, and the U-mode loop hands it to the
@@ -1321,7 +1437,12 @@ Definition wp_usertrap_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, 
     (* THE DEPOSIT'S FAMILIES, taken ONCE and read by both syscall rows:
        the process chose them when it built its bundle, and the post it
        gets back is at the same ones ([UexecSG.v]'s header). *)
-    (f : sfam) :=
+    (f : sfam)
+    (* THE KEY THE KILL PAIR WAS HANDED AT (lane TRAP-ROWS, T3).  OPAQUE:
+       the kernel never reads it, it only gives back the side it did not
+       take, and the party that knows which key its own arm was at is the
+       U-mode loop -- the save walk's trapframe is not that key. *)
+    (Wk : uvis) :=
   let pcE : mword 64 := mword_of_int KernelSyms.usertrap in
   let pj := proc_addr j in
   (* the trap delivered a legal S-mode configuration -- see above *)
@@ -1382,13 +1503,13 @@ Definition wp_usertrap_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, 
   ut_pay_in f sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U))) U -∗
   (* ...AND THE KILL ROW, owed at every cause and empty at all but the ones
      usertrap kills at -- [ut_kill_in] *)
-  ut_kill_in (pv_gen (us_V U)) sc_v -∗
+  ut_kill_in f sc_v Wk (pv_gen (us_V U)) -∗
   (* THE CROSSING: usertrap parks (yield, and every sleeping syscall), so it
      may return on a different hart -- and the bundle comes back at THAT
      hart, which is why [R] is a family (see the note above). *)
   wp_next true pj (fun (CID' : CpuId) =>
     usertrap_post (CID := CID') (R CID') pt ksp m mie_v menvcfg0 U sts gn cs
-      pid sepc_v sc_v f) -∗
+      pid sepc_v sc_v f Wk) -∗
   WP (Loop : expr riscv_lang).
 
 (* THE MODULE TYPE'S INSTANCE LIST IS THE UNION OF THE FIVE CONES', NOT THE
@@ -1672,8 +1793,8 @@ Module Type USERTRAP.
       (m : regfile) (ms_v sc_v stval_v sepc_v ksp : mword 64)
       (mie_v mdv0 menvcfg0 : mword 64) (U : ustate) (sts : list fdstate)
       (gn : gname) (cs : gset gname) (pid : mword 32)
-      (f : sfam),
+      (f : sfam) (Wk : uvis),
       wp_usertrap_body (fun h : CpuId => usertrap_res (CID := h))
         pt j m ms_v sc_v stval_v sepc_v ksp mie_v mdv0 menvcfg0 U sts gn cs
-        pid f.
+        pid f Wk.
 End USERTRAP.

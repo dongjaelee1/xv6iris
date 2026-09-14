@@ -234,7 +234,7 @@ Section Ut56.
       (mie_v menvcfg0 epv scv : mword 64) (lks : gset string) (sts : list fdstate)
       (gn : gname) (cs : gset gname) (pid : mword 32)
       (* the deposit's families, relayed to the tails *)
-      (fdep : sfam) :
+      (fdep : sfam) (Wk : UexecSlot.uvis) :
     printk_gen_contract (kt := KT1) (fsc_printk) (fsc_uart) (fsc_disk) ->
     ut_wf N ->
     (* THE GENERATION THE PROLOGUE KEPT, relayed to the tail below: the
@@ -278,7 +278,11 @@ Section Ut56.
        TWO-SIDED AND LINEAR (lane SELF-KILL, P6b): the application's TAINT,
        or the process's OWN payload at -1 -- a program that faults on
        purpose pays for its own death. *)
-    (□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U))) -∗
+    (* ...AND THE RESUME SLOT BESIDE IT, ADDITIVELY (lane TRAP-ROWS, T3):
+       what the process handed over is the PAIR, and this arm is one of the
+       two that decide which side the kernel takes. *)
+    ((□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U)))
+     ∧ UexecRet.uslot Wk) -∗
     (* THE PAY FACT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
        device interrupt, an unexpected cause -- and each of them reaches a
        killed check ([SpecUsertrap.ut_pay_in] is owed at every cause for
@@ -288,7 +292,7 @@ Section Ut56.
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
-                     mie_v menvcfg0 U0 sts gn cs pid epv scv fdep) -∗
+                     mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hpk Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
@@ -626,10 +630,14 @@ Section Ut56.
        carries, and the eighth names the generation the deposit's right
        side is keyed at ([SpecSetkilled]'s note). *)
     iDestruct (proc_priv_pid_reg with "Hpv") as "(Hpid & Hreg & Hpidback)".
+    (* THE PAIR'S LEFT SIDE IS WHAT setkilled TAKES (lane TRAP-ROWS, T3):
+       the kernel is killing, so it takes the -1 deposit and never the
+       resume slot -- which is the whole point of the additive shape. *)
+    iDestruct (bi.and_elim_l with "Hkc") as "Hkcl".
     iApply (SK.wp_setkilled_sconf (un_s N) (un_j N) (un_l N) MC nx 0%nat false
               (un_pj N) false lks pid (pv_gen (us_V U)) HMCa0 Hj Hjl
               ltac:(vm_compute; reflexivity)
-              ltac:(lia) Hpidnz with "Hkc Hreg Hpid Hcg Hcpu Htext Hpc Hpi [-]").
+              ltac:(lia) Hpidnz with "Hkcl Hreg Hpid Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
     iApply wp_next_off_intro.
     iIntros (S1) "%HcsS1 Hcg Hcpu Hpc Hpid Hreg #Hshot".
@@ -678,8 +686,10 @@ Section Ut56.
                (pv_tf (us_V U) !!! tf_arg_idx 0) (us_M U) sts
                (pv_cwi (us_V U)) cs)%I as "Hso".
     { iIntros (n). iApply (ut_sys_out_quiet _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hnec). }
+    iAssert (ut_resume_in scv Wk (pv_gen (us_V U)))%I as "Hri".
+    { iApply (ut_resume_in_of_shot with "Hshot"). }
     iApply (T.ut_a6 Rsys N U0 U pt ksp m0 S1 av nx false
-              mie_v menvcfg0 epv scv lks sts sts gn cs cs pid fdep
+              mie_v menvcfg0 epv scv lks sts sts gn cs cs pid fdep Wk
               Hwf' Hgenr ltac:(intros _; reflexivity)
               (* the children set does not move on a transparent arm *)
               ltac:(intros _; reflexivity)
@@ -690,8 +700,12 @@ Section Ut56.
                    a transparent trap ran no syscall and answered nothing *)
                 ltac:(intros Hc; exfalso; exact (Hnec Hc)) Hav Hnx Htfpe Hksp Hm0sp HS1sp HS1s1 HcsS1'
               Hmiev Hmenvv Hrd
-              with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
-                    Hmyp Hcont").
+              (* THE PAIR'S LEFT SIDE WENT TO setkilled (lane TRAP-ROWS,
+                 T3), so what this arm still has is the one-shot setkilled
+                 handed back -- which is what refutes the killed check's
+                 not-killed branch downstream. *)
+              with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hri Hso Hcont]
+                    Hframe Hxo Hfo Hwo Hri Hso Hmyp Hcont").
     all: try lkbelow.
     iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu [-Hclm Hown] Hclm [-]").
     - rewrite /trap_csrs.
@@ -739,7 +753,7 @@ Section UtD0.
       (mie_v menvcfg0 epv scv : mword 64) (lks : gset string) (sts : list fdstate)
       (gn : gname) (cs : gset gname) (pid : mword 32)
       (* the deposit's families, relayed to the tails *)
-      (fdep : sfam) :
+      (fdep : sfam) (Wk : UexecSlot.uvis) :
     printk_gen_contract (kt := KT1) (fsc_printk) (fsc_uart) (fsc_disk) ->
     ut_wf N ->
     (* THE GENERATION THE PROLOGUE KEPT, relayed to the tail below: the
@@ -783,7 +797,11 @@ Section UtD0.
        TWO-SIDED AND LINEAR (lane SELF-KILL, P6b): the application's TAINT,
        or the process's OWN payload at -1 -- a program that faults on
        purpose pays for its own death. *)
-    (□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U))) -∗
+    (* ...AND THE RESUME SLOT BESIDE IT, ADDITIVELY (lane TRAP-ROWS, T3):
+       what the process handed over is the PAIR, and this arm is one of the
+       two that decide which side the kernel takes. *)
+    ((□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U)))
+     ∧ UexecRet.uslot Wk) -∗
     (* THE PAY FACT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
        device interrupt, an unexpected cause -- and each of them reaches a
        killed check ([SpecUsertrap.ut_pay_in] is owed at every cause for
@@ -793,7 +811,7 @@ Section UtD0.
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
-                     mie_v menvcfg0 U0 sts gn cs pid epv scv fdep) -∗
+                     mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hpk Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
@@ -1065,7 +1083,7 @@ Section UtD0.
       rewrite us_upt_id upd_usM_id.
       iDestruct ("Hownback" $! U sts cs with "Hpv Hufr Hch Hsy") as "Hown".
       iApply (ut_56 Rsys N U0 U pt ksp m0 mr av nx
-                mie_v menvcfg0 epv scv lks sts gn cs pid fdep
+                mie_v menvcfg0 epv scv lks sts gn cs pid fdep Wk
                 Hpk Hwf' Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmrsp Hmrs1 Hcsmr
                 Hmiev Hmenvv Hrd Hnec
                 with "Htext Hpc Hcg [-Hframe Hkc Hcont] Hframe Hkc Hmyp Hcont").
@@ -1152,8 +1170,12 @@ Section UtD0.
                  (us_M (MkUstate V' (us_M U)))
                  sts (pv_cwi (us_V (MkUstate V' (us_M U)))) cs)%I as "Hso".
       { iIntros (n). iApply (ut_sys_out_quiet _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hnec). }
+      iAssert (ut_resume_in scv Wk (pv_gen (us_V (MkUstate V' (us_M U)))))%I
+        with "[Hkc]" as "Hri".
+      { iDestruct (bi.and_elim_r with "Hkc") as "H".
+        iApply (ut_resume_in_of_slot _ _ _ Hnec with "H"). }
       iApply (T.ut_a6 Rsys N U0 (MkUstate V' (us_M U)) pt ksp m0 mr av nx false
-                mie_v menvcfg0 epv scv lks sts sts gn cs cs pid fdep
+                mie_v menvcfg0 epv scv lks sts sts gn cs cs pid fdep Wk
                 Hwf' Hgenr ltac:(intros _; reflexivity)
                 (* the children set does not move on a transparent arm *)
                 ltac:(intros _; reflexivity)
@@ -1164,8 +1186,11 @@ Section UtD0.
                    a transparent trap ran no syscall and answered nothing *)
                 ltac:(intros Hc; exfalso; exact (Hnec Hc)) Hav Hnx HV'tfp Hksp Hm0sp Hmrsp Hmrs1 Hcsmr
                 Hmiev Hmenvv Hrd'
-                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
-                      Hmyp Hcont").
+                (* THE KERNEL SERVED THE FAULT, so it takes the pair's RIGHT
+                   side and owes it back on the resume (lane TRAP-ROWS, T3).
+                   This is the arm that used to drop the credential. *)
+                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hri Hso Hcont]
+                      Hframe Hxo Hfo Hwo Hri Hso Hmyp Hcont").
       all: try lkbelow.
       iApply (ua_hold_on Rsys N (MkUstate V' (us_M U)) _ sts cs with "Hcpu Hcsrs Hclm [-]").
       rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
@@ -1199,7 +1224,7 @@ Section UtE8.
       (mie_v menvcfg0 epv scv : mword 64) (lks : gset string) (sts : list fdstate)
       (gn : gname) (cs : gset gname) (pid : mword 32)
       (* the deposit's families, relayed to the tails *)
-      (fdep : sfam) :
+      (fdep : sfam) (Wk : UexecSlot.uvis) :
     ut_wf N ->
     (* THE GENERATION THE PROLOGUE KEPT, relayed to the tail below: the
        record this arm parks is the entry's incarnation, which is what the
@@ -1239,16 +1264,20 @@ Section UtE8.
        (lane SELF-KILL, P6b): a kill is paid for by the KILLER, into
        <p->lock>'s own killed row. *)
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
+    (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3): a delegated
+       interrupt is a cause the kernel HANDLES, so the pair's left side is
+       [emp] and what crosses is the slot alone. *)
+    ut_kill_out scv Wk -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
-                     mie_v menvcfg0 U0 sts gn cs pid epv scv fdep) -∗
+                     mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe #Hmyp Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe #Hmyp Hko Hcont".
     iDestruct (ua_hold_off Rsys N U _ sts cs with "Hhold") as
       "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     (* depth 0 forces the held set empty, so the printk / killed / setkilled
@@ -1394,7 +1423,7 @@ Section UtE8.
                  (pv_cwi (us_V U)) cs)%I as "Hso".
       { iIntros (n). iApply (ut_sys_out_quiet _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hnec). }
       iApply (T.ut_fa Rsys N U0 U pt ksp m0 mf av nx false
-                mie_v menvcfg0 epv scv lks sts sts gn cs cs pid fdep
+                mie_v menvcfg0 epv scv lks sts sts gn cs cs pid fdep Wk
                 Hwf' Hgenr ltac:(intros _; reflexivity)
                 (* the children set does not move on a transparent arm *)
                 ltac:(intros _; reflexivity)
@@ -1405,8 +1434,8 @@ Section UtE8.
                    a transparent trap ran no syscall and answered nothing *)
                 ltac:(intros Hc; exfalso; exact (Hnec Hc)) Hav Hnx Htfpe Hksp Hm0sp Hmfsp Hmfs1 Hcsmf
                 Hmiev Hmenvv Hrd
-                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
-                      Hmyp Hcont").
+                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hko Hso Hcont]
+                      Hframe Hxo Hfo Hwo Hko Hso Hmyp Hcont").
       iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu Hcsrs Hclm [-]").
       rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
     - (* KILLED: fall through to +0xf2's [c.j +0xf6], then kexit(-1). *)

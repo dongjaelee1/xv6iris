@@ -240,7 +240,7 @@ Section UtRet2.
       (sts0 sts : list fdstate) (gn : gname) (cs cs2 : gset gname)
       (pid : mword 32)
       (* the deposit's families, relayed with the syscall channel's row *)
-      (fdep : sfam) :
+      (fdep : sfam) (Wk : UexecSlot.uvis) :
     ut_wf N ->
     (* THE GENERATION THE WALK KEPT: the post is stated at the ENTRY record
        and this tail parks the one it was handed.  No arm re-incarnates the
@@ -327,6 +327,8 @@ Section UtRet2.
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
+    (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3) *)
+    ut_kill_out scw Wk -∗
     (* ...and the syscall channel's, relayed the same way: this tail moves
        nothing the row reads, and the a0 word it is read at is the one of
        the record it parks, at the resume view it parks it at --
@@ -345,7 +347,7 @@ Section UtRet2.
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
-                     mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗
+                     mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmfsp Hmfs1 Hcs Hmiev Hmenvv Hrd Hepcw.
@@ -355,7 +357,7 @@ Section UtRet2.
     
     destruct Hwf as (Hj & Hjl & Hlen & Hlg).
     iIntros "#Htext Hpc Hcg Hcpu Hclm Hsepc Hscause Hstval Hsret Hstvec Hq4
-             Hkptr #Htfk [#Hcaps Hown] Hframe Hxo Hfo Hwo Hso #Hmyp Hcont".
+             Hkptr #Htfk [#Hcaps Hown] Hframe Hxo Hfo Hwo Hko Hso #Hmyp Hcont".
     (* the boundary hands the trap resource back at the literal [∅] that
        [ut_res] pins -- depth 0 forces the held set empty, so this is a
        re-spelling, not an obligation. *)
@@ -716,7 +718,8 @@ Section UtRet2.
               (kvi_satp_word (ud_root (pv_upt (us_V U)))) (mepc_val uepc) scv stv mdv0 U
               with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                     Hhs Hpriv Hms Hscause Hstval Hsepc [Hstvec] Hpc [Hfile]
-                    Hmie Hmdl Hmenv Hhw Hmin [-Hxo Hfo Hwo Hso] Hxo Hfo Hwo Hso").
+                    Hmie Hmdl Hmenv Hhw Hmin [-Hxo Hfo Hwo Hko Hso]
+                    Hxo Hfo Hwo Hko Hso").
     - reflexivity.
     - exact Hrd.
     - (* [ut_fd_kept], straight off the premise: this tail re-closes the
@@ -804,7 +807,7 @@ Section UtRet.
       (sts0 sts : list fdstate) (gn : gname) (cs cs2 : gset gname)
       (pid : mword 32)
       (* the deposit's families, relayed with the syscall channel's row *)
-      (fdep : sfam) :
+      (fdep : sfam) (Wk : UexecSlot.uvis) :
     ut_wf N ->
     (* THE GENERATION THE WALK KEPT: the post is stated at the ENTRY record
        and this tail parks the one it was handed.  No arm re-incarnates the
@@ -869,6 +872,8 @@ Section UtRet.
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
+    (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3) *)
+    ut_kill_out scw Wk -∗
     (* ...and the syscall channel's, relayed the same way: this tail moves
        nothing the row reads, and the a0 word it is read at is the one of
        the record it parks, at the resume view it parks it at --
@@ -887,14 +892,14 @@ Section UtRet.
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
-                     mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗
+                     mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hso #Hmyp Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hko Hso #Hmyp Hcont".
     iDestruct "Hhold" as "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     iDestruct (ut_own_priv with "Hown") as "(Hpv & Hufr & Hch & Hsy & Hownback)".
     iDestruct (ut_epc_exists with "Hpv") as %Hepcx.
@@ -1048,7 +1053,7 @@ Section UtRet.
                     (add_vec (un_ks N) (mword_of_int 4096)) (cid_word (CID := CIDp)))).
       apply list_lookup_total_correct. exact Hepc. }
     iApply (ut_ret2 (CID := CIDp) Rsys N U0 (MkUstate Vr _) pt ksp m0 mf av nx b uepc vb
-              mie_v menvcfg0 epw scw lks sts0 sts gn cs cs2 pid fdep
+              mie_v menvcfg0 epw scw lks sts0 sts gn cs cs2 pid fdep Wk
               Hwf' ltac:(cbn [us_V]; exact Hgenk) Hfdk Hchk Hfder Hpiper Hpidrr Hav Hnx ltac:(rewrite HVrupt; exact Htfpe) Hksp Hm0sp
               ltac:(rewrite (callee_saved_lookup Hcspr csp_rs1
                               ltac:(vm_compute; reflexivity)); exact HM1sp)
@@ -1058,7 +1063,7 @@ Section UtRet.
                              (ut_cs_of_callee_saved _ _ Hcspr)))
               Hmiev Hmenvv Hrdr Hepcw
               with "Htext Hpc Hcg Hcpu Hclm Hsepc Hscause Hstval Hsret Hstvec
-                    Hq4 Hkptr Htfk [Hown] Hframe Hxo Hfo Hwo Hso Hmyp Hcont").
+                    Hq4 Hkptr Htfk [Hown] Hframe Hxo Hfo Hwo Hko Hso Hmyp Hcont").
     rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
   Qed.
 
@@ -1077,6 +1082,20 @@ Section UtA6.
      [b = false] from the other three.  [which_dev = 0] before the kexit is
      dead code in the resource sense -- kexit never returns -- so the [c.li
      s2,0] is stepped and its value never read again. *)
+  (* THE BRANCH'S OWN READING OF THE FLAG (lane TRAP-ROWS, T3).  The
+     [c.bnez a0] at +0xac tests the SIGN-EXTENDED word [killed()] returned;
+     its FALL-THROUGH says that word is zero, and [RiscvExtras.trunc32_sext64]
+     brings that back to the 32-bit cell the row is stated at. *)
+  Local Lemma ut_kl_zero_of_branch (kl : mword 32) :
+    neq_vec (sign_extend' 64 kl) (zero_reg : mword 64) = false ->
+    kl = (mword_of_int 0 : mword 32).
+  Proof.
+    unfold neq_vec. rewrite negb_false_iff. intro H.
+    apply eq_vec_true_iff in H.
+    apply (f_equal trunc32) in H. rewrite trunc32_sext64 in H.
+    rewrite H. apply bv_eq; vm_compute; reflexivity.
+  Qed.
+
   Lemma ut_a6 (N : ut_names) (U0 U : ustate) (pt : uptd) (ksp : mword 64)
       (m0 m : regfile) (av nx : nat) (b : bool)
       (mie_v menvcfg0 epw scw : mword 64) (lks : gset string)
@@ -1087,7 +1106,7 @@ Section UtA6.
       (sts0 sts : list fdstate) (gn : gname) (cs cs2 : gset gname)
       (pid : mword 32)
       (* the deposit's families, relayed with the syscall channel's row *)
-      (fdep : sfam) :
+      (fdep : sfam) (Wk : UexecSlot.uvis) :
     ut_wf N ->
     (* THE GENERATION THE WALK KEPT: the post is stated at the ENTRY record
        and this tail parks the one it was handed.  No arm re-incarnates the
@@ -1157,6 +1176,12 @@ Section UtA6.
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
+    (* ...AND THE UNTAKEN CONTINUATION, OR THE FACT THAT THERE IS NO RESUME
+       (lane TRAP-ROWS, T3).  This arm is the second [killed()] check, so it
+       is the one place the two can be told apart: the shot refutes the
+       not-killed branch against the row ([SchedCtx.kill_paid_shot_nz]) and
+       the slot is what the resume owes -- [SpecUsertrap.ut_resume_in]. *)
+    ut_resume_in scw Wk (pv_gen (us_V U)) -∗
     (* ...and the syscall channel's, relayed the same way: this tail moves
        nothing the row reads, and the a0 word it is read at is the one of
        the record it parks, at the resume view it parks it at --
@@ -1175,14 +1200,14 @@ Section UtA6.
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
-                     mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗
+                     mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hbelow.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hso #Hmyp Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hres Hso #Hmyp Hcont".
     iDestruct "Hhold" as "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     iAssert (procs_inv (un_s N)) with "[]" as "#Hpi".
     { iDestruct "Hcaps" as "($ & _)". }
@@ -1246,7 +1271,17 @@ Section UtA6.
        generation is this incarnation's ([ProcInv.proc_priv_pid_reg]).
        Both come straight back, because the two agreements are pure. *)
     iDestruct (ut_own_priv with "Hown") as "(Hpv & Hufr & Hch & Hsy & Hownback)".
+    (* the live slot's pid is nonzero -- the block says so, and it is what
+       keeps [SchedCtx.kill_paid]'s free arm out of the reading (T3) *)
+    iDestruct (ProcInv.proc_priv_pid_nz with "Hpv") as "%Hpidnz".
     iDestruct (ProcInv.proc_priv_pid_reg with "Hpv") as "(Hqp & Hrg & Hpvback)".
+    (* THE ACCESSOR CARRIES THE RESUME ROW INTO THE CRITICAL SECTION (lane
+       TRAP-ROWS, T3).  The refutation can only happen HERE: at a zero flag
+       the row holds the UNFIRED one-shot, and that is the one moment the
+       shot can be contradicted -- [ChildTok.kill_pend] is linear and goes
+       straight back, so no refuter can be carried out of the section.  So
+       the accessor consumes [Hres] and hands back, under the zero-flag
+       guard, the slot the resume owes. *)
     iAssert (∀ (pidr klr : mword 32),
                p_pid (proc_addr (un_j N)) ↦₄{DfracOwn (1/4)} pidr -∗
                SchedCtx.kill_paid pidr klr -∗
@@ -1254,26 +1289,43 @@ Section UtA6.
                SchedCtx.kill_paid pidr klr ∗
                ((⌜klr = (mword_of_int 0 : mword 32)⌝
                  ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                (⌜klr = (mword_of_int 0 : mword 32)⌝ -∗
+                   ut_kill_out scw Wk) ∗
                 p_pid (un_pj N) ↦₄{DfracOwn (1/4)} pid ∗
                 pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U))))%I
-      with "[Hqp Hrg]" as "Hkacc".
+      with "[Hqp Hrg Hres]" as "Hkacc".
     { iIntros (pidr klr) "Hq Hr".
       iDestruct (ctx_word4_pointsto_agree with "Hq Hqp") as %->.
       iDestruct (SchedCtx.kill_paid_shot pid klr (DfracOwn qeighth)
                    (pv_gen (us_V U)) with "Hr Hrg") as "(Hr & Hrg & Hs)".
-      iFrame "Hq Hr Hs Hqp Hrg". }
+      destruct (decide (klr = (mword_of_int 0 : mword 32))) as [Hkz | Hknz].
+      - (* the flag is ZERO: the row's own [kill_pend] refutes a shot, so
+           what [Hres] is carrying can only be the slot. *)
+        rewrite /ut_resume_in /ut_kill_out.
+        destruct (decide (scw = UsysMemOk.uecall_scause)) as [_ | _].
+        + iFrame "Hq Hr Hs Hqp Hrg". by iIntros "_".
+        + iDestruct "Hres" as "[Hslot | #Hsh]".
+          * iFrame "Hq Hr Hs Hqp Hrg". iIntros "_". iExact "Hslot".
+          * iDestruct (SchedCtx.kill_paid_shot_nz pid klr (DfracOwn qeighth)
+                         (pv_gen (us_V U)) Hpidnz with "Hr Hrg Hsh")
+              as "(_ & _ & %Hne)". exfalso. exact (Hne Hkz).
+      - (* the flag is NONZERO: this call takes the kexit branch and the
+           resume row is never read. *)
+        iFrame "Hq Hr Hs Hqp Hrg". iIntros "%Hkz". exfalso. exact (Hknz Hkz). }
     iApply (KI.wp_killed_sconf (CID := CID2) (un_s N) (un_j N) (un_l N)
               M2 nx 0%nat b (un_pj N) b lks
               (fun (klv : mword 32) =>
                  ((⌜klv = (mword_of_int 0 : mword 32)⌝
                    ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                  (⌜klv = (mword_of_int 0 : mword 32)⌝ -∗
+                     ut_kill_out scw Wk) ∗
                   p_pid (un_pj N) ↦₄{DfracOwn (1/4)} pid ∗
                   pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)))%I)
               HM2a0 Hj Hjl ltac:(vm_compute; reflexivity) ltac:(lia)
               ltac:(lkbelow)
               with "Hkacc Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
-    iIntros (CID3 Hk3 mf kl) "[%Hcskl %Hkla0] (#Hkw & Hqp & Hrg) Hcg Hcpu Hpc".
+    iIntros (CID3 Hk3 mf kl) "[%Hcskl %Hkla0] (#Hkw & Hkores & Hqp & Hrg) Hcg Hcpu Hpc".
     iDestruct ("Hpvback" with "Hqp Hrg") as "Hpv".
     iDestruct ("Hownback" $! U sts cs2 with "Hpv Hufr Hch Hsy") as "Hown".
     assert (Hretac : ret_pc (M2 !!! Regidx Rra) = mword_of_int (UT + 0xac))
@@ -1418,6 +1470,10 @@ Section UtA6.
       iSplitL "Hclm"; [iExact "Hclm"|].
       rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
     - (* NOT killed: fall through to +0xae. *)
+      (* ...AND THE RESUME ROW IS CASHED HERE (lane TRAP-ROWS, T3): the
+         flag is zero, which is the guard the accessor's answer is under. *)
+      iDestruct ("Hkores" with "[%]") as "Hko";
+        [ exact (ut_kl_zero_of_branch kl Hnz) | ].
       iApply (wp_cbnez_fall_s_sconf (CID := CID3) (mword_of_int (UT + 0xac))
                 (mword_of_int 36 : mword 8) (Cregidx (mword_of_int 2)) Ra0
                 mf nx b Hc2 ltac:(vm_compute; discriminate)
@@ -1437,10 +1493,10 @@ Section UtA6.
       iDestruct (wp_next_retarget CID3 CID4 true (un_pj N) _
                    ltac:(wp_next_chain) with "Hcont") as "Hcont".
       iApply (ut_ret (CID := CID4) Rsys N U0 U pt ksp m0 mf av nx b
-                mie_v menvcfg0 epw scw lks sts0 sts gn cs cs2 pid fdep
+                mie_v menvcfg0 epw scw lks sts0 sts gn cs cs2 pid fdep Wk
                 Hwf' ltac:(exact Hgenk) Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmfsp Hmfs1 Hcsmf
                 Hmiev Hmenvv Hrd
-                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
+                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hko Hso Hcont] Hframe Hxo Hfo Hwo Hko Hso
                       Hmyp Hcont").
       rewrite /ut_hold. iSplitL "Hcpu"; [iExact "Hcpu"|].
       iSplitL "Hcsrs"; [iExact "Hcsrs"|].
@@ -1474,7 +1530,7 @@ Section UtFa.
       (sts0 sts : list fdstate) (gn : gname) (cs cs2 : gset gname)
       (pid : mword 32)
       (* the deposit's families, relayed with the syscall channel's row *)
-      (fdep : sfam) :
+      (fdep : sfam) (Wk : UexecSlot.uvis) :
     ut_wf N ->
     (* THE GENERATION THE WALK KEPT: the post is stated at the ENTRY record
        and this tail parks the one it was handed.  No arm re-incarnates the
@@ -1539,6 +1595,8 @@ Section UtFa.
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
+    (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3) *)
+    ut_kill_out scw Wk -∗
     (* ...and the syscall channel's, relayed the same way: this tail moves
        nothing the row reads, and the a0 word it is read at is the one of
        the record it parks, at the resume view it parks it at --
@@ -1557,14 +1615,14 @@ Section UtFa.
     my_pay (pv_gen (us_V U)) (sexit_pay fdep) -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
-                     mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep) -∗
+                     mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hso #Hmyp Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hko Hso #Hmyp Hcont".
     iDestruct "Hhold" as "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     (* depth 0 forces the held set empty, which is what lets the yield arm
        hand [cpu_own ... ∅] to a contract that pins [∅] (SpecYield.v). *)
@@ -1618,10 +1676,10 @@ Section UtFa.
       iDestruct (wp_next_retarget CID CID2 true (un_pj N) _
                    ltac:(wp_next_chain) with "Hcont") as "Hcont".
       iApply (ut_ret (CID := CID2) Rsys N U0 U pt ksp m0 M1 av nx b
-                mie_v menvcfg0 epw scw lks sts0 sts gn cs cs2 pid fdep
+                mie_v menvcfg0 epw scw lks sts0 sts gn cs cs2 pid fdep Wk
                 Hwf' ltac:(exact Hgenk) Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp HM1sp HM1s1 HcsM1
                 Hmiev Hmenvv Hrd
-                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
+                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hko Hso Hcont] Hframe Hxo Hfo Hwo Hko Hso
                       Hmyp Hcont").
       rewrite /ut_hold. iSplitL "Hcpu"; [iExact "Hcpu"|].
       iSplitL "Hcsrs"; [iExact "Hcsrs"|].
@@ -1707,10 +1765,10 @@ Section UtFa.
       iDestruct (wp_next_retarget CID4 CID5 true (un_pj N) _
                    ltac:(wp_next_chain) with "Hcont") as "Hcont".
       iApply (ut_ret (CID := CID5) Rsys N U0 U pt ksp m0 mf av nx b
-                mie_v menvcfg0 epw scw lks sts0 sts gn cs cs2 pid fdep
+                mie_v menvcfg0 epw scw lks sts0 sts gn cs cs2 pid fdep Wk
                 Hwf' ltac:(exact Hgenk) Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmfsp Hmfs1 Hcsmf
                 Hmiev Hmenvv Hrd
-                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
+                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hko Hso Hcont] Hframe Hxo Hfo Hwo Hko Hso
                       Hmyp Hcont").
       (* the yield arm came back at the literal [∅]; [lks = ∅] at depth 0
          makes that the set [ut_hold] names. *)

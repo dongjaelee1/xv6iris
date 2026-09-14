@@ -250,9 +250,18 @@ Section SchedCtx.
      spends it to refute the zero arm.  It is the ghost image of the C's
      own monotonicity, and it costs the writers nothing they do not already
      hold. *)
+  (* ...AND THE PAID ARM IS AT A NONZERO FLAG (lane TRAP-ROWS, T2/T3).
+     The one-shot fires exactly when a writer stores 1 ([kkill],
+     [setkilled]); the only store of 0 is [freeproc]'s, on a DEAD slot,
+     where [kill_paid]'s free arm applies and this row is gone.  So within
+     a live incarnation the flag is MONOTONE, and saying so here is what
+     lets a party holding the shot read the flag as nonzero
+     ([kill_paid_shot_nz]) -- which is how usertrap's second killed check
+     refutes its resume branch after a [setkilled], and how a console read
+     that answered -1 by kill refutes it after the syscall. *)
   Definition kill_row (gn : gname) (kl : mword 32) : iProp Σ :=
     ((⌜kl = (mword_of_int 0 : mword 32)⌝ ∗ ChildTok.kill_pend gn)
-     ∨ (ChildTok.kill_shot gn ∗
+     ∨ (⌜kl <> (mword_of_int 0 : mword 32)⌝ ∗ ChildTok.kill_shot gn ∗
         (ChildTok.kill_owed gn ∨ ChildTok.taken_at gn)))%I.
 
   (* WHOSE ROW IT IS, and the tie that says so: an eighth of the pid's
@@ -348,17 +357,31 @@ Section SchedCtx.
   Qed.
 
   Lemma kill_row_of_owed (gn : gname) (kl : mword 32) :
+    kl <> (mword_of_int 0 : mword 32) ->
     ChildTok.kill_shot gn -∗ ChildTok.kill_owed gn -∗ kill_row gn kl.
   Proof.
-    rewrite /kill_row. iIntros "#Hs H". iRight.
-    iSplitR; [ iExact "Hs" | ]. iLeft. iExact "H".
+    intro Hnz. rewrite /kill_row. iIntros "#Hs H". iRight.
+    iSplitR; [ by iPureIntro | ]. iSplitR; [ iExact "Hs" | ]. iLeft. iExact "H".
   Qed.
 
   Lemma kill_row_of_taken (gn : gname) (kl : mword 32) :
+    kl <> (mword_of_int 0 : mword 32) ->
     ChildTok.kill_shot gn -∗ ChildTok.taken_at gn -∗ kill_row gn kl.
   Proof.
-    rewrite /kill_row. iIntros "#Hs H". iRight.
-    iSplitR; [ iExact "Hs" | ]. iRight. iExact "H".
+    intro Hnz. rewrite /kill_row. iIntros "#Hs H". iRight.
+    iSplitR; [ by iPureIntro | ]. iSplitR; [ iExact "Hs" | ]. iRight. iExact "H".
+  Qed.
+
+  (* ...AND THE READING THE MONOTONE FLAG BUYS: the shot says the flag is
+     nonzero, which is the converse of [kill_row_shot]. *)
+  Lemma kill_row_shot_nz (gn : gname) (kl : mword 32) :
+    kill_row gn kl -∗ ChildTok.kill_shot gn -∗
+    kill_row gn kl ∗ ⌜kl <> (mword_of_int 0 : mword 32)⌝.
+  Proof.
+    rewrite /kill_row. iIntros "[[_ Hp] | Hr] #Hs".
+    - iDestruct (ChildTok.kill_pend_shot with "Hp Hs") as %[].
+    - iDestruct "Hr" as "[%Hnz Hr]". iSplitR ""; [ | by iPureIntro ].
+      iRight. iSplitR; [ by iPureIntro | ]. iExact "Hr".
   Qed.
 
   (* ...AND WHAT A NONZERO FLAG SAYS, relayed: the one-shot has been fired.
@@ -370,8 +393,8 @@ Section SchedCtx.
     kill_row gn kl -∗ ChildTok.kill_shot gn ∗ kill_row gn kl.
   Proof.
     intro Hnz. rewrite /kill_row.
-    iIntros "[[%Hz _] | [#Hs H]]"; [ exfalso; exact (Hnz Hz) | ].
-    iSplitR; [ iExact "Hs" | ]. iRight. iFrame "Hs H".
+    iIntros "[[%Hz _] | [_ [#Hs H]]]"; [ exfalso; exact (Hnz Hz) | ].
+    iSplitR; [ iExact "Hs" | ]. iRight. iFrame "Hs H". by iPureIntro.
   Qed.
 
   (* ...AND WHAT A WRITER DOES BEFORE IT STORES: fire the one-shot.  At the
@@ -382,7 +405,7 @@ Section SchedCtx.
   Lemma kill_row_fire (gn : gname) (kl : mword 32) :
     kill_row gn kl ==∗ ChildTok.kill_shot gn.
   Proof.
-    rewrite /kill_row. iIntros "[[_ Hp] | [#Hs _]]".
+    rewrite /kill_row. iIntros "[[_ Hp] | [_ [#Hs _]]]".
     - iApply (ChildTok.kill_pend_fire with "Hp").
     - iModIntro. iExact "Hs".
   Qed.
@@ -400,10 +423,11 @@ Section SchedCtx.
     ChildTok.kill_owed gn ∗ kill_row gn kl.
   Proof.
     iIntros "#Hs Ht Hrow". rewrite /kill_row.
-    iDestruct "Hrow" as "[[_ Hp] | [_ [Ho | Ht2]]]".
+    iDestruct "Hrow" as "[[_ Hp] | [%Hnz [_ [Ho | Ht2]]]]".
     - iDestruct (ChildTok.kill_pend_shot with "Hp Hs") as %[].
     - iSplitL "Ho"; [ iExact "Ho" | ].
-      iRight. iSplitR; [ iExact "Hs" | ]. iRight. iExact "Ht".
+      iRight. iSplitR; [ by iPureIntro | ].
+      iSplitR; [ iExact "Hs" | ]. iRight. iExact "Ht".
     - iDestruct (ChildTok.taken_at_excl with "Ht Ht2") as %[].
   Qed.
 
@@ -450,9 +474,11 @@ Section SchedCtx.
      store it is about to make. *)
   Lemma kill_paid_kill (pid : mword 32) (kl kl' : mword 32) :
     bv_unsigned pid <> 0 ->
+    ⌜kl' <> (mword_of_int 0 : mword 32)⌝ -∗
     □ riscv_kill_cred -∗ kill_paid pid kl ==∗ kill_paid pid kl'.
   Proof.
-    intro Hpnz. rewrite /kill_paid. iIntros "#Hsup [[%Hz _] | [%Hnz Hr]]".
+    intro Hpnz. rewrite /kill_paid.
+    iIntros "%Hknz #Hsup [[%Hz _] | [%Hnz Hr]]".
     - exfalso. exact (Hpnz Hz).
     - iDestruct "Hr" as (gn Q) "(Hr & #Hmy & #Hw & Hrow)".
       iMod (kill_row_fire with "Hrow") as "#Hs". iModIntro.
@@ -461,7 +487,7 @@ Section SchedCtx.
       iSplitL "Hr"; [ iExact "Hr" | ].
       iSplitR; [ iExact "Hmy" | ].
       iSplitR; [ iModIntro; iExact "Hw" | ].
-      iApply (kill_row_of_owed with "Hs").
+      iApply (kill_row_of_owed _ _ Hknz with "Hs").
       iApply (ChildTok.kill_owed_of with "Hmy"). iApply "Hw". iExact "Hsup".
   Qed.
 
@@ -476,11 +502,12 @@ Section SchedCtx.
   Lemma kill_paid_kill_owed (pid : mword 32) (kl kl' : mword 32) (dq : dfrac)
       (gn : gname) :
     bv_unsigned pid <> 0 ->
+    ⌜kl' <> (mword_of_int 0 : mword 32)⌝ -∗
     pid_reg pid dq gn -∗ ChildTok.kill_owed gn -∗ kill_paid pid kl ==∗
     pid_reg pid dq gn ∗ kill_paid pid kl'.
   Proof.
     intro Hpnz. rewrite /kill_paid.
-    iIntros "Hmine Howed [[%Hz _] | [%Hnz Hr]]".
+    iIntros "%Hknz Hmine Howed [[%Hz _] | [%Hnz Hr]]".
     - exfalso. exact (Hpnz Hz).
     - iDestruct "Hr" as (gn' Q) "(Hr & #Hmy & #Hw & Hrow)".
       iDestruct (pid_reg_agree pid pid dq (DfracOwn qeighth) gn gn' eq_refl
@@ -491,7 +518,7 @@ Section SchedCtx.
       iSplitL "Hr"; [ iExact "Hr" | ].
       iSplitR; [ iExact "Hmy" | ].
       iSplitR; [ iModIntro; iExact "Hw" | ].
-      iApply (kill_row_of_owed with "Hs Howed").
+      iApply (kill_row_of_owed _ _ Hknz with "Hs Howed").
   Qed.
 
   (* ...AND THE TWO SIDES AS ONE STEP, which is what a writer that may be
@@ -506,13 +533,14 @@ Section SchedCtx.
   Lemma kill_paid_kill_two (pid : mword 32) (kl kl' : mword 32) (dq : dfrac)
       (gn : gname) :
     bv_unsigned pid <> 0 ->
+    ⌜kl' <> (mword_of_int 0 : mword 32)⌝ -∗
     pid_reg pid dq gn -∗
     (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) -∗
     kill_paid pid kl ==∗
     pid_reg pid dq gn ∗ ChildTok.kill_shot gn ∗ kill_paid pid kl'.
   Proof.
     intro Hpnz. rewrite /kill_paid.
-    iIntros "Hmine Hpay [[%Hz _] | [%Hnz Hr]]".
+    iIntros "%Hknz Hmine Hpay [[%Hz _] | [%Hnz Hr]]".
     - exfalso. exact (Hpnz Hz).
     - iDestruct "Hr" as (gn' Q) "(Hr & #Hmy & #Hw & Hrow)".
       iDestruct (pid_reg_agree pid pid dq (DfracOwn qeighth) gn gn' eq_refl
@@ -528,7 +556,7 @@ Section SchedCtx.
       iSplitL "Hr"; [ iExact "Hr" | ].
       iSplitR; [ iExact "Hmy" | ].
       iSplitR; [ iModIntro; iExact "Hw" | ].
-      iApply (kill_row_of_owed with "Hs Howed").
+      iApply (kill_row_of_owed _ _ Hknz with "Hs Howed").
   Qed.
 
   (* ...AND WHAT AN UNUSED SLOT'S PAYLOAD SAYS ABOUT THE FLAG: either it
@@ -607,6 +635,33 @@ Section SchedCtx.
         iFrame "Hmine". iSplitL "Hr Hrow".
         * iApply (kill_paid_of_reg pid kl gn Q Hnz with "Hr Hmy Hw Hrow").
         * iRight. iExact "Hs".
+  Qed.
+
+  (* ...AND THE CONVERSE, WHICH IS WHAT A KILLED CHECK NEEDS (lane
+     TRAP-ROWS, T2/T3).  A party that already HOLDS the incarnation's
+     one-shot -- because [setkilled] fired it, or because a call it made
+     relayed it -- reads [p->killed] as NONZERO: within a live incarnation
+     the flag is monotone and the row's paid arm says so.  This is what
+     refutes usertrap's second killed check on the paths where the process
+     is provably dead, and it is the only place that fact can be read: the
+     row is linear and lives under <p->lock>.
+     THE NONZERO PID IS A PREMISE and not a reading -- [kill_paid]'s free
+     arm is a slot no one holds, and what rules it out is the caller's own
+     block ([SlotGen.gen_halves_priv_nz]). *)
+  Lemma kill_paid_shot_nz (pid kl : mword 32) (dq : dfrac) (gn : gname) :
+    bv_unsigned pid <> 0 ->
+    kill_paid pid kl -∗ pid_reg pid dq gn -∗ ChildTok.kill_shot gn -∗
+    kill_paid pid kl ∗ pid_reg pid dq gn ∗
+    ⌜kl <> (mword_of_int 0 : mword 32)⌝.
+  Proof.
+    intro Hnz. iIntros "Hkp Hmine #Hs".
+    iDestruct (kill_paid_agree pid kl dq gn with "Hkp Hmine")
+      as "[Harm Hmine]".
+    iDestruct "Harm" as "[[%Hz _] | [_ Hlive]]"; [ exfalso; exact (Hnz Hz) | ].
+    iDestruct "Hlive" as (Q) "(Hr & #Hmy & #Hw & Hrow)".
+    iDestruct (kill_row_shot_nz gn kl with "Hrow Hs") as "[Hrow %Hknz]".
+    iFrame "Hmine". iSplitL; [ | by iPureIntro ].
+    iApply (kill_paid_of_reg pid kl gn Q Hnz with "Hr Hmy Hw Hrow").
   Qed.
 
   (* THE TAKE, AND IT IS [kexit]'s ALONE (lane SELF-KILL, P6).  A dying

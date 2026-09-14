@@ -291,8 +291,16 @@ Section ProofSetkilled.
          THE STEP IS A GHOST UPDATE because the writer also FIRES the
          incarnation's kill one-shot, whose persistent half comes back
          here (lane SELF-KILL, P6). *)
-      iMod (kill_paid_kill_two pidv kl _ (DfracOwn qeighth) gn Hpidnz
-              with "Hreg Hkill Hrow") as "(Hreg & #Hshot & Hrow)".
+      iMod (kill_paid_kill_two pidv kl (trunc32 (rget C1 sk_a5))
+              (DfracOwn qeighth) gn Hpidnz
+              with "[] Hreg Hkill Hrow") as "(Hreg & #Hshot & Hrow)";
+        [ (* the flag this store just wrote is 1 (lane TRAP-ROWS, T2/T3:
+             the row's paid arm is at a nonzero flag) *)
+          iPureIntro;
+          rewrite (rget_ne C1 sk_a5 ltac:(vm_compute; discriminate));
+          rewrite /C1 upd_eq;
+          intro Hc; apply (f_equal (@bv_unsigned 32)) in Hc;
+          vm_compute in Hc; discriminate | ].
       iModIntro.
       iSplitL "Hreg"; [ iExact "Hreg" | ].
       iSplitR "Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot";

@@ -802,7 +802,8 @@ Section UkArms.
                   (sexit_pay_at Q sfam_pt) with "Hmyp") | ].
     (* THE KILL ROW IS [emp] AT AN INTERRUPT (lane KILL-PAY, K3(b)): the
        dispatched cause is one devintr handles, so no kill can follow it. *)
-    iSplitR.
+    (* THE PAIR (lane TRAP-ROWS, T3), and its left is free here *)
+    iSplit.
     { iApply (ukill_cred_at_not _ _
                 (utrap_scause_intr_not_kill i
                    (register_lookup (R_bitvector_64 scause) rsA) Hi)). }

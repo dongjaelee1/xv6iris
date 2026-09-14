@@ -122,7 +122,7 @@ Section UtSysBlock.
       (m0 m : regfile) (av nx : nat)
       (mie_v menvcfg0 epv scv : mword 64) (lks : gset string) (sts : list fdstate)
       (gn : gname) (cs : gset gname) (pid : mword 32)
-      (fdep : sfam) :
+      (fdep : sfam) (Wk : UexecSlot.uvis) :
     ut_wf N ->
     (K_usertrap <= av)%nat ->
     (trap_res false + nx)%nat = (av - 4)%nat ->
@@ -162,7 +162,7 @@ Section UtSysBlock.
     ut_pay_in fdep scv (<[tf_epc_idx := ret_pc epv]> (pv_tf (us_V U0))) U0 -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res SY.syscall_env) pt ksp m0
-                     mie_v menvcfg0 U0 sts gn cs pid epv scv fdep) -∗
+                     mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hwf Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hma0 Hcs Hmiev Hmenvv Hpro Hscec.
@@ -1154,9 +1154,11 @@ Section UtSysBlock.
       iAssert (my_pay (pv_gen (us_V (MkUstate V2 M2))) (sexit_pay fdep))
         as "#Hmy2".
       { rewrite Hgen2. iExact "Hmyp". }
+      iAssert (ut_resume_in scv Wk (pv_gen (us_V (MkUstate V2 M2))))%I as "Hri".
+      { rewrite Hscec. iApply ut_resume_in_ecall. }
       iApply (T.ut_a6 (CID := CID2) SY.syscall_env N U0 (MkUstate V2 M2) pt ksp m0 mg av
                 n2 true
-                mie_v menvcfg0 epv scv lks sts stsR gn cs csR pid fdep
+                mie_v menvcfg0 epv scv lks sts stsR gn cs csR pid fdep Wk
                 Hwf'
                 (* the generation, across the dispatcher and the prologue:
                    no entry re-incarnates its caller ([SpecSyscall]'s own
@@ -1176,8 +1178,8 @@ Section UtSysBlock.
                 ltac:(rewrite Htfg HV1upt; exact Htfpe) Hksp Hm0sp
                 Hmgsp Hmgs1 Hcsmg
                 Hmiev Hmenvv Hrda
-                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hso Hcont] Hframe Hxo Hfo Hwo Hso
-                      Hmy2 Hcont").
+                with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hri Hso Hcont]
+                      Hframe Hxo Hfo Hwo Hri Hso Hmy2 Hcont").
       all: try lkbelow.
       rewrite /ut_hold. iSplitL "Hcpu"; [iExact "Hcpu"|].
       iSplitR; [rewrite /trap_csrs_ext; done|].

@@ -140,7 +140,7 @@ Section UservecAllPt.
   Lemma wp_uservec_pt (C : ucfg) (pt : uptd) (Rut : uptd -> iProp Σ)
       (j : nat) (vksp : mword 64) (U : ustate) (sts : list fdstate)
       (gn : gname) (cs : gset gname) (pid : mword 32)
-      (fdep : sfam) (M : gmap Z (bv 8))
+      (fdep : sfam) (Wk : UexecSlot.uvis) (M : gmap Z (bv 8))
       (g : regfile) (ms_v sc_v stval_v sepc_v : mword 64) :
     (* [UT.]-qualified, not the section alias: inside a section that FIXES
        [CID], the alias has no [CID] implicit left to instantiate (section
@@ -148,7 +148,7 @@ Section UservecAllPt.
        still does, and the two are convertible, so the [: USERVEC] check
        accepts it. *)
     wp_uservec_pt_body (fun h : CpuId => UT.usertrap_res_bare (CID := h))
-      C pt Rut j vksp U sts gn cs pid fdep M g ms_v sc_v stval_v sepc_v.
+      C pt Rut j vksp U sts gn cs pid fdep Wk M g ms_v sc_v stval_v sepc_v.
   Proof.
     cbv beta zeta delta [wp_uservec_pt_body].
     (* [tf_pa] deliberately NOT unfolded here: its 35 trapframe cells ride in
@@ -1635,9 +1635,9 @@ Section UservecAllPt.
     iEval (rewrite Hstvec) in "Hstvec".
     iApply (UT.wp_usertrap pt j (<[Regidx (mword_of_int 1) := regval_into_reg (uva 0x9c)]> M7)
               ms_v sc_v stval_v sepc_v vksp (uc_mie C) (uc_mideleg C) MENVCFG_S _ sts
-              gn cs pid fdep
+              gn cs pid fdep Wk
               Hums Hjlt Hspv' Htpv' Hmie Hmm Hmenvval0
-              with "Hkt Hpc Hhw Hinv Hhs Hpriv Hms Hsc Hstval Hsepc Hstvec Hmie Hmdl Hmenv Hfile Hures' [Hxin] [Hfin] [Hein] Hkin").
+              with "Hkt Hpc Hhw Hinv Hhs Hpriv Hms Hsc Hstval Hsepc Hstvec Hmie Hmdl Hmenv Hfile Hures' [Hxin] [Hfin] [Hein] [Hkin]").
     { (* THE BUNDLE ACROSS THE SAVE WALK: the saved frame is [g]'s registers
          at the two words the bundle's key and guard read (a1, a7) -- the
          agreement the round crosses by, restricted to two indices, hence
@@ -1708,13 +1708,17 @@ Section UservecAllPt.
                     Hueqe eq_refl
                     with "Hein")
       end. }
+    { (* THE PAIR ACROSS THE SAVE WALK (lane TRAP-ROWS, T3): the row is at
+         an OPAQUE key -- the loop's own -- so this boundary relays it
+         verbatim. *)
+      iExact "Hkin". }
     iApply wp_next_intro. iIntros (CID2).
     iEval (rewrite /usertrap_post).
     (* [usertrap_post] names where the round left the descriptor states *)
     iIntros (pt' mf ms' usatp uepc sc' stval' mdv0 U2 sts2 cs2)
       "%Huptpt2 %Hrd2 %Hfdk2 %Hchk2 %Hgenk2 %Hfde2 %Hpipe2 %Hpidr2 %Hpcret
        %Hmask %Hpttf %Haccwf %Hmapwf %Hretms %Hsconf2 %Hcalleesaved %Htpcid %Ha0usatp %Hsatprooted
-       Hhs2 Hpriv2 Hms2 Hsc2 Hstval2 Hsepc2 Hstvec2 Hpc2 Hfile2 Hmie3 Hmdl3 Hmenv3 #Hhw2 #Hmin2 Hures2 Hxo2 Hfo2 Hwo2 Hso2".
+       Hhs2 Hpriv2 Hms2 Hsc2 Hstval2 Hsepc2 Hstvec2 Hpc2 Hfile2 Hmie3 Hmdl3 Hmenv3 #Hhw2 #Hmin2 Hures2 Hxo2 Hfo2 Hwo2 Hko2 Hso2".
     (* x0 IS ZERO in the file usertrap handed back -- the one fact the
        register-file tie below needs of the base ([UexecRet.userret_gpr_x0]). *)
     iDestruct (gpr_file_x0 mf (mword_of_int 0) ltac:(vm_compute; reflexivity)
@@ -1871,7 +1875,8 @@ Section UservecAllPt.
                 deferred to a goal, [?U'] is already resolved by the time the
                 (purely iota) conversion is checked. *)
              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hhs3 Hpriv3 Hms3 Hmie4 Hmdl4 Hmenv4 Hstvec2 Hsenv3 Hsc2 Hstval2 Hsepc3
-                    [Hupt3] Hpc3 Hfile3 Hures3 Hhw2 Hmin2 Hcreds2 [Hxo2] [Hfo2] [Hwo2] [Hso2]").
+                    [Hupt3] Hpc3 Hfile3 Hures3 Hhw2 Hmin2 Hcreds2 [Hxo2] [Hfo2] [Hwo2]
+                    [Hko2] [Hso2]").
     - (* the descriptor the residue is keyed at IS the one handed over *)
       reflexivity.
     - (* THE ROUND, read at the machine that trapped.  usertrap's [tf0] is
@@ -2005,6 +2010,10 @@ Section UservecAllPt.
       + cbn [us_V pv_tf upd_usM us_tf upd_usV upd_tf].
         unfold UsysMemOk.usys_num, tf_arg_idx, tf_of. reflexivity.
       + cbn [us_V pv_tf us_upt upd_upt upd_usV us_tf upd_tf]. reflexivity.
+    - (* ...AND THE UNTAKEN CONTINUATION, forwarded verbatim: this boundary
+         moves neither the cause nor the key the pair was handed at
+         (lane TRAP-ROWS, T3). *)
+      iExact "Hko2".
     - (* THE SYSCALL CHANNEL'S ANSWER, across the same two moves.  The row's
          KEY is the entry one on both sides -- usertrap ran at the record
          this boundary named, so the six rows of

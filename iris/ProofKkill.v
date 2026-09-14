@@ -638,7 +638,13 @@ Section ProofKkill.
                incarnation's kill one-shot (lane SELF-KILL, P6): from here
                on the flag is nonzero for good, and that is the fact
                [killed()] relays and [kexit] spends. *)
-            iMod (kill_paid_kill pidc kl _ Hpcnz with "Hkc Hrow") as "Hrow".
+            iMod (kill_paid_kill pidc kl (trunc32 (rget (CID := CIDf) M40 Ra5))
+                    Hpcnz with "[] Hkc Hrow") as "Hrow";
+              [ iPureIntro;
+                rewrite (rget_ne (CID := CIDf) M40 Ra5 ltac:(vm_compute; discriminate));
+                rewrite /M40 upd_eq;
+                intro Hc; apply (f_equal (@bv_unsigned 32)) in Hc;
+                vm_compute in Hc; discriminate | ].
             iModIntro. iExists _, xs, pidc.
             iFrame "Hkilled Hxstate Hpidhalf Hrow". }
           iApply fupd_wp.
@@ -672,7 +678,13 @@ Section ProofKkill.
             by (apply bv_eq; vm_compute; reflexivity).
           iEval (rewrite Hpp4c) in "Hpc".
           iAssert (|==> proc_pub (proc_addr k))%I with "[Hkilled Hxstate Hpidhalf Hrow]" as ">Hpub".
-          { iMod (kill_paid_kill pidc kl _ Hpcnz with "Hkc Hrow") as "Hrow".
+          { iMod (kill_paid_kill pidc kl (trunc32 (rget (CID := CIDf) M40 Ra5))
+                    Hpcnz with "[] Hkc Hrow") as "Hrow";
+              [ iPureIntro;
+                rewrite (rget_ne (CID := CIDf) M40 Ra5 ltac:(vm_compute; discriminate));
+                rewrite /M40 upd_eq;
+                intro Hc; apply (f_equal (@bv_unsigned 32)) in Hc;
+                vm_compute in Hc; discriminate | ].
             iModIntro. iExists _, xs, pidc.
             iFrame "Hkilled Hxstate Hpidhalf Hrow". }
           iDestruct (proc_lock_res_intro γs γk (proc_addr k) st ch

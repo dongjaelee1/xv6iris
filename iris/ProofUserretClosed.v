@@ -587,18 +587,18 @@ Section UserretClosed.
            ([uvis_run W]): the rows carry it opaque, so nothing has to be
            transported across the save walk. ---- *)
     iAssert (SpecUsertrap.ut_kill_in fdep sc (uvis_run W)
-               (pv_gen (us_V (us_upt U0 pt))) ∗
+               (uvis_gen W) ∗
              (if decide (sc = uecall_scause) then uexec_arm sc W fdep
               else emp))%I with "[Hret]" as "[Hkin Hret]".
     { rewrite /SpecUsertrap.ut_kill_in.
       destruct (decide (sc = uecall_scause)) as [Hec | Hne].
       - iSplitR; [ iSplitR; [ | done ];
                    iPureIntro; cbn [uvis_run uvis_of_run uvis_gen];
-                   exact (eq_sym Hgen0)
+                   reflexivity
                  | iExact "Hret" ].
       - iSplitL; [ | done ].
         iSplitR; [ iPureIntro; cbn [uvis_run uvis_of_run uvis_gen];
-                   exact (eq_sym Hgen0) | ].
+                   reflexivity | ].
         iEval (rewrite (uexec_arm_run sc W fdep Hlen)) in "Hret".
         rewrite (uexec_arm_transparent sc (uvis_run W) fdep Hne).
         iExact "Hret". }
@@ -610,6 +610,7 @@ Section UserretClosed.
               (uvis_M W)
               (tf_resume_gpr0 (uvis_tf W))
               ms_v sc stv (tf_w (uvis_tf W) tf_epc_idx)
+              (eq_sym Hgen0)
               Hstv Hdqc Hmie Hj Hnorm Hptwf
               with "Hkt Hhw Hmin Hclaim Hcreds Hframe Hures Hin Hfin [Hpay] Hkin [-]").
     { rewrite /SpecUsertrap.ut_pay_in. iExact "Hpay". }

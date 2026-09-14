@@ -240,6 +240,17 @@ Definition wp_consoleread_sconf_body
          ([UkSh.ush_read_ans]'s minus-one arm was its only destination and
          only [ush_read_ans_pos] is spent), so the row is dropped rather
          than weakened to something vacuous. *)
+      (* ...AND A NEGATIVE ANSWER HANDS THE READER THE KILL FACT (lane
+         TRAP-ROWS, T2).  The one exit that returns -1 is the
+         [killed(myproc())] test inside the wait loop; it fires only
+         against a NONZERO [p->killed], and [killed()] hands the caller
+         this incarnation's one-shot at that flag
+         ([SchedCtx.kill_paid_shot]).  The shot is PERSISTENT, so relaying
+         it costs the arm nothing and the reader keeps it -- which is what
+         lets usertrap's second killed check refute its own resume branch,
+         and hence what makes "read never answers -1 to user mode" a fact
+         of the kernel rather than a discipline. *)
+      (⌜(r < 0)%Z⌝ -∗ ChildTok.kill_shot (pv_gen (us_V U))) -∗
       ⌜(Z.of_nat d <= Z.max 0 n)%Z⌝ -∗
       (* ...AND ON A NON-NEGATIVE RETURN THE RUN IS EXACTLY THAT LONG: the
          copy is one byte per round and a failing one-byte either_copyout

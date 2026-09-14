@@ -123,6 +123,8 @@ Section UtSysBlock.
       (mie_v menvcfg0 epv scv : mword 64) (lks : gset string) (sts : list fdstate)
       (gn : gname) (cs : gset gname) (pid : mword 32)
       (fdep : sfam) (Wk : UexecSlot.uvis) :
+    (* the key's generation is the block's (lane TRAP-ROWS, T2) *)
+    gn = pv_gen (us_V U0) ->
     ut_wf N ->
     (K_usertrap <= av)%nat ->
     (trap_res false + nx)%nat = (av - 4)%nat ->
@@ -165,7 +167,7 @@ Section UtSysBlock.
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hwf Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hma0 Hcs Hmiev Hmenvv Hpro Hscec.
+    intros Hgnq Hwf Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hma0 Hcs Hmiev Hmenvv Hpro Hscec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     pose proof (ut_nx_bound_off av nx Hav Hnx) as Hkso.
     
@@ -639,7 +641,12 @@ Section UtSysBlock.
                 (un_w N)
  (un_fn N pid) (un_ip N) (un_dqi N)
                 S4 n2 pid (MkUstate V1 ((us_M U))) sts gn cs lks fdep
-                Hj Hjl ltac:(rewrite Hn2; lia) eq_refl
+                Hj Hjl ltac:(rewrite Hn2; lia)
+                (* the key's generation is the block's, across the prologue's
+                   one trapframe write (lane TRAP-ROWS, T2) *)
+                ltac:(cbn [us_V]; rewrite HV1gen;
+                      rewrite Hgnq; symmetry; exact Hpr6)
+                eq_refl
                 with "Hwl Hcg [] Htext Hkd Hpc Hpi Hbs Hip Hfd Hir Hsy Hpv [Hufr] [Hch] [Hxin] [Hfin] [Hein] [-]").
     (* the syscall channel takes the bundle AT ITS NAMED STATES now, and
        hands back the states the call left together with the table row that

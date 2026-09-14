@@ -1943,6 +1943,8 @@ Section SyscallVocab.
        r <> csp_rs1 -> r <> Rs0 -> r <> Rs1 -> r <> Rs2 ->
        M !!! Regidx r = m !!! Regidx r) ->
     (K_syscall <= av)%nat ->
+    (* the key's generation is the block's (lane TRAP-ROWS, T2) *)
+    gn = pv_gen (us_V U) ->
     (* the tie [syscall_env]'s indices cannot reach -- SpecSyscall.v's note *)
     fcn_pid fn = pid ->
     (* the arm's OWN table index, as [sysc_mem_ok] reads it off the entry
@@ -3397,6 +3399,10 @@ Section SyscallArms.
        it to turn a W page of the projection into a real user leaf.  A
        PREMISE here rather than a resource step, because this lemma holds no
        block: the caller does ([ProcPtOwn.proc_ptm_wf] is the step). *)
+    (* ...AND THE KEY'S GENERATION IS THE BLOCK'S (lane TRAP-ROWS, T2):
+       row 5's receipt names the reader's incarnation, and the reader is
+       this process. *)
+    gn = pv_gen (us_V U) ->
     ProcPtOwn.proc_pt_wf (pv_upt (us_V U)) ->
     (* ...AND WHAT THE BLOCK'S LAZY BIT CLAIMS, which is row 5's tie:
        [ProcInv.proc_priv_core]'s own invariant on [ProcDefs.pv_lazy], read
@@ -3416,12 +3422,12 @@ Section SyscallArms.
     (* THE TABLE IS THE PROCESS'S OWN, and the key's permission map is its
        projection by [UexecSlot.uvis_of]'s own definition -- which is the
        equation row 5's existential asks for (lane CONS-SWALLOW, W4). *)
-    fileread_extra_core (pv_upt (us_V U)) (fd_st_of_key v0 sts)
+    fileread_extra_core gn (pv_upt (us_V U)) (fd_st_of_key v0 sts)
       (sys_rw_count v2) (rf_F f)
       (rf_ret f) (rf_in f) r M' v1 -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
   Proof.
-    intros Hn Hv0 Hv1 Hv2 Hwf Hlzp Hret. iIntros "H".
+    intros Hn Hv0 Hv1 Hv2 Hgnq Hwf Hlzp Hret. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 5 Hn
               ltac:(vm_compute; discriminate)
               ltac:(vm_compute; discriminate)).
@@ -3761,7 +3767,7 @@ Section SyscallArms.
     sysc_arm_goal 11 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
@@ -4065,7 +4071,7 @@ Section SyscallArms.
     sysc_arm_goal 12 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
@@ -4199,7 +4205,7 @@ Section SyscallArms.
     sysc_arm_goal 3 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     subst pj.
@@ -4328,7 +4334,7 @@ Section SyscallArms.
     sysc_arm_goal 14 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
@@ -4419,7 +4425,7 @@ Section SyscallArms.
     sysc_arm_goal 6 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
@@ -4518,7 +4524,7 @@ Section SyscallArms.
     sysc_arm_goal 13 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     subst pj.
@@ -4722,7 +4728,7 @@ Section SyscallArms.
     sysc_arm_goal 10 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
@@ -4824,7 +4830,7 @@ Section SyscallArms.
     sysc_arm_goal 1 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
@@ -5053,7 +5059,7 @@ Section SyscallArms.
     sysc_arm_goal 7 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     subst pj.
@@ -5300,7 +5306,7 @@ Section SyscallArms.
     sysc_arm_goal 2 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
     (* THE PAYMENT, off the route's own row: this arm's number IS
@@ -5396,7 +5402,7 @@ Section SyscallArms.
     sysc_arm_goal 22 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
@@ -5501,7 +5507,7 @@ Section SyscallArms.
     sysc_arm_goal 16 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
@@ -5675,7 +5681,7 @@ Section SyscallArms.
     sysc_arm_goal 5 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
@@ -5835,8 +5841,11 @@ Section SyscallArms.
     { iApply sysc_wait_out_ne. unfold UsysMemOk.USYS_wait in *; lia. }
     iApply (sysc_exec_out_ne _ _ _ _ _ _ _ _ (sysc_num_ne7 _ _ Hnum eq_refl)).
     rewrite Hmfa0.
+    iEval (rewrite -Hgnq) in "Hex".
     iApply (sysc_out_read U sts gn cs pid fdep v0 v1 v2 r _ _ _ _
-              ltac:(rewrite Hnum; reflexivity) Hv0 Hv1 Hv2 Hptwf Hlzp Hfrret
+              ltac:(rewrite Hnum; reflexivity) Hv0 Hv1 Hv2
+              ltac:(first [ reflexivity | assumption | symmetry; assumption ])
+              Hptwf Hlzp Hfrret
               with "Hex").
   Qed.
 
@@ -5849,7 +5858,7 @@ Section SyscallArms.
     sysc_arm_goal 8 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
@@ -5969,7 +5978,7 @@ Section SyscallArms.
     sysc_arm_goal 9 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
@@ -6152,7 +6161,7 @@ Section SyscallArms.
     sysc_arm_goal 18 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
@@ -6272,7 +6281,7 @@ Section SyscallArms.
     sysc_arm_goal 19 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
@@ -6405,7 +6414,7 @@ Section SyscallArms.
     sysc_arm_goal 21 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
@@ -6605,7 +6614,7 @@ Section SyscallArms.
     sysc_arm_goal 4 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
@@ -6915,7 +6924,7 @@ Section SyscallArms.
     sysc_arm_goal 20 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
@@ -7056,7 +7065,7 @@ Section SyscallArms.
     sysc_arm_goal 17 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
@@ -7206,7 +7215,7 @@ Section SyscallArms.
     sysc_arm_goal 15 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
   Proof.
     rewrite /sysc_arm_goal /sysc_arm_pre.
-    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hpidt Hnum.
+    intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
     iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
@@ -7922,7 +7931,7 @@ Section SyscallMain.
         gn cs lks fdep.
   Proof.
     cbv beta delta [wp_syscall_sconf_body].
-    intros pcE pj ret_tgt Hj Hgamma Hav Hpidt.
+    intros pcE pj ret_tgt Hj Hgamma Hav Hgnq Hpidt.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
@@ -8391,7 +8400,7 @@ Section SyscallMain.
         by wp_next_chain.
       iDestruct (cpu_own_transport CID8 CID22 0%nat true pj true Hcr8_22 with "Hcpu") as "Hcpu".
       iApply (sysc_arm_dispatch (CID := CID22) k γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m D0 fdep Hk
-                Hj Hgamma eq_refl HD0armsp HD0s2 HD0ra HD0other HD0avb Hpidt Hsysc_num
+                Hj Hgamma eq_refl HD0armsp HD0s2 HD0ra HD0other HD0avb Hgnq Hpidt Hsysc_num
                 with "[Hpc Hcg Hcpu Htext Hprocs HR Hbs Hip Hfd Hir Hpriv Hufrag Hrow] Hr24 Hr16 Hr8 Hr0 Hdata Hcont Hxin Hfin Hein").
       { iApply (sysc_arm_pre_intro with
           "Hpc Hcg Hcpu Htext Hprocs HR Hbs Hip Hfd Hir Hpriv Hufrag Hrow Hwl"). }

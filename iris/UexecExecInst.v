@@ -703,7 +703,7 @@ Section UexecExecInst.
           ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
           ⌜ProcPtOwn.proc_pt_wf P⌝ ∗
           ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
-          fileread_extra_core P (fd_st_of_key (xk_a W 0) (uvis_fd W))
+          fileread_extra_core (uvis_gen W) P (fd_st_of_key (xk_a W 0) (uvis_fd W))
             (sys_rw_count (xk_a W 2)) (rf_F f) (rf_ret f) (rf_in f) r M'
             (xk_a W 1))
      else if decide (n = 9) then
@@ -800,9 +800,9 @@ Section UexecExecInst.
     xv6_spost X n f W r M' fdv' cw' cs' ⊣⊢ xv6_spost X n f W' r M' fdv' cw' cs'.
   Proof.
     intros Hk.
-    pose proof Hk as (HM & Ha0 & Ha1 & Ha2 & Hfd & Hcw & _ & _ & _ & Hpi & Hsz
+    pose proof Hk as (HM & Ha0 & Ha1 & Ha2 & Hfd & Hcw & Hgn & _ & _ & Hpi & Hsz
                       & Hlz).
-    rewrite /xv6_spost /xk_a /tf_w HM Ha0 Ha1 Ha2 Hfd Hcw Hpi Hsz Hlz.
+    rewrite /xv6_spost /xk_a /tf_w HM Ha0 Ha1 Ha2 Hfd Hcw Hgn Hpi Hsz Hlz.
     reflexivity.
   Qed.
 
@@ -1397,7 +1397,7 @@ Section UexecExecInst.
     perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
     ProcPtOwn.proc_pt_wf P ->
     (uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)) ->
-    fileread_extra_core P (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
+    fileread_extra_core (uvis_gen W) P (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (rf_F f) (rf_ret f)
       (rf_in f) r M' (tf_w (uvis_tf W) (tf_arg_idx 1)) -∗
     spost_at X 5 f W r M' fdv' cw' cs'.

@@ -696,6 +696,10 @@ Definition wp_syscall_sconf_body
   (j < NPROC)%nat ->
   γs !! j = Some γl ->
   (K_syscall <= av)%nat ->
+  (* THE KEY'S GENERATION IS THE BLOCK'S (lane TRAP-ROWS, T2): read's
+     receipt names the READER's incarnation, and the reader is this
+     process; the trap route is the party that knows it. *)
+  gn = pv_gen (us_V U) ->
   (* THE ONE TIE BETWEEN [fn]'s FIELDS AND A DISPATCH PARAMETER THAT [fn]'s
      OWN INDEX LIST CANNOT REACH.  [sys_exit]'s contract asks for [fn] to BE
      the record built out of the running process's names, and every field of

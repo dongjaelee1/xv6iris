@@ -1503,7 +1503,15 @@ Definition wp_usertrap_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, 
   ut_pay_in f sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U))) U -∗
   (* ...AND THE KILL ROW, owed at every cause and empty at all but the ones
      usertrap kills at -- [ut_kill_in] *)
-  ut_kill_in f sc_v Wk (pv_gen (us_V U)) -∗
+  (* THE KEY'S GENERATION IS THE BLOCK'S (lane TRAP-ROWS, T2/T3).  Every
+     row usertrap relays that names an incarnation -- the kill pair's, and
+     the console read's one-shot on row 5 -- is at the KEY's generation,
+     and the party that knows it is this process's is the U-mode loop.
+     A RESOURCE ROW and not a Coq premise: the record usertrap runs at is
+     the SAVE WALK's, which the boundary above cannot name, so a Coq
+     premise here would pin it to the wrong one. *)
+  ⌜gn = pv_gen (us_V U)⌝ -∗
+  ut_kill_in f sc_v Wk gn -∗
   (* THE CROSSING: usertrap parks (yield, and every sleeping syscall), so it
      may return on a different hart -- and the bundle comes back at THAT
      hart, which is why [R] is a family (see the note above). *)

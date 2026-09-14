@@ -780,6 +780,8 @@ Section UtDispatch.
       (ep sc st : mword 64)
       (mie_v menvcfg0 : mword 64) (sts : list fdstate) (gn : gname)
       (cs : gset gname) (pid : mword 32) (fdep : sfam) (Wk : UexecSlot.uvis) :
+    (* the key's generation is the block's (lane TRAP-ROWS, T2) *)
+    gn = pv_gen (us_V U0) ->
     printk_gen_contract (kt := KT1) (fsc_printk) (fsc_uart) (fsc_disk) ->
     (* THE PROLOGUE'S MOVE (milestone J1a): [U0] is the state usertrap was
        entered at and [U] the one the +0x28..+0x2e block handed on, so the
@@ -822,13 +824,13 @@ Section UtDispatch.
        the fall-through below, where [SpecDevintr.devintr_ret]'s zero
        answer and the ecall test together say the cause is a
        [UexecRet.ukill_sc] one. *)
-    ut_kill_in fdep sc Wk (pv_gen (us_V U0)) -∗
+    ut_kill_in fdep sc Wk gn -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') SY.syscall_env) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid ep sc fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hpk Hpro Hwf Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hma0 Hcs Hmiev Hmenvv.
+    intros Hgnq Hpk Hpro Hwf Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hma0 Hcs Hmiev Hmenvv.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
@@ -931,6 +933,7 @@ Section UtDispatch.
       { apply eq_vec_true_iff in Hsys. rewrite HD2a4 HD2a5 in Hsys. exact Hsys. }
       iApply (S.ut_90 N U0 U pt ksp m0 D2 av nx
                 mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
+                Hgnq
                 Hwf' Hav Hnx Htfpe Hksp Hm0sp HD2sp HD2s1 HD2a0 HcsD2
                 Hmiev Hmenvv Hpro Hscec
                 with "Htext Hpc Hcg Hhold Hframe Hxin Hfin Hein Hcont").
@@ -1052,7 +1055,7 @@ Section UtDispatch.
         (* THE PAIR'S RIGHT SIDE IS ALL A HANDLED INTERRUPT NEEDS (lane
            TRAP-ROWS, T3): the kernel serves the device and resumes, so it
            owes the slot back and never touches the (here empty) deposit. *)
-        iDestruct (ut_kill_in_pair fdep sc Wk (pv_gen (us_V U0)) Hscne
+        iDestruct (ut_kill_in_pair fdep sc Wk gn Hscne
                      with "Hkin") as "[%Hgw Hkp]".
         iDestruct (bi.and_elim_r with "Hkp") as "Hko".
         iAssert (ut_kill_out sc Wk)%I with "[Hko]" as "Hkor".
@@ -1087,8 +1090,9 @@ Section UtDispatch.
                  ∧ UexecRet.uslot Wk)%I
           with "[Hkin]" as "Hkc".
         { rewrite (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))).
-          iDestruct (ut_kill_in_pair fdep sc Wk (pv_gen (us_V U0))
+          iDestruct (ut_kill_in_pair fdep sc Wk gn
                        (proj1 Hkill) with "Hkin") as "[%Hgw Hkin]".
+          iEval (rewrite Hgnq) in "Hkin".
           rewrite /ukill_cred_at.
           destruct (decide (ukill_sc sc)) as [_ | Hn];
             [ iExact "Hkin" | exfalso; exact (Hn Hkill) ]. }
@@ -1474,7 +1478,7 @@ Section UtSeal.
     cbv beta delta [wp_usertrap_body].
     intros pcE pj Hms Hj Hsp Htp Hmiev Hmask Hmenvv.
     iIntros "#Htext Hpc #Hhw #Hminv Hhs Hpriv Hms Hsc Hst Hep Hstv
-             Hmie Hmdl Hmenv Hgpr HR Hxin Hfin Hein Hkin Hcont".
+             Hmie Hmdl Hmenv Hgpr HR Hxin Hfin Hein %Hgnq Hkin Hcont".
     (* SCOPED: a bare [rewrite] would unfold [ut_res] inside the crossing's
        [usertrap_post] too, and the blocks state it folded. *)
     iEval (rewrite /usertrap_res /ut_res) in "HR".
@@ -1491,6 +1495,7 @@ Section UtSeal.
     iIntros (M V') "%HMsp %HMs1 %HMa0 %HcsM %HuptV %HtfV %HszV %HcwiV %HgenV %HlzV Hpc Hcg Hcpu Hclm Hraw Henv Hfr".
     iApply (ut_dispatch N (MkUstate V Mu) (MkUstate V' Mu) pt ksp m M av (av - 4)%nat sepc_v sc_v stval_v
               mie_v menvcfg0 sts gn cs pid fdep Wk
+              ltac:(cbn [us_V]; exact Hgnq)
               (ut_printk (fsc_printk) (fsc_uart) (fsc_disk))
               (conj HtfV (conj HuptV (conj HszV (conj eq_refl
                  (conj HcwiV (conj HgenV HlzV))))))

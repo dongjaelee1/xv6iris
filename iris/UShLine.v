@@ -241,7 +241,7 @@ Section UShLine.
       ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
       ⌜proc_pt_wf P⌝ ∗
       ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
-      fileread_extra_core P (fd_st_of_key v0 sts) (sys_rw_count v2)
+      fileread_extra_core (uvis_gen W) P (fd_st_of_key v0 sts) (sys_rw_count v2)
         (rf_F f) (rf_ret f) (rf_in f) r M' v1.
   Proof.
     intros H0 H1 H2 Hfd. iIntros "H".

@@ -293,7 +293,7 @@ Section SpecSysRead.
       (Rin : list (list mobs * bv 8) -> iProp Σ) (P : iProp Σ)
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
     (⌜sys_read_ret V v n r⌝ ∗
-     fileread_extra (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin P r M' addr)%I.
+     fileread_extra (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin P r M' addr)%I.
 
   Lemma sys_read_arms_ret V v sts n F Rd Rin P r M' addr :
     sys_read_arms V v sts n F Rd Rin P r M' addr -∗ ⌜sys_read_ret V v n r⌝.
@@ -306,7 +306,7 @@ Section SpecSysRead.
      already carries [UsysMemOk.usys_mem_ok] and [usys_fd_ok]. *)
   Lemma sys_read_arms_extra V v sts n F Rd Rin P r M' addr :
     sys_read_arms V v sts n F Rd Rin P r M' addr -∗
-    fileread_extra (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin P r M' addr.
+    fileread_extra (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin P r M' addr.
   Proof. iIntros "[_ $]". Qed.
 
   (* ...AND THE PAYLOAD OFF IT, which is what the dispatcher's read arm
@@ -314,7 +314,7 @@ Section SpecSysRead.
      process is the [_core], the payload is the kernel's. *)
   Lemma sys_read_arms_pay V v sts n F Rd Rin P r M' addr :
     sys_read_arms V v sts n F Rd Rin P r M' addr -∗
-    P ∗ fileread_extra_core (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin r M' addr.
+    P ∗ fileread_extra_core (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin r M' addr.
   Proof. iIntros "[_ H]". iApply (fileread_extra_pay with "H"). Qed.
 
   (* ---- the key, read at the two shapes the walk reaches it in --------
@@ -356,7 +356,7 @@ Section SpecSysRead.
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) :
     arg_fd v (pv_ofile V) = Some (fd, fv) ->
     sts !! fd = Some st ->
-    fileread_arms (pv_upt V) st n F Rd Rin P r M' addr -∗
+    fileread_arms (pv_gen V) (pv_upt V) st n F Rd Rin P r M' addr -∗
     sys_read_arms V v sts n F Rd Rin P r M' addr.
   Proof.
     intros Hsome Hst. rewrite /sys_read_arms /sys_fd_st Hsome Hst /=.

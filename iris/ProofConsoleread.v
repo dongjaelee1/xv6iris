@@ -1123,6 +1123,9 @@ Section CrBodies.
          ⌜callee_saved m0 mf⌝ -∗
          ⌜uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P'⌝ -∗
          ⌜(-1 <= r <= Z.max 0 n)%Z⌝ -∗
+         (* ...AND A NEGATIVE ANSWER IS A KILL, AND HANDS THE FACT OVER
+            (lane TRAP-ROWS, T2) -- [SpecConsoleread]'s new row, mirrored *)
+         (⌜(r < 0)%Z⌝ -∗ ChildTok.kill_shot (pv_gen (us_V U))) -∗
          cr_winO cn Wd ord fault Ment Mo (m0 !!! Regidx Ra1) n r hs -∗
          ⌜mf !!! Regidx Ra0 = (mword_of_int r : mword 64)⌝ -∗
          (* THE LEDGER'S TAGS, one per byte the run carries *)
@@ -1161,12 +1164,16 @@ Section CrBodies.
     (* the epilogue moves NOTHING: it hands the block on at the image it
        arrived at, so the caller's receipt travels with it *)
     cr_winO cn Wd ord fault Ment (us_M U) (m0 !!! Regidx Ra1) n r hs -∗
+    (* THE KILL ROW, CARRIED THROUGH THE EPILOGUE (lane TRAP-ROWS, T2):
+       every exit reaches +0xce, and only the [killed] one answers below
+       zero -- so the other two hand this over vacuously. *)
+    (⌜(r < 0)%Z⌝ -∗ ChildTok.kill_shot (pv_gen (us_V U))) -∗
     cr_saved sp0 m0 -∗ cr_rest sp0 -∗
     cr_ret (CID0 := CID0) cn Wd ord fault jp m0 av eb pid U Ment n lks -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros pj Hm0sp HMsp HMa0 HMcs Hr Hav Heb Hcr.
-    iIntros "#Ht Hcg Hcnt Hpc Hpriv #Htags Hwin
+    iIntros "#Ht Hcg Hcnt Hpc Hpriv #Htags Hwin Hshotq
              (K1 & K2 & K3 & K4 & K5 & K6 & K8 & K9) Hrest Hcont".
     assert (Hb1 : add_vec (pa_stk sp0 12%nat)
                     (zero_extend' 64 (concat_vec (mword_of_int 11 : mword 6) ('b"000")))
@@ -1461,7 +1468,7 @@ Section CrBodies.
     rewrite /cr_ret.
     iSpecialize ("Hcont" $! CIDr with "[%]"); [wp_next_chain|].
     iApply ("Hcont" $! E9 r (pv_upt (us_V U)) (us_M U) hs
-              with "[%] [%] [%] Hwin [%] Htags Hcg Hcnt Hpc [Hpriv]").
+              with "[%] [%] [%] Hshotq Hwin [%] Htags Hcg Hcnt Hpc [Hpriv]").
     - exact Hcs.
     - apply uptd_ext_sz_refl.
     - exact Hr.
@@ -1493,6 +1500,8 @@ Section CrBodies.
          ⌜ cr_cs_hi M m0 ⌝ -∗
          ⌜ uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P' ⌝ -∗
          ⌜ (-1 <= r <= Z.max 0 n)%Z ⌝ -∗
+         (* the kill row, carried to the epilogue (lane TRAP-ROWS, T2) *)
+         (⌜(r < 0)%Z⌝ -∗ ChildTok.kill_shot (pv_gen (us_V U))) -∗
          ([∗ list] h ∈ hs, riscv_rx_tag h) -∗
          sie_cap_gpr KT1 M (av - 12)%nat true (proc_addr jp) -∗
          pc_is (mword_of_int (CR + 0xce)) -∗
@@ -1520,10 +1529,10 @@ Section CrBodies.
       (upd_usM (us_upt U P') Mo) Ment n lks.
   Proof.
     intro Hx. iIntros "H" (CIDx Hsx mf r P'' Mo' hs)
-      "%Hcs %Hex %Hr Hwin %Ha0 #Htags Hcg Hcnt Hpc Hpriv".
+      "%Hcs %Hex %Hr Hshotq Hwin %Ha0 #Htags Hcg Hcnt Hpc Hpriv".
     iSpecialize ("H" $! CIDx with "[%]"); [exact Hsx|].
     iApply ("H" $! mf r P'' Mo' hs
-              with "[%] [%] [%] Hwin [%] Htags Hcg Hcnt Hpc [Hpriv]").
+              with "[%] [%] [%] Hshotq Hwin [%] Htags Hcg Hcnt Hpc [Hpriv]").
     - exact Hcs.
     - exact (uptd_ext_sz_trans _ _ P' _ Hx Hex).
     - exact Hr.
@@ -1546,11 +1555,14 @@ Section CrBodies.
     iIntros "#Ht Hsaved Hcont".
     rewrite /cr_epi_prop.
     iIntros (CIDe Hse M P' Mo r hs)
-      "Hwin %Hsp %Ha0 %Hcs %Hext %Hr #Htags Hcg Hpc Hcnt Hpriv Hrest".
+      "Hwin %Hsp %Ha0 %Hcs %Hext %Hr Hshotq #Htags Hcg Hpc Hcnt Hpriv Hrest".
     iApply (cr_epi (CID := CIDe) CIDe cn Wd ord (cr_fault U (m0 !!! Regidx Ra1))
               jp m0 M av true sp0 pid (upd_usM (us_upt U P') Mo) (us_M U) n r hs lks
               Hm0sp Hsp Ha0 Hcs Hr Hav eq_refl ltac:(intros _; reflexivity)
-              with "Ht Hcg Hcnt Hpc Hpriv Htags Hwin Hsaved Hrest").
+              with "Ht Hcg Hcnt Hpc Hpriv Htags Hwin [Hshotq] Hsaved Hrest").
+    { (* the epilogue is at the re-keyed record; the generation does not
+         move ([upd_usM]/[us_upt] leave [pv_gen]) *)
+      iExact "Hshotq". }
     iApply (cr_ret_shift (CID0 := CIDe) cn Wd ord (cr_fault U (m0 !!! Regidx Ra1))
               jp m0 av pid U (us_M U) Mo P' n lks Hext).
     iApply (wp_next_retarget CID CIDe true (proc_addr jp) _ ltac:(wp_next_chain)
@@ -1753,7 +1765,7 @@ Section ProofConsoleread.
     iEval (rewrite Hjce) in "Hpc".
     iSpecialize ("EPI" $! CIDj with "[%]"); [wp_next_chain|].
     iApply ("EPI" $! X4 P' Mo (n - nc) hs
-              with "Hwin [%] [%] [%] [%] [%] Htags Hcg Hpc Hcnt Hpriv Hrest").
+              with "Hwin [%] [%] [%] [%] [%] [] Htags Hcg Hpc Hcnt Hpriv Hrest").
     - rewrite /X4 upd_ne; [| reg_neq].
       rewrite (Hthr csp_rs1 ltac:(vm_compute; reflexivity)). exact Hsp.
     - rewrite /X4 upd_eq. reflexivity.
@@ -1770,6 +1782,9 @@ Section ProofConsoleread.
         rewrite (Hthr Rs11 ltac:(vm_compute; reflexivity)). exact Q11.
     - exact Hext.
     - lia.
+    - (* this exit answers [n - nc >= 0], so the kill row is vacuous
+         (lane TRAP-ROWS, T2) *)
+      iIntros "%Hneg". exfalso. lia.
   Qed.
 
   (* THE FIVE EXITS, AS ONE NON-SEPARATING CONJUNCTION.  Exactly one is
@@ -3042,26 +3057,45 @@ Section ProofConsoleread.
     { apply (callee_saved_trans M mmp W2 (callee_saved_trans M W1 mmp HcsMW1 Hcsmp)).
       rewrite /W2. apply callee_saved_insert_r;
         [vm_compute; reflexivity | apply callee_saved_refl]. }
-    (* killed() ONLY REPORTS THE FLAG (lane SELF-KILL, §4b'): consoleread
-       branches on the number and relays nothing off the row, so the access
-       it supplies is the identity. *)
+    (* killed() REPORTS THE FLAG AND, AT A NONZERO ONE, THE INCARNATION'S
+       ONE-SHOT (lane TRAP-ROWS, T2).  consoleread's -1 exit is the one
+       place in the tree where "the reader was killed" becomes a fact the
+       CALLER can carry out of the kernel, and this is where it is read:
+       the accessor lends the pid quarter and the registration eighth off
+       the block, exactly as usertrap's three sites do, and gets back the
+       flag's own reading. *)
+    iDestruct (ProcInv.proc_priv_core_pid_reg with "Hpriv") as "(Hqp & Hrg & Hpvback)".
     iAssert (∀ (pidr klr : mword 32),
                p_pid (proc_addr jp) ↦₄{DfracOwn (1/4)} pidr -∗
                SchedCtx.kill_paid pidr klr -∗
                p_pid (proc_addr jp) ↦₄{DfracOwn (1/4)} pidr ∗
-               SchedCtx.kill_paid pidr klr ∗ emp)%I
-      as "Hkacc".
-    { iIntros (pidr klr) "Hq Hr". iFrame "Hq Hr". }
+               SchedCtx.kill_paid pidr klr ∗
+               ((⌜klr = (mword_of_int 0 : mword 32)⌝
+                 ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                p_pid (proc_addr jp) ↦₄{DfracOwn (1/4)} pid ∗
+                pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U))))%I
+      with "[Hqp Hrg]" as "Hkacc".
+    { iIntros (pidr klr) "Hq Hr".
+      iDestruct (ctx_word4_pointsto_agree with "Hq Hqp") as %->.
+      iDestruct (SchedCtx.kill_paid_shot pid klr (DfracOwn qeighth)
+                   (pv_gen (us_V U)) with "Hr Hrg") as "(Hr & Hrg & Hs)".
+      iFrame "Hq Hr Hs Hqp Hrg". }
     iApply (Killed.wp_killed_sconf γs jp γlp W2 (trap_res true + (av - 12))%nat 1%nat true
               (proc_addr jp) false ({["cons"]} ∪ lks)
-              (fun (_ : mword 32) => emp)%I
+              (fun (klv : mword 32) =>
+                 ((⌜klv = (mword_of_int 0 : mword 32)⌝
+                   ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                  p_pid (proc_addr jp) ↦₄{DfracOwn (1/4)} pid ∗
+                  pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)))%I)
               HW2a0 Hjp Hjl cr_lvl1
               ltac:(assert (trap_res true = 90%nat) as -> by reflexivity;
                     lia)
               ltac:(lkbelow)
               with "Hkacc Hcg Hcnt Ht Hpc Hpinv").
     all: try lkbelow.
-    iApply wp_next_off_intro. iIntros (mkl kl) "[%Hcskl %Hkla0] _ Hcg Hcnt Hpc". rgall.
+    iApply wp_next_off_intro.
+    iIntros (mkl kl) "[%Hcskl %Hkla0] (#Hkw & Hqp & Hrg) Hcg Hcnt Hpc". rgall.
+    iDestruct ("Hpvback" with "Hqp Hrg") as "Hpriv".
     iEval (rewrite HW2ra) in "Hpc".
     assert (Hp50 : ret_pc (add_vec_int (mword_of_int (CR + 0x4c) : mword 64) 4)
                    = (mword_of_int (CR + 0x50) : mword 64)) by pcw.
@@ -3194,7 +3228,7 @@ Section ProofConsoleread.
       iDestruct "EX" as "[_ HEPI]".
       iSpecialize ("HEPI" $! CIDz with "[%]"); [wp_next_chain|].
       iApply ("HEPI" $! K4 P' Mo (-1)%Z hs
-                with "Hwin [%] [%] [%] [%] [%] Htags Hcg Hpc Hcnt Hpriv Hrest").
+                with "Hwin [%] [%] [%] [%] [%] [] Htags Hcg Hpc Hcnt Hpriv Hrest").
       - rewrite /K4 upd_ne; [| reg_neq].
         rewrite (callee_saved_lookup HcsMr csp_rs1 ltac:(vm_compute; reflexivity)). exact Hsp.
       - rewrite /K4 upd_eq. reflexivity.
@@ -3207,6 +3241,12 @@ Section ProofConsoleread.
           | rewrite (callee_saved_lookup HcsMr Rs11 ltac:(vm_compute; reflexivity)); exact Hcs11 ].
       - exact Hext.
       - split; [lia | pose proof (Z.le_max_l 0 n); lia].
+      - (* THE ANSWER IS -1 BECAUSE THE FLAG WAS NONZERO (lane TRAP-ROWS,
+           T2), and [killed()] handed the one-shot back at that flag -- the
+           fact the reader carries out of the kernel. *)
+        iIntros "_".
+        iDestruct "Hkw" as "[%Hz0 | $]". exfalso.
+        rewrite Hz0 in Hkz. vm_compute in Hkz. discriminate Hkz.
       }
     (* ======= NOT killed: sleep on &cons.r ======= *)
     iApply (wp_cbnez_fall_s_sconf (mword_of_int (CR + 0x50)) (mword_of_int 56 : mword 8)
@@ -3934,18 +3974,20 @@ Section ProofConsoleread.
       iIntros (CIDr) "%Hsr".
       iSpecialize ("Hcont" $! CIDr with "[%]"); [exact Hsr|].
       iIntros (mf r P' Mo hs)
-        "%Hcs %Hext %Hr Hwin %Ha0 #Htags Hcg Hcnt Hpc Hpriv".
+        "%Hcs %Hext %Hr Hshotq Hwin %Ha0 #Htags Hcg Hcnt Hpc Hpriv".
       rewrite /cr_winO.
       iDestruct "Hwin" as (dw dcw bsw)
         "(%Hdwle & %Htie & %Hcb1 & %Hcb4 & %Hmoeq & %Htag & Hout)".
       subst Mo. rewrite /cr_out.
       iDestruct "Hout" as (cur sl) "(#Hsl & Hwd & Hco)".
       iApply ("Hcont" $! mf r P' dw dcw cur bsw hs sl
-                with "[%] [%] [%] [%] [%] [%] [%] [%] [%] Htags Hsl Hwd Hco
+                with "[%] [%] [%] [Hshotq] [%] [%] [%] [%] [%] [%] Htags Hsl Hwd Hco
                      Hcg Hcnt Hpc Hpriv").
       - exact Hcs.
       - exact Hext.
       - exact Hr.
+      - (* the kill row, relayed verbatim from the epilogue's own (T2) *)
+        iExact "Hshotq".
       - exact Hdwle.
       - exact Htie.
       - exact Hcb1.

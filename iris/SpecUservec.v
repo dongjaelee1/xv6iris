@@ -432,6 +432,8 @@ Definition wp_uservec_pt_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} 
        none of the user bytes -- and it is what the round's left-hand side
        is stated at. *)
     (M : gmap Z (bv 8)) (g : regfile) (ms_v sc_v stval_v sepc_v : mword 64) :=
+  (* the key's generation is the block's (lane TRAP-ROWS, T2/T3) *)
+  gn = pv_gen (us_V U) ->
   (* stvec points at the trampoline base *)
   uc_stvec C = mword_of_int TRAMPOLINE ->
   (* the kernel owns the config cells outright at this join (same fact the
@@ -536,7 +538,7 @@ Definition wp_uservec_pt_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} 
     (ProcDefs.upd_usM (ProcInv.us_tf U (tf_of g (ret_pc sepc_v))) M) -∗
   (* ...and THE KILL ROW, owed at every cause and read only at the ones
      usertrap kills at ([SpecUsertrap.ut_kill_in]) *)
-  ut_kill_in f sc_v Wk (pv_gen (us_V U)) -∗
+  ut_kill_in f sc_v Wk gn -∗
   wp_next true (proc_addr j) (fun CID' : CpuId =>
     uservec_post (CID := CID') (URes CID') C pt vksp U M g sts gn cs pid
       sepc_v sc_v f Wk) -∗

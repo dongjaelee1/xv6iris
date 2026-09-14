@@ -157,7 +157,7 @@ Section UservecAllPt.
        address (~260 nodes vs ~12) is 14 % of the proof TERM.  The leaves
        unify through the definition. See claude-notes/optimization.md. *)
     unfold uservec_gpr.
-    intros Hstvec Hdqc Hmie Hjlt Hnorm Hptwf.
+    intros Hgnq Hstvec Hdqc Hmie Hjlt Hnorm Hptwf.
     iIntros "#Hkt #Hhw #Hinv #Hclaim #Hcreds Hframe Hures Hxin Hfin Hein Hkin Hcont".
     (* ============ open the trapped machine ============ *)
     (* AT NAMED DATA (milestone J1a).  [user_trap_frame] is definitionally the
@@ -1637,7 +1637,7 @@ Section UservecAllPt.
               ms_v sc_v stval_v sepc_v vksp (uc_mie C) (uc_mideleg C) MENVCFG_S _ sts
               gn cs pid fdep Wk
               Hums Hjlt Hspv' Htpv' Hmie Hmm Hmenvval0
-              with "Hkt Hpc Hhw Hinv Hhs Hpriv Hms Hsc Hstval Hsepc Hstvec Hmie Hmdl Hmenv Hfile Hures' [Hxin] [Hfin] [Hein] [Hkin]").
+              with "Hkt Hpc Hhw Hinv Hhs Hpriv Hms Hsc Hstval Hsepc Hstvec Hmie Hmdl Hmenv Hfile Hures' [Hxin] [Hfin] [Hein] [%] [Hkin]").
     { (* THE BUNDLE ACROSS THE SAVE WALK: the saved frame is [g]'s registers
          at the two words the bundle's key and guard read (a1, a7) -- the
          agreement the round crosses by, restricted to two indices, hence
@@ -1708,6 +1708,9 @@ Section UservecAllPt.
                     Hueqe eq_refl
                     with "Hein")
       end. }
+    { (* the key's generation is the block's, and the save walk moves no
+         generation (lane TRAP-ROWS, T2) *)
+      cbn [us_V us_tf upd_usM upd_usV upd_tf]. exact Hgnq. }
     { (* THE PAIR ACROSS THE SAVE WALK (lane TRAP-ROWS, T3): the row is at
          an OPAQUE key -- the loop's own -- so this boundary relays it
          verbatim. *)

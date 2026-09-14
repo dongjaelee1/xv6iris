@@ -126,10 +126,12 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   gains `Rt`); M4a(3) LANDED 2026-09-16 (`2e0c78906`; the note below: the
   prompt paid by the link; the pair `sh_prompt_pay`); M3b(1) + M3c LANDED
   2026-09-16 (`c9bf0cde9`); M5a LANDED 2026-09-16 (`5c48c3aa2`; the note
-  below: the read on the era's link); IN FLIGHT: M5b (the credential in the
-  console lease; closes `Hsh_owed`'s third conjunct); then M3b core (the
-  payload at the line boundary, the lend into echo), sh's wait redemption
-  after TRAP-ROWS-3 T4(b); M4b, M6 after.
+  below: the read on the era's link); IN FLIGHT: M5b (main checkout: the
+  credential in the console lease; closes `Hsh_owed`'s third conjunct) and
+  M4b(1) (`-sup`, `lane/io-leaf-diag`: the diagnostics tower carries
+  `ksh_w`, structural only); then M3b core (the payload at the line
+  boundary, the lend into echo), sh's wait redemption after TRAP-ROWS-4;
+  M4b(2) the diagnostics' payment, M6 after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad

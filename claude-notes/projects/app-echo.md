@@ -102,6 +102,17 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   `echo_in := ein`, `echo_win`, `echo_turn`, `echo_R` over `echo_led`,
   `echo_phi := fun _ h => disc h -> Forall good_out (cycles_of h)`); the
   eight dependents; `Hphi` closed from `echo_led_phi`.
+- [ ] **PROLOGUE-ALTS** (pure; `-sup`, `lane/prologue-alts`): LAUNCHED
+  2026-09-16 (the note below): init's exec-failure loop and terminal
+  fork failure as prologue alternatives in EchoDisc/EchoOutPure; the
+  EchoOut stage after part 5.
+- [ ] **TRAP-ROWS** (kernel; `-tlw`, `lane/trap-rows`): phase 1 in flight
+  (brief scratchpad `brief-trap-rows.md`): T1 the short console write's
+  reason; T2 the read's -1 arm carries the reader's killed fact and the
+  user-level read loses the kill case (owner 2026-09-16: "agreed with
+  fixing the console read spec to never return -1 to userspace"); T3 the
+  additive conjunction at a killing-cause trap; T4 wait's -1 arm (the
+  note below).
 - [x] ~~**CONS-IO milestone F**~~ LANDED 2026-09-15 (`b0e667795`; the note
   below): the echo window token `riscv_win_res` (a fifth application-chosen
   predicate) lent in consoleintr's contract and returned by the append,
@@ -3316,6 +3327,31 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+PROLOGUE-ALTS LAUNCHED (2026-09-16; pure lane in `-sup`, `lane/prologue-alts`;
+brief scratchpad `brief-prologue-alts.md`; phase 1 = statements).  Owner's Q1:
+"yes, allow these errors in the top-level trace theorem."  THE SHAPE, from
+user/init.c: the console transcript begins `("init: starting sh\n" "init: exec
+sh failed\n")^j ++ "init: starting sh\n" ++ ("$ " ++ session | "init: fork
+failed\n")` -- the exec failure is printed by the CHILD, init reaps it and the
+outer loop restarts, any number of times; the fork failure is TERMINAL (init
+exits, the kernel panics on the OTHER UART -- EchoDisc.v:10-40: printk/panic
+write Uart1, so the console wire is silent from then on and by D1 no input is
+ever admitted).  The three alternatives at the byte after each "init:
+starting sh\n" are prefix-free but not head-distinct ('$','i','i'), so
+`line_alts_head_det`'s trick does not carry over; the lane designs the
+choice.  "init: wait returned an error\n" is NOT an alternative: it is
+REFUTED by TRAP-ROWS's fourth row T4 (below).  EchoOut's stage for the
+choice waits for ECHO-OUT part 5 to land (same file).
+
+TRAP-ROWS ROW T4 (2026-09-16; added to the kernel lane in `-tlw`): WAIT'S -1
+ARM HAS A REASON, treated as T2.  kernel/proc.c `wait` returns -1 iff
+`!havekids || killed(p)`; `UserChildren.wait_ans`'s -1 arm is bare today.  The
+row: `⌜rv = -1 /\ cs' = cs⌝ ∗ (⌜cs = ∅⌝ ∨ kill_shot gn)` at the kernel; the
+killed case never returns to user mode (usertrap's second check); the
+U-tier wait post keeps `r = -1 -> cs = ∅`, which init refutes from sh's
+generation in its `uch` set.  So `wp_kinit_main_die_dw` becomes a refuted
+arm, not a discipline alternative.
 
 SELF-KILL STEP 5 LANDED (2026-09-16; `b41a0075f` on `d403be38f`; 12 files
 +755/-137; builds selfk72-selfk84 in `-sup`; audit the thirteen; lemma_diff =

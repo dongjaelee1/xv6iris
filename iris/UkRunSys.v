@@ -2222,12 +2222,17 @@ Section UkRunSys.
        in with the call and the engine's rides [urun]; the answer says what
        the reap left, and [UserChildren.uch_update] is the one step that can
        take them there. *)
+    (* the run's identity conjunct is the PAIR now ([UkRun.urun_ids]); the
+       children half is what this leaf moves, the pid half rides through
+       (lane TRAP-ROWS-4, B). *)
+    iDestruct (urun_ids_ch with "Hcha") as "[Hcha Hidsback]".
     iDestruct (uch_agree with "Hcha Hch") as %<-.
     (* the goal here is the SLOT, not a [WP], so the update rides
        [UexecRet.uslot_bupd] -- the same door every other leaf that moves a
        ghost half in this position uses. *)
     iApply uslot_bupd.
     iMod (uch_update (ukn_ch N) cs cs cs' with "Hcha Hch") as "[Hcha Hch]".
+    iDestruct ("Hidsback" $! cs' with "Hcha") as "Hcha".
     iModIntro.
     destruct (usys_mem_ok_wait_null USYS_wait _ r _ _ _ _ _ _ _ _
                 eq_refl Ha0 Hok) as [-> [-> ->]].

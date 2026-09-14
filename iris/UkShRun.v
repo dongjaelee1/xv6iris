@@ -1090,7 +1090,7 @@ Section UkShRun.
       iIntros (hp2) "Hrun".
       iApply ("Hpar" $! hp2 r with "[%] Hans HP Hsz Hstd Hcwd HD Hrun").
       exact Hr.
-    - iIntros (N' hc γ') "%Hpeq Hmy HRc [#Hck HP] Hsz Hstd HD Hcwd Hch Hrun".
+    - iIntros (N' hc γ') "%Hpeq Hmy HRc [#Hck HP] Hsz Hstd HD Hcwd Hch _ Hrun".
       (* the weaker class the rest of sh's walk is stated at: the record
          the arm minted is keyed at [Q], and [Q] does not read the status *)
       pose proof (ukn_const_of_eq N' Q Hpeq HQc) as Hcst'.

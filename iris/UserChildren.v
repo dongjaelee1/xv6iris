@@ -121,6 +121,72 @@ Section UserChildren.
 End UserChildren.
 
 (* ===================================================================== *)
+(* A RUNNING PROCESS'S OWN PID, AS A HANDLE (lane TRAP-ROWS-4, B).        *)
+(* ===================================================================== *)
+(* [UkRun.urun] binds the key's pid EXISTENTIALLY, so a program holding a  *)
+(* run has no way to NAME its own pid -- which is the wall that kept       *)
+(* wait's reaping arm from being redeemable: the arm says "the reaped      *)
+(* generation was yours unless YOU are <init>", and a caller that cannot   *)
+(* say which pid it is cannot take either disjunct.  This is [UserCwd.     *)
+(* ucwd]'s twin, one value wide and at the SAME class: the engine's half   *)
+(* sits inside [urun] pinned to [uvis_pid], the program's half is what an  *)
+(* entry constructor hands over.  It is independently what makes           *)
+(* getpid(2)'s answer sayable.                                            *)
+(*   OVER [Z] AND NOT [mword 32], and the fragment is at [bv_unsigned      *)
+(* pidv]: a new [ghost_varG Σ (mword 32)] would be a NEW CLASS in the U    *)
+(* tier, which is the very thing T4(b)'s ruling forbade; [ghost_varG Σ Z]  *)
+(* is already there for the break and the working directory.              *)
+Section UserPid.
+  Context `{!ghost_varG Σ Z}.
+
+  (* the ENGINE's half: [UkRun.urun] carries it at [bv_unsigned (uvis_pid W)] *)
+  Definition upid_auth (γp : gname) (p : Z) : iProp Σ :=
+    ghost_var γp (1/2) p.
+
+  (* the PROGRAM's half *)
+  Definition upid (γp : gname) (p : Z) : iProp Σ :=
+    ghost_var γp (1/2) p.
+
+  Global Instance upid_auth_timeless γp p : Timeless (upid_auth γp p).
+  Proof. apply _. Qed.
+  Global Instance upid_timeless γp p : Timeless (upid γp p).
+  Proof. apply _. Qed.
+
+  (* the fragment READS the engine's half -- the lemma the resource exists
+     for, and why the authority sits INSIDE [urun]. *)
+  Lemma upid_agree (γp : gname) (p p' : Z) :
+    upid_auth γp p -∗ upid γp p' -∗ ⌜ p = p' ⌝.
+  Proof.
+    iIntros "H1 H2". iDestruct (ghost_var_agree with "H1 H2") as %->. done.
+  Qed.
+
+  (* NO UPDATE LAW.  A process's pid never changes: allocproc chooses it
+     once and exec does not move it ([UexecSlot.uvis_pid] is fixed across
+     every row of [UsysMemOk]).  A [ucwd_update] twin would be a licence
+     nothing needs. *)
+
+  (* the mint, at the pid the key carries: an entry constructor keeps the
+     authority in the [urun] it is building and hands the fragment over. *)
+  Lemma upid_alloc (p : Z) :
+    ⊢ |==> ∃ γp : gname, upid_auth γp p ∗ upid γp p.
+  Proof.
+    iMod (ghost_var_alloc p) as (γp) "Hc".
+    iEval (rewrite -Qp.half_half) in "Hc".
+    iDestruct (ghost_var_split with "Hc") as "[HA HF]".
+    iModIntro. iExists γp. iFrame "HA HF".
+  Qed.
+
+  Definition upid_any (γp : gname) : iProp Σ := (∃ p : Z, upid γp p)%I.
+
+  Global Instance upid_any_timeless γp : Timeless (upid_any γp).
+  Proof. apply _. Qed.
+
+  Lemma upid_any_of (γp : gname) (p : Z) : upid γp p -∗ upid_any γp.
+  Proof. iIntros "H". iExists p. iExact "H". Qed.
+
+End UserPid.
+
+(* ===================================================================== *)
 (* WHAT A REAP DOES TO THE READING, as the one PURE row every party from  *)
 (* kwait to the trap loop relays: AT MOST ONE generation leaves it -- the *)
 (* one that was reaped, which [WaitInv.children_inv_reap] takes out of    *)

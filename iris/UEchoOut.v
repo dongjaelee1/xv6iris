@@ -791,10 +791,12 @@ Section UEchoOut.
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
-    iApply (uslot_of_urun_ro W 12 (echq v ps0 cs0 n0 P) Hal8
+    iApply (uslot_of_urun_ro W 12 (echq v ps0 cs0 n0 P)
+              (mword_of_int 0 : mword 32) (* B1a: nothing reads [ukn_ipid] yet *)
+              Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
               with "Hdep Hpay").
-    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd _ _ #HA Hrun".
+    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd _ _ _ #HA Hrun".
     pose proof (ukn_const_of_eq N _ Hpayeq (fun x y => eq_refl)) as Htc.
     rewrite Hpc.
     iApply (wp_kecho_start N h (tf_resume_gpr0 (uvis_tf W))

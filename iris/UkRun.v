@@ -141,9 +141,29 @@ Record uk_names (Σ : gFunctors) := MkUkNames {
      at this very predicate -- so a run cannot name a payload that is not
      its own, and exit's leaf ([UkRunSys.wp_uk_ecall_exit]) pays exactly
      this at exactly the status the program passes. *)
-  ukn_pay : Z -> iProp Σ
+  ukn_pay : Z -> iProp Σ;
+  (* THE PROCESS'S OWN PID, AS A GHOST NAME (lane TRAP-ROWS-4, B).
+     [urun] binds the key's pid existentially, so until now a program had
+     no handle on it at all -- which is what kept wait's reaping arm
+     unredeemable: the arm says "the generation you reaped was your own
+     child unless YOU are <init>", and a caller that cannot say which pid
+     it is can take neither disjunct.  [UserChildren.upid_auth] sits in
+     [urun] pinned to [bv_unsigned (uvis_pid W)] and the fragment is what
+     an entry constructor hands over -- [ukn_cwd]'s twin, one value wide.
+     It is independently what makes getpid(2)'s answer sayable. *)
+  ukn_pid : gname;
+  (* ...AND <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-4, B).  PURE, because
+     the kernel's seal is a [Xv6Cameras.wchG] ghost and this tier carries
+     no such class (T4(b)'s ruling).  Two rows spend it: wait's reaping arm
+     ([UkRunSys.wp_uk_ecall_wait_null_live]'s [⌜p = ukn_ipid N⌝] disjunct,
+     read against the fragment above) and fork's child arm
+     ([UkFork.wp_uk_ecall_fork]'s [⌜pidc <> ukn_ipid N'⌝], which is what a
+     forked child spends to refute the first).  An entry constructor takes
+     it as a parameter and fork's child arm inherits it from the kernel's
+     own answer. *)
+  ukn_ipid : mword 32
 }.
-Global Arguments MkUkNames {_} _ _ _ _ _ _ _.
+Global Arguments MkUkNames {_} _ _ _ _ _ _ _ _ _.
 Global Arguments ukn_t {_} _.
 Global Arguments ukn_d {_} _.
 Global Arguments ukn_s {_} _.
@@ -151,6 +171,8 @@ Global Arguments ukn_fd {_} _.
 Global Arguments ukn_cwd {_} _.
 Global Arguments ukn_ch {_} _.
 Global Arguments ukn_pay {_} _.
+Global Arguments ukn_pid {_} _.
+Global Arguments ukn_ipid {_} _.
 
 (* THE TRIVIAL PAYLOAD, AS A CLASS.  A program whose exit owes its parent
    nothing has to be able to SAY so at its exit ecall
@@ -821,6 +843,59 @@ Section UkRun.
     iApply ("Hd" $! M pm sz fdv cw gn cs pidv with "Hmp Hh Hf").
   Qed.
 
+  (* THE TWO IDENTITY AUTHORITIES, AS ONE CONJUNCT (lane TRAP-ROWS-4, B).
+     [uch_auth] ties a program's [UserChildren.uch] to the set the key is
+     at; [upid_auth] does the same for the pid, which [urun] binds
+     existentially and which nothing the program holds could name until
+     now.  Pinning the pid is what lets a caller say "my pid is [p]" and
+     have that mean something about the key its next ecall traps from --
+     and that is what makes wait's reaping arm redeemable
+     ([UkRunSys.wp_uk_ecall_wait_null_live]).
+       THEY ARE ONE CONJUNCT AND NOT TWO on purpose: a hundred leaves
+     destructure [urun] positionally and hand this very hypothesis back to
+     [urun_close], and none of them reads either half.  Bundled, the pid
+     authority costs those leaves NOTHING; spelled beside it, it would cost
+     every one of them a name.  The four leaves that DO read a half take it
+     through the accessors below.
+       AT [bv_unsigned pidv]: the ghost is over [Z], because a
+     [ghost_varG Σ (mword 32)] would be a new class in this tier -- see
+     [UserChildren.upid_auth]'s note. *)
+  Definition urun_ids (N : uk_names Σ) (cs : gset gname) (pidv : mword 32)
+      : iProp Σ :=
+    (uch_auth (ukn_ch N) cs ∗ upid_auth (ukn_pid N) (bv_unsigned pidv))%I.
+
+  Global Instance urun_ids_timeless N cs pidv : Timeless (urun_ids N cs pidv).
+  Proof. rewrite /urun_ids. apply _. Qed.
+
+  Lemma urun_ids_intro (N : uk_names Σ) (cs : gset gname) (pidv : mword 32) :
+    uch_auth (ukn_ch N) cs -∗ upid_auth (ukn_pid N) (bv_unsigned pidv) -∗
+    urun_ids N cs pidv.
+  Proof. iIntros "H1 H2". iFrame "H1 H2". Qed.
+
+  (* the children half, LENT: the fork and wait leaves read it against the
+     program's own fragment and give it straight back *)
+  Lemma urun_ids_ch (N : uk_names Σ) (cs : gset gname) (pidv : mword 32) :
+    urun_ids N cs pidv -∗
+    uch_auth (ukn_ch N) cs ∗
+    (∀ cs' : gset gname,
+       uch_auth (ukn_ch N) cs' -∗ urun_ids N cs' pidv).
+  Proof.
+    iIntros "[Hch Hpid]". iSplitL "Hch"; [ iExact "Hch" | ].
+    iIntros (cs') "Hch". iFrame "Hch Hpid".
+  Qed.
+
+  (* ...and the pid half, LENT the same way.  A borrow, because what it is
+     spent on is an agreement ([UserChildren.upid_agree]) -- a process's pid
+     never moves. *)
+  Lemma urun_ids_pid (N : uk_names Σ) (cs : gset gname) (pidv : mword 32) :
+    urun_ids N cs pidv -∗
+    upid_auth (ukn_pid N) (bv_unsigned pidv) ∗
+    (upid_auth (ukn_pid N) (bv_unsigned pidv) -∗ urun_ids N cs pidv).
+  Proof.
+    iIntros "[Hch Hpid]". iSplitL "Hpid"; [ iExact "Hpid" | ].
+    iIntros "Hpid". iFrame "Hch Hpid".
+  Qed.
+
   Definition urun (N : uk_names Σ) (h : CpuId) (m : regfile) (pc : mword 64)
       (avail : nat) : iProp Σ :=
     (∃ (xi : TsoCtx.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
@@ -875,7 +950,7 @@ Section UkRun.
           program learns which children it has only by agreement against
           this half, which is what makes wait(2)'s two arms mean
           something. *)
-       uch_auth (ukn_ch N) cs ∗
+       urun_ids N cs pidv ∗
        (* ...AND THE PROCESS'S OWN KNOWLEDGE OF ITS EXIT PAYLOAD, at the
           generation the key carries.  PERSISTENT, so it costs no leaf
           anything to thread; it is here because [gn] is bound by this
@@ -925,6 +1000,11 @@ Section UkRun.
     cs' = cs -> uch_auth (ukn_ch N) cs -∗ uch_auth (ukn_ch N) cs'.
   Proof. intros ->. iIntros "$". Qed.
 
+  (* ...and the same at the bundled pair, which is what a leaf holds *)
+  Lemma urun_ids_quiet (N : uk_names Σ) (cs cs' : gset gname) (pidv : mword 32) :
+    cs' = cs -> urun_ids N cs pidv -∗ urun_ids N cs' pidv.
+  Proof. intros ->. iIntros "$". Qed.
+
   (* THE MOVER, for the day a fork/wait/exit leaf moves the set. *)
   Lemma uch_move (N : uk_names Σ) (S S' : gset gname) :
     uch_auth (ukn_ch N) S -∗ uch (ukn_ch N) S ==∗
@@ -955,8 +1035,10 @@ Section UkRun.
     ufd_auth (ukn_fd N) fdv -∗
     (* ...and the cwd authority, at the same [cw] the key is at *)
     ucwd_auth (ukn_cwd N) cw -∗
-    (* ...and the children authority, at the same [cs] the key is at *)
-    uch_auth (ukn_ch N) cs -∗
+    (* ...and the two identity authorities, at the same [cs] and [pidv] the
+       key is at -- ONE conjunct, so no leaf that hands them straight back
+       moved ([urun_ids]) *)
+    urun_ids N cs pidv -∗
     (* ...and the process's own knowledge of its exit payload, back at the
        same generation -- persistent, like the supplier below *)
     my_pay gn (ukn_pay N) -∗
@@ -1002,7 +1084,7 @@ Section UkRun.
     ustack (ukn_d N) (m !!! Regidx csp_rs1) avail -∗
     ufd_auth (ukn_fd N) fdv -∗
     ucwd_auth (ukn_cwd N) cw -∗
-    uch_auth (ukn_ch N) cs -∗
+    urun_ids N cs pidv -∗
     my_pay gn (ukn_pay N) -∗
     udep -∗
     (∀ h : CpuId, urun N h (<[Regidx rd := v]> m) pc' avail -∗
@@ -1392,7 +1474,15 @@ Section UkRun.
   (* needs it: sh reads and writes its line buffer, which the lossy entry  *)
   (* would drop.                                                          *)
   (* ------------------------------------------------------------------- *)
-  Lemma uslot_of_urun_all (W : uvis) (avail : nat) (Q : Z -> iProp Σ) :
+  Lemma uslot_of_urun_all (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
+      (* <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-4, B): what the record
+         this constructor mints records at [UkRun.ukn_ipid], and what
+         wait's reaping arm is read against.  A PARAMETER and not a
+         [UexecSlot.uvis] field: the key is the kernel's index for a
+         process's whole execution and every [bump]/[skey_eq] law is
+         stated over it, while this number is fixed once, by the party
+         that builds the entry. *)
+      (ipid : mword 32) :
     uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) mod 8 = 0 ->
     8 * Z.of_nat avail
       <= uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) ->
@@ -1443,6 +1533,12 @@ Section UkRun.
           because an entry constructor builds the FIRST run of a program
           and a program that has not forked has no children. *)
        uch (ukn_ch N) (uvis_ch W) -∗
+       (* ...AND ITS OWN HALF OF ITS PID (lane TRAP-ROWS-4, B): the number
+          the resumed key carries, at the record's own ghost name.  It is
+          what a caller reads wait's reaping arm against
+          ([UkRunSys.wp_uk_ecall_wait_null_live]) and what makes getpid(2)'s
+          answer sayable.  A program that never asks drops it. *)
+       upid (ukn_pid N) (bv_unsigned (uvis_pid W)) -∗
        ([∗ map] k ↦ b ∈ base.filter
              (fun kv : Z * bv 8 =>
                 kv.1 < uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1)
@@ -1483,6 +1579,11 @@ Section UkRun.
        the authority stays in the [urun] being built, the fragment goes to
        the program. *)
     iMod (uch_alloc (uvis_ch W)) as (γch) "[Hcha Hchf]".
+    (* ...AND THE PID'S PAIR, at the pid the resumed key carries: the
+       authority stays in the [urun] being built (bundled with the
+       children's -- [urun_ids]), the fragment goes to the program.  It is
+       what lets the program NAME its own pid (lane TRAP-ROWS-4, B). *)
+    iMod (upid_alloc (bv_unsigned (uvis_pid W))) as (γpid) "[Hpida Hpidf]".
     rewrite -/(utext_all γt (uvis_M W) (uvis_perm W)).
     (* ---- the two cuts: at the frame's base, then at sp ---- *)
     set (sp := tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1).
@@ -1523,8 +1624,8 @@ Section UkRun.
       unfold f. rewrite Hb'. reflexivity. }
     iDestruct (ubytes_of_map γd _ base (8 * avail) f Hf with "Dmid") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q) h
-                   with "[%] [%] Hszf Ht Hstd Hcwf Hchf Dlo Dtop");
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid ipid) h
+                   with "[%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf Dlo Dtop");
       [ reflexivity | exact Hsz | ].
     iApply "Hprog".
     iExists xi, C, pt, Rfd, Rut, sz, (uvis_M W), (uvis_perm W), (uvis_fd W),
@@ -1535,13 +1636,24 @@ Section UkRun.
     iSplitR; [ iPureIntro; exact HRut | ].
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
+    (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid ipid)
+                 (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].
   Qed.
 
-  Lemma uslot_of_urun (W : uvis) (avail : nat) (Q : Z -> iProp Σ) :
+  Lemma uslot_of_urun (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
+      (* <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-4, B): what the record
+         this constructor mints records at [UkRun.ukn_ipid], and what
+         wait's reaping arm is read against.  A PARAMETER and not a
+         [UexecSlot.uvis] field: the key is the kernel's index for a
+         process's whole execution and every [bump]/[skey_eq] law is
+         stated over it, while this number is fixed once, by the party
+         that builds the entry. *)
+      (ipid : mword 32) :
     (* the resume sp is word-aligned -- what [ustack] now asserts, and the
        one place it is an obligation rather than a consequence, since it is
        a fact about the process the kernel set up *)
@@ -1611,6 +1723,12 @@ Section UkRun.
           because an entry constructor builds the FIRST run of a program
           and a program that has not forked has no children. *)
        uch (ukn_ch N) (uvis_ch W) -∗
+       (* ...AND ITS OWN HALF OF ITS PID (lane TRAP-ROWS-4, B): the number
+          the resumed key carries, at the record's own ghost name.  It is
+          what a caller reads wait's reaping arm against
+          ([UkRunSys.wp_uk_ecall_wait_null_live]) and what makes getpid(2)'s
+          answer sayable.  A program that never asks drops it. *)
+       upid (ukn_pid N) (bv_unsigned (uvis_pid W)) -∗
        urun N h (tf_resume_gpr0 (uvis_tf W)) (tf_resume_pc (uvis_tf W))
          avail -∗
        WP (Loop : expr riscv_lang))
@@ -1643,6 +1761,11 @@ Section UkRun.
        the authority stays in the [urun] being built, the fragment goes to
        the program. *)
     iMod (uch_alloc (uvis_ch W)) as (γch) "[Hcha Hchf]".
+    (* ...AND THE PID'S PAIR, at the pid the resumed key carries: the
+       authority stays in the [urun] being built (bundled with the
+       children's -- [urun_ids]), the fragment goes to the program.  It is
+       what lets the program NAME its own pid (lane TRAP-ROWS-4, B). *)
+    iMod (upid_alloc (bv_unsigned (uvis_pid W))) as (γpid) "[Hpida Hpidf]".
     rewrite -/(utext_all γt (uvis_M W) (uvis_perm W)).
     (* ---- the carve ---- *)
     set (sp := tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1).
@@ -1655,8 +1778,8 @@ Section UkRun.
       unfold f. unfold D, base in *. rewrite Hb. reflexivity. }
     iDestruct (ubytes_of_map γd D base (8 * avail) f Hf with "Hd") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q) h
-                   with "[%] [%] Hszf Ht Hstd Hcwf Hchf");
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid ipid) h
+                   with "[%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf");
       [ reflexivity | exact Hsz | ].
     iApply "Hprog".
     iExists xi, C, pt, Rfd, Rut, sz, (uvis_M W), (uvis_perm W), (uvis_fd W),
@@ -1667,6 +1790,9 @@ Section UkRun.
     iSplitR; [ iPureIntro; exact HRut | ].
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
+    (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid ipid)
+                 (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
@@ -1688,7 +1814,15 @@ Section UkRun.
   (* disjoint from any other, so no caller and no entry gate ever has to   *)
   (* decide whether two argv slots point at the same string.               *)
   (* ------------------------------------------------------------------- *)
-  Lemma uslot_of_urun_ro (W : uvis) (avail : nat) (Q : Z -> iProp Σ) :
+  Lemma uslot_of_urun_ro (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
+      (* <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-4, B): what the record
+         this constructor mints records at [UkRun.ukn_ipid], and what
+         wait's reaping arm is read against.  A PARAMETER and not a
+         [UexecSlot.uvis] field: the key is the kernel's index for a
+         process's whole execution and every [bump]/[skey_eq] law is
+         stated over it, while this number is fixed once, by the party
+         that builds the entry. *)
+      (ipid : mword 32) :
     uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) mod 8 = 0 ->
     8 * Z.of_nat avail
       <= uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) ->
@@ -1751,6 +1885,12 @@ Section UkRun.
           because an entry constructor builds the FIRST run of a program
           and a program that has not forked has no children. *)
        uch (ukn_ch N) (uvis_ch W) -∗
+       (* ...AND ITS OWN HALF OF ITS PID (lane TRAP-ROWS-4, B): the number
+          the resumed key carries, at the record's own ghost name.  It is
+          what a caller reads wait's reaping arm against
+          ([UkRunSys.wp_uk_ecall_wait_null_live]) and what makes getpid(2)'s
+          answer sayable.  A program that never asks drops it. *)
+       upid (ukn_pid N) (bv_unsigned (uvis_pid W)) -∗
        ([∗ map] k ↦ b ∈ base.filter
              (fun kv : Z * bv 8 =>
                 ~ (kv.1 < uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1)))
@@ -1788,6 +1928,11 @@ Section UkRun.
        the authority stays in the [urun] being built, the fragment goes to
        the program. *)
     iMod (uch_alloc (uvis_ch W)) as (γch) "[Hcha Hchf]".
+    (* ...AND THE PID'S PAIR, at the pid the resumed key carries: the
+       authority stays in the [urun] being built (bundled with the
+       children's -- [urun_ids]), the fragment goes to the program.  It is
+       what lets the program NAME its own pid (lane TRAP-ROWS-4, B). *)
+    iMod (upid_alloc (bv_unsigned (uvis_pid W))) as (γpid) "[Hpida Hpidf]".
     rewrite -/(utext_all γt (uvis_M W) (uvis_perm W)).
     (* ---- the cut at the entry sp ---- *)
     set (sp := tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1).
@@ -1812,8 +1957,8 @@ Section UkRun.
                  (base.filter (fun kv : Z * bv 8 => kv.1 < uint sp) D)
                  base (8 * avail) f Hf with "Dlo") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q) h
-                   with "[%] [%] Hszf Ht Hstd Hcwf Hchf Dhi");
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid ipid) h
+                   with "[%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf Dhi");
       [ reflexivity | exact Hsz | ].
     iApply "Hprog".
     iExists xi, C, pt, Rfd, Rut, sz, (uvis_M W), (uvis_perm W), (uvis_fd W),
@@ -1824,6 +1969,9 @@ Section UkRun.
     iSplitR; [ iPureIntro; exact HRut | ].
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
+    (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid ipid)
+                 (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".

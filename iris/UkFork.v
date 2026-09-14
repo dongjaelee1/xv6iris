@@ -908,6 +908,13 @@ Section UkFork.
            is only one value it can be -- which is why this arm can name
            it where it cannot name the parent's. *)
         UserChildren.uch (ukn_ch N') ∅ -∗
+        (* ...AND ITS OWN PID, AS A HANDLE (lane TRAP-ROWS-4, B).  The
+           number <allocpid> gave it, at the child record's own ghost name:
+           a forked child is the one process that can PROVE it is not
+           <init> ([ukn_ipid N'] is inherited from the parent's record and
+           the kernel's fork answer refutes the equality), and that is what
+           it spends on wait's reaping arm. *)
+        (∃ p : Z, UserChildren.upid (ukn_pid N') p) -∗
         urun N' h'
           (<[Regidx (mword_of_int 10) := (mword_of_int 0 : mword 64)]> m)
           (add_vec_int pc 4) avail -∗
@@ -921,7 +928,9 @@ Section UkFork.
     (* ...and its other half pins the key's children set, which is why the
        set has to come IN: [urun] binds it existentially, and the arm has
        to name it to say what it grew to *)
-    iDestruct (uch_agree with "Hcha Hchf") as %->.
+    iDestruct (urun_ids_ch with "Hcha") as "[Hchauth Hidsb0]".
+    iDestruct (uch_agree with "Hchauth Hchf") as %->.
+    iDestruct ("Hidsb0" $! Sc with "Hchauth") as "Hcha".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     (* the caller's handles ARE the parent's table, at the slots they name --
@@ -998,6 +1007,10 @@ Section UkFork.
          the kernel's own map ([WaitInv.children_own_at]), whose per-slot
          row the kernel moves at the same fork. *)
       iApply uslot_bupd.
+      (* the run's identity conjunct is the PAIR now ([UkRun.urun_ids]): the
+         children half is what this arm moves, the pid half rides through
+         untouched (lane TRAP-ROWS-4, B). *)
+      iDestruct (urun_ids_ch with "Hcha") as "[Hcha Hidsback]".
       iAssert (|==> ∃ cs2 : gset gname,
                  ⌜cs' = cs2⌝ ∗ uch_auth (ukn_ch N) cs2 ∗
                  ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
@@ -1019,6 +1032,7 @@ Section UkFork.
           iRight. iExists γ, pidk. iSplitR; [iPureIntro; exact Hpv |].
           iFrame "Htok Hchf". }
       iDestruct "Hmv" as (cs2) "(%Hcs2 & Hcha & Harm)". subst cs'.
+      iDestruct ("Hidsback" $! cs2 with "Hcha") as "Hcha".
       iModIntro.
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv fdv c c gn gn Sc
                  cs2 pidv false false r Hx0 Hal4).
@@ -1054,6 +1068,13 @@ Section UkFork.
          A fresh name for the parent's reason -- both halves of a variable
          are full, and one name cannot carry two processes' sets. *)
       iMod (uch_alloc (∅ : gset gname)) as (γch') "[Hcha' Hchf']".
+      (* ...AND ITS OWN PID PAIR, at the number <allocpid> gave it (lane
+         TRAP-ROWS-4, B).  A fresh name for the children pair's reason, and
+         at the CHILD's pid rather than the parent's: this is a different
+         process.  The child's record inherits <init>'s number from the
+         parent's ([ukn_ipid]), which is what its wait arm will be read
+         against. *)
+      iMod (upid_alloc (bv_unsigned pidc)) as (γpid') "[Hpida' Hpidf']".
       iModIntro.
       rewrite (uslot_bump_at_run m pc M M pm pm sz sz fdv fdv c c gn g' Sc ∅
                  pidv pidc false false (mword_of_int 0) Hx0 Hal4).
@@ -1064,15 +1085,22 @@ Section UkFork.
          child's run is keyed by it -- which is what makes the child's own
          exit leaf able to pay what its parent will redeem. *)
       iApply ukcq_ukc.
-      iApply (urun_close_upd (MkUkNames γt' γd' γs' γfd' γc' γch' Q) M pm m
+      iDestruct (urun_ids_intro
+                   (MkUkNames γt' γd' γs' γfd' γc' γch' Q γpid' (ukn_ipid N))
+                   ∅ pidc with "Hcha' Hpida'") as "Hcha'".
+      iApply (urun_close_upd
+                (MkUkNames γt' γd' γs' γfd' γc' γch' Q γpid' (ukn_ipid N))
+                M pm m
                 (mword_of_int 10)
                 (mword_of_int 0) sz fdv c g' ∅ pidc (add_vec_int pc 4) avail
                 ltac:(unfold unot_sp; vm_compute; discriminate)
                 with "Hheap' Hstk' Hufd' Hcwa' Hcha' Hmp Hdep").
       iIntros (h') "Hrun".
-      iApply ("Hchild" $! (MkUkNames γt' γd' γs' γfd' γc' γch' Q) h' g'
-                with "[%] Hmp HRc HP' Hsz' Hstd' Hfrag' Hcwf' Hchf' Hrun").
-      reflexivity.
+      iApply ("Hchild" $!
+                (MkUkNames γt' γd' γs' γfd' γc' γch' Q γpid' (ukn_ipid N)) h' g'
+                with "[%] Hmp HRc HP' Hsz' Hstd' Hfrag' Hcwf' Hchf' [Hpidf'] Hrun").
+      { reflexivity. }
+      iExists (bv_unsigned pidc). iExact "Hpidf'".
   Qed.
 
   (* ===================================================================== *)
@@ -1178,6 +1206,8 @@ Section UkFork.
            is only one value it can be -- which is why this arm can name
            it where it cannot name the parent's. *)
         UserChildren.uch (ukn_ch N') ∅ -∗
+        (* ...and its own pid, as a handle -- see [wp_uk_ecall_fork] *)
+        (∃ p : Z, UserChildren.upid (ukn_pid N') p) -∗
         urun N' h'
           (<[Regidx (mword_of_int 10) := (mword_of_int 0 : mword 64)]> m)
           (add_vec_int pc 4) avail -∗
@@ -1193,9 +1223,9 @@ Section UkFork.
     iSplitL "Hpar".
     - iIntros (h' r) "%Hr Harm _ Hsz Hstd HD Hcwd Hrun".
       iApply ("Hpar" $! h' r with "[%] Harm Hsz Hstd HD Hcwd Hrun"). exact Hr.
-    - iIntros (N' h' γ') "%Hpeq Hmp HRc' [Ht' Ha'] Hsz' Hstd' Hfrag' Hcwd' Hch' Hrun".
+    - iIntros (N' h' γ') "%Hpeq Hmp HRc' [Ht' Ha'] Hsz' Hstd' Hfrag' Hcwd' Hch' Hpid' Hrun".
       iApply ("Hchild" $! N' h' γ'
-                with "[%] Hmp HRc' Ht' Ha' Hsz' Hstd' Hfrag' Hcwd' Hch' Hrun").
+                with "[%] Hmp HRc' Ht' Ha' Hsz' Hstd' Hfrag' Hcwd' Hch' Hpid' Hrun").
       exact Hpeq.
   Qed.
 

@@ -943,7 +943,7 @@ Section UkInitMain.
          child execs, and nothing before the exec allocates. *)
       (* the child's own children fragment is [∅] and init's child execs
          before it forks, so nothing here reads it *)
-      iIntros (N' hc γ') "%Hpeq _ (Hpos & Hlease & Hrt) Hpay Hsz Hstd _ Hcwd _ Hrun".
+      iIntros (N' hc γ') "%Hpeq _ (Hpos & Hlease & Hrt) Hpay Hsz Hstd _ Hcwd _ _ Hrun".
       set (mk := <[Regidx a0_idx := (mword_of_int 0 : mword 64)]> mf1).
       assert (Hrak : mk !!! Regidx ra_idx = m !!! Regidx ra_idx).
       { rewrite /mk (upd_ne mf1 (Regidx a0_idx) (Regidx ra_idx) _

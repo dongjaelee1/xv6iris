@@ -179,12 +179,14 @@ Section USyncKernel.
   Proof.
     intros Hpc Hsub Hx Hroom Hal8 Hdata Hfdlen Hstop Hpsok_free Hlzf.
     iIntros "#Hdep #Hpay".
-    iApply (uslot_of_urun W 4 (fun _ => True)%I Hal8 ltac:(lia) Hdata Hfdlen
+    iApply (uslot_of_urun W 4 (fun _ => True)%I
+              (mword_of_int 0 : mword 32) (* B1a: nothing reads [ukn_ipid] yet *)
+              Hal8 ltac:(lia) Hdata Hfdlen
               Hstop Hlzf with "Hdep Hpay").
     (* sync makes no descriptor call, so its ledger is dropped here *)
     (* sync makes no descriptor call and no chdir, so its ledger and its
        working directory are both dropped here *)
-    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht _ _ _ Hrun".
+    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht _ _ _ _ Hrun".
     pose proof (Hpayeq : UkRun.ukn_triv N) as Hti.
     rewrite Hpc.
     iApply (wp_ksync_start N Hpsok_free h (tf_resume_gpr0 (uvis_tf W))

@@ -367,11 +367,12 @@ Section UInitKernel.
        the walk uses checks each conjunct on its own and is fine. *)
     iIntros "Hdp #Hdep #Hxs Hdn Hrd Hrd0 Htn #Hmp".
     iApply (uslot_of_urun_all W (2 + (4 + (12 + (12 + (4 + n0))))) (fun _ => True)%I
+              (mword_of_int 0 : mword 32) (* B1a: nothing reads [ukn_ipid] yet *)
               Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
     (* init's own half of its children set travels with its cwd: nothing
        on init's walk READS it, but fork MOVES it, so the fragment goes
        down the chain index-free ([UserChildren.uch_any]). *)
-    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd Hcwf Hchf Dlo _ Hrun".
+    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd Hcwf Hchf _ Dlo _ Hrun".
     pose proof (ukn_const_of_triv N (Hpayeq : UkRun.ukn_triv N)) as Hti.
     (* ---- the argument vector, out of the data below the frame ---- *)
     assert (Hsub16 :

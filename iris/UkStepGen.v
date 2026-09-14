@@ -198,7 +198,7 @@ Section UkGen.
   Hypothesis Ret_transparent : forall (sc : mword 64) (W : uvis),
     sc <> uecall_scause ->
     RetF X sc W ⊣⊢
-    (∃ f : sfam, uexec_pay_dep sc W f ∗ ukill_cred_at sc ∗
+    (∃ f : sfam, uexec_pay_dep sc W f ∗ ukill_cred_at (uvis_gen W) sc ∗
        uexec_kill_arm_F X sc W f).
 
   (* the slot at a TRAP-OUT key is the continuation at the running state --
@@ -575,7 +575,7 @@ Section UkGenArms.
     (* THE KILL ROW IS [emp] AT AN INTERRUPT (lane KILL-PAY, K3(b)): the
        dispatched cause is one devintr handles, so no kill can follow it. *)
     iSplitR.
-    { iApply (ukill_cred_at_not _
+    { iApply (ukill_cred_at_not _ _
                 (UkStep.utrap_scause_intr_not_kill i
                    (register_lookup (R_bitvector_64 scause) rsA) Hi)). }
     rewrite (ukc'_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2).
@@ -1928,7 +1928,7 @@ Section UkGenPlain.
   Lemma uexec_ret_transparent_gen (sc : mword 64) (W : uvis) :
     sc <> uecall_scause ->
     uexec_ret_F uslot sc W ⊣⊢
-    (∃ f : sfam, uexec_pay_dep sc W f ∗ ukill_cred_at sc ∗
+    (∃ f : sfam, uexec_pay_dep sc W f ∗ ukill_cred_at (uvis_gen W) sc ∗
        uexec_kill_arm_F uslot sc W f).
   Proof. exact (uexec_ret_transparent sc W). Qed.
 

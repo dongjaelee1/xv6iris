@@ -375,12 +375,15 @@ Section UserretClosed.
            round ([UexecRet.uexec_ret_split]). ---- *)
     iDestruct (uexec_ret_split sc W with "Hret") as (fdep) "[Hdep Hret]".
     (* ...AND THE KILL ROW COMES OUT OF THE DEPOSIT FIRST (lane KILL-PAY,
-       K3(b)).  It is persistent at both branches, so this is a COPY and
-       not a move: the deposit's own rows go on down as before, and the
-       copy rides uservec's pre beside the payment
-       ([SpecUsertrap.ut_kill_in]) to the dispatcher, which cashes it at
-       the unexpected-scause arm -- the one place setkilled runs. *)
-    iDestruct (uexec_dep_F_kill uslot sc W fdep with "Hdep") as "[#Hkin Hdep]".
+       K3(b)).  It MOVES (lane SELF-KILL, P6b): the row is two-sided and
+       its right side is a linear payment, so what is left in the deposit's
+       non-ecall branch is [emp].  It rides uservec's pre beside the
+       payment ([SpecUsertrap.ut_kill_in]) to the dispatcher, which cashes
+       it at the unexpected-scause arm -- the one place setkilled runs.
+       AT THE BLOCK'S GENERATION, which the trap route's own pin says is
+       the key's ([Hgen0]). *)
+    iDestruct (uexec_dep_F_kill uslot sc W fdep with "Hdep") as "[Hkin Hdep]".
+    iEval (rewrite -Hgen0) in "Hkin".
     iDestruct "Hdep" as "[Hpay Hxin]".
     (* THE PAYMENT IS THE ONE ROW WITH NO GUARD, so it is split off here
        rather than in the case analysis below: the process owes it at every

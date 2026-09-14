@@ -1386,33 +1386,54 @@ Section UexecRet.
      ([uexec_dep_F] below), the transparent arm the U-tier leaves prove
      ([uexec_ret_transparent]), and the kernel's own row
      ([SpecUsertrap.ut_kill_in], which carries it from uservec to
-     usertrap's setkilled).  PERSISTENT at both branches, so the split
-     below duplicates it rather than moving it. *)
-  Definition ukill_cred_at (sc : mword 64) : iProp Σ :=
-    (if decide (ukill_sc sc) then □ riscv_kill_cred else emp)%I.
-
-  Global Instance ukill_cred_at_persistent sc : Persistent (ukill_cred_at sc).
-  Proof. rewrite /ukill_cred_at. destruct (decide (ukill_sc sc)); apply _. Qed.
+     usertrap's setkilled). *)
+  (* ...AND IT IS TWO-SIDED (lane SELF-KILL, P6b).  There are two ways a
+     process can be entitled to the kill the kernel is about to perform,
+     and they are not the same party's:
+       * the LEFT is the application's TAINT ([RiscvPtsto.riscv_kill_cred]),
+         which every GENERIC process holds out of the supply
+         ([UexecExecInst.xv6_ssupply]) and which is what an unverified
+         program's arbitrary fault is charged;
+       * the RIGHT is the process's OWN exit payload at -1, deposited
+         outright ([ChildTok.kill_owed]) -- which is what a verified
+         program does when it faults ON PURPOSE, and is the whole point of
+         this lane: sh's child stores through the NULL [malloc] returned
+         and pays for its own death with no taint at all.
+     The row is therefore NOT persistent any more, and the consumer that
+     used to duplicate it now MOVES it. *)
+  Definition ukill_cred_at (gn : gname) (sc : mword 64) : iProp Σ :=
+    (if decide (ukill_sc sc)
+     then (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) else emp)%I.
 
   (* ...and at any cause the kernel HANDLES the row is [emp] and free: the
      interrupt arms discharge it this way ([UkStep.utrap_scause_intr_not_kill]) *)
-  Lemma ukill_cred_at_not (sc : mword 64) : ~ ukill_sc sc -> ⊢ ukill_cred_at sc.
+  Lemma ukill_cred_at_not (gn : gname) (sc : mword 64) :
+    ~ ukill_sc sc -> ⊢ ukill_cred_at gn sc.
   Proof.
     intros Hn. rewrite /ukill_cred_at.
     destruct (decide (ukill_sc sc)) as [Hk | _]; [ exfalso; exact (Hn Hk) | done ].
   Qed.
 
-  (* ...and at a cause the kernel KILLS at, the row IS the credential *)
-  Lemma ukill_cred_at_of_cred (sc : mword 64) :
-    □ riscv_kill_cred -∗ ukill_cred_at sc.
+  (* ...and at a cause the kernel KILLS at, the row is the taint -- the
+     generic route's side *)
+  Lemma ukill_cred_at_of_cred (gn : gname) (sc : mword 64) :
+    □ riscv_kill_cred -∗ ukill_cred_at gn sc.
   Proof.
     rewrite /ukill_cred_at. iIntros "#H".
-    destruct (decide (ukill_sc sc)) as [_ | _]; [ iExact "H" | done ].
+    destruct (decide (ukill_sc sc)) as [_ | _]; [ iLeft; iExact "H" | done ].
+  Qed.
+
+  (* ...or the process's own payment -- the deliberate side *)
+  Lemma ukill_cred_at_of_owed (gn : gname) (sc : mword 64) :
+    ChildTok.kill_owed gn -∗ ukill_cred_at gn sc.
+  Proof.
+    rewrite /ukill_cred_at. iIntros "H".
+    destruct (decide (ukill_sc sc)) as [_ | _]; [ iRight; iExact "H" | done ].
   Qed.
 
   (* at the ecall cause there is no kill row: [ukill_sc]'s first conjunct
      is exactly "not the ecall cause" *)
-  Lemma ukill_cred_at_ecall : ⊢ ukill_cred_at uecall_scause.
+  Lemma ukill_cred_at_ecall (gn : gname) : ⊢ ukill_cred_at gn uecall_scause.
   Proof.
     rewrite /ukill_cred_at.
     destruct (decide (ukill_sc uecall_scause)) as [Hk | _];
@@ -1427,25 +1448,30 @@ Section UexecRet.
         if decide (n = USYS_exit) then emp
         else if decide (n = USYS_fork) then uexec_fork_child_F X W (sfork_pay f)
         else sbundle_at X n f W
-      else ukill_cred_at sc))%I.
+      else ukill_cred_at (uvis_gen W) sc))%I.
 
-  (* ...AND THE KILL ROW COMES OUT OF IT WITHOUT MOVING (lane KILL-PAY,
-     K3(b)): the kernel route needs its own copy -- [ut_kill_in] rides
-     uservec's pre beside [ut_pay_in] and ends at usertrap's setkilled --
-     and the deposit's other rows have to stay where they are.  Both
-     branches are persistent (at the ecall cause the row is [emp]), so the
-     "split" is a duplication. *)
+  (* ...AND THE KILL ROW COMES OUT OF IT, AND IT MOVES (lane SELF-KILL,
+     P6b).  The kernel route needs it -- [ut_kill_in] rides uservec's pre
+     beside [ut_pay_in] and ends at usertrap's setkilled -- and it is the
+     WHOLE of the deposit's non-ecall branch, so what is left behind is
+     [emp].  It used to be a duplication; the right side of the row is a
+     linear payment now and there is only one. *)
   Lemma uexec_dep_F_kill (X : uvis -d> iPropO Σ) (sc : mword 64) (W : uvis)
       (f : sfam) :
-    uexec_dep_F X sc W f -∗ ukill_cred_at sc ∗ uexec_dep_F X sc W f.
+    uexec_dep_F X sc W f -∗
+    ukill_cred_at (uvis_gen W) sc ∗
+    (uexec_pay_dep sc W f ∗
+     (if decide (sc = uecall_scause) then
+        let n := usys_num (uvis_tf W) in
+        if decide (n = USYS_exit) then emp
+        else if decide (n = USYS_fork) then uexec_fork_child_F X W (sfork_pay f)
+        else sbundle_at X n f W
+      else emp)).
   Proof.
     rewrite /uexec_dep_F. cbv zeta. iIntros "[Hpay Hx]".
     destruct (decide (sc = uecall_scause)) as [-> | Hne].
     - iSplitR; [ iApply ukill_cred_at_ecall | iFrame "Hpay Hx" ].
-    - rewrite /ukill_cred_at.
-      destruct (decide (ukill_sc sc)) as [_ | _].
-      + iDestruct "Hx" as "#Hx". iFrame "Hpay". iSplitR; iExact "Hx".
-      + iFrame "Hpay Hx".
+    - iFrame "Hx Hpay".
   Qed.
 
   (* ...AND THE TWO TOGETHER, WITH THE FAMILIES BOUND ONCE, OUTSIDE BOTH.
@@ -1473,7 +1499,7 @@ Section UexecRet.
            the kernel cannot handle (lane KILL-PAY, K3(b)), over the arm the
            process CHOSE -- resume-or-kill, or a deliberate death
            ([uexec_kill_arm_F], lane SELF-KILL §3b) *)
-        else (ukill_cred_at sc ∗ uexec_kill_arm_F X sc W f)))%I.
+        else (ukill_cred_at (uvis_gen W) sc ∗ uexec_kill_arm_F X sc W f)))%I.
 
   (* (B) the kernel obligation: its later-free BODY, and the guarded form *)
   Definition ukb_F (X : uvis -d> iPropO Σ) `{CID : CpuId} `{XI : TsoCtx.CurCtx}
@@ -1978,7 +2004,7 @@ Section UexecRet.
   Lemma uexec_ret_transparent (sc : mword 64) (W : uvis) :
     sc <> uecall_scause ->
     uexec_ret sc W ⊣⊢
-    (∃ f : sfam, uexec_pay_dep sc W f ∗ ukill_cred_at sc ∗
+    (∃ f : sfam, uexec_pay_dep sc W f ∗ ukill_cred_at (uvis_gen W) sc ∗
        uexec_kill_arm sc W f).
   Proof.
     intros Hne. rewrite /uexec_ret /uexec_ret_F /uexec_kill_arm.
@@ -2137,7 +2163,7 @@ Section UexecRet.
       [| iModIntro; iExists fR; iSplitR; [ done | iSplitR;
          [ iApply (uexec_pay_dep_free sc W _ fR
                      ltac:(intros [Hx _]; exact (Hnec Hx)) HfR with "Hpay")
-         | iApply (ukill_cred_at_of_cred sc with "Hkc") ]]].
+         | iApply (ukill_cred_at_of_cred (uvis_gen W) sc with "Hkc") ]]].
     destruct (decide (usys_num (uvis_tf W) = USYS_exit)) as [Hxi | Hnx];
       [iModIntro; iExists fR; iSplitR; [ done | iSplitL;
        [ iApply (uexec_pay_dep_const R sc W fR HfR with "Hpay HRb")

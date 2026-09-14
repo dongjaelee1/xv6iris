@@ -862,10 +862,19 @@ Qed.
      WHAT IT IS: the kill row of the trapping process's own deposit
    ([UexecRet.uexec_dep_F]'s non-ecall branch).  WHO SPENDS IT: the
    dispatcher's unexpected-scause arm, which calls setkilled -- and
-   [SpecSetkilled] charges the application's price of a kill.  PERSISTENT
-   at both branches, so it costs nothing to carry. *)
-Definition ut_kill_in `{!riscvGS Σ} (sc_v : mword 64) : iProp Σ :=
-  ukill_cred_at sc_v.
+   [SpecSetkilled] charges the price of a kill.
+     TWO-SIDED, AND THEREFORE LINEAR (lane SELF-KILL, P6b): the LEFT side
+   is the application's taint, which every generic process holds out of
+   the supply, and the RIGHT is the process's OWN exit payload at -1
+   ([ChildTok.kill_owed]) -- what a verified program deposits when it
+   faults on purpose.  Indexed by the trapping incarnation's GENERATION,
+   because that is what the right side's payment is keyed at.
+   [xv6G] is bound rather than [ctokG] itself: the bundle carries the
+   class as a FIELD instance and two of them in one scope print
+   identically (durable-notes). *)
+Definition ut_kill_in `{!riscvGS Σ, !xv6G Σ} (gn : gname) (sc_v : mword 64)
+    : iProp Σ :=
+  ukill_cred_at gn sc_v.
 
 (* THERE IS NOTHING COMING BACK (lane SELF-KILL, P6b).  The payload at the
    kill status is the KILLER's price, paid into <p->lock>'s own killed row
@@ -1366,7 +1375,7 @@ Definition wp_usertrap_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, 
   ut_pay_in f sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U))) U -∗
   (* ...AND THE KILL ROW, owed at every cause and empty at all but the ones
      usertrap kills at -- [ut_kill_in] *)
-  ut_kill_in sc_v -∗
+  ut_kill_in (pv_gen (us_V U)) sc_v -∗
   (* THE CROSSING: usertrap parks (yield, and every sleeping syscall), so it
      may return on a different hart -- and the bundle comes back at THAT
      hart, which is why [R] is a family (see the note above). *)

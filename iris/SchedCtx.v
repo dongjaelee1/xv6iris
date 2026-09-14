@@ -494,6 +494,43 @@ Section SchedCtx.
       iApply (kill_row_of_owed with "Hs Howed").
   Qed.
 
+  (* ...AND THE TWO SIDES AS ONE STEP, which is what a writer that may be
+     EITHER party takes (lane SELF-KILL, P6b; [SpecSetkilled]).  setkilled
+     runs only on [myproc()], so the process it kills may be paying for its
+     own death ([ChildTok.kill_owed], the right side) or being killed by an
+     application that holds the taint (the left) -- and the row is closed
+     the same way either way.  The registration eighth is what names the
+     generation the right side's payment is keyed at, and it is what lets
+     the step hand the ONE-SHOT back: after this write the flag is monotone
+     for this incarnation, and [ChildTok.kill_shot] is that fact. *)
+  Lemma kill_paid_kill_two (pid : mword 32) (kl kl' : mword 32) (dq : dfrac)
+      (gn : gname) :
+    bv_unsigned pid <> 0 ->
+    pid_reg pid dq gn -∗
+    (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) -∗
+    kill_paid pid kl ==∗
+    pid_reg pid dq gn ∗ ChildTok.kill_shot gn ∗ kill_paid pid kl'.
+  Proof.
+    intro Hpnz. rewrite /kill_paid.
+    iIntros "Hmine Hpay [[%Hz _] | [%Hnz Hr]]".
+    - exfalso. exact (Hpnz Hz).
+    - iDestruct "Hr" as (gn' Q) "(Hr & #Hmy & #Hw & Hrow)".
+      iDestruct (pid_reg_agree pid pid dq (DfracOwn qeighth) gn gn' eq_refl
+                   with "Hmine Hr") as %->.
+      iMod (kill_row_fire with "Hrow") as "#Hs".
+      iAssert (ChildTok.kill_owed gn') with "[Hpay]" as "Howed".
+      { iDestruct "Hpay" as "[#Hc | $]".
+        iApply (ChildTok.kill_owed_of with "Hmy"). iApply "Hw". iExact "Hc". }
+      iModIntro. iFrame "Hmine".
+      iSplitR "Hr Howed"; [ iExact "Hs" | ].
+      iRight. iSplitR; [ iPureIntro; exact Hnz | ].
+      iExists gn', Q.
+      iSplitL "Hr"; [ iExact "Hr" | ].
+      iSplitR; [ iExact "Hmy" | ].
+      iSplitR; [ iModIntro; iExact "Hw" | ].
+      iApply (kill_row_of_owed with "Hs Howed").
+  Qed.
+
   (* ...AND WHAT AN UNUSED SLOT'S PAYLOAD SAYS ABOUT THE FLAG: either it
      is zero, or a killer with the application's supply set it while the
      slot was free.  allocproc reads this off the slot it is about to

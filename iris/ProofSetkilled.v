@@ -35,6 +35,8 @@ Require Import ProcGeom.
 Require Import FdSlots.
 Require Import FileInvDefs.
 Require Import SchedCtx.
+Require Import SlotGen.   (* [pid_reg] / [qeighth] *)
+Require Import ChildTok.  (* [kill_owed] / [kill_shot] *)
 Require Import SpecAcquire SpecRelease.
 Require Import SpecSetkilled.
 From Kernel Require KernelInstrs KernelSyms.
@@ -69,13 +71,13 @@ Section ProofSetkilled.
 
   Lemma wp_setkilled_sconf  (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
-      (pidv : mword 32)
-    : wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv.
+      (pidv : mword 32) (gn : gname)
+    : wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv gn.
   Proof.
     cbv beta delta [wp_setkilled_sconf_body].
     intros pcE ret_tgt Ha0 Hj Hgl Hn Hav Hpidnz Hno.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
-    iIntros "#Hkc Hpidv Hcg Hcpu #Htext Hpc #Hprocs Hcont".
+    iIntros "Hkill Hreg Hpidv Hcg Hcpu #Htext Hpc #Hprocs Hcont".
     iDestruct (cpu_own_eb_agree with "Hcg Hcpu") as %Hbeq.
     iDestruct (procs_inv_lookup γs j γl Hgl with "Hprocs") as "#Hislock".
     (* ===================== PROLOGUE (32-byte frame, 3 slots used) ======= *)
@@ -274,16 +276,27 @@ Section ProofSetkilled.
       apply kv_addv_zero. }
     (* reassemble the lock resource: [proc_pub] quantifies [killed], so the
        stored value need never be named. *)
-    iAssert (|==> proc_lock_res γs γl (proc_addr j))%I with "[Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot]" as ">HR2".
+    iAssert (|==> pid_reg pidv (DfracOwn qeighth) gn ∗ ChildTok.kill_shot gn
+                  ∗ proc_lock_res γs γl (proc_addr j))%I
+      with "[Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot Hkill Hreg]"
+      as ">(Hreg & #Hshot & HR2)".
     { (* the flag is 1 from here on, so the row must be re-closed on its
-         PAID arm -- and what pays is the price the slot itself publishes:
-         the target's payload at -1, bought with the application's TAINT
-         ([RiscvPtsto.riscv_kill_cred], lane SELF-KILL, §4b').  The side
-         condition is the caller's: the slot is LIVE.
+         PAID arm -- and what pays is the caller's two-sided price: the
+         application's TAINT, which buys the target's payload through the
+         slot's own published wand, or that payload deposited OUTRIGHT by
+         the process about to die (lane SELF-KILL, P6b,
+         [SchedCtx.kill_paid_kill_two]).  The side condition is the
+         caller's: the slot is LIVE, and the registration eighth is what
+         says the payment's generation is the row's.
          THE STEP IS A GHOST UPDATE because the writer also FIRES the
-         incarnation's kill one-shot (lane SELF-KILL, P6). *)
-      iMod (kill_paid_kill pidv kl _ Hpidnz with "Hkc Hrow") as "Hrow".
+         incarnation's kill one-shot, whose persistent half comes back
+         here (lane SELF-KILL, P6). *)
+      iMod (kill_paid_kill_two pidv kl _ (DfracOwn qeighth) gn Hpidnz
+              with "Hreg Hkill Hrow") as "(Hreg & #Hshot & Hrow)".
       iModIntro.
+      iSplitL "Hreg"; [ iExact "Hreg" | ].
+      iSplitR "Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot";
+        [ iExact "Hshot" | ].
       iApply (proc_lock_res_intro γs γl (proc_addr j) st ch with "Hstate Hpg Hchan [-Hslot] Hslot").
       iExists _, xs, pidv. iFrame "Hkilled Hxstate Hpidq Hrow". }
     (* ===================== release(&p->lock) ===================== *)
@@ -434,7 +447,7 @@ Section ProofSetkilled.
     iDestruct (cpu_own_transport CIDrel CIDe7 n eb p b ltac:(wp_next_chain)
                  with "Hcpu") as "Hcpu".
     iSpecialize ("Hcont" $! CIDe7 with "[%]"); [wp_next_chain|].
-    iApply ("Hcont" $! E3 with "[%] Hcg Hcpu Hpc Hpidv").
+    iApply ("Hcont" $! E3 with "[%] Hcg Hcpu Hpc Hpidv Hreg Hshot").
     unfold callee_saved.
     split; [exact HE3csp|].
     split; [exact HE3s0|]. split; [exact HE3s1|].

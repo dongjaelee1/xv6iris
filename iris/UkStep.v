@@ -803,7 +803,7 @@ Section UkArms.
     (* THE KILL ROW IS [emp] AT AN INTERRUPT (lane KILL-PAY, K3(b)): the
        dispatched cause is one devintr handles, so no kill can follow it. *)
     iSplitR.
-    { iApply (ukill_cred_at_not _
+    { iApply (ukill_cred_at_not _ _
                 (utrap_scause_intr_not_kill i
                    (register_lookup (R_bitvector_64 scause) rsA) Hi)). }
     rewrite (uslot_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2).

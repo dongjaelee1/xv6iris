@@ -54,6 +54,10 @@ Require Import ProcGeom CpuOwn.
 Require Import FdSlots.
 Require Import FileInvDefs.
 Require Import SchedCtx.
+Require Import SlotGen.   (* [pid_reg] / [qeighth] -- the registration eighth
+                             that names the target's incarnation; [ProcInv]
+                             does not re-export it *)
+Require Import ChildTok.  (* [kill_owed] / [kill_shot] *)
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import ProcAvail.
@@ -65,7 +69,7 @@ Import Defs.
 Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
      (γs : list gname) (j : nat) (γl : gname)
     (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
-    (pidv : mword 32) :=
+    (pidv : mword 32) (gn : gname) :=
   let pcE : mword 64 := mword_of_int KernelSyms.setkilled in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   (* the argument is proc j *)
@@ -89,13 +93,28 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
      setkilled is BALANCED -- both the entry and the exit [cpu_own] carry the
      same [lks] -- because the C releases p->lock on its only return path. *)
   locks_below lks "proc" ->
-  (* THE KILL CREDENTIAL (app-echo.md, lane KILL-PAY, K2).  Writing
-     [p->killed] nonzero costs the application's price of a kill:
-     [SchedCtx.proc_pub]'s killed row is "the flag is zero OR the credential
-     has been paid", and this function is one of the two writers, so it
-     cannot re-bundle the lock's payload without it.  PERSISTENT, so it is
-     lent and not spent. *)
-  □ riscv_kill_cred -∗
+  (* THE PRICE OF THE KILL, AND IT IS TWO-SIDED (lane SELF-KILL, P6b).
+     Writing [p->killed] nonzero costs the TARGET's exit payload at -1:
+     [SchedCtx.kill_row] is "the flag is zero OR it has been paid", and
+     this function is one of the two writers, so it cannot re-bundle the
+     lock's payload without paying.  There are two ways to pay, and they
+     are different parties':
+       * the LEFT is the application's TAINT, which buys the target's
+         payload through the row's published wand -- what a THIRD-PARTY
+         killer uses ([SpecKkill], [SpecSysKill], which keep it);
+       * the RIGHT is the payload ITSELF, deposited by the process that is
+         about to be killed ([ChildTok.kill_owed]) -- setkilled's only
+         caller is usertrap's fault arm on [myproc()], so a process that
+         faults ON PURPOSE pays for its own death with no taint at all.
+     Keyed at the target's generation, which is what the registration
+     eighth below names. *)
+  (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) -∗
+  (* ...AND THE CALLER'S REGISTRATION EIGHTH, LENT (lane SELF-KILL, P6b):
+     what says the [gn] the payment is keyed at IS the generation
+     <p->lock>'s row is at ([SlotGen.pid_reg_agree]).  usertrap's fault arm
+     holds it off the process's own block
+     ([ProcInv.proc_priv_pid_reg]). *)
+  pid_reg pidv (DfracOwn qeighth) gn -∗
   (* THE CALLER'S OWN QUARTER OF [p->pid], LENT (lane SELF-KILL, 4b').
      [SchedCtx.kill_paid] has a FREE arm at [p->pid = 0] which claims the
      flag is zero -- an invariant only because the C's writers cannot reach
@@ -121,6 +140,14 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
       pc_is ret_tgt -∗
       (* the lent quarter, back *)
       p_pid (proc_addr j) ↦₄{DfracOwn (1/4)} pidv -∗
+      (* ...and the lent registration eighth *)
+      pid_reg pidv (DfracOwn qeighth) gn -∗
+      (* ...AND THE ONE-SHOT, FIRED (lane SELF-KILL, P6b).  The write is
+         what makes the flag monotone for this incarnation, and this is its
+         ghost image: [ChildTok.kill_shot gn] is persistent and says the
+         flag will never read zero again, which is what refutes the
+         not-killed branch of the killed() check this arm walks into. *)
+      ChildTok.kill_shot gn -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
@@ -129,6 +156,6 @@ Module Type SETKILLED.
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
        (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
-      (pidv : mword 32),
-      wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv.
+      (pidv : mword 32) (gn : gname),
+      wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv gn.
 End SETKILLED.

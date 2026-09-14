@@ -822,7 +822,7 @@ Section UtDispatch.
        the fall-through below, where [SpecDevintr.devintr_ret]'s zero
        answer and the ecall test together say the cause is a
        [UexecRet.ukill_sc] one. *)
-    ut_kill_in sc -∗
+    ut_kill_in (pv_gen (us_V U0)) sc -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') SY.syscall_env) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid ep sc fdep) -∗
@@ -832,7 +832,7 @@ Section UtDispatch.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hcpu Hclm Hraw Henv Hframe Hxin Hfin Hein #Hkin Hcont".
+    iIntros "#Htext Hpc Hcg Hcpu Hclm Hraw Henv Hframe Hxin Hfin Hein Hkin Hcont".
     iDestruct "Henv" as "[#Hcaps Hown]".
     (* the device complement, at THIS hart, out of the bundle's [∀ h] form *)
     iAssert (devintr_caps_any (fsc_uart) (fsc_disk) (fsc_dlock) (un_tk N) (un_s N)
@@ -1069,8 +1069,13 @@ Section UtDispatch.
         assert (Hkill : ukill_sc sc)
           by exact (ud_devintr_zero_ukill sc Hscne
                       ltac:(rewrite <- HD4a0; exact Hdev)).
-        iAssert (□ riscv_kill_cred)%I as "#Hkc".
-        { rewrite /ut_kill_in /ukill_cred_at.
+        (* THE ROW IS TWO-SIDED AND LINEAR NOW (lane SELF-KILL, P6b): what
+           comes out is the application's TAINT or the process's OWN
+           payload at -1, and setkilled takes either. *)
+        iAssert (□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U)))%I
+          with "[Hkin]" as "Hkc".
+        { rewrite (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))).
+          rewrite /ut_kill_in /ukill_cred_at.
           destruct (decide (ukill_sc sc)) as [_ | Hn];
             [ iExact "Hkin" | exfalso; exact (Hn Hkill) ]. }
         iApply (wp_cbnez_fall_s_sconf (mword_of_int (UT + 0x40))
@@ -1455,7 +1460,7 @@ Section UtSeal.
     cbv beta delta [wp_usertrap_body].
     intros pcE pj Hms Hj Hsp Htp Hmiev Hmask Hmenvv.
     iIntros "#Htext Hpc #Hhw #Hminv Hhs Hpriv Hms Hsc Hst Hep Hstv
-             Hmie Hmdl Hmenv Hgpr HR Hxin Hfin Hein #Hkin Hcont".
+             Hmie Hmdl Hmenv Hgpr HR Hxin Hfin Hein Hkin Hcont".
     (* SCOPED: a bare [rewrite] would unfold [ut_res] inside the crossing's
        [usertrap_post] too, and the blocks state it folded. *)
     iEval (rewrite /usertrap_res /ut_res) in "HR".
@@ -1468,7 +1473,7 @@ Section UtSeal.
               mie_v mdv0 menvcfg0 sts cs pid
               Hms Hav Hsp Htp Hmiev Hmask Hmenvv
               with "Htext Hpc Hhw Hminv Hhs Hpriv Hms Hsc Hst Hep Hstv
-                    Hmie Hmdl Hmenv Hgpr Htc Htrap Henv [Hcont Hxin Hfin Hein]").
+                    Hmie Hmdl Hmenv Hgpr Htc Htrap Henv [Hcont Hxin Hfin Hein Hkin]").
     iIntros (M V') "%HMsp %HMs1 %HMa0 %HcsM %HuptV %HtfV %HszV %HcwiV %HgenV %HlzV Hpc Hcg Hcpu Hclm Hraw Henv Hfr".
     iApply (ut_dispatch N (MkUstate V Mu) (MkUstate V' Mu) pt ksp m M av (av - 4)%nat sepc_v sc_v stval_v
               mie_v menvcfg0 sts gn cs pid fdep

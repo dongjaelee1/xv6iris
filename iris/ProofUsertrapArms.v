@@ -268,14 +268,17 @@ Section Ut56.
     ut_hold Rsys N U false lks sts cs pid -∗
     ut_frame ksp (m0 !!! Regidx Rra) (m0 !!! Regidx Rs0)
                  (m0 !!! Regidx Rs1) (m0 !!! Regidx Rs2) -∗
-    (* ...AND THE KILL CREDENTIAL (app-echo.md, lane KILL-PAY, K3(b)).
+    (* ...AND THE PRICE OF THE KILL (app-echo.md, lane KILL-PAY, K3(b)).
        This block RUNS setkilled -- it is the "unexpected scause" arm --
-       and [SpecSetkilled] charges the application's price of a kill.  The
-       credential comes from the trapping PROCESS'S OWN DEPOSIT: the kill
-       row of [UexecRet.uexec_ret] at a cause the kernel cannot handle,
-       carried down as [SpecUsertrap.ut_kill_in] and cashed by the
-       dispatcher, which is where [UexecRet.ukill_sc] is known. *)
-    □ riscv_kill_cred -∗
+       and [SpecSetkilled] charges the price of a kill.  It comes from the
+       trapping PROCESS'S OWN DEPOSIT: the kill row of [UexecRet.uexec_ret]
+       at a cause the kernel cannot handle, carried down as
+       [SpecUsertrap.ut_kill_in] and cashed by the dispatcher, which is
+       where [UexecRet.ukill_sc] is known.
+       TWO-SIDED AND LINEAR (lane SELF-KILL, P6b): the application's TAINT,
+       or the process's OWN payload at -1 -- a program that faults on
+       purpose pays for its own death. *)
+    (□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U))) -∗
     (* THE PAY FACT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
        device interrupt, an unexpected cause -- and each of them reaches a
        killed check ([SpecUsertrap.ut_pay_in] is owed at every cause for
@@ -292,7 +295,7 @@ Section Ut56.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe #Hkc #Hmyp Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe Hkc #Hmyp Hcont".
     iDestruct (ua_hold_off Rsys N U _ sts cs with "Hhold") as
       "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     (* depth 0 forces the held set empty, so the printk / killed / setkilled
@@ -617,17 +620,20 @@ Section Ut56.
       by (rewrite /MC upd_ne; [exact HMBs1 | reg_neq]).
     assert (HcsMC : ut_cs m0 MC)
       by (rewrite /MC; apply ut_cs_insert; [vm_compute; reflexivity | exact HcsMB]).
-    (* the quarter of [p->pid] setkilled borrows, and the pid it names:
-       what ties this process's own liveness fact to the row <p->lock>
-       carries ([SpecSetkilled]'s note) *)
-    iDestruct (proc_priv_pid with "Hpv") as "(Hpid & Hpidback)".
+    (* the quarter of [p->pid] setkilled borrows AND the registration
+       eighth beside it, lent as one ([ProcInv.proc_priv_pid_reg]): the
+       quarter ties this process's own liveness fact to the row <p->lock>
+       carries, and the eighth names the generation the deposit's right
+       side is keyed at ([SpecSetkilled]'s note). *)
+    iDestruct (proc_priv_pid_reg with "Hpv") as "(Hpid & Hreg & Hpidback)".
     iApply (SK.wp_setkilled_sconf (un_s N) (un_j N) (un_l N) MC nx 0%nat false
-              (un_pj N) false lks pid HMCa0 Hj Hjl
+              (un_pj N) false lks pid (pv_gen (us_V U)) HMCa0 Hj Hjl
               ltac:(vm_compute; reflexivity)
-              ltac:(lia) Hpidnz with "Hkc Hpid Hcg Hcpu Htext Hpc Hpi [-]").
+              ltac:(lia) Hpidnz with "Hkc Hreg Hpid Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
-    iApply wp_next_off_intro. iIntros (S1) "%HcsS1 Hcg Hcpu Hpc Hpid".
-    iDestruct ("Hpidback" with "Hpid") as "Hpv".
+    iApply wp_next_off_intro.
+    iIntros (S1) "%HcsS1 Hcg Hcpu Hpc Hpid Hreg #Hshot".
+    iDestruct ("Hpidback" with "Hpid Hreg") as "Hpv".
     assert (Hret82 : ret_pc (MC !!! Regidx Rra) = mword_of_int (UT + 0x82))
       by (rewrite HMCra; pcw).
     iEval (rewrite Hret82) in "Hpc".
@@ -767,14 +773,17 @@ Section UtD0.
     ut_hold Rsys N U false lks sts cs pid -∗
     ut_frame ksp (m0 !!! Regidx Rra) (m0 !!! Regidx Rs0)
                  (m0 !!! Regidx Rs1) (m0 !!! Regidx Rs2) -∗
-    (* ...AND THE KILL CREDENTIAL (app-echo.md, lane KILL-PAY, K3(b)).
+    (* ...AND THE PRICE OF THE KILL (app-echo.md, lane KILL-PAY, K3(b)).
        This block RUNS setkilled -- it is the "unexpected scause" arm --
-       and [SpecSetkilled] charges the application's price of a kill.  The
-       credential comes from the trapping PROCESS'S OWN DEPOSIT: the kill
-       row of [UexecRet.uexec_ret] at a cause the kernel cannot handle,
-       carried down as [SpecUsertrap.ut_kill_in] and cashed by the
-       dispatcher, which is where [UexecRet.ukill_sc] is known. *)
-    □ riscv_kill_cred -∗
+       and [SpecSetkilled] charges the price of a kill.  It comes from the
+       trapping PROCESS'S OWN DEPOSIT: the kill row of [UexecRet.uexec_ret]
+       at a cause the kernel cannot handle, carried down as
+       [SpecUsertrap.ut_kill_in] and cashed by the dispatcher, which is
+       where [UexecRet.ukill_sc] is known.
+       TWO-SIDED AND LINEAR (lane SELF-KILL, P6b): the application's TAINT,
+       or the process's OWN payload at -1 -- a program that faults on
+       purpose pays for its own death. *)
+    (□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U))) -∗
     (* THE PAY FACT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
        device interrupt, an unexpected cause -- and each of them reaches a
        killed check ([SpecUsertrap.ut_pay_in] is owed at every cause for
@@ -791,7 +800,7 @@ Section UtD0.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe #Hkc #Hmyp Hcont".
+    iIntros "#Htext Hpc Hcg Hhold Hframe Hkc #Hmyp Hcont".
     iDestruct (ua_hold_off Rsys N U _ sts cs with "Hhold") as
       "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     (* depth 0 forces the held set empty, so the printk / killed / setkilled
@@ -1059,7 +1068,7 @@ Section UtD0.
                 mie_v menvcfg0 epv scv lks sts gn cs pid fdep
                 Hpk Hwf' Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmrsp Hmrs1 Hcsmr
                 Hmiev Hmenvv Hrd Hnec
-                with "Htext Hpc Hcg [-Hframe Hcont] Hframe Hkc Hmyp Hcont").
+                with "Htext Hpc Hcg [-Hframe Hkc Hcont] Hframe Hkc Hmyp Hcont").
       iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu Hcsrs Hclm [-]").
       rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
     - (* ---- vmfault backed a page: the [bnez] is taken, to +0xa6 ---- *)

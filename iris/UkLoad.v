@@ -917,11 +917,12 @@ Section UkLoadPostFetch.
       [ iApply (uexec_pay_dep_ne _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false) _ (sfam_at Qp sfam_pt)
                   (utrap_scause_load_ne (register_lookup (R_bitvector_64 scause) rsx))
                   (sexit_pay_at Qp sfam_pt) with "Hmyp") | ].
-    (* THE KILL ROW, out of the fault witness: the application's taint
-       ([UexecRet.ukill_cred_at]) *)
+    (* THE KILL ROW, out of the fault witness -- the LEFT side of the
+       two-sided deposit, which is the tainted route's (lane SELF-KILL,
+       P6b; [UexecRet.ukill_cred_at]) *)
     iSplitR.
     { iPoseProof Hkcw as "#Hkcw".
-      iApply (ukill_cred_at_of_cred _ with "Hkcw"). }
+      iApply (ukill_cred_at_of_cred _ _ with "Hkcw"). }
     iExact "Hret".
   Qed.
 

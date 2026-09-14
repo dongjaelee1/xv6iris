@@ -124,9 +124,11 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   note below: sh's prompt through the link); M4a(2a) LANDED 2026-09-16
   (the note below: init lends the credential at its fork; `init_boot_pay`
   gains `Rt`); M4a(3) LANDED 2026-09-16 (`2e0c78906`; the note below: the
-  prompt paid by the link; the pair `sh_prompt_pay`); IN FLIGHT: M3b core
-  (the payloads, the lend into echo) + M3c (the child's death), sh's wait
-  redemption LAST after TRAP-ROWS-3 T4(b); M4b-M6 after.
+  prompt paid by the link; the pair `sh_prompt_pay`); M3b(1) + M3c LANDED
+  2026-09-16 (`c9bf0cde9`; the note below); IN FLIGHT: M5 the read leaf
+  (brief v7; closes `Hsh_owed`'s third conjunct); then M3b core (the
+  payload at the line boundary, the lend into echo), sh's wait redemption
+  after TRAP-ROWS-3 T4(b); M4b, M6 after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad
@@ -3362,6 +3364,35 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M3b(1) + M3c LANDED (2026-09-16; `19797bcf6`+`c9bf0cde9` on `81944dd7f`;
+9 sh files; builds io32-io37 in the main checkout; audit the thirteen;
+lemma_diff 5 GONE all justified (`wp_kshr_fork_any`,
+`wp_kshr_fork1_final_any` dead; the three `ushp_pay_free` hypotheses
+restated as premises); no Admitted).  M3b(1) -- SH'S CHILD IS FORKED AT A
+PAYLOAD SH CHOOSES: `ukn_triv` is gone from the child's path; its three jobs
+are premises at whatever payload sh picks: the free exit row `(⊢ ukn_pay N
+(-1))`, the exec supply (the second trivial `uxsup` premise DELETED: the
+child's record satisfies the same equation, so the supply above is its
+own), the kill wand `□ (riscv_kill_cred -∗ ukn_pay N (-1))` (free at `True`;
+`iRight` at the era's payload).  `wp_kshr_fork1_any`'s child arm `⌜ukn_triv
+N'⌝` -> `⌜ukn_pay N' = ukn_pay N⌝`; `UkShFork.wp_kshf_fork:313` is THE ONE SITE
+choosing `(Q, Rc)`, still `(fun _ => True, emp)`.  M3c -- THE CHILD'S DEATH PAYS
+WITH A RESOURCE, NOT A FACT: `wp_ksh_memset_null` and the seven parser
+lemmas carry `ukn_pay N (-1)` as a resource, handed back on the arm where
+malloc succeeded, spent on the null-store death through the engine's
+`wp_uk_sb_denied`; the two walks entering the parser (`wp_kshm_child`,
+`wp_kshm_child_echo_holds`) are one `iPoseProof` away from a real payload.
+FINDING: M3b core's PAYLOAD IS BLOCKED ON M5 -- D3's `Rc` is the bundle at
+the LINE BOUNDARY (`E_lb v 17`), but after the prompt sh holds only stage
+20; the seventeen echoed bytes advance the read side through
+`echo_read_link` on sh's lease = M5.  Also for M3b core: the live chain
+still goes through the kernel constructor at `Pay := emp`, `Q := True`
+(`UShEcho.v:1288-1312`), `sh_exec_sup_echo:450` hard-wires the trivial
+payload; the exec-failure refund is dropped at `UkShEcho.v:561`; echo's
+fd-1 row = the named-ledger arm on `ush_fd0p` (same arity now).  NEXT: M5
+(fresh agent; brief v7: the read leaf closes `Hsh_owed`'s third conjunct).
+Handover: `io-leaf-handover.md`.
 
 IO-LEAF M4a(3) LANDED (2026-09-16; `2e0c78906` on `078401293`; 10 files;
 builds io29-io31 in the main checkout; audit the thirteen; lemma_diff CLEAN;

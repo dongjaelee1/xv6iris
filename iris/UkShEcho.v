@@ -873,17 +873,20 @@ Section UkShEcho.
       by (rewrite /m2 (upd_eq m1 (Regidx (mword_of_int 1 : mword 5)) _);
           apply bv_eq; vm_compute; reflexivity).
     (* ---- parsecmd ---- *)
+    (* the exit payload goes down the parser's walk (lane IO-LEAF, M3c):
+       [malloc] can return NULL and the store through it kills this
+       process.  This walk still has it for free. *)
+    iPoseProof (ukn_pay_free_of_triv N Ht) as "Hpay".
     iApply (UkShParseCmd.wp_kshp_parser N (UkShMalloc.ushm_fresh N sz)
               (usz (ukn_s N) (sz + 65536))
               (UkShMalloc.ushm_malloc_ok_holds N Hpsok_free sz
                  Hszlo Hszal Hszok)
-              (ukn_pay_free_of_triv N Ht)
               h2 m2 dw dv s0 len f echo_toks
               (8 + (UkShDiag.ush_Dg + n))
               Ha0_2 Hns Htoks Htlen Hs0 Hs64
-              with "Hpcode Hpro Hline Hws Hsy HM Hrun").
+              with "Hpcode Hpro Hline Hws Hsy HM Hpay Hrun").
     iIntros (p) "%Hparses Hnode Hline %Hcut Hws Hsy".
-    iIntros (h3 m3) "%Hcs3 %Ha0_3 Hsz Hrun".
+    iIntros (h3 m3) "%Hcs3 %Ha0_3 Hsz _ Hrun".
     rewrite Hra_2.
     (* ---- 0x9c6  jal ra,runcmd ---- *)
     iApply (wp_uk_jal N h3 m3 (mword_of_int 0x9c6)

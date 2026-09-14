@@ -118,9 +118,9 @@ Section UkShParseExec.
   (* ...and the payload the contract's FAILURE arm costs (lane SELF-KILL,
      step 5): free at the forked child's trivial record, which is the only
      process that parses. *)
-  Hypothesis ushp_pay_free : (⊢ ukn_pay N (-1)).
+  (* [ushp_pay_free] is gone -- see [UkShParseLex] (lane IO-LEAF, M3c). *)
 
-  Local Notation wp_kshp_execcmd := (UkShParseLex.wp_kshp_execcmd N UMalloc UMalloc' ushp_malloc_ok ushp_pay_free).
+  Local Notation wp_kshp_execcmd := (UkShParseLex.wp_kshp_execcmd N UMalloc UMalloc' ushp_malloc_ok).
 (*ALIASES-END*)
   (* ===================================================================== *)
   (* §11 parseexec @0x590 -- the ARGUMENT LOOP.                             *)
@@ -1090,6 +1090,9 @@ Section UkShParseExec.
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
     ustr γd dv ushp_symbols 7 ushp_sym_f -∗
     UMalloc -∗
+    (* the exit payload, carried for the NULL-store death arm below
+       ([UkShParseLex.wp_kshp_execcmd]; lane IO-LEAF, M3c) *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.parseexec) (16 + (24 + nn)) -∗
     (∀ p : Z,
        ⌜ p + 168 < Z64 ⌝ -∗
@@ -1102,13 +1105,14 @@ Section UkShParseExec.
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
            UMalloc' -∗
+           ukn_pay N (-1) -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (16 + (24 + nn)) -∗
            WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM Hrun Hcont".
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM Hpay Hrun Hcont".
     rewrite shpp_parseexec.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     set (sp0 := m !!! Regidx csp_rs1) in *.
@@ -1524,8 +1528,8 @@ Section UkShParseExec.
                  (regval_into_reg (mword_of_int 0x5c6 : mword 64))).
       apply bv_eq; vm_compute; reflexivity. }
     rewrite <- shpp_execcmd.
-    iApply (wp_kshp_execcmd h13 m10 s0 (10 + nn) with "Hcode HM Hrun").
-    iIntros (h14 m11 p) "%Hcs1011 %Ha0_11 %Hpb Hnode HM' Hrun".
+    iApply (wp_kshp_execcmd h13 m10 s0 (10 + nn) with "Hcode HM Hpay Hrun").
+    iIntros (h14 m11 p) "%Hcs1011 %Ha0_11 %Hpb Hnode HM' Hpay Hrun".
     rewrite Eret10.
     destruct Hpb as [ Hp0 [ Hp16 Hpsz ] ].
     assert (H38 : (2:Z) ^ 38 = 274877906944) by (vm_compute; reflexivity).
@@ -2363,7 +2367,8 @@ Section UkShParseExec.
               with "[] Hrun").
     { iApply (uis_shp_606 with "Hcode"). }
     iIntros (h40) "Hrun".
-    iApply ("Hcont" $! p with "[] [Hty Hav Hev] Hcur Hstr Hws Hsy [] [] HM' Hrun").
+    iApply ("Hcont" $! p
+              with "[] [Hty Hav Hev] Hcur Hstr Hws Hsy [] [] HM' Hpay Hrun").
     - iPureIntro. lia.
     - iApply ushp_exec_pre_at. rewrite /ushp_exec_pre.
       iSplitR; [ iPureIntro; exact Htlen | ].

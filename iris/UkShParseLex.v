@@ -170,7 +170,12 @@ Section UkShParseLex.
      reached only from [parsecmd], and only sh's FORKED CHILD parses, at a
      trivial payload ([UkRun.ukn_pay_free_of_triv]).  Exactly the shape
      [UkShRun]'s exit walks already take. *)
-  Hypothesis ushp_pay_free : (⊢ ukn_pay N (-1)).
+  (* [ushp_pay_free] IS GONE (lane IO-LEAF, M3c): it said "the exit
+     payload is free at this record", which is true only while sh's
+     children are forked at [fun _ => True].  What the walk needs it for
+     is the NULL store's death arm, and that arm takes the payload as a
+     RESOURCE now -- carried in at [wp_kshp_execcmd] and handed back where
+     the allocation succeeded. *)
 
   (* ===================================================================== *)
   (* §8 peek @0x448 -- 40 instructions, an EIGHT-word frame, one scan.      *)
@@ -1700,6 +1705,14 @@ Section UkShParseLex.
   Lemma wp_kshp_execcmd (h : CpuId) (m : regfile) (s0 : Z) (nn : nat) :
     shp_code γt -∗
     UMalloc -∗
+    (* THE EXIT PAYLOAD, CARRIED (lane IO-LEAF, M3c).  [malloc] can return
+       NULL, and what this walk does then is store through it and DIE --
+       [UkSh.wp_ksh_memset_null], whose engine leaf spends the payload at
+       the kill status.  It used to be the section Hypothesis
+       [ushp_pay_free : (⊢ ukn_pay N (-1))], which a child forked at a
+       LINEAR payload cannot satisfy; so it is a resource, carried in and
+       handed back on the arm where the allocation succeeded. *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.execcmd) (4 + (10 + nn)) -∗
     (∀ (h' : CpuId) (m' : regfile) (p : Z),
        ⌜ ucallee_saved m m' ⌝ -∗
@@ -1707,11 +1720,12 @@ Section UkShParseLex.
        ⌜ 0 < p /\ p mod 16 = 0 /\ p + 168 < 2 ^ 38 ⌝ -∗
        ushp_exec_pre s0 p [] -∗
        UMalloc' -∗
+       ukn_pay N (-1) -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (10 + nn)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode HM Hrun Hcont".
+    iIntros "#Hcode HM Hpay Hrun Hcont".
     iDestruct (ushp_code_shk γt with "Hcode") as "#Hkcode".
     rewrite shpp_execcmd.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -1979,9 +1993,9 @@ Section UkShParseLex.
       (* ---- memset(0, 0, 168): the FIRST store faults and the child dies -- *)
       iDestruct (ush_text0 γt with "Hkcode") as (btx) "#Ht0".
       iApply (wp_ksh_memset_null N h10 m9 0 168%nat btx (8 + nn)
-                ushp_pay_free ltac:(lia) ltac:(vm_compute; reflexivity)
+                ltac:(lia) ltac:(vm_compute; reflexivity)
                 Ha0_9 Ha2_9 ltac:(lia) ltac:(unfold Z31; lia)
-                with "Hkcode Ht0 Hrun").
+                with "Hkcode Ht0 Hpay Hrun").
     }
     destruct Hpb as [ Hp0 [ Hp16 Hpsz ] ].
     assert (H38 : (2:Z) ^ 38 = 274877906944) by (vm_compute; reflexivity).
@@ -2241,7 +2255,8 @@ Section UkShParseLex.
     { iApply (uis_shp_1fe with "Hcode"). }
     iIntros (h17) "Hrun".
     (* ---- what the caller reads back ---- *)
-    iApply ("Hcont" $! h17 mf p with "[] [] [] [Hty Hpad Hav Hev] HM' Hrun").
+    iApply ("Hcont" $! h17 mf p
+              with "[] [] [] [Hty Hpad Hav Hev] HM' Hpay Hrun").
     - iPureIntro. intros q Hq.
       destruct (Z.eq_dec (uint q) 2) as [ Eq2 | Eq2 ].
       { rewrite (ushp_ridx_eq q csp_rs1

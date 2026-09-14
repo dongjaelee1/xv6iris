@@ -2000,17 +2000,24 @@ Section UkSh.
   (* ===================================================================== *)
   Lemma wp_ksh_memset_null (h : CpuId) (m : regfile) (a : Z) (Nb : nat)
       (b0 : bv 8) (nn : nat) :
-    (⊢ ukn_pay N (-1)) ->
     0 <= a -> a + Z.of_nat Nb < 2 ^ 38 ->
     m !!! Regidx a0_idx = mword_of_int a ->
     m !!! Regidx a2_idx = mword_of_int (Z.of_nat Nb) ->
     (0 < Nb)%nat -> Z.of_nat Nb < Z31 ->
     shk_code γt -∗
     utext γt a b0 -∗
+    (* THE EXIT PAYLOAD, AS A RESOURCE (lane IO-LEAF, M3c).  It was the
+       Coq-level [(⊢ ukn_pay N (-1))] -- "the payload is free at this
+       record" -- which is exactly what a child that dies at a LINEAR
+       payload cannot say.  The engine leaf below took the same step
+       (TRAP-ROWS M2 part 2, [UkRunMem.wp_uk_sb_denied]); this is the same
+       premise one level up, and a caller that still has the free payload
+       is one [iPoseProof] away from it. *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.memset) (2 + nn) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hpx Halo Hahi0 Ha0 Ha2 HN0 HN31. iIntros "#Hcode #Ht0 Hrun".
+    intros Halo Hahi0 Ha0 Ha2 HN0 HN31. iIntros "#Hcode #Ht0 Hpay Hrun".
     rewrite shp_memset.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     assert (Hahi : a + Z.of_nat Nb < 274877906944)
@@ -2230,9 +2237,9 @@ Section UkSh.
                (regval_into_reg (mword_of_int a : mword 64))). }
     (* ---- 0xa70..0xa76  the byte loop ---- *)
     (* ---- 0xa70  sb a1,0(a5) -- AND THIS IS WHERE THE PROCESS DIES ---- *)
-    (* the deposit is a RESOURCE at the leaf now (the IO-LEAF review); this
-       walk still has it for free, so it is one [iPoseProof] away. *)
-    iPoseProof Hpx as "Hpay".
+    (* the deposit is a RESOURCE at the leaf (TRAP-ROWS M2 part 2) and a
+       resource here too (lane IO-LEAF, M3c): it was carried down the
+       parser's walk from the fork that lent it. *)
     iApply (wp_uk_sb_denied N h9 m6 (mword_of_int 0xa70)
               (mword_of_int 0 : mword 12) a5_idx a1_idx a b0 nn
               ltac:(rewrite Ha5_6; replace (a + Z.of_nat 0) with a by lia;

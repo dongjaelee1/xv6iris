@@ -120,9 +120,9 @@ Section UkShParseCmd.
   (* ...and the payload the contract's FAILURE arm costs (lane SELF-KILL,
      step 5): free at the forked child's trivial record, which is the only
      process that parses. *)
-  Hypothesis ushp_pay_free : (⊢ ukn_pay N (-1)).
+  (* [ushp_pay_free] is gone -- see [UkShParseLex] (lane IO-LEAF, M3c). *)
 
-  Local Notation wp_kshp_parseexec := (UkShParseExec.wp_kshp_parseexec N UMalloc UMalloc' ushp_malloc_ok ushp_pay_free).
+  Local Notation wp_kshp_parseexec := (UkShParseExec.wp_kshp_parseexec N UMalloc UMalloc' ushp_malloc_ok).
 (*ALIASES-END*)
 
   (* ===================================================================== *)
@@ -161,6 +161,9 @@ Section UkShParseCmd.
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
     ustr γd dv ushp_symbols 7 ushp_sym_f -∗
     UMalloc -∗
+    (* the exit payload, carried for the NULL-store death arm
+       ([UkShParseLex.wp_kshp_execcmd]; lane IO-LEAF, M3c) *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.parsepipe)
       (6 + (16 + (24 + nn))) -∗
     (∀ p : Z,
@@ -174,13 +177,14 @@ Section UkShParseCmd.
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
            UMalloc' -∗
+           ukn_pay N (-1) -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (6 + (16 + (24 + nn))) -∗
            WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM Hrun Hcont".
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM Hpay Hrun Hcont".
     rewrite shpp_parsepipe.
     assert (Elen0 : (len + ushp_skipws (len - len) len f)%nat = len)
       by (rewrite Nat.sub_diag; cbn [ushp_skipws]; lia).
@@ -335,9 +339,9 @@ Section UkShParseCmd.
     iApply (wp_kshp_parseexec h5 m5 dq dw dv ps s0 len off f w0 toks nn
               Ha0_5 Ha1_5 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64
               Hps0 Hps8 Hpssz
-              with "Hcode Hro Hcur Hstr Hws Hsy HM Hrun").
+              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpay Hrun").
     iIntros (p) "%Hpsz Hnode Hcur Hstr Hws Hsy".
-    iIntros (h6 m6) "%Hcs56 %Ha0_6 HM' Hrun".
+    iIntros (h6 m6) "%Hcs56 %Ha0_6 HM' Hpay Hrun".
     rewrite Eret5.
     (* ---- 0x69c  c.mv s3,a0 ---- *)
     iApply (wp_uk_cmv N h6 m6 (mword_of_int 0x69c) s3_idx a0_idx
@@ -600,7 +604,8 @@ Section UkShParseCmd.
     { iApply (uis_shp_6be with "Hcode"). }
     { iApply (uis_shp_6c0 with "Hcode"). }
     iIntros (hf) "Hrun".
-    iApply ("Hcont" $! p with "[] Hnode Hcur Hstr Hws Hsy [] [] HM' Hrun").
+    iApply ("Hcont" $! p
+              with "[] Hnode Hcur Hstr Hws Hsy [] [] HM' Hpay Hrun").
     - iPureIntro. exact Hpsz.
     - iPureIntro.
       apply (ushp_frame_cs [(ra_idx, mword_of_int 5 : mword 6);
@@ -654,6 +659,9 @@ Section UkShParseCmd.
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
     ustr γd dv ushp_symbols 7 ushp_sym_f -∗
     UMalloc -∗
+    (* the exit payload, carried for the NULL-store death arm
+       ([UkShParseLex.wp_kshp_execcmd]; lane IO-LEAF, M3c) *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.parseline)
       (6 + (6 + (16 + (24 + nn)))) -∗
     (∀ p : Z,
@@ -667,13 +675,14 @@ Section UkShParseCmd.
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
            UMalloc' -∗
+           ukn_pay N (-1) -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (6 + (6 + (16 + (24 + nn)))) -∗
            WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM Hrun Hcont".
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM Hpay Hrun Hcont".
     rewrite shpp_parseline.
     assert (Elen0 : (len + ushp_skipws (len - len) len f)%nat = len)
       by (rewrite Nat.sub_diag; cbn [ushp_skipws]; lia).
@@ -809,9 +818,9 @@ Section UkShParseCmd.
     iApply (wp_kshp_parsepipe h4 m4 dq dw dv ps s0 len off f w0 toks nn
               Ha0_4 Ha1_4 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64
               Hps0 Hps8 Hpssz
-              with "Hcode Hro Hcur Hstr Hws Hsy HM Hrun").
+              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpay Hrun").
     iIntros (p) "%Hpsz Hnode Hcur Hstr Hws Hsy".
-    iIntros (h5 m5) "%Hcs45 %Ha0_5 HM' Hrun".
+    iIntros (h5 m5) "%Hcs45 %Ha0_5 HM' Hpay Hrun".
     rewrite Eret4.
     (* ---- 0x6fa  c.mv s1,a0 ---- *)
     iApply (wp_uk_cmv N h5 m5 (mword_of_int 0x6fa) s1_idx a0_idx
@@ -1266,7 +1275,8 @@ Section UkShParseCmd.
     { iApply (uis_shp_746 with "Hcode"). }
     { iApply (uis_shp_748 with "Hcode"). }
     iIntros (hf) "Hrun".
-    iApply ("Hcont" $! p with "[] Hnode Hcur Hstr Hws Hsy [] [] HM' Hrun").
+    iApply ("Hcont" $! p
+              with "[] Hnode Hcur Hstr Hws Hsy [] [] HM' Hpay Hrun").
     - iPureIntro. exact Hpsz.
     - iPureIntro.
       apply (ushp_frame_cs [(ra_idx, mword_of_int 5 : mword 6);
@@ -2501,6 +2511,9 @@ Section UkShParseCmd.
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
     ustr γd dv ushp_symbols 7 ushp_sym_f -∗
     UMalloc -∗
+    (* the exit payload, carried for the NULL-store death arm
+       ([UkShParseLex.wp_kshp_execcmd]; lane IO-LEAF, M3c) *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.parsecmd)
       (8 + (6 + (6 + (16 + (24 + nn))))) -∗
     (∀ p : Z,
@@ -2512,13 +2525,14 @@ Section UkShParseCmd.
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
            UMalloc' -∗
+           ukn_pay N (-1) -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (8 + (6 + (6 + (16 + (24 + nn))))) -∗
            WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Hnosym Htoks Htlen Hs0 Hs64.
-    iIntros "#Hcode #Hro Hstr Hws Hsy HM Hrun Hcont".
+    iIntros "#Hcode #Hro Hstr Hws Hsy HM Hpay Hrun Hcont".
     rewrite shpp_parsecmd.
     iDestruct (ustr_len with "Hstr") as %Hlen31.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -2888,9 +2902,9 @@ Section UkShParseCmd.
               ltac:(f_equal; lia)
               Hnosym Htoks Htlen ltac:(lia) ltac:(lia)
               Hcur0 Hcur8 Hcurz
-              with "Hcode Hro Lcur Hstr Hws Hsy HM Hrun").
+              with "Hcode Hro Lcur Hstr Hws Hsy HM Hpay Hrun").
     iIntros (p) "%Hpsz Hnode Lcur Hstr Hws Hsy".
-    iIntros (h15 m13) "%Hcs1213 %Ha0_13 HM' Hrun".
+    iIntros (h15 m13) "%Hcs1213 %Ha0_13 HM' Hpay Hrun".
     rewrite Eret12.
     iDestruct "Hnode" as "(%Hnl & %Hp0 & %Hp8 & Hty & Hav & Hev)".
     iAssert (ushp_exec_at s0 p toks) with "[Hty Hav Hev]" as "Hnode".
@@ -3300,7 +3314,7 @@ Section UkShParseCmd.
       iSplitL "Lcur"; [ iExact "Lcur" | ].
       iSplitL "L2"; [ iExact "L2" | done ]. }
     iIntros (hf) "Hrun".
-    iApply ("Hcont" $! p with "Hnode Hline Hws Hsy [] [] HM' Hrun").
+    iApply ("Hcont" $! p with "Hnode Hline Hws Hsy [] [] HM' Hpay Hrun").
     - iPureIntro.
       apply (ushp_frame_cs [(ra_idx, mword_of_int 7 : mword 6);
                (s0_idx, mword_of_int 6 : mword 6);
@@ -3397,6 +3411,9 @@ Section UkShParseCmd.
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
     ustr γd dv ushp_symbols 7 ushp_sym_f -∗
     UMalloc -∗
+    (* the exit payload, carried for the NULL-store death arm
+       ([UkShParseLex.wp_kshp_execcmd]; lane IO-LEAF, M3c) *)
+    ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.parsecmd) (60 + nn) -∗
     (∀ p : Z,
        ⌜ ushp_parses s0 len f p (UshpExec toks) ⌝ -∗
@@ -3410,16 +3427,17 @@ Section UkShParseCmd.
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
            UMalloc' -∗
+           ukn_pay N (-1) -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (60 + nn) -∗
            WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Hnosym Htoks Htlen Hs0 Hs64.
-    iIntros "#Hcode #Hro Hstr Hws Hsy HM Hrun Hcont".
+    iIntros "#Hcode #Hro Hstr Hws Hsy HM Hpay Hrun Hcont".
     iApply (wp_kshp_parsecmd h m dw dv s0 len f toks nn
               Ha0 Hnosym Htoks Htlen Hs0 Hs64
-              with "Hcode Hro Hstr Hws Hsy HM Hrun").
+              with "Hcode Hro Hstr Hws Hsy HM Hpay Hrun").
     iIntros (p) "Hnode Hline Hws Hsy".
     iApply ("Hcont" $! p with "[] Hnode Hline [] Hws Hsy").
     - iPureIntro. exists toks. split; [ exact Htoks | ].

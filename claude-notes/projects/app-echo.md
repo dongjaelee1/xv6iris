@@ -52,34 +52,24 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
 - [x] ~~**SH-STATE**~~ LANDED 2026-09-13 (`65536f83f`; the note below):
   `sh_pay_state` proved at a named constant `sh_Rsh`; `Hsh_owed` is
   `sh_deps ∧ sh_pay_rest sh_Rsh`; `UConsLine`'s three Props are lemmas.
-- [ ] **SELF-KILL** (kernel; `-sup`, `lane/self-kill`; steps 1-4a, 4b' and P6
-  steps 1-2 LANDED, `27869216e`, the notes below).  OWNER'S RULING
-  2026-09-13: THE KILL CREDENTIAL IS THE TARGET'S EXIT PAYLOAD AT -1 -- no
-  separate predicate, no alive token; Q(-1) is supplied when a process may
-  trap at a killing cause, the syscall precondition when it enters with the
-  syscall cause; no ∧, no -1 wand at ecalls; `killed()` reports the flag.
-  `riscv_kill_cred` survives ONLY as the application's taint, the antecedent
-  of each process's published payment wand and a third-party killer's price.
-  A FABLE REVIEW of the lane (2026-09-15, at the owner's request) found the
-  repeated blockers were mechanism rulings made ahead of facts already in the
-  tree (the seven C facts: `p->killed` is monotone; `p->lock` is not held
-  from usertrap's second check to kexit; `setkilled` runs only on `myproc()`;
-  kexit needs the payload only at the ZOMBIE park; `my_pay` is knowledge not
-  the resource; THE KERNEL NEVER RESUMES A NON-LAZY PROCESS FROM A KILLING
-  TRAP -- vmfault's success arm needs an unmapped lazy page -- so the arm at
-  a killing cause is the slot alone and no ∧/refund was ever needed;
-  setkilled should hand `kill_shot` back).  REMAINING, from the DESIGN PAGE
-  (scratchpad `brief-self-kill-2.md`): P6b-carrier (the generic family's
-  constant payload rides a persistent `□ (riscv_kill_cred -∗ R)` in its six
-  signatures -- `upay_neg` kept exactly where it is honest and deleted from
-  `urun`, `upay_at`, the arms and the exit stubs), P6b-deposit (the
-  two-sided `ukill_cred_at gn sc := if ukill_sc sc then (□ riscv_kill_cred ∨
-  kill_owed gn) else emp`; `SpecSetkilled` two-sided, returning `kill_shot`),
-  then step 5 (memset's null store).  Withdrawn: R3's ∧, "upay_neg deleted
-  everywhere", "no accessor", "put taken_at back from proc_priv".  Blessed
-  pending the owner's word: the forking process's persistent child wand
-  `□ (riscv_kill_cred -∗ sfork_pay f (-1))` at the fork ecall, the one -1
-  wand at an ecall (free at the trivial payload).
+- [ ] **SELF-KILL** (kernel; `-sup`, `lane/self-kill`; steps 1-4a, 4b', P6 and
+  P6b LANDED 2026-09-15, `a33bf1a3d`, the notes below; the Fable review's
+  design page scratchpad `brief-self-kill-2.md` is the design of record).
+  OWNER'S RULINGS: the kill credential is the target's exit payload at -1
+  (no separate predicate, no alive token; Q(-1) supplied at a killing cause,
+  the syscall precondition at an ecall; `killed()` reports the flag);
+  `riscv_kill_cred` survives only as the application's taint; "require that
+  taint implies Q, persistently" -- the forking process's child wand
+  `□ (riscv_kill_cred -∗ sfork_pay f (-1))` at the fork ecall is blessed.
+  REMAINING: step 5 (memset's null store: widen
+  `UkStore.uk_store_fault_post_fetch`'s `(⊢ □ riscv_kill_cred)` premise to
+  `ukill_cred_at gn sc`'s RIGHT side off `UserPermDenied.u_fault_flavor_store_key`
+  and the child's trivial `ukn_pay N (-1)`; the resume arm from the engine's
+  Löb IH; `ushm_sbrk_never_fails` and the six `Hsbrk` signatures deleted;
+  `ushp_malloc_ty`'s null arm; `wp_kshp_execcmd` split before memset), and
+  the optional use of setkilled's returned `kill_shot` after +0x56 (the
+  not-killed branch after setkilled is provable with the slot, so nothing
+  depends on refuting it).
 - [x] ~~**CONS-IO milestone A**~~ LANDED 2026-09-13 (`eef6a8dec` with SELF-KILL
   1-4a; the note below): the input resource, the shift as one fupd per
   accepted input over the two-resource `echo_link`, the log's high-water
@@ -3318,6 +3308,38 @@ unused stays.  CONSTRAINT for ECHO-OUT part 3: `Hpow` is a plain `==∗` fired
 with `obsN` already open -- the era's linear seed must be bupd-mintable from
 the ledger's own state; nothing in `Hpow` may open an invariant.  Handover:
 scratchpad `cons-io-handover-7.md`.
+
+SELF-KILL P6b LANDED (2026-09-15; `d03988128`+`a33bf1a3d` on `f24ec51af`; 51 files
++1252/-1545; builds selfk57-selfk71 in `-sup`; audit the thirteen; lemma_diff =
+15 removals, the retired -1-wand vocabulary: `upay_neg`/`_of`/`_pay`,
+`uexec_pay_arm`/`_triv`/`_const`, `uexec_kill_arm_F_final`/`_pay`,
+`uexec_kill_arm_final`/`_pay`/`_cases`, `ut_pay_out`, `sysc_pay_out`,
+`sysc_pay_in_ret`, `ukill_cred_at_persistent`).  From the Fable review's
+design page: THE GENERIC FAMILY'S CONSTANT PAYLOAD is carried PERSISTENTLY as
+the process's own published payment wand `□ (riscv_kill_cred -∗ R)` at the six
+generic-family sites (`uslot_mint_pay`/`_all`, `cond_entry_slot_pay`,
+`uexec_dep_F_of_supply`, `uexec_arm_of_all`, `uexec_ret_of_all`; the class field
+`sbundle_of_supply` takes `□ R`, cashed by its one caller, because `uexecSG`
+has no `riscvGS` in scope) -- the family is only ever reached tainted, so every
+leg helps itself and the arm-vs-deposit routing case analysis disappears.
+`upay_neg` IS GONE from the tree; nothing about the kill status travels the
+trap route: `upay_at gn sc tf f := my_pay gn (sexit_pay f) ∗ (the exit ecall's
+`sexit_pay f (exit_xs tf)`, else emp)`, `uexec_kill_arm_F X sc W f := X W` (the
+kernel never resumes a non-lazy process from a killing trap: vmfault's success
+arm needs an unmapped lazy page), `urun` carries no payload row, the syscall
+post carries no payment row, `exec_slot_pre`/`PinnedExec` hand the new
+image's slot outright.  THE DEPOSIT AT A KILLING CAUSE is two-sided and
+linear: `ukill_cred_at gn sc := if ukill_sc sc then (□ riscv_kill_cred ∨
+ChildTok.kill_owed gn) else emp`, indexed by the trapping incarnation
+(`SpecUsertrap.ut_kill_in gn sc`); `SpecSetkilled` takes either side, lends
+back the registration eighth and returns the incarnation's one-shot
+`kill_shot gn` (`SchedCtx.kill_paid_kill_two`); `SpecKkill`/`SpecSysKill`
+keep `□ riscv_kill_cred`.  Programs that lost a `⊢ ukn_pay N (-1)`/`upay_neg`
+premise: `UkSh.wp_ksh_exit`, `UkInit`'s exec exit leaf, `UkCat`/`UkSync`/`UkEcho`'s
+exit leaves, `USyncKernel`/`UEchoKernel`/`UInitKernel`'s slots, `UkRun.urun_gen`,
+`UkSh.ush_gen_slot`, `UShKernel`, `UInitSh`, `UShEcho`, `PinnedExec`'s six wand
+pairs.  `UkShRun.v:~2504/2542`'s `(⊢ ukn_pay N (-1))` premises stay: they are
+step 5's `Hsbrk`.  Handover: scratchpad `self-kill-handover.md` (cont. 12).
 
 ECHO-OUT PART 4 LANDED (2026-09-15; `a007ec892` on `2b87dc1c5`; EchoOut.v
 +997/-1284; builds eo50-eo52 in `-disc`; audit the thirteen; lemma_diff = 58

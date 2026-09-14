@@ -178,7 +178,11 @@ Notation K_kwait := (62%nat) (only parsing).
 Definition wp_kwait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (γa γp γf γw : gname)  (γs : list gname) (j : nat) (γl : gname)
     (m : regfile) (av : nat) (eb : bool) (b : bool)
-    (pid : mword 32) (U : ustate) (lks : gset string) (cs : gset gname) :=
+    (pid : mword 32) (U : ustate) (lks : gset string) (cs : gset gname)
+    (* <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-3/4, T4(b)): what the
+       reaping arm's second disjunct is stated against.  PURE, and tied to
+       the ghost by the [SlotGen.init_pid_is] premise below. *)
+    (ipid : mword 32) :=
   let pcE : mword 64 := mword_of_int KernelSyms.kwait in
   let pj := proc_addr j in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
@@ -215,6 +219,14 @@ Definition wp_kwait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
      reaped generation leaves the set.  The mold is sys_exit's, which
      relays the same row to kexit ([SpecKexit]). *)
   ch_frag (pv_chg (us_V U)) pj cs -∗
+  (* ...AND WHO <INIT> IS, AS A NUMBER (lane TRAP-ROWS-3/4, T4(b)).  The
+     reaper reads [WaitInv.init_ident] off the wait-lock invariant's orphan
+     conjunct and its own block's slot-generation quarter; what it CANNOT
+     do is name the pid that comes out, because the seal is existential
+     there.  This persistent row is the name, and it is what lets the
+     answer below be stated at pure numbers rather than at a ghost the U
+     tier could never carry. *)
+  SlotGen.init_pid_is ipid -∗
   wp_next b pj (fun (CID : CpuId) =>
     (* THE ONLY THING kwait WRITES IS THE FOUR-BYTE EXIT STATUS, AT [addr],
        AND ONLY WHEN [addr <> 0].  [d] is the count copyout actually placed
@@ -246,7 +258,7 @@ Definition wp_kwait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
          escrow is keyed at what that cell reads
          ([ProcDefs.proc_dormant]'s ZOMBIE arm). *)
       wait_ans rv (xstate_val xw) cs cs' (pv_gen (us_V U))
-        (bool_decide (addr = (zero_reg : mword 64))) -∗
+        (bool_decide (addr = (zero_reg : mword 64))) pid ipid -∗
       sie_cap_gpr KT1 mf av b pj -∗
       cpu_own 0 eb pj b lks -∗
       pc_is ret_tgt -∗
@@ -268,6 +280,7 @@ Module Type KWAIT.
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (γa γp γf γw : gname) (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (eb : bool) (b : bool)
-      (pid : mword 32) (U : ustate) (lks : gset string) (cs : gset gname),
-      wp_kwait_sconf_body γa γp γf γw γs j γl m av eb b pid U lks cs.
+      (pid : mword 32) (U : ustate) (lks : gset string) (cs : gset gname)
+      (ipid : mword 32),
+      wp_kwait_sconf_body γa γp γf γw γs j γl m av eb b pid U lks cs ipid.
 End KWAIT.

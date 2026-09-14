@@ -282,7 +282,7 @@ Section ProofUserinit.
              Hfirst #Hpersist Hfsinit
              #Hpinv #Hlpid
              #Hdcaps #Hwaitlk #Hftable #Hcready #Hwire Hbundle Hrdtok #Htramp
-             Hkenv Hpav Hinitproc Hcont".
+             Hkenv Hpav Hinitproc Hipt Hcont".
     (* the boot arm: at nesting level 0 the exit arm IS the entry base *)
     iDestruct (cpu_own_eb_agree with "Hcg Hcpu") as %Heb. cbn in Heb. subst eb.
     (* the two path bytes, out of the read-only image *)
@@ -471,10 +471,31 @@ Section ProofUserinit.
        parent, its parent cell is 0 at boot and nothing ever writes it, so
        there is no entry for its slot and nothing to hold them.  The
        quarters ride the park into its block, exactly as the pair does. *)
-    rewrite slot_gen_quarters. iDestruct "Hsg" as "[_ Hsg]".
+    (* ...AND THE THREE QUARTERS ARE DISCARDED, NOT DROPPED (lane
+       TRAP-ROWS-3/4, T4(b)).  What a forking parent would deposit under
+       <wait_lock> has no holder here, but it is exactly what says WHICH
+       incarnation <init> is -- so it is made PERSISTENT instead of thrown
+       away, and [WaitInv.init_gen] below is the sealed reading.
+         WHAT IT COSTS: [slot_gen (proc_addr j) (DfracOwn 1)] is forever
+       unobtainable, i.e. allocproc can never re-key <init>'s slot, and its
+       pid can never be deregistered.  Both are TRUE -- <init> never exits
+       and kexit panics on it -- and nothing in the tree needs the
+       converse. *)
+    rewrite slot_gen_quarters. iDestruct "Hsg" as "[Hsg34 Hsg]".
     (* the registration arrives already cut (lane SELF-KILL, §1): the row's
        eighth stayed in <p->lock>'s payload at allocproc. *)
-    iDestruct "Hpr" as "[_ Hpr]".
+    iDestruct "Hpr" as "[Hpr34 Hpr]".
+    iMod (slot_gen_persist with "Hsg34") as "#Hsgd".
+    iMod (pid_reg_persist with "Hpr34") as "#Hprd".
+    (* ...AND THE SAVED PID, WRITTEN AND SEALED.  userinit is the one party
+       that knows which pid allocproc chose, and the cell main routed here
+       is whole, so this is the only place the write can happen. *)
+    iMod (SlotGen.init_pid_set _ pid with "Hipt") as "Hipt".
+    iMod (SlotGen.init_pid_seal with "Hipt") as "#Hipis".
+    iDestruct (my_pay_kq_readings with "Hmp Hkq") as "(_ & #Hgpid & Hkq)".
+    iAssert (WaitInv.init_gen (proc_addr j) pid) as "#Hig".
+    { rewrite /WaitInv.init_gen. iExists (pv_gen V).
+      iFrame "Hsgd Hgpid Hipis Hprd". }
     iAssert (gen_halves_priv (proc_addr j) pid (pv_gen V))
       with "[Hsg Hpr Htaken]" as "Hgh";
       [iApply (gen_halves_priv_intro (proc_addr j) pid (pv_gen V)
@@ -535,6 +556,12 @@ Section ProofUserinit.
        the park and could not be shared with the parked process at all.
        See [iris/ForkretParkClose.v] and projects/forkret-park.md. *)
     iMod (ctx_word_pointsto_persist with "Hinitproc") as "#Hinitproc".
+    (* the word the store left IS the slot's address, which is what ties the
+       cell to the sealed identity above (lane TRAP-ROWS-3/4, T4(b)) *)
+    assert (Hipv : (rget R5 Ra0 : mword 64) = proc_addr j).
+    { assert (Hr : rget R5 Ra0 = R5 !!! Regidx Ra0) by (rgne; reflexivity).
+      rewrite Hr. exact HR5a0. }
+    iEval (rewrite Hipv) in "Hinitproc".
     assert (Hpp18 : add_vec_int (mword_of_int (UI + 0x14) : mword 64) 4
                     = mword_of_int (UI + 0x18)) by pcw.
     iEval (rewrite Hpp18) in "Hpc".
@@ -784,9 +811,10 @@ Section ProofUserinit.
     (* closer, beside the persistent world and the child's stack.          *)
     (* ================================================================= *)
     iAssert (∃ iv1 : mword 64,
-               (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ iv1)%I
-      as (iv1) "#Hip1".
-    { iExists _. iExact "Hinitproc". }
+               (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ iv1 ∗
+               WaitInv.init_gen iv1 pid)%I
+      as (iv1) "[#Hip1 #Hig1]".
+    { iExists (proc_addr j). iFrame "Hinitproc Hig". }
     iDestruct (procs_inv_len with "Hpinv") as %Hnproc.
     iAssert (⌜fs_geom_ok⌝)%I as %Hgeomok.
     { iPoseProof "Hpersist" as "Hp".
@@ -797,7 +825,7 @@ Section ProofUserinit.
     pose (N := MkUtNames γft γf γw γs j γl pd pav pu
                  γtl
                  iv1 DfracDiscarded
- ks pid).
+ ks pid pid).
     assert (Hwf : ut_wf N).
     { split_and!; [exact Hj | exact Hgl | exact Hnproc | exact (fgo_loggeom Hgeomok)]. }
     iAssert (park_env N) as "#Henv".
@@ -819,11 +847,15 @@ Section ProofUserinit.
         (* the second port's row rides along: [devintr_caps_any] gained it
            at the bump and [park_world] spells it out, so the copy that came
            in is the copy that goes down. *)
+        iSplitR;
+          [| (* ...and <init>'s sealed identity, at the record's own two
+                numbers (lane TRAP-ROWS-3/4, T4(b)) *)
+             iExact "Hig1"].
         rewrite /park_world /uart1_caps. iExists γtl, pd, pav, pu.
         iDestruct "Hdcaps" as "(#Hd1 & #Hd2 & #Hd3 & #Hd4 & #Hd5 & #Hd6 & #Hd7)".
         iFrame "Hd1 Hd2 Hd3 Hd4 Hd5 Hd6 Hcready Hwire Htramp Hpav".
         iSplitR; [iExists γp; iExact "Hlpid"|].
-        iSplitR; [iExists iv1; iExact "Hip1"|].
+        iSplitR; [iExists iv1, pid; iFrame "Hip1 Hig1"|].
         iExact "Hd7". }
       iSplitR; [iExists γp; iExact "Hlpid"|].
       iSplitR; [iExact "Hpav"|].
@@ -1115,7 +1147,7 @@ Section ProofUserinit.
     - split; [| exact HP4ra].
       unfold callee_saved. split_and!; assumption.
     - iExact "Hkenv".
-    - iExists _. iExact "Hinitproc".
+    - iExists (proc_addr j). iFrame "Hinitproc". iExists pid. iExact "Hig".
   Qed.
 
 End ProofUserinit.

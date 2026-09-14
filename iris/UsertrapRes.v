@@ -502,6 +502,14 @@ Section UsertrapRes.
     un_dqi : dfrac;
     un_ks  : mword 64;                (* the kernel stack's BASE             *)
     un_pid : mword 32;
+    (* <INIT>'S PID, AS A NUMBER (lane TRAP-ROWS-3/4, T4(b)).  PURE, and it
+       is what lets wait's answer say whose child the reaped zombie was
+       ([UserChildren.wait_ans]'s reaping arm is stated at two [mword 32]
+       parameters, the caller's pid and this one).  Tied to the ghost by
+       [ut_caps]'s [WaitInv.init_gen] row, which userinit seals
+       ([ProofUserinit]) and every later record inherits ([ProofKforkB5]:
+       a child's record carries its parent's number). *)
+    un_ipid : mword 32;
   }.
 
   (* the running process's [struct proc] address, and the fileclose
@@ -600,7 +608,9 @@ Section UsertrapRes.
       devintr_caps_any fsc_uart fsc_disk fsc_dlock γtl γs pd pav pu ∗
       sysc_park_extra γtl ∗
       wire_inv ∗ kmap_at tramp_vpn tramp_ppn KP_rx ∗
-      (∃ ip : mword 64, (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ ip).
+      (∃ (ip : mword 64) (p0 : mword 32),
+         (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ ip ∗
+         WaitInv.init_gen ip p0).
   Proof.
     iIntros "H". iDestruct "H" as (γtl pd pav pu)
       "(#Hdev & #Hcc & #Hgeom & #Hdlk & #Htl & #Hpi & #Hcr & #Hnp & #Hpav & #Hwire & #Hkmap & #Hip & #Hu1)".
@@ -677,7 +687,22 @@ Section UsertrapRes.
         what fork hands down.  It is here so that usertrap can pass it to
         syscall and syscall to sys_fork; the parker of THIS process put it
         here ([ut_park_caps]). *)
-     park_world (un_s N))%I.
+     park_world (un_s N) ∗
+     (* ...AND WHO <INIT> IS (lane TRAP-ROWS-3/4, T4(b)): the GHOST half of
+        [WaitInv.init_ident], at the record's own two numbers.  The CELL
+        half is not here -- it is context-dependent and the resumer gets
+        its own copy from [park_globals] -- so this row is context-free and
+        rides the park for nothing.  kexit rejoins the two
+        ([WaitInv.init_ident_at_of_gen]); kwait spends the [init_pid_is]
+        inside it. *)
+     WaitInv.init_gen (un_ip N) (un_ipid N) ∗
+     (* ...AND THE SHARE THAT ROW IS USABLE AT.  Both parkers build the
+        record at [DfracDiscarded] ([ut_park_caps] pins it and is where
+        this comes from); the trap loop needs to KNOW it, because
+        [WaitInv.init_ident] -- which kexit's reparent takes -- is the
+        DISCARDED cell joined with the ghost above, and [ut_own] carries
+        the cell only at [un_dqi N]. *)
+     ⌜un_dqi N = DfracDiscarded⌝)%I.
 
   Global Instance ut_caps_persistent N : Persistent (ut_caps N).
   Proof. rewrite /ut_caps. apply _. Qed.
@@ -734,7 +759,10 @@ Section UsertrapRes.
      is_lock (un_w N) wait_lock_addr "wait_lock"%string (wait_res_at) ∗
      is_ftable (un_ft N) (un_f N) ∗
      disk_geom (fsc_disk) (un_pd N) (un_pav N) (un_pu N) ∗
-     park_world (un_s N))%I.
+     park_world (un_s N) ∗
+     (* ...and <init>'s ghost identity, which the parker holds and the
+        resumer cannot re-derive (lane TRAP-ROWS-3/4, T4(b)) *)
+     WaitInv.init_gen (un_ip N) (un_ipid N))%I.
 
   Global Instance ut_park_caps_persistent N : Persistent (ut_park_caps N).
   Proof. rewrite /ut_park_caps. apply _. Qed.
@@ -744,6 +772,21 @@ Section UsertrapRes.
      [fs_ready] at the resumer's context, so it is stated over two contexts
      and cannot live under the section's ambient one. *)
 
+
+  (* ...AND WHO <INIT> IS, projected: the ghost half of
+     [WaitInv.init_ident] at the record's own two numbers, and the share
+     the residue's <initproc> cell is at -- which is what lets the
+     dispatcher JOIN the two into [WaitInv.init_ident (un_ip N)] (lane
+     TRAP-ROWS-3/4, T4(b)). *)
+  Lemma ut_caps_init (N : ut_names) :
+    ut_caps N -∗
+    ⌜un_dqi N = DfracDiscarded⌝ ∗ WaitInv.init_gen (un_ip N) (un_ipid N).
+  Proof.
+    rewrite /ut_caps.
+    iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
+              _ & _ & #Hig & %Hdq)".
+    iSplitR; [ iPureIntro; exact Hdq | ]. iExact "Hig".
+  Qed.
 
   (* vmfault's and the kalloc cone's bundle, assembled out of three
      persistent members of [ut_caps] rather than carried separately. *)
@@ -2100,11 +2143,20 @@ Lemma ut_caps_of_park `{XI : CurCtx} `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
   FsReady.fs_ready (XI := Xc) -∗
   ut_caps (XI := Xc) N.
 Proof.
-  iIntros (Hwf) "(%Hdq & #Hprocs0 & #Hkst0 & #Hdev0 & #Hwl0 & #Hft0 & #Hdg0 & #Hpw0)
+  iIntros (Hwf) "(%Hdq & #Hprocs0 & #Hkst0 & #Hdev0 & #Hwl0 & #Hft0 & #Hdg0 & #Hpw0 & #Hig0)
                 (#Hprocs & #Hwl & #Hft & #Hcc & #Hcr & #Htl & #Hnp & #Hipx) #Hfs".
   destruct Hwf as (Hj & Hlk & _ & _).
   iDestruct (park_world_open with "Hpw0") as (γtl0 pd0 pav0 pu0)
-    "(#Hdca0 & #Hextra0 & #Hwire & #Hkmap & _)".
+    "(#Hdca0 & #Hextra0 & #Hwire & #Hkmap & #Hipw0)".
+  (* <INIT>'S CELL AND ITS GHOST, RE-PAIRED AT THE RESUMER'S CONTEXT (lane
+     TRAP-ROWS-3/4, T4(b)).  The parker's world holds the two together at
+     [ξ]; the resumer's [park_globals] holds the cell at [Xc]; and a
+     DISCARDED word agrees with itself across contexts
+     ([TsoCtx.ctx_word_pointsto_agree]), so the ghost -- which is
+     context-free -- rides straight over. *)
+  iDestruct "Hipw0" as (ipw p0w) "[#Hipc0 #Higw]".
+  iDestruct "Hipx" as (ipx) "#Hipcx".
+  iDestruct (ctx_word_pointsto_agree cur_ctx Xc with "Hipc0 Hipcx") as %<-.
   (* THE SECOND PORT'S ROW travels with the parked world -- it is the one
      member neither [fs_ready] nor the park globals carry, and it is
      context-free, so the copy that came in is the copy that goes out. *)
@@ -2142,7 +2194,7 @@ Proof.
     iSplitR; [iExact "Hpav"|].
     iSplitR; [iExact "Hwire"|].
     iSplitR; [iExact "Hkmap"|].
-    iSplitR; [iExact "Hipx" | iExact "Hu1"]. }
+    iSplitR; [iExists ipw, p0w; iFrame "Hipcx Higw" | iExact "Hu1"]. }
   rewrite /ut_caps.
   iSplitR; [iExact "Hprocs"|].
   iSplitR; [iApply (fs_ready_data with "Hfs")|].
@@ -2161,7 +2213,11 @@ Proof.
   iSplitR; [rewrite Hpd Hpav Hpu; iExact "Hdg2"|].
   iSplitR; [iExact "Hkav"|].
   iSplitR; [iExact "Hfs"|].
-  iExact "Hpw".
+  iSplitR; [iExact "Hpw"|].
+  (* <init>'s ghost identity is CONTEXT-FREE, so the parker's copy is the
+     resumer's (lane TRAP-ROWS-3/4, T4(b)) *)
+  iSplitR; [iExact "Hig0"|].
+  iPureIntro. exact Hdq.
 Qed.
 
 (* ...AND THE PARKER'S GLOBALS, at ITS OWN CONTEXT, out of what it holds
@@ -2173,10 +2229,12 @@ Lemma park_globals_of_park_env `{XI : CurCtx} `{!riscvGS Σ, !xv6G Σ, !bioslotG
   ut_park_caps N -∗ sysc_park_extra (un_tk N) -∗
   park_globals cur_ctx (un_s N) (un_w N) (un_ft N) (un_f N) (un_tk N).
 Proof.
-  iIntros "(_ & #Hprocs & _ & #Hdev & #Hwl & #Hft & _ & #Hpw) (#Hnp & _ & #Htl & #Hcr)".
+  iIntros "(_ & #Hprocs & _ & #Hdev & #Hwl & #Hft & _ & #Hpw & _) (#Hnp & _ & #Htl & #Hcr)".
   iDestruct "Hdev" as "(_ & #Hcc & _)".
   iDestruct (park_world_open with "Hpw") as (γtl0 pd0 pav0 pu0) "(_ & _ & _ & _ & #Hipx)".
-  rewrite /park_globals. iFrame "Hprocs Hwl Hft Hcc Hcr Htl Hnp". iExact "Hipx".
+  iDestruct "Hipx" as (ipw p0w) "[#Hipc _]".
+  rewrite /park_globals. iFrame "Hprocs Hwl Hft Hcc Hcr Htl Hnp".
+  iExists ipw. iExact "Hipc".
 Qed.
 
 Definition park_env `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,

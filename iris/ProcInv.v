@@ -2056,6 +2056,50 @@ Section ProcInv.
     iFrame "Hc Hft Hgq Hxs". iApply ("Hgback" with "Hpr").
   Qed.
 
+  (* ...AND THE SLOT-GENERATION QUARTER, lent the same way (lane
+     TRAP-ROWS-3, T4(b)).  kwait's reaping tail compares it with the
+     sealed quarter [WaitInv.init_ident] carries, which is how a reaper
+     learns whether the address it is reaping at is <init>'s -- and hence
+     whether the zombie could have been an orphan at all. *)
+  (* ...AND THE BLOCK'S OWN READING OF ITS PID AT THAT GENERATION, beside
+     it: the pair the reaper needs is "the generation I am running as" and
+     "the pid that generation was given", and a block holds both -- the
+     quarter in its [SlotGen.gen_halves_priv] and the persistent
+     [ChildTok.gen_pid] off the kernel's quarter of the incarnation. *)
+  Lemma proc_priv_core_slot_gen (pa : mword 64) (pid : mword 32) (U : ustate) :
+    proc_priv_core pa pid U -∗
+    slot_gen pa (DfracOwn (1/4)) (pv_gen (us_V U)) ∗
+    gen_pid (pv_gen (us_V U)) pid ∗
+    (slot_gen pa (DfracOwn (1/4)) (pv_gen (us_V U)) -∗ proc_priv_core pa pid U).
+  Proof.
+    iIntros "H". iEval (rewrite proc_priv_core_bare) in "H".
+    iDestruct "H" as "(Hb & %Hlz & Hc & Hft & Hgq & Hxs & Hgh)".
+    iDestruct "Hgq" as (Q) "[Hkq #Hmy]".
+    iDestruct (my_pay_kq_readings with "Hmy Hkq") as "(_ & #Hgp & Hkq)".
+    iDestruct (gen_halves_priv_sg with "Hgh") as "[Hsg Hgback]".
+    iSplitL "Hsg"; [ iExact "Hsg" | ].
+    iSplitR; [ iExact "Hgp" | ].
+    iIntros "Hsg". rewrite proc_priv_core_bare.
+    iFrame "Hb". iSplitR; [ iPureIntro; exact Hlz | ].
+    iFrame "Hc Hft Hxs". iSplitL "Hkq"; [ iExists Q; iFrame "Hkq Hmy" | ].
+    iApply ("Hgback" with "Hsg").
+  Qed.
+
+  Lemma proc_priv_slot_gen (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) :
+    proc_priv γf pa pid U -∗
+    slot_gen pa (DfracOwn (1/4)) (pv_gen (us_V U)) ∗
+    gen_pid (pv_gen (us_V U)) pid ∗
+    (slot_gen pa (DfracOwn (1/4)) (pv_gen (us_V U)) -∗ proc_priv γf pa pid U).
+  Proof.
+    iIntros "[Hc Ho]".
+    iDestruct (proc_priv_core_slot_gen with "Hc") as "(Hsg & #Hgp & Hback)".
+    iSplitL "Hsg"; [ iExact "Hsg" | ].
+    iSplitR; [ iExact "Hgp" | ].
+    iIntros "Hsg". iSplitR "Ho"; [ | iExact "Ho" ].
+    iApply ("Hback" with "Hsg").
+  Qed.
+
   Lemma proc_priv_pid_reg (γf : gname) (pa : mword 64) (pid : mword 32)
       (U : ustate) :
     proc_priv γf pa pid U -∗

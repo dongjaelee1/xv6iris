@@ -1039,7 +1039,7 @@ Section ProofMain.
        [i] goes into slot [i]'s dormant block at the proc-table assembly
        ([SpecProcinit.procs_inv_alloc]), which is where a slot's row lives
        until allocproc hands it to the process it creates. *)
-    WaitInv.children_boot -∗
+    WaitInv.children_boot_rows -∗
     (* [PidLock.nextpid_res] itself: the .data word procinit's
        [initlock(&pid_lock,"nextpid")] brings under its lock, AT THE PINNED
        VALUE the loader left -- the payload's [1 <= v <= PIDMAX] is founded
@@ -1731,6 +1731,12 @@ Section ProofMain.
     disk_done_lb γv 0%nat -∗
     disk_cfg_is γv (DfracOwn (1/2)) c0 -∗
     (∃ v0 : mword 64, (mword_of_int KernelSyms.initproc : mword 64) ↦₈ v0) -∗
+    (* ...AND <INIT>'S SAVED-PID CELL, WHOLE (lane TRAP-ROWS-3/4, T4(b)).
+       It comes off [WaitInv.children_boot] at ProofMain's top level rather
+       than through procinit's assembly, because the party that writes it
+       is userinit -- which this group calls, at +0x9e -- and no group
+       between the two has anything to do with it. *)
+    SlotGen.init_pid_tok (mword_of_int 0 : mword 32) -∗
     ( ∀ (γk : gname) (pd pav pu : mword 64) (m' : regfile),
         sie_cap_gpr KT1 m' n false p0 -∗
         pc_is (mword_of_int (KernelSyms.main + 0xa2) : mword 64) -∗
@@ -1753,7 +1759,7 @@ Section ProofMain.
     iIntros "Hlbc Hbufl Hbufn Hbhead Hbpay Hlit Hinl Hkit1 Hkit2
              Hsbb Hlogr Hmir Hirslot Hirauth Hient Hlft Hfents Hirfile Hfdauth
              Hldisk".
-    iIntros "Hdiskptr Hdiskfree Hdusedidx Hdslots Hclaim Hcmauth #Hdone Hcfg Hinitproc Hcont".
+    iIntros "Hdiskptr Hdiskfree Hdusedidx Hdslots Hclaim Hcmauth #Hdone Hcfg Hinitproc Hipt Hcont".
     iPoseProof (dev_inv_disk with "Hdev") as "#Hdinv".
     iDestruct "Hlbc" as (vbl vbn vbc) "(Hbw & Hbn & Hbc)".
     iDestruct "Hlit" as (vil vin vic) "(Hiw & Hin & Hic)".
@@ -2170,7 +2176,7 @@ Section ProofMain.
               with "Hcg Hcpu Htext Hkdata Hpc Hpanic Hitl Hitinv Hesc Hireg
                     Hfirst Hpersist Hfsinit
                     Hpinv Hlpidlk Hdcaps Hwaitlk Hftable' Hcready Hwire Hbundle Hrdtok Htramp Hkenv
-                    Hpavail Hinitproc").
+                    Hpavail Hinitproc Hipt").
     all: try lkbelow.
     iApply wp_next_off_intro.
     iIntros (mui) "Hcg Hpc %Hcsui Hcpu _ _ _".
@@ -2435,6 +2441,12 @@ Section ProofMain.
     iIntros "Hcg Hfree Hcpu Hq #Htext #Hkdata Hpc #Hsinv Hprim #Hwand #Hecho Hlocks Hglobals".
     iIntros "Hfirst Hnpid".
     iIntros "Hparks Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth #Hcert #Hseam".
+    (* <INIT>'S SAVED-PID CELL COMES OFF THE BOOT ROW HERE (lane
+       TRAP-ROWS-3/4, T4(b)) and goes to the assembly that CALLS userinit
+       ([mn_grp_fs], main+0x9e); the three columns below it are procinit's
+       ([mn_grp_kvm]).  Split at the top rather than threaded group to
+       group -- [SpecMain.wp_main_sconf_body]'s premise stays one row. *)
+    iDestruct (WaitInv.children_boot_split with "Hchb") as "[Hipt Hchb]".
     iIntros "#Hdev #Hwire Hbundle Htx Hsent Hlb Htok Hhi Hlgh Hwin Hdlab".
     (* ---- THE SECOND PORT'S THIRTEEN ROWS (bump 163d39b), all of them out
        of [BootShared.boot_shared_alloc] and none derivable below the boot
@@ -2591,7 +2603,7 @@ Section ProofMain.
                     Hbufn Hbhead Hbpay Hlit Hinl Hkit1 Hkit2
                     Hsbb Hlogr Hmir Hirslot Hirauth Hient
                     Hlft Hfents Hirfile Hfdauth Hldisk Hdiskptr Hdiskfree
-                    Hdusedidx Hdslots Hclaim Hcmauth Hdone Hcfg Hinitproc").
+                    Hdusedidx Hdslots Hclaim Hcmauth Hdone Hcfg Hinitproc Hipt").
     { iApply (printk_env_panic with "Hpenv"). }
     iIntros (γk pd pav pu m5) "Hcg Hpc Hfree Hcpu #Hdlock #Hgeom Hftfresh".
     (* ---- THE INSTALLED-HANDLER RESOURCE, folded HERE and not earlier: the

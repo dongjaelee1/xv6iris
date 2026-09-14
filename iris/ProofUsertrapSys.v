@@ -391,6 +391,23 @@ Section UtSysBlock.
          [SpecSyscall.v]'s header on why the five families ride through
          [syscall()] on this same channel rather than inside [Hsy]. *)
       iDestruct "Hown" as "(Hbs & Hip & Hfd & Hir & Hpv & Hufr & Hch & Hsy)".
+      (* WHO <INIT> IS, JOINED ONCE FOR THE DISPATCHER (lane TRAP-ROWS-3/4,
+         T4(b)).  The residue carries the <initproc> cell at [un_dqi N],
+         which [ut_caps] pins to [DfracDiscarded]; the ghost half of
+         [WaitInv.init_ident] rides the same capability record because it
+         is CONTEXT-FREE and the cell is not.  sys_exit's reparent and
+         sys_wait's reaping arm are the two entries that spend it; the
+         other twenty frame the pair exactly as they framed the cell. *)
+      iDestruct (ut_caps_init with "Hcaps") as "(%Hdqi & #Hig)".
+      iEval (rewrite Hdqi) in "Hip".
+      iDestruct "Hip" as "#Hipd".
+      iAssert (SpecSyscall.sysc_init_id (un_dqi N) (un_ip N)) with "[]" as "Hipp".
+      { (* NOT [iFrame]: at [DfracDiscarded] the outer cell and the one
+           INSIDE [WaitInv.init_ident] are the same proposition, and a
+           persistent frame would close both. *)
+        rewrite /SpecSyscall.sysc_init_id Hdqi.
+        iSplitR; [ iExact "Hipd" | ].
+        iApply (WaitInv.init_ident_at_of_gen with "Hipd Hig"). }
       (* the epc word EXISTS -- read off the page's own length invariant while
          the block is still whole, because [ut_epc_exists] is a pure read and
          [proc_priv_tf_upd] below consumes the block. *)
@@ -647,7 +664,7 @@ Section UtSysBlock.
                 ltac:(cbn [us_V]; rewrite HV1gen;
                       rewrite Hgnq; symmetry; exact Hpr6)
                 eq_refl
-                with "Hwl Hcg [] Htext Hkd Hpc Hpi Hbs Hip Hfd Hir Hsy Hpv [Hufr] [Hch] [Hxin] [Hfin] [Hein] [-]").
+                with "Hwl Hcg [] Htext Hkd Hpc Hpi Hbs Hipp Hfd Hir Hsy Hpv [Hufr] [Hch] [Hxin] [Hfin] [Hein] [-]").
     (* the syscall channel takes the bundle AT ITS NAMED STATES now, and
        hands back the states the call left together with the table row that
        says how they moved -- no ∃-weakening on either side of the call. *)
@@ -799,6 +816,9 @@ Section UtSysBlock.
          The residue is rebuilt at [stsR], so the row travels UP with it
          rather than being discarded here -- which is what the ∃-weakening
          this line used to do cost. *)
+      (* the residue's own cell comes back out of the pair the dispatcher
+         carried (lane TRAP-ROWS-3/4, T4(b)) *)
+      iDestruct "Hip" as "[Hip _]".
       iPoseProof (ut_own_rebuild SY.syscall_env N (MkUstate V2 M2) stsR csR
                     with "Hbs Hip Hfd Hir Hpv Hufr Hch Hsy") as "Hown".
       assert (Hmgsp : mg !!! Regidx csp_rs1 = pa_stk ksp 4)
@@ -1144,7 +1164,7 @@ Section UtSysBlock.
       assert (Hgnw : pv_gen V1 = gn)
         by (rewrite HV1gen Hgnq; exact Hpr6).
       iAssert (ut_wait_out scv (<[tf_epc_idx := ret_pc epv]> (pv_tf (us_V U0)))
-                 (pv_tf (us_V (MkUstate V2 M2)) !!! tf_arg_idx 0) cs csR gn)%I
+                 (pv_tf (us_V (MkUstate V2 M2)) !!! tf_arg_idx 0) cs csR gn pid)%I
         with "[Hwo]" as "Hwo".
       { rewrite /ut_wait_out /sysc_wait_out.
         cbn [us_V]. rewrite Ha0w. rewrite Hgnw.

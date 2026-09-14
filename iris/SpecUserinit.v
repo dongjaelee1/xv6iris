@@ -256,6 +256,14 @@ Definition wp_userinit_sconf_body
   procs_avail (Some (S np)) -∗
   (* the one global cell userinit writes *)
   (mword_of_int KernelSyms.initproc : mword 64) ↦₈ v0 -∗
+  (* ...AND <INIT>'S SAVED-PID CELL, WHOLE AND AT A JUNK VALUE (lane
+     TRAP-ROWS-3/4, T4(b)).  userinit is the ONE party that knows which pid
+     <init> got -- allocproc chose it three instructions in -- so it is the
+     one party that can write it and SEAL it
+     ([SlotGen.init_pid_set]/[_seal]).  The boot mints it beside the
+     children map ([WaitInv.children_boot]) and main routes it straight
+     here. *)
+  SlotGen.init_pid_tok (mword_of_int 0 : mword 32) -∗
   wp_next b pj (fun (CID : CpuId) =>
     ∀ mf : regfile,
       sie_cap_gpr KT1 mf K b pj -∗
@@ -290,7 +298,16 @@ Definition wp_userinit_sconf_body
          [UsertrapRes.ut_own_nopt] wants [initproc ↦₈{un_dqi N} (un_ip N)],
          and [un_dqi] is the record builder's choice
          ([iris/ForkretParkClose.v], [claude-notes/projects/forkret-park.md]). *)
-      (∃ v : mword 64, (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ v) -∗
+      (* ...AND WHO <INIT> IS, SEALED (lane TRAP-ROWS-3/4, T4(b)): the
+         cell's value, the slot's generation at [DfracDiscarded], that
+         generation's pid and the saved pid at it.  PERSISTENT and
+         irreversible.  main drops it -- the party that needs it is the
+         first process's own trap loop, and userinit put it in the record
+         it parks with ([UsertrapRes.ut_caps]'s [WaitInv.init_gen] row) --
+         but it is stated here because it is what makes that record's row
+         non-vacuous. *)
+      (∃ v : mword 64, (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ v ∗
+         ∃ p0 : mword 32, WaitInv.init_gen v p0) -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

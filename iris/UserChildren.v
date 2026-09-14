@@ -47,6 +47,9 @@ Require Import RiscvExtras.  (* [sext32_64_moi] & co -- the reaped pid's word *)
 Require Import ProcGeom.  (* [PIDMAX] -- kernel/param.h, the reaped pid's range *)
 Require Import ChildTok.   (* [exit_tok] / [gen_uniq] -- what a reap answers
                               with beside the set it moved *)
+Require Import Xv6Cameras. (* [wchG] -- [init_pid_is]'s class *)
+Require Import SlotGen.    (* [init_pid_is] -- the saved pid the reaping arm's
+                              second disjunct is stated at (T4(b)) *)
 Local Open Scope Z_scope.
 
 Section UserChildren.
@@ -194,6 +197,68 @@ Proof.
   rewrite Hm1 Hm in Hval. lia.
 Qed.
 
+(* ===================================================================== *)
+(* THE CALLER IS <INIT>, AS A GHOST -- AND IT STAYS ON THIS SIDE OF THE   *)
+(* PARK (lane TRAP-ROWS-3/4, T4(b)).                                      *)
+(* ===================================================================== *)
+(* [wchG] IS NOT A CLASS THE U TIER DECLARES, and it never will be: the   *)
+(* moment [wait_ans] mentioned a ghost of it, fifty-four files below      *)
+(* [UexecRet] would have to carry [Context `{!wchG Σ}].  So the           *)
+(* generation-level reading lives HERE, in a section of its own that      *)
+(* nothing below the kernel's own relays enters, and [wait_ans] below is  *)
+(* stated at PURE [mword 32] parameters instead -- the caller's pid and   *)
+(* <init>'s.  kwait converts between the two ([ProofKwait.kw_reap]).      *)
+Section GenIsInit.
+  Context `{!ctokG Σ}.
+  Context `{!wchG Σ}.
+
+  (* ===================================================================
+     THE CALLER IS <INIT>, AT THE CALLER'S OWN GENERATION (lane
+     TRAP-ROWS-3, T4(b)).
+     ===================================================================
+     In the C, [reparent] (kernel/proc.c:325) sets [pp->parent = initproc]
+     ONLY, so the orphan column of the wait-lock invariant is non-empty at
+     <init>'s address and nowhere else ([WaitInv]'s [orph_at_init]
+     conjunct).  A reaper that is not <init> therefore reaps out of its OWN
+     row, and the reaping arm can say so -- but only under this disjunct,
+     because <init> itself really does reap orphans.
+       IT IS THE KERNEL'S OWN FORM, and it stops at kwait.  [wait_ans]
+     below says the same thing at PURE pids, because the relays between
+     kwait and the trap loop carry no [wchG]; [gen_is_init_pid] is the
+     step across, taken once, in [ProofKwait.kw_reap], against the
+     caller's own [ChildTok.gen_pid]. *)
+  Definition gen_is_init (g : gname) : iProp Σ :=
+    (∃ p0 : mword 32, init_pid_is p0 ∗ gen_pid g p0)%I.
+
+  Global Instance gen_is_init_persistent g : Persistent (gen_is_init g).
+  Proof. rewrite /gen_is_init. apply _. Qed.
+
+  (* the pid form, for a caller that can name its own pid *)
+  Lemma gen_is_init_pid (g : gname) (pidv : mword 32) :
+    gen_is_init g -∗ gen_pid g pidv -∗ ∃ p0 : mword 32,
+      init_pid_is p0 ∗ ⌜pidv = p0⌝.
+  Proof.
+    iIntros "(%p0 & #Hi & #Hp0) Hp".
+    iDestruct (gen_pid_agree with "Hp Hp0") as %->.
+    iExists p0. iFrame "Hi". done.
+  Qed.
+
+  (* ...AND THE REFUTATION A FORKED CHILD SPENDS.  Its fork handed it
+     [init_pid_is p0] with [⌜its own pid <> p0⌝] ([UkFork]'s child arm);
+     the reaping arm's second disjunct would make its pid <init>'s, and
+     the saved pid AGREES with itself. *)
+  Lemma gen_is_init_ne (g : gname) (pidv p0 : mword 32) :
+    pidv <> p0 ->
+    init_pid_is p0 -∗ gen_pid g pidv -∗ gen_is_init g -∗ False.
+  Proof.
+    intro Hne. iIntros "#Hi Hp Hg".
+    iDestruct (gen_is_init_pid with "Hg Hp") as (p1) "[#Hi1 %Heq]".
+    iDestruct (init_pid_is_agree with "Hi Hi1") as %<-.
+    exfalso. exact (Hne Heq).
+  Qed.
+
+End GenIsInit.
+
 Section WaitAns.
   Context `{!ctokG Σ}.
 
@@ -231,20 +296,37 @@ Section WaitAns.
      word the reap leaves in a0 is [sign_extend' 64 rv], and refuting
      [= -1] needs the upper bound as well as the nonzero.  A caller that
      sees -1 is therefore on the FAILING arm and may read its reason. *)
+  (* ...AND WHOSE CHILD THE REAPED ZOMBIE WAS (lane TRAP-ROWS-3/4, T4(b)).
+     [pidv] is the CALLER'S OWN pid and [ip] is <init>'s; the reaping arm
+     says the generation it took out of the set was in the caller's own
+     column -- unless the caller IS <init>, which is the one process that
+     reaps orphans ([reparent], kernel/proc.c:325, hands every orphan to
+     <initproc> and to no one else).  Without it a caller that never reads
+     the returned pid -- sh's [wait(0)] does not -- cannot tell whether it
+     reaped its own child or someone's orphan, and so cannot redeem its
+     [ChildTok.child_tok].
+       TWO PURE [mword 32] PARAMETERS AND NOT A GHOST.  A ghost reading
+     ([gen_is_init] above) would put [Xv6Cameras.wchG] on every file that
+     relays this row, which is the whole U tier; a NUMBER rides the relays
+     the way [nullst] already does and costs them nothing.  kwait is where
+     the two meet: it holds the caller's registration and the sealed pid,
+     and hands this arm the equation ([ProofKwait.kw_reap]).  Both
+     disjuncts are PURE, hence persistent. *)
   Definition wait_ans (rv : mword 32) (xs : Z) (cs cs' : gset gname)
-      (gn : gname) (nullst : bool) : iProp Σ :=
+      (gn : gname) (nullst : bool) (pidv ip : mword 32) : iProp Σ :=
     (⌜rv = (mword_of_int (-1) : mword 32) /\ cs' = cs⌝ ∗ wait_why cs gn nullst
      ∨ ∃ γ' : gname,
          ⌜cs' = cs ∖ {[γ']} /\ (1 <= bv_unsigned rv <= PIDMAX)%Z⌝ ∗
+         ⌜γ' ∈ cs \/ pidv = ip⌝ ∗
          exit_tok γ' rv xs ∗ gen_uniq cs rv γ')%I.
 
   (* the pure row, which is all the twenty-odd relays between kwait and the
      program ever look at *)
   Lemma wait_ans_reaped (rv : mword 32) (xs : Z) (cs cs' : gset gname)
-      (gn : gname) (nullst : bool) :
-    wait_ans rv xs cs cs' gn nullst -∗ ⌜ch_reaped cs cs'⌝.
+      (gn : gname) (nullst : bool) (pidv ip : mword 32) :
+    wait_ans rv xs cs cs' gn nullst pidv ip -∗ ⌜ch_reaped cs cs'⌝.
   Proof.
-    iIntros "[[[_ %He] _] | (%γ' & [%He _] & _)]"; iPureIntro.
+    iIntros "[[[_ %He] _] | (%γ' & [%He _] & _ & _ & _)]"; iPureIntro.
     - left. exact He.
     - right. exists γ'. exact He.
   Qed.
@@ -260,12 +342,12 @@ Section WaitAns.
      the channel back -- the [Hrwhy] idiom the console read already uses
      ([SpecFileread.console_receipt_m1_why]). *)
   Lemma wait_ans_m1 (rv : mword 32) (xs : Z) (cs cs' : gset gname)
-      (gn : gname) (nullst : bool) :
+      (gn : gname) (nullst : bool) (pidv ip : mword 32) :
     (sign_extend' 64 rv : mword 64) = (mword_of_int (-1) : mword 64) ->
-    wait_ans rv xs cs cs' gn nullst -∗
+    wait_ans rv xs cs cs' gn nullst pidv ip -∗
     ⌜rv = (mword_of_int (-1) : mword 32) /\ cs' = cs⌝ ∗ wait_why cs gn nullst.
   Proof.
-    intro Hm1. iIntros "[[%Hf #Hwhy] | (%γ' & [_ %Hrng] & _)]".
+    intro Hm1. iIntros "[[%Hf #Hwhy] | (%γ' & [_ %Hrng] & _ & _ & _)]".
     - iSplitR; [ iPureIntro; exact Hf | ]. iExact "Hwhy".
     - exfalso. exact (sext32_rng_not_neg1 rv Hrng Hm1).
   Qed.
@@ -273,9 +355,10 @@ Section WaitAns.
   (* the failing arm, for the three exits that reap nothing.  Each supplies
      its OWN reason: the childless exit the empty column, the killed exit
      the one-shot, the copyout exit the guard's refutation. *)
-  Lemma wait_ans_neg (xs : Z) (cs : gset gname) (gn : gname) (nullst : bool) :
+  Lemma wait_ans_neg (xs : Z) (cs : gset gname) (gn : gname) (nullst : bool)
+      (pidv ip : mword 32) :
     wait_why cs gn nullst -∗
-    wait_ans (mword_of_int (-1) : mword 32) xs cs cs gn nullst.
+    wait_ans (mword_of_int (-1) : mword 32) xs cs cs gn nullst pidv ip.
   Proof.
     iIntros "Hwhy". iLeft. iSplitR; [ iPureIntro; split; reflexivity | ].
     iExact "Hwhy".
@@ -295,3 +378,60 @@ Section WaitAns.
   Proof. iIntros "H". rewrite /wait_why. iRight. iRight. iExact "H". Qed.
 
 End WaitAns.
+
+(* ===================================================================== *)
+(* THE SAME ANSWER, AT THE GENERATION -- kwait's OWN FORM (lane           *)
+(* TRAP-ROWS-3/4, T4(b)).                                                 *)
+(* ===================================================================== *)
+(* What the reaper can PRODUCE is a ghost: the orphan column of the        *)
+(* wait-lock invariant hands it [WaitInv.init_ident], and against its own  *)
+(* block's slot-generation quarter that says "the generation I am running  *)
+(* as is <init>'s".  What the answer has to TRAVEL as is a number, because *)
+(* the relays below the syscall boundary carry no [wchG].                  *)
+(*   So kwait's eleven internal block lemmas are stated at THIS form and   *)
+(* the step across is taken ONCE, at [wp_kwait_sconf]'s own exit, where    *)
+(* [SlotGen.init_pid_is] (kwait's contract premise) and the caller's       *)
+(* [ChildTok.gen_pid] (off its block) are both in hand --                  *)
+(* [wait_ans_of_gen].                                                      *)
+Section WaitAnsGen.
+  Context `{!ctokG Σ}.
+  Context `{!wchG Σ}.
+
+  Definition wait_ans_gen (rv : mword 32) (xs : Z) (cs cs' : gset gname)
+      (gn : gname) (nullst : bool) : iProp Σ :=
+    (⌜rv = (mword_of_int (-1) : mword 32) /\ cs' = cs⌝ ∗ wait_why cs gn nullst
+     ∨ ∃ γ' : gname,
+         ⌜cs' = cs ∖ {[γ']} /\ (1 <= bv_unsigned rv <= PIDMAX)%Z⌝ ∗
+         (⌜γ' ∈ cs⌝ ∨ gen_is_init gn) ∗
+         exit_tok γ' rv xs ∗ gen_uniq cs rv γ')%I.
+
+  (* the failing arm, exactly as [wait_ans_neg] *)
+  Lemma wait_ans_gen_neg (xs : Z) (cs : gset gname) (gn : gname)
+      (nullst : bool) :
+    wait_why cs gn nullst -∗
+    wait_ans_gen (mword_of_int (-1) : mword 32) xs cs cs gn nullst.
+  Proof.
+    iIntros "Hwhy". iLeft. iSplitR; [ iPureIntro; split; reflexivity | ].
+    iExact "Hwhy".
+  Qed.
+
+  (* THE ONE STEP ACROSS, and it is two agreements: the caller's own
+     registration says which pid its generation was given, and the sealed
+     pid says which pid <init> was given. *)
+  Lemma wait_ans_of_gen (rv : mword 32) (xs : Z) (cs cs' : gset gname)
+      (gn : gname) (nullst : bool) (pidme ipid : mword 32) :
+    gen_pid gn pidme -∗ init_pid_is ipid -∗
+    wait_ans_gen rv xs cs cs' gn nullst -∗
+    wait_ans rv xs cs cs' gn nullst pidme ipid.
+  Proof.
+    iIntros "#Hgp #Hi [Hneg | (%γ' & %Hrng & Hoci & Hesc & Huniq)]".
+    - iLeft. iExact "Hneg".
+    - iRight. iExists γ'. iSplitR; [ iPureIntro; exact Hrng | ].
+      iSplitR "Hesc Huniq"; [ | iFrame "Hesc Huniq" ].
+      iDestruct "Hoci" as "[%Hin | #Hgi]"; [ by iPureIntro; left | ].
+      iDestruct (gen_is_init_pid with "Hgi Hgp") as (p1) "[#Hi1 %Heq]".
+      iDestruct (init_pid_is_agree with "Hi Hi1") as %<-.
+      iPureIntro. right. exact Heq.
+  Qed.
+
+End WaitAnsGen.

@@ -1028,7 +1028,9 @@ Section KexitPark.
     kernel_text -∗ pc_is (mword_of_int (KX + 0x60)) -∗
     procs_inv γs -∗
     is_lock γw wait_lock_addr "wait_lock"%string (wait_res_at) -∗
-    (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
+    (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ ip -∗
+    (* ...and who <init> is -- see [SpecKexit] (lane TRAP-ROWS-3, T4(b)) *)
+    WaitInv.init_ident ip -∗
     fd_slots FDSPARE -∗
     (* the cwd's unit REJOINED with the allowance: [iput] handed the [1]
        back when it destroyed the reference. *)
@@ -1078,7 +1080,7 @@ Section KexitPark.
   Proof.
     intros pj Hj Hgl Hav Hregs Hof Hcwd Hfresh.
     destruct Hregs as (Hs3 & Hs4 & Hsp0 & Hdom).
-    iIntros "Hcg Hcloser Hown Htce Hcce #Htext Hpc #Hprocs #Hwl Hinit Hsp Hir Hbs Hpriv Hgq Hrow Hxb Hgh #Hmy HQ Htaken".
+    iIntros "Hcg Hcloser Hown Htce Hcce #Htext Hpc #Hprocs #Hwl Hinit #Hid Hsp Hir Hbs Hpriv Hgq Hrow Hxb Hgh #Hmy HQ Htaken".
     (* THE SCHED CROSSING NEEDS THE EXACT SINGLETON: swtch is contracted at
        [{["proc"]}] on both sides (SpecSwtch.v), xv6's own
        [panic("sched locks")] discipline.  [kx_park] enters at depth 0, so the
@@ -1249,7 +1251,7 @@ Section KexitPark.
     assert (Hfresh_proc : locks_below ({["wait_lock"]} ∪ lks) "proc").
     { apply locks_below_union_singleton; [exact Hwl_lt_proc |].
       lkbelow. }
-    iApply (Reparent.wp_reparent_sconf (CID := CIDa)  P4 γs pj ip ps dqi 1%nat (trap_res b + av)%nat eb false
+    iApply (Reparent.wp_reparent_sconf (CID := CIDa)  P4 γs pj ip ps DfracDiscarded 1%nat (trap_res b + av)%nat eb false
               ({["wait_lock"]} ∪ lks)
               ltac:(lia) ltac:(intro r; apply rf_to_gmap_dom) Hlen ltac:(lia)
               Hfresh_proc
@@ -1257,6 +1259,10 @@ Section KexitPark.
     all: try lkbelow.
     iApply wp_next_off_intro.
     iIntros (Mrp) "[%Hcsr %Hdomr] Hcg Hown Htext2 Hpc Hinit Hpar".
+    (* the cell's share is the PERSISTENT one now (lane TRAP-ROWS-3,
+       T4(b)): the wait-lock invariant's orphan conjunct names <init>'s
+       address at it, so the ghost step below spends a copy. *)
+    iDestruct "Hinit" as "#Hinit".
     (* reparent's output table is indexed by the a0 IT saw, which is [p] *)
     iEval (rewrite HP4a0) in "Hpar".
     (* THE INVARIANT FOLLOWS THE CELLS.  Every cell reparent rewrote held
@@ -1268,7 +1274,8 @@ Section KexitPark.
        read.  NO PREMISE ON [ip]: at a zero address every tie is guarded
        away. *)
     iDestruct (children_inv_reparent ps gs mc O pj ip (pv_chg (us_V U)) cs
-                 (proc_addr_nonzero j Hj) Hrowl with "Hci") as "Hci".
+                 (proc_addr_nonzero j Hj) Hrowl with "[] Hci") as "Hci";
+      [ iExact "Hid" | ].
     assert (Hpc72 : ret_pc (P4 !!! Regidx (mword_of_int 1 : mword 5))
                     = mword_of_int (KX + 0x72))
       by (rewrite HP4ra; apply bv_eq; vm_compute; reflexivity).
@@ -1794,7 +1801,9 @@ Section KexitRest.
     sb_bmapstart ↦₄{dqb} (mword_of_int fsc_bmapstart : mword 32) -∗
     sb_inodestart ↦₄{dqs} (mword_of_int icfg_ist : mword 32) -∗
     bitmap_inv fsc_fs fsc_bmapstart fsc_cov fsc_logst fsc_size -∗
-    (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
+    (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ ip -∗
+    (* ...and who <init> is -- see [SpecKexit] (lane TRAP-ROWS-3, T4(b)) *)
+    WaitInv.init_ident ip -∗
     fd_slots FDSPARE -∗
     iref_slots IREFSPARE -∗
     proc_priv γf pj pid U -∗
@@ -1819,7 +1828,7 @@ Section KexitRest.
     iIntros "Hcg Hcloser Hown Htce Hcce #Htext #Hkd Hpc #Hprocs #Hpanenv #Hwl".
     iIntros "#Hbio #Hlog Hseam Hgen #Hdev #Hgeo #Hdlk Hbsl".
     iIntros "#Hitab #Hitinv #Hescrows #Hireg #Hropen #Hslks Hsbb Hsbi #Hbmres".
-    iIntros "Hinit Hsp Hir Hpriv Hfrag Hrow #Hmy HQ".
+    iIntros "Hinit #Hid Hsp Hir Hpriv Hfrag Hrow #Hmy HQ".
     (* [eb = b], for the complement's transport guards ONLY.  NOT [subst b]. *)
     iDestruct (cpu_own_eb_agree with "Hcg Hown") as %Hb. cbn in Hb.
     (* THE REFERENCE COMES OFF THE BLOCK FIRST.  [cwd_ref] has no null arm,
@@ -2093,7 +2102,7 @@ Section KexitRest.
               ltac:(cbn [upd_cwd pv_ofile pv_fdg]; exact Hof)
               ltac:(cbn [upd_cwd pv_cwd pv_fdg]; reflexivity)
               Hfresh_wl
-              with "Hcg Hcloser Hown Htce Hcce Htext Hpc Hprocs Hwl Hinit Hsp Hir Hbsl
+              with "Hcg Hcloser Hown Htce Hcce Htext Hpc Hprocs Hwl Hinit Hid Hsp Hir Hbsl
                     Hpriv [Hgq] Hrow Hxb [Hgh] Hmy [HQ] [Htaken]").
     { (* the pair is keyed at the block's generation, which zeroing
          [p->cwd] does not touch *)
@@ -2134,7 +2143,7 @@ Section ProofKexit.
     iIntros "Hcg Hcloser Hown Htce Hcce #Htext #Hkd Hpc #Hprocs #Hpanenv #Hwl #Hft".
     iIntros "#Hkmem Hav0".
     iIntros "#Hbio #Hlog #Hseam #Hgen #Hdev #Hgeo #Hdlk Hbsl #Hrdy".
-    iIntros "Hinit Hsp Hir Hpriv Hfrag Hrow #Hmy HQ".
+    iIntros "Hinit #Hid Hsp Hir Hpriv Hfrag Hrow #Hmy HQ".
     (* ---- THE FILE SYSTEM, AT THE ONLY NAMES THERE ARE ----
        kexit used to take a [fclose_ties] record here and [subst] its twelve
        equations, because every ambient name was also a BINDER of this
@@ -2262,7 +2271,7 @@ Section ProofKexit.
     { rewrite Hrg4_15 /A2 upd_eq. apply bv_eq; vm_compute; reflexivity. }
     iApply (wp_ld_s_sconf (CID := CID4) (kt := KT1) (ktd := KT0) (mword_of_int (KX + 0x1c))
               (mword_of_int 15 : mword 5) (mword_of_int 15 : mword 5) (mword_of_int 554 : mword 12)
-              A2 (av - 6)%nat ip b (dqm := dqi) ltac:(vm_compute; discriminate) ltac:(rdok)
+              A2 (av - 6)%nat ip b (dqm := DfracDiscarded) ltac:(vm_compute; discriminate) ltac:(rdok)
               with "Hcg Hpc [] [Hinit]").
     { iApply (kxi_1c with "Htext"). }
     { iEval (rewrite Hipa). iExact "Hinit". }
@@ -2518,7 +2527,7 @@ Section ProofKexit.
                   with "Hcg Hcloser Hown Htce Hcce Htext Hkd Hpc Hprocs Hpanenv Hwl
                         Hbio Hlog Hseam Hgen Hdev Hgeo Hdlk Hbsl
                         Hitab Hitinv Hescrows Hireg Hropen Hslks Hsbb Hsbi Hbmres
-                        Hinit Hsp Hir Hpriv Hfrag Hrow [Hmy] [HQ]").
+                        Hinit Hid Hsp Hir Hpriv Hfrag Hrow [Hmy] [HQ]").
         { (* the loop's [kx_nulled] carries the generation name unchanged *)
           iEval (rewrite Hxgen). iExact "Hmy". }
         { (* ...and the status it is paid at, which is this call's argument

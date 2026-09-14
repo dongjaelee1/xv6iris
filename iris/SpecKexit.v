@@ -263,7 +263,13 @@ Definition wp_kexit_sconf_body
      [iput(p->cwd)], so stating it differently would be stating it twice. *)
   FsReady.fs_ready -∗
   (* the initproc pointer, at any fraction (write-once; see the header) *)
-  (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
+  (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ ip -∗
+  (* ...AND WHO <INIT> IS (lane TRAP-ROWS-3, T4(b)): the reparent below
+     hands both of the dying process's children columns to [ip], and the
+     wait-lock invariant's orphan conjunct can only be re-established at an
+     address it can name as <init>'s ([WaitInv.orph_at_init_at]).
+     PERSISTENT, sealed once by userinit. *)
+  WaitInv.init_ident ip -∗
   (* the process itself: its private block and its fd-slot allowance *)
   fd_slots FDSPARE -∗
   (* the iref ALLOWANCE.  Only [IREFSPARE], not [1 + IREFSPARE]: the cwd's

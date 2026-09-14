@@ -68,7 +68,8 @@
 From Stdlib Require Import ZArith List.
 From stdpp Require Import gmap list bitvector.definitions.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Import gen_heap ghost_var ghost_map.
+From iris.algebra.lib Require Import dfrac_agree.
+From iris.base_logic.lib Require Import gen_heap ghost_var ghost_map own.
 Require Import SailStdpp.Base SailStdpp.Operators_mwords SailStdpp.Values.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvPtsto.
@@ -699,9 +700,244 @@ Section WaitInv.
      here ([gen_slot], persistent, inside [gen_halves]) and is carried
      purely as well ([inv_gens]), because a writer cannot borrow two
      entries of one big-op at once. *)
+  (* ...AND THE ORPHAN COLUMN IS NON-EMPTY AT <INIT> AND NOWHERE ELSE
+     (lane TRAP-ROWS-3, T4(b)).  [reparent] (kernel/proc.c:325) writes
+     [pp->parent = initproc] and nothing else ever puts a generation into
+     the orphan map, so an address with an orphan IS the value of the
+     <initproc> cell.  That is what makes the reaper's disjunction
+     ([children_inv_reap]'s (W2)) collapse to "my own row" for every
+     caller but <init>.
+       IT IS A RESOURCE AND NOT A PURE TIE, because the payload has no
+     other way to NAME <init>: the address is read out of a global that
+     userinit seals ([ProofUserinit], [SpecUserinit]'s post), and pinning
+     it purely would need an [ip] in the existential that nothing ties to
+     the cell.  A [□]-wand from a PURE premise, so it is persistent and --
+     at the empty orphan map the boot starts from -- free.
+       AT THE CONTEXT, because [wait_res_at] is a λ-payload: the cell is a
+     memory word and the park carries the payload across contexts. *)
+  (* ===================================================================
+     WHO <INIT> IS, SEALED ONCE (lane TRAP-ROWS-3, T4(b)).
+     ===================================================================
+     userinit is the one party that knows which slot and which pid <init>
+     got, and it is where the three readings are frozen: the <initproc>
+     cell's value (it stores it and DISCARDS the cell), that slot's
+     CURRENT generation (userinit drops the parent's three quarters of
+     [SlotGen.slot_gen] today -- it discards them instead), and that
+     generation's pid ([ChildTok.gen_pid], persistent already), tied
+     together with the saved pid [SlotGen.init_pid_is].
+       PERSISTENT and carried beside the wait lock's handle, so the reaper
+     has it wherever it runs. *)
+  (* THE GHOST HALF ON ITS OWN, at a NAMED pid.  It is CONTEXT-FREE, which
+     is why it is the half that rides the trap loop's capability record
+     ([UsertrapRes.ut_caps]) and the syscall's parameter list: the CELL is
+     re-obtained at the resumer's own context ([UsertrapRes.park_globals]),
+     exactly as [un_dqi]'s share already is, so nothing about <init> has to
+     be transported across a park. *)
+  (* ...AND IT CARRIES <INIT>'S REGISTRATION TOO, which [init_ident_at]
+     does not need and a FORKING PARENT does: allocproc's scan proves the
+     pid it is about to insert is absent from the register, and this row is
+     what turns that into [⌜the child's pid <> <init>'s⌝] -- the token the
+     child spends on wait's reaping arm ([UkFork]'s child arm). *)
+  Definition init_gen (ip : mword 64) (p0 : mword 32) : iProp Σ :=
+    (∃ g : gname,
+       slot_gen ip DfracDiscarded g ∗ gen_pid g p0 ∗ init_pid_is p0 ∗
+       pid_reg p0 DfracDiscarded g)%I.
+
+  Global Instance init_gen_persistent ip p0 : Persistent (init_gen ip p0).
+  Proof. rewrite /init_gen. apply _. Qed.
+
+  Lemma init_gen_pid_is (ip : mword 64) (p0 : mword 32) :
+    init_gen ip p0 -∗ init_pid_is p0.
+  Proof. iIntros "(%g & _ & _ & $ & _)". Qed.
+
+  (* ...AND WHAT A FRESH PID IS REFUTED AGAINST: <init>'s pid IS in the
+     register, so a key the scan proved absent is not it. *)
+  Lemma init_gen_reg_ne (R : gmap Z gname) (ip : mword 64) (p0 pidc : mword 32) :
+    R !! bv_unsigned pidc = None ->
+    pid_reg_auth R -∗ init_gen ip p0 -∗ ⌜pidc <> p0⌝.
+  Proof.
+    intro Hfree. iIntros "Ha (%g & _ & _ & _ & #Hreg)".
+    iDestruct (pid_reg_lookup with "Ha Hreg") as %Hl.
+    iPureIntro. intro He. subst pidc. rewrite Hl in Hfree. discriminate.
+  Qed.
+
+  (* THE FULL FORM IS SPELLED OUT rather than built out of [init_gen]:
+     [TsoCtx.CtxMorph]'s solver walks the payload STRUCTURALLY, and a named
+     context-free conjunct in the middle of it is exactly the shape that
+     sends the search off ([ctx_morph_const_pay]'s note). *)
+  Definition init_ident_at (ξ : CtxId) (ip : mword 64) : iProp Σ :=
+    (ctx_word_pointsto ξ (mword_of_int KernelSyms.initproc : mword 64)
+       DfracDiscarded ip ∗
+     ∃ (g : gname) (p0 : mword 32),
+       slot_gen ip DfracDiscarded g ∗ gen_pid g p0 ∗ init_pid_is p0)%I.
+
+  Definition init_ident (ip : mword 64) : iProp Σ := init_ident_at cur_ctx ip.
+
+  (* ...and the two halves joined, which is what every kexit-chain caller
+     does: it holds the persistent cell already and the ghost half comes
+     off its capability record. *)
+  Lemma init_ident_at_of_gen (ξ : CtxId) (ip : mword 64) (p0 : mword 32) :
+    ctx_word_pointsto ξ (mword_of_int KernelSyms.initproc : mword 64)
+      DfracDiscarded ip -∗
+    init_gen ip p0 -∗ init_ident_at ξ ip.
+  Proof.
+    iIntros "#Hc (%g & #Hsg & #Hgp & #Hi & _)". rewrite /init_ident_at.
+    iFrame "Hc". iExists g, p0. iFrame "Hsg Hgp Hi".
+  Qed.
+
+  Global Instance init_ident_at_persistent ξ ip : Persistent (init_ident_at ξ ip).
+  Proof. rewrite /init_ident_at. apply _. Qed.
+
+  Global Instance init_ident_at_morph ip : CtxMorph (λ ξ, init_ident_at ξ ip).
+  Proof. rewrite /init_ident_at. ctx_morph_solve. Qed.
+
+  (* WHAT A PROCESS AT <INIT>'S ADDRESS READS OFF IT: its own block's
+     quarter of the slot generation meets the sealed one, so the
+     generation it is running as IS <init>'s, and the disjunct
+     [UserChildren.wait_ans]'s reaping arm reports is in hand.  The quarter
+     comes straight back -- the two steps are agreements. *)
+  Lemma init_ident_gen (ξ : CtxId) (pme : mword 64) (gn : gname) :
+    init_ident_at ξ pme -∗
+    slot_gen pme (DfracOwn (1/4)) gn -∗
+    slot_gen pme (DfracOwn (1/4)) gn ∗ gen_is_init gn.
+  Proof.
+    iIntros "[#Hip (%g & %p0 & #Hsg & #Hgp & #Hi)] Hsgq".
+    iDestruct (slot_gen_agree with "Hsg Hsgq") as %<-.
+    iFrame "Hsgq". iExists p0. iFrame "Hi Hgp".
+  Qed.
+
+  (* ONE ROW PER ENTRY OF THE ORPHAN MAP, and not a [□]-wand over an
+     arbitrary address: [TsoCtx.CtxMorph]'s transport is a [==∗] that
+     SPENDS its domination, so nothing under a [□] can be transported, and
+     the payload has to be structural ([CtxMorphTac]'s solver: exists /
+     sep / or / big-ops down to the cells).  A row not in the map has an
+     empty column by [orph_row]'s own default, so the map's entries are
+     exactly the ones that can have anything to say. *)
+  Definition orph_at_init_at (ξ : CtxId) (O : orph_map) : iProp Σ :=
+    ([∗ map] pa ↦ Sr ∈ O,
+       ⌜Sr = (∅ : gset gname)⌝ ∨ init_ident_at ξ pa)%I.
+
+  Definition orph_at_init (O : orph_map) : iProp Σ := orph_at_init_at cur_ctx O.
+
+  Global Instance orph_at_init_at_persistent ξ O : Persistent (orph_at_init_at ξ O).
+  Proof. rewrite /orph_at_init_at. apply _. Qed.
+
+  Global Instance orph_at_init_at_morph O : CtxMorph (λ ξ, orph_at_init_at ξ O).
+  Proof. rewrite /orph_at_init_at. ctx_morph_solve. Qed.
+
+  (* it is free at an empty column, which is where the boot founds it *)
+  Lemma orph_at_init_empty (ξ : CtxId) :
+    ⊢ orph_at_init_at ξ (∅ : orph_map).
+  Proof. rewrite /orph_at_init_at. by rewrite big_sepM_empty. Qed.
+
+  (* ...and what a reader takes out of it *)
+  Lemma orph_at_init_read (ξ : CtxId) (O : orph_map) (pa : mword 64) (g : gname) :
+    g ∈ orph_row O pa ->
+    orph_at_init_at ξ O -∗ init_ident_at ξ pa.
+  Proof.
+    intro Hin. rewrite /orph_at_init_at.
+    destruct (O !! pa) as [S |] eqn:Ho;
+      [| exfalso; rewrite /orph_row Ho in Hin; cbn in Hin; set_solver ].
+    iIntros "H".
+    iDestruct (big_sepM_lookup _ _ pa S Ho with "H") as "[%He | $]".
+    exfalso. rewrite /orph_row Ho in Hin. cbn in Hin.
+    rewrite He in Hin. set_solver.
+  Qed.
+
+  (* ...and the two ways a writer re-establishes it.  OVERWRITING ONE ROW
+     WITH A SUBSET is free (the reap, which takes the zombie out of the
+     column); INSERTING AT AN ADDRESS the writer can name costs exactly the
+     <initproc> cell at that address (reparent, which is the only party
+     that ever makes a column bigger). *)
+  Lemma orph_at_init_shrink (ξ : CtxId) (O : orph_map) (pa : mword 64)
+      (Sr : gset gname) :
+    Sr ⊆ orph_row O pa ->
+    orph_at_init_at ξ O -∗ orph_at_init_at ξ (<[pa := Sr]> O).
+  Proof.
+    intro Hsub. rewrite /orph_at_init_at. iIntros "H".
+    rewrite big_sepM_insert_delete.
+    destruct (O !! pa) as [S0 |] eqn:Ho.
+    - iDestruct (big_sepM_lookup_acc _ _ pa S0 Ho with "H") as "[#Hpa H]".
+      iSplitR.
+      + iDestruct "Hpa" as "[%He | $]". iLeft. iPureIntro.
+        rewrite /orph_row Ho in Hsub. cbn in Hsub. rewrite He in Hsub.
+        set_solver.
+      + iDestruct ("H" with "Hpa") as "H".
+        iApply (big_sepM_subseteq with "H"). apply delete_subseteq.
+    - iSplitR.
+      + iLeft. iPureIntro.
+        rewrite /orph_row Ho in Hsub. cbn in Hsub. set_solver.
+      + iApply (big_sepM_subseteq with "H"). apply delete_subseteq.
+  Qed.
+
+  Lemma orph_at_init_ins (ξ : CtxId) (O : orph_map) (pa : mword 64)
+      (Sr : gset gname) :
+    (⌜Sr = (∅ : gset gname)⌝ ∨ init_ident_at ξ pa) -∗
+    orph_at_init_at ξ O -∗ orph_at_init_at ξ (<[pa := Sr]> O).
+  Proof.
+    rewrite /orph_at_init_at. iIntros "#Hpa H".
+    rewrite big_sepM_insert_delete.
+    iSplitR; [ iExact "Hpa" | ].
+    iApply (big_sepM_subseteq with "H"). apply delete_subseteq.
+  Qed.
+
+  (* WHAT THE REAPER SPENDS THE ORPHAN CONJUNCT ON (lane TRAP-ROWS-3,
+     T4(b)): the reaped generation is in its OWN row unless the address it
+     is reaping at is <init>'s -- and at <init>'s address the invariant
+     hands over [init_ident_at], against which the reaper's own block's
+     quarter of [SlotGen.slot_gen] says it IS <init>.  NOTHING IS THREADED
+     INTO THE WAIT WALK for this: the fact lives in the payload the reaper
+     already holds, and the quarter comes out of the block it already
+     holds ([ProcInv.proc_priv_slot_gen]) -- which is why [SpecKwait]'s
+     contract does not move. *)
+  Lemma orph_at_init_reap (ξ : CtxId) (O : orph_map) (pme : mword 64)
+      (gn g : gname) (cs : gset gname) :
+    g ∈ cs \/ g ∈ orph_row O pme ->
+    orph_at_init_at ξ O -∗
+    slot_gen pme (DfracOwn (1/4)) gn -∗
+    slot_gen pme (DfracOwn (1/4)) gn ∗ (⌜g ∈ cs⌝ ∨ gen_is_init gn).
+  Proof.
+    intro HW2. iIntros "#Hoi Hsgq".
+    destruct HW2 as [Hin | Horph]; [ iFrame "Hsgq"; by iLeft | ].
+    iDestruct (orph_at_init_read ξ O pme g Horph with "Hoi") as "#Hid".
+    iDestruct (init_ident_gen ξ pme gn with "Hid Hsgq") as "[Hsgq #Hgi]".
+    iFrame "Hsgq". by iRight.
+  Qed.
+
+  Definition children_inv_at (ξ : CtxId) (ps : list (mword 64)) (gs : list gname)
+      (m : gmap gname (mword 64 * gset gname)) (O : orph_map) : iProp Σ :=
+    (gen_halves ps gs ∗ ⌜inv_pure ps gs m O⌝ ∗ orph_at_init_at ξ O)%I.
+
   Definition children_inv (ps : list (mword 64)) (gs : list gname)
       (m : gmap gname (mword 64 * gset gname)) (O : orph_map) : iProp Σ :=
-    (gen_halves ps gs ∗ ⌜inv_pure ps gs m O⌝)%I.
+    children_inv_at cur_ctx ps gs m O.
+
+  Global Instance children_inv_at_morph ps gs m O :
+    CtxMorph (λ ξ, children_inv_at ξ ps gs m O).
+  Proof. rewrite /children_inv_at. ctx_morph_solve. Qed.
+
+  (* the persistent half of the invariant, read off without spending it *)
+  Lemma children_inv_orph_all (ps : list (mword 64)) (gs : list gname)
+      (m : gmap gname (mword 64 * gset gname)) (O : orph_map) :
+    children_inv ps gs m O -∗ orph_at_init O ∗ children_inv ps gs m O.
+  Proof.
+    rewrite /children_inv /children_inv_at /orph_at_init.
+    iIntros "(Hgh & %Hp & #Hoi)". iFrame "Hoi Hgh". by iPureIntro.
+  Qed.
+
+  (* WHAT THE REAPER READS OFF IT: an address with orphans IS <init>'s, and
+     the payload hands over everything the reaper needs to say so at its
+     own generation. *)
+  Lemma children_inv_orph_init (ps : list (mword 64)) (gs : list gname)
+      (m : gmap gname (mword 64 * gset gname)) (O : orph_map)
+      (pa : mword 64) (g : gname) :
+    g ∈ orph_row O pa ->
+    children_inv ps gs m O -∗ init_ident pa.
+  Proof.
+    intro Hin. rewrite /children_inv /children_inv_at.
+    iIntros "(_ & _ & #Hoi)".
+    iApply (orph_at_init_read cur_ctx O pa g Hin with "Hoi").
+  Qed.
 
   (* the children map's own existential closure, the shape the boot chain
      carries before the columns are bound together: one opaque conjunct. *)
@@ -783,7 +1019,7 @@ Section WaitInv.
     children_inv ps gs m O -∗ slot_gen (proc_addr j) (DfracOwn (3/4)) g -∗
     ⌜ps !! j = Some (zero_reg : mword 64)⌝.
   Proof.
-    intro Hj. rewrite /children_inv. iIntros "[Hgh _] Hsg".
+    intro Hj. rewrite /children_inv /children_inv_at. iIntros "(Hgh & _ & _) Hsg".
     iApply (gen_halves_no_entry ps gs j g Hj with "Hgh Hsg").
   Qed.
 
@@ -807,7 +1043,8 @@ Section WaitInv.
     children_inv (<[j := pa]> ps) (<[j := g]> gs)
                  (<[γ0 := (pa, cs ∪ {[g]})]> m) O.
   Proof.
-    intros Hj Hm. rewrite /children_inv. iIntros "[Hgh %Hp] Hsg Hpr #Hgs #Hgp".
+    intros Hj Hm. rewrite /children_inv /children_inv_at.
+    iIntros "(Hgh & %Hp & #Hoi) Hsg Hpr #Hgs #Hgp".
     destruct Hp as (Hlps & Hlgs & Hru & Hig & Hir & Hio & Hisl).
     assert (Hjlt : (j < length ps)%nat) by (eapply lookup_lt_Some; exact Hj).
     (* the child's generation is at no OCCUPIED slot: its [gen_slot] is
@@ -820,7 +1057,7 @@ Section WaitInv.
     { case_bool_decide; [done |].
       iExists g, pid. iFrame "Hsg Hpr Hgs Hgp". iPureIntro.
       apply list_lookup_insert. rewrite Hlgs. exact Hjlt. }
-    iFrame "Hgh". iPureIntro.
+    iFrame "Hgh Hoi". iPureIntro.
     (* the slot [j] was free, so nothing already pointed at it *)
     assert (Hne : forall (k : nat) (v : mword 64),
                     ps !! k = Some v -> v <> (zero_reg : mword 64) -> k <> j).
@@ -916,19 +1153,39 @@ Section WaitInv.
      [ip] ([op_map]), and its row is emptied.  NO PREMISE ON [ip]: at
      [ip = 0] the cells it writes stop being occupied and every tie about
      them is guarded away. *)
+  (* ...AND IT NOW NAMES WHERE THE ORPHANS WENT (lane TRAP-ROWS-3, T4(b)):
+     [op_map] puts BOTH of the dying process's columns at [ip], so the
+     invariant's [orph_at_init] conjunct can only be re-established if
+     [ip] IS the <initproc> cell's value.  kexit holds exactly that --
+     [SpecKexit]/[SpecReparent] read the cell to pass it to reparent -- at
+     the PERSISTENT share, which is the one every live caller has
+     ([UsertrapRes.ut_park_caps] pins [un_dqi N = DfracDiscarded]). *)
   Lemma children_inv_reparent (ps : list (mword 64)) (gs : list gname)
       (m : gmap gname (mword 64 * gset gname)) (O : orph_map)
       (pa ip : mword 64) (γ0 : gname) (S : gset gname) :
     pa <> (zero_reg : mword 64) ->
     m !! γ0 = Some (pa, S) ->
+    init_ident ip -∗
     children_inv ps gs m O -∗
     children_inv (rp_map pa ip ps) gs
                  (<[γ0 := (pa, (∅ : gset gname))]> m) (op_map pa ip O S).
   Proof.
-    intros Hpa Hm. rewrite /children_inv. iIntros "[Hgh %Hp]".
+    intros Hpa Hm. rewrite /children_inv /children_inv_at.
+    iIntros "#Hid (Hgh & %Hp & #Hoi)".
     destruct Hp as (Hlps & Hlgs & Hru & Hig & Hir & Hio & Hisl).
     iDestruct (gen_halves_rp_map pa ip ps gs Hpa with "Hgh") as "Hgh".
-    iFrame "Hgh". iPureIntro.
+    iFrame "Hgh".
+    (* THE ORPHAN COLUMN AFTER THE WALK (lane TRAP-ROWS-3, T4(b)): every
+       address it is non-empty at is either one it was non-empty at before
+       -- and the old conjunct names that one -- or [ip], which the caller's
+       own share of the <initproc> cell names. *)
+    iSplitR "";
+      [| rewrite /op_map;
+         iApply (orph_at_init_ins cur_ctx _ ip _ with "[Hid] [Hoi]");
+         [ iRight; iExact "Hid"
+         | iApply (orph_at_init_shrink cur_ctx O pa (∅ : gset gname)
+                     ltac:(set_solver) with "Hoi") ] ].
+    iPureIntro.
     (* an occupied slot AFTER the walk was occupied before it, and its cell
        moved only if it named the dying process *)
     assert (Hocc : forall (k : nat) (v : mword 64),
@@ -1047,7 +1304,8 @@ Section WaitInv.
                  (<[γ0 := (pj, cs ∖ {[g]})]> m)
                  (<[pj := orph_row O pj ∖ {[g]}]> O).
   Proof.
-    intros Hpj Hk Hm. rewrite /children_inv. iIntros "[Hgh %Hp] Hsg".
+    intros Hpj Hk Hm. rewrite /children_inv /children_inv_at.
+    iIntros "(Hgh & %Hp & #Hoi) Hsg".
     destruct Hp as (Hlps & Hlgs & Hru & Hig & Hir & Hio & Hisl).
     assert (Hklt : (k < length ps)%nat) by (eapply lookup_lt_Some; exact Hk).
     iDestruct (gen_halves_take ps gs k pj Hk with "Hgh") as "[He Hgh]".
@@ -1068,7 +1326,13 @@ Section WaitInv.
     iSplitR; [iPureIntro; exact HW2 |].
     iFrame "Hsgw".
     iSplitL "Hpr0"; [iExists pid0; iFrame "Hpr0 Hgp0" |].
-    iFrame "Hgh". iPureIntro.
+    iFrame "Hgh".
+    (* the reap only SHRINKS the orphan column, so the conjunct rides
+       across unchanged (lane TRAP-ROWS-3, T4(b)) *)
+    iSplitR "";
+      [| iApply (orph_at_init_shrink cur_ctx O pj (orph_row O pj ∖ {[g]})
+                   ltac:(set_solver) with "Hoi") ].
+    iPureIntro.
     (* the reaped generation is at no OTHER occupied slot *)
     assert (Hother : forall (k' : nat) (v : mword 64),
                        ps !! k' = Some v -> v <> (zero_reg : mword 64) ->
@@ -1178,7 +1442,8 @@ Section WaitInv.
     g ∈ cs ->
     children_inv ps gs m O -∗ gen_pid g pid -∗ pid_reg pid dq g' -∗ ⌜g = g'⌝.
   Proof.
-    intros Hpj Hm Hin. rewrite /children_inv. iIntros "[Hgh %Hp] #Hgp Hpr".
+    intros Hpj Hm Hin. rewrite /children_inv /children_inv_at.
+    iIntros "(Hgh & %Hp & _) #Hgp Hpr".
     destruct Hp as (Hlps & Hlgs & Hru & Hig & Hir & Hio & Hisl).
     destruct (Hir γ0 pj cs g Hm Hpj Hin) as (k & Hk & Hgk).
     iDestruct (gen_halves_take ps gs k pj Hk with "Hgh") as "[He _]".
@@ -1208,7 +1473,8 @@ Section WaitInv.
     (∃ pidg : mword 32, gen_pid g pidg ∗ ⌜pidg = pid -> g = g'⌝) ∗
     children_inv ps gs m O ∗ pid_reg pid dq g'.
   Proof.
-    intros Hpj Hm Hin. rewrite /children_inv. iIntros "[Hgh %Hp] Hpr".
+    intros Hpj Hm Hin. rewrite /children_inv /children_inv_at.
+    iIntros "(Hgh & %Hp & #Hoi) Hpr".
     pose proof Hp as Hp'.
     destruct Hp as (Hlps & Hlgs & Hru & Hig & Hir & Hio & Hisl).
     destruct (Hir γ0 pj cs g Hm Hpj Hin) as (k & Hk & Hgk).
@@ -1231,7 +1497,7 @@ Section WaitInv.
     iDestruct ("Hback" $! pj with "[Hsg0 Hpr0]") as "Hgh".
     { rewrite Hb. iExists g, pid0. iFrame "Hsg0 Hpr0 Hgs0 Hgp0".
       iPureIntro. exact Hgk. }
-    rewrite (list_insert_id ps k pj Hk). iFrame "Hgh". iPureIntro. exact Hp'.
+    rewrite (list_insert_id ps k pj Hk). iFrame "Hgh Hoi". iPureIntro. exact Hp'.
   Qed.
 
   (* ...AND THE SUMMARY OVER A SUBSET, by set induction: one member is
@@ -1292,7 +1558,7 @@ Section WaitInv.
     children_inv ps gs m O -∗
     ⌜cs = (∅ : gset gname) /\ orph_row O pj = (∅ : gset gname)⌝.
   Proof.
-    intros Hpj Hscan Hm. rewrite /children_inv. iIntros "[_ %Hp]".
+    intros Hpj Hscan Hm. rewrite /children_inv /children_inv_at. iIntros "(_ & %Hp & _)".
     destruct Hp as (Hlps & Hlgs & Hru & Hig & Hir & Hio & Hisl).
     iPureIntro. split.
     - apply set_eq. intro g. split; [| set_solver]. intro Hin.
@@ -1317,12 +1583,33 @@ Section WaitInv.
      pid has been handed out.  Both are minted in this file's boot fupd for
      [children_res]'s reason: the names are canonical, so they cannot be
      minted anywhere a gname would have to thread. *)
-  Definition children_boot : iProp Σ :=
+  (* ...AND <INIT>'S SAVED PID, MINTED WHOLE AT A JUNK VALUE (lane
+     TRAP-ROWS-3, T4(b)).  The cell is canonical ([Xv6Cameras.wip_name]),
+     so it is minted here for [children_res]'s own reason; userinit is the
+     one party that can write the real pid into it and seal it
+     ([SlotGen.init_pid_set] then [SlotGen.init_pid_seal]), and the token
+     rides main's own chain to get there. *)
+  (* SPLIT IN TWO AT THE TOP, because the two halves go to DIFFERENT
+     assemblies of main: the rows below are procinit's
+     ([ProofMain.mn_grp_kvm]), while the saved-pid token has to reach the
+     assembly that CALLS userinit ([ProofMain.mn_grp_fs], main+0x9e), which
+     is the one party that knows which pid <init> got.  Splitting here
+     rather than threading it group to group is what keeps
+     [SpecMain.wp_main_sconf_body]'s premise ONE row. *)
+  Definition children_boot_rows : iProp Σ :=
     (children_res_boot ∗ orphans_own (∅ : orph_map) ∗
      pid_reg_auth (∅ : gmap Z gname) ∗
      [∗ list] i ∈ seq 0 NPROC,
        ∃ γ0 g : gname,
          ch_frag γ0 (proc_addr i) ∅ ∗ slot_gen (proc_addr i) (DfracOwn 1) g)%I.
+
+  Definition children_boot : iProp Σ :=
+    (init_pid_tok (mword_of_int 0 : mword 32) ∗ children_boot_rows)%I.
+
+  Lemma children_boot_split :
+    children_boot -∗
+    init_pid_tok (mword_of_int 0 : mword 32) ∗ children_boot_rows.
+  Proof. iIntros "H". iExact "H". Qed.
 
   (* WHAT [wait_lock] PROTECTS, IN ONE EXISTENTIAL: the parent cells, the
      children rows, the orphan rows, and the invariant that ties the four
@@ -1335,7 +1622,7 @@ Section WaitInv.
     (∃ (ps : list (mword 64)) (gs : list gname)
        (m : gmap gname (mword 64 * gset gname)) (O : orph_map),
        parents_own_at ξ ps ∗ children_own_at m ∗ orphans_own O ∗
-       children_inv ps gs m O)%I.
+       children_inv_at ξ ps gs m O)%I.
   Definition wait_res : iProp Σ := wait_res_at cur_ctx.
 
   Global Instance parents_res_at_morph : CtxMorph parents_res_at.
@@ -1407,10 +1694,15 @@ Section WaitInv.
     iDestruct "Hc" as (m) "[Hm %Hm0]".
     destruct Hm0 as [Hru Hempty].
     iDestruct (parents_own_length with "Hps") as %Hlen.
-    rewrite /wait_res /wait_res_at /children_inv.
+    rewrite /wait_res /wait_res_at /children_inv_at.
     iExists ps, (replicate (length ps) (1%positive : gname)), m, (∅ : orph_map).
     iFrame "Hps Hm Ho".
     iSplitR; [iApply (gen_halves_zeros ps _ Hz) |].
+    (* THE ORPHAN COLUMN IS EMPTY AT BOOT, so its tie to <init> is free --
+       which is what lets the conjunct be founded here, at a [newlock] that
+       runs long before userinit has written the <initproc> cell (lane
+       TRAP-ROWS-3, T4(b)). *)
+    iSplitR ""; [| iApply orph_at_init_empty ].
     iPureIntro.
     split; [exact Hlen |].
     split; [apply length_replicate |].
@@ -1568,9 +1860,16 @@ Section WaitInvBoot.
     iMod (slot_gen_rows_alloc γ) as (γsg) "Hsg".
     (* ...and the pid register, empty *)
     iMod (ghost_map_alloc_empty (K := Z) (V := gname)) as (γpr) "Hpr".
-    iModIntro. iExists (WchG Σ _ _ _ _ γ γo γsg γpr).
-    rewrite /children_boot /children_res_boot /children_own_at /orphans_own
-            /pid_reg_auth /slot_gen.
+    (* ...and <init>'s pid cell, whole and at junk *)
+    iMod (own_alloc (Some (to_dfrac_agree (DfracOwn 1)
+                             ((mword_of_int 0 : mword 32) : leibnizO (mword 32)))
+                     : ipidUR)) as (γip) "Hip";
+      [ done | ].
+    iModIntro. iExists (WchG Σ _ _ _ _ _ γ γo γsg γpr γip).
+    rewrite /children_boot /children_boot_rows /children_res_boot
+            /children_own_at /orphans_own
+            /pid_reg_auth /slot_gen /init_pid_tok.
+    iSplitL "Hip"; [iExact "Hip" |].
     iSplitL "Ha"; [iExists m'; iFrame "Ha"; iPureIntro; exact Hok |].
     iSplitL "Ho"; [iExact "Ho" |].
     iSplitL "Hpr"; [iExact "Hpr" |].

@@ -253,7 +253,7 @@ Module UtResFits (SY : SYSCALL) <: USERTRAP_RES_PARK.
     iPoseProof "Hdone2" as "Hdone3". iDestruct "Hdone3" as "(_ & #Hrdy & _)".
     iDestruct (ut_caps_of_park (XI := ξp) Xc N Hwf with "Hcaps Hglob Hrdy") as "#Hc".
     iDestruct "Hc" as "(#Hprocs & _ & _ & _ & _ & #Hwl & #Hft & _ & _ & _ & _ & _ & _
-                        & _ & #Hdg & _ & _ & #Hpw)".
+                        & _ & #Hdg & _ & _ & #Hpw & _ & _)".
     iDestruct "Hglob" as "(_ & _ & _ & _ & #Hcr & #Htl & #Hnp & _)".
     iDestruct "Hextra" as "(_ & #Hpav & _ & _)".
     iApply (SY.syscall_env_park (XI := Xc) (un_f N) (un_w N) (un_ft N) (un_tk N)

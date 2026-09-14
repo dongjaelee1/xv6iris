@@ -1008,23 +1008,42 @@ Section UexecRet.
   (* ...AT THE CALLER'S GENERATION AND ITS STATUS POINTER (lane TRAP-ROWS,
      T4): what the kernel's own channels carry, because the -1 arm's reason
      names the incarnation and is guarded on the null pointer. *)
+  (* ...AND AT THE TWO PIDS THE REAPING ARM'S SECOND ROW NAMES (lane
+     TRAP-ROWS-3/4, T4(b)): the caller's own and <init>'s.  PURE, so they
+     ride here exactly as [nullst] does. *)
   Definition uwait_ans_at (r : mword 64) (cs cs' : gset gname)
-      (gn : gname) (nullst : bool) : iProp Σ :=
+      (gn : gname) (nullst : bool) (pidv ip : mword 32) : iProp Σ :=
     (∃ (rv : mword 32) (xs : Z),
        ⌜r = (sign_extend' 64 rv : mword 64)⌝ ∗
-       wait_ans rv xs cs cs' gn nullst)%I.
+       wait_ans rv xs cs cs' gn nullst pidv ip)%I.
+
+  (* ...AND WHAT A PROCESS THAT CAN NAME ITS OWN PID SEES: the reason and
+     the status pointer absorbed, the two pids kept.  THE MIDDLE FORM, and
+     it exists so that [uwait_ans] below KEEPS ITS ARITY -- the leaves that
+     do not want the row ([UkInit.wp_kinit_wait], [UkShRun.wp_kshr_wait])
+     do not move (lane TRAP-ROWS-3, T4(c)'s trick). *)
+  Definition uwait_ans_pid (r : mword 64) (cs cs' : gset gname)
+      (pidv ip : mword 32) : iProp Σ :=
+    (∃ (gn : gname) (b : bool), uwait_ans_at r cs cs' gn b pidv ip)%I.
 
   (* ...AND WHAT THE PROCESS SEES.  [urun] binds the process's own
      generation with NO resource beside it (UkRun.v's note), so the U tier
      cannot name it -- the reason is ABSORBED here and delivered instead as
-     the resume's own pure row ([SpecUsertrap.ut_live_out]). *)
+     the resume's own pure row ([SpecUsertrap.ut_live_out]).  The two pids
+     are absorbed with it, for the same reason and until the run carries a
+     handle on its own ([UkRun.ukn_pid]). *)
   Definition uwait_ans (r : mword 64) (cs cs' : gset gname) : iProp Σ :=
-    (∃ (gn : gname) (b : bool), uwait_ans_at r cs cs' gn b)%I.
+    (∃ (pidv ip : mword 32), uwait_ans_pid r cs cs' pidv ip)%I.
+
+  Lemma uwait_ans_of_pid (r : mword 64) (cs cs' : gset gname)
+      (pidv ip : mword 32) :
+    uwait_ans_pid r cs cs' pidv ip -∗ uwait_ans r cs cs'.
+  Proof. iIntros "H". iExists pidv, ip. iExact "H". Qed.
 
   Lemma uwait_ans_of (r : mword 64) (cs cs' : gset gname)
-      (gn : gname) (b : bool) :
-    uwait_ans_at r cs cs' gn b -∗ uwait_ans r cs cs'.
-  Proof. iIntros "H". iExists gn, b. iExact "H". Qed.
+      (gn : gname) (b : bool) (pidv ip : mword 32) :
+    uwait_ans_at r cs cs' gn b pidv ip -∗ uwait_ans r cs cs'.
+  Proof. iIntros "H". iExists pidv, ip, gn, b. iExact "H". Qed.
 
   (* the failing arm, at the word the [li -1] tails leave in a0 *)
   Lemma sext_neg1_64 :
@@ -1032,9 +1051,10 @@ Section UexecRet.
     = (mword_of_int (-1) : mword 64).
   Proof. apply bv_eq; vm_compute; reflexivity. Qed.
 
-  Lemma uwait_ans_at_neg1 (cs : gset gname) (gn : gname) (b : bool) :
+  Lemma uwait_ans_at_neg1 (cs : gset gname) (gn : gname) (b : bool)
+      (pidv ip : mword 32) :
     (⌜b = false⌝ ∨ ⌜cs = (∅ : gset gname)⌝ ∨ ChildTok.kill_shot gn) -∗
-    uwait_ans_at (mword_of_int (-1) : mword 64) cs cs gn b.
+    uwait_ans_at (mword_of_int (-1) : mword 64) cs cs gn b pidv ip.
   Proof.
     iIntros "Hwhy". iExists (mword_of_int (-1) : mword 32), 0%Z.
     iSplitR; [iPureIntro; symmetry; exact sext_neg1_64 |].
@@ -1044,7 +1064,8 @@ Section UexecRet.
   Lemma uwait_ans_neg1 (cs : gset gname) :
     ⊢ uwait_ans (mword_of_int (-1) : mword 64) cs cs.
   Proof.
-    iExists inhabitant, false.
+    iExists (mword_of_int 0 : mword 32), (mword_of_int 0 : mword 32),
+            inhabitant, false.
     iApply uwait_ans_at_neg1. by iLeft.
   Qed.
 
@@ -1052,7 +1073,7 @@ Section UexecRet.
   Lemma uwait_ans_reaped (r : mword 64) (cs cs' : gset gname) :
     uwait_ans r cs cs' -∗ ⌜ch_reaped cs cs'⌝.
   Proof.
-    iIntros "H". iDestruct "H" as (gn b rv xs) "[_ Ha]".
+    iIntros "H". iDestruct "H" as (pidv ip gn b rv xs) "[_ Ha]".
     iApply (wait_ans_reaped with "Ha").
   Qed.
 
@@ -1812,7 +1833,7 @@ Section UexecRet.
     rewrite /uslot_F /uvb_F /ukont_F /ukb_F /uexec_ret_F /uexec_kill_arm_F
             /uexec_fork_F
             /uexec_fork_parent_F /ufork_ans /uexec_ret_cont_F
-            /uexec_wait_F /uwait_ans /uexec_ret_cont_gen.
+            /uexec_wait_F /uwait_ans /uwait_ans_pid /uexec_ret_cont_gen.
     solve_contractive_wide.
   Qed.
 

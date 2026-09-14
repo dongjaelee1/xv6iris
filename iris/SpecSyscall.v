@@ -196,6 +196,24 @@ Import Defs.
    entry and exit sizes, saying which way the address space went and how
    far, descriptor included; [exec] replaces the address space outright and
    is unconstrained here, its image being [KexecDefs]'s to pin. *)
+(* ===================================================================== *)
+(* WHO <INIT> IS, AS THE SYSCALL LAYER CARRIES IT (lane TRAP-ROWS-3/4,    *)
+(* T4(b)).                                                                *)
+(* ===================================================================== *)
+(* The <initproc> cell and the GHOST half of [WaitInv.init_ident] at the   *)
+(* value it holds, PAIRED.  Two entries want it: sys_exit, whose kexit     *)
+(* reparents the dying process's children to that address and has to name  *)
+(* it as <init>'s ([SpecKexit]), and sys_wait, whose reaping arm reports   *)
+(* "the caller is <init>" at the pid inside ([SpecKwait]).  Paired rather  *)
+(* than two rows because the ghost is only useful AT the cell's value, and *)
+(* paired rather than spelled at every arm because the other twenty simply *)
+(* frame it across their call -- exactly as they framed the cell alone.    *)
+(* PERSISTENT, so it costs the twenty nothing.                             *)
+Definition sysc_init_id `{!riscvGS Σ, !xv6G Σ, !wchG Σ} `{GEN : GenId} `{XI : CurCtx}
+    (dqi : dfrac) (ip : mword 64) : iProp Σ :=
+  ((mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip ∗
+   WaitInv.init_ident ip)%I.
+
 Definition sysc_num (V : pprivate) : Z :=
   bv_signed (subrange_vec_dec (pv_tf V !!! tf_arg_idx 7) 31 0 : mword 32).
 
@@ -520,15 +538,20 @@ Section SyscExec.
      (lane TRAP-ROWS, T4): the -1 arm's reason names the incarnation and is
      guarded on the null pointer, and both are readings of data this row
      already has. *)
+  (* ...AND THE TWO PIDS THE REAPING ARM NAMES (lane TRAP-ROWS-3/4, T4(b)):
+     the caller's own and <init>'s, both PURE. *)
   Definition sysc_wait_out (U : ustate) (r : mword 64)
-      (cs cs' : gset gname) : iProp Σ :=
+      (cs cs' : gset gname) (pidv : mword 32) : iProp Σ :=
     (⌜sysc_num (us_V U) = UsysMemOk.USYS_wait⌝ -∗
-       uwait_ans_at r cs cs' (pv_gen (us_V U))
-         (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0
-                       = (zero_reg : mword 64))))%I.
+       ∃ ip : mword 32,
+         uwait_ans_at r cs cs' (pv_gen (us_V U))
+           (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0
+                         = (zero_reg : mword 64))) pidv ip)%I.
 
-  Lemma sysc_wait_out_ne (U : ustate) (r : mword 64) (cs cs' : gset gname) :
-    sysc_num (us_V U) <> UsysMemOk.USYS_wait -> ⊢ sysc_wait_out U r cs cs'.
+  Lemma sysc_wait_out_ne (U : ustate) (r : mword 64) (cs cs' : gset gname)
+      (pidv : mword 32) :
+    sysc_num (us_V U) <> UsysMemOk.USYS_wait ->
+    ⊢ sysc_wait_out U r cs cs' pidv.
   Proof.
     intros Hne. rewrite /sysc_wait_out. iIntros "%Hc". exfalso. exact (Hne Hc).
   Qed.
@@ -538,14 +561,15 @@ Section SyscExec.
      fabricate -- the escrow and the uniqueness are resources, so the only
      way to this row is the call's own post. *)
   Lemma sysc_wait_out_of (U : ustate) (r : mword 64) (rv : mword 32) (xs : Z)
-      (cs cs' : gset gname) :
+      (cs cs' : gset gname) (pidv ip : mword 32) :
     r = (sign_extend' 64 rv : mword 64) ->
     wait_ans rv xs cs cs' (pv_gen (us_V U))
-      (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0 = (zero_reg : mword 64))) -∗
-    sysc_wait_out U r cs cs'.
+      (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0 = (zero_reg : mword 64)))
+      pidv ip -∗
+    sysc_wait_out U r cs cs' pidv.
   Proof.
     intros ->. rewrite /sysc_wait_out /uwait_ans_at. iIntros "H %Hn".
-    iExists rv, xs. iSplitR; [done | iExact "H"].
+    iExists ip, rv, xs. iSplitR; [done | iExact "H"].
   Qed.
 
   (* ...AND THE PURE HALF, for the twenty entries that keep the set.  fork
@@ -736,7 +760,7 @@ Definition wp_syscall_sconf_body
      table) is the only entry that draws on them; the other twenty-one
      simply frame them across their own call. *)
   bslots 3 -∗
-  (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
+  sysc_init_id dqi ip -∗
   fd_slots FDSPARE -∗
   iref_slots IREFSPARE -∗
   (* everything else the twenty-two entries consume, abstractly -- header.
@@ -977,7 +1001,7 @@ Definition wp_syscall_sconf_body
       sie_cap_gpr KT1 mf av true pj -∗
       cpu_own 0%nat true pj true lks -∗
       bslots 3 -∗
-      (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
+      sysc_init_id dqi ip -∗
       fd_slots FDSPARE -∗
       iref_slots IREFSPARE -∗
       R γf pj fn -∗
@@ -1002,7 +1026,7 @@ Definition wp_syscall_sconf_body
       sysc_fork_out f U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
       (* ...and WAIT'S: the set its children reading shrank to -- see
          [sysc_wait_out] *)
-      sysc_wait_out U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
+      sysc_wait_out U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' pid -∗
       WP (Loop : expr riscv_lang))
    ∧ kstack_closer pj (m !!! Regidx csp_rs1) (trap_res true + av)) -∗
   WP (Loop : expr riscv_lang).

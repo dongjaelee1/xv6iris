@@ -139,7 +139,15 @@ Section ParkWorld.
           [ParkCap.park_token_park_steady]).  NOR IS THE APPLICATION'S
           SUPPLY, and that is the point of ARM-c: the kernel mints no slot,
           so it needs no credential to mint one with. *)
-       (∃ ip : mword 64, (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ ip) ∗
+       (* ...AND WHO <INIT> IS, BESIDE ITS CELL (lane TRAP-ROWS-3/4, T4(b)).
+          It is the ghost half of [WaitInv.init_ident] at a NAMED pid, and
+          it rides here for the cell's own reason: a forked child's record
+          has to carry <init>'s number ([UsertrapRes.un_ipid]) and the
+          parent is the only party that can hand it down.  Context-free and
+          persistent, so it costs the park nothing. *)
+       (∃ (ip : mword 64) (p0 : mword 32),
+          (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ ip ∗
+          WaitInv.init_gen ip p0) ∗
        (* THE SECOND PORT (XV6_REV 163d39b), which is [SpecDevintr.uart1_caps
           fsc_uart] spelled out -- ROW FOR ROW, so [ProofUserinit.v] can pass
           one to the other by [iExact] after unfolding both -- this file sits

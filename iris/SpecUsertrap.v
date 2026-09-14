@@ -617,19 +617,21 @@ Qed.
 Definition ut_wait_out `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
     (sc_v : mword 64) (tf : list (mword 64)) (r : mword 64)
-    (cs cs' : gset gname) (gn : gname)
+    (cs cs' : gset gname) (gn : gname) (pidv : mword 32)
     : iProp Σ :=
   (⌜sc_v = uecall_scause /\ usys_num tf = USYS_wait⌝ -∗
-     uwait_ans_at r cs cs' gn
-       (bool_decide (tf !!! tf_arg_idx 0 = (zero_reg : mword 64))))%I.
+     ∃ ip : mword 32,
+       uwait_ans_at r cs cs' gn
+         (bool_decide (tf !!! tf_arg_idx 0 = (zero_reg : mword 64))) pidv ip)%I.
 
 Lemma ut_wait_out_cong `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
     (sc_v : mword 64) (tf1 tf2 : list (mword 64)) (r1 r2 : mword 64)
-    (cs cs' : gset gname) (gn : gname) :
+    (cs cs' : gset gname) (gn : gname) (pidv : mword 32) :
   usys_num tf1 = usys_num tf2 -> r1 = r2 ->
   tf1 !!! tf_arg_idx 0 = tf2 !!! tf_arg_idx 0 ->
-  ut_wait_out sc_v tf1 r1 cs cs' gn -∗ ut_wait_out sc_v tf2 r2 cs cs' gn.
+  ut_wait_out sc_v tf1 r1 cs cs' gn pidv -∗
+  ut_wait_out sc_v tf2 r2 cs cs' gn pidv.
 Proof.
   intros Hn Hr Ha0. rewrite /ut_wait_out. subst r2. rewrite Ha0.
   iIntros "H %Hc".
@@ -644,13 +646,13 @@ Qed.
 Lemma ut_wait_out_forget `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
     (sc_v : mword 64) (tf : list (mword 64)) (r : mword 64)
-    (cs cs' : gset gname) (gn : gname) :
-  ut_wait_out sc_v tf r cs cs' gn -∗
+    (cs cs' : gset gname) (gn : gname) (pidv : mword 32) :
+  ut_wait_out sc_v tf r cs cs' gn pidv -∗
   (⌜sc_v = uecall_scause /\ usys_num tf = USYS_wait⌝ -∗
      uwait_ans r cs cs').
 Proof.
   rewrite /ut_wait_out. iIntros "H %Hc".
-  iDestruct ("H" with "[%]") as "H"; [exact Hc |].
+  iDestruct ("H" with "[%]") as (ip) "H"; [exact Hc |].
   iApply (uwait_ans_of with "H").
 Qed.
 
@@ -832,8 +834,8 @@ Qed.
 Lemma ut_wait_out_quiet `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
     (sc_v : mword 64) (tf : list (mword 64)) (r : mword 64)
-    (cs cs' : gset gname) (gn : gname) :
-  sc_v <> uecall_scause -> ⊢ ut_wait_out sc_v tf r cs cs' gn.
+    (cs cs' : gset gname) (gn : gname) (pidv : mword 32) :
+  sc_v <> uecall_scause -> ⊢ ut_wait_out sc_v tf r cs cs' gn pidv.
 Proof.
   intros Hne. rewrite /ut_wait_out. iIntros "%Hc". exfalso.
   exact (Hne (proj1 Hc)).
@@ -842,8 +844,8 @@ Qed.
 Lemma ut_wait_out_quiet_n `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
     (sc_v : mword 64) (tf : list (mword 64)) (r : mword 64)
-    (cs cs' : gset gname) (gn : gname) :
-  usys_num tf <> USYS_wait -> ⊢ ut_wait_out sc_v tf r cs cs' gn.
+    (cs cs' : gset gname) (gn : gname) (pidv : mword 32) :
+  usys_num tf <> USYS_wait -> ⊢ ut_wait_out sc_v tf r cs cs' gn pidv.
 Proof.
   intros Hne. rewrite /ut_wait_out. iIntros "%Hc". exfalso.
   exact (Hne (proj2 Hc)).
@@ -1598,7 +1600,7 @@ Definition usertrap_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fi
     (* ...AND WAIT'S: what the reap left the caller's reading -- see
        [ut_wait_out] *)
     ut_wait_out sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U)))
-      (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' gn -∗
+      (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' gn pid -∗
     (* ...AND WHAT A RESUME ITSELF PROVES (lane TRAP-ROWS, T2(iii) / T4):
        the two rows above answer at the incarnation, the process cannot
        name it, and this is what survives the refutation -- see

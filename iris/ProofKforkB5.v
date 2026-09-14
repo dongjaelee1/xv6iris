@@ -313,14 +313,18 @@ Section ProofKforkB5.
     (* -------------------------------------------------------------- *)
     iDestruct (park_world_open with "Hworld") as (γtl pd pav pu)
       "(#Hdcaps & #Hextra & #Hwire & #Htramp & #Hipx)".
-    iDestruct "Hipx" as (iv1) "#Hip1".
+    iDestruct "Hipx" as (iv1 ip0) "[#Hip1 #Hig1]".
     iDestruct (SchedCtx.procs_inv_len with "Hpinv") as %Hnproc.
     iAssert (⌜FsReady.fs_geom_ok⌝)%I as %Hgeomok.
     { iDestruct "Hfdone" as "(_ & #Hrdy & _)". iApply (FsReady.fs_ready_geom with "Hrdy"). }
+    (* <INIT>'S NUMBER IS INHERITED, not re-derived: the parent's parked
+       world carries the cell and the sealed identity together, and the
+       child's record is keyed at exactly those two (lane TRAP-ROWS-3/4,
+       T4(b)). *)
     pose (N := MkUtNames γft γf γw γs j γl pd pav pu
                  γtl
                  iv1 DfracDiscarded
- ks pid_c).
+ ks pid_c ip0).
     assert (Hwf : ut_wf N).
     { split_and!; [exact Hj | exact Hgl | exact Hnproc | exact (FsReady.fgo_loggeom Hgeomok)]. }
     iAssert (park_env N) as "#Henv".
@@ -339,7 +343,8 @@ Section ProofKforkB5.
       iSplitR; [iExact "Hwl"|].
       iSplitR; [iExact "Hft"|].
       iSplitR; [iExact "Hgeom"|].
-      iExact "Hworld". }
+      iSplitR; [iExact "Hworld"|].
+      iExact "Hig1". }
     iAssert (park_own N) with "[Hbsl]" as "Hown_park".
     { rewrite /park_own. iFrame "Hbsl". iExact "Hip1". }
     iDestruct (ProcDefs.kstack_free_at with "Hks Hkfree") as "Hstack".

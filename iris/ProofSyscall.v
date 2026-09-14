@@ -1640,7 +1640,7 @@ Section SyscallVocab.
      procs_inv γs ∗
      syscall_env γf pj fn ∗
      bslots 3 ∗
-     (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip ∗
+     sysc_init_id dqi ip ∗
      fd_slots FDSPARE ∗
      iref_slots IREFSPARE ∗
      proc_priv γf pj pid U ∗
@@ -1686,7 +1686,7 @@ Section SyscallVocab.
     procs_inv γs -∗
     syscall_env γf pj fn -∗
     bslots 3 -∗
-    (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
+    sysc_init_id dqi ip -∗
     fd_slots FDSPARE -∗
     iref_slots IREFSPARE -∗
     proc_priv γf pj pid U -∗
@@ -1819,7 +1819,7 @@ Section SyscallVocab.
         sie_cap_gpr KT1 mf av true pj -∗
         cpu_own 0%nat true pj true lks -∗
         bslots 3 -∗
-        (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
+        sysc_init_id dqi ip -∗
         fd_slots FDSPARE -∗
         iref_slots IREFSPARE -∗
         syscall_env γf pj fn -∗
@@ -1841,7 +1841,7 @@ Section SyscallVocab.
         sysc_fork_out f U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
         (* ...and WAIT'S: the set its children reading shrank to --
            see [SpecSyscall.sysc_wait_out] *)
-        sysc_wait_out U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
+        sysc_wait_out U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' pid -∗
         WP (Loop : expr riscv_lang))%I).
 
   (* THE EXIT SLOT, as the dispatch sees it: the caller's return
@@ -2089,7 +2089,7 @@ Section SyscallVocab.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk (m !!! Regidx csp_rs1) 3) (DfracOwn 1) (m !!! Regidx Rs1) -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk (m !!! Regidx csp_rs1) 4) (DfracOwn 1) (m !!! Regidx Rs2) -∗
     bslots 3 -∗
-    (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
+    sysc_init_id dqi ip -∗
     fd_slots FDSPARE -∗ iref_slots IREFSPARE -∗
     syscall_env γf pj fn -∗ proc_priv γf pj pid U' -∗
     fd_frags (pv_fdg (us_V U)) sts' -∗
@@ -2105,7 +2105,7 @@ Section SyscallVocab.
     (* AT THE RECORD'S OWN a0 WORD, like the syscall channel's row below *)
     sysc_fork_out f U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
     (* ...AND WAIT'S, on fork's footing exactly *)
-    sysc_wait_out U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
+    sysc_wait_out U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' pid -∗
     (* the exec channel's answer, carried like the rows above it *)
     sysc_exec_out f U U' sts sts' gn cs pid -∗
     (* ...and the syscall channel's, carried the same way: the epilogue
@@ -2870,7 +2870,7 @@ Section SyscallRet.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk (m !!! Regidx csp_rs1) 3) (DfracOwn 1) (m !!! Regidx Rs1) -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk (m !!! Regidx csp_rs1) 4) (DfracOwn 1) (m !!! Regidx Rs2) -∗
     bslots 3 -∗
-    (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
+    sysc_init_id dqi ip -∗
     fd_slots FDSPARE -∗ iref_slots IREFSPARE -∗
     syscall_env γf pj fn -∗ proc_priv γf pj pid U' -∗
     fd_frags (pv_fdg (us_V U)) sts' -∗
@@ -2889,7 +2889,7 @@ Section SyscallRet.
        arm that owes nothing discharges it in the hole after [Hcont] *)
     sysc_fork_out f U (E !!! Regidx Ra0) cs cs' -∗
     (* ...AND WAIT'S, at the same word *)
-    sysc_wait_out U (E !!! Regidx Ra0) cs cs' -∗
+    sysc_wait_out U (E !!! Regidx Ra0) cs cs' pid -∗
     sysc_exec_out f U
       (us_tf U' (<[tf_arg_idx 0 := E !!! Regidx Ra0]> (pv_tf (us_V U'))))
       sts sts' gn cs pid -∗
@@ -4226,10 +4226,20 @@ Section SyscallArms.
     iPoseProof "Henv" as "#Henvc".
     iDestruct (syscall_env_all with "Henvc") as (γp γw' γft γtk)
       "(#Hkalloc & #Hnextpid & _ & #Hwaitlk & _)".
+    (* <INIT>'S NUMBER, off the paired row this layer carries (lane
+       TRAP-ROWS-3/4, T4(b)): kwait's reaping arm is stated at it, and the
+       sealed identity beside the cell is what names it. *)
+    iDestruct "Hip" as "[Hipc #Hid]".
+    iAssert (sysc_init_id dqi ip) with "[Hipc]" as "Hip";
+      [ iFrame "Hipc"; iExact "Hid" | ].
+    iAssert (∃ p0 : mword 32, SlotGen.init_pid_is p0)%I as (p0) "#Hipis".
+    { iDestruct "Hid" as "[_ Hg]". iDestruct "Hg" as (gz p1) "(_ & _ & Hi)".
+      iExists p1. iExact "Hi". }
     (* ---- the call ---- *)
     iApply (SysWait.wp_sys_wait_sconf fsc_kalloc γp γf γw' γs j γl M (av - 4)%nat true true lks pid U v0 cs
+              p0
               Hj Hgamma Hv0 ltac:(lia) eq_refl
-              with "Hcg Hcpu Htext Hdata Hpc Hprocs Hwaitlk Hkalloc Hnextpid Hpriv Hrow").
+              with "Hcg Hcpu Htext Hdata Hpc Hprocs Hwaitlk Hkalloc Hnextpid Hpriv Hrow Hipis").
     iIntros (CIDy Hsy mf P' rv dw xw cs')
       "%Hcs %Hext %Hdwle %Hnullw Hans Hcg Hcpu Hpc Hpriv Hrow".
     destruct Hcs as [Hcs Ha0w].
@@ -4304,7 +4314,8 @@ Section SyscallArms.
       assert (Hv0w : v0 = pv_tf (us_V U) !!! tf_arg_idx 0)
         by (symmetry; apply list_lookup_total_correct, Hv0).
       iEval (rewrite Hv0w) in "Hans".
-      iApply (sysc_wait_out_of U _ rv (xstate_val xw) cs cs' Ha0w with "Hans"). }
+      iApply (sysc_wait_out_of U _ rv (xstate_val xw) cs cs' pid p0 Ha0w
+                with "Hans"). }
     iApply (sysc_exec_out_ne _ _ _ _ _ _ _ _ (sysc_num_ne7 _ _ Hnum eq_refl)).
     iApply (sysc_sys_out_quiet U sts gn cs pid fdep _ _ _ _ _ _ Hnum
               ltac:(unfold sysc_num_nofs; lia)).
@@ -5421,6 +5432,14 @@ Section SyscallArms.
        and nothing pure beside it. *)
     iDestruct (sysc_fs_env_ties with "Hfsenv") as "%T".
     iDestruct "Hfsenv" as "(_ & _ & _ & _ & #Hrdy)".
+    (* WHO <INIT> IS, out of the paired row this layer carries (lane
+       TRAP-ROWS-3/4, T4(b)): kexit's reparent hands both of the dying
+       process's children columns to that address, and the wait-lock
+       invariant's orphan conjunct can only be re-established at an address
+       the caller can name as <init>'s. *)
+    iDestruct "Hip" as "[_ #Hid]".
+    iAssert ((mword_of_int KernelSyms.initproc : mword 64) ↦₈□ ip)%I as "#Hipc".
+    { iDestruct "Hid" as "[Hc _]". iExact "Hc". }
     (* ---- the closer, walked down syscall's own frame ---- *)
     iDestruct "Hcont" as "[_ Hkcl]".
     iDestruct (stack_own_4_intro (m !!! Regidx csp_rs1)
@@ -5453,7 +5472,7 @@ Section SyscallArms.
               Hjn Hlk Hv0 ltac:(lia) Hlg eq_refl (locks_below_empty "log")
               with "Hcg Hkcl4 Hcpu Htext Hdata Hpc Hpi Hpanic Hwaitlk Hftable
                     Hkmem Hka Hbio' Hlog Hseam Hgen Hdevi Hgeom Hdlock Hbs
-                    Hrdy Hip Hfd Hir Hpriv Hufrag Hrow Hmy HQ").
+                    Hrdy Hipc Hid Hfd Hir Hpriv Hufrag Hrow Hmy HQ").
   Qed.
 
   (* ------------------------------------------------------------------- *)

@@ -1125,28 +1125,47 @@ Definition sgenUR : ucmra :=
    [Countable (mword 64)] against whatever instances that file imports. *)
 Definition orph_map : Type :=
   gmap (SailStdpp.Values.mword 64) (gset gname).
+(* <INIT>'S PID, SAVED ONCE (lane TRAP-ROWS-3, T4(b)).  A ONE-CELL
+   [dfrac_agree]: the boot mints it WHOLE at a junk value, userinit --
+   the one party that knows which slot and which pid <init> got -- writes
+   the real pid into it and DISCARDS it, and every later reading is the
+   persistent [SlotGen.init_pid_is].  Two readings therefore AGREE, which
+   is the whole point: kwait's reaping arm reports "the caller's pid is
+   <init>'s" at this predicate and a forked child refutes it against the
+   token its fork handed it.
+     A GHOST AND NOT THE <initproc> CELL, because the row travels to the U
+   tier: [UserChildren.wait_ans] is stated with no [riscvGS] and no
+   [TsoCtx.CurCtx], and a memory points-to would drag both down there and
+   make the row context-dependent across the park. *)
+Definition ipidUR : ucmra :=
+  optionUR (dfrac_agreeR (leibnizO (SailStdpp.Values.mword 32))).
 Class wchGpreS (Σ : gFunctors) :=
   { wch_pre_inG :: ghost_mapG Σ gname (SailStdpp.Values.mword 64 * gset gname);
     worph_pre_inG :: ghost_varG Σ orph_map;
     wsg_pre_inG :: inG Σ sgenUR;
-    wpr_pre_inG :: ghost_mapG Σ Z gname }.
+    wpr_pre_inG :: ghost_mapG Σ Z gname;
+    wip_pre_inG :: inG Σ ipidUR }.
 Class wchG (Σ : gFunctors) :=
   WchG { wch_inG :: ghost_mapG Σ gname (SailStdpp.Values.mword 64 * gset gname);
          worph_inG :: ghost_varG Σ orph_map;
          wsg_inG :: inG Σ sgenUR;
          wpr_inG :: ghost_mapG Σ Z gname;
+         wip_inG :: inG Σ ipidUR;
          wch_name : gname;
          worph_name : gname;
          wsg_name : gname;
-         wpr_name : gname }.
+         wpr_name : gname;
+         wip_name : gname }.
 Global Instance wchG_preS `{!wchG Σ} : wchGpreS Σ :=
   {| wch_pre_inG := wch_inG; worph_pre_inG := worph_inG;
-     wsg_pre_inG := wsg_inG; wpr_pre_inG := wpr_inG |}.
+     wsg_pre_inG := wsg_inG; wpr_pre_inG := wpr_inG;
+     wip_pre_inG := wip_inG |}.
 Definition wchΣ : gFunctors :=
   #[ ghost_mapΣ gname (SailStdpp.Values.mword 64 * gset gname);
      ghost_varΣ orph_map;
      GFunctor sgenUR;
-     ghost_mapΣ Z gname ].
+     ghost_mapΣ Z gname;
+     GFunctor ipidUR ].
 Global Instance subG_wchΣ {Σ} : subG wchΣ Σ -> wchGpreS Σ.
 Proof. solve_inG. Qed.
 

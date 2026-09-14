@@ -170,7 +170,9 @@ Definition wp_sys_exit_sconf_body
      kexit's verbatim *)
   FsReady.fs_ready -∗
   (* the initproc pointer, at any fraction *)
-  (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
+  (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ ip -∗
+  (* ...and who <init> is, for kexit's reparent -- see [SpecKexit] *)
+  WaitInv.init_ident ip -∗
   (* the process itself: its private block (trapframe included) and its
      fd-slot allowance *)
   fd_slots FDSPARE -∗

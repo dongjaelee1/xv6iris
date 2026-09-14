@@ -1536,7 +1536,7 @@ Section UkInitMain.
       (* the answer, opened once for the three arms below: the return value
          is an [int] sign-extended, and either nothing was reaped or a
          generation left the set with its escrow. *)
-      iDestruct "Hans" as (gnw bnw rv xs) "[%Hret Hwa]".
+      iDestruct "Hans" as (pidw ipw gnw bnw rv xs) "[%Hret Hwa]".
       (* ---- 0x4a  beq a0,s1,0x32 -- BACK EDGE to the restart head ---- *)
       assert (Etgt4a : add_vec (mword_of_int 0x4a : mword 64)
                          (sign_extend' 64 (mword_of_int 8168 : mword 13))
@@ -1565,7 +1565,7 @@ Section UkInitMain.
            shell's behalf next round -- and the token is simply dropped. *)
         assert (Hs1ret : (sign_extend' 64 pidsh : mword 64) = ret).
         { rewrite <- Hs1w3, <- Ha0w3. apply eq_vec_true_iff. exact Hbeq. }
-        iDestruct "Hwa" as "[[[%Hm1 %Hcseq] _] | (%γ' & [%Hcseq %Hrngc] & Hesc & #Huq)]".
+        iDestruct "Hwa" as "[[[%Hm1 %Hcseq] _] | (%γ' & [%Hcseq %Hrngc] & _ & Hesc & #Huq)]".
         { (* NOTHING WAS REAPED AND THE [beq] AGAINST s1 WAS TAKEN, so the
              shell's pid is -1 -- which the fork arm refuted on the way in.
              The arm matters: taking it would re-enter the restart head
@@ -1627,7 +1627,7 @@ Section UkInitMain.
           iAssert (⌜γsh ∈ cs'⌝ ∗ UserChildren.uch γch cs' ∗
                    child_tok γsh pidsh (ucons_pay cn γ T Rd))%I
             with "[Hwa Hch Htok]" as "(%Hin' & Hch & Htok)".
-          { iDestruct "Hwa" as "[[[%Hm1 %Hcseq] _] | (%γ' & [%Hcseq %Hrngc] & Hesc & _)]".
+          { iDestruct "Hwa" as "[[[%Hm1 %Hcseq] _] | (%γ' & [%Hcseq %Hrngc] & _ & Hesc & _)]".
             - iFrame "Hch Htok". iPureIntro. rewrite Hcseq. exact Hin.
             - iDestruct (exit_tok_tok_ne γ' γsh rv pidsh xs (ucons_pay cn γ T Rd)
                            ltac:(intro Hc; apply Hs1ne;

@@ -231,6 +231,24 @@ Section SlotGen.
     apply sg_el_valid, dfrac_valid_own_1.
   Qed.
 
+  (* ...AND THE ONE-WAY DISCARD, WHICH <INIT> ALONE TAKES (lane
+     TRAP-ROWS-3/4, T4(b)).  userinit has no parent to hold the three
+     quarters a forking parent would deposit under <wait_lock>, so it used
+     to DROP them; it discards them instead, and the persistent reading is
+     what [WaitInv.init_ident] seals -- the reaper compares it with its own
+     block's quarter to learn whether the slot it is reaping at is
+     <init>'s.
+       WHAT IT COSTS: [slot_gen ip (DfracOwn 1)] is forever unobtainable at
+     <init>'s slot, i.e. allocproc can never re-key it.  That is TRUE --
+     <init> never exits, and kexit panics on it -- and nothing in the tree
+     needs the converse. *)
+  Lemma slot_gen_persist pa dq g :
+    slot_gen pa dq g ==∗ slot_gen pa DfracDiscarded g.
+  Proof.
+    rewrite /slot_gen. iApply own_update.
+    rewrite /sg_one. apply singleton_update. apply dfrac_agree_persist.
+  Qed.
+
   (* ------------------------------------------------------------------ *)
   (* THE PID REGISTER.                                                    *)
   (* ------------------------------------------------------------------ *)
@@ -247,6 +265,15 @@ Section SlotGen.
 
   Global Instance pid_reg_timeless pid dq g : Timeless (pid_reg pid dq g).
   Proof. apply _. Qed.
+
+  (* ...and the same one-way discard, for <init>'s registration (lane
+     TRAP-ROWS-3/4, T4(b)): userinit keeps the block's eighth and discards
+     the rest, so [WaitInv.init_ident]'s reading of "which generation owns
+     <init>'s pid" is persistent and a forked child's fresh INSERT can be
+     refuted against it. *)
+  Lemma pid_reg_persist pid dq g :
+    pid_reg pid dq g ==∗ pid_reg pid DfracDiscarded g.
+  Proof. rewrite /pid_reg. iApply ghost_map_elem_persist. Qed.
   Global Instance pid_reg_auth_timeless R : Timeless (pid_reg_auth R).
   Proof. apply _. Qed.
 
@@ -455,6 +482,92 @@ Section SlotGen.
      then gen_halves_at pa pid g
      else ⌜bv_unsigned pid = 0⌝ ∗ slot_gen pa (DfracOwn 1) g)%I.
 
+
+  (* ------------------------------------------------------------------ *)
+  (* <INIT>'S PID, SAVED ONCE (lane TRAP-ROWS-3, T4(b)).                  *)
+  (* ------------------------------------------------------------------ *)
+  (* The boot mints the cell WHOLE at a junk value ([WaitInv.children_boot]
+     carries it), userinit -- the one party that knows which pid <init>
+     got -- writes the real one and SEALS it, and every later reading is
+     the persistent [init_pid_is].  Two readings AGREE, and that is the
+     whole content: kwait's reaping arm reports "the caller is <init>" as
+     [init_pid_is] at the caller's pid, and a forked child refutes it
+     against the token its fork handed it ([init_pid_is_ne]).
+       WHY A ONE-CELL GHOST AND NOT THE <initproc> WORD.  The row travels
+     to the U tier, where [UserChildren.wait_ans] is stated with neither
+     [riscvGS] nor [TsoCtx.CurCtx]; a memory points-to would drag both
+     down there and make the answer context-dependent across the park. *)
+  Definition init_pid_tok (p : mword 32) : iProp Σ :=
+    own wip_name (Some (to_dfrac_agree (DfracOwn 1) (p : leibnizO (mword 32)))
+                  : ipidUR).
+
+  Definition init_pid_is (p : mword 32) : iProp Σ :=
+    own wip_name (Some (to_dfrac_agree DfracDiscarded (p : leibnizO (mword 32)))
+                  : ipidUR).
+
+  Global Instance init_pid_is_persistent p : Persistent (init_pid_is p).
+  Proof. rewrite /init_pid_is. apply _. Qed.
+
+  Global Instance init_pid_is_timeless p : Timeless (init_pid_is p).
+  Proof. rewrite /init_pid_is. apply _. Qed.
+
+  (* THE AGREEMENT, which is what the refutation at a forked child spends *)
+  Lemma init_pid_is_agree (p p' : mword 32) :
+    init_pid_is p -∗ init_pid_is p' -∗ ⌜p = p'⌝.
+  Proof.
+    iIntros "H1 H2".
+    iDestruct (own_valid_2 with "H1 H2") as %Hv.
+    rewrite -Some_op Some_valid dfrac_agree_op_valid_L in Hv.
+    iPureIntro. exact (proj2 Hv).
+  Qed.
+
+  (* ...and the form a child spends it in: its own pid is not <init>'s *)
+  Lemma init_pid_is_ne (p p' : mword 32) :
+    p <> p' -> init_pid_is p -∗ init_pid_is p' -∗ False.
+  Proof.
+    intro Hne. iIntros "H1 H2".
+    iDestruct (init_pid_is_agree with "H1 H2") as %Heq.
+    exfalso. exact (Hne Heq).
+  Qed.
+
+  Local Lemma to_dfrac_agree_one_valid (a : leibnizO (mword 32)) :
+    ✓ (to_dfrac_agree (DfracOwn 1) a).
+  Proof.
+    rewrite /to_dfrac_agree pair_valid.
+    split; [ apply dfrac_valid_own_1 | ].
+    apply (cmra_valid_op_l _ (to_agree a)). by apply to_agree_op_valid.
+  Qed.
+
+  (* userinit's two moves: write the pid <init> actually got, then seal *)
+  Lemma init_pid_set (p p' : mword 32) :
+    init_pid_tok p ==∗ init_pid_tok p'.
+  Proof.
+    rewrite /init_pid_tok. iApply own_update.
+    apply option_update, cmra_update_exclusive.
+    apply to_dfrac_agree_one_valid.
+  Qed.
+
+  Lemma init_pid_seal (p : mword 32) :
+    init_pid_tok p ==∗ init_pid_is p.
+  Proof.
+    rewrite /init_pid_tok /init_pid_is. iApply own_update.
+    apply option_update.
+    apply dfrac_agree_persist.
+  Qed.
+
+  (* the token is EXCLUSIVE, which is what keeps the seal a one-shot *)
+  Lemma init_pid_tok_excl (p p' : mword 32) :
+    init_pid_tok p -∗ init_pid_tok p' -∗ False.
+  Proof.
+    iIntros "H1 H2".
+    iDestruct (own_valid_2 with "H1 H2") as %Hv.
+    rewrite -Some_op Some_valid dfrac_agree_op_valid_L in Hv.
+    destruct Hv as [Hd _]. rewrite dfrac_op_own dfrac_valid_own in Hd.
+    iPureIntro.
+    assert (Hlt : (1 < 1 + 1)%Qp) by compute_done.
+    exact (proj1 (Qp.lt_nge _ _) Hlt Hd).
+  Qed.
+
 End SlotGen.
 
 (* ===================================================================== *)
@@ -505,6 +618,20 @@ Section SlotGenTok.
   (* ...AND THE SPLIT [kexit] TAKES: the marker out, the rest into the park
      ([gen_halves_dorm] at ZOMBIE is exactly [gen_halves_at]). *)
   (* ...and the same borrow one layer up *)
+  (* ...AND THE SLOT-GENERATION QUARTER, lent the same way (lane
+     TRAP-ROWS-3, T4(b)): the reaper compares it with the sealed one
+     [WaitInv.init_ident] carries to learn whether it IS <init>.  A
+     borrow, because the agreement it is spent on is pure. *)
+  Lemma gen_halves_at_sg pa pid g :
+    gen_halves_at pa pid g -∗
+    slot_gen pa (DfracOwn (1/4)) g ∗
+    (slot_gen pa (DfracOwn (1/4)) g -∗ gen_halves_at pa pid g).
+  Proof.
+    rewrite /gen_halves_at. iIntros "(%Hr & Hsg & Hpr)".
+    iSplitL "Hsg"; [ iExact "Hsg" | ]. iIntros "Hsg".
+    iSplitR; [ iPureIntro; exact Hr | ]. iFrame "Hsg Hpr".
+  Qed.
+
   Lemma gen_halves_priv_reg pa pid g :
     gen_halves_priv pa pid g -∗
     pid_reg pid (DfracOwn qeighth) g ∗
@@ -514,6 +641,17 @@ Section SlotGenTok.
     iDestruct (gen_halves_at_reg with "Hat") as "[Hpr Hback]".
     iSplitL "Hpr"; [ iExact "Hpr" | ]. iIntros "Hpr".
     iSplitR "Ht"; [ iApply ("Hback" with "Hpr") | iExact "Ht" ].
+  Qed.
+
+  Lemma gen_halves_priv_sg pa pid g :
+    gen_halves_priv pa pid g -∗
+    slot_gen pa (DfracOwn (1/4)) g ∗
+    (slot_gen pa (DfracOwn (1/4)) g -∗ gen_halves_priv pa pid g).
+  Proof.
+    rewrite /gen_halves_priv. iIntros "[Hat Ht]".
+    iDestruct (gen_halves_at_sg with "Hat") as "[Hsg Hback]".
+    iSplitL "Hsg"; [ iExact "Hsg" | ]. iIntros "Hsg".
+    iSplitR "Ht"; [ iApply ("Hback" with "Hsg") | iExact "Ht" ].
   Qed.
 
   Lemma gen_halves_priv_split pa pid g :

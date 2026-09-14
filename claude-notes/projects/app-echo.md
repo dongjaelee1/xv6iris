@@ -127,6 +127,10 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   and TRAP-ROWS-3 (T4(c) pid range, T4(b)); M4b-M6 after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
+- [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`): LAUNCHED
+  2026-09-16 (brief scratchpad `brief-trap-rows-3.md`): T4(c) the pid range
+  on the block's registration (the wait clause of `ut_live_out`); T4(b)
+  the reaping arm names the caller's own child (orphans only at init).
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
@@ -135,8 +139,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   lemma.  `-sup` is free.
 - [ ] **TRAP-ROWS** (kernel; `-tlw`, `lane/trap-rows`; brief scratchpad
   `brief-trap-rows.md`): T1 LANDED 2026-09-16 (`6eafdaa54`); M2 PART 1
-  (T3 + T2(i)) LANDED 2026-09-16 (`ea01ef696`; the notes below); M2 part 2
-  (T2(ii)(iii) + T4) in flight: T2 the read's -1 arm carries the reader's killed fact and the
+  (T3 + T2(i)) LANDED (`ea01ef696`); M2 PART 2 (T2(ii)(iii), T4 kernel
+  side, the four engine statements) LANDED 2026-09-16 (`b289999e7`; the
+  notes below).  DONE.  Rows: T2 the read's -1 arm carries the reader's killed fact and the
   user-level read loses the kill case (owner 2026-09-16: "agreed with
   fixing the console read spec to never return -1 to userspace"); T3 the
   additive conjunction at a killing-cause trap; T4 wait's -1 arm (the
@@ -3355,6 +3360,41 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+TRAP-ROWS M2 PART 2 LANDED (2026-09-16; `48dc134db`..`b289999e7`, five commits
+cherry-picked from the lane's `90e8f1b0b` onto `6385d5f87`; 22 files
++1017/-186; builds tr46-tr81 in `-tlw`; audit the thirteen; lemma_diff
+CLEAN; no Admitted; trusted diff scratchpad `trusted-trap-rows-m2p2.md`).
+T4 KERNEL SIDE: `UserChildren.wait_why cs gn nullst := ⌜nullst = false⌝ ∨
+⌜cs = ∅⌝ ∨ kill_shot gn` (persistent) on `wait_ans`'s -1 arm; producers
+`kw_nokids` (the scan's accumulator: a4 is written once, at +0xca, only on
+the arm that matched a cell) through `kw_scan`/`kw_round_tail`, then
+`WaitInv.children_inv_empty`; `killed()`'s `Rout` at +0xd6 -> the one-shot;
+absorbed at the U tier by `ut_wait_out_forget`.  THE FOUR ENGINE STATEMENTS
+(the IO-LEAF review's): `UkStore.uk_store_fault_post_fetch` gains `Kcx`,
+`Hkcw : ⊢ (Kcx ∗ my_pay gn Qp -∗ □ riscv_kill_cred ∨ kill_owed gn)`, its
+paycont carries `Kcx ∧ uslot …`; `uk_store_obl_base`/`_rvc` likewise;
+`wp_uk_store_denied` at `Kc := Qp (-1)` taking `Qp (-1) -∗`;
+`UkRunMem.wp_uk_sb_denied` the same -- the pair travels WHOLE to the leaf
+because the deposit the leaf owes is itself additive; `wp_ksh_memset_null`
+keeps its Coq premise and `iPoseProof`s it.  T2(ii): `console_receipt_m1_why`/
+`fileread_extra_core_m1_why`/`spost_at_read_why` read the reason without
+spending the arm; `ut_a6` hoists it, feeds the `killed()` accessor, which
+refutes the shot with `kill_paid_shot_nz`; out comes `SpecUsertrap.ut_live_out`
+on `usertrap_post -> uservec_post` (free at a non-ecall cause).  T2(iii):
+`UexecRet.uexec_ret_cont_gen` re-cut ONCE with `⌜uexec_live_ok n tf sts r⌝`,
+through `uexec_ret_round_slot`/`ProofUserretClosed`, out at
+`UkRunSys.wp_uk_ecall_read_recv`.  AT AN OPEN READABLE CONSOLE FD THE
+SURVIVING -1 CAUSE IS `n < 0`, NOT A CLOSED FD.  FINDING: the wait clause `r
+= -1 -> cs' = ∅` is true but not derivable -- the process block's
+registration (`SlotGen.gen_halves_at`) carries only `pid <> 0`, the range
+`1 <= pid <= PIDMAX` lives in `PidLock.nextpid_res_at` and never reaches the
+block, so a reaped child's `r = sext pid` cannot refute `r = -1`; `ut_live_out`
+ships with the read clause only, `cs'` kept as a parameter.  RULED (lane
+TRAP-ROWS-3, launched): T4(c) the registration gains the pid range; T4(b)
+the wait lock's payload names the initproc address, `inv_orph` gains `∀ pa g,
+g ∈ orph_row O pa -> pa = ip`, maintained by reparent, minted at boot; the
+U-tier spelling a pid fact (init's pid = 1).  Handover: `trap-rows-handover.md`.
 
 IO-LEAF M4a(1) LANDED (2026-09-16; `7f512a248` on `d847aa0d5`; UkSh.v + new
 UShOut.v; build io26 in the main checkout; audit the thirteen; lemma_diff

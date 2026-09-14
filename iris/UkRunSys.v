@@ -2933,6 +2933,18 @@ Section UkRunSys.
           eliminates [ConsoleInv.cons_swallow]'s copyout-fault disjunct by
           [uk_read_nofault] above. *)
        ⌜uvis_lazy W = false⌝ -∗
+       (* ...AND THE ANSWER IS NOT -1 (lane TRAP-ROWS, T2(iii)).  A process
+          that resumes was not killed, and usertrap's second [killed] check
+          is where that is cashed: with the one-shot refuted,
+          [SpecFileread.console_receipt]'s -1 arm has exactly one cause
+          left, fileread's [n < 0] sign guard, and a caller that asked for
+          a non-negative count has ruled that out too.  So AT AN OPEN
+          READABLE CONSOLE DESCRIPTOR the read did not fail -- and the
+          reason the row is guarded rather than flat is that a caller whose
+          fd is closed, or not the console, or whose count is negative, HAS
+          no such fact.  [UexecRet.uexec_live_ok] names the descriptor by
+          index, which is the form a program holding its own table wants. *)
+       ⌜uexec_live_ok USYS_read (uvis_tf W) (uvis_fd W) r⌝ -∗
        (* the ledger comes straight back: read moves no descriptor *)
        UserFd.ustd (ukn_fd N) l -∗
        (* THE POST, AT THE TRAPPING KEY AND THE RESUME IMAGE *)
@@ -3071,7 +3083,7 @@ Section UkRunSys.
     { iIntros (h'') "Hrun".
       iApply ("Hcont" $! h'' r d g (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
                 _ _ _ _
-                with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hstd Hpost Hrun Hbuf").
+                with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hstd Hpost Hrun Hbuf").
       - exact Hdcap.
       - intros j Hj. apply Hgf; lia.
       (* the destination run is linear, off the ownership of the buffer *)
@@ -3097,7 +3109,10 @@ Section UkRunSys.
       - rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg2 m pc).
       - rewrite (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false). exact Htake.
       (* definitional: the run is at [false] *)
-      - reflexivity. }
+      - reflexivity.
+      (* ...and what the resume proved, straight off the arm's own row
+         (lane TRAP-ROWS, T2(iii)) *)
+      - exact Hliverow. }
     iDestruct (ukcq_ukc with "Hkc") as "Hkc".
     iApply ("Hkc" $! h' xi' C' pt' Rfd' Rut' with "[%] [%] [%] Hb'");
       [ exact Hlo' | exact Hpm' | exact Hlzf' ].
@@ -3850,7 +3865,7 @@ Section UkRunSys.
     iSplitR; [ iFrame "Hmy" | ].
     iSplitL "Hdepn"; [ iExact "Hdepn" | ].
     iIntros (r M' pm' sz' fdv' cw' gn' cs' lz')
-      "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hchrow Hpost".
+      "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hliverow %Hchrow Hpost".
     assert (Hlzq : lz' = false)
       by (refine (usys_mem_ok_lazy _ _ _ _ _ _ _ _ _ _ _ _ Hok);
           vm_compute; discriminate).

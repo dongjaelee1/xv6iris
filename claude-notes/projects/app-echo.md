@@ -116,8 +116,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   (`e3d97238a`; the note below: the write leaf's ownership row, the printf
   cone's per-byte family, the banner site); M1(e) in flight (the conversion
   above UkWriteLeaf); M2-M6 after TRAP-ROWS M2.
-- [ ] **DUP-ROW** (kernel; `-sup`, `lane/dup-row`): LAUNCHED 2026-09-16:
-  dup's -1 arm carries "the caller's table is full" so init refutes it.
+- [ ] **DUP-ROW** (kernel; `-sup`, `lane/dup-row`): phase 1 done 2026-09-16
+  (the note below), phase 2 (gate, rebase) in flight: the U-tier dup row
+  names its two reasons; init refutes them from its own ledger.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
@@ -125,8 +126,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   below): `ps_len_ok`, `echo_write_link_pro`, the arbitrary-round banner
   lemma.  `-sup` is free.
 - [ ] **TRAP-ROWS** (kernel; `-tlw`, `lane/trap-rows`; brief scratchpad
-  `brief-trap-rows.md`): T1 LANDED 2026-09-16 (`6eafdaa54`; the note below);
-  M2 = T2+T3+T4 in flight: T2 the read's -1 arm carries the reader's killed fact and the
+  `brief-trap-rows.md`): T1 LANDED 2026-09-16 (`6eafdaa54`); M2 PART 1
+  (T3 + T2(i)) LANDED 2026-09-16 (`ea01ef696`; the notes below); M2 part 2
+  (T2(ii)(iii) + T4) in flight: T2 the read's -1 arm carries the reader's killed fact and the
   user-level read loses the kill case (owner 2026-09-16: "agreed with
   fixing the console read spec to never return -1 to userspace"); T3 the
   additive conjunction at a killing-cause trap; T4 wait's -1 arm (the
@@ -3345,6 +3347,53 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+TRAP-ROWS M2 PART 1 LANDED (2026-09-16; `52b0d4cd7`+`ea01ef696` on `80f33b290`;
+26 files +849/-335; builds tr10-tr45 in `-tlw`; audit the thirteen;
+lemma_diff = 3 removals, the separating arm's vocabulary
+(`uexec_kill_arm_F_resume`, `uexec_kill_arm_resume`, `uexec_dep_F_kill`),
+replaced by `uexec_kill_arm_F_not`/`_of_cred`; no Admitted).  T3 THE
+ADDITIVE PAIR END TO END: `uexec_kill_arm_F X sc W f := ukill_cred_at
+(uvis_gen W) sc ∧ X W`, `uexec_dep_F`'s non-ecall branch `emp`; the pair
+stays INSIDE the arm so `uexec_ret_F_split`/`_join` keep their shapes; the
+∧ is free at all five producers (`iSplit`).  Three decisions: (1) the key the
+pair is handed at is OPAQUE -- `wp_usertrap_body`/`wp_uservec_pt_body` take
+`Wk : uvis` free (usertrap's `U` has the save walk's epc word, `tf_ueq` cannot
+transport it); `ProofUserretClosed` passes `uvis_run W`; only
+`UexecApply.uslot_run_cong` is new; (2) `SchedCtx.kill_row`'s paid arm
+records THE FLAG IS NONZERO (the C's monotonicity: only `freeproc` writes 0),
+buying `kill_paid_shot_nz`; `kill_paid_kill{,_owed,_two}` take it as a
+resource row; (3) `ut_a6` takes a slot-OR-shot row: `ut_56` spends the pair's
+left at `setkilled` and keeps the one-shot, whose refutation lives inside
+`ut_a6`'s `killed()` accessor (`kill_pend` is linear); `ut_d0`'s vmfault
+success arm now TAKES the pair's right side (it used to drop the credential
+by affinity).  T2(i): `console_receipt`'s -1 arm is `⌜r = -1⌝ ∗ (⌜n < 0⌝ ∨
+kill_shot gn) ∗ ∃ cur d', Rd cur d'` -- at an open readable console fd the
+surviving -1 cause is `n < 0`, NOT a closed fd (a different arm);
+`SpecConsoleread`'s post gains `⌜r < 0⌝ -∗ kill_shot (pv_gen (us_V U))`,
+consoleread's `killed()` lends the pid quarter + registration eighth off
+`proc_priv_core`; `gn = pv_gen (us_V U)` threaded as a RESOURCE row through
+`wp_syscall_sconf_body`/`sysc_arm_goal`/usertrap/uservec, discharged at
+`ProofUserretClosed` from `Hgen0`.  M2 PART 2 (in flight): T2(ii) `ut_a6`
+with `kill_paid_shot_nz`; T2(iii)+T4 as ONE pure row `ut_live_out` on
+`UexecRet.uexec_ret_cont_gen` (RULED: the generic returning arm, re-cut
+once, both the read and the wait clauses) via `usertrap_post` ->
+`uservec_post` -> `wp_uk_ecall_read_recv`/the wait leaf; T4's `kw_scan`
+accumulator, `wait_ans` re-signed last.  Handover: `trap-rows-handover.md`.
+
+DUP-ROW PHASE 1 (2026-09-16; `-sup`; proofs already closed, gate pending):
+the KERNEL dup spec `SpecSysDup.sys_dup_post` was already three-armed with
+both reasons; the bare -1 was the U-tier row `UsysMemOk.usys_fd_ok`'s dup
+case, where `ProofSyscall.sysc_dup_priv` DISCARDED them.  NEW: the -1 arm
+carries `(∀ fd st, argfd = fd -> sts !! fd = Some st -> st = FdClosed) ∨
+fd_lowest_closed sts = None`; `UkRunSys.wp_uk_ecall_dup` discharges the
+first inside (it holds `st <> FdClosed`) and hands the program `⌜r = -1 ∧
+fd_lowest_closed l = None⌝` on ITS OWN ledger `l`; `UkInit.wp_kinit_dup_cons`
+likewise; RULED: the success arm also gains `sts !! argfd <> Some FdClosed`.
+No third cause in the C.  `ufd_head` unchanged: pinning fds 1-2 needs the
+named ledger threaded through `wp_kinit_main_from_1e`'s two dups (IO-LEAF's
+file) -- `fd_lowest_closed (ufd_l1 st) = Some 1`/`(ufd_l2 st) = Some 2` hold by
+reflexivity (`ufd_scan1/2`), so the -1 arms refute by `congruence`.
 
 IO-LEAF M1(c,d) LANDED (2026-09-16; `2229de714`+`2b6d39386`+`e3d97238a` on
 `7d305173a`; 8 files; builds io4-io9 in the main checkout; audit the

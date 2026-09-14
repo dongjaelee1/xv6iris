@@ -386,10 +386,19 @@ Section UInitBanner.
 
   (* ...and what /init's banner leaves behind IS [UShOut]'s cursor at the
      prompt's first byte: eighteen bytes out, no resolution filed, the
-     round's stream still the banner's.  A CONVERSION, not a lemma with
-     content -- the two definitions are the same proposition. *)
-  Lemma bnr_ushpr (v : era_pins) : bnr v 18%nat = UShOut.ushpr T v 0%nat.
-  Proof. reflexivity. Qed.
+     round's stream still the banner's.  Round 0 at count 0 is
+     [EchoLinks.wr_pro]'s shape -- the round's prologue alternative is
+     still open and the shell's '$' is what files it -- so the credential
+     the shell will spend at EVERY prompt (lane IO-LEAF, M6a) is exactly
+     this one at [n = 0]. *)
+  Lemma bnr_ushpr (v : era_pins) :
+    bnr v 18%nat -∗ UShOut.ushpr T v 0%nat 0%nat.
+  Proof.
+    rewrite /bnr /UShOut.ushpr /EchoLinks.ewc_owed.
+    iIntros "[(Htn & Hps & Hcs & HE) | #HT]"; [| by iRight ].
+    iLeft. iExists [], [], 18%nat. iFrame "Htn Hps Hcs HE".
+    iPureIntro. exact EchoLinks.wr_owed_round0.
+  Qed.
 
   Lemma kinit_banner0_pay_holds :
     echo_links T γ -∗
@@ -407,8 +416,8 @@ Section UInitBanner.
     { iApply "Hb". }
     iIntros "Ht". rewrite /kinit_turn0.
     iDestruct "Ht" as (v) "[#Hpin Hbnr]".
-    iApply (UShOut.sh_prompt_pay_of_ushpr T γ v with "Hpin Hlk [Hbnr]").
-    rewrite <- (bnr_ushpr v). iExact "Hbnr".
+    iApply (UShOut.sh_prompt_pay_of_ushpr T γ v 0%nat with "Hpin Hlk [Hbnr]").
+    iApply (bnr_ushpr v with "Hbnr").
   Qed.
 
 End UInitBanner.

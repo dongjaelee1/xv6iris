@@ -112,9 +112,12 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
 - [ ] **IO-LEAF** (programs; main checkout, `lane/io-leaf`): SURVEYED and
   REVIEWED 2026-09-16 (the notes below); M1 LAUNCHED 2026-09-16 (brief v3
   scratchpad `brief-io-leaf.md`): M1(a,b) LANDED 2026-09-16 (`f4b03abd7`;
-  the note below: `EchoLinks.v`, `Tn` concrete); M1(c,d) in flight (init's
-  banner round 0; the write leaf's ownership row in UkRunSys); M2-M6 after
-  TRAP-ROWS M2 and PROLOGUE-ALTS-2.
+  the note below: `EchoLinks.v`, `Tn` concrete); M1(c,d) LANDED 2026-09-16
+  (`e3d97238a`; the note below: the write leaf's ownership row, the printf
+  cone's per-byte family, the banner site); M1(e) in flight (the conversion
+  above UkWriteLeaf); M2-M6 after TRAP-ROWS M2.
+- [ ] **DUP-ROW** (kernel; `-sup`, `lane/dup-row`): LAUNCHED 2026-09-16:
+  dup's -1 arm carries "the caller's table is full" so init refutes it.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):
   init's exec-failure loop, terminal fork failure, and the restart after
   sh's fork panic as prologue rounds; EchoOut's stage carries `ps`.
@@ -3342,6 +3345,41 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+IO-LEAF M1(c,d) LANDED (2026-09-16; `2229de714`+`2b6d39386`+`e3d97238a` on
+`7d305173a`; 8 files; builds io4-io9 in the main checkout; audit the
+thirteen; lemma_diff CLEAN; no Admitted).  THE SHORT CONSOLE WRITE IS
+REFUTABLE: `UkRunSys.wp_uk_ecall_write_chain_buf` takes the caller's source
+run `ubytesq (ukn_d N) dq a1 nb f` (handed back) and its post gains
+`⌜uvis_lazy W = false⌝` and `⌜∀ P j, proc_pt_wf P -> perm_of (ud_um P)
+(uvis_sz W) = uvis_perm W -> lazy_free (ud_um P) (uvis_sz W) -> j < nb ->
+uva_rmapped P (a1 + j)⌝` (the write-side twin of the read leaf's
+`uk_read_nofault` row); `wp_uk_ecall_write_chain` keeps its statement
+verbatim as the `nb = 0` instance, so sh's and echo's chain wrappers are
+untouched; `UkWriteLeaf.uwrite_no_short` reads a console write of an owned
+run as `⌜r = nb⌝ ∗ Q nb` (T1's anti-vacuity witness).  `EchoLinks` gains
+the fifth conjunct `echo_link_pro`.  INIT'S PRINTF CONE CARRIES A PER-BYTE
+FAMILY: `UkInit.kinit_w1 fdv b Ci Co` (the one-byte write's statement
+generalised in what the caller may say, putc's frame byte in and back),
+threaded through `wp_kinit_putc`/`_vprintf_step`/`_vprintf_loop`/`_vprintf`/
+`wp_kinit_printf_chain`; `wp_kinit_printf` keeps its statement verbatim as
+the `Ch := fun _ => emp` instance (the die arms untouched).  THE BANNER
+SITE: `UkInit.kinit_banner_pay N 18 (init_lit LIT_START)`, `kinit_banner0`,
+and the restart-head Löb quarter's affine premise `kinit_round0 :=
+kinit_banner0 ∨ True` threaded through `wp_kinit_main_from_1e`/
+`_repair_tail`/`_repair`/`wp_kinit_main`/`wp_kinit_start`; `wp_kinit_banner`
+rejoins both ways at one post.  NOT YET: `wp_kinit_start` still supplies the
+trivial arm (round 0's banner still goes out on `udepw_law 16`) because
+init's walk sits BELOW the file system (none of UkInit* requires
+UexecExecInst/SpecFilewrite/UkWriteLeaf) -- the conversion `eturn ->
+kinit_banner_pay` is one lemma ABOVE UkWriteLeaf on UShLine's mould
+(`kinit_banner0_holds`), then `init_boot_pay`'s third conjunct becomes `∀ N',
+kinit_banner0 N'`; the recipe (split putc's frame byte in two halves) is in
+the handover.  FINDING: /init cannot prove fd 1 is the console --
+`UInitFd.ufd_head` pins slot 0 only because a failing `dup` is not refutable
+(the kernel's dup spec has a bare -1 arm; in the C `fdalloc` fails only when
+all 16 slots are taken) -> lane DUP-ROW (below).  Handover: scratchpad
+`io-leaf-handover.md`.
 
 PROLOGUE-ALTS-2 LANDED (2026-09-16; `ca914ff85` on `ef245363f`; 3 files
 +832/-5; builds pb1-pb2 in `-sup`; audit the thirteen; lemma_diff CLEAN; no

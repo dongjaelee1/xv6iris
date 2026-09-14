@@ -4874,14 +4874,18 @@ Section SyscallArms.
     (* ...AND THE CHILD'S PAYMENT WAND BESIDE IT (lane SELF-KILL, §4b'):
        the depositing process supplied it and allocproc founds the child's
        killed row on it. *)
-    iDestruct "Hjslot" as "[#Hjkw Hjslot]".
+    (* ...AND THE LEND BESIDE IT (lane FORK-REFUND): the resource the
+       forking process handed its child, carried separately from the
+       continuation so this call can get it back if no child is made. *)
+    iDestruct "Hjslot" as "(#Hjkw & HjRc & Hjslot)".
     iApply (SysFork.wp_sys_fork_sconf γp γw γft γf
               (fcn_procs fn)
 
-              M 0%nat (av - 4)%nat true pj true pid U sts cs (sfork_pay fdep) ∅
+              M 0%nat (av - 4)%nat true pj true pid U sts cs (sfork_pay fdep)
+              (sfork_lend fdep) ∅
               ltac:(lia) sysc_noff0b
               (locks_below_empty "wait_lock")
-              with "Hcg Hcpu Htext Hpc Hprocs' Hnextpid Hwl Hftable Hitable Hitinv Hireg Hkat Hpav Hworld Htoken Hfdone Hjslot Hjkw Hpriv Hufrag Hrow").
+              with "Hcg Hcpu Htext Hpc Hprocs' Hnextpid Hwl Hftable Hitable Hitinv Hireg Hkat Hpav Hworld Htoken Hfdone HjRc Hjslot Hjkw Hpriv Hufrag Hrow").
     (* THE PARENT'S DESCRIPTOR STATES COME BACK AT THE VERY LIST THEY WENT
        IN AT: fork reads [p->ofile] and writes none of it, and what the CHILD
        got is that same list ([SpecKfork]'s post says so). *)
@@ -4913,10 +4917,13 @@ Section SyscallArms.
                  sysc_fork_out fdep U
                    (mf !!! Regidx (mword_of_int 10 : mword 5)) cs cs')%I
       with "[Hrv]" as "[%Hrv Hpack]".
-    { iDestruct "Hrv" as "[[%Hm1 Hrw] | Hpid]".
+    { iDestruct "Hrv" as "[(%Hm1 & Hrw & HRcb) | Hpid]".
       - iSplitR; [iPureIntro; left; exact Hm1 |].
         iExists cs. iFrame "Hrw". rewrite /sysc_fork_out /ufork_ans.
-        iIntros "_". iLeft. iPureIntro. exact (conj Hm1 eq_refl).
+        (* ...AND THE LEND, REFUNDED (lane FORK-REFUND): kfork made no
+           child, so what the parent lent comes back through this arm. *)
+        iIntros "_". iLeft.
+        iSplitR; [iPureIntro; exact (conj Hm1 eq_refl) | iExact "HRcb"].
       - iDestruct "Hpid" as (pidv γ) "(%Hpv & %Hpb & Htok & Hrw)".
         iSplitR; [iPureIntro; right; exists pidv; exact (conj Hpv Hpb) |].
         iExists (cs ∪ {[γ]}). iFrame "Hrw".

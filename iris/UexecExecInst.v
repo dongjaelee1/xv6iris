@@ -277,6 +277,15 @@ Section UexecExecInst.
        travels with both -- see [UexecSG.v]'s [sfork_pay].  LAST, so every
        positional builder only gained a trailing argument. *)
     kf_pay   : Z -> iProp Σ;
+    (* ---- fork (1), second piece: WHAT THE PARENT LENDS ITS CHILD
+       ([UexecSG.sfork_lend]) ---- The resource the forking process hands
+       the child to run WITH, as opposed to what the child's exit owes
+       back ([kf_pay]).  A field of the FAMILIES for [kf_pay]'s reason and
+       more sharply: the lend goes DOWN on fork's deposit and comes BACK
+       on fork's failing arm, and [f] is the one value that travels with
+       both.  A generic process lends nothing ([emp]).  LAST, so every
+       positional builder only gained a trailing argument. *)
+    kf_lend  : iProp Σ;
     (* ---- exit (2): THIS PROCESS'S OWN EXIT PAYLOAD
        ([UexecSG.sexit_pay]) ---- What the process's own exit owes its
        parent, on [kf_pay]'s footing and for its reason: the deposit pays
@@ -336,6 +345,7 @@ Section UexecExecInst.
        df_Farm  := df_Farm f; df_Fdots := df_Fdots f; df_Fun := df_Fun f;
        df_Fok   := df_Fok f; df_Fex := df_Fex f;
        kf_pay   := kf_pay f;
+       kf_lend  := kf_lend f;
        kf_xpay  := Q;
        rf_ret   := rf_ret f;
        rf_in    := rf_in f |}.
@@ -347,7 +357,7 @@ Section UexecExecInst.
      its bundles AT THIS RECORD. *)
   Definition xfam_exec_at (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) (Rs : iProp Σ)
-      (pay : Z -> iProp Σ) : xfam :=
+      (pay : Z -> iProp Σ) (lend : iProp Σ) : xfam :=
     {| xf_P := P; xf_Pmiss := Pmiss; xf_Fo := Fo; xf_Rs := Rs;
        rf_F     := pfam_triv (fun _ _ _ _ => True%I);
        cf_P     := fun _ _ => True%I;
@@ -385,6 +395,10 @@ Section UexecExecInst.
        df_Fok   := pfam_triv (fun _ _ _ _ => True%I);
        df_Fex   := pfam_triv (fun _ _ _ _ => True%I);
        kf_pay   := pay;
+       (* ...and what it lends its child, which a generic builder leaves
+          at [emp]: only a leaf that hands its child a protocol token
+          names one ([xfam_pay]). *)
+       kf_lend  := lend;
        (* the process's OWN payload is the trivial one at every builder
           here: a leaf that has a real one re-keys with [xfam_at]. *)
        kf_xpay  := fun _ => True%I;
@@ -406,7 +420,7 @@ Section UexecExecInst.
      name is unchanged, so no discharger moved. *)
   Definition xfam_exec (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) (Rs : iProp Σ) : xfam :=
-    xfam_exec_at P Pmiss Fo Rs (fun _ => True%I).
+    xfam_exec_at P Pmiss Fo Rs (fun _ => True%I) emp%I.
 
   (* the point, for the arms that carry no deposit *)
   Definition xfam_pt : xfam :=
@@ -416,9 +430,9 @@ Section UexecExecInst.
   (* ...AND THE POINT AT A CHOSEN PAYLOAD, which is all a fork leaf needs:
      fork's rows read no other field of the families
      ([UexecSG.sfam_pay]). *)
-  Definition xfam_pay (Q : Z -> iProp Σ) : xfam :=
+  Definition xfam_pay (Q : Z -> iProp Σ) (Rc : iProp Σ) : xfam :=
     xfam_exec_at (fun _ _ => True%I) (fun _ _ => True%I)
-                 (pfam_triv (fun _ _ _ => True%I)) True%I Q.
+                 (pfam_triv (fun _ _ _ => True%I)) True%I Q Rc.
 
   (* ================================================================== *)
   (* THE KEY'S THREE ARGUMENT WORDS, named once.  A bundle reads nothing  *)
@@ -1023,13 +1037,17 @@ Section UexecExecInst.
     {| sfam := xfam;
        sfam_pt := xfam_pt;
        sfork_pay := kf_pay;
+       sfork_lend := kf_lend;
        sfam_pay := xfam_pay;
-       sfork_pay_pay := fun Q => eq_refl;
+       sfork_pay_pay := fun Q Rc => eq_refl;
+       sfork_lend_pay := fun Q Rc => eq_refl;
        sfork_pay_pt := eq_refl;
+       sfork_lend_pt := eq_refl;
        sexit_pay := kf_xpay;
        sfam_at := xfam_at;
        sexit_pay_at := fun Q f => eq_refl;
        sfork_pay_at := fun Q f => eq_refl;
+       sfork_lend_at := fun Q f => eq_refl;
        sexit_pay_pt := eq_refl;
        sbundle_at_at := xfam_at_sbundle;
        spost_at_at := xfam_at_spost;

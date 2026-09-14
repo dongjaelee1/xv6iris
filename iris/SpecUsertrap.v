@@ -576,7 +576,7 @@ Definition ut_fork_out `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI :
     (cs cs' : gset gname)
     : iProp Σ :=
   (⌜sc_v = uecall_scause /\ usys_num tf = USYS_fork⌝ -∗
-     ufork_ans (sfork_pay f) r cs cs')%I.
+     ufork_ans (sfork_pay f) (sfork_lend f) r cs cs')%I.
 
 (* THE ROW READS THE FRAME ONLY THROUGH ITS a7 WORD, so it transports
    across any two frames the save walk leaves agreeing on the number --
@@ -725,8 +725,15 @@ Definition ut_fork_in `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : 
         can supply it -- so it rides the deposit beside the slot.  A
         generic child's payload is [fun _ => True] and the wand is free. *)
      □ (riscv_kill_cred -∗ sfork_pay f (-1)) ∗
+     (* ...AND WHAT THE PARENT LENDS ITS CHILD (lane FORK-REFUND): the
+        resource the forking process hands the child to run with
+        ([UexecSG.sfork_lend]), carried BESIDE the continuation because
+        the kernel must be able to take it back without building the
+        child -- fork's failing arm refunds it ([ut_fork_out]). *)
+     sfork_lend f ∗
      ∀ (g' : gname) (pidc : mword 32),
        my_pay g' (sfork_pay f) -∗
+       sfork_lend f -∗
        uslot (uvis_of (us_tf U (bump_tf tf (mword_of_int 0))) sts g' ∅ pidc))%I.
 
 (* THE ROW'S CONGRUENCE, and it is [TfUser.tf_ueq]-shaped rather than
@@ -779,9 +786,9 @@ Proof.
   iDestruct ("H" with "[%]") as "H";
     [ split; [ exact (proj1 Hc)
              | rewrite (tf_ueq_num tf tf' Hu); exact (proj2 Hc) ] |].
-  iDestruct "H" as "[#Hkw H]". iSplitR; [ iExact "Hkw" | ].
-  iIntros (g' pidc) "Hp".
-  iSpecialize ("H" $! g' pidc). iSpecialize ("H" with "Hp").
+  iDestruct "H" as "(#Hkw & HRc & H)". iSplitR; [ iExact "Hkw" | ].
+  iFrame "HRc". iIntros (g' pidc) "Hp HRc".
+  iSpecialize ("H" $! g' pidc). iSpecialize ("H" with "Hp HRc").
   rewrite !uvis_of_us_tf.
   iEval (rewrite (uslot_key_cong
                     (MkUvis (bump_tf tf (mword_of_int 0)) (us_M U)

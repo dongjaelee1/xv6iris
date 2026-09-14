@@ -971,9 +971,18 @@ Section UexecRet.
      ([UexecSG.sfork_pay]) -- the quarter a later wait() redeems
      ([ChildTok.gen_pay]).  Both arms are NONZERO, which is what lets the
      arm below stay guarded on [r <> 0] alone. *)
-  Definition ufork_ans (Q : Z -> iProp Σ) (r : mword 64)
+  (* ...AND THE FAILING ARM REFUNDS THE LEND (lane FORK-REFUND).  [Rc] is
+     what the parent handed its child to run with
+     ([UexecSG.sfork_lend]); it went down on fork's DEPOSIT, and on this
+     arm the kernel created no child, so nothing consumed it and the
+     kernel hands it straight back.  Not an accounting nicety: init
+     prints "init: fork failed" and sh's [fork1] prints "fork" -- both on
+     the credential the parent lent -- so a parent that could not get the
+     lend back could not report the failure.  A parent that lends nothing
+     forks at [emp] and the conjunct is free. *)
+  Definition ufork_ans (Q : Z -> iProp Σ) (Rc : iProp Σ) (r : mword 64)
       (cs cs' : gset gname) : iProp Σ :=
-    (⌜r = (mword_of_int (-1) : mword 64) /\ cs' = cs⌝
+    ((⌜r = (mword_of_int (-1) : mword 64) /\ cs' = cs⌝ ∗ Rc)
      ∨ ∃ (γ : gname) (pidv : mword 32),
          ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
          ⌜cs' = cs ∪ {[γ]}⌝ ∗
@@ -1025,7 +1034,7 @@ Section UexecRet.
   (* the parent's arm: a NONZERO return, the key it trapped at bumped, and
      fork's answer at that return value. *)
   Definition uexec_fork_parent_F (X : uvis -d> iPropO Σ) (W : uvis)
-      (Q : Z -> iProp Σ) : iProp Σ :=
+      (Q : Z -> iProp Σ) (Rc : iProp Σ) : iProp Σ :=
     (∀ (r : mword 64) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname),
         (* THE GUARD IS FREE.  <allocpid> allocates every pid in
            [1, PIDMAX] under <pid_lock> and a failed fork returns -1, so
@@ -1054,7 +1063,7 @@ Section UexecRet.
            [WaitInv.ch_frag] -- rides the kernel's residue
            ([UsertrapRes.ut_own]) and kfork moves it under that lock, so
            the answer the kernel hands up says what the set became. *)
-        ufork_ans Q r (uvis_ch W) cs' -∗
+        ufork_ans Q Rc r (uvis_ch W) cs' -∗
         (* ...AND THE LAZY BIT DOES NOT MOVE: fork writes no field of the
            caller's block ([ProcDefs.pv_lazy]), so the parent resumes at
            the bit it trapped at, exactly as it resumes at its own image
@@ -1100,11 +1109,24 @@ Section UexecRet.
      file's section is [{!riscvGS} {!ufdG} {!ctokG}] and naming the supply
      here would put [fileG] on the whole U tier -- exactly what lane
      SUPPLY-SPLIT exists to prevent. *)
+  (* ...AND THE LEND TRAVELS WITH IT, IN TWO PIECES (lane FORK-REFUND).
+     [Rc] is the resource the parent hands its child to run with
+     ([UexecSG.sfork_lend]), and the deposit carries it BESIDE the child's
+     continuation rather than inside it, because the kernel has to be able
+     to take it back without building the child: on the failing arm it
+     drops the wand and refunds the resource ([ufork_ans]), on the
+     succeeding arm it feeds the resource to the wand and gets the child's
+     slot.  It costs the depositing process nothing -- it holds [Rc] once
+     and proves [Rc ∗ (Rc -∗ slot)] by handing that one copy over and
+     introducing the wand -- and it is the only shape that makes both
+     outcomes payable from a single copy. *)
   Definition uexec_fork_child_F (X : uvis -d> iPropO Σ) (W : uvis)
-      (Q : Z -> iProp Σ) : iProp Σ :=
+      (Q : Z -> iProp Σ) (Rc : iProp Σ) : iProp Σ :=
     (□ (riscv_kill_cred -∗ Q (-1)) ∗
+     Rc ∗
      ∀ (g' : gname) (pidc : mword 32),
        my_pay g' Q -∗
+       Rc -∗
        (* THE CHILD INHERITS THE BIT.  uvmcopy copies the parent's leaves at
           the parent's own vpns and the break is copied with them, so the
           child's block is created at the parent's [ProcDefs.pv_lazy]. *)
@@ -1123,13 +1145,17 @@ Section UexecRet.
      child's is a slot -- a fresh process is resumed with its own. *)
   Definition uexec_fork_F (X : uvis -d> iPropO Σ) (W : uvis) (f : sfam)
       : iProp Σ :=
-    (uexec_fork_parent_F X W (sfork_pay f) ∗
+    (uexec_fork_parent_F X W (sfork_pay f) (sfork_lend f) ∗
      (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'): the
         child's killed row publishes a wand from the application's TAINT
         ([RiscvPtsto.riscv_kill_cred]) to the child's exit payload at -1,
         allocproc founds it, and the FORKING PROCESS is the only party that
         can supply it.  A child at [fun _ => True] costs nothing. *)
      □ (riscv_kill_cred -∗ sfork_pay f (-1)) ∗
+     (* ...AND THE LEND, BESIDE THE CHILD'S LEG (lane FORK-REFUND): the
+        kernel takes this copy and either refunds it on the failing arm or
+        feeds it to the wand below to build the child. *)
+     sfork_lend f ∗
      (∀ (fdv' : list fdstate) (cw' : Z) (g' : gname) (pidc : mword 32),
         my_pay g' (sfork_pay f) -∗
         (* THE CHILD'S TABLE IS THE PARENT'S.  fork() copies it --
@@ -1149,6 +1175,8 @@ Section UexecRet.
            and the child's block is built at the parent's inum
            ([SpecKfork]'s post says so; lane C1). *)
         ⌜cw' = uvis_cwd W⌝ -∗
+        (* ...AND WHAT ITS PARENT LENT IT, verbatim *)
+        sfork_lend f -∗
         (* ...AND ITS CHILDREN SET IS EMPTY, on the nose: a process that
            has just been created has created nothing.  No binder and no
            row -- there is only one value it can be.  Its PID has a binder
@@ -1159,33 +1187,39 @@ Section UexecRet.
 
   (* the guarded child conjunct and the one record, each way *)
   Lemma uexec_fork_child_of (X : uvis -d> iPropO Σ) (W : uvis)
-      (Q : Z -> iProp Σ) :
+      (Q : Z -> iProp Σ) (Rc : iProp Σ) :
     □ (riscv_kill_cred -∗ Q (-1)) -∗
+    Rc -∗
     (∀ (fdv' : list fdstate) (cw' : Z) (g' : gname) (pidc : mword 32),
        my_pay g' Q -∗
        ⌜fdv' = uvis_fd W⌝ -∗ ⌜cw' = uvis_cwd W⌝ -∗
+       Rc -∗
        X (bump_at W (mword_of_int 0) (uvis_M W) (uvis_perm W) (uvis_sz W)
             fdv' cw' g' ∅ pidc (uvis_lazy W))) -∗
-    uexec_fork_child_F X W Q.
+    uexec_fork_child_F X W Q Rc.
   Proof.
-    iIntros "#Hk H". rewrite /uexec_fork_child_F.
-    iSplitR; [ iExact "Hk" | ]. iIntros (g' pidc) "Hp".
-    iApply ("H" $! (uvis_fd W) (uvis_cwd W) g' pidc with "Hp [%] [%]"); reflexivity.
+    iIntros "#Hk HRc H". rewrite /uexec_fork_child_F.
+    iSplitR; [ iExact "Hk" | ]. iFrame "HRc". iIntros (g' pidc) "Hp HRc".
+    iApply ("H" $! (uvis_fd W) (uvis_cwd W) g' pidc with "Hp [%] [%] HRc");
+      reflexivity.
   Qed.
 
   Lemma uexec_fork_child_to (X : uvis -d> iPropO Σ) (W : uvis)
-      (Q : Z -> iProp Σ) :
-    uexec_fork_child_F X W Q -∗
+      (Q : Z -> iProp Σ) (Rc : iProp Σ) :
+    uexec_fork_child_F X W Q Rc -∗
     □ (riscv_kill_cred -∗ Q (-1)) ∗
+    Rc ∗
     (∀ (fdv' : list fdstate) (cw' : Z) (g' : gname) (pidc : mword 32),
        my_pay g' Q -∗
        ⌜fdv' = uvis_fd W⌝ -∗ ⌜cw' = uvis_cwd W⌝ -∗
+       Rc -∗
        X (bump_at W (mword_of_int 0) (uvis_M W) (uvis_perm W) (uvis_sz W)
             fdv' cw' g' ∅ pidc (uvis_lazy W))).
   Proof.
-    rewrite /uexec_fork_child_F. iIntros "[#Hk H]".
-    iSplitR; [ iExact "Hk" | ]. iIntros (fdv' cw' g' pidc) "Hp -> ->".
-    iApply ("H" with "Hp").
+    rewrite /uexec_fork_child_F. iIntros "(#Hk & HRc & H)".
+    iSplitR; [ iExact "Hk" | ]. iFrame "HRc".
+    iIntros (fdv' cw' g' pidc) "Hp -> -> HRc".
+    iApply ("H" with "Hp HRc").
   Qed.
 
   (* the returning arm's CONTINUATION: the four pure rows, the syscall's
@@ -1357,7 +1391,8 @@ Section UexecRet.
     (if decide (sc = uecall_scause) then
        let n := usys_num (uvis_tf W) in
        if decide (n = USYS_exit) then emp
-       else if decide (n = USYS_fork) then uexec_fork_parent_F X W (sfork_pay f)
+       else if decide (n = USYS_fork) then
+         uexec_fork_parent_F X W (sfork_pay f) (sfork_lend f)
        else if decide (n = USYS_wait) then uexec_wait_F X n f W
        else uexec_ret_cont_F X n f W
      else uexec_kill_arm_F X sc W f)%I.
@@ -1446,7 +1481,8 @@ Section UexecRet.
      (if decide (sc = uecall_scause) then
         let n := usys_num (uvis_tf W) in
         if decide (n = USYS_exit) then emp
-        else if decide (n = USYS_fork) then uexec_fork_child_F X W (sfork_pay f)
+        else if decide (n = USYS_fork) then
+          uexec_fork_child_F X W (sfork_pay f) (sfork_lend f)
         else sbundle_at X n f W
       else ukill_cred_at (uvis_gen W) sc))%I.
 
@@ -1464,7 +1500,8 @@ Section UexecRet.
      (if decide (sc = uecall_scause) then
         let n := usys_num (uvis_tf W) in
         if decide (n = USYS_exit) then emp
-        else if decide (n = USYS_fork) then uexec_fork_child_F X W (sfork_pay f)
+        else if decide (n = USYS_fork) then
+          uexec_fork_child_F X W (sfork_pay f) (sfork_lend f)
         else sbundle_at X n f W
       else emp)).
   Proof.
@@ -1921,15 +1958,18 @@ Section UexecRet.
            ⌜r <> (mword_of_int 0 : mword 64)⌝ -∗
            ⌜fdv' = uvis_fd W⌝ -∗
            ⌜cw' = uvis_cwd W⌝ -∗
-           ufork_ans (sfork_pay f) r (uvis_ch W) cs' -∗
+           ufork_ans (sfork_pay f) (sfork_lend f) r (uvis_ch W) cs' -∗
            uslot (bump W r (uvis_M W) (uvis_perm W) (uvis_sz W) fdv' cw'
                     (uvis_gen W) cs' (uvis_lazy W))) ∗
         (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b') *)
         □ (riscv_kill_cred -∗ sfork_pay f (-1)) ∗
+        (* ...AND THE LEND, BESIDE THE CHILD'S LEG (lane FORK-REFUND) *)
+        sfork_lend f ∗
         (∀ (fdv' : list fdstate) (cw' : Z) (g' : gname) (pidc : mword 32),
            my_pay g' (sfork_pay f) -∗
            ⌜fdv' = uvis_fd W⌝ -∗
            ⌜cw' = uvis_cwd W⌝ -∗
+           sfork_lend f -∗
            uslot (bump_at W (mword_of_int 0) (uvis_M W) (uvis_perm W) (uvis_sz W)
                     fdv' cw' g' ∅ pidc (uvis_lazy W))))
      else if decide (n = USYS_wait) then
@@ -1989,7 +2029,8 @@ Section UexecRet.
     uexec_arm sc W f ⊣⊢
     (let n := usys_num (uvis_tf W) in
      if decide (n = USYS_exit) then emp
-     else if decide (n = USYS_fork) then uexec_fork_parent_F uslot W (sfork_pay f)
+     else if decide (n = USYS_fork) then
+       uexec_fork_parent_F uslot W (sfork_pay f) (sfork_lend f)
      else if decide (n = USYS_wait) then uexec_wait_F uslot n f W
      else uexec_ret_cont_F uslot n f W).
   Proof.
@@ -2058,9 +2099,10 @@ Section UexecRet.
        collapse by reflexivity on the way down
        ([uexec_fork_child_of]). *)
     destruct (decide (usys_num (uvis_tf W) = USYS_fork)).
-    { iDestruct "H" as "[Hp [#Hkw Hc]]". iSplitR "Hp";
+    { iDestruct "H" as "(Hp & #Hkw & HRc & Hc)". iSplitR "Hp";
         [ iFrame "Hpay";
-          iApply (uexec_fork_child_of X W (sfork_pay f) with "Hkw Hc")
+          iApply (uexec_fork_child_of X W (sfork_pay f) (sfork_lend f)
+                    with "Hkw HRc Hc")
         | iExact "Hp" ]. }
     (* wait splits like every other returning number: the bundle goes down
        and the arm -- its own, at [uexec_wait_F] -- stays. *)
@@ -2082,8 +2124,9 @@ Section UexecRet.
     destruct (decide (usys_num (uvis_tf W) = USYS_fork)).
     { iFrame "Hpay". iSplitL "Ha";
         [ iExact "Ha"
-        | iDestruct (uexec_fork_child_to X W (sfork_pay f) with "Hd")
-            as "[#Hkw Hc]"; iSplitR; [ iExact "Hkw" | iExact "Hc" ] ]. }
+        | iDestruct (uexec_fork_child_to X W (sfork_pay f) (sfork_lend f)
+                       with "Hd")
+            as "(#Hkw & HRc & Hc)"; iSplitR; [ iExact "Hkw" | iFrame "HRc Hc" ] ]. }
     destruct (decide (usys_num (uvis_tf W) = USYS_wait)); iFrame "Hpay Hd Ha".
   Qed.
 
@@ -2159,6 +2202,12 @@ Section UexecRet.
     assert (HfR : sexit_pay fR = (fun _ => R)%I) by exact (sexit_pay_at _ _).
     assert (HfRk : sfork_pay fR = (fun _ => True)%I)
       by (unfold fR; rewrite sfork_pay_at; exact sfork_pay_pt).
+    (* ...and the generic family lends its child nothing (lane FORK-REFUND):
+       the point's lend is [emp] and the payload re-keying passes it
+       through, so fork's deposit costs this inhabitant nothing and its
+       failing arm refunds nothing. *)
+    assert (HfRl : sfork_lend fR = emp%I)
+      by (unfold fR; rewrite sfork_lend_at; exact sfork_lend_pt).
     destruct (decide (sc = uecall_scause)) as [Hec | Hnec];
       [| iModIntro; iExists fR; iSplitR; [ done | iSplitR;
          [ iApply (uexec_pay_dep_free sc W _ fR
@@ -2181,9 +2230,10 @@ Section UexecRet.
       [iModIntro; iExists fR; iSplitR; [ done | iSplitR;
        [ iApply (uexec_pay_dep_free sc W _ fR
                    ltac:(intros [_ Hx]; exact (Hnx Hx)) HfR with "Hpay") |
-         rewrite /uexec_fork_child_F HfRk;
+         rewrite /uexec_fork_child_F HfRk HfRl;
          iSplitR; [ iModIntro; iIntros "_"; done | ];
-         iIntros (g' pidc) "Hp"; iApply "Halltriv";
+         iSplitR; [ done | ];
+         iIntros (g' pidc) "Hp _"; iApply "Halltriv";
          cbn [uvis_gen bump bump_at]; iExact "Hp" ]] |].
     (* THE MINT NAMES THE PAYLOAD NOW ([UexecSG.sbundle_of_supply], R1):
        this inhabitant's is the constant [fun _ => R], and the family that

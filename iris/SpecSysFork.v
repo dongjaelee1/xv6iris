@@ -110,6 +110,9 @@ Definition wp_sys_fork_sconf_body
     (* the child's exit payload, forwarded to kfork -- see
        [SpecKfork.kfork_post].  sys_fork never reads it. *)
     (Q : Z -> iProp Σ)
+    (* the parent's lend, forwarded to kfork -- see [SpecKfork.kfork_post].
+       sys_fork never reads it either. *)
+    (Rc : iProp Σ)
     (lks : gset string) :=
   let pcE : mword 64 := mword_of_int KernelSyms.sys_fork in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
@@ -177,8 +180,13 @@ Definition wp_sys_fork_sconf_body
      [ChildTok.child_tok γ pidv Q] knows the pid its child's key is at --
      [ChildTok.gen_pid] reads it off the token -- and a verified parent can
      therefore say what its child's getpid(2) will answer. *)
+  (* ...AND WHAT THE PARENT LENDS THE CHILD (lane FORK-REFUND), a linear
+     premise beside the slot and forwarded to kfork with it: kfork feeds it
+     to the wand below on the success path and refunds it on the -1 arm,
+     where no child was created.  sys_fork neither reads nor moves it. *)
+  Rc -∗
   (∀ (g' : gname) (pidc : mword 32),
-     my_pay g' Q -∗ uslot (uvis_of (kfork_child U) sts g' ∅ pidc)) -∗
+     my_pay g' Q -∗ Rc -∗ uslot (uvis_of (kfork_child U) sts g' ∅ pidc)) -∗
   (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'):
      relayed straight to kfork, which relays it to allocproc, which founds
      the child's killed row on it ([SchedCtx.kill_paid]'s live arm).  The
@@ -216,8 +224,10 @@ Definition wp_sys_fork_sconf_body
       (* ...AND THE CALLER'S CHILDREN ROW, MOVED on the pid arm: kfork put
          the child's generation in the caller's set under <wait_lock>, so
          what comes back is the reading the resume key is built at. *)
+      (* ...AND THE LEND, BACK ON THE -1 ARM (lane FORK-REFUND): kfork made
+         no child, so the resource the parent lent it is still whole. *)
       ( (⌜ mf !!! Regidx (mword_of_int 10 : mword 5) = (mword_of_int (-1) : mword 64) ⌝ ∗
-         ch_frag (pv_chg (us_V U)) p csP)
+         ch_frag (pv_chg (us_V U)) p csP ∗ Rc)
         ∨ (∃ (pidv : mword 32) (γ : gname),
               ⌜ mf !!! Regidx (mword_of_int 10 : mword 5)
                 = (sign_extend' 64 pidv : mword 64) ⌝ ∗
@@ -238,7 +248,8 @@ Module Type SYSFORK.
       (b : bool) (pid : mword 32) (U : ustate) (sts : list fdstate)
       (csP : gset gname)
       (Q : Z -> iProp Σ)
+      (Rc : iProp Σ)
       (lks : gset string),
       wp_sys_fork_sconf_body γp γw γl γf γs
- m lvl av eb p b pid U sts csP Q lks.
+ m lvl av eb p b pid U sts csP Q Rc lks.
 End SYSFORK.

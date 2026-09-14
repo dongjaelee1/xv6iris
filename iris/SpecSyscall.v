@@ -437,8 +437,16 @@ Section SyscExec.
       : iProp Σ :=
     (⌜sysc_num (us_V U) = UsysMemOk.USYS_fork⌝ -∗
        □ (riscv_kill_cred -∗ sfork_pay f (-1)) ∗
+       (* ...AND WHAT THE PARENT LENDS ITS CHILD (lane FORK-REFUND), beside
+          the continuation rather than inside it: the dispatcher's fork arm
+          hands this copy to [SpecSysFork], which hands it to kfork, which
+          either feeds it to the wand below to build the child or -- on
+          either of its two failure exits -- refunds it through
+          [sysc_fork_out]. *)
+       sfork_lend f ∗
        ∀ (g' : gname) (pidc : mword 32),
          my_pay g' (sfork_pay f) -∗
+         sfork_lend f -∗
          uslot (uvis_of (kfork_child U) sts g' ∅ pidc))%I.
 
   (* THE PAYMENT, the one deposit that is neither a bundle nor a slot: the
@@ -493,7 +501,7 @@ Section SyscExec.
   Definition sysc_fork_out (f : sfam) (U : ustate) (r : mword 64)
       (cs cs' : gset gname) : iProp Σ :=
     (⌜sysc_num (us_V U) = UsysMemOk.USYS_fork⌝ -∗
-       ufork_ans (sfork_pay f) r cs cs')%I.
+       ufork_ans (sfork_pay f) (sfork_lend f) r cs cs')%I.
 
   Lemma sysc_fork_out_ne (f : sfam) (U : ustate) (r : mword 64)
       (cs cs' : gset gname) :

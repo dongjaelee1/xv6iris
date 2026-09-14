@@ -689,7 +689,10 @@ Section UtSysBlock.
          { split; [ exact Hscec | rewrite usys_num_epc Hn0; exact Hk ]. }
          (* ...AND THE CHILD'S PAYMENT WAND RIDES WITH THE SLOT (lane
             SELF-KILL, §4b'), relayed unchanged. *)
-         iDestruct "Hj" as "[#Hjkw Hj]". iSplitR; [ iExact "Hjkw" | ].
+         (* ...AND THE LEND WITH IT (lane FORK-REFUND), beside the slot
+            and not inside it, so the dispatcher can refund it. *)
+         iDestruct "Hj" as "(#Hjkw & HjRc & Hj)".
+         iSplitR; [ iExact "Hjkw" | ]. iFrame "HjRc".
          iIntros (g' pidc). iSpecialize ("Hj" $! g' pidc).
          rewrite (Hchild g' pidc). iExact "Hj". }
     (* THE PAYMENT, handed on unchanged for fork's reason: the row is keyed

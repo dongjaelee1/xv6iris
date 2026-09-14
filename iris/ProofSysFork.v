@@ -110,9 +110,10 @@ Section ProofSysFork.
       (b : bool) (pid : mword 32) (U : ustate) (sts : list fdstate)
       (csP : gset gname)
       (Q : Z -> iProp Σ)
+      (Rc : iProp Σ)
       (lks : gset string)
     : wp_sys_fork_sconf_body γp γw γl γf γs
- m lvl av eb p b pid U sts csP Q lks.
+ m lvl av eb p b pid U sts csP Q Rc lks.
   Proof.
     cbv beta delta [wp_sys_fork_sconf_body].
     intros pcE ret_tgt Hav Hlvl Hbelow.
@@ -127,7 +128,7 @@ Section ProofSysFork.
     set (M1 := <[Regidx csp_rs1 := regval_into_reg sp']> m).
     set (M2 := <[Regidx (mword_of_int 8 : mword 5) := regval_into_reg (add_vec (M1 !!! Regidx csp_rs1) (sign_extend' 64 (caddi4spn_imm nzimm_s0)))]> M1).
     iIntros "Hcg Hcpu #Htext Hpc #Hprocs #Hplock #Hwlock #Hftbl
-             #Hitbl #Hitinv #Hireg Henv #Hpav #Hworld #Htoken #Hfdone Hjslot
+             #Hitbl #Hitinv #Hireg Henv #Hpav #Hworld #Htoken #Hfdone HjRc Hjslot
              #Hjkw Hpriv Hpfrag Hpchrow Hcont".
     assert (Hcsp1 : M1 !!! Regidx csp_rs1 = sp') by (apply upd_eq).
     assert (Hpush : sp' = pa_stk (m !!! Regidx csp_rs1) 2).
@@ -212,10 +213,10 @@ Section ProofSysFork.
        state as a function of the parent's. *)
     iApply (Kfork.wp_kfork_sconf γp γw γl γf γs
 
-              Bj lvl (av - 2)%nat eb p b pid U sts csP Q lks
+              Bj lvl (av - 2)%nat eb p b pid U sts csP Q Rc lks
               ltac:(lia) Hlvl ltac:(lkbelow)
               with "Hcg Hcpu Htext Hpc Hprocs Hplock Hwlock Hftbl
-                    Hitbl Hitinv Hireg Henvn Hpav Hworld Htoken Hjslot Hjkw Hfdone Hpriv Hpfrag
+                    Hitbl Hitinv Hireg Henvn Hpav Hworld Htoken HjRc Hjslot Hjkw Hfdone Hpriv Hpfrag
                     Hpchrow").
     iIntros (CID6 Hs6 MF) "%HcsMF Hpc Hpost".
     iDestruct "Hpost" as "(Hcg & Hcpu & Hpriv & Hpfrag & #Henv & Hrv)".

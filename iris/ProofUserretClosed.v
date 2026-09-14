@@ -504,12 +504,16 @@ Section UserretClosed.
           (* ...AND THE CHILD'S PAYMENT WAND, relayed unchanged (lane
              SELF-KILL, §4b'): the deposit carries it and [ut_fork_in]
              hands it to the kernel, which gives it to allocproc. *)
+          (* ...AND THE LEND, relayed beside it (lane FORK-REFUND): the
+             deposit carries the resource the parent handed its child
+             SEPARATELY from the continuation, so the kernel can refund it
+             on the failing arm; this row only forwards it. *)
           iEval (rewrite /uexec_fork_child_F) in "Hxin".
-          iDestruct "Hxin" as "[#Hkw Hxin]".
-          iSplitR; [ iExact "Hkw" | ].
-          iIntros (g' pidc) "Hmp".
+          iDestruct "Hxin" as "(#Hkw & HRc & Hxin)".
+          iSplitR; [ iExact "Hkw" | ]. iFrame "HRc".
+          iIntros (g' pidc) "Hmp HRc".
           rewrite /uexec_fork_child_F SpecUsertrap.uvis_of_us_tf.
-          iSpecialize ("Hxin" $! g' pidc). iSpecialize ("Hxin" with "Hmp").
+          iSpecialize ("Hxin" $! g' pidc). iSpecialize ("Hxin" with "Hmp HRc").
           iEval (rewrite (uslot_key_cong
                             (bump_at W (mword_of_int 0) (uvis_M W) (uvis_perm W)
                                (uvis_sz W) (uvis_fd W) (uvis_cwd W) g' ∅ pidc

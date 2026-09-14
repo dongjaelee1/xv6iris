@@ -907,8 +907,18 @@ Section UkInitMain.
                 with "[] Hrun").
       { iApply (uis_init_370 with "Hcp"). }
       iIntros (hp2) "Hrun".
-      iApply ("Hpar" $! hp2 r with "[] Hans [] Hsz [Hstd] Hcwd Hrun").
+      iApply ("Hpar" $! hp2 r with "[] [Hans] [] Hsz [Hstd] Hcwd Hrun").
       { iPureIntro. exact Hrnz. }
+      (* THE REFUND IS DROPPED HERE (lane FORK-REFUND).  The leaf's failing
+         arm now hands back what init LENT its child -- its half of the
+         console position pair and the child's payload at -1 -- because the
+         kernel created no process.  THIS statement's arm does not name it
+         yet, so the conjunct is dropped: threading it out to init's
+         "init: fork failed" print is lane IO-LEAF's, and nothing above
+         this leaf can use it until that arm names it. *)
+      { iDestruct "Hans" as "[(%Hm1 & Hf & _) | Hpid]".
+        - iLeft. iSplitR; [ iPureIntro; exact Hm1 | iExact "Hf" ].
+        - iRight. iExact "Hpid". }
       { iFrame "Hcp Hrp Hap". }
       { iApply ("Hback" with "Hstd"). }
     - (* ...and the CHILD under fresh ones.  Its ledger is dropped: init's

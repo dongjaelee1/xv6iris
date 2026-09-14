@@ -208,6 +208,14 @@ Definition kfork_post
        kfork is payload-GENERIC -- it never reads [Q] -- and the generic
        fork bundle picks [fun _ => True]. *)
     (Q : Z -> iProp Σ)
+    (* WHAT THE FORKING PROCESS LENDS ITS CHILD (lane FORK-REFUND).  The
+       resource the parent hands the child to run WITH, as opposed to what
+       the child's exit owes back ([Q]).  kfork is lend-GENERIC -- it never
+       reads [Rc] -- and does exactly two things with it: it feeds it to the
+       slot premise on the success path, and it hands it BACK on the -1 arm,
+       where no child was created and nothing consumed it.  The generic fork
+       bundle lends [emp]. *)
+    (Rc : iProp Σ)
     (K : nat) (mr : regfile) (rv : mword 64) (lks : gset string) : iProp Σ :=
   ( sie_cap_gpr KT1 mr K b pme ∗
     cpu_own lvl eb pme b lks ∗
@@ -235,8 +243,11 @@ Definition kfork_post
        [procs_inv], on the success arm the RUNNABLE park swallowed it. *)
     ( (* allocproc found no slot, or uvmcopy failed: the row comes back
          at the set it went in at, because no child was made *)
+      (* ...AND THE LEND COMES BACK (lane FORK-REFUND): allocproc found no
+         slot, or uvmcopy failed and freeproc undid the slot, so no child
+         ever ran and the resource the parent lent it is still whole. *)
       (⌜ rv = (mword_of_int (-1) : mword 64) ⌝ ∗
-       ch_frag (pv_chg (us_V Up)) pme csP)
+       ch_frag (pv_chg (us_V Up)) pme csP ∗ Rc)
     ∨ (* the child's pid, sign-extended exactly as `lw`/`mv a0,s1` leaves it,
          AND IN [1, PIDMAX] (kernel/param.h) -- allocproc chose it out of the
          bounded counter <pid_lock> protects and its post says so
@@ -278,6 +289,8 @@ Definition wp_kfork_sconf_body
     (csP : gset gname)
     (* the child's exit payload -- see [kfork_post] *)
     (Q : Z -> iProp Σ)
+    (* the parent's lend -- see [kfork_post] *)
+    (Rc : iProp Σ)
     (lks : gset string) :=
   let pcE : mword 64 := mword_of_int KernelSyms.kfork in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
@@ -364,8 +377,15 @@ Definition wp_kfork_sconf_body
      [ChildTok.child_tok γ pidv Q] knows the pid its child's key is at --
      [ChildTok.gen_pid] reads it off the token -- and a verified parent can
      therefore say what its child's getpid(2) will answer. *)
+  (* ...AND WHAT THE PARENT LENDS THE CHILD, A LINEAR PREMISE OF ITS OWN
+     (lane FORK-REFUND).  It comes in BESIDE the slot rather than inside
+     it, because kfork has to be able to give it back without building a
+     child: on the two failure exits it drops the wand below and refunds
+     this copy ([kfork_post]'s -1 arm), and on the success path it feeds
+     this copy to the wand.  A caller that lends nothing passes [emp]. *)
+  Rc -∗
   (∀ (g' : gname) (pidc : mword 32),
-     my_pay g' Q -∗ uslot (uvis_of (kfork_child Up) stsP g' ∅ pidc)) -∗
+     my_pay g' Q -∗ Rc -∗ uslot (uvis_of (kfork_child Up) stsP g' ∅ pidc)) -∗
   (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'; the
      owner's ruling of 2026-09-13).  A [kill(2)] costs the TARGET's exit
      payload at -1, and the party that calls kill holds none of the
@@ -395,7 +415,7 @@ Definition wp_kfork_sconf_body
     ∀ (mr : regfile),
       ⌜ callee_saved m mr ⌝ -∗
       pc_is ret_tgt -∗
-      kfork_post γf lvl eb pme b pid_p Up stsP csP Q K mr
+      kfork_post γf lvl eb pme b pid_p Up stsP csP Q Rc K mr
         (mr !!! Regidx (mword_of_int 10 : mword 5)) lks -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
@@ -410,7 +430,8 @@ Module Type KFORK.
       (b : bool) (pid_p : mword 32) (Up : ustate) (stsP : list fdstate)
       (csP : gset gname)
       (Q : Z -> iProp Σ)
+      (Rc : iProp Σ)
       (lks : gset string),
       wp_kfork_sconf_body γp γw γl γf γs
- m lvl K eb pme b pid_p Up stsP csP Q lks.
+ m lvl K eb pme b pid_p Up stsP csP Q Rc lks.
 End KFORK.

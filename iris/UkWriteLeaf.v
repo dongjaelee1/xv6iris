@@ -142,6 +142,9 @@ Section UkWriteLeaf.
        df_Fok   := pfam_triv (fun _ _ _ _ => True%I);
        df_Fex   := pfam_triv (fun _ _ _ _ => True%I);
        kf_pay   := fun _ => True%I;
+       (* a program that forks lends nothing at this record (lane
+          FORK-REFUND): [UexecSG.sfork_lend] is [emp]. *)
+       kf_lend  := emp%I;
        kf_xpay  := Xp;
        rf_ret   := fun _ _ => True%I;
        (* the console's input link, at the trivial claim (lane CONS-IO,

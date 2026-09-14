@@ -296,14 +296,44 @@ Class uexecSG (Σ : gFunctors) {sg_ctok : ctokG Σ} := {
      payload is [Q] and whose bundles nothing reads.  A fork trap reads no
      other field of [f], so this point is all a fork leaf needs -- it is
      [sfam_pt] with the one field that fork does read. *)
-  sfam_pay : (Z -> iProp Σ) -> sfam;
-  sfork_pay_pay : forall Q : Z -> iProp Σ, sfork_pay (sfam_pay Q) = Q;
+  (* ...AND WHAT THE PARENT LENDS THE CHILD, on [sfork_pay]'s footing and
+     for [sfork_pay]'s own reason.  [sfork_lend f] is the resource the
+     forking process hands its child to run WITH -- not what the child's
+     exit owes back ([sfork_pay]), and not an address-space view
+     ([UkFork.Forkable] re-mints those at the child's fresh ghost names):
+     a PROTOCOL TOKEN at a FIXED name, such as init's half of the console
+     position pair it lends the shell.
+     IT IS A FIELD OF THE FAMILIES FOR EXACTLY [sfork_pay]'s MECHANICAL
+     REASON, and it is the reason that matters most here: the lend is
+     handed over by fork's DEPOSIT (the child's leg spends it) and handed
+     BACK by fork's ARM (the failing leg refunds it, because the kernel
+     created no child and nothing consumed it), and the trap route splits
+     those two apart and carries them past each other through the whole
+     kernel excursion.  Only [f] travels with both, so only [f] can make
+     the resource that went down and the resource that comes back the SAME
+     resource.  A process that lends nothing forks at [emp]. *)
+  sfork_lend : sfam -> iProp Σ;
+  (* ...and the guarantee that the process may CHOOSE both: a family whose
+     payload is [Q], whose lend is [Rc], and whose bundles nothing reads.
+     A fork trap reads no other field of [f], so this point is all a fork
+     leaf needs -- it is [sfam_pt] with the two fields that fork does
+     read. *)
+  sfam_pay : (Z -> iProp Σ) -> iProp Σ -> sfam;
+  sfork_pay_pay : forall (Q : Z -> iProp Σ) (Rc : iProp Σ),
+    sfork_pay (sfam_pay Q Rc) = Q;
+  sfork_lend_pay : forall (Q : Z -> iProp Σ) (Rc : iProp Σ),
+    sfork_lend (sfam_pay Q Rc) = Rc;
   (* ...AND THE POINT'S PAYLOAD IS THE TRIVIAL ONE.  The point is what a
      party that deposits nothing names ([sfam_pt]), and a process forked by
      one owes its parent nothing -- which is what lets the GENERIC family
      answer fork's child slot at the credential it is indexed by
      ([UexecRet.uexec_dep_F_of_supply]). *)
   sfork_pay_pt : sfork_pay sfam_pt = (fun _ => True)%I;
+  (* ...AND THE POINT LENDS NOTHING, [sfork_pay_pt]'s twin and for its
+     reason: a generic process hands its child no protocol token, so the
+     generic family's fork deposit costs it [emp] and its failing arm
+     refunds [emp]. *)
+  sfork_lend_pt : sfork_lend sfam_pt = emp%I;
 
   (* THE PROCESS'S OWN PAYLOAD, on [sfork_pay]'s footing and for its
      reason.  What a process's exit owes its parent is chosen by the
@@ -332,6 +362,12 @@ Class uexecSG (Σ : gFunctors) {sg_ctok : ctokG Σ} := {
     sexit_pay (sfam_at Q f) = Q;
   sfork_pay_at : forall (Q : Z -> iProp Σ) (f : sfam),
     sfork_pay (sfam_at Q f) = sfork_pay f;
+  (* ...and so does the LEND, for [sfork_pay_at]'s reason: re-keying a
+     family at this process's own exit payload moves no other field, so a
+     leaf that takes its supplier's [f] and puts its own [UkRun.ukn_pay]
+     in it still forks lending what it chose. *)
+  sfork_lend_at : forall (Q : Z -> iProp Σ) (f : sfam),
+    sfork_lend (sfam_at Q f) = sfork_lend f;
   (* ...AND THE POINT'S PAYLOAD IS THE TRIVIAL ONE, [sfork_pay_pt]'s twin:
      the point is what a party that deposits nothing names, and a GENERIC
      process owes its parent nothing -- which is what lets the generic

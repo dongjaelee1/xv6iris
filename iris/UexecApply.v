@@ -1042,7 +1042,7 @@ Section LoopApply.
        Owed only at a fork ecall; every other arm refutes the guard. *)
     (⌜sc = uecall_scause
       /\ usys_num (uvis_tf (uvis_run W)) = USYS_fork⌝ -∗
-     ufork_ans (sfork_pay f) (uvis_tf W' !!! tf_arg_idx 0)
+     ufork_ans (sfork_pay f) (sfork_lend f) (uvis_tf W' !!! tf_arg_idx 0)
        (uvis_ch W) (uvis_ch W')) -∗
     (* ...AND THE KERNEL'S WAIT ANSWER, on the same footing: the reap took
        the reaped generation out of the caller's reading, and the row the
@@ -1343,7 +1343,7 @@ Section LoopApply.
     (* ...AND FORK'S, forwarded verbatim -- see [uexec_ret_round_slot] *)
     (⌜sc = uecall_scause
       /\ usys_num (tf_of g (ret_pc sepc_v)) = USYS_fork⌝ -∗
-     ufork_ans (sfork_pay f) (pv_tf (us_V U') !!! tf_arg_idx 0)
+     ufork_ans (sfork_pay f) (sfork_lend f) (pv_tf (us_V U') !!! tf_arg_idx 0)
        (uvis_ch W) cs') -∗
     (* ...and WAIT'S, forwarded the same way *)
     (⌜sc = uecall_scause

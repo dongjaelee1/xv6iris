@@ -149,6 +149,9 @@ Section UShLine.
        df_Fok   := pfam_triv (fun _ _ _ _ => True%I);
        df_Fex   := pfam_triv (fun _ _ _ _ => True%I);
        kf_pay   := fun _ => True%I;
+       (* a program that forks lends nothing at this record (lane
+          FORK-REFUND): [UexecSG.sfork_lend] is [emp]. *)
+       kf_lend  := emp%I;
        kf_xpay  := Q;
        rf_ret   := Rd;
        (* sh says nothing about the input's boundary account yet: the real

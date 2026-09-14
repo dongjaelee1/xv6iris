@@ -842,12 +842,17 @@ Section UkFork.
     ((∀ (h' : CpuId) (r : mword 64),
         ⌜r <> (mword_of_int 0 : mword 64)⌝ -∗
         (* FORK'S TWO ARMS, as the program sees them: it FAILED, returning
-           -1, and the caller's children set is the one it had; or it
-           returned the child's pid, and the parent gets
-           [ChildTok.child_tok] -- the quarter a later wait() redeems --
-           beside the set grown by that child's generation. *)
+           -1, and the caller's children set is the one it had AND WHAT IT
+           LENT ITS CHILD COMES BACK (lane FORK-REFUND: the kernel created
+           no process, so nothing consumed [Rc] -- and a parent that could
+           not get it back could not report the failure, since init's
+           "init: fork failed" and sh's "fork" are printed on exactly the
+           console credential the parent lends); or it returned the child's
+           pid, and the parent gets [ChildTok.child_tok] -- the quarter a
+           later wait() redeems -- beside the set grown by that child's
+           generation, the lend having gone to the child. *)
         ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
-            UserChildren.uch (ukn_ch N) Sc)
+            UserChildren.uch (ukn_ch N) Sc ∗ Rc)
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
              child_tok γ pidv Q ∗
@@ -964,21 +969,25 @@ Section UkFork.
        the only field either leg reads is the child's exit payload -- so
        the point family at [Q] is exactly what the two legs need
        ([UexecSG.sfam_pay] / [sfork_pay_pay]). *)
-    iExists (sfam_at (ukn_pay N) (sfam_pay Q)).
-    rewrite (sfork_pay_at (ukn_pay N) (sfam_pay Q)) sfork_pay_pay.
+    iExists (sfam_at (ukn_pay N) (sfam_pay Q Rc)).
+    rewrite (sfork_pay_at (ukn_pay N) (sfam_pay Q Rc)) sfork_pay_pay.
+    (* ...AND THE LEND IS A FIELD OF THE SAME VALUE (lane FORK-REFUND):
+       what the deposit hands down and what the failing arm hands back are
+       the same resource because [f] carries both. *)
+    rewrite (sfork_lend_at (ukn_pay N) (sfam_pay Q Rc)) sfork_lend_pay.
     (* THE PAY FACT, at the PARENT's own payload -- the child's is [Q], and
        the two live in one value ([UexecSG.sfam_at]).  Nothing travels
        beside it (lane SELF-KILL, P6b). *)
     iSplitR;
       [ iApply (uexec_pay_dep_ret USYS_fork m pc M pm sz fdv c gn Sc pidv
-                  false _ (sfam_at (ukn_pay N) (sfam_pay Q))
+                  false _ (sfam_at (ukn_pay N) (sfam_pay Q Rc))
                   ltac:(rewrite tf_of_num; exact Hn)
                   ltac:(unfold USYS_fork, USYS_exit; lia)
-                  (sexit_pay_at (ukn_pay N) (sfam_pay Q)) with "Hmy") | ].
+                  (sexit_pay_at (ukn_pay N) (sfam_pay Q Rc)) with "Hmy") | ].
     (* the PARENT keeps the descriptor authority it had -- fork does not
        touch the parent's table -- and the CHILD mints its own below. *)
     iSplitL "Hpar HP Hsz Hstd HD Hcwd Hheap Hstk Hufd Hcwda Hcha Hchf";
-      [ | iSplitR; [ iModIntro; iExact "Hkw" | ] ].
+      [ | iSplitR; [ iModIntro; iExact "Hkw" | iSplitL "HRc"; [ iExact "HRc" | ] ] ].
     (* ---- the parent: same heap, r <> 0, and the children set grown by
        the child's generation ---- *)
     - iIntros (r fdv' cw' cs') "%Hr %Hfv %Hcv Hans". subst fdv' cw'.
@@ -992,16 +1001,16 @@ Section UkFork.
       iAssert (|==> ∃ cs2 : gset gname,
                  ⌜cs' = cs2⌝ ∗ uch_auth (ukn_ch N) cs2 ∗
                  ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
-                     UserChildren.uch (ukn_ch N) Sc)
+                     UserChildren.uch (ukn_ch N) Sc ∗ Rc)
                   ∨ ∃ (γ : gname) (pidv : mword 32),
                       ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
                       child_tok γ pidv Q ∗
                       UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})))%I
         with "[Hcha Hchf Hans]" as ">Hmv".
-      { rewrite /ufork_ans. iDestruct "Hans" as "[%Hm1 | Hpid]".
+      { rewrite /ufork_ans. iDestruct "Hans" as "[[%Hm1 HRc] | Hpid]".
         - destruct Hm1 as [Hm1 Hcs]. iModIntro. iExists Sc.
           iSplitR; [iPureIntro; exact Hcs |]. iFrame "Hcha".
-          iLeft. iSplitR; [iPureIntro; exact Hm1 |]. iExact "Hchf".
+          iLeft. iSplitR; [iPureIntro; exact Hm1 |]. iFrame "Hchf HRc".
         - iDestruct "Hpid" as (γ pidk) "(%Hpv & %Hcs & Htok)".
           iMod (uch_update (ukn_ch N) Sc Sc (Sc ∪ {[γ]}) with "Hcha Hchf")
             as "[Hcha Hchf]".
@@ -1022,7 +1031,7 @@ Section UkFork.
       iApply ("Hpar" $! h' r with "[%] Harm HP Hsz Hstd HD Hcwd Hrun").
       exact Hr.
     (* ---- the child: fresh heap, r = 0, payload rebuilt at the new names *)
-    - iIntros (fdv' cw' g' pidc) "#Hmp %Hfdv' %Hcv'". subst fdv' cw'.
+    - iIntros (fdv' cw' g' pidc) "#Hmp %Hfdv' %Hcv' HRc". subst fdv' cw'.
       (* THE CHILD'S OWN DESCRIPTOR AUTHORITY, minted at the view the kernel
          handed it -- BEFORE the key is rewritten to [ukc], since the update
          is absorbed by the [uslot] and not by what it unfolds to.  The
@@ -1082,6 +1091,11 @@ Section UkFork.
   (*                                                                       *)
   (* [⌜r <> 0⌝] STAYS: init and sh both branch on it, and it is the one    *)
   (* thing about the return value an untracking caller reads.              *)
+  (*                                                                       *)
+  (* AND THE LEND IS [emp] HERE (lane FORK-REFUND), so the general leaf's  *)
+  (* refund on the -1 arm is [emp] too and this statement does not name it *)
+  (* -- it is dropped where the fragment is rebuilt, exactly as the token  *)
+  (* is.  A caller that wants a real lend back takes the general leaf.     *)
   (* ===================================================================== *)
   Lemma wp_uk_ecall_fork_any (N : uk_names Σ) (h : CpuId) (m : regfile)
       (pc : mword 64) (avail : nat) (szv : Z) (l : list fdstate)
@@ -1139,7 +1153,7 @@ Section UkFork.
          is dropped: a caller at this statement has said it will not
          redeem one. *)
       iAssert (UserChildren.uch_any (ukn_ch N)) with "[Hans]" as "Hch".
-      { iDestruct "Hans" as "[[_ Hf] | Hpid]".
+      { iDestruct "Hans" as "[(_ & Hf & _) | Hpid]".
         - iApply (uch_any_of with "Hf").
         - iDestruct "Hpid" as (γ pidv) "(_ & _ & Hf)".
           iApply (uch_any_of with "Hf"). }
@@ -1204,7 +1218,7 @@ Section UkFork.
         ⌜r <> (mword_of_int 0 : mword 64)⌝ -∗
         (* fork's two arms -- see [wp_uk_ecall_fork] *)
         ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
-            UserChildren.uch (ukn_ch N) Sc)
+            UserChildren.uch (ukn_ch N) Sc ∗ Rc)
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
              child_tok γ pidv Q ∗

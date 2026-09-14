@@ -101,20 +101,31 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   the owner's `688c4c1b7`; the note below): the kernel hands init a
   per-power-cycle exclusive token so the application's ledger adopts each
   era exactly once.
-- [ ] **ECHO-OUT** (application; `-disc`, `lane/echo-out`): PARTS 1-3a LANDED
-  2026-09-15 (`3f8124641`; the notes below): the claims, the stage machine,
-  the ledger's steps, the seed at the power-on step, the tag with the
-  history's shape, and three TOTAL link families (`echo_write_link`,
-  `echo_write_link_blk`, `echo_read_link` with `led_acc`/`read_ret`) against
-  the landed kernel shapes.  BLOCKED (part 3b): `echo_happ_echo`, the era's
-  first-write link, and the `AppEcho` wiring (hence `echo_phi`'s restatement
-  and `Hphi`) on three gaps -- G1 `Happ_echo` has no obs-invariant handle so
-  the shift's links cannot reach the ledger; G2 `WpUart.echo_link` returns
-  the input claim unchanged so the chain-first window has no home and a second
-  echo before the append is not ruled out; G3 the era's first write is total
-  at the claim but not at the link (init holds nothing saying `acc = []`).  A
-  FABLE REVIEW of the three gaps is in progress before the next ruling
-  (scratchpad `brief-review-echo-out.md`; handover `echo-out-handover-4.md`).
+- [ ] **ECHO-OUT** (application; `-disc`, `lane/echo-out`): PARTS 1-4 LANDED
+  2026-09-15 (`a007ec892`; the notes below).  Part 4 = the CLAIM-RESIDENT
+  re-cut from the design page (the era's authorities live in the output
+  claim; the input claim carries a settled arm and a WINDOW arm guarded by
+  the kernel-lent token's share; no seeds, no escrow, no adoption, no ledger
+  in any link; all five steps and all four link families proved; 58
+  deletions).  REMAINING: `echo_happ_echo` (against the local copy of the
+  shift until CONS-IO F lands -- in progress), then part 5 after F: the
+  `AppEcho` wiring (`echo_out := eout`, `echo_in := ein`, `echo_win`,
+  `echo_turn`, `echo_R` over `echo_led`, `echo_phi := fun _ h => disc h ->
+  Forall good_out (cycles_of h)`), `Hphi` closed from `echo_led_phi`.
+- [ ] **CONS-IO milestone F** (kernel; `-tlw`; the design page's §1): the
+  echo window token `riscv_win_res` (a fifth application-chosen predicate)
+  lent in consoleintr's contract and returned by the append, riding the PLIC
+  payload; `app_turn`/`app_win` on the record; `Hpow`'s four-part yield;
+  `Hinit_boot`'s turn premise.  ACCEPTED BY THE OWNER AS A WORKAROUND
+  (2026-09-15) with post-Qed debt: redesign what an application is and the
+  app-kernel interaction in the adequacy statement, and a SINGLE IO resource
+  instead of separate I and O claims with a lent token.
+- [ ] **POST-QED REDESIGN** (owner, 2026-09-15; do not start before the
+  theorem closes): (a) the notion of an application and the app-kernel
+  interaction in terms of adequacy; (b) one IO invariant/resource instead of
+  the split output/input claims and the lent window token.  Everything above
+  is proof structure, not statement: the closed theorem mentions only the
+  machine, the disk image and the pure trace predicate.
 - [x] ~~**CONS-IO milestone E -- FOUND-AT-POWERON**~~ LANDED 2026-09-15
   (`a7f5e98a7`; the note below): `Hpow`'s power-on arm yields the era's
   founded claims; `app_xfer_boot_raw` back to two arguments; milestone D's
@@ -3307,6 +3318,34 @@ unused stays.  CONSTRAINT for ECHO-OUT part 3: `Hpow` is a plain `==∗` fired
 with `obsN` already open -- the era's linear seed must be bupd-mintable from
 the ledger's own state; nothing in `Hpow` may open an invariant.  Handover:
 scratchpad `cons-io-handover-7.md`.
+
+ECHO-OUT PART 4 LANDED (2026-09-15; `a007ec892` on `2b87dc1c5`; EchoOut.v
++997/-1284; builds eo50-eo52 in `-disc`; audit the thirteen; lemma_diff = 58
+deletions, all the page's).  THE CLAIM-RESIDENT SHAPE (scratchpad
+`e5-design-page.md`, from the Fable review of part 3): per era `v` = {turn
+(ghost_var nat), cs (mono_list nat), E (mono_list (list mobs * bv 8)), wcnt
+(ghost_var nat in quarters)}, `era_pin k v` persistent (the ledger's pin map,
+auth spent only at `echo_led_pow`).  `eout k ho acc := T ∨ ∃ v so, era_pin ∗
+turn_auth v (pcount …) ∗ cs_auth v (o_cs so) ∗ Elist_auth v (o_E so) ∗ wcnt v
+(1/4) (length (o_E so)) ∗ ⌜eout_pure ∧ cs_len_ok ∧ Forall (< length line_alts)⌝`;
+`ein k hi pops dl := T ∨ settled (wcnt v (1/4) n, `length (echoed pops) = n`,
+`Elist_lb v (seg_of (echoed pops))`, `cs_lb`, `ein_pure`) ∨ window (wcnt v (1/2)
+n, `length (echoed pops) + 1 = n`, same bounds)`; `ewin k := T ∨ ∃ v n, era_pin
+∗ wcnt v (1/2) n` (= `app_win`); `eturn k := ∃ v, era_pin ∗ turn v 0 ∗ cs_lb v
+[] ∗ E_lb v 0` (= `app_turn`); `ein_pend` carries the echo's quarter and the
+new entry's bounds to the append.  THE ECHO: three agreeing shares tie `length
+E = length (echoed pops)`, the lower bound gives `seg_of (echoed pops) = E`, D2
+fires, all four quarters move to `n+1`, re-split ¼/½/¼; a SECOND FIRING meets
+the window arm at five quarters (`wcnt_over`).  THE APPEND: window arm by
+agreement + `app_inj_1` on the two bounds; settled arm REFUTED by
+`echoed_elem_inv` + `open_seg_hist_ext` (the entry would be logged with a
+segment strictly below itself).  WRITES: the out claim only; the FIRST write
+is the ordinary link at `P = 0` (`turn_agree` + `pcount_zero` derive `acc =
+[]`).  READS: the in claim only; `read_ret` exports `E_index`/`E_byte` of
+`seg_of (echoed pops)` so `ein_read_line` is usable from the read alone.  The
+two kernel statements F changes are LOCAL COPIES (`in_append_F`,
+`cons_echo_shift_F`) with no consumers until F lands.  Handover: scratchpad
+`echo-out-handover-5.md`.
 
 ECHO-OUT PART 3a LANDED (2026-09-15; `5ac07f800`+`3f8124641` on `600510a94`; 3
 files +555/-175; builds eo40-eo43 in `-disc`; audit the thirteen; lemma_diff

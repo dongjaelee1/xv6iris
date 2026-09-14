@@ -119,7 +119,9 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   complete for round 0); M1(f) LANDED 2026-09-16 (`eab187afb`; the note
   below: fds 1-2 pinned, the banner free of the law); M2 LANDED 2026-09-16
   (`88127e629`; the note below: echo's writes through the link); TXT-ROW
-  (`-sup`) and M3 (the shell's transport, main checkout) next; M4-M6 after.
+  (`-sup`, `lane/txt-row`: the text-half write leaf, discharges
+  `echo_wtxt`) and M3 (the shell's transport, main checkout, M3a/b/c; brief
+  v5) IN FLIGHT 2026-09-16; M4-M6 after.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
 - [x] ~~**PROLOGUE-ALTS**~~ LANDED 2026-09-16 (`833300de0`; the note below):

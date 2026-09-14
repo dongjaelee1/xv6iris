@@ -1646,9 +1646,9 @@ Section UkInit.
       name an era.  AFFINE ([Rt ∨ True]), so a round that has no
       credential to lend still execs its shell. *)
   Definition init_exec_sup_pos (cn : cons_names) (T : iProp Σ) (st : fdstate)
-      (Rt : iProp Σ) (γ : gname) (n : nat) : iProp Σ :=
+      (Rt : iProp Σ) (Rd : nat -> iProp Σ) (γ : gname) (n : nat) : iProp Σ :=
     (∀ (N' : uk_names Σ) (m : regfile) (pc : mword 64),
-       ⌜ ukn_pay N' = ucons_pay cn γ T ⌝ -∗
+       ⌜ ukn_pay N' = ucons_pay cn γ T Rd ⌝ -∗
        ⌜ m !!! Regidx a0_idx = (mword_of_int 0x9a8 : mword 64) ⌝ -∗
        ⌜ m !!! Regidx a1_idx = (mword_of_int 0x1000 : mword 64) ⌝ -∗
        init_rodata (ukn_t N') -∗
@@ -1661,15 +1661,15 @@ Section UkInit.
           reach sh through [UexecRet]'s deposit; that row is a WAND from
           the kill credential now, so the token crosses [PinnedExec]'s
           [Pay] beside the position and lands in [UkSh.ush_at]. *)
-       ucons_pay cn γ T (-1) -∗
+       ucons_pay cn γ T Rd (-1) -∗
        udepw_at_ref N' m pc FsImg.ROOTINO)%I.
 
   Definition init_exec_sup_lend (cn : cons_names) (T : iProp Σ)
-      (st : fdstate) (Rt : iProp Σ) : iProp Σ :=
-    (□ (∀ (γ : gname) (n : nat), init_exec_sup_pos cn T st Rt γ n))%I.
+      (st : fdstate) (Rt : iProp Σ) (Rd : nat -> iProp Σ) : iProp Σ :=
+    (□ (∀ (γ : gname) (n : nat), init_exec_sup_pos cn T st Rt Rd γ n))%I.
 
-  Global Instance init_exec_sup_lend_persistent cn T st Rt :
-    Persistent (init_exec_sup_lend cn T st Rt).
+  Global Instance init_exec_sup_lend_persistent cn T st Rt Rd :
+    Persistent (init_exec_sup_lend cn T st Rt Rd).
   Proof. rewrite /init_exec_sup_lend. apply _. Qed.
 
   (* ...AND THE SAME SUPPLY AS A WAND FROM THE CONSOLE CREDENTIAL (lane E2).
@@ -1681,16 +1681,16 @@ Section UkInit.
      pays it under the taint (where the shell proves nothing anyway).
      Both halves are [□], so the restart loop applies them per round. *)
   Definition init_cons_sup (cn : cons_names) (T Cns : iProp Σ)
-      (st : fdstate) (Rt : iProp Σ) : iProp Σ :=
-    (□ (Cns -∗ init_exec_sup_lend cn T st Rt) ∗ □ (T -∗ Cns))%I.
+      (st : fdstate) (Rt : iProp Σ) (Rd : nat -> iProp Σ) : iProp Σ :=
+    (□ (Cns -∗ init_exec_sup_lend cn T st Rt Rd) ∗ □ (T -∗ Cns))%I.
 
-  Global Instance init_cons_sup_persistent cn T Cns st Rt :
-    Persistent (init_cons_sup cn T Cns st Rt).
+  Global Instance init_cons_sup_persistent cn T Cns st Rt Rd :
+    Persistent (init_cons_sup cn T Cns st Rt Rd).
   Proof. rewrite /init_cons_sup. apply _. Qed.
 
   Lemma init_cons_sup_taint (cn : cons_names) (T Cns : iProp Σ)
-      (st : fdstate) (Rt : iProp Σ) :
-    init_cons_sup cn T Cns st Rt -∗ T -∗ init_exec_sup_lend cn T st Rt.
+      (st : fdstate) (Rt : iProp Σ) (Rd : nat -> iProp Σ) :
+    init_cons_sup cn T Cns st Rt Rd -∗ T -∗ init_exec_sup_lend cn T st Rt Rd.
   Proof.
     iIntros "[#Hw #Ht] HT". iApply "Hw". iApply ("Ht" with "HT").
   Qed.

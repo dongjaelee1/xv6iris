@@ -102,9 +102,9 @@ Section EchoAdequacy.
              nothing else now -- read(5) pays from the console LEASE
              (SH-LINE 2b, R1') and open(15) is PINNED (SH-OPEN)), which is
              /init's own write deposit too (E5), sh's static state out of
-             the data below the frame (E4), sh's tail (SH-LINE 2b), and --
-             since lane ECHO-OUT part 5 -- sh's CONSOLE READ LEAF itself
-             (IO-LEAF; see the third conjunct).
+             the data below the frame (E4), and sh's tail (SH-LINE 2b).
+             sh's CONSOLE READ LEAF was a third conjunct from lane
+             ECHO-OUT part 5 until lane IO-LEAF M5 paid it.
              Quantified
              over the era's classes for [Hinit_boot]'s own reason: they
              are born by the boot mint. ---- *)
@@ -123,7 +123,7 @@ Section EchoAdequacy.
       (Hsh_owed : forall (HR : riscvGS Σ) (GEN : GenId)
          `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
            HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ},
-         (* THREE SEPARATE COQ-LEVEL ENTAILMENTS, not one [iProp] conjunction
+         (* TWO SEPARATE COQ-LEVEL ENTAILMENTS, not one [iProp] conjunction
             under an Iris one.  Each is owed whole by a different lane --
             E5's write(16) deposit and SH-LINE's tail -- and
             [echo_Hinit_boot] takes them as Coq premises: an Iris [∃] would
@@ -138,29 +138,17 @@ Section EchoAdequacy.
             other. *)
          (⊢ UkSh.sh_deps (PS := uprogSG_free))
          /\ (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh)
-         (* ...AND A THIRD, sh's CONSOLE READ LEAF (lane ECHO-OUT part 5;
-            owned by lane IO-LEAF).  It was DISCHARGED inside
-            [UInitBoot.echo_Hinit_boot] until part 5, by
-            [UShLine.ush_read_recv_leaf_holds] out of the boundary's flat
-            input licence [WpUart.in_licence].  At [AppEcho.echo_in]'s REAL
-            claim that licence is FALSE: [EchoOut.ein]'s two non-taint arms
-            pin the delivered sequence and its count, so moving [dl] needs
-            the READER's half of [EchoOut.dl_cnt] and only the taint arm is
-            free -- while the payload's LEASE arm
-            ([UserConsole.ucons_pay]) carries no taint.  Lane IO-LEAF puts
-            the era's pin and that half on sh's lease and runs the leaf
-            through [EchoOut.echo_read_link], whose [WpUart.read_link]
-            hands over [⌜ConsLog.read_ok pops dl ws⌝].
-            IT IS THE DELETED LEMMA'S STATEMENT VERBATIM, quantified over
-            the FIXED PART as well because the taint it is stated at is the
-            record's ([app_kill app_echo c]), which this field's own binder
-            introduces. *)
-         /\ (forall (c : app_fixed app_echo) (γp : gname)
-                    (N : UkRun.uk_names Σ) (l : list FdSlots.fdstate),
-               UkRun.ukn_pay N
-                 = UserConsole.ucons_pay FsCfg.fsc_cons γp (echo_taint c) ->
-               ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp
-                   (echo_taint c) FsCfg.fsc_cons l))
+         (* THE THIRD CONJUNCT IS GONE (lane IO-LEAF, M5).  It was sh's
+            CONSOLE READ LEAF, owed here since lane ECHO-OUT part 5 because
+            the boundary's flat input licence [WpUart.in_licence] is FALSE
+            at [AppEcho.echo_in]'s real claim -- moving [dl] needs the
+            READER's half of [EchoOut.dl_cnt].  Sh's lease carries that
+            half now: it is the [Rd] of [UserConsole.ucons_pay], under the
+            same existential as the cursor, so it round-trips through
+            /init's wait exactly as the reader token does, and
+            [UShLine.ush_read_recv_leaf_holds] runs the leaf through
+            [EchoOut.echo_read_link].  [UInitBoot.echo_Hinit_boot]
+            discharges it. *))
       (Hgen0 : g.(ggen) = 0%nat) (Hpow0 : g.(gpow) = false)
       (Himg : fs_boot_image_wf (v_disk (g.(gdev).(dvirtio))) XV6_DISK_BYTES
                 sb nib cov)
@@ -253,7 +241,7 @@ Section EchoAdequacy.
          binds ONCE and hands to both sides -- so there is nothing left to
          move and [Hgen] is a premise this discharge does not read. *)
       destruct (Hsh_owed HR GEN HBs HFd HIr HPav HWc HF)
-        as (Hdeps & Hre & Hrdleaf).
+        as (Hdeps & Hre).
       (* [GEN] is IMPLICIT and fixed by unification -- from [Hw16] first
          and [Heq] after, both of which carry the record's own [GenId].
          Naming it here would pin the wrong one: the [GEN] this field
@@ -263,7 +251,7 @@ Section EchoAdequacy.
          CONS-IO milestone F), on [app_in]'s mould *)
       cbn [app_echo app_win] in Hwin.
       iIntros "#Hinv Hb Hturn".
-      iApply (echo_Hinit_boot HR GEN c r Hdeps Hre (Hrdleaf c)
+      iApply (echo_Hinit_boot HR GEN c r Hdeps Hre
                 Heq Htag Hkill Hout Hin Hwin with "Hinv Hb [Hturn]").
       cbn [app_echo app_turn]. iExact "Hturn".
     - (* [Happ_echo]: at [AppEcho.echo_out]'s E5 placeholder the console's

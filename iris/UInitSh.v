@@ -899,6 +899,12 @@ Section UInitSh.
   (* ------------------------------------------------------------------- *)
   Lemma init_exec_sup_of_sh_slot (T : iProp Σ) `{!Persistent T} `{!Timeless T}
       (cn : cons_names) (st : fdstate) (K : iProp Σ) `{!Persistent K}
+      (* ...AND THE APPLICATION'S PER-POSITION CREDENTIAL (lane IO-LEAF,
+         M5): [UserConsole.ucons_pay]'s [Rd], which rides sh's exit payload
+         under the same existential as the cursor and so round-trips
+         through /init's wait.  A parameter for [T]'s reason -- this file
+         names no era. *)
+      (Rd : nat -> iProp Σ) `{!forall i : nat, Timeless (Rd i)}
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat) :
     (* the numbers sh admits -- THE FREE ONES (lane SUPPLY-SPLIT) *)
     (* AT THE FREE INSTANCE, NAMED AND NOT RESOLVED (lane SUPPLY-SPLIT's
@@ -942,7 +948,7 @@ Section UInitSh.
        over the POSITION GHOST because init mints a fresh pair per child,
        exactly as [sh_pay]'s tail is. *)
     (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
-       ukn_pay N = ucons_pay cn γp T ->
+       ukn_pay N = ucons_pay cn γp T Rd ->
        ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T cn l) ->
     udep (PS := uprogSG_free) -∗
     (* ...AND THE THREE DEPOSITS SH OWES: read(5), open(15), write(16), the
@@ -986,7 +992,7 @@ Section UInitSh.
        the ONE place the two ends meet: /init's walk carries it opaquely
        ([UkInit.init_exec_sup_pos]'s [Rt]) and sh's entry reads it. *)
     UkInit.init_exec_sup_lend cn T st
-      (UShKernel.sh_prompt_pay (PS := uprogSG_free)).
+      (UShKernel.sh_prompt_pay (PS := uprogSG_free)) Rd.
   Proof.
     intros Hpsok_free Hn0 Hst Hrl. subst st.
     iIntros "#Hdep #Hdp #Hcons (#Hinv & #Hcl0 & #Hgen & #Hpay)".
@@ -1053,10 +1059,10 @@ Section UInitSh.
        [□ (riscv_kill_cred -∗ R)]), and the arm builds it out of the TAINT
        it is already holding ([UserConsole.ucons_pay_taint]) -- which is
        the whole reason a tainted process needs no lease. *)
-    iAssert (□ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') (ucons_pay cn γp T) -∗
+    iAssert (□ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') (ucons_pay cn γp T Rd) -∗
                   uslot W'))%I as "#Hgen'".
     { iModIntro. iIntros (W') "#HT #Hmp".
-      iApply ("Hgen" $! (ucons_pay cn γp T (-1)) W' with "HT [Hmp] []").
+      iApply ("Hgen" $! (ucons_pay cn γp T Rd (-1)) W' with "HT [Hmp] []").
       - rewrite ucons_pay_eta. iExact "Hmp".
       - iModIntro. iIntros "_". iApply (ucons_pay_taint with "HT"). }
     (* THE LINEAR HALF OF [Pay] IS THE POSITION: [UInitSh.sh_pay] is
@@ -1081,9 +1087,9 @@ Section UInitSh.
                   ⌜uvis_lazy W' = false⌝ -∗
                   ⌜exec_args_of M (mword_of_int 0x1000 : mword 64)
                      na alen afun⌝ -∗
-                  my_pay (uvis_gen W') (ucons_pay cn γp T) -∗
+                  my_pay (uvis_gen W') (ucons_pay cn γp T Rd) -∗
                   (sh_pay T Rsh n0 ∗ upos γp np
-                     ∗ ucons_pay cn γp T (-1)
+                     ∗ ucons_pay cn γp T Rd (-1)
                      ∗ (UShKernel.sh_prompt_pay (PS := uprogSG_free) ∨ True)) -∗ uslot W'))%I
       as "#Hcon".
     { iModIntro.
@@ -1100,9 +1106,9 @@ Section UInitSh.
          INSTANTIATED lemma with no goal in play; the [iApply] then has
          only the resource list to do. *)
       pose proof (sh_slot_of_kexec (SG := uexecSG_xv6) (PS := uprogSG_free)
-                    Hpsok_free Rsh γp cn T K (ucons_pay cn γp T) (Hrl γp)
+                    Hpsok_free Rsh γp cn T K (ucons_pay cn γp T Rd) (Hrl γp)
                     1%nat alen afun fdv W' n0 np
-                    (ucons_pay_const cn γp T) Hok Hcwd0
+                    (ucons_pay_const cn γp T Rd) Hok Hcwd0
                     (init_sh_room alen n0 Halen Hn0) Hlen Hlzf) as Hsk.
       idtac "MARK-s4c-pose-ok".
       iApply (Hsk with "[] Hdep Hdp Htag [] [] [Hpr] Hcons Hgen' Hmp Hps Hls").
@@ -1128,9 +1134,9 @@ Section UInitSh.
                  FsImg.ROOTINO init_sh_pl [FsImg.ROOTINO; FsShPin.SH_INO]
                  FsShPin.SH_INO ElfUser.sh_elf 1%nat
                  (sh_pay T Rsh n0 ∗ upos γp np
-                    ∗ ucons_pay cn γp T (-1)
+                    ∗ ucons_pay cn γp T Rd (-1)
                     ∗ (UShKernel.sh_prompt_pay (PS := uprogSG_free) ∨ True))%I
-                 (ucons_pay cn γp T)
+                 (ucons_pay cn γp T Rd)
                  M (mword_of_int 0x9a8) (mword_of_int 0x1000) fdv
                  init_sh_pin_resolves sh_elf_loadable
                  (init_sh_path_of M Hsro)
@@ -1157,7 +1163,7 @@ Section UInitSh.
     iApply (sbundle_pay_exec_intro_ref uslot
               (uvis_of_run m pc M pm sz fdv FsImg.ROOTINO gn cs pidv false)
               (ukn_pay N) P Pmiss Fo
-              (sh_pay T Rsh n0 ∗ upos γp np ∗ ucons_pay cn γp T (-1)
+              (sh_pay T Rsh n0 ∗ upos γp np ∗ ucons_pay cn γp T Rd (-1)
                  ∗ (UShKernel.sh_prompt_pay (PS := uprogSG_free) ∨ True))%I).
     { rewrite Hpeq. iIntros "!> (_ & _ & $ & _)". }
     { cbn [uvis_gen uvis_of_run]. iExact "Hmpay". }

@@ -513,8 +513,8 @@ Section UConsLine.
   (*  keyed at and the lease is what pays for the read.                    *)
   (* =================================================================== *)
   Definition ush_exec_pay (Pay : iProp Σ) (cn : cons_names) (T : iProp Σ)
-      (γp : gname) (n : nat) : iProp Σ :=
-    (Pay ∗ ush_tag_law T ∗ upos γp n ∗ ucons_pay cn γp T (-1))%I.
+      (Rd : nat -> iProp Σ) (γp : gname) (n : nat) : iProp Σ :=
+    (Pay ∗ ush_tag_law T ∗ upos γp n ∗ ucons_pay cn γp T Rd (-1))%I.
 
 
 End UConsLine.

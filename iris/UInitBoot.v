@@ -374,6 +374,10 @@ Section UInitBoot.
      [UInitSh.init_exec_sup_of_sh_slot]. *)
   Lemma init_cons_sup_of_sh_slot (γ : echo_fixed) (r : echo_names)
       (cn : cons_names) (st : fdstate)
+      (* the application's per-position credential on the lease (lane
+         IO-LEAF, M5), passed straight through: see
+         [UInitSh.init_exec_sup_of_sh_slot] *)
+      (Rd : nat -> iProp Σ) `{!forall i : nat, Timeless (Rd i)}
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat) :
     file_app = MkAppcfg echo_names (echo_pred γ) r ->
     (forall k : Z, free_num k -> @psok Σ uprogSG_free k) ->
@@ -382,13 +386,13 @@ Section UInitBoot.
     (* the read leaf sh runs on, passed straight through: see
        [UInitSh.init_exec_sup_of_sh_slot] *)
     (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
-       ukn_pay N = ucons_pay cn γp (echo_taint γ) ->
+       ukn_pay N = ucons_pay cn γp (echo_taint γ) Rd ->
        ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp (echo_taint γ) cn l) ->
     udep (PS := uprogSG_free) -∗ UkSh.sh_deps (PS := uprogSG_free) -∗
     UInitSh.init_sh_slot (echo_taint γ) (UInitSh.sh_pay (echo_taint γ) Rsh n0) -∗
     UkInit.init_cons_sup cn (echo_taint γ)
       (init_cons_cred (echo_taint γ) r) st
-      (UShKernel.sh_prompt_pay (PS := uprogSG_free)).
+      (UShKernel.sh_prompt_pay (PS := uprogSG_free)) Rd.
   Proof.
     intros Heq Hpsok_free Hn0 Hst Hrl.
     iIntros "#Hdep #Hdp #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
@@ -397,7 +401,7 @@ Section UInitBoot.
       (* [Persistent K] is an INSTANCE binder there, so it is not passed
          positionally; [cons_never_persistent] answers it. *)
       iApply (UInitSh.init_exec_sup_of_sh_slot (echo_taint γ) cn st
-                (cons_never r) Rsh n0 Hpsok_free Hn0 Hst Hrl
+                (cons_never r) Rd Rsh n0 Hpsok_free Hn0 Hst Hrl
                 with "Hdep Hdp [] Hcore'").
       iApply (ush_cons_in_of_Cns γ r Heq with "[] Hcns").
       iDestruct "Hcore'" as "(#Hinv & _)". iExact "Hinv".
@@ -535,22 +539,16 @@ Section EchoInitBoot.
        pins.  What is still owed is the TAIL at that same family. *)
     (⊢ UkSh.sh_deps (PS := uprogSG_free)) ->
     (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh) ->
-    (* ...AND SH'S READ LEAF (lane ECHO-OUT part 5; owned by lane IO-LEAF).
-       It was DISCHARGED here until part 5, by
-       [UShLine.ush_read_recv_leaf_holds] out of the boundary's flat input
-       licence -- and that licence is FALSE at [AppEcho.echo_in]'s real
-       claim ([EchoOut.ein] pins the delivered sequence and its count, so
-       moving [dl] needs the READER's half of [EchoOut.dl_cnt]).  Sh's
-       lease does not carry that half yet; IO-LEAF puts it there and runs
-       the leaf through [EchoOut.echo_read_link].  So it arrives here as a
-       Coq-level premise, on [sh_deps]'s mould and at the shape
-       [UInitSh.init_cons_sup_of_sh_slot] asks for -- VERBATIM the
-       statement the deleted lemma proved, quantified over the POSITION
-       GHOST because /init mints a fresh pair per child. *)
-    (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
-       ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ) ->
-       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp (echo_taint γ)
-           fsc_cons l) ->
+    (* SH'S READ LEAF IS NO LONGER OWED (lane IO-LEAF, M5).  It was a
+       Coq-level premise here from lane ECHO-OUT part 5, because the
+       boundary's flat input licence is FALSE at [AppEcho.echo_in]'s real
+       claim -- moving [dl] needs the READER's half of [EchoOut.dl_cnt],
+       and sh's lease did not carry it.  It does now: the half is
+       [UserConsole.ucons_pay]'s [Rd], instantiated below at
+       [UShLine.ush_rd_pin γ], under the same existential as the cursor,
+       so it round-trips through /init's wait like the token itself.  The
+       discharge is [UShLine.ush_read_recv_leaf_holds], applied in the
+       proof, and [UInitBootAdequacy]'s [Hsh_owed] has two conjuncts. *)
     (* ---- and the two equations [Hinit_boot] hands over ---- *)
     @file_app Σ HF = MkAppcfg echo_names (echo_pred γ) r ->
     riscv_rx_tag = echo_tag γ ->
@@ -588,7 +586,7 @@ Section EchoInitBoot.
       echo_turn γ (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Hsh_deps Hsh_rest Hsh_rdleaf Heq Htag Hkill Hout Hin Hwin.
+    intros Hsh_deps Hsh_rest Heq Htag Hkill Hout Hin Hwin.
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)
@@ -690,11 +688,28 @@ Section EchoInitBoot.
     { rewrite /app_sup. rewrite Heq.
       cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
       iIntros "#Hs". iApply (echo_taint_of_sup γ r with "Hs"). }
+    (* THE LINKS, ONCE: the law the read leaf and the banner both spend,
+       proved exactly where the record's four equations are. *)
+    iAssert (EchoLinks.echo_links (echo_taint γ) γ) as "#Hlks";
+      [ iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin) | ].
+    assert (Hlkc : ⊢ EchoLinks.echo_links (echo_taint γ) γ)
+      by (iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin)).
+    (* ...AND SH'S READ LEAF, DISCHARGED (lane IO-LEAF, M5). *)
+    assert (Hsh_rdleaf :
+      forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
+        ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ)
+                      (UShLine.ush_rd_pin γ) ->
+        ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp (echo_taint γ)
+            fsc_cons l).
+    { intros γp N l Hpeq.
+      exact (UShLine.ush_read_recv_leaf_holds γ (echo_taint γ) N γp l
+               Hpeq Hstw Htsw Hlkc). }
     iAssert (UkInit.init_cons_sup fsc_cons (echo_taint γ)
                (init_cons_cred (echo_taint γ) r) init_cons_fd
-               (UShKernel.sh_prompt_pay (PS := uprogSG_free)))%I as "#Hxs".
+               (UShKernel.sh_prompt_pay (PS := uprogSG_free))
+               (UShLine.ush_rd_pin γ))%I as "#Hxs".
     { iApply (init_cons_sup_of_sh_slot γ r fsc_cons init_cons_fd
-                UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
+                (UShLine.ush_rd_pin γ) UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
                 ltac:(vm_compute; discriminate)
                 ltac:(reflexivity)
                 Hsh_rdleaf
@@ -732,11 +747,13 @@ Section EchoInitBoot.
                     (init_cons_cred (echo_taint γ) r)
                     fsc_cons init_cons_fd
                     (UShKernel.sh_prompt_pay (PS := uprogSG_free))
+                    (UShLine.ush_rd_pin γ)
                     -∗ uslot W'))%I as "#Hcon".
     { iApply (UInitKernel.init_boot_con (PS := uprogSG_free)
                 (echo_taint γ)
                 (init_cons_cred (echo_taint γ) r) init_cons_fd
                 (UShKernel.sh_prompt_pay (PS := uprogSG_free)) fsc_cons
+                (UShLine.ush_rd_pin γ)
                 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
                 init_cons_fd_ne Hktaint
                 (init_boot_room 0%nat
@@ -749,14 +766,20 @@ Section EchoInitBoot.
               (UInitKernel.init_boot_pay (PS := uprogSG_free)
                  (echo_taint γ)
                  (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd
-                 (UShKernel.sh_prompt_pay (PS := uprogSG_free)))
+                 (UShKernel.sh_prompt_pay (PS := uprogSG_free))
+                 (UShLine.ush_rd_pin γ))
               with "Hcl Hinv Hcon [] [Hdn Hturn]").
     - iIntros "!>" (W') "#Ht Hp".
       iApply ("Hmint" $! True%I W' with "Ht Hp []").
       iModIntro. iIntros "_". done.
     - iIntros "Hrd". rewrite /UInitKernel.init_boot_pay.
+      iDestruct (UInitBanner.kinit_banner0_pay_holds (echo_taint γ) γ
+                   (PS := uprogSG_free) with "Hlks [Hturn]")
+        as "[Hdl Hbn]"; [ rewrite /echo_turn; iExact "Hturn" | ].
       iSplitL "Hdn"; [ iExact "Hdn" | ].
       iSplitL "Hrd"; [ rewrite ucons_reader_eq; iExact "Hrd" | ].
+      iSplitL "Hdl".
+      { rewrite /UShLine.ush_rd_pin /UInitBanner.kinit_dl0. iExact "Hdl". }
       (* THE ERA'S CREDENTIAL BECOMES /init's BANNER PAYMENT (lane IO-LEAF,
          M1(e)).  This is the one place where the application's claim and
          the kernel's console contracts are the same object AND row 16's
@@ -767,10 +790,7 @@ Section EchoInitBoot.
          payment has ONE row to answer for and [Hsh_deps] is not a premise
          of it any more.  [Hsh_deps] still stands above -- init's three die
          arms and [UkInit.init_deps] spend it (M4/M6). *)
-      iApply (UInitBanner.kinit_banner0_pay_holds (echo_taint γ) γ
-                (PS := uprogSG_free) with "[] [Hturn]").
-      + iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin).
-      + rewrite /echo_turn. iExact "Hturn".
+      iExact "Hbn".
   Qed.
 
 End EchoInitBoot.

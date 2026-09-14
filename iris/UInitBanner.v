@@ -313,20 +313,34 @@ Section UInitBanner.
   Definition kinit_turn0 : iProp Σ :=
     (∃ v : era_pins, era_pin γ (S gen_id) v ∗ bnr v 18%nat)%I.
 
+  (* ...AND THE READER'S HALF OF THE DELIVERED COUNT, SPLIT OFF HERE (lane
+     IO-LEAF, M5).  [EchoOut.eturn] carries FIVE things and the banner
+     spends four of them; the fifth is the reader's half of the era's
+     delivered count, which is not the writer's business at all -- it is
+     the credential the SHELL needs to read the console, and it travels on
+     the console lease ([UserConsole.ucons_pay]'s [Rd]) rather than on the
+     turn.  So the payment hands it straight back, at the era's own pin,
+     and /init's boot bundle puts it where the lease is minted. *)
+  Definition kinit_dl0 : iProp Σ :=
+    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ dl_cnt v (1/2) 0%nat)%I.
+
   Lemma kinit_banner0_holds :
     echo_links T γ -∗
     eturn γ (S gen_id) -∗
-    ∀ N : uk_names Σ, UkInitMain.kinit_banner0 N stc_cons kinit_turn0.
+    kinit_dl0
+    ∗ ∀ N : uk_names Σ, UkInitMain.kinit_banner0 N stc_cons kinit_turn0.
   Proof.
-    iIntros "#Hlk Hturn" (N).
+    iIntros "#Hlk Hturn".
     iDestruct (echo_links_w with "Hlk") as "#Hw".
     iDestruct (echo_links_taint with "Hlk") as "#Ht".
-    rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
-    iIntros "Hl".
     (* THE ONE ROW: after the two dups fd 1 carries what the open installed
        ([UInitFd.ufd_l3_row1]), and what the open installed is the console
        device, read/write. *)
-    iDestruct "Hturn" as (v) "(#Hpin & Htn & _ & #Hcs & #Hps & #HE)".
+    iDestruct "Hturn" as (v) "(#Hpin & Htn & Hdl & #Hcs & #Hps & #HE)".
+    iSplitL "Hdl"; [ rewrite /kinit_dl0; iExists v; iFrame "Hpin Hdl" | ].
+    iIntros (N).
+    rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
+    iIntros "Hl".
     iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons) ∗ bnr v i)%I.
     iSplitR "Htn Hl".
     { iIntros "!>" (j) "%Hj".
@@ -380,13 +394,17 @@ Section UInitBanner.
   Lemma kinit_banner0_pay_holds :
     echo_links T γ -∗
     eturn γ (S gen_id) -∗
-    ∀ N : uk_names Σ,
-      UkInitMain.kinit_banner0 N stc_cons UShKernel.sh_prompt_pay.
+    kinit_dl0
+    ∗ ∀ N : uk_names Σ,
+        UkInitMain.kinit_banner0 N stc_cons UShKernel.sh_prompt_pay.
   Proof.
-    iIntros "#Hlk Hturn" (N).
+    iIntros "#Hlk Hturn".
+    iDestruct (kinit_banner0_holds with "Hlk Hturn") as "[Hdl Hb]".
+    iSplitL "Hdl"; [ iExact "Hdl" | ].
+    iIntros (N).
     iApply (kinit_banner0_mono N kinit_turn0 UShKernel.sh_prompt_pay
-              with "[] [Hturn]"); last first.
-    { iApply (kinit_banner0_holds with "Hlk Hturn"). }
+              with "[] [Hb]"); last first.
+    { iApply "Hb". }
     iIntros "Ht". rewrite /kinit_turn0.
     iDestruct "Ht" as (v) "[#Hpin Hbnr]".
     iApply (UShOut.sh_prompt_pay_of_ushpr T γ v with "Hpin Hlk [Hbnr]").

@@ -269,53 +269,78 @@ Section UserConsole.
 
      [T] IS A PARAMETER and not [AppEcho.echo_taint]: the program tier
      names no application.  The application instantiates it at the entry
-     constructor, exactly as [UInitSh.init_sh_slot] takes its taint. *)
-  Definition ucons_pay (cn : cons_names) (γ : gname) (T : iProp Σ)
-    : Z -> iProp Σ :=
-    fun _ => ((∃ n : nat, ucons_reader cn n ∗ upos_a γ n) ∨ T)%I.
+     constructor, exactly as [UInitSh.init_sh_slot] takes its taint.
 
-  Global Instance ucons_pay_timeless cn γ T `{!Timeless T} (xs : Z) :
-    Timeless (ucons_pay cn γ T xs).
+     ...AND SO IS [Rd], THE READER'S OWN PER-POSITION CREDENTIAL (lane
+     IO-LEAF, M5).  The console lease is not the only exclusive right that
+     travels init -> shell -> init on this payload: the application's input
+     claim keeps a DELIVERED COUNT ([EchoOut.dl_cnt]) whose reader half the
+     shell must hold to read the console at all, and that half moves in
+     lockstep with the ring's cursor -- every console read advances both by
+     the window it consumed.  So it rides HERE, under the SAME existential
+     [n] as [upos_a], which is the only place the two numbers can be said
+     to agree: a holder of [upos γ n] pins the existential by
+     [upos_agree], and reads [Rd] at its own count.
+     A PARAMETER for [T]'s reason exactly -- the program tier names no
+     application and no era -- and it is [emp]-able: an application with
+     nothing to say about its input instantiates it at [fun _ => emp] and
+     every lemma below is the landed one. *)
+  Definition ucons_pay (cn : cons_names) (γ : gname) (T : iProp Σ)
+      (Rd : nat -> iProp Σ)
+    : Z -> iProp Σ :=
+    fun _ => ((∃ n : nat, ucons_reader cn n ∗ upos_a γ n ∗ Rd n) ∨ T)%I.
+
+  Global Instance ucons_pay_timeless cn γ T Rd `{!Timeless T}
+      `{!forall n : nat, Timeless (Rd n)} (xs : Z) :
+    Timeless (ucons_pay cn γ T Rd xs).
   Proof. rewrite /ucons_pay. apply _. Qed.
 
   (* the payload does not read the status -- [UkRun.ukn_const]'s witness *)
   Lemma ucons_pay_const (cn : cons_names) (γ : gname) (T : iProp Σ)
-      (x y : Z) :
-    ucons_pay cn γ T x = ucons_pay cn γ T y.
+      (Rd : nat -> iProp Σ) (x y : Z) :
+    ucons_pay cn γ T Rd x = ucons_pay cn γ T Rd y.
   Proof. reflexivity. Qed.
 
   (* ...AND THE SAME FACT IN THE FORM THE GENERIC SLOT IS STATED AT: the
      payload IS the constant function at the resource it names, so a lemma
      indexed by [fun _ => R] applies here at [R] read off the kill status
      ([UexecExecMint.uslot_mint_pay], [UexecRet.uexec_wp_uslot]). *)
-  Lemma ucons_pay_eta (cn : cons_names) (γ : gname) (T : iProp Σ) :
-    (fun _ : Z => ucons_pay cn γ T (-1)) = ucons_pay cn γ T.
+  Lemma ucons_pay_eta (cn : cons_names) (γ : gname) (T : iProp Σ)
+      (Rd : nat -> iProp Σ) :
+    (fun _ : Z => ucons_pay cn γ T Rd (-1)) = ucons_pay cn γ T Rd.
   Proof. reflexivity. Qed.
 
   (* the two constructors: the lender's, at the position it minted the
      pair at, and the tainted one's *)
   Lemma ucons_pay_tok (cn : cons_names) (γ : gname) (T : iProp Σ)
-      (n : nat) (xs : Z) :
-    ucons_reader cn n -∗ upos_a γ n -∗ ucons_pay cn γ T xs.
+      (Rd : nat -> iProp Σ) (n : nat) (xs : Z) :
+    ucons_reader cn n -∗ upos_a γ n -∗ Rd n -∗ ucons_pay cn γ T Rd xs.
   Proof.
-    iIntros "Hr Hp". rewrite /ucons_pay. iLeft. iExists n. iFrame "Hr Hp".
+    iIntros "Hr Hp Hd". rewrite /ucons_pay. iLeft. iExists n.
+    iFrame "Hr Hp Hd".
   Qed.
 
   Lemma ucons_pay_taint (cn : cons_names) (γ : gname) (T : iProp Σ)
-      (xs : Z) :
-    T -∗ ucons_pay cn γ T xs.
+      (Rd : nat -> iProp Σ) (xs : Z) :
+    T -∗ ucons_pay cn γ T Rd xs.
   Proof. iIntros "HT". rewrite /ucons_pay. by iRight. Qed.
 
   (* ...and what init reads off it at the reap: the token at a position it
      does not know, or the taint.  The payload's half of the pair is
      DROPPED -- the child that held the other half is gone, so nothing
      will ever agree against it again. *)
+  (* ...AND THE READER'S CREDENTIAL COMES BACK WITH IT (lane IO-LEAF, M5):
+     the shell that died gave the token back AT SOME POSITION and the
+     application's half of the delivered count at that same position.  The
+     position pair's payload half is DROPPED -- the child that held the
+     other half is gone -- but [Rd]'s number survives inside the
+     existential, which is what makes the next round's mint honest. *)
   Lemma ucons_pay_redeem (cn : cons_names) (γ : gname) (T : iProp Σ)
-      (xs : Z) :
-    ucons_pay cn γ T xs -∗ (∃ n : nat, ucons_reader cn n) ∨ T.
+      (Rd : nat -> iProp Σ) (xs : Z) :
+    ucons_pay cn γ T Rd xs -∗ (∃ n : nat, ucons_reader cn n ∗ Rd n) ∨ T.
   Proof.
     rewrite /ucons_pay. iIntros "[Hl | HT]"; [| by iRight ].
-    iDestruct "Hl" as (n) "[Hr _]". iLeft. iExists n. iExact "Hr".
+    iDestruct "Hl" as (n) "(Hr & _ & Hd)". iLeft. iExists n. iFrame "Hr Hd".
   Qed.
 
   (* =================================================================== *)
@@ -340,31 +365,39 @@ Section UserConsole.
   (*  process holds -- the number is still there and no longer says        *)
   (*  anything ([ush_read_recv_leaf]'s taint disjunct).                     *)
   (* =================================================================== *)
-  Definition uinit_tok (cn : cons_names) (T : iProp Σ) : iProp Σ :=
-    ((∃ n : nat, ucons_reader cn n) ∨ T)%I.
+  Definition uinit_tok (cn : cons_names) (T : iProp Σ)
+      (Rd : nat -> iProp Σ) : iProp Σ :=
+    ((∃ n : nat, ucons_reader cn n ∗ Rd n) ∨ T)%I.
 
   (* the boot's own shape: init's entry is handed the token at position 0
      ([InitBoot.init_boot_bundle]'s input, threaded to init's run through
-     [PinnedExec.pinned_exec_bundle]'s linear [Pay]) *)
-  Lemma uinit_tok_0 (cn : cons_names) (T : iProp Σ) :
-    ucons_reader cn 0%nat -∗ uinit_tok cn T.
+     [PinnedExec.pinned_exec_bundle]'s linear [Pay]) -- and, beside it, the
+     application's own credential at that same 0 (lane IO-LEAF, M5: for the
+     echo era it is [EchoOut.eturn]'s [dl_cnt v (1/2) 0]). *)
+  Lemma uinit_tok_0 (cn : cons_names) (T : iProp Σ)
+      (Rd : nat -> iProp Σ) :
+    ucons_reader cn 0%nat -∗ Rd 0%nat -∗ uinit_tok cn T Rd.
   Proof.
-    iIntros "Hr". rewrite /uinit_tok. iLeft. iExists 0%nat. iExact "Hr".
+    iIntros "Hr Hd". rewrite /uinit_tok. iLeft. iExists 0%nat.
+    iFrame "Hr Hd".
   Qed.
 
-  (* THE MINT, once per round, immediately before the fork *)
-  Lemma uinit_lend (cn : cons_names) (T : iProp Σ) (xs : Z) :
-    uinit_tok cn T ==∗
-    ∃ (γ : gname) (n : nat), ucons_pay cn γ T xs ∗ upos γ n.
+  (* THE MINT, once per round, immediately before the fork.  The fresh
+     position pair is allocated AT THE TOKEN'S OWN NUMBER, which is what
+     ties [Rd]'s count to the cursor the shell will hold. *)
+  Lemma uinit_lend (cn : cons_names) (T : iProp Σ) (Rd : nat -> iProp Σ)
+      (xs : Z) :
+    uinit_tok cn T Rd ==∗
+    ∃ (γ : gname) (n : nat), ucons_pay cn γ T Rd xs ∗ upos γ n.
   Proof.
     rewrite /uinit_tok. iIntros "[Hl | HT]".
-    - iDestruct "Hl" as (n) "Hr".
+    - iDestruct "Hl" as (n) "[Hr Hd]".
       iMod (upos_alloc n) as (γ) "[Hp Hpa]".
       iModIntro. iExists γ, n. iFrame "Hp".
-      iApply (ucons_pay_tok cn γ T n xs with "Hr Hpa").
+      iApply (ucons_pay_tok cn γ T Rd n xs with "Hr Hpa Hd").
     - iMod (upos_alloc 0%nat) as (γ) "[Hp _]".
       iModIntro. iExists γ, 0%nat. iFrame "Hp".
-      iApply (ucons_pay_taint cn γ T xs with "HT").
+      iApply (ucons_pay_taint cn γ T Rd xs with "HT").
   Qed.
 
   (* ...AND THE REDEEM, at the wait that reaps the shell: the escrow's
@@ -372,9 +405,10 @@ Section UserConsole.
      ([ChildTok.gen_pay]), and what init reads off it is the token again --
      at a position it does not know, which is why the next round's mint
      takes one from the token itself. *)
-  Lemma uinit_redeem (cn : cons_names) (γ : gname) (T : iProp Σ) (xs : Z) :
-    ucons_pay cn γ T xs -∗ uinit_tok cn T.
-  Proof. rewrite /uinit_tok. iApply (ucons_pay_redeem cn γ T xs). Qed.
+  Lemma uinit_redeem (cn : cons_names) (γ : gname) (T : iProp Σ)
+      (Rd : nat -> iProp Σ) (xs : Z) :
+    ucons_pay cn γ T Rd xs -∗ uinit_tok cn T Rd.
+  Proof. rewrite /uinit_tok. iApply (ucons_pay_redeem cn γ T Rd xs). Qed.
 
 End UserConsole.
 

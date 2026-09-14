@@ -3624,6 +3624,14 @@ bare file rows and the six deliberately descoped `# Foo.v` rows.  No prose
 comments -- "ditch all that useless commentary from _CoqProject".  Every lane
 adding a file adds a bare row.  (`b7c49dea2` stripped 2195 -> 1533 lines.)
 
+CHECKPOINT 2026-09-14 (session limit) -- IO-LEAF STEP 3 IN FLIGHT: the init
+side is a LOCAL WIP commit c74734d65 on lane/io-leaf (not pushed; the tree
+does not build until the glue), lane STEP3-SH's uncommitted edits sit in
+-disc, PROLOGUE-ALTS-3's in -tlw, INIT-DIAG's in -sup.  Everything a
+successor needs is in `checkpoint-2026-09-14-step3.md` and
+`handoff-2026-09-16/step3-interface.md` (the binding contract) plus the three
+`handoff-2026-09-16/brief-*.md`.
+
 IO-LEAF M6a(2) LANDED (2026-09-16; `61f015f7b`+`e8b61dc6a` on `61269a3c2`;
 EchoLinks.v, UInitBanner.v, UInitBoot.v, UInitKernel.v, UkInitMain.v; builds
 io53-io54 in the main checkout; audit the thirteen; lemma_diff 6 GONE (the

@@ -226,3 +226,5 @@ goes once its lessons are lifted into the design or durable notes. Not listed
 here either: `ls claude-notes/completed/`.
 
 **Resuming a coordinator session?** Read `projects/CHECKPOINT.md` first.
+
+- `projects/checkpoint-2026-09-14-step3.md` -- THE LATEST CHECKPOINT (2026-09-14, IO-LEAF step 3 in flight; read it before anything in projects/).

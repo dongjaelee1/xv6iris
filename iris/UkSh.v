@@ -140,6 +140,9 @@ Require Import ObsTrace.     (* [mobs] -- what a tag's history is made of, and
    ([UkRun.urun_gen]); [FsImg.ROOTINO] is the directory the pin resolves
    "console" from, which is sh's own working directory at its entry. *)
 Require Import UexecSlot UexecRet.
+Require Import UserPerm.    (* [perm_of] / [lazy_free] -- the text row's reading *)
+Require Import ProcPtOwn.   (* [proc_pt_wf] *)
+Require Import UserPtTree.  (* [uva_rmapped] -- what refutes the short write *)
 Require FsImg.
 
 (* ===================================================================== *)
@@ -1040,6 +1043,189 @@ Section UkSh.
     { exact Htk. }
   Qed.
 
+  (* ...AND THE SAME STUB WITH THE SOURCE RUN IN THE TEXT HALF (lane
+     TXT-ROW's leaf, at sh; [UkEcho.wp_kecho_write_chain_txt] is the twin).
+
+     EVERY LITERAL SH WRITES IS .rodata: the prompt "$ " at 0x1338, the
+     three panic strings, the two "%s" formats.  A .rodata run is filed
+     under [UkRun.ukn_t] and its pages are X-and-NOT-W, so
+     [UserHeap.uheap_ubytes_w] -- which is what [wp_ksh_write_chain] hands
+     the leaf -- says nothing about it and the post's SHORT arm cannot be
+     refuted.  [UkRunSys.wp_uk_ecall_write_chain_txt] reads the run off
+     [UserHeap.uheap_text] instead, one test weaker and true of exactly
+     the pages a literal lives on, and hands back the two facts
+     [UkWriteLeaf.uwrite_no_short] wants.
+
+     BOTH STUBS STAND, as [wp_ksh_write] and [wp_ksh_write_chain] do: a
+     write whose buffer is the LINE BUFFER (the child's diagnostic prints
+     a heap string) takes the data-half leaf, and a write whose buffer is
+     a literal takes this one. *)
+  Lemma wp_ksh_write_chain_txt (h : CpuId) (m : regfile) (avail : nat)
+      (fdep : sfam) (l : list fdstate) (nb : nat) (fb : nat -> bv 8) :
+    shk_code γt -∗
+    urun N h m (mword_of_int ShSyms.write) avail -∗
+    udepwf_std N (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+      (add_vec_int (mword_of_int ShSyms.write : mword 64) 2) 16 fdep l -∗
+    UserFd.ustd γfd l -∗
+    ([∗ list] j ∈ seq 0 nb,
+       utext γt (uint (m !!! Regidx a1_idx) + Z.of_nat j)%Z (fb j)) -∗
+    (∀ (h' : CpuId) (ret : mword 64) (W : uvis) (cw' : Z) (cs' : gset gname),
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx a0_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx a1_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx a2_idx⌝ -∗
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       ⌜uvis_lazy W = false⌝ -∗
+       ⌜ forall (P : uptd) (j : nat),
+           ProcPtOwn.proc_pt_wf P ->
+           perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
+           lazy_free (ud_um P) (uvis_sz W) ->
+           (j < nb)%nat ->
+           UserPtTree.uva_rmapped P
+             (uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))) ⌝ -∗
+       UserFd.ustd γfd l -∗
+       spost_at uslot 16 fdep W ret (uvis_M W) (uvis_fd W) cw' cs' -∗
+       urun N h'
+         (<[Regidx a0_idx := ret]>
+            (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
+         (ret_pc (m !!! Regidx ra_idx)) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    iIntros "#Hcode Hrun Hsb Hstd #Hbs Hcont".
+    rewrite shp_write.
+    (* ---- 0xca6  c.li a7,16 ---- *)
+    iApply (wp_uk_cli N h m (mword_of_int 0xca6)
+              (mword_of_int 16 : mword 6) a7_idx avail
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; discriminate) with "[] Hrun").
+    { iApply (uis_shk_ca6 with "Hcode"). }
+    assert (Eca6 : add_vec_int (mword_of_int 0xca6 : mword 64) 2
+                   = mword_of_int 0xca8)
+      by (apply bv_eq; vm_compute; reflexivity).
+    assert (Em : <[Regidx a7_idx
+                   := regval_into_reg (sign_extend' 64 (mword_of_int 16 : mword 6)
+                                       : mword 64)]> m
+                 = <[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+      by (f_equal; apply bv_eq; vm_compute; reflexivity).
+    rewrite Eca6 Em.
+    iIntros (h1) "Hrun".
+    set (m1 := <[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m).
+    (* ---- 0xca8  ecall -- THE CHAIN-PAYING WRITE, AT THE TEXT ROW ---- *)
+    assert (Ha1m1 : m1 !!! Regidx a1_idx = m !!! Regidx a1_idx)
+      by exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx)
+                  (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)).
+    rewrite <- Ha1m1.
+    iApply (wp_uk_ecall_write_chain_txt N h1 m1 (mword_of_int 0xca8) avail
+              fdep l nb fb
+              ltac:(unfold m1, usysno;
+                    rewrite (upd_eq m (Regidx a7_idx)
+                               (mword_of_int 16 : mword 64));
+                    vm_compute; reflexivity)
+              ltac:(vm_compute; reflexivity)
+              with "[] Hrun Hsb Hstd Hbs").
+    { iApply (uis_shk_ca8 with "Hcode"). }
+    assert (Eca8 : add_vec_int (mword_of_int 0xca8 : mword 64) 4
+                   = mword_of_int 0xcac)
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite Eca8.
+    iIntros (h2 ret W cw' cs')
+      "%Ha0 %Ha1 %Ha2 %Htk %Hlz %Hnf Hstd _ Hpost Hrun".
+    rewrite Ha1m1.
+    set (m2 := <[Regidx a0_idx := ret]> m1).
+    (* ---- 0xcac  c.jr ra ---- *)
+    assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
+    { unfold m2, m1.
+      exact (eq_trans
+               (upd_ne m1 (Regidx a0_idx) (Regidx ra_idx) ret
+                  ltac:(vm_compute; discriminate))
+               (upd_ne m (Regidx a7_idx) (Regidx ra_idx)
+                  (mword_of_int 16 : mword 64)
+                  ltac:(vm_compute; discriminate))). }
+    iApply (wp_uk_cjr N h2 m2 (mword_of_int 0xcac) ra_idx
+              (ret_pc (m !!! Regidx ra_idx)) avail
+              ltac:(vm_compute; discriminate)
+              ltac:(rewrite Hra; reflexivity)
+              with "[] Hrun").
+    { iApply (uis_shk_cac with "Hcode"). }
+    iIntros (h3) "Hrun".
+    iApply ("Hcont" $! h3 ret W cw' cs'
+              with "[%] [%] [%] [%] [%] [%] Hstd Hpost Hrun").
+    { rewrite Ha0 /m1.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a0_idx)
+               (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)). }
+    { rewrite Ha1 /m1.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx)
+               (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)). }
+    { rewrite Ha2 /m1.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a2_idx)
+               (mword_of_int 16 : mword 64) ltac:(vm_compute; discriminate)). }
+    { exact Htk. }
+    { exact Hlz. }
+    { rewrite <- Ha1m1. exact Hnf. }
+  Qed.
+
+  (* ===================================================================== *)
+  (* WHAT THE WALK SPENDS PER WRITE (lane IO-LEAF, M4a).                    *)
+  (*                                                                       *)
+  (* [UkEcho.kecho_w]'s twin at sh, and it is per CALL and not per byte for *)
+  (* the same reason: sh's prompt is [write(2, "$ ", 2)] and the child's    *)
+  (* diagnostic is an [fprintf] whose putc writes one byte at a time, so    *)
+  (* the obligation has to be statable at any count.  THE DESCRIPTOR IS A   *)
+  (* PARAMETER, which /init's and echo's are not: sh writes its prompt to   *)
+  (* fd 2 and its diagnostics to fd 2, while echo writes to fd 1, and which *)
+  (* arm of [SpecFilewrite.filewrite_in] row 16 asks for is decided by      *)
+  (* argument 0's ledger row.                                              *)
+  (*                                                                       *)
+  (* It names nothing but the program tier's own vocabulary -- the three    *)
+  (* argument registers, the run, [Ci], [Co] -- and that is forced: sh sits *)
+  (* BELOW the file system and cannot name row 16's reading at all          *)
+  (* ([UkWriteLeaf]'s header).  The CONCRETE discharge -- the console       *)
+  (* chain, the era's write link, the short arm's refutation -- is proved   *)
+  (* above [UkWriteLeaf] and reaches this walk as a premise, exactly as     *)
+  (* /init's banner reaches [UkInitMain] from [UInitBanner].                *)
+  (* ===================================================================== *)
+  Definition ksh_w (fdw ua : mword 64) (nb : nat) (Ci Co : iProp Σ) : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (avail : nat),
+       ⌜m !!! Regidx a0_idx = fdw⌝ -∗
+       ⌜m !!! Regidx a1_idx = ua⌝ -∗
+       ⌜m !!! Regidx a2_idx = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
+       shk_code γt -∗
+       Ci -∗
+       urun N h m (mword_of_int ShSyms.write) avail -∗
+       (∀ (h' : CpuId) (ret : mword 64),
+          Co -∗
+          urun N h'
+            (<[Regidx a0_idx := ret]>
+               (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
+            (ret_pc (m !!! Regidx ra_idx)) avail -∗
+          WP (Loop : expr riscv_lang)) -∗
+       WP (Loop : expr riscv_lang))%I.
+
+  (* ...AND THE TRIVIAL ONE: the flagged deposit pays row 16 and the post
+     is thrown away, which is what every write of sh's does today.  This is
+     what keeps the two stubs side by side ([wp_ksh_write] beside
+     [wp_ksh_write_chain]) while the swap happens one site at a time. *)
+  Lemma ksh_w_of_law (fdw ua : mword 64) (nb : nat) (Ci Co : iProp Σ) :
+    (Ci ⊢ Co) -> sh_deps -∗ ksh_w fdw ua nb Ci Co.
+  Proof.
+    intros Hm. iIntros "#Hdp" (h m avail) "_ _ _ #Hcode HCi Hrun Hcont".
+    iApply (wp_ksh_write h m avail with "Hdp Hcode Hrun").
+    iIntros (h' ret) "Hrun".
+    iApply ("Hcont" $! h' ret with "[HCi] Hrun"). by iApply Hm.
+  Qed.
+
+  (* ...and the output side is MONOTONE, which is what lets the LAST write
+     of a run hand its cursor straight on ([UkEcho.kecho_w_mono]'s twin). *)
+  Lemma ksh_w_mono (fdw ua : mword 64) (nb : nat) (Ci Co Co' : iProp Σ) :
+    (Co -∗ Co') -∗ ksh_w fdw ua nb Ci Co -∗ ksh_w fdw ua nb Ci Co'.
+  Proof.
+    iIntros "Hm Hw" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode HCi Hrun Hcont".
+    iApply ("Hw" $! h m avail with "[%] [%] [%] Hcode HCi Hrun");
+      [ exact Ha0 | exact Ha1 | exact Ha2 | ].
+    iIntros (h' ret) "HCo Hrun".
+    iApply ("Hcont" $! h' ret with "[Hm HCo] Hrun").
+    iApply ("Hm" with "HCo").
+  Qed.
 
 
   (* ===================================================================== *)

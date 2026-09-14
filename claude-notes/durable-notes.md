@@ -844,6 +844,9 @@ Five ways to be silently miscounted, all of them green builds:
   adding it there. A file deliberately out of the build is descoped by commenting
   its row to a bare `# Foo.v`, which is the syntax `--check` recognizes; a
   silently dropped row and a deliberate one look identical from outside.
+- **`iris/_CoqProject` carries no prose.** Header, bare file rows and the
+  descoped `# Foo.v` rows only (owner ruling 2026-09-14); a new file is one bare
+  row in build order, nothing else.
 
 Check the report after adding a function — every failure mode here is a status
 downgrade, never an error.

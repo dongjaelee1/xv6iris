@@ -3599,6 +3599,31 @@ sh_pay_rest sh_Rsh` from `UShEcho.sh_exec_sup_of_echo_slot_closed`, the
 conjunct deleted at `echo_Hinit_boot`/`UInitBootAdequacy`.  Serialise AFTER
 M3b core: both re-cut `wp_kshf_fork`'s child arm.
 
+SH-LINE-CRED LANDED (2026-09-14; the lane's `6da70b151` in `-sup`, cherry-picked
+as `0f2595cc3` on `lane/io-leaf`, pushed to main with `b7c49dea2`; new
+EchoLinksLine.v, UShPanic.v; builds io60-io61 in the main checkout; audit md5
+unchanged; lemma_diff CLEAN; no Admitted; TRUSTED DIFF EMPTY).  THE SHELL'S
+WRITE CREDENTIAL SURVIVES A CHILD'S RUN AND THE FORK PANIC, at TIGHT shapes:
+`EchoLinksLine.wr_tail`/`wr_blk_t` (the line's remaining bytes, no `∨ True`
+slack), the family `ewc_line`/`ewc_lpr`/`ewc_lcred k n p` (the tight sibling of
+`EchoLinks.ewc_cred`), the steps `echo_blk_step`, `echo_prompt_dollar_post`/
+`_line`, `echo_prompt_space_t`, `ewc_read_t`, `ewc_lcred_read`, the panic route
+`echo_panic_step` + `ewc_panic_done : ewc_panic v n 5 -∗ EchoLinks.ewc_ban T v
+n 0` (a panicking fork1 pays its five bytes and hands the next round's banner
+credential to the parent), `ewc_ban_done_line`, `ewc_post_of_ech`; `UShPanic`
+routes them as `ksh_w1_of_link_panic`, `ksh_w_of_link_prompt_fam`,
+`ksh_w_of_link_lcred` and `sh_prompt_law_holds_line : echo_links T γ -∗
+UShKernel.sh_prompt_law (ewc_lcred T γ (S gen_id))`.  FINDING: EchoLinks's
+loose `wr_blk`/`wr_sp`/`wr_open` admit a wire the line credential cannot
+re-derive after a child has written; so step 3 instantiates the loop's `Wc :=
+ewc_lcred` (tight) widened with the ban arm, NOT `ewc_cred`.  Consumers
+untouched (nothing above the two new files changed).
+
+PROJECT RULE (owner, 2026-09-14): `iris/_CoqProject` carries ONLY the header,
+bare file rows and the six deliberately descoped `# Foo.v` rows.  No prose
+comments -- "ditch all that useless commentary from _CoqProject".  Every lane
+adding a file adds a bare row.  (`b7c49dea2` stripped 2195 -> 1533 lines.)
+
 IO-LEAF M6a(2) LANDED (2026-09-16; `61f015f7b`+`e8b61dc6a` on `61269a3c2`;
 EchoLinks.v, UInitBanner.v, UInitBoot.v, UInitKernel.v, UkInitMain.v; builds
 io53-io54 in the main checkout; audit the thirteen; lemma_diff 6 GONE (the

@@ -273,15 +273,19 @@ Section UShPanic.
   (*  S3  ONE BYTE OF THE PANIC LINE, THROUGH THE ERA'S LINK              *)
   (*      ([UInitBanner.kinit_w1_of_link]'s mould at sh's fd 2)           *)
   (* =================================================================== *)
-  Lemma ksh_w1_of_link_panic (N : uk_names Σ) (v : era_pins) (n : nat)
-      (l : list fdstate) (rb : bool) (i : nat) (b : bv 8) :
+  (* ...AT ANY ALTERNATIVE (lane IO-LEAF, M4b(2)): a byte of the block the
+     writer files with its first byte ([EchoLinksLine.echo_blk_step]) --
+     sh's own "fork\n" is [a = 3], the exec-failed child's
+     "exec echo failed\n" is [a = 1]. *)
+  Lemma ksh_w1_of_link_blk (N : uk_names Σ) (v : era_pins) (n : nat)
+      (l : list fdstate) (rb : bool) (a i : nat) (b : bv 8) :
     l !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
-    line_alts !!! 3%nat !! i = Some b ->
+    line_alts !!! a !! i = Some b ->
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
     UkShDiag.ksh_w1 N (mword_of_int 2 : mword 64) b
-      (UserFd.ustd (ukn_fd N) l ∗ EchoLinksLine.ewc_panic T v n i)
-      (UserFd.ustd (ukn_fd N) l ∗ EchoLinksLine.ewc_panic T v n (S i)).
+      (UserFd.ustd (ukn_fd N) l ∗ EchoLinksLine.ewc_blk T v n a i)
+      (UserFd.ustd (ukn_fd N) l ∗ EchoLinksLine.ewc_blk T v n a (S i)).
   Proof.
     intros Hl2 Hb.
     iIntros "#Hpin #Hlk" (ua h m avail) "%Ha0 %Ha1 %Ha2 #Hcode [Hbuf [Hl Hc]] Hrun Hcont".
@@ -294,8 +298,8 @@ Section UShPanic.
     set (Q := (fun k : nat =>
                  ubyteq (ukn_d N) (DfracOwn (1/2)) (uint ua) b
                  ∗ match k with
-                   | O => EchoLinksLine.ewc_panic T v n i
-                   | _ => EchoLinksLine.ewc_panic T v n (S i)
+                   | O => EchoLinksLine.ewc_blk T v n a i
+                   | _ => EchoLinksLine.ewc_blk T v n a (S i)
                    end)%I).
     assert (Ham1 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
                      !!! Regidx a1_idx = ua)
@@ -343,7 +347,7 @@ Section UShPanic.
         { pose proof (HM 0%nat ltac:(lia)) as HM0.
           cbn in HM0. rewrite HM0 in Hb'. by injection Hb'. }
         subst b'.
-        iApply (EchoLinksLine.echo_panic_step T γ (S gen_id) v n i b (Q 1%nat)
+        iApply (EchoLinksLine.echo_blk_step T γ (S gen_id) v n a i b (Q 1%nat)
                   Hb with "Hpin Hlk Hc [Hb1]").
         iIntros "Hres". rewrite /Q. iFrame "Hb1". iExact "Hres". }
     { iApply (ubytesq_of_one with "Hb2"). }
@@ -362,6 +366,21 @@ Section UShPanic.
     iDestruct (ubyte_join with "Hb1 Hb2") as "Hbuf".
     iApply ("Hcont" $! h' ret with "[Hbuf Hl Hc] Hrun").
     iFrame "Hbuf Hl". iExact "Hc".
+  Qed.
+
+  (* ...and the panic's byte is the instance at [a = 3] *)
+  Lemma ksh_w1_of_link_panic (N : uk_names Σ) (v : era_pins) (n : nat)
+      (l : list fdstate) (rb : bool) (i : nat) (b : bv 8) :
+    l !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    line_alts !!! 3%nat !! i = Some b ->
+    era_pin γ (S gen_id) v -∗
+    echo_links T γ -∗
+    UkShDiag.ksh_w1 N (mword_of_int 2 : mword 64) b
+      (UserFd.ustd (ukn_fd N) l ∗ EchoLinksLine.ewc_panic T v n i)
+      (UserFd.ustd (ukn_fd N) l ∗ EchoLinksLine.ewc_panic T v n (S i)).
+  Proof.
+    intros Hl2 Hb. rewrite /EchoLinksLine.ewc_panic.
+    exact (ksh_w1_of_link_blk N v n l rb 3%nat i b Hl2 Hb).
   Qed.
 
   (* =================================================================== *)
@@ -612,6 +631,72 @@ Section UShPanic.
       iApply (UkWriteClosed.ksh_w_of_closed N (mword_of_int 2)
                 (mword_of_int sh_prompt_pv) 2%nat l 2%nat
                 UShOut.sh_fd2_signed ltac:(unfold NSTD; lia) Hcl).
+  Qed.
+
+  (* =================================================================== *)
+  (*  S6  sh's OWN PANIC (lane IO-LEAF, M4b(2)): [UkShDiag.ush_panic_law]  *)
+  (*      at the era's links.  The block credential the fork meant to      *)
+  (*      lend opens into the panic family ([EchoLinksLine.               *)
+  (*      ewc_lcred_blk_panic]), each of "fork\n"'s five bytes is a step   *)
+  (*      of it ([ksh_w1_of_link_panic], S3), and the fifth leaves the     *)
+  (*      banner-owed credential ([EchoLinksLine.ewc_panic_done]) -- which  *)
+  (*      is [UInitBanner.kinit_ban T γ], spelled out.                     *)
+  (* =================================================================== *)
+  Lemma ush_panic_law_holds :
+    echo_links T γ -∗
+    UkShDiag.ush_panic_law (EchoLinksLine.ewc_lcred T γ (S gen_id))
+      (fun n : nat => ∃ v : era_pins,
+         era_pin γ (S gen_id) v ∗ EchoLinks.ewc_ban T v n 0%nat)%I.
+  Proof.
+    iIntros "#Hlk". rewrite /UkShDiag.ush_panic_law.
+    iIntros "!>" (N n l) "%Hfd2 Hc". destruct Hfd2 as [rb Hl2].
+    iDestruct (EchoLinksLine.ewc_lcred_blk_panic T γ (S gen_id) n with "Hc")
+      as (v) "[#Hpin Hc]".
+    iExists (fun p : nat => EchoLinksLine.ewc_panic T v n p).
+    iSplitL "Hc"; [ iExact "Hc" | ].
+    iSplit.
+    - iIntros "!>" (p b) "%Hb".
+      iApply (ksh_w1_of_link_panic N v n l rb p b Hl2 Hb with "Hpin Hlk").
+    - iIntros "!> Hp". iExists v. iFrame "Hpin".
+      iPoseProof (EchoLinksLine.ewc_panic_done T v n) as "Hd".
+      iEval (rewrite EchoLinksLine.line_alts_len3) in "Hd".
+      iApply ("Hd" with "Hp").
+  Qed.
+
+  (* =================================================================== *)
+  (*  S7  THE EXEC-FAILED CHILD'S DIAGNOSTIC (M4b(2)): [UkShDiag.          *)
+  (*      ush_execfail_law] at the era's links.  The block credential the  *)
+  (*      exec handed back opens at alternative 1 ([EchoLinksLine.         *)
+  (*      ewc_lcred_blk_open]), each of "exec echo failed\n"'s seventeen   *)
+  (*      bytes is a step ([ksh_w1_of_link_blk]), and the seventeenth      *)
+  (*      leaves the block written up to its prompt -- a boundary          *)
+  (*      credential ([EchoLinksLine.ewc_lcred_of_post_a]), what the       *)
+  (*      child's exit hands back and the parent's next prompt is paid     *)
+  (*      from.                                                            *)
+  (* =================================================================== *)
+  Lemma ush_execfail_law_holds (n : nat) :
+    echo_links T γ -∗
+    UkShDiag.ush_execfail_law
+      (EchoLinksLine.ewc_lcred T γ (S gen_id) n 3%nat)
+      (EchoLinksLine.ewc_lcred T γ (S gen_id) n 0%nat).
+  Proof.
+    iIntros "#Hlk". rewrite /UkShDiag.ush_execfail_law.
+    iIntros "!>" (N l) "%Hfd2 Hc". destruct Hfd2 as [rb Hl2].
+    iDestruct (EchoLinksLine.ewc_lcred_blk_open T γ (S gen_id) n 1%nat with "Hc")
+      as (v) "[#Hpin Hc]".
+    iExists (fun p : nat => EchoLinksLine.ewc_blk T v n 1%nat p).
+    iSplitL "Hc"; [ iExact "Hc" | ].
+    iSplit.
+    - iIntros "!>" (p b) "%Hb".
+      iApply (ksh_w1_of_link_blk N v n l rb 1%nat p b Hl2 Hb with "Hpin Hlk").
+    - iIntros "!> Hp".
+      iApply (EchoLinksLine.ewc_lcred_of_post_a T γ (S gen_id) n 1%nat v
+                ltac:(lia) with "Hpin").
+      iPoseProof (EchoLinksLine.ewc_blk_done T v n 1%nat) as "Hd".
+      assert (E17 : (length (line_alts !!! 1%nat) - 2)%nat = 17%nat)
+        by (rewrite EchoLinksLine.line_alts_len1; reflexivity).
+      iEval (rewrite E17) in "Hd".
+      iApply ("Hd" with "Hp").
   Qed.
 
 End UShPanic.

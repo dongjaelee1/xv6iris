@@ -1298,25 +1298,35 @@ Section UkShRun.
   (* [ustack] would forget the spilled ra and the child would return to an  *)
   (* unnamed address.)                                                      *)
   (*                                                                       *)
-  (* DEPENDS ON [ush_diag_leaf] (the -1 arm's panic).                       *)
+  (* THE -1 ARM'S PANIC IS THE CALLER'S (lane IO-LEAF, M4b(2)): the tail   *)
+  (* and [wp_kshr_fork1] hand the run at [panic]'s entry back to the site,  *)
+  (* which pays "fork\n" however it can -- [wp_kshr_fork1_any] below on the *)
+  (* free law ([ush_diag_leaf]), sh's own fork arm through the era's links  *)
+  (* ([UkShFork.wp_kshf_fork]).                                             *)
   (* ===================================================================== *)
 
   (* the shared tail, 0x74..0x80 plus the panic branch, at WHATEVER gname
      triple the arm that reached it is running under *)
   Local Lemma wp_kshr_fork1_tail (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (mt : regfile)
-      (sp0 vra vs0 : mword 64) (n : nat) :
+      (sp0 vra vs0 : mword 64) (n : nat)
+      (* WHAT THE PANIC IS PAID WITH (lane IO-LEAF, M4b(2)): the site's
+         own resource, abstract here.  It rides through the tail and comes
+         back out on BOTH arms -- to the panic continuation when fork
+         failed, to the returning one otherwise. *)
+      (X : iProp Σ) :
     uint sp0 mod 8 = 0 ->
     16 <= uint sp0 ->
     mt !!! Regidx csp_rs1 = add_vec_int sp0 (- (8 * Z.of_nat 2)) ->
-    UkSh.sh_deps -∗
     shk_code (ukn_t N) -∗
     shk_rodata (ukn_t N) -∗
     uword (ukn_d N) (uint sp0 - 8) vra -∗
-    (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)).  The [-1] arm of
-       this tail is [panic("fork")], which ends in [exit] and so has to pay
-       what this record's exit owes; the RETURNING arm pays nothing, so the
-       resource comes straight back out of the continuation below.  Two
-       exclusive branches, one resource. *)
+    (* WHAT THE PANIC SPENDS, BORROWED (lane KILL-PAY, K4(a); lane
+       IO-LEAF, M4b(2)).  The [-1] arm of this tail is [panic("fork")],
+       which writes and then ends in [exit]; what it spends is the site's
+       [X] -- used to be this record's exit payload, is now whatever the
+       site pays the message and the exit with.  The RETURNING arm spends
+       nothing, so the resource comes straight back out of the
+       continuation below.  Two exclusive branches, one resource. *)
     uword (ukn_d N) (uint sp0 - 16) vs0 -∗
     (* ...OR THE FACT THAT THE PANIC IS UNREACHABLE (lane IO-LEAF, M3a).
        The tail runs in BOTH processes and only the parent can see -1, so
@@ -1324,9 +1334,17 @@ Section UkShRun.
        to pay for free because its record was trivial; once the child's
        payload is the parent's choice, the disjunct is what stands in for
        [UkRun.ukn_pay_free_of_triv]. *)
-    (ukn_pay N (-1)
-     ∨ ⌜ mt !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝) -∗
+    (X ∨ ⌜ mt !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝) -∗
     urun N h mt (mword_of_int 0x74) (Dg + n) -∗
+    (* THE PANIC, at the site's hand (M4b(2)): fork returned -1, a0 is the
+       address of "fork", and the run is at [panic]'s entry with the
+       diagnostic subtree's stack need in hand. *)
+    (∀ (h' : CpuId) (m' : regfile),
+       ⌜ uint (m' !!! Regidx a0_idx) = 0x1298 ⌝ -∗
+       ⌜ mt !!! Regidx a0_idx = (mword_of_int (-1) : mword 64) ⌝ -∗
+       X -∗
+       urun N h' m' (mword_of_int ShSyms.panic) (Dg + n) -∗
+       WP (Loop : expr riscv_lang)) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ forall q : mword 5, uint q <> 1 -> uint q <> 2 -> uint q <> 8 ->
            uint q <> 15 -> m' !!! Regidx q = mt !!! Regidx q ⌝ -∗
@@ -1334,13 +1352,13 @@ Section UkShRun.
        ⌜ m' !!! Regidx s0_idx = vs0 ⌝ -∗
        ⌜ m' !!! Regidx csp_rs1 = sp0 ⌝ -∗
        (* ...and back, unspent: fork1 returned *)
-       (ukn_pay N (-1)
-        ∨ ⌜ mt !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝) -∗
+       (X ∨ ⌜ mt !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝) -∗
        urun N h' m' (ret_pc vra) (2 + (Dg + n)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hal8 Hlo Hsp. iIntros "#Hdp #Hcode #Hro Hw8 Hw0 Hpayv Hrun Hcont".
+    intros Hal8 Hlo Hsp.
+    iIntros "#Hcode #Hro Hw8 Hw0 Hpayv Hrun Hpanic Hcont".
     assert (Hbsp1 : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 2)))
                     = bv_unsigned sp0 - 16).
     { replace (- (8 * Z.of_nat 2)) with (-16) by lia.
@@ -1450,10 +1468,13 @@ Section UkShRun.
         rewrite /t3 (upd_eq t2 (Regidx a0_idx)
                        (mword_of_int 0x1298 : mword 64)).
         apply uint_moi. unfold Z64. lia. }
-      iApply (ush_diag_leaf N h5 t4 ShSyms.panic n
-                ltac:(left; split; [ reflexivity | left; exact Hmsg ])
-                with "Hdp Hcode Hro [] Hpayv Hrun").
-      rewrite ush_diag_res_panic. done. }
+      (* the branch was taken, so a0 WAS -1 *)
+      assert (Hneg : mt !!! Regidx a0_idx = (mword_of_int (-1) : mword 64)).
+      { unfold uv_btaken in Hbt. apply eq_vec_true_iff in Hbt.
+        rewrite (Ht1 a0_idx ltac:(vm_compute; discriminate)) Ha5_1 in Hbt.
+        rewrite Hbt. apply bv_eq. vm_compute. reflexivity. }
+      iApply ("Hpanic" $! h5 t4 with "[%] [%] Hpayv Hrun");
+        [ exact Hmsg | exact Hneg ]. }
     (* ---- fork succeeded: pop and return ---- *)
     (* 0x7a  c.ldsp ra,8(sp) *)
     iApply (wp_uk_cldsp N h2 t1 (mword_of_int 0x7a)
@@ -1556,7 +1577,7 @@ Section UkShRun.
     exact (Ht1 q (ushr_ridx_ne q a5_idx ltac:(rewrite Hc15; exact H15))).
   Qed.
 
-  (* ---- fork1, whole.  DEPENDS ON [ush_diag_leaf]. --------------------- *)
+  (* ---- fork1, whole.  THE PANIC IS THE CALLER'S (M4b(2)). ------------- *)
   (* CWD-INDEXED, as [wp_kshr_fork]: the value crosses, and
      [wp_kshr_fork1_any] below is the index-free corollary. *)
   Lemma wp_kshr_fork1 (N : uk_names Σ) `{!ukn_const N}
@@ -1564,9 +1585,14 @@ Section UkShRun.
       (szv : Z) (l : list fdstate) (D : gmap nat fdstate)
       (h : CpuId) (m : regfile) (n : nat) (cw : Z)
       (* the three binders [wp_kshr_fork] opens (lane IO-LEAF, M3a) *)
-      (Sc : gset gname) (Q : Z -> iProp Σ) (Rc : iProp Σ) :
+      (Sc : gset gname) (Q : Z -> iProp Σ) (Rc : iProp Σ)
+      (* ...and what the caller's panic spends (M4b(2)): the resource the
+         site holds for its exit, abstract -- the record's own payload at
+         [wp_kshr_fork1_any], the lease's pieces at sh's fork arm *)
+      (Pex : iProp Σ) :
     (forall x y : Z, Q x = Q y) ->
-    UkSh.sh_deps -∗
+    (* NO FREE WRITE LAW (M4b(2)): nothing on fork1's own path writes, and
+       the panic is the caller's. *)
     shk_code (ukn_t N) -∗ shk_rodata (ukn_t N) -∗ P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
     UserFd.ustd (ukn_fd N) l -∗
     UserCwd.ucwd (ukn_cwd N) cw -∗
@@ -1580,13 +1606,32 @@ Section UkShRun.
     (* what the caller lends its child, and how a killer pays for it *)
     Rc -∗
     □ (riscv_kill_cred -∗ Q (-1)) -∗
-    (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)): fork1's [-1] arm
-       panics, and a panic ends in [exit].  The RETURNING arm hands it
-       straight back, on the parent's continuation below; the CHILD's tail
-       never reaches the panic ([wp_kshr_fork1_tail]'s second disjunct). *)
-    ukn_pay N (-1) -∗
+    (* WHAT THE PANIC SPENDS, BORROWED (lane KILL-PAY, K4(a); M4b(2)):
+       fork1's [-1] arm panics, and the panic is the caller's (below).
+       The RETURNING arm hands it straight back, on the parent's
+       continuation; the CHILD's tail never reaches the panic
+       ([wp_kshr_fork1_tail]'s second disjunct). *)
+    Pex -∗
     urun N h m (mword_of_int ShSyms.fork1) (2 + (Dg + n)) -∗
-    ((∀ (h' : CpuId) (m' : regfile) (r : mword 64),
+    ((* THE PANIC (M4b(2)): fork returned -1, and the parent is at
+        [panic]'s entry with "fork" in a0, holding its ledger, fork's
+        answer -- the lend back whole on the row's [-1] arm -- and what it
+        borrowed.  Its text, .rodata, break, cwd and descriptors are
+        dropped: nothing after [panic] reads them. *)
+     (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
+        ⌜ uint (m' !!! Regidx a0_idx) = 0x1298 ⌝ -∗
+        ⌜ r = (mword_of_int (-1) : mword 64) ⌝ -∗
+        ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
+            UserChildren.uch (ukn_ch N) Sc ∗ Rc)
+         ∨ ∃ (γ : gname) (pidv : mword 32),
+             ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             child_tok γ pidv Q ∗
+             UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
+        UserFd.ustd (ukn_fd N) l -∗
+        Pex -∗
+        urun N h' m' (mword_of_int ShSyms.panic) (Dg + n) -∗
+        WP (Loop : expr riscv_lang)) ∗
+     (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
@@ -1601,8 +1646,8 @@ Section UkShRun.
         UserFd.ustd (ukn_fd N) l -∗
         UserCwd.ucwd (ukn_cwd N) cw -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
-        (* ...and the payload back, unspent: fork1 returned *)
-        ukn_pay N (-1) -∗
+        (* ...and what it borrowed back, unspent: fork1 returned *)
+        Pex -∗
         urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + (Dg + n)) -∗
         WP (Loop : expr riscv_lang)) ∗
      (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname),
@@ -1624,8 +1669,8 @@ Section UkShRun.
     WP (Loop : expr riscv_lang).
   Proof.
     intros HQc.
-    iIntros "#Hdp #Hcode #Hro HP Hsz Hstd Hcwd Hch HD HRc #Hkw Hpayv Hrun
-             [Hpar Hchi]".
+    iIntros "#Hcode #Hro HP Hsz Hstd Hcwd Hch HD HRc #Hkw Hpayv Hrun
+             (Hpanic & Hpar & Hchi)".
     rewrite shr_fork1.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     remember (m !!! Regidx csp_rs1) as sp0 eqn:Hsp0.
@@ -1820,20 +1865,42 @@ Section UkShRun.
            exact (Hm1 q (ushr_ridx_ne q csp_rs1 ltac:(lia))). }
     (* the borrowed payload goes with the PARENT: the child's tail is at a
        trivial record and pays its own (lane KILL-PAY, K4(a)) *)
-    iSplitL "Hpar Hpayv".
+    iSplitL "Hpanic Hpar Hpayv".
     - (* ---- THE PARENT ---- *)
       iIntros (hp r) "%Hr Hans (_ & HP & Hw8 & Hw0) Hsz Hstd Hcwd HD Hrun".
+      (* everything the parent holds rides through the tail as its [X]
+         and comes back on whichever arm runs *)
       iApply (wp_kshr_fork1_tail N hp
                 (<[Regidx a0_idx := r]>
                    (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m3))
-                sp0 vra vs0 n Hal8 Hlo (Hspf r)
-                with "Hdp Hcode Hro Hw8 Hw0 [Hpayv] Hrun").
-      { by iLeft. }
+                sp0 vra vs0 n
+                (Pex
+                 ∗ ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
+                       UserChildren.uch (ukn_ch N) Sc ∗ Rc)
+                    ∨ ∃ (γ : gname) (pidv : mword 32),
+                        ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+                        child_tok γ pidv Q ∗
+                        UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]}))
+                 ∗ P (ukn_t N) (ukn_d N) (ukn_s N) ∗ usz (ukn_s N) szv
+                 ∗ UserFd.ustd (ukn_fd N) l ∗ UserCwd.ucwd (ukn_cwd N) cw
+                 ∗ ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st))%I
+                Hal8 Hlo (Hspf r)
+                with "Hcode Hro Hw8 Hw0 [Hpayv Hans HP Hsz Hstd Hcwd HD]
+                      Hrun [Hpanic] [Hpar]").
+      { iLeft. iFrame "Hpayv Hans HP Hsz Hstd Hcwd HD". }
+      { (* the panic: what it wants comes out of [X], the rest is dropped *)
+        iIntros (hp2 m') "%Hmsg %Hneg (Hpayv & Hans & _ & _ & Hstd & _ & _)
+                          Hrun".
+        rewrite (upd_eq _ (Regidx a0_idx) r) in Hneg.
+        iApply ("Hpanic" $! hp2 m' r
+                  with "[%] [%] Hans Hstd Hpayv Hrun");
+          [ exact Hmsg | exact Hneg ]. }
       iIntros (hp2 m') "%Hq %Hra %Hs0 %Hsps Hpayv Hrun".
       (* the parent's a0 IS the return value, and it is not 0 -- so what
-         comes back is the payload and not the tail's dead disjunct *)
-      iAssert (ukn_pay N (-1)) with "[Hpayv]" as "Hpayv".
-      { iDestruct "Hpayv" as "[$ | %Hz0]". exfalso. apply Hr.
+         comes back is [X] and not the tail's dead disjunct *)
+      iDestruct "Hpayv" as "[(Hpayv & Hans & HP & Hsz & Hstd & Hcwd & HD)
+                             | %Hz0]"; last first.
+      { exfalso. apply Hr.
         rewrite <- Hz0. symmetry. exact (upd_eq _ (Regidx a0_idx) r). }
       iApply ("Hpar" $! hp2 m' r
                 with "[%] [%] [%] Hans HP Hsz Hstd Hcwd HD Hpayv [Hrun]").
@@ -1852,10 +1919,15 @@ Section UkShRun.
       iApply (wp_kshr_fork1_tail N' hc
                 (<[Regidx a0_idx := (mword_of_int 0 : mword 64)]>
                    (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m3))
-                sp0 vra vs0 n Hal8 Hlo (Hspf (mword_of_int 0 : mword 64))
-                with "Hdp Hck Hcro Hw8 Hw0 [] Hrun").
+                sp0 vra vs0 n emp%I Hal8 Hlo (Hspf (mword_of_int 0 : mword 64))
+                with "Hck Hcro Hw8 Hw0 [] Hrun []").
       { iRight. iPureIntro.
         exact (upd_eq _ (Regidx a0_idx) (mword_of_int 0 : mword 64)). }
+      { (* ...and it never panics: 0 is not -1 *)
+        iIntros (hc2 m') "_ %Hneg _ _". exfalso.
+        rewrite (upd_eq _ (Regidx a0_idx) (mword_of_int 0 : mword 64)) in Hneg.
+        apply (f_equal bv_unsigned) in Hneg. vm_compute in Hneg.
+        discriminate Hneg. }
       iIntros (hc2 m') "%Hq %Hra %Hs0 %Hsps _ Hrun".
       iApply ("Hchi" $! N' hc2 m' γ'
                 with "[%] [%] [%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch HD [Hrun]").
@@ -1939,9 +2011,18 @@ Section UkShRun.
        and the payload is the caller's own (lane IO-LEAF, M3b). *)
     iDestruct "Hch" as (Sc) "Hch".
     iApply (wp_kshr_fork1 N P szv l D h m n cw Sc (ukn_pay N) emp%I
-              (ukn_const_eq (N := N))
-              with "Hdp Hcode Hro HP Hsz Hstd Hcwd Hch HD [] Hkw Hpayv Hrun").
+              (ukn_pay N (-1)) (ukn_const_eq (N := N))
+              with "Hcode Hro HP Hsz Hstd Hcwd Hch HD [] Hkw Hpayv Hrun").
     { done. }
+    iSplitR.
+    { (* the panic, on the free law: the record's own payload pays the
+         exit, as before (M4b(2) pays sh's own fork arm through the links
+         instead -- [UkShFork.wp_kshf_fork]) *)
+      iIntros (h' m' r) "%Hmsg _ _ _ Hpayv Hrun".
+      iApply (ush_diag_leaf N h' m' ShSyms.panic n
+                ltac:(left; split; [ reflexivity | left; exact Hmsg ])
+                with "Hdp Hcode Hro [] Hpayv Hrun").
+      rewrite ush_diag_res_panic. done. }
     iSplitL "Hpar".
     - iIntros (h' m' r) "%Hr %Hcs %Ha0 Hans HP Hsz Hstd Hcwd HD Hpayv Hrun".
       iAssert (UserChildren.uch_any (ukn_ch N)) with "[Hans]" as "Hch".

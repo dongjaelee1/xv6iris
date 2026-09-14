@@ -286,7 +286,8 @@ Section UkShFork.
           ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗
           ⌜ usz_ok (sz + 65536) ⌝ -∗
           ⌜ UkSh.ush_fd0c ld /\ UkSh.ush_fd1p ld /\ UkSh.ush_fd2p ld ⌝ -∗
-          UkSh.sh_deps -∗
+          (* NO FREE WRITE LAW (M4b(2)): the paid child's walk spends it
+             nowhere -- its one diagnostic goes through the links *)
           shk_code (ukn_t N') -∗
           shp_code (ukn_t N') -∗ shp_rodata (ukn_t N') -∗ ush_jtab (ukn_t N') -∗
           ustr (ukn_d N') (DfracOwn 1) s0 len g -∗
@@ -331,24 +332,43 @@ Section UkShFork.
   Local Lemma wp_kshf_fork_core
       (h : CpuId) (m : regfile) (f : nat -> bv 8) (k len : nat)
       (sz : Z) (l : list fdstate) (n : nat)
-      (Q : Z -> iProp Σ) (Rc : iProp Σ) :
+      (Q : Z -> iProp Σ) (Rc : iProp Σ)
+      (* ...and what fork1's panic spends (M4b(2)) *)
+      (Pex : iProp Σ) :
     (forall x y : Z, Q x = Q y) ->
     UkSh.ush_regs m ->
     m !!! Regidx s1_idx = mword_of_int (sh_buf + Z.of_nat k) ->
     (forall j : nat, (j < len)%nat -> f (k + j)%nat <> ubyte0) ->
     f (k + len)%nat = ubyte0 ->
     (k + len < sh_nbuf)%nat ->
-    UkSh.sh_deps -∗
     ushl_head l sz -∗
     shk_code γt -∗ shk_rodata γt -∗ ush_jtab γt -∗
     ⌜ UkSh.ush_fd0p l ⌝ -∗
     ush_std l -∗ UserCwd.ucwd γcwd FsImg.ROOTINO -∗
     UserChildren.uch_any γch -∗ UserChildren.upid_any γpid -∗
-    (* what the parent lends, how a killer pays for it, and the exit
-       payload fork1's panic borrows *)
+    (* what the parent lends, how a killer pays for it, and what fork1's
+       panic spends -- borrowed, and back on the returning arm *)
     Rc -∗
     □ (riscv_kill_cred -∗ Q (-1)) -∗
-    ukn_pay N (-1) -∗
+    Pex -∗
+    (* THE PANIC: fork failed, and sh is at [panic]'s entry with "fork" in
+       a0, its ledger, fork's answer and what it borrowed -- see
+       [UkShRun.wp_kshr_fork1].  The children set was opened at some [Sc]
+       for the fork, so the arm is over it. *)
+    (∀ (Sc : gset gname) (h' : CpuId) (m' : regfile) (r : mword 64),
+       ⌜ uint (m' !!! Regidx a0_idx) = 0x1298 ⌝ -∗
+       ⌜ r = (mword_of_int (-1) : mword 64) ⌝ -∗
+       ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
+           UserChildren.uch γch Sc ∗ Rc)
+        ∨ ∃ (γ : gname) (pidv : mword 32),
+            ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+            child_tok γ pidv Q ∗
+            UserChildren.uch γch (Sc ∪ {[γ]})) -∗
+       UserFd.ustd γfd l -∗
+       Pex -∗
+       urun N h' m' (mword_of_int ShSyms.panic)
+         (UkShDiag.ush_Dg + (66 + n)) -∗
+       WP (Loop : expr riscv_lang)) -∗
     (* THE CHILD, at 0x9c0 *)
     (∀ (N' : uk_names Σ) (hB : CpuId) (mA : regfile) (γ' : gname),
        ⌜ ukn_pay N' = Q ⌝ -∗
@@ -368,12 +388,12 @@ Section UkShFork.
          (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
        WP (Loop : expr riscv_lang)) -∗
     (* THE PARENT'S RE-ENTRY: the head's slot out of what the fork and the
-       wait left, and the exit payload back *)
+       wait left, and what fork1 borrowed back *)
     (∀ (Sc Sw Sw' : gset gname) (ret : mword 64) (pidv : mword 32),
        ⌜ ret = (mword_of_int (-1) : mword 64) -> Sw' = (∅ : gset gname) ⌝ -∗
        ushf_fans Sc Q Rc Sw -∗
        uwait_ans_pid ret Sw Sw' pidv -∗
-       ukn_pay N (-1) -∗
+       Pex -∗
        ◇ UkSh.ush_posb N γp T Wc Wb Pm l 0%nat) -∗
     ushl_dat -∗ usz γs sz -∗
     ubytes γd sh_buf sh_nbuf f -∗
@@ -381,8 +401,8 @@ Section UkShFork.
     WP (Loop : expr riscv_lang).
   Proof.
     intros HQc Hregs Hs1 Hnn Hnul Hkl.
-    iIntros "#Hdp Hhead #Hcode #Hro #Hjt %Hfd0 Hustd Hcwd Hch Hpid HRc #Hkw
-             Hlease Hchild Hre Hdat Hsz Hbuf Hrun".
+    iIntros "Hhead #Hcode #Hro #Hjt %Hfd0 Hustd Hcwd Hch Hpid HRc #Hkw
+             Hlease Hpanic Hchild Hre Hdat Hsz Hbuf Hrun".
     destruct Hregs as (Hs2 & Hs3 & Hs4 & Hs5 & Hs6).
     assert (Hlen31 : Z.of_nat len < 2 ^ 31)
       by (unfold sh_nbuf in Hkl; lia).
@@ -415,8 +435,8 @@ Section UkShFork.
        left.  THE PAYLOAD AND THE LEND ARE THE CALLER'S (step 4). *)
     iDestruct "Hch" as (Sc) "Hch".
     iApply (UkShDiag.wp_kshr_fork1_final N (ushf_pay f)
-              sz l ∅ h1 m1 (66 + n) FsImg.ROOTINO Sc Q Rc HQc
-              with "Hdp Hcode Hro [Hdat Hbuf] Hsz Hustd Hcwd Hch [] HRc Hkw
+              sz l ∅ h1 m1 (66 + n) FsImg.ROOTINO Sc Q Rc Pex HQc
+              with "Hcode Hro [Hdat Hbuf] Hsz Hustd Hcwd Hch [] HRc Hkw
                     Hlease Hrun").
     { rewrite /ushf_pay.
       iSplitR; [ iExact "Hcode" | ].
@@ -429,6 +449,11 @@ Section UkShFork.
                    = mword_of_int 0x930)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Eret.
+    iSplitL "Hpanic".
+    { (* ================= THE PANIC: fork failed ======================= *)
+      iIntros (hA mA rA) "%Hmsg %HrA Hans Hustd Hpex Hrun".
+      iApply ("Hpanic" $! Sc hA mA rA with "[%] [%] Hans Hustd Hpex Hrun");
+        [ exact Hmsg | exact HrA ]. }
     iSplitL "Hhead Hpid Hre".
     - (* ================= THE PARENT: reap, and round again ============= *)
       iIntros (hA mA rA) "%HrA %HcsA %Ha0A Hans Hpay Hsz Hustd Hcwd _ Hlease Hrun".
@@ -633,6 +658,9 @@ Section UkShFork.
        premises of the obligation, see [UkSh.ush_rest_l] *)
     (forall i : nat, ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i) ->
     (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ UkSh.ush_at N γp i) ->
+    (* ...and the payload's OWN assembler (M4b(2)): what the fork panic
+       leaves is the banner-owed credential, and the exit is paid from it *)
+    (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
     (* ...and the credential's conversion at a fork that failed (step 4) *)
     (forall i : nat, ⊢ Wc i 3%nat -∗ Wc i 0%nat) ->
     UkSh.sh_deps -∗
@@ -646,6 +674,8 @@ Section UkShFork.
     (* the two laws of the paid child (step 4) *)
     ushf_kill_law -∗
     ushf_child_law -∗
+    (* ...and the law of sh's own panic (M4b(2)) *)
+    UkShDiag.ush_panic_law Wc Wb -∗
     (* the row the console preamble established (lane SH-OPEN): the PARENT
        keeps its ledger across fork1 -- a REDIR runs in the child -- so the
        row goes straight back into the head *)
@@ -657,9 +687,9 @@ Section UkShFork.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline Hszlo Hszal Hszok
-           Hpm1 Hpm2 Hwbl.
-    iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hjt #Hkl #Hchl %Hfd0 Hstd Hdat Hsz
-             Hbuf Hrun".
+           Hpm1 Hpm2 Hpmwb Hwbl.
+    iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hjt #Hkl #Hchl #Hplaw %Hfd0 Hstd
+             Hdat Hsz Hbuf Hrun".
     iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpid & Hpos)".
     (* THE CONSOLE ARM APART FROM THE REST *)
     iAssert ((∃ np : nat, ⌜UkSh.ush_bnd np⌝ ∗ Pm np
@@ -677,26 +707,51 @@ Section UkShFork.
         iSplitR; [ by iPureIntro | ]. iRight. iExact "Hwc". }
     - (* ================= THE CONSOLE ARM: lend, and redeem ============= *)
       iDestruct "Hcon" as (np) "(%Hbnd & Hpm & %Hrow & Hc)".
-      (* the exit payload fork1's panic borrows, assembled at the affine
-         assembler (M4b(2) pays the panic from the lend instead) *)
-      iDestruct (Hpm2 np Hbnd with "Hpm") as "Hat".
-      iEval (rewrite /UkSh.ush_at) in "Hat".
-      iDestruct "Hat" as "[Hpos Hlease]".
+      (* WHAT FORK1 BORROWS IS THE LEASE'S PIECES (M4b(2)): a failed fork
+         pays "fork\n" from the lend and its exit from the pieces and the
+         banner-owed credential the message leaves; a fork that returned
+         hands the pieces back to the re-entry. *)
       iAssert (□ (riscv_kill_cred -∗ ushf_wq np))%I as "#Hkw".
       { iIntros "!> Hk". rewrite /ushf_wq. iRight. iApply ("Hkl" $! np with "Hk"). }
       iApply (wp_kshf_fork_core h m f k len sz l n (fun _ : Z => ushf_wq np)
-                (Wc np 3%nat) ltac:(intros x y; reflexivity)
+                (Wc np 3%nat) (Pm np) ltac:(intros x y; reflexivity)
                 Hregs Hs1 Hnn Hnul Hkl
-                with "Hdp Hhead Hcode Hro Hjt [%] Hustd Hcwd Hch Hpid Hc Hkw
-                      Hlease [] [Hpos] Hdat Hsz Hbuf Hrun");
-        [ exact Hfd0 | | ].
+                with "Hhead Hcode Hro Hjt [%] Hustd Hcwd Hch Hpid Hc Hkw
+                      Hpm [] [] [] Hdat Hsz Hbuf Hrun");
+        [ exact Hfd0 | | | ].
+      + (* THE PANIC, PAID (M4b(2)): fork failed and the lend came back
+           whole -- the row's [-1] arm -- so the five bytes go out on the
+           block credential and the exit is paid from the pieces and the
+           banner-owed credential they leave ([ush_at_of_pm_wb]). *)
+        iIntros (Sc h' m' r) "%Hmsg %Hr1 Hans Hustd' Hpm' Hrun'".
+        iDestruct "Hans" as "[(_ & _ & HRc) | Hpid']".
+        * iApply (UkShDiag.wp_kshd_panic_paid N Wc Wb l h' m' (66 + n) np
+                    (proj2 (proj2 Hrow)) Hmsg
+                    with "Hplaw Hcode Hro Hustd' HRc [Hpm'] Hrun'").
+          iIntros "_ Hwb".
+          iDestruct (Hpmwb np Hbnd with "Hpm' Hwb") as "Hat".
+          iEval (rewrite /UkSh.ush_at) in "Hat".
+          iDestruct "Hat" as "[_ Hpay]". iExact "Hpay".
+        * (* THE ROW'S PID ARM AT -1: a child whose 32-bit pid sign-extends
+             to -1.  Nothing in [UkFork.wp_uk_ecall_fork]'s parent post
+             bounds the pid, so the arm cannot be refuted here; it pays on
+             the FREE law with the affine assembler, as every fork panic
+             did before M4b(2).  The killer is a pid-range row on that
+             post (xv6's pids are positive ints). *)
+          iApply (UkShDiag.ush_diag_leaf_holds N h' m' ShSyms.panic (66 + n)
+                    ltac:(left; split; [ reflexivity | left; exact Hmsg ])
+                    with "Hdp Hcode Hro [] [Hpm'] Hrun'").
+          { rewrite UkShRun.ush_diag_res_panic. done. }
+          iDestruct (Hpm2 np Hbnd with "Hpm'") as "Hat".
+          iEval (rewrite /UkSh.ush_at) in "Hat".
+          iDestruct "Hat" as "[_ Hpay]". iExact "Hpay".
       + (* the child, on the paid entry *)
         iIntros (N' hB mA γ') "%Hpeq' %Hs1A Hmy HRc #Hcode' #Hro' #Hjt'
                                Hline' Hws Hsy Hustd' Hcwd' Hch' Hfresh Hrun'".
         iApply ("Hchl" $! N' hB mA DfracDiscarded DfracDiscarded
                   (sh_buf + Z.of_nat k) len (fun j : nat => f (k + j)%nat)
                   sz l n np
-                  with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hdp Hcode' [] []
+                  with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hcode' [] []
                         Hjt' Hline' Hws Hsy Hustd' Hcwd' [Hch'] Hfresh HRc Hrun'").
         * exact Hpeq'.
         * exact Hs1A.
@@ -711,18 +766,12 @@ Section UkShFork.
         * iApply (ushf_code_shp with "Hcode'").
         * iApply (ushf_rodata_shp with "Hro'").
         * iApply (UserChildren.uch_any_of with "Hch'").
-      + (* the re-entry *)
-        iIntros (Sc Sw Sw' ret pidv) "%Hm1 Hfans Hans Hlease".
-        (* the pieces back out of the payload, or the taint *)
-        iAssert (UkSh.ush_at N γp np) with "[Hpos Hlease]" as "Hat".
-        { rewrite /UkSh.ush_at. iFrame "Hpos Hlease". }
+      + (* the re-entry, with the pieces back in hand *)
+        iIntros (Sc Sw Sw' ret pidv) "%Hm1 Hfans Hans Hpm".
         rewrite /ushf_fans. iDestruct "Hfans" as "[[%HSw HRc] | Hfans]".
         { (* the lend came back whole: a fork that failed (the relayed
              row; fork1 panics before this) re-enters at the boundary *)
           iModIntro.
-          iDestruct (Hpm1 np with "Hat") as "[Hpm | [#HT Hp]]";
-            [ | iApply (UkSh.ush_posb_taint N γp T Wc Wb Pm l 0%nat
-                          with "HT Hp") ].
           iApply (UkSh.ush_posb_of_wc N γp T Wc Wb Pm l 0%nat np Hbnd
                     with "Hpm [HRc]").
           rewrite /UkSh.ush_wcp. iLeft. iSplitR; [ by iPureIntro | ].
@@ -746,9 +795,6 @@ Section UkShFork.
           iMod (gen_pay_timeless γ pidc (fun _ : Z => ushf_wq np) xs
                   with "Htok Hesc") as "HQ".
           iModIntro.
-          iDestruct (Hpm1 np with "Hat") as "[Hpm | [#HT Hp]]";
-            [ | iApply (UkSh.ush_posb_taint N γp T Wc Wb Pm l 0%nat
-                          with "HT Hp") ].
           iApply (UkSh.ush_posb_of_wc N γp T Wc Wb Pm l 0%nat np Hbnd
                     with "Hpm [HQ]").
           rewrite /UkSh.ush_wcp. iLeft. iSplitR; [ by iPureIntro | ].
@@ -756,20 +802,27 @@ Section UkShFork.
             [ iApply (Hwbl np with "HQ") | iExact "HQ" ].
         * (* NOT THE CHILD IT FORKED: the affine arm -- see the header *)
           iModIntro.
-          iApply (UkSh.ush_posb_of N γp T Wc Wb Pm Hpm1 l 0%nat np
-                    with "[] Hat").
-          iLeft. by iPureIntro.
+          iApply (UkSh.ush_posb_of_wc N γp T Wc Wb Pm l 0%nat np Hbnd
+                    with "Hpm []").
+          rewrite /UkSh.ush_wcp. iRight. iRight. done.
     - (* ============ THE AFFINE ARM AND THE TAINT: the generic walk ====== *)
       iDestruct (UkSh.ush_posb_at N γp T Wc Wb Pm Hpm2 l 3%nat with "Hpos")
         as (np0) "[#Hbnd0 Hpos]".
       iEval (rewrite /UkSh.ush_at) in "Hpos".
       iDestruct "Hpos" as "[Hpos Hlease]".
       iApply (wp_kshf_fork_core h m f k len sz l n (fun _ : Z => True%I)
-                emp%I ltac:(intros x y; reflexivity)
+                emp%I (UkRun.ukn_pay N (-1)) ltac:(intros x y; reflexivity)
                 Hregs Hs1 Hnn Hnul Hkl
-                with "Hdp Hhead Hcode Hro Hjt [%] Hustd Hcwd Hch Hpid [] []
-                      Hlease [] [Hpos] Hdat Hsz Hbuf Hrun");
-        [ exact Hfd0 | done | iModIntro; iIntros "_"; done | | ].
+                with "Hhead Hcode Hro Hjt [%] Hustd Hcwd Hch Hpid [] []
+                      Hlease [] [] [Hpos] Hdat Hsz Hbuf Hrun");
+        [ exact Hfd0 | done | iModIntro; iIntros "_"; done | | | ].
+      + (* the panic, on the free law and the record's own payload, as
+           before *)
+        iIntros (Sc h' m' r) "%Hmsg _ _ _ Hpay Hrun'".
+        iApply (UkShDiag.ush_diag_leaf_holds N h' m' ShSyms.panic (66 + n)
+                  ltac:(left; split; [ reflexivity | left; exact Hmsg ])
+                  with "Hdp Hcode Hro [] Hpay Hrun'").
+        rewrite UkShRun.ush_diag_res_panic. done.
       + (* the child: the generic walk at the trivial payload *)
         iIntros (N' hB mA γ') "%Hpeq' %Hs1A _ _ #Hcode' #Hro' #Hjt'
                                Hline' Hws Hsy Hustd' Hcwd' Hch' Hfresh Hrun'".
@@ -834,6 +887,7 @@ Section UkShFork.
        premises of the obligation, see [UkSh.ush_rest_l] *)
     (forall i : nat, ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i) ->
     (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ UkSh.ush_at N γp i) ->
+    (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
     (forall i : nat, ⊢ Wc i 3%nat -∗ Wc i 0%nat) ->
     UkSh.sh_deps -∗
     ushl_head l sz -∗
@@ -842,6 +896,7 @@ Section UkShFork.
     shk_rodata γt -∗ shp_code γt -∗ ush_jtab γt -∗
     ushf_kill_law -∗
     ushf_child_law -∗
+    UkShDiag.ush_panic_law Wc Wb -∗
     ⌜ UkSh.ush_fd0p l ⌝ -∗
     ush_bstate l -∗
     ushl_dat -∗ usz γs sz -∗
@@ -850,9 +905,9 @@ Section UkShFork.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hregs Hs1 Ha5 Hnn Hnul Hkl Hns Htoks Htlen Hline Hszlo Hszal Hszok
-           Hpm1 Hpm2 Hwbl.
-    iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hpcode #Hjt #Hkl #Hchl %Hfd0 Hstd
-             Hdat Hsz Hbuf Hrun".
+           Hpm1 Hpm2 Hpmwb Hwbl.
+    iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hpcode #Hjt #Hkl #Hchl #Hplaw %Hfd0
+             Hstd Hdat Hsz Hbuf Hrun".
     assert (Hbr : forall j : nat, 0 <= bv_unsigned (f j) < Z64).
     { intros j. pose proof (bv_unsigned_in_range 8 (f j)) as H0.
       assert (Em8 : bv_modulus 8 = 256) by (vm_compute; reflexivity).
@@ -883,8 +938,9 @@ Section UkShFork.
     iIntros (h1) "Hrun".
     iApply (wp_kshf_fork h1 m f k len toks sz l n
               Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline
-              Hszlo Hszal Hszok Hpm1 Hpm2 Hwbl
-              with "Hdp Hhead Hcode Hxs Hro Hjt Hkl Hchl [%] Hstd Hdat Hsz Hbuf Hrun").
+              Hszlo Hszal Hszok Hpm1 Hpm2 Hpmwb Hwbl
+              with "Hdp Hhead Hcode Hxs Hro Hjt Hkl Hchl Hplaw [%] Hstd Hdat
+                    Hsz Hbuf Hrun").
     exact Hfd0.
   Qed.
 
@@ -975,6 +1031,11 @@ Section UkShFork.
     usz_ok (sz + 65536) ->
     (* the credential's conversion at a fork that failed (step 4) *)
     (forall i : nat, ⊢ Wc i 3%nat -∗ Wc i 0%nat) ->
+    (* ...and the payload's own assembler (M4b(2)): the fork panic's exit.
+       A premise of the DISCHARGER and not of the obligation, because the
+       obligation's shape ([UkSh.ush_rest_l]) is what [UInitSh.sh_pay_rest]
+       trusts; [UkSh.ush_at_of_pm_wb] is the loop's own hypothesis. *)
+    (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
     UkSh.sh_deps -∗
     (* the exec deposit's supplier for the GENERIC child -- [UkRun.uxsup],
        see [UkShRun.wp_kshr_runcmd] *)
@@ -982,18 +1043,21 @@ Section UkShFork.
     (* ...the two laws of the PAID child (step 4), discharged at the top *)
     ushf_kill_law -∗
     ushf_child_law -∗
+    (* ...and the law of sh's own panic (M4b(2)), [UShPanic.
+       ush_panic_law_holds] *)
+    UkShDiag.ush_panic_law Wc Wb -∗
     (* ...AND THE TAINT'S CONTINUATION.  The line fact's second arm is the
        taint, and a tainted process does not run sh's code any more: the
        body hands its run to the generic slot. *)
     UkSh.ush_gen_slot N T -∗
     UkSh.ush_rest_l N γp T Wc Wb Pm (UkShLoop.ushl_R N sz).
   Proof.
-    intros Hlex Hszlo Hszal Hszok Hwbl.
+    intros Hlex Hszlo Hszal Hszok Hwbl Hpmwb.
     (* the generic slot is a [□] behind a definition; unfolding it before
        the [#] intro keeps the [Persistent] search off its wand chain
        (durable-notes, "[iIntros "#H"] on a bundle of wands"). *)
     rewrite /UkSh.ush_gen_slot.
-    iIntros "#Hdp #Hxs #Hkl #Hchl #Hgen".
+    iIntros "#Hdp #Hxs #Hkl #Hchl #Hplaw #Hgen".
     (* THE RECORD'S OWN THREE COME OUT OF THE OBLIGATION now (lane SH-LINE
        2b, (b)): sh's text, its jump table and the constancy of its exit
        payload are facts about the record the KERNEL minted, so the entry
@@ -1019,8 +1083,9 @@ Section UkShFork.
     destruct (Hlex f k len Hline) as (Hns & toks & Htoks & Htlen).
     iApply (wp_kshm_body h m f k len toks sz l n
               Hregs Hs1 Ha5 Hnn Hnul ltac:(lia) Hns Htoks Htlen Hline
-              Hszlo Hszal Hszok Hpm1 Hpm2 Hwbl
-              with "Hdp [Hhead] Hcode Hxs Hro [] Hjt Hkl Hchl [%] Hstd Hdat Hsz Hbuf Hrun").
+              Hszlo Hszal Hszok Hpm1 Hpm2 Hpmwb Hwbl
+              with "Hdp [Hhead] Hcode Hxs Hro [] Hjt Hkl Hchl Hplaw [%] Hstd
+                    Hdat Hsz Hbuf Hrun").
     - iApply (UkShLoop.ushl_head_of_R N γp with "Hhead").
     - iApply (ushf_code_shp with "Hcode").
     - exact Hfd0.

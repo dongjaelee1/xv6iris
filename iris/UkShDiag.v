@@ -89,6 +89,7 @@ Require User.ShSyms User.ShInstrs.
 Require Import UkProgAbi.
 Require Import UkShRun.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
+Require Import EchoDisc.  (* [line_alts]: "fork\n" is the line's alternative 3 (M4b(2)) *)
 Local Open Scope Z_scope.
 Import Defs.
 
@@ -8428,7 +8429,7 @@ Section UkShDiagLeaf.
   Definition ush_Dg : nat := (2 + (10 + (12 + 4)))%nat.
 
   (* a panic message, as a string in the TEXT half *)
-  Local Lemma shd_msg_str (gt gd : gname) (dq : dfrac) (a : Z) (len : nat) :
+  Lemma shd_msg_str (gt gd : gname) (dq : dfrac) (a : Z) (len : nat) :
     shd_fmt_ok a len = true -> Z.of_nat len < 2 ^ 31 ->
     shk_rodata gt -∗ shd_str gt gd true dq a len (shd_lit a).
   Proof.
@@ -8641,14 +8642,293 @@ Section UkShDiagLeaf.
   (* CWD-INDEXED (lane E4): [UkShRun.wp_kshr_fork1]'s value-preserving
      form at sh's own diagnostic leaf.  ([wp_kshr_fork1_final_any], the
      index-free corollary, is gone -- see the note below.) *)
+  (* ===================================================================== *)
+  (* §Y  sh's OWN PANIC, PAID (lane IO-LEAF, M4b(2)).                       *)
+  (*                                                                        *)
+  (* [panic("fork")] writes "fork\n" -- five bytes, the line's alternative *)
+  (* 3 ([EchoDisc.line_alts]) -- on fd 2 and exits.  What the shell holds   *)
+  (* when fork fails is the block credential it meant to LEND ([Wc n 3]):   *)
+  (* the five bytes ARE the block the lend was for, and what is left after  *)
+  (* them is the banner-owed credential ([Wb n]), which is what sh's exit   *)
+  (* hands /init at a closed prompt.  [ush_panic_law] is that walk as the   *)
+  (* fork arm takes it: the credential opens into a family [Pf] with a      *)
+  (* byte step at each of the five bytes and the banner-owed credential at  *)
+  (* the end.  Opaque in [Wc]/[Wb] for the loop's reason; [UShPanic.        *)
+  (* ush_panic_law_holds] is the discharge at the era's links.              *)
+  (* ===================================================================== *)
+  Definition ush_panic_law (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ)
+      : iProp Σ :=
+    (□ (∀ (N : uk_names Σ) (n : nat) (l : list fdstate),
+          ⌜ UkSh.ush_fd2p l ⌝ -∗
+          Wc n 3%nat -∗
+          ∃ Pf : nat -> iProp Σ,
+            Pf 0%nat
+            ∗ □ (∀ (p : nat) (b : bv 8),
+                   ⌜ line_alts !!! 3%nat !! p = Some b ⌝ -∗
+                   ksh_w1 N (mword_of_int 2 : mword 64) b
+                     (UserFd.ustd (ukn_fd N) l ∗ Pf p)
+                     (UserFd.ustd (ukn_fd N) l ∗ Pf (S p)))
+            ∗ □ (Pf 5%nat -∗ Wb n)))%I.
+
+  Global Instance ush_panic_law_persistent Wc Wb : Persistent (ush_panic_law Wc Wb).
+  Proof. rewrite /ush_panic_law. apply _. Qed.
+
+  (* the five bytes, closed: "fork" at 0x1298 and the '\n' of panic's
+     format "%s\n" at 0x1290 + 2 are the five bytes of alternative 3 *)
+  Lemma ush_fork_msg_len : length (line_alts !!! 3%nat) = 5%nat.
+  Proof. vm_compute. reflexivity. Qed.
+
+  Lemma ush_fork_msg_byte (p : nat) :
+    (p < 4)%nat -> shd_lit 0x1298 p = line_alts !!! 3%nat !!! p.
+  Proof.
+    intros Hp.
+    destruct p as [| [| [| [| p]]]]; [ | | | | exfalso; lia ];
+      apply bv_eq; vm_compute; reflexivity.
+  Qed.
+
+  Lemma ush_fork_msg_nl : shd_lit 0x1290 2%nat = line_alts !!! 3%nat !!! 4%nat.
+  Proof. apply bv_eq. vm_compute. reflexivity. Qed.
+
+  Lemma ush_fork_msg_lookup (p : nat) :
+    (p < 5)%nat -> line_alts !!! 3%nat !! p = Some (line_alts !!! 3%nat !!! p).
+  Proof.
+    intros Hp. apply list_lookup_lookup_total_lt. rewrite ush_fork_msg_len. exact Hp.
+  Qed.
+
+  (* THE WALK: [wp_kshd_panic_chain] at the law's family, the ledger riding
+     beside it.  The exit is the site's: it gets its ledger back and the
+     banner-owed credential, and pays the record's exit however it can. *)
+  Lemma wp_kshd_panic_paid (N : uk_names Σ) `{!ukn_const N}
+      (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ)
+      (l : list fdstate) (h : CpuId) (m : regfile) (n np : nat) :
+    UkSh.ush_fd2p l ->
+    uint (m !!! Regidx a0_idx) = 0x1298 ->
+    ush_panic_law Wc Wb -∗
+    shk_code (ukn_t N) -∗
+    shk_rodata (ukn_t N) -∗
+    UserFd.ustd (ukn_fd N) l -∗
+    Wc np 3%nat -∗
+    (UserFd.ustd (ukn_fd N) l -∗ Wb np -∗ ukn_pay N (-1)) -∗
+    urun N h m (mword_of_int ShSyms.panic) (ush_Dg + n) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hfd2 Hmsg. iIntros "#Hlaw #Hcode #Hro Hstd Hc Hpay Hrun".
+    iDestruct ("Hlaw" $! N np l with "[%] Hc") as (Pf) "(HPf & #Hstep & #Hdone)";
+      [ exact Hfd2 | ].
+    replace (ush_Dg + n)%nat with (2 + (10 + (12 + (4 + n))))%nat
+      by (unfold ush_Dg; lia).
+    assert (Ha0 : m !!! Regidx a0_idx = (mword_of_int 0x1298 : mword 64))
+      by (rewrite <- Hmsg; symmetry; apply moi_of_uint).
+    iDestruct (shd_msg_str (ukn_t N) (ukn_d N) DfracDiscarded 0x1298 4%nat
+                 ltac:(vm_compute; reflexivity) ltac:(lia)
+                 with "Hro") as "#Hs".
+    (* the three families, the ledger riding beside the credential *)
+    set (C1 := (fun _ : nat => UserFd.ustd (ukn_fd N) l ∗ Pf 0%nat)%I).
+    set (C2 := (fun p : nat => UserFd.ustd (ukn_fd N) l ∗ Pf p)%I).
+    set (C3 := (fun p : nat => UserFd.ustd (ukn_fd N) l ∗ Pf (p + 2)%nat)%I).
+    assert (E12 : C1 0%nat = C2 0%nat) by reflexivity.
+    assert (E23 : C2 4%nat = C3 2%nat) by reflexivity.
+    iApply (wp_kshd_panic_chain N true DfracDiscarded 0x1298 4%nat
+              (shd_lit 0x1298) C1 C2 C3 h m n ltac:(lia) Ha0 E12 E23
+              with "[] [] [] [Hstd HPf] Hcode Hro Hs [Hpay] Hrun").
+    { iModIntro. iIntros (p) "%Hp". exfalso. lia. }
+    { iModIntro. iIntros (p) "%Hp". rewrite /C2.
+      rewrite (ush_fork_msg_byte p Hp).
+      iApply ("Hstep" $! p (line_alts !!! 3%nat !!! p) with "[%]").
+      apply ush_fork_msg_lookup. lia. }
+    { iModIntro. iIntros (p) "%Hp". rewrite /C3.
+      assert (Hp2 : p = 2%nat) by lia. subst p. cbn [Nat.add].
+      rewrite ush_fork_msg_nl.
+      iApply ("Hstep" $! 4%nat (line_alts !!! 3%nat !!! 4%nat) with "[%]").
+      apply ush_fork_msg_lookup. lia. }
+    { rewrite /C1. iFrame "Hstd HPf". }
+    { rewrite /C3. iIntros "[Hstd HPf]". cbn [Nat.add].
+      iApply ("Hpay" with "Hstd"). iApply ("Hdone" with "HPf"). }
+  Qed.
+
+  (* ===================================================================== *)
+  (* §Z  THE EXEC-FAILED CHILD'S DIAGNOSTIC, PAID (lane IO-LEAF, M4b(2)).   *)
+  (*                                                                        *)
+  (* [fprintf(2, "exec %s failed\n", argv[0])] at 0xda, in the CHILD whose *)
+  (* exec returned: seventeen bytes for [argv[0] = "echo"], the line's      *)
+  (* alternative 1 ([EchoDisc.line_alts]) up to its prompt.  What the child *)
+  (* holds is the exec's REFUND -- the block credential it was lent, whole  *)
+  (* ([Cr]) -- and what the seventeen bytes leave is the block written up   *)
+  (* to its prompt ([Cd]), which is what its exit hands the parent.  The    *)
+  (* law is at the two ends as the runner names them; [UShPanic.            *)
+  (* ush_execfail_law_holds] is the discharge at the era's links.           *)
+  (* ===================================================================== *)
+  Definition ush_execfail_law (Cr Cd : iProp Σ) : iProp Σ :=
+    (□ (∀ (N : uk_names Σ) (l : list fdstate),
+          ⌜ UkSh.ush_fd2p l ⌝ -∗
+          Cr -∗
+          ∃ Pf : nat -> iProp Σ,
+            Pf 0%nat
+            ∗ □ (∀ (p : nat) (b : bv 8),
+                   ⌜ line_alts !!! 1%nat !! p = Some b ⌝ -∗
+                   ksh_w1 N (mword_of_int 2 : mword 64) b
+                     (UserFd.ustd (ukn_fd N) l ∗ Pf p)
+                     (UserFd.ustd (ukn_fd N) l ∗ Pf (S p)))
+            ∗ □ (Pf 17%nat -∗ Cd)))%I.
+
+  Global Instance ush_execfail_law_persistent Cr Cd :
+    Persistent (ush_execfail_law Cr Cd).
+  Proof. rewrite /ush_execfail_law. apply _. Qed.
+
+  (* a run of byte equalities, decided by one [vm_compute] *)
+  Lemma ush_bytes_of_forallb (f g : nat -> bv 8) (lo cnt : nat) :
+    forallb (fun p : nat => Z.eqb (bv_unsigned (f p)) (bv_unsigned (g p)))
+      (seq lo cnt) = true ->
+    forall p : nat, (lo <= p < lo + cnt)%nat -> f p = g p.
+  Proof.
+    intros H p Hp. apply bv_eq. apply Z.eqb_eq.
+    exact (proj1 (forallb_forall _ _) H p (proj2 (in_seq cnt lo p) Hp)).
+  Qed.
+
+  (* the seventeen bytes, closed: the format's two windows at 0x12a8
+     ("exec " and " failed\n") and the argument "echo" are the line's
+     alternative 1, byte for byte *)
+  Lemma ush_execfail_len : length (line_alts !!! 1%nat) = 19%nat.
+  Proof. vm_compute. reflexivity. Qed.
+
+  Lemma ush_execfail_lookup (p : nat) :
+    (p < 19)%nat -> line_alts !!! 1%nat !! p = Some (line_alts !!! 1%nat !!! p).
+  Proof.
+    intros Hp. apply list_lookup_lookup_total_lt. rewrite ush_execfail_len.
+    exact Hp.
+  Qed.
+
+  Lemma ush_execfail_w1 :
+    forall p : nat, (0 <= p < 0 + 5)%nat ->
+      shd_lit 0x12a8 p = line_alts !!! 1%nat !!! p.
+  Proof. apply ush_bytes_of_forallb. vm_compute. reflexivity. Qed.
+
+  Lemma ush_execfail_arg :
+    forall j : nat, (0 <= j < 0 + 4)%nat ->
+      echo_line !!! j = line_alts !!! 1%nat !!! (5 + j)%nat.
+  Proof. apply ush_bytes_of_forallb. vm_compute. reflexivity. Qed.
+
+  Lemma ush_execfail_w2 :
+    forall p : nat, (7 <= p < 7 + 8)%nat ->
+      shd_lit 0x12a8 p = line_alts !!! 1%nat !!! (p + 2)%nat.
+  Proof. apply ush_bytes_of_forallb. vm_compute. reflexivity. Qed.
+
+  (* THE WALK: [ush_diag_leaf_holds]'s 0xda arm at the law's family, the
+     ledger riding beside the credential.  The argument is "echo", as the
+     paid runner knows it ([UkShEcho.echo_argv_bytes]). *)
+  Lemma wp_kshd_execfail_paid (N : uk_names Σ) `{!ukn_const N}
+      (Cr Cd : iProp Σ) (l : list fdstate) (h : CpuId) (m : regfile)
+      (n : nat) (x : uarg) :
+    UkSh.ush_fd2p l ->
+    uint (m !!! Regidx s1_idx) mod 8 = 0 ->
+    ua_len x = 4%nat ->
+    (forall j : nat, (j < 4)%nat -> ua_bytes x j = echo_line !!! j) ->
+    ush_execfail_law Cr Cd -∗
+    shk_code (ukn_t N) -∗
+    shk_rodata (ukn_t N) -∗
+    UkShRun.ush_ptr (ukn_d N) (uint (m !!! Regidx s1_idx) + 8) (ua_ptr x) -∗
+    UkShRun.ush_str (ukn_d N) x -∗
+    UserFd.ustd (ukn_fd N) l -∗
+    Cr -∗
+    (UserFd.ustd (ukn_fd N) l -∗ Cd -∗ ukn_pay N (-1)) -∗
+    urun N h m (mword_of_int 0xda) (ush_Dg + n) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hfd2 Hal Hxlen Hxb.
+    iIntros "#Hlaw #Hcode #Hro #Hw [%Hxr #Hxs] Hstd Hc Hpay Hrun".
+    iDestruct ("Hlaw" $! N l with "[%] Hc") as (Pf) "(HPf & #Hstep & #Hdone)";
+      [ exact Hfd2 | ].
+    replace (ush_Dg + n)%nat with (10 + (12 + (4 + (n + 2))))%nat
+      by (unfold ush_Dg; lia).
+    (* ---- 0xda  c.ld a2,8(s1) -- ecmd->argv[0] ---- *)
+    iApply (UkShRun.wp_uk_cldq N h m (mword_of_int 0xda)
+              (mword_of_int 1 : mword 5) (mword_of_int 1 : mword 3)
+              (mword_of_int 4 : mword 3) s1_idx a2_idx DfracDiscarded
+              (uint (m !!! Regidx s1_idx) + 8) (mword_of_int (ua_ptr x))
+              (10 + (12 + (4 + (n + 2))))
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)
+              ltac:(vm_compute uoff_c8; lia)
+              ltac:(rewrite Zplus_mod Hal; reflexivity)
+              ltac:(vm_compute; discriminate)
+              with "[] Hw Hrun").
+    { iApply (uis_shk_da with "Hcode"). }
+    iIntros "_".
+    assert (Eda : add_vec_int (mword_of_int 0xda : mword 64) 2
+                  = mword_of_int 0xdc)
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite Eda. iIntros (h1) "Hrun".
+    set (m1 := <[Regidx a2_idx
+                 := regval_into_reg
+                      (mword_of_int (ua_ptr x) : mword 64)]> m).
+    iDestruct (shd_str_of_ustr (ukn_t N) (ukn_d N) DfracDiscarded (ua_ptr x) (ua_len x)
+                 (ua_bytes x)
+                 with "Hxs") as "#Hs".
+    assert (Hlitsdc : shd_die_lits 0xdc 0xe0 0xe4 0xe6 0xea 0xec
+                      (mword_of_int 1 : mword 20) (mword_of_int 460 : mword 12)
+                      (mword_of_int 4036 : mword 21) (mword_of_int 2970 : mword 21)
+                      (mword_of_int 0 : mword 6)
+                      0x12a8 15%nat 5%nat)
+      by shd_die_solve.
+    (* the three families: the format's first window, the argument, the
+       format's second window -- one credential index across all three *)
+    set (C1 := (fun p : nat => UserFd.ustd (ukn_fd N) l ∗ Pf p)%I).
+    set (C2 := (fun p : nat => UserFd.ustd (ukn_fd N) l ∗ Pf (5 + p)%nat)%I).
+    set (C3 := (fun p : nat => UserFd.ustd (ukn_fd N) l ∗ Pf (p + 2)%nat)%I).
+    assert (E12 : C1 5%nat = C2 0%nat) by reflexivity.
+    assert (E23 : C2 (ua_len x) = C3 (S (S 5%nat))) by (rewrite Hxlen; reflexivity).
+    iApply (wp_kshd_die_chain N false DfracDiscarded
+              0xdc 0xe0 0xe4 0xe6 0xea 0xec
+              (mword_of_int 1 : mword 20) (mword_of_int 460 : mword 12)
+              (mword_of_int 4036 : mword 21) (mword_of_int 2970 : mword 21)
+              (mword_of_int 0 : mword 6)
+              0x12a8 15%nat 5%nat
+              (ua_ptr x) (ua_len x) (ua_bytes x) C1 C2 C3 h1 m1 (n + 2)
+              Hlitsdc
+              ltac:(lia)
+              ltac:(exact (upd_eq m (Regidx a2_idx) (regval_into_reg _)))
+              E12 E23
+              with "[] [] [] [Hstd HPf] Hcode Hro Hs [] [] [] [] [] [] [Hpay] Hrun").
+    { iModIntro. iIntros (p) "%Hp". rewrite /C1.
+      rewrite (ush_execfail_w1 p ltac:(lia)).
+      iApply ("Hstep" $! p (line_alts !!! 1%nat !!! p) with "[%]").
+      apply ush_execfail_lookup. lia. }
+    { iModIntro. iIntros (p) "%Hp". rewrite /C2. rewrite Hxlen in Hp.
+      rewrite (Hxb p Hp) (ush_execfail_arg p ltac:(lia)).
+      replace (5 + S p)%nat with (S (5 + p))%nat by lia.
+      iApply ("Hstep" $! (5 + p)%nat (line_alts !!! 1%nat !!! (5 + p)%nat)
+                with "[%]").
+      apply ush_execfail_lookup. lia. }
+    { iModIntro. iIntros (p) "%Hp". rewrite /C3.
+      rewrite (ush_execfail_w2 p ltac:(lia)).
+      replace (S p + 2)%nat with (S (p + 2))%nat by lia.
+      iApply ("Hstep" $! (p + 2)%nat (line_alts !!! 1%nat !!! (p + 2)%nat)
+                with "[%]").
+      apply ush_execfail_lookup. lia. }
+    { rewrite /C1. iFrame "Hstd HPf". }
+    { iApply (uis_shk_dc with "Hcode"). }
+    { iApply (uis_shk_e0 with "Hcode"). }
+    { iApply (uis_shk_e4 with "Hcode"). }
+    { iApply (uis_shk_e6 with "Hcode"). }
+    { iApply (uis_shk_ea with "Hcode"). }
+    { iApply (uis_shk_ec with "Hcode"). }
+    { rewrite /C3. iIntros "[Hstd HPf]". cbn [Nat.add].
+      iApply ("Hpay" with "Hstd"). iApply ("Hdone" with "HPf"). }
+  Qed.
+
+  (* ...AND fork1 WITH THE PANIC THE CALLER'S (M4b(2)): [UkShRun.
+     wp_kshr_fork1] at this file's stack need.  The site pays the panic --
+     sh's fork arm through [wp_kshd_panic_paid], the generic runner on the
+     free law ([ush_diag_leaf_holds]). *)
   Lemma wp_kshr_fork1_final (N : uk_names Σ) `{!ukn_const N}
       (P : gname -> gname -> gname -> iProp Σ) `{FP : !Forkable P}
       (szv : Z) (l : list fdstate) (D : gmap nat fdstate)
       (h : CpuId) (m : regfile) (n : nat) (cw : Z)
       (* the three binders [UkShRun.wp_kshr_fork] opens (lane IO-LEAF, M3a) *)
-      (Sc : gset gname) (Q : Z -> iProp Σ) (Rc : iProp Σ) :
+      (Sc : gset gname) (Q : Z -> iProp Σ) (Rc : iProp Σ)
+      (* ...and what the panic spends (M4b(2)) *)
+      (Pex : iProp Σ) :
     (forall x y : Z, Q x = Q y) ->
-    UkSh.sh_deps -∗
     shk_code (ukn_t N) -∗ shk_rodata (ukn_t N) -∗ P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
     UserFd.ustd (ukn_fd N) l -∗
     UserCwd.ucwd (ukn_cwd N) cw -∗
@@ -8656,12 +8936,27 @@ Section UkShDiagLeaf.
     ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
     Rc -∗
     □ (riscv_kill_cred -∗ Q (-1)) -∗
-    (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)): fork1's [-1] arm
-       panics and a panic ends in [exit].  The returning arm hands it
-       straight back. *)
-    ukn_pay N (-1) -∗
+    (* WHAT THE PANIC SPENDS, BORROWED (lane KILL-PAY, K4(a); M4b(2)):
+       fork1's [-1] arm panics, and the panic is the caller's.  The
+       returning arm hands it straight back. *)
+    Pex -∗
     urun N h m (mword_of_int ShSyms.fork1) (2 + (ush_Dg + n)) -∗
-    ((∀ (h' : CpuId) (m' : regfile) (r : mword 64),
+    ((* THE PANIC: fork returned -1, "fork" is in a0, and the run is at
+        [panic]'s entry -- see [UkShRun.wp_kshr_fork1] *)
+     (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
+        ⌜ uint (m' !!! Regidx a0_idx) = 0x1298 ⌝ -∗
+        ⌜ r = (mword_of_int (-1) : mword 64) ⌝ -∗
+        ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
+            UserChildren.uch (ukn_ch N) Sc ∗ Rc)
+         ∨ ∃ (γ : gname) (pidv : mword 32),
+             ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             child_tok γ pidv Q ∗
+             UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
+        UserFd.ustd (ukn_fd N) l -∗
+        Pex -∗
+        urun N h' m' (mword_of_int ShSyms.panic) (ush_Dg + n) -∗
+        WP (Loop : expr riscv_lang)) ∗
+     (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
@@ -8676,7 +8971,7 @@ Section UkShDiagLeaf.
         UserCwd.ucwd (ukn_cwd N) cw -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
         (* ...and back, unspent: fork1 returned *)
-        ukn_pay N (-1) -∗
+        Pex -∗
         urun N h' m'
           (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)))
           (2 + (ush_Dg + n)) -∗
@@ -8700,8 +8995,7 @@ Section UkShDiagLeaf.
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    exact (wp_kshr_fork1 ush_Dg ush_diag_leaf_holds
-             N P szv l D h m n cw Sc Q Rc).
+    exact (wp_kshr_fork1 ush_Dg N P szv l D h m n cw Sc Q Rc Pex).
   Qed.
 
   (* [wp_kshr_fork1_final_any] IS GONE (lane IO-LEAF, M3b): it had no

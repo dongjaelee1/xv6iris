@@ -815,6 +815,28 @@ Section echo_links_line.
     cbn [ewc_lpr]. iApply (ewc_line_of_post v n 0%nat ltac:(lia) with "Hc").
   Qed.
 
+  (* ...AT ANY ALTERNATIVE A CHILD CAN TAKE (lane IO-LEAF, M4b(2)): the
+     exec-failed child's "exec %s failed" is [a = 1]. *)
+  Lemma ewc_lcred_of_post_a (k n a : nat) (v : era_pins) :
+    (a < 3)%nat ->
+    era_pin γ k v -∗ ewc_post v n a -∗ ewc_lcred k n 0%nat.
+  Proof.
+    intros Ha. iIntros "#Hpin Hc". rewrite /ewc_lcred. iExists v. iFrame "Hpin".
+    cbn [ewc_lpr]. iApply (ewc_line_of_post v n a Ha with "Hc").
+  Qed.
+
+  (* THE BLOCK OWED OPENS AT ANY ALTERNATIVE (M4b(2)): nothing has been
+     written, so the block-first byte is still free to file whichever the
+     writer takes ([ewc_blk_0]).  [ewc_lcred_blk_panic] below is [a = 3]. *)
+  Lemma ewc_lcred_blk_open (k n a : nat) :
+    ewc_lcred k n 3%nat -∗
+    ∃ v : era_pins, era_pin γ k v ∗ ewc_blk v n a 0%nat.
+  Proof.
+    rewrite /ewc_lcred. iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
+    iExists v. iFrame "Hpin". cbn [ewc_lpr].
+    iApply (ewc_blk_0 v n 0%nat a with "Hc").
+  Qed.
+
   (* =================================================================== *)
   (*  S7  THE PANIC, and the banner it opens                              *)
   (* =================================================================== *)

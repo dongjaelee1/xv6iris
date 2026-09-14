@@ -527,19 +527,24 @@ Section UkShEcho.
   (* AT THE PAID PAYLOAD (step 4): the record is CONSTANT-paid at [Q]
      ([UkRun.ukn_const], sh's choice is status-independent) and holds what
      it was lent; a failed exec's diagnostic exits on the refund. *)
-  Definition wp_kshr_exec_echo (Q : Z -> iProp Σ) (Cr : iProp Σ) : Prop :=
+  (* ...AND THE DIAGNOSTIC IS PAID (M4b(2)): a child whose exec FAILED
+     writes "exec echo failed" on its fd 2 from the refund ([Cr], the
+     block credential it was lent) and exits on what the seventeen bytes
+     leave ([Cd], the block written up to its prompt).  The free law
+     [UkSh.sh_deps] is no longer a premise: nothing on this walk spends it. *)
+  Definition wp_kshr_exec_echo (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) : Prop :=
     forall (N : uk_names Σ) (Hc : ukn_const N) (h : CpuId) (m : regfile)
            (t szv s0 : Z) (g : nat -> bv 8) (ld : list fdstate) (n : nat),
       ukn_pay N = Q ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       echo_argv_bytes g ->
       UkSh.ush_fd1p ld ->
-      ⊢ UkSh.sh_deps -∗
-        shk_code (ukn_t N) -∗
+      UkSh.ush_fd2p ld ->
+      ⊢ shk_code (ukn_t N) -∗
         sh_exec_sup_echo Q Cr -∗
-        (* ...and what the lend pays at the exit of a child whose exec
-           FAILED (step 4; M4b(2) pays the diagnostic from it first) *)
-        □ (Cr -∗ Q (-1)) -∗
+        (* the diagnostic's law, and what its end pays at the exit *)
+        UkShDiag.ush_execfail_law Cr Cd -∗
+        □ (Cd -∗ Q (-1)) -∗
         ush_jtab (ukn_t N) -∗
         ush_cmd (ukn_d N) t (echo_cmd s0 g) -∗
         usz (ukn_s N) szv -∗
@@ -605,20 +610,18 @@ Section UkShEcho.
   Qed.
 
   (* ---- the specialised EXEC arm, PROVED ------------------------------- *)
-  Lemma wp_kshr_exec_echo_holds (Q : Z -> iProp Σ) (Cr : iProp Σ) :
-    wp_kshr_exec_echo Q Cr.
+  Lemma wp_kshr_exec_echo_holds (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
+    wp_kshr_exec_echo Q Cr Cd.
   Proof.
-    intros N Hcc h m t szv s0 g ld n Hpeq Ha0 Hbytes Hfd1.
+    intros N Hcc h m t szv s0 g ld n Hpeq Ha0 Hbytes Hfd1 Hfd2.
     (* THE BUNDLE-INTRO HANG (durable-notes, "iIntros #H on a bundle of
-       wands"), at [UkSh.sh_deps]: [iIntros "#Hdp"] on the three
-       [UkRun.udepw_law]s sends the [Persistent] search down [udepw]'s wand
-       chain and it does not return AT THIS FILE'S ALTITUDE (the same
-       tactic is fine in [UkShRun.v], whose cone carries fewer instances).
-       Both walks spend [sh_deps] EXACTLY ONCE, so a LINEAR intro is all
-       that is needed and no [Persistent] instance is ever asked for.
-       [sh_exec_sup_echo] is introduced linearly for the same reason and
-       its box stripped by an explicit unfold where it is spent. *)
-    iIntros "Hdp #Hcode Hexs #Hcq #Hjt #Htree Hsz Hstd Hcwd Hch Hcr Hrun".
+       wands"): [iIntros "#H"] on a bundle of [UkRun.udepw_law]s sends the
+       [Persistent] search down [udepw]'s wand chain and it does not return
+       AT THIS FILE'S ALTITUDE.  [UkSh.sh_deps] used to be introduced
+       linearly for that reason and is GONE from this walk (M4b(2): the
+       diagnostic goes through the links); [sh_exec_sup_echo] is still
+       introduced linearly and its box stripped by an explicit unfold. *)
+    iIntros "#Hcode Hexs #Hxl #Hcd #Hjt #Htree Hsz Hstd Hcwd Hch Hcr Hrun".
     rewrite /sh_exec_sup_echo. iDestruct "Hexs" as "#Hexs".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
     iDestruct (echo_cmd_addr with "Htree") as %[Htr Ht8].
@@ -761,10 +764,8 @@ Section UkShEcho.
               ((2 + (UkShDiag.ush_Dg + n))%nat)
               with "Hcode Hrun Hcwd Hdepx").
     rewrite Hrk3. iIntros (h6) "Hcwd [Hstd Hcr] Hrun".
-    (* the exit payload, out of the lend (M4b(2) writes the diagnostic
-       through the links from it first) *)
-    iDestruct ("Hcq" with "Hcr") as "Hpay". iEval (rewrite <- Hpeq) in "Hpay".
-    (* ---- 0xda: "exec %s failed" -- THE DIAGNOSTIC CUT ---- *)
+    (* ---- 0xda: "exec %s failed" -- PAID (M4b(2)): the seventeen bytes
+       go out on the refund, and the exit on what they leave ---- *)
     set (k4 := <[Regidx a0_idx := (mword_of_int (-1) : mword 64)]>
                  (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> k3)).
     assert (Hs1_k4 : uint (k4 !!! Regidx s1_idx) = t).
@@ -779,18 +780,18 @@ Section UkShEcho.
       rewrite Hs1_k. apply uint_moi. unfold Z64. lia. }
     replace (2 + (UkShDiag.ush_Dg + n))%nat
       with (UkShDiag.ush_Dg + (2 + n))%nat by lia.
-    iApply (UkShDiag.ush_diag_leaf_holds N h6 k4 0xda (2 + n)
-              ltac:(right; left; split;
-                    [ reflexivity | rewrite Hs1_k4; exact Ht8 ])
-              with "Hdp Hcode Hro [] Hpay Hrun").
-    { rewrite /ush_diag_res.
-      destruct (decide ((0xda : Z) = 0xda)) as [_ | Hne];
-        [ | exfalso; exact (Hne eq_refl) ].
-      iExists (UArg (s0 + Z.of_nat (echo_off 0%nat)) (echo_alen 0%nat)
-                 (fun j : nat => g (echo_off 0%nat + j)%nat)).
-      rewrite Hs1_k4. cbn [ua_ptr ua_len ua_bytes].
-      iSplitR; [ iExact "Hw0" | ].
+    iApply (UkShDiag.wp_kshd_execfail_paid N Cr Cd ld h6 k4 (2 + n)
+              (UArg (s0 + Z.of_nat (echo_off 0%nat)) (echo_alen 0%nat)
+                 (fun j : nat => g (echo_off 0%nat + j)%nat))
+              Hfd2 ltac:(rewrite Hs1_k4; exact Ht8) ltac:(reflexivity)
+              ltac:(intros j Hj; cbn [ua_bytes];
+                    rewrite (proj1 Hbytes 0%nat j ltac:(lia) Hj);
+                    cbn [echo_off]; rewrite Nat.add_0_l; reflexivity)
+              with "Hxl Hcode Hro [] [] Hstd Hcr [] Hrun").
+    { rewrite Hs1_k4. cbn [ua_ptr]. iExact "Hw0". }
+    { rewrite /ush_str. cbn [ua_ptr ua_len ua_bytes].
       iSplitR; [ iPureIntro; exact Hxr | iExact "Hxs" ]. }
+    { iIntros "_ Hc". rewrite <- Hpeq. iApply ("Hcd" with "Hc"). }
   Qed.
 
   (* =================================================================== *)
@@ -810,7 +811,7 @@ Section UkShEcho.
   (* it does today.  The disjunction is [UConsLine.ush_rest_line]'s, and   *)
   (* the case split belongs to the body that holds it (SH-LINE 2b).        *)
   (* =================================================================== *)
-  Definition wp_kshm_child_echo (Q : Z -> iProp Σ) (Cr : iProp Σ) : Prop :=
+  Definition wp_kshm_child_echo (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) : Prop :=
     forall (N : uk_names Σ) (Hc : ukn_const N)
            (h : CpuId) (m : regfile) (dw dv : dfrac)
            (s0 : Z) (len : nat) (f : nat -> bv 8) (sz : Z)
@@ -823,10 +824,17 @@ Section UkShEcho.
       UserPtTree.pgroundup sz = sz ->
       usz_ok (sz + 65536) ->
       UkSh.ush_fd1p ld ->
-      ⊢ UkSh.sh_deps -∗
-        shk_code (ukn_t N) -∗
+      UkSh.ush_fd2p ld ->
+      (* NO FREE WRITE LAW (M4b(2)): the paid child's walk spends it
+         nowhere *)
+      ⊢ shk_code (ukn_t N) -∗
         sh_exec_sup_echo Q Cr -∗
+        (* what the lend pays where the parser's walk DIES (the null store
+           at [memset]) -- and the diagnostic's law and what its end pays
+           where the exec FAILED (M4b(2)) *)
         □ (Cr -∗ Q (-1)) -∗
+        UkShDiag.ush_execfail_law Cr Cd -∗
+        □ (Cd -∗ Q (-1)) -∗
         shp_code (ukn_t N) -∗ shp_rodata (ukn_t N) -∗ ush_jtab (ukn_t N) -∗
         ustr (ukn_d N) (DfracOwn 1) s0 len f -∗
         ustr (ukn_d N) dw ushp_whitespace 5 ushp_ws_f -∗
@@ -840,11 +848,11 @@ Section UkShEcho.
           (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
         WP (Loop : expr riscv_lang).
 
-  Lemma wp_kshm_child_echo_holds (Q : Z -> iProp Σ) (Cr : iProp Σ) :
-    wp_kshm_child_echo Q Cr.
+  Lemma wp_kshm_child_echo_holds (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
+    wp_kshm_child_echo Q Cr Cd.
   Proof.
     intros N Hc h m dw dv s0 len f sz ld n
-      Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1.
+      Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1 Hfd2.
     (* the ONE line the discipline admits, as the parser's own premises *)
     destruct (ush_line_toks_holds f 0%nat len Hline) as (Hlen17 & Hns0 & Htoks0).
     assert (Hns : ushp_no_symbols len f) by exact Hns0.
@@ -853,10 +861,12 @@ Section UkShEcho.
     assert (Hbytes : echo_argv_bytes
               (ushp_nulfold echo_toks (ushp_ext len f)))
       by exact (echo_argv_bytes_of_line_holds f 0%nat len Hline).
-    (* [sh_deps] and the pinned supply LINEARLY, as in
-       [wp_kshr_exec_echo_holds]: both are spent exactly once, at the arm
-       below, and introducing either with [#] does not return here. *)
-    iIntros "Hdp #Hcode Hexs #Hcq #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
+    (* the pinned supply LINEARLY, as in [wp_kshr_exec_echo_holds]: it is
+       spent exactly once, at the arm below, and introducing it with [#]
+       does not return here.  No [UkSh.sh_deps] anywhere on this walk
+       (M4b(2)). *)
+    iIntros "#Hcode Hexs #Hcq #Hxl #Hcd #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd
+             Hcwd Hch HM Hcr Hrun".
     (* the line's own bytes are non-NUL, which is what makes each token a
        string once the cut lands *)
     iDestruct (ustr_nonul with "Hline") as %Hnn0.
@@ -960,10 +970,10 @@ Section UkShEcho.
        generic supply appears anywhere in this walk. *)
     replace (60 + (8 + (UkShDiag.ush_Dg + n)))%nat
       with (6 + (2 + (UkShDiag.ush_Dg + (60 + n))))%nat by lia.
-    iApply (wp_kshr_exec_echo_holds Q Cr N _ h4 m4 p (sz + 65536) s0
+    iApply (wp_kshr_exec_echo_holds Q Cr Cd N _ h4 m4 p (sz + 65536) s0
               (ushp_nulfold echo_toks (ushp_ext len f)) ld ((60 + n)%nat)
-              Hpeq Ha0_4 Hbytes Hfd1
-              with "Hdp Hcode Hexs Hcq Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
+              Hpeq Ha0_4 Hbytes Hfd1 Hfd2
+              with "Hcode Hexs Hxl Hcd Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
   Qed.
 
   (* =================================================================== *)
@@ -983,22 +993,37 @@ Section UkShEcho.
     Persistent (sh_exec_sup_echo_wq Wc).
   Proof. rewrite /sh_exec_sup_echo_wq. apply _. Qed.
 
+  (* ...and the diagnostic's law at the same two ends (M4b(2)): from the
+     block owed to the block written up to its prompt, at every boundary *)
+  Definition ush_execfail_law_wq (Wc : nat -> nat -> iProp Σ) : iProp Σ :=
+    (□ (∀ np : nat, UkShDiag.ush_execfail_law (Wc np 3%nat) (Wc np 0%nat)))%I.
+
+  Global Instance ush_execfail_law_wq_persistent Wc :
+    Persistent (ush_execfail_law_wq Wc).
+  Proof. rewrite /ush_execfail_law_wq. apply _. Qed.
+
   Lemma ushf_child_law_holds (Wc : nat -> nat -> iProp Σ) :
+    ush_execfail_law_wq Wc -∗
     sh_exec_sup_echo_wq Wc -∗ UkShFork.ushf_child_law Wc.
   Proof.
-    iIntros "#Hsup". rewrite /UkShFork.ushf_child_law.
+    iIntros "#Hxl #Hsup". rewrite /UkShFork.ushf_child_law.
     iIntros "!>" (N' h m dw dv s0 len g sz ld n np)
       "%Hpeq %Hs1 %Hline %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
-       Hdp #Hcode #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
+       #Hcode #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
     pose proof (ukn_const_of_eq N' _ Hpeq (fun x y => eq_refl)) as Hc.
     iApply (wp_kshm_child_echo_holds (fun _ : Z => UkShFork.ushf_wq Wc np)
-              (Wc np 3%nat) N' Hc h m dw dv s0 len g sz ld n
+              (Wc np 3%nat) (Wc np 0%nat) N' Hc h m dw dv s0 len g sz ld n
               Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok
-              (proj1 (proj2 Hrows))
-              with "Hdp Hcode [] [] Hpcode Hpro Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun").
+              (proj1 (proj2 Hrows)) (proj2 (proj2 Hrows))
+              with "Hcode [] [] [] [] Hpcode Hpro Hjt Hline Hws Hsy Hstd Hcwd Hch
+                    HM Hcr Hrun").
     - iApply ("Hsup" $! np).
-    - (* a failed exec's child exits on the block it was lent *)
+    - (* a child that died at the null store exits on the block it was
+         lent *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iLeft. iExact "Hc".
+    - iApply ("Hxl" $! np).
+    - (* a failed exec's child exits on the block written up to its prompt *)
+      iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iRight. iExact "Hc".
   Qed.
 
   (* =================================================================== *)

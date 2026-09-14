@@ -73,6 +73,7 @@ Require Import EchoLinksLine.     (* [ewc_lcred] and the lend's two ends *)
 Require Import UEchoOut.          (* [echo_uexec_slot_at] / [ech] / [echo_stage] *)
 Require Import UShEcho.           (* the pinned bundle's inputs *)
 Require Import UShEchoOut.        (* [echo_out_argv_of_image] *)
+Require Import UShPanic.          (* [ush_execfail_law_holds]: the exec-failed diagnostic's law (M4b(2)) *)
 Require User.EchoSyms.
 
 (* ECHO'S .rodata IS IN THE EXEC IMAGE, as its text is: the image is the
@@ -317,8 +318,21 @@ Section UShEchoPay.
     intros Hkt. iIntros "#Hlk #Hdep #Hslot".
     (* at [uprogSG_free] the numbers sh admits are the free ones: the
        hypothesis is the identity *)
-    iApply (UkShEcho.ushf_child_law_holds (PS := uprogSG_free) (fun k H => H) Wc).
-    iApply (sh_exec_sup_echo_wq_holds Hkt with "Hlk Hdep Hslot").
+    (* the two laws first, as named hypotheses: an [iApply ... with "[] []"]
+       here sends the [Persistent] search down the child law's wand chain
+       (durable-notes, "iIntros #H on a bundle of wands") *)
+    iPoseProof (sh_exec_sup_echo_wq_holds Hkt with "Hlk Hdep Hslot") as "Hsup".
+    (* ...PINNED at [uprogSG_free] on both sides (durable-notes, "instance
+       pinning"): left to instance search the assertion lands at another
+       [uprogSG] and the [iApply] below unfolds the child law trying to
+       make the two agree, and never returns *)
+    iAssert (UkShEcho.ush_execfail_law_wq (PS := uprogSG_free) Wc) as "Hxlw".
+    { (* the exec-failed diagnostic's law, at every boundary (M4b(2)) *)
+      rewrite /UkShEcho.ush_execfail_law_wq. iIntros "!>" (np).
+      iApply (UShPanic.ush_execfail_law_holds (PS := uprogSG_free) T γ np
+                with "Hlk"). }
+    iApply (UkShEcho.ushf_child_law_holds (PS := uprogSG_free) (fun k H => H) Wc
+              with "Hxlw Hsup").
   Qed.
 
 End UShEchoPay.

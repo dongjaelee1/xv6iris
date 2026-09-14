@@ -3733,7 +3733,9 @@ admits every word in {1,3}*{0,2}, e.g. `[3; 3; 0]` (two banners) and `[1; 0]`
 (an exec diagnostic with no banner), which the machine never produces.  The
 theorem is weaker by that much and not vacuous; tightening = a
 well-formedness conjunct on `ps` through `pro_ok` plus a premise on
-`echo_link_pro`.  Ruling wanted: leave it (shortest honest path) or tighten.
+`echo_link_pro`.  RULED 2026-09-14 (owner): "the weaker trace predicate seems alright for
+now; let's land it first and then we'll go back and clean things up and
+possibly strengthen it" -- tightening is post-Qed cleanup.
 WHAT STEP 4 RECEIVES: `EchoLinks.wr_ban`'s open prologue is `pro_fail j :=
 concat (replicate j [3; 1])`, `wr_ban_pro : wr_ban ps cs n P -> wr_pro ps cs n
 P` (the banner is an unfiled letter at the banner-owed shape), `wr_banp`/

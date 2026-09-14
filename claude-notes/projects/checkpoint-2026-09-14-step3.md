@@ -1,4 +1,4 @@
-# CHECKPOINT 2026-09-14 (session limit) -- IO-LEAF step 3 in flight
+# CHECKPOINT 2026-09-14 (second session limit) -- step 3, INIT-DIAG, PROLOGUE-ALTS-3 landed; nothing in flight
 
 Supersedes `checkpoint-2026-09-16.md` §4/§5 for the state of play; that file's
 rules (§1-§3: build procedure, gate, commit rules, how to talk to the owner)
@@ -21,6 +21,11 @@ two halves of step 3).
   rows ONLY; no prose comments ("ditch all that useless commentary").
 * Landings: `git push origin lane/io-leaf:main` after the full gate; notes only
   from `/shared/xv6iris-2-notes` (branch `notes`, `git push origin HEAD:main`).
+* 2026-09-14 (later): THE WEAKER TRACE PREDICATE IS ACCEPTED FOR NOW --
+  "the weaker trace predicate seems alright for now; let's land it first and
+  then we'll go back and clean things up and possibly strengthen it".  So
+  PROLOGUE-ALTS-3's widening (app-echo.md, "PROLOGUE-ALTS-3 LANDED") is NOT
+  an open question; tightening belongs to the post-Qed cleanup.
 
 ## 2. What is on main (origin/main = b65275c81 code)
 
@@ -36,10 +41,31 @@ two halves of step 3).
 
 All lanes have landed; every checkout is free (`-disc` on `lane/step3-sh`,
 `-tlw` on `lane/prologue-alts-3`, `-sup` on `lane/init-diag`, all merged;
-the main checkout on `lane/io-leaf-3` = main).  OPEN OWNER QUESTIONS: (i)
-the trace predicate's WIDENING by PROLOGUE-ALTS-3 (app-echo.md's
-"PROLOGUE-ALTS-3 LANDED": leave or tighten); (ii) `die_dw` (a killed init),
-unchanged.
+the main checkout on `lane/io-leaf-3` = main).  ONE OPEN OWNER QUESTION:
+`die_dw` (a killed init prints "init: wait returned an error", which no
+transcript admits) -- narrow the free law to that one arm, or a kernel row
+relating the kill shot to the taint (`open-row-survey.md` is the map if
+kernel rows reopen).  The predicate widening is RULED (§1), not open.
+
+## 3b. Where the next agent starts
+
+Read `durable-notes.md`, this file, then app-echo.md's four 2026-09-14
+"LANDED" notes (INIT-DIAG, IO-LEAF STEP 3, PROLOGUE-ALTS-3, and M6a(3) STEPS
+1-2) and `handoff-2026-09-16/io-leaf-handover.md` ("THE REST OF THE LANE").
+The one remaining hypothesis of the top theorem is `Hsh_owed`
+(`UInitBootAdequacy.v`): `⊢ sh_deps` (the free console-write law, spent at
+four leaf families: the prompt's affine arm in `UkSh.ksh_w_of_wcp`, the
+shell's diagnostics `UkShDiag.ksh_w1_of_law`, init's die arms
+`UkInit.kinit_w1_of_law`, the echo child's generic entry in `UShEcho`) and
+`⊢ sh_pay_rest sh_Rsh` (the rest-of-line obligation; R3's three
+prerequisites, app-echo.md "SH-LINE R3 SURVEYED").  Order of work is §4
+below; step 4 first.  Spawn lanes on the four free checkouts with briefs on
+`handoff-2026-09-16/brief-*.md`'s mould (checkout, reading list, allow/deny
+files, build procedure, gate, report shape); a lane that starts a detached VM
+build and ends its turn does not wake on completion -- poll its `<log>.out`
+for `EXIT=` and message it.  Rebase recipe and gate: `checkpoint-2026-09-16.md`
+§6.  Landings from `-notes` by cherry-pick when the lane is behind main by
+notes-only commits (`git diff <lane> HEAD -- iris` must be empty).
 
 ## 4. Then (unchanged plan)
 

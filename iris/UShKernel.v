@@ -372,41 +372,10 @@ Section UShKernel.
   (* ------------------------------------------------------------------- *)
 
   (* ------------------------------------------------------------------- *)
-  (* SS1b WHAT PAYS FOR SH'S PROMPT (lane IO-LEAF, M4a).                   *)
-  (*                                                                      *)
-  (* sh's "$ " is the byte that RESOLVES round 0 of the application's      *)
-  (* transcript, so what pays for it is the era's own write link and not   *)
-  (* the flagged deposit -- and neither this file nor sh's walk may name   *)
-  (* an era.  What crosses instead is a PAIR: an abstract credential [C]   *)
-  (* -- /init's, lent at its fork and carried over the exec by             *)
-  (* [PinnedExec]'s [Pay] -- and a persistent conversion from it into the  *)
-  (* per-call obligation sh's walk spends ([UkSh.ksh_w] at fd 2, sh's      *)
-  (* .rodata literal and two bytes).  The conversion is quantified over    *)
-  (* the NAME RECORD, because this entry allocates it, and over the        *)
-  (* LEDGER, because sh's console preamble may move the ledger between the *)
-  (* entry and the first prompt.  [UShOut.ksh_w_of_link_prompt] is the ONE *)
-  (* thing that discharges it.                                            *)
-  (* ------------------------------------------------------------------- *)
-  Definition sh_prompt_pay : iProp Σ :=
-    (∃ C : iProp Σ,
-       C ∗ □ (∀ (N : uk_names Σ) (l : list fdstate),
-                ⌜ UkSh.ush_fd2p l ⌝ -∗
-                shk_rodata (ukn_t N) -∗
-                UkSh.ksh_w N (mword_of_int 2)
-                  (mword_of_int UkSh.sh_prompt_pv) 2%nat
-                  (ustd (ukn_fd N) l ∗ C) (ustd (ukn_fd N) l)))%I.
-
-  (* THE ENTRY DOES NOT TAKE IT ANY MORE (lane IO-LEAF, step 3): the
-     credential arrives in the loop's own slot ([UkSh.ush_wcp]) at the
-     lent count, through the entry law ([UShLine.ush_posb_of_lend]).  The
-     pair above is still what /init's banner leaves behind
-     ([UInitBanner.sh_prompt_pay_of_kinit_own]) and rides
-     [UkInit.init_exec_sup_pos]'s [Rt] slot, which nothing reads. *)
-
-  (* ------------------------------------------------------------------- *)
   (* SS1c THE PROMPT AT EVERY LINE BOUNDARY (lane IO-LEAF, M6a(3)).       *)
-  (* [sh_prompt_pay] is round 0's credential WITH its conversion; what the *)
-  (* command loop needs at every later prompt is the conversion ALONE, at  *)
+  (* sh's "$ " resolves a round of the application's transcript, so what  *)
+  (* pays for it is the era's own write link, and neither this file nor    *)
+  (* sh's walk may name an era.  What crosses is a CONVERSION ALONE, at    *)
   (* an abstract credential family [Wc n p] -- the era's write credential  *)
   (* at line boundary [n] with [p] prompt bytes out -- which the loop      *)
   (* carries beside its cursor and moves with the read.  Quantified over   *)

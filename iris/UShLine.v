@@ -94,6 +94,7 @@ Require Import WpUart.             (* [cons_read_pay]: E5's console I/O
 Require Import UartNames.          (* [cons_names] *)
 Require Import UserConsole.        (* [upos] / [ucons_pay] *)
 Require Import UkSh.               (* [ush_narrow_count_le] *)
+Require UkInit.                    (* [init_rd]: the exit family, the pair *)
 Require Import UConsLine.          (* [ush_read_recv_leaf] / [ush_std_cons] *)
 (* THE ERA'S READ SIDE (lane IO-LEAF, M5).  [EchoOut] is the application's
    CLAIM and [EchoLinks] the program-side law built on it; this file names
@@ -493,16 +494,15 @@ Section UShLine.
      credential [Wb n] -- init's next round's banner is payable from it --
      which the shell reaches only at its shut-fd-0 exit with fd 2 closed.
      The right arm is AFFINE until step 4 (every other exit assembles the
-     payload without a credential).  Spelled here rather than at
-     [UkInit.init_rd] because this checkout's [UkInit] does not have it
-     yet; the coordinator unifies the two. *)
+     payload without a credential); it is spelled ONCE, at
+     [UkInit.init_rd], and this is that family at the era's read side. *)
   Definition ush_rd_x (γ : echo_gn) (Wb : nat -> iProp Σ) (n : nat)
       : iProp Σ :=
-    (ush_rd_pin γ n ∗ (Wb n ∨ True))%I.  (* AFFINE -- step 4 kills it *)
+    UkInit.init_rd (ush_rd_pin γ) Wb n.
 
   Global Instance ush_rd_x_timeless γ Wb n `{!Timeless (Wb n)} :
     Timeless (ush_rd_x γ Wb n).
-  Proof. rewrite /ush_rd_x. apply _. Qed.
+  Proof. rewrite /ush_rd_x /UkInit.init_rd /UkInit.init_rd_cred. apply _. Qed.
 
   (* =================================================================== *)
   (*  THE LEASE, UNBUNDLED (lane IO-LEAF, M5(3); [UkSh]'s [Pm]).          *)
@@ -541,7 +541,7 @@ Section UShLine.
     iDestruct "Hl" as (n') "(Hrd0 & Hpa & Hcred)".
     iDestruct (upos_agree γp n n' with "Hpos Hpa") as %<-.
     iLeft. rewrite /ush_mid. iFrame "Hpos Hpa".
-    rewrite /ush_rd_x. iDestruct "Hcred" as "[[_ Hcred] _]". iFrame "Hrd0 Hcred".
+    rewrite /ush_rd_x /UkInit.init_rd /UkInit.init_rd_cred. iDestruct "Hcred" as "[[_ Hcred] _]". iFrame "Hrd0 Hcred".
   Qed.
 
   (* ...and go back together at a boundary WITHOUT a credential: the exit
@@ -556,7 +556,7 @@ Section UShLine.
     iIntros "(Hpos & Hpa & Hrd0 & Hcred)". iFrame "Hpos". rewrite Hpay.
     iApply (ucons_pay_tok fsc_cons γp T (ush_rd_x γ Wb) n (-1)
               with "Hrd0 Hpa [Hcred]").
-    rewrite /ush_rd_x /ush_rd_pin.
+    rewrite /ush_rd_x /UkInit.init_rd /UkInit.init_rd_cred /ush_rd_pin.
     iSplitL "Hcred"; [ iSplitR; [ by iPureIntro | iExact "Hcred" ] | ].
     by iRight.
   Qed.
@@ -574,7 +574,7 @@ Section UShLine.
     iIntros "(Hpos & Hpa & Hrd0 & Hcred) Hb". iFrame "Hpos". rewrite Hpay.
     iApply (ucons_pay_tok fsc_cons γp T (ush_rd_x γ Wb) n (-1)
               with "Hrd0 Hpa [Hcred Hb]").
-    rewrite /ush_rd_x /ush_rd_pin.
+    rewrite /ush_rd_x /UkInit.init_rd /UkInit.init_rd_cred /ush_rd_pin.
     iSplitL "Hcred"; [ iSplitR; [ by iPureIntro | iExact "Hcred" ] | ].
     iLeft. iExact "Hb".
   Qed.

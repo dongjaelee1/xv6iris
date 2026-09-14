@@ -84,9 +84,8 @@ Require Import UCodeShK.           (* [shk_ro] / [shk_rodata] *)
 Require Import UkSh.               (* [ksh_w] / [wp_ksh_write_chain_txt] *)
 Require Import UkWriteClosed.      (* [ksh_w_of_closed]: the prompt on a
                                       closed fd 2 (step 3) *)
-Require Import UShKernel.          (* [sh_prompt_pay]: the PAIR sh's entry
-                                      takes -- the credential and the
-                                      conversion of it into this call *)
+Require Import UShKernel.          (* [sh_prompt_law]: the conversion of
+                                      the loop's credential into this call *)
 Require Import EchoDisc.
 Require Import EchoOutPure.
 Require Import EchoOut.
@@ -415,40 +414,8 @@ Section UShOut.
   Qed.
 
   (* =================================================================== *)
-  (*  S5  THE PAIR THAT CROSSES INTO SH (lane IO-LEAF, M4a(3))            *)
-  (*                                                                     *)
-  (*  Everything above is about ONE ledger and ONE era pin; what /init    *)
-  (*  hands the shell is neither -- it is an opaque credential and a      *)
-  (*  persistent conversion of it, because init's walk may not name an    *)
-  (*  era and sh's walk may not name row 16.  [UShKernel.sh_prompt_pay]   *)
-  (*  is that pair, and this is the one thing that builds it: the era's   *)
-  (*  cursor at stage 18 (which is what /init's banner leaves behind --   *)
-  (*  [UInitBanner.kinit_turn0], [ushpr] at [p = 0] verbatim) beside the  *)
-  (*  conversion above, quantified over the record the entry allocates    *)
-  (*  and over the ledger sh's console preamble leaves.                   *)
-  (* =================================================================== *)
-  Lemma sh_prompt_pay_of_ushpr (v : era_pins) (n : nat) :
-    era_pin γ (S gen_id) v -∗
-    echo_links T γ -∗
-    ushpr v n 0%nat -∗
-    UShKernel.sh_prompt_pay.
-  Proof.
-    iIntros "#Hpin #Hlk Hc". rewrite /UShKernel.sh_prompt_pay.
-    iExists (ushpr v n 0%nat). iFrame "Hc". iModIntro.
-    iIntros (N l) "%Hfd2 #Hro".
-    destruct Hfd2 as [rb Hl2].
-    iApply (UkSh.ksh_w_mono N (mword_of_int 2)
-              (mword_of_int sh_prompt_pv) 2%nat
-              (UserFd.ustd (ukn_fd N) l ∗ ushpr v n 0%nat)
-              (UserFd.ustd (ukn_fd N) l ∗ ushpr v n 2%nat)
-              (UserFd.ustd (ukn_fd N) l) with "[] []").
-    - iIntros "[$ _]".
-    - iApply (ksh_w_of_link_prompt N v n l rb Hl2 with "Hpin Hlk Hro").
-  Qed.
-
-  (* =================================================================== *)
-  (*  S6  THE SAME CALL AT THE LOOP'S OWN CREDENTIAL (lane IO-LEAF,       *)
-  (*      M6a(3)): the era's pin travels INSIDE the credential, because   *)
+  (*  S5  THE CALL AT THE LOOP'S OWN CREDENTIAL (lane IO-LEAF, M6a(3)):  *)
+  (*      the era's pin travels INSIDE the credential, because            *)
   (*      the command loop names no [v]; the call reads it out and puts   *)
   (*      it back.  This is what [UShKernel.sh_prompt_law] is built from. *)
   (* =================================================================== *)

@@ -1441,7 +1441,7 @@ Section UkInitMain.
            with the position and the lease (lane IO-LEAF, M4a(3)): the
            exec supply is a wand from all three, and what they land in is
            [PinnedExec]'s linear [Pay] -- which is what sh's entry
-           constructor reads ([UShKernel.sh_prompt_at]). *)
+           constructor reads ([UShLine.ush_posb_of_lend]). *)
         iIntros (N' hc)
           "%Hpeq (#Hck & #Hrk & #Hak) Hsz Hstd #Hrow' Hcred Hpos Hlease Hcwd Hrun".
         (* the child's walk runs at ITS payload's class, which is the

@@ -57,6 +57,9 @@ Proof. reflexivity. Qed.
 Lemma ufd_l0_row0 : ufd_l0 !! 0%nat = Some FdClosed.
 Proof. reflexivity. Qed.
 
+Lemma ufd_l0_row2 : ufd_l0 !! 2%nat = Some FdClosed.
+Proof. reflexivity. Qed.
+
 Lemma ufd_l1_row0 (st : fdstate) : ufd_l1 st !! 0%nat = Some st.
 Proof. reflexivity. Qed.
 

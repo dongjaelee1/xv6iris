@@ -26,12 +26,61 @@ quantifies the loop head), hence `sh_pay T Wc Rsh n0` and `sh_pay_rest`'s
 `Hpsok_free` (calls: `N γp T Wc Hpsok_free …`), `UkSh` after it
 (`wp_ksh_start N γp T Hpsok_free Wc Pm Hpm1 Hpm2 Hpm3 Hwc cn Hrl …`).
 
-STEP 3 NOW: at the entry `sh_slot_of_kexec` takes `Pm n ∗ Wc n 0` (the raw
-pieces + the boundary credential, `Rc`) instead of `Q (-1)`, and `ush_posb`'s
-slot loses its `∨ True`; init's lend `uinit_lend` mints the pair across the
-two shapes; `Rd n` (in `Q`) carries the BANNER credential; the exit on a
-shut fd 0 and init's closed-fd head arm are the two arms to settle first
-(the reviewer's Q3 in scratchpad `review-m6a3.md`, if present).
+## STEP 3 -- THE DESIGN OF RECORD (coordinator, 2026-09-14, after the
+## banner-optional ruling; supersedes the reviewer's Q3 where they differ)
+
+Families (all opaque below the top; instances at `echo_Hinit_boot`):
+  `Rdl n` -- the READ side of the lease at boundary `n` (UShLine.ush_rd_pin);
+  `Wb  n` -- the BANNER-OWED credential at `n` (UInitBanner.kinit_ban n =
+             ∃ v, era_pin ∗ ewc_ban v n 0);
+  `Wc n p` -- the shell's credential at `n`, `p` prompt bytes out; AT p = 0 IT
+             IS A DISJUNCTION `∃ v, era_pin ∗ (ewc_owed v n ∨ ewc_ban v n 0)`
+             (prompt-shaped after a banner that reached the wire, banner-
+             owed otherwise -- PROLOGUE-ALTS-3 pays the '$' from either);
+             at p = 2 it is `ewc_open` as today.
+  `Pm n`  -- the mid-line pieces (UShLine.ush_mid), unchanged.
+sh's EXIT family `Rd n := Rdl n ∗ Wb n` (UkInit defines it from the two;
+`ukn_pay N = ucons_pay cn γ T Rd`).  The LEND is `ucons_pay cn γ T Rd' (-1)`
+at the DIFFERENT family `Rd' n := Rdl n ∗ Wc n 0`, minted by `uinit_lend` at
+family `Rd'` from the token opened at `Rd` -- so `Rc ≠ Q (-1)` in exactly
+the ruling's sense, and `UserConsole` does not change.
+init's loop head holds `uinit_tok cn T Rd`; per round: open it (`reader n ∗
+Rdl n ∗ Wb n` or T); the banner: on the console arm the law `□ ∀ n N', Wb n
+-∗ kinit_banner0 N' stc (Wc n 0)` (kinit_ban_law becomes n-indexed; Bn
+LEAVES init_boot_pay, kinit_round0 DIES), on the closed arm the banner is
+written through `UkWriteClosed.kinit_w1_of_closed_l0` and `Wb n` becomes
+`Wc n 0` by its ban arm (no conversion), on the taint arm T; then
+`uinit_lend` at `Rd'`, `wp_kinit_fork` lends `upos γ n ∗ ucons_pay Rd' (-1)`
+(the `(Rt ∨ True)` conjunct is GONE; `init_exec_sup_pos` takes the lend at
+`Rd'`); FORK-REFUND hands `Rc` back whole (die_df's credential: M6b).
+sh's ENTRY (`sh_slot_of_kexec`/`sh_uexec_slot`): `upos γp n -∗ ucons_pay cn
+γp T Rd' (-1) -∗ uslot W'` -- the raw pieces + the credential; NO
+`sh_prompt_at`, NO `ush_prompt_in`, NO `Q (-1)` (the exit payload is
+assembled by sh where it exits).  The entry law (UShLine): `upos γp n ∗
+ucons_pay Rd' (-1) -∗ ush_posb l 0` with `ush_posb l p := (∃ n, ⌜bnd n⌝ ∗ Pm
+n ∗ ush_wcp l n p) ∨ (T ∗ ush_pos)` and `ush_wcp l n p := (⌜ush_fd0c l ∧
+ush_fd2p l⌝ ∗ Wc n p) ∨ (⌜l !! 2 = Some FdClosed⌝ ∗ Wc n 0)` -- the BOTH-
+CONSOLE row on the credential arm (from init's l3 head, preserved by the
+preamble's opens) is what refutes `ush_gets_done_0` on that arm (fd 0 closed
+contradicts fd0c); the closed arm keeps the credential UNCHANGED through the
+prompt (`ksh_w_of_closed`) and reaches sh's exit only via the shut fd 0 (-1
+read) or the discipline lemma (fd 0 open, fd 2 closed: an untainted read at
+an unwritten prompt is refuted -- PROLOGUE-ALTS-3's (3)).
+`Context (Pm)` and its laws move ABOVE `ush_posb`; `ush_pm_of_at` dies
+(nothing holds `ush_at` in the loop); `ush_at_of_pm` becomes the EXIT
+ASSEMBLERS: `bnd n -> Pm n -∗ Wb n -∗ ush_at n` (at the new `Rd`) and
+`ush_at_of_pm_taint` (kept); sh reaches `Wb n` at the shut-fd-0 exit from the
+slot's closed arm only if the credential there is ban-shaped -- so the closed
+arm's credential is `Wc n 0`'s BAN arm specifically: state the slot's closed
+arm as `⌜closed⌝ ∗ Wb n` and let the top's `Wc n 0` disjunction absorb it at
+the prompt on the console row; the "fork\n" exit (M3b core) reaches `Wb n'`
+by `EchoLinksLine.ewc_panic_done`.
+`sh_pay_rest` quantifies `Wc`, `Wb` AND `Pm` -- plan its final shape ONCE
+(it is R3's to delete).
+Files: UkInit, UkInitMain, UInitKernel, UInitBanner, UkSh, UShLine,
+UShKernel, UkShLoop/Cd/Fork/Echo (Wb beside Wc), UInitSh, UInitBoot,
+UInitBootAdequacy (Hsh_owed's second conjunct's text only if sh_pay_rest's
+binder list is reported), EchoLinks only through PROLOGUE-ALTS-3's lemma.
 
 
 **THREE TRAPS, all paid:**

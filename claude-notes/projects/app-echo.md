@@ -101,7 +101,13 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   (2026-09-16): `echoOutΣ`/`subG`; the `AppEcho` wiring (`echo_out := eout`,
   `echo_in := ein`, `echo_win`, `echo_turn`, `echo_R` over `echo_led`,
   `echo_phi := fun _ h => disc h -> Forall good_out (cycles_of h)`); the
-  eight dependents; `Hphi` closed from `echo_led_phi`.
+  eight dependents; `Hphi` closed from `echo_led_phi`.  BLOCKER RULED
+  2026-09-16 (the note below): sh's read leaf becomes a third owed
+  entailment of `Hsh_owed`; landing with `Hphi` closed.
+- [ ] **FORK-REFUND** (kernel; main checkout, `lane/fork-refund`): LAUNCHED
+  2026-09-16 (the note below): fork's -1 arm returns `Rc`.
+- [ ] **IO-LEAF** (programs): SURVEYED 2026-09-16 (the note below); brief
+  v2 ready; launches after part 5, TRAP-ROWS, FORK-REFUND, PROLOGUE-ALTS.
 - [ ] **PROLOGUE-ALTS** (pure; `-sup`, `lane/prologue-alts`): LAUNCHED
   2026-09-16 (the note below): init's exec-failure loop and terminal
   fork failure as prologue alternatives in EchoDisc/EchoOutPure; the
@@ -3327,6 +3333,45 @@ check uses it to refute the resume branch; the user-level read spec's -1 case
 is left with "fd 0 closed" only, which sh refutes.  Nothing about exit
 changes (the earlier "two-sided exit deposit" is withdrawn).  Owner: "agreed
 with fixing the console read spec to never return -1 to userspace."
+
+ECHO-OUT PART 5 -- RULING ON THE BLOCKER (2026-09-16).  The wiring (nine
+files: AppEcho's four claims/ledger/tag at EchoOut's, the owner's `echo_phi`,
+`echoOutG` in the eight dependents, `UInitBootAdequacy.Hphi` CLOSED) is
+proved but one `assert` at `UInitBoot.v:596`, `⊢ in_licence`, is FALSE at the
+real input claim: sh's read leaf (`UShLine.ush_read_recv_leaf_holds`) pays the
+console read's `cons_read_pay` from a generic licence that only the `emp`
+placeholder satisfied, and `ucons_pay`'s lease arm carries no taint, so the
+interim shape "`□ (T -∗ in_licence)`" recorded earlier does NOT work either.
+RULED: route (B) -- sh's read leaf becomes a THIRD owed entailment of
+`Hsh_owed` (the leaf's statement verbatim as a Coq-level premise in
+`Hsh_deps`' mould), discharged by IO-LEAF (survey §4: `era_pin ∗ dl_cnt v
+(1/2) n` on sh's lease, the leaf through `echo_read_link`).  `Hphi` closes now.
+Part 5a (`echoOutΣ` + `subG_echoOutΣ`, EchoOut.v +18) is on the lane; both
+land together.
+
+IO-LEAF SURVEY DONE (2026-09-16; scratchpad `io-leaf-survey.md`; brief v2
+`brief-io-leaf.md` with decisions D1-D6).  Findings: the three `*_write_chain`
+wrappers have ZERO callers; sh's fork/wait use `wp_uk_ecall_fork_any` with
+`Rc := emp`, `Q := True` hard-wired and discard the child token and the wait
+answer; the turn's route IS the console lease's (`uinit_tok -> uinit_lend ->
+Rc/Q -> PinnedExec.Pay -> ush_at -> exit -> gen_pay -> uinit_redeem`); the
+read side FITS as landed; `sh_deps` has 49 premise sites spent in two places.
+DECISIONS: D1 the three links packaged as ONE persistent law `echo_links`
+proved once under the four equations, taken by the programs in `sh_deps`'
+mould (the U tier imports EchoOut for the predicates, not the equations);
+D2 the child's death at a linear payload = T3's additive pair; D3 payloads
+status-independent `turn-at-the-alternative's-end ∨ T`, `ush_at` unbundled
+(sh's exit(0) is refuted by T2); D4 the refunds ARE the turn (fork: T5 below;
+exec: PinnedExec's refund kept); D5 the read leaf off `read_ret`; D6 order
+M1 init's banner -> M2 echo -> M3 transport -> M4 sh's prompt/diagnostics ->
+M5 read leaf -> M6 `Hsh_owed` down to `sh_pay_rest` alone.
+
+FORK-REFUND LAUNCHED (2026-09-16; kernel row T5 as its own lane in the main
+checkout, `lane/fork-refund`; brief `brief-fork-refund.md`): `wp_uk_ecall_fork`'s
+-1 arm (UkFork.v:849) LOSES the parent's lend `Rc`; the row returns it
+(`⌜r = -1⌝ ∗ uch Sc ∗ Rc`) from every failure exit of the kernel's fork.
+Needed because init's "init: fork failed" and sh's `fork1` "fork" diagnostics
+must be written with the turn that rode `Rc` (survey W8).
 
 PROLOGUE-ALTS LAUNCHED (2026-09-16; pure lane in `-sup`, `lane/prologue-alts`;
 brief scratchpad `brief-prologue-alts.md`; phase 1 = statements).  Owner's Q1:

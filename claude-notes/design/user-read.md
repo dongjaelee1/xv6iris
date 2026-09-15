@@ -117,6 +117,20 @@ console: ledger-fixed AT THE ARM THE HANDLE NAMES.  One deposit family
 answers it is selected by the same kind the leaf cased on, so the
 kernel-side wiring is one table, not four lemmas.
 
+**RULED (RD-2, 2026-09-15, from RD-1's finding): the offset MODE lives
+IN THE STATE.**  `FdInode` gains the parked-vs-held mode (an
+`offmode`), because it is the only shape that keeps `FdSlots.foff_row`
+both PERSISTENT and A PURE FUNCTION OF THE STATE once a half can be
+handed out: a held descriptor's row claims nothing, a parked one's
+claims `off_user_inv`, and which one applies is readable off the
+descriptor itself — which is also this section's arm dispatch for
+free.  Consequences RD-2 must carry through the `fdstate` match cone:
+open's publish selects the mode (`off_pub_park`/`off_pub_hand` — both
+already proved), fork's U-tier row demands mode = parked on every
+inode descriptor (the pre-fork `uoff_park` re-mints the row the
+child's copy consumes — `foff_row_inode` is the one step), close/dup
+are mode-indifferent.
+
 ## 4. Fork (and dup) versus an owned offset — RULED 2026-09-15: PARK
 
 THE OWNER RULED option (i): fork parks every held `uoff`.  The analysis

@@ -153,7 +153,9 @@ Derived corollaries, in order of what applications actually use:
   `ProofKforkB3` takes the parent's row persistently), so deliverable 5
   is the park lemma + a U-tier statement-side obligation for RD-2.
   This lane discharges the TR's `\nz` note.
-- [ ] **RD-2 FILE-LEAF** (U tier; BLOCKED on box): the inode arm —
+- [ ] **RD-2 FILE-LEAF** (U tier; LAUNCHED 2026-09-15, Opus lane,
+  branch rd2-file-leaf; RD-1 merged and gated first; the mode-in-state
+  ruling is in design/user-read.md §3): the inode arm —
   `wp_uk_ecall_read` at kind `FdInode`: window walk + kept post at
   `aread`'s receipt; post = the target's File row.  First consumer to
   prove: `cat` reading a known file (a new small app, or a lemma-level

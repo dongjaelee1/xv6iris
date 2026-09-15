@@ -33,9 +33,14 @@ recovers to a view satisfying the three pins and the console state.
   and /echo pins plus `cons_state` -- NOT the mkfs image's view (init's
   repair arm may have created the console node; review finding 8).
 
-STATED AND CLOSED (2026-09-14): `UInitBootAdequacy.echo_adequacy_modulo_phi`
+STATED AND CLOSED (2026-09-14).  `UInitBootAdequacy.echo_adequacy_modulo_phi`
 = `App.xv6_app_adequacy` at `AppEcho.app_echo` with EVERY obligation of the
-record discharged.  `Hphi` closed at lane ECHO-OUT part 5; `Hsh_owed`'s three
+record discharged; `echo_adequacy_echoΣ` beside it is the CLOSED form -- the
+functor list fixed at `echoΣ` (so no class is merely assumed realisable),
+the disk at the literal mkfs image, the conclusion spelled out with no Iris
+in it (`disc κs -> Forall good_out (cycles_of κs)`), and only three premises
+left: generation zero, powered off, and the disk is the image mkfs wrote.
+That corollary is what `make audit-echo-only` audits.  `Hphi` closed at lane ECHO-OUT part 5; `Hsh_owed`'s three
 conjuncts closed in turn -- sh's console read leaf at IO-LEAF M5, the free
 write law at EXEC-SEAM (D), the rest-of-line obligation at R3 -- and the
 binder is DELETED.  The theorem's remaining premises are the power-on machine

@@ -859,8 +859,12 @@ audit-only` (`iris/SystemAssumptions.v`) prints
 walks `App`/`AppEcho`/`EchoOut`/`EchoLinks*`/`EchoDisc` or the
 `Uk*`/`USh*`/`UInit*`/`UEcho*` program tier. `make audit-echo-only`
 (`iris/EchoAssumptions.v`, landed 2026-09-14) prints
-`UInitBootAdequacy.echo_adequacy_modulo_phi` — the application theorem, whose
-cone DOES walk all of that. **Run BOTH after a change that touches the program
+`UInitBootAdequacy.echo_adequacy_echoΣ` — the CLOSED application theorem
+(concrete functor list `echoΣ`, the disk at the mkfs image, only the three
+hardware facts left), whose cone DOES walk all of that. **Audit the closed
+corollary, never the `modulo_phi` form**: the axiom list of a theorem you
+cannot instantiate says nothing, and a `Σ`-generic statement no concrete `Σ`
+satisfies is vacuous — fixing the functor list is what checks that. **Run BOTH after a change that touches the program
 tier**: the system audit cannot see an axiom leaked there, and a grep for
 `Admitted`/`Axiom` cannot see an undischarged `Spec*` module `Parameter`
 sitting behind a sealed functor — only `Print Assumptions` can.

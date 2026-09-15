@@ -1665,7 +1665,7 @@ Section FilereadConsoleMorph.
   Context `{GEN : GenId} `{CID : CpuId}.
 
   Global Instance console_ready_app_morph :
-    CtxMorph (λ ξ0 : TsoCtx.CtxId, console_ready_app (XI := ξ0)).
+    CtxMorph (λ ξ0 : CtxIdDefs.CtxId, console_ready_app (XI := ξ0)).
   Proof.
     iIntros (ξ ξ') "Hd H". rewrite /console_ready_app.
     iDestruct "H" as "[H #Hu]".

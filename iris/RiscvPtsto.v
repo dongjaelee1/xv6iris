@@ -12,7 +12,8 @@ Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvModelBytes.
 Require Import RiscvLang.
 Require Import ObsTrace.
-Require Import ConsLog.  (* [log_entry]: the console input log's vocabulary *)
+Require Import LogEntryDefs.  (* [log_entry]: the console input log's
+                                 vocabulary, and nothing else of its theory *)
 Require Import TsoMemPa TsoGhost.  (* the TSO machine ghosts (tso-machine-flip.md) *)
 Require Export DiskImg.  (* [diskImgG]/[disk_img_auth]: the disk image map *)
 (* [disk_write]/[disk_wr]/[wr_apply]: the disk image and the pure write
@@ -724,10 +725,10 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
 
      ERA-INDEXED, on [riscv_out_res]'s mould and for its reason: the first
      argument is the era number, [S gen_id] at the kernel. *)
-  riscv_in_res : nat -> list mobs -> list ConsLog.log_entry ->
+  riscv_in_res : nat -> list mobs -> list LogEntryDefs.log_entry ->
                  list (list mobs * bv 8) -> iProp Σ;
   riscv_in_res_timeless :
-    forall (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+    forall (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
            (dl : list (list mobs * bv 8)), Timeless (riscv_in_res k h pops dl);
   (* THE ECHO WINDOW TOKEN (claude-notes/projects/app-echo.md, "E5 -- THE
      APPLICATION CLAIM", lane CONS-IO milestone F).  The application's own
@@ -1079,11 +1080,11 @@ Proof. rewrite /out_res_triv. apply _. Qed.
 (* ...and the input log's, on the same mould: the generic application
    claims nothing about what was typed and nothing about who got it. *)
 Definition in_res_triv {Σ : gFunctors} :
-    nat -> list mobs -> list ConsLog.log_entry ->
+    nat -> list mobs -> list LogEntryDefs.log_entry ->
     list (list mobs * bv 8) -> iProp Σ :=
   fun _ _ _ _ => emp%I.
 Global Instance in_res_triv_timeless {Σ : gFunctors} (k : nat) (h : list mobs)
-    (pops : list ConsLog.log_entry) (dl : list (list mobs * bv 8)) :
+    (pops : list LogEntryDefs.log_entry) (dl : list (list mobs * bv 8)) :
   Timeless (in_res_triv (Σ := Σ) k h pops dl).
 Proof. rewrite /in_res_triv. apply _. Qed.
 

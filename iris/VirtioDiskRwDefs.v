@@ -600,9 +600,9 @@ Section VdrwbDefs.
   Proof.
     intros Hal11 Hal12. iIntros "(Hx0 & Hx1 & Hx2 & Hxp)".
     iDestruct "Hxp" as (vp) "Hxp".
-    iDestruct (ctx_word_pointsto_join4 TsoCtx.cur_ctx (pa_stk sp0 12) (DfracOwn 1) v0 v1 Hal12
+    iDestruct (ctx_word_pointsto_join4 CtxIdDefs.cur_ctx (pa_stk sp0 12) (DfracOwn 1) v0 v1 Hal12
                  with "Hx0 Hx1") as "H12".
-    iDestruct (ctx_word_pointsto_join4 TsoCtx.cur_ctx (pa_stk sp0 11) (DfracOwn 1) v2 vp Hal11
+    iDestruct (ctx_word_pointsto_join4 CtxIdDefs.cur_ctx (pa_stk sp0 11) (DfracOwn 1) v2 vp Hal11
                  with "Hx2 Hxp") as "H11".
     rewrite /vdrw_scratch. iExists (word_of_words v2 vp), (word_of_words v0 v1).
     (* A6.61: the join stays in tier ([ByteBuf.ctx_word_pointsto_join4]);

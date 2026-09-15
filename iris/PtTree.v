@@ -940,7 +940,7 @@ Qed.
 (* ===================================================================== *)
 Inductive ptier : Type :=
 | KTier (B : nat)
-| UTier (xi : TsoCtx.CtxId).
+| UTier (xi : CtxIdDefs.CtxId).
 
 (* ===================================================================== *)
 (* THE KERNEL SLOT'S ALLOWED BYTES (tso-pin-memo.md §2/§5.5; A6.53).      *)
@@ -1667,9 +1667,9 @@ End PtTreeIris.
    the tiered slot a notation of its own makes that conversion a TOKEN
    substitution rather than a re-parenthesisation -- which matters, because
    the old spelling is an infix and the new head is a prefix. *)
-Notation "a ↦ₚₜ{ dq } w" := (pt_slot_own (UTier TsoCtx.cur_ctx) a dq w)
+Notation "a ↦ₚₜ{ dq } w" := (pt_slot_own (UTier CtxIdDefs.cur_ctx) a dq w)
   (at level 20, format "a  ↦ₚₜ{ dq }  w") : bi_scope.
-Notation "a ↦ₚₜ w" := (pt_slot_own (UTier TsoCtx.cur_ctx) a (DfracOwn 1) w)
+Notation "a ↦ₚₜ w" := (pt_slot_own (UTier CtxIdDefs.cur_ctx) a (DfracOwn 1) w)
   (at level 20, format "a  ↦ₚₜ  w") : bi_scope.
 (* NOTE the spacing: a fused "]{" token would break ghost_map's [↪[γ]]
    tree-wide (durable-notes' lexer rule, and it DID -- [KstackOwn]'s
@@ -1678,7 +1678,7 @@ Notation "a ↦ₚₜ w" := (pt_slot_own (UTier TsoCtx.cur_ctx) a (DfracOwn 1) w
 Notation "a ↦ₖₜ[ B ] dq w" := (pt_slot_own (KTier B) a dq w)
   (at level 20, format "a  ↦ₖₜ[ B ]  dq  w") : bi_scope.
 
-Lemma pt_slot_own_Some `{!riscvGS Σ} (xi : TsoCtx.CtxId)
+Lemma pt_slot_own_Some `{!riscvGS Σ} (xi : CtxIdDefs.CtxId)
     (a : Arch.pa) (dq : dfrac) (w : bv 64) :
   pt_slot_own (UTier xi) a dq w = TsoCtx.ctx_phys_word_pointsto xi a dq w.
 Proof. reflexivity. Qed.
@@ -1688,20 +1688,20 @@ Lemma pt_slot_own_None `{!riscvGS Σ} (B : nat)
   pt_slot_own (KTier B) a dq w = kpt_slot_pin a dq w B.
 Proof. reflexivity. Qed.
 
-Notation pt_page_own           := (pt_page_own_at (UTier TsoCtx.cur_ctx)).
-Notation ptree_own             := (ptree_own_at (UTier TsoCtx.cur_ctx)).
-Notation pt_kids_own           := (pt_kids_own_at (UTier TsoCtx.cur_ctx)).
-Notation pt_frame              := (pt_frame_at (UTier TsoCtx.cur_ctx)).
-Notation pt_page_own_acc       := (pt_page_own_acc_at (UTier TsoCtx.cur_ctx)).
-Notation pt_page_own_acc_ro    := (pt_page_own_acc_ro_at (UTier TsoCtx.cur_ctx)).
-Notation pt_kids_own_acc       := (pt_kids_own_acc_at (UTier TsoCtx.cur_ctx)).
-Notation pt_kids_own_acc_ro    := (pt_kids_own_acc_ro_at (UTier TsoCtx.cur_ctx)).
-Notation ptree_own_S           := (ptree_own_S_at (UTier TsoCtx.cur_ctx)).
-Notation ptree_own_page_valid  := (ptree_own_page_valid_at (UTier TsoCtx.cur_ctx)).
-Notation ptree_own_path_ro     := (ptree_own_path_ro_at (UTier TsoCtx.cur_ctx)).
-Notation ptree_own_path_upd    := (ptree_own_path_upd_at (UTier TsoCtx.cur_ctx)).
-Notation ptree_own_path_mem    := (ptree_own_path_mem_at (UTier TsoCtx.cur_ctx)).
-Notation ptree_own_blocked_mem := (ptree_own_blocked_mem_at (UTier TsoCtx.cur_ctx)).
+Notation pt_page_own           := (pt_page_own_at (UTier CtxIdDefs.cur_ctx)).
+Notation ptree_own             := (ptree_own_at (UTier CtxIdDefs.cur_ctx)).
+Notation pt_kids_own           := (pt_kids_own_at (UTier CtxIdDefs.cur_ctx)).
+Notation pt_frame              := (pt_frame_at (UTier CtxIdDefs.cur_ctx)).
+Notation pt_page_own_acc       := (pt_page_own_acc_at (UTier CtxIdDefs.cur_ctx)).
+Notation pt_page_own_acc_ro    := (pt_page_own_acc_ro_at (UTier CtxIdDefs.cur_ctx)).
+Notation pt_kids_own_acc       := (pt_kids_own_acc_at (UTier CtxIdDefs.cur_ctx)).
+Notation pt_kids_own_acc_ro    := (pt_kids_own_acc_ro_at (UTier CtxIdDefs.cur_ctx)).
+Notation ptree_own_S           := (ptree_own_S_at (UTier CtxIdDefs.cur_ctx)).
+Notation ptree_own_page_valid  := (ptree_own_page_valid_at (UTier CtxIdDefs.cur_ctx)).
+Notation ptree_own_path_ro     := (ptree_own_path_ro_at (UTier CtxIdDefs.cur_ctx)).
+Notation ptree_own_path_upd    := (ptree_own_path_upd_at (UTier CtxIdDefs.cur_ctx)).
+Notation ptree_own_path_mem    := (ptree_own_path_mem_at (UTier CtxIdDefs.cur_ctx)).
+Notation ptree_own_blocked_mem := (ptree_own_blocked_mem_at (UTier CtxIdDefs.cur_ctx)).
 
 Notation kpt_page_own B        := (pt_page_own_at (KTier B)).
 Notation kptree_own B          := (ptree_own_at (KTier B)).

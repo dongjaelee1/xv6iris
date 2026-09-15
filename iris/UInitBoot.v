@@ -25,7 +25,7 @@
 (* WHAT IS STILL A PREMISE HERE, and what discharges it:                  *)
 (*   the CLAIM LAW at [FsInitPinBoot.era0_pins] -- [AppEcho]'s, through   *)
 (*     the era's record equation (the pin is one of the three conjuncts   *)
-(*     of [AppEcho.echo_fs_pure], so [echo_fs_pure_acc] gives it);        *)
+(*     of [EchoFsPure.echo_fs_pure], so [echo_fs_pure_acc] gives it);        *)
 (*   the CONSTRUCTOR WAND -- [UInitKernel.init_slot_of_kexec] at /init's  *)
 (*     own entry premises;                                               *)
 (*   the TAINT ARM -- [UexecExecMint.uslot_mint_all] on                   *)

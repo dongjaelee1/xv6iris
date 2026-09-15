@@ -63,7 +63,7 @@ Import Defs.
    and for the reason recorded there: adding it to the kit's notation block
    rebuilds the tree for a display change, and is cutover work. <<< *)
 Local Notation "a ↦ₚ₈c{ dq } w" :=
-  (TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a dq w)
+  (TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a dq w)
   (at level 20, format "a  ↦ₚ₈c{ dq }  w") : bi_scope.
 
 
@@ -127,9 +127,9 @@ Definition wp_userret_pt_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : Cp
   KptShare.kpt_creds -∗
   tlb_res_pt kroot -∗
   pt_frame (upt_tree_spec uroot tfp um) -∗
-  TsoCtx.own_context TsoCtx.cur_ctx -∗
-  ifence_step (Pimg ∗ TsoCtx.own_context TsoCtx.cur_ctx)
-              (Qimg ∗ TsoCtx.own_context TsoCtx.cur_ctx) -∗
+  TsoCtx.own_context CtxIdDefs.cur_ctx -∗
+  ifence_step (Pimg ∗ TsoCtx.own_context CtxIdDefs.cur_ctx)
+              (Qimg ∗ TsoCtx.own_context CtxIdDefs.cur_ctx) -∗
   Pimg -∗
   pc_is (uva 0x9c) -∗
   gpr_file m -∗
@@ -173,7 +173,7 @@ Definition wp_userret_pt_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : Cp
     senvcfg ↦ᵣ□ senvcfg0 -∗
     sepc ↦ᵣ sepc0 -∗
     utlb_inv_pt uroot tfp um -∗
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
     Qimg -∗
     pc_is (ret_pc sepc0) -∗
     gpr_file (userret_gpr m vra vsp vgp vtp vt0 vt1 vt2 vs0 vs1 va1 va2 va3

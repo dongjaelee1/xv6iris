@@ -22,6 +22,10 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.        (* [mobs], [Uart0] (via DevModel) *)
 Require Import ObsTrace.         (* [obs_ends_in], [hist_ext] *)
+Require Export LogEntryDefs. (* [log_entry], [le_hist], [le_byte],
+                                [le_echo] -- this file's own entry type,
+                                split out for [RiscvPtsto].  EXPORT: every
+                                existing importer reads them here.     *)
 (* after the imports, before any definition -- the Sail imports leave
    string_scope on top and `++` would elaborate as String.append (CONS-IO, F1) *)
 Local Open Scope list_scope.
@@ -47,10 +51,9 @@ Definition cons_echo (c : bv 8) (cs : list (bv 8)) : Prop :=
   cs = [] \/ cs = [echo_of c]
   \/ (cons_erase c = true /\ exists n : nat, cs = mjoin (replicate n consputc_bs)).
 
-Definition log_entry : Type := (list mobs * bv 8 * list (bv 8))%type.
-Definition le_hist (e : log_entry) : list mobs := e.1.1.
-Definition le_byte (e : log_entry) : bv 8 := e.1.2.
-Definition le_echo (e : log_entry) : list (bv 8) := e.2.
+(* [log_entry] and its projections MOVED DOWN to [LogEntryDefs.v]
+   (re-exported above): [RiscvPtsto] names the type and nothing else
+   of this file's theory. *)
 
 (* the entries a read hands out: the echoed ones *)
 Definition log_echoed (e : log_entry) : Prop := le_echo e = [echo_of (le_byte e)].

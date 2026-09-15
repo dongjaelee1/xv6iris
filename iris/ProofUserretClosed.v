@@ -214,9 +214,9 @@ Section UserretClosed.
                    per step ([Rut_at_acc] below is the [HRut] every loop
                    lemma takes) and the trap folds it back into the residue
                    through the closer, which is why the closer takes it. *)
-                TsoCtx.own_context TsoCtx.cur_ctx ∗
+                TsoCtx.own_context CtxIdDefs.cur_ctx ∗
                 (∀ sts' : list fdstate,
-                   FdSlots.fd_frags γfd sts' -∗ TsoCtx.own_context TsoCtx.cur_ctx -∗
+                   FdSlots.fd_frags γfd sts' -∗ TsoCtx.own_context CtxIdDefs.cur_ctx -∗
                    UV.usertrap_res_bare (CID := h) p ksp U sts' cs pid) ∗
                 ⌜uint (pv_sz (us_V U)) = sz⌝ ∗
                 ⌜pv_fdg (us_V U) = γfd⌝ ∗
@@ -245,9 +245,9 @@ Section UserretClosed.
     pv_cwi (us_V U) = cw ->
     pv_gen (us_V U) = gn ->
     pv_lazy (us_V U) = lz ->
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
     (∀ sts' : list fdstate,
-       FdSlots.fd_frags γfd sts' -∗ TsoCtx.own_context TsoCtx.cur_ctx -∗
+       FdSlots.fd_frags γfd sts' -∗ TsoCtx.own_context CtxIdDefs.cur_ctx -∗
        UV.usertrap_res_bare (CID := h) p ksp U sts' cs pid) -∗
     Rut_at h sz γfd cw gn cs pid lz p.
   Proof.
@@ -265,8 +265,8 @@ Section UserretClosed.
   Lemma Rut_at_acc (h : CpuId) (sz : Z) (γfd : gname) (cw : Z)
       (gn : gname) (cs : gset gname) (pid : mword 32) (lz : bool) (p : uptd) :
     ⊢ Rut_at h sz γfd cw gn cs pid lz p -∗
-      TsoCtx.own_context TsoCtx.cur_ctx ∗
-      (TsoCtx.own_context TsoCtx.cur_ctx -∗ Rut_at h sz γfd cw gn cs pid lz p).
+      TsoCtx.own_context CtxIdDefs.cur_ctx ∗
+      (TsoCtx.own_context CtxIdDefs.cur_ctx -∗ Rut_at h sz γfd cw gn cs pid lz p).
   Proof.
     iIntros "H".
     iDestruct "H" as (ksp U) "(Hctx & Hclose & %Hsz & %Hg & %Hc & %Hgn & %Hlz)".

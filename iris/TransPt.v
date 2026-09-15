@@ -819,10 +819,10 @@ Section Pt2TranslateIris.
        [TsoCtxStore.ctx_store_win_ok] and its own [own_context]. *)
     □ (∀ (m : TsoMemPa.bytemap) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     S σ.(mem) -∗
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗ tlb_inv_pt2 rc Sp Sc ==∗
     ∃ σ' : mstate,
@@ -1050,10 +1050,10 @@ Section Pt2TrampInst.
     (* A6.24's payer, threaded through the wrapper unchanged. *)
     □ (∀ (m : TsoMemPa.bytemap) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     S σ.(mem) -∗
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗ tlb_inv_pt2 rc Sp Sc ={⊤ ∖ ↑minstretN}=∗
     ∃ σ' : mstate,
@@ -1153,10 +1153,10 @@ Section Pt2TrampInstKcur.
     (* A6.24's payer, threaded through the wrapper unchanged. *)
     □ (∀ (m : TsoMemPa.bytemap) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     (* ...AND A SECOND PAYER, AT THE KERNEL TIER.  These two wrappers walk
        BOTH trees: the previous/current user tree at the [Some ξ] tier and
        the SHARED KERNEL tree at the [None] tier ([kptree_own]).  The
@@ -1461,10 +1461,10 @@ Section Pt2TrampInstKprev.
     (* A6.24's payer, threaded through the wrapper unchanged. *)
     □ (∀ (m : TsoMemPa.bytemap) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     (* ...AND A SECOND PAYER, AT THE KERNEL TIER.  These two wrappers walk
        BOTH trees: the previous/current user tree at the [Some ξ] tier and
        the SHARED KERNEL tree at the [None] tier ([kptree_own]).  The

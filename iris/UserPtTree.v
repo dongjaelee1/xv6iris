@@ -1563,10 +1563,10 @@ Section UserPtTranslate.
        its own page table. *)
     □ (∀ (m : TsoMemPa.bytemap) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     S σ.(mem) -∗
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗ utlb_inv_pt uroot tfp um ==∗
     ∃ σ' : mstate,

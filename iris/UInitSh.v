@@ -81,12 +81,7 @@ Require User.ShData User.ShInstrs.
 Require Import PathElems.          (* [path_elems] *)
 Require Import ElfUser.
 Require Import ElfLoadable.        (* [sh_elf_loadable] *)
-Require Import AppEcho.            (* [echo_fs_pure] -- the WHOLE pins law
-Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
-                                      and its ledger are stated at (lane
-                                      ECHO-OUT part 5).  It CARRIES
-                                      [mono_natG], so it is the taint's one
-                                      instance here too. *)
+Require Import EchoFsPure.         (* [echo_fs_pure] -- the WHOLE pins law
                                       sh is handed (lane E4: its own exec of
                                       /echo needs [FsEchoPin.era0_echo_pins],
                                       which is one of its conjuncts).  A PURE
@@ -94,10 +89,18 @@ Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       era's console GHOSTS are deliberately
                                       NOT named here -- see the note at
                                       [init_sh_slot]. *)
+Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
+                                      and its ledger are stated at (lane
+                                      ECHO-OUT part 5).  It CARRIES
+                                      [mono_natG], so it is the taint's one
+                                      instance here too. *)
 Require Import PageGeom.           (* [PGSIZE] *)
 Require Import KexecDefs.
 Require Import SpecKexec.
 Require Import SpecCopyin.         (* [uimg_word_at] *)
+Require Export UImgWordDefs.  (* [img_word_of_bytes], [uimg_word_det]
+                                 -- split out of this file for [UShEcho].
+                                 EXPORT: existing importers unchanged. *)
 Require Import SpecSysExec.        (* [exec_args_of] / [exec_path_of] *)
 Require Import AppCfg AppInv.
 Require Import FsCfg.
@@ -202,54 +205,9 @@ Proof. vm_compute. reflexivity. Qed.
 Lemma bv0_moi0 : (bv_0 8 : bv 8) = (mword_of_int 0 : mword 8).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* an eight-byte window of the image, in the two spellings: the map's own
-   [Some (nth_byte w k)] and the contract's [bv_to_little_endian] *)
-Lemma img_word_of_bytes (M : gmap Z (bv 8)) (a z : Z) :
-  (forall k : nat, (k < 8)%nat ->
-     M !! (a + Z.of_nat k) = Some (nth_byte (mword_of_int z : mword 64) k)) ->
-  forall k : nat, (k < 8)%nat ->
-    M !! (a + Z.of_nat k) = bv_to_little_endian 8 8 z !! k.
-Proof.
-  intros H k Hk. rewrite (H k Hk). exact (eq_sym (bv_le_nth_byte z k Hk)).
-Qed.
-
-(* the two spellings of a word's bytes agree, so eight image bytes pin the
-   word they encode *)
-Lemma uimg_word_det (M : gmap Z (bv 8)) (a : Z) (w : mword 64) (z : Z) :
-  0 <= z < 2 ^ 64 ->
-  uimg_word_at M a w ->
-  (forall k : nat, (k < 8)%nat ->
-     M !! (a + Z.of_nat k) = bv_to_little_endian 8 8 z !! k) ->
-  w = (mword_of_int z : mword 64).
-Proof.
-  intros Hz Hw Hz8.
-  assert (Hlen : forall y : Z, length (bv_to_little_endian 8 8 y) = 8%nat)
-    by (intro y; rewrite (length_bv_to_little_endian 8 8 y ltac:(lia));
-        reflexivity).
-  assert (Hl : bv_to_little_endian 8 8 (bv_unsigned w)
-               = bv_to_little_endian 8 8 z).
-  { apply list_eq. intro k.
-    destruct (decide (k < 8)%nat) as [Hk | Hk].
-    - rewrite <- (Hw k Hk). exact (Hz8 k Hk).
-    - assert (Hnw : bv_to_little_endian 8 8 (bv_unsigned w) !! k = None)
-        by (apply lookup_ge_None_2; rewrite Hlen; lia).
-      assert (Hnz : bv_to_little_endian 8 8 z !! k = None)
-        by (apply lookup_ge_None_2; rewrite Hlen; lia).
-      rewrite Hnw Hnz. reflexivity. }
-  assert (Hmod : bv_unsigned w `mod` 2 ^ 64 = z `mod` 2 ^ 64).
-  { pose proof (little_endian_to_bv_to_little_endian 8 8 (bv_unsigned w)
-                  ltac:(lia)) as H1.
-    pose proof (little_endian_to_bv_to_little_endian 8 8 z ltac:(lia)) as H2.
-    change (8 * Z.of_N 8) with 64 in H1.
-    change (8 * Z.of_N 8) with 64 in H2.
-    rewrite <- H1. rewrite <- H2. rewrite Hl. reflexivity. }
-  pose proof (bv_unsigned_in_range _ w) as Hr.
-  unfold bv_modulus in Hr. change (2 ^ Z.of_N 64) with (2 ^ 64) in Hr.
-  rewrite (Z.mod_small _ _ Hr) in Hmod.
-  rewrite (Z.mod_small _ _ Hz) in Hmod.
-  apply bv_eq. rewrite Hmod.
-  exact (eq_sym (moi_small z ltac:(unfold Z64; lia))).
-Qed.
+(* [img_word_of_bytes] and [uimg_word_det] MOVED DOWN to
+   [UImgWordDefs.v] (re-exported above): they are pure facts about a
+   byte map, and [UShEcho] wants exactly those two out of this file. *)
 
 (* ===================================================================== *)
 (*  4.  INIT'S ARGUMENTS ARE DETERMINED BY ITS IMAGE                       *)
@@ -783,7 +741,7 @@ Section UInitSh.
   (* THE PINS LAW IS THE WHOLE ONE (lane E4).  sh does not only get its own
      row: its [exec] of the parsed command is a PINNED exec at
      [FsEchoPin.era0_echo_pins], and both that and [FsShPin.era0_sh_pins]
-     are conjuncts of [AppEcho.echo_fs_pure], so what crosses is the one
+     are conjuncts of [EchoFsPure.echo_fs_pure], so what crosses is the one
      law and each consumer projects ([sh_pins_of_fs_pure] below is /sh's
      projection; E4's is /echo's). *)
   Definition init_sh_slot_core (T : iProp Σ) (Pay : iProp Σ) : iProp Σ :=

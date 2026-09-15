@@ -495,7 +495,7 @@ Section SlotGen.
      against the token its fork handed it ([init_pid_is_ne]).
        WHY A ONE-CELL GHOST AND NOT THE <initproc> WORD.  The row travels
      to the U tier, where [UserChildren.wait_ans] is stated with neither
-     [riscvGS] nor [TsoCtx.CurCtx]; a memory points-to would drag both
+     [riscvGS] nor [CtxIdDefs.CurCtx]; a memory points-to would drag both
      down there and make the answer context-dependent across the park. *)
   Definition init_pid_tok (p : mword 32) : iProp Σ :=
     own wip_name (Some (to_dfrac_agree (DfracOwn 1) (p : leibnizO (mword 32)))

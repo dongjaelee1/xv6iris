@@ -389,7 +389,7 @@ Section SmodeCorePt.
     - apply Forall_cons_1 in Hall as [Hx Hxs].
       iIntros "#Hk [Hb Hrest]".
       iDestruct (IH Hxs with "Hk Hrest") as %Hr.
-      iEval (rewrite (TsoCtx.ctx_pointsto_phys TsoCtx.cur_ctx (pa_add a x)
+      iEval (rewrite (TsoCtx.ctx_pointsto_phys CtxIdDefs.cur_ctx (pa_add a x)
                         (DfracOwn 1) (f x))) in "Hb".
       iDestruct "Hb" as (ppn') "(#Hk' & %Hc & %Hp & _)".
       rewrite (svpn_of_pa_add a x Hcan Hx).
@@ -408,7 +408,7 @@ Section SmodeCorePt.
     Forall (fun j => (bv_unsigned (subrange_vec_dec a 11 0) + Z.of_nat j < 4096)%Z) l ->
     kmap_at (svpn_of a) ppn KP_rw -∗
     ([∗ list] j ∈ l, (pa_add a j) ↦ₘ{dq} (f j)) -∗
-    ([∗ list] j ∈ l, TsoCtx.ctx_phys_pointsto TsoCtx.cur_ctx
+    ([∗ list] j ∈ l, TsoCtx.ctx_phys_pointsto CtxIdDefs.cur_ctx
                        (pa_add (pa_of ppn a) j) dq (f j)).
   Proof.
     intros Hcan. induction l as [|x xs IH]; intro Hall.
@@ -417,7 +417,7 @@ Section SmodeCorePt.
       iIntros "#Hk [Hb Hrest]".
       iDestruct (IH Hxs with "Hk Hrest") as "Hrest".
       iFrame "Hrest".
-      iEval (rewrite (TsoCtx.ctx_pointsto_phys TsoCtx.cur_ctx (pa_add a x)
+      iEval (rewrite (TsoCtx.ctx_pointsto_phys CtxIdDefs.cur_ctx (pa_add a x)
                         dq (f x))) in "Hb".
       iDestruct "Hb" as (ppn') "(#Hk' & %Hc & %Hp & Hph)".
       rewrite (svpn_of_pa_add a x Hcan Hx).
@@ -432,7 +432,7 @@ Section SmodeCorePt.
     Forall (fun j => (uint (pa_add a j) < 274877906944)%Z /\
                      ktier_pin cur_ktier ppn (pa_add a j)) l ->
     kmap_at (svpn_of a) ppn KP_rw -∗
-    ([∗ list] j ∈ l, TsoCtx.ctx_phys_pointsto TsoCtx.cur_ctx
+    ([∗ list] j ∈ l, TsoCtx.ctx_phys_pointsto CtxIdDefs.cur_ctx
                        (pa_add (pa_of ppn a) j) (DfracOwn 1) (f j)) -∗
     ([∗ list] j ∈ l, (pa_add a j) ↦ₘ (f j)).
   Proof.
@@ -443,7 +443,7 @@ Section SmodeCorePt.
       iIntros "#Hk [Hb Hrest]".
       iDestruct (IH Hxs Hpxs with "Hk Hrest") as "Hrest".
       iFrame "Hrest".
-      iEval (rewrite (TsoCtx.ctx_pointsto_phys TsoCtx.cur_ctx (pa_add a x)
+      iEval (rewrite (TsoCtx.ctx_pointsto_phys CtxIdDefs.cur_ctx (pa_add a x)
                         (DfracOwn 1) (f x))).
       iExists ppn.
       rewrite (svpn_of_pa_add a x Hcan Hx).
@@ -466,9 +466,9 @@ Section SmodeCorePt.
     pa_of ppn a = a ->
     kmap_at (svpn_of a) ppn KP_rw -∗
     ([∗ list] j ∈ seq 0 4,
-       TsoCtx.ctx_phys_pointsto TsoCtx.cur_ctx (pa_add a j) (DfracOwn 1)
+       TsoCtx.ctx_phys_pointsto CtxIdDefs.cur_ctx (pa_add a j) (DfracOwn 1)
          (nth_byte w j)) -∗
-    TsoCtx.ctx_word4_pointsto (KTR := KTR2) TsoCtx.cur_ctx a (DfracOwn 1) w.
+    TsoCtx.ctx_word4_pointsto (KTR := KTR2) CtxIdDefs.cur_ctx a (DfracOwn 1) w.
   Proof.
     intros Halign Hcan Hid. iIntros "#Hk Hb".
     pose proof (bv_unsigned_in_range _ a) as [Hnn Hup].
@@ -486,7 +486,7 @@ Section SmodeCorePt.
       apply Z.mod_divide in H4; [| lia]. destruct H4 as [q Hq].
       pose proof (Z.mod_pos_bound (bv_unsigned a) 4096 ltac:(lia)) as Hb1.
       lia. }
-    iApply (TsoCtx.ctx_word4_pointsto_intro TsoCtx.cur_ctx a (DfracOwn 1) w
+    iApply (TsoCtx.ctx_word4_pointsto_intro CtxIdDefs.cur_ctx a (DfracOwn 1) w
               Halign).
     iApply (big_sepL_impl with "Hb").
     iIntros "!>" (x y Hjx) "H".
@@ -581,7 +581,7 @@ Section SmodeCorePt.
     kmap_at (svpn_of a) ppn KP_rw -∗
     gen_heap_interp (hG:=riscv_memGS) σ.(mem) -∗
     tso_interp_of riscv_eraGS img σ.(mem) log V -∗
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
     ([∗ list] j ∈ seq 0 (N.to_nat n), (pa_add a j) ↦ₘ (nth_byte vold j)) ==∗
     gen_heap_interp (hG:=riscv_memGS)
       (write_bytes σ.(mem) (pa_of ppn a) n vnew) ∗
@@ -589,7 +589,7 @@ Section SmodeCorePt.
       (log ++ [PWMsg (snap_of (pa_of ppn a) n vnew) (hart_agent cpu_id)])%list
       (vstep (hart_agent cpu_id) (V (hart_agent cpu_id))
          (log ++ [PWMsg (snap_of (pa_of ppn a) n vnew) (hart_agent cpu_id)])%list V) ∗
-    TsoCtx.own_context TsoCtx.cur_ctx ∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx ∗
     ([∗ list] j ∈ seq 0 (N.to_nat n), (pa_add a j) ↦ₘ (nth_byte vnew j)).
   Proof.
     intros Hn Hcan Hall. iIntros "#Hk Hm Htso Hrun Hb".
@@ -622,7 +622,7 @@ Section SmodeCorePt.
             (gs_of img σ.(mem) log V σ.(sregs) σ.(mdev))
             (gs_of img (write_bytes σ.(mem) pa n vnew) log' V'
                σ.(sregs) σ.(mdev))
-            TsoCtx.cur_ctx pa n vold vnew Hn eq_refl eq_refl eq_refl
+            CtxIdDefs.cur_ctx pa n vold vnew Hn eq_refl eq_refl eq_refl
             Htvmono Htvtop with "Hm Htso Hrun Hb")
       as "(Hm & Htso & Hrun & Hb)".
     iModIntro. iFrame "Hm Hrun".
@@ -650,7 +650,7 @@ Section SmodeCorePt.
     kmap_at (svpn_of a) ppn KP_rw -∗
     gen_heap_interp (hG:=riscv_memGS) σ.(mem) -∗
     tso_interp_of riscv_eraGS img σ.(mem) log V -∗
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        TsoCtx.mem_free (pa_add a j) (DfracOwn 1)) ==∗
     gen_heap_interp (hG:=riscv_memGS)
@@ -659,7 +659,7 @@ Section SmodeCorePt.
       (log ++ [PWMsg (snap_of (pa_of ppn a) n vnew) (hart_agent cpu_id)])%list
       (vstep (hart_agent cpu_id) (V (hart_agent cpu_id))
          (log ++ [PWMsg (snap_of (pa_of ppn a) n vnew) (hart_agent cpu_id)])%list V) ∗
-    TsoCtx.own_context TsoCtx.cur_ctx ∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx ∗
     ([∗ list] j ∈ seq 0 (N.to_nat n), (pa_add a j) ↦ₘ (nth_byte vnew j)).
   Proof.
     intros Hn Hcan Hall. iIntros "#Hk Hm Htso Hrun Hb".
@@ -692,7 +692,7 @@ Section SmodeCorePt.
             (gs_of img σ.(mem) log V σ.(sregs) σ.(mdev))
             (gs_of img (write_bytes σ.(mem) pa n vnew) log' V'
                σ.(sregs) σ.(mdev))
-            TsoCtx.cur_ctx pa n vnew Hn eq_refl eq_refl eq_refl
+            CtxIdDefs.cur_ctx pa n vnew Hn eq_refl eq_refl eq_refl
             Htvmono Htvtop with "Hm Htso Hrun Hb")
       as "(Hm & Htso & Hrun & Hb)".
     iModIntro. iFrame "Hm Hrun".
@@ -714,7 +714,7 @@ Section SmodeCorePt.
     kmap_at (svpn_of va) ppn KP_rw -∗
     gen_heap_interp (hG:=riscv_memGS) σ.(mem) -∗
     tso_interp_of riscv_eraGS img σ.(mem) log V -∗
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
     va ↦₈ vold ==∗
     gen_heap_interp (hG:=riscv_memGS)
       (write_bytes σ.(mem) (pa_of ppn va) 8 vnew) ∗
@@ -722,7 +722,7 @@ Section SmodeCorePt.
       (log ++ [PWMsg (snap_of (pa_of ppn va) 8 vnew) (hart_agent cpu_id)])%list
       (vstep (hart_agent cpu_id) (V (hart_agent cpu_id))
          (log ++ [PWMsg (snap_of (pa_of ppn va) 8 vnew) (hart_agent cpu_id)])%list V) ∗
-    TsoCtx.own_context TsoCtx.cur_ctx ∗ va ↦₈ vnew.
+    TsoCtx.own_context CtxIdDefs.cur_ctx ∗ va ↦₈ vnew.
   Proof.
     intros Hcan Hoff. iIntros "#Hk Hm Htso Hrun Hw".
     iDestruct (ctx_word_pointsto_aligned_p with "Hw") as %Hal.
@@ -747,7 +747,7 @@ Section SmodeCorePt.
     kmap_at (svpn_of va) ppn KP_rw -∗
     gen_heap_interp (hG:=riscv_memGS) σ.(mem) -∗
     tso_interp_of riscv_eraGS img σ.(mem) log V -∗
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
     va ↦₄ vold ==∗
     gen_heap_interp (hG:=riscv_memGS)
       (write_bytes σ.(mem) (pa_of ppn va) 4 vnew) ∗
@@ -755,7 +755,7 @@ Section SmodeCorePt.
       (log ++ [PWMsg (snap_of (pa_of ppn va) 4 vnew) (hart_agent cpu_id)])%list
       (vstep (hart_agent cpu_id) (V (hart_agent cpu_id))
          (log ++ [PWMsg (snap_of (pa_of ppn va) 4 vnew) (hart_agent cpu_id)])%list V) ∗
-    TsoCtx.own_context TsoCtx.cur_ctx ∗ va ↦₄ vnew.
+    TsoCtx.own_context CtxIdDefs.cur_ctx ∗ va ↦₄ vnew.
   Proof.
     intros Hcan Hoff. iIntros "#Hk Hm Htso Hrun Hw".
     iDestruct (ctx_word4_pointsto_aligned_p with "Hw") as %Hal.
@@ -907,7 +907,7 @@ Section SmodeCorePt.
     kmap_at (svpn_of a) ppn KP_rw -∗
     gen_heap_interp (hG:=riscv_memGS) σ.(mem) -∗
     tso_interp_of riscv_eraGS img σ.(mem) log V -∗
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
     ([∗ list] j ∈ seq 0 (N.to_nat n), (pa_add a j) ↦ₘ{dq} (nth_byte v j)) -∗
     ⌜forall tv' : nat, (V (hart_agent cpu_id) <= tv')%nat ->
        TsoMemPa.tso_read_bytes img log (hart_agent cpu_id) tv'
@@ -920,7 +920,7 @@ Section SmodeCorePt.
                σ.(sregs) σ.(mdev) Hpin).
     iDestruct (TsoCtx.ctx_phys_load_bytes_ok
                  (gs_of img σ.(mem) log V σ.(sregs) σ.(mdev))
-                 TsoCtx.cur_ctx (pa_of ppn a) n v dq with "Hm Htso Hrun Hb")
+                 CtxIdDefs.cur_ctx (pa_of ppn a) n v dq with "Hm Htso Hrun Hb")
       as %Hok.
     iPureIntro. intros tv' Htv'. apply Hok. cbn [gtv gs_of]. lia.
   Qed.
@@ -936,7 +936,7 @@ Section SmodeCorePt.
     kmap_at (svpn_of va) ppn KP_rw -∗
     gen_heap_interp (hG:=riscv_memGS) σ.(mem) -∗
     tso_interp_of riscv_eraGS img σ.(mem) log V -∗
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
     va ↦₈{dq} v -∗
     ⌜forall tv' : nat, (V (hart_agent cpu_id) <= tv')%nat ->
        TsoMemPa.tso_read_bytes img log (hart_agent cpu_id) tv'

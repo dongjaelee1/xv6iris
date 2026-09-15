@@ -217,7 +217,7 @@ Record xv6_app (Σ : gFunctors) := MkApp {
      the ones a process has been given.  Its founding is [Hpow]'s power-on
      arm (lane CONS-IO milestone E), exactly as [app_out]'s, and its era
      index is the same generation number. *)
-  app_in    : app_fixed -> nat -> list mobs -> list ConsLog.log_entry ->
+  app_in    : app_fixed -> nat -> list mobs -> list LogEntryDefs.log_entry ->
               list (list mobs * bv 8) -> iProp Σ;
   (* THE ERA'S CONSOLE TURN (app-echo.md, "E5 -- THE APPLICATION CLAIM",
      lane CONS-IO milestone F): what <init> is handed at the era's boot,
@@ -336,7 +336,7 @@ Theorem xv6_app_adequacy Σ
        claim is: it lives in the console UART's invariant, whose body every
        device leaf strips a later off.  NOT persistent. *)
     (Hinpt : forall (c : app_fixed A) (k : nat) (h : list mobs)
-                    (pops : list ConsLog.log_entry)
+                    (pops : list LogEntryDefs.log_entry)
                     (dl : list (list mobs * bv 8)),
        Timeless (app_in A c k h pops dl))
     (* ...AND THE ECHO WINDOW TOKEN'S TIMELESSNESS (lane CONS-IO milestone
@@ -355,10 +355,10 @@ Theorem xv6_app_adequacy Σ
        of its own taint arm. *)
     (Happ_in_sup : forall (c : app_fixed A) (r : app_names A),
        AppInv.app_sup_raw (app_pred A c) r
-         ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
-                (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
+         ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
+                (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
                 app_in A c k h pops dl ==∗ app_in A c k h (pops ++ [e]) dl)
-           ∗ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+           ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
                   (dl ws : list (list mobs * bv 8)),
                   app_in A c k h pops dl ==∗ app_in A c k h pops (dl ++ ws)))
     (HR0 : forall c : app_fixed A, app_cl A c ⊢ |==> app_R A c [])
@@ -436,7 +436,7 @@ Theorem xv6_app_adequacy Σ
           obligation would let a byte on the kernel's port slip past the
           claim about the console's. *)
        ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
-              (ho hi : list mobs) (pops : list ConsLog.log_entry)
+              (ho hi : list mobs) (pops : list LogEntryDefs.log_entry)
               (dl : list (list mobs * bv 8)),
               ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
               ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗
@@ -603,7 +603,7 @@ Theorem xv6_app_adequacy Σ
        output claim, and at the [boot_fixedGS] literal below both ARE this
        record's.  Quantified over the context because nothing in the shift
        is context-relative and the boot chain runs at the boot hart's own
-       [TsoCtx.CtxId]. *)
+       [CtxIdDefs.CtxId]. *)
     (Happ_echo :
        forall (HR : riscvGS Σ) (c : app_fixed A),
          @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out A c ->

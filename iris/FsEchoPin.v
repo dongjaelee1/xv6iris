@@ -22,7 +22,7 @@
     contract for echo out of its own pins, so the lemma names below are
     that bundle's inputs -- deliberately [FsShPin]'s shapes with [sh]
     replaced by [echo] throughout.  The application's own claim
-    ([AppEcho.echo_fs_pure]) carries [era0_echo_pins] beside /init's and
+    ([EchoFsPure.echo_fs_pure]) carries [era0_echo_pins] beside /init's and
     /sh's.
 
     WHAT IS REUSED, AND WHY NOTHING IS RESTATED.

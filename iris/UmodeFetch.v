@@ -543,10 +543,10 @@ Section UmodeFetchOk.
     (* A6.30's payer, threaded (the walk's A/D write-back appends): *)
     □ (∀ (m : TsoMemPa.bytemap) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     S σ.(mem) -∗
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗
     utlb_inv_pt (ud_root pt) (ud_tfp pt) (ud_um pt) -∗ umem pt M ==∗
@@ -674,10 +674,10 @@ Section UmodeFetchRvc4.
     (* A6.30's payer, threaded (the walk's A/D write-back appends): *)
     □ (∀ (m : TsoMemPa.bytemap) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     S σ.(mem) -∗
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗
     utlb_inv_pt (ud_root pt) (ud_tfp pt) (ud_um pt) -∗ umem pt M ==∗
@@ -790,10 +790,10 @@ Section UmodeFetchSplit.
     (* A6.30's payer, threaded (the walk's A/D write-back appends): *)
     □ (∀ (m : TsoMemPa.bytemap) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     S σ.(mem) -∗
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗
     utlb_inv_pt (ud_root pt) (ud_tfp pt) (ud_um pt) -∗ umem pt M ==∗
@@ -894,10 +894,10 @@ Section UmodeFetchSplitBase.
     (* A6.30's payer, threaded (the walk's A/D write-back appends): *)
     □ (∀ (m : TsoMemPa.bytemap) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     S σ.(mem) -∗
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗
     utlb_inv_pt (ud_root pt) (ud_tfp pt) (ud_um pt) -∗ umem pt M ==∗

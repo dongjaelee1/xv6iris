@@ -162,7 +162,7 @@ Section SbOwnedAcc.
      was born at; a caller that has to identify it with the boot
      configuration's holds the concrete [sb_park] instead (fsinit and
      initlog both do). *)
-  Lemma log_ctx_sb_owned_acc `{XI : TsoCtx.CurCtx} (E : coPset) (γ : log_names) (bn : bio_names)
+  Lemma log_ctx_sb_owned_acc `{XI : CtxIdDefs.CurCtx} (E : coPset) (γ : log_names) (bn : bio_names)
       (γfs : fs_names) (cov : gset Z) (logstart : Z) (dev : mword 32) :
     ↑sbN ⊆ E ->
     log_ctx γ bn γfs cov logstart dev ={E, E ∖ ↑sbN}=∗
@@ -186,7 +186,7 @@ Section SbOwnedAcc.
      (fraction 1 for an unlocked inode, 3/4 for a read-locked one).  A
      [DfracDiscarded] park would not close this goal -- which is why the
      run is parked at fraction 1 and not made persistent. *)
-  Lemma log_ctx_sb_not_owned `{XI : TsoCtx.CurCtx} (E : coPset) (γ : log_names) (bn : bio_names)
+  Lemma log_ctx_sb_not_owned `{XI : CtxIdDefs.CurCtx} (E : coPset) (γ : log_names) (bn : bio_names)
       (γfs : fs_names) (cov : gset Z) (logstart : Z) (dev : mword 32)
       (dq : dfrac) (b : Z) (bs : list (bv 8)) :
     ↑sbN ⊆ E ->

@@ -96,7 +96,7 @@ Section BootCarve.
      -- the M-mode boot stack is a LEDGER region (A6.17/A6.28) -- so the
      carve that produces it needs the ambient context.  Only the lemmas
      that mention it pick the binder up. *)
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   (* the raw memory conjunct's shape, named once: a per-byte [pointsto] at
      full ownership, exactly what [gen_heap_init_names] mints. *)

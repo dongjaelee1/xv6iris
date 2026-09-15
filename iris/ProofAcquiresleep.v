@@ -244,7 +244,7 @@ Section AslProps.
      it automatically. *)
   Definition asl_exit `{GEN : GenId} `{XI : CurCtx} (CID0 : CPU)
        (γs : list gname) (j : nat)
-      (γl γsl : gname) (R : TsoCtx.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
+      (γl γsl : gname) (R : CtxIdDefs.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (pidv : mword 32)
       (av : nat) (Upr : ustate) (slk spd sp0 : mword 64)
       (eb : bool) (lks : gset string) : iProp Σ :=
@@ -260,7 +260,7 @@ Section AslProps.
          inside [sleeplocked_q] now, so it is no longer a row of its own).
          R1-pre: the client payload comes at the bound the last releaser
          presented, with its floor. *)
-      locked γl cpu_id -∗ sl_free_hold γsl slk -∗ H q -∗ R TsoCtx.cur_ctx -∗
+      locked γl cpu_id -∗ sl_free_hold γsl slk -∗ H q -∗ R CtxIdDefs.cur_ctx -∗
       slk ↦₄ (mword_of_int 0 : mword 32) -∗
       proc_priv_bare (proc_addr j) pidv Upr -∗
       (* HELD: the sleeplock's inner "sleep lock"-rank spinlock is taken
@@ -277,7 +277,7 @@ Section AslProps.
 
   Definition asl_loop `{GEN : GenId} `{XI : CurCtx} (CID0 : CPU)
       (γs : list gname) (j : nat)
-      (γl γsl : gname) (R : TsoCtx.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
+      (γl γsl : gname) (R : CtxIdDefs.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (pidv : mword 32)
       (av : nat) (Upr : ustate) (slk spd sp0 : mword 64)
       (eb : bool) (lks : gset string) : iProp Σ :=
@@ -372,7 +372,7 @@ Section AslProps.
      hands the payload at the running context and the floor the inner
      acquire minted over the caller's [llb Tl]. ---- *)
   Definition asl_nexit_l `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
-      (γl γsl : gname) (R : TsoCtx.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp) (X : iProp Σ) (Tl : nat)
+      (γl γsl : gname) (R : CtxIdDefs.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp) (X : iProp Σ) (Tl : nat)
       (m : regfile) (j : nat) (pidv : mword 32)
       (av : nat) (Upr : ustate) (slk spd sp0 : mword 64)
       (eb : bool) (n : nat) (lks : gset string) : iProp Σ :=
@@ -383,7 +383,7 @@ Section AslProps.
       pa_stk sp0 3 ↦₈[KT1] (m !!! Regidx (mword_of_int 9 : mword 5)) -∗
       pa_stk sp0 4 ↦₈[KT1] (m !!! Regidx (mword_of_int 18 : mword 5)) -∗
       locked γl cpu_id -∗ sl_free_hold γsl slk -∗ H q -∗ X -∗
-      (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx K) -∗ R TsoCtx.cur_ctx -∗
+      (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗ R CtxIdDefs.cur_ctx -∗
       slk ↦₄ (mword_of_int 0 : mword 32) -∗
       proc_priv_bare (proc_addr j) pidv Upr -∗
       (* HELD, same convention as [asl_exit]: [lks] is the OUTER set, this
@@ -396,7 +396,7 @@ Section AslProps.
       WP (Loop : expr riscv_lang))%I.
 
   Definition asl_nloop_l `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
-      (γl γsl : gname) (R : TsoCtx.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp) (X : iProp Σ) (Tl : nat)
+      (γl γsl : gname) (R : CtxIdDefs.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp) (X : iProp Σ) (Tl : nat)
       (m : regfile) (j : nat) (pidv : mword 32)
       (av : nat) (Upr : ustate) (slk spd sp0 : mword 64)
       (eb : bool) (n : nat) (lks : gset string) : iProp Σ :=
@@ -443,7 +443,7 @@ Section AslBodies.
 
   (* ---- the exit path: +0x36 (locked:=1) .. +0x52 (c.ret) ---- *)
   Lemma asl_exit_body `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (CID0 : CPU) (γs : list gname) (j : nat)
-      (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
+      (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
       (m M : regfile) (pidv : mword 32) (av : nat) (Upr : ustate)
       (slk spd sp0 : mword 64) (eb : bool) (lks : gset string) :
     let pj := proc_addr j in
@@ -462,7 +462,7 @@ Section AslBodies.
     pa_stk sp0 2 ↦₈[KT1] (m !!! Regidx (mword_of_int 8 : mword 5)) -∗
     pa_stk sp0 3 ↦₈[KT1] (m !!! Regidx (mword_of_int 9 : mword 5)) -∗
     pa_stk sp0 4 ↦₈[KT1] (m !!! Regidx (mword_of_int 18 : mword 5)) -∗
-    locked γl cpu_id -∗ sl_free_hold γsl slk -∗ H q -∗ R TsoCtx.cur_ctx -∗
+    locked γl cpu_id -∗ sl_free_hold γsl slk -∗ H q -∗ R CtxIdDefs.cur_ctx -∗
     slk ↦₄ (mword_of_int 0 : mword 32) -∗
     proc_priv_bare pj pidv Upr -∗
     cpu_own 1 eb pj false ({["sleep lock"]} ∪ lks) -∗
@@ -479,7 +479,7 @@ Section AslBodies.
         cpu_claim_ext eb pj -∗
         pc_is (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5))) -∗
         sleeplocked_q γsl q slk pidv -∗
-        R TsoCtx.cur_ctx -∗
+        R CtxIdDefs.cur_ctx -∗
         proc_priv_bare pj pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
@@ -643,7 +643,7 @@ Section AslBodies.
     assert (HE5a0 : E5 !!! Regidx (mword_of_int 10 : mword 5) = sl_lk slk).
     { rewrite /E5 upd_ne; [| reg_neq]. rewrite /E4 upd_eq. rewrite add_vec_zero_l. exact HE3s2. }
     (* re-close sl_res in the HELD state (word = 1) *)
-    iDestruct (sl_res_close_held_q γsl slk (R TsoCtx.cur_ctx) H (mword_of_int 1 : mword 32) q ltac:(vm_compute; reflexivity) with "Hw Hha HHq") as "HRc0".
+    iDestruct (sl_res_close_held_q γsl slk (R CtxIdDefs.cur_ctx) H (mword_of_int 1 : mword 32) q ltac:(vm_compute; reflexivity) with "Hw Hha HHq") as "HRc0".
     iDestruct (sl_pay_of_res γsl slk R H with "HRc0") as "HRc".
     assert (Hrel_lka : add_vec (E5 !!! Regidx (mword_of_int 10 : mword 5)) (sign_extend' 64 (mword_of_int 0 : mword 12)) = sl_lk slk).
     { rewrite HE5a0. replace (sign_extend' 64 (mword_of_int 0 : mword 12) : mword 64) with (mword_of_int 0 : mword 64) by (apply bv_eq; vm_compute; reflexivity). apply kv_addv_zero. }
@@ -818,7 +818,7 @@ Section AslBodies.
      exit path, or the loop's own Löb IH. ---- *)
   Lemma asl_post_sleep_body `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (CID0 : CPU)
       (γs : list gname) (j : nat)
-      (γl γsl : gname) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
+      (γl γsl : gname) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
       (m M : regfile) (pidv : mword 32) (av : nat) (Upr : ustate)
       (slk spd sp0 : mword 64) (eb : bool) (lks : gset string) :
     let pj := proc_addr j in
@@ -833,7 +833,7 @@ Section AslBodies.
     pa_stk sp0 3 ↦₈[KT1] (m !!! Regidx (mword_of_int 9 : mword 5)) -∗
     pa_stk sp0 4 ↦₈[KT1] (m !!! Regidx (mword_of_int 18 : mword 5)) -∗
     locked γl cpu_id -∗
-    sl_pay γsl slk R H TsoCtx.cur_ctx -∗ H q -∗
+    sl_pay γsl slk R H CtxIdDefs.cur_ctx -∗ H q -∗
     proc_priv_bare pj pidv Upr -∗
     (* OUTER convention, matching [asl_loop]/[asl_exit]: still holding
        "sleep lock" here (the reload+branch at +0x32..+0x34 happens before
@@ -918,7 +918,7 @@ Section AslBodies.
      re-acquire), i.e. the whole four-call split-sleep protocol ---- *)
   Lemma asl_loop_body `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (CID0 : CPU)
       (γs : list gname) (j : nat)
-      (γpl γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
+      (γpl γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
       (m M : regfile) (pidv : mword 32) (av : nat) (Upr : ustate)
       (slk spd sp0 : mword 64) (eb : bool) (lks : gset string) :
     let pj := proc_addr j in
@@ -1048,7 +1048,7 @@ Section AslBodies.
     (* re-close [sl_res] HELD and hand the lock back.  THE INDEX SPLIT: the
        pay half goes to this release, the [_ext] complement is exactly what
        sleep() asks for and rides through the park. *)
-    iDestruct (sl_res_close_held γsl slk (R TsoCtx.cur_ctx) H vh Hvh with "Hw Hdep") as "HRc0".
+    iDestruct (sl_res_close_held γsl slk (R CtxIdDefs.cur_ctx) H vh Hvh with "Hw Hdep") as "HRc0".
     iDestruct (sl_pay_of_res γsl slk R H with "HRc0") as "HRc".
     assert (Hrel_lka : add_vec (L4 !!! Regidx (mword_of_int 10 : mword 5)) (sign_extend' 64 (mword_of_int 0 : mword 12)) = sl_lk slk).
     { rewrite HL4a0. replace (sign_extend' 64 (mword_of_int 0 : mword 12) : mword 64) with (mword_of_int 0 : mword 64) by (apply bv_eq; vm_compute; reflexivity). apply kv_addv_zero. }
@@ -1185,7 +1185,7 @@ Section ProofAcquiresleep.
 
   Lemma wp_acquiresleep_genl_llb_sconf
       (γs : list gname) (j : nat)
-      (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
+      (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool)
       (b : bool) (lks : gset string) (Tl : nat)
     : wp_acquiresleep_genl_llb_sconf_body γs j γl γsl s R H q m pidv Upr av eb b lks Tl.
@@ -2163,7 +2163,7 @@ Section ProofAcquiresleep.
   Qed.
 
   Lemma asl_nested_core_llb
-      (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp) (X : iProp Σ) (Tl : nat)
+      (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp) (X : iProp Σ) (Tl : nat)
       (m : regfile) (j : nat) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool)
       (n : nat) (lks : gset string) :
     let pcE : mword 64 := mword_of_int KernelSyms.acquiresleep in
@@ -2193,8 +2193,8 @@ Section ProofAcquiresleep.
         pc_is ret_tgt -∗
         sleeplocked_q γsl q slk pidv -∗
         X -∗
-        (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx K) -∗
-        R TsoCtx.cur_ctx -∗
+        (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
+        R CtxIdDefs.cur_ctx -∗
         proc_priv_bare pj pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
@@ -2581,7 +2581,7 @@ Section ProofAcquiresleep.
       assert (HE5a0 : E5 !!! Regidx (mword_of_int 10 : mword 5) = sl_lk slk).
       { rewrite /E5 upd_ne; [| reg_neq]. rewrite /E4 upd_eq. rewrite add_vec_zero_l. exact HE3s2. }
       (* re-close sl_res in the HELD state (word = 1) *)
-      iDestruct (sl_res_close_held_q γsl slk (R TsoCtx.cur_ctx) H (mword_of_int 1 : mword 32) q ltac:(vm_compute; reflexivity) with "Hw Hha HHq") as "HRc0".
+      iDestruct (sl_res_close_held_q γsl slk (R CtxIdDefs.cur_ctx) H (mword_of_int 1 : mword 32) q ltac:(vm_compute; reflexivity) with "Hw Hha HHq") as "HRc0".
     iDestruct (sl_pay_of_res γsl slk R H with "HRc0") as "HRc".
       assert (Hrel_lka : add_vec (E5 !!! Regidx (mword_of_int 10 : mword 5)) (sign_extend' 64 (mword_of_int 0 : mword 12)) = sl_lk slk).
       { rewrite HE5a0. replace (sign_extend' 64 (mword_of_int 0 : mword 12) : mword 64) with (mword_of_int 0 : mword 64) by (apply bv_eq; vm_compute; reflexivity). apply kv_addv_zero. }
@@ -2860,7 +2860,7 @@ Section ProofAcquiresleep.
 
   Lemma wp_acquiresleep_nb_genl_llb_sconf
       (j : nat)
-      (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (γt : gname) (q : Qp)
+      (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (γt : gname) (q : Qp)
       (m : regfile) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool)
       (n : nat) (lks : gset string) (Tl : nat)
     : wp_acquiresleep_nb_genl_llb_body j γl γsl s R γt q m pidv Upr av eb n lks Tl.

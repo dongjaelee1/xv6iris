@@ -121,14 +121,14 @@ Qed.
 (* 2. The payload-indexed byte map.                                        *)
 (* ===================================================================== *)
 
-Definition xbyte `{!riscvGS Σ} `{XI : TsoCtx.CurCtx} (o : option nat)
+Definition xbyte `{!riscvGS Σ} `{XI : CtxIdDefs.CurCtx} (o : option nat)
     (a : Arch.pa) (b : bv 8) : iProp Σ :=
   match o with
   | None => TsoCtx.ctx_phys_pointsto XI a (DfracOwn 1) b
   | Some IK => TsoCtx.ctx_phys_xpointsto XI IK a (DfracOwn 1) b
   end.
 
-Definition bytes_own_p `{!riscvGS Σ} `{XI : TsoCtx.CurCtx}
+Definition bytes_own_p `{!riscvGS Σ} `{XI : CtxIdDefs.CurCtx}
     (F : Arch.pa -> option nat) (mm : gmap Arch.pa (bv 8)) : iProp Σ :=
   ([∗ map] a ↦ b ∈ mm, xbyte (F a) a b)%I.
 

@@ -44,6 +44,7 @@ HartMCycle.v
 HartStepAny.v
 HartStepFull.v
 HartMPmp.v
+HartTranslateM.v
 HartMFetch.v
 HartMDecode.v
 HartMStore.v
@@ -61,6 +62,7 @@ PtreeType.v
 Ktier.v
 UartNames.v
 RiscvPtsto.v
+CtxIdDefs.v
 TsoCtx.v
 TsoCtxStore.v
 TsoCtxLedger.v
@@ -1467,6 +1469,7 @@ SystemUartAccepted.v
 App.v
 
 EchoDisc.v
+LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v
 EchoOut.v
@@ -1474,6 +1477,7 @@ EchoLinks.v
 EchoLinksPro.v
 EchoLinksLine.v
 EchoLinksBan.v
+EchoFsPure.v
 AppEcho.v
 
 FsAbsUnlinkFire.v
@@ -1518,6 +1522,7 @@ UShConsK.v
 UShEcho.v
 UShLine.v
 
+UImgWordDefs.v
 UInitSh.v
 UInitBoot.v
 UInitBootAdequacy.v

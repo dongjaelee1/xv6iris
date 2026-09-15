@@ -583,7 +583,7 @@ Section ProofIunlockMain.
                  Hdshr Hlen with "[Hidev Hinumc] Hvalid Hlk Hshot Hfrz Hlg") as "[Hhdr Hrest]".
     { rewrite /inode_ident. iFrame "Hidev Hinumc". }
     iDestruct (SieCapCtx.sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
-    iMod (ic_park fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k TsoCtx.cur_ctx d dev inum
+    iMod (ic_park fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k CtxIdDefs.cur_ctx d dev inum
             (IcLoaded g dn' bm') ⊤ ltac:(solve_ndisj) Hid
             with "Hesc Hrun Hhdr Hrest Hd Hdep2")
       as "(Hrun & Hn & Hs & Hbody & %Tp & Hrp & Href & #HllbT)".

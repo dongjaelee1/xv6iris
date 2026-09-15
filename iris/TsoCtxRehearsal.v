@@ -31,7 +31,7 @@
       (a running token, for boot) and [twin_ctx_birth] (a parked token, for
       fork).  Section [roster] then shows what an interp-FREE mint needs to
       be true: an identity carrying ITS OWN gname (which the real
-      [TsoCtx.CtxId] does and the twin's [nat] does not).
+      [CtxIdDefs.CtxId] does and the twin's [nat] does not).
 
    2. [CtxMorph]'s pointsto instance IS REFUTABLE ([no_ctx_morph_pointsto]):
       the class has a bare [==∗], and re-registering a byte at another
@@ -863,7 +863,7 @@ End rehearsal.
    EVERY claim about it is a fragment of some GLOBAL authority, and no
    fragment of a fixed-gname authority is allocatable from nothing.
 
-   The real surface does not have that problem: [TsoCtx.CtxId] is
+   The real surface does not have that problem: [CtxIdDefs.CtxId] is
    [MkCtxId (γ : gname)] -- the identity CARRIES ITS OWN GHOST NAME.  This
    section shows that with such an identity an interp-free allocation works
    exactly as ruled:

@@ -713,7 +713,7 @@ Definition fs_boot_snap_wf (dk : Z -> bv 8) (ndisk : nat)
     [FirstTok.first_fsinit] reads any of them, so all three travel
     existentially. *)
 Definition fs_boot_supply `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ}
-    `{XI : TsoCtx.CurCtx}
+    `{XI : CtxIdDefs.CurCtx}
     (ICFG : icfg) (FSC : fscfg) (APP : appcfg Σ) (dk : Z -> bv 8)
     (sb : fs_sb) (nib : nat) (cov : gset Z)
     (γd : uart_names) (γv : disk_names) (cnm : cons_names)
@@ -747,7 +747,7 @@ Definition fs_boot_supply `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ}
    holds.  Stated at [∧] because that is what a persistent consequence of a
    linear bundle is; the proofmode splits it into the copy and the bundle. *)
 Lemma fs_boot_supply_app_inv `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !irefslotG Σ}
-    `{GEN : GenId} `{XI : TsoCtx.CurCtx}
+    `{GEN : GenId} `{XI : CtxIdDefs.CurCtx}
     (ICFG : icfg) (FSC : fscfg) (APP : appcfg Σ) (dk : Z -> bv 8)
     (sb : FsImg.fs_sb) (nib : nat) (cov : gset Z)
     (γd : uart_names) (γv : disk_names) (cnm : cons_names)

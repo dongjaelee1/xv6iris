@@ -43,20 +43,20 @@ Section IcachePinwObl.
      the two-armed read licence at [lo]. *)
   Lemma cred_floor_vis `{CIDw : CpuId} (lo tl : nat) :
     (lo <= tl)%nat ->
-    TsoCtx.own_context TsoCtx.cur_ctx -∗ IcacheRef.cred_floor lo tl -∗
-    TsoCtx.own_context TsoCtx.cur_ctx ∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗ IcacheRef.cred_floor lo tl -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx ∗
     ∃ K : nat,
       view_lb view_name loglen_name (hart_agent cpu_id) K ∗
       TsoCtx.ledger_vis (hart_agent cpu_id) K lo.
   Proof.
     iIntros (Hlotl) "Hctx #Hfl".
     iDestruct "Hfl" as "[Hflc | (%a & Hw)]".
-    - iDestruct (TsoCtx.own_context_floor_view TsoCtx.cur_ctx tl
+    - iDestruct (TsoCtx.own_context_floor_view CtxIdDefs.cur_ctx tl
                    with "Hctx Hflc") as "[Hctx Hview]".
       iDestruct "Hview" as (K) "[#HvK %HtlK]".
       iFrame "Hctx". iExists K. iFrame "HvK".
       iApply TsoCtx.ledger_vis_below. lia.
-    - iDestruct (TsoCtx.own_context_wrote_vis TsoCtx.cur_ctx lo a
+    - iDestruct (TsoCtx.own_context_wrote_vis CtxIdDefs.cur_ctx lo a
                    with "Hctx Hw") as "[Hctx Hview]".
       iDestruct "Hview" as (K) "[#HvK #Hvis]".
       iFrame "Hctx". iExists K. iFrame "HvK Hvis".
@@ -66,7 +66,7 @@ Section IcachePinwObl.
       (w : mword 32) (lo tst tl : nat) :
     (lo <= tl)%nat ->
     tso_interp_at riscv_eraGS g -∗
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
     IcacheRef.cred_floor lo tl -∗
     iref_pin_rows k w lo tst -∗
     ⌜forall tvr : nat, (g.(gtv) cpu_id <= tvr)%nat ->
@@ -116,15 +116,15 @@ Section IcachePinwObl.
     (tst <= tl)%nat ->
     tso_interp_at riscv_eraGS g -∗
     gen_heap_interp (hG := riscv_memGS) g.(gmem) -∗
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
-    TsoCtx.ctx_floor TsoCtx.cur_ctx tl -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
+    TsoCtx.ctx_floor CtxIdDefs.cur_ctx tl -∗
     iref_pin_rows k w lo tst -∗
     ⌜forall tvr : nat, (g.(gtv) cpu_id <= tvr)%nat ->
        tso_read_bytes g.(gimg) g.(glog) (hart_agent cpu_id) tvr
          (i_ref (ientry k)) 4 w⌝.
   Proof.
     iIntros (Htsttl) "Hint Hgh Hctx #Hfl Hrows".
-    iDestruct (TsoCtx.own_context_floor_view TsoCtx.cur_ctx tl with "Hctx Hfl")
+    iDestruct (TsoCtx.own_context_floor_view CtxIdDefs.cur_ctx tl with "Hctx Hfl")
       as "[Hctx Hview]".
     iDestruct "Hview" as (K) "[#HvK %HtlK]".
     iDestruct (view_lb_le view_name loglen_name (hart_agent cpu_id) K tl HtlK
@@ -154,8 +154,8 @@ Section IcachePinwObl.
     (tst <= tl)%nat ->
     tso_interp_at riscv_eraGS g -∗
     gen_heap_interp (hG := riscv_memGS) g.(gmem) -∗
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
-    TsoCtx.ctx_floor TsoCtx.cur_ctx tl -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
+    TsoCtx.ctx_floor CtxIdDefs.cur_ctx tl -∗
     iref_pin_rows k w lo tst -∗
     ⌜forall tvr : nat, (g.(gtv) cpu_id <= tvr)%nat ->
        (exists v : mword 32,

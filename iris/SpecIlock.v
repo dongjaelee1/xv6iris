@@ -384,7 +384,7 @@ Definition wp_ilock_dep_sconf_body
   wp_next true pj (fun (CID : CpuId) =>
   ∀ (mf : regfile) (dn : dinode) (bm : blkmap) (filled : bool),
       ⌜callee_saved m mf⌝ -∗
-      (∃ K : nat, ⌜(Tl ≤ K)%nat⌝ ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx K) -∗
+      (∃ K : nat, ⌜(Tl ≤ K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
       sie_cap_gpr KT1 mf K b pj -∗
       cpu_own 0 eb pj b lks -∗
       trap_csrs_ext KT1 eb -∗
@@ -642,7 +642,7 @@ Definition wp_ilock_tx_sconf_body
   wp_next true pj (fun (CID : CpuId) =>
   ∀ (mf : regfile) (dn : dinode) (bm : blkmap) (filled : bool),
       ⌜callee_saved m mf⌝ -∗
-      (∃ K : nat, ⌜(Tl ≤ K)%nat⌝ ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx K) -∗
+      (∃ K : nat, ⌜(Tl ≤ K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
       sie_cap_gpr KT1 mf K b pj -∗
       cpu_own 0 eb pj b lks -∗
       trap_csrs_ext KT1 eb -∗

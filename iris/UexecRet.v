@@ -608,7 +608,7 @@ Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
 Section TrappedMachine.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.
-  Context `{GEN : GenId} `{CID : CpuId} `{XI : TsoCtx.CurCtx}.
+  Context `{GEN : GenId} `{CID : CpuId} `{XI : CtxIdDefs.CurCtx}.
 
   (* A THIN WRAPPER ON [UserExec.user_trap_frame_atm] (milestone J, stage
      S3).  The rows below the length conjunct ARE that predicate, at the
@@ -1726,7 +1726,7 @@ Section UexecRet.
         else uexec_kill_arm_F X sc W f))%I.
 
   (* (B) the kernel obligation: its later-free BODY, and the guarded form *)
-  Definition ukb_F (X : uvis -d> iPropO Σ) `{CID : CpuId} `{XI : TsoCtx.CurCtx}
+  Definition ukb_F (X : uvis -d> iPropO Σ) `{CID : CpuId} `{XI : CtxIdDefs.CurCtx}
       (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ) (Rut : uptd -> iProp Σ) (sz : Z)
       (π : gmap (mword 27) uperm) (fdv : list fdstate) (cw : Z)
       (g : gname) (cs : gset gname) (pidv : mword 32) (lz : bool)
@@ -1791,7 +1791,7 @@ Section UexecRet.
        uexec_ret_F X sc W' -∗
        WP (Loop : expr riscv_lang))%I.
 
-  Definition ukont_F (X : uvis -d> iPropO Σ) `{CID : CpuId} `{XI : TsoCtx.CurCtx}
+  Definition ukont_F (X : uvis -d> iPropO Σ) `{CID : CpuId} `{XI : CtxIdDefs.CurCtx}
       (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ) (Rut : uptd -> iProp Σ) (sz : Z)
       (π : gmap (mword 27) uperm) (fdv : list fdstate) (cw : Z)
       (g : gname) (cs : gset gname) (pidv : mword 32) (lz : bool)
@@ -1834,7 +1834,7 @@ Section UexecRet.
      [Rfd] IS NOT IN THE KEY, for the reason the realizing table is not: a
      process does not observe which resource realizes its descriptor view,
      only what the view IS. *)
-  Definition uvb_F (X : uvis -d> iPropO Σ) `{CID : CpuId} `{XI : TsoCtx.CurCtx}
+  Definition uvb_F (X : uvis -d> iPropO Σ) `{CID : CpuId} `{XI : CtxIdDefs.CurCtx}
       (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ) (Rut : uptd -> iProp Σ) (sz : Z)
       (π : gmap (mword 27) uperm) (fdv : list fdstate) (cw : Z)
       (g : gname) (cs : gset gname) (pidv : mword 32) (lz : bool)
@@ -1852,14 +1852,14 @@ Section UexecRet.
      at THE process's size rather than at every size a table might realize. *)
   Definition uslot_F (X : uvis -d> iPropO Σ) : uvis -d> iPropO Σ :=
     fun W =>
-      (∀ (h : CpuId) (xi : TsoCtx.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
+      (∀ (h : CpuId) (xi : CtxIdDefs.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
          (Rut : uptd -> iProp Σ)
        (* A6.140: the residue-token accessor rides the ∀ as a Coq-level
           fact, exactly [UexecWp.uexec_F]'s row -- the loop engine borrows
           the running token out of [Rut pt] per step and restores it *)
        (HRut : forall pt' : uptd,
-                 ⊢ Rut pt' -∗ TsoCtx.own_context TsoCtx.cur_ctx ∗
-                              (TsoCtx.own_context TsoCtx.cur_ctx -∗ Rut pt')),
+                 ⊢ Rut pt' -∗ TsoCtx.own_context CtxIdDefs.cur_ctx ∗
+                              (TsoCtx.own_context CtxIdDefs.cur_ctx -∗ Rut pt')),
          ⌜loop_ok C pt⌝ -∗
          ⌜perm_of (ud_um pt) (uvis_sz W) = uvis_perm W⌝ -∗
          (* ...AND THE FILL IS EMPTY WHERE THE KEY SAYS SO (lane KILL-PAY,
@@ -1902,17 +1902,17 @@ Section UexecRet.
   Definition uexec_kill_arm : mword 64 -> uvis -> sfam -> iProp Σ :=
     uexec_kill_arm_F uslot.
   Definition uexec_dep : mword 64 -> uvis -> sfam -> iProp Σ := uexec_dep_F uslot.
-  Definition ukb `{CID : CpuId} `{XI : TsoCtx.CurCtx} (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
+  Definition ukb `{CID : CpuId} `{XI : CtxIdDefs.CurCtx} (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
       (Rut : uptd -> iProp Σ)
       (sz : Z) (π : gmap (mword 27) uperm) (fdv : list fdstate) (cw : Z)
       (g : gname) (cs : gset gname) (pidv : mword 32) (lz : bool) : iProp Σ :=
     ukb_F uslot C pt Rfd Rut sz π fdv cw g cs pidv lz.
-  Definition ukont `{CID : CpuId} `{XI : TsoCtx.CurCtx} (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
+  Definition ukont `{CID : CpuId} `{XI : CtxIdDefs.CurCtx} (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
       (Rut : uptd -> iProp Σ)
       (sz : Z) (π : gmap (mword 27) uperm) (fdv : list fdstate) (cw : Z)
       (g : gname) (cs : gset gname) (pidv : mword 32) (lz : bool) : iProp Σ :=
     ukont_F uslot C pt Rfd Rut sz π fdv cw g cs pidv lz.
-  Definition uvb `{CID : CpuId} `{XI : TsoCtx.CurCtx} (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
+  Definition uvb `{CID : CpuId} `{XI : CtxIdDefs.CurCtx} (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
       (Rut : uptd -> iProp Σ)
       (sz : Z) (π : gmap (mword 27) uperm) (fdv : list fdstate) (cw : Z)
       (g : gname) (cs : gset gname) (pidv : mword 32) (lz : bool)
@@ -1928,14 +1928,14 @@ Section UexecRet.
       (pidv : mword 32) (lz : bool)
       (m : regfile) (pc : mword 64)
       : iProp Σ :=
-    (∀ (h : CpuId) (xi : TsoCtx.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
+    (∀ (h : CpuId) (xi : CtxIdDefs.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
        (Rut : uptd -> iProp Σ)
        (* A6.140: the residue-token accessor rides the ∀ as a Coq-level
           fact, exactly [UexecWp.uexec_F]'s row -- the loop engine borrows
           the running token out of [Rut pt] per step and restores it *)
        (HRut : forall pt' : uptd,
-                 ⊢ Rut pt' -∗ TsoCtx.own_context TsoCtx.cur_ctx ∗
-                              (TsoCtx.own_context TsoCtx.cur_ctx -∗ Rut pt')),
+                 ⊢ Rut pt' -∗ TsoCtx.own_context CtxIdDefs.cur_ctx ∗
+                              (TsoCtx.own_context CtxIdDefs.cur_ctx -∗ Rut pt')),
        ⌜loop_ok C pt⌝ -∗
        ⌜perm_of (ud_um pt) szv = π⌝ -∗
        (* ...and the fill row, as [uslot_F] states it *)
@@ -1974,14 +1974,14 @@ Section UexecRet.
 
   Lemma uslot_unfold (W : uvis) :
     uslot W ⊣⊢
-    (∀ (h : CpuId) (xi : TsoCtx.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
+    (∀ (h : CpuId) (xi : CtxIdDefs.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
        (Rut : uptd -> iProp Σ)
        (* A6.140: the residue-token accessor rides the ∀ as a Coq-level
           fact, exactly [UexecWp.uexec_F]'s row -- the loop engine borrows
           the running token out of [Rut pt] per step and restores it *)
        (HRut : forall pt' : uptd,
-                 ⊢ Rut pt' -∗ TsoCtx.own_context TsoCtx.cur_ctx ∗
-                              (TsoCtx.own_context TsoCtx.cur_ctx -∗ Rut pt')),
+                 ⊢ Rut pt' -∗ TsoCtx.own_context CtxIdDefs.cur_ctx ∗
+                              (TsoCtx.own_context CtxIdDefs.cur_ctx -∗ Rut pt')),
        ⌜loop_ok C pt⌝ -∗
        ⌜perm_of (ud_um pt) (uvis_sz W) = uvis_perm W⌝ -∗
        (* ...and the fill row, as [uslot_F] states it *)
@@ -2103,7 +2103,7 @@ Section UexecRet.
              cs cs' pidv pidv lz lz' r Hx0 Hal).
   Qed.
 
-  Lemma ukont_unfold `{CID : CpuId} `{XI : TsoCtx.CurCtx} (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
+  Lemma ukont_unfold `{CID : CpuId} `{XI : CtxIdDefs.CurCtx} (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
       (Rut : uptd -> iProp Σ)
       (sz : Z) (π : gmap (mword 27) uperm) (fdv : list fdstate) (cw : Z)
       (g : gname) (cs : gset gname) (pidv : mword 32) (lz : bool) :
@@ -2113,7 +2113,7 @@ Section UexecRet.
 
   (* ...and the body's own rows, spelled out: what the trap loop reads the
      kernel obligation back at once it has stripped the guard's later *)
-  Lemma ukb_unfold `{CID : CpuId} `{XI : TsoCtx.CurCtx} (C : ucfg) (pt : uptd)
+  Lemma ukb_unfold `{CID : CpuId} `{XI : CtxIdDefs.CurCtx} (C : ucfg) (pt : uptd)
       (Rfd : list fdstate -> iProp Σ) (Rut : uptd -> iProp Σ)
       (sz : Z) (π : gmap (mword 27) uperm) (fdv : list fdstate) (cw : Z)
       (g : gname) (cs : gset gname) (pidv : mword 32) (lz : bool) :

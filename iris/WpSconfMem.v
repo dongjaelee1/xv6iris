@@ -162,7 +162,7 @@ Section WpSconfMem.
     kmap_at (svpn_of a) ppn KP_rw -∗
     gen_heap_interp (hG:=riscv_memGS) σ.(mem) -∗
     tso_interp_of riscv_eraGS img σ.(mem) log V -∗
-    TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+    TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
     wordw_pointsto width a (DfracOwn 1) vold ==∗
     gen_heap_interp (hG:=riscv_memGS)
       (write_bytes σ.(mem) (pa_of ppn a) (Z.to_N width) vnew) ∗
@@ -173,7 +173,7 @@ Section WpSconfMem.
       (vstep (hart_agent (@cpu_id CIDw)) (V (hart_agent (@cpu_id CIDw)))
          (log ++ [PWMsg (snap_of (pa_of ppn a) (Z.to_N width) vnew)
                     (hart_agent (@cpu_id CIDw))])%list V) ∗
-    TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx ∗
+    TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
     wordw_pointsto width a (DfracOwn 1) vnew.
   Proof.
     intros Hw0 Hcan Hoff. iIntros "#Hk Hm Htso Hrun Hw".
@@ -214,7 +214,7 @@ Section WpSconfMem.
     kmap_at (svpn_of a) ppn KP_rw -∗
     gen_heap_interp (hG:=riscv_memGS) σ.(mem) -∗
     tso_interp_of riscv_eraGS img σ.(mem) log V -∗
-    TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+    TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
     wordw_free width a ==∗
     gen_heap_interp (hG:=riscv_memGS)
       (write_bytes σ.(mem) (pa_of ppn a) (Z.to_N width) vnew) ∗
@@ -225,7 +225,7 @@ Section WpSconfMem.
       (vstep (hart_agent (@cpu_id CIDw)) (V (hart_agent (@cpu_id CIDw)))
          (log ++ [PWMsg (snap_of (pa_of ppn a) (Z.to_N width) vnew)
                     (hart_agent (@cpu_id CIDw))])%list V) ∗
-    TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx ∗
+    TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
     wordw_pointsto width a (DfracOwn 1) vnew.
   Proof.
     intros Hw0 Hcan Hoff. iIntros "#Hk Hm Htso Hrun Hw".
@@ -270,7 +270,7 @@ Section WpSconfMem.
     kmap_at (svpn_of a) ppn KP_rw -∗
     gen_heap_interp (hG:=riscv_memGS) σ.(mem) -∗
     tso_interp_of riscv_eraGS img σ.(mem) log V -∗
-    TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+    TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
     wordw_pointsto width a dq v -∗
     ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
        tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
@@ -471,7 +471,7 @@ Section WpSconfMem.
        kmap_at (svpn_of ea) ppn KP_rw -∗
        gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
        tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-       TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
        Dat v -∗
        ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
           tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
@@ -614,9 +614,9 @@ Section WpSconfMem.
          thing that localises this failure. *)
       (* A6.63'': the token in the leaf's payload is at the FRESH CpuId the
          obligation bound, not the section's -- see the helpers above. *)
-      set (Psic := (fun bs => TsoCtx.own_context (CID := CID) TsoCtx.cur_ctx ∗ Ψ bs)%I).
+      set (Psic := (fun bs => TsoCtx.own_context (CID := CID) CtxIdDefs.cur_ctx ∗ Ψ bs)%I).
       assert (HPsic : Psic
-                = (fun bs => TsoCtx.own_context (CID := CID) TsoCtx.cur_ctx ∗ Ψ bs)%I)
+                = (fun bs => TsoCtx.own_context (CID := CID) CtxIdDefs.cur_ctx ∗ Ψ bs)%I)
         by reflexivity.
       clearbody Psic.
       (* A6.63''' THE SPLIT SAID *ELABORATION*, NOT GOAL UNIFICATION -- the
@@ -909,7 +909,7 @@ Section WpSconfMem.
        kmap_at (svpn_of ea) ppn KP_rw -∗
        gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
        tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-       TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
        Res -∗
        ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
           exists v : mword (8*width),
@@ -1030,9 +1030,9 @@ Section WpSconfMem.
          [Rex] SEPARATELY, so what must be rigid is [Rex] -- making [Rr]
          itself rigid would stop the node's post from unifying with the
          engine's slot. *)
-      set (Rex := (TsoCtx.own_context (CID := CID) TsoCtx.cur_ctx ∗ T)%I).
+      set (Rex := (TsoCtx.own_context (CID := CID) CtxIdDefs.cur_ctx ∗ T)%I).
       assert (HRex : Rex
-                = (TsoCtx.own_context (CID := CID) TsoCtx.cur_ctx ∗ T)%I)
+                = (TsoCtx.own_context (CID := CID) CtxIdDefs.cur_ctx ∗ T)%I)
         by reflexivity.
       clearbody Rex.
       iApply (swp_mono (CID := CID)
@@ -1257,7 +1257,7 @@ Section WpSconfMem.
        kmap_at (svpn_of ea) ppn KP_rw -∗
        gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
        tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-       TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
        Res -∗
        ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
           (exists v : mword (8*width),
@@ -1381,9 +1381,9 @@ Section WpSconfMem.
          [Rex] SEPARATELY, so what must be rigid is [Rex] -- making [Rr]
          itself rigid would stop the node's post from unifying with the
          engine's slot. *)
-      set (Rex := (TsoCtx.own_context (CID := CID) TsoCtx.cur_ctx ∗ T)%I).
+      set (Rex := (TsoCtx.own_context (CID := CID) CtxIdDefs.cur_ctx ∗ T)%I).
       assert (HRex : Rex
-                = (TsoCtx.own_context (CID := CID) TsoCtx.cur_ctx ∗ T)%I)
+                = (TsoCtx.own_context (CID := CID) CtxIdDefs.cur_ctx ∗ T)%I)
         by reflexivity.
       clearbody Rex.
       iApply (swp_mono (CID := CID)
@@ -1618,11 +1618,11 @@ Section WpSconfMem.
        kmap_at (svpn_of ea) ppn KP_rw -∗
        gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
        tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-       TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
        Res ==∗
        gen_heap_interp (hG := riscv_memGS) sigma.(mem) ∗
        tso_interp_of riscv_eraGS img sigma.(mem) log V ∗
-       TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx ∗
+       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
        Res ∗
        ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
           exists v : mword (8*width),
@@ -1748,9 +1748,9 @@ Section WpSconfMem.
          [Rex] SEPARATELY, so what must be rigid is [Rex] -- making [Rr]
          itself rigid would stop the node's post from unifying with the
          engine's slot. *)
-      set (Rex := (TsoCtx.own_context (CID := CID) TsoCtx.cur_ctx ∗ T)%I).
+      set (Rex := (TsoCtx.own_context (CID := CID) CtxIdDefs.cur_ctx ∗ T)%I).
       assert (HRex : Rex
-                = (TsoCtx.own_context (CID := CID) TsoCtx.cur_ctx ∗ T)%I)
+                = (TsoCtx.own_context (CID := CID) CtxIdDefs.cur_ctx ∗ T)%I)
         by reflexivity.
       clearbody Rex.
       iApply (swp_mono (CID := CID)
@@ -1968,7 +1968,7 @@ Section WpSconfMem.
        kmap_at (svpn_of ea) ppn KP_rw -∗
        gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
        tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-       TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
        Res -∗
        ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
           exists v : mword (8*width),
@@ -2093,9 +2093,9 @@ Section WpSconfMem.
          [Rex] SEPARATELY, so what must be rigid is [Rex] -- making [Rr]
          itself rigid would stop the node's post from unifying with the
          engine's slot. *)
-      set (Rex := (TsoCtx.own_context (CID := CID) TsoCtx.cur_ctx ∗ T)%I).
+      set (Rex := (TsoCtx.own_context (CID := CID) CtxIdDefs.cur_ctx ∗ T)%I).
       assert (HRex : Rex
-                = (TsoCtx.own_context (CID := CID) TsoCtx.cur_ctx ∗ T)%I)
+                = (TsoCtx.own_context (CID := CID) CtxIdDefs.cur_ctx ∗ T)%I)
         by reflexivity.
       clearbody Rex.
       iApply (swp_mono (CID := CID)
@@ -2738,7 +2738,7 @@ Section WpSconfMem.
        kmap_at (svpn_of ea) ppn KP_rw -∗
        gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
        tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-       TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
        Res ==∗
        gen_heap_interp (hG := riscv_memGS)
          (write_bytes sigma.(mem) (pa_of ppn ea) (Z.to_N width) sv) ∗
@@ -2749,7 +2749,7 @@ Section WpSconfMem.
          (vstep (hart_agent (@cpu_id CIDw)) (V (hart_agent (@cpu_id CIDw)))
             (log ++ [PWMsg (snap_of (pa_of ppn ea) (Z.to_N width) sv)
                        (hart_agent (@cpu_id CIDw))])%list V) ∗
-       TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx ∗
+       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
        Post) ->
     sie_cap_gpr kt m n b p -∗
     pc_is pc -∗
@@ -2861,7 +2861,7 @@ Section WpSconfMem.
                     (sda_rs mst0 MENVCFG_S satp0 pmar0 pcfg paddr tlbv)
                     imm rs2 rs1 (tp_pin (CID := CID) m) (pa_of ppn ea) sv
                     pmar0 pcfg paddr
-                    (TsoCtx.own_context (CID := CID) TsoCtx.cur_ctx ∗ Ψ)%I
+                    (TsoCtx.own_context (CID := CID) CtxIdDefs.cur_ctx ∗ Ψ)%I
                     (sr_swp_res (strans_regime (CID := CID))) rr
                     (sr_swp_mode (strans_regime (CID := CID)) satp0)
                     Lsv
@@ -3954,7 +3954,7 @@ Section WpSconfMem.
          against the running token.  Registered inside the store's own
          atomic update, where the token and the message fragment both are. *)
       (∃ lo : nat, TsoGhost.llb loglen_name lo ∗
-         TsoCtx.ctx_wrote TsoCtx.cur_ctx lo ea ∗
+         TsoCtx.ctx_wrote CtxIdDefs.cur_ctx lo ea ∗
          [∗ list] j ∈ seq 0 8,
          TsoCtx.phys_ledger_wpay (pa_add ea j) (DfracOwn 1) (z8 j) lo
            (TsoMemPa.TsWin ea 8 j z8 cp (fun _ => Some lo) lo)) -∗
@@ -3988,7 +3988,7 @@ Section WpSconfMem.
               (mword_of_int 0 : mword 5) rs1 imm m n (zero_reg : mword 64)
               (∃ (pl : Arch.pa) (lo : nat), ⌜pl = ea⌝ ∗
                  TsoGhost.llb loglen_name lo ∗
-                 TsoCtx.ctx_wrote TsoCtx.cur_ctx lo pl ∗
+                 TsoCtx.ctx_wrote CtxIdDefs.cur_ctx lo pl ∗
                  [∗ list] j ∈ seq 0 8,
                    TsoCtx.phys_ledger_wpay (pa_add pl j) (DfracOwn 1) (z8 j) lo
                      (TsoMemPa.TsWin pl 8 j z8 cp (fun _ => Some lo) lo))%I
@@ -3996,7 +3996,7 @@ Section WpSconfMem.
               (wordw_pointsto (KTR := KT0) 8 ea (DfracOwn 1) vold)
               (∃ (pl : Arch.pa) (lo : nat), ⌜pl = ea⌝ ∗
                  TsoGhost.llb loglen_name lo ∗
-                 TsoCtx.ctx_wrote TsoCtx.cur_ctx lo pl ∗
+                 TsoCtx.ctx_wrote CtxIdDefs.cur_ctx lo pl ∗
                  [∗ list] j ∈ seq 0 8,
                    TsoCtx.phys_ledger_wpay (pa_add pl j) (DfracOwn 1) (z8 j) lo
                      (TsoMemPa.TsWin pl 8 j z8 cp (fun _ => Some lo) lo))%I
@@ -4023,7 +4023,7 @@ Section WpSconfMem.
       iMod (SmodeCorePt.word_pointsto_wpay_mint_c (KTR := KT0) img sigma log V
               ea ppn vold (zero_reg : mword 64) cp Hcan Hoff
               with "Hk Hmem Htso Hbw") as "(Hmem & Htso & #Hlb & Hpay & #Hmsg)".
-      iMod (TsoCtx.ctx_wrote_register (CID := CIDw) TsoCtx.cur_ctx W (length log)
+      iMod (TsoCtx.ctx_wrote_register (CID := CIDw) CtxIdDefs.cur_ctx W (length log)
               (pa_of ppn ea)
               (PWMsg (snap_of (pa_of ppn ea) 8 (zero_reg : mword 64))
                  (hart_agent (@cpu_id CIDw)))

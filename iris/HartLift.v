@@ -54,7 +54,8 @@ Require Import RiscvLang RiscvPtsto RiscvExec.
 (* [fence_post]/[own_pub_le]/[pwmsg]: the barrier is the one silent node with
    a memory-model effect (see [hsil_tv]).  Import is not transitive. *)
 Require Import TsoMemPa.
-Require Import TsoCtx.
+Require Import CtxIdDefs.  (* [CurCtx] -- this file binds an ambient context
+                              and needs nothing else of the kit *)
 Local Open Scope Z_scope.
 
 (* ====================================================================== *)

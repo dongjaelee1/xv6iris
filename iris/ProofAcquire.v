@@ -115,7 +115,7 @@ Section ProofAcquire.
       pc_is (mword_of_int (KernelSyms.acquire + 0x24)) -∗
       (* A6.119/A6.120: the WHOLE parked record, with the acquirer's floor
          at its stamp -- what the absorb below consumes. *)
-      (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx K) -∗
+      (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
       locked_pre γl cpu_id -∗ lock_pay_won R -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).

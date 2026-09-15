@@ -317,7 +317,7 @@ Section load.
      premise of [robl_ram] is simply not needed: the gate's conclusion is
      ∀ tv' above the hart's own view, with no upper bound. *)
   Lemma robl_ram_ctx (img : gmap Arch.pa (bv 8)) (sg : mstate)
-      (log : list pwmsg) (V : agent -> nat) (xi : TsoCtx.CtxId)
+      (log : list pwmsg) (V : agent -> nat) (xi : CtxIdDefs.CtxId)
       (pa : Arch.pa) (w : bv 64) (dq : dfrac) (tv : nat) :
     V (hart_agent cpu_id) = tv ->
     gen_heap_interp (hG := riscv_memGS) sg.(mem) -∗

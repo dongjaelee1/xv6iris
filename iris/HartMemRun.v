@@ -203,7 +203,7 @@ Qed.
    premise.  The FETCH branch is no longer distinguished (RULING 1 is
    overruled, so it is the plain arm too),
    RULING 1's flat arm, and it reads the cache through [_forget]. *)
-Definition bytes_own `{!riscvGS Σ} `{XI : TsoCtx.CurCtx}
+Definition bytes_own `{!riscvGS Σ} `{XI : CtxIdDefs.CurCtx}
     (mm : gmap Arch.pa (bv 8)) : iProp Σ :=
   ([∗ map] a ↦ b ∈ mm,
      TsoCtx.ctx_phys_pointsto XI a (DfracOwn 1) b)%I.

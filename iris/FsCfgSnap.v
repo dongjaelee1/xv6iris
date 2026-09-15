@@ -809,7 +809,7 @@ Section SnapMint.
   Context `{GEN : GenId}.
   (* the off ledgers' bodies hold ξ-indexed cells (off-ledger ruling), so
      the era mint runs at an ambient context, exactly as the kits do *)
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   Lemma fs_cfg_alloc_snap (γd : uart_names) (γv : disk_names)
       (* the console ring's ghost names, minted with the ring in the boot

@@ -139,7 +139,7 @@ Section UmodeCap.
   (* but is spelled as an update of the old).                              *)
   (* ------------------------------------------------------------------- *)
   Definition uv_intr_wp : iProp Σ :=
-    (□ ∀ (CID : CpuId) (XI : TsoCtx.CurCtx)
+    (□ ∀ (CID : CpuId) (XI : CtxIdDefs.CurCtx)
          (g : regfile) (M : gmap Z (bv 8)) (va : mword 64)
          (i : InterruptType) (sc0 stval_v : mword 64),
        uv_trap_frame C pt (utrap_scause (Interrupt i) sc0) stval_v va g M -∗
@@ -147,7 +147,7 @@ Section UmodeCap.
           serves the interrupt holding it and hands it back inside
           [uv_run]'s [uv_lin], at the RESUMING hart-and-context *)
        TsoCtx.own_context XI -∗
-       (∀ (CID : CpuId) (XI : TsoCtx.CurCtx), uv_run C pt M g va -∗
+       (∀ (CID : CpuId) (XI : CtxIdDefs.CurCtx), uv_run C pt M g va -∗
           WP (Loop : expr riscv_lang)) -∗
        WP (Loop : expr riscv_lang))%I.
 
@@ -157,7 +157,7 @@ Section UmodeCap.
   (* according to the process's protocol [Ψ] at the number in a7.          *)
   (* ------------------------------------------------------------------- *)
   Definition uv_sys_wp (Ψ : usys_protocol Σ) : iProp Σ :=
-    (□ ∀ (CID : CpuId) (XI : TsoCtx.CurCtx)
+    (□ ∀ (CID : CpuId) (XI : CtxIdDefs.CurCtx)
          (g : regfile) (M : gmap Z (bv 8)) (va : mword 64)
          (sc0 stval_v : mword 64),
        uv_trap_frame C pt (utrap_scause (rv64d_types.Exception (E_U_EnvCall tt)) sc0)

@@ -2413,7 +2413,7 @@ Section ProofFilewrite.
     iApply fupd_wp.
     (* r25 item 24: CHECK OUT the fd's off box (see ProofFileread) *)
     iDestruct (sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
-    iMod (proto_read_checkout ⊤ ik kx qx γb0 γo0 Cf mo Kt TsoCtx.cur_ctx
+    iMod (proto_read_checkout ⊤ ik kx qx γb0 γo0 Cf mo Kt CtxIdDefs.cur_ctx
             ltac:(solve_ndisj) P8 P9 HKt with "Hrun Hflt Hat Hoffr")
       as "(Hrun & Hres & #Hbox0 & #Hmem0 & %T0 & Hhold & Hd0 & Hc0 & %Tr & Hrest)".
     iDestruct ("Hcgb" with "Hrun") as "Hcg".
@@ -3185,7 +3185,7 @@ Section ProofFilewrite.
     (* ---- CHECK IN the cell: the half came back at exactly its word ---- *)
     iDestruct (sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
     iDestruct (off_resident_of γo0 kx v2 Hwf2 with "Hcell Hgv") as "Hres".
-    iMod (proto_read_park ⊤ ik kx qx γb0 γo0 Cf mo T0 Tr TsoCtx.cur_ctx
+    iMod (proto_read_park ⊤ ik kx qx γb0 γo0 Cf mo T0 Tr CtxIdDefs.cur_ctx
             ltac:(solve_ndisj) P8 P9 Hqmo
             with "Hrun Hres Hhold Hd0 Hc0 Hbox0 Hmem0 Hrest")
       as "(Hrun & Hoh & Hoffd)".

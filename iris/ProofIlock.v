@@ -2619,11 +2619,11 @@ Section ProofIlockMain.
     iDestruct "Hslp" as (s0) "((Hrp & %Hs0 & #Hflp) & Htok & Hneu & Hoffr)".
     iMod (ic_dep_checkout fsc_ic k d with "Hneu") as "[Hd Hd2]".
     iDestruct (SieCapCtx.sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
-    iAssert (|={⊤}=> TsoCtx.own_context TsoCtx.cur_ctx ∗
+    iAssert (|={⊤}=> TsoCtx.own_context CtxIdDefs.cur_ctx ∗
                (∃ x : ic_x,
                   ic_hdr_held fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k (ic_dep_rd d)
-                    (Some (icfg_dev, inum)) x TsoCtx.cur_ctx ∗
-                  ic_rest k x TsoCtx.cur_ctx) ∗
+                    (Some (icfg_dev, inum)) x CtxIdDefs.cur_ctx ∗
+                  ic_rest k x CtxIdDefs.cur_ctx) ∗
                ic_deposit2 k d)%I
       with "[Hrun Href Hside Hrefm Hd2 Hrp]" as ">(Hrun & Hbun & Hdep2)".
     { destruct (ic_dep_rd d) eqn:Hrd.
@@ -2632,7 +2632,7 @@ Section ProofIlockMain.
         iDestruct "Hrdsh" as (ty) "Hshot".
         pose proof (ic_dep_rd_shr d s icfg_dev inum g lo Hdshr Hrd) as Hdrd.
         rewrite Hdrd.
-        iMod (ic_checkout_rd fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k TsoCtx.cur_ctx
+        iMod (ic_checkout_rd fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k CtxIdDefs.cur_ctx
                 s icfg_dev inum g lo ty s0 Kt (lr_tp s0) ⊤
                 ltac:(solve_ndisj) ltac:(solve_ndisj) Hk Hs0 (Nat.le_refl _)
                 with "Hesc Hrun Hflt Hflp Hitbl Hshot [Href] [Hrefm] Hd2 Hrp")
@@ -2642,7 +2642,7 @@ Section ProofIlockMain.
         iModIntro. iFrame "Hrun Hdep2". iExact "Hbun".
       - (* EVERY BUNDLELESS DESCRIPTOR, the write arm included: the arm's
            side share is what [ic_dep_side] carried *)
-        iMod (ic_checkout fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k TsoCtx.cur_ctx d
+        iMod (ic_checkout fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k CtxIdDefs.cur_ctx d
                 icfg_dev inum s0 Kt (lr_tp s0) ⊤
                 ltac:(solve_ndisj) Hid0 Hrd Hs0 (Nat.le_refl _)
                 with "Hesc Hrun Hflt Hflp [Href] [Hrefm] Hd2 [Hside] Hrp")

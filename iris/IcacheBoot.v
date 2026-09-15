@@ -1546,7 +1546,7 @@ Section IcacheBootTable.
             (ic_ids_of_length dvs) (ic_ids_of_live dvs)
             with "Hkey Hxkey Htkey Hckey Hids Hrows") as "[#Hpinv Hpool]".
     (* ---- the itable lock's BARE resource at the boot bound, and the lock ---- *)
-    iAssert (itable_res2_bare TsoCtx.cur_ctx tl cn γfs γi cov logstart nib dv)%I
+    iAssert (itable_res2_bare CtxIdDefs.cur_ctx tl cn γfs γi cov logstart nib dv)%I
       with "[HhalfL Hsupply Hslots Hpool Hislauth Href Hstamps Hl1]" as "Hres".
     { iExists ∅, ∅. iFrame "HhalfL".
       iSplitL "Href Hstamps Hl1".

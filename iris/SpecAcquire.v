@@ -249,7 +249,7 @@ Definition wp_acquire_gen_llb_pre_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `
        scheduler chain threads it from here to swtch, retiring the
        shim's [hart_view_lb_any].  Trivial at SC; minted at the AMO
        under TSO ([TsoCtxTwin2.twin_passed_get]). *)
-    (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx K) -∗
+    (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
     (∃ K : nat, hart_view_lb K) -∗
     cpu_own (S n) eb p false ({[s]} ∪ lks) -∗
     arm_pay kt n eb p -∗
@@ -353,7 +353,7 @@ Definition wp_acquire_llb_pre_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID
     (* the payload at the caller's context + the view receipt; see the
        generic tier above for both *)
     R cur_ctx -∗
-    (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx K) -∗
+    (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
     (∃ K : nat, hart_view_lb K) -∗
     cpu_own (S n) eb p false ({[s]} ∪ lks) -∗
     arm_pay kt n eb p -∗

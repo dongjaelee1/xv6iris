@@ -243,7 +243,7 @@ Qed.
 (*  names, three inums and three byte lists.  Section 5's delta lemmas are *)
 (*  about those three sentences and about nothing else, so they are proved *)
 (*  here once over the generalisation and applied three times by the       *)
-(*  application's own step ([AppEcho.echo_fs_pure]).                        *)
+(*  application's own step ([EchoFsPure.echo_fs_pure]).                        *)
 (* ====================================================================== *)
 
 Definition file_pin (nm : fname) (ino : Z) (bs : list (bv 8)) (av : aview)

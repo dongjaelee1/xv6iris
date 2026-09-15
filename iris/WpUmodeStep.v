@@ -166,7 +166,7 @@ Section UvResume.
      while it is parked. *)
   Definition uv_resume (Ψ : usys_protocol Σ) (M : gmap Z (bv 8))
       (m : regfile) (pc : mword 64) : iProp Σ :=
-    (∀ (CID : CpuId) (XI : TsoCtx.CurCtx),
+    (∀ (CID : CpuId) (XI : CtxIdDefs.CurCtx),
        uv_run C pt M m pc -∗ WP (Loop : expr riscv_lang))%I.
 
 End UvResume.
@@ -304,7 +304,7 @@ Section UvObl.
      wrapper -- which does stand past the later -- puts [Kc] into [R]. *)
   Definition uv_step_obl (Kc : iProp Σ) (Ψ : usys_protocol Σ)
       (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) : iProp Σ :=
-    (∀ (R : iProp Σ) (CIDo : CpuId) (XIo : TsoCtx.CurCtx) (t : ptree)
+    (∀ (R : iProp Σ) (CIDo : CpuId) (XIo : CtxIdDefs.CurCtx) (t : ptree)
        (rs1 rsA : regstate)
        (usatp : mword 64) (pcfg : type_of_register pmpcfg_n)
        (paddr : type_of_register pmpaddr_n),
@@ -331,7 +331,7 @@ Section UvObl.
   (* the Loeb hypothesis, named: what the wrapper hands the payload closer *)
   Definition uv_ih (Kc : iProp Σ) (Ψ : usys_protocol Σ) (M : gmap Z (bv 8))
       (m : regfile) (pc : mword 64) : iProp Σ :=
-    (∀ (CID : CpuId) (XI : TsoCtx.CurCtx),
+    (∀ (CID : CpuId) (XI : CtxIdDefs.CurCtx),
        uv_cap_gpr C pt Ψ M m -∗ pc_is pc -∗
        uv_step_obl Kc Ψ M m pc -∗ ▷ Kc -∗ WP (Loop : expr riscv_lang))%I.
 
@@ -568,7 +568,7 @@ Section UvArms.
     uv_bytes pt M t -∗
     uv_res pt M t usatp pcfg paddr -∗
     TsoCtx.own_context XI -∗
-    (R -∗ ∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m' -∗
+    (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m' -∗
        pc_is (CID := CID0) npc -∗ WP (Loop : expr riscv_lang)) -∗
     uv_psi C R rs2.
   Proof.
@@ -1529,7 +1529,7 @@ Section UvFunnel.
     agree_on D_u (u_state rs2 ∅) dstateU ->
     uv_tree_ok pt (upa_map pt M) t' ->
     gen_cert -∗ uv_amb -∗ uv_cap C pt Ψ -∗
-    (R -∗ ∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
+    (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
        pc_is (CID := CID0) (uv_next jt (add_vec_int pc k)) -∗
        WP (Loop : expr riscv_lang)) -∗
     resv_any cpu_id -∗
@@ -1696,7 +1696,7 @@ Section UvObligation.
          = Some (RETIRE_SUCCESS, uv_post s_pc jt wr)) ->
     gen_cert -∗ uv_amb -∗ uv_cap C pt Ψ -∗
     uv_fetch_bridge (uc_dqc C) pt M rsA t (F_Base w) -∗
-    (R -∗ ∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
+    (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
        pc_is (CID := CID0) (uv_next jt (add_vec_int pc 4)) -∗
        WP (Loop : expr riscv_lang)) -∗
     resv_any cpu_id -∗
@@ -1827,7 +1827,7 @@ Section UvObligation.
          = Some (RETIRE_SUCCESS, uv_post s_pc jt wr)) ->
     gen_cert -∗ uv_amb -∗ uv_cap C pt Ψ -∗
     uv_fetch_bridge (uc_dqc C) pt M rsA t (F_RVC h) -∗
-    (R -∗ ∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
+    (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
        pc_is (CID := CID0) (uv_next jt (add_vec_int pc 2)) -∗
        WP (Loop : expr riscv_lang)) -∗
     resv_any cpu_id -∗
@@ -2011,7 +2011,7 @@ Section UvRetire.
          = Some (RETIRE_SUCCESS, uv_post s_pc jt wr)) ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    ▷ (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    ▷ (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
          uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
          pc_is (CID := CID0)
            (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
@@ -2090,7 +2090,7 @@ Section UvRetire.
          = Some (RETIRE_SUCCESS, uv_post s_pc jt wr)) ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
        pc_is (CID := CID0)
          (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗

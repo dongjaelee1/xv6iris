@@ -1,6 +1,28 @@
 # spec-cleanup — generic syscall specs, read first
 
-STATUS: OPENED 2026-09-15 (owner: "focus on cleanup... the read system
+STATUS: COMPLETE 2026-09-17, modulo the PARKED R-a (owner: "park and
+relay") and the relay queue below.  Every lane RD-0..RD-6, RD-TR and
+RA-1/RA-3 landed; RA-2 stopped at three engine walls, recorded in
+`design/user-read.md` §8.4; RA-4 never launched (nothing to consume).
+
+## RELAY QUEUE (for upstream, via the owner's push)
+
+1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`
+   §8.4): offset ownership needs one of — a per-process held-set
+   resource `uheld γ H` beside `ucwd`/`uch` (in/out on fork/exec), a
+   deposit-capable fork (out of `free_num`), or a tier index on
+   `sysc_fd_ok`'s parked conjunct.  All engine-design calls.  Every
+   supporting lemma is landed and closed (`FdPark.v`, `UserOff.v`);
+   the resume worklist is the 13 grep-able markers.
+2. **The pipe queue ghost** (`design/user-read.md` §3 RD-5 block +
+   `design/pipe.md`'s own hooks): contents-indexed pipe refinement
+   would make read's/write's pipe arms content-carrying; plus the
+   pipe EOF row.
+3. **The count/window join** at the pipe read receipt, and **row 16's
+   missing return blanket** (`design/user-write.md`): one conjunct
+   each, wide cones, both priced in the design pages.
+
+OPENED 2026-09-15 (owner: "focus on cleanup... the read system
 call spec needs generalization... a generic read spec... will allow us
 to prove more user level applications correct").  Goal: the syscall
 specs the echo theorem runs on are tailored to echo and its string;

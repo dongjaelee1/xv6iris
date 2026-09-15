@@ -586,7 +586,17 @@ fig:sys-read + the `\nz` offset note + the "XXX" paragraph.
   discharges it; the content post is ADDITIONAL, riding the kept
   receipt, exactly as recv does today.
 
-## 8. Route R-a: the owned offset through the descriptor rules (design, 2026-09-16, Fable — CAMPAIGN OPENED on the owner's word)
+## 8. Route R-a: the owned offset through the descriptor rules (design, 2026-09-16, Fable)
+
+STATUS: **PARKED 2026-09-17 (owner: "park and relay")** after RA-1,
+RA-3 and RA-2 (§8.4's walls).  Everything provable without an engine
+change is LANDED and axiom-free (the state, the boundary machinery,
+the arm split's kernel half); the three walls all live in the
+engine's own design (the free-number law, the tierless `sysc_fd_ok`,
+the kexec chain), so the resolution — §8.4's `uheld` proposal, or a
+restructuring of the law — is relayed upstream rather than fought
+from outside.  The 13 `RA-2: held case here` markers stand as the
+worklist for whoever resumes.
 
 R-a delivers §6's owned-offset figure.  §3's RD-2 AS-LANDED block is
 its problem statement; this section is the resolution, one wall at a

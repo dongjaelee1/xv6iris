@@ -108,7 +108,6 @@ Require Import ProcAvail.        (* [pavG]                                  *)
 Require Import FsStateEra.       (* [era_node], [era_node_rec]              *)
 Require Import InodeRegion.      (* [ftop_inv]/[ftop_body]/[ftop_clean]     *)
 Require Import Xv6G.
-Require Import SpecReadi.        (* [rd_clamp]                              *)
 Require Import PipeInvDefs.      (* [pipe_rw_ret]: the return blanket       *)
 Require Import SysReadDefs.    (* the read observation's pure vocabulary  *)
 Require FsImg.                   (* [T_FILE_z] -- Require, NOT Import

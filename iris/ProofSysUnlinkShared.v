@@ -65,7 +65,6 @@ Require Import FsTree.
 Require Import IcacheEscrow.
 Require Import FileInvDefs.
 Require Import ProcInv.
-Require Import SpecReadi.        (* [rd_delivered]                         *)
 Require Import SysReadDefs.   (* [rd_clamp] / [rd_delivered] / [rd_bytes] *)
 Require Import PathElems.        (* [path_elems], [nameiparent_of]         *)
 Require Import ProofSysUnlinkPure.   (* the top-level pure layer; see header   *)

@@ -176,8 +176,6 @@ Require Import FsAbsEra.        (* [elend]: the era lend the hops fire;
                                    stated over *)
 Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
                                    argument 0, shared with sys_exec *)
-Require Import FsAbsEraMknod.   (* [npar_walk_pre_era], [npar_walk_dead_era]
-                                   -- the parent-prefix one-shot, REUSED *)
 Require Import FsAbsMknodFire.  (* [acre_commit_at], [dlookup_commit_at],
                                    [mkf_auth_nview] *)
 Require Import AppInv.          (* [appN]/[appE]: the application's namespace, the commit mask (app-instances.md round A) *)

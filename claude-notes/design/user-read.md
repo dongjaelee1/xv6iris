@@ -619,6 +619,118 @@ held mode means "nobody else moves my offset", and a descriptor that
 reaches code outside the owner's WP (a forked child, an exec'd image)
 is precisely one whose offset the owner no longer controls.
 
+**AS LANDED (RA-1, 2026-09-16 — branch `ra1-offmode`, mirror-green):
+the STATE HALF is in, at ZERO semantic change, and the CLASS-FIELD
+PREMISE IS NOT — it is blocked on RA-3's boundary work, one lane
+early.**
+
+What landed, all of it byte-for-byte invisible to every existing
+statement and proof:
+
+- `FdSlots.offmode` (`OffParked | OffHeld`), the third field of
+  `FdInode`, carried mechanically through the whole match cone (24
+  files; every constructor site writes `OffParked`).
+- `FdSlots.foff_row` is STATE-KEYED — parked → `off_user_inv γo`, held
+  → `emp` — and keeps both load-bearing properties (Persistent, a pure
+  function of the state).  `foff_row_inode` / `foff_row_inode_of` keep
+  their exact statements at parked states, plus a free
+  `foff_row_inode_held`.
+- `FdSlots.fdst_parked` / `fdv_all_parked` with `Decision` instances
+  and the list kit (lookup, TOTAL lookup — dup's row hands one over —
+  insert, replicate, closed).
+- `UsysMemOk.usys_fd_ok_parked` (+ `_ne_open`): the generic tier's own
+  row-by-row maintenance, proved, with the one owed case NAMED as a
+  premise (below).
+- The U-tier surface (`UkReadFile`, `UkWriteFile`) at the new literal;
+  `ufd`/`ustd`/fork/open row statements unchanged.
+
+**THE DECISION THE DESIGN DID NOT HAVE, and it is what buys "zero
+semantic change": `FileInvDefs.fdstate_ok`'s FD_INODE arm PINS
+`m = OffParked`.**  Without it the kernel proofs break immediately and
+not cosmetically: `ProofFileread`/`ProofFilewrite` reach their offset
+fires through `fileread_st_inode_rd` → `fdstate_ok_inode`, whose `st`
+is universally quantified, so the moment the mode exists those proofs
+face a held state at which `foff_row` claims nothing and `off_gv`'s
+algebra forbids the kernel half from moving.  Pinning at the file
+invariant makes every `st` the invariant hands out parked, so
+`foff_row_inode_of` applies at the literal and NOT ONE kernel proof
+line changed (the brief's deliverable-2 STOP did not fire).  **Wiring
+mode `hand` is exactly the act of relaxing that conjunct**, and it is
+where §8.2's mode-split arms attach: RA-2 owns both halves together.
+
+**AND THE STOP: `sbundle_of_supply_ne` CANNOT TAKE THE PREMISE YET.**
+Checked in the tree, not assumed; three findings, each one fatal on its
+own:
+
+1. **It is not one class field but two.**
+   `UexecExecInst.xv6_sbundle_of_supply` — the field the GENERIC TAIL
+   uses (`UexecRet.uexec_wp_uslot` mints with it at every key) —
+   DELEGATES to `xv6_sbundle_of_supply_ne` at every `n <> exec`
+   (`UexecExecInst.v:994`).  So narrowing `_ne` narrows the generic
+   slot's own law, not merely `UkRun.udep`'s.  §8.1's "the ONE
+   statement change at the class" is two, and the second one guards
+   `uslot W` itself.
+2. **`udep`'s law is KEY-FREE BY FORCE, so there is nowhere to put a
+   key-indexed fact.**  The chain is
+   `udep_gen` → `udep`'s law → `udep_dep` → `UkRun.udepw_mint`.
+   `udepw_mint` does hold the key's `fdv` (it takes
+   `ufd_auth (ukn_fd N) fdv`), but the fact would have to arrive
+   through `udepw`'s LEFT disjunct, which `udepw_of_psok` proves from
+   nothing at EVERY `fdv` — and it must, because `urun` is
+   re-established after every instruction and `fdv` moves under the
+   program's own execution (`UkRun.v:302`, "THE LAW IS KEY-FREE, AND
+   THAT IS FORCED, NOT CHOSEN"); its ~12 call sites in `UkInit`,
+   `UkSh*`, `UkCat`, `UkSync` are all at packed `urun`s with no `fdv`
+   in scope.  The only carriers needing no statement change are
+   `UserFd.ufd_auth` or `UkRun.urun` carrying `⌜fdv_all_parked fdv⌝`
+   outright — and BOTH make the WHOLE U tier all-parked, i.e. they
+   make a program that holds a `uoff` unable to hold a `urun` at all.
+   That is scaffolding RA-4 must rip out, not a threading, so it was
+   not landed.
+3. **The mint sites have no table fact, and the Löb step has no
+   maintenance.**  `UexecExecMint.uslot_mint{,_pay,_all}` produce
+   `□ ∀ W, my_pay … -∗ uslot W` at an ARBITRARY key; guarding them
+   pushes `fdv_all_parked (uvis_fd W)` onto `SystemAdequacy.
+   init_boot_of_sup`, `UInitBoot`, `PinnedExec`'s taint arm,
+   `SpecKexec`'s two slot wands and `UInitSh` — the kernel can now
+   prove it for any live table (the `fdstate_ok` pin above makes every
+   descriptor parked) but NO ROW EXPORTS IT, and exporting it from `ProcInv`'s
+   array bridge through exec's and fork's mints IS §8.3.  Worse, the
+   guarded generic WP could not close its own Löb: the successor key's
+   table comes through `UsysMemOk.usys_fd_ok`, whose **OPEN ARM BINDS
+   `t` EXISTENTIALLY AND CONSTRAINS IT NOWHERE** — so that row, as
+   written, licenses a generic open to install a held descriptor.
+
+**WHAT RA-2 / RA-3 INHERIT, and the order this implies.**  The open
+row's missing conjunct is cheap and real: `SysOpenDefs.open_fd_rcpt`'s
+`t` is instantiated at a PARKED constructor by every arm of
+`SpecSysOpen.sys_open_post`, so `fdst_parked (FdOpen rd wr t)` is TRUE
+and merely unstated; adding it to `usys_fd_ok`'s open arm and
+discharging it at `ProofSyscall`'s arm 15 is the first step of the
+discipline, and `usys_fd_ok_parked` is already written to take exactly
+that fact as its one premise.
+
+**AND THE LANES ARE IN THE WRONG ORDER — §8.2 CANNOT PRECEDE §8.1's
+PREMISE, AND §8.1's PREMISE CANNOT PRECEDE §8.3.**  The first half is
+the sharper one and it was not priced: the instant `fileread_in`'s
+inode arm demands `uoff` at a held state, `FsAbsInvFire.
+fsabs_fileread_in` — which is stated `∀ st` and paid from a PERSISTENT
+credential — is unprovable there, so `xv6_sbundle_of_supply_ne` breaks
+in the same commit that splits the arm.  The arm split and the class
+premise are ONE change, not two lanes.  The second half is finding 3.
+So the campaign's order should be:
+
+  **RA-3 FIRST** — and it is cheap *because* it is vacuous today: with
+  nothing held, fork's and exec's deposit-carried halves, the retype
+  before `ProofKforkB3`'s scan, `ProcInv`'s all-parked export, the
+  `usys_fd_ok` open-row conjunct and finally the two class fields'
+  premise can all land while every descriptor really is parked, so
+  every new obligation is discharged by the `fdstate_ok` pin.
+  **THEN RA-2** — the mode-split arms together with `hand` at the
+  enriched open row and the relaxation of the `fdstate_ok` pin, in one
+  commit, because that is the commit that first makes a held
+  descriptor exist.  **THEN RA-4.**
+
 ### 8.2 The kernel arms, mode-split
 
 `fileread_in` / `filewrite_in`'s inode arms become mode-indexed on the
@@ -660,13 +772,21 @@ advanced `uoff` out — the "one conjunct" upgrade every RD lane
 priced), and §6's figure becomes drawable as written; the TR swaps its
 honest offset note for the owned form.
 
-- [ ] **RA-1** (kernel+U, wide cone): `offmode` in `FdInode`,
+- [x] **RA-1** (kernel+U, wide cone): `offmode` in `FdInode`,
   state-keyed `foff_row`, the `fdstate` match cone, `fdv_all_parked`,
-  the class-field premise, the generic tier's invariant maintenance.
-  Everything mechanical; no new algebra.
+  the `usys_fd_ok` maintenance — LANDED at zero semantic change, plus
+  the `fdstate_ok` pin that buys it.  The class-field premise did NOT
+  land and is re-scoped into RA-3; see §8.1's AS-LANDED block for the
+  three findings and the RE-ORDERING they force (RA-3 → RA-2 → RA-4).
+- [ ] **RA-3** (kernel, hardest — and RA-1 found it must come FIRST):
+  the boundary parks of §8.3 (fork's deposit-carried halves, the
+  retype before the scan; exec's same), plus `ProcInv`'s all-parked
+  export, the `usys_fd_ok` open-row conjunct, and — as its last step —
+  §8.1's premise on BOTH class fields.  All of it vacuous while
+  nothing is held, which is exactly why it is cheap now.
 - [ ] **RA-2** (kernel): the mode-split arms of §8.2 + `hand` wired at
-  the enriched open row.
-- [ ] **RA-3** (kernel, hardest): the boundary parks of §8.3 (fork's
-  deposit-carried halves, the retype before the scan; exec's same).
+  the enriched open row + relaxing the `fdstate_ok` pin, in ONE
+  commit: this is the commit that first makes a held descriptor exist,
+  and the arm split is not provable before RA-3's premise is in.
 - [ ] **RA-4** (U-tier + TR): the held conjunct on the file leaves,
   the owned-offset corollary, the §6 figure into user.tex.

@@ -266,6 +266,102 @@ Definition kxc_stack_ok (top base : Z) (len : nat -> nat) (argc : nat) : Prop :=
   (forall i, (1 <= i)%nat -> (i <= argc)%nat -> base <= kxc_sp top len i)
   /\ base <= kxc_sp_final top len argc.
 
+(* ---- THE GEOMETRY OF THE PUSH ---------------------------------------- *)
+(* Every address the argument block occupies lies between [base] and
+   [top], and every argument is shorter than the page it fitted in.  A
+   caller that has to put one of those addresses in machine range should
+   spend these, NOT compute the block at a literal argument list: the
+   addresses are a function of [len], so a proof that names them as
+   numbers is a proof about one argv. *)
+
+Lemma kxc_round16_le (x : Z) : kxc_round16 x <= x.
+Proof.
+  rewrite /kxc_round16. pose proof (Z.mod_pos_bound x 16 ltac:(lia)). lia.
+Qed.
+
+Lemma kxc_round16_gt (x : Z) : x - 16 < kxc_round16 x.
+Proof.
+  rewrite /kxc_round16. pose proof (Z.mod_pos_bound x 16 ltac:(lia)). lia.
+Qed.
+
+(* a push only ever moves the pointer DOWN *)
+Lemma kxc_sp_S_le (top : Z) (len : nat -> nat) (i : nat) :
+  kxc_sp top len (S i) <= kxc_sp top len i.
+Proof.
+  cbn [kxc_sp].
+  pose proof (kxc_round16_le (kxc_sp top len i - (Z.of_nat (len i) + 1))).
+  lia.
+Qed.
+
+Lemma kxc_sp_anti (top : Z) (len : nat -> nat) (i : nat) :
+  forall j : nat, (i <= j)%nat -> kxc_sp top len j <= kxc_sp top len i.
+Proof.
+  intro j. induction j as [| j IH]; intro Hle.
+  - assert (i = 0%nat) by lia. subst i. lia.
+  - destruct (decide (i = S j)) as [-> | Hne]; [lia |].
+    pose proof (kxc_sp_S_le top len j). pose proof (IH ltac:(lia)). lia.
+Qed.
+
+Lemma kxc_sp_le_top (top : Z) (len : nat -> nat) (i : nat) :
+  kxc_sp top len i <= top.
+Proof. exact (kxc_sp_anti top len 0%nat i ltac:(lia)). Qed.
+
+Lemma kxc_sp_final_le (top : Z) (len : nat -> nat) (argc : nat) :
+  kxc_sp_final top len argc <= kxc_sp top len argc.
+Proof.
+  rewrite /kxc_sp_final.
+  pose proof (kxc_round16_le (kxc_sp top len argc
+                              - 8 * (Z.of_nat argc + 1))).
+  lia.
+Qed.
+
+(* ...so an argument's string and its NUL are inside the stack page the
+   fit condition tested, and so is the vector *)
+Lemma kxc_sp_range (top base : Z) (len : nat -> nat) (argc i : nat) :
+  kxc_stack_ok top base len argc -> (1 <= i)%nat -> (i <= argc)%nat ->
+  base <= kxc_sp top len i <= top.
+Proof.
+  intros [Hok _] H1 H2.
+  split; [exact (Hok i H1 H2) | apply kxc_sp_le_top].
+Qed.
+
+Lemma kxc_sp_final_range (top base : Z) (len : nat -> nat) (argc : nat) :
+  kxc_stack_ok top base len argc ->
+  base <= kxc_sp_final top len argc <= top.
+Proof.
+  intros Hok. split; [exact (proj2 Hok) |].
+  etrans; [apply kxc_sp_final_le | apply kxc_sp_le_top].
+Qed.
+
+(* ...AND SO IS THE VECTOR, which is what bounds [argc] without counting
+   the arguments: the C tested the pointer once more after pushing the
+   [argc + 1] words. *)
+Lemma kxc_argc_bound (top base : Z) (len : nat -> nat) (argc : nat) :
+  kxc_stack_ok top base len argc -> 8 * (Z.of_nat argc + 1) <= top - base.
+Proof.
+  intros Hok. pose proof (proj2 Hok) as Hf. rewrite /kxc_sp_final in Hf.
+  pose proof (kxc_round16_le (kxc_sp top len argc
+                              - 8 * (Z.of_nat argc + 1))).
+  pose proof (kxc_sp_le_top top len argc). lia.
+Qed.
+
+(* AN ARGUMENT IS SHORTER THAN THE PAGE IT FITTED IN.  The C tested the
+   pointer after every push, so [len i + 1] cannot exceed the distance the
+   pointer had left -- which is what bounds a string's length without
+   knowing what the string is. *)
+Lemma kxc_len_bound (top base : Z) (len : nat -> nat) (argc i : nat) :
+  kxc_stack_ok top base len argc -> (i < argc)%nat ->
+  Z.of_nat (len i) + 1 <= top - base.
+Proof.
+  intros Hok Hi.
+  pose proof (proj1 Hok (S i) ltac:(lia) ltac:(lia)) as Hlo.
+  pose proof (kxc_sp_le_top top len i) as Hhi.
+  cbn [kxc_sp] in Hlo.
+  pose proof (kxc_round16_le (kxc_sp top len i
+                              - (Z.of_nat (len i) + 1))).
+  lia.
+Qed.
+
 (* ===================================================================== *)
 (*  What the commit block writes into the trapframe.                      *)
 (* ===================================================================== *)

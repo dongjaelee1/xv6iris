@@ -35,6 +35,7 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import FdSlots.
+Require Import UmodeAbi.          (* [ubyte0] *)
 Require Import UserHeap.          (* [uarg] / [ua_len] / [ua_bytes] *)
 Require Import UexecSlot.         (* [uvis] and its fields *)
 Require Import SpecKexec.         (* [kexec_image_ok] *)
@@ -152,9 +153,21 @@ Lemma echo_out_argv_of_image (na : nat) (alen : nat -> nat)
   UEchoOut.echo_out_argv
     (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W))).
 Proof.
-  intros Hok Hna Halen Hafun.
-  destruct (UShEcho.echo_key_args_holds na alen afun sts W Hok Hna Halen Hafun)
+  intros Hok Hna Halen Hafun. subst na.
+  (* the general reading's ONE side condition, at this line: no byte exec
+     pushed is a NUL, because every one of them is the line's own *)
+  assert (Hno : forall i j : nat, (i < 3)%nat -> (j < alen i)%nat ->
+            afun i j <> ubyte0).
+  { intros i j Hi Hj. rewrite (Halen i Hi) in Hj.
+    rewrite (Hafun i j Hi Hj).
+    exact (UShEcho.echo_line_nonul _
+             (UkShEcho.echo_off_lt i j Hi (Nat.lt_le_incl _ _ Hj))). }
+  destruct (UShEcho.echo_key_args_holds 3%nat alen afun sts W Hok Hno)
     as [Hargc Hk].
-  exact (echo_out_argv_of_key_args (uvis_M W) (uvis_av W)
-           (Z.to_nat (uvis_argc W)) Hargc Hk).
+  apply (echo_out_argv_of_key_args (uvis_M W) (uvis_av W)
+           (Z.to_nat (uvis_argc W)) Hargc).
+  intros i Hi. destruct (Hk i Hi) as [Hl Hb].
+  split; [ rewrite Hl; exact (Halen i Hi) | ].
+  intros j Hj. rewrite (Hb j ltac:(rewrite (Halen i Hi); exact Hj)).
+  exact (Hafun i j Hi Hj).
 Qed.

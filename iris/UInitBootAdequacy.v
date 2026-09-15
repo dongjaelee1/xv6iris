@@ -252,4 +252,88 @@ Section EchoAdequacy.
   Qed.
 
 
+
 End EchoAdequacy.
+(* ====================================================================== *)
+(*  THE CLOSED COROLLARY -- the application theorem with NOTHING left as   *)
+(*  a premise but the hardware setup.                                      *)
+(*                                                                        *)
+(*  [echo_adequacy_modulo_phi] above is stated over an ABSTRACT [Σ] and    *)
+(*  lists the disk's well-formedness facts separately.  Neither is a       *)
+(*  defect of the proof, but both are things a reader must discharge       *)
+(*  before the statement says anything, and a [Print Assumptions] of a     *)
+(*  CONDITIONAL statement is worth less than one of a closed one           *)
+(*  (durable-notes: prefer a theorem with nothing left as a premise over   *)
+(*  a shorter axiom list obtained by leaving one undischarged).  This      *)
+(*  corollary closes both, on [SystemAdequacy.xv6_fs_adequacy_xv6Σ]'s      *)
+(*  mould, and IT is what [iris/EchoAssumptions.v] audits.                 *)
+(*                                                                        *)
+(*  WHAT IT CLOSES.                                                        *)
+(*                                                                        *)
+(*  (1) THE FUNCTOR LIST.  Every ghost class the theorem quantifies over   *)
+(*  is discharged from [echoΣ] by the standard [subG] instances, so -- the *)
+(*  ghost state is realisable -- is CHECKED rather than claimed.  This     *)
+(*  matters more than it looks: a [Σ]-generic theorem whose class          *)
+(*  constraints no concrete [Σ] satisfies is VACUOUS, and nothing in a     *)
+(*  build sees that (durable-notes, the Vacuity section).                  *)
+(*  [EchoOut.echoOutΣ] was written for this corollary and had no user      *)
+(*  until now.                                                             *)
+(*                                                                        *)
+(*  (2) THE IMAGE.  [Himg]/[Hdk] follow from the one hardware equation by  *)
+(*  the same two steps the system theorem takes: [Hdisk] rewrites the      *)
+(*  machine's disk to the literal image, [SystemAdequacy.fsimg_image_wf]   *)
+(*  (a closed lemma) closes the well-formedness, and [FsImgDisk.fsimg_P]   *)
+(*  IS [fs_blocks fsimg_dk] by definition, so the block equation is        *)
+(*  [reflexivity] -- no [vm_compute] on 2,048,000 bytes.  [Hsb]/[Hcov]     *)
+(*  are [eq_refl] once [sb]/[cov] are instantiated at the parsed           *)
+(*  superblock and the coverage.                                           *)
+(*                                                                        *)
+(*  WHAT IT DOES NOT CLOSE, and cannot: [Hdisk] itself -- the machine is   *)
+(*  switched on with the disk mkfs wrote.  That is a statement about the   *)
+(*  HARDWARE SETUP, not about the file system, and                         *)
+(*  [xv6_fs_adequacy_xv6Σ] assumes exactly the same thing.                 *)
+(*                                                                        *)
+(*  THE CONCLUSION MENTIONS NO IRIS.  [AppEcho.echo_phi] does not depend   *)
+(*  on [Σ], so [app_phi app_echo] unfolds to a proposition about the       *)
+(*  observable trace alone, and it is spelled out here rather than left    *)
+(*  behind the record: IF the console input kept the discipline            *)
+(*  ([EchoDisc.disc] -- the user types the echo line over and over,        *)
+(*  waiting for the prompt and for each byte's echo), THEN every power     *)
+(*  cycle's console output is a legal session transcript                   *)
+(*  ([EchoDisc.good_out]).  A reader needs no separation logic to read it. *)
+(* ====================================================================== *)
+
+(* The shell's line-choice list.  Bundled with its own [subG] instance for
+   the reason every Iris library does it: the generic [subG_inG] cannot be
+   applied to a bare [GFunctor] entry of a longer list without one. *)
+Definition echoLineΣ : gFunctors := #[ GFunctor (mono_listR (leibnizO Z)) ].
+
+Global Instance subG_echoLineΣ {Σ} :
+  subG echoLineΣ Σ -> inG Σ (mono_listR (leibnizO Z)).
+Proof. solve_inG. Qed.
+
+Definition echoΣ : gFunctors :=
+  #[ xv6Σ                (* the system theorem's own list                  *)
+   ; bioslotΣ            (* not in [xv6Σ]: the bio escrow's slot camera    *)
+   ; echoOutΣ            (* the echo claims' four ghosts                   *)
+   ; echoLineΣ           (* the shell's line-choice list                   *)
+   ].
+
+Corollary echo_adequacy_echoΣ (g : gstate)
+    (Hgen0 : g.(ggen) = 0%nat) (Hpow0 : g.(gpow) = false)
+    (Hdisk : v_disk (g.(gdev).(dvirtio)) = FsImgDisk.fsimg_dk) :
+  forall (n : nat) (κs : list mobs) t2 g2,
+    language.nsteps n ([PowerLoopE : language.expr riscv_lang], g)
+      κs (t2, g2) ->
+    (forall e2, e2 ∈ t2 -> language.reducible (Λ := riscv_lang) e2 g2)
+    /\ (disc κs -> Forall good_out (cycles_of κs)).
+Proof.
+  assert (Himg : fs_boot_image_wf (v_disk (g.(gdev).(dvirtio))) XV6_DISK_BYTES
+                   fsimg_sb fsimg_nib fsimg_cov)
+    by (rewrite Hdisk; exact fsimg_image_wf).
+  assert (Hdk : fs_blocks (v_disk (g.(gdev).(dvirtio))) = fsimg_P)
+    by (rewrite Hdisk; reflexivity).
+  intros n κs t2 g2 Hn.
+  exact (echo_adequacy_modulo_phi (Σ := echoΣ) g fsimg_sb fsimg_nib fsimg_cov
+           Hgen0 Hpow0 Himg Hdk eq_refl eq_refl n κs t2 g2 Hn).
+Qed.

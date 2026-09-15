@@ -163,7 +163,7 @@ Qed.
 (* ===================================================================== *)
 Module IreclaimProof (BR : BREAD) (BL : BRELSE) (IG : IGET)
                      (BO : BEGIN_OP) (IL : ILOCK) (IU : IUNLOCK)
-                     (IP : IPUT) (EO : END_OP) : IRECLAIM.
+                     (IP : IPUT) (EO : END_OP) (Printk : PRINTK_GEN) : IRECLAIM.
 
 Notation Rra := (mword_of_int 1 : mword 5).
 Notation Rs0 := (mword_of_int 8 : mword 5).
@@ -952,7 +952,6 @@ Section IreclaimOrphan.
     cov_below fsc_cov fsc_size ->
     fsc_ninodes <= 16 * Z.of_nat icfg_nib ->
     fsc_ninodes < 2 ^ 31 ->
-    printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
     (j < NPROC)%nat ->
     γs !! j = Some γl ->
     (Z.to_nat (fsc_ninodes - bv_unsigned inum) <= S fuel)%nat ->
@@ -1017,7 +1016,7 @@ Section IreclaimOrphan.
              pidv dq dqb dqs dqn j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros HK Hgeom Hst Hblk Hsize Hbm0 Hbmcov Hbmlog Hcovb Hnnib Hn31 Hpk
+    intros HK Hgeom Hst Hblk Hsize Hbm0 Hbmcov Hbmlog Hcovb Hnnib Hn31
            Hj Hgl Hfuel Hinum Hkk Hbseq Hdswf Htnz Hbnoeq
            Hsp Hthr Hs1 Hs2 Hs3 Hs4 Hs5 Hs6 Hbelow.
     pose proof HK as HK'. 
@@ -1140,8 +1139,9 @@ Section IreclaimOrphan.
     (* the panic tail runs at depth 0, so the held set is forced empty and
        printk's order premise ("pr", 14) needs no hypothesis here. *)
     iDestruct (cpu_own_zero_empty with "Hcnt") as "[%Hlkempty Hcnt]".
-    iApply (Hpk CID3 XI O3 (K - 8)%nat eb (proc_addr j)
-              DfracDiscarded irc_msg [PkANum] b _
+    iApply (Printk.wp_printk_gen_sconf (CID := CID3) (XI := XI) KT1 _ _ _
+              O3 (K - 8)%nat eb (proc_addr j)
+              (dqf := DfracDiscarded) irc_msg [PkANum] b _
               ltac:(lia) Hlmsg Hnmsg ltac:(rewrite Hkmsg; reflexivity)
               ltac:(cbn [length]; lia)
               with "Hcg Htext Hkdata Hpc Hcnt Hpenv [] []").
@@ -2301,7 +2301,6 @@ Section IreclaimScan.
     1 < fsc_ninodes ->
     fsc_ninodes <= 16 * Z.of_nat icfg_nib ->
     fsc_ninodes < 2 ^ 31 ->
-    printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
     (j < NPROC)%nat ->
     γs !! j = Some γl ->
     (* irc_scan reaches irc_step (no lock), irc_orphan ("itable", 2) and
@@ -2327,7 +2326,7 @@ Section IreclaimScan.
                pidv dq dqb dqs dqn j m K eb b lks Upr fuel.
   Proof.
     intros HK Hgeom Hst Hblk Hsize Hbm0 Hbmcov Hbmlog Hcovb Hn1 Hnnib Hn31
-           Hpk Hj Hgl Hbelow.
+ Hj Hgl Hbelow.
     pose proof HK as HK'. 
     pose proof Hgeom as [Hcovok Hlogsub].
     iIntros "#Htext #Hkdata #Hpenv #Hbio #Hlctx #Hseam #Hgen #Hireg
@@ -3019,7 +3018,7 @@ Section IreclaimScan.
                     fuel
                     pidv dq dqb dqs dqn m WD K eb b lks
                     Upr HK Hgeom Hst Hblk Hsize Hbm0 Hbmcov Hbmlog Hcovb Hnnib Hn31
-                    Hpk Hj Hgl Hfuel Hinum Hkk
+ Hj Hgl Hfuel Hinum Hkk
                     (* LICENCE (e)'s four premises (§7.1): the block this
                        walk bread, decoded, with the claim-shaped record the
                        [c.beqz] at +0xa2 has just refuted a zero type for. *)
@@ -3093,7 +3092,7 @@ Section IreclaimMain.
   Proof.
     cbv beta delta [wp_ireclaim_sconf_body].
     intros pcE pj ret_tgt HK Hgeom Hst Hblk Hsize Hbm0 Hbmcov Hbmlog Hcovb
-           Hn1 Hnnib Hn31 Hpk Hj Hgl Ha0 Hbelow.
+           Hn1 Hnnib Hn31 Hj Hgl Ha0 Hbelow.
     pose proof HK as HK'. 
     (* the bound as a NAMED hypothesis -- see [irc_step]'s note: a class field
        in an explicit-argument position leaves its instance an evar until the
@@ -3589,7 +3588,7 @@ Section IreclaimMain.
 
                   pidv dq dqb dqs dqn m K eb b lks
                   Upr HK Hgeom Hst Hblk Hsize Hbm0 Hbmcov Hbmlog Hcovb Hn1 Hnnib
-                  Hn31 Hpk Hj Hgl Hbelow
+                  Hn31 Hj Hgl Hbelow
                   with "Htext Hkdata Hpenv Hbio Hlctx Hseam Hgen Hireg
                         Hitb2 Hitbl Hesc Hslks Hprocs Hdevi Hdgeom Hdlock")
       as "Hscan".

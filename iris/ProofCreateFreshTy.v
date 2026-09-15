@@ -169,7 +169,6 @@ Definition create_fresh_ty_body
   bv_unsigned ty <> 0 ->
   (* durable-disk 2b-inode-3: ialloc's claim box owes the region (L5) *)
   InodeRegion.ireg_ty_ok (ialloc_fresh ty) ->
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (j < NPROC)%nat ->
   γs !! j = Some γl ->
   icfg_dev = ROOTDEV ->
@@ -416,7 +415,7 @@ Lemma create_fresh_ty :
 Proof.
   intros.
   cbv beta delta [create_fresh_ty_body]. cbv zeta.
-  intros HKia HKil Hlg Hist Hiregb Hn1 Hn2 Hn3 Htynz Htyk Hpkc Hj Hgs Hdevr
+  intros HKia HKil Hlg Hist Hiregb Hn1 Hn2 Hn3 Htynz Htyk Hj Hgs Hdevr
          HAs4 HAs1 Hkdlt Heb Hbelow Hia Hil.
   iIntros "Hcg Hcnt #Htext Hpc #Hkd #Hpk #Hbio #Hlogc #Hitb2 #Hitbl #Hesc
            #Hslks #Hireg #Hiopen #Hprocs #Hdevi #Hdgeom #Hdlk Hsbn Hsbi
@@ -504,7 +503,7 @@ Proof.
   iApply (Hia CID3 XI γs j γl pd pav pu
             ty u Sb pidv dq dqs dqn A3 K eb b lks Upr
             t qc
-            HKia Hlg Hist Hiregb Hn1 Hn2 Hn3 Htynz Htyk Hpkc Hj Hgs HA3a0 HA3a1 Heb
+            HKia Hlg Hist Hiregb Hn1 Hn2 Hn3 Htynz Htyk Hj Hgs HA3a0 HA3a1 Heb
             Hbelow
             with "Hcg Hcnt Htext Hpc Hkd Hpk Hbio Hlogc Hsbn Hsbi Hireg Hiopen
                   Hppid Hprocs Hdevi Hdgeom Hdlk Hbs2 Hitb2 Hitbl Hesc Hisl Hop

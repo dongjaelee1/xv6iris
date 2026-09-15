@@ -808,7 +808,7 @@ Section SystemBoot.
         #Hpinned & #Hubw0 & #Hubw1 & #Hurw0 & #Hurw1 &
         #Hstarted & Hprim & #Hdev & #Hdev1 & #Hplic & #Hwinv & Hturn &
         #Hcinv & #Hcert & Hharts & Hlk & Hgl & Hmdata & Hpark & Hpst & Hpavail & Hchb & Huart &
-        Htok & Hhi & Hlgh & Hwin & Hdlab & Huart1 & Htok1 & Hhi1 & Hlgh1 & Hdlab1 &
+        Htok & Hhi & Hlgh & Hwin & Harm & Hdlab & Huart1 & Htok1 & Hhi1 & Hlgh1 & Harm1 & Hdlab1 &
         Hcfg & Hclaim & Hcmauth & #Hdone & Hkpt & Hkptb & Hkmap & Hmir & Hpages & Hirauth &
         Hirslot & Hfs)".
     (* THE FIRST PROCESS'S EXEC BUNDLE, off [Hinit_boot] at the era's own
@@ -877,12 +877,12 @@ Section SystemBoot.
     iDestruct (dev_inv_disk with "Hdev") as "#Hvinv".
     iDestruct (dev_inv_perm with "Hdev") as "#Hqinv".
     iModIntro.
-    iSplitL "Hthr0 Hprim Hh0 Hhrest Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Hwin Hdlab Htx1 Htok1 Hhi1 Hlgh1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
+    iSplitL "Hthr0 Hprim Hh0 Hhrest Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Hwin Harm Hdlab Htx1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
              Hpages".
     { iApply (big_sepL_cpu_glue
                 (fun c => WP (LoopE gen_id c : expr riscv_lang) @ ⊤
 )%I).
-      iSplitL "Hthr0 Hprim Hh0 Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Hwin Hdlab Htx1 Htok1 Hhi1 Hlgh1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
+      iSplitL "Hthr0 Hprim Hh0 Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Hwin Harm Hdlab Htx1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
                Hpages".
       { (* THE BOOT HART: the arm that consumes the whole supply. *)
         (* AT [HF] EXPLICITLY, not by resolution.  [SpecMain.MAIN]'s
@@ -965,6 +965,9 @@ Section SystemBoot.
         (* ...and the era's ECHO WINDOW TOKEN beside it (lane CONS-IO
            milestone F), which main parks in the same PLIC payload *)
         iSpecialize ("HP" with "Hwin").
+        (* ...and the consoleintr arm's half (redesign R2), parked in the
+           same payload *)
+        iSpecialize ("HP" with "Harm").
         iSpecialize ("HP" with "Hdlab").
         (* ---- THE SECOND PORT'S THIRTEEN ROWS (bump 163d39b).  Two
            invariants -- UART1's own, and the PLIC's at the two CONCRETE
@@ -986,6 +989,7 @@ Section SystemBoot.
         iSpecialize ("HP" with "Htok1").
         iSpecialize ("HP" with "Hhi1").
         iSpecialize ("HP" with "Hlgh1").
+        iSpecialize ("HP" with "Harm1").
         iSpecialize ("HP" with "Hdlab1").
         iSpecialize ("HP" with "Hcfg").
         iSpecialize ("HP" with "Hclaim").

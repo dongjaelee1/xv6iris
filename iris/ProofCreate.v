@@ -201,7 +201,7 @@ Section ProofCreateMain.
     rewrite /wp_create_sconf_body.
     intros HK Hroot Hnib0 Hlg Hsize Hbms0 Hbmsc Hbmsl
            Hist0 Hcovb Hbmgeo Hiregb Hcstr Hplen31 Hni1 Hni2 Hni3 Hnib16
-           Htynz Htyw Hpkc Hu Hns Hj Hgs Ha1 Ha2 Ha3 Heb.
+           Htynz Htyw Hu Hns Hj Hgs Ha1 Ha2 Ha3 Heb.
     (* (L5) at the fresh record is (L5) at the type word (2b-inode-3). *)
     pose proof (InodeRegion.ireg_ty_ok_of_w (ialloc_fresh ty) Htyw) as Htyk.
     destruct (cr_kb K HK)
@@ -220,7 +220,7 @@ Section ProofCreateMain.
               P Pmiss Farm Fdots Fun Fok Fex
               HK Hroot Hnib0 Hlg Hsize Hbms0 Hbmsc
               Hbmsl Hist0 Hcovb Hbmgeo Hiregb Hcstr Hplen31 Hni1 Hni2 Hni3
-              Htynz Htyk Hpkc Hu Hns Hj Hgs Ha1 Ha2 Ha3 Heb
+              Htynz Htyk Hu Hns Hj Hgs Ha1 Ha2 Ha3 Heb
               with "Hcg Hcnt Htext Hpc Hkd Hpk Hbio Hlogc Hkenv
                     Hitb2 Hitbl Hesc Hslks Hiregi Hiopen Hsbn Hsbi Hsbs Hsbb Hbmr
                     Hpriv Hpath Hprocs Hdevi Hgeom Hdlk Hbsl Hisl Hop Htx
@@ -233,7 +233,7 @@ Section ProofCreateMain.
               (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
               P Pmiss Farm Fdots Fun Fok Fex
               HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl
-              Hist0 Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Htynz Htyk Hpkc
+              Hist0 Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Htynz Htyk
               Hu Hns Hj Hgs eq_refl eq_refl Hal10 Hal9 Heb
               with "Htext Hkd Hpk Hbio Hlogc Hkenv Hitb2 Hitbl Hesc
                     Hslks Hiregi Hiopen Hprocs Hdevi Hgeom Hdlk [] []").
@@ -247,7 +247,7 @@ Section ProofCreateMain.
                 kd qd gd γil γisl dind dn bm data nf nsl t
                 P Pmiss Farm Fdots Fun Fok Fex
                 HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl
-                Hist0 Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Hpkc
+                Hist0 Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16
                 Hu Hns Hj Hgs eq_refl eq_refl Hal10 Hal9 Heb
                 with "Htext Hkd Hpk Hbio Hlogc Hkenv Hitb2 Hitbl
                       Hesc Hslks Hiregi Hiopen Hprocs Hdevi Hgeom Hdlk").

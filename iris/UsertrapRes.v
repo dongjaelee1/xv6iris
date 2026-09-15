@@ -752,6 +752,7 @@ Section UsertrapRes.
      is_kstack (un_pj N) (un_ks N) ∗
      devintr_caps_any (fsc_uart) (fsc_disk) (fsc_dlock) (un_tk N) (un_s N)
        (un_pd N) (un_pav N) (un_pu N) ∗
+     printk_env (fsc_printk) (fsc_uart) (fsc_disk) ∗
      is_lock (un_w N) wait_lock_addr "wait_lock"%string (wait_res_at) ∗
      is_ftable (un_ft N) (un_f N) ∗
      disk_geom (fsc_disk) (un_pd N) (un_pav N) (un_pu N) ∗
@@ -2042,6 +2043,7 @@ Definition park_globals `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fil
     !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId}
     (ξ : CtxId) (γs : list gname) (γw γft γf γtl : gname) : iProp Σ :=
   (procs_inv (XI := ξ) γs ∗
+   printk_env (XI := ξ) (fsc_printk) (fsc_uart) (fsc_disk) ∗
    is_lock (XI := ξ) γw wait_lock_addr "wait_lock"%string (wait_res_at) ∗
    is_ftable (XI := ξ) γft γf ∗
    console_caps (XI := ξ) fsc_uart ∗
@@ -2140,8 +2142,8 @@ Lemma ut_caps_of_park `{XI : CurCtx} `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
   FsReady.fs_ready (XI := Xc) -∗
   ut_caps (XI := Xc) N.
 Proof.
-  iIntros (Hwf) "(%Hdq & #Hprocs0 & #Hkst0 & #Hdev0 & #Hwl0 & #Hft0 & #Hdg0 & #Hpw0 & #Hig0)
-                (#Hprocs & #Hwl & #Hft & #Hcc & #Hcr & #Htl & #Hnp & #Hipx) #Hfs".
+  iIntros (Hwf) "(%Hdq & #Hprocs0 & #Hkst0 & #Hdev0 & _ & #Hwl0 & #Hft0 & #Hdg0 & #Hpw0 & #Hig0)
+                (#Hprocs & #Hpe & #Hwl & #Hft & #Hcc & #Hcr & #Htl & #Hnp & #Hipx) #Hfs".
   destruct Hwf as (Hj & Hlk & _ & _).
   iDestruct (park_world_open with "Hpw0") as (γtl0 pd0 pav0 pu0)
     "(#Hdca0 & #Hextra0 & #Hwire & #Hkmap & #Hipw0)".
@@ -2168,7 +2170,6 @@ Proof.
   iDestruct (is_kstack_agree_x cur_ctx Xc (un_pj N) (un_ks N) ks2
                with "Hkst0 Hkst2") as %Hks.
   iDestruct (fs_ready_kmem with "Hfs") as "[#Hkml #Hkav]".
-  iDestruct (fs_ready_printk with "Hfs") as "[#Hpe _]".
   iAssert (devintr_caps_any (XI := Xc) (fsc_uart) (fsc_disk) (fsc_dlock) (un_tk N)
              (un_s N) (un_pd N) (un_pav N) (un_pu N)) as "#Hdca".
   { rewrite /devintr_caps_any.
@@ -2226,11 +2227,11 @@ Lemma park_globals_of_park_env `{XI : CurCtx} `{!riscvGS Σ, !xv6G Σ, !bioslotG
   ut_park_caps N -∗ sysc_park_extra (un_tk N) -∗
   park_globals cur_ctx (un_s N) (un_w N) (un_ft N) (un_f N) (un_tk N).
 Proof.
-  iIntros "(_ & #Hprocs & _ & #Hdev & #Hwl & #Hft & _ & #Hpw & _) (#Hnp & _ & #Htl & #Hcr)".
+  iIntros "(_ & #Hprocs & _ & #Hdev & #Hpe & #Hwl & #Hft & _ & #Hpw & _) (#Hnp & _ & #Htl & #Hcr)".
   iDestruct "Hdev" as "(_ & #Hcc & _)".
   iDestruct (park_world_open with "Hpw") as (γtl0 pd0 pav0 pu0) "(_ & _ & _ & _ & #Hipx)".
   iDestruct "Hipx" as (ipw) "[#Hipc _]".
-  rewrite /park_globals. iFrame "Hprocs Hwl Hft Hcc Hcr Htl Hnp".
+  rewrite /park_globals. iFrame "Hprocs Hpe Hwl Hft Hcc Hcr Htl Hnp".
   iExists ipw. iExact "Hipc".
 Qed.
 
@@ -2335,7 +2336,7 @@ Proof.
   iDestruct "Hdone" as "(_ & #Hrdy & _)".
   iDestruct (ut_caps_of_park (XI := ξp) Xc N Hwf with "Hpark Hglob Hrdy") as "#Hcaps".
   iDestruct "Hpark" as "(%Hdq & _)".
-  iDestruct "Hglob" as "(_ & _ & _ & _ & _ & _ & _ & Hipx)".
+  iDestruct "Hglob" as "(_ & _ & _ & _ & _ & _ & _ & _ & Hipx)".
   iDestruct "Hipx" as (ip) "#Hip2".
   iDestruct "Hown" as "(Hbs & Hip0)".
   iDestruct (ctx_word_pointsto_agree ξp Xc with "Hip0 Hip2") as %Hip.

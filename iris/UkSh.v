@@ -395,52 +395,31 @@ Proof.
   rewrite Nat.Div0.mod_add. exact (Nat.mod_small i (length echo_line) Hi).
 Qed.
 
-(* THE TWO BYTES [gets] STOPS ON, DECIDED AT THE LITERAL (lane IO-LEAF,
-   M5(3)).  [gets] breaks on '\n' and on '\r'; '\n' is [echo_line]'s LAST
-   byte and nothing else, and '\r' is not one of its seventeen -- which is
-   what turns "the loop went round again" into "the byte was not the
-   line's last" and "the loop stopped" into "the line is complete". *)
-Lemma ush_echo_byte_bool :
-  forallb (fun j : nat =>
-     (implb (Z.eqb (bv_unsigned (echo_line !!! j)) 10) (Nat.eqb j 16)
-      && negb (Z.eqb (bv_unsigned (echo_line !!! j)) 13))%bool)
-    (seq 0 17) = true.
-Proof. vm_compute. reflexivity. Qed.
+(* THE TWO BYTES [gets] STOPS ON (lane IO-LEAF, M5(3)).  [gets] breaks on
+   '\n' and on '\r'; '\n' is [echo_line]'s LAST byte and nothing else, and
+   '\r' is no byte of it at all -- which is what turns "the loop went round
+   again" into "the byte was not the line's last" and "the loop stopped"
+   into "the line is complete".
 
-Lemma ush_echo_byte_rows (j : nat) :
-  (j < length echo_line)%nat ->
-  (bv_unsigned (echo_line !!! j) = 10 -> j = 16%nat)
-  /\ bv_unsigned (echo_line !!! j) <> 13.
-Proof.
-  rewrite echo_line_length. intro Hj.
-  assert (Hin : In j (seq 0 17)) by (apply in_seq; lia).
-  pose proof (proj1 (forallb_forall _ _) ush_echo_byte_bool j Hin) as Hb.
-  apply andb_prop in Hb as [H10 H13]. split.
-  - intro He. apply Z.eqb_eq in He. rewrite He in H10. cbn in H10.
-    apply Nat.eqb_eq in H10. exact H10.
-  - intro He. apply Z.eqb_eq in He. rewrite He in H13. discriminate H13.
-Qed.
+   THE LINE'S BYTE ROWS ARE [EchoDisc]'s: [echo_line_byte_nl] (the only
+   newline is the last byte), [echo_line_byte_ncr] (no carriage return)
+   and [echo_line_nl_val].  They were three closed [forallb]s over
+   seventeen indices here.
 
-Lemma ush_echo_nl16 : bv_unsigned (echo_line !!! 16%nat) = 10.
-Proof. vm_compute. reflexivity. Qed.
-
+   [ush_echo_first] is NOT one of them and stays: it is the COMMAND
+   NAME's first byte, which is 'e' whatever the arguments are, because
+   the line the discipline admits runs /echo. *)
 Lemma ush_echo_first : bv_unsigned (echo_line !!! 0%nat) = 101.
 Proof. vm_compute. reflexivity. Qed.
 
 (* ...and no byte of the line is the NUL [gets] plants past it, which is
    what turns "the first NUL at or after 0" into "the line's length" *)
-Lemma ush_echo_no_nul_bool :
-  forallb (fun j : nat => negb (bool_decide (echo_line !!! j = ubyte0)))
-    (seq 0 17) = true.
-Proof. vm_compute. reflexivity. Qed.
-
 Lemma ush_echo_no_nul (j : nat) :
   (j < length echo_line)%nat -> echo_line !!! j <> ubyte0.
 Proof.
-  rewrite echo_line_length. intro Hj.
-  assert (Hin : In j (seq 0 17)) by (apply in_seq; lia).
-  pose proof (proj1 (forallb_forall _ _) ush_echo_no_nul_bool j Hin) as Hb.
-  apply negb_true_iff in Hb. exact (bool_decide_eq_false_1 _ Hb).
+  intros Hj Hc. apply (echo_line_byte_nonzero j Hj).
+  apply (f_equal bv_unsigned) in Hc.
+  rewrite (_ : bv_unsigned ubyte0 = 0%Z) in Hc; [exact Hc | by vm_compute].
 Qed.
 
 (* ===================================================================== *)
@@ -2102,7 +2081,7 @@ Section UkSh.
     iSplitR.
     { iPureIntro. rewrite /ush_gline_p. split_and!.
       - exact Hn0.
-      - rewrite echo_line_length. lia.
+      - exact echo_line_pos.
       - intro Hc. exfalso. lia.
       - intros j Hj. exfalso. lia. }
     rewrite Nat.add_0_r. iExact "Hp".
@@ -3927,15 +3906,14 @@ Section UkSh.
         iApply (ush_pos_of_pm (n0 + i + 1)%nat with "HT Hpm"). }
       destruct Hp as (Hbnd & Hi17 & _ & Hbytes).
       rewrite (ush_bnd_mod n0 i Hbnd Hi17) in Hby.
-      assert (Hi16 : i = 16%nat).
-      { apply (proj1 (ush_echo_byte_rows i Hi17)).
-        rewrite <- Hby. exact Hb10. }
+      assert (Hi16 : i = (length echo_line - 1)%nat).
+      { apply (echo_line_byte_nl i Hi17). rewrite <- Hby. exact Hb10. }
       assert (Hlen : (i + 1)%nat = length echo_line)
-        by (rewrite echo_line_length; lia).
+        by (pose proof echo_line_pos; lia).
       assert (Hli : ush_line_is (ush_set f i (g1 0%nat)) 0%nat
                       (length echo_line)).
       { rewrite /ush_line_is. split; [ reflexivity | ].
-        intros j Hj. rewrite echo_line_length in Hj.
+        intros j Hj.
         replace (0 + j)%nat with j by lia.
         destruct (Nat.eq_dec j i) as [-> | Hne].
         - rewrite ush_set_at. exact Hby.
@@ -4065,13 +4043,13 @@ Section UkSh.
         rewrite (ush_bnd_mod n0 i Hbnd Hi17) in Hby.
         assert (Hb10 : bz <> 10)
           by (symmetry in Htk8v; apply Z.eqb_neq in Htk8v; exact Htk8v).
-        assert (Hine : i <> 16%nat).
-        { intro He. apply Hb10. rewrite <- ush_echo_nl16, <- He, <- Hby.
+        assert (Hine : i <> (length echo_line - 1)%nat).
+        { intro He. apply Hb10. rewrite <- echo_line_nl_val, <- He, <- Hby.
           reflexivity. }
         iLeft. iSplitR.
         { iPureIntro. rewrite /ush_gline_p. split_and!.
           - exact Hbnd.
-          - rewrite echo_line_length in Hi17 |- *. lia.
+          - lia.
           - intros _. exact Hfdc.
           - intros j Hj.
             destruct (Nat.eq_dec j i) as [-> | Hne];
@@ -4125,7 +4103,7 @@ Section UkSh.
       iApply (ush_pos_of_pm (n0 + i + 1)%nat with "HT Hpm"). }
     destruct Hp as (Hbnd & Hi17 & _ & _).
     rewrite (ush_bnd_mod n0 i Hbnd Hi17) in Hby.
-    exfalso. apply (proj2 (ush_echo_byte_rows i Hi17)).
+    exfalso. apply (echo_line_byte_ncr i Hi17).
     rewrite <- Hby. exact Hb13.
   Qed.
 
@@ -4233,7 +4211,7 @@ Section UkSh.
   Proof.
     intros Ha0 Ha1 HNle HN31 Hfd0.
     assert (HN0 : (0 < Nb)%nat)
-      by (pose proof echo_line_length; lia).
+      by (pose proof echo_line_pos; lia).
     iIntros "#Hlaw #Hcode Hbs Hstd Hpos Hrun Hcont".
     rewrite shp_gets.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -5265,7 +5243,7 @@ Section UkSh.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 HNle HN31 Hfd0.
-    assert (HN0 : (0 < Nb)%nat) by (pose proof echo_line_length; lia).
+    assert (HN0 : (0 < Nb)%nat) by (pose proof echo_line_pos; lia).
     iIntros "#Hdp #Hlaw #Hplaw #Hcode Hbs Hstd Hpos Hrun Hcont".
     (* THE ONE BRANCH: which of the payments answers the prompt is decided
        here, once, and the walk below spends the obligation every arm
@@ -7253,6 +7231,9 @@ Section UkSh.
     assert (Hbf : sh_buf = 8224) by (vm_compute; reflexivity).
     assert (Hnb : sh_nbuf = 100%nat) by (vm_compute; reflexivity).
     assert (Hnbz : Z.of_nat sh_nbuf = 100) by (vm_compute; reflexivity).
+    (* THE LINE FITS sh's BUFFER.  A SIDE CONDITION on the line and not a
+       fact about these bytes: [getcmd] reads at most [sh_nbuf - 1] of
+       them, so a general line has to carry this as a premise. *)
     assert (Hnble : (length echo_line < sh_nbuf)%nat)
       by (rewrite echo_line_length; vm_compute; lia).
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hgen".
@@ -7538,7 +7519,7 @@ Section UkSh.
       iAssert T as "#HTb".
       { iDestruct "Hline" as "[%Hl | $]".
         exfalso. destruct Hl as [_ [_ Hby]].
-        pose proof (Hby 0%nat ltac:(rewrite echo_line_length; lia)) as Hg0.
+        pose proof (Hby 0%nat ltac:(pose proof echo_line_pos; lia)) as Hg0.
         rewrite Nat.add_0_l in Hg0.
         assert (He : bv_unsigned (g 0%nat)
                      = bv_unsigned (echo_line !!! 0%nat))
@@ -7659,7 +7640,7 @@ Section UkSh.
       iAssert T as "#HTb".
       { iDestruct "Hline" as "[%Hl | $]".
         exfalso. destruct Hl as [_ [_ Hby]].
-        pose proof (Hby 0%nat ltac:(rewrite echo_line_length; lia)) as Hg0.
+        pose proof (Hby 0%nat ltac:(pose proof echo_line_pos; lia)) as Hg0.
         rewrite Nat.add_0_l in Hg0.
         assert (He : bv_unsigned (g 0%nat)
                      = bv_unsigned (echo_line !!! 0%nat))

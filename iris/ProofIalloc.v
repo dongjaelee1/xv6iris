@@ -401,7 +401,7 @@ Section IallocBytes.
 End IallocBytes.
 
 Module IallocProof (BR : BREAD) (LW : LOG_WRITE) (BL : BRELSE)
-                   (MS : MEMSET) (IG : IGET) : IALLOC.
+                   (MS : MEMSET) (IG : IGET) (Printk : PRINTK_GEN) : IALLOC.
 
 Notation Rra := (mword_of_int 1 : mword 5).
 Notation Rs0 := (mword_of_int 8 : mword 5).
@@ -782,7 +782,6 @@ Section IallocOut.
     (K_ialloc <= K)%nat ->
     bv_unsigned ty <> 0 ->          (* threaded to [ia_epilogue]; see there *)
     InodeRegion.ireg_ty_ok (ialloc_fresh ty) ->
-    printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
     ia_sp m M ->
     ia_thr8 m M ->
     sie_cap_gpr KT1 M (K - 8)%nat b (proc_addr j) -∗
@@ -805,7 +804,7 @@ Section IallocOut.
             pidv dq dqs dqn j m K b lks Upr t qt -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros HK Hty Htyk Hpk Hsp Hthr.
+    intros HK Hty Htyk Hsp Hthr.
     pose proof HK as HK'. 
     pose proof ia_msg_fmt as (Hkmsg & Hnmsg & Hlmsg).
     iIntros "Hcg Hcnt #Htext #Hkdata Hpc #Hpenv Hframe Hppid
@@ -1041,8 +1040,9 @@ Section IallocOut.
     (* the panic tail runs at depth 0, so the held set is forced empty and
        printk's order premise ("pr", 14) needs no hypothesis here. *)
     iDestruct (cpu_own_zero_empty with "Hcnt") as "[%Hlkempty Hcnt]".
-    iApply (Hpk CID9 XI Q9 (K - 8)%nat true (proc_addr j)
-              DfracDiscarded ia_msg [] b _
+    iApply (Printk.wp_printk_gen_sconf (CID := CID9) (XI := XI) KT1 _ _ _
+              Q9 (K - 8)%nat true (proc_addr j)
+              (dqf := DfracDiscarded) ia_msg [] b _
               ltac:(lia) Hlmsg Hnmsg ltac:(rewrite Hkmsg; reflexivity)
               ltac:(cbn [length]; lia)
               with "Hcg Htext Hkdata Hpc Hcnt Hpenv [] [//]").
@@ -2003,7 +2003,6 @@ Section IallocScan.
     fsc_ninodes < 2 ^ 31 ->
     bv_unsigned ty <> 0 ->
     InodeRegion.ireg_ty_ok (ialloc_fresh ty) ->
-    printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
     (j < NPROC)%nat ->
     γs !! j = Some γl ->
     (* ia_scan reaches bread/brelse ("bcache", 4, every turn) and ia_claim
@@ -2054,7 +2053,7 @@ Section IallocScan.
                  pidv dq dqs dqn j m K b lks Upr t qt -∗
          WP (Loop : expr riscv_lang))).
   Proof.
-    intros HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hpk Hj Hgl Hbelow.
+    intros HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hj Hgl Hbelow.
     (* THE BOUND AS A NAMED HYPOTHESIS, not an inline [ltac:] argument, and
        rank 1d is why.  [fsc_ninodes] is a CLASS FIELD now, so writing it in
        an explicit-argument position elaborates to [@fsc_ninodes ?fscfg] --
@@ -2845,7 +2844,7 @@ Section IallocScan.
                        ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
           iApply (ia_out (CID0 := CID19) j
  ty u Sb t qt pidv dq dqs dqn m GE K b lks
-                    Upr HK Hty Htyk Hpk HGEsp HGEthr
+                    Upr HK Hty Htyk HGEsp HGEthr
                     with "Hcg Hcnt Htext Hkdata Hpc Hpenv Hframe Hppid
                           Hsbn Hsbi Hsl Hiref Hop Htx [Hcont]").
           { iApply (wp_next_shift (b := true) (CIDa := CID14) (CIDb := CID19)
@@ -2875,7 +2874,7 @@ Section IallocMain.
                          pidv dq dqs dqn m K eb b lks Upr t qt.
   Proof.
     cbv beta delta [wp_ialloc_gen_body].
-    intros pcE pj ret_tgt HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hpk Hj Hgl
+    intros pcE pj ret_tgt HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hj Hgl
            Ha0 Ha1 Heb Hbelow.
     subst eb.
     pose proof HK as HK'. 
@@ -3320,7 +3319,7 @@ Section IallocMain.
     iPoseProof (ia_scan (CIDe := CID19) γs j γl pd pav pu
  ty u Sb
                   t qt pidv dq dqs dqn m K b lks
-                  Upr HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hpk Hj Hgl Hbelow
+                  Upr HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hj Hgl Hbelow
                   with "Htext Hkdata Hpenv Hbio Hlctx Hireg Hiopen Hprocs
                         Hdevi Hdgeom Hdlock Hitb2 Hitbl Hesc") as "Hscan".
     (* THE FUEL THROUGH [constr:], not straight into [$!].  The proofmode
@@ -3367,7 +3366,7 @@ Section IallocMain.
                            pidv dq dqs dqn m K eb b lks Upr t qt.
   Proof.
     cbv beta delta [wp_ialloc_sconf_body].
-    intros pcE pj ret_tgt HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hpk Hj Hgl
+    intros pcE pj ret_tgt HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hj Hgl
            Ha0 Ha1 Heb Hbelow.
     iIntros "Hcg Hcnt #Htext Hpc #Hkdata #Hpenv #Hbio #Hlctx
               Hsbn Hsbi #Hireg #Hiopen Hppid #Hprocs #Hdevi #Hdgeom #Hdlock Hsl
@@ -3376,7 +3375,7 @@ Section IallocMain.
     iApply (wp_ialloc_gen (CID := CID) γs j γl pd pav pu
  ty u Sb
               pidv dq dqs dqn m K eb b lks
-              Upr t qt HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hpk Hj Hgl Ha0 Ha1 Heb Hbelow
+              Upr t qt HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hj Hgl Ha0 Ha1 Heb Hbelow
               with "Hcg Hcnt Htext Hpc Hkdata Hpenv Hbio Hlctx
                     Hsbn Hsbi Hireg Hiopen Hppid Hprocs Hdevi Hdgeom Hdlock Hsl
                     Hitb2 Hitbl Hesc Hiref HopS Htxc [Hcont Htx]").

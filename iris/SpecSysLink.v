@@ -513,7 +513,6 @@ Definition wp_sys_link_sconf_body
      ZERO-extended halfword argument. *)
   16 * Z.of_nat icfg_nib <= 2 ^ 16 ->
   (* ---- dirlink's out-of-blocks arm calls printk, not panic ---- *)
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (j < NPROC)%nat ->
   gs !! j = Some gl ->
   (* namei's own premise, inherited: the walker runs with the base enabled *)

@@ -777,7 +777,7 @@ Section ProofSysLinkBody.
   Proof.
     cbv beta delta [wp_sys_link_sconf_body].
     intros pcE pj ret_tgt HK HdevR Hnib0 Hgeom Hsize
-           Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hnib16 Hprkc Hj Hgl
+           Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hnib16 Hj Hgl
            Heb Harg0 Harg1.
     destruct (sl_kb K HK) as (Kna & Knp & Kdl & Kar & Kbo & Keo & Kil & Kiu
                               & Kiupd & Kip & Kiup & K10 & K38 & Kpop).
@@ -2760,7 +2760,7 @@ Section ProofSysLinkBody.
                              ltac:(exact (proj1 (proj2 (proj2 Hdiok))))
                              ltac:(exact (sl_size_lt _
                                      (proj1 (proj2 (proj2 (proj2 (proj2 Hdiok)))))))
-                             Hist0 Hdiblk Hdiblog Hdinb Hlow16 Hbmgeo Hprkc Hsize
+                             Hist0 Hdiblk Hdiblog Hdinb Hlow16 Hbmgeo Hsize
                              Hbm0 Hbmcov Hbmlog Hcovb Hiregb
                              ltac:(exact (sl_dl_need_ok _ w1 w2 _ n2 Hcrok2 Hu3))
                              Hj Hgl HU6a0 HU6a2 Heb (Hlb "log"%string)

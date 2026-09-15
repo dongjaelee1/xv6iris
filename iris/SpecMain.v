@@ -747,6 +747,12 @@ Section SpecMain.
        no console discipline and carries none ([WpUart.win_at] is [emp]
        there). *)
     riscv_win_res (Datatypes.S gen_id) -∗
+    (* ...AND THE CONSOLEINTR ARM'S HALF (redesign R2), parked in the same
+       payload and at [None]: between interrupts no arm is in progress.  It
+       is the KERNEL's own ghost, not the application's, and it is what lets
+       consoleintr prove "no arm is in progress" as a pure side condition at
+       an arm's entry. *)
+    uart_arm γd (1/2) None -∗
     uart_dlab_is γd (DfracOwn (1/2)) b0 -∗
     (* ==================== THE SECOND PORT (bump 163d39b) ==================
        Everything main needs about UART1, all of it minted in
@@ -786,6 +792,7 @@ Section SpecMain.
     uart_rx_tok γd1 0%nat None -∗
     uart_rx_hi γd1 (1/2) None -∗
     uart_log_hi γd1 (1/2) None -∗
+    uart_arm γd1 (1/2) None -∗
     uart_dlab_is γd1 (DfracOwn (1/2)) b1 -∗
     disk_cfg_is γv (DfracOwn (1/2)) c0 -∗
     (* ...and the two disk ghosts the protocol invariant does NOT hold, minted

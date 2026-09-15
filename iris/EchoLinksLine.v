@@ -905,8 +905,9 @@ Section echo_links_line.
     ewc_post v n0 0%nat.
   Proof.
     intros Hn0 HP Hpin Ht. pose proof echo_line_pos as HL.
-    assert (H12 : (length (line_alts !!! 0%nat) - 2)%nat = 12%nat)
-      by (rewrite line_alts_len0; reflexivity).
+    assert (H12 : (length (line_alts !!! 0%nat) - 2)%nat
+                  = length echo_line_out)
+      by (rewrite line_alts_0_length; lia).
     rewrite /ewc_post H12 /ewc_blk.
     iIntros "[(Htn & #Hps & #Hcs & #HE) | #HT]"; last by iRight.
     iLeft. iExists ps0, cs0, P. cbn [blkcs]. iFrame "Htn Hps Hcs HE".

@@ -228,11 +228,8 @@ Qed.
 (* The consoleintr arm in progress: the byte [c] was accepted at history
    [h], the echo [cs] was chosen for it, and [j] of [cs]'s bytes have
    already reached the wire.  [None] between arms. *)
-Definition cons_arm : Type := (list mobs * bv 8 * list (bv 8) * nat)%type.
-Definition ca_hist (a : cons_arm) : list mobs := a.1.1.1.
-Definition ca_byte (a : cons_arm) : bv 8 := a.1.1.2.
-Definition ca_echo (a : cons_arm) : list (bv 8) := a.1.2.
-Definition ca_sent (a : cons_arm) : nat := a.2.
+(* [cons_arm] and its four projections are in [LogEntryDefs.v], which this
+   file re-exports -- the ghost camera and the port ghost name the type. *)
 
 Record cons_hist := MkCH {
   ch_acc : list (bv 8);                    (* every byte the console UART accepted *)

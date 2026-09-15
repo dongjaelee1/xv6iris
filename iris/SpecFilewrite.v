@@ -465,9 +465,6 @@ Section SpecFilewrite.
      (* the bitmap's geometry, forwarded through bmap to balloc *)
      ⌜bitmap_geom_ok fsc_cov fsc_logst (fsc_bmapstart)
                      (fsc_size)⌝ ∗
-     (* balloc's out-of-blocks arm calls the GENERAL printk path; carried as
-        a hypothesis, never a functor (SpecBalloc.v's header) *)
-     ⌜printk_gen_contract (kt := KT1) (fsc_printk) (fsc_uart) (fsc_disk)⌝ ∗
      bio_ctx (fsc_bio)
        (fs_view fsc_fs (fsc_disk) icfg_dev fsc_cov) ∗
      (* THE LOG: begin_op mints the reservation, end_op spends it, and the
@@ -559,7 +556,7 @@ Section SpecFilewrite.
   Proof.
     rewrite /filewrite_fs_env /filewrite_fs_out.
     iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
-              _ & Hsbi & Hsbs & Hsbb & _ & _ & _ & _ & Hbsl)".
+              Hsbi & Hsbs & Hsbb & _ & _ & _ & _ & Hbsl)".
     iFrame "Hsbi Hsbs Hsbb Hbsl".
   Qed.
 

@@ -1314,7 +1314,7 @@ Section ProofDirlinkMain.
     cbv beta delta [wp_dirlink_gen_body].
     intros pcE pjv nb ret_tgt nrec s k0 HK Htype Hbmcov Hszb Hinums
            Hdisj Horph
-           Hstab Hnlk Hlg Hbmwf Hholes Haddrs Hsz31 Hist0 Hiblk Hiblog Hdinb Hcinb Hbmgeo Hpkc
+           Hstab Hnlk Hlg Hbmwf Hholes Haddrs Hsz31 Hist0 Hiblk Hiblog Hdinb Hcinb Hbmgeo
            Hsize Hbms0 Hbmsc Hbmsl Hcovb Hiregb Hnc Hj Hgs Ha0 Ha2 Heb Hbelow.
     (* THE REGION RECORD IS ALLOCATED, which is all licence (c) needs of it
        at the inner lookup's ["."] case: [Htype] fixes the IN-CORE type at
@@ -2379,7 +2379,7 @@ Section ProofDirlinkMain.
                   Hbmwf Hholes Hbmcov
                   ltac:(change (Z.of_nat 16%nat) with 16;
                         exact (dl_lt31 _ Hk0fit))
-                  Hsz31 Hbmgeo Hpkc Hj Hgs HV6a0
+                  Hsz31 Hbmgeo Hj Hgs HV6a0
                   ltac:(cbn [negb]; rewrite HV6a1 dlk_zero_moi;
                         exact (eq_vec_refl _))
                   HV6a3 HV6a4
@@ -3530,7 +3530,7 @@ Section ProofDirlinkMain.
     intros pcE pjv nb ret_tgt nrec s k0 HK Htype Hbmcov Hszb Hinums
            Hdisj Horph
            Hstab Hnlk Hlg Hbmwf Hholes Haddrs Hsz31 Hist0 Hiblk Hiblog Hdinb
-           Hcinb Hbmgeo Hpkc
+           Hcinb Hbmgeo
            Hsize Hbms0 Hbmsc Hbmsl Hcovb Hiregb Hnc Hj Hgs Ha0 Ha2 Heb Hbelow.
     iIntros "Hcg Hcnt #Htext Hpc #Hkd #Hpk #Hbio #Hlog #Hkenv
               Hidev Hiinum Hmeta Hmap Hblocks Hnm Hsbi Hsbs Hsbb #Hbmr
@@ -3554,7 +3554,7 @@ Section ProofDirlinkMain.
               ip dinum bm data dn dn0 fn inum ncount Sb0 t0 (1/2)%Qp
               pidv dq dqd dqn dqs dqb dqbs dqf m K eb b lks Upr
               HK Htype Hbmcov Hszb Hinums Hdisj Horph Hstab Hnlk Hlg Hbmwf Hholes
-              Haddrs Hsz31 Hist0 Hiblk Hiblog Hdinb Hcinb Hbmgeo Hpkc
+              Haddrs Hsz31 Hist0 Hiblk Hiblog Hdinb Hcinb Hbmgeo
               Hsize Hbms0 Hbmsc Hbmsl Hcovb Hiregb (Hncg _ _) Hj Hgs Ha0 Ha2 Heb Hbelow
               with "Hcg Hcnt Htext Hpc Hkd Hpk Hbio Hlog Hkenv
                     Hidev Hiinum Hmeta Hmap Hblocks Hnm Hsbi Hsbs Hsbb Hbmr

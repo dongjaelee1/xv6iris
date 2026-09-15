@@ -244,7 +244,6 @@ Section ProofCreateFound.
     bv_unsigned ty <> 0 ->
     (* durable-disk 2b-inode-3: ialloc's claim box owes the region (L5) *)
     InodeRegion.ireg_ty_ok (ialloc_fresh ty) ->
-    printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
     (create_units <= u)%nat ->
     (create_slots <= ns)%nat ->
     (j < NPROC)%nat ->
@@ -312,7 +311,7 @@ Section ProofCreateFound.
     WP (Loop : expr riscv_lang).
   Proof.
     intros HK Hroot Hnib0 Hlg Hsize Hbms0 Hbmsc Hbmsl
-           Hist0 Hcovb Hbmgeo Hiregb Hcstr Hplen31 Hni1 Hni2 Hni3 Htynz Htyk Hpkc
+           Hist0 Hcovb Hbmgeo Hiregb Hcstr Hplen31 Hni1 Hni2 Hni3 Htynz Htyk
            Hu Hns Hj Hgs Ha1 Ha2 Ha3 Heb.
     destruct (cr_kb K HK)
       as (HK10 & HKnp & HKil & HKdlu & HKiup & HKia & HKiu & HKdlk & HKsum).

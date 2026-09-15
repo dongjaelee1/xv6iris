@@ -1123,7 +1123,6 @@ Definition wp_create_sconf_body
      entries pass a literal. *)
   InodeRegion.ireg_ty_ok_w ty ->
   (* ---- ialloc's no-inodes arm calls printk, not panic ---- *)
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (* ---- THE TWO LEDGERS (see the header) ---- *)
   (create_units <= u)%nat ->
   (create_slots <= ns)%nat ->

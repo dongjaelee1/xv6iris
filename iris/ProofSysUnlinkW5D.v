@@ -181,7 +181,6 @@ Section ProofSysUnlinkW5D.
       (Phiex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Phimiss : pfam Σ (aview -> Z -> fname -> iProp Σ)) :
     (K_sys_unlink <= K)%nat ->
-    printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
     (0 < icfg_nib)%nat ->
     log_geom_ok fsc_cov fsc_logst ->
     0 < fsc_size <= BPB ->
@@ -370,7 +369,7 @@ Section ProofSysUnlinkW5D.
                         Phient Phitgt Phiex Phimiss)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros HK Hprk Hnib0 Hgeom Hsize Hbm0 Hbmcov
+    intros HK Hnib0 Hgeom Hsize Hbm0 Hbmcov
            Hbmlog Hist0 Hcovb Hiregb Hj Hgl Heb Hsp0 Hal Hn1 Hupt1 Hkd Hks
            Hdinb Htydir Hiok Hrl_datd Hdok Hddix Hdoc Hduq Hnotdot Hnotdd
            Hfst Hal27
@@ -778,7 +777,7 @@ Section ProofSysUnlinkW5D.
               Hnls
               Hwfd Hhzd Hcovd Hoffn31 Hszd31
               Hbmgeom
-              Hprk Hj Hgl HB6a0
+ Hj Hgl HB6a0
               Ha1t Ha3t Ha4t
               (Hlb "log"%string)
               with "Hcg Hown [] [] Htext Hpc Hdata Hprenv Hbio Hlog

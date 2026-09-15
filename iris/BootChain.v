@@ -455,6 +455,7 @@ Section BootPrimary.
        power-on step by [RiscvAdequacy.power_boot_res] and parked in the
        same payload, where consoleintr's shift finds it. *)
     riscv_win_res (Datatypes.S gen_id) -∗
+    uart_arm γd (1/2) None -∗
     uart_dlab_is γd (DfracOwn (1/2)) b0 -∗
     (* ---- THE SECOND PORT (bump 163d39b), forwarded whole.  [uart_inv Uart1]
        and the CONCRETE [plic_inv γd γd1] are [BootShared]'s exports beside
@@ -472,6 +473,7 @@ Section BootPrimary.
     uart_rx_tok γd1 0%nat None -∗
     uart_rx_hi γd1 (1/2) None -∗
     uart_log_hi γd1 (1/2) None -∗
+    uart_arm γd1 (1/2) None -∗
     uart_dlab_is γd1 (DfracOwn (1/2)) b1 -∗
     disk_cfg_is γv (DfracOwn (1/2)) c0 -∗
     ([∗ map] i ↦ st ∈ gset_to_gmap HInactive (set_seq 0 8 : gset nat),
@@ -490,9 +492,9 @@ Section BootPrimary.
     intros Hreset Hz Hprun Hlen Hlive Hcnu Himg.
     iIntros "#Htext #Hdata Hres Hthr #Hstarted Hprim #Hecho Hlk Hgl Hfirst Hnext Hpark Hpst Hpav Hchb
              Hfs Hmir Hirslot Hirauth #Hcert #Hseam
-             #Hdev #Hwire Hinitb Htx Hsent Hlb Htok Hhi Hlgh Hwin Hdlab
+             #Hdev #Hwire Hinitb Htx Hsent Hlb Htok Hhi Hlgh Hwin Harm Hdlab
              #Huinv1 #Hplic #Hpinned #Hubw0 #Hurw0 #Hubw1 #Hurw1
-             Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Hdlab1
+             Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1
              Hcfg Hclaim Hcmauth #Hdone Hkpt Hkptb Hkmap Hpages".
     iApply (boot_entry_bridge rs iv dq Hreset with "Htext Hres Hthr").
     iIntros (mf) "Hcap Hctx Hcpu Hg Hraw #Htimc Hpc".
@@ -508,9 +510,9 @@ Section BootPrimary.
               with "Hcap Hctx Hcpu Hg Htext Hdata Hpc Hstarted Hprim [] Hecho Hlk Hgl
                     Hfirst Hnext Hpark Hpst Hpav Hchb Hfs Hmir Hirslot Hirauth
                     Hcert Hseam
-                    Hdev Hwire Hinitb Htx Hsent Hlb Htok Hhi Hlgh Hwin Hdlab
+                    Hdev Hwire Hinitb Htx Hsent Hlb Htok Hhi Hlgh Hwin Harm Hdlab
                     Huinv1 Hplic Hpinned Hubw0 Hurw0 Hubw1 Hurw1
-                    Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Hdlab1
+                    Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1
                     Hcfg Hclaim Hcmauth Hdone Htimc Hraw Hkpt Hkptb Hkmap Hpages").
     (* THE DEPOSIT WAND: main's boot arm hands over exactly [main_deposit]'s
        ten conjuncts at exactly its eight existential witnesses, plus

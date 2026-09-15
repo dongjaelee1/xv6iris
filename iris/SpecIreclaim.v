@@ -120,17 +120,7 @@
    running-process bundle exactly as SpecIalloc.v / SpecIput.v do, and takes
    the parking premise.  It enters and returns at noff 0.
 
-   THE printk IS LIVE AND IT IS FORMATTED.  [auipc s6,0x4 / addi s6,s6,50] at
-   +0x2e/+0x32 off [ireclaim = 0x80003408] puts the format string at
-   0x80007478, and +0x38..+0x3c calls it with [a1 = s3 = inum], i.e. with a
-   [%d] conversion -- where balloc's and ialloc's messages have none.  As in
-   SpecBalloc.v / SpecIalloc.v the contract takes [γpr], the two PERSISTENT
-   credentials [kernel_data] and [printk_env], and printk's contract as a
-   PURE Prop HYPOTHESIS ([SpecPrintk.printk_gen_contract]) rather than as
-   a functor argument.  See SpecBalloc.v's "READ THIS BEFORE TRUSTING THE
-   STANDING SIX": carrying it as a hypothesis keeps [Print Assumptions] at the
-   standing six, but the six are then modulo a THREADED printk obligation,
-   exactly as [SpecPanic]'s own credentials are.                                 *)
+   *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list functions bitvector.definitions.
 From iris.proofmode Require Import proofmode.
@@ -223,7 +213,6 @@ Definition wp_ireclaim_sconf_body
   fsc_ninodes <= 16 * Z.of_nat icfg_nib ->
   fsc_ninodes < 2 ^ 31 ->
   (* THE ORPHAN ARM'S FIRST CALLEE, as a hypothesis and not a functor *)
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (j < NPROC)%nat ->
   γs !! j = Some γl ->
   (* a0 = dev: the RV64 ABI's sign extension of an [int] *)

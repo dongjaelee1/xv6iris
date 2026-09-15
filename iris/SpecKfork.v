@@ -151,6 +151,7 @@ Require Import SpecUsertrap.  (* [usertrap_res]'s instances: was reaching
                                  here through UsertrapRes.v's own import *)
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto.
+Require Import SpecPrintk.
 Require Import FirstTok.  (* [first_done] -- the child's token's source *)
 Require Import InstrBytes.
 Require Import RegFile.
@@ -318,6 +319,7 @@ Definition wp_kfork_sconf_body
   is_lock γp alp_pid_lock "nextpid"%string nextpid_res_at -∗
   is_lock γw wait_lock_addr "wait_lock"%string (wait_res_at) -∗
   is_ftable γl γf -∗
+  SpecPrintk.printk_env (FsCfg.fsc_printk) (FsCfg.fsc_uart) (FsCfg.fsc_disk) -∗
   is_itable2 fsc_itlock fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev -∗
   itable_inv -∗
   (* THE INODE REGION, and it is here for ONE reason: kfork's

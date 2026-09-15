@@ -124,6 +124,16 @@ Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 Lemma echo_ws_length : length echo_ws = 3%nat.
 Proof. reflexivity. Qed.
 
+(* THE TWO BOUNDS A CALLER OWES, named where the word list is: the line
+   has a command name to run, and it has fewer words than sh's MAXARGS.
+   Both are decidable at any given line and become premises once the word
+   list is a parameter. *)
+Lemma echo_ws_pos : (0 < length echo_ws)%nat.
+Proof. rewrite echo_ws_length. lia. Qed.
+
+Lemma echo_ws_lt10 : (length echo_ws < 10)%nat.
+Proof. rewrite echo_ws_length. lia. Qed.
+
 (* a word of the line, read back through [!!] so that [LineWords]' lemmas
    -- every one of which is keyed on [ws !! i = Some w] -- apply *)
 Lemma echo_ws_at (i : nat) :
@@ -163,6 +173,19 @@ Proof.
   exact (elem_of_list_lookup_2 echo_line j b Hb).
 Qed.
 
+(* THE THREE ROWS THE SHELL'S OWN WALK SPENDS, each off the reading above
+   together with the newline's position: the only newline is the LAST
+   byte, no byte is a carriage return, and no byte is the NUL [gets]
+   plants past the line -- which is what turns "the first NUL at or after
+   0" into the line's length. *)
+Lemma echo_line_byte_ncr (j : nat) :
+  (j < length echo_line)%nat -> bv_unsigned (echo_line !!! j) <> 13%Z.
+Proof. intro Hj. pose proof (echo_line_byte_val_at j Hj). lia. Qed.
+
+Lemma echo_line_byte_nonzero (j : nat) :
+  (j < length echo_line)%nat -> bv_unsigned (echo_line !!! j) <> 0%Z.
+Proof. intro Hj. pose proof (echo_line_byte_val_at j Hj). lia. Qed.
+
 (* ...AND ITS POSITIONAL HALF: the only newline is the last byte, which is
    what [gets] stopping at the first one says about the buffer it read. *)
 Lemma echo_line_nl_last (k : nat) :
@@ -179,6 +202,25 @@ Proof.
   replace (length (wl_body echo_ws) + 1 - 1)%nat
     with (length (wl_body echo_ws)) by lia.
   exact (wl_line_nl_at echo_ws).
+Qed.
+
+Lemma echo_line_byte_nl (j : nat) :
+  (j < length echo_line)%nat ->
+  bv_unsigned (echo_line !!! j) = 10%Z -> j = (length echo_line - 1)%nat.
+Proof.
+  intros Hj He. apply echo_line_nl_last.
+  destruct (lookup_lt_is_Some_2 echo_line j Hj) as [b Hb].
+  rewrite Hb. f_equal.
+  rewrite <- (list_lookup_total_correct echo_line j b Hb).
+  apply bv_eq. rewrite He. by vm_compute.
+Qed.
+
+Lemma echo_line_nl_val :
+  bv_unsigned (echo_line !!! (length echo_line - 1)%nat) = 10%Z.
+Proof.
+  rewrite (list_lookup_total_correct echo_line (length echo_line - 1)%nat
+             (Z_to_bv 8 10%Z) echo_line_nl_at_end).
+  by vm_compute.
 Qed.
 
 Global Opaque echo_line.
@@ -879,6 +921,12 @@ Proof.
                (echo_ocur_lt i w (length w) Hi Hw ltac:(lia))).
     rewrite /echo_line_out Hend. exact (wl_line_nl_at (drop 1 echo_ws)).
 Qed.
+
+(* the alternative is the output and then the prompt, so its length is
+   the output's plus two -- not a number *)
+Lemma line_alts_0_length :
+  length (line_alts !!! 0%nat) = (length echo_line_out + 2)%nat.
+Proof. rewrite line_alts_0 length_app. by vm_compute (length (sb "$ "%string)). Qed.
 
 Lemma line_alts_length : length line_alts = 4.
 Proof. reflexivity. Qed.

@@ -486,6 +486,8 @@ Section ProofMain.
        byte.  The second port has none: [WpUart.win_at] is [emp] at
        [Uart1]. *)
     riscv_win_res (S gen_id) -∗
+    (* the consoleintr arm's half, parked in the same payload (redesign R2) *)
+    uart_arm γd (1/2) None -∗
     uart_dlab_is γd (DfracOwn (1/2)) b0 -∗
     (* ==================== THE SECOND PORT (bump 163d39b) ==================
        [plic_inv γd γd1] CONCRETELY, because this group runs BOTH receive-token
@@ -507,6 +509,7 @@ Section ProofMain.
        PLIC payload at [None], where [ohist_le None _] is free. *)
     uart_rx_hi γd1 (1/2) None -∗
     uart_log_hi γd1 (1/2) None -∗
+    uart_arm γd1 (1/2) None -∗
     uart_dlab_is γd1 (DfracOwn (1/2)) b1 -∗
     (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3), the last member of
        [console_caps] this group assembles and the only one main cannot
@@ -542,9 +545,9 @@ Section ProofMain.
   Proof.
     intros Hn Hcnu Hconsq.
     iIntros "Hcg #Htext #Hkdata #Hdev Hpc Hfree Hcpu Hlcons Hltx0 Hltx1 Hlpr".
-    iIntros "Hkprintk Hdevsw Hrest Hring Hclean Htx Hsent Hlb Htok Hhi Hlgh Hwin Hdlab".
+    iIntros "Hkprintk Hdevsw Hrest Hring Hclean Htx Hsent Hlb Htok Hhi Hlgh Hwin Harm Hdlab".
     iIntros "#Hplic #Hpinned #Huinv1 #Hubw0 #Hurw0 #Hubw1 #Hurw1".
-    iIntros "Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Hdlab1 #Hecho Hcont".
+    iIntros "Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1 #Hecho Hcont".
     iPoseProof (dev_inv_uart with "Hdev") as "#Huinv".
     iPoseProof (kernel_data_string mn_nl_addr mn_nl
                   (mword_of_int mn_nl_addr) eq_refl
@@ -613,11 +616,11 @@ Section ProofMain.
     iApply fupd_wp.
     iMod (uart_rx_tok_deposit ⊤ γd γd1 Uart0 ktok hltok None None
             ltac:(solve_ndisj) (ohist_le_none hltok) (ohist_le_none hltok)
-            with "Hplic Htok Hhi Hlgh [Hwin]") as "#Hinit".
+            with "Hplic Htok Hhi Hlgh Harm [Hwin]") as "#Hinit".
     { iApply (win_at_uart0_intro with "Hwin"). }
     iMod (uart_rx_tok_deposit ⊤ γd γd1 Uart1 ktok1 hltok1 None None
             ltac:(solve_ndisj) (ohist_le_none hltok1) (ohist_le_none hltok1)
-            with "Hplic Htok1 Hhi1 Hlgh1 []") as "#Hinit1";
+            with "Hplic Htok1 Hhi1 Hlgh1 Harm1 []") as "#Hinit1";
       [ iApply win_at_uart1 |].
     (* [plic_unames γd γd1 Uart0] IS [γd] and [... Uart1] IS [γd1], by iota on
        the port; normalising the two one-shots here keeps every later
@@ -1592,17 +1595,9 @@ Section ProofMain.
        [FirstTok.first_fsinit_pures_of_snap] produced at main's top. *)
     icfg_nib = nib ->
     first_fsinit_pures dk sb Pb ->
-    (* ---- STAGE (f)'S PERSISTENT HALF: the four pure rows of
-       [FirstTok.first_boot_persist] plus the two device ties it is spelled
-       at.  [fs_geom_ok] and [printk_gen_contract] are produced at
-       [wp_main_boot_sconf]'s top (the one place holding both the image
-       hypothesis and the ten configuration ties); the ties are what let a
-       bundle written at [fsc_uart]/[fsc_disk] be assembled out of rows this
-       group holds at [γd]/[γv]. ---- *)
     fsc_uart = γd ->
     fsc_disk = γv ->
     fs_geom_ok ->
-    printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
     sie_cap_gpr KT1 m n false p0 -∗
     kernel_text -∗ kernel_data -∗ dev_inv γd γv -∗
     (* ---- THE PARK ROWS, forwarded to userinit at +0x9e (forkret-park.md
@@ -1764,7 +1759,7 @@ Section ProofMain.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hn Hlen Hlive Hdevq Hnibq Hcov0 Hnibeq Hpures
-           Huartq Hdiskq Hgeomok Hpkc.
+           Huartq Hdiskq Hgeomok.
     iIntros "Hcg #Htext #Hkdata #Hdev #Hwire Hbundle Hrdtok #Htramp #Hccaps #Hu1caps #Hcready #Htl #Hwaitlk
              #Hpenv #Hkmem #Hcert #Hseam Hfolauth Hoffa Hfirst
              #Hpanic Hpc Hfree Hcpu #Hpinv Hpavail #Hlpidlk Hkenv".
@@ -2161,7 +2156,6 @@ Section ProofMain.
       iSplitR; [iExact "Htext"|].
       iSplitR; [iExact "Hkdata"|].
       iSplitR; [iExact "Hpenv"|].
-      iSplitR; [iPureIntro; exact Hpkc|].
       iSplitR; [iExact "Hbioctx"|].
       iSplitR; [iExact "Hseam"|].
       iSplitR; [iExact "Hcert"|].
@@ -2459,7 +2453,7 @@ Section ProofMain.
        ([mn_grp_kvm]).  Split at the top rather than threaded group to
        group -- [SpecMain.wp_main_sconf_body]'s premise stays one row. *)
     iDestruct (WaitInv.children_boot_split with "Hchb") as "[Hipt Hchb]".
-    iIntros "#Hdev #Hwire Hbundle Htx Hsent Hlb Htok Hhi Hlgh Hwin Hdlab".
+    iIntros "#Hdev #Hwire Hbundle Htx Hsent Hlb Htok Hhi Hlgh Hwin Harm Hdlab".
     (* ---- THE SECOND PORT'S THIRTEEN ROWS (bump 163d39b), all of them out
        of [BootShared.boot_shared_alloc] and none derivable below the boot
        chain: UART1's own invariant, the PLIC's at the two CONCRETE bundles
@@ -2468,7 +2462,7 @@ Section ProofMain.
        port 1's ghost row, which is the console's verbatim because
        [uartinitone] is ONE contract run at two ports. ---- *)
     iIntros "#Huinv1 #Hplic #Hpinned #Hubw0 #Hurw0 #Hubw1 #Hurw1".
-    iIntros "Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Hdlab1".
+    iIntros "Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1".
     iIntros "Hcfg Hclaim Hcmauth #Hdone #Htimc Hhart Hunset Hbunset Hkauth Hpages".
     iDestruct "Hlocks" as "(Hlcons & Hltx0 & Hltx1 & Hlpr & Hlkmem & Hlpid & Hlwait &
                             Hltick & Hlbc & Hlit & Hlft & Hldisk)".
@@ -2560,9 +2554,9 @@ Section ProofMain.
               Hcnu Hconsq
               with "Hcg Htext Hkdata Hdev Hpc Hfree Hcpu Hlcons Hltx0 Hltx1 Hlpr
                     Hkprintk Hdevsw Hdevrest Hring Hclean Htx Hsent Hlb Htok
-                    Hhi Hlgh Hwin Hdlab
+                    Hhi Hlgh Hwin Harm Hdlab
                     Hplic Hpinned Huinv1 Hubw0 Hurw0 Hubw1 Hurw1
-                    Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Hdlab1 Hecho").
+                    Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1 Hecho").
     iIntros (m2) "Hcg Hpc Hfree Hcpu #Hpenv #Hccaps #Hu1caps #Hcready".
     (* ---- STAGE (f): the printk half of [FirstTok.first_boot_persist],
        re-spelled at the CONFIGURATION's device gnames.  The group produces
@@ -2572,11 +2566,6 @@ Section ProofMain.
        functor argument is already main's, so nothing new is assumed. ---- *)
     iAssert (printk_env fsc_printk fsc_uart fsc_disk) as "#Hpenvc".
     { rewrite Huartq Hdiskq. iExact "Hpenv". }
-    assert (Hpkc : printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk).
-    { rewrite Huartq Hdiskq. rewrite /printk_gen_contract.
-      intros CIDp XIp m0 K0 eb pj dqf f descs bb lks.
-      exact (PrintkGen.wp_printk_gen_sconf (CID := CIDp) (XI := XIp) KT1 fsc_printk γd γv
-               m0 K0 eb pj (dqf := dqf) f descs bb lks). }
     (* ...and the crash seam, likewise: the boot chain hands it at the era's
        [cov] and superblock, [FirstTok] spells it at the configuration. *)
     iAssert (FsCrash.fs_crash_seam fsc_cov fsc_logst) as "#Hseamc".
@@ -2607,7 +2596,7 @@ Section ProofMain.
     iApply (mn_grp_fs γp γs γv γd γw γtl m4 (K - 2)%nat p0 ps c0 free0 dk sb nib
               Pb Rspent
               Hn50 Hlen Hlive Hdevq Hnibpos Hcovpos Hnibq Hpures
-              Huartq Hdiskq Hgeomok Hpkc
+              Huartq Hdiskq Hgeomok
               with "Hcg Htext Hkdata Hdev Hwire Hbundle Hrdtok Htramp Hccaps Hu1caps Hcready Htl Hwaitlock
                     Hpenvc Hkmem Hcert Hseamc Hfolat Hoffa Hfirst
                     [Hpenv] Hpc Hfree Hcpu Hpinv Hpavail

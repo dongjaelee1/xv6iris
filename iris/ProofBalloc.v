@@ -69,11 +69,7 @@
 
    THE OUT-OF-BLOCKS ARM IS LIVE and calls printk on its GENERAL path (at
    balloc time [panicking] is 0, so [SpecPrintk]'s panic-path contract does
-   not apply).  Its contract arrives as the PURE hypothesis
-   [SpecPrintk.printk_gen_contract] rather than as a functor argument,
-   which is what keeps [Print Assumptions] on the linked theorem at the
-   standing six: [LinkPrintk]'s only instance is itself an [Axiom], and a
-   functor would import it here.  The format string is minted out of the
+   not apply).  The format string is minted out of the
    [kernel_data] premise by [KernelDataInv.kernel_data_string]; it takes no
    varargs, so [descs = []].                                              *)
 From Stdlib Require Import Eqdep_dec ZArith Bool Lia List String Ascii.
@@ -168,7 +164,7 @@ Proof.
               | vm_compute; reflexivity].
 Qed.
 
-Module BallocProof (BR : BREAD) (LW : LOG_WRITE) (BL : BRELSE) (MS : MEMSET) : BALLOC.
+Module BallocProof (BR : BREAD) (LW : LOG_WRITE) (BL : BRELSE) (MS : MEMSET) (Printk : PRINTK_GEN) : BALLOC.
 
 Notation Rra := (mword_of_int 1 : mword 5).
 Notation Rs0 := (mword_of_int 8 : mword 5).
@@ -620,7 +616,6 @@ Section BallocOut.
       (pidv : mword 32) (dq dqb dqs : dfrac)
       (m M : regfile) (K : nat) (eb : bool) (b : bool) (lks : gset string) (Upr : ustate) :
     (K_balloc <= K)%nat ->
-    printk_gen_contract (kt := KT1) γpr γu γd ->
     ba_sp m M ->
     ba_thr9 m M ->
     sie_cap_gpr KT1 M (K - 10)%nat b (proc_addr j) -∗
@@ -640,7 +635,7 @@ Section BallocOut.
             pidv dq dqb dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros HK Hpk Hsp Hthr.
+    intros HK Hsp Hthr.
     pose proof HK as HK'. 
     pose proof ba_msg_fmt as (Hkmsg & Hnmsg & Hlmsg).
     iIntros "Hcg Hcnt Hextc Hextm #Htext #Hkdata Hpc #Hpenv Hframe Hppid
@@ -905,8 +900,9 @@ Section BallocOut.
     (* the panic tail runs at depth 0, so the held set is forced empty and
        printk's order premise ("pr", 14) needs no hypothesis here. *)
     iDestruct (cpu_own_zero_empty with "Hcnt") as "[%Hlkempty Hcnt]".
-    iApply (Hpk CID10 cur_ctx QA (K - 10)%nat eb (proc_addr j)
-              DfracDiscarded ba_msg [] b _
+    iApply (Printk.wp_printk_gen_sconf (CID := CID10) (XI := cur_ctx) KT1 _ _ _
+              QA (K - 10)%nat eb (proc_addr j)
+              (dqf := DfracDiscarded) ba_msg [] b _
               ltac:(lia) Hlmsg Hnmsg ltac:(rewrite Hkmsg; reflexivity)
               ltac:(cbn [length]; lia)
               with "Hcg Htext Hkdata Hpc Hcnt Hpenv [] [//]").
@@ -961,7 +957,7 @@ Section BallocOut.
     iEval (rewrite Hjt) in "Hpc".
     iDestruct (cpu_own_transport CID11 CID13 0 eb (proc_addr j) b
                  ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
-    (* [Hpk]/printk does not thread the complement, so [Hextc]/[Hextm] are
+    (* [(printk_contract _ _ _)]/printk does not thread the complement, so [Hextc]/[Hextm] are
        still at [CID0] -- one wide hop straight to the delivery hart. *)
     iDestruct (IntrDefs.trap_csrs_ext_transport CID0 CID13 eb (proc_addr j)
                  ltac:(rewrite Hbm; wp_next_chain) with "Hextc") as "Hextc".
@@ -999,7 +995,6 @@ Section BallocExhaust.
       (pidv : mword 32) (dq dqb dqs : dfrac)
       (m M : regfile) (K : nat) (eb : bool) (b : bool) (lks : gset string) (Upr : ustate) :
     (K_balloc <= K)%nat ->
-    printk_gen_contract (kt := KT1) γpr γu γd ->
     0 < size <= BPB ->
     ba_sp m M ->
     ba_thr9 m M ->
@@ -1030,7 +1025,7 @@ Section BallocExhaust.
             pidv dq dqb dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros HK Hpk Hsize Hsp Hthr Hs2 Hs5 Hs6 Hs8 Hkk Hbelow.
+    intros HK Hsize Hsp Hthr Hs2 Hs5 Hs6 Hs8 Hkk Hbelow.
     pose proof HK as HK'. 
     pose proof Hsize as Hsize'. rewrite BPB_value in Hsize'.
     iIntros "Hcg Hcnt Hextc Hextm #Htext #Hkdata Hpc #Hpenv #Hbio #Hprocs Hframe Hppid Hsbsz Hsbbm Hsl Hop Hlk Hcont".
@@ -1201,7 +1196,7 @@ Section BallocExhaust.
     iDestruct (IntrDefs.cpu_claim_ext_transport CID0 CID6 eb (proc_addr j)
                  ltac:(rewrite Hbm; wp_next_chain) with "Hextm") as "Hextm".
     iApply (ba_out (CID0 := CID6)  j γfs bn γ γpr γu γd cov logstart bmapstart
-              size u cr Sb pidv dq dqb dqs m E3 K eb b lks Upr HK Hpk HE3sp HE3thr
+              size u cr Sb pidv dq dqb dqs m E3 K eb b lks Upr HK HE3sp HE3thr
               with "Hcg Hcnt Hextc Hextm Htext Hkdata Hpc Hpenv Hframe
                     Hppid Hsbsz Hsbbm Hsl Hop [Hcont]").
     { iApply (wp_next_shift (b := true) (CIDa := CID2) (CIDb := CID6) ltac:(wp_next_chain)
@@ -2531,7 +2526,6 @@ Section BallocScan.
       (pidv : mword 32) (dq dqb dqs : dfrac)
       (m : regfile) (K : nat) (eb : bool) (b : bool) (lks : gset string) (Upr : ustate) (fuel : nat) :
     (K_balloc <= K)%nat ->
-    printk_gen_contract (kt := KT1) γpr γu γd ->
     log_geom_ok cov logstart ->
     0 < size <= BPB ->
     uint bnoB = bmapstart ->
@@ -2588,7 +2582,7 @@ Section BallocScan.
             pidv dq dqb dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros HK Hpk Hgeom Hsize HbnoB Hbmcov Hbmlog Hok Hkk Hj Hgl Hcred.
+    intros HK Hgeom Hsize HbnoB Hbmcov Hbmlog Hok Hkk Hj Hgl Hcred.
     pose proof HK as HK'. 
     pose proof Hsize as Hsz'. rewrite BPB_value in Hsz'.
     pose proof Hgeom as [Hcovok Hlogsub].
@@ -2626,7 +2620,7 @@ Section BallocScan.
                    ltac:(rewrite Hbm; wp_next_chain) with "Hextm") as "Hextm".
       iApply (ba_exhaust (CID0 := CID1)  γs j γfs γd bn γ γpr γu cov logstart
                 bmapstart size dev u cr Sb kk bnoB (bitmap_bytes used) bsdX dX
-                pidv dq dqb dqs m M K eb b lks Upr HK Hpk Hsize Hsp Hthr Hs2 Hs5 Hs6 Hs8 Hkk Hbelow
+                pidv dq dqb dqs m M K eb b lks Upr HK Hsize Hsp Hthr Hs2 Hs5 Hs6 Hs8 Hkk Hbelow
                 with "Hcg Hcnt Hextc Hextm Htext Hkdata Hpc Hpenv Hbio Hprocs Hframe Hppid Hsbsz Hsbbm Hsl Hop Hlk [Hcont]").
       { iApply (wp_next_shift (b := true) (CIDa := CIDx) (CIDb := CID1) ltac:(wp_next_chain)
                   with "Hcont"). }
@@ -2654,7 +2648,7 @@ Section BallocScan.
                      ltac:(rewrite Hbm; wp_next_chain) with "Hextm") as "Hextm".
         iApply (ba_exhaust (CID0 := CID1)  γs j γfs γd bn γ γpr γu cov logstart
                   bmapstart size dev u cr Sb kk bnoB (bitmap_bytes used) bsdX dX
-                  pidv dq dqb dqs m M K eb b lks Upr HK Hpk Hsize Hsp Hthr Hs2 Hs5 Hs6 Hs8 Hkk Hbelow
+                  pidv dq dqb dqs m M K eb b lks Upr HK Hsize Hsp Hthr Hs2 Hs5 Hs6 Hs8 Hkk Hbelow
                   with "Hcg Hcnt Hextc Hextm Htext Hkdata Hpc Hpenv Hbio Hprocs Hframe Hppid Hsbsz Hsbbm Hsl Hop Hlk [Hcont]").
         { iApply (wp_next_shift (b := true) (CIDa := CIDx) (CIDb := CID1) ltac:(wp_next_chain)
                     with "Hcont"). }
@@ -3278,7 +3272,7 @@ Section BallocScan.
                           ltac:(rewrite Hbm; wp_next_chain) with "Hextm") as "Hextm".
              iApply (ba_exhaust (CID0 := CID15)  γs j γfs γd bn γ γpr γu cov logstart
                        bmapstart size dev u cr Sb kk bnoB (bitmap_bytes used) bsdX dX
-                       pidv dq dqb dqs m SA K eb b lks Upr HK Hpk Hsize HSAsp HSAthr HSAs2
+                       pidv dq dqb dqs m SA K eb b lks Upr HK Hsize HSAsp HSAthr HSAs2
                        HSAs5 HSAs6 HSAs8 Hkk Hbelow
                        with "Hcg Hcnt Hextc Hextm Htext Hkdata Hpc Hpenv Hbio Hprocs Hframe Hppid Hsbsz Hsbbm Hsl Hop Hlk [Hcont]").
              { iApply (wp_next_shift (b := true) (CIDa := CIDx) (CIDb := CID15)
@@ -3401,7 +3395,6 @@ Section BallocMain.
       let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
       (K_balloc <= K)%nat ->
       log_geom_ok cov logstart ->
-      printk_gen_contract (kt := KT1) γpr γu γd ->
       0 < size <= BPB ->
       0 <= bmapstart ->
       bmapstart ∈ cov ->
@@ -3459,7 +3452,7 @@ Section BallocMain.
           WP (Loop : expr riscv_lang)) -∗
       WP (Loop : expr riscv_lang).
   Proof.
-    intros pcE pj ret_tgt HK Hgeom Hpk Hsize Hbm0 Hbmcov Hbmlog Hcred Hj Hgl Ha0 Hbelow.
+    intros pcE pj ret_tgt HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hcred Hj Hgl Ha0 Hbelow.
     pose proof HK as HK'. 
     pose proof Hsize as Hsz'. rewrite BPB_value in Hsz'.
     pose proof Hgeom as [Hcovok Hlogsub].
@@ -4372,7 +4365,7 @@ Section BallocMain.
     iApply (ba_scan γs j γl γu γd γk pd pav pu γfs bn γ γpr cov logstart
               bmapstart size dev used u cr Sb kk bnoB bsd0 d0 pidv dq dqb dqs
               m K eb b lks Upr (Z.to_nat BPB)
-              HK Hpk Hgeom Hsize HbnoB Hbmcov Hbmlog Hok Hkk Hj Hgl Hcred
+              HK Hgeom Hsize HbnoB Hbmcov Hbmlog Hok Hkk Hj Hgl Hcred
               CIDb33 0 W4 ba_fuel_full ba_bi_zero HW4sp HW4thr
               HW4a0 HW4a4 HW4s1 HW4s2 HW4s3 HW4s4 HW4s5 HW4s6 HW4s7 HW4s8 Hbelow
               with "Hcg Hcnt Hextc Hextm Htext Hkdata Hpc Hpenv Hbio Hlctx Hprocs Hframe Hppid Hsbsz Hsbbm Hdevi Hdgeom
@@ -4428,7 +4421,7 @@ Section BallocMain.
                            pidv dq dqb dqs m K eb b lks Upr.
   Proof.
     cbv beta delta [wp_balloc_sconf_body].
-    intros pcE pj ret_tgt HK Hgeom Hpk Hsize Hbm0 Hbmcov Hbmlog Hj Hgl Ha0 Hbelow.
+    intros pcE pj ret_tgt HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hj Hgl Ha0 Hbelow.
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc #Hkdata #Hpenv #Hbio #Hlctx Hppid
               Hsbsz Hsbbm #Hbminv #Hprocs #Hdevi #Hdgeom #Hdlock Hsl Hop Hcont".
     iDestruct (log_op_openS with "Hop") as (Sb) "[Hop Htx]".
@@ -4439,7 +4432,7 @@ Section BallocMain.
     iApply (ba_main γs j γl γu γd γk pd pav pu bn γ γfs
               cov logstart bmapstart size dev γpr u false Sb
               pidv dq dqb dqs m K eb b lks
-              Upr HK Hgeom Hpk Hsize Hbm0 Hbmcov Hbmlog ltac:(discriminate)
+              Upr HK Hgeom Hsize Hbm0 Hbmcov Hbmlog ltac:(discriminate)
               Hj Hgl Ha0 Hbelow
               with "Hcg Hcnt Hextc Hextm Htext Hpc Hkdata Hpenv Hbio Hlctx Hppid
                     Hsbsz Hsbbm Hbminv Hprocs Hdevi Hdgeom Hdlock Hsl Hop [Hcont Htx]").

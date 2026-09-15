@@ -35,16 +35,6 @@
    three values must be PINNED because the branches read them; here they are
    only passed to printk / vmfault and their identity is irrelevant.)
 
-   printk IS THE ASSUMED GENERAL PATH, TAKEN AS A HYPOTHESIS.  [PRINTK_GEN]'s
-   only instance is [LinkPrintk]'s [Axiom], so instantiating the functor
-   here would carry that axiom into usertrap's [Print Assumptions] and, through
-   the trampoline, into everybody's.  [SpecPrintk.printk_gen_contract] is
-   the [Prop] twin of [SpecPanic]'s credentials for exactly this reason, so
-   [ut_56] takes it as an ordinary [->] premise and pushes the obligation up.
-   ProofProcdumpLoop.v and ProofBalloc.v are the two worked call sites.  The
-   vararg obligation is free: every conversion in both format strings is
-   [%lx]/[%d], i.e. [PkANum], and [pk_desc_res _ PkANum = True]
-   ([UsertrapAux.ut_fmt{1,2}_descs_res]).
 
    VMFAULT IS THE ONE CALLEE THAT MOVES THE PROCESS RECORD, and it is taken
    over the SAME accessor copyin/copyout use ([ProcInv.proc_priv_copy]): it
@@ -121,7 +111,7 @@ Set Printing Depth 40.
 
 Require Import UserFd.   (* [ufdG] -- the class a minted user slot needs *)
 Module UtArms (PR : PREPARE_RETURN) (KI : KILLED) (KE : KEXIT) (YI : YIELD)
-              (SK : SETKILLED) (VM : VMFAULT).
+              (SK : SETKILLED) (VM : VMFAULT) (Printk : PRINTK_GEN).
 
 (* the tail's three blocks, at this file's callee instances: +0x56 and +0xd0
    both end in [ut_a6], +0xd0's failure arm in [ut_56], and +0xe8's two arms
@@ -235,7 +225,6 @@ Section Ut56.
       (gn : gname) (cs : gset gname) (pid : mword 32)
       (* the deposit's families, relayed to the tails *)
       (fdep : sfam) (Wk : UexecSlot.uvis) :
-    printk_gen_contract (kt := KT1) (fsc_printk) (fsc_uart) (fsc_disk) ->
     ut_wf N ->
     (* THE GENERATION THE PROLOGUE KEPT, relayed to the tail below: the
        record this arm parks is the entry's incarnation, which is what the
@@ -295,7 +284,7 @@ Section Ut56.
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hpk Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
+    intros Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
@@ -445,7 +434,8 @@ Section Ut56.
       by (rewrite /M5 upd_ne; [exact HM4s1 | reg_neq]).
     assert (HcsM5 : ut_cs m0 M5)
       by (rewrite /M5; apply ut_cs_insert; [vm_compute; reflexivity | exact HcsM4]).
-    iApply (Hpk CID XI M5 nx false (un_pj N) DfracDiscarded ut_fmt1
+    iApply (Printk.wp_printk_gen_sconf (CID := CID) (XI := XI) KT1 _ _ _
+              M5 nx false (un_pj N) (dqf := DfracDiscarded) ut_fmt1
               ut_fmt1_descs false lks ltac:(lia) ut_fmt1_len ut_fmt1_nonul
               ut_fmt1_kinds ut_fmt1_ndescs
               with "Hcg Htext Hkd Hpc Hcpu Hpenv [Hf1] []").
@@ -556,7 +546,8 @@ Section Ut56.
       apply ut_cs_insert; [vm_compute; reflexivity |].
       apply ut_cs_insert; [vm_compute; reflexivity |].
       apply ut_cs_insert; [vm_compute; reflexivity | exact HcsP1']. }
-    iApply (Hpk CID XI MA nx false (un_pj N) DfracDiscarded ut_fmt2
+    iApply (Printk.wp_printk_gen_sconf (CID := CID) (XI := XI) KT1 _ _ _
+              MA nx false (un_pj N) (dqf := DfracDiscarded) ut_fmt2
               ut_fmt2_descs false lks ltac:(lia) ut_fmt2_len ut_fmt2_nonul
               ut_fmt2_kinds ut_fmt2_ndescs
               with "Hcg Htext Hkd Hpc Hcpu Hpenv [Hf2] []").
@@ -757,7 +748,6 @@ Section UtD0.
       (gn : gname) (cs : gset gname) (pid : mword 32)
       (* the deposit's families, relayed to the tails *)
       (fdep : sfam) (Wk : UexecSlot.uvis) :
-    printk_gen_contract (kt := KT1) (fsc_printk) (fsc_uart) (fsc_disk) ->
     ut_wf N ->
     (* THE GENERATION THE PROLOGUE KEPT, relayed to the tail below: the
        record this arm parks is the entry's incarnation, which is what the
@@ -817,7 +807,7 @@ Section UtD0.
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hpk Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
+    intros Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
@@ -1087,7 +1077,7 @@ Section UtD0.
       iDestruct ("Hownback" $! U sts cs with "Hpv Hufr Hch Hsy") as "Hown".
       iApply (ut_56 Rsys N U0 U pt ksp m0 mr av nx
                 mie_v menvcfg0 epv scv lks sts gn cs pid fdep Wk
-                Hpk Hwf' Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmrsp Hmrs1 Hcsmr
+ Hwf' Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmrsp Hmrs1 Hcsmr
                 Hmiev Hmenvv Hrd Hnec
                 with "Htext Hpc Hcg [-Hframe Hkc Hcont] Hframe Hkc Hmyp Hcont").
       iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu Hcsrs Hclm [-]").

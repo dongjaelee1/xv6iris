@@ -2,5 +2,6 @@
    balloc is ASSUMED (LinkBalloc.v supplies the single Axiom instance), so
    bmap counts as proven-with-caveat in tools/proof_coverage.py. *)
 Require Import LinkBalloc LinkBread LinkBrelse LinkLogWrite ProofBmap.
+Require Import LinkPrintk.
 
-Module Bmap := BmapProof Balloc Bread Brelse LogWrite.
+Module Bmap := BmapProof Balloc Bread Brelse LogWrite PrintkGen.

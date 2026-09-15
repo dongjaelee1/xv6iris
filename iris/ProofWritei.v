@@ -157,7 +157,7 @@ Set Printing Depth 40.
 (*  Everywhere else [dist] is the literal [0%nat].                        *)
 (* ===================================================================== *)
 Module WriteiProof (BM : BMAP) (BR : BREAD) (BL : BRELSE) (LW : LOG_WRITE)
-                   (EC : EITHER_COPYIN) (IU : IUPDATE) : WRITEI.
+                   (EC : EITHER_COPYIN) (IU : IUPDATE) (Printk : PRINTK_GEN) : WRITEI.
 
 Notation WI := KernelSyms.writei.
 
@@ -2113,7 +2113,6 @@ Section WriteiLoop.
     M !!! Regidx Rs3 = (mword_of_int (Z.of_nat tot) : mword 64) ->
     M !!! Regidx Rs9 = (mword_of_int 1024 : mword 64) ->
     M !!! Regidx Rs8 = (mword_of_int (-1) : mword 64) ->
-    printk_gen_contract (kt := KT1) (ba_pr A) fsc_uart fsc_disk ->
     (* THE ORDER PREMISE.  Every callee this iteration reaches that carries
        one wants its own rank: bread and brelse want "bcache" (4,
        SpecBread.v / SpecBrelse.v), log_write wants "log" (3,
@@ -2181,7 +2180,7 @@ Section WriteiLoop.
       intros CID0 tot bmI dataI wroteI PI nI SI M
              Htotlt HwfI HhzI HsizedI HcovSI HcovTI HrangeI HkerI HusrI HextI
              HW1 HW2 HW3 HW4 HW5 HWsb Hfresh
-             Hsp Hs5 Hs7 Hs4 Hs2 Hs6 Hs3 Hs9 Hs8 Hprkc Hbelow;
+             Hsp Hs5 Hs7 Hs4 Hs2 Hs6 Hs3 Hs9 Hs8 Hbelow;
       [ exfalso; pose proof (wi_blocks_pos (off + tot) (n - tot) ltac:(lia)); lia |].
     remember ((off + tot) `div` BSIZE)%nat as fbn eqn:Hfbne.
     remember ((off + tot) `mod` BSIZE)%nat as o eqn:Hoe.
@@ -2297,7 +2296,7 @@ Section WriteiLoop.
               HKbm
               (wi_bmap_need_ok (ba_bms A) (S W) nI SI (bmap_ind fbn)
                  ltac:(lia) HW2)
-              Hgeom0 Hgok Hprkc
+              Hgeom0 Hgok
               ltac:(intros Hc; exact (proj1 (bool_decide_eq_true _) Hc))
               Hfbnlt HwfI Hj Hgl HA3a0 HA3a1
               with "Hcg Hcnt Hextc Hextm Htext Hpc Hkdata Hprkenv Hpanenv Hbio Hrow Hlctx Hidev Hmap
@@ -3630,7 +3629,7 @@ Section WriteiLoop.
                             pose proof (wi_blocks_pos (off + (tot + mm))%nat
                                           (n - (tot + mm))%nat ltac:(lia));
                             lia)
-                      HG3sp HG3s5 HG3s7 HG3s4 HG3s2 HG3s6 HG3s3 HG3s9 HG3s8 Hprkc Hbelow
+                      HG3sp HG3s5 HG3s7 HG3s4 HG3s2 HG3s6 HG3s3 HG3s9 HG3s8 Hbelow
                       with "Hcg Hcnt Hextc Hextm Htext Hpc Hkdata Hprkenv Hbio Hlctx
                             Hkenv Hprocs
                             Hdevi Hdgeom Hdlock Hframe Hidev Hinum
@@ -4090,7 +4089,7 @@ Section WriteiMain.
   Proof.
     cbv beta delta [wp_writei_gen_body].
     intros pcE pj src ret_tgt HK Hcost Hgeom Hist Hicov Hilog Hnib Hadr Hdtnz Hstab Hnlk
-           Hwf Hhz Hcovin Hsum Hszdn Hgok Hprkc Hj Hgl Ha0 Ha1 Ha3 Ha4 Hbelow.
+           Hwf Hhz Hcovin Hsum Hszdn Hgok Hj Hgl Ha0 Ha1 Ha3 Ha4 Hbelow.
     (* the whole allocation side travels as ONE record from here down *)
     set (A := MkBmAlloc icfg_log fsc_bmapstart fsc_size dqb dqbs fsc_printk).
     pose proof HK as HK'. 
@@ -5060,7 +5059,7 @@ Section WriteiMain.
               (* the loop is entered at the caller's own state, so the
                  single-block clause is four reflexivities *)
               ltac:(unfold wi16_fresh; intros _; split_and!; reflexivity)
-              HU3sp HU3s5 HU3s7 HU3s4 HU3s2 HU3s6 HU3s3 HU3s9 HU3s8 Hprkc Hbelow
+              HU3sp HU3s5 HU3s7 HU3s4 HU3s2 HU3s6 HU3s3 HU3s9 HU3s8 Hbelow
               with "Hcg Hcnt Hextc Hextm Htext Hpc Hkdata Hprkenv Hbio Hlctx Hkenv
                     Hprocs
                     Hdevi Hdgeom Hdlock Hframe Hidev Hinum
@@ -5095,7 +5094,7 @@ Section WriteiMain.
   Proof.
     cbv beta delta [wp_writei_sconf_body].
     intros pcE pj src ret_tgt HK Hcost Hgeom Hist Hicov Hilog Hnib Hadr Hdtnz Hstab Hnlk
-           Hwf Hhz Hcovin Hsum Hszdn Hgok Hprkc Hj Hgl Ha0 Ha1 Ha3 Ha4 Hbelow.
+           Hwf Hhz Hcovin Hsum Hszdn Hgok Hj Hgl Ha0 Ha1 Ha3 Ha4 Hbelow.
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc #Hkdata #Hprkenv #Hbio #Hlctx #Hkenv
               Hidev Hinum
               Hmeta Hmap Hblocks Hsb Hszc Hbmsc #Hbminv #Hireg Hdn Hsrc
@@ -5106,7 +5105,7 @@ Section WriteiMain.
               ip inum bm data dn dn0 user off n src_bytes U ncount Sb0
               pidv dq dqd dqn dqs dqb dqbs m K eb b lks
               HK Hcost Hgeom Hist Hicov Hilog Hnib Hadr Hdtnz Hstab Hnlk
-              Hwf Hhz Hcovin Hsum Hszdn Hgok Hprkc Hj Hgl Ha0 Ha1 Ha3 Ha4 Hbelow
+              Hwf Hhz Hcovin Hsum Hszdn Hgok Hj Hgl Ha0 Ha1 Ha3 Ha4 Hbelow
               with "Hcg Hcnt Hextc Hextm Htext Hpc Hkdata Hprkenv Hbio Hlctx Hkenv
                     Hidev Hinum
                     Hmeta Hmap Hblocks Hsb Hszc Hbmsc Hbminv Hireg Hdn Hsrc

@@ -72,7 +72,39 @@ the only case outside it.
   `echo_alen_le5` are deleted — nothing reads an argument's offset or length
   as a number any more. What remains is `echo_off_0 = 0` (true of every line,
   `wl_off_0`) and `echo_alen_0 = 4` (the COMMAND NAME, which stays "echo").
-- **THE LENGTH IS GONE EVERYWHERE BUT `UkSh.v`.** `UConsLine.ush_disc_line`
+- **THE ENTRY'S STACK ROOM IS AN INEQUALITY.** `echo_sp_final`'s
+  `kxc_sp_final 0x4000 alen 3 = 0x3FB0` is gone. `KexecDefs.kxc_span` /
+  `kxc_sp_ge` / `kxc_sp_final_ge` bound how far down the push can reach —
+  each argument costs its bytes, its NUL and at most fifteen of alignment;
+  the vector its words and fifteen more — and `UShEcho.echo_argv_fits` is
+  the side condition that earns echo's twelve-word frame its room. A line
+  long enough to crowd that frame off the stack page is a line the claim
+  must not be about, and now it says so.
+- **THE EXEC CHANNEL COUNTS TO `length echo_ws`.** `echo_args_det`,
+  `echo_argv_is`, `UShEchoOut.echo_out_argv_of_image` and `UShEchoPay`
+  state the count and the per-index rows at the word list; the `Hna`
+  derivation counts the vector's arguments to it by the same NULL-terminator
+  argument as before, and `echo_ws_lt10` is what puts the vector's own
+  addresses in machine range. No statement in the exec chain says 3.
+- **THE ARGV NODE IS READ OUT OF THE HEAP BY INDUCTION.**
+  `UShEcho.echo_node_row` is one argument's four rows and
+  `echo_node_rows_of_cmd` inducts on the count; `echo_node_img` is stated
+  at `length echo_ws`. This was twelve `iDestruct`s at indices 0/1/2.
+  `uheap`'s readings are pure, so the heap survives the induction.
+- **THE ARITY IS THE WORD LIST'S, up to the node.** `UkShEcho`'s argv-node
+  vocabulary — `echo_off_lt`, `echo_toks_lookup`, `echo_cmd_args_length` /
+  `_lookup`, `echo_argv_bytes`, `echo_cmd_str` / `_word` / `_cap` — is
+  stated at `length echo_ws`, not 3. `EchoDisc.echo_ws_pos` and
+  `echo_ws_lt10` name the two bounds a caller owes.
+- **THE LENGTH IS GONE.** Three sites still name 17, and each is a
+  deliberate one: the two anti-vacuity demos at a literal wire
+  (`EchoOut.v`, `EchoLinksPro.v`), and `UkSh`'s check that the line fits
+  `getcmd`'s buffer — a SIDE CONDITION on the line, flagged as such in
+  place. `UkSh`'s three closed `forallb`s over seventeen indices are gone:
+  its byte rows are `EchoDisc.echo_line_byte_nl` / `_ncr` / `_nonzero` and
+  `echo_line_nl_val`. `ush_echo_first` stays literal on purpose — it is the
+  COMMAND NAME's first byte.
+- **Formerly:** `UConsLine.ush_disc_line`
   divides by `length echo_line`, `UShEcho.echo_line_nonul` and
   `UkShEcho.echo_off_lt` are stated at it, and `ush_line_toks` reports it —
   none of them says 17. `EchoDisc.echo_line_nl_at_end` is where the closing
@@ -98,22 +130,51 @@ premise once the word list is a parameter.
 
 ## What is left
 
-1. **`UkSh.v`'s OWN WALK** still reads 17 at twelve sites — the shell's
-   `gets` loop and its per-byte row. These are the last consumers of
-   `EchoDisc.echo_line_length`; the rest of the tree spends
-   `echo_line_pos`. Several are `rewrite echo_line_length; intro Hj`
-   feeding a `do 17 destruct`, so they want the line's byte laws
-   (`echo_line_byte_val_at`) rather than positivity.
-2. **THE EXEC-CHANNEL PREMISES.** `UShEchoOut.echo_out_argv_of_image` and
-   `UShEchoPay` still carry `na = 3` and per-index `alen i = echo_alen i`;
-   they should read `na = length echo_ws` and quantify.
-3. **THE CALLER'S SIDE CONDITIONS**, none of which `LineWords`/`UkShWords`
-   state: at most `MAXARGS` words (sh's parser), the line inside `getcmd`'s
-   100-byte buffer and the console's 128. The argv block's fit inside exec's
-   stack page is already an inequality (`KexecDefs.kxc_len_bound`).
-4. **THE WORD LIST ITSELF.** Once 1-3 are done, `EchoDisc.echo_ws` becomes a
-   parameter with `wl_wf` and item 3's bounds and prefix-freeness as its premises, and the theorem
-   reads `forall ws, ... -> <the claim at that line>`.
+1. **THE PARAMETERIZATION.** `EchoDisc.echo_ws` is still a `Definition`.
+   The swap test (below) says the tree no longer depends on WHICH word list
+   it is, so what is left is the mechanism for making it a variable. A
+   Section does not span files, so the options are a module functor (the
+   `design/spec-modules.md` pattern) or one more `Context` class threaded
+   the way `riscvGS Σ` already is through every file. THAT IS AN
+   ARCHITECTURAL CHOICE and wants the owner's ruling, not a unilateral
+   pick — and it is the whole of what stands between here and
+   `forall ws, wf ws -> <the claim at that line>`.
+2. **THE CALLER'S BOUNDS.** `EchoDisc.echo_ws_pos` and `echo_ws_lt10` name
+   two of them (the line has a command name; fewer words than sh's
+   MAXARGS). Still unnamed: the line inside `getcmd`'s 100-byte buffer
+   (flagged in place at `UkSh`) and the console's 128. The argv block's fit
+   inside exec's stack page is already an inequality
+   (`KexecDefs.kxc_len_bound`).
+3. **THE WORD LIST ITSELF.** Once 1-2 are done, `EchoDisc.echo_ws` becomes
+   a parameter with `wl_wf`, item 2's bounds and prefix-freeness as its
+   premises, and the theorem reads
+   `forall ws, ... -> <the claim at that line>`.
+
+## The swap test, and what it measured
+
+Point `EchoDisc.echo_ws` at a DIFFERENT word list and rebuild. Run at
+`[echo; hi; there; you]` — four words where the landed line has three, of
+lengths 4/2/5/3 where it has 4/5/5 — the whole echo cone went green except
+for sites that are deliberately AT a literal, plus exactly two real
+findings, both since fixed:
+
+- `UConsLine.ush_echo_tokens` named the token list as `[(0,4);(5,10);(11,16)]`.
+  It names `wl_toks echo_ws`, and `UkShEcho`'s bridging `replace` is gone.
+- `EchoLinksLine`'s block end was `length (line_alts !!! 0) - 2 = 12`. It is
+  `length echo_line_out`, via the new `EchoDisc.line_alts_0_length` — the
+  alternative is the output and then the prompt.
+
+WHAT LEGITIMATELY NEEDS RETARGETING at another line, and is not a defect:
+`echo_line_length`, `echo_line_string`, `echo_line_out_string`/`_length`,
+`echo_ws_length`, `EchoLinksLine.line_alts_len0`, and the anti-vacuity
+demos that embed a literal wire (`EchoOut.pro_choice_round1_live`,
+`EchoLinksPro.wr_owed_ambiguous`, `EchoDisc`'s five `demo_seg*`). Those are
+transcription checks and satisfiability witnesses; at a parameterized line
+they become computations at whatever instance is supplied.
+
+RE-RUN IT after any further structural work — it is the cheapest check
+that the cone has not re-acquired a literal dependence, and it found two
+that reading the code had missed.
 
 ## The two traps this lane keeps walking into
 

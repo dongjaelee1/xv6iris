@@ -517,7 +517,6 @@ Definition wp_dirlink_sconf_body
      record dirlink stores.  See the header. *)
   bv_unsigned inum < 16 * Z.of_nat icfg_nib ->
   bitmap_geom_ok fsc_cov fsc_logst fsc_bmapstart fsc_size ->
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (* ---- iput's premises (itrunc's geometry) ---- *)
   0 < fsc_size <= BPB ->
   0 <= fsc_bmapstart ->
@@ -781,7 +780,6 @@ Definition wp_dirlink_gen_body
      record dirlink stores.  See the header. *)
   bv_unsigned inum < 16 * Z.of_nat icfg_nib ->
   bitmap_geom_ok fsc_cov fsc_logst fsc_bmapstart fsc_size ->
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (* ---- iput's premises (itrunc's geometry) ---- *)
   0 < fsc_size <= BPB ->
   0 <= fsc_bmapstart ->

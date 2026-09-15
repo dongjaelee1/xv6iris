@@ -121,7 +121,7 @@ Section ProofSysUnlink.
   Proof.
     cbv beta zeta delta [wp_sys_unlink_body wp_sys_unlink_frame].
     intros HK HdevR Hnib0 Hgeom Hsize Hbm0 Hbmcov
-           Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hnib16 Hprk Hj Hgl Heb Harg0.
+           Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hnib16 Hj Hgl Heb Harg0.
     iIntros "Hcg Hown _ _ #Htext #Hdata Hpc #Hprenv #Hbio #Hlog
              Hseam Hgen #Hdev #Hgeo #Hdlk Hbsl #Hitab #Hitinv #Hescrows
              #Hslks #Hireg #Hropen Hsbb Hsbi Hsbs #Hbmres #Hkenv #Hprocs Hir Hpriv
@@ -222,7 +222,7 @@ Section ProofSysUnlink.
                 gili gisli gyi si qsi loyi tlyi dni bmi dati
                 m M3 (m !!! Regidx csp_rs1 : mword 64) s3x K eb b lks t
                 pl P Pmiss Phient Phitgt Phiex Phimiss
-                HK Hprk Hnib0 Hgeom Hsize Hbm0
+                HK Hnib0 Hgeom Hsize Hbm0
                 Hbmcov Hbmlog Hist0 Hcovb Hiregb Hj Hgl Heb eq_refl Hal Hn1
                 Hupt1 Hkd Hks Hdinb Htydir Hiok Hrl_datd Hdok Hddix Hdoc Hduq
                 Hnotdot Hnotdd Hfst Hal27 Hregs3 Hnlzi Hioki Hrl_dati Hdoki
@@ -247,7 +247,7 @@ Section ProofSysUnlink.
                 gili gisli gyi si qsi loyi tlyi dni bmi dati
                 m M3 (m !!! Regidx csp_rs1 : mword 64) s3x K eb b lks t
                 pl P Pmiss Phient Phitgt Phiex Phimiss
-                HK Hprk Hnib0 Hgeom Hsize Hbm0
+                HK Hnib0 Hgeom Hsize Hbm0
                 Hbmcov Hbmlog Hist0 Hcovb Hiregb Hj Hgl Heb eq_refl Hal Hn1
                 Hupt1 Hkd Hks Hdinb Htydir Hiok Hrl_datd Hdok Hddix Hdoc Hduq
                 Hnotdot Hnotdd Hfst Hal27 Hregs3 Hnlzi Hioki Hrl_dati Hdoki

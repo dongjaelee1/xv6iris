@@ -55,18 +55,6 @@
        [printk_env γpr γu γd] (the format string itself needs no premise:
        [KernelDataInv.kernel_data_string_all] mints its persistent string out of
        [kernel_data]);
-     - printk's contract as a [Prop] HYPOTHESIS
-       ([SpecPrintk.printk_gen_contract]), never as a functor argument.
-
-   *** READ THIS BEFORE TRUSTING "THE STANDING SIX". ***  [PRINTK_GEN]'s only
-   instance is [LinkPrintk]'s own [Axiom].  Instantiating the functor here
-   would put a SEVENTH entry in [Print Assumptions Balloc.wp_balloc_sconf] --
-   and, through the ripple, in bmap's and writei's too.  Carrying it as a
-   hypothesis keeps all three at the standing six, but that is NOT
-   self-containment: balloc's six are modulo a THREADED printk obligation
-   that its callers must eventually discharge, exactly the standing that
-   [SpecPanic]'s own credentials already have throughout this tree.  A reader who
-   takes the six for "depends on nothing else" is misreading it.
 
    THE BITMAP IS AN INVARIANT, NOT A PREMISE.  balloc reads BOTH superblock
    fields out of memory ([sb.size] at sb+4, [sb.bmapstart] at sb+28), so
@@ -166,7 +154,6 @@ Definition wp_balloc_sconf_body
   log_geom_ok cov logstart ->
   (* THE OUT-OF-BLOCKS ARM'S CALLEE, as a hypothesis and not a functor -- see
      the header for why that is what keeps this proof at the standing six *)
-  printk_gen_contract (kt := KT1) γpr γu γd ->
   (* ONE BITMAP BLOCK (see the header), and the [0 < size] that kills the
      +0x12 arm *)
   0 < size <= BPB ->
@@ -311,7 +298,6 @@ Definition wp_balloc_gen_body
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   (K_balloc <= K)%nat ->
   log_geom_ok cov logstart ->
-  printk_gen_contract (kt := KT1) γpr γu γd ->
   0 < size <= BPB ->
   0 <= bmapstart ->
   bmapstart ∈ cov ->

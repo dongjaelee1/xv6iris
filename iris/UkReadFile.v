@@ -300,7 +300,12 @@ Section UkReadFile.
       assert (Hab : a = MkAnode (AFile bs0) nl)
         by exact (arow_at_pinned _ _ _ _ Hrow Hav).
       subst a. cbn [an_node] in Htie, Hbytes.
-      rewrite /anode_size_ok /= /MAXFILE /BSIZE in Hsz.
+      (* the cap at [Z], factor by factor: a [/=] here computes
+         [MAXFILE * BSIZE] as a 274432-deep unary [nat] and overflows *)
+      cbn [anode_size_ok an_node] in Hsz.
+      apply Nat2Z.inj_le in Hsz. rewrite Nat2Z.inj_mul in Hsz.
+      change (Z.of_nat MAXFILE) with 268 in Hsz.
+      change (Z.of_nat BSIZE) with 1024 in Hsz.
       iFrame "Hn2". iRight. iExists off.
       (* the return value IS the clamped count, so [d] is it too.  The
          count fits a 64-bit word because the row's own SIZE CAP is what

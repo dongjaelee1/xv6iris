@@ -58,6 +58,7 @@ Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuil
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto.
+Require Import SpecPrintk.
 Require Import RegFile.
 Require Import WpNext.
 Require Import WpMmodeLeafBase.
@@ -229,6 +230,7 @@ Section ProofKforkB5.
        initproc share) and the file system's steady token (only its
        [fs_geom_ok] is read here; forkret is who pays the file system). *)
     FileInv.is_ftable γft γf -∗
+    SpecPrintk.printk_env (FsCfg.fsc_printk) (FsCfg.fsc_uart) (FsCfg.fsc_disk) -∗
     park_world γs -∗
     park_token γs -∗
     FirstTok.first_done -∗
@@ -302,7 +304,7 @@ Section ProofKforkB5.
     WP (Loop : expr riscv_lang).
   Proof.
     intros HK Hlvl Hj Hgl Hrest Hb Hm20 Hm21 Hm9 Hurun Hkfd Hkgn Hkch Hkpid Hfresh.
-    iIntros "Hcg Hown Hpay #Htext Hpc #Hpinv #Hwl #Hft #Hworld #Htoken #Hfdone Hheld Hhart Hpriv Hfrag Hcrow Hprow Hsg34 Hpr34 #Hgslot #Hgpid Hjslot #Hmk
+    iIntros "Hcg Hown Hpay #Htext Hpc #Hpinv #Hwl #Hft #Hpe #Hworld #Htoken #Hfdone Hheld Hhart Hpriv Hfrag Hcrow Hprow Hsg34 Hpr34 #Hgslot #Hgpid Hjslot #Hmk
              Hfd Hirsp Hbsl Hkfree #Hks Hctx Hcont".
     (* -------------------------------------------------------------- *)
     (* MOVE 1a: build [proc_lock_res γs γl (proc_addr j)] at USED, via the *)
@@ -342,6 +344,7 @@ Section ProofKforkB5.
       iSplitR; [iExact "Hpinv"|].
       iSplitR; [iExact "Hks"|].
       iSplitR; [iExact "Hdcaps"|].
+      iSplitR; [iExact "Hpe"|].
       iSplitR; [iExact "Hwl"|].
       iSplitR; [iExact "Hft"|].
       iSplitR; [iExact "Hgeom"|].

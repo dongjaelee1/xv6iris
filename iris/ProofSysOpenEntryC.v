@@ -257,7 +257,6 @@ Section ProofSysOpenEntryC.
     (plen < 128)%nat ->
     1 < fsc_ninodes -> fsc_ninodes <= 16 * Z.of_nat icfg_nib -> fsc_ninodes < 2 ^ 31 ->
     16 * Z.of_nat icfg_nib <= 2 ^ 16 ->
-    printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
     (sys_open_slots <= ns)%nat ->
     (jx < NPROC)%nat -> gs !! jx = Some gl ->
     eb = true ->
@@ -338,7 +337,7 @@ Section ProofSysOpenEntryC.
   Proof.
     intros HK HdevR Hnib0 Hgeom Hsize Hbm0 Hbmcov
            Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr Hplen Hni1 Hni2 Hni3 Hush
-           Hprkc Hnsb Hj Hgl Heb Hlkempty Hpof Hom Hal23 Hsp0 HNsp HNthr HNs0 HNs2 HNs3
+ Hnsb Hj Hgl Heb Hlkempty Hpof Hom Hal23 Hsp0 HNsp HNthr HNs0 HNs2 HNs3
            Hal.
     pose proof HK as HKfull.
     destruct (so_kb K HK) as (HKcr & HKna & HKai & HKas & HKbo & HKeo & HKil &
@@ -505,7 +504,7 @@ Section ProofSysOpenEntryC.
               ltac:(assert (E31 : (2 ^ 31 = 2147483648)%Z)
                       by (vm_compute; reflexivity); lia)
               Hni1 Hni2 Hni3 Hush
-              soc_tfile_nz FsAbsCreateFire.T_FILE_ty_ok Hprkc
+              soc_tfile_nz FsAbsCreateFire.T_FILE_ty_ok
               ltac:(unfold create_units; lia) Hnsb Hj Hgl
               HN5a1 HN5a2 HN5a3 Heb
               with "Hcg Hown Htext Hpc Hdata Hpre Hbio Hlog Hkenv Hitab

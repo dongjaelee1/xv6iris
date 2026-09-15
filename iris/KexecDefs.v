@@ -166,6 +166,7 @@ Require Import RiscvLang RiscvPtsto.
 Require Import WpLock.
 Require Import KernelDataInv.
 Require Import SpecPanic.
+Require Import SpecPrintk.  (* [printk_env] *)
 Require Import FdSlots.
 Require Import ProcGeom.
 Require Export SwtchCtx.
@@ -345,6 +346,35 @@ Proof.
   pose proof (kxc_sp_le_top top len argc). lia.
 Qed.
 
+(* ...AND HOW FAR DOWN THE PUSH CAN REACH.  Each argument costs its own
+   bytes, its NUL and at most fifteen of alignment; the vector costs its
+   words and at most fifteen more.  A caller that needs ROOM LEFT BELOW
+   the block -- an entry frame, say -- gets it from this and a bound on
+   the arguments, rather than from the block's address as a number. *)
+Fixpoint kxc_span (len : nat -> nat) (i : nat) : Z :=
+  match i with
+  | O => 0
+  | S i' => kxc_span len i' + (Z.of_nat (len i') + 16)
+  end.
+
+Lemma kxc_sp_ge (top : Z) (len : nat -> nat) (i : nat) :
+  top - kxc_span len i <= kxc_sp top len i.
+Proof.
+  induction i as [| i IH]; cbn [kxc_sp kxc_span]; [lia |].
+  pose proof (kxc_round16_gt (kxc_sp top len i - (Z.of_nat (len i) + 1))).
+  lia.
+Qed.
+
+Lemma kxc_sp_final_ge (top : Z) (len : nat -> nat) (argc : nat) :
+  top - kxc_span len argc - (8 * (Z.of_nat argc + 1) + 16)
+  <= kxc_sp_final top len argc.
+Proof.
+  rewrite /kxc_sp_final.
+  pose proof (kxc_round16_gt (kxc_sp top len argc
+                              - 8 * (Z.of_nat argc + 1))).
+  pose proof (kxc_sp_ge top len argc). lia.
+Qed.
+
 (* AN ARGUMENT IS SHORTER THAN THE PAGE IT FITTED IN.  The C tested the
    pointer after every push, so [len i + 1] cannot exceed the distance the
    pointer had left -- which is what bounds a string's length without
@@ -486,6 +516,7 @@ Definition fs_fabric
      the kexec cone threads them down to [bread]; [FsReady.disk_geom_agree]
      is the bridge in the other direction. *)
   (FsReady.fs_ready ∗
+   printk_env fsc_printk fsc_uart fsc_disk ∗
    procs_inv gs ∗
    disk_geom fsc_disk pd pav pu ∗
    is_lock fsc_dlock d_lock "virtio_disk"%string (disk_res_at fsc_disk pd pav pu))%I.
@@ -527,12 +558,12 @@ Proof.
      named frame pays a goal-side conversion per hypothesis -- the same
      measurement (107.7 s and 90.6 s at two call sites) that made the old
      constructor lemma worth having. *)
-  iIntros "(#Hrdy & #Hprocs & #Hgeom & #Hdlock)".
+  iIntros "(#Hrdy & #Hpk & #Hprocs & #Hgeom & #Hdlock)".
   iDestruct (FsReady.fs_ready_icache with "Hrdy") as "(#Hitab & #Hitinv & #Hesc & #Hslks)".
   iDestruct (FsReady.fs_ready_region with "Hrdy") as "[#Hireg #Hropen]".
   iDestruct (FsReady.fs_ready_disk with "Hrdy") as "[#Hdevi _]".
   iSplitR; [iApply (FsReady.fs_ready_data with "Hrdy") |].
-  iSplitR; [iApply (FsReady.fs_ready_panic with "Hrdy") |].
+  iSplitR; [iApply (printk_env_panic with "Hpk") |].
   iSplitR; [iApply (FsReady.fs_ready_bio with "Hrdy") |].
   iSplitR; [iApply (FsReady.fs_ready_log with "Hrdy") |].
   iSplitR; [iApply (FsReady.fs_ready_seam with "Hrdy") |].

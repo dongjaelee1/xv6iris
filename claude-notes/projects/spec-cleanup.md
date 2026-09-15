@@ -346,8 +346,14 @@ Derived corollaries, in order of what applications actually use:
   (`FsAbs.top_frag_1_nview_excl` is the algebra), so any client `nview`
   share contradicts the chain node's own premises.  The read side has no
   such wall because its arm leaves a client share outstanding on purpose.
-  The open channel is `AppInv.app_step` on the delta, and cutting that
-  row is the write side's R-a — a campaign.
+  What is NOT missing is the R-c pattern: `awrite_full_at`'s phase 1
+  already hands the caller the offset, the chunk bytes AND the row's
+  pre-content (`FsAbsWriteFire.wri_pre`), and phase 2 the delta, all in
+  scope where `Q (S k)` is built — so a cursor CAN record what happened
+  per chunk.  What is missing is the ANCHOR for the first chunk's
+  pre-content, and the tree's candidate is the caller's own
+  `AppInv.app_step` claim.  Cutting that anchored cursor is the write
+  side's R-a — a campaign, and it wants an owner ruling on the anchor.
   **(ii) ROW 16 CARRIES NO RETURN BLANKET.**  `UexecExecInst.xv6_spost`'s
   read row has `⌜fileread_ret …⌝` beside the extra and the write row
   deliberately does not, so at a PIPE (where the arm is `emp`) a U-tier

@@ -272,13 +272,25 @@ the tree:
 
 The read side has no such wall because the read arm leaves a client share
 outstanding ON PURPOSE (`ic_rd_arm` at 3/4) — which is what makes
-`wp_uk_cat_read_learns` non-vacuous.  A write-side content row about the
-ABSTRACT file therefore needs a channel that is not a pin, and the tree
-has one: the caller's step on the delta (`AppInv.app_step` inside
-`awrite_full_at`'s phase 1, where `FsAbsWriteFire.wri_pre` hands the
-caller the PRE-row `AFile bs0` and phase 2 the post-map's reading).  The
+`wp_uk_cat_read_learns` non-vacuous.
+
+**AND THE R-c PATTERN IS NOT WHAT IS MISSING — THE ANCHOR IS.**  Read's
+R-c is "the offset is REPORTED by the receipt instead of owned", and the
+write side has the same thing one level in: `awrite_full_at`'s phase 1
+hands the caller `FsAbsWriteFire.wri_pre (abs_view I) i off bs bs0 nl`
+— which NAMES the offset `off`, the chunk's bytes `bs` and the row's
+PRE-CONTENT `AFile bs0` — and phase 2 hands it
+`abs_view I' = delta_write i off bs (abs_view I)`.  Both are in scope
+exactly where `Q (S k)` is built, so a caller CAN record, per fired
+chunk, "the file's row was `bs0` and became the splice of `bs` at
+`off`", and chain that across the whole call.  What it cannot do is
+identify the FIRST chunk's `bs0` with anything it knew before the call:
+that identification is what a pin would be, and the pin is excluded.  So
+the missing piece is an ANCHOR, and the tree already has the right kind
+of one — `AppInv.app_step i I (delta_write …)`, the application's own
+claim over the `aview`, which every node's phase 1 already pays.  The
 member is stated at an arbitrary `Q` precisely so that channel is open.
-**Naming and cutting that row is the write side's R-a, and it is a
+**Cutting the anchored cursor is the write side's R-a, and it is a
 campaign, not a lane** (see §5).
 
 ### 3d. The pipe member — `iris/UkWritePipe.v`
@@ -326,11 +338,17 @@ same conjunct.
    conclusion, and every row-16 consumer's post shape.  It is what makes
    the pipe write member say anything at all, and it makes the other two
    members' `_ret` derivations redundant.
-2. **THE ABSTRACT CONTENT ROW at the inode arm** (§3c): the write
-   analogue of `FsAbsReadFire.aread_commit_at_pinned_self` — a chain
-   builder at a cursor that records the delta, stated against the
-   application's claim rather than against a pin, since a pin cannot be
-   held across a write.  The write side's R-a; a campaign.
+2. **THE ANCHORED CURSOR at the inode arm** (§3c).  Not a new row in the
+   post: a CHAIN BUILDER, the write analogue of
+   `FsAbsReadFire.aread_commit_at_pinned_self`, that records each fired
+   chunk's `(off, bs, bs0)` into `Q (S k)` — all three are already in
+   scope at phase 2 — and anchors the first chunk's `bs0` to the
+   caller's `AppInv.app_step` claim rather than to a pin, since a pin
+   cannot be held across a write.  With it the member's success arm reads
+   "the file now holds the splice of the program's own bytes at the
+   reported offset", which is the write side's §6-figure.  The write
+   side's R-a; a campaign, and the one that needs an owner ruling on
+   whether the anchor is the app claim or something new.
 3. **THE PIPE'S TWO ROWS**, unchanged from RD-5 and still kernel-side:
    there is no byte-queue ghost (`PipeInvDefs.pipe_names`' four gnames
    are all about the ENDS), so neither "the bytes the writer pushed are

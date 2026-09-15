@@ -738,7 +738,6 @@ Section UkShFork.
     (* the lease's two laws the fork arm spends (lane IO-LEAF, step 3):
        premises of the obligation, see [UkSh.ush_rest_l] *)
     (forall i : nat, ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i) ->
-    (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ UkSh.ush_at N γp i) ->
     (* ...and the payload's OWN assembler (M4b(2)): what the fork panic
        leaves is the banner-owed credential, and the exit is paid from it *)
     (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
@@ -768,7 +767,7 @@ Section UkShFork.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline Hszlo Hszal Hszok
-           Hpm1 Hpm2 Hpmwb Hwbl.
+           Hpm1 Hpmwb Hwbl.
     iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hjt #Hkl #Hchl #Hplaw %Hfd0 Hstd
              Hdat Hsz Hbuf Hrun".
     iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpid & Hpos)".
@@ -776,16 +775,16 @@ Section UkShFork.
     iAssert ((∃ np : nat, ⌜UkSh.ush_bnd np⌝ ∗ Pm np
                 ∗ ⌜UkSh.ush_fd0c l /\ UkSh.ush_fd1p l /\ UkSh.ush_fd2p l⌝
                 ∗ Wc np 3%nat)
-             ∨ UkSh.ush_posb N γp T Wc Wb Pm l 3%nat)%I
-      with "[Hpos]" as "[Hcon | Hpos]".
+             ∨ (T ∗ UkSh.ush_pos N γp))%I
+      with "[Hpos]" as "[Hcon | [#HT Hpos]]".
     { rewrite /UkSh.ush_posb. iDestruct "Hpos" as "[Hb | Ht]"; last first.
-      { iRight. iRight. iExact "Ht". }
+      { iRight. iExact "Ht". }
       iDestruct "Hb" as (np) "(%Hbnd & Hpm & Hwc)".
-      rewrite /UkSh.ush_wcp. iDestruct "Hwc" as "[[%Hrow Hc] | Hwc]".
+      rewrite /UkSh.ush_wcp. iDestruct "Hwc" as "[[%Hrow Hc] | [%Hcl _]]".
       - iLeft. iExists np. iFrame "Hpm Hc". iPureIntro.
         split; [ exact Hbnd | exact Hrow ].
-      - iRight. iLeft. iExists np. iFrame "Hpm".
-        iSplitR; [ by iPureIntro | ]. iRight. iExact "Hwc". }
+      - (* the closed arm never reaches the body ([p < 3] at [p = 3]) *)
+        exfalso. destruct Hcl as [_ Hlt]. lia. }
     - (* ================= THE CONSOLE ARM: lend, and redeem ============= *)
       iDestruct "Hcon" as (np) "(%Hbnd & Hpm & %Hrow & Hc)".
       (* WHAT FORK1 BORROWS IS THE LEASE'S PIECES (M4b(2)): a failed fork
@@ -879,9 +878,9 @@ Section UkShFork.
         rewrite /UkSh.ush_wcp. iLeft. iSplitR; [ by iPureIntro | ].
         rewrite /ushf_wq. iDestruct "HQ" as "[HQ | HQ]";
           [ iApply (Hwbl np with "HQ") | iExact "HQ" ].
-    - (* ============ THE AFFINE ARM AND THE TAINT: the generic walk ====== *)
-      iDestruct (UkSh.ush_posb_at N γp T Wc Wb Pm Hpm2 l 3%nat with "Hpos")
-        as (np0) "[#Hbnd0 Hpos]".
+    - (* ============ THE TAINT: the generic walk (the only credential-less
+         arm since lane EXEC-SEAM, (C)) ====== *)
+      iDestruct "Hpos" as (np0) "Hpos".
       iEval (rewrite /UkSh.ush_at) in "Hpos".
       iDestruct "Hpos" as "[Hpos Hlease]".
       iApply (wp_kshf_fork_core h m f k len sz l n (fun _ : Z => True%I)
@@ -920,11 +919,10 @@ Section UkShFork.
         * iApply (ushf_rodata_shp with "Hro'").
         * iApply (UserCwd.ucwd_any_of with "Hcwd'").
         * iApply (UserChildren.uch_any_of with "Hch'").
-      + (* the re-entry: the payload comes apart on the affine arm, as
-           before *)
+      + (* the re-entry: the tainted cursor, back as it went out *)
         iIntros (Sw Sw' ret pidv) "_ _ _ _ Hlease". iModIntro.
-        iApply (UkSh.ush_posb_of N γp T Wc Wb Pm Hpm1 l 0%nat np0
-                  with "Hbnd0 [Hpos Hlease]").
+        rewrite /UkSh.ush_posb. iRight. iFrame "HT".
+        rewrite /UkSh.ush_pos. iExists np0.
         rewrite /UkSh.ush_at. iFrame "Hpos Hlease".
   Qed.
 
@@ -960,7 +958,6 @@ Section UkShFork.
     (* the lease's two laws the fork arm spends (lane IO-LEAF, step 3):
        premises of the obligation, see [UkSh.ush_rest_l] *)
     (forall i : nat, ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i) ->
-    (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ UkSh.ush_at N γp i) ->
     (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
     (forall i : nat, ⊢ Wc i 3%nat -∗ Wc i 0%nat) ->
     UkSh.sh_deps -∗
@@ -979,7 +976,7 @@ Section UkShFork.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hregs Hs1 Ha5 Hnn Hnul Hkl Hns Htoks Htlen Hline Hszlo Hszal Hszok
-           Hpm1 Hpm2 Hpmwb Hwbl.
+           Hpm1 Hpmwb Hwbl.
     iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hpcode #Hjt #Hkl #Hchl #Hplaw %Hfd0
              Hstd Hdat Hsz Hbuf Hrun".
     assert (Hbr : forall j : nat, 0 <= bv_unsigned (f j) < Z64).
@@ -1012,7 +1009,7 @@ Section UkShFork.
     iIntros (h1) "Hrun".
     iApply (wp_kshf_fork h1 m f k len toks sz l n
               Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline
-              Hszlo Hszal Hszok Hpm1 Hpm2 Hpmwb Hwbl
+              Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl
               with "Hdp Hhead Hcode Hxs Hro Hjt Hkl Hchl Hplaw [%] Hstd Hdat
                     Hsz Hbuf Hrun").
     exact Hfd0.
@@ -1138,7 +1135,7 @@ Section UkShFork.
        pays them and the discharger no longer takes them as premises --
        which is what makes [UInitSh.sh_pay_rest], a [∀] over every record,
        provable at all.  [.rodata] rides in with the table. *)
-    iModIntro. iIntros (l) "%Hc %Hpm1 %Hpm2 #Hcode #Hjt Hhead".
+    iModIntro. iIntros (l) "%Hc %Hpm1 #Hcode #Hjt Hhead".
     iDestruct (ush_jtab_ro γt with "Hjt") as "#Hro".
     iIntros (h m f k i2 n) "%Hregs %Hs1 %Ha5 %Hi2 %Hfd0 Hline Hstd [Hdat Hsz] Hbuf Hrun".
     destruct Hi2 as [[Hki2 Hi2n] Hnul2].
@@ -1157,7 +1154,7 @@ Section UkShFork.
     destruct (Hlex f k len Hline) as (Hns & toks & Htoks & Htlen).
     iApply (wp_kshm_body h m f k len toks sz l n
               Hregs Hs1 Ha5 Hnn Hnul ltac:(lia) Hns Htoks Htlen Hline
-              Hszlo Hszal Hszok Hpm1 Hpm2 Hpmwb Hwbl
+              Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl
               with "Hdp [Hhead] Hcode Hxs Hro [] Hjt Hkl Hchl Hplaw [%] Hstd
                     Hdat Hsz Hbuf Hrun").
     - iApply (UkShLoop.ushl_head_of_R N γp with "Hhead").

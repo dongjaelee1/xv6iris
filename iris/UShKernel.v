@@ -437,9 +437,6 @@ Section UShKernel.
          ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q -> ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i)
-      (Hpm2 : forall (N : uk_names Σ) (i : nat),
-         ukn_pay N = Q -> UkSh.ush_bnd i ->
-         ⊢ Pm i -∗ UkSh.ush_at N γp i)
       (Hpm3 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q -> ⊢ T -∗ Pm i -∗ UkSh.ush_at N γp i)
       (Hpmwb : forall (N : uk_names Σ) (i : nat),
@@ -469,7 +466,7 @@ Section UShKernel.
        ([UShLine.ush_posb_of_lend] is the one discharge). *)
     (forall (N : uk_names Σ) (l : list fdstate) (n : nat),
        ukn_pay N = Q ->
-       ⊢ upos γp n -∗ Ql (-1) -∗ UkSh.ush_wcp Wc Wb l n 0%nat -∗
+       ⊢ upos γp n -∗ Ql (-1) -∗ (UkSh.ush_wcp Wc Wb l n 0%nat ∨ T) -∗
          UkSh.ush_posb N γp T Wc Wb Pm l 0%nat) ->
     (forall x y : Z, Q x = Q y) ->
     tf_resume_pc (uvis_tf W) = (mword_of_int ShSyms.start : mword 64) ->
@@ -613,7 +610,7 @@ Section UShKernel.
     (* ...AND THE ERA'S WRITE CREDENTIAL, in the loop's own slot at the
        lent count (step 3): the console arm, the banner-owed closed arm,
        or the affine arm. *)
-    UkSh.ush_wcp Wc Wb (take NSTD (uvis_fd W)) n 0%nat -∗
+    (UkSh.ush_wcp Wc Wb (take NSTD (uvis_fd W)) n 0%nat ∨ T) -∗
     uslot W.
   Proof.
     intros Hbd HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf Hch0 Hpid1.
@@ -652,7 +649,6 @@ Section UShKernel.
                 (shk_img_data _ Hsub) Hx with "Ht"). }
     iApply (wp_ksh_start N γp T Hpsok_free Wc Wb Hwbwc Hwbl Pm
               (fun i => Hpm1 N i Hpayeq)
-              (fun i Hb => Hpm2 N i Hpayeq Hb)
               (fun i => Hpm3 N i Hpayeq)
               (fun i Hb => Hpmwb N i Hpayeq Hb)
               Hwbr
@@ -706,9 +702,6 @@ Section UShKernel.
          ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q -> ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i)
-      (Hpm2 : forall (N : uk_names Σ) (i : nat),
-         ukn_pay N = Q -> UkSh.ush_bnd i ->
-         ⊢ Pm i -∗ UkSh.ush_at N γp i)
       (Hpm3 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q -> ⊢ T -∗ Pm i -∗ UkSh.ush_at N γp i)
       (Hpmwb : forall (N : uk_names Σ) (i : nat),
@@ -734,7 +727,7 @@ Section UShKernel.
     (* the entry law, passed straight through: see [sh_uexec_slot] *)
     (forall (N : uk_names Σ) (l : list fdstate) (n : nat),
        ukn_pay N = Q ->
-       ⊢ upos γp n -∗ Ql (-1) -∗ UkSh.ush_wcp Wc Wb l n 0%nat -∗
+       ⊢ upos γp n -∗ Ql (-1) -∗ (UkSh.ush_wcp Wc Wb l n 0%nat ∨ T) -∗
          UkSh.ush_posb N γp T Wc Wb Pm l 0%nat) ->
     (forall x y : Z, Q x = Q y) ->
     kexec_image_ok sh_elf na alen afun sts W' ->
@@ -797,7 +790,7 @@ Section UShKernel.
     upos γp n -∗
     (* the lend, beside the position (lane KILL-PAY, K4(a); step 3) *)
     Ql (-1) -∗
-    UkSh.ush_wcp Wc Wb (take NSTD sts) n 0%nat -∗
+    (UkSh.ush_wcp Wc Wb (take NSTD sts) n 0%nat ∨ T) -∗
     uslot W'.
   Proof.
     intros Hbd HQc Hok Hcwd0 Hroom Hlen Hlzf Hch0 Hpid1.
@@ -888,7 +881,7 @@ Section UShKernel.
     (* the entry row is stated at the EXEC'ING process's table, which is
        the one the image fact says the new key carries *)
     rewrite <- Hfd.
-    iApply (sh_uexec_slot R γp cn T K Q Ql Pm Wc Wb Hrl Hpm1 Hpm2 Hpm3 Hpmwb
+    iApply (sh_uexec_slot R γp cn T K Q Ql Pm Wc Wb Hrl Hpm1 Hpm3 Hpmwb
               Hwc Hwbwc Hwbl Hwbr W' n0 n Hbd).
     - exact HQc.
     - rewrite Hpc. exact sh_start_pc.

@@ -433,7 +433,7 @@ Section UInitKernel.
     (* init's round starts at the token's own position, which at boot is
        the empty prefix ([UserConsole.uinit_tok_0]) *)
     - iApply (uinit_tok_0 cn T (UkInit.init_rd Rdl Wb) with "Hrd [Hrd0 Hbn]").
-      rewrite /UkInit.init_rd /UkInit.init_rd_cred. iFrame "Hrd0". by iLeft.
+      rewrite /UkInit.init_rd /UkInit.init_rd_cred. iFrame "Hrd0". iExact "Hbn".
   Qed.
 
   (* ------------------------------------------------------------------- *)

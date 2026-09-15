@@ -1051,9 +1051,6 @@ Section UInitSh.
        ⊢ UkSh.ush_at N γp i -∗
          UkSh.ush_lease N γp T (Pm γp) i) ->
     (forall (γp : gname) (N : uk_names Σ) (i : nat),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) -> UkSh.ush_bnd i ->
-       ⊢ Pm γp i -∗ UkSh.ush_at N γp i) ->
-    (forall (γp : gname) (N : uk_names Σ) (i : nat),
        ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
        ⊢ T -∗ Pm γp i -∗ UkSh.ush_at N γp i) ->
     (* ...AND THE PAYLOAD'S OWN ARM (step 3): the pieces and the
@@ -1082,7 +1079,7 @@ Section UInitSh.
     (forall (γp : gname) (N : uk_names Σ) (l : list fdstate) (i : nat),
        ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
        ⊢ upos γp i -∗ ucons_pay cn γp T Rdl (-1) -∗
-         UkSh.ush_wcp Wc Wb l i 0%nat -∗
+         (UkSh.ush_wcp Wc Wb l i 0%nat ∨ T) -∗
          UkSh.ush_posb N γp T Wc Wb (Pm γp) l 0%nat) ->
     (* ...AND THE LEND'S CONVERSION AT THE SHELL'S ENTRY (lane M6b): the
        round-open credential is the prompt credential at the same count
@@ -1135,7 +1132,7 @@ Section UInitSh.
        ONE place the two ends meet. *)
     UkInit.init_exec_sup_lend cn T st Wp Wb Rdl.
   Proof.
-    intros Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw.
+    intros Hpsok_free Hn0 Hst Hrl Hpm1 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw.
     subst st.
     iIntros "#Hdep #Hdp #Hplaw #Hcons (#Hinv & #Hcl0 & #Hgen & #Hpay)".
     (* E4: what crosses is the WHOLE pins law and each consumer projects *)
@@ -1247,7 +1244,7 @@ Section UInitSh.
                   (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
                      ∗ ucons_pay cn γp T Rdl (-1)
                      ∗ (UserFd.ustd (ukn_fd N) l
-                        ∗ UkInit.init_lend_cred
+                        ∗ UkInit.init_lend_cred T
                             (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
                             Wp Wb l np)) -∗ uslot W'))%I
       as "#Hcon".
@@ -1266,11 +1263,11 @@ Section UInitSh.
          the lend's conversion [Hpw]; the closed arm (slot 2 of the
          all-closed ledger); or the affine one.  The old record's ledger
          fragment is dropped: the process that execs is replaced. *)
-      iAssert (UkSh.ush_wcp Wc Wb (take NSTD fdv) np 0%nat)
+      iAssert (UkSh.ush_wcp Wc Wb (take NSTD fdv) np 0%nat ∨ T)%I
         with "[Hcred]" as "Hwcp".
       { rewrite Hl /UkInit.init_lend_cred /UkSh.ush_wcp.
-        iDestruct "Hcred" as "[[%Hl3 Hc] | [[%Hl0 Hb] | _]]".
-        - iLeft. iSplitR.
+        iDestruct "Hcred" as "[[%Hl3 Hc] | [[%Hl0 Hb] | #HT]]".
+        - iLeft. iLeft. iSplitR.
           + iPureIntro. rewrite Hl3. split_and!.
             * exists true. exact (ufd_l3_row0 _).
             * exists true. exact (ufd_l3_row1 _).
@@ -1278,9 +1275,11 @@ Section UInitSh.
           + iPoseProof (Hpw np) as "Hpw'". iApply ("Hpw'" with "Hc").
         - (* the all-closed ledger, with none of the preamble's opens landed
              yet (step 4: [UkSh.ush_lcl] at 0) *)
-          iRight. iLeft. iFrame "Hb". iPureIntro. rewrite Hl0.
+          iLeft. iRight. iFrame "Hb". iPureIntro. rewrite Hl0.
           split; [ | lia ]. exists 0%nat. split; [ lia | exact ufd_l0_lcl ].
-        - iRight. by iRight. }
+        - (* the taint: a tainted shell runs on the generic slot, and the
+             entry law's right arm is where it goes (lane EXEC-SEAM, (C)) *)
+          iRight. iExact "HT". }
       iClear "Hstd'".
       destruct (init_args_det M na alen afun Hsav Hsro Hargs) as [-> Halen].
       idtac "MARK-s4b-args-det".
@@ -1295,7 +1294,7 @@ Section UInitSh.
       pose proof (sh_slot_of_kexec (SG := uexecSG_xv6) (PS := uprogSG_free)
                     Hpsok_free Rsh γp cn T K (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
                     (ucons_pay cn γp T Rdl)
-                    (Pm γp) Wc Wb (Hrl γp) (Hpm1 γp) (Hpm2 γp) (Hpm3 γp)
+                    (Pm γp) Wc Wb (Hrl γp) (Hpm1 γp) (Hpm3 γp)
                     (Hpmwb γp) (Hwc γp) Hwbwc Hwbl (Hwbr γp)
                     1%nat alen afun fdv W' n0 np
                     (fun N0 l0 n1 => Hbd γp N0 l0 n1)
@@ -1319,7 +1318,7 @@ Section UInitSh.
                  (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
                     ∗ ucons_pay cn γp T Rdl (-1)
                     ∗ (UserFd.ustd (ukn_fd N) l
-                       ∗ UkInit.init_lend_cred
+                       ∗ UkInit.init_lend_cred T
                            (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
                            Wp Wb l np))%I
                  (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
@@ -1354,7 +1353,7 @@ Section UInitSh.
               (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
                  ∗ ucons_pay cn γp T Rdl (-1)
                  ∗ (UserFd.ustd (ukn_fd N) l
-                    ∗ UkInit.init_lend_cred
+                    ∗ UkInit.init_lend_cred T
                         (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
                         Wp Wb l np))%I).
     { iIntros "!> (_ & Hps & Hls & Hstd & Hcred)".

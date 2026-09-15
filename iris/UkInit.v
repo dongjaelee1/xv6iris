@@ -1652,9 +1652,13 @@ Section UkInit.
   (*  redemption (step 4, M3b core) are what supply a credential at every  *)
   (*  exit; until then the two arms say so here and nowhere else.          *)
   (* =================================================================== *)
-  (* AFFINE -- step 4 kills it *)
+  (* THE CREDENTIAL ARM IS THE WHOLE STORY NOW (lane EXEC-SEAM, (C)):
+     every exit of the shell hands the banner-owed credential back -- the
+     shut-fd-0 exit and the fork panic on [UkSh.ush_at_of_pm_wb], the
+     tainted exits on the pair's own taint arm -- so the affine arm has no
+     producer left and is gone. *)
   Definition init_rd_cred (Wb : nat -> iProp Σ) (n : nat) : iProp Σ :=
-    (Wb n ∨ True)%I.
+    Wb n.
 
   Definition init_rd (Rdl Wb : nat -> iProp Σ) (n : nat) : iProp Σ :=
     (Rdl n ∗ init_rd_cred Wb n)%I.
@@ -1664,18 +1668,6 @@ Section UkInit.
       (n : nat) :
     Timeless (init_rd Rdl Wb n).
   Proof. rewrite /init_rd /init_rd_cred. apply _. Qed.
-
-  (* the pieces alone are a payload at the pair family: the credential's
-     affine arm.  What the child's failing exec refunds is the lend, and
-     what its [exit(1)] owes is the pair. *)
-  Lemma init_pay_of_lend (cn : cons_names) (γ : gname) (T : iProp Σ)
-      (Rdl Wb : nat -> iProp Σ) (xs : Z) :
-    ucons_pay cn γ T Rdl xs -∗ ucons_pay cn γ T (init_rd Rdl Wb) xs.
-  Proof.
-    rewrite /ucons_pay /init_rd /init_rd_cred.
-    iIntros "[H | $]". iLeft. iDestruct "H" as (n) "(Hr & Hp & Hd)".
-    iExists n. iFrame "Hr Hp Hd". by iRight.
-  Qed.
 
   (* the credential the lend carries, AT THE LEDGER the child inherits.
      ON THE CONSOLE ROW IT IS THE ROUND-OPEN SHAPE [Wp n] (lane M6b; top:
@@ -1688,22 +1680,18 @@ Section UkInit.
      ([UkInitMain.kinit_diag_law]) and converts to the prompt credential
      at the shell's entry ([UInitSh.init_exec_sup_of_sh_slot]'s [Wp n -∗
      Wc n 0]).
-     THE THIRD ARM IS [True], NOT [T]: it is built where the token's
-     credential arm is [init_rd_cred]'s affine arm ([UkInitMain.
-     wp_kinit_banner]), which has neither a credential nor the taint in
-     hand; it dies with [init_rd_cred]'s [∨ True]. *)
-  Definition init_lend_cred (st : fdstate)
+     THE THIRD ARM IS THE TAINT (lane EXEC-SEAM, (C)): with
+     [init_rd_cred]'s affine arm gone, the only credential-less case left
+     where the lend is built ([UkInitMain.wp_kinit_banner], the restart
+     loop's mint) is the tainted token, and a tainted shell runs on the
+     generic slot.  So the lend names [T] like every other resource of the
+     walk. *)
+  Definition init_lend_cred (T : iProp Σ) (st : fdstate)
       (Wp Wb : nat -> iProp Σ)
       (l : list fdstate) (n : nat) : iProp Σ :=
     ((⌜l = ufd_l3 st⌝ ∗ Wp n)
      ∨ (⌜l = ufd_l0⌝ ∗ Wb n)
-     ∨ True)%I.   (* AFFINE -- dies with [init_rd_cred]'s arm *)
-
-  Lemma init_lend_cred_triv (st : fdstate)
-      (Wp Wb : nat -> iProp Σ)
-      (l : list fdstate) (n : nat) :
-    ⊢ init_lend_cred st Wp Wb l n.
-  Proof. rewrite /init_lend_cred. iRight. by iRight. Qed.
+     ∨ T)%I.
 
   (* WHAT A FAILED exec REFUNDS (lane M6b): the lend as it went in --
      the child's ledger, the position, the lease and the credential at
@@ -1716,7 +1704,7 @@ Section UkInit.
       (Wp Wb Rdl : nat -> iProp Σ) (γfd' : gname)
       (l : list fdstate) (γ : gname) (n : nat) : iProp Σ :=
     (UserFd.ustd γfd' l ∗ upos γ n ∗ ucons_pay cn γ T Rdl (-1)
-     ∗ init_lend_cred st Wp Wb l n)%I.
+     ∗ init_lend_cred T st Wp Wb l n)%I.
 
   (*  THE DESCRIPTOR ROW IS THE LEDGER AND ITS ARM, not the head as a
       disjunction: sh's entry is told one thing about its table -- fd 0 is
@@ -1737,7 +1725,7 @@ Section UkInit.
        init_argv (ukn_d N') -∗
        UserFd.ustd (ukn_fd N') l -∗
        UInitFd.ufd_row T st l -∗
-       init_lend_cred st Wp Wb l n -∗
+       init_lend_cred T st Wp Wb l n -∗
        upos γ n -∗
        (* ...AND THE LEASE ITSELF (lane KILL-PAY, K4(a)), at the READ
           family: the console reader token used to ride in the child's own

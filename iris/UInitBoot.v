@@ -418,9 +418,6 @@ Section UInitBoot.
        ⊢ UkSh.ush_at N γp i -∗
          UkSh.ush_lease N γp (echo_taint γ) (Pm γp) i) ->
     (forall (γp : gname) (N : uk_names Σ) (i : nat),
-       ukn_pay N = ucons_pay cn γp (echo_taint γ) (UkInit.init_rd Rdl Wb) -> UkSh.ush_bnd i ->
-       ⊢ Pm γp i -∗ UkSh.ush_at N γp i) ->
-    (forall (γp : gname) (N : uk_names Σ) (i : nat),
        ukn_pay N = ucons_pay cn γp (echo_taint γ) (UkInit.init_rd Rdl Wb) ->
        ⊢ echo_taint γ -∗ Pm γp i -∗ UkSh.ush_at N γp i) ->
     (forall (γp : gname) (N : uk_names Σ) (i : nat),
@@ -439,7 +436,7 @@ Section UInitBoot.
     (forall (γp : gname) (N : uk_names Σ) (l : list fdstate) (i : nat),
        ukn_pay N = ucons_pay cn γp (echo_taint γ) (UkInit.init_rd Rdl Wb) ->
        ⊢ upos γp i -∗ ucons_pay cn γp (echo_taint γ) Rdl (-1) -∗
-         UkSh.ush_wcp Wc Wb l i 0%nat -∗
+         (UkSh.ush_wcp Wc Wb l i 0%nat ∨ echo_taint γ) -∗
          UkSh.ush_posb N γp (echo_taint γ) Wc Wb (Pm γp) l 0%nat) ->
     (* the lend's conversion at the shell's entry (lane M6b), passed
        straight through *)
@@ -452,7 +449,7 @@ Section UInitBoot.
       (init_cons_cred (echo_taint γ) r) st
       Wp Wb Rdl.
   Proof.
-    intros Heq Hpsok_free Hn0 Hst Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw.
+    intros Heq Hpsok_free Hn0 Hst Hrl Hpm1 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw.
     iIntros "#Hdep #Hdp #Hplaw #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
     - iIntros "!> #Hcns".
       iDestruct "Hcore" as "#Hcore'".
@@ -460,7 +457,7 @@ Section UInitBoot.
          positionally; [cons_never_persistent] answers it. *)
       iApply (UInitSh.init_exec_sup_of_sh_slot (echo_taint γ) cn st
                 (cons_never r) Rdl Pm Wc Wb Wp Rsh n0 Hpsok_free Hn0 Hst
-                Hrl Hpm1 Hpm2 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw
+                Hrl Hpm1 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw
                 with "Hdep Hdp Hplaw [] Hcore'").
       iApply (ush_cons_in_of_Cns γ r Heq with "[] Hcns").
       iDestruct "Hcore'" as "(#Hinv & _)". iExact "Hinv".
@@ -786,15 +783,6 @@ Section EchoInitBoot.
       by (intros γp N i Hpeq;
           exact (UShLine.ush_mid_of_at γ (echo_taint γ) (UInitBanner.kinit_ban (echo_taint γ) γ)
                    N γp i Hpeq)).
-    assert (Hsh_pm2 :
-      forall (γp : gname) (N : uk_names Σ) (i : nat),
-        ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ)
-                      (UShLine.ush_rd_x γ (UInitBanner.kinit_ban (echo_taint γ) γ)) -> UkSh.ush_bnd i ->
-        ⊢ UShLine.ush_mid γ γp i -∗
-          UkSh.ush_at N γp i)
-      by (intros γp N i Hpeq Hb;
-          exact (UShLine.ush_at_of_mid γ (echo_taint γ) (UInitBanner.kinit_ban (echo_taint γ) γ)
-                   N γp i Hpeq Hb)).
     assert (Hsh_pm3 :
       forall (γp : gname) (N : uk_names Σ) (i : nat),
         ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ)
@@ -830,8 +818,8 @@ Section EchoInitBoot.
                       (UShLine.ush_rd_x γ (UInitBanner.kinit_ban (echo_taint γ) γ)) ->
         ⊢ upos γp i -∗
           ucons_pay fsc_cons γp (echo_taint γ) (UShLine.ush_rd_pin γ) (-1) -∗
-          UkSh.ush_wcp (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id))
-            (UInitBanner.kinit_ban (echo_taint γ) γ) l i 0%nat -∗
+          (UkSh.ush_wcp (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id))
+             (UInitBanner.kinit_ban (echo_taint γ) γ) l i 0%nat ∨ echo_taint γ) -∗
           UkSh.ush_posb N γp (echo_taint γ)
             (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id))
             (UInitBanner.kinit_ban (echo_taint γ) γ) (UShLine.ush_mid γ γp) l 0%nat)
@@ -898,7 +886,7 @@ Section EchoInitBoot.
                 UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
                 ltac:(vm_compute; discriminate)
                 ltac:(reflexivity)
-                Hsh_rdleaf Hsh_pm1 Hsh_pm2 Hsh_pm3 Hsh_pmwb Hsh_wc
+                Hsh_rdleaf Hsh_pm1 Hsh_pm3 Hsh_pmwb Hsh_wc
                 Hsh_wbwc Hsh_wbl Hsh_wbr Hsh_bd Hpw
                 with "[] [] Hplaw Hsh").
       - iApply (udep_free).

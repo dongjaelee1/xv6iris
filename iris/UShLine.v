@@ -565,24 +565,9 @@ Section UShLine.
     rewrite /ush_rd_x /UkInit.init_rd /UkInit.init_rd_cred. iDestruct "Hcred" as "[[_ Hcred] _]". iFrame "Hrd0 Hcred".
   Qed.
 
-  (* ...and go back together at a boundary WITHOUT a credential: the exit
-     family's affine arm (step 4 kills it with the arm) *)
-  Lemma ush_at_of_mid (γ : echo_gn) (T : iProp Σ) `{!Persistent T}
-      (Wb : nat -> iProp Σ) (N : uk_names Σ) (γp : gname) (n : nat) :
-    ukn_pay N = ucons_pay fsc_cons γp T (ush_rd_x γ Wb) ->
-    UkSh.ush_bnd n ->
-    ⊢ ush_mid γ γp n -∗ UkSh.ush_at N γp n.
-  Proof.
-    intros Hpay Hbnd. rewrite /ush_mid /UkSh.ush_at.
-    iIntros "(Hpos & Hpa & Hrd0 & Hcred)". iFrame "Hpos". rewrite Hpay.
-    iApply (ucons_pay_tok fsc_cons γp T (ush_rd_x γ Wb) n (-1)
-              with "Hrd0 Hpa [Hcred]").
-    rewrite /ush_rd_x /UkInit.init_rd /UkInit.init_rd_cred /ush_rd_pin.
-    iSplitL "Hcred"; [ iSplitR; [ by iPureIntro | iExact "Hcred" ] | ].
-    by iRight.
-  Qed.
-
-  (* ...OR WITH THE BANNER-OWED CREDENTIAL: the exit family's own arm,
+  (* ...and go back together at a boundary WITH THE BANNER-OWED
+     CREDENTIAL: the exit family's own arm (its only one since lane
+     EXEC-SEAM, (C)),
      which sh's shut-fd-0 exit assembles when its fd 2 was closed (step
      3; [UkSh.ush_at_of_pm_wb]'s discharge) *)
   Lemma ush_at_of_mid_wb (γ : echo_gn) (T : iProp Σ) `{!Persistent T}
@@ -597,7 +582,7 @@ Section UShLine.
               with "Hrd0 Hpa [Hcred Hb]").
     rewrite /ush_rd_x /UkInit.init_rd /UkInit.init_rd_cred /ush_rd_pin.
     iSplitL "Hcred"; [ iSplitR; [ by iPureIntro | iExact "Hcred" ] | ].
-    iLeft. iExact "Hb".
+    iExact "Hb".
   Qed.
 
   Lemma ush_at_of_mid_taint (γ : echo_gn) (T : iProp Σ) `{!Persistent T}
@@ -705,11 +690,19 @@ Section UShLine.
       (Wb : nat -> iProp Σ) (l : list fdstate) (n : nat) :
     ukn_pay N = ucons_pay fsc_cons γp T (ush_rd_x γ Wb) ->
     ⊢ upos γp n -∗ ucons_pay fsc_cons γp T (ush_rd_pin γ) (-1) -∗
-      UkSh.ush_wcp Wc Wb l n 0%nat -∗
+      (* the lent slot, OR THE TAINT (lane EXEC-SEAM, (C)): /init's lend
+         names the taint on its third arm, and a tainted turn is the
+         cursor's own right arm *)
+      (UkSh.ush_wcp Wc Wb l n 0%nat ∨ T) -∗
       UkSh.ush_posb N γp T Wc Wb (ush_mid γ γp) l 0%nat.
   Proof.
     intro Hpay. rewrite /ucons_pay.
-    iIntros "Hpos [Hl | #HT] Hwc"; last first.
+    iIntros "Hpos Hl [Hwc | #HT]"; last first.
+    { iApply (UkSh.ush_posb_taint N γp T Wc Wb (ush_mid γ γp) l 0%nat
+                with "HT [Hpos]").
+      rewrite /UkSh.ush_pos /UkSh.ush_at. iExists n. iFrame "Hpos".
+      rewrite Hpay. iApply (ucons_pay_taint with "HT"). }
+    iDestruct "Hl" as "[Hl | #HT]"; last first.
     { iApply (UkSh.ush_posb_taint N γp T Wc Wb (ush_mid γ γp) l 0%nat
                 with "HT [Hpos]").
       rewrite /UkSh.ush_pos /UkSh.ush_at. iExists n. iFrame "Hpos".

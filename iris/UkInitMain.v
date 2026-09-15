@@ -221,7 +221,7 @@ Section UkInitMain.
      caller: init's own exit payload is the trivial one, and nothing reads
      the console after init has died. *)
   Lemma wp_kinit_main_die_df (N' : uk_names Σ) `{!ukn_const N'}
-      (stc : fdstate) (Wp Wb : nat -> iProp Σ)
+      (T : iProp Σ) (stc : fdstate) (Wp Wb : nat -> iProp Σ)
       (l : list fdstate) (np : nat)
       (hdf : CpuId) (mdf0 : regfile) (n : nat) :
     (* the exit payload, out of the program's own hand (lane
@@ -231,7 +231,7 @@ Section UkInitMain.
     kinit_diag_law stc Wp Wb -∗
     init_code (ukn_t N') -∗ init_rodata (ukn_t N') -∗
     UserFd.ustd (ukn_fd N') l -∗
-    init_lend_cred stc Wp Wb l np -∗
+    init_lend_cred T stc Wp Wb l np -∗
     urun N' hdf mdf0 (mword_of_int 0x84) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
@@ -368,7 +368,8 @@ Section UkInitMain.
      [UkInit.init_rd Rdl Wb] at [np], with the REAL credential in it, so
      init's restart head pays its next banner from it at the reap.  On the
      closed row and the affine arm the flagged deposit prints and the exit
-     pays the pair's affine arm ([UkInit.init_pay_of_lend]), as before. *)
+     pays the pair with the lend's own banner-owed credential, and under the
+     taint with the pair's taint arm (lane EXEC-SEAM, (C): no affine arm). *)
   Lemma wp_kinit_main_die_de (N' : uk_names Σ) `{!ukn_const N'}
       (T : iProp Σ) (stc : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
       (cn : cons_names) (l : list fdstate) (γ : gname) (np : nat)
@@ -459,7 +460,7 @@ Section UkInitMain.
                ∗ Ch 0%nat ∗ (Ch 21%nat -∗ ukn_pay N' (-1)))%I
       with "[Hstd Hpos Hlease Hcred]" as (Ch) "(#Hw & HCh & Hfin)".
     { rewrite /init_lend_cred.
-      iDestruct "Hcred" as "[[%Hl3 Hp] | _]".
+      iDestruct "Hcred" as "[[%Hl3 Hp] | [[%Hl0 Hb] | HT]]".
       - subst l.
         iDestruct ("Hxlaw" $! np N' with "Hp") as "Hpay'".
         rewrite /UkInit.kinit_banner_pay.
@@ -474,14 +475,32 @@ Section UkInitMain.
         iDestruct (upos_agree γ np n' with "Hpos Hpa") as %<-.
         iApply (ucons_pay_tok cn γ T (init_rd Rdl Wb) np (-1)
                   with "Hr Hpa [Hd Hb]").
-        rewrite /init_rd /init_rd_cred. iFrame "Hd". iLeft. iExact "Hb".
-      - iClear "Hstd Hpos". iExists (fun _ => emp%I).
+        rewrite /init_rd /init_rd_cred. iFrame "Hd". iExact "Hb".
+      - (* THE CLOSED ROW: the bytes go nowhere (fd 1 is closed) and the
+           lend carries the banner-owed credential itself, which is what
+           the pair is rebuilt with (lane EXEC-SEAM, (C): the pair has no
+           affine arm any more) *)
+        iClear "Hstd". iExists (fun _ => emp%I).
         iSplitR; [ | iSplitR; [ done | ] ].
         + iIntros "!>" (j) "_".
           iApply (UkInit.kinit_w1_of_law N' (mword_of_int 1 : mword 64)
                     (init_lit LIT_EXEC j) with "Hwr").
         + iIntros "_". rewrite Hpeq.
-          iApply (init_pay_of_lend cn γ T Rdl Wb (-1) with "Hlease"). }
+          iEval (rewrite /ucons_pay) in "Hlease".
+          iDestruct "Hlease" as "[Hl | HT]"; last first.
+          { iApply (ucons_pay_taint with "HT"). }
+          iDestruct "Hl" as (n') "(Hr & Hpa & Hd)".
+          iDestruct (upos_agree γ np n' with "Hpos Hpa") as %<-.
+          iApply (ucons_pay_tok cn γ T (init_rd Rdl Wb) np (-1)
+                    with "Hr Hpa [Hd Hb]").
+          rewrite /init_rd /init_rd_cred. iFrame "Hd". iExact "Hb".
+      - (* THE TAINT: the pair's own taint arm *)
+        iClear "Hstd Hpos". iExists (fun _ => emp%I).
+        iSplitR; [ | iSplitR; [ done | ] ].
+        + iIntros "!>" (j) "_".
+          iApply (UkInit.kinit_w1_of_law N' (mword_of_int 1 : mword 64)
+                    (init_lit LIT_EXEC j) with "Hwr").
+        + iIntros "_". rewrite Hpeq. iApply (ucons_pay_taint with "HT"). }
     iApply (wp_kinit_printf_chain N' 0x9b0 21%nat (init_lit 0x9b0) Ch hde3 de3 n
               ltac:(vm_compute; discriminate)
               ltac:(vm_compute; reflexivity) ltac:(lia) (fun j Hj => init_lit_nopct 0x9b0 21%nat j Hokde Hj) Ha0de
@@ -592,7 +611,7 @@ Section UkInitMain.
        nothing under the taint ([UkInit.init_lend_cred]).  It goes into the
        same [Pay] as the position and the lease and lands in the shell's
        own credential slot ([UkSh.ush_wcp]). *)
-    init_lend_cred stc Wp Wb l np -∗
+    init_lend_cred T stc Wp Wb l np -∗
     (* ...AND THE POSITION ITS PARENT LENT IT at the fork
        ([UkFork.wp_uk_ecall_fork]'s [Rc]).  It is SPENT here: the exec
        supply is a wand from it, and what crosses into sh's own run is
@@ -821,7 +840,7 @@ Section UkInitMain.
        the shell's own first write, the prompt, is the byte that resolves
        the round, and its exit hands the next round's banner credential
        back on the payload ([UkInit.init_rd]). *)
-    init_lend_cred stc Wp Wb l np -∗
+    init_lend_cred T stc Wp Wb l np -∗
     (* THE LEDGER.  fork copies the descriptor table, so the child wakes
        on the parent's, and the child is the arm that execs sh -- which
        needs a ledger of its own to hand on.  [UkFork.wp_uk_ecall_fork]
@@ -857,7 +876,7 @@ Section UkInitMain.
              and the credential at the ledger -- and "init: fork failed"
              is paid from the credential ([wp_kinit_main_die_df]). *)
           ∗ upos γ np ∗ ucons_pay cn γ T Rdl (-1)
-          ∗ init_lend_cred stc Wp Wb l np)
+          ∗ init_lend_cred T stc Wp Wb l np)
          ∨ ∃ (γc : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
              ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
@@ -879,7 +898,7 @@ Section UkInitMain.
           -∗ usz (ukn_s N') szv -∗
         UserFd.ustd (ukn_fd N') l -∗
         UInitFd.ufd_row T stc l -∗
-        init_lend_cred stc Wp Wb l np -∗
+        init_lend_cred T stc Wp Wb l np -∗
         upos γ np -∗
         ucons_pay cn γ T Rdl (-1) -∗
         UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
@@ -933,7 +952,7 @@ Section UkInitMain.
     iApply (wp_uk_ecall_fork N h1 mf1 (mword_of_int 0x36c) avail szv
               l ∅ FsImg.ROOTINO Sc (ucons_pay cn γ T (init_rd Rdl Wb))
               (upos γ np ∗ ucons_pay cn γ T Rdl (-1)
-               ∗ init_lend_cred stc Wp Wb l np)%I
+               ∗ init_lend_cred T stc Wp Wb l np)%I
               (fun gt gd _ =>
                  (init_code gt ∗ init_rodata gt ∗ init_argv gd)%I)
               ltac:(unfold mf1, usysno;
@@ -1101,7 +1120,7 @@ Section UkInitMain.
       (Wp Wb Rdl : nat -> iProp Σ) : iProp Σ :=
     (∃ l : list fdstate,
        UserFd.ustd γfd l ∗ UInitFd.ufd_row T stc l
-       ∗ uinit_tok cn T (fun k => Rdl k ∗ init_lend_cred stc Wp Wb l k)%I)%I.
+       ∗ uinit_tok cn T (fun k => Rdl k ∗ init_lend_cred T stc Wp Wb l k)%I)%I.
 
   (* ...AND THE BANNER ITSELF, both ways round: with the payment through
      the per-byte family, without it through the flagged deposit.  ONE
@@ -1151,10 +1170,7 @@ Section UkInitMain.
       { iLeft. rewrite /kinit_lent. iExists l. iFrame "Hstd Hrow".
         rewrite /uinit_tok. by iRight. }
       iDestruct "Htk" as (k) "(Hr & Hd & Hb)".
-      iDestruct "Hb" as "[Hb | _]"; last first.
-      { iLeft. rewrite /kinit_lent. iExists l. iFrame "Hstd Hrow".
-        rewrite /uinit_tok. iLeft. iExists k. iFrame "Hr Hd".
-        iApply init_lend_cred_triv. }
+      rewrite /init_rd_cred.
       iPoseProof "Hrow" as "Hrow2".
       iDestruct "Hrow2" as "[%Hl3 | [%Hl0 | #HT]]".
       - iRight. iSplitR; [ by iPureIntro | ]. iFrame "Hstd".
@@ -1162,9 +1178,10 @@ Section UkInitMain.
       - iLeft. rewrite /kinit_lent. iExists l. iFrame "Hstd Hrow".
         rewrite /uinit_tok. iLeft. iExists k. iFrame "Hr Hd".
         rewrite /init_lend_cred. iRight. iLeft. iFrame "Hb". by iPureIntro.
-      - iLeft. rewrite /kinit_lent. iExists l. iFrame "Hstd Hrow".
+      - (* the row's taint is the lend's third arm (lane EXEC-SEAM, (C)) *)
+        iLeft. rewrite /kinit_lent. iExists l. iFrame "Hstd Hrow".
         rewrite /uinit_tok. iLeft. iExists k. iFrame "Hr Hd".
-        iApply init_lend_cred_triv. }
+        rewrite /init_lend_cred. iRight. iRight. iExact "HT". }
     { (* the flagged deposit, and the lend as assembled *)
       iApply (wp_kinit_printf N LIT_START 18%nat (init_lit LIT_START) h m n
                 ltac:(vm_compute; discriminate)
@@ -1357,10 +1374,11 @@ Section UkInitMain.
          of the round's handover -- it mints the pair at the token's
          CURRENT position and builds the shell's exit payload out of the
          token, leaving init the program half to lend. *)
-      iMod (uinit_lend_c cn T Rdl (init_lend_cred stc Wp Wb l) (-1)
+      iMod (uinit_lend_c cn T Rdl (init_lend_cred T stc Wp Wb l) (-1)
               with "Htk") as (γ np) "(HQ & Hpos & Hcred)".
-      iAssert (init_lend_cred stc Wp Wb l np) with "[Hcred]" as "Hcred".
-      { iDestruct "Hcred" as "[$ | _]". iApply init_lend_cred_triv. }
+      iAssert (init_lend_cred T stc Wp Wb l np) with "[Hcred]" as "Hcred".
+      { iDestruct "Hcred" as "[$ | #HT]".
+        rewrite /init_lend_cred. iRight. iRight. iExact "HT". }
       iApply (wp_kinit_fork T stc Wp Wb Rdl cn l γ np szv hl4 ml4
                 (12 + (12 + (4 + n))) Sc Hkt
                 with "Hcode Hro Hargv Hsz HQ Hpos Hcred Hstd Hrow Hcwd Hch Hrun").
@@ -1425,7 +1443,7 @@ Section UkInitMain.
              arm carries the pid's range, a pid in [1, PIDMAX] sign-extends
              to a small positive, and [blt a0,x0] is not taken on one. *)
           iDestruct "Hans" as "[(%Hrm1 & _ & _ & _ & Hcred) | (%γsh & %pidsh & %Hrpid & %Hrng & _ & _)]".
-          { iApply (wp_kinit_main_die_df N stc Wp Wb l np hp2 _ n
+          { iApply (wp_kinit_main_die_df N T stc Wp Wb l np hp2 _ n
                       with "Hpay Hwr Hdlaw Hcode Hro Hstd Hcred Hrun"). }
           exfalso.
           rewrite Ha0p1 Hrpid (sext32_small pidsh (pid_lt_Z31 _ Hrng)) in Hblt.

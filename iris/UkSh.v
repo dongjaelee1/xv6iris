@@ -1561,20 +1561,16 @@ Section UkSh.
      preamble's first opens landed ([ush_lcl]) -- so fd 2 is still closed
      -- and the banner-owed credential rides unchanged; it never reaches
      the body ([p < 3]: a line read on it is the taint,
-     [ush_gets_done_line]).  And the AFFINE arm, with exactly two
-     producers left, both outside this file (step 4): the entry's mapping
-     of /init's own affine lend arm ([UInitSh]), and the wait's re-entry
-     when the reaped child cannot be identified as the one forked
-     ([UkShFork]; the shell's children set and pid are unconstrained at
-     its entry).  Indexed by the ledger because the console preamble may
-     move it ([ush_wcp_cons]). *)
+     [ush_gets_done_line]).  NO AFFINE ARM (lane EXEC-SEAM, (C)): its two
+     producers are gone -- /init's lend names the taint on its third arm
+     and the entry runs a tainted shell on the generic slot, and the wait
+     re-entry identifies the reaped child as the one forked (the entry's
+     key pins sh's children set and pid).  A tainted turn is [ush_posb]'s
+     right arm, never a slot.  Indexed by the ledger because the console
+     preamble may move it ([ush_wcp_cons]). *)
   Definition ush_wcp (l : list fdstate) (n p : nat) : iProp Σ :=
     ((⌜ ush_fd0c l /\ ush_fd1p l /\ ush_fd2p l ⌝ ∗ Wc n p)
-     ∨ (⌜ (exists j : nat, (j <= 2)%nat /\ ush_lcl l j) /\ (p < 3)%nat ⌝ ∗ Wb n)
-     ∨ True)%I.  (* AFFINE -- two named producers, see the header *)
-
-  Lemma ush_wcp_triv (l : list fdstate) (n p : nat) : ⊢ ush_wcp l n p.
-  Proof. rewrite /ush_wcp. iRight. by iRight. Qed.
+     ∨ (⌜ (exists j : nat, (j <= 2)%nat /\ ush_lcl l j) /\ (p < 3)%nat ⌝ ∗ Wb n))%I.
 
   (* the preamble installs the console at the lowest closed slot [k]: the
      console arm's rows survive it; the closed arm's ledger gains one open
@@ -1588,8 +1584,7 @@ Section UkSh.
     ush_wcp (<[k := FdOpen true true (FdDevice CONSOLE)]> l) n 0%nat.
   Proof.
     intros Hlen Hk. rewrite /ush_wcp.
-    iIntros "[[%Hrow Hc] | [[%Hcl Hb] | _]]"; last first.
-    { iRight. by iRight. }
+    iIntros "[[%Hrow Hc] | [%Hcl Hb]]"; last first.
     { destruct Hcl as [[j [Hj2 Hlcl]] _].
       assert (Hj3 : (j < NSTD)%nat) by (unfold NSTD; lia).
       assert (Hkj : k = j) by exact (ush_lcl_lowest l j k Hj3 Hlcl Hk).
@@ -1598,7 +1593,7 @@ Section UkSh.
       destruct (decide (j = 2%nat)) as [-> | Hne].
       - iLeft. iSplitR; [ iPureIntro; exact (ush_lcl_rows _ Hlcl') | ].
         iApply (ush_wb_wc n with "Hb").
-      - iRight. iLeft. iFrame "Hb". iPureIntro. split; [ | lia ].
+      - iRight. iFrame "Hb". iPureIntro. split; [ | lia ].
         exists (S j). split; [ lia | exact Hlcl' ]. }
     destruct Hrow as (Hfd0c & Hfd1 & Hfd2).
     iLeft. iFrame "Hc". iPureIntro.
@@ -1608,27 +1603,23 @@ Section UkSh.
   Qed.
 
   (* THE PROMPT'S CALL, AT WHICHEVER ARM THE WALK IS ON: the loop's
-     credential through the law's console arm; the banner-owed credential
-     framed past the law's closed arm; else the flagged deposit.  What
+     credential through the law's console arm, or the banner-owed
+     credential framed past the law's closed arm.  No free law any more
+     (lane EXEC-SEAM, (C)): the slot has no affine arm to print on.  What
      comes back is the loop's slot two bytes on. *)
   Lemma ksh_w_of_wcp (l : list fdstate) (n : nat) :
-    sh_deps -∗
     ush_prompt_law -∗
     ush_wcp l n 0%nat -∗
     ksh_w (mword_of_int 2) (mword_of_int sh_prompt_pv) 2%nat
       (ustd γfd l) (ustd γfd l ∗ ush_wcp l n 2%nat).
   Proof.
-    iIntros "#Hdp #Hlaw Hwc". rewrite /ush_prompt_law.
+    iIntros "#Hlaw Hwc". rewrite /ush_prompt_law.
     iDestruct "Hlaw" as "[#Hplaw #Hclaw]".
-    iDestruct "Hwc" as "[[%Hrow Hc] | [[%Hcl Hb] | _]]"; last first.
-    { iApply (ksh_w_mono _ _ _ (ustd γfd l) (ustd γfd l) with "[] []").
-      - iIntros "$". iApply ush_wcp_triv.
-      - iApply (ksh_w_of_law (mword_of_int 2) (mword_of_int sh_prompt_pv) 2%nat
-                  (ustd γfd l) (ustd γfd l) ltac:(reflexivity) with "Hdp"). }
+    iDestruct "Hwc" as "[[%Hrow Hc] | [%Hcl Hb]]"; last first.
     { destruct Hcl as [[j [Hj2 Hlcl]] _].
       iDestruct ("Hclaw" $! l with "[%]") as "Hw"; [ exact (ush_lcl_2 l j Hj2 Hlcl) | ].
       iApply (ksh_w_mono _ _ _ (ustd γfd l) (ustd γfd l) with "[Hb] [Hw]").
-      - iIntros "$". rewrite /ush_wcp. iRight. iLeft. iFrame "Hb".
+      - iIntros "$". rewrite /ush_wcp. iRight. iFrame "Hb".
         iPureIntro. split; [ exists j; split; [ exact Hj2 | exact Hlcl ] | lia ].
       - iExact "Hw". }
     destruct Hrow as (Hfd0c & Hfd1 & Hfd2).
@@ -1775,9 +1766,9 @@ Section UkSh.
 
   Hypothesis ush_pm_of_at : forall n : nat, ⊢ ush_at n -∗ ush_lease n.
 
-  Hypothesis ush_at_of_pm :
-    forall n : nat,
-      ush_bnd n -> ⊢ Pm n -∗ ush_at n.
+  (* NO CREDENTIAL-LESS ASSEMBLER (lane EXEC-SEAM, (C)): a payload is
+     assembled at a boundary WITH the banner-owed credential
+     ([ush_at_of_pm_wb]) or under the taint, and nowhere else. *)
 
   (* ...AND UNDER THE TAINT THEY GO BACK TOGETHER ANYWHERE, because a
      tainted payload is free ([UserConsole.ucons_pay]'s right arm) and the
@@ -1852,43 +1843,6 @@ Section UkSh.
     ((∃ n : nat, ⌜ush_bnd n⌝ ∗ Pm n ∗ ush_wcp l n p)
      ∨ (T ∗ ush_pos))%I.
 
-  (* ...and the exit's reading of it: the payload, assembled on its affine
-     arm (the credential slot is dropped; step 4's exits keep it) *)
-  Lemma ush_pos_of_posb (l : list fdstate) (p : nat) :
-    ush_posb l p -∗ ush_pos.
-  Proof.
-    rewrite /ush_posb. iIntros "[H | [_ $]]".
-    iDestruct "H" as (n) "(%Hn & H & _)". rewrite /ush_pos. iExists n.
-    iApply (ush_at_of_pm n Hn with "H").
-  Qed.
-
-  (* the two arms as ONE existential -- the fork arm's accessor.  The
-     credential is dropped and the payload assembled on its affine arm;
-     step 4 rewrites it (the fork LENDS the credential). *)
-  Lemma ush_posb_at (l : list fdstate) (p : nat) :
-    ush_posb l p -∗
-    ∃ n : nat, (⌜ush_bnd n⌝ ∨ T) ∗ ush_at n.
-  Proof.
-    rewrite /ush_posb /ush_pos. iIntros "[H | [#HT H]]".
-    - iDestruct "H" as (n) "(%Hn & H & _)". iExists n.
-      iSplitR; [ iLeft; by iPureIntro | ].
-      iApply (ush_at_of_pm n Hn with "H").
-    - iDestruct "H" as (n) "H". iExists n. iFrame "H". iRight. iExact "HT".
-  Qed.
-
-  (* ...and its inverse, at the affine arm: the payload comes apart into
-     the pieces and the slot is empty *)
-  Lemma ush_posb_of (l : list fdstate) (p n : nat) :
-    (⌜ush_bnd n⌝ ∨ T) -∗ ush_at n -∗ ush_posb l p.
-  Proof.
-    rewrite /ush_posb. iIntros "[%Hn | #HT] H".
-    - iDestruct (ush_pm_of_at n with "H") as "[H | H]";
-        [ | iRight; iExact "H" ].
-      iLeft. iExists n. iSplitR; [ by iPureIntro | ].
-      iFrame "H". iApply ush_wcp_triv.
-    - iRight. iFrame "HT". rewrite /ush_pos. iExists n. iExact "H".
-  Qed.
-
   Lemma ush_posb_of_wc (l : list fdstate) (p n : nat) :
     ush_bnd n -> Pm n -∗ ush_wcp l n p -∗ ush_posb l p.
   Proof.
@@ -1925,11 +1879,10 @@ Section UkSh.
     iLeft. iDestruct "H" as (n) "(%Hn & H & Hc)". iExists n.
     iSplitR; [ by iPureIntro | ]. iFrame "H".
     rewrite /ush_wcp.
-    iDestruct "Hc" as "[[%Hrow Hc] | [[%Hcl Hb] | _]]".
+    iDestruct "Hc" as "[[%Hrow Hc] | [%Hcl Hb]]".
     - iLeft. iSplitR; [ by iPureIntro | ].
       iApply (ush_wc_blk_line n with "Hc").
     - exfalso. destruct Hcl as [_ Hp]. lia.
-    - iRight. by iRight.
   Qed.
 
   (* WHAT A READ ANSWERS, at three arms and not one (lane SH-LINE 2b).
@@ -1986,7 +1939,7 @@ Section UkSh.
            CONSOLE's.  What it buys is the other arm's refutation below. *)
         ⌜ ush_fd0c l ⌝ ∗
         (* THE PIECES AND NOT THE PAYLOAD: mid-line the era's credential is
-           at no boundary, so what comes back is [Pm] ([ush_at_of_pm] puts
+           at no boundary, so what comes back is [Pm] ([ush_at_of_pm_wb] puts
            it back together where the line ends). *)
         Pm (n + dc)%nat)
      ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗
@@ -2195,7 +2148,7 @@ Section UkSh.
      lease -- this is the shut fd 0's exit, and what the loop's slot holds
      decides the payload.  The console arm is REFUTED (fd 0 is the console
      there); the closed arm's banner-owed credential goes into the payload
-     ([ush_at_of_pm_wb]); the affine arm assembles it without one. *)
+     ([ush_at_of_pm_wb]). *)
   Lemma ush_gets_done_0 (l : list fdstate) (n0 : nat) (f : nat -> bv 8) :
     ush_bnd n0 -> l !! 0%nat = Some FdClosed ->
     Pm n0 -∗ ush_wcp l n0 2%nat -∗ ush_gets_done l 0%nat f.
@@ -2204,10 +2157,9 @@ Section UkSh.
     iSplitR; [ by iPureIntro | ].
     rewrite /ush_pos. iExists n0.
     rewrite /ush_wcp.
-    iDestruct "Hwc" as "[[%Hrow _] | [[_ Hb] | _]]".
+    iDestruct "Hwc" as "[[%Hrow _] | [_ Hb]]".
     - exfalso. exact (ush_fd0c_not_closed l (proj1 Hrow) Hcl).
     - iApply (ush_at_of_pm_wb n0 Hn0 with "H Hb").
-    - iApply (ush_at_of_pm n0 Hn0 with "H").
   Qed.
 
   (* ONE LINE READ: the credential the prompt left becomes the NEXT
@@ -2223,7 +2175,7 @@ Section UkSh.
   Proof.
     intros Hn0 Hli. iIntros "Hwc H". rewrite /ush_gets_done.
     pose proof (ush_bnd_step n0 Hn0) as Hb.
-    iDestruct "Hwc" as "[[%Hrow Hc] | [[%Hcl Hb] | _]]".
+    iDestruct "Hwc" as "[[%Hrow Hc] | [%Hcl Hb]]".
     - iRight. iLeft.
       iSplitR; [ iPureIntro; split; [ reflexivity | exact Hli ] | ].
       iDestruct (ush_wc_read n0 with "H Hc") as "[H Hc]".
@@ -2233,11 +2185,6 @@ Section UkSh.
     - iDestruct (ush_wb_read n0 with "H Hb") as "[H #HT]".
       iRight. iRight. iFrame "HT".
       iApply (ush_pos_of_pm (n0 + length echo_line)%nat with "HT H").
-    - iRight. iLeft.
-      iSplitR; [ iPureIntro; split; [ reflexivity | exact Hli ] | ].
-      iApply (ush_posb_of_wc l 3%nat (n0 + length echo_line)%nat Hb
-                with "H []").
-      iApply ush_wcp_triv.
   Qed.
 
   (* ...and the same exit on a tainted turn, at no slot *)
@@ -2254,12 +2201,6 @@ Section UkSh.
     iIntros "#HT H". rewrite /ush_gets_done. iRight. iRight. iFrame "HT H".
   Qed.
 
-  Lemma ush_gets_done_pos (l : list fdstate) (i : nat) (f : nat -> bv 8) :
-    ush_gets_done l i f -∗ ush_pos.
-  Proof.
-    rewrite /ush_gets_done. iIntros "[[_ $] | [[_ H] | [_ $]]]".
-    iApply (ush_pos_of_posb with "H").
-  Qed.
 
   (* ...and the NUL [gets] plants past the line does not disturb it: the
      line's own bytes are all BELOW the index it is planted at. *)
@@ -5312,8 +5253,14 @@ Section UkSh.
           -1 exactly when the line is empty, which is what keeps the
           command loop's body off the arm where there is no line to
           lex. *)
-       ⌜ g 0%nat = ubyte0 ->
-         m' !!! Regidx a0_idx = (mword_of_int (-1) : mword 64) ⌝ -∗
+       (* ...TOTALLY (lane EXEC-SEAM, (C)): [seqz]/[negw] of the first
+          byte is -1 on a NUL and 0 on anything else, which is what lets
+          the command loop's exit say that a line it read was not the turn
+          it left on. *)
+       ⌜ (g 0%nat = ubyte0 ->
+          m' !!! Regidx a0_idx = (mword_of_int (-1) : mword 64))
+         /\ (g 0%nat <> ubyte0 ->
+             m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64)) ⌝ -∗
        ubytes γd a Nb g -∗
        ustd γfd l -∗
        ush_gets_done l i2 g -∗
@@ -5342,7 +5289,7 @@ Section UkSh.
       iApply (ksh_w_mono _ _ _ (ustd γfd l) (ustd γfd l ∗ ush_wcp l n 2%nat)
                 with "[Hpm] [Hwc]").
       - iIntros "[$ Hwc]". iLeft. iExists n. iFrame "Hpm Hwc". by iPureIntro.
-      - iApply (ksh_w_of_wcp l n with "Hdp Hplaw Hwc"). }
+      - iApply (ksh_w_of_wcp l n with "Hplaw Hwc"). }
     rewrite shp_getcmd.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     iDestruct (urun_ubytes_bnd h m _ (4 + (12 + nn)) (DfracOwn 1) a Nb f
@@ -5943,6 +5890,34 @@ Section UkSh.
         apply bv_eq; vm_compute; reflexivity. }
       rewrite /nK (upd_eq nJ (Regidx a0_idx) _). rewrite Hx0J Ha0J.
       apply bv_eq; vm_compute; reflexivity. }
+    (* ...and 0 on any other first byte: [sltiu a0,a0,1] is false at a
+       nonzero unsigned byte, and [negw] of 0 is 0 *)
+    assert (Hret0 : gg 0%nat <> ubyte0 ->
+                    nK !!! Regidx a0_idx = (mword_of_int 0 : mword 64)).
+    { intro Hg0.
+      assert (Hlt : zopz0zI_u (nI !!! Regidx a0_idx)
+                      (sign_extend' 64 (mword_of_int 1 : mword 12)) = false).
+      { rewrite /nI (upd_eq mG (Regidx a0_idx)
+                       (regval_into_reg
+                          (zero_extend' 64 (gg 0%nat : mword 8) : mword 64))).
+        unfold zopz0zI_u, regval_into_reg. apply Z.ltb_ge.
+        rewrite !RiscvExtras.uint_unsigned UmodeArith.zext8_unsigned.
+        assert (H1 : bv_unsigned (sign_extend' 64 (mword_of_int 1 : mword 12)
+                                  : mword 64) = 1)
+          by (vm_compute; reflexivity).
+        rewrite H1.
+        pose proof (bv_unsigned_in_range _ (gg 0%nat)) as [Hg0lo _].
+        assert (Hg0nz : bv_unsigned (gg 0%nat) <> 0).
+        { intro Hz0. apply Hg0. apply bv_eq. rewrite Hz0.
+          vm_compute. reflexivity. }
+        (* stated at the byte's own type and closed by [exact]: the goal
+           reads the byte through [mword 8], which [lia] does not identify
+           with [bv 8] *)
+        assert (Hg1 : (1 <= bv_unsigned (gg 0%nat))%Z) by lia.
+        exact Hg1. }
+      rewrite /nK (upd_eq nJ (Regidx a0_idx) _). rewrite Hx0J.
+      rewrite /nJ (upd_eq nI (Regidx a0_idx) _). rewrite Hlt.
+      apply bv_eq; vm_compute; reflexivity. }
     (* the sp the epilogue reloads from: it survived all three calls *)
     assert (HspK : nK !!! Regidx csp_rs1
                    = add_vec_int sp0 (- (8 * Z.of_nat 4))).
@@ -6100,18 +6075,23 @@ Section UkSh.
     iIntros (h32) "Hrun".
     iApply ("Hcont" $! h32 p5 gg i2 with "[] [] [] Hbs Hstd Hpos Hrun").
     { iPureIntro. exact Hgi. }
-    2: { iPureIntro. intro Hg0.
-         rewrite (upd_ne p4 (Regidx csp_rs1) (Regidx a0_idx) _
-                    ltac:(vm_compute; discriminate)).
-         rewrite (upd_ne p3 (Regidx s2_idx) (Regidx a0_idx) _
-                    ltac:(vm_compute; discriminate)).
-         rewrite (upd_ne p2 (Regidx s1_idx) (Regidx a0_idx) _
-                    ltac:(vm_compute; discriminate)).
-         rewrite (upd_ne p1 (Regidx s0_idx) (Regidx a0_idx) _
-                    ltac:(vm_compute; discriminate)).
-         rewrite (upd_ne nK (Regidx ra_idx) (Regidx a0_idx) _
-                    ltac:(vm_compute; discriminate)).
-         exact (Hret Hg0). }
+    2: { iPureIntro.
+         (* a0 reaches the caller untouched by the epilogue: both halves of
+            the return row are [Hret] / [Hret0] under the same five
+            reloads *)
+         assert (Ha0p5 : p5 !!! Regidx a0_idx = nK !!! Regidx a0_idx).
+         { rewrite (upd_ne p4 (Regidx csp_rs1) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+           rewrite (upd_ne p3 (Regidx s2_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+           rewrite (upd_ne p2 (Regidx s1_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+           rewrite (upd_ne p1 (Regidx s0_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+           exact (upd_ne nK (Regidx ra_idx) (Regidx a0_idx) _
+                    ltac:(vm_compute; discriminate)). }
+         rewrite Ha0p5.
+         split; intro Hg0; [ exact (Hret Hg0) | exact (Hret0 Hg0) ]. }
     iPureIntro. intros r Hr.
     assert (Hcsp2 : uint csp_rs1 = 2) by (vm_compute; reflexivity).
     destruct (Z.eq_dec (uint r) 2) as [Eq1 | Eq1].
@@ -6828,13 +6808,12 @@ Section UkSh.
         (* ...AND THE LEASE'S TWO LAWS THE BODY'S FORK ARM SPENDS (lane
            IO-LEAF, step 3): the loop holds the PIECES ([Pm]) and the fork
            arm assembles the payload from them at a boundary
-           ([ush_at_of_pm]) and takes it apart again on the returning arm
+           ([ush_at_of_pm_wb]) and takes it apart again on the returning arm
            ([ush_pm_of_at]).  Premises of the OBLIGATION for the same
            reason as the three above: the laws are this section's
            hypotheses, so [wp_ksh_loop] pays them, and no caller of
            [UInitSh.sh_pay_rest] -- a [∀] over every [Pm] -- could. *)
         ⌜ forall i : nat, ⊢ ush_at i -∗ ush_lease i ⌝ -∗
-        ⌜ forall i : nat, ush_bnd i -> ⊢ Pm i -∗ ush_at i ⌝ -∗
         shk_code γt -∗
         ush_jtab γt -∗
         ush_loop_head R l -∗
@@ -7369,7 +7348,21 @@ Section UkSh.
     (* sh's OWN exit: the payload it owes its parent is the lease it has
        been carrying since its entry (lane KILL-PAY, K4(a)) *)
     { iIntros (h5) "Hrun".
-      iDestruct (ush_gets_done_pos l i2 g with "Hpos") as "Hpos".
+      (* THE PAYLOAD, off whichever arm left: nothing read, or the taint.
+         A LINE READ is refuted here (lane EXEC-SEAM, (C)): its first byte
+         is 'e', so getcmd answered 0 and this branch was not taken. *)
+      iAssert ush_pos with "[Hpos]" as "Hpos".
+      { rewrite /ush_gets_done.
+        iDestruct "Hpos" as "[[_ $] | [[%Hl _] | [_ $]]]".
+        exfalso. destruct Hl as [_ Hli].
+        assert (Hg0 : g 0%nat <> ubyte0).
+        { rewrite (proj2 Hli 0%nat ltac:(rewrite (proj1 Hli); vm_compute; lia)).
+          intro He. apply (f_equal bv_unsigned) in He.
+          vm_compute in He. discriminate He. }
+        assert (Hz : uv_btaken BLT (mword_of_int 0 : mword 64)
+                       (zero_reg : mword 64) = false)
+          by (vm_compute; reflexivity).
+        rewrite (proj2 Ha0m Hg0) Hz in Htk40. discriminate Htk40. }
       iDestruct (ush_pos_pay with "Hpos") as "Hpay".
       iApply (wp_ksh_die h5 mR (16 + n) with "Hcode Hpay Hrun"). }
     assert (E940 : add_vec_int (mword_of_int 0x940 : mword 64) 4
@@ -7395,7 +7388,7 @@ Section UkSh.
         assert (Hm1 : uv_btaken BLT (mword_of_int (-1) : mword 64)
                         (zero_reg : mword 64) = true)
           by (vm_compute; reflexivity).
-        rewrite (Ha0m Hg0) Hm1 in Htk40. discriminate Htk40.
+        rewrite (proj1 Ha0m Hg0) Hm1 in Htk40. discriminate Htk40.
       - iFrame "Hp". iLeft. iPureIntro. destruct Hl as [Hi17 Hli].
         split; [ exact Hi17 | rewrite <- Hi17; exact Hli ].
       - iSplitR; [ iRight; iExact "HT" | ].
@@ -7516,8 +7509,8 @@ Section UkSh.
                      = mword_of_int 0x97a)
         by (apply bv_eq; vm_compute; reflexivity).
       rewrite E976. iIntros (hh1) "Hrun".
-      iDestruct ("Hrest" $! l with "[%] [%] [%] Hcode Hjt IH") as "Hbody";
-        [ exact Hpay | exact ush_pm_of_at | exact ush_at_of_pm | ].
+      iDestruct ("Hrest" $! l with "[%] [%] Hcode Hjt IH") as "Hbody";
+        [ exact Hpay | exact ush_pm_of_at | ].
       iApply ("Hbody" $! hh1 mm g kk i2 n0
                 with "[] [] [] [] [] Hrl Hstd HR Hbs Hrun");
         iPureIntro; [ exact Hrm | exact Hsm | exact Ham

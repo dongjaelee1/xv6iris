@@ -98,6 +98,7 @@ Require Import FsCrash.
 Require Import FsDurSnap.
 Require Import FsImgDisk.
 Require Import SystemAdequacy.
+Require Import FsBootParams.  (* [XV6_DISK_BYTES], [fsimg_cov]              *)
 Require Import FsImgCheck.
 Require Import FsImg.            (* [fs_sb], [FsImg.sb_logstart] *)
 Require Import FsState.
@@ -114,6 +115,10 @@ Require Import ConsoleInv.       (* [CONSOLE] *)
 Require Import FsConsPin.        (* [cons_absent] / [cons_present_at], the
                                     era-0 console state and its transport,
                                     and section 5's delta algebra *)
+Require Export EchoFsPure.       (* [echo_fs_pure] -- this
+                                    application's pure claim, split out
+                                    for [UInitSh].  EXPORT: existing
+                                    importers unchanged.            *)
 Require Import FsCfgBoot.        (* [fs_boot_image_wf]: the theorem's [Himg] *)
 Require Import FsDurImg.         (* [img_state], [img_snap_ok]: era 0's snapshot *)
 Require Import AppInv.           (* [app_xfer_raw], [app_xfer_raw_pers_or_pure],
@@ -311,14 +316,9 @@ End EchoLedger.
 (*  3.  THE PREDICATE: TAINTED, OR THE BINARIES ARE THE IMAGE'S            *)
 (* ====================================================================== *)
 
-(* /init, /sh and /echo are the image's, path and content, on the abstract
-   state's VIEW.  Per-inum rather than "the map is the image's" on purpose:
-   the durable snapshot pins a state per inum and no whole-map equality
-   exists (fs-syscall-specs.md lane D, gap (3)).  This half of the claim is
-   PURE -- it owns nothing -- so it is a [Prop] and the predicate embeds
-   it. *)
-Definition echo_fs_pure (av : aview) : Prop :=
-  era0_pins av /\ era0_sh_pins av /\ era0_echo_pins av.
+(* [echo_fs_pure] MOVED DOWN to [EchoFsPure.v] (re-exported above):
+   [UInitSh] names this [Prop] in [init_sh_slot_core]'s statement and
+   wants nothing else of this application. *)
 
 (* THE APPLICATION'S INSTANCE NAMES: the console one-shot's ghost name,
    one per instance of the claim (the running one, and one per durable
@@ -1409,7 +1409,7 @@ Section EchoApp.
      arm -- the instant between the echo's store and the [WpUart.in_append]
      that files its entry. *)
   Definition echo_in (γ : echo_fixed) :
-      nat -> list mobs -> list ConsLog.log_entry ->
+      nat -> list mobs -> list LogEntryDefs.log_entry ->
       list (list mobs * bv 8) -> iProp Σ :=
     EchoOut.ein (echo_taint γ) γ.
 
@@ -1479,7 +1479,7 @@ Section EchoApp.
   Proof. cbn [app_echo app_fixed app_out echo_out] in c |- *. apply _. Qed.
 
   Lemma echo_Hinpt (c : app_fixed app_echo) (k : nat) (h : list mobs)
-      (pops : list ConsLog.log_entry) (dl : list (list mobs * bv 8)) :
+      (pops : list LogEntryDefs.log_entry) (dl : list (list mobs * bv 8)) :
     Timeless (app_in app_echo c k h pops dl).
   Proof. cbn [app_echo app_fixed app_in echo_in] in c |- *. apply _. Qed.
 
@@ -1491,11 +1491,11 @@ Section EchoApp.
 
   Lemma echo_Happ_in_sup (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r
-      ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
-             (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
+      ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
+             (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
              app_in app_echo c k h pops dl ==∗
              app_in app_echo c k h (pops ++ [e]) dl)
-        ∗ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+        ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
                (dl ws : list (list mobs * bv 8)),
                app_in app_echo c k h pops dl ==∗
                app_in app_echo c k h pops (dl ++ ws)).
@@ -1565,7 +1565,7 @@ Section EchoApp.
     @file_app Σ HF = MkAppcfg (app_names app_echo) (app_pred app_echo c) r ->
     (i = Uart0 -> FsCfg.fsc_uart = γ) ->
     ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
-           (ho hi : list mobs) (pops : list ConsLog.log_entry)
+           (ho hi : list mobs) (pops : list LogEntryDefs.log_entry)
            (dl : list (list mobs * bv 8)),
            ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
            ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗

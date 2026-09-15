@@ -217,7 +217,7 @@ Section FsAbsSeam.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !irefslotG Σ}.
   Context `{GEN : GenId}.
   Context `{ICFG : icfg}.
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   (* =================================================================== *)
   (*  2-3.  THE SEAM AT [dv_half], AND THE LEND FIRED AT THE READ ARM:    *)

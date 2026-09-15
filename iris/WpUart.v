@@ -942,7 +942,7 @@ Section DevLoops.
   (*  and the console's keyboard, and the kernel's own port carries [emp]. *)
   (* ==================================================================== *)
   Definition in_res_at (iu : uart_id) (k : nat) (ho : list mobs)
-      (pops : list ConsLog.log_entry)
+      (pops : list LogEntryDefs.log_entry)
       (dl : list (list mobs * bv 8)) : iProp Σ :=
     match iu with Uart0 => riscv_in_res k ho pops dl | Uart1 => emp end%I.
 
@@ -951,7 +951,7 @@ Section DevLoops.
   Proof. rewrite /in_res_at. destruct iu; apply _. Qed.
 
   Lemma in_res_at_uart1 (k : nat) (ho : list mobs)
-      (pops : list ConsLog.log_entry)
+      (pops : list LogEntryDefs.log_entry)
       (dl : list (list mobs * bv 8)) : ⊢ in_res_at Uart1 k ho pops dl.
   Proof. done. Qed.
 
@@ -1016,17 +1016,17 @@ Section DevLoops.
      needs to reinstall the accumulator.  Only consoleintr moves it, and it
      holds cons.lock and the port invariant together when it does. *)
   Definition uart_logm (γ : uart_names) (q : Qp)
-      (L : list ConsLog.log_entry) : iProp Σ :=
+      (L : list LogEntryDefs.log_entry) : iProp Σ :=
     ghost_var γ.(un_logm) q L.
 
   (* THE KERNEL'S MIRROR OF THE LOG.  The application owns [riscv_in_res];
      the kernel keeps a mono_list beside it so that the console ring can
      hold a PERSISTENT lower bound on the log and state its gap facts
      against that bound rather than against a resource it cannot see. *)
-  Definition in_log_auth (γ : uart_names) (L : list ConsLog.log_entry) : iProp Σ :=
-    own γ.(un_log) (●ML (L : list (leibnizO ConsLog.log_entry))).
-  Definition in_log_lb (γ : uart_names) (L : list ConsLog.log_entry) : iProp Σ :=
-    own γ.(un_log) (◯ML (L : list (leibnizO ConsLog.log_entry))).
+  Definition in_log_auth (γ : uart_names) (L : list LogEntryDefs.log_entry) : iProp Σ :=
+    own γ.(un_log) (●ML (L : list (leibnizO LogEntryDefs.log_entry))).
+  Definition in_log_lb (γ : uart_names) (L : list LogEntryDefs.log_entry) : iProp Σ :=
+    own γ.(un_log) (◯ML (L : list (leibnizO LogEntryDefs.log_entry))).
 
   Global Instance in_log_lb_persistent γ L : Persistent (in_log_lb γ L).
   Proof. rewrite /in_log_lb. apply _. Qed.
@@ -1058,7 +1058,7 @@ Section DevLoops.
   Proof.
     rewrite /in_log_auth. iIntros "Ha".
     iMod (own_update _ _
-            (●ML ((L ++ [e]) : list (leibnizO ConsLog.log_entry)))
+            (●ML ((L ++ [e]) : list (leibnizO LogEntryDefs.log_entry)))
             with "Ha") as "$"; [| done].
     apply mono_list_update. by exists [e].
   Qed.
@@ -1066,8 +1066,8 @@ Section DevLoops.
   (* the log's TOP history: what the mark's two halves agree on.  Spelled
      by INDEX and not with [last], which [Stdlib.List.last] shadows in the
      files this vocabulary reaches ([ObsTrace.obs_ends_in_inj]'s note). *)
-  Definition log_top (pops : list ConsLog.log_entry) : option (list mobs) :=
-    ConsLog.le_hist <$> (pops !! (length pops - 1)%nat).
+  Definition log_top (pops : list LogEntryDefs.log_entry) : option (list mobs) :=
+    LogEntryDefs.le_hist <$> (pops !! (length pops - 1)%nat).
 
   (* THE CLAUSE THE INVARIANT CARRIES, AT ITS OWN MOVABLE WITNESS.  NOT the
      output claim's: [out_link] moves that witness at every store, and
@@ -1076,7 +1076,7 @@ Section DevLoops.
      side binds its own [o], moved only inside the shift's or the read's
      own view shift, where a bound on the byte's history is in hand. *)
   Definition in_claim_at (iu : uart_id) (γ : uart_names) : iProp Σ :=
-    (∃ (o : option (list mobs)) (pops : list ConsLog.log_entry)
+    (∃ (o : option (list mobs)) (pops : list LogEntryDefs.log_entry)
        (dl : list (list mobs * bv 8)),
        obs_hist_lb_o o ∗ in_res_at iu (S gen_id) (default [] o) pops dl ∗
        uart_log_hi γ (1/2) (log_top pops) ∗ uart_deliv γ (1/2) dl ∗
@@ -2236,10 +2236,10 @@ Section DevLoops.
      hands back exactly what it was given ([in_append_of_licence]). *)
   Definition in_append (k : nat) (h : list mobs) (c : bv 8) (cs : list (bv 8))
       (Φ : iProp Σ) : iProp Σ :=
-    (∀ (o : option (list mobs)) (pops : list ConsLog.log_entry)
+    (∀ (o : option (list mobs)) (pops : list LogEntryDefs.log_entry)
        (dl : list (list mobs * bv 8)),
        obs_hist_lb_o o -∗ in_res_at Uart0 k (default [] o) pops dl -∗
-       ⌜forall e, e ∈ pops -> hist_ext (ConsLog.le_hist e) h⌝
+       ⌜forall e, e ∈ pops -> hist_ext (LogEntryDefs.le_hist e) h⌝
        ={⊤ ∖ ↑uartN Uart0}=∗
        ∃ o' : option (list mobs),
          obs_hist_lb_o o' ∗
@@ -2262,10 +2262,10 @@ Section DevLoops.
      an input needs no order fact. *)
   Definition echo_link (k : nat) (h : list mobs) (b : bv 8) (Φ : iProp Σ) : iProp Σ :=
     (∀ (o o' : option (list mobs)) (acc : list (bv 8))
-       (pops : list ConsLog.log_entry) (dl : list (list mobs * bv 8)),
+       (pops : list LogEntryDefs.log_entry) (dl : list (list mobs * bv 8)),
        obs_hist_lb_o o -∗ out_res_at Uart0 k (default [] o) acc -∗
        obs_hist_lb_o o' -∗ in_res_at Uart0 k (default [] o') pops dl -∗
-       ⌜forall e, e ∈ pops -> hist_ext (ConsLog.le_hist e) h⌝ -∗
+       ⌜forall e, e ∈ pops -> hist_ext (LogEntryDefs.le_hist e) h⌝ -∗
        (* ...AND THE WIRE BELOW THE ACCEPTED SEQUENCE, AT THE BYTE'S OWN
           HISTORY (the coordinator's second C2 amendment).  The application
           has to place the transcript it owes -- which the discipline pins
@@ -2353,7 +2353,7 @@ Section DevLoops.
      an echo or edited away.  The log itself does not move. *)
   Definition read_link (k : nat) (ws : list (list mobs * bv 8))
       (Φ : iProp Σ) : iProp Σ :=
-    (∀ (o : option (list mobs)) (pops : list ConsLog.log_entry)
+    (∀ (o : option (list mobs)) (pops : list LogEntryDefs.log_entry)
        (dl : list (list mobs * bv 8)),
        obs_hist_lb_o o -∗ in_res_at Uart0 k (default [] o) pops dl -∗
        ⌜ConsLog.read_ok pops dl ws⌝
@@ -2417,10 +2417,10 @@ Section DevLoops.
   (* QUANTIFIED OVER THE ERA, on [out_licence]'s mould and for its reason
      (lane CONS-IO milestone C). *)
   Definition in_licence : iProp Σ :=
-    (□ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
-          (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
+    (□ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
+          (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
           riscv_in_res k h pops dl ==∗ riscv_in_res k h (pops ++ [e]) dl)
-     ∗ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+     ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
             (dl ws : list (list mobs * bv 8)),
             riscv_in_res k h pops dl ==∗ riscv_in_res k h pops (dl ++ ws)))%I.
 
@@ -2529,7 +2529,7 @@ Section DevLoops.
      needs to re-close over the new entry, and it was proved here. *)
   Lemma in_claim_append (iu : uart_id) (γ : uart_names)
       (hg : option (list mobs)) (h : list mobs) (c : bv 8)
-      (cs : list (bv 8)) (L : list ConsLog.log_entry) (Φ : iProp Σ) :
+      (cs : list (bv 8)) (L : list LogEntryDefs.log_entry) (Φ : iProp Σ) :
     iu = Uart0 ->
     ohist_ext hg h ->
     obs_ends_in Uart0 h c ->
@@ -2539,7 +2539,7 @@ Section DevLoops.
       ={⊤ ∖ ↑uartN iu}=∗
       in_claim_at iu γ ∗ uart_log_hi γ (1/2) (Some h) ∗
       uart_logm γ (1/2) ((L ++ [(h, c, cs)])%list) ∗
-      ⌜forall e, e ∈ L -> hist_ext (ConsLog.le_hist e) h⌝ ∗
+      ⌜forall e, e ∈ L -> hist_ext (LogEntryDefs.le_hist e) h⌝ ∗
       (* ...AND THE ECHO WINDOW TOKEN, BACK (lane CONS-IO milestone F): the
          run's loan is repaid at its last step, and the arm hands it on to
          the exit, which puts it back in the PLIC payload. *)
@@ -2554,7 +2554,7 @@ Section DevLoops.
     iDestruct (ghost_var_agree with "Hhi Hhi0") as %Hagr.
     (* the order fact, out of the mark and the log's own chain: the mark IS
        the log's top, and the chain carries every entry below it. *)
-    assert (Hbelow : forall e, e ∈ pops -> hist_ext (ConsLog.le_hist e) h).
+    assert (Hbelow : forall e, e ∈ pops -> hist_ext (LogEntryDefs.le_hist e) h).
     { apply (ConsLog.cl_log_ok_last_ext pops h Hok).
       intros el Hel. rewrite Hagr /log_top Hel /= in Hx. exact Hx. }
     iEval (rewrite Hagr) in "Hhi".
@@ -2585,7 +2585,7 @@ Section DevLoops.
      at is the one whose opening produces exactly that. *)
   Lemma uart_inv_append (γ : uart_names) (hg : option (list mobs))
       (h : list mobs) (c : bv 8) (cs : list (bv 8))
-      (L : list ConsLog.log_entry) (Φ : iProp Σ) :
+      (L : list LogEntryDefs.log_entry) (Φ : iProp Σ) :
     ohist_ext hg h ->
     obs_ends_in Uart0 h c ->
     ConsLog.cons_echo c cs ->
@@ -2593,7 +2593,7 @@ Section DevLoops.
     in_append (S gen_id) h c cs Φ
       ={⊤}=∗ uart_log_hi γ (1/2) (Some h) ∗
              uart_logm γ (1/2) ((L ++ [(h, c, cs)])%list) ∗
-             ⌜forall e, e ∈ L -> hist_ext (ConsLog.le_hist e) h⌝ ∗
+             ⌜forall e, e ∈ L -> hist_ext (LogEntryDefs.le_hist e) h⌝ ∗
              (* ...and the window token, back (lane CONS-IO milestone F) *)
              riscv_win_res (S gen_id) ∗ Φ.
   Proof.
@@ -2619,7 +2619,7 @@ Section DevLoops.
      own half's value and the two agree -- so it proves [read_ok] before it
      ever opens anything, and the mirror comes straight back. *)
   Lemma in_claim_read (iu : uart_id) (γ : uart_names)
-      (dv ws : list (list mobs * bv 8)) (L : list ConsLog.log_entry)
+      (dv ws : list (list mobs * bv 8)) (L : list LogEntryDefs.log_entry)
       (Φ : iProp Σ) :
     iu = Uart0 ->
     ConsLog.read_ok L dv ws ->
@@ -2652,7 +2652,7 @@ Section DevLoops.
      [|={⊤}=>] with no machine step.  [uart_inv_append]'s twin, and stated
      at [⊤] for its reason. *)
   Lemma uart_inv_read (γ : uart_names) (dv ws : list (list mobs * bv 8))
-      (L : list ConsLog.log_entry) (Φ : iProp Σ) :
+      (L : list LogEntryDefs.log_entry) (Φ : iProp Σ) :
     ConsLog.read_ok L dv ws ->
     uart_inv Uart0 γ -∗ uart_deliv γ (1/2) dv -∗ uart_logm γ (1/2) L -∗
     read_link (S gen_id) ws Φ
@@ -2776,7 +2776,7 @@ Section DevLoops.
       "(#Hilb & Hires & Hhi0 & Hdv & Hau & Hlm0 & %Hok)".
     rewrite /uart_log_hi.
     iDestruct (ghost_var_agree with "Hhi Hhi0") as %Hagr.
-    assert (Hbelow : forall e, e ∈ pops -> hist_ext (ConsLog.le_hist e) h).
+    assert (Hbelow : forall e, e ∈ pops -> hist_ext (LogEntryDefs.le_hist e) h).
     { apply (ConsLog.cl_log_ok_last_ext pops h Hok).
       intros el Hel. rewrite Hagr /log_top Hel /= in Hx. exact Hx. }
     iDestruct (uart_out_prefix with "Hout Hwlb") as %Hpre.
@@ -3085,12 +3085,12 @@ Section DevLoops.
     iMod (ghost_var_alloc (@None (list mobs))) as (γlg) "Hlg".
     iEval (rewrite -Qp.half_half) in "Hlg".
     iDestruct (ghost_var_split with "Hlg") as "[Hlg1 Hlg2]".
-    iMod (own_alloc (●ML (@nil (leibnizO ConsLog.log_entry)))) as (γml) "Hml";
+    iMod (own_alloc (●ML (@nil (leibnizO LogEntryDefs.log_entry)))) as (γml) "Hml";
       [apply mono_list_auth_valid|].
     iMod (ghost_var_alloc (@nil (list mobs * bv 8))) as (γdv) "Hdv".
     iEval (rewrite -Qp.half_half) in "Hdv".
     iDestruct (ghost_var_split with "Hdv") as "[Hdv1 Hdv2]".
-    iMod (ghost_var_alloc (@nil ConsLog.log_entry)) as (γlm) "Hlm".
+    iMod (ghost_var_alloc (@nil LogEntryDefs.log_entry)) as (γlm) "Hlm".
     iEval (rewrite -Qp.half_half) in "Hlm".
     iDestruct (ghost_var_split with "Hlm") as "[Hlm1 Hlm2]".
     iModIntro.
@@ -3254,11 +3254,11 @@ Section DevLoops.
          its own [pops]/[dl]: the two claims live at independent witnesses
          because a writer's [out_link] moves only the output's.  Taken
          linearly and given back, exactly as the output claim is. *)
-      (Ires : nat -> list mobs -> list ConsLog.log_entry ->
+      (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
               list (list mobs * bv 8) -> iProp Σ)
       (Hookin : riscv_in_res = Ires)
       (Htx : ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
-                     (ho hi : list mobs) (pops : list ConsLog.log_entry)
+                     (ho hi : list mobs) (pops : list LogEntryDefs.log_entry)
                      (dl : list (list mobs * bv 8)),
                ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
                ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗

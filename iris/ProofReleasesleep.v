@@ -76,7 +76,7 @@ Section ProofReleasesleep.
 
   Lemma wp_releasesleep_genin_sconf
       (γs : list gname)
-      (γl γsl : gname) (s : string) (R Rdep : TsoCtx.CtxId -> iProp Σ)
+      (γl γsl : gname) (s : string) (R Rdep : CtxIdDefs.CtxId -> iProp Σ)
       `{HmR : !TsoCtx.CtxMorph R} `{HmRd : !TsoCtx.CtxMorph Rdep} (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (pd : mword 32) (pme : mword 64) (av : nat) (eb : bool) (b : bool) (lks : gset string)
       (tl : nat)
@@ -267,7 +267,7 @@ Section ProofReleasesleep.
                          (sign_extend' 64 (mword_of_int 0x28 : mword 12)) = sl_pid slk).
     { rgne. rewrite HMacqs1. reflexivity. }
     (* open sl_res as the holder: the token refutes the free arm. *)
-    iDestruct (sl_res_open_held_q γsl slk (R TsoCtx.cur_ctx) H q with "HRsl Hslk") as "(Hslk & Hha & HHdep & Hcell)".
+    iDestruct (sl_res_open_held_q γsl slk (R CtxIdDefs.cur_ctx) H q with "HRsl Hslk") as "(Hslk & Hha & HHdep & Hcell)".
     (* the pid field now rides INSIDE the holder token (SleepLock.v's
        [sleeplocked_q]); open it for the [sw zero,40(s1)] below and close it
        back at 0, which is exactly the free arm's shape. *)
@@ -384,7 +384,7 @@ Section ProofReleasesleep.
       rewrite /R2 upd_ne; [| vm_compute; discriminate].
       rewrite /R1 upd_eq. reflexivity. }
     (* rebuild the FREE sl_res: zeroed word + token + zeroed pid + R. *)
-    iDestruct (sl_res_close_free γsl slk (Rdep TsoCtx.cur_ctx) H q with "Hslkw Hslk Hha HRdep") as "HRsl".
+    iDestruct (sl_res_close_free γsl slk (Rdep CtxIdDefs.cur_ctx) H q with "Hslkw Hslk Hha HRdep") as "HRsl".
     (* release(&slk->lk): intr_count 1 -> 0.  ENDGAME R1-pre / R2: the
        free arm goes back UNFLOORED and the hook ([lock_hook_llb]) raises
        the lock's stamped record to the presented [llb tl] and mints the
@@ -570,7 +570,7 @@ Section ProofReleasesleep.
   (* the plain λ relay: the _in relay at [tl := 0], [Rdep := R]. *)
   Lemma wp_releasesleep_genl_sconf
       (γs : list gname)
-      (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ)
+      (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ)
       `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (pd : mword 32) (pme : mword 64) (av : nat) (eb : bool) (b : bool) (lks : gset string)
     : wp_releasesleep_genl_sconf_body γs γl γsl s R H q m pd pme av eb b lks.

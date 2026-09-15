@@ -505,7 +505,7 @@ Section BootCarveMain.
   (* after their [sign_extend']-ed 12-bit literal offsets reduce by      *)
   (* [vm_compute].                                                      *)
   (* ------------------------------------------------------------------ *)
-  Lemma boot_lk_raw `{XI : TsoCtx.CurCtx} (g : gstate) (A : Z) :
+  Lemma boot_lk_raw `{XI : CtxIdDefs.CurCtx} (g : gstate) (A : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= A -> A + 24 <= ram_hi -> A mod 8 = 0 ->
@@ -551,7 +551,7 @@ Section BootCarveMain.
   (* lock consoleinit has just initialised.  The four bytes of padding   *)
   (* between the ring's end and [pr] are dropped, as everywhere.         *)
   (* ------------------------------------------------------------------ *)
-  Lemma boot_cons_res `{XI : TsoCtx.CurCtx} (g : gstate) (cn : cons_names) :
+  Lemma boot_cons_res `{XI : CtxIdDefs.CurCtx} (g : gstate) (cn : cons_names) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= KernelSyms.cons ->
@@ -697,7 +697,7 @@ Section BootCarveMain.
      [lk.name ↦₈] at +16, [lk.cpu ↦₈] at +24), then [name ↦₈] at +32 and
      [pid ↦₄] at +40.  Serves every sleeplock in the image: the NBUF buffer
      locks and the NINODE inode locks. *)
-  Lemma boot_sl_raw `{XI : TsoCtx.CurCtx} (g : gstate) (A : Z) :
+  Lemma boot_sl_raw `{XI : CtxIdDefs.CurCtx} (g : gstate) (A : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= A -> A + 44 <= ram_hi -> A mod 8 = 0 ->
@@ -768,7 +768,7 @@ Section BootCarveMain.
 
   (* [BcacheInv.blink_raw]: the LRU link pair, [prev ↦₈] at +72 and
      [next ↦₈] at +80 of a [struct buf]. *)
-  Lemma boot_blink_raw `{XI : TsoCtx.CurCtx} (g : gstate) (A : Z) :
+  Lemma boot_blink_raw `{XI : CtxIdDefs.CurCtx} (g : gstate) (A : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= A -> A + 88 <= ram_hi -> A mod 8 = 0 ->
@@ -808,19 +808,19 @@ Section BootCarveMain.
      are still together -- so these local shapes are stated with the ctx
      tower QUALIFIED (this file deliberately does not [Import TsoCtx], so
      its bare [↦] notations stay the raw ones the range machinery uses). *)
-  Local Definition dinfo_raw `{XI : TsoCtx.CurCtx} (a : Arch.pa) : iProp Σ :=
+  Local Definition dinfo_raw `{XI : CtxIdDefs.CurCtx} (a : Arch.pa) : iProp Σ :=
     ((∃ w : SailStdpp.Values.mword 64,
         TsoCtx.ctx_word_pointsto XI a (DfracOwn 1) w) ∗
      (∃ sb : bv 8,
         TsoCtx.ctx_pointsto XI (pa_add a 8%nat) (DfracOwn 1) sb))%I.
 
-  Local Definition dops_raw `{XI : TsoCtx.CurCtx} (a : Arch.pa) : iProp Σ :=
+  Local Definition dops_raw `{XI : CtxIdDefs.CurCtx} (a : Arch.pa) : iProp Σ :=
     (∃ (t r : SailStdpp.Values.mword 32) (s : SailStdpp.Values.mword 64),
        TsoCtx.ctx_word4_pointsto XI a (DfracOwn 1) t ∗
        TsoCtx.ctx_word4_pointsto XI (pa_add a 4%nat) (DfracOwn 1) r ∗
        TsoCtx.ctx_word_pointsto XI (pa_add a 8%nat) (DfracOwn 1) s)%I.
 
-  Lemma boot_dinfo_raw `{XI : TsoCtx.CurCtx} (g : gstate) (A : Z) :
+  Lemma boot_dinfo_raw `{XI : CtxIdDefs.CurCtx} (g : gstate) (A : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= A -> A + 16 <= ram_hi -> A mod 8 = 0 ->
@@ -840,7 +840,7 @@ Section BootCarveMain.
     iSplitL "H0"; [iExists w; iExact "H0" | iExists (boot_byte (A + 8)); iExact "H1"].
   Qed.
 
-  Lemma boot_dops_raw `{XI : TsoCtx.CurCtx} (g : gstate) (A : Z) :
+  Lemma boot_dops_raw `{XI : CtxIdDefs.CurCtx} (g : gstate) (A : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= A -> A + 16 <= ram_hi -> A mod 8 = 0 ->
@@ -871,7 +871,7 @@ Section BootCarveMain.
   Qed.
 
   (* the eight slots, out of the two ranges. *)
-  Lemma boot_disk_slots `{XI : TsoCtx.CurCtx} (g : gstate) :
+  Lemma boot_disk_slots `{XI : CtxIdDefs.CurCtx} (g : gstate) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     kmap_static_claims -∗
@@ -955,7 +955,7 @@ Section BootCarveMain.
      [BioInitAt.buf_raw k] by conversion ([bpa k] is [bnode k] is
      [pa_of_z (buf_base + buf_stride * k)]), which is what lets the family's
      third half be handed over with no address bridge. *)
-  Local Definition bpay_raw `{XI : TsoCtx.CurCtx} (a : Arch.pa) : iProp Σ :=
+  Local Definition bpay_raw `{XI : CtxIdDefs.CurCtx} (a : Arch.pa) : iProp Σ :=
     (TsoCtx.ctx_word4_pointsto XI (b_valid a) (DfracOwn 1)
        (mword_of_int 0 : mword 32) ∗
      TsoCtx.ctx_word4_pointsto XI (b_disk a) (DfracOwn 1)
@@ -973,10 +973,10 @@ Section BootCarveMain.
   (* the per-element shape, NAMED: the family's [Φ] is applied to the element
      address, and a LAMBDA there leaves the per-element goal a beta-redex that
      [iApply] will not see through. *)
-  Local Definition bnode_raw `{XI : TsoCtx.CurCtx} (a : Arch.pa) : iProp Σ :=
+  Local Definition bnode_raw `{XI : CtxIdDefs.CurCtx} (a : Arch.pa) : iProp Σ :=
     (sl_raw (buf_lock a) ∗ blink_raw a ∗ bpay_raw a)%I.
 
-  Lemma boot_buf_node `{XI : TsoCtx.CurCtx} (g : gstate) (A : Z) :
+  Lemma boot_buf_node `{XI : CtxIdDefs.CurCtx} (g : gstate) (A : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     img_end <= A -> A + 1112 <= ram_hi -> A mod 8 = 0 ->
@@ -1083,11 +1083,11 @@ Section BootCarveMain.
      so the whole bridge is one framing.  It is kept as a NAME because the
      address agreement is the content: nothing else in the tree says that
      the [k]th record of the carve's stride family is the [k]th buffer. *)
-  Lemma bpay_raw_buf_raw `{XI : TsoCtx.CurCtx} (k : nat) :
+  Lemma bpay_raw_buf_raw `{XI : CtxIdDefs.CurCtx} (k : nat) :
     bpay_raw (pa_of_z (buf_base + buf_stride * Z.of_nat k)) ⊢ buf_raw k.
   Proof. rewrite /bpay_raw /buf_raw. iIntros "$". Qed.
 
-  Lemma boot_bcache_nodes `{XI : TsoCtx.CurCtx} (g : gstate) :
+  Lemma boot_bcache_nodes `{XI : CtxIdDefs.CurCtx} (g : gstate) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     kmap_static_claims -∗
@@ -1140,7 +1140,7 @@ Section BootCarveMain.
   (* [mword_of_int (off + 4*j)] spelling -- which IS [InodeInv.i_addr]   *)
   (* at [off = 80], so its consumer needs no address rewriting at all.   *)
   (* ------------------------------------------------------------------ *)
-  Lemma boot_word4_cells `{XI : TsoCtx.CurCtx} (g : gstate) (C : Z) (n : nat) (off : Z) :
+  Lemma boot_word4_cells `{XI : CtxIdDefs.CurCtx} (g : gstate) (C : Z) (n : nat) (off : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= C + off -> C + off + 4 * Z.of_nat n <= ram_hi ->
@@ -1205,10 +1205,10 @@ Section BootCarveMain.
   (* same claim and the precedent.  Everything else is contents-         *)
   (* existential, which is all the cache's boot step needs.              *)
   (* ------------------------------------------------------------------ *)
-  Local Definition inode_node_raw `{XI : TsoCtx.CurCtx} (a : Arch.pa) : iProp Σ :=
+  Local Definition inode_node_raw `{XI : CtxIdDefs.CurCtx} (a : Arch.pa) : iProp Σ :=
     (sl_raw (i_lock a) ∗ ientry_raw_at a)%I.
 
-  Lemma boot_inode_entry `{XI : TsoCtx.CurCtx} (g : gstate) (A : Z) :
+  Lemma boot_inode_entry `{XI : CtxIdDefs.CurCtx} (g : gstate) (A : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     img_end <= A -> A + 136 <= ram_hi -> A mod 8 = 0 ->
@@ -1346,7 +1346,7 @@ Section BootCarveMain.
      the ENTRY array's own base.  Gives both of [main_globals_raw]'s inode
      conjuncts -- the sleeplocks iinit takes, and the cells [icache_boot]
      takes. *)
-  Lemma boot_inode_entries `{XI : TsoCtx.CurCtx} (g : gstate) :
+  Lemma boot_inode_entries `{XI : CtxIdDefs.CurCtx} (g : gstate) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     kmap_static_claims -∗
@@ -1407,7 +1407,7 @@ Section BootCarveMain.
   (* slot's padding.  Nothing could build [FileInv.ftable_res] without    *)
   (* them, which is why [is_ftable] had no producer anywhere in the tree. *)
   (* ------------------------------------------------------------------ *)
-  Local Definition file_node_raw `{XI : TsoCtx.CurCtx} (a : Arch.pa) : iProp Σ :=
+  Local Definition file_node_raw `{XI : CtxIdDefs.CurCtx} (a : Arch.pa) : iProp Σ :=
     (TsoCtx.ctx_word4_pointsto XI a (DfracOwn 1) FD_NONE ∗
      TsoCtx.ctx_word4_pointsto XI (foff_of a 4) (DfracOwn 1)
        (mword_of_int 0 : mword 32) ∗
@@ -1422,7 +1422,7 @@ Section BootCarveMain.
      (∃ mj : bv 16,
         TsoCtx.ctx_word2_pointsto XI (foff_of a 36) (DfracOwn 1) mj))%I.
 
-  Lemma boot_file_entry `{XI : TsoCtx.CurCtx} (g : gstate) (A : Z) :
+  Lemma boot_file_entry `{XI : CtxIdDefs.CurCtx} (g : gstate) (A : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     img_end <= A -> A + 40 <= ram_hi -> A mod 8 = 0 ->
@@ -1530,13 +1530,13 @@ Section BootCarveMain.
      [foff_of] offsets are the [a_f…] names), and both sides are now at the
      CTX TIER -- the carve builds ctx cells directly -- so the bridge is one
      framing and its content is the address agreement. *)
-  Lemma file_node_raw_fentry `{XI : TsoCtx.CurCtx} (k : nat) :
+  Lemma file_node_raw_fentry `{XI : CtxIdDefs.CurCtx} (k : nat) :
     file_node_raw (pa_of_z (file_base + file_stride * Z.of_nat k))
     ⊢ fentry_raw k.
   Proof. rewrite /file_node_raw /fentry_raw. iIntros "$". Qed.
 
   (* the NFILE entries, as [FileInv.ftable_res_boot] takes them. *)
-  Lemma boot_file_entries `{XI : TsoCtx.CurCtx} (g : gstate) :
+  Lemma boot_file_entries `{XI : CtxIdDefs.CurCtx} (g : gstate) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     kmap_static_claims -∗
@@ -1617,7 +1617,7 @@ Section BootCarveMain.
     rewrite pa_add_of_z. f_equal. lia.
   Qed.
 
-  Lemma boot_log_raw `{XI : TsoCtx.CurCtx} (g : gstate) :
+  Lemma boot_log_raw `{XI : CtxIdDefs.CurCtx} (g : gstate) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     kmap_static_claims -∗
@@ -1739,7 +1739,7 @@ Section BootCarveMain.
   (* the order the client's cuts out of the one .bss range must follow   *)
   (* ([main_lock_windows] is that check).                               *)
   (* ------------------------------------------------------------------ *)
-  Lemma boot_main_locks_raw `{XI : TsoCtx.CurCtx} (g : gstate) :
+  Lemma boot_main_locks_raw `{XI : CtxIdDefs.CurCtx} (g : gstate) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     kmap_static_claims -∗
@@ -1819,7 +1819,7 @@ Section BootCarveMain.
   (* ================================================================== *)
 
   (* the saved-context save area: [n] doublewords from [C + off]. *)
-  Lemma boot_ctx_cells `{XI : TsoCtx.CurCtx} (g : gstate) (C : Z) (n : nat) (off : Z) :
+  Lemma boot_ctx_cells `{XI : CtxIdDefs.CurCtx} (g : gstate) (C : Z) (n : nat) (off : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= C + off -> C + off + 8 * Z.of_nat n <= ram_hi ->
@@ -1855,7 +1855,7 @@ Section BootCarveMain.
       iSplitL "Hc"; [ rewrite off_of_z; iExact "Hc" | iExact "Hvs" ].
   Qed.
 
-  Lemma boot_own_ctx `{XI : TsoCtx.CurCtx} (g : gstate) (C : Z) :
+  Lemma boot_own_ctx `{XI : CtxIdDefs.CurCtx} (g : gstate) (C : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= C -> C + 112 <= ram_hi -> C mod 8 = 0 ->
@@ -1871,7 +1871,7 @@ Section BootCarveMain.
 
   (* a run of [n] PINNED-zero doublewords from [C + off] -- the sixteen null
      [p->ofile] slots (and, at n = 1, any single zeroed pointer cell). *)
-  Lemma boot_zero_cells `{XI : TsoCtx.CurCtx} (g : gstate) (C : Z) (n : nat) (off : Z) :
+  Lemma boot_zero_cells `{XI : CtxIdDefs.CurCtx} (g : gstate) (C : Z) (n : nat) (off : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= C + off -> img_end <= C + off ->
@@ -1917,7 +1917,7 @@ Section BootCarveMain.
      NAME array, and [pname_cells] now carries "there is a NUL"
      ([ProcGeom.pname_wf]).  The array is BSS, so the fact is already in the
      image -- it just has to stop being forgotten here. *)
-  Lemma boot_name_cells `{XI : TsoCtx.CurCtx} (g : gstate) (C : Z) (n : nat) (off : Z) :
+  Lemma boot_name_cells `{XI : CtxIdDefs.CurCtx} (g : gstate) (C : Z) (n : nat) (off : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= C + off -> img_end <= C + off ->
@@ -1938,7 +1938,7 @@ Section BootCarveMain.
 
   (* ---- the three runs, in the consumer's own vocabulary ---- *)
 
-  Lemma boot_ofile_cells `{XI : TsoCtx.CurCtx} (g : gstate) (A : Z) :
+  Lemma boot_ofile_cells `{XI : CtxIdDefs.CurCtx} (g : gstate) (A : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     img_end <= A -> A + 336 <= ram_hi -> A mod 8 = 0 ->
@@ -1960,7 +1960,7 @@ Section BootCarveMain.
      [pname_cells] carries [ProcGeom.pname_wf], and sixteen zero bytes have a
      NUL at index 0.  The [∃ bs] shape is kept so no consumer moves; the
      witness is simply concrete now. *)
-  Lemma boot_proc_name `{XI : TsoCtx.CurCtx} (g : gstate) (A : Z) :
+  Lemma boot_proc_name `{XI : CtxIdDefs.CurCtx} (g : gstate) (A : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= A -> img_end <= A -> A + 360 <= ram_hi ->
@@ -2008,7 +2008,7 @@ Section BootCarveMain.
      would cut this in the wrong place and [boot_procs_raw] would hand its
      caller [chan] and [proc_pub ∗ parent] instead of the pair and the
      parent. *)
-  Local Definition proc_slot_raw `{XI : TsoCtx.CurCtx} (a : Arch.pa) : iProp Σ :=
+  Local Definition proc_slot_raw `{XI : CtxIdDefs.CurCtx} (a : Arch.pa) : iProp Σ :=
     (proc_raw a ∗
      ((∃ ch : SailStdpp.Values.mword 64,
          TsoCtx.ctx_word_pointsto XI (p_chan a) (DfracOwn 1) ch) ∗ proc_pub a) ∗
@@ -2026,7 +2026,7 @@ Section BootCarveMain.
         ([SlotGen.gen_halves_dorm]). *)
      pid_lock_share a (mword_of_int 0 : mword 32))%I.
 
-  Lemma boot_proc_slot `{XI : TsoCtx.CurCtx} (g : gstate) (A : Z) :
+  Lemma boot_proc_slot `{XI : CtxIdDefs.CurCtx} (g : gstate) (A : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     img_end <= A -> A + 360 <= ram_hi -> A mod 8 = 0 ->
@@ -2254,7 +2254,7 @@ Section BootCarveMain.
 
   (* ...and the 64 slots, out of the one [proc[]] range: ONE family, whose
      per-element carve gives both of [main_globals_raw]'s proc big-ops. *)
-  Lemma boot_procs_raw `{XI : TsoCtx.CurCtx} (g : gstate) :
+  Lemma boot_procs_raw `{XI : CtxIdDefs.CurCtx} (g : gstate) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     kmap_static_claims -∗
@@ -2315,7 +2315,7 @@ Section BootCarveMain.
   (* one page, out of its own 4096-byte range: [BootCarve.boot_cran_mem_run]
      hands out the bytes already indexed by [pa_add], and [page_own] is that
      run with the contents forgotten. *)
-  Lemma boot_page_own `{XI : TsoCtx.CurCtx} (g : gstate) (lo : Z) :
+  Lemma boot_page_own `{XI : CtxIdDefs.CurCtx} (g : gstate) (lo : Z) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= lo -> lo + 4096 <= ram_hi ->
@@ -2337,7 +2337,7 @@ Section BootCarveMain.
 
   (* ...and the whole run, by the same downward induction as §9's stack:
      ONE cut per page, the cursor moving up. *)
-  Lemma boot_pg_run_own `{XI : TsoCtx.CurCtx} (g : gstate) (s1 : mword 64) (n : nat) :
+  Lemma boot_pg_run_own `{XI : CtxIdDefs.CurCtx} (g : gstate) (s1 : mword 64) (n : nat) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end + 4096 <= uint s1 ->
@@ -2393,7 +2393,7 @@ Section BootCarveMain.
      [K_kvmmake + 64 + 3 < length ps] is about).  The cursor equation
      [uint s1 + 4096*n = uint phystop + 4096] is what pins the run: the
      cursor ends exactly one page past PHYSTOP. *)
-  Lemma boot_kinit_run `{XI : TsoCtx.CurCtx} (g : gstate) (phystop s1 : mword 64) (n : nat) :
+  Lemma boot_kinit_run `{XI : CtxIdDefs.CurCtx} (g : gstate) (phystop s1 : mword 64) (n : nat) :
     (forall x : Z, ram_lo <= x < ram_hi ->
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     uint s1 + 4096 * Z.of_nat n = uint phystop + 4096 ->

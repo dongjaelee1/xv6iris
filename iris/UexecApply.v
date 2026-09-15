@@ -691,7 +691,7 @@ End Apply.
 Section Frame.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.
-  Context `{GEN : GenId} `{CID : CpuId} `{XI : TsoCtx.CurCtx}.
+  Context `{GEN : GenId} `{CID : CpuId} `{XI : CtxIdDefs.CurCtx}.
 
   Lemma trapped_machine_frame (C : ucfg) (pt : uptd) (Rut : uptd -> iProp Σ)
       (sz : Z) (sc stv : mword 64) (W : uvis) :
@@ -789,7 +789,7 @@ Section LoopApply.
      whole-system bundle.  A file that binds [Xv6G.xv6G] gets the class
      through the bundle and must not bind it again. *)
   Context `{!ctokG Σ}.
-  Context `{GEN : GenId} `{CID : CpuId} `{XI : TsoCtx.CurCtx}.
+  Context `{GEN : GenId} `{CID : CpuId} `{XI : CtxIdDefs.CurCtx}.
   Context {SG : uexecSG Σ}.
 
   (* ------------------------------------------------------------------ *)

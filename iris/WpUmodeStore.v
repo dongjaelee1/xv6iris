@@ -1303,7 +1303,7 @@ Section UvStorePostFetch.
     agree_on D_u (u_state rs2 ∅) dstateU ->
     uv_tree_ok pt (upa_map pt M) t' ->
     gen_cert -∗ uv_amb -∗ uv_cap C pt Ψ -∗
-    (R -∗ ∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) kk wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc dpc) -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -1594,7 +1594,7 @@ Section UvStoreObl.
     ~ uva_text pt (uint va) ->
     gen_cert -∗ uv_amb -∗ uv_cap C pt Ψ -∗
     uv_fetch_bridge (uc_dqc C) pt M rsA t (F_Base w) -∗
-    (R -∗ ∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) kk wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗ WP (Loop : expr riscv_lang)) -∗
     resv_any cpu_id -∗
@@ -1713,7 +1713,7 @@ Section UvStoreObl.
     ~ uva_text pt (uint va) ->
     gen_cert -∗ uv_amb -∗ uv_cap C pt Ψ -∗
     uv_fetch_bridge (uc_dqc C) pt M rsA t (F_RVC h) -∗
-    (R -∗ ∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) kk wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 2) -∗ WP (Loop : expr riscv_lang)) -∗
     resv_any cpu_id -∗
@@ -1854,7 +1854,7 @@ Section WpUmodeStore.
     ~ uva_text pt (uint va) ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    ▷ (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    ▷ (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
          uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) k wval) m -∗
          pc_is (CID := CID0) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
          WP (Loop : expr riscv_lang)) -∗
@@ -1916,7 +1916,7 @@ Section WpUmodeStore.
     ~ uva_text pt (uint va) ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) k wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -1949,7 +1949,7 @@ Section WpUmodeStore.
     ~ uva_text pt (uint va) ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store8 M (uint va) wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -1984,7 +1984,7 @@ Section WpUmodeStore.
     ~ uva_text pt (uint va) ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) 4 wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -2020,7 +2020,7 @@ Section WpUmodeStore.
     ~ uva_text pt (uint va) ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) 1 wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -2062,7 +2062,7 @@ Section WpUmodeStore.
     ~ uva_text pt (uint tgt) ->
     uv_cap_gpr C pt Psi M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Psi (uM_store8 M (uint tgt) wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -2108,7 +2108,7 @@ Section WpUmodeStore.
     ~ uva_text pt (uint va) ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store8 M (uint va) wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -2154,7 +2154,7 @@ Section WpUmodeStore.
     ~ uva_text pt (uint va) ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) 4 wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
        WP (Loop : expr riscv_lang)) -∗

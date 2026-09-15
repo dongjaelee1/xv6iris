@@ -228,7 +228,7 @@ Local Ltac str_read :=
       rewrite (bool_decide_eq_true_2 P ltac:(assumption))
   end.
 
-(* THE BARE TRANSLATION AS A COMPUTED RUN.  [HartMFetch.hfrun_translateAddr_M]
+(* THE BARE TRANSLATION AS A COMPUTED RUN.  [HartTranslateM.hfrun_translateAddr_M]
    one privilege over: at Supervisor the mode is not the syntactic [Bare] of
    the Machine arm, so [translationMode] really runs -- [architecture] off
    mstatus's SXL and then the satp read -- which is the whole difference (two

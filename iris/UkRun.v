@@ -895,7 +895,7 @@ Section UkRun.
 
   Definition urun (N : uk_names Σ) (h : CpuId) (m : regfile) (pc : mword 64)
       (avail : nat) : iProp Σ :=
-    (∃ (xi : TsoCtx.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
+    (∃ (xi : CtxIdDefs.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
        (Rut : uptd -> iProp Σ) (sz : Z)
        (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (fdv : list fdstate)
        (* THE WORKING DIRECTORY IS HIDDEN TOO, exactly as the image, the
@@ -1415,7 +1415,7 @@ Section UkRun.
      sits in a page the table maps, and [upt_map_wf] puts every such page
      below the trapframe; a LIVE address is below the break, and [usz_ok]
      puts the break below the trapframe too. *)
-  Lemma umem_lazy_bound {CIDL : CpuId} {XIL : TsoCtx.CurCtx} (pt : uptd) (sz : Z) (M : gmap Z (bv 8)) :
+  Lemma umem_lazy_bound {CIDL : CpuId} {XIL : CtxIdDefs.CurCtx} (pt : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     proc_pt_wf pt -> usz_ok sz ->
     umem_lazy_x pt sz M -∗ ⌜ forall a : Z, is_Some (M !! a) -> 0 <= a < 2 ^ 38 ⌝.
   Proof.

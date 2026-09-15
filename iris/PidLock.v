@@ -142,7 +142,7 @@ Section PidLock.
      that does (an uncounted allocproc) holds the shot already, off
      [ProcAvail.procs_avail None].  The marks are CONTEXT-FREE, so the
      payload is still a [TsoCtx.CtxMorph]. *)
-  Definition nextpid_res_at (ξ : TsoCtx.CtxId) : iProp Σ :=
+  Definition nextpid_res_at (ξ : CtxIdDefs.CtxId) : iProp Σ :=
     ((∃ v : mword 32, TsoCtx.ctx_word4_pointsto ξ alp_nextpid (DfracOwn 1) v ∗
                       ⌜1 <= bv_unsigned v <= PIDMAX⌝ ∗
                       (⌜bv_unsigned v = 1⌝ ∨ SlotGen.nextpid_shot)) ∗
@@ -152,7 +152,7 @@ Section PidLock.
         pid_reg_auth R ∗
         (⌜Forall (fun q : mword 32 => bv_unsigned q <> 1) pids⌝
          ∨ SlotGen.nextpid_shot)))%I.
-  Definition nextpid_res : iProp Σ := nextpid_res_at TsoCtx.cur_ctx.
+  Definition nextpid_res : iProp Σ := nextpid_res_at CtxIdDefs.cur_ctx.
 
   Global Instance nextpid_res_at_morph : TsoCtx.CtxMorph nextpid_res_at.
   Proof. rewrite /nextpid_res_at /pid_lock_share_at. CtxMorphTac.ctx_morph_solve. Qed.
@@ -163,9 +163,9 @@ Section PidLock.
      one LIST of values.  An OFFSET induction because [seq k (S n)] is
      [k :: seq (S k) n]. *)
   Lemma pid_shares_gather (n k : nat) (v : mword 32) :
-    ([∗ list] i ∈ seq k n, pid_lock_share_at TsoCtx.cur_ctx (proc_addr i) v)
+    ([∗ list] i ∈ seq k n, pid_lock_share_at CtxIdDefs.cur_ctx (proc_addr i) v)
     -∗ [∗ list] j ↦ p ∈ replicate n v,
-         pid_lock_share_at TsoCtx.cur_ctx (proc_addr (k + j)) p.
+         pid_lock_share_at CtxIdDefs.cur_ctx (proc_addr (k + j)) p.
   Proof.
     revert k. induction n as [|n IH]; intros k.
     - iIntros "_". done.

@@ -22,7 +22,7 @@
     contract for echo out of its own pins, so the lemma names below are
     that bundle's inputs -- deliberately [FsShPin]'s shapes with [sh]
     replaced by [echo] throughout.  The application's own claim
-    ([AppEcho.echo_fs_pure]) carries [era0_echo_pins] beside /init's and
+    ([EchoFsPure.echo_fs_pure]) carries [era0_echo_pins] beside /init's and
     /sh's.
 
     WHAT IS REUSED, AND WHY NOTHING IS RESTATED.
@@ -88,6 +88,7 @@ Require Import FsDurSnap.
 Require Import FsDurSyscall.
 Require Import FsCfgBoot.
 Require Import SystemAdequacy.
+Require Import FsBootParams.  (* [XV6_DISK_BYTES], [fsimg_cov], [fsimg_nib] *)
 Require Import FsImgDisk.
 Require Import FsImgCheck.     (* [fname_echo], [fsimg_echo_path],
                                   [fsimg_echo_type], [fsimg_echo_at]     *)

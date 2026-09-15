@@ -467,7 +467,7 @@ Section ProofIdup.
        read at the payload row's stamp (A6.144: the acquire floor covers it,
        the store below forfeits it -- the row closes LLB-bare). *)
     iDestruct (IcacheInv.iref_claims_at k Hk with "Hclaims") as "#Hclaim0".
-    iDestruct (itable_slot_res_acc_upd_llb TsoCtx.cur_ctx M ci k Hk
+    iDestruct (itable_slot_res_acc_upd_llb CtxIdDefs.cur_ctx M ci k Hk
                  with "Hstamps") as "[Hsrow Hstampsback]".
     iEval (rewrite {1}/itable_slot_res HMk) in "Hsrow".
     iDestruct "Hsrow" as "[Hbrow Hsrow]".
@@ -489,7 +489,7 @@ Section ProofIdup.
               (mword_of_int (KernelSyms.idup + 0x18)) Ra5 Rs1
               (mword_of_int 8 : mword 12) macq (trap_res b + (K - 4))%nat
               (fun v _ => v = iref_word M k)
-              ((TsoCtx.ctx_floor TsoCtx.cur_ctx tstk ∗
+              ((TsoCtx.ctx_floor CtxIdDefs.cur_ctx tstk ∗
                 ∃ lo : nat,
                   IcacheInv.iref_pin_rows k (iref_word M k) lo tstk ∗
                   (IcacheInv.iref_pin_rows k (iref_word M k) lo tstk
@@ -703,7 +703,7 @@ Section ProofIdup.
     { rewrite /islot2 lookup_insert Hcik. iFrame "Hiu Hgid Hicnt".
       iSplitR "Hmir Hsel Hpin"; [| iApply (frz_park_intro_off with "Hmir Hsel Hpin") ].
       rewrite /islot_rest_at (id_frac_rest qt qr Hhalfsum). iFrame. }
-    iAssert (itable_res2_llb TsoCtx.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev) with "[Hhalf Hstampsllb Hiauth Hipool Hslots Hpool]" as "HRres".
+    iAssert (itable_res2_llb CtxIdDefs.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev) with "[Hhalf Hstampsllb Hiauth Hipool Hslots Hpool]" as "HRres".
     { iExists (<[k := ((qt + qr/2)%Qp, Pos.succ cnt)]> M), ci.
       iFrame "Hhalf Hstampsllb Hiauth Hpool Hipool".
       iSplitR; [| iSplitR; [| iExact "Hslots"]].

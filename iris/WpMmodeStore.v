@@ -401,7 +401,7 @@ Section WpStoreGpr.
      THE SOLO-ERA SHAPE WAS MEASURED AND REJECTED: all eight harts run
      start(), so [TsoMemPa.all_own] fails at the second hart's first
      prologue save.  See A6.17. *)
-  Local Lemma ctx_phys_word_ram (xi : TsoCtx.CtxId) (a : Arch.pa)
+  Local Lemma ctx_phys_word_ram (xi : CtxIdDefs.CtxId) (a : Arch.pa)
       (dq : dfrac) (w : bv 64) :
     TsoCtx.ctx_phys_word_pointsto xi a dq w ⊢ ⌜addr_is_ram a⌝.
   Proof.

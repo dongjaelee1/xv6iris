@@ -82,7 +82,8 @@ Require Import FsCfgBoot.       (* [img_node], [img_nodes_lookup],
                                    [fs_boot_image_wf]                       *)
 Require Import FsDurImg.        (* [img_snap_ok], [img_state],
                                    [img_root_entries], [img_node_file_byte] *)
-Require Import SystemAdequacy.  (* [fsimg_snap_ok], [fsimg_nib], [fsimg_cov] *)
+Require Import SystemAdequacy.  (* [fsimg_snap_ok], [fsimg_image_wf]        *)
+Require Import FsBootParams.  (* [XV6_DISK_BYTES], [fsimg_cov], [fsimg_nib] *)
 Require Import FsImgDisk.       (* [fsimg_P]                                *)
 Require Import FsImgCheck.      (* [fsimg_sb], [fname_init],
                                    [fsimg_init_path], [fsimg_init_at]       *)

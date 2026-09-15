@@ -320,7 +320,7 @@ Proof. intro H. apply kexec_ok_qf_of_q, kexec_ok_q_of_True, H. Qed.
 
     Kept TRANSPARENT for that reason, and NOT sealed: opacity would break
     the specialisations rather than help them.                            *)
-Definition kexec_closer `{XI : TsoCtx.CurCtx}
+Definition kexec_closer `{XI : CtxIdDefs.CurCtx}
     (* EXACTLY the classes the rows below need, which is the kexec
        contract's list MINUS [pavG]: [proc_priv] is [ProcInv]'s, and that
        section takes `{!riscvGS, !fileG, !xv6G, !bioslotG, !fdslotG,

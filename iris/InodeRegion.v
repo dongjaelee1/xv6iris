@@ -1296,9 +1296,9 @@ Section InodeRegion.
      [↦] occurrences), but it names [IcacheRef.inode_ref], whose identity
      cells are [↦₄] and therefore context-indexed since the flip.  The
      binder is spelled QUALIFIED because this file does not import TsoCtx --
-     an unqualified [TsoCtx.CurCtx] in a no-import file silently generalises a
-     fresh [TsoCtx.CurCtx : Type] (tso-flip-replay.md pass 2.3). *)
-  Context `{XI : TsoCtx.CurCtx}.
+     an unqualified [CtxIdDefs.CurCtx] in a no-import file silently generalises a
+     fresh [CtxIdDefs.CurCtx : Type] (tso-flip-replay.md pass 2.3). *)
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   (* THE per-inum resource: this inum's on-disk record is [dn].  EXCLUSIVE
      (a full-fraction ghost_map element), keyed by the inum's value; the

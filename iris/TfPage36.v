@@ -31,7 +31,7 @@ Section TfPage36.
   Context `{!riscvGS Σ}.
   (* A6.61 newly reached: the trapframe page is a LEDGER page (A6.49), so
      this file's cells are ctx and the section owes the ambient binder. *)
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   (* A6.69: THE TRAPFRAME CELLS ARE THE CONTEXT'S PHYSICAL LEDGER, not the
      raw [↦ₚ₈] tower.  [ProcDefs.tf_words] flipped at A6.58 (its supplier,

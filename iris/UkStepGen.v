@@ -95,13 +95,13 @@ Section UkGen.
   Context (RetF : (uvis -d> iPropO Σ) -> mword 64 -> uvis -> iProp Σ).
   Context (X : uvis -d> iPropO Σ).
   (* ...and which ambient TSO contexts the family's slot covers (header) *)
-  Context (Q : TsoCtx.CurCtx -> Prop).
+  Context (Q : CtxIdDefs.CurCtx -> Prop).
   (* [ChildTok.ctokG] BEFORE [uexecSG], which is indexed by it *)
   Context `{!ctokG Σ}.
   Context {SG : uexecSG Σ}.
 
   (* UexecRet.[ukb_F] at [RetF] *)
-  Definition ukb_F' `{CID : CpuId} `{XI : TsoCtx.CurCtx}
+  Definition ukb_F' `{CID : CpuId} `{XI : CtxIdDefs.CurCtx}
       (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
       (Rut : uptd -> iProp Σ) (sz : Z)
       (π : gmap (mword 27) uperm) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) : iProp Σ :=
@@ -130,14 +130,14 @@ Section UkGen.
        WP (Loop : expr riscv_lang))%I.
 
   (* UexecRet.[ukont_F] at [RetF] *)
-  Definition ukont_F' `{CID : CpuId} `{XI : TsoCtx.CurCtx}
+  Definition ukont_F' `{CID : CpuId} `{XI : CtxIdDefs.CurCtx}
       (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
       (Rut : uptd -> iProp Σ) (sz : Z)
       (π : gmap (mword 27) uperm) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) : iProp Σ :=
     (▷ ukb_F' C pt Rfd Rut sz π fdv cw gn cs pidv)%I.
 
   (* UexecRet.[uvb_F] at [RetF] *)
-  Definition uvb_F' `{CID : CpuId} `{XI : TsoCtx.CurCtx}
+  Definition uvb_F' `{CID : CpuId} `{XI : CtxIdDefs.CurCtx}
       (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
       (Rut : uptd -> iProp Σ) (sz : Z)
       (π : gmap (mword 27) uperm) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32)
@@ -149,7 +149,7 @@ Section UkGen.
   (* UexecRet.[ukc] at [RetF] / [X], with the context binder guarded by [Q] *)
   Definition ukc' (π : gmap (mword 27) uperm) (M : gmap Z (bv 8))
       (szv : Z) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) (m : regfile) (pc : mword 64) : iProp Σ :=
-    (∀ (h : CpuId) (xi : TsoCtx.CurCtx) (C : ucfg) (pt : uptd)
+    (∀ (h : CpuId) (xi : CtxIdDefs.CurCtx) (C : ucfg) (pt : uptd)
        (Rfd : list fdstate -> iProp Σ) (Rut : uptd -> iProp Σ)
        (* A6.140: the accessor the loop borrows the running token with *)
        (HRut : forall pt' : uptd,
@@ -300,7 +300,7 @@ Section UkGenObl.
       (Qp : Z -> iProp Σ) (sz : Z)
       (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32)
       (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) : iProp Σ :=
-    (∀ (R : iProp Σ) (CIDo : CpuId) (XIo : TsoCtx.CurCtx)
+    (∀ (R : iProp Σ) (CIDo : CpuId) (XIo : CtxIdDefs.CurCtx)
        (C : ucfg) (pt : uptd)
        (Rfd : list fdstate -> iProp Σ) (Rut : uptd -> iProp Σ)
        (* the accessor rides along so the obligation can re-enter [ukc'] --
@@ -347,7 +347,7 @@ Section UkGenObl.
       (Qp : Z -> iProp Σ)
       (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32)
       (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) : iProp Σ :=
-    (∀ (h : CpuId) (xi : TsoCtx.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
+    (∀ (h : CpuId) (xi : CtxIdDefs.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
        (Rut : uptd -> iProp Σ)
        (* A6.140: the accessor the loop borrows the running token with *)
        (HRut : forall pt' : uptd,
@@ -372,7 +372,7 @@ Section UkGenObl.
       (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
       (Rut : uptd -> iProp Σ) : iProp Σ :=
     (uk_paycont' Qp gn (Kc ∧ ukc' π M sz fdv cw gn cs pidv m pc) ∗
-     (TsoCtx.own_context TsoCtx.cur_ctx -∗ Rut pt) ∗
+     (TsoCtx.own_context CtxIdDefs.cur_ctx -∗ Rut pt) ∗
      Rfd fdv ∗ ukb_F' C pt Rfd Rut sz π fdv cw gn cs pidv)%I.
 
 End UkGenObl.
@@ -1909,7 +1909,7 @@ Section UkGenPlain.
   Lemma uslot_unfold_gen (W : uvis) :
     uvis_lazy W = false ->
     uslot W ⊣⊢
-    ukc' uexec_ret_F uslot (fun _ : TsoCtx.CurCtx => Logic.True) (uvis_perm W) (uvis_M W)
+    ukc' uexec_ret_F uslot (fun _ : CtxIdDefs.CurCtx => Logic.True) (uvis_perm W) (uvis_M W)
       (uvis_sz W) (uvis_fd W) (uvis_cwd W) (uvis_gen W) (uvis_ch W)
       (uvis_pid W)
       (tf_resume_gpr0 (uvis_tf W)) (tf_resume_pc (uvis_tf W)).
@@ -1983,7 +1983,7 @@ Section UkGenPlain.
       (Qp : Z -> iProp Σ) :
     uk_ecall_ty C pt Rfd Rut π sz Hlo Hpm HRut Hlf Qp.
   Proof.
-    exact (wp_uk_ecall' uexec_ret_F uslot (fun _ : TsoCtx.CurCtx => Logic.True)
+    exact (wp_uk_ecall' uexec_ret_F uslot (fun _ : CtxIdDefs.CurCtx => Logic.True)
              uslot_unfold_gen uexec_ret_transparent_gen
              C pt Rfd Rut π sz Hlo Hpm HRut I Hlf (Qp := Qp)).
   Qed.

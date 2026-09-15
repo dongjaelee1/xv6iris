@@ -2472,7 +2472,7 @@ Section ProofFileread.
                 inode's rows (its floor is [Kp]), the share's floor from the
                 acquire ([Kt]), the cell resident at the running context *)
              iDestruct (sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
-             iMod (proto_read_checkout ⊤ ikk k q γb0 γo0 Cf mo Kt TsoCtx.cur_ctx
+             iMod (proto_read_checkout ⊤ ikk k q γb0 γo0 Cf mo Kt CtxIdDefs.cur_ctx
                      ltac:(solve_ndisj) Hipk Hik HKt with "Hrun Hflt Hat Hoffr")
                as "(Hrun & Hres & #Hbox0 & #Hmem0 & %T0 & Hhold & Hd0 & Hc0 & %Tr & Hrest)".
              iDestruct ("Hcgb" with "Hrun") as "Hcg".
@@ -2836,7 +2836,7 @@ Section ProofFileread.
                 iDestruct (sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
                 iEval (rewrite Nat.add_0_r Hoffz) in "Hgv".
                 iDestruct (off_resident_of γo0 k v Hwf with "Hoff Hgv") as "Hres".
-                iMod (proto_read_park ⊤ ikk k q γb0 γo0 Cf mo T0 Tr TsoCtx.cur_ctx
+                iMod (proto_read_park ⊤ ikk k q γb0 γo0 Cf mo T0 Tr CtxIdDefs.cur_ctx
                         ltac:(solve_ndisj) Hipk Hik Hqmo
                         with "Hrun Hres Hhold Hd0 Hc0 Hbox0 Hmem0 Hrest")
                   as "(Hrun & Hoh & Hoffd)".
@@ -3192,7 +3192,7 @@ Section ProofFileread.
                 { rewrite moi32_unsigned bvw32_small; [iExact "Hgv" |].
                   split; [lia |]. apply (Z.le_lt_trans _ (Z.of_nat MAXFILE * Z.of_nat BSIZE));
                     [exact Hadv | vm_compute; reflexivity]. }
-                iMod (proto_read_park ⊤ ikk k q γb0 γo0 Cf mo T0 Tr TsoCtx.cur_ctx
+                iMod (proto_read_park ⊤ ikk k q γb0 γo0 Cf mo T0 Tr CtxIdDefs.cur_ctx
                         ltac:(solve_ndisj) Hipk Hik Hqmo
                         with "Hrun Hres Hhold Hd0 Hc0 Hbox0 Hmem0 Hrest")
                   as "(Hrun & Hoh & Hoffd)".

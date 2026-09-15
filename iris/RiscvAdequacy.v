@@ -1269,9 +1269,9 @@ Definition boot_fixedGS {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
        the application claims of the inputs the CONSOLE UART has accepted
        and of which of them a process has been given.  A RESOURCE and
        TIMELESS for [Ores]'s reasons; founded by the transport, not here. *)
-    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
-    (HIrest : forall (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+    (HIrest : forall (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
                      (dl : list (list mobs * bv 8)), Timeless (Ires k h pops dl))
     (* ...and the ECHO WINDOW TOKEN (app-echo.md, lane CONS-IO milestone F),
        the client's per-era exclusive: the kernel carries it on the console
@@ -1363,7 +1363,7 @@ Lemma disk_proj_trace {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
     (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
     (Ores : nat -> list mobs -> list (bv 8) -> iProp Σ)
     (HOrest : forall k h acc, Timeless (Ores k h acc))
-    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
     (Wres : nat -> iProp Σ) (HWrest : forall k, Timeless (Wres k)) (c : CT)
@@ -1464,7 +1464,7 @@ Proof. iIntros "[_ H]". iApply (obs_pred_at_alloc with "H"). Qed.
    and a turn of [emp]). *)
 Lemma obs_pred_at_step {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ} (ndisk : nat)
     (O : nat -> list mobs -> list (bv 8) -> iProp Σ)
-    (I : nat -> list mobs -> list ConsLog.log_entry ->
+    (I : nat -> list mobs -> list LogEntryDefs.log_entry ->
          list (list mobs * bv 8) -> iProp Σ)
     (Tn : nat -> iProp Σ) (W : nat -> iProp Σ)
     (HO : forall k : nat, ⊢ O k [] []) (HI : forall k : nat, ⊢ I k [] [] [])
@@ -1540,7 +1540,7 @@ Qed.
 Lemma obs_ledger_at_step {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ} (ndisk : nat)
     (R : list mobs -> iProp Σ) (HRt : forall h, Timeless (R h))
     (O : nat -> list mobs -> list (bv 8) -> iProp Σ)
-    (I : nat -> list mobs -> list ConsLog.log_entry ->
+    (I : nat -> list mobs -> list LogEntryDefs.log_entry ->
          list (list mobs * bv 8) -> iProp Σ)
     (* ...and the window token and the turn (lane CONS-IO milestone F): the
        ledger's step yields four things now, and this lemma passes all four
@@ -1713,10 +1713,10 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
     (HOrest : forall (c : CT) (k : nat) (h : list mobs) (acc : list (bv 8)),
        Timeless (Ores c k h acc))
     (* ...and the INPUT LOG (lane CONS-IO), threaded exactly as [Ores] is *)
-    (Ires : CT -> nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : CT -> nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall (c : CT) (k : nat) (h : list mobs)
-                     (pops : list ConsLog.log_entry)
+                     (pops : list LogEntryDefs.log_entry)
                      (dl : list (list mobs * bv 8)),
        Timeless (Ires c k h pops dl))
     (* ...and the ECHO WINDOW TOKEN (lane CONS-IO milestone F), the third
@@ -2120,7 +2120,7 @@ Proof.
               @out_res_triv_timeless Σ k h acc)
            (fun _ : unit => in_res_triv)
            (fun (_ : unit) (k : nat) (h : list mobs)
-                (pops : list ConsLog.log_entry)
+                (pops : list LogEntryDefs.log_entry)
                 (dl : list (list mobs * bv 8)) =>
               @in_res_triv_timeless Σ k h pops dl)
            (* the window token and the turn, both trivial at this packaged

@@ -739,7 +739,7 @@ Section CtxWordHalves.
     rewrite Hf big_sepL_fmap. reflexivity.
   Qed.
 
-  Lemma ctx_word_pointsto_split4 (ξ : TsoCtx.CtxId) (a : Arch.pa)
+  Lemma ctx_word_pointsto_split4 (ξ : CtxIdDefs.CtxId) (a : Arch.pa)
       (dq : dfrac) (w : bv 64) :
     TsoCtx.ctx_word_pointsto ξ a dq w ⊢
     TsoCtx.ctx_word4_pointsto ξ a dq (word_lo w) ∗
@@ -761,7 +761,7 @@ Section CtxWordHalves.
       rewrite pa_add_add. rewrite nth_byte_word_hi; [reflexivity | lia].
   Qed.
 
-  Lemma ctx_word_pointsto_join4 (ξ : TsoCtx.CtxId) (a : Arch.pa)
+  Lemma ctx_word_pointsto_join4 (ξ : CtxIdDefs.CtxId) (a : Arch.pa)
       (dq : dfrac) (lo hi : bv 32) :
     is_aligned_paddr (Physaddr a) 8 = true ->
     TsoCtx.ctx_word4_pointsto ξ a dq lo -∗
@@ -786,7 +786,7 @@ Section CtxWordHalves.
      the ONLY direction of that pair that survives.  Named so that
      [grep ctx_buf_forget] is, like [grep ctx_pointsto_forget], the
      inventory of places where a byte run leaves the ledger. *)
-  Lemma ctx_buf_forget (ξ : TsoCtx.CtxId) (p : Arch.pa) (len : nat)
+  Lemma ctx_buf_forget (ξ : CtxIdDefs.CtxId) (p : Arch.pa) (len : nat)
       (f : nat -> bv 8) (dq : dfrac) :
     ([∗ list] j ∈ seq 0 len,
        TsoCtx.ctx_pointsto ξ (pa_add p j) dq (f j))

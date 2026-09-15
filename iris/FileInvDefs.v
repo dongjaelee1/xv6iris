@@ -842,7 +842,7 @@ Section InodeCore.
 End InodeCore.
 
 Section FileInv.
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
   (* [icacheG]/[pipeG]/[cinvG] are bound HERE rather than reached through
      [fileG], since they left that class (see its note).  This file is
      BELOW [Xv6G.v] -- it is one of the files the bundle is built out of --
@@ -1932,7 +1932,7 @@ Section FileLiveAt.
 End FileLiveAt.
 
 Section FileLiveEq.
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
   Context `{!riscvGS Σ, !lockG Σ, !fileG Σ, !fdslotG Σ, !offboxG Σ,
             !icacheG Σ, !pipeG Σ, !cinvG Σ, !irefslotG Σ,
             !ghost_mapG Σ nat unit, !flivG Σ,

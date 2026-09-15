@@ -546,7 +546,7 @@ Section CtBodies.
       (pe : option (list mobs * bv 8)) (rr ww ee : mword 32)
       (bs : list (bv 8)) (ts : list (option (list mobs))) : iProp Σ :=
     (∃ (cur nrd : nat) (st pd : list (list mobs * bv 8))
-       (hh : option (list mobs)) (L0 : list ConsLog.log_entry) (gp : bool),
+       (hh : option (list mobs)) (L0 : list LogEntryDefs.log_entry) (gp : bool),
        ⌜ cons_stored rr ww cur st bs ts ⌝ ∗
        ⌜ cons_pend rr ww ee pd bs ts ⌝ ∗
        ⌜ cons_chain (st ++ pd) ⌝ ∗

@@ -65,6 +65,9 @@ Require Import FsCfgBoot.   (* [fs_boot_image_wf], moved down at stage (f) *)
 Require Import RiscvAdequacy.
 Require Import FsCrash.
 Require Import FsDurSnap.   (* [snap_ok] -- the theorem's durability claim *)
+Require Import FsBootParams. (* [XV6_DISK_BYTES], [fs_boot_pure],
+                                [fsimg_cov], [fsimg_nib] -- the pure
+                                parameters, moved out of this file  *)
 Require Import FsDurImg.    (* [img_snap_ok] / [img_P_dur_alloc]: era 0's own
                                epoch, the ONE value-first allocation left *)
 Require Import FirstTok.    (* [fs_extent_of_image] *)
@@ -138,40 +141,11 @@ Proof. reflexivity. Qed.
 (* 2. ONE ERA'S BOOT: the entailment [riscv_power_adequacy] asks for.       *)
 (* ---------------------------------------------------------------------- *)
 
-(* THE BOOT MINT's RANGE: the whole xv6 file system image, FSSIZE = 2000
-   blocks of BSIZE = 1024 bytes (kernel/param.h, kernel/fs.h, mkfs/mkfs.c).
-   Every boot is handed exclusive byte fragments of the era's disk image over
-   [[0, XV6_DISK_BYTES)] ([RiscvAdequacy.power_boot_res]); the FS layer's
-   block views are carved out of them (claude-notes/design/fs-log.md).  The
-   base layer takes this as a PARAMETER -- no FS constant appears below this
-   file. *)
-Definition XV6_DISK_BYTES : nat := (2000 * 1024)%nat.
-
-(* THE PURE PROJECTION OF THE CRASH PREDICATE: what [FsCrash.P_fs_named]
-   says about the PHYSICAL disk it is stated over -- the durable extent's
-   geometry, the map the machine would recover to, that map's log header,
-   and that the recovered view IS a file system.
-
-   IT IS WHAT EVERY BOOT AFTER THE FIRST KNOWS ABOUT ITS DISK, and there is
-   nothing else: it is EXTRACTED from the crash predicate by
-   [FsCrash.P_fs_project], which [RiscvAdequacy.riscv_power_adequacy] runs
-   against its own [state_interp] at each PowerOn.  An assumed "the disk is
-   still mkfs's image at every era" is refutable -- nothing proves that
-   xv6's own writes leave the disk mkfs-shaped -- and there is none: the
-   image hypothesis below is one equation about the INITIAL machine. *)
-Definition fs_boot_pure (cov : gset Z) (ls : Z) (dk : Z -> bv 8) : Prop :=
-  fs_extent cov ls XV6_DISK_BYTES /\
-  exists D : gmap Z (list (bv 8)),
-    fs_recovery (fs_blocks dk) D cov ls /\
-    hdr_wf (fs_blocks dk) cov ls /\
-    (* ...AND THE COMMITTED VIEW IS A FILE SYSTEM (lane CE).  This is the
-       durability claim: the map the machine would recover to right now is
-       the encoding of an abstract file-system state -- every inode's record
-       parses and is locally well formed, no two inodes share a block, and
-       the bitmap's bits are the used set ([FsDurSnap.snap_ok]).  It comes
-       off [FsCrash.P_fs]'s durable snapshot, which the commit re-establishes
-       at every group commit and nothing else ever moves. *)
-    exists S : fs_state_rec, snap_ok S D.
+(* [XV6_DISK_BYTES] -- the boot mint's range -- and [fs_boot_pure] -- the   *)
+(* pure projection of the crash predicate -- MOVED DOWN to                 *)
+(* [FsBootParams.v] (required above).  Both are stated over [FsCrash] /     *)
+(* [FsDurSnap] vocabulary alone, so [FsDurSyscall] and the pin files can    *)
+(* name them without importing the adequacy cone.                          *)
 
 (* THE THREE ERA-INDEPENDENT FACTS a boot needs about the COVERED RANGE
    (durable-disk lane E-himg), read off the initial machine's image.
@@ -354,7 +328,7 @@ Qed.
    lines later.  This is that pure conjunct, peeled off without spending the
    supply ([FsCfgBoot.fs_boot_supply_app_inv] is the shape). *)
 Lemma fs_boot_supply_uart {Sg : gFunctors} `{!riscvGS Sg, !xv6G Sg, !bioslotG Sg}
-    `{XI : TsoCtx.CurCtx}
+    `{XI : CtxIdDefs.CurCtx}
     (ICFG : icfg) (FSC : FsCfg.fscfg) (APP : appcfg Sg) (dk : Z -> bv 8)
     (sb : FsImg.fs_sb) (nib : nat) (cov : gset Z)
     (gud : uart_names) (guv : DiskPtsto.disk_names) (cnm : cons_names)
@@ -422,7 +396,7 @@ Lemma fs_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
     (Ores : nat -> list mobs -> list (bv 8) -> iProp Σ)
     (HOrest : forall k h acc, Timeless (Ores k h acc))
-    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
     (* ...and the echo window token's slot (lane CONS-IO milestone F),
@@ -475,7 +449,7 @@ Lemma xv6_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
     (Ores : nat -> list mobs -> list (bv 8) -> iProp Σ)
     (HOrest : forall k h acc, Timeless (Ores k h acc))
-    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
     (* ...and the echo window token's slot (lane CONS-IO milestone F),
@@ -1200,10 +1174,10 @@ Theorem xv6_power_adequacy_gen Σ
        [Ores] and declared beside it for the same reason ([Happ_boot]'s
        statement names it): what the application claims of the inputs the
        console UART accepted and of the ones a process has been given. *)
-    (Ires : CT -> nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : CT -> nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall (c : CT) (k : nat) (h : list mobs)
-                     (pops : list ConsLog.log_entry)
+                     (pops : list LogEntryDefs.log_entry)
                      (dl : list (list mobs * bv 8)),
        Timeless (Ires c k h pops dl))
     (* ...AND THE ECHO WINDOW TOKEN (lane CONS-IO milestone F), the third
@@ -1277,10 +1251,10 @@ Theorem xv6_power_adequacy_gen Σ
        [App.xv6_app]'s [Happ_in_sup] is this obligation. *)
     (Hin_sup : forall (c : CT) (r : app_names),
        AppInv.app_sup_raw (app_fs c) r
-         ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
-                (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
+         ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
+                (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
                 Ires c k h pops dl ==∗ Ires c k h (pops ++ [e]) dl)
-           ∗ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+           ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
                   (dl ws : list (list mobs * bv 8)),
                   Ires c k h pops dl ==∗ Ires c k h pops (dl ++ ws)))
     (* THE FIRST PROCESS'S EXEC BUNDLE (ARM-c): the ONE thing the
@@ -1787,7 +1761,7 @@ Proof.
                @out_res_triv_timeless _ k h acc)
             (fun _ : unit => in_res_triv)
             (fun (_ : unit) (k : nat) (h : list mobs)
-                 (pops : list ConsLog.log_entry)
+                 (pops : list LogEntryDefs.log_entry)
                  (dl : list (list mobs * bv 8)) =>
                @in_res_triv_timeless _ k h pops dl)
             (* the window token and the turn, both trivial at the generic
@@ -1861,7 +1835,7 @@ Theorem xv6_trace_adequacy Σ
     (* ...AND THE INPUT LOG (lane CONS-IO), on [Ores]'s mould: what the
        client claims of the inputs the console UART accepted and of the
        ones a process has been given. *)
-    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
     (HR0 : ⊢ |==> R [])
@@ -1890,7 +1864,7 @@ Theorem xv6_trace_adequacy Σ
        an event on either wire. *)
     (Htx : forall (HR : riscvGS Σ) (GEN : GenId) (i : uart_id) (γ : uart_names),
        ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
-              (ho hi : list mobs) (pops : list ConsLog.log_entry)
+              (ho hi : list mobs) (pops : list LogEntryDefs.log_entry)
               (dl : list (list mobs * bv 8)),
               ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
               ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗
@@ -1970,10 +1944,10 @@ Theorem xv6_trace_adequacy Σ
        the generic slot's [read(2)] on fd 0 are paid out of
        [WpUart.in_licence], and with [Ires] arbitrary only the client can
        say that its claim survives them. *)
-    (Hin_lic : ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
-                      (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
+    (Hin_lic : ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
+                      (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
                       Ires k h pops dl ==∗ Ires k h (pops ++ [e]) dl)
-                 ∗ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+                 ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
                         (dl ws : list (list mobs * bv 8)),
                         Ires k h pops dl ==∗ Ires k h pops (dl ++ ws)))
     (P : list mobs -> Prop) (HR : forall h, R h ⊢ ⌜P h⌝)
@@ -2108,35 +2082,13 @@ Definition xv6Σ : gFunctors :=
    can tell them from a regression. *)
 
 (* ---------------------------------------------------------------------- *)
-(* 1.  THE IMAGE'S COVERAGE SET (ruling R4).                               *)
+(* 1.  THE IMAGE'S COVERAGE SET (ruling R4) and the inode-region size.     *)
 (*                                                                        *)
-(* [cov] is the set of block numbers the proof maintains logical content    *)
-(* for -- the domain of [FsBoot.fs_C0], and exactly the set               *)
-(* [bread] accepts.  The generic theorems keep it a PARAMETER, because      *)
-(* nothing about the image constrains it and the conclusion never mentions  *)
-(* it; here it is instantiated at the image's own range.  Block 0 is        *)
-(* excluded (binit leaves all thirty buffers claiming blockno 0), and the   *)
-(* top is the superblock's [size = 2000].                                  *)
-(*                                                                        *)
-(* Stocking the inode pool is what forces the choice: every block a live    *)
-(* image inode names has to be in [cov], on top of the log region, the      *)
-(* inode blocks and the bitmap block.  At [cov = ∅] the statement said      *)
-(* nothing about a file system at all.                                      *)
+(* [fsimg_cov], [fsimg_cov_elem_of] and [fsimg_nib] MOVED DOWN to          *)
+(* [FsBootParams.v] (required above): they are definitions over nothing    *)
+(* but arithmetic, and the file-system pin files that need only those      *)
+(* three no longer import this file to get them.                          *)
 (* ---------------------------------------------------------------------- *)
-Definition fsimg_cov : gset Z := list_to_set (Z.of_nat <$> seq 1 1999).
-
-Lemma fsimg_cov_elem_of (b : Z) : b ∈ fsimg_cov <-> 1 <= b < 2000.
-Proof.
-  rewrite /fsimg_cov elem_of_list_to_set elem_of_list_fmap. split.
-  - intros (k & -> & Hk). apply elem_of_seq in Hk. lia.
-  - intros Hb. exists (Z.to_nat b).
-    split; [lia | apply elem_of_seq; lia].
-Qed.
-
-(* the image's inode-region size, in blocks: [ninodes/16 + 1 = 200/16 + 1],
-   which is [bmapstart - inodestart = 46 - 33].  [FsImgCheck]'s own sweeps
-   ([fsimg_region_wf], [fsimg_region_free]) are stated at this 13. *)
-Definition fsimg_nib : nat := 13%nat.
 
 (* ---------------------------------------------------------------------- *)
 (* 2.  THE IMAGE HYPOTHESIS, DISCHARGED.                                   *)
@@ -2404,7 +2356,7 @@ Corollary xv6_trace_adequacy_xv6Σ (g : gstate)
     (HTgt : forall h, Timeless (Tg h))
     (Ores : nat -> list mobs -> list (bv 8) -> iProp xv6Σ)
     (HOrest : forall k h acc, Timeless (Ores k h acc))
-    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp xv6Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
     (HR0 : ⊢ |==> R [])
@@ -2417,7 +2369,7 @@ Corollary xv6_trace_adequacy_xv6Σ (g : gstate)
           else Ores (S (obs_boots h)) [] [] ∗ Ires (S (obs_boots h)) [] [] []))
     (Htx : forall (HR : riscvGS xv6Σ) (GEN : GenId) (i : uart_id) (γ : uart_names),
        ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
-              (ho hi : list mobs) (pops : list ConsLog.log_entry)
+              (ho hi : list mobs) (pops : list LogEntryDefs.log_entry)
               (dl : list (list mobs * bv 8)),
               ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
               ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗
@@ -2476,10 +2428,10 @@ Corollary xv6_trace_adequacy_xv6Σ (g : gstate)
        the generic slot's [read(2)] on fd 0 are paid out of
        [WpUart.in_licence], and with [Ires] arbitrary only the client can
        say that its claim survives them. *)
-    (Hin_lic : ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
-                      (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
+    (Hin_lic : ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
+                      (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
                       Ires k h pops dl ==∗ Ires k h (pops ++ [e]) dl)
-                 ∗ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+                 ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
                         (dl ws : list (list mobs * bv 8)),
                         Ires k h pops dl ==∗ Ires k h pops (dl ++ ws)))
     (P : list mobs -> Prop) (HR : forall h, R h ⊢ ⌜P h⌝)
@@ -2514,7 +2466,7 @@ Proof.
                @out_res_triv_timeless _ k h acc)
             (fun _ : unit => in_res_triv)
             (fun (_ : unit) (k : nat) (h : list mobs)
-                 (pops : list ConsLog.log_entry)
+                 (pops : list LogEntryDefs.log_entry)
                  (dl : list (list mobs * bv 8)) =>
                @in_res_triv_timeless _ k h pops dl)
             (* the window token and the turn, both trivial at the generic

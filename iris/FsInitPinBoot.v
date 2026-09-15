@@ -86,7 +86,9 @@ Require Import FsCrash.        (* [fs_recovery], [fs_recovery_det],
 Require Import FsDurSnap.      (* [snap_ok], [sk_bytes], [sk_sbok],
                                   [fs_snap], [fs_snap_read_ok_keep]     *)
 Require Import FsCfgBoot.      (* [fs_boot_snap_wf] -- the mint's bundle *)
-Require Import SystemAdequacy. (* [fsimg_cov], [fsimg_nib]              *)
+Require Import SystemAdequacy. (* [xv6_boot_era],
+                                  [xv6_power_adequacy_xv6Σ]           *)
+Require Import FsBootParams.  (* [fsimg_cov], [fsimg_nib]                   *)
 Require Import FsImgDisk.      (* [fsimg_P] = [fs_blocks fsimg_dk]      *)
 Require Import FsImgCheck.     (* [fsimg_sb], [fsimg_wf_log_clean],
                                   [fsimg_sb_logstart]                   *)

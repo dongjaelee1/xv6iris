@@ -841,7 +841,7 @@ Section UShLine.
   (* =================================================================== *)
   Lemma ush_rd_byte_of_rows
       (sl sl' ws dl : list (list mobs * bv 8)) (hs : list (list mobs))
-      (pops : list ConsLog.log_entry)
+      (pops : list LogEntryDefs.log_entry)
       (n dd dc : nat) (g : nat -> bv 8) :
     (0 < dd)%nat -> (dd <= dc)%nat ->
     cons_window sl n dd g hs ->

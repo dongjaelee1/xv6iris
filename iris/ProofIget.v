@@ -1038,7 +1038,7 @@ Section ProofIget.
       arm_pay KT1 n eb p -∗
       locked fsc_itlock cpu_id -∗
       itable_half M -∗
-      ([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res TsoCtx.cur_ctx M ci i0) -∗
+      ([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res CtxIdDefs.cur_ctx M ci i0) -∗
       iref_slots_auth -∗
       isl_pool M -∗
       ([∗ list] i0 ∈ seq 0 NINODE, islot2 cur_ctx fsc_ic M ci i0) -∗
@@ -1078,7 +1078,7 @@ Section ProofIget.
         arm_pay KT1 n eb p -∗
         locked fsc_itlock cpu_id -∗
         itable_half M -∗
-        ([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res TsoCtx.cur_ctx M ci i0) -∗
+        ([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res CtxIdDefs.cur_ctx M ci i0) -∗
         iref_slots_auth -∗
         isl_pool M -∗
         ([∗ list] i0 ∈ seq 0 NINODE, islot2 cur_ctx fsc_ic M ci i0) -∗
@@ -1256,7 +1256,7 @@ Section ProofIget.
                slot's ref cell / stamp auth, out of the section rows NOW: the
                recycle's (a) needs the floor, +0x78 the cell.  Back llb-bare after
                (b') at +0x7c. *)
-            iDestruct (itable_slot_res_acc_upd_llb TsoCtx.cur_ctx M ci e He
+            iDestruct (itable_slot_res_acc_upd_llb CtxIdDefs.cur_ctx M ci e He
                          with "Hstamps") as "[Hsrow Hstampsback]".
             iEval (rewrite {1}/itable_slot_res HMe Hcik) in "Hsrow".
             iDestruct "Hsrow" as "[Hbrow Hsrow]".
@@ -1269,7 +1269,7 @@ Section ProofIget.
                window opens; the three stores below are PLAIN. ---- *)
             iApply fupd_wp.
             iDestruct (SieCapCtx.sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
-            iMod (ic_recycle_withdraw fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst e TsoCtx.cur_ctx r tb
+            iMod (ic_recycle_withdraw fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst e CtxIdDefs.cur_ctx r tb
                     devT inumT ⊤ ltac:(solve_ndisj) Hrw Hrid Hrle
                     with "Hesc Hrun Hflb Hrd Hc HgidQ")
               as "(Hrun & Hc & %T0 & %HT0 & Hrd & Hhdr)".
@@ -1429,12 +1429,12 @@ Section ProofIget.
                       (mword_of_int (KernelSyms.iget + 0x78)) Ra5 Rs3
                       (mword_of_int 8 : mword 12) V1 (trap_res b + (K - 6))%nat
                       (([∗ list] j ∈ seq 0 4,
-                          TsoCtx.ctx_pointsto TsoCtx.cur_ctx
+                          TsoCtx.ctx_pointsto CtxIdDefs.cur_ctx
                             (pa_add (i_ref (ientry e)) j) (DfracOwn 1)
                             (nth_byte (mword_of_int 0 : mword 32) j))%I)
                       ((∃ loA : nat,
                           TsoGhost.llb loglen_name loA ∗
-                          TsoCtx.ctx_wrote TsoCtx.cur_ctx loA
+                          TsoCtx.ctx_wrote CtxIdDefs.cur_ctx loA
                             (i_ref (ientry e)) ∗
                           IcacheInv.iref_pin_rows e
                             (mword_of_int 1 : mword 32) loA loA)%I)
@@ -1444,7 +1444,7 @@ Section ProofIget.
                            IcacheInv.iref_tok_genlo e (1/2/2)%Qp g loA ∗
                            IcacheRef.live_genlo e (1/2)%Qp g loA ∗
                            IcacheRefDefs.ity_pending g ∗
-                           TsoCtx.ctx_wrote TsoCtx.cur_ctx loA
+                           TsoCtx.ctx_wrote CtxIdDefs.cur_ctx loA
                              (i_ref (ientry e)) ∗
                            (∃ tstn : nat, ⌜(loA <= tstn)%nat⌝ ∗
                               mono_nat_auth_own (icfg_istmp e) (1/2) tstn ∗
@@ -1464,7 +1464,7 @@ Section ProofIget.
               rewrite Hsv78.
               iIntros "Hkm Hgh Htso Hown HRes".
               iAssert ([∗ list] j ∈ seq 0 4,
-                         TsoCtx.ctx_phys_pointsto TsoCtx.cur_ctx
+                         TsoCtx.ctx_phys_pointsto CtxIdDefs.cur_ctx
                            (pa_add (i_ref (ientry e)) j) (DfracOwn 1)
                            (nth_byte (mword_of_int 0 : mword 32) j))%I
                 with "[HRes]" as "Hpb".
@@ -1500,7 +1500,7 @@ Section ProofIget.
                 as "(Hgh & Htso & #Hmsg & #HllbS & Hrows)".
               (* A6.146: the author REGISTERS its own arm store -- the fresh
                  bundle's read credential ([cred_floor]'s wrote arm) *)
-              iMod (TsoCtx.ctx_wrote_register (CID := CIDw) TsoCtx.cur_ctx W
+              iMod (TsoCtx.ctx_wrote_register (CID := CIDw) CtxIdDefs.cur_ctx W
                       (length log) (i_ref (ientry e))
                       (TsoMemPa.PWMsg
                          (snap_of (i_ref (ientry e)) (Z.to_N 4)
@@ -1588,7 +1588,7 @@ Section ProofIget.
                the taken row's shape); the table's half at [true] selects the
                arm and comes straight back for the live row. *)
             iDestruct (SieCapCtx.sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
-            iMod (ic_recycle_deposit fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst e TsoCtx.cur_ctx
+            iMod (ic_recycle_deposit fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst e CtxIdDefs.cur_ctx
                     (SlotReg (sr_td r) true None (Some (IcRaw, T0))) icfg_dev inum gnew T0 ⊤
                     ltac:(solve_ndisj) eq_refl eq_refl
                     with "Hesc Hrun Hrd Hc [Hvld Hd1 Hn1 Hnl] Hpend Hfoff Hlvh Hgid")
@@ -1639,7 +1639,7 @@ Section ProofIget.
                 iPureIntro. cbn. split_and!; [done | done | done | lia]. }
               iDestruct "Hstrow" as (tstn) "(_ & Hst & Hllbn)".
               iExists tstn. iFrame "Hst Hllbn". }
-            iAssert (itable_res2_llb TsoCtx.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
+            iAssert (itable_res2_llb CtxIdDefs.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
               with "[Hhalf Hstampsllb Hiauth Hipool Hslots Hpool]" as "HRres".
             { iExists (<[e := ((1/2/2)%Qp, 1%positive)]> M), (<[e := (icfg_dev, inum)]> ci).
               iFrame "Hhalf Hstampsllb Hiauth".
@@ -1824,7 +1824,7 @@ Section ProofIget.
       iDestruct (IcacheInv.iref_claims_at j Hk with "Hclaims") as "#Hclaim0".
       destruct (M !! j) as [[qj nj]|] eqn:HMj.
       - (* ===== A LIVE SLOT: [bge x0,a5] falls through ===== *)
-        iDestruct (itable_slot_res_acc_upd TsoCtx.cur_ctx M ci j Hk
+        iDestruct (itable_slot_res_acc_upd CtxIdDefs.cur_ctx M ci j Hk
                      with "Hstamps") as "[Hsrow Hstampsback]".
         iEval (rewrite {1}/itable_slot_res HMj) in "Hsrow".
         iDestruct "Hsrow" as "[Hbrow Hsrow]".
@@ -1833,7 +1833,7 @@ Section ProofIget.
                   (mword_of_int (KernelSyms.iget + 0x44)) Ra5 Rs1
                   (mword_of_int 8 : mword 12) Mr (trap_res b + (K - 6))%nat
                   (fun v _ => v = iref_word M j)
-                  ((TsoCtx.ctx_floor TsoCtx.cur_ctx tstj ∗
+                  ((TsoCtx.ctx_floor CtxIdDefs.cur_ctx tstj ∗
                     ∃ lo : nat,
                       IcacheInv.iref_pin_rows j (iref_word M j) lo tstj ∗
                       (IcacheInv.iref_pin_rows j (iref_word M j) lo tstj
@@ -2146,7 +2146,7 @@ Section ProofIget.
        store on the standing window ([CtxPinw.pinw_write_c] at the leaf's
        obligation), its ghost move [IcacheInv.iref_incr_store_pinw_au]. *)
         iDestruct (IcacheInv.iref_claims_at j Hk with "Hclaims") as "#Hclaim5".
-        iDestruct (itable_slot_res_acc_upd_llb TsoCtx.cur_ctx M ci j Hk
+        iDestruct (itable_slot_res_acc_upd_llb CtxIdDefs.cur_ctx M ci j Hk
                      with "Hstamps") as "[Hsrow Hstampsback]".
         iEval (rewrite {1}/itable_slot_res HMj) in "Hsrow".
         iDestruct "Hsrow" as "[Hbrow Hsrow]".
@@ -2304,7 +2304,7 @@ Section ProofIget.
             [| iApply (frz_park_intro_off with "Hmirj Hselj Hpinj")].
           rewrite /islot_rest_at (ig_frac_rest qj qj' ltac:(by apply Qp.sub_Some)).
           rewrite /inode_ident. iFrame. }
-        iAssert (itable_res2_llb TsoCtx.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
+        iAssert (itable_res2_llb CtxIdDefs.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
           with "[Hhalf Hstampsllb Hiauth Hipool Hslots Hpool]" as "HRres".
         { iExists (<[j := ((qj + qj'/2)%Qp, Pos.succ nj)]> M), ci.
           iFrame "Hhalf Hstampsllb Hiauth Hpool Hipool".
@@ -2462,7 +2462,7 @@ Section ProofIget.
           iFrame "Hf2 Hl2 Hs2 Hid2 Hstnew".
       - (* ===== A FREE SLOT: the payload's own ctx cell reads 0, and
            [bge x0,a5] is TAKEN, to +0x34 ===== *)
-        iDestruct (itable_slot_res_acc_upd TsoCtx.cur_ctx M ci j Hk
+        iDestruct (itable_slot_res_acc_upd CtxIdDefs.cur_ctx M ci j Hk
                      with "Hstamps") as "[Hsrow Hstampsback]".
         iEval (rewrite {1}/itable_slot_res HMj) in "Hsrow".
         iDestruct "Hsrow" as "[Hbrow Hsrow]".

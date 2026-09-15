@@ -102,41 +102,20 @@ Require Import SailStdpp.Operators_mwords.  (* [uint]; exports no mword key inst
 Require Import Riscv.rv64d_types Riscv.rv64d.   (* [is_aligned_paddr]/[Physaddr]: the word tower's alignment vocabulary *)
 Require Import RiscvModelBytes RiscvLang RiscvPtsto Ktier.
 Require Import TsoMemPa TsoGhost.
+Require Export CtxIdDefs.  (* [CtxId] / [CurCtx] -- this file's own
+                              identity vocabulary, split out so a file
+                              that merely binds a context need not
+                              import the kit.  EXPORT: every existing
+                              importer reads them through here.    *)
 
 (* ------------------------------------------------------------------ *)
 (* The context identity and the ambient class                          *)
 (* ------------------------------------------------------------------ *)
 
-(* TWO GNAMES, BOTH THE CONTEXT'S OWN ([TsoCtxTwin2.CtxId] is the same
-   record): the BOUND authority (one monotone nat -- clean facts'
-   justification) and the DIRTY-SET authority (a ghost map keyed by
-   (timestamp, byte)).  The identity carrying its own ghost names is
-   what lets a token -- and hence every authority -- be minted wherever
-   the identity can, with no global roster: the corrected construction's
-   cornerstone. *)
-Record CtxId := MkCtxId { ctx_bound_name : gname; ctx_dirty_name : gname }.
-Add Printing Constructor CtxId.
-
-Global Instance ctx_id_eq_dec : EqDecision CtxId.
-Proof. solve_decision. Defined.
-(* INHABITED IS LOAD-BEARING, not decoration: a [CtxId] existentially bound
-   inside a ▷-guarded record (the parked context, SwtchCtx.valid_context_pre)
-   can only have its later pushed inward by [bi.later_exist], which HOLDS
-   ONLY OVER AN INHABITED DOMAIN.  Without this instance the resumer cannot
-   open the record it is about to run. *)
-Global Instance ctx_id_inhabited : Inhabited CtxId :=
-  populate (MkCtxId inhabitant inhabitant).
-
-Global Instance ctx_id_countable : Countable CtxId.
-Proof.
-  apply (inj_countable' (λ ξ, (ctx_bound_name ξ, ctx_dirty_name ξ))
-           (λ p, MkCtxId p.1 p.2)).
-  by intros [].
-Qed.
-
-(* Ambient, and -- unlike [CurKtier] -- WITHOUT a default instance; see
-   ruling 1 above. *)
-Class CurCtx := cur_ctx : CtxId.
+(* [CtxId] and [CurCtx] MOVED DOWN to [CtxIdDefs.v] (re-exported
+   above, so every importer of this file still sees them): a file
+   that only binds an ambient context should not have to import
+   this whole kit to say so. *)
 
 (* ---------------------------------------------------------------------- *)
 (* [pa_add] IS INJECTIVE IN ITS INDEX -- the kit needs it for exactly one   *)
@@ -4001,15 +3980,8 @@ Global Instance ctx_morph_const_pay `{!riscvGS Σ} (P : iProp Σ) :
    the cutover had inherited flip's 99. *)
 Proof. iIntros (ξ ξ') "Hd HP !>". iFrame. Qed.
 
-(* The class TYPE is transparent to typeclass unification: [CurCtx] is
-   definitionally [CtxId], and instance search must see through the
-   wrapper's binder type or every [Persistent (is_lock … <{P}>)] /
-   [CtxMorph <{P}>] resolution dies at the (CurCtx → iProp) vs
-   (CtxId → iProp) seam.  This transparency is about the TYPE only; which
-   ambient [CurCtx] INSTANCE a term picks up is unaffected (the
-   silent-drop hazard in tso-port.md §2d concerns instance selection, not
-   type unfolding). *)
-Global Typeclasses Transparent CurCtx.
+(* [CurCtx]'s transparency declaration moved with the class to
+   [CtxIdDefs.v], re-exported above. *)
 
 (* ================================================================== *)
 (* THE M1 NOTATION FLIP (stage 1: the byte and 8-byte-word families).

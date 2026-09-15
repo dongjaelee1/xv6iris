@@ -518,7 +518,7 @@ Section UkObl.
       (Q : Z -> iProp Σ) (sz : Z)
       (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32)
       (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) : iProp Σ :=
-    (∀ (R : iProp Σ) (CIDo : CpuId) (XIo : TsoCtx.CurCtx)
+    (∀ (R : iProp Σ) (CIDo : CpuId) (XIo : CtxIdDefs.CurCtx)
        (C : ucfg) (pt : uptd)
        (Rfd : list fdstate -> iProp Σ) (Rut : uptd -> iProp Σ)
        (* the accessor rides along so the obligation can re-enter [ukc] --
@@ -561,7 +561,7 @@ Section UkObl.
       (Q : Z -> iProp Σ)
       (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32)
       (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) : iProp Σ :=
-    (∀ (h : CpuId) (xi : TsoCtx.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
+    (∀ (h : CpuId) (xi : CtxIdDefs.CurCtx) (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
        (Rut : uptd -> iProp Σ)
        (* A6.140: the accessor the loop borrows the running token with *)
        (HRut : forall pt' : uptd,
@@ -594,7 +594,7 @@ Section UkObl.
       (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ)
       (Rut : uptd -> iProp Σ) : iProp Σ :=
     (uk_paycont Q gn (Kc ∧ ukc π M sz fdv cw gn cs pidv false m pc) ∗
-     (TsoCtx.own_context TsoCtx.cur_ctx -∗ Rut pt) ∗
+     (TsoCtx.own_context CtxIdDefs.cur_ctx -∗ Rut pt) ∗
      Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false)%I.
 
 End UkObl.

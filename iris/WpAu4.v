@@ -158,7 +158,7 @@ Section Au4Leaves.
          KP_rw -∗
        gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
        tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-       TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
        Res -∗
        ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
           (exists v : mword 32,
@@ -228,7 +228,7 @@ Section Au4Leaves.
                            (sign_extend' 64 imm))) ppn KP_rw -∗
        gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
        tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-       TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
        Res ==∗
        gen_heap_interp (hG := riscv_memGS)
          (write_bytes sigma.(mem)
@@ -251,7 +251,7 @@ Section Au4Leaves.
                                              (sign_extend' 64 imm)))
                           (Z.to_N 4) (trunc32 (rget (CID := CID) m rs2)))
                        (hart_agent (@cpu_id CIDw))])%list V) ∗
-       TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx ∗
+       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
        Post) ->
     sie_cap_gpr kt m av b p -∗
     pc_is pc -∗

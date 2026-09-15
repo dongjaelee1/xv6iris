@@ -710,7 +710,7 @@ Section UvLoadPostFetch.
     agree_on D_u (u_state rs2 ∅) dstateU ->
     uv_tree_ok pt (upa_map pt M) t' ->
     gen_cert -∗ uv_amb -∗ uv_cap C pt Ψ -∗
-    (R -∗ ∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
          (<[Regidx lrd := regval_into_reg wval]> m) -∗
        pc_is (CID := CID0) (add_vec_int pc dpc) -∗
@@ -979,7 +979,7 @@ Section UvLoadObl.
        exists bb : bv 8, M !! (uint va + Z.of_nat j) = Some bb) ->
     gen_cert -∗ uv_amb -∗ uv_cap C pt Ψ -∗
     uv_fetch_bridge (uc_dqc C) pt M rsA t (F_Base w) -∗
-    (R -∗ ∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
          (<[Regidx lrd := regval_into_reg wval]> m) -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗ WP (Loop : expr riscv_lang)) -∗
@@ -1100,7 +1100,7 @@ Section UvLoadObl.
        exists bb : bv 8, M !! (uint va + Z.of_nat j) = Some bb) ->
     gen_cert -∗ uv_amb -∗ uv_cap C pt Ψ -∗
     uv_fetch_bridge (uc_dqc C) pt M rsA t (F_RVC h) -∗
-    (R -∗ ∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
          (<[Regidx lrd := regval_into_reg wval]> m) -∗
        pc_is (CID := CID0) (add_vec_int pc 2) -∗ WP (Loop : expr riscv_lang)) -∗
@@ -1248,7 +1248,7 @@ Section WpUmodeLoad.
     wval = extend_value is_unsigned (uM_word M (uint va) k) ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    ▷ (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    ▷ (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
          uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
            (<[Regidx rd := regval_into_reg wval]> m) -∗
          pc_is (CID := CID0) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
@@ -1312,7 +1312,7 @@ Section WpUmodeLoad.
     wval = extend_value is_unsigned (uM_word M (uint va) k) ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
          (<[Regidx rd := regval_into_reg wval]> m) -∗
        pc_is (CID := CID0) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
@@ -1350,7 +1350,7 @@ Section WpUmodeLoad.
     wval = uM_word M (uint va) 8 ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
          (<[Regidx rd := regval_into_reg wval]> m) -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
@@ -1393,7 +1393,7 @@ Section WpUmodeLoad.
     wval = uM_word M (uint va) 8 ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
          (<[Regidx rd := regval_into_reg wval]> m) -∗
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
@@ -1437,7 +1437,7 @@ Section WpUmodeLoad.
     wval = zero_extend' 64 bb ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
          (<[Regidx rd := regval_into_reg wval]> m) -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
@@ -1484,7 +1484,7 @@ Section WpUmodeLoad.
     wval = sign_extend' 64 wv ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
          (<[Regidx rd := regval_into_reg wval]> m) -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
@@ -1524,7 +1524,7 @@ Section WpUmodeLoad.
     wval = zero_extend' 64 wv ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
          (<[Regidx rd := regval_into_reg wval]> m) -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
@@ -1570,7 +1570,7 @@ Section WpUmodeLoad.
     wval = sign_extend' 64 wv ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
          (<[Regidx rd := regval_into_reg wval]> m) -∗
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
@@ -1622,7 +1622,7 @@ Section WpUmodeLoad.
     uM_bytes M (uint va) 8 wval ->
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
-    (∀ (CID0 : CpuId) (XI0 : TsoCtx.CurCtx),
+    (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M
          (<[Regidx rd := regval_into_reg wval]> m) -∗
        pc_is (CID := CID0) (add_vec_int pc 2) -∗

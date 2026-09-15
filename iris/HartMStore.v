@@ -18,7 +18,7 @@ Require Import SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvModelBytes.
 Require Import RiscvLang RiscvPtsto RiscvExec HartSwp HartLift HartRegNode
-        HartSpan HartSpanChar HartEvents HartMPmp HartMFetch HartMDecode.
+        HartSpan HartSpanChar HartEvents HartMPmp HartTranslateM HartMDecode.
 Require Import RiscvExtras RiscvFetchExec.
 (* [pwmsg]/[agent]: [wobl_ram] below is stated over the write log *)
 Require Import TsoMemPa.
@@ -617,7 +617,7 @@ Section store.
   Qed.
 
   Lemma wobl_ram_ctx (img : gmap Arch.pa (bv 8)) (sg : mstate)
-      (log : list pwmsg) (V : agent -> nat) (xi : TsoCtx.CtxId)
+      (log : list pwmsg) (V : agent -> nat) (xi : CtxIdDefs.CtxId)
       (n : N) (req : Interface.WriteReq.t n) (vold : bv (8 * n)) :
     ak_excl (Interface.WriteReq.access_kind req) = false ->
     (Z.of_nat (N.to_nat n) <= 18446744073709551616)%Z ->

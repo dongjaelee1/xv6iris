@@ -556,8 +556,8 @@ Section CtxPinw.
     (Z.of_nat (N.to_nat n) <= 18446744073709551616)%Z ->
     gen_heap_interp (hG := riscv_memGS) σ.(mem) -∗
     tso_interp_of riscv_eraGS img σ.(mem) log V -∗
-    TsoCtx.own_context TsoCtx.cur_ctx -∗
-    TsoCtx.ctx_floor TsoCtx.cur_ctx tst -∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx -∗
+    TsoCtx.ctx_floor CtxIdDefs.cur_ctx tst -∗
     ([∗ list] j ∈ seq 0 (N.to_nat n), ∃ t : nat, ⌜(t <= tst)%nat⌝ ∗
        phys_ledger_pinw (pa_add pa j) (DfracOwn 1) (nth_byte vold j) t
          (TsPinw pa (N.to_nat n) j lo Sw)) ==∗
@@ -567,7 +567,7 @@ Section CtxPinw.
       (vstep (hart_agent cpu_id) (V (hart_agent cpu_id))
          (log ++ [TsoMemPa.PWMsg (snap_of pa n vnew) (hart_agent cpu_id)])%list
          V) ∗
-    TsoCtx.own_context TsoCtx.cur_ctx ∗
+    TsoCtx.own_context CtxIdDefs.cur_ctx ∗
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        ctx_phys_pointsto cur_ctx (pa_add pa j) (DfracOwn 1)
          (nth_byte vnew j)).
@@ -601,13 +601,13 @@ Section CtxPinw.
                σ.(sregs) σ.(mdev) Hpin).
     iMod (ledger_retire_pinw_cells
             (gs_of img σ.(mem) log V σ.(sregs) σ.(mdev))
-            TsoCtx.cur_ctx pa vold n lo tst Sw
+            CtxIdDefs.cur_ctx pa vold n lo tst Sw
             with "Htso Hfl Hpw") as "[Hint Hcells]".
     iMod (ctx_store_win_ok
             (gs_of img σ.(mem) log V σ.(sregs) σ.(mdev))
             (gs_of img (write_bytes σ.(mem) pa n vnew) log' V'
                σ.(sregs) σ.(mdev))
-            TsoCtx.cur_ctx pa n vold vnew Hn eq_refl eq_refl eq_refl
+            CtxIdDefs.cur_ctx pa n vold vnew Hn eq_refl eq_refl eq_refl
             (fun c => Htvmono c) (fun c => Htvtop c)
             with "Hgh Hint Hctx Hcells") as "($ & Htso & $ & $)".
     iModIntro.

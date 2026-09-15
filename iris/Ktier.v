@@ -31,7 +31,7 @@
    is unchanged.  Explicit-tier statements use the bracket spellings
    ([a ↦ₘ[KT1] v]) or the named argument [(KTR := kt)].
 
-   DELIBERATE DEVIATION from the weak-memory branch's [TsoCtx.CurCtx], which has
+   DELIBERATE DEVIATION from the weak-memory branch's [CtxIdDefs.CurCtx], which has
    ZERO instances by design: [CurKtier] carries a GLOBAL DEFAULT [KT0] at
    LOW priority (100), so any local pin beats it regardless of declaration
    order and the ~430 use-only consumer files need no annotation at all.

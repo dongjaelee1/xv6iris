@@ -6,8 +6,8 @@ a cleanup proposal, not debt. Two of §5's three questions to the owner are
 answered by events: Q2 (should the closed theorem wait for `Hsh_owed` to
 retire, or should R4 absorb it) is moot — `Hsh_owed` is gone, retired the way
 the plan of record had it; Q3 (may R1 start before the theorem closes) is
-moot — it has closed. **Q1 is still open and still the first thing to
-settle**: whether the echo obligation stays persistent and split with
+moot — it has closed. **Q1 IS RULED: OPTION A** (owner, 2026-09-15; see the
+section at the end of this file): whether the echo obligation stays persistent and split with
 cons.lock's exclusion stated by a kernel-owned ghost half (`uart_arm`), or
 becomes LINEAR, justified by cons.lock's own resource — that choice changes
 `cons_echo_shift`'s shape, not just its premises, so it is upstream of R2's
@@ -235,3 +235,45 @@ Record cons_cred Σ := MkCC {
 1. §2 keeps the shift persistent and split, and STATES cons.lock's exclusion with a kernel-owned ghost half (`uart_arm`) in the token's slot — is that acceptable, or do you want the alternative the coordinator set aside (a LINEAR echo obligation justified by cons.lock's own resource, no ghost half), which changes `cons_echo_shift`'s shape and `console_caps` rather than only its premises?
 2. Should the closed theorem wait for `Hsh_owed` to retire through IO-LEAF M4b/M6 and SH-LINE R2/R3 (as the plan of record has it), or may R4 absorb those two conjuncts' consumers into the `cons_cred` re-cut and retire them there — one lane instead of three, at the cost of a bigger trusted diff in one landing?
 3. R1 touches no trusted statement and no kernel file — may it start before the theorem closes, or does "do not start before the theorem closes" cover it?
+
+## 6. Q1 RULED (owner, 2026-09-15): the echo obligation stays PERSISTENT AND SPLIT
+
+The obligation keeps its `□` and its split run; `cons.lock`'s exclusion is
+STATED by a kernel-owned ghost variable recording which `consoleintr` arm is
+in progress:
+
+```coq
+γ_arm : gname                       (* a : option (trace * byte * list byte * nat) *)
+ghost_var γ_arm (1/2) a             (* in the port invariant *)
+ghost_var γ_arm (1/2) a             (* riding the PLIC payload, where the token rides today *)
+```
+
+Opening an arm has the PURE side condition `a = None`, proved by
+`ghost_var_agree` between the handler's half and the invariant's half and
+advanced with `ghost_var_update_2`.  The application's law loses its `Token`
+premise and keeps `□`; the interleavings `cons.lock` forbids are refuted by a
+pure premise the KERNEL proves about its own state, where today they are
+refuted by fraction arithmetic in the APPLICATION's (`1/2 + 1/2 + 1/4 = 5/4`,
+`ghost_var_valid_2`).
+
+WHAT WAS SET ASIDE, and why it is worth writing down.  The alternative was a
+LINEAR obligation held in `cons.lock`'s own lock invariant, so that two
+overlapping arms are impossible because two threads cannot both hold the
+lock — the exclusion DERIVED from the lock that actually serializes the arm,
+rather than asserted by where a ghost half was placed.  It was not taken
+because a non-duplicable obligation cannot be a premise of a `□` kernel
+contract: `consoleintr`'s contract and the console capability bundle change
+SHAPE, not just their premise lists.  If it is ever reopened, the thing to
+check is that what gets threaded is literally "the caller holds `cons.lock`"
+— threading a freshly minted one-shot token that merely lives in the lock
+invariant rebuilds today's design under a new name and pays an interface
+change for nothing.
+
+A DETAIL THAT CONSTRAINS ANY FIX, recorded so it is not rediscovered:
+`cons.lock` excludes other ARMS, not other WRITERS.  `consolewrite` holds no
+`cons.lock`, so a process byte really can land between two echo bytes.  That
+is why the run must stay split, and why "one atomic ghost event per received
+character" is refuted — a single event appending all of `cs` would assert an
+ordering the wire does not keep.
+
+R2 IS THEREFORE UNBLOCKED.

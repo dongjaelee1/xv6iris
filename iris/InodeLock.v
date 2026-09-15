@@ -139,9 +139,9 @@ Section InodeLockRes.
   Context `{!riscvGS Σ}.
   (* M1 stage 2: [InodeInv.inode_meta]/[inode_addrs] hold [↦₄] cells and are
      context-indexed since the flip.  QUALIFIED, because this file does not
-     import TsoCtx (an unqualified [TsoCtx.CurCtx] here would silently generalise a
-     fresh [TsoCtx.CurCtx : Type]). *)
-  Context `{XI : TsoCtx.CurCtx}.
+     import TsoCtx (an unqualified [CtxIdDefs.CurCtx] here would silently generalise a
+     fresh [CtxIdDefs.CurCtx : Type]). *)
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   (* the cells at NO particular value: what iget leaves behind, and what
      [IcacheEscrow.ic_unloaded] parks.  The length is what makes memmove's
@@ -156,10 +156,10 @@ Section InodeLockResMorph.
   Context `{!riscvGS Σ, !xv6G Σ}.
 
   (* M1 stage 2: [inode_raw] is the two cell bundles, hence transportable
-     rather than ξ-constant.  QUALIFIED [TsoCtx.CtxId], since this file
+     rather than ξ-constant.  QUALIFIED [CtxIdDefs.CtxId], since this file
      does not import TsoCtx. *)
   Global Instance inode_raw_morph (ip : mword 64) :
-    TsoCtx.CtxMorph (λ ξ : TsoCtx.CtxId, inode_raw (XI := ξ) ip).
+    TsoCtx.CtxMorph (λ ξ : CtxIdDefs.CtxId, inode_raw (XI := ξ) ip).
   Proof.
     iIntros (ξ ξ') "Hd [[%d Hm] (%l & %Hl & Ha)]". rewrite /inode_raw.
     iMod (inode_meta_morph ip d ξ ξ' with "Hd Hm") as "[Hd Hm]".

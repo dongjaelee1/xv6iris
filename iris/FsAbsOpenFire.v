@@ -110,11 +110,11 @@ Local Open Scope Z_scope.
 (*  0.  THE ROW READINGS OF AN ERA NODE (pure, no binder)                 *)
 (* ===================================================================== *)
 
-Lemma opf_era_type `{XI : TsoCtx.CurCtx} (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8)) :
+Lemma opf_era_type `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8)) :
   fn_type (era_node dn bm data) = bv_unsigned (di_type dn).
 Proof. by rewrite /fn_type era_node_rec. Qed.
 
-Lemma opf_era_not_dir `{XI : TsoCtx.CurCtx} (dn : dinode) (bm : blkmap)
+Lemma opf_era_not_dir `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm : blkmap)
     (data : nat -> list (bv 8)) :
   bv_unsigned (di_type dn) <> T_DIR_z ->
   fn_is_dir (era_node dn bm data) = false.
@@ -124,7 +124,7 @@ Proof.
 Qed.
 
 (* THE FILE ROW: the abstract node is the record's bytes at its own count. *)
-Lemma opf_era_file_row `{XI : TsoCtx.CurCtx} (dn : dinode) (bm : blkmap)
+Lemma opf_era_file_row `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm : blkmap)
     (data : nat -> list (bv 8)) :
   bv_unsigned (di_type dn) = FsImg.T_FILE_z ->
   abs_row (era_node dn bm data)
@@ -142,7 +142,7 @@ Proof.
 Qed.
 
 (* THE DEVICE ROW: the major/minor pair straight off the record. *)
-Lemma opf_era_dev_row `{XI : TsoCtx.CurCtx} (dn : dinode) (bm : blkmap)
+Lemma opf_era_dev_row `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm : blkmap)
     (data : nat -> list (bv 8)) :
   bv_unsigned (di_type dn) <> T_DIR_z ->
   bv_unsigned (di_type dn) <> FsImg.T_FILE_z ->
@@ -159,7 +159,7 @@ Proof.
 Qed.
 
 (* THE DIRECTORY ROW, for symmetry: [FsAbsMknodFire]'s two facts joined. *)
-Lemma opf_era_dir_row `{XI : TsoCtx.CurCtx} (dn : dinode) (bm : blkmap)
+Lemma opf_era_dir_row `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm : blkmap)
     (data : nat -> list (bv 8)) :
   bv_unsigned (di_type dn) = T_DIR_z ->
   abs_row (era_node dn bm data)
@@ -175,14 +175,14 @@ Qed.
 (* [di_trunc] zeroes the size, so the truncated record's bytes are the
    empty list; the type and the count are untouched, so the row stays a
    FILE at the OBSERVED nlink. *)
-Lemma opf_trunc_size `{XI : TsoCtx.CurCtx} (dn : dinode) (bm' : blkmap)
+Lemma opf_trunc_size `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm' : blkmap)
     (data' : nat -> list (bv 8)) :
   fn_size (era_node (di_trunc dn) bm' data') = 0.
 Proof.
   rewrite /fn_size era_node_rec /di_trunc /=. apply bv_0_unsigned.
 Qed.
 
-Lemma opf_trunc_bytes `{XI : TsoCtx.CurCtx} (dn : dinode) (bm' : blkmap)
+Lemma opf_trunc_bytes `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm' : blkmap)
     (data' : nat -> list (bv 8)) :
   fn_file_bytes (era_node (di_trunc dn) bm' data') = [].
 Proof.
@@ -190,13 +190,13 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma opf_trunc_nlink `{XI : TsoCtx.CurCtx} (dn : dinode) (bm bm' : blkmap)
+Lemma opf_trunc_nlink `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm bm' : blkmap)
     (data data' : nat -> list (bv 8)) :
   fn_nlink (era_node (di_trunc dn) bm' data')
   = fn_nlink (era_node dn bm data).
 Proof. by rewrite /fn_nlink !era_node_rec. Qed.
 
-Lemma opf_trunc_row `{XI : TsoCtx.CurCtx} (dn : dinode) (bm bm' : blkmap)
+Lemma opf_trunc_row `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm bm' : blkmap)
     (data data' : nat -> list (bv 8)) :
   bv_unsigned (di_type dn) = FsImg.T_FILE_z ->
   abs_row (era_node (di_trunc dn) bm' data')
@@ -214,19 +214,19 @@ Qed.
 
 (* an era node whose record has a nonzero type has a row, and it is the
    typed row above *)
-Lemma opf_era_typed `{XI : TsoCtx.CurCtx} (dn : dinode) (bm : blkmap)
+Lemma opf_era_typed `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm : blkmap)
     (data : nat -> list (bv 8)) :
   bv_unsigned (di_type dn) <> 0 -> fn_type (era_node dn bm data) <> 0.
 Proof. intros H. rewrite opf_era_type. exact H. Qed.
 
 (* ...which every [inode_ok] payload has: its fourth clause is the type *)
-Lemma opf_era_typed_ok `{XI : TsoCtx.CurCtx} (cov : gset Z) (logstart : Z)
+Lemma opf_era_typed_ok `{XI : CtxIdDefs.CurCtx} (cov : gset Z) (logstart : Z)
     (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8)) :
   InodeLock.inode_ok cov logstart dn bm data -> fn_type (era_node dn bm data) <> 0.
 Proof. intros (_ & _ & _ & Hty & _). exact (opf_era_typed dn bm data Hty). Qed.
 
 (* a FILE record is typed *)
-Lemma opf_era_file_typed `{XI : TsoCtx.CurCtx} (dn : dinode) (bm : blkmap)
+Lemma opf_era_file_typed `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm : blkmap)
     (data : nat -> list (bv 8)) :
   bv_unsigned (di_type dn) = FsImg.T_FILE_z -> fn_type (era_node dn bm data) <> 0.
 Proof.
@@ -235,7 +235,7 @@ Qed.
 
 (* ...and a record with a nonzero count is LIVE (E2-V2): the fact the
    unconditional row readings below need *)
-Lemma opf_era_live `{XI : TsoCtx.CurCtx} (dn : dinode) (bm : blkmap)
+Lemma opf_era_live `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm : blkmap)
     (data : nat -> list (bv 8)) :
   bv_unsigned (di_nlink dn) <> 0 -> fn_nlink (era_node dn bm data) <> 0%nat.
 Proof.
@@ -248,7 +248,7 @@ Qed.
    take these any more -- they take the [abs_row] reading and the type, and
    derive the counted clause themselves ([FsAbsDefs.abs_view_arow]) -- so
    only the two unconditional forms a LINKED node's reader wants remain. *)
-Lemma opf_era_dev_of `{XI : TsoCtx.CurCtx} (dn : dinode) (bm : blkmap)
+Lemma opf_era_dev_of `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm : blkmap)
     (data : nat -> list (bv 8)) :
   bv_unsigned (di_type dn) <> T_DIR_z ->
   bv_unsigned (di_type dn) <> FsImg.T_FILE_z ->
@@ -263,7 +263,7 @@ Proof.
   by rewrite (opf_era_dev_row dn bm data Hnd Hnf).
 Qed.
 
-Lemma opf_era_dir_of `{XI : TsoCtx.CurCtx} (dn : dinode) (bm : blkmap)
+Lemma opf_era_dir_of `{XI : CtxIdDefs.CurCtx} (dn : dinode) (bm : blkmap)
     (data : nat -> list (bv 8)) :
   bv_unsigned (di_type dn) = T_DIR_z ->
   bv_unsigned (di_nlink dn) <> 0 ->
@@ -290,7 +290,7 @@ Section OpenFire.
      quantifier over the start, same start rule, same family over
      [path_elems pl]), so this is a rename.
      The namei-side twin of [FsAbsNparMknod.np_start_of_mknod]. *)
-  Lemma opf_start_of_open `{XI : TsoCtx.CurCtx} (γfs : fs_names) (cw : Z) (P Pmiss : nat -> Z -> iProp Σ)
+  Lemma opf_start_of_open `{XI : CtxIdDefs.CurCtx} (γfs : fs_names) (cw : Z) (P Pmiss : nat -> Z -> iProp Σ)
       (pl : list (bv 8)) :
     namei_walk_pre_era γfs cw P Pmiss -∗ ex_start γfs cw P Pmiss pl.
   Proof.
@@ -305,7 +305,7 @@ Section OpenFire.
 
   (* [mkf_dlookup_fire]'s mold, at the WHOLE row.  Any share suffices: the
      commit only reads. *)
-  Lemma opf_open_fire `{XI : TsoCtx.CurCtx} (γfs : fs_names) (E : coPset) (dq : dfrac)
+  Lemma opf_open_fire `{XI : CtxIdDefs.CurCtx} (γfs : fs_names) (E : coPset) (dq : dfrac)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) (i : Z) (n : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
     fn_type n <> 0 ->
@@ -341,7 +341,7 @@ Section OpenFire.
 
   (* the [DfracOwn 1] reading, which is the spelling sys_open holds
      ([top_frag] whole, from its [ilock] to its [iunlock]) *)
-  Lemma opf_open_fire_1 `{XI : TsoCtx.CurCtx} (γfs : fs_names) (E : coPset)
+  Lemma opf_open_fire_1 `{XI : CtxIdDefs.CurCtx} (γfs : fs_names) (E : coPset)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) (i : Z) (n : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
     fn_type n <> 0 ->
@@ -365,7 +365,7 @@ Section OpenFire.
      inside the one [ftopN] critical section.  The receipt's pre-state row
      is the OBSERVED one -- the fragment is the same one the terminal
      observation read. *)
-  Lemma opf_atrunc_fire `{XI : TsoCtx.CurCtx} (γfs : fs_names) (E : coPset)
+  Lemma opf_atrunc_fire `{XI : CtxIdDefs.CurCtx} (γfs : fs_names) (E : coPset)
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (i : Z) (bs0 : list (bv 8)) (nl : nat) (n n' : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->

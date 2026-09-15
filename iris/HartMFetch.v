@@ -51,6 +51,10 @@ Require Import RiscvModelBytes.
 Require Import RiscvLang RiscvPtsto RiscvExec HartSwp HartLift HartRegNode
         HartSpan HartSpanChar HartEvents HartMPmp.
 Require Import RiscvExtras RiscvFetchExec.
+Require Export HartTranslateM.  (* [hfrun_translateAddr_M] + the two
+                                   reduction tactics, split out of this
+                                   file for [HartMStore].  EXPORT: this
+                                   file's own walks still use them. *)
 (* [pwmsg]/[agent]/[tso_read_bytes]: [fobl_ram] below is stated over the
    write log -- post-A6.36 an instruction fetch takes the same plain arm as
    a data load and so reads THROUGH the log rather than off the flat cache *)
@@ -83,53 +87,9 @@ Proof. reflexivity. Qed.
 Local Ltac mf_glue :=
   cbn beta iota zeta delta [get_config_rvfi ext_fetch_check_pc].
 
-Local Ltac tr_cbn :=
-  cbn beta iota zeta delta
-    [Defs.bind Defs.bind0 Interface.iMon_bind Defs.liftR Defs.try_catch
-     Defs.catch_early_return Defs.returnm returnM returnR Defs.returnR
-     Defs.read_reg Defs.early_return Defs.throw Defs.and_boolM Defs.or_boolM
-     andb orb negb not].
-
-Local Ltac tr_read :=
-  rewrite hfrun_read;
-  match goal with
-  | |- context [ bool_decide ?P ] =>
-      rewrite (bool_decide_eq_true_2 P ltac:(assumption))
-  end.
-
-(* the identity translation's address, at the spelling [translateAddr]'s
-   Bare arm produces *)
-Local Lemma zext_pc_id (x : SailStdpp.Values.mword 64) :
-  zero_extend' 64 (bits_of_virtaddr (Virtaddr x)) = x.
-Proof. exact (fetch_pa_id x). Qed.
-
-(* GENERIC IN THE ACCESS.  The Bare-mode translation is access-agnostic;
-   the access enters in exactly two places, and each is a one-line premise
-   the caller discharges -- so the fetch and the store share this walk
-   rather than owning a copy each. *)
-Lemma hfrun_translateAddr_M (D Drw : gset register) (rs : regstate)
-    (pc : SailStdpp.Values.mword 64)
-    (acc : MemoryAccessType mem_payload) :
-  (mstatus : register) ∈ D ->
-  (cur_privilege : register) ∈ D ->
-  register_lookup cur_privilege rs = Machine ->
-  effectivePrivilege acc (register_lookup mstatus rs) Machine
-    = returnM Machine ->
-  is_shadow_stack_access acc = returnM false ->
-  hfrun 8 D Drw rs (translateAddr (Virtaddr pc) acc)
-  = Some (Values.Ok (Physaddr pc, PBMT_PMA, init_ext_ptw), rs).
-Proof.
-  intros HD1 HD2 Hpriv Hep Hss.
-  unfold translateAddr. tr_cbn.
-  tr_read. tr_cbn.
-  tr_read. rewrite Hpriv. tr_cbn.
-  rewrite Hep. tr_cbn.
-  unfold translationMode.
-  change (Instances.generic_eq Machine Machine) with true. tr_cbn.
-  rewrite Hss. tr_cbn.
-  change (Instances.generic_eq Bare Bare) with true. tr_cbn.
-  rewrite zext_pc_id. apply hfrun_ret.
-Qed.
+(* [tr_cbn], [tr_read], [zext_pc_id] and [hfrun_translateAddr_M] MOVED
+   DOWN to [HartTranslateM.v] (re-exported above): the
+   store path needs that one walk and nothing else of this file. *)
 
 Lemma hfrun_translateAddr_M_ifetch (D Drw : gset register) (rs : regstate)
     (pc : SailStdpp.Values.mword 64) :

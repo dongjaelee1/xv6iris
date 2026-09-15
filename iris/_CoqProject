@@ -1508,6 +1508,7 @@ UkShCd.v
 UkShMain.v
 UkShFork.v
 UConsLine.v
+UkShWords.v
 UkShEcho.v
 UInitCons.v
 UConsOpen.v

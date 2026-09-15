@@ -50,6 +50,7 @@ Require Import UCodeShP.
 Require Import UkSh.
 Require Import UkShParse.
 Require Import UkShParseCmd.
+Require Import UkShWords.        (* the lexer at an ARBITRARY word list *)
 Require Import UkShRun.
 Require Import UkShDiag.
 Require Import UkShMalloc.
@@ -79,10 +80,17 @@ Set Printing Depth 40.
 (* ([UkShParse.ushp_tokens len f 0 toks]) and returns the node at THAT     *)
 (* list ([ushp_tree s0 p (UshpExec toks)]), so there is no determinacy     *)
 (* lemma to prove about the parser -- the caller names the tokens.  What   *)
-(* the disciplined branch owes is therefore a CLOSED COMPUTATION: the     *)
-(* seventeen bytes of [EchoDisc.echo_line] carry no symbol byte and their  *)
-(* maximal non-blank runs are [(0,4)], [(5,10)] and [(11,16)].  That is    *)
-(* [UConsLine.ush_echo_tokens], and it is proved below by [vm_compute].    *)
+(* the disciplined branch owes is therefore that the line LEXES: it        *)
+(* carries no symbol byte and its maximal non-blank runs are the token     *)
+(* list.  That is [UConsLine.ush_echo_tokens].                             *)
+(*                                                                        *)
+(* AND THAT IS NOT A PROPERTY OF THESE SEVENTEEN BYTES.  It used to be     *)
+(* proved by [vm_compute] at the literal, which is an answer worth exactly *)
+(* one command line.  [UkShWords.v] proves it for an ARBITRARY list of     *)
+(* words joined by single spaces and closed by a newline, and what is left *)
+(* here is the INSTANCE: [echo_ws] names the three words, two closed       *)
+(* computations say the literal IS their join and what offsets they land   *)
+(* at, and everything else is [UkShWords]' general lemmas applied.         *)
 (* ===================================================================== *)
 
 Definition echo_toks : list (nat * nat) := [(0, 4); (5, 10); (11, 16)]%nat.
@@ -106,39 +114,63 @@ Proof.
   intro Hi. destruct i as [| [| [| i]]]; try reflexivity. exfalso. lia.
 Qed.
 
-(* ---- the closed computation: the literal line lexes ------------------ *)
+(* ---- the line, AS WORDS ---------------------------------------------- *)
 
-(* [UkShParse.UshpTokCons] with the two scanned lengths NAMED, so a call
-   site supplies them as closed numbers instead of leaving them to
-   unification. *)
-Local Lemma ushe_tok_step (len i k n : nat) (f : nat -> bv 8)
-    (toks : list (nat * nat)) :
-  ushp_skipws (len - i) i f = k ->
-  ushp_toklen (len - (i + k)) (i + k) f = n ->
-  (0 < n)%nat ->
-  ushp_tokens len f (i + k + n)%nat toks ->
-  ushp_tokens len f i ((i + k, i + k + n)%nat :: toks).
+(* THE THREE WORDS.  Everything about the lexer below reads the line
+   through this list and not through the literal, so pointing the
+   application at another command line is a change HERE and nowhere else
+   in this section. *)
+Definition echo_ws : list (list (bv 8)) :=
+  [ sb "echo"%string; sb "hello"%string; sb "world"%string ].
+
+Lemma echo_ws_wf : wl_wf echo_ws.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* ...and the two closed computations that tie the literal to them: what
+   the join spells, and where it puts the words.  These are the ONLY
+   [vm_compute]s the lexing obligations still cost. *)
+Lemma echo_line_words : echo_line = wl_line echo_ws.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma echo_toks_wl : wl_toks echo_ws = echo_toks.
+Proof. vm_compute. reflexivity. Qed.
+
+(* the two boundary accessors, at the word list: argument [i] IS word [i] *)
+Lemma echo_ws_at (i : nat) :
+  (i < 3)%nat ->
+  exists w : list (bv 8), echo_ws !! i = Some w /\ length w = echo_alen i.
 Proof.
-  intros Hk Hn Hpos Ht.
-  pose proof (UshpTokCons len f i toks) as C. cbv zeta in C.
-  rewrite Hk Hn in C. exact (C Hpos Ht).
+  intro Hi. destruct i as [| [| [| i]]];
+    [ exists (sb "echo"%string) | exists (sb "hello"%string)
+    | exists (sb "world"%string) | exfalso; lia ];
+    (split; [ reflexivity | vm_compute; reflexivity ]).
 Qed.
+
+Lemma echo_off_wl (i : nat) :
+  (i < 3)%nat -> wl_off 0%nat echo_ws i = echo_off i.
+Proof.
+  intro Hi. destruct i as [| [| [| i]]];
+    [ vm_compute; reflexivity | vm_compute; reflexivity
+    | vm_compute; reflexivity | exfalso; lia ].
+Qed.
+
+(* ---- the line lexes: [UkShWords.v]'s two general lemmas, instantiated - *)
 
 Lemma ush_echo_tokens_holds : UConsLine.ush_echo_tokens.
 Proof.
-  rewrite /UConsLine.ush_echo_tokens echo_line_length.
+  rewrite /UConsLine.ush_echo_tokens.
+  assert (Hlen : length echo_line = length (wl_line echo_ws))
+    by (by rewrite echo_line_words).
+  assert (Hf : forall j : nat, (j < length echo_line)%nat ->
+            echo_line !!! j = wl_line echo_ws !!! j)
+    by (intros j _; by rewrite echo_line_words).
   split_and!.
-  - intros j Hj.
-    do 17 (destruct j as [| j]; [ vm_compute; reflexivity | ]). lia.
-  - change [(0, 4); (5, 10); (11, 16)]%nat
-      with [(0 + 0, 0 + 0 + 4); (4 + 1, 4 + 1 + 5); (10 + 1, 10 + 1 + 5)]%nat.
-    apply (ushe_tok_step 17 0 0 4);
-      [ vm_compute; reflexivity | vm_compute; reflexivity | lia | ].
-    apply (ushe_tok_step 17 4 1 5);
-      [ vm_compute; reflexivity | vm_compute; reflexivity | lia | ].
-    apply (ushe_tok_step 17 10 1 5);
-      [ vm_compute; reflexivity | vm_compute; reflexivity | lia | ].
-    apply UshpTokNil. vm_compute. reflexivity.
+  - exact (wl_no_symbols echo_ws (fun j : nat => echo_line !!! j)
+             (length echo_line) echo_ws_wf Hlen Hf).
+  - replace [(0, 4); (5, 10); (11, 16)]%nat with (wl_toks echo_ws)
+      by (vm_compute; reflexivity).
+    exact (wl_tokens echo_ws (fun j : nat => echo_line !!! j)
+             (length echo_line) echo_ws_wf Hlen Hf).
   - simpl. lia.
 Qed.
 
@@ -159,61 +191,12 @@ Definition ush_line_toks : Prop :=
     /\ ushp_tokens len (fun j : nat => f (k + j)%nat) 0%nat echo_toks.
 
 (* ---- the transport, which is all the determinacy costs --------------- *)
-(* [ushp_skipws] / [ushp_toklen] read [f] only inside the window they are
-   given, and [ushp_tokens]' two constructors read it only through them --
-   so pointwise equality below [len] carries a tokenization across.  Three
-   plain inductions; nothing about echo. *)
-Lemma ushp_skipws_ext (n : nat) :
-  forall (i : nat) (f f' : nat -> bv 8),
-    (forall j : nat, (i <= j < i + n)%nat -> f j = f' j) ->
-    ushp_skipws n i f = ushp_skipws n i f'.
-Proof.
-  induction n as [| n IH ]; intros i f f' H; cbn; [ reflexivity | ].
-  rewrite (H i ltac:(lia)).
-  destruct (ushp_is_ws (f' i)); [ | reflexivity ].
-  f_equal. apply IH. intros j Hj. apply H. lia.
-Qed.
+(* The four [ushp_*_ext] lemmas this used to carry say only that the lexer
+   reads [f] inside its window and nowhere else -- nothing about echo, and
+   nothing about any particular line -- so they live in [UkShWords.v] now,
+   beside the general tokenization they exist to move. *)
 
-Lemma ushp_toklen_ext (n : nat) :
-  forall (i : nat) (f f' : nat -> bv 8),
-    (forall j : nat, (i <= j < i + n)%nat -> f j = f' j) ->
-    ushp_toklen n i f = ushp_toklen n i f'.
-Proof.
-  induction n as [| n IH ]; intros i f f' H; cbn; [ reflexivity | ].
-  rewrite (H i ltac:(lia)).
-  destruct (ushp_is_ws (f' i) || ushp_is_sym (f' i)); [ reflexivity | ].
-  f_equal. apply IH. intros j Hj. apply H. lia.
-Qed.
-
-Lemma ushp_no_symbols_ext (len : nat) (f f' : nat -> bv 8) :
-  (forall j : nat, (j < len)%nat -> f j = f' j) ->
-  ushp_no_symbols len f -> ushp_no_symbols len f'.
-Proof.
-  intros H Hns j Hj. rewrite <- (H j Hj). exact (Hns j Hj).
-Qed.
-
-Lemma ushp_tokens_ext (len : nat) (f f' : nat -> bv 8) :
-  (forall j : nat, (j < len)%nat -> f j = f' j) ->
-  forall (i : nat) (toks : list (nat * nat)),
-    ushp_tokens len f i toks -> ushp_tokens len f' i toks.
-Proof.
-  intros Hff i toks Ht.
-  assert (Hsk : forall a : nat,
-            ushp_skipws (len - a) a f' = ushp_skipws (len - a) a f).
-  { intro a. apply ushp_skipws_ext. intros j Hj. symmetry. apply Hff. lia. }
-  assert (Htl : forall b : nat,
-            ushp_toklen (len - b) b f' = ushp_toklen (len - b) b f).
-  { intro b. apply ushp_toklen_ext. intros j Hj. symmetry. apply Hff. lia. }
-  induction Ht as [ off Hnil | off toks0 k0 n0 Hpos Hrec IH ].
-  - apply UshpTokNil. rewrite (Hsk off). exact Hnil.
-  - apply (ushe_tok_step len off k0 n0 f').
-    + exact (Hsk off).
-    + exact (Htl (off + k0)%nat).
-    + exact Hpos.
-    + exact IH.
-Qed.
-
-(* ...and the determinacy itself: ONE transport of the closed computation. *)
+(* ...and the determinacy itself: ONE transport of the lexing above. *)
 Lemma ush_line_toks_holds : ush_line_toks.
 Proof.
   intros f k len [Hlen Hf].
@@ -288,46 +271,32 @@ Definition echo_argv_bytes_of_line : Prop :=
     echo_argv_bytes
       (ushp_nulfold echo_toks (ushp_ext len (fun j : nat => f (k + j)%nat))).
 
-(* [nulterminate]'s cut at [echo_toks] is the three stores at 4, 10 and 16
-   and nothing else, so every index inside a token is the line's own byte
-   and every token's end is the terminator. *)
-Local Lemma nulfold_echo_other (g : nat -> bv 8) (x : nat) :
-  (x < 17)%nat -> x <> 4%nat -> x <> 10%nat -> x <> 16%nat ->
-  ushp_nulfold echo_toks (ushp_ext 17 g) x = g x.
-Proof.
-  intros Hx H4 H10 H16.
-  unfold echo_toks. cbn [ushp_nulfold snd].
-  rewrite /ushp_setb /ushp_ext.
-  rewrite (proj2 (Nat.eqb_neq x 16) H16).
-  rewrite (proj2 (Nat.eqb_neq x 10) H10).
-  rewrite (proj2 (Nat.eqb_neq x 4) H4).
-  rewrite (bool_decide_eq_true_2 _ Hx).
-  reflexivity.
-Qed.
-
-Local Lemma nulfold_echo_nul (g : nat -> bv 8) (x : nat) :
-  (x = 4 \/ x = 10 \/ x = 16)%nat ->
-  ushp_nulfold echo_toks (ushp_ext 17 g) x = ubyte0.
-Proof.
-  intros Hx. unfold echo_toks. cbn [ushp_nulfold snd].
-  rewrite /ushp_setb.
-  destruct Hx as [-> | [-> | ->]]; reflexivity.
-Qed.
-
+(* ...AND THE CUT IS NOT A PROPERTY OF THESE OFFSETS EITHER.  It used to
+   be three stores at 4, 10 and 16, discharged by [reflexivity] at each.
+   [UkShWords.wl_cut_in] / [wl_cut_end] say the same thing at an arbitrary
+   word list -- inside word [i] the cut is transparent, at its END it is
+   the terminator -- so this is two applications and the arithmetic that
+   keeps every index inside [ushp_ext]'s window. *)
 Lemma echo_argv_bytes_of_line_holds : echo_argv_bytes_of_line.
 Proof.
   intros f k len [Hlen Hf].
-  rewrite echo_line_length in Hlen. subst len.
+  assert (Hlw : length (wl_line echo_ws) = len)
+    by (rewrite <- echo_line_words; by rewrite Hlen).
   split.
   - intros i j Hi Hj.
-    assert (Hb : (echo_off i + j < 17)%nat /\ (echo_off i + j <> 4)%nat
-                 /\ (echo_off i + j <> 10)%nat /\ (echo_off i + j <> 16)%nat)
-      by (destruct i as [| [| i]]; cbn [echo_off echo_alen] in *; lia).
-    destruct Hb as (Hb1 & Hb2 & Hb3 & Hb4).
-    rewrite (nulfold_echo_other _ _ Hb1 Hb2 Hb3 Hb4).
-    exact (Hf _ Hb1).
-  - intros i Hi. apply nulfold_echo_nul.
-    destruct i as [| [| i]]; cbn [echo_off echo_alen]; auto.
+    destruct (echo_ws_at i Hi) as (w & Hw & Hwlen).
+    rewrite <- Hwlen in Hj.
+    pose proof (wl_off_lt_line echo_ws i w j Hw ltac:(lia)) as Hlt.
+    rewrite Hlw in Hlt.
+    rewrite <- (echo_off_wl i Hi). rewrite <- echo_toks_wl.
+    rewrite (wl_cut_in echo_ws (fun x : nat => f (k + x)%nat) len i w j
+               Hw Hj Hlt).
+    exact (Hf _ Hlt).
+  - intros i Hi.
+    destruct (echo_ws_at i Hi) as (w & Hw & Hwlen).
+    rewrite <- (echo_off_wl i Hi). rewrite <- Hwlen.
+    rewrite <- echo_toks_wl.
+    exact (wl_cut_end echo_ws (fun x : nat => f (k + x)%nat) len i w Hw).
 Qed.
 
 Section UkShEcho.

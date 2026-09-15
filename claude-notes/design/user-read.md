@@ -54,6 +54,44 @@ THE CHANGE.  The user half becomes holdable:
   commit (open the invariant instead of presenting a half), so the
   kernel proof has ONE fire lemma with two suppliers, not two specs.
 
+**AS LANDED (RD-1, 2026-09-15 — `iris/UserOff.v`, branch `rd1-off-own`).**
+`uoff γo off := off_gv γo (1/2) (Z.of_nat off)` is in a new thin
+`UserOff.v` above `OffGv.v`, not in `OffGv.v` itself — the design left
+the choice open and the operational reason decided it: an edit to
+`OffGv.v` changes its digest and invalidates the .vo of everything
+below the fd layer, so the mirror cannot compile a single file again
+without a full rebuild.  `uoff_park` is `={E}=∗`, not `==∗` (allocating
+an invariant is a fancy update; there is no `==∗` form).  The rest
+landed as written, with ONE name the design did not have: the fire's
+premise is a SUPPLIER,
+
+    off_supply γo E off d R :=
+      off_gv γo (1/2) (Z.of_nat off) ={E}=∗ off_gv γo (1/2) (Z.of_nat (off+d)) ∗ R
+
+— "take the kernel's half at `off`, give it back at `off+d`, leave `R`"
+— which is what makes "one fire, two suppliers" literal: each of the
+three fires (`arf_read_fire_gen`, `wrf_awrite_fire_gen`,
+`wrf_apart_fire_gen`) takes one and returns `R`, and
+`off_supply_parked` (R = `True`, opens `off_user_inv`) /
+`off_supply_held` (R = `uoff γo (off+d)`, opens nothing) are the two
+answers.  The old lemma names keep their EXACT former statements as the
+parked instances, so no kernel proof changed.
+
+**THE ONE THING THAT DID NOT LAND: the MINT at open.**  `off_pub_park`
+and `off_pub_hand` are both proved and the publish
+(`ProofSysOpenPub.v`) now goes through `off_pub_park` — the mode is
+named at the call site — but mode `hand` cannot be wired yet, and the
+obstacle is not in open: `FdSlots.foff_row` is a PURE FUNCTION OF THE
+DESCRIPTOR STATE and PERSISTENT (`FdInode _ γo ↦ off_user_inv γo`,
+every row, no per-row choice).  There is only one user half, so a
+descriptor whose half was handed out HAS NO INVARIANT and its row
+cannot claim one.  Wiring `hand` is therefore a change to the ROW
+FAMILY — the per-row policy `FdSlots.v`'s own comment anticipates — and
+the cheapest shape that keeps both properties is to put the mode IN THE
+STATE (an `FdInode` that records parked-vs-held), which is also §3's
+arm dispatch for free.  That is an `fdstate` change with a wide match
+cone: **RD-2's call, not a side effect of RD-1.**
+
 ## 3. Arm dispatch by the handle — RD-2/4/5
 
 The U-tier read leaf cases on the `fdstate` the caller's `ufd fd st`
@@ -78,6 +116,155 @@ console: ledger-fixed AT THE ARM THE HANDLE NAMES.  One deposit family
 `udepwf_at (kind)` replaces the per-arm ad-hoc forms; the supplier that
 answers it is selected by the same kind the leaf cased on, so the
 kernel-side wiring is one table, not four lemmas.
+
+**RULED (RD-2, 2026-09-15, from RD-1's finding): the offset MODE lives
+IN THE STATE.**  `FdInode` gains the parked-vs-held mode (an
+`offmode`), because it is the only shape that keeps `FdSlots.foff_row`
+both PERSISTENT and A PURE FUNCTION OF THE STATE once a half can be
+handed out: a held descriptor's row claims nothing, a parked one's
+claims `off_user_inv`, and which one applies is readable off the
+descriptor itself — which is also this section's arm dispatch for
+free.  Consequences RD-2 must carry through the `fdstate` match cone:
+open's publish selects the mode (`off_pub_park`/`off_pub_hand` — both
+already proved), fork's U-tier row demands mode = parked on every
+inode descriptor (the pre-fork `uoff_park` re-mints the row the
+child's copy consumes — `foff_row_inode` is the one step), close/dup
+are mode-indifferent.
+
+**AS LANDED (RD-2, 2026-09-15 — branch `rd2-file-leaf`): THE RULING IS
+NOT IMPLEMENTABLE AS SCOPED, and the obstruction is one level below the
+row family.**  The mode in the state is the right *shape* — nothing
+found here contradicts it — but putting it there does not, by itself,
+get a held offset into the kernel, and what stops it is the
+GENERIC-SAFETY SUPPLY LAW.  The chain, every link checked in the tree
+rather than assumed:
+
+1. `SpecFileread`'s contract takes `FdSlots.foff_row st` as a premise
+   and `ProofFileread` spends it at `foff_row_inode_of`
+   (`ProofFileread.v:2244`) to get `off_user_inv γo`, which is the
+   PARKED supplier of its two fires (`arf_read_fire` at `:2820` and
+   `:3171`).  `ProofFilewrite` does the same at `:4914` for
+   `wrf_awrite_fire` / `wrf_apart_fire`.
+2. That `st` is UNIVERSALLY QUANTIFIED in the kernel proof.  So the
+   moment `foff_row` is state-keyed (held → nothing), the held arm of
+   the kernel proof has no offset supplier at all — and it needs one,
+   because `off_gv` is a fractional ghost var: the kernel's half CANNOT
+   move while a program holds the other half at the old value.  That is
+   algebra, not proof engineering.  (`OffGv.off_permit γo` — "move the
+   kernel half to any value" — is outright INCONSISTENT with a live
+   `uoff γo off`; it is a parked-mode artifact by construction.)
+3. So the held supplier has to enter through the only channel fileread
+   has to its caller: `SpecFileread.fileread_in`'s inode arm, i.e. the
+   DEPOSIT the process hands the trap.
+4. **And that is the wall.**  `fileread_in` at every state must be
+   payable from the generic supply: `UexecSG.sbundle_of_supply_ne` is a
+   CLASS FIELD — `⊢ □ ssupply ==∗ ∃ f, … xv6_sbundle X n f W` at an
+   ARBITRARY key `W`, hence an arbitrary descriptor table and an
+   arbitrary a0 — discharged by `UexecExecInst.xv6_sbundle_of_supply_ne`
+   through `FsAbsInvFire.fsabs_fileread_in`, which is stated `∀ st` and
+   PAID FROM A PERSISTENT CREDENTIAL.  An exclusive `uoff` is not merely
+   absent there; as a `□` premise it is inconsistent (open it twice and
+   hold three halves) — the same argument `SpecFileread.v:900`'s header
+   already makes for the console reader token.  A held arm demanding
+   `uoff` makes that class field unprovable.
+
+Two further consequences of mode-in-state, found on the way and not
+priced by the ruling:
+
+  (a) **Parking stops being a resource move.**  With the mode in the
+      state, `uoff_park` alone no longer takes a descriptor from held to
+      parked — the `fdstate` has to be RETYPED too, and a retype needs
+      both halves of `FdSlots.fd_st` (`fd_st_move`), i.e. a kernel step.
+      xv6 has no "park" syscall, so §4's "the caller parks via
+      `uoff_park` before the ecall" is not expressible at the U tier
+      once the mode lives in the state.
+  (b) **kfork cannot copy a held row.**  `ProofKforkB3`'s scan hands the
+      parent's row to the child PERSISTENTLY (§4's as-landed note); at a
+      held row there is nothing persistent to hand, and the proof is
+      stated at an arbitrary `sts`, so no U-tier premise can rescue it.
+
+### The routes out (owner's call; RD-2 recommends R-c now, R-a as a campaign)
+
+**R-a — mode in the state, plus a PARKED-TABLE DISCIPLINE in the generic
+tier.**  The full ruling, honestly priced:
+  - narrow `UexecSG.sbundle_of_supply_ne` (and `UkRun.udep`'s law,
+    `udepw`'s left disjunct, `udepw_of_psok`) to keys whose a0
+    descriptor is PARKED, and thread that reading from the process's own
+    descriptor knowledge;
+  - give sys_open's publish a MODE PARAMETER chosen by the deposit's
+    family, so ONE kernel proof serves park and hand (`SpecSysOpen`'s 15
+    `FdInode` sites + `ProofSysOpen{Pub,Parts,Stores,Alloc,CreArm,
+    Shared}`);
+  - give kfork a KERNEL-SIDE park (it holds the parent's held payment;
+    `uoff_park` is one step) plus the parent-state retype — which is
+    what makes (a) and (b) go away, and what makes §4's ruling true by
+    construction instead of by politeness.
+  A campaign, not a lane.  It is also the only route that delivers §6's
+  figure as written.
+
+**R-b — mode-free DISJUNCTIVE row** (recorded escape, not recommended):
+`foff_row (FdInode _ γo) := off_user_inv γo ∨ (∃ o, uoff γo o)`.
+`fdstate` untouched; parking is again a pure resource move; kfork
+park-then-copies locally; open hands the half out with no new
+constructor; the generic law is untouched because `fileread_in` never
+changes.  Its cost is exactly what the mode buys: the program cannot
+tell WHICH disjunct came back, so the File row would return
+`True ∨ uoff γo (off+d)` and §6's corollary is not derivable.  It
+becomes useful only with a per-`γo` "no invariant was ever allocated
+here" witness — a new ghost and a new obligation on every minter.
+
+**R-c — LANDED by RD-2 (`iris/UkReadFile.v`, branch `rd2-file-leaf`,
+mirror-green, `Print Assumptions` at the standing bar).**  The
+intermediate that needs NO kernel change, and what actually unblocks
+`cat`: the file-arm leaf AT A PARKED DESCRIPTOR, with the
+offset REPORTED by the receipt instead of owned.
+`FsAbsReadFire.read_post_ok` already existentially names `off`, the
+observed node `a` and `d`, ties `Z.of_nat d = bv_unsigned r`, and — on
+an `AFile bs` row — says the `d` bytes at the destination ARE
+`bs[off, off+d)` in the resume image.  So §3's whole File CONTENT row is
+derivable today; what is missing is only the caller's ability to PREDICT
+`off` before the call and to carry it across calls.  A `cat`-shaped
+consumer that pins its file (`aread_commit_at_pinned_self` at its
+`nview`) LEARNS the bytes it read, from this leaf, with nothing new in
+the kernel.  R-a upgrades it later by replacing the reported `off` with
+an owned one — the leaf's statement gains a conjunct and loses an
+existential; nothing else about it moves.
+
+WHAT IS IN `iris/UkReadFile.v`:
+
+- `udepwf_st N m pc n fdep st` — §3's arm-indexed deposit, the third
+  sibling of `UkRun.udepwf_at` (cwd-fixed) and `udepwf_std`
+  (ledger-fixed): it fixes the STATE the caller's handle names,
+  `⌜fd_st_of_key (a0) fdv = st⌝`, because a file descriptor is never a
+  standard stream (`UserFd.ufd` carries `NSTD ≤ fd`) and the ledger
+  cannot reach it.  `udepwf_st_read_file` is its supplier, and the whole
+  price is ONE observation commit: `pf_at (aread_commit_at Γ appE i γo) F`
+  and nothing beside it — §1's "the payment is a resource the PROGRAM
+  owns and understands", literally.
+- `xfam_rdf` / `read_file_fam` — `UShLine.xfam_rd` with `rf_F` real
+  instead of trivial.  The console member names `rf_ret`/`rf_in` and
+  leaves `rf_F` at the unit; the inode member does the reverse, and that
+  difference IS the arm.
+- `wp_uk_ecall_read_file` — the leaf: `wp_uk_ecall_read_recv`'s walk
+  with the post kept, at the file arm.  §5's claim that the recv leaf's
+  bridge rows are ARM-INDEPENDENT is now checked rather than asserted:
+  all six (resume-image bytes, destination linearity, writable-mapped,
+  the three argument ties, the lazy bit, `uexec_live_ok`) are copied
+  unchanged, and the only differences are in the descriptor.
+- `read_arms_file_learn` — §3's File row, assembled, and CLOSED UNDER
+  THE GLOBAL CONTEXT (no axioms at all): at a pinned file the return
+  value IS `ard_count (Z.to_nat cnt) off |bs|` = `min(cnt, |bs| − off)`
+  and the bytes the program holds back ARE `bs[off, off+d)`.  The count
+  fits a word because `ard_pre` already carries the row's size cap.
+  The `r = -1` disjunct is the kernel's own and is honest: readi answers
+  -1 on a copyout fault and `uexec_live_ok` refutes -1 only at the
+  console, so an inode reader that wants the left arm tests `r ≥ 0` —
+  which is what cat's loop does anyway.
+- `wp_uk_cat_read_learns` (+ `cat_file`, `cat_piece`) — the consumer
+  test the lane owed: a program holding `ufd fd (FdOpen true _
+  (FdInode i γo))` and `nview Γ q i (AFile cat_file)` reads and LEARNS
+  the bytes, and it falls out of the leaf with no new machinery (the
+  only thing it builds is its own pin, handed back).
 
 ## 4. Fork (and dup) versus an owned offset — RULED 2026-09-15: PARK
 
@@ -107,6 +294,25 @@ ever needs it.  NOTE: fork need only park the offsets of descriptors
 that are OPEN at the fork; close returns/drops the half (the off box
 dies with the file object's last reference).
 
+**AS LANDED (RD-1): the kernel owes NOTHING, checked not assumed.**
+kfork's descriptor-bundle copy (`ProofKforkB3.v`'s scan) takes the
+parent's row PERSISTENTLY (`#Hprow`) and hands the same row to the
+child — "THE CHILD'S OFFSET ROW IS THE PARENT'S: one file, one shadow,
+and the parent's entry is persistent".  So the child's table costs the
+proof nothing exactly as long as the parent's row carries an
+`off_user_inv`, which under mode `park` it always does; RD-1 changed no
+fork proof and the ruling changes none.  Read the other way, this is
+the same sentence as §2's as-landed note: under a future mode `hand` a
+handed row has NO invariant, so the pre-fork park is not politeness —
+it is what RE-MINTS the row the child's copy consumes.  The obligation
+is therefore purely U-tier and purely the caller's: the enriched fork
+row's premise asks the program to `uoff_park` every held offset before
+the ecall and gives back `off_user_inv` = `FdSlots.foff_row` at that
+state (`foff_row_inode` is the one step between them).  RD-1 landed the
+door (`uoff_park`) and this finding; the premise itself is written when
+RD-2 cuts the U-tier rows.  dup needs nothing at all: `γo` is per FILE
+OBJECT, so one `uoff` already serves both descriptor numbers.
+
 ## 5. The Φ channel through the trap row
 
 `wp_uk_ecall_read_recv` already built the mechanism: the window walk
@@ -119,6 +325,27 @@ are ARM-INDEPENDENT and move unchanged into the shared walk.  RD-2
 adds the Inode member (`aread`'s receipt: `ard_pre`, `ard_count`,
 slice + `Φ`), RD-4 re-cuts the console member at the merged claim,
 RD-5 adds the pipe member.
+
+**AS LANDED (RD-2): the Inode member needs NOTHING new — it is
+`FsAbsReadFire.read_arms`, which `SpecFileread.fileread_extra_core`
+already returns on the inode arm, and every one of §3's File-row
+conjuncts is inside it** (`read_post_ok`: `ard_pre av i off a`,
+`0 ≤ n`, `ard_ret_tie n a off r`, `Z.of_nat d = bv_unsigned r`, the
+`AFile bs` image row `M' !! (addr+j) = bs !!! (off+j)` under the
+caller's own linearity hypothesis, and `F.(pf_recv) av off a d`).  So
+the "receipt family indexed by the arm" is a READING of what is already
+there, not a construction: the console member is `console_receipt`, the
+inode member is `read_arms`, and the family is `fileread_extra_core`
+itself.  The bridge rows `wp_uk_ecall_read_recv` hands out (resume-image
+bytes, wmapped destination, the three trapframe-argument ties, the lazy
+bit, `uexec_live_ok`) are indeed arm-independent — the file leaf reuses
+them verbatim.  What the inode member DOES need that the console one
+does not is a deposit fixed at the descriptor a0 names rather than at
+the low `NSTD` ledger (`udepwf_std`'s `⌜take NSTD fdv = l⌝` becomes
+`⌜fdv !! fd = Some st⌝`), because an inode descriptor is not a standard
+one; that is the `udepwf_at (kind)` this section asks for, and the name
+`udepwf_at` is already taken by the cwd-fixed form in `UkRun.v` — call
+it `udepwf_fd`.
 
 ## 6. The two presentation forms (and the TR §7 figure)
 

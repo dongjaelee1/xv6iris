@@ -103,6 +103,8 @@ Require Import Xv6Cameras.
 (* the three binder classes the section list names, IMPORTED rather than
    inherited ([FsAbsMknodFire]'s header records why). *)
 Require Import FdSlots.          (* [fdslotG]                               *)
+Require Import UserOff.          (* [off_supply]: the fire's offset supplier,
+                                    parked or HELD ([uoff])                 *)
 Require Import FileInvDefs.      (* [fileG]: carries [icacheG] and [icfg]   *)
 Require Import ProcAvail.        (* [pavG]                                  *)
 Require Import FsStateEra.       (* [era_node], [era_node_rec]              *)
@@ -463,31 +465,41 @@ Section ReadFire.
   (* ...AND IT MOVES THE OFFSET, ITSELF: the kernel's half goes in at the
      offset the read used, the client hands it back UNMOVED (the
      piece-shape rule), and THIS LEMMA advances it by [d], the count
-     delivered, out of the descriptor row's own existential invariant
-     ([OffGv.off_user_inv], persistent, carried by [FdSlots.foff_row] and
-     threaded down from sys_read's descriptor bundle).
+     delivered, THROUGH THE USER SIDE'S SUPPLIER ([UserOff.off_supply]).
      Fired at the CHECKIN of the cell, after readi -- the one instant of
      the hold where the count is known; the row cannot move between the
-     lock's acquire and there. *)
-  Lemma arf_read_fire (γfs : fs_names) (E : coPset) (dq : dfrac)
+     lock's acquire and there.
+
+     ONE FIRE, TWO SUPPLIERS (RD-1, design/user-read.md section 2).  This
+     lemma does not care WHICH half the user side is: it asks for
+     [off_supply γo E off d R] -- "take the kernel's half at [off], give
+     it back at [off + d], leave [R]" -- and hands [R] back.  The two ways
+     to answer it are [UserOff.off_supply_parked] (the descriptor row's
+     existential invariant [OffGv.off_user_inv], carried by
+     [FdSlots.foff_row] and threaded down from sys_read's descriptor
+     bundle; [R = True]) and [UserOff.off_supply_held] (the caller
+     presented its own [uoff γo off] and takes back [uoff γo (off + d)]).
+     [arf_read_fire] and [arf_read_fire_held] below are those two
+     instances; nothing else in the tree instantiates this lemma. *)
+  Lemma arf_read_fire_gen (γfs : fs_names) (E : coPset) (dq : dfrac)
+      (R : iProp Σ)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (i : Z) (γo : gname)
       (off d : nat) (n : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
     (off <= MAXFILE * BSIZE)%nat ->
     anode_size_ok (abs_row n) ->
     fn_type n <> 0 ->
-    ftop_inv γfs -∗ off_user_inv γo -∗
+    ftop_inv γfs -∗ off_supply γo E off d R -∗
     pf_at (aread_commit_at (fs_gamma_L γfs) appE i γo) F -∗
     top_frag_q (fs_gamma_L γfs) dq i n -∗
     off_gv γo (1/2) (Z.of_nat off) ={E}=∗
       top_frag_q (fs_gamma_L γfs) dq i n
       ∗ off_gv γo (1/2) (Z.of_nat (off + d))
+      ∗ R
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
   Proof.
-    intros HE Hoff Hsz Hnz. iIntros "#Hi #Hoinv Hcm Hf Hg".
-    assert (Hfoff : ↑foffN ⊆ E).
-    { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
+    intros HE Hoff Hsz Hnz. iIntros "#Hi Hsup Hcm Hf Hg".
     (* THE PIECE IS SPENT: the fire eliminates to the AU side. *)
     iDestruct (pf_at_au with "Hcm") as "Hcm".
     (* the same re-spelling [opf_open_fire] does, and for the same reason:
@@ -508,12 +520,69 @@ Section ReadFire.
     iMod "Hcl2".
     iMod ("Hclose" with "[Hta Hla Hpark]") as "_".
     { iNext. rewrite /ftop_body. iExists I, A. by iFrame. }
-    (* THE ADVANCE IS THE KERNEL'S: the process's half comes out of the
-       row's existential invariant and both halves move together. *)
-    iMod (off_user_inv_move E γo (Z.of_nat off) (Z.of_nat (off + d)) Hfoff
-            with "Hoinv Hg") as "Hg".
-    iModIntro. iFrame "Hf Hg". iExists (abs_view I).
+    (* THE ADVANCE: the user side answers at its own supplier, and both
+       halves move together inside it. *)
+    iMod ("Hsup" with "Hg") as "[Hg HR]".
+    iModIntro. iFrame "Hf Hg HR". iExists (abs_view I).
     iSplitR; [by iPureIntro |]. iExact "HΦ".
+  Qed.
+
+  (* SUPPLIER 1 -- THE PARKED PATH, verbatim the statement this lemma had
+     before RD-1: the generic user-mode WP's process holds only the row's
+     invariant, and the fire opens it.  [ProofFileread]'s two call sites
+     are here and nowhere else. *)
+  Lemma arf_read_fire (γfs : fs_names) (E : coPset) (dq : dfrac)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (i : Z) (γo : gname)
+      (off d : nat) (n : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    (off <= MAXFILE * BSIZE)%nat ->
+    anode_size_ok (abs_row n) ->
+    fn_type n <> 0 ->
+    ftop_inv γfs -∗ off_user_inv γo -∗
+    pf_at (aread_commit_at (fs_gamma_L γfs) appE i γo) F -∗
+    top_frag_q (fs_gamma_L γfs) dq i n -∗
+    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+      top_frag_q (fs_gamma_L γfs) dq i n
+      ∗ off_gv γo (1/2) (Z.of_nat (off + d))
+      ∗ ∃ av : aview,
+          ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
+  Proof.
+    intros HE Hoff Hsz Hnz. iIntros "#Hi #Hoinv Hcm Hf Hg".
+    assert (Hfoff : ↑foffN ⊆ E).
+    { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
+    iMod (arf_read_fire_gen γfs E dq True F i γo off d n HE Hoff Hsz Hnz
+            with "Hi [] Hcm Hf Hg") as "(Hf & Hg & _ & Hav)".
+    { iApply (off_supply_parked E γo off d Hfoff with "Hoinv"). }
+    iModIntro. iFrame "Hf Hg Hav".
+  Qed.
+
+  (* SUPPLIER 2 -- THE HELD PATH (RD-1): the caller owns its file position
+     and says so.  The offset half it presents is its OWN ghost, so
+     design/fs-syscall-specs.md section 4 is respected -- the commit
+     ([aread_commit_at]) still lends the KERNEL half and takes it back
+     unmoved, and the only thing that moved client-side is the client's
+     own [uoff].  No invariant is opened here at all. *)
+  Lemma arf_read_fire_held (γfs : fs_names) (E : coPset) (dq : dfrac)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (i : Z) (γo : gname)
+      (off d : nat) (n : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    (off <= MAXFILE * BSIZE)%nat ->
+    anode_size_ok (abs_row n) ->
+    fn_type n <> 0 ->
+    ftop_inv γfs -∗ uoff γo off -∗
+    pf_at (aread_commit_at (fs_gamma_L γfs) appE i γo) F -∗
+    top_frag_q (fs_gamma_L γfs) dq i n -∗
+    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+      top_frag_q (fs_gamma_L γfs) dq i n
+      ∗ off_gv γo (1/2) (Z.of_nat (off + d))
+      ∗ uoff γo (off + d)
+      ∗ ∃ av : aview,
+          ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
+  Proof.
+    intros HE Hoff Hsz Hnz. iIntros "#Hi Hu Hcm Hf Hg".
+    iApply (arf_read_fire_gen γfs E dq (uoff γo (off + d)) F i γo off d n
+              HE Hoff Hsz Hnz with "Hi [Hu] Hcm Hf Hg").
+    iApply (off_supply_held E γo off d with "Hu").
   Qed.
 
   (* the [DfracOwn 1] reading, which is the spelling fileread holds
@@ -536,6 +605,30 @@ Section ReadFire.
   Proof.
     intros HE Hoff Hsz Hnz. rewrite top_frag_1.
     exact (arf_read_fire γfs E _ F i γo off d n HE Hoff Hsz Hnz).
+  Qed.
+
+  (* ...and the same reading of the HELD fire, which is the spelling a
+     verified program's read will reach ([arf_read_fire_held] at
+     fileread's whole fragment). *)
+  Lemma arf_read_fire_held_1 (γfs : fs_names) (E : coPset)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (i : Z) (γo : gname)
+      (off d : nat) (n : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    (off <= MAXFILE * BSIZE)%nat ->
+    anode_size_ok (abs_row n) ->
+    fn_type n <> 0 ->
+    ftop_inv γfs -∗ uoff γo off -∗
+    pf_at (aread_commit_at (fs_gamma_L γfs) appE i γo) F -∗
+    top_frag (fs_gamma_L γfs) i n -∗
+    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+      top_frag (fs_gamma_L γfs) i n
+      ∗ off_gv γo (1/2) (Z.of_nat (off + d))
+      ∗ uoff γo (off + d)
+      ∗ ∃ av : aview,
+          ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
+  Proof.
+    intros HE Hoff Hsz Hnz. rewrite top_frag_1.
+    exact (arf_read_fire_held γfs E _ F i γo off d n HE Hoff Hsz Hnz).
   Qed.
 
   (* =================================================================== *)

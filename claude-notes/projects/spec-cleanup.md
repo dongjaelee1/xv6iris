@@ -115,20 +115,103 @@ Derived corollaries, in order of what applications actually use:
       → per-arm receipt family).
   (d) the TR figure sketch (both forms: general AU + owned-offset
       corollary), so the end state is agreed before proof work starts.
-- [ ] **RD-1 OFF-OWN** (kernel; LAUNCHED 2026-09-15, Opus lane, after
-  the fork ruling landed = PARK): implement (a) —
-  `uoff`, sys_open's mint, fileread/filewrite's fire against a HELD
-  half (both halves in hand: no invariant open), fork per the ruling;
-  the generic-WP path keeps `off_user_inv` untouched.  This lane
-  discharges the TR's `\nz` note.
-- [ ] **RD-2 FILE-LEAF** (U tier; BLOCKED on box): the inode arm —
-  `wp_uk_ecall_read` at kind `FdInode`: window walk + kept post at
-  `aread`'s receipt; post = the target's File row.  First consumer to
-  prove: `cat` reading a known file (a new small app, or a lemma-level
-  instance) — the test that the spec is actually general.
-- [ ] **RD-3 BASE/WIN MERGE**: retire the base leaf into the window
-  form (the debt UkRunSys's own comment records).  Small; fold into
-  RD-2's edit of the same file.
+- [x] **RD-1 OFF-OWN** (kernel; LANDED 2026-09-15, branch
+  `rd1-off-own`, mirror-green incl. `ProofFileread`/`ProofFilewrite`
+  and the echo audit at 14): implemented (a) —
+  `uoff`, fileread's/filewrite's fire against a HELD half (both halves
+  in hand: no invariant open), fork per the ruling; the generic-WP path
+  keeps `off_user_inv` untouched, byte for byte.  WHAT LANDED:
+  - `iris/UserOff.v` (NEW, above `OffGv.v`): `uoff γo off`, `uoff_park`
+    (the one-way door, `={E}=∗` — invariant allocation is a fancy
+    update), `uoff_advance`, `uoff_agree`/`uoff_agree_k`, the supplier
+    `off_supply γo E off d R` with its two answers
+    (`off_supply_parked` / `off_supply_held`), and the publish's two
+    modes `off_pub_park` / `off_pub_hand`.
+  - ONE FIRE, TWO SUPPLIERS, in all three fires:
+    `FsAbsReadFire.arf_read_fire_gen` + `_held` (+`_held_1`),
+    `FsAbsWriteFire.wrf_awrite_fire_gen` + `_held`,
+    `wrf_apart_fire_gen` + `_held`.  The four existing names
+    (`arf_read_fire`, `arf_read_fire_1`, `wrf_awrite_fire`,
+    `wrf_apart_fire`) keep their EXACT former statements as the parked
+    instances, so `ProofFileread`/`ProofFilewrite`'s four call sites and
+    every contract above them are untouched.  `aread_commit_at` and the
+    write chain's two arms keep their types: they still LEND the kernel
+    half unmoved, so `fs-syscall-specs.md` §4 holds — the half that
+    moves client-side is the CLIENT'S OWN `uoff`.
+  - `ProofSysOpenPub.v`'s publish now names its mode
+    (`off_pub_park`); behaviour identical.
+  - `Print Assumptions` on all 17 new/re-derived lemmas: **closed under
+    the global context** (not even funext).
+  THE ONE DEFERRAL, and RD-2 must rule on it: **mode `hand` cannot be
+  wired to the descriptor bundle yet.** `FdSlots.foff_row` is a pure
+  function of the fdstate AND persistent, so a descriptor whose half was
+  handed out has no invariant and no row — wiring `hand` is a change to
+  the ROW FAMILY (the per-row policy `FdSlots.v` already anticipates),
+  cheapest as the mode IN THE STATE, which is also §3's arm dispatch for
+  free.  See `design/user-read.md` §2/§4 as-landed notes and the trailing
+  notes in `UserOff.v`.  FORK: the kernel owes NOTHING (checked:
+  `ProofKforkB3` takes the parent's row persistently), so deliverable 5
+  is the park lemma + a U-tier statement-side obligation for RD-2.
+  This lane discharges the TR's `\nz` note.
+- [~] **RD-2 FILE-LEAF** (U tier; branch `rd2-file-leaf`, 2026-09-15):
+  **RE-SCOPED BY A FINDING — the mode-in-state ruling is not
+  implementable as scoped, and RD-2 stopped rather than restructure the
+  generic-safety tier.**  Full argument in `design/user-read.md` §3's
+  AS-LANDED block; one-line version: a HELD offset half has to reach
+  `ProofFileread`'s fire, the only channel into it is
+  `SpecFileread.fileread_in`'s inode arm, and that arm must be payable
+  at EVERY descriptor state from a PERSISTENT credential because
+  `UexecSG.sbundle_of_supply_ne` is a class field at an arbitrary key
+  (`FsAbsInvFire.fsabs_fileread_in`, `∀ st`, `□ ssupply`).  An exclusive
+  `uoff` there is not merely unavailable, it is inconsistent.  Two extra
+  consequences the ruling had not priced: with the mode in the state,
+  PARKING becomes a descriptor retype (a kernel step — xv6 has no park
+  syscall), and `ProofKforkB3` cannot copy a held row (it hands the
+  parent's row to the child persistently, at an arbitrary `sts`).
+  THREE ROUTES OUT are written up in §3: **R-a** mode in the state +
+  a parked-table discipline through the generic tier and a
+  mode-parameterized sys_open publish (a campaign: `SpecSysOpen`'s 15
+  sites + six `ProofSysOpen*` files + `ProofKforkB3` + the class field
+  and its consumers) — the only route that delivers §6's figure;
+  **R-b** the mode-free disjunctive row (recorded escape, does not
+  deliver the File row); **R-c** the file-arm leaf AT A PARKED
+  DESCRIPTOR with the offset REPORTED by the receipt instead of owned —
+  zero kernel change, delivers §3's whole File CONTENT row and the
+  `cat` consumer today, and upgrades to R-a later by one conjunct.
+  **RD-2 TOOK R-c AND LANDED IT** (`iris/UkReadFile.v`, mirror-green,
+  whole tree; `Print Assumptions` at the standing bar — and
+  `read_arms_file_learn` is CLOSED UNDER THE GLOBAL CONTEXT):
+  `udepwf_st` (§3's arm-indexed deposit — the STATE-fixed third sibling
+  of `udepwf_at`/`udepwf_std`) + `udepwf_st_read_file` (its supplier:
+  ONE observation commit and nothing beside it), `xfam_rdf` /
+  `read_file_fam`, `wp_uk_ecall_read_file` (the leaf: recv's walk with
+  the post kept, at the file arm — which CHECKS §5's claim that recv's
+  six bridge rows are arm-independent), `read_arms_file_learn` (§3's
+  File row: `r = min(cnt, |bs| − off)` and the bytes ARE
+  `bs[off, off+d)`), and the consumer test `wp_uk_cat_read_learns`.
+  R-a IS STILL OWED as its own campaign — it is what buys the PREDICTED
+  offset, §6's figure and the TR's `\nz` note.  OWNER RULING WANTED on
+  whether to schedule it.
+  ALSO LANDED: RD-3 below (folded in as briefed), and §3/§5's
+  as-landed blocks.  Also recorded in §5: the "receipt family indexed by
+  the arm" needs NOTHING new — the inode member IS
+  `FsAbsReadFire.read_arms` and the family IS
+  `SpecFileread.fileread_extra_core`; only the DEPOSIT needs a new
+  member, fd-fixed rather than ledger-fixed (`udepwf_fd`, since
+  `udepwf_at` already names the cwd-fixed form).
+- [x] **RD-3 BASE/WIN MERGE** — LANDED 2026-09-15 on `rd2-file-leaf`
+  (folded into RD-2 as briefed).  `UkRunSys.wp_uk_ecall_read` is now a
+  COROLLARY of `wp_uk_ecall_read_win`, at its exact former statement
+  (so `UkCat`'s read stub and every other caller is untouched); the
+  130-line walk is retired and upstream's relay note in that file is
+  closed.  The derivation's one real step is the ADDRESS SPELLING —
+  the base leaf names its buffer by a `Z` tied to a1 through
+  `mword_of_int`, the window leaf by `uint` of the register — which is
+  paid by a new accessor `UkRunSys.urun_ubytes_run` (the no-wrap fact
+  read off `urun` rather than off the heap `urun` binds
+  existentially); at a count of ZERO no byte is owned, no agreement
+  exists and none is needed, since both spellings of an empty run are
+  `emp`.  Mirror-green (whole tree).
 - [ ] **RD-4 CONSOLE ARM** (WAITS for upstream's post-Qed R1 — the
   merged IO claim is being built right now and is exactly the resource
   this arm should be stated at): re-cut `read_recv`'s console arm at

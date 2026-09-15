@@ -1008,8 +1008,7 @@ Section EchoInitBoot.
         assert (E0 : length (proc_upto [] [] 0%nat) = 0%nat)
           by (vm_compute; reflexivity).
         rewrite E0. iFrame "Hlb0 Hps0 Hcs0". iPureIntro.
-        rewrite /EchoOut.rd_stage. split_and!;
-          [ constructor | constructor | exact (UShOut.sh_pro_pin [] []) | cbn; lia ]. }
+        exact EchoOut.rd_stage_0. }
       iDestruct (UInitBanner.kinit_ban0_of_eturn (echo_taint γ) γ
                    with "[Hturn]")
         as "[Hdl Hbn]"; [ rewrite /echo_turn; iExact "Hturn" | ].

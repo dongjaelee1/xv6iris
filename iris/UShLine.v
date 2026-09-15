@@ -119,20 +119,15 @@ Import Defs.
 (*  "echo hello world\n".  A closed computation, in the [forallb]-over-   *)
 (*  [seq] shape [UkSh.ush_jrow_bytes] uses.                               *)
 (* ===================================================================== *)
-Lemma echo_line_no_cr_bool :
-  forallb (fun i : nat =>
-             bool_decide (cons_xlate (echo_line !!! i) = echo_line !!! i))
-    (seq 0 17) = true.
-Proof. vm_compute. reflexivity. Qed.
-
 Lemma echo_line_no_cr (i : nat) :
   (i < length echo_line)%nat ->
   cons_xlate (echo_line !!! i) = echo_line !!! i.
 Proof.
-  rewrite echo_line_length. intro Hi.
-  pose proof (proj1 (forallb_forall _ _) echo_line_no_cr_bool i
-                ltac:(apply in_seq; lia)) as H.
-  exact (bool_decide_eq_true_1 _ H).
+  intro Hi. pose proof (echo_line_byte_val_at i Hi) as Hv.
+  rewrite /cons_xlate. rewrite decide_False; [reflexivity |].
+  intro Hq. apply (f_equal bv_unsigned) in Hq.
+  rewrite (_ : bv_unsigned (mword_of_int 13 : mword 8) = 13%Z) in Hq;
+    [lia | by vm_compute].
 Qed.
 
 Section UShLine.
@@ -661,7 +656,7 @@ Section UShLine.
     iDestruct (ps_lb_cmp v ps ps0 with "Hps Hps0") as %Hpsc.
     iDestruct (cs_lb_cmp v cs cs0 with "Hcs Hcs0") as %Hcsc.
     iExFalso. iPureIntro.
-    pose proof echo_line_length as HL.
+    pose proof echo_line_pos as HL.
     exact (EchoLinks.wr_owed_read_refute ps cs ps0 cs0 n P
              (n + length echo_line)%nat
              (or_introl (EchoLinks.wr_ban_pro ps cs n P Hw))
@@ -868,7 +863,7 @@ Section UShLine.
     cbn [snd] in Hb.
     rewrite Hg Hb.
     apply echo_line_no_cr.
-    rewrite echo_line_length. apply Nat.mod_upper_bound. lia.
+    apply Nat.mod_upper_bound. pose proof echo_line_pos. lia.
   Qed.
 
   (* =================================================================== *)

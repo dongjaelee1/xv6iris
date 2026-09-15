@@ -225,13 +225,13 @@ Lemma div_succ_of_mod0 (n : nat) :
   ((n + 1) `mod` length echo_line = 0)%nat ->
   (n `div` length echo_line = (n + 1) `div` length echo_line - 1)%nat.
 Proof.
-  pose proof echo_line_length as HL. intros Hm.
+  pose proof echo_line_pos as HL. intros Hm.
   pose proof (Nat.div_mod_eq (n + 1) (length echo_line)) as Hdm.
   rewrite Hm Nat.add_0_r in Hdm.
   set (m := ((n + 1) `div` length echo_line)%nat) in *.
-  assert (Hm1 : (1 <= m)%nat) by lia.
+  assert (Hm1 : (1 <= m)%nat) by nia.
   assert (Hn : n = ((m - 1) * length echo_line + (length echo_line - 1))%nat)
-    by lia.
+    by nia.
   rewrite Hn (Nat.div_add_l (m - 1) (length echo_line) (length echo_line - 1));
     [| lia].
   rewrite (Nat.div_small (length echo_line - 1) (length echo_line)); lia.
@@ -241,7 +241,7 @@ Lemma div_succ_of_modn0 (n : nat) :
   ((n + 1) `mod` length echo_line <> 0)%nat ->
   (n `div` length echo_line = (n + 1) `div` length echo_line)%nat.
 Proof.
-  pose proof echo_line_length as HL. intros Hm.
+  pose proof echo_line_pos as HL. intros Hm.
   pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
   assert (Hr : (n `mod` length echo_line < length echo_line)%nat)
     by (apply Nat.mod_upper_bound; lia).
@@ -250,9 +250,9 @@ Proof.
   assert (Hrs : (r + 1 < length echo_line)%nat).
   { destruct (decide ((r + 1)%nat = length echo_line)) as [He | He]; [| lia].
     exfalso. apply Hm.
-    assert (Hn1 : (n + 1)%nat = ((q + 1) * length echo_line)%nat) by lia.
+    assert (Hn1 : (n + 1)%nat = ((q + 1) * length echo_line)%nat) by nia.
     rewrite Hn1 Nat.Div0.mod_mul. reflexivity. }
-  assert (Hn1 : (n + 1)%nat = (q * length echo_line + (r + 1))%nat) by lia.
+  assert (Hn1 : (n + 1)%nat = (q * length echo_line + (r + 1))%nat) by nia.
   rewrite Hn1 (Nat.div_add_l q (length echo_line) (r + 1)); [| lia].
   rewrite (Nat.div_small (r + 1) (length echo_line)); lia.
 Qed.
@@ -305,7 +305,7 @@ Lemma cs_len_ok_blk (so : ostage) (a : nat) (b : bv 8) :
   cs_len_ok so ->
   cs_len_ok (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]).
 Proof.
-  pose proof echo_line_length as HL. intros Hm Hpos Hw Hc.
+  pose proof echo_line_pos as HL. intros Hm Hpos Hw Hc.
   destruct (cs_len_ok_inv so Hc) as [[_ Hq] | [Hne _]]; last first.
   { exfalso. by apply Hne. }
   apply cs_len_ok_intro.
@@ -406,7 +406,7 @@ Lemma ps_len_ok_blk (so : ostage) (a : nat) (b : bv 8) :
   ps_len_ok so ->
   ps_len_ok (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]).
 Proof.
-  pose proof echo_line_length as HL. intros Hm Hpos Hq Hok.
+  pose proof echo_line_pos as HL. intros Hm Hpos Hq Hok.
   pose proof Hok as [HA HB].
   rewrite /ps_len_ok /ps_round /ps_opens in HA, HB |- *.
   cbn [o_ps o_cs o_E o_w] in HA, HB |- *.
@@ -471,7 +471,7 @@ Lemma ps_len_ok_echo (so : ostage) (x : list mobs * bv 8) :
   ps_len_ok so ->
   ps_len_ok (MkO (o_ps so) (o_cs so) (o_E so ++ [x]) []).
 Proof.
-  pose proof echo_line_length as HL. intros Hok. pose proof Hok as [HA HB].
+  pose proof echo_line_pos as HL. intros Hok. pose proof Hok as [HA HB].
   rewrite /ps_len_ok /ps_round /ps_opens in HA, HB |- *.
   cbn [o_ps o_cs o_E o_w] in HA, HB |- *.
   rewrite (length_app (o_E so) [x]). cbn [length].
@@ -710,7 +710,7 @@ Proof.
   intros Hp Hk. rewrite /pending_n.
   case_decide as H0; [done |].
   case_decide as Hm; [| done].
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   assert (Hq : (1 <= k `div` length echo_line)%nat).
   { destruct (decide (k `div` length echo_line = 0)%nat) as [Hd | Hd]; [| lia].
     exfalso. pose proof (Nat.div_mod_eq k (length echo_line)) as Hdm.
@@ -760,7 +760,7 @@ Lemma proc_upto_cs_prefix ps0 ps cs0 cs n :
 Proof.
   intros Hps Hcs Hpin Hn. rewrite /proc_upto. apply proc_upto_from_ext.
   intros j _ Hj. apply (pending_n_cs_prefix ps0 ps cs0 cs j Hps Hcs).
-  - pose proof echo_line_length as HL. apply Nat.div_le_upper_bound; lia.
+  - pose proof echo_line_pos as HL. apply Nat.div_le_upper_bound; lia.
   - apply (pro_pin_at ps0 cs0 n j Hpin). lia.
 Qed.
 
@@ -1068,7 +1068,8 @@ Lemma rd_stage_0 : rd_stage [] [] 0%nat.
 Proof.
   rewrite /rd_stage. split_and!; [constructor | constructor | |].
   - intros q Hq. lia.
-  - cbn. lia.
+  - replace (0 - 1)%nat with 0%nat by lia.
+    rewrite Nat.Div0.div_0_l. cbn [length]. lia.
 Qed.
 
 Lemma rd_stage_le (ps0 cs0 : list nat) (m m' : nat) :
@@ -2938,7 +2939,7 @@ Section echo_out.
     pose proof (cs_len_ok_echo so (open_seg h, c) Hcsb Hweq Hcsl) as Hcsl2.
     assert (Hbnd2 : (S (length (o_E so)) `div` length echo_line
                      <= S (length (o_cs so)))%nat).
-    { pose proof echo_line_length as HLL.
+    { pose proof echo_line_pos as HLL.
       destruct (cs_len_ok_inv (MkO (o_ps so) (o_cs so) (o_E so ++ [(open_seg h, c)]) [])
                   Hcsl2) as [[_ Hq] | [_ Hq]];
         cbn [o_ps o_cs o_E o_w] in Hq; rewrite length_app in Hq;
@@ -2953,7 +2954,7 @@ Section echo_out.
     { intros q Hq.
       destruct (decide (length echo_line * q < length (o_E so))%nat)
         as [Hltq | Hgeq]; [by apply Hpin |].
-      pose proof echo_line_length as HLL.
+      pose proof echo_line_pos as HLL.
       assert (Heq17 : (length echo_line * q = length (o_E so))%nat) by lia.
       assert (Hqe : (length (o_E so) `div` length echo_line)%nat = q).
       { rewrite -Heq17 Nat.mul_comm. apply Nat.div_mul. lia. }
@@ -3015,7 +3016,7 @@ Section echo_out.
           intros q Hq. rewrite length_app in Hq. cbn [length] in Hq.
           destruct (decide (length echo_line * q < length (o_E so))%nat)
             as [Hltq | Hgeq]; [by apply Hpin |].
-          pose proof echo_line_length as HLL.
+          pose proof echo_line_pos as HLL.
           assert (Heq17 : (length echo_line * q = length (o_E so))%nat) by lia.
           assert (Hqe : (length (o_E so) `div` length echo_line)%nat = q).
           { rewrite -Heq17 Nat.mul_comm. apply Nat.div_mul. lia. }
@@ -3274,7 +3275,7 @@ Section echo_out.
       destruct (decide (length (o_E so) = 0%nat)) as [Hz | Hz]; [exact Hz |].
       exfalso.
       pose proof (prefix_length _ _ Hcsp) as Hlen0.
-      pose proof echo_line_length as HLL.
+      pose proof echo_line_pos as HLL.
       assert (Hdm : length (o_E so)
                     = (length echo_line
                        * (length (o_E so) `div` length echo_line))%nat).
@@ -3561,7 +3562,7 @@ Section echo_out.
       ∗ ((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v (cs0 ++ [a]) ∗ E_lb v n0) ∨ T).
   Proof.
     intros Hpos Hmod Hdiv Hpin0 HPeq Halt Hhead.
-    pose proof echo_line_length as HLL.
+    pose proof echo_line_pos as HLL.
     assert (Hd1 : ((n0 - 1) `div` length echo_line
                    = n0 `div` length echo_line - 1)%nat).
     { assert (Hn1 : n0 = ((n0 - 1) + 1)%nat) by lia.
@@ -3636,7 +3637,7 @@ Section echo_out.
        either ([pro_idx_app_le] at the blocks the stage has passed). *)
     assert (Hpinq : pro_pin (o_ps so) (o_cs so ++ [a]) (length (o_E so))).
     { intros qq Hqq. rewrite pro_idx_app_le; [by apply Hpin |].
-      pose proof echo_line_length as HL.
+      pose proof echo_line_pos as HL.
       rewrite HlenE in Hqq. rewrite Hq.
       pose proof (Nat.div_mod_eq n0 (length echo_line)) as Hdm.
       rewrite Hmod Nat.add_0_r in Hdm. nia. }
@@ -4007,7 +4008,7 @@ Section echo_out.
       ∗ ((turn v (S P) ∗ ps_lb v (ps0 ++ [a]) ∗ cs_lb v cs0 ∗ E_lb v n0) ∨ T).
   Proof.
     intros Hmod Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead.
-    pose proof echo_line_length as HLL.
+    pose proof echo_line_pos as HLL.
     iIntros "#Hpin Ht #Hpslb #Hcslb #HElb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [by iApply eout_of_taint | by iRight]. }
@@ -4299,6 +4300,52 @@ Section echo_out.
       by apply prefix_length.
   Qed.
 
+  (* ---- THE READ, ON THE MERGED CLAIM.  Today this step has TWO identical
+     branches, one per arm of [ein], differing only in which counter share
+     they put back; here there is one.  The pure work is unchanged --
+     [ein_read_pure] turns [ConsLog.read_ok] into the delivered-prefix fact
+     the claim needs -- and it is exactly the premise [ecl_pure_read] takes.
+
+     THE READER'S STAGE FACTS are not in the post here.  Today they are
+     lower bounds the input claim carries; on the merged claim they are
+     derivable from the AUTHORITIES it holds, but the shape the reader wants
+     them in is decided by the link R2 writes, so they are left to it rather
+     than guessed at now. ---- *)
+  Lemma ecl_step_read (k : nat) (v : era_pins) (n : nat) (ho : list mobs)
+      (CH : ConsLog.cons_hist) (ws : list (list mobs * bv 8)) :
+    read_ok (ConsLog.ch_log CH) (ConsLog.ch_dl CH) ws ->
+    era_pin k v -∗ dl_cnt v (1/2) n -∗ ecl k ho CH ==∗
+      ecl k ho (ConsLog.cons_step CH (ConsLog.EvRead ws))
+      ∗ ((T ∗ dl_cnt v (1/2) n)
+         ∨ dl_cnt v (1/2) (n + length ws)%nat
+           ∗ ⌜length (ConsLog.ch_dl CH) = n⌝
+           ∗ ⌜(ConsLog.ch_dl CH ++ ws) `prefix_of` echoed (ConsLog.ch_log CH)⌝
+           ∗ ⌜E_index (seg_of (echoed (ConsLog.ch_log CH)))⌝
+           ∗ ⌜E_byte (seg_of (echoed (ConsLog.ch_log CH)))⌝).
+  Proof.
+    intros Hread. iIntros "#Hpinr Hdlr Hcl".
+    iDestruct "Hcl" as "[#HT | Hp]".
+    { iModIntro. iSplitR; [rewrite /ecl; by iLeft |]. iLeft. by iFrame "Hdlr". }
+    iDestruct "Hp" as (v2 so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct (era_pin_agree with "Hpin Hpinr") as %->.
+    iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
+    pose proof Hall as Hall0.
+    destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
+    pose proof Hin as Hin2.
+    destruct Hin2 as (_ & _ & _ & _ & Hidx & Hbyte & _).
+    destruct (ein_read_pure k (ConsLog.ch_log CH) (ConsLog.ch_dl CH) ws
+                (o_cs so) Hread Hin) as (Hpref & Hp' & Hbnd').
+    iMod (dl_cnt_update v (length (ConsLog.ch_dl CH)) n (n + length ws)%nat
+            with "Hdl Hdlr") as "[Hdl Hdlr]".
+    iModIntro. iSplitL "Hta Hcs Hps HE Hdl".
+    { rewrite /ecl. iRight. iExists v, so.
+      rewrite /ConsLog.cons_step. cbn [ConsLog.ch_dl].
+      rewrite length_app Hdleq. iFrame "Hpin Hta Hcs Hps HE Hdl".
+      iPureIntro. exact (ecl_pure_read k ho so CH ws Hpref Hall0). }
+    iRight. iFrame "Hdlr". iPureIntro. split_and!;
+      [exact Hdleq | exact Hpref | exact Hidx | exact Hbyte].
+  Qed.
+
   Lemma ein_step_read (k : nat) (v : era_pins) (n : nat) (hi : list mobs)
       (pops : list log_entry) (dl ws : list (list mobs * bv 8)) :
     read_ok pops dl ws ->
@@ -4425,6 +4472,44 @@ Section echo_out.
      [h], the claim carries the stamp at [ho], and
      [EchoOutPure.open_seg_prefix_boots] puts the two segments in one cycle.
      [EchoOutPure.good_out_of_stage] then turns the stage into [good_out]. *)
+  (* ---- THE DRAIN, ON THE MERGED CLAIM.  [App.Htx] reads the trace
+     property off the claim at the end of the run.  Today it needs a second
+     witness because the output and input claims carry their own; here there
+     is one claim and one witness, and the proof is the output side's
+     verbatim -- the input-side clauses play no part in [good_out]. ---- *)
+  Lemma ecl_drain (k : nat) (h ho : list mobs) (CH : ConsLog.cons_hist)
+      (seg : list mobs) :
+    trace_shape h true ->
+    obs_boots h = k ->
+    ho `prefix_of` h ->
+    ins seg = ins (open_seg h) ->
+    obs_wire Uart0 seg `prefix_of` ConsLog.ch_acc CH ->
+    ecl k ho CH -∗ ecl k ho CH ∗ (T ∨ ⌜good_out seg⌝).
+  Proof.
+    intros Hsh Hk Hpre Hins Hwire. subst k. rewrite /ecl.
+    iIntros "Hcl".
+    iDestruct "Hcl" as "[#HT | Hp]".
+    - iSplitR; [iLeft; iExact "HT" | iLeft; iExact "HT"].
+    - iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+      pose proof Hall as Hall2.
+      destruct Hall2 as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
+      destruct Hpure as (Hacc & Hwp & Hidx & Hbyte & Hpsb & Hpin & Hcs' & Hdsc
+                         & Hpre1 & Hpre2 & Hpre3).
+      iSplitL "Hta Hcs Hps HE Hdl".
+      { iRight. iExists v, so. iFrame "Hpin Hta Hcs Hps HE Hdl". by iPureIntro. }
+      iRight. iPureIntro.
+      assert (Hlen : (length (o_E so) <= length (ins seg))%nat).
+      { rewrite Hins. destruct Hpre3 as [HEnil | Hbo].
+        - rewrite HEnil. cbn [length]. lia.
+        - etrans; [exact Hpre2 |]. apply prefix_length, ins_prefix_of.
+          apply open_seg_prefix_boots;
+            [exact Hpre | by rewrite Hbo | exact Hsh]. }
+      apply (good_out_of_stage (o_ps so) (o_cs so) (o_E so) (o_w so) seg
+               Hpsb Hcs' Hbyte Hpin Hwp).
+      + rewrite -Hacc. exact Hwire.
+      + exact Hlen.
+  Qed.
+
   Lemma eout_drain (k : nat) (h ho : list mobs)
       (acc : list (bv 8)) (seg : list mobs) :
     trace_shape h true ->

@@ -63,7 +63,7 @@ Lemma echo_alt0_tok1 (j : nat) :
   line_alts !!! 0%nat !! j
   = Some (echo_line !!! (UkShEcho.echo_off 1%nat + j)%nat).
 Proof.
-  cbn [UkShEcho.echo_alen UkShEcho.echo_off]. intro Hj.
+  rewrite UkShEcho.echo_alen_1 UkShEcho.echo_off_1. intro Hj.
   do 5 (destruct j as [| j]; [ vm_compute; reflexivity | ]).
   exfalso. lia.
 Qed.
@@ -73,7 +73,7 @@ Lemma echo_alt0_tok2 (j : nat) :
   line_alts !!! 0%nat !! (6 + j)%nat
   = Some (echo_line !!! (UkShEcho.echo_off 2%nat + j)%nat).
 Proof.
-  cbn [UkShEcho.echo_alen UkShEcho.echo_off]. intro Hj.
+  rewrite UkShEcho.echo_alen_2 UkShEcho.echo_off_2. intro Hj.
   do 5 (destruct j as [| j]; [ vm_compute; reflexivity | ]).
   exfalso. lia.
 Qed.
@@ -98,15 +98,15 @@ Proof.
     injection Hg as <-.
     destruct (Hk 1%nat ltac:(lia)) as [Hlen Hb].
     split; [ rewrite Hlen; reflexivity | ].
-    intros j Hj. rewrite (Hb j ltac:(cbn [UkShEcho.echo_alen]; lia)).
-    exact (echo_alt0_tok1 j ltac:(cbn [UkShEcho.echo_alen]; lia)).
+    intros j Hj. rewrite (Hb j ltac:(rewrite UkShEcho.echo_alen_1; lia)).
+    exact (echo_alt0_tok1 j ltac:(rewrite UkShEcho.echo_alen_1; lia)).
   - intros g Hg.
     rewrite (echo_args_lookup M av 3%nat 2%nat ltac:(lia)) in Hg.
     injection Hg as <-.
     destruct (Hk 2%nat ltac:(lia)) as [Hlen Hb].
     split; [ rewrite Hlen; reflexivity | ].
-    intros j Hj. rewrite (Hb j ltac:(cbn [UkShEcho.echo_alen]; lia)).
-    exact (echo_alt0_tok2 j ltac:(cbn [UkShEcho.echo_alen]; lia)).
+    intros j Hj. rewrite (Hb j ltac:(rewrite UkShEcho.echo_alen_2; lia)).
+    exact (echo_alt0_tok2 j ltac:(rewrite UkShEcho.echo_alen_2; lia)).
 Qed.
 
 (* ...AND OFF THE EXEC CHANNEL, which is the form the entry constructor

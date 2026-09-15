@@ -151,7 +151,7 @@ Lemma pending_n_round_shape (ps cs : list nat) (n : nat) :
       pending_n ps' cs n
       = pre ++ pro_of (pro_from (pro_idx cs (n `div` length echo_line)) ps').
 Proof.
-  intros Hm Hr. pose proof echo_line_length as HL.
+  intros Hm Hr. pose proof echo_line_pos as HL.
   destruct (decide (n = 0%nat)) as [Hz | Hn0].
   - exists []. intros ps'. rewrite /pending_n. case_decide as H0; [| done].
     rewrite Hz Nat.Div0.div_0_l. by cbn [pro_idx pro_from app].
@@ -333,7 +333,7 @@ Lemma wr_pro_dollar (ps cs : list nat) (n P : nat) :
   wr_pro ps cs n P -> wr_sp (ps ++ [0%nat]) cs n (S P).
 Proof.
   intros (Hpin & Hm & Hdv & Hr & Hnd & HP).
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   assert (Hle : (pro_idx cs (n `div` length echo_line) <= pro_rounds ps)%nat)
     by exact (pro_pin_idx_le ps cs n Hpin).
   assert (Hpre : ps `prefix_of` (ps ++ [0%nat])) by by eexists.
@@ -368,7 +368,7 @@ Lemma wr_blk_dollar (ps cs : list nat) (n P : nat) :
   wr_blk ps cs n P -> wr_sp ps (cs ++ [2%nat]) n (S P).
 Proof.
   intros (Hpin & Hm & Hdv & HP).
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   assert (Hn17 : n = (length echo_line * S (length cs))%nat).
   { pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
     rewrite Hdv in Hdm. lia. }
@@ -434,7 +434,7 @@ Lemma wr_open_read (ps cs : list nat) (n P : nat) :
   wr_open ps cs n P -> wr_blk ps cs (n + length echo_line)%nat P.
 Proof.
   intros (Hpin & Hm & Hdv & Hrd & HP).
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   assert (Hn17 : n = (length echo_line * (n `div` length echo_line))%nat).
   { pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm. lia. }
   assert (Hsum : (n + length echo_line)%nat
@@ -489,7 +489,7 @@ Lemma wr_blk_read_refute (ps cs ps0 cs0 : list nat) (n P m d : nat) :
   (length (proc_upto ps0 cs0 m) <= P + d)%nat -> False.
 Proof.
   intros (Hpin & Hm & Hdv & HP) Hcs Hd Hnm (HFps0 & HFcs0 & Hpin0 & Hbnd0) Hps Hle.
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   assert (Hn : n = (length echo_line * S (length cs))%nat).
   { pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
     rewrite Hdv in Hdm. lia. }
@@ -540,7 +540,7 @@ Lemma wr_owed_read_refute (ps cs ps0 cs0 : list nat) (n P m : nat) :
 Proof.
   intros Hw Hnm Hrs Hps Hcs Hle.
   pose proof Hrs as (HFps0 & HFcs0 & Hpin0 & Hbnd0).
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   assert (Hqle : (n `div` length echo_line <= length cs0)%nat).
   { etrans; [| exact Hbnd0]. apply Nat.Div0.div_le_mono. lia. }
   destruct Hw as [Hw | Hw]; last first.
@@ -587,7 +587,11 @@ Proof.
     exact Hr. }
   assert (Hlt : (length (pending_n ps cs n) < length (pending_n ps0 cs0 n))%nat).
   { rewrite (pending_n_round_pre ps cs n Hm Hr) (pending_n_round_pre ps0 cs0 n Hm Hr0).
-    rewrite !length_app Hidx.
+    (* PINNED: a bare [!length_app] splits [length echo_line] too, and
+       [Hidx] still names it *)
+    rewrite !(length_app
+                (if decide (n = 0%nat) then [] else line_alts !!! 3%nat) _)
+      Hidx.
     pose proof (pro_of_open_done_lt _ _ Hnd Hdone0 (pro_from_mono _ _ _ Hps)
                   (pro_from_Forall _ _ _ HFps0)).
     lia. }
@@ -964,7 +968,7 @@ Section echo_links.
     - (* the round is settled: the '$' is the line's block, alternative 2 *)
       pose proof (wr_blk_dollar ps cs n P Hw) as Hsp.
       destruct Hw as (Hpin & Hm & Hdv & HP).
-      pose proof echo_line_length as HL.
+      pose proof echo_line_pos as HL.
       assert (Hpos : (0 < n)%nat).
       { destruct (decide (n = 0%nat)) as [Hz | Hne]; [| lia].
         rewrite Hz Nat.Div0.div_0_l in Hdv. lia. }

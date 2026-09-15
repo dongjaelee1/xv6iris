@@ -92,9 +92,11 @@ Section EchoAdequacy.
   (* the echo claims' class (lane ECHO-OUT part 5) *)
   Context `{!echoOutG Σ}.
 
-  (* THE NAME IS KEPT, and it is now a misnomer in one direction only: the
-     theorem is no longer modulo [Hphi] -- lane ECHO-OUT part 5 closed it --
-     but it IS still modulo the shell's two owed entailments below. *)
+  (* THE NAME IS KEPT AND IT IS NOW A MISNOMER: the theorem is no longer
+     modulo [Hphi] (lane ECHO-OUT part 5 closed it), and as of lane R3 it
+     is not modulo anything about the shell's program either -- [Hsh_owed]
+     is gone.  What is left are the machine model, the disk image and the
+     thirteen ambient assumptions the audit prints. *)
   Theorem echo_adequacy_modulo_phi
       (g : gstate) (sb : FsImg.fs_sb) (nib : nat) (cov : gset Z)
       (* ---- NOTHING ABOUT THE SHELL'S PROGRAM IS OWED ANY MORE.

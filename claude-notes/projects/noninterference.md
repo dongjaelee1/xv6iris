@@ -1,7 +1,11 @@
 # noninterference — the campaign
 
-STATUS: CAMPAIGN OPENED 2026-09-15 (owner's word, the day after the echo
-adequacy theorem closed).  §§0–7 below are the design discussion as
+STATUS: PAUSED 2026-09-15, the day it opened (owner: spec cleanup
+first — see `spec-cleanup.md`; its RD-1/RD-2 owned-offset and
+functional file rows are this campaign's §4 determinism prerequisites
+arriving early, so the pause costs nothing).  Below: CAMPAIGN OPENED
+2026-09-15 (owner's word, the day after the echo adequacy theorem
+closed).  §§0–7 below are the design discussion as
 checkpointed 2026-09-04 (Fable, with the owner) and remain the design of
 record until a lane's as-landed note contradicts them; the LANES section
 is the live worklist.  **EXECUTION IS GATED ON A BUILD MIRROR**: the

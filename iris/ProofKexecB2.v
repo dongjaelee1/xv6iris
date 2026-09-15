@@ -132,6 +132,7 @@ Require Import SpecBeginOp.
 Require Import SpecEndOp.
 Require Import SpecIlock.
 Require Import SpecReadi.
+Require Import SysReadDefs.   (* [rd_clamp] / [rd_delivered] / [rd_bytes] *)
 Require Import SpecIunlockput.
 Require Import SpecNamei.
 Require Import SpecProcFreepagetable.

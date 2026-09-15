@@ -357,3 +357,31 @@ Proof. rewrite sret_ms5_MPP. apply trap_ms_MPP. Qed.
 Lemma roundtrip_SD (elp_v : mword 1) (ms : mword 64) :
   _get_Mstatus_SD (sret_ms5 (trap_ms elp_v ms)) = _get_Mstatus_SD ms.
 Proof. rewrite sret_ms5_SD. apply trap_ms_SD. Qed.
+
+(* --------------------------------------------------------------------- *)
+(*  THE MSTATUS USERTRAP RETURNS UNDER                                    *)
+(* --------------------------------------------------------------------- *)
+
+(* the mstatus facts usertrap's return guarantees: exactly userret's
+   premises (the sret decodes to User and does not trap) plus the FS/VS
+   pins the user-mode invariant carries across the sret
+   ([userret_to_user_state_ptm], UserKernelBridge.v). *)
+Definition usertrap_ret_ms (ms : mword 64) : Prop :=
+  eq_vec (_get_Mstatus_SIE ms) ('b"1") = false /\
+  eq_vec (_get_Mstatus_MPRV ms) ('b"1") = false /\
+  _get_Mstatus_SXL ms = 'b"10" /\
+  eq_vec (_get_Mstatus_TVM ms) ('b"1") = false /\
+  eq_vec (_get_Mstatus_MXR ms) ('b"0") = true /\
+  eq_vec (_get_Mstatus_TSR ms) ('b"1") = false /\
+  eq_vec (_get_Mstatus_FS ms) ('b"00") = true /\
+  eq_vec (_get_Mstatus_VS ms) ('b"00") = true /\
+  sret_newpriv ms = User /\
+  (* the four pins [UserExec.user_mstatus_ok] carries through user mode and
+     the bridge therefore asks of the pre-sret value: XS/SD/MPP out of
+     [sconf_ms_facts], and SPIE = 1 -- prepare_return's [sret_bits 0 1],
+     agreed against [sconf]'s tie at the exit.  Appended, so the existing
+     destructurings' last binder absorbs them. *)
+  _get_Mstatus_XS ms = extStatus_map_forwards Off /\
+  _get_Mstatus_SD ms = ('b"0" : mword 1) /\
+  eq_vec (_get_Mstatus_MPP ms) ('b"10") = false /\
+  _get_Mstatus_SPIE ms = ('b"1" : mword 1).

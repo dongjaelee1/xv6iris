@@ -109,6 +109,7 @@ Require Import SpecPanic.
 Require Import SpecBmap SpecBread SpecBrelse SpecEitherCopyout.
 Require Import ProofReadiParts.
 Require Import SpecReadi.
+Require Import SysReadDefs.   (* [rd_clamp] / [rd_delivered] / [rd_bytes] *)
 From Kernel Require KernelSyms.
 Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)

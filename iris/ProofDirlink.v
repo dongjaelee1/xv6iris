@@ -101,6 +101,7 @@ Require Import ProcInv.
 Require Import FileInvDefs.
 Require Import DirView.
 Require Import SpecReadi SpecStrncpy SpecWritei SpecIput.
+Require Import SysReadDefs.   (* [rd_clamp] / [rd_delivered] / [rd_bytes] *)
 Require Import CodeDirlink.
 Require Import SpecDirlookup.
 Require Import SpecDirlink.

@@ -249,8 +249,15 @@ Section UInitDiag.
   Definition kinit_pro (n : nat) : iProp Σ :=
     (∃ v : era_pins, era_pin γ (S gen_id) v ∗ EchoLinksPro.ewc_pro T v n)%I.
 
+  (* A bare [apply _] here cost 7.4 s of this file's 11 s: the search is on
+     the (exists, sep) STRUCTURE, not on the leaves.  Naming the two
+     structural instances first leaves the leaf search cheap (0.6 s). *)
   Global Instance kinit_pro_timeless n : Timeless (kinit_pro n).
-  Proof. rewrite /kinit_pro. apply _. Qed.
+  Proof.
+    rewrite /kinit_pro.
+    apply bi.exist_timeless => v.
+    apply bi.sep_timeless; apply _.
+  Qed.
 
   (* ...is what /init lends the shell ([kinit_own] is the shape the
      shell's prompt law takes) ... *)

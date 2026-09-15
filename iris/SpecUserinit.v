@@ -81,6 +81,8 @@ Require Import CalleeSaved KernelText KernelDataInv.
 Require Import IntrDefs.
 Require Import WireInv.   (* [wire_inv] *)
 Require Import UsertrapRes.   (* [devintr_caps_any] -- the park's device complement *)
+Require Import SpecUsertrap.  (* [usertrap_res]'s instances: was reaching
+                                 here through UsertrapRes.v's own import *)
 Require Import WaitInv.       (* [wait_res_at] *)
 Require Import SpecProcinit.  (* [wait_lock_addr] *)
 Require Import FileInv.       (* [is_ftable] *)

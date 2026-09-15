@@ -143,29 +143,10 @@ Import Defs.
 Require Import TsoCtx.
 
 
-(* the mstatus facts usertrap's return guarantees: exactly userret's
-   premises (the sret decodes to User and does not trap) plus the FS/VS
-   pins the user-mode invariant carries across the sret
-   ([userret_to_user_state_ptm], UserKernelBridge.v). *)
-Definition usertrap_ret_ms (ms : mword 64) : Prop :=
-  eq_vec (_get_Mstatus_SIE ms) ('b"1") = false /\
-  eq_vec (_get_Mstatus_MPRV ms) ('b"1") = false /\
-  _get_Mstatus_SXL ms = 'b"10" /\
-  eq_vec (_get_Mstatus_TVM ms) ('b"1") = false /\
-  eq_vec (_get_Mstatus_MXR ms) ('b"0") = true /\
-  eq_vec (_get_Mstatus_TSR ms) ('b"1") = false /\
-  eq_vec (_get_Mstatus_FS ms) ('b"00") = true /\
-  eq_vec (_get_Mstatus_VS ms) ('b"00") = true /\
-  sret_newpriv ms = User /\
-  (* the four pins [UserExec.user_mstatus_ok] carries through user mode and
-     the bridge therefore asks of the pre-sret value: XS/SD/MPP out of
-     [sconf_ms_facts], and SPIE = 1 -- prepare_return's [sret_bits 0 1],
-     agreed against [sconf]'s tie at the exit.  Appended, so the existing
-     destructurings' last binder absorbs them. *)
-  _get_Mstatus_XS ms = extStatus_map_forwards Off /\
-  _get_Mstatus_SD ms = ('b"0" : mword 1) /\
-  eq_vec (_get_Mstatus_MPP ms) ('b"10") = false /\
-  _get_Mstatus_SPIE ms = ('b"1" : mword 1).
+(* [usertrap_ret_ms] MOVED DOWN to MstatusBits.v: it is a predicate on an
+   mstatus word and nothing else, and [UsertrapRes.v] -- the definitional
+   layer below this file -- needs it, which a contract file may not own
+   (design/code-organization.md). *)
 
 (* the satp-value facts both trampoline switches need, shared spec
    vocabulary: [v] is a Sv39, asid-0 satp value rooted at [root]. *)

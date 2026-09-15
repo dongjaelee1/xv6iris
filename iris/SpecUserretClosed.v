@@ -63,6 +63,7 @@ Require Import FdSlots FileInvDefs.
 Require Import IrefSlots.
 Require Import ProcAvail.
 Require Import SpecUsertrap.
+Require Import MstatusBits.   (* [usertrap_ret_ms] *)
 Require Import UtResFits.  (* [USERTRAP_RES_PARK] -- the residue plus its producer *)
 (* [loop_ok] MOVED DOWN into UexecWp.v -- the per-process user-execution WP
    slot's statement needs it, and that file has to sit below UsertrapRes.v.

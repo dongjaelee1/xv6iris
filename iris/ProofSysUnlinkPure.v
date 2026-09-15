@@ -84,6 +84,7 @@ Require Import ProcInv.
 Require Import SpecIput.
 Require Import SpecDirlookup.
 Require Import SpecReadi.
+Require Import SysReadDefs.   (* [rd_clamp] / [rd_delivered] / [rd_bytes] *)
 Require Import SpecWritei.
 Require Import SpecNamex.
 Require Import SysUnlinkBudget.

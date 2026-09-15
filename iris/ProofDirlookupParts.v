@@ -64,6 +64,7 @@ Require Import BioDefs.
 Require Import InodeInv.
 Require Import DirView.
 Require Import SpecReadi.
+Require Import SysReadDefs.   (* [rd_clamp] / [rd_delivered] / [rd_bytes] *)
 From Kernel Require KernelSyms.
 Require Import TsoCtx.
 Local Open Scope Z_scope.

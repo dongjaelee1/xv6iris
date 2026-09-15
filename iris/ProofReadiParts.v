@@ -50,6 +50,7 @@ Require Import FsBlocks.
 Require Import InodeInv.
 Require Import ProcInv.
 Require Import SpecReadi.
+Require Import SysReadDefs.   (* [rd_clamp] / [rd_delivered] / [rd_bytes] *)
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import TsoCtx.

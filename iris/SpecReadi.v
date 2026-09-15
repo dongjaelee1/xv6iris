@@ -177,6 +177,8 @@ Require Import WpLock.
 Require Import KernelDataInv.
 Require Import SpecPanic.
 Require Import FdSlots.
+Require Import SysReadDefs.  (* [rd_clamp] / [rd_delivered] / [rd_bytes]: the read's
+                                pure vocabulary, owned below this contract *)
 Require Import ProcGeom.
 Require Export SwtchCtx.
 Require Import CpuOwn.
@@ -213,45 +215,11 @@ Local Open Scope Z_scope.
    reaches neither panic nor printk, so it is unaffected and is not the
    max. *)
 Notation K_readi := (92%nat) (only parsing).
-(* ===================================================================== *)
-(*  THE TWO PURE FUNCTIONS THE CONTRACT SPEAKS IN                        *)
-(* ===================================================================== *)
-
-(* [n], clamped to the file's end.  Zero when [off] is already past the end,
-   which is exactly what the pre-frame exit returns. *)
-Definition rd_clamp (szw : bv 32) (off n : nat) : nat :=
-  if decide (Z.to_nat (bv_unsigned szw) < off + n)%nat
-  then (Z.to_nat (bv_unsigned szw) - off)%nat
-  else n.
-
-(* the destination after [tot] bytes have been read: the file's bytes below
-   [tot], the caller's own bytes at and above it. *)
-Definition rd_delivered (data : nat -> list (bv 8)) (dst_olds : nat -> bv 8)
-    (off tot i : nat) : bv 8 :=
-  if decide (i < tot)%nat
-  then file_byte data (off + i)%nat
-  else dst_olds i.
-
-(* the clamp only ever shrinks *)
-Lemma rd_clamp_le (szw : bv 32) (off n : nat) : (rd_clamp szw off n <= n)%nat.
-Proof. rewrite /rd_clamp. case_decide as H1; lia. Qed.
-
-(* THE SAME BYTES, WITHOUT THE TAIL -- what the USER arm's window equation
-   is written over.  A [umem_wr] run of length [tot] reads its source only
-   below [tot], where [rd_delivered] IS this ([rd_delivered_bytes]); saying
-   it this way keeps the caller's own [dst_olds], which the user arm never
-   owns, out of the equation. *)
-Definition rd_bytes (data : nat -> list (bv 8)) (off i : nat) : bv 8 :=
-  file_byte data (off + i)%nat.
-
-Lemma rd_delivered_bytes (data : nat -> list (bv 8)) (dst_olds : nat -> bv 8)
-    (off tot i : nat) :
-  (i < tot)%nat -> rd_delivered data dst_olds off tot i = rd_bytes data off i.
-Proof.
-  intro Hi. rewrite /rd_delivered /rd_bytes.
-  case_decide as H1; [reflexivity | exfalso; lia].
-Qed.
-
+(* [rd_clamp] / [rd_delivered] / [rd_bytes] and their two pure lemmas MOVED
+   DOWN to SysReadDefs.v -- the read observation's pure vocabulary, which is
+   below both this contract and the invariant layer.  A contract file may
+   not own a definition the layers below it need
+   (design/code-organization.md); that file's own header states the rule. *)
 (* ===================================================================== *)
 (*  THE ABI's 32-BIT ARGUMENT, FOR A CALLER WHOSE ARGUMENT IS SMALL      *)
 (* ===================================================================== *)

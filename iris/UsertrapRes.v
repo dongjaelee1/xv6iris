@@ -73,7 +73,6 @@ Require Import UserPerm.      (* [lazy_free] -- what the block's lazy bit claims
 Require Import SpecProcinit.
 Require Import SpecFileclose.
 Require Import SysExecDefs.   (* [K_sys_exec] -- usertrap's budget bottoms out in exec *)
-Require Import SpecUsertrap.  (* [usertrap_ret_ms] / [usertrap_entry_ms]; the fit check moved to UtResFits.v *)
 Require Import FsCfg.    (* [fsc_printk] etc -- the ambient names the ties point at *)
 Require Import FirstTok.     (* [first_done] -- what the park's closer is handed *)
 Require Import SyscParkEnv.  (* [sysc_park_extra] / [park_world] -- the park's syscall-side rows *)

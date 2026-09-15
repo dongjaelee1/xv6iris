@@ -98,6 +98,7 @@ Require Import ProcInv.
 Require Import FileInvDefs.
 Require Import DirView.
 Require Import SpecReadi SpecNamecmp SpecIget.
+Require Import SysReadDefs.   (* [rd_clamp] / [rd_delivered] / [rd_bytes] *)
 Require Import CodeDirlookup.
 Require Import IgetLic.
 Require Import SpecDirlookup.

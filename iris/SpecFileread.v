@@ -183,6 +183,7 @@ Require Import ProcInv.
 Require Import ConsoleInv.
 Require Import FileInvDefs.
 Require Import SpecReadi.
+Require Import SysReadDefs.   (* [rd_clamp] / [rd_delivered] / [rd_bytes] *)
 Require Import FsBytesGamma.     (* [fs_gamma_L]: the live Γ                 *)
 Require Import AppInv.           (* [appN]/[appE]: the commit's mask         *)
 Require Import FsAbsReadFire.    (* [aread_commit_at], [read_arms]: the one

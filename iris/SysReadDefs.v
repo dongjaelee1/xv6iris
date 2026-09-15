@@ -114,14 +114,51 @@ Require Import FsTree.         (* [file_bytes]: the landed flat byte-list
 Require Import PipeInvDefs.    (* [pipe_rw_ret], the landed blanket the
                                   sanity lemma folds the arms back into    *)
 Require Import InodeInv.       (* [MAXFILE]; exports InodeDefs' [file_byte] *)
-Require Import SpecReadi.      (* [rd_clamp], [rd_delivered]: what readi
-                                  actually answers -- the tie is to THESE  *)
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import FsAbsDefs.          (* the abstract state (lane A, landed)       *)
 Import Defs.
 
 Local Open Scope Z_scope.
+
+(* ===================================================================== *)
+(*  THE TWO PURE FUNCTIONS THE CONTRACT SPEAKS IN                        *)
+(* ===================================================================== *)
+
+(* [n], clamped to the file's end.  Zero when [off] is already past the end,
+   which is exactly what the pre-frame exit returns. *)
+Definition rd_clamp (szw : bv 32) (off n : nat) : nat :=
+  if decide (Z.to_nat (bv_unsigned szw) < off + n)%nat
+  then (Z.to_nat (bv_unsigned szw) - off)%nat
+  else n.
+
+(* the destination after [tot] bytes have been read: the file's bytes below
+   [tot], the caller's own bytes at and above it. *)
+Definition rd_delivered (data : nat -> list (bv 8)) (dst_olds : nat -> bv 8)
+    (off tot i : nat) : bv 8 :=
+  if decide (i < tot)%nat
+  then file_byte data (off + i)%nat
+  else dst_olds i.
+
+(* the clamp only ever shrinks *)
+Lemma rd_clamp_le (szw : bv 32) (off n : nat) : (rd_clamp szw off n <= n)%nat.
+Proof. rewrite /rd_clamp. case_decide as H1; lia. Qed.
+
+(* THE SAME BYTES, WITHOUT THE TAIL -- what the USER arm's window equation
+   is written over.  A [umem_wr] run of length [tot] reads its source only
+   below [tot], where [rd_delivered] IS this ([rd_delivered_bytes]); saying
+   it this way keeps the caller's own [dst_olds], which the user arm never
+   owns, out of the equation. *)
+Definition rd_bytes (data : nat -> list (bv 8)) (off i : nat) : bv 8 :=
+  file_byte data (off + i)%nat.
+
+Lemma rd_delivered_bytes (data : nat -> list (bv 8)) (dst_olds : nat -> bv 8)
+    (off tot i : nat) :
+  (i < tot)%nat -> rd_delivered data dst_olds off tot i = rd_bytes data off i.
+Proof.
+  intro Hi. rewrite /rd_delivered /rd_bytes.
+  case_decide as H1; [reflexivity | exfalso; lia].
+Qed.
 
 (* ===================================================================== *)
 (*  1.  THE COUNT, THE SLICE, AND THE READI BRIDGE (PURE)                 *)

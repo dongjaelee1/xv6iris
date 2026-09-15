@@ -1130,6 +1130,31 @@ Section DevLoops.
      input-monotonicity law the application does not owe.  So the input
      side binds its own [o], moved only inside the shift's or the read's
      own view shift, where a bound on the byte's history is in hand. *)
+  (* THE PORT'S ONE CLAIM (redesign R2), replacing [out_claim_at] and
+     [in_claim_at].  The application's resource at ONE witness, the machine's
+     accepted bytes tied to the history's own, the kernel's four halves
+     against the history's fields, and the history's well-formedness -- which
+     subsumes [log_ok] and adds the arm's.
+
+     THE ARM'S HALF IS HERE, not beside it: it is a field of the history the
+     resource is about, so keeping it anywhere else would need a second
+     agreement to say the two describe the same arm. *)
+  Definition cons_claim_at (iu : uart_id) (γ : uart_names) (u : uart_state)
+      : iProp Σ :=
+    (∃ (o : option (list mobs)) (H : LogEntryDefs.cons_hist),
+       obs_hist_lb_o o ∗ chist_at iu (S gen_id) (default [] o) H ∗
+       ⌜LogEntryDefs.ch_acc H = uart_acc u⌝ ∗
+       uart_log_hi γ (1/2) (log_top (LogEntryDefs.ch_log H)) ∗
+       uart_deliv γ (1/2) (LogEntryDefs.ch_dl H) ∗
+       in_log_auth γ (LogEntryDefs.ch_log H) ∗
+       uart_logm γ (1/2) (LogEntryDefs.ch_log H) ∗
+       uart_arm γ (1/2) (LogEntryDefs.ch_arm H) ∗
+       ⌜ConsLog.cons_hist_ok H⌝)%I.
+
+  Global Instance cons_claim_at_timeless iu γ u :
+    Timeless (cons_claim_at iu γ u).
+  Proof. rewrite /cons_claim_at. apply _. Qed.
+
   Definition in_claim_at (iu : uart_id) (γ : uart_names) : iProp Σ :=
     (∃ (o : option (list mobs)) (pops : list LogEntryDefs.log_entry)
        (dl : list (list mobs * bv 8)),
@@ -2222,14 +2247,15 @@ Section DevLoops.
   (*  makes [Htx] need a second; here the resource is one and so is the     *)
   (*  witness it is held at.                                               *)
   (* ==================================================================== *)
-  Definition cons_link (k : nat) (ev : ConsLog.cons_ev) (Φ : iProp Σ) : iProp Σ :=
+  Definition cons_link (i : uart_id) (k : nat) (ev : ConsLog.cons_ev)
+      (Φ : iProp Σ) : iProp Σ :=
     (∀ (o : option (list mobs)) (H : LogEntryDefs.cons_hist),
-       obs_hist_lb_o o -∗ chist_at Uart0 k (default [] o) H -∗
+       obs_hist_lb_o o -∗ chist_at i k (default [] o) H -∗
        ⌜ConsLog.cons_ev_ok H ev⌝
-       ={⊤ ∖ ↑uartN Uart0}=∗
+       ={⊤ ∖ ↑uartN i}=∗
        ∃ o' : option (list mobs),
          obs_hist_lb_o o' ∗
-         chist_at Uart0 k (default [] o') (ConsLog.cons_step H ev) ∗ Φ)%I.
+         chist_at i k (default [] o') (ConsLog.cons_step H ev) ∗ Φ)%I.
 
   (* THE ARM'S RUN, stoppable exactly where today's [in_run] is: at each
      byte the holder chooses to close the arm or to emit the next one.  The
@@ -2238,10 +2264,10 @@ Section DevLoops.
      bytes than it planned. *)
   Fixpoint cons_run (k : nat) (bs : list (bv 8)) (Φ : iProp Σ) : iProp Σ :=
     match bs with
-    | [] => cons_link k ConsLog.EvClose Φ
+    | [] => cons_link Uart0 k ConsLog.EvClose Φ
     | b :: bs' =>
-        cons_link k ConsLog.EvClose Φ
-        ∧ cons_link k (ConsLog.EvByte b) (cons_run k bs' Φ)
+        cons_link Uart0 k ConsLog.EvClose Φ
+        ∧ cons_link Uart0 k (ConsLog.EvByte b) (cons_run k bs' Φ)
     end%I.
 
   (* THE LICENCE: "any holder of the supply may move the resource by any

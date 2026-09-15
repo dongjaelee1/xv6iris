@@ -45,6 +45,7 @@ Require Import ProcAvail.
 Require Import Xv6G.
 Require Import UserFd.
 Require Import SystemAdequacy.
+Require Import FsBootParams.  (* [XV6_DISK_BYTES], [fsimg_cov], [fsimg_nib] *)
 Require Import FsImgCheck.
 Require Import FsImgDisk.
 Require Import App.                (* [xv6_app_adequacy] and the record *)

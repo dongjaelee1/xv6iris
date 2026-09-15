@@ -98,6 +98,7 @@ Require Import FsCrash.
 Require Import FsDurSnap.
 Require Import FsImgDisk.
 Require Import SystemAdequacy.
+Require Import FsBootParams.  (* [XV6_DISK_BYTES], [fsimg_cov]              *)
 Require Import FsImgCheck.
 Require Import FsImg.            (* [fs_sb], [FsImg.sb_logstart] *)
 Require Import FsState.

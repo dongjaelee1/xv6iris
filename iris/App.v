@@ -110,6 +110,7 @@ Require Import Xv6G.
 Require Import UserFd.
 (* ...and this file's own *)
 Require Import SystemAdequacy.
+Require Import FsBootParams.  (* [XV6_DISK_BYTES], [fsimg_cov], [fsimg_nib] *)
 Require Import TsoCtx.             (* [CurCtx]: the echo obligation's context *)
 Require Import SpecConsoleintr.    (* [cons_echo_shift]: the echo obligation  *)
 (* the image's own superblock and region width, and the disk literal, for

@@ -50,7 +50,7 @@ Require Import FsTree.
 Require Import FsCrash.
 Require Import FsDurSnap.
 Require Import FsCfgBoot.
-Require Import SystemAdequacy.
+Require Import FsBootParams.    (* [fsimg_cov]                            *)
 Require Import FsImgDisk.
 Require Import FsImgCheck.     (* [fsimg_byte], [fsimg_path_root]        *)
 Require Import FsImg.

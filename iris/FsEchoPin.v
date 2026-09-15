@@ -88,6 +88,7 @@ Require Import FsDurSnap.
 Require Import FsDurSyscall.
 Require Import FsCfgBoot.
 Require Import SystemAdequacy.
+Require Import FsBootParams.  (* [XV6_DISK_BYTES], [fsimg_cov], [fsimg_nib] *)
 Require Import FsImgDisk.
 Require Import FsImgCheck.     (* [fname_echo], [fsimg_echo_path],
                                   [fsimg_echo_type], [fsimg_echo_at]     *)

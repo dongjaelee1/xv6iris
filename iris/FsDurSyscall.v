@@ -68,7 +68,7 @@ Require Import RiscvPtsto.      (* [riscvEraGS], [log_mirror] -- IMPORTED,
 Require Import DiskImg.         (* [diskImgG]                             *)
 Require Import Xv6Cameras.      (* [fsCrashG], [lockG], [fsLinkG],
                                    [fsTopG]                              *)
-Require Import SystemAdequacy.  (* [fs_boot_pure]                         *)
+Require Import FsBootParams.    (* [fs_boot_pure]                         *)
 Require Import FsCrash.         (* [P_fs], [fs_commit_receipt],
                                    [fs_recovery], [fs_blocks]             *)
 

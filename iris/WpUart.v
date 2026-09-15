@@ -964,6 +964,26 @@ Section DevLoops.
      carries [emp].  Unlike the two claims it lives in NO invariant: it
      rides the PLIC payload ([uart_rx_writer] below), which is what carries
      it to consoleintr's shift and back. *)
+  (* THE MERGED CONSOLE RESOURCE AT A PORT (redesign R2).  [Uart1] has no
+     console discipline and claims nothing, exactly as the three it
+     replaces.  NAMED [chist_at] and not [cons_res_at]: the console RING's
+     own resource already has that name ([ConsoleInv], used across
+     ProofConsoleread), and the two are different things. *)
+  (* [Uart1] has no
+     console discipline and claims nothing, exactly as the three it
+     replaces. *)
+  Definition chist_at (iu : uart_id) (k : nat) (ho : list mobs)
+      (H : LogEntryDefs.cons_hist) : iProp Σ :=
+    match iu with Uart0 => riscv_cons_res k ho H | Uart1 => emp end%I.
+
+  Global Instance cons_res_at_timeless iu k ho H :
+    Timeless (chist_at iu k ho H).
+  Proof. rewrite /chist_at. destruct iu; apply _. Qed.
+
+  Lemma cons_res_at_uart1 (k : nat) (ho : list mobs)
+      (H : LogEntryDefs.cons_hist) : ⊢ chist_at Uart1 k ho H.
+  Proof. done. Qed.
+
   Definition win_at (iu : uart_id) (k : nat) : iProp Σ :=
     match iu with Uart0 => riscv_win_res k | Uart1 => emp end%I.
 
@@ -2189,6 +2209,52 @@ Section DevLoops.
      GENERIC process's payment and the generic process is any era's, so the
      one persistent resource covers them all -- and the application pays it
      out of the taint arm of whichever era's claim it is handed. *)
+  (* ==================================================================== *)
+  (*  THE LINK FAMILY, OVER EVENTS (redesign R2).                          *)
+  (*                                                                       *)
+  (*  ONE wand per boundary event, where today there are four link shapes   *)
+  (*  ([out_link], [in_append], [echo_link], [read_link]) over two          *)
+  (*  resources at two witnesses.  The application supplies it and the      *)
+  (*  kernel fires it with the port invariant open, having proved the       *)
+  (*  event's pure premise ([ConsLog.cons_ev_ok]) from its own state.       *)
+  (*                                                                       *)
+  (*  ONE WITNESS.  The two claims carry their own today, which is what     *)
+  (*  makes [Htx] need a second; here the resource is one and so is the     *)
+  (*  witness it is held at.                                               *)
+  (* ==================================================================== *)
+  Definition cons_link (k : nat) (ev : ConsLog.cons_ev) (Φ : iProp Σ) : iProp Σ :=
+    (∀ (o : option (list mobs)) (H : LogEntryDefs.cons_hist),
+       obs_hist_lb_o o -∗ chist_at Uart0 k (default [] o) H -∗
+       ⌜ConsLog.cons_ev_ok H ev⌝
+       ={⊤ ∖ ↑uartN Uart0}=∗
+       ∃ o' : option (list mobs),
+         obs_hist_lb_o o' ∗
+         chist_at Uart0 k (default [] o') (ConsLog.cons_step H ev) ∗ Φ)%I.
+
+  (* THE ARM'S RUN, stoppable exactly where today's [in_run] is: at each
+     byte the holder chooses to close the arm or to emit the next one.  The
+     [∧] is Iris's additive conjunction, as it is today -- the choice is the
+     KERNEL's, and it is what lets one law cover an arm that emits fewer
+     bytes than it planned. *)
+  Fixpoint cons_run (k : nat) (bs : list (bv 8)) (Φ : iProp Σ) : iProp Σ :=
+    match bs with
+    | [] => cons_link k ConsLog.EvClose Φ
+    | b :: bs' =>
+        cons_link k ConsLog.EvClose Φ
+        ∧ cons_link k (ConsLog.EvByte b) (cons_run k bs' Φ)
+    end%I.
+
+  (* THE LICENCE: "any holder of the supply may move the resource by any
+     event".  One conjunct where there are two today ([out_licence] and
+     [in_licence]), because there is one resource. *)
+  Definition cons_licence : iProp Σ :=
+    (□ ∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
+         (ev : ConsLog.cons_ev),
+        riscv_cons_res k h H ==∗ riscv_cons_res k h (ConsLog.cons_step H ev))%I.
+
+  Global Instance cons_licence_persistent : Persistent cons_licence.
+  Proof. rewrite /cons_licence. apply _. Qed.
+
   Definition out_licence : iProp Σ :=
     (□ ∀ (k : nat) (h : list mobs) (acc : list (bv 8)) (b : bv 8),
         riscv_out_res k h acc ==∗ riscv_out_res k h (acc ++ [b]))%I.

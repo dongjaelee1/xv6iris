@@ -798,6 +798,7 @@ Global Existing Instance riscv_out_res_timeless.
 Global Existing Instance riscv_in_res_timeless.
 (* ...and the echo window token's (lane CONS-IO milestone F) *)
 Global Existing Instance riscv_win_res_timeless.
+Global Existing Instance riscv_cons_res_timeless.
 
 Class riscvGS (Σ : gFunctors) := RiscvGS {
   riscv_fixedGS :: riscvFixedGS Σ;

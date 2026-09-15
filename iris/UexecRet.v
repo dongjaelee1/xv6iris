@@ -109,6 +109,7 @@ Require Import UmodeRegs.    (* [uv_regs] / [uv_amb] *)
 Require Import UmodeText.    (* [user_ptm_inv_x]: the image STAMPED while the process runs *)
 Require Import UserPerm.     (* [uperm] / [perm_of] *)
 Require Import FdSlots.      (* [fdstate] -- the descriptor view in the key *)
+Require Import TsoCtx.  (* [own_context] *)
 Require Import ProcDefs.     (* [ustate] / [us_V] / [us_M] -- the kernel record
                                 the RUN KEY below is matched against *)
 Require Import UserChildren. (* [wait_ans] -- the kernel's own two-armed

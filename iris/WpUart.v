@@ -61,6 +61,8 @@ Require Export UartNames.  (* [uart_names]: split out for the build DAG *)
 Require Export FastSetSolver.
 Require Export Xv6Cameras.  (* the cameras this file states its theory over *)
 Require Import TsoCtxStore.
+Require Import ConsLog.  (* [log_ok] / [read_ok] / [cons_echo] and the log laws *)
+Require Import TsoCtx.  (* [rel_cells] / [rel_pre_cells] *)
 Local Open Scope Z_scope.
 Import Defs.
 

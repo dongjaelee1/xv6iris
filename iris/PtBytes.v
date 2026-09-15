@@ -47,6 +47,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvModelBytes VirtioQueue.
 Require Import RiscvLang RiscvPtsto RiscvExec.
 Require Import HartMemRun.
+Require Import TsoCtx.  (* [ctx_phys_pointsto_forget] / [ctx_phys_word_pointsto] *)
 Local Open Scope Z_scope.
 
 (* ===================================================================== *)

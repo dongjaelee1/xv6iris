@@ -26,6 +26,7 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import RiscvModelBytes RiscvPtsto RiscvExec RiscvTryStep RiscvExtras.
 Require Import PtAdBits Pt4kWalk CommonWalk PtTree WpDecodeBridge.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
+Require Import TsoCtx.  (* [ctx_phys_pointsto] and its intro *)
 Local Open Scope Z_scope.
 Import Defs.
 

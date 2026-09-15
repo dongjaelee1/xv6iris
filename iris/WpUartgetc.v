@@ -54,7 +54,7 @@ Require Import RiscvLang ObsTrace RiscvPtsto.
 Require Import RiscvExtras.   (* [and_vec64_unsigned]: the absorbed zext.b *)
 Require Import InstrBytes.
 Require Import RegFile.
-Require Import DiskPtsto WpUart.
+Require Import WpUart.
 Require Import IntrDefs.
 Require Import HartTp WpNext.
 Require Import SpecUart.

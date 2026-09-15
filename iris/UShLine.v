@@ -72,22 +72,18 @@ Require Import UserHeap.
 Require Import UserPerm.           (* [perm_of] / [lazy_free] *)
 Require Import ProcPtOwn.          (* [uptd] / [ud_um] / [proc_pt_wf] *)
 Require Import UserPtTree.         (* [uva_wmapped] *)
-Require Import UserCwd UserChildren.
-Require Import UmodeArith UmodeAbi.
+Require Import UmodeArith.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
 Require Import VcGen.              (* [trunc32] *)
 Require Import PieceFam.
-Require Import FsTree.
-Require Import ChildTok.
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFileread.       (* [fileread_in] / [console_receipt] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
-Require Import AppCfg AppInv.      (* [app_sup] *)
+Require Import AppInv.      (* [app_sup] *)
 Require Import FsCfg.
-Require Import FsAbsDefs.
 Require Import ConsoleInv.         (* [cons_acc] / [cons_out] / [CONSOLE] *)
 Require Import WpUart.             (* [cons_read_pay]: E5's console I/O
                                       boundary (lane CONS-IO) *)
@@ -95,7 +91,6 @@ Require Import UartNames.          (* [cons_names] *)
 Require Import UserConsole.        (* [upos] / [ucons_pay] *)
 Require Import UkSh.               (* [ush_narrow_count_le] *)
 Require UkInit.                    (* [init_rd]: the exit family, the pair *)
-Require Import UConsLine.          (* [ush_read_recv_leaf] / [ush_std_cons] *)
 (* THE ERA'S READ SIDE (lane IO-LEAF, M5).  [EchoOut] is the application's
    CLAIM and [EchoLinks] the program-side law built on it; this file names
    neither the boot record nor its four equations -- the law arrives as a

@@ -94,7 +94,6 @@ Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
 Require Import SysOpenDefs.
 Require Import ProofSysOpenShared.
 Require Import ProofSysOpenAlloc.
-Require Import AppInv.          (* [appN]/[appE]: the application's namespace, the commit mask (app-instances.md round A) *)
 Require Import PieceFam.       (* [pfam]/[pf_at]: the one-shot piece's pair *)
 Require Import FsAbsDefs.
 Require Import TsoCtx.

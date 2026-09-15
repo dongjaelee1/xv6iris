@@ -28,37 +28,19 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
+Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 Require Import Xv6Cameras Xv6G FdSlots IrefSlots ProcAvail FileInvDefs.
-Require Import RegFile.
-Require Import ProcGeom.          (* [NOFILE] *)
-Require Import UserPerm UexecSlot UexecRet.
-Require Import UserHeap UkRun UkRunLeaf.
-Require Import UserFd UserCwd UserChildren.
-Require Import ChildTok.
-Require Import ElfFile ElfUser ElfLoadable.
-Require Import PathElems FsTree FsBlocks FsBytesGamma.
-Require Import FsCfg.             (* [fsc_fs] *)
-Require Import PageGeom.          (* [PGSIZE] *)
-Require Import UmodeArith UmodeAbi.
-Require Import FsImg FsImgCheck.
-Require Import FsAbsDefs FsAbsEra.
-Require Import AppCfg AppInv.
-Require Import PinnedObs PinnedExec.
-Require Import FsEchoPin.
-Require Import PieceFam.
-Require Import SpecKexec SpecSysExec.   (* [kexec_sz] *)
+Require Import UserPerm.
+Require Import UkRun.
+Require Import UserFd.
+Require Import ElfUser.
+Require Import SpecKexec.   (* [kexec_sz] *)
 Require Import UShKernel.         (* [sh_kexec_sz] *)
-Require Import KexecBuilt.
 Require Import UserPtTree.        (* [pgroundup] *)
-Require Import KexecDefs.
-Require Import UkAbi.
-Require Import UexecSG UexecExecInst UexecExecMint.
-Require Import UkSh UkShRun UkShDiag.
-Require Import UkShParse.         (* [ushp_no_symbols] / [ushp_tokens] *)
+Require Import UexecExecInst.
+Require Import UkSh.
 Require Import UkShLoop.          (* [ush_line_lexable] / [ushl_R] *)
-Require Import UkShMain UkShFork. (* [ushf_rest_of_body] *)
-Require Import UConsLine EchoDisc.
+Require Import UkShFork. (* [ushf_rest_of_body] *)
 Require Import UkShEcho.          (* [ush_line_toks_holds] / [echo_toks] *)
 Require Import EchoOut.           (* [era_pin] / [era_pins] *)
 Require Import EchoLinks.         (* [echo_links] / [ewc_ban] *)

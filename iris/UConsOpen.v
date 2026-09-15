@@ -47,17 +47,14 @@ Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
 Require Import UserPerm.        (* [uperm] *)
-Require Import UserCwd.
 Require Import UmodeAbi.           (* [uimg_sub] *)
 Require Import ProcGeom.           (* [NOFILE], [tf_arg_idx] *)
-Require Import UInitFd.            (* [ufd_l0] / [ufd_l1] / [ufd_alloc0] *)
 Require Import PieceFam.
 Require Import FsTree.             (* [fname] *)
 Require Import PathElems.
 Require Import ArgPath.
-Require Import ChildTok.
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
-Require Import UkRun UkRunLeaf UkRunSys.
+Require Import UkRun.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import AppCfg AppInv.
 Require Import FsCfg.
@@ -67,11 +64,8 @@ Require Import FsAbsDefs.
 Require Import FsAbs.              (* [ax_hop] / [ax_hops_from] *)
 Require Import FsAbsEra.           (* [ex_start] / [ex_hop] / [elend] *)
 Require Import SysOpenDefs SpecSysOpen.
-Require Import SysMknodDefs SpecSysMknod.
-Require Import ConsoleInv.         (* [CONSOLE] *)
 Require Import FsConsPin.
 Require Import PinnedObs.
-Require Import PinnedOpen.
 Require Import AppEcho.
 Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       and its ledger are stated at (lane

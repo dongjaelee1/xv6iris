@@ -124,7 +124,6 @@ Require Import ByteBuf.        (* [bb_cstr]                          *)
 Require Import SpecCopyin.     (* [uimg_word_at]: the image's word at an address *)
 Require Import SpecCopyinstr.  (* [copyinstr_got]: the path's content *)
 Require Import PathElems.      (* [path_elems]                       *)
-Require Import DirentEnc.      (* [bview]                            *)
 Require Import ArgPath.        (* [arg_path_of]: the path argument, read
                                   off the caller's own image -- exec's
                                   [exec_path_of] is its alias below *)

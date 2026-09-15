@@ -73,7 +73,7 @@ Require Import VcGen.
 Require Import Ktier.
 Require Import DevModel PowerBoot.
 Require Import UartsFields.
-Require Import DiskPtsto WpUart.
+Require Import WpUart.
 Require Import IntrDefs.
 Require Import CpuOwn.
 Require Import WpLock.

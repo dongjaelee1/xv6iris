@@ -106,7 +106,6 @@ Require Import DevModel.
 Require Import DiskPtsto WpUart.
 Require Import UartTxInv.
 Require Import SpecUartPutc.  (* [uart_base_word]: the callee LOADS its base *)
-Require Import SpecCopyin.        (* [ubytes_at]: the content seam        *)
 Require Import SchedCtx.
 Require Export SwtchCtx.
 From Kernel Require KernelSyms.

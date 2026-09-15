@@ -91,11 +91,11 @@ Require Import KernelText KernelDataInv.
 Require Import RegFile WpNext.
 Require Import RiscvExtras.
 Require Import CalleeSaved.
-Require Import DiskPtsto WpUart.
+Require Import DiskPtsto.
+Require Import UartNames.
 Require Import IntrDefs.
 Require Import WpLock.
 Require Import CpuOwn.
-Require Import UartTxInv.
 Require Export PrintkArgs.
 Require Import SpecPrputc.
 Require Import SpecPanic.

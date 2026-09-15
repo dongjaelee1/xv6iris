@@ -122,7 +122,6 @@ Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import TsoCtx.   (* [CurCtx]: the residue owns a thread token *)
 Require Import UmodeText.   (* [user_ptm_inv_x] -- the image STAMPED (icache) *)
-Require Import ChildTok.  (* [child_tok] -- fork's answer, forwarded *)
 Local Open Scope Z_scope.
 Import Defs.
 

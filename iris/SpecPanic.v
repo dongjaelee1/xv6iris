@@ -98,11 +98,10 @@ Require Import RiscvLang RiscvPtsto.
 Require Import InstrBytes.
 Require Import KernelText KernelDataInv.
 Require Import RegFile.
-Require Import DiskPtsto WpUart.
+Require Import WpUart.
 Require Import IntrDefs.
 Require Import WpLock.
 Require Import CpuOwn.
-Require Import UartTxInv.
 Require Import PrintkArgs.
 Require Import SpecPrputc.
 From Kernel Require KernelSyms.

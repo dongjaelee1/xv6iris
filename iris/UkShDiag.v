@@ -127,7 +127,6 @@ Require Import FdSlots.  (* [fdstate] -- the descriptor ledger's states *)
 Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for
                             which rides inside [urun] *)
-Require Import UsysMemOk. (* [USYS_exec] -- excluded by the minting law *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 Require Import UserCwd.  (* [ucwd] / [ucwd_any] -- the process's own view of its working directory *)
 Require Import UserChildren.  (* [uch_any] -- the process's own half of its children set *)

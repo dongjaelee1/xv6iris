@@ -61,7 +61,6 @@ Require Import RegFile.
 Require Import WpMmodeLeafBase.
 Require Import RiscvExtras.
 Require Import StackOwn CalleeSaved.
-Require Import KernelDataInv.
 Require Import DevModel WpUart.
 Require Import ObsTrace.   (* [uart_write_wire]: no MMIO write drives SOUT *)
 Require Import PowerBoot.   (* [pa_of_z] *)
@@ -73,7 +72,6 @@ Require Import WpLock.
 Require Import UartTxInv.
 Require Import SpecProcinit.
 Require Import SpecUart.
-Require Import SpecUartPutc.
 Require Import SpecInitlock.
 Require Import CodeUartinitone.
 From Kernel Require KernelSyms.

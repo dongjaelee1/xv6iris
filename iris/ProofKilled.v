@@ -33,8 +33,6 @@ Require Import WpLock.
 Require Import ProcGeom.
 Require Import FdSlots.
 Require Import FileInvDefs.
-Require Import SlotGen.
-Require Import ChildTok.
 Require Import SchedCtx.
 Require Import SpecAcquire SpecRelease.
 Require Import SpecKilled.

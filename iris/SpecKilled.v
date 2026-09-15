@@ -47,8 +47,6 @@ Require Import LockRank.
 Require Import ProcGeom CpuOwn.
 Require Import FdSlots.
 Require Import FileInvDefs.
-Require Import SlotGen.   (* [pid_reg] / [qeighth] -- the caller's tie *)
-Require Import ChildTok.  (* [kill_shot] -- the incarnation's kill one-shot *)
 Require Import SchedCtx.
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.

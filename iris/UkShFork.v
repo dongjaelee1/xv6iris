@@ -64,7 +64,7 @@ Require Import UmodeArith UmodeAbi.
 Require Import ProcGeom.     (* [PIDMAX] -- the fork answer's pid range *)
 Require Import UserPerm.
 From Stdlib Require Import FunctionalExtensionality.
-Require Import UserHeap UkRun UkRunLeaf UkRunMem.
+Require Import UserHeap UkRun UkRunLeaf.
 Require Import UkFork.
 Require Import FdSlots UserFd.
 Require Import UCodeShK UCodeShP.
@@ -75,7 +75,6 @@ Require Import UkShDiag.
 Require Import UkShMalloc.
 Require Import UkShLoop.
 Require Import UkShCd.   (* [ushc_bytes_sub] / [ushc_ustr_of_bytes]: the line cut out *)
-Require Import UkShMain.
 Require Import TsoCtx.
 Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name; [child_tok] / [exit_tok] / [gen_pay_timeless] *)
@@ -84,13 +83,11 @@ Require Import EchoDisc.  (* [echo_line]: the disciplined line's first byte *)
 Local Open Scope Z_scope.
 Import Defs.
 
-Require Import UsysMemOk. (* [USYS_exec] -- excluded by the minting law *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 Require Import UserCwd.  (* [ucwd] / [ucwd_any] -- the process's own view of its working directory *)
 Require Import UserChildren.  (* [uch_any] -- the process's own half of its children set *)
 
 Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
-Require Import UserConsole.  (* [upos] -- sh's half of the console position pair *)
 (* A PID IN [1, PIDMAX] DOES NOT SIGN-EXTEND TO -1 (lane RESIDUALS, (A)):
    the fork answer's pid arm carries the range, and the shell's fork-failed
    branch (fork1's [-1] test) refutes that arm with it.  Pure, on [Z], at

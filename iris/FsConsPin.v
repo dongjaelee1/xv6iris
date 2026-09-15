@@ -45,22 +45,16 @@ From iris.base_logic.lib Require Import ghost_map.
    for section 5's deltas and [ConsoleInv] for the ONE constant the device
    node's major is ([ConsoleInv.CONSOLE]; spelling a second literal 1 here
    would be a second source of truth). *)
-Require Import Xv6Cameras.
 Require Import FsState.
-Require Import BioDefs.
-Require Import DinodeEnc.
-Require Import DirView.
-Require Import InodeInv.
 Require Import FsTree.
 Require Import FsCrash.
 Require Import FsDurSnap.
-Require Import FsDurSyscall.
 Require Import FsCfgBoot.
 Require Import SystemAdequacy.
 Require Import FsImgDisk.
 Require Import FsImgCheck.     (* [fsimg_byte], [fsimg_path_root]        *)
 Require Import FsImg.
-Require Import FsAbs.          (* LAST of the fs stack (FsAbs's own rule) *)
+Require Import FsAbsDefs.      (* [arun]/[astep]/[abs_view]: FsAbs's pure *)
 Require Import FsInitPin.      (* [era0_D], [img_astep_root], [era0_root_row] *)
 Require Import FsInitPinBoot.  (* [era0_recovery_D], [era0_boot_snap_ok]  *)
 Require Import FsShPin.        (* [SH_INO] / [sh_path] / [era0_sh_pins]   *)

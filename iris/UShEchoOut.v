@@ -34,7 +34,6 @@ From iris.proofmode Require Import proofmode.
 Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
-Require Import RiscvLang.
 Require Import FdSlots.
 Require Import UserHeap.          (* [uarg] / [ua_len] / [ua_bytes] *)
 Require Import UexecSlot.         (* [uvis] and its fields *)

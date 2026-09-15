@@ -62,7 +62,6 @@ Require Import IntrDefs HartTp WpNext.
 Require Import CpuOwn.
 Require Import W32Arith.   (* [w32_zero_add]: [c.mv]'s [add_vec zero_reg] *)
 Require Import DevModel UartsFields.   (* [Uart0], [uart_index] *)
-Require Import UartTxInv.   (* [uart_lock_name], [is_txlock_at] *)
 Require Import CodeConsputc.
 Require Import SpecUartPutc SpecConsputc.
 From Kernel Require KernelInstrs.

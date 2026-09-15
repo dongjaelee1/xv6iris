@@ -49,17 +49,12 @@ Require Import RegFile.
 Require Import WpMmodeLeafBase.
 Require Import RiscvExtras.
 Require Import StackOwn CalleeSaved.
-Require Import KernelText KernelDataInv.
+Require Import KernelDataInv.
 Require Import DevModel WpUart.
 Require Import UartsFields.
-Require Import WpSmodeIntr.
 Require Import IntrDefs HartTp WpNext.
 Require Import WpSconfAlu WpSconfMem WpSconfCtl.
-Require Import WpLock.
-Require Import UartTxInv.
-Require Import SpecProcinit.
 Require Import SpecUartinitone.
-Require Import SpecUartPutc.
 Require Import CodeUartinit.
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.

@@ -124,7 +124,7 @@ Require Import FsBytesGamma.
 Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
                                    argument 0, which the walk is at *)
 Require Import SysOpenDefs.
-Require Import FsAbsMknodFire.
+Require Import FsAbsCreateFire.
 Require Import FsAbsEra.          (* [ep_start]: the walk one-shot AT ONE PATH *)
 Require Import FsAbsOpenFire.
 Require Import ProofSysOpenShared.

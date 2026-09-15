@@ -63,7 +63,7 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import RiscvLang RiscvPtsto RiscvExtras.
 Require Import WpMmodeLeafBase.
 Require Import UmodeArith.
-Require Import UserPerm UexecSlot UexecRet UsysMemOk.
+Require Import UserPerm UexecSlot UexecRet.
 Require Import UserHeap.
 Require Import FdSlots.
 Require Import ProcGeom.
@@ -82,7 +82,6 @@ Require Import ElfUser.        (* [init_elf] and its reduced facts (leaf, see he
 Require Import UShKernel.      (* the entry geometry, and sh's own bridge *)
 Require User.InitSyms User.InitData User.InitInstrs.
 Require Import UexecSG.        (* [uexecSG] / [uprogSG]: the ARM deposit class *)
-Require Import UserCwd.  (* [ucwd] / [ucwd_any] -- the process's own view of its working directory *)
 Require Import UserChildren.  (* [uch_any_of] -- the entry's children fragment,
                                  weakened to the index-free form init carries *)
 Require FsImg.           (* [FsImg.ROOTINO] -- the inum init is born at *)

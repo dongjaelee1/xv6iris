@@ -95,7 +95,6 @@ Require Import FsAbsCreateFire.    (* [acre_commit_at], [cre_arm_fired],
                                       [aunarm_of_arm], [cre_child_unfired] *)
 Require Import SpecSysMknod.       (* [mknod_au_at], [mknod_post_ok] *)
 Require Import ConsoleInv.         (* [CONSOLE] *)
-Require Import FsImgCheck.
 Require Import FsConsPin.          (* the console's two states, and its pin *)
 Require Import PinnedObs.
 Require Import PinnedOpen.

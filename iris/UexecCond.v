@@ -233,7 +233,6 @@ Proof. unfold echo_gate. apply _. Defined.
 Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for
                             which rides inside [urun] *)
-Require Import UsysMemOk.
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 Require Import UkRun.    (* [udep] -- the program's supplier and its law *)
 

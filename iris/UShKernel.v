@@ -62,11 +62,10 @@ Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuil
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras.
-Require Import RegFile.
 Require Import WpMmodeLeafBase.
 Require Import UmodeArith.
-Require Import UserPerm UexecSlot UexecRet UsysMemOk.
-Require Import UserHeap UkRunSys.
+Require Import UserPerm UexecSlot UexecRet.
+Require Import UserHeap.
 Require Import FdSlots.
 Require Import ProcGeom.
 Require Import UserFd.
@@ -240,8 +239,6 @@ Proof.
 Qed.
 
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
-Require Import UserCwd.  (* [ucwd] / [ucwd_any] -- the process's own view of its working directory *)
-Require Import UserChildren.  (* [uch_any] -- the process's own half of its children set *)
 Require Import Xv6Cameras.    (* [uartGhostG] -- the console ring's cameras *)
 Require Import UserConsole.   (* [ucons_pay] / [upos] -- sh's exit payload and
                                  its half of the console position pair *)

@@ -69,7 +69,6 @@ Require Import SpecKilled SpecKexit SpecYield SpecPrepareReturn.
 Require Import SpecUsertrap UsertrapRes.
 Require Import UsysMemOk.     (* [usys_num] / [uecall_scause] -- the row's guard *)
 Require Import SpecSysRead.   (* [sys_rw_count] -- the read's count *)
-Require Import SpecArgfd.     (* [fd_st_of_key] -- the descriptor it names *)
 Require Import UexecRet.      (* [uslot] -- the resume slot the row is stated at *)
 Require Import UexecExecInst. (* [spost_at_read_why] -- the receipt's reason *)
 Require Import UexecSlot TfUser.   (* [tf_resume_pc] / [ret_pc_idem] / [tf_ueq_epc] *)

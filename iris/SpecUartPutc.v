@@ -95,9 +95,9 @@ Require Import RegFile WpNext.
 Require Import RiscvExtras.
 Require Import CalleeSaved.
 Require Import RiscvModelBytes DevModel PowerBoot.
-Require Import KptPt KMap Ktier.
+Require Import Ktier.
 Require Import UartsFields.
-Require Import DiskPtsto WpUart.
+Require Import WpUart.
 Require Import IntrDefs.
 Require Import LockRank.
 Require Import CpuOwn.

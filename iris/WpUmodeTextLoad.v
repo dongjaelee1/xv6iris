@@ -46,7 +46,6 @@ Require Import UserPtTree.
 Require Import HartSwp HartLift HartSpan HartSpanChar HartGoodb HartMemRun HartMemAsm HartMCycle
         HartEvents HartMFetch HartMFrame.
 Require Import PtTreeAdue HartSMem.
-Require Import WpMmodeLeafBase.
 Require Import UserBits.
 Require Import PtBytes UserBytes UserFrame UserClassifyAsm.
 Require Import UserExecFacts.

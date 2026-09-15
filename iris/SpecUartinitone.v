@@ -86,7 +86,7 @@ Require Import RiscvLang RiscvPtsto.
 Require Import InstrBytes.
 Require Import RiscvExtras.
 Require Import CalleeSaved.
-Require Import KernelText KernelDataInv.
+Require Import KernelText.
 Require Import DevModel WpUart.
 Require Import UartsFields.
 Require Import UartTxInv.

@@ -54,7 +54,6 @@ Require Import AppCfg.          (* [app_pred] / [app_run] *)
 Require Import AppInv.          (* [app_inv], [appE] *)
 Require Import ArgPath.         (* [arg_path_of], [arg_path_of_uniq] *)
 Require Import PieceFam.        (* [pfam] / [pf_at] *)
-Require Import FsAbsEra.        (* [ex_start], [um_start_of] *)
 Require Import FsAbsDefs.       (* [arow_at], [abs_view], [anode] *)
 Require Import SysOpenDefs.     (* [open_au_plain_at], [aopen_commit_at],
                                    [open_trunc_piece], [open_fd_rcpt],

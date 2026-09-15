@@ -37,7 +37,7 @@ Require Import UserExec.
 Require UserTotalU.
 Require Import UserActiveClass.
 Require Import UserMemPt UserMemCert UserMemArmsC.
-Require Import MemAccessGen WpMmodeLeafBase.
+Require Import WpMmodeLeafBase.
 Require Import UmodeMem UmodeArith.
 Require Import UmodeRegs.
 Require Import WpUmodeStep WpUmodeStore WpUmodeLoad WpUmodeTextLoad.

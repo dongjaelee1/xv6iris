@@ -28,7 +28,6 @@ Require Import DevModel DiskPtsto WpUart.
 Require Import IntrDefs.
 Require Import RiscvExtras.
 Require Import SpecUart.
-Require Import WpSmodeUart.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import TsoCtx.

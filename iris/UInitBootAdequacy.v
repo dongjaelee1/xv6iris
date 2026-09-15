@@ -31,12 +31,6 @@ Require Import SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang ObsTrace RiscvPtsto.
-Require Import FsState.
-Require Import FsAbsDefs.
-Require Import InitBoot.
-Require Import InodeInv.
-Require Import AppCfg.
-Require Import AppInv.
 Require Import FdSlots.
 Require Import FileInvDefs.
 Require Import WpUart.
@@ -53,17 +47,11 @@ Require Import UserFd.
 Require Import SystemAdequacy.
 Require Import FsImgCheck.
 Require Import FsImgDisk.
-Require Import TsoCtx.             (* [CurCtx] *)
-Require Import UexecSG.            (* [uprogSG] *)
-Require Import UexecExecInst.      (* [uprogSG_free] -- /init's own instance *)
-Require Import UkRun.              (* [udepw_law] *)
-Require Import UkSh.               (* [sh_deps] / [ush_read_recv_leaf] *)
 Require Import UserConsole.        (* [ucons_pay]: the payload the owed read
                                       leaf is stated at (lane ECHO-OUT
                                       part 5) *)
 Require Import FsCfg.              (* [fsc_cons]: ...and the era's console
                                       ring it names *)
-Require Import UInitSh.            (* [sh_pay_state] *)
 Require Import App.                (* [xv6_app_adequacy] and the record *)
 Require Import AppEcho.            (* [app_echo] and its obligations *)
 Require Import EchoOut.            (* [echoOutG]: the class the record's four

@@ -66,11 +66,9 @@ Require Import KernelText KernelDataInv.
 Require Import RegFile WpNext.
 Require Import RiscvExtras.
 Require Import CalleeSaved.
-Require Import DiskPtsto WpUart.
 Require Import IntrDefs.
 Require Import LockRank.
 Require Import CpuOwn.
-Require Import UartTxInv.
 Require Import SpecPrputc.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)

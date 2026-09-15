@@ -39,10 +39,9 @@ From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap sets bitvector.definitions.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvFetchExec.
+Require Import RiscvLang RiscvPtsto RiscvFetchExec.
 Require Import WpDecodeBridge.  (* [dstate] -- the concrete state to refute at *)
-Require Import PtAdBits PtTree Pt4kWalk UptTree.
-Require Import PtBuild.
+Require Import PtAdBits PtTree.
 Require Import UserPtTree.
 Require Import ProcPtOwn.
 Require Import UserPerm.

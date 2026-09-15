@@ -72,20 +72,14 @@ Require Import ChildTok.
 Require Import UexecSlot.
 Require Import UexecRet.          (* [uslot] -- REQUIRED DIRECTLY (the seal) *)
 Require Import UexecSG.
-Require Import ElfFile.
 Require Import PathElems.
-Require Import FsTree.
-Require Import FsBlocks.
-Require Import FsBytesGamma.
 Require Import AppCfg.
 Require Import AppInv.
 Require Import FsCfg.             (* [fsc_fs] / [fsc_cons] *)
 Require Import ConsoleInv.        (* [cons_reader] *)
 Require Import SpecKexec.         (* [exec_au_pre] / [kexec_image_ok] *)
-Require Import PieceFam.
 Require Import FsAbsDefs.
 Require Import FsAbsEra.
-Require Import PinnedObs.
 Require Import PinnedExec.
 Require Import UexecExecInst.     (* the class INSTANCE: [uexecSG_xv6].  This
                                      file is E2's assembly for THE xv6
@@ -134,7 +128,6 @@ Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       instance here too. *)
 Require Import UserConsole.       (* [ucons_reader_eq] *)
 Require Import UserFd.            (* [NSTD] *)
-Require Import UexecWp.           (* [uexec_wp] *)
 Require Import LinkUserinit.      (* [UG.uexec_wp_gen]: the generic user WP,
                                      the module route SystemAdequacy uses --
                                      the application tier does not Require a
@@ -143,8 +136,6 @@ Require Import UkSh.              (* [sh_deps] / [ush_tag_law] / the two
                                      console leaves sh's entry is told *)
 Require Import UShConsK.          (* sh's two console leaf discharges at
                                      echo's era (lane SH-OPEN) *)
-Require Import FsConsPin.         (* [cons_absent] / [cons_present_at] *)
-Require Import App.               (* [xv6_app_adequacy] and the record *)
 (* THE ADEQUACY LAYER IS DELIBERATELY NOT REQUIRED HERE.  This file is a
    proofmode-heavy u-tier assembly; pulling [RiscvAdequacy] /
    [SystemAdequacy] / [FsCfgBoot] into it -- which is what the B3 theorem
@@ -157,7 +148,6 @@ Require Import App.               (* [xv6_app_adequacy] and the record *)
 Require Import KexecDefs.         (* [kxc_sp_final] *)
 Require Import PageGeom.          (* [PGSIZE] *)
 Require Import InitBoot.          (* [init_boot_bundle] and its path *)
-Require Import DirentEnc.
 Require Import ElfUser.           (* [init_elf] *)
 Require Import ElfLoadable.       (* [init_elf_loadable] *)
 Require Import FsInitPin.         (* [INIT_INO] / [init_path] / [init_bytes] *)

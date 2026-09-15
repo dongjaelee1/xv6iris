@@ -59,7 +59,6 @@ Require Import UkShFork.
 Require Import UConsLine.        (* [ush_line_is]: the buffer IS [echo_line] *)
 Require Import EchoDisc.         (* [echo_line], [sb], [nlb] *)
 Require Import FsImg.            (* [ROOTINO] -- the cwd the pin resolves at *)
-Require Import UsysMemOk.        (* [USYS_exec] *)
 Require Import UexecSG.          (* [uexecSG] / [uprogSG]: the deposit class *)
 Require Import TsoCtx.
 Require User.ShSyms User.ShInstrs.

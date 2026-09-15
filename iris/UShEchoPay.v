@@ -35,38 +35,29 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
+Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 Require Import Xv6Cameras Xv6G FdSlots IrefSlots ProcAvail FileInvDefs.
-Require Import RegFile.
 Require Import ProcGeom.          (* [NOFILE] *)
-Require Import UserPerm UexecSlot UexecRet.
-Require Import UserHeap UkRun UkRunLeaf.
-Require Import UserFd UserCwd UserChildren.
+Require Import UexecSlot UexecRet.
+Require Import UkRun.
+Require Import UserFd.
 Require Import ChildTok.
-Require Import ElfFile ElfUser ElfLoadable.
-Require Import PathElems FsTree FsBlocks FsBytesGamma.
+Require Import ElfFile ElfUser.
 Require Import FsCfg.             (* [fsc_fs] *)
 Require Import PageGeom.          (* [PGSIZE] *)
-Require Import UmodeArith UmodeAbi.
-Require Import FsImg FsImgCheck.
-Require Import FsAbsDefs FsAbsEra.
-Require Import AppCfg AppInv.
-Require Import PinnedObs PinnedExec.
+Require Import UmodeAbi.
+Require Import FsImg.
+Require Import PinnedExec.
 Require Import FsEchoPin.
-Require Import PieceFam.          (* [MkPfam] *)
 Require Import SpecKexec SpecSysExec.
 Require Import UInitSh.           (* [sbundle_pay_exec_intro_refR] *)
 Require Import UShKernel.
-Require Import KexecBuilt.
-Require Import UserPtTree.
 Require Import KexecDefs.
-Require Import UkAbi.
-Require Import UexecSG UexecExecInst UexecExecMint.
+Require Import UexecExecInst.
 Require Import UCodeEcho.         (* [echo_img_sub] / [echo_data_sub] *)
-Require Import UkEcho UEchoKernel.
-Require Import UkSh UkShRun UkShFork UkShEcho.
+Require Import UkSh UkShFork UkShEcho.
 Require Import UkRunExecRef.      (* [udepw_at_refR] *)
-Require Import UConsLine EchoDisc.
+Require Import EchoDisc.
 Require Import EchoOut.           (* [era_pin] / [turn] / [ps_lb] *)
 Require Import EchoLinks.         (* [echo_links] / [wr_blk] *)
 Require Import EchoLinksLine.     (* [ewc_lcred] and the lend's two ends *)

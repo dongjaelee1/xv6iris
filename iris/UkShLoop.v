@@ -49,7 +49,6 @@ Import Defs.
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 
 Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
-Require Import UserConsole.  (* [upos] -- sh's half of the console position pair *)
 (* ===================================================================== *)
 (* THE DISCIPLINED LINE LEXES (lane SH-LINE 2b, L3).                      *)
 (*                                                                        *)

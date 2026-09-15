@@ -57,12 +57,11 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import WpUmodeBranch.
-Require Import UmodeArith UmodeAbi.
+Require Import UmodeAbi.
 From Stdlib Require Import FunctionalExtensionality.
-Require Import UserHeap UkRun UkRunLeaf UkRunMem UkRunSys.
-Require Import FdSlots UserFd.
-Require Import UCodeShK UCodeShP.
+Require Import UserHeap UkRun UkRunLeaf UkRunSys.
+Require Import UserFd.
+Require Import UCodeShK.
 Require Import UkSh.
 Require Import UkShParse.
 Require Import UkShDiag.
@@ -127,13 +126,10 @@ Proof.
       rewrite E2. exact Hnul.
 Qed.
 
-Require Import UsysMemOk. (* [USYS_exec] -- excluded by the minting law *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 Require Import UserCwd.  (* [ucwd] / [ucwd_any] -- the process's own view of its working directory *)
-Require Import UserChildren.  (* [uch_any] -- the process's own half of its children set *)
 
 Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
-Require Import UserConsole.  (* [upos] -- sh's half of the console position pair *)
 Section UkShCd.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.

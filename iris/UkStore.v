@@ -64,7 +64,7 @@ Require Import UserMemCert UserMemArmsBase UserMemArmsC.
 Require Import UmodeMem UmodeFetch.
 Require Import UmodeRegs.
 Require Import WpUmodeStep WpUmodeStore.
-Require Import ProcPtOwn UserPerm UexecWp UexecRet UkStep.
+Require Import UserPerm UexecWp UexecRet UkStep.
 Require Import UmodeText.
 Require Import FdSlots.      (* [fdstate] -- the key's descriptor view *)
 Require Import TsoCtx.   (* [CurCtx]: ambient, per the WpUmode* precedent *)

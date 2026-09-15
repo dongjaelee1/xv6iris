@@ -46,22 +46,20 @@ Require Import RegFile.           (* [regfile] *)
 Require Import ProcGeom.          (* [NOFILE] *)
 Require Import UserPerm UexecSlot UexecRet.
 Require Import UserHeap UkRun UkRunLeaf.   (* [uv_avi_pos] *)
-Require Import UserFd UserCwd UserChildren.
+Require Import UserFd.
 Require Import ChildTok.
 Require Import ElfFile ElfUser ElfLoadable.
-Require Import PathElems FsTree FsBlocks FsBytesGamma.
+Require Import PathElems.
 Require Import FsCfg.             (* [fsc_fs] -- the era's file-system names *)
 Require Import PageGeom.          (* [PGSIZE] *)
-Require Import WpMmodeLeafBase.   (* [csp_rs1] *)
 Require Import UmodeArith UmodeAbi.
 Require Import FsImg FsImgCheck.
 Require Import FsAbsDefs FsAbsEra.
 Require Import AppCfg AppInv.
-Require Import PinnedObs PinnedExec.
+Require Import PinnedExec.
 Require Import FsEchoPin.
-Require Import ByteBuf.           (* [bb_cstr] / [bb_nonul] *)
 Require Import ArgPath.           (* [arg_path_shape] / [arg_path_of] *)
-Require Import SpecKexec SpecSysExec SpecCopyin SpecCopyinstr.
+Require Import SpecKexec SpecSysExec SpecCopyin.
 Require Import UInitSh.           (* [img_word_of_bytes] / [uimg_word_det] *)
 Require Import UShKernel.         (* the entry geometry: [sh_page_perm],
                                      [udata_lo_is_Some], [kxc_sp_final_mod8],
@@ -72,11 +70,10 @@ Require Import UserPtTree.        (* [pgroundup] *)
 Require Import WpUmodeLoad.       (* [uM_word] / [uM_word_bytes] *)
 Require Import KexecDefs.
 Require Import UkAbi.
-Require Import UexecSG UexecExecInst UexecExecMint.
 Require Import UCodeEcho.
-Require Import UkEcho UEchoKernel.
-Require Import UkSh UkShRun UkShEcho.
-Require Import UConsLine EchoDisc.
+Require Import UEchoKernel.
+Require Import UkShRun UkShEcho.
+Require Import EchoDisc.
 Require User.EchoSyms.
 Local Open Scope Z_scope.
 Import Defs.

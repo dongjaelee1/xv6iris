@@ -112,7 +112,8 @@ Require Import IntrDefs.
 Require Import HartTp WpNext.
 Require Import WpSconfAlu WpSconfMem WpSconfCtl WpSconfBtype WpSmodeIntr.
 Require Import WpLock ProcGeom CpuOwn.
-Require Import DevModel DiskPtsto WpUart.
+Require Import DevModel WpUart.
+Require Import Xv6Cameras.
 Require Import SpecUart WpSconfUartAccess.
 Require Import PowerBoot.      (* [pa_of_z] *)
 Require Import UartsFields.

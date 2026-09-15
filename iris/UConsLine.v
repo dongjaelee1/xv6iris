@@ -48,11 +48,7 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes ObsTrace.
-Require Import RegFile.
-Require Import UmodeArith.
-Require Import UmodeAbi.       (* [ubyte0] -- the NUL [gets] plants *)
-Require Import UsysMemOk.
+Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 Require Import UserHeap UkRun UkRunSys.
 (* the address-space vocabulary the swallowed byte's FAULT arm is refuted
    in ([ush_swallow_nofault]): the permission projection and the lazy
@@ -67,8 +63,7 @@ Require Import UserPtTree.     (* [uva_wmapped] *)
    resolve nothing (durable-notes, "Typeclasses and ghost-class bundling"). *)
 Require Import Xv6Cameras.     (* [uartGhostG]: the console ring's cameras *)
 Require Import ChildTok.       (* [ctokG]: the slot's fork arms' capacity *)
-Require Import VcGen.          (* [trunc32]: how [argfd] reads a descriptor *)
-Require Import FdSlots UserFd ProcGeom.
+Require Import FdSlots UserFd.
 Require Import UInitFd.      (* [ufd_l0] -- the all-closed low ledger the
                                CLOSED arm of sh's entry is at *)
 Require Import UserCwd UserChildren.  (* [ucwd_any] / [uch_any] -- the two
@@ -77,21 +72,18 @@ Require Import UserCwd UserChildren.  (* [ucwd_any] / [uch_any] -- the two
 Require Import UexecSlot UexecRet.  (* [uvis] / [uslot] -- the taint's
                                generic slot, [UkRun.urun_gen]'s premise *)
 Require Import ConsoleInv.     (* [cons_window] / [cons_chain] / [CONSOLE] *)
-Require Import SpecFileread.   (* [fileread_ret]: the answer's range, B3 *)
 Require Import UserConsole.    (* [upos] / [ucons_stored_lb] / [ucons_pay] *)
-Require Import UCodeInit UkInit.  (* init's catalogs and its exec supply's shape *)
 Require Import UkSh.           (* [sh_buf] / [sh_nbuf] *)
 Require Import UkShParse.      (* [ushp_no_symbols] / [ushp_tokens] *)
 Require Import UkShLoop.       (* [ush_line_lexable] -- the lowest file that
                                   sees both the LINE and the LEXER *)
-Require Import AppEcho.        (* [echo_line] / [star_prefix] / [disc_seg] *)
+Require Import EchoDisc.        (* [echo_line] / [star_prefix] / [disc_seg] *)
 Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       and its ledger are stated at (lane
                                       ECHO-OUT part 5).  It CARRIES
                                       [mono_natG], so it is the taint's one
                                       instance here too. *)
 Require Import UexecSG.
-Require FsImg.
 Local Open Scope Z_scope.
 Import Defs.
 

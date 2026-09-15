@@ -59,7 +59,6 @@ Require Import RiscvExtras.
 Require Import CalleeSaved.
 Require Import KernelText KernelDataInv.
 Require Import DevModel WpUart.
-Require Import UartsFields.
 Require Import UartTxInv.
 Require Import SpecUartPutc.  (* [uart_base_word] *)
 (* [lk_raw] / [lk_fresh] -- the three-cell spinlock bundle, before and after

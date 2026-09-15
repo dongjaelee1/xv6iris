@@ -49,7 +49,7 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes ObsTrace.
+Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 (* the ghost binder list, each module IMPORTED and not merely required --
    see [UkWriteLeaf.v]'s header *)
@@ -61,33 +61,16 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
-Require Import ProcPtOwn.
-Require Import UserPtTree.
-Require Import UserCwd UserChildren.
-Require Import UmodeArith UmodeAbi.
-Require Import ProcGeom.
-Require Import VcGen.
-Require Import PieceFam.
-Require Import FsTree.
-Require Import ChildTok.
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
+Require Import UexecSlot UexecSG.
 Require Import UkRun UkRunSys.
-Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
-Require Import SpecArgfd.
-Require Import SpecFilewrite.
 Require Import SpecConsolewrite.   (* [cons_out_chain] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import ConsoleInv.         (* [CONSOLE] *)
-Require Import FsCfg.
-Require Import FsAbsDefs.
 Require Import WpUart.
 Require Import UkWriteLeaf.        (* the supply and the post, at row 16 *)
-Require Import UCodeInit.
 Require Import UInitFd.            (* [ufd_l3] / [ufd_l3_row1] *)
 Require Import UkInit UkInitLit UkInitMain.
 Require Import EchoDisc.
-Require Import EchoOutPure.
 Require Import EchoOut.
 Require Import EchoLinks.
 Require Import EchoLinksPro.       (* [ewc_pro] / [ewc_pdiag] / the steps *)

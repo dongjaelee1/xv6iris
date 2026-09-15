@@ -60,7 +60,6 @@ Require Import WpSconfAlu WpSconfMem WpSconfCtl.
 Require Import IntrDefs WpNext.
 Require Import WpLock CpuOwn.
 Require Import WpUart.
-Require Import UartTxInv.
 Require Import PrintkArgs.
 Require Import SpecPrintk.
 Require Import SpecPanic.

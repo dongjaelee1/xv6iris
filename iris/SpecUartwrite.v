@@ -82,7 +82,8 @@ Require Import LockRank.
 Require Import ProcGeom CpuOwn.
 Require Import FdSlots.
 Require Import DevModel.
-Require Import DiskPtsto WpUart.
+Require Import WpUart.
+Require Import Xv6Cameras.
 
 Require Import UartTxInv.
 Require Import UartsFields.

@@ -53,7 +53,7 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes ObsTrace.
+Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 (* THE GHOST BINDER LIST, each module IMPORTED and not merely required
    ([UkWriteLeaf.v]'s header) *)
@@ -65,24 +65,11 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
-Require Import ProcPtOwn.
-Require Import UserPtTree.
-Require Import UserCwd UserChildren.
-Require Import UmodeArith.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import VcGen.              (* [trunc32] *)
-Require Import PieceFam.
-Require Import FsTree.
-Require Import ChildTok.
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
-Require Import UkRun UkRunSys.
-Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
+Require Import UexecRet UexecSG.
+Require Import UkRun.
 Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFilewrite.      (* [filewrite_in] *)
-Require Import SpecSysRead.        (* [sys_rw_count] *)
-Require Import FsCfg.
-Require Import FsAbsDefs.
 Require Import UkWriteLeaf.        (* [xfam_wr] / [sbundle_at_write_intro_at] *)
 Require Import UkSh.               (* [ksh_w] / [wp_ksh_write_chain] *)
 Require Import UkInit.             (* [kinit_w1] / [wp_kinit_write_chain] *)

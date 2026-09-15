@@ -29,16 +29,11 @@ Require Import RiscvLang RiscvPtsto.
 Require Import RegFile.
 Require Import UsysMemOk UexecSlot UexecRet.
 Require Import FdSlots.      (* [fdstate] -- the key's descriptor view *)
-Require Import ProcGeom.   (* [tf_arg_idx] -- wait's row is based at a0 *)
-Require Import UserPtTree. (* [umem_wr_write] / [umem_write_prefix] *)
 Require Import UkStep.
 Require Import UmodeArith.  (* [moi_add_l] / [uint_moi]: read's row addresses
                                through [add_vec_int], the heap through [Z] *)
 Require Import UserHeap.
 Require Import UserPerm.    (* [uperm] -- the row's permission-map argument *)
-Require Import UserPtTree.  (* [umem_wr] / [umem_write] -- the window's image *)
-Require Import UserBits.    (* [uint_add_vec_int_small] -- the window's no-wrap *)
-Require Import RiscvExtras. (* [uint_unsigned] *)
 Require Import RiscvModelBytes. (* [nth_byte] -- pipe's two reported words *)
 Require Import TsoCtx.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)

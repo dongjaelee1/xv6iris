@@ -42,10 +42,10 @@ Require Import RegFile InstrBytes WpMmodeLeafBase.
 Require Import RiscvExtras.
 Require Import StackOwn CalleeSaved KernelText.
 Require Import KernelRvcDecode.
-Require Import WpSconfAlu WpSconfMem WpSconfCtl WpSconfBtype WpSmodeIntr.
+Require Import WpSconfAlu WpSconfMem WpSconfCtl WpSmodeIntr.
 Require Import DevModel.
 Require Import UartsFields.
-Require Import DiskPtsto WpUart.
+Require Import WpUart.
 Require Import IntrDefs HartTp WpNext.
 Require Import LockRank.
 Require Import CpuOwn.

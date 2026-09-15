@@ -60,7 +60,6 @@ Require Import UInitFd.  (* the console prologue's ledger rows and INIT'S
 Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for
                             which rides inside [urun] *)
-Require Import UsysMemOk. (* [USYS_exec] -- excluded by the minting law *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 
 Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)

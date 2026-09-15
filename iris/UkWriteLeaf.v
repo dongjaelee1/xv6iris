@@ -42,7 +42,7 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes ObsTrace.
+Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 (* THE GHOST BINDER LIST, each module IMPORTED and not merely required --
    naming a class without its defining module in scope introduces a FRESH
@@ -59,15 +59,10 @@ Require Import UserHeap.
 Require Import UserPerm.           (* [uperm] -- the heap's permission map *)
 Require Import ProcPtOwn.
 Require Import UserPtTree.
-Require Import UserCwd UserChildren.
-Require Import UmodeArith.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import VcGen.              (* [trunc32] *)
 Require Import PieceFam.
-Require Import FsTree.
-Require Import ChildTok.
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
-Require Import UkRun UkRunSys.
+Require Import UexecSlot UexecRet UexecSG.
+Require Import UkRun.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
@@ -76,8 +71,6 @@ Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import PipeInvDefs.        (* [pipe_rw_ret]: what [filewrite_ret] is *)
 Require Import WpUart.             (* [out_licence] / [out_link] *)
 Require Import ConsoleInv.         (* [CONSOLE] *)
-Require Import FsCfg.
-Require Import FsAbsDefs.
 Require Import TsoCtx.
 Local Open Scope Z_scope.
 Import Defs.

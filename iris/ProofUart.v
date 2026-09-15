@@ -37,7 +37,7 @@ Require Import HartLift HartSpan HartSwp HartSMem.
 Require Import WpSmodePtEngine.
 Require Import KptGoodb.
 Require Import WpIntrInv.
-Require Import DiskPtsto WpUart WpSmodeUart.
+Require Import DiskPtsto WpUart.
 Require Import WpSmodeIntr.
 Require Import IntrDefs.
 Require Import Riscv.rv64d_types Riscv.rv64d.

@@ -81,7 +81,6 @@ Require Import WireInv KptExecMap.   (* [park_world_open]'s rows *)
 Require Import FsReady.
 Require Import SpecConsoleintr.  (* [console_caps] -- devintr's console row *)
 Require Import TicksInv.         (* [is_tickslock] -- the tick keeper's real arm *)
-Require Import ConsoleInv.       (* the console ring's invariant *)
 Require Import SpecFileread.     (* [console_ready_app] -- resumer-supplied, park_globals *)
 Require Import DiskInv.          (* [disk_geom] / [disk_res] *)
 Require Import SpecDevintr.

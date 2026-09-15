@@ -64,7 +64,6 @@ Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.
 Import Defs.
 
-Require Import UsysMemOk. (* [USYS_exec] -- excluded by the minting law *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 
 Section UkShMalloc.

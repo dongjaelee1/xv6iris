@@ -35,7 +35,6 @@ Import Defs.
 Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for
                             which rides inside [urun] *)
-Require Import UsysMemOk. (* [USYS_exec] -- excluded by the minting law *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 (* [tf_w] / [tf_arg_idx] / [uvis] / [uslot]: the write-chain stub below
    states its post at the TRAPPING KEY, which nothing else in this file

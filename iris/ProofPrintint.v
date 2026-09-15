@@ -68,11 +68,10 @@ Require Import RiscvExtras.
 Require Import StackOwn StackBytes CalleeSaved KernelText KernelDataInv.
 Require Import KernelRvcDecode.
 Require Import WpSconfAlu WpSconfMem WpSconfCtl WpSconfBtype WpSmodeIntr.
-Require Import DiskPtsto WpUart.
+Require Import WpUart.
 Require Import IntrDefs HartTp WpNext.
 Require Import WpLock.
 Require Import CpuOwn.
-Require Import UartTxInv.
 Require Import ByteCursor PrintintArith.
 Require Import CodePrintint.
 Require Import SpecPrputc SpecPrintint.

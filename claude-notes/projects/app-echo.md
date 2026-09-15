@@ -65,7 +65,7 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   `sh_deps ∧ sh_pay_rest sh_Rsh`; `UConsLine`'s three Props are lemmas.
 - [ ] **SELF-KILL** (kernel; `-sup`, `lane/self-kill`; steps 1-4a, 4b', P6 and
   P6b LANDED 2026-09-15, `a33bf1a3d`, the notes below; the Fable review's
-  design page scratchpad `brief-self-kill-2.md` is the design of record).
+  design page is the design of record).
   OWNER'S RULINGS: the kill credential is the target's exit payload at -1
   (no separate predicate, no alive token; Q(-1) supplied at a killing cause,
   the syscall precondition at an ecall; `killed()` reports the flag);
@@ -121,8 +121,7 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
 - [x] ~~**FORK-REFUND**~~ LANDED 2026-09-16 (`e58f284a2`; the note below):
   fork's -1 arm returns `Rc`; `sfork_lend` on `sfam`.
 - [ ] **IO-LEAF** (programs; main checkout, `lane/io-leaf`): SURVEYED and
-  REVIEWED 2026-09-16 (the notes below); M1 LAUNCHED 2026-09-16 (brief v3
-  scratchpad `brief-io-leaf.md`): M1(a,b) LANDED 2026-09-16 (`f4b03abd7`;
+  REVIEWED 2026-09-16 (the notes below); M1 LAUNCHED 2026-09-16: M1(a,b) LANDED 2026-09-16 (`f4b03abd7`;
   the note below: `EchoLinks.v`, `Tn` concrete); M1(c,d) LANDED 2026-09-16
   (`e3d97238a`; the note below: the write leaf's ownership row, the printf
   cone's per-byte family, the banner site); M1(e) LANDED 2026-09-16
@@ -156,14 +155,12 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   theorem.
 - [x] ~~**DUP-ROW**~~ LANDED 2026-09-16 (`18f1ab44e`; the note below): the
   U-tier dup row names its reasons on both arms.
-- [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`; brief scratchpad
-  `brief-trap-rows-3.md`): T4(c) LANDED 2026-09-16 (`2a372a9d7`; the note
+- [ ] **TRAP-ROWS-3** (kernel; `-tlw`, `lane/trap-rows-3`): T4(c) LANDED 2026-09-16 (`2a372a9d7`; the note
   below); T4(b) (the reaping arm names the caller's own child): two
   obstacles ruled 2026-09-16 (the note below: the U tier sees numbers --
   `un_ipid`/`ukn_ipid`, `ukn_pid`/`upid`); HANDED OVER with the kernel side
   saved (`t4b-wip.patch`) and a five-step plan.
-- [ ] **TRAP-ROWS-4** (kernel; `-tlw`, `lane/trap-rows-4`; brief scratchpad
-  `brief-trap-rows-4.md`): MILESTONE A LANDED 2026-09-16 (`5f04889b0`; the
+- [ ] **TRAP-ROWS-4** (kernel; `-tlw`, `lane/trap-rows-4`): MILESTONE A LANDED 2026-09-16 (`5f04889b0`; the
   note below: the boot end, the kernel invariant, the row at numbers);
   B1a LANDED 2026-09-16 (`31aff80ee`; the note below: `ukn_pid`/`upid`, the
   constructors); B1b in flight (RULED: init's pid pinned to the literal 1;
@@ -173,7 +170,7 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
   (Some n)` and is whole in the payload after userinit's park (shape A), so
   allocproc's two corollaries are its two existing regimes; the fork-side
   token `⌜pidc <> 1⌝`; the wait leaf's `_pid` twin).  TRAP-ROWS-4 HANDED
-  OVER 2026-09-16 (`trap-rows-4-B-handover.md`: the ten-item plan, the
+  OVER 2026-09-16 (the ten-item plan, the
   `procs_avail_at` corollary trick since `Some n` is the free-slot count,
   two checks for the successor).
 - [x] ~~**TRAP-ROWS-5**~~ LANDED 2026-09-16 (`274483946`; the note below):
@@ -185,8 +182,7 @@ CONS-ROWS (2026-09-13, `b3f64b406`).
 - [x] ~~**PROLOGUE-ALTS-2**~~ LANDED 2026-09-16 (`ca914ff85`; the note
   below): `ps_len_ok`, `echo_write_link_pro`, the arbitrary-round banner
   lemma.  `-sup` is free.
-- [ ] **TRAP-ROWS** (kernel; `-tlw`, `lane/trap-rows`; brief scratchpad
-  `brief-trap-rows.md`): T1 LANDED 2026-09-16 (`6eafdaa54`); M2 PART 1
+- [ ] **TRAP-ROWS** (kernel; `-tlw`, `lane/trap-rows`): T1 LANDED 2026-09-16 (`6eafdaa54`); M2 PART 1
   (T3 + T2(i)) LANDED (`ea01ef696`); M2 PART 2 (T2(ii)(iii), T4 kernel
   side, the four engine statements) LANDED 2026-09-16 (`b289999e7`; the
   notes below).  DONE.  Rows: T2 the read's -1 arm carries the reader's killed fact and the
@@ -1154,7 +1150,7 @@ from uvmcopy's pointwise post (`perm_leaf` reads bits 1..4 only,
 `dom` agrees because `um_below` puts every mapped page under `n`); sz —
 `np->sz = p->sz`; cwd — B4's `pv_cwi Vc' = pv_cwi Up`.  `ProofSysFork`
 hands kfork the single slot, minted from the supply for now.
-  KFORK-CHILD (LANDED 2026-09-08; brief `brief-kfork-child.md`).
+  KFORK-CHILD (LANDED 2026-09-08).
   Phase-1 facts: `kfork_child Up := us_tf Up (<[14%nat := zero_reg]>
   (pv_tf (us_V Up)))` and the pure lemmas live in a new leaf
   `iris/KforkChild.v` (a lemma in UserPtTree rebuilds 659 files, in
@@ -1198,7 +1194,7 @@ the parent's arm is instantiated at the return:
     promise `pid ≠ 0`; the contracts do not say so yet.  What retiring this
     row costs is itemised in `kernel-defects.md` ("STILL OPEN AS PROOF
     WORK").]
-  FORK-ROW (LANDED 2026-09-09; brief `brief-fork-row.md`).  Phase-1
+  FORK-ROW (LANDED 2026-09-09).  Phase-1
   facts: `uexec_fork_F = uexec_fork_parent_F ∗ <guarded child>`; the arm
   at fork is the parent piece, the deposit `uexec_fork_child_F X W := X
   (bump W 0 (uvis_M W) (uvis_perm W) (uvis_sz W) (uvis_fd W) (uvis_cwd W))`;
@@ -1241,8 +1237,7 @@ the closer re-keys it by the congruence.  forkret's boot arm refutes
 `Some` by `first_tok_boot_excl` (its `first_addr ↦₄ 1` against the
 package's `↦₄□ 0`); its steady arm proves `urun_eq` from the facts it
 already has.  kfork parks steady, instantiating its family at
-`uvis_of Uc stsP`; `SpecKfork`'s premise is unchanged until lane (a).
-Brief: scratchpad `brief-steady-park.md`.  Phase-1 corrections: the
+`uvis_of Uc stsP`; `SpecKfork`'s premise is unchanged until lane (a).  Phase-1 corrections: the
 run-key vocabulary (`urun_eq`, `urun_eq_of`, `urun_eq_resume` in
 projection form, `uslot_of_urun_eq` from `uslot_ukc`) lives in
 `UexecRet.v` (UexecSlot has no `tf_resume_gpr0`; `ProcInv.upd_upt` is
@@ -1263,7 +1258,7 @@ row reaches INTO `first_done`'s `fs_ready` copies of persistent rows —
 build such packages with `iSplitL`/`iSplitR`.  `UexecCond.uslot_congr`
 has no callers (delete in (a) or (c)).
 
-#### HYGIENE (LANDED 2026-09-09; brief `brief-hygiene.md`)
+#### HYGIENE (LANDED 2026-09-09)
 
 The sweep owed after the folds, ruled from the phase-1 inventory:
 (H1) the `AU`-suffixed leaves become `Sys{Write,Read,Mknod,Open}Defs.v`;
@@ -1297,7 +1292,7 @@ deleted (the pilot's ten, the superseded consolewrite trio, `SpecKexecB3`),
 each walk's hoisted layer; `ProofKexecACode.v` phase A at the machine,
 `ProofKexecA.v` phase A at the contract; `KexecBridge.v` the pure closer.
 
-#### RECEIPT-IMAGE (LANDED 2026-09-09; brief `brief-receipt-image.md`)
+#### RECEIPT-IMAGE (LANDED 2026-09-09)
 
 A GAP IN READ'S RECEIPT.  `read_post_ok` hands the process the node `a`,
 the offset and the count, but the bytes in its OWN BUFFER are the image
@@ -1342,7 +1337,7 @@ fileread's device arm → sys_read's console receipt), ARM-c (echo's supply
 from the taint, `echo_pred := taint ∨ pins`), L6 (init/sh/echo programs),
 L7.
 
-#### L5 — findings for the design (2026-09-09); L5-a in flight (`brief-l5a-tag.md`), L5-b drafted (`brief-l5b-ledger.md`)
+#### L5 — findings for the design (2026-09-09); L5-a in flight, L5-b drafted
 
 THE READS ARE FREE.  uartgetc's LSR poll and RHR load are
 `wp_uart_read_free_s_sconf` (WpSconfUartAccess): the loaded byte is an
@@ -1432,8 +1427,7 @@ token, before plicinit) swaps to the right arm and mints the persistent
 `inited`; the disjunction elimination is FOLDED INTO plic_claim /
 plic_complete (they take the persistent witness, which rides
 `console_caps`), so callers never see it.  The `¬ enabled` clause and
-plicinithart's premise from the phase-1 design are dropped.  Brief:
-`brief-l5a-finish.md` (a fresh agent over the previous agent's tree, which
+plicinithart's premise from the phase-1 design are dropped.  (a fresh agent over the previous agent's tree, which
 was complete and proved except two red files; backup `l5a-wip-*.tgz`).
 L5-a (2/2) LANDED: the PLIC invariant is a row of per-source SLOTS
 (`WpUart.plic_slot γ p i := plic_preinit γ i ∨ (plic_inited γ i ∗ if
@@ -1458,7 +1452,7 @@ fourth row of `console_caps` (which already crosses `started` inside
 `main_deposit`); `uart_dlab_off` is already inside `is_txlock` ⊂
 `console_caps`, so the RHR pop's DLAB premise costs no contract change.
 
-#### L5-b LEDGER (LANDED 2026-09-09; briefs `brief-l5b-ledger.md`, `brief-l5b-finish.md`)
+#### L5-b LEDGER (LANDED 2026-09-09)
 
 Phase-1 facts.  The ring's coupling is stated on the 32-BIT DIFFERENCES
 the code itself compares (`c.subw` then `bltu`): `cons_ok r w e :=
@@ -1552,7 +1546,7 @@ kernel-wide threading are deleted; `Happ_sup` leaves `xv6_app_adequacy`;
 `echo_tag`'s taint arm, delivered through L5-b's console receipt.  ORDER:
 after L5-b: (2) exec's arm (b) in the deposit; (1) userinit's slot piece
 + `UkInit`'s slot at the observed image (L6 init); (3) waits on the
-kernel fix; then `Happ_sup` goes.  Brief for (2): `brief-armc-execb.md`.
+kernel fix; then `Happ_sup` goes.  Brief for (2):.
 EXEC-B (LANDED 2026-09-09).  Phase-1 facts: `SpecKexec.exec_slot_pre`
 is the CONJUNCTION of the loadable wand and the other-success wand
 (`Φo av i a -∗ ⌜¬ anode_loadable a⌝ -∗ ⌜exec_key_ok na alen sts W'⌝ -∗
@@ -1672,7 +1666,7 @@ engine's ghost names are BUNDLED IN A RECORD (`uk_names`: text, heap
 data, size, fd, cwd) so `urun` and the leaves take one argument and a new
 resource adds a field, not an argument — done in the SAME pass, since it
 touches the same sites.  Remaining lanes, in order: FETCHSTR-MEM (the
-reading; in flight), UK-NAMES + CWD (brief `brief-cwd-ghost.md`; the
+reading; in flight), UK-NAMES + CWD (the
 record sweep is its own green checkpoint), then C+D.
 
 USERINIT AND THE BOOT ARM.  forkret's boot arm kexec("/init") today takes
@@ -1701,7 +1695,7 @@ pid and retries; the tree is relaid (395 files), `SpecAllocpid.v` became
 contracts do NOT yet say `pid ∈ [1, PIDMAX]`: `nextpid_res_at` is still
 at an existential value, `allocproc_post`/`kfork_post` bind the pid
 existentially, so the round's pid-wrap row (`iApply "Hmk"` at `r = 0`) is
-still live.  PID-ROW (brief `brief-pid-row.md`) retires it: the counter
+still live.  PID-ROW retires it: the counter
 bounded in the payload and founded pinned at boot (`nextpid = 1` in
 .data; `first`'s pinned carve is the mold), the bound through
 `wp_ap_pidsec` into `allocproc_post`, `kfork_post`/`SpecSysFork`'s pid
@@ -1720,9 +1714,8 @@ gname arguments.  `Forkable` STAYS a heap-triple family `gname -> gname ->
 gname -> iProp` (the child's fd name is minted AFTER the heap fork and the
 rebuild, so a record-typed payload would carry a field no instance can
 honour); `UkShLoop.ushl_dat` moved onto a bare gname for the same reason.
-38 files, +3123/−2926, scripted sweep + hand residue (backup in the
-scratchpad).
-CWD-RESOURCE (2/2, LANDED 2026-09-09; brief `brief-cwd-finish.md`).  Phase-1
+38 files, +3123/−2926, scripted sweep + hand residue (backup in the).
+CWD-RESOURCE (2/2, LANDED 2026-09-09).  Phase-1
 facts: `UserCwd.ucwd_auth γc c`/`ucwd γc c` (two halves of a `ghost_var`
 on the existing `ghost_varG Σ Z`, no new camera), `ukn_cwd` the record's
 fifth field, `urun` carries `ucwd_auth (ukn_cwd N) cw` at the very `cw`
@@ -1780,7 +1773,7 @@ refund record; the ten syscall folds and R-CONJ are on main.  Still open:
 - **Q4** stays provisional (`echo_pred := taint ∨ pins`).
 - Hygiene backlog (above) after ARM.
 
-PID-ROW LANDED (2026-09-09; brief `brief-pid-row.md`).  `ProcGeom.PIDMAX =
+PID-ROW LANDED (2026-09-09).  `ProcGeom.PIDMAX =
 1000` (kernel/param.h, beside NPROC).  `PidLock.nextpid_res_at` carries
 `1 <= v <= PIDMAX`; the .data word is carved PINNED at 1
 (`BootShared.nextpid_bytes`, `first`'s carve the mold) and main's `newlock`
@@ -1802,10 +1795,10 @@ premise (~255) and its Require; `SpecUserretClosed.v:169`;
 `SyscParkEnv.park_world`'s row (~126) + `park_world_sup` (~145);
 `ParkCap.park_pkg`'s row (~122, ~332, ~468); `ProofForkret.v` ~239, ~884;
 `SpecUserinit.v:226`; `SpecMain.v` ~651; `BootShared.v` ~1471, ~1503;
-`BootChain.v` ~406.  NEXT: PINNED-EXEC (C+D, brief `brief-pinned-exec.md`),
+`BootChain.v` ~406.  NEXT: PINNED-EXEC (C+D),
 then ARM-c (1).
 
-PINNED-EXEC C LANDED (2026-09-09; brief `brief-pinned-exec.md`).
+PINNED-EXEC C LANDED (2026-09-09).
 `iris/PinnedExec.v`: `pin_resolves Pin cw pl hops ino f nl` (the start
 `um_start_of cw pl = hops !!! 0`, the terminal `hops !!! length (path_elems
 pl) = ino`, and under `Pin v` the run plus `v !! ino = Some (MkAnode (AFile
@@ -1870,7 +1863,7 @@ D IS BLOCKED ON THREE EXEC-CHANNEL FACTS -- rulings (2026-09-09):
   UexecExecInst still says `fsabs_env` where the supply is `app_sup`.
 ORDER: EXEC-CHANNEL (LANDED) → EXEC-ARGS (LANDED) → PINNED-EXEC D → ARM-c (1).
 
-EXEC-CHANNEL LANDED (2026-09-09; brief `brief-exec-channel.md`).  D-1:
+EXEC-CHANNEL LANDED (2026-09-09).  D-1:
 `UkRun.udepw_at N m pc n c` (after `udepw_of_uxsup`) is `udepw` with the
 cwd FIXED at `c` and the same loan of `uheap`/`ufd_auth`; adapters
 `udepw_at_of_udepw` (one direction -- redefining `udepw` would move the
@@ -1890,7 +1883,7 @@ it purely.  `sh_slot_of_kexec`/`init_slot_of_kexec` read it from the image
 fact (premise dropped; neither has a caller yet).  Hygiene noticed:
 `KexecBuilt.pgroundup_ge` duplicates `UserPerm.pgroundup_ge`.
 
-EXEC-ARGS LANDED (2026-09-09; brief `brief-exec-args.md`).  sys_exec's
+EXEC-ARGS LANDED (2026-09-09).  sys_exec's
 contract reads the ARGV VECTOR off the process image the way it reads the
 path.  `SpecCopyin.uimg_word_at` (beside `copyin_got`: one image vocabulary
 at bytes and at words; the eight addresses are consecutive in Z, the wrap
@@ -1909,11 +1902,11 @@ in `sx_body`/`sx_step`/`sx_loop`, the break publishing the NULL word beside
 `v1` (was a fresh ∀).  `sys_exec_slot_pre`'s wand, both arms and
 PinnedExec's three constructor wands take `exec_args_of`;
 `exec_args_shape` stays as its first conjunct (`exec_args_of_shape`).
-NEXT: PINNED-EXEC D (brief `brief-pinned-exec-d.md`), then ARM-c (1).
+NEXT: PINNED-EXEC D, then ARM-c (1).
 
 PINNED-EXEC D — brief-pinned-exec-d.md (2026-09-09): phase 1 landed the
 shape, phase 2 stopped on D-4.  Landed (WIP, uncommitted; backup
-`pexd-wip.patch` + `UInitSh-wip.v` in the scratchpad): `UCodeInit.
+`pexd-wip.patch` + `UInitSh-wip.v` in the): `UCodeInit.
 init_argv_map` (InitData's data half at/above 0x1000, the array `{ "sh",
 0 }`) and `init_argv` its persisted view; init's entry carves with
 `uslot_of_urun_all`, persists the sixteen bytes (`uarea_persist`) and drops
@@ -1952,10 +1945,10 @@ k` → `fd = k`, ledger `ustd_after`; `None` → `fd ≥ NSTD` with a handle),
 so the loop generalises over the ledger and the fall-through `close(fd)`
 spends the handle as today.  REDIR is refuted in the verified command set,
 so nothing else moves.  Then `UkInit.ustd_open` is deleted, `init_exec_sup`
-takes `ustd_any`, and D closes.  Brief `brief-std-ledger-d-finish.md`.
+takes `ustd_any`, and D closes.  Brief.
 ORDER: STD-LEDGER + D FINISH (LANDED) → ARM-c (1a) (LANDED) → WX-KEY (LANDED) → WX-FORK (LANDED) → WX-RES + WX-ROW (LANDED) → WX-EXIT (LANDED) → WX-GEN (LANDED) → WX-INV (LANDED) → WX-WAIT (LANDED) → E1 ECHO-PRED (LANDED) → E3 RECEIPT LEAF + reader token (design first) → E4 SH-ECHO → E2 INIT-BOOT (ARM-c 1b) → E5 L7 (design first).  See "THE REMAINING ARC".
 
-STD-LEDGER LANDED (2026-09-09; brief `brief-std-ledger-d-finish.md` part A).
+STD-LEDGER LANDED (2026-09-09; brief part A).
 sh is verified at ANY standard-stream ledger: `UkSh.ush_std l` is
 `UserFd.ustd γfd l` and nothing more, and `UShKernel.sh_uexec_slot`/
 `sh_slot_of_kexec` take only `length sts = NOFILE`.  The ledger is read at
@@ -1986,12 +1979,12 @@ instance: `init_sh_slot T Pay`, `sh_pay`, `init_args_det` (na = 1, alen 0 =
 2 read off init's image), `init_sh_room` (n0 ≤ 402), `init_exec_sup_of_sh_slot`.
 `UInitKernel.init_slot_of_kexec : kexec_image_ok init_elf … -> room ->
 length sts = NOFILE -> uvis_cwd W' = ROOTINO -> psok -> udep -∗ init_exec_sup
--∗ uslot W'`.  NEXT: ARM-c (1a) (`brief-armc-1a.md`), then (1b): echo
+-∗ uslot W'`.  NEXT: ARM-c (1a), then (1b): echo
 discharges `Hinit_boot` with `T := taint`, the claim law from `echo_pred :=
 taint ∨ pins`, `init_sh_slot` from `app_inv` + those, and `init_slot_of_kexec ∘
 init_exec_sup_of_sh_slot` at the kernel instance.
 
-ARM-c (1a) LANDED (2026-09-09; briefs `brief-armc-1a.md`, `brief-armc-1a-finish.md`)
+ARM-c (1a) LANDED (2026-09-09)
 -- THE KERNEL NEVER MINTS.  `InitBoot.v` names the first process's exec
 bundle: `init_boot_bundle cw sts` is kexec's caller-side bundle at
 `init_boot_path` ("/init", named once; ProofForkretParts uses it), na = 1,
@@ -2022,11 +2015,10 @@ kit 2); the generic instances discharge it from `init_boot_of_sup`/`_triv`.
 New CtxMorph instances: `inode_held_at_morph`, `proc_priv_nocwd_morph`,
 `cwd_ref_at_morph`, `first_boot_morph`, `fkp_park_block_morph`.  Audit
 unchanged at thirteen; lemma_diff: four justified GONEs (`app_triv_sup`,
-`fkr_init_bytes`, `syscall_env_sup`, `park_world_sup`).  NEXT: WX-KEY
-(`brief-wx-key.md`); (1b) echo's discharge of `Hinit_boot` waits on the taint
+`fkr_init_bytes`, `syscall_env_sup`, `park_world_sup`).  NEXT: WX-KEY; (1b) echo's discharge of `Hinit_boot` waits on the taint
 (`echo_pred := taint ∨ pins`) and L7.
 
-WX-KEY LANDED (2026-09-10; brief `brief-wx-key.md`).  The user-execution key
+WX-KEY LANDED (2026-09-10).  The user-execution key
 carries two more readings and the kernel carries the cells they read.
 `UexecSlot.uvis` (UexecSlot.v:~91) gains `uvis_gen : gname` (this process's
 incarnation) and `uvis_ch : gset gname` (its live children's), and `uvis_of U
@@ -2071,7 +2063,7 @@ Parameter changed in place (`wait_res_at γc`).  Traps: iris `own` import for
 ssreflect `rewrite` grammar); `CoreId (None : optionUR (exclR unitO))` must be
 spelled out.  WX-PID (pid uniqueness in `PidLock.nextpid_res_at`) split off.
 
-WX-FORK LANDED (2026-09-10; briefs `brief-wx-fork.md`, `brief-wx-fork-finish.md`).
+WX-FORK LANDED (2026-09-10).
 - A generation is a SAVED PREDICATE (`iris/ChildTok.v`): `gen_own γ dq pa pid
   Q := saved_anything_own (F := genF) γ dq ((pa, pid), Next ∘ Q)` with `genF
   := prodOF (constOF (leibnizO (mword 64 * mword 32))) (Z -d> ▶ ∙)` -- the
@@ -2135,8 +2127,7 @@ WX-FORK LANDED (2026-09-10; briefs `brief-wx-fork.md`, `brief-wx-fork-finish.md`
   thirteen sites unchanged).
 - `UexecSlot.tf_resume_gpr_a0` bridges the a0 word and the return value.
 
-WX-RES + WX-ROW LANDED (2026-09-10; briefs `brief-wx-res.md`,
-`brief-wx-row-res-finish.md`, `brief-wx-row-res-finish-2.md`; commit `96de38269`).
+WX-RES + WX-ROW LANDED (2026-09-10; commit `96de38269`).
 - THE MAP'S NAME IS CANONICAL: `Xv6Cameras.wch_name` (class-carried on `wchG`,
   minted with the map in the boot fupd by `WaitInv.children_res_alloc`, the
   `fdslot_name`/`pav_name` precedent).  No lemma threads a `γc`; `ut_names.un_ch`
@@ -2182,7 +2173,7 @@ WX-RES + WX-ROW LANDED (2026-09-10; briefs `brief-wx-res.md`,
   `proc_ctx`); the adequacy top needs `!wchGpreS Σ` and `Hinit_boot` a `!wchG Σ`
   binder (the era's instance comes out of `boot_shared_alloc`).
 
-E1 ECHO-PRED LANDED (2026-09-11; brief `brief-echo-pred.md`; commit follows this
+E1 ECHO-PRED LANDED (2026-09-11; commit follows this
 note's).  `FsEchoPin.v` is `FsShPin.v` at inum 4 (`ECHO_INO`, `echo_path`,
 `echo_bytes = ElfUser.echo_elf`, `era0_echo_pins`, the boot transport, the
 resource forms).  `AppEcho.echo_taint γ := mono_nat_lb_own γ 1` is the ONE
@@ -2208,8 +2199,7 @@ token (E5(c) is answered: the token is needed; its shape is the program-side
 half of the console ring's consumption cursor, so a receipt states its bytes'
 positions by construction).  A console-ring survey precedes the E3 design.
 
-CONS-CURSOR LANDED (2026-09-11; briefs `brief-cons-cursor.md`, `-finish.md`,
-`-finish-2.md`; commit `40e97689f`, 48 files; three agents).  The kernel half
+CONS-CURSOR LANDED (2026-09-11; commit `40e97689f`, 48 files; three agents).  The kernel half
 of E3.  C1: `WpUart.uart_col_ok u hs np nk hl ht` carries the queued histories'
 strict-prefix CHAIN, a last-popped ANCHOR `hl` and an explicit TOP `ht`;
 "histories only grow" is `RiscvPtsto.obs_hist_lb`/`obs_hist_auth` (a
@@ -2259,7 +2249,7 @@ cons_clean_tok cn` (`SpecMain.v:433-439`).  GONE: `console_ready` (+4),
 `-1 ≤ r` arm is a killed process (unobservable from user mode); `cons_tagged` is
 subsumed by `cons_window`.
 
-PID-KEY LANDED (2026-09-11; brief `brief-pid-key.md`; 58 files; the rulings
+PID-KEY LANDED (2026-09-11; 58 files; the rulings
 below are as landed).  `UexecSlot.uvis_pid : mword 32` (LAST); `uvis_of U sts g
 cs pid`, `uvis_of_run … g cs pidv`, `exec_key U' sts gn cs pidv na`; `bump` keeps
 the pid (`bump_at` names it; fork's child key `bump_at … g' ∅ pidc`, `∀ g'
@@ -2343,7 +2333,7 @@ LANES: CONS-ROUTE (kernel: the `P` wand through read; `cons_acc`'s bupd; init's
 token route) → SH-LINE (program: `pos`, `Q`, init's fork/wait/loop, the linear
 `Pay` across exec, sh's entry/`ush_pstate`/`gets`, `ushf_lexable` discharged).
 
-CONS-ROUTE LANDED (2026-09-11; brief `brief-cons-route.md`; 24 files; the
+CONS-ROUTE LANDED (2026-09-11; 24 files; the
 rulings below are as landed).  R1 `SpecFileread.fileread_in st F Rd P` (one
 match, `P` in every arm; the console arm `cons_acc fsc_cons app_sup (fun cur dc
 => P ∗ Rd cur dc)`); `fileread_extra … P := P ∗ fileread_extra_core …`;
@@ -2462,7 +2452,7 @@ transports.  (3) Before a second hand-rolled instance (open), FACTOR
 general "pinned observation family" lemma over a syscall's families, so exec
 and open are two instantiations rather than two copies.
 
-EXEC-PAY LANDED (2026-09-11; brief `brief-exec-pay.md`; 21 files; the rulings
+EXEC-PAY LANDED (2026-09-11; 21 files; the rulings
 below are as landed).  THE EXIT PAYLOAD CROSSES exec: `exec_slot_pre`'s wands
 take `Q (-1)`; `exec_post_ok Fs Γ Q …`'s success arms are wands
 `exec_post_ok_recv` hands back; `sysc_exec_out f`/`ut_exec_out f`'s success arm
@@ -2501,7 +2491,7 @@ takes; the four entry constructors (`UShKernel`, `UInitKernel`, `USyncKernel`,
 `ukn_triv` from sh's proof.  (4) forkret's boot arm hands `True` (init's bundle
 is at the trivial payload).
 
-PATH-ARGS LANDED (2026-09-11; brief `brief-path-args.md`; 21 files + `ArgPath.v`).
+PATH-ARGS LANDED (2026-09-11; 21 files + `ArgPath.v`).
 `ArgPath.arg_path_of M pv pl` is the one path reading (exec's names are
 aliases); `open_au_pre_plain/_create pl …` and `mknod_au_pre pl …` carry the
 walk at that path; `open_au_plain_at`/`open_au_create_at`/`mknod_au_at` guard
@@ -2563,7 +2553,7 @@ and `ChildTok.my_pay_agree` makes a slot at the trivial payload unusable at
 (:775) mints the exec bundle only at `⌜kf_xpay f = (fun _ => True)⌝`;
 `UkRun.uxsup`/`udepw_of_uxsup` say the same one tier up.  The console token
 and the fs taint are independent, so init cannot lend only on the untainted
-arm.  RULING: lane GENERIC-PAY (`wx-briefs/brief-generic-pay.md`) -- the
+arm.  RULING: lane GENERIC-PAY -- the
 generic slot at a CONSTANT payload `fun _ => R`, `R` a linear resource the
 slot holds and pays at every exit/kill (`R ∧ R` from one `R`), relayed
 through exec by the EXEC-PAY row (`sexit_pay f (-1) -∗ uslot`), the fork child
@@ -3216,7 +3206,7 @@ UInitBoot:~560 where `Hilic` is built.  Dev-loop: a WpUart/Spec* statement
 change is ~1200 files (~45 min) and vmbuild drops every dirty .vo; rocq-warm
 replays ProofConsoleintr (3257 sentences) in ~20 s; a run-on-gcp SYNC IS A
 BUILD (it carries uncommitted edits and drops their .vo) -- `--no-sync` for
-reads.  Handover: scratchpad `cons-io-handover-2.md`.
+reads.
 
 SELF-KILL STEPS 1-4a LANDED (2026-09-13; four lane commits, with CONS-IO A;
 16+ files; audit the thirteen; lemma_diff CLEAN).  (1) `UserPermDenied.v`, a
@@ -3314,7 +3304,7 @@ registry's counter keyed by the ERA NUMBER `S gen` -- so the PowerOn arm's mint
 `app_boot`; `app_xfer_boot_raw` untouched.  In the U tier it is
 `UInitKernel.init_boot_pay`'s third conjunct beside the console lease, into
 `UkInitMain.wp_kinit_start`, where init `iClear`s it until IO-LEAF spends it
-at init's first banner byte.  Handover: scratchpad `cons-io-handover-6.md`.
+at init's first banner byte.
 
 SELF-KILL 4b' LANDED (2026-09-14; `8d04f314e` on `e26aa620c`; 40 files +1205/-543;
 builds selfk49/selfk50 in `-sup`; audit the thirteen; lemma_diff = 27 removals,
@@ -3344,7 +3334,6 @@ row's free arm is refuted by the caller: `SlotGen.gen_halves_priv` gains
 `⌜bv_unsigned pid ≠ 0⌝` (the bundle IS a registration) and every block shape
 inherits it.  With the owner's C guard (`kkill` refuses pid 0, 688c4c1b7) the
 free arm is the pure flag; `ProofKkill` was re-walked at that rebase.
-Handover: scratchpad `self-kill-handover.md`.
 
 ECHO-OUT PART 1+2a LANDED (2026-09-15; `41fa2ec15`, seven commits on `fc8098d8d`;
 `EchoOut.v` 2.6k lines + `EchoOutPure.v`; builds eo0-eo34 in `-disc`; audit the
@@ -3376,7 +3365,6 @@ hence milestone E (the founding at the power-on step with a linear seed).
 `RiscvPtsto.era_tok` (milestone D) is unusable by the application (`A :
 xv6_app Σ` is fixed before `HR`).  App-side items for part 3: `echo_tag` gains
 `⌜trace_shape h true⌝` (minted by `echo_R_rx`); `echo_led_tx` at Uart0 only.
-Handover: scratchpad `echo-out-handover-3.md`.
 
 CONS-IO MILESTONE E -- FOUND-AT-POWERON LANDED (2026-09-15; `a7f5e98a7` on
 `9fafc190f`; 11 files +430/-511; builds cio52-cio59 in `-tlw`; audit the
@@ -3400,8 +3388,7 @@ MILESTONE D IS REVERTED in the same commit -- `era_tok`, its bank, the
 conjunct, `wp_kinit_start`'s premise, the `boot_fixedGS` binder: nothing
 unused stays.  CONSTRAINT for ECHO-OUT part 3: `Hpow` is a plain `==∗` fired
 with `obsN` already open -- the era's linear seed must be bupd-mintable from
-the ledger's own state; nothing in `Hpow` may open an invariant.  Handover:
-scratchpad `cons-io-handover-7.md`.
+the ledger's own state; nothing in `Hpow` may open an invariant.
 
 OWNER RULING 2026-09-16 (TRAP-ROWS T2, corrected): a killed reader never
 returns to user mode -- consoleread returns -1 only when `killed(p)` is set,
@@ -3578,9 +3565,9 @@ TRUSTED DIFF: `Hsh_owed`'s text, `echo_Hinit_boot`'s statement and
 ⌜Persistent T⌝ -∗ ush_rest_l N γp T Wc (Rsh …)` (was without `Wc`: the owed
 conjunct is quantified over one more family).  NEXT: step 3 (`Rc ≠ Q (-1)`
 + init's two diagnostics through the link; every `∨ True` then dead), step
-4 (M3b core + the wait redemption).  Handover: `io-leaf-handover.md`.
+4 (M3b core + the wait redemption).
 
-SH-LINE R3 SURVEYED (2026-09-14; read-only; scratchpad `r3-report.md`; no
+SH-LINE R3 SURVEYED (2026-09-14; read-only; no
 edit, no build).  THE SECOND CONJUNCT OF `Hsh_owed` CANNOT BE CLOSED WITH
 THE SHELL FILES FROZEN, and not for a collision reason: (A) `UkRun.uxsup`
 (the GENERIC exec supply, "this process may exec any path") has no producer
@@ -4068,7 +4055,7 @@ two shapes, `ush_at` unbundled (the payload assembled only where sh exits
 or forks).  FOUR-STEP ORDER in the handover: `ush_mid` + `E_lb`; the
 `Wc`/`Wc'` routing (`ush_prompt_law` already proved); `Rc <> Q (-1)` + the two
 diagnostics through the link (every `∨ True` arm then dead); M3b core + the
-wait redemption on TRAP-ROWS-5's `_pid` rows.  Handover: `io-leaf-handover.md`.
+wait redemption on TRAP-ROWS-5's `_pid` rows.
 
 ALL LANES QUIESCED 2026-09-16 (the owner's instruction: no more subagents;
 checkpoint; the checkpoints have since been deleted).
@@ -4135,9 +4122,9 @@ untouched.  WHAT IO-LEAF RECEIVES: the child arm gives `∃ p, ⌜p <> 1⌝ ∗ 
 uwait_ans_pid_mine` (`pidv <> 1`, `r <> -1`) give `⌜γ' ∈ Sc ∧ Sc' = Sc ∖ {[γ']}⌝
 ∗ exit_tok γ' rv xs ∗ gen_uniq Sc rv γ'`; at `Sc = {[γ]}` this pins `γ' = γ`
 with no pid comparison; `wp_kshr_wait` needs a `_pid` twin (UkShRun).  THE
-KERNEL ROWS ARE COMPLETE.  Handover: `trap-rows-5-handover.md`.
+KERNEL ROWS ARE COMPLETE.
 
-ENDGAME AUDIT (2026-09-16; read-only; scratchpad `endgame-audit.md`; tree at
+ENDGAME AUDIT (2026-09-16; read-only; tree at
 a72323b79 = M6a(1), which the audit fetched from the lane and which has since
 landed).  THE FREE WRITE LAW `udepw_law 16` IS SPENT AT ONLY FOUR LEAVES:
 `UkSh.ksh_w_of_law` (:1369), `ksh_w_of_prompt_in`'s right arm (:1462),
@@ -4206,8 +4193,7 @@ init pays its banner from the lease at every round; `Rt` collapses;
 `die_dw` deleted if refutable via T4; sh's side without the `∨ True`
 (`ush_mid` gains `E_lb v n`; `Wc`/`Wc'` beside `Pm`).  Trap: the sync deletes
 the `.vo` of every edited file -- rebuild a touched dependency with `make -f
-CoqMakefile -j8 A.vo` on the VM before `rocq-warm check B.v`.  Handover:
-`io-leaf-handover.md`.
+CoqMakefile -j8 A.vo` on the VM before `rocq-warm check B.v`.
 
 IO-LEAF M5(3) LANDED (2026-09-16; `49cd3b5d1` on `ae7a46895`; 9 files
 +1212/-285; builds io44-io51 in the main checkout; audit the thirteen;
@@ -4243,8 +4229,7 @@ taint only.  AT THE LEND SITE (`UkShFork.v:319`, still `Rc := emp`) sh holds
 needs M6's strengthening of `Rd` first (one edit at two ends,
 UInitBanner/UInitBoot and UShLine; `ush_posb`'s left arm carries whatever
 `Rd` carries) and T4(b) for the wait.  Rebase trap: `git apply --3way`
-STAGES its result -- save patches with `git diff HEAD -- iris/`.  Handover:
-`io-leaf-handover.md`.
+STAGES its result -- save patches with `git diff HEAD -- iris/`.
 
 TRAP-ROWS-4 B1a LANDED (2026-09-16; `31aff80ee` on `b992befc3`; 11 files
 +289/-32; builds tr110-tr114 in `-tlw`; audit the thirteen; lemma_diff
@@ -4273,7 +4258,7 @@ nextpid_is (n+1)`; callers without it keep the old post); `ProofMain` mints
 `nextpid_is 1` at the seal; `ProofUserinit` learns `pid = 1`; everything
 downstream at the literal (`⌜pidc <> 1⌝`, `uwait_ans_pid … 1`); `sinit_pid`/
 `kf_ipid`/`sfam_ip`/`ukn_ipid` unnecessary.  If any allocation precedes
-userinit, the lane stops.  Handover: `trap-rows-4-B-handover.md`.
+userinit, the lane stops.
 
 TRAP-ROWS-4 MILESTONE A LANDED (2026-09-16; `5f04889b0` on `212d0aec7`; 29
 files +1115/-174; builds tr104-tr109 in `-tlw`; audit the thirteen;
@@ -4307,7 +4292,7 @@ FORK-REFUND's mould -- `sfam` gains `sinit_pid` (+ laws), `xfam` gains
 U tier sets `sinit_pid := ukn_ipid N`; `wp_uk_ecall_wait_null_live`'s `_pid`
 twin hands `⌜γ' ∈ Sc⌝ ∨ ⌜p = ukn_ipid N⌝` against `upid (ukn_pid N) p`; the
 entry constructors' lines (UShKernel:584, UInitKernel:360, UEchoKernel:456,
-UEchoOut:794, USyncKernel:182) are B's.  Handover: `trap-rows-4-handover.md`.
+UEchoOut:794, USyncKernel:182) are B's.
 
 IO-LEAF M4b(1) LANDED (2026-09-16; `02b240e03` on `0a2a4befe`; UkShDiag.v only;
 builds dg1-dg3 in `-sup`; audit the thirteen; lemma_diff CLEAN; no Admitted).
@@ -4334,7 +4319,6 @@ LINE).  M4b(2) receives: the three remaining `sh_deps` sites
 `UkShRun.ush_diag_leaf`'s shape, which must change to carry the obligation
 (a consumer move in UkShRun.v), the chain leaf quantifying `slen`/`sf` under
 the existential, and the turn at each site's stage (M3b core / M6).
-Handover: `io-leaf-diag-handover.md`.
 
 IO-LEAF M5b LANDED (2026-09-16; `32d7b6bbf` on `eddf42399`; 10 files; builds
 io40-io43 in the main checkout; audit the thirteen; lemma_diff 1 GONE
@@ -4364,7 +4348,6 @@ CONFIRMED FREE: the write-side turn's return fits the same `Rd` slot
 cs_lb ∗ E_lb v n` -- the round-start conjunct existential since the stage is
 not a function of the count alone); nothing in UserConsole/UkInit/
 UkInitMain/UInitKernel/UInitSh/UConsLine moves, only the two ends.
-Handover: `io-leaf-handover.md`.
 
 IO-LEAF M5a LANDED (2026-09-16; the lane's `529b2a853` cherry-picked onto
 `3f628acef` as `5c48c3aa2`; EchoLinks.v + UShLine.v; builds io38-io39 in the
@@ -4393,11 +4376,9 @@ cursor, `upos_agree` keeps the counts equal), `Rd 0` from `eturn`'s `dl_cnt`
 at the boot mint; `ush_at` unchanged; M5b in flight (UkInitMain/UkInit/
 UInitKernel/UInitBoot/UserConsole allowed), closing `Hsh_owed`'s THIRD
 conjunct.  The same slot is M6's route for the write-side turn's return.
-Handover: `io-leaf-handover.md`.
 
 TRAP-ROWS-3 T4(b) -- TWO OBSTACLES, RULED (2026-09-16; attempt saved as
-scratchpad `t4b-wip.patch`, 15 files, green at tr101/tr102; handover
-`trap-rows-3-handover.md`).  Written and compiling below the U tier, with
+scratchpad `t4b-wip.patch`, 15 files, green at tr101/tr102).  Written and compiling below the U tier, with
 NO change to `SpecKwait`'s contract: `Xv6Cameras.ipidUR` on `wchG`;
 `SlotGen.init_pid_tok`/`init_pid_is` (persistent agreement);
 `UserChildren.gen_is_init g := ∃ p0, init_pid_is p0 ∗ gen_pid g p0`;
@@ -4452,7 +4433,6 @@ still goes through the kernel constructor at `Pay := emp`, `Q := True`
 payload; the exec-failure refund is dropped at `UkShEcho.v:561`; echo's
 fd-1 row = the named-ledger arm on `ush_fd0p` (same arity now).  NEXT: M5
 (fresh agent; brief v7: the read leaf closes `Hsh_owed`'s third conjunct).
-Handover: `io-leaf-handover.md`.
 
 IO-LEAF M4a(3) LANDED (2026-09-16; `2e0c78906` on `078401293`; 10 files;
 builds io29-io31 in the main checkout; audit the thirteen; lemma_diff CLEAN;
@@ -4480,7 +4460,6 @@ Strengthened premise (flagged): `init_exec_sup_of_sh_slot`/
 `init_cons_sup_of_sh_slot` take `st = FdOpen true true (FdDevice CONSOLE)`
 (was `∃ wr, …`; init's open IS O_RDWR); `UInitSh.ufd_head_rows` reads rows 0
 and 2 off one head.  NEXT: M3b core + M3c; the wait redemption last (T4(b)).
-Handover: `io-leaf-handover.md`.
 
 TRAP-ROWS-3 T4(c) LANDED (2026-09-16; `2a372a9d7` on `9d1efd787`; 9 files
 +322/-83; builds tr82-tr87 in `-tlw`; audit the thirteen; lemma_diff CLEAN;
@@ -4508,7 +4487,6 @@ child arm carries `∃ p0, init_pid_is p0 ∗ ⌜pidc <> p0⌝` (refuted at the
 registration insert against init's persistent registration), the reaping
 arm gains `⌜γ' ∈ cs⌝ ∨ (∃ p0, init_pid_is p0 ∗ ⌜caller pid = p0⌝)`; a
 process holding its fork-side token gets `γ' ∈ Sc`.  Phase 1b in flight.
-Handover: `trap-rows-3-handover.md`.
 
 IO-LEAF M4a(2a) LANDED (2026-09-16; the lane's `7e4d0b4c4` cherry-picked
 onto `28918db6a`; 5 files; build io28 in the main checkout; audit the
@@ -4534,14 +4512,13 @@ back on the back edge, since the turn does not come home until M6), with
 `ksh_w_of_law`; `ush_rest`/`ush_rest_l`/`ush_loop_head`/`ushl_head` have ~80
 mentions across thirteen files (UkSh 51, UShLine 13, UkShFork 12, UkShLoop
 9, UShKernel 6, UConsLine 9, UkShCd 7, UkShRun 3, UInitSh 3, UkShMain,
-UkShEcho, UkShParse, UInitBoot) at ~2 h a build.  Handover:
-`io-leaf-handover.md` (the M4a(3) plan; M3b core + M3c unblocked, sh's wait
+UkShEcho, UkShParse, UInitBoot) at ~2 h a build.  (the M4a(3) plan; M3b core + M3c unblocked, sh's wait
 redemption last).
 
 TRAP-ROWS M2 PART 2 LANDED (2026-09-16; `48dc134db`..`b289999e7`, five commits
 cherry-picked from the lane's `90e8f1b0b` onto `6385d5f87`; 22 files
 +1017/-186; builds tr46-tr81 in `-tlw`; audit the thirteen; lemma_diff
-CLEAN; no Admitted; trusted diff scratchpad `trusted-trap-rows-m2p2.md`).
+CLEAN; no Admitted; trusted diff).
 T4 KERNEL SIDE: `UserChildren.wait_why cs gn nullst := ⌜nullst = false⌝ ∨
 ⌜cs = ∅⌝ ∨ kill_shot gn` (persistent) on `wait_ans`'s -1 arm; producers
 `kw_nokids` (the scan's accumulator: a4 is written once, at +0xca, only on
@@ -4571,7 +4548,7 @@ ships with the read clause only, `cs'` kept as a parameter.  RULED (lane
 TRAP-ROWS-3, launched): T4(c) the registration gains the pid range; T4(b)
 the wait lock's payload names the initproc address, `inv_orph` gains `∀ pa g,
 g ∈ orph_row O pa -> pa = ip`, maintained by reparent, minted at boot; the
-U-tier spelling a pid fact (init's pid = 1).  Handover: `trap-rows-handover.md`.
+U-tier spelling a pid fact (init's pid = 1).
 
 IO-LEAF M4a(1) LANDED (2026-09-16; `7f512a248` on `d847aa0d5`; UkSh.v + new
 UShOut.v; build io26 in the main checkout; audit the thirteen; lemma_diff
@@ -4605,7 +4582,7 @@ the head), not at the fork site -> `kinit_banner_pay stc len f Rt` returns
 `kinit_banner0`/`kinit_round0`/the restart head to the fork; this CHANGES
 `init_boot_pay`'s third conjunct (trusted diff), `kinit_banner0_holds` and
 UInitBoot's supply -- RULED: do it (M4a(2)), files UkInit/UInitBanner/
-UInitKernel/UInitBoot now allowed.  Handover: `io-leaf-handover.md`.
+UInitKernel/UInitBoot now allowed.
 
 IO-LEAF M3a + M3b(1) LANDED (2026-09-16; `56f4fd855`+`85a10a883` on
 `1ddfa7f99`; 6 files +404/-222; builds io22-io24 in the main checkout;
@@ -4639,7 +4616,7 @@ pid, so it cannot apply `gen_uniq_tok` as init does; in the C `reparent`
 moves orphans to `initproc` ONLY, so a non-init caller reaps only its own
 child: the row `γ' ∈ cs ∨ ⌜the caller is initproc⌝` (sent to TRAP-ROWS).
 Echo's fd-1 console row (`ufd_head_row12` through `UInitSh`/
-`sh_slot_of_kexec`) = M3b(2), unblocked.  Handover: `io-leaf-handover.md`.
+`sh_slot_of_kexec`) = M3b(2), unblocked.
 
 TXT-ROW LANDED (2026-09-16; `a103f2e15` on `ee1dbb690`; 4 files; builds tx1-tx4
 in `-sup`; audit the thirteen; lemma_diff 3 GONE in UEchoOut (`perm_of_mapped`/
@@ -4654,8 +4631,7 @@ untouched.  `UkEcho.wp_kecho_write_chain_txt`; `UEchoOut.echo_wtxt_holds`
 in one `iApply`, and `kecho_w_of_link_txt`/`kecho_pay_of_link`/
 `echo_uexec_slot_at` lose the premise.  THE ENGINE OWES NOTHING FOR ECHO'S
 OUTPUT: `echo_uexec_slot_at`'s remaining premises are M3's two
-(`echo_out_argv`; echo's fd 1 is the console).  Handover: scratchpad
-`txt-row-handover.md`.
+(`echo_out_argv`; echo's fd 1 is the console).
 
 IO-LEAF M2 LANDED (2026-09-16; `88127e629` on `7e816baa8`; UkEcho.v,
 UEchoKernel.v, new UEchoOut.v; +1262/-77; builds io14-io21 in the main
@@ -4690,7 +4666,7 @@ WRITABLE half) so it does not cover text; the true text half is proved
 the exec channel).  On `echo_uexec_slot_at` NO row spends `udepw_law 16`.
 Two traps recorded: `vmbuild.sh` from the repo root only; a bare
 `` `{!ctokG Σ} `` beside `xv6G Σ` is a SECOND camera (copy UInitBanner's
-context list).  Handover: scratchpad `io-leaf-handover.md`.
+context list).
 
 IO-LEAF M1(f) LANDED (2026-09-16; `eab187afb` on `8367785f1`; 7 files
 +330/-199; builds fd1-fd2 in `-sup`; audit the thirteen; lemma_diff 4 GONE
@@ -4710,8 +4686,7 @@ its six-row case split (read-only, inode, other-device, closed, None gone):
 `echo_links T γ -∗ eturn γ (S gen_id) -∗ ∀ N, kinit_banner0 N stc_cons`.
 `echo_Hinit_boot` and `ufd_head_row` unchanged in statement (UInitSh/
 UConsLine/UkSh untouched).  STILL OWED: `Hsh_owed`'s `sh_deps` (the die
-arms + `init_deps`, M4/M6); rounds k > 0 (M6).  Handover: scratchpad
-`io-leaf-fd-handover.md`.
+arms + `init_deps`, M4/M6); rounds k > 0 (M6).
 
 DUP-ROW LANDED (2026-09-16; `18f1ab44e` on `7102d9de0`; 6 files +238/-80;
 builds dr0-dr4 in `-sup`; audit the thirteen; lemma_diff CLEAN; no Admitted).
@@ -4731,8 +4706,7 @@ discharges the first reason inside, holding `st <> FdClosed`);
 threads the named ledger from the open through both dups
 (`wp_kinit_dup_cons` at `ufd_l1`/`ufd_l2`; `ufd_scan1`/`2` kill the -1 arm by
 `congruence`; `init_cons_alloc1`/`2` give 1 and 2) and gives `ufd_head` a
-console arm at `ufd_l3` -- lane IO-LEAF M1(f).  Handover: scratchpad
-`dup-row-handover.md`.
+console arm at `ufd_l3` -- lane IO-LEAF M1(f).
 
 IO-LEAF M1(e) LANDED (2026-09-16; `9250b2e81` on `94f8d7c72`; 4 files; builds
 io10-io13 in the main checkout; audit the thirteen; lemma_diff CLEAN; no
@@ -4759,7 +4733,6 @@ with them; `Hsh_owed`'s `sh_deps` survives until the die arms and
 `init_deps` are off it (M4/M6).  OPEN FOR M6: rounds k > 0 print through the
 flagged deposit (the Löb hypothesis re-enters the restart head with
 `iRight`) until the turn returns through the child's payload (M3).
-Handover: scratchpad `io-leaf-handover.md`.
 
 TRAP-ROWS M2 PART 1 LANDED (2026-09-16; `52b0d4cd7`+`ea01ef696` on `80f33b290`;
 26 files +849/-335; builds tr10-tr45 in `-tlw`; audit the thirteen;
@@ -4792,7 +4765,7 @@ with `kill_paid_shot_nz`; T2(iii)+T4 as ONE pure row `ut_live_out` on
 `UexecRet.uexec_ret_cont_gen` (RULED: the generic returning arm, re-cut
 once, both the read and the wait clauses) via `usertrap_post` ->
 `uservec_post` -> `wp_uk_ecall_read_recv`/the wait leaf; T4's `kw_scan`
-accumulator, `wait_ans` re-signed last.  Handover: `trap-rows-handover.md`.
+accumulator, `wait_ans` re-signed last.
 
 DUP-ROW PHASE 1 (2026-09-16; `-sup`; proofs already closed, gate pending):
 the KERNEL dup spec `SpecSysDup.sys_dup_post` was already three-armed with
@@ -4840,8 +4813,7 @@ kinit_banner0 N'`; the recipe (split putc's frame byte in two halves) is in
 the handover.  FINDING: /init cannot prove fd 1 is the console --
 `UInitFd.ufd_head` pins slot 0 only because a failing `dup` is not refutable
 (the kernel's dup spec has a bare -1 arm; in the C `fdalloc` fails only when
-all 16 slots are taken) -> lane DUP-ROW (below).  Handover: scratchpad
-`io-leaf-handover.md`.
+all 16 slots are taken) -> lane DUP-ROW (below).
 
 PROLOGUE-ALTS-2 LANDED (2026-09-16; `ca914ff85` on `ef245363f`; 3 files
 +832/-5; builds pb1-pb2 in `-sup`; audit the thirteen; lemma_diff CLEAN; no
@@ -4867,8 +4839,7 @@ ps0`, which pays `ps_lb v (ps0 ++ [a])`.  `proc_upto_round_banner(_open)`
 gives the banner byte at an arbitrary round and an arbitrary count j of
 failed execs (`pro_round * j`), no vm_compute; `pro_choice_round1_live` is
 the round-1 anti-vacuity witness.  `EchoLinks.v`'s FIFTH conjunct
-(`echo_link_pro`) is IO-LEAF's to add.  Handover: scratchpad
-`prologue-alts-2-handover.md`.
+(`echo_link_pro`) is IO-LEAF's to add.
 
 IO-LEAF M1(a,b) LANDED (2026-09-16; `f4b03abd7` on `249b751c2`; 5 files
 +234/-38; builds io1-io3 in the main checkout; audit the thirteen; lemma_diff
@@ -4894,8 +4865,7 @@ j)⌝` by `uheap_ubytes_w` + `lazy_free_uw_addr` + `uva_rmapped_of_wmapped`.
 Also: init's write buffer is putc's own STACK byte (`sb a1,-17(s0)`), not
 rodata; the banner site sits inside `wp_kinit_main_loop`'s Löb, so round 0
 takes an affine `(eturn-bundle at the round start) ∨ True` premise on that
-quarter, collapsing to the real bundle at M6.  Handover: scratchpad
-`io-leaf-handover.md`.
+quarter, collapsing to the real bundle at M6.
 
 PROLOGUE-ALTS LANDED (2026-09-16; `f5d63cbfa`+`d1b189277`+`833300de0` on
 `1bb1702af`; 3 files (EchoDisc, EchoOutPure, EchoOut); builds pa1-pa4 in
@@ -4932,7 +4902,7 @@ OWED (lane PROLOGUE-ALTS-2, launched): `ps_len_ok` in `eout_pure` (the
 current round is settled iff the writer wrote past the banner; `cs_len_ok`'s
 twin), `echo_write_link_pro` (the choice link at byte 19 of ANY round, with
 the round-opening premise `n0 = 0 ∨ cs0 !!! (n0/17-1) = 3`), the
-arbitrary-round banner lemma.  Handover: scratchpad `prologue-alts-handover.md`.
+arbitrary-round banner lemma.
 
 FORK-REFUND LANDED (2026-09-16; `e58f284a2` on `174da0e13`; 19 files +334/-105;
 builds fr1-fr6 in the main checkout; audit the thirteen; lemma_diff CLEAN;
@@ -4954,7 +4924,7 @@ closure runs.  The row: `UkFork.wp_uk_ecall_fork`/`_argv`'s -1 arm is `⌜r =
 `_any` wrappers).  TERMS: the refund is observed only on an actual resume --
 a killed parent's lend is covered by its payload's taint arm.  No consumer
 of the refund exists yet; IO-LEAF threads it to "init: fork failed" and sh's
-"fork".  Handover: scratchpad `fork-refund-handover.md`.
+"fork".
 
 TRAP-ROWS T1 LANDED (2026-09-16; `6eafdaa54` = the lane's `b82d19470` on
 `c33d42af6`, cherry-picked over a notes commit; 16 files +532/-108; build tr9
@@ -4980,8 +4950,7 @@ round) and `cw_loop` carries `uptd_ext` from it.  IO-LEAF receives the
 refutable short arm at row 16.  M2 (T2+T3+T4, with the engine's `Kc := Qp
 (-1)` restatement) in flight.
 
-IO-LEAF DESIGN REVIEWED (2026-09-16; Fable review scratchpad
-`tasks-review-io-leaf.md`; brief v2 D8 records the rulings).  D1 (`echo_links`,
+IO-LEAF DESIGN REVIEWED (2026-09-16; Fable review; brief v2 D8 records the rulings).  D1 (`echo_links`,
 one persistent link law in `sh_deps`' mould) SOUND AND SIMPLEST: a sibling
 section under `riscvGS`, `echo_links_holds` inside the equation section,
 `read_ret` moved out of it; `Tn` is already `eturn γ (S gen_id)` at the top,
@@ -5034,11 +5003,9 @@ neither had a true statement left) and the leaf is the THIRD CONJUNCT OF
 owned by IO-LEAF (D5/D6).  `in_licence_triv`/`cons_read_pay_triv` stay (the
 generic slot uses them).  Also gone: `AppEcho.echo_phase`/`echo_R_pow`/
 `echo_R_tx` (the real ledger steps are EchoOut's), `echo_phi_disc`,
-`EchoOutPure.echo_phi_of_good_out`.  Handover: scratchpad
-`echo-out-handover-6.md` (§2 = what IO-LEAF receives from `eturn`).
+`EchoOutPure.echo_phi_of_good_out`.  (§2 = what IO-LEAF receives from `eturn`).
 
-TRAP-ROWS PHASE 1 ACCEPTED (2026-09-16; `-tlw`, `lane/trap-rows`; builds tr1-tr5;
-handover `trap-rows-handover.md`).  T1 GREEN AS STATEMENTS (15 files): the
+TRAP-ROWS PHASE 1 ACCEPTED (2026-09-16; `-tlw`, `lane/trap-rows`; builds tr1-tr5).  T1 GREEN AS STATEMENTS (15 files): the
 short console write's reason is EXISTENTIAL over the 32-byte chunk,
 `write_cons_short P ua k n := ∃ d, k <= d < n ∧ ~ uva_rmapped P (ua + d)`
 (`uva_rmapped` = walkaddr's V&U test, weaker than `uva_wmapped`: copyin has
@@ -5068,7 +5035,7 @@ proofs (`ProofCopyin`, `ProofConsolewrite.cw_loop`) landed alone (whole-tree
 cone), M2 = T2+T3+T4 (UexecRet/SpecUsertrap cone, ~1 h builds).
 
 PROLOGUE-ALTS PHASE 1 ACCEPTED (2026-09-16; statements in scratchpad
-`prologue-alts-phase1-stmts.v`; handover `prologue-alts-handover.md`).  THE
+`prologue-alts-phase1-stmts.v`).  THE
 SHAPE: a resolution list `ps : list nat` over `pro_alts = [ "$ "; "init: exec
 sh failed\n"; "init: fork failed\n" ]`, `pro_of ps` (monotone under append:
 an unresolved `ps` owes only the banner), `pro_done ps`; `sess_n ps cs n`,
@@ -5105,8 +5072,7 @@ RULED: route (B) -- sh's read leaf becomes a THIRD owed entailment of
 Part 5a (`echoOutΣ` + `subG_echoOutΣ`, EchoOut.v +18) is on the lane; both
 land together.
 
-IO-LEAF SURVEY DONE (2026-09-16; scratchpad `io-leaf-survey.md`; brief v2
-`brief-io-leaf.md` with decisions D1-D6).  Findings: the three `*_write_chain`
+IO-LEAF SURVEY DONE (2026-09-16; brief v2 with decisions D1-D6).  Findings: the three `*_write_chain`
 wrappers have ZERO callers; sh's fork/wait use `wp_uk_ecall_fork_any` with
 `Rc := emp`, `Q := True` hard-wired and discard the child token and the wait
 answer; the turn's route IS the console lease's (`uinit_tok -> uinit_lend ->
@@ -5123,14 +5089,14 @@ M1 init's banner -> M2 echo -> M3 transport -> M4 sh's prompt/diagnostics ->
 M5 read leaf -> M6 `Hsh_owed` down to `sh_pay_rest` alone.
 
 FORK-REFUND LAUNCHED (2026-09-16; kernel row T5 as its own lane in the main
-checkout, `lane/fork-refund`; brief `brief-fork-refund.md`): `wp_uk_ecall_fork`'s
+checkout, `lane/fork-refund`): `wp_uk_ecall_fork`'s
 -1 arm (UkFork.v:849) LOSES the parent's lend `Rc`; the row returns it
 (`⌜r = -1⌝ ∗ uch Sc ∗ Rc`) from every failure exit of the kernel's fork.
 Needed because init's "init: fork failed" and sh's `fork1` "fork" diagnostics
 must be written with the turn that rode `Rc` (survey W8).
 
 PROLOGUE-ALTS LAUNCHED (2026-09-16; pure lane in `-sup`, `lane/prologue-alts`;
-brief scratchpad `brief-prologue-alts.md`; phase 1 = statements).  Owner's Q1:
+brief; phase 1 = statements).  Owner's Q1:
 "yes, allow these errors in the top-level trace theorem."  THE SHAPE, from
 user/init.c: the console transcript begins `("init: starting sh\n" "init: exec
 sh failed\n")^j ++ "init: starting sh\n" ++ ("$ " ++ session | "init: fork
@@ -5179,8 +5145,7 @@ from `ukn_triv`: only sh's forked child parses.  `UkShRun`'s three `(⊢ ukn_pay
 N (-1))` premises are KILL-PAY K4(a)'s (the exit payload is a resource) and
 stay.  GENERALISATION NOTE: a deliberate fault at a LINEAR payload hits the
 additive `Kc ∧ ukc` in `UkStep.uk_step_obl` and would have to move that first
-(the design page's §D4).  Handover: scratchpad `self-kill-handover.md`
-(cont. 13).
+(the design page's §D4).  (cont. 13).
 
 ECHO-OUT PART 4 ADDENDUM LANDED (2026-09-16; `f46053e5e` on `1b1847cd6`;
 EchoOut.v +431/-125; builds eo54-eo55 in `-disc`; audit the thirteen;
@@ -5203,8 +5168,7 @@ in the line by the reader's own count (sh's `gets` needs no history).  `Hlt`
 per-entry stamps; `ein_lt` returns the taint instead on the tainted arm.
 `echo_Htx` is NOT a gap (handover §7b).  NEXT (part 5, in flight): `echoOutΣ` +
 `subG`; AppEcho's four holes, `echo_R`/`echo_tag`, the owner's `echo_phi`;
-the eight dependents; `Hphi` closed.  Handover: scratchpad
-`echo-out-handover-5.md` §7.
+the eight dependents; `Hphi` closed.  Handover: scratchpad §7.
 
 CONS-IO MILESTONE F LANDED (2026-09-15; `b0e667795` on `4363635b5`; 23 files
 +883/-284; builds cio60-cio64 in `-tlw`; audit the thirteen; lemma_diff CLEAN;
@@ -5230,7 +5194,7 @@ parameter) down to `UInitKernel.init_boot_pay`'s fourth conjunct and
 `UkInitMain.wp_kinit_start` (held, `iClear`ed until IO-LEAF); `boot_fixedGS`
 gains `Wres`/`HWrest`.  AppEcho's `echo_turn`/`echo_win := fun _ _ => emp`,
 `echo_Hpow` yields four `emp`s, `echo_Happ_echo` through the triv route --
-ECHO-OUT part 5 replaces them.  Handover: scratchpad `cons-io-handover-8.md`.
+ECHO-OUT part 5 replaces them.
 
 SELF-KILL P6b LANDED (2026-09-15; `d03988128`+`a33bf1a3d` on `f24ec51af`; 51 files
 +1252/-1545; builds selfk57-selfk71 in `-sup`; audit the thirteen; lemma_diff =
@@ -5262,12 +5226,11 @@ premise: `UkSh.wp_ksh_exit`, `UkInit`'s exec exit leaf, `UkCat`/`UkSync`/`UkEcho
 exit leaves, `USyncKernel`/`UEchoKernel`/`UInitKernel`'s slots, `UkRun.urun_gen`,
 `UkSh.ush_gen_slot`, `UShKernel`, `UInitSh`, `UShEcho`, `PinnedExec`'s six wand
 pairs.  `UkShRun.v:~2504/2542`'s `(⊢ ukn_pay N (-1))` premises stay: they are
-step 5's `Hsbrk`.  Handover: scratchpad `self-kill-handover.md` (cont. 12).
+step 5's `Hsbrk`.  (cont. 12).
 
 ECHO-OUT PART 4 LANDED (2026-09-15; `a007ec892` on `2b87dc1c5`; EchoOut.v
 +997/-1284; builds eo50-eo52 in `-disc`; audit the thirteen; lemma_diff = 58
-deletions, all the page's).  THE CLAIM-RESIDENT SHAPE (scratchpad
-`e5-design-page.md`, from the Fable review of part 3): per era `v` = {turn
+deletions, all the page's).  THE CLAIM-RESIDENT SHAPE (scratchpad, from the Fable review of part 3): per era `v` = {turn
 (ghost_var nat), cs (mono_list nat), E (mono_list (list mobs * bv 8)), wcnt
 (ghost_var nat in quarters)}, `era_pin k v` persistent (the ledger's pin map,
 auth spent only at `echo_led_pow`).  `eout k ho acc := T ∨ ∃ v so, era_pin ∗
@@ -5289,8 +5252,7 @@ is the ordinary link at `P = 0` (`turn_agree` + `pcount_zero` derive `acc =
 []`).  READS: the in claim only; `read_ret` exports `E_index`/`E_byte` of
 `seg_of (echoed pops)` so `ein_read_line` is usable from the read alone.  The
 two kernel statements F changes are LOCAL COPIES (`in_append_F`,
-`cons_echo_shift_F`) with no consumers until F lands.  Handover: scratchpad
-`echo-out-handover-5.md`.
+`cons_echo_shift_F`) with no consumers until F lands.
 
 ECHO-OUT PART 3a LANDED (2026-09-15; `5ac07f800`+`3f8124641` on `600510a94`; 3
 files +555/-175; builds eo40-eo43 in `-disc`; audit the thirteen; lemma_diff
@@ -5313,8 +5275,7 @@ window, `era_pin ∗ cs_lb ∗ E_lb v (length (dl ++ ws))` with the `div 17 ≤ 
 (length cs0)` bound) -- all TOTAL.  NOT DONE: `echo_happ_echo`,
 `echo_write_link_first`, the `AppEcho` wiring (`echo_out`/`echo_in` still
 `emp`; `echo_R` still the taint counter; `echo_phi` still the per-cycle form;
-`Hphi` open) -- gaps G1/G2/G3 in the lane item.  Handover: scratchpad
-`echo-out-handover-4.md` (§3 is the important part).
+`Hphi` open) -- gaps G1/G2/G3 in the lane item.  (§3 is the important part).
 
 SELF-KILL P6 STEPS 1-2 LANDED (2026-09-15; `0b15f76d2`+`27869216e` on `d3e76970b`;
 26 files +981/-378; builds selfk51-selfk56 in `-sup`; audit the thirteen;
@@ -5341,8 +5302,7 @@ quarter and the registration eighth off their own block
 `SpecKexit`'s payment is `Q (kexit_status m) ∨ (⌜status = -1⌝ ∗ kill_shot gn)`
 and `ProofKexit.kx_park` does the take at the ZOMBIE store with NO later
 (`kill_owed` is exactly the park's shape).  `kill_row` loses its interim taint
-conjunct and `kill_why*`/`kill_paid_access` with it.  Handover: scratchpad
-`self-kill-handover.md` (cont. 9-11).
+conjunct and `kill_why*`/`kill_paid_access` with it.  (cont. 9-11).
 
 E5 DESIGN OF RECORD, REVISIONS 4-7 (coordinator, 2026-09-14; these amend the
 "E5 -- THE CONSOLE I/O CLAIM" note above and the RULINGS below; the kernel side
@@ -5396,9 +5356,9 @@ lower bounds of the stage exposed by the ledger; the read link hands out
 strictness ("this continuation is not already complete") follow purely
 (`proc_upto` is definitionally aligned with the cursor; the naive
 `proc_stream` law was FALSE at a completed continuation).
-The Fable design review of 2026-09-14 (scratchpad `brief-review-echo.md`)
+The Fable design review of 2026-09-14
 drove R4'/R5/R6 and the turn's monotonicity; its dispositions are in the
-session scratchpad `e5-design.md` REVISION 6.
+session scratchpad REVISION 6.
 (R8, 2026-09-15) THE FOUNDING MOVES TO THE POWER-ON STEP: `Happ_boot`'s `□`
 bupd returns its only input, so founded claims were derivable from nothing;
 now `Hpow`'s power-on arm yields `app_out A c (S k) [] [] ∗ app_in A c (S k)
@@ -5751,7 +5711,7 @@ still starts at `ucwd_any` -- E2/2b produce it), `sh_echo_slot T`'s
 `echo_fs_pure` law (E2).  NOT REACHED: nothing CALLS `wp_kshm_child_echo` --
 the dispatch belongs in `wp_kshf_fork`'s child arm, which cannot see UkShEcho
 (dependency runs the other way): SH-LINE 2b builds it in a file above
-UkShEcho.v.  NEXT: REBASE-SH-ECHO (`brief-rebase-sh-echo.md`, in -tlw) onto
+UkShEcho.v.  NEXT: REBASE-SH-ECHO (in -tlw) onto
 main (SUPPLY-SPLIT r2 + SH-OPEN), landed after UNTAG.
 
 E4 SH-ECHO PHASE 2 ON ITS BRANCH (2026-09-12; `lane/sh-echo` = `e01a8d9df` on
@@ -6178,7 +6138,7 @@ audit: the token `ucons_reader cn 0` is the BUNDLE's own wand argument
 `Hinit_boot`'s; `ush_tag_law` is `rewrite Htag; auto` now.  (8) `Hphi` holds
 `▷ app_R A c h` at the run's FINAL `h`, so a per-cycle tagged shadow for
 EVERY cycle is readable; DISC-RATE's per-cycle `echo_phi` is compatible.
-Corrections: `design/app-instances.md` does not exist (App.v's headers cite
+Corrections: does not exist (App.v's headers cite
 it); `uart-trace.md` is under `completed/`.  OWNER APPROVED THE DIFF (2026-09-12: "that seems ok"); phase 2 (proofs +
 commit on `lane/app-iface`) launched.  The LOOP-off clause rides on TX-TAG
 phase 2 (WpUart only); the matching `Htx` premise is a later, separately
@@ -6703,7 +6663,7 @@ per-call `fd_lowest_closed` lemmas.  REMAINING (a fresh agent, `brief-open-pin-
 `wp_kinit_dup` rewired, init's head through `UkInitMain` and the fork's child
 arm, the eight application laws wired at echo's era.
 
-SPEC-TIGHTEN LANDED (2026-09-11; brief `brief-spec-tighten.md`; 19 files).
+SPEC-TIGHTEN LANDED (2026-09-11; 19 files).
 `SysOpenDefs.open_trunc_piece Γ vom Ft := if om_trunc vom then pf_at
 (atrunc_commit_at Γ appE) Ft else emp` on the four open bundles, arms and
 receipts (FILE arms return `emp` when nothing was owed); NOT keyed at the
@@ -6780,7 +6740,7 @@ carry their path argument as exec does (`open_path_of`/`mknod_path_of` at
 trapframe argument 0 through `SpecFetchstr.fetchstr_got`; `open_au_pre_plain`/
 `_create`, `open_receipt_plain`/`_create`, `mknod_au_pre`/its receipt, rows 15
 and 17 of `xv6_sbundle`/`xv6_spost` stated at the argument's path; the walk
-piece at THAT path). A kernel lane (`brief-path-args.md`).  chdir/unlink stay
+piece at THAT path). A kernel lane.  chdir/unlink stay
 `∀ pl` until a consumer needs them.
 FACT 3: init's second open can FAIL (`filealloc`/`fdalloc`).  SETTLED WITH THE
 OWNER (2026-09-11): init proves NOTHING about allocation succeeding.  Both arms
@@ -7007,7 +6967,7 @@ are open; sh rests on three undischarged facts (`ushf_lexable`,
 `ushd_clw_text_ty`, `ushm_sbrk_never_fails`) and execs on the generic `uxsup`.
 
 THE THREE SEAMS, IN ORDER (each a lane):
-E1 ECHO-PRED (`brief-echo-pred.md`).  `echo_pred γ _ av := mono_nat_lb_own γ 1 ∨
+E1 ECHO-PRED.  `echo_pred γ _ av := mono_nat_lb_own γ 1 ∨
   ⌜echo_fs_pure av⌝` (the ruled `taint ∨ pins`; `app_pred` receives `app_fixed
   = γ`, so the taint is nameable); `echo_fs_pure` gains the `/echo` pin (a
   `FsEchoPin.v` on `FsShPin`'s mold: `ECHO_INO = 4`, `echo_path`, `era0_echo_pins`,
@@ -7016,7 +6976,7 @@ E1 ECHO-PRED (`brief-echo-pred.md`).  `echo_pred γ _ av := mono_nat_lb_own γ 1
   app_sup_raw (echo_pred γ) r`; the record `app_echo : xv6_app Σ` with every
   hypothesis but `Hinit_boot`/`Hphi` discharged as LEMMAS and still no theorem
   (the GAP-premise trap).
-E2 ARM-c (1b) INIT-BOOT (`brief-init-boot.md`, after E1).  echo's `Hinit_boot`:
+E2 ARM-c (1b) INIT-BOOT (after E1).  echo's `Hinit_boot`:
   `app_inv fsc_fs -∗ |==> init_boot_bundle ROOTINO fdt0` built by
   `PinnedExec.pinned_exec_bundle` at `Pin := era0_pins`, hops `[ROOTINO; 7]`,
   `f := init_elf`, `T := taint`, `Q := fun _ => True` (E5 changes it): the claim
@@ -7024,7 +6984,7 @@ E2 ARM-c (1b) INIT-BOOT (`brief-init-boot.md`, after E1).  echo's `Hinit_boot`:
   (init's program at the observed image, `uvis_cwd = ROOTINO` from the bundle's
   statement); the taint arm `□ (∀ W', T -∗ my_pay … -∗ uslot W')` paid by
   `UexecExecMint.uslot_mint` on `echo_sup_of_taint`.  Mirror `UInitSh`.
-E3 RECEIPT LEAF + SH'S LINE (`brief-receipt-leaf.md`).  A u-tier READ leaf that
+E3 RECEIPT LEAF + SH'S LINE.  A u-tier READ leaf that
   returns the process's `spost_at` (the `udepw` explicit-disjunct route,
   UkRun.v:~298) and, from it, `console_receipt`'s per-byte tags; `echo_tag h :=
   ⌜disc h⌝ ∨ taint`, so sh's line buffer carries `⌜the line is a prefix of
@@ -7034,7 +6994,7 @@ E3 RECEIPT LEAF + SH'S LINE (`brief-receipt-leaf.md`).  A u-tier READ leaf that
   `ushd_clw_text_ty` and `ushm_sbrk_never_fails` are separate gaps (a text-load
   leaf; a real assumption about sbrk) -- close the first, and state the second
   as an explicit premise of sh's program lemma until it can be proved.
-E4 SH-ECHO (`brief-sh-echo.md`).  `UShEcho.v` on `UInitSh`'s mold: sh's exec of
+E4 SH-ECHO.  `UShEcho.v` on `UInitSh`'s mold: sh's exec of
   the parsed command through `pinned_exec_bundle` at `era0_echo_pins`, hops
   `[ROOTINO; ECHO_INO]`, `T := taint`; the disciplined branch knows the command
   is "echo hello world" (E3), the tainted branch answers with the generic slot
@@ -7199,14 +7159,14 @@ post-side spelling is vacuous); the escrow at `xstate_val xw` with `xw` the one
 status word every copyout arm writes a prefix of; init's `wp_kinit_wait` is
 INDEXED and its fork stub becomes the indexed leaf at `fun _ => True`.
 
-ORDER: WX-GEN (`brief-wx-gen.md`: the two ghosts, `nextpid_res_at`'s list
+ORDER: WX-GEN (the two ghosts, `nextpid_res_at`'s list
 and authority, allocproc/freeproc, the block's halves, kfork's and
 userinit's split; green with `children_inv` still stated-not-carried) →
-WX-INV (`brief-wx-inv.md`: carry it; kwait's row) → WX-WAIT
-(`brief-wx-wait.md`: the post, the route, the leaf, init) → ARM-c (1b) → L7.
+WX-INV (carry it; kwait's row) → WX-WAIT
+(the post, the route, the leaf, init) → ARM-c (1b) → L7.
 WX-PID is absorbed: pid uniqueness IS `pid_reg`.
 
-WX-WAIT LANDED (2026-09-11; brief `brief-wx-wait.md`; commit `f3f77bb51`, 15 files).
+WX-WAIT LANDED (2026-09-11; commit `f3f77bb51`, 15 files).
 WAIT RETURNS THE REAPED CHILD'S ESCROW.  `UserChildren.wait_ans rv xs cs cs'` is
 the ONE answer kwait, sys_wait, the dispatcher, the round and the leaf relay:
 `⌜rv = -1 ∧ cs' = cs⌝`, or `∃ γ', ⌜cs' = cs ∖ {[γ']}⌝ ∗ exit_tok γ' rv xs ∗ gen_uniq
@@ -7235,7 +7195,7 @@ a pid to a slot" -- false since WX-GEN (`pid_reg` + `gen_slot`); what is true is
 that nothing kkill's caller holds determines the match.  Narrow it when that
 file is next touched (its cone is large).
 
-WX-INV LANDED (2026-09-11; brief `brief-wx-inv.md`; commit `5b228fcad` rebased over
+WX-INV LANDED (2026-09-11; commit `5b228fcad` rebased over
 the XV6_REV bump `92e0b0415`; 25 files).  THE WAIT-LOCK INVARIANT IS CARRIED:
 `WaitInv.wait_res_at ξ := ∃ ps gs m O, parents_own_at ξ ps ∗ children_own_at m ∗
 orphans_own O ∗ children_inv ps gs m O` (:1248) with `children_inv ps gs m O :=
@@ -7277,7 +7237,7 @@ Parameters: KWAIT, SYSWAIT, SYSCALL's post.  Two lane-taken rulings, accepted:
 `gs` as an explicit column with `Some`-lookups; `inv_gens` carried purely and
 re-established from the persistent `gen_slot`.
 
-WX-GEN LANDED (2026-09-10; brief `brief-wx-gen.md`; commit `d4a70aa12`, 62 files +
+WX-GEN LANDED (2026-09-10; commit `d4a70aa12`, 62 files +
 `iris/SlotGen.v`).  Two exclusive ghosts on `Xv6Cameras.wchG` (no new class binder):
 `SlotGen.slot_gen pa dq γ` (`own` at `gmapUR (mword 64) (dfrac_agreeR (leibnizO
 gname))`, no authority: `slot_gen_agree`, `slot_gen_quarters` 3/4:1/4,
@@ -7310,7 +7270,7 @@ the sites: `gen_halves_rp_map` takes no `ip ≠ 0` and kfork's deposit no `pme �
 where the fact is spent, carries `kw_pme_nz`).  `children_inv` stays STATED
 (WX-INV carries it).
 
-WX-EXIT LANDED (2026-09-10; briefs `brief-wx-exit.md`, `brief-wx-exit-finish.md`;
+WX-EXIT LANDED (2026-09-10,;
 commit `3f10fc4fa`, 101 files; the rulings below were given mid-lane).
 - THE BLOCK: `ProcInv.proc_priv_core` carries `∃ Q, gen_kq (pv_gen V) pa pid Q ∗
   my_pay (pv_gen V) Q` and `∃ xsv, p_xstate pa ↦₄{1/2} xsv` (LAST);
@@ -7483,7 +7443,7 @@ LANES (in order; each a brief; all after ARM-c (1a)):
   WX-WAIT: kwait/sys_wait return the escrow with the two facts; the row;
     u-tier wait leaf; the combination rule; init's `wp_kinit_wait`; L7 then
     hands the console-input resource as `Q`.
-Brief for WX-KEY: `brief-wx-key.md`.
+Brief for WX-KEY:.
 
 #### WAIT-EXIT — DESIGN (owner's ruling 2026-09-09): a child's exit returns its resources to the parent through wait()
 

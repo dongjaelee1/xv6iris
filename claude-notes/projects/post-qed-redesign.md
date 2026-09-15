@@ -14,6 +14,25 @@ becomes LINEAR, justified by cons.lock's own resource — that choice changes
 whole cost. The §1 inventory below still reads true except that `Hsh_owed`
 is no longer among the U-tier's debts.
 
+**R1 LANDED (2026-09-15, `a5d32a972`), pure half only.** `ConsLog.v` now
+carries `cons_arm`, `cons_hist`, `cons_ev`, `cons_step`, `cons_ev_ok`,
+`arm_ok`, `cons_hist_ok` (named around `ConsoleInv.cons_ok`, the ring's
+counters) and the theorem `cons_hist_ok_step` — the events preserve the
+invariant. Wired to nothing: the three claims, their links and the token
+are untouched. **§2.1 IS WRONG IN ONE PLACE, found by proving it**:
+`EvClose`'s premise cannot be `j <= length cs`, because the entry records
+`take j cs` and `log_ok` wants every entry's echo to be a LEGAL echo, but
+`cons_echo` is not prefix-closed — the erase arm's echo is a multiple of the
+three bytes `consputc_bs`, so stopping one or two bytes in leaves something
+that echoes nothing. The premise is `cons_echo c (take j cs)`: the arm is
+stoppable exactly where its partial echo is itself legal, which is what
+`WpUart.in_claim_append`/`uart_inv_append` already demand for what they
+file. So "STOPPABLE at any `j`" below is wrong, and §2.4's account of the
+kernel side must respect it. `EvOpen` also carries `obs_ends_in Uart0 h c`
+(needed at `EvClose`, and `cons_echo_shift` already supplies it).
+STILL TO DO in R1: `ecl` beside `eout`/`ein`, and the five step lemmas and
+the drain re-proved over the history record.
+
 Design page (read-only review, 2026-09-16, `origin/main` = `3d3f4bbfb`); nothing built, every fact cited. A RESOURCE is an owned Iris proposition (`iProp Σ`): LINEAR if it cannot be duplicated, PERSISTENT (`□`) if it can, TIMELESS if it survives leaving an invariant. An INVARIANT is a shared resource any thread may open for one atomic step and must restore. A VIEW SHIFT (`==∗`, `={E}=∗`) is a ghost step with no machine step. A WAND `P -∗ Q` turns a `P` into a `Q`. GHOST STATE is bookkeeping in resources (a `ghost_var` with FRACTIONAL SHARES that must agree; a `mono_list` whose persistent LOWER BOUNDS are prefixes of an AUTHORITY). An ERA is one power cycle, numbered `S gen_id`.
 
 ## 1. WHAT WAS ACTUALLY NEEDED

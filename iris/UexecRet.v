@@ -985,6 +985,14 @@ Section UexecRet.
     ((⌜r = (mword_of_int (-1) : mword 64) /\ cs' = cs⌝ ∗ Rc)
      ∨ ∃ (γ : gname) (pidv : mword 32),
          ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+         (* ...AND THE PID IS IN [1, PIDMAX] (lane RESIDUALS, (A)): relayed
+            verbatim from the kernel's own fork post
+            ([SpecKfork.kfork_post]'s pid arm), where allocpid chose it out
+            of the bounded counter.  A pid in that interval sign-extends to
+            a small positive, so a parent can tell "fork returned a pid"
+            from "fork returned -1" -- which is what a program's fork-failed
+            branch needs to refute the pid arm. *)
+         ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
          ⌜cs' = cs ∪ {[γ]}⌝ ∗
          child_tok γ pidv Q)%I.
 

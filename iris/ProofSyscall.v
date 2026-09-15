@@ -5016,6 +5016,7 @@ Section SyscallArms.
         rewrite /sysc_fork_out /ufork_ans. iIntros "_".
         iRight. iExists γ, pidv.
         iSplitR; [iPureIntro; exact Hpv |].
+        iSplitR; [iPureIntro; exact Hpb |].
         iSplitR; [iPureIntro; reflexivity | iExact "Htok"]. }
     iDestruct "Hpack" as (cs') "[Hrow Hans]".
     assert (Hmfsp : mf !!! Regidx csp_rs1 = pa_stk (m !!! Regidx csp_rs1) 4).

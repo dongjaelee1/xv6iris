@@ -84,6 +84,9 @@ Proof. unfold PIDMAX, Z63. lia. Qed.
 Lemma pid_geb0 (z : Z) : 1 <= z <= PIDMAX -> Z.geb z 0 = true.
 Proof. unfold PIDMAX. intros H. apply Z.geb_le. lia. Qed.
 
+Lemma pid_ltb0 (z : Z) : 1 <= z <= PIDMAX -> Z.ltb z 0 = false.
+Proof. unfold PIDMAX. intros H. apply Z.ltb_ge. lia. Qed.
+
 Section UkInitMain.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.
@@ -852,6 +855,7 @@ Section UkInitMain.
           ∗ init_lend_cred stc Wp Wb l np)
          ∨ ∃ (γc : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
              child_tok γc pidv (ucons_pay cn γ T (init_rd Rdl Wb)) ∗
              UserChildren.uch γch (Sc ∪ {[γc]})) -∗
         (init_code γt ∗ init_rodata γt ∗ init_argv γd) -∗ usz γs szv -∗
@@ -1406,15 +1410,19 @@ Section UkInitMain.
              lend came back -- the credential goes to the print, the
              position and the lease are dropped (init exits; its own
              payload is trivial and nothing reads the console after it).
-             The pid arm cannot be the one a negative return is on, but
-             this leaf's arm does not say so; there the lend's affine arm
-             and the flagged deposit print instead. *)
-          iDestruct "Hans" as "[(%Hrm1 & _ & _ & _ & Hcred) | (%γsh & %pidsh & %Hrpid & _ & _)]".
+             THE PID ARM IS REFUTED (lane RESIDUALS, (A)): the leaf's pid
+             arm carries the pid's range, a pid in [1, PIDMAX] sign-extends
+             to a small positive, and [blt a0,x0] is not taken on one. *)
+          iDestruct "Hans" as "[(%Hrm1 & _ & _ & _ & Hcred) | (%γsh & %pidsh & %Hrpid & %Hrng & _ & _)]".
           { iApply (wp_kinit_main_die_df N stc Wp Wb l np hp2 _ n
                       with "Hpay Hwr Hdlaw Hcode Hro Hstd Hcred Hrun"). }
-          iApply (wp_kinit_main_die_df N stc Wp Wb l np hp2 _ n
-                    with "Hpay Hwr Hdlaw Hcode Hro Hstd [] Hrun").
-          iApply init_lend_cred_triv.
+          exfalso.
+          rewrite Ha0p1 Hrpid (sext32_small pidsh (pid_lt_Z31 _ Hrng)) in Hblt.
+          cbn [uv_btaken] in Hblt.
+          rewrite zero_reg_moi in Hblt.
+          rewrite (moi_lt_s (bv_unsigned pidsh) 0 (pid_Z63 _ Hrng)
+                     ltac:(unfold Z63; lia)) in Hblt.
+          rewrite (pid_ltb0 _ Hrng) in Hblt. discriminate Hblt.
         * (* fork succeeded: this is the parent, so a0 <> 0 too.
              THE LATER COMES FROM HERE.  The path 0x32 -> printf -> fork ->
              0x3c -> 0x42 -> 0x44 falls THROUGH into the wait head; it is
@@ -1457,7 +1465,7 @@ Section UkInitMain.
           iIntros (hp3) "Hrun".
           (* THE FORK SUCCEEDED, so the answer is on its pid arm: the -1
              disjunct cannot be, because the [blt] above was not taken. *)
-          iDestruct "Hans" as "[(%Hrm1 & Hch & _) | (%γsh & %pidsh & %Hrpid & Htok & Hch)]".
+          iDestruct "Hans" as "[(%Hrm1 & Hch & _) | (%γsh & %pidsh & %Hrpid & _ & Htok & Hch)]".
           { exfalso. rewrite Ha0p1 Hrm1 in Hblt. vm_compute in Hblt.
             discriminate Hblt. }
           assert (Hs1p1 : mp1 !!! Regidx s1_idx

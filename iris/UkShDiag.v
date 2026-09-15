@@ -80,6 +80,7 @@ Require Import RegFile.
 Require Import WpMmodeLeafBase.
 Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
+Require Import ProcGeom.     (* [PIDMAX] -- the fork answer's pid range *)
 Require Import UserHeap UkRun UkRunLeaf UkRunMem UkRunBr.
 Require Import UkFork.
 Require Import UCodeShK.
@@ -8950,6 +8951,7 @@ Section UkShDiagLeaf.
             UserChildren.uch (ukn_ch N) Sc ∗ Rc)
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         UserFd.ustd (ukn_fd N) l -∗
@@ -8964,6 +8966,7 @@ Section UkShDiagLeaf.
             UserChildren.uch (ukn_ch N) Sc ∗ Rc)
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗

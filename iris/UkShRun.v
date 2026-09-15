@@ -97,6 +97,7 @@ Require Import WpMmodeLeafBase.
 Require Import UserBits.
 Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
+Require Import ProcGeom.     (* [PIDMAX] -- the fork answer's pid range *)
 Require Import UsysMemOk.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem UkRunSys UkRunBr.
 Require UkLoad.
@@ -1089,6 +1090,7 @@ Section UkShRun.
             UserChildren.uch (ukn_ch N) Sc ∗ Rc)
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
@@ -1625,6 +1627,7 @@ Section UkShRun.
             UserChildren.uch (ukn_ch N) Sc ∗ Rc)
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         UserFd.ustd (ukn_fd N) l -∗
@@ -1640,6 +1643,7 @@ Section UkShRun.
             UserChildren.uch (ukn_ch N) Sc ∗ Rc)
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
@@ -1879,6 +1883,7 @@ Section UkShRun.
                        UserChildren.uch (ukn_ch N) Sc ∗ Rc)
                     ∨ ∃ (γ : gname) (pidv : mword 32),
                         ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+                        ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
                         child_tok γ pidv Q ∗
                         UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]}))
                  ∗ P (ukn_t N) (ukn_d N) (ukn_s N) ∗ usz (ukn_s N) szv
@@ -2028,7 +2033,7 @@ Section UkShRun.
       iAssert (UserChildren.uch_any (ukn_ch N)) with "[Hans]" as "Hch".
       { iDestruct "Hans" as "[(_ & Hf & _) | Hpid]".
         - iApply (uch_any_of with "Hf").
-        - iDestruct "Hpid" as (γ pidv) "(_ & _ & Hf)".
+        - iDestruct "Hpid" as (γ pidv) "(_ & _ & _ & Hf)".
           iApply (uch_any_of with "Hf"). }
       iApply ("Hpar" $! h' m' r
                 with "[%] [%] [%] HP Hsz Hstd [Hcwd] Hch HD Hpayv Hrun");

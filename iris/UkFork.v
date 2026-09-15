@@ -61,6 +61,7 @@ Require Import UkRun.
 Require Import UkRunSys.   (* [usysno] *)
 Require Import TsoCtx.
 Require Import ChildTok.     (* [child_tok] / [my_pay] -- fork's two pieces *)
+Require Import ProcGeom.     (* [PIDMAX] -- the fork answer's pid range *)
 Local Open Scope Z_scope.
 Import Defs.
 
@@ -855,6 +856,7 @@ Section UkFork.
             UserChildren.uch (ukn_ch N) Sc ∗ Rc)
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
@@ -1021,6 +1023,7 @@ Section UkFork.
                      UserChildren.uch (ukn_ch N) Sc ∗ Rc)
                   ∨ ∃ (γ : gname) (pidv : mword 32),
                       ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+                      ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
                       child_tok γ pidv Q ∗
                       UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})))%I
         with "[Hcha Hchf Hans]" as ">Hmv".
@@ -1028,12 +1031,13 @@ Section UkFork.
         - destruct Hm1 as [Hm1 Hcs]. iModIntro. iExists Sc.
           iSplitR; [iPureIntro; exact Hcs |]. iFrame "Hcha".
           iLeft. iSplitR; [iPureIntro; exact Hm1 |]. iFrame "Hchf HRc".
-        - iDestruct "Hpid" as (γ pidk) "(%Hpv & %Hcs & Htok)".
+        - iDestruct "Hpid" as (γ pidk) "(%Hpv & %Hrng & %Hcs & Htok)".
           iMod (uch_update (ukn_ch N) Sc Sc (Sc ∪ {[γ]}) with "Hcha Hchf")
             as "[Hcha Hchf]".
           iModIntro. iExists (Sc ∪ {[γ]}).
           iSplitR; [iPureIntro; exact Hcs |]. iFrame "Hcha".
           iRight. iExists γ, pidk. iSplitR; [iPureIntro; exact Hpv |].
+          iSplitR; [iPureIntro; exact Hrng |].
           iFrame "Htok Hchf". }
       iDestruct "Hmv" as (cs2) "(%Hcs2 & Hcha & Harm)". subst cs'.
       iDestruct ("Hidsback" $! cs2 with "Hcha") as "Hcha".
@@ -1181,6 +1185,7 @@ Section UkFork.
             UserChildren.uch (ukn_ch N) Sc ∗ Rc)
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+             ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         usz (ukn_s N) szv -∗

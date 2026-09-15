@@ -61,6 +61,7 @@ Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
+Require Import ProcGeom.     (* [PIDMAX] -- the fork answer's pid range *)
 Require Import UserPerm.
 From Stdlib Require Import FunctionalExtensionality.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem.
@@ -90,6 +91,33 @@ Require Import UserChildren.  (* [uch_any] -- the process's own half of its chil
 
 Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
 Require Import UserConsole.  (* [upos] -- sh's half of the console position pair *)
+(* A PID IN [1, PIDMAX] DOES NOT SIGN-EXTEND TO -1 (lane RESIDUALS, (A)):
+   the fork answer's pid arm carries the range, and the shell's fork-failed
+   branch (fork1's [-1] test) refutes that arm with it.  Pure, on [Z], at
+   the top level so [lia] sees no machine word. *)
+Lemma ushf_pid_lt_Z31 (z : Z) : 1 <= z <= PIDMAX -> z < Z31.
+Proof. unfold PIDMAX, Z31. lia. Qed.
+
+Lemma ushf_pid_Z64 (z : Z) : 1 <= z <= PIDMAX -> 0 <= z < Z64.
+Proof. unfold PIDMAX, Z64. lia. Qed.
+
+Lemma ushf_pid_ne_m1 (z : Z) : 1 <= z <= PIDMAX -> z <> 18446744073709551615.
+Proof. unfold PIDMAX. lia. Qed.
+
+Lemma ushf_pid_sext_ne_m1 (pidv : mword 32) :
+  1 <= bv_unsigned pidv <= PIDMAX ->
+  (sign_extend' 64 pidv : mword 64) <> (mword_of_int (-1) : mword 64).
+Proof.
+  intros Hrng Heq.
+  rewrite (sext32_small pidv (ushf_pid_lt_Z31 _ Hrng)) in Heq.
+  pose proof (f_equal uint Heq) as Hu.
+  rewrite (uint_moi (bv_unsigned pidv) (ushf_pid_Z64 _ Hrng)) in Hu.
+  assert (Hm1 : uint (mword_of_int (-1) : mword 64) = 18446744073709551615)
+    by (vm_compute; reflexivity).
+  rewrite Hm1 in Hu.
+  exact (ushf_pid_ne_m1 _ Hrng Hu).
+Qed.
+
 Section UkShFork.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.
@@ -362,6 +390,7 @@ Section UkShFork.
            UserChildren.uch γch Sc ∗ Rc)
         ∨ ∃ (γ : gname) (pidv : mword 32),
             ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
+            ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
             child_tok γ pidv Q ∗
             UserChildren.uch γch (Sc ∪ {[γ]})) -∗
        UserFd.ustd γfd l -∗
@@ -465,7 +494,7 @@ Section UkShFork.
       { rewrite /ushf_fans.
         iDestruct "Hans" as "[(_ & Hf & HRc) | Hpid']".
         - iExists Sc. iFrame "Hf". iLeft. iFrame "HRc". by iPureIntro.
-        - iDestruct "Hpid'" as (γ pidv) "(_ & Htok & Hf)".
+        - iDestruct "Hpid'" as (γ pidv) "(_ & _ & Htok & Hf)".
           iExists (Sc ∪ {[γ]}). iFrame "Hf". iRight.
           iExists γ, pidv. iFrame "Htok". by iPureIntro. }
       iDestruct "Hchx" as (Sw) "[Hch Hfans]".
@@ -732,19 +761,13 @@ Section UkShFork.
           iDestruct (Hpmwb np Hbnd with "Hpm' Hwb") as "Hat".
           iEval (rewrite /UkSh.ush_at) in "Hat".
           iDestruct "Hat" as "[_ Hpay]". iExact "Hpay".
-        * (* THE ROW'S PID ARM AT -1: a child whose 32-bit pid sign-extends
-             to -1.  Nothing in [UkFork.wp_uk_ecall_fork]'s parent post
-             bounds the pid, so the arm cannot be refuted here; it pays on
-             the FREE law with the affine assembler, as every fork panic
-             did before M4b(2).  The killer is a pid-range row on that
-             post (xv6's pids are positive ints). *)
-          iApply (UkShDiag.ush_diag_leaf_holds N h' m' ShSyms.panic (66 + n)
-                    ltac:(left; split; [ reflexivity | left; exact Hmsg ])
-                    with "Hdp Hcode Hro [] [Hpm'] Hrun'").
-          { rewrite UkShRun.ush_diag_res_panic. done. }
-          iDestruct (Hpm2 np Hbnd with "Hpm'") as "Hat".
-          iEval (rewrite /UkSh.ush_at) in "Hat".
-          iDestruct "Hat" as "[_ Hpay]". iExact "Hpay".
+        * (* THE ROW'S PID ARM AT -1 IS REFUTED (lane RESIDUALS, (A)): the
+             leaf's pid arm carries the pid's range ([UexecRet.ufork_ans],
+             off [SpecKfork.kfork_post]), and a pid in [1, PIDMAX]
+             sign-extends to a small positive, never to -1. *)
+          iDestruct "Hpid'" as (γ pidv) "(%Hpv & %Hrng & _ & _)".
+          exfalso.
+          exact (ushf_pid_sext_ne_m1 pidv Hrng (eq_trans (eq_sym Hpv) Hr1)).
       + (* the child, on the paid entry *)
         iIntros (N' hB mA γ') "%Hpeq' %Hs1A Hmy HRc #Hcode' #Hro' #Hjt'
                                Hline' Hws Hsy Hustd' Hcwd' Hch' Hfresh Hrun'".

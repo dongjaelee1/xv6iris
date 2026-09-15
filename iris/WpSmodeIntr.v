@@ -85,7 +85,7 @@ Require Import IntrDefs WpIntrInv.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Local Open Scope Z_scope.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 
 Section WpSmodeIntr.

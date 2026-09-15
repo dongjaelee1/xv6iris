@@ -192,7 +192,7 @@ Require Import AppInv.      (* [app_inv], [appN], [app_top_update_*]:
                                the application's half of the abstract map
                                (app-instances.md section 2), which every mover
                                of [ftop_body]'s map opens beside [ftopN] *)
-Require TsoCtx.   (* qualified: the class only, no notation flip *)
+Require Import CtxIdDefs.   (* qualified: the class only, no notation flip *)
 Local Open Scope Z_scope.
 
 (* ===================================================================== *)

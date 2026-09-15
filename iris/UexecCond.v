@@ -60,7 +60,7 @@ Require Import USyncKernel.
 Require Import UEchoKernel.
 Require User.SyncInstrs.
 Require User.EchoSyms User.EchoInstrs.
-Require Import TsoCtx.   (* [CurCtx]: ambient, per the WpUmode*/Uk* precedent *)
+Require Import CtxIdDefs.   (* [CurCtx]: ambient, per the WpUmode*/Uk* precedent *)
 Require Import ProcGeom.  (* [NOFILE] -- how many slots a table has *)
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.

@@ -41,7 +41,7 @@ Require Import RiscvLang RiscvPtsto RiscvExec HartSwp HartLift HartSpan
         HartSpanChar HartRunGen HartRegNode HartMCycle RegFile WpGpr.
 Require Import RiscvExtras RiscvFetchExec WpMmodeLeafBase HartMFrame
         ExecCommon HartMRun HartGoodb WpDecodeBridge.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* collapse the closed [Z.eqb] tests of the model's rX/wX cascades *)

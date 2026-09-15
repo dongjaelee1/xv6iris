@@ -56,7 +56,7 @@ Require Import FsAbsWriteFire.     (* [awrite_chain] and its two arms       *)
 Require Import SpecCopyin.         (* [ubytes_at]: the content seam         *)
 Require Import SpecFilewrite.      (* [write_post_ok_at], [write_post_fail_at] *)
 Require Import AppInv.             (* [appE]                                *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Local Open Scope Z_scope.
 

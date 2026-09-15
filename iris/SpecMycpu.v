@@ -16,7 +16,7 @@ Require Import IntrDefs.
 Require Import ProcGeom.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 
   (* INTERRUPTS MUST BE DISABLED -- xv6 says so in as many words above

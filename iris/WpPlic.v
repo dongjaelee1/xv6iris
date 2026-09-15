@@ -41,7 +41,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import WpPlicExec.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Import Defs.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 (* the width-4 store tower's store word [wv] is a double [autocast]/subrange of
    the register value: [wv = autocast (subrange_vec_dec vrs2 31 0)] with

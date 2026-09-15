@@ -38,7 +38,7 @@ Require Import ProcdumpAux.
 Require Import CodeProcdump.
 From Kernel Require KernelInstrs KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 Local Open Scope Z_scope.
 (* a failing tactic in a whole-function WP otherwise spends tens of minutes

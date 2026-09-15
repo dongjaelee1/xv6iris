@@ -40,7 +40,7 @@ Require Import CpuOwn.
 Require Import BcacheInv BioInv.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 Definition wp_bpin_sconf_body

@@ -42,7 +42,7 @@ Require Import ProofProcdumpParts.
 Require Import ProofProcdumpLoop.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 Local Open Scope Z_scope.
 

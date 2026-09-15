@@ -51,7 +51,7 @@ Require Import CodeKfork.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import IrefSlots.  (* [iref_frac] rides [file_core] -- FileInvDefs *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* durable-notes: a syscall-altitude goal over [ProcInv.tf_page] carries a

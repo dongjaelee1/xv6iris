@@ -39,7 +39,7 @@ Require Import AlignBits WpMmodeLeafBase.
 Require Import UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem UkRunSys.
 Require Import UCodeSync.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.SyncSyms User.SyncInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.

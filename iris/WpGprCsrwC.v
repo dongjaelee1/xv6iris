@@ -34,7 +34,7 @@ Require Import HartSwp HartLift HartRegNode HartSpan HartSpanChar HartMCycle
         HartMFrame HartGoodb WpDecodeBridge WpMmodeJump WpMmodeCsrSwp.
 Require Import WpGprCsrrCommon.   (* drive_csr_term *)
 Require Import WpInstrConfig.     (* wp_instr_config: the raw-cell wrapper *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* ====================================================================== *)

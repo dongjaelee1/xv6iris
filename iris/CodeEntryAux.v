@@ -33,7 +33,7 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts.
 Require Import RiscvLang RiscvPtsto WpDecode.
 Require Export ExecCommon.
 Require Import CodeEntry.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* ---- the eight instruction words, their operand fields, and their decodes ---- *)

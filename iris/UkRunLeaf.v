@@ -39,7 +39,7 @@ Require Import UmodeArith.
 Require Import WpMmodeLeafBase.
 Require Import UkLeaf.
 Require Import UserHeap.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.
 Import Defs.
@@ -55,7 +55,6 @@ Require Import RiscvLang RiscvPtsto RiscvExtras.
 Require Import RegFile.
 Require Import WpMmodeLeafBase.
 Require Import WpUmodeStep.
-Require Import TsoCtx.   (* [CurCtx]: ambient, per the WpUmode* precedent *)
 
 Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for

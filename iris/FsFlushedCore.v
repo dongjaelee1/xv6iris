@@ -71,7 +71,7 @@ Require Import DiskImg.         (* [diskImgG]                              *)
 Require Import Xv6Cameras.      (* [fsCrashG], [lockG], [fsLinkG], [fsTopG] *)
 Require Import FsDurSnap.       (* [snap_ok], [snap_holds], [P_dur_tie_keep] *)
 Require Import FsCrash.         (* [P_fs], [fs_receipt], [fs_hist_lb], [fs_bank] *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Local Open Scope Z_scope.
 

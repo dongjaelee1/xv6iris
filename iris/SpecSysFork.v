@@ -94,7 +94,7 @@ Import Defs.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import FsCfg.   (* [fscfg]: the fs configuration is AMBIENT *)
 Local Open Scope Z_scope.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 (* kfork's budget plus this function's own two slots. *)
 Notation K_sys_fork := ((K_kfork + 2)%nat) (only parsing).

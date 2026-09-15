@@ -74,7 +74,7 @@ Require Import UkWriteLeaf.        (* [xfam_wr] / [sbundle_at_write_intro_at] *)
 Require Import UkSh.               (* [ksh_w] / [wp_ksh_write_chain] *)
 Require Import UkInit.             (* [kinit_w1] / [wp_kinit_write_chain] *)
 Require Import UInitFd.            (* [ufd_l0] -- the witnesses' ledger *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.ShSyms User.InitSyms.  (* the two stubs' entry pcs *)
 Local Open Scope Z_scope.
 Import Defs.

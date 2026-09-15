@@ -44,7 +44,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import SpecUart.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Import Defs.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Module UartProof : UART.
 

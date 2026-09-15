@@ -170,7 +170,7 @@ Require Import Xv6G.   (* the ghost-state bundle; see its header *)
    CONSUMER of the receipt composes with. *)
 Require Import FsDurSnap.      (* [snap_holds] -- the commit's certificate *)
 Require Import FsFlushedCore.  (* [flushed] -- the receipt itself          *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 
 (* sys_sync's own frame is 4 slots ([c.addi sp,sp,-32] at +0x00); its deepest

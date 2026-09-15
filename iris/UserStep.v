@@ -192,7 +192,7 @@ Proof. reflexivity. Qed.
 (* the U-mode reference decode state on every register the decoder reads.  *)
 (* ===================================================================== *)
 Require Import WpDecodeBridge DecodeTotalU.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Lemma agree_u (σ : mstate) :
   register_lookup cur_privilege σ.(sregs) = User ->

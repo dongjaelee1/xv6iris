@@ -40,7 +40,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SpecKinit.
 Require Import KernelRvcDecode.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require Import SieCapCtx.   (* [sie_cap_gpr_own_ctx_acc]: the creator's borrow *)
 Local Open Scope Z_scope.
 Import Defs.

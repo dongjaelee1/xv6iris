@@ -76,7 +76,7 @@ Require Import HartSCsr HartSwp HartMFrame HartLift HartSpan HartSpanChar
         WpMmodeCsrSwp WpGprCsrwA.
 Require Import TimerCap WpGprCsrwStimecmp MinstretInv.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

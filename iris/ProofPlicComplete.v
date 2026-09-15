@@ -52,7 +52,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import RiscvExtras.
 Require Import CodePlicComplete.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 
 (* ---- the decodes used only by plic_complete ---- *)

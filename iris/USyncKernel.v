@@ -37,7 +37,7 @@ Require Import WpMmodeLeafBase.
 Require Import UserPerm UexecSlot UexecRet.
 Require Import UserHeap UkRun UkSync.
 Require Import UCodeSync.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.SyncSyms User.SyncInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.

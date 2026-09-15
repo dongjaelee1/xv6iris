@@ -71,7 +71,7 @@ Require FsCrash.               (* [fs_crash_seam_at]: the seam at the applicatio
                                   spelled QUALIFIED -- this file does not want FsCrash's exports *)
 Require Import Xv6G.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Local Open Scope Z_scope.
 

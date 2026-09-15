@@ -85,7 +85,7 @@ Require Import ProcPtOwn.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Import Defs.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 (* ===================================================================== *)
 (*  THE MEMORY-INDEXED CONTRACT.                                          *)

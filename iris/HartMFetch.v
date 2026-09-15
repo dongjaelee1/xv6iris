@@ -59,7 +59,7 @@ Require Export HartTranslateM.  (* [hfrun_translateAddr_M] + the two
    write log -- post-A6.36 an instruction fetch takes the same plain arm as
    a data load and so reads THROUGH the log rather than off the flat cache *)
 Require Import TsoMemPa.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 Local Notation zerobit :=

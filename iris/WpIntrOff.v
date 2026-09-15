@@ -53,7 +53,7 @@ Require Import CpuOwn.
 Require Import WpPushOffCsr.   (* [csr_sstatus] -- WpSconfCsr's copy is [Local] *)
 Require Import WpSconfCsr.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

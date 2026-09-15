@@ -71,7 +71,7 @@ Require Import RegFile.
 Require Import WpIntrCore.
 Require Import UserFrame.
 Require Import UserPtTree.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

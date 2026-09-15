@@ -55,7 +55,7 @@ Require Import HartSwp HartLift HartSpan HartSpanChar.
 Require Import HartSKpt KptGoodb.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import TsoMemPa.   (* A6.55: [view_lb] for the pin receipt *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

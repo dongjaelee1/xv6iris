@@ -29,7 +29,7 @@ Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 Require Import UserHeap UkRun UkRunLeaf UkRunSys.
 Require Import UCodeCat.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.CatSyms User.CatInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.

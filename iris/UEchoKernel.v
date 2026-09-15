@@ -44,7 +44,7 @@ Require Import UkAbi.
 Require Import UserPerm UexecSlot UexecRet.
 Require Import UserHeap UkRun UkEcho.
 Require Import UCodeEcho.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.EchoSyms User.EchoInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.

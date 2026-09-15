@@ -64,7 +64,7 @@ Import Defs.
 (* §3.3, §4.4 item 2), not a twin.                                         *)
 (* ===================================================================== *)
 Require Import HartSwp HartLift HartSpan HartRegNode HartMemRun UserExecFacts.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 
 (* ONE PEEL FOR EVERY BIND SHAPE the generated code produces: [bind0], the

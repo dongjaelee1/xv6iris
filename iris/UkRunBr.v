@@ -42,7 +42,7 @@ Require Import WpUmodeBranch.
 Require Import UkStep.   (* [uvb_x0]: the zero register, for the x0 branches *)
 Require Import UkBranch.
 Require Import UkRun.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.
 Import Defs.

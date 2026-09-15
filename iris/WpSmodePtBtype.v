@@ -16,7 +16,7 @@ Require Import SmodeCore.
 Require Import WpSmodePtFetch.
 Require Import HartSwp WpSmodePtEngine.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 
 (* ---- Local helpers copied from WpSmodeBtype.v ---- *)

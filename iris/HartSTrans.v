@@ -39,7 +39,7 @@ Require Import RiscvModelBytes RiscvLang RiscvPtsto RiscvExec RiscvExtras
 Require Import HartSwp HartLift HartSpan HartSpanChar HartGoodb.
 Require Import WpDecodeBridge Pt4kWalk CommonWalk PtTree PtTreeAdue.
 Require Import HartMFetch HartMStore PtAdBits.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* the same spelling [HartMFetch] uses for the misalignment tests *)

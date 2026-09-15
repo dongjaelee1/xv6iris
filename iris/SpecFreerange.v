@@ -22,7 +22,7 @@ Require Import CpuOwn.
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 
 Definition PGSIZEv : mword 64 := mword_of_int 4096.

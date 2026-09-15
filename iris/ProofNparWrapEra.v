@@ -66,7 +66,7 @@ Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import ProcDefs.  (* [pprivate], [proc_priv_bare] *)
 Local Open Scope Z_scope.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Set Printing Depth 40.
 

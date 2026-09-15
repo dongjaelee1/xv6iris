@@ -274,6 +274,72 @@ Section UkReadRows.
   Qed.
 
   (* =================================================================== *)
+  (*  3b.  THE STATE-FIXED DEPOSIT, AND THE HANDLE'S AGREEMENT             *)
+  (*                                                                      *)
+  (*  Both MOVED here from [UkReadFile.v] (lane RD-6), which is the home   *)
+  (*  design/user-read.md section 3's housekeeping paragraph named: they   *)
+  (*  are ARM-independent (the "file" leaf is really the HANDLE leaf) and  *)
+  (*  they are SYSCALL-independent too -- [udepwf_st] takes the number,    *)
+  (*  and the write side's file arm (lane RD-6) reaches its own row        *)
+  (*  through exactly these two.  [UkReadPipe.v] used to import them from  *)
+  (*  [UkReadFile.v] for want of a lower home; both keep their exact       *)
+  (*  statements, so every caller is untouched.                           *)
+  (* =================================================================== *)
+  (* [UkRun.udepwf_std]'s third sibling.  Row 5's / row 16's bundle is the
+     contract at [SpecArgfd.fd_st_of_key (xk_a W 0) (uvis_fd W)], so which
+     ARM the supplier must answer is decided by the KEY's own descriptor
+     table -- and a supplier holding an observation commit at inode [i] (or
+     a write chain at it) answers the INODE arm at THAT file and no other.
+     [udepwf]'s own forall binds [fdv], so it cannot be told; the leaf,
+     which has destructed [urun] and holds both the authority and the
+     caller's HANDLE, can ([UserFd.ufd_agree]), and that is why the fact
+     enters as a premise INSIDE the forall here.
+
+     THE CWD IS STILL forall-BOUND, as in the ledger-fixed form: neither a
+     read's nor a write's bundle reads a path. *)
+  Definition udepwf_st (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (n : Z) (fdep : sfam) (st : fdstate) : iProp Σ :=
+    (⌜sexit_pay fdep = ukn_pay N⌝ ∗
+     ∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
+       (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname)
+       (pidv : mword 32),
+       ⌜fd_st_of_key (m !!! Regidx (mword_of_int 10 : mword 5)) fdv = st⌝ -∗
+       my_pay gn (ukn_pay N) -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
+       sbundle_at uslot n fdep
+         (uvis_of_run m pc M pm sz fdv cw gn cs pidv false))%I.
+
+  (* ...AND IT IS [UkRunSys.udepwf_K] AT THAT READING, so the one read walk
+     and the one write walk take it as it stands. *)
+  Lemma udepwf_st_K (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (n : Z) (fdep : sfam) (st : fdstate) :
+    udepwf_st N m pc n fdep st
+    ⊣⊢ udepwf_K N m pc n fdep
+          (fun fdv =>
+             fd_st_of_key (m !!! Regidx (mword_of_int 10 : mword 5)) fdv = st).
+  Proof. rewrite /udepwf_st /udepwf_K. iSplit; iIntros "H"; iExact "H". Qed.
+
+  (* THE DESCRIPTOR THE CALL WILL RUN ON, OUT OF THE CALLER'S OWN HANDLE --
+     the walks' agreement premise at the HANDLE.  The console twin reads it
+     out of the LEDGER ([std_fd_st_of_key] above), which can only speak of
+     the low [NSTD] slots; a file descriptor is never one of those
+     ([UserFd.ufd] carries the bound), so this is the same step at the
+     handle instead. *)
+  Lemma ufd_key_agree (N : uk_names Σ) (fd : nat) (st : fdstate)
+      (v0 : mword 64) :
+    bv_signed (trunc32 v0) = Z.of_nat fd ->
+    (fd < NOFILE)%nat ->
+    forall fdv : list fdstate,
+      ufd_auth (ukn_fd N) fdv -∗ UserFd.ufd (ukn_fd N) fd st -∗
+      ⌜fd_st_of_key v0 fdv = st⌝.
+  Proof.
+    intros H0 Hlt fdv. iIntros "Ha Hh".
+    iDestruct (ufd_agree (ukn_fd N) fdv fd st with "Ha Hh") as %Hlk.
+    iPureIntro. exact (ufd_fd_st_of_key v0 fdv fd st H0 Hlt Hlk).
+  Qed.
+
+  (* =================================================================== *)
   (*  4.  THE COUNT, ACROSS THE SIGN BOUNDARY                              *)
   (* =================================================================== *)
   (* A program names its request as a [nat] read off argument 2 UNSIGNED;

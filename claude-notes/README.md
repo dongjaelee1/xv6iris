@@ -132,6 +132,13 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   be ConsLog's `EvRead` event, the one read walk and the two descriptor
   readings that instantiate it, and the owned-offset corollary the TR
   shows.
+- **[`user-write.md`](design/user-write.md)** — the GENERIC write spec, the
+  sibling of `user-read.md` and the same programme one syscall over: the
+  write-side inventory (the chunk/output chains at the caller's own prefix
+  cursor, the three ledger-fixed leaves, row 16's already-neutral named
+  reading), the ONE write walk and the source-run reading only a leaf can
+  state, the inode/console/pipe members, why a program cannot hold a pin
+  across its own write, and why row 16 carries no return blanket.
 - **[`user-heap.md`](design/user-heap.md)** — the SEPARATION-LOGIC HEAP over
   user memory: the two `ghost_map`s (text persistent/X, data exclusive/W)
   and why that is what makes an exclusive points-to imply writability, the

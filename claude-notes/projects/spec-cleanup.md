@@ -287,9 +287,72 @@ Derived corollaries, in order of what applications actually use:
   `UkReadRows.uread_count_le` / `UkSh.ush_narrow_count_le` is `UserBits.v`
   (41 importers), a whole-tree rebuild for zero proof content.  Design of
   record: `design/user-read.md` §3's RD-5 AS-LANDED block and §5's.
-- [ ] **RD-6 WRITE**: the same program for write (its tailorings:
-  `sh_deps`' write(16) deposit, the echo output ledger) — brief cut
-  after RD-2 proves the pattern.
+- [x] **RD-6 WRITE** (LANDED 2026-09-15, branch `rd6-write`,
+  mirror-green whole tree, echo audit at 14): the same programme for
+  write, and it needed a NEW DESIGN PAGE —
+  **`design/user-write.md` is the design of record** (why a sibling and
+  not a §8 of `user-read.md` is its own opening paragraph: the tailoring
+  is on the OUTPUT side, and write's arms report through a CHAIN THE
+  CALLER BUILDS where read's report through a RECEIPT THE KERNEL FILLS).
+  THE SURVEY'S ONE-LINE ANSWER: **write's spec was already general in its
+  PAYMENT and not general in its ARM**.  `SpecFilewrite.filewrite_in`'s
+  two heavy arms are both a chain over the caller's own prefix cursor
+  `Q` (per CHUNK on the inode arm, per BYTE on the console arm) since
+  lane OUT-FUPD retired the located receipts, and `UkWriteLeaf.v` — the
+  write-side `UkReadRows.v` — was cut application-free from the start,
+  so echo's and sh's output leaves (`UEchoOut`, `UShOut`, `UShPanic`,
+  `UInitBanner`, `UInitDiag`, `UkWriteClosed`) were ALREADY INSTANCES and
+  nothing was touched in any of them.  Upstream's word-list
+  generalization de-tailored the CALLER (`UEchoOut`/`EchoDisc`/
+  `UkShEcho`), not the spec, and left this ground untouched.  What was
+  missing was §3 of `user-read.md` at the write side: all three U-tier
+  write leaves were LEDGER-fixed, so **no U-tier write could reach the
+  INODE arm at all**.  WHAT LANDED:
+  - `UkRunSys.wp_uk_ecall_write_at` — THE ONE WRITE WALK, the read
+    walk's twin: parametric in `D`/`K` (the same `udepwf_K`, which was
+    already syscall-generic) and, additionally, in the caller's SOURCE
+    RUN `S` through a new reading `UkRunSys.usrc_ok` (the IMAGE row —
+    "the key's image along the run IS my bytes", new, and the piece the
+    file arm was missing — beside the MAPPED row the buffer leaf already
+    had), with `usrc_ok_ubytesq` / `usrc_ok_utext` its DATA and TEXT
+    answers.  `wp_uk_ecall_write_chain_buf` and `_txt` are now its two
+    corollaries at their EXACT former statements, so every program stub
+    and every application file is untouched; ~150 duplicated lines gone.
+  - `iris/UkWriteCons.v` — the console member assembled with the short
+    arm ALREADY REFUTED (`wp_uk_ecall_write_cons`: a console write of a
+    run the program owns returns the FULL count and the caller's own
+    cursor at it) plus `wp_uk_ecall_write_cons_licence`.  The payment is
+    `WpUart.out_link` per byte — the console history's OUTPUT event as an
+    atomic update, the exact mirror of RD-4's `cons_read_pay`/`read_link`
+    finding on the input side.
+  - `iris/UkWriteFile.v` — the file member: `udepwf_st_write_file` (ONE
+    chunk chain and nothing beside it), `wp_uk_ecall_write_file` (the
+    one walk at the HANDLE reading), `write_arms_file_learn` (**the
+    bytes the kernel committed ARE the program's own**, via the new
+    image row and the one-line bridge `ubytes_at_src`; CLOSED UNDER THE
+    GLOBAL CONTEXT), and the consumer test `wp_uk_write_file_lands`.
+  - `iris/UkWritePipe.v` — the pipe member: supplier from `emp`
+    (§1's principle at its limit case), and `wp_uk_pipe_write_end` at
+    exactly the handle RD-5's `wp_uk_pipe_read_end` hands back.
+  - HOUSEKEEPING TAKEN (RD-5 recorded it): `UkReadFile.udepwf_st`,
+    `udepwf_st_K` and `ufd_key_agree` MOVED to `UkReadRows.v`, at their
+    exact statements — they are syscall-independent as well as
+    arm-independent, and the write walk invalidated that cone anyway.
+  TWO FINDINGS THAT RE-SCOPE, both written up in `user-write.md`:
+  **(i) A PROGRAM CANNOT HOLD A PIN ACROSS ITS OWN WRITE**, so the
+  cat-shaped dual is not merely missing, it is VACUOUS: the kernel's
+  mover needs the WHOLE γtop element to update the row, and that is what
+  `IcacheEscrow.ic_loaded` holds while the inode is ilock'd
+  (`FsAbs.top_frag_1_nview_excl` is the algebra), so any client `nview`
+  share contradicts the chain node's own premises.  The read side has no
+  such wall because its arm leaves a client share outstanding on purpose.
+  The open channel is `AppInv.app_step` on the delta, and cutting that
+  row is the write side's R-a — a campaign.
+  **(ii) ROW 16 CARRIES NO RETURN BLANKET.**  `UexecExecInst.xv6_spost`'s
+  read row has `⌜fileread_ret …⌝` beside the extra and the write row
+  deliberately does not, so at a PIPE (where the arm is `emp`) a U-tier
+  write learns NOTHING about `r` — not even that it is `-1` or in range.
+  One conjunct to fix, a wide cone to land; owed, named, priced.
 - [ ] **RD-TR**: rewrite `user.tex` §7's read figure to the RD-0
   sketch (general spec + owned-offset corollary), delete the `\nz`
   note and the "XXX" paragraph.  LAST — the tree leads, the TR

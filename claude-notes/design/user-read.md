@@ -3,8 +3,10 @@
 Status: DESIGN OF RECORD for `projects/spec-cleanup.md` lanes RD-1..RD-5
 (2026-09-15, Fable).  One owner ruling is open (§4, fork); everything
 else here is decided unless a lane's as-landed note contradicts it.
-Companion pages: `user-fd.md` (the descriptor ledger this dispatches
-on), `fs-syscall-specs.md` (§4's ghost-ownership rule, the AU shape),
+Companion pages: `user-write.md` (the SAME PROGRAMME FOR WRITE — lane
+RD-6, and the sibling this page's §1 principle and §3 dispatch are
+reused by), `user-fd.md` (the descriptor ledger this dispatches on),
+`fs-syscall-specs.md` (§4's ghost-ownership rule, the AU shape),
 `user-wp-slot.md` (the trap contract the leaf rides).
 
 ## 1. The principle
@@ -360,6 +362,13 @@ proof content — RD-1's operational argument for not putting `uoff` in
 beside the two `fd_st_of_key` readings; `UkReadPipe.v` imports them from
 `UkReadFile.v` instead, because an edit to `UkReadRows.v` invalidates
 `UShLine.vo` and the whole echo chain above it.
+**DONE by RD-6** (`user-write.md` §3a): `udepwf_st`, `udepwf_st_K` and
+`ufd_key_agree` are in `UkReadRows.v` at their exact former statements —
+the write side's file and pipe members reach their rows through the same
+two, so they are syscall-independent as well as arm-independent, and
+RD-6's one write walk invalidated that cone anyway, so the move was
+free.  `uread_count_le` / `ush_narrow_count_le` stay as recorded: their
+home is `UserBits.v` and that is a whole-tree rebuild.
 
 ### The routes out (owner's call; RD-2 recommends R-c now, R-a as a campaign)
 

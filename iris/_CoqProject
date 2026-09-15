@@ -1536,6 +1536,9 @@ UInitBootAdequacy.v
 # EchoAssumptions.v
 
 UkWriteLeaf.v
+UkWriteCons.v
+UkWriteFile.v
+UkWritePipe.v
 UkWriteClosed.v
 UInitBanner.v
 UInitDiag.v

@@ -8,7 +8,7 @@ durable-disk lanes; see
 the design of record [`../design/durable-fs-plan.md`](../design/durable-fs-plan.md).
 Item (2), `sys_sync`'s postcondition, does NOT belong to the log layer:
 owner ruling (2026-08-28) — it is done under the fs-syscall-specs banner
-([`../projects/fs-syscall-specs.md`](../projects/fs-syscall-specs.md), row Y).
+([`fs-syscall-specs.md`](fs-syscall-specs.md), row Y).
 NOT current guidance; the passages naming deleted mechanisms are history.
 
 ---

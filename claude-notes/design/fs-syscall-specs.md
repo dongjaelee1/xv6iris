@@ -21,7 +21,7 @@ past state), specialized by the WAL's batch atomicity.
 > three rungs; lane H complete; the durable campaign's one open lane is
 > F — receipts).  The user's word: rank 4's finding first, then get
 > going.  The campaign worklist is
-> [`../projects/fs-syscall-specs.md`](../projects/fs-syscall-specs.md)
+> [`../completed/fs-syscall-specs.md`](../completed/fs-syscall-specs.md)
 > (lanes, gating, and the consumer-side input to the simplification
 > campaign's rank-4 ruling on the `dview`/`fview` island).  The
 > impact-note mapping below remains accurate; §5's grounding block is
@@ -201,7 +201,7 @@ state av     :=  the abs_of-fmap reading of fs_view's γtop authority
 **`dview` retires (this rules §9 Q1 and answers rank 4 for the live
 substrate).**  *DONE 2026-08-30 — the ghosts, the lend, the camera and
 the two gnames are out of the tree (three staged green commits; see the
-lane-A record in `projects/fs-syscall-specs.md`).  The sequencing below
+lane-A record in `completed/fs-syscall-specs.md`).  The sequencing below
 was ruled the other way round in the end, for the only reason that keeps
 each stage green: the dv-FIRING STATEMENTS leave the build FIRST (the
 frozen trace trio off-build with tombstones, `SpecNameiTr` and

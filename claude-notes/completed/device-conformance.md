@@ -1,5 +1,21 @@
 # Project: device conformance — the semantics, differentially tested against QEMU (and now against real hardware)
 
+**ARCHIVED.**  The suite is built, running on both platforms and wired into
+CI; what it found lives where it is maintained, not here.
+[`tools/vtest/README.md`](../../tools/vtest/README.md) is the AUTHORITY on the
+findings (open and fixed), [`README-hw.md`](../../tools/vtest/README-hw.md) on
+what a board run claims and its own "What is not done", and
+[`design/device.md`](../design/device.md) on the rules both produced.  §5
+below is the worklist as it stood on 2026-08-24 and is NOT current: its item 0
+remainder and item 7 (the soundness bridge) landed as `VExecStep.v`
+(`enode_mnode`, `sapply_sound`), `VConcStep.v` (`tnode_mnode`) and
+`VIcacheStep.v`, so `VRun`'s theorem is now over `rtc erased_step` on
+`RiscvLang.prim_step` rather than over `exec`; item 2 (`disk_err`), item 5
+(`plic_*`) and item 8 (findings 4 and 5) are done.  What it lists that is
+still open — finding 17's wild-arm schedule, item 6's CPU/memory half, and
+§4b's deferred ruling — is in the README's findings table with everything
+else.
+
 ## STATUS ADDENDUM (2026-09-02): THE SUITE UNDER THE TSO CUTOVER, AND FINDING 24 CLOSED
 
 The `tso-cutover` branch flipped the machine (`RiscvLang.gstate` grew the

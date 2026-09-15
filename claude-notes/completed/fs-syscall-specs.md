@@ -1,5 +1,40 @@
 # fs-syscall-specs — the campaign worklist
 
+**ARCHIVED.**  Every syscall has its AU contract (one per syscall, the
+`SpecSys*.v` column; the write chain as built is
+[`../design/fs-syscall-specs.md`](../design/fs-syscall-specs.md) §4), the
+design doc's §9 owner questions are ruled, and the two program lanes below
+were finished by the applications effort rather than here.  The checkboxes
+were never swept, so read them against this:
+
+* **INIT / SH — done elsewhere.**  Init's blocker `uki_wait_ok` and the
+  `usys_window` row it was about no longer exist; the u-tier syscall row was
+  reshaped and both programs closed inside `projects/app-echo.md`
+  (sh is `iris/UkSh*.v`).
+* **P4 / P5b — dead.**  They belong to the FD-ROW PILOT section, retired
+  2026-09-09 ([`fd-row-pilot.md`](fd-row-pilot.md)); its files are deleted and
+  the shape was adopted as the ARM instead.
+* **The γtop↔snapshot DECISION — moot** by its own terms once lane W landed.
+* **RULING B (the `f->off` carrier) — RULED, not open**: postponed until a
+  consumer exists.  The trigger to re-raise it is the first proof needing a
+  POSITION across two syscalls (an lseek spec, a sequential-write client, or
+  the app-facing fd layer).
+
+**WHAT ACTUALLY SURVIVES THIS FILE is lane A's `dv_*` COLUMN RETIREMENT, and
+only its second half.**  The seam moved as ruled — option (b), the
+era-fragment walk, landed (`SpecNamexEra`/`ProofNamexEra`/`LinkNamexEra` and
+the namei/npar siblings) — and the dv-firing walk it replaced is deleted:
+`SpecNamexTr.v`, `ProofNamexTr.v`, `LinkNamexTr.v`, `ProofNameiTr.v`,
+`LinkNameiTr.v` are gone (they had been off-build since 2026-08-30 and
+nothing required them).  `SpecNameiTr.v` STAYS: the era column requires it
+for `inode_held_at` only, annotated at each of its three `Require` sites.
+
+The COLUMN is still live and is the work nobody has done: `DirView.v` has 66
+dependents, and `dv_half`/`dv_ride` are still consumed in code by the era
+walk itself (`SpecNameiEra.v`, `SpecNamexEra.v`, `ProofNamexEra.v`), by
+`FsAbs.v` (16 uses) and by `IcacheEscrow.v`.  Whoever retires it starts
+there, not at the walk.
+
 STATUS: OPENED 2026-08-27 (user: rank 4's finding first, then get going),
 after the durable-disk adequacy theorem became TRUE (`Himg` deleted,
 lane H complete; that campaign's only open lane is F — receipts).

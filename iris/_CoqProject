@@ -1226,11 +1226,6 @@ ProofNamexRoot.v
 LinkNamexRoot.v
 ProofNamei.v
 LinkNamei.v
-# SpecNamexTr.v
-# ProofNamexTr.v
-# LinkNamexTr.v
-# ProofNameiTr.v
-# LinkNameiTr.v
 ProofNameiRoot.v
 LinkNameiRoot.v
 SpecNameiRootBoot.v

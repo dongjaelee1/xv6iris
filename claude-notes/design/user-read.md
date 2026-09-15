@@ -585,3 +585,88 @@ fig:sys-read + the `\nz` offset note + the "XXX" paragraph.
 - `usys_mem_ok`'s read row (the trap-contract row): the leaf still
   discharges it; the content post is ADDITIONAL, riding the kept
   receipt, exactly as recv does today.
+
+## 8. Route R-a: the owned offset through the descriptor rules (design, 2026-09-16, Fable — CAMPAIGN OPENED on the owner's word)
+
+R-a delivers §6's owned-offset figure.  §3's RD-2 AS-LANDED block is
+its problem statement; this section is the resolution, one wall at a
+time.  The mode-in-state ruling STANDS (nothing below contradicts it);
+what was missing is the three boundary disciplines that make it sound.
+
+### 8.1 The wall (the generic supply law) and the pattern that beats it
+
+The console arm already crosses this exact wall: its payments are
+EXCLUSIVE (the ring reader token, the port input resource), yet
+`sbundle_of_supply_ne` is provable — because `cons_acc` is DISJUNCTIVE
+(the reader token at the caller's cursor, OR the persistent credential
+a tainted/generic caller holds), and the generic supply pays the weak
+disjunct for the weak post.  The inode arm goes the same way, with one
+extra fact the console never needed: the weak (parked) supplier only
+exists where `off_user_inv` does, so the disjunction alone is not
+enough — the class field must never be asked to pay at a held state.
+
+THE DISCIPLINE: **the generic tier is all-parked.**
+- A new pure reading `fdv_all_parked : list fdstate -> Prop` (every
+  `FdInode` records `OffParked`).
+- `UexecSG.sbundle_of_supply_ne` gains the premise
+  `fdv_all_parked (uvis_fd W)` — the ONE statement change at the class.
+- The generic engine maintains it as an invariant of its own tier:
+  the generic open row parks (it already does — `off_pub_park` is
+  what the publish calls today), no generic row constructs a held
+  state, and the two CROSSINGS (fork, exec) park kernel-side (§8.3).
+This is not a proof convenience but the semantic truth of ownership:
+held mode means "nobody else moves my offset", and a descriptor that
+reaches code outside the owner's WP (a forked child, an exec'd image)
+is precisely one whose offset the owner no longer controls.
+
+### 8.2 The kernel arms, mode-split
+
+`fileread_in` / `filewrite_in`'s inode arms become mode-indexed on the
+descriptor state the row already carries:
+- PARKED state: today's payment, byte for byte (`aread_commit` /
+  the chunk chain; fire via `off_supply_parked`).
+- HELD state: the payment additionally carries `uoff γo off`, riding
+  the state-fixed deposit (`udepwf_st` — landed, RD-2), and the fire
+  is `off_supply_held` (landed, RD-1).  The receipt returns
+  `uoff γo (off+d)`.
+Both fires exist; both publish modes exist (`off_pub_park`/`_hand`);
+the work is the arm split and the wiring of `hand` into the enriched
+open row's post (`uoff γo 0` beside a held handle).
+
+### 8.3 The boundary parks (fork, exec) — the hardest lane
+
+Consequence (a) of RD-2 (parking is a RETYPE, a kernel step) is
+resolved by putting the park where the kernel step already is:
+- The enriched FORK row's deposit CARRIES the caller's `uoff` halves,
+  one per held descriptor (a U-tier premise: you cannot fork without
+  surrendering your offsets — the PARK ruling's semantics, now
+  enforced by the row).  The kernel proof uses each surrendered half
+  to reconstitute `off_user_inv` (via `foff_row_inode`'s one step) and
+  retypes the state held→parked, BEFORE `ProofKforkB3`'s descriptor
+  scan — which then copies only parked rows, dissolving consequence
+  (b) (the scan's persistent hand-off is of parked rows only).
+- The enriched EXEC row does the same for the caller's own table (the
+  image dies but the table survives exec, so the offsets must be
+  surrendered too).  Exec from the generic tier needs nothing: its
+  table is all-parked already.
+- CLOSE and EXIT of a held descriptor need nothing: the kernel drops
+  its own half with the file object; the orphaned user half is ghost
+  garbage (agreement partner gone), harmless and unclaimable.
+
+### 8.4 The payoff, and the lanes
+
+At the end: the U-tier file leaves gain the held conjunct (`uoff` in,
+advanced `uoff` out — the "one conjunct" upgrade every RD lane
+priced), and §6's figure becomes drawable as written; the TR swaps its
+honest offset note for the owned form.
+
+- [ ] **RA-1** (kernel+U, wide cone): `offmode` in `FdInode`,
+  state-keyed `foff_row`, the `fdstate` match cone, `fdv_all_parked`,
+  the class-field premise, the generic tier's invariant maintenance.
+  Everything mechanical; no new algebra.
+- [ ] **RA-2** (kernel): the mode-split arms of §8.2 + `hand` wired at
+  the enriched open row.
+- [ ] **RA-3** (kernel, hardest): the boundary parks of §8.3 (fork's
+  deposit-carried halves, the retype before the scan; exec's same).
+- [ ] **RA-4** (U-tier + TR): the held conjunct on the file leaves,
+  the owned-offset corollary, the §6 figure into user.tex.

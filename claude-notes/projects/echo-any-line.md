@@ -47,45 +47,55 @@ the only case outside it.
 - The transcript layer (`EchoOut`, `EchoOutPure`, `EchoLinks*`, `UEchoOut`)
   no longer knows the line's length is 17: it spends `echo_line_pos`, which is
   `wl_line_pos` — every line carries its newline.
-- The assumption audit is unchanged (`make audit-echo-only`, fourteen
-  assumptions, md5 `a78bf9a051fb56b084795d782df04045`).
+- **ECHO'S OUTPUT IS THE LINE MINUS ITS COMMAND NAME.**
+  `EchoDisc.echo_line_out := wl_line (drop 1 echo_ws)` and the good line
+  alternative is `echo_line_out ++ "$ "`. `UShEcho.echo_out` is deleted, and
+  `UShEchoOut`'s bridge is `echo_alt0_word` — word `k` of the tail and word
+  `S k` of the line are the same byte of the same word.
+- **THE EXEC'D KEY'S ARGV READING IS GENERAL.** `UShEcho.echo_key_args`
+  quantifies over `(na, alen, afun)`; its one side condition is that no pushed
+  byte is a NUL. The addresses come off `KexecDefs`' push geometry
+  (`kxc_sp_anti`, `kxc_sp_range`, `kxc_argc_bound`, `kxc_len_bound`), which is
+  where "the string is short" becomes a stated inequality.
+- The cursor laws a write chain over the words needs: `wl_off_S_at` (the next
+  word starts one blank past this one's end), `wl_line_sep` (a separator
+  follows a word while another word remains), `wl_off_last` + `wl_line_nl_at`
+  (the last word's end IS the body's end, which is where the newline is).
+- The assumption audit is unchanged throughout (`make audit-echo-only`,
+  fourteen assumptions, md5 `a78bf9a051fb56b084795d782df04045`).
 
 ## What is left
 
-In execution order. The first two are the only NEW proofs of size; the rest is
-replacing literal readings with the general ones.
-
-1. **THE NUMBERS.** `UkShEcho.echo_off_0..2` / `echo_alen_0..2` are the
-   literal's last foothold. Every use of one marks a consumer that still
-   reasons at this line rather than at `wl_off` and `length`; the general
-   statement has none, so the lane is done when they are deleted.
-   `echo_off_lt` (an argument's bytes are inside the line) is the shape they
-   should all take.
-2. **EXEC'S STACK ARITHMETIC** (`UShEcho.echo_key_args_holds`). It computes
-   `kxc_sp_final 0x4000 alen 3 = 0x3FB0` and the three string addresses as
-   closed numbers. `KexecDefs.kxc_sp` is already general in `alen`; what is
-   missing is its monotonicity and range against `kxc_stack_ok`, which is
-   where "the string is short" becomes a stated inequality rather than an
-   arithmetic accident.
-3. **ECHO'S WRITE CHAIN** (`UEchoOut.kecho_pay_of_link`). A fully unrolled
-   four-write chain at cursor offsets 0/5/6/11/12. It becomes an induction
-   over the words carrying a byte cursor; `ech_step` and
+1. **ECHO'S WRITE CHAIN** (`UEchoOut.echo_out_argv` and
+   `kecho_pay_of_link`). The last structural piece, and the last holder of a
+   literal: `echo_out_argv` says argc is three, each argument is five bytes,
+   and they sit at the alternative's offsets 0 and 6; `kecho_pay_of_link` is
+   a fully unrolled four-write chain at cursor offsets 0/5/6/11/12. It becomes
+   an induction over the words with the cursor at `wl_off 0 (drop 1 echo_ws)`,
+   spending the four cursor laws above. `ech_step`, `ech_chain` and
    `kecho_w_of_link_data`/`_txt` are already offset-generic, and
-   `UkEcho.kecho_pay` is already a fixpoint over the argument list — so is
+   `UkEcho.kecho_pay` is already a fixpoint over the argument list — as is
    `UkEcho.wp_kecho_main`, which walks argv's loop at an arbitrary `args`.
    Nothing about echo's own machine code needs generalising.
-4. **THE LINE CHOICE IS READ OFF ONE BYTE** (`EchoOutPure.line_alts_head_det`).
+2. **THE NUMBERS.** `UkShEcho.echo_off_1`/`_2` and `echo_alen_1`/`_2` exist
+   only to serve item 1's literal statement and go with it. `echo_off_0` is
+   general (`wl_off_0`) and stays; `echo_alen_0 = 4` is about the COMMAND
+   NAME, which is fixed in the general theorem too, and also stays.
+3. **THE LINE CHOICE IS READ OFF ONE BYTE** (`EchoOutPure.line_alts_head_det`).
    The four alternatives' first bytes are `h e $ f`; an arbitrary echoed
    string collides with `"fork\n"` on `echo foo` and with
    `"exec echo failed"` on `echo eggs`. Either add "the first word printed
    does not begin with `e` or `f`" as a side condition, or port down the
    prologue's whole-block argument (`EchoDisc.pro_of_prefix_free`), which is
    the cleaner shape. THIS IS A DESIGN DECISION, not labour.
-5. **THE CALLER'S SIDE CONDITIONS**, none of which `LineWords`/`UkShWords`
+4. **THE CALLER'S SIDE CONDITIONS**, none of which `LineWords`/`UkShWords`
    state: at most `MAXARGS` words (sh's parser), the line inside `getcmd`'s
    100-byte buffer and the console's 128, and the argv block inside exec's
-   stack page (item 2's inequality).
-6. **`UConsLine.ush_disc_line`** still reads `echo_line !! (i mod 17)`.
+   stack page (item 1 of the landed list gives the inequality).
+5. **`UConsLine.ush_disc_line`** still reads `echo_line !! (i mod 17)`.
+6. **THE WORD LIST ITSELF.** Once 1-5 are done, `EchoDisc.echo_ws` becomes a
+   parameter with `wl_wf` and the side conditions of item 4 as its premises,
+   and the theorem reads `forall ws, ... -> <the claim at that line>`.
 
 ## The two traps this lane keeps walking into
 

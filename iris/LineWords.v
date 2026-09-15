@@ -356,6 +356,105 @@ Proof.
              Hi Hj ltac:(rewrite !length_app; cbn [length]; lia)).
 Qed.
 
+(* THE NEXT WORD STARTS ONE BLANK PAST THIS ONE'S END -- the recurrence
+   every cursor that walks the line spends, and the reason a write chain
+   over the words needs no offset arithmetic of its own. *)
+Lemma wl_off_S_at (ws : list (list (bv 8))) :
+  forall (off i : nat) (w : list (bv 8)),
+    ws !! i = Some w -> wl_off off ws (S i) = S (wl_off off ws i + length w).
+Proof.
+  induction ws as [| w0 r IH]; intros off i w Hi; [by destruct i |].
+  destruct i as [| i'].
+  - cbn in Hi. injection Hi as Heq. subst w0.
+    cbn [wl_off]. by rewrite wl_off_0.
+  - cbn [wl_off]. exact (IH (S (off + length w0)) i' w Hi).
+Qed.
+
+(* ...AND WHAT SITS THERE: a separator while another word follows, and the
+   closing newline once none does. *)
+(* a lookup at the junction of a three-way join, with the index EXPLICIT:
+   an [ltac:(lia)] inside [lookup_app_r] sees the index as an evar and
+   fails (durable-notes, "Inline [ltac:] and evar-typed holes"). *)
+Lemma wl_lookup_mid {A} (u m v : list A) (x : A) (j : nat) :
+  j = length u + length m ->
+  (u ++ m ++ x :: v) !! j = Some x.
+Proof.
+  intros ->.
+  rewrite (lookup_app_r u (m ++ x :: v) (length u + length m) ltac:(lia)).
+  replace (length u + length m - length u) with (length m) by lia.
+  rewrite (lookup_app_r m (x :: v) (length m) ltac:(lia)) Nat.sub_diag.
+  reflexivity.
+Qed.
+
+Lemma wl_line_sep_pre (ws : list (list (bv 8))) :
+  forall (off i : nat) (w : list (bv 8)) (pre : list (bv 8)),
+    ws !! i = Some w -> (S i < length ws)%nat -> off = length pre ->
+    (pre ++ wl_body ws ++ [wl_nl]) !! (wl_off off ws i + length w)
+    = Some wl_sp.
+Proof.
+  induction ws as [| w0 r IH]; intros off i w pre Hi Hlen Hoff;
+    [by destruct i |].
+  destruct i as [| i'].
+  - cbn in Hi. injection Hi as Heq. subst w0.
+    destruct r as [| w1 r1]; [cbn [length] in Hlen; lia |].
+    assert (Hshape : wl_body (w :: w1 :: r1) ++ [wl_nl]
+                     = w ++ wl_sp :: (wl_body (w1 :: r1) ++ [wl_nl])).
+    { rewrite wl_body_cons wl_tail_cons. symmetry.
+      exact (app_assoc w (wl_sp :: wl_body (w1 :: r1)) [wl_nl]). }
+    rewrite wl_off_0 Hoff Hshape.
+    exact (wl_lookup_mid pre w (wl_body (w1 :: r1) ++ [wl_nl]) wl_sp
+             (length pre + length w) eq_refl).
+  - assert (Hrne : r <> []).
+    { intro Hnil. rewrite Hnil in Hi. by destruct i'. }
+    assert (Hsplit : pre ++ wl_body (w0 :: r) ++ [wl_nl]
+                     = (pre ++ w0 ++ [wl_sp]) ++ wl_body r ++ [wl_nl]).
+    { destruct r as [| w1 r1]; [exfalso; by apply Hrne |].
+      rewrite wl_body_cons wl_tail_cons.
+      change (wl_sp :: wl_body (w1 :: r1))
+        with ([wl_sp] ++ wl_body (w1 :: r1)).
+      by rewrite -!app_assoc. }
+    cbn [wl_off]. rewrite Hsplit.
+    exact (IH (S (off + length w0)) i' w (pre ++ w0 ++ [wl_sp]) Hi
+             ltac:(cbn [length] in Hlen; lia)
+             ltac:(rewrite !length_app; cbn [length]; lia)).
+Qed.
+
+Lemma wl_line_sep (ws : list (list (bv 8))) (i : nat) (w : list (bv 8)) :
+  ws !! i = Some w -> (S i < length ws)%nat ->
+  wl_line ws !! (wl_off 0 ws i + length w) = Some wl_sp.
+Proof.
+  intros Hi Hlen.
+  exact (wl_line_sep_pre ws 0 i w [] Hi Hlen eq_refl).
+Qed.
+
+(* the LAST word's end IS the body's end, which is where the newline is *)
+Lemma wl_off_last (ws : list (list (bv 8))) :
+  forall (off i : nat) (w : list (bv 8)),
+    ws !! i = Some w -> S i = length ws ->
+    wl_off off ws i + length w = off + length (wl_body ws).
+Proof.
+  induction ws as [| w0 r IH]; intros off i w Hi Hlen; [by destruct i |].
+  destruct i as [| i'].
+  - cbn in Hi. injection Hi as Heq. subst w0.
+    destruct r as [| w1 r1]; [| cbn [length] in Hlen; lia].
+    rewrite wl_off_0 wl_body_cons. cbn [wl_tail]. rewrite app_nil_r. lia.
+  - assert (Hrne : r <> []).
+    { intro Hnil. rewrite Hnil in Hi. by destruct i'. }
+    cbn [wl_off].
+    rewrite (IH (S (off + length w0)) i' w Hi
+               ltac:(cbn [length] in Hlen; lia)).
+    rewrite wl_body_cons length_app (wl_tail_length_cons r Hrne). lia.
+Qed.
+
+Lemma wl_line_nl_at (ws : list (list (bv 8))) :
+  wl_line ws !! length (wl_body ws) = Some wl_nl.
+Proof.
+  rewrite /wl_line
+    (lookup_app_r (wl_body ws) [wl_nl] (length (wl_body ws)) ltac:(lia))
+    Nat.sub_diag.
+  reflexivity.
+Qed.
+
 Lemma wl_line_word (ws : list (list (bv 8))) (i : nat) (w : list (bv 8))
     (j : nat) :
   ws !! i = Some w -> j < length w ->

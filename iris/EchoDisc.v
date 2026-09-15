@@ -756,11 +756,29 @@ Qed.
    pairwise distinct, which is what makes the LINE choice readable off one
    byte of the wire ([line_alts_head_det]).  A later ruling changes this
    ONE list. *)
+(* ECHO'S OUTPUT IS THE LINE MINUS ITS COMMAND NAME.  echo prints its
+   arguments joined by single spaces and closed by a newline -- which is
+   exactly what [gets] read, with the first word dropped.  So the good
+   alternative is not a second literal transcribed beside [echo_line]: it
+   is [wl_line] of the line's tail, and then the prompt sh writes once it
+   has reaped.  A transcription error here cannot make the two disagree,
+   because there is only one of them. *)
+Definition echo_line_out : list (bv 8) := wl_line (drop 1 echo_ws).
+
+Lemma echo_line_out_string : echo_line_out = sb "hello world"%string ++ nlb.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma echo_line_out_length : length echo_line_out = 12%nat.
+Proof. vm_compute. reflexivity. Qed.
+
 Definition line_alts : list (list (bv 8)) :=
-  [ sb "hello world"%string ++ nlb ++ sb "$ "%string;
+  [ echo_line_out ++ sb "$ "%string;
     sb "exec echo failed"%string ++ nlb ++ sb "$ "%string;
     sb "$ "%string;
     sb "fork"%string ++ nlb ].
+
+Lemma line_alts_0 : line_alts !!! 0%nat = echo_line_out ++ sb "$ "%string.
+Proof. reflexivity. Qed.
 
 Lemma line_alts_length : length line_alts = 4.
 Proof. reflexivity. Qed.

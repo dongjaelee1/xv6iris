@@ -39,7 +39,8 @@ Require Import UserHeap.          (* [uarg] / [ua_len] / [ua_bytes] *)
 Require Import UexecSlot.         (* [uvis] and its fields *)
 Require Import SpecKexec.         (* [kexec_image_ok] *)
 Require Import ElfUser.           (* [echo_elf] *)
-Require Import EchoDisc.          (* [echo_line] / [line_alts] *)
+Require Import LineWords.         (* [wl_line] / [wl_off] / [wl_line_word] *)
+Require Import EchoDisc.          (* [echo_line] / [echo_line_out] / [line_alts] *)
 Require Import UEchoKernel.       (* [echo_arg] / [echo_args] *)
 Require Import UkShEcho.          (* [echo_off] / [echo_alen] *)
 Require Import UShEcho.           (* [echo_key_args] *)
@@ -48,24 +49,49 @@ Require Import UEchoOut.          (* [echo_out_argv] *)
 Local Open Scope list_scope.
 
 (* ===================================================================== *)
-(*  S1  THE TWO CLOSED COMPUTATIONS                                       *)
+(*  S1  THE BRIDGE, IN ONE SENTENCE                                       *)
 (*                                                                       *)
-(*  [echo_line]      = "echo hello world\n"   (17 bytes)                  *)
-(*  [line_alts !!! 0] = "hello world\n$ "     (14 bytes)                  *)
+(*  [EchoDisc.echo_line_out] IS [wl_line] of the line's TAIL, so the      *)
+(*  alternative's byte at word [k] of that tail and the line's byte at    *)
+(*  word [S k] are the same byte of the same word -- twice                *)
+(*  [LineWords.wl_line_word] and nothing else.  This used to be two       *)
+(*  five-way case analyses over the literal's offsets.                    *)
 (*                                                                       *)
-(*  sh's token [i] starts at [echo_off i] of the LINE; echo prints tokens *)
-(*  1 and 2, which are the alternative's bytes 0..4 and 6..10.  (Byte 5   *)
-(*  of the alternative is echo's own separator, out of .rodata, and bytes *)
-(*  12..13 are the prompt sh writes after it reaps -- neither is argv's.) *)
+(*  (The alternative continues past the tail with the prompt sh writes    *)
+(*  once it has reaped, which is why the lookup needs the bound.)         *)
 (* ===================================================================== *)
+Lemma echo_alt0_word (k j : nat) (w : list (bv 8)) :
+  echo_ws !! S k = Some w -> (j < length w)%nat ->
+  line_alts !!! 0%nat !! (wl_off 0%nat (drop 1 echo_ws) k + j)%nat
+  = Some (echo_line !!! (UkShEcho.echo_off (S k) + j)%nat).
+Proof.
+  intros Hw Hj.
+  assert (Hd : drop 1 echo_ws !! k = Some w)
+    by (rewrite lookup_drop; exact Hw).
+  pose proof (wl_off_lt_line (drop 1 echo_ws) k w j Hd
+                (Nat.lt_le_incl _ _ Hj)) as Hlt.
+  rewrite line_alts_0 /echo_line_out.
+  rewrite (lookup_app_l (wl_line (drop 1 echo_ws)) _ _ Hlt).
+  destruct (lookup_lt_is_Some_2 (wl_line (drop 1 echo_ws))
+              (wl_off 0%nat (drop 1 echo_ws) k + j)%nat Hlt) as [b Hb].
+  rewrite Hb. f_equal.
+  rewrite <- (list_lookup_total_correct _ _ _ Hb).
+  rewrite (wl_line_word (drop 1 echo_ws) k w j Hd Hj).
+  rewrite /UkShEcho.echo_off echo_line_words.
+  by rewrite (wl_line_word echo_ws (S k) w j Hw Hj).
+Qed.
+
+(* ...at the two words echo prints.  The [6] is [UEchoOut.echo_out_argv]'s
+   own reading of the alternative and is the last number here. *)
 Lemma echo_alt0_tok1 (j : nat) :
   (j < UkShEcho.echo_alen 1%nat)%nat ->
   line_alts !!! 0%nat !! j
   = Some (echo_line !!! (UkShEcho.echo_off 1%nat + j)%nat).
 Proof.
-  rewrite UkShEcho.echo_alen_1 UkShEcho.echo_off_1. intro Hj.
-  do 5 (destruct j as [| j]; [ vm_compute; reflexivity | ]).
-  exfalso. lia.
+  intro Hj.
+  pose proof (echo_alt0_word 0%nat j (echo_ws !!! 1%nat)
+                (UkShEcho.echo_ws_at 1%nat ltac:(lia)) Hj) as H.
+  rewrite wl_off_0 in H. exact H.
 Qed.
 
 Lemma echo_alt0_tok2 (j : nat) :
@@ -73,9 +99,11 @@ Lemma echo_alt0_tok2 (j : nat) :
   line_alts !!! 0%nat !! (6 + j)%nat
   = Some (echo_line !!! (UkShEcho.echo_off 2%nat + j)%nat).
 Proof.
-  rewrite UkShEcho.echo_alen_2 UkShEcho.echo_off_2. intro Hj.
-  do 5 (destruct j as [| j]; [ vm_compute; reflexivity | ]).
-  exfalso. lia.
+  intro Hj.
+  pose proof (echo_alt0_word 1%nat j (echo_ws !!! 2%nat)
+                (UkShEcho.echo_ws_at 2%nat ltac:(lia)) Hj) as H.
+  rewrite (_ : wl_off 0%nat (drop 1 echo_ws) 1%nat = 6%nat) in H;
+    [exact H | by vm_compute].
 Qed.
 
 (* ===================================================================== *)

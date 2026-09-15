@@ -1235,16 +1235,9 @@ Section UShEcho.
   (*    }                                                                  *)
   (*  so at [argc = 3] it writes four buffers, in this order.              *)
   (* =================================================================== *)
-  Definition echo_out : list (bv 8) :=
-    sb "hello" ++ sb " " ++ sb "world" ++ nlb.
-
-  (* ANTI-VACUITY: those are the bytes the target statement's expected
-     stream carries for one cycle. *)
-  Lemma echo_out_string : echo_out = sb "hello world" ++ nlb.
-  Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
-
-  Lemma echo_out_length : length echo_out = 12%nat.
-  Proof. vm_compute. reflexivity. Qed.
+  (* ...and those bytes are [EchoDisc.echo_line_out] -- the line's tail.
+     There is no second spelling of them here: the loop's output IS the
+     join, and [EchoDisc] is where the join is named. *)
 
   (* ---- E4's OWN PART: the argv echo reads off its key ARE the strings -- *)
   (* [UEchoKernel.echo_arg] is a FUNCTION of the key (the pointer is the
@@ -1379,7 +1372,7 @@ Section UShEcho.
   (*  does not: the argv bytes ARE "echo", "hello", "world"                *)
   (*  ([echo_key_args], from [echo_cmd] through the exec channel) and the  *)
   (*  LOOP'S ORDER -- so the transcript at echo's [exit] ecall is the      *)
-  (*  entry's plus [echo_out], and nothing else.                           *)
+  (*  entry's plus [echo_line_out], and nothing else.                      *)
   (* =================================================================== *)
   Definition echo_writes_out
       (recv : uk_names Σ -> iProp Σ)
@@ -1394,7 +1387,7 @@ Section UShEcho.
         uargv (ukn_d N) av args -∗ tx N bs -∗
         urun N h m (mword_of_int EchoSyms.start) (2 + (8 + (2 + n))) -∗
         (∀ (h' : CpuId) (m' : regfile),
-           tx N (bs ++ echo_out) -∗
+           tx N (bs ++ echo_line_out) -∗
            urun N h' m' (mword_of_int EchoSyms.exit) n -∗
            WP (Loop : expr riscv_lang)) -∗
         WP (Loop : expr riscv_lang).

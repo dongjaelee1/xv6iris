@@ -72,6 +72,12 @@ the only case outside it.
   `echo_alen_le5` are deleted — nothing reads an argument's offset or length
   as a number any more. What remains is `echo_off_0 = 0` (true of every line,
   `wl_off_0`) and `echo_alen_0 = 4` (the COMMAND NAME, which stays "echo").
+- **THE EXEC CHANNEL COUNTS TO `length echo_ws`.** `echo_args_det`,
+  `echo_argv_is`, `UShEchoOut.echo_out_argv_of_image` and `UShEchoPay`
+  state the count and the per-index rows at the word list; the `Hna`
+  derivation counts the vector's arguments to it by the same NULL-terminator
+  argument as before, and `echo_ws_lt10` is what puts the vector's own
+  addresses in machine range. No statement in the exec chain says 3.
 - **THE ARGV NODE IS READ OUT OF THE HEAP BY INDUCTION.**
   `UShEcho.echo_node_row` is one argument's four rows and
   `echo_node_rows_of_cmd` inducts on the count; `echo_node_img` is stated
@@ -116,14 +122,13 @@ premise once the word list is a parameter.
 
 ## What is left
 
-1. **THE EXEC-CHANNEL PREMISES.** `UShEcho.echo_args_det`,
-   `UShEchoOut.echo_out_argv_of_image` and `UShEchoPay` still state
-   `na = 3` and `alen i = echo_alen i` per index; the `Hna` derivation
-   (`UShEcho` ~1106) counts to three by case analysis on the vector's NULL
-   terminator and should count to `length echo_ws` instead.
-   `UShEcho.echo_argv_is` still says `length args = 3`. The image
-   EXTRACTION below them is already general, so this is the statements and
-   the one counting argument, not the heap reasoning.
+1. **THE ENTRY'S STACK ROOM** (`UShEcho.echo_sp_final` / `echo_room`).
+   The last literal in the chain: `kxc_sp_final 0x4000 alen 3 = 0x3FB0`,
+   the address exec's push loop lands the vector at, computed at lengths
+   4/5/5. What the entry needs of it is only that `echo`'s twelve-word
+   frame fits below it, so the shape wanted is an inequality off
+   `KexecDefs.kxc_sp_range` — the same move `echo_key_args` already made —
+   rather than the address as a number.
 2. **THE CALLER'S BOUNDS.** `EchoDisc.echo_ws_pos` and `echo_ws_lt10` name
    two of them (the line has a command name; fewer words than sh's
    MAXARGS). Still unnamed: the line inside `getcmd`'s 100-byte buffer

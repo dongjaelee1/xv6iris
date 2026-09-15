@@ -123,9 +123,11 @@ Section UShEchoPay.
       <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen na ->
     length sts = NOFILE ->
     uvis_lazy W' = false ->
-    na = 3%nat ->
-    (forall i : nat, (i < 3)%nat -> alen i = UkShEcho.echo_alen i) ->
-    (forall i j : nat, (i < 3)%nat -> (j < UkShEcho.echo_alen i)%nat ->
+    na = length echo_ws ->
+    (forall i : nat, (i < length echo_ws)%nat ->
+       alen i = UkShEcho.echo_alen i) ->
+    (forall i j : nat, (i < length echo_ws)%nat ->
+       (j < UkShEcho.echo_alen i)%nat ->
        afun i j = echo_line !!! (UkShEcho.echo_off i + j)%nat) ->
     UkSh.ush_fd1p (take NSTD sts) ->
     (⊢ □ riscv_kill_cred -∗ T) ->
@@ -239,8 +241,10 @@ Section UShEchoPay.
         as (Hna & Halen & Hafun).
       iApply (echo_slot_of_kexec_at na alen afun fdv W' v np Hok
                 ltac:(subst na;
-                      exact (echo_room alen (Halen 0%nat ltac:(lia))
-                               (Halen 1%nat ltac:(lia)) (Halen 2%nat ltac:(lia))))
+                      exact (echo_room alen
+                               (Halen 0%nat ltac:(rewrite echo_ws_length; lia))
+                               (Halen 1%nat ltac:(rewrite echo_ws_length; lia))
+                               (Halen 2%nat ltac:(rewrite echo_ws_length; lia))))
                 Hlen Hlzf Hna Halen Hafun Hfd1' Hkt
                 with "Hpin Hlk Hdep Hgen Hmp Hc"). }
     (* ---- THE TAINT ARM: the generic slot at the chosen payload ---- *)

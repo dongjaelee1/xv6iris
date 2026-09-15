@@ -1086,9 +1086,11 @@ Section UShEcho.
       echo_node_img M s0 t g ->
       UkShEcho.echo_argv_bytes g ->
       exec_args_of M (mword_of_int (t + 8) : mword 64) na alen afun ->
-      na = 3%nat
-      /\ (forall i : nat, (i < 3)%nat -> alen i = UkShEcho.echo_alen i)
-      /\ (forall i j : nat, (i < 3)%nat -> (j < UkShEcho.echo_alen i)%nat ->
+      na = length echo_ws
+      /\ (forall i : nat, (i < length echo_ws)%nat ->
+            alen i = UkShEcho.echo_alen i)
+      /\ (forall i j : nat, (i < length echo_ws)%nat ->
+            (j < UkShEcho.echo_alen i)%nat ->
             afun i j = echo_line !!! (UkShEcho.echo_off i + j)%nat).
 
   Lemma echo_args_det_holds : echo_args_det.
@@ -1098,13 +1100,17 @@ Section UShEcho.
     destruct Hargs as (Hshape & avf & Hptr & Hnz & Hnul & Hstr).
     destruct Hshape as (_ & Hcstr & Hlen4k).
     (* ---- the key's argv address, unwrapped ---- *)
-    assert (Ea : forall i : nat, (i <= 3)%nat ->
+    (* the vector's own addresses are in range because there are FEWER
+       WORDS THAN sh's MAXARGS -- which is where that bound earns its
+       keep, and the only thing the count is used for here. *)
+    assert (Ea : forall i : nat, (i <= length echo_ws)%nat ->
               uint (add_vec_int (mword_of_int (t + 8) : mword 64)
                       (8 * Z.of_nat i)) = t + 8 + 8 * Z.of_nat i)
-      by (intros i Hi; apply uint_avi_moi; unfold Z64; lia).
+      by (intros i Hi; apply uint_avi_moi;
+          pose proof echo_ws_lt10; unfold Z64; lia).
     (* ---- THE COUNT ---- *)
-    assert (Hna : na = 3%nat).
-    { destruct (decide (na < 3)%nat) as [Hlt | Hge].
+    assert (Hna : na = length echo_ws).
+    { destruct (decide (na < length echo_ws)%nat) as [Hlt | Hge].
       - exfalso.
         pose proof (Hptr na (Nat.le_refl na)) as Hw.
         rewrite (Ea na ltac:(lia)) in Hw.
@@ -1120,16 +1126,16 @@ Section UShEcho.
                    ltac:(unfold Z64; lia)) in Hcz.
         rewrite (uint_moi 0 ltac:(unfold Z64; lia)) in Hcz.
         lia.
-      - destruct (decide (na = 3%nat)) as [He | Hne];
+      - destruct (decide (na = length echo_ws)) as [He | Hne];
           [ exact He | exfalso ].
-        pose proof (Hptr 3%nat ltac:(lia)) as Hw.
-        rewrite (Ea 3%nat ltac:(lia)) in Hw.
-        exact (Hnz 3%nat ltac:(lia)
-                 (uimg_word_det M (t + 8 + 8 * Z.of_nat 3%nat) (avf 3%nat) 0
-                    ltac:(lia) Hw Hbc)). }
+        pose proof (Hptr (length echo_ws) ltac:(lia)) as Hw.
+        rewrite (Ea (length echo_ws) ltac:(lia)) in Hw.
+        exact (Hnz (length echo_ws) ltac:(lia)
+                 (uimg_word_det M (t + 8 + 8 * Z.of_nat (length echo_ws))
+                    (avf (length echo_ws)) 0 ltac:(lia) Hw Hbc)). }
     subst na.
     (* ---- THE THREE POINTERS ---- *)
-    assert (Hpi : forall i : nat, (i < 3)%nat ->
+    assert (Hpi : forall i : nat, (i < length echo_ws)%nat ->
               avf i = (mword_of_int (s0 + Z.of_nat (UkShEcho.echo_off i))
                        : mword 64)).
     { intros i Hi.
@@ -1139,7 +1145,7 @@ Section UShEcho.
                (s0 + Z.of_nat (UkShEcho.echo_off i)) ltac:(lia) Hw
                (Hword i Hi)). }
     (* ---- WHAT THE COPY LOOP READ, at the node's own addresses ---- *)
-    assert (Hsi : forall i : nat, (i < 3)%nat ->
+    assert (Hsi : forall i : nat, (i < length echo_ws)%nat ->
               forall j : nat, (j <= alen i)%nat ->
                 M !! (s0 + Z.of_nat (UkShEcho.echo_off i) + Z.of_nat j)
                 = Some (afun i j)).
@@ -1152,7 +1158,7 @@ Section UShEcho.
                  ltac:(lia) ltac:(lia) ltac:(unfold Z64; lia)) in Hsj.
       exact Hsj. }
     (* ---- THE THREE LENGTHS ---- *)
-    assert (Halen : forall i : nat, (i < 3)%nat ->
+    assert (Halen : forall i : nat, (i < length echo_ws)%nat ->
               alen i = UkShEcho.echo_alen i).
     { intros i Hi.
       destruct (Hcstr i ltac:(lia)) as [Hno Hnl].
@@ -1165,7 +1171,7 @@ Section UShEcho.
         pose proof (proj1 Hbytes i (alen i) Hi Hlt) as Hgl.
         assert (Hidx : (UkShEcho.echo_off i + alen i
                         < length echo_line)%nat)
-          by (apply UkShEcho.echo_off_lt; rewrite ?echo_ws_length; lia).
+          by (apply UkShEcho.echo_off_lt; lia).
         apply (echo_line_nonul _ Hidx).
         rewrite <- Hgl, <- Hm2. exact (eq_sym ubyte0_moi0).
       - destruct (decide (alen i = UkShEcho.echo_alen i)) as [He | Hne];
@@ -1364,7 +1370,7 @@ Section UShEcho.
 
   (* ---- the shape a list of [uarg]s has when it IS echo's three -------- *)
   Definition echo_argv_is (args : list uarg) : Prop :=
-    length args = 3%nat
+    length args = length echo_ws
     /\ forall (i : nat) (x : uarg), args !! i = Some x ->
          ua_len x = UkShEcho.echo_alen i
          /\ forall j : nat, (j < UkShEcho.echo_alen i)%nat ->

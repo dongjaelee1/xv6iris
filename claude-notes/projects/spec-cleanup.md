@@ -88,9 +88,11 @@ Derived corollaries, in order of what applications actually use:
 
 ## Lanes
 
-- [ ] **RD-0 DESIGN** (Fable; no build needed; NOW).  The ruling set,
-  written into a `design/` page (new `design/user-read.md`, linking
-  `design/user-fd.md`):
+- [x] ~~**RD-0 DESIGN**~~ LANDED 2026-09-15 (`design/user-read.md`):
+  (a)–(d) all written; ONE OWNER RULING OPEN — fork vs. owned offset
+  (§4 there; recommendation = fork parks every held `uoff`, the
+  fractional route recorded as the escape).  RD-1's brief is cut from
+  its §2, RD-2's from §3+§5, RD-TR's figure from §6.  Original scope:
   (a) OFFSET OWNERSHIP: `off_gv`'s user half becomes a holdable linear
       resource `uoff γo off` minted to the caller at sys_open's publish;
       `off_user_inv` (the parked form) stays as the opt-out a process

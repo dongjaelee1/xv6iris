@@ -274,11 +274,16 @@ Derived corollaries, in order of what applications actually use:
   POST-PARK table (`fd_frags_park_at`'s `⌜fdv_all_parked sts'⌝`), which
   restates the wands and moves every applier.  **(3)** THE STOP: fork is a
   FREE number (`UexecSG.free_num` excludes only exec/5/6/15..20), so its
-  `xv6_sbundle` arm is `emp` and every verified forker pays through
-  `UkRun.udepw_of_psok` — whose `udepw` QUANTIFIES THE TABLE UNIVERSALLY
-  and whose left disjunct is a pure fact.  The surrender slot therefore
-  has NO PAYER, and the class premise does not reach it (it lands on the
-  supply law, the generic tier's route) — which CORRECTS §8.3's finding B:
+  `xv6_sbundle` arm is `emp`, and `UkFork.wp_uk_ecall_fork` takes NO
+  deposit premise — it mints from the law packed inside `UkRun.urun`
+  (`udep_dep`), and that law is **a PURE proposition** (`UkRun.udep`'s
+  second conjunct, inside `⌜ ⌝`; `udep_free` proves all of it from
+  nothing), so it can carry neither a resource nor a key-indexed fact at
+  any key.  The surrender slot therefore has NO PAYER — it forces fork out
+  of `free_num` and every site onto the explicit route, where a verified
+  program holds nothing about its table — and the class premise does not
+  reach it (it lands on the supply law, the generic tier's route) — which
+  CORRECTS §8.3's finding B:
   the U-tier wrappers cannot discharge once the premise exists, they
   cannot discharge at all.  **ROUTE OUT, and it supersedes finding C's
   "no carrier exists": a U-tier HALF OF THE HELD SET (`uheld γ H`), the

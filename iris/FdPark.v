@@ -517,12 +517,21 @@ End FdPark.
       [fdv_all_parked sts'] at the table exec HANDS OVER -- which restates
       the wands rather than inheriting them.
 
-   3. THE SURRENDER SLOT AT FORK HAS NO PAYER.  fork is a FREE number
-      ([UexecSG.free_num]), so its [UexecExecInst.xv6_sbundle] arm is [emp]
-      and every verified forker pays through [UkRun.udepw_of_psok] -- whose
-      [udepw] quantifies the table UNIVERSALLY and whose left disjunct is a
-      pure fact with no table in it.  The class premise does not reach that
-      disjunct: it lands on the supply law, which is the GENERIC tier's
-      route.  What would reach it is a U-tier HALF OF THE PROCESS'S HELD
-      SET -- the third sibling of [UserCwd.ucwd] and [UserChildren.uch] --
-      and that is an owner decision (SS8.4). *)
+   3. THE SURRENDER SLOT AT FORK HAS NO PAYER, AND THE REASON IS THAT
+      FORK'S DEPOSIT IS MINTED FROM A PURE LAW.  fork is a FREE number
+      ([UexecSG.free_num]), so its [UexecExecInst.xv6_sbundle] arm is
+      [emp]; and [UkFork.wp_uk_ecall_fork] takes no deposit premise at all
+      -- it reads the law PACKED INSIDE [UkRun.urun] and spends it through
+      [UkRun.udep_dep].  That law is the second conjunct of [UkRun.udep]
+      and it lives inside [| |]: a PURE proposition, so it can carry
+      neither a resource nor a key-indexed fact, at any [W]
+      ([UexecExecMint.udep_free] proves the whole of it from nothing for
+      every verified program; [UkRun.udepw]'s left disjunct is the same
+      shape for the leaves that DO take an explicit deposit).  So the slot
+      forces fork out of [free_num] and every fork site onto the explicit
+      route -- where a verified program has nothing to pay with, and where
+      the class premise does not reach it (that premise lands on the
+      supply law, which is the GENERIC tier's route).  What would reach it
+      is a U-tier HALF OF THE PROCESS'S HELD SET -- the third sibling of
+      [UserCwd.ucwd] and [UserChildren.uch] -- and that is an owner
+      decision (SS8.4). *)

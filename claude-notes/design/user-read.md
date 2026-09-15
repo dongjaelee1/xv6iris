@@ -979,16 +979,25 @@ landing on fork's arm instead of read's.**
   exec, 5, 6, 15, 16, 17, 18, 19, 20 — **so fork is FREE**: `xv6_sbundle`'s
   fork arm is the match's `else emp`, and `UexecExecInst.xv6_sbundle_free`
   mints it FROM NOTHING at every key.
-- Putting `uoff_surr_at (uvis_fd W)` into that arm (§8.3's only sound
-  carrier, finding B) makes fork non-free.  The ONLY U-tier route to
-  fork's deposit is `UkRun.udepw`'s LEFT disjunct, `UkRun.udepw_of_psok`
-  (`UkRun.v:434`: `psok n -> n <> USYS_exec -> ⊢ udepw N m pc n`), whose
-  proof is `iIntros (M pm sz fdv cw gn cs pidv) … iLeft; iPureIntro`:
-  **`udepw` quantifies the table `fdv` UNIVERSALLY and its left disjunct is
-  a pure fact with no table in it**, so no table-dependent row can ever
-  pass through it.  Every verified forker goes exactly this way (the
-  `udepw_of_psok` + `free_lit` sites in `UkInit`, `UkShRun`, `UkCat`,
-  `UkSync`).
+- **And fork's deposit is minted from a PURE LAW.**  `UkFork.wp_uk_ecall_fork`
+  takes no deposit premise at all: it reads the law packed inside
+  `UkRun.urun` (`#Hdep`, `UkFork.v:931`) and spends it through
+  `UkRun.udep_dep`.  That law is the second conjunct of `UkRun.udep`
+  (`UkRun.v:334`) and it lives **inside `⌜ ⌝`** —
+  `⌜∀ n W Q, psok n -> n <> USYS_exec -> ⊢ □ Dsup ==∗ sbundle_pay uslot n Q W⌝`
+  — so it can carry neither a resource nor a key-indexed fact, at any `W`;
+  `UexecExecMint.udep_free` proves the whole of it FROM NOTHING for every
+  verified program.  The leaves that DO take an explicit deposit are the
+  same shape one level out: `UkRun.udepw` quantifies the table `fdv`
+  UNIVERSALLY and its left disjunct is the pure `⌜psok n /\ n <> USYS_exec⌝`
+  (`UkRun.v:390`), which `udepw_of_psok` (`:434`) proves from nothing.
+- So putting `uoff_surr_at (uvis_fd W)` into fork's arm (§8.3's only sound
+  carrier, finding B) forces fork OUT of `free_num` and every fork site —
+  generic and verified alike — onto the EXPLICIT route (`udepw`'s right
+  disjunct, read's route through `UkReadFile.udepwf_st`), where the slot
+  must be paid from a resource the site holds.  The generic tier can pay
+  it, once the class premise exists.  A verified program cannot: it holds
+  nothing that says anything about its table.
 - **The class premise does not help, and that is the correction to §8.3's
   finding B.**  The premise lands on `xv6_sbundle_of_supply(_ne)` — the
   RIGHT disjunct's supply law, the GENERIC tier's route.  A verified

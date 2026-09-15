@@ -1364,6 +1364,115 @@ Definition echoOutΣ : gFunctors :=
 Global Instance subG_echoOutΣ {Σ} : subG echoOutΣ Σ -> echoOutG Σ.
 Proof. solve_inG. Qed.
 
+(* ====================================================================== *)
+(*  THE ERA'S ECHOED LIST, READ OFF THE CONSOLE HISTORY (redesign lane R1) *)
+(*                                                                        *)
+(*  The redesign merges the output and input claims into ONE claim over    *)
+(*  [ConsLog.cons_hist].  The claim's [o_E] -- the era's echoed list -- is *)
+(*  then not a free existential but a FUNCTION of the history, and that    *)
+(*  function is what makes the window counter unnecessary.                 *)
+(*                                                                        *)
+(*  TODAY the input claim has two non-taint arms differing only in the     *)
+(*  counter: SETTLED (the log and the era's list agree) and the chain-     *)
+(*  first WINDOW (the echo's byte is on the wire, its log entry still      *)
+(*  owed, so the era's list is ONE AHEAD).  The window arm holds a HALF of *)
+(*  [wcnt] so that a second firing of the run meets five quarters.  With   *)
+(*  the arm in the history the two arms are ONE: [ch_E] counts the         *)
+(*  in-flight entry as soon as its byte is out, and                        *)
+(*  [ch_E_close] below says the list DOES NOT MOVE when the entry is       *)
+(*  filed -- the window closes by construction, with nothing to refute.    *)
+(*                                                                        *)
+(*  THE ARM'S CONDITION IS [take j cs = [echo_of c]], NOT                  *)
+(*  [cs = [echo_of c]].  It has to be exactly [ConsLog.log_echoed]'s       *)
+(*  condition on the entry [EvClose] will file, [(h, c, take j cs)], or    *)
+(*  [ch_E_close] is false.  The two differ: a BACKSPACE input (c = 8) is   *)
+(*  erased rather than echoed, so its [cs] is the three-byte               *)
+(*  [consputc_bs] and [cs <> [echo_of c]] -- but [take 1 cs = [8]] IS      *)
+(*  [[echo_of 8]], so the filed entry counts as echoed and the era's list  *)
+(*  must already have counted it.  (Such an input breaks the console       *)
+(*  discipline and so only ever reaches the claim's TAINT arm; [ch_E] is   *)
+(*  a pure function and has to be right there anyway.)                     *)
+(* ====================================================================== *)
+
+Definition ch_arm_E (a : option ConsLog.cons_arm) : list (list mobs * bv 8) :=
+  match a with
+  | Some (h, c, cs, j) =>
+      if decide (take j cs = [echo_of c]) then [(open_seg h, c)] else []
+  | None => []
+  end.
+
+Definition ch_E (H : ConsLog.cons_hist) : list (list mobs * bv 8) :=
+  seg_of (echoed (ConsLog.ch_log H)) ++ ch_arm_E (ConsLog.ch_arm H).
+
+(* one filed entry, as the era's list sees it *)
+Lemma seg_echoed_snoc (L : list log_entry) (e : log_entry) :
+  seg_of (echoed (L ++ [e]))
+  = seg_of (echoed L)
+    ++ (if decide (log_echoed e) then [(open_seg (le_hist e), le_byte e)] else []).
+Proof.
+  destruct (decide (log_echoed e)) as [He | He].
+  - by rewrite (echoed_snoc_yes L e He) seg_of_app.
+  - by rewrite (echoed_snoc_no L e He) app_nil_r.
+Qed.
+
+Lemma ch_E_out (H : ConsLog.cons_hist) (b : bv 8) :
+  ch_E (ConsLog.cons_step H (ConsLog.EvOut b)) = ch_E H.
+Proof. reflexivity. Qed.
+
+Lemma ch_E_read (H : ConsLog.cons_hist) (ws : list (list mobs * bv 8)) :
+  ch_E (ConsLog.cons_step H (ConsLog.EvRead ws)) = ch_E H.
+Proof. reflexivity. Qed.
+
+(* the arm opens with nothing sent, so it counts nothing yet *)
+Lemma ch_arm_E_open (h : list mobs) (c : bv 8) (cs : list (bv 8)) :
+  ch_arm_E (Some (h, c, cs, 0%nat)) = [].
+Proof.
+  cbn [ch_arm_E]. case_decide as Hk; [exfalso; discriminate Hk | reflexivity].
+Qed.
+
+Lemma ch_E_open (H : ConsLog.cons_hist) (h : list mobs) (c : bv 8)
+    (cs : list (bv 8)) :
+  ConsLog.ch_arm H = None ->
+  ch_E (ConsLog.cons_step H (ConsLog.EvOpen h c cs)) = ch_E H.
+Proof.
+  intros Hn. unfold ch_E, ConsLog.cons_step. rewrite Hn.
+  cbn [ConsLog.ch_log ConsLog.ch_arm].
+  rewrite ch_arm_E_open. cbn [ch_arm_E]. by rewrite !app_nil_r.
+Qed.
+
+(* THE ONE THAT MATTERS: filing the entry does not move the era's list.
+   This is the settled/window merge -- there is no second arm and no
+   counter, because the two descriptions are equal. *)
+Lemma ch_E_close (H : ConsLog.cons_hist) :
+  ch_E (ConsLog.cons_step H ConsLog.EvClose) = ch_E H.
+Proof.
+  rewrite /ch_E /ConsLog.cons_step.
+  destruct (ConsLog.ch_arm H) as [[[[h c] cs] j] |] eqn:Ha; [| by rewrite Ha].
+  cbn [ConsLog.ch_log ConsLog.ch_arm ch_arm_E].
+  rewrite seg_echoed_snoc app_nil_r. done.
+Qed.
+
+(* the byte going out is the only event that moves the list *)
+Lemma ch_E_byte (H : ConsLog.cons_hist) (b : bv 8)
+    (h : list mobs) (c : bv 8) (cs : list (bv 8)) (j : nat) :
+  ConsLog.ch_arm H = Some (h, c, cs, j) ->
+  ch_E (ConsLog.cons_step H (ConsLog.EvByte b))
+  = seg_of (echoed (ConsLog.ch_log H)) ++ ch_arm_E (Some (h, c, cs, S j)).
+Proof. intros Ha. rewrite /ch_E /ConsLog.cons_step. by rewrite Ha. Qed.
+
+(* ...and for the ordinary echo of one byte it grows by exactly that entry *)
+Lemma ch_E_byte_echo (H : ConsLog.cons_hist) (b : bv 8)
+    (h : list mobs) (c : bv 8) :
+  ConsLog.ch_arm H = Some (h, c, [echo_of c], 0%nat) ->
+  ch_E (ConsLog.cons_step H (ConsLog.EvByte b))
+  = ch_E H ++ [(open_seg h, c)].
+Proof.
+  intros Ha. rewrite (ch_E_byte H b h c [echo_of c] 0%nat Ha).
+  unfold ch_E. rewrite Ha ch_arm_E_open app_nil_r.
+  cbn [ch_arm_E]. case_decide as Hk; [reflexivity |].
+  exfalso. apply Hk. reflexivity.
+Qed.
+
 Section echo_out.
   Context {Σ : gFunctors} `{!echoOutG Σ}.
   (* THE TAINT, ABSTRACTLY.  [AppEcho.echo_taint] is [mono_nat_lb_own

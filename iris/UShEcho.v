@@ -940,22 +940,73 @@ Section UShEcho.
   Definition echo_node_img (M : gmap Z (bv 8)) (s0 t : Z)
       (g : nat -> bv 8) : Prop :=
     0 < t < 2 ^ 38
-    /\ (forall i : nat, (i < 3)%nat ->
+    /\ (forall i : nat, (i < length echo_ws)%nat ->
           0 < s0 + Z.of_nat (UkShEcho.echo_off i) < 2 ^ 38)
-    /\ (forall i : nat, (i < 3)%nat -> forall k : nat, (k < 8)%nat ->
+    /\ (forall i : nat, (i < length echo_ws)%nat -> forall k : nat, (k < 8)%nat ->
           M !! (t + 8 + 8 * Z.of_nat i + Z.of_nat k)
           = bv_to_little_endian 8 8
               (s0 + Z.of_nat (UkShEcho.echo_off i)) !! k)
     /\ (forall k : nat, (k < 8)%nat ->
-          M !! (t + 8 + 8 * Z.of_nat 3%nat + Z.of_nat k)
+          M !! (t + 8 + 8 * Z.of_nat (length echo_ws) + Z.of_nat k)
           = bv_to_little_endian 8 8 0 !! k)
-    /\ (forall i : nat, (i < 3)%nat ->
+    /\ (forall i : nat, (i < length echo_ws)%nat ->
           forall j : nat, (j < UkShEcho.echo_alen i)%nat ->
             M !! (s0 + Z.of_nat (UkShEcho.echo_off i) + Z.of_nat j)
             = Some (g (UkShEcho.echo_off i + j)%nat))
-    /\ (forall i : nat, (i < 3)%nat ->
+    /\ (forall i : nat, (i < length echo_ws)%nat ->
           M !! (s0 + Z.of_nat (UkShEcho.echo_off i)
                 + Z.of_nat (UkShEcho.echo_alen i)) = Some ubyte0).
+
+  (* ONE ARGUMENT'S FOUR ROWS, at an ARBITRARY index.  [uheap]'s readings
+     are pure, so the heap survives all four of them -- which is what lets
+     the count be inducted on rather than unrolled. *)
+  Definition echo_node_row (M : gmap Z (bv 8)) (s0 t : Z)
+      (g : nat -> bv 8) (i : nat) : Prop :=
+    0 < s0 + Z.of_nat (UkShEcho.echo_off i) < 2 ^ 38
+    /\ (forall k : nat, (k < 8)%nat ->
+          M !! (t + 8 + 8 * Z.of_nat i + Z.of_nat k)
+          = bv_to_little_endian 8 8
+              (s0 + Z.of_nat (UkShEcho.echo_off i)) !! k)
+    /\ (forall j : nat, (j < UkShEcho.echo_alen i)%nat ->
+          M !! (s0 + Z.of_nat (UkShEcho.echo_off i) + Z.of_nat j)
+          = Some (g (UkShEcho.echo_off i + j)%nat))
+    /\ M !! (s0 + Z.of_nat (UkShEcho.echo_off i)
+             + Z.of_nat (UkShEcho.echo_alen i)) = Some ubyte0.
+
+  Lemma echo_node_row_of_cmd (gt gd gs : gname) (M : gmap Z (bv 8))
+      (pm : gmap (mword 27) uperm) (sz s0 t : Z) (g : nat -> bv 8) (i : nat) :
+    (i < length echo_ws)%nat ->
+    uheap gt gd gs M pm sz -∗ ush_cmd gd t (UkShEcho.echo_cmd s0 g) -∗
+    ⌜ echo_node_row M s0 t g i ⌝.
+  Proof.
+    intro Hi. iIntros "Hheap #Hc".
+    iDestruct (UkShEcho.echo_cmd_word gd t s0 g i Hi with "Hc") as "#Hw".
+    iDestruct (uheap_uwordq_img with "Hheap Hw") as %Hb.
+    iDestruct (UkShEcho.echo_cmd_str gd t s0 g i Hi with "Hc") as "[%Hr #Hs]".
+    iDestruct "Hs" as "(_ & _ & Hbs & Hnl)".
+    iDestruct (uheap_ubytesq_img with "Hheap Hbs") as %Hg.
+    iDestruct (uheap_ubyte with "Hheap Hnl") as %(Hz & _ & _).
+    iPureIntro. rewrite /echo_node_row.
+    split_and!; [ lia | lia | exact Hb | exact Hg | exact Hz ].
+  Qed.
+
+  (* ...AND EVERY ARGUMENT, by induction on the count.  This was twelve
+     [iDestruct]s at indices 0, 1 and 2. *)
+  Lemma echo_node_rows_of_cmd (gt gd gs : gname) (M : gmap Z (bv 8))
+      (pm : gmap (mword 27) uperm) (sz s0 t : Z) (g : nat -> bv 8) (n : nat) :
+    (n <= length echo_ws)%nat ->
+    uheap gt gd gs M pm sz -∗ ush_cmd gd t (UkShEcho.echo_cmd s0 g) -∗
+    ⌜ forall i : nat, (i < n)%nat -> echo_node_row M s0 t g i ⌝.
+  Proof.
+    induction n as [| n IH]; intro Hn; iIntros "Hheap #Hc".
+    - iPureIntro. intros i Hi. exfalso. lia.
+    - iDestruct (IH ltac:(lia) with "Hheap Hc") as %Hprev.
+      iDestruct (echo_node_row_of_cmd gt gd gs M pm sz s0 t g n
+                   ltac:(lia) with "Hheap Hc") as %Hnew.
+      iPureIntro. intros i Hi.
+      destruct (decide (i < n)%nat) as [Hlt | Hge]; [ exact (Hprev i Hlt) | ].
+      assert (Hin : i = n) by lia. by subst i.
+  Qed.
 
   (* ...and the ONE place the heap is touched: the deposit's loan
      ([UkRun.udepw_at] hands the supplier the two authorities and takes
@@ -967,44 +1018,18 @@ Section UShEcho.
   Proof.
     iIntros "Hheap #Hc".
     iDestruct (UkShEcho.echo_cmd_addr with "Hc") as %[Htr _].
-    iDestruct (UkShEcho.echo_cmd_word gd t s0 g 0%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
-      as "#Hw0".
-    iDestruct (uheap_uwordq_img with "Hheap Hw0") as %Hb0.
-    iDestruct (UkShEcho.echo_cmd_word gd t s0 g 1%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
-      as "#Hw1".
-    iDestruct (uheap_uwordq_img with "Hheap Hw1") as %Hb1.
-    iDestruct (UkShEcho.echo_cmd_word gd t s0 g 2%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
-      as "#Hw2".
-    iDestruct (uheap_uwordq_img with "Hheap Hw2") as %Hb2.
     iDestruct (UkShEcho.echo_cmd_cap gd t s0 g with "Hc") as "#Hwc".
     iDestruct (uheap_uwordq_img with "Hheap Hwc") as %Hbc.
-    iDestruct (UkShEcho.echo_cmd_str gd t s0 g 0%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
-      as "[%Hr0 #Hs0]".
-    iDestruct (UkShEcho.echo_cmd_str gd t s0 g 1%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
-      as "[%Hr1 #Hs1]".
-    iDestruct (UkShEcho.echo_cmd_str gd t s0 g 2%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
-      as "[%Hr2 #Hs2]".
-    iDestruct "Hs0" as "(_ & _ & Hbs0 & Hnl0)".
-    iDestruct "Hs1" as "(_ & _ & Hbs1 & Hnl1)".
-    iDestruct "Hs2" as "(_ & _ & Hbs2 & Hnl2)".
-    iDestruct (uheap_ubytesq_img with "Hheap Hbs0") as %Hg0.
-    iDestruct (uheap_ubytesq_img with "Hheap Hbs1") as %Hg1.
-    iDestruct (uheap_ubytesq_img with "Hheap Hbs2") as %Hg2.
-    iDestruct (uheap_ubyte with "Hheap Hnl0") as %(Hz0 & _ & _).
-    iDestruct (uheap_ubyte with "Hheap Hnl1") as %(Hz1 & _ & _).
-    iDestruct (uheap_ubyte with "Hheap Hnl2") as %(Hz2 & _ & _).
-    iPureIntro. split_and!.
+    iDestruct (echo_node_rows_of_cmd gt gd gs M pm sz s0 t g
+                 (length echo_ws) ltac:(lia) with "Hheap Hc") as %Hall.
+    iPureIntro. rewrite /echo_node_img. split_and!.
     - lia.
     - lia.
-    - intros i Hi; destruct i as [| [| [| i]]];
-        [ exact Hr0 | exact Hr1 | exact Hr2 | exfalso; lia ].
-    - intros i Hi; destruct i as [| [| [| i]]];
-        [ exact Hb0 | exact Hb1 | exact Hb2 | exfalso; lia ].
+    - intros i Hi. exact (proj1 (Hall i Hi)).
+    - intros i Hi. exact (proj1 (proj2 (Hall i Hi))).
     - exact Hbc.
-    - intros i Hi; destruct i as [| [| [| i]]];
-        [ exact Hg0 | exact Hg1 | exact Hg2 | exfalso; lia ].
-    - intros i Hi; destruct i as [| [| [| i]]];
-        [ exact Hz0 | exact Hz1 | exact Hz2 | exfalso; lia ].
+    - intros i Hi. exact (proj1 (proj2 (proj2 (Hall i Hi)))).
+    - intros i Hi. exact (proj2 (proj2 (proj2 (Hall i Hi)))).
   Qed.
 
   (* THE PATH: argv[0]'s string IS "echo", terminated. *)
@@ -1017,7 +1042,7 @@ Section UShEcho.
   Lemma sh_echo_path_of_holds : sh_echo_path_of.
   Proof.
     intros M s0 t g (_ & Hri & _ & _ & Hgi & Hzi) Hbytes.
-    pose proof (Hri 0%nat ltac:(lia)) as Hr.
+    pose proof (Hri 0%nat ltac:(exact echo_ws_pos)) as Hr.
     rewrite UkShEcho.echo_off_0 in Hr. rewrite Z.add_0_r in Hr.
     assert (Hn4 : M !! (s0 + 4) = Some (bv_0 8)).
     { rewrite <- ubyte0_bv0.
@@ -1025,7 +1050,7 @@ Section UShEcho.
         with (s0 + Z.of_nat (UkShEcho.echo_off 0%nat)
               + Z.of_nat (UkShEcho.echo_alen 0%nat))
         by (rewrite UkShEcho.echo_off_0 UkShEcho.echo_alen_0; lia).
-      exact (Hzi 0%nat ltac:(lia)). }
+      exact (Hzi 0%nat ltac:(exact echo_ws_pos)). }
     split_and!.
     - exact echo_pl_shape.
     - intros j b Hj.
@@ -1037,7 +1062,7 @@ Section UShEcho.
       replace (s0 + Z.of_nat j)
         with (s0 + Z.of_nat (UkShEcho.echo_off 0%nat) + Z.of_nat j)
         by (rewrite UkShEcho.echo_off_0; lia).
-      rewrite (Hgi 0%nat ltac:(lia) j
+      rewrite (Hgi 0%nat ltac:(exact echo_ws_pos) j
                  ltac:(rewrite UkShEcho.echo_alen_0; lia)).
       f_equal.
       rewrite <- (list_lookup_total_correct _ _ _ Hj).

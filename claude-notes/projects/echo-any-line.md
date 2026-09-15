@@ -72,6 +72,11 @@ the only case outside it.
   `echo_alen_le5` are deleted — nothing reads an argument's offset or length
   as a number any more. What remains is `echo_off_0 = 0` (true of every line,
   `wl_off_0`) and `echo_alen_0 = 4` (the COMMAND NAME, which stays "echo").
+- **THE ARGV NODE IS READ OUT OF THE HEAP BY INDUCTION.**
+  `UShEcho.echo_node_row` is one argument's four rows and
+  `echo_node_rows_of_cmd` inducts on the count; `echo_node_img` is stated
+  at `length echo_ws`. This was twelve `iDestruct`s at indices 0/1/2.
+  `uheap`'s readings are pure, so the heap survives the induction.
 - **THE ARITY IS THE WORD LIST'S, up to the node.** `UkShEcho`'s argv-node
   vocabulary — `echo_off_lt`, `echo_toks_lookup`, `echo_cmd_args_length` /
   `_lookup`, `echo_argv_bytes`, `echo_cmd_str` / `_word` / `_cap` — is
@@ -111,15 +116,14 @@ premise once the word list is a parameter.
 
 ## What is left
 
-1. **THE IMAGE EXTRACTION IS STILL UNROLLED AT THREE.**
-   `UShEcho.echo_node_img` and `echo_node_img_of_cmd` read the argv node
-   out of the heap one argument at a time (twelve `iDestruct`s at indices
-   0/1/2), and `echo_args_det` / `echo_key_args`'s callers still say
-   `na = 3` and `alen i = echo_alen i` per index — as do
-   `UShEchoOut.echo_out_argv_of_image` and `UShEchoPay`. The shape wanted
-   is a one-index helper plus an induction on the count, exactly as
-   `kecho_pay_of_link_from` did for the write chain. `uheap`'s readings do
-   not consume it, so the induction can hold the heap throughout.
+1. **THE EXEC-CHANNEL PREMISES.** `UShEcho.echo_args_det`,
+   `UShEchoOut.echo_out_argv_of_image` and `UShEchoPay` still state
+   `na = 3` and `alen i = echo_alen i` per index; the `Hna` derivation
+   (`UShEcho` ~1106) counts to three by case analysis on the vector's NULL
+   terminator and should count to `length echo_ws` instead.
+   `UShEcho.echo_argv_is` still says `length args = 3`. The image
+   EXTRACTION below them is already general, so this is the statements and
+   the one counting argument, not the heap reasoning.
 2. **THE CALLER'S BOUNDS.** `EchoDisc.echo_ws_pos` and `echo_ws_lt10` name
    two of them (the line has a command name; fewer words than sh's
    MAXARGS). Still unnamed: the line inside `getcmd`'s 100-byte buffer

@@ -27,7 +27,17 @@ two halves of step 3).
   PROLOGUE-ALTS-3's widening (app-echo.md, "PROLOGUE-ALTS-3 LANDED") is NOT
   an open question; tightening belongs to the post-Qed cleanup.
 
-## 2. What is on main (origin/main = 146e7cac1 code; notes at or after 52ac81007)
+## 2. What is on main (origin/main = d1cc70d8b code)
+
+FOURTH SESSION (2026-09-14, later): EXEC-SEAM (B)/(C)/(D) LANDED (`75e353efc`,
+`10b399a6c`, `d1cc70d8b`; app-echo.md "EXEC-SEAM LANDED").  `Hsh_owed` is ONE
+conjunct now (`⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh`); no `∨ True` in the
+U tier.  Lane R3 (checkout `-sup`, branch `lane/r3`, brief
+`handoff-2026-09-16/brief-r3.md`) deletes it per `r3-survey-2.md` §5/§6.
+Owner ruling 2026-09-14: finish the work; no surveys, reports or owner pages
+before Qed.
+
+## 2-third. What was on main at the third checkpoint (146e7cac1)
 
 THIRD SESSION (2026-09-14, later): M6b LANDED (`a7d47ccef`+`290f05cf0`),
 IO-LEAF STEP 4 LANDED (`2426ca438`+`7da574e81`), RESIDUALS (A) LANDED

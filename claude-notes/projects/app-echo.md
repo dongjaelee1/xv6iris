@@ -3783,6 +3783,37 @@ family.  Init's free write law then has exactly the two payable arms
 `die_de`/`die_df` left (INIT-DIAG's laws), and nothing about `die_dw` is an
 owner question any more.
 
+EXEC-SEAM LANDED (2026-09-14; the lane's `75e353efc` (B) + `10b399a6c` (C) +
+`d1cc70d8b` (D) fast-forwarded onto `6645b0260`; builds es-3/es-9/es-11 in
+`-disc`; audit md5 UNCHANGED 57f7327206c4b276d05035342fea8ecf -- `Print
+Assumptions` sees axioms, not a theorem's premises; lemma_diff 9 GONE, all
+justified in the report; no Admitted).  (B) THE EXEC SEAM CARRIES THE
+CHILDREN SET AND THE PID: `SpecKexec.exec_slot_pre … sts cs pidv` with the
+rows `⌜uvis_ch W' = cs⌝ -∗ ⌜uvis_pid W' = pidv⌝ -∗` on both slot wands
+(reflexive at the kernel's discharge, `exec_key_ch`/`exec_key_pid`), relayed
+through `exec_au_pre`/`SpecSysExec`/`UexecExecInst.exec_sbundle`
+(SpecSyscall/SpecUsertrap textually unchanged; `init_boot_bundle` quantifies
+`∀ cs pidv` inside, arity kept), the twin `UkRunExecRef.udepw_at_refR_ids`
+hands the supplier `urun_ids`; `UkSh.ush_pstate` carries `uch γch ∅ ∗ ush_pid`
+(`∃ p, ⌜p <> 1⌝ ∗ upid γpid p`), the wait re-entry's not-my-child arm is GONE
+(`ushf_wait_empty`).  (C) NO `∨ True` LEFT in iris/Uk*.v iris/USh*.v
+iris/UInit*.v iris/UEcho*.v: `init_rd_cred Wb n := Wb n`; `init_lend_cred T
+st Wp Wb l n`'s third arm is `T`; `ush_wcp` two arms (console: fd 0, 1, 2 the
+console; closed: `∃ j <= 2, ush_lcl l j` with `p < 3`); the entry law takes
+`ush_wcp … ∨ T`; deleted `ush_wcp_triv`, `ush_at_of_pm`, `ush_pos_of_posb`,
+`ush_posb_at`, `ush_posb_of`, `ush_gets_done_pos`, `UShLine.ush_at_of_mid`,
+`init_lend_cred_triv`, `init_pay_of_lend`; getcmd's return row made total.
+(D) THE FREE WRITE LAW UNDER THE TAINT: the paid walk takes `□ (T -∗
+sh_deps)` (derived at the top by `UexecExecMint.udepw_law_of_sup_write`:
+`app_sup -∗ out_licence -∗ udepw_law 16`); init's closed-ledger writes pay
+through `kinit_w1_of_closed_l0` (`init_deps`' first conjunct is the pair
+`kinit_wlaw T := □ (T -∗ udepw_law 16) ∗ kinit_wcl`).  TRUSTED: `Hsh_owed`
+OLD `(⊢ UkSh.sh_deps (PS := uprogSG_free)) /\ (⊢ UInitSh.sh_pay_rest
+UInitSh.sh_Rsh)`, NEW `(⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh)`.  Remaining
+unconditional spenders of the free law: the GENERIC programs only (UkShRun/
+UkShDiag/UkShMain's generic lemmas, UkCat/UkEcho/UShEcho/UEchoKernel).  Next:
+lane R3 deletes the last conjunct.  Report: `handoff-2026-09-16/exec-seam-report.md`.
+
 RESIDUALS (A) LANDED; (B) BLOCKED AT THE EXEC SEAM (2026-09-14; lane
 RESIDUALS' `c0474175b` in `-disc` cherry-picked as `146e7cac1`; 7 files;
 build rs-1 on the identical tree; audit the thirteen; lemma_diff CLEAN; no

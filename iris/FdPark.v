@@ -361,6 +361,109 @@ Section FdPark.
       iFrame "Ha Hb".
   Qed.
 
+  (* =================================================================== *)
+  (*  6.  THE ARM'S SUPPLIER AND ITS RECEIPT (SS8.2's kernel half)         *)
+  (* =================================================================== *)
+
+  (* WHAT A HELD ROW'S READ OR WRITE GIVES BACK, keyed on the same state
+     the payment is keyed on: the half, ADVANCED.  At every other row it
+     is the unit, which is what [UserOff.off_supply_parked] leaves behind
+     ([R = True]) -- so ONE receipt serves both modes and the arms below
+     differ in the state and in nothing else.
+
+     NOTE WHAT THE PAYMENT IS: [uoff_surr] above, unchanged.  The resource
+     SS8.2's held arm asks of its caller and the one SS8.3's boundary asks
+     of a crossing process are the SAME PROPOSITION at one row -- the
+     half, at a position the row does not name -- which is why the two
+     halves of RA-2 share this file's vocabulary rather than each growing
+     their own.  (The kernel learns the position from its OWN half, by
+     agreement, inside the supplier below; neither the payment nor the
+     boundary has to say it.) *)
+  Definition uoff_rcpt (st : fdstate) (o : nat) : iProp Σ :=
+    match st with
+    | FdOpen _ _ (FdInode _ γo OffHeld) => uoff γo o
+    | _ => True
+    end%I.
+
+  Lemma uoff_rcpt_parked (st : fdstate) (o : nat) :
+    fdst_parked st -> ⊢ uoff_rcpt st o.
+  Proof.
+    intros H. destruct st as [| r w [i g [|] | | mj]]; done.
+  Qed.
+
+  Lemma uoff_rcpt_held (r w : bool) (i : Z) (γo : gname) (o : nat) :
+    uoff γo o -∗ uoff_rcpt (FdOpen r w (FdInode i γo OffHeld)) o.
+  Proof. by iIntros "$". Qed.
+
+  (* ...AND THE RECEIPT IS A PAYMENT AGAIN.  This is the one step that
+     makes a held descriptor USABLE rather than merely servable: what
+     comes back off a read is what the next read -- or the next boundary
+     crossing -- is paid with.  "read, read, fork" is this lemma twice and
+     [fd_frags_park_at] once. *)
+  Lemma uoff_rcpt_surr (st : fdstate) (o : nat) :
+    uoff_rcpt st o -∗ uoff_surr st.
+  Proof.
+    destruct st as [| r w [i g [|] | | mj]]; cbn;
+      try (iIntros "_"; by iEmpIntro).
+    iIntros "H". by iExists o.
+  Qed.
+
+  (* THE SUPPLIER, ASSEMBLED FROM THE ROW AND THE ARM'S PAYMENT, AND IT IS
+     WHAT THE MODE-SPLIT ARMS SPEND (design/user-read.md SS8.2).  The two
+     fires ([FsAbsReadFire.arf_read_fire_gen],
+     [FsAbsWriteFire.wrf_awrite_fire_gen] / [wrf_apart_fire_gen]) each take
+     ONE [UserOff.off_supply] and hand back its [R]; this lemma is the
+     state-keyed way to build one, so a kernel proof that has branched on
+     nothing at all -- it holds the row it always held and the payment its
+     contract's inode arm now carries -- gets its supplier and its receipt
+     from the descriptor, exactly as [FdSlots.foff_row_inode_of] used to
+     give it the invariant.
+
+     THE POSITION IS THE KERNEL'S.  A held payment names its offset under
+     an existential and the kernel matches it against its OWN half
+     ([UserOff.uoff_agree_k]) rather than against [f->off] -- the two are
+     the same value by the off box's own invariant, and this way the arm
+     costs the caller no equation.
+
+     WHY IT IS HERE AND NOT IN [SpecFileread]: stating the arms is RA-2's
+     one commit, and an import of [UserOff] into the fileread contract
+     invalidates its whole cone.  This lemma is the part that can be
+     proved without the arms, and it is proved at the GENERAL case -- both
+     modes, one statement -- so the arm split spends it instead of
+     building it. *)
+  Lemma off_supply_of_st (E : coPset) (r w : bool) (i : Z) (γo : gname)
+      (m : offmode) (off d : nat) :
+    ↑foffN ⊆ E ->
+    foff_row (FdOpen r w (FdInode i γo m)) -∗
+    uoff_surr (FdOpen r w (FdInode i γo m)) -∗
+    off_gv γo (1/2) (Z.of_nat off) -∗
+      off_gv γo (1/2) (Z.of_nat off)
+      ∗ off_supply γo E off d
+          (uoff_rcpt (FdOpen r w (FdInode i γo m)) (off + d)).
+  Proof.
+    intros HE. destruct m; cbn [foff_row uoff_surr uoff_rcpt].
+    - iIntros "#Hinv _ $". iApply (off_supply_parked E γo off d HE with "Hinv").
+    - iIntros "_ Hs Hk". iDestruct "Hs" as (o) "Hu".
+      iDestruct (uoff_agree_k γo o (Z.of_nat off) with "Hu Hk") as %Heq.
+      assert (Ho : o = off) by (apply Nat2Z.inj; symmetry; exact Heq).
+      rewrite Ho. iFrame "Hk".
+      iApply (off_supply_held E γo off d with "Hu").
+  Qed.
+
+  (* ...and the reading a kernel proof actually holds its state at: an
+     EQUATION, never a match ([FdSlots.foff_row_inode_of]'s convention, and
+     [SpecFileread]'s two [_of] lemmas'). *)
+  Lemma off_supply_of_st_eq (E : coPset) (st : fdstate) (r w : bool) (i : Z)
+      (γo : gname) (m : offmode) (off d : nat) :
+    st = FdOpen r w (FdInode i γo m) ->
+    ↑foffN ⊆ E ->
+    foff_row st -∗ uoff_surr st -∗ off_gv γo (1/2) (Z.of_nat off) -∗
+      off_gv γo (1/2) (Z.of_nat off)
+      ∗ off_supply γo E off d (uoff_rcpt st (off + d)).
+  Proof.
+    intros -> HE. exact (off_supply_of_st E r w i γo m off d HE).
+  Qed.
+
 End FdPark.
 
 (* ===================================================================== *)
@@ -389,3 +492,37 @@ End FdPark.
      polymorphic wrapper between a program and the fork leaf -- which
      quantifies its descriptor map universally -- would be left holding a
      premise it cannot discharge.  (* RA-2: held case here *) *)
+
+(* ===================================================================== *)
+(*  ...AND WHAT RA-2 FOUND WHEN IT RAN (design/user-read.md SS8.4)        *)
+(* ===================================================================== *)
+(* THE COMMIT DID NOT CLOSE, AND THE THREE LINKS THAT STOPPED IT ARE NOT
+   IN THIS FILE -- every lemma above still stands and is still what the
+   held case will spend.  In one line each, with SS8.4 as the record:
+
+   1. [hand] AT OPEN IS REFUTED BY THE OPEN-ROW CONJUNCT THIS CAMPAIGN
+      ITSELF LANDED.  [UsysMemOk.usys_fd_ok]'s open arm pins
+      [fdst_parked] on the ACTUAL successor table, and that relation is
+      threaded for BOTH tiers with no tier index ([SpecSyscall.sysc_fd_ok],
+      [SpecUsertrap]) -- so a held open kills [ProofSyscall]'s arm 15.  The
+      conjunct cannot come off until the generic tier's Loeb step reads
+      successor-parkedness somewhere else; the one candidate is the slot's
+      own post ([UexecSG.spost_at]'s [fdv'], which the FAMILY chooses).
+
+   2. RELAXING THE PIN DELETES THE ONLY SUPPLIER OF SS8.3's EXEC PREMISE.
+      [ProcInv.proc_priv_parked] IS the pin, in three steps
+      ([FileInvDefs.fdstate_ok_parked] -> [file_ref_parked] -> the export),
+      and SS8.3's finding C discharges [SpecKexec.exec_slot_pre]'s wands
+      with it.  The replacement is [fd_frags_park_at]'s own output --
+      [fdv_all_parked sts'] at the table exec HANDS OVER -- which restates
+      the wands rather than inheriting them.
+
+   3. THE SURRENDER SLOT AT FORK HAS NO PAYER.  fork is a FREE number
+      ([UexecSG.free_num]), so its [UexecExecInst.xv6_sbundle] arm is [emp]
+      and every verified forker pays through [UkRun.udepw_of_psok] -- whose
+      [udepw] quantifies the table UNIVERSALLY and whose left disjunct is a
+      pure fact with no table in it.  The class premise does not reach that
+      disjunct: it lands on the supply law, which is the GENERIC tier's
+      route.  What would reach it is a U-tier HALF OF THE PROCESS'S HELD
+      SET -- the third sibling of [UserCwd.ucwd] and [UserChildren.uch] --
+      and that is an owner decision (SS8.4). *)

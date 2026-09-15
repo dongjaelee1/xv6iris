@@ -183,7 +183,11 @@ half) its two answers.  The mapped row is what the buffer leaf already
 handed out; **the image row is new and it is the piece the file arm was
 missing** — `SpecFilewrite.write_post_ok_at` says the committed run is
 `ubytes_at M ua`, `M` is the trapping key's image, and `UkRun.urun` binds
-it existentially, so no caller could ever tie it to the run it owns.
+it existentially, so nothing above the leaf can state the equation.  (It
+was reachable one awkward way: the deposit's own wand lends the heap, so
+a caller could have proved the row there and carried it in its `Q`.  The
+walk hands it out unconditionally instead, which is what makes the file
+member's content row independent of which cursor the caller chose.)
 
 `wp_uk_ecall_write_chain_buf` and `wp_uk_ecall_write_chain_txt` are now
 its two corollaries AT THEIR EXACT FORMER STATEMENTS (they drop the image

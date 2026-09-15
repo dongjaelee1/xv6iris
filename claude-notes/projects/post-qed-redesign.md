@@ -30,8 +30,25 @@ stoppable exactly where its partial echo is itself legal, which is what
 file. So "STOPPABLE at any `j`" below is wrong, and §2.4's account of the
 kernel side must respect it. `EvOpen` also carries `obs_ends_in Uart0 h c`
 (needed at `EvClose`, and `cons_echo_shift` already supplies it).
-STILL TO DO in R1: `ecl` beside `eout`/`ein`, and the five step lemmas and
-the drain re-proved over the history record.
+**R1 CONTINUED (2026-09-15, `e4215df16` + `f8580a953`).** `EchoOut.v` now
+carries `ch_arm_E`/`ch_E` (the era's echoed list as a FUNCTION of the
+history), the movement lemmas, `ch_arm_era`, `ecl_pure` and
+`ecl_pure_close`. Two findings worth keeping:
+
+* `ch_E_close : ch_E (cons_step H EvClose) = ch_E H` — filing the entry does
+  not move the era's list. That IS the settled/window merge: §2.6's claim
+  that `wcnt` can go is confirmed, and there is nothing left for a counter to
+  refute. It holds only because the arm's condition is `take j cs =
+  [echo_of c]` (see the correction above), which is *definitionally* the same
+  decision as `log_echoed` on the entry `EvClose` files — `done` closes the
+  goal.
+* `ch_E_close_len` is the identity the merge really turns on: at the close the
+  log's echo count jumps to the era's list length, so `ein_pure`'s reader-side
+  block bound falls out of the WRITER's own `cs_len_ok`. Today those two facts
+  live in two claims and the window counter is what keeps them in step.
+
+STILL TO DO in R1: the `EvOut`/`EvOpen`/`EvByte`/`EvRead` preservation
+lemmas, the Iris-level `ecl`, and the drain.
 
 Design page (read-only review, 2026-09-16, `origin/main` = `3d3f4bbfb`); nothing built, every fact cited. A RESOURCE is an owned Iris proposition (`iProp Σ`): LINEAR if it cannot be duplicated, PERSISTENT (`□`) if it can, TIMELESS if it survives leaving an invariant. An INVARIANT is a shared resource any thread may open for one atomic step and must restore. A VIEW SHIFT (`==∗`, `={E}=∗`) is a ghost step with no machine step. A WAND `P -∗ Q` turns a `P` into a `Q`. GHOST STATE is bookkeeping in resources (a `ghost_var` with FRACTIONAL SHARES that must agree; a `mono_list` whose persistent LOWER BOUNDS are prefixes of an AUTHORITY). An ERA is one power cycle, numbered `S gen_id`.
 

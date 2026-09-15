@@ -61,41 +61,43 @@ the only case outside it.
   word starts one blank past this one's end), `wl_line_sep` (a separator
   follows a word while another word remains), `wl_off_last` + `wl_line_nl_at`
   (the last word's end IS the body's end, which is where the newline is).
+- **ECHO'S WRITE CHAIN IS AN INDUCTION OVER THE WORDS.**
+  `UEchoOut.echo_out_argv` says argv IS the line's words and argument `i` sits
+  where the output join puts it (`EchoDisc.echo_ocur`);
+  `kecho_pay_of_link_from` walks them, writing a word and then a separator or
+  the closing newline exactly as `echo_out_sep` / `echo_out_last` decide. The
+  two bytes echo writes that are not argv's ARE `wl_sp` and `wl_nl`. The exit
+  payload's cursor is `length echo_line_out`, not 12.
+- **THE LITERAL READINGS ARE GONE.** `echo_off_1`/`_2`, `echo_alen_1`/`_2` and
+  `echo_alen_le5` are deleted — nothing reads an argument's offset or length
+  as a number any more. What remains is `echo_off_0 = 0` (true of every line,
+  `wl_off_0`) and `echo_alen_0 = 4` (the COMMAND NAME, which stays "echo").
 - The assumption audit is unchanged throughout (`make audit-echo-only`,
   fourteen assumptions, md5 `a78bf9a051fb56b084795d782df04045`).
 
 ## What is left
 
-1. **ECHO'S WRITE CHAIN** (`UEchoOut.echo_out_argv` and
-   `kecho_pay_of_link`). The last structural piece, and the last holder of a
-   literal: `echo_out_argv` says argc is three, each argument is five bytes,
-   and they sit at the alternative's offsets 0 and 6; `kecho_pay_of_link` is
-   a fully unrolled four-write chain at cursor offsets 0/5/6/11/12. It becomes
-   an induction over the words with the cursor at `wl_off 0 (drop 1 echo_ws)`,
-   spending the four cursor laws above. `ech_step`, `ech_chain` and
-   `kecho_w_of_link_data`/`_txt` are already offset-generic, and
-   `UkEcho.kecho_pay` is already a fixpoint over the argument list — as is
-   `UkEcho.wp_kecho_main`, which walks argv's loop at an arbitrary `args`.
-   Nothing about echo's own machine code needs generalising.
-2. **THE NUMBERS.** `UkShEcho.echo_off_1`/`_2` and `echo_alen_1`/`_2` exist
-   only to serve item 1's literal statement and go with it. `echo_off_0` is
-   general (`wl_off_0`) and stays; `echo_alen_0 = 4` is about the COMMAND
-   NAME, which is fixed in the general theorem too, and also stays.
-3. **THE LINE CHOICE IS READ OFF ONE BYTE** (`EchoOutPure.line_alts_head_det`).
+1. **THE LINE CHOICE IS READ OFF ONE BYTE** (`EchoOutPure.line_alts_head_det`).
    The four alternatives' first bytes are `h e $ f`; an arbitrary echoed
    string collides with `"fork\n"` on `echo foo` and with
    `"exec echo failed"` on `echo eggs`. Either add "the first word printed
    does not begin with `e` or `f`" as a side condition, or port down the
    prologue's whole-block argument (`EchoDisc.pro_of_prefix_free`), which is
-   the cleaner shape. THIS IS A DESIGN DECISION, not labour.
+   the cleaner shape. THIS IS A DESIGN DECISION, not labour, and it is the
+   only one left.
+2. **`UConsLine.ush_disc_line`** still reads `echo_line !! (i mod 17)`, and
+   `UShEcho.echo_line_nonul` is stated at `j < 17`. Both want
+   `length echo_line` instead.
+3. **THE EXEC-CHANNEL PREMISES.** `UShEchoOut.echo_out_argv_of_image` and
+   `UShEchoPay` still carry `na = 3` and per-index `alen i = echo_alen i`;
+   they should read `na = length echo_ws` and quantify.
 4. **THE CALLER'S SIDE CONDITIONS**, none of which `LineWords`/`UkShWords`
    state: at most `MAXARGS` words (sh's parser), the line inside `getcmd`'s
-   100-byte buffer and the console's 128, and the argv block inside exec's
-   stack page (item 1 of the landed list gives the inequality).
-5. **`UConsLine.ush_disc_line`** still reads `echo_line !! (i mod 17)`.
-6. **THE WORD LIST ITSELF.** Once 1-5 are done, `EchoDisc.echo_ws` becomes a
-   parameter with `wl_wf` and the side conditions of item 4 as its premises,
-   and the theorem reads `forall ws, ... -> <the claim at that line>`.
+   100-byte buffer and the console's 128. The argv block's fit inside exec's
+   stack page is already an inequality (`KexecDefs.kxc_len_bound`).
+5. **THE WORD LIST ITSELF.** Once 1-4 are done, `EchoDisc.echo_ws` becomes a
+   parameter with `wl_wf` and item 4's bounds as its premises, and the theorem
+   reads `forall ws, ... -> <the claim at that line>`.
 
 ## The two traps this lane keeps walking into
 

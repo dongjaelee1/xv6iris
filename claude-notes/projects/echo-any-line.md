@@ -75,28 +75,36 @@ the only case outside it.
 - The assumption audit is unchanged throughout (`make audit-echo-only`,
   fourteen assumptions, md5 `a78bf9a051fb56b084795d782df04045`).
 
+## The ruling on the line choice (owner, this lane)
+
+The claim used to read WHICH alternative ran off ONE byte of the wire —
+`h`, `e`, `$`, `f` are distinct. That is a property of what echo happens to
+print, and at an arbitrary line it fails.
+
+**Ported down, not side-conditioned.** `EchoOutPure.line_alts_prefix_det` is
+the prologue's whole-block reading (`EchoDisc.pro_alts_prefix_det`) at the
+line: the four alternatives are pairwise PREFIX-FREE. That excludes exactly
+two outputs — `fork\n` and `exec echo failed\n`, where the observer genuinely
+cannot tell echo's printing from sh's own diagnostic — where distinct heads
+would have excluded every line whose first printed word begins with `e` or
+`f`. The exclusion belongs to sh's diagnostics, not to any letter, and the
+property is decidable, so it is a computation at any given line and becomes a
+premise once the word list is a parameter.
+
 ## What is left
 
-1. **THE LINE CHOICE IS READ OFF ONE BYTE** (`EchoOutPure.line_alts_head_det`).
-   The four alternatives' first bytes are `h e $ f`; an arbitrary echoed
-   string collides with `"fork\n"` on `echo foo` and with
-   `"exec echo failed"` on `echo eggs`. Either add "the first word printed
-   does not begin with `e` or `f`" as a side condition, or port down the
-   prologue's whole-block argument (`EchoDisc.pro_of_prefix_free`), which is
-   the cleaner shape. THIS IS A DESIGN DECISION, not labour, and it is the
-   only one left.
-2. **`UConsLine.ush_disc_line`** still reads `echo_line !! (i mod 17)`, and
+1. **`UConsLine.ush_disc_line`** still reads `echo_line !! (i mod 17)`, and
    `UShEcho.echo_line_nonul` is stated at `j < 17`. Both want
    `length echo_line` instead.
-3. **THE EXEC-CHANNEL PREMISES.** `UShEchoOut.echo_out_argv_of_image` and
+2. **THE EXEC-CHANNEL PREMISES.** `UShEchoOut.echo_out_argv_of_image` and
    `UShEchoPay` still carry `na = 3` and per-index `alen i = echo_alen i`;
    they should read `na = length echo_ws` and quantify.
-4. **THE CALLER'S SIDE CONDITIONS**, none of which `LineWords`/`UkShWords`
+3. **THE CALLER'S SIDE CONDITIONS**, none of which `LineWords`/`UkShWords`
    state: at most `MAXARGS` words (sh's parser), the line inside `getcmd`'s
    100-byte buffer and the console's 128. The argv block's fit inside exec's
    stack page is already an inequality (`KexecDefs.kxc_len_bound`).
-5. **THE WORD LIST ITSELF.** Once 1-4 are done, `EchoDisc.echo_ws` becomes a
-   parameter with `wl_wf` and item 4's bounds as its premises, and the theorem
+4. **THE WORD LIST ITSELF.** Once 1-3 are done, `EchoDisc.echo_ws` becomes a
+   parameter with `wl_wf` and item 3's bounds and prefix-freeness as its premises, and the theorem
    reads `forall ws, ... -> <the claim at that line>`.
 
 ## The two traps this lane keeps walking into

@@ -1756,22 +1756,23 @@ takes the page's bytes as `M`'s (`proc_ptm_page_bytes`).  STILL OWED: the
 argv reading `exec_args_of` — `fetchaddr` is ownership-only, so the argv
 POINTERS stay unread though the strings they point at are.
 
-## Decisions outstanding (refreshed 2026-09-08)
+## Decisions outstanding
 
-Everything ruled on 2026-09-07/08 is implemented up to and including the
-refund record; the ten syscall folds and R-CONJ are on main.  Still open:
+NONE.  The theorem is closed (`UInitBootAdequacy.echo_adequacy_echoΣ`) and
+nothing is owed by any lane.  The list that stood here was refreshed
+2026-09-08 and every item on it has since been settled by shipping: ARM
+(L2-a/L2-b) landed, L5's tag output and console ledger are `app_tag` and the
+ledger, L6's `wait(0)` null-window row is `UkRunSys.wp_uk_ecall_wait_null_*`
+and echo's bundles landed with it, and Q4 stopped being provisional when
+`AppEcho.echo_pred` shipped as `echo_taint ∨ (⌜echo_fs_pure av⌝ ∗
+cons_state r av)`.
 
-- **ARM (L2-a/L2-b)** — in flight; its phase-0 inventory may surface the
-  park-channel question (fd-row-pilot §6 item 3) as a real decision.
-- **L5** — the rx wand's TAG output and the console ledger (the design
-  sketch is under "The two options for the generic slot's supply"); the
-  console READ arm's receipt is where the tag reaches sh.
-- **L6** — fork's real row LANDED (three lanes, above); init's `wait(0)`
-  null-window row; echo's own bundles (its pins as
-  cursor/receipt families; the exec slot wand answered from
-  `kexec_image_ok`).
-- **Q4** stays provisional (`echo_pred := taint ∨ pins`).
-- Hygiene backlog (above) after ARM.
+WHAT IS PROPOSED BUT NOT OWED lives in
+[`post-qed-redesign.md`](post-qed-redesign.md) (one console I/O invariant;
+R1's pure half landed, the rest waits on the owner's choice between a
+persistent-and-split echo obligation and a linear one).  The one change that
+would make the theorem SAY more is the trace predicate's known widening,
+recorded in [`../design/applications.md`](../design/applications.md) §5.
 
 PID-ROW LANDED (2026-09-09).  `ProcGeom.PIDMAX =
 1000` (kernel/param.h, beside NPROC).  `PidLock.nextpid_res_at` carries

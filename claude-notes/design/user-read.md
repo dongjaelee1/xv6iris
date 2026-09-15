@@ -213,8 +213,10 @@ tell WHICH disjunct came back, so the File row would return
 becomes useful only with a per-`γo` "no invariant was ever allocated
 here" witness — a new ghost and a new obligation on every minter.
 
-**R-c — the intermediate that needs NO kernel change, and what actually
-unblocks `cat`:** cut the file-arm leaf AT A PARKED DESCRIPTOR, with the
+**R-c — LANDED by RD-2 (`iris/UkReadFile.v`, branch `rd2-file-leaf`,
+mirror-green, `Print Assumptions` at the standing bar).**  The
+intermediate that needs NO kernel change, and what actually unblocks
+`cat`: the file-arm leaf AT A PARKED DESCRIPTOR, with the
 offset REPORTED by the receipt instead of owned.
 `FsAbsReadFire.read_post_ok` already existentially names `off`, the
 observed node `a` and `d`, ties `Z.of_nat d = bv_unsigned r`, and — on
@@ -224,9 +226,45 @@ derivable today; what is missing is only the caller's ability to PREDICT
 `off` before the call and to carry it across calls.  A `cat`-shaped
 consumer that pins its file (`aread_commit_at_pinned_self` at its
 `nview`) LEARNS the bytes it read, from this leaf, with nothing new in
-the kernel.  Land that, and R-a upgrades it later by replacing the
-reported `off` with an owned one — the leaf's statement gains a
-conjunct and loses an existential; nothing else about it moves.
+the kernel.  R-a upgrades it later by replacing the reported `off` with
+an owned one — the leaf's statement gains a conjunct and loses an
+existential; nothing else about it moves.
+
+WHAT IS IN `iris/UkReadFile.v`:
+
+- `udepwf_st N m pc n fdep st` — §3's arm-indexed deposit, the third
+  sibling of `UkRun.udepwf_at` (cwd-fixed) and `udepwf_std`
+  (ledger-fixed): it fixes the STATE the caller's handle names,
+  `⌜fd_st_of_key (a0) fdv = st⌝`, because a file descriptor is never a
+  standard stream (`UserFd.ufd` carries `NSTD ≤ fd`) and the ledger
+  cannot reach it.  `udepwf_st_read_file` is its supplier, and the whole
+  price is ONE observation commit: `pf_at (aread_commit_at Γ appE i γo) F`
+  and nothing beside it — §1's "the payment is a resource the PROGRAM
+  owns and understands", literally.
+- `xfam_rdf` / `read_file_fam` — `UShLine.xfam_rd` with `rf_F` real
+  instead of trivial.  The console member names `rf_ret`/`rf_in` and
+  leaves `rf_F` at the unit; the inode member does the reverse, and that
+  difference IS the arm.
+- `wp_uk_ecall_read_file` — the leaf: `wp_uk_ecall_read_recv`'s walk
+  with the post kept, at the file arm.  §5's claim that the recv leaf's
+  bridge rows are ARM-INDEPENDENT is now checked rather than asserted:
+  all six (resume-image bytes, destination linearity, writable-mapped,
+  the three argument ties, the lazy bit, `uexec_live_ok`) are copied
+  unchanged, and the only differences are in the descriptor.
+- `read_arms_file_learn` — §3's File row, assembled, and CLOSED UNDER
+  THE GLOBAL CONTEXT (no axioms at all): at a pinned file the return
+  value IS `ard_count (Z.to_nat cnt) off |bs|` = `min(cnt, |bs| − off)`
+  and the bytes the program holds back ARE `bs[off, off+d)`.  The count
+  fits a word because `ard_pre` already carries the row's size cap.
+  The `r = -1` disjunct is the kernel's own and is honest: readi answers
+  -1 on a copyout fault and `uexec_live_ok` refutes -1 only at the
+  console, so an inode reader that wants the left arm tests `r ≥ 0` —
+  which is what cat's loop does anyway.
+- `wp_uk_cat_read_learns` (+ `cat_file`, `cat_piece`) — the consumer
+  test the lane owed: a program holding `ufd fd (FdOpen true _
+  (FdInode i γo))` and `nview Γ q i (AFile cat_file)` reads and LEARNS
+  the bytes, and it falls out of the leaf with no new machinery (the
+  only thing it builds is its own pin, handed back).
 
 ## 4. Fork (and dup) versus an owned offset — RULED 2026-09-15: PARK
 

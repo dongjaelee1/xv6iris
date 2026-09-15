@@ -178,9 +178,21 @@ Derived corollaries, in order of what applications actually use:
   DESCRIPTOR with the offset REPORTED by the receipt instead of owned —
   zero kernel change, delivers §3's whole File CONTENT row and the
   `cat` consumer today, and upgrades to R-a later by one conjunct.
-  RD-2 RECOMMENDS R-c NEXT, R-a as its own campaign.  OWNER RULING
-  WANTED before the next lane is cut.
-  WHAT RD-2 DID LAND: RD-3 below (folded in as briefed), and §3/§5's
+  **RD-2 TOOK R-c AND LANDED IT** (`iris/UkReadFile.v`, mirror-green,
+  whole tree; `Print Assumptions` at the standing bar — and
+  `read_arms_file_learn` is CLOSED UNDER THE GLOBAL CONTEXT):
+  `udepwf_st` (§3's arm-indexed deposit — the STATE-fixed third sibling
+  of `udepwf_at`/`udepwf_std`) + `udepwf_st_read_file` (its supplier:
+  ONE observation commit and nothing beside it), `xfam_rdf` /
+  `read_file_fam`, `wp_uk_ecall_read_file` (the leaf: recv's walk with
+  the post kept, at the file arm — which CHECKS §5's claim that recv's
+  six bridge rows are arm-independent), `read_arms_file_learn` (§3's
+  File row: `r = min(cnt, |bs| − off)` and the bytes ARE
+  `bs[off, off+d)`), and the consumer test `wp_uk_cat_read_learns`.
+  R-a IS STILL OWED as its own campaign — it is what buys the PREDICTED
+  offset, §6's figure and the TR's `\nz` note.  OWNER RULING WANTED on
+  whether to schedule it.
+  ALSO LANDED: RD-3 below (folded in as briefed), and §3/§5's
   as-landed blocks.  Also recorded in §5: the "receipt family indexed by
   the arm" needs NOTHING new — the inode member IS
   `FsAbsReadFire.read_arms` and the family IS

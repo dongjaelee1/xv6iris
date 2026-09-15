@@ -1593,6 +1593,84 @@ Proof.
     rewrite app_nil_r. by rewrite Hseg.
 Qed.
 
+(* ---- THE OTHER FOUR EVENTS.  Three of them are FRAME lemmas: the output
+   side's own step ([eout_pure] at the new accepted bytes, with [cs_len_ok]
+   and [ps_len_ok]) is what today's [eout_step_write]/[_blk]/[_pro] and
+   [eout_step_echo] already prove, and these say the INPUT-side clauses come
+   along for free -- which is the whole point of merging the claims.  Only
+   [EvOpen] needs anything new, and what it needs is the two era facts the
+   arm will owe the entry it files. ---- *)
+
+Lemma ecl_pure_out (k : nat) (ho : list mobs) (so so' : ostage)
+    (H : ConsLog.cons_hist) (b : bv 8) :
+  o_cs so' = o_cs so -> o_E so' = o_E so ->
+  eout_pure k ho so' (ConsLog.ch_acc H ++ [b]) ->
+  cs_len_ok so' -> ps_len_ok so' ->
+  ecl_pure k ho so H ->
+  ecl_pure k ho so' (ConsLog.cons_step H (ConsLog.EvOut b)).
+Proof.
+  intros Hcs' HE' Hout Hc Hp (_ & _ & _ & Hin & Hera & HE).
+  rewrite /ecl_pure /ConsLog.cons_step.
+  cbn [ConsLog.ch_acc ConsLog.ch_log ConsLog.ch_dl ConsLog.ch_arm].
+  split_and!; [exact Hout | exact Hc | exact Hp | by rewrite Hcs' | exact Hera |].
+  by rewrite HE' HE /ch_E.
+Qed.
+
+Lemma ecl_pure_read (k : nat) (ho : list mobs) (so : ostage)
+    (H : ConsLog.cons_hist) (ws : list (list mobs * bv 8)) :
+  (ConsLog.ch_dl H ++ ws) `prefix_of` echoed (ConsLog.ch_log H) ->
+  ecl_pure k ho so H ->
+  ecl_pure k ho so (ConsLog.cons_step H (ConsLog.EvRead ws)).
+Proof.
+  intros Hpre (Hout & Hc & Hp & Hin & Hera & HE).
+  destruct Hin as (Hlog & Hdsc & Hbts & _ & HEi & HEb & Hcnt).
+  rewrite /ecl_pure /ConsLog.cons_step.
+  cbn [ConsLog.ch_acc ConsLog.ch_log ConsLog.ch_dl ConsLog.ch_arm].
+  split_and!; [exact Hout | exact Hc | exact Hp | | exact Hera | by rewrite HE /ch_E].
+  by split_and!.
+Qed.
+
+(* the arm opens: nothing the claim says moves, but from here on the claim
+   owes the entry the arm will file its two era facts *)
+Lemma ecl_pure_open (k : nat) (ho : list mobs) (so : ostage)
+    (H : ConsLog.cons_hist) (h : list mobs) (c : bv 8) (cs : list (bv 8)) :
+  ConsLog.ch_arm H = None ->
+  disc_seg (open_seg h) -> obs_boots h = k ->
+  ecl_pure k ho so H ->
+  ecl_pure k ho so (ConsLog.cons_step H (ConsLog.EvOpen h c cs)).
+Proof.
+  intros Hn Hd Hb (Hout & Hc & Hp & Hin & _ & HE).
+  pose proof (ch_E_open H h c cs Hn) as Hopen.
+  rewrite /ecl_pure /ConsLog.cons_step.
+  cbn [ConsLog.ch_acc ConsLog.ch_log ConsLog.ch_dl ConsLog.ch_arm].
+  split_and!; [exact Hout | exact Hc | exact Hp | exact Hin | | ].
+  - cbn [ch_arm_era]. by split.
+  - rewrite HE -Hopen /ConsLog.cons_step /ch_E.
+    by cbn [ConsLog.ch_log ConsLog.ch_arm].
+Qed.
+
+(* the echoed byte goes out: the era's list grows by exactly that entry,
+   which is what the output side's own step already says *)
+Lemma ecl_pure_byte (k : nat) (ho : list mobs) (so so' : ostage)
+    (H : ConsLog.cons_hist) (b : bv 8) (h : list mobs) (c : bv 8) :
+  ConsLog.ch_arm H = Some (h, c, [echo_of c], 0%nat) ->
+  o_cs so' = o_cs so ->
+  o_E so' = o_E so ++ [(open_seg h, c)] ->
+  eout_pure k ho so' (ConsLog.ch_acc H ++ [b]) ->
+  cs_len_ok so' -> ps_len_ok so' ->
+  ecl_pure k ho so H ->
+  ecl_pure k ho so' (ConsLog.cons_step H (ConsLog.EvByte b)).
+Proof.
+  intros Ha Hcs' HE' Hout Hc Hp (_ & _ & _ & Hin & Hera & HE).
+  pose proof (ch_E_byte_echo H b h c Ha) as Hgrow.
+  rewrite /ecl_pure /ConsLog.cons_step Ha.
+  cbn [ConsLog.ch_acc ConsLog.ch_log ConsLog.ch_dl ConsLog.ch_arm].
+  split_and!; [exact Hout | exact Hc | exact Hp | by rewrite Hcs' | | ].
+  - rewrite Ha in Hera. cbn [ch_arm_era] in Hera |- *. exact Hera.
+  - rewrite HE' HE -Hgrow /ConsLog.cons_step Ha.
+    by cbn [ConsLog.ch_log ConsLog.ch_arm].
+Qed.
+
 Section echo_out.
   Context {Σ : gFunctors} `{!echoOutG Σ}.
   (* THE TAINT, ABSTRACTLY.  [AppEcho.echo_taint] is [mono_nat_lb_own

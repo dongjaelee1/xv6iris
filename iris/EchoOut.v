@@ -1489,6 +1489,13 @@ Proof.
     by rewrite app_nil_r seg_of_length.
 Qed.
 
+Lemma ch_dl_close (H : ConsLog.cons_hist) :
+  ConsLog.ch_dl (ConsLog.cons_step H ConsLog.EvClose) = ConsLog.ch_dl H.
+Proof.
+  rewrite /ConsLog.cons_step.
+  by destruct (ConsLog.ch_arm H) as [[[[h c] cs] j] |].
+Qed.
+
 (* ---- the era facts the in-flight arm carries.  They are what the entry
    [EvClose] files needs in order to join [ein_pure]'s per-entry clauses,
    and they are the application's business, not [ConsLog]'s: that file
@@ -2103,6 +2110,68 @@ Section echo_out.
     (∃ v : era_pins,
        era_pin k v ∗ turn v 0%nat ∗ dl_cnt v (1/2) 0%nat
        ∗ cs_lb v [] ∗ ps_lb v [] ∗ E_lb v 0%nat)%I.
+
+  (* ====================================================================== *)
+  (*  THE MERGED CLAIM (redesign lane R1), wired to nothing yet.            *)
+  (*                                                                        *)
+  (*  [eout] and [ein] above, over ONE stage and ONE console history, with  *)
+  (*  NO WINDOW COUNTER.  The two arms [ein] needs -- settled, and the      *)
+  (*  chain-first window where the era's list is one ahead of the log --    *)
+  (*  are one arm here, because [ch_E] counts the in-flight entry as soon   *)
+  (*  as its byte is out and [ch_E_close] says filing the entry does not    *)
+  (*  move the list.  There is nothing left for [wcnt] to refute, and the   *)
+  (*  lower bounds [ein] carries ([Elist_lb], [cs_lb], [ps_lb], [turn_lb])  *)
+  (*  are unnecessary too: one claim holds the AUTHORITIES.                 *)
+  (* ====================================================================== *)
+  Definition ecl (k : nat) (ho : list mobs) (H : ConsLog.cons_hist) : iProp Σ :=
+    ( T
+    ∨ ∃ (v : era_pins) (so : ostage),
+        era_pin k v
+        ∗ turn_auth v (pcount (o_ps so) (o_cs so) (o_E so) (o_w so))
+        ∗ cs_auth v (o_cs so)
+        ∗ ps_auth v (o_ps so)
+        ∗ Elist_auth v (o_E so)
+        ∗ dl_cnt v (1/2) (length (ConsLog.ch_dl H))
+        ∗ ⌜ecl_pure k ho so H⌝)%I.
+
+  Global Instance ecl_timeless k ho H : Timeless (ecl k ho H).
+  Proof. rewrite /ecl. apply _. Qed.
+
+  (* ---- FILING THE LOG ENTRY NEEDS NO GHOST UPDATE AT ALL.
+
+     This is the sharpest statement of what the merge buys.  Today the same
+     move is a view shift: it picks between [ein]'s settled and window arms,
+     re-splits [wcnt], and hands the lent token back.  Here the stage, all
+     four authorities and the delivered count are untouched -- only the pure
+     side moves, by [ecl_pure_close] -- so the step is an ENTAILMENT, with
+     no [==*], no invariant to open and no resource to find. ---- *)
+  Lemma ecl_close (k : nat) (ho : list mobs) (H : ConsLog.cons_hist) :
+    ConsLog.cons_hist_ok H ->
+    ConsLog.cons_ev_ok H ConsLog.EvClose ->
+    ecl k ho H -∗ ecl k ho (ConsLog.cons_step H ConsLog.EvClose).
+  Proof.
+    intros Hok Hev. rewrite /ecl.
+    iIntros "[HT | Hc]"; [by iLeft |]. iRight.
+    iDestruct "Hc" as (v so) "(Hpin & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
+    iExists v, so. iFrame "Hpin Htn Hcs Hps HE".
+    rewrite ch_dl_close. iFrame "Hdl". iPureIntro.
+    by apply (ecl_pure_close k ho so H Hok Hev Hpure).
+  Qed.
+
+  (* ---- ...and neither does opening one. ---- *)
+  Lemma ecl_open (k : nat) (ho : list mobs) (H : ConsLog.cons_hist)
+      (h : list mobs) (c : bv 8) (cs : list (bv 8)) :
+    ConsLog.ch_arm H = None ->
+    disc_seg (open_seg h) -> obs_boots h = k ->
+    ecl k ho H -∗ ecl k ho (ConsLog.cons_step H (ConsLog.EvOpen h c cs)).
+  Proof.
+    intros Hn Hd Hb. rewrite /ecl.
+    iIntros "[HT | Hc]"; [by iLeft |]. iRight.
+    iDestruct "Hc" as (v so) "(Hpin & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
+    iExists v, so. iFrame "Hpin Htn Hcs Hps HE".
+    rewrite /ConsLog.cons_step. cbn [ConsLog.ch_dl]. iFrame "Hdl".
+    iPureIntro. by apply (ecl_pure_open k ho so H h c cs Hn Hd Hb Hpure).
+  Qed.
 
   (* THE TAG -- [App.app_tag A c], and [AppEcho.echo_tag γ] with the taint
      abstracted, which is what [Happ_echo]'s tag equation says.  It is what

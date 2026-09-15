@@ -1139,20 +1139,32 @@ Section DevLoops.
      THE ARM'S HALF IS HERE, not beside it: it is a field of the history the
      resource is about, so keeping it anywhere else would need a second
      agreement to say the two describe the same arm. *)
-  Definition cons_claim_at (iu : uart_id) (γ : uart_names) (u : uart_state)
-      : iProp Σ :=
-    (∃ (o : option (list mobs)) (H : LogEntryDefs.cons_hist),
-       obs_hist_lb_o o ∗ chist_at iu (S gen_id) (default [] o) H ∗
-       ⌜LogEntryDefs.ch_acc H = uart_acc u⌝ ∗
-       uart_log_hi γ (1/2) (log_top (LogEntryDefs.ch_log H)) ∗
-       uart_deliv γ (1/2) (LogEntryDefs.ch_dl H) ∗
-       in_log_auth γ (LogEntryDefs.ch_log H) ∗
-       uart_logm γ (1/2) (LogEntryDefs.ch_log H) ∗
-       uart_arm γ (1/2) (LogEntryDefs.ch_arm H) ∗
-       ⌜ConsLog.cons_hist_ok H⌝)%I.
+  (* THE PORT'S CLAIM SLOT (redesign R2), and WHY IT HOLDS ONLY THE ARM SO
+     FAR.  The finished clause is
 
-  Global Instance cons_claim_at_timeless iu γ u :
-    Timeless (cons_claim_at iu γ u).
+       ∃ o H, obs_hist_lb_o o ∗ chist_at iu (S gen_id) (default [] o) H
+              ∗ ⌜ch_acc H = uart_acc u⌝ ∗ <the kernel's four log halves>
+              ∗ uart_arm γ (1/2) (ch_arm H) ∗ ⌜cons_hist_ok H⌝
+
+     and none of the three additions can be made on its own:
+
+     - [chist_at] has to be FOUNDED at boot, as [out_res_at] and [in_res_at]
+       are, by the application's transport.  The kernel cannot conjure it:
+       the field is opaque there, and that it happens to be [emp] for both
+       applications today is not something the kernel may use.
+     - the [uart_acc] tie can only hold once every transmit store STEPS the
+       history, or a THR store breaks it.
+     - the kernel's four log halves are held by [in_claim_at] and cannot be
+       held twice.
+
+     So the claim's founding, its tie to the machine state and its firing
+     sites are ONE change, which is what the redesign plan means by the
+     kernel lane being unsplittable. *)
+  Definition cons_claim_at (iu : uart_id) (γ : uart_names) : iProp Σ :=
+    (∃ a : option LogEntryDefs.cons_arm, uart_arm γ (1/2) a)%I.
+
+  Global Instance cons_claim_at_timeless iu γ :
+    Timeless (cons_claim_at iu γ).
   Proof. rewrite /cons_claim_at. apply _. Qed.
 
   Definition in_claim_at (iu : uart_id) (γ : uart_names) : iProp Σ :=
@@ -1597,8 +1609,7 @@ Section DevLoops.
     (∃ (u : uart_state) (p : plic_state) (v : virtio_state),
        uart_frag Uart0 u ∗ plic_frag p ∗ virtio_frag v ∗
        uart_ghosts γ u ∗ uart_colE Uart0 γ u ∗ in_claim_at Uart0 γ ∗
-       (* the port's half of the consoleintr arm (redesign R2) *)
-       (∃ a : option LogEntryDefs.cons_arm, uart_arm γ (1/2) a) ∗
+       cons_claim_at Uart0 γ ∗
        uart_preinit γ ∗
        virtio_proto γd v ∗
        ⌜ plic_ok p ⌝ ∗ ⌜ virtio_isr_ok v ⌝)%I.
@@ -1637,9 +1648,7 @@ Section DevLoops.
      open the invariant to reach it. *)
   Definition uart_inv_body (i : uart_id) (γ : uart_names) : iProp Σ :=
     (∃ u : uart_state, uart_frag i u ∗ uart_ghosts γ u ∗ uart_colE i γ u
-       ∗ in_claim_at i γ
-       (* the port's half of the arm (redesign R2) *)
-       ∗ ∃ a : option LogEntryDefs.cons_arm, uart_arm γ (1/2) a)%I.
+       ∗ in_claim_at i γ ∗ cons_claim_at i γ)%I.
 
   (* ------------------------------------------------------------------ *)
   (*  THE PLIC INVARIANT'S PER-SOURCE SLOTS.                             *)
@@ -2744,38 +2753,20 @@ Section DevLoops.
   Qed.
 
   (* ------------------------------------------------------------------ *)
-  (*  ADVANCING THE ARM, WITH THE PORT INVARIANT OPENED HERE.              *)
+  (*  ADVANCING THE ARM IS NOW STEPPING THE HISTORY.                       *)
   (*                                                                      *)
-  (*  This is option A's primitive, and the whole of what the ruling buys. *)
-  (*  The caller holds the PLIC payload's half; the port invariant holds   *)
-  (*  the other.  Opening the invariant makes them agree, so:              *)
+  (*  [uart_inv_arm_set] stood here and is GONE, and its going is the      *)
+  (*  design working rather than a regression: the arm is a FIELD of the   *)
+  (*  history the port's claim is about ([cons_claim_at] ties the          *)
+  (*  invariant's half to [ch_arm H]), so there is no such thing as moving *)
+  (*  the arm without moving the history.  What used to be that lemma is   *)
+  (*  [cons_link Uart0 k (EvOpen h c cs)] and its [EvClose] twin, whose    *)
+  (*  pure premise [ConsLog.cons_ev_ok] carries "no arm is in progress"    *)
+  (*  and whose step advances both halves with the history.                *)
   (*                                                                      *)
-  (*   - the caller's value IS the invariant's, which is how "no arm is in *)
-  (*     progress" becomes a PURE side condition consoleintr can prove at  *)
-  (*     an arm's entry -- it reads it off its own half;                   *)
-  (*   - while an arm is open the invariant's half is [Some ...], so a     *)
-  (*     second [EvOpen] meets a premise it cannot discharge.  That is     *)
-  (*     the exclusion cons.lock provides, stated where the fact lives.    *)
-  (*                                                                      *)
-  (*  [uart_inv_body] is TIMELESS, so this is one [={E}=∗] with no machine *)
-  (*  step of its own -- the same shape [uart_inv_append] has.             *)
+  (*  [uart_arm_agree] and [uart_arm_update] stay: they are what the event *)
+  (*  firing uses on the two halves once the invariant is open.            *)
   (* ------------------------------------------------------------------ *)
-  Lemma uart_inv_arm_set (E : coPset) (γ : uart_names)
-      (a a' : option LogEntryDefs.cons_arm) :
-    ↑uartN Uart0 ⊆ E ->
-    uart_inv Uart0 γ -∗ uart_arm γ (1/2) a ={E}=∗ uart_arm γ (1/2) a'.
-  Proof.
-    intros Hmask. iIntros "#Hinv Hmine".
-    iInv "Hinv" as ">Hbody" "Hclose".
-    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl & Harm)".
-    iDestruct "Harm" as (a0) "Harm".
-    (* the two halves agree: the caller's value is the invariant's *)
-    iDestruct (uart_arm_agree with "Hmine Harm") as %<-.
-    iMod (uart_arm_update γ a a a' with "Hmine Harm") as "[Hmine Harm]".
-    iMod ("Hclose" with "[Hu Hg Hcol Hincl Harm]") as "_".
-    { iNext. iExists u. iFrame "Hu Hg Hcol Hincl". iExists a'. iExact "Harm". }
-    by iModIntro.
-  Qed.
 
   (* WHAT A WOULD-BE SECOND ARM MEETS is not a lemma of its own: it is
      [uart_arm_agree] above.  Whoever holds the payload's half knows the

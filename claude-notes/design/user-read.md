@@ -708,7 +708,11 @@ row's missing conjunct is cheap and real: `SysOpenDefs.open_fd_rcpt`'s
 and merely unstated; adding it to `usys_fd_ok`'s open arm and
 discharging it at `ProofSyscall`'s arm 15 is the first step of the
 discipline, and `usys_fd_ok_parked` is already written to take exactly
-that fact as its one premise.
+that fact as its one premise.  (**DONE — RA-3**, §8.3's AS-LANDED block:
+the conjunct is on the open arm, `usys_fd_ok_parked` is premise-free, and
+finding 3 above is discharged.  Findings 1 and 2 stand, and RA-3 added a
+third wall from the other side: §8.3's surrender slot cannot be plugged
+in before this premise either.)
 
 **AND THE LANES ARE IN THE WRONG ORDER — §8.2 CANNOT PRECEDE §8.1's
 PREMISE, AND §8.1's PREMISE CANNOT PRECEDE §8.3.**  The first half is
@@ -765,6 +769,147 @@ resolved by putting the park where the kernel step already is:
   its own half with the file object; the orphaned user half is ghost
   garbage (agreement partner gone), harmless and unclaimable.
 
+**AS LANDED (RA-3, 2026-09-16 — `iris/FdPark.v`, branch `ra3-boundary`,
+mirror-green): the machinery and both CROSSINGS are in, the open row's
+missing conjunct is in — and THE SURRENDER SLOT CANNOT BE PLUGGED IN
+BEFORE THE CLASS PREMISE.**  That last is RA-1's finding read from the
+other end, and it is the sharp one: §8.1's premise and §8.3's slot are
+ONE change, exactly as §8.1's premise and §8.2's arm split were found to
+be one.  The campaign's remaining pieces therefore collapse into RA-2's
+single commit, and what RA-3 did was make every one of them a plug-in
+rather than a construction.
+
+**1. THE UNSTATED CONJUNCT, and where it went: `UsysMemOk.usys_fd_ok`'s
+OPEN ARM, not the receipt.**  The open arm's success disjunct now ends
+`... /\ fdst_parked (FdOpen rd wr t)`.  The choice is forced by what the
+premise has to be dischargeable FROM: `usys_fd_ok_parked` reads
+all-parkedness of the SUCCESSOR key off `usys_fd_ok` itself (that is the
+Löb step of §8.1's finding 3), and `SysOpenDefs.open_fd_rcpt` is not in
+that chain — stated there the fact would be true of every open the kernel
+performs and still absent from the one proposition the tier threads.  So
+`usys_fd_ok_parked` LOST ITS PREMISE and is a theorem; `usys_fd_ok_parked_ne_open`
+(the shape the owed premise could be read at) is deleted.  What it cost,
+end to end: the three `SpecSysOpen.open_arms_*_split` statements carry the
+conjunct out of the arms (six disjuncts, each one `fdst_parked_dev` or
+`fdst_parked_inode` — the arms always installed a parked constructor),
+`ProofSyscall`'s arm 15 and its local copy of the split's shape relay it,
+and four destructuring patterns in `UkRunSys` gained a `& _`.  No other
+consumer moved.
+
+**2. THE MACHINERY (`iris/FdPark.v`), all of it stated at the held subset
+and proved at the general case, so the pin's relaxation ACTIVATES it
+rather than changing it:**
+- `fdst_park` / `fdv_park` — the pure park, with `fdv_park_id` (the
+  identity on an all-parked table: the vacuity, in one line) and
+  `fdv_all_parked_park`;
+- `uoff_surr` / `uoff_surrs` / `uoff_surrs_map` — the surrender, a big-op
+  that QUANTIFIES over the held subset and degenerates to `emp`
+  (`uoff_surrs_parked`);
+- `foff_row_park` / `foff_rows_park` — §8.3's "one step": `uoff_park`
+  into `FdSlots.foff_row_inode`, per row;
+- `fd_auths` + `fd_frags_park` — the retype, `FdSlots.fd_st_move` per
+  row, bundle and authorities landing together;
+- **`uoff_surr_at sts := ⌜fdv_all_parked sts⌝ ∨ uoff_surrs sts`, THE
+  BOUNDARY SLOT — one step, two suppliers** (`fd_frags_park_at`), which
+  is §8.1's console-arm precedent at fork and exec: the generic tier pays
+  the pure left disjunct (its own discipline), an owner pays the halves,
+  and the boundary proof never learns which.
+
+**3. THE TWO CROSSINGS, both proved today.**
+- FORK: `ProofKforkB3.kfk_at_parked` (and `_fdt0`).  The copy-so-far is
+  the parent's prefix spliced onto the child's all-closed tail, so
+  parkedness crosses the scan AT EVERY INDEX — which is the shape the
+  loop invariant wants, and it is what dissolves RD-2's consequence (b)
+  once the park runs before the scan.
+- EXEC: `SpecKexec.kexec_image_ok_parked` / `exec_key_ok_parked` (plus
+  the missing reader `exec_key_ok_fd`).  xv6 has no FD_CLOEXEC, the table
+  survives exec unchanged, so BOTH slot wands of `exec_slot_pre` resume
+  at a key whose table is the caller's — "generic-tier exec needs
+  nothing" is exactly these two lemmas.
+- The root of the whole discipline is `FdSlots.fdv_all_parked_fdt0`.
+
+**3b. AND THE ALL-PARKED EXPORT, which is the pin surfaced as a theorem:
+`ProcInv.proc_priv_parked`** — a live process block plus its descriptor
+bundle says `fdv_all_parked sts`, for every table, with no premise at all.
+The chain is three lemmas: `FileInvDefs.fdstate_ok_parked` (the FD_INODE
+arm's pin, read as the fact it is), `FileInvDefs.file_ref_parked` (a
+`struct file` that exists pins its descriptor's mode, through
+`file_pay_st`), and `ProcInv.ofile_slot_parked` / `ofile_slots_parked`
+(the array walk: a null slot is `FdClosed`, a filled one names a file).
+**This is what says the discipline is not an assumption about a tier but
+a property of the kernel's own invariant** — and it is what makes RA-2's
+placement decision easy (below).
+
+**4. FINDING A — THE ARRAY HALF OF THE RETYPE IS NOT VACUOUS, IT IS
+UNINHABITED.**  `ProcInv.ofile_slot`'s file disjunct shares its `st` with
+`FileInvDefs.file_ref γf k q st`, and `file_ref` carries `fdstate_ok`,
+which PINS `OffParked`.  So under the pin a held row cannot appear in a
+live `ofile_slot` at all: the array half of the park cannot be written,
+and writing it IS relaxing the pin.  Everything in `FdPark.v` is
+therefore stated at the ghost level the pin does not reach.  RA-2 gets
+the array half for free in the commit it already owns.
+
+**5. FINDING B — THE SURRENDER SLOT HAS NO HOME UNTIL THE CLASS PREMISE
+LANDS, and it is blocked from BOTH ends.**
+- THE DEPOSIT END (where §8.3 puts it).  The slot's only sound carrier is
+  the key's own table `uvis_fd W` — the only thing that names every held
+  row — so the conjunct belongs in `UexecExecInst.xv6_sbundle`'s fork
+  arm.  But `xv6_sbundle_of_supply_ne` must pay that deposit at an
+  ARBITRARY key: the LEFT disjunct needs the all-parked premise (RA-2's),
+  and the RIGHT needs exclusive halves, which a `□ ssupply` can never
+  present.  Hence: **the slot's plug-in and §8.1's premise are one
+  change.**
+- THE U-TIER END (the fallback: state it over the caller's HANDLES).
+  Attempted and reverted — the brief's STOP fired.  Two independent
+  reasons.  (i) A `UserFd.ufd` at a held state IS NOT REFUTABLE at the U
+  tier (the pin lives in the file invariant, which that tier cannot
+  see), so a caller whose descriptor map is universally quantified cannot
+  discharge even the vacuous premise — and every wrapper between a
+  program and the leaf is such a caller (`UkShRun.wp_kshr_fork`,
+  `wp_kshr_fork1`, `wp_kshr_fork1_any`, `UkShDiag`'s finals).  Threading
+  it would mean carrying an inert premise through the whole sh cone.
+  (ii) Even at a concrete map, the handles do not COVER the key's table:
+  a program may drop a handle and keep its half.  The coverage fact is
+  true by construction once mode `hand` exists (a held row is born at an
+  open the program asked for, which hands it the handle and the half
+  together) — but it is RA-2's open row that has to say so.
+
+**6. FINDING C — THERE IS NO U-TIER CARRIER FOR "MY WHOLE TABLE IS
+PARKED", AND THERE MUST NOT NEED TO BE: THE PREMISE GOES ON THE WANDS.**
+`SystemAdequacy.init_boot_of_sup` is fine either way — its table is
+`FdSlots.fdt0` at every caller.  The other three mint sites
+(`PinnedExec`'s taint arm, `UInitSh`'s, `UInitBoot`'s) owe the fact about
+the EXEC'ING PROGRAM's own table `fdv`, and a verified program's U-tier
+knowledge of its table is `UserFd.ustd` (the low `NSTD` slots) plus its
+`ufd` handles — **nothing pins the rest**, so a program CANNOT state
+all-parkedness of its own table.  init's table really is all-parked
+(three console descriptors, thirteen closed slots) and no tier says so.
+RA-1's finding 2 already rules out the brute fix (all-parkedness inside
+`urun`/`ufd_auth` makes a program unable to hold a `uoff` at all).
+
+THE RESOLUTION, and it is why 3b was worth proving: the premise belongs
+on `SpecKexec.exec_slot_pre`'s TWO WANDS, not on the bundle a program
+hands in.  A wand's premise is supplied by whoever APPLIES it, and that
+is the KERNEL (`ProofKexec`, at the key it just built) — which holds the
+process block and can discharge it with `ProcInv.proc_priv_parked` and no
+new machinery.  The program's side of the bundle never mentions the
+table.  **What RA-2 must check (RA-3 did not): that the matching
+`FdSlots.fd_frags` bundle is in scope at each of the two wand
+applications — the block is (`ProofKexec.v`'s continuation takes
+`proc_priv`), the bundle travels on the syscall channel
+(`UsertrapRes.ut_own`) and may have to be threaded a little further in.**
+
+**7. THE MARKERS.**  `grep -rn 'RA-2: held case here' iris/` lists every
+place the held case attaches: `FdPark.v` (header + the closing block: the
+array half, the plug-in, the coverage fact), `FdSlots.v`
+(`fdv_all_parked_fdt0`), `FileInvDefs.v` (`fdstate_ok_parked` — the pin
+itself, and the lemma the relaxation falsifies), `ProcInv.v` (the
+export, and where it is spent), `ProofKforkB3.v` (the scan, with the
+exact hypothesis names the park goes before, and `kfk_at_parked`),
+`SpecKexec.v` (the exec crossing), `SystemAdequacy.v`, `UInitBoot.v`,
+`PinnedExec.v`, `UInitSh.v` (the four mint sites, each saying which fact
+it will owe and where it comes from).
+
 ### 8.4 The payoff, and the lanes
 
 At the end: the U-tier file leaves gain the held conjunct (`uoff` in,
@@ -778,15 +923,23 @@ honest offset note for the owned form.
   the `fdstate_ok` pin that buys it.  The class-field premise did NOT
   land and is re-scoped into RA-3; see §8.1's AS-LANDED block for the
   three findings and the RE-ORDERING they force (RA-3 → RA-2 → RA-4).
-- [ ] **RA-3** (kernel, hardest — and RA-1 found it must come FIRST):
-  the boundary parks of §8.3 (fork's deposit-carried halves, the
-  retype before the scan; exec's same), plus `ProcInv`'s all-parked
-  export, the `usys_fd_ok` open-row conjunct, and — as its last step —
-  §8.1's premise on BOTH class fields.  All of it vacuous while
-  nothing is held, which is exactly why it is cheap now.
-- [ ] **RA-2** (kernel): the mode-split arms of §8.2 + `hand` wired at
-  the enriched open row + relaxing the `fdstate_ok` pin, in ONE
-  commit: this is the commit that first makes a held descriptor exist,
-  and the arm split is not provable before RA-3's premise is in.
+- [x] **RA-3** (kernel; ran FIRST, as RA-1 found it must): LANDED —
+  `iris/FdPark.v` (the park, the surrender, the boundary slot's one
+  step and two suppliers), the `usys_fd_ok` open-row conjunct (which
+  makes `usys_fd_ok_parked` premise-free), and BOTH crossings
+  (`ProofKforkB3.kfk_at_parked`, `SpecKexec.kexec_image_ok_parked` /
+  `exec_key_ok_parked`).  NOT landed, with reasons in §8.3's AS-LANDED
+  block: the surrender slot's PLUG-IN (findings A and B — it cannot
+  precede §8.1's class premise, from either end), and the U-tier
+  carrier for "my whole table is parked" (finding C, an owner decision
+  on the critical path).
+- [ ] **RA-2** (kernel): now ONE commit for everything that remains —
+  the mode-split arms of §8.2, `hand` at the enriched open row, §8.1's
+  premise on BOTH class fields, §8.3's surrender slot plugged into the
+  fork/exec deposits, the array half of the retype, and relaxing the
+  `fdstate_ok` pin.  RA-3's findings A and B are why these cannot be
+  separated: each of them is unprovable until the others are in, and
+  the pin is what makes them all vacuous until then.  Everything they
+  need is proved and waiting in `FdPark.v`.
 - [ ] **RA-4** (U-tier + TR): the held conjunct on the file leaves,
   the owned-offset corollary, the §6 figure into user.tex.

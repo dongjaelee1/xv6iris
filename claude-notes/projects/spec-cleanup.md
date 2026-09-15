@@ -219,6 +219,41 @@ Derived corollaries, in order of what applications actually use:
   there; RA-1 (offmode + all-parked + class-field premise, zero
   semantic change) LAUNCHED 2026-09-16, Opus, branch `ra1-offmode`,
   brief scratchpad `brief-ra1-offmode.md`.
+- [x] **RA-1** LANDED (branch `ra1-offmode`): the STATE half at zero
+  semantic change, bought by the `fdstate_ok` pin; the class-field
+  premise did NOT land and re-scoped the lanes to RA-3 → RA-2 → RA-4.
+  See `design/user-read.md` §8.1's AS-LANDED block for the three
+  findings.
+- [x] **RA-3 BOUNDARY PARKS** (LANDED 2026-09-16, branch
+  `ra3-boundary`, mirror-green whole tree, echo audit at 14).  Design
+  of record: `design/user-read.md` §8.3's AS-LANDED block.  WHAT
+  LANDED: `iris/FdPark.v` — `fdst_park`/`fdv_park` and their laws, the
+  surrender (`uoff_surr`/`uoff_surrs`, a big-op that quantifies over
+  the held subset and degenerates to `emp`), §8.3's one park step
+  (`foff_rows_park`), the retype (`fd_frags_park`, `fd_st_move` per
+  row), and **the boundary slot `uoff_surr_at = ⌜all parked⌝ ∨ the
+  halves` with ONE step and TWO suppliers (`fd_frags_park_at`)** — the
+  console arm's disjunctive precedent at fork and exec.  Plus the
+  `usys_fd_ok` OPEN-ROW CONJUNCT (`fdst_parked (FdOpen rd wr t)`,
+  carried out of the arms by `open_arms_*_split`; `usys_fd_ok_parked`
+  is now premise-free, `_ne_open` deleted), and BOTH CROSSINGS proved:
+  fork's `ProofKforkB3.kfk_at_parked` and exec's
+  `SpecKexec.kexec_image_ok_parked` / `exec_key_ok_parked`.
+  THREE FINDINGS THAT RE-SCOPE, all in §8.3's block: **(A)** the array
+  half of the retype is UNINHABITED under the pin (`ofile_slot` shares
+  its `st` with `file_ref`, which carries `fdstate_ok`), so it cannot
+  be written before the pin is relaxed; **(B)** the SURRENDER SLOT'S
+  PLUG-IN cannot precede §8.1's class premise, from either end — the
+  deposit end because `xv6_sbundle_of_supply_ne` pays at an arbitrary
+  key, the U-tier end because a `ufd` at a held state is not refutable
+  there (the brief's STOP fired at `UkShRun.wp_kshr_fork`, whose
+  descriptor map is universally quantified); **(C)** there is NO U-TIER
+  CARRIER for "my whole table is parked", which three of the five mint
+  sites need — `ustd` pins the low `NSTD` slots and `ufd` pins named
+  ones, and nothing pins the rest.  **(C) IS AN OWNER DECISION ON THE
+  CRITICAL PATH.**  Consequence for the campaign: everything that
+  remains is RA-2's ONE commit; `grep -rn 'RA-2: held case here' iris/`
+  is its worklist, left in the tree at each attachment point.
 - OWNER RULED 2026-09-15: BREADTH FIRST — RD-4/RD-5/RD-6 on the landed
   R-c pattern; route R-a (the owned-offset campaign) queued behind them,
   upgrading each arm by one conjunct when it runs.

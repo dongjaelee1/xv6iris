@@ -1,13 +1,42 @@
-# noninterference — a design discussion, checkpointed
+# noninterference — the campaign
 
-STATUS: DESIGN DISCUSSION, CHECKPOINTED 2026-09-04 (Fable, with the
-owner).  Not part of the kernel proof's design and deliberately NOT under
-`design/`: nothing under `iris/` implements any of it, and no lane is
-running it.  It records how non-interference (NI) between user processes
-could be formalized, specified and proved in this framework, the options
-that were considered and rejected, one formulation that was proposed and
-then corrected in review, and the honest limits.  Anyone picking this up
-starts here; the rulings below are recommendations and the owner decides.
+STATUS: CAMPAIGN OPENED 2026-09-15 (owner's word, the day after the echo
+adequacy theorem closed).  §§0–7 below are the design discussion as
+checkpointed 2026-09-04 (Fable, with the owner) and remain the design of
+record until a lane's as-landed note contradicts them; the LANES section
+is the live worklist.  **EXECUTION IS GATED ON A BUILD MIRROR**: the
+project has had no EC2 box since ~2026-09-10 (the old mirror is gone;
+the instance offered 09-11 belonged to another project and was handed
+back clean).  Briefs and design may proceed; no proof lane compiles
+until a box exists — the standing order (never build locally) holds.
+
+## Lanes (opened 2026-09-15)
+
+Execution order is §6's, adjusted for one territory fact: upstream's
+post-Qed redesign (app-echo, POST-QED R1) is actively re-cutting the
+claim files around the engine, so M0's re-cut of `uexec_ret_F` WAITS for
+that to settle (or goes to upstream with it — relay if they want it);
+M1's ledgers are fresh ground and go first.
+
+- [ ] **NI-LEDGER-KALLOC** (M1's first ledger; kernel; BLOCKED on the
+  build box).  The allocator's ghost ledger on the FREE POOL pattern
+  (`bitmap_inv`, per §2/§7): an abstract free set in the allocator's
+  invariant; `kalloc` fails iff it is empty; each `kalloc`/`kfree`
+  appends an actor-labelled `Alloc`/`Free` event.  Deliverables: the
+  event vocabulary + ledger file; `SpecKalloc`'s rows deterministic in
+  the ledger; callers served by the invariant (not per-caller
+  fragments).  Cut the lane brief from §2/§7 when the box exists.
+- [ ] **NI-LEDGER-REST** (M1 remainder): `nextpid` — coordinate with
+  the landed TRAP-ROWS `upid`/`ukn_pid` work, the U tier already sees
+  pid numbers — then `ticks`, the zombie set; then the per-process key
+  history `uhist : mono_list uvis` beside `proc_priv`.
+- [ ] **NI-STRONG-INSTANCE** (§3.1): a process before its first syscall
+  appends no events — provable in-logic once NI-LEDGER-KALLOC lands;
+  the campaign's first theorem.
+- [ ] **NI-DET-ROWS** (M0): `usys_det` and the ecall arm's re-cut, the
+  loop's `round_det` discharge — after the post-Qed redesign settles;
+  §4 lists the row set to start from.
+- [ ] **NI-TRACE** (M2) and **NI-EXT** (M3): unchanged from §6.
 
 Related design of record: [`design/user-wp-slot.md`](../design/user-wp-slot.md)
 (the trap contract this would re-shape), [`design/uk-engine.md`](../design/uk-engine.md)

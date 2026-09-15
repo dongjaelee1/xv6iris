@@ -221,13 +221,15 @@ Section UkInitMain.
      caller: init's own exit payload is the trivial one, and nothing reads
      the console after init has died. *)
   Lemma wp_kinit_main_die_df (N' : uk_names Σ) `{!ukn_const N'}
-      (T : iProp Σ) (stc : fdstate) (Wp Wb : nat -> iProp Σ)
+      (T : iProp Σ) `{!Persistent T} (stc : fdstate) (Wp Wb : nat -> iProp Σ)
       (l : list fdstate) (np : nat)
       (hdf : CpuId) (mdf0 : regfile) (n : nat) :
     (* the exit payload, out of the program's own hand (lane
        KILL-PAY, K4(a)) *)
     ukn_pay N' (-1) -∗
-    udepw_law 16 -∗
+    (* the write deposit, at its two arms (lane EXEC-SEAM, (D)): the law
+       under the taint, and the closed-fd leaf *)
+    kinit_wlaw T -∗
     kinit_diag_law stc Wp Wb -∗
     init_code (ukn_t N') -∗ init_rodata (ukn_t N') -∗
     UserFd.ustd (ukn_fd N') l -∗
@@ -235,7 +237,7 @@ Section UkInitMain.
     urun N' hdf mdf0 (mword_of_int 0x84) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "Hpay #Hwr #[Hxlaw Hflaw] #Hcode #Hro Hstd Hcred Hrun".
+    iIntros "Hpay #[Hwrl Hwcl] #[Hxlaw Hflaw] #Hcode #Hro Hstd Hcred Hrun".
     destruct init_syms_pins
       as (_ & _ & Hprintf & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hexit).
     assert (Hokdf : init_lit_ok 0x990 18%nat = true)
@@ -309,13 +311,21 @@ Section UkInitMain.
                       (init_lit LIT_FORK j) (Ch j) (Ch (S j)))
                ∗ Ch 0%nat)%I with "[Hstd Hcred]" as (Ch) "[#Hw HCh]".
     { rewrite /init_lend_cred.
-      iDestruct "Hcred" as "[[%Hl3 Hp] | _]".
+      iDestruct "Hcred" as "[[%Hl3 Hp] | [[%Hl0 _] | #HT]]".
       - subst l.
         iDestruct ("Hflaw" $! np N' with "Hp") as "Hpay'".
         rewrite /UkInit.kinit_banner_pay.
         iDestruct ("Hpay'" with "Hstd") as (Ch) "(#Hw & HCh & _)".
         iExists Ch. iFrame "Hw HCh".
-      - iClear "Hstd". iExists (fun _ => emp%I). iSplitR; [ | done ].
+      - (* THE CLOSED ROW (lane EXEC-SEAM, (D)): fd 1 is closed, the bytes
+           go nowhere, and the ledger itself is the per-byte carrier of the
+           closed-fd leaf *)
+        subst l. iExists (fun _ => UserFd.ustd (ukn_fd N') ufd_l0).
+        iSplitR; [ | iExact "Hstd" ].
+        iIntros "!>" (j) "_". iApply ("Hwcl" $! N' (init_lit LIT_FORK j)).
+      - (* THE TAINT: the write law under the taint *)
+        iDestruct ("Hwrl" with "HT") as "#Hwr".
+        iClear "Hstd". iExists (fun _ => emp%I). iSplitR; [ | done ].
         iIntros "!>" (j) "_".
         iApply (UkInit.kinit_w1_of_law N' (mword_of_int 1 : mword 64)
                   (init_lit LIT_FORK j) with "Hwr"). }
@@ -371,11 +381,12 @@ Section UkInitMain.
      pays the pair with the lend's own banner-owed credential, and under the
      taint with the pair's taint arm (lane EXEC-SEAM, (C): no affine arm). *)
   Lemma wp_kinit_main_die_de (N' : uk_names Σ) `{!ukn_const N'}
-      (T : iProp Σ) (stc : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
+      (T : iProp Σ) `{!Persistent T} (stc : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
       (cn : cons_names) (l : list fdstate) (γ : gname) (np : nat)
       (hde : CpuId) (mde0 : regfile) (n : nat) :
     ukn_pay N' = ucons_pay cn γ T (init_rd Rdl Wb) ->
-    udepw_law 16 -∗
+    (* the write deposit at its two arms (lane EXEC-SEAM, (D)) *)
+    kinit_wlaw T -∗
     kinit_diag_law stc Wp Wb -∗
     init_code (ukn_t N') -∗ init_rodata (ukn_t N') -∗
     init_lend_ref cn T stc Wp Wb Rdl (ukn_fd N') l γ np -∗
@@ -383,7 +394,7 @@ Section UkInitMain.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hpeq.
-    iIntros "#Hwr #[Hxlaw Hflaw] #Hcode #Hro (Hstd & Hpos & Hlease & Hcred) Hrun".
+    iIntros "#[Hwrl Hwcl] #[Hxlaw Hflaw] #Hcode #Hro (Hstd & Hpos & Hlease & Hcred) Hrun".
     destruct init_syms_pins
       as (_ & _ & Hprintf & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hexit).
     assert (Hokde : init_lit_ok 0x9b0 21%nat = true)
@@ -460,7 +471,7 @@ Section UkInitMain.
                ∗ Ch 0%nat ∗ (Ch 21%nat -∗ ukn_pay N' (-1)))%I
       with "[Hstd Hpos Hlease Hcred]" as (Ch) "(#Hw & HCh & Hfin)".
     { rewrite /init_lend_cred.
-      iDestruct "Hcred" as "[[%Hl3 Hp] | [[%Hl0 Hb] | HT]]".
+      iDestruct "Hcred" as "[[%Hl3 Hp] | [[%Hl0 Hb] | #HT]]".
       - subst l.
         iDestruct ("Hxlaw" $! np N' with "Hp") as "Hpay'".
         rewrite /UkInit.kinit_banner_pay.
@@ -476,15 +487,14 @@ Section UkInitMain.
         iApply (ucons_pay_tok cn γ T (init_rd Rdl Wb) np (-1)
                   with "Hr Hpa [Hd Hb]").
         rewrite /init_rd /init_rd_cred. iFrame "Hd". iExact "Hb".
-      - (* THE CLOSED ROW: the bytes go nowhere (fd 1 is closed) and the
-           lend carries the banner-owed credential itself, which is what
-           the pair is rebuilt with (lane EXEC-SEAM, (C): the pair has no
-           affine arm any more) *)
-        iClear "Hstd". iExists (fun _ => emp%I).
-        iSplitR; [ | iSplitR; [ done | ] ].
-        + iIntros "!>" (j) "_".
-          iApply (UkInit.kinit_w1_of_law N' (mword_of_int 1 : mword 64)
-                    (init_lit LIT_EXEC j) with "Hwr").
+      - (* THE CLOSED ROW: the bytes go nowhere (fd 1 is closed) -- the
+           ledger is the closed-fd leaf's carrier (lane EXEC-SEAM, (D)) --
+           and the lend carries the banner-owed credential itself, which is
+           what the pair is rebuilt with ((C): the pair has no affine arm
+           any more) *)
+        subst l. iExists (fun _ => UserFd.ustd (ukn_fd N') ufd_l0).
+        iSplitR; [ | iSplitL "Hstd"; [ iExact "Hstd" | ] ].
+        + iIntros "!>" (j) "_". iApply ("Hwcl" $! N' (init_lit LIT_EXEC j)).
         + iIntros "_". rewrite Hpeq.
           iEval (rewrite /ucons_pay) in "Hlease".
           iDestruct "Hlease" as "[Hl | HT]"; last first.
@@ -494,7 +504,9 @@ Section UkInitMain.
           iApply (ucons_pay_tok cn γ T (init_rd Rdl Wb) np (-1)
                     with "Hr Hpa [Hd Hb]").
           rewrite /init_rd /init_rd_cred. iFrame "Hd". iExact "Hb".
-      - (* THE TAINT: the pair's own taint arm *)
+      - (* THE TAINT: the write law under the taint, and the pair's own
+           taint arm *)
+        iDestruct ("Hwrl" with "HT") as "#Hwr".
         iClear "Hstd Hpos". iExists (fun _ => emp%I).
         iSplitR; [ | iSplitR; [ done | ] ].
         + iIntros "!>" (j) "_".
@@ -1139,7 +1151,10 @@ Section UkInitMain.
       (Wp Wb Rdl : nat -> iProp Σ)
       (cn : cons_names) (h : CpuId) (m : regfile) (n : nat) :
     m !!! Regidx a0_idx = mword_of_int LIT_START ->
-    udepw_law 16 -∗
+    (* the write deposit at its two arms (lane EXEC-SEAM, (D)): the law
+       under the taint, and the closed-fd leaf for a console that never
+       opened *)
+    kinit_wlaw T -∗
     kinit_ban_law stc Wp Wb -∗
     init_code γt -∗
     utext_str γt LIT_START 18%nat (init_lit LIT_START) -∗
@@ -1154,35 +1169,42 @@ Section UkInitMain.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0.
-    iIntros "#Hwr #Hblaw #Hcode #Hstr Htk Hstd Hrun Hcont".
+    iIntros "#[Hwrl Hwcl] #Hblaw #Hcode #Hstr Htk Hstd Hrun Hcont".
     assert (HokS : init_lit_ok LIT_START 18%nat = true)
       by (vm_compute; reflexivity).
     iDestruct (UInitFd.ufd_head_open_row with "Hstd") as (l) "(Hstd & #Hrow & _)".
-    (* ONE case split before the printf: the payment goes through the link
-       exactly when the lease carries a credential AND the ledger is the
-       console one; every other combination is the flagged deposit with
-       the lend assembled up front. *)
-    iAssert (kinit_lent T stc cn Wp Wb Rdl
+    (* ONE case split before the printf (lane EXEC-SEAM, (D): three ways):
+       the payment goes through the link when the lease carries a
+       credential AND the ledger is the console one; through the closed-fd
+       leaf when the ledger is the all-closed one (the bytes go nowhere and
+       the ledger itself is the carrier); and on the free law UNDER THE
+       TAINT otherwise, with the lend assembled up front. *)
+    iAssert ((T ∗ kinit_lent T stc cn Wp Wb Rdl)
              ∨ (⌜l = ufd_l3 stc⌝ ∗ UserFd.ustd γfd l
+                ∗ ∃ k : nat, ucons_reader cn k ∗ Rdl k ∗ Wb k)
+             ∨ (⌜l = ufd_l0⌝ ∗ UserFd.ustd γfd l
                 ∗ ∃ k : nat, ucons_reader cn k ∗ Rdl k ∗ Wb k))%I
-      with "[Htk Hstd]" as "[Hrest | Hpay]".
+      with "[Htk Hstd]" as "[[#HT Hrest] | [Hpay | Hcl]]".
     { rewrite /uinit_tok. iDestruct "Htk" as "[Htk | #HT]"; last first.
-      { iLeft. rewrite /kinit_lent. iExists l. iFrame "Hstd Hrow".
+      { iLeft. iSplitR; [ iExact "HT" | ].
+        rewrite /kinit_lent. iExists l. iFrame "Hstd Hrow".
         rewrite /uinit_tok. by iRight. }
       iDestruct "Htk" as (k) "(Hr & Hd & Hb)".
       rewrite /init_rd_cred.
       iPoseProof "Hrow" as "Hrow2".
       iDestruct "Hrow2" as "[%Hl3 | [%Hl0 | #HT]]".
-      - iRight. iSplitR; [ by iPureIntro | ]. iFrame "Hstd".
+      - iRight. iLeft. iSplitR; [ by iPureIntro | ]. iFrame "Hstd".
         iExists k. iFrame "Hr Hd Hb".
-      - iLeft. rewrite /kinit_lent. iExists l. iFrame "Hstd Hrow".
-        rewrite /uinit_tok. iLeft. iExists k. iFrame "Hr Hd".
-        rewrite /init_lend_cred. iRight. iLeft. iFrame "Hb". by iPureIntro.
+      - iRight. iRight. iSplitR; [ by iPureIntro | ]. iFrame "Hstd".
+        iExists k. iFrame "Hr Hd Hb".
       - (* the row's taint is the lend's third arm (lane EXEC-SEAM, (C)) *)
-        iLeft. rewrite /kinit_lent. iExists l. iFrame "Hstd Hrow".
+        iLeft. iSplitR; [ iExact "HT" | ].
+        rewrite /kinit_lent. iExists l. iFrame "Hstd Hrow".
         rewrite /uinit_tok. iLeft. iExists k. iFrame "Hr Hd".
         rewrite /init_lend_cred. iRight. iRight. iExact "HT". }
-    { (* the flagged deposit, and the lend as assembled *)
+    { (* the taint: the write law under the taint, and the lend as
+         assembled *)
+      iDestruct ("Hwrl" with "HT") as "#Hwr".
       iApply (wp_kinit_printf N LIT_START 18%nat (init_lit LIT_START) h m n
                 ltac:(vm_compute; discriminate)
                 ltac:(vm_compute; reflexivity) ltac:(lia)
@@ -1190,6 +1212,23 @@ Section UkInitMain.
                 with "Hwr Hcode Hstr Hrun").
       iIntros (h' m') "%Hcs Hrun".
       iApply ("Hcont" $! h' m' with "[%] Hrest Hrun"). exact Hcs. }
+    2: { (* the closed row: the banner reaches no wire, and the ledger is
+            the closed-fd leaf's carrier; the lend keeps the banner-owed
+            credential on its closed arm *)
+      iDestruct "Hcl" as (Hl0) "[Hl0 Hk]". iDestruct "Hk" as (k) "(Hr & Hd & Hb)".
+      subst l.
+      iApply (wp_kinit_printf_chain N LIT_START 18%nat (init_lit LIT_START)
+                (fun _ => UserFd.ustd γfd ufd_l0) h m n
+                ltac:(vm_compute; discriminate)
+                ltac:(vm_compute; reflexivity) ltac:(lia)
+                (fun j Hj => init_lit_nopct LIT_START 18%nat j HokS Hj) Ha0
+                with "[] Hcode Hstr Hl0 Hrun").
+      { iIntros "!>" (j) "_". iApply ("Hwcl" $! N (init_lit LIT_START j)). }
+      iIntros (h' m') "%Hcs Hl0 Hrun".
+      iApply ("Hcont" $! h' m' with "[%] [Hl0 Hr Hd Hb] Hrun"); [ exact Hcs | ].
+      rewrite /kinit_lent. iExists ufd_l0. iFrame "Hl0 Hrow".
+      rewrite /uinit_tok. iLeft. iExists k. iFrame "Hr Hd".
+      rewrite /init_lend_cred. iRight. iLeft. iFrame "Hb". by iPureIntro. }
     iDestruct "Hpay" as (Hl3) "[Hl3 Hk]". iDestruct "Hk" as (k) "(Hr & Hd & Hb)".
     subst l.
     iDestruct ("Hblaw" $! k with "Hb") as "Hb".
@@ -2400,7 +2439,7 @@ Section UkInitMain.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hdance #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
     iDestruct (uki_open1_of_dance N T Cns stc
-                 with "[$Hwr $Hwl15 $Hwl17] Hdance") as "Hop1".
+                 with "Hwl17 Hdance") as "Hop1".
     destruct init_syms_pins
       as (_ & Hmain & _ & _ & _ & Hopen & _ & _ & _ & _ & _ & _ & _).
     rewrite Hmain.

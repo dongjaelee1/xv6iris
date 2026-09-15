@@ -3343,7 +3343,6 @@ Section UkSh.
     mc !!! Regidx s4_idx = mword_of_int (Z.of_nat Nb) ->
     mc !!! Regidx s5_idx = mword_of_int 1 ->
     mc !!! Regidx s6_idx = mword_of_int (spz - 81) ->
-    sh_deps -∗
     (* the tag's reading, which is what the ^D swallow is refuted with *)
     ush_tag_law -∗
     shk_code γt -∗
@@ -3373,7 +3372,7 @@ Section UkSh.
       intros i h mc f bc nn HN Hi HNlen Ha0 Ha64 HN31 Hsz0 Hsz1
              Hs0 Hs1 Hs2 Hs4 Hs5 Hs6.
     { assert (HF : False) by lia. destruct HF. }
-    iIntros "#Hdp #Hlaw #Hcode Hbs Hb Hstd Hpos Hwc Hrun Hcont".
+    iIntros "#Hlaw #Hcode Hbs Hb Hstd Hpos Hwc Hrun Hcont".
     (* ---- 0xad0  c.mv s8,s1 ---- *)
     iApply (wp_uk_cmv N h mc (mword_of_int 0xad0) s8_idx s1_idx
               (mword_of_int (Z.of_nat i)) nn
@@ -4056,7 +4055,7 @@ Section UkSh.
                       exact Hs5)
                 ltac:(rewrite (PCall s6_idx ltac:(vm_compute; reflexivity));
                       exact Hs6)
-                with "Hdp Hlaw Hcode Hbs Hb Hstd [Hans] Hwc Hrun").
+                with "Hlaw Hcode Hbs Hb Hstd [Hans] Hwc Hrun").
       { (* ROUND AGAIN: the byte was neither '\n' nor '\r', so it was not
            the line's last -- [i] is below 16 and the line grows by one. *)
         assert (Hnb : nth_byte (m9 !!! Regidx a5_idx) 0%nat = g1 0%nat)
@@ -4220,7 +4219,6 @@ Section UkSh.
        "nothing read" and "one line read" (lane IO-LEAF, M5(3)) *)
     (length echo_line < Nb)%nat -> Z.of_nat Nb < Z31 ->
     ush_fd0p l ->
-    sh_deps -∗
     ush_tag_law -∗
     shk_code γt -∗
     ubytes γd a Nb f -∗
@@ -4241,7 +4239,7 @@ Section UkSh.
     intros Ha0 Ha1 HNle HN31 Hfd0.
     assert (HN0 : (0 < Nb)%nat)
       by (pose proof echo_line_length; lia).
-    iIntros "#Hdp #Hlaw #Hcode Hbs Hstd Hpos Hrun Hcont".
+    iIntros "#Hlaw #Hcode Hbs Hstd Hpos Hrun Hcont".
     rewrite shp_gets.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     iDestruct (urun_ubytes_bnd h m _ (12 + nn) (DfracOwn 1) a Nb f ltac:(lia)
@@ -4628,7 +4626,7 @@ Section UkSh.
                     exact (upd_eq m6 (Regidx s6_idx)
                              (regval_into_reg (mword_of_int (spz - 81)
                                                : mword 64))))
-              with "Hdp Hlaw Hcode Hbs Hbc Hstd Hpos Hwc Hrun").
+              with "Hlaw Hcode Hbs Hbc Hstd Hpos Hwc Hrun").
     iIntros (h19 mc i2 g bc2) "%Hi2 %Hs8c %Hpk Hbs Hbc Hstd Hpos Hrun".
     iDestruct ("Hclc" $! bc2 with "Hbc") as "Hw11".
     (* ---- 0xb00  c.add s8,s8,s7 ---- *)
@@ -5225,13 +5223,16 @@ Section UkSh.
   (* know which: both arms of that branch are proved, so the two            *)
   (* instructions go through with their values left as they are.            *)
   (* ===================================================================== *)
+  (* THE WRITE DEPOSIT UNDER THE TAINT (lane EXEC-SEAM, (D)): the only
+     turn that prints on the free law is a tainted one, and the law is
+     owed there and nowhere else. *)
   Lemma wp_ksh_getcmd (h : CpuId) (m : regfile) (a : Z) (Nb : nat)
       (f : nat -> bv 8) (l : list fdstate) (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int a ->
     m !!! Regidx a1_idx = mword_of_int (Z.of_nat Nb) ->
     (length echo_line < Nb)%nat -> Z.of_nat Nb < Z31 ->
     ush_fd0p l ->
-    sh_deps -∗
+    □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     (* ...and the prompt's law at every line boundary (lane IO-LEAF,
        M6a(3)) *)
@@ -5282,9 +5283,10 @@ Section UkSh.
     { rewrite /ush_posb. iDestruct "Hpos" as "[Hb | [#HT Hp]]"; last first.
       { iApply (ksh_w_mono _ _ _ (ustd γfd l) (ustd γfd l) with "[Hp] []").
         - iIntros "$". iRight. iFrame "HT Hp".
-        - iApply (ksh_w_of_law (mword_of_int 2) (mword_of_int sh_prompt_pv)
+        - iDestruct ("Hdp" with "HT") as "#Hdp16".
+          iApply (ksh_w_of_law (mword_of_int 2) (mword_of_int sh_prompt_pv)
                     2%nat (ustd γfd l) (ustd γfd l) ltac:(reflexivity)
-                    with "Hdp"). }
+                    with "Hdp16"). }
       iDestruct "Hb" as (n) "(%Hbnd & Hpm & Hwc)".
       iApply (ksh_w_mono _ _ _ (ustd γfd l) (ustd γfd l ∗ ush_wcp l n 2%nat)
                 with "[Hpm] [Hwc]").
@@ -5786,7 +5788,7 @@ Section UkSh.
       exact (upd_eq mM (Regidx a1_idx)
                (regval_into_reg (mword_of_int (Z.of_nat Nb) : mword 64))). }
     iApply (wp_ksh_gets h22 nH a Nb fm l nn Ha0_H Ha1_H HNle HN31 Hfd0
-              with "Hdp Hlaw Hcode Hbs Hstd Hpos Hrun").
+              with "Hlaw Hcode Hbs Hstd Hpos Hrun").
     iIntros "Hbs" (h23 mG) "%HcsG Hrun". rewrite HraH.
     assert (Er32 : ret_pc (mword_of_int 0x32 : mword 64) = mword_of_int 0x32)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -7233,7 +7235,7 @@ Section UkSh.
   (* ---- the loop itself: 0x938..0x976, under one iLöb ------------------ *)
   (* DEPENDS ON [ush_read_leaf] (through getcmd).                          *)
   Local Lemma wp_ksh_loop (R : iProp Σ) (l : list fdstate) :
-    sh_deps -∗
+    □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     ush_prompt_law -∗
     ush_rest_l R -∗ shk_code γt -∗ ush_jtab γt -∗ ush_loop_head R l.
@@ -7690,7 +7692,7 @@ Section UkSh.
   (* ===================================================================== *)
   Lemma wp_ksh_cmd_head (R : iProp Σ) (h : CpuId) (m : regfile)
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
-    sh_deps -∗
+    □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     ush_prompt_law -∗
     ush_rest_l R -∗
@@ -7905,7 +7907,7 @@ Section UkSh.
      started from. *)
   Local Lemma wp_ksh_console (R K : iProp Σ) (h : CpuId) (m : regfile)
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
-    sh_deps -∗
+    □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     ush_prompt_law -∗
     ush_rest_l R -∗
@@ -8185,7 +8187,7 @@ Section UkSh.
   (* ===================================================================== *)
   Lemma wp_ksh_main (R K : iProp Σ) (h : CpuId) (m : regfile)
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
-    sh_deps -∗
+    □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     ush_prompt_law -∗
     ush_rest_l R -∗
@@ -8457,7 +8459,7 @@ Section UkSh.
   (* ===================================================================== *)
   Lemma wp_ksh_start (R K : iProp Σ) (h : CpuId) (m : regfile)
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
-    sh_deps -∗
+    □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     (* ...and the prompt's law at every line boundary (lane IO-LEAF,
        M6a(3)), from the entry ([UShKernel.sh_prompt_law]) *)

@@ -582,11 +582,9 @@ Section UkInit.
   (* whole point of the lane -- /init's slot may not be a function of        *)
   (* [AppInv.app_sup], because for the echo application that IS the taint.   *)
   (* ===================================================================== *)
-  Definition init_deps (T : iProp Σ) : iProp Σ :=
-    (udepw_law 16 ∗ □ (T -∗ udepw_law 15) ∗ □ (T -∗ udepw_law 17))%I.
-
-  Global Instance init_deps_persistent T : Persistent (init_deps T).
-  Proof. rewrite /init_deps. apply _. Qed.
+  (* [init_deps] is stated AFTER this section (lane EXEC-SEAM, (D)): its
+     write conjunct now bundles the closed-fd leaf at EVERY record, and a
+     record-generic law cannot be spelled at the section's [N]. *)
 
   (* ...and mknod's, for open's reason: 17's branch is a create, and the
      credential arm goes through [uki_mknod_leaf]. *)
@@ -720,10 +718,9 @@ Section UkInit.
 
   Lemma uki_open1_of_dance (T Cns : iProp Σ) `{!Persistent T}
       (stc : fdstate) :
-    init_deps T -∗ init_cons_dance T Cns stc -∗ uki_open1 T Cns stc.
+    □ (T -∗ udepw_law 17) -∗ init_cons_dance T Cns stc -∗ uki_open1 T Cns stc.
   Proof.
-    iIntros "Hdp Hd".
-    iDestruct "Hdp" as "#(_ & _ & Hwl17)".
+    iIntros "#Hwl17 Hd".
     iIntros (h m avail) "#Hcode #Hro %Hargs Hrun Hcwd Hstd Hcont".
     iDestruct "Hd" as "[[%K [[#Habs #Hmkl] HK]] | (#Hcl0 & #Hmklh & HC)]".
     - (* THE MISS ROUTE: the first open is the dead walk, and it returns -1 *)
@@ -1972,3 +1969,50 @@ Section UkInit.
   Qed.
 
 End UkInit.
+
+(* ===================================================================== *)
+(*  THE THREE DEPOSITS INIT OWES, record-generic (lane EXEC-SEAM, (D)).   *)
+(*                                                                        *)
+(*  write(16), open(15) and mknod(17) are CLAIM numbers, each paid under  *)
+(*  the taint out of the application's supply; the write conjunct is a    *)
+(*  PAIR in the old conjunct's position: the tainted law beside the        *)
+(*  CLOSED-FD LEAF -- a write to a closed descriptor puts nothing on the   *)
+(*  wire, and its deposit is free at every record                          *)
+(*  ([UkWriteClosed.kinit_w1_of_closed_l0]).  That leaf is what init's     *)
+(*  diagnostics and banner print on when the console never opened, and    *)
+(*  it has to be stated at EVERY record because the exec'ing child's       *)
+(*  diagnostics run at a record the fork minted.  No free law remains:     *)
+(*  the console row pays through the era's links, the closed row through  *)
+(*  this leaf, and the taint row through the law under the taint.          *)
+(* ===================================================================== *)
+Section InitDeps.
+  Context `{!riscvGS Σ}.
+  Context `{!ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
+  Context `{!ctokG Σ}.
+  Context `{!uartGhostG Σ}.
+  Context {SG : uexecSG Σ}.
+  Context `{PS : uprogSG Σ}.
+
+  Definition kinit_wcl : iProp Σ :=
+    (□ (∀ (N0 : uk_names Σ) (b : bv 8),
+          kinit_w1 N0 (mword_of_int 1 : mword 64) b
+            (UserFd.ustd (ukn_fd N0) ufd_l0) (UserFd.ustd (ukn_fd N0) ufd_l0)))%I.
+
+  Global Instance kinit_wcl_persistent : Persistent kinit_wcl.
+  Proof. rewrite /kinit_wcl. apply _. Qed.
+
+  Definition kinit_wlaw (T : iProp Σ) : iProp Σ :=
+    (□ (T -∗ udepw_law 16) ∗ kinit_wcl)%I.
+
+  Global Instance kinit_wlaw_persistent T : Persistent (kinit_wlaw T).
+  Proof. rewrite /kinit_wlaw. apply _. Qed.
+
+  Definition init_deps (T : iProp Σ) : iProp Σ :=
+    (kinit_wlaw T ∗ □ (T -∗ udepw_law 15) ∗ □ (T -∗ udepw_law 17))%I.
+
+  Global Instance init_deps_persistent T : Persistent (init_deps T).
+  Proof. rewrite /init_deps. apply _. Qed.
+End InitDeps.

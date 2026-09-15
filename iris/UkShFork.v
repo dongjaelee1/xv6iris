@@ -743,7 +743,7 @@ Section UkShFork.
     (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
     (* ...and the credential's conversion at a fork that failed (step 4) *)
     (forall i : nat, ⊢ Wc i 3%nat -∗ Wc i 0%nat) ->
-    UkSh.sh_deps -∗
+    □ (T -∗ UkSh.sh_deps) -∗
     ushl_head l sz -∗
     shk_code γt -∗
     (* the exec deposit's supplier for the GENERIC child -- [UkRun.uxsup],
@@ -889,12 +889,13 @@ Section UkShFork.
                 with "Hhead Hcode Hro Hjt [%] Hustd Hcwd Hch Hpid [] []
                       Hlease [] [] [Hpos] Hdat Hsz Hbuf Hrun");
         [ exact Hfd0 | done | iModIntro; iIntros "_"; done | | | ].
-      + (* the panic, on the free law and the record's own payload, as
-           before *)
+      + (* the panic, on the free law UNDER THE TAINT and the record's own
+           payload *)
         iIntros (Sc h' m' r) "%Hmsg _ _ _ Hpay Hrun'".
+        iDestruct ("Hdp" with "HT") as "#Hdp16".
         iApply (UkShDiag.ush_diag_leaf_holds N h' m' ShSyms.panic (66 + n)
                   ltac:(left; split; [ reflexivity | left; exact Hmsg ])
-                  with "Hdp Hcode Hro [] Hpay Hrun'").
+                  with "Hdp16 Hcode Hro [] Hpay Hrun'").
         rewrite UkShRun.ush_diag_res_panic. done.
       + (* the child: the generic walk at the trivial payload *)
         iIntros (N' hB mA γ') "%Hpeq' %Hs1A _ _ #Hcode' #Hro' #Hjt'
@@ -904,6 +905,7 @@ Section UkShFork.
         iDestruct (uxsup_at_triv N' with "Hxs") as "#Hxs'".
         iAssert (□ (riscv_kill_cred -∗ UkRun.ukn_pay N' (-1)))%I as "#Hkw'".
         { rewrite Htiv'. iModIntro. iIntros "_". done. }
+        iDestruct ("Hdp" with "HT") as "#Hdp16".
         iApply (UkShMain.wp_kshm_child_alloc N' Hpsok_free
                   hB mA DfracDiscarded DfracDiscarded
                   (sh_buf + Z.of_nat k) len (fun j : nat => f (k + j)%nat)
@@ -913,7 +915,7 @@ Section UkShFork.
                   ltac:(unfold sh_buf, sh_nbuf, Z64 in *; lia)
                   ltac:(unfold sh_buf, sh_nbuf in *; lia)
                   Hszlo Hszal Hszok (ukn_pay_free_of_triv N' Htiv')
-                  with "Hdp Hcode' Hxs' Hkw' [] [] Hjt' Hline' Hws Hsy Hustd'
+                  with "Hdp16 Hcode' Hxs' Hkw' [] [] Hjt' Hline' Hws Hsy Hustd'
                         [Hcwd'] [Hch'] Hfresh Hrun'").
         * iApply (ushf_code_shp with "Hcode'").
         * iApply (ushf_rodata_shp with "Hro'").
@@ -960,7 +962,7 @@ Section UkShFork.
     (forall i : nat, ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i) ->
     (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
     (forall i : nat, ⊢ Wc i 3%nat -∗ Wc i 0%nat) ->
-    UkSh.sh_deps -∗
+    □ (T -∗ UkSh.sh_deps) -∗
     ushl_head l sz -∗
     shk_code γt -∗
     uxsup -∗
@@ -1107,7 +1109,7 @@ Section UkShFork.
        obligation's shape ([UkSh.ush_rest_l]) is what [UInitSh.sh_pay_rest]
        trusts; [UkSh.ush_at_of_pm_wb] is the loop's own hypothesis. *)
     (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
-    UkSh.sh_deps -∗
+    □ (T -∗ UkSh.sh_deps) -∗
     (* the exec deposit's supplier for the GENERIC child -- [UkRun.uxsup],
        see [UkShRun.wp_kshr_runcmd] *)
     uxsup -∗

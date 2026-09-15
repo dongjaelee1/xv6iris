@@ -47,6 +47,9 @@ Require Import FirstTok.        (* in the require block for FsAbsInvFire's
 Require Import UexecExecInst.   (* the class INSTANCE: [uexecSG_xv6] / [uprogSG_gen] *)
 Require Import FsAbsInvFire.    (* [fsabs_open_in] / [fsabs_mknod_pre]: the two
                                    branches the supply pays update-free *)
+Require Import SpecFilewrite.    (* [filewrite_in]: row 16's keyed input, for
+                                    [filewrite_in_of_sup] (lane EXEC-SEAM, (D)) *)
+Require Import SpecConsolewrite. (* [cons_out_chain_of_licence]: its console arm *)
 Require Import UsysMemOk.       (* [USYS_exec] *)
 Require Import RegFile.         (* [regfile] -- [udepw]'s register argument *)
 Require Import UkRun.           (* [udep] -- the supplier and its key-free law *)
@@ -194,6 +197,58 @@ Section UexecExecMint.
   Proof.
     intros Hn. iIntros "#Hsup". rewrite /udepw_law.
     iIntros "!>" (N m pc). iApply (udepw_of_sup N m pc n Hn with "Hsup").
+  Qed.
+
+  (* ...AND WRITE'S, WITH NO UPDATE MODALITY (lane EXEC-SEAM, (D)).
+     [FsAbsInvFire.fsabs_filewrite_in] is stated under [|==>], but every arm
+     of its proof is [iModIntro]: the inode arm is the supply's own chain,
+     the console arm is the licence's, and nothing is minted.  Restated
+     without the modality it fits [UkRun.udepw]'s shape, whose conclusion
+     has none -- which is what lets a program's write deposit be paid
+     UNDER THE TAINT ([T -∗ app_sup], [T -∗ out_licence]) instead of being
+     admitted at the top as a free law. *)
+  Lemma filewrite_in_of_sup (st : fdstate) (n : Z) (M : gmap Z (bv 8))
+      (ua : mword 64) :
+    app_sup -∗ out_licence -∗ filewrite_in st n M ua (fun _ => True%I).
+  Proof.
+    iIntros "#Hsup #Hlic".
+    rewrite /filewrite_in.
+    destruct st as [| rb wb ty]; [ iEmpIntro | ].
+    destruct wb; [| iEmpIntro ].
+    destruct ty as [i γo | | ma].
+    - iApply (fsabs_awrite_chain _ i γo M ua 0%nat _ with "Hsup").
+    - iEmpIntro.
+    - iApply (cons_out_chain_of_licence with "Hlic").
+  Qed.
+
+  Lemma udepw_of_sup_write `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
+      (pc : mword 64) :
+    app_sup -∗ out_licence -∗ udepw (PS := PSx) N m pc 16.
+  Proof.
+    iIntros "#Hsup #Hlic".
+    rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
+    iFrame "Hheap Hufd". iRight.
+    rewrite /sbundle_pay. iExists (xfam_at (ukn_pay N) xfam_pt).
+    iSplitR; [ done | ].
+    rewrite /sbundle_at /= /xv6_sbundle /xfam_at /xfam_pt /xfam_exec /=.
+    destruct (decide ((16 : Z) = UsysMemOk.USYS_exec)) as [He | _];
+      [ exfalso; discriminate He | ].
+    destruct (decide ((16 : Z) = 5)) as [He | _];
+      [ exfalso; discriminate He | ].
+    destruct (decide ((16 : Z) = 9)) as [He | _];
+      [ exfalso; discriminate He | ].
+    destruct (decide ((16 : Z) = 15)) as [He | _];
+      [ exfalso; discriminate He | ].
+    destruct (decide ((16 : Z) = 16)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    iApply (filewrite_in_of_sup with "Hsup Hlic").
+  Qed.
+
+  Lemma udepw_law_of_sup_write `{PSx : uprogSG Σ} :
+    app_sup -∗ out_licence -∗ udepw_law (PS := PSx) 16.
+  Proof.
+    iIntros "#Hsup #Hlic". rewrite /udepw_law.
+    iIntros "!>" (N m pc). iApply (udepw_of_sup_write N m pc with "Hsup Hlic").
   Qed.
 
   (* the loop's mint: the generic slot at every key, out of the supply.

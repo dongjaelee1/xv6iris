@@ -553,7 +553,7 @@ Section UShKernel.
        who owes what).  This is what keeps sh's entry off the generic
        supplier: [udep] above is at the program's OWN instance, where the
        admitted numbers are [UexecSG.free_num] and nothing more. *)
-    UkSh.sh_deps -∗
+    □ (T -∗ UkSh.sh_deps) -∗
     (* ...AND THE TAG'S READING (lane SH-LINE 2b, L4; app-echo.md,
        "SH-LINE PHASE 1 LANDED", ruling (3)).  [RiscvPtsto.riscv_rx_tag] is
        a field of the machine's FIXED ghost state and nothing below the top
@@ -769,7 +769,7 @@ Section UShKernel.
     (* the deposit supplier and the three deposits, passed straight
        through: see [sh_uexec_slot] and [UkSh.sh_deps] *)
     udep -∗
-    UkSh.sh_deps -∗
+    □ (T -∗ UkSh.sh_deps) -∗
     (* the tag's reading, passed straight through: see [sh_uexec_slot] *)
     UkSh.ush_tag_law T -∗
     (* ...and the prompt's law at every boundary, passed straight through:

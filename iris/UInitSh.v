@@ -1090,7 +1090,7 @@ Section UInitSh.
     (* ...AND THE THREE DEPOSITS SH OWES: read(5), open(15), write(16), the
        CLAIM numbers sh calls ([UkSh.sh_deps]).  They cross the exec with
        the slot, because the slot they build IS sh's. *)
-    UkSh.sh_deps (PS := uprogSG_free) -∗
+    □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
     (* ...AND THE PROMPT'S LAW AT EVERY LINE BOUNDARY (lane IO-LEAF,
        M6a(3)): persistent, so it crosses into every shell this [□] builds. *)
     UShKernel.sh_prompt_law (PS := uprogSG_free) Wc -∗

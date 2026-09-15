@@ -98,6 +98,7 @@ Require Import UexecExecInst.     (* the class INSTANCE: [uexecSG_xv6].  This
 Require Import UkRun.             (* [udepw_law] -- the named deposits *)
 Require Import UkInit.            (* [init_deps] / [init_cons_sup] *)
 Require Import UexecExecMint.     (* [udepw_law_of_sup] / [udep_free] *)
+Require Import UkWriteClosed.     (* [kinit_w1_of_closed_l0]: init's write on a closed fd 1 (lane EXEC-SEAM, (D)) *)
 Require Import UInitKernel.       (* [init_slot_of_kexec] / the dance *)
 Require Import EchoLinks.         (* [echo_links] -- E5's four links as one
                                      persistent law *)
@@ -336,13 +337,16 @@ Section UInitBoot.
       ASSEMBLY -- whose section has no [uexecSG] variable, so both sides
       resolve to the kernel's instance -- reads them off the supply. *)
   Lemma init_deps_of_laws `{PSx : uprogSG Σ} (T : iProp Σ) :
-    □ UkRun.udepw_law (PS := PSx) 16 -∗
+    (* the write deposit at its two arms (lane EXEC-SEAM, (D)): the law
+       under the taint, and the closed-fd leaf at every record *)
+    □ (T -∗ UkRun.udepw_law (PS := PSx) 16) -∗
+    UkInit.kinit_wcl (PS := PSx) -∗
     □ (T -∗ UkRun.udepw_law (PS := PSx) 15) -∗
     □ (T -∗ UkRun.udepw_law (PS := PSx) 17) -∗
     □ UkInit.init_deps (PS := PSx) T.
   Proof.
-    iIntros "#Hwr #H15 #H17 !>". rewrite /UkInit.init_deps.
-    iSplit; [ iExact "Hwr" | ]. iSplit.
+    iIntros "#Hwr #Hwcl #H15 #H17 !>". rewrite /UkInit.init_deps /UkInit.kinit_wlaw.
+    iSplit; [ iSplit; [ iModIntro; iExact "Hwr" | iExact "Hwcl" ] | ]. iSplit.
     - iModIntro. iExact "H15".
     - iModIntro. iExact "H17".
   Qed.
@@ -441,7 +445,8 @@ Section UInitBoot.
     (* the lend's conversion at the shell's entry (lane M6b), passed
        straight through *)
     (forall n : nat, ⊢ Wp n -∗ Wc n 0%nat) ->
-    udep (PS := uprogSG_free) -∗ UkSh.sh_deps (PS := uprogSG_free) -∗
+    udep (PS := uprogSG_free) -∗
+    □ (echo_taint γ -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
     UShKernel.sh_prompt_law (PS := uprogSG_free) Wc -∗
     UInitSh.init_sh_slot (echo_taint γ)
       (UInitSh.sh_pay (echo_taint γ) Wc Wb Pm Rsh n0) -∗
@@ -593,7 +598,10 @@ Section EchoInitBoot.
        proved here ([UInitSh.sh_pay_state_holds]) and it fixes the family --
        [UInitSh.sh_Rsh], the loop's own data at the break the exec'd key
        pins.  What is still owed is the TAIL at that same family. *)
-    (⊢ UkSh.sh_deps (PS := uprogSG_free)) ->
+    (* THE FREE WRITE LAW IS NO LONGER OWED (lane EXEC-SEAM, (D)): the
+       paid walks spend write's deposit under the taint, where it is the
+       supply's ([UexecExecMint.udepw_law_of_sup_write]), or through the
+       closed-fd leaf where the console never opened. *)
     (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh) ->
     (* SH'S READ LEAF IS NO LONGER OWED (lane IO-LEAF, M5).  It was a
        Coq-level premise here from lane ECHO-OUT part 5, because the
@@ -642,7 +650,7 @@ Section EchoInitBoot.
       echo_turn γ (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Hsh_deps Hsh_rest Heq Htag Hkill Hout Hin Hwin.
+    intros Hsh_rest Heq Htag Hkill Hout Hin Hwin.
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)
@@ -705,8 +713,15 @@ Section EchoInitBoot.
     iAssert (□ UkInit.init_deps (PS := uprogSG_free) (echo_taint γ))%I
       as "#Hdp".
     { iApply (init_deps_of_laws (PSx := uprogSG_free) (echo_taint γ)
-                with "[] [] []").
-      - iModIntro. iApply Hsh_deps.
+                with "[] [] [] []").
+      - (* write, under the taint: the supply and the output licence *)
+        iModIntro. iIntros "#HT".
+        iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] []").
+        + iApply ("Hsup" with "HT").
+        + iApply ("Hlic" with "HT").
+      - (* ...and the closed-fd leaf, at every record *)
+        rewrite /UkInit.kinit_wcl. iIntros "!>" (N0 b).
+        iApply (UkWriteClosed.kinit_w1_of_closed_l0 (PS := uprogSG_free) N0 b).
       - iModIntro. iIntros "HT".
         iApply (udepw_law_of_sup (PSx := uprogSG_free) 15
                   (or_introl eq_refl)).
@@ -890,7 +905,11 @@ Section EchoInitBoot.
                 Hsh_wbwc Hsh_wbl Hsh_wbr Hsh_bd Hpw
                 with "[] [] Hplaw Hsh").
       - iApply (udep_free).
-      - iApply Hsh_deps. }
+      - (* sh's write deposit, under the taint (lane EXEC-SEAM, (D)) *)
+        iModIntro. iIntros "#HT".
+        iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] []").
+        + iApply ("Hsup" with "HT").
+        + iApply ("Hlic" with "HT"). }
     (* ---- THE CONSOLE DANCE, at whichever arm the VIEW decided
            ([AppEcho.echo_boot]).  Built through [UInitKernel]'s two intro
            lemmas, which is the one place this file names its vocabulary:

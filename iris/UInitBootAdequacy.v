@@ -136,8 +136,12 @@ Section EchoAdequacy.
             ([UInitSh.sh_pay_state_holds]) and proving it is what fixes
             [UInitSh.sh_Rsh], so the tail is owed at that family and no
             other. *)
-         (⊢ UkSh.sh_deps (PS := uprogSG_free))
-         /\ (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh)
+         (* THE FIRST CONJUNCT IS GONE (lane EXEC-SEAM, (D)): the free
+            write law is derived under the taint from the application's
+            supply ([UexecExecMint.udepw_law_of_sup_write]) and the
+            closed-fd leaf pays the writes that reach no wire, so nothing
+            about write(16) is owed here any more. *)
+         (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh)
          (* THE THIRD CONJUNCT IS GONE (lane IO-LEAF, M5).  It was sh's
             CONSOLE READ LEAF, owed here since lane ECHO-OUT part 5 because
             the boundary's flat input licence [WpUart.in_licence] is FALSE
@@ -240,8 +244,7 @@ Section EchoAdequacy.
          [EchoOut.echoOutG]'s own [eo_mono_nat] now -- a class this section
          binds ONCE and hands to both sides -- so there is nothing left to
          move and [Hgen] is a premise this discharge does not read. *)
-      destruct (Hsh_owed HR GEN HBs HFd HIr HPav HWc HF)
-        as (Hdeps & Hre).
+      pose proof (Hsh_owed HR GEN HBs HFd HIr HPav HWc HF) as Hre.
       (* [GEN] is IMPLICIT and fixed by unification -- from [Hw16] first
          and [Heq] after, both of which carry the record's own [GenId].
          Naming it here would pin the wrong one: the [GEN] this field
@@ -251,7 +254,7 @@ Section EchoAdequacy.
          CONS-IO milestone F), on [app_in]'s mould *)
       cbn [app_echo app_win] in Hwin.
       iIntros "#Hinv Hb Hturn".
-      iApply (echo_Hinit_boot HR GEN c r Hdeps Hre
+      iApply (echo_Hinit_boot HR GEN c r Hre
                 Heq Htag Hkill Hout Hin Hwin with "Hinv Hb [Hturn]").
       cbn [app_echo app_turn]. iExact "Hturn".
     - (* [Happ_echo]: at [AppEcho.echo_out]'s E5 placeholder the console's

@@ -169,7 +169,7 @@ Proof. destruct V; reflexivity. Qed.
 (* the user-execution WP has to name (the descriptor view, the pid, the   *)
 (* slot's own key) would otherwise be one more argument in all of them.   *)
 (* As a FIELD it is free.  See                                           *)
-(* claude-notes/projects/user-wp-slot.md, milestone J item 1 and the      *)
+(* claude-notes/completed/user-wp-slot.md, milestone J item 1 and the     *)
 (* ledger's item-4 ruling.                                                *)
 (*                                                                       *)
 (* WHY [M] IS NOT A FIELD OF [pprivate] INSTEAD.  [pprivate] is the       *)

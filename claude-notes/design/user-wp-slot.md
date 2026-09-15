@@ -6,9 +6,10 @@ and every park; userret extracts it and runs it; the user-space WP RETURNS
 the next one at its trap and the trap-entry seam re-deposits that.  A WP is
 MINTED at the two PARKS and nowhere else (userinit's, and sys_fork's kfork
 call — a WP is a LINEAR resource the parker owes its child); the loop mints
-nothing.  Today the minted one is the generic-safety WP; the machinery
-exists so a VERIFIED process can carry its own WP instead.  The in-flight
-work (real per-process linkage) is `projects/user-wp-slot.md`.
+nothing.  Since ARM-c (1a) the kernel mints NOWHERE (THE KERNEL MINTS
+NOWHERE, below): a verified process carries its own WP, and the generic
+inhabitant survives only as the GENERIC instance's discharge.  The effort
+that built all of this is retired — `completed/user-wp-slot.md`.
 
 ## The two WP forms
 
@@ -257,7 +258,7 @@ PARKS' — `ProofUserinit`'s and `ProofSysFork`'s applications of
   `umem_wr_app`/`umem_wrote` algebra; `umem_grow` for sbrk-class),
   same-`M` for writers-from-user-memory; the residual ∃-weakened tier
   (`proc_pt_any`) is being eliminated bottom-up and then deleted —
-  state and DAG in `projects/user-wp-slot.md` §2.
+  state and DAG in `completed/user-wp-slot.md` §2.
 - The DESCRIPTOR (`pv_upt`) stays exposed in `ustate`: the trap
   seams, the phase splits and the table-moving specs are keyed on it.
   The SLOT's key is the user-visible `uvis` (above); `uvis_of` is the

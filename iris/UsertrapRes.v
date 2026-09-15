@@ -846,7 +846,7 @@ Section UsertrapRes.
         carry the ∀-state [UexecWp.uexec_wp] as a last conjunct and the trap
         loop pulled it out each round.  The loop now runs the per-process
         KEYED contract ([UexecRet.uslot] / [uexec_ret]) and FRAMES it across
-        [wp_uservec_pt] instead -- projects/user-wp-slot.md SS4c, refutation
+        [wp_uservec_pt] instead -- completed/user-wp-slot.md SS4c, refutation
         R-a: a keyed row cannot live here, because the residue's index moves
         inside the round while [ut_own_priv]'s closer is ∀-general in it. *)
      Rsys (un_f N) (un_pj N) (un_fn N pid))%I.

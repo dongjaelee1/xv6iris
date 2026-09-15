@@ -5,7 +5,7 @@
    -- the machine state the kernel's userret trampoline leaves once it has
    sret'd into User mode -- into the CONCRETE resume state the trap loop
    feeds to the per-process user-execution contract it holds
-   ([UexecRet.uslot] / [uvb]; see claude-notes/projects/user-wp-slot.md).
+   ([UexecRet.uslot] / [uvb]; see claude-notes/completed/user-wp-slot.md).
    That is [userret_to_user_state_ptm]: a [u_regs] bundle at the post-sret
    state, [user_ptm_inv] at the NAMED lazy image, and [user_cfg].  It used
    to deliver the PACKED [user_inv C pt] instead; the packing now happens

@@ -380,7 +380,7 @@ Definition forkret_closer
         THIS RESUME LANDS ON.  At [Wk = Some _] the parker captured ONE
         slot and the run-key premise above re-keys it onto this record.  At
         [Wk = None] the closer yields no slot at all: the boot arm's kexec
-        moves the key (projects/user-wp-slot.md SS4c, R-b) and the slot
+        moves the key (completed/user-wp-slot.md SS4c, R-b) and the slot
         that record runs on is exec's own receipt, paid by the exec bundle
         the package handed that arm.  See [ParkCap.park_pkg], of which this
         is the forkret-side spelling; one [sts] for the residue's fragments

@@ -1,7 +1,7 @@
 (* ===================================================================== *)
 (* ProofUexecWp.v -- THE GENERIC INHABITANT of the user-execution WP slot. *)
 (*                                                                         *)
-(* See claude-notes/projects/user-wp-slot.md SS1.2.  [UexecWp.v] gives the  *)
+(* See claude-notes/completed/user-wp-slot.md SS1.2.  [UexecWp.v] gives the *)
 (* slot's SHAPE; this file gives the one inhabitant that always exists:     *)
 (* generic safety of arbitrary user-mode execution, repackaged so that the  *)
 (* residue can carry it as a per-process resource.  [uexec_wp] is the       *)

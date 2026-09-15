@@ -68,7 +68,7 @@ Require Import UtResFits.  (* [USERTRAP_RES_PARK] -- the residue plus its produc
    slot's statement needs it, and that file has to sit below UsertrapRes.v.
    Exported, not merely imported, so every consumer of this interface keeps
    seeing [loop_ok] under the same name from the same place
-   (claude-notes/projects/user-wp-slot.md SS1.1). *)
+   (claude-notes/completed/user-wp-slot.md SS1.1). *)
 Require Export UexecWp.
 Require Import UserPerm.   (* [perm_of] -- the key's permission projection *)
 Require Import UserFd.   (* [ufdG] -- the class a minted user slot needs *)

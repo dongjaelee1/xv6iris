@@ -17,7 +17,7 @@ The design of record for the enriched u-tier syscall row was here. Spec
 statements: `iris/FsFdMirror.v`, `iris/UexecRetFs.v`, `iris/FdRowPilot.v`
 (deleted).
 
-Related: [`user-wp-slot.md`](user-wp-slot.md) (the trap contract this
+Related: [`user-wp-slot.md`](../design/user-wp-slot.md) (the trap contract this
 enriches; its part (A) PARKS exactly this refinement: "a later refinement
 adds an iProp premise under the same ∀ … without changing the shape"),
 [`fs-syscall-specs.md`](fs-syscall-specs.md) (v3 — the kernel-side AU
@@ -155,7 +155,7 @@ State-dependent content needs a state carrier, i.e. the seam.
 **(c1) enrich the KEY instead (a `uvis` fd-table projection field — the
 `uvis_perm`/`uvis_sz` precedent, stage 3, owner-ruled) — OWNER-RULED IN,
 and landed: `uvis` carries `uvis_fd : list fdstate`
-([`user-wp-slot.md`](user-wp-slot.md) stage 4).  The two objections
+([`user-wp-slot.md`](../design/user-wp-slot.md) stage 4).  The two objections
 below stand as written and are what the landed field does NOT do — it
 carries the fd half only, and the av half stays this design's business —
 but the tax argument (ii) was mispriced: `urun` hides the field

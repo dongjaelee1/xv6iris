@@ -1,7 +1,7 @@
 (* ===================================================================== *)
 (* UexecApply.v -- THE VOCABULARY THE TRAP LOOP NEEDS TO APPLY A SLOT.     *)
 (*                                                                        *)
-(* Milestone J (claude-notes/projects/user-wp-slot.md SS4c) has the loop   *)
+(* Milestone J (claude-notes/completed/user-wp-slot.md SS4c) has the loop  *)
 (* hold [UexecRet.uexec_ret sc W] across a round and re-key it at the      *)
 (* state the round resumed.  Everything here is what that re-keying needs  *)
 (* and nothing in the tree had:                                           *)

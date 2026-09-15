@@ -2,7 +2,7 @@
 (* UexecWp.v -- THE USER-EXECUTION WP the trap loop runs, as a RESOURCE:   *)
 (* the forall-state form of WHAT THIS PROCESS DOES WHEN USERRET RESUMES IT. *)
 (*                                                                         *)
-(* See claude-notes/projects/user-wp-slot.md (SS1.1 is this file).  The     *)
+(* See claude-notes/completed/user-wp-slot.md (SS1.1 is this file).  The    *)
 (* kernel's trap loop currently runs user mode through ONE hardwired        *)
 (* theorem ([SpecUser.USER.wp_user_exec_closed]).  The project makes the WP *)
 (* userret runs a per-process RESOURCE, carried in the kernel-side residue  *)

@@ -1,5 +1,33 @@
 # Project: the per-process user-execution WP — handoff state & worklist
 
+**RETIRED 2026-09-14.**  All four items of §0′'s "WHAT IS LEFT" are closed,
+and all four by the applications effort rather than from this side
+(`../projects/app-echo.md`):
+
+1. the exec-site forcing function, in the AU form (`SpecKexecAU.exec_slot_pre`
+   / `kexec_image_ok`), and then the pinned exec bundle (PINNED-EXEC D,
+   EXEC-SEAM);
+2. fork's real row — `uexec_ret`'s fork arm pays TWO slots at one key (the
+   parent's at `r ≠ 0`, the child's at `r = 0`), and `UkFork.v`'s `Forkable`
+   moves the caller's facts into the child at fresh heap names (WX-FORK,
+   2026-09-10).  The question the item actually asked — who mints on the fork
+   arm — is VOID: since ARM-c (1a) the kernel mints NOWHERE, and the parent
+   supplies the child's slot;
+3. `sh` and `init` are off the old capability engine and onto this one
+   (`UkSh*.v`, `UkInit*.v`, `UkCat*.v`);
+4. the Φ refinement is BUILT, at the application tier rather than by
+   strengthening `SpecConsolewrite` from here: WRITE-LEAF and ECHO-OUT close
+   `Hphi`, and `UInitBootAdequacy.echo_adequacy_modulo_phi` states that the
+   console wire is a prefix of the expected transcript.
+
+The machinery is not merely finished but CONSUMED: the closed application
+theorem runs on it, and `make audit-echo-only`'s fourteen assumptions owe
+this tier nothing.  NOT closed by this project and never part of it — the
+U-mode `CurCtx` question (whether `uvb` should own a context), which
+`main-tso-readiness.md` §5.2 deferred *waiting on this work* and which is
+therefore now unblocked.  The DESIGN OF RECORD STAYS LIVE at
+`../design/user-wp-slot.md`; everything below is historical.
+
 **WHAT THIS PROJECT IS.**  Making the WP that userret runs a per-process
 resource so that VERIFIED user programs (sync first, then echo) can run
 inside the whole-system theorem in place of the generic-safety WP.
@@ -71,7 +99,7 @@ What a successor needs to know:
 - Milestone J now lands on a tree where the trap loop's own files already
   carry `CurCtx`; J's edits to them must preserve it (same union rule).
 
-## §0′ COORDINATOR CHECKPOINT — 2026-08-29 (2nd), resume here
+## §0′ COORDINATOR CHECKPOINT — 2026-08-29 (2nd)
 
 Everything below is COMMITTED AND GREEN on `main` (`887026313` at the time
 of writing).  Working tree clean, nothing in flight, no lane running.
@@ -89,7 +117,8 @@ its entry deposit is `UkEchoKernel.echo_uexec_slot`, and
 sync, then echo, then the generic WP.  Two verified programs now travel
 the park channel, and adding a third is one more `destruct`.
 
-**WHAT IS LEFT, in the order it is worth doing.**
+**WHAT WAS LEFT, in the order it was worth doing — ALL FOUR SINCE CLOSED
+(the retirement banner at the top says by what).**
 
 1. **The exec-site forcing function (§3 item 5) — LANDED IN THE AU FORM,
    not in `kexec_ok`.**  `SpecKexecAU.exec_slot_pre S Φo …` hands the

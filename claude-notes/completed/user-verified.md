@@ -28,7 +28,7 @@ the kernel-derived trap contract of `iris/UexecRet.v` — the bundle
 cells, the register file, the pc, the parked residue and the kernel
 obligation `ukont`) and the trapframe-keyed slot `uslot`; see
 `../design/user-wp-slot.md` §"The ruled design for the user/kernel trap
-contract" and `../projects/user-wp-slot.md` §3 for what is landed and what
+contract" and `user-wp-slot.md` (retired) §3 for what is landed and what
 blocks the leaf sweep.  Everything below describes the tier as built on
 `uv_cap`, which is still what sh / echo / init / sync thread.
 

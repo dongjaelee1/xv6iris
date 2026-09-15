@@ -41,7 +41,7 @@
 (* kernel proof may state the round at whichever of the two lists it      *)
 (* happens to hold.                                                       *)
 (*                                                                        *)
-(* PURE.  See claude-notes/projects/user-wp-slot.md SS4a (J1a).           *)
+(* PURE.  See claude-notes/completed/user-wp-slot.md SS4a (J1a).          *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.

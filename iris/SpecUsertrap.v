@@ -2004,7 +2004,7 @@ Module Type USERTRAP_RES.
      type exported [usertrap_res_uwp_acc] / [usertrap_res_run_open] to pull
      it out and put one back each round.  The trap loop now runs the keyed
      per-process contract ([UexecRet.uslot] / [uexec_ret]) and FRAMES it
-     across [wp_uservec_pt] -- projects/user-wp-slot.md SS4c, refutation
+     across [wp_uservec_pt] -- completed/user-wp-slot.md SS4c, refutation
      R-a -- so the residue carries no WP and neither accessor has a reader. *)
   Parameter usertrap_res_tf_open :
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{!ufdG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (pt : uptd) (ksp : mword 64) (U : ustate) (sts : list fdstate) (cs : gset gname) (pid : mword 32),

@@ -6,7 +6,7 @@
    and to finish by applying the ONE hardwired generic-safety theorem; it
    now takes the WP TO RUN as a premise -- [UexecWp.uexec_wp], the
    per-process user-execution slot the caller extracted from the kernel
-   residue (claude-notes/projects/user-wp-slot.md).  Whether that slot is
+   residue (claude-notes/completed/user-wp-slot.md).  Whether that slot is
    the generic one or a verified program's continuation is no longer this
    file's business, which is exactly the point of the seam.
 

@@ -141,7 +141,7 @@ Section ParkCap.
                         replace its address space first: forkret's boot arm
                         runs kexec("/init") between the park and the
                         resume, so no key captured at the park survives it
-                        (userinit's park; projects/user-wp-slot.md SS4c,
+                        (userinit's park; completed/user-wp-slot.md SS4c,
                         refutation R-b).  What the parker hands over
                         instead is the EXEC BUNDLE that boot arm spends
                         ([InitBoot.init_boot_bundle], the row below), whose
@@ -233,7 +233,7 @@ Section ParkCap.
            captured at the park would be stale, because [ProofForkret]'s
            boot arm runs kexec("/init") between the park and the resume and
            applies this closer at the POST-EXEC record
-           (projects/user-wp-slot.md SS4c, refutation R-b).  At [Some Wk] the
+           (completed/user-wp-slot.md SS4c, refutation R-b).  At [Some Wk] the
            parker captured ONE slot, at [Wk], and the pure premise above
            re-keys it onto [uvis_of U'] ([UexecRet.uslot_of_urun_eq]) --
            sound because that mode's [first_done] makes the boot arm dead
@@ -480,7 +480,7 @@ Section ParkCap.
        row of the package built here, spent by forkret's boot arm on
        kexec("/init").  NOT A SLOT, and not a slot family: the party that
        resumes this record replaces its address space first, so no key
-       named here survives (projects/user-wp-slot.md SS4c, R-b) -- what
+       named here survives (completed/user-wp-slot.md SS4c, R-b) -- what
        DOES survive is the bundle whose slot piece answers at the key kexec
        builds, which is why the boot mode carries this instead.  THE KERNEL
        THEREFORE MINTS NOTHING: the bundle comes from the application,

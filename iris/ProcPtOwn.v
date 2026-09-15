@@ -3434,7 +3434,7 @@ Section ProcPt.
 
      A CONTRACT HOLDING IT CANNOT SAY WHAT HAPPENED TO THE PROCESS STATE,
      which is the whole reason the elimination campaign
-     (claude-notes/projects/user-wp-slot.md §2) exists.  Every contract in
+     (claude-notes/completed/user-wp-slot.md §2) exists.  Every contract in
      the tree is now either PRECISE -- an equation on the image, [umem_wr]
      / [umem_grow] / [umem_del] -- or writes its existential out inline
      where the function really does give the address space away

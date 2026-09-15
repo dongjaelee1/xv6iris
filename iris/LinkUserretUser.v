@@ -3,7 +3,7 @@
    (LinkUserret).  This is the machine-checked statement that userret's
    postcondition feeds the user-execution WP SLOT ([UexecWp.uexec_wp]) with
    nothing missing.  The dovetail no longer names [USER]: the WP to run is a
-   PREMISE it takes (claude-notes/projects/user-wp-slot.md), so there is no
+   PREMISE it takes (claude-notes/completed/user-wp-slot.md), so there is no
    second functor argument to link here. *)
 Require Import LinkUserret UserretUser.
 

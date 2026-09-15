@@ -4299,6 +4299,52 @@ Section echo_out.
       by apply prefix_length.
   Qed.
 
+  (* ---- THE READ, ON THE MERGED CLAIM.  Today this step has TWO identical
+     branches, one per arm of [ein], differing only in which counter share
+     they put back; here there is one.  The pure work is unchanged --
+     [ein_read_pure] turns [ConsLog.read_ok] into the delivered-prefix fact
+     the claim needs -- and it is exactly the premise [ecl_pure_read] takes.
+
+     THE READER'S STAGE FACTS are not in the post here.  Today they are
+     lower bounds the input claim carries; on the merged claim they are
+     derivable from the AUTHORITIES it holds, but the shape the reader wants
+     them in is decided by the link R2 writes, so they are left to it rather
+     than guessed at now. ---- *)
+  Lemma ecl_step_read (k : nat) (v : era_pins) (n : nat) (ho : list mobs)
+      (CH : ConsLog.cons_hist) (ws : list (list mobs * bv 8)) :
+    read_ok (ConsLog.ch_log CH) (ConsLog.ch_dl CH) ws ->
+    era_pin k v -∗ dl_cnt v (1/2) n -∗ ecl k ho CH ==∗
+      ecl k ho (ConsLog.cons_step CH (ConsLog.EvRead ws))
+      ∗ ((T ∗ dl_cnt v (1/2) n)
+         ∨ dl_cnt v (1/2) (n + length ws)%nat
+           ∗ ⌜length (ConsLog.ch_dl CH) = n⌝
+           ∗ ⌜(ConsLog.ch_dl CH ++ ws) `prefix_of` echoed (ConsLog.ch_log CH)⌝
+           ∗ ⌜E_index (seg_of (echoed (ConsLog.ch_log CH)))⌝
+           ∗ ⌜E_byte (seg_of (echoed (ConsLog.ch_log CH)))⌝).
+  Proof.
+    intros Hread. iIntros "#Hpinr Hdlr Hcl".
+    iDestruct "Hcl" as "[#HT | Hp]".
+    { iModIntro. iSplitR; [rewrite /ecl; by iLeft |]. iLeft. by iFrame "Hdlr". }
+    iDestruct "Hp" as (v2 so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct (era_pin_agree with "Hpin Hpinr") as %->.
+    iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
+    pose proof Hall as Hall0.
+    destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
+    pose proof Hin as Hin2.
+    destruct Hin2 as (_ & _ & _ & _ & Hidx & Hbyte & _).
+    destruct (ein_read_pure k (ConsLog.ch_log CH) (ConsLog.ch_dl CH) ws
+                (o_cs so) Hread Hin) as (Hpref & Hp' & Hbnd').
+    iMod (dl_cnt_update v (length (ConsLog.ch_dl CH)) n (n + length ws)%nat
+            with "Hdl Hdlr") as "[Hdl Hdlr]".
+    iModIntro. iSplitL "Hta Hcs Hps HE Hdl".
+    { rewrite /ecl. iRight. iExists v, so.
+      rewrite /ConsLog.cons_step. cbn [ConsLog.ch_dl].
+      rewrite length_app Hdleq. iFrame "Hpin Hta Hcs Hps HE Hdl".
+      iPureIntro. exact (ecl_pure_read k ho so CH ws Hpref Hall0). }
+    iRight. iFrame "Hdlr". iPureIntro. split_and!;
+      [exact Hdleq | exact Hpref | exact Hidx | exact Hbyte].
+  Qed.
+
   Lemma ein_step_read (k : nat) (v : era_pins) (n : nat) (hi : list mobs)
       (pops : list log_entry) (dl ws : list (list mobs * bv 8)) :
     read_ok pops dl ws ->
@@ -4425,6 +4471,44 @@ Section echo_out.
      [h], the claim carries the stamp at [ho], and
      [EchoOutPure.open_seg_prefix_boots] puts the two segments in one cycle.
      [EchoOutPure.good_out_of_stage] then turns the stage into [good_out]. *)
+  (* ---- THE DRAIN, ON THE MERGED CLAIM.  [App.Htx] reads the trace
+     property off the claim at the end of the run.  Today it needs a second
+     witness because the output and input claims carry their own; here there
+     is one claim and one witness, and the proof is the output side's
+     verbatim -- the input-side clauses play no part in [good_out]. ---- *)
+  Lemma ecl_drain (k : nat) (h ho : list mobs) (CH : ConsLog.cons_hist)
+      (seg : list mobs) :
+    trace_shape h true ->
+    obs_boots h = k ->
+    ho `prefix_of` h ->
+    ins seg = ins (open_seg h) ->
+    obs_wire Uart0 seg `prefix_of` ConsLog.ch_acc CH ->
+    ecl k ho CH -∗ ecl k ho CH ∗ (T ∨ ⌜good_out seg⌝).
+  Proof.
+    intros Hsh Hk Hpre Hins Hwire. subst k. rewrite /ecl.
+    iIntros "Hcl".
+    iDestruct "Hcl" as "[#HT | Hp]".
+    - iSplitR; [iLeft; iExact "HT" | iLeft; iExact "HT"].
+    - iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+      pose proof Hall as Hall2.
+      destruct Hall2 as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
+      destruct Hpure as (Hacc & Hwp & Hidx & Hbyte & Hpsb & Hpin & Hcs' & Hdsc
+                         & Hpre1 & Hpre2 & Hpre3).
+      iSplitL "Hta Hcs Hps HE Hdl".
+      { iRight. iExists v, so. iFrame "Hpin Hta Hcs Hps HE Hdl". by iPureIntro. }
+      iRight. iPureIntro.
+      assert (Hlen : (length (o_E so) <= length (ins seg))%nat).
+      { rewrite Hins. destruct Hpre3 as [HEnil | Hbo].
+        - rewrite HEnil. cbn [length]. lia.
+        - etrans; [exact Hpre2 |]. apply prefix_length, ins_prefix_of.
+          apply open_seg_prefix_boots;
+            [exact Hpre | by rewrite Hbo | exact Hsh]. }
+      apply (good_out_of_stage (o_ps so) (o_cs so) (o_E so) (o_w so) seg
+               Hpsb Hcs' Hbyte Hpin Hwp).
+      + rewrite -Hacc. exact Hwire.
+      + exact Hlen.
+  Qed.
+
   Lemma eout_drain (k : nat) (h ho : list mobs)
       (acc : list (bv 8)) (seg : list mobs) :
     trace_shape h true ->

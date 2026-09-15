@@ -1,4 +1,4 @@
-# CHECKPOINT 2026-09-14 (second session limit) -- step 3, INIT-DIAG, PROLOGUE-ALTS-3 landed; nothing in flight
+# CHECKPOINT 2026-09-14 (THIRD session limit) -- step 3, INIT-DIAG, PROLOGUE-ALTS-3, M6b, step 4, RESIDUALS (A) landed; lane EXEC-SEAM was in flight
 
 Supersedes `checkpoint-2026-09-16.md` §4/§5 for the state of play; that file's
 rules (§1-§3: build procedure, gate, commit rules, how to talk to the owner)
@@ -27,7 +27,19 @@ two halves of step 3).
   PROLOGUE-ALTS-3's widening (app-echo.md, "PROLOGUE-ALTS-3 LANDED") is NOT
   an open question; tightening belongs to the post-Qed cleanup.
 
-## 2. What is on main (origin/main = b65275c81 code)
+## 2. What is on main (origin/main = 146e7cac1 code; notes at or after 52ac81007)
+
+THIRD SESSION (2026-09-14, later): M6b LANDED (`a7d47ccef`+`290f05cf0`),
+IO-LEAF STEP 4 LANDED (`2426ca438`+`7da574e81`), RESIDUALS (A) LANDED
+(`146e7cac1`) -- app-echo.md's notes of those names are the record; the
+R3 RE-SURVEY (ruling: delete `sh_pay_rest`, discharge at the era's families
+through a new `UShRest.sh_rest_holds`; report `handoff-2026-09-16/
+r3-survey-2.md`); the refreshed TRUSTED-SURFACE document
+`handoff-2026-09-16/trusted-surface-2026-09-14b.md` (as of 7da574e81; not yet
+sent to the owner as a page -- do so).  The remaining hypothesis is still
+`Hsh_owed`'s two conjuncts.
+
+## 2-old. What was on main at the second checkpoint (b65275c81)
 
 * M6a(3) steps 1-2, WRITE-CLOSED, SH-LINE-CRED, the `_CoqProject` strip,
   INIT-DIAG (`bdd9faf7f`), IO-LEAF STEP 3 (`a583457a6`, `a860c399d`,
@@ -46,7 +58,10 @@ Two lanes, spawned from the coordinator's main checkout (`lane/io-leaf-3`):
   `-sup` is free again.
 * RESIDUALS -- (A) LANDED (`146e7cac1`), (B) BLOCKED at the exec seam
   (app-echo.md "RESIDUALS (A) LANDED; (B) BLOCKED").
-* EXEC-SEAM in `-disc`, branch `lane/exec-seam` (RUNNING): (B) the exec seam
+* EXEC-SEAM in `-disc`, branch `lane/exec-seam` (WAS RUNNING at the third
+  session limit -- DIED with the session; its checkout may hold uncommitted
+  edits: `git status`/`git diff` in -disc first, then re-spawn with the saved
+  brief plus "continue from the previous attempt's edits"): (B) the exec seam
   carries `uvis_ch`/`uvis_pid` (kernel contract text changes: pure rows,
   reflexive at the discharge), (C) the kills, (D) the free law
   taint-conditional + `Hsh_owed`'s first conjunct deleted; brief
@@ -91,6 +106,27 @@ build and ends its turn does not wake on completion -- poll its `<log>.out`
 for `EXIT=` and message it.  Rebase recipe and gate: `checkpoint-2026-09-16.md`
 §6.  Landings from `-notes` by cherry-pick when the lane is behind main by
 notes-only commits (`git diff <lane> HEAD -- iris` must be empty).
+
+## 3c. Where the FOURTH session starts
+
+1. `cd /shared/xv6iris-2-disc && git status --short` -- if lane EXEC-SEAM
+   left uncommitted edits, re-spawn it (brief `brief-exec-seam.md`) telling
+   it to inspect and continue; if it committed (B)/(C)/(D) on
+   `lane/exec-seam`, land by cherry-pick onto main (recipe: `git fetch
+   /shared/xv6iris-2-disc lane/exec-seam:refs/remotes/disc/exec-seam` in the
+   main checkout, cherry-pick, `git diff <lane> HEAD -- iris` empty, push
+   `lane/io-leaf-3:main`; the lane's gate ran on the identical tree).
+2. Then lane R3 (brief on the mould of the others; the plan is
+   `r3-survey-2.md` §6: `ush_gen_slot` and the wb-assembler into
+   `ush_rest_l`'s box, the fork's taint arm to the generic slot through
+   `ush_gen_run`, new `UShRest.v` (`sh_rest_holds`), `sh_pay_rest` DELETED and
+   `Hsh_owed`'s second conjunct with it -- TRUSTED, OLD/NEW).
+3. Then the closed theorem: `Hsh_owed` gone; consider a second audit target
+   for the echo theorem (trusted-surface §4 recommends one) and the
+   corollary at the literal image (§2.2); refresh the trusted-surface
+   document once more; send it to the owner.
+4. Post-Qed: the predicate tightening; init's closed-ledger arms off the
+   free law.
 
 ## 4. Then (unchanged plan)
 

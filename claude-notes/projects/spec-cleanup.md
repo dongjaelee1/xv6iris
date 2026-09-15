@@ -5,6 +5,19 @@ relay") and the relay queue below.  Every lane RD-0..RD-6, RD-TR and
 RA-1/RA-3 landed; RA-2 stopped at three engine walls, recorded in
 `design/user-read.md` §8.4; RA-4 never launched (nothing to consume).
 
+## EXEC (opened 2026-09-18, owner: "exec is something we could tackle")
+
+Design of record: `design/user-exec.md`.  FINDING: the kernel-side
+exec-success spec is ALREADY GENERAL (`exec_slot_pre` over any ELF,
+`kexec_image_ok` near-functional, loadability decidable, unverified
+targets served by the taint arm); what is pinned is the U-tier
+assembly, which fuses three separable obligations — (W) the resolution,
+(L) loadability, (E) the exec'd program's entry theorem `image_entry`.
+Lanes EX-1 (entry + assembly, zero semantic change), EX-2 (the
+FRAGMENT walk supplier — the pin-free route; feasibility check first),
+EX-3 (the general argv/path reading), EX-4 (the rule, the test, the
+TR figure).  Nothing relay-shaped unless EX-2's share check fails.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

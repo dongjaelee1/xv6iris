@@ -45,8 +45,12 @@ Two lanes, spawned from the coordinator's main checkout (`lane/io-leaf-3`):
 * M6B-INIT -- LANDED (`a7d47ccef`+`290f05cf0`, app-echo.md "M6b LANDED");
   `-sup` is free again.
 * RESIDUALS -- (A) LANDED (`146e7cac1`), (B) BLOCKED at the exec seam
-  (app-echo.md "RESIDUALS (A) LANDED; (B) BLOCKED"); lane EXEC-SEAM follows
-  (brief `brief-exec-seam.md`), then (C)/(D) verbatim from `brief-residuals.md`.
+  (app-echo.md "RESIDUALS (A) LANDED; (B) BLOCKED").
+* EXEC-SEAM in `-disc`, branch `lane/exec-seam` (RUNNING): (B) the exec seam
+  carries `uvis_ch`/`uvis_pid` (kernel contract text changes: pure rows,
+  reflexive at the discharge), (C) the kills, (D) the free law
+  taint-conditional + `Hsh_owed`'s first conjunct deleted; brief
+  `brief-exec-seam.md`, report `exec-seam-report.md`.  R3 follows it.
 * R3-SURVEY -- DONE (app-echo.md "SH-LINE R3 RE-SURVEYED"): RULED to delete
   `sh_pay_rest` and the second conjunct and discharge at the era's families
   through a new `UShRest.sh_rest_holds`; lane R3 follows RESIDUALS.

@@ -1684,173 +1684,17 @@ Section UkRunSys.
   (* ------------------------------------------------------------------- *)
 
   (* ------------------------------------------------------------------- *)
-  (* ecall, at read -- THE FIRST SYSCALL IN THIS TIER THAT WRITES USER     *)
-  (* MEMORY.                                                              *)
+  (* ecall, at read -- RETIRED INTO THE WINDOW FORM (lane RD-3).           *)
   (*                                                                      *)
-  (* [UsysMemOk]'s read row says the kernel wrote SOME [d] bytes at        *)
-  (* argument 1, no more than the count at argument 2, and left the        *)
-  (* permission map and the break alone.  It does not say WHICH bytes, and *)
-  (* it does not tie [d] to the return value -- so this leaf does not      *)
-  (* either.  What it does say is the only thing a caller can use: hand in *)
-  (* the whole count as a run you own, get the whole count back at SOME    *)
-  (* contents.                                                            *)
-  (*                                                                      *)
-  (* OWNING THE WHOLE COUNT IS THE PREMISE, not a convenience.  The row    *)
-  (* licenses a write anywhere in [buf .. buf+cnt), so a caller that owned *)
-  (* less could not absorb it, and the heap would be left describing bytes *)
-  (* the kernel had changed underneath it.                                *)
+  (* [wp_uk_ecall_read] used to stand HERE, as a walk of its own: the      *)
+  (* exact non-negative count, the buffer at an address the caller spells  *)
+  (* as a [Z], and the whole run back at unconstrained contents.  It is    *)
+  (* now a COROLLARY of [wp_uk_ecall_read_win] below -- the merge that     *)
+  (* leaf's own header asked for -- and it keeps its name and its exact    *)
+  (* statement, so every caller ([UkCat]'s read stub) is untouched.  What  *)
+  (* was retired is the hundred-and-thirty-line walk, which said nothing   *)
+  (* the window leaf's does not say better.                                *)
   (* ------------------------------------------------------------------- *)
-  Lemma wp_uk_ecall_read (N : uk_names Σ) (h : CpuId) (m : regfile)
-      (pc : mword 64) (a : Z) (cnt : nat) (f : nat -> bv 8) (avail : nat) :
-    usysno m = USYS_read ->
-    m !!! Regidx (mword_of_int 11) = (mword_of_int a : mword 64) ->
-    bv_signed (subrange_vec_dec (m !!! Regidx (mword_of_int 12)) 31 0
-               : mword 32) = Z.of_nat cnt ->
-    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
-    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
-    ubytes (ukn_d N) a cnt f -∗
-    urun N h m pc avail -∗
-    udepw N m pc USYS_read -∗
-    (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8),
-       ubytes (ukn_d N) a cnt g -∗
-       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
-         (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
-    intros Hn Ha1 Hcnt Hal4.
-    iIntros "#Hi Hbs Hrun Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
-    iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
-                with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
-    iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
-    iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
-    (* the run is in the image, and does not wrap *)
-    iDestruct (uheap_ubytes_img with "Hheap Hbs") as %Himg.
-    iApply (UkStep.wp_uk_ecall C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc fdv cw gn cs pidv Hui
-              (fun (s : mstate)
-                   (Hp : register_lookup cur_privilege s.(sregs) = User)
-                   (Hc : register_lookup (R_bitvector_64 PC) s.(sregs) = pc) =>
-                 UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
-                   s pc ltac:(vm_compute; reflexivity)
-                   ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy").
-    rewrite (uexec_ret_ecall _ _ eq_refl).
-    assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_read).
-    { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
-    (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
-       number is rewritten and the destructs below then reduce both copies
-       at once *)
-    rewrite /uexec_pay_dep /upay_at.
-    rewrite Hnum. cbv zeta.
-    destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
-      [ | exfalso; exact (Hpne eq_refl) ].
-    destruct (decide (USYS_read = USYS_exit)) as [He | _];
-      [ exfalso; vm_compute in He; discriminate | ].
-    destruct (decide (USYS_read = USYS_fork)) as [He | _];
-      [ exfalso; vm_compute in He; discriminate | ].
-    (* the arm binds the deposit's FAMILIES ([UexecSG.v]'s header); the
-       law mints at some [f] and this leaf, which discards its post,
-       hands that witness straight over. *)
-    (* THE MINT ALREADY NAMED THE PAYLOAD (app-echo.md, "SH-LINE RULING",
-       R1): read's bundle is a wand from the depositing process's own exit
-       payload, so nothing is re-keyed here any more -- the family the
-       deposit came at IS at [ukn_pay N]. *)
-    iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
-    iExists fdep. rewrite Hfp.
-    cbn [uvis_gen uvis_of_run].
-    iSplitR; [ iFrame "Hmy" | ].
-    iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hliverow %Hchrow _".
-    (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
-       trapping key is at [false] -- the U tier's run is
-       ([UexecRet.ukcq]) -- and every row but sbrk's is the equation
-       ([UsysMemOk.usys_mem_ok_lazy]), so the resume key is at [false] too
-       and the close below is at the run's own bit. *)
-    assert (Hlzq : lz' = false)
-      by (refine (usys_mem_ok_lazy _ _ _ _ _ _ _ _ _ _ _ _ Hok);
-          first [ assumption | vm_compute; discriminate ]).
-    subst lz'.
-    (* THE CWD CROSSED THE TRAP UNCHANGED -- chdir is the one row that moves
-       it, and this is not it -- so the engine's half is re-keyed onto the
-       view the process resumes at and the program's half never moved. *)
-    assert (Hcw : cw' = cw)
-      by (refine (usys_cwd_ok_quiet _ _ _ _ _ Hcwrow); vm_compute; discriminate).
-    iDestruct (ucwd_auth_quiet N cw cw' Hcw with "Hcwda") as "Hcwda".
-    (* ...AND SO DID THE GENERATION AND THE CHILDREN SET: no entry
-       re-incarnates its caller, and this lane's children row is the
-       identity at every number ([UsysMemOk] SS2e/SS2f).  Both are
-       substituted rather than re-keyed -- the generation has no
-       authority beside it, and the children authority is already at
-       the set the process resumes at. *)
-    assert (Hgn : gn' = gn) by exact (usys_gen_ok_quiet _ _ _ Hgnrow).
-    assert (Hch : cs' = cs) by exact (usys_ch_ok_quiet _ _ _ _ Hchrow).
-    subst gn' cs'.
-    (* unfold the row down to its read arm *)
-    unfold usys_mem_ok in Hok.
-    destruct (decide (USYS_read = USYS_exec)) as [He | _];
-      [ exfalso; vm_compute in He; discriminate | ].
-    destruct (decide (USYS_read = USYS_sbrk)) as [He | _];
-      [ exfalso; vm_compute in He; discriminate | ].
-    destruct (decide (USYS_read = USYS_wait)) as [He | _];
-      [ exfalso; vm_compute in He; discriminate | ].
-    destruct (decide (USYS_read = USYS_pipe)) as [He | _];
-      [ exfalso; vm_compute in He; discriminate | ].
-    destruct (decide (USYS_read = USYS_read)) as [_ | Hne];
-      [ | exfalso; exact (Hne eq_refl) ].
-    destruct Hok as [(d & bs & Hdle & HM') [-> [-> _]]].
-    (* the row's [d] is within the run the caller owns *)
-    cbn [uvis_tf uvis_of_run] in Hdle, HM'.
-    unfold usys_rdcount in Hdle. rewrite tf_of_arg2 in Hdle.
-    rewrite Hcnt in Hdle.
-    assert (Hdn : (d <= cnt)%nat) by lia.
-    rewrite tf_of_arg1 Ha1 in HM'.
-    (* ...so writing [d] of them is writing all [cnt], the tail unchanged *)
-    (* the row addresses through [add_vec_int], the heap through [Z] --
-       and they agree, because every owned address is below MAXVA *)
-    assert (Hwrap : forall k : nat, (k < d)%nat ->
-               uint (add_vec_int (mword_of_int a : mword 64) (Z.of_nat k))
-               = (a + Z.of_nat k)%Z).
-    { intros k Hk.
-      destruct (proj2 (Himg 0%nat ltac:(lia))) as [Ha0 _].
-      destruct (proj2 (Himg k ltac:(lia))) as [_ Hak].
-      assert (Ha64 : 0 <= a < Z64) by (unfold Z64; lia).
-      assert (Hak64 : 0 <= a + Z.of_nat k < Z64) by (unfold Z64; lia).
-      unfold add_vec_int.
-      rewrite moi_add_l (uint_moi a Ha64).
-      exact (uint_moi (a + Z.of_nat k) Hak64). }
-    rewrite (UserPtTree.umem_wr_write M a d bs Hwrap) in HM'.
-    rewrite (umem_write_prefix M a cnt d bs f Hdn
-               ltac:(intros k Hk; exact (proj1 (Himg k Hk)))) in HM'.
-    subst M'.
-    (* the slot ends in a [WP], so it absorbs the heap's update -- which is
-       the only place the update CAN run, the row being what says how far
-       the image moved *)
-    iApply uslot_bupd.
-    iMod (uheap_store_run (ukn_t N) (ukn_d N) (ukn_s N) M pm sz a cnt f
-            (fun k => if decide (k < d)%nat then bs k else f k)
-            with "Hheap Hbs") as "[Hheap Hbs]".
-    iModIntro.
-    cbn [uvis_M uvis_perm uvis_of_run].
-    (* the row read, not dropped: this entry is none of the four that move
-       [p->ofile[]], so the table -- and the authority [urun] carries -- is
-       already at the view the process resumes at. *)
-    (* [refine] first, so the four side goals are at the CONCRETE number --
-       as an [ltac:] argument they would run while it was still an evar. *)
-    assert (Hview : fdv' = fdv).
-    { refine (usys_fd_ok_quiet _ _ _ _ _ _ _ _ _ Hfdok);
-        vm_compute; discriminate. }
-    subst fdv'.
-    rewrite (uslot_bump_run m pc M
-               (umem_write M a cnt
-                  (fun k => if decide (k < d)%nat then bs k else f k))
-               pm pm sz sz fdv fdv cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
-    iApply ukcq_ukc.
-    iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
-    iIntros (h') "Hrun".
-    iApply ("Hcont" $! h' r _ with "Hbs Hrun").
-  Qed.
 
   (* ------------------------------------------------------------------- *)
   (* EXEC'S FAILURE ARM.  A successful exec never returns to this WP at all *)
@@ -2893,13 +2737,13 @@ Section UkRunSys.
   (* THE READ ROW'S INSTANCE OF THE WINDOW LEAF -- sh's [getcmd] shape.     *)
   (* Nothing but [usyswin]'s read branch, taken once here so a program      *)
   (* does not have to unfold it: the buffer is a1, the count is a2 as an    *)
-  (* [int], and the caller owns AT LEAST the count.  NOT the same lemma as  *)
-  (* [wp_uk_ecall_read] above (cat's): that one asks for the exact          *)
-  (* non-negative count and returns the buffer at unconstrained contents;   *)
-  (* this one allows any owned run covering the cap and returns the         *)
-  (* written prefix's length [d] with the tail pinned unchanged.  The two   *)
-  (* should eventually merge (this one generalizes, modulo the address      *)
-  (* spelling) -- relay note in the worklist.                               *)
+  (* [int], and the caller owns AT LEAST the count.  THE BASE LEAF          *)
+  (* [wp_uk_ecall_read] (cat's) IS NOW A COROLLARY OF THIS ONE (lane RD-3): *)
+  (* it asked for the exact non-negative count and returned the buffer at   *)
+  (* unconstrained contents, and this one allows any owned run covering the *)
+  (* cap and returns the written prefix's length [d] with the tail pinned   *)
+  (* unchanged -- so it generalizes every part of it, modulo the ADDRESS    *)
+  (* SPELLING, which is the one thing the derivation below has to pay for.  *)
   (* ------------------------------------------------------------------- *)
   Lemma wp_uk_ecall_read_win (N : uk_names Σ) (h : CpuId) (m : regfile)
       (pc : mword 64) (cnt : Z) (k : nat) (f : nat -> bv 8) (avail : nat) :
@@ -2943,6 +2787,93 @@ Section UkRunSys.
     iIntros (h' r d g) "%Hd %Hgf Hrun Hbuf".
     iApply ("Hcont" $! h' r d g with "[%] [%] Hrun Hbuf");
       [ exact Hd | exact Hgf ].
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (* THE RUN'S NO-WRAP FACT, OFF [urun] RATHER THAN OFF THE HEAP.          *)
+  (*                                                                      *)
+  (* [uheap_ubytes_run] above is stated at the process's own [UserHeap.    *)
+  (* uheap], and [urun] binds the image, the permission map and the break  *)
+  (* existentially -- so a leaf that has NOT yet destructed the run cannot *)
+  (* reach it, and a leaf that is about to APPLY another leaf must not.    *)
+  (* This is the same reading taken at the run itself: the conclusion is   *)
+  (* PURE, so neither the run nor the buffer is spent and the existential  *)
+  (* can simply be opened and dropped.                                     *)
+  (* ------------------------------------------------------------------- *)
+  Lemma urun_ubytes_run (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (avail : nat) (a : Z) (nb : nat) (f : nat -> bv 8) :
+    urun N h m pc avail -∗ ubytes (ukn_d N) a nb f -∗
+    ⌜ forall j : nat, (j < nb)%nat -> 0 <= a + Z.of_nat j < 2 ^ 38 ⌝.
+  Proof.
+    iIntros "Hrun Hbs".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
+      "(_ & _ & _ & _ & Hheap & _)".
+    iDestruct (uheap_ubytes_run (ukn_t N) (ukn_d N) (ukn_s N) M pm sz
+                 (DfracOwn 1) a nb f with "Hheap Hbs") as %Hb.
+    iPureIntro. intros j Hj. exact (proj2 (Hb j Hj)).
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (* ...AND THE BASE READ LEAF, AS A COROLLARY OF THE WINDOW FORM           *)
+  (* (lane RD-3 -- the merge [wp_uk_ecall_read_win]'s header asked for).    *)
+  (*                                                                       *)
+  (* THE STATEMENT IS THE RETIRED WALK'S, WORD FOR WORD, so [UkCat]'s read  *)
+  (* stub and every other caller survives: hand in the whole count as a run *)
+  (* you own, get the whole count back at SOME contents.  Owning the whole  *)
+  (* count is still the premise and still for the same reason -- the row    *)
+  (* licenses a write anywhere in [buf .. buf+cnt) -- and the window leaf   *)
+  (* asks for exactly that, at [k = cnt].                                   *)
+  (*                                                                       *)
+  (* THE ONE THING THE DERIVATION OWES IS THE ADDRESS SPELLING.  This leaf  *)
+  (* names the destination by a [Z] tied to a1 through [mword_of_int]; the  *)
+  (* window leaf names it by [uint] of the register itself.  The two agree  *)
+  (* exactly where a byte is OWNED, because an owned address is below MAXVA *)
+  (* ([urun_ubytes_run] above) -- and at a count of ZERO no byte is owned   *)
+  (* and none is needed, since both spellings of an empty run are [emp].    *)
+  (* ------------------------------------------------------------------- *)
+  Lemma wp_uk_ecall_read (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (a : Z) (cnt : nat) (f : nat -> bv 8) (avail : nat) :
+    usysno m = USYS_read ->
+    m !!! Regidx (mword_of_int 11) = (mword_of_int a : mword 64) ->
+    bv_signed (subrange_vec_dec (m !!! Regidx (mword_of_int 12)) 31 0
+               : mword 32) = Z.of_nat cnt ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    ubytes (ukn_d N) a cnt f -∗
+    urun N h m pc avail -∗
+    udepw N m pc USYS_read -∗
+    (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8),
+       ubytes (ukn_d N) a cnt g -∗
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
+         (add_vec_int pc 4) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hn Ha1 Hcnt Hal4.
+    iIntros "#Hi Hbs Hrun Hsb Hcont".
+    assert (Hk : (Z.to_nat (Z.of_nat cnt) <= cnt)%nat)
+      by (rewrite Nat2Z.id; lia).
+    (* the run does not wrap, off the ownership rather than off a premise *)
+    iDestruct (urun_ubytes_run N h m pc avail a cnt f with "Hrun Hbs") as %Hb.
+    destruct cnt as [| c].
+    - (* THE EMPTY RUN: both spellings are [emp], so the window leaf's
+         destination never has to be identified with this leaf's. *)
+      iApply (wp_uk_ecall_read_win N h m pc (Z.of_nat 0%nat) 0%nat f avail
+                Hn Hcnt Hk Hal4 with "Hi Hrun Hsb [Hbs]").
+      { rewrite /ubytes /ubytesq /=. done. }
+      iIntros (h' r d g) "_ _ Hrun Hbuf".
+      iApply ("Hcont" $! h' r g with "[Hbuf] Hrun").
+      rewrite /ubytes /ubytesq /=. done.
+    - (* THE NONEMPTY RUN: the first owned byte is what identifies them *)
+      assert (Hd : uint (m !!! Regidx (mword_of_int 11) : mword 64) = a).
+      { destruct (Hb 0%nat ltac:(lia)) as [Hlo Hhi].
+        rewrite Ha1. apply uint_moi. unfold Z64. lia. }
+      iApply (wp_uk_ecall_read_win N h m pc (Z.of_nat (S c)) (S c) f avail
+                Hn Hcnt Hk Hal4 with "Hi Hrun Hsb [Hbs]").
+      { rewrite Hd. iExact "Hbs". }
+      iIntros (h' r d g) "_ _ Hrun Hbuf".
+      iApply ("Hcont" $! h' r g with "[Hbuf] Hrun").
+      rewrite -Hd. iExact "Hbuf".
   Qed.
 
   (* ------------------------------------------------------------------- *)

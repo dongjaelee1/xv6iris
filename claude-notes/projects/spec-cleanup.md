@@ -153,16 +153,53 @@ Derived corollaries, in order of what applications actually use:
   `ProofKforkB3` takes the parent's row persistently), so deliverable 5
   is the park lemma + a U-tier statement-side obligation for RD-2.
   This lane discharges the TR's `\nz` note.
-- [ ] **RD-2 FILE-LEAF** (U tier; LAUNCHED 2026-09-15, Opus lane,
-  branch rd2-file-leaf; RD-1 merged and gated first; the mode-in-state
-  ruling is in design/user-read.md §3): the inode arm —
-  `wp_uk_ecall_read` at kind `FdInode`: window walk + kept post at
-  `aread`'s receipt; post = the target's File row.  First consumer to
-  prove: `cat` reading a known file (a new small app, or a lemma-level
-  instance) — the test that the spec is actually general.
-- [ ] **RD-3 BASE/WIN MERGE**: retire the base leaf into the window
-  form (the debt UkRunSys's own comment records).  Small; fold into
-  RD-2's edit of the same file.
+- [~] **RD-2 FILE-LEAF** (U tier; branch `rd2-file-leaf`, 2026-09-15):
+  **RE-SCOPED BY A FINDING — the mode-in-state ruling is not
+  implementable as scoped, and RD-2 stopped rather than restructure the
+  generic-safety tier.**  Full argument in `design/user-read.md` §3's
+  AS-LANDED block; one-line version: a HELD offset half has to reach
+  `ProofFileread`'s fire, the only channel into it is
+  `SpecFileread.fileread_in`'s inode arm, and that arm must be payable
+  at EVERY descriptor state from a PERSISTENT credential because
+  `UexecSG.sbundle_of_supply_ne` is a class field at an arbitrary key
+  (`FsAbsInvFire.fsabs_fileread_in`, `∀ st`, `□ ssupply`).  An exclusive
+  `uoff` there is not merely unavailable, it is inconsistent.  Two extra
+  consequences the ruling had not priced: with the mode in the state,
+  PARKING becomes a descriptor retype (a kernel step — xv6 has no park
+  syscall), and `ProofKforkB3` cannot copy a held row (it hands the
+  parent's row to the child persistently, at an arbitrary `sts`).
+  THREE ROUTES OUT are written up in §3: **R-a** mode in the state +
+  a parked-table discipline through the generic tier and a
+  mode-parameterized sys_open publish (a campaign: `SpecSysOpen`'s 15
+  sites + six `ProofSysOpen*` files + `ProofKforkB3` + the class field
+  and its consumers) — the only route that delivers §6's figure;
+  **R-b** the mode-free disjunctive row (recorded escape, does not
+  deliver the File row); **R-c** the file-arm leaf AT A PARKED
+  DESCRIPTOR with the offset REPORTED by the receipt instead of owned —
+  zero kernel change, delivers §3's whole File CONTENT row and the
+  `cat` consumer today, and upgrades to R-a later by one conjunct.
+  RD-2 RECOMMENDS R-c NEXT, R-a as its own campaign.  OWNER RULING
+  WANTED before the next lane is cut.
+  WHAT RD-2 DID LAND: RD-3 below (folded in as briefed), and §3/§5's
+  as-landed blocks.  Also recorded in §5: the "receipt family indexed by
+  the arm" needs NOTHING new — the inode member IS
+  `FsAbsReadFire.read_arms` and the family IS
+  `SpecFileread.fileread_extra_core`; only the DEPOSIT needs a new
+  member, fd-fixed rather than ledger-fixed (`udepwf_fd`, since
+  `udepwf_at` already names the cwd-fixed form).
+- [x] **RD-3 BASE/WIN MERGE** — LANDED 2026-09-15 on `rd2-file-leaf`
+  (folded into RD-2 as briefed).  `UkRunSys.wp_uk_ecall_read` is now a
+  COROLLARY of `wp_uk_ecall_read_win`, at its exact former statement
+  (so `UkCat`'s read stub and every other caller is untouched); the
+  130-line walk is retired and upstream's relay note in that file is
+  closed.  The derivation's one real step is the ADDRESS SPELLING —
+  the base leaf names its buffer by a `Z` tied to a1 through
+  `mword_of_int`, the window leaf by `uint` of the register — which is
+  paid by a new accessor `UkRunSys.urun_ubytes_run` (the no-wrap fact
+  read off `urun` rather than off the heap `urun` binds
+  existentially); at a count of ZERO no byte is owned, no agreement
+  exists and none is needed, since both spellings of an empty run are
+  `emp`.  Mirror-green (whole tree).
 - [ ] **RD-4 CONSOLE ARM** (WAITS for upstream's post-Qed R1 — the
   merged IO claim is being built right now and is exactly the resource
   this arm should be stated at): re-cut `read_recv`'s console arm at

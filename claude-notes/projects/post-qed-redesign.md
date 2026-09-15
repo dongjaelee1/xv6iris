@@ -57,7 +57,12 @@ merge paying off: today those clauses are a second claim that must be
 stepped separately and kept in agreement by the window counter. All four
 compiled first try, which is the signal that §2.5's decomposition is right.
 
-STILL TO DO in R1: the Iris-level `ecl` and the drain. Note `ecl_pure_read`
+**R1 IS COMPLETE (`2199f289d`).** The Iris-level `ecl`, a step per event and
+the drain all landed. `ecl_close` and `ecl_open` are ENTAILMENTS — no view
+shift, no ghost update — where today the same moves are fancy updates that
+pick between `ein`'s two arms and re-split the counter. `ecl_step_read`'s
+two identical branches become one; `ecl_step_echo` loses the five-quarters
+refutation. Note `ecl_pure_read`
 takes the delivered-prefix fact as a premise; today's `ein_step_read`
 derives it from `ConsLog.read_ok`, and that derivation is unchanged by the
 merge, so it was left where it is rather than restated.
@@ -277,3 +282,45 @@ character" is refuted — a single event appending all of `cs` would assert an
 ordering the wire does not keep.
 
 R2 IS THEREFORE UNBLOCKED.
+
+## 7. R2, as landed so far (2026-09-15)
+
+**R2a (`fad4c7027`) — the kernel ghost.** `WpUart.uart_arm`, a `ghost_var`
+over `option LogEntryDefs.cons_arm`, with `uart_arm_agree`/`uart_arm_update`.
+One half in the port invariant (`uart_inv_body`, and `dev_inv_body` before
+it), the other riding `uart_rx_writer` — the PLIC payload, which already
+carries the window token. Both minted at `None` by `uart_ghosts_alloc` and
+threaded through the boot mint (BootShared → BootChain → SpecMain/ProofMain
+→ the two PLIC deposits) exactly as the receive token and the two marks are.
+`cons_arm` and its projections MOVED to `LogEntryDefs.v` (ConsLog re-exports)
+so the camera and the port ghost can name the type without the log's theory.
+
+**R2a' (`954665f4d`) — the primitive.** `uart_inv_arm_set`: open the port
+invariant, agree the two halves, advance both. `uart_inv_body` is timeless,
+so it is one `={E}=∗` with no machine step — the shape `uart_inv_append`
+has, which is what makes it usable where consoleintr needs it. This settles
+the one thing option A could have got wrong: the kernel really can read the
+arm off its own half and advance both.
+
+**consoleintr's contract is deliberately UNCHANGED.** The payload's half
+travels PAST the call in `ProofUartintr` rather than into it. Threading it in
+was tried and backed out: `ct_mark` is the right bundle, but carrying it into
+`ct_owed` and the switch arms costs a cascade that buys nothing until the arm
+is actually opened.
+
+**WHAT IS LEFT OF R2 CANNOT BE LANDED GREEN ON ITS OWN, and that is the
+scheduling fact to plan around.** The remaining work — `riscv_cons_res`
+replacing the three fixed-record fields, the links becoming `cons_link` over
+events, the licence, `store_ob`, `cons_echo_shift` losing its token — changes
+the APPLICATION's obligations. The echo application cannot satisfy both the
+old and the new shape at once, because the authorities are exclusive and
+cannot be held twice. So R2's remainder and R3 are ONE landing, and §4's
+"statements first with the trivial application green" means the echo tier is
+red in between. Budget for it accordingly; there is no checkpoint inside it.
+
+**COORDINATION.** Another session ("Echo any line") is actively editing the
+echo/word-list cone — `EchoDisc.v`, `UkSh.v`, `UShEcho*.v`, `EchoOut*.v`,
+`EchoLinks*.v` — which is R3's territory. It has offered to stay off
+`EchoOut.v` for a stretch when R3 starts. Ask before starting R3, not during.
+It has already replaced `EchoOutPure.line_alts_head_det` with
+`line_alts_prefix_det` (prefix-freeness rather than a one-byte reading).

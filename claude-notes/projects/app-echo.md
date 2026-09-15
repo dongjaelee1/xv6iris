@@ -3783,6 +3783,31 @@ family.  Init's free write law then has exactly the two payable arms
 `die_de`/`die_df` left (INIT-DIAG's laws), and nothing about `die_dw` is an
 owner question any more.
 
+SH-LINE R3 RE-SURVEYED (2026-09-14, after step 4; read-only; report
+`handoff-2026-09-16/r3-survey-2.md`).  FINDING, RULED BY THE COORDINATOR:
+`sh_pay_rest`'s `∀ T Wc Wb Pm` is ITSELF the obstacle -- after step 4
+`ushf_rest_of_body` (the only prover of `ush_rest_l`) takes the era's three
+laws (`ushf_kill_law`, `ushf_child_law`, `ush_panic_law`), `Timeless (Wc n
+p)` and the payload-guarded wb-assembler, none of which exists for an
+arbitrary `Wc`; so the obligation is discharged AT THE ERA'S FAMILIES:
+DELETE `UInitSh.sh_pay_rest` and `Hsh_owed`'s second conjunct, build
+`sh_pay`'s `∀ γp N, ush_rest_l …` conjunct directly in `echo_Hinit_boot`
+through a new glue lemma `UShRest.sh_rest_holds` (new leaf after
+`UShEchoPay.v`, ~60 lines).  This supersedes the R3 ruling's "sh_pay_rest's
+text unchanged" (a deletion, not new text; one hypothesis fewer).  No
+composer file: `ushf_rest_of_body` IS the composer once (i) its taint arm
+goes to the generic slot at 0x92c through `ush_gen_run` (deleting `uxsup`,
+the generic child, the free-law panic and so `sh_deps` from the three fork
+lemmas -- `□ (T -∗ uxsup)` has no constructor and would need one on
+`uslot_mint_all`'s mould), (ii) `ush_gen_slot` and the wb-assembler come
+from `ush_rest_l`'s box (OLD/NEW in the report §3; paid by `wp_ksh_loop`),
+(iii) the glue supplies the laws, timelessness, lexability and the bounds.
+HARD DEPENDENCY: RESIDUALS (B)/(C) must kill `ush_wcp`'s `∨ True` first
+(its wait-re-entry producer reaches the fork with no `T`).  Serialised
+after RESIDUALS; collisions listed in the report §6.  Also found:
+`ushf_child_law_holds_at` has no consumer yet and `UShEcho.sh_echo_slot` is
+built nowhere at the top (the glue builds it).
+
 IO-LEAF STEP 4 LANDED (2026-09-14; lane STEP4-SH's `06f61205b`+`ee1a0276e`
 in `-disc`, cherry-picked as `2426ca438`+`7da574e81` on `e4376a1c6`; 20
 files; NEW `iris/UShEchoPay.v`; builds s4-5/s4-8 in `-disc` on the identical

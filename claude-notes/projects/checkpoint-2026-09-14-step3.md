@@ -51,8 +51,9 @@ Two lanes, spawned from the coordinator's main checkout (`lane/io-leaf-3`):
   `ush_wcp`'s third arm, the affine assemblers), (D) `sh_deps` made
   taint-conditional and `Hsh_owed`'s FIRST conjunct deleted (TRUSTED; the
   audit md5 changes); brief `brief-residuals.md`, report `residuals-report.md`.
-* R3-SURVEY in `-sup` (READ-ONLY): what closes `sh_pay_rest` after step 4;
-  brief `brief-r3-survey.md`, report `r3-survey-2.md`.
+* R3-SURVEY -- DONE (app-echo.md "SH-LINE R3 RE-SURVEYED"): RULED to delete
+  `sh_pay_rest` and the second conjunct and discharge at the era's families
+  through a new `UShRest.sh_rest_holds`; lane R3 follows RESIDUALS.
 * TRUSTED-SURFACE in `-tlw` (READ-ONLY): the refreshed trusted-surface
   document as of 7da574e81; brief `brief-trusted-surface.md`, report
   `trusted-surface-2026-09-14b.md`.

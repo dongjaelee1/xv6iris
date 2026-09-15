@@ -79,7 +79,10 @@ console: ledger-fixed AT THE ARM THE HANDLE NAMES.  One deposit family
 answers it is selected by the same kind the leaf cased on, so the
 kernel-side wiring is one table, not four lemmas.
 
-## 4. OWNER RULING NEEDED: fork (and dup) versus an owned offset
+## 4. Fork (and dup) versus an owned offset — RULED 2026-09-15: PARK
+
+THE OWNER RULED option (i): fork parks every held `uoff`.  The analysis
+that led there is kept below; (ii) remains the recorded escape.
 
 An owned `uoff γo off` cannot be duplicated, and xv6 shares the open
 FILE OBJECT (hence `f->off`) across both fork and dup:

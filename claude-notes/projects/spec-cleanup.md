@@ -115,7 +115,8 @@ Derived corollaries, in order of what applications actually use:
       → per-arm receipt family).
   (d) the TR figure sketch (both forms: general AU + owned-offset
       corollary), so the end state is agreed before proof work starts.
-- [ ] **RD-1 OFF-OWN** (kernel; BLOCKED on box): implement (a) —
+- [ ] **RD-1 OFF-OWN** (kernel; LAUNCHED 2026-09-15, Opus lane, after
+  the fork ruling landed = PARK): implement (a) —
   `uoff`, sys_open's mint, fileread/filewrite's fire against a HELD
   half (both halves in hand: no invariant open), fork per the ruling;
   the generic-WP path keeps `off_user_inv` untouched.  This lane

@@ -38,8 +38,8 @@ kernel is discharged trivially (`app_sup_raw_triv`, `app_xfer_raw_triv`,
 the generic slot).  The echo application constrains the state, so every
 retag that changes the user-visible view, every process creation and
 every reboot has to be paid for.  The scaffold makes those payments
-PARAMETERS of the theorem; §6 lists what the echo application still
-owes, lane by lane.
+PARAMETERS of the theorem.  The echo application owes none of them any
+more: `UInitBootAdequacy.echo_adequacy_echoΣ` discharges every one.
 
 ## 1. The principle: ONE predicate, TWO instances, crossing by transport
 
@@ -295,6 +295,25 @@ for echo, `disc h` gives the counter at 0 out of the ledger, the durable
 claim gives `pristine ∨ taint`, and `echo_R_untainted` settles it.  No
 era-local fact is exported, which is what makes the statement hold
 across reboots.
+
+**THE PREDICATE IS WIDER THAN THE MACHINE, IN ONE KNOWN WAY, AND THE
+THEOREM IS THAT MUCH WEAKER.**  A PROLOGUE ROUND is one turn of /init's
+outer loop, recorded as a list `ps` of LETTERS drawn from
+`EchoDisc.pro_alts` = [prompt; exec-failed; fork-failed; banner], and
+`pro_cont a := a = 1 \/ a = 3` makes the banner and the exec diagnostic
+interchangeable CONTINUERS.  Nothing constrains `ps` further: `pro_ok`
+(`EchoDisc.v:1015`) asks only that every letter is `< 4` and that the round
+count covers the line, so the predicate admits every word over `{1,3}`
+followed by `0` or `2` — `[3; 3; 0]`, two banners before one prompt, among
+them.  The machine never produces those: a banner is printed once per
+round on the console arm and never on the closed arm.  So more wires count
+as good than the machine can emit, and `good_out` claims less than it
+looks like it claims.  It is NOT vacuous — five machine transcripts are
+checked as witnesses by `vm_compute` (`EchoDisc.v`'s `demo_*`).  TIGHTENING
+IT is a well-formedness conjunct on `ps` through `pro_ok` plus a matching
+premise on `echo_link_pro`; the owner deferred it past the closed theorem
+(2026-09-14) and it is the one change that would make the theorem say
+more.
 
 ## 7. Rejected shapes
 

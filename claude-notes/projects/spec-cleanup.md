@@ -115,12 +115,44 @@ Derived corollaries, in order of what applications actually use:
       → per-arm receipt family).
   (d) the TR figure sketch (both forms: general AU + owned-offset
       corollary), so the end state is agreed before proof work starts.
-- [ ] **RD-1 OFF-OWN** (kernel; LAUNCHED 2026-09-15, Opus lane, after
-  the fork ruling landed = PARK): implement (a) —
-  `uoff`, sys_open's mint, fileread/filewrite's fire against a HELD
-  half (both halves in hand: no invariant open), fork per the ruling;
-  the generic-WP path keeps `off_user_inv` untouched.  This lane
-  discharges the TR's `\nz` note.
+- [x] **RD-1 OFF-OWN** (kernel; LANDED 2026-09-15, branch
+  `rd1-off-own`, mirror-green incl. `ProofFileread`/`ProofFilewrite`
+  and the echo audit at 14): implemented (a) —
+  `uoff`, fileread's/filewrite's fire against a HELD half (both halves
+  in hand: no invariant open), fork per the ruling; the generic-WP path
+  keeps `off_user_inv` untouched, byte for byte.  WHAT LANDED:
+  - `iris/UserOff.v` (NEW, above `OffGv.v`): `uoff γo off`, `uoff_park`
+    (the one-way door, `={E}=∗` — invariant allocation is a fancy
+    update), `uoff_advance`, `uoff_agree`/`uoff_agree_k`, the supplier
+    `off_supply γo E off d R` with its two answers
+    (`off_supply_parked` / `off_supply_held`), and the publish's two
+    modes `off_pub_park` / `off_pub_hand`.
+  - ONE FIRE, TWO SUPPLIERS, in all three fires:
+    `FsAbsReadFire.arf_read_fire_gen` + `_held` (+`_held_1`),
+    `FsAbsWriteFire.wrf_awrite_fire_gen` + `_held`,
+    `wrf_apart_fire_gen` + `_held`.  The four existing names
+    (`arf_read_fire`, `arf_read_fire_1`, `wrf_awrite_fire`,
+    `wrf_apart_fire`) keep their EXACT former statements as the parked
+    instances, so `ProofFileread`/`ProofFilewrite`'s four call sites and
+    every contract above them are untouched.  `aread_commit_at` and the
+    write chain's two arms keep their types: they still LEND the kernel
+    half unmoved, so `fs-syscall-specs.md` §4 holds — the half that
+    moves client-side is the CLIENT'S OWN `uoff`.
+  - `ProofSysOpenPub.v`'s publish now names its mode
+    (`off_pub_park`); behaviour identical.
+  - `Print Assumptions` on all 17 new/re-derived lemmas: **closed under
+    the global context** (not even funext).
+  THE ONE DEFERRAL, and RD-2 must rule on it: **mode `hand` cannot be
+  wired to the descriptor bundle yet.** `FdSlots.foff_row` is a pure
+  function of the fdstate AND persistent, so a descriptor whose half was
+  handed out has no invariant and no row — wiring `hand` is a change to
+  the ROW FAMILY (the per-row policy `FdSlots.v` already anticipates),
+  cheapest as the mode IN THE STATE, which is also §3's arm dispatch for
+  free.  See `design/user-read.md` §2/§4 as-landed notes and the trailing
+  notes in `UserOff.v`.  FORK: the kernel owes NOTHING (checked:
+  `ProofKforkB3` takes the parent's row persistently), so deliverable 5
+  is the park lemma + a U-tier statement-side obligation for RD-2.
+  This lane discharges the TR's `\nz` note.
 - [ ] **RD-2 FILE-LEAF** (U tier; BLOCKED on box): the inode arm —
   `wp_uk_ecall_read` at kind `FdInode`: window walk + kept post at
   `aread`'s receipt; post = the target's File row.  First consumer to

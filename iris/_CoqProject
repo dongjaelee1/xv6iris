@@ -501,6 +501,7 @@ IcacheRef.v
 IcacheHeld.v
 EscrowDefs.v
 OffGv.v
+UserOff.v
 FileOffCell.v
 OffBox.v
 FileInvDefs.v

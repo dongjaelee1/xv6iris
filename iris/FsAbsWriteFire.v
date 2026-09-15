@@ -143,6 +143,8 @@ Require Import Xv6Cameras.
 (* the three binder classes the section list names, IMPORTED rather than
    inherited ([FsAbsMknodFire]'s header records why). *)
 Require Import FdSlots.          (* [fdslotG]                               *)
+Require Import UserOff.          (* [off_supply]: the fire's offset supplier,
+                                    parked or HELD ([uoff])                 *)
 Require Import FileInvDefs.      (* [fileG]: carries [icacheG] and [icfg]   *)
 Require Import ProcAvail.        (* [pavG]                                  *)
 Require Import FsStateEra.       (* [era_node], [era_node_rec]              *)
@@ -713,8 +715,8 @@ Section WriteFire.
      bundle).  The receipt's pre-state row is the
      OBSERVED one -- the fragment read is the one the fire retags, so
      nothing can move between the observation and the update. *)
-  Lemma wrf_awrite_fire (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat) (REST : iProp Σ)
+  Lemma wrf_awrite_fire_gen (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat) (REST ROff : iProp Σ)
       (off : nat) (bs bs0 : list (bv 8)) (nl : nat) (n n' : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
     inode_local i n' ->
@@ -726,18 +728,16 @@ Section WriteFire.
     fn_type n' <> 0 ->
     abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
     ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs ->
-    ftop_inv γfs -∗ app_inv γfs -∗ off_user_inv γo -∗
+    ftop_inv γfs -∗ app_inv γfs -∗ off_supply γo E off (length bs) ROff -∗
     awrite_full_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
     off_gv γo (1/2) (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
-      ∗ REST.
+      ∗ ROff ∗ REST.
   Proof.
     intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby.
-    iIntros "#Hi #Hai #Hoinv Hcm Hf Hg".
-    assert (Hfoff : ↑foffN ⊆ E).
-    { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
+    iIntros "#Hi #Hai Hsup Hcm Hf Hg".
     (* the re-spelling is needed because the unifier cannot solve
        [γtop ?Γ =?= fs_top γfs]. *)
     rewrite /top_frag /fs_gamma_L /=.
@@ -779,11 +779,83 @@ Section WriteFire.
       - rewrite lookup_insert in Hj. injection Hj as <-. exact Hloc.
       - rewrite lookup_insert_ne in Hj; [| exact (not_eq_sym Hne)].
         exact (Hcl jj mm Hj Hun). }
-    (* THE ADVANCE IS THE KERNEL'S: the process's half comes out of the
-       row's existential invariant and both halves move together. *)
-    iMod (off_user_inv_move E γo (Z.of_nat off) (Z.of_nat (off + length bs))
-            Hfoff with "Hoinv Hg") as "Hg".
+    (* THE ADVANCE: the user side answers at its own supplier, and both
+       halves move together inside it. *)
+    iMod ("Hsup" with "Hg") as "[Hg HR]".
+    iModIntro. iFrame "Hf Hg HR Hrest".
+  Qed.
+
+  (* SUPPLIER 1 -- THE PARKED PATH, verbatim the statement this lemma had
+     before RD-1 ([ProofFilewrite]'s call site is here and nowhere else):
+     the advance comes off the descriptor row's own existential invariant
+     ([OffGv.off_user_inv], persistent, carried by [FdSlots.foff_row] and
+     threaded down from sys_write's descriptor bundle). *)
+  Lemma wrf_awrite_fire (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat) (REST : iProp Σ)
+      (off : nat) (bs bs0 : list (bv 8)) (nl : nat) (n n' : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    inode_local i n' ->
+    (0 < length bs)%nat ->
+    (off <= length bs0)%nat ->
+    (off + length bs <= MAXFILE * BSIZE)%nat ->
+    fn_type n <> 0 ->
+    abs_row n = MkAnode (AFile bs0) nl ->
+    fn_type n' <> 0 ->
+    abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
+    ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs ->
+    ftop_inv γfs -∗ app_inv γfs -∗ off_user_inv γo -∗
+    awrite_full_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
+    top_frag (fs_gamma_L γfs) i n -∗
+    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+      top_frag (fs_gamma_L γfs) i n'
+      ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
+      ∗ REST.
+  Proof.
+    intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby.
+    iIntros "#Hi #Hai #Hoinv Hcm Hf Hg".
+    assert (Hfoff : ↑foffN ⊆ E).
+    { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
+    iMod (wrf_awrite_fire_gen γfs E i γo M ua k REST True off bs bs0 nl n n'
+            HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby
+            with "Hi Hai [] Hcm Hf Hg") as "(Hf & Hg & _ & Hrest)".
+    { iApply (off_supply_parked E γo off (length bs) Hfoff with "Hoinv"). }
     iModIntro. iFrame "Hf Hg Hrest".
+  Qed.
+
+  (* SUPPLIER 2 -- THE HELD PATH (RD-1): the caller owns its file position.
+     The chunk's advance is the run that LANDED, so a caller that chains
+     [uoff] across the chunks reads its position off the chain's cursor.
+     design/fs-syscall-specs.md section 4 is respected exactly as at the
+     read fire: [awrite_full_at] still lends the KERNEL half and takes it
+     back unmoved; the only client-side move is the client's own [uoff]. *)
+  Lemma wrf_awrite_fire_held (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat) (REST : iProp Σ)
+      (off : nat) (bs bs0 : list (bv 8)) (nl : nat) (n n' : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    inode_local i n' ->
+    (0 < length bs)%nat ->
+    (off <= length bs0)%nat ->
+    (off + length bs <= MAXFILE * BSIZE)%nat ->
+    fn_type n <> 0 ->
+    abs_row n = MkAnode (AFile bs0) nl ->
+    fn_type n' <> 0 ->
+    abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
+    ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs ->
+    ftop_inv γfs -∗ app_inv γfs -∗ uoff γo off -∗
+    awrite_full_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
+    top_frag (fs_gamma_L γfs) i n -∗
+    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+      top_frag (fs_gamma_L γfs) i n'
+      ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
+      ∗ uoff γo (off + length bs) ∗ REST.
+  Proof.
+    intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby.
+    iIntros "#Hi #Hai Hu Hcm Hf Hg".
+    iApply (wrf_awrite_fire_gen γfs E i γo M ua k REST (uoff γo (off + length bs))
+              off bs bs0 nl n n'
+              HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby
+              with "Hi Hai [Hu] Hcm Hf Hg").
+    iApply (off_supply_held E γo off (length bs) with "Hu").
   Qed.
 
   (* THE PARTIAL ARM'S FIRE (round E2, lane E2-W): [wrf_awrite_fire] at the
@@ -792,9 +864,9 @@ Section WriteFire.
      advanced by the COUNT writei returned rather than by the run that
      landed.  ([wrf_partial_move], the offset-only move this replaces, is
      gone with the hole it papered over.) *)
-  Lemma wrf_apart_fire (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
+  Lemma wrf_apart_fire_gen (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
       (M : gmap Z (bv 8)) (ua : mword 64) (k : nat)
-      (REST : iProp Σ) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat)
+      (REST ROff : iProp Σ) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat)
       (n n' : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
     inode_local i n' ->
@@ -808,18 +880,16 @@ Section WriteFire.
     fn_type n' <> 0 ->
     abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
     ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) (take r bs) ->
-    ftop_inv γfs -∗ app_inv γfs -∗ off_user_inv γo -∗
+    ftop_inv γfs -∗ app_inv γfs -∗ off_supply γo E off r ROff -∗
     awrite_part_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
     off_gv γo (1/2) (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + r))
-      ∗ REST.
+      ∗ ROff ∗ REST.
   Proof.
     intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby.
-    iIntros "#Hi #Hai #Hoinv Hcm Hf Hg".
-    assert (Hfoff : ↑foffN ⊆ E).
-    { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
+    iIntros "#Hi #Hai Hsup Hcm Hf Hg".
     rewrite /top_frag /fs_gamma_L /=.
     iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [solve_ndisj |].
     iDestruct "Hbody" as ">Hb".
@@ -853,10 +923,83 @@ Section WriteFire.
       - rewrite lookup_insert in Hj. injection Hj as <-. exact Hloc.
       - rewrite lookup_insert_ne in Hj; [| exact (not_eq_sym Hne)].
         exact (Hcl jj mm Hj Hun). }
-    (* THE ADVANCE IS THE KERNEL'S, at the COUNT writei returned. *)
-    iMod (off_user_inv_move E γo (Z.of_nat off) (Z.of_nat (off + r))
-            Hfoff with "Hoinv Hg") as "Hg".
+    (* THE ADVANCE, at the COUNT writei returned: the user side answers at
+       its own supplier. *)
+    iMod ("Hsup" with "Hg") as "[Hg HR]".
+    iModIntro. iFrame "Hf Hg HR Hrest".
+  Qed.
+
+  (* SUPPLIER 1 -- THE PARKED PATH, verbatim the statement this lemma had
+     before RD-1 ([ProofFilewrite]'s call site is here and nowhere else). *)
+  Lemma wrf_apart_fire (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat)
+      (REST : iProp Σ) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat)
+      (n n' : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    inode_local i n' ->
+    (0 < length bs)%nat ->
+    (off <= length bs0)%nat ->
+    (off + length bs <= MAXFILE * BSIZE)%nat ->
+    (r <= length bs)%nat ->
+    (length bs <= r + BSIZE)%nat ->
+    fn_type n <> 0 ->
+    abs_row n = MkAnode (AFile bs0) nl ->
+    fn_type n' <> 0 ->
+    abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
+    ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) (take r bs) ->
+    ftop_inv γfs -∗ app_inv γfs -∗ off_user_inv γo -∗
+    awrite_part_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
+    top_frag (fs_gamma_L γfs) i n -∗
+    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+      top_frag (fs_gamma_L γfs) i n'
+      ∗ off_gv γo (1/2) (Z.of_nat (off + r))
+      ∗ REST.
+  Proof.
+    intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby.
+    iIntros "#Hi #Hai #Hoinv Hcm Hf Hg".
+    assert (Hfoff : ↑foffN ⊆ E).
+    { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
+    iMod (wrf_apart_fire_gen γfs E i γo M ua k REST True off r bs bs0 nl n n'
+            HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby
+            with "Hi Hai [] Hcm Hf Hg") as "(Hf & Hg & _ & Hrest)".
+    { iApply (off_supply_parked E γo off r Hfoff with "Hoinv"). }
     iModIntro. iFrame "Hf Hg Hrest".
+  Qed.
+
+  (* SUPPLIER 2 -- THE HELD PATH (RD-1): the advance the caller gets back
+     is the COUNT writei returned, not the run it offered -- which is
+     exactly the knowledge a program needs to resume a short write. *)
+  Lemma wrf_apart_fire_held (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat)
+      (REST : iProp Σ) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat)
+      (n n' : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    inode_local i n' ->
+    (0 < length bs)%nat ->
+    (off <= length bs0)%nat ->
+    (off + length bs <= MAXFILE * BSIZE)%nat ->
+    (r <= length bs)%nat ->
+    (length bs <= r + BSIZE)%nat ->
+    fn_type n <> 0 ->
+    abs_row n = MkAnode (AFile bs0) nl ->
+    fn_type n' <> 0 ->
+    abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
+    ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) (take r bs) ->
+    ftop_inv γfs -∗ app_inv γfs -∗ uoff γo off -∗
+    awrite_part_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
+    top_frag (fs_gamma_L γfs) i n -∗
+    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+      top_frag (fs_gamma_L γfs) i n'
+      ∗ off_gv γo (1/2) (Z.of_nat (off + r))
+      ∗ uoff γo (off + r) ∗ REST.
+  Proof.
+    intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby.
+    iIntros "#Hi #Hai Hu Hcm Hf Hg".
+    iApply (wrf_apart_fire_gen γfs E i γo M ua k REST (uoff γo (off + r))
+              off r bs bs0 nl n n'
+              HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby
+              with "Hi Hai [Hu] Hcm Hf Hg").
+    iApply (off_supply_held E γo off r with "Hu").
   Qed.
 
 End WriteFire.

@@ -76,6 +76,8 @@ Require Import IntrDefs.
 Require Import ProcGeom.
 Require Import WpLock.
 Require Import FdSlots FileInv.
+Require Import FdPark.  (* [fdv_all_parked_*]: the BOUNDARY PARK's discipline,
+                           which the scan below carries parent -> child *)
 Require Import ProcInv.
 Require Import SpecFiledup.
 Require Import CpuOwn.
@@ -183,6 +185,41 @@ Proof.
   rewrite <- (kfk_at_step Vp_of V0_of i v HVp HV0 Hvp Hi).
   symmetry. apply list_insert_id.
   rewrite (kfk_at_lookup_i Vp_of V0_of i HVp Hi). exact Hv.
+Qed.
+
+(* THE BOUNDARY PARK'S CROSSING AT FORK (design/user-read.md SS8.3), and it
+   is the WHOLE fork half of the discipline that is provable today.  The
+   copy-so-far is a splice of the parent's prefix onto the child's
+   all-closed tail, so if the parent's table has no descriptor with its
+   offset half handed out, neither has the child's -- at EVERY index the
+   scan has reached, which is the shape the loop invariant needs.
+
+   WHY IT MATTERS AND WHY IT IS CHEAP.  A held row is exactly one whose
+   [FdSlots.foff_row] is [emp], and the scan hands the parent's row to the
+   child PERSISTENTLY: at a held row there would be nothing to hand, and
+   the child would end up naming the same [γo] with neither an invariant
+   nor a half (RD-2's consequence (b)).  What rules that out is not this
+   lemma but the park that precedes the scan
+   ([FdPark.fd_frags_park]); this is the lemma that says the park's
+   result SURVIVES the copy, so a child of an all-parked parent is
+   all-parked.  It is vacuously true today ([FileInvDefs.fdstate_ok] pins
+   every live inode row at [OffParked]) and it is what RA-2's narrowed
+   slot mints will read.  (* RA-2: held case here *) *)
+Lemma kfk_at_parked (src dst : list fdstate) (i : nat) :
+  fdv_all_parked src -> fdv_all_parked dst ->
+  fdv_all_parked (kfk_at src dst i).
+Proof.
+  intros Hs Hd. unfold kfk_at.
+  apply fdv_all_parked_app;
+    [ exact (fdv_all_parked_take src i Hs) | exact (fdv_all_parked_drop dst i Hd) ].
+Qed.
+
+(* ...and at the two ends of the scan, which is where a caller reads it:
+   the child starts at the all-closed table and finishes at the parent's. *)
+Lemma kfk_at_parked_fdt0 (src : list fdstate) (i : nat) :
+  fdv_all_parked src -> fdv_all_parked (kfk_at src fdt0 i).
+Proof.
+  intros Hs. apply kfk_at_parked; [exact Hs | exact (fdv_all_parked_closed NOFILE)].
 Qed.
 
 (* ===================================================================== *)
@@ -716,6 +753,21 @@ Section KforkB3Proof.
            duplicated, and the parent's AUTHORITY agrees with the list the
            caller handed in -- so this is where "a copy of the pointers"
            becomes "a copy of the TABLE". *)
+        (* (* RA-2: held case here *) THE PARK GOES BEFORE THIS SCAN, not
+           inside it (design/user-read.md SS8.3).  [#Hprow] below is the
+           parent's row handed to the child PERSISTENTLY, and at a HELD
+           row it is [emp] -- so the child would inherit a descriptor
+           naming [γo] with no invariant and no half.  What prevents it is
+           [FdPark.fd_frags_park] applied to [Hpfrag] and the surrendered
+           halves BEFORE the loop is entered, leaving [stsP] parked row by
+           row; [kfk_at_parked] above then carries the result across the
+           copy.  It is not applied here today because there is nothing to
+           apply it to: [FileInvDefs.fdstate_ok] pins every live inode row
+           at [OffParked], so [FdPark.fdv_park stsP = stsP] and the step is
+           the identity ([FdPark.fd_frags_park_parked]).  RA-2 relaxes the
+           pin and the park becomes load-bearing in the same commit -- and
+           it also has to move [FileInvDefs.file_ref]'s own [st], which is
+           the array half this file's [Hst] carries. *)
         iDestruct (fd_frags_acc (pv_fdg (us_V Up)) stsP i stp HstpL with "Hpfrag")
           as "(Hpfr & #Hprow & Hpfrback)".
         iDestruct (fd_st_agree with "Hst Hpfr") as %Heqst. subst stp.

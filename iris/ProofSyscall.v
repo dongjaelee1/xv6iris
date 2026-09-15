@@ -7376,7 +7376,11 @@ Section SyscallArms.
                   /\ fd_frees (pv_ofile (us_V (us_upt U P'))) = fd :: l
                   /\ UW' = us_ofile (us_upt U P') fd (fnode k)
                   /\ sts !! fd = Some FdClosed
-                  /\ sts' = <[fd := FdOpen rb wb t]> sts)⌝
+                  /\ sts' = <[fd := FdOpen rb wb t]> sts
+                  (* ...AND THE ROW IT INSTALLS IS PARKED, which is what
+                     this arm owes [UsysMemOk.usys_fd_ok]'s open row
+                     (design/user-read.md SS8.1) *)
+                  /\ fdst_parked (FdOpen rb wb t))⌝
            ∗ proc_priv γf (proc_addr j) pid UW'
            ∗ fd_frags (pv_fdg (us_V (us_upt U P'))) sts'
            ∗ fd_slot
@@ -7468,7 +7472,7 @@ Section SyscallArms.
       destruct (decide (15 = USYS_open)) as [_ | Hco]; [| exfalso; exact (Hco eq_refl)].
       destruct Hdisj as
         [(Hr & -> & ->)
-        | (fd & ll & kf & rb & wb & tp & Hr & Hfrees & -> & Hcl & ->)].
+        | (fd & ll & kf & rb & wb & tp & Hr & Hfrees & -> & Hcl & -> & Hpk)].
       - iExists (upd_upt (us_V U) P'), sts. iFrame "Hpv Hb Hrc". iPureIntro.
         split_and!; [exact Htfpe | reflexivity | reflexivity | reflexivity | reflexivity | reflexivity | exact Hextz | reflexivity | reflexivity |].
         (* the failure arm installs nothing: the row's right disjunct *)
@@ -7500,9 +7504,13 @@ Section SyscallArms.
         split_and!; [exact Htfpe | reflexivity | reflexivity | reflexivity | reflexivity | reflexivity | exact Hextz | reflexivity | reflexivity |].
         (* the table's open row binds the descriptor, the mode bits and the
            type existentially; the split names all three, so the arm
-           exhibits them. *)
+           exhibits them.  The fourth conjunct is the OFFSET MODE
+           (design/user-read.md SS8.1): the split carries it out of the
+           arms, where every constructor really is parked, and the row is
+           what lets the generic tier read all-parkedness of the successor
+           key off this entry. *)
         left. exists fd, rb, wb, tp.
-        split_and!; [exact Hr | exact Hleast | reflexivity]. }
+        split_and!; [exact Hr | exact Hleast | reflexivity | exact Hpk]. }
     assert (Hmfsp : mf !!! Regidx csp_rs1 = pa_stk (m !!! Regidx csp_rs1) 4).
     { rewrite (callee_saved_lookup Hcs csp_rs1 ltac:(vm_compute; reflexivity)). exact HMsp. }
     assert (Hmfs2 : mf !!! Regidx Rs2 = page_base (ud_tfp (pv_upt V'))).

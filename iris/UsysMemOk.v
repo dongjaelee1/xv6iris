@@ -508,7 +508,28 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
            needs: [close(fd); open(path)] reopens the descriptor just
            closed precisely because the scan starts at 0. *)
         fd_least_closed sts fd /\
-        sts' = <[fd := FdOpen rd wr t]> sts)
+        sts' = <[fd := FdOpen rd wr t]> sts /\
+        (* ...AND THE DESCRIPTOR IT INSTALLS IS PARKED (design/user-read.md
+           SS8.1, SS8.3).  The type stays existential -- this table still
+           cannot see which file the path named -- but its OFFSET MODE does
+           not have to: every arm of [SpecSysOpen.sys_open_post]
+           instantiates [SysOpenDefs.open_fd_rcpt]'s [t] at a PARKED
+           constructor ([FdDevice], or [FdInode _ _ OffParked]), so the
+           fact was true and merely unstated, and [SpecSysOpen.
+           open_arms_split] now carries it out to [ProofSyscall]'s arm 15.
+
+           WHY IT BELONGS HERE rather than on the receipt.  Without it this
+           row -- and it alone -- LICENSES A GENERIC OPEN TO INSTALL A HELD
+           DESCRIPTOR, which is what stopped the guarded generic WP from
+           closing its own Loeb step (RA-1's finding 3): the successor
+           key's table comes through THIS predicate, so the maintenance
+           lemma below has to read all-parkedness off it.  Stated on
+           [open_fd_rcpt] instead, the fact would be true of every open the
+           kernel actually performs and still absent from the one
+           proposition the tier threads.  With it here,
+           [usys_fd_ok_parked] is a THEOREM rather than a lemma with an
+           owed premise. *)
+        fdst_parked (FdOpen rd wr t))
      (* ...or the call failed, which it reports as -1 -- see dup's row for
         why the failure arm is guarded rather than bare. *)
      \/ (r = (mword_of_int (-1) : mword 64) /\ sts' = sts))
@@ -731,7 +752,7 @@ Proof.
   { destruct H as [(fd1 & _ & _ & _ & ->) | (_ & -> & _)];
       [apply length_insert | reflexivity]. }
   destruct (decide (n = USYS_open)) as [_ | _].
-  { destruct H as [(fd & rd & wr & t & _ & _ & ->) | [_ ->]];
+  { destruct H as [(fd & rd & wr & t & _ & _ & -> & _) | [_ ->]];
       [apply length_insert | reflexivity]. }
   destruct (decide (n = USYS_pipe)) as [_ | _].
   { destruct (decide (uint r = 0)) as [_ | _].
@@ -741,36 +762,32 @@ Proof.
   subst. reflexivity.
 Qed.
 
-(* ...AND SO DOES THE GENERIC TIER'S PARKED DISCIPLINE, WITH ONE ROW OWED
-   (design/user-read.md SS8.1).  [FdSlots.fdv_all_parked] says no
+(* ...AND SO DOES THE GENERIC TIER'S PARKED DISCIPLINE, WITH NOTHING OWED
+   (design/user-read.md SS8.1, SS8.3).  [FdSlots.fdv_all_parked] says no
    descriptor in the table has had its offset half handed out, which is
    what the generic user-mode WP's supply law needs of the key it pays at:
    the weak (parked) supplier of the offset fire exists only where
    [OffGv.off_user_inv] does, and a persistent supply can never present an
    exclusive [UserOff.uoff].
 
-   FOUR OF THE FIVE ROWS PRESERVE IT FOR NOTHING -- close installs
-   [FdClosed]; dup COPIES a row the table already had (out of range the
-   total lookup is [FdClosed], so the copy is parked either way); pipe
-   installs the two ends; every other entry leaves the table alone.  OPEN
-   is the one row that introduces a TYPE this table cannot see: its arm
-   binds [t] existentially and says nothing about it, so a generic open is
-   licensed -- BY THIS ROW -- to install a held descriptor.  That case is
-   therefore a PREMISE here rather than an assumption, and discharging it
-   means a new conjunct on the open row itself, read off
-   [SysOpenDefs.open_fd_rcpt]'s [t] (every arm of
-   [SpecSysOpen.sys_open_post] instantiates it at a PARKED constructor, so
-   the fact is true; it is merely not stated). *)
+   EVERY ROW PRESERVES IT, and four of the five for nothing -- close
+   installs [FdClosed]; dup COPIES a row the table already had (out of
+   range the total lookup is [FdClosed], so the copy is parked either
+   way); pipe installs the two ends; every other entry leaves the table
+   alone.  OPEN is the row that introduces a TYPE this table cannot see,
+   and it is the reason the open arm carries [fdst_parked] explicitly:
+   with that conjunct this is a THEOREM, and the generic tier's Loeb step
+   can read all-parkedness of the SUCCESSOR key off the same row it
+   already threads.  (RA-1 landed it with that case as a premise, because
+   the conjunct did not exist yet; RA-3 added the conjunct and the premise
+   went away.) *)
 Lemma usys_fd_ok_parked (n : Z) (tf : list (mword 64)) (r : mword 64)
     (sts sts' : list fdstate) :
   usys_fd_ok n tf r sts sts' ->
   fdv_all_parked sts ->
-  (forall (fd : nat) (rd wr : bool) (t : fdtype),
-     n = USYS_open -> sts' = <[fd := FdOpen rd wr t]> sts ->
-     fdst_parked (FdOpen rd wr t)) ->
   fdv_all_parked sts'.
 Proof.
-  unfold usys_fd_ok. intros H Hpk Hopen.
+  unfold usys_fd_ok. intros H Hpk.
   destruct (decide (n = USYS_close)) as [_ | _].
   { destruct H as [H _].
     destruct (decide (uint r = 0)); subst;
@@ -781,10 +798,9 @@ Proof.
       [ apply fdv_all_parked_insert;
         [ exact Hpk | apply fdv_all_parked_lookup_total; exact Hpk ]
       | exact Hpk ]. }
-  destruct (decide (n = USYS_open)) as [Ho | _].
-  { destruct H as [(fd & rd & wr & t & _ & _ & He) | [_ ->]]; [| exact Hpk].
-    rewrite He. apply fdv_all_parked_insert;
-      [ exact Hpk | exact (Hopen fd rd wr t Ho He) ]. }
+  destruct (decide (n = USYS_open)) as [_ | _].
+  { destruct H as [(fd & rd & wr & t & _ & _ & He & Hop) | [_ ->]]; [| exact Hpk].
+    rewrite He. apply fdv_all_parked_insert; [ exact Hpk | exact Hop ]. }
   destruct (decide (n = USYS_pipe)) as [_ | _].
   { destruct (decide (uint r = 0)) as [_ | _].
     - destruct H as (a & b & _ & _ & _ & ->).
@@ -796,17 +812,11 @@ Proof.
   subst. exact Hpk.
 Qed.
 
-(* ...and the shape every entry BUT open reads it at, which is where the
-   owed row does not bite. *)
-Lemma usys_fd_ok_parked_ne_open (n : Z) (tf : list (mword 64)) (r : mword 64)
-    (sts sts' : list fdstate) :
-  n <> USYS_open ->
-  usys_fd_ok n tf r sts sts' -> fdv_all_parked sts -> fdv_all_parked sts'.
-Proof.
-  intros Hne H Hpk.
-  apply (usys_fd_ok_parked n tf r sts sts' H Hpk).
-  intros fd rd wr t Ho _. exfalso. exact (Hne Ho).
-Qed.
+(* [usys_fd_ok_parked_ne_open] IS GONE, and its disappearance is the point:
+   it was the shape RA-1's owed premise could be read at (every entry but
+   open), and with the open arm carrying [fdst_parked] there is no entry
+   the discipline has to be excused at.  A caller that had it applies
+   [usys_fd_ok_parked] and drops its [n <> USYS_open]. *)
 
 (* ===================================================================== *)
 (* SS2d THE WORKING-DIRECTORY ROW: one number moves it.                    *)

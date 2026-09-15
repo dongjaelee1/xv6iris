@@ -260,6 +260,20 @@ Section PinnedExec.
        by the pay fact ([UexecExecMint.uslot_mint]), so the arm cannot be
        "[T] gives a slot at every key" any more -- it is "[T] and this
        key's payload give a slot at this key". *)
+    (* (* RA-2: held case here *) ...AND WHEN THE GENERIC FAMILY IS
+       NARROWED TO ALL-PARKED KEYS (design/user-read.md SS8.1), this arm
+       gains [⌜FdSlots.fdv_all_parked (uvis_fd W')⌝] and this bundle gains
+       [fdv_all_parked sts] -- one premise, because the two arms below
+       apply the arm at a [W'] the kernel's own [kexec_image_ok] /
+       [exec_key_ok] pins to [sts] ([SpecKexec.kexec_image_ok_parked],
+       [exec_key_ok_parked] are the two steps).  BUT NOT ON THIS BUNDLE:
+       a verified program's U-tier knowledge of its own table is
+       [UserFd.ustd] (the low [NSTD] slots) and its [ufd] handles, and
+       neither says anything about the rest of it, so a program CANNOT
+       state all-parkedness of the table it execs with.  The premise
+       belongs on [SpecKexec.exec_slot_pre]'s two WANDS, where the party
+       that supplies it is the KERNEL -- which holds the block and reads
+       the fact straight off it ([ProcInv.proc_priv_parked]). *)
     □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
     Pay -∗
     pf_at (fun S => sys_exec_slot_pre S Q (pobs_P T hops) (pobs_recv Pin T)

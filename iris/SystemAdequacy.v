@@ -1077,6 +1077,18 @@ Lemma init_boot_of_sup {Σ}
      [read(2)] on fd 0 for an arbitrary application, and [App.Happ_in_sup]
      is where the supply buys it. *)
   (app_sup ⊢ in_licence) ->
+  (* (* RA-2: held case here *) THE MINT SITE'S ALL-PARKED FACT
+     (design/user-read.md SS8.1's finding 3, SS8.3).  When
+     [UexecExecMint.uslot_mint] is narrowed to keys whose table is
+     all-parked, this discharge owes [FdSlots.fdv_all_parked sts] -- and
+     it has it for nothing at the only [sts] the boot chain instantiates:
+     [FdSlots.fdv_all_parked_fdt0], since [App.xv6_app] and
+     [BootChain]/[ProofMain] all state the bundle at [FdSlots.fdt0].  The
+     fact then crosses the exec that spends the bundle by
+     [SpecKexec.kexec_image_ok_parked] / [exec_key_ok_parked], which is
+     what carries it to the key the first process resumes at.  So the
+     premise, when RA-2 adds it, is [fdv_all_parked sts] here and
+     [fdv_all_parked_fdt0] at every caller. *)
   app_sup -∗ □ riscv_kill_cred -∗ init_boot_bundle cw sts.
 Proof.
   intros Hlic Hilic. iIntros "#Hsup #Hkc".

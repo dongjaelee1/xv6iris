@@ -1157,6 +1157,19 @@ Section UInitSh.
        [□ (riscv_kill_cred -∗ R)]), and the arm builds it out of the TAINT
        it is already holding ([UserConsole.ucons_pay_taint]) -- which is
        the whole reason a tainted process needs no lease. *)
+    (* (* RA-2: held case here *) THE TAINT ARM, AT THE KEY sh RESUMES AT.
+       Under RA-2's narrowing this assertion gains
+       [⌜FdSlots.fdv_all_parked (uvis_fd W')⌝] and the key's table is
+       [fdv] -- init's OWN table at the exec, since exec keeps it
+       ([SpecKexec.kexec_image_ok_parked] is the crossing).  init's table
+       really is all-parked (it holds three console descriptors and
+       thirteen closed slots), but note what says so TODAY: only
+       [Hl : take NSTD fdv = l] from [UserFd.ustd_agree] and the
+       [UInitFd.ufd_row] facts above, i.e. the low three slots.  The rest
+       of the table is unconstrained at this tier, which is why the
+       premise must ride the kexec SLOT WANDS (kernel-supplied, off
+       [ProcInv.proc_priv_parked]) and not this assertion -- see the same
+       note at [PinnedExec.pex_slot]'s taint arm. *)
     iAssert (□ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') (ucons_pay cn γp T (UkInit.init_rd Rdl Wb)) -∗
                   uslot W'))%I as "#Hgen'".
     { iModIntro. iIntros (W') "#HT #Hmp".

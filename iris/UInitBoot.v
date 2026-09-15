@@ -703,6 +703,15 @@ Section EchoInitBoot.
         [ rewrite Hkill; iModIntro; iExact "Ht" | ].
       iDestruct ("Hlic" with "Ht") as "#Hlc".
       iDestruct ("Hilic" with "Ht") as "#Hilc".
+      (* (* RA-2: held case here *) THE TAINT ARM'S MINT IS AT AN ARBITRARY
+         KEY, which is what RA-2's narrowing bites: [uslot_mint_all] will
+         ask for [FdSlots.fdv_all_parked (uvis_fd W)] and this [W] is
+         universally quantified here.  Where the fact comes from is the
+         SITE THAT SPENDS this arm -- [PinnedExec.pex_slot]'s taint arm,
+         applied at the key exec resumed, whose table is the exec'ing
+         process's own ([SpecKexec.kexec_image_ok_parked] /
+         [exec_key_ok_parked]) -- so the premise travels IN to this
+         assertion from there, not out of it. *)
       iApply (uslot_mint_all with "Hs Hkc Hlc Hilc Hwp Hp HR"). }
     (* ---- the pins law, and /init's own row out of it ---- *)
     iAssert (□ (∀ v : aview, AppCfg.app_pred AppCfg.app_run v -∗

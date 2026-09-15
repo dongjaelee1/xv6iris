@@ -476,7 +476,7 @@ Section UkRunSys.
       - iMod (ufd_alloc_least_any γfd fdv l fd1 _ Hcl Hne with "Hufd Hstd")
           as "[$ $]". by iModIntro. }
     destruct (decide (n = USYS_open)) as [_ | _].
-    { destruct Hrow as [(fd & rd & wr & t & _ & Hcl & ->) | [_ ->]];
+    { destruct Hrow as [(fd & rd & wr & t & _ & Hcl & -> & _) | [_ ->]];
         [| iModIntro; iFrame "Hufd"; by iExists l ].
       iMod (ufd_alloc_least_any γfd fdv l fd (FdOpen rd wr t) Hcl
               ltac:(discriminate) with "Hufd Hstd") as "[$ $]".
@@ -930,7 +930,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & ->) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot -- which is the
          promise [sys_open_post] makes and the row carries, and which the
          caller's ledger turns into a NUMBER. *)
@@ -3467,7 +3467,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & ->) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
@@ -4333,7 +4333,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & ->) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl

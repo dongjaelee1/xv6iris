@@ -681,6 +681,46 @@ Lemma kexec_image_ok_fd (f : elf_bytes) (na : nat) (alen : nat -> nat)
   kexec_image_ok f na alen afun sts W' -> uvis_fd W' = sts.
 Proof. intros (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hfd & _). exact Hfd. Qed.
 
+(* ...and the same row off the NON-LOADABLE arm, which the second slot wand
+   resumes on.  Both wands of [exec_slot_pre] resume a process at a key
+   whose descriptor view IS the caller's table, and that is the whole
+   content of exec's boundary. *)
+Lemma exec_key_ok_fd (na : nat) (alen : nat -> nat) (sts : list fdstate)
+    (W' : uvis) :
+  exec_key_ok na alen sts W' -> uvis_fd W' = sts.
+Proof. intros (_ & _ & _ & _ & _ & _ & _ & Hfd & _). exact Hfd. Qed.
+
+(* ===================================================================== *)
+(*  THE BOUNDARY PARK'S CROSSING AT EXEC (design/user-read.md SS8.3).     *)
+(*                                                                       *)
+(*  THE IMAGE DIES AND THE TABLE DOES NOT: xv6 has no FD_CLOEXEC, so the  *)
+(*  descriptors a process execs with are the ones it had, which is how    *)
+(*  the shell hands a redirected descriptor to the program it runs.  So   *)
+(*  exec's whole obligation to the all-parked discipline is that the      *)
+(*  table it hands over is parked, and these two readings are that fact   *)
+(*  at each of [exec_slot_pre]'s two wands.                               *)
+(*                                                                       *)
+(*  WHAT THE SURRENDER ADDS, AND WHERE IT GOES.  A process that holds an  *)
+(*  offset at its exec has to give it up for the same reason a forking    *)
+(*  one does -- the image that owned it is gone, and the new image's WP   *)
+(*  never saw the half -- but that is a resource the caller hands to the  *)
+(*  DEPOSIT ([FdPark.uoff_surr_at] at the key's own table), and the       *)
+(*  generic tier answers it with the left disjunct, i.e. with exactly     *)
+(*  these two lemmas.  Exec from the generic tier therefore needs nothing *)
+(*  beyond them, which is what SS8.3 says.  (* RA-2: held case here *)    *)
+(* ===================================================================== *)
+Lemma kexec_image_ok_parked (f : elf_bytes) (na : nat) (alen : nat -> nat)
+    (afun : nat -> nat -> bv 8) (sts : list fdstate) (W' : uvis) :
+  kexec_image_ok f na alen afun sts W' ->
+  fdv_all_parked sts -> fdv_all_parked (uvis_fd W').
+Proof. intros Hok Hpk. rewrite (kexec_image_ok_fd f na alen afun sts W' Hok). exact Hpk. Qed.
+
+Lemma exec_key_ok_parked (na : nat) (alen : nat -> nat) (sts : list fdstate)
+    (W' : uvis) :
+  exec_key_ok na alen sts W' ->
+  fdv_all_parked sts -> fdv_all_parked (uvis_fd W').
+Proof. intros Hok Hpk. rewrite (exec_key_ok_fd na alen sts W' Hok). exact Hpk. Qed.
+
 (* THE MAP-STOP READER: the row a slot constructor takes straight over as
    [UkRun.uslot_of_urun]'s premise. *)
 Lemma kexec_image_ok_below (f : elf_bytes) (na : nat) (alen : nat -> nat)

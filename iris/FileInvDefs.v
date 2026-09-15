@@ -621,6 +621,22 @@ Proof.
     rewrite Ht in Hc; apply (f_equal bv_unsigned) in Hc; by vm_compute in Hc.
 Qed.
 
+(* ...AND THE OFFSET MODE, which is the FD_INODE arm's pin read as the fact
+   it actually is (design/user-read.md SS8.1, SS8.3): a descriptor state
+   that a live [struct file] admits is PARKED.  It is what makes the
+   all-parked discipline a THEOREM about any live process block rather
+   than an assumption about the tier -- [ProcInv.proc_priv_parked] is that
+   reading one layer up -- and relaxing the pin is exactly what makes this
+   lemma false, which is why the boundary parks have to be in place first.
+   (* RA-2: held case here *) *)
+Lemma fdstate_ok_parked (inum : mword 32) (γo : gname) (C : fcontent)
+    (st : fdstate) :
+  fdstate_ok inum γo C st -> fdst_parked st.
+Proof.
+  destruct st as [| r w [n g [|] | | mj]]; cbn; intros Hok; try exact I.
+  destruct Hok as (_ & _ & _ & _ & _ & Hm). discriminate Hm.
+Qed.
+
 (* THE MODE FLAGS, read off the cells.  What a proof that has just branched
    on [beqz f->readable] learns about the state it was handed. *)
 Lemma fdstate_ok_rw (inum : mword 32) (γo : gname) (C : fcontent) (r w : bool) (t : fdtype) :
@@ -1775,6 +1791,17 @@ Section FileInv.
     (∃ C : fcontent,
        fref_tok γ k q ∗ file_fields k q C ∗ file_pay_st γ k q C st ∗
        flive_tok k)%I.
+
+  (* THE OFFSET MODE OF A REFERENCED DESCRIPTOR, which is the pin read off
+     the reference itself: a [struct file] that exists has a content, and
+     [file_pay_st] carries [fdstate_ok] of it, which pins [OffParked].
+     This is the one step [ProcInv]'s array export is made of. *)
+  Lemma file_ref_parked (γ : gname) (k : nat) (q : Qp) (st : fdstate) :
+    file_ref γ k q st -∗ ⌜fdst_parked st⌝.
+  Proof.
+    iIntros "(%C & _ & _ & (%pn & %Hok & _ & _) & _)". iPureIntro.
+    exact (fdstate_ok_parked _ _ C st Hok).
+  Qed.
 
   (* THE BRIDGE OUT OF THE QUANTIFIER: what a proof that has to look at the
      file's own cells opens the reference for.  Every [fc_type]-to-[st]

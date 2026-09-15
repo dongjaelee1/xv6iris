@@ -249,8 +249,10 @@ Proof. unfold fdv_all_parked. apply _. Defined.
    a row the table already had -- and out of range the TOTAL lookup is
    [FdClosed], so the copy is parked either way; sys_pipe inserts the two
    ends.  [UsysMemOk.usys_fd_ok_parked] is those four rows read off the
-   syscall table, and it is where the one row this discipline still owes
-   (open's existential type) is named. ---- *)
+   syscall table, and OPEN -- whose type the syscall table binds
+   existentially -- is the fifth, since RA-3 put [fdst_parked] on that
+   row (the arms always installed a parked constructor; the row merely
+   did not say so). ---- *)
 Lemma fdst_parked_closed : fdst_parked FdClosed.
 Proof. exact I. Qed.
 Lemma fdst_parked_pipe (r w : bool) : fdst_parked (FdOpen r w FdPipe).
@@ -889,6 +891,18 @@ Section FdSlots.
 
   Lemma fdt0_length : length fdt0 = NOFILE.
   Proof. apply length_replicate. Qed.
+
+  (* ...AND IT IS THE ROOT OF THE ALL-PARKED DISCIPLINE (design/user-read.md
+     SS8.1).  Every table in the system descends from this one -- a process
+     is born here ([fd_st_alloc]'s mint), the first process's exec bundle
+     is stated at it ([InitBoot.init_boot_bundle] through
+     [App.xv6_app]'s [Hinit_boot]), and every row that moves a table
+     preserves parkedness ([UsysMemOk.usys_fd_ok_parked]) -- so this is
+     where "no descriptor has its offset half handed out" is TRUE rather
+     than assumed, and it is the fact the generic tier's narrowed slot
+     mints will be discharged from.  (* RA-2: held case here *) *)
+  Lemma fdv_all_parked_fdt0 : fdv_all_parked fdt0.
+  Proof. apply fdv_all_parked_closed. Qed.
 
   (* ...and the scan on it answers 0: a fresh process's first open lands on
      descriptor 0, which is how init gets the console there.  Stated here

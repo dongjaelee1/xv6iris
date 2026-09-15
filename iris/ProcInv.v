@@ -423,6 +423,23 @@ Section ProcInv.
       split; [rewrite Hfn; exact (fnode_ne_zero k Hk) | exact Hty].
   Qed.
 
+  (* ...AND THE OFFSET MODE, the same reading at the row that owns it
+     (design/user-read.md SS8.3).  A slot is either NULL -- whose state is
+     [FdClosed], parked by definition -- or it names a file, and a file
+     that exists pins its descriptor's mode ([FileInvDefs.file_ref_parked],
+     which is [fdstate_ok]'s FD_INODE arm).  So the array KNOWS the
+     discipline; no tier has to assume it. *)
+  Lemma ofile_slot_parked (γf γd : gname) (pa : mword 64) (fd : nat)
+      (v : mword 64) (st : fdstate) :
+    fd_st γd fd st -∗ ofile_slot γf γd pa fd v -∗ ⌜fdst_parked st⌝.
+  Proof.
+    iIntros "Hst [_ [(-> & _ & Ha) | (%k & %q & %st' & _ & Href & Ha)]]".
+    - iDestruct (fd_st_agree with "Ha Hst") as %<-. iPureIntro.
+      exact fdst_parked_closed.
+    - iDestruct (fd_st_agree with "Ha Hst") as %<-.
+      iApply (file_ref_parked with "Href").
+  Qed.
+
   Definition proc_ofiles (γf γd : gname) (pa : mword 64) (fs : list (mword 64))
       : iProp Σ :=
     (⌜length fs = NOFILE⌝ ∗ [∗ list] fd ↦ v ∈ fs, ofile_slot γf γd pa fd v)%I.
@@ -628,6 +645,44 @@ Section ProcInv.
       split; [ intros Hc; contradiction (Hnz Hc)
              | intros Hc; contradiction (Hno Hc) ].
     - exact (Htail j' v st Hv Hst).
+  Qed.
+
+  (* ...AND THE SAME WALK FOR THE OFFSET MODE: every row of a live block's
+     table is parked (design/user-read.md SS8.3).  Structurally
+     [ofile_slots_states_agree]'s twin -- the array and the bundle are
+     zipped by index, and the per-slot reading is
+     [ofile_slot_parked]. *)
+  Lemma ofile_slots_parked (γf γd : gname) (pa : mword 64)
+      (n : nat) (fs : list (mword 64)) (sts : list fdstate) :
+    length sts = length fs ->
+    ([∗ list] i ↦ v ∈ fs, ofile_slot γf γd pa (n + i)%nat v) -∗
+    ([∗ list] i ↦ st ∈ sts, fd_st γd (n + i)%nat st) -∗
+    ⌜fdv_all_parked sts⌝.
+  Proof.
+    revert n sts. induction fs as [| a fs' IH]; intros n sts Hlen.
+    { destruct sts as [| b sts']; [| discriminate Hlen].
+      iIntros "_ _". iPureIntro. constructor. }
+    destruct sts as [| b sts']; [discriminate Hlen |].
+    iIntros "[Hh Ht] [Hbh Hbt]".
+    rewrite Nat.add_0_r.
+    iDestruct (ofile_slot_parked with "Hbh Hh") as %Hhead.
+    iDestruct (IH (S n) sts' ltac:(cbn in Hlen; lia) with "[Ht] [Hbt]") as %Htail.
+    { iApply (big_sepL_mono with "Ht").
+      intros i v _. by replace (n + S i)%nat with (S n + i)%nat by lia. }
+    { iApply (big_sepL_mono with "Hbt").
+      intros i st _. by replace (n + S i)%nat with (S n + i)%nat by lia. }
+    iPureIntro. constructor; [exact Hhead | exact Htail].
+  Qed.
+
+  Lemma proc_ofiles_parked (γf γd : gname) (pa : mword 64)
+      (fs : list (mword 64)) (sts : list fdstate) :
+    proc_ofiles γf γd pa fs -∗ fd_frags γd sts -∗ ⌜fdv_all_parked sts⌝.
+  Proof.
+    iIntros "[%Hlf Ho] (%Hls & Hs & _)".
+    iApply (ofile_slots_parked γf γd pa 0%nat fs sts
+              ltac:(rewrite Hls Hlf; reflexivity) with "[Ho] [Hs]").
+    - iApply (big_sepL_mono with "Ho"). intros i v _. by rewrite Nat.add_0_l.
+    - iApply (big_sepL_mono with "Hs"). intros i st _. by rewrite Nat.add_0_l.
   Qed.
 
   Lemma proc_ofiles_states_agree (γf γd : gname) (pa : mword 64)
@@ -1387,6 +1442,28 @@ Section ProcInv.
   (* nothing re-opened.                                                  *)
   (* =================================================================== *)
   (* the whole-array agreement at the block a caller actually holds *)
+  (* THE ALL-PARKED EXPORT (design/user-read.md SS8.1, SS8.3), at the block
+     a caller actually holds.  It is the one fact the generic tier's
+     narrowed slot mints will need about a live key's table, and it is a
+     THEOREM here rather than a premise anywhere: the pin lives in
+     [FileInvDefs.fdstate_ok] and this is the chain that surfaces it --
+     [file_ref_parked] per open slot, [FdClosed] per null one.
+     WHERE IT IS SPENT: wherever the KERNEL applies a slot wand at a key
+     it just built ([SpecKexec.exec_slot_pre]'s two, through
+     [kexec_image_ok_parked] / [exec_key_ok_parked]), the kernel holds the
+     block and can discharge the premise with this -- which is why the
+     all-parked premise belongs on the WANDS rather than on the exec
+     bundle a program hands in (a U-tier program cannot state it about its
+     own table; see the note at [PinnedExec.pex_slot]'s taint arm).
+     (* RA-2: held case here *) *)
+  Lemma proc_priv_parked (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) (sts : list fdstate) :
+    proc_priv γf pa pid U -∗ fd_frags (pv_fdg (us_V U)) sts -∗
+    ⌜fdv_all_parked sts⌝.
+  Proof.
+    iIntros "[_ Hof] Hfr". iApply (proc_ofiles_parked with "Hof Hfr").
+  Qed.
+
   Lemma proc_priv_states_agree (γf : gname) (pa : mword 64) (pid : mword 32)
       (U : ustate) (sts : list fdstate) :
     proc_priv γf pa pid U -∗ fd_frags (pv_fdg (us_V U)) sts -∗

@@ -134,9 +134,6 @@ Require Import SpecIlock SpecIunlock SpecIunlockput SpecIput.
 Require Import SpecDirlookup.
 Require Import CodeNamex.
 Require Import SpecNamex.
-Require Import SpecNameiTr.   (* [inode_held_at] ONLY: the pinned package.
-                                 The dv-firing [nx_hop] is in scope and is
-                                 NOT what this walk fires. *)
 Require Import FsAbsEra.      (* [elend] and the two fire lemmas *)
 Require Import FsAbsNpar.     (* [np_elems]/[ep_hops_from]/[np_dead]: the
                                  PARENT-PREFIX family and its death arm *)

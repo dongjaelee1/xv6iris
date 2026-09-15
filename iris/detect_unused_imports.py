@@ -197,9 +197,13 @@ class ImportStmt:
     from_prefix: str | None  # the `From X` prefix, or None
     modules: list[str]     # module tokens exactly as written on the line
     trailer: str = ""      # text after the period (a trailing comment), verbatim
+    endline: int = 0       # last line of the statement; > lineno iff the
+                           # trailing comment runs on (see parse_imports)
 
 
-# One statement per line (verified: no multi-line Require in this codebase).
+# One `Require` per line (verified: no multi-line Require in this codebase) --
+# but a STATEMENT may still span lines, because its trailing comment can; see
+# the third paragraph and `ImportStmt.endline`.
 #
 # THE TRAILING COMMENT IS PART OF THE STATEMENT.  `Require Import X.  (* why *)`
 # is this tree's house style for explaining an import, and a pattern that stops
@@ -210,11 +214,20 @@ class ImportStmt:
 # separated by a definition.  That was 1072 of this tree's 25833 `Require`
 # lines, across 628 files.
 #
-# The comment must be CLOSED on the same line: `.*\*\)` is greedy, so it runs to
-# the last `*)` on the line, and a comment that opens here and closes further
-# down simply fails to match -- which leaves that line invisible exactly as
-# before, rather than letting a deletion take the first line of a comment and
-# strand the rest.  Anything after the closing `*)` also fails to match, so a
+# A TRAILING COMMENT THAT RUNS ON IS STILL A TRAILING COMMENT.  `_STMT_RE`'s
+# `.*\*\)` cannot cross a newline, so a comment opening on the Require line and
+# closing two lines down used to fail to match -- and by the paragraph above,
+# that made the import invisible to every pass rather than merely losing its
+# comment.  It was not a rare shape: 367 `Require` lines across 181 files, and
+# it is why `SpecNameiTr.v` survived every sweep while nothing used it (its
+# three importers each annotated the import across three lines).  So a line
+# that ends in an UNCLOSED `(*` is now joined with the lines up to the `*)`
+# that closes it -- `_OPEN_RE` spots the opening, `comment_spans` finds the
+# close (respecting nesting), and `_STMT_ML_RE` matches the joined block.
+# `endline` then carries the span, so a deletion takes the whole comment with
+# it and can never strand half of one.
+#
+# Anything after the closing `*)` still fails to match, so a
 # `Require ... . (* c *) Definition ...` one-liner is never rewritten.
 _STMT_RE = re.compile(
     r"""^\s*
@@ -230,12 +243,92 @@ _STMT_RE = re.compile(
 )
 
 
+# A statement whose trailing comment does NOT close on its own line: the same
+# shape as `_STMT_RE` up to the period, then an opening `(*`.  Used only to
+# decide whether to join the following lines -- `_STMT_ML_RE` does the parse.
+_OPEN_RE = re.compile(
+    r"""^\s*
+        (?:From\s+[\w.]+\s+)?
+        Require\s+
+        (?:Import\s+|Export\s+)?
+        [\w.\t ]+?
+        [ \t]*\.
+        [ \t]*\(\*
+    """,
+    re.VERBOSE,
+)
+
+# `_STMT_RE` with a tail that may span lines.  Two deliberate narrowings from
+# the single-line pattern: the module list is `[\w.\t ]` rather than `[\w.\s]`,
+# so the MODULES can never be read across a newline (there is no multi-line
+# `Require` in this codebase, and letting the tokens run on would silently
+# swallow the next statement), and the tail is `[\s\S]` rather than a DOTALL
+# `.`, so only the comment is allowed to cross lines.
+_STMT_ML_RE = re.compile(
+    r"""^\s*
+        (?:From\s+(?P<from>[\w.]+)\s+)?
+        Require\s+
+        (?P<mode>Import\s+|Export\s+)?
+        (?P<mods>[\w.\t ]+?)
+        [ \t]*\.
+        (?P<tail>[ \t]*\(\*[\s\S]*\*\))
+        \s*$
+    """,
+    re.VERBOSE,
+)
+
+
+def comment_spans(text: str) -> dict[int, int]:
+    """Offset of each TOP-LEVEL `(*` -> offset just past its matching `*)`.
+
+    Same nesting walk as `blank_coq_comments`; an unterminated comment simply
+    contributes no span, so a statement whose trailing `(*` never closes stays
+    unmatched (and so untouched) exactly as it was before multi-line support.
+    """
+    spans: dict[int, int] = {}
+    depth, start = 0, 0
+    for m in _COQ_COMMENT.finditer(text):
+        if m.group() == "(*":
+            if depth == 0:
+                start = m.start()
+            depth += 1
+        elif depth:
+            depth -= 1
+            if depth == 0:
+                spans[start] = m.end()
+    return spans
+
+
 def parse_imports(text: str) -> list[ImportStmt]:
     stmts: list[ImportStmt] = []
-    for i, line in enumerate(text.splitlines(), start=1):
+    lines = text.splitlines()
+    spans: dict[int, int] | None = None     # built lazily: most files need none
+    starts: list[int] | None = None         # byte offset of each line
+    for i, line in enumerate(lines, start=1):
         m = _STMT_RE.match(line)
+        endline = i
         if not m:
-            continue
+            # A trailing comment that runs on to a later line.  Join the block
+            # and re-match; `endline` then spans it.
+            om = _OPEN_RE.match(line)
+            if not om:
+                continue
+            if spans is None:
+                spans = comment_spans(text)
+                starts, off = [], 0
+                for ln in lines:
+                    starts.append(off)
+                    off += len(ln) + 1
+            end = spans.get(starts[i - 1] + om.end() - 2)
+            if end is None:
+                continue                    # unterminated: leave it alone
+            endline = text.count("\n", 0, end) + 1
+            if endline <= i:
+                continue                    # closed on its own line after all
+            m = _STMT_ML_RE.match("\n".join(lines[i - 1:endline]))
+            if not m:
+                continue
+            line = "\n".join(lines[i - 1:endline])
         mode = (m.group("mode") or "").strip()
         kind = {"Import": "import", "Export": "export", "": "require"}[mode]
         mods = m.group("mods").split()
@@ -247,9 +340,17 @@ def parse_imports(text: str) -> list[ImportStmt]:
                 from_prefix=m.group("from"),
                 modules=mods,
                 trailer=m.group("tail") or "",
+                endline=endline,
             )
         )
     return stmts
+
+
+def first_line(raw: str) -> str:
+    """The statement's own line, for a report -- a run-on trailing comment is
+    elided rather than pasted into a one-line bullet."""
+    head, _, rest = raw.strip().partition("\n")
+    return head + (" ..." if rest else "")
 
 
 def logical_path(stmt: ImportStmt, token: str, local_prefix: str) -> str:
@@ -721,7 +822,8 @@ def duplicate_candidates(text: str, stmts: list[ImportStmt], local_prefix: str,
     those are skipped on both sides, so an import that is simply unused is
     reported as the removal it is rather than as a duplicate.
     """
-    code = set() if across_code else code_lines(text, {s.lineno for s in stmts})
+    code = set() if across_code else code_lines(
+        text, {n for s in stmts for n in range(s.lineno, s.endline + 1)})
     occ: dict[str, list[tuple[ImportStmt, int, str]]] = {}
     for s in stmts:
         for i, tok in enumerate(s.modules):
@@ -768,7 +870,7 @@ def is_documented(stmt: ImportStmt, text: str,
         return True
     lines = text.splitlines()
     blanked = blank_coq_comments(text).splitlines()
-    req = {s.lineno for s in stmts}
+    req = {n for s in stmts for n in range(s.lineno, s.endline + 1)}
     j = stmt.lineno - 2                      # 0-based index of the line above
     while j >= 0 and (j + 1) in req:         # skip the rest of the import group
         j -= 1
@@ -956,8 +1058,20 @@ def apply_edits(text: str, edits: list[Candidate], local_prefix: str) -> str:
             continue
         added[0] += stmt.trailer
 
+    # Continuation lines of a statement whose trailing comment runs on.  When
+    # that statement is edited they must NOT be re-emitted: a partial edit
+    # rebuilds the line with the whole `trailer` (newlines and all) and a whole
+    # deletion takes the comment with it, so in both cases the original
+    # continuation lines are already accounted for.  A statement nobody edits
+    # keeps every line of its span verbatim.
+    cont_of = {n: s.lineno for s in stmts
+               for n in range(s.lineno + 1, s.endline + 1)}
+
     out_lines: list[str] = []
     for i, line in enumerate(text.splitlines(), start=1):
+        if cont_of.get(i) in drop_idx:
+            out_lines.extend(added_by_line.get(i, []))
+            continue
         if i in drop_idx:
             stmt = stmt_by_line[i]
             remaining = [m for j, m in enumerate(stmt.modules)
@@ -1218,7 +1332,7 @@ def _cand_dict(c: Candidate) -> dict:
 def describe(c: Candidate) -> str:
     """One report bullet for a candidate."""
     where = (f"- `{c.token}`  (logical `{c.full_path}`) "
-             f"-- line {c.stmt.lineno}: `{c.stmt.raw.strip()}`")
+             f"-- line {c.stmt.lineno}: `{first_line(c.stmt.raw)}`")
     if c.kind == "rewrite":
         where += "\n  - provides no referenced name itself; import instead: " + \
                  ", ".join(f"`{m}`" for m in c.via)

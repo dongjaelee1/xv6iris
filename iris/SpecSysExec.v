@@ -246,14 +246,20 @@ Section SysExecAU.
      two rows (2026-09-12, the coordinator): the syscall's bundle is stated
      at the same [cw] the boot's is ([SpecKexec.exec_au_pre]), so both hand
      the slot wands the inum the resumed key carries. *)
+  (* ...AND THE CALLER'S CHILDREN SET AND PID (lane EXEC-SEAM), threaded to
+     [exec_slot_pre]'s two identity rows exactly as [cw] is: the syscall's
+     bundle is stated at the [cs]/[pid] the contract already binds, so the
+     resumed key's readings are the caller's own. *)
   Definition sys_exec_slot_pre (S : uvis -> iProp Σ) (Q : Z -> iProp Σ)
       (P : nat -> Z -> iProp Σ)
       (Φo : aview -> Z -> anode -> iProp Σ) (cw : Z)
-      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate) : iProp Σ :=
+      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate)
+      (cs : gset gname) (pidv : mword 32) : iProp Σ :=
     (∀ (pl : list (bv 8)) (na : nat) (alen : nat -> nat)
        (afun : nat -> nat -> bv 8),
        ⌜exec_path_of M pv pl⌝ -∗ ⌜exec_args_of M av na alen afun⌝ -∗
-       exec_slot_pre S Q (P (length (path_elems pl))) Φo cw na alen afun sts)%I.
+       exec_slot_pre S Q (P (length (path_elems pl))) Φo cw na alen afun sts
+         cs pidv)%I.
 
   (* Both one-shot pieces at their pairs ([SpecKexec.exec_au_pre]'s
      shape, at the argument-shape-quantified slot wand). *)
@@ -261,20 +267,23 @@ Section SysExecAU.
       (γfs : fs_names) (cw : Z) (Q : Z -> iProp Σ)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
-      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate) : iProp Σ :=
+      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate)
+      (cs : gset gname) (pidv : mword 32) : iProp Σ :=
     ((∀ pl : list (bv 8), ⌜exec_path_of M pv pl⌝ -∗ ex_start γfs cw P Pmiss pl)
      ∗ pf_at (aopen_commit_at Γ appE) Fo
-     ∗ pf_at (fun S => sys_exec_slot_pre S Q P Fo.(pf_recv) cw M pv av sts) Fs)%I.
+     ∗ pf_at (fun S => sys_exec_slot_pre S Q P Fo.(pf_recv) cw M pv av sts
+                         cs pidv) Fs)%I.
 
   (* non-expansive in the slot predicate, as [SpecKexec.exec_au_pre_ne]:
      what UexecExecInst.v's instance at the fixpoint variable needs *)
   Lemma sys_exec_slot_pre_ne (n : nat) (S S' : uvis -d> iPropO Σ)
       (Q : Z -> iProp Σ) (P : nat -> Z -> iProp Σ)
       (Φo : aview -> Z -> anode -> iProp Σ) (cw : Z)
-      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate) :
+      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate)
+      (cs : gset gname) (pidv : mword 32) :
     S ≡{n}≡ S' ->
-    sys_exec_slot_pre S Q P Φo cw M pv av sts
-    ≡{n}≡ sys_exec_slot_pre S' Q P Φo cw M pv av sts.
+    sys_exec_slot_pre S Q P Φo cw M pv av sts cs pidv
+    ≡{n}≡ sys_exec_slot_pre S' Q P Φo cw M pv av sts cs pidv.
   Proof.
     intros HS. rewrite /sys_exec_slot_pre.
     apply bi.forall_ne; intros pl.
@@ -282,20 +291,22 @@ Section SysExecAU.
     apply bi.forall_ne; intros afun. apply bi.wand_ne; [reflexivity |].
     apply bi.wand_ne; [reflexivity |].
     exact (exec_slot_pre_ne n S S' Q (P (length (path_elems pl)))
-             Φo cw na alen afun sts HS).
+             Φo cw na alen afun sts cs pidv HS).
   Qed.
 
   Lemma sys_exec_au_pre_ne (n : nat) (S S' : uvis -d> iPropO Σ) (Rs : iProp Σ)
       Γ (γfs : fs_names) (cw : Z) (Q : Z -> iProp Σ)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
-      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate) :
+      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate)
+      (cs : gset gname) (pidv : mword 32) :
     S ≡{n}≡ S' ->
-    sys_exec_au_pre (MkPfam S Rs) Γ γfs cw Q P Pmiss Fo M pv av sts
-    ≡{n}≡ sys_exec_au_pre (MkPfam S' Rs) Γ γfs cw Q P Pmiss Fo M pv av sts.
+    sys_exec_au_pre (MkPfam S Rs) Γ γfs cw Q P Pmiss Fo M pv av sts cs pidv
+    ≡{n}≡ sys_exec_au_pre (MkPfam S' Rs) Γ γfs cw Q P Pmiss Fo M pv av sts cs pidv.
   Proof.
     intros HS. rewrite /sys_exec_au_pre /pf_at. cbn [pf_recv pf_refund].
-    by rewrite (sys_exec_slot_pre_ne n S S' Q P Fo.(pf_recv) cw M pv av sts HS).
+    by rewrite (sys_exec_slot_pre_ne n S S' Q P Fo.(pf_recv) cw M pv av sts
+                  cs pidv HS).
   Qed.
 
   (* ret = -1: sys_exec's own early exits (the whole bundle back) folded
@@ -304,12 +315,13 @@ Section SysExecAU.
       (Q : Z -> iProp Σ)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
-      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate) : iProp Σ :=
-    (sys_exec_au_pre Fs Γ γfs cw Q P Pmiss Fo M pv av sts
+      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate)
+      (cs : gset gname) (pidv : mword 32) : iProp Σ :=
+    (sys_exec_au_pre Fs Γ γfs cw Q P Pmiss Fo M pv av sts cs pidv
      ∨ (∃ (pl : list (bv 8)) (na : nat) (alen : nat -> nat)
           (afun : nat -> nat -> bv 8),
           ⌜exec_path_of M pv pl⌝ ∗ ⌜exec_args_of M av na alen afun⌝ ∗
-          exec_post_fail Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts))%I.
+          exec_post_fail Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts cs pidv))%I.
 
   (* ...AND IT REFUNDS THE DEPOSIT (lane KILL-PAY, K4(a), ruling R-A):
      [SpecKexec.exec_post_fail_refund] at the second disjunct, and
@@ -318,8 +330,9 @@ Section SysExecAU.
       (γfs : fs_names) (cw : Z) (Q : Z -> iProp Σ)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
-      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate) :
-    sys_exec_post_fail Fs Γ γfs cw Q P Pmiss Fo M pv av sts
+      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate)
+      (cs : gset gname) (pidv : mword 32) :
+    sys_exec_post_fail Fs Γ γfs cw Q P Pmiss Fo M pv av sts cs pidv
       ⊢ Fs.(pf_refund).
   Proof.
     rewrite /sys_exec_post_fail /sys_exec_au_pre.
@@ -343,7 +356,7 @@ Section SysExecAU.
     (∃ U' : ustate,
        proc_priv γf pj pid U' ∗
        ((⌜r = (mword_of_int (-1) : mword 64) /\ us_V U' = V /\ us_M U' = M⌝
-         ∗ sys_exec_post_fail Fs Γ γfs cw Q P Pmiss Fo M pv av sts)
+         ∗ sys_exec_post_fail Fs Γ γfs cw Q P Pmiss Fo M pv av sts cs pid)
         ∨ (∃ (pl : list (bv 8)) (na : nat) (alen : nat -> nat)
              (afun : nat -> nat -> bv 8),
              ⌜exec_path_of M pv pl⌝ ∗ ⌜exec_args_of M av na alen afun⌝ ∗
@@ -436,7 +449,8 @@ Definition wp_sys_exec_sconf_body
   (* THE PAY FACT RIDES IN WITH THE BUNDLE -- see [SpecKexec]'s note; this
      contract relays it to kexec and does nothing else with it. *)
   my_pay gn Q -∗
-  sys_exec_au_pre Fs Γfs fsc_fs (pv_cwi (us_V U)) Q P Pmiss Fo (us_M U) v0 v1 sts -∗
+  sys_exec_au_pre Fs Γfs fsc_fs (pv_cwi (us_V U)) Q P Pmiss Fo (us_M U) v0 v1 sts
+    cs pid -∗
   wp_next true pj (fun (CID : CpuId) =>
   ∀ (mf : regfile) (P' : uptd) (M' : gmap Z (bv 8)),
       ⌜callee_saved m mf⌝ -∗

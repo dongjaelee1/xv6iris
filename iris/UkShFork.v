@@ -259,6 +259,7 @@ Section UkShFork.
      [wp_kshf_fork_any] -- the cwd-indexed state and the index-free arm --
      are gone with the index. *)
   Local Notation γpid := (ukn_pid N).
+  Local Notation ush_pid := (UkSh.ush_pid N).
   Local Notation ush_bstate := (UkSh.ush_bstate N γp T Wc Wb Pm).
 
   (* THE CREDENTIAL FAMILY IS TIMELESS, as the era's is
@@ -343,6 +344,45 @@ Section UkShFork.
      ∨ (∃ (γ : gname) (pidc : mword 32),
           ⌜Sw = Sc ∪ {[γ]}⌝ ∗ child_tok γ pidc Q))%I.
 
+  (* THE SET AFTER THE WAIT IS EMPTY AGAIN (lane EXEC-SEAM).  sh enters
+     with no children ([UkSh.ush_pstate]'s [uch γch ∅]), a turn forks at
+     most one, and its wait -- at a pid that is not <init>'s -- either
+     fails with the set empty ([UkRunSys.wp_uk_ecall_wait_null_pid]'s row)
+     or reaps out of sh's OWN set ([UserChildren.wait_ans]'s [γ' ∈ cs ∨
+     pidv = 1], the right disjunct refuted), and the only generation in
+     that set is the one the fork put there.  Pure, so the caller reads
+     it with an [iAssert ... as %] and keeps both answers. *)
+  Lemma ushf_wait_empty (Q : Z -> iProp Σ) (Rc : iProp Σ)
+      (Sw Sw' : gset gname) (ret : mword 64) (pidv : mword 32) :
+    pidv <> (mword_of_int 1 : mword 32) ->
+    (ret = (mword_of_int (-1) : mword 64) -> Sw' = (∅ : gset gname)) ->
+    ushf_fans ∅ Q Rc Sw -∗ uwait_ans_pid ret Sw Sw' pidv -∗
+    ⌜Sw' = (∅ : gset gname)⌝.
+  Proof.
+    intros Hne Hm1. iIntros "Hfans Hans".
+    rewrite /uwait_ans_pid /uwait_ans_at.
+    iDestruct "Hans" as (gn b rv xs) "[%Hr Hwa]".
+    rewrite /UserChildren.wait_ans.
+    iDestruct "Hwa" as "[[%Hf _] | Hreap]".
+    { iPureIntro. apply Hm1. rewrite Hr (proj1 Hf). exact UexecRet.sext_neg1_64. }
+    iDestruct "Hreap" as (γ') "(%Hrng & %Hoci & _ & _)".
+    destruct Hoci as [Hin | Heq]; [ | exfalso; exact (Hne Heq) ].
+    destruct Hrng as [HSw' _].
+    rewrite /ushf_fans. iDestruct "Hfans" as "[[%HSw _] | Hf]".
+    - iPureIntro. exfalso. rewrite HSw in Hin. set_solver.
+    - iDestruct "Hf" as (γ pidc) "[%HSw _]". iPureIntro.
+      rewrite HSw in Hin. rewrite HSw' HSw.
+      assert (Hg : γ' = γ) by set_solver. subst γ'. set_solver.
+  Qed.
+
+  (* sh's pid handle, as the wait row reads it: a [Z] other than 1 is a
+     word other than <init>'s *)
+  Lemma ushf_pid_ne_1 (pidv : mword 32) (p : Z) :
+    bv_unsigned pidv = p -> p <> 1 -> pidv <> (mword_of_int 1 : mword 32).
+  Proof.
+    intros Hp Hne Heq. apply Hne. rewrite <- Hp, Heq. vm_compute. reflexivity.
+  Qed.
+
   (* the first byte of the disciplined line is 'e' *)
   Lemma ushf_echo_byte0 : bv_unsigned (echo_line !!! 0%nat) = 101.
   Proof. vm_compute. reflexivity. Qed.
@@ -373,7 +413,9 @@ Section UkShFork.
     shk_code γt -∗ shk_rodata γt -∗ ush_jtab γt -∗
     ⌜ UkSh.ush_fd0p l ⌝ -∗
     ush_std l -∗ UserCwd.ucwd γcwd FsImg.ROOTINO -∗
-    UserChildren.uch_any γch -∗ UserChildren.upid_any γpid -∗
+    (* the loop's two identity fragments (lane EXEC-SEAM): no children at
+       the head, and a pid that is not <init>'s *)
+    UserChildren.uch γch ∅ -∗ ush_pid -∗
     (* what the parent lends, how a killer pays for it, and what fork1's
        panic spends -- borrowed, and back on the returning arm *)
     Rc -∗
@@ -417,10 +459,14 @@ Section UkShFork.
          (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
        WP (Loop : expr riscv_lang)) -∗
     (* THE PARENT'S RE-ENTRY: the head's slot out of what the fork and the
-       wait left, and what fork1 borrowed back *)
-    (∀ (Sc Sw Sw' : gset gname) (ret : mword 64) (pidv : mword 32),
+       wait left, and what fork1 borrowed back.  The fork went out at the
+       EMPTY set and the wait's row is at sh's own pid, which is not
+       <init>'s (lane EXEC-SEAM) -- so the arm can identify the reaped
+       generation. *)
+    (∀ (Sw Sw' : gset gname) (ret : mword 64) (pidv : mword 32),
+       ⌜ pidv <> (mword_of_int 1 : mword 32) ⌝ -∗
        ⌜ ret = (mword_of_int (-1) : mword 64) -> Sw' = (∅ : gset gname) ⌝ -∗
-       ushf_fans Sc Q Rc Sw -∗
+       ushf_fans ∅ Q Rc Sw -∗
        uwait_ans_pid ret Sw Sw' pidv -∗
        Pex -∗
        ◇ UkSh.ush_posb N γp T Wc Wb Pm l 0%nat) -∗
@@ -462,9 +508,8 @@ Section UkShFork.
        M3a) and closed again at the loop head: the fork MINTS the token at
        the generation that joined it, and the wait REPORTS what the reap
        left.  THE PAYLOAD AND THE LEND ARE THE CALLER'S (step 4). *)
-    iDestruct "Hch" as (Sc) "Hch".
     iApply (UkShDiag.wp_kshr_fork1_final N (ushf_pay f)
-              sz l ∅ h1 m1 (66 + n) FsImg.ROOTINO Sc Q Rc Pex HQc
+              sz l ∅ h1 m1 (66 + n) FsImg.ROOTINO ∅ Q Rc Pex HQc
               with "Hcode Hro [Hdat Hbuf] Hsz Hustd Hcwd Hch [] HRc Hkw
                     Hlease Hrun").
     { rewrite /ushf_pay.
@@ -481,7 +526,7 @@ Section UkShFork.
     iSplitL "Hpanic".
     { (* ================= THE PANIC: fork failed ======================= *)
       iIntros (hA mA rA) "%Hmsg %HrA Hans Hustd Hpex Hrun".
-      iApply ("Hpanic" $! Sc hA mA rA with "[%] [%] Hans Hustd Hpex Hrun");
+      iApply ("Hpanic" $! ∅ hA mA rA with "[%] [%] Hans Hustd Hpex Hrun");
         [ exact Hmsg | exact HrA ]. }
     iSplitL "Hhead Hpid Hre".
     - (* ================= THE PARENT: reap, and round again ============= *)
@@ -489,13 +534,13 @@ Section UkShFork.
       iDestruct "Hpay" as "(_ & _ & _ & Hdat & Hbuf)".
       (* WHAT THE FORK LEFT IN sh's HAND, at the set it grew to *)
       iAssert (∃ Sw : gset gname,
-                 UserChildren.uch (ukn_ch N) Sw ∗ ushf_fans Sc Q Rc Sw)%I
+                 UserChildren.uch (ukn_ch N) Sw ∗ ushf_fans ∅ Q Rc Sw)%I
         with "[Hans]" as "Hchx".
       { rewrite /ushf_fans.
         iDestruct "Hans" as "[(_ & Hf & HRc) | Hpid']".
-        - iExists Sc. iFrame "Hf". iLeft. iFrame "HRc". by iPureIntro.
+        - iExists ∅. iFrame "Hf". iLeft. iFrame "HRc". by iPureIntro.
         - iDestruct "Hpid'" as (γ pidv) "(_ & _ & Htok & Hf)".
-          iExists (Sc ∪ {[γ]}). iFrame "Hf". iRight.
+          iExists (∅ ∪ {[γ]}). iFrame "Hf". iRight.
           iExists γ, pidv. iFrame "Htok". by iPureIntro. }
       iDestruct "Hchx" as (Sw) "[Hch Hfans]".
       (* ---- 0x930  c.beqz a0,0x9c0 -- NOT taken: this is the parent ---- *)
@@ -555,14 +600,21 @@ Section UkShFork.
       assert (Hra_C : mC !!! Regidx ra_idx = (mword_of_int 0x938 : mword 64))
         by exact (upd_eq mB (Regidx ra_idx) _).
       (* ---- wait((int * )0), AT sh's OWN PID (step 4) ---- *)
-      iDestruct "Hpid" as (pid) "Hpid".
+      iDestruct "Hpid" as (pid) "[%Hpid1 Hpid]".
       iApply (UkShRun.wp_kshr_wait_pid Hpsok_free N hD mC
                 (2 + (UkShDiag.ush_Dg + (66 + n))) Sw pid Ha0_C
                 with "Hcode Hrun Hch Hpid").
       iIntros (hE ret Sw' pidv) "%Hpv Hpid %Hneg1 Hans Hrun Hch".
-      iDestruct (UserChildren.uch_any_of with "Hch") as "Hch".
-      iAssert (UserChildren.upid_any γpid) with "[Hpid]" as "Hpid";
-        [ iExists pid; iExact "Hpid" | ].
+      (* THE SET IS EMPTY AGAIN (lane EXEC-SEAM): the wait reaped the one
+         generation the fork put in, or failed with the set empty *)
+      assert (Hpv1 : pidv <> (mword_of_int 1 : mword 32))
+        by exact (ushf_pid_ne_1 pidv pid Hpv Hpid1).
+      iAssert (⌜Sw' = (∅ : gset gname)⌝)%I as %HSw'.
+      { iApply (ushf_wait_empty Q Rc Sw Sw' ret pidv Hpv1 Hneg1
+                  with "Hfans Hans"). }
+      iEval (rewrite HSw') in "Hch".
+      iAssert ush_pid with "[Hpid]" as "Hpid";
+        [ iExists pid; iSplitR; [ iPureIntro; exact Hpid1 | iExact "Hpid" ] | ].
       rewrite Hra_C.
       assert (Eret2 : ret_pc (mword_of_int 0x938 : mword 64)
                       = mword_of_int 0x938)
@@ -602,8 +654,8 @@ Section UkShFork.
         with (16 + (80 + n))%nat by (unfold UkShDiag.ush_Dg; lia).
       (* THE RE-ENTRY: the head's slot out of what the fork and the wait
          left (the caller's law), and the head *)
-      iMod ("Hre" $! Sc Sw Sw' ret pidv with "[%] Hfans Hans Hlease") as "Hpos";
-        [ exact Hneg1 | ].
+      iMod ("Hre" $! Sw Sw' ret pidv with "[%] [%] Hfans Hans Hlease") as "Hpos";
+        [ exact Hpv1 | exact Hneg1 | ].
       iApply ("Hhead" $! hE mD f n
                 with "[%] [%] [Hustd Hcwd Hch Hpid Hpos] Hdat Hsz Hbuf Hrun").
       + exact HregsD.
@@ -790,7 +842,7 @@ Section UkShFork.
         * iApply (ushf_rodata_shp with "Hro'").
         * iApply (UserChildren.uch_any_of with "Hch'").
       + (* the re-entry, with the pieces back in hand *)
-        iIntros (Sc Sw Sw' ret pidv) "%Hm1 Hfans Hans Hpm".
+        iIntros (Sw Sw' ret pidv) "%Hpv1 %Hm1 Hfans Hans Hpm".
         rewrite /ushf_fans. iDestruct "Hfans" as "[[%HSw HRc] | Hfans]".
         { (* the lend came back whole: a fork that failed (the relayed
              row; fork1 panics before this) re-enters at the boundary *)
@@ -810,24 +862,23 @@ Section UkShFork.
             by (rewrite Hr Hrv; exact UexecRet.sext_neg1_64).
           specialize (Hm1 Hret1). rewrite Hm1 in Hcs. set_solver. }
         iDestruct "Hreap" as (γ') "(%Hrng & %Hin & Hesc & #Huniq)".
-        destruct (decide (γ' = γ)) as [-> | Hne].
-        * (* THE REDEMPTION: the reaped generation is the child sh forked,
-             so its escrow carries the payload sh chose *)
-          iDestruct (exit_tok_pid with "Hesc") as "#Hgp".
-          iDestruct (child_tok_pid with "Htok Hgp") as %<-.
-          iMod (gen_pay_timeless γ pidc (fun _ : Z => ushf_wq np) xs
-                  with "Htok Hesc") as "HQ".
-          iModIntro.
-          iApply (UkSh.ush_posb_of_wc N γp T Wc Wb Pm l 0%nat np Hbnd
-                    with "Hpm [HQ]").
-          rewrite /UkSh.ush_wcp. iLeft. iSplitR; [ by iPureIntro | ].
-          rewrite /ushf_wq. iDestruct "HQ" as "[HQ | HQ]";
-            [ iApply (Hwbl np with "HQ") | iExact "HQ" ].
-        * (* NOT THE CHILD IT FORKED: the affine arm -- see the header *)
-          iModIntro.
-          iApply (UkSh.ush_posb_of_wc N γp T Wc Wb Pm l 0%nat np Hbnd
-                    with "Hpm []").
-          rewrite /UkSh.ush_wcp. iRight. iRight. done.
+        (* THE REAPED GENERATION IS THE CHILD SH FORKED (lane EXEC-SEAM):
+           the set the wait read held that one generation alone -- sh
+           entered with none -- and sh is not <init>, so the row's
+           orphan disjunct is refuted and the membership names it. *)
+        destruct Hin as [Hin | Heq]; [ | exfalso; exact (Hpv1 Heq) ].
+        assert (Hgg : γ' = γ) by set_solver. subst γ'.
+        (* THE REDEMPTION: its escrow carries the payload sh chose *)
+        iDestruct (exit_tok_pid with "Hesc") as "#Hgp".
+        iDestruct (child_tok_pid with "Htok Hgp") as %<-.
+        iMod (gen_pay_timeless γ pidc (fun _ : Z => ushf_wq np) xs
+                with "Htok Hesc") as "HQ".
+        iModIntro.
+        iApply (UkSh.ush_posb_of_wc N γp T Wc Wb Pm l 0%nat np Hbnd
+                  with "Hpm [HQ]").
+        rewrite /UkSh.ush_wcp. iLeft. iSplitR; [ by iPureIntro | ].
+        rewrite /ushf_wq. iDestruct "HQ" as "[HQ | HQ]";
+          [ iApply (Hwbl np with "HQ") | iExact "HQ" ].
     - (* ============ THE AFFINE ARM AND THE TAINT: the generic walk ====== *)
       iDestruct (UkSh.ush_posb_at N γp T Wc Wb Pm Hpm2 l 3%nat with "Hpos")
         as (np0) "[#Hbnd0 Hpos]".
@@ -871,7 +922,7 @@ Section UkShFork.
         * iApply (UserChildren.uch_any_of with "Hch'").
       + (* the re-entry: the payload comes apart on the affine arm, as
            before *)
-        iIntros (Sc Sw Sw' ret pidv) "_ _ _ Hlease". iModIntro.
+        iIntros (Sw Sw' ret pidv) "_ _ _ _ Hlease". iModIntro.
         iApply (UkSh.ush_posb_of N γp T Wc Wb Pm Hpm1 l 0%nat np0
                   with "Hbnd0 [Hpos Hlease]").
         rewrite /UkSh.ush_at. iFrame "Hpos Hlease".

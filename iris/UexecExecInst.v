@@ -471,7 +471,7 @@ Section UexecExecInst.
      sys_exec_au_pre (MkPfam X (xf_Rs f)) (fs_gamma_L fsc_fs) fsc_fs
        (uvis_cwd W) (kf_xpay f) (xf_P f) (xf_Pmiss f) (xf_Fo f)
        (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
-       (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W))%I.
+       (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W))%I.
 
   Lemma exec_sbundle_ne (n : nat) :
     Proper (dist n ==> eq ==> eq ==> dist n) exec_sbundle.
@@ -482,7 +482,7 @@ Section UexecExecInst.
     rewrite (sys_exec_au_pre_ne n X Y (xf_Rs f) (fs_gamma_L fsc_fs) fsc_fs
                (uvis_cwd W) (kf_xpay f) (xf_P f) (xf_Pmiss f) (xf_Fo f)
                (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
-               (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) HXY).
+               (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) HXY).
     reflexivity.
   Qed.
 
@@ -497,10 +497,14 @@ Section UexecExecInst.
     uvis_fd W = uvis_fd W' ->
     uvis_cwd W = uvis_cwd W' ->
     uvis_gen W = uvis_gen W' ->
+    (* ...and the two identity readings the AU half now carries (lane
+       EXEC-SEAM); [UexecSG.skey_eq] pins both *)
+    uvis_ch W = uvis_ch W' ->
+    uvis_pid W = uvis_pid W' ->
     exec_sbundle X f W ⊣⊢ exec_sbundle X f W'.
   Proof.
-    intros HM Hpv Hav Hfd Hcw Hgn.
-    rewrite /exec_sbundle HM Hpv Hav Hfd Hcw Hgn. reflexivity.
+    intros HM Hpv Hav Hfd Hcw Hgn Hch Hpi.
+    rewrite /exec_sbundle HM Hpv Hav Hfd Hcw Hgn Hch Hpi. reflexivity.
   Qed.
 
   (* ===================================================================== *)
@@ -782,10 +786,10 @@ Section UexecExecInst.
     skey_eq W W' -> xv6_sbundle X n f W ⊣⊢ xv6_sbundle X n f W'.
   Proof.
     intros Hk.
-    pose proof Hk as (HM & Ha0 & Ha1 & Ha2 & Hfd & Hcw & Hgn & _ & _ & _ & _).
+    pose proof Hk as (HM & Ha0 & Ha1 & Ha2 & Hfd & Hcw & Hgn & Hch & Hpi & _ & _).
     rewrite /xv6_sbundle.
     destruct (decide (n = USYS_exec)) as [_ | _];
-      [ exact (exec_sbundle_cong X f W W' HM Ha0 Ha1 Hfd Hcw Hgn) | ].
+      [ exact (exec_sbundle_cong X f W W' HM Ha0 Ha1 Hfd Hcw Hgn Hch Hpi) | ].
     rewrite /xk_a /tf_w HM Ha0 Ha1 Ha2 Hfd Hcw.
     reflexivity.
   Qed.
@@ -837,14 +841,14 @@ Section UexecExecInst.
     rewrite /exec_slot_pre.
     iDestruct "Hslot" as "[Hsa Hsb]".
     iSplitL "Hsa".
-    - iIntros (av i ff nl W') "HP Ho %Hld %Him %Hcwq %Hlzq Hpy".
+    - iIntros (av i ff nl W') "HP Ho %Hld %Him %Hcwq %Hlzq %Hchq %Hpiq Hpy".
       iApply "Hup".
-      iApply ("Hsa" $! av i ff nl W' with "HP Ho [%] [%] [%] [%] Hpy");
-        [ exact Hld | exact Him | exact Hcwq | exact Hlzq ].
-    - iIntros (av i a W') "HP Ho %Hnl %Hkk %Hcwq %Hlzq Hpy".
+      iApply ("Hsa" $! av i ff nl W' with "HP Ho [%] [%] [%] [%] [%] [%] Hpy");
+        [ exact Hld | exact Him | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq ].
+    - iIntros (av i a W') "HP Ho %Hnl %Hkk %Hcwq %Hlzq %Hchq %Hpiq Hpy".
       iApply "Hup".
-      iApply ("Hsb" $! av i a W' with "HP Ho [%] [%] [%] [%] Hpy");
-        [ exact Hnl | exact Hkk | exact Hcwq | exact Hlzq ].
+      iApply ("Hsb" $! av i a W' with "HP Ho [%] [%] [%] [%] [%] [%] Hpy");
+        [ exact Hnl | exact Hkk | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq ].
   Qed.
 
   (* THE SUPPLY.  Opaque in the class, and at THIS instance it is the
@@ -987,8 +991,8 @@ Section UexecExecInst.
          could answer only one of them, and the new image is handed no
          payload by the kernel any more. *)
       rewrite /exec_slot_pre. iSplitR.
-      + iIntros (av' i ff nl W') "_ _ _ _ _ _ Hp". iApply ("Hs" with "Hp HR").
-      + iIntros (av' i a W') "_ _ _ _ _ _ Hp". iApply ("Hs" with "Hp HR").
+      + iIntros (av' i ff nl W') "_ _ _ _ _ _ _ _ Hp". iApply ("Hs" with "Hp HR").
+      + iIntros (av' i a W') "_ _ _ _ _ _ _ _ Hp". iApply ("Hs" with "Hp HR").
     - iApply (xv6_sbundle_of_supply_ne X n W (fun _ => R)%I Hne).
       rewrite /xv6_ssupply. iModIntro.
       iSplit; [ iExact "Hsup"
@@ -1278,7 +1282,7 @@ Section UexecExecInst.
     sys_exec_au_pre (MkPfam X Rs) (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       (fun _ => True)%I P Pmiss Fo
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
-      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) -∗
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) -∗
     sbundle_at X USYS_exec (xfam_exec P Pmiss Fo Rs) W.
   Proof.
     iIntros "Hmp H". rewrite /sbundle_at /= /xv6_sbundle.
@@ -1294,7 +1298,7 @@ Section UexecExecInst.
     sys_exec_au_pre (MkPfam X Rs) (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       (fun _ => True)%I P Pmiss Fo
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
-      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) -∗
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) -∗
     sbundle X USYS_exec W.
   Proof.
     iIntros "Hmp H". rewrite /sbundle. iExists (xfam_exec P Pmiss Fo Rs).
@@ -1316,7 +1320,7 @@ Section UexecExecInst.
     sys_exec_au_pre (MkPfam X Rs) (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       Q P Pmiss Fo
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
-      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) -∗
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) -∗
     sbundle_pay X USYS_exec Q W.
   Proof.
     iIntros "Hmp H". rewrite /sbundle_pay.
@@ -1341,7 +1345,7 @@ Section UexecExecInst.
     sys_exec_au_pre (MkPfam X Rs) (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       Q P Pmiss Fo
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
-      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) -∗
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) -∗
     sbundle_pay_ref X Q W.
   Proof.
     iIntros "#Hrf Hmp H". rewrite /sbundle_pay_ref.
@@ -1360,7 +1364,7 @@ Section UexecExecInst.
     sys_exec_au_pre (MkPfam X (xf_Rs f)) (fs_gamma_L fsc_fs) fsc_fs
       (uvis_cwd W) (kf_xpay f) (xf_P f) (xf_Pmiss f) (xf_Fo f)
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
-      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W).
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W).
   Proof.
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle.
     destruct (decide (USYS_exec = USYS_exec)) as [_ | Hc];
@@ -1376,7 +1380,7 @@ Section UexecExecInst.
       sys_exec_au_pre (MkPfam X Rs) (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
         Q P Pmiss Fo
         (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
-        (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W).
+        (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W).
   Proof.
     iIntros "H". rewrite /sbundle. iDestruct "H" as (f) "H".
     iDestruct (sbundle_at_exec_elim X f W with "H") as "H".

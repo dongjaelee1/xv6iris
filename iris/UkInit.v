@@ -1746,12 +1746,21 @@ Section UkInit.
           [PinnedExec]'s [Pay] beside the position and lands in the
           shell's loop as its PIECES ([UkSh.ush_posb]). *)
        ucons_pay cn γ T Rdl (-1) -∗
+       (* ...AND THE CHILD'S TWO IDENTITY FRAGMENTS (lane EXEC-SEAM): a
+          fork child has no children yet and is not <init>
+          ([UkFork.wp_uk_ecall_fork]'s child arm), and the shell's entry
+          reads both facts off the key it is resumed at
+          ([SpecKexec.exec_slot_pre]'s identity rows) -- so the fragments
+          cross here and are spent against the record's authorities inside
+          the deposit ([UkRunExecRef.udepw_at_refR_ids]). *)
+       UserChildren.uch (ukn_ch N') ∅ -∗
+       (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid (ukn_pid N') p) -∗
        (* ...AND THE REFUND IS THE LEND ITSELF (lane M6b), ledger included:
           a failed exec hands the four back at the shapes they went in at,
           which is what the diagnostic and the exit after it are paid
           from.  [UkRun.udepw_at_ref] could only name the record's own
           exit payload, and the credential does not fit in that family. *)
-       udepw_at_refR N' m pc FsImg.ROOTINO
+       udepw_at_refR_ids N' m pc FsImg.ROOTINO
          (init_lend_ref cn T st Wp Wb Rdl (ukn_fd N') l γ n))%I.
 
   Definition init_exec_sup_lend (cn : cons_names) (T : iProp Σ)
@@ -1809,7 +1818,7 @@ Section UkInit.
        [UkRun.udepw]'s left disjunct excludes it by construction.  The
        caller hands it in, at the key the ecall traps from and at the one
        working directory it answers for. *)
-    udepw_at_refR N
+    udepw_at_refR_ids N
       (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> m)
       (mword_of_int 0x3ac) c R -∗
     (* exec only comes back when it FAILED, and then it returns -1 -- AND
@@ -1844,7 +1853,7 @@ Section UkInit.
     rewrite E0 Em.
     iIntros (h1) "Hrun".
     set (m1 := <[Regidx a7_idx := (mword_of_int 7 : mword 64)]> m).
-    iApply (wp_uk_ecall_exec_at_cwd_refR N h1 m1 (mword_of_int 0x3ac) avail c R
+    iApply (wp_uk_ecall_exec_at_cwd_refR_ids N h1 m1 (mword_of_int 0x3ac) avail c R
               ltac:(unfold m1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 7 : mword 64));
                     vm_compute; reflexivity)

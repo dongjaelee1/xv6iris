@@ -611,7 +611,7 @@ Section KexecAUExit.
       gf fsc_kalloc pj pidv m ret_tgt K b eb lks dqb dqs fsc_bmapstart
       na plen pv dqpv pfun av dqa avf aslen dqas afun -∗
     SpecKexec.exec_post_fail Fs ΓL fsc_fs (pv_cwi (us_V U)) Qpay P Pmiss Fo
-      (bview plen pfun) na alen afun sts -∗
+      (bview plen pfun) na alen afun sts cs pidv -∗
     KexecOkQ.kexec_closer (CID := CIDx)
       kxau_QF (fun _ : KexecOkQ.kxf_cause => Logic.True)
       gf fsc_kalloc pj pidv U m ret_tgt K b eb lks dqb dqs fsc_bmapstart
@@ -664,7 +664,7 @@ Section KexecAUExit.
       gf fsc_kalloc pj pidv m ret_tgt K b eb lks dqb dqs fsc_bmapstart
       na plen pv dqpv pfun av dqa avf aslen dqas afun -∗
     PA.kxa_receipt Fs P Fo Qpay (pv_cwi (us_V U)) (length (path_elems pl)) zi
-                   na alen afun sts dn bm datl -∗
+                   na alen afun sts cs pidv dn bm datl -∗
     KexecOkQ.kexec_closer (CID := CIDx)
       (KexecBridge.exec_built_Q (kxc_fb datl dn) ef na alen afun)
       (kxau_QFp (kxc_fb datl dn) na alen)
@@ -729,7 +729,7 @@ Section KexecAUExit.
         iDestruct (pf_at_au with "Hsl") as "[Hsl _]".
         iApply ("Hsl" $! av0 zi (kxc_fb datl dn) nl
                   (SpecKexec.exec_key U' sts gn cs pidv na)
-                  with "HP HΦ [%] [%] [%] [%] Hmp");
+                  with "HP HΦ [%] [%] [%] [%] [%] [%] Hmp");
           [ exact Hload | exact Himg
           (* THE KEY'S CWD is the caller's: exec does not chdir, so the
              post-exec block's inum is the entry block's
@@ -739,7 +739,11 @@ Section KexecAUExit.
           (* ...AND ITS LAZY BIT IS CLEAR (lane LAZY-FLAG, K4): exec's image
              is eager, and [KexecDefs.kexec_ok]'s own row says so *)
           | rewrite SpecKexec.exec_key_lazy;
-            exact (SpecKexec.kexec_ok_exec_lazy _ _ _ _ _ _ Hokx) ].
+            exact (SpecKexec.kexec_ok_exec_lazy _ _ _ _ _ _ Hokx)
+          (* ...AND ITS CHILDREN SET AND PID ARE THE CALLER'S (lane
+             EXEC-SEAM): both go straight into the key, by reflexivity *)
+          | exact (SpecKexec.exec_key_ch U' sts gn cs pidv na)
+          | exact (SpecKexec.exec_key_pid U' sts gn cs pidv na) ].
     - (* NOT A LOADABLE FILE.  Arm (b) on success, [EfNotLoadable] on a
          failure past the lock. *)
       destruct Hq as [(Hr & HV & (_ & _ & HM)) | Hsucc].
@@ -780,7 +784,7 @@ Section KexecAUExit.
         iDestruct (pf_at_au with "Hsl") as "[_ Hsl]".
         iApply ("Hsl" $! av0 zi (abs_row (FsStateEra.era_node dn bm datl))
                   (SpecKexec.exec_key U' sts gn cs pidv na)
-                  with "HP HΦ [%] [%] [%] [%] Hmp").
+                  with "HP HΦ [%] [%] [%] [%] [%] [%] Hmp").
         { exact Hnl. }
         { exact (SpecKexec.kexec_ok_exec_key_ok U U' sts gn cs pidv
                    (mf !!! Regidx Ra0)
@@ -790,6 +794,9 @@ Section KexecAUExit.
           exact (SpecKexec.kexec_ok_cwi _ _ _ _ _ _ _ _ Hne Hkok). }
         { rewrite SpecKexec.exec_key_lazy.
           exact (SpecKexec.kexec_ok_lazy _ _ _ _ _ _ _ _ Hne Hkok). }
+        (* ...and the two identity rows, by reflexivity (lane EXEC-SEAM) *)
+        { exact (SpecKexec.exec_key_ch U' sts gn cs pidv na). }
+        { exact (SpecKexec.exec_key_pid U' sts gn cs pidv na). }
   Qed.
 
 End KexecAUExit.
@@ -878,7 +885,7 @@ Section KexecAUMain.
     iApply (PA.kxc_phaseA_au (CID0 := CID0) Fs kxau_QF
               (fun _ : KexecOkQ.kxf_cause => Logic.True) Qpay
               gs jp gl pd pav pu gf
-              plen pfun na avf alen aslen afun pidv U sts dqb dqs dqa dqpv dqas
+              plen pfun na avf alen aslen afun pidv U sts cs dqb dqs dqa dqpv dqas
               m K eb eb ∅
               (m !!! Regidx csp_rs1) (m !!! Regidx Rra) (m !!! Regidx Rs0)
               (m !!! Regidx Rs1) (m !!! Regidx Rs2)

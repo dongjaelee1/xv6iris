@@ -510,6 +510,15 @@ Section UShKernel.
        LAZY-FLAG's K4 puts [uvis_lazy W' = false] on
        [SpecKexec.kexec_image_ok] and on [exec_slot_pre]'s two wands. *)
     uvis_lazy W = false ->
+    (* ...AND ITS TWO IDENTITY ROWS (lane EXEC-SEAM): a freshly exec'd sh
+       has NO CHILDREN and is NOT <init>.  Both are read off
+       [SpecKexec.exec_slot_pre]'s wands by the caller (init's supply, which
+       spends its child's fragments for them), and both go into the loop's
+       state ([UkSh.ush_pstate]): the children set is what lets the wait
+       redeem the one child sh forks, the pid is what says the reaped
+       generation came out of sh's OWN set. *)
+    uvis_ch W = ∅ ->
+    bv_unsigned (uvis_pid W) <> 1 ->
     (* THE PAYLOAD.  The data below the frame is handed over whole, and it
        is here that it is spent: on the line buffer, which every stage has
        needed, AND on [R] -- the two static lexer tables, the allocator's
@@ -607,7 +616,7 @@ Section UShKernel.
     UkSh.ush_wcp Wc Wb (take NSTD (uvis_fd W)) n 0%nat -∗
     uslot W.
   Proof.
-    intros Hbd HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf.
+    intros Hbd HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf Hch0 Hpid1.
     iIntros "#Hpay #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 Hin #Hgen #Hmp Hpos
              Hlease Hwcp".
     iApply (uslot_of_urun_all W (2 + (8 + (16 + (ush_Dbody + n0)))) Q
@@ -663,9 +672,11 @@ Section UShKernel.
       iApply (UkSh.ush_jtab_of_rodata (ukn_t N) with "Hro").
     - rewrite /UkSh.ush_std. iExact "Hstd".
     - rewrite <- Hcwd0. iExact "Hcwf".
-    - iApply (uch_any_of with "Hchf").
-    - (* ...and sh's own pid, as a handle (step 4) *)
-      rewrite /UserChildren.upid_any. iExists _. iExact "Hpidf".
+    - (* the children set, at the EMPTY set the key carries (lane EXEC-SEAM) *)
+      rewrite <- Hch0. iExact "Hchf".
+    - (* ...and sh's own pid, as a handle (step 4) with its one fact *)
+      rewrite /UkSh.ush_pid. iExists (bv_unsigned (uvis_pid W)).
+      iSplitR; [ iPureIntro; exact Hpid1 | iExact "Hpidf" ].
     - (* THE LOOP'S CURSOR, OUT OF THE RAW LEND AND THE CREDENTIAL SLOT
          (lane IO-LEAF, step 3) *)
       iApply (Hbd N (take NSTD (uvis_fd W)) n Hpayeq with "Hpos Hlease Hwcp").
@@ -740,6 +751,10 @@ Section UShKernel.
        [KexecBuilt]'s coverage row is what will make this a READING of
        [kexec_image_ok] instead of a premise (lane LAZY-FLAG, K4). *)
     uvis_lazy W' = false ->
+    (* ...and the two identity rows, passed straight through: see
+       [sh_uexec_slot] (lane EXEC-SEAM) *)
+    uvis_ch W' = ∅ ->
+    bv_unsigned (uvis_pid W') <> 1 ->
     (* the payload, passed straight through: see [sh_uexec_slot] *)
     (* the payload, passed straight through.  ITS [|==>] is lane SH-STATE's:
        sh's static state holds the two lexer tables at [DfracDiscarded]
@@ -785,7 +800,7 @@ Section UShKernel.
     UkSh.ush_wcp Wc Wb (take NSTD sts) n 0%nat -∗
     uslot W'.
   Proof.
-    intros Hbd HQc Hok Hcwd0 Hroom Hlen Hlzf.
+    intros Hbd HQc Hok Hcwd0 Hroom Hlen Hlzf Hch0 Hpid1.
     (* THE MAP STOPS AT THE BREAK, off the image fact's own row: exec built
        a fresh address space, so [KexecBuilt.kxb_perm_below] says it maps
        nothing above the break, which is what lets sh's later [sbrk] see
@@ -890,6 +905,8 @@ Section UShKernel.
     - exact Hstop.
     - exact Hcwd0.
     - exact Hlzf.
+    - exact Hch0.
+    - exact Hpid1.
   Qed.
 
 End UShKernel.

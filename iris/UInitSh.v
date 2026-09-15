@@ -941,7 +941,7 @@ Section UInitSh.
     sys_exec_au_pre (MkPfam X Rs) (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       Q P Pmiss Fo
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
-      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) -∗
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) -∗
     sbundle_pay_refR X Q R W.
   Proof.
     iIntros "#Hrf Hmp H". rewrite /sbundle_pay_refR.
@@ -1145,8 +1145,21 @@ Section UInitSh.
        needs is [length fdv = NOFILE], which comes off the LENT authority
        ([UserFd.ufd_auth_len]) rather than off the ledger. *)
     iModIntro. iIntros (γp np N m pc l)
-      "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease".
-    rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
+      "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
+    rewrite /udepw_at_refR_ids.
+    iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd Hids".
+    (* ---- THE TWO IDENTITY READINGS (lane EXEC-SEAM), off the lent
+       authorities against the child's own fragments: the key's children
+       set is EMPTY and its pid is not <init>'s.  Both are pure, so the
+       fragments are spent and the authorities go straight back. ---- *)
+    iDestruct (urun_ids_ch with "Hids") as "[Hcha Hidsb]".
+    iDestruct (UserChildren.uch_agree with "Hcha Hchf") as %Hcs.
+    iDestruct ("Hidsb" $! cs with "Hcha") as "Hids".
+    iDestruct "Hpidf" as (p) "[%Hp1 Hpidf]".
+    iDestruct (urun_ids_pid with "Hids") as "[Hpida Hidsb]".
+    iDestruct (UserChildren.upid_agree with "Hpida Hpidf") as %Hpv.
+    iDestruct ("Hidsb" with "Hpida") as "Hids".
+    iClear "Hchf Hpidf".
     (* ---- the two image readings, off the lent heap ---- *)
     iAssert (⌜uimg_sub UCodeInit.init_ro M⌝)%I as %Hsro.
     { iIntros (a b Hb).
@@ -1179,7 +1192,7 @@ Section UInitSh.
        ([UkInit.init_lend_ref]) -- the shell's slot converts the credential
        where it is built ([Hcon] below), and the refund wand hands the four
        back without looking at them. *)
-    iFrame "Hheap Hufd".
+    iFrame "Hheap Hufd Hids".
     (* ---- sh's constructor, at every key the image fact admits ---- *)
     (* THE PAYLOAD RIDES WITH THE PAY FACT ([SpecKexec.exec_slot_pre]): the
        kernel holds the exec'ing process's own payment across this call and
@@ -1223,6 +1236,11 @@ Section UInitSh.
                      off the wand here and restated nowhere. *)
                   ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗
                   ⌜uvis_lazy W' = false⌝ -∗
+                  (* ...AND THE TWO IDENTITY ROWS (lane EXEC-SEAM): the
+                     key's children set and pid are the exec'ing child's,
+                     read above as [∅] and as a pid other than 1. *)
+                  ⌜uvis_ch W' = cs⌝ -∗
+                  ⌜uvis_pid W' = pidv⌝ -∗
                   ⌜exec_args_of M (mword_of_int 0x1000 : mword 64)
                      na alen afun⌝ -∗
                   my_pay (uvis_gen W') (ucons_pay cn γp T (UkInit.init_rd Rdl Wb)) -∗
@@ -1235,7 +1253,10 @@ Section UInitSh.
       as "#Hcon".
     { iModIntro.
       iIntros (na alen afun W')
-        "%Hok %Hcwd0 %Hlzf %Hargs #Hmp [[#Hp1 [#Hp2 #Htag]] [Hps [Hls [Hstd' Hcred]]]]".
+        "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq %Hargs #Hmp [[#Hp1 [#Hp2 #Htag]] [Hps [Hls [Hstd' Hcred]]]]".
+      assert (Hch0 : uvis_ch W' = ∅) by (rewrite Hchq; exact Hcs).
+      assert (Hpid1 : bv_unsigned (uvis_pid W') <> 1)
+        by (rewrite Hpiq Hpv; exact Hp1).
       (* ...AND THE CREDENTIAL, AT THE SAME LEDGER (step 3; M6b): /init
          lent it correlated with the row ([UkInit.init_lend_cred]), so it
          lands in the loop's slot on the arm the row names -- the
@@ -1279,7 +1300,7 @@ Section UInitSh.
                     1%nat alen afun fdv W' n0 np
                     (fun N0 l0 n1 => Hbd γp N0 l0 n1)
                     (ucons_pay_const cn γp T (UkInit.init_rd Rdl Wb)) Hok Hcwd0
-                    (init_sh_room alen n0 Halen Hn0) Hlen Hlzf) as Hsk.
+                    (init_sh_room alen n0 Halen Hn0) Hlen Hlzf Hch0 Hpid1) as Hsk.
       idtac "MARK-s4c-pose-ok".
       iApply (Hsk with "[] Hdep Hdp Htag Hplaw [] [] Hcons Hgen' Hmp Hps
                         Hls Hwcp").
@@ -1302,7 +1323,7 @@ Section UInitSh.
                            (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
                            Wp Wb l np))%I
                  (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
-                 M (mword_of_int 0x9a8) (mword_of_int 0x1000) fdv
+                 M (mword_of_int 0x9a8) (mword_of_int 0x1000) fdv cs pidv
                  init_sh_pin_resolves sh_elf_loadable
                  (init_sh_path_of M Hsro)
                  with "Hcl Hinv Hcon Hgen' [Hpos Hlease Hstd Hcred]")

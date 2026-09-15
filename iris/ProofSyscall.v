@@ -3618,7 +3618,7 @@ Section SyscallArms.
     ∃ (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (gmap Z FsAbsDefs.anode -> Z -> FsAbsDefs.anode -> iProp Σ)),
       sys_exec_au_pre (MkPfam uslot (sexec_refund f)) (fs_gamma_L fsc_fs) fsc_fs
-        (pv_cwi (us_V U)) (kf_xpay f) P Pmiss Fo (us_M U) v0 v1 sts.
+        (pv_cwi (us_V U)) (kf_xpay f) P Pmiss Fo (us_M U) v0 v1 sts cs pid.
   Proof.
     intros Hn Hv0 Hv1. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 7 Hn ltac:(vm_compute; discriminate)
@@ -3627,7 +3627,7 @@ Section SyscallArms.
     cbn [uvis_gen uvis_of] in *.
     iFrame "Hmp".
     iExists (xf_P f), (xf_Pmiss f), (xf_Fo f).
-    rewrite /uvis_of /tf_w. cbn [uvis_M uvis_tf uvis_fd].
+    rewrite /uvis_of /tf_w. cbn [uvis_M uvis_tf uvis_fd uvis_ch uvis_pid].
     rewrite (list_lookup_total_correct _ _ _ Hv0).
     rewrite (list_lookup_total_correct _ _ _ Hv1). iExact "H".
   Qed.

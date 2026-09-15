@@ -134,12 +134,13 @@ Section SysExecAUBridge.
       (Pw Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Mim : gmap Z (bv 8)) (pvp avp : mword 64) (sts : list fdstate)
+      (cs : gset gname) (pidv : mword 32)
       (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8) :
     exec_path_of Mim pvp pl ->
     exec_args_of Mim avp na alen afun ->
-    sys_exec_au_pre Fs Γ γfs cw Qpay Pw Pmiss Fo Mim pvp avp sts -∗
-    exec_au_pre Fs Γ γfs cw Qpay Pw Pmiss Fo pl na alen afun sts.
+    sys_exec_au_pre Fs Γ γfs cw Qpay Pw Pmiss Fo Mim pvp avp sts cs pidv -∗
+    exec_au_pre Fs Γ γfs cw Qpay Pw Pmiss Fo pl na alen afun sts cs pidv.
   Proof.
     intros Hpsh Hsh. rewrite /sys_exec_au_pre /exec_au_pre.
     iIntros "(Hera & Hcom & Hslot)".
@@ -286,7 +287,8 @@ Section SysExecBreakAU.
        of what its exit owes, which the new image's slot is built against
        ([SpecKexec.exec_slot_pre]) *)
     my_pay gn Qpay -∗
-    sys_exec_au_pre Fs (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) Qpay Pw Pmiss Fo Mim pvp avp sts -∗
+    sys_exec_au_pre Fs (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) Qpay Pw Pmiss Fo Mim pvp avp sts
+      cs pid -∗
     sx_body γf jp pid U K eb b lks sp0 m plen pfun rest uav
             M P i pg alen afun uvf (mword_of_int (SX + 0xb6) : mword 64) -∗
     wp_next b (proc_addr jp) (fun (CID : CpuId) =>
@@ -350,7 +352,7 @@ Section SysExecBreakAU.
       - intros j Hj. rewrite (sx_avf_lt uvf i j Hj).
         exact (proj2 (proj2 (Havok j Hj))). }
     iDestruct (sys_exec_au_pre_at Fs (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) Qpay Pw Pmiss Fo
-                 Mim pvp avp sts (bview plen pfun) i alen afun
+                 Mim pvp avp sts cs pid (bview plen pfun) i alen afun
                  Hpof Hargs with "Hau") as "Hau".
     iDestruct (sx_carry_open sp0 m plen pfun rest with "Hcarry")
       as "(Hf1 & Hf2 & Hspill & F10 & Hpb & Hps)".

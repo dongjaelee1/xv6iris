@@ -1596,6 +1596,9 @@ Proof.
      the first process ever gets ([InitBoot]'s note). *)
   iDestruct ("Hbundle" with "Hrdtok") as "Hbundle".
   iDestruct "Hbundle" as (Pcur Pmiss Fo Rrf) "Hxpre".
+  (* ...at the first process's own children set and pid (lane EXEC-SEAM):
+     the bundle is owed at every pair, and this arm names the block's *)
+  iSpecialize ("Hxpre" $! cs pid).
   iApply (KX.wp_kexec_sconf (MkPfam uslot Rrf) γs j γl pd pav pu
 
  γf

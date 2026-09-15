@@ -6619,9 +6619,24 @@ Section UkSh.
      ([UShKernel.sh_uexec_slot]'s [uvis_cwd W = ROOTINO]) and nothing in a
      turn moves it -- the [cd] arm is refuted at the body's dispatch
      ([UkShFork.wp_kshm_body]). *)
+  (* ...AND BOTH ARE PINNED NOW (lane EXEC-SEAM): the children set is
+     EMPTY -- a fresh sh has forked nobody, and every turn's fork is
+     redeemed by the wait that follows it ([UkShFork.ushf_wait_empty]) --
+     and the pid is NOT <init>'s, which is what makes the wait's reaping
+     arm speak of sh's OWN set ([UserChildren.wait_ans]'s [γ' ∈ cs ∨ pidv
+     = 1], the right disjunct refuted).  Both come off the exec'd key
+     ([UShKernel.sh_uexec_slot], from [SpecKexec.exec_slot_pre]'s two
+     identity rows).  ONE conjunct each, so the positional readers of this
+     state did not move. *)
+  Definition ush_pid : iProp Σ :=
+    (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid γpid p)%I.
+
+  Global Instance ush_pid_timeless : Timeless ush_pid.
+  Proof. rewrite /ush_pid. apply _. Qed.
+
   Definition ush_pstate (l : list fdstate) : iProp Σ :=
-    (ush_std l ∗ UserCwd.ucwd γcwd FsImg.ROOTINO ∗ UserChildren.uch_any γch
-     ∗ UserChildren.upid_any γpid ∗ ush_posb l 0%nat)%I.
+    (ush_std l ∗ UserCwd.ucwd γcwd FsImg.ROOTINO ∗ UserChildren.uch γch ∅
+     ∗ ush_pid ∗ ush_posb l 0%nat)%I.
 
   (* ...AND THE BODY'S STATE (step 4): the same, with the slot at the
      BLOCK-OWED index the line's read left ([ush_gets_done_line]).  This
@@ -6629,8 +6644,8 @@ Section UkSh.
      arm and a failed fork go back to the head through
      [ush_posb_blk_line]. *)
   Definition ush_bstate (l : list fdstate) : iProp Σ :=
-    (ush_std l ∗ UserCwd.ucwd γcwd FsImg.ROOTINO ∗ UserChildren.uch_any γch
-     ∗ UserChildren.upid_any γpid ∗ ush_posb l 3%nat)%I.
+    (ush_std l ∗ UserCwd.ucwd γcwd FsImg.ROOTINO ∗ UserChildren.uch γch ∅
+     ∗ ush_pid ∗ ush_posb l 3%nat)%I.
 
   (* ...and back to the head's, where nothing was written: a blank line's
      back edge, the [cd] arm's, and a fork that failed *)
@@ -7911,8 +7926,8 @@ Section UkSh.
     ush_cons_in K -∗
     ush_std l -∗
     UserCwd.ucwd γcwd FsImg.ROOTINO -∗
-    UserChildren.uch_any γch -∗
-    UserChildren.upid_any γpid -∗
+    UserChildren.uch γch ∅ -∗
+    ush_pid -∗
     ush_posb l 0%nat -∗
     R -∗
     ubytes γd sh_buf sh_nbuf f -∗
@@ -8193,8 +8208,8 @@ Section UkSh.
        [UserCwd.ucwd_any] at the command loop, which is all [cd] needs. *)
     ush_std l -∗
     UserCwd.ucwd γcwd FsImg.ROOTINO -∗
-    UserChildren.uch_any γch -∗
-    UserChildren.upid_any γpid -∗
+    UserChildren.uch γch ∅ -∗
+    ush_pid -∗
     ush_posb l 0%nat -∗
     R -∗
     ubytes γd sh_buf sh_nbuf f -∗
@@ -8477,8 +8492,8 @@ Section UkSh.
     ush_cons_in K -∗
     ush_std l -∗
     UserCwd.ucwd γcwd FsImg.ROOTINO -∗
-    UserChildren.uch_any γch -∗
-    UserChildren.upid_any γpid -∗
+    UserChildren.uch γch ∅ -∗
+    ush_pid -∗
     (* ...AND THE CURSOR WITH THE ERA'S CREDENTIAL BESIDE IT (step 3): this
        is where the era's credential enters sh -- /init lends the pieces
        and the credential at the fork, the child carries them across the

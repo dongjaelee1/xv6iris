@@ -125,14 +125,21 @@ Section InitBoot.
      [PinnedExec.pinned_exec_bundle]'s linear [Pay] is that slot, and it
      is why no arity of [SpecKexec.exec_slot_pre] changes.  The generic
      instance drops it ([init_boot_bundle_triv]). *)
+  (* AT EVERY CHILDREN SET AND PID (lane EXEC-SEAM).  [SpecKexec.
+     exec_slot_pre] now names the caller's two identity readings, and the
+     boot arm names the first process's when it spends the bundle
+     ([ProofForkret.fkr_boot]); the application's constructor reads
+     neither, so the bundle is owed at all of them and the arity of this
+     predicate -- which [App.Hinit_boot] names -- does not move. *)
   Definition init_boot_bundle (cw : Z) (sts : list fdstate) : iProp Σ :=
     (cons_reader fsc_cons 0%nat -∗
      ∃ (P Pmiss : nat -> Z -> iProp Σ)
        (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
        (R : iProp Σ),
-       exec_au_pre (MkPfam uslot R) (fs_gamma_L fsc_fs) fsc_fs cw
-         (fun _ => True%I) P Pmiss Fo init_boot_path
-         1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) sts)%I.
+       ∀ (cs : gset gname) (pidv : mword 32),
+         exec_au_pre (MkPfam uslot R) (fs_gamma_L fsc_fs) fsc_fs cw
+           (fun _ => True%I) P Pmiss Fo init_boot_path
+           1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) sts cs pidv)%I.
 
   (* THE GENERIC APPLICATION'S: a slot at every key answers both wands and
      tracks nothing.  [App.xv6_app_adequacy_triv_xv6Σ] reaches the family
@@ -148,9 +155,10 @@ Section InitBoot.
     iIntros "_".
     iExists (fun _ _ => True%I), (fun _ _ => True%I),
             (pfam_triv (fun _ _ _ => True%I)), True%I.
+    iIntros (cs pidv).
     iApply (exec_au_pre_triv_at uslot (fs_gamma_L fsc_fs) fsc_fs cw
               init_boot_path 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes)
-              sts).
+              sts cs pidv).
     iModIntro. iIntros (W) "Hp".
     iApply "HS". iExact "Hp".
   Qed.

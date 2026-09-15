@@ -1050,8 +1050,10 @@ Section UkShEcho.
       (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ) (Pm : nat -> iProp Σ)
       (l : list fdstate) (c : Z) : iProp Σ :=
     (UkSh.ush_std N l ∗ UserCwd.ucwd (ukn_cwd N) c
-     ∗ UserChildren.uch_any (ukn_ch N)
-     ∗ UserChildren.upid_any (ukn_pid N)
+     (* the two identity conjuncts are PINNED now (lane EXEC-SEAM), as
+        [UkSh.ush_pstate]'s are: no children at the head, not <init> *)
+     ∗ UserChildren.uch (ukn_ch N) ∅
+     ∗ UkSh.ush_pid N
      ∗ UkSh.ush_posb N gp T Wc Wb Pm l 0%nat)%I.
 
   Lemma ush_pstate_of_at (N : uk_names Σ) (gp : gname) (T : iProp Σ)

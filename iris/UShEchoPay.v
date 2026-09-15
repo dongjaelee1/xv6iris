@@ -232,6 +232,10 @@ Section UShEchoPay.
                   ⌜kexec_image_ok ElfUser.echo_elf na alen afun fdv W'⌝ -∗
                   ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗
                   ⌜uvis_lazy W' = false⌝ -∗
+                  (* the two identity rows (lane EXEC-SEAM): echo reads
+                     neither *)
+                  ⌜uvis_ch W' = cs⌝ -∗
+                  ⌜uvis_pid W' = pidv⌝ -∗
                   ⌜exec_args_of M (mword_of_int (t + 8) : mword 64)
                      na alen afun⌝ -∗
                   my_pay (uvis_gen W') (fun _ : Z => Wq np) -∗
@@ -239,7 +243,7 @@ Section UShEchoPay.
                    ∗ EchoLinksLine.ewc_lpr T v np 3%nat) -∗
                   uslot W'))%I as "#Hcon".
     { iModIntro.
-      iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf %Hargs Hmp [_ Hc]".
+      iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf _ _ %Hargs Hmp [_ Hc]".
       destruct (echo_args_det_holds M s0 t g na alen afun Himg Hbytes Hargs)
         as (Hna & Halen & Hafun).
       iApply (echo_slot_of_kexec_at na alen afun fdv W' v np Hok
@@ -266,7 +270,7 @@ Section UShEchoPay.
                  (UserFd.ustd (ukn_fd N') ld
                   ∗ EchoLinksLine.ewc_lpr T v np 3%nat)%I
                  (fun _ : Z => Wq np)
-                 M (mword_of_int s0) (mword_of_int (t + 8)) fdv
+                 M (mword_of_int s0) (mword_of_int (t + 8)) fdv cs pidv
                  sh_echo_pin_resolves echo_elf_loadable
                  (sh_echo_path_of_holds M s0 t g Himg Hbytes)
                  with "Hcl Hinv Hcon Hgen' [Hstd Hcr]") as (P Pmiss Fo) "Hb";

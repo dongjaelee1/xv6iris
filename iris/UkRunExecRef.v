@@ -229,4 +229,152 @@ Section UkRunExecRef.
     iApply ("Hcont" $! h' with "Hcwd Hpayret Hrun").
   Qed.
 
+  (* ===================================================================== *)
+  (* ...AND WITH THE RECORD'S IDENTITY AUTHORITIES LENT (lane EXEC-SEAM).   *)
+  (* [SpecKexec.exec_slot_pre]'s two wands now pin the resumed key's       *)
+  (* children set and pid to the exec'ing process's own ([uvis_ch W' =     *)
+  (* cs], [uvis_pid W' = pidv]), and a supplier that wants to SAY what      *)
+  (* those are -- init's, for the shell it starts: "no children yet, and    *)
+  (* not <init>" -- has to read [cs] and [pidv] off the record's authority  *)
+  (* for both ([UkRun.urun_ids]) against the program's own fragments       *)
+  (* ([UserChildren.uch] / [upid]).  So this deposit lends the authority    *)
+  (* beside the heap and the descriptor authority and takes it back; the    *)
+  (* leaf below is [wp_uk_ecall_exec_at_cwd_refR]'s proof with one more     *)
+  (* resource handed through, and [udepw_at_refR_ids_of_refR] is the        *)
+  (* forgetful direction for a supplier that reads neither.                 *)
+  (* ===================================================================== *)
+  Definition udepw_at_refR_ids (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (c : Z) (R : iProp Σ) : iProp Σ :=
+    (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
+       (fdv : list fdstate) (gn : gname) (cs : gset gname) (pidv : mword 32),
+       my_pay gn (ukn_pay N) -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
+       urun_ids N cs pidv -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
+       urun_ids N cs pidv ∗
+       sbundle_pay_refR uslot (ukn_pay N) R
+         (uvis_of_run m pc M pm sz fdv c gn cs pidv false))%I.
+
+  Lemma udepw_at_refR_ids_of_refR (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (c : Z) (R : iProp Σ) :
+    udepw_at_refR N m pc c R -∗ udepw_at_refR_ids N m pc c R.
+  Proof.
+    rewrite /udepw_at_refR /udepw_at_refR_ids.
+    iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp Hh Hf Hids".
+    iDestruct ("Hd" $! M pm sz fdv gn cs pidv with "Hmp Hh Hf")
+      as "(Hh & Hf & Hb)".
+    iFrame "Hh Hf Hids Hb".
+  Qed.
+
+  Lemma wp_uk_ecall_exec_at_cwd_refR_ids (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (avail : nat) (c : Z) (R : iProp Σ) :
+    usysno m = USYS_exec ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    (* the program's half of its working directory... *)
+    UserCwd.ucwd (ukn_cwd N) c -∗
+    (* ...and the deposit at every key whose cwd is that one inum, at the
+       supplier-named refund AND WITH THE IDENTITY AUTHORITIES LENT
+       ([udepw_at_refR_ids], lane EXEC-SEAM) *)
+    udepw_at_refR_ids N m pc c R -∗
+    (∀ h' : CpuId,
+       UserCwd.ucwd (ukn_cwd N) c -∗
+       (* ...AND THE REFUND, as the supplier's wand reads it *)
+       R -∗
+       urun N h'
+         (<[Regidx (mword_of_int 10) := (mword_of_int (-1) : mword 64)]> m)
+         (add_vec_int pc 4) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hn Hal4.
+    iIntros "#Hi Hrun Hcwd Hsb Hcont".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    (* the whole point of the leaf: the key's cwd IS the one the caller's
+       bundle is stated at *)
+    iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
+    iDestruct ("Hsb" $! M pm sz fdv gn cs pidv with "Hmy Hheap Hufd Hcha")
+      as "(Hheap & Hufd & Hcha & Hdepn)".
+    iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
+    iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
+    iApply (UkStep.wp_uk_ecall C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc fdv c gn cs pidv Hui
+              (fun (s : mstate)
+                   (Hp : register_lookup cur_privilege s.(sregs) = User)
+                   (Hc : register_lookup (R_bitvector_64 PC) s.(sregs) = pc) =>
+                 UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
+                   s pc ltac:(vm_compute; reflexivity)
+                   ltac:(vm_compute; reflexivity) Hp Hc)
+              with "Hb Hmy").
+    rewrite (uexec_ret_ecall _ _ eq_refl).
+    assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false)) = USYS_exec).
+    { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
+    (* the PAYMENT's guard IS the deposit's own, so it is opened BEFORE the
+       number is rewritten and the destructs below then reduce both copies
+       at once *)
+    rewrite /uexec_pay_dep /upay_at.
+    rewrite Hnum. cbv zeta.
+    destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
+      [ | exfalso; exact (Hpne eq_refl) ].
+    destruct (decide (USYS_exec = USYS_exit)) as [He | _];
+      [ exfalso; unfold USYS_exec, USYS_exit in He; discriminate He | ].
+    destruct (decide (USYS_exec = USYS_fork)) as [He | _];
+      [ exfalso; unfold USYS_exec, USYS_fork in He; discriminate He | ].
+    (* THE MINT ALREADY NAMED THE PAYLOAD (app-echo.md, "SH-LINE RULING",
+       R1): read's bundle is a wand from the depositing process's own exit
+       payload, so nothing is re-keyed here any more -- the family the
+       deposit came at IS at [ukn_pay N]. *)
+    iDestruct "Hdepn" as (fdep) "(%Hfp & #Href & Hdepn)".
+    iExists fdep. rewrite Hfp.
+    cbn [uvis_gen uvis_of_run].
+    iSplitR; [ iFrame "Hmy" | ].
+    iSplitL "Hdepn"; [ iExact "Hdepn" | ].
+    (* THE POST AT exec IS THE REFUND (lane KILL-PAY, K4(a), R-A): it used
+       to be [emp] and is a wand from "the answer was -1" now
+       ([UexecSG.spost_at_exec]), which is exactly the branch this leaf is
+       on -- a successful exec never resumes here. *)
+    iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hliverow %Hchrow Hsp".
+    (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
+       trapping key is at [false] -- the U tier's run is
+       ([UexecRet.ukcq]) -- and every row but sbrk's is the equation
+       ([UsysMemOk.usys_mem_ok_lazy]), so the resume key is at [false] too
+       and the close below is at the run's own bit. *)
+    assert (Hlzq : lz' = false)
+      by (refine (usys_mem_ok_lazy _ _ _ _ _ _ _ _ _ _ _ _ Hok);
+          first [ assumption | vm_compute; discriminate ]).
+    subst lz'.
+    assert (Hcw : cw' = c)
+      by (refine (usys_cwd_ok_quiet _ _ _ _ _ Hcwrow); vm_compute; discriminate).
+    iDestruct (ucwd_auth_quiet N c cw' Hcw with "Hcwda") as "Hcwda".
+    (* ...AND SO DID THE GENERATION AND THE CHILDREN SET: no entry
+       re-incarnates its caller, and this lane's children row is the
+       identity at every number ([UsysMemOk] SS2e/SS2f).  Both are
+       substituted rather than re-keyed -- the generation has no
+       authority beside it, and the children authority is already at
+       the set the process resumes at. *)
+    assert (Hgn : gn' = gn) by exact (usys_gen_ok_quiet _ _ _ Hgnrow).
+    assert (Hch : cs' = cs) by exact (usys_ch_ok_quiet _ _ _ _ Hchrow).
+    subst gn' cs'.
+    destruct (usys_mem_ok_exec_row USYS_exec _ r _ _ _ _ _ _ _ _ eq_refl Hok)
+      as [-> [-> [-> ->]]].
+    (* the refund, cashed at the answer this arm IS at, and turned into
+       what the supplier's wand says it is worth *)
+    iEval (rewrite spost_at_exec) in "Hsp".
+    iDestruct ("Hsp" with "[//]") as "Hrf".
+    iDestruct ("Href" with "Hrf") as "Hpayret".
+    cbn [uvis_M uvis_perm uvis_of_run].
+    assert (Hview : fdv' = fdv).
+    { refine (usys_fd_ok_quiet _ _ _ _ _ _ _ _ _ Hfdok);
+        vm_compute; discriminate. }
+    subst fdv'.
+    rewrite (uslot_bump_run m pc M M pm pm sz sz fdv fdv c cw' gn gn cs cs pidv false false
+               (mword_of_int (-1) : mword 64) Hx0 Hal4).
+    iApply ukcq_ukc.
+    iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+    iIntros (h') "Hrun".
+    iApply ("Hcont" $! h' with "Hcwd Hpayret Hrun").
+  Qed.
+
+
 End UkRunExecRef.

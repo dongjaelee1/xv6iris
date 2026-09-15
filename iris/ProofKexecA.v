@@ -781,6 +781,9 @@ Section KexecAUAMain.
       (L : nat) (zi : Z)
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate)
+      (* ...and the caller's children set and pid, the two identity rows of
+         [SpecKexec.exec_slot_pre] (lane EXEC-SEAM), threaded like [cw] *)
+      (cs : gset gname) (pidv : mword 32)
       (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8)) : iProp Σ :=
     (∃ av : aview,
        ⌜arow_at av zi (abs_row (FsStateEra.era_node dn bm data))⌝ ∗
@@ -792,7 +795,7 @@ Section KexecAUAMain.
        Fo.(pf_recv) av zi (abs_row (FsStateEra.era_node dn bm data)) ∗
        P L zi ∗
        pf_at (fun S => SpecKexec.exec_slot_pre S Qpay (P L) Fo.(pf_recv)
-                         cw na alen afun sts) Fs)%I.
+                         cw na alen afun sts cs pidv) Fs)%I.
 
   (* the +0x090 row, and the [bad:] tails' row, are the same receipt: the
      buffer [ef] plays no part in it (the header claim was the only thing
@@ -802,9 +805,9 @@ Section KexecAUAMain.
       (Qpay : Z -> iProp Σ) (cw : Z)
       (L : nat) (zi : Z)
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-      (sts : list fdstate) (ef : nat -> bv 8)
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) (ef : nat -> bv 8)
       (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8)) : iProp Σ :=
-    kxa_receipt Fs P Fo Qpay cw L zi na alen afun sts dn bm data.
+    kxa_receipt Fs P Fo Qpay cw L zi na alen afun sts cs pidv dn bm data.
 
   (* ---- the two refund shapes, assembled ------------------------------ *)
 
@@ -815,13 +818,13 @@ Section KexecAUAMain.
       (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-      (sts : list fdstate) (pl : list (bv 8)) :
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) (pl : list (bv 8)) :
     SysOpenDefs.namei_walk_dead_era γ P Pmiss pl
       ∗ (pf_at (SysOpenDefs.aopen_commit_at (FsBytesGamma.fs_gamma_L γ) appE) Fo
          ∗ pf_at (fun S => SpecKexec.exec_slot_pre S Qpay (P (length (path_elems pl)))
-                             Fo.(pf_recv) cw na alen afun sts) Fs) -∗
+                             Fo.(pf_recv) cw na alen afun sts cs pidv) Fs) -∗
     SpecKexec.exec_post_fail Fs (FsBytesGamma.fs_gamma_L γ) γ cw Qpay P Pmiss Fo
-      pl na alen afun sts.
+      pl na alen afun sts cs pidv.
   Proof.
     iIntros "(Hd & Hoc & Hsl)". rewrite /SpecKexec.exec_post_fail.
     iRight. iLeft. iFrame "Hd Hoc Hsl".
@@ -938,14 +941,14 @@ Section KexecAUAMain.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (L : nat) (zi : Z)
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-      (sts : list fdstate) (pl : list (bv 8))
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) (pl : list (bv 8))
       (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8))
       (ef : nat -> bv 8) :
     L = length (path_elems pl) ->
     LA.kxc_bad_cause dn ef data ->
-    kxa_receipt Fs P Fo Qpay cw L zi na alen afun sts dn bm data -∗
+    kxa_receipt Fs P Fo Qpay cw L zi na alen afun sts cs pidv dn bm data -∗
     SpecKexec.exec_post_fail Fs (FsBytesGamma.fs_gamma_L γ) γ cw Qpay P Pmiss Fo
-      pl na alen afun sts.
+      pl na alen afun sts cs pidv.
   Proof.
     intros HL Hbad. iIntros "H". rewrite /kxa_receipt.
     iDestruct "H" as (av) "(%Hav & %Hrow & HΦ & HP & Hsl)".
@@ -1009,6 +1012,9 @@ Section KexecAUAMain.
       (alen : nat -> nat) (aslen : nat -> nat)
       (afun : nat -> nat -> bv 8)
       (pidv : mword 32) (U : ustate) (sts : list fdstate)
+      (* the caller's children set, for [exec_slot_pre]'s identity rows
+         (lane EXEC-SEAM); the pid is the process's own above *)
+      (cs : gset gname)
       (dqb dqs dqa dqpv dqas : dfrac)
       (m : regfile) (K : nat) (eb : bool) (b : bool) (lks : gset string)
       (sp0 ra0 s00 s10 s20 pv av : mword 64)
@@ -1059,7 +1065,7 @@ Section KexecAUAMain.
     pf_at (SysOpenDefs.aopen_commit_at ΓL appE) Fo -∗
     pf_at (fun S => SpecKexec.exec_slot_pre S Qpay
                       (P (length (path_elems (bview plen pfun))))
-                      Fo.(pf_recv) (pv_cwi (us_V U)) na alen afun sts) Fs -∗
+                      Fo.(pf_recv) (pv_cwi (us_V U)) na alen afun sts cs pidv) Fs -∗
     kalloc_env fsc_kalloc None -∗
     sb_bmapstart ↦₄{dqb} (mword_of_int fsc_bmapstart : mword 32) -∗
     sb_inodestart ↦₄{dqs} (mword_of_int icfg_ist : mword 32) -∗
@@ -1077,7 +1083,7 @@ Section KexecAUAMain.
     □ (∀ CX : CpuId,
        KEX CX -∗
        SpecKexec.exec_post_fail Fs ΓL fsc_fs (pv_cwi (us_V U)) Qpay P Pmiss Fo
-         (bview plen pfun) na alen afun sts -∗
+         (bview plen pfun) na alen afun sts cs pidv -∗
       KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K b
            eb lks dqb dqs fsc_bmapstart na alen plen pv dqpv pfun
            av dqa avf aslen dqas afun) -∗
@@ -1141,7 +1147,7 @@ Section KexecAUAMain.
         (∃ zi : Z,
            kxa_receipt Fs P Fo Qpay (pv_cwi (us_V U))
                        (length (path_elems (bview plen pfun))) zi
-                       na alen afun sts dnf bmf datl) -∗
+                       na alen afun sts cs pidv dnf bmf datl) -∗
         kxc_frameA6x sp0 ra0 s00 s10 s20 pv av (m !!! Regidx Rs4) ef -∗
         wp_next (CID0 := CID) true (proc_addr jp) KEX -∗
         WP (Loop : expr riscv_lang)) -∗
@@ -1161,9 +1167,9 @@ Section KexecAUAMain.
                  ∗ pf_at (fun S => SpecKexec.exec_slot_pre S Qpay
                                      (P (length (path_elems (bview plen pfun))))
                                      Fo.(pf_recv) (pv_cwi (us_V U))
-                                     na alen afun sts) Fs)%I
+                                     na alen afun sts cs pidv) Fs)%I
               (SpecKexec.exec_post_fail Fs ΓL fsc_fs (pv_cwi (us_V U)) Qpay P Pmiss Fo
-                 (bview plen pfun) na alen afun sts)
+                 (bview plen pfun) na alen afun sts cs pidv)
               gs jp gl pd pav pu gf
               plen pfun na avf alen aslen afun pidv U dqb dqs dqa dqpv dqas
               m K eb b lks sp0 ra0 s00 s10 s20 pv av KEX
@@ -1175,7 +1181,7 @@ Section KexecAUAMain.
                     [Hcont90]").
     { (* arm (ii) *)
       iIntros "H". iApply (kxa_fail_dead Fs fsc_fs (pv_cwi (us_V U)) Qpay P Pmiss Fo
-                             na alen afun sts (bview plen pfun) with "H"). }
+                             na alen afun sts cs pidv (bview plen pfun) with "H"). }
     (* ---- the seam at +0x032: [kxc_a2_r] takes it, at the receipt ---- *)
     iIntros (CIDs Hss M32 ipv zi n1) "HP [Hoc Hsl] Hseam Hexit".
     iDestruct (wp_next_retarget CID0 CIDs true (proc_addr jp) _ Hss
@@ -1185,10 +1191,10 @@ Section KexecAUAMain.
               m M32 K eb b lks sp0 ra0 s00 s10 s20 pv av ipv zi n1
               (kxa_receipt Fs P Fo Qpay (pv_cwi (us_V U))
                            (length (path_elems (bview plen pfun))) zi
-                           na alen afun sts)
+                           na alen afun sts cs pidv)
               (kxa_receipt_x Fs P Fo Qpay (pv_cwi (us_V U))
                              (length (path_elems (bview plen pfun))) zi
-                             na alen afun sts)
+                             na alen afun sts cs pidv)
               KEX
               Hqf HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb
               Hiregb Hjp Hgs Hsp Hra Hs0 Hs1 Hs2
@@ -1216,7 +1222,7 @@ Section KexecAUAMain.
       iIntros "!>" (CX dn bm data ef) "%Hbad HK HR".
       iApply ("Hkw" $! CX with "HK").
       iApply (kxa_fail_obs Fs fsc_fs (pv_cwi (us_V U)) Qpay P Pmiss Fo _ zi na alen afun sts
-                (bview plen pfun) dn bm data ef ltac:(reflexivity) Hbad
+                cs pidv (bview plen pfun) dn bm data ef ltac:(reflexivity) Hbad
                 with "HR"). }
     (* ---- and the +0x090 exit: [kxc_phaseA]'s rows, plus the receipt ---- *)
     { iEval (rewrite /wp_next). iIntros (CIDx) "%Hqx".

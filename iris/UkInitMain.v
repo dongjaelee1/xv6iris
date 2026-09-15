@@ -574,6 +574,11 @@ Section UkInitMain.
        about a PATH and "sh" is relative; the child was forked at the
        root, and nothing between the fork and the ecall moves it. *)
     UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
+    (* ...AND ITS TWO IDENTITY FRAGMENTS (lane EXEC-SEAM), which the exec
+       supply spends against the record's authorities so the shell's entry
+       can be told "no children yet, not <init>". *)
+    UserChildren.uch (ukn_ch N') ∅ -∗
+    (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid (ukn_pid N') p) -∗
     (* ...AND THE DESCRIPTOR HEAD.  exec copies the table, so the exec'd
        program's entry constructor speaks about THIS process's slots -- and
        it is told one row about them, the head's own three arms
@@ -607,7 +612,7 @@ Section UkInitMain.
        read the exit status ([UserConsole.ucons_pay_const]) *)
     pose proof (ukn_const_of_eq N' (ucons_pay cn γ T (init_rd Rdl Wb)) Hpeq
                   (ucons_pay_const cn γ T (init_rd Rdl Wb))) as Hcst'.
-    iIntros "#(Hwr & Hwl15 & Hwl17) #Hdlaw #Hcode #Hxs #Hro #Hargv Hcwd Hstd #Hrow
+    iIntros "#(Hwr & Hwl15 & Hwl17) #Hdlaw #Hcode #Hxs #Hro #Hargv Hcwd Hch Hpid Hstd #Hrow
              Hcred Hpos Hlease Hrun".
     destruct init_syms_pins
       as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hexec & _ & _).
@@ -710,10 +715,10 @@ Section UkInitMain.
        directory is the one the fragment names. *)
     iApply (wp_kinit_exec N' hc5 mc5 (12 + (12 + (4 + n))) FsImg.ROOTINO
               (init_lend_ref cn T stc Wp Wb Rdl (ukn_fd N') l γ np)
-              with "Hcode Hrun Hcwd [Hstd Hcred Hpos Hlease]").
+              with "Hcode Hrun Hcwd [Hstd Hcred Hpos Hlease Hch Hpid]").
     { iApply ("Hxs" $! γ np N' (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> mc5)
                 (mword_of_int 0x3ac) l
-                with "[%] [%] [%] Hro Hargv Hstd Hrow Hcred Hpos Hlease").
+                with "[%] [%] [%] Hro Hargv Hstd Hrow Hcred Hpos Hlease Hch Hpid").
       - exact Hpeq.
       - rewrite (upd_ne mc5 (Regidx a7_idx) (Regidx a0_idx)
                    (mword_of_int 7 : mword 64)
@@ -878,6 +883,12 @@ Section UkInitMain.
         upos γ np -∗
         ucons_pay cn γ T Rdl (-1) -∗
         UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
+        (* ...AND THE CHILD'S TWO IDENTITY FRAGMENTS, KEPT (lane
+           EXEC-SEAM): no children yet, and a pid that is not <init>'s --
+           what the shell's entry is told about the key it is exec'd at
+           ([UkInit.init_exec_sup_pos]). *)
+        UserChildren.uch (ukn_ch N') ∅ -∗
+        (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid (ukn_pid N') p) -∗
         urun N' h'
           (<[Regidx a0_idx := (mword_of_int 0 : mword 64)]>
              (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m))
@@ -979,7 +990,7 @@ Section UkInitMain.
          child execs, and nothing before the exec allocates. *)
       (* the child's own children fragment is [∅] and init's child execs
          before it forks, so nothing here reads it *)
-      iIntros (N' hc γ') "%Hpeq _ (Hpos & Hlease & Hcred) Hpay Hsz Hstd _ Hcwd _ _ Hrun".
+      iIntros (N' hc γ') "%Hpeq _ (Hpos & Hlease & Hcred) Hpay Hsz Hstd _ Hcwd Hch' Hpid' Hrun".
       set (mk := <[Regidx a0_idx := (mword_of_int 0 : mword 64)]> mf1).
       assert (Hrak : mk !!! Regidx ra_idx = m !!! Regidx ra_idx).
       { rewrite /mk (upd_ne mf1 (Regidx a0_idx) (Regidx ra_idx) _
@@ -994,7 +1005,7 @@ Section UkInitMain.
       { iApply (uis_init_370 with "Hck"). }
       iIntros (hc2) "Hrun".
       iApply ("Hchi" $! N' hc2
-                with "[%] [] Hsz Hstd Hrow Hcred Hpos Hlease Hcwd Hrun").
+                with "[%] [] Hsz Hstd Hrow Hcred Hpos Hlease Hcwd Hch' Hpid' Hrun").
       { exact Hpeq. }
       { iFrame "Hck Hrk Hak". }
   Qed.
@@ -1494,7 +1505,7 @@ Section UkInitMain.
            [PinnedExec]'s linear [Pay] -- which is what sh's entry
            constructor reads ([UShLine.ush_posb_of_lend]). *)
         iIntros (N' hc)
-          "%Hpeq (#Hck & #Hrk & #Hak) Hsz Hstd #Hrow' Hcred Hpos Hlease Hcwd Hrun".
+          "%Hpeq (#Hck & #Hrk & #Hak) Hsz Hstd #Hrow' Hcred Hpos Hlease Hcwd Hch Hpid Hrun".
         (* the child's walk runs at ITS payload's class, which is the
            shell's ([UserConsole.ucons_pay_const]) *)
         pose proof (ukn_const_of_eq N' (ucons_pay cn γ T (init_rd Rdl Wb)) Hpeq
@@ -1560,7 +1571,7 @@ Section UkInitMain.
         { iApply (uis_init_42 with "Hck"). }
         iIntros (hc3) "Hrun".
         iApply (wp_kinit_main_child T stc cn Wp Wb Rdl γ np l N' hc3 mc1 n Hpeq
-                  with "[$Hwr $Hwl15 $Hwl17] Hdlaw Hck Hxs Hrk Hak Hcwd Hstd Hrow'
+                  with "[$Hwr $Hwl15 $Hwl17] Hdlaw Hck Hxs Hrk Hak Hcwd Hch Hpid Hstd Hrow'
                         Hcred Hpos Hlease Hrun").
     - (* ==================== the WAIT head @0x44 ==================== *)
       iIntros (h m cs γ γsh pidsh) "%Hs2 %Hs1 %Hin %Hpnz Hsz Hstd Hcwd Hch Htok Hrun".

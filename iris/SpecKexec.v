@@ -589,6 +589,19 @@ Lemma exec_key_fd (U' : ustate) (sts : list fdstate) (gn : gname) (cs : gset gna
   uvis_fd (exec_key U' sts gn cs pidv na) = sts.
 Proof. destruct U' as [V' M']. destruct V'. reflexivity. Qed.
 
+(* ...AND ITS CHILDREN SET AND PID ARE THE CALLER'S (lane EXEC-SEAM): the
+   two binders go straight into the key, so both readings are definitional.
+   These pay [exec_slot_pre]'s two identity rows at the kernel's discharge. *)
+Lemma exec_key_ch (U' : ustate) (sts : list fdstate) (gn : gname) (cs : gset gname) (pidv : mword 32)
+    (na : nat) :
+  uvis_ch (exec_key U' sts gn cs pidv na) = cs.
+Proof. destruct U' as [V' M']. destruct V'. reflexivity. Qed.
+
+Lemma exec_key_pid (U' : ustate) (sts : list fdstate) (gn : gname) (cs : gset gname) (pidv : mword 32)
+    (na : nat) :
+  uvis_pid (exec_key U' sts gn cs pidv na) = pidv.
+Proof. destruct U' as [V' M']. destruct V'. reflexivity. Qed.
+
 (* THE SUCCESS CONJUNCTS AT THE RESUME KEY.  [KexecDefs.kexec_ok]'s second
    arm read through [exec_key]: the three trapframe words the commit block
    and the dispatcher's a0 store leave, the size and the stack bounds, and
@@ -796,12 +809,21 @@ Section KexecAU.
        [KexecBuilt.kexec_built] gains the fresh table's coverage row,
        [ProcInv.upd_exec] clears [ProcDefs.pv_lazy], and
        [KexecBridge.exec_image_ok_of_built] relays it. *)
+  (* ...AND ITS CHILDREN SET AND ITS PID ARE THE CALLER'S (lane EXEC-SEAM).
+     exec KEEPS the process -- it neither reaps nor re-numbers -- so the
+     key both wands resume at reads the caller's children set [cs] and the
+     caller's pid [pidv], the very binders the kexec contract already
+     carries ([exec_key] puts them straight into the key, and both rows are
+     [reflexivity] there: [exec_key_ch], [exec_key_pid]).  A pinned caller
+     needs them because a freshly exec'd process's slot has to be able to
+     say "I have no children yet" and "I am not <init>": sh's wait
+     redeems the one child it forked against exactly those two facts. *)
   Definition exec_slot_pre (S : uvis -> iProp Σ) (Q : Z -> iProp Σ)
       (Pfin : Z -> iProp Σ)
       (Φo : aview -> Z -> anode -> iProp Σ)
       (cw : Z)
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-      (sts : list fdstate) : iProp Σ :=
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) : iProp Σ :=
     ((∀ (av : aview) (i : Z) (f : elf_bytes) (nl : nat) (W' : uvis),
         Pfin i -∗
         Φo av i (MkAnode (AFile f) nl) -∗
@@ -809,6 +831,8 @@ Section KexecAU.
         ⌜kexec_image_ok f na alen afun sts W'⌝ -∗
         ⌜uvis_cwd W' = cw⌝ -∗
         ⌜uvis_lazy W' = false⌝ -∗
+        ⌜uvis_ch W' = cs⌝ -∗
+        ⌜uvis_pid W' = pidv⌝ -∗
         my_pay (uvis_gen W') Q -∗
         S W')
      ∗ (∀ (av : aview) (i : Z) (a : anode) (W' : uvis),
@@ -818,6 +842,8 @@ Section KexecAU.
           ⌜exec_key_ok na alen sts W'⌝ -∗
           ⌜uvis_cwd W' = cw⌝ -∗
           ⌜uvis_lazy W' = false⌝ -∗
+          ⌜uvis_ch W' = cs⌝ -∗
+          ⌜uvis_pid W' = pidv⌝ -∗
           my_pay (uvis_gen W') Q -∗
           S W'))%I.
 
@@ -841,11 +867,11 @@ Section KexecAU.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-      (sts : list fdstate) : iProp Σ :=
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) : iProp Σ :=
     (ex_start γfs cw P Pmiss pl
      ∗ pf_at (aopen_commit_at Γ appE) Fo
      ∗ pf_at (fun S => exec_slot_pre S Q (P (length (path_elems pl)))
-                         Fo.(pf_recv) cw na alen afun sts) Fs)%I.
+                         Fo.(pf_recv) cw na alen afun sts cs pidv) Fs)%I.
 
   (* THE BUNDLE A CALLER THAT TRACKS NOTHING HANDS IN, and it is free
      wherever it has a slot at every key: every hop says yes at a [True]
@@ -863,11 +889,11 @@ Section KexecAU.
   Lemma exec_au_pre_triv_at (S : uvis -> iProp Σ) Γ (γfs : fs_names) (cw : Z)
       (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-      (sts : list fdstate) :
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ S W) -∗
     exec_au_pre (MkPfam S True%I) Γ γfs cw (fun _ => True%I)
       (fun _ _ => True%I) (fun _ _ => True%I) (pfam_triv (fun _ _ _ => True%I))
-      pl na alen afun sts.
+      pl na alen afun sts cs pidv.
   Proof.
     iIntros "#HS". rewrite /exec_au_pre. iSplitR.
     { rewrite /ex_start /ex_hops_from. iIntros (r) "_". iModIntro.
@@ -880,8 +906,8 @@ Section KexecAU.
        [pf_at_triv]. *)
     rewrite /pf_at /=. iSplit; [| done].
     rewrite /exec_slot_pre. iSplitR.
-    - iIntros (av i f nl W') "_ _ _ _ _ _ Hp". iApply ("HS" with "Hp").
-    - iIntros (av i a W') "_ _ _ _ _ _ Hp". iApply ("HS" with "Hp").
+    - iIntros (av i f nl W') "_ _ _ _ _ _ _ _ Hp". iApply ("HS" with "Hp").
+    - iIntros (av i a W') "_ _ _ _ _ _ _ _ Hp". iApply ("HS" with "Hp").
   Qed.
 
   (* ...and the one a caller that wants nothing back hands in: the slot
@@ -889,10 +915,10 @@ Section KexecAU.
      family every [emp] satisfies. *)
   Lemma exec_au_pre_triv Γ (γfs : fs_names) (cw : Z) (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-      (sts : list fdstate) :
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     ⊢ exec_au_pre (MkPfam (fun _ => emp%I) True%I) Γ γfs cw (fun _ => True%I)
         (fun _ _ => True%I) (fun _ _ => True%I) (pfam_triv (fun _ _ _ => True%I))
-        pl na alen afun sts.
+        pl na alen afun sts cs pidv.
   Proof.
     iApply (exec_au_pre_triv_at (fun _ => emp%I)).
     iIntros "!>" (W) "_". iEmpIntro.
@@ -906,10 +932,10 @@ Section KexecAU.
       (Φo : aview -> Z -> anode -> iProp Σ)
       (cw : Z)
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-      (sts : list fdstate) :
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     S ≡{n}≡ S' ->
-    exec_slot_pre S Q Pfin Φo cw na alen afun sts
-    ≡{n}≡ exec_slot_pre S' Q Pfin Φo cw na alen afun sts.
+    exec_slot_pre S Q Pfin Φo cw na alen afun sts cs pidv
+    ≡{n}≡ exec_slot_pre S' Q Pfin Φo cw na alen afun sts cs pidv.
   Proof. intros HS. rewrite /exec_slot_pre. solve_proper. Qed.
 
   (* ...and at the PAIR the bundle takes: the refund does not move with the
@@ -920,14 +946,14 @@ Section KexecAU.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-      (sts : list fdstate) :
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     S ≡{n}≡ S' ->
-    exec_au_pre (MkPfam S Rs) Γ γfs cw Q P Pmiss Fo pl na alen afun sts
-    ≡{n}≡ exec_au_pre (MkPfam S' Rs) Γ γfs cw Q P Pmiss Fo pl na alen afun sts.
+    exec_au_pre (MkPfam S Rs) Γ γfs cw Q P Pmiss Fo pl na alen afun sts cs pidv
+    ≡{n}≡ exec_au_pre (MkPfam S' Rs) Γ γfs cw Q P Pmiss Fo pl na alen afun sts cs pidv.
   Proof.
     intros HS. rewrite /exec_au_pre /pf_at. cbn [pf_recv pf_refund].
     by rewrite (exec_slot_pre_ne n S S' Q (P (length (path_elems pl)))
-                  Fo.(pf_recv) cw na alen afun sts HS).
+                  Fo.(pf_recv) cw na alen afun sts cs pidv HS).
   Qed.
 
   (* ------------------------------------------------------------------ *)
@@ -986,14 +1012,14 @@ Section KexecAU.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-      (sts : list fdstate) : iProp Σ :=
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) : iProp Σ :=
     ((* (i) nothing fs-visible happened *)
-     exec_au_pre Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts
+     exec_au_pre Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts cs pidv
      ∨ ((* (ii) the walk died at some hop: the era refund shape *)
           (namei_walk_dead_era γfs P Pmiss pl
              ∗ pf_at (aopen_commit_at Γ appE) Fo
              ∗ pf_at (fun S => exec_slot_pre S Q (P (length (path_elems pl)))
-                                 Fo.(pf_recv) cw na alen afun sts)
+                                 Fo.(pf_recv) cw na alen afun sts cs pidv)
                  Fs)
           ∨ (* (iii) the walk completed and the node was observed; exec
                failed past the lock, and the arm says WHY (header,
@@ -1004,7 +1030,7 @@ Section KexecAU.
              ∗ ⌜arow_at av i a⌝ ∗ Fo.(pf_recv) av i a
              ∗ ⌜exec_fail_ok a na alen c⌝
              ∗ pf_at (fun S => exec_slot_pre S Q (P (length (path_elems pl)))
-                                 Fo.(pf_recv) cw na alen afun sts)
+                                 Fo.(pf_recv) cw na alen afun sts cs pidv)
                  Fs)))%I.
 
   (* THE FAILURE ARM REFUNDS THE DEPOSIT (app-echo.md, lane KILL-PAY,
@@ -1024,8 +1050,8 @@ Section KexecAU.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-      (sts : list fdstate) :
-    exec_post_fail Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
+    exec_post_fail Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts cs pidv
       ⊢ Fs.(pf_refund).
   Proof.
     rewrite /exec_post_fail /exec_au_pre.
@@ -1047,7 +1073,7 @@ Section KexecAU.
       (sts : list fdstate) (gn : gname) (cs : gset gname) (pidv : mword 32)
       (U U' : ustate) (r : mword 64) : iProp Σ :=
     ((⌜r = (mword_of_int (-1) : mword 64) /\ us_V U' = us_V U /\ us_M U' = us_M U⌝
-      ∗ exec_post_fail Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts)
+      ∗ exec_post_fail Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts cs pidv)
      ∨ exec_post_ok Fs Γ Q P Fo pl na alen afun sts gn cs pidv U U' r)%I.
 
   (* SANITY: the arms imply the landed result relation, so the parallel
@@ -1269,7 +1295,7 @@ Definition wp_kexec_sconf_body
        wands are at ITS naming of it. *)
     (my_pay gn Q ∗
      exec_au_pre Fs Γfs fsc_fs (pv_cwi (us_V U)) Q P Pmiss Fo
-       (bview plen pfun) na alen afun sts)
+       (bview plen pfun) na alen afun sts cs pidv)
     (exec_arms Fs Γfs fsc_fs (pv_cwi (us_V U)) Q P Pmiss Fo
        (bview plen pfun) na alen afun sts gn cs pidv U).
 

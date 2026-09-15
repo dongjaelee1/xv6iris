@@ -972,6 +972,18 @@ must be restated at the table exec HANDS OVER rather than at the caller's
 and applier moves with it (`SpecKexec`, `ProofKexec`, `PinnedExec.pex_slot`,
 `UInitSh`, `UInitBoot`, `SystemAdequacy.init_boot_of_sup`).
 
+**AND THE CHECK RA-3 LEFT FOR RA-2 ("that the matching `FdSlots.fd_frags`
+bundle is in scope at each of the two wand applications") COMES BACK NO,
+independently of the pin.**  `proc_priv_parked` needs BOTH halves —
+`proc_priv γf pa pid U -∗ fd_frags (pv_fdg (us_V U)) sts -∗ ⌜fdv_all_parked sts⌝`
+— and while the process block IS there (the closer takes `Hpriv`,
+`ProofKexec.v:677`), the bundle is NOT: `grep -c fd_frags` is **0** across
+the whole kexec chain (`SpecKexec.v`, `ProofKexec*.v`, `KexecOkQ.v`,
+`KexecBridge.v`).  It lives one layer out, on the syscall channel
+(`UsertrapRes.ut_own`, `ProofSyscall`), so threading it in is a new
+parameter through that entire chain rather than the local step finding C
+assumed ("with no new machinery").
+
 **WALL 3 — THE SURRENDER SLOT AT FORK HAS NO PAYER, AND THE CLASS PREMISE
 DOES NOT REACH IT.  This is the brief's STOP, and it is RA-1's finding 2
 landing on fork's arm instead of read's.**

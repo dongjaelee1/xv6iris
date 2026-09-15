@@ -272,7 +272,14 @@ Derived corollaries, in order of what applications actually use:
   `SpecKexec.exec_slot_pre`'s wands — change (1) of the commit refutes
   change (3) of the same commit; the replacement is to discharge from the
   POST-PARK table (`fd_frags_park_at`'s `⌜fdv_all_parked sts'⌝`), which
-  restates the wands and moves every applier.  **(3)** THE STOP: fork is a
+  restates the wands and moves every applier.  AND the check RA-3 left for
+  RA-2 comes back NO independently of the pin: `proc_priv_parked` needs the
+  block AND the bundle, the block is in scope at the wand applications
+  (`Hpriv`) but `fd_frags` occurs **zero** times in the whole kexec chain
+  (`SpecKexec`, `ProofKexec*`, `KexecOkQ`, `KexecBridge`) — it is on the
+  syscall channel one layer out (`UsertrapRes.ut_own`, `ProofSyscall`), so
+  it is a new parameter through that chain, not the local step finding C
+  assumed.  **(3)** THE STOP: fork is a
   FREE number (`UexecSG.free_num` excludes only exec/5/6/15..20), so its
   `xv6_sbundle` arm is `emp`, and `UkFork.wp_uk_ecall_fork` takes NO
   deposit premise — it mints from the law packed inside `UkRun.urun`

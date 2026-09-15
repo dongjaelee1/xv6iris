@@ -166,10 +166,19 @@ Qed.
 (* ...AND ITS POSITIONAL HALF: the only newline is the last byte, which is
    what [gets] stopping at the first one says about the buffer it read. *)
 Lemma echo_line_nl_last (k : nat) :
-  echo_line !! k = Some (Z_to_bv 8 10%Z) -> k = 16%nat.
+  echo_line !! k = Some (Z_to_bv 8 10%Z) -> k = (length echo_line - 1)%nat.
 Proof.
   rewrite echo_line_words. intro Hk.
-  rewrite (wl_line_nl_last echo_ws k echo_ws_wf Hk). by vm_compute.
+  rewrite (wl_line_nl_last echo_ws k echo_ws_wf Hk) wl_line_length. lia.
+Qed.
+
+Lemma echo_line_nl_at_end :
+  echo_line !! (length echo_line - 1)%nat = Some (Z_to_bv 8 10%Z).
+Proof.
+  rewrite echo_line_words wl_line_length.
+  replace (length (wl_body echo_ws) + 1 - 1)%nat
+    with (length (wl_body echo_ws)) by lia.
+  exact (wl_line_nl_at echo_ws).
 Qed.
 
 Global Opaque echo_line.

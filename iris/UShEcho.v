@@ -112,11 +112,10 @@ Qed.
 
 (* ...and no byte of the line is a NUL, which is what pins each argument's
    LENGTH: a [bb_cstr] that stopped early would have to find one. *)
-Lemma echo_line_nonul (j : nat) : (j < 17)%nat -> echo_line !!! j <> ubyte0.
+Lemma echo_line_nonul (j : nat) :
+  (j < length echo_line)%nat -> echo_line !!! j <> ubyte0.
 Proof.
-  intro Hj.
-  pose proof (echo_line_byte_val_at j ltac:(rewrite echo_line_length; lia))
-    as Hv.
+  intro Hj. pose proof (echo_line_byte_val_at j Hj) as Hv.
   intro Hc. apply (f_equal bv_unsigned) in Hc.
   rewrite (_ : bv_unsigned ubyte0 = 0%Z) in Hc; [lia | by vm_compute].
 Qed.
@@ -1139,7 +1138,8 @@ Section UShEcho.
         pose proof (Hgi i Hi (alen i) Hlt) as Hm2.
         rewrite Hm1 in Hm2. injection Hm2 as Hm2.
         pose proof (proj1 Hbytes i (alen i) Hi Hlt) as Hgl.
-        assert (Hidx : (UkShEcho.echo_off i + alen i < 17)%nat)
+        assert (Hidx : (UkShEcho.echo_off i + alen i
+                        < length echo_line)%nat)
           by (apply UkShEcho.echo_off_lt; lia).
         apply (echo_line_nonul _ Hidx).
         rewrite <- Hgl, <- Hm2. exact (eq_sym ubyte0_moi0).

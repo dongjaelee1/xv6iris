@@ -2738,7 +2738,7 @@ Section echo_out.
     pose proof (cs_len_ok_echo so (open_seg h, c) Hcsb Hweq Hcsl) as Hcsl2.
     assert (Hbnd2 : (S (length (o_E so)) `div` length echo_line
                      <= S (length (o_cs so)))%nat).
-    { pose proof echo_line_length as HLL.
+    { pose proof echo_line_pos as HLL.
       destruct (cs_len_ok_inv (MkO (o_ps so) (o_cs so) (o_E so ++ [(open_seg h, c)]) [])
                   Hcsl2) as [[_ Hq] | [_ Hq]];
         cbn [o_ps o_cs o_E o_w] in Hq; rewrite length_app in Hq;
@@ -2753,7 +2753,7 @@ Section echo_out.
     { intros q Hq.
       destruct (decide (length echo_line * q < length (o_E so))%nat)
         as [Hltq | Hgeq]; [by apply Hpin |].
-      pose proof echo_line_length as HLL.
+      pose proof echo_line_pos as HLL.
       assert (Heq17 : (length echo_line * q = length (o_E so))%nat) by lia.
       assert (Hqe : (length (o_E so) `div` length echo_line)%nat = q).
       { rewrite -Heq17 Nat.mul_comm. apply Nat.div_mul. lia. }
@@ -2802,7 +2802,7 @@ Section echo_out.
           intros q Hq. rewrite length_app in Hq. cbn [length] in Hq.
           destruct (decide (length echo_line * q < length (o_E so))%nat)
             as [Hltq | Hgeq]; [by apply Hpin |].
-          pose proof echo_line_length as HLL.
+          pose proof echo_line_pos as HLL.
           assert (Heq17 : (length echo_line * q = length (o_E so))%nat) by lia.
           assert (Hqe : (length (o_E so) `div` length echo_line)%nat = q).
           { rewrite -Heq17 Nat.mul_comm. apply Nat.div_mul. lia. }
@@ -3353,7 +3353,7 @@ Section echo_out.
       destruct (decide (length (o_E so) = 0%nat)) as [Hz | Hz]; [exact Hz |].
       exfalso.
       pose proof (prefix_length _ _ Hcsp) as Hlen0.
-      pose proof echo_line_length as HLL.
+      pose proof echo_line_pos as HLL.
       assert (Hdm : length (o_E so)
                     = (length echo_line
                        * (length (o_E so) `div` length echo_line))%nat).
@@ -3406,7 +3406,7 @@ Section echo_out.
       ∗ ((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v (cs0 ++ [a]) ∗ E_lb v n0) ∨ T).
   Proof.
     intros Hpos Hmod Hdiv Hpin0 HPeq Halt Hhead.
-    pose proof echo_line_length as HLL.
+    pose proof echo_line_pos as HLL.
     assert (Hd1 : ((n0 - 1) `div` length echo_line
                    = n0 `div` length echo_line - 1)%nat).
     { assert (Hn1 : n0 = ((n0 - 1) + 1)%nat) by lia.
@@ -3483,7 +3483,7 @@ Section echo_out.
        either ([pro_idx_app_le] at the blocks the stage has passed). *)
     assert (Hpinq : pro_pin (o_ps so) (o_cs so ++ [a]) (length (o_E so))).
     { intros qq Hqq. rewrite pro_idx_app_le; [by apply Hpin |].
-      pose proof echo_line_length as HL.
+      pose proof echo_line_pos as HL.
       rewrite HlenE in Hqq. rewrite Hq.
       pose proof (Nat.div_mod_eq n0 (length echo_line)) as Hdm.
       rewrite Hmod Nat.add_0_r in Hdm. nia. }
@@ -3732,7 +3732,7 @@ Section echo_out.
       ∗ ((turn v (S P) ∗ ps_lb v (ps0 ++ [a]) ∗ cs_lb v cs0 ∗ E_lb v n0) ∨ T).
   Proof.
     intros Hmod Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead.
-    pose proof echo_line_length as HLL.
+    pose proof echo_line_pos as HLL.
     iIntros "#Hpin Ht #Hpslb #Hcslb #HElb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /ecl; by iLeft | by iRight]. }

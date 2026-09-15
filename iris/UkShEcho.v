@@ -117,10 +117,10 @@ Proof. rewrite /echo_toks wl_toks_length. vm_compute. lia. Qed.
    these words.  A caller that used to bound [echo_off i + j] by case
    analysis over the three offsets gets it from this. *)
 Lemma echo_off_lt (i j : nat) :
-  (i < 3)%nat -> (j <= echo_alen i)%nat -> (echo_off i + j < 17)%nat.
+  (i < 3)%nat -> (j <= echo_alen i)%nat ->
+  (echo_off i + j < length echo_line)%nat.
 Proof.
-  intros Hi Hj. rewrite <- echo_line_length.
-  rewrite /echo_off echo_line_words.
+  intros Hi Hj. rewrite /echo_off echo_line_words.
   exact (wl_off_lt_line echo_ws i _ j (echo_ws_at i Hi) Hj).
 Qed.
 
@@ -176,7 +176,7 @@ Qed.
 Definition ush_line_toks : Prop :=
   forall (f : nat -> bv 8) (k len : nat),
     UConsLine.ush_line_is f k len ->
-    len = 17%nat
+    len = length echo_line
     /\ ushp_no_symbols len (fun j : nat => f (k + j)%nat)
     /\ ushp_tokens len (fun j : nat => f (k + j)%nat) 0%nat echo_toks.
 
@@ -190,17 +190,15 @@ Definition ush_line_toks : Prop :=
 Lemma ush_line_toks_holds : ush_line_toks.
 Proof.
   intros f k len [Hlen Hf].
-  rewrite echo_line_length in Hlen.
   split; [ exact Hlen | ].
   subst len.
   destruct ush_echo_tokens_holds as (Hns & Htk & _).
-  rewrite echo_line_length in Hns, Htk.
-  assert (Hext : forall j : nat, (j < 17)%nat ->
+  assert (Hext : forall j : nat, (j < length echo_line)%nat ->
             echo_line !!! j = f (k + j)%nat)
     by (intros j Hj; symmetry; exact (Hf j Hj)).
   split.
-  - exact (ushp_no_symbols_ext 17 _ _ Hext Hns).
-  - exact (ushp_tokens_ext 17 _ _ Hext 0%nat echo_toks Htk).
+  - exact (ushp_no_symbols_ext (length echo_line) _ _ Hext Hns).
+  - exact (ushp_tokens_ext (length echo_line) _ _ Hext 0%nat echo_toks Htk).
 Qed.
 
 (* ---- the command, as a VALUE ---------------------------------------- *)
@@ -808,7 +806,7 @@ Section UkShEcho.
     intros N Hc h m dw dv s0 len f sz ld n
       Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1 Hfd2.
     (* the ONE line the discipline admits, as the parser's own premises *)
-    destruct (ush_line_toks_holds f 0%nat len Hline) as (Hlen17 & Hns0 & Htoks0).
+    destruct (ush_line_toks_holds f 0%nat len Hline) as (_ & Hns0 & Htoks0).
     assert (Hns : ushp_no_symbols len f) by exact Hns0.
     assert (Htoks : ushp_tokens len f 0%nat echo_toks) by exact Htoks0.
     pose proof echo_toks_lt10 as Htlen.

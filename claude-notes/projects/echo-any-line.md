@@ -72,6 +72,11 @@ the only case outside it.
   `echo_alen_le5` are deleted — nothing reads an argument's offset or length
   as a number any more. What remains is `echo_off_0 = 0` (true of every line,
   `wl_off_0`) and `echo_alen_0 = 4` (the COMMAND NAME, which stays "echo").
+- **THE LENGTH IS GONE EVERYWHERE BUT `UkSh.v`.** `UConsLine.ush_disc_line`
+  divides by `length echo_line`, `UShEcho.echo_line_nonul` and
+  `UkShEcho.echo_off_lt` are stated at it, and `ush_line_toks` reports it —
+  none of them says 17. `EchoDisc.echo_line_nl_at_end` is where the closing
+  newline is, positionally.
 - The assumption audit is unchanged throughout (`make audit-echo-only`,
   fourteen assumptions, md5 `a78bf9a051fb56b084795d782df04045`).
 
@@ -93,9 +98,12 @@ premise once the word list is a parameter.
 
 ## What is left
 
-1. **`UConsLine.ush_disc_line`** still reads `echo_line !! (i mod 17)`, and
-   `UShEcho.echo_line_nonul` is stated at `j < 17`. Both want
-   `length echo_line` instead.
+1. **`UkSh.v`'s OWN WALK** still reads 17 at twelve sites — the shell's
+   `gets` loop and its per-byte row. These are the last consumers of
+   `EchoDisc.echo_line_length`; the rest of the tree spends
+   `echo_line_pos`. Several are `rewrite echo_line_length; intro Hj`
+   feeding a `do 17 destruct`, so they want the line's byte laws
+   (`echo_line_byte_val_at`) rather than positivity.
 2. **THE EXEC-CHANNEL PREMISES.** `UShEchoOut.echo_out_argv_of_image` and
    `UShEchoPay` still carry `na = 3` and per-index `alen i = echo_alen i`;
    they should read `na = length echo_ws` and quantify.

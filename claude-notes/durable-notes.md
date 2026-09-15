@@ -82,6 +82,9 @@ pointer line per top-level and `design/` file and does NOT list `projects/` or
   (`iris/` has no Makefile; the target is in the top-level one); it lives in
   `iris/SystemAssumptions.v`, deliberately outside `_CoqProject`. Do not add a
   second `Print Assumptions` beside it — consecutive calls share nothing.
+  **For BOTH audits use `make audit-all-only`, never `make audit-only
+  audit-echo-only`** — the second form serialises two multi-minute walks, the
+  target runs them under `-j2`; CI does the same by backgrounding them.
 - **Every device-conformance test must pass.** `make vtest-check-ci` compiles
   them against checked-in QEMU captures. A known divergence is pinned on BOTH
   sides and proved unequal, so **a device change that "fixes" a pinned finding
@@ -867,7 +870,12 @@ cannot instantiate says nothing, and a `Σ`-generic statement no concrete `Σ`
 satisfies is vacuous — fixing the functor list is what checks that. **Run BOTH after a change that touches the program
 tier**: the system audit cannot see an axiom leaked there, and a grep for
 `Admitted`/`Axiom` cannot see an undischarged `Spec*` module `Parameter`
-sitting behind a sealed functor — only `Print Assumptions` can.
+sitting behind a sealed functor — only `Print Assumptions` can. `make
+audit-all-only` runs the pair CONCURRENTLY (`-j2`), which is the difference
+between the max of the two walks and their sum; **CI runs both on every push**
+and puts each list in the run's step summary under its own heading, so a
+regression in either is visible without anyone remembering to type the
+command.
 
 `make audit-echo-only` must show these FOURTEEN (md5 of the filtered output
 `a78bf9a051fb56b084795d782df04045`): the thirteen below PLUS

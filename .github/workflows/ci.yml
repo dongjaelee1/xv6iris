@@ -166,58 +166,100 @@ jobs:
             exit 1
           fi
 
-      # ---- 3b. Assumption audit (iris/SystemAssumptions.v) ----
-      # `Print Assumptions` on the system theorem -- the only check that sees
-      # through every functor and seal, and so the only statement of what the
-      # whole development actually rests on.  It used to be a line inside
-      # SystemAdequacy.v, where it was 95 s of that file's 98.6 s on the serial
-      # build tail; it is now its own file, out of iris/_CoqProject on purpose
-      # (the commented row there is what tells proof_coverage.py so), compiled
-      # here by `make audit-only` against the tree the previous step built.
-      # CI pays the same 95 s it always did -- what moved is that a developer's
-      # `make proofs` no longer does.
+      # ---- 3b. Assumption audits (iris/SystemAssumptions.v, EchoAssumptions.v) ----
+      # `Print Assumptions`, the only check that sees through every functor and
+      # seal, and so the only statement of what the development actually rests
+      # on.  TWO THEOREMS, because NEITHER CONE CONTAINS THE OTHER:
       #
-      # `audit-only`, not `audit`: the latter depends on `proofs`, whose
-      # kernel-rocq prerequisite pulls in the absent kernel ELF (see the note
-      # atop this file).  `-s` keeps make's recipe echo out of the captured
-      # stdout, so the log is exactly the audit's output; coqc's warnings go to
-      # stderr and stay in the job log rather than the summary.
+      #   SystemAdequacy.xv6_fs_adequacy_xv6Σ -- the chain at the TRIVIAL
+      #     application.  Safety plus the file system's durability, every image
+      #     fact discharged by computation at the 2,048,000 bytes mkfs wrote.
+      #     It names no user program, so it never walks the Uk*/USh*/UInit*/
+      #     UEcho* tier.
+      #   UInitBootAdequacy.echo_adequacy_echoΣ -- the same chain at
+      #     AppEcho.app_echo, closed: functor list fixed at echoΣ, disk at the
+      #     mkfs image, only the three hardware facts left open.  Its cone DOES
+      #     walk that tier, and the system audit above could not tell you
+      #     whether an axiom leaked into it.  Neither can a grep for
+      #     `Admitted`/`Axiom`: a Spec*.v module Parameter that no Link*.v
+      #     discharged sits in the proof term unmentioned by any source line.
+      #
+      # Each is a file of its own, out of iris/_CoqProject on purpose (the
+      # commented rows there are what tell proof_coverage.py so), compiled here
+      # against the tree the previous step built.  The system one used to be a
+      # line inside SystemAdequacy.v, where it was 95 s of that file's 98.6 s on
+      # the serial build tail; CI pays that cost, a developer's `make proofs` no
+      # longer does.
+      #
+      # THEY RUN CONCURRENTLY, and that is the point of backgrounding them
+      # rather than naming both targets on one `make` line -- make runs command
+      # line goals one after another unless it is itself parallel, so the step
+      # would cost the SUM of the two walks instead of the max.  MEASURED on
+      # the dev VM 2026-09-15: system alone 82.7 s, echo alone 83.7 s, the pair
+      # 86.4 s.  They are single-threaded coqc processes sharing nothing but
+      # the .vo they read, so the overlap is nearly free and the step drops
+      # from ~166 s to ~86 s.  `make audit-all-only` is the same thing for a
+      # developer (`$(MAKE) -j2`); CI does its own backgrounding only because
+      # it needs each audit's output in a log of its own to put in the summary,
+      # which one shared stdout cannot give it.
+      #
+      # `audit-only`/`audit-echo-only`, not `audit`/`audit-echo`: the latter
+      # depend on `proofs`, whose kernel-rocq prerequisite pulls in the absent
+      # kernel ELF (see the note atop this file).  `-s` keeps make's recipe echo
+      # out of the captured stdout, so each log is exactly one audit's output;
+      # coqc's warnings go to stderr and stay in the job log rather than the
+      # summary.
       #
       # The output goes in the step summary rather than being read out of a
-      # 1900-line build log.  The step FAILS if coqc does (a broken audit is a
-      # broken tree), but the axiom list itself is only reported, not diffed
-      # against an expected set -- same contract as when it lived in the build
-      # log, so read it.  The summary is written either way: a failing run is
-      # exactly when you want to see how far it got.
-      - name: Assumption audit (iris/, Print Assumptions on the system theorem)
+      # 1900-line build log.  The step FAILS if either coqc does (a broken audit
+      # is a broken tree), but the axiom lists themselves are only reported, not
+      # diffed against an expected set -- same contract as when they lived in
+      # the build log, so read them.  BOTH summaries are written even when one
+      # audit fails: a failing run is exactly when you want to see how far each
+      # got, which is also why the two exit statuses are collected separately
+      # instead of the step dying on the first.
+      - name: Assumption audits (iris/, Print Assumptions, system + echo in parallel)
         run: |
-          rc=0
+          rc_sys=0
+          rc_echo=0
           make -s SWITCH="$GITHUB_WORKSPACE" audit-only \
-            > "$RUNNER_TEMP/assumptions.log" || rc=$?
+            > "$RUNNER_TEMP/assumptions-system.log" &
+          pid_sys=$!
+          make -s SWITCH="$GITHUB_WORKSPACE" audit-echo-only \
+            > "$RUNNER_TEMP/assumptions-echo.log" &
+          pid_echo=$!
+          wait $pid_sys  || rc_sys=$?
+          wait $pid_echo || rc_echo=$?
+
           {
             echo "## Assumption audit"
             echo
-            echo "\`Print Assumptions SystemAdequacy.xv6_power_adequacy_xv6Σ\` — the"
-            echo "transitive axiom footprint of the system theorem, through every functor"
-            echo "and every seal."
+            echo "### \`SystemAdequacy.xv6_fs_adequacy_xv6Σ\`"
             echo
-            echo "Expected: exactly three — \`functional_extensionality_dep\` and"
-            echo "the two LR/SC reservation predicates"
-            echo "(\`xv6iris_extras.resv_matches\`, \`xv6iris_extras.resv_is_valid\`)."
-            echo "**Anything else is a regression** — a \`Link*\` entry means an"
-            echo "unproven kernel function came back into the cone, and a bare Sail"
-            echo "platform extern means the fork's \`coq:\` bindings or"
-            echo "\`model-xv6iris/xv6iris_extras.v\` drifted."
-            echo
-            if [ "$rc" -ne 0 ]; then
-              echo "> :x: The audit did not complete (exit $rc); the output below is partial."
+            if [ "$rc_sys" -ne 0 ]; then
+              echo "> :x: exit $rc_sys — output below is partial."
               echo
             fi
             echo '```'
-            cat "$RUNNER_TEMP/assumptions.log"
+            cat "$RUNNER_TEMP/assumptions-system.log"
+            echo '```'
+            echo
+            echo "### \`UInitBootAdequacy.echo_adequacy_echoΣ\`"
+            echo
+            if [ "$rc_echo" -ne 0 ]; then
+              echo "> :x: exit $rc_echo — output below is partial."
+              echo
+            fi
+            echo '```'
+            cat "$RUNNER_TEMP/assumptions-echo.log"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          exit $rc
+
+          if [ "$rc_sys" -ne 0 ] || [ "$rc_echo" -ne 0 ]; then
+            echo "::error::An assumption audit failed (system: $rc_sys," \
+                 "echo: $rc_echo); see the step summary."
+            exit 1
+          fi
 
       # ---- 3b'. Trusted base of the adequacy statement (iris/) ----
       # The other half of the audit above.  `Print Assumptions` answers "what
@@ -252,32 +294,57 @@ jobs:
         env:
           SWITCH: ${{ github.workspace }}
         run: |
-          # ALL THREE RUNGS OF THE LADDER, most general first.  Read the
-          # three tables as one story:
+          # ALL THREE RUNGS OF THE LADDER, most general first, AND THEN THE
+          # APPLICATION.  MEASURED 2026-09-15, in-tree definitions / lines:
           #   RiscvAdequacy.riscv_power_adequacy  -- the machine, an ABSTRACT
-          #     crash invariant [Pc], and any [phi].  This is the "any
-          #     provable pure trace property" theorem, and it is the CHEAPEST
-          #     of the three to state (MEASURED 2026-08-27: 431 definitions /
-          #     3493 lines) because it names no file system at all.
+          #     crash invariant [Pc], and any [phi].  The "any provable pure
+          #     trace property" theorem.  17 files / 581 / 5200.
           #   xv6_power_adequacy_xv6Sigma         -- xv6's instance: [Pc] is
           #     fixed at [FsCrash.P_fs_named], the invariant xv6's boot cone
-          #     actually establishes, with [phi] still free.  605 / 4781: the
-          #     dearest of the three, because its statement names BOTH the
+          #     actually establishes, with [phi] still free.  46 / 760 / 6572,
+          #     the dearest of the four, because its statement names BOTH the
           #     Iris ghost layer (via the [Hphi] hypothesis, an iProp
           #     entailment) and the FS durability record.
-          #   xv6_fs_adequacy_xv6Sigma            -- [phi] chosen.  446 / 3460.
+          #   xv6_fs_adequacy_xv6Sigma            -- [phi] chosen.
+          #     28 / 498 / 4013.
+          #   UInitBootAdequacy.echo_adequacy_echoSigma -- the same chain at
+          #     [AppEcho.app_echo], closed.  11 / 395 / 3354.
           #
-          # NEITHER OF THE LOWER TWO CONTAINS THE OTHER: 605 vs 446, sharing
-          # 428; 177 are power-only (the ghost layer) and 18 are fs-only (the
+          # NEITHER OF THE MIDDLE TWO CONTAINS THE OTHER: 760 vs 498, sharing
+          # 480; 280 are power-only (the ghost layer) and 18 are fs-only (the
           # pure FS-consistency vocabulary only [phi] names -- xv6_trace_pure,
           # fs_boot_pure, snap_ok and its cone, the link-count definitions).
           # AT FILE LEVEL IT LOOKS LIKE A SUPERSET AND IS NOT: those 18 live
           # in files the general theorem reaches for other reasons.  Do not
           # read containment off the file column.
+          #
+          # THE ECHO ROW IS THE SMALLEST OF THE FOUR, and that is the result,
+          # not a bug in the seed.  The application theorem is the one with
+          # the most PROOF behind it and the least STATEMENT in front of it:
+          # what it says is a property of the UART trace, so its base is the
+          # machine + device model, [ObsTrace], and [EchoDisc] -- 11 files,
+          # 358 of its 395 definitions shared with xv6_fs_adequacy's, 37 its
+          # own.  The 20 FS files in that theorem's base (Fs*, Bio*, Log*,
+          # Dirent*, Dinode*, Bitmap*, Inode*, Dir*) are absent here: the
+          # echo statement never names a file system.
+          #
+          # WHAT TO WATCH IS [EchoDisc.v]'s 32 definitions / 276 lines.  For
+          # the other three the statement vocabulary is FS consistency, which
+          # this tree defines either way; here THE PREDICATE IS THE
+          # SPECIFICATION -- [disc]/[good_out] is what "a legal session
+          # transcript" means, and a Print Assumptions of a theorem about the
+          # wrong predicate is worth nothing.  This table is what says which
+          # definitions a reader must check to rule that out.
+          #
+          # EACH RUN OVERWRITES tools/tcb/TcbSeed.v, so the loop is SERIAL on
+          # purpose -- unlike the two audits in the step above, these are 3-5 s
+          # apiece and there is nothing to win by racing them into the same
+          # scratch file.
           rc=0
           for thm in RiscvAdequacy.riscv_power_adequacy \
                      SystemAdequacy.xv6_power_adequacy_xv6Σ \
-                     SystemAdequacy.xv6_fs_adequacy_xv6Σ; do
+                     SystemAdequacy.xv6_fs_adequacy_xv6Σ \
+                     UInitBootAdequacy.echo_adequacy_echoΣ; do
             log="$RUNNER_TEMP/tcb-${thm##*.}.log"
             if ./tools/tcb/tcb-report.sh "xv6iris.$thm" > "$log" 2>&1; then
               python3 tools/tcb/tcb_report.py "$log" --md --target "$thm" \
@@ -356,7 +423,8 @@ jobs:
       # not drift and does not fail here, but it has to say so: comment its row
       # out to a bare `# Foo.v` (see coqproject_files' docstring), which is what
       # distinguishes a deliberate omission -- a descoped tier, or a file some
-      # other target builds, as the step above builds SystemAssumptions.v --
+      # other target builds, as step 3b builds SystemAssumptions.v and
+      # EchoAssumptions.v --
       # from the forgotten row this check is here to catch.  Either way the
       # file is counted by nobody, so a file omitted this way must carry no
       # coverage claims.  A mere coverage change never fails CI.  Runs only on a

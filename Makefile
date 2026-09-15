@@ -18,6 +18,9 @@
 #   make vtest-passes  build every run's proof, then print the table
 #   make audit      build, then Print Assumptions on the system theorem
 #   make audit-only the same audit, against an already-built tree
+#   make audit-echo / audit-echo-only  the same, for the ECHO APPLICATION
+#                   theorem -- a cone the system audit never walks
+#   make audit-all / audit-all-only    BOTH audits, run concurrently
 #   make model      compile the Sail-generated Coq model (model-xv6iris/)
 #   make kernel     build the xv6 kernel ELF (xv6-riscv/kernel/kernel)
 #   make user       build the xv6 user-space programs (xv6-riscv/user/_*)
@@ -131,7 +134,7 @@ USER_DUMPS ?= sync:Sync echo:Echo sh:Sh init:Init cat:Cat
 
 .PHONY: all proofs model kernel user dump dump-force kernel-rocq user-rocq \
         xv6-rev-check sail-rev-check gen-code check-decode update-decode \
-        audit audit-only audit-echo audit-echo-only vtest vtest-check vtest-check-ci vtest-gen vtest-deps \
+        audit audit-only audit-echo audit-echo-only audit-all audit-all-only vtest vtest-check vtest-check-ci vtest-gen vtest-deps \
         hwtest hwtest-gen hwtest-gen-all hwtest-probe \
         vtest-runs vtest-passes vtest-table \
         clean clean-proofs distclean model-gen
@@ -302,7 +305,7 @@ audit-only:
 	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob SystemAssumptions.v
 
 # The SAME audit for the APPLICATION theorem (iris/EchoAssumptions.v):
-# `Print Assumptions` on UInitBootAdequacy.echo_adequacy_modulo_phi.  It is a
+# `Print Assumptions` on UInitBootAdequacy.echo_adequacy_echoSigma.  It is a
 # SEPARATE target because neither theorem's cone contains the other -- the
 # system audit above never walks the Uk*/USh*/UInit*/UEcho* program tier, so it
 # cannot see an undischarged Spec* module Parameter hiding behind a seal there.
@@ -313,6 +316,27 @@ audit-echo: proofs
 
 audit-echo-only:
 	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob EchoAssumptions.v
+
+# BOTH audits, and the reason this target exists rather than a habit of typing
+# `make audit-only audit-echo-only`: that line SERIALISES them.  Make runs the
+# goals on its command line one after another unless it is itself parallel, so
+# the two would cost the sum of their wall clocks for no reason -- they are
+# independent single-threaded coqc processes over an already-built tree,
+# sharing nothing but the .vo they read.  The recursive `-j2` is what overlaps
+# them, and the overlap is nearly free: MEASURED on the dev VM 2026-09-15,
+# system alone 82.7 s, echo alone 83.7 s, the pair 86.4 s.
+#
+# `--output-sync=target` is not tidiness either: the two Print Assumptions
+# outputs land on one stdout, and without it they interleave mid-line and both
+# lists become unreadable.  -O makes make buffer each recipe and emit it whole.
+# (CI does not use this target -- it backgrounds the two `audit-*-only` targets
+# itself, because it needs each audit's output in a log file of its own to put
+# in the step summary.  Same parallelism, different plumbing.)
+audit-all: proofs
+	$(MAKE) audit-all-only
+
+audit-all-only:
+	$(MAKE) -j2 --output-sync=target audit-only audit-echo-only
 
 # ---- 5. vtest: the device semantics, differentially tested against QEMU ----
 #

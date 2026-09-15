@@ -617,20 +617,34 @@ CID)` at each body site and each cross-module block application. A section whose
 
 ## `Print Assumptions` is a whole-tree walk
 
-It lives in `iris/SystemAssumptions.v`, run by `make audit-only` and by CI —
-deliberately not a `_CoqProject` row, and deliberately not in the serial build
-tail. It forces and walks every opaque body in the cone, and forcing is not a
-read: each term is re-COOKED out of its sections and re-substituted through
+It lives in `iris/SystemAssumptions.v` (and, for the echo application theorem,
+`iris/EchoAssumptions.v`), run by `make audit-only` / `make audit-echo-only` and
+by CI — deliberately not `_CoqProject` rows, and deliberately not in the serial
+build tail. It forces and walks every opaque body in the cone, and forcing is
+not a read: each term is re-COOKED out of its sections and re-substituted through
 applied functors, 2–3× per term. Both of this tree's universal idioms (`Section`
 + `Context`, sealed functor applications) are on that path.
 
 So it is ~linear in total proof-term bytes in the cone, which makes it a **proxy
 metric for whole-tree proof-term size** — treat a jump as a tripwire.
 
+- **TWO AUDITS COST THE MAX, NOT THE SUM — but only if you overlap them.** They
+  are independent single-threaded `coqc` processes over a built tree, sharing
+  nothing but the `.vo` they read, so the overlap is nearly free: MEASURED on
+  the dev VM 2026-09-15, **system alone 82.7 s, echo alone 83.7 s, the pair
+  86.4 s**. `make audit-all-only` runs them under `$(MAKE) -j2` and CI
+  backgrounds the two `audit-*-only` targets in one step. Naming both goals on
+  one non-parallel `make` line SERIALISES them, which is the whole reason that
+  target exists. (The ~379 s quoted in `iris/SystemAssumptions.v` and
+  `design/adequacy.md` is an older measurement on other hardware. What is stable
+  is the SHAPE — a whole-tree walk, linear in cone proof-term bytes — not the
+  absolute seconds; do not compare the two figures.)
 - **Negative results:** it is not disk I/O; nothing is cached between calls, so
-  a second audit doubles the bill rather than riding along; auditing at lower
-  altitude does not decompose the cost, since the deepest contract carries nearly
-  all of it; GC tuning does nothing.
+  a second audit doubles the bill rather than riding along (this is *within* one
+  process — it is why neither audit file may carry a second `Print Assumptions`,
+  and it is not contradicted by the point above, which is about two processes on
+  two cores); auditing at lower altitude does not decompose the cost, since the
+  deepest contract carries nearly all of it; GC tuning does nothing.
 - **The cost is the CONE, not the file you are auditing** — cutting a file's
   compile time moves its audit by nothing.
 - **`-noglob` on the audit compile is load-bearing**: with no `.glob` the nightly

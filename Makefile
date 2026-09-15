@@ -323,8 +323,8 @@ audit-echo-only:
 # the two would cost the sum of their wall clocks for no reason -- they are
 # independent single-threaded coqc processes over an already-built tree,
 # sharing nothing but the .vo they read.  The recursive `-j2` is what overlaps
-# them, and the overlap is nearly free: MEASURED on the dev VM 2026-09-15,
-# system alone 82.7 s, echo alone 83.7 s, the pair 86.4 s.
+# them, and the overlap is nearly free: the pair costs about what either one
+# costs alone (claude-notes/optimization.md has the dated measurement).
 #
 # `--output-sync=target` is not tidiness either: the two Print Assumptions
 # outputs land on one stdout, and without it they interleave mid-line and both

@@ -2651,6 +2651,48 @@ Section DevLoops.
     iModIntro. iFrame "Hhi Hlm Hwin HΦ". iPureIntro. exact Hbelow.
   Qed.
 
+  (* ------------------------------------------------------------------ *)
+  (*  ADVANCING THE ARM, WITH THE PORT INVARIANT OPENED HERE.              *)
+  (*                                                                      *)
+  (*  This is option A's primitive, and the whole of what the ruling buys. *)
+  (*  The caller holds the PLIC payload's half; the port invariant holds   *)
+  (*  the other.  Opening the invariant makes them agree, so:              *)
+  (*                                                                      *)
+  (*   - the caller's value IS the invariant's, which is how "no arm is in *)
+  (*     progress" becomes a PURE side condition consoleintr can prove at  *)
+  (*     an arm's entry -- it reads it off its own half;                   *)
+  (*   - while an arm is open the invariant's half is [Some ...], so a     *)
+  (*     second [EvOpen] meets a premise it cannot discharge.  That is     *)
+  (*     the exclusion cons.lock provides, stated where the fact lives.    *)
+  (*                                                                      *)
+  (*  [uart_inv_body] is TIMELESS, so this is one [={E}=∗] with no machine *)
+  (*  step of its own -- the same shape [uart_inv_append] has.             *)
+  (* ------------------------------------------------------------------ *)
+  Lemma uart_inv_arm_set (E : coPset) (γ : uart_names)
+      (a a' : option LogEntryDefs.cons_arm) :
+    ↑uartN Uart0 ⊆ E ->
+    uart_inv Uart0 γ -∗ uart_arm γ (1/2) a ={E}=∗ uart_arm γ (1/2) a'.
+  Proof.
+    intros Hmask. iIntros "#Hinv Hmine".
+    iInv "Hinv" as ">Hbody" "Hclose".
+    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl & Harm)".
+    iDestruct "Harm" as (a0) "Harm".
+    (* the two halves agree: the caller's value is the invariant's *)
+    iDestruct (uart_arm_agree with "Hmine Harm") as %<-.
+    iMod (uart_arm_update γ a a a' with "Hmine Harm") as "[Hmine Harm]".
+    iMod ("Hclose" with "[Hu Hg Hcol Hincl Harm]") as "_".
+    { iNext. iExists u. iFrame "Hu Hg Hcol Hincl". iExists a'. iExact "Harm". }
+    by iModIntro.
+  Qed.
+
+  (* WHAT A WOULD-BE SECOND ARM MEETS is not a lemma of its own: it is
+     [uart_arm_agree] above.  Whoever holds the payload's half knows the
+     invariant's value, so while an arm is open the invariant's half is
+     [Some ...] and [cons_ev_ok]'s [EvOpen] premise -- "no arm is in
+     progress" -- cannot be discharged.  That is the exclusion cons.lock
+     provides, stated where the fact lives, and it replaces the fraction
+     arithmetic the application does today. *)
+
   (* THE READ.  The caller advances the CONSUMED sequence [dl] by the
      window it just took out of the ring, and pays for it with the pure
      boundary fact -- which it may derive from the log itself, handed to it

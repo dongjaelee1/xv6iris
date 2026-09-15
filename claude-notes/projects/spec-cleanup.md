@@ -359,7 +359,13 @@ Derived corollaries, in order of what applications actually use:
   deliberately does not, so at a PIPE (where the arm is `emp`) a U-tier
   write learns NOTHING about `r` — not even that it is `-1` or in range.
   One conjunct to fix, a wide cone to land; owed, named, priced.
-- [ ] **RD-TR**: rewrite `user.tex` §7's read figure to the RD-0
+- [x] **RD-TR** LANDED 2026-09-16 (xv6iris-doc `e5859f3`; user.tex §7):
+  fig:sys-read KEPT as the general kernel-boundary AU form; NEW
+  fig:uk-read = the ECALL-tier inode-arm rule (dup-figure style);
+  offset paragraph made honest (receipt-reported today; ownership is
+  stated as the outlook, no campaign jargon); XXX + the nz offset note
+  deleted; console/pipe arms and write's mirror in prose, pipe's gap
+  stated as future work.  Original scope: rewrite the read figure to the RD-0
   sketch (general spec + owned-offset corollary), delete the `\nz`
   note and the "XXX" paragraph.  LAST — the tree leads, the TR
   records.

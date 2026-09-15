@@ -3783,6 +3783,34 @@ family.  Init's free write law then has exactly the two payable arms
 `die_de`/`die_df` left (INIT-DIAG's laws), and nothing about `die_dw` is an
 owner question any more.
 
+RESIDUALS (A) LANDED; (B) BLOCKED AT THE EXEC SEAM (2026-09-14; lane
+RESIDUALS' `c0474175b` in `-disc` cherry-picked as `146e7cac1`; 7 files;
+build rs-1 on the identical tree; audit the thirteen; lemma_diff CLEAN; no
+Admitted).  (A) THE FORK ANSWER CARRIES THE PID'S RANGE: the row `⌜1 <=
+bv_unsigned pidv <= PIDMAX⌝` was NOT on the fork leaf (only on the kernel's
+`SpecKfork` post and at `ProofSyscall`'s one construction site); it is now a
+pure row of `UexecRet.ufork_ans`'s pid arm, proved once at that site and
+passed through `UkFork`/`UkShRun`/`UkShDiag`/`UkShFork`/`UkInitMain`
+(kernel contract TEXT unchanged; `sysc_fork_out` names `ufork_ans`, so the
+contracts now promise the row).  Refuted: the shell's fork-panic pid
+sub-arm (`ushf_pid_sext_ne_m1`), init's fork-failed pid disjunct.  (B) THE
+EXEC SEAM DOES NOT CARRY `uvis_ch W'`/`uvis_pid W'`: `SpecKexec.exec_slot_pre`
+and `PinnedExec.pinned_exec_bundle` pin the image, the cwd, the lazy flag
+and the payload of the exec'd key `W'` but not its children set or pid,
+though both are the caller's by reflexivity at the kernel's discharge
+(`ProofKexec` `exec_key U' sts gn cs pidv na`).  Carrying them is a lane of
+its own (EXEC-SEAM): rows `⌜uvis_ch W' = cs⌝ ∗ ⌜uvis_pid W' = pidv⌝` on
+`exec_slot_pre` relayed through `SpecSysExec`/`SpecSyscall`/`SpecUsertrap`/
+`UexecSG`/`UexecApply`/`UexecRet`/`UexecExecInst`/`PinnedExec`, a `_refR`
+twin of `udepw_at_ref` handing the supplier the record's `urun_ids`, then
+`UkInit.init_exec_sup_pos` -> `UInitSh` -> `UShKernel.sh_uexec_slot` ->
+`UkSh.ush_pstate` (`uch ∅`, `upid p`, `p <> 1`); cone ~150 files (kexec /
+sys_exec / syscall / usertrap Specs and Proofs).  NOTHING WEAKENED.  (C)/(D)
+have no (B)-independent part: `ush_wcp`'s affine arm's producers are init's
+`init_lend_cred` mapping and the wait re-entry (= (B)); `sh_deps` is spent on
+the paid walk at `ksh_w_of_wcp`'s True arm with no `T`.  ORDER OF RECORD:
+EXEC-SEAM (B) -> (C) -> (D) -> R3.  Report: `handoff-2026-09-16/residuals-report.md`.
+
 SH-LINE R3 RE-SURVEYED (2026-09-14, after step 4; read-only; report
 `handoff-2026-09-16/r3-survey-2.md`).  FINDING, RULED BY THE COORDINATOR:
 `sh_pay_rest`'s `∀ T Wc Wb Pm` is ITSELF the obstacle -- after step 4

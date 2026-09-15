@@ -44,13 +44,9 @@ Two lanes, spawned from the coordinator's main checkout (`lane/io-leaf-3`):
   LANDED"); `-disc` is free again.
 * M6B-INIT -- LANDED (`a7d47ccef`+`290f05cf0`, app-echo.md "M6b LANDED");
   `-sup` is free again.
-* RESIDUALS in `-disc`, branch `lane/residuals` (launched after step 4 landed):
-  (A) the fork's pid sub-arm refuted from the leaf's pid-range row, (B) the
-  exec-seam rows (`uvis_ch W' = ∅`, `uvis_pid W' = pidv`) into sh's entry,
-  (C) every `∨ True` killed (`init_rd_cred`, `init_lend_cred`'s third arm,
-  `ush_wcp`'s third arm, the affine assemblers), (D) `sh_deps` made
-  taint-conditional and `Hsh_owed`'s FIRST conjunct deleted (TRUSTED; the
-  audit md5 changes); brief `brief-residuals.md`, report `residuals-report.md`.
+* RESIDUALS -- (A) LANDED (`146e7cac1`), (B) BLOCKED at the exec seam
+  (app-echo.md "RESIDUALS (A) LANDED; (B) BLOCKED"); lane EXEC-SEAM follows
+  (brief `brief-exec-seam.md`), then (C)/(D) verbatim from `brief-residuals.md`.
 * R3-SURVEY -- DONE (app-echo.md "SH-LINE R3 RE-SURVEYED"): RULED to delete
   `sh_pay_rest` and the second conjunct and discharge at the era's families
   through a new `UShRest.sh_rest_holds`; lane R3 follows RESIDUALS.

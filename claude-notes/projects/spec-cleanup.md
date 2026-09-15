@@ -246,7 +246,9 @@ Derived corollaries, in order of what applications actually use:
   (which ARE the two arms), the two `fd_st_of_key` readings and the
   count's sign-boundary bridges.  Design of record: `design/user-read.md`
   §3's RD-4 AS-LANDED block and §5's.
-- [ ] **RD-5 PIPE ARM**: the read end against the pipe's AU
+- [ ] **RD-5 PIPE ARM** (LAUNCHED 2026-09-15, Opus lane, branch
+  rd5-pipe-arm, brief scratchpad `brief-rd5-pipe-arm.md` — RD-4's shape,
+  the one walk's D/K at the handle reading): the read end against the pipe's AU
   (`usys_pipe_ok` names the slots; the content row is new).
 - [ ] **RD-6 WRITE**: the same program for write (its tailorings:
   `sh_deps`' write(16) deposit, the echo output ledger) — brief cut

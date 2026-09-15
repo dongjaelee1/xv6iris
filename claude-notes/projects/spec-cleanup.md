@@ -212,6 +212,13 @@ Derived corollaries, in order of what applications actually use:
   existentially); at a count of ZERO no byte is owned, no agreement
   exists and none is needed, since both spellings of an empty run are
   `emp`.  Mirror-green (whole tree).
+- **R-a CAMPAIGN OPENED 2026-09-16** (owner's word; design =
+  `design/user-read.md` §8: the all-parked generic tier beats the
+  supply-law wall on the console arm's disjunctive precedent; boundary
+  parks ride fork/exec's own kernel step).  Lanes RA-1..RA-4 listed
+  there; RA-1 (offmode + all-parked + class-field premise, zero
+  semantic change) LAUNCHED 2026-09-16, Opus, branch `ra1-offmode`,
+  brief scratchpad `brief-ra1-offmode.md`.
 - OWNER RULED 2026-09-15: BREADTH FIRST — RD-4/RD-5/RD-6 on the landed
   R-c pattern; route R-a (the owned-offset campaign) queued behind them,
   upgrading each arm by one conjunct when it runs.

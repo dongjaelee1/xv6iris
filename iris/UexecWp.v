@@ -75,6 +75,7 @@ Require Import ProcPtOwn.   (* [ud_pas] / [proc_pt_wf] -- the descriptor facts *
 Require Import UserPtTree.  (* [uptd] / [user_pt_inv] *)
 Require Import UmodeText.   (* [user_pt_inv_x] -- the image STAMPED (icache) *)
 Require Import UserFrame.   (* [u_regs] -- the per-step mutable cells *)
+Require Import TsoCtx.  (* [own_context] *)
 Require Import UserExec.    (* [ucfg] / [user_cfg] / [user_mstatus_ok] /
                                [user_trap_frame] *)
 Local Open Scope Z_scope.

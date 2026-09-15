@@ -75,7 +75,7 @@ Require Import UkShDiag.
 Require Import UkShMalloc.
 Require Import UkShLoop.
 Require Import UkShCd.   (* [ushc_bytes_sub] / [ushc_ustr_of_bytes]: the line cut out *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name; [child_tok] / [exit_tok] / [gen_pay_timeless] *)
 Require Import UexecRet.  (* [uwait_ans_pid] / [sext_neg1_64]: the wait's answer at sh's own pid *)

@@ -76,7 +76,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvLang RegFile RiscvPtsto RiscvExec.
 Require Import HartLift HartSpan.
 Require Import WpGpr MinstretInv InstrBytes.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* ===================================================================== *)

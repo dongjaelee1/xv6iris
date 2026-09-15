@@ -33,7 +33,7 @@ Require Import HartSwp HartLift HartSpan HartSpanChar.
 Require Import HartEvents HartMFetch PtTreeAdue.
 Require Import SmodeCorePt RiscvExtras.
 Require Import Riscv.rv64d_types Riscv.rv64d.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 (* [HartMFetch]'s local spelling of the zero bit, for the shells' premises *)

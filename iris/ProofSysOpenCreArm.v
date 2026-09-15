@@ -97,7 +97,7 @@ From Kernel Require KernelSyms.
 Require Import ProcAvail.
 Require Import Xv6G.
 Require Import FsCfg.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Local Open Scope Z_scope.
 

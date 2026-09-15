@@ -42,7 +42,7 @@ Require VirtioQueue.   (* [write_bytes_lookup]: the snapshot's per-byte hits *)
    ([TsoGhost.view_lb] at the era's names), and [TsoCtx.hart_view_lb] is the
    Σ-surface wrapper over it -- tso-machine-flip.md §6 amendment A6.6. *)
 Require Import TsoMemPa TsoGhost.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* ---------------------------------------------------------------------- *)

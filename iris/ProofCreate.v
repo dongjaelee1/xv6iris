@@ -125,7 +125,7 @@ From Kernel Require KernelSyms.
 Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Local Open Scope Z_scope.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 (* claude-notes/optimization.md "Register maps": the leaves' premises are
    stated over [rget] (see e.g. [cri_*]'s consumers below), so with these

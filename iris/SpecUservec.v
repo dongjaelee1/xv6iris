@@ -120,7 +120,7 @@ Require Import UtResFits.  (* [USERTRAP_RES_PARK] -- the residue plus its produc
 From Kernel Require KernelSyms.
 Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.   (* [CurCtx]: the residue owns a thread token *)
+Require Import CtxIdDefs.   (* [CurCtx]: the residue owns a thread token *)
 Require Import UmodeText.   (* [user_ptm_inv_x] -- the image STAMPED (icache) *)
 Local Open Scope Z_scope.
 Import Defs.

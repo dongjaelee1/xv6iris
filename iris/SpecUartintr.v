@@ -81,7 +81,7 @@ Require Import SpecConsoleintr.
 From Kernel Require KernelSyms.
 Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 
 (* ---------------------------------------------------------------------- *)

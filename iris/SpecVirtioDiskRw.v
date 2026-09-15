@@ -46,7 +46,7 @@ Require Import DiskPtsto DiskInv.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 
 (* rw's own frame is 96 bytes (12 slots); its deepest callee is sleep (22). *)

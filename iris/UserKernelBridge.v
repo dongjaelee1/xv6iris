@@ -57,7 +57,7 @@ Require Import InstrBytes WpGpr RegFile.
 Require Import MstatusBits.
 Require Import UserFrame.
 Require Import UptTree UserPtTree UserExec.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require Import UmodeText.
 Local Open Scope Z_scope.
 Import Defs.

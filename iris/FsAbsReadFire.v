@@ -115,7 +115,7 @@ Require FsImg.                   (* [T_FILE_z] -- Require, NOT Import
 Require Import AppInv.          (* [appN]/[appE]: the application's namespace, the commit mask (app-instances.md round A) *)
 Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its refund *)
 Require Import FsAbs.            (* LAST (FsAbs's own rule)                 *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Local Open Scope Z_scope.
 

@@ -6,7 +6,7 @@ Require Import RiscvExtras.
 Require Import SailStdpp.Base.
 Require Import RiscvLang RiscvPtsto RiscvExec RiscvTryStep RiscvFetchExec WpDecode.
 From iris.base_logic.lib Require Import invariants.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 

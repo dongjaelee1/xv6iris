@@ -37,7 +37,7 @@ Require Import UserPerm.
 Require Import WpMmodeLeafBase.
 Require Import UkStore.
 Require Import UserHeap.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.
 Import Defs.
@@ -49,7 +49,6 @@ Require Import UserPtTree.
 Require Import HartSwp HartLift HartSpan HartGoodb HartMemRun HartMCycle
   HartStepFull HartRunFull HartRunGen.
 Require Import UmodeMem.
-Require Import TsoCtx.   (* [CurCtx]: ambient, per the WpUmode* precedent *)
 Require Import WpMmodeLeafBase.
 Require Import WpUmodeLoad.
 Require Import UserPerm UkStore.

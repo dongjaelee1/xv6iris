@@ -40,7 +40,7 @@ Require Import RiscvLang RiscvPtsto RiscvExec RiscvExtras RiscvTryStep
         RiscvFetchExec.
 Require Import KptPt KMap.
 Require Import InstrBytes.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 Section WpInstrRun.

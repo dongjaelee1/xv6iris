@@ -83,7 +83,7 @@ Require Import SailStdpp.Operators_mwords.
 Require SailStdpp.Values.     (* [mword], referenced qualified -- see above   *)
 Require Import Riscv.rv64d_types.
 Require Import RiscvLang.     (* [CPU]                                        *)
-Require Import ConsLog.       (* [log_entry]: the console input log's entries  *)
+Require Import LogEntryDefs.       (* [log_entry]: the console input log's entries  *)
 Require Import VirtioModel.   (* [virtio_cfg], [disk_wr]                      *)
 Require Import VSlot.         (* [vslot] -- the TYPE only; see that file       *)
 Require Import DinodeEnc.

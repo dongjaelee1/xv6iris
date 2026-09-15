@@ -24,7 +24,7 @@ From Kernel Require KernelSyms.
 Require Import CodeStart.
 Require Import KernelConsts.
 Require Import CodeTimerinitAux.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* ===================================================================== *)

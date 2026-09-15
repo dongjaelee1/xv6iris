@@ -70,7 +70,7 @@ Require Import SpecUartPutc.   (* [uart_base_word]: the .data word the MMIO
      address is LOADED from, and [uartputc_stack] *)
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 
 (* prputc's own frame is 2 slots ([c.addi sp,sp,-16] at +0x00), over

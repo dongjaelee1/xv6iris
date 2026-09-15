@@ -53,7 +53,7 @@ Require Import HartSwp HartLift HartRegNode HartSpan HartSpanChar HartMCycle
         HartMFrame HartGoodb WpDecodeBridge WpMmodeJump WpMmodeCsrSwp.
 Require Import WpGprCsrrCommon.
 Require Import WpGprCsrwB.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* the walker's view of the write: the pruned term, so no goal ever carries

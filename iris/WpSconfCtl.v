@@ -35,7 +35,7 @@ Require Import HartSwp.
 Require Import WpSconfEngine.
 Require Import IntrDefs.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 
 (* THE EXEC-SIDE BRIDGES ARE GONE, and with them the [WpSmodePtCtl] import.

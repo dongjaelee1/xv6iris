@@ -182,7 +182,7 @@ Require Import AppInv.          (* [appN]/[appE]: the application's namespace, t
 Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its refund *)
 Require Import FsAbs.           (* LAST (FsAbs's own rule) *)
 Import Defs.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Local Open Scope Z_scope.
 

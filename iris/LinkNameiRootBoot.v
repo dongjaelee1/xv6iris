@@ -38,7 +38,7 @@ Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import SpecNameiRootBoot.
 Require Import ProcDefs UserPtTree ProcGeom.  (* the dead-binder dummy: MkPPriv/UPTD/NOFILE *)
 Require Import LinkNameiRoot.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Module NameiRootBoot : NAMEI_ROOT_BOOT.
   Lemma wp_namei_root_boot :

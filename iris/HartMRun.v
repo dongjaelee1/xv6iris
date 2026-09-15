@@ -47,7 +47,7 @@ Require Import RiscvLang RiscvPtsto RiscvExec HartSwp HartLift HartRegNode
         HartSpan HartSpanChar HartRunGen HartEvents HartMCycle HartMDispatch
         HartMPmp HartMFetch.
 Require Import RiscvFetchExec.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 Local Notation zerobit :=

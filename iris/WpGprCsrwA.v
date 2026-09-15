@@ -13,7 +13,7 @@ Require Import HartSwp HartLift HartSpan HartSpanChar HartMCycle
         HartMFrame HartGoodb WpDecodeBridge WpMmodeJump WpMmodeCsrSwp.
 Local Open Scope Z_scope.
 Require Import WpGprCsrwCommon.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Definition csr_mcounteren : mword 12 := mword_of_int 0x306.
 

@@ -45,7 +45,7 @@ Require Import KptPt.
 Local Open Scope Z_scope.
 
 Require Import InstrBytes WpInstrRun.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 (* ====================================================================== *)
 (* THE PRIVILEGE-PARAMETRIC ANCHOR TOWER.                                  *)

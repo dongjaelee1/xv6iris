@@ -22,7 +22,7 @@ From Kernel Require KernelInstrs.
 From Kernel Require KernelSyms.
 Require Import WpMmodeLeafBase.
 Require Import SpecSpin.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 Module SpinProof : SPIN.

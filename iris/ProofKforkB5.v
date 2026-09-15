@@ -95,7 +95,7 @@ From Kernel Require KernelSyms.
 Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Local Open Scope Z_scope.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Set Printing Depth 40.
 

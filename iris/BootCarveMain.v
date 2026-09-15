@@ -61,6 +61,7 @@ Require Import SpecMain.
 Require Import UartsFields.   (* [uart_f_lock] -- the two transmit locks live in `.data` now *)
 Require Import FileInvDefs.   (* the open-file table's geometry and [fentry_raw] *)
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
+Require Import TsoCtx.  (* the [ctx_*_pointsto] family *)
 Local Open Scope Z_scope.
 
 (* --- the alignment arithmetic the structured carves need, over plain [Z] --- *)

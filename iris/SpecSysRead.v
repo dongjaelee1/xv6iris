@@ -174,7 +174,7 @@ Require Import FsCfg.  (* [fscfg]: the fs configuration is AMBIENT *)
 Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its refund *)
 Require Import FsAbsDefs.  (* LAST (FsAbs's own rule) *)
 Import Defs.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Local Open Scope Z_scope.
 

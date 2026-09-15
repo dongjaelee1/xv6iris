@@ -82,7 +82,7 @@ Require Import FsDurXfer.       (* the run vocabulary: [xr_fs], [xf_shape] *)
 Require Import FsDurSnap.
 Require Import FsCollect.
 Require Import LogSnapLaw.      (* [snap_law] -- what [log_ctx] parks *)
-Require TsoCtx.   (* qualified: the class only, no notation flip *)
+Require Import CtxIdDefs.   (* qualified: the class only, no notation flip *)
 
 Local Open Scope Z_scope.
 

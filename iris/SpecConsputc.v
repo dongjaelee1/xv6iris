@@ -87,7 +87,7 @@ Require Import SpecUartPutc.   (* [cp_byte], [cp_byte_sb]: the byte
      uartputc_sync stores for an argument, which is what each arm pushes *)
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 
 (* consputc's own frame is 2 slots ([c.addi16sp sp,-16] at +0x00), over

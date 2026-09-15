@@ -16,7 +16,7 @@ Require Import HartSwp HartLift HartRegNode HartSpan HartSpanChar HartGoodb
         WpDecodeBridge.
 Require Import WpMmodeJump.     (* cw_Drw / cw_Dro *)
 Require Import WpMmodeCsrSwp.   (* swp_execute_CSRReg_csrr + the cr_* footprint *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Lemma exec_read_CSR_menvcfg s :
   exec (read_CSR (Ox"30A")) s

@@ -23,7 +23,7 @@ Require Import PtBuild KvmSpec.
 Require Import Riscv.riscv_extras.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 
 Definition wp_kvmmap_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}

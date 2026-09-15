@@ -23,7 +23,7 @@ Require Import PtTree.
 Require Import PtBuild KvmSpec.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 
 (* uvmcreate(): kalloc one page, memset it to zero, return it as an empty

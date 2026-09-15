@@ -47,7 +47,7 @@ Require Import LogInv.         (* [log_ctx], [log_ctx_sb]                 *)
 Require Import FsBytesGamma.   (* [gamma_blk_owned], the bridge           *)
 Require Import FsStateDefs.    (* [blk_owned_q], [blk_owned_ne_full]      *)
 Require Import FsState.        (* [sb_owned] -- what [col_hand] asks for  *)
-Require TsoCtx.   (* qualified: the class only, no notation flip *)
+Require Import CtxIdDefs.   (* qualified: the class only, no notation flip *)
 
 Local Open Scope Z_scope.
 

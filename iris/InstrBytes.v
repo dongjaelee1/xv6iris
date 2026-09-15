@@ -19,6 +19,7 @@ Require Import RiscvModelBytes.
 Require Import RiscvLang RiscvPtsto RiscvExec RiscvExtras RiscvTryStep RiscvFetchExec MinstretInv.
 Require Import MstatusFacts.
 Require Import KptPt KMap.
+Require Import HartMFetch.  (* [fobl_ifetch] *)
 Local Open Scope Z_scope.
 
 (* This file's business IS taking the word apart, so it opts back out of

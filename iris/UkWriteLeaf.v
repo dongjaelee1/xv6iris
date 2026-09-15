@@ -71,7 +71,7 @@ Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import PipeInvDefs.        (* [pipe_rw_ret]: what [filewrite_ret] is *)
 Require Import WpUart.             (* [out_licence] / [out_link] *)
 Require Import ConsoleInv.         (* [CONSOLE] *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

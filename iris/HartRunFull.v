@@ -62,7 +62,7 @@ Require Import RiscvLang RiscvPtsto RiscvExec RiscvTryStep.
 Require Import HartSwp HartLift HartRegNode HartSpan HartSpanChar HartGoodb
         WpDecodeBridge WpMmodeCsrSwp HartRunGen.
 Require Import SmodeCore WpIntrCore.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

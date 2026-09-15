@@ -24,7 +24,7 @@ Require Import SchedCtx.
 From Kernel Require KernelSyms.
 Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 (* THE SCAN NO LONGER SKIPS THE RUNNING PROCESS.  xv6's wakeup used to guard
    the whole body with [if (p != myproc())]; it now acquires every slot's

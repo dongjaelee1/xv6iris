@@ -46,7 +46,7 @@ Local Ltac zt :=
 
 
 Require Import WpMmodeJump.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Section csrw.
   Context `{!riscvGS Σ}.

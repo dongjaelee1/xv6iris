@@ -54,7 +54,7 @@ Require Import SpecInitlock SpecUartinit SpecConsoleinit.
 From Kernel Require KernelSyms.
 Require Import KernelRvcDecode.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 Set Printing Depth 40.

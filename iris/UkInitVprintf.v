@@ -17,7 +17,7 @@ Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem.
 Require Import UCodeInit.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.InitSyms User.InitInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.

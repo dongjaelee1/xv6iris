@@ -123,7 +123,7 @@ Proof. rewrite /mm_Drw /mm_Dro. set_solver. Qed.
 (* ====================================================================== *)
 
 Require Import HartMFrame.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Section swpbase.
   Context `{!riscvGS Σ}.

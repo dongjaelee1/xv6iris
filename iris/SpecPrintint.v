@@ -72,7 +72,7 @@ Require Import CpuOwn.
 Require Import SpecPrputc.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 
 (* printint's own frame is 8 slots ([c.addi16sp sp,-64] at +0x00), over

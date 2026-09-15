@@ -37,7 +37,7 @@ Require Import ProofSysOpenParts.    (* [so_omv], [so_and], [so_rd_word],
                                         [so_wr_word], [so_and1_01]         *)
 Require Import SysOpenDefs.        (* [om_arg] and the four bit readings *)
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
-Require TsoCtx.   (* qualified: the class only, no notation flip *)
+Require Import CtxIdDefs.   (* qualified: the class only, no notation flip *)
 
 Local Open Scope Z_scope.
 

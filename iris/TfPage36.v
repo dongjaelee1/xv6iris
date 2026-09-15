@@ -24,6 +24,7 @@ Require Import RiscvPtsto.
 Require Import TrampPt.
 Require Import ProcGeom.
 Require Import ProcDefs.
+Require Import TsoCtx.  (* [ctx_phys_word_pointsto] *)
 Local Open Scope Z_scope.
 Import Defs.
 

@@ -82,6 +82,7 @@ Require Import UserHeap.
 Require Import UCodeEcho.
 Require Import UkEcho.
 Require Import UEchoKernel.
+Require Import LineWords.   (* [wl_sp] / [wl_nl] / [wl_off] *)
 Require Import EchoDisc.
 Require Import EchoOutPure.
 Require Import EchoOut.
@@ -181,21 +182,16 @@ Proof.
   rewrite Hc0 app_nil_r. exact Hb.
 Qed.
 
-(* THE TWO LITERALS ARE THE LINE'S OWN BYTES: no [vm_compute] on a
-   variable anywhere, the two dumps are closed. *)
-Definition echo_sep_b : bv 8 := Z_to_bv 8 0x20.
-Definition echo_nl_b : bv 8 := Z_to_bv 8 0xa.
-
-Lemma echo_sep_line : line_alts !!! 0%nat !! 5%nat = Some echo_sep_b.
+(* THE TWO BYTES ECHO WRITES THAT ARE NOT argv'S are the line's own two
+   blanks -- the separator the join puts between words and the newline it
+   closes with ([LineWords.wl_sp] / [wl_nl]).  They had a second spelling
+   here; they do not now, and WHERE they land is [EchoDisc.echo_out_sep]
+   and [echo_out_last] rather than two offsets.  These two readings stay
+   closed: they are echo's .rodata, which is a dump. *)
+Lemma echo_sep_ro : echo_ro !! UkEcho.echo_sep_ptr = Some wl_sp.
 Proof. vm_compute. reflexivity. Qed.
 
-Lemma echo_nl_line : line_alts !!! 0%nat !! 11%nat = Some echo_nl_b.
-Proof. vm_compute. reflexivity. Qed.
-
-Lemma echo_sep_ro : echo_ro !! UkEcho.echo_sep_ptr = Some echo_sep_b.
-Proof. vm_compute. reflexivity. Qed.
-
-Lemma echo_nl_ro : echo_ro !! UkEcho.echo_nl_ptr = Some echo_nl_b.
+Lemma echo_nl_ro : echo_ro !! UkEcho.echo_nl_ptr = Some wl_nl.
 Proof. vm_compute. reflexivity. Qed.
 
 (* THE READING THAT MAKES THE TEXT LEAF TRUE now LIVES IN THE ENGINE
@@ -276,7 +272,7 @@ Section UEchoOut.
      lambda, because it is what the record is minted at and what the
      walk's [ukn_pay] equation reads. *)
   Definition echq (v : era_pins) (ps0 cs0 : list nat) (n0 P : nat)
-    : Z -> iProp Σ := fun _ => ech v ps0 cs0 n0 P 12%nat.
+    : Z -> iProp Σ := fun _ => ech v ps0 cs0 n0 P (length echo_line_out).
 
   (* =================================================================== *)
   (*  S2  ONE BYTE, THROUGH THE ERA'S WRITE LINK                          *)
@@ -619,23 +615,22 @@ Section UEchoOut.
   (* =================================================================== *)
   (*  S6  THE PAYMENT                                                     *)
   (* =================================================================== *)
-  (* echo's own reading of its argument vector: argc is THREE and the two
-     arguments it prints ARE the line's two tokens.  Lane IO-LEAF's M3 is
-     what supplies it -- sh's parser pins the tokens to the input line
-     ([UShEcho.echo_argv_is] through [UkShEcho.echo_off]) and the exec
-     channel carries the image -- and until then it is a premise, stated
-     in the ERA's vocabulary rather than the shell's so that nothing here
-     depends on which parser produced the vector. *)
+  (* echo's own reading of its argument vector: it IS the line's words,
+     and argument [i] sits in the alternative where the OUTPUT join puts
+     it ([EchoDisc.echo_ocur]) -- because echo's output IS that join.
+     Argument 0 is the command name, which echo does not print.
+
+     NOT "argc is three and each is five bytes at offsets 0 and 6".  It is
+     stated in the ERA's vocabulary rather than the shell's, so that
+     nothing here depends on which parser produced the vector; lane
+     IO-LEAF's M3 supplies it off the exec channel. *)
   Definition echo_out_argv (args : list uarg) : Prop :=
-    length args = 3%nat
-    /\ (forall g : uarg, args !! 1%nat = Some g ->
-          ua_len g = 5%nat
-          /\ forall j : nat, (j < 5)%nat ->
-               line_alts !!! 0%nat !! j = Some (ua_bytes g j))
-    /\ (forall g : uarg, args !! 2%nat = Some g ->
-          ua_len g = 5%nat
-          /\ forall j : nat, (j < 5)%nat ->
-               line_alts !!! 0%nat !! (6 + j)%nat = Some (ua_bytes g j)).
+    length args = length echo_ws
+    /\ forall (i : nat) (g : uarg), (1 <= i)%nat -> args !! i = Some g ->
+         ua_len g = length (echo_ws !!! i)
+         /\ forall j : nat, (j < ua_len g)%nat ->
+              line_alts !!! 0%nat !! (echo_ocur i + j)%nat
+              = Some (ua_bytes g j).
 
   Lemma echo_rodata_byte (g : gname) (a : Z) (b : bv 8) :
     echo_ro !! a = Some b -> echo_rodata g -∗ utext g a b.
@@ -654,13 +649,115 @@ Section UEchoOut.
      the record's payload is the one sh's fork chose, and what echo's last
      byte leaves -- the cursor twelve bytes on -- pays it through a
      persistent wand ([echq] is the identity case). *)
+  (* THE CHAIN, BY INDUCTION OVER THE WORDS.  echo writes [argv[i]], then
+     a separator or the closing newline depending on whether another
+     argument follows -- which is the same case split [EchoDisc.
+     echo_out_sep] and [echo_out_last] make, and the cursor moves by
+     exactly what the join puts there ([echo_ocur_S]).  [i + k] is the
+     LAST argument's index throughout, which is what [kecho_pay_all]
+     starts the recursion at.
+
+     This was four writes at cursor offsets 0/5/6/11/12. *)
+  Lemma kecho_pay_of_link_from (N : uk_names Σ) (v : era_pins)
+      (ps0 cs0 : list nat) (n0 P : nat) (av : Z) (args : list uarg)
+      (l : list fdstate) (rb : bool) :
+    echo_stage ps0 cs0 n0 P ->
+    echo_out_argv args ->
+    l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    forall k i : nat,
+      (1 <= i)%nat -> (i + k)%nat = (length echo_ws - 1)%nat ->
+      □ (ech v ps0 cs0 n0 P (length echo_line_out) -∗ ukn_pay N (-1)) -∗
+      era_pin γ (S gen_id) v -∗
+      echo_links T γ -∗
+      echo_rodata (ukn_t N) -∗
+      uargv (ukn_d N) av args -∗
+      kecho_pay N args k i
+        (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P (echo_ocur i))
+        (ukn_pay N (-1)).
+  Proof.
+    intros Hst (Hlen & Hargs) Hl1 k.
+    induction k as [| k IH]; intros i Hi1 Hik;
+      iIntros "#Hq #Hpin #Hlk #Hro #Hargv"; cbn [kecho_pay];
+      iIntros (g) "%Hg";
+      (* the argument IS word [i] of the line *)
+      [ pose proof (Hargs i g Hi1 Hg) as [Hgl Hgb]
+      | pose proof (Hargs i g Hi1 Hg) as [Hgl Hgb] ];
+      (assert (Hiw : (i < length echo_ws)%nat)
+         by (apply lookup_lt_Some in Hg; lia));
+      (pose proof (echo_ws_at i Hiw) as Hw);
+      iDestruct (uargv_acc (ukn_d N) av args i g Hg with "Hargv")
+        as "[[_ #Hs] _]".
+    - (* THE LAST ARGUMENT: its bytes, then the newline, which ends the
+         output and pays the exit *)
+      destruct (echo_out_last i (echo_ws !!! i) Hi1 Hw ltac:(lia))
+        as [Hend Hnl].
+      iExists (UserFd.ustd (ukn_fd N) l
+               ∗ ech v ps0 cs0 n0 P (echo_ocur i + ua_len g)%nat)%I.
+      iSplitR.
+      + iApply (kecho_w_of_link_data N v ps0 cs0 n0 P (echo_ocur i) l rb
+                  (ua_ptr g) (ua_len g) (ua_bytes g) Hst Hl1
+                  ltac:(intros j Hj; apply Hgb; lia)
+                  with "Hpin Hlk Hs").
+      + rewrite Hgl.
+        iApply (kecho_w_mono N (mword_of_int echo_nl_ptr) 1%nat
+                  (UserFd.ustd (ukn_fd N) l
+                   ∗ ech v ps0 cs0 n0 P
+                       (echo_ocur i + length (echo_ws !!! i))%nat)
+                  (UserFd.ustd (ukn_fd N) l
+                   ∗ ech v ps0 cs0 n0 P
+                       (S (echo_ocur i + length (echo_ws !!! i))))
+                  (ukn_pay N (-1)) with "[] []").
+        { iIntros "[_ Hc]". rewrite Hend. iApply ("Hq" with "Hc"). }
+        iApply (kecho_w_of_link_txt N v ps0 cs0 n0 P
+                  (echo_ocur i + length (echo_ws !!! i))%nat l rb
+                  echo_nl_ptr wl_nl Hst Hl1 Hnl
+                  ltac:(unfold echo_nl_ptr;
+                        change (2 ^ 38) with 274877906944; lia)
+                  with "Hpin Hlk [Hro]").
+        iApply (echo_rodata_byte (ukn_t N) echo_nl_ptr wl_nl
+                  echo_nl_ro with "Hro").
+    - (* ...AND ANOTHER FOLLOWS: its bytes, then the separator, and the
+         cursor lands exactly where the next word starts *)
+      pose proof (echo_out_sep i (echo_ws !!! i) Hi1 Hw ltac:(lia)) as Hsep.
+      pose proof (echo_ocur_S i (echo_ws !!! i) Hi1 Hw) as HS.
+      iExists (UserFd.ustd (ukn_fd N) l
+               ∗ ech v ps0 cs0 n0 P (echo_ocur i + ua_len g)%nat)%I.
+      iExists (UserFd.ustd (ukn_fd N) l
+               ∗ ech v ps0 cs0 n0 P (echo_ocur (S i)))%I.
+      iSplitR; [| iSplitR ].
+      + iApply (kecho_w_of_link_data N v ps0 cs0 n0 P (echo_ocur i) l rb
+                  (ua_ptr g) (ua_len g) (ua_bytes g) Hst Hl1
+                  ltac:(intros j Hj; apply Hgb; lia)
+                  with "Hpin Hlk Hs").
+      + rewrite Hgl HS.
+        iApply (kecho_w_of_link_txt N v ps0 cs0 n0 P
+                  (echo_ocur i + length (echo_ws !!! i))%nat l rb
+                  echo_sep_ptr wl_sp Hst Hl1 Hsep
+                  ltac:(unfold echo_sep_ptr;
+                        change (2 ^ 38) with 274877906944; lia)
+                  with "Hpin Hlk [Hro]").
+        iApply (echo_rodata_byte (ukn_t N) echo_sep_ptr wl_sp
+                  echo_sep_ro with "Hro").
+      + iApply (IH (S i) ltac:(lia) ltac:(lia) with "Hq Hpin Hlk Hro Hargv").
+  Qed.
+
+  (* ...AND THE WHOLE CHAIN, out of four persistent things: the era's
+     links, its pin, echo's argument vector and echo's own .rodata.  The
+     CURSOR is not among them -- it is the walk's [Ci], handed in at the
+     entry -- so this lemma is as persistent as [UInitBanner]'s payment is
+     linear, and for the same reason: init's credential is spent once, and
+     echo's is spent by the walk. *)
+  (* AT ANY EXIT PAYLOAD THE END OF THE BLOCK PAYS (lane IO-LEAF, step 4):
+     the record's payload is the one sh's fork chose, and what echo's last
+     byte leaves -- the cursor at the output's end -- pays it through a
+     persistent wand ([echq] is the identity case). *)
   Lemma kecho_pay_of_link (N : uk_names Σ) (v : era_pins)
       (ps0 cs0 : list nat) (n0 P : nat) (av : Z) (args : list uarg)
       (l : list fdstate) (rb : bool) :
     echo_stage ps0 cs0 n0 P ->
     echo_out_argv args ->
     l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
-    □ (ech v ps0 cs0 n0 P 12%nat -∗ ukn_pay N (-1)) -∗
+    □ (ech v ps0 cs0 n0 P (length echo_line_out) -∗ ukn_pay N (-1)) -∗
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
     echo_rodata (ukn_t N) -∗
@@ -669,59 +766,22 @@ Section UEchoOut.
       (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P 0%nat)
       (ukn_pay N (-1)).
   Proof.
-    intros Hst (Hlen & Hg1p & Hg2p) Hl1.
+    intros Hst Hargv Hl1.
+    pose proof Hargv as (Hlen & _).
+    rewrite echo_ws_length in Hlen.
     iIntros "#Hq #Hpin #Hlk #Hro #Hargv".
     rewrite /kecho_pay_all. iSplit.
     - iIntros "%Hsmall". exfalso. lia.
     - iIntros "_".
-      replace (length args - 2)%nat with 1%nat by lia.
-      cbn [kecho_pay].
-      iIntros (g1) "%Hg1".
-      destruct (Hg1p g1 Hg1) as [Hl1len Hb1].
-      iDestruct (uargv_acc (ukn_d N) av args 1%nat g1 Hg1 with "Hargv")
-        as "[[_ #Hs1] _]".
-      iExists (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P 5%nat)%I.
-      iExists (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P 6%nat)%I.
-      iSplitR; [| iSplitR ].
-      + (* write(1, argv[1], 5) -- and its first byte FILES the choice *)
-        rewrite Hl1len.
-        iApply (kecho_w_of_link_data N v ps0 cs0 n0 P 0%nat l rb
-                  (ua_ptr g1) 5%nat (ua_bytes g1) Hst Hl1
-                  ltac:(intros j Hj; apply Hb1; lia)
-                  with "Hpin Hlk Hs1").
-      + (* write(1, " ", 1) *)
-        iApply (kecho_w_of_link_txt N v ps0 cs0 n0 P 5%nat l rb
-                  echo_sep_ptr echo_sep_b Hst Hl1 echo_sep_line
-                  ltac:(unfold echo_sep_ptr;
-                        change (2 ^ 38) with 274877906944; lia)
-                  with "Hpin Hlk [Hro]").
-        iApply (echo_rodata_byte (ukn_t N) echo_sep_ptr echo_sep_b
-                  echo_sep_ro with "Hro").
-      + iIntros (g2) "%Hg2".
-        destruct (Hg2p g2 Hg2) as [Hl2len Hb2].
-        iDestruct (uargv_acc (ukn_d N) av args 2%nat g2 Hg2 with "Hargv")
-          as "[[_ #Hs2] _]".
-        iExists (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P 11%nat)%I.
-        iSplitR.
-        * (* write(1, argv[2], 5) *)
-          rewrite Hl2len.
-          iApply (kecho_w_of_link_data N v ps0 cs0 n0 P 6%nat l rb
-                    (ua_ptr g2) 5%nat (ua_bytes g2) Hst Hl1
-                    ltac:(intros j Hj; apply Hb2; lia)
-                    with "Hpin Hlk Hs2").
-        * (* write(1, "\n", 1) -- and its cursor pays the exit *)
-          iApply (kecho_w_mono N (mword_of_int echo_nl_ptr) 1%nat
-                    (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P 11%nat)
-                    (UserFd.ustd (ukn_fd N) l ∗ ech v ps0 cs0 n0 P (S 11))
-                    (ukn_pay N (-1)) with "[] []").
-          { iIntros "[_ Hc]". iApply ("Hq" with "Hc"). }
-          iApply (kecho_w_of_link_txt N v ps0 cs0 n0 P 11%nat l rb
-                    echo_nl_ptr echo_nl_b Hst Hl1 echo_nl_line
-                    ltac:(unfold echo_nl_ptr;
-                          change (2 ^ 38) with 274877906944; lia)
-                    with "Hpin Hlk [Hro]").
-          iApply (echo_rodata_byte (ukn_t N) echo_nl_ptr echo_nl_b
-                    echo_nl_ro with "Hro").
+      (* the recursion starts at argument 1 with the cursor at the output's
+         own beginning, which is where word 1 of the line lands *)
+      assert (H0 : echo_ocur 1%nat = 0%nat)
+        by (rewrite /echo_ocur; exact (wl_off_0 0%nat (drop 1 echo_ws))).
+      rewrite <- H0.
+      iApply (kecho_pay_of_link_from N v ps0 cs0 n0 P av args l rb
+                Hst Hargv Hl1 (length args - 2)%nat 1%nat
+                ltac:(lia) ltac:(rewrite echo_ws_length; lia)
+                with "Hq Hpin Hlk Hro Hargv").
   Qed.
 
   (* =================================================================== *)
@@ -774,7 +834,7 @@ Section UEchoOut.
     (forall (p : mword 27) (q : uperm), uvis_perm W !! p = Some q ->
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     uvis_lazy W = false ->
-    □ (ech v ps0 cs0 n0 P 12%nat -∗ Q (-1)) -∗
+    □ (ech v ps0 cs0 n0 P (length echo_line_out) -∗ Q (-1)) -∗
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
     udep -∗

@@ -46,7 +46,7 @@ Require Import WpGprMret.
 Require Import SmodeCore.
 From Kernel Require Import KernelInstrs.
 From Kernel Require KernelSyms.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

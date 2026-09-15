@@ -57,7 +57,7 @@ Require Import HartSwp HartLift HartSpan HartMCycle HartStepFull.
 Require Import UserFrame UserClassifyAsm.
 Require Import PtreeType PtTree SmodePte UserPtTree UserExec.
 Require Import HartMemRun PtBytes UserBytes.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

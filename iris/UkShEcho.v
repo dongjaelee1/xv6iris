@@ -110,62 +110,31 @@ Definition echo_alen (i : nat) : nat := length (echo_ws !!! i).
 Lemma echo_toks_lt10 : (length echo_toks < 10)%nat.
 Proof. rewrite /echo_toks wl_toks_length. vm_compute. lia. Qed.
 
-Lemma echo_ws_wf : wl_wf echo_ws.
-Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
-
-Lemma echo_ws_length : length echo_ws = 3%nat.
-Proof. reflexivity. Qed.
-
-(* argument [i] IS word [i], read back through [!!] so that [UkShWords]'
-   lemmas -- every one of which is keyed on [ws !! i = Some w] -- apply *)
-Lemma echo_ws_at (i : nat) :
-  (i < 3)%nat -> echo_ws !! i = Some (echo_ws !!! i).
-Proof.
-  intro Hi.
-  destruct (lookup_lt_is_Some_2 echo_ws i ltac:(rewrite echo_ws_length; lia))
-    as [w Hw].
-  by rewrite Hw list_lookup_total_alt Hw.
-Qed.
+(* [echo_ws_wf], [echo_ws_length] and [echo_ws_at] are [EchoDisc]'s, with
+   the word list they are about. *)
 
 (* AN ARGUMENT'S BYTES ARE INSIDE THE LINE -- [LineWords.wl_off_lt_line] at
    these words.  A caller that used to bound [echo_off i + j] by case
    analysis over the three offsets gets it from this. *)
 Lemma echo_off_lt (i j : nat) :
-  (i < 3)%nat -> (j <= echo_alen i)%nat -> (echo_off i + j < 17)%nat.
+  (i < 3)%nat -> (j <= echo_alen i)%nat ->
+  (echo_off i + j < length echo_line)%nat.
 Proof.
-  intros Hi Hj. rewrite <- echo_line_length.
-  rewrite /echo_off echo_line_words.
+  intros Hi Hj. rewrite /echo_off echo_line_words.
   exact (wl_off_lt_line echo_ws i _ j (echo_ws_at i Hi) Hj).
 Qed.
 
-(* ...AND THE THREE OFFSETS AND LENGTHS AS NUMBERS.  This is the literal's
-   last foothold: a consumer that reasons at [LineWords.wl_off] and
-   [length] needs none of them, so every use below marks a site still to
-   be generalised. *)
+(* ...AND THE TWO NUMBERS THAT ARE NOT ABOUT THE ARGUMENTS.  The first
+   word starts at the line's base, which is true of every line
+   ([LineWords.wl_off_0]); the COMMAND NAME is four bytes, which stays
+   four whatever the arguments are, because the program run is /echo.
+   The offsets and lengths of the arguments themselves are gone: nothing
+   above reads one any more. *)
 Lemma echo_off_0 : echo_off 0%nat = 0%nat.
 Proof. by rewrite /echo_off wl_off_0. Qed.
-Lemma echo_off_1 : echo_off 1%nat = 5%nat.
-Proof. by vm_compute. Qed.
-Lemma echo_off_2 : echo_off 2%nat = 11%nat.
-Proof. by vm_compute. Qed.
+
 Lemma echo_alen_0 : echo_alen 0%nat = 4%nat.
 Proof. by vm_compute. Qed.
-Lemma echo_alen_1 : echo_alen 1%nat = 5%nat.
-Proof. by vm_compute. Qed.
-Lemma echo_alen_2 : echo_alen 2%nat = 5%nat.
-Proof. by vm_compute. Qed.
-
-Lemma echo_alen_le5 (i : nat) : (echo_alen i <= 5)%nat.
-Proof.
-  destruct i as [| [| [| i]]].
-  - rewrite echo_alen_0. lia.
-  - rewrite echo_alen_1. lia.
-  - rewrite echo_alen_2. lia.
-  - rewrite /echo_alen list_lookup_total_alt
-      (lookup_ge_None_2 echo_ws (S (S (S i)))
-         ltac:(rewrite echo_ws_length; lia)).
-    cbn. lia.
-Qed.
 
 Lemma echo_toks_lookup (i : nat) :
   (i < 3)%nat ->
@@ -207,7 +176,7 @@ Qed.
 Definition ush_line_toks : Prop :=
   forall (f : nat -> bv 8) (k len : nat),
     UConsLine.ush_line_is f k len ->
-    len = 17%nat
+    len = length echo_line
     /\ ushp_no_symbols len (fun j : nat => f (k + j)%nat)
     /\ ushp_tokens len (fun j : nat => f (k + j)%nat) 0%nat echo_toks.
 
@@ -221,17 +190,15 @@ Definition ush_line_toks : Prop :=
 Lemma ush_line_toks_holds : ush_line_toks.
 Proof.
   intros f k len [Hlen Hf].
-  rewrite echo_line_length in Hlen.
   split; [ exact Hlen | ].
   subst len.
   destruct ush_echo_tokens_holds as (Hns & Htk & _).
-  rewrite echo_line_length in Hns, Htk.
-  assert (Hext : forall j : nat, (j < 17)%nat ->
+  assert (Hext : forall j : nat, (j < length echo_line)%nat ->
             echo_line !!! j = f (k + j)%nat)
     by (intros j Hj; symmetry; exact (Hf j Hj)).
   split.
-  - exact (ushp_no_symbols_ext 17 _ _ Hext Hns).
-  - exact (ushp_tokens_ext 17 _ _ Hext 0%nat echo_toks Htk).
+  - exact (ushp_no_symbols_ext (length echo_line) _ _ Hext Hns).
+  - exact (ushp_tokens_ext (length echo_line) _ _ Hext 0%nat echo_toks Htk).
 Qed.
 
 (* ---- the command, as a VALUE ---------------------------------------- *)
@@ -839,7 +806,7 @@ Section UkShEcho.
     intros N Hc h m dw dv s0 len f sz ld n
       Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1 Hfd2.
     (* the ONE line the discipline admits, as the parser's own premises *)
-    destruct (ush_line_toks_holds f 0%nat len Hline) as (Hlen17 & Hns0 & Htoks0).
+    destruct (ush_line_toks_holds f 0%nat len Hline) as (_ & Hns0 & Htoks0).
     assert (Hns : ushp_no_symbols len f) by exact Hns0.
     assert (Htoks : ushp_tokens len f 0%nat echo_toks) by exact Htoks0.
     pose proof echo_toks_lt10 as Htlen.

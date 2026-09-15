@@ -64,7 +64,7 @@ Require Import KvmSpec.
 Require Import UserPtTree.
 Require Import ProcPtOwn.
 From Kernel Require KernelSyms.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 
 

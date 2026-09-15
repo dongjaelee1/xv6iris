@@ -61,7 +61,7 @@ Require Import RiscvLang RiscvPtsto RiscvExec HartSwp HartLift HartRegNode
 Require Import RiscvExtras RiscvFetchExec.
 Require Import RegFile WpGpr.
 Require Import WpMmodeLeafBase SmodePte PtTreeAdue.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

@@ -135,7 +135,7 @@ Require Import ProcDefs.  (* [pprivate], [proc_priv_bare] *)
 Require Import FsCfg.     (* the ambient fs names [fs_ready] is stated at *)
 Require Import FsReady.   (* [fs_ready], the fs world a closer holds *)
 Local Open Scope Z_scope.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 
 (* fileclose's own frame is 8 slots ([addi sp,sp,-64]: ra, s0..s5 saved), and

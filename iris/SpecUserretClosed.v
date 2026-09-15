@@ -79,7 +79,7 @@ Require Import UexecRet.   (* [ukc] -- the U-mode continuation the entry runs.
                               re-export (durable-notes). *)
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.   (* [CurCtx]: the residue owns a thread token *)
+Require Import CtxIdDefs.   (* [CurCtx]: the residue owns a thread token *)
 Local Open Scope Z_scope.
 Import Defs.
 

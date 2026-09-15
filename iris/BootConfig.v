@@ -40,7 +40,7 @@ Require Import MstatusFacts.
    unusable once the bitvector zify hook is loaded). *)
 Require Import PrintintArith.
 From Kernel Require KernelSyms.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* ====================================================================== *)

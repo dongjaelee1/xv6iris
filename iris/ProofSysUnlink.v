@@ -61,7 +61,7 @@ From Kernel Require KernelSyms KernelData.
 Require Import ProcAvail.
 Require Import Xv6G.
 Local Open Scope Z_scope.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Set Printing Depth 40.
 

@@ -112,11 +112,10 @@ Qed.
 
 (* ...and no byte of the line is a NUL, which is what pins each argument's
    LENGTH: a [bb_cstr] that stopped early would have to find one. *)
-Lemma echo_line_nonul (j : nat) : (j < 17)%nat -> echo_line !!! j <> ubyte0.
+Lemma echo_line_nonul (j : nat) :
+  (j < length echo_line)%nat -> echo_line !!! j <> ubyte0.
 Proof.
-  intro Hj.
-  pose proof (echo_line_byte_val_at j ltac:(rewrite echo_line_length; lia))
-    as Hv.
+  intro Hj. pose proof (echo_line_byte_val_at j Hj) as Hv.
   intro Hc. apply (f_equal bv_unsigned) in Hc.
   rewrite (_ : bv_unsigned ubyte0 = 0%Z) in Hc; [lia | by vm_compute].
 Qed.
@@ -1139,7 +1138,8 @@ Section UShEcho.
         pose proof (Hgi i Hi (alen i) Hlt) as Hm2.
         rewrite Hm1 in Hm2. injection Hm2 as Hm2.
         pose proof (proj1 Hbytes i (alen i) Hi Hlt) as Hgl.
-        assert (Hidx : (UkShEcho.echo_off i + alen i < 17)%nat)
+        assert (Hidx : (UkShEcho.echo_off i + alen i
+                        < length echo_line)%nat)
           by (apply UkShEcho.echo_off_lt; lia).
         apply (echo_line_nonul _ Hidx).
         rewrite <- Hgl, <- Hm2. exact (eq_sym ubyte0_moi0).
@@ -1235,16 +1235,9 @@ Section UShEcho.
   (*    }                                                                  *)
   (*  so at [argc = 3] it writes four buffers, in this order.              *)
   (* =================================================================== *)
-  Definition echo_out : list (bv 8) :=
-    sb "hello" ++ sb " " ++ sb "world" ++ nlb.
-
-  (* ANTI-VACUITY: those are the bytes the target statement's expected
-     stream carries for one cycle. *)
-  Lemma echo_out_string : echo_out = sb "hello world" ++ nlb.
-  Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
-
-  Lemma echo_out_length : length echo_out = 12%nat.
-  Proof. vm_compute. reflexivity. Qed.
+  (* ...and those bytes are [EchoDisc.echo_line_out] -- the line's tail.
+     There is no second spelling of them here: the loop's output IS the
+     join, and [EchoDisc] is where the join is named. *)
 
   (* ---- E4's OWN PART: the argv echo reads off its key ARE the strings -- *)
   (* [UEchoKernel.echo_arg] is a FUNCTION of the key (the pointer is the
@@ -1252,109 +1245,96 @@ Section UShEcho.
      scan finds, the bytes are the image's), so what has to be shown is
      that [kexec_args_at]'s block, built from the [(na, alen, afun)] that
      [echo_args_det] pinned, is read back as the same three strings. *)
+  (* THE KEY'S READING OF ITS ARGUMENT VECTOR IS THE STRINGS exec PUSHED.
+     [UEchoKernel.echo_arg] is a FUNCTION of the key -- the pointer is the
+     eight image bytes of the slot read as a word, the length is what a
+     scan finds, the bytes are the image's -- and this says that function
+     agrees with the [(na, alen, afun)] the exec channel carried.
+
+     NOT AT THREE ARGUMENTS OF FOUR AND FIVE BYTES.  It used to compute
+     [kxc_sp_final 0x4000 alen 3 = 0x3FB0] and the three string addresses
+     as closed numbers, which is a proof about one argument vector.  The
+     addresses come off [KexecDefs]' push geometry now: the block lies
+     between the stack page's base and its top because the C tested the
+     pointer after every push ([kxc_stack_ok]), and that is the whole of
+     what puts them in machine range.
+
+     THE ONE SIDE CONDITION is that no pushed byte is a NUL -- which is
+     what pins each string's LENGTH, because a scan that stopped early
+     would have to find one.  The ELF is still echo's: [kexec_sz] decides
+     the stack page, and nothing else here is about the program. *)
   Definition echo_key_args : Prop :=
     forall (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
            (sts : list fdstate) (W' : uvis),
       kexec_image_ok ElfUser.echo_elf na alen afun sts W' ->
-      na = 3%nat ->
-      (forall i : nat, (i < 3)%nat -> alen i = UkShEcho.echo_alen i) ->
-      (forall i j : nat, (i < 3)%nat -> (j < UkShEcho.echo_alen i)%nat ->
-         afun i j = echo_line !!! (UkShEcho.echo_off i + j)%nat) ->
-      Z.to_nat (uvis_argc W') = 3%nat
-      /\ (forall i : nat, (i < 3)%nat ->
-            ua_len (echo_arg (uvis_M W') (uvis_av W') i)
-            = UkShEcho.echo_alen i
-            /\ forall j : nat, (j < UkShEcho.echo_alen i)%nat ->
+      (forall i j : nat, (i < na)%nat -> (j < alen i)%nat ->
+         afun i j <> ubyte0) ->
+      Z.to_nat (uvis_argc W') = na
+      /\ (forall i : nat, (i < na)%nat ->
+            ua_len (echo_arg (uvis_M W') (uvis_av W') i) = alen i
+            /\ forall j : nat, (j < alen i)%nat ->
                  ua_bytes (echo_arg (uvis_M W') (uvis_av W') i) j
-                 = echo_line !!! (UkShEcho.echo_off i + j)%nat).
+                 = afun i j).
 
   Lemma echo_key_args_holds : echo_key_args.
   Proof.
-    intros na alen afun sts W' Hok Hna Halen Hafun. subst na.
+    intros na alen afun sts W' Hok Hno.
     pose proof echo_kexec_sz as Hsz.
     unfold kexec_image_ok in Hok. cbv zeta in Hok. rewrite Hsz in Hok.
     destruct Hok as (_ & _ & _ & Ha1w & Ha0w & _
-                     & (Hstr & Hnul & Hvec) & _ & _ & _ & _ & _).
-    pose proof (Halen 0%nat ltac:(lia)) as H0.
-    pose proof (Halen 1%nat ltac:(lia)) as H1.
-    pose proof (Halen 2%nat ltac:(lia)) as H2.
-    rewrite UkShEcho.echo_alen_0 in H0. rewrite UkShEcho.echo_alen_1 in H1.
-    rewrite UkShEcho.echo_alen_2 in H2.
-    assert (Hsp3 : kxc_sp_final 0x4000 alen 3%nat = 0x3FB0)
-      by exact (echo_sp_final alen H0 H1 H2).
-    (* the three string addresses, as CLOSED numbers: exec's push loop at
-       argument lengths 4, 5, 5 lands them at 0x3FF0, 0x3FE0, 0x3FD0. *)
-    assert (Hp : forall i : nat, (i < 3)%nat ->
-              kxc_sp 0x4000 alen (S i) = 0x3FF0 - 16 * Z.of_nat i).
-    { intros i Hi. destruct i as [| [| [| i]]];
-        [ cbn [kxc_sp]; rewrite H0; vm_compute; reflexivity
-        | cbn [kxc_sp]; rewrite H0; rewrite H1; vm_compute; reflexivity
-        | cbn [kxc_sp]; rewrite H0; rewrite H1; rewrite H2;
-          vm_compute; reflexivity
-        | exfalso; lia ]. }
+                     & (Hstr & Hnul & Hvec) & (Hfit & _) & _ & _ & _ & _).
+    unfold PGSIZE in Hfit.
+    (* ---- THE BLOCK IS INSIDE THE STACK PAGE ---- *)
+    pose proof (kxc_argc_bound 0x4000 (0x4000 - 4096) alen na Hfit) as Hnab.
+    assert (Hsprange : forall i : nat, (i < na)%nat ->
+              0x4000 - 4096 <= kxc_sp 0x4000 alen (S i) <= 0x4000)
+      by (intros i Hi;
+          exact (kxc_sp_range 0x4000 (0x4000 - 4096) alen na (S i)
+                   Hfit ltac:(lia) ltac:(lia))).
+    pose proof (kxc_sp_final_range 0x4000 (0x4000 - 4096) alen na Hfit)
+      as Hfinal.
     (* ---- the key's own a0/a1 ---- *)
-    assert (Hav : uvis_av W' = 0x3FB0).
+    assert (Hav : uvis_av W' = kxc_sp_final 0x4000 alen na).
     { unfold uvis_av. unfold tf_resume_gpr0. rewrite tf_resume_gpr_a1.
-      rewrite Ha1w. rewrite Hsp3. apply uint_moi. unfold Z64. lia. }
-    assert (Hargc : uvis_argc W' = 3).
+      rewrite Ha1w. apply uint_moi. unfold Z64. lia. }
+    assert (Hargc : uvis_argc W' = Z.of_nat na).
     { unfold uvis_argc. unfold tf_resume_gpr0. rewrite tf_resume_gpr_a0.
-      rewrite Ha0w.
-      rewrite (uint_moi (Z.of_nat 3%nat) ltac:(unfold Z64; lia)).
-      reflexivity. }
-    (* ---- the three pointers the vector spells ---- *)
-    assert (Hptr : forall i : nat, (i < 3)%nat ->
-              uk_argv_p (uvis_M W') 0x3FB0 (Z.of_nat i)
+      rewrite Ha0w. apply uint_moi. unfold Z64. lia. }
+    (* ---- the pointers the vector spells ---- *)
+    assert (Hptr : forall i : nat, (i < na)%nat ->
+              uk_argv_p (uvis_M W') (kxc_sp_final 0x4000 alen na) (Z.of_nat i)
               = kxc_sp 0x4000 alen (S i)).
-    { intros i Hi. rewrite <- Hsp3. apply uk_argv_p_of_bytes.
-      - rewrite (Hp i Hi). unfold Z64. lia.
+    { intros i Hi. apply uk_argv_p_of_bytes.
+      - pose proof (Hsprange i Hi). unfold Z64. lia.
       - intros k Hk.
         pose proof (Hvec i k ltac:(lia) Hk) as Hb.
         unfold kexec_ustack in Hb.
-        destruct (decide (i < 3)%nat) as [Hlt | Hge]; [ | exfalso; lia ].
+        destruct (decide (i < na)%nat) as [Hlt | Hge]; [ | exfalso; lia ].
         exact Hb. }
-    (* ---- the bytes ARE the line's, and the NUL is the cut's ---- *)
-    assert (Hidx : forall i j : nat, (i < 3)%nat ->
-              (j < UkShEcho.echo_alen i)%nat ->
-              (UkShEcho.echo_off i + j < 17)%nat).
-    { intros i j Hi Hj. apply UkShEcho.echo_off_lt; lia. }
-    assert (Hstr' : forall i j : nat, (i < 3)%nat ->
-              (j < UkShEcho.echo_alen i)%nat ->
-              uvis_M W' !! (kxc_sp 0x4000 alen (S i) + Z.of_nat j)
-              = Some (echo_line !!! (UkShEcho.echo_off i + j)%nat)).
-    { intros i j Hi Hj.
-      rewrite <- (Hafun i j Hi Hj).
-      apply Hstr; [ lia | rewrite (Halen i Hi); exact Hj ]. }
-    assert (Hnul' : forall i : nat, (i < 3)%nat ->
-              uvis_M W' !! (kxc_sp 0x4000 alen (S i)
-                            + Z.of_nat (UkShEcho.echo_alen i))
-              = Some ubyte0).
-    { intros i Hi. rewrite <- (Halen i Hi). rewrite ubyte0_bv0.
-      exact (Hnul i ltac:(lia)). }
-    assert (Hcs : forall i : nat, (i < 3)%nat ->
+    (* ---- each string is NUL-terminated exactly where exec put the NUL ---- *)
+    assert (Hcs : forall i : nat, (i < na)%nat ->
               ucstr (uvis_M W') (kxc_sp 0x4000 alen (S i))
-                (Z.of_nat (UkShEcho.echo_alen i))).
+                (Z.of_nat (alen i))).
     { intros i Hi. constructor.
       - lia.
-      - intros j Hj.
-        assert (Hj' : (Z.to_nat j < UkShEcho.echo_alen i)%nat) by lia.
-        exists (echo_line !!! (UkShEcho.echo_off i + Z.to_nat j)%nat).
-        split.
+      - intros j Hj. exists (afun i (Z.to_nat j)). split.
         + replace (kxc_sp 0x4000 alen (S i) + j)
             with (kxc_sp 0x4000 alen (S i) + Z.of_nat (Z.to_nat j)) by lia.
-          exact (Hstr' i (Z.to_nat j) Hi Hj').
-        + exact (echo_line_nonul _ (Hidx i (Z.to_nat j) Hi Hj')).
-      - exact (Hnul' i Hi). }
-    assert (Hlen : forall i : nat, (i < 3)%nat ->
+          apply Hstr; lia.
+        + apply Hno; lia.
+      - rewrite ubyte0_bv0. exact (Hnul i Hi). }
+    assert (Hlen : forall i : nat, (i < na)%nat ->
               uk_slen (uvis_M W') (kxc_sp 0x4000 alen (S i))
-              = Z.of_nat (UkShEcho.echo_alen i)).
+              = Z.of_nat (alen i)).
     { intros i Hi. apply uk_slen_ucstr; [ | exact (Hcs i Hi) ].
-      pose proof (UkShEcho.echo_alen_le5 i). lia. }
-    (* ---- and that is echo's reading of its own key ---- *)
-    split; [ rewrite Hargc; reflexivity | ].
+      pose proof (kxc_len_bound 0x4000 (0x4000 - 4096) alen na i Hfit Hi).
+      change (2 ^ 31) with 2147483648. lia. }
+    (* ---- and that is the key's own reading ---- *)
+    split; [ rewrite Hargc; lia | ].
     intros i Hi. unfold echo_arg. cbn [ua_len ua_bytes].
     rewrite Hav. unfold uk_slens. rewrite (Hptr i Hi). rewrite (Hlen i Hi).
     split; [ lia | ].
-    intros j Hj. rewrite (Hstr' i j Hi Hj). reflexivity.
+    intros j Hj. rewrite (Hstr i j Hi Hj). reflexivity.
   Qed.
 
   (* ---- the shape a list of [uarg]s has when it IS echo's three -------- *)
@@ -1379,7 +1359,7 @@ Section UShEcho.
   (*  does not: the argv bytes ARE "echo", "hello", "world"                *)
   (*  ([echo_key_args], from [echo_cmd] through the exec channel) and the  *)
   (*  LOOP'S ORDER -- so the transcript at echo's [exit] ecall is the      *)
-  (*  entry's plus [echo_out], and nothing else.                           *)
+  (*  entry's plus [echo_line_out], and nothing else.                      *)
   (* =================================================================== *)
   Definition echo_writes_out
       (recv : uk_names Σ -> iProp Σ)
@@ -1394,7 +1374,7 @@ Section UShEcho.
         uargv (ukn_d N) av args -∗ tx N bs -∗
         urun N h m (mword_of_int EchoSyms.start) (2 + (8 + (2 + n))) -∗
         (∀ (h' : CpuId) (m' : regfile),
-           tx N (bs ++ echo_out) -∗
+           tx N (bs ++ echo_line_out) -∗
            urun N h' m' (mword_of_int EchoSyms.exit) n -∗
            WP (Loop : expr riscv_lang)) -∗
         WP (Loop : expr riscv_lang).

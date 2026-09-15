@@ -60,7 +60,7 @@ Require Import DiskPtsto VirtioProto WpUart.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import WpVirtioExec.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 
 Local Open Scope Z_scope.

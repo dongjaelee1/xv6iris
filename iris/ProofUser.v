@@ -31,7 +31,7 @@ Require Import UserPtTree UserExec UserClassifyAsm.
 Require Import UserTotalU UserActiveClass.
 Require Import UserMemArmsBase UserMemArmsC UserMemArmsA UserMemClassifyAmo.
 Require Import SpecUser.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

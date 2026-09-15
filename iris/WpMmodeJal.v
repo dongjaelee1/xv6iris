@@ -16,7 +16,7 @@ Require Import InstrBytes.
 Require Import WpInstr.   (* wp_instr / mm_cycle, split out of InstrBytes *)
 Require Import HartSwp WpMmodeJump.
 From iris.base_logic.lib Require Import invariants.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* register-generic JAL execute (reused verbatim from the old formulation --

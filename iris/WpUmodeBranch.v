@@ -73,7 +73,7 @@ Require UserTotalU.
 Require Import UserPtTree UserExec.
 Require Import UmodeMem UmodeCap.
 Require Import WpUmodeStep.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 Set Printing Depth 40.

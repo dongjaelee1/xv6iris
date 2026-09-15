@@ -49,7 +49,7 @@ Import Defs.
 Require Import HartSwp HartLift HartSpan HartSpanChar HartRunGen HartRegNode
         HartMCycle HartMRun HartMFrame HartGoodb WpDecodeBridge ExecCommon.
 Require Import WpInstrConfig.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 

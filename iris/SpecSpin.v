@@ -19,7 +19,7 @@ Require Import SailStdpp.Base.
 Require Import RiscvLang RegFile RiscvPtsto RiscvFetchExec WpGpr.
 Require Import InstrBytes KernelText.
 From Kernel Require KernelSyms.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* the entry pc of the park loop (also its jump target -- the loop is a

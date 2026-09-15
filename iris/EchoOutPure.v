@@ -1007,13 +1007,32 @@ Proof.
   destruct a as [|[|[|[|a]]]]; try lia; vm_compute; discriminate.
 Qed.
 
-Lemma line_alts_head_det (a b : nat) :
+(* THE WHOLE-BLOCK READING, as on the prologue side
+   ([EchoDisc.pro_alts_prefix_det]): the four alternatives are PAIRWISE
+   PREFIX-FREE, so a wire that carries one of them carries no other.
+
+   IT USED TO BE A ONE-BYTE READING -- the four heads are 'h', 'e', '$',
+   'f' -- and that is a property of what echo happens to print.  At an
+   arbitrary line it fails: a wire showing "fork\n" could be echo printing
+   the word [fork] or sh's own fork1 panicking, and one showing
+   "exec echo failed\n$ " could be echo printing those three words or the
+   child failing to exec.  In BOTH cases the observer genuinely cannot
+   tell, so the claim has to exclude them -- and prefix-freeness excludes
+   exactly those two outputs and nothing else, where distinct heads would
+   have excluded every line whose first printed word begins with 'e' or
+   'f'.  The exclusion belongs to sh's diagnostics, not to any letter.
+
+   DECIDABLE, so it is a computation at any given line and a premise once
+   the word list becomes a parameter. *)
+Lemma line_alts_prefix_det (a b : nat) :
   a < length line_alts -> b < length line_alts ->
-  line_alts !!! a !! 0 = line_alts !!! b !! 0 -> a = b.
+  line_alts !!! a `prefix_of` line_alts !!! b -> a = b.
 Proof.
   rewrite line_alts_length. intros Ha Hb.
   destruct a as [|[|[|[|a]]]]; destruct b as [|[|[|[|b]]]]; try lia;
-    try reflexivity; intros H; vm_compute in H; discriminate.
+    try reflexivity;
+    intros H; exfalso; revert H;
+    apply (bool_decide_unpack _); vm_compute; exact I.
 Qed.
 
 (* out of range [!!!] reads [0], which IS in range, so this is the honest
@@ -1105,11 +1124,11 @@ Proof.
 Qed.
 
 (* THE BLOCK STEP: two continuations below ONE wire are the same
-   continuation.  The LINE choice comes off ONE byte ([line_alts_head_det]:
-   'h', 'e', '$', 'f' are distinct); when that choice is the shell's own
-   fork panic the RESTART'S PROLOGUE comes off PREFIX-FREENESS
-   ([EchoDisc.pro_of_prefix_free]), which also FORCES the unprimed round
-   settled -- that is how the stage learns its own prologue is complete. *)
+   continuation.  BOTH halves come off PREFIX-FREENESS now -- the LINE
+   choice from [line_alts_prefix_det] and, when that choice is the shell's
+   own fork panic, the RESTART'S PROLOGUE from
+   [EchoDisc.pro_of_prefix_free], which also FORCES the unprimed round
+   settled: that is how the stage learns its own prologue is complete. *)
 Lemma alt_cont_prefix_det (ps ps' cs cs' : list nat) (X X' : list (bv 8)) :
   cs_ok cs -> cs_ok cs' ->
   Forall (fun a => (a < length pro_alts)%nat) ps ->
@@ -1124,27 +1143,20 @@ Lemma alt_cont_prefix_det (ps ps' cs cs' : list nat) (X X' : list (bv 8)) :
 Proof.
   intros Hcs Hcs' Hps Hps' Hset HX Hp.
   rewrite /alt_cont -!app_assoc in Hp.
-  assert (Hp0 : 0 < length (line_alts !!! (cs' !!! 0%nat))).
-  { destruct (line_alts !!! (cs' !!! 0%nat)) as [| z zs] eqn:Hz;
-      [ exfalso; exact (line_alts_nonnil _ (Hcs' 0%nat) Hz) | cbn; lia ]. }
-  assert (Hq0 : 0 < length (line_alts !!! (cs !!! 0%nat))).
-  { destruct (line_alts !!! (cs !!! 0%nat)) as [| z zs] eqn:Hz;
-      [ exfalso; exact (line_alts_nonnil _ (Hcs 0%nat) Hz) | cbn; lia ]. }
+  (* the two alternatives are comparable below the wire, so they are the
+     same one -- [EchoDisc.pro_of_prefix_free]'s step, at the line *)
+  assert (Hlcmp : line_alts !!! (cs' !!! 0%nat)
+                   `prefix_of` line_alts !!! (cs !!! 0%nat)
+                 \/ line_alts !!! (cs !!! 0%nat)
+                      `prefix_of` line_alts !!! (cs' !!! 0%nat)).
+  { eapply prefix_weak_total;
+      [ etrans; [apply prefix_app_r; reflexivity | exact Hp]
+      | apply prefix_app_r; reflexivity ]. }
   assert (Hhd : cs' !!! 0%nat = cs !!! 0%nat).
-  { apply line_alts_head_det; [apply Hcs' | apply Hcs |].
-    destruct (lookup_lt_is_Some_2 (line_alts !!! (cs' !!! 0%nat)) 0 Hp0)
-      as [z Hz].
-    assert (Hz1 : (line_alts !!! (cs' !!! 0%nat)
-                    ++ ((if decide (cs' !!! 0%nat = 3%nat)
-                         then pro_of (pro_from (S (pro_idx cs' 0%nat)) ps')
-                         else []) ++ X')) !! 0 = Some z)
-      by (rewrite lookup_app_l; [exact Hz | lia]).
-    assert (Hz2 : (line_alts !!! (cs !!! 0%nat)
-                    ++ ((if decide (cs !!! 0%nat = 3%nat)
-                         then pro_of (pro_from (S (pro_idx cs 0%nat)) ps)
-                         else []) ++ X)) !! 0 = Some z)
-      by (eapply prefix_lookup_Some; [exact Hz1 | exact Hp]).
-    rewrite lookup_app_l in Hz2; [| lia]. by rewrite Hz Hz2. }
+  { destruct Hlcmp as [Hc | Hc];
+      [ exact (line_alts_prefix_det _ _ (Hcs' 0%nat) (Hcs 0%nat) Hc)
+      | symmetry;
+        exact (line_alts_prefix_det _ _ (Hcs 0%nat) (Hcs' 0%nat) Hc) ]. }
   rewrite Hhd in Hp. apply prefix_app_inv in Hp.
   cbn [pro_idx] in Hp |- *. rewrite Hhd.
   case_decide as H3.

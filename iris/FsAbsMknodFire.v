@@ -545,7 +545,7 @@ End NparMknod.
 (* [TsoCtx] is IMPORTED here (and only here) because [Section CreateFire]
    binds [CurCtx]; it is deliberately the LAST require in the file, so no
    notation of its flips under anything above. *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 (* FsAbsCreateFire.v -- the create AU's SUCCESS FIRE AT A NON-DIRECTORY
    CHILD, and the [T_FILE] row reading that instantiates it.

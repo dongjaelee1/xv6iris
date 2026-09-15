@@ -33,7 +33,7 @@ Require Import UkStep.
 Require Import UserHeap.
 Require Import UserPerm.    (* [uperm] -- the row's permission-map argument *)
 Require Import RiscvModelBytes. (* [nth_byte] -- pipe's two reported words *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.
 Import Defs.
@@ -47,7 +47,6 @@ Require Import UserFrame.
 Require Import UserExecFacts.
 Require Import UsysMemOk.
 Require Import UexecSlot UexecRet.
-Require Import TsoCtx.   (* [CurCtx]: ambient, per the WpUmode* precedent *)
 Local Open Scope Z_scope.
 Require Import UkRun.
 Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of

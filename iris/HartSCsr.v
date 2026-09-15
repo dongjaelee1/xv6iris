@@ -44,7 +44,7 @@ Require Import RiscvLang RiscvPtsto RiscvExec HartSwp HartLift HartSpan
 Require Import RiscvExtras RiscvFetchExec WpMmodeLeafBase HartMFrame
         ExecCommon HartMRun HartGoodb WpDecodeBridge.
 Require Import WpMmodeJump WpMmodeCsrSwp.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 Section HartSCsr.

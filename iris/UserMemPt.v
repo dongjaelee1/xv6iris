@@ -35,7 +35,7 @@ Require Import WpMmodeLeafBase.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import MemAccessGen.
 Require Import HartMemRun HartMemAsm PtWalkCert.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

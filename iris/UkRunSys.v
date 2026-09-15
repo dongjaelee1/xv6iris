@@ -54,7 +54,7 @@ Require Import UserPtTree.  (* [umem_wr] / [umem_write] -- the window's image *)
 Require Import UserBits.    (* [uint_add_vec_int_small] -- the window's no-wrap *)
 Require Import RiscvExtras. (* [uint_unsigned] *)
 Require Import RiscvModelBytes. (* [nth_byte] -- pipe's two reported words *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Require Import UserChildren. (* [uch] / [uch_update] -- the program's half of
                                 its children reading, which wait moves, and
@@ -71,7 +71,6 @@ Require Import UserFrame.
 Require Import UserExecFacts.
 Require Import UsysMemOk.
 Require Import UexecSlot UexecRet.
-Require Import TsoCtx.   (* [CurCtx]: ambient, per the WpUmode* precedent *)
 Local Open Scope Z_scope.
 Require Import UkRun.
 

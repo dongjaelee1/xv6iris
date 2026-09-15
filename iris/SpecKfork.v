@@ -192,7 +192,7 @@ Require Import FsCfg.   (* [fscfg]: the fs configuration is AMBIENT *)
    uvmcopy (42), freeproc (44), filedup/idup (14 apiece), acquire/release
    (10), myproc (10), safestrcpy (2). *)
 Notation K_kfork := (56%nat) (only parsing).
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Definition kfork_post
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
  (γf : gname) (lvl : nat) (eb : bool)

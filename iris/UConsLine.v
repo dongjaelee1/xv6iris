@@ -120,9 +120,9 @@ Import Defs.
 
 (* '\n' occurs in [echo_line] ONLY as its last byte -- the fact both (1)
    and (2) turn on, decided at the literal *)
-Lemma echo_line_nl_at (k : nat) :
-  (k < 17)%nat -> echo_line !! k = Some (Z_to_bv 8 10) -> k = 16%nat.
-Proof. intros _ H. exact (echo_line_nl_last k H). Qed.
+(* [echo_line_nl_at] is [EchoDisc.echo_line_nl_last] -- the only newline
+   is the line's last byte, which is what [gets] stopping at the first one
+   says about the buffer it read. *)
 
 Lemma ush_disc_line :
   forall (q : nat) (bs : list (bv 8)),
@@ -133,13 +133,12 @@ Lemma ush_disc_line :
     bs = take (length bs) echo_line.
 Proof.
   intros q bs Hsp Hnl.
-  pose proof echo_line_length as Hp.
-  assert (Hpos : (0 < length echo_line)%nat) by lia.
+  pose proof echo_line_pos as Hpos.
   assert (HLlen : length (concat (replicate q echo_line))
                   = (q * length echo_line)%nat)
     by apply concat_replicate_length.
   assert (Hpt : forall i : nat, (i < length bs)%nat ->
-            bs !! i = echo_line !! (i `mod` 17)%nat).
+            bs !! i = echo_line !! (i `mod` length echo_line)%nat).
   { intros i Hi.
     assert (Hi2 : (length (concat (replicate q echo_line)) + i
                    < length (concat (replicate q echo_line) ++ bs))%nat)
@@ -151,21 +150,24 @@ Proof.
     rewrite lookup_app_r in H; [ | lia ].
     replace (length (concat (replicate q echo_line)) + i
              - length (concat (replicate q echo_line)))%nat with i in H by lia.
-    rewrite H. f_equal. rewrite HLlen Hp.
-    transitivity ((i + q * 17) `mod` 17)%nat;
+    rewrite H. f_equal. rewrite HLlen.
+    transitivity ((i + q * length echo_line) `mod` length echo_line)%nat;
       [ f_equal; lia | apply Nat.Div0.mod_add ]. }
-  assert (Hlen : (length bs <= 17)%nat).
-  { destruct (Nat.le_gt_cases (length bs) 17%nat) as [Hle | Hgt];
-      [ exact Hle | exfalso ].
-    assert (H16i : (16 < length bs)%nat) by lia.
-    assert (H16 : bs !! 16%nat = Some (Z_to_bv 8 10))
-      by (rewrite (Hpt 16%nat H16i); reflexivity).
-    assert (H17 : (S 16 < length bs)%nat) by lia.
-    exact (Hnl 16%nat H17 H16). }
+  assert (Hlen : (length bs <= length echo_line)%nat).
+  { destruct (Nat.le_gt_cases (length bs) (length echo_line))
+      as [Hle | Hgt]; [ exact Hle | exfalso ].
+    assert (H16i : (length echo_line - 1 < length bs)%nat) by lia.
+    assert (H16 : bs !! (length echo_line - 1)%nat = Some (Z_to_bv 8 10)).
+    { rewrite (Hpt (length echo_line - 1)%nat H16i).
+      rewrite (Nat.mod_small (length echo_line - 1)%nat (length echo_line)
+                 ltac:(lia)).
+      exact echo_line_nl_at_end. }
+    assert (H17 : (S (length echo_line - 1) < length bs)%nat) by lia.
+    exact (Hnl (length echo_line - 1)%nat H17 H16). }
   apply list_eq. intros i.
   destruct (decide (i < length bs)%nat) as [Hi | Hi].
   - rewrite (Hpt i Hi). rewrite lookup_take; [ | exact Hi ].
-    rewrite (Nat.mod_small i 17%nat ltac:(lia)). reflexivity.
+    rewrite (Nat.mod_small i (length echo_line) ltac:(lia)). reflexivity.
   - assert (Hn1 : bs !! i = None) by (apply lookup_ge_None_2; lia).
     assert (Hn2 : take (length bs) echo_line !! i = None)
       by (apply lookup_ge_None_2; rewrite length_take; lia).
@@ -197,16 +199,16 @@ Lemma ush_line_full :
     bs = echo_line.
 Proof.
   intros bs0. cbv zeta. intro Heq.
-  pose proof echo_line_length as Hp.
+  pose proof echo_line_pos as Hp.
   pose proof (f_equal length Heq) as HL.
-  rewrite length_take Hp length_app in HL. cbn [length] in HL.
+  rewrite length_take length_app in HL. cbn [length] in HL.
   assert (Hlast : (bs0 ++ [Z_to_bv 8 10]) !! (length bs0) = Some (Z_to_bv 8 10)).
   { rewrite lookup_app_r; [ | lia ]. rewrite Nat.sub_diag. reflexivity. }
   rewrite Heq in Hlast.
   apply lookup_take_Some in Hlast as [Hlast _].
-  pose proof (echo_line_nl_at (length bs0) ltac:(lia) Hlast) as H16.
+  pose proof (echo_line_nl_last (length bs0) Hlast) as H16.
   rewrite Heq length_app. cbn [length]. rewrite H16.
-  apply take_ge. rewrite Hp. lia.
+  apply take_ge. lia.
 Qed.
 
 (* (3) ...AND THAT LINE LEXES, concretely.  [ushp_no_symbols] keeps

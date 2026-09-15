@@ -53,7 +53,7 @@ Require Import RiscvExtras.
 Require Import SmodePte.
 From Kernel Require Import KernelInstrs.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

@@ -121,6 +121,18 @@ Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 Lemma echo_ws_wf : wl_wf echo_ws.
 Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
+Lemma echo_ws_length : length echo_ws = 3%nat.
+Proof. reflexivity. Qed.
+
+(* a word of the line, read back through [!!] so that [LineWords]' lemmas
+   -- every one of which is keyed on [ws !! i = Some w] -- apply *)
+Lemma echo_ws_at (i : nat) :
+  (i < length echo_ws)%nat -> echo_ws !! i = Some (echo_ws !!! i).
+Proof.
+  intro Hi. destruct (lookup_lt_is_Some_2 echo_ws i Hi) as [w Hw].
+  by rewrite Hw list_lookup_total_alt Hw.
+Qed.
+
 (* ---- EVERY BYTE OF THE LINE, NUMERICALLY ----------------------------- *)
 (* The console-side proofs each have to refute one byte -- the carriage
    return [consoleintr] rewrites, the three erase characters, the
@@ -154,10 +166,19 @@ Qed.
 (* ...AND ITS POSITIONAL HALF: the only newline is the last byte, which is
    what [gets] stopping at the first one says about the buffer it read. *)
 Lemma echo_line_nl_last (k : nat) :
-  echo_line !! k = Some (Z_to_bv 8 10%Z) -> k = 16%nat.
+  echo_line !! k = Some (Z_to_bv 8 10%Z) -> k = (length echo_line - 1)%nat.
 Proof.
   rewrite echo_line_words. intro Hk.
-  rewrite (wl_line_nl_last echo_ws k echo_ws_wf Hk). by vm_compute.
+  rewrite (wl_line_nl_last echo_ws k echo_ws_wf Hk) wl_line_length. lia.
+Qed.
+
+Lemma echo_line_nl_at_end :
+  echo_line !! (length echo_line - 1)%nat = Some (Z_to_bv 8 10%Z).
+Proof.
+  rewrite echo_line_words wl_line_length.
+  replace (length (wl_body echo_ws) + 1 - 1)%nat
+    with (length (wl_body echo_ws)) by lia.
+  exact (wl_line_nl_at echo_ws).
 Qed.
 
 Global Opaque echo_line.
@@ -756,11 +777,108 @@ Qed.
    pairwise distinct, which is what makes the LINE choice readable off one
    byte of the wire ([line_alts_head_det]).  A later ruling changes this
    ONE list. *)
+(* ECHO'S OUTPUT IS THE LINE MINUS ITS COMMAND NAME.  echo prints its
+   arguments joined by single spaces and closed by a newline -- which is
+   exactly what [gets] read, with the first word dropped.  So the good
+   alternative is not a second literal transcribed beside [echo_line]: it
+   is [wl_line] of the line's tail, and then the prompt sh writes once it
+   has reaped.  A transcription error here cannot make the two disagree,
+   because there is only one of them. *)
+Definition echo_line_out : list (bv 8) := wl_line (drop 1 echo_ws).
+
+Lemma echo_line_out_string : echo_line_out = sb "hello world"%string ++ nlb.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma echo_line_out_length : length echo_line_out = 12%nat.
+Proof. vm_compute. reflexivity. Qed.
+
 Definition line_alts : list (list (bv 8)) :=
-  [ sb "hello world"%string ++ nlb ++ sb "$ "%string;
+  [ echo_line_out ++ sb "$ "%string;
     sb "exec echo failed"%string ++ nlb ++ sb "$ "%string;
     sb "$ "%string;
     sb "fork"%string ++ nlb ].
+
+Lemma line_alts_0 : line_alts !!! 0%nat = echo_line_out ++ sb "$ "%string.
+Proof. reflexivity. Qed.
+
+(* ---- WHERE ECHO'S OUTPUT PUTS EACH WORD ------------------------------ *)
+(* Argument [i] of the line is word [i - 1] of the TAIL, because echo does
+   not print the command name.  These four are the whole of the cursor a
+   write chain over the words walks: where a word starts, what follows it
+   while another word remains, and what follows the last one. *)
+Definition echo_ocur (i : nat) : nat := wl_off 0%nat (drop 1 echo_ws) (i - 1).
+
+Lemma echo_ws_drop (i : nat) :
+  (1 <= i)%nat -> drop 1 echo_ws !! (i - 1)%nat = echo_ws !! i.
+Proof.
+  intro Hi. rewrite lookup_drop. f_equal. lia.
+Qed.
+
+(* the alternative opens with the output, and the prompt is past it *)
+Lemma echo_alt0_out (p : nat) :
+  (p < length echo_line_out)%nat ->
+  line_alts !!! 0%nat !! p = echo_line_out !! p.
+Proof.
+  intro Hp. rewrite line_alts_0.
+  exact (lookup_app_l echo_line_out (sb "$ "%string) p Hp).
+Qed.
+
+Lemma echo_ocur_S (i : nat) (w : list (bv 8)) :
+  (1 <= i)%nat -> echo_ws !! i = Some w ->
+  echo_ocur (S i) = S (echo_ocur i + length w)%nat.
+Proof.
+  intros Hi Hw. rewrite /echo_ocur.
+  replace (S i - 1)%nat with (S (i - 1)) by lia.
+  exact (wl_off_S_at (drop 1 echo_ws) 0%nat (i - 1)%nat w
+           ltac:(rewrite echo_ws_drop; [exact Hw | exact Hi])).
+Qed.
+
+Lemma echo_ocur_lt (i : nat) (w : list (bv 8)) (j : nat) :
+  (1 <= i)%nat -> echo_ws !! i = Some w -> (j <= length w)%nat ->
+  (echo_ocur i + j < length echo_line_out)%nat.
+Proof.
+  intros Hi Hw Hj. rewrite /echo_ocur /echo_line_out.
+  exact (wl_off_lt_line (drop 1 echo_ws) (i - 1)%nat w j
+           ltac:(rewrite echo_ws_drop; [exact Hw | exact Hi]) Hj).
+Qed.
+
+(* a separator follows a word while another argument remains... *)
+Lemma echo_out_sep (i : nat) (w : list (bv 8)) :
+  (1 <= i)%nat -> echo_ws !! i = Some w -> (S i < length echo_ws)%nat ->
+  line_alts !!! 0%nat !! (echo_ocur i + length w)%nat = Some wl_sp.
+Proof.
+  intros Hi Hw Hlt.
+  assert (Hd : drop 1 echo_ws !! (i - 1)%nat = Some w)
+    by (rewrite echo_ws_drop; [exact Hw | exact Hi]).
+  rewrite (echo_alt0_out (echo_ocur i + length w)%nat
+             (echo_ocur_lt i w (length w) Hi Hw ltac:(lia))).
+  rewrite /echo_line_out /echo_ocur.
+  apply (wl_line_sep (drop 1 echo_ws) (i - 1)%nat w Hd).
+  rewrite length_drop. lia.
+Qed.
+
+(* ...and the closing newline follows the last, which is where the output
+   ends *)
+Lemma echo_out_last (i : nat) (w : list (bv 8)) :
+  (1 <= i)%nat -> echo_ws !! i = Some w -> S i = length echo_ws ->
+  S (echo_ocur i + length w)%nat = length echo_line_out
+  /\ line_alts !!! 0%nat !! (echo_ocur i + length w)%nat = Some wl_nl.
+Proof.
+  intros Hi Hw Hlast.
+  assert (Hd : drop 1 echo_ws !! (i - 1)%nat = Some w)
+    by (rewrite echo_ws_drop; [exact Hw | exact Hi]).
+  assert (Hend : (echo_ocur i + length w)%nat
+                 = length (wl_body (drop 1 echo_ws))).
+  { rewrite /echo_ocur.
+    rewrite (wl_off_last (drop 1 echo_ws) 0%nat (i - 1)%nat w Hd
+               ltac:(rewrite length_drop; lia)).
+    lia. }
+  split.
+  - rewrite Hend /echo_line_out wl_line_length. lia.
+  - rewrite (echo_alt0_out (echo_ocur i + length w)%nat
+               (echo_ocur_lt i w (length w) Hi Hw ltac:(lia))).
+    rewrite /echo_line_out Hend. exact (wl_line_nl_at (drop 1 echo_ws)).
+Qed.
 
 Lemma line_alts_length : length line_alts = 4.
 Proof. reflexivity. Qed.

@@ -61,7 +61,7 @@ Require Import SpecUart.
 Require Import WpSconfAlu WpSconfBtype.
 Require Import WpSconfUartAccess.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 Module UartgetcProof (Uart : UART).

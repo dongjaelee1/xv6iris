@@ -41,7 +41,7 @@ Require Import UartNames.
 Require Import LinkPrputc LinkPrintint LinkAcquire LinkRelease ProofPrintk.
 Require Import SpecPrintk.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Module Printk := PrintkProof Prputc Printint Acquire Release.
 

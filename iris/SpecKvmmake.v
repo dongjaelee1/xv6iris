@@ -22,7 +22,7 @@ Require Import PtTree.
 Require Import PtBuild KvmMap KvmSpec.
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 
 (* kvmmake(): kalloc a fresh root page, memset it, run the seven kvmmap regions

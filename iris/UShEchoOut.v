@@ -35,11 +35,13 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import FdSlots.
+Require Import UmodeAbi.          (* [ubyte0] *)
 Require Import UserHeap.          (* [uarg] / [ua_len] / [ua_bytes] *)
 Require Import UexecSlot.         (* [uvis] and its fields *)
 Require Import SpecKexec.         (* [kexec_image_ok] *)
 Require Import ElfUser.           (* [echo_elf] *)
-Require Import EchoDisc.          (* [echo_line] / [line_alts] *)
+Require Import LineWords.         (* [wl_line] / [wl_off] / [wl_line_word] *)
+Require Import EchoDisc.          (* [echo_line] / [echo_line_out] / [line_alts] *)
 Require Import UEchoKernel.       (* [echo_arg] / [echo_args] *)
 Require Import UkShEcho.          (* [echo_off] / [echo_alen] *)
 Require Import UShEcho.           (* [echo_key_args] *)
@@ -48,65 +50,63 @@ Require Import UEchoOut.          (* [echo_out_argv] *)
 Local Open Scope list_scope.
 
 (* ===================================================================== *)
-(*  S1  THE TWO CLOSED COMPUTATIONS                                       *)
+(*  S1  THE BRIDGE, IN ONE SENTENCE                                       *)
 (*                                                                       *)
-(*  [echo_line]      = "echo hello world\n"   (17 bytes)                  *)
-(*  [line_alts !!! 0] = "hello world\n$ "     (14 bytes)                  *)
+(*  [EchoDisc.echo_line_out] IS [wl_line] of the line's TAIL, so the      *)
+(*  alternative's byte where the OUTPUT puts word [i] and the line's byte *)
+(*  where the INPUT puts it are the same byte of the same word -- twice   *)
+(*  [LineWords.wl_line_word] and nothing else.  This used to be two       *)
+(*  five-way case analyses over the literal's offsets.                    *)
 (*                                                                       *)
-(*  sh's token [i] starts at [echo_off i] of the LINE; echo prints tokens *)
-(*  1 and 2, which are the alternative's bytes 0..4 and 6..10.  (Byte 5   *)
-(*  of the alternative is echo's own separator, out of .rodata, and bytes *)
-(*  12..13 are the prompt sh writes after it reaps -- neither is argv's.) *)
+(*  (The alternative continues past the output with the prompt sh writes  *)
+(*  once it has reaped, which is why the lookup needs the bound.)         *)
 (* ===================================================================== *)
-Lemma echo_alt0_tok1 (j : nat) :
-  (j < UkShEcho.echo_alen 1%nat)%nat ->
-  line_alts !!! 0%nat !! j
-  = Some (echo_line !!! (UkShEcho.echo_off 1%nat + j)%nat).
+Lemma echo_alt0_word (i j : nat) (w : list (bv 8)) :
+  (1 <= i)%nat -> echo_ws !! i = Some w -> (j < length w)%nat ->
+  line_alts !!! 0%nat !! (echo_ocur i + j)%nat
+  = Some (echo_line !!! (UkShEcho.echo_off i + j)%nat).
 Proof.
-  rewrite UkShEcho.echo_alen_1 UkShEcho.echo_off_1. intro Hj.
-  do 5 (destruct j as [| j]; [ vm_compute; reflexivity | ]).
-  exfalso. lia.
-Qed.
-
-Lemma echo_alt0_tok2 (j : nat) :
-  (j < UkShEcho.echo_alen 2%nat)%nat ->
-  line_alts !!! 0%nat !! (6 + j)%nat
-  = Some (echo_line !!! (UkShEcho.echo_off 2%nat + j)%nat).
-Proof.
-  rewrite UkShEcho.echo_alen_2 UkShEcho.echo_off_2. intro Hj.
-  do 5 (destruct j as [| j]; [ vm_compute; reflexivity | ]).
-  exfalso. lia.
+  intros Hi Hw Hj.
+  assert (Hd : drop 1 echo_ws !! (i - 1)%nat = Some w)
+    by (rewrite echo_ws_drop; [exact Hw | exact Hi]).
+  rewrite (echo_alt0_out (echo_ocur i + j)%nat
+             (echo_ocur_lt i w j Hi Hw (Nat.lt_le_incl _ _ Hj))).
+  rewrite /echo_line_out /echo_ocur.
+  destruct (lookup_lt_is_Some_2 (wl_line (drop 1 echo_ws))
+              (wl_off 0%nat (drop 1 echo_ws) (i - 1)%nat + j)%nat
+              ltac:(exact (wl_off_lt_line (drop 1 echo_ws) (i - 1)%nat w j
+                             Hd (Nat.lt_le_incl _ _ Hj)))) as [b Hb].
+  rewrite Hb. f_equal.
+  rewrite <- (list_lookup_total_correct _ _ _ Hb).
+  rewrite (wl_line_word (drop 1 echo_ws) (i - 1)%nat w j Hd Hj).
+  rewrite /UkShEcho.echo_off echo_line_words.
+  by rewrite (wl_line_word echo_ws i w j Hw Hj).
 Qed.
 
 (* ===================================================================== *)
 (*  S2  THE BRIDGE                                                        *)
 (* ===================================================================== *)
 Lemma echo_out_argv_of_key_args (M : gmap Z (bv 8)) (av : Z) (argcn : nat) :
-  argcn = 3%nat ->
-  (forall i : nat, (i < 3)%nat ->
-     ua_len (echo_arg M av i) = UkShEcho.echo_alen i
-     /\ forall j : nat, (j < UkShEcho.echo_alen i)%nat ->
+  argcn = length echo_ws ->
+  (forall i : nat, (i < length echo_ws)%nat ->
+     ua_len (echo_arg M av i) = length (echo_ws !!! i)
+     /\ forall j : nat, (j < length (echo_ws !!! i))%nat ->
           ua_bytes (echo_arg M av i) j
           = echo_line !!! (UkShEcho.echo_off i + j)%nat) ->
   UEchoOut.echo_out_argv (echo_args M av argcn).
 Proof.
   intros -> Hk. rewrite /UEchoOut.echo_out_argv.
-  split_and!.
-  - exact (echo_args_length M av 3%nat).
-  - intros g Hg.
-    rewrite (echo_args_lookup M av 3%nat 1%nat ltac:(lia)) in Hg.
-    injection Hg as <-.
-    destruct (Hk 1%nat ltac:(lia)) as [Hlen Hb].
-    split; [ rewrite Hlen; reflexivity | ].
-    intros j Hj. rewrite (Hb j ltac:(rewrite UkShEcho.echo_alen_1; lia)).
-    exact (echo_alt0_tok1 j ltac:(rewrite UkShEcho.echo_alen_1; lia)).
-  - intros g Hg.
-    rewrite (echo_args_lookup M av 3%nat 2%nat ltac:(lia)) in Hg.
-    injection Hg as <-.
-    destruct (Hk 2%nat ltac:(lia)) as [Hlen Hb].
-    split; [ rewrite Hlen; reflexivity | ].
-    intros j Hj. rewrite (Hb j ltac:(rewrite UkShEcho.echo_alen_2; lia)).
-    exact (echo_alt0_tok2 j ltac:(rewrite UkShEcho.echo_alen_2; lia)).
+  split; [ exact (echo_args_length M av (length echo_ws)) | ].
+  intros i g Hi1 Hg.
+  assert (Hilt : (i < length echo_ws)%nat)
+    by (apply lookup_lt_Some in Hg; rewrite echo_args_length in Hg; lia).
+  rewrite (echo_args_lookup M av (length echo_ws) i Hilt) in Hg.
+  injection Hg as <-.
+  destruct (Hk i Hilt) as [Hlen Hb].
+  split; [ exact Hlen | ].
+  intros j Hj. rewrite Hlen in Hj.
+  rewrite (Hb j Hj).
+  exact (echo_alt0_word i j (echo_ws !!! i) Hi1 (echo_ws_at i Hilt) Hj).
 Qed.
 
 (* ...AND OFF THE EXEC CHANNEL, which is the form the entry constructor
@@ -124,9 +124,21 @@ Lemma echo_out_argv_of_image (na : nat) (alen : nat -> nat)
   UEchoOut.echo_out_argv
     (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W))).
 Proof.
-  intros Hok Hna Halen Hafun.
-  destruct (UShEcho.echo_key_args_holds na alen afun sts W Hok Hna Halen Hafun)
+  intros Hok Hna Halen Hafun. subst na.
+  (* the general reading's ONE side condition, at this line: no byte exec
+     pushed is a NUL, because every one of them is the line's own *)
+  assert (Hno : forall i j : nat, (i < 3)%nat -> (j < alen i)%nat ->
+            afun i j <> ubyte0).
+  { intros i j Hi Hj. rewrite (Halen i Hi) in Hj.
+    rewrite (Hafun i j Hi Hj).
+    exact (UShEcho.echo_line_nonul _
+             (UkShEcho.echo_off_lt i j Hi (Nat.lt_le_incl _ _ Hj))). }
+  destruct (UShEcho.echo_key_args_holds 3%nat alen afun sts W Hok Hno)
     as [Hargc Hk].
-  exact (echo_out_argv_of_key_args (uvis_M W) (uvis_av W)
-           (Z.to_nat (uvis_argc W)) Hargc Hk).
+  apply (echo_out_argv_of_key_args (uvis_M W) (uvis_av W)
+           (Z.to_nat (uvis_argc W)) Hargc).
+  intros i Hi. destruct (Hk i Hi) as [Hl Hb].
+  split; [ rewrite Hl; exact (Halen i Hi) | ].
+  intros j Hj. rewrite (Hb j ltac:(rewrite (Halen i Hi); exact Hj)).
+  exact (Hafun i j Hi Hj).
 Qed.

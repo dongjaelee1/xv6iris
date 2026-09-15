@@ -209,7 +209,7 @@ Require Import FsCfg.   (* [fscfg]: the fs configuration is AMBIENT *)
    [SpecPanic.panic_stack]) sets the bound, acquire and release wanting only
    10.  [K_idup]'s budget for a frame half again as deep. *)
 Notation K_iget := (62%nat) (only parsing).
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Definition wp_iget_sconf_body
     `{!riscvGS Σ, !xv6G Σ, ICFG : icfg, APP : appcfg Σ, FSC : fscfg, !irefslotG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (inum : mword 32)

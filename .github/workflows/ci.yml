@@ -166,58 +166,82 @@ jobs:
             exit 1
           fi
 
-      # ---- 3b. Assumption audit (iris/SystemAssumptions.v) ----
-      # `Print Assumptions` on the system theorem -- the only check that sees
-      # through every functor and seal, and so the only statement of what the
-      # whole development actually rests on.  It used to be a line inside
-      # SystemAdequacy.v, where it was 95 s of that file's 98.6 s on the serial
-      # build tail; it is now its own file, out of iris/_CoqProject on purpose
-      # (the commented row there is what tells proof_coverage.py so), compiled
-      # here by `make audit-only` against the tree the previous step built.
-      # CI pays the same 95 s it always did -- what moved is that a developer's
-      # `make proofs` no longer does.
+      # ---- 3b. Assumption audits (iris/SystemAssumptions.v, EchoAssumptions.v) ----
+      # `Print Assumptions`, the only check that sees through every functor and
+      # seal.  TWO THEOREMS, because NEITHER CONE CONTAINS THE OTHER:
+      # xv6_fs_adequacy_xv6Σ is the chain at the TRIVIAL application and names
+      # no user program, so it never walks the Uk*/USh*/UInit*/UEcho* tier;
+      # echo_adequacy_echoΣ is the same chain at AppEcho.app_echo, closed, and
+      # its cone does.  Nor can a grep for `Admitted`/`Axiom` stand in for the
+      # second: a Spec*.v module Parameter that no Link*.v discharged sits in
+      # the proof term unmentioned by any source line.
       #
-      # `audit-only`, not `audit`: the latter depends on `proofs`, whose
-      # kernel-rocq prerequisite pulls in the absent kernel ELF (see the note
-      # atop this file).  `-s` keeps make's recipe echo out of the captured
-      # stdout, so the log is exactly the audit's output; coqc's warnings go to
-      # stderr and stay in the job log rather than the summary.
+      # Each is a file of its own, out of iris/_CoqProject on purpose (the
+      # commented rows there are what tell proof_coverage.py so), compiled here
+      # against the tree the previous step built.  The system one used to be a
+      # line inside SystemAdequacy.v, 95 s of that file's 98.6 s on the serial
+      # build tail; CI pays that, a developer's `make proofs` no longer does.
       #
-      # The output goes in the step summary rather than being read out of a
-      # 1900-line build log.  The step FAILS if coqc does (a broken audit is a
-      # broken tree), but the axiom list itself is only reported, not diffed
-      # against an expected set -- same contract as when it lived in the build
-      # log, so read it.  The summary is written either way: a failing run is
-      # exactly when you want to see how far it got.
-      - name: Assumption audit (iris/, Print Assumptions on the system theorem)
+      # THEY RUN CONCURRENTLY.  Naming both targets on one `make` line would
+      # serialise them -- make walks command-line goals in order unless it is
+      # itself parallel -- and they are single-threaded coqc processes sharing
+      # nothing but the .vo they read, so the overlap roughly halves the step.
+      # `make audit-all-only` is the same pairing for a developer; CI
+      # backgrounds the targets itself only because it needs each audit's
+      # output in a log of its own for the summary.
+      #
+      # `audit-only`/`audit-echo-only`, not `audit`/`audit-echo`: the latter
+      # depend on `proofs`, whose kernel-rocq prerequisite pulls in the absent
+      # kernel ELF (see the note atop this file).  `-s` keeps make's recipe echo
+      # out of the captured stdout; coqc's warnings go to stderr and stay in the
+      # job log rather than the summary.
+      #
+      # The lists are REPORTED, not diffed against an expected set -- same
+      # contract as when they lived in the build log, so read them.  The step
+      # fails if either coqc does, and both sections are written either way,
+      # which is why the two exit statuses are collected separately.
+      - name: Assumption audits (iris/, Print Assumptions, system + echo in parallel)
         run: |
-          rc=0
+          rc_sys=0
+          rc_echo=0
           make -s SWITCH="$GITHUB_WORKSPACE" audit-only \
-            > "$RUNNER_TEMP/assumptions.log" || rc=$?
+            > "$RUNNER_TEMP/assumptions-system.log" &
+          pid_sys=$!
+          make -s SWITCH="$GITHUB_WORKSPACE" audit-echo-only \
+            > "$RUNNER_TEMP/assumptions-echo.log" &
+          pid_echo=$!
+          wait $pid_sys  || rc_sys=$?
+          wait $pid_echo || rc_echo=$?
+
           {
             echo "## Assumption audit"
             echo
-            echo "\`Print Assumptions SystemAdequacy.xv6_power_adequacy_xv6Σ\` — the"
-            echo "transitive axiom footprint of the system theorem, through every functor"
-            echo "and every seal."
+            echo "### \`SystemAdequacy.xv6_fs_adequacy_xv6Σ\`"
             echo
-            echo "Expected: exactly three — \`functional_extensionality_dep\` and"
-            echo "the two LR/SC reservation predicates"
-            echo "(\`xv6iris_extras.resv_matches\`, \`xv6iris_extras.resv_is_valid\`)."
-            echo "**Anything else is a regression** — a \`Link*\` entry means an"
-            echo "unproven kernel function came back into the cone, and a bare Sail"
-            echo "platform extern means the fork's \`coq:\` bindings or"
-            echo "\`model-xv6iris/xv6iris_extras.v\` drifted."
-            echo
-            if [ "$rc" -ne 0 ]; then
-              echo "> :x: The audit did not complete (exit $rc); the output below is partial."
+            if [ "$rc_sys" -ne 0 ]; then
+              echo "> :x: exit $rc_sys — output below is partial."
               echo
             fi
             echo '```'
-            cat "$RUNNER_TEMP/assumptions.log"
+            cat "$RUNNER_TEMP/assumptions-system.log"
+            echo '```'
+            echo
+            echo "### \`UInitBootAdequacy.echo_adequacy_echoΣ\`"
+            echo
+            if [ "$rc_echo" -ne 0 ]; then
+              echo "> :x: exit $rc_echo — output below is partial."
+              echo
+            fi
+            echo '```'
+            cat "$RUNNER_TEMP/assumptions-echo.log"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          exit $rc
+
+          if [ "$rc_sys" -ne 0 ] || [ "$rc_echo" -ne 0 ]; then
+            echo "::error::An assumption audit failed (system: $rc_sys," \
+                 "echo: $rc_echo); see the step summary."
+            exit 1
+          fi
 
       # ---- 3b'. Trusted base of the adequacy statement (iris/) ----
       # The other half of the audit above.  `Print Assumptions` answers "what
@@ -252,32 +276,49 @@ jobs:
         env:
           SWITCH: ${{ github.workspace }}
         run: |
-          # ALL THREE RUNGS OF THE LADDER, most general first.  Read the
-          # three tables as one story:
-          #   RiscvAdequacy.riscv_power_adequacy  -- the machine, an ABSTRACT
-          #     crash invariant [Pc], and any [phi].  This is the "any
-          #     provable pure trace property" theorem, and it is the CHEAPEST
-          #     of the three to state (MEASURED 2026-08-27: 431 definitions /
-          #     3493 lines) because it names no file system at all.
-          #   xv6_power_adequacy_xv6Sigma         -- xv6's instance: [Pc] is
-          #     fixed at [FsCrash.P_fs_named], the invariant xv6's boot cone
-          #     actually establishes, with [phi] still free.  605 / 4781: the
-          #     dearest of the three, because its statement names BOTH the
-          #     Iris ghost layer (via the [Hphi] hypothesis, an iProp
-          #     entailment) and the FS durability record.
-          #   xv6_fs_adequacy_xv6Sigma            -- [phi] chosen.  446 / 3460.
+          # ALL THREE RUNGS OF THE LADDER, most general first, AND THEN THE
+          # APPLICATION:
+          #   riscv_power_adequacy       -- the machine, an ABSTRACT crash
+          #     invariant [Pc], any [phi].  The "any provable pure trace
+          #     property" theorem; it names no file system at all.
+          #   xv6_power_adequacy_xv6Sigma -- xv6's instance: [Pc] fixed at
+          #     [FsCrash.P_fs_named], [phi] still free.  The dearest of the
+          #     four to state: it names BOTH the Iris ghost layer (via the
+          #     [Hphi] hypothesis, an iProp entailment) and the FS durability
+          #     record.
+          #   xv6_fs_adequacy_xv6Sigma   -- [phi] chosen.
+          #   echo_adequacy_echoSigma    -- the chain at [AppEcho.app_echo],
+          #     closed.
           #
-          # NEITHER OF THE LOWER TWO CONTAINS THE OTHER: 605 vs 446, sharing
-          # 428; 177 are power-only (the ghost layer) and 18 are fs-only (the
-          # pure FS-consistency vocabulary only [phi] names -- xv6_trace_pure,
-          # fs_boot_pure, snap_ok and its cone, the link-count definitions).
-          # AT FILE LEVEL IT LOOKS LIKE A SUPERSET AND IS NOT: those 18 live
-          # in files the general theorem reaches for other reasons.  Do not
-          # read containment off the file column.
+          # NEITHER OF THE MIDDLE TWO CONTAINS THE OTHER: a free [phi] puts
+          # the ghost layer in that base, while only the fs one reaches the
+          # pure FS-consistency vocabulary [phi] names (xv6_trace_pure,
+          # fs_boot_pure, snap_ok and its cone, the link-count definitions),
+          # which live in files the general theorem reaches for other reasons.
+          # Do not read containment off the file column.
+          #
+          # DO NOT EXPECT THE ECHO ROW TO BE THE BIGGEST just because it is
+          # the application theorem: it has the most PROOF behind it and the
+          # least STATEMENT in front of it.  What it says is a property of the
+          # UART trace, so its base is the machine + device model, [ObsTrace]
+          # and [EchoDisc], with no file system in it at all.
+          #
+          # WHAT TO WATCH IS [EchoDisc.v]'s CONTRIBUTION.  For the other three
+          # the statement vocabulary is FS consistency, which this tree defines
+          # either way; here THE PREDICATE IS THE SPECIFICATION, so a
+          # Print Assumptions of a theorem about the wrong [disc]/[good_out] is
+          # worth nothing and this table is what rules that out.  The counts
+          # are not quoted in this comment on purpose: they move with every
+          # proof edit, and the tables below print the live ones.
+          #
+          # EACH RUN OVERWRITES tools/tcb/TcbSeed.v, so the loop is SERIAL --
+          # these are a few seconds apiece and there is nothing to win by
+          # racing them into one scratch file.
           rc=0
           for thm in RiscvAdequacy.riscv_power_adequacy \
                      SystemAdequacy.xv6_power_adequacy_xv6Σ \
-                     SystemAdequacy.xv6_fs_adequacy_xv6Σ; do
+                     SystemAdequacy.xv6_fs_adequacy_xv6Σ \
+                     UInitBootAdequacy.echo_adequacy_echoΣ; do
             log="$RUNNER_TEMP/tcb-${thm##*.}.log"
             if ./tools/tcb/tcb-report.sh "xv6iris.$thm" > "$log" 2>&1; then
               python3 tools/tcb/tcb_report.py "$log" --md --target "$thm" \
@@ -356,7 +397,8 @@ jobs:
       # not drift and does not fail here, but it has to say so: comment its row
       # out to a bare `# Foo.v` (see coqproject_files' docstring), which is what
       # distinguishes a deliberate omission -- a descoped tier, or a file some
-      # other target builds, as the step above builds SystemAssumptions.v --
+      # other target builds, as step 3b builds SystemAssumptions.v and
+      # EchoAssumptions.v --
       # from the forgotten row this check is here to catch.  Either way the
       # file is counted by nobody, so a file omitted this way must carry no
       # coverage claims.  A mere coverage change never fails CI.  Runs only on a

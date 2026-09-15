@@ -52,7 +52,7 @@ Require Import ProcAvail.
 Require Import LogInv.  (* [logG]: [ireg_inv]'s own instance argument *)
 Import Defs.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* sys_fork's balanced 16-byte frame: entry [addi sp,-16] and exit

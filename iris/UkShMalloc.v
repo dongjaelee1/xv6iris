@@ -58,7 +58,7 @@ Require Import UkProgAbi.
 Require Import UCodeShM.
 Require Import UCodeShP.
 Require UkShParse.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Local Open Scope Z_scope.

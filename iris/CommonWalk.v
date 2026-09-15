@@ -30,7 +30,7 @@ From iris.base_logic.lib Require Import gen_heap ghost_map.
 From iris.program_logic Require Import language weakestpre.
 Require Import RiscvPtsto HartSwp HartLift HartRegNode HartSpan HartSpanChar
         HartGoodb.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

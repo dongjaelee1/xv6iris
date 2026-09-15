@@ -38,6 +38,8 @@ inside the project-local opam switch, so you do **not** need to
 ```sh
 make            # == make proofs: build the model, the kernel dump, and all Iris proofs
 make audit      # build, then Print Assumptions on the system theorem (see below)
+make audit-echo # the same, for the echo application theorem
+make audit-all  # both audits, run concurrently
 make model      # compile only model-xv6iris/ (the Sail-generated Rocq model)
 make kernel     # build the xv6 kernel ELF (xv6-riscv/kernel/kernel)
 make user       # build the xv6 user programs (xv6-riscv/user/_*, via fs.img)
@@ -53,6 +55,17 @@ measures ~95 s on the build's serial tail, roughly 30 % of a clean build's wall
 clock, so it is run on demand and by CI (which puts its output in the run's
 step summary) rather than on every developer build. That is also why
 `iris/_CoqProject` carries it as a commented-out row.
+
+`make audit-echo` is the same audit of the *application* theorem
+(`iris/EchoAssumptions.v`, `Print Assumptions
+UInitBootAdequacy.echo_adequacy_echoΣ`), and it is not a duplicate: neither
+theorem's cone contains the other. The system theorem is the chain at the
+trivial application and never walks the `Uk*`/`USh*`/`UInit*`/`UEcho*`
+user-program tier, so it cannot see an undischarged module parameter hiding
+behind a seal there. `make audit-all` runs the two concurrently — they are
+independent processes over a built tree, so the pair costs the longer of them
+rather than the sum. CI runs both on every push and reports each list, plus the
+trusted base of each adequacy statement, in the run's step summary.
 
 Build graph: each ELF is disassembled by `tools/dump_elf.py` — the kernel into
 `kernel-rocq/*.v`, each user program into `user-rocq/*.v`; `iris/` depends on

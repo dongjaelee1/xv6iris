@@ -137,7 +137,7 @@ Require Import Xv6Cameras.
 Require Import Xv6G.            (* the bundle                                 *)
 Require FsImg.                  (* [FsImg.ROOTINO]: the start rule's root     *)
 Require Import FsAbs.           (* LAST: [nview], [ax_hop], [lend_agrees]     *)
-Require TsoCtx.   (* qualified: the class only, no notation flip *)
+Require Import CtxIdDefs.   (* qualified: the class only, no notation flip *)
 
 Local Open Scope Z_scope.
 

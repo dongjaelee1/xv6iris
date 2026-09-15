@@ -15,7 +15,7 @@ Local Open Scope Z_scope.
 Require Import WpGprCsrrCommon.
 Require Import WpMmodeCsrSwp.   (* swp_execute_CSRReg_csrr + the cr_* footprint *)
 Require Import HartSwp HartSpan HartSpanChar WpDecodeBridge.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 (* [read_CSR csr_csrr] IS the mhartid read -- the whole 4096-way dispatch
    collapses by conversion at a literal CSR number, which is why

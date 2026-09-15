@@ -83,7 +83,7 @@ Require Import FsBytesGamma.  (* [fs_gamma_L]/[gamma_byte_range]: the record-slo
                                  corollary is stated at the ABSTRACT view's run *)
 From Kernel Require KernelSyms.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
 (* log_write's own frame is 4 slots ([c.addi sp,sp,-32] at +0x00); its

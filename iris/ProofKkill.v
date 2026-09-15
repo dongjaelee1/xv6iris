@@ -69,7 +69,7 @@ From Kernel Require KernelInstrs KernelSyms.
 Require Import CodeKkill.
 Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 Local Open Scope Z_scope.
 (* a failing tactic in a whole-function WP over the proc invariant otherwise

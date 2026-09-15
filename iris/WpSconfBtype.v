@@ -30,7 +30,7 @@ Require Import InstrBytes WpGpr RegFile HartTp WpNext.
 Require Import WpSconfEngine.
 Require Import IntrDefs.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 
 (* THE EXEC-SIDE BRIDGES ARE GONE.  This file used to carry a [rvv] helper

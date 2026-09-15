@@ -17,7 +17,7 @@ Require Import MinstretInv.   (* exec_clint_dispatch_false: writing stimecmp ref
 Require Import HartSwp HartLift HartRegNode HartSpan HartSpanChar HartMCycle
         HartMFrame HartGoodb WpDecodeBridge WpMmodeJump WpMmodeCsrSwp.
 Require Import WpGprCsrrCommon.   (* drive_csr_term *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 (* ===================================================================== *)
 (* MONADIC-LEGALIZE REDUCTION LAYER.  Each legalize_* chains             *)

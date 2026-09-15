@@ -26,7 +26,7 @@ Require Import BioInv.
 Require Import FsBlocks.
 Require Import Riscv.rv64d_types.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 Section BioFs.
   Context `{!riscvGS Σ, !xv6G Σ}.

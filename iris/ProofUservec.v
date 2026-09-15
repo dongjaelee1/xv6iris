@@ -61,7 +61,7 @@ Local Open Scope Z_scope.
 Require Import ParkCap.   (* [park_token] *)
 Require Import UsertrapRes UtResFits.  (* [ut_park_intro_body] -- the park's producer entry *)
 Require Import UexecRet.  (* the round's vocabulary *)
-Require Import TsoCtx.   (* [CurCtx]: the residue owns a thread token *)
+Require Import CtxIdDefs.   (* [CurCtx]: the residue owns a thread token *)
 Require Import UmodeText.   (* [umem_lazy_x_mint] / [user_ptm_inv_x_close] (icache) *)
 Import Defs.
 

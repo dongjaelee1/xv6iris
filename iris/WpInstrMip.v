@@ -39,7 +39,7 @@ Require Import KptPt.
 Local Open Scope Z_scope.
 
 Require Import InstrBytes WpInstrRun.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 
 (* the read-only frame sees neither the nextPC commit nor the mip refresh:
    both cells are in [mm_Drw].  Discharged POSITIONALLY through

@@ -1436,7 +1436,13 @@ Section EchoApp.
              what a party a kill touched may keep is the fact the taint
              already states.  [echo_taint_of_sup] is [Happ_kill]. *)
           echo_taint
-          echo_out echo_in echo_turn echo_win echo_phi.
+          echo_out echo_in echo_turn echo_win
+          (* THE MERGED CONSOLE CLAIM (redesign R2/R3): [emp] until the flip
+             that replaces [echo_out]/[echo_in]/[echo_win] by
+             [EchoOut.ecl].  Nothing holds it yet, so nothing has to found
+             it. *)
+          (fun _ _ _ _ => emp%I)
+          echo_phi.
 
   (* ---- THE BIRTH STEP ---- *)
   Lemma echo_Hbirth : ⊢ |==> ∃ c : app_fixed app_echo, app_cl app_echo c.

@@ -239,10 +239,14 @@ Record xv6_app (Σ : gFunctors) := MkApp {
      The machine's ambient copy is [RiscvPtsto.riscv_win_res], fixed to this
      field by [Hinit_boot]'s and [Happ_echo]'s equations. *)
   app_win   : app_fixed -> nat -> iProp Σ;
+  (* THE MERGED CONSOLE CLAIM (redesign R2/R3).  [app_out], [app_in] and
+     [app_win] become this one, over the whole console history.  It is
+     [emp] for an application that claims nothing of the console. *)
+  app_cons  : app_fixed -> nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ;
   (* the conclusion, over the operational state and the run's trace *)
   app_phi   : gstate -> list mobs -> Prop;
 }.
-Arguments MkApp {Σ} _ _ _ _ _ _ _ _ _ _ _ _ _.
+Arguments MkApp {Σ} _ _ _ _ _ _ _ _ _ _ _ _ _ _.
 Arguments app_fixed {Σ} _. Arguments app_cl {Σ} _ _.
 Arguments app_names {Σ} _. Arguments app_pred {Σ} _ _ _ _.
 Arguments app_boot {Σ} _ _ _ _.
@@ -251,6 +255,7 @@ Arguments app_kill {Σ} _ _.
 Arguments app_out {Σ} _ _ _ _ _.
 Arguments app_in {Σ} _ _ _ _ _ _.
 Arguments app_turn {Σ} _ _ _. Arguments app_win {Σ} _ _ _.
+Arguments app_cons {Σ} _ _ _ _.
 Arguments app_phi {Σ} _ _ _.
 
 (* THE GENERIC APPLICATION: no fixed part, nothing claimed, nothing read *)
@@ -261,6 +266,8 @@ Definition app_triv (Σ : gFunctors) : xv6_app Σ :=
         (* the turn and the echo window token: the generic application has
            no console discipline, so both are [emp] (lane CONS-IO F) *)
         (fun _ _ => emp%I) (fun _ _ => emp%I)
+        (* the merged console claim: nothing claimed (redesign R2) *)
+        (fun _ _ _ _ => emp%I)
         (fun _ _ => True).
 
 (* ---------------------------------------------------------------------- *)
@@ -345,6 +352,8 @@ Theorem xv6_app_adequacy Σ
        strips its later, so the machine's field owes this instance exactly
        as the two claims do. *)
     (Hwint : forall (c : app_fixed A) (k : nat), Timeless (app_win A c k))
+    (Hconst : forall (c : app_fixed A) (k : nat) (h : list mobs)
+                     (H : LogEntryDefs.cons_hist), Timeless (app_cons A c k h H))
     (* ...AND WHAT HOLDING THE SUPPLY ENTITLES A PROCESS TO ON THE INPUT
        SIDE ([Happ_out_sup]'s twin, at the same price).  ONE obligation,
        TWO conjuncts, because the kernel's generic supply has to pay for
@@ -640,6 +649,7 @@ Theorem xv6_app_adequacy Σ
                (app_kill A c) (Hkillp c) (Hkillt c)
                (app_out A c) (Houtt c) (app_in A c) (Hinpt c)
                (app_win A c) (Hwint c)
+               (app_cons A c) (Hconst c)
                (app_fixed A) c) g' -∗
          ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
          ▷ xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
@@ -669,6 +679,7 @@ Proof.
              (app_kill A c) (Hkillp c) (Hkillt c)
              (app_out A c) (Houtt c) (app_in A c) (Hinpt c)
              (app_win A c) (Hwint c)
+             (app_cons A c) (Hconst c)
              (app_fixed A) c
          /\ @file_app Σ HF = MkAppcfg (app_names A) (app_pred A c) r
          /\ (i = Uart0 -> FsCfg.fsc_uart = γ)) ->
@@ -684,7 +695,8 @@ Proof.
            (app_fixed A) (app_cl A) Hbirth
            (app_names A) (app_pred A) (app_boot A)
            (app_out A) Houtt (app_in A) Hinpt
-           (app_win A) Hwint (app_turn A) Happ_boot Happ_init
+           (app_win A) Hwint (app_cons A) Hconst
+           (app_turn A) Happ_boot Happ_init
            (app_tag A) Htagp Htagt
            (app_kill A) Hkillp Hkillt Happ_kill
            Happ_out_sup Happ_in_sup Hinit_boot
@@ -823,6 +835,8 @@ Proof.
            (* the echo window token's timelessness (lane CONS-IO milestone
               F), vacuous at the generic application's [emp] *)
            ltac:(intros c k; cbn [app_triv app_win]; apply _)
+           (* the merged console claim's timelessness (redesign R2) *)
+           ltac:(intros c k h H; cbn [app_triv app_cons]; apply _)
            ltac:(intros c r; cbn [app_triv app_in];
                  iIntros "_"; iSplit; iIntros "!>" (?????) "_"; by iModIntro)
            app_triv_R0

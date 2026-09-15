@@ -231,12 +231,8 @@ Qed.
 (* [cons_arm] and its four projections are in [LogEntryDefs.v], which this
    file re-exports -- the ghost camera and the port ghost name the type. *)
 
-Record cons_hist := MkCH {
-  ch_acc : list (bv 8);                    (* every byte the console UART accepted *)
-  ch_log : list log_entry;                 (* every accepted input, with what was echoed *)
-  ch_dl  : list (list mobs * bv 8);        (* the inputs delivered to processes *)
-  ch_arm : option cons_arm                 (* the arm in progress *)
-}.
+(* [cons_hist] is in [LogEntryDefs.v], which this file re-exports: the
+   fixed record's field names the type. *)
 
 (* One ghost event per boundary step.  [EvOut] is a process byte reaching
    the wire (write(2)); [EvOpen]/[EvByte]/[EvClose] are one consoleintr

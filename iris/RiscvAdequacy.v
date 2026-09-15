@@ -1280,6 +1280,11 @@ Definition boot_fixedGS {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
        the payload it rides stays timeless, and founded by the power-on
        hook rather than here. *)
     (Wres : nat -> iProp Σ) (HWrest : forall k : nat, Timeless (Wres k))
+    (* THE MERGED CONSOLE RESOURCE (redesign R2), a Coq-level argument for
+       [Ores]'s reason and TIMELESS for its reasons. *)
+    (Cres : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
+    (HCrest : forall (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist),
+       Timeless (Cres k h H))
     (* the application's FIXED PART (app-instances.md §6 ruling 1): its
        type and the one value [riscv_power_adequacy]'s birth step produced,
        before the crash slot *)
@@ -1293,7 +1298,7 @@ Definition boot_fixedGS {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
      are main's.  All resolve from [riscvGpreS]. *)
   RiscvFixedGS Σ Hinv _ _ _ _ _ _ _ _ _ _ _ _ _ γgen γstart _ γreg
     _ _ _ γdisk ndisk Pcp γswap _ γobs T Ptp _ γhist Tg HTg HTgt
-    Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest CT c.
+    Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest Cres HCrest CT c.
 
 (* ---------------------------------------------------------------------- *)
 (* THE TRACE HOOK'S HELPERS -- ONE PER CONJUNCT OF [state_interp].          *)
@@ -1366,12 +1371,14 @@ Lemma disk_proj_trace {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
     (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
-    (Wres : nat -> iProp Σ) (HWrest : forall k, Timeless (Wres k)) (c : CT)
+    (Wres : nat -> iProp Σ) (HWrest : forall k, Timeless (Wres k))
+    (Cres : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
+    (HCrest : forall k h H, Timeless (Cres k h H)) (c : CT)
     (g' : gstate) :
   ⊢ @power_interp Σ
        (boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
           (Pc γdisk γswap γreg γstart c) γobs T Ptp γhist Tg HTg HTgt
-          Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest CT c) g' -∗
+          Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest Cres HCrest CT c) g' -∗
     ▷ Pc γdisk γswap γreg γstart c -∗
     ◇ ⌜Ppure (v_disk (dvirtio (gdev g')))⌝.
 Proof.
@@ -1725,6 +1732,9 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
        by [Hobs]'s on-arm below, exactly as the two claims are. *)
     (Wres : CT -> nat -> iProp Σ)
     (HWrest : forall (c : CT) (k : nat), Timeless (Wres c k))
+    (Cres : CT -> nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
+    (HCrest : forall (c : CT) (k : nat) (h : list mobs)
+                     (H : LogEntryDefs.cons_hist), Timeless (Cres c k h H))
     (* ...and the ERA'S TURN (lane CONS-IO milestone F), which is NOT a
        field: the application's per-era credential for <init>, produced by
        the same arm and carried by [power_boot_res] to the boot bundle. *)
@@ -1816,7 +1826,7 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
                (Pc γdisk γswap γreg γstart c) γobs T (Pt γobs c) γhist
                (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
                (Ores c) (HOrest c) (Ires c) (HIrest c)
-               (Wres c) (HWrest c) CT c) g' -∗
+               (Wres c) (HWrest c) (Cres c) (HCrest c) CT c) g' -∗
          ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
          ▷ Pc γdisk γswap γreg γstart c -∗ ▷ Pt γobs c -∗
          ◇ ⌜phi g' h⌝)
@@ -1863,7 +1873,7 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
              (Pc γdisk γswap γreg γstart c) γobs T (Pt γobs c) γhist
              (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
              (Ores c) (HOrest c) (Ires c) (HIrest c)
-             (Wres c) (HWrest c) CT c ->
+             (Wres c) (HWrest c) (Cres c) (HCrest c) CT c ->
        ⊢ obs_inv -∗
          power_boot_res HE gen D nproc ndisk Mof (Rb c gen) (Tn c (S gen)) g'
          ={⊤}=∗
@@ -1945,7 +1955,7 @@ Proof.
               (Pc γfdisk γswap γreg γstart c) γobs κs (Pt γobs c) γhist
               (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
               (Ores c) (HOrest c) (Ires c) (HIrest c)
-              (Wres c) (HWrest c) CT c).
+              (Wres c) (HWrest c) (Cres c) (HCrest c) CT c).
   (* the client's trace hook at the gnames just allocated.  [F] is a local
      DEFINITION, so this statement and the one the final observation below
      faces are convertible. *)
@@ -2090,7 +2100,8 @@ Corollary riscv_trace_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
              (@kill_cred_triv_timeless Σ)
              out_res_triv (@out_res_triv_timeless Σ)
              in_res_triv (@in_res_triv_timeless Σ)
-             win_res_triv (@win_res_triv_timeless Σ) unit c ->
+             win_res_triv (@win_res_triv_timeless Σ)
+             cons_res_triv (@cons_res_triv_timeless Σ) unit c ->
        ⊢ obs_inv -∗
          power_boot_res HE gen D nproc ndisk Mof Rb emp%I g' ={⊤}=∗
           ([∗ list] c ∈ enum CPU,
@@ -2127,6 +2138,10 @@ Proof.
               theorem's generic application (lane CONS-IO milestone F) *)
            (fun _ : unit => win_res_triv)
            (fun (_ : unit) (k : nat) => @win_res_triv_timeless Σ k)
+           (* the merged console resource, trivial here too (redesign R2) *)
+           (fun _ : unit => cons_res_triv)
+           (fun (_ : unit) (k : nat) (h : list mobs)
+                (H : LogEntryDefs.cons_hist) => @cons_res_triv_timeless Σ k h H)
            (fun (_ : unit) (_ : nat) => emp%I)
            (fun γobs _ => obs_ledger_at_alloc_cl R γobs True%I
                             ltac:(iIntros "_"; iMod HR0 as "HR"; by iModIntro))

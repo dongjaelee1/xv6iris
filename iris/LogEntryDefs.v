@@ -30,3 +30,16 @@ Definition ca_hist (a : cons_arm) : list mobs := le_hist a.1.
 Definition ca_byte (a : cons_arm) : bv 8 := le_byte a.1.
 Definition ca_echo (a : cons_arm) : list (bv 8) := le_echo a.1.
 Definition ca_sent (a : cons_arm) : nat := a.2.
+
+(* THE CONSOLE HISTORY (redesign R2): everything the console port's one
+   resource is about -- the bytes the UART has accepted, the accepted-input
+   log, what has been delivered to processes, and the arm in progress.
+   Here, and not in [ConsLog.v], because [RiscvPtsto.v] names the TYPE for
+   the fixed record's field and wants none of the log's theory.  The events
+   that move it, and their well-formedness, stay in [ConsLog.v]. *)
+Record cons_hist := MkCH {
+  ch_acc : list (bv 8);                    (* every byte the console UART accepted *)
+  ch_log : list log_entry;                 (* every accepted input, with what was echoed *)
+  ch_dl  : list (list mobs * bv 8);        (* the inputs delivered to processes *)
+  ch_arm : option cons_arm                 (* the arm in progress *)
+}.

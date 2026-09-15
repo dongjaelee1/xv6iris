@@ -402,12 +402,14 @@ Lemma fs_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (* ...and the echo window token's slot (lane CONS-IO milestone F),
        carried like [Ires] and read by no hook here *)
     (Wres : nat -> iProp Σ) (HWrest : forall k, Timeless (Wres k))
+    (Cres : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
+    (HCrest : forall k h H, Timeless (Cres k h H))
     (g' : gstate) :
   ⊢ @power_interp Σ
        (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
           (xv6_slot N app_fs cov ls γd γsw γreg γstart c)
           γobs T (obs_pred_at γobs) γhist Tg HTg HTgt
-          Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest CT c) g' -∗
+          Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest Cres HCrest CT c) g' -∗
     ▷ xv6_slot N app_fs cov ls γd γsw γreg γstart c -∗
     ◇ ⌜fs_boot_pure cov ls (v_disk (g'.(gdev).(dvirtio)))⌝.
 Proof.
@@ -416,7 +418,7 @@ Proof.
            (fs_boot_pure cov ls)
            (xv6_slot_project N app_fs cov ls)
            Hinv γgen γstart γreg γd γsw γobs T (obs_pred_at γobs) γhist
-           Tg HTg HTgt Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest c g').
+           Tg HTg HTgt Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest Cres HCrest c g').
 Qed.
 
 (* ...AND A [phi] THAT IS NOT ABOUT THE DISK AT ALL, beside it.
@@ -455,12 +457,14 @@ Lemma xv6_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (* ...and the echo window token's slot (lane CONS-IO milestone F),
        carried like [Ires] and read by no hook here *)
     (Wres : nat -> iProp Σ) (HWrest : forall k, Timeless (Wres k))
+    (Cres : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
+    (HCrest : forall k h H, Timeless (Cres k h H))
     (g' : gstate) :
   ⊢ @power_interp Σ
        (boot_fixedGS Hinv γgen γstart γreg γd XV6_DISK_BYTES γsw
           (xv6_slot N app_fs cov ls γd γsw γreg γstart c)
           γobs T (obs_pred_at γobs) γhist Tg HTg HTgt
-          Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest CT c) g' -∗
+          Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest Cres HCrest CT c) g' -∗
     ▷ xv6_slot N app_fs cov ls γd γsw γreg γstart c -∗
     ◇ ⌜xv6_trace_pure cov ls g'⌝.
 Proof.
@@ -470,7 +474,7 @@ Proof.
   iDestruct (power_interp_resv_ok with "Hsi") as %Hresv.
   iDestruct (fs_trace_hook Σ cov ls CT N app_fs Hinv γgen γstart γreg γd γsw
                γobs γhist c T Tg HTg HTgt Kc HKc HKct Ores HOrest
-               Ires HIrest Wres HWrest g' with "Hsi HP") as ">%Hdisk".
+               Ires HIrest Wres HWrest Cres HCrest g' with "Hsi HP") as ">%Hdisk".
   iModIntro. iPureIntro. split; [exact Hdisk | exact Hresv].
 Qed.
 
@@ -1203,6 +1207,9 @@ Theorem xv6_power_adequacy_gen Σ
        back.  [App.xv6_app]'s [app_win]. *)
     (Wres : CT -> nat -> iProp Σ)
     (HWrest : forall (c : CT) (k : nat), Timeless (Wres c k))
+    (Cres : CT -> nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
+    (HCrest : forall (c : CT) (k : nat) (h : list mobs)
+                     (H : LogEntryDefs.cons_hist), Timeless (Cres c k h H))
     (* ...and the ERA'S TURN, which is no field at all: the application's
        per-era credential for <init>, produced by the same power-on step and
        delivered to [Hinit_boot] below.  [App.xv6_app]'s [app_turn]. *)
@@ -1423,7 +1430,7 @@ Theorem xv6_power_adequacy_gen Σ
                  γd γsw γreg γstart c)
               γobs T (Pt γobs c) γhist (Tg c) (HTg c) (HTgt c)
               (Kc c) (HKc c) (HKct c) (Ores c) (HOrest c)
-              (Ires c) (HIrest c) (Wres c) (HWrest c) CT c
+              (Ires c) (HIrest c) (Wres c) (HWrest c) (Cres c) (HCrest c) CT c
           /\ @file_app Σ HF = MkAppcfg app_names (app_fs c) r
           /\ (i = Uart0 -> FsCfg.fsc_uart = γ)) ->
        ⊢ obs_inv -∗ uart_obs_permit i γ)
@@ -1440,7 +1447,7 @@ Theorem xv6_power_adequacy_gen Σ
                   γd γsw γreg γstart c)
                γobs T (Pt γobs c) γhist (Tg c) (HTg c) (HTgt c)
                (Kc c) (HKc c) (HKct c) (Ores c) (HOrest c)
-               (Ires c) (HIrest c) (Wres c) (HWrest c) CT c) g' -∗
+               (Ires c) (HIrest c) (Wres c) (HWrest c) (Cres c) (HCrest c) CT c) g' -∗
          ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
          ▷ xv6_slot app_names app_fs cov (FsImg.sb_logstart sb)
              γd γsw γreg γstart c -∗
@@ -1649,7 +1656,7 @@ Proof.
               this layer fixes the crash predicate but says nothing about the
               trace, so both pass down unexamined. *)
            Pt Tg HTg HTgt Kc HKc HKct Ores HOrest Ires HIrest
-           Wres HWrest Tnn HPt Hobs phi Hphi
+           Wres HWrest Cres HCrest Tnn HPt Hobs phi Hphi
            Hgen0 Hpow _ n κs t2 g2 Hn).
   (* the per-era boot entailment, at the era instance the power thread just
      minted.  [riscv_fixedGS (RiscvGS Σ F HE)] iota-reduces to [F] and
@@ -1752,6 +1759,7 @@ Theorem xv6_power_adequacy Σ
                out_res_triv (@out_res_triv_timeless _)
                in_res_triv (@in_res_triv_timeless _)
                win_res_triv (@win_res_triv_timeless _)
+               cons_res_triv (@cons_res_triv_timeless _)
                unit c) g' -∗
          ▷ xv6_slot unit (fun _ _ _ => True%I) cov (FsImg.sb_logstart sb)
              γd γsw γreg γstart c -∗
@@ -1784,6 +1792,9 @@ Proof.
                application (lane CONS-IO milestone F) *)
             (fun _ : unit => win_res_triv)
             (fun (_ : unit) (k : nat) => @win_res_triv_timeless _ k)
+            (fun _ : unit => cons_res_triv)
+            (fun (_ : unit) (k : nat) (h : list mobs)
+                 (H : LogEntryDefs.cons_hist) => @cons_res_triv_timeless _ k h H)
             (fun (_ : unit) (_ : nat) => emp%I)
             ltac:(intros c k; apply app_xfer_boot_raw_triv;
                   intros r av; reflexivity)
@@ -1992,6 +2003,9 @@ Proof.
                [App.xv6_app_adequacy], where the record supplies both. *)
             (fun _ : unit => win_res_triv)
             (fun (_ : unit) (k : nat) => @win_res_triv_timeless Σ k)
+            (fun _ : unit => cons_res_triv)
+            (fun (_ : unit) (k : nat) (h : list mobs)
+                 (H : LogEntryDefs.cons_hist) => @cons_res_triv_timeless Σ k h H)
             (fun (_ : unit) (_ : nat) => emp%I)
             (* THE TRANSPORT IS THE CLIENT'S at this theorem: it is what
                founds the client's own output claim per era. *)
@@ -2282,6 +2296,7 @@ Corollary xv6_power_adequacy_xv6Σ (g : gstate)
                out_res_triv (@out_res_triv_timeless _)
                in_res_triv (@in_res_triv_timeless _)
                win_res_triv (@win_res_triv_timeless _)
+               cons_res_triv (@cons_res_triv_timeless _)
                unit c) g' -∗
          ▷ xv6_slot unit (fun _ _ _ => True%I) fsimg_cov
              (FsImg.sb_logstart fsimg_sb) γd γsw γreg γstart c -∗
@@ -2352,7 +2367,8 @@ Proof.
                 (@kill_cred_triv_timeless xv6Σ)
                 out_res_triv (@out_res_triv_timeless xv6Σ)
                 in_res_triv (@in_res_triv_timeless xv6Σ)
-                win_res_triv (@win_res_triv_timeless xv6Σ) g')
+                win_res_triv (@win_res_triv_timeless xv6Σ)
+                cons_res_triv (@cons_res_triv_timeless xv6Σ) g')
            Hgen0 Hpow Hdisk).
 Qed.
 
@@ -2489,6 +2505,9 @@ Proof.
                application (lane CONS-IO milestone F) *)
             (fun _ : unit => win_res_triv)
             (fun (_ : unit) (k : nat) => @win_res_triv_timeless _ k)
+            (fun _ : unit => cons_res_triv)
+            (fun (_ : unit) (k : nat) (h : list mobs)
+                 (H : LogEntryDefs.cons_hist) => @cons_res_triv_timeless _ k h H)
             (fun (_ : unit) (_ : nat) => emp%I)
             ltac:(intros c k; apply app_xfer_boot_raw_triv;
                   intros r av; reflexivity)

@@ -1369,7 +1369,7 @@ Proof. solve_inG. Qed.
 (*  THE ERA'S ECHOED LIST, READ OFF THE CONSOLE HISTORY (redesign lane R1) *)
 (*                                                                        *)
 (*  The redesign merges the output and input claims into ONE claim over    *)
-(*  [ConsLog.cons_hist].  The claim's [o_E] -- the era's echoed list -- is *)
+(*  [LogEntryDefs.cons_hist].  The claim's [o_E] -- the era's echoed list -- is *)
 (*  then not a free existential but a FUNCTION of the history, and that    *)
 (*  function is what makes the window counter unnecessary.                 *)
 (*                                                                        *)
@@ -1402,8 +1402,8 @@ Definition ch_arm_E (a : option LogEntryDefs.cons_arm) : list (list mobs * bv 8)
   | None => []
   end.
 
-Definition ch_E (H : ConsLog.cons_hist) : list (list mobs * bv 8) :=
-  seg_of (echoed (ConsLog.ch_log H)) ++ ch_arm_E (ConsLog.ch_arm H).
+Definition ch_E (H : LogEntryDefs.cons_hist) : list (list mobs * bv 8) :=
+  seg_of (echoed (LogEntryDefs.ch_log H)) ++ ch_arm_E (LogEntryDefs.ch_arm H).
 
 (* one filed entry, as the era's list sees it *)
 Lemma seg_echoed_snoc (L : list log_entry) (e : log_entry) :
@@ -1416,11 +1416,11 @@ Proof.
   - by rewrite (echoed_snoc_no L e He) app_nil_r.
 Qed.
 
-Lemma ch_E_out (H : ConsLog.cons_hist) (b : bv 8) :
+Lemma ch_E_out (H : LogEntryDefs.cons_hist) (b : bv 8) :
   ch_E (ConsLog.cons_step H (ConsLog.EvOut b)) = ch_E H.
 Proof. reflexivity. Qed.
 
-Lemma ch_E_read (H : ConsLog.cons_hist) (ws : list (list mobs * bv 8)) :
+Lemma ch_E_read (H : LogEntryDefs.cons_hist) (ws : list (list mobs * bv 8)) :
   ch_E (ConsLog.cons_step H (ConsLog.EvRead ws)) = ch_E H.
 Proof. reflexivity. Qed.
 
@@ -1431,40 +1431,40 @@ Proof.
   cbn [ch_arm_E]. case_decide as Hk; [exfalso; discriminate Hk | reflexivity].
 Qed.
 
-Lemma ch_E_open (H : ConsLog.cons_hist) (h : list mobs) (c : bv 8)
+Lemma ch_E_open (H : LogEntryDefs.cons_hist) (h : list mobs) (c : bv 8)
     (cs : list (bv 8)) :
-  ConsLog.ch_arm H = None ->
+  LogEntryDefs.ch_arm H = None ->
   ch_E (ConsLog.cons_step H (ConsLog.EvOpen h c cs)) = ch_E H.
 Proof.
   intros Hn. unfold ch_E, ConsLog.cons_step. rewrite Hn.
-  cbn [ConsLog.ch_log ConsLog.ch_arm].
+  cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm].
   rewrite ch_arm_E_open. cbn [ch_arm_E]. by rewrite !app_nil_r.
 Qed.
 
 (* THE ONE THAT MATTERS: filing the entry does not move the era's list.
    This is the settled/window merge -- there is no second arm and no
    counter, because the two descriptions are equal. *)
-Lemma ch_E_close (H : ConsLog.cons_hist) :
+Lemma ch_E_close (H : LogEntryDefs.cons_hist) :
   ch_E (ConsLog.cons_step H ConsLog.EvClose) = ch_E H.
 Proof.
   rewrite /ch_E /ConsLog.cons_step.
-  destruct (ConsLog.ch_arm H) as [[[[h c] cs] j] |] eqn:Ha; [| by rewrite Ha].
-  cbn [ConsLog.ch_log ConsLog.ch_arm ch_arm_E].
+  destruct (LogEntryDefs.ch_arm H) as [[[[h c] cs] j] |] eqn:Ha; [| by rewrite Ha].
+  cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
   rewrite seg_echoed_snoc app_nil_r. done.
 Qed.
 
 (* the byte going out is the only event that moves the list *)
-Lemma ch_E_byte (H : ConsLog.cons_hist) (b : bv 8)
+Lemma ch_E_byte (H : LogEntryDefs.cons_hist) (b : bv 8)
     (h : list mobs) (c : bv 8) (cs : list (bv 8)) (j : nat) :
-  ConsLog.ch_arm H = Some (h, c, cs, j) ->
+  LogEntryDefs.ch_arm H = Some (h, c, cs, j) ->
   ch_E (ConsLog.cons_step H (ConsLog.EvByte b))
-  = seg_of (echoed (ConsLog.ch_log H)) ++ ch_arm_E (Some (h, c, cs, S j)).
+  = seg_of (echoed (LogEntryDefs.ch_log H)) ++ ch_arm_E (Some (h, c, cs, S j)).
 Proof. intros Ha. rewrite /ch_E /ConsLog.cons_step. by rewrite Ha. Qed.
 
 (* ...and for the ordinary echo of one byte it grows by exactly that entry *)
-Lemma ch_E_byte_echo (H : ConsLog.cons_hist) (b : bv 8)
+Lemma ch_E_byte_echo (H : LogEntryDefs.cons_hist) (b : bv 8)
     (h : list mobs) (c : bv 8) :
-  ConsLog.ch_arm H = Some (h, c, [echo_of c], 0%nat) ->
+  LogEntryDefs.ch_arm H = Some (h, c, [echo_of c], 0%nat) ->
   ch_E (ConsLog.cons_step H (ConsLog.EvByte b))
   = ch_E H ++ [(open_seg h, c)].
 Proof.
@@ -1479,29 +1479,29 @@ Qed.
    ([rd_stage] at the log's echo count) be read off the WRITER's
    ([eout_pure]'s [pro_pin] at [length (o_E so)]) -- today those are two
    facts in two claims, kept in step by the window counter. ---- *)
-Lemma ch_E_close_len (H : ConsLog.cons_hist) :
-  length (echoed (ConsLog.ch_log (ConsLog.cons_step H ConsLog.EvClose)))
+Lemma ch_E_close_len (H : LogEntryDefs.cons_hist) :
+  length (echoed (LogEntryDefs.ch_log (ConsLog.cons_step H ConsLog.EvClose)))
   = length (ch_E H).
 Proof.
   rewrite -(ch_E_close H) /ch_E.
-  destruct (ConsLog.ch_arm H) as [[[[h c] cs] j] |] eqn:Ha.
+  destruct (LogEntryDefs.ch_arm H) as [[[[h c] cs] j] |] eqn:Ha.
   - rewrite /ConsLog.cons_step Ha /=. by rewrite app_nil_r seg_of_length.
   - rewrite /ConsLog.cons_step Ha /=. rewrite Ha /=.
     by rewrite app_nil_r seg_of_length.
 Qed.
 
-Lemma ch_dl_byte (H : ConsLog.cons_hist) (b : bv 8) :
-  ConsLog.ch_dl (ConsLog.cons_step H (ConsLog.EvByte b)) = ConsLog.ch_dl H.
+Lemma ch_dl_byte (H : LogEntryDefs.cons_hist) (b : bv 8) :
+  LogEntryDefs.ch_dl (ConsLog.cons_step H (ConsLog.EvByte b)) = LogEntryDefs.ch_dl H.
 Proof.
   rewrite /ConsLog.cons_step.
-  by destruct (ConsLog.ch_arm H) as [[[[h c] cs] j] |].
+  by destruct (LogEntryDefs.ch_arm H) as [[[[h c] cs] j] |].
 Qed.
 
-Lemma ch_dl_close (H : ConsLog.cons_hist) :
-  ConsLog.ch_dl (ConsLog.cons_step H ConsLog.EvClose) = ConsLog.ch_dl H.
+Lemma ch_dl_close (H : LogEntryDefs.cons_hist) :
+  LogEntryDefs.ch_dl (ConsLog.cons_step H ConsLog.EvClose) = LogEntryDefs.ch_dl H.
 Proof.
   rewrite /ConsLog.cons_step.
-  by destruct (ConsLog.ch_arm H) as [[[[h c] cs] j] |].
+  by destruct (LogEntryDefs.ch_arm H) as [[[[h c] cs] j] |].
 Qed.
 
 (* ---- the era facts the in-flight arm carries.  They are what the entry
@@ -1521,23 +1521,23 @@ Definition ch_arm_era (k : nat) (a : option LogEntryDefs.cons_arm) : Prop :=
    today it is an existential [cs0] the input claim carries a lower bound
    for. ---- *)
 Definition ecl_pure (k : nat) (ho : list mobs) (so : ostage)
-    (H : ConsLog.cons_hist) : Prop :=
-  eout_pure k ho so (ConsLog.ch_acc H)
+    (H : LogEntryDefs.cons_hist) : Prop :=
+  eout_pure k ho so (LogEntryDefs.ch_acc H)
   /\ cs_len_ok so
   /\ ps_len_ok so
-  /\ ein_pure k (ConsLog.ch_log H) (ConsLog.ch_dl H) (o_cs so)
-  /\ ch_arm_era k (ConsLog.ch_arm H)
+  /\ ein_pure k (LogEntryDefs.ch_log H) (LogEntryDefs.ch_dl H) (o_cs so)
+  /\ ch_arm_era k (LogEntryDefs.ch_arm H)
   /\ o_E so = ch_E H.
 
 (* the two events that touch neither the log nor the arm leave every
    clause but [eout_pure]'s and [ein_pure]'s own arguments alone *)
 Lemma ecl_pure_arm (k : nat) (ho : list mobs) (so : ostage)
-    (H : ConsLog.cons_hist) :
-  ecl_pure k ho so H -> ch_arm_era k (ConsLog.ch_arm H).
+    (H : LogEntryDefs.cons_hist) :
+  ecl_pure k ho so H -> ch_arm_era k (LogEntryDefs.ch_arm H).
 Proof. by intros (_ & _ & _ & _ & Hera & _). Qed.
 
 Lemma ecl_pure_E (k : nat) (ho : list mobs) (so : ostage)
-    (H : ConsLog.cons_hist) :
+    (H : LogEntryDefs.cons_hist) :
   ecl_pure k ho so H -> o_E so = ch_E H.
 Proof. by intros (_ & _ & _ & _ & _ & HE). Qed.
 
@@ -1548,7 +1548,7 @@ Proof. by intros (_ & _ & _ & _ & _ & HE). Qed.
    the log's new echo count, because [ch_E_close_len] makes the two
    lengths equal. ---- *)
 Lemma ecl_pure_close (k : nat) (ho : list mobs) (so : ostage)
-    (H : ConsLog.cons_hist) :
+    (H : LogEntryDefs.cons_hist) :
   ConsLog.cons_hist_ok H ->
   ConsLog.cons_ev_ok H ConsLog.EvClose ->
   ecl_pure k ho so H ->
@@ -1559,7 +1559,7 @@ Proof.
   pose proof (ch_E_close_len H) as Hlen.
   pose proof (ConsLog.cons_hist_ok_step H ConsLog.EvClose Hok Hev) as Hok'.
   unfold ConsLog.cons_hist_ok in Hok'. destruct Hok' as [Hlog' _].
-  destruct (ConsLog.ch_arm H) as [[[[h c] cs] j] |] eqn:Ha; cycle 1.
+  destruct (LogEntryDefs.ch_arm H) as [[[[h c] cs] j] |] eqn:Ha; cycle 1.
   { rewrite /ConsLog.cons_step Ha. exact Hecl. }
   destruct Hecl as (Hout & Hcs & Hps & Hin & Hera & HE).
   destruct Hin as (_ & Hdsc & Hbts & Hdl & _ & _ & _).
@@ -1567,12 +1567,12 @@ Proof.
   destruct Hera as [Hdseg Hboots].
   destruct Hout as (Hacc & Hw & HEi & HEb & Hpsf & Hpin & Hcsf & Hdse & Hpre & Hle & Hbo).
   rewrite /ConsLog.cons_step Ha in Hlog' Hlen |- *.
-  cbn [ConsLog.ch_acc ConsLog.ch_log ConsLog.ch_dl ConsLog.ch_arm] in Hlog', Hlen |- *.
+  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl LogEntryDefs.ch_arm] in Hlog', Hlen |- *.
   (* the era's list has not moved, so the new log's echoed slice IS [o_E so] *)
-  assert (Hseg : seg_of (echoed (ConsLog.ch_log H ++ [(h, c, take j cs)]))
+  assert (Hseg : seg_of (echoed (LogEntryDefs.ch_log H ++ [(h, c, take j cs)]))
                  = o_E so).
   { rewrite HE -Hclose /ch_E /ConsLog.cons_step Ha.
-    cbn [ConsLog.ch_log ConsLog.ch_arm ch_arm_E]. by rewrite app_nil_r. }
+    cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E]. by rewrite app_nil_r. }
   split_and!.
   - (* eout_pure: the accepted bytes did not move *)
     by split_and!.
@@ -1604,7 +1604,7 @@ Proof.
                         /\ (length (o_E so) `mod` length echo_line)%nat = 0%nat));
         lia.
   - exact I.
-  - rewrite /ch_E. cbn [ConsLog.ch_log ConsLog.ch_arm ch_arm_E].
+  - rewrite /ch_E. cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
     rewrite app_nil_r. by rewrite Hseg.
 Qed.
 
@@ -1617,9 +1617,9 @@ Qed.
    arm will owe the entry it files. ---- *)
 
 Lemma ecl_pure_out (k : nat) (ho : list mobs) (so so' : ostage)
-    (H : ConsLog.cons_hist) (b : bv 8) :
+    (H : LogEntryDefs.cons_hist) (b : bv 8) :
   (length (o_cs so) <= length (o_cs so'))%nat -> o_E so' = o_E so ->
-  eout_pure k ho so' (ConsLog.ch_acc H ++ [b]) ->
+  eout_pure k ho so' (LogEntryDefs.ch_acc H ++ [b]) ->
   cs_len_ok so' -> ps_len_ok so' ->
   ecl_pure k ho so H ->
   ecl_pure k ho so' (ConsLog.cons_step H (ConsLog.EvOut b)).
@@ -1627,7 +1627,7 @@ Proof.
   intros Hcs' HE' Hout Hc Hp (_ & _ & _ & Hin & Hera & HE).
   destruct Hin as (Hlog & Hdsc & Hbts & Hdl & HEi & HEb & Hcnt).
   rewrite /ecl_pure /ConsLog.cons_step.
-  cbn [ConsLog.ch_acc ConsLog.ch_log ConsLog.ch_dl ConsLog.ch_arm].
+  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl LogEntryDefs.ch_arm].
   split_and!; [exact Hout | exact Hc | exact Hp | | exact Hera |].
   - split_and!; [exact Hlog | exact Hdsc | exact Hbts | exact Hdl
                 | exact HEi | exact HEb | lia].
@@ -1635,15 +1635,15 @@ Proof.
 Qed.
 
 Lemma ecl_pure_read (k : nat) (ho : list mobs) (so : ostage)
-    (H : ConsLog.cons_hist) (ws : list (list mobs * bv 8)) :
-  (ConsLog.ch_dl H ++ ws) `prefix_of` echoed (ConsLog.ch_log H) ->
+    (H : LogEntryDefs.cons_hist) (ws : list (list mobs * bv 8)) :
+  (LogEntryDefs.ch_dl H ++ ws) `prefix_of` echoed (LogEntryDefs.ch_log H) ->
   ecl_pure k ho so H ->
   ecl_pure k ho so (ConsLog.cons_step H (ConsLog.EvRead ws)).
 Proof.
   intros Hpre (Hout & Hc & Hp & Hin & Hera & HE).
   destruct Hin as (Hlog & Hdsc & Hbts & _ & HEi & HEb & Hcnt).
   rewrite /ecl_pure /ConsLog.cons_step.
-  cbn [ConsLog.ch_acc ConsLog.ch_log ConsLog.ch_dl ConsLog.ch_arm].
+  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl LogEntryDefs.ch_arm].
   split_and!; [exact Hout | exact Hc | exact Hp | | exact Hera | by rewrite HE /ch_E].
   by split_and!.
 Qed.
@@ -1651,8 +1651,8 @@ Qed.
 (* the arm opens: nothing the claim says moves, but from here on the claim
    owes the entry the arm will file its two era facts *)
 Lemma ecl_pure_open (k : nat) (ho : list mobs) (so : ostage)
-    (H : ConsLog.cons_hist) (h : list mobs) (c : bv 8) (cs : list (bv 8)) :
-  ConsLog.ch_arm H = None ->
+    (H : LogEntryDefs.cons_hist) (h : list mobs) (c : bv 8) (cs : list (bv 8)) :
+  LogEntryDefs.ch_arm H = None ->
   disc_seg (open_seg h) -> obs_boots h = k ->
   ecl_pure k ho so H ->
   ecl_pure k ho so (ConsLog.cons_step H (ConsLog.EvOpen h c cs)).
@@ -1660,21 +1660,21 @@ Proof.
   intros Hn Hd Hb (Hout & Hc & Hp & Hin & _ & HE).
   pose proof (ch_E_open H h c cs Hn) as Hopen.
   rewrite /ecl_pure /ConsLog.cons_step.
-  cbn [ConsLog.ch_acc ConsLog.ch_log ConsLog.ch_dl ConsLog.ch_arm].
+  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl LogEntryDefs.ch_arm].
   split_and!; [exact Hout | exact Hc | exact Hp | exact Hin | | ].
   - cbn [ch_arm_era]. by split.
   - rewrite HE -Hopen /ConsLog.cons_step /ch_E.
-    by cbn [ConsLog.ch_log ConsLog.ch_arm].
+    by cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm].
 Qed.
 
 (* the echoed byte goes out: the era's list grows by exactly that entry,
    which is what the output side's own step already says *)
 Lemma ecl_pure_byte (k : nat) (ho ho' : list mobs) (so so' : ostage)
-    (H : ConsLog.cons_hist) (b : bv 8) (h : list mobs) (c : bv 8) :
-  ConsLog.ch_arm H = Some (h, c, [echo_of c], 0%nat) ->
+    (H : LogEntryDefs.cons_hist) (b : bv 8) (h : list mobs) (c : bv 8) :
+  LogEntryDefs.ch_arm H = Some (h, c, [echo_of c], 0%nat) ->
   (length (o_cs so) <= length (o_cs so'))%nat ->
   o_E so' = o_E so ++ [(open_seg h, c)] ->
-  eout_pure k ho' so' (ConsLog.ch_acc H ++ [b]) ->
+  eout_pure k ho' so' (LogEntryDefs.ch_acc H ++ [b]) ->
   cs_len_ok so' -> ps_len_ok so' ->
   ecl_pure k ho so H ->
   (* THE WITNESS MOVES: the echo re-establishes the claim's facts at the
@@ -1685,13 +1685,13 @@ Proof.
   destruct Hin as (Hlog & Hdsc & Hbts & Hdl & HEi & HEb & Hcnt).
   pose proof (ch_E_byte_echo H b h c Ha) as Hgrow.
   rewrite /ecl_pure /ConsLog.cons_step Ha.
-  cbn [ConsLog.ch_acc ConsLog.ch_log ConsLog.ch_dl ConsLog.ch_arm].
+  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl LogEntryDefs.ch_arm].
   split_and!; [exact Hout | exact Hc | exact Hp
               | split_and!; [exact Hlog | exact Hdsc | exact Hbts | exact Hdl
                             | exact HEi | exact HEb | lia] | | ].
   - rewrite Ha in Hera. cbn [ch_arm_era] in Hera |- *. exact Hera.
   - rewrite HE' HE -Hgrow /ConsLog.cons_step Ha.
-    by cbn [ConsLog.ch_log ConsLog.ch_arm].
+    by cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm].
 Qed.
 
 Section echo_out.
@@ -2139,7 +2139,7 @@ Section echo_out.
   (*  lower bounds [ein] carries ([Elist_lb], [cs_lb], [ps_lb], [turn_lb])  *)
   (*  are unnecessary too: one claim holds the AUTHORITIES.                 *)
   (* ====================================================================== *)
-  Definition ecl (k : nat) (ho : list mobs) (H : ConsLog.cons_hist) : iProp Σ :=
+  Definition ecl (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist) : iProp Σ :=
     ( T
     ∨ ∃ (v : era_pins) (so : ostage),
         era_pin k v
@@ -2147,7 +2147,7 @@ Section echo_out.
         ∗ cs_auth v (o_cs so)
         ∗ ps_auth v (o_ps so)
         ∗ Elist_auth v (o_E so)
-        ∗ dl_cnt v (1/2) (length (ConsLog.ch_dl H))
+        ∗ dl_cnt v (1/2) (length (LogEntryDefs.ch_dl H))
         ∗ ⌜ecl_pure k ho so H⌝)%I.
 
   Global Instance ecl_timeless k ho H : Timeless (ecl k ho H).
@@ -2161,7 +2161,7 @@ Section echo_out.
      four authorities and the delivered count are untouched -- only the pure
      side moves, by [ecl_pure_close] -- so the step is an ENTAILMENT, with
      no [==*], no invariant to open and no resource to find. ---- *)
-  Lemma ecl_close (k : nat) (ho : list mobs) (H : ConsLog.cons_hist) :
+  Lemma ecl_close (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     ConsLog.cons_hist_ok H ->
     ConsLog.cons_ev_ok H ConsLog.EvClose ->
     ecl k ho H -∗ ecl k ho (ConsLog.cons_step H ConsLog.EvClose).
@@ -2175,9 +2175,9 @@ Section echo_out.
   Qed.
 
   (* ---- ...and neither does opening one. ---- *)
-  Lemma ecl_open (k : nat) (ho : list mobs) (H : ConsLog.cons_hist)
+  Lemma ecl_open (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist)
       (h : list mobs) (c : bv 8) (cs : list (bv 8)) :
-    ConsLog.ch_arm H = None ->
+    LogEntryDefs.ch_arm H = None ->
     disc_seg (open_seg h) -> obs_boots h = k ->
     ecl k ho H -∗ ecl k ho (ConsLog.cons_step H (ConsLog.EvOpen h c cs)).
   Proof.
@@ -2185,7 +2185,7 @@ Section echo_out.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
     iDestruct "Hc" as (v so) "(Hpin & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
     iExists v, so. iFrame "Hpin Htn Hcs Hps HE".
-    rewrite /ConsLog.cons_step. cbn [ConsLog.ch_dl]. iFrame "Hdl".
+    rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl]. iFrame "Hdl".
     iPureIntro. by apply (ecl_pure_open k ho so H h c cs Hn Hd Hb Hpure).
   Qed.
 
@@ -2636,15 +2636,15 @@ Section echo_out.
      carries, and the arm at [j = 0] contributes nothing to [ch_E], so the
      list and the log's echoed slice are equal outright. ---- *)
   Lemma ecl_step_echo (k : nat) (h : list mobs) (c : bv 8)
-      (ho : list mobs) (CH : ConsLog.cons_hist) :
+      (ho : list mobs) (CH : LogEntryDefs.cons_hist) :
     disc h ->
     trace_shape h true ->
     obs_boots h = k ->
     obs_ends_in Uart0 h c ->
-    obs_wire Uart0 (open_seg h) `prefix_of` ConsLog.ch_acc CH ->
-    (forall e, e ∈ ConsLog.ch_log CH -> hist_ext (le_hist e) h) ->
-    (length (echoed (ConsLog.ch_log CH)) < length (ins (open_seg h)))%nat ->
-    ConsLog.ch_arm CH = Some (h, c, [echo_of c], 0%nat) ->
+    obs_wire Uart0 (open_seg h) `prefix_of` LogEntryDefs.ch_acc CH ->
+    (forall e, e ∈ LogEntryDefs.ch_log CH -> hist_ext (le_hist e) h) ->
+    (length (echoed (LogEntryDefs.ch_log CH)) < length (ins (open_seg h)))%nat ->
+    LogEntryDefs.ch_arm CH = Some (h, c, [echo_of c], 0%nat) ->
     ecl k ho CH ==∗
       ecl k h (ConsLog.cons_step CH (ConsLog.EvByte (echo_of c))).
   Proof.
@@ -2659,11 +2659,11 @@ Section echo_out.
                        & Hpre1 & Hpre2 & Hpre3).
     pose proof Hcsb' as Hcsb.
     destruct Hin as (Hlog & Hdsc2 & Hstamp & Hdlp & Hidxi & Hbytei & Hbndi).
-    assert (Hseg : seg_of (echoed (ConsLog.ch_log CH)) = o_E so).
+    assert (Hseg : seg_of (echoed (LogEntryDefs.ch_log CH)) = o_E so).
     { rewrite HEtie /ch_E Harm ch_arm_E_open app_nil_r. reflexivity. }
     (* ...and the same as a NUMERIC fact, which is what the arithmetic below
        needs; today it comes out of the counter shares agreeing *)
-    assert (Hoi : length (o_E so) = length (echoed (ConsLog.ch_log CH))).
+    assert (Hoi : length (o_E so) = length (echoed (LogEntryDefs.ch_log CH))).
     { by rewrite -Hseg seg_of_length. }
     (* the byte's own facts, as in the landed proof *)
     pose proof (disc_seg'_open_seg h Hsh Hdisc) as Hd'.
@@ -2675,10 +2675,10 @@ Section echo_out.
     { rewrite -Hseg.
       apply Forall_lookup_2. intros j x Hx.
       rewrite /seg_of list_lookup_fmap in Hx.
-      destruct (echoed (ConsLog.ch_log CH) !! j) as [y |] eqn:Hy; [| discriminate].
+      destruct (echoed (LogEntryDefs.ch_log CH) !! j) as [y |] eqn:Hy; [| discriminate].
       cbn in Hx. injection Hx as Hx. rewrite -Hx. cbn [fst].
-      assert (Hyin : y ∈ echoed (ConsLog.ch_log CH)) by (by eapply elem_of_list_lookup_2).
-      destruct (echoed_elem_inv (ConsLog.ch_log CH) y Hyin) as (e & He & _ & Hye).
+      assert (Hyin : y ∈ echoed (LogEntryDefs.ch_log CH)) by (by eapply elem_of_list_lookup_2).
+      destruct (echoed_elem_inv (LogEntryDefs.ch_log CH) y Hyin) as (e & He & _ & Hye).
       apply open_seg_prefix_boots.
       - rewrite -Hye. cbn [fst]. by destruct (Hord e He) as [Hpre _].
       - rewrite -Hye. cbn [fst]. exact (Hstamp e He).
@@ -3316,7 +3316,7 @@ Section echo_out.
      process write does not touch the log, the delivered list or the arm,
      which is exactly why the frame lemma is all that is needed. ---- *)
   Lemma ecl_step_write (k : nat) (v : era_pins) (P n0 : nat) (b : bv 8)
-      (ps0 cs0 : list nat) (ho : list mobs) (H : ConsLog.cons_hist) :
+      (ps0 cs0 : list nat) (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     ((n0 `div` length echo_line) <= length cs0)%nat ->
     pro_pin ps0 cs0 n0 ->
     proc_upto ps0 cs0 (S n0) !! P = Some b ->
@@ -3369,7 +3369,7 @@ Section echo_out.
     - rewrite /ecl. iRight.
       iExists v, (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])).
       cbn [o_ps o_cs o_E o_w]. rewrite pcount_write -HP.
-      rewrite /ConsLog.cons_step. cbn [ConsLog.ch_dl].
+      rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
       iFrame "Hpin Hta Hcs Hps HE Hdl". iPureIntro.
       apply (ecl_pure_out k ho so
                (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])) H b);
@@ -3392,7 +3392,7 @@ Section echo_out.
   Qed.
 
   Lemma ecl_step_write_blk (k : nat) (v : era_pins) (P n0 a : nat)
-      (b : bv 8) (ps0 cs0 : list nat) (ho : list mobs) (H : ConsLog.cons_hist) :
+      (b : bv 8) (ps0 cs0 : list nat) (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     (0 < n0)%nat ->
     (n0 `mod` length echo_line)%nat = 0%nat ->
     ((n0 `div` length echo_line) <= S (length cs0))%nat ->
@@ -3510,7 +3510,7 @@ Section echo_out.
     - rewrite /ecl. iRight.
       iExists v, (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]).
       cbn [o_ps o_cs o_E o_w]. rewrite Hpc2.
-      rewrite /ConsLog.cons_step. cbn [ConsLog.ch_dl].
+      rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
       iFrame "Hpin Hta Hcs Hps HE Hdl". iPureIntro.
       apply (ecl_pure_out k ho so
                (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]) H b);
@@ -3717,7 +3717,7 @@ Section echo_out.
      AT [n0 = 0], [cs0 = []] THIS IS PHASE 1'S FORM exactly:
      [P = length (pro_of ps0)] and [~ pro_done ps0]. *)
   Lemma ecl_step_write_pro (k : nat) (v : era_pins) (P n0 a : nat)
-      (b : bv 8) (ps0 cs0 : list nat) (ho : list mobs) (CH : ConsLog.cons_hist) :
+      (b : bv 8) (ps0 cs0 : list nat) (ho : list mobs) (CH : LogEntryDefs.cons_hist) :
     (n0 `mod` length echo_line)%nat = 0%nat ->
     (n0 = 0%nat \/ cs0 !!! (n0 `div` length echo_line - 1)%nat = 3%nat) ->
     ((n0 `div` length echo_line) <= length cs0)%nat ->
@@ -3961,7 +3961,7 @@ Section echo_out.
     - rewrite /ecl. iRight.
       iExists v, (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b])).
       cbn [o_ps o_cs o_E o_w]. rewrite Hpc2.
-      rewrite /ConsLog.cons_step. cbn [ConsLog.ch_dl].
+      rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
       iFrame "Hpin Hta Hcs Hps HE Hdl". iPureIntro.
       apply (ecl_pure_out k ho so
                (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b])) CH b);
@@ -4312,16 +4312,16 @@ Section echo_out.
      them in is decided by the link R2 writes, so they are left to it rather
      than guessed at now. ---- *)
   Lemma ecl_step_read (k : nat) (v : era_pins) (n : nat) (ho : list mobs)
-      (CH : ConsLog.cons_hist) (ws : list (list mobs * bv 8)) :
-    read_ok (ConsLog.ch_log CH) (ConsLog.ch_dl CH) ws ->
+      (CH : LogEntryDefs.cons_hist) (ws : list (list mobs * bv 8)) :
+    read_ok (LogEntryDefs.ch_log CH) (LogEntryDefs.ch_dl CH) ws ->
     era_pin k v -∗ dl_cnt v (1/2) n -∗ ecl k ho CH ==∗
       ecl k ho (ConsLog.cons_step CH (ConsLog.EvRead ws))
       ∗ ((T ∗ dl_cnt v (1/2) n)
          ∨ dl_cnt v (1/2) (n + length ws)%nat
-           ∗ ⌜length (ConsLog.ch_dl CH) = n⌝
-           ∗ ⌜(ConsLog.ch_dl CH ++ ws) `prefix_of` echoed (ConsLog.ch_log CH)⌝
-           ∗ ⌜E_index (seg_of (echoed (ConsLog.ch_log CH)))⌝
-           ∗ ⌜E_byte (seg_of (echoed (ConsLog.ch_log CH)))⌝).
+           ∗ ⌜length (LogEntryDefs.ch_dl CH) = n⌝
+           ∗ ⌜(LogEntryDefs.ch_dl CH ++ ws) `prefix_of` echoed (LogEntryDefs.ch_log CH)⌝
+           ∗ ⌜E_index (seg_of (echoed (LogEntryDefs.ch_log CH)))⌝
+           ∗ ⌜E_byte (seg_of (echoed (LogEntryDefs.ch_log CH)))⌝).
   Proof.
     intros Hread. iIntros "#Hpinr Hdlr Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
@@ -4333,13 +4333,13 @@ Section echo_out.
     destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
     pose proof Hin as Hin2.
     destruct Hin2 as (_ & _ & _ & _ & Hidx & Hbyte & _).
-    destruct (ein_read_pure k (ConsLog.ch_log CH) (ConsLog.ch_dl CH) ws
+    destruct (ein_read_pure k (LogEntryDefs.ch_log CH) (LogEntryDefs.ch_dl CH) ws
                 (o_cs so) Hread Hin) as (Hpref & Hp' & Hbnd').
-    iMod (dl_cnt_update v (length (ConsLog.ch_dl CH)) n (n + length ws)%nat
+    iMod (dl_cnt_update v (length (LogEntryDefs.ch_dl CH)) n (n + length ws)%nat
             with "Hdl Hdlr") as "[Hdl Hdlr]".
     iModIntro. iSplitL "Hta Hcs Hps HE Hdl".
     { rewrite /ecl. iRight. iExists v, so.
-      rewrite /ConsLog.cons_step. cbn [ConsLog.ch_dl].
+      rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
       rewrite length_app Hdleq. iFrame "Hpin Hta Hcs Hps HE Hdl".
       iPureIntro. exact (ecl_pure_read k ho so CH ws Hpref Hall0). }
     iRight. iFrame "Hdlr". iPureIntro. split_and!;
@@ -4477,13 +4477,13 @@ Section echo_out.
      witness because the output and input claims carry their own; here there
      is one claim and one witness, and the proof is the output side's
      verbatim -- the input-side clauses play no part in [good_out]. ---- *)
-  Lemma ecl_drain (k : nat) (h ho : list mobs) (CH : ConsLog.cons_hist)
+  Lemma ecl_drain (k : nat) (h ho : list mobs) (CH : LogEntryDefs.cons_hist)
       (seg : list mobs) :
     trace_shape h true ->
     obs_boots h = k ->
     ho `prefix_of` h ->
     ins seg = ins (open_seg h) ->
-    obs_wire Uart0 seg `prefix_of` ConsLog.ch_acc CH ->
+    obs_wire Uart0 seg `prefix_of` LogEntryDefs.ch_acc CH ->
     ecl k ho CH -∗ ecl k ho CH ∗ (T ∨ ⌜good_out seg⌝).
   Proof.
     intros Hsh Hk Hpre Hins Hwire. subst k. rewrite /ecl.

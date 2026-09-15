@@ -254,6 +254,44 @@ Derived corollaries, in order of what applications actually use:
   CRITICAL PATH.**  Consequence for the campaign: everything that
   remains is RA-2's ONE commit; `grep -rn 'RA-2: held case here' iris/`
   is its worklist, left in the tree at each attachment point.
+- [~] **RA-2 THE ONE COMMIT** (RAN 2026-09-16, branch `ra2-onecommit`,
+  mirror-green whole tree, echo audit at 14).  **THE SEMANTIC CHANGE DID
+  NOT LAND: three walls, each checked at the statement, all in
+  `design/user-read.md` §8.4's AS-LANDED block.**  **(1)** `hand` at open
+  is REFUTED BY RA-3's OWN landing — `UsysMemOk.usys_fd_ok`'s open arm
+  pins `fdst_parked` on the ACTUAL successor table and that relation is
+  threaded for BOTH TIERS with no tier index (`SpecSyscall.sysc_fd_ok`,
+  `SpecUsertrap`), so a held open kills `ProofSyscall`'s arm 15 and the
+  three `open_arms_*_split`; the conjunct cannot come off because the
+  generic Löb step reads successor-parkedness off it (RA-1's finding 3),
+  so the carrier must first move to the slot's post
+  (`UexecSG.spost_at`'s `fdv'`, chosen by the family) — a new lane, RA-5.
+  **(2)** Relaxing the pin DELETES `ProcInv.proc_priv_parked`
+  (`fdstate_ok_parked` → `file_ref_parked` → the export is the pin, in
+  three steps), which is the ONLY supplier of §8.3's premise on
+  `SpecKexec.exec_slot_pre`'s wands — change (1) of the commit refutes
+  change (3) of the same commit; the replacement is to discharge from the
+  POST-PARK table (`fd_frags_park_at`'s `⌜fdv_all_parked sts'⌝`), which
+  restates the wands and moves every applier.  **(3)** THE STOP: fork is a
+  FREE number (`UexecSG.free_num` excludes only exec/5/6/15..20), so its
+  `xv6_sbundle` arm is `emp` and every verified forker pays through
+  `UkRun.udepw_of_psok` — whose `udepw` QUANTIFIES THE TABLE UNIVERSALLY
+  and whose left disjunct is a pure fact.  The surrender slot therefore
+  has NO PAYER, and the class premise does not reach it (it lands on the
+  supply law, the generic tier's route) — which CORRECTS §8.3's finding B:
+  the U-tier wrappers cannot discharge once the premise exists, they
+  cannot discharge at all.  **ROUTE OUT, and it supersedes finding C's
+  "no carrier exists": a U-tier HALF OF THE HELD SET (`uheld γ H`), the
+  third sibling of `UserCwd.ucwd` / `UserChildren.uch`** — a program that
+  never opened at `hand` holds `H = ∅` and can SAY so at the leaf, which
+  is not RA-1's finding-2 brute fix (it makes no program unable to hold a
+  `uoff`).  OWNER DECISION: a fourth piece of per-process U-tier state,
+  plus an in/out pair on every fork/exec wrapper.  LANDED instead, zero
+  semantic change: `iris/FdPark.v` §6 — the arm split's kernel half
+  (`uoff_rcpt`, `uoff_rcpt_surr`, `off_supply_of_st{,_eq}`: row + payment
+  + the kernel's own half give the fire's supplier and its receipt at BOTH
+  modes in one statement), and the finding that §8.2's arm payment and
+  §8.3's boundary surrender are THE SAME PROPOSITION at one row.
 - OWNER RULED 2026-09-15: BREADTH FIRST — RD-4/RD-5/RD-6 on the landed
   R-c pattern; route R-a (the owned-offset campaign) queued behind them,
   upgrading each arm by one conjunct when it runs.

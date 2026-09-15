@@ -910,7 +910,144 @@ exact hypothesis names the park goes before, and `kfk_at_parked`),
 `PinnedExec.v`, `UInitSh.v` (the four mint sites, each saying which fact
 it will owe and where it comes from).
 
-### 8.4 The payoff, and the lanes
+### 8.4 The one commit, and the three links that break it (RA-2)
+
+**AS LANDED (RA-2, 2026-09-16 — branch `ra2-onecommit`): THE SEMANTIC
+CHANGE DID NOT LAND, AND THE REASON IS NOT INSIDE §8.2.**  The brief's five
+parts really are one commit — RA-1 and RA-3 were right about that — but
+three of the links that commit has to close are broken by RA-1's and
+RA-3's OWN landings, and each one is a wall a lane cannot climb by proving
+harder.  Every claim below is checked in the tree at the named statement,
+not inferred from the earlier blocks.  What landed is the arm split's
+kernel half, stated at the held subset and proved at the general case
+(`FdPark.v` §6, below), plus this block.
+
+**WALL 1 — `hand` AT OPEN IS REFUTED BY RA-3's OWN OPEN-ROW CONJUNCT, AND
+THE CONJUNCT CANNOT COME OFF.**  §8.3's landing (1) put
+`fdst_parked (FdOpen rd wr t)` on `UsysMemOk.usys_fd_ok`'s OPEN ARM
+(`UsysMemOk.v:532`), i.e. on the ACTUAL successor table.  That predicate is
+ONE relation, threaded for BOTH TIERS with no tier index anywhere on the
+path: `SpecSyscall.sysc_fd_ok` (`SpecSyscall.v:330`) is it verbatim, and
+`SpecUsertrap` (`:312`) relays it at every number.  So the enriched open
+row cannot install `FdInode i γo OffHeld` — `fdst_parked` of that state is
+`False` by definition (`FdSlots.v:232`) — and change (5) makes
+`ProofSyscall`'s arm 15 (`ProofSyscall.v:7383`) unprovable, together with
+the three `SpecSysOpen.open_arms_*_split` statements that carry the
+conjunct out (`SpecSysOpen.v:1107, 1216, 1351`, each paying it with
+`fdst_parked_inode` / `_dev`).  Publishing `hand` at a PARKED state is not
+an escape: `FdSlots.foff_row` at `OffParked` IS `off_user_inv`, and mode
+`hand` (`UserOff.off_pub_hand`) never allocates it, so the row would
+promise an invariant that does not exist.  And the conjunct cannot simply
+come off, because RA-1's finding 3 is that the generic tier's Löb step
+reads the SUCCESSOR key's all-parkedness off exactly this row — which is
+why RA-3 chose it over `SysOpenDefs.open_fd_rcpt` in the first place.
+**So mode `hand` needs a DIFFERENT carrier for generic successor-
+parkedness before it can be wired, and there is exactly one candidate in
+the tree: the slot's own post.  `UexecSG.spost_at X n f W r M' fdv' cw' cs'`
+already takes the successor table `fdv'` as an argument, and the FAMILY
+`f` is what the tier hands in — so the generic family can demand park and
+report it while the enriched family does not.**  That is a restructure of
+the generic tier's Löb step; it is not one of the commit's five parts, it
+must be priced as its own lane, and it has to land BEFORE `hand`.
+
+**WALL 2 — RELAXING THE PIN DESTROYS THE ONLY SUPPLIER OF §8.3's EXEC
+PREMISE: change (1) refutes change (3) inside the same commit.**  §8.3's
+finding C resolves the U-tier carrier problem by putting the all-parked
+premise on `SpecKexec.exec_slot_pre`'s two wands, "where the party that
+supplies it is the KERNEL — which holds the block and reads the fact
+straight off it (`ProcInv.proc_priv_parked`)".  But `proc_priv_parked` IS
+THE PIN, in three steps and nothing else: `ProcInv.proc_ofiles_parked` ←
+`FileInvDefs.file_ref_parked` (`FileInvDefs.v:1799`, whose entire proof is
+`exact (fdstate_ok_parked _ _ C st Hok)`) ← `FileInvDefs.fdstate_ok_parked`
+(`:632`), which is the FD_INODE arm's `m = OffParked` conjunct read as a
+fact.  Change (1) deletes that conjunct, so `fdstate_ok_parked` becomes
+FALSE and `file_ref_parked`, `ofile_slot_parked`, `ofile_slots_parked` and
+`proc_priv_parked` go with it.  **The wands' premise then has no kernel
+supplier, and §8.3's resolution has to be REPLACED rather than inherited.**
+The replacement exists and is not free: the kernel must discharge the
+premise from the POST-PARK table instead — `FdPark.fd_frags_park_at`
+returns `⌜fdv_all_parked sts'⌝` — which means `exec_slot_pre`'s premise
+must be restated at the table exec HANDS OVER rather than at the caller's
+`sts`, with the surrender spent before the wands are applied.  Every stater
+and applier moves with it (`SpecKexec`, `ProofKexec`, `PinnedExec.pex_slot`,
+`UInitSh`, `UInitBoot`, `SystemAdequacy.init_boot_of_sup`).
+
+**WALL 3 — THE SURRENDER SLOT AT FORK HAS NO PAYER, AND THE CLASS PREMISE
+DOES NOT REACH IT.  This is the brief's STOP, and it is RA-1's finding 2
+landing on fork's arm instead of read's.**
+- fork is `n = 1`, and `UexecSG.free_num` (`UexecSG.v:712`) excludes only
+  exec, 5, 6, 15, 16, 17, 18, 19, 20 — **so fork is FREE**: `xv6_sbundle`'s
+  fork arm is the match's `else emp`, and `UexecExecInst.xv6_sbundle_free`
+  mints it FROM NOTHING at every key.
+- Putting `uoff_surr_at (uvis_fd W)` into that arm (§8.3's only sound
+  carrier, finding B) makes fork non-free.  The ONLY U-tier route to
+  fork's deposit is `UkRun.udepw`'s LEFT disjunct, `UkRun.udepw_of_psok`
+  (`UkRun.v:434`: `psok n -> n <> USYS_exec -> ⊢ udepw N m pc n`), whose
+  proof is `iIntros (M pm sz fdv cw gn cs pidv) … iLeft; iPureIntro`:
+  **`udepw` quantifies the table `fdv` UNIVERSALLY and its left disjunct is
+  a pure fact with no table in it**, so no table-dependent row can ever
+  pass through it.  Every verified forker goes exactly this way (the
+  `udepw_of_psok` + `free_lit` sites in `UkInit`, `UkShRun`, `UkCat`,
+  `UkSync`).
+- **The class premise does not help, and that is the correction to §8.3's
+  finding B.**  The premise lands on `xv6_sbundle_of_supply(_ne)` — the
+  RIGHT disjunct's supply law, the GENERIC tier's route.  A verified
+  program's wrappers never touch the class field, so "they can discharge
+  it once the class premise exists in the same commit" is false: they
+  cannot discharge it at all, in this commit or a later one.
+- The U-tier fallback is still shut, one step further in than RA-3 took
+  it: `UkFork.wp_uk_ecall_fork` (`UkFork.v:785`) DOES hold the caller's
+  handle map `D` and derives `D ⊆ fdv` (`ufd_sub_hi`), so it could take
+  `FdPark.uoff_surrs_map D` — but what the kernel needs is COVERAGE (no
+  held row OUTSIDE `D`), and nothing at that tier can state it.
+
+**THE ROUTE OUT, and it is finding C's missing carrier: a U-tier HALF of
+the process's own HELD SET, exactly as the tier already carries a half of
+its working directory and a half of its children set.**  §8.3's finding C
+says "a verified program's U-tier knowledge of its table is `ustd` plus
+its `ufd` handles — nothing pins the rest, so a program CANNOT state
+all-parkedness of its own table", and that is true of the TABLE.  It is not
+true of a SET the kernel maintains for it: `UserCwd.ucwd` and
+`UserChildren.uch` are both halves of kernel-side values that a program
+tracks across syscalls, and both are already taken and given back by
+`wp_uk_ecall_fork` (`UkFork.v:824-834`).  A third one —
+`uheld γ H` at the set of descriptors whose offset half is OUT, with the
+authority inside `UkRun.urun` and the invariant "`H` is exactly the held
+subset of `fdv`" — gives a program everything the two shut ends needed:
+- a program that never opened at mode `hand` holds `uheld γ ∅` and pays the
+  fork/exec row's surrender by `∅`-introduction, so `⌜fdv_all_parked fdv⌝`
+  becomes provable AT THE LEAF, from the program's own resource, with no
+  premise on `udepw` and no fact inside `ufd_auth` (which is what RA-1's
+  finding 2 ruled out — and this is NOT that: it makes no program unable
+  to hold a `uoff`, it makes every program able to SAY whether it does);
+- an owner pays `uoff_surrs` over `H`, and COVERAGE is by construction
+  because the kernel's own rows maintain the set (hand-open adds, the
+  boundary park clears, close removes).
+THE COST, honestly: a new ledger resource in `urun`, a row in
+`usys_fd_ok`'s shape or beside it, and a new in/out pair on every U-tier
+fork and exec wrapper (`UkFork`, `UkShRun.wp_kshr_fork{,1,1_any}`,
+`UkShDiag`'s finals, `UkInit`'s exec sites) — mechanical, wide, and an
+OWNER DECISION, since it is a fourth piece of the U tier's per-process
+state and §8.3's finding C was recorded as an owner decision already.
+
+**WHAT LANDED (zero semantic change, mirror-green): `FdPark.v` §6 — the
+arm split's kernel half.**  `uoff_rcpt` (the state-keyed receipt: the half
+ADVANCED at a held row, the unit everywhere else, which is exactly what
+`UserOff.off_supply_parked` leaves behind), `uoff_rcpt_surr` (the receipt
+IS a payment again — "read, read, fork" is this lemma twice and
+`fd_frags_park_at` once), and `off_supply_of_st` / `off_supply_of_st_eq`:
+the row plus the arm's payment plus the kernel's own half give the fire's
+supplier and its receipt, at BOTH modes in one statement, with the position
+matched against the kernel's half (`UserOff.uoff_agree_k`) so the arm costs
+its caller no equation.  This is what §8.2's mode-split arms SPEND rather
+than build, and it is in `FdPark.v` for RA-3's reason and RD-1's: an import
+of `UserOff` into `SpecFileread` invalidates that contract's whole cone.
+**It also records the one simplification the two halves of RA-2 share: the
+resource §8.2's held arm asks of its caller and the one §8.3's boundary
+asks of a crossing process are THE SAME PROPOSITION at one row
+(`FdPark.uoff_surr`), so there is one payment vocabulary, not two.**
+
+### 8.5 The payoff, and the lanes
 
 At the end: the U-tier file leaves gain the held conjunct (`uoff` in,
 advanced `uoff` out — the "one conjunct" upgrade every RD lane
@@ -933,13 +1070,34 @@ honest offset note for the owned form.
   precede §8.1's class premise, from either end), and the U-tier
   carrier for "my whole table is parked" (finding C, an owner decision
   on the critical path).
-- [ ] **RA-2** (kernel): now ONE commit for everything that remains —
-  the mode-split arms of §8.2, `hand` at the enriched open row, §8.1's
+- [~] **RA-2** (kernel): ONE commit for everything that remains — the
+  mode-split arms of §8.2, `hand` at the enriched open row, §8.1's
   premise on BOTH class fields, §8.3's surrender slot plugged into the
   fork/exec deposits, the array half of the retype, and relaxing the
-  `fdstate_ok` pin.  RA-3's findings A and B are why these cannot be
-  separated: each of them is unprovable until the others are in, and
-  the pin is what makes them all vacuous until then.  Everything they
-  need is proved and waiting in `FdPark.v`.
+  `fdstate_ok` pin.  **RAN 2026-09-16 AND STOPPED AT THREE WALLS; the
+  semantic change did NOT land.**  §8.4's AS-LANDED block has them, each
+  checked at the statement: (1) `hand` at open is refuted by RA-3's own
+  `usys_fd_ok` open-row conjunct, which cannot come off until the generic
+  Löb step's carrier moves to the slot's post (`UexecSG.spost_at`'s
+  `fdv'`); (2) relaxing the pin deletes `ProcInv.proc_priv_parked`, which
+  is the ONLY supplier of §8.3's premise on `exec_slot_pre`'s wands, so
+  change (1) refutes change (3) inside the commit; (3) fork is a FREE
+  number and the only U-tier route to its deposit (`UkRun.udepw_of_psok`)
+  quantifies the table universally, so the surrender slot has no payer and
+  the class premise — which lands on the supply law — never reaches it.
+  LANDED instead, zero semantic change, mirror-green: `FdPark.v` §6, the
+  arm split's kernel half (`uoff_rcpt`, `uoff_rcpt_surr`,
+  `off_supply_of_st{,_eq}`).
+- [ ] **RA-5** (new, from §8.4's wall 1; must precede any `hand`): move
+  the generic tier's Löb carrier for successor-parkedness off
+  `usys_fd_ok`'s open arm and onto the slot's own post, so the open row
+  can install either mode.
+- [ ] **OWNER DECISION** (from §8.4's route out, and it supersedes §8.3's
+  finding C): a U-tier HALF OF THE PROCESS'S HELD SET (`uheld γ H`), the
+  third sibling of `UserCwd.ucwd` and `UserChildren.uch`.  It is what lets
+  a program SAY whether it holds any offset — which is what walls 2 and 3
+  both need and what finding C concluded does not exist.  Cost: a new
+  resource in `urun` and a new in/out pair on every U-tier fork and exec
+  wrapper.
 - [ ] **RA-4** (U-tier + TR): the held conjunct on the file leaves,
   the owned-offset corollary, the §6 figure into user.tex.

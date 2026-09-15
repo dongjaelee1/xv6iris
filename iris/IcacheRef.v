@@ -1348,8 +1348,8 @@ Section IcacheRef.
      author's read at EVERY view (store forwarding).  Cash-in:
      [IcachePinwObl.cred_floor_vis]. *)
   Definition cred_floor (lo tl : nat) : iProp Σ :=
-    (TsoCtx.ctx_floor TsoCtx.cur_ctx tl ∨
-     ∃ a : Arch.pa, TsoCtx.ctx_wrote TsoCtx.cur_ctx lo a)%I.
+    (TsoCtx.ctx_floor CtxIdDefs.cur_ctx tl ∨
+     ∃ a : Arch.pa, TsoCtx.ctx_wrote CtxIdDefs.cur_ctx lo a)%I.
 
   Global Instance cred_floor_persistent lo tl : Persistent (cred_floor lo tl).
   Proof. rewrite /cred_floor. apply _. Qed.
@@ -1357,11 +1357,11 @@ Section IcacheRef.
   Proof. rewrite /cred_floor. apply _. Qed.
 
   Lemma cred_floor_of_ctx (lo tl : nat) :
-    TsoCtx.ctx_floor TsoCtx.cur_ctx tl -∗ cred_floor lo tl.
+    TsoCtx.ctx_floor CtxIdDefs.cur_ctx tl -∗ cred_floor lo tl.
   Proof. iIntros "H". by iLeft. Qed.
 
   Lemma cred_floor_of_wrote (lo tl : nat) (a : Arch.pa) :
-    TsoCtx.ctx_wrote TsoCtx.cur_ctx lo a -∗ cred_floor lo tl.
+    TsoCtx.ctx_wrote CtxIdDefs.cur_ctx lo a -∗ cred_floor lo tl.
   Proof. iIntros "H". iRight. by iExists a. Qed.
 
   Lemma cred_floor_0 : ⊢ cred_floor 0 0.

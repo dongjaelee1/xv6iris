@@ -547,16 +547,16 @@ Section IputTail.
     ((∀ (M' : gmap nat (Qp * positive)) (ci' : gmap nat (mword 32 * mword 32)),
         ⌜forall j, j <> k -> M' !! j = Mt !! j⌝ -∗
         ⌜forall j, j <> k -> ci' !! j = ci !! j⌝ -∗
-        itable_slot_res_llb TsoCtx.cur_ctx M' ci' k -∗
-        [∗ list] j ∈ seq 0 NINODE, itable_slot_res_llb TsoCtx.cur_ctx M' ci' j) ∗
+        itable_slot_res_llb CtxIdDefs.cur_ctx M' ci' k -∗
+        [∗ list] j ∈ seq 0 NINODE, itable_slot_res_llb CtxIdDefs.cur_ctx M' ci' j) ∗
      (∃ tst : nat,
         mono_nat_auth_own (icfg_istmp k) (1/2) tst ∗
-        TsoGhost.llb loglen_name tst ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx tst) ∗
+        TsoGhost.llb loglen_name tst ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx tst) ∗
      (∃ (x0 : ic_x) (td T0 : nat),
         ⌜x0 ≠ IcRaw⌝ ∗
         ic_regd k (SlotReg td true (Some (dev, inum)) (Some (x0, T0))) ∗
         TsoGhost.llb loglen_name td ∗ ic_cnt k 1 ∗
-        ic_hdr cn γfs γi cov logstart k (Some (dev, inum)) x0 TsoCtx.cur_ctx))%I.
+        ic_hdr cn γfs γi cov logstart k (Some (dev, inum)) x0 CtxIdDefs.cur_ctx))%I.
 
   (* THE ROW, OPEN (F42/F42′ under F28): the guard entered the pin from the
      row's resting cell, so the row cannot be re-formed while the window is
@@ -599,11 +599,11 @@ Section IputTail.
          if decide (cnt = 1%positive)
          then ip_window cn γfs γi cov logstart k Mt ci q dev inum ∗
               ip_row_open cn k Mt ci q dev inum ∗ ip_pin k tid qtx
-         else ([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res TsoCtx.cur_ctx Mt ci i0) ∗
+         else ([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res CtxIdDefs.cur_ctx Mt ci i0) ∗
               IcacheRef.ic_ref_stamps k dev inum 1%Qp ∗
               ([∗ list] i0 ∈ seq 0 NINODE, islot2 cur_ctx cn Mt ci i0) ∗
               tid ↪[ln_tx icfg_log]{#qtx} ()
-     | None => ([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res TsoCtx.cur_ctx Mt ci i0) ∗
+     | None => ([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res CtxIdDefs.cur_ctx Mt ci i0) ∗
                IcacheRef.ic_ref_stamps k dev inum 1%Qp ∗
                ([∗ list] i0 ∈ seq 0 NINODE, islot2 cur_ctx cn Mt ci i0) ∗
                tid ↪[ln_tx icfg_log]{#qtx} ()
@@ -622,7 +622,7 @@ Section IputTail.
     ip_rows cn γfs γi cov logstart k Mt ci q dev inum tid qtx ⊣⊢
     (iref_frag k q ∗ live_fracc k q ∗ slh_tok (icfg_isl k) q ∗
      inode_ident k (DfracOwn q) dev inum) ∗
-    (([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res TsoCtx.cur_ctx Mt ci i0) ∗
+    (([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res CtxIdDefs.cur_ctx Mt ci i0) ∗
      IcacheRef.ic_ref_stamps k dev inum 1%Qp ∗
      ([∗ list] i0 ∈ seq 0 NINODE, islot2 cur_ctx cn Mt ci i0) ∗
      tid ↪[ln_tx icfg_log]{#qtx} ()).
@@ -854,7 +854,7 @@ Section IputTail.
     trap_csrs_ext KT1 eb -∗
     cpu_claim_ext eb pj -∗
     locked fsc_itlock cpu_id -∗
-    itable_res2_llb TsoCtx.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev -∗
+    itable_res2_llb CtxIdDefs.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev -∗
     iref_slot -∗
     (* RULING G (iclaim-ledger.md §6′): the REGIME, borrowed and returned.
        Nothing in this tail touches it -- the freeze is the free path's -- but
@@ -1298,7 +1298,7 @@ Section IputTail.
                 (mword_of_int (KernelSyms.iput + 0x22)) Ra5 Rs1
                 (mword_of_int 8 : mword 12) D2 (trap_res eb + (K - 6))%nat
                 ((⌜(loip <= tstk)%nat⌝ ∗
-                  TsoCtx.ctx_floor TsoCtx.cur_ctx tstk ∗
+                  TsoCtx.ctx_floor CtxIdDefs.cur_ctx tstk ∗
                   IcacheInv.iref_pin_rows k (iref_word Mt k) loip tstk ∗
                   (∀ P : iProp Σ,
                      P ={⊤ ∖ ↑minstretN ∖ ↑icacheN ∖ ↑iregN,
@@ -1379,7 +1379,7 @@ Section IputTail.
          is DEAD, count 0. *)
       iApply fupd_wp.
       iDestruct (SieCapCtx.sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
-      iMod (ic_evict_deposit fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k TsoCtx.cur_ctx
+      iMod (ic_evict_deposit fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k CtxIdDefs.cur_ctx
               (SlotReg td true (Some (icfg_dev, inum)) (Some (x0, T0))) x0 T0 ⊤
               ltac:(solve_ndisj) eq_refl eq_refl
               with "Hesc Hrun Hrd Hc [Hvld Hid Hnlk HgidD]")
@@ -1486,7 +1486,7 @@ Section IputTail.
       assert (Hqthalf : (qt ≤ 1/2)%Qp) by (rewrite Hsum; apply Qp.le_add_l).
       (* the payload's slot row: the count store below forfeits its floor
          (A6.144), so it closes LLB-bare; the box's L1 row rides beside it *)
-      iDestruct (itable_slot_res_acc_upd_llb TsoCtx.cur_ctx Mt ci k Hk
+      iDestruct (itable_slot_res_acc_upd_llb CtxIdDefs.cur_ctx Mt ci k Hk
                    with "Hstamps") as "[Hsrow Hstampsback]".
       iEval (rewrite {1}/itable_slot_res HMk) in "Hsrow".
       iDestruct "Hsrow" as "[Hbrow Hsrow]".
@@ -2650,13 +2650,13 @@ Section IputFreePath.
     (∀ (M' : gmap nat (Qp * positive)) (ci' : gmap nat (mword 32 * mword 32)),
        ⌜forall j0, j0 <> k -> M' !! j0 = Mt !! j0⌝ -∗
        ⌜forall j0, j0 <> k -> ci' !! j0 = ci !! j0⌝ -∗
-       itable_slot_res_llb TsoCtx.cur_ctx M' ci' k -∗
-       [∗ list] j0 ∈ seq 0 NINODE, itable_slot_res_llb TsoCtx.cur_ctx M' ci' j0) -∗
+       itable_slot_res_llb CtxIdDefs.cur_ctx M' ci' k -∗
+       [∗ list] j0 ∈ seq 0 NINODE, itable_slot_res_llb CtxIdDefs.cur_ctx M' ci' j0) -∗
     (∃ tst : nat, mono_nat_auth_own (icfg_istmp k) (1/2) tst ∗ TsoGhost.llb loglen_name tst) -∗
     ic_regd k (SlotReg td true (Some (icfg_dev, inum)) (Some (IcLoaded g1 dn bm, T0))) -∗
     TsoGhost.llb loglen_name td -∗
     ⌜(T0 <= Kw)%nat⌝ -∗
-    TsoCtx.ctx_floor TsoCtx.cur_ctx Kw -∗
+    TsoCtx.ctx_floor CtxIdDefs.cur_ctx Kw -∗
     ic_cnt k 1 -∗
     i_valid (ientry k) ↦₄ valid_word true -∗
     IcacheRef.inode_ident k (DfracOwn (1/2)) icfg_dev inum -∗
@@ -2899,7 +2899,7 @@ Section IputFreePath.
        one level down); the header's quarter ties the identity. *)
     iMod (ic_dep_checkout fsc_ic k (DepFrz q icfg_dev inum tid (qtx/2)%Qp) with "Hneu")
       as "[Hdep Hdepa]".
-    iMod (ic_free_take fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k TsoCtx.cur_ctx
+    iMod (ic_free_take fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k CtxIdDefs.cur_ctx
             (SlotReg td true (Some (icfg_dev, inum)) (Some (IcLoaded g1 dn bm, T0)))
             icfg_dev inum (IcLoaded g1 dn bm) T0 Kw s0 ⊤
             ltac:(solve_ndisj) eq_refl eq_refl eq_refl HTKw Hs0
@@ -2924,12 +2924,12 @@ Section IputFreePath.
         iExists (SlotReg td false (Some (icfg_dev, inum)) None). iFrame "Hreg Hc Hllbd".
         iPureIntro. cbn. split_and!; [done | done | done | lia]. }
       iExact "Hstk". }
-    iAssert (itable_res2_llb TsoCtx.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
+    iAssert (itable_res2_llb CtxIdDefs.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
       with "[Hhalf Hstampsllb Hiauth Hipool Hslots Hpool]" as "HRres".
     { (* the constructor, not [iFrame]: the goal's eight conjuncts include two
          50-element big-ops, so the bare frame walked them once per name for
          9.7 s (2026-09-03 profile).  [IcacheEscrow.itable_res2_llb_intro]. *)
-      iApply (IcacheEscrow.itable_res2_llb_intro TsoCtx.cur_ctx fsc_ic fsc_fs
+      iApply (IcacheEscrow.itable_res2_llb_intro CtxIdDefs.cur_ctx fsc_ic fsc_fs
                 fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev Mt ci HMwf Hciwf
                 with "Hhalf Hstampsllb Hiauth Hipool Hslots Hpool"). }
     (* ===== +0x5e auipc a0 ; +0x62 addi a0,a0,1306 ; +0x66 jal release ===== *)
@@ -3170,7 +3170,7 @@ Section IputFreePath.
        with the share the guard's pin handed back (F42′; Q10 option B: the
        walk keeps the NAME-half, the alternative takes the other) *)
     iMod (ic_pin_enter k tid (qtx/2)%Qp with "Hpinr Htxp") as "[Hpinf Hhpn]".
-    iMod (ic_park_frz fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k TsoCtx.cur_ctx q icfg_dev inum
+    iMod (ic_park_frz fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k CtxIdDefs.cur_ctx q icfg_dev inum
             tid (qtx/2)%Qp g2 ⊤ ltac:(solve_ndisj)
             with "Hesc Hrun [Hvld Hidv Hinh Hnl] [Hty Hmaj Hmin Hsz Haddrs] Hdep Hpinf Hhold")
       as "(Hrun & Hneu & Hfrg & Htxq & %Tp & Hrp & Href & #HllbT)".
@@ -3231,7 +3231,7 @@ Section IputFreePath.
     (* the genin tier: the L2 row goes back UNFLOORED at the park stamp and
        the callee re-floors it at the parked context (M-6, R2) *)
     (* r25 pass 1 (correction 2): ONE bound for the combined maximum *)
-    iDestruct (ic_slp_dep_of_rows fsc_ic k Tp TsoCtx.cur_ctx
+    iDestruct (ic_slp_dep_of_rows fsc_ic k Tp CtxIdDefs.cur_ctx
                  with "HllbT Hictok Hrp Hneu Hoffr") as (Tc) "(%HTpc & #HllbC & Hdepc)".
     iApply (RS.wp_releasesleep_genin_sconf γs gil gisl "inode"%string (ic_slp fsc_ic k)
               (fun _ => ic_slp_dep fsc_ic k Tc) (slh_tok (icfg_isl k)) q J6 pidv pj (K - 6)%nat eb eb lks Tc
@@ -3382,7 +3382,7 @@ Section IputFreePath.
     { iDestruct "Hclaim86" as "[%HA _]". by iPureIntro. }
     (* the slot's two rows: the box's L1 row (the last close's (a) below)
        and the exact-read stamp row (the +0x86 read's AU) *)
-    iDestruct (itable_slot_res_acc_upd_llb TsoCtx.cur_ctx Mt2 ci2 k Hk
+    iDestruct (itable_slot_res_acc_upd_llb CtxIdDefs.cur_ctx Mt2 ci2 k Hk
                  with "Hstamps") as "[Hsrow Hstampsback]".
     iEval (rewrite {1}/itable_slot_res HMk2 Hcik2) in "Hsrow".
     iDestruct "Hsrow" as "[Hbrow Hsrow]".
@@ -3394,7 +3394,7 @@ Section IputFreePath.
               (mword_of_int (KernelSyms.iput + 0x86)) Ra5 Rs1
               (mword_of_int 8 : mword 12) macq2 (trap_res eb + (K - 6))%nat
               (fun v _ => v = iref_word Mt2 k)
-              ((TsoCtx.ctx_floor TsoCtx.cur_ctx tstk2 ∗
+              ((TsoCtx.ctx_floor CtxIdDefs.cur_ctx tstk2 ∗
                 ∃ lo : nat,
                   IcacheInv.iref_pin_rows k (iref_word Mt2 k) lo tstk2 ∗
                   (IcacheInv.iref_pin_rows k (iref_word Mt2 k) lo tstk2
@@ -3484,7 +3484,7 @@ Section IputFreePath.
        so the walk's name-half never leaves its hand.  The freeze token rides
        back out in [ic_hdr_frz] for the retire AU below. *)
     iDestruct (SieCapCtx.sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
-    iMod (ic_evict_withdraw_frz fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k TsoCtx.cur_ctx r2
+    iMod (ic_evict_withdraw_frz fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k CtxIdDefs.cur_ctx r2
             icfg_dev inum tb2 Kt2 rg ⊤
             ltac:(solve_ndisj) Hrw2 Hrid2 Hrle2 with "Hesc Hrun Hflb2 Hflt2 Hreg Hc [Href] Hpre")
       as "(Hrun & Hc & %x0 & %T0' & %HT0' & Hreg & Hhdr)".
@@ -3517,7 +3517,7 @@ Section IputFreePath.
     unshelve iApply (wp_sw_au_dat_s_sconf true
               (mword_of_int (KernelSyms.iput + 0x8a)) Ra5 Rs1
               (mword_of_int 8 : mword 12) F1 (trap_res eb + (K - 6))%nat
-              ((TsoCtx.ctx_floor TsoCtx.cur_ctx tstk2 ∗
+              ((TsoCtx.ctx_floor CtxIdDefs.cur_ctx tstk2 ∗
                 (∃ lo : nat, ⌜(lo <= tstk2)%nat⌝ ∗
                    IcacheInv.iref_pin_rows k (iref_word Mt2 k) lo tstk2) ∗
                 (∀ P : iProp Σ,
@@ -3598,7 +3598,7 @@ Section IputFreePath.
        the box), then (d) drops the unit: the slot is DEAD, count 0. *)
     iApply fupd_wp.
     iDestruct (SieCapCtx.sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
-    iMod (ic_evict_deposit fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k TsoCtx.cur_ctx
+    iMod (ic_evict_deposit fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k CtxIdDefs.cur_ctx
             (SlotReg (sr_td r2) true (Some (icfg_dev, inum)) (Some (x0, T0'))) x0 T0' ⊤
             ltac:(solve_ndisj) eq_refl eq_refl
             with "Hesc Hrun Hreg Hc [Hvld Hid Hnlk HgidD]")
@@ -3697,7 +3697,7 @@ Section IputFreePath.
       rewrite (fl_ci_inums_delete ci2 k icfg_dev inum Hcik2 Hinj).
       apply fl_pool_set; [exact Hinreg | exact Hincid]. }
     iEval (rewrite -Hpoolset) in "Hpool".
-    iAssert (itable_res2_llb TsoCtx.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
+    iAssert (itable_res2_llb CtxIdDefs.cur_ctx fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
       with "[Hhalf Hstampsllb Hiauth Hipool Hslots Hpool]" as "HRres3".
     { (* the two pure rows in Ltac, where they are cheap, then the
          constructor: the bare [iFrame] this replaces was 13.5 s of the
@@ -3718,7 +3718,7 @@ Section IputFreePath.
           exact (Hrange k1 p1 (proj2 Hp1')).
         - intros k1 p1 Hp1'. rewrite lookup_delete_Some in Hp1'.
           exact (Hdv k1 p1 (proj2 Hp1')). }
-      iApply (IcacheEscrow.itable_res2_llb_intro TsoCtx.cur_ctx fsc_ic fsc_fs
+      iApply (IcacheEscrow.itable_res2_llb_intro CtxIdDefs.cur_ctx fsc_ic fsc_fs
                 fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev
                 (delete k Mt2) (delete k ci2) Hwf3 Hciwf3
                 with "Hhalf Hstampsllb Hiauth Hipool Hslots Hpool"). }
@@ -4092,13 +4092,13 @@ Section IputFreePath.
        (∀ (M' : gmap nat (Qp * positive)) (ci' : gmap nat (mword 32 * mword 32)),
           ⌜forall j0, j0 <> k -> M' !! j0 = Mt !! j0⌝ -∗
           ⌜forall j0, j0 <> k -> ci' !! j0 = ci !! j0⌝ -∗
-          itable_slot_res_llb TsoCtx.cur_ctx M' ci' k -∗
-          [∗ list] j0 ∈ seq 0 NINODE, itable_slot_res_llb TsoCtx.cur_ctx M' ci' j0) -∗
+          itable_slot_res_llb CtxIdDefs.cur_ctx M' ci' k -∗
+          [∗ list] j0 ∈ seq 0 NINODE, itable_slot_res_llb CtxIdDefs.cur_ctx M' ci' j0) -∗
        (∃ tst : nat, mono_nat_auth_own (icfg_istmp k) (1/2) tst ∗ TsoGhost.llb loglen_name tst) -∗
        ic_regd k (SlotReg td true (Some (icfg_dev, inum)) (Some (IcLoaded g1 dn bm, T0))) -∗
        TsoGhost.llb loglen_name td -∗
        ⌜(T0 <= Kw)%nat⌝ -∗
-       TsoCtx.ctx_floor TsoCtx.cur_ctx Kw -∗
+       TsoCtx.ctx_floor CtxIdDefs.cur_ctx Kw -∗
        ic_cnt k 1 -∗
        i_valid (ientry k) ↦₄ valid_word true -∗
        IcacheRef.inode_ident k (DfracOwn (1/2)) icfg_dev inum -∗
@@ -4240,7 +4240,7 @@ Section IputFreePath.
     ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k -∗
     locked fsc_itlock cpu_id -∗
     itable_half Mt -∗
-    ([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res TsoCtx.cur_ctx Mt ci i0) -∗
+    ([∗ list] i0 ∈ seq 0 NINODE, itable_slot_res CtxIdDefs.cur_ctx Mt ci i0) -∗
     iref_slots_auth -∗
     isl_pool Mt -∗
     ([∗ list] i0 ∈ seq 0 NINODE, islot2 cur_ctx fsc_ic Mt ci i0) -∗
@@ -4249,7 +4249,7 @@ Section IputFreePath.
        acquire's floor over it -- the guard's (a) presents both *)
     IcacheRef.inode_ref_at k q icfg_dev inum mst -∗
     ⌜(CtxBox.max_stamp mst <= Kt)%nat⌝ -∗
-    TsoCtx.ctx_floor TsoCtx.cur_ctx Kt -∗
+    TsoCtx.ctx_floor CtxIdDefs.cur_ctx Kt -∗
     is_sleeplock_genl gil gisl (i_lock ip) "inode"%string (ic_slp fsc_ic k)
                      (slh_tok (icfg_isl k)) -∗
     ireg_inv fsc_ireg fsc_fs icfg_ist icfg_nib -∗
@@ -4408,7 +4408,7 @@ Section IputFreePath.
     assert (Hpa3a : add_vec (rget M Rs1) (sign_extend' 64 (mword_of_int 64 : mword 12))
                     = i_valid (ientry k)).
     { rewrite (rget_ne M Rs1 ltac:(nz)) HMs1. reflexivity. }
-    iDestruct (itable_slot_res_acc_upd_llb TsoCtx.cur_ctx Mt ci k Hk
+    iDestruct (itable_slot_res_acc_upd_llb CtxIdDefs.cur_ctx Mt ci k Hk
                  with "Hstamps") as "[Hsrow Hstampsback]".
     iEval (rewrite {1}/itable_slot_res HMk1 Hcik) in "Hsrow".
     iDestruct "Hsrow" as "[Hbrow Hsrow]".
@@ -4429,7 +4429,7 @@ Section IputFreePath.
                  (eq_sym (Qp.div_2 (qtx/2)%Qp)) with "Htx") as "[Htxp Htxh]".
     iMod (ic_pin_enter k tid (qtx/2/2)%Qp with "Hpin Htxp") as "[Hpintx Hhpn]".
     iDestruct (SieCapCtx.sie_cap_gpr_own_ctx_acc with "Hcg") as "[Hrun Hcgb]".
-    iMod (ic_guard_withdraw fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k TsoCtx.cur_ctx r icfg_dev inum tb Kt ⊤
+    iMod (ic_guard_withdraw fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k CtxIdDefs.cur_ctx r icfg_dev inum tb Kt ⊤
             ltac:(solve_ndisj) Hrw Hrid Hrle with "Hesc Hrun Hflb Hflt Hreg Hc [Hrefm] Hpintx")
       as "(Hrun & Hc & %x0 & %T0 & %Hx0 & %HT0 & Hreg & Hhdr)".
     { iExists mst. iFrame "Hrefm". iPureIntro. split; [exact Hmst | exact HKt]. }
@@ -4754,7 +4754,7 @@ Section IputFreePath.
       iAssert (IcacheInv.iref_tok_genlo k q gfe lofe)
         with "[Hrfrg Hrlv Hrslh]" as "Hrtok".
       { rewrite /IcacheInv.iref_tok_genlo. iFrame. }
-      iAssert (ic_hdr fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k (Some (icfg_dev, inum)) (IcLoaded ga dn bm) TsoCtx.cur_ctx)
+      iAssert (ic_hdr fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k (Some (icfg_dev, inum)) (IcLoaded ga dn bm) CtxIdDefs.cur_ctx)
         with "[Hvld Hid Hnl Hlg Hoff Hlvh HgidH]" as "Hhdr".
       { rewrite /ic_hdr /ic_hdr_amb /ic_pay. iFrame "Hvld Hid Hnl HgidH".
         iLeft. iFrame "Hlg Hshot Hoff Hlvh". }
@@ -5002,7 +5002,7 @@ Section IputFreePath.
     (* R3.4 / F30 (g): NO (b) here -- the header stays out across the
        acquiresleep and the free path's (g) closes the register under both
        locks.  The bound (a) exported picks the floor (g) will present. *)
-    iAssert (∃ Kw : nat, ⌜(T0 <= Kw)%nat⌝ ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx Kw)%I
+    iAssert (∃ Kw : nat, ⌜(T0 <= Kw)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx Kw)%I
       as (Kw) "[%HTKw #Hflw]".
     { destruct (Nat.max_spec tb Kt) as [[_ Hmx] | [_ Hmx]]; rewrite Hmx in HT0;
         [iExists Kt; iFrame "Hflt" | iExists tb; iFrame "Hflb"]; by iPureIntro. }
@@ -5339,7 +5339,7 @@ Section ProofIput.
        UP FRONT.  It is persistent and says nothing about the VALUE, so a
        RESTORING peek of the same cell delivers it. *)
     iDestruct (IcacheInv.iref_claims_at k Hk with "Hclaims0") as "#Hclaim18".
-    iDestruct (itable_slot_res_acc_upd TsoCtx.cur_ctx Mt ci k Hk
+    iDestruct (itable_slot_res_acc_upd CtxIdDefs.cur_ctx Mt ci k Hk
                  with "Hstamps") as "[Hsrow Hstampsback]".
     iEval (rewrite {1}/itable_slot_res HMk) in "Hsrow".
     iDestruct "Hsrow" as "[Hbrow Hsrow]".
@@ -5352,7 +5352,7 @@ Section ProofIput.
               (mword_of_int (KernelSyms.iput + 0x18)) Ra5 Rs1
               (mword_of_int 8 : mword 12) macq (trap_res eb + (K - 6))%nat
               (fun v _ => v = iref_word Mt k)
-              ((TsoCtx.ctx_floor TsoCtx.cur_ctx tstk0 ∗
+              ((TsoCtx.ctx_floor CtxIdDefs.cur_ctx tstk0 ∗
                 ∃ lo : nat,
                   IcacheInv.iref_pin_rows k (iref_word Mt k) lo tstk0 ∗
                   (IcacheInv.iref_pin_rows k (iref_word Mt k) lo tstk0

@@ -5555,7 +5555,7 @@ Section IcacheTable.
      from the handle at another and could not morph.  The rows now take the
      payload's [ξ] explicitly; at the acquirer's context they unfold to what
      they were, so consumers change one token. *)
-  Definition islot_empty (ξ : TsoCtx.CtxId) (cn : ic_names) (k : nat) : iProp Σ :=
+  Definition islot_empty (ξ : CtxIdDefs.CtxId) (cn : ic_names) (k : nat) : iProp Σ :=
     (∃ dev inum : mword 32,
        (* THE CELLS follow the box (tso-flip M-1'/F17): the table's share of
           a DEAD slot is the identity halves complementary to the dead
@@ -5593,7 +5593,7 @@ Section IcacheTable.
      arms' inums, so pool ⊎ live = every region inum, one half each); wiring
      it is the recycle/eviction increment's, together with the boot premise
      that supplies them. *)
-  Definition islot2 (ξ : TsoCtx.CtxId) (cn : ic_names) (M : gmap nat (Qp * positive))
+  Definition islot2 (ξ : CtxIdDefs.CtxId) (cn : ic_names) (M : gmap nat (Qp * positive))
       (ci : gmap nat (mword 32 * mword 32)) (k : nat) : iProp Σ :=
     match M !! k, ci !! k with
     | None, None => islot_empty ξ cn k
@@ -5677,7 +5677,7 @@ Section IcacheTable.
      release exactly like the exact-read stamps ([itable_slot_row_raise]). *)
   Definition icM_count (M : gmap nat (Qp * positive)) (k : nat) : nat :=
     match M !! k with Some (_, n) => Pos.to_nat n | None => 0%nat end.
-  Definition ic_slot_row_fl (ξ : TsoCtx.CtxId) (k : nat) (oi : ic_bid) (c : nat) : iProp Σ :=
+  Definition ic_slot_row_fl (ξ : CtxIdDefs.CtxId) (k : nat) (oi : ic_bid) (c : nat) : iProp Σ :=
     (∃ tb : nat, ic_slot_row k oi c tb ∗ TsoGhost.llb loglen_name tb ∗
                  TsoCtx.ctx_floor ξ tb)%I.
   Definition ic_slot_row_llb (k : nat) (oi : ic_bid) (c : nat) : iProp Σ :=
@@ -5685,7 +5685,7 @@ Section IcacheTable.
   Definition ic_slot_row_bare (tl k : nat) (oi : ic_bid) (c : nat) : iProp Σ :=
     (∃ tb : nat, ⌜(tb <= tl)%nat⌝ ∗ ic_slot_row k oi c tb ∗ TsoGhost.llb loglen_name tb)%I.
 
-  Definition itable_slot_res (ξ : TsoCtx.CtxId)
+  Definition itable_slot_res (ξ : CtxIdDefs.CtxId)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
       (k : nat) : iProp Σ :=
     ic_slot_row_fl ξ k (ci !! k) (icM_count M k) ∗
@@ -5704,7 +5704,7 @@ Section IcacheTable.
   (* the same rows with the live floors STRIPPED -- what a releaser can
      hand (the hooked release's Rdep side; the hook reinserts the floors at
      the lock's stamped context, bounded by the twins' llb receipt). *)
-  Definition itable_slot_res_bare (ξ : TsoCtx.CtxId) (tl : nat)
+  Definition itable_slot_res_bare (ξ : CtxIdDefs.CtxId) (tl : nat)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
       (k : nat) : iProp Σ :=
     ic_slot_row_bare tl k (ci !! k) (icM_count M k) ∗
@@ -5720,7 +5720,7 @@ Section IcacheTable.
         TsoGhost.llb loglen_name tst)%I
     end.
 
-  Lemma itable_slot_res_of_bare (ξ : TsoCtx.CtxId) (tl : nat)
+  Lemma itable_slot_res_of_bare (ξ : CtxIdDefs.CtxId) (tl : nat)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
       (k : nat) :
     itable_slot_res_bare ξ tl M ci k ∗ TsoCtx.ctx_floor ξ tl ⊢
@@ -5741,7 +5741,7 @@ Section IcacheTable.
   (* the release-time rows: floors STRIPPED, llb-backed only -- what a
      holder can hand back after bumping stamps.  [itable_ctx_hook] below
      re-floors them at the lock's stamped context, one raise per live slot. *)
-  Definition itable_slot_res_llb (ξ : TsoCtx.CtxId)
+  Definition itable_slot_res_llb (ξ : CtxIdDefs.CtxId)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
       (k : nat) : iProp Σ :=
     ic_slot_row_llb k (ci !! k) (icM_count M k) ∗
@@ -5793,7 +5793,7 @@ Section IcacheTable.
       iExists tst. iFrame "Hcell Hst Hllb2".
   Qed.
 
-    Lemma itable_slot_res_acc_upd (ξ : TsoCtx.CtxId)
+    Lemma itable_slot_res_acc_upd (ξ : CtxIdDefs.CtxId)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
       (k : nat) :
     (k < NINODE)%nat ->
@@ -5821,7 +5821,7 @@ Section IcacheTable.
     rewrite /itable_slot_res /icM_count (Hagree x Hxk) (Hagc x Hxk). iExact "H".
   Qed.
 
-  Lemma itable_slot_res_to_llb (ξ : TsoCtx.CtxId)
+  Lemma itable_slot_res_to_llb (ξ : CtxIdDefs.CtxId)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
       (k : nat) :
     itable_slot_res ξ M ci k ⊢ itable_slot_res_llb ξ M ci k.
@@ -5839,7 +5839,7 @@ Section IcacheTable.
      floor (the exact/racy read PRECEDES the slot's store), but the CLOSE
      is into the LLB world -- a holder cannot mint a [cur_ctx] floor for
      its own buffered store; the release's park re-floors every row. *)
-  Lemma itable_slot_res_acc_upd_llb (ξ : TsoCtx.CtxId)
+  Lemma itable_slot_res_acc_upd_llb (ξ : CtxIdDefs.CtxId)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
       (k : nat) :
     (k < NINODE)%nat ->
@@ -5868,7 +5868,7 @@ Section IcacheTable.
     rewrite /itable_slot_res /icM_count (Hagree x Hxk) (Hagc x Hxk). iExact "H".
   Qed.
 
-  Lemma itable_rows_to_llb (ξ : TsoCtx.CtxId)
+  Lemma itable_rows_to_llb (ξ : CtxIdDefs.CtxId)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32)) :
     ([∗ list] k ∈ seq 0 NINODE, itable_slot_res ξ M ci k) ⊢
     ([∗ list] k ∈ seq 0 NINODE, itable_slot_res_llb ξ M ci k).
@@ -5876,7 +5876,7 @@ Section IcacheTable.
     apply big_sepL_mono. intros n y Hny. apply itable_slot_res_to_llb.
   Qed.
 
-  Definition itable_res2 (ξ : TsoCtx.CtxId)
+  Definition itable_res2 (ξ : CtxIdDefs.CtxId)
       (cn : ic_names) (γfs : fs_names) (γi : gname)
       (cov : gset Z) (logstart : Z) (nib : nat) (dv : mword 32) : iProp Σ :=
     (∃ (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32)),
@@ -5895,7 +5895,7 @@ Section IcacheTable.
        ([∗ list] k ∈ seq 0 NINODE, islot2 ξ cn M ci k) ∗
        ipool γfs γi cov logstart (region_inums nib ∖ ci_inums ci) ∅)%I.
 
-  Definition itable_res2_llb (ξ : TsoCtx.CtxId)
+  Definition itable_res2_llb (ξ : CtxIdDefs.CtxId)
       (cn : ic_names) (γfs : fs_names) (γi : gname)
       (cov : gset Z) (logstart : Z) (nib : nat) (dv : mword 32) : iProp Σ :=
     (∃ (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32)),
@@ -5918,7 +5918,7 @@ Section IcacheTable.
      abstraction a CONSTRUCTOR lemma when you define it".  The two pure rows
      are Coq premises rather than [⌜⌝] wands so that a caller proves them in
      Ltac, where they are cheap, and the [iApply] stays first-order. *)
-  Lemma itable_res2_intro (ξ : TsoCtx.CtxId)
+  Lemma itable_res2_intro (ξ : CtxIdDefs.CtxId)
       (cn : ic_names) (γfs : fs_names) (γi : gname)
       (cov : gset Z) (logstart : Z) (nib : nat) (dv : mword 32)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
@@ -5943,7 +5943,7 @@ Section IcacheTable.
     iExact "Hpool".
   Qed.
 
-  Lemma itable_res2_llb_intro (ξ : TsoCtx.CtxId)
+  Lemma itable_res2_llb_intro (ξ : CtxIdDefs.CtxId)
       (cn : ic_names) (γfs : fs_names) (γi : gname)
       (cov : gset Z) (logstart : Z) (nib : nat) (dv : mword 32)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
@@ -5992,7 +5992,7 @@ Section IcacheTable.
       iModIntro. iFrame "Hd Hrow". iExists tst. iFrame "Hcell Hst Hllb".
   Qed.
 
-  Definition itable_res2_bare (ξ : TsoCtx.CtxId) (tl : nat)
+  Definition itable_res2_bare (ξ : CtxIdDefs.CtxId) (tl : nat)
       (cn : ic_names) (γfs : fs_names) (γi : gname)
       (cov : gset Z) (logstart : Z) (nib : nat) (dv : mword 32) : iProp Σ :=
     (∃ (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32)),
@@ -6009,7 +6009,7 @@ Section IcacheTable.
     CtxMorph (fun ξ => itable_res2_bare ξ tl cn γfs γi cov logstart nib dv).
   Proof. rewrite /itable_res2_bare. ctx_morph_solve. Qed.
 
-  Lemma itable_res2_of_bare (ξ : TsoCtx.CtxId) (tl : nat)
+  Lemma itable_res2_of_bare (ξ : CtxIdDefs.CtxId) (tl : nat)
       (cn : ic_names) (γfs : fs_names) (γi : gname)
       (cov : gset Z) (logstart : Z) (nib : nat) (dv : mword 32) :
     itable_res2_bare ξ tl cn γfs γi cov logstart nib dv ∗ TsoCtx.ctx_floor ξ tl ⊢
@@ -6028,7 +6028,7 @@ Section IcacheTable.
               with "Hhalf Hrows Hia Hip Hslots Hpool").
   Qed.
 
-  Local Lemma itable_slot_row_raise (ξc : TsoCtx.CtxId) (T : nat)
+  Local Lemma itable_slot_row_raise (ξc : CtxIdDefs.CtxId) (T : nat)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
       (k : nat) :
     ctx_stamped ξc T -∗ itable_slot_res_llb ξc M ci k ==∗
@@ -6050,7 +6050,7 @@ Section IcacheTable.
       iExact "H".
   Qed.
 
-  Local Lemma itable_rows_raise (ξc : TsoCtx.CtxId) (T : nat)
+  Local Lemma itable_rows_raise (ξc : CtxIdDefs.CtxId) (T : nat)
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
       (l : list nat) :
     ctx_stamped ξc T -∗

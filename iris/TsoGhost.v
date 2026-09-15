@@ -72,7 +72,7 @@ Qed.
 
 (* One bundle for everything the TSO machine side needs.  The
    per-context authorities (a mono_nat bound, a dirty ghost_map) reuse
-   [tsomem_natG]/[tsomem_dirtyG]; their NAMES ride in [TsoCtx.CtxId]. *)
+   [tsomem_natG]/[tsomem_dirtyG]; their NAMES ride in [CtxIdDefs.CtxId]. *)
 Class tsoMemG Σ := TsoMemG {
   (* the per-byte timestamp of the latest write; fragments ride inside
      [ctx_pointsto] at the fact's own dq, beside gen_heap's byte.

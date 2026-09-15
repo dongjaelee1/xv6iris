@@ -263,7 +263,7 @@ Section CrBodies.
   Definition cr_ghost `{XI : CurCtx} (cn : cons_names) (rr ww ee : mword 32)
       (bs : list (bv 8)) (ts : list (option (list mobs))) : iProp Σ :=
     (∃ (cur nrd : nat) (st pd : list (list mobs * bv 8))
-       (hh : option (list mobs)) (L0 : list ConsLog.log_entry) (gp : bool),
+       (hh : option (list mobs)) (L0 : list LogEntryDefs.log_entry) (gp : bool),
        ⌜cons_stored rr ww cur st bs ts⌝ ∗ ⌜cons_pend rr ww ee pd bs ts⌝ ∗
        ⌜cons_chain (st ++ pd)⌝ ∗ ⌜cons_below (st ++ pd) hh⌝ ∗
        cons_stored_auth cn st ∗ cons_cursor cn nrd ∗ cons_hi cn hh ∗
@@ -323,7 +323,7 @@ Section CrBodies.
      block. *)
   Lemma cr_res_log `{XI : CurCtx} (cn : cons_names) :
     cons_res cn -∗
-    ∃ (st R : list (list mobs * bv 8)) (L0 : list ConsLog.log_entry)
+    ∃ (st R : list (list mobs * bv 8)) (L0 : list LogEntryDefs.log_entry)
       (gp : bool),
       ⌜st `prefix_of` R⌝ ∗ ⌜cons_chain R⌝ ∗ ⌜cons_log_ok L0 R gp⌝ ∗
       cons_stored_auth cn st ∗ cons_logm cn L0 ∗

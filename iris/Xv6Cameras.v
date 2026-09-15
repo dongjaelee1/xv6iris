@@ -382,13 +382,13 @@ Class uartGhostG (Σ : gFunctors) := UartGhostG {
      that ties the boundary's [dl] to the ring's consumed count.  The
      high-water history of the log reuses [uart_ghost_rxhiG] above -- it is
      the same [option (list mobs)] camera. *)
-  cons_ghost_inlogG :: inG Σ (mono_listR (leibnizO ConsLog.log_entry));
+  cons_ghost_inlogG :: inG Σ (mono_listR (leibnizO LogEntryDefs.log_entry));
   cons_ghost_delivG :: ghost_varG Σ (list (list mobs * bv 8));
   (* ...AND THE LOG'S EXACT MIRROR ([WpUart.uart_logm] /
      [ConsoleInv.cons_logm], lane CONS-IO milestone B): a [ghost_var] over
      the SAME list the [mono_list] above mirrors, because the ring needs
      equality with the log and not a bound (see [UartNames.un_logm]). *)
-  cons_ghost_logmG :: ghost_varG Σ (list ConsLog.log_entry);
+  cons_ghost_logmG :: ghost_varG Σ (list LogEntryDefs.log_entry);
 }.
 
 Definition uartGhostΣ : gFunctors :=
@@ -399,9 +399,9 @@ Definition uartGhostΣ : gFunctors :=
      ghost_varΣ (option (list mobs));
      GFunctor (mono_listR (leibnizO (list mobs * bv 8)));
      ghost_varΣ nat;
-     GFunctor (mono_listR (leibnizO ConsLog.log_entry));
+     GFunctor (mono_listR (leibnizO LogEntryDefs.log_entry));
      ghost_varΣ (list (list mobs * bv 8));
-     ghost_varΣ (list ConsLog.log_entry) ].
+     ghost_varΣ (list LogEntryDefs.log_entry) ].
 
 Global Instance subG_uartGhostG Σ : subG uartGhostΣ Σ -> uartGhostG Σ.
 Proof. solve_inG. Qed.
@@ -1135,7 +1135,7 @@ Definition orph_map : Type :=
    token its fork handed it.
      A GHOST AND NOT THE <initproc> CELL, because the row travels to the U
    tier: [UserChildren.wait_ans] is stated with no [riscvGS] and no
-   [TsoCtx.CurCtx], and a memory points-to would drag both down there and
+   [CtxIdDefs.CurCtx], and a memory points-to would drag both down there and
    make the row context-dependent across the park. *)
 Definition ipidUR : ucmra :=
   optionUR (dfrac_agreeR (leibnizO (SailStdpp.Values.mword 32))).

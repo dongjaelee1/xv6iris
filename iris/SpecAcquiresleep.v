@@ -200,7 +200,7 @@ Definition wp_acquiresleep_gen_llb_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG
       (* the holder token, WITH the pid field inside it (SleepLock.v's
          [sleeplocked_q]): acquiresleep's store into [lk->pid] lands through
          [sleeplocked_q_pid], so what a holder walks away with is one row. *)
-      (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx K) -∗
+      (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
       sleeplocked_q γsl q slk pidv -∗
       R -∗
       proc_priv_bare pj pidv Upr -∗
@@ -215,7 +215,7 @@ Definition wp_acquiresleep_gen_llb_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG
    [R := λ _, R0]. *)
 Definition wp_acquiresleep_genl_llb_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (γs : list gname) (j : nat)
-    (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
+    (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
     (m : regfile) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool) (b : bool) (lks : gset string) (Tl : nat) :=
   let pcE : mword 64 := mword_of_int KernelSyms.acquiresleep in
   let slk := m !!! Regidx (mword_of_int 10 : mword 5) in
@@ -272,11 +272,11 @@ Definition wp_acquiresleep_genl_llb_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslot
       (* the holder token, WITH the pid field inside it (SleepLock.v's
          [sleeplocked_q]): acquiresleep's store into [lk->pid] lands through
          [sleeplocked_q_pid], so what a holder walks away with is one row. *)
-      (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx K) -∗
+      (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
       sleeplocked_q γsl q slk pidv -∗
       (* ENDGAME R1-pre: the client's context-λ payload at the winner's own
          context, through the inner lock's standard payload morph *)
-      R TsoCtx.cur_ctx -∗
+      R CtxIdDefs.cur_ctx -∗
       proc_priv_bare pj pidv Upr -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
@@ -435,7 +435,7 @@ Definition wp_acquiresleep_nb_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
    iput's guard re-deposit and its checkout). *)
 Definition wp_acquiresleep_nb_genl_llb_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (j : nat)
-    (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ)
+    (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ)
     (* THE DEPOSIT'S OWN GNAME, separate from the lock's.  A client keys the
        "may hold" right by the OBJECT rather than by the lock -- the icache
        keys it by the inode SLOT ([IcacheRefDefs.icfg_isl k]) so that a reference
@@ -467,8 +467,8 @@ Definition wp_acquiresleep_nb_genl_llb_body `{!riscvGS Σ, !xv6G Σ, !bioslotG �
       pc_is ret_tgt -∗
       sleeplocked_q γsl q slk pidv -∗
       slh_auth γt (Some q) -∗
-      (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor TsoCtx.cur_ctx K) -∗
-      R TsoCtx.cur_ctx -∗
+      (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
+      R CtxIdDefs.cur_ctx -∗
       proc_priv_bare pj pidv Upr -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
@@ -487,7 +487,7 @@ Module Type ACQUIRESLEEP.
       wp_acquiresleep_gen_llb_sconf_body γs j γl γsl s R H q m pidv Upr av eb b lks Tl.
   Parameter wp_acquiresleep_genl_llb_sconf :
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
-      (γs : list gname) (j : nat) (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
+      (γs : list gname) (j : nat) (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool) (b : bool) (lks : gset string) (Tl : nat),
       wp_acquiresleep_genl_llb_sconf_body γs j γl γsl s R H q m pidv Upr av eb b lks Tl.
   Parameter wp_acquiresleep_nb_sconf :
@@ -500,7 +500,7 @@ Module Type ACQUIRESLEEP.
   Parameter wp_acquiresleep_nb_genl_llb_sconf :
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (j : nat)
-      (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (γt : gname) (q : Qp)
+      (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (γt : gname) (q : Qp)
       (m : regfile) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool)
       (n : nat) (lks : gset string) (Tl : nat),
       wp_acquiresleep_nb_genl_llb_body j γl γsl s R γt q m pidv Upr av eb n lks Tl.

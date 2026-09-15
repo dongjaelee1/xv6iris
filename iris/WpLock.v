@@ -1102,7 +1102,7 @@ Section Lock.
      and a cell forgotten out of the tower has the witness but no
      log-length receipt ([TsoCtx.ctx_phys_pointsto_forget_floor]).  The
      arm is the witness, full stop. *)
-  Definition lk_floor (ξ : TsoCtx.CtxId) (lo : nat) : iProp Σ :=
+  Definition lk_floor (ξ : CtxIdDefs.CtxId) (lo : nat) : iProp Σ :=
     (TsoCtx.ctx_floor ξ lo ∨ ∃ a : Arch.pa, TsoCtx.ctx_wrote ξ lo a)%I.
 
   Global Instance lk_floor_persistent ξ lo : Persistent (lk_floor ξ lo).
@@ -1142,7 +1142,7 @@ Section Lock.
      land on [ledger_vis] at the token's own receipt, which is exactly the
      premise [lkcpu_read_not_mine] takes -- so the racy read needs no
      absorbed opener and [lock_openable_c] has no consumer left. *)
-  Lemma lk_floor_vis `{CID : CpuId} (ξ : TsoCtx.CtxId) (lo : nat) :
+  Lemma lk_floor_vis `{CID : CpuId} (ξ : CtxIdDefs.CtxId) (lo : nat) :
     TsoCtx.own_context ξ -∗ lk_floor ξ lo -∗
     TsoCtx.own_context ξ ∗ ∃ K : nat,
       TsoGhost.view_lb view_name loglen_name (hart_agent cpu_id) K ∗
@@ -2070,8 +2070,8 @@ End Lock.
 (* beside [lk_floor_morph].)                                                *)
 (* ---------------------------------------------------------------------- *)
 Global Instance is_lock_handle_morph `{!riscvGS Σ, !lockG Σ}
-    (γ : gname) (lk : mword 64) (s : string) (R : TsoCtx.CtxId → iProp Σ) :
-  TsoCtx.CtxMorph (λ ξ : TsoCtx.CtxId, is_lock (XI := ξ) γ lk s R).
+    (γ : gname) (lk : mword 64) (s : string) (R : CtxIdDefs.CtxId → iProp Σ) :
+  TsoCtx.CtxMorph (λ ξ : CtxIdDefs.CtxId, is_lock (XI := ξ) γ lk s R).
 Proof.
   iIntros (ξ ξ') "Hd H". rewrite /is_lock.
   iDestruct "H" as (lo) "(#Hn & #Hi & Hf)".

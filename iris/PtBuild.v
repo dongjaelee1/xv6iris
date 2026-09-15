@@ -1352,7 +1352,7 @@ Section PtBuildIris.
      kalloc page is a THREAD's, and installing it in the shared kernel table
      forgets the registration ([TsoCtx.ctx_phys_word_ledger]), which is
      exactly right: it stops being any one thread's. *)
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   (* the Pt4kWalk address facts at PtTree's [u_pte_addr] spelling
      (identical definitions; [exact] bridges by conversion) *)
@@ -1411,7 +1411,7 @@ Section PtBuildIris.
   Lemma zero_page_to_node (lvl : nat) (dq : dfrac) (b : mword 44) :
     pt_node_claim b -∗
     ([∗ list] j ∈ seq 0 4096,
-       TsoCtx.ctx_phys_pointsto TsoCtx.cur_ctx
+       TsoCtx.ctx_phys_pointsto CtxIdDefs.cur_ctx
          (pa_add (zero_extend' 64 (concat_vec b (zeros' 12 : mword 12))) j)
          dq (mword_of_int 0 : mword 8))
     -∗ ptree_own lvl dq (pt_empty_node b).
@@ -1429,7 +1429,7 @@ Section PtBuildIris.
       cbn [Nat.add pt_base pt_ents pt_empty_node].
       replace (Z.of_nat k + 0) with (Z.of_nat k) by lia.
       iIntros "Hb".
-      rewrite (pt_slot_own_ctx (UTier TsoCtx.cur_ctx) TsoCtx.cur_ctx _ _ _
+      rewrite (pt_slot_own_ctx (UTier CtxIdDefs.cur_ctx) CtxIdDefs.cur_ctx _ _ _
                  eq_refl).
       iApply TsoCtx.ctx_phys_word_pointsto_intro.
       { exact (u_pte_addr_aligned8 b (mword_of_int (Z.of_nat k))). }

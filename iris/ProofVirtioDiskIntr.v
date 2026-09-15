@@ -1263,7 +1263,7 @@ Section VtDevRam.
       kmap_at (svpn_of ea) ppn KP_rw -∗
       gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
       tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-      TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+      TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
       vt_idx_res γd pu np nr F t0 t1 W -∗
       ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
          exists v : mword 16,
@@ -1468,7 +1468,7 @@ Section VtDevRam.
       kmap_at (svpn_of ea) ppn KP_rw -∗
       gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
       tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-      TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+      TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
       (TsoCtx.hart_view_lb (CID := CID) V0 ∗ ⌜(q0 <= V0)%nat⌝ ∗
        ([∗ list] j ∈ seq 0 4,
           ledger_le (pa_add ea j) (nth_byte head j) q0) ∗ W) -∗
@@ -1526,7 +1526,7 @@ Section VtDevRam.
       kmap_at (svpn_of ea) ppn KP_rw -∗
       gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
       tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-      TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+      TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
       (TsoCtx.hart_view_lb (CID := CID) V0 ∗ ⌜(q0 <= V0)%nat⌝ ∗
        ledger_le ea b q0 ∗ W) -∗
       ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->

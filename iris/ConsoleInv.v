@@ -337,10 +337,10 @@ Definition cons_gtop (R : list (list mobs * bv 8)) : option (list mobs) :=
    [cons_stored]: that gives [obs_ends_in] and nothing about the log.  It
    is true because the only transition that puts a byte in the ring is
    consoleintr's store arm, which echoes [echo_of c] before it stores. *)
-Definition cons_logged (L : list ConsLog.log_entry)
+Definition cons_logged (L : list LogEntryDefs.log_entry)
     (R : list (list mobs * bv 8)) : Prop :=
   forall p, p ∈ R ->
-    exists e, e ∈ L /\ (ConsLog.le_hist e, ConsLog.le_byte e) = p
+    exists e, e ∈ L /\ (LogEntryDefs.le_hist e, LogEntryDefs.le_byte e) = p
               /\ ConsLog.log_echoed e.
 
 (* ...AND BETWEEN ANY TWO CONSECUTIVE ONES THE LOG ACCOUNTS FOR THE GAP:
@@ -348,7 +348,7 @@ Definition cons_logged (L : list ConsLog.log_entry)
    erase character was typed.  [read_ok]'s clauses 3 and 4, at the ring's
    own sequence rather than at a read's window -- a window is a stretch of
    it, so the read reads its two clauses straight off. *)
-Definition cons_gaps_ok (L : list ConsLog.log_entry)
+Definition cons_gaps_ok (L : list LogEntryDefs.log_entry)
     (R : list (list mobs * bv 8)) : Prop :=
   (forall i h1 c1 h2 c2,
      R !! i = Some (h1, c1) -> R !! S i = Some (h2, c2) ->
@@ -364,16 +364,16 @@ Definition cons_gaps_ok (L : list ConsLog.log_entry)
    is vacuous), a pop sets it to [true] (the erase character it logs is
    above the shortened ring), a drop logs [cs = []] and leaves it, a
    commit does not touch the sequence at all. *)
-Definition cons_gp_ok (L : list ConsLog.log_entry)
+Definition cons_gp_ok (L : list LogEntryDefs.log_entry)
     (R : list (list mobs * bv 8)) (gp : bool) : Prop :=
   if gp
-  then exists e, e ∈ L /\ hist_ext [] (ConsLog.le_hist e)
-                 /\ ohist_ext (cons_gtop R) (ConsLog.le_hist e)
-                 /\ ConsLog.cons_erase (ConsLog.le_byte e) = true
-  else forall e, e ∈ L -> ohist_ext (cons_gtop R) (ConsLog.le_hist e) ->
-                 ConsLog.le_echo e = [].
+  then exists e, e ∈ L /\ hist_ext [] (LogEntryDefs.le_hist e)
+                 /\ ohist_ext (cons_gtop R) (LogEntryDefs.le_hist e)
+                 /\ ConsLog.cons_erase (LogEntryDefs.le_byte e) = true
+  else forall e, e ∈ L -> ohist_ext (cons_gtop R) (LogEntryDefs.le_hist e) ->
+                 LogEntryDefs.le_echo e = [].
 
-Definition cons_log_ok (L : list ConsLog.log_entry)
+Definition cons_log_ok (L : list LogEntryDefs.log_entry)
     (R : list (list mobs * bv 8)) (gp : bool) : Prop :=
   cons_logged L R /\ cons_gaps_ok L R /\ cons_gp_ok L R gp.
 
@@ -395,7 +395,7 @@ Definition cons_log_ok (L : list ConsLog.log_entry)
    yet.  Owing it sets the accumulator to [true] up front and the clause
    is stated over EVERY legal echo, because the glyph count is not known
    until the loop ends. *)
-Definition cons_owed (L : list ConsLog.log_entry)
+Definition cons_owed (L : list LogEntryDefs.log_entry)
     (pe : option (list mobs * bv 8))
     (R : list (list mobs * bv 8)) (gp : bool) : Prop :=
   match pe with
@@ -462,9 +462,9 @@ Qed.
 
 (* A DROP: the entry logged has no echo, so it can sit anywhere and every
    clause is unmoved. *)
-Lemma cons_log_ok_snoc_nil (L : list ConsLog.log_entry)
-    (R : list (list mobs * bv 8)) (gp : bool) (e : ConsLog.log_entry) :
-  ConsLog.le_echo e = [] ->
+Lemma cons_log_ok_snoc_nil (L : list LogEntryDefs.log_entry)
+    (R : list (list mobs * bv 8)) (gp : bool) (e : LogEntryDefs.log_entry) :
+  LogEntryDefs.le_echo e = [] ->
   cons_log_ok L R gp -> cons_log_ok (L ++ [e]) R gp.
 Proof.
   intros He (Hlg & [Hg1 Hg0] & Hgp).
@@ -513,9 +513,9 @@ Proof.
 Qed.
 
 (* an entry logged ABOVE a gap's upper end never lands inside it *)
-Lemma cons_gap_ok_snoc_above (L : list ConsLog.log_entry) (h1 h2 : list mobs)
-    (e : ConsLog.log_entry) :
-  hist_ext h2 (ConsLog.le_hist e) ->
+Lemma cons_gap_ok_snoc_above (L : list LogEntryDefs.log_entry) (h1 h2 : list mobs)
+    (e : LogEntryDefs.log_entry) :
+  hist_ext h2 (LogEntryDefs.le_hist e) ->
   ConsLog.gap_ok L h1 h2 -> ConsLog.gap_ok (L ++ [e])%list h1 h2.
 Proof.
   intros Hab [Hl | (e' & He' & Ha & Hb & Hc)].
@@ -531,7 +531,7 @@ Qed.
    so it flips the accumulator to [true] up front against the entry it has
    not filed yet -- and the clause holds at EVERY legal echo, because the
    C('U') loop's glyph count is not known until the loop ends. *)
-Lemma cons_log_ok_owe (L : list ConsLog.log_entry)
+Lemma cons_log_ok_owe (L : list LogEntryDefs.log_entry)
     (R : list (list mobs * bv 8)) (gp : bool)
     (h : list mobs) (c : bv 8) (cs : list (bv 8)) :
   cons_chain R -> ohist_ext (cons_gtop R) h -> hist_ext [] h ->
@@ -539,7 +539,7 @@ Lemma cons_log_ok_owe (L : list ConsLog.log_entry)
   cons_log_ok L R gp -> cons_log_ok (L ++ [(h, c, cs)])%list R true.
 Proof.
   intros Hch Hgt Hne Her (Hlg & [Hg1 Hg0] & _).
-  set (e0 := (h, c, cs) : ConsLog.log_entry).
+  set (e0 := (h, c, cs) : LogEntryDefs.log_entry).
   assert (Hlift : forall (i : nat) (hi : list mobs) (ci : bv 8),
                     R !! i = Some (hi, ci) -> hist_ext hi h)
     by (intros i hi ci Hi; exact (cons_gtop_lift R h i hi ci Hch Hgt Hi)).
@@ -563,17 +563,17 @@ Qed.
    where the log's top is an ECHOED entry above the ring's top -- exactly
    what [cons_gp_ok false] forbids -- so the arm's append and its ring
    transition are one ghost step ([ProofConsoleintr.ct_gh_push]). *)
-Lemma cons_log_ok_push (L : list ConsLog.log_entry)
+Lemma cons_log_ok_push (L : list LogEntryDefs.log_entry)
     (R : list (list mobs * bv 8)) (gp : bool) (h : list mobs) (c : bv 8) :
   cons_chain R ->
-  (forall e, e ∈ L -> hist_ext (ConsLog.le_hist e) h) ->
+  (forall e, e ∈ L -> hist_ext (LogEntryDefs.le_hist e) h) ->
   ohist_ext (cons_gtop R) h ->
   cons_log_ok L R gp ->
   cons_log_ok (L ++ [(h, c, [ConsLog.echo_of c])])%list (R ++ [(h, c)])%list false.
 Proof.
   intros Hch Habove Hgt (Hlg & [Hg1 Hg0] & Hgp).
-  set (e0 := (h, c, [ConsLog.echo_of c]) : ConsLog.log_entry).
-  assert (He0h : ConsLog.le_hist e0 = h) by reflexivity.
+  set (e0 := (h, c, [ConsLog.echo_of c]) : LogEntryDefs.log_entry).
+  assert (He0h : LogEntryDefs.le_hist e0 = h) by reflexivity.
   (* every history the ring holds is strictly below the new one *)
   assert (Hlift : forall (i : nat) (hi : list mobs) (ci : bv 8),
                     R !! i = Some (hi, ci) -> hist_ext hi h)
@@ -663,7 +663,7 @@ Qed.
    accumulator is a restriction, and the accumulator survives because the
    ring's top only moves DOWN the chain -- which is why the erase arms owe
    their character BEFORE they pop ([cons_owed] at [Some]). *)
-Lemma cons_log_ok_pop (L : list ConsLog.log_entry)
+Lemma cons_log_ok_pop (L : list LogEntryDefs.log_entry)
     (R : list (list mobs * bv 8)) (p : list mobs * bv 8) :
   cons_chain (R ++ [p])%list ->
   cons_log_ok L (R ++ [p])%list true -> cons_log_ok L R true.
@@ -684,7 +684,7 @@ Proof.
     rewrite (cons_gtop_snoc R p) in Hab. cbn in Hab.
     rewrite /cons_gtop.
     destruct (R !! (length R - 1)%nat) as [[g cg]|] eqn:Hg; [| done].
-    cbn. apply (hist_ext_trans g p.1 (ConsLog.le_hist e)); [| exact Hab].
+    cbn. apply (hist_ext_trans g p.1 (LogEntryDefs.le_hist e)); [| exact Hab].
     assert (Hgl : (R ++ [p])%list !! (length R - 1)%nat = Some (g, cg))
       by (apply Hlk; exact Hg).
     assert (Hpl : (R ++ [p])%list !! (length R)%nat = Some p)
@@ -695,7 +695,7 @@ Proof.
     exact (Hch (length R - 1)%nat (length R)%nat g ph cg pc Hgl Hpl ltac:(lia)).
 Qed.
 
-Lemma cons_read_ok_of (L : list ConsLog.log_entry)
+Lemma cons_read_ok_of (L : list LogEntryDefs.log_entry)
     (R dv ws : list (list mobs * bv 8)) :
   cons_logged L R -> cons_gaps_ok L R -> cons_chain R ->
   ((dv ++ ws)%list `prefix_of` R) ->
@@ -1601,7 +1601,7 @@ Section ConsoleInv.
      the log.  Only consoleintr moves it, and it holds cons.lock and the
      port invariant together when it does. *)
   Definition cons_logm (cn : cons_names)
-      (L : list ConsLog.log_entry) : iProp Σ :=
+      (L : list LogEntryDefs.log_entry) : iProp Σ :=
     ghost_var (un_logm cn.(cn_uart)) (1/2) L.
   (* the ring's half of the high-water mark.  THE SAME PROPOSITION as
      [WpUart.uart_rx_hi (cn_uart cn) (1/2)], spelled here because this file
@@ -1986,7 +1986,7 @@ Section ConsoleInv.
     (∃ (r w e : mword 32) (bs : list (bv 8)) (ts : list (option (list mobs)))
        (cur nrd : nat) (st pd : list (list mobs * bv 8))
        (hh : option (list mobs))
-       (L0 : list ConsLog.log_entry) (gp : bool),
+       (L0 : list LogEntryDefs.log_entry) (gp : bool),
        a_cons_r ↦₄ r ∗
        a_cons_w ↦₄ w ∗
        a_cons_e ↦₄ e ∗
@@ -2171,7 +2171,7 @@ Section ConsoleInv.
   Lemma cons_ghosts_alloc (γu : uart_names) :
     ghost_var (un_rxhi γu) (1/2) (None : option (list mobs)) -∗
     ghost_var (un_deliv γu) (1/2) (@nil (list mobs * bv 8)) -∗
-    ghost_var (un_logm γu) (1/2) (@nil ConsLog.log_entry) ==∗
+    ghost_var (un_logm γu) (1/2) (@nil LogEntryDefs.log_entry) ==∗
       ∃ cn : cons_names, ⌜cn_uart cn = γu⌝ ∗ cons_ghosts_boot cn.
   Proof.
     iIntros "Hhi Hdv Hlm".
@@ -2223,7 +2223,7 @@ Section ConsoleCtx.
     (∃ (r w e : mword 32) (bs : list (bv 8)) (ts : list (option (list mobs)))
        (cur nrd : nat) (st pd : list (list mobs * bv 8))
        (hh : option (list mobs))
-       (L0 : list ConsLog.log_entry) (gp : bool),
+       (L0 : list LogEntryDefs.log_entry) (gp : bool),
        ctx_word4_pointsto ξ a_cons_r (DfracOwn 1) r ∗
        ctx_word4_pointsto ξ a_cons_w (DfracOwn 1) w ∗
        ctx_word4_pointsto ξ a_cons_e (DfracOwn 1) e ∗
@@ -2607,8 +2607,8 @@ Section ConsoleMorph.
      instance is restated locally -- the body is ξ-free post-M4, only the
      floor moves ([WpLock.lk_floor_morph]). *)
   Local Instance is_lock_morph_local (γ : gname) (lk : mword 64) (s : string)
-      (R : TsoCtx.CtxId → iProp Σ) :
-    CtxMorph (λ ξ0 : TsoCtx.CtxId, is_lock (XI := ξ0) γ lk s R).
+      (R : CtxIdDefs.CtxId → iProp Σ) :
+    CtxMorph (λ ξ0 : CtxIdDefs.CtxId, is_lock (XI := ξ0) γ lk s R).
   Proof. rewrite /is_lock. ctx_morph_solve. Qed.
 
   (* [console_inv] at another context (tso-port M2: a forkret park carries

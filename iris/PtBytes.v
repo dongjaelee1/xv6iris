@@ -122,7 +122,7 @@ Qed.
 
 Section PtBytesIris.
   Context `{!riscvGS Σ}.
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   (* THE VIEW LEMMA.  [->p8] is [<align>] plus the eight byte cells, and
      [bytes_own] over [word_bytes] is those same eight cells -- the whole
@@ -195,7 +195,7 @@ Qed.
 
 Section BytesOwnFacts.
   Context `{!riscvGS Σ}.
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   (* an owned byte cell is EXCLUSIVE, so two of them are at distinct
      addresses -- the one fact the disjointness below is made of *)
@@ -320,7 +320,7 @@ Qed.
 
 Section MapsUnion.
   Context `{!riscvGS Σ}.
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   Lemma bytes_own_list_disj (l : list (gmap Arch.pa (bv 8))) :
     ([∗ list] m ∈ l, bytes_own m) ⊢ ⌜maps_disj l⌝.

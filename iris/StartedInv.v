@@ -370,11 +370,11 @@ Section StartedInv.
       kmap_at (svpn_of started_addr) ppn KP_rw -∗
       gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
       tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-      TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+      TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
       started_res γi ξd P ==∗
       gen_heap_interp (hG := riscv_memGS) sigma.(mem) ∗
       tso_interp_of riscv_eraGS img sigma.(mem) log V ∗
-      TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx ∗
+      TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
       started_res γi ξd P ∗
       ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
          exists v : mword (8*4),
@@ -544,11 +544,11 @@ Section StartedInv.
       kmap_at (svpn_of started_addr) ppn KP_rw -∗
       gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
       tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-      TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+      TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
       (started_win_plain ∗ dset_auth γi (1/2) ∅ ∗ ctx_stamped ξd 0 ∗
        started_prim γi ∗
        (llb loglen_name B0 ∗
-        □ (∀ pos : nat, ⌜(B0 <= pos)%nat⌝ -∗ P pos TsoCtx.cur_ctx))) ==∗
+        □ (∀ pos : nat, ⌜(B0 <= pos)%nat⌝ -∗ P pos CtxIdDefs.cur_ctx))) ==∗
       gen_heap_interp (hG := riscv_memGS)
         (write_bytes sigma.(mem) (pa_of ppn started_addr) (Z.to_N 4) started_set) ∗
       tso_interp_of riscv_eraGS img
@@ -558,7 +558,7 @@ Section StartedInv.
         (vstep (hart_agent (@cpu_id CIDw)) (V (hart_agent (@cpu_id CIDw)))
            (log ++ [PWMsg (snap_of (pa_of ppn started_addr) (Z.to_N 4) started_set)
                       (hart_agent (@cpu_id CIDw))])%list V) ∗
-      TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx ∗
+      TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
       started_right γi ξd P.
   Proof.
     intros Hz CIDw img sigma log V ppn Hcan Hoff Hid Hmig.
@@ -577,7 +577,7 @@ Section StartedInv.
     iDestruct ("Hmk" $! (S (length log)) with "[%]") as "HPmk".
     { cbn in HB0len. lia. }
     (* the deposit, at the old log *)
-    iMod (ctx_deposit (CID := CIDw) (P (S (length log))) TsoCtx.cur_ctx ξd 0%nat
+    iMod (ctx_deposit (CID := CIDw) (P (S (length log))) CtxIdDefs.cur_ctx ξd 0%nat
             with "Hctx Hpk HPmk")
       as "(Hctx & %T & _ & Hpk & HP)".
     iDestruct (started_parked_llb with "Hpk") as "[Hpk #Hllb]".

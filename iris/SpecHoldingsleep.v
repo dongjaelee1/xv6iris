@@ -50,7 +50,7 @@ Require Import TsoCtx.
    derives from (the sleeplock's payload is a WpLock payload).  holdingsleep
    never touches R, so the body is the gen body with [is_sleeplock_genl]. *)
 Definition wp_holdingsleep_genl_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
-    (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
+    (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
     (m : regfile) (p : mword 64) (pidv : mword 32) (av : nat) (eb : bool) (b : bool) (lks : gset string) (Upr : ustate) :=
   let pcE : mword 64 := mword_of_int KernelSyms.holdingsleep in
   let slk := m !!! Regidx (mword_of_int 10 : mword 5) in
@@ -140,7 +140,7 @@ Definition wp_holdingsleep_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{
 
 Module Type HOLDINGSLEEP.
   Parameter wp_holdingsleep_genl_sconf :
-    forall `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
+    forall `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (p : mword 64) (pidv : mword 32) (av : nat) (eb : bool) (b : bool) (lks : gset string) (Upr : ustate),
       wp_holdingsleep_genl_sconf_body γl γsl s R H q m p pidv av eb b lks Upr.
   Parameter wp_holdingsleep_gen_sconf :

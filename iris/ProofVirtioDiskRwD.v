@@ -683,7 +683,7 @@ Section VdrwdLeaves.
       kmap_at (svpn_of ea) ppn KP_rw -∗
       gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
       tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-      TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+      TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
       (⌜v = wrap16 np⌝ ∗ avail_half pav np) -∗
       ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
          tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
@@ -711,7 +711,7 @@ Section VdrwdLeaves.
       kmap_at (svpn_of ea) ppn KP_rw -∗
       gen_heap_interp (hG := riscv_memGS) sigma.(mem) -∗
       tso_interp_of riscv_eraGS img sigma.(mem) log V -∗
-      TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx -∗
+      TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx -∗
       ([∗ list] j ∈ seq 0 2, phys_ledger (pa_add (pa_add pav 2%nat) j) (DfracOwn 1)
                                (nth_byte (wrap16 np) j)) ==∗
       gen_heap_interp (hG := riscv_memGS)
@@ -727,11 +727,11 @@ Section VdrwdLeaves.
            (log ++ [PWMsg (snap_of (pa_of ppn ea) (Z.to_N 2)
                              (wrap16 (S np) : SailStdpp.Values.mword 16))
                       (hart_agent (@cpu_id CIDw))])%list V) ∗
-      TsoCtx.own_context (CID := CIDw) TsoCtx.cur_ctx ∗
+      TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
       (∃ t : nat,
          ([∗ list] j ∈ seq 0 2, phys_ledger_at (pa_add (pa_add pav 2%nat) j) (DfracOwn 1)
                                   (nth_byte (wrap16 (S np)) j) t) ∗
-         TsoCtx.ctx_wrote TsoCtx.cur_ctx t (pa_add pav 2%nat)).
+         TsoCtx.ctx_wrote CtxIdDefs.cur_ctx t (pa_add pav 2%nat)).
   Proof.
     intros -> CIDw img sigma log V ppn Hcan Hoff Hid _.
     rewrite (ktier_pin_id ppn _ Hid).
@@ -773,7 +773,7 @@ Section VdrwdLeaves.
             Htvmono Htvtop with "Hm Htso Hres") as "(Hm & Htso & #Hmsg & Hnew)".
     iDestruct (TsoCtx.tso_interp_loglen_llb with "Htso") as "[Htso #Hllb]".
     iEval (cbn [glog gs_of]; rewrite /log' length_app Nat.add_1_r) in "Hllb".
-    iMod (TsoCtx.ctx_wrote_register (CID := CIDw) TsoCtx.cur_ctx W (length log)
+    iMod (TsoCtx.ctx_wrote_register (CID := CIDw) CtxIdDefs.cur_ctx W (length log)
             (pa_add pav 2%nat)
             (PWMsg (snap_of (pa_add pav 2%nat) (Z.to_N 2) vnew)
                (hart_agent (@cpu_id CIDw)))
@@ -1069,7 +1069,7 @@ Section VdrwdLeaves.
               (∃ t : nat,
                  ([∗ list] j ∈ seq 0 2, phys_ledger_at (pa_add (pa_add pav 2%nat) j) (DfracOwn 1)
                                           (nth_byte (wrap16 (S np)) j) t) ∗
-                 TsoCtx.ctx_wrote TsoCtx.cur_ctx t (pa_add pav 2%nat))%I
+                 TsoCtx.ctx_wrote CtxIdDefs.cur_ctx t (pa_add pav 2%nat))%I
               ltac:(lia) ltac:(lia) ltac:(unfold vmem_width; lia) ltac:(exists 2048; reflexivity)
               ltac:(vm_compute; reflexivity)
               exec_write_ram_plain_2

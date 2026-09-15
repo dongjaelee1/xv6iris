@@ -328,7 +328,7 @@ Qed.
    lines later.  This is that pure conjunct, peeled off without spending the
    supply ([FsCfgBoot.fs_boot_supply_app_inv] is the shape). *)
 Lemma fs_boot_supply_uart {Sg : gFunctors} `{!riscvGS Sg, !xv6G Sg, !bioslotG Sg}
-    `{XI : TsoCtx.CurCtx}
+    `{XI : CtxIdDefs.CurCtx}
     (ICFG : icfg) (FSC : FsCfg.fscfg) (APP : appcfg Sg) (dk : Z -> bv 8)
     (sb : FsImg.fs_sb) (nib : nat) (cov : gset Z)
     (gud : uart_names) (guv : DiskPtsto.disk_names) (cnm : cons_names)
@@ -396,7 +396,7 @@ Lemma fs_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
     (Ores : nat -> list mobs -> list (bv 8) -> iProp Σ)
     (HOrest : forall k h acc, Timeless (Ores k h acc))
-    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
     (* ...and the echo window token's slot (lane CONS-IO milestone F),
@@ -449,7 +449,7 @@ Lemma xv6_trace_hook (Σ : gFunctors) `{!xv6G Σ, !riscvGpreS Σ}
     (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
     (Ores : nat -> list mobs -> list (bv 8) -> iProp Σ)
     (HOrest : forall k h acc, Timeless (Ores k h acc))
-    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
     (* ...and the echo window token's slot (lane CONS-IO milestone F),
@@ -1174,10 +1174,10 @@ Theorem xv6_power_adequacy_gen Σ
        [Ores] and declared beside it for the same reason ([Happ_boot]'s
        statement names it): what the application claims of the inputs the
        console UART accepted and of the ones a process has been given. *)
-    (Ires : CT -> nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : CT -> nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall (c : CT) (k : nat) (h : list mobs)
-                     (pops : list ConsLog.log_entry)
+                     (pops : list LogEntryDefs.log_entry)
                      (dl : list (list mobs * bv 8)),
        Timeless (Ires c k h pops dl))
     (* ...AND THE ECHO WINDOW TOKEN (lane CONS-IO milestone F), the third
@@ -1251,10 +1251,10 @@ Theorem xv6_power_adequacy_gen Σ
        [App.xv6_app]'s [Happ_in_sup] is this obligation. *)
     (Hin_sup : forall (c : CT) (r : app_names),
        AppInv.app_sup_raw (app_fs c) r
-         ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
-                (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
+         ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
+                (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
                 Ires c k h pops dl ==∗ Ires c k h (pops ++ [e]) dl)
-           ∗ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+           ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
                   (dl ws : list (list mobs * bv 8)),
                   Ires c k h pops dl ==∗ Ires c k h pops (dl ++ ws)))
     (* THE FIRST PROCESS'S EXEC BUNDLE (ARM-c): the ONE thing the
@@ -1761,7 +1761,7 @@ Proof.
                @out_res_triv_timeless _ k h acc)
             (fun _ : unit => in_res_triv)
             (fun (_ : unit) (k : nat) (h : list mobs)
-                 (pops : list ConsLog.log_entry)
+                 (pops : list LogEntryDefs.log_entry)
                  (dl : list (list mobs * bv 8)) =>
                @in_res_triv_timeless _ k h pops dl)
             (* the window token and the turn, both trivial at the generic
@@ -1835,7 +1835,7 @@ Theorem xv6_trace_adequacy Σ
     (* ...AND THE INPUT LOG (lane CONS-IO), on [Ores]'s mould: what the
        client claims of the inputs the console UART accepted and of the
        ones a process has been given. *)
-    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
     (HR0 : ⊢ |==> R [])
@@ -1864,7 +1864,7 @@ Theorem xv6_trace_adequacy Σ
        an event on either wire. *)
     (Htx : forall (HR : riscvGS Σ) (GEN : GenId) (i : uart_id) (γ : uart_names),
        ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
-              (ho hi : list mobs) (pops : list ConsLog.log_entry)
+              (ho hi : list mobs) (pops : list LogEntryDefs.log_entry)
               (dl : list (list mobs * bv 8)),
               ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
               ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗
@@ -1944,10 +1944,10 @@ Theorem xv6_trace_adequacy Σ
        the generic slot's [read(2)] on fd 0 are paid out of
        [WpUart.in_licence], and with [Ires] arbitrary only the client can
        say that its claim survives them. *)
-    (Hin_lic : ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
-                      (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
+    (Hin_lic : ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
+                      (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
                       Ires k h pops dl ==∗ Ires k h (pops ++ [e]) dl)
-                 ∗ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+                 ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
                         (dl ws : list (list mobs * bv 8)),
                         Ires k h pops dl ==∗ Ires k h pops (dl ++ ws)))
     (P : list mobs -> Prop) (HR : forall h, R h ⊢ ⌜P h⌝)
@@ -2356,7 +2356,7 @@ Corollary xv6_trace_adequacy_xv6Σ (g : gstate)
     (HTgt : forall h, Timeless (Tg h))
     (Ores : nat -> list mobs -> list (bv 8) -> iProp xv6Σ)
     (HOrest : forall k h acc, Timeless (Ores k h acc))
-    (Ires : nat -> list mobs -> list ConsLog.log_entry ->
+    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
             list (list mobs * bv 8) -> iProp xv6Σ)
     (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
     (HR0 : ⊢ |==> R [])
@@ -2369,7 +2369,7 @@ Corollary xv6_trace_adequacy_xv6Σ (g : gstate)
           else Ores (S (obs_boots h)) [] [] ∗ Ires (S (obs_boots h)) [] [] []))
     (Htx : forall (HR : riscvGS xv6Σ) (GEN : GenId) (i : uart_id) (γ : uart_names),
        ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
-              (ho hi : list mobs) (pops : list ConsLog.log_entry)
+              (ho hi : list mobs) (pops : list LogEntryDefs.log_entry)
               (dl : list (list mobs * bv 8)),
               ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
               ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗
@@ -2428,10 +2428,10 @@ Corollary xv6_trace_adequacy_xv6Σ (g : gstate)
        the generic slot's [read(2)] on fd 0 are paid out of
        [WpUart.in_licence], and with [Ires] arbitrary only the client can
        say that its claim survives them. *)
-    (Hin_lic : ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
-                      (dl : list (list mobs * bv 8)) (e : ConsLog.log_entry),
+    (Hin_lic : ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
+                      (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
                       Ires k h pops dl ==∗ Ires k h (pops ++ [e]) dl)
-                 ∗ □ (∀ (k : nat) (h : list mobs) (pops : list ConsLog.log_entry)
+                 ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
                         (dl ws : list (list mobs * bv 8)),
                         Ires k h pops dl ==∗ Ires k h pops (dl ++ ws)))
     (P : list mobs -> Prop) (HR : forall h, R h ⊢ ⌜P h⌝)
@@ -2466,7 +2466,7 @@ Proof.
                @out_res_triv_timeless _ k h acc)
             (fun _ : unit => in_res_triv)
             (fun (_ : unit) (k : nat) (h : list mobs)
-                 (pops : list ConsLog.log_entry)
+                 (pops : list LogEntryDefs.log_entry)
                  (dl : list (list mobs * bv 8)) =>
                @in_res_triv_timeless _ k h pops dl)
             (* the window token and the turn, both trivial at the generic

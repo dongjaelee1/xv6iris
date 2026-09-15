@@ -62,7 +62,7 @@
    [ProcInv.proc_priv]'s length and [ProcInv.proc_priv_states_agree]
    ([ProofSyscall.sysc_fd_key]).
 
-   NOTHING HERE READS A [TsoCtx.CurCtx], and that is a requirement rather
+   NOTHING HERE READS A [CtxIdDefs.CurCtx], and that is a requirement rather
    than an accident (the section note below).  Getting there cost the dead
    context binders on [FsAbsDelta.delta_trunc],
    [SysOpenDefs.atrunc_commit_at] and the [om_*] mode readers,

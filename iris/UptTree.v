@@ -722,10 +722,10 @@ Section UptTranslateIris.
        page table. *)
     □ (∀ (m : gmap Arch.pa (bv 8)) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     S σ.(mem) -∗
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗ utlb_inv_pt uroot tfp um ==∗
     ∃ σ' : mstate,
@@ -772,20 +772,20 @@ Section UptTranslateIris.
     iAssert (∀ wnew : mword 64,
                ⌜pte_wb_ok (pte_set_ad w a0 d0) wnew⌝ -∗
                gen_heap_interp σ.(mem) -∗ S σ.(mem) -∗
-               pt_slot_own (UTier TsoCtx.cur_ctx)
+               pt_slot_own (UTier CtxIdDefs.cur_ctx)
                  (pt_addr0 p1 (svpn_of va)) (DfracOwn 1)
                  (pte_set_ad w a0 d0) ==∗
                gen_heap_interp (RiscvModelBytes.write_bytes σ.(mem)
                                   (pt_addr0 p1 (svpn_of va)) 8 wnew) ∗
                S (RiscvModelBytes.write_bytes σ.(mem)
                     (pt_addr0 p1 (svpn_of va)) 8 wnew) ∗
-               pt_slot_own (UTier TsoCtx.cur_ctx)
+               pt_slot_own (UTier CtxIdDefs.cur_ctx)
                  (pt_addr0 p1 (svpn_of va)) (DfracOwn 1) wnew)%I
       as "Hpay'".
     { iIntros (wnew) "%Hcn Hgh Hsto Hs".
       iApply ("Hpay" $! σ.(mem) (pt_addr0 p1 (svpn_of va)) _ wnew
                 with "Hgh Hsto Hs"). }
-    iMod (ptree_translateAddr_own acc p (UTier TsoCtx.cur_ctx) uroot t w va pa usatp
+    iMod (ptree_translateAddr_own acc p (UTier CtxIdDefs.cur_ctx) uroot t w va pa usatp
             tlbvec p2 p1 a0 d0 σ S
             Hchk (upt_variant tfp um (svpn_of va) w Hwf Hleaf) Hcanon Hout Hbase Hmaps Htlbok
             Hmisa Hmenv Hhtif Hcp Htm Heff Hss Hsatpv Hppn Hasid Htlbv
@@ -836,10 +836,10 @@ Section UptTranslateIrisAcc.
     (* A6.24's payer, threaded through the wrapper unchanged. *)
     □ (∀ (m : gmap Arch.pa (bv 8)) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     S σ.(mem) -∗
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗ utlb_inv_pt uroot tfp um ==∗
     ∃ σ' : mstate,
@@ -887,10 +887,10 @@ Section UptTranslateIrisAcc.
     (* A6.24's payer, threaded through the wrapper unchanged. *)
     □ (∀ (m : gmap Arch.pa (bv 8)) (a : Arch.pa) (wold wnew : mword 64),
          gen_heap_interp m -∗ S m -∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wold ==∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wold ==∗
          gen_heap_interp (RiscvModelBytes.write_bytes m a 8 wnew) ∗
          S (RiscvModelBytes.write_bytes m a 8 wnew) ∗
-         TsoCtx.ctx_phys_word_pointsto TsoCtx.cur_ctx a (DfracOwn 1) wnew) -∗
+         TsoCtx.ctx_phys_word_pointsto CtxIdDefs.cur_ctx a (DfracOwn 1) wnew) -∗
     S σ.(mem) -∗
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗ utlb_inv_pt uroot tfp um ==∗
     ∃ σ' : mstate,

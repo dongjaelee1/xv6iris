@@ -86,7 +86,7 @@ Definition wp_releasesleep_gen_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ,
 (* ENDGAME R1-pre: THE BOUND-INDEXED BASE TIER (see SpecAcquiresleep). *)
 Definition wp_releasesleep_genin_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (γs : list gname)
-    (γl γsl : gname) (s : string) (R Rdep : TsoCtx.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
+    (γl γsl : gname) (s : string) (R Rdep : CtxIdDefs.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
     (m : regfile) (pd : mword 32) (pme : mword 64) (av : nat) (eb : bool) (b : bool) (lks : gset string) (tl : nat) :=
   let pcE : mword 64 := mword_of_int KernelSyms.releasesleep in
   let slk := m !!! Regidx (mword_of_int 10 : mword 5) in
@@ -94,7 +94,7 @@ Definition wp_releasesleep_genin_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG �
                    in
   (22 <= av)%nat ->
   locks_below lks "sleep lock" ->
-  (forall ξ : TsoCtx.CtxId, Rdep ξ ∗ TsoCtx.ctx_floor ξ tl ⊢ R ξ) ->
+  (forall ξ : CtxIdDefs.CtxId, Rdep ξ ∗ TsoCtx.ctx_floor ξ tl ⊢ R ξ) ->
   sie_cap_gpr KT1 m av b pme -∗
   cpu_own 0 eb pme b lks -∗
   kernel_text -∗ pc_is pcE -∗
@@ -106,7 +106,7 @@ Definition wp_releasesleep_genin_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG �
      [tl]; the hook mints the floor at the lock's stamped record and the
      entailment above re-floors the row inside it *)
   TsoGhost.llb loglen_name tl -∗
-  Rdep TsoCtx.cur_ctx -∗
+  Rdep CtxIdDefs.cur_ctx -∗
   (* wakeup's resources *)
   procs_inv γs -∗
   wp_next b pme (fun (CID : CpuId) =>
@@ -122,7 +122,7 @@ Definition wp_releasesleep_genin_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG �
 
 Definition wp_releasesleep_genl_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (γs : list gname)
-    (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
+    (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
     (m : regfile) (pd : mword 32) (pme : mword 64) (av : nat) (eb : bool) (b : bool) (lks : gset string) :=
   let pcE : mword 64 := mword_of_int KernelSyms.releasesleep in
   let slk := m !!! Regidx (mword_of_int 10 : mword 5) in
@@ -138,7 +138,7 @@ Definition wp_releasesleep_genl_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ
   sleeplocked_q γsl q slk pd -∗
   (* ENDGAME R1-pre: WpLock's PLAIN release form relayed -- the releaser
      hands the payload at its own context (every ghost-only client can) *)
-  R TsoCtx.cur_ctx -∗
+  R CtxIdDefs.cur_ctx -∗
   (* wakeup's resources *)
   procs_inv γs -∗
   wp_next b pme (fun (CID : CpuId) =>
@@ -199,13 +199,13 @@ Module Type RELEASESLEEP.
   Parameter wp_releasesleep_genin_sconf :
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (γs : list gname)
-      (γl γsl : gname) (s : string) (R Rdep : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} `{HmRd : !TsoCtx.CtxMorph Rdep} (H : Qp -> iProp Σ) (q : Qp)
+      (γl γsl : gname) (s : string) (R Rdep : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} `{HmRd : !TsoCtx.CtxMorph Rdep} (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (pd : mword 32) (pme : mword 64) (av : nat) (eb : bool) (b : bool) (lks : gset string) (tl : nat),
       wp_releasesleep_genin_sconf_body γs γl γsl s R Rdep H q m pd pme av eb b lks tl.
   Parameter wp_releasesleep_genl_sconf :
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (γs : list gname)
-      (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
+      (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (pd : mword 32) (pme : mword 64) (av : nat) (eb : bool) (b : bool) (lks : gset string),
       wp_releasesleep_genl_sconf_body γs γl γsl s R H q m pd pme av eb b lks.
   Parameter wp_releasesleep_sconf :

@@ -70,7 +70,7 @@ Section ProofHoldingsleep.
       | lazymatch goal with |- ?M !!! _ = _ => is_var M; progress unfold M end ].
 
   Lemma wp_holdingsleep_genl_sconf
-      (γl γsl : gname) (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R}
+      (γl γsl : gname) (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R}
       (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (p : mword 64) (pidv : mword 32) (av : nat) (eb : bool) (b : bool) (lks : gset string) (Upr : ustate)
     : wp_holdingsleep_genl_sconf_body γl γsl s R H q m p pidv av eb b lks Upr.
@@ -251,7 +251,7 @@ Section ProofHoldingsleep.
       by (rewrite HM5ra; apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpc18) in "Hpc".
     (* open sl_res with the caller's token: refute the free arm. *)
-    iDestruct (sl_res_open_held_q γsl slk (R TsoCtx.cur_ctx) H q with "HR Hsl")
+    iDestruct (sl_res_open_held_q γsl slk (R CtxIdDefs.cur_ctx) H q with "HR Hsl")
       as "(Hsl & Hha & HHq & Hcellex)".
     (* the lock's pid field rides inside the holder token now (SleepLock.v's
        [sleeplocked_q]); holdingsleep only READS it, so it comes out and goes
@@ -497,7 +497,7 @@ Section ProofHoldingsleep.
       rewrite /D1e upd_ne; [| vm_compute; discriminate].
       rewrite /C46 upd_ne; [| vm_compute; discriminate]. exact HC42csp. }
     (* close sl_res again (held), for release's R argument. *)
-    iDestruct (sl_res_close_held γsl slk (R TsoCtx.cur_ctx) H v Hvnz with "Hslk Hdep") as "HR20".
+    iDestruct (sl_res_close_held γsl slk (R CtxIdDefs.cur_ctx) H v Hvnz with "Hslk Hdep") as "HR20".
     iDestruct (sl_pay_of_res γsl slk R H with "HR20") as "HR2".
     (* release(&slk->lk): intr_count 1 -> 0. *)
     iApply (Release.wp_release_sconf KT1 γl (sl_lk slk) "sleep lock"%string (sl_pay γsl slk R H) D20

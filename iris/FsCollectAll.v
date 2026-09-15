@@ -92,7 +92,7 @@ Local Open Scope Z_scope.
 
 Section BigOps.
   Context {Σ : gFunctors}.
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   (* a list's big-op covers its set: duplicates are simply dropped, which
      an affine logic allows and which is what makes the three overlapping
@@ -163,7 +163,7 @@ Qed.
 
 Section BigOpsRegion.
   Context {Σ : gFunctors}.
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   Lemma nested_to_set (Ψ : Z -> iProp Σ) (nib : nat) :
     ([∗ list] bi ∈ seq 0%nat nib,
@@ -280,7 +280,7 @@ Section CollectAll.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !irefslotG Σ}.
   Context `{GEN : GenId}.
   Context `{ICFG : icfg, APP : appcfg Σ}.
-  Context `{XI : TsoCtx.CurCtx}.
+  Context `{XI : CtxIdDefs.CurCtx}.
 
   (* the inum-as-a-number reading of the region's currency; the region and
      the abstract map speak [Z], the cache speaks [mword 32] *)

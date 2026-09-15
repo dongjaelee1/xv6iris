@@ -47,7 +47,7 @@ Section SleepLockAt.
      at bound 0 seals the free arm under the free floor. *)
   Lemma new_sleeplock_genl_at2 `{XI : CurCtx} `{CID : RiscvLang.CpuId}
       E (p : gname * gname) (slk : mword 64)
-      (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) :
+      (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) :
     sl_free_pair p -∗
     lock_name (sl_lk slk) "sleep lock"%string -∗
     sl_name slk s -∗
@@ -88,7 +88,7 @@ Section SleepLockAt.
 
   Lemma sl_fresh_new_genl_at2 `{XI : CurCtx} `{CID : RiscvLang.CpuId}
       E (p : gname * gname) (slk : mword 64)
-      (s : string) (R : TsoCtx.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) :
+      (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) :
     sl_free_pair p -∗ sl_fresh slk s -∗ own_context cur_ctx -∗ R cur_ctx ={E}=∗
     own_context cur_ctx ∗ is_sleeplock_genl p.1 p.2 slk s R H.
   Proof.

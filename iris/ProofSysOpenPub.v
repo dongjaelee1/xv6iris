@@ -50,6 +50,7 @@ Require Import WpSconfMem.
 Require Import IntrDefs.
 Require Import CpuOwn.
 Require Import FdSlots.
+Require Import UserOff.    (* [off_pub_park]: the publish's mode (RD-1)      *)
 Require Import ProcGeom.
 Require Import SchedCtx.
 Require Import SpecPanic.
@@ -316,11 +317,20 @@ Section ProofSysOpenPub.
     { destruct (bool_decide (fc_type C = FD_INODE)) eqn:Hbd.
       - apply bool_decide_eq_true_1 in Hbd.
         iDestruct "Hfoff" as "[Hfoff Hgv]".
-        iDestruct (off_gv_halves with "Hgv") as "[Hgk Hgu]".
+        (* THE PUBLISH'S MODE IS [park] (RD-1, design/user-read.md section
+           2): the whole shadow splits into the kernel's half, which the
+           deposit puts in the file's off box, and the user's, which
+           becomes the row invariant the descriptor bundle carries.
+           [UserOff.off_pub_hand] is the other mode -- the half HANDED to
+           the caller as [uoff g 0] -- and what stands between it and this
+           call site is recorded at the bottom of [UserOff.v]: the row
+           family [FdSlots.foff_row] has no room for a per-row choice yet.
+           The generic user-mode safety WP keeps [park] whatever happens
+           to the enriched row. *)
+        iMod (off_pub_park ⊤ g _ with "Hgv") as "[Hgk #Huinv]".
         iMod (so_deposit ⊤ kk kf g C ltac:(solve_ndisj) Hkk Hip Hbd
                 with "Hrun [Hfoff Hgk] Hrows") as "(Hrun & Hrows & %γb & Hfd)".
         { iExists voff. iFrame "Hfoff Hgk". iPureIntro. exact (Hwf Hbd). }
-        iMod (off_user_inv_alloc ⊤ g _ with "Hgu") as "#Huinv".
         iModIntro. iFrame "Hrun Hrows". iExists γb. iFrame "Huinv". iExact "Hfd".
       - iModIntro. iFrame "Hrun Hrows". iExists inhabitant.
         iSplitL; [iExact "Hfoff" | by iPureIntro]. }

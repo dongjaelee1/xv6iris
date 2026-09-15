@@ -54,6 +54,44 @@ THE CHANGE.  The user half becomes holdable:
   commit (open the invariant instead of presenting a half), so the
   kernel proof has ONE fire lemma with two suppliers, not two specs.
 
+**AS LANDED (RD-1, 2026-09-15 — `iris/UserOff.v`, branch `rd1-off-own`).**
+`uoff γo off := off_gv γo (1/2) (Z.of_nat off)` is in a new thin
+`UserOff.v` above `OffGv.v`, not in `OffGv.v` itself — the design left
+the choice open and the operational reason decided it: an edit to
+`OffGv.v` changes its digest and invalidates the .vo of everything
+below the fd layer, so the mirror cannot compile a single file again
+without a full rebuild.  `uoff_park` is `={E}=∗`, not `==∗` (allocating
+an invariant is a fancy update; there is no `==∗` form).  The rest
+landed as written, with ONE name the design did not have: the fire's
+premise is a SUPPLIER,
+
+    off_supply γo E off d R :=
+      off_gv γo (1/2) (Z.of_nat off) ={E}=∗ off_gv γo (1/2) (Z.of_nat (off+d)) ∗ R
+
+— "take the kernel's half at `off`, give it back at `off+d`, leave `R`"
+— which is what makes "one fire, two suppliers" literal: each of the
+three fires (`arf_read_fire_gen`, `wrf_awrite_fire_gen`,
+`wrf_apart_fire_gen`) takes one and returns `R`, and
+`off_supply_parked` (R = `True`, opens `off_user_inv`) /
+`off_supply_held` (R = `uoff γo (off+d)`, opens nothing) are the two
+answers.  The old lemma names keep their EXACT former statements as the
+parked instances, so no kernel proof changed.
+
+**THE ONE THING THAT DID NOT LAND: the MINT at open.**  `off_pub_park`
+and `off_pub_hand` are both proved and the publish
+(`ProofSysOpenPub.v`) now goes through `off_pub_park` — the mode is
+named at the call site — but mode `hand` cannot be wired yet, and the
+obstacle is not in open: `FdSlots.foff_row` is a PURE FUNCTION OF THE
+DESCRIPTOR STATE and PERSISTENT (`FdInode _ γo ↦ off_user_inv γo`,
+every row, no per-row choice).  There is only one user half, so a
+descriptor whose half was handed out HAS NO INVARIANT and its row
+cannot claim one.  Wiring `hand` is therefore a change to the ROW
+FAMILY — the per-row policy `FdSlots.v`'s own comment anticipates — and
+the cheapest shape that keeps both properties is to put the mode IN THE
+STATE (an `FdInode` that records parked-vs-held), which is also §3's
+arm dispatch for free.  That is an `fdstate` change with a wide match
+cone: **RD-2's call, not a side effect of RD-1.**
+
 ## 3. Arm dispatch by the handle — RD-2/4/5
 
 The U-tier read leaf cases on the `fdstate` the caller's `ufd fd st`
@@ -106,6 +144,25 @@ RECOMMENDATION: (i), with (ii) recorded as the escape if a program
 ever needs it.  NOTE: fork need only park the offsets of descriptors
 that are OPEN at the fork; close returns/drops the half (the off box
 dies with the file object's last reference).
+
+**AS LANDED (RD-1): the kernel owes NOTHING, checked not assumed.**
+kfork's descriptor-bundle copy (`ProofKforkB3.v`'s scan) takes the
+parent's row PERSISTENTLY (`#Hprow`) and hands the same row to the
+child — "THE CHILD'S OFFSET ROW IS THE PARENT'S: one file, one shadow,
+and the parent's entry is persistent".  So the child's table costs the
+proof nothing exactly as long as the parent's row carries an
+`off_user_inv`, which under mode `park` it always does; RD-1 changed no
+fork proof and the ruling changes none.  Read the other way, this is
+the same sentence as §2's as-landed note: under a future mode `hand` a
+handed row has NO invariant, so the pre-fork park is not politeness —
+it is what RE-MINTS the row the child's copy consumes.  The obligation
+is therefore purely U-tier and purely the caller's: the enriched fork
+row's premise asks the program to `uoff_park` every held offset before
+the ecall and gives back `off_user_inv` = `FdSlots.foff_row` at that
+state (`foff_row_inode` is the one step between them).  RD-1 landed the
+door (`uoff_park`) and this finding; the premise itself is written when
+RD-2 cuts the U-tier rows.  dup needs nothing at all: `γo` is per FILE
+OBJECT, so one `uoff` already serves both descriptor numbers.
 
 ## 5. The Φ channel through the trap row
 

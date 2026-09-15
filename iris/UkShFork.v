@@ -950,7 +950,7 @@ Section UkShFork.
     (* THE FIRST BYTE IS 'e', so the line is not a [cd] command *)
     assert (Hnck : bv_unsigned (f k) <> 99).
     { destruct Hline as [Hlen Hby].
-      pose proof echo_line_length as HL.
+      pose proof echo_line_pos as HL.
       pose proof (Hby 0%nat ltac:(lia)) as H0. cbn beta in H0.
       rewrite !Nat.add_0_r in H0. rewrite H0 ushf_echo_byte0. lia. }
     pose proof Hregs as Hregs'.

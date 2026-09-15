@@ -72,7 +72,15 @@ the only case outside it.
   `echo_alen_le5` are deleted — nothing reads an argument's offset or length
   as a number any more. What remains is `echo_off_0 = 0` (true of every line,
   `wl_off_0`) and `echo_alen_0 = 4` (the COMMAND NAME, which stays "echo").
-- **THE LENGTH IS GONE EVERYWHERE BUT `UkSh.v`.** `UConsLine.ush_disc_line`
+- **THE LENGTH IS GONE.** Three sites still name 17, and each is a
+  deliberate one: the two anti-vacuity demos at a literal wire
+  (`EchoOut.v`, `EchoLinksPro.v`), and `UkSh`'s check that the line fits
+  `getcmd`'s buffer — a SIDE CONDITION on the line, flagged as such in
+  place. `UkSh`'s three closed `forallb`s over seventeen indices are gone:
+  its byte rows are `EchoDisc.echo_line_byte_nl` / `_ncr` / `_nonzero` and
+  `echo_line_nl_val`. `ush_echo_first` stays literal on purpose — it is the
+  COMMAND NAME's first byte.
+- **Formerly:** `UConsLine.ush_disc_line`
   divides by `length echo_line`, `UShEcho.echo_line_nonul` and
   `UkShEcho.echo_off_lt` are stated at it, and `ush_line_toks` reports it —
   none of them says 17. `EchoDisc.echo_line_nl_at_end` is where the closing
@@ -98,21 +106,15 @@ premise once the word list is a parameter.
 
 ## What is left
 
-1. **`UkSh.v`'s OWN WALK** still reads 17 at twelve sites — the shell's
-   `gets` loop and its per-byte row. These are the last consumers of
-   `EchoDisc.echo_line_length`; the rest of the tree spends
-   `echo_line_pos`. Several are `rewrite echo_line_length; intro Hj`
-   feeding a `do 17 destruct`, so they want the line's byte laws
-   (`echo_line_byte_val_at`) rather than positivity.
-2. **THE EXEC-CHANNEL PREMISES.** `UShEchoOut.echo_out_argv_of_image` and
+1. **THE EXEC-CHANNEL PREMISES.** `UShEchoOut.echo_out_argv_of_image` and
    `UShEchoPay` still carry `na = 3` and per-index `alen i = echo_alen i`;
    they should read `na = length echo_ws` and quantify.
-3. **THE CALLER'S SIDE CONDITIONS**, none of which `LineWords`/`UkShWords`
+2. **THE CALLER'S SIDE CONDITIONS**, none of which `LineWords`/`UkShWords`
    state: at most `MAXARGS` words (sh's parser), the line inside `getcmd`'s
    100-byte buffer and the console's 128. The argv block's fit inside exec's
    stack page is already an inequality (`KexecDefs.kxc_len_bound`).
-4. **THE WORD LIST ITSELF.** Once 1-3 are done, `EchoDisc.echo_ws` becomes a
-   parameter with `wl_wf` and item 3's bounds and prefix-freeness as its premises, and the theorem
+3. **THE WORD LIST ITSELF.** Once 1-2 are done, `EchoDisc.echo_ws` becomes a
+   parameter with `wl_wf` and item 2's bounds and prefix-freeness as its premises, and the theorem
    reads `forall ws, ... -> <the claim at that line>`.
 
 ## The two traps this lane keeps walking into

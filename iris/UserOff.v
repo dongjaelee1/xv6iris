@@ -197,37 +197,29 @@ Section UserOff.
 End UserOff.
 
 (* ==================================================================== *)
-(*  AS LANDED (RD-1, 2026-09-15): where mode HAND still cannot go        *)
+(*  WHERE MODE HAND STANDS (RA-1)                                        *)
 (* ==================================================================== *)
-(* [off_pub_hand] is proved and all three fires take the held supplier,
-   but NOTHING IN THE TREE HANDS A [uoff] OUT YET -- the publish calls
-   [off_pub_park] -- and the reason is one structural fact worth recording
-   where the next lane will look:
+(* The ROW FAMILY now has the per-row policy [FdSlots.v]'s own comment
+   anticipated, and it has it in the shape design/user-read.md section 3
+   ruled: the mode is IN THE STATE.  [FdSlots.offmode] is the third field
+   of [FdInode], and [FdSlots.foff_row] reads it --
 
-     [FdSlots.foff_row] is a PURE FUNCTION OF THE DESCRIPTOR STATE, and
-     PERSISTENT -- [foff_row (FdOpen _ _ (FdInode _ γo)) = off_user_inv γo]
-     for EVERY inode descriptor, with no room for a per-row choice.
+     parked -> [OffGv.off_user_inv γo]   (what every inode row was)
+     held   -> nothing
 
-   Those two properties are load-bearing: persistence is why a forked
-   child's copy of the table costs nothing and why [fd_frags] can be
-   threaded opaquely by every syscall that does not touch offsets; being
-   keyed by the state is why the family is a function of the list the
-   bundle is already indexed by.  But they are exactly what mode HAND
-   contradicts -- there is only ONE user half, so a descriptor whose half
-   was handed out HAS NO INVARIANT, and its row cannot claim one.
+   -- which keeps the family both PERSISTENT and A PURE FUNCTION OF THE
+   STATE, the two properties a forked child's copy, a dup, and every
+   syscall that threads [fd_frags] opaquely all rest on.
 
-   So wiring mode HAND is not a change to the publish; it is a change to
-   the ROW FAMILY, and it needs the per-row POLICY [FdSlots.v]'s own
-   comment already anticipates ("a verified process that keeps its half
-   instead takes a per-row POLICY where this family now takes the
-   invariant; the enriched open row is where that choice will be made").
-   The cheapest shape that keeps BOTH properties is to put the mode in the
-   STATE -- an [FdInode] that records whether its offset is parked or held
-   -- which is also, for free, design/user-read.md section 3's arm
-   dispatch: the U-tier leaf cases on the handle's kind, and "held inode"
-   is the arm whose payment is [uoff].  That is an fdstate change with a
-   wide match cone, so it is RD-2's call to make, not a side effect of
-   this lane.
+   STILL NOTHING HANDS A [uoff] OUT, and that is now a pin rather than a
+   wall.  [FileInvDefs.fdstate_ok]'s FD_INODE arm requires [OffParked], so
+   every descriptor the file invariant describes is parked and the kernel
+   meets no held state: fileread's and filewrite's fires read the same
+   [foff_row] they always did.  Wiring mode HAND is exactly the act of
+   relaxing that conjunct, and what it costs is design/user-read.md
+   section 8.2's mode-split arms (the held arm's payment is the caller's
+   own [uoff], riding [UkReadFile.udepwf_st]) plus section 8.3's boundary
+   parks at fork and exec.
 
    WHAT DOES NOT BLOCK ON IT: everything above.  The park path is
    unchanged end to end, the held supplier is proved and plugged into all

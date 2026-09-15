@@ -151,7 +151,7 @@ Section UkWriteFile.
        awrite_chain (fs_gamma_L fsc_fs) appE i γo M (m !!! Regidx a1_idx)
          Q 0%nat (wchunks n)) -∗
     udepwf_st N m pc 16 (write_file_fam Q (ukn_pay N))
-      (FdOpen rb true (FdInode i γo)).
+      (FdOpen rb true (FdInode i γo OffParked)).
   Proof.
     intros Hcnt. iIntros "Hch". rewrite /udepwf_st.
     iSplitR; [ iPureIntro; reflexivity | ].
@@ -320,14 +320,14 @@ Section UkWriteFile.
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     (* THE HANDLE: "fd is open for writing on inode i" *)
-    UserFd.ufd (ukn_fd N) fd (FdOpen rb true (FdInode i γo)) -∗
+    UserFd.ufd (ukn_fd N) fd (FdOpen rb true (FdInode i γo OffParked)) -∗
     (* THE BYTES *)
     ubytesq (ukn_d N) dq (uint (m !!! Regidx a1_idx)) nb f -∗
     (* the application's supply, which is what the chain costs at the
        trivial cursor *)
     app_sup -∗
     (∀ (h' : CpuId) (r : mword 64),
-       UserFd.ufd (ukn_fd N) fd (FdOpen rb true (FdInode i γo)) -∗
+       UserFd.ufd (ukn_fd N) fd (FdOpen rb true (FdInode i γo OffParked)) -∗
        ubytesq (ukn_d N) dq (uint (m !!! Regidx a1_idx)) nb f -∗
        ((⌜r = (mword_of_int (Z.of_nat nb) : mword 64)⌝ ∗
          ⌜∃ bs : list (bv 8), length bs = nb /\
@@ -348,7 +348,7 @@ Section UkWriteFile.
                 0%nat (wchunks (Z.of_nat nb)) with "Hsup"). }
     iApply (wp_uk_ecall_write_file N h m pc avail
               (write_file_fam (fun _ => True%I) (ukn_pay N)) fd
-              (FdOpen rb true (FdInode i γo))
+              (FdOpen rb true (FdInode i γo OffParked))
               (ubytesq (ukn_d N) dq (uint (m !!! Regidx a1_idx)) nb f)
               nb f Hn Hfdv Hfdlt Hal4
               (fun M pmv sz =>

@@ -231,7 +231,7 @@ Section ProofSysOpenStores.
        /\ 0 <= bv_unsigned (di_major dn) <= NDEV_max
        /\ t = FdDevice (bv_unsigned (di_major dn))) ->
     (bv_unsigned (di_type dn) <> FsImg.T_DEVICE_z ->
-       tyw = FD_INODE /\ t = FdInode (bv_unsigned inum) g) ->
+       tyw = FD_INODE /\ t = FdInode (bv_unsigned inum) g OffParked) ->
     is_aligned_paddr (Physaddr (pa_stk sp0 23)) 8 = true ->
     sp0 = (m !!! Regidx csp_rs1 : mword 64) ->
     so_sp sp0 N -> so_thr m N ->
@@ -363,7 +363,7 @@ Section ProofSysOpenStores.
                     /\ t = FdDevice (bv_unsigned (di_major dn)))
       by (intros Hq; destruct (Htd Hq) as (_ & _ & Ha & Hbq); exact (conj Ha Hbq)).
     assert (Hinob : bv_unsigned (di_type dn) <> FsImg.T_DEVICE_z ->
-                    t = FdInode (bv_unsigned inum) g)
+                    t = FdInode (bv_unsigned inum) g OffParked)
       by (intros Hq; exact (proj2 (Hti Hq))).
     (* THE OWNER'S RULING (2026-08-29), AND THIS LANE OWES IT NOTHING NEW:
        [Htd] already says a T_DEVICE inode was stored as FD_DEVICE, so the
@@ -525,7 +525,7 @@ Section ProofSysOpenStores.
               /foff_of.
       iFrame "Hfty Hfrd Hfwr Hfpip Hfip Hfmaj". }
     (* the published content's type, in the shape the publication asks for *)
-    assert (Hfdty : (fc_type C = FD_INODE /\ t = FdInode (bv_unsigned inum) g)
+    assert (Hfdty : (fc_type C = FD_INODE /\ t = FdInode (bv_unsigned inum) g OffParked)
                    \/ (fc_type C = FD_DEVICE
                        /\ t = FdDevice (bv_unsigned (fc_major C)))).
     { destruct (decide (bv_unsigned (di_type dn) = FsImg.T_DEVICE_z))
@@ -938,7 +938,7 @@ Section ProofSysOpenStores.
        function context. *)
     (* the O_TRUNC file arm: the ONE arm of this surface that spends the
        trunc commit, at the row the observation read *)
-    assert (Htis : t = FdInode (bv_unsigned inum) g).
+    assert (Htis : t = FdInode (bv_unsigned inum) g OffParked).
     { destruct (Hti ltac:(rewrite Htyfz; vm_compute; discriminate)) as [_ Hq].
       exact Hq. }
     iEval (rewrite /so_obs (opf_era_file_row dn bm data Htyfz)) in "Hobs".

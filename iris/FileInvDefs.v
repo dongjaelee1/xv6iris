@@ -545,7 +545,20 @@ Definition fdstate_ok (inum : mword 32) (γo : gname) (C : fcontent) (st : fdsta
       /\ fc_writable C = ((if w then mword_of_int 1 else mword_of_int 0) : mword 8)
       /\ match t with
          | FdPipe        => fc_type C = FD_PIPE
-         | FdInode n g   => fc_type C = FD_INODE /\ n = bv_unsigned inum /\ g = γo
+         (* ...AND THE OFFSET MODE IS PARKED.  There is exactly one user
+            half of the shadow, and the kernel's own proofs advance
+            [f->off] against [FdSlots.foff_row], which claims that half
+            only at a PARKED row -- so a live [struct file] whose
+            descriptor recorded [OffHeld] would leave fileread's and
+            filewrite's fires with no offset supplier at all.  Today
+            nothing mints a held descriptor, so this pin is what makes
+            the mode's arrival BYTE-FOR-BYTE INVISIBLE to the kernel:
+            every [st] the file invariant hands out is parked and every
+            kernel proof reads the same row it read before.  Wiring mode
+            [hand] is exactly the act of relaxing this conjunct, and it
+            comes with the mode-split arms of design/user-read.md SS8.2. *)
+         | FdInode n g m => fc_type C = FD_INODE /\ n = bv_unsigned inum /\ g = γo
+                            /\ m = OffParked
          | FdDevice mj   => fc_type C = FD_DEVICE /\ mj = bv_unsigned (fc_major C)
          end
   end.
@@ -560,7 +573,7 @@ Lemma fdstate_ok_pipe (inum : mword 32) (γo : gname) (C : fcontent) (st : fdsta
   fdstate_ok inum γo C st -> fc_type C = FD_PIPE ->
   ∃ r w : bool, st = FdOpen r w FdPipe.
 Proof.
-  destruct st as [|r w [n g| |mj]]; cbn; intros Hok Ht.
+  destruct st as [|r w [n g m| |mj]]; cbn; intros Hok Ht.
   - exfalso. rewrite Ht in Hok. apply (f_equal bv_unsigned) in Hok.
     by vm_compute in Hok.
   - exfalso. destruct Hok as (_ & _ & Hc & _). rewrite Ht in Hc.
@@ -572,12 +585,12 @@ Qed.
 
 Lemma fdstate_ok_inode (inum : mword 32) (γo : gname) (C : fcontent) (st : fdstate) :
   fdstate_ok inum γo C st -> fc_type C = FD_INODE ->
-  ∃ r w : bool, st = FdOpen r w (FdInode (bv_unsigned inum) γo).
+  ∃ r w : bool, st = FdOpen r w (FdInode (bv_unsigned inum) γo OffParked).
 Proof.
-  destruct st as [|r w [n g| |mj]]; cbn; intros Hok Ht.
+  destruct st as [|r w [n g m| |mj]]; cbn; intros Hok Ht.
   - exfalso. rewrite Ht in Hok. apply (f_equal bv_unsigned) in Hok.
     by vm_compute in Hok.
-  - destruct Hok as (_ & _ & _ & -> & ->). by exists r, w.
+  - destruct Hok as (_ & _ & _ & -> & -> & ->). by exists r, w.
   - exfalso. destruct Hok as (_ & _ & Hc). rewrite Ht in Hc.
     apply (f_equal bv_unsigned) in Hc. by vm_compute in Hc.
   - exfalso. destruct Hok as (_ & _ & Hc & _). rewrite Ht in Hc.
@@ -588,7 +601,7 @@ Lemma fdstate_ok_device (inum : mword 32) (γo : gname) (C : fcontent) (st : fds
   fdstate_ok inum γo C st -> fc_type C = FD_DEVICE ->
   ∃ r w : bool, st = FdOpen r w (FdDevice (bv_unsigned (fc_major C))).
 Proof.
-  destruct st as [|r w [n g| |mj]]; cbn; intros Hok Ht.
+  destruct st as [|r w [n g m| |mj]]; cbn; intros Hok Ht.
   - exfalso. rewrite Ht in Hok. apply (f_equal bv_unsigned) in Hok.
     by vm_compute in Hok.
   - exfalso. destruct Hok as (_ & _ & Hc & _). rewrite Ht in Hc.
@@ -601,7 +614,7 @@ Qed.
 Lemma fdstate_ok_none (inum : mword 32) (γo : gname) (C : fcontent) (st : fdstate) :
   fdstate_ok inum γo C st -> fc_type C = FD_NONE -> st = FdClosed.
 Proof.
-  destruct st as [|r w [n g| |mj]]; cbn; intros Hok Ht; [reflexivity | | |];
+  destruct st as [|r w [n g m| |mj]]; cbn; intros Hok Ht; [reflexivity | | |];
     exfalso;
     [ destruct Hok as (_ & _ & Hc & _) | destruct Hok as (_ & _ & Hc)
     | destruct Hok as (_ & _ & Hc & _) ];
@@ -637,9 +650,9 @@ Qed.
 Lemma fdstate_ok_inj (inum : mword 32) (γo : gname) (C : fcontent) (st1 st2 : fdstate) :
   fdstate_ok inum γo C st1 -> fdstate_ok inum γo C st2 -> st1 = st2.
 Proof.
-  destruct st1 as [|r1 w1 [n1 g1| |m1]]; cbn; intros H1 H2.
+  destruct st1 as [|r1 w1 [n1 g1 om1| |m1]]; cbn; intros H1 H2.
   - by rewrite (fdstate_ok_none inum γo C st2 H2 H1).
-  - destruct H1 as (Hr & Hw & Ht & -> & ->).
+  - destruct H1 as (Hr & Hw & Ht & -> & -> & ->).
     destruct (fdstate_ok_inode inum γo C st2 H2 Ht) as (r2 & w2 & ->).
     destruct (fdstate_ok_rw inum γo C r2 w2 _ H2) as [Hr2 Hw2].
     by rewrite (fdstate_bit_inj r1 r2 _ Hr Hr2) (fdstate_bit_inj w1 w2 _ Hw Hw2).
@@ -688,7 +701,7 @@ Proof.
   intros H1 H2 Ht.
   destruct (fdstate_ok_inode inum1 γ1 C st H1 Ht) as (r1 & w1 & E1).
   destruct (fdstate_ok_inode inum2 γ2 C st H2 Ht) as (r2 & w2 & E2).
-  rewrite E1 in E2. injection E2 as _ _ Hn Hg. auto.
+  rewrite E1 in E2. inversion E2. auto.
 Qed.
 
 (* ...and the SHAPE the three per-type readings share: an open descriptor is
@@ -703,7 +716,7 @@ Proof.
   intros Hok [H|[H|H]].
   - destruct (fdstate_ok_pipe   inum γo C st Hok H) as (r & w & ->). by exists r, w, FdPipe.
   - destruct (fdstate_ok_inode  inum γo C st Hok H) as (r & w & ->).
-    by exists r, w, (FdInode (bv_unsigned inum) γo).
+    by exists r, w, (FdInode (bv_unsigned inum) γo OffParked).
   - destruct (fdstate_ok_device inum γo C st Hok H) as (r & w & ->).
     by exists r, w, (FdDevice (bv_unsigned (fc_major C))).
 Qed.
@@ -1959,10 +1972,10 @@ Section FoffRow.
     (if bool_decide (fc_type C = FD_INODE) then off_user_inv γo else True) -∗
     foff_row st.
   Proof.
-    intros Hok. destruct st as [|r w [n g| |mj]]; cbn;
+    intros Hok. destruct st as [|r w [n g m| |mj]]; cbn;
       [by iIntros "_" | | by iIntros "_" | by iIntros "_"].
-    destruct Hok as (_ & _ & Ht & _ & ->).
-    rewrite (bool_decide_eq_true_2 _ Ht). iIntros "$".
+    destruct Hok as (_ & _ & Ht & _ & -> & ->).
+    rewrite (bool_decide_eq_true_2 _ Ht). cbn. iIntros "$".
   Qed.
 
 End FoffRow.

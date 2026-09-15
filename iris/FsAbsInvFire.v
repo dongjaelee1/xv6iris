@@ -299,7 +299,7 @@ Section FsAbsInvFire.
     rewrite /fileread_in. iIntros "#Hilic #Hsup HP".
     destruct st as [| rb wb ty]; [iExact "HP" |].
     destruct rb; [| iExact "HP"].
-    destruct ty as [i γo | | ma].
+    destruct ty as [i γo om | | ma].
     - iFrame "HP". iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
     - iExact "HP".
     - case_decide; [| iExact "HP"].
@@ -347,7 +347,7 @@ Section FsAbsInvFire.
     rewrite /filewrite_in.
     destruct st as [| rb wb ty]; [by iModIntro |].
     destruct wb; [| by iModIntro].
-    destruct ty as [i γo | | ma].
+    destruct ty as [i γo om | | ma].
     - iModIntro.
       iApply (fsabs_awrite_chain fsc_fs i γo M ua 0%nat (wchunks n)
                 with "Hsup").

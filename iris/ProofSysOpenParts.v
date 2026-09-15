@@ -1022,7 +1022,7 @@ Section ProofSysOpenPublish.
       - rewrite bool_decide_true; [reflexivity | reflexivity].
       - rewrite orb_true_r. reflexivity. }
     set (stpub := if bool_decide (fc_type C = FD_INODE)
-                  then FdOpen rb wb (FdInode (bv_unsigned inum) γo)
+                  then FdOpen rb wb (FdInode (bv_unsigned inum) γo OffParked)
                   else FdOpen rb wb (FdDevice (bv_unsigned (fc_major C)))).
     assert (Hokpub : fdstate_ok inum γo C stpub).
     { rewrite /stpub. destruct Hty as [Ht | Ht].

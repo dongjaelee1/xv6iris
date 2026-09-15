@@ -156,8 +156,29 @@ Definition fdslotUR : ucmra := authUR natUR.
    one.  It is tied to the payload's [fpnames.fp_ooff] by
    [FileInvDefs.fdstate_ok]'s FD_INODE arm.  Pipes and devices have no
    meaningful offset and carry no name. *)
+(* [FdInode] ALSO RECORDS WHOSE THE OFFSET IS (design/user-read.md SS3's
+   RULING, SS8.1).  There is exactly ONE user half of [OffGv.off_gv], so a
+   descriptor's row family can carry [OffGv.off_user_inv] only while that
+   half is PARKED in it; a descriptor whose half has been HANDED to the
+   program ([UserOff.uoff]) has no invariant and its row must claim
+   nothing.  Putting the choice in the STATE is the only shape that keeps
+   [foff_row] both PERSISTENT and A PURE FUNCTION OF THE STATE, which is
+   what every site that threads [fd_frags] opaquely relies on -- and it is
+   design/user-read.md SS3's arm dispatch for free: "held inode" is the arm
+   whose payment is the program's own [uoff].
+
+   TODAY EVERY CONSTRUCTOR SITE WRITES [OffParked] and the file invariant
+   PINS it ([FileInvDefs.fdstate_ok]'s FD_INODE arm), so the kernel meets
+   no held descriptor and its proofs are byte-for-byte what they were.
+   Mode [hand] is wired at the enriched open row by the next lane. *)
+Inductive offmode := OffParked | OffHeld.
+
+Global Instance offmode_eq_dec : EqDecision offmode.
+Proof. solve_decision. Defined.
+Global Instance offmode_inhabited : Inhabited offmode := populate OffParked.
+
 Inductive fdtype :=
-| FdInode (inum : Z) (γo : gname)
+| FdInode (inum : Z) (γo : gname) (om : offmode)
 | FdPipe
 | FdDevice (major : Z).
 
@@ -191,6 +212,88 @@ Proof. solve_decision. Defined.
 Global Instance fdstate_eq_dec : EqDecision fdstate.
 Proof. solve_decision. Defined.
 Global Instance fdstate_inhabited : Inhabited fdstate := populate FdClosed.
+
+(* ===================================================================== *)
+(*  THE PARKED READING OF A DESCRIPTOR TABLE                              *)
+(* ===================================================================== *)
+(* "nobody in this table has been handed an offset half" (design/
+   user-read.md SS8.1).  It is the GENERIC TIER'S DISCIPLINE: the generic
+   user-mode WP answers for no abstract state and pays every deposit out
+   of a PERSISTENT supply, so it can never present an exclusive [uoff] --
+   and the weak (parked) supplier of the offset fire only exists where
+   [OffGv.off_user_inv] does.  A descriptor that reaches code outside the
+   owner's WP is precisely one whose offset the owner no longer controls,
+   so the two readings coincide.
+
+   PURE, and a function of the LIST the descriptor bundle is already
+   indexed by -- the same discipline [foff_row] follows one section down,
+   for the same reason: every site that threads the bundle opaquely stays
+   untouched. *)
+Definition fdst_parked (st : fdstate) : Prop :=
+  match st with
+  | FdOpen _ _ (FdInode _ _ OffHeld) => False
+  | _ => True
+  end.
+
+Global Instance fdst_parked_dec (st : fdstate) : Decision (fdst_parked st).
+Proof. destruct st as [|? ? [? ? [|]| |?]]; cbn; apply _. Defined.
+
+Definition fdv_all_parked (l : list fdstate) : Prop := Forall fdst_parked l.
+
+Global Instance fdv_all_parked_dec (l : list fdstate) : Decision (fdv_all_parked l).
+Proof. unfold fdv_all_parked. apply _. Defined.
+
+(* ---- the little kit: every generic-tier table operation preserves it.
+   close and kfork's closed rows insert [FdClosed]; the parked open
+   inserts an [FdInode _ _ OffParked] (or a device, or a pipe); dup copies
+   a row the table already had -- and out of range the TOTAL lookup is
+   [FdClosed], so the copy is parked either way; sys_pipe inserts the two
+   ends.  [UsysMemOk.usys_fd_ok_parked] is those four rows read off the
+   syscall table, and it is where the one row this discipline still owes
+   (open's existential type) is named. ---- *)
+Lemma fdst_parked_closed : fdst_parked FdClosed.
+Proof. exact I. Qed.
+Lemma fdst_parked_pipe (r w : bool) : fdst_parked (FdOpen r w FdPipe).
+Proof. exact I. Qed.
+Lemma fdst_parked_dev (r w : bool) (mj : Z) : fdst_parked (FdOpen r w (FdDevice mj)).
+Proof. exact I. Qed.
+Lemma fdst_parked_inode (r w : bool) (i : Z) (γo : gname) :
+  fdst_parked (FdOpen r w (FdInode i γo OffParked)).
+Proof. exact I. Qed.
+
+Lemma fdv_all_parked_lookup (l : list fdstate) (k : nat) (st : fdstate) :
+  fdv_all_parked l -> l !! k = Some st -> fdst_parked st.
+Proof. intros Hl Hk. exact (Forall_lookup_1 _ _ _ _ Hl Hk). Qed.
+
+(* the TOTAL lookup, which is what dup's row hands over: out of range the
+   default is [FdClosed], which is parked. *)
+Lemma fdv_all_parked_lookup_total (l : list fdstate) (k : nat) :
+  fdv_all_parked l -> fdst_parked (l !!! k).
+Proof.
+  intros Hl. destruct (l !! k) as [st |] eqn:Hk.
+  - rewrite (list_lookup_total_correct _ _ _ Hk).
+    exact (fdv_all_parked_lookup l k st Hl Hk).
+  - rewrite list_lookup_total_alt Hk. exact I.
+Qed.
+
+Lemma fdv_all_parked_insert (l : list fdstate) (k : nat) (st : fdstate) :
+  fdv_all_parked l -> fdst_parked st -> fdv_all_parked (<[k := st]> l).
+Proof.
+  intros Hl Hst. unfold fdv_all_parked in *.
+  apply Forall_lookup. intros j y Hy.
+  apply list_lookup_insert_Some in Hy as [(_ & <- & _) | (_ & Hy)];
+    [exact Hst | exact (Forall_lookup_1 _ _ _ _ Hl Hy)].
+Qed.
+
+Lemma fdv_all_parked_replicate (n : nat) (st : fdstate) :
+  fdst_parked st -> fdv_all_parked (replicate n st).
+Proof.
+  intros Hst. unfold fdv_all_parked. apply Forall_lookup.
+  intros j y Hy. apply lookup_replicate in Hy as [-> _]. exact Hst.
+Qed.
+
+Lemma fdv_all_parked_closed (n : nat) : fdv_all_parked (replicate n FdClosed).
+Proof. apply fdv_all_parked_replicate, fdst_parked_closed. Qed.
 
 Definition fdstElt : cmra := prodR fracR (agreeR (leibnizO fdstate)).
 Definition fdstUR : ucmra := gmapUR nat fdstElt.
@@ -501,18 +604,33 @@ Section FdSlots.
      half the publish returned; dup copies the source's; close, pipe and
      kfork's closed rows owe nothing.
 
-     WHAT IS NOT YET HERE: a verified process that keeps its half instead
-     takes a per-row POLICY where this family now takes the invariant; the
-     enriched open row is where that choice will be made. *)
+     AND THE PER-ROW POLICY IS HERE NOW, as [FdInode]'s own [offmode]
+     field: a verified process that KEEPS its half holds a descriptor
+     whose state records [OffHeld], and that row claims nothing.  Putting
+     the choice in the state rather than beside the family is what keeps
+     the two properties above -- persistence and being a function of the
+     list -- which a per-row resource parameter would have destroyed.  No
+     held descriptor exists yet: [FileInvDefs.fdstate_ok] pins every live
+     inode row at [OffParked], and relaxing that pin is the enriched open
+     row's business (design/user-read.md SS8.2). *)
   Context `{!riscvGS Σ, !offboxG Σ}.
 
+  (* KEYED BY THE MODE THE STATE RECORDS (design/user-read.md SS8.1): a
+     PARKED inode row claims the invariant, exactly as every inode row did
+     before the mode existed; a HELD one claims NOTHING, because its half
+     is in the program's hands and there is only one.  Both properties the
+     family is load-bearing for survive: it is still PERSISTENT (so a
+     forked child's copy and a dup cost nothing) and still A PURE FUNCTION
+     OF THE STATE (so every site that threads [fd_frags] opaquely is
+     untouched). *)
   Definition foff_row (st : fdstate) : iProp Σ :=
     match st with
-    | FdOpen _ _ (FdInode _ γo) => off_user_inv γo
+    | FdOpen _ _ (FdInode _ γo OffParked) => off_user_inv γo
+    | FdOpen _ _ (FdInode _ _ OffHeld)   => emp
     | _ => True
     end.
   Global Instance foff_row_persistent st : Persistent (foff_row st).
-  Proof. destruct st as [|? ? [? ?| |?]]; apply _. Qed.
+  Proof. destruct st as [|? ? [? ? [|]| |?]]; apply _. Qed.
 
   Lemma foff_row_closed : ⊢ foff_row FdClosed.
   Proof. done. Qed.
@@ -521,8 +639,13 @@ Section FdSlots.
   Lemma foff_row_dev (r w : bool) (mj : Z) : ⊢ foff_row (FdOpen r w (FdDevice mj)).
   Proof. done. Qed.
   Lemma foff_row_inode (r w : bool) (i : Z) (γo : gname) :
-    off_user_inv γo -∗ foff_row (FdOpen r w (FdInode i γo)).
+    off_user_inv γo -∗ foff_row (FdOpen r w (FdInode i γo OffParked)).
   Proof. iIntros "$". Qed.
+  (* ...and the held row, which is free: a handed-out half leaves the row
+     with nothing to say. *)
+  Lemma foff_row_inode_held (r w : bool) (i : Z) (γo : gname) :
+    ⊢ foff_row (FdOpen r w (FdInode i γo OffHeld)).
+  Proof. done. Qed.
 
   (* ...and the reading a walk needs, at a state it holds only through an
      EQUATION: a descriptor's shape is derived from its content, never
@@ -530,7 +653,7 @@ Section FdSlots.
      [FsAbsWriteFire.wrf_awrite_fire] the invariant they advance the
      offset out of. *)
   Lemma foff_row_inode_of (st : fdstate) (r w : bool) (i : Z) (γo : gname) :
-    st = FdOpen r w (FdInode i γo) -> foff_row st -∗ off_user_inv γo.
+    st = FdOpen r w (FdInode i γo OffParked) -> foff_row st -∗ off_user_inv γo.
   Proof. intros ->. iIntros "$". Qed.
 
   (* NO PERMIT ROW.  fileread and filewrite take the INVARIANT itself --

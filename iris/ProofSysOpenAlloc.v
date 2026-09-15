@@ -968,7 +968,7 @@ Section ProofSysOpenAlloc.
     { intros Hc. apply Hnd3. apply bv_eq. rewrite Hc.
       vm_compute. reflexivity. }
     (* THE OFFSET SHADOW IS MINTED HERE, beside the word the store just
-       wrote: the AU's descriptor type [FdInode inum γo] has to name it
+       wrote: the AU's descriptor type [FdInode inum γo OffParked] has to name it
        before the publication runs, so the name exists from the store on
        and the box is born holding both (ProofSysOpenParts.so_deposit). *)
     iApply fupd_wp.
@@ -980,7 +980,7 @@ Section ProofSysOpenAlloc.
               (fc_readable Cf) (fc_writable Cf) (fc_pipe Cf) (fc_ip Cf)
               (fc_major Cf) om (mword_of_int 0 : mword 32) lo nsj u pidv dqb
               dqs U sts m M8 sp0 K eb b lks w6 w24 bp
-              data Mim pvv vom pl P Pmiss Fo Ft (FdInode (bv_unsigned inum) γo) γo
+              data Mim pvv vom pl P Pmiss Fo Ft (FdInode (bv_unsigned inum) γo OffParked) γo
               Hqs HKiu HKeo HKit HK24 Kpop Hkk Hinb Hipos Hgeom Hsize
               Hbm0 Hbmcov Hbmlog Hist0 Hiblk Hiblog Hcovb Hu2 Hj Hgl Hlkempty
               Hkf Hfdlt Hlen Hfrees (or_introl eq_refl) Hdir

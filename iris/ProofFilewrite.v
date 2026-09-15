@@ -1891,7 +1891,7 @@ Section ProofFilewrite.
        premises about an [fcontent] the caller had to open and hand down;
        both are facts about the STATE now, and the loop re-derives the field
        equations it works with from [fdstate_ok] each iteration. *)
-    stx = FdOpen rx true (FdInode nx γx) ->
+    stx = FdOpen rx true (FdInode nx γx OffParked) ->
     m !!! Regidx csp_rs1 = sp0 ->
     pj = proc_addr jx ->
     (* ---- [filewrite_fs_env]'s ten PURE fields.  Pure, hence free: they
@@ -2051,7 +2051,7 @@ Section ProofFilewrite.
     iDestruct (file_pay_st_ok with "Hrpay") as "[%Hex Hrpay]".
     destruct Hex as (inumx & γox & Hokx).
     pose proof Hokx as Hokc. rewrite Hstx in Hokc.
-    destruct Hokc as (Hrdc & Hwrc & Htyi & Hnxeq & Hgxeq).
+    destruct Hokc as (Hrdc & Hwrc & Htyi & Hnxeq & Hgxeq & _).
     assert (Hwb : fc_wbool Cf = true).
     { rewrite /fc_wbool Hwrc. by vm_compute. }
     iPoseProof (SpecPrintk.printk_env_panic with "Hpk") as "#Hpenv".
@@ -2210,7 +2210,7 @@ Section ProofFilewrite.
        IS the row the contract's receipts are indexed by ([nx]) -- the sixth
        output is what makes the two the same existential. *)
     pose proof Pst as Pstx. rewrite Hstx in Pstx.
-    destruct Pstx as (_ & _ & _ & Hnum & Hgo0).
+    destruct Pstx as (_ & _ & _ & Hnum & Hgo0 & _).
     (* the box's shadow IS the contract's: the descriptor's state names it *)
     assert (Hgxo : γx = γo0) by exact Hgo0.
     assert (P3 : IBLOCK inum icfg_ist ∈ fsc_cov)
@@ -4903,7 +4903,7 @@ Section ProofFilewrite.
                as (rx & wx & Hstx).
              assert (Hwx : wx = true).
              { destruct (fdstate_ok_rw inumx γox Cf rx wx
-                           (FdInode (bv_unsigned inumx) γox)
+                           (FdInode (bv_unsigned inumx) γox OffParked)
                            ltac:(rewrite -Hstx; exact Hok)) as [_ Hwrc].
                destruct wx; [reflexivity |]. exfalso.
                rewrite /fc_wbool Hwrc in Hwb. by vm_compute in Hwb. }

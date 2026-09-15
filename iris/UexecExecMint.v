@@ -213,7 +213,7 @@ Section UexecExecMint.
     rewrite /filewrite_in.
     destruct st as [| rb wb ty]; [ iEmpIntro | ].
     destruct wb; [| iEmpIntro ].
-    destruct ty as [i γo | | ma].
+    destruct ty as [i γo om | | ma].
     - iApply (fsabs_awrite_chain _ i γo M ua 0%nat _ with "Hsup").
     - iEmpIntro.
     - iApply (cons_out_chain_of_licence with "Hlic").

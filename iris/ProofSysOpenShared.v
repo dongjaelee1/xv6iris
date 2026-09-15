@@ -495,7 +495,7 @@ Section ProofSysOpenShared.
        on this arm is [emp]. *)
     (∀ r : mword 64,
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
-         (FdInode i γo) sts r -∗
+         (FdInode i γo OffParked) sts r -∗
        open_post_ok_plain (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom P Fo Ft sts U r).
   Proof.
     intros Hpl Hnt. iIntros "HP Hobs".
@@ -524,7 +524,7 @@ Section ProofSysOpenShared.
                     ∗ Ft.(pf_recv) av' i bs0) -∗
     (∀ r : mword 64,
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
-         (FdInode i γo) sts r -∗
+         (FdInode i γo OffParked) sts r -∗
        open_post_ok_plain (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom P Fo Ft sts U r).
   Proof.
     intros Hpl Ht. iIntros "HP Hobs Htr".
@@ -553,7 +553,7 @@ Section ProofSysOpenShared.
     open_trunc_piece (fs_gamma_L fsc_fs) vom Ft -∗
     (∀ r : mword 64,
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
-         (FdInode i γo) sts r -∗
+         (FdInode i γo OffParked) sts r -∗
        open_post_ok_plain (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom P Fo Ft sts U r).
   Proof.
     intros Hpl H0. iIntros "HP Hobs Htc".
@@ -585,7 +585,7 @@ Section ProofSysOpenShared.
     (bv_unsigned (di_type dn) = FsImg.T_DEVICE_z ->
        0 <= bv_unsigned (di_major dn) <= NDEV_max
        /\ t = FdDevice (bv_unsigned (di_major dn))) ->
-    (bv_unsigned (di_type dn) <> FsImg.T_DEVICE_z -> t = FdInode i γo) ->
+    (bv_unsigned (di_type dn) <> FsImg.T_DEVICE_z -> t = FdInode i γo OffParked) ->
     (bv_unsigned (di_type dn) = T_DIR_z
      \/ bv_unsigned (di_type dn) = FsImg.T_FILE_z
      \/ bv_unsigned (di_type dn) = FsImg.T_DEVICE_z) ->

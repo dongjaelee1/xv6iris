@@ -534,7 +534,7 @@ Section SpecFilewrite.
     (match st with
      | FdOpen _ _ FdPipe        => emp
      | FdOpen _ _ (FdDevice mj) => filewrite_dev_env fn mj
-     | FdOpen _ _ (FdInode _ _)   => filewrite_fs_env γf fn
+     | FdOpen _ _ (FdInode _ _ _)   => filewrite_fs_env γf fn
      | FdClosed             => emp
      end)%I.
 
@@ -543,7 +543,7 @@ Section SpecFilewrite.
     (match st with
      | FdOpen _ _ FdPipe        => emp
      | FdOpen _ _ (FdDevice mj) => filewrite_dev_out fn mj
-     | FdOpen _ _ (FdInode _ _)   => filewrite_fs_out fn
+     | FdOpen _ _ (FdInode _ _ _)   => filewrite_fs_out fn
      | FdClosed             => emp
      end)%I.
 
@@ -564,7 +564,7 @@ Section SpecFilewrite.
     filewrite_env γf fn st -∗ filewrite_env_out fn st.
   Proof.
     rewrite /filewrite_env /filewrite_env_out.
-    destruct st as [|? ? [? ?| |?]]; try by iIntros "$".
+    destruct st as [|? ? [? ? ?| |?]]; try by iIntros "$".
     iApply filewrite_fs_env_out.
   Qed.
 
@@ -788,7 +788,7 @@ Section SpecFilewrite.
   Definition filewrite_in (st : fdstate) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
     match st with
-    | FdOpen _ true (FdInode i γo) =>
+    | FdOpen _ true (FdInode i γo _) =>
         awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua Q 0%nat (wchunks n)
     | FdOpen _ true (FdDevice _) =>
         cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n)
@@ -808,7 +808,7 @@ Section SpecFilewrite.
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
       (r : mword 64) : iProp Σ :=
     match st with
-    | FdOpen _ true (FdInode i γo) =>
+    | FdOpen _ true (FdInode i γo _) =>
         write_arms_at (fs_gamma_L fsc_fs) i γo n M ua Q r
     | FdOpen _ true (FdDevice ma) =>
         if decide (ma = ConsoleInv.CONSOLE)
@@ -835,7 +835,7 @@ Section SpecFilewrite.
      and every arm names the fact it is standing on. *)
 
   Lemma filewrite_in_inode rb i γo n M ua Q :
-    filewrite_in (FdOpen rb true (FdInode i γo)) n M ua Q -∗
+    filewrite_in (FdOpen rb true (FdInode i γo OffParked)) n M ua Q -∗
     awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua Q 0%nat (wchunks n).
   Proof. by iIntros "$". Qed.
 
@@ -849,7 +849,7 @@ Section SpecFilewrite.
 
   Lemma filewrite_extra_inode P rb i γo n M ua Q r :
     write_arms_at (fs_gamma_L fsc_fs) i γo n M ua Q r -∗
-    filewrite_extra P (FdOpen rb true (FdInode i γo)) n M ua Q r.
+    filewrite_extra P (FdOpen rb true (FdInode i γo OffParked)) n M ua Q r.
   Proof. by iIntros "$". Qed.
 
   Lemma filewrite_extra_cons P rb (mj : Z) n M ua Q r :
@@ -922,7 +922,7 @@ Section SpecFilewrite.
   Proof.
     intros Hn. destruct st as [| rb wb ty]; [by iIntros |].
     destruct wb; [| by iIntros].
-    destruct ty as [i γo | | mj]; rewrite /filewrite_in /filewrite_extra.
+    destruct ty as [i γo om | | mj]; rewrite /filewrite_in /filewrite_extra.
     - iIntros "Hc". by iApply (write_arms_at_neg with "Hc").
     - by iIntros.
     - case_decide as Hc; [| by iIntros].

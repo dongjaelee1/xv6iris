@@ -741,6 +741,73 @@ Proof.
   subst. reflexivity.
 Qed.
 
+(* ...AND SO DOES THE GENERIC TIER'S PARKED DISCIPLINE, WITH ONE ROW OWED
+   (design/user-read.md SS8.1).  [FdSlots.fdv_all_parked] says no
+   descriptor in the table has had its offset half handed out, which is
+   what the generic user-mode WP's supply law needs of the key it pays at:
+   the weak (parked) supplier of the offset fire exists only where
+   [OffGv.off_user_inv] does, and a persistent supply can never present an
+   exclusive [UserOff.uoff].
+
+   FOUR OF THE FIVE ROWS PRESERVE IT FOR NOTHING -- close installs
+   [FdClosed]; dup COPIES a row the table already had (out of range the
+   total lookup is [FdClosed], so the copy is parked either way); pipe
+   installs the two ends; every other entry leaves the table alone.  OPEN
+   is the one row that introduces a TYPE this table cannot see: its arm
+   binds [t] existentially and says nothing about it, so a generic open is
+   licensed -- BY THIS ROW -- to install a held descriptor.  That case is
+   therefore a PREMISE here rather than an assumption, and discharging it
+   means a new conjunct on the open row itself, read off
+   [SysOpenDefs.open_fd_rcpt]'s [t] (every arm of
+   [SpecSysOpen.sys_open_post] instantiates it at a PARKED constructor, so
+   the fact is true; it is merely not stated). *)
+Lemma usys_fd_ok_parked (n : Z) (tf : list (mword 64)) (r : mword 64)
+    (sts sts' : list fdstate) :
+  usys_fd_ok n tf r sts sts' ->
+  fdv_all_parked sts ->
+  (forall (fd : nat) (rd wr : bool) (t : fdtype),
+     n = USYS_open -> sts' = <[fd := FdOpen rd wr t]> sts ->
+     fdst_parked (FdOpen rd wr t)) ->
+  fdv_all_parked sts'.
+Proof.
+  unfold usys_fd_ok. intros H Hpk Hopen.
+  destruct (decide (n = USYS_close)) as [_ | _].
+  { destruct H as [H _].
+    destruct (decide (uint r = 0)); subst;
+      [ apply fdv_all_parked_insert; [exact Hpk | exact fdst_parked_closed]
+      | exact Hpk ]. }
+  destruct (decide (n = USYS_dup)) as [_ | _].
+  { destruct H as [(fd1 & _ & _ & _ & ->) | (_ & -> & _)];
+      [ apply fdv_all_parked_insert;
+        [ exact Hpk | apply fdv_all_parked_lookup_total; exact Hpk ]
+      | exact Hpk ]. }
+  destruct (decide (n = USYS_open)) as [Ho | _].
+  { destruct H as [(fd & rd & wr & t & _ & _ & He) | [_ ->]]; [| exact Hpk].
+    rewrite He. apply fdv_all_parked_insert;
+      [ exact Hpk | exact (Hopen fd rd wr t Ho He) ]. }
+  destruct (decide (n = USYS_pipe)) as [_ | _].
+  { destruct (decide (uint r = 0)) as [_ | _].
+    - destruct H as (a & b & _ & _ & _ & ->).
+      apply fdv_all_parked_insert;
+        [ apply fdv_all_parked_insert;
+          [ exact Hpk | exact (fdst_parked_pipe true false) ]
+        | exact (fdst_parked_pipe false true) ].
+    - subst. exact Hpk. }
+  subst. exact Hpk.
+Qed.
+
+(* ...and the shape every entry BUT open reads it at, which is where the
+   owed row does not bite. *)
+Lemma usys_fd_ok_parked_ne_open (n : Z) (tf : list (mword 64)) (r : mword 64)
+    (sts sts' : list fdstate) :
+  n <> USYS_open ->
+  usys_fd_ok n tf r sts sts' -> fdv_all_parked sts -> fdv_all_parked sts'.
+Proof.
+  intros Hne H Hpk.
+  apply (usys_fd_ok_parked n tf r sts sts' H Hpk).
+  intros fd rd wr t Ho _. exfalso. exact (Hne Ho).
+Qed.
+
 (* ===================================================================== *)
 (* SS2d THE WORKING-DIRECTORY ROW: one number moves it.                    *)
 (*                                                                         *)

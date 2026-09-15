@@ -2231,7 +2231,7 @@ Section ProofFileread.
              (* the descriptor at the CARVE's names, which is where the fire
                 reads the row -- one equation, and the caller's piece is at
                 the same key. *)
-             assert (Hstm : st = FdOpen true wbx (FdInode (bv_unsigned inm) γo0))
+             assert (Hstm : st = FdOpen true wbx (FdInode (bv_unsigned inm) γo0 OffParked))
                by (rewrite Hst Hieq Hgo; reflexivity).
              (* THE CALLER'S ONE PIECE, still paired with its refund: the
                 fire below takes the pair and spends the AU side, since the

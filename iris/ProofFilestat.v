@@ -175,21 +175,21 @@ Section ProofFilestat.
          performed ---- *)
   Local Lemma fst_env_in (fn : fstat_names) (st : fdstate) :
     match st with
-    | FdOpen _ _ (FdInode _ _) | FdOpen _ _ (FdDevice _) => True
+    | FdOpen _ _ (FdInode _ _ _) | FdOpen _ _ (FdDevice _) => True
     | _ => False
     end -> filestat_env fn st -∗ filestat_fs_env fn.
   Proof.
-    destruct st as [|? ? [? ?| |?]]; cbn; intros H; [contradiction| |contradiction|];
+    destruct st as [|? ? [? ? ?| |?]]; cbn; intros H; [contradiction| |contradiction|];
       by iIntros "$".
   Qed.
 
   Local Lemma fst_env_out_in (fn : fstat_names) (st : fdstate) :
     match st with
-    | FdOpen _ _ (FdInode _ _) | FdOpen _ _ (FdDevice _) => True
+    | FdOpen _ _ (FdInode _ _ _) | FdOpen _ _ (FdDevice _) => True
     | _ => False
     end -> filestat_fs_out fn -∗ filestat_env_out fn st.
   Proof.
-    destruct st as [|? ? [? ?| |?]]; cbn; intros H; [contradiction| |contradiction|];
+    destruct st as [|? ? [? ? ?| |?]]; cbn; intros H; [contradiction| |contradiction|];
       by iIntros "$".
   Qed.
 
@@ -528,7 +528,7 @@ Section ProofFilestat.
       iEval (rewrite Hpp1e) in "Hpc".
       (* the environment, opened at the decision the code took *)
       assert (Hin' : match st with
-                     | FdOpen _ _ (FdInode _ _) | FdOpen _ _ (FdDevice _) => True
+                     | FdOpen _ _ (FdInode _ _ _) | FdOpen _ _ (FdDevice _) => True
                      | _ => False end).
       { destruct Hin as [Ht | Ht];
           [ destruct (fdstate_ok_inode _ _ _ _ Hok Ht) as (? & ? & ->)

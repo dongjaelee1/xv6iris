@@ -285,7 +285,7 @@ Section ProofSysOpenCreArm.
          else emp)
       ∗ ∃ γo : gname,
             open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
-              (FdInode i0 γo) sts r.
+              (FdInode i0 γo OffParked) sts r.
   Proof.
     rewrite /open_post_ok_plain /socr_P /socr_Phio_pure.
     cbn [pf_recv pf_refund].
@@ -330,7 +330,7 @@ Section ProofSysOpenCreArm.
              else emp) ∗
             ∃ γo : gname,
               open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
-                (FdInode i0 γo) sts r)
+                (FdInode i0 γo OffParked) sts r)
          ∨ (∃ ma mi : Z,
               ⌜arow_at av i0 (MkAnode (ADev ma mi) nl)⌝ ∗
               ⌜0 <= ma <= NDEV_max⌝ ∗

@@ -185,7 +185,7 @@ Section ProofSysOpenPub.
     (* ---- the AU side: the omode word IS the caller's argument, and the
        descriptor's type is the one the published content names ---- *)
     om = arg_int32 vom ->
-    (fc_type C = FD_INODE /\ t = FdInode (bv_unsigned inum) g)
+    (fc_type C = FD_INODE /\ t = FdInode (bv_unsigned inum) g OffParked)
     \/ (fc_type C = FD_DEVICE /\ t = FdDevice (bv_unsigned (fc_major C))) ->
     sp0 = (m !!! Regidx csp_rs1 : mword 64) ->
     so_sp sp0 M -> so_thr m M ->

@@ -203,7 +203,7 @@
 
    The success arms additionally TYPE the new descriptor's row --
    [FdOpen rb wb (FdDevice ma)] on the device arm, [FdOpen rb wb
-   (FdInode i γo)] on the file/dir/create arms -- where the blanket leaves
+   (FdInode i γo OffParked)] on the file/dir/create arms -- where the blanket leaves
    the type existential; [proc_priv_settle]'s payout IS the typed row.
 
    ==== THE REFERENCE LEDGER, AND WHY IT IS THREE ======================
@@ -538,7 +538,7 @@ Section SysOpenArms.
             else emp) ∗
            ∃ γo : gname,
              open_fd_ok γf p pid UW (om_readable vom) (om_writable vom)
-               (FdInode i γo) sts r)
+               (FdInode i γo OffParked) sts r)
         ∨ (* DIRECTORY, at O_RDONLY exactly: the arm's own key is what
              pays the writable-fd-is-not-a-directory theorem here
              ([om_rdonly_modes]) *)
@@ -548,7 +548,7 @@ Section SysOpenArms.
            Fo.(pf_recv) av i (MkAnode (ADir ents) nl) ∗
            open_trunc_piece Γ vom Ft ∗
            ∃ γo : gname,
-             open_fd_ok γf p pid UW true false (FdInode i γo) sts r)))%I.
+             open_fd_ok γf p pid UW true false (FdInode i γo OffParked) sts r)))%I.
 
   (* ret -1: the header's three-way fold, residue returned per arm.  The
      third disjunct's observation is FIRED, not optional: every post-walk
@@ -650,7 +650,7 @@ Section SysOpenArms.
            pf_at (aunarm_of_arm Γ appE Farm) Fun ∗
            ∃ γo : gname,
              open_fd_ok γf p pid UW (om_readable vom) (om_writable vom)
-               (FdInode i γo) sts r)
+               (FdInode i γo OffParked) sts r)
         ∨ (* EXISTS-OPENS *)
         (∃ (avx : aview) (entsx : gmap fname Z) (nlx : nat),
            ⌜avx !! d = Some (MkAnode (ADir entsx) nlx)⌝ ∗
@@ -671,7 +671,7 @@ Section SysOpenArms.
                    else emp) ∗
                   ∃ γo : gname,
                     open_fd_ok γf p pid UW (om_readable vom)
-                      (om_writable vom) (FdInode i γo) sts r)
+                      (om_writable vom) (FdInode i γo OffParked) sts r)
                ∨ (* ...or a DEVICE (F-OK admits it; the major test still
                     stands between it and the fd) *)
                (∃ ma mi : Z,
@@ -979,7 +979,7 @@ Section SysOpenArms.
                else emp) ∗
               ∃ γo : gname,
                 ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
-                   (FdInode i γo) sts r fdv'⌝)
+                   (FdInode i γo OffParked) sts r fdv'⌝)
            ∨ (* DIRECTORY, at O_RDONLY exactly *)
            (∃ (ents : gmap fname Z) (nl : nat),
               ⌜arow_at av i (MkAnode (ADir ents) nl)⌝ ∗
@@ -987,7 +987,7 @@ Section SysOpenArms.
               Fo.(pf_recv) av i (MkAnode (ADir ents) nl) ∗
               open_trunc_piece Γ vom Ft ∗
               ∃ γo : gname,
-                ⌜open_fd_rcpt true false (FdInode i γo) sts r fdv'⌝))))%I.
+                ⌜open_fd_rcpt true false (FdInode i γo OffParked) sts r fdv'⌝))))%I.
 
   Definition open_receipt_create Γ (γfs : fs_names) (cw : Z)
       (M : gmap Z (bv 8)) (pv vom : mword 64)
@@ -1018,7 +1018,7 @@ Section SysOpenArms.
               pf_at (aunarm_of_arm Γ appE Farm) Fun ∗
               ∃ γo : gname,
                 ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
-                   (FdInode i γo) sts r fdv'⌝)
+                   (FdInode i γo OffParked) sts r fdv'⌝)
            ∨ (* EXISTS-OPENS *)
            (∃ (avx : aview) (entsx : gmap fname Z) (nlx : nat),
               ⌜avx !! d = Some (MkAnode (ADir entsx) nlx)⌝ ∗
@@ -1037,7 +1037,7 @@ Section SysOpenArms.
                       else emp) ∗
                      ∃ γo : gname,
                        ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
-                          (FdInode i γo) sts r fdv'⌝)
+                          (FdInode i γo OffParked) sts r fdv'⌝)
                   ∨ (∃ ma mi : Z,
                        ⌜arow_at av i (MkAnode (ADev ma mi) nl)⌝ ∗
                        ⌜0 <= ma <= NDEV_max⌝ ∗
@@ -1135,7 +1135,7 @@ Section SysOpenArms.
         iDestruct (open_fd_ok_split with "Hfd") as (fd l k fdv')
           "((%Hr & %Hfl & %Hcl & %Hins) & %Hrc & Hpriv & Hb)".
         iExists (us_ofile UW fd (fnode k)), fdv'.
-        iSplitR; [ iPureIntro; right; exists fd, l, k, (om_readable vom), (om_writable vom), (FdInode i go);
+        iSplitR; [ iPureIntro; right; exists fd, l, k, (om_readable vom), (om_writable vom), (FdInode i go OffParked);
                    split_and!;
                      [ exact Hr | exact Hfl | reflexivity
                      | exact Hcl | exact Hins ] | ].
@@ -1153,7 +1153,7 @@ Section SysOpenArms.
         iDestruct (open_fd_ok_split with "Hfd") as (fd l k fdv')
           "((%Hr & %Hfl & %Hcl & %Hins) & %Hrc & Hpriv & Hb)".
         iExists (us_ofile UW fd (fnode k)), fdv'.
-        iSplitR; [ iPureIntro; right; exists fd, l, k, true, false, (FdInode i go);
+        iSplitR; [ iPureIntro; right; exists fd, l, k, true, false, (FdInode i go OffParked);
                    split_and!;
                      [ exact Hr | exact Hfl | reflexivity
                      | exact Hcl | exact Hins ] | ].
@@ -1219,7 +1219,7 @@ Section SysOpenArms.
         iDestruct (open_fd_ok_split with "Hfd") as (fd l k fdv')
           "((%Hr & %Hfl & %Hcl & %Hins) & %Hrc & Hpriv & Hb)".
         iExists (us_ofile UW fd (fnode k)), fdv'.
-        iSplitR; [ iPureIntro; right; exists fd, l, k, (om_readable vom), (om_writable vom), (FdInode i go);
+        iSplitR; [ iPureIntro; right; exists fd, l, k, (om_readable vom), (om_writable vom), (FdInode i go OffParked);
                    split_and!;
                      [ exact Hr | exact Hfl | reflexivity
                      | exact Hcl | exact Hins ] | ].
@@ -1246,7 +1246,7 @@ Section SysOpenArms.
           iDestruct (open_fd_ok_split with "Hfd") as (fd l k fdv')
             "((%Hr & %Hfl & %Hcl & %Hins) & %Hrc & Hpriv & Hb)".
           iExists (us_ofile UW fd (fnode k)), fdv'.
-          iSplitR; [ iPureIntro; right; exists fd, l, k, (om_readable vom), (om_writable vom), (FdInode i go);
+          iSplitR; [ iPureIntro; right; exists fd, l, k, (om_readable vom), (om_writable vom), (FdInode i go OffParked);
                      split_and!;
                        [ exact Hr | exact Hfl | reflexivity
                      | exact Hcl | exact Hins ] | ].

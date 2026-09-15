@@ -154,7 +154,7 @@ Section UkReadFile.
 
      A program spends this leaf's post through [spost_at_read_elim]
      above and lands in [SpecFileread.fileread_extra_core] at its own
-     [st]; at [FdOpen true _ (FdInode i γo)] that IS
+     [st]; at [FdOpen true _ (FdInode i γo OffParked)] that IS
      [FsAbsReadFire.read_arms], and section 3's whole File row is inside
      it. *)
   Lemma wp_uk_ecall_read_file (N : uk_names Σ) (h : CpuId)
@@ -242,7 +242,7 @@ Section UkReadFile.
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) :
     pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F -∗
     udepwf_st N m pc USYS_read (read_file_fam (ukn_pay N) F)
-      (FdOpen true wb (FdInode i γo)).
+      (FdOpen true wb (FdInode i γo OffParked)).
   Proof.
     iIntros "Hau". rewrite /udepwf_st.
     iSplitR; [ iPureIntro; reflexivity | ].
@@ -387,12 +387,12 @@ Section UkReadFile.
     urun N h m pc avail -∗
     (* THE HANDLE: "fd is open for reading on inode i" -- the caller's own
        knowledge of its descriptor, which is what selects the arm *)
-    UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo)) -∗
+    UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffParked)) -∗
     (* THE PIN: "that inode is this file" *)
     nview Γ q i (MkAnode (AFile cat_file) nl) -∗
     ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k f -∗
     (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8),
-       UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo)) -∗
+       UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffParked)) -∗
        nview Γ q i (MkAnode (AFile cat_file) nl) -∗
        (⌜r = (mword_of_int (-1) : mword 64)⌝
         ∨ (∃ off : nat,
@@ -412,7 +412,7 @@ Section UkReadFile.
                  with "Hau") as "Hsb".
     iApply (wp_uk_ecall_read_file N h m pc cnt k f avail
               (read_file_fam (ukn_pay N) (cat_recv Γ q i nl)) fd
-              (FdOpen true wb (FdInode i γo))
+              (FdOpen true wb (FdInode i γo OffParked))
               Hn Hcnt Hcapk Hfdv Hfdlt Hal4 with "Hi Hrun Hsb Hufdh Hbuf").
     iIntros (h' r d g W M' fdv' cw' cs')
       "%Hd %Hgf %Hlin %Himg %Hnf %H0 %H1 %H2 %Hkey %Hlz %Hlive Hufdh Hpost Hrun Hbuf".

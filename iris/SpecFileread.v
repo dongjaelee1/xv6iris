@@ -606,7 +606,7 @@ Section SpecFileread.
     (match st with
      | FdOpen _ _ FdPipe        => emp
      | FdOpen _ _ (FdDevice mj) => fileread_dev_env fn mj
-     | FdOpen _ _ (FdInode _ _)   => fileread_fs_env γf fn
+     | FdOpen _ _ (FdInode _ _ _)   => fileread_fs_env γf fn
      | FdClosed             => emp
      end)%I.
 
@@ -614,7 +614,7 @@ Section SpecFileread.
     (match st with
      | FdOpen _ _ FdPipe        => emp
      | FdOpen _ _ (FdDevice mj) => fileread_dev_out fn mj
-     | FdOpen _ _ (FdInode _ _)   => fileread_fs_out fn
+     | FdOpen _ _ (FdInode _ _ _)   => fileread_fs_out fn
      | FdClosed             => emp
      end)%I.
 
@@ -634,7 +634,7 @@ Section SpecFileread.
     fileread_env γf fn st -∗ fileread_env_out fn st.
   Proof.
     rewrite /fileread_env /fileread_env_out.
-    destruct st as [|? ? [? ?| |?]]; try by iIntros "$".
+    destruct st as [|? ? [? ? ?| |?]]; try by iIntros "$".
     iApply fileread_fs_env_out.
   Qed.
 
@@ -932,7 +932,7 @@ Section SpecFileread.
       (Rin : list (list mobs * bv 8) -> iProp Σ) (P : iProp Σ) : iProp Σ :=
     (P -∗
      match st with
-     | FdOpen true _ (FdInode i γo) =>
+     | FdOpen true _ (FdInode i γo _) =>
          P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F
      | FdOpen true _ (FdDevice mj) =>
          if decide (mj = CONSOLE)
@@ -1297,7 +1297,7 @@ Section SpecFileread.
       (Rin : list (list mobs * bv 8) -> iProp Σ)
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
     match st with
-    | FdOpen true _ (FdInode i γo) =>
+    | FdOpen true _ (FdInode i γo _) =>
         read_arms (fs_gamma_L fsc_fs) i γo n F r M' addr
     | FdOpen true _ (FdDevice mj) =>
         (* UNIFORM: the receipt is paid at every caller now, because [Rd]
@@ -1374,7 +1374,7 @@ Section SpecFileread.
      every arm names the fact it is standing on. *)
 
   Lemma fileread_in_inode wb i γo F Rd Rin P :
-    fileread_in (FdOpen true wb (FdInode i γo)) F Rd Rin P -∗ P -∗
+    fileread_in (FdOpen true wb (FdInode i γo OffParked)) F Rd Rin P -∗ P -∗
     P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F.
   Proof. rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP"). Qed.
 
@@ -1383,14 +1383,14 @@ Section SpecFileread.
      which is the shape the landed walks are written in. *)
   Lemma fileread_extra_inode (gn : gname) (pt : uptd) wb i γo n F Rd Rin P r M' addr :
     P -∗ read_arms (fs_gamma_L fsc_fs) i γo n F r M' addr -∗
-    fileread_extra gn pt (FdOpen true wb (FdInode i γo)) n F Rd Rin P r M' addr.
+    fileread_extra gn pt (FdOpen true wb (FdInode i γo OffParked)) n F Rd Rin P r M' addr.
   Proof. iIntros "HP H". rewrite /fileread_extra. iFrame "HP". iExact "H". Qed.
 
   (* ...and the two at a state the walk holds only through an EQUATION: a
      descriptor's shape is derived from its content, not matched on. *)
   Lemma fileread_in_inode_of (st : fdstate) (wb : bool) (i : Z) (γo : gname)
       F Rd Rin P :
-    st = FdOpen true wb (FdInode i γo) ->
+    st = FdOpen true wb (FdInode i γo OffParked) ->
     fileread_in st F Rd Rin P -∗ P -∗
     P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F.
   Proof.
@@ -1399,7 +1399,7 @@ Section SpecFileread.
 
   Lemma fileread_extra_inode_of (gn : gname) (pt : uptd) (st : fdstate) (wb : bool) (i : Z) (γo : gname)
       n F Rd Rin P r M' addr :
-    st = FdOpen true wb (FdInode i γo) ->
+    st = FdOpen true wb (FdInode i γo OffParked) ->
     P -∗ read_arms (fs_gamma_L fsc_fs) i γo n F r M' addr -∗
     fileread_extra gn pt st n F Rd Rin P r M' addr.
   Proof.
@@ -1551,7 +1551,7 @@ Section SpecFileread.
     fdstate_ok inum γo C st -> fc_type C = FD_INODE ->
     eq_vec (zero_extend' 64 (fc_readable C : mword 8) : mword 64)
            (zero_reg : mword 64) = false ->
-    exists wb : bool, st = FdOpen true wb (FdInode (bv_unsigned inum) γo).
+    exists wb : bool, st = FdOpen true wb (FdInode (bv_unsigned inum) γo OffParked).
   Proof.
     intros Hok Ht Hrd.
     destruct (fdstate_ok_inode inum γo C st Hok Ht) as (rb & wb & Hst).
@@ -1635,7 +1635,7 @@ Section SpecFileread.
     destruct rb;
       [ | iIntros "H HP"; iDestruct ("H" with "HP") as "H"; iModIntro;
           iFrame "H"; by iPureIntro ].
-    destruct ty as [i γo | | mj].
+    destruct ty as [i γo om | | mj].
     - iIntros "H HP". iDestruct ("H" with "HP") as "[HP Hc]".
       iModIntro. iFrame "HP". by iApply (read_arms_neg with "Hc").
     - iIntros "H HP". iDestruct ("H" with "HP") as "H". iModIntro.

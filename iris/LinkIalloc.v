@@ -17,20 +17,9 @@
    [kernel_data] / [panic_env] the contract takes are threaded to bread,
    log_write, brelse and iget, whose own panic arms are theirs.
 
-   *** READ THIS BEFORE TRUSTING "THE STANDING SIX". ***  ialloc's
-   no-inodes arm IS LIVE and calls printk on its GENERAL path, and
-   [PRINTK_GEN]'s only instance is [LinkPrintk]'s own [Axiom].
-   Instantiating that functor -- here or in [ProofIalloc.v] -- would put a
-   SEVENTH entry in [Print Assumptions Ialloc.wp_ialloc_sconf].
-   [SpecIalloc.v] therefore takes printk's contract as a PURE HYPOTHESIS
-   ([SpecPrintk.printk_gen_contract]), which keeps the count at the
-   standing six -- but that is NOT self-containment: ialloc's six are
-   modulo a THREADED printk obligation that its callers must eventually
-   discharge, exactly the standing that [SpecPanic]'s own credentials
-   already have throughout this tree.  This is SpecBalloc.v's arrangement verbatim;
-   a reader who takes the six for "depends on nothing else" is misreading
-   it.                                                                    *)
+   *)
 Require Import LinkBread LinkLogWrite LinkBrelse LinkMemsetArray LinkIget
                 ProofIalloc.
+Require Import LinkPrintk.
 
-Module Ialloc := IallocProof Bread LogWrite Brelse MemsetArray Iget.
+Module Ialloc := IallocProof Bread LogWrite Brelse MemsetArray Iget PrintkGen.

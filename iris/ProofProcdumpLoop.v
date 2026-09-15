@@ -340,6 +340,7 @@ End ProcdumpLoopRes.
 (* 5.  THE SCAN                                                           *)
 (* ===================================================================== *)
 
+Module PdLoop (Printk : PRINTK_GEN).
 Section ProofProcdumpLoop.
   Context `{!riscvGS Σ, !xv6G Σ}.
 
@@ -451,7 +452,6 @@ Section ProofProcdumpLoop.
       (γpr : gname) (γd : uart_names) (γv : disk_names)
       (m0 : regfile) (spv p : mword 64) (K' : nat) (eb b : bool)
       (lks : gset string) :
-    printk_gen_contract (kt := KT1) γpr γd γv ->
     (* THE BUDGET BELOW procdump's OWN FRAME, and it is printk's whole need:
        the two [Hpk] applications in the body are made at [K'] itself, so this
        IS [SpecPrintk.printk_stack]'s literal.  It is a claim about the image,
@@ -480,7 +480,7 @@ Section ProofProcdumpLoop.
       ([∗ list] k ∈ seq j (NPROC - j), proc_dump_slot (proc_addr k)) -∗
       WP (Loop : expr riscv_lang).
   Proof.
-    intros Hpk HK Hfresh.
+    intros HK Hfresh.
     iIntros "#Hkt #Hkd #Hpenv Hqexit".
     iAssert (∀ (fuel : nat),
       wp_next (CID0 := CID0) b p (fun (CIDf : CpuId) =>
@@ -702,7 +702,8 @@ Section ProofProcdumpLoop.
         iPoseProof (pd_fmt_str with "Hkd") as "Hfmt".
         iDestruct (cpu_own_transport CIDp CIDq3 0%nat eb p b 
                      ltac:(wp_next_chain) with "Hown") as "Hown".
-        iApply (Hpk CIDq3 cur_ctx P5c K' eb p DfracDiscarded pd_fmt
+        iApply (Printk.wp_printk_gen_sconf (CID := CIDq3) (XI := cur_ctx) KT1
+                  _ _ _ P5c K' eb p (dqf := DfracDiscarded) pd_fmt
                   [PkANum; PkAStr DfracDiscarded ss; PkAStr dq3 nm2] b lks
                   ltac:(lia) pd_fmt_len pd_fmt_nonul
                   ltac:(rewrite pd_fmt_kinds; reflexivity)
@@ -779,7 +780,8 @@ Section ProofProcdumpLoop.
         iPoseProof (pd_nl_str with "Hkd") as "Hnlstr".
         iDestruct (cpu_own_transport CIDq4 CIDq6 0%nat eb p b
                      ltac:(wp_next_chain) with "Hown") as "Hown".
-        iApply (Hpk CIDq6 cur_ctx P62 K' eb p DfracDiscarded pd_nl [] b lks
+        iApply (Printk.wp_printk_gen_sconf (CID := CIDq6) (XI := cur_ctx) KT1
+                  _ _ _ P62 K' eb p (dqf := DfracDiscarded) pd_nl [] b lks
                   ltac:(lia) pd_nl_len pd_nl_nonul
                   ltac:(rewrite pd_nl_kinds; reflexivity)
                   ltac:(cbn [length]; lia)
@@ -1134,3 +1136,4 @@ Section ProofProcdumpLoop.
   Qed.
 
 End ProofProcdumpLoop.
+End PdLoop.

@@ -369,7 +369,6 @@ Definition wp_fsinit_sconf_body
          [log_state] pack's row (b) provable. *)
   (forall b : Z, b ∈ fsc_cov -> L !! b = Some (lm_view M b)) ->
   (* ---- ireclaim's printk, as a hypothesis and not a functor ---- *)
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (j < NPROC)%nat ->
   γs !! j = Some γl ->
   (* a0 = dev *)

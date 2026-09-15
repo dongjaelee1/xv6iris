@@ -105,6 +105,7 @@ Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuil
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto.
+Require Import SpecPrintk.
 Require Import RegFile.
 Require Import WpNext.
 Require Import WpMmodeLeafBase.
@@ -637,6 +638,7 @@ Section KforkArms.
     kalloc_env_at fsc_kalloc fsc_kpages None -∗
     is_lock γw wait_lock_addr "wait_lock"%string (wait_res_at) -∗
     is_ftable γl γf -∗
+    SpecPrintk.printk_env (FsCfg.fsc_printk) (FsCfg.fsc_uart) (FsCfg.fsc_disk) -∗
     is_itable2 fsc_itlock fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev -∗
     itable_inv -∗
     (* the region handle, straight through to [B4.kfk_b4]'s [idup]
@@ -676,7 +678,7 @@ Section KforkArms.
       Hofnull Hcwdnull Hpidc Hpidne Hshsz Hshimg Hshperm Hshlz Hbelow.
     subst tfsrc tfdst.
     iIntros "#Htext #Hprocs Hcg Hcpu Hpc Hframe Hpv Hpfrag Hprow HCpriv Hcgen Hcsg Hcpr Hcfrag Hcrow Hcxb #Hmk
-             Hheld Hhart Hfd Hbsl Hkst Hctxex Hpay Hkalloc #Hwlock #Hft
+             Hheld Hhart Hfd Hbsl Hkst Hctxex Hpay Hkalloc #Hwlock #Hft #Hpe
              Hitb Hitinv #Hireg Hirs #Hfdone #Hworld #Htoken HRc Hjslot Hcont".
     iDestruct "Hctxex" as (ks rest) "(%Hrestlen & Hks & Hkctx)".
     rewrite /kfk_frame_at.
@@ -923,7 +925,7 @@ Section KforkArms.
                 (sign_extend' 64 pid_c) lks
                 ltac:(lia) ltac:(lia) HjN Hgamma Hrestlen (eq_sym Hbeq) Hmf4s4 Hmf4s5 Hpid4
                 Hurun eq_refl eq_refl eq_refl eq_refl
-                with "Hsc4 Hown4 Hpay Htext Hpc4 Hprocs Hwlock Hft Hworld Htoken Hfdone
+                with "Hsc4 Hown4 Hpay Htext Hpc4 Hprocs Hwlock Hft Hpe Hworld Htoken Hfdone
                       Hheld Hhart Hpvcx4 Hcfrag Hcrow Hprow Hsg34 Hpr34 Hgslot Hgpid Hjslot Hmk Hfd Hirsp Hbsl Hkst Hks Hkctx").
       all: try lkbelow.
       (* [b] is symbolic here (B5's own exit index): an ordinary crossing,
@@ -1021,7 +1023,7 @@ Section KforkMain.
   Proof.
     cbv beta delta [wp_kfork_sconf_body]. cbn zeta.
     intros HK Hlvl Hbelow.
-    iIntros "Hcg Hcpu #Htext Hpc #Hprocs #Hplock #Hwlock #Hftbl
+    iIntros "Hcg Hcpu #Htext Hpc #Hprocs #Hplock #Hwlock #Hftbl #Hpe
              #Hitbl #Hitinv #Hireg Henv #Hpav #Hworld #Htoken HRc Hjslot #HKp #Hfdone Hpv Hpfrag Hrow Hcont".
     (* the SIE index the two lock-holding exits come back at *)
     iDestruct (cpu_own_eb_agree with "Hcg Hcpu") as %Hbeq.
@@ -1118,7 +1120,7 @@ Section KforkMain.
                 HMtsp HMts4 HMts5 HMta5 HMta4 HMta3 Htfsrc Htfdst HMtthr
                 Hnpa HjN Hgamma Hofn Hcwdn Hpidc Hpidne Hshsz Hshimg Hshperm Hshlz ltac:(lkbelow)
                 with "Ht Hprocs Hcg Hcpu Hpc Hframe Hpv Hpfrag Hrow HCp Hcgen Hcsg Hcpr Hcfrag Hcrow Hcxb Hmk Hheld Hhart
-                      Hfd Hbsl Hkst Hctx Hpay Hke Hwl Hft Hit Hiti Hireg Hirs Hfdone Hworld Htoken HRc Hjslot
+                      Hfd Hbsl Hkst Hctx Hpay Hke Hwl Hft Hpe Hit Hiti Hireg Hirs Hfdone Hworld Htoken HRc Hjslot
                       [HR]").
       (* the crossing fact by NAME, never as an inline [ltac:] in argument
          position: the hole's expected type is still an evar there, which is

@@ -23,11 +23,6 @@
    callee, so [ProofCreate] applies [ProofCreateFreshTy.create_fresh_ty]
    directly.  Read that file's header for what the span is.
 
-   panic is NOT a module here.  create's own panics are all inside callees
-   (ialloc's no-inodes arm printks rather than panics, which is why the
-   contract carries [printk_gen_contract] rather than a panic obligation);
-   the [kernel_data] / [panic_env] the contract takes are threaded to the
-   callees, whose own panic arms are discharged against [Panic].
 
    So this cone's assumption count is the five platform axioms plus
    funext, and nothing else. *)

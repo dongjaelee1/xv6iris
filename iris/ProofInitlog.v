@@ -358,9 +358,7 @@ Proof. reflexivity. Qed.
 (* ===================================================================== *)
 
 Module InitlogProof (Initlock : INITLOCK) (Bread : BREAD) (Brelse : BRELSE)
-                    (InstallTrans : INSTALL_TRANS) (WriteHead : WRITE_HEAD)
-  : INITLOG.
-
+                    (InstallTrans : INSTALL_TRANS) (WriteHead : WRITE_HEAD) (Printk : PRINTK_GEN) : INITLOG.
 
 Notation Rra := (mword_of_int 1 : mword 5).
 Notation Rs0 := (mword_of_int 8 : mword 5).
@@ -1165,7 +1163,7 @@ Section ProofInitlog.
                             pidv dq dqs m K eb b lks Upr bs_sb sbrec.
   Proof.
     cbv beta delta [wp_initlog_sconf_body].
-    intros pcE pj ret_tgt c_name c_cpu HK Hgeom Hj Hgl Hbnd Hndup Hin Hpk
+    intros pcE pj ret_tgt c_name c_cpu HK Hgeom Hj Hgl Hbnd Hndup Hin
            Hma0 Hma1 HDf HLmir Hbelow Hsbok Hsbparse Hxvslot.
     destruct Hgeom as [Hcovok Hlogsub].
     iIntros "Hcg Hcnt Hextc Hclmc #Htext #Hkdata Hpc #Hpenv #Hbio #Hseam
@@ -2093,8 +2091,6 @@ Section ProofInitlog.
                 w ∈ il_W bs_hdr ((hdr_dec bs_hdr).1) ->
                 D !! uint w = Some false).
     { intros _ w Hw. apply HDf. exact (proj1 (Hwok' w Hw)). }
-    assert (Hpkg : true = true -> printk_gen_contract (kt := KT1) γpr γu γd).
-    { intros _. exact Hpk. }
     (* THE EXCEPTION SET NAMES EVERY ENTRY (durable-disk lane E-except): the
        header's write set IS the set, and [Xv] holds slot [i]'s content
        there -- which [Hysmir] says is what the copy loop read. *)
@@ -2124,7 +2120,7 @@ Section ProofInitlog.
                                     (fun k : nat => ys !!! k) i))
               _ Upr HKit Hgeomok Hj Hgl
               HC2a0 Hshapeg Hnodupg Hwok' HLwg HDg Hexcg
-              Hbelow Hpkg
+              Hbelow
               with "Hcg Hcnt Hextc Hclmc Htext Hkdata Hpc Hpenv [] Hbio Hfroz Hppid Hprocs Hdevi Hdgeom Hdlock Hncell Hcells Hbrow Hxo HLauth HDauth
                     Hents Hs2 [] [Hmirh]").
     all: try lkbelow.

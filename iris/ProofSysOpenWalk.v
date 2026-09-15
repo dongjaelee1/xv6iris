@@ -229,7 +229,6 @@ Section ProofSysOpenWalk.
     (plen < 128)%nat ->
     1 < fsc_ninodes -> fsc_ninodes <= 16 * Z.of_nat icfg_nib -> fsc_ninodes < 2 ^ 31 ->
     16 * Z.of_nat icfg_nib <= 2 ^ 16 ->
-    printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
     (sys_open_slots <= ns)%nat ->
     (jx < NPROC)%nat -> gs !! jx = Some gl ->
     eb = true ->
@@ -312,7 +311,7 @@ Section ProofSysOpenWalk.
   Proof.
     intros HK HdevR Hnib0 Hgeom Hsize Hbm0 Hbmcov
            Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr Hplen Hni1 Hni2 Hni3 Hush
-           Hprkc Hnsb Hj Hgl Heb Hlkempty Hpof Hom Hal23 Hsp0 HNsp HNthr HNs0 HNs2
+ Hnsb Hj Hgl Heb Hlkempty Hpof Hom Hal23 Hsp0 HNsp HNthr HNs0 HNs2
            HNs3 Hal.
     pose proof HK as HKfull.
     destruct (so_kb K HK) as (HKcr & HKna & HKai & HKas & HKbo & HKeo & HKil &

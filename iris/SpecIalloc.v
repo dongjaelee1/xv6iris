@@ -26,17 +26,6 @@
    188 bytes, an EIGHT-slot frame.  Registers, off CodeIalloc.v:
    [s5 = dev], [s6 = type], [s2 = inum], [s4 = &sb], [s1 = bp], [s3 = dip].
 
-   *** THE NO-INODES ARM IS LIVE, AND IT CALLS printk, NOT panic. ***  This
-   kernel's ialloc was modified exactly the way its balloc was (SpecBalloc.v's
-   header): the scan's fall-through at +0x66..+0x70 restores s1..s6 and lands
-   on [auipc a0,0x4 / addi a0,a0,850 / jal printk] at +0x72, then [c.li a0,0].
-   So this contract takes the same three things balloc's does -- [γpr], the
-   two PERSISTENT credentials [kernel_data] and [printk_env], and printk's
-   contract as a PURE Prop HYPOTHESIS ([SpecPrintk.printk_gen_contract])
-   rather than as a functor argument.  See SpecBalloc.v's "READ THIS BEFORE
-   TRUSTING THE STANDING SIX": carrying it as a hypothesis keeps
-   [Print Assumptions] at the standing six, but the six are then modulo a
-   THREADED printk obligation, exactly as [SpecPanic]'s credentials are.
 
    ---- THE CLAIM TAKES NO REGION RESOURCE AND PAYS NONE BACK (§16) -------
 
@@ -223,7 +212,6 @@ Definition wp_ialloc_sconf_body
      moves. *)
   InodeRegion.ireg_ty_ok (ialloc_fresh ty) ->
   (* THE NO-INODES ARM'S CALLEE, as a hypothesis and not a functor *)
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (j < NPROC)%nat ->
   γs !! j = Some γl ->
   (* a0 = dev, a1 = type: the RV64 ABI's sign extension, and [sh s6,0(s3)]
@@ -417,7 +405,6 @@ Definition wp_ialloc_gen_body
      moves. *)
   InodeRegion.ireg_ty_ok (ialloc_fresh ty) ->
   (* THE NO-INODES ARM'S CALLEE, as a hypothesis and not a functor *)
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (j < NPROC)%nat ->
   γs !! j = Some γl ->
   (* a0 = dev, a1 = type: the RV64 ABI's sign extension, and [sh s6,0(s3)]

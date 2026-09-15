@@ -25,22 +25,11 @@
    The [kernel_data] / [panic_env] the contract takes are threaded to all
    eight callees, whose own panic arms are discharged against [Panic].
 
-   *** READ THIS BEFORE TRUSTING "THE STANDING SIX". ***  ireclaim's orphan
-   arm calls printk on its GENERAL path -- and, unlike balloc's and ialloc's
-   messages, with a [%d] conversion -- and [PRINTK_GEN]'s only instance is
-   [LinkPrintk]'s own [Axiom].  Instantiating that functor -- here or in
-   [ProofIreclaim.v] -- would put a SEVENTH entry in [Print Assumptions
-   Ireclaim.wp_ireclaim_sconf].  [SpecIreclaim.v] therefore takes printk's
-   contract as a PURE HYPOTHESIS ([SpecPrintk.printk_gen_contract]), which
-   keeps the count at the standing six -- but that is NOT self-containment:
-   ireclaim's six are modulo a THREADED printk obligation that its callers
-   (fsinit, and the boot client above it) must eventually discharge, exactly
-   the standing that [SpecPanic]'s own credentials already have throughout this
-   tree.  This is SpecBalloc.v's / LinkIalloc.v's arrangement verbatim; a
-   reader who takes the six for "depends on nothing else" is misreading it. *)
+   *)
 Require Import LinkBread LinkBrelse LinkIget LinkBeginOp
                 LinkIlock LinkIunlock LinkIput LinkEndOp
                 ProofIreclaim.
+Require Import LinkPrintk.
 
 Module Ireclaim := IreclaimProof Bread Brelse Iget BeginOp
-                                 Ilock Iunlock Iput EndOp.
+                                 Ilock Iunlock Iput EndOp PrintkGen.

@@ -778,7 +778,7 @@ Section ProofSysMkdirBody.
     cbv beta delta [wp_sys_mkdir_sconf_body].
     intros pcE pj ret_tgt HK HdevR Hnib0 Hgeom
            Hsize Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb
-           Hni1 Hni2 Hni3 Hush Hpkc Hnsb Hj Hgl Heb Hargv.
+           Hni1 Hni2 Hni3 Hush Hnsb Hj Hgl Heb Hargv.
     destruct (md_kb K HK) as (Kcr & Kar & Kbo & Keo & Kiup & K18 & Kpop).
     set (sp0 := m !!! Regidx csp_rs1).
     iIntros "Hcg Hown _ _ #Htext #Hdata Hpc #Hpre #Hbio #Hlog Hseam
@@ -1213,7 +1213,7 @@ Section ProofSysMkdirBody.
                 P Pmiss Farm Fdots Fun Fok Fex
                 ltac:(lia) HdevR Hnib0 Hgeom Hsize
                 Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr
-                (md_plen_lt pk Hpk) Hni1 Hni2 Hni3 Hush md_tdir_nz SpecCreate.T_DIR_ty_ok Hpkc
+                (md_plen_lt pk Hpk) Hni1 Hni2 Hni3 Hush md_tdir_nz SpecCreate.T_DIR_ty_ok
                 ltac:(unfold create_units; lia) Hnsb Hj Hgl
                 HN4a1 HN4a2 HN4a3 Heb
                 with "Hcg Hown Htext Hpc Hdata Hpre Hbio Hlog Hkenv

@@ -5,11 +5,6 @@
    this file owns: the leading [printk("\n")] at +0x1e.  Sealed as
    [ProcdumpProof : PROCDUMP].
 
-   procdump's callee is printk on its GENERAL path, carried as the Coq
-   hypothesis [SpecPrintk.printk_gen_contract] rather than as a functor
-   argument, so this proof takes no axiom from it and neither does any
-   caller -- the SpecBalloc.v shape.  Consequently there is nothing for
-   LinkProcdump.v to instantiate but the module itself.
 
    The design and the racy-read finding behind [procdump_view] are in
    claude-notes/projects/procdump.md. *)
@@ -56,7 +51,12 @@ Proof. reflexivity. Qed.
 Lemma pd_NPROC_pos : (0 < NPROC)%nat.
 Proof. unfold NPROC. lia. Qed.
 
-Module ProcdumpProof : PROCDUMP.
+Require Import SpecPrintk.
+
+Module ProcdumpProof (Printk : PRINTK_GEN) : PROCDUMP.
+
+  Module PL := PdLoop Printk.
+
 Section ProofProcdumpMain.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ}.
   Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
@@ -74,7 +74,7 @@ Section ProofProcdumpMain.
     : wp_procdump_sconf_body γpr γd γv m K eb p b lks.
   Proof.
     cbv beta zeta delta [wp_procdump_sconf_body].
-    intros HK Hpk Hlkbelow.
+    intros HK Hlkbelow.
     iIntros "Hcg Hcnt #Htext #Hkdata Hpc #Hpenv Hview Hcont".
     (* ================================================================== *)
     (* +0x00 .. +0x1a -- the frame, the nine saves, a0 := "\n"            *)
@@ -117,7 +117,8 @@ Section ProofProcdumpMain.
     iPoseProof (pd_nl_str with "Hkdata") as "Hnlstr".
     iDestruct (cpu_own_transport CID CID2 0%nat eb p b
                  ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
-    iApply (Hpk CID2 cur_ctx M1 (K - 10)%nat eb p DfracDiscarded pd_nl [] b lks
+    iApply (Printk.wp_printk_gen_sconf (CID := CID2) (XI := cur_ctx) KT1
+              γpr γd γv M1 (K - 10)%nat eb p (dqf := DfracDiscarded) pd_nl [] b lks
               (pd_K52 K HK) pd_nl_len pd_nl_nonul
               ltac:(rewrite pd_nl_kinds; reflexivity)
               ltac:(cbn [length]; lia)
@@ -156,9 +157,9 @@ Section ProofProcdumpMain.
     (* +0x56 .. +0x8c -- the scan, entered at its head with j = 0, with   *)
     (* the epilogue (+0x8e .. +0xa2) as its exit continuation.            *)
     (* ================================================================== *)
-    iPoseProof (wp_pd_loop (CID0 := CID4) γpr γd γv m
+    iPoseProof (PL.wp_pd_loop (CID0 := CID4) γpr γd γv m
                   (pa_stk (m !!! pdR 2 : mword 64) 10) p (K - 10)%nat eb b lks
-                  Hpk (pd_K52 K HK) Hlkbelow
+ (pd_K52 K HK) Hlkbelow
                   with "Htext Hkdata Hpenv [Hframe Hcont]") as "Hscan".
     { iIntros (CIDx Hsx Mx) "%Hxc Hcg Hcnt2 Hpc Hview".
       destruct Hxc as [Hxsp Hxhi].

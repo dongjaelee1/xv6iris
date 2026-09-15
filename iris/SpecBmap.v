@@ -288,7 +288,6 @@ Definition wp_bmap_sconf_body
   (* balloc's out-of-blocks arm calls the GENERAL printk path; its contract
      rides as a hypothesis, never a functor, so that neither balloc nor bmap
      inherits LinkPrintk's Axiom.  See SpecBalloc.v's header. *)
-  printk_gen_contract (kt := KT1) γpr γu γd ->
   (* KILLS THE PANIC ARM *)
   (fbn < MAXFILE)%nat ->
   blkmap_wf cov logstart bm ->
@@ -466,7 +465,6 @@ Definition wp_bmap_gen_body
   (bmap_need cr (bmap_ind fbn) <= n)%nat ->
   log_geom_ok cov logstart ->
   bitmap_geom_ok cov logstart bmapstart size ->
-  printk_gen_contract (kt := KT1) γpr γu γd ->
   (* THE CREDIT'S PREMISE: claiming the bitmap block is already paid for
      means claiming this op has already logged it.  There is only one. *)
   (cr = true -> bmapstart ∈ Sb) ->

@@ -70,8 +70,3 @@ Module PrintkGen : PRINTK_GEN.
     { destruct Hpost as (Hcs & Hra & _). done. }
   Qed.
 End PrintkGen.
-
-(* [printk_gen_contract]'s only role right now is a hypothesis threaded by
-   the fs.c error arms (SpecBalloc.v and friends) -- none of it is composed
-   into the boot chain yet, so nothing needs a witness that it holds.  When
-   one does, it is [fun CIDp => PrintkGen.wp_printk_gen_sconf (CID := CIDp)]. *)

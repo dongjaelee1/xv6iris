@@ -6,7 +6,8 @@
    nothing else. *)
 Require Import SpecWritei SpecBmap SpecBread SpecBrelse SpecLogWrite
         SpecEitherCopyin SpecIupdate.
+Require Import LinkPrintk.
 Require Import LinkBmap LinkBread LinkBrelse LinkLogWrite LinkEitherCopyin
         LinkIupdate ProofWritei.
 
-Module Writei := WriteiProof Bmap Bread Brelse LogWrite EitherCopyin Iupdate.
+Module Writei := WriteiProof Bmap Bread Brelse LogWrite EitherCopyin Iupdate PrintkGen.

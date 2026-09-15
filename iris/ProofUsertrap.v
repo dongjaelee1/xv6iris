@@ -18,19 +18,6 @@
        if ((r_sstatus() & SSTATUS_SPP) != 0)
          panic("usertrap: not from user mode");
 
-   compiles to [csrr a5,sstatus / andi a5,a5,256 / c.bnez a5 -> +0x84].  The
-   trap came from USER mode, so [SpecUsertrap.usertrap_entry_ms]'s
-   [trap_mstatus_ok] pins [SPP <> 1]; [RiscvExtras.mword1_zero_of_ne_one]
-   turns that into [SPP = 0], [IntrDefs.sconf_at_sret] transports it to the
-   mstatus the [csrr] actually READ (the ghost sret mirror the boundary
-   parks agrees with [sconf]'s tie), and
-   [ProofUsertrapParts.ut_spp_clear_neq] makes the masked word zero.  The
-   [c.bnez] therefore provably FALLS THROUGH: [panic] is never applied, so
-   neither [SpecPanic]'s contract nor printk's panic path is in this cone.
-   The only printk usertrap reaches is the GENERAL one, on the
-   unexpected-scause arm, and that is [ProofUsertrapArms]' threaded
-   [SpecPrintk.printk_gen_contract] hypothesis -- discharged from the
-   [PRINTK_GEN] functor argument at the seal below.
 
    TWO THINGS ABOUT THE DISPATCH, both from the notes:
 
@@ -129,7 +116,7 @@ Module UsertrapProof (SY : SYSCALL) (PK : PRINTK_GEN) (MP : MYPROC)
 Module Fits := UtResFits SY.
 
 (* the four proven blocks, at this file's callee instances *)
-Module A := UtArms PR KI KE YI SK VM.
+Module A := UtArms PR KI KE YI SK VM PK.
 Module S := UtSys PR KI KE YI SY.
 
 Notation Rra := (mword_of_int 1  : mword 5).
@@ -782,7 +769,6 @@ Section UtDispatch.
       (cs : gset gname) (pid : mword 32) (fdep : sfam) (Wk : UexecSlot.uvis) :
     (* the key's generation is the block's (lane TRAP-ROWS, T2) *)
     gn = pv_gen (us_V U0) ->
-    printk_gen_contract (kt := KT1) (fsc_printk) (fsc_uart) (fsc_disk) ->
     (* THE PROLOGUE'S MOVE (milestone J1a): [U0] is the state usertrap was
        entered at and [U] the one the +0x28..+0x2e block handed on, so the
        two differ in exactly the epc word.  The arms below turn this into
@@ -830,7 +816,7 @@ Section UtDispatch.
                      mie_v menvcfg0 U0 sts gn cs pid ep sc fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hgnq Hpk Hpro Hwf Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hma0 Hcs Hmiev Hmenvv.
+    intros Hgnq Hpro Hwf Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hma0 Hcs Hmiev Hmenvv.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
@@ -1168,7 +1154,7 @@ Section UtDispatch.
             rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"]. }
           iApply (A.ut_d0 SY.syscall_env N U0 U pt ksp m0 D6 av nx
                     mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
-                    Hpk Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
+ Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
                     Hav Hnx Htfpe Hksp Hm0sp HD6sp HD6s1 HcsD6
                     Hmiev Hmenvv (ut_round_entry ep sc U0 U Hscne Hpro)
                     (* the transparent arms' defining cause, off the dispatch's own
@@ -1250,7 +1236,7 @@ Section UtDispatch.
                rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"]. }
              iApply (A.ut_d0 SY.syscall_env N U0 U pt ksp m0 D8 av nx
                        mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
-                       Hpk Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
+ Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
                        Hav Hnx Htfpe Hksp Hm0sp HD8sp HD8s1 HcsD8
                        Hmiev Hmenvv (ut_round_entry ep sc U0 U Hscne Hpro)
                        (* the transparent arms' defining cause, off the dispatch's own
@@ -1275,7 +1261,7 @@ Section UtDispatch.
                rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"]. }
              iApply (A.ut_56 SY.syscall_env N U0 U pt ksp m0 D8 av nx
                        mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
-                       Hpk Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
+ Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
                        Hav Hnx Htfpe Hksp Hm0sp HD8sp HD8s1 HcsD8
                        Hmiev Hmenvv (ut_round_entry ep sc U0 U Hscne Hpro)
                        (* the transparent arms' defining cause, off the dispatch's own
@@ -1456,15 +1442,6 @@ Section UtSeal.
   Context `{!ufdG Σ}.
   Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
 
-  (* printk's contract, as the [Prop] the arms take -- from the functor
-     argument, at whatever hart the call happens on. *)
-  Local Lemma ut_printk (γpr : gname) (γd : uart_names) (γv : disk_names) :
-    printk_gen_contract (kt := KT1) γpr γd γv.
-  Proof.
-    intros CIDp XIp m0 K eb pj dqf f descs b lks.
-    exact (PK.wp_printk_gen_sconf KT1 (CID := CIDp) (XI := XIp) γpr γd γv m0 K eb pj
-             (dqf := dqf) f descs b lks).
-  Qed.
 
   Lemma wp_usertrap (pt : uptd) (j : nat) (m : regfile)
       (ms_v sc_v stval_v sepc_v ksp : mword 64)
@@ -1496,7 +1473,6 @@ Section UtSeal.
     iApply (ut_dispatch N (MkUstate V Mu) (MkUstate V' Mu) pt ksp m M av (av - 4)%nat sepc_v sc_v stval_v
               mie_v menvcfg0 sts gn cs pid fdep Wk
               ltac:(cbn [us_V]; exact Hgnq)
-              (ut_printk (fsc_printk) (fsc_uart) (fsc_disk))
               (conj HtfV (conj HuptV (conj HszV (conj eq_refl
                  (conj HcwiV (conj HgenV HlzV))))))
               Hwf Hav

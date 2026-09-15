@@ -9,20 +9,10 @@
    [size <= BPB]) -- are refuted inside the proof, so no panic contract is
    instantiated here either.
 
-   *** READ THIS BEFORE TRUSTING "THE STANDING SIX". ***  balloc's
-   out-of-blocks arm IS LIVE and calls printk on its GENERAL path, and
-   [PRINTK_GEN]'s only instance is [LinkPrintk]'s own [Axiom].
-   Instantiating that functor -- here or in [ProofBalloc.v] -- would put a
-   SEVENTH entry in [Print Assumptions Balloc.wp_balloc_sconf] and, through
-   the ripple, in bmap's and writei's too.  [SpecBalloc.v] therefore takes
-   printk's contract as a PURE HYPOTHESIS ([SpecPrintk.printk_gen_contract]),
-   which keeps all three at the standing six -- but that is NOT
-   self-containment: balloc's six are modulo a THREADED printk obligation
-   that its callers must eventually discharge, exactly the standing that
-   [SpecPanic]'s own credentials already have throughout this tree.  A reader who
-   takes the six for "depends on nothing else" is misreading it.          *)
+   *)
 Require Import LinkBread LinkLogWrite LinkBrelse LinkMemsetArray ProofBalloc.
+Require Import LinkPrintk.
 
 (* the whole-function memset spec [MEMSET] is [MemsetArray] (LinkMemsetArray),
    not the [MEMSET_PARTS] module [Memset] *)
-Module Balloc := BallocProof Bread LogWrite Brelse MemsetArray.
+Module Balloc := BallocProof Bread LogWrite Brelse MemsetArray PrintkGen.

@@ -320,7 +320,7 @@ Require Import FileInvDefs.
 Require Import UserPtTree.
 Require Import ProcPtOwn.
 Require Import ProcInv.
-Require Import SpecPrintk.      (* [printk_env], [printk_gen_contract] *)
+Require Import SpecPrintk.      (* [printk_env] *)
 Require Import SpecDirlink.     (* [ic_sleeplocks], [ireg_blocks_ok] *)
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
@@ -574,7 +574,6 @@ Definition wp_sys_unlink_frame
   (* mkfs's [ushort] geometry, the landed contract's premise verbatim *)
   16 * Z.of_nat icfg_nib <= 2 ^ 16 ->
   (* ---- balloc's out-of-blocks arm calls printk, not panic ---- *)
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (j < NPROC)%nat ->
   gs !! j = Some gl ->
   (* nameiparent's own premise, inherited *)

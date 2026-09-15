@@ -2330,7 +2330,6 @@ Section EndOpBlocks.
               ltac:(intros Hab; discriminate)
               ltac:(intros Hab; discriminate)
               ltac:(lkbelow)
-              ltac:(intros Hab; discriminate)
               with "Hcg Hcnt Hextc Hextm Htext Hkd Hpc Hpenv [] Hbio Hlfz Hppid Hprocs Hdevi Hdgeom Hdlock Hncell HW Hbinvh [] HauthL HauthD Hent Hu2
                     [] [Hmirc]").
     all: try lkbelow.

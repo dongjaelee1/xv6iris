@@ -264,7 +264,8 @@ the tree:
    which needs the WHOLE element (`FsState.top_frag` at `DfracOwn 1`) —
    and that is exactly what the cache's loaded payload holds while the
    inode is ilock'd (`IcacheEscrow.ic_loaded`; `FsAbs.top_frag_1_nview_excl`
-   is the algebra, `FsAbsSeam.ic_loaded_nview_excl` the seam);
+   is the algebra, `FsAbsEra.ic_loaded_nview_excl` the seam — note
+   `FsAbs.v`'s comment still calls it `FsAbsSeam`'s, which is stale);
 3. so a client holding ANY `nview` share of the file it is writing
    contradicts the chain node's own premises, and every cursor it could
    build would be proved by `False`.

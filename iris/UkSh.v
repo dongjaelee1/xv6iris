@@ -6816,8 +6816,22 @@ Section UkSh.
            hypotheses, so [wp_ksh_loop] pays them, and no caller of
            [UInitSh.sh_pay_rest] -- a [∀] over every [Pm] -- could. *)
         ⌜ forall i : nat, ⊢ ush_at i -∗ ush_lease i ⌝ -∗
+        (* ...AND THE PAYLOAD'S OWN ASSEMBLER, at a boundary and with the
+           banner-owed credential ([ush_at_of_pm_wb]): what the fork
+           panic's exit is paid from.  A premise of the OBLIGATION for the
+           same reason (lane R3): it is this section's hypothesis, so
+           [wp_ksh_loop] pays it and no discharger stated over an
+           arbitrary [Pm]/[Wb] pair could. *)
+        ⌜ forall i : nat, ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ ush_at i ⌝ -∗
         shk_code γt -∗
         ush_jtab γt -∗
+        (* ...AND THE TAINT'S GENERIC CONTINUATION (lane R3).  The body's
+           line fact has the taint as its second arm and a tainted process
+           stops running sh's code ([ush_gen_run]); the slot is a fact
+           about the RECORD the kernel minted ([ukn_pay N] is the console
+           lease's pair), so the entry produces it and the discharger
+           cannot.  Same rule as the three above. *)
+        ush_gen_slot -∗
         ush_loop_head R l -∗
         ∀ (h : CpuId) (m : regfile) (f : nat -> bv 8) (k i2 : nat) (n : nat),
           ⌜ ush_regs m ⌝ -∗
@@ -7238,14 +7252,15 @@ Section UkSh.
     □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     ush_prompt_law -∗
-    ush_rest_l R -∗ shk_code γt -∗ ush_jtab γt -∗ ush_loop_head R l.
+    ush_rest_l R -∗ shk_code γt -∗ ush_jtab γt -∗ ush_gen_slot -∗
+    ush_loop_head R l.
   Proof.
     assert (Hbf : sh_buf = 8224) by (vm_compute; reflexivity).
     assert (Hnb : sh_nbuf = 100%nat) by (vm_compute; reflexivity).
     assert (Hnbz : Z.of_nat sh_nbuf = 100) by (vm_compute; reflexivity).
     assert (Hnble : (length echo_line < sh_nbuf)%nat)
       by (rewrite echo_line_length; vm_compute; lia).
-    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt".
+    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hgen".
     iLöb as "IH".
     iIntros (h m f n0) "%Hregs %Hfd0 Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
@@ -7511,8 +7526,8 @@ Section UkSh.
                      = mword_of_int 0x97a)
         by (apply bv_eq; vm_compute; reflexivity).
       rewrite E976. iIntros (hh1) "Hrun".
-      iDestruct ("Hrest" $! l with "[%] [%] Hcode Hjt IH") as "Hbody";
-        [ exact Hpay | exact ush_pm_of_at | ].
+      iDestruct ("Hrest" $! l with "[%] [%] [%] Hcode Hjt Hgen IH") as "Hbody";
+        [ exact Hpay | exact ush_pm_of_at | exact ush_at_of_pm_wb | ].
       iApply ("Hbody" $! hh1 mm g kk i2 n0
                 with "[] [] [] [] [] Hrl Hstd HR Hbs Hrun");
         iPureIntro; [ exact Hrm | exact Hsm | exact Ham
@@ -7698,6 +7713,7 @@ Section UkSh.
     ush_rest_l R -∗
     shk_code γt -∗
     ush_jtab γt -∗
+    ush_gen_slot -∗
     ⌜ ush_fd0p l ⌝ -∗
     ush_pstate l -∗
     R -∗
@@ -7705,7 +7721,7 @@ Section UkSh.
     urun N h m (mword_of_int 0x914) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt %Hfd0 Hstd HR Hbs Hrun".
+    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hgen %Hfd0 Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
     (* ---- 0x914  li s3,100 ---- *)
     iApply (wp_uk_li N h m (mword_of_int 0x914)
@@ -7854,7 +7870,8 @@ Section UkSh.
                  (regval_into_reg (mword_of_int 99 : mword 64))).
       - exact (upd_eq m5 (Regidx s6_idx)
                  (regval_into_reg (mword_of_int 32 : mword 64))). }
-    iDestruct (wp_ksh_loop R l with "Hdp Hlaw Hplaw Hrest Hcode Hjt") as "Hhead".
+    iDestruct (wp_ksh_loop R l with "Hdp Hlaw Hplaw Hrest Hcode Hjt Hgen")
+      as "Hhead".
     iApply ("Hhead" $! h7 m6 f n0 with "[%] [%] Hstd HR Hbs Hrun");
       [ exact Hregs | exact Hfd0 ].
   Qed.
@@ -8091,8 +8108,8 @@ Section UkSh.
          the row that ledger satisfies *)
       iIntros (h5) "Hrun".
       iApply (wp_ksh_cmd_head R h5 mD f n0 l'
-                with "Hdp Hlaw Hplaw Hrest Hcode Hjt [%] [Hstd Hcwd Hch Hpid Hpos]
-                      HR Hbs Hrun");
+                with "Hdp Hlaw Hplaw Hrest Hcode Hjt Hgen [%]
+                      [Hstd Hcwd Hch Hpid Hpos] HR Hbs Hrun");
         [ exact Hfd0' | ].
       rewrite /ush_pstate /ush_std. iFrame "Hstd Hcwd Hch Hpid Hpos". }
     assert (E908 : add_vec_int (mword_of_int 0x908 : mword 64) 4
@@ -8171,8 +8188,8 @@ Section UkSh.
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Eret2.
     iApply (wp_ksh_cmd_head R h8 _ f n0 l'
-              with "Hdp Hlaw Hplaw Hrest Hcode Hjt [%] [Hstd Hcwd Hch Hpid Hpos]
-                    HR Hbs Hrun");
+              with "Hdp Hlaw Hplaw Hrest Hcode Hjt Hgen [%]
+                    [Hstd Hcwd Hch Hpid Hpos] HR Hbs Hrun");
       [ exact Hfd0' | ].
     rewrite /ush_pstate /ush_std. iFrame "Hstd Hcwd Hch Hpid Hpos".
   Qed.

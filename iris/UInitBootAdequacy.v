@@ -63,7 +63,7 @@ Require Import UserConsole.        (* [ucons_pay]: the payload the owed read
                                       part 5) *)
 Require Import FsCfg.              (* [fsc_cons]: ...and the era's console
                                       ring it names *)
-Require Import UInitSh.            (* [sh_pay_state] / [sh_pay_rest] *)
+Require Import UInitSh.            (* [sh_pay_state] *)
 Require Import App.                (* [xv6_app_adequacy] and the record *)
 Require Import AppEcho.            (* [app_echo] and its obligations *)
 Require Import EchoOut.            (* [echoOutG]: the class the record's four
@@ -97,62 +97,34 @@ Section EchoAdequacy.
      but it IS still modulo the shell's two owed entailments below. *)
   Theorem echo_adequacy_modulo_phi
       (g : gstate) (sb : FsImg.fs_sb) (nib : nat) (cov : gset Z)
-      (* ---- WHAT THE ARC STILL OWES ON THE SHELL'S SIDE, by lane: the
-             ONE deposit sh still calls ([UkSh.sh_deps] is write(16) and
-             nothing else now -- read(5) pays from the console LEASE
-             (SH-LINE 2b, R1') and open(15) is PINNED (SH-OPEN)), which is
-             /init's own write deposit too (E5), sh's static state out of
-             the data below the frame (E4), and sh's tail (SH-LINE 2b).
+      (* ---- NOTHING ABOUT THE SHELL'S PROGRAM IS OWED ANY MORE.
+             [Hsh_owed] IS GONE (lane R3).  It had two Coq-level
+             entailments at [UexecExecInst.uprogSG_free]:
+
+               (1) [(⊢ UkSh.sh_deps (PS := uprogSG_free))], the FREE WRITE
+                   LAW -- "a write(16) counts as paid without the era's
+                   credential".  Lane EXEC-SEAM (D) deleted it: the paid
+                   walks spend write's deposit under the TAINT, where it is
+                   the application's own supply
+                   ([UexecExecMint.udepw_law_of_sup_write]), and init's
+                   diagnostics on a closed descriptor pay through the
+                   closed-fd leaf, which reaches no wire.
+
+               (2) [(⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh)], the shell's
+                   REST-OF-LINE obligation -- "for EVERY taint and EVERY
+                   credential family, the command loop's body holds the
+                   line fact".  It is deleted here, and [UInitSh.
+                   sh_pay_rest] with it: the body's one proof
+                   ([UkShFork.ushf_rest_of_body]) needs the paid child's
+                   law, a killed child's credential and sh's fork panic --
+                   facts about THE ERA's families, false for some families
+                   -- so the [∀ T Wc Wb Pm] form could never be supplied.
+                   [UShRest.sh_rest_holds] discharges the obligation at the
+                   echo era's own families instead, inside
+                   [UInitBoot.echo_Hinit_boot].
+
              sh's CONSOLE READ LEAF was a third conjunct from lane
-             ECHO-OUT part 5 until lane IO-LEAF M5 paid it.
-             Quantified
-             over the era's classes for [Hinit_boot]'s own reason: they
-             are born by the boot mint. ---- *)
-      (* NO [(XI : CurCtx)] BINDER: [echo_Hinit_boot] does not take one
-         either -- the working-context class is resolved from the ambient
-         instance, and quantifying it here would leave a [_] at the call
-         that nothing determines ("Could not find an instance for
-         CurCtx"). *)
-      (* [GEN] IS BACK, and it has to be: [UkSh.sh_deps] is
-         [urun]-shaped, so they need a full [riscvGS]
-         and a [GenId], and the only [riscvGS] in sight is this field's
-         [HR] -- the section has the PRE-structure classes only.  Without
-         the binder the whole hypothesis loses its instances
-         ("Could not find an instance for ?riscvGS0 / ?GEN / ?ctokG0 /
-         ?SG"). *)
-      (Hsh_owed : forall (HR : riscvGS Σ) (GEN : GenId)
-         `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
-           HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ},
-         (* TWO SEPARATE COQ-LEVEL ENTAILMENTS, not one [iProp] conjunction
-            under an Iris one.  Each is owed whole by a different lane --
-            E5's write(16) deposit and SH-LINE's tail -- and
-            [echo_Hinit_boot] takes them as Coq premises: an Iris [∃] would
-            have to be opened inside the proofmode and its components could
-            not be handed to a Coq argument position at all.  Both are at
-            [UexecExecInst.uprogSG_free]: that is the acceptance test, and
-            it is readable here.
-            THE FAMILY IS NAMED, not existentially quantified (lane
-            SH-STATE): the state payload is proved
-            ([UInitSh.sh_pay_state_holds]) and proving it is what fixes
-            [UInitSh.sh_Rsh], so the tail is owed at that family and no
-            other. *)
-         (* THE FIRST CONJUNCT IS GONE (lane EXEC-SEAM, (D)): the free
-            write law is derived under the taint from the application's
-            supply ([UexecExecMint.udepw_law_of_sup_write]) and the
-            closed-fd leaf pays the writes that reach no wire, so nothing
-            about write(16) is owed here any more. *)
-         (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh)
-         (* THE THIRD CONJUNCT IS GONE (lane IO-LEAF, M5).  It was sh's
-            CONSOLE READ LEAF, owed here since lane ECHO-OUT part 5 because
-            the boundary's flat input licence [WpUart.in_licence] is FALSE
-            at [AppEcho.echo_in]'s real claim -- moving [dl] needs the
-            READER's half of [EchoOut.dl_cnt].  Sh's lease carries that
-            half now: it is the [Rd] of [UserConsole.ucons_pay], under the
-            same existential as the cursor, so it round-trips through
-            /init's wait exactly as the reader token does, and
-            [UShLine.ush_read_recv_leaf_holds] runs the leaf through
-            [EchoOut.echo_read_link].  [UInitBoot.echo_Hinit_boot]
-            discharges it. *))
+             ECHO-OUT part 5 until lane IO-LEAF M5 paid it. ---- *)
       (Hgen0 : g.(ggen) = 0%nat) (Hpow0 : g.(gpow) = false)
       (Himg : fs_boot_image_wf (v_disk (g.(gdev).(dvirtio))) XV6_DISK_BYTES
                 sb nib cov)
@@ -223,9 +195,11 @@ Section EchoAdequacy.
     - exact (echo_Happ_init g sb nib cov Himg Hdk Hsb Hcov).
     - (* ---- [Hinit_boot]: E2's own, and the only obligation of the
              record this lane owes.  Everything it needs is at
-             [UexecExecInst.uprogSG_free]: the shell's deposits come in as
-             [Hsh_owed] at that instance, and [echo_Hinit_boot] builds
-             /init's slot from them without ever touching the supply. ---- *)
+             [UexecExecInst.uprogSG_free],
+             and [echo_Hinit_boot] now takes NO Coq-level entailment about
+             the shell's program: it builds /init's slot, sh's entry
+             payload and sh's tail obligation itself, off the era's links
+             and the boot resource. ---- *)
       
       intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen Hout Hin
              Hwin.
@@ -244,7 +218,6 @@ Section EchoAdequacy.
          [EchoOut.echoOutG]'s own [eo_mono_nat] now -- a class this section
          binds ONCE and hands to both sides -- so there is nothing left to
          move and [Hgen] is a premise this discharge does not read. *)
-      pose proof (Hsh_owed HR GEN HBs HFd HIr HPav HWc HF) as Hre.
       (* [GEN] is IMPLICIT and fixed by unification -- from [Hw16] first
          and [Heq] after, both of which carry the record's own [GenId].
          Naming it here would pin the wrong one: the [GEN] this field
@@ -254,7 +227,7 @@ Section EchoAdequacy.
          CONS-IO milestone F), on [app_in]'s mould *)
       cbn [app_echo app_win] in Hwin.
       iIntros "#Hinv Hb Hturn".
-      iApply (echo_Hinit_boot HR GEN c r Hre
+      iApply (echo_Hinit_boot HR GEN c r
                 Heq Htag Hkill Hout Hin Hwin with "Hinv Hb [Hturn]").
       cbn [app_echo app_turn]. iExact "Hturn".
     - (* [Happ_echo]: at [AppEcho.echo_out]'s E5 placeholder the console's

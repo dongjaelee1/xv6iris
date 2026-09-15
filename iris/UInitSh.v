@@ -506,29 +506,16 @@ Section UInitSh.
              ubyte γd k b) -∗
           |==> ∃ f : nat -> bv 8, Rsh γt γd γs ∗ ubytes γd sh_buf sh_nbuf f))%I.
 
-  (* ...AND IT IS QUANTIFIED OVER THE TAINT (lane IO-LEAF, M5(3)).  The
-     body's obligation carries the line fact -- "the line in the buffer is
-     [EchoDisc.echo_line], or the taint" -- and the cursor's boundary
-     beside it, both of which name the application's [T].  What the TOP
-     theorem owes is stated before any era is in scope ([Hsh_owed]), so the
-     [T] is universally quantified here and instantiated at the era where
-     [sh_pay] is built. *)
-  (* ...AND OVER THE ERA'S WRITE CREDENTIAL FAMILY (lane IO-LEAF, M6a(3)),
-     for the same reason: the command loop carries the credential beside
-     its cursor ([UkSh.ush_posb]), so the body's obligation names the
-     family, and the family is the era's. *)
-  (* ...AND OVER THE BANNER-OWED CREDENTIAL AND THE LEASE'S PIECES (lane
-     IO-LEAF, step 3), for the same reason: the loop holds the pieces in
-     the payload's place and the closed arm of its credential slot names
-     the banner-owed family. *)
-  Definition sh_pay_rest (Rsh : gname -> gname -> gname -> iProp Σ)
-      : iProp Σ :=
-    (∀ (γp : gname) (N : uk_names Σ) (T : iProp Σ)
-       (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ)
-       (Pm : nat -> iProp Σ),
-       ⌜ Persistent T ⌝ -∗
-       ush_rest_l (PS := uprogSG_free) N γp T Wc Wb Pm
-         (Rsh (ukn_t N) (ukn_d N) (ukn_s N)))%I.
+  (* [sh_pay_rest] IS GONE (lane R3).  It was the era-FREE form of the
+     tail obligation -- a [forall T Wc Wb Pm] the top theorem assumed --
+     and it is not provable in that shape: its one discharger
+     ([UkShFork.ushf_rest_of_body]) needs the PAID CHILD's law, a killed
+     child's credential and sh's own panic law, all of which are facts
+     about the era's families and FALSE for some of them.  The obligation
+     is discharged at the echo era's own families instead
+     ([UShRest.sh_rest_holds]), which is what [sh_pay]'s second conjunct
+     below asks for and what [UInitBoot.echo_Hinit_boot] now proves rather
+     than assumes. *)
 
   Definition sh_pay (T : iProp Σ) (Wc : nat -> nat -> iProp Σ)
       (Wb : nat -> iProp Σ) (Pm : gname -> nat -> iProp Σ)
@@ -561,16 +548,22 @@ Section UInitSh.
         working (durable-notes, "Shaping a change so the sweep is small"). *)
      ∗ UkSh.ush_tag_law T)%I.
 
+  (* THE MIDDLE PREMISE IS [sh_pay]'s SECOND CONJUNCT ITSELF (lane R3):
+     the tail obligation at THIS era's taint and families, one per
+     position ghost.  [UShRest.sh_rest_holds] is what supplies it. *)
   Lemma sh_pay_of_parts (T : iProp Σ) `{!Persistent T}
       (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ)
       (Pm : gname -> nat -> iProp Σ)
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat) :
-    sh_pay_state Rsh n0 -∗ sh_pay_rest Rsh -∗ UkSh.ush_tag_law T -∗
+    sh_pay_state Rsh n0 -∗
+    (∀ (γp : gname) (N : uk_names Σ),
+       ush_rest_l (PS := uprogSG_free) N γp T Wc Wb (Pm γp)
+         (Rsh (ukn_t N) (ukn_d N) (ukn_s N))) -∗
+    UkSh.ush_tag_law T -∗
     sh_pay T Wc Wb Pm Rsh n0.
   Proof.
-    iIntros "#Hst #Hre #Htg". rewrite /sh_pay /sh_pay_state /sh_pay_rest.
-    iSplitR; [ iExact "Hst" | ]. iSplitR; [ | iExact "Htg" ].
-    iIntros (γp N). iApply ("Hre" $! γp N T Wc Wb (Pm γp)). by iPureIntro.
+    iIntros "#Hst #Hre #Htg". rewrite /sh_pay /sh_pay_state.
+    iSplitR; [ iExact "Hst" | ]. iSplitR; [ iExact "Hre" | iExact "Htg" ].
   Qed.
 
   Global Instance sh_pay_persistent T Wc Wb Pm Rsh n0 :

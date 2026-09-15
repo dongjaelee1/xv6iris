@@ -113,6 +113,9 @@ Require Import UInitConsK.        (* the two arms' discharges at echo's era *)
 Require Import UInitSh.           (* [init_cons_sup_of_sh_slot] *)
 Require Import UShOut.            (* [sh_prompt_law_holds] *)
 Require Import UShPanic.          (* [sh_prompt_law_holds_line]: the prompt's law at the tight family (step 4) *)
+Require Import UShRest.           (* [sh_rest_holds]: the shell's tail
+                                     obligation, discharged at the era's
+                                     own families (lane R3) *)
 Require Import EchoLinksPro.      (* [ewc_pro]: the round-open shape /init lends *)
 Require Import EchoLinksLine.     (* [ewc_lcred]: the loop's tight credential family (step 4) *)
 Require Import EchoLinksBan.      (* [ewc_ban_line]: the banner-owed credential is a boundary credential *)
@@ -602,7 +605,10 @@ Section EchoInitBoot.
        paid walks spend write's deposit under the taint, where it is the
        supply's ([UexecExecMint.udepw_law_of_sup_write]), or through the
        closed-fd leaf where the console never opened. *)
-    (⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh) ->
+    (* THE REST-OF-LINE OBLIGATION IS NO LONGER OWED EITHER (lane R3):
+       it is discharged below at the echo era's own credential families
+       ([UShRest.sh_rest_holds]), so NOTHING about the shell's program is
+       assumed by the top theorem any more. *)
     (* SH'S READ LEAF IS NO LONGER OWED (lane IO-LEAF, M5).  It was a
        Coq-level premise here from lane ECHO-OUT part 5, because the
        boundary's flat input licence is FALSE at [AppEcho.echo_in]'s real
@@ -612,7 +618,7 @@ Section EchoInitBoot.
        [UShLine.ush_rd_pin γ], under the same existential as the cursor,
        so it round-trips through /init's wait like the token itself.  The
        discharge is [UShLine.ush_read_recv_leaf_holds], applied in the
-       proof, and [UInitBootAdequacy]'s [Hsh_owed] has two conjuncts. *)
+       proof, and [UInitBootAdequacy]'s [Hsh_owed] is GONE (lane R3). *)
     (* ---- and the two equations [Hinit_boot] hands over ---- *)
     @file_app Σ HF = MkAppcfg echo_names (echo_pred γ) r ->
     riscv_rx_tag = echo_tag γ ->
@@ -650,7 +656,7 @@ Section EchoInitBoot.
       echo_turn γ (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Hsh_rest Heq Htag Hkill Hout Hin Hwin.
+    intros Heq Htag Hkill Hout Hin Hwin.
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)
@@ -679,6 +685,19 @@ Section EchoInitBoot.
         iApply (EchoOut.ein_sup_deliv (echo_taint γ) γ k h pops dl ws
                   with "Ht Hi"). }
     iIntros "#Hinv Hb Hturn". iModIntro.
+    (* ---- THE ERA'S PIN, out of the turn and back (lane R3).  The pin is
+           persistent and the turn is not, so the pin is read off here and
+           the turn re-sealed unchanged; [UShRest.sh_rest_holds] needs the
+           pin to say what a KILLED child's write credential is, and the
+           shell's slot is assembled (persistently) before the turn is
+           spent at the end of this proof. ---- *)
+    iAssert ((∃ v : era_pins, era_pin γ (S gen_id) v)
+             ∗ echo_turn γ (S gen_id))%I
+      with "[Hturn]" as "[#Hpine Hturn]".
+    { rewrite /echo_turn /EchoOut.eturn.
+      iDestruct "Hturn" as (v0) "(#Hp0 & Ht1 & Ht2 & Ht3 & Ht4 & Ht5)".
+      iSplitR; [ iExists v0; iExact "Hp0" | ].
+      iExists v0. iFrame "Hp0 Ht1 Ht2 Ht3 Ht4 Ht5". }
     (* ---- the taint's supply, and the generic slot it buys ---- *)
     iAssert (□ (echo_taint γ -∗ app_sup))%I as "#Hsup".
     { rewrite /app_sup. rewrite Heq. cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
@@ -735,6 +754,20 @@ Section EchoInitBoot.
     { rewrite /UkSh.ush_tag_law. iIntros "!>" (h) "Hr".
       rewrite Htag /echo_tag /EchoOut.etag.
       iDestruct "Hr" as "[_ Hr]". iExact "Hr". }
+    (* THE LINKS, ONCE: the law the read leaf and the banner both spend,
+       proved exactly where the record's four equations are. *)
+    iAssert (EchoLinks.echo_links (echo_taint γ) γ) as "#Hlks";
+      [ iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin) | ].
+    assert (Hlkc : ⊢ EchoLinks.echo_links (echo_taint γ) γ)
+      by (iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin)).
+    (* ---- /echo's PINNED ENTRY, as the paid child's law needs it (lane
+           R3): the file-system invariant, the claim law projected at
+           echo's pins, and the taint's generic mint -- the three pieces
+           already in hand. ---- *)
+    iAssert (UShEcho.sh_echo_slot (echo_taint γ)) as "#Hslot".
+    { iApply UShEcho.sh_echo_slot_of_fs_pure_holds.
+      rewrite /UShEcho.sh_echo_slot_of_fs_pure.
+      iSplitR; [ iExact "Hinv" | ]. iSplitR; [ iExact "Hfs" | iExact "Hmint" ]. }
     (* ---- the shell's slot, and the exec supply as a wand from the
            console credential ---- *)
     (* THE FAMILIES, ONCE (step 3): the write credential is the era's at
@@ -756,7 +789,15 @@ Section EchoInitBoot.
                 (UInitBanner.kinit_ban (echo_taint γ) γ) (UShLine.ush_mid γ)
                 UInitSh.sh_Rsh 0%nat
                 with "[] [] Htg");
-        [ iApply UInitSh.sh_pay_state_holds | iApply Hsh_rest ]. }
+        [ iApply UInitSh.sh_pay_state_holds | ].
+      (* THE TAIL, AT THE ERA'S FAMILIES (lane R3).  [UInitBanner.kinit_ban]
+         IS the banner-owed family spelled at the era's pin, and
+         [UShRest.sh_rest_holds] is stated at that spelling, so the one
+         unfolding here is the same one [Hsh_wbr] does below. *)
+      iIntros (γp N). rewrite /UInitBanner.kinit_ban.
+      iApply (UShRest.sh_rest_holds (echo_taint γ) γ γp N Hktaint
+                with "Hlks [] Hslot Hpine").
+      iApply (udep_free). }
     (* THE TWO READINGS OF THE SUPPLY, at Coq level: the console ring's
        dirty credential read AS THE TAINT and back
        ([AppEcho.echo_taint_of_sup] / [echo_sup_of_taint]).  They were
@@ -771,12 +812,6 @@ Section EchoInitBoot.
     { rewrite /app_sup. rewrite Heq.
       cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
       iIntros "#Hs". iApply (echo_taint_of_sup γ r with "Hs"). }
-    (* THE LINKS, ONCE: the law the read leaf and the banner both spend,
-       proved exactly where the record's four equations are. *)
-    iAssert (EchoLinks.echo_links (echo_taint γ) γ) as "#Hlks";
-      [ iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin) | ].
-    assert (Hlkc : ⊢ EchoLinks.echo_links (echo_taint γ) γ)
-      by (iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin)).
     (* ...AND SH'S READ LEAF, DISCHARGED (lane IO-LEAF, M5). *)
     assert (Hsh_rdleaf :
       forall (γp : gname) (N : uk_names Σ) (l : list fdstate),

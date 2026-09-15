@@ -743,13 +743,14 @@ Section UkShFork.
     (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
     (* ...and the credential's conversion at a fork that failed (step 4) *)
     (forall i : nat, ⊢ Wc i 3%nat -∗ Wc i 0%nat) ->
-    □ (T -∗ UkSh.sh_deps) -∗
+    (* THE TAINT'S CONTINUATION (lane R3), in place of the free write law
+       and the exec supply: a tainted process does not run sh's code, so
+       the arm hands its run to the generic slot right here rather than
+       forking a generic child.  [UkRun.uxsup] has no producer anywhere in
+       the tree, which is why that arm could never be paid from the top. *)
+    UkSh.ush_gen_slot N T -∗
     ushl_head l sz -∗
     shk_code γt -∗
-    (* the exec deposit's supplier for the GENERIC child -- [UkRun.uxsup],
-       see [UkShRun.wp_kshr_runcmd]: the affine and tainted arms reach
-       runcmd's EXEC arm on it *)
-    uxsup -∗
     shk_rodata γt -∗ ush_jtab γt -∗
     (* the two laws of the paid child (step 4) *)
     ushf_kill_law -∗
@@ -768,7 +769,7 @@ Section UkShFork.
   Proof.
     intros Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.
-    iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hjt #Hkl #Hchl #Hplaw %Hfd0 Hstd
+    iIntros "#Hgen Hhead #Hcode #Hro #Hjt #Hkl #Hchl #Hplaw %Hfd0 Hstd
              Hdat Hsz Hbuf Hrun".
     iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpid & Hpos)".
     (* THE CONSOLE ARM APART FROM THE REST *)
@@ -878,54 +879,17 @@ Section UkShFork.
         rewrite /UkSh.ush_wcp. iLeft. iSplitR; [ by iPureIntro | ].
         rewrite /ushf_wq. iDestruct "HQ" as "[HQ | HQ]";
           [ iApply (Hwbl np with "HQ") | iExact "HQ" ].
-    - (* ============ THE TAINT: the generic walk (the only credential-less
-         arm since lane EXEC-SEAM, (C)) ====== *)
-      iDestruct "Hpos" as (np0) "Hpos".
-      iEval (rewrite /UkSh.ush_at) in "Hpos".
-      iDestruct "Hpos" as "[Hpos Hlease]".
-      iApply (wp_kshf_fork_core h m f k len sz l n (fun _ : Z => True%I)
-                emp%I (UkRun.ukn_pay N (-1)) ltac:(intros x y; reflexivity)
-                Hregs Hs1 Hnn Hnul Hkl
-                with "Hhead Hcode Hro Hjt [%] Hustd Hcwd Hch Hpid [] []
-                      Hlease [] [] [Hpos] Hdat Hsz Hbuf Hrun");
-        [ exact Hfd0 | done | iModIntro; iIntros "_"; done | | | ].
-      + (* the panic, on the free law UNDER THE TAINT and the record's own
-           payload *)
-        iIntros (Sc h' m' r) "%Hmsg _ _ _ Hpay Hrun'".
-        iDestruct ("Hdp" with "HT") as "#Hdp16".
-        iApply (UkShDiag.ush_diag_leaf_holds N h' m' ShSyms.panic (66 + n)
-                  ltac:(left; split; [ reflexivity | left; exact Hmsg ])
-                  with "Hdp16 Hcode Hro [] Hpay Hrun'").
-        rewrite UkShRun.ush_diag_res_panic. done.
-      + (* the child: the generic walk at the trivial payload *)
-        iIntros (N' hB mA γ') "%Hpeq' %Hs1A _ _ #Hcode' #Hro' #Hjt'
-                               Hline' Hws Hsy Hustd' Hcwd' Hch' Hfresh Hrun'".
-        pose proof (Hpeq' : UkRun.ukn_triv N') as Htiv'.
-        pose proof (ukn_const_of_triv N' Htiv') as Hcst'.
-        iDestruct (uxsup_at_triv N' with "Hxs") as "#Hxs'".
-        iAssert (□ (riscv_kill_cred -∗ UkRun.ukn_pay N' (-1)))%I as "#Hkw'".
-        { rewrite Htiv'. iModIntro. iIntros "_". done. }
-        iDestruct ("Hdp" with "HT") as "#Hdp16".
-        iApply (UkShMain.wp_kshm_child_alloc N' Hpsok_free
-                  hB mA DfracDiscarded DfracDiscarded
-                  (sh_buf + Z.of_nat k) len (fun j : nat => f (k + j)%nat)
-                  toks sz l n
-                  Hs1A Hns Htoks Htlen
-                  ltac:(unfold sh_buf; lia)
-                  ltac:(unfold sh_buf, sh_nbuf, Z64 in *; lia)
-                  ltac:(unfold sh_buf, sh_nbuf in *; lia)
-                  Hszlo Hszal Hszok (ukn_pay_free_of_triv N' Htiv')
-                  with "Hdp16 Hcode' Hxs' Hkw' [] [] Hjt' Hline' Hws Hsy Hustd'
-                        [Hcwd'] [Hch'] Hfresh Hrun'").
-        * iApply (ushf_code_shp with "Hcode'").
-        * iApply (ushf_rodata_shp with "Hro'").
-        * iApply (UserCwd.ucwd_any_of with "Hcwd'").
-        * iApply (UserChildren.uch_any_of with "Hch'").
-      + (* the re-entry: the tainted cursor, back as it went out *)
-        iIntros (Sw Sw' ret pidv) "_ _ _ _ Hlease". iModIntro.
-        rewrite /UkSh.ush_posb. iRight. iFrame "HT".
-        rewrite /UkSh.ush_pos. iExists np0.
-        rewrite /UkSh.ush_at. iFrame "Hpos Hlease".
+    - (* ============ THE TAINT: sh's code is left HERE (lane R3).  A
+         tainted process may run anything, so the arm hands its run to the
+         GENERIC SLOT at 0x92c rather than walking fork1/runcmd on the free
+         write law and an exec supply nobody can produce.  Everything the
+         old arm carried -- the cursor, the lease, the ledger, the buffer
+         -- is dropped: the taint claims nothing. ====== *)
+      assert (Halo : is_aligned_vaddr
+                       (Virtaddr (mword_of_int 0x92c : mword 64)) 2 = true)
+        by (vm_compute; reflexivity).
+      iApply (UkSh.ush_gen_run N T h m (mword_of_int 0x92c) (16 + (80 + n))
+                Halo with "Hgen HT Hrun").
   Qed.
 
   (* ===================================================================== *)
@@ -962,10 +926,11 @@ Section UkShFork.
     (forall i : nat, ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i) ->
     (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
     (forall i : nat, ⊢ Wc i 3%nat -∗ Wc i 0%nat) ->
-    □ (T -∗ UkSh.sh_deps) -∗
+    (* the taint's continuation, in place of the free write law and the
+       exec supply (lane R3) -- see [wp_kshf_fork] *)
+    UkSh.ush_gen_slot N T -∗
     ushl_head l sz -∗
     shk_code γt -∗
-    uxsup -∗
     shk_rodata γt -∗ shp_code γt -∗ ush_jtab γt -∗
     ushf_kill_law -∗
     ushf_child_law -∗
@@ -979,7 +944,7 @@ Section UkShFork.
   Proof.
     intros Hregs Hs1 Ha5 Hnn Hnul Hkl Hns Htoks Htlen Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.
-    iIntros "#Hdp Hhead #Hcode #Hxs #Hro #Hpcode #Hjt #Hkl #Hchl #Hplaw %Hfd0
+    iIntros "#Hgen Hhead #Hcode #Hro #Hpcode #Hjt #Hkl #Hchl #Hplaw %Hfd0
              Hstd Hdat Hsz Hbuf Hrun".
     assert (Hbr : forall j : nat, 0 <= bv_unsigned (f j) < Z64).
     { intros j. pose proof (bv_unsigned_in_range 8 (f j)) as H0.
@@ -1012,7 +977,7 @@ Section UkShFork.
     iApply (wp_kshf_fork h1 m f k len toks sz l n
               Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline
               Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl
-              with "Hdp Hhead Hcode Hxs Hro Hjt Hkl Hchl Hplaw [%] Hstd Hdat
+              with "Hgen Hhead Hcode Hro Hjt Hkl Hchl Hplaw [%] Hstd Hdat
                     Hsz Hbuf Hrun").
     exact Hfd0.
   Qed.
@@ -1104,40 +1069,30 @@ Section UkShFork.
     usz_ok (sz + 65536) ->
     (* the credential's conversion at a fork that failed (step 4) *)
     (forall i : nat, ⊢ Wc i 3%nat -∗ Wc i 0%nat) ->
-    (* ...and the payload's own assembler (M4b(2)): the fork panic's exit.
-       A premise of the DISCHARGER and not of the obligation, because the
-       obligation's shape ([UkSh.ush_rest_l]) is what [UInitSh.sh_pay_rest]
-       trusts; [UkSh.ush_at_of_pm_wb] is the loop's own hypothesis. *)
-    (forall i : nat, UkSh.ush_bnd i -> ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
-    □ (T -∗ UkSh.sh_deps) -∗
-    (* the exec deposit's supplier for the GENERIC child -- [UkRun.uxsup],
-       see [UkShRun.wp_kshr_runcmd] *)
-    uxsup -∗
+    (* THE PAYLOAD'S OWN ASSEMBLER AND THE TAINT'S CONTINUATION ARE NOT
+       PREMISES HERE ANY MORE (lane R3): both are facts about the RECORD
+       the kernel minted -- the assembler is guarded by [ukn_pay N], the
+       generic slot IS [ukn_pay N] at an arbitrary key -- so they come out
+       of the obligation's own box below, exactly as sh's text, its jump
+       table and the constancy of its payload do.  THE FREE WRITE LAW AND
+       THE EXEC SUPPLY ARE GONE with the fork's taint arm. *)
     (* ...the two laws of the PAID child (step 4), discharged at the top *)
     ushf_kill_law -∗
     ushf_child_law -∗
     (* ...and the law of sh's own panic (M4b(2)), [UShPanic.
        ush_panic_law_holds] *)
     UkShDiag.ush_panic_law Wc Wb -∗
-    (* ...AND THE TAINT'S CONTINUATION.  The line fact's second arm is the
-       taint, and a tainted process does not run sh's code any more: the
-       body hands its run to the generic slot. *)
-    UkSh.ush_gen_slot N T -∗
     UkSh.ush_rest_l N γp T Wc Wb Pm (UkShLoop.ushl_R N sz).
   Proof.
-    intros Hlex Hszlo Hszal Hszok Hwbl Hpmwb.
-    (* the generic slot is a [□] behind a definition; unfolding it before
-       the [#] intro keeps the [Persistent] search off its wand chain
-       (durable-notes, "[iIntros "#H"] on a bundle of wands"). *)
-    rewrite /UkSh.ush_gen_slot.
-    iIntros "#Hdp #Hxs #Hkl #Hchl #Hplaw #Hgen".
+    intros Hlex Hszlo Hszal Hszok Hwbl.
+    iIntros "#Hkl #Hchl #Hplaw".
     (* THE RECORD'S OWN THREE COME OUT OF THE OBLIGATION now (lane SH-LINE
        2b, (b)): sh's text, its jump table and the constancy of its exit
        payload are facts about the record the KERNEL minted, so the entry
        pays them and the discharger no longer takes them as premises --
        which is what makes [UInitSh.sh_pay_rest], a [∀] over every record,
        provable at all.  [.rodata] rides in with the table. *)
-    iModIntro. iIntros (l) "%Hc %Hpm1 #Hcode #Hjt Hhead".
+    iModIntro. iIntros (l) "%Hc %Hpm1 %Hpmwb #Hcode #Hjt #Hgen Hhead".
     iDestruct (ush_jtab_ro γt with "Hjt") as "#Hro".
     iIntros (h m f k i2 n) "%Hregs %Hs1 %Ha5 %Hi2 %Hfd0 Hline Hstd [Hdat Hsz] Hbuf Hrun".
     destruct Hi2 as [[Hki2 Hi2n] Hnul2].
@@ -1149,15 +1104,14 @@ Section UkShFork.
                        (Virtaddr (mword_of_int 0x97a : mword 64)) 2 = true)
         by (vm_compute; reflexivity).
       iApply (UkSh.ush_gen_run N T h m (mword_of_int 0x97a)
-                (16 + (UkSh.ush_Dbody + n)) Halo with "[] HT Hrun").
-      rewrite /UkSh.ush_gen_slot. iExact "Hgen". }
+                (16 + (UkSh.ush_Dbody + n)) Halo with "Hgen HT Hrun"). }
     iDestruct ("Hl" $! len with "[%] [%]") as %Hline;
       [ exact Hnn | exact Hnul | ].
     destruct (Hlex f k len Hline) as (Hns & toks & Htoks & Htlen).
     iApply (wp_kshm_body h m f k len toks sz l n
               Hregs Hs1 Ha5 Hnn Hnul ltac:(lia) Hns Htoks Htlen Hline
               Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl
-              with "Hdp [Hhead] Hcode Hxs Hro [] Hjt Hkl Hchl Hplaw [%] Hstd
+              with "Hgen [Hhead] Hcode Hro [] Hjt Hkl Hchl Hplaw [%] Hstd
                     Hdat Hsz Hbuf Hrun").
     - iApply (UkShLoop.ushl_head_of_R N γp with "Hhead").
     - iApply (ushf_code_shp with "Hcode").

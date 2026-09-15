@@ -47,8 +47,20 @@ history), the movement lemmas, `ch_arm_era`, `ecl_pure` and
   block bound falls out of the WRITER's own `cs_len_ok`. Today those two facts
   live in two claims and the window counter is what keeps them in step.
 
-STILL TO DO in R1: the `EvOut`/`EvOpen`/`EvByte`/`EvRead` preservation
-lemmas, the Iris-level `ecl`, and the drain.
+**R1's PURE HALF IS COMPLETE (`9907cbe20`).** `ecl_pure_out`,
+`ecl_pure_read`, `ecl_pure_open` and `ecl_pure_byte` join `ecl_pure_close`,
+so every `cons_ev` has its preservation lemma. Three are FRAME lemmas — they
+take the OUTPUT side's own step (`eout_pure` at the new accepted bytes, which
+`eout_step_write`/`_blk`/`_pro` and `eout_step_echo` already prove) as a
+premise and show the INPUT-side clauses come along for free. That is the
+merge paying off: today those clauses are a second claim that must be
+stepped separately and kept in agreement by the window counter. All four
+compiled first try, which is the signal that §2.5's decomposition is right.
+
+STILL TO DO in R1: the Iris-level `ecl` and the drain. Note `ecl_pure_read`
+takes the delivered-prefix fact as a premise; today's `ein_step_read`
+derives it from `ConsLog.read_ok`, and that derivation is unchanged by the
+merge, so it was left where it is rather than restated.
 
 Design page (read-only review, 2026-09-16, `origin/main` = `3d3f4bbfb`); nothing built, every fact cited. A RESOURCE is an owned Iris proposition (`iProp Σ`): LINEAR if it cannot be duplicated, PERSISTENT (`□`) if it can, TIMELESS if it survives leaving an invariant. An INVARIANT is a shared resource any thread may open for one atomic step and must restore. A VIEW SHIFT (`==∗`, `={E}=∗`) is a ghost step with no machine step. A WAND `P -∗ Q` turns a `P` into a `Q`. GHOST STATE is bookkeeping in resources (a `ghost_var` with FRACTIONAL SHARES that must agree; a `mono_list` whose persistent LOWER BOUNDS are prefixes of an AUTHORITY). An ERA is one power cycle, numbered `S gen_id`.
 

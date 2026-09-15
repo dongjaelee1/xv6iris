@@ -1395,7 +1395,7 @@ Proof. solve_inG. Qed.
 (*  a pure function and has to be right there anyway.)                     *)
 (* ====================================================================== *)
 
-Definition ch_arm_E (a : option ConsLog.cons_arm) : list (list mobs * bv 8) :=
+Definition ch_arm_E (a : option LogEntryDefs.cons_arm) : list (list mobs * bv 8) :=
   match a with
   | Some (h, c, cs, j) =>
       if decide (take j cs = [echo_of c]) then [(open_seg h, c)] else []
@@ -1508,7 +1508,7 @@ Qed.
    [EvClose] files needs in order to join [ein_pure]'s per-entry clauses,
    and they are the application's business, not [ConsLog]'s: that file
    knows nothing of the discipline or of era numbers. ---- *)
-Definition ch_arm_era (k : nat) (a : option ConsLog.cons_arm) : Prop :=
+Definition ch_arm_era (k : nat) (a : option LogEntryDefs.cons_arm) : Prop :=
   match a with
   | Some (h, c, cs, j) => disc_seg (open_seg h) /\ obs_boots h = k
   | None => True

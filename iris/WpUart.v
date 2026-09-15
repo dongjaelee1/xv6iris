@@ -1021,6 +1021,39 @@ Section DevLoops.
       (L : list LogEntryDefs.log_entry) : iProp Σ :=
     ghost_var γ.(un_logm) q L.
 
+  (* THE CONSOLEINTR ARM IN PROGRESS (redesign R2, option A).  A ghost_var
+     PAIR: one half in the port invariant, one riding the PLIC payload
+     beside the receive token.  consoleintr agrees the two at the arm's
+     entry (so [None] is a PURE side condition it can prove), advances both,
+     and returns them at [None] when the arm closes.
+
+     WHY THE KERNEL OWNS IT.  consoleintr holds cons.lock for the whole arm,
+     so two arms cannot overlap; but the application's echo obligation is
+     persistent and its run is split across several fupds, so nothing in the
+     obligation's own premises says that.  Today the application is lent an
+     exclusive of its own to tell a first firing from a second, and refutes
+     the second by fraction arithmetic.  This pair states the same exclusion
+     where the fact actually lives -- in the kernel, about the kernel's own
+     code. *)
+  Definition uart_arm (γ : uart_names) (q : Qp)
+      (a : option LogEntryDefs.cons_arm) : iProp Σ :=
+    ghost_var γ.(un_arm) q a.
+
+  Global Instance uart_arm_timeless γ q a : Timeless (uart_arm γ q a).
+  Proof. rewrite /uart_arm. apply _. Qed.
+
+  Lemma uart_arm_agree (γ : uart_names) (q1 q2 : Qp) (a1 a2 : option LogEntryDefs.cons_arm) :
+    uart_arm γ q1 a1 -∗ uart_arm γ q2 a2 -∗ ⌜a1 = a2⌝.
+  Proof. rewrite /uart_arm. iIntros "H1 H2". by iApply (ghost_var_agree with "H1 H2"). Qed.
+
+  Lemma uart_arm_update (γ : uart_names) (a1 a2 a' : option LogEntryDefs.cons_arm) :
+    uart_arm γ (1/2) a1 -∗ uart_arm γ (1/2) a2 ==∗
+      uart_arm γ (1/2) a' ∗ uart_arm γ (1/2) a'.
+  Proof.
+    rewrite /uart_arm. iIntros "H1 H2".
+    iMod (ghost_var_update_halves a' with "H1 H2") as "[$ $]". done.
+  Qed.
+
   (* THE KERNEL'S MIRROR OF THE LOG.  The application owns [riscv_in_res];
      the kernel keeps a mono_list beside it so that the console ring can
      hold a PERSISTENT lower bound on the log and state its gap facts
@@ -1519,6 +1552,8 @@ Section DevLoops.
     (∃ (u : uart_state) (p : plic_state) (v : virtio_state),
        uart_frag Uart0 u ∗ plic_frag p ∗ virtio_frag v ∗
        uart_ghosts γ u ∗ uart_colE Uart0 γ u ∗ in_claim_at Uart0 γ ∗
+       (* the port's half of the consoleintr arm (redesign R2) *)
+       (∃ a : option LogEntryDefs.cons_arm, uart_arm γ (1/2) a) ∗
        uart_preinit γ ∗
        virtio_proto γd v ∗
        ⌜ plic_ok p ⌝ ∗ ⌜ virtio_isr_ok v ⌝)%I.
@@ -1557,7 +1592,9 @@ Section DevLoops.
      open the invariant to reach it. *)
   Definition uart_inv_body (i : uart_id) (γ : uart_names) : iProp Σ :=
     (∃ u : uart_state, uart_frag i u ∗ uart_ghosts γ u ∗ uart_colE i γ u
-       ∗ in_claim_at i γ)%I.
+       ∗ in_claim_at i γ
+       (* the port's half of the arm (redesign R2) *)
+       ∗ ∃ a : option LogEntryDefs.cons_arm, uart_arm γ (1/2) a)%I.
 
   (* ------------------------------------------------------------------ *)
   (*  THE PLIC INVARIANT'S PER-SOURCE SLOTS.                             *)
@@ -1627,6 +1664,10 @@ Section DevLoops.
     (uart_rx_tok γ k hl ∗
      (∃ hh : option (list mobs), uart_rx_hi γ (1/2) hh ∗ ⌜ohist_le hh hl⌝) ∗
      (∃ hg : option (list mobs), uart_log_hi γ (1/2) hg ∗ ⌜ohist_le hg hl⌝) ∗
+     (* THE ARM'S OTHER HALF (redesign R2), at [None]: between interrupts no
+        consoleintr arm is in progress, and this payload is the one carrier
+        that reaches consoleintr and comes back at every interrupt. *)
+     uart_arm γ (1/2) None ∗
      win_at iu (S gen_id))%I.
 
   Definition plic_payload_uart (iu : uart_id) (γ : uart_names) : iProp Σ :=
@@ -2601,12 +2642,12 @@ Section DevLoops.
   Proof.
     intros Hx Hends Hecho. iIntros "#Hinv Hhi Hlm Hap".
     iInv "Hinv" as ">Hbody" "Hclose".
-    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl)".
+    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl & Harm)".
     iMod (in_claim_append Uart0 γ hg h c cs L Φ eq_refl Hx Hends Hecho
             with "Hincl Hhi Hlm Hap")
       as "(Hincl & Hhi & Hlm & %Hbelow & Hwin & HΦ)".
-    iMod ("Hclose" with "[Hu Hg Hcol Hincl]") as "_".
-    { iNext. iExists u. iFrame "Hu Hg Hcol Hincl". }
+    iMod ("Hclose" with "[Hu Hg Hcol Hincl Harm]") as "_".
+    { iNext. iExists u. iFrame "Hu Hg Hcol Hincl Harm". }
     iModIntro. iFrame "Hhi Hlm Hwin HΦ". iPureIntro. exact Hbelow.
   Qed.
 
@@ -2662,11 +2703,11 @@ Section DevLoops.
   Proof.
     intros Hread. iIntros "#Hinv Hdv Hlm Hrd".
     iInv "Hinv" as ">Hbody" "Hclose".
-    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl)".
+    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl & Harm)".
     iMod (in_claim_read Uart0 γ dv ws L Φ eq_refl Hread
             with "Hincl Hdv Hlm Hrd") as "(Hincl & Hdv & Hlm & HΦ)".
-    iMod ("Hclose" with "[Hu Hg Hcol Hincl]") as "_".
-    { iNext. iExists u. iFrame "Hu Hg Hcol Hincl". }
+    iMod ("Hclose" with "[Hu Hg Hcol Hincl Harm]") as "_".
+    { iNext. iExists u. iFrame "Hu Hg Hcol Hincl Harm". }
     iModIntro. iFrame "Hdv Hlm HΦ".
   Qed.
 
@@ -2909,9 +2950,9 @@ Section DevLoops.
   Proof.
     iIntros "Hbody Hpre1 Hperm Htok". rewrite /dev_inv_body.
     iDestruct "Hbody" as (u p v)
-      "(Hu & Hp & Hv & Hg & Hcol & Hin & Hpre & Hproto & %Hpok & %Hvok)".
-    iMod (uart_inv_alloc E Uart0 γ with "[Hu Hg Hcol Hin]") as "#Huinv".
-    { iExists u. iFrame "Hu Hg Hcol Hin". }
+      "(Hu & Hp & Hv & Hg & Hcol & Hin & Harm & Hpre & Hproto & %Hpok & %Hvok)".
+    iMod (uart_inv_alloc E Uart0 γ with "[Hu Hg Hcol Hin Harm]") as "#Huinv".
+    { iExists u. iFrame "Hu Hg Hcol Hin Harm". }
     iMod (plic_inv_alloc E γ γ1 with "[Hp Hpre Hpre1]") as "#Hpinv".
     { iExists p. iFrame "Hp". iSplitR; [iPureIntro; exact Hpok|].
       rewrite plic_slots_eq.
@@ -2955,10 +2996,10 @@ Section DevLoops.
     (* ...AND THE LOG'S MARK (lane CONS-IO), on the ring mark's mould *)
     ohist_le hg hl ->
     plic_uslot iu γu cl -∗ uart_rx_tok γu k hl -∗ uart_rx_hi γu (1/2) hh -∗
-    uart_log_hi γu (1/2) hg -∗ win_at iu (S gen_id)
+    uart_log_hi γu (1/2) hg -∗ uart_arm γu (1/2) None -∗ win_at iu (S gen_id)
       ==∗ uart_inited γu ∗ plic_uslot iu γu cl.
   Proof.
-    iIntros (Hle Hleg) "Hu Htok Hhi Hlg Hwin".
+    iIntros (Hle Hleg) "Hu Htok Hhi Hlg Harm Hwin".
     iDestruct (plic_uslot_cases with "Hu") as "[Hpre | [#Hin Hrest]]".
     - iMod (uart_preinit_fire with "Hpre") as "#Hin".
       iModIntro. iSplitR; [iExact "Hin" |].
@@ -2968,6 +3009,7 @@ Section DevLoops.
       iExists k, hl. iFrame "Htok".
       iSplitL "Hhi"; [iExists hh; iFrame "Hhi"; iPureIntro; exact Hle |].
       iSplitL "Hlg"; [iExists hg; iFrame "Hlg"; iPureIntro; exact Hleg |].
+      iSplitL "Harm"; [iExact "Harm" |].
       iExact "Hwin".
     - (* the deposit has already run: the slot's own payload is the token's
          partner, so this one is spare and is simply dropped *)
@@ -2983,19 +3025,21 @@ Section DevLoops.
     plic_inv γ γ1 -∗ uart_rx_tok (plic_unames γ γ1 j) k hl -∗
     uart_rx_hi (plic_unames γ γ1 j) (1/2) hh -∗
     uart_log_hi (plic_unames γ γ1 j) (1/2) hg -∗
+    (* ...the arm's half, at [None] (redesign R2)... *)
+    uart_arm (plic_unames γ γ1 j) (1/2) None -∗
     (* ...and the era's echo window token, [emp] at the second port
        (lane CONS-IO milestone F) *)
     win_at j (S gen_id)
       ={E}=∗ uart_inited (plic_unames γ γ1 j).
   Proof.
-    iIntros (Hmask Hle Hleg) "#Hpinv Htok Hhi Hlg Hwin".
+    iIntros (Hmask Hle Hleg) "#Hpinv Htok Hhi Hlg Harm Hwin".
     iInv "Hpinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (p) "(Hp & %Hpok & Hslots)".
     rewrite plic_slots_eq.
     destruct j; cbn [plic_unames];
       [ iDestruct "Hslots" as "[Hu Hw]" | iDestruct "Hslots" as "[Hw Hu]" ];
       (iMod (plic_uslot_deposit _ _ _ k hl hh hg Hle Hleg
-               with "Hu Htok Hhi Hlg Hwin")
+               with "Hu Htok Hhi Hlg Harm Hwin")
          as "[#Hin Hu]";
        iMod ("Hclose" with "[Hp Hu Hw]") as "_";
        [ iNext; iExists p; iFrame "Hp"; iSplitR; [iPureIntro; exact Hpok|];
@@ -3052,6 +3096,10 @@ Section DevLoops.
                    console port it goes to the ring, at [Uart1] it is
                    dropped like the second high-water half. *)
                 uart_logm γ (1/2) [] ∗
+                (* ...AND THE ARM'S TWO HALVES (redesign R2), both at [None]:
+                   one goes into the invariant body beside the input claim,
+                   the other rides the PLIC payload. *)
+                uart_arm γ (1/2) None ∗ uart_arm γ (1/2) None ∗
                 uart_preinit γ.
   Proof.
     intros Hrx Hlb Hwo Hacc0. iIntros "Hres Hires".
@@ -3095,15 +3143,19 @@ Section DevLoops.
     iMod (ghost_var_alloc (@nil LogEntryDefs.log_entry)) as (γlm) "Hlm".
     iEval (rewrite -Qp.half_half) in "Hlm".
     iDestruct (ghost_var_split with "Hlm") as "[Hlm1 Hlm2]".
+    (* the consoleintr arm, at [None] (redesign R2) *)
+    iMod (ghost_var_alloc (@None LogEntryDefs.cons_arm)) as (γar) "Har".
+    iEval (rewrite -Qp.half_half) in "Har".
+    iDestruct (ghost_var_split with "Har") as "[Har1 Har2]".
     iModIntro.
-    iExists (UartNames γa γb γc γd γpu γpo γhi γin γlg γml γdv γlm).
+    iExists (UartNames γa γb γc γd γpu γpo γhi γin γlg γml γdv γlm γar).
     rewrite /uart_sent_auth /uart_out_auth /uart_tx_auth /uart_tx_own
             /uart_dlab_auth /uart_dlab_is /uart_sent /uart_colE /uart_col
             /uart_rx_tok /uart_rx_popped /uart_rx_hi /uart_preinit /=.
     iFrame "Ha Hb Hc1 Hd1 Hc2 Hsent Hd2".
     (* the column's own half of the pop counter and the caller's token are
        the SAME proposition, so the rest are placed by hand *)
-    iSplitR "Hires Hlg1 Hml Hdv1 Hlm1 Hpo2 Hhi1 Hhi2 Hlg2 Hdv2 Hlm2 Hin".
+    iSplitR "Hires Hlg1 Hml Hdv1 Hlm1 Hpo2 Hhi1 Hhi2 Hlg2 Hdv2 Hlm2 Har1 Har2 Hin".
     { iSplitL "Hres";
         [iApply (uart_out_claim_nil iu u Hacc0 with "Hres")|].
       iExists [], 0%nat, 0%nat, None, None. iFrame "Hpu Hpo1".
@@ -3114,7 +3166,7 @@ Section DevLoops.
                   | exact I | intros j h Hj; done]. }
     iSplitL "Hires Hlg1 Hml Hdv1 Hlm1".
     { iApply (in_claim_at_nil iu
-                (UartNames γa γb γc γd γpu γpo γhi γin γlg γml γdv γlm)
+                (UartNames γa γb γc γd γpu γpo γhi γin γlg γml γdv γlm γar)
                 with "Hires [Hlg1] [Hdv1] [Hml] [Hlm1]").
       - rewrite /uart_log_hi /=. iExact "Hlg1".
       - rewrite /uart_deliv /=. iExact "Hdv1".
@@ -3125,7 +3177,9 @@ Section DevLoops.
     iSplitL "Hhi2"; [iExact "Hhi2" |].
     iSplitL "Hlg2"; [rewrite /uart_log_hi /=; iExact "Hlg2" |].
     iSplitL "Hdv2"; [rewrite /uart_deliv /=; iExact "Hdv2" |].
-    iSplitL "Hlm2"; [rewrite /uart_logm /=; iExact "Hlm2" | iExact "Hin"].
+    iSplitL "Hlm2"; [rewrite /uart_logm /=; iExact "Hlm2" |].
+    iSplitL "Har1"; [rewrite /uart_arm /=; iExact "Har1" |].
+    iSplitL "Har2"; [rewrite /uart_arm /=; iExact "Har2" | iExact "Hin"].
   Qed.
 
   (* ------------------------------------------------------------------ *)
@@ -3393,7 +3447,7 @@ Section DevLoops.
     - (* a byte leaves the tx FIFO: it moves from the head of [u_tx] to the
          tail of [u_out], so the accepted trace is UNCHANGED. *)
       iInv "Huinv" as ">Hbody" "Hclose".
-      iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl)".
+      iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl & Harm)".
       iDestruct (dev_interp_agree_uart with "Hdev Hu") as %Hu.
       rewrite Hu in Htx0.
       iMod (dev_interp_update_uart _ i u u' with "Hdev Hu") as "[Hdev' Hu']".
@@ -3438,12 +3492,12 @@ Section DevLoops.
          under LOOP it would re-enter the receiver with no observation, which
          is why the clause is there. *)
       iDestruct (uart_colE_tx_pop i γ u u' _ Htx0 with "Hcol") as "Hcol".
-      iMod ("Hclose" with "[Hu' Hg Hcol Hincl]") as "_".
+      iMod ("Hclose" with "[Hu' Hg Hcol Hincl Harm]") as "_".
       { iNext. iExists u'. iFrame. }
       iModIntro. iFrame "Hgr Hmem Hdev' Hoauth". iApply "IH".
     - (* a byte arrives from the outside world: rx only, trace untouched *)
       iInv "Huinv" as ">Hbody" "Hclose".
-      iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl)".
+      iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl & Harm)".
       iDestruct (dev_interp_agree_uart with "Hdev Hu") as %Hu.
       rewrite Hu in Hrx.
       iMod (dev_interp_update_uart _ i u u' with "Hdev Hu") as "[Hdev' Hu']".
@@ -3506,7 +3560,7 @@ Section DevLoops.
                    (uart_rx_push_acc u b u' Hrx) with "Hocl") as "Hocl".
       iAssert (uart_colE i γ u') with "[Hocl Hcolb]" as "Hcol";
         [rewrite /uart_colE; iFrame "Hocl Hcolb"|].
-      iMod ("Hclose" with "[Hu' Hg Hcol Hincl]") as "_".
+      iMod ("Hclose" with "[Hu' Hg Hcol Hincl Harm]") as "_".
       { iNext. iExists u'. iFrame. }
       iModIntro. iFrame "Hgr Hmem Hdev' Hoauth". iApply "IH".
     - (* the gateway latches the UART's interrupt level.  This is the ONE

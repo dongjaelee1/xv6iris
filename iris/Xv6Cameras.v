@@ -389,6 +389,15 @@ Class uartGhostG (Σ : gFunctors) := UartGhostG {
      the SAME list the [mono_list] above mirrors, because the ring needs
      equality with the log and not a bound (see [UartNames.un_logm]). *)
   cons_ghost_logmG :: ghost_varG Σ (list LogEntryDefs.log_entry);
+  (* THE CONSOLEINTR ARM IN PROGRESS ([WpUart.uart_arm], redesign R2): a
+     [ghost_var] PAIR over "which arm consoleintr is inside, and how much of
+     its echo has gone out".  One half sits in the port invariant, the other
+     rides the PLIC payload beside the receive token -- so opening an arm has
+     the pure side condition "no arm is in progress", proved by the two
+     halves agreeing.  It is the KERNEL's own statement of the exclusion
+     [cons.lock] provides, and it is what retires the application-owned
+     window counter the echo obligation is lent today. *)
+  cons_ghost_armG :: ghost_varG Σ (option LogEntryDefs.cons_arm);
 }.
 
 Definition uartGhostΣ : gFunctors :=
@@ -401,7 +410,8 @@ Definition uartGhostΣ : gFunctors :=
      ghost_varΣ nat;
      GFunctor (mono_listR (leibnizO LogEntryDefs.log_entry));
      ghost_varΣ (list (list mobs * bv 8));
-     ghost_varΣ (list LogEntryDefs.log_entry) ].
+     ghost_varΣ (list LogEntryDefs.log_entry);
+     ghost_varΣ (option LogEntryDefs.cons_arm) ].
 
 Global Instance subG_uartGhostG Σ : subG uartGhostΣ Σ -> uartGhostG Σ.
 Proof. solve_inG. Qed.

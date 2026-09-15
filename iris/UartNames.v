@@ -94,6 +94,13 @@ Record uart_names := UartNames {
                and it holds cons.lock and the port invariant together when
                it does.  APPENDED LAST. *)
   un_logm   : gname;
+  (* un_arm    THE CONSOLEINTR ARM IN PROGRESS (redesign R2): a ghost_var
+               PAIR, one half in the port invariant and one riding
+               [WpUart.uart_rx_writer] in the PLIC payload.  Opening an arm
+               agrees the two and advances both; a second arm before the
+               first is closed is refuted by the agreement, which is the
+               kernel stating the exclusion cons.lock already provides. *)
+  un_arm    : gname;
 }.
 
 (* THE CONSOLE RING'S GHOST NAMES, here and not in [ConsoleInv.v] for the

@@ -1,4 +1,4 @@
-# CHECKPOINT 2026-09-14 (THIRD session limit) -- step 3, INIT-DIAG, PROLOGUE-ALTS-3, M6b, step 4, RESIDUALS (A) landed; lane EXEC-SEAM was in flight
+# CHECKPOINT 2026-09-14 (FOURTH session limit) -- everything through EXEC-SEAM landed; lane R3 (the last conjunct) was in flight
 
 Supersedes `checkpoint-2026-09-16.md` §4/§5 for the state of play; that file's
 rules (§1-§3: build procedure, gate, commit rules, how to talk to the owner)
@@ -116,6 +116,39 @@ build and ends its turn does not wake on completion -- poll its `<log>.out`
 for `EXIT=` and message it.  Rebase recipe and gate: `checkpoint-2026-09-16.md`
 §6.  Landings from `-notes` by cherry-pick when the lane is behind main by
 notes-only commits (`git diff <lane> HEAD -- iris` must be empty).
+
+## 3d. Where the FIFTH session starts (2026-09-14, fourth session limit)
+
+State: origin/main code d1cc70d8b.  The top theorem's ONE remaining
+hypothesis is `Hsh_owed : … ⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh` (the
+shell's rest-of-line obligation).  No `∨ True` in the U tier; the free write
+law is off the theorem.  Owner rulings: finish the work, no surveys/reports/
+owner pages before Qed; the weaker trace predicate stays until post-Qed.
+
+IN FLIGHT: lane R3 in `/shared/xv6iris-2-sup`, branch `lane/r3` (created from
+origin/main d1cc70d8b), brief `handoff-2026-09-16/brief-r3.md`, design
+`r3-survey-2.md` §5/§6 with the tree winning where EXEC-SEAM moved under it
+(`exec-seam-report.md`).  The lane DIES with the session; its checkout keeps
+its edits and its VM tree `/mnt/rocq/trees/_shared_xv6iris-2-sup` keeps its
+build state (logs `/tmp/r3-N.log`).
+
+1. `cd /shared/xv6iris-2-sup && git status --short && git log --oneline -3`.
+   If it committed on `lane/r3`: check the report `<scratchpad>/r3-report.md`
+   or the commit messages for the gate, then land by fast-forward/cherry-pick
+   from the main checkout (`git fetch /shared/xv6iris-2-sup lane/r3`,
+   merge-base must be origin/main's code, `git merge --ff-only`, push
+   `lane/io-leaf-3:main`).  If it left uncommitted edits: re-spawn with the
+   brief plus "inspect git status/diff first and continue; a build may have
+   been running -- check `/tmp/r3-*.log` on the VM for the last EXIT= line
+   before starting one".  If clean and no commit: re-spawn from the brief.
+2. After R3 lands, `Hsh_owed` is GONE and the theorem is closed.  Then (cheap,
+   coordinator): a second audit target printing the echo theorem's own
+   assumptions (`Print Assumptions echo_adequacy_modulo_phi` beside the
+   system one in `iris/SystemAssumptions.v`, outside `_CoqProject`), the
+   as-landed note, and the checkpoint.
+3. Post-Qed only, and only when the owner asks: the trace-predicate
+   tightening, init's closed-ledger arms, the trusted-surface refresh/page,
+   the post-Qed redesign.
 
 ## 3c. Where the FOURTH session starts
 

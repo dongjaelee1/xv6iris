@@ -212,7 +212,12 @@ Derived corollaries, in order of what applications actually use:
   existentially); at a count of ZERO no byte is owned, no agreement
   exists and none is needed, since both spellings of an empty run are
   `emp`.  Mirror-green (whole tree).
-- [ ] **RD-4 CONSOLE ARM** (WAITS for upstream's post-Qed R1 — the
+- OWNER RULED 2026-09-15: BREADTH FIRST — RD-4/RD-5/RD-6 on the landed
+  R-c pattern; route R-a (the owned-offset campaign) queued behind them,
+  upgrading each arm by one conjunct when it runs.
+- [ ] **RD-4 CONSOLE ARM** (LAUNCHED 2026-09-15, Opus lane, branch
+  rd4-cons-arm; R1 landed upstream, so the blocker below is GONE —
+  historical scope:
   merged IO claim is being built right now and is exactly the resource
   this arm should be stated at): re-cut `read_recv`'s console arm at
   the merged claim, application-neutral; re-derive

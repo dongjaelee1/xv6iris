@@ -1,4 +1,4 @@
-# CHECKPOINT 2026-09-14 (FOURTH session limit) -- everything through EXEC-SEAM landed; lane R3 (the last conjunct) was in flight
+# CHECKPOINT 2026-09-14 (FIFTH session) -- THE THEOREM IS CLOSED: R3 landed, `Hsh_owed` is gone, the echo audit target is in
 
 Supersedes `checkpoint-2026-09-16.md` §4/§5 for the state of play; that file's
 rules (§1-§3: build procedure, gate, commit rules, how to talk to the owner)
@@ -116,6 +116,51 @@ build and ends its turn does not wake on completion -- poll its `<log>.out`
 for `EXIT=` and message it.  Rebase recipe and gate: `checkpoint-2026-09-16.md`
 §6.  Landings from `-notes` by cherry-pick when the lane is behind main by
 notes-only commits (`git diff <lane> HEAD -- iris` must be empty).
+
+## 3e. THE THEOREM IS CLOSED (2026-09-14, fifth session) -- and where the SIXTH starts
+
+STATE: origin/main `a0017a499`.  `UInitBootAdequacy.echo_adequacy_modulo_phi`
+has NO obligation premise left.  Its binders are `g sb nib cov`, `Hgen0`,
+`Hpow0`, `Himg`, `Hdk`, `Hsb`, `Hcov` -- the power-on machine state and the
+disk image, nothing about any user program.  Nothing is in flight; every
+checkout is free (`-sup` on `lane/r3` = main; `-disc`, `-tlw` stale but
+clean).
+
+WHAT LANDED THIS SESSION.
+1. LANE R3 (`56aa37296` + `5fb23a304`, from `-sup`): the shell's rest-of-line
+   obligation discharged at the echo era through the new
+   `UShRest.sh_rest_holds`; `UInitSh.sh_pay_rest` and the whole `Hsh_owed`
+   binder DELETED.  app-echo.md "SH-LINE R3 LANDED -- THE THEOREM IS CLOSED"
+   is the record; report `handoff-2026-09-16/r3-report-2.md`.  The
+   coordinator re-ran the entire gate itself on the identical tree before
+   landing (md5s local=VM, `make -n` clean, audit md5 unchanged, lemma_diff
+   one justified GONE, `--check-dumps` clean, no `Admitted`); the lane's own
+   gate agreed.
+2. THE ECHO AUDIT TARGET (`a0017a499`): `iris/EchoAssumptions.v`, a bare
+   `# EchoAssumptions.v` row, and `make audit-echo`/`audit-echo-only`.
+   FOURTEEN assumptions, md5 `a78bf9a051fb56b084795d782df04045` = the system
+   theorem's thirteen + `PrimString.length`.  This is the FIRST time `Print
+   Assumptions` has ever walked the program tier's cone; it found no leaked
+   axiom and no undischarged `Spec*`/`Link*` module parameter.
+   durable-notes' "adequacy-print baseline" now documents BOTH targets and
+   says to run both after a program-tier change.
+
+WHERE THE SIXTH SESSION STARTS.  Nothing is owed; everything below is
+OPTIONAL and waits for the owner to ask.  In the order that makes sense:
+(a) THE COROLLARY AT THE LITERAL IMAGE -- discharge `Himg`/`Hdk`/`Hsb`/`Hcov`
+    by the same computation `xv6_fs_adequacy_xv6Σ` already does, leaving one
+    `Hdisk`.  Tidiness, NOT soundness: "the initial disk is the mkfs image"
+    stays assumed either way, exactly as it is for the system theorem.
+(b) THE TRACE-PREDICATE TIGHTENING (the ruling of §1 deferred it to
+    post-Qed): the known widening is trusted-surface-2026-09-14b.md §3.4 --
+    per prologue round the predicate admits every word over `{1,3}` followed
+    by `0` or `2`, so e.g. two banners before a prompt counts as good output,
+    which the machine never produces.  The fix is a well-formedness conjunct
+    on `ps` through `pro_ok` plus a premise on `echo_link_pro`.
+(c) init's closed-ledger arms off the free law.
+(d) The trusted-surface refresh and the owner-facing page (the standing
+    ruling forbade owner pages BEFORE Qed; that bar is now down).
+(e) The post-Qed redesign (`handoff-2026-09-16/post-qed-redesign.md`).
 
 ## 3d. Where the FIFTH session starts (2026-09-14, fourth session limit)
 

@@ -853,6 +853,23 @@ downgrade, never an error.
 
 ## The adequacy-print baseline
 
+THERE ARE TWO AUDIT TARGETS, and neither cone contains the other. `make
+audit-only` (`iris/SystemAssumptions.v`) prints
+`xv6_fs_adequacy_xv6Σ` — the chain at the TRIVIAL application, which never
+walks `App`/`AppEcho`/`EchoOut`/`EchoLinks*`/`EchoDisc` or the
+`Uk*`/`USh*`/`UInit*`/`UEcho*` program tier. `make audit-echo-only`
+(`iris/EchoAssumptions.v`, landed 2026-09-14) prints
+`UInitBootAdequacy.echo_adequacy_modulo_phi` — the application theorem, whose
+cone DOES walk all of that. **Run BOTH after a change that touches the program
+tier**: the system audit cannot see an axiom leaked there, and a grep for
+`Admitted`/`Axiom` cannot see an undischarged `Spec*` module `Parameter`
+sitting behind a sealed functor — only `Print Assumptions` can.
+
+`make audit-echo-only` must show these FOURTEEN (md5 of the filtered output
+`a78bf9a051fb56b084795d782df04045`): the thirteen below PLUS
+`PrimString.length`, reached through `PStringBytes.pstring_hex_length`, the
+byte-count every hex-imported binary blob is decoded by.
+
 `Print Assumptions xv6_fs_adequacy_xv6Σ` must show EXACTLY these thirteen. Diff
 **textually, not by count.**
 

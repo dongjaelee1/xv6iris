@@ -227,4 +227,4 @@ here either: `ls claude-notes/completed/`.
 
 **Resuming a coordinator session?** Read `projects/CHECKPOINT.md` first.
 
-- `projects/checkpoint-2026-09-14-step3.md` -- THE LATEST CHECKPOINT (2026-09-14, IO-LEAF step 3 in flight; read it before anything in projects/).
+- `projects/checkpoint-2026-09-14-step3.md` -- THE LATEST CHECKPOINT (2026-09-14, §3e: THE APPLICATION THEOREM IS CLOSED -- `echo_adequacy_modulo_phi` has no obligation premise left; read it before anything in projects/).

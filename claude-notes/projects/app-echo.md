@@ -33,10 +33,16 @@ recovers to a view satisfying the three pins and the console state.
   and /echo pins plus `cons_state` -- NOT the mkfs image's view (init's
   repair arm may have created the console node; review finding 8).
 
-STATED: `UInitBootAdequacy.echo_adequacy_modulo_phi` = `App.xv6_app_adequacy`
-at `AppEcho.app_echo` with every obligation of the record discharged except
-`Hphi` (E5's) and the shell side's owed hypotheses (`Hsh_owed`: `udepw_law
-16`, `sh_deps`, `sh_pay_state`, `sh_pay_rest`, all at `uprogSG_free`).
+STATED AND CLOSED (2026-09-14): `UInitBootAdequacy.echo_adequacy_modulo_phi`
+= `App.xv6_app_adequacy` at `AppEcho.app_echo` with EVERY obligation of the
+record discharged.  `Hphi` closed at lane ECHO-OUT part 5; `Hsh_owed`'s three
+conjuncts closed in turn -- sh's console read leaf at IO-LEAF M5, the free
+write law at EXEC-SEAM (D), the rest-of-line obligation at R3 -- and the
+binder is DELETED.  The theorem's remaining premises are the power-on machine
+state (`Hgen0`, `Hpow0`) and the disk image (`Himg`, `Hdk`, `Hsb`, `Hcov`):
+nothing about any user program, and nothing owed by any lane.  `make
+audit-echo-only` (NEW, `iris/EchoAssumptions.v`) prints FOURTEEN assumptions,
+md5 `a78bf9a051fb56b084795d782df04045`.
 
 ## Lanes, in execution order (refreshed 2026-09-13)
 
@@ -3782,6 +3788,99 @@ calls the `_pid` twin; in `wp_kinit_main_loop`'s "wait itself failed" arm
 family.  Init's free write law then has exactly the two payable arms
 `die_de`/`die_df` left (INIT-DIAG's laws), and nothing about `die_dw` is an
 owner question any more.
+
+SH-LINE R3 LANDED -- THE THEOREM IS CLOSED (2026-09-14; lane R3's
+`56aa37296` + `5fb23a304` in `-sup`, fast-forwarded onto `4548e9d3a` and
+pushed as origin/main; 7 files incl. NEW `iris/UShRest.v`; builds r3-3
+(COMPILED=28) and r3-4 (COMPILED=1), both EXIT=0, zero `^Error`; the
+coordinator re-ran the whole gate on the identical tree before landing --
+local md5 of all 7 changed files = the VM's, VM `make -n` no `ROCQ compile`,
+audit md5 UNCHANGED `57f7327206c4b276d05035342fea8ecf` (the thirteen printed
+in full), `lemma_diff --ref origin/main` exactly ONE GONE, `--check-dumps`
+clean, no `Admitted` anywhere in `iris/`, no new `∨ True`).
+
+TRUSTED: `Hsh_owed` OLD `(⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh)`, NEW --
+THE WHOLE BINDER IS DELETED, with the `pose proof` and both Coq premises of
+`echo_Hinit_boot`.  `echo_adequacy_modulo_phi`'s binders are now `g sb nib
+cov`, `Hgen0`, `Hpow0`, `Himg`, `Hdk`, `Hsb`, `Hcov` and nothing else.
+
+WHY THE `∀`-FORM COULD NEVER BE DISCHARGED (the survey's §1 finding,
+confirmed).  `sh_pay_rest` quantified the taint `T` and the credential
+families `Wc`/`Wb`/`Pm` universally, but its ONLY discharger
+(`UkShFork.ushf_rest_of_body`) needs the ERA's laws -- the paid child's walk,
+a killed child's credential, sh's fork panic -- which are FALSE at some
+families.  So the obligation is discharged at the echo era's own families
+instead, and the era-free statement is deleted rather than proved.
+
+THE FOUR EDITS.  (1) `UkSh.ush_rest_l` gains TWO ROWS INSIDE ITS BOX: the
+payload's banner-credential assembler `⌜∀ i, ush_bnd i -> ⊢ Pm i -∗ Wb i -∗
+ush_at i⌝` and `ush_gen_slot`.  Both are facts about THE RECORD THE KERNEL
+MINTED, so the entry produces them (`wp_ksh_loop`/`wp_ksh_cmd_head` gain
+`ush_gen_slot`; `sh_uexec_slot`'s `Hgen'` pays it from the top's
+`uslot_mint_all`) and the discharger stops taking them as premises.
+(2) `UkShFork.wp_kshf_fork`'s TAINT ARM stops forking a generic child and
+hands the run straight to the generic slot at 0x92c (`ush_gen_run`) -- the
+same move the line fact's taint arm makes at 0x97a.  That deletes `uxsup`
+and `□ (T -∗ sh_deps)` from all three fork lemmas.  NOTE FOR THE RECORD:
+`UkRun.uxsup` HAS NO PRODUCER ANYWHERE IN THE TREE, so that arm was a place
+the top could never have paid.  (3) NEW `iris/UShRest.v` (one bare
+`_CoqProject` row after `UShEchoPay.v`): `sh_rest_holds` takes the era's
+links, the free-instance deposit, `UShEcho.sh_echo_slot` and one `era_pin`,
+and returns the whole obligation at `ewc_lcred`/`kinit_ban`/`ush_mid`/
+`sh_Rsh`.  (4) `UInitSh.sh_pay_rest` DELETED (the one `lemma_diff` GONE,
+justified "discharged, not owed"); `sh_pay_of_parts` takes `sh_pay`'s second
+conjunct itself; `UInitBoot` reads the era pin off the turn
+non-destructively, builds `sh_echo_slot`, and applies the new lemma.
+
+WHAT THE RE-SURVEY GOT WRONG (all mechanical; the §5 DESIGN was sound as
+written).  EXEC-SEAM (C) had already deleted the premise the wb-assembler
+was to "replace", so it is an addition, not a replacement; the survey's
+`wp_ksh_main` is the tree's `wp_ksh_cmd_head`; the pin extraction collides
+with an existing `#Hpin0`; `sh_echo_slot` is one `iApply
+sh_echo_slot_of_fs_pure_holds`, not three `iSplitR`s; no `rewrite
+sh_kexec_sz` is needed in the goal (the two `R`s are convertible).  §8's
+query 1 answered YES (`HWct` IS in `ushf_rest_of_body`'s closure, right
+after `Hpsok_free`).  The one non-obvious pin is `udep (PS :=
+uprogSG_free)`: dropping it gives `iSpecialize: cannot instantiate (udep -∗
+…) with udep`, two propositions that PRINT IDENTICALLY.  Report:
+`handoff-2026-09-16/r3-report-2.md`.
+
+ECHO AUDIT TARGET LANDED (2026-09-14; `a0017a499`; NEW
+`iris/EchoAssumptions.v` + a bare `# EchoAssumptions.v` row + `make
+audit-echo`/`audit-echo-only`).  WHY IT IS NOT A DUPLICATE of
+`make audit-only`: NEITHER THEOREM'S CONE CONTAINS THE OTHER.  The system
+audit's target is `SystemAdequacy.xv6_fs_adequacy_xv6Σ`, the chain at the
+TRIVIAL application; it never walks `App`, `AppEcho`, `EchoOut`,
+`EchoLinks*`, `EchoDisc` or the `Uk*`/`USh*`/`UInit*`/`UEcho*` program tier,
+so the thirteen certified nothing about whether the PROGRAM tier leaked an
+axiom.  The only evidence for that had been a grep for `Admitted`/`Axiom`,
+and a grep cannot see through a sealed functor: an undischarged `Spec*`
+module `Parameter` sits in the proof term with no source line to find.
+MEASURED, first run: FOURTEEN, EXIT=0, md5
+`a78bf9a051fb56b084795d782df04045` -- the system theorem's thirteen PLUS
+`PrimString.length`, which is the eleventh Rocq string primitive, reached
+through `PStringBytes.pstring_hex_length` (`iris/PStringBytes.v:56`), the
+byte-count `pstring_hex_bytes` decodes every hex-imported binary blob by.
+NO `Spec*`/`Link*` module parameter: every deliberately unproven kernel
+function the program tier calls through is discharged inside the theorem's
+cone.  The file's header is the baseline a reader compares against.  NOTE:
+a theorem's PREMISES never appear in a `Print Assumptions` -- so this list
+would have looked the same while `Hsh_owed` was open.  The two checks are
+complementary and neither substitutes for the other.
+
+WHAT IS LEFT (2026-09-14, after the close).  Nothing is owed by any lane.
+Optional and post-Qed, in the owner's gift: (a) the COROLLARY AT THE LITERAL
+IMAGE -- the echo theorem still lists `Himg`/`Hdk`/`Hsb`/`Hcov` separately
+where `xv6_fs_adequacy_xv6Σ` discharges them by computation from the 2 MB
+mkfs image and takes one `Hdisk` instead; closing them is the SAME
+computation the system side already does, and it does NOT remove the
+assumption "the initial disk is the mkfs image" (that one stays either way,
+as it does for the system theorem), so it is tidiness, not soundness;
+(b) the TRACE-PREDICATE TIGHTENING (the known widening, trusted-surface
+§3.4: per round the predicate admits every word over `{1,3}` then `0` or
+`2`, e.g. two banners before a prompt, which the machine never produces);
+(c) init's closed-ledger arms off the free law; (d) the trusted-surface
+refresh and the owner-facing page; (e) the post-Qed redesign.
 
 EXEC-SEAM LANDED (2026-09-14; the lane's `75e353efc` (B) + `10b399a6c` (C) +
 `d1cc70d8b` (D) fast-forwarded onto `6645b0260`; builds es-3/es-9/es-11 in

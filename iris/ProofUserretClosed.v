@@ -96,11 +96,6 @@ Require Import UexecRet.     (* [uslot] / [uexec_ret] / [ukb] / [ukc] /
 Require Import UexecApply.   (* the round's tail, as named lemmas *)
 Require Import UexecSG.       (* [uexecSG]: [sbundle_at] / [spost_at] / [skey_eq] -- the loop runs on the
                                  enriched slot (lane E3b) *)
-Require Import UexecExecMint. (* [udep_gen]/[uslot_mint]: the generic slot's
-                                 construction, which [UexecCond]'s gate chain
-                                 below is stated against *)
-Require Import UexecExecInst. (* the class INSTANCE: what the loop hands the
-                                 process back at each contracted number *)
 Require Import UserretUser.
 Require Import TfPage36.
 From Kernel Require KernelSyms.

@@ -115,10 +115,6 @@ Require Import ParkCap.               (* [park_token_park] *)
 Require Import UsertrapRes.           (* [ut_names], [park_env], [park_own] *)
 Require Import SyscParkEnv.           (* [sysc_park_extra] / [park_world] *)
 Require Import SpecDevintr.           (* [uart1_caps] -- [park_world]'s second-port row *)
-Require Import UexecRet.              (* [uslot] -- DIRECT, the seal does not
-                                         travel through a re-export *)
-Require Import InitBoot.              (* [init_boot_bundle] -- what the park
-                                         carries in place of a slot *)
 Require Import FsReady.               (* [fs_geom_ok] *)
 Require Import DiskInv TicksInv.      (* [disk_geom], [is_tickslock] *)
 Require Import SpecUserinit.

@@ -42,8 +42,6 @@ Require Import UexecSlot.
 Require Import UexecWp.
 Require Import UexecRet.
 Require Import UexecCond.       (* [cond_entry_slot] -- the plain generic slot *)
-Require Import FirstTok.        (* in the require block for FsAbsInvFire's
-                                   sake; nothing here names its [fsabs_env] *)
 Require Import UexecExecInst.   (* the class INSTANCE: [uexecSG_xv6] / [uprogSG_gen] *)
 Require Import FsAbsInvFire.    (* [fsabs_open_in] / [fsabs_mknod_pre]: the two
                                    branches the supply pays update-free *)

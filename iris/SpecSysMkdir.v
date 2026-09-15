@@ -138,7 +138,7 @@ Require Import WpUart.
 Require Import DiskInv.
 Require Import Xv6Cameras.
 Require Import BioInv.
-Require Import FsBlocks LogInv.
+Require Import LogInv.
 Require Import FsCrash.
 Require Import BitmapInv.
 Require Import InodeInv.

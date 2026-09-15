@@ -64,13 +64,6 @@ Require Import UserPtTree.     (* [uva_wmapped] *)
 Require Import Xv6Cameras.     (* [uartGhostG]: the console ring's cameras *)
 Require Import ChildTok.       (* [ctokG]: the slot's fork arms' capacity *)
 Require Import FdSlots UserFd.
-Require Import UInitFd.      (* [ufd_l0] -- the all-closed low ledger the
-                               CLOSED arm of sh's entry is at *)
-Require Import UserCwd UserChildren.  (* [ucwd_any] / [uch_any] -- the two
-                               ghosts [UkSh.ush_pstate] carries beside the
-                               ledger *)
-Require Import UexecSlot UexecRet.  (* [uvis] / [uslot] -- the taint's
-                               generic slot, [UkRun.urun_gen]'s premise *)
 Require Import ConsoleInv.     (* [cons_window] / [cons_chain] / [CONSOLE] *)
 Require Import UserConsole.    (* [upos] / [ucons_stored_lb] / [ucons_pay] *)
 Require Import UkSh.           (* [sh_buf] / [sh_nbuf] *)

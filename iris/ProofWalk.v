@@ -41,11 +41,6 @@ Require Import TsoCtx.
 (* A6.86: [TsoCtxShim] is RETIRED -- its last live use died with the M4
    contract flip.  See its tombstone. *)
 Import Defs.
-Require Import ByteBuf.  (* A6.58: the CONTEXT tower's 8<->4 halving
-                            ([ctx_word_pointsto_split4]/[_join4]) and the
-                            window forget ([ctx_buf_forget]) live here --
-                            the lowest file importing both [InstrBytes]'
-                            pure halves and [TsoCtx]'s tier. *)
 Local Open Scope Z_scope.
 
 

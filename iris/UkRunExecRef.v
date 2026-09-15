@@ -30,16 +30,11 @@ Require Import RegFile.
 Require Import UsysMemOk UexecSlot UexecRet.
 Require Import FdSlots.      (* [fdstate] -- the key's descriptor view *)
 Require Import UkStep.
-Require Import UmodeArith.  (* [moi_add_l] / [uint_moi]: read's row addresses
-                               through [add_vec_int], the heap through [Z] *)
 Require Import UserHeap.
 Require Import UserPerm.    (* [uperm] -- the row's permission-map argument *)
 Require Import RiscvModelBytes. (* [nth_byte] -- pipe's two reported words *)
 Require Import TsoCtx.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
-Require Import UserChildren. (* [uch] / [uch_update] -- the program's half of
-                                its children reading, which wait moves, and
-                                [ch_reaped], the row the wait leaf reports *)
 Local Open Scope Z_scope.
 Import Defs.
 From Stdlib Require Import ZArith Bool Lia List FunctionalExtensionality.

@@ -360,8 +360,6 @@ Require Import SpecSysFork SpecSysExit SpecSysWait SpecSysPipe SpecSysRead SpecS
                SysExecDefs SpecSysFstat SpecSysChdir SpecSysDup SpecSysGetpid SpecSysSbrk
                SpecSysPause SpecSysUptime SpecSysWrite SpecSysMknod SpecSysLink SpecSysMkdir
                SpecSysClose SpecSysSync.
-Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
-                                   argument 0, which the walk is at *)
 Require Import SpecSysOpen.
 (* THE ATOMIC-UPDATE CONTRACTS the three fs-mutating entries run on (their
    return blankets are corollaries: [open_arms_landed], [mknod_arms_ret],

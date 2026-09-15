@@ -79,10 +79,6 @@ Require Import DinodeEnc.
 Require Import DirentEnc.
 Require Import DirView.
 Require Import InodeDefs.
-Require Import IregLinkNz.   (* the nonzero-count reading at a held token
-                                ([ireg_tok_nz]) and the agreement of two
-                                fragments of one register
-                                ([ireg_toks_agree]), which is (D1) *)
 Require Import UserPtTree.
 Require Import ProcInv.
 Require Import SpecIput.

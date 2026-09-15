@@ -89,7 +89,6 @@ Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       [mono_natG], so it is the taint's one
                                       instance here too. *)
 Require Import UInitCons.
-Require Import UConsOpen.
 Require Import UConsOpen.   (* the shared console open: the dead walk, the
                                two suppliers, the two key-level rows *)
 Require Import TsoCtx.

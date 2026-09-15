@@ -122,8 +122,6 @@ Require Import CpuOwn.
 Require Import SchedCtx.
 Require Import DiskPtsto WpUart.
 Require Import UartTxInv.
-Require Import SpecConsputc.   (* [consputc_bs]: the three bytes an erase
-     puts on the wire, and what this function's echo is stated against *)
 Require Import SpecUartPutc.   (* [uart_base_word]: the .data word the
    console driver LOADS its MMIO base from, since XV6_REV 163d39b.
    Required explicitly -- SpecConsputc requires it, but Import is not

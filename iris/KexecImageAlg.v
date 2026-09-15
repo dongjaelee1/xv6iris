@@ -67,8 +67,6 @@ Require Import PageGeom.        (* [PGSIZE]                                  *)
 Require Import UserPtTree.      (* [umem_write], [umem_wr], [umem_grow],
                                    [pgroundup], [uva_live], [live_set]      *)
 Require Import ElfFile.         (* the image semantics                       *)
-Require Import ElfBridge.       (* [elf_parse_phdr_all], [ph_at_of_ehdr] --
-                                   §4's identification of the code's walk  *)
 Require Import KexecDefs.       (* [kxc_sp], [kxc_sp_final], [kxc_stack_ok]  *)
 Require Export KexecBuilt.      (* the argument block's algebra, spelled
                                    below [SpecKexec] so the kexec block

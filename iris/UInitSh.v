@@ -53,7 +53,6 @@ Require Import ProcGeom.
    module in scope introduces a FRESH Type variable instead of the class,
    and the kernel's [uexecSG] instance is then invisible to resolution.
    [PinnedExec.v]'s header is the note. *)
-Require Import Xv6Cameras.      (* [bioslotG] *)
 Require Import Xv6G.            (* [xv6G] *)
 Require Import FdSlots.         (* [fdslotG], [fdstate] *)
 Require Import IrefSlots.       (* [irefslotG] *)

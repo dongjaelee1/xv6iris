@@ -53,7 +53,7 @@ Require Export Xv6Cameras.  (* the cameras this file states its theory over *)
 (* the context axis (tso-port M3): the PAYLOAD of every lock is a function
    of the thread of control that holds its facts -- see the block above
    [lock_inv]. *)
-Require Import Ktier KMap RiscvExtras.  (* A6.84: [ktier_pin] / [kmap_at] --
+Require Import Ktier RiscvExtras.  (* A6.84: [ktier_pin] / [kmap_at] --
    a ledger cell carries no MAPPING, so [lk_addr_claim] states one here *)
 Require Import TsoCtx.
 (* [lock_name_intro] mints the deliberately-RAW name-field metadata

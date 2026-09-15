@@ -49,9 +49,6 @@ Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvLang ObsTrace RiscvPtsto.
 Require Import KptPt.   (* kmap_M0, for the kmap ghost (rwx-kmap) *)
 Require Import KptGhost.   (* kpt_unset / kpt_ghost_alloc / kptb_ghost_alloc: the shared kernel table\'s one-shots *)
-Require Import BootCarve.  (* the boot-image carving library: the claims-bundle
-                              persist and the rwx three-way split at [text_end],
-                              lifted out of this proof so there is ONE copy *)
 Require Import SmodeCore.  (* sieG: the [ghost_varG Σ (mword 1)] for the SIE/SPP/SPIE ghosts *)
 Require Import WpUart.
 Require Import PowerBoot.   (* the canonical reset machine + [boot_shape_boot_gstate] *)
@@ -209,9 +206,6 @@ Qed.
 (*    recursion, patching the function one hart at a time).                 *)
 (* ---------------------------------------------------------------------- *)
 
-Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
-                            its descriptor table, the authority for
-                            which rides inside [urun] *)
 Section reg_alloc.
   Context {Σ : gFunctors}.
   Context `{!ghost_mapG Σ register (sigT type_of_register)}.

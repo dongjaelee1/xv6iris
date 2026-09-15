@@ -47,11 +47,6 @@ Require Import UserFd.
 Require Import SystemAdequacy.
 Require Import FsImgCheck.
 Require Import FsImgDisk.
-Require Import UserConsole.        (* [ucons_pay]: the payload the owed read
-                                      leaf is stated at (lane ECHO-OUT
-                                      part 5) *)
-Require Import FsCfg.              (* [fsc_cons]: ...and the era's console
-                                      ring it names *)
 Require Import App.                (* [xv6_app_adequacy] and the record *)
 Require Import AppEcho.            (* [app_echo] and its obligations *)
 Require Import EchoOut.            (* [echoOutG]: the class the record's four

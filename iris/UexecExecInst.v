@@ -147,8 +147,6 @@ Require Import UserPerm.       (* [perm_of] -- and the key's projection *)
 Require Import UexecSlot.      (* [uvis] / [tf_w]                     *)
 Require Import UsysMemOk.      (* [USYS_exec] -- the one number with a bundle *)
 Require Import UexecSG.        (* [uexecSG] / [uprogSG] -- the class   *)
-Require Import UexecRet.       (* [uslot] -- the family the generic
-                                  inhabitants mint at                 *)
 Require Import SpecSysExec.  (* [sys_exec_au_pre]                   *)
 Require Import SpecKexec.    (* [exec_slot_pre] -- the piece the
                                   monotonicity walks through          *)

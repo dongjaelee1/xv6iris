@@ -49,8 +49,6 @@ Require Import AppDur.      (* [app_dur_raw]: the application's DURABLE claim be
 Require Import InitBoot.    (* [init_boot_bundle]: the first process's exec bundle,
                                which the theorem's [Hinit_boot] delivers *)
 Require Import InodeInv.    (* [ROOTINO]: the first process's working directory *)
-Require Import UexecExecInst.  (* [uexecSG_xv6]: the instance [uslot] -- and hence
-                                  the bundle -- is read at *)
 Require Import UexecExecMint.  (* [uslot_mint]: the GENERIC application's discharge *)
 Require Import LinkUserinit.   (* [UG.uexec_wp_gen]: ...and the [box] it eliminates *)
 Require Import AppInv.      (* [app_sup_raw]: the application's supply, at the raw gname,

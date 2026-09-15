@@ -126,8 +126,6 @@ Require Import CodeNamex.
 Require Import SpecNamex.
 Require Import FsAbsEra.      (* [ex_hop]/[ex_hops_from], [elend], and the
                                  three ghost lemmas the fire uses *)
-Require Import FsAbsStart.    (* [ex_start] and [bview_head_slash]: the
-                                 deferred start the two arms fire *)
 Require Import SpecNamexEra.
 Require Import ProofDirlookupParts ProofNamexParts.
 From Kernel Require KernelSyms.

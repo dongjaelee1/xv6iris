@@ -154,8 +154,6 @@ Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import FsTree.          (* [fname], [DOT], [DOTDOT] *)
 Require Import FsBytesGamma.    (* [fs_gamma_L]: the live Γ *)
-Require Import FsAbsEraMknod.   (* the era walk-premise pair, reused
-                                   verbatim (nameiparent-generic) *)
 Require Import AppInv.          (* [appN]/[appE]: the application's namespace, the commit mask (app-instances.md round A) *)
 Require Import FsAbsDefs.           (* LAST (FsAbs's own rule) *)
 Import Defs.

@@ -65,11 +65,6 @@ Require Export SwtchCtx.
 Require Import FsAbsCreateFire. (* [T_DEVICE], [create_made]                *)
 Require Import PathElems.       (* [path_elems], [SLASH] *)
 Require Import FsTree.          (* [fname] *)
-Require FsImg.                  (* [FsImg.ROOTINO : Z] -- Require, NOT
-                                   Import: [FsImg]'s [fs_sb] field readers
-                                   ([sb_ninodes] : fs_sb -> Z) would shadow
-                                   the superblock CELL ADDRESSES a syscall
-                                   frame threads *)
 Require Import FsAbsDefs.           (* the abstract state *)
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.

@@ -65,7 +65,7 @@ Require Import FsBlocks.        (* [fs_names], [fs_top] *)
 Require Import FsNode.          (* [fs_node] *)
 Require Import FsAbsDefs.       (* [aview], [abs_view], [abs_view_insert_same] *)
 Require Import AppCfg.          (* [appcfg]: [app_names], [app_pred], [app_run] *)
-Require Import IcacheRef.       (* [icfg_nib]: the inode region's width, for
+Require Import IcacheRefDefs.       (* [icfg_nib]: the inode region's width, for
                                    the body's DOMAIN row (round C) *)
 
 Local Open Scope Z_scope.

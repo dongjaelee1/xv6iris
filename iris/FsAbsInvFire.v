@@ -64,17 +64,9 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import ProcAvail.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import FsBytesGamma.   (* [fs_gamma_L]: the live Γ *)
-Require FsImg.                  (* [FsImg.ROOTINO : Z] -- Require, NOT
-                                   Import: [FsImg]'s [fs_sb] field readers
-                                   would shadow the superblock CELL
-                                   ADDRESSES the frame below threads *)
-Require Import SysMknodDefs.  (* [delta_create], [cre_pre],
-                                   [npar_elems], [abs_view_insert] *)
 Require Import SysWriteDefs.  (* [wchunks]: the chain's node count, and
                                    the splice algebra it re-exports *)
 Require Import FsAbsEra.        (* [elend]: the era lend the hops fire *)
-Require Import FsAbsEraMknod.   (* [npar_walk_pre_era], [npar_walk_dead_era]
-                                   -- the parent-prefix one-shot, REUSED *)
 Require Import FsAbsMknodFire.  (* [acre_commit_at], [dlookup_commit_at],
                                    [mkf_auth_nview] *)
 (* ...and this file's own: the other commit definitions and the invariant.
@@ -95,8 +87,6 @@ Require Import SpecConsolewrite.   (* [cons_out_chain_of_licence]: the
                                       of the supply's OUTPUT LICENCE *)
 Require Import SpecFilewrite.      (* [filewrite_in]: the one keyed input *)
 Require Import SpecFileread.       (* [fileread_in]: read's keyed input *)
-Require Import SpecSysRead.        (* in the require block; the dischargers
-                                      are stated at the BARE descriptor state *)
 Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its refund *)
 Import Defs.
 Require Import TsoCtx.

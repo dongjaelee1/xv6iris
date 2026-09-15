@@ -125,7 +125,6 @@ Proof. unfold ush_set. rewrite Nat.eqb_refl. reflexivity. Qed.
 Require Import VcGen.
 Require Import RiscvExtras.
 Require Import FdSlots.   (* [fdstate] -- what a handle names *)
-Require Import ProcGeom.  (* [NOFILE] *)
 Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for
                             which rides inside [urun] *)

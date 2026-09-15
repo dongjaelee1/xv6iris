@@ -168,12 +168,6 @@ Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import PathElems.       (* [path_elems], [SLASH] *)
 Require Import FsTree.          (* [fname] *)
 Require Import FsBytesGamma.    (* [fs_gamma_L]: the live Γ *)
-Require FsImg.                  (* [FsImg.ROOTINO : Z] -- Require, NOT
-                                   Import: [FsImg]'s [fs_sb] field readers
-                                   would shadow the superblock CELL
-                                   ADDRESSES the frame below threads *)
-Require Import SysMknodDefs.  (* [delta_create], [cre_pre],
-                                   [npar_elems], [abs_view_insert] *)
 Require Import SysWriteDefs.  (* the splice algebra it re-exports, which
                                    the mint justification below is cut from *)
 Require Import FsAbsEra.        (* [elend]: the era lend the hops fire;

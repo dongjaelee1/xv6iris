@@ -340,14 +340,8 @@ Require Import FsCfg.   (* [fscfg]: the fs configuration is AMBIENT *)
 Require Import PathElems.       (* [path_elems], [SLASH] *)
 Require Import FsTree.          (* [fname] *)
 Require Import FsBytesGamma.    (* [fs_gamma_L]: the live Γ *)
-Require FsImg.                  (* [FsImg.ROOTINO : Z] -- Require, NOT
-                                   Import: [FsImg]'s [fs_sb] field readers
-                                   would shadow the superblock CELL
-                                   ADDRESSES the frame below threads *)
 Require Import SysMknodDefs.  (* [delta_create], [cre_pre],
                                    [npar_elems], [abs_view_insert] *)
-Require Import FsAbsEraMknod.   (* [npar_walk_pre_era], [npar_walk_dead_era]
-                                   -- the parent-prefix one-shot, REUSED *)
 Require Import FsAbsMknodFire.  (* [acre_commit_at], [dlookup_commit_at] *)
 Require Import AppInv.          (* [appN]/[appE]: the application's namespace, the commit mask (app-instances.md round A) *)
 Require Import ArgPath.       (* [arg_path_of]: the reading of trapframe

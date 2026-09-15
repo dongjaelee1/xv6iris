@@ -114,9 +114,6 @@ Require Import KvmSpec.
 Require Import FileInvDefs.
 Require Import SpecDirlink.
 Require Import SpecNamex.      (* K_namex, walk_need / walk_spend, ROOT* *)
-Require Import FsAbsEra.       (* [ex_hop]/[ex_hops_from]: [FsAbs.ax_hop] at
-                                  the ERA lend, which is the one difference
-                                  between this contract and [SpecNamexTr] *)
 Require Import FsAbsEra.     (* [ex_start]: the DEFERRED start (lane A-iii) *)
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.

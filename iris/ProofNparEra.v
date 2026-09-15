@@ -135,10 +135,6 @@ Require Import SpecDirlookup.
 Require Import CodeNamex.
 Require Import SpecNamex.
 Require Import FsAbsEra.      (* [elend] and the two fire lemmas *)
-Require Import FsAbsNpar.     (* [np_elems]/[ep_hops_from]/[np_dead]: the
-                                 PARENT-PREFIX family and its death arm *)
-Require Import FsAbsStart.    (* [ep_start] and [bview_head_slash]: the
-                                 deferred start the two arms fire *)
 Require Import SpecNparEra.
 Require Import ProofDirlookupParts ProofNamexParts.
 From Kernel Require KernelSyms.

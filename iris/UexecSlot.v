@@ -62,8 +62,6 @@ Require Import RegFile.
 Require Import ProcGeom.     (* [tf_epc_idx] / [tf_sp_idx] / [TFWORDS] *)
 Require Import TfUser.       (* [tf_ueq] *)
 Require Import UserPtTree.   (* [uptd] / [user_pt_inv] *)
-Require Import UserExec.     (* [ucfg] / [user_cfg] / [user_mstatus_ok] /
-                                [user_trap_frame] *)
 Require Import SpecUserret.  (* [userret_gpr] -- the 31-insert register file *)
 Require Import ProcDefs.     (* [pprivate] / [ustate] / [pv_tf] *)
 Require Import UserPerm.     (* [uperm] / [perm_of] -- the permission view *)

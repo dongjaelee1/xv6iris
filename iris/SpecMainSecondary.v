@@ -65,7 +65,8 @@ Require Import IntrDefs.
 Require Import KptShare KptExecMap KvmMap.
 Require Import StartedInv.
 Require Import SpecPrintk.
-Require Import ProcGeom FdSlots CpuOwn SchedCtx.
+Require Import FdSlots CpuOwn SchedCtx.
+Require Import HartTp.
 (* [dev_ncpu], the PLIC's modelled hart count, for plicinithart's premise *)
 Require Import DevModel.
 Require Import DiskPtsto.

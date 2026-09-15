@@ -94,8 +94,6 @@ Require Import FsCfg.   (* [fscfg]: the fs configuration is AMBIENT *)
 Local Open Scope Z_scope.
 
 Require Import FsBytesGamma.
-Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
-                                   argument 0, which the walk is at *)
 Require Import SysOpenDefs.
 Require Import SpecSysOpen.   (* the arms this block builds *)
 Require Import ProofSysOpenBits.

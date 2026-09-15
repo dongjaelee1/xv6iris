@@ -22,11 +22,6 @@ Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import TsoCtx.
 Local Open Scope Z_scope.
-Require Import ByteBuf.  (* A6.58: the CONTEXT tower's 8<->4 halving
-                            ([ctx_word_pointsto_split4]/[_join4]) and the
-                            window forget ([ctx_buf_forget]) live here --
-                            the lowest file importing both [InstrBytes]'
-                            pure halves and [TsoCtx]'s tier. *)
 Import Defs.
 
 (* ---- Local width-4/1 helpers copied from WpSmodeLoad.v / WpSmodeStore.v ---- *)

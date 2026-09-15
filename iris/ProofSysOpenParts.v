@@ -54,7 +54,7 @@ Require Import StackOwn StackBytes.
 Require Import CalleeSaved KernelText.
 Require Import WpSconfAlu WpSconfMem WpSconfCtl.
 Require Import IntrDefs.
-Require Import WpLock.                (* [lockG] -- bound in the publication's
+Require Import Xv6Cameras.                (* [lockG] -- bound in the publication's
                                          section, and a class that is not
                                          IMPORTED becomes a fresh VARIABLE *)
 Require Import ByteBuf.

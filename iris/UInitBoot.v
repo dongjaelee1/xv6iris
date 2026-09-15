@@ -67,7 +67,6 @@ Require Import FdSlots.
 Require Import IrefSlots.
 Require Import ProcAvail.
 Require Import FileInvDefs.
-Require Import UserFd.
 Require Import ChildTok.
 Require Import UexecSlot.
 Require Import UexecRet.          (* [uslot] -- REQUIRED DIRECTLY (the seal) *)

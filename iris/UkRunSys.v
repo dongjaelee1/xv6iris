@@ -45,7 +45,6 @@ Require Import RegFile.
 Require Import UsysMemOk UexecSlot UexecRet.
 Require Import FdSlots.      (* [fdstate] -- the key's descriptor view *)
 Require Import ProcGeom.   (* [tf_arg_idx] -- wait's row is based at a0 *)
-Require Import UserPtTree. (* [umem_wr_write] / [umem_write_prefix] *)
 Require Import UkStep.
 Require Import UmodeArith.  (* [moi_add_l] / [uint_moi]: read's row addresses
                                through [add_vec_int], the heap through [Z] *)

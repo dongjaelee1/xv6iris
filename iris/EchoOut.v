@@ -1473,6 +1473,126 @@ Proof.
   exfalso. apply Hk. reflexivity.
 Qed.
 
+(* ---- the settled state: once the arm closes, the log's echoed count IS
+   the era's list length.  This is what lets the READER's stage fact
+   ([rd_stage] at the log's echo count) be read off the WRITER's
+   ([eout_pure]'s [pro_pin] at [length (o_E so)]) -- today those are two
+   facts in two claims, kept in step by the window counter. ---- *)
+Lemma ch_E_close_len (H : ConsLog.cons_hist) :
+  length (echoed (ConsLog.ch_log (ConsLog.cons_step H ConsLog.EvClose)))
+  = length (ch_E H).
+Proof.
+  rewrite -(ch_E_close H) /ch_E.
+  destruct (ConsLog.ch_arm H) as [[[[h c] cs] j] |] eqn:Ha.
+  - rewrite /ConsLog.cons_step Ha /=. by rewrite app_nil_r seg_of_length.
+  - rewrite /ConsLog.cons_step Ha /=. rewrite Ha /=.
+    by rewrite app_nil_r seg_of_length.
+Qed.
+
+(* ---- the era facts the in-flight arm carries.  They are what the entry
+   [EvClose] files needs in order to join [ein_pure]'s per-entry clauses,
+   and they are the application's business, not [ConsLog]'s: that file
+   knows nothing of the discipline or of era numbers. ---- *)
+Definition ch_arm_era (k : nat) (a : option ConsLog.cons_arm) : Prop :=
+  match a with
+  | Some (h, c, cs, j) => disc_seg (open_seg h) /\ obs_boots h = k
+  | None => True
+  end.
+
+(* ---- THE MERGED CLAIM'S PURE CONTENT.  Today's [eout_pure] and
+   [ein_pure] over ONE stage and ONE history, plus the tie that makes the
+   window counter unnecessary: the era's echoed list IS [ch_E] of the
+   history.  [ein_pure]'s choice list is the stage's own [o_cs], where
+   today it is an existential [cs0] the input claim carries a lower bound
+   for. ---- *)
+Definition ecl_pure (k : nat) (ho : list mobs) (so : ostage)
+    (H : ConsLog.cons_hist) : Prop :=
+  eout_pure k ho so (ConsLog.ch_acc H)
+  /\ cs_len_ok so
+  /\ ps_len_ok so
+  /\ ein_pure k (ConsLog.ch_log H) (ConsLog.ch_dl H) (o_cs so)
+  /\ ch_arm_era k (ConsLog.ch_arm H)
+  /\ o_E so = ch_E H.
+
+(* the two events that touch neither the log nor the arm leave every
+   clause but [eout_pure]'s and [ein_pure]'s own arguments alone *)
+Lemma ecl_pure_arm (k : nat) (ho : list mobs) (so : ostage)
+    (H : ConsLog.cons_hist) :
+  ecl_pure k ho so H -> ch_arm_era k (ConsLog.ch_arm H).
+Proof. by intros (_ & _ & _ & _ & Hera & _). Qed.
+
+Lemma ecl_pure_E (k : nat) (ho : list mobs) (so : ostage)
+    (H : ConsLog.cons_hist) :
+  ecl_pure k ho so H -> o_E so = ch_E H.
+Proof. by intros (_ & _ & _ & _ & _ & HE). Qed.
+
+(* ---- FILING THE ENTRY PRESERVES THE CLAIM, WITH THE STAGE UNCHANGED.
+   This is what the settled/window split costs today and what the merge
+   buys: there is no arm to choose, no counter to agree with, and the
+   writer's [pro_pin] at [length (o_E so)] IS the reader's stage fact at
+   the log's new echo count, because [ch_E_close_len] makes the two
+   lengths equal. ---- *)
+Lemma ecl_pure_close (k : nat) (ho : list mobs) (so : ostage)
+    (H : ConsLog.cons_hist) :
+  ConsLog.cons_hist_ok H ->
+  ConsLog.cons_ev_ok H ConsLog.EvClose ->
+  ecl_pure k ho so H ->
+  ecl_pure k ho so (ConsLog.cons_step H ConsLog.EvClose).
+Proof.
+  intros Hok Hev Hecl.
+  pose proof (ch_E_close H) as Hclose.
+  pose proof (ch_E_close_len H) as Hlen.
+  pose proof (ConsLog.cons_hist_ok_step H ConsLog.EvClose Hok Hev) as Hok'.
+  unfold ConsLog.cons_hist_ok in Hok'. destruct Hok' as [Hlog' _].
+  destruct (ConsLog.ch_arm H) as [[[[h c] cs] j] |] eqn:Ha; cycle 1.
+  { rewrite /ConsLog.cons_step Ha. exact Hecl. }
+  destruct Hecl as (Hout & Hcs & Hps & Hin & Hera & HE).
+  destruct Hin as (_ & Hdsc & Hbts & Hdl & _ & _ & _).
+  rewrite Ha in Hera. cbn [ch_arm_era] in Hera.
+  destruct Hera as [Hdseg Hboots].
+  destruct Hout as (Hacc & Hw & HEi & HEb & Hpsf & Hpin & Hcsf & Hdse & Hpre & Hle & Hbo).
+  rewrite /ConsLog.cons_step Ha in Hlog' Hlen |- *.
+  cbn [ConsLog.ch_acc ConsLog.ch_log ConsLog.ch_dl ConsLog.ch_arm] in Hlog', Hlen |- *.
+  (* the era's list has not moved, so the new log's echoed slice IS [o_E so] *)
+  assert (Hseg : seg_of (echoed (ConsLog.ch_log H ++ [(h, c, take j cs)]))
+                 = o_E so).
+  { rewrite HE -Hclose /ch_E /ConsLog.cons_step Ha.
+    cbn [ConsLog.ch_log ConsLog.ch_arm ch_arm_E]. by rewrite app_nil_r. }
+  split_and!.
+  - (* eout_pure: the accepted bytes did not move *)
+    by split_and!.
+  - exact Hcs.
+  - exact Hps.
+  - (* ein_pure at the new log *)
+    split_and!.
+    + exact Hlog'.
+    + intros e He. apply elem_of_app in He as [He | He].
+      * exact (Hdsc e He).
+      * apply elem_of_list_singleton in He as ->.
+        cbn [le_hist fst snd]. exact Hdseg.
+    + intros e He. apply elem_of_app in He as [He | He].
+      * exact (Hbts e He).
+      * apply elem_of_list_singleton in He as ->.
+        cbn [le_hist fst snd]. exact Hboots.
+    + (* the delivered prefix survives: the log's echoed slice only grows *)
+      destruct (decide (log_echoed (h, c, take j cs))) as [Hy | Hn].
+      * rewrite (echoed_snoc_yes _ _ Hy).
+        by apply (prefix_app_r _ _ [(le_hist (h, c, take j cs),
+                                     le_byte (h, c, take j cs))]).
+      * by rewrite (echoed_snoc_no _ _ Hn).
+    + by rewrite Hseg.
+    + by rewrite Hseg.
+    + (* the reader's block count, off the writer's own [cs_len_ok] *)
+      rewrite -(seg_of_length (echoed _)) Hseg.
+      rewrite /cs_len_ok in Hcs.
+      destruct (decide (o_w so = []
+                        /\ (length (o_E so) `mod` length echo_line)%nat = 0%nat));
+        lia.
+  - exact I.
+  - rewrite /ch_E. cbn [ConsLog.ch_log ConsLog.ch_arm ch_arm_E].
+    rewrite app_nil_r. by rewrite Hseg.
+Qed.
+
 Section echo_out.
   Context {Σ : gFunctors} `{!echoOutG Σ}.
   (* THE TAINT, ABSTRACTLY.  [AppEcho.echo_taint] is [mono_nat_lb_own

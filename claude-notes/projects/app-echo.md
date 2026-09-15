@@ -3472,10 +3472,9 @@ ua nb (ustd l) (ustd l)` and `kinit_w1_of_closed` (its init twin at
 all-closed head ledger `ufd_l0` (`ksh_w_of_closed_l0` at fd 2,
 `kinit_w1_of_closed_l0` at fd 1) -- the audit's blocker (2) and the guard step
 3 needs on init's closed-fd head arm.  Report:
-`handoff-2026-09-16/write-closed-report.md`.
+the lane's report (deleted with the handoff set).
 
-IO-LEAF M6a(3) REVIEWED (2026-09-14; read-only Fable review, `handoff-2026-09-16/
-review-m6a3.md`).  Confirms the design and every argument order; its blocking
+IO-LEAF M6a(3) REVIEWED (2026-09-14; read-only Fable review).  Confirms the design and every argument order; its blocking
 finding (`ush_rest_l` takes `Wc`, so `sh_pay_rest` must quantify it) was
 already in the landing.  RECORD: (2) `Wc n 0 := ewc_owed` is NOT the prompt's
 shape once a child has RUN: after a successful echo the child recorded `a =
@@ -3632,7 +3631,7 @@ adding a file adds a bare row.  (`b7c49dea2` stripped 2195 -> 1533 lines.)
 
 CHECKPOINT 2026-09-14 (session limit) -- IO-LEAF STEP 3 IN FLIGHT (SUPERSEDED
 the same day: INIT-DIAG and step 3 LANDED, see the two notes above;
-`checkpoint-2026-09-14-step3.md` carries the state of play).
+the checkpoint carried the state of play; it has since been deleted).
 
 INIT-DIAG LANDED (2026-09-14; the lane's `aff0a688b` in `-sup` cherry-picked
 as `bdd9faf7f`; NEW `iris/EchoLinksPro.v` (row after `EchoLinks.v`) and
@@ -3658,7 +3657,6 @@ pays "init: fork failed" directly.  (2) The three die lemmas
 `UkInitMain.wp_kinit_main_die_de/_df/_dw` all spend `udepw_law 16` through
 the free printf; `wp_kinit_fork`'s -1 arm DISCARDS the refunded `Rc`
 (UkInitMain.v ~937) -- M6b keeps it and threads `wp_kinit_printf_chain`.
-Report: `handoff-2026-09-16/init-diag-report.md`.
 
 IO-LEAF STEP 3 LANDED (2026-09-14; `a583457a6` init side + `a860c399d` shell
 side (lane STEP3-SH's `791e7216d` in `-disc`) + `eab906990` the glue, on
@@ -3706,7 +3704,7 @@ kills all three (`ush_wcp_cons` at k = 2 through PROLOGUE-ALTS-3's
 lemma; the fork arm's re-entry and the wait redemption produce `Wb n`).
 GOTCHA recorded in durable-notes: a transitive `Require` can vanish under a
 sibling's edit (UInitBoot lost UShOut through UInitBanner).  Reports:
-`handoff-2026-09-16/step3-sh-report.md`.
+the lane's report (deleted with the handoff set).
 
 PROLOGUE-ALTS-3 LANDED (2026-09-14; the lane's `7c269ea8f`+`58b586b52`+
 `39544b6af` in `-tlw` cherry-picked onto `33064d938` as `…b65275c81`; 10
@@ -3761,8 +3759,7 @@ read at an unwritten prompt is refuted).  `echo_write_link_pro` UNCHANGED
 every `a`).  EchoLinksPro follows the letter: `wr_pdiag`'s open prologue is
 `pro_fail j ++ [3; a]`, `ewc_pro`'s body is `wr_pban` (`wr_pro` plus "the
 open round is `pro_fail j ++ [3]`"), every Iris statement UInitDiag consumes
-unchanged.  Reports: `handoff-2026-09-16/prologue-alts-3-report.md`,
-`-report-2.md`, `-report-3.md`.
+unchanged.
 
 DIE-DW CORRECTED (2026-09-14; owner: "how can a killed init print anything?").
 The M6a(2) finding (a) -- "a KILLED init is real -- a killed process runs on
@@ -3843,7 +3840,7 @@ query 1 answered YES (`HWct` IS in `ushf_rest_of_body`'s closure, right
 after `Hpsok_free`).  The one non-obvious pin is `udep (PS :=
 uprogSG_free)`: dropping it gives `iSpecialize: cannot instantiate (udep -∗
 …) with udep`, two propositions that PRINT IDENTICALLY.  Report:
-`handoff-2026-09-16/r3-report-2.md`.
+the lane's report (deleted with the handoff set).
 
 ECHO AUDIT TARGET LANDED (2026-09-14; `a0017a499`; NEW
 `iris/EchoAssumptions.v` + a bare `# EchoAssumptions.v` row + `make
@@ -3911,7 +3908,7 @@ OLD `(⊢ UkSh.sh_deps (PS := uprogSG_free)) /\ (⊢ UInitSh.sh_pay_rest
 UInitSh.sh_Rsh)`, NEW `(⊢ UInitSh.sh_pay_rest UInitSh.sh_Rsh)`.  Remaining
 unconditional spenders of the free law: the GENERIC programs only (UkShRun/
 UkShDiag/UkShMain's generic lemmas, UkCat/UkEcho/UShEcho/UEchoKernel).  Next:
-lane R3 deletes the last conjunct.  Report: `handoff-2026-09-16/exec-seam-report.md`.
+lane R3 deletes the last conjunct.
 
 RESIDUALS (A) LANDED; (B) BLOCKED AT THE EXEC SEAM (2026-09-14; lane
 RESIDUALS' `c0474175b` in `-disc` cherry-picked as `146e7cac1`; 7 files;
@@ -3939,10 +3936,10 @@ sys_exec / syscall / usertrap Specs and Proofs).  NOTHING WEAKENED.  (C)/(D)
 have no (B)-independent part: `ush_wcp`'s affine arm's producers are init's
 `init_lend_cred` mapping and the wait re-entry (= (B)); `sh_deps` is spent on
 the paid walk at `ksh_w_of_wcp`'s True arm with no `T`.  ORDER OF RECORD:
-EXEC-SEAM (B) -> (C) -> (D) -> R3.  Report: `handoff-2026-09-16/residuals-report.md`.
+EXEC-SEAM (B) -> (C) -> (D) -> R3.
 
 SH-LINE R3 RE-SURVEYED (2026-09-14, after step 4; read-only; report
-`handoff-2026-09-16/r3-survey-2.md`).  FINDING, RULED BY THE COORDINATOR:
+the R3 re-survey, since deleted).  FINDING, RULED BY THE COORDINATOR:
 `sh_pay_rest`'s `∀ T Wc Wb Pm` is ITSELF the obstacle -- after step 4
 `ushf_rest_of_body` (the only prover of `ush_rest_l`) takes the era's three
 laws (`ushf_kill_law`, `ushf_child_law`, `ush_panic_law`), `Timeless (Wc n
@@ -4005,7 +4002,6 @@ free law -- killer: a pid-range row (`bv_unsigned pidv < 2^31`) in
 `UkFork.wp_uk_ecall_fork`'s parent post.  `sh_deps` spenders left: §5 of
 the report (the prompt's True arm, getcmd's taint arm, the pid sub-arm, the
 affine/taint fork arm, the GENERIC runner/diag lemmas, the entry's hand-off).
-Report: `handoff-2026-09-16/step4-sh-report.md`.
 
 M6b LANDED (2026-09-14; lane M6B-INIT's `b48cb3199`+`6d87c8558` in `-sup`,
 cherry-picked as `a7d47ccef`+`290f05cf0` on `e9477f988`; 7 files, NEW
@@ -4033,7 +4029,7 @@ nat -> nat -> iProp) … (Wc n 0)`, no diag law); `Hsh_owed` unchanged.  `∨
 True` LEFT in init: `UkInit.init_rd_cred` and `init_lend_cred`'s third arm --
 ONE obligation, every shell exit hands back `Wb n` (lane STEP4-SH).
 `udepw_law 16` still spent on the closed-ledger and affine arms of
-`die_de`/`die_df`/the banner.  Report: `handoff-2026-09-16/m6b-init-report.md`.
+`die_de`/`die_df`/the banner.
 
 IO-LEAF M6a(2) LANDED (2026-09-16; `61f015f7b`+`e8b61dc6a` on `61269a3c2`;
 EchoLinks.v, UInitBanner.v, UInitBoot.v, UInitKernel.v, UkInitMain.v; builds
@@ -4070,7 +4066,7 @@ diagnostics through the link (every `∨ True` arm then dead); M3b core + the
 wait redemption on TRAP-ROWS-5's `_pid` rows.  Handover: `io-leaf-handover.md`.
 
 ALL LANES QUIESCED 2026-09-16 (the owner's instruction: no more subagents;
-checkpoint).  The checkpoint is `claude-notes/projects/checkpoint-2026-09-16.md`.
+checkpoint; the checkpoints have since been deleted).
 
 POST-QED REDESIGN -- DESIGN STUDY DONE (2026-09-16; read-only Fable review;
 scratchpad `post-qed-redesign.md`, sent to the owner; design only, the
@@ -6330,7 +6326,7 @@ udepw N m pc 15)`, discharged at the era from `□ (T -∗ app_sup)` +
 arms; the unused UkRunSys leaves stay as 2b's moulds.
 
 E5 -- THE OUTPUT SIDE: DESIGN PROPOSAL (coordinator, 2026-09-12; after the
-pre-mortem review `review-echo-plan-2026-09-12.md` findings 2-5, 7, 12 and
+pre-mortem review `review-echo-plan-2026-09-12.md` (now in `../completed/`) findings 2-5, 7, 12 and
 the owner's ruling "the output includes the 'hart N starting' outputs, along
 with the shell, and the real 'echo hello world'").
 

@@ -178,9 +178,10 @@ Section UserOff.
   Qed.
 
   (* MODE HAND -- the enriched open row: the half is HANDED to the caller
-     at the position the publish stored, which for [sys_open] is 0 (xv6's
-     [filealloc] path zeroes [f->off]).  Not a modality at all: handing is
-     the split itself, and it is the mint that costs a step. *)
+     at the position the publish stored, which at [sys_open] is 0 (the
+     open path stores a zero [f->off]), hence [off_pub_hand_0].  Not a
+     modality at all: handing IS the split; it is the mint that costs a
+     step. *)
   Lemma off_pub_hand γo (off : nat) :
     off_gv γo 1 (Z.of_nat off) -∗
       off_gv γo (1/2) (Z.of_nat off) ∗ uoff γo off.
@@ -198,9 +199,10 @@ End UserOff.
 (* ==================================================================== *)
 (*  AS LANDED (RD-1, 2026-09-15): where mode HAND still cannot go        *)
 (* ==================================================================== *)
-(* [off_pub_hand] is proved and the fires take the held supplier, but
-   NOTHING IN THE TREE CALLS EITHER YET, and the reason is one structural
-   fact worth recording where the next lane will look:
+(* [off_pub_hand] is proved and all three fires take the held supplier,
+   but NOTHING IN THE TREE HANDS A [uoff] OUT YET -- the publish calls
+   [off_pub_park] -- and the reason is one structural fact worth recording
+   where the next lane will look:
 
      [FdSlots.foff_row] is a PURE FUNCTION OF THE DESCRIPTOR STATE, and
      PERSISTENT -- [foff_row (FdOpen _ _ (FdInode _ γo)) = off_user_inv γo]

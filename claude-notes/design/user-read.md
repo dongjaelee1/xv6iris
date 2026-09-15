@@ -258,6 +258,109 @@ for word), the two family records `xfam_rd` / `xfam_rdf` (which ARE the
 two arms), the two `fd_st_of_key` readings, and the count's sign-boundary
 bridges.
 
+**AS LANDED (RD-5, 2026-09-15 — `iris/UkReadPipe.v`, branch `rd5-pipe-arm`):
+the Pipe row's PAYMENT side is FINISHED and its CONTENT side DOES NOT
+EXIST — and the second half is a landed definition one level below, not a
+gap in the U tier.**  The judgment the lane was asked for (is the pipe
+arm's payment already an AU on the queue, as RD-4 found the console arm's
+was?) is NO, and for a reason no U-tier statement can repair:
+
+  THERE IS NO BYTE-QUEUE GHOST TO STATE AN AU ON.  `PipeInvDefs.pipe_names`
+  carries four gnames and every one is about the ENDS — `pn_read`/
+  `pn_write` are the two reference fractions, `pn_mread`/`pn_mwrite` the
+  two open marks.  The ring's contents are the `bs` bound EXISTENTIALLY
+  inside `pipe_res_at`, i.e. inside the payload of the pipe's own
+  spinlock, and the queue coupling that would say which of those 512 bytes
+  are live is deliberately not imposed: what is imposed is the pure
+  counter bound `pipe_count_ok nr nw`, of which `design/pipe.md` says, in
+  terms, "Nothing consumes it yet — the CONTENTS of the live window stay
+  existential; it and `pipe_data`'s tracked byte list are the hooks a
+  future contents-indexed refinement builds on."  `SpecPiperead`'s own
+  contract says the same at the function tier: "`bs` is what came out of
+  the pipe, which no contract at this tier can name".
+
+So the kernel's read contract at a pipe descriptor is a NO-OP ON BOTH
+SIDES: `SpecFileread.fileread_in` at `FdOpen true _ FdPipe` is the
+`_ => P` arm (it takes NOTHING) and `SpecFileread.fileread_extra_core` at
+the same state is `emp` (it tells NOTHING).  §3's Pipe row is therefore,
+today, exactly its **Dev (other)** row — "the base weak form (bytes exist,
+tail pinned) — honest, since the device model gives nothing to name".
+
+WHAT IS IN `iris/UkReadPipe.v`, at that honest strength:
+
+- `udepwf_st_read_pipe` — the supplier, proved FROM `emp`.  A pipe read
+  costs its caller nothing beyond its own handle, which is §1's "the
+  payment is a resource the PROGRAM owns and understands" at its limit
+  case.  (Compare `UkReadFile.udepwf_st_read_file`: one observation
+  commit; `UkReadCons.udepwf_std_read_cons`: the ring plus one AU.)
+- `uread_pipe_ans` / `uread_pipe_ans_of_ret` — the CONTENT post, which is
+  PURE: `PipeInvDefs.pipe_rw_ret` (piperead's and pipewrite's shared
+  return convention) read at the caller's own `nat` request — the call
+  failed, or it delivered a count no larger than the request.  `-1` is NOT
+  refuted and that is correct: `UexecRet.uexec_live_ok` refutes it only at
+  the console, and piperead really does answer -1 (killed while asleep, or
+  the first copyout faulted).
+- `wp_uk_ecall_read_pipe` — the member: `UkRunSys.wp_uk_ecall_read_at`'s
+  walk at the pipe arm.  The one walk's `D`/`K` parametrization FITS the
+  pipe handle with nothing added (the STOP rule did not fire): a pipe end
+  is a descriptor a program was GIVEN by `sys_pipe` rather than one the
+  ledger can reach, so the reading is `UkReadRows.ufd_fd_st_of_key`'s —
+  the file arm's route, for the file arm's reason.  No payment argument
+  and no family argument: there is nothing for a caller to choose.
+- `upipe_ends_handles` / `wp_uk_pipe_read_end` — the consumer test, at the
+  only strength the tree supports (below).
+
+**THE EOF ROW IS OWED, and it is owed one level down.**  §3's "writer end
+closed and queue empty → r = 0" is a fact about the pipe's open marks
+(`pipe_endstate`) and its counters, both under the pipe's lock;
+`fileread_extra_core`'s `emp` is where it would have to come through, and
+it does not.  No U-tier statement can mint it.
+
+**...AND SO IS THE COUNT/WINDOW JOIN, which is the sharper of the two.**
+It is the exact analogue of `UsysMemOk`'s SS2c join.  The walk hands out a
+window length `d` (what `usys_mem_ok` says the call wrote) and the post
+hands out a return value `r`; at the INODE arm `FsAbsReadFire.read_post_ok`
+ties them (`Z.of_nat d = bv_unsigned r`) and at the CONSOLE arm
+`console_receipt` does — but at the pipe arm NOTHING does, so a program
+reading a pipe cannot conclude that the bytes of its buffer ABOVE the
+returned count are unchanged.  That is a kernel-side row
+(`fileread_extra_core`'s pipe arm), not a U-tier one; the member therefore
+hands `d` and `r` over separately and claims no equation between them.
+
+**THE CONSUMER TEST, and why it is the seam rather than the bytes.**  "A
+program holding the read end learns the writer's bytes" is not derivable
+at any tier today, and neither is a one-process write-then-read — for the
+one reason above and no other.  What IS derivable, and what has to hold
+for the member to be reachable by a real program, is that the two
+descriptors `sys_pipe` hands back are handles at exactly the two states
+the read and write members case on: `UsysMemOk.usys_pipe_ok`'s join makes
+the bytes in the caller's `int fd[2]` name those slots,
+`UkRunSys.wp_uk_ecall_pipe` spends it, and `wp_uk_pipe_read_end` reads
+that post one step further into the two members' own premises (`ufd a
+(FdOpen true false FdPipe)` and `ufd b (FdOpen false true FdPipe)`, at a
+ledger with no free standard slot, where the ledger does not move).  The
+SECOND call is not in the test and cannot be: the descriptor arrives in
+the caller's BUFFER and a program must load it into a0 with its own
+instructions first.  RD-6 should take the write end's handle from the same
+lemma — **and should expect the same wall**, checked here so RD-6 need not
+re-survey: `SpecFilewrite.filewrite_env` at `FdOpen _ _ FdPipe` is `emp`
+and so is `SpecFilewrite.filewrite_extra` there (`filewrite_extra_pipe` is
+proved from nothing), exactly mirroring read's two.  The write member will
+be this file's mirror image: a supplier from `emp`, a pure return post
+(`filewrite_ret`), and the same two owed kernel-side rows.
+
+**HOUSEKEEPING, NOT DONE, with the reason.**  `UkSh.ush_narrow_count_le`
+stays a private copy of `UkReadRows.uread_count_le`: the natural lower home
+for the two pure word lemmas is `UserBits.v` (41 importers, `ProcPtOwn`
+among them), so the move would rebuild essentially the whole tree for zero
+proof content — RD-1's operational argument for not putting `uoff` in
+`OffGv.v`, at a worse ratio.  Related and recorded rather than done:
+`UkReadFile.udepwf_st` and `UkReadFile.ufd_key_agree` are ARM-INDEPENDENT
+(the "file" leaf is really the HANDLE leaf) and belong in `UkReadRows.v`
+beside the two `fd_st_of_key` readings; `UkReadPipe.v` imports them from
+`UkReadFile.v` instead, because an edit to `UkReadRows.v` invalidates
+`UShLine.vo` and the whole echo chain above it.
+
 ### The routes out (owner's call; RD-2 recommends R-c now, R-a as a campaign)
 
 **R-a — mode in the state, plus a PARKED-TABLE DISCIPLINE in the generic
@@ -411,6 +514,15 @@ them — there is one walk (`UkRunSys.wp_uk_ecall_read_at`) that hands them
 out, and the arms differ only in the descriptor.  The two key-level
 adapters the arms used to keep private copies of live in
 `iris/UkReadRows.v`.
+
+**AS LANDED (RD-5): the Pipe member of the receipt family is `emp`, and
+that IS the member.**  `fileread_extra_core` at `FdOpen true _ FdPipe` is
+the unit, so there is nothing to re-cut and nothing to read: the pipe
+member of §3 rides the receipt family's BLANKET (`fileread_ret`, i.e.
+`pipe_rw_ret`) and the walk's arm-independent bridge rows, and no more.
+The two rows a real pipe member would need — the EOF row and the
+count/window join — are named as owed in §3's RD-5 block, both of them
+kernel-side.
 
 **AS LANDED (RD-2): the Inode member needs NOTHING new — it is
 `FsAbsReadFire.read_arms`, which `SpecFileread.fileread_extra_core`

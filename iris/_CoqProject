@@ -1497,6 +1497,7 @@ UCodeShK.v
 UkReadRows.v
 UkReadFile.v
 UkReadCons.v
+UkReadPipe.v
 UkRunBr.v
 UkSh.v
 UkShRun.v

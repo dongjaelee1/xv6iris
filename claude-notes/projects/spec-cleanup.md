@@ -246,10 +246,47 @@ Derived corollaries, in order of what applications actually use:
   (which ARE the two arms), the two `fd_st_of_key` readings and the
   count's sign-boundary bridges.  Design of record: `design/user-read.md`
   §3's RD-4 AS-LANDED block and §5's.
-- [ ] **RD-5 PIPE ARM** (LAUNCHED 2026-09-15, Opus lane, branch
-  rd5-pipe-arm, brief scratchpad `brief-rd5-pipe-arm.md` — RD-4's shape,
-  the one walk's D/K at the handle reading): the read end against the pipe's AU
-  (`usys_pipe_ok` names the slots; the content row is new).
+- [x] **RD-5 PIPE ARM** (LANDED 2026-09-15, branch rd5-pipe-arm,
+  mirror-green whole tree, echo audit at 14): the pipe arm is
+  `iris/UkReadPipe.v` (`wp_uk_ecall_read_pipe`, `udepwf_st_read_pipe`,
+  `uread_pipe_ans`, `upipe_ends_handles`, `wp_uk_pipe_read_end`), and the
+  judgment the lane owed is the OPPOSITE of RD-4's: **the pipe arm's
+  payment is NOT already an AU on the queue, because THERE IS NO QUEUE
+  GHOST.**  `PipeInvDefs.pipe_names`' four gnames are all about the ENDS
+  (two reference fractions, two open marks); the ring's contents are the
+  `bs` bound existentially inside `pipe_res_at`, under the pipe's own
+  spinlock, and the queue coupling is deliberately not imposed
+  (`design/pipe.md`: "the CONTENTS of the live window stay existential …
+  the hooks a future contents-indexed refinement builds on";
+  `SpecPiperead`: "`bs` … which no contract at this tier can name").  So
+  the kernel's read contract at a pipe is a no-op on both sides —
+  `fileread_in` at `FdOpen true _ FdPipe` is the `_ => P` arm and
+  `fileread_extra_core` there is `emp` — and §3's Pipe row is today
+  exactly its **Dev (other)** row.  WHAT LANDED at that honest strength:
+  the supplier proved FROM `emp` (a pipe read costs its caller nothing
+  beyond its handle — §1's principle at its limit case), the pure content
+  post `uread_pipe_ans` = `pipe_rw_ret` at the caller's own `nat` count
+  (-1 is not refuted, correctly: `uexec_live_ok` refutes it only at the
+  console), and the member as `UkRunSys.wp_uk_ecall_read_at` at the handle
+  reading — the walk's `D`/`K` FIT the pipe handle with nothing added, so
+  the brief's STOP rule did not fire.  OWED, BOTH KERNEL-SIDE: the EOF row
+  (a fact about `pipe_endstate` and the counters, under the lock) and —
+  sharper — the COUNT/WINDOW JOIN, the exact analogue of `UsysMemOk`'s
+  SS2c: the inode and console arms tie the window length `d` to the return
+  value `r`, the pipe arm ties nothing, so a pipe reader cannot conclude
+  its buffer above `r` is unchanged.  The consumer test is the SEAM, not
+  the bytes (neither a two-process nor a one-process write-then-read
+  content fact is derivable): `wp_uk_pipe_read_end` reads
+  `wp_uk_ecall_pipe`'s post one step further into the two members' own
+  premises, handing out `ufd a (FdOpen true false FdPipe)` and `ufd b
+  (FdOpen false true FdPipe)` — **RD-6 should take the write end from
+  there, and should expect the same wall**: `SpecFilewrite.filewrite_env`
+  and `filewrite_extra` are BOTH `emp` at `FdOpen _ _ FdPipe` (checked, so
+  RD-6 need not re-survey), so the write member is this one's mirror image
+  — supplier from `emp`, pure `filewrite_ret` post, same two owed rows.  Housekeeping NOT done, with the reason: the lower home for
+  `UkReadRows.uread_count_le` / `UkSh.ush_narrow_count_le` is `UserBits.v`
+  (41 importers), a whole-tree rebuild for zero proof content.  Design of
+  record: `design/user-read.md` §3's RD-5 AS-LANDED block and §5's.
 - [ ] **RD-6 WRITE**: the same program for write (its tailorings:
   `sh_deps`' write(16) deposit, the echo output ledger) — brief cut
   after RD-2 proves the pattern.

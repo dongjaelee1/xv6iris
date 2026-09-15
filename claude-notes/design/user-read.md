@@ -183,6 +183,81 @@ priced by the ruling:
       held row there is nothing persistent to hand, and the proof is
       stated at an arbitrary `sts`, so no U-tier premise can rescue it.
 
+**AS LANDED (RD-4, 2026-09-15 — `iris/UkReadCons.v`, `iris/UkReadRows.v`,
+branch `rd4-cons-arm`): the Console row's INPUT SIDE WAS ALREADY NEUTRAL,
+and it is neutral one level BELOW the merged claim.**  The judgment the
+lane was asked for, checked rather than assumed: nothing had to be
+factored out of `EchoOut.v`, and nothing there was touched.
+
+`SpecFileread.fileread_in`'s console arm is two payments side by side:
+
+    cons_acc fsc_cons app_sup Rd          -- the RING's (ConsoleInv)
+  ∗ WpUart.cons_read_pay (S gen_id) Rin   -- the CONSOLE HISTORY's
+
+and the second one IS `ConsLog`'s `EvRead` event written as an atomic
+update.  `WpUart.cons_read_pay k R := ∀ ws, WpUart.read_link k ws (R ws)`,
+and `read_link` takes the port's input resource at `(pops, dl)` together
+with the kernel's pure premise `ConsLog.read_ok pops dl ws` — which is
+literally `ConsLog.cons_ev_ok H (EvRead ws)` — and gives it back at
+`(pops, dl ++ ws)`, which is `ConsLog.cons_step H (EvRead ws)`.  Both
+payments are keyed by the console (the ring's committed sequence; the log
+and the delivered list), by no application and by no era ledger.  Echo
+enters only as the CALLER'S CHOICE of `Rd` and `Rin` — exactly as it
+enters the file arm as the caller's choice of the observation commit's
+receipt.  So §3's Console row is stated at those public lemmas.
+
+Read the other way: the merged claim (`EchoOut.ecl`, `ecl_pure`, `ch_E`)
+is ONE ANSWER to this AU and not its home.  `EchoOut.ecl_step_read`'s
+premise is `ConsLog.read_ok` and its conclusion is
+`ConsLog.cons_step _ (EvRead ws)` — the same event — so when R1 wires the
+merged claim in, the console arm does not move: only which `Rin` the
+program supplies.  The arm did not have to wait for it, which is why this
+lane landed with `EchoOut.v` untouched.
+
+WHAT IS IN `iris/UkReadCons.v`:
+
+- `udepwf_std_read_cons` — the supplier: the two payments above buy read's
+  ledger-fixed deposit at a console descriptor.  The deposit stays
+  `UkRun.udepwf_std` (a console read is about a STANDARD stream, so the
+  arm is readable off the caller's own record of the low `NSTD` slots);
+  the descriptor INDEX is a parameter and not 0.
+- `uread_cons_win` / `uread_cons_ans` — the CONTENT post: the delivered
+  bytes are the ring's committed sequence at the cursor the call ran at,
+  and the window the call CONSUMED (`ws`, the claim's next input segment)
+  is that same sequence read to the bound `cons_swallow` extends to, with
+  `Rin ws` beside it.  Two of `console_receipt`'s GUARDED rows are already
+  discharged here — the per-byte ledger's linearity guard, by the walk's
+  resume-image bridge, and `cons_swallow`'s copy-out-fault disjunct, by
+  the walk's writable-mapped row — so the reason is at `False`.
+- `wp_uk_ecall_read_cons` — the member: the kept-post walk at a console
+  descriptor, payment in, content post out, `-1` refuted by
+  `UexecRet.uexec_live_ok`.
+
+AND THE INSTANCE (deliverable 3).  `UShLine.ush_read_recv_era`'s console
+branch is now a WRAPPER around it: `ush_read_pay_era` answers the two
+payments out of sh's lease (one split, both arms), `ush_read_sup_era` is
+`udepwf_std_read_cons` at `Rd := ush_rd_ret`, `Rin := ush_rd_in` (its
+statement unchanged), and what is left of the leaf is the era's own
+reading of `ws`.  `UkSh.ush_read_recv_leaf`, `ush_read_recv_leaf_holds`,
+`ush_read_ans_era` and every consumer keep their exact statements.
+
+AND THE WALK IS ONE (the fold RD-2's report asked for, generalized).
+`UkRunSys.wp_uk_ecall_read_recv` and `UkReadFile.wp_uk_ecall_read_file`
+each carried a full copy of the read walk; they differed in the CALLER'S
+DESCRIPTOR KNOWLEDGE and in nothing else.  `UkRunSys.wp_uk_ecall_read_at`
+is the one walk, parametric in a resource `D` and the pure reading
+`K : list fdstate -> Prop` it buys against the key's table
+(`UserFd.ustd_agree` and `UserFd.ufd_agree` are the two answers), with
+`UkRunSys.udepwf_K` the deposit at the same reading (`udepwf_std` and
+`UkReadFile.udepwf_st` are its two instances, definitionally).  Both
+leaves keep their exact statements and every caller is untouched.
+`iris/UkReadRows.v` is the shared home for what the arms really do share:
+the `sbundle_at_read_intro` / `spost_at_read_elim` pair (`UkReadFile`'s
+`_st` copies and `UShLine`'s `_at` copies were the same two lemmas, word
+for word), the two family records `xfam_rd` / `xfam_rdf` (which ARE the
+two arms), the two `fd_st_of_key` readings, and the count's sign-boundary
+bridges.
+
 ### The routes out (owner's call; RD-2 recommends R-c now, R-a as a campaign)
 
 **R-a — mode in the state, plus a PARKED-TABLE DISCIPLINE in the generic
@@ -325,6 +400,17 @@ are ARM-INDEPENDENT and move unchanged into the shared walk.  RD-2
 adds the Inode member (`aread`'s receipt: `ard_pre`, `ard_count`,
 slice + `Φ`), RD-4 re-cuts the console member at the merged claim,
 RD-5 adds the pipe member.
+
+**AS LANDED (RD-4): the Console member needs nothing new either, and the
+bridge rows are now shared by construction.**  The console member of the
+receipt family is `SpecFileread.console_receipt`, as this section said;
+what RD-4 added is not a member but the READING of it that is
+application-free (`UkReadCons.uread_cons_ans`).  The claim that the recv
+leaf's bridge rows are ARM-INDEPENDENT is no longer checked by copying
+them — there is one walk (`UkRunSys.wp_uk_ecall_read_at`) that hands them
+out, and the arms differ only in the descriptor.  The two key-level
+adapters the arms used to keep private copies of live in
+`iris/UkReadRows.v`.
 
 **AS LANDED (RD-2): the Inode member needs NOTHING new — it is
 `FsAbsReadFire.read_arms`, which `SpecFileread.fileread_extra_core`

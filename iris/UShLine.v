@@ -79,6 +79,12 @@ Require Import PieceFam.
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
+Require Import UkReadRows.         (* the read leaf's SHARED key-level rows:
+                                      [xfam_rd], the intro/elim pair, the two
+                                      [fd_st_of_key] readings, the count *)
+Require Import UkReadCons.         (* THE NEUTRAL CONSOLE MEMBER of the read
+                                      leaf -- this file's leaf is its echo
+                                      INSTANCE (lane RD-4) *)
 Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFileread.       (* [fileread_in] / [console_receipt] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
@@ -164,54 +170,9 @@ Section UShLine.
      own payment, and what sh asks to be told about the window it CONSUMED
      is the era's [EchoOut.read_ret] -- not [True], which was only ever
      payable while the application's input claim was [emp]. *)
-  Definition xfam_rd (Q : Z -> iProp Σ) (Rd : nat -> nat -> iProp Σ)
-      (Rin : list (list mobs * bv 8) -> iProp Σ) : xfam :=
-    {| xf_P     := fun _ _ => True%I;
-       xf_Pmiss := fun _ _ => True%I;
-       xf_Fo    := pfam_triv (fun _ _ _ => True%I);
-       xf_Rs    := True%I;
-       rf_F     := pfam_triv (fun _ _ _ _ => True%I);
-       cf_P     := fun _ _ => True%I;
-       cf_Pmiss := fun _ _ => True%I;
-       cf_Fo    := pfam_triv (fun _ _ _ => True%I);
-       of_P     := fun _ _ => True%I;
-       of_Pmiss := fun _ _ => True%I;
-       of_Farm  := pfam_triv (fun _ _ => True%I);
-       of_Fun   := pfam_triv (fun _ _ => True%I);
-       of_Fok   := pfam_triv (fun _ _ _ _ => True%I);
-       of_Fex   := pfam_triv (fun _ _ _ _ => True%I);
-       of_Fo    := pfam_triv (fun _ _ _ => True%I);
-       of_Ft    := pfam_triv (fun _ _ _ => True%I);
-       wf_Q     := fun _ => True%I;
-       nf_P     := fun _ _ => True%I;
-       nf_Pmiss := fun _ _ => True%I;
-       nf_Farm  := pfam_triv (fun _ _ => True%I);
-       nf_Fun   := pfam_triv (fun _ _ => True%I);
-       nf_Fok   := pfam_triv (fun _ _ _ _ => True%I);
-       nf_Fex   := pfam_triv (fun _ _ _ _ => True%I);
-       uf_P     := fun _ _ => True%I;
-       uf_Pmiss := fun _ _ => True%I;
-       uf_Fent  := pfam_triv (fun _ _ _ _ => True%I);
-       uf_Ftgt  := pfam_triv (fun _ _ => True%I);
-       uf_Fex   := pfam_triv (fun _ _ _ _ => True%I);
-       uf_Fmiss := pfam_triv (fun _ _ _ => True%I);
-       lf_Ftgt  := pfam_triv (fun _ _ _ => True%I);
-       lf_Fent  := pfam_triv (fun _ _ _ _ => True%I);
-       lf_Funt  := pfam_triv (fun _ _ => True%I);
-       df_P     := fun _ _ => True%I;
-       df_Pmiss := fun _ _ => True%I;
-       df_Farm  := pfam_triv (fun _ _ => True%I);
-       df_Fdots := pfam_triv (fun _ _ _ _ => True%I);
-       df_Fun   := pfam_triv (fun _ _ => True%I);
-       df_Fok   := pfam_triv (fun _ _ _ _ => True%I);
-       df_Fex   := pfam_triv (fun _ _ _ _ => True%I);
-       kf_pay   := fun _ => True%I;
-       (* a program that forks lends nothing at this record (lane
-          FORK-REFUND): [UexecSG.sfork_lend] is [emp]. *)
-       kf_lend  := emp%I;
-       kf_xpay  := Q;
-       rf_ret   := Rd;
-       rf_in    := Rin |}.
+  (* [xfam_rd] MOVED to [UkReadRows.v] (lane RD-4), beside its inode twin
+     [xfam_rdf]: the two ARE the two arms of the read leaf, and neither file
+     that needed one could see the other. *)
 
   (* WHAT SH ASKS TO BE TOLD.  A lease holder's choice: the window it was
      handed begins at ITS OWN position and its half of the pair comes back
@@ -253,67 +214,16 @@ Section UShLine.
     ush_read_fam_at γp T n (fun _ => True%I) Q.
 
   (* =================================================================== *)
-  (*  S1b  THE TWO KEY-LEVEL ROWS, IN THE PROCESS'S DIRECTION             *)
+  (*  S1b  THE TWO KEY-LEVEL ROWS MOVED (lane RD-4)                       *)
   (*                                                                      *)
-  (*  [UexecExecInst] states the deposit's ELIM and the post's INTRO --    *)
-  (*  the DISPATCHER's two directions.  A process needs the other two, at  *)
-  (*  readings it can name, so each takes the key's own projections as     *)
-  (*  pure premises.  [UConsOpen]'s two are the mold; the proofs are the   *)
-  (*  same three lines, the match at one literal.                          *)
+  (*  [sbundle_at_read_intro_at] / [spost_at_read_elim_at] were this       *)
+  (*  file's copies of the deposit's INTRO and the post's ELIM in the      *)
+  (*  process's direction; [UkReadFile.v] carried the same two lemmas word *)
+  (*  for word, because neither arm's file could see the other's.  They    *)
+  (*  are one pair now, [UkReadRows.sbundle_at_read_intro] /               *)
+  (*  [UkReadRows.spost_at_read_elim], and they say nothing about the      *)
+  (*  descriptor -- which is exactly why there was only ever one of them.  *)
   (* =================================================================== *)
-  Local Ltac xv6_skip :=
-    match goal with
-    | |- context [ @decide (?a = ?b) _ ] =>
-        let Hc := fresh "Hc" in
-        destruct (decide (a = b)) as [Hc | _]; [ exfalso; by vm_compute in Hc | ]
-    end.
-  Local Ltac xv6_take :=
-    match goal with
-    | |- context [ @decide (?a = ?b) _ ] =>
-        let Hc := fresh "Hc" in
-        destruct (decide (a = b)) as [_ | Hc]; [ | exfalso; by apply Hc ]
-    end.
-
-  Lemma sbundle_at_read_intro_at (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
-      (v0 : mword 64) (sts : list fdstate) :
-    tf_w (uvis_tf W) (tf_arg_idx 0) = v0 -> uvis_fd W = sts ->
-    fileread_in (fd_st_of_key v0 sts) (rf_F f) (rf_ret f) (rf_in f) True%I -∗
-    sbundle_at X USYS_read f W.
-  Proof.
-    intros H0 Hfd. iIntros "H".
-    (* the REWRITE GOES FIRST, against the lemma's own variables
-       ([UConsOpen.sbundle_at_open_intro_at]'s note) *)
-    rewrite -H0 -Hfd.
-    rewrite /sbundle_at /= /xv6_sbundle /xk_a.
-    xv6_skip. xv6_take. iExact "H".
-  Qed.
-
-  Lemma spost_at_read_elim_at (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
-      (v0 v1 v2 : mword 64) (sts : list fdstate)
-      (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate)
-      (cw' : Z) (cs' : gset gname) :
-    tf_w (uvis_tf W) (tf_arg_idx 0) = v0 ->
-    tf_w (uvis_tf W) (tf_arg_idx 1) = v1 ->
-    tf_w (uvis_tf W) (tf_arg_idx 2) = v2 ->
-    uvis_fd W = sts ->
-    spost_at X USYS_read f W r M' fdv' cw' cs' -∗
-    (* THE ANSWER'S RANGE COMES OUT WITH THE RECEIPT (lane CONS-ROWS, B3):
-       row 5 carries [SpecFileread.fileread_ret] at the key's own count, and
-       a process that has not tied [r] to its request can spend neither of
-       the receipt's control-flow rows. *)
-    ⌜fileread_ret (sys_rw_count v2) r⌝ ∗
-    ∃ P : uptd,
-      ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
-      ⌜proc_pt_wf P⌝ ∗
-      ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
-      fileread_extra_core (uvis_gen W) P (fd_st_of_key v0 sts) (sys_rw_count v2)
-        (rf_F f) (rf_ret f) (rf_in f) r M' v1.
-  Proof.
-    intros H0 H1 H2 Hfd. iIntros "H".
-    rewrite -H0 -H1 -H2 -Hfd.
-    rewrite /spost_at /= /xv6_spost /xk_a.
-    xv6_take. iExact "H".
-  Qed.
 
   (* THE DESCRIPTOR THE CALL RAN ON, out of the caller's own ledger: the
      arm [SpecFileread.fileread_in] takes is selected by the KEY's table,
@@ -324,12 +234,9 @@ Section UShLine.
     l !! 0%nat = Some (FdOpen true wr (FdDevice CONSOLE)) ->
     fd_st_of_key v0 fdv = FdOpen true wr (FdDevice CONSOLE).
   Proof.
-    intros H0 Htake Hl0. rewrite /fd_st_of_key H0.
-    destruct (decide (0 <= 0 < Z.of_nat NOFILE)) as [_ | Hc];
-      [ | exfalso; apply Hc; unfold NOFILE; lia ].
-    rewrite <- Htake in Hl0.
-    rewrite lookup_take in Hl0; [ | unfold NSTD; lia ].
-    change (Z.to_nat 0) with 0%nat. rewrite Hl0. reflexivity.
+    intros H0 Htake Hl0.
+    exact (std_fd_st_of_key v0 fdv l 0%nat _ H0 ltac:(unfold NSTD; lia)
+             Htake Hl0).
   Qed.
 
   (* =================================================================== *)
@@ -381,15 +288,7 @@ Section UShLine.
   Lemma ush_count_is_cap (w : mword 64) (cap : nat) :
     uint w = Z.of_nat cap -> (Z.of_nat cap < 2 ^ 31)%Z ->
     sys_rw_count w = Z.of_nat cap.
-  Proof.
-    intros Hu Hlt. rewrite uint_unsigned in Hu.
-    change (2 ^ 31)%Z with 2147483648%Z in Hlt.
-    rewrite /sys_rw_count. unfold bv_signed.
-    rewrite trunc32_subrange subrange_31_0_unsigned Hu.
-    rewrite (Z.mod_small (Z.of_nat cap) 4294967296); [| lia].
-    assert (Hhm : bv_half_modulus 32 = 2147483648) by (vm_compute; reflexivity).
-    rewrite bv_swrap_small; [ reflexivity | rewrite Hhm; lia ].
-  Qed.
+  Proof. exact (uread_count_is_cap w cap). Qed.
   (* THE DESCRIPTOR THE CALL RAN ON, at the row's OTHER arm: a SHUT fd 0.
      [SpecFileread.fileread_in]'s [FdClosed] arm asks for nothing and
      [fileread_extra_core]'s says [r = -1] (lane CLOSED-READ) -- so the
@@ -401,12 +300,9 @@ Section UShLine.
     l !! 0%nat = Some FdClosed ->
     fd_st_of_key v0 fdv = FdClosed.
   Proof.
-    intros H0 Htake Hl0. rewrite /fd_st_of_key H0.
-    destruct (decide (0 <= 0 < Z.of_nat NOFILE)) as [_ | Hc];
-      [ | exfalso; apply Hc; unfold NOFILE; lia ].
-    rewrite <- Htake in Hl0.
-    rewrite lookup_take in Hl0; [ | unfold NSTD; lia ].
-    change (Z.to_nat 0) with 0%nat. rewrite Hl0. reflexivity.
+    intros H0 Htake Hl0.
+    exact (std_fd_st_of_key v0 fdv l 0%nat _ H0 ltac:(unfold NSTD; lia)
+             Htake Hl0).
   Qed.
 
   (* ...AND THE SUPPLY AT THAT ARM, which costs nothing at all: the shut
@@ -428,7 +324,7 @@ Section UShLine.
     rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
     iFrame "Hheap Hufd".
-    iApply (sbundle_at_read_intro_at uslot
+    iApply (sbundle_at_read_intro uslot
               (ush_read_fam_at γp T n Rin (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               (m !!! Regidx a0_idx) fdv
@@ -739,13 +635,18 @@ Section UShLine.
   (*  the ring with [ConsoleInv.cons_dirty_cred] and the boundary with    *)
   (*  [EchoLinks.echo_link_rd_taint].                                     *)
   (* =================================================================== *)
-  Lemma ush_read_sup_era (γ : echo_gn) (T : iProp Σ)
+  (* THE PAYMENT ITSELF, WITHOUT THE DEPOSIT AROUND IT (lane RD-4).  The
+     neutral console member ([UkReadCons.wp_uk_ecall_read_cons]) takes the
+     two payments as they stand, so what this file owes is only the era's
+     answer to them; the deposit's wrapping is the member's.  BOTH ARMS OF
+     THE LEASE ANSWER BOTH PAYMENTS, and they must be split ONCE: the token
+     arm pays the ring with the token and the console history with the half
+     beside it, the taint arm pays the ring with
+     [ConsoleInv.cons_dirty_cred] and the history with
+     [EchoLinks.echo_link_rd_taint]. *)
+  Lemma ush_read_pay_era (γ : echo_gn) (T : iProp Σ)
       `{!Persistent T} `{!Timeless T}
-      (N : uk_names Σ) (γp : gname)
-      (m : regfile) (pc : mword 64) (l : list fdstate) (n : nat) (wr : bool) :
-    (* the descriptor is fd 0, and fd 0 is the console *)
-    bv_signed (trunc32 (m !!! Regidx a0_idx)) = 0 ->
-    l !! 0%nat = Some (FdOpen true wr (FdDevice CONSOLE)) ->
+      (N : uk_names Σ) (γp : gname) (n : nat) :
     (* E2's two readings of the supply *)
     (⊢ app_sup -∗ T) ->
     (⊢ T -∗ app_sup) ->
@@ -754,28 +655,13 @@ Section UShLine.
        IO-LEAF, M5(3)): the payload's own form asserts a LINE BOUNDARY,
        which is false between a line's first byte and its '\n'. *)
     UkSh.ush_lease N γp T (ush_mid γ γp) n -∗
-    udepwf_std N m pc USYS_read (ush_read_fam_era T γ γp n (ukn_pay N)) l.
+    cons_acc fsc_cons app_sup (ush_rd_ret γp T n)
+    ∗ cons_read_pay (S gen_id) (ush_rd_in T γ n).
   Proof.
-    intros Ha0 Hl0 Hst Hts.
+    intros Hst Hts.
     iIntros "#Hlk HP".
     iDestruct (echo_links_rd with "Hlk") as "#Hrdl".
     iDestruct (echo_links_rd_taint with "Hlk") as "#Hrdt".
-    rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
-    iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
-    iFrame "Hheap Hufd".
-    iApply (sbundle_at_read_intro_at uslot
-              (ush_read_fam_era T γ γp n (ukn_pay N))
-              (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
-              (m !!! Regidx a0_idx) fdv
-              (tf_of_arg0 m pc)
-              (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)).
-    rewrite (ush_fd_st_console (m !!! Regidx a0_idx) fdv l wr Ha0 Htake Hl0).
-    cbn [ush_read_fam_era ush_read_fam_at xfam_rd
-         rf_F rf_ret rf_in kf_xpay].
-    rewrite /fileread_in.
-    destruct (decide (CONSOLE = CONSOLE)) as [_ | Hc];
-      [ | exfalso; exact (Hc eq_refl) ].
-    iIntros "_".
     iEval (rewrite /UkSh.ush_lease /ush_mid) in "HP".
     iDestruct "HP" as "[Hl | [#HT Hp]]".
     - (* THE LEASE HOLDER'S ARM: the token, both halves of the position
@@ -783,7 +669,9 @@ Section UShLine.
       iDestruct "Hl" as "(Hpos & Hpa & Hrd0 & Hcred)".
       iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE & #Hres)".
       iSplitR "Hdl"; last first.
-      { (* THE BOUNDARY'S HALF: the era's read link at sh's own count *)
+      { (* THE CONSOLE HISTORY'S HALF: the era's read link at sh's own
+           count, which is ONE answer to [WpUart.read_link]'s atomic
+           update -- ConsLog's [EvRead] event. *)
         iIntros (ws).
         iApply ("Hrdl" $! (S gen_id) v n ws with "Hpin Hdl").
         iIntros "Hret". rewrite /ush_rd_in. iLeft. iExists v.
@@ -796,13 +684,12 @@ Section UShLine.
            and BOTH halves move ([upos_update]) *)
         subst cur.
         iMod (upos_update γp n (n + dc)%nat with "Hpos Hpa") as "[Hpos Hpa]".
-        iModIntro. iSplitR "Hpos Hpa Hrd'"; [ done | ].
-        rewrite /ush_rd_ret. iLeft.
+        iModIntro. rewrite /ush_rd_ret. iLeft.
         iSplitR; [ done | ]. iFrame "Hpos Hpa".
         rewrite ucons_reader_eq. iExact "Hrd'".
       + (* a tokenless reader popped while the call slept *)
         iAssert T as "#HT"; [ iApply Hst; iExact "Hdirty" | ].
-        iModIntro. iSplitR "Hpos"; [ done | ].
+        iModIntro. iClear "Hrd'".
         rewrite /ush_rd_ret. iRight. iFrame "HT".
         iExists n. iExact "Hpos".
     - (* THE TAINTED ARM: the lease holds no token and no credential;
@@ -813,11 +700,39 @@ Section UShLine.
       iSplitL "Hpos".
       + iApply (cons_acc_cred fsc_cons app_sup with "[] [Hpos]").
         * rewrite /cons_dirty_cred. iModIntro. iApply Hts. iExact "HT".
-        * iIntros (cur dc). iModIntro. iSplitR "Hpos"; [ done | ].
+        * iIntros (cur dc). iModIntro.
           rewrite /ush_rd_ret. iRight. iFrame "HT". iExists n'.
           iExact "Hpos".
       + iIntros (ws). iApply ("Hrdt" $! (S gen_id) ws with "HT").
         iIntros "#HT'". rewrite /ush_rd_in. iRight. iExact "HT'".
+  Qed.
+
+  (* ...AND THE DEPOSIT, at its exact former statement: the neutral
+     supplier at the era's own [Rd] and [Rin].  [UkReadCons.read_cons_fam]
+     and [ush_read_fam_era] are the same record ([UkReadRows.xfam_rd] at
+     those two), which is the whole content of "sh's read is an INSTANCE of
+     the console member". *)
+  Lemma ush_read_sup_era (γ : echo_gn) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T}
+      (N : uk_names Σ) (γp : gname)
+      (m : regfile) (pc : mword 64) (l : list fdstate) (n : nat) (wr : bool) :
+    (* the descriptor is fd 0, and fd 0 is the console *)
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = 0 ->
+    l !! 0%nat = Some (FdOpen true wr (FdDevice CONSOLE)) ->
+    (* E2's two readings of the supply *)
+    (⊢ app_sup -∗ T) ->
+    (⊢ T -∗ app_sup) ->
+    echo_links T γ -∗
+    UkSh.ush_lease N γp T (ush_mid γ γp) n -∗
+    udepwf_std N m pc USYS_read (ush_read_fam_era T γ γp n (ukn_pay N)) l.
+  Proof.
+    intros Ha0 Hl0 Hst Hts.
+    iIntros "#Hlk HP".
+    iDestruct (ush_read_pay_era γ T N γp n Hst Hts with "Hlk HP")
+      as "[Hacc Hlink]".
+    iApply (udepwf_std_read_cons N m pc l 0%nat wr
+              (ush_rd_ret γp T n) (ush_rd_in T γ n)
+              Ha0 ltac:(unfold NSTD; lia) Hl0 with "Hacc Hlink").
   Qed.
 
   (* =================================================================== *)
@@ -1005,100 +920,48 @@ Section UShLine.
        the walk carries is [UkSh.ush_lease] and not the payload. *)
     destruct Hfd0 as [[wr Hl0] | Hcl].
     - (* ================= fd 0 IS THE CONSOLE ================= *)
+      (* THE ECHO TAILORING IS A WRAPPER NOW (lane RD-4).  The walk, the
+         refutation of the [-1] arm at an open readable console descriptor,
+         the receipt's two GUARDED rows (the per-byte ledger's linearity
+         and [ConsoleInv.cons_swallow]'s copy-out fault) and the window's
+         assembly are all the NEUTRAL console member's
+         ([UkReadCons.wp_uk_ecall_read_cons]) -- none of them was ever
+         about an application.  What is left here is the era's own reading
+         of the input segment the call consumed, which is what [Rin] is
+         for. *)
       assert (Hfdc : UkSh.ush_fd0c l) by (exists wr; exact Hl0).
-      iDestruct (ush_read_sup_era γ T N γp m pc l n wr Ha0 Hl0 Hst Hts
-                   with "Hlk Hpos") as "Hsb".
-      iApply (wp_uk_ecall_read_recv (PS := uprogSG_free) N h m pc
-                (bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0
-                            : mword 32))
-                k f avail (ush_read_fam_era T γ γp n (ukn_pay N)) l
-                Hn eq_refl ltac:(lia) Hal
-                with "Hi Hrun Hsb Hstd Hbuf").
-      iIntros (h' r d g W M' fdv' cw' cs')
-        "%Hd %Hgf %Hlin %HM %Hnf %Harg0 %Harg1 %Harg2 %Htake %Hlz %Hlive
-         Hstd Hpost Hrun Hbuf".
-      iDestruct (spost_at_read_elim_at uslot
-                   (ush_read_fam_era T γ γp n (ukn_pay N)) W
-                   (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
-                   (m !!! Regidx a2_idx) (uvis_fd W) r M' fdv' cw' cs'
-                   Harg0 Harg1 Harg2 eq_refl with "Hpost")
-        as "[%Hfrret Hpost']".
-      iDestruct "Hpost'" as (P) "(%Hperm & %Hwf & %Hlazy & Hrec)".
-      rewrite Hcnt in Hfrret.
-      (* THE ANSWER IS NOT -1 AT AN OPEN READABLE CONSOLE DESCRIPTOR
-         (lane TRAP-ROWS, T2(iii)) *)
-      assert (Hfdw : uvis_fd W !! 0%nat
-                     = Some (FdOpen true wr (FdDevice CONSOLE))).
-      { pose proof Hl0 as Hl0'. rewrite <- Htake in Hl0'.
-        rewrite lookup_take in Hl0'; [ exact Hl0' | unfold NSTD; lia ]. }
-      assert (Hcgz : (0 <= bv_signed
-                        (trunc32 (tf_w (uvis_tf W) (tf_arg_idx 2))))%Z).
-      { rewrite Harg2. rewrite /sys_rw_count in Hcnt. lia. }
-      assert (Hargfd : usys_argfd (uvis_tf W) = 0%Z).
-      { rewrite /usys_argfd.
-        replace (uvis_tf W !!! tf_arg_idx 0) with (m !!! Regidx a0_idx)
-          by (symmetry; exact Harg0).
-        exact Ha0. }
-      assert (Hne1 : r <> (mword_of_int (-1) : mword 64)).
-      { apply (proj1 Hlive eq_refl Hcgz wr).
-        - rewrite Hargfd. unfold NOFILE. lia.
-        - rewrite Hargfd. exact Hfdw. }
-      iEval (rewrite (ush_fd_st_console (m !!! Regidx a0_idx) (uvis_fd W) l wr
-                        Ha0 Htake Hl0) /fileread_extra_core;
-             cbn [ush_read_fam_era ush_read_fam_at xfam_rd
-                  rf_F rf_ret rf_in kf_xpay]) in "Hrec".
-      destruct (decide (CONSOLE = CONSOLE)) as [_ | Hc];
-        [ | exfalso; exact (Hc eq_refl) ].
-      pose proof (Hlazy Hlz) as Hlf.
-      iEval (rewrite /console_receipt) in "Hrec".
-      iDestruct "Hrec" as "[(%Hm1 & _ & _) | Hw]";
-        [ exfalso; exact (Hne1 Hm1) | ].
-      iDestruct "Hw" as (dd dc cur hs sl)
-        "(%Hdr & %Hdmax & %Hb1 & %Hb4 & %Hhl & %Hled & #Htags & #Hlb
-          & Hwin & Hrd)".
+      iDestruct (ush_read_pay_era γ T N γp n Hst Hts with "Hlk Hpos")
+        as "[Hacc Hlink]".
+      iApply (wp_uk_ecall_read_cons (PS := uprogSG_free) N h m pc
+                (uint (m !!! Regidx a1_idx)) k cap f avail l 0%nat wr
+                (ush_rd_ret γp T n) (ush_rd_in T γ n)
+                Hn Ha0 ltac:(unfold NSTD; lia) Hl0 eq_refl Ha2 Hcapk Hcap31
+                Hal with "Hi Hrun Hstd Hbuf Hacc Hlink").
+      iIntros (h' r d g) "%Hd %Hgf Hstd Hans Hbuf Hrun".
+      iDestruct "Hans" as (dd dc cur hs)
+        "(%Hdr & %Hddcap & %Hb1 & %Hb4 & #Htags & Hrd & Hwin)".
       rewrite /ush_rd_ret.
       iDestruct "Hrd" as "[(%Hcur & Hp & Hrdt & Hpa) | [#HT Hp]]"; last first.
       { (* the caller's own [Rd] came back tainted *)
         iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp] Hbuf Hrun");
-          [ lia | exact Hgf | ].
+          [ exact Hd | exact Hgf | ].
         rewrite /ush_read_ans_era /UkSh.ush_pos /UkSh.ush_at.
         iRight. iRight. iFrame "HT".
         iDestruct "Hp" as (n') "Hp". iExists n'. iFrame "Hp".
         rewrite Hpay. iApply (ucons_pay_taint with "HT"). }
       subst cur.
-      destruct Hfrret as [Hm1 | (i0 & Hri & Hi0)];
-        [ exfalso; exact (Hne1 Hm1) | ].
-      assert (Hi0u : bv_unsigned r = i0).
-      { rewrite Hri. rewrite <- uint_unsigned.
-        apply uint_moi. unfold Z64. lia. }
-      assert (Hddcap : (dd <= cap)%nat) by lia.
-      iDestruct "Hwin" as "[(%Hwj & %Hsl & %Hch & #Hsw & Hbnd) | #Hdirty]";
-        last first.
+      iDestruct "Hwin" as "[Hw | #Hdirty]"; last first.
       { (* a tokenless reader popped while the call slept *)
         iAssert T as "#HT"; [ iApply Hst; iExact "Hdirty" | ].
         iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp] Hbuf Hrun");
-          [ lia | exact Hgf | ].
+          [ exact Hd | exact Hgf | ].
         rewrite /ush_read_ans_era /UkSh.ush_pos /UkSh.ush_at.
         iRight. iRight. iFrame "HT". iExists (n + dc)%nat. iFrame "Hp".
         rewrite Hpay. iApply (ucons_pay_taint with "HT"). }
+      rewrite /uread_cons_win.
+      iDestruct "Hw" as (sl) "(%Hch & #Hlb & %Hwinf & #Hsw & %Hddc & Hbnd)".
       iDestruct "Hbnd" as (sl2 ws)
         "(#Hlb2 & %Hpre2 & %Hlen2 & %Hlws & %Hwsj & Hrin)".
-      assert (Hwinf : cons_window sl n dd g hs).
-      { split_and!; [ lia | exact Hhl | ].
-        intros j Hj.
-        destruct (Hwj j Hj) as (hj & bj & Hhj & Hej & Hsj).
-        exists hj, bj. split_and!; [ exact Hsj | exact Hhj | exact Hej | ].
-        destruct (Hled ltac:(intros i Hi; apply Hlin; lia) j Hj)
-          as (hj' & bj' & Hhj' & Hej' & Hmj').
-        assert (Hhe : hj' = hj)
-          by (rewrite Hhj in Hhj'; by injection Hhj' as Hhj'').
-        subst hj'.
-        assert (Hbe : bj' = bj)
-          by exact (proj2 (obs_ends_in_inj _ _ hj bj' bj Hej' Hej)).
-        subst bj'.
-        rewrite (HM j ltac:(lia)) in Hmj'. by injection Hmj' as Hmj''. }
-      assert (Hddc : (dd <= dc)%nat).
-      { pose proof (prefix_length _ _ Hpre2) as Hle. lia. }
       (* THE BOUNDARY'S ANSWER, and THE PIECES KEPT TOGETHER (lane
          IO-LEAF, M5(3)): the era's credential at the window's far end
          goes back beside the token and both halves of the position pair,
@@ -1159,37 +1022,24 @@ Section UShLine.
         iPureIntro. rewrite <- Hlws. exact Hbd. }
       iDestruct "Hera" as "[[#Hera Hmid] | [#HT Hp']]"; last first.
       { iApply ("Hcont" $! h' r d g with "[%] [%] Hstd [Hp'] Hbuf Hrun");
-          [ lia | exact Hgf | ].
+          [ exact Hd | exact Hgf | ].
         rewrite /ush_read_ans_era. iRight. iRight. iFrame "HT Hp'". }
       iApply ("Hcont" $! h' r d g
                 with "[%] [%] Hstd [Hmid] Hbuf Hrun");
-        [ lia | exact Hgf | ].
+        [ exact Hd | exact Hgf | ].
       rewrite /ush_read_ans_era. iLeft.
       iExists dd, dc, hs, sl.
       iSplitR; [ by iPureIntro | ].
       iSplitR; [ iPureIntro; exact Hddcap | ].
-      iSplitR; [ iPureIntro; intros Hdc; apply Hb1;
-                 rewrite Hcnt Hdc; lia | ].
-      iSplitR; [ iPureIntro; intros Hd0 Hc0; apply Hb4;
-                 [ exact Hd0 | rewrite Hcnt; lia ] | ].
+      iSplitR; [ iPureIntro; exact Hb1 | ].
+      iSplitR; [ iPureIntro; exact Hb4 | ].
       iSplitR; [ by iPureIntro | ].
-      iSplitR; [ rewrite ucons_stored_lb_eq; iExact "Hlb" | ].
+      iSplitR; [ iExact "Hlb" | ].
       iSplitR; [ iExact "Htags" | ].
       iSplitR; [ iPureIntro; exact Hwinf | ].
-      iSplitR "Hmid"; last first.
-      { iSplitR; [ iExact "Hera" | ].
-        iSplitR; [ by iPureIntro | ]. iExact "Hmid". }
-      destruct (Nat.eq_dec dd cap) as [Hde | Hdne].
-      { assert (Hdcdd : dc = dd)
-          by (apply Hb1; rewrite Hcnt Hde; lia).
-        rewrite Hdcdd. iApply ucons_swallow_refl. }
-      iApply (ucons_swallow_mono fsc_cons
-                (~ uva_wmapped P (uint (add_vec_int (m !!! Regidx a1_idx)
-                                          (Z.of_nat dd)))) False sl dd dc
-                ltac:(intro Hno;
-                      exact (Hno (Hnf P dd Hwf Hperm Hlf ltac:(lia))))
-                with "[]").
-      rewrite ucons_swallow_eq. iExact "Hsw".
+      iSplitR; [ iExact "Hsw" | ].
+      iSplitR; [ iExact "Hera" | ].
+      iSplitR; [ by iPureIntro | ]. iExact "Hmid".
     - (* ================= fd 0 IS SHUT ================= *)
       iDestruct (ush_read_sup_closed N γp T (ush_rd_in T γ n) m pc l n
                    Ha0 Hcl) as "Hsb".
@@ -1202,7 +1052,7 @@ Section UShLine.
       iIntros (h' r d g W M' fdv' cw' cs')
         "%Hd %Hgf %Hlin %HM %Hnf %Harg0 %Harg1 %Harg2 %Htake %Hlz %Hlive
          Hstd Hpost Hrun Hbuf".
-      iDestruct (spost_at_read_elim_at uslot
+      iDestruct (spost_at_read_elim uslot
                    (ush_read_fam_era T γ γp n (ukn_pay N)) W
                    (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
                    (m !!! Regidx a2_idx) (uvis_fd W) r M' fdv' cw' cs'

@@ -123,6 +123,15 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   who has to carry a ledger and why nobody can escape it, and why a forked
   child's table IS its parent's -- what kfork's copy loop proves, what
   [`SpecKfork`] therefore states, and the one u-tier seam still open.
+- **[`user-read.md`](design/user-read.md)** — the GENERIC read spec: when a
+  syscall's U-tier spec is general (content post at every arm, payment a
+  resource the PROGRAM owns, arm chosen by the caller's own handle), the
+  offset as the program's resource and why an OWNED one cannot reach the
+  kernel's fire through the generic-safety supply law, the four arms
+  (inode, console, pipe, other device) with the console's payment shown to
+  be ConsLog's `EvRead` event, the one read walk and the two descriptor
+  readings that instantiate it, and the owned-offset corollary the TR
+  shows.
 - **[`user-heap.md`](design/user-heap.md)** — the SEPARATION-LOGIC HEAP over
   user memory: the two `ghost_map`s (text persistent/X, data exclusive/W)
   and why that is what makes an exclusive points-to imply writability, the

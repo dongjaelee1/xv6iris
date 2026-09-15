@@ -73,6 +73,9 @@ Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkStep.             (* [wp_uk_ecall] / [uvb_x0] -- the walk *)
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6], [xfam] *)
+Require Import UkReadRows.         (* the read leaf's SHARED key-level rows:
+                                      [xfam_rdf], the intro/elim pair, the
+                                      two [fd_st_of_key] readings *)
 Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFileread.       (* [fileread_in] / [fileread_extra_core] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
@@ -105,60 +108,10 @@ Section UkReadFile.
   (* =================================================================== *)
   (*  1.  THE FAMILY                                                      *)
   (* =================================================================== *)
-  (* [UexecExecInst.xfam] at the ONE field the inode arm's rows look at
-     ([rf_F], the observation receipt), and the trivial ones everywhere
-     else: a deposit is read at one number, so the rest of the record is
-     inert.  [UShLine.xfam_rd] is the mold and this is it with [rf_F]
-     real instead of trivial -- the console member names [rf_ret] /
-     [rf_in] and leaves [rf_F] at the unit, the inode member does the
-     reverse, and that difference IS the arm. *)
-  Definition xfam_rdf (Q : Z -> iProp Σ)
-      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) : xfam :=
-    {| xf_P     := fun _ _ => True%I;
-       xf_Pmiss := fun _ _ => True%I;
-       xf_Fo    := pfam_triv (fun _ _ _ => True%I);
-       xf_Rs    := True%I;
-       rf_F     := F;
-       cf_P     := fun _ _ => True%I;
-       cf_Pmiss := fun _ _ => True%I;
-       cf_Fo    := pfam_triv (fun _ _ _ => True%I);
-       of_P     := fun _ _ => True%I;
-       of_Pmiss := fun _ _ => True%I;
-       of_Farm  := pfam_triv (fun _ _ => True%I);
-       of_Fun   := pfam_triv (fun _ _ => True%I);
-       of_Fok   := pfam_triv (fun _ _ _ _ => True%I);
-       of_Fex   := pfam_triv (fun _ _ _ _ => True%I);
-       of_Fo    := pfam_triv (fun _ _ _ => True%I);
-       of_Ft    := pfam_triv (fun _ _ _ => True%I);
-       wf_Q     := fun _ => True%I;
-       nf_P     := fun _ _ => True%I;
-       nf_Pmiss := fun _ _ => True%I;
-       nf_Farm  := pfam_triv (fun _ _ => True%I);
-       nf_Fun   := pfam_triv (fun _ _ => True%I);
-       nf_Fok   := pfam_triv (fun _ _ _ _ => True%I);
-       nf_Fex   := pfam_triv (fun _ _ _ _ => True%I);
-       uf_P     := fun _ _ => True%I;
-       uf_Pmiss := fun _ _ => True%I;
-       uf_Fent  := pfam_triv (fun _ _ _ _ => True%I);
-       uf_Ftgt  := pfam_triv (fun _ _ => True%I);
-       uf_Fex   := pfam_triv (fun _ _ _ _ => True%I);
-       uf_Fmiss := pfam_triv (fun _ _ _ => True%I);
-       lf_Ftgt  := pfam_triv (fun _ _ _ => True%I);
-       lf_Fent  := pfam_triv (fun _ _ _ _ => True%I);
-       lf_Funt  := pfam_triv (fun _ _ => True%I);
-       df_P     := fun _ _ => True%I;
-       df_Pmiss := fun _ _ => True%I;
-       df_Farm  := pfam_triv (fun _ _ => True%I);
-       df_Fdots := pfam_triv (fun _ _ _ _ => True%I);
-       df_Fun   := pfam_triv (fun _ _ => True%I);
-       df_Fok   := pfam_triv (fun _ _ _ _ => True%I);
-       df_Fex   := pfam_triv (fun _ _ _ _ => True%I);
-       kf_pay   := fun _ => True%I;
-       kf_lend  := emp%I;
-       kf_xpay  := Q;
-       rf_ret   := fun _ _ => True%I;
-       rf_in    := fun _ => True%I |}.
-
+  (* [UkReadRows.xfam_rdf] is the record ([UexecExecInst.xfam] at the ONE
+     field the inode arm's rows look at, [rf_F]); it MOVED to that file
+     beside its console twin [xfam_rd], which is what the two arms'
+     difference actually is. *)
   (* AT THE CLASS'S OWN FAMILY TYPE ([UShLine.ush_read_fam_at]'s note):
      the ecall leaves take [UexecSG.sfam], and an [xfam]-typed argument
      is checked before the instance evar is resolved and so does not
@@ -196,87 +149,43 @@ Section UkReadFile.
        sbundle_at uslot n fdep
          (uvis_of_run m pc M pm sz fdv cw gn cs pidv false))%I.
 
-  (* =================================================================== *)
-  (*  3.  THE TWO KEY-LEVEL ROWS, IN THE PROCESS'S DIRECTION               *)
-  (* =================================================================== *)
-  (* [UShLine]'s pair, at the state-fixed reading.  They are restated
-     rather than imported because [UShLine.v] sits ABOVE this file (it is
-     the echo application's own line lemma) and its copies are proved at
-     the console arm's spelling; the proofs are three lines each. *)
-  Local Ltac xv6_skip :=
-    match goal with
-    | |- context [ @decide (?a = ?b) _ ] =>
-        let Hc := fresh "Hc" in
-        destruct (decide (a = b)) as [Hc | _]; [ exfalso; by vm_compute in Hc | ]
-    end.
-  Local Ltac xv6_take :=
-    match goal with
-    | |- context [ @decide (?a = ?b) _ ] =>
-        let Hc := fresh "Hc" in
-        destruct (decide (a = b)) as [_ | Hc]; [ | exfalso; by apply Hc ]
-    end.
+  (* ...AND IT IS [UkRunSys.udepwf_K] AT THAT READING, so the one read walk
+     takes it as it stands. *)
+  Lemma udepwf_st_K (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (n : Z) (fdep : sfam) (st : fdstate) :
+    udepwf_st N m pc n fdep st
+    ⊣⊢ udepwf_K N m pc n fdep
+          (fun fdv => fd_st_of_key (m !!! Regidx a0_idx) fdv = st).
+  Proof. rewrite /udepwf_st /udepwf_K. iSplit; iIntros "H"; iExact "H". Qed.
 
-  Lemma sbundle_at_read_intro_st (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
-      (v0 : mword 64) (sts : list fdstate) :
-    tf_w (uvis_tf W) (tf_arg_idx 0) = v0 -> uvis_fd W = sts ->
-    fileread_in (fd_st_of_key v0 sts) (rf_F f) (rf_ret f) (rf_in f) True%I -∗
-    sbundle_at X USYS_read f W.
-  Proof.
-    intros H0 Hfd. iIntros "H".
-    rewrite -H0 -Hfd.
-    rewrite /sbundle_at /= /xv6_sbundle /xk_a.
-    xv6_skip. xv6_take. iExact "H".
-  Qed.
-
-  Lemma spost_at_read_elim_st (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
-      (v0 v1 v2 : mword 64) (sts : list fdstate)
-      (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate)
-      (cw' : Z) (cs' : gset gname) :
-    tf_w (uvis_tf W) (tf_arg_idx 0) = v0 ->
-    tf_w (uvis_tf W) (tf_arg_idx 1) = v1 ->
-    tf_w (uvis_tf W) (tf_arg_idx 2) = v2 ->
-    uvis_fd W = sts ->
-    spost_at X USYS_read f W r M' fdv' cw' cs' -∗
-    ⌜fileread_ret (sys_rw_count v2) r⌝ ∗
-    ∃ P : uptd,
-      ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
-      ⌜proc_pt_wf P⌝ ∗
-      ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
-      fileread_extra_core (uvis_gen W) P (fd_st_of_key v0 sts) (sys_rw_count v2)
-        (rf_F f) (rf_ret f) (rf_in f) r M' v1.
-  Proof.
-    intros H0 H1 H2 Hfd. iIntros "H".
-    rewrite -H0 -H1 -H2 -Hfd.
-    rewrite /spost_at /= /xv6_spost /xk_a.
-    xv6_take. iExact "H".
-  Qed.
-
-  (* THE DESCRIPTOR THE CALL WILL RUN ON, OUT OF THE CALLER'S OWN HANDLE.
-     The console twin ([UShLine.ush_fd_st_console]) reads it out of the
-     LEDGER, which can only speak of the low [NSTD] slots; a file
-     descriptor is never one of those ([UserFd.ufd] carries the bound), so
-     this is the same step at the handle instead. *)
-  Lemma ufd_st_of_key (v0 : mword 64) (fdv : list fdstate) (fd : nat)
-      (st : fdstate) :
+  (* THE DESCRIPTOR THE CALL WILL RUN ON, OUT OF THE CALLER'S OWN HANDLE --
+     the walk's agreement premise at the HANDLE.  The console twin reads it
+     out of the LEDGER ([UkReadRows.std_fd_st_of_key]), which can only speak
+     of the low [NSTD] slots; a file descriptor is never one of those
+     ([UserFd.ufd] carries the bound), so this is the same step at the
+     handle instead. *)
+  Lemma ufd_key_agree (N : uk_names Σ) (fd : nat) (st : fdstate)
+      (v0 : mword 64) :
     bv_signed (trunc32 v0) = Z.of_nat fd ->
     (fd < NOFILE)%nat ->
-    fdv !! fd = Some st ->
-    fd_st_of_key v0 fdv = st.
+    forall fdv : list fdstate,
+      ufd_auth (ukn_fd N) fdv -∗ UserFd.ufd (ukn_fd N) fd st -∗
+      ⌜fd_st_of_key v0 fdv = st⌝.
   Proof.
-    intros H0 Hlt Hlk. rewrite /fd_st_of_key H0.
-    destruct (decide (0 <= Z.of_nat fd < Z.of_nat NOFILE)) as [_ | Hc];
-      [ | exfalso; apply Hc; lia ].
-    rewrite Nat2Z.id Hlk. reflexivity.
+    intros H0 Hlt fdv. iIntros "Ha Hh".
+    iDestruct (ufd_agree (ukn_fd N) fdv fd st with "Ha Hh") as %Hlk.
+    iPureIntro. exact (ufd_fd_st_of_key v0 fdv fd st H0 Hlt Hlk).
   Qed.
 
   (* =================================================================== *)
   (*  4.  THE LEAF                                                        *)
   (* =================================================================== *)
-  (* [UkRunSys.wp_uk_ecall_read_recv]'s walk, at the FILE arm.  Every
-     bridge row below is that leaf's, unchanged -- section 5's "the rows
-     the recv leaf hands out are ARM-INDEPENDENT" is literally true, and
-     this is the check of it.  The three differences are all in the
-     descriptor:
+  (* [UkRunSys.wp_uk_ecall_read_at]'s walk, at the FILE arm -- and since
+     lane RD-4 it IS that walk and no longer a second copy of it: section
+     5's "the rows the recv leaf hands out are ARM-INDEPENDENT" is not only
+     true, it is the generalization the duplication was in disguise, so the
+     rows below are handed out by the one walk and this leaf only names the
+     descriptor.  The three differences are all in the descriptor:
 
        - the DEPOSIT is fixed at the STATE the caller's handle names
          ([udepwf_st]) rather than at the low [NSTD] ledger, because an
@@ -288,7 +197,7 @@ Section UkReadFile.
          post's inode arm readable: without it, row 5's receipt is about
          a descriptor the caller cannot identify with its own.
 
-     A program spends this leaf's post through [spost_at_read_elim_st]
+     A program spends this leaf's post through [spost_at_read_elim]
      above and lands in [SpecFileread.fileread_extra_core] at its own
      [st]; at [FdOpen true _ (FdInode i γo)] that IS
      [FsAbsReadFire.read_arms], and section 3's whole File row is inside
@@ -354,150 +263,13 @@ Section UkReadFile.
   Proof.
     intros Hn Hcnt Hcapk Hfdv Hfdlt Hal4.
     iIntros "#Hi Hrun Hsb Hufdh Hbuf Hcont".
-    set (dst := m !!! Regidx a1_idx : mword 64).
-    set (cap := Z.to_nat cnt).
-    assert (Hwin : usyswin m USYS_read = Some (dst, cap)).
-    { unfold usyswin.
-      destruct (decide (USYS_read = USYS_wait)) as [Hc | _]; [ discriminate Hc | ].
-      destruct (decide (USYS_read = USYS_pipe)) as [Hc | _]; [ discriminate Hc | ].
-      destruct (decide (USYS_read = USYS_read)) as [_ | Hc];
-        [ | exfalso; exact (Hc eq_refl) ].
-      rewrite Hcnt. reflexivity. }
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
-    (* THE KEY'S ARM IS THE CALLER'S OWN HANDLE, which is both what the
-       deposit is stated at and what makes row 5's arm readable *)
-    iDestruct (ufd_agree (ukn_fd N) fdv fd st with "Hufd Hufdh") as %Hlk.
-    assert (Hkey : fd_st_of_key (m !!! Regidx a0_idx) fdv = st)
-      by exact (ufd_st_of_key _ fdv fd st Hfdv Hfdlt Hlk).
-    iDestruct "Hsb" as "[%Hfp Hsb]".
-    iDestruct ("Hsb" $! M pm sz fdv cw gn cs pidv with "[%] Hmy Hheap Hufd")
-      as "(Hheap & Hufd & Hdepn)"; [ exact Hkey | ].
-    iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
-    iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
-    (* THE NO-WRAP FACT, off the ownership rather than off a premise *)
-    iDestruct (uheap_ubytes_run (ukn_t N) (ukn_d N) (ukn_s N) M pm sz (DfracOwn 1) (uint dst) k f
-                 with "Hheap Hbuf") as %Hbnd.
-    assert (Hlin : forall i : nat, (i < k)%nat ->
-              uint (add_vec_int dst (Z.of_nat i)) = (uint dst + Z.of_nat i)%Z).
-    { intros i Hi. destruct (Hbnd i Hi) as [_ Hc].
-      change (2 ^ 38) with 274877906944 in Hc.
-      rewrite !uint_unsigned in Hc |- *.
-      apply uint_add_vec_int_small; lia. }
-    iDestruct (uheap_ubytes_w (ukn_t N) (ukn_d N) (ukn_s N) M pm sz (DfracOwn 1) (uint dst) k f
-                 with "Hheap Hbuf") as %Hwacc.
-    assert (Hnf : forall (P : uptd) (j : nat),
-              ProcPtOwn.proc_pt_wf P -> perm_of (ud_um P) sz = pm ->
-              lazy_free (ud_um P) sz -> (j < k)%nat ->
-              UserPtTree.uva_wmapped P (uint (add_vec_int dst (Z.of_nat j)))).
-    { intros P j Hwf Hpmp Hlf Hjk.
-      rewrite (Hlin j Hjk).
-      destruct (Hbnd j Hjk) as [_ Hrange].
-      apply (UserHeap.lazy_free_uw_addr P sz (uint dst + Z.of_nat j)%Z Hwf Hlf);
-        [ exact Hrange | rewrite Hpmp; exact (Hwacc j Hjk) ]. }
-    iApply (UkStep.wp_uk_ecall C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc fdv cw gn cs pidv Hui
-              (fun (s : mstate)
-                   (Hp : register_lookup cur_privilege s.(sregs) = User)
-                   (Hc : register_lookup (R_bitvector_64 PC) s.(sregs) = pc) =>
-                 UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
-                   s pc ltac:(vm_compute; reflexivity)
-                   ltac:(vm_compute; reflexivity) Hp Hc)
-              with "Hb Hmy").
-    rewrite (uexec_ret_ecall _ _ eq_refl).
-    assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_read).
-    { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
-    assert (Hw : usys_win USYS_read (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false))
-                 = Some (dst, cap)).
-    { cbn [uvis_tf uvis_of_run]. rewrite usyswin_tf_of. exact Hwin. }
-    rewrite /uexec_pay_dep /upay_at.
-    rewrite Hnum. cbv zeta.
-    destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
-      [ | exfalso; exact (Hpne eq_refl) ].
-    destruct (decide (USYS_read = USYS_exit)) as [He | _];
-      [ exfalso; vm_compute in He; discriminate | ].
-    destruct (decide (USYS_read = USYS_fork)) as [He | _];
-      [ exfalso; vm_compute in He; discriminate | ].
-    destruct (decide (USYS_read = USYS_wait)) as [He | _];
-      [ exfalso; vm_compute in He; discriminate | ].
-    iExists fdep. rewrite Hfp.
-    cbn [uvis_gen uvis_of_run].
-    iSplitR; [ iFrame "Hmy" | ].
-    iSplitL "Hdepn"; [ iExact "Hdepn" | ].
-    iIntros (r M' pm' sz' fdv' cw' gn' cs' lz')
-      "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hliverow %Hchrow Hpost".
-    assert (Hlzq : lz' = false)
-      by (refine (usys_mem_ok_lazy _ _ _ _ _ _ _ _ _ _ _ _ Hok);
-          first [ assumption | vm_compute; discriminate ]).
-    subst lz'.
-    assert (Hcw : cw' = cw)
-      by (refine (usys_cwd_ok_quiet _ _ _ _ _ Hcwrow); vm_compute; discriminate).
-    iDestruct (ucwd_auth_quiet N cw cw' Hcw with "Hcwda") as "Hcwda".
-    assert (Hgn : gn' = gn) by exact (usys_gen_ok_quiet _ _ _ Hgnrow).
-    assert (Hch : cs' = cs) by exact (usys_ch_ok_quiet _ _ _ _ Hchrow).
-    subst gn' cs'.
-    destruct (usys_mem_ok_window USYS_read _ r _ _ _ _ _ _ _ _ dst cap Hw Hok)
-      as ((d & bs & Hdcap & HM') & -> & ->).
-    cbn [uvis_M uvis_perm uvis_sz uvis_of_run] in HM' |- *.
-    assert (Hg : exists g : nat -> bv 8,
-              (forall j : nat, (j < d)%nat -> g j = bs j) /\
-              (forall j : nat, (d <= j)%nat -> g j = f j)).
-    { exists (fun j => if decide (j < d)%nat then bs j else f j).
-      split; intros j Hj; case_decide as Hc;
-        [ reflexivity | exfalso; lia | exfalso; lia | reflexivity ]. }
-    destruct Hg as (g & Hgb & Hgf).
-    assert (Hdk : (d <= k)%nat) by (unfold cap in Hdcap; lia).
-    rewrite (umem_wr_ext M dst d bs g
-               ltac:(intros i Hi; symmetry; exact (Hgb i Hi))) in HM'.
-    rewrite (umem_wr_write M dst d g
-               ltac:(intros i Hi; apply Hlin; lia)) in HM'.
-    subst M'.
-    assert (Hview : fdv' = fdv).
-    { refine (usys_fd_ok_quiet _ _ _ _ _ _ _ _ _ Hfdok);
-        vm_compute; discriminate. }
-    subst fdv'.
-    rewrite (uslot_bump_run m pc M (umem_write M (uint dst) d g) pm pm sz sz
-               fdv fdv cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
-    rewrite /ukc. iIntros (h' xi' C' pt' Rfd' Rut') "%Hlo' %Hpm' %Hlzf' Hb'".
-    iEval (rewrite (ubytes_split (ukn_d N) (uint dst) d k f Hdk)) in "Hbuf".
-    iDestruct "Hbuf" as "[Hblo Hbhi]".
-    iMod (uheap_store_run (ukn_t N) (ukn_d N) (ukn_s N) M pm sz (uint dst) d f g with "Hheap Hblo")
-      as "[Hheap Hblo]".
-    iDestruct (ubytes_ext (ukn_d N) (uint dst + Z.of_nat d) (k - d)
-                 (fun j => f (d + j)%nat) (fun j => g (d + j)%nat)
-                 ltac:(intros j _; symmetry; apply Hgf; lia) with "Hbhi")
-      as "Hbhi".
-    iAssert (ubytes (ukn_d N) (uint dst) k g) with "[Hblo Hbhi]" as "Hbuf".
-    { rewrite (ubytes_split (ukn_d N) (uint dst) d k g Hdk). iFrame "Hblo Hbhi". }
-    iDestruct (urun_close_upd N (umem_write M (uint dst) d g) pm m
-                 (mword_of_int 10) r sz fdv cw' gn cs pidv (add_vec_int pc 4) avail
-                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hbuf Hufdh Hpost]") as "Hkc".
-    { iIntros (h'') "Hrun".
-      iApply ("Hcont" $! h'' r d g (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
-                _ _ _ _
-                with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hufdh Hpost Hrun Hbuf").
-      - exact Hdcap.
-      - intros j Hj. apply Hgf; lia.
-      - exact Hlin.
-      - intros j Hj. rewrite (Hlin j Hj).
-        destruct (decide (j < d)%nat) as [Hjd | Hjd].
-        + exact (umem_write_lookup_in M (uint dst) d g j Hjd).
-        + rewrite (umem_write_lookup_out M (uint dst) d g
-                     (uint dst + Z.of_nat j)%Z
-                     ltac:(intros i Hi; lia)).
-          destruct (Hbnd j Hj) as [HMj _]. rewrite HMj.
-          rewrite (Hgf j ltac:(lia)). reflexivity.
-      - intros P j Hwf Hpmp Hlf Hjk.
-        cbn [uvis_sz uvis_perm uvis_of_run] in Hpmp, Hlf.
-        exact (Hnf P j Hwf Hpmp Hlf Hjk).
-      - rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg0 m pc).
-      - rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg1 m pc).
-      - rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg2 m pc).
-      - rewrite (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false). exact Hkey.
-      - reflexivity.
-      - exact Hliverow. }
-    iDestruct (ukcq_ukc with "Hkc") as "Hkc".
-    iApply ("Hkc" $! h' xi' C' pt' Rfd' Rut' with "[%] [%] [%] Hb'");
-      [ exact Hlo' | exact Hpm' | exact Hlzf' ].
+    iApply (wp_uk_ecall_read_at N h m pc cnt k f avail fdep
+              (UserFd.ufd (ukn_fd N) fd st)
+              (fun fdv => fd_st_of_key (m !!! Regidx a0_idx) fdv = st)
+              Hn Hcnt Hcapk Hal4
+              (ufd_key_agree N fd st (m !!! Regidx a0_idx) Hfdv Hfdlt)
+              with "Hi Hrun [Hsb] Hufdh Hbuf Hcont").
+    rewrite /udepwf_st /udepwf_K. iExact "Hsb".
   Qed.
 
   (* =================================================================== *)
@@ -521,7 +293,7 @@ Section UkReadFile.
     iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Hkey _ Hheap Hufd".
     iFrame "Hheap Hufd".
-    iApply (sbundle_at_read_intro_st uslot (xfam_rdf (ukn_pay N) F)
+    iApply (sbundle_at_read_intro uslot (xfam_rdf (ukn_pay N) F)
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               (m !!! Regidx a0_idx) fdv
               (tf_of_arg0 m pc)
@@ -684,7 +456,7 @@ Section UkReadFile.
               Hn Hcnt Hcapk Hfdv Hfdlt Hal4 with "Hi Hrun Hsb Hufdh Hbuf").
     iIntros (h' r d g W M' fdv' cw' cs')
       "%Hd %Hgf %Hlin %Himg %Hnf %H0 %H1 %H2 %Hkey %Hlz %Hlive Hufdh Hpost Hrun Hbuf".
-    iDestruct (spost_at_read_elim_st uslot
+    iDestruct (spost_at_read_elim uslot
                  (xfam_rdf (ukn_pay N) (cat_recv Γ q i nl)) W
                  (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
                  (m !!! Regidx a2_idx) (uvis_fd W)

@@ -2909,39 +2909,79 @@ Section UkRunSys.
   (* call left in the caller's buffer, which is what the resume image       *)
   (* holds).                                                                *)
   (*                                                                        *)
-  (* ...AND THE LEDGER IS THE CALLER'S OWN, which is what makes the receipt *)
-  (* readable at all: the arm is selected by [SpecArgfd.fd_st_of_key        *)
+  (* ...AND THE CALLER'S DESCRIPTOR KNOWLEDGE IS WHAT MAKES THE RECEIPT     *)
+  (* READABLE AT ALL: the arm is selected by [SpecArgfd.fd_st_of_key        *)
   (* (xk_a W 0) (uvis_fd W)], and a program holds no [uvis_fd W] -- [urun]  *)
-  (* binds it existentially.  What it holds is its LEDGER of the low [NSTD] *)
-  (* slots, so the leaf reads the agreement off the authority it has just   *)
-  (* destructed and hands it over as [take NSTD (uvis_fd W) = l].  Without  *)
-  (* it "fd 0 is the console" says nothing about the arm this call took.    *)
+  (* binds it existentially.  What it holds is either its LEDGER of the low *)
+  (* [NSTD] slots or a HANDLE on one descriptor, so the walk takes the      *)
+  (* resource [D] and the pure reading [K] of the key's table it buys, and  *)
+  (* hands [K (uvis_fd W)] over.  Without it "fd 0 is the console" (or "fd  *)
+  (* is my file") says nothing about the arm this call took.                *)
   (*                                                                        *)
-  (* THE DEPOSIT IS LEDGER-FIXED ([UkRun.udepwf_std]), which is the other   *)
-  (* half of the same point and the read's analogue of the open leaf's      *)
-  (* cwd-fixed deposit: a supplier that spends the CONSOLE READER TOKEN     *)
-  (* answers the console arm and no other, and which arm row 5 asks for is  *)
-  (* decided by the key's own table -- while [UkRun.udepwf]'s ∀ binds it.   *)
+  (* THE DEPOSIT IS FIXED AT THE SAME READING ([udepwf_K] above), which is   *)
+  (* the other half of the same point and the read's analogue of the open    *)
+  (* leaf's cwd-fixed deposit: a supplier that spends the CONSOLE READER     *)
+  (* TOKEN answers the console arm and no other, and which arm row 5 asks    *)
+  (* for is decided by the key's own table -- while [UkRun.udepwf]'s ∀ binds *)
+  (* it.                                                                     *)
   (*                                                                        *)
   (* THE BUFFER IS A PRECONDITION, as in [wp_uk_ecall_read_win]: the        *)
   (* caller owns the whole count at a1 going in and gets it back with the   *)
   (* written prefix moved and the tail pinned.                              *)
   (*                                                                        *)
   (* THE WALK IS [wp_uk_ecall_window]'s, with the post KEPT and the         *)
-  (* ledger agreement taken where both halves are in one hand.              *)
+  (* descriptor agreement taken where both halves are in one hand.  IT IS   *)
+  (* THE ONLY READ WALK (lane RD-4): [wp_uk_ecall_read_recv] below and      *)
+  (* [UkReadFile.wp_uk_ecall_read_file] are its two answers.                *)
   (* ------------------------------------------------------------------- *)
-  Lemma wp_uk_ecall_read_recv (N : uk_names Σ) (h : CpuId)
+  (* ------------------------------------------------------------------- *)
+  (* THE DEPOSIT, FIXED AT WHATEVER THE CALLER KNOWS ABOUT THE KEY'S       *)
+  (* TABLE (lane RD-4).                                                    *)
+  (*                                                                       *)
+  (* [UkRun.udepwf_std] fixes it at the low [NSTD] LEDGER and               *)
+  (* [UkReadFile.udepwf_st] at the STATE one descriptor is in; the two      *)
+  (* differ in the pure row inside the [forall] and NOWHERE ELSE, so the    *)
+  (* family below is both of them, and the read walk takes it.  (It is not  *)
+  (* [UkRun.udepwf_at]'s sibling: that one fixes the CWD, which no read     *)
+  (* reads.)                                                               *)
+  (* ------------------------------------------------------------------- *)
+  Definition udepwf_K (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (n : Z) (fdep : sfam) (K : list fdstate -> Prop) : iProp Σ :=
+    (⌜sexit_pay fdep = ukn_pay N⌝ ∗
+     ∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
+       (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname)
+       (pidv : mword 32),
+       ⌜K fdv⌝ -∗
+       my_pay gn (ukn_pay N) -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
+       sbundle_at uslot n fdep
+         (uvis_of_run m pc M pm sz fdv cw gn cs pidv false))%I.
+
+  Lemma udepwf_K_std (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (n : Z) (fdep : sfam) (l : list fdstate) :
+    udepwf_std N m pc n fdep l
+    ⊣⊢ udepwf_K N m pc n fdep (fun fdv => take NSTD fdv = l).
+  Proof. rewrite /udepwf_std /udepwf_K. iSplit; iIntros "H"; iExact "H". Qed.
+
+  Lemma wp_uk_ecall_read_at (N : uk_names Σ) (h : CpuId)
       (m : regfile) (pc : mword 64) (cnt : Z) (k : nat) (f : nat -> bv 8)
-      (avail : nat) (fdep : sfam) (l : list fdstate) :
+      (avail : nat) (fdep : sfam) (D : iProp Σ) (K : list fdstate -> Prop) :
     usysno m = USYS_read ->
     bv_signed (subrange_vec_dec (m !!! Regidx (mword_of_int 12)) 31 0
                : mword 32) = cnt ->
     (Z.to_nat cnt <= k)%nat ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    (* WHAT THE CALLER'S DESCRIPTOR KNOWLEDGE BUYS AGAINST THE KEY'S OWN
+       TABLE.  The conclusion is PURE, so the reading costs neither the
+       authority nor [D]; the ledger's answer and the handle's are the
+       two instances. *)
+    (forall fdv : list fdstate,
+       ufd_auth (ukn_fd N) fdv -∗ D -∗ ⌜K fdv⌝) ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
-    udepwf_std N m pc USYS_read fdep l -∗
-    UserFd.ustd (ukn_fd N) l -∗
+    udepwf_K N m pc USYS_read fdep K -∗
+    D -∗
     ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 11))) k f -∗
     (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8)
        (W : uvis) (M' : gmap Z (bv 8))
@@ -2991,7 +3031,7 @@ Section UkRunSys.
        ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx (mword_of_int 11)⌝ -∗
        ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx (mword_of_int 12)⌝ -∗
        (* ...AND ITS LEDGER IS THE CALLER'S OWN TOO *)
-       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       ⌜K (uvis_fd W)⌝ -∗
        (* ...AND ITS LAZY BIT IS [false] (lane LAZY-FLAG, L6 -- THE
           DELIVERABLE).  Definitional at this leaf: the U tier's run is at
           an empty fill ([UexecRet.ukcq] is hardwired at [false]), so the
@@ -3015,7 +3055,7 @@ Section UkRunSys.
           index, which is the form a program holding its own table wants. *)
        ⌜uexec_live_ok USYS_read (uvis_tf W) (uvis_fd W) r cs'⌝ -∗
        (* the ledger comes straight back: read moves no descriptor *)
-       UserFd.ustd (ukn_fd N) l -∗
+       D -∗
        (* THE POST, AT THE TRAPPING KEY AND THE RESUME IMAGE *)
        spost_at uslot USYS_read fdep W r M' fdv' cw' cs' -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
@@ -3024,7 +3064,7 @@ Section UkRunSys.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hn Hcnt Hcapk Hal4.
+    intros Hn Hcnt Hcapk Hal4 Hag.
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
     set (dst := m !!! Regidx (mword_of_int 11) : mword 64).
     set (cap := Z.to_nat cnt).
@@ -3038,7 +3078,7 @@ Section UkRunSys.
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
     (* THE KEY'S LOW THREE SLOTS ARE THE CALLER'S OWN LEDGER, which is both
        what the deposit is stated at and what makes row 5's arm readable *)
-    iDestruct (ustd_agree (ukn_fd N) fdv l with "Hufd Hstd") as %Htake.
+    iDestruct (Hag fdv with "Hufd Hstd") as %Htake.
     iDestruct "Hsb" as "[%Hfp Hsb]".
     iDestruct ("Hsb" $! M pm sz fdv cw gn cs pidv with "[%] Hmy Hheap Hufd")
       as "(Hheap & Hufd & Hdepn)"; [ exact Htake | ].
@@ -3185,6 +3225,75 @@ Section UkRunSys.
     iDestruct (ukcq_ukc with "Hkc") as "Hkc".
     iApply ("Hkc" $! h' xi' C' pt' Rfd' Rut' with "[%] [%] [%] Hb'");
       [ exact Hlo' | exact Hpm' | exact Hlzf' ].
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (* ...AND ITS LEDGER-FIXED COROLLARY, AT ITS EXACT FORMER STATEMENT      *)
+  (* (lane RD-4).                                                          *)
+  (*                                                                       *)
+  (* [wp_uk_ecall_read_recv] used to carry the walk above verbatim, and    *)
+  (* [UkReadFile.wp_uk_ecall_read_file] carried a second copy of it: the   *)
+  (* two differed in the DESCRIPTOR KNOWLEDGE and in nothing else, which   *)
+  (* is the generalization the duplication was in disguise.  The walk is   *)
+  (* now ONE; this is its LEDGER answer (a standard stream, read off       *)
+  (* [UserFd.ustd]) and the file leaf is its HANDLE answer.  The statement *)
+  (* is unchanged, so every caller is untouched.                           *)
+  (* ------------------------------------------------------------------- *)
+  Lemma wp_uk_ecall_read_recv (N : uk_names Σ) (h : CpuId)
+      (m : regfile) (pc : mword 64) (cnt : Z) (k : nat) (f : nat -> bv 8)
+      (avail : nat) (fdep : sfam) (l : list fdstate) :
+    usysno m = USYS_read ->
+    bv_signed (subrange_vec_dec (m !!! Regidx (mword_of_int 12)) 31 0
+               : mword 32) = cnt ->
+    (Z.to_nat cnt <= k)%nat ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    udepwf_std N m pc USYS_read fdep l -∗
+    UserFd.ustd (ukn_fd N) l -∗
+    ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 11))) k f -∗
+    (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8)
+       (W : uvis) (M' : gmap Z (bv 8))
+       (fdv' : list fdstate) (cw' : Z) (cs' : gset gname),
+       ⌜ (d <= Z.to_nat cnt)%nat ⌝ -∗
+       ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
+       ⌜ forall i : nat, (i < k)%nat ->
+           uint (add_vec_int (m !!! Regidx (mword_of_int 11)) (Z.of_nat i))
+           = (uint (m !!! Regidx (mword_of_int 11)) + Z.of_nat i)%Z ⌝ -∗
+       ⌜ forall j : nat, (j < k)%nat ->
+           M' !! uint (add_vec_int (m !!! Regidx (mword_of_int 11))
+                         (Z.of_nat j))
+           = Some (g j) ⌝ -∗
+       ⌜ forall (P : uptd) (j : nat),
+           ProcPtOwn.proc_pt_wf P ->
+           perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
+           lazy_free (ud_um P) (uvis_sz W) ->
+           (j < k)%nat ->
+           UserPtTree.uva_wmapped P
+             (uint (add_vec_int (m !!! Regidx (mword_of_int 11))
+                      (Z.of_nat j))) ⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx (mword_of_int 10)⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx (mword_of_int 11)⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx (mword_of_int 12)⌝ -∗
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       ⌜uvis_lazy W = false⌝ -∗
+       ⌜uexec_live_ok USYS_read (uvis_tf W) (uvis_fd W) r cs'⌝ -∗
+       UserFd.ustd (ukn_fd N) l -∗
+       spost_at uslot USYS_read fdep W r M' fdv' cw' cs' -∗
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
+         (add_vec_int pc 4) avail -∗
+       ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 11))) k g -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hn Hcnt Hcapk Hal4.
+    iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
+    iApply (wp_uk_ecall_read_at N h m pc cnt k f avail fdep
+              (UserFd.ustd (ukn_fd N) l) (fun fdv => take NSTD fdv = l)
+              Hn Hcnt Hcapk Hal4
+              (fun fdv => ustd_agree (ukn_fd N) fdv l)
+              with "Hi Hrun [Hsb] Hstd Hbuf Hcont").
+    iApply (udepwf_K_std N m pc USYS_read fdep l with "Hsb").
   Qed.
 
   (* ------------------------------------------------------------------- *)

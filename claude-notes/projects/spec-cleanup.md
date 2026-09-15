@@ -215,14 +215,37 @@ Derived corollaries, in order of what applications actually use:
 - OWNER RULED 2026-09-15: BREADTH FIRST — RD-4/RD-5/RD-6 on the landed
   R-c pattern; route R-a (the owned-offset campaign) queued behind them,
   upgrading each arm by one conjunct when it runs.
-- [ ] **RD-4 CONSOLE ARM** (LAUNCHED 2026-09-15, Opus lane, branch
-  rd4-cons-arm; R1 landed upstream, so the blocker below is GONE —
-  historical scope:
-  merged IO claim is being built right now and is exactly the resource
-  this arm should be stated at): re-cut `read_recv`'s console arm at
-  the merged claim, application-neutral; re-derive
-  `ush_read_recv_leaf` as an instance; echo's proof re-points, its
-  statement unchanged.
+- [x] **RD-4 CONSOLE ARM** (LANDED 2026-09-15, branch rd4-cons-arm,
+  mirror-green whole tree, echo audit at 14): the console arm is
+  `iris/UkReadCons.v` (`wp_uk_ecall_read_cons`,
+  `udepwf_std_read_cons`, `uread_cons_ans`), and the judgment the lane
+  owed is that **the input side was ALREADY NEUTRAL** — one level BELOW
+  the merged claim.  `SpecFileread.fileread_in`'s console arm is
+  `ConsoleInv.cons_acc` (the ring) beside `WpUart.cons_read_pay`, and
+  `cons_read_pay` IS ConsLog's `EvRead` event as an atomic update
+  (`read_link`'s premise is `ConsLog.read_ok pops dl ws` =
+  `cons_ev_ok H (EvRead ws)`; its conclusion is `dl ++ ws` =
+  `cons_step H (EvRead ws)`).  Echo enters only as the caller's choice
+  of `Rd`/`Rin`, so NOTHING had to be factored out of `EchoOut.v` and
+  nothing there was touched; the merged claim (`ecl`, `ecl_step_read`)
+  is one ANSWER to this AU and the arm does not wait on it being wired.
+  `UShLine.ush_read_recv_era`'s console branch is now a wrapper
+  (`ush_read_pay_era` answers both payments off sh's lease;
+  `ush_read_sup_era` is the neutral supplier at echo's `Rd`/`Rin`), and
+  `UkSh.ush_read_recv_leaf` / `ush_read_recv_leaf_holds` /
+  `ush_read_ans_era` keep their exact statements.
+  AND THE READ WALK IS NOW ONE: `UkRunSys.wp_uk_ecall_read_at`,
+  parametric in the caller's descriptor resource `D` and the pure
+  reading `K` it buys, with `UkRunSys.udepwf_K` the deposit at the same
+  reading; `wp_uk_ecall_read_recv` (ledger) and
+  `UkReadFile.wp_uk_ecall_read_file` (handle) are its two corollaries
+  at their exact former statements, and ~150 duplicated lines of walk
+  are gone.  `iris/UkReadRows.v` is the shared home RD-2's report asked
+  for: the `sbundle_at_read_intro` / `spost_at_read_elim` pair (two
+  word-for-word copies before), the `xfam_rd` / `xfam_rdf` family pair
+  (which ARE the two arms), the two `fd_st_of_key` readings and the
+  count's sign-boundary bridges.  Design of record: `design/user-read.md`
+  §3's RD-4 AS-LANDED block and §5's.
 - [ ] **RD-5 PIPE ARM**: the read end against the pipe's AU
   (`usys_pipe_ok` names the slots; the content row is new).
 - [ ] **RD-6 WRITE**: the same program for write (its tailorings:
@@ -235,8 +258,10 @@ Derived corollaries, in order of what applications actually use:
 
 ## Territory / coordination
 
-- RD-4 sits inside the post-Qed redesign's blast radius — do not start
-  until R1 lands; the merged claim is an INPUT to this lane.
+- RD-4 is DONE and it did NOT need the merged claim as an input: the
+  console arm's AU is the kernel's own console boundary
+  (`WpUart.cons_read_pay`, i.e. ConsLog's `EvRead`), which the merged
+  claim answers rather than owns.  `EchoOut.v` was not touched.
 - RD-3's merge is the relay note upstream left in `UkRunSys.v`; taking
   it here closes their note — say so in the commit.
 - `UkRunSys.v` / the engine files have been upstream's workspace all

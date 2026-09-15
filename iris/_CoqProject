@@ -1526,6 +1526,7 @@ UShLine.v
 UInitSh.v
 UInitBoot.v
 UInitBootAdequacy.v
+# EchoAssumptions.v
 
 UkWriteLeaf.v
 UkWriteClosed.v

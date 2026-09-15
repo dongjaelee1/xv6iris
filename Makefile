@@ -131,7 +131,7 @@ USER_DUMPS ?= sync:Sync echo:Echo sh:Sh init:Init cat:Cat
 
 .PHONY: all proofs model kernel user dump dump-force kernel-rocq user-rocq \
         xv6-rev-check sail-rev-check gen-code check-decode update-decode \
-        audit audit-only vtest vtest-check vtest-check-ci vtest-gen vtest-deps \
+        audit audit-only audit-echo audit-echo-only vtest vtest-check vtest-check-ci vtest-gen vtest-deps \
         hwtest hwtest-gen hwtest-gen-all hwtest-probe \
         vtest-runs vtest-passes vtest-table \
         clean clean-proofs distclean model-gen
@@ -300,6 +300,19 @@ audit: proofs
 # kernel-rocq prerequisite would pull in the (absent) kernel ELF.
 audit-only:
 	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob SystemAssumptions.v
+
+# The SAME audit for the APPLICATION theorem (iris/EchoAssumptions.v):
+# `Print Assumptions` on UInitBootAdequacy.echo_adequacy_modulo_phi.  It is a
+# SEPARATE target because neither theorem's cone contains the other -- the
+# system audit above never walks the Uk*/USh*/UInit*/UEcho* program tier, so it
+# cannot see an undischarged Spec* module Parameter hiding behind a seal there.
+# That file's header has the argument in full.  Same reasons for -noglob and
+# for staying out of iris/_CoqProject as SystemAssumptions.v.
+audit-echo: proofs
+	$(MAKE) audit-echo-only
+
+audit-echo-only:
+	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob EchoAssumptions.v
 
 # ---- 5. vtest: the device semantics, differentially tested against QEMU ----
 #

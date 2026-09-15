@@ -922,6 +922,12 @@ Proof.
     rewrite /echo_line_out Hend. exact (wl_line_nl_at (drop 1 echo_ws)).
 Qed.
 
+(* the alternative is the output and then the prompt, so its length is
+   the output's plus two -- not a number *)
+Lemma line_alts_0_length :
+  length (line_alts !!! 0%nat) = (length echo_line_out + 2)%nat.
+Proof. rewrite line_alts_0 length_app. by vm_compute (length (sb "$ "%string)). Qed.
+
 Lemma line_alts_length : length line_alts = 4.
 Proof. reflexivity. Qed.
 

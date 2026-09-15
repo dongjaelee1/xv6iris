@@ -130,15 +130,15 @@ premise once the word list is a parameter.
 
 ## What is left
 
-1. **THE SWAP TEST.** Everything in the chain is now structural, so
-   changing `EchoDisc.echo_ws` to a different word list and rebuilding
-   should go green apart from the checks that are deliberately AT the
-   literal. Expected to fail, by design: `echo_line_length = 17`,
-   `echo_line_string`, `echo_line_out_string`/`_length`,
-   `EchoLinksLine.line_alts_len0 = 14`, and the six `demo_*` anti-vacuity
-   segments (they embed a literal wire). Anything ELSE that fails is a
-   remaining literal dependence and the next thing to fix. Run it before
-   attempting the parameterization — it measures what is actually left.
+1. **THE PARAMETERIZATION.** `EchoDisc.echo_ws` is still a `Definition`.
+   The swap test (below) says the tree no longer depends on WHICH word list
+   it is, so what is left is the mechanism for making it a variable. A
+   Section does not span files, so the options are a module functor (the
+   `design/spec-modules.md` pattern) or one more `Context` class threaded
+   the way `riscvGS Σ` already is through every file. THAT IS AN
+   ARCHITECTURAL CHOICE and wants the owner's ruling, not a unilateral
+   pick — and it is the whole of what stands between here and
+   `forall ws, wf ws -> <the claim at that line>`.
 2. **THE CALLER'S BOUNDS.** `EchoDisc.echo_ws_pos` and `echo_ws_lt10` name
    two of them (the line has a command name; fewer words than sh's
    MAXARGS). Still unnamed: the line inside `getcmd`'s 100-byte buffer
@@ -149,6 +149,32 @@ premise once the word list is a parameter.
    a parameter with `wl_wf`, item 2's bounds and prefix-freeness as its
    premises, and the theorem reads
    `forall ws, ... -> <the claim at that line>`.
+
+## The swap test, and what it measured
+
+Point `EchoDisc.echo_ws` at a DIFFERENT word list and rebuild. Run at
+`[echo; hi; there; you]` — four words where the landed line has three, of
+lengths 4/2/5/3 where it has 4/5/5 — the whole echo cone went green except
+for sites that are deliberately AT a literal, plus exactly two real
+findings, both since fixed:
+
+- `UConsLine.ush_echo_tokens` named the token list as `[(0,4);(5,10);(11,16)]`.
+  It names `wl_toks echo_ws`, and `UkShEcho`'s bridging `replace` is gone.
+- `EchoLinksLine`'s block end was `length (line_alts !!! 0) - 2 = 12`. It is
+  `length echo_line_out`, via the new `EchoDisc.line_alts_0_length` — the
+  alternative is the output and then the prompt.
+
+WHAT LEGITIMATELY NEEDS RETARGETING at another line, and is not a defect:
+`echo_line_length`, `echo_line_string`, `echo_line_out_string`/`_length`,
+`echo_ws_length`, `EchoLinksLine.line_alts_len0`, and the anti-vacuity
+demos that embed a literal wire (`EchoOut.pro_choice_round1_live`,
+`EchoLinksPro.wr_owed_ambiguous`, `EchoDisc`'s five `demo_seg*`). Those are
+transcription checks and satisfiability witnesses; at a parameterized line
+they become computations at whatever instance is supplied.
+
+RE-RUN IT after any further structural work — it is the cheapest check
+that the cone has not re-acquired a literal dependence, and it found two
+that reading the code had missed.
 
 ## The two traps this lane keeps walking into
 

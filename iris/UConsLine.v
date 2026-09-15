@@ -70,6 +70,7 @@ Require Import UkSh.           (* [sh_buf] / [sh_nbuf] *)
 Require Import UkShParse.      (* [ushp_no_symbols] / [ushp_tokens] *)
 Require Import UkShLoop.       (* [ush_line_lexable] -- the lowest file that
                                   sees both the LINE and the LEXER *)
+Require Import LineWords.       (* [wl_toks] -- the tokens are the WORDS' *)
 Require Import EchoDisc.        (* [echo_line] / [star_prefix] / [disc_seg] *)
 Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       and its ledger are stated at (lane
@@ -220,8 +221,8 @@ Qed.
 Definition ush_echo_tokens : Prop :=
   ushp_no_symbols (length echo_line) (fun j : nat => echo_line !!! j)
   /\ ushp_tokens (length echo_line) (fun j : nat => echo_line !!! j) 0%nat
-       [(0, 4); (5, 10); (11, 16)]%nat
-  /\ (length [(0, 4); (5, 10); (11, 16)]%nat < 10)%nat.
+       (wl_toks echo_ws)
+  /\ (length (wl_toks echo_ws) < 10)%nat.
 
 (* (4) ...AND THE SHAPE THE BUFFER'S LINE IS IN WHEN IT IS DISCIPLINED is
    [UkSh.ush_line_is] -- MOVED DOWN to the program tier (lane SH-LINE 2b,

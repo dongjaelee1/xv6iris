@@ -293,6 +293,7 @@ Definition wp_sys_mkdir_friendly_body
   (* [procs_inv] left [fs_ready] (FsCfg.v's header): a PROCESS resource,
      persistent, and every caller already holds it. *)
   procs_inv γs -∗
+  printk_env fsc_printk fsc_uart fsc_disk -∗
   fs_res ns dqb dqs dqbs dqn -∗
   proc_priv γf pj pid U -∗
   wp_next true pj (fun (CID : CpuId) =>
@@ -350,7 +351,7 @@ Module FsSysMkdir (M : SYSMKDIR).
     pose proof (FsReady.fgo_nin_hi   Hg) as Hn2.
     pose proof (FsReady.fgo_nin_31   Hg) as Hn3.
     pose proof (FsReady.fgo_ushort   Hg) as Hus.
-    iIntros "Hcg Hown Hpc #Hw #Hsup Hprocs Hres Hpriv Hcont".
+    iIntros "Hcg Hown Hpc #Hw #Hsup Hprocs #Hpr Hres Hpriv Hcont".
     (* SIMP-2: the unpack is [FsReady]'s own projection rather than a raw
        [iDestruct].  It has to be: [fs_ready] is [Typeclasses Opaque] (see
        that file's two seals and the measurement behind them), so the
@@ -361,7 +362,7 @@ Module FsSysMkdir (M : SYSMKDIR).
        The three ring pages are the one thing still quantified, so they are
        unpacked here and the seal is instantiated at the witness. *)
     iDestruct (FsReady.fs_ready_all with "Hw") as
-      "(Htext & Hdata & Hpr & %Hprg & Hbio & Hlogc &
+      "(Htext & Hdata & Hbio & Hlogc &
         Hseam & Hgc & Hdev & Hdisk & Hitb2 & Hitbl &
         Hesc & Hisl & Hireg & Hiopen & Hkenv & %Hgeo & #Hsbc & #Hbmi)".
     iDestruct "Hdisk" as (pd pav pu) "[#Hdgeom #Hdlk]".
@@ -382,7 +383,7 @@ Module FsSysMkdir (M : SYSMKDIR).
               (pfam_triv (fun _ _ _ _ => True%I))
               (pfam_triv (fun _ _ _ _ => True%I))
               HK Hroot Hnibp Hlg Hsz Hbnn Hbcov Hbout
-              Histnn Hcb Hbg Hib Hn1 Hn2 Hn3 Hus Hprg Hns Hj Hgs
+              Histnn Hcb Hbg Hib Hn1 Hn2 Hn3 Hus Hns Hj Hgs
               eq_refl Htf
               with "Hcg Hown [] [] Htext Hdata Hpc Hpr Hbio Hlogc
                     Hseam Hgc Hdev Hdgeom Hdlk Hbsl Hitb2 Hitbl Hesc Hisl
@@ -483,6 +484,7 @@ Definition wp_sys_chdir_friendly_body
   (* [procs_inv] left [fs_ready] (FsCfg.v's header): a PROCESS resource,
      persistent, and every caller already holds it. *)
   procs_inv γs -∗
+  printk_env fsc_printk fsc_uart fsc_disk -∗
   fs_res 2 dqb dqs dqbs dqn -∗
   proc_priv γf pj pid U -∗
   wp_next true pj (fun (CID : CpuId) =>
@@ -526,7 +528,7 @@ Module FsSysChdir (M : SYSCHDIR).
     pose proof (FsReady.fgo_ist_nn   Hg) as Histnn.
     pose proof (FsReady.fgo_covbelow Hg) as Hcb.
     pose proof (FsReady.fgo_iblocks  Hg) as Hib.
-    iIntros "Hcg Hown Hpc #Hw Hprocs Hres Hpriv Hcont".
+    iIntros "Hcg Hown Hpc #Hw Hprocs #Hpr Hres Hpriv Hcont".
     (* SIMP-2: the unpack is [FsReady]'s own projection rather than a raw
        [iDestruct].  It has to be: [fs_ready] is [Typeclasses Opaque] (see
        that file's two seals and the measurement behind them), so the
@@ -536,7 +538,7 @@ Module FsSysChdir (M : SYSCHDIR).
        names the seal below reads.  The three ring pages are the one thing
        still quantified, so they are unpacked here. *)
     iDestruct (FsReady.fs_ready_all with "Hw") as
-      "(Htext & Hdata & Hpr & %Hprg & Hbio & Hlogc &
+      "(Htext & Hdata & Hbio & Hlogc &
         Hseam & Hgc & Hdev & Hdisk & Hitb2 & Hitbl &
         Hesc & Hisl & Hireg & Hiopen & Hkenv & %Hgeo & #Hsbc & #Hbmi)".
     iDestruct "Hdisk" as (pd pav pu) "[#Hdgeom #Hdlk]".

@@ -7,5 +7,6 @@
    [BmapCore], which is parameterised by whether the allocation arms are
    live.  Precedent: LinkWalkNoalloc.v. *)
 Require Import LinkBread LinkBrelse ProofBmap.
+Require Import LinkPrintk.
 
-Module BmapNoalloc := BmapNoallocProof Bread Brelse.
+Module BmapNoalloc := BmapNoallocProof Bread Brelse PrintkGen.

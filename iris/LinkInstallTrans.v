@@ -8,5 +8,6 @@
    pre-frame [blez] having executed nothing, and otherwise s6 = 0 makes both
    [bnez s6] fall through), so the proof never reaches the call. *)
 Require Import LinkBread LinkBwrite LinkBunpin LinkBrelse LinkMemmove ProofInstallTrans.
+Require Import LinkPrintk.
 
-Module InstallTrans := InstallTransProof Bread Bwrite Bunpin Brelse Memmove.
+Module InstallTrans := InstallTransProof Bread Bwrite Bunpin Brelse Memmove PrintkGen.

@@ -184,7 +184,7 @@ Section ProofSysOpenFullBody.
     cbv beta zeta delta [wp_sys_open_create_body wp_sys_open_frame].
     intros Hcr HK HdevR Hnib0 Hgeom Hsize
            Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hush
-           Hprkc Hnsb Hj Hgl Heb Hargv Hargvom.
+ Hnsb Hj Hgl Heb Hargv Hargvom.
     pose proof HK as HKfull.
     destruct (so_kb K HK) as (HKcr & HKna & HKai & HKas & HKbo & HKeo & HKil &
                               HKiu & HKit & HKip & HKup & HKfc & HKfa & HKfd &
@@ -876,7 +876,7 @@ Section ProofSysOpenFullBody.
               (us_M U) v vom P Pmiss Farm Fun Fok Fex Fo Ft
               HKfull HdevR Hnib0 Hgeom Hsize Hbm0
               Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr Hpk Hni1 Hni2
-              Hni3 Hush Hprkc Hnsb Hj Hgl Heb Hlkempty Hpof eq_refl Hal23
+              Hni3 Hush Hnsb Hj Hgl Heb Hlkempty Hpof eq_refl Hal23
               ltac:(reflexivity) HS2sp HS2thr HS2s0 HS2s2 HS2s3 Hal
               with "Hcg Hown [] [] Htext Hdata Hpc Hpre Hftab Hbio
                     Hlog Hseam Hgen Hkenv Hitab Hitinv Hescrows Hslks Hireg Hropen

@@ -559,7 +559,7 @@ Section FsinitMain.
            Hcgeom Hbmq Hszq
            Hmagic Hvni Hvis Hvbs Hvls
            Hn1 Hnnib Hn31 Hdevr Hnib0 Hist0 Hblk Hsize Hbm0 Hbmcov
-           Hbmlog Hcovb Hhdrbnd Hhdrnd Hhdrok Hxvslot HLmir Hpk Hj Hgl Ha0 Hbelow.
+           Hbmlog Hcovb Hhdrbnd Hhdrnd Hhdrok Hxvslot HLmir Hj Hgl Ha0 Hbelow.
     subst v_ninodes. subst v_inodestart. subst v_bmapstart.
     subst v_logstart.
     pose proof HK as HK'. 
@@ -1453,7 +1453,6 @@ Section FsinitMain.
               Hhdrbnd Hhdrnd
               ltac:(intros b0 Hb0; destruct (Hhdrok b0 Hb0) as (Hc & Hl & _);
                     exact (conj Hc Hl))
-              Hpk
               HQ9a0 HQ9a1 HDall HLmir
               (* initlog's bound is "bcache"(4); fsinit's own is
                  "itable"(2), and [locks_below_mono] weakens it. *)
@@ -1553,7 +1552,7 @@ Section FsinitMain.
  pidv dq (DfracOwn 1) (DfracOwn 1)
               (DfracOwn 1) R1 (K - 4)%nat eb b lks Upr
               ltac:(lia) Hgeom Hist0 Hblk Hsize Hbm0
-              Hbmcov Hbmlog Hcovb Hn1 Hnnib Hn31 Hpk Hj Hgl HR1a0
+              Hbmcov Hbmlog Hcovb Hn1 Hnnib Hn31 Hj Hgl HR1a0
               Hbelow
               with "Hcg Hcnt Hextc Hclmc Htext Hpc Hkdata Hpenv Hbio Hlctx Hseam
                     Hgen Hni Hist Hbms HiregS Hboot Hitb2 Hitbl Hesc Hslks HbmS Hppid

@@ -166,6 +166,7 @@ Require Import RiscvLang RiscvPtsto.
 Require Import WpLock.
 Require Import KernelDataInv.
 Require Import SpecPanic.
+Require Import SpecPrintk.  (* [printk_env] *)
 Require Import FdSlots.
 Require Import ProcGeom.
 Require Export SwtchCtx.
@@ -486,6 +487,7 @@ Definition fs_fabric
      the kexec cone threads them down to [bread]; [FsReady.disk_geom_agree]
      is the bridge in the other direction. *)
   (FsReady.fs_ready ∗
+   printk_env fsc_printk fsc_uart fsc_disk ∗
    procs_inv gs ∗
    disk_geom fsc_disk pd pav pu ∗
    is_lock fsc_dlock d_lock "virtio_disk"%string (disk_res_at fsc_disk pd pav pu))%I.
@@ -527,12 +529,12 @@ Proof.
      named frame pays a goal-side conversion per hypothesis -- the same
      measurement (107.7 s and 90.6 s at two call sites) that made the old
      constructor lemma worth having. *)
-  iIntros "(#Hrdy & #Hprocs & #Hgeom & #Hdlock)".
+  iIntros "(#Hrdy & #Hpk & #Hprocs & #Hgeom & #Hdlock)".
   iDestruct (FsReady.fs_ready_icache with "Hrdy") as "(#Hitab & #Hitinv & #Hesc & #Hslks)".
   iDestruct (FsReady.fs_ready_region with "Hrdy") as "[#Hireg #Hropen]".
   iDestruct (FsReady.fs_ready_disk with "Hrdy") as "[#Hdevi _]".
   iSplitR; [iApply (FsReady.fs_ready_data with "Hrdy") |].
-  iSplitR; [iApply (FsReady.fs_ready_panic with "Hrdy") |].
+  iSplitR; [iApply (printk_env_panic with "Hpk") |].
   iSplitR; [iApply (FsReady.fs_ready_bio with "Hrdy") |].
   iSplitR; [iApply (FsReady.fs_ready_log with "Hrdy") |].
   iSplitR; [iApply (FsReady.fs_ready_seam with "Hrdy") |].

@@ -93,7 +93,6 @@
 
    Strictly more than sys_chdir's, and all of it is create's rather than
    this function's: the printk credential pair ([printk_env] and the pure
-   [printk_gen_contract]) that ialloc's out-of-inodes arm needs, all FOUR
    superblock cells rather than two ([sb_ninodes] and [sb_size] beside
    [sb_inodestart] and [sb_bmapstart]), and mkfs's inode geometry
    ([1 < ninodes <= 16 * nib < 2^31] plus the [ushort] tie
@@ -152,7 +151,7 @@ Require Import FileInvDefs.
 Require Import UserPtTree.
 Require Import ProcPtOwn.
 Require Import ProcInv.
-Require Import SpecPrintk.      (* [printk_env], [printk_gen_contract] *)
+Require Import SpecPrintk.      (* [printk_env] *)
 Require Import SpecDirlink.     (* [ic_sleeplocks], [ireg_blocks_ok] *)
 Require Import SpecDirlookup.   (* [T_DIR]: the type mkdir's create is at *)
 Require Import SpecCreate.      (* [create_slots], [create_units], [K_create],
@@ -323,7 +322,6 @@ Definition wp_sys_mkdir_sconf_body
   fsc_ninodes < 2 ^ 31 ->
   16 * Z.of_nat icfg_nib <= 2 ^ 16 ->
   (* ---- ialloc's no-inodes arm calls printk, not panic ---- *)
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (* ---- the reference allowance create's walk needs ---- *)
   (create_slots <= ns)%nat ->
   (j < NPROC)%nat ->

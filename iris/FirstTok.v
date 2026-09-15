@@ -241,7 +241,6 @@ Section FirstTok.
   Definition first_boot_persist : iProp Σ :=
     (kernel_text ∗ kernel_data ∗
      printk_env fsc_printk fsc_uart fsc_disk ∗
-     ⌜printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk⌝ ∗
      bio_ctx fsc_bio (fs_view fsc_fs fsc_disk icfg_dev fsc_cov) ∗
      fs_crash_seam fsc_cov fsc_logst ∗ gen_cert ∗
      dev_inv fsc_uart fsc_disk ∗
@@ -651,7 +650,7 @@ Section FirstTok.
     fs_sb_cells -∗ fs_ready_pre.
   Proof.
     iIntros "HP HK HL #HC". rewrite /fs_ready_pre /first_boot_persist.
-    iDestruct "HP" as "(H1 & H2 & H3 & %H4 & H5 & H7 & H8 & H9 & H10 & H11 &
+    iDestruct "HP" as "(H1 & H2 & H3 & H5 & H7 & H8 & H9 & H10 & H11 &
                         H12 & H13 & H14 & H15 & H16 & H17 & %H18)".
     (* RECOVERY IS DONE (durable-disk lane E-except): [initlog] sealed the
        byte view's exception set into [log_ctx], so the region and the
@@ -687,8 +686,6 @@ Section FirstTok.
        syntactic check.  The two pure rows go in place. *)
     iSplitL "H1"; [iExact "H1"|].
     iSplitL "H2"; [iExact "H2"|].
-    iSplitL "H3"; [iExact "H3"|].
-    iSplitR; [iPureIntro; exact H4|].
     iSplitL "H5"; [iExact "H5"|].
     iSplitR; [iExact "HLp"|].
     iSplitL "H7"; [iExact "H7"|].

@@ -325,9 +325,6 @@ Definition wp_install_trans_sconf_body
      "bcache" (4); it takes no lock of its own and calls no other function
      with a lower bound, so this is the one premise its whole cone needs. *)
   locks_below lks "bcache" ->
-  (* the recovering arm's printk, as a PURE Prop hypothesis (the
-     [SpecIreclaim] idiom); nothing is owed at recovering = false *)
-  (recovering = true -> printk_gen_contract (kt := KT1) γpr γu γd) ->
   sie_cap_gpr KT1 m K b pj -∗
   cpu_own 0 eb pj b lks -∗
   (* THE TRAP-CSR COMPLEMENT, NOT THE BARE PAIR.  install_trans has NO

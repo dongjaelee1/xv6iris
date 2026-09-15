@@ -571,7 +571,7 @@ Qed.
 (* ===================================================================== *)
 
 Module InstallTransProof (Bread : BREAD) (Bwrite : BWRITE) (Bunpin : BUNPIN)
-                         (Brelse : BRELSE) (Mm : MEMMOVE) : INSTALL_TRANS.
+                         (Brelse : BRELSE) (Mm : MEMMOVE) (Printk : PRINTK_GEN) : INSTALL_TRANS.
 
 Notation Rra  := (mword_of_int 1 : mword 5).
 Notation Rs0  := (mword_of_int 8 : mword 5).
@@ -991,7 +991,7 @@ Section InstallTransBlocks.
   (*  +0x6c -> +0x70 : THE LOOP HEAD (durable-disk stage D2).             *)
   (*  At recovering = 0 the [bnez s6] falls through; at recovering = 1 it *)
   (*  jumps to the printk block at +0x46 -- which calls the REAL printk   *)
-  (*  (the [printk_gen_contract] Prop, the SpecIreclaim idiom) and        *)
+
   (*  rejoins at +0x70 via the [c.j] at +0x52.  Factored as a CPS block   *)
   (*  so the two arms share one continuation: everything the walk needs   *)
   (*  downstream is [it_lregs] (the s-registers), which both arms         *)
@@ -1003,7 +1003,6 @@ Section InstallTransBlocks.
       (j t : nat) (w : mword 32)
       (m M : regfile) (K : nat) (eb : bool) (lks : gset string) :
     (K_install_trans <= K)%nat ->
-    (recovering = true -> printk_gen_contract (kt := KT1) γpr γu γd) ->
     locks_below lks "bcache" ->
     it_lregs recovering m M t ->
     sie_cap_gpr KT1 M (K - 10)%nat eb (proc_addr j) -∗
@@ -1022,7 +1021,7 @@ Section InstallTransBlocks.
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros HK Hpk Hbelow Hregs.
+    intros HK Hbelow Hregs.
     pose proof Hregs as (Hsp & Hs3 & Hs4 & Hs5 & Hs6 & Hs7 & Hs8 & _ & _ & _).
     iIntros "Hcg Hcnt #Htext #Hkd Hpc Hpenvpk Hblk Hcont".
     destruct recovering; cbv iota.
@@ -1126,8 +1125,8 @@ Section InstallTransBlocks.
       { simpl. done. }
       iDestruct (cpu_own_transport CID0 CIDh5 0%nat eb (proc_addr j) eb
                    ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
-      pose proof (Hpk eq_refl) as Hpkc.
-      iApply (Hpkc CIDh5 XI Mh4 (K - 10)%nat eb (proc_addr j) DfracDiscarded
+      iApply (Printk.wp_printk_gen_sconf (CID := CIDh5) (XI := XI) KT1 _ _ _
+                Mh4 (K - 10)%nat eb (proc_addr j) (dqf := DfracDiscarded)
                 it_fmt_s [PkANum; PkANum] eb lks
                 ltac:(pose proof printk_stack; lia)
                 ltac:(exact (proj2 (proj2 it_fmt_fmt)))
@@ -1797,7 +1796,6 @@ Section InstallTransBlocks.
     (recovering = true ->
      forall (i : nat) (w : mword 32),
        W !! i = Some w -> uint w ∈ Xexc /\ Xv (uint w) = Lw i) ->
-    (recovering = true -> printk_gen_contract (kt := KT1) γpr γu γd) ->
     forall (CID0 : CpuId) (t : nat) (M : regfile),
     (t < n)%nat ->
     (n - t <= fuel)%nat ->
@@ -1850,7 +1848,7 @@ Section InstallTransBlocks.
     it_cont (CID0 := CID0)  j bn γfs logstart recovering n W Lw Xexc L D pidv dq m K eb eb (R n) lks Upr -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros HK Hgeom Hj Hgl Hshape Hnd Hwok HLw HD Hexc Hpk.
+    intros HK Hgeom Hj Hgl Hshape Hnd Hwok HLw HD Hexc.
     destruct Hshape as [HnW Hn30].
     destruct Hgeom as [Hcovok Hlogsub].
     induction fuel as [|fuel IH]; intros CID0 t M Ht Hfuel Hregs Hbelow.
@@ -1894,7 +1892,7 @@ Section InstallTransBlocks.
     (* ===== +0x6c -> +0x70 : the loop head (branch + the recovering
        arm's printk), one CPS block for both arms ===== *)
     iApply (it_head γpr γu γd recovering j t w m M K eb lks
-              HK Hpk Hbelow Hregs
+              HK Hbelow Hregs
               with "Hcg Hcnt Htext Hkd Hpc Hpenvpk Hblk").
     iIntros (CIDa1 Hsa1 M0) "%HM0regs Hcg Hcnt Hpc Hblk".
     pose proof HM0regs as (HMsp & HMs3 & HMs4 & HMs5 & HMs6 & HMs7 & HMs8 & HMs9 & HMs10 & HMs11).
@@ -2726,7 +2724,7 @@ Section ProofInstallTrans.
                                   pidv dq m K eb b R lks Upr.
   Proof.
     cbv beta delta [wp_install_trans_sconf_body].
-    intros pcE pj ret_tgt HK Hgeom Hj Hgl Ha0 Hshape Hnd Hwok HLw HD Hexc Hbelow Hpk.
+    intros pcE pj ret_tgt HK Hgeom Hj Hgl Ha0 Hshape Hnd Hwok HLw HD Hexc Hbelow.
     destruct Hshape as [HnW Hn30].
     iIntros "Hcg Hcnt Hextc Hextm #Htext #Hkd Hpc #Hpenv #Hpenvpk #Hbio #Hlfz Hppid #Hprocs".
     iIntros "#Hdev #Hgeo #Hdlock Hncell Hblks #Hbinv Hxo HauthL HauthD Hents Hslots #Hperm HR Hcont".
@@ -3341,14 +3339,14 @@ Section ProofInstallTrans.
       destruct recovering.
       + iApply (it_loop n γs j γl γu γd γk pd pav pu bn γfs γpr cov logstart dev
                   true n W Lw home Xv Xexc L D pidv dq m K eb R lks Upr
-                  HK Hgeom Hj Hgl (conj HnW Hn30) Hnd Hwok HLw HD Hexc Hpk
+                  HK Hgeom Hj Hgl (conj HnW Hn30) Hnd Hwok HLw HD Hexc
                   CIDq12 0%nat Q11 Hnp (it_fuel0 n) HQ11regs Hbelow
                   with "Hcg Hcnt Hextc Hextm Htext Hkd Hpc Hpenv Hpenvpk Hbio Hlfz Hppid Hprocs
                         Hdev Hgeo Hdlock Hframe Hncell Hblks Hbinv Hxo HauthL HauthD Hdone Hents
                         Hslots Hperm HR Hcont").
       + iApply (it_loop n γs j γl γu γd γk pd pav pu bn γfs γpr cov logstart dev
                   false n W Lw home Xv Xexc L D pidv dq m K eb R lks Upr
-                  HK Hgeom Hj Hgl (conj HnW Hn30) Hnd Hwok HLw HD Hexc Hpk
+                  HK Hgeom Hj Hgl (conj HnW Hn30) Hnd Hwok HLw HD Hexc
                   CIDq12 0%nat Q11 Hnp (it_fuel0 n) HQ11regs Hbelow
                   with "Hcg Hcnt Hextc Hextm Htext Hkd Hpc Hpenv Hpenvpk Hbio Hlfz Hppid Hprocs
                         Hdev Hgeo Hdlock Hframe Hncell Hblks Hbinv Hxo HauthL HauthD Hdone Hents

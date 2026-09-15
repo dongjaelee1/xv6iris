@@ -7,5 +7,6 @@
    two functions' own Link files). *)
 Require Import LinkInitlock LinkBread LinkBrelse LinkInstallTrans LinkWriteHead
         ProofInitlog.
+Require Import LinkPrintk.
 
-Module Initlog := InitlogProof Initlock Bread Brelse InstallTrans WriteHead.
+Module Initlog := InitlogProof Initlock Bread Brelse InstallTrans WriteHead PrintkGen.

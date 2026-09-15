@@ -107,6 +107,7 @@ From iris.base_logic.lib Require Import ghost_var invariants gen_heap.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto.
+Require Import SpecPrintk.
 Require Import InstrBytes.
 Require Import RegFile WpNext.
 Require Import RiscvExtras.
@@ -1106,6 +1107,7 @@ Module Type SYSCALL.
       is_ftable γft γf -∗
       procs_inv (fcn_procs fn) -∗
       disk_geom (fsc_disk) (fcn_pd fn) (fcn_pav fn) (fcn_pu fn) -∗
+      printk_env fsc_printk fsc_uart fsc_disk -∗
       first_done -∗
       (* the world a child's park needs, copied in -- see [ProofSyscall]'s
          [syscall_env] *)

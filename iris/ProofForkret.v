@@ -42,6 +42,7 @@ From iris.base_logic.lib Require Import ghost_var invariants gen_heap.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras.
+Require Import SpecPrintk.
 Require Import RiscvModelBytes.   (* [pa_add] -- how kexec indexes its byte runs *)
 Require Import PageGeom.
 Require Import InstrBytes WireInv.   (* [wire_inv] -- named by [fkr_tail]'s statement *)
@@ -1114,7 +1115,7 @@ Proof.
   (* the token's persistent half, opened once: seventeen rows, and every
      one of them is a premise of fsinit, of kexec, or of the seal. *)
   iEval (rewrite /first_boot_persist) in "Hbp".
-  iDestruct "Hbp" as "(_ & #Hkdata & #Hpenv & %Hpkc & #Hbio & #Hseam & #Hgen &
+  iDestruct "Hbp" as "(_ & #Hkdata & #Hpenv & #Hbio & #Hseam & #Hgen &
                        #Hdevi & #Hdisk & #Hitb2 & #Hitbl & #Hesc & #Hslks &
                        #Hireg & #Hbits & #Hkmem & %Hgeom)".
   iDestruct "Hdisk" as (pd pav pu) "[#Hdgeom #Hdlock]".
@@ -1243,7 +1244,7 @@ Proof.
             Hmagic eq_refl eq_refl eq_refl eq_refl
             Hn1 Hnnib Hn31 Hdev Hnib0
             Hist0 Hiregb Hsize Hbm0 Hbmcov Hbmlog Hcovb
-            Hhdrbnd Hhdrnd Hhdrok Hxvslot HLdk Hpkc Hjlt Hgl
+            Hhdrbnd Hhdrnd Hhdrok Hxvslot HLdk Hjlt Hgl
             HB6a0 ltac:(lkbelow)
             with "Hcg Hcpu Hextc Hclmc Htext Hkdata Hpc Hpenv Hbio Hseamg Hxfer Hgen
                   Hmirf Hlfree Hbinvf Hb1 Hxo Hsbraw Hireg Hboot Hitb2 Hitbl Hesc Hslks
@@ -1350,7 +1351,6 @@ Proof.
     iSplitR; [iExact "Htext" |].
     iSplitR; [iExact "Hkdata" |].
     iSplitR; [iExact "Hpenv" |].
-    iSplitR; [iPureIntro; exact Hpkc |].
     iSplitR; [iExact "Hbio" |].
     iSplitR; [iExact "Hseam" |].
     iSplitR; [iExact "Hgen" |].
@@ -1521,7 +1521,7 @@ Proof.
   iPoseProof (log_ctx_seal with "Hlctx") as "#Hbseal".
   iDestruct (InodeRegion.ireg_inv_of with "Hireg Hbseal") as "#HiregS".
   iDestruct (BitmapInv.bitmap_inv_of with "Hbits Hbseal") as "#HbitsS".
-  iDestruct (fs_ready_panic with "Hfsr") as "#Hpenv2".
+  iPoseProof (SpecPrintk.printk_env_panic with "Hpenv") as "#Hpenv2".
   iDestruct (fs_ready_region with "Hfsr") as "[_ #Hropen]".
   iDestruct (fs_ready_kalloc with "Hfsr") as "#Hkaenv".
   iAssert (fs_fabric γs pd pav pu)
@@ -1532,6 +1532,7 @@ Proof.
      [iFrame] over that many definition-valued rows measured 61.0 s. *)
   { rewrite /fs_fabric.
     iSplitR; [iExact "Hfsr" |].
+    iSplitR; [iExact "Hpenv" |].
     iSplitR; [iExact "Hpinv" |].
     iSplitR; [iExact "Hdgeom" |].
     iExact "Hdlock". }

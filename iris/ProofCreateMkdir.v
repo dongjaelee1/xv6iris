@@ -237,7 +237,6 @@ Section ProofCreateMkdir.
     fsc_ninodes <= 16 * Z.of_nat icfg_nib ->
     fsc_ninodes < 2 ^ 31 ->
     16 * Z.of_nat icfg_nib <= 2 ^ 16 ->
-    printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
     (create_units <= u)%nat ->
     (create_slots <= ns)%nat ->
     (j < NPROC)%nat ->
@@ -271,7 +270,7 @@ Section ProofCreateMkdir.
                     P Pmiss Farm Fdots Fun Fok Fex).
   Proof.
     intros HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0
-           Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Hpkc Hu Hns Hj Hgs
+           Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Hu Hns Hj Hgs
            Hspm Hrt Hal10 Hal9 Heb.
     destruct (cr_kb K HK)
       as (HK10 & HKnp & HKil & HKdlu & HKiup & HKia & HKiu & HKdlk & HKsum).
@@ -595,7 +594,7 @@ Section ProofCreateMkdir.
               ltac:(exact (di_type_stable_refl _))
               ltac:(exact (di_nlink_stable_refl _ Hctynz))
               Hlg Hcbmwf Hcholes Hcaddr Hcsz31 Hist0 Hcblk Hcblog Hcinb
-              Hcl16b Hbmgeo Hpkc Hsize Hbms0 Hbmsc Hbmsl Hcovb Hiregb
+              Hcl16b Hbmgeo Hsize Hbms0 Hbmsc Hbmsl Hcovb Hiregb
               ltac:(rewrite Hcnrec0 Hck0; rewrite Hind0;
                     exact (cr_alloc_dlneed n3 _ false Hn3lo))
               Hj Hgs HZ5a0 HZ5a2 Heb ltac:(lkbelow)
@@ -1065,7 +1064,7 @@ Section ProofCreateMkdir.
                 ltac:(exact (di_type_stable_refl _))
                 ltac:(exact (di_nlink_stable_refl _ Hc1tynz))
                 Hlg Hwf1 Hholes1 Haddr1 Hsz311 Hist0 Hcblk Hcblog Hcinb
-                Hdl16b Hbmgeo Hpkc Hsize Hbms0 Hbmsc Hbmsl Hcovb Hiregb
+                Hdl16b Hbmgeo Hsize Hbms0 Hbmsc Hbmsl Hcovb Hiregb
                 Hdlneed4
                 Hj Hgs HY5a0 HY5a2 Heb ltac:(lkbelow)
                 with "Hcg Hcnt Htext Hpc Hkd Hpk Hbio Hlogc Hkenv
@@ -1482,7 +1481,7 @@ Section ProofCreateMkdir.
                   ltac:(exact (di_type_stable_refl dn))
                   ltac:(exact (di_nlink_stable_refl dn Htynzd))
                   Hlg Hbmwf Hholes Hdaddr Hsz31 Hist0 Hdblk Hdblog Hdib
-                  Hcl16b Hbmgeo Hpkc Hsize Hbms0 Hbmsc Hbmsl Hcovb Hiregb
+                  Hcl16b Hbmgeo Hsize Hbms0 Hbmsc Hbmsl Hcovb Hiregb
                   ltac:(rewrite Hcrb3;
                         exact (cr_mkdir_dl3_need n3 n4 n5 _ _ _ _ _ true _
                                  Hn3lo Hcorr' Hspend1 Hspend2 eq_refl eq_refl))

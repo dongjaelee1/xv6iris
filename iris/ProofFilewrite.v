@@ -1026,10 +1026,11 @@ Require Import FsAbsDefs.              (* LAST (FsAbs's own rule)              *
    device arm relays an accepted-trace receipt on the console major, and
    consolewrite's contract is the general form at every other major too (its
    seed is free there), so one walk serves them all. *)
+Require Import SpecPrintk.
+
 Module FilewriteProof (Pipewrite : PIPEWRITE) (Ilock : ILOCK) (Writei : WRITEI)
                       (Iunlock : IUNLOCK) (BeginOp : BEGIN_OP) (EndOp : END_OP)
-                      (Consolewrite : CONSOLEWRITE) (PN : PANIC)
-                      : FILEWRITE.
+                      (Consolewrite : CONSOLEWRITE) (PN : PANIC) (Printk : PRINTK_GEN) : FILEWRITE.
 
 Section ProofFilewrite.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ}.
@@ -1908,7 +1909,6 @@ Section ProofFilewrite.
          ∉ log_region_set fsc_logst) ->
     BitmapInv.bitmap_geom_ok fsc_cov fsc_logst
       (fsc_bmapstart) (fsc_size) ->
-    SpecPrintk.printk_gen_contract (kt := KT1) (fsc_printk) (fsc_uart) (fsc_disk) ->
     (* ---- THE FUEL, and everything the loop carries under it ---- *)
     (* the ROUND'S image: writei's user arm faults pages in, so the block
        comes back at a fresh one and [MI] is carried like [PI]. *)
@@ -2024,7 +2024,7 @@ Section ProofFilewrite.
     WP (Loop : expr riscv_lang).
   Proof.
     intros HK Hkf Hjp Hgsj Hlens Hfnj Hfnps Hn Heb Hstx Hspm Hpjeq.
-    intros P1 P2 P3q P4q P6 P7.
+    intros P1 P2 P3q P4q P6.
     (* [pj] is the CALLER's let-bound local and every callee contract below
        states its resources at [proc_addr jx]; the two are the same word and
        the equation is eliminated once here rather than rewritten at each of
@@ -2615,7 +2615,7 @@ Section ProofFilewrite.
               (SpecFilewrite.fw_chunk_joint (Z.to_nat (bv_unsigned v))
                  (Z.to_nat c) Hoffb Hcb)
               (fw_size_lt31 (bv_unsigned (di_size dnl)) (proj1 (bv_unsigned_in_range _ _)) Hszb)
-              P6 P7 Hjp Hgsj
+              P6 Hjp Hgsj
               ltac:(rewrite HQ6a0; exact P8)
               ltac:(rewrite HQ6a1; vm_compute; reflexivity)
               HQ6a3 HQ6a4
@@ -5411,7 +5411,7 @@ Section ProofFilewrite.
                     environment (the cinv is minted per publication, so no
                     fixed persistent family can exist); the names below keep
                     their meanings and the seventh slot is simply gone. *)
-                 iDestruct "Henv" as "(%E1 & %E2 & %E3 & %E4 & %E5 & %E6 & #E8 & #E9 & #E10 & #E11 & #E12 & #E13 & #E14 & #E26 & #E15 & #E16 & #E17 & E18 & E19 & E20 & #E21 & #E22 & #E23 & #E24 & E25)".
+                 iDestruct "Henv" as "(%E1 & %E2 & %E3 & %E4 & %E5 & #E8 & #E9 & #E10 & #E11 & #E12 & #E13 & #E14 & #E26 & #E15 & #E16 & #E17 & E18 & E19 & E20 & #E21 & #E22 & #E23 & #E24 & E25)".
                  (* the loop still takes the ONE slot's off-borrow invariant;
                     the environment now carries the family, so it is selected
                     here rather than by the caller. *)
@@ -5431,7 +5431,7 @@ Section ProofFilewrite.
                            m K eb n b sp0 w12 pj lks Q
                            HK Hk Hj Hgs Hlens Hfnj Hfnps Hn01 Heb Hstx Hspm
                            ltac:(reflexivity)
-                           E1 E2 E3 E4 E5 E6
+                           E1 E2 E3 E4 E5
                            (Z.to_nat n) 0%Z 0%Z 0%nat (pv_upt (us_V U)) L7
                            ltac:(rewrite (Z2Nat.id n Hn0); lia)
                            ltac:(lia)

@@ -26,19 +26,6 @@
    The [kernel_data] / [panic_env] the contract takes are threaded to all
    five callees, whose own panic arms are discharged against [Panic].
 
-   *** READ THIS BEFORE TRUSTING "THE STANDING SIX". ***  ireclaim's orphan
-   arm calls printk on its general path (with a [%d]), and [PRINTK_GEN]'s only
-   instance is [LinkPrintk]'s own [Axiom].  SpecIreclaim.v therefore takes
-   printk's contract as a PURE HYPOTHESIS ([SpecPrintk.printk_gen_contract])
-   and SpecFsinit.v threads that same hypothesis down to it -- so the
-   obligation is now TWO deep, and the boot client above fsinit (forkret /
-   main) is where it finally has to be discharged, or accepted as
-   [SpecPanic]'s own credentials already are.  [Print Assumptions
-   Fsinit.wp_fsinit_sconf] therefore stays at the standing six -- the five
-   platform axioms plus funext -- but the six are MODULO that threaded printk
-   obligation.  This is SpecBalloc.v's /
-   LinkIalloc.v's / LinkIreclaim.v's arrangement verbatim; a reader who takes
-   the six for "depends on nothing else" is misreading it.
 
    THE BOOT CLIENT'S SIDE OF THE BARGAIN, in one place: fsinit needs
    [bslots 35] ((LOGBLOCKS + 2) + 2 + 1), the raw 32 bytes of .bss at

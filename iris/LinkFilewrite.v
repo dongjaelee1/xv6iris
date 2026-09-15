@@ -21,6 +21,7 @@
 Require Import LinkPipewrite LinkIlock LinkWritei LinkIunlock LinkBeginOp
                 LinkEndOp LinkConsolewrite LinkPanic
                 ProofFilewrite.
+Require Import LinkPrintk.
 
 Module Filewrite := FilewriteProof Pipewrite Ilock Writei Iunlock BeginOp
-                                   EndOp Consolewrite Panic.
+                                   EndOp Consolewrite Panic PrintkGen.

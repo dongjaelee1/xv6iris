@@ -612,7 +612,6 @@ Definition wp_writei_sconf_body
   bitmap_geom_ok fsc_cov fsc_logst fsc_bmapstart fsc_size ->
   (* balloc's out-of-blocks arm calls the GENERAL printk path; carried as a
      hypothesis, never a functor.  See SpecBalloc.v's header. *)
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (j < NPROC)%nat ->
   γs !! j = Some γl ->
   (* a0 = ip *)
@@ -912,7 +911,6 @@ Definition wp_writei_gen_body
   bitmap_geom_ok fsc_cov fsc_logst fsc_bmapstart fsc_size ->
   (* balloc's out-of-blocks arm calls the GENERAL printk path; carried as a
      hypothesis, never a functor.  See SpecBalloc.v's header. *)
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (j < NPROC)%nat ->
   γs !! j = Some γl ->
   (* a0 = ip *)

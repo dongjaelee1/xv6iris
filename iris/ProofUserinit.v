@@ -76,6 +76,7 @@ From iris.program_logic Require Import language weakestpre lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvModelBytes.
+Require Import SpecPrintk.
 Require Import RiscvLang RiscvPtsto.
 Require Import RegFile HartTp WpNext.
 Require Import WpMmodeLeafBase.
@@ -835,7 +836,7 @@ Section ProofUserinit.
     iAssert (⌜fs_geom_ok⌝)%I as %Hgeomok.
     { iPoseProof "Hpersist" as "Hp".
       iEval (rewrite /first_boot_persist) in "Hp".
-      iDestruct "Hp" as "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
+      iDestruct "Hp" as "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
                          _ & _ & _ & _ & %Hg)".
       iPureIntro. exact Hg. }
     pose (N := MkUtNames γft γf γw γs j γl pd pav pu
@@ -844,6 +845,10 @@ Section ProofUserinit.
  ks pid).
     assert (Hwf : ut_wf N).
     { split_and!; [exact Hj | exact Hgl | exact Hnproc | exact (fgo_loggeom Hgeomok)]. }
+    iAssert (SpecPrintk.printk_env (FsCfg.fsc_printk) (FsCfg.fsc_uart) (FsCfg.fsc_disk)) as "#Hpke".
+    { iPoseProof "Hpersist" as "Hp2".
+      iEval (rewrite /first_boot_persist) in "Hp2".
+      iDestruct "Hp2" as "(_ & _ & $ & _)". }
     iAssert (park_env N) as "#Henv".
     { iAssert (disk_geom fsc_disk pd pav pu ∗ is_tickslock γtl)%I as "[#Hgeom #Htl]".
       { iDestruct "Hdcaps" as "(_ & _ & $ & _ & $ & _)". }
@@ -856,6 +861,7 @@ Section ProofUserinit.
         iSplitR; [iExact "Hpinv"|].
         iSplitR; [iExact "Hks"|].
         iSplitR; [iExact "Hdcaps"|].
+        iSplitR; [iExact "Hpke"|].
         iSplitR; [iExact "Hwaitlk"|].
         iSplitR; [iExact "Hftable"|].
         iSplitR; [iExact "Hgeom"|].

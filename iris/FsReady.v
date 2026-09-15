@@ -147,7 +147,6 @@ Require Import FsCfg.
 Require Import KallocInv.   (* [kmem_res], [kalloc_avail] *)
 Require Import KvmSpec.
 Require Import FileInvDefs.
-Require Import SpecPrintk.
 Require Import ProcAvail.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 From Kernel Require KernelSyms.
@@ -269,9 +268,7 @@ Section FsReady.
   (* ================================================================== *)
 
   (* THE RUNTIME FILE SYSTEM.  Every invariant, lock handle and certificate
-     the fs cone runs on, plus the printk credential PAIR (the resource and
-     its pure contract, which travel together and are wanted together by
-     ialloc's out-of-inodes arm).
+     the fs cone runs on.
 
      NO PARAMETERS.  Every name it used to take is ambient: the four the
      inode cache already owned ([icfg_log], [icfg_ist], [icfg_nib],
@@ -297,8 +294,6 @@ Section FsReady.
      see the header. *)
   Definition fs_ready : iProp Σ :=
     (kernel_text ∗ kernel_data ∗
-     printk_env fsc_printk fsc_uart fsc_disk ∗
-     ⌜printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk⌝ ∗
      bio_ctx fsc_bio (fs_view fsc_fs fsc_disk icfg_dev fsc_cov) ∗
      log_ctx icfg_log fsc_bio fsc_fs fsc_cov fsc_logst icfg_dev ∗
      fs_crash_seam fsc_cov fsc_logst ∗
@@ -396,8 +391,6 @@ Section FsReady.
      constituent by constituent. *)
   Definition fs_ready_pre : iProp Σ :=
     (kernel_text ∗ kernel_data ∗
-     printk_env fsc_printk fsc_uart fsc_disk ∗
-     ⌜printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk⌝ ∗
      bio_ctx fsc_bio (fs_view fsc_fs fsc_disk icfg_dev fsc_cov) ∗
      log_ctx icfg_log fsc_bio fsc_fs fsc_cov fsc_logst icfg_dev ∗
      fs_crash_seam fsc_cov fsc_logst ∗
@@ -436,12 +429,12 @@ Section FsReady.
     iIntros "Hpre Hboot".
     iMod (fs_ready_seal with "Hboot") as "#Hopen".
     iModIntro. rewrite /fs_ready /fs_ready_pre.
-    (* NINETEEN rows now, not twenty: the [disk_geom]/[is_lock] pair is one
-       existentially-quantified conjunct (R1). *)
-    iDestruct "Hpre" as "(H1 & H2 & H3 & %H4 & H5 & H6 & H7 & H8 & H9 & H10
+    (* the [disk_geom]/[is_lock] pair is one existentially-quantified
+       conjunct (R1). *)
+    iDestruct "Hpre" as "(H1 & H2 & H5 & H6 & H7 & H8 & H9 & H10
                           & H11 & H12 & H13 & H14 & H15 & H16 & H17
                           & %H18 & #H19 & #H20 & #H21)".
-    iFrame "H1 H2 H3 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15".
+    iFrame "H1 H2 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15".
     iFrame "Hopen H16 H17 H19 H20 H21". iFrame "%".
   Qed.
 
@@ -452,10 +445,10 @@ Section FsReady.
   Lemma fs_ready_pre_of : fs_ready -∗ fs_ready_pre.
   Proof.
     rewrite /fs_ready /fs_ready_pre.
-    iIntros "(H1 & H2 & H3 & %H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11
+    iIntros "(H1 & H2 & H5 & H6 & H7 & H8 & H9 & H10 & H11
               & H12 & H13 & H14 & H15 & _ & H16 & H17 & %H18 & #H19 & #H20
               & #H21)".
-    iFrame "H1 H2 H3 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 H17 H19 H20
+    iFrame "H1 H2 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 H17 H19 H20
             H21".
     iFrame "%".
   Qed.
@@ -470,39 +463,25 @@ Section FsReady.
      persistent row can feed a callee that spells seven.
 
      They are grouped the way real contracts group them: the machine's data
-     certificate, the printk pair (and the [panic_env] every
-     panic arm actually asks for), the block/log fabric, the disk fabric,
-     the icache's four, the inode region's two, and the allocator. *)
+     certificate, the block/log fabric, the disk fabric, the icache's four,
+     the inode region's two, and the allocator. *)
 
   Lemma fs_ready_data : fs_ready -∗ kernel_data.
   Proof. rewrite /fs_ready. by iIntros "(_ & $ & _)". Qed.
 
-  Lemma fs_ready_printk :
-    fs_ready -∗ printk_env fsc_printk fsc_uart fsc_disk ∗
-                ⌜printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk⌝.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & $ & $ & _)". Qed.
-
-  (* what a panic arm actually asks for -- [printk_env] is strictly
-     stronger, and this is the standing weakening. *)
-  Lemma fs_ready_panic : fs_ready -∗ SpecPanic.panic_env.
-  Proof.
-    iIntros "H". iDestruct (fs_ready_printk with "H") as "[Hp _]".
-    by iApply printk_env_panic.
-  Qed.
-
   Lemma fs_ready_bio :
     fs_ready -∗ bio_ctx fsc_bio (fs_view fsc_fs fsc_disk icfg_dev fsc_cov).
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & $ & _)". Qed.
+  Proof. rewrite /fs_ready. by iIntros "(_ & _ & $ & _)". Qed.
 
   Lemma fs_ready_log :
     fs_ready -∗ log_ctx icfg_log fsc_bio fsc_fs fsc_cov fsc_logst icfg_dev.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & $ & _)". Qed.
+  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & $ & _)". Qed.
 
   Lemma fs_ready_seam : fs_ready -∗ fs_crash_seam fsc_cov fsc_logst.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & $ & _)". Qed.
+  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & $ & _)". Qed.
 
   Lemma fs_ready_gen : fs_ready -∗ gen_cert.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & $ & _)". Qed.
+  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & $ & _)". Qed.
 
   (* THE RECOVERY R1 RESTS ON.  The three ring pages left [fscfg] because
      [virtio_disk_init] [kalloc]s them at WP time, so [fs_ready] quantifies
@@ -537,7 +516,7 @@ Section FsReady.
                    is_lock fsc_dlock d_lock "virtio_disk"%string (disk_res_at fsc_disk pd pav pu)).
   Proof.
     rewrite /fs_ready.
-    by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & $ & $ & _)".
+    by iIntros "(_ & _ & _ & _ & _ & _ & $ & $ & _)".
   Qed.
 
   (* the icache's four, likewise *)
@@ -548,8 +527,7 @@ Section FsReady.
                 ic_sleeplocks fsc_ic.
   Proof.
     rewrite /fs_ready.
-    by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _
-                 & $ & $ & $ & $ & _)".
+    by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & $ & $ & $ & $ & _)".
   Qed.
 
   (* THE INODE REGION, AND ITS REGIME.  This is the pair the whole
@@ -561,8 +539,7 @@ Section FsReady.
     fs_ready -∗ ireg_inv fsc_ireg fsc_fs icfg_ist icfg_nib ∗ ireg_open.
   Proof.
     rewrite /fs_ready.
-    by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _
-                 & $ & $ & _)".
+    by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & $ & _)".
   Qed.
 
   (* THE ALLOCATOR, in the two forms its consumers want: the pair SPELLED
@@ -575,7 +552,7 @@ Section FsReady.
     kalloc_avail fsc_kpages None.
   Proof.
     rewrite /fs_ready.
-    by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & $ & _)".
+    by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & $ & _)".
   Qed.
 
   Lemma fs_ready_kalloc : fs_ready -∗ kalloc_env fsc_kalloc None.
@@ -589,17 +566,17 @@ Section FsReady.
      premises and four superblock cells free: a caller holding [fs_ready]
      reads them off it, and needs nothing of its own. *)
   Lemma fs_ready_geom : fs_ready -∗ ⌜fs_geom_ok⌝.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & _)". Qed.
+  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & _)". Qed.
 
   Lemma fs_ready_sb : fs_ready -∗ fs_sb_cells.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & _)". Qed.
+  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & _)". Qed.
 
   (* ---- THE BITMAP --------------------------------------------------
      The row balloc and bfree take, and the one [SpecFileclose]'s persistent
      bundle carries in place of the exclusive [bitmap_res] it used to. *)
   Lemma fs_ready_bitmap :
     fs_ready -∗ bitmap_inv fsc_fs fsc_bmapstart fsc_cov fsc_logst fsc_size.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $)". Qed.
+  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $)". Qed.
 
   (* the same four cells, spelled one by one -- the form every existing fs
      contract states them in, at [dq := DfracDiscarded]. *)
@@ -620,8 +597,6 @@ Section FsReady.
   Lemma fs_ready_all :
     fs_ready -∗
     kernel_text ∗ kernel_data ∗
-    printk_env fsc_printk fsc_uart fsc_disk ∗
-    ⌜printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk⌝ ∗
     bio_ctx fsc_bio (fs_view fsc_fs fsc_disk icfg_dev fsc_cov) ∗
     log_ctx icfg_log fsc_bio fsc_fs fsc_cov fsc_logst icfg_dev ∗
     fs_crash_seam fsc_cov fsc_logst ∗ gen_cert ∗
@@ -643,10 +618,10 @@ Section FsReady.
   Proof.
     iIntros "H". iDestruct (fs_ready_kalloc with "H") as "#Hka".
     rewrite /fs_ready.
-    iDestruct "H" as "(H1 & H2 & H3 & %H4 & H5 & H6 & H7 & H8 & H9 & H10
+    iDestruct "H" as "(H1 & H2 & H5 & H6 & H7 & H8 & H9 & H10
                        & H11 & H12 & H13 & H14 & H15 & H16 & _ & _
                        & %H19 & #H20 & #H21)".
-    iFrame "H1 H2 H3 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 Hka H20 H21".
+    iFrame "H1 H2 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 Hka H20 H21".
     iFrame "%".
   Qed.
 

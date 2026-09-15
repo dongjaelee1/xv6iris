@@ -195,9 +195,7 @@ End PRINTK.
    and the return-value postcondition dropped -- the strictly weaker fact
    those callers actually need.  [printk_env] bundles the two persistent
    credentials that instantiation wants (pr.lock's [is_lock] and
-   [SpecPrputc.prputc_env]) as ONE, and [printk_gen_contract] packages the
-   whole thing as a [Prop] so a caller can carry it as a plain hypothesis
-   instead of instantiating a functor -- [LinkPrintk.v] proves it once, as a
+   [SpecPrputc.prputc_env]) as ONE.  [LinkPrintk.v] proves the contract once, as a
    corollary of [PRINTK] above, and every consumer threads that proof (or, for
    main/main-secondary/usertrap, the [PRINTK_GEN] functor it also seals).
 
@@ -312,17 +310,6 @@ Definition wp_printk_gen_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CI
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
-(* printk's general contract as a PROP, so a caller can carry it as a
-   HYPOTHESIS rather than instantiate a functor -- the [Prop] twin of
-   [SpecPanic]'s own credentials, and the same idiom [ProofBmap.balloc_contract]
-   uses.  [LinkPrintk.printk_gen_contract_holds] proves it unconditionally, so
-   a holder pays nothing beyond the standing platform/stdlib axioms. *)
-Definition printk_gen_contract `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId}
-    {kt : ktier} (γpr : gname) (γd : uart_names) (γv : disk_names) : Prop :=
-  forall (CIDp : CpuId) (XIp : CurCtx)
-    (m0 : regfile) (K : nat) (eb : bool) (pj : mword 64)
-    (dqf : dfrac) (f : string) (descs : list pk_arg_desc) (b : bool) (lks : gset string),
-    wp_printk_gen_sconf_body kt (CID := CIDp) (XI := XIp) γpr γd γv m0 K eb pj dqf f descs b lks.
 
 Module Type PRINTK_GEN.
   Parameter wp_printk_gen_sconf :

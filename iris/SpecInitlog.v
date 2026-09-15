@@ -230,7 +230,6 @@ Definition wp_initlog_sconf_body
      b ∈ cov /\ b ∉ log_region_set logstart) ->
   (* the recovering install's printk (dead at a clean header, but the
      general install contract carries it), as a pure Prop hypothesis *)
-  printk_gen_contract (kt := KT1) γpr γu γd ->
   (* the two arguments (RV64 ABI: the [int dev] arrives sign-extended) *)
   m !!! Regidx (mword_of_int 10 : mword 5) = sign_extend' 64 dev ->
   m !!! Regidx (mword_of_int 11 : mword 5) = sb ->

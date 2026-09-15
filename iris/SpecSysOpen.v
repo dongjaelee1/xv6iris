@@ -326,7 +326,7 @@ Require Import FileInv.               (* [is_ftable], [fnode] *)
 Require Import UserPtTree.
 Require Import ProcPtOwn.
 Require Import ProcInv.
-Require Import SpecPrintk.      (* [printk_env], [printk_gen_contract] *)
+Require Import SpecPrintk.      (* [printk_env] *)
 Require Import SpecDirlink.     (* [ic_sleeplocks], [ireg_blocks_ok] *)
 Require Import SpecFdalloc.     (* [fd_frees] *)
 Require Import SpecCreate.      (* [create_slots], the create arms and their
@@ -1468,7 +1468,6 @@ Definition wp_sys_open_frame
   fsc_ninodes <= 16 * Z.of_nat icfg_nib ->
   fsc_ninodes < 2 ^ 31 ->
   16 * Z.of_nat icfg_nib <= 2 ^ 16 ->
-  printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
   (sys_open_slots <= ns)%nat ->
   (j < NPROC)%nat ->
   gs !! j = Some gl ->

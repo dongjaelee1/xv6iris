@@ -238,7 +238,6 @@ Section ProofCreateAlloc.
     bv_unsigned ty <> 0 ->
     (* durable-disk 2b-inode-3: ialloc's claim box owes the region (L5) *)
     InodeRegion.ireg_ty_ok (ialloc_fresh ty) ->
-    printk_gen_contract (kt := KT1) fsc_printk fsc_uart fsc_disk ->
     (create_units <= u)%nat ->
     (create_slots <= ns)%nat ->
     (j < NPROC)%nat ->
@@ -303,7 +302,7 @@ Section ProofCreateAlloc.
                     P Pmiss Farm Fdots Fun Fok Fex).
   Proof.
     intros HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0
-           Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Htynz Htyk Hpkc Hu Hns Hj Hgs
+           Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Htynz Htyk Hu Hns Hj Hgs
            Hspm Hrt Hal10 Hal9 Heb.
     destruct (cr_kb K HK)
       as (HK10 & HKnp & HKil & HKdlu & HKiup & HKia & HKiu & HKdlk & HKsum).
@@ -401,7 +400,7 @@ Section ProofCreateAlloc.
               q1 Sb1 t (1/4)%Qp (1/4)%Qp
               pidv (DfracOwn (1/4)) dqs dqn Ma (K - 10)%nat eb b lks (upd_usM U _)
               ltac:(exact HKia) ltac:(exact HKil) Hlg Hist0 Hiregb Hni1 Hni2
-              Hni3 Htynz Htyk Hpkc Hj Hgs Hroot A20 A9 Hkdlt Heb ltac:(lkbelow)
+              Hni3 Htynz Htyk Hj Hgs Hroot A20 A9 Hkdlt Heb ltac:(lkbelow)
               (fun (CIDx : CpuId) (XIx : CurCtx) => IA.wp_ialloc_gen (CID := CIDx) (XI := XIx))
               (fun (CIDx : CpuId) (XIx : CurCtx) => IL.wp_ilock_dep_sconf (CID := CIDx) (XI := XIx))
               with "Hcg Hcnt Htext Hpc Hkd Hpk Hbio Hlogc Hitb2 Hitbl
@@ -1046,7 +1045,7 @@ Section ProofCreateAlloc.
                   ltac:(exact (di_type_stable_refl dn))
                   ltac:(exact (di_nlink_stable_refl dn Htynzd))
                   Hlg Hbmwf Hholes Hdaddr Hsz31 Hist0 Hdblk Hdblog Hdib
-                  Hcl16b Hbmgeo Hpkc Hsize Hbms0 Hbmsc Hbmsl Hcovb Hiregb
+                  Hcl16b Hbmgeo Hsize Hbms0 Hbmsc Hbmsl Hcovb Hiregb
                   ltac:(exact (cr_alloc_dlneed (S q2) _ _ ltac:(lia)))
                   Hj Hgs HX4a0 HX4a2 Heb ltac:(lkbelow)
                   with "Hcg Hcnt Htext Hpc Hkd Hpk Hbio Hlogc Hkenv

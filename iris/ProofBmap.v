@@ -174,8 +174,7 @@ Section BmapKit.
   Definition bm_prk (ak : option bm_alloc) (γu : uart_names)
       (γd : disk_names) : iProp Σ :=
     match ak with
-    | Some a => (⌜printk_gen_contract (kt := KT1) (ba_pr a) γu γd⌝ ∗
-                 kernel_data ∗ printk_env (ba_pr a) γu γd)%I
+    | Some a => (kernel_data ∗ printk_env (ba_pr a) γu γd)%I
     | None => emp%I
     end.
 
@@ -186,7 +185,6 @@ Section BmapKit.
       (γu : uart_names) (γd : disk_names) :
     ak = Some a ->
     bm_prk ak γu γd -∗
-      ⌜printk_gen_contract (kt := KT1) (ba_pr a) γu γd⌝ ∗
       kernel_data ∗ printk_env (ba_pr a) γu γd.
   Proof. intros ->. rewrite /bm_prk. iIntros "H". iExact "H". Qed.
 
@@ -1637,7 +1635,7 @@ Section BmapTail.
         as "(%Hbgok & #Hlctx & Hsl & Hop & Hsbsz & Hsbbm & #Hbminv)".
       destruct Hbgok as (Hbgsz & Hbg0 & Hbgcov & Hbglog).
       iDestruct (bm_prk_elim (MkBmAlloc γ bms sz dqb dqs γpr) _ γu γd eq_refl
-                   with "Hprk") as "(%Hprkc & #Hkdata & #Hprkenv)".
+                   with "Hprk") as "(#Hkdata & #Hprkenv)".
       assert (Hjmp9a : add_vec (mword_of_int (KernelSyms.bmap + 0x80) : mword 64)
                 (sign_extend' 64 (sign_extend' 13
                    (concat_vec (mword_of_int 13 : mword 8) ('b"0"))))
@@ -1729,7 +1727,7 @@ Section BmapTail.
                 cov logstart bms sz dev γpr ub crb SbI
                 pidv dq dqb dqs A1
                 (K - 6)%nat eb b lks Upr
-                HKba Hgeom0 Hprkc Hbgsz Hbg0 Hbgcov Hbglog
+                HKba Hgeom0 Hbgsz Hbg0 Hbgcov Hbglog
                 ltac:(intros Hc; specialize (Hcrb Hc); cbn in Hcrb;
                       exact (bmset_sing_in _ _ Hcrb))
                 Hj Hgl HA1a0
@@ -2556,7 +2554,7 @@ Section ProofBmapMain.
           as "(%Hbgok & #Hlctx & Hsl2 & Hop & Hsbsz & Hsbbm & #Hbminv)".
         destruct Hbgok as (Hbgsz & Hbg0 & Hbgcov & Hbglog).
         iDestruct (bm_prk_elim (MkBmAlloc γ bms sz dqb dqs γpr) _ γu γd eq_refl
-                     with "Hprk") as "(%Hprkc & #Hkdata & #Hprkenv)".
+                     with "Hprk") as "(#Hkdata & #Hprkenv)".
         iApply (wp_cbnez_fall_s_sconf (mword_of_int (KernelSyms.bmap + 0x26))
                   (mword_of_int 50 : mword 8) (Cregidx (mword_of_int 1)) Rs1
                   D3 (K - 6)%nat b ltac:(vm_compute; reflexivity) ltac:(nz)
@@ -2633,7 +2631,7 @@ Section ProofBmapMain.
         iApply (Hballoc _ _ γs j γl γu γd γk pd pav pu bn γ γfs
                   cov logstart bms sz dev γpr u2 cr Sb pidv dq dqb dqs D5
                   (K - 6)%nat eb b lks Upr
-                  HKba Hgeom Hprkc Hbgsz Hbg0 Hbgcov Hbglog
+                  HKba Hgeom Hbgsz Hbg0 Hbgcov Hbglog
                   ltac:(intros Hc; specialize (Hcr0 Hc); cbn in Hcr0;
                         exact (bmset_sing_in _ _ Hcr0))
                   Hj Hgl HD5a0
@@ -3127,7 +3125,7 @@ Section ProofBmapMain.
           as "(%Hbgok & #Hlctx & Hsl2 & Hop & Hsbsz & Hsbbm & #Hbminv)".
         destruct Hbgok as (Hbgsz & Hbg0 & Hbgcov & Hbglog).
         iDestruct (bm_prk_elim (MkBmAlloc γ bms sz dqb dqs γpr) _ γu γd eq_refl
-                     with "Hprk") as "(%Hprkc & #Hkdata & #Hprkenv)".
+                     with "Hprk") as "(#Hkdata & #Hprkenv)".
         iApply (wp_cbnez_fall_s_sconf (mword_of_int (KernelSyms.bmap + 0x4c))
                   (mword_of_int 10 : mword 8) (Cregidx (mword_of_int 1)) Rs1
                   J4 (K - 6)%nat b ltac:(vm_compute; reflexivity) ltac:(nz)
@@ -3208,7 +3206,7 @@ Section ProofBmapMain.
         iApply (Hballoc _ _ γs j γl γu γd γk pd pav pu bn γ γfs
                   cov logstart bms sz dev γpr u2 cr Sb pidv dq dqb dqs P1
                   (K - 6)%nat eb b lks Upr
-                  HKba Hgeom Hprkc Hbgsz Hbg0 Hbgcov Hbglog
+                  HKba Hgeom Hbgsz Hbg0 Hbgcov Hbglog
                   ltac:(intros Hc; specialize (Hcr0 Hc); cbn in Hcr0;
                         exact (bmset_sing_in _ _ Hcr0))
                   Hj Hgl HP1a0
@@ -3581,7 +3579,8 @@ End BmapCore.
 (*  code is proved twice.                                                 *)
 (* ===================================================================== *)
 
-Module BmapProof (BA : BALLOC) (BR : BREAD) (BL : BRELSE) (LW : LOG_WRITE) : BMAP.
+Module BmapProof (BA : BALLOC) (BR : BREAD) (BL : BRELSE) (LW : LOG_WRITE) (Printk : PRINTK_GEN) : BMAP.
+
 Module Core := BmapCore BR BL.
 
 Section BmapSeal.
@@ -3606,7 +3605,7 @@ Section BmapSeal.
                          pidv dq dqd dqb dqs m K eb b lks Upr.
   Proof.
     cbv beta delta [wp_bmap_sconf_body].
-    intros pcE pj ret_tgt bnw HK Hn5 Hgeom Hbgok Hprkc Hfbn Hwf Hj Hgl Ha0 Ha1 Hbelow.
+    intros pcE pj ret_tgt bnw HK Hn5 Hgeom Hbgok Hfbn Hwf Hj Hgl Ha0 Ha1 Hbelow.
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc #Hkdata #Hprkenv #Hpanenv #Hbio #Hrow #Hlctx
               Hidev Hmap Hblocks Hppid
               Hsbsz Hsbbm #Hbminv
@@ -3628,7 +3627,7 @@ Section BmapSeal.
                  with "Hlctx Hsl2 Hop Hsbsz Hsbbm Hbminv") as "Hkit".
     iAssert (bm_prk (Some (MkBmAlloc γ bmapstart size dqb dqs γpr)) γu γd)
       as "#Hprk".
-    { rewrite /bm_prk. iSplitR; [iPureIntro; exact Hprkc|]. iFrame "Hkdata Hprkenv". }
+    { rewrite /bm_prk. iFrame "Hkdata Hprkenv". }
     iApply (Core.wp_bmap_gen γs j γl γu γd γk pd pav pu bn
               (Some (MkBmAlloc γ bmapstart size dqb dqs γpr)) γfs
               cov logstart dev ip bm data fbn n false Sb0 pidv (DfracOwn 1) dqd m K eb b lks Upr
@@ -3695,7 +3694,7 @@ Section BmapSeal.
                        pidv dq dqd dqb dqs m K eb b lks Upr.
   Proof.
     cbv beta delta [wp_bmap_gen_body].
-    intros pcE pj ret_tgt bnw HK Hneed Hgeom Hbgok Hprkc Hcrp Hfbn Hwf Hj Hgl
+    intros pcE pj ret_tgt bnw HK Hneed Hgeom Hbgok Hcrp Hfbn Hwf Hj Hgl
            Ha0 Ha1 Hbelow.
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc #Hkdata #Hprkenv #Hpanenv #Hbio #Hrow #Hlctx
               Hidev Hmap Hblocks Hppid
@@ -3712,7 +3711,7 @@ Section BmapSeal.
                  with "Hlctx Hsl2 Hop Hsbsz Hsbbm Hbminv") as "Hkit".
     iAssert (bm_prk (Some (MkBmAlloc γ bmapstart size dqb dqs γpr)) γu γd)
       as "#Hprk".
-    { rewrite /bm_prk. iSplitR; [iPureIntro; exact Hprkc|]. iFrame "Hkdata Hprkenv". }
+    { rewrite /bm_prk. iFrame "Hkdata Hprkenv". }
     iApply (Core.wp_bmap_gen γs j γl γu γd γk pd pav pu bn
               (Some (MkBmAlloc γ bmapstart size dqb dqs γpr)) γfs
               cov logstart dev ip bm data fbn n cr Sb pidv (DfracOwn 1) dqd m K eb b lks Upr
@@ -3762,7 +3761,8 @@ End BmapSeal.
 
 End BmapProof.
 
-Module BmapNoallocProof (BR : BREAD) (BL : BRELSE) : BMAP_NOALLOC.
+Module BmapNoallocProof (BR : BREAD) (BL : BRELSE) (Printk : PRINTK_GEN) : BMAP_NOALLOC.
+
 Module Core := BmapCore BR BL.
 
 Section BmapNoallocSeal.

@@ -1041,7 +1041,7 @@ Section ProofSysMknodBody.
     cbv beta delta [wp_sys_mknod_frame].
     intros pcE pj ret_tgt HK HdevR Hnib0 Hgeom
            Hsize Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb
-           Hni1 Hni2 Hni3 Hush Hpkc Hnsb Hj Hgl Heb Hargv0 Hargv1 Hargv2.
+           Hni1 Hni2 Hni3 Hush Hnsb Hj Hgl Heb Hargv0 Hargv1 Hargv2.
     destruct (mn_kb K HK) as (Kcr & Kar & Kbo & Keo & Kiup & Kai & K18 & Kpop).
     set (sp0 := m !!! Regidx csp_rs1).
     iIntros "Hcg Hown _ _ #Htext #Hdata Hpc #Hpre #Hbio #Hlog Hseam
@@ -1734,7 +1734,7 @@ Section ProofSysMknodBody.
                      ltac:(lia) HdevR Hnib0 Hgeom Hsize
                      Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr
                      (mn_plen_lt pk Hpk) Hni1 Hni2 Hni3 Hush
-                     mn_tdev_nz FsAbsCreateFire.T_DEVICE_ty_ok Hpkc
+                     mn_tdev_nz FsAbsCreateFire.T_DEVICE_ty_ok
                      ltac:(unfold create_units; lia) Hnsb Hj Hgl
                      HN4a1 HN4a2 HN4a3 Heb
                      with "Hcg Hown Htext Hpc Hdata Hpre Hbio Hlog Hkenv
@@ -2460,13 +2460,13 @@ Section MknodStableWp.
     cbv beta delta [wp_sys_mknod_stable_body wp_sys_mknod_frame].
     intros Gfs ma mi Hrun pcE pj ret_tgt
            HK Hdev Hnib Hlgeom Hsize Hbm0 Hbmcov Hbmlog Hist Hcovb Hbmgeo
-           Hireg Hni1 Hni2 Hni3 Hush Hprk Hnsb Hj Hgl Heb Ha0 Ha1 Ha2.
+           Hireg Hni1 Hni2 Hni3 Hush Hnsb Hj Hgl Heb Ha0 Ha1 Ha2.
     iIntros "Hcg Hown Htcsr Hclaim Htext Hdata Hpc Hpenv Hbio Hlog Hseam
              Hgen Hdev Hgeo Hdlk Hbsl Hitab Hitinv Hesc Hslks Hiregi Hropen
              Hsbn Hsbi Hsbs Hsbb Hbmres Hkenv Hprocs Hiref Hpriv
              (#Hchain & Hacre & Hdl & Hchild) Hcont".
     iApply (HW HK Hdev Hnib Hlgeom Hsize Hbm0 Hbmcov Hbmlog Hist Hcovb
-              Hbmgeo Hireg Hni1 Hni2 Hni3 Hush Hprk Hnsb Hj Hgl Heb
+              Hbmgeo Hireg Hni1 Hni2 Hni3 Hush Hnsb Hj Hgl Heb
               Ha0 Ha1 Ha2
               with "Hcg Hown Htcsr Hclaim Htext Hdata Hpc Hpenv Hbio Hlog
                     Hseam Hgen Hdev Hgeo Hdlk Hbsl Hitab Hitinv Hesc Hslks

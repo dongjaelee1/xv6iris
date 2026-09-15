@@ -71,24 +71,6 @@
    THE REST
    ====================================================================
 
-   - The four string literals and the [states] table itself come out of
-     [kernel_data] (persistent, [↦ₛ□] / [↦ₘ□]), so none of them is a
-     premise: procdump's format strings and its six state names are image
-     bytes, not caller state.
-   - printk runs on its GENERAL path here (procdump is not panic code), so
-     the callee is [SpecPrintk]: its persistent credential [printk_env]
-     plus its contract carried as a Coq HYPOTHESIS
-     ([SpecPrintk.printk_gen_contract]) rather than as a functor argument
-     -- the shape SpecBalloc.v uses, and for the same reason: PRINTK_GEN's
-     only instance is LinkPrintk's [Axiom], and taking it as a functor
-     would drag that axiom into procdump's [Print Assumptions] and into
-     every caller's.
-   - [cpu_own 0 eb p C b] is threaded net-zero (printk's acquire/release
-     pair leaves the interrupt level as it found it), and [panic_env] is
-     carried because that acquire needs it.  No [procs_inv]: procdump takes
-     no proc lock, which is the one respect in which it is EASIER than
-     wakeup and kkill.
-   - K >= 48: procdump's own ten slots plus printk's thirty-eight.
 
    Requires only the definitional layer plus SpecPrintk.v's vocabulary --
    never a [Proof*] file. *)
@@ -169,7 +151,6 @@ Definition wp_procdump_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GEN :
   (* ten slots of its own, fifty-two for printk (printk_stack) *)
   (62 <= K)%nat ->
   (* the callee, as a hypothesis and not a functor -- see the header *)
-  printk_gen_contract (kt := KT1) γpr γd γv ->
   (* procdump takes no lock of its own (the header's whole point); its one
      callee, printk, is entered at rank "pr" -- the lowest (only) rank this
      cone touches, so this is the whole order premise. *)

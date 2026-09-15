@@ -50,6 +50,7 @@ Require Import UCodeShP.
 Require Import UkSh.
 Require Import UkShParse.
 Require Import UkShParseCmd.
+Require Import LineWords.        (* [wl_line] / [wl_toks] / [wl_off]      *)
 Require Import UkShWords.        (* the lexer at an ARBITRARY word list *)
 Require Import UkShRun.
 Require Import UkShDiag.
@@ -93,65 +94,85 @@ Set Printing Depth 40.
 (* at, and everything else is [UkShWords]' general lemmas applied.         *)
 (* ===================================================================== *)
 
-Definition echo_toks : list (nat * nat) := [(0, 4); (5, 10); (11, 16)]%nat.
+(* THE TOKEN LIST AND THE TWO BOUNDARY ACCESSORS ARE THE WORD LIST'S.
+   [EchoDisc.echo_line] IS [LineWords.wl_line EchoDisc.echo_ws], so the
+   tokens sh's lexer finds are [wl_toks] of those words, argument [i]
+   starts where the join puts word [i], and it is as long as that word.
+   Nothing below reads a number off this line. *)
+Definition echo_toks : list (nat * nat) := wl_toks echo_ws.
 
+Definition echo_off (i : nat) : nat := wl_off 0%nat echo_ws i.
+
+Definition echo_alen (i : nat) : nat := length (echo_ws !!! i).
+
+(* the one fact about THESE words the lexer's caller needs and the general
+   statement cannot give it: there are fewer of them than sh's MAXARGS *)
 Lemma echo_toks_lt10 : (length echo_toks < 10)%nat.
-Proof. vm_compute. lia. Qed.
+Proof. rewrite /echo_toks wl_toks_length. vm_compute. lia. Qed.
 
-(* the token boundaries, as the two functions every statement below reads
-   them through: argument [i] starts at [echo_off i] and is [echo_alen i]
-   bytes long *)
-Definition echo_off (i : nat) : nat :=
-  match i with 0%nat => 0%nat | 1%nat => 5%nat | _ => 11%nat end.
+Lemma echo_ws_wf : wl_wf echo_ws.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
-Definition echo_alen (i : nat) : nat :=
-  match i with 0%nat => 4%nat | _ => 5%nat end.
+Lemma echo_ws_length : length echo_ws = 3%nat.
+Proof. reflexivity. Qed.
+
+(* argument [i] IS word [i], read back through [!!] so that [UkShWords]'
+   lemmas -- every one of which is keyed on [ws !! i = Some w] -- apply *)
+Lemma echo_ws_at (i : nat) :
+  (i < 3)%nat -> echo_ws !! i = Some (echo_ws !!! i).
+Proof.
+  intro Hi.
+  destruct (lookup_lt_is_Some_2 echo_ws i ltac:(rewrite echo_ws_length; lia))
+    as [w Hw].
+  by rewrite Hw list_lookup_total_alt Hw.
+Qed.
+
+(* AN ARGUMENT'S BYTES ARE INSIDE THE LINE -- [LineWords.wl_off_lt_line] at
+   these words.  A caller that used to bound [echo_off i + j] by case
+   analysis over the three offsets gets it from this. *)
+Lemma echo_off_lt (i j : nat) :
+  (i < 3)%nat -> (j <= echo_alen i)%nat -> (echo_off i + j < 17)%nat.
+Proof.
+  intros Hi Hj. rewrite <- echo_line_length.
+  rewrite /echo_off echo_line_words.
+  exact (wl_off_lt_line echo_ws i _ j (echo_ws_at i Hi) Hj).
+Qed.
+
+(* ...AND THE THREE OFFSETS AND LENGTHS AS NUMBERS.  This is the literal's
+   last foothold: a consumer that reasons at [LineWords.wl_off] and
+   [length] needs none of them, so every use below marks a site still to
+   be generalised. *)
+Lemma echo_off_0 : echo_off 0%nat = 0%nat.
+Proof. by rewrite /echo_off wl_off_0. Qed.
+Lemma echo_off_1 : echo_off 1%nat = 5%nat.
+Proof. by vm_compute. Qed.
+Lemma echo_off_2 : echo_off 2%nat = 11%nat.
+Proof. by vm_compute. Qed.
+Lemma echo_alen_0 : echo_alen 0%nat = 4%nat.
+Proof. by vm_compute. Qed.
+Lemma echo_alen_1 : echo_alen 1%nat = 5%nat.
+Proof. by vm_compute. Qed.
+Lemma echo_alen_2 : echo_alen 2%nat = 5%nat.
+Proof. by vm_compute. Qed.
+
+Lemma echo_alen_le5 (i : nat) : (echo_alen i <= 5)%nat.
+Proof.
+  destruct i as [| [| [| i]]].
+  - rewrite echo_alen_0. lia.
+  - rewrite echo_alen_1. lia.
+  - rewrite echo_alen_2. lia.
+  - rewrite /echo_alen list_lookup_total_alt
+      (lookup_ge_None_2 echo_ws (S (S (S i)))
+         ltac:(rewrite echo_ws_length; lia)).
+    cbn. lia.
+Qed.
 
 Lemma echo_toks_lookup (i : nat) :
   (i < 3)%nat ->
   echo_toks !! i = Some (echo_off i, (echo_off i + echo_alen i)%nat).
 Proof.
-  intro Hi. destruct i as [| [| [| i]]]; try reflexivity. exfalso. lia.
-Qed.
-
-(* ---- the line, AS WORDS ---------------------------------------------- *)
-
-(* THE THREE WORDS.  Everything about the lexer below reads the line
-   through this list and not through the literal, so pointing the
-   application at another command line is a change HERE and nowhere else
-   in this section. *)
-Definition echo_ws : list (list (bv 8)) :=
-  [ sb "echo"%string; sb "hello"%string; sb "world"%string ].
-
-Lemma echo_ws_wf : wl_wf echo_ws.
-Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
-
-(* ...and the two closed computations that tie the literal to them: what
-   the join spells, and where it puts the words.  These are the ONLY
-   [vm_compute]s the lexing obligations still cost. *)
-Lemma echo_line_words : echo_line = wl_line echo_ws.
-Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
-
-Lemma echo_toks_wl : wl_toks echo_ws = echo_toks.
-Proof. vm_compute. reflexivity. Qed.
-
-(* the two boundary accessors, at the word list: argument [i] IS word [i] *)
-Lemma echo_ws_at (i : nat) :
-  (i < 3)%nat ->
-  exists w : list (bv 8), echo_ws !! i = Some w /\ length w = echo_alen i.
-Proof.
-  intro Hi. destruct i as [| [| [| i]]];
-    [ exists (sb "echo"%string) | exists (sb "hello"%string)
-    | exists (sb "world"%string) | exfalso; lia ];
-    (split; [ reflexivity | vm_compute; reflexivity ]).
-Qed.
-
-Lemma echo_off_wl (i : nat) :
-  (i < 3)%nat -> wl_off 0%nat echo_ws i = echo_off i.
-Proof.
-  intro Hi. destruct i as [| [| [| i]]];
-    [ vm_compute; reflexivity | vm_compute; reflexivity
-    | vm_compute; reflexivity | exfalso; lia ].
+  intro Hi. rewrite /echo_toks /echo_off /echo_alen /wl_toks.
+  exact (wl_toks_at_lookup echo_ws 0%nat i _ (echo_ws_at i Hi)).
 Qed.
 
 (* ---- the line lexes: [UkShWords.v]'s two general lemmas, instantiated - *)
@@ -167,8 +188,8 @@ Proof.
   split_and!.
   - exact (wl_no_symbols echo_ws (fun j : nat => echo_line !!! j)
              (length echo_line) echo_ws_wf Hlen Hf).
-  - replace [(0, 4); (5, 10); (11, 16)]%nat with (wl_toks echo_ws)
-      by (vm_compute; reflexivity).
+  - replace [(0, 4); (5, 10); (11, 16)]%nat with echo_toks
+      by (rewrite /echo_toks; vm_compute; reflexivity).
     exact (wl_tokens echo_ws (fun j : nat => echo_line !!! j)
              (length echo_line) echo_ws_wf Hlen Hf).
   - simpl. lia.
@@ -280,23 +301,19 @@ Definition echo_argv_bytes_of_line : Prop :=
 Lemma echo_argv_bytes_of_line_holds : echo_argv_bytes_of_line.
 Proof.
   intros f k len [Hlen Hf].
-  assert (Hlw : length (wl_line echo_ws) = len)
-    by (rewrite <- echo_line_words; by rewrite Hlen).
   split.
   - intros i j Hi Hj.
-    destruct (echo_ws_at i Hi) as (w & Hw & Hwlen).
-    rewrite <- Hwlen in Hj.
-    pose proof (wl_off_lt_line echo_ws i w j Hw ltac:(lia)) as Hlt.
-    rewrite Hlw in Hlt.
-    rewrite <- (echo_off_wl i Hi). rewrite <- echo_toks_wl.
-    rewrite (wl_cut_in echo_ws (fun x : nat => f (k + x)%nat) len i w j
-               Hw Hj Hlt).
+    pose proof (echo_ws_at i Hi) as Hw.
+    assert (Hlt : (wl_off 0%nat echo_ws i + j < len)%nat).
+    { rewrite Hlen echo_line_words.
+      exact (wl_off_lt_line echo_ws i _ j Hw (Nat.lt_le_incl _ _ Hj)). }
+    rewrite /echo_off /echo_toks
+      (wl_cut_in echo_ws (fun x : nat => f (k + x)%nat) len i _ j Hw Hj Hlt).
     exact (Hf _ Hlt).
   - intros i Hi.
-    destruct (echo_ws_at i Hi) as (w & Hw & Hwlen).
-    rewrite <- (echo_off_wl i Hi). rewrite <- Hwlen.
-    rewrite <- echo_toks_wl.
-    exact (wl_cut_end echo_ws (fun x : nat => f (k + x)%nat) len i w Hw).
+    pose proof (echo_ws_at i Hi) as Hw.
+    rewrite /echo_off /echo_alen /echo_toks.
+    exact (wl_cut_end echo_ws (fun x : nat => f (k + x)%nat) len i _ Hw).
 Qed.
 
 Section UkShEcho.
@@ -719,7 +736,7 @@ Section UkShEcho.
       - (* [echo_off 0] IS 0; the supply names the token's base, the load
            named its offset from the node, and the two are the same [Z]. *)
         assert (Hoff0 : s0 + Z.of_nat (echo_off 0%nat) = s0)
-          by (cbn [echo_off]; lia).
+          by (rewrite echo_off_0; lia).
         rewrite <- Hoff0. exact Hka0.
       - exact Hka1.
       - exact Hbytes.
@@ -754,7 +771,7 @@ Section UkShEcho.
               Hfd2 ltac:(rewrite Hs1_k4; exact Ht8) ltac:(reflexivity)
               ltac:(intros j Hj; cbn [ua_bytes];
                     rewrite (proj1 Hbytes 0%nat j ltac:(lia) Hj);
-                    cbn [echo_off]; rewrite Nat.add_0_l; reflexivity)
+                    rewrite echo_off_0 Nat.add_0_l; reflexivity)
               with "Hxl Hcode Hro [] [] Hstd Hcr [] Hrun").
     { rewrite Hs1_k4. cbn [ua_ptr]. iExact "Hw0". }
     { rewrite /ush_str. cbn [ua_ptr ua_len ua_bytes].

@@ -114,10 +114,10 @@ Qed.
 Lemma echo_line_nonul (j : nat) : (j < 17)%nat -> echo_line !!! j <> ubyte0.
 Proof.
   intro Hj.
-  do 17 (destruct j as [| j];
-         [ intro Hc; apply (f_equal bv_unsigned) in Hc;
-           vm_compute in Hc; discriminate Hc | ]).
-  exfalso. lia.
+  pose proof (echo_line_byte_val_at j ltac:(rewrite echo_line_length; lia))
+    as Hv.
+  intro Hc. apply (f_equal bv_unsigned) in Hc.
+  rewrite (_ : bv_unsigned ubyte0 = 0%Z) in Hc; [lia | by vm_compute].
 Qed.
 
 Lemma ubyte0_bv0 : ubyte0 = (bv_0 8 : bv 8).
@@ -1018,13 +1018,13 @@ Section UShEcho.
   Proof.
     intros M s0 t g (_ & Hri & _ & _ & Hgi & Hzi) Hbytes.
     pose proof (Hri 0%nat ltac:(lia)) as Hr.
-    cbn [UkShEcho.echo_off] in Hr. rewrite Z.add_0_r in Hr.
+    rewrite UkShEcho.echo_off_0 in Hr. rewrite Z.add_0_r in Hr.
     assert (Hn4 : M !! (s0 + 4) = Some (bv_0 8)).
     { rewrite <- ubyte0_bv0.
       replace (s0 + 4)
         with (s0 + Z.of_nat (UkShEcho.echo_off 0%nat)
               + Z.of_nat (UkShEcho.echo_alen 0%nat))
-        by (cbn [UkShEcho.echo_off UkShEcho.echo_alen]; lia).
+        by (rewrite UkShEcho.echo_off_0 UkShEcho.echo_alen_0; lia).
       exact (Hzi 0%nat ltac:(lia)). }
     split_and!.
     - exact echo_pl_shape.
@@ -1036,14 +1036,14 @@ Section UShEcho.
                  ltac:(unfold Z64; lia)).
       replace (s0 + Z.of_nat j)
         with (s0 + Z.of_nat (UkShEcho.echo_off 0%nat) + Z.of_nat j)
-        by (cbn [UkShEcho.echo_off]; lia).
+        by (rewrite UkShEcho.echo_off_0; lia).
       rewrite (Hgi 0%nat ltac:(lia) j
-                 ltac:(cbn [UkShEcho.echo_alen]; lia)).
+                 ltac:(rewrite UkShEcho.echo_alen_0; lia)).
       f_equal.
       rewrite <- (list_lookup_total_correct _ _ _ Hj).
       rewrite (echo_pl_line j Hjl).
       exact (proj1 Hbytes 0%nat j ltac:(lia)
-               ltac:(cbn [UkShEcho.echo_alen]; lia)).
+               ltac:(rewrite UkShEcho.echo_alen_0; lia)).
     - rewrite echo_pl_len.
       rewrite (uint_avi_moi s0 (Z.of_nat 4%nat) ltac:(lia) ltac:(lia)
                  ltac:(unfold Z64; lia)).
@@ -1139,8 +1139,7 @@ Section UShEcho.
         rewrite Hm1 in Hm2. injection Hm2 as Hm2.
         pose proof (proj1 Hbytes i (alen i) Hi Hlt) as Hgl.
         assert (Hidx : (UkShEcho.echo_off i + alen i < 17)%nat)
-          by (destruct i as [| [| i]];
-              cbn [UkShEcho.echo_off UkShEcho.echo_alen] in *; lia).
+          by (apply UkShEcho.echo_off_lt; lia).
         apply (echo_line_nonul _ Hidx).
         rewrite <- Hgl, <- Hm2. exact (eq_sym ubyte0_moi0).
       - destruct (decide (alen i = UkShEcho.echo_alen i)) as [He | Hne];
@@ -1278,7 +1277,8 @@ Section UShEcho.
     pose proof (Halen 0%nat ltac:(lia)) as H0.
     pose proof (Halen 1%nat ltac:(lia)) as H1.
     pose proof (Halen 2%nat ltac:(lia)) as H2.
-    cbn [UkShEcho.echo_alen] in H0, H1, H2.
+    rewrite UkShEcho.echo_alen_0 in H0. rewrite UkShEcho.echo_alen_1 in H1.
+    rewrite UkShEcho.echo_alen_2 in H2.
     assert (Hsp3 : kxc_sp_final 0x4000 alen 3%nat = 0x3FB0)
       by exact (echo_sp_final alen H0 H1 H2).
     (* the three string addresses, as CLOSED numbers: exec's push loop at
@@ -1315,8 +1315,7 @@ Section UShEcho.
     assert (Hidx : forall i j : nat, (i < 3)%nat ->
               (j < UkShEcho.echo_alen i)%nat ->
               (UkShEcho.echo_off i + j < 17)%nat).
-    { intros i j Hi Hj. destruct i as [| [| [| i]]];
-        cbn [UkShEcho.echo_off UkShEcho.echo_alen] in *; lia. }
+    { intros i j Hi Hj. apply UkShEcho.echo_off_lt; lia. }
     assert (Hstr' : forall i j : nat, (i < 3)%nat ->
               (j < UkShEcho.echo_alen i)%nat ->
               uvis_M W' !! (kxc_sp 0x4000 alen (S i) + Z.of_nat j)
@@ -1348,8 +1347,7 @@ Section UShEcho.
               uk_slen (uvis_M W') (kxc_sp 0x4000 alen (S i))
               = Z.of_nat (UkShEcho.echo_alen i)).
     { intros i Hi. apply uk_slen_ucstr; [ | exact (Hcs i Hi) ].
-      destruct i as [| [| [| i]]];
-        cbn [UkShEcho.echo_alen]; lia. }
+      pose proof (UkShEcho.echo_alen_le5 i). lia. }
     (* ---- and that is echo's reading of its own key ---- *)
     split; [ rewrite Hargc; reflexivity | ].
     intros i Hi. unfold echo_arg. cbn [ua_len ua_bytes].

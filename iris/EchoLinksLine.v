@@ -171,7 +171,7 @@ Definition blkcs (cs : list nat) (a i : nat) : list nat :=
 Lemma wr_blk_n (ps cs : list nat) (n P : nat) :
   wr_blk ps cs n P -> n = (length echo_line * S (length cs))%nat.
 Proof.
-  intros (_ & Hm & Hdv & _). pose proof echo_line_length as HL.
+  intros (_ & Hm & Hdv & _). pose proof echo_line_pos as HL.
   pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
   rewrite Hdv Hm in Hdm. lia.
 Qed.
@@ -179,7 +179,7 @@ Qed.
 Lemma wr_blk_pos (ps cs : list nat) (n P : nat) :
   wr_blk ps cs n P -> (0 < n)%nat.
 Proof.
-  intros Hw. pose proof (wr_blk_n ps cs n P Hw). pose proof echo_line_length.
+  intros Hw. pose proof (wr_blk_n ps cs n P Hw). pose proof echo_line_pos.
   lia.
 Qed.
 
@@ -200,7 +200,7 @@ Lemma wr_blk_pin_snoc (ps cs : list nat) (n P a : nat) :
   wr_blk ps cs n P -> pro_pin ps (cs ++ [a]) n.
 Proof.
   intros Hw. pose proof (wr_blk_n ps cs n P Hw) as Hn.
-  destruct Hw as (Hpin & _). pose proof echo_line_length as HL.
+  destruct Hw as (Hpin & _). pose proof echo_line_pos as HL.
   intros q Hq. rewrite (pro_idx_app_le cs [a] q); [exact (Hpin q Hq) | nia].
 Qed.
 
@@ -208,7 +208,7 @@ Lemma wr_blk_low (ps cs : list nat) (n P a : nat) :
   wr_blk ps cs n P -> proc_upto ps (cs ++ [a]) n = proc_upto ps cs n.
 Proof.
   intros Hw. pose proof (wr_blk_n ps cs n P Hw) as Hn.
-  destruct Hw as (Hpin & Hm & Hdv & HP). pose proof echo_line_length as HL.
+  destruct Hw as (Hpin & Hm & Hdv & HP). pose proof echo_line_pos as HL.
   symmetry.
   apply (proc_upto_cs_prefix_pred ps ps cs (cs ++ [a]) n
            ltac:(reflexivity) ltac:(by eexists) Hpin).
@@ -302,7 +302,7 @@ Lemma wr_blk_open (ps cs : list nat) (n P a : nat) :
   wr_open_t ps (cs ++ [a]) n (P + length (line_alts !!! a))%nat.
 Proof.
   intros [Hw Ht] Ha. pose proof (wr_blk_n ps cs n P Hw) as Hn.
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   pose proof Hw as (Hpin & Hm & Hdv & HP).
   split; [| exact (wr_tail_snoc ps cs a Ha Ht)].
   rewrite /wr_open. split_and!.
@@ -904,7 +904,7 @@ Section echo_links_line.
       ∗ E_lb v n0) ∨ T) -∗
     ewc_post v n0 0%nat.
   Proof.
-    intros Hn0 HP Hpin Ht. pose proof echo_line_length as HL.
+    intros Hn0 HP Hpin Ht. pose proof echo_line_pos as HL.
     assert (H12 : (length (line_alts !!! 0%nat) - 2)%nat = 12%nat)
       by (rewrite line_alts_len0; reflexivity).
     rewrite /ewc_post H12 /ewc_blk.

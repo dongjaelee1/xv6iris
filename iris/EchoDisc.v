@@ -54,6 +54,7 @@ From stdpp Require Import list bitvector.definitions.
 Require Import RiscvLang.        (* [mobs] *)
 Require Import ObsTrace.         (* [obs_wire Uart0], [cycles_of], [trace_shape] *)
 Require Import RiscvPtsto.       (* [string_bytes] *)
+Require Import LineWords.        (* the line as a list of WORDS *)
 (* ssreflect's [rewrite] (the [/def] fold, the multi-rule form) is what this
    file's proofs are written in; a pure file does not get it from the
    proofmode the way its neighbours do, so it is imported by name. *)
@@ -76,22 +77,90 @@ Definition nlb : list (bv 8) := [Z_to_bv 8 10%Z].
 (*  1.  THE INPUT LINE AND D3 (the landed predicate, verbatim)             *)
 (* ====================================================================== *)
 
-(* the console line the discipline admits: "echo hello world\n" -- the
-   bytes the user types, and ALSO their echoes, because [consoleintr]
-   echoes a stored byte unchanged and rewrites only '\r' (to '\n').  This
-   line ends in '\n' (byte 10), not '\r', so echo is the IDENTITY on it. *)
-Definition echo_line : list (bv 8) :=
-  Z_to_bv 8 <$> [101; 99; 104; 111; 32; 104; 101; 108; 108; 111; 32;
-                 119; 111; 114; 108; 100; 10]%Z.
+(* THE CONSOLE LINE THE DISCIPLINE ADMITS, as the three WORDS it is --
+   the command name and its two arguments -- joined by single spaces and
+   closed by the newline [gets] stops at and keeps ([LineWords.wl_line]).
+   These are the bytes the user types, and ALSO their echoes, because
+   [consoleintr] echoes a stored byte unchanged and rewrites only '\r'
+   (to '\n'); the line ends in '\n' (byte 10), not '\r', so echo is the
+   IDENTITY on it.
+
+   IT IS SPELLED AS WORDS AND NOT AS SEVENTEEN BYTES because that is the
+   structure everything above actually reads it through: sh's lexer finds
+   the words ([UkShWords.wl_tokens]), exec pushes them, and echo prints
+   them back.  A fact stated at the byte list is worth one command line;
+   the same fact at [wl_line] is worth every disciplined one. *)
+Definition echo_ws : list (list (bv 8)) :=
+  [ sb "echo"%string; sb "hello"%string; sb "world"%string ].
+
+Definition echo_line : list (bv 8) := wl_line echo_ws.
+
+(* THE ONE SANCTIONED UNFOLDING.  Past the [Opaque] below the tree reads
+   the line through its lemmas and never through its bytes -- which is
+   both what makes a general line possible and what stops an [rewrite
+   !length_app] from silently turning [length echo_line] into the arity
+   of a join. *)
+Lemma echo_line_words : echo_line = wl_line echo_ws.
+Proof. reflexivity. Qed.
 
 Lemma echo_line_length : length echo_line = 17.
-Proof. reflexivity. Qed.
+Proof. vm_compute. reflexivity. Qed.
+
+(* ...and the ONE thing most of the tree needs of that length: no line is
+   empty, because every line carries its newline.  Not a fact about these
+   three words ([LineWords.wl_line_pos]). *)
 Lemma echo_line_pos : 0 < length echo_line.
-Proof. rewrite echo_line_length. lia. Qed.
+Proof. rewrite echo_line_words. exact (wl_line_pos echo_ws). Qed.
 
 (* the same line, read off the string it is: a transcription check *)
 Lemma echo_line_string : echo_line = sb "echo hello world"%string ++ nlb.
 Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* the words are words: nonempty and alphanumeric.  Decidable, so this is
+   the ONE check that says which line the application is about. *)
+Lemma echo_ws_wf : wl_wf echo_ws.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* ---- EVERY BYTE OF THE LINE, NUMERICALLY ----------------------------- *)
+(* The console-side proofs each have to refute one byte -- the carriage
+   return [consoleintr] rewrites, the three erase characters, the
+   end-of-file byte, the NUL [gets] plants past the line.  Each used to be
+   a case analysis over seventeen literals.  All of them come off this one
+   reading ([LineWords.wl_line_byte_val]) by [lia]. *)
+Lemma echo_line_byte_val (b : bv 8) :
+  b ∈ echo_line ->
+  bv_unsigned b = 10%Z \/ bv_unsigned b = 32%Z
+  \/ (48 <= bv_unsigned b <= 57)%Z
+  \/ (65 <= bv_unsigned b <= 90)%Z
+  \/ (97 <= bv_unsigned b <= 122)%Z.
+Proof.
+  rewrite echo_line_words. exact (wl_line_byte_val echo_ws b echo_ws_wf).
+Qed.
+
+Lemma echo_line_byte_val_at (j : nat) :
+  (j < length echo_line)%nat ->
+  bv_unsigned (echo_line !!! j) = 10%Z
+  \/ bv_unsigned (echo_line !!! j) = 32%Z
+  \/ (48 <= bv_unsigned (echo_line !!! j) <= 57)%Z
+  \/ (65 <= bv_unsigned (echo_line !!! j) <= 90)%Z
+  \/ (97 <= bv_unsigned (echo_line !!! j) <= 122)%Z.
+Proof.
+  intro Hj. apply echo_line_byte_val.
+  destruct (lookup_lt_is_Some_2 echo_line j Hj) as [b Hb].
+  rewrite list_lookup_total_alt Hb. cbn [default from_option].
+  exact (elem_of_list_lookup_2 echo_line j b Hb).
+Qed.
+
+(* ...AND ITS POSITIONAL HALF: the only newline is the last byte, which is
+   what [gets] stopping at the first one says about the buffer it read. *)
+Lemma echo_line_nl_last (k : nat) :
+  echo_line !! k = Some (Z_to_bv 8 10%Z) -> k = 16%nat.
+Proof.
+  rewrite echo_line_words. intro Hk.
+  rewrite (wl_line_nl_last echo_ws k echo_ws_wf Hk). by vm_compute.
+Qed.
+
+Global Opaque echo_line.
 
 (* the INPUT bytes of an observation list, in order -- the CONSOLE's; an
    input on the other port is not the user's and is invisible here *)
@@ -760,6 +829,26 @@ Proof.
   by rewrite app_nil_r.
 Qed.
 
+(* ---- THE LENGTHS, ONCE ----------------------------------------------- *)
+(* [length echo_line] is what every consumer divides the session by, and
+   an unguarded [rewrite !length_app] unfolds it into the arity of the
+   join the line IS -- leaving [lia] with two different atoms.  So the
+   three decompositions a consumer needs are proved HERE, with the
+   [length_app] instances pinned, and nobody above takes a session apart
+   with [length_app] again. *)
+Lemma alt_blk_length ps cs q :
+  length (alt_blk ps cs q)
+  = (length echo_line + length (alt_cont ps cs q))%nat.
+Proof. rewrite /alt_blk (length_app echo_line _). reflexivity. Qed.
+
+Lemma alt_seq_S_length ps cs q :
+  length (alt_seq ps cs (S q))
+  = (length (alt_seq ps cs q) + length echo_line
+     + length (alt_cont ps cs q))%nat.
+Proof.
+  rewrite alt_seq_S (length_app (alt_seq ps cs q) _) alt_blk_length. lia.
+Qed.
+
 (* ---- the two extensionality laws the transcript needs ---- *)
 
 Lemma pro_idx_ext cs1 cs2 q :
@@ -999,6 +1088,16 @@ Proof.
   by rewrite !app_nil_r.
 Qed.
 
+(* ...and the session's own, on the same rule *)
+Lemma sess_n_length ps cs n :
+  length (sess_n ps cs n)
+  = (length (pro_of ps) + length (alt_seq ps cs (n `div` length echo_line))
+     + (n `mod` length echo_line) `min` length echo_line)%nat.
+Proof.
+  rewrite /sess_n (length_app (pro_of ps) _) (length_app (alt_seq ps cs _) _)
+    length_take. lia.
+Qed.
+
 Lemma sess_n_ps_ext ps1 ps2 cs n :
   (forall r, (r <= pro_idx cs (n `div` length echo_line))%nat ->
      pro_of (pro_from r ps1) = pro_of (pro_from r ps2)) ->
@@ -1059,14 +1158,14 @@ Lemma pro_pin_at ps cs n k :
   pro_pin ps cs n -> (k < n)%nat ->
   (pro_idx cs (k `div` length echo_line) < pro_rounds ps)%nat.
 Proof.
-  intros Hp Hk. apply Hp. pose proof echo_line_length as HL.
+  intros Hp Hk. apply Hp. pose proof echo_line_pos as HL.
   pose proof (Nat.div_mod_eq k (length echo_line)). lia.
 Qed.
 
 Lemma pro_pin_idx_le ps cs n :
   pro_pin ps cs n -> (pro_idx cs (n `div` length echo_line) <= pro_rounds ps)%nat.
 Proof.
-  intros Hp. pose proof echo_line_length as HL.
+  intros Hp. pose proof echo_line_pos as HL.
   pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
   destruct (decide (length echo_line * (n `div` length echo_line) < n)%nat)
     as [Hlt | Hge].
@@ -1205,7 +1304,7 @@ Proof.
     - rewrite pro_rounds_app /pad pro_rounds_replicate_0.
       pose proof (pro_idx_le cs (length l' `div` length echo_line)) as H1.
       pose proof (Nat.Div0.div_le_upper_bound (length l') (length echo_line)
-                    (length l') ltac:(pose proof echo_line_length; nia)) as H2.
+                    (length l') ltac:(pose proof echo_line_pos; nia)) as H2.
       lia. }
   split; [exact Hcs |].
   etrans; [exact Hout |]. rewrite /sess.
@@ -1227,7 +1326,7 @@ Lemma star_prefix_decomp (l : list (bv 8)) :
       ++ take (length l `mod` length echo_line) echo_line.
 Proof.
   intros Hsp.
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   pose proof (Nat.div_mod_eq (length l) (length echo_line)) as Hdm.
   pose proof (Nat.mod_upper_bound (length l) (length echo_line)
                 ltac:(lia)) as Hub.
@@ -1619,7 +1718,8 @@ Lemma sess_n_pro_len ps cs n r :
   (r <= pro_idx cs (n `div` length echo_line))%nat ->
   (length (pro_of (pro_from r ps)) <= length (sess_n ps cs n))%nat.
 Proof.
-  intros Hr. rewrite /sess_n !length_app.
+  intros Hr. rewrite /sess_n
+    (length_app (pro_of ps) _) (length_app (alt_seq ps cs _) _).
   pose proof (alt_seq_pro_len ps cs (n `div` length echo_line) r Hr). lia.
 Qed.
 

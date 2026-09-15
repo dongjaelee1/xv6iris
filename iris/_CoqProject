@@ -1465,6 +1465,7 @@ UartAccepted.v
 SystemUartAccepted.v
 App.v
 
+LineWords.v
 EchoDisc.v
 ConsLog.v
 EchoOutPure.v

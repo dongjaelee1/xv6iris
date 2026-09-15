@@ -479,11 +479,7 @@ Qed.
 Lemma ush_echo_line_no_ctrl_d (x : bv 8) :
   x ∈ echo_line -> bv_unsigned x <> 4.
 Proof.
-  rewrite /echo_line. intros Hx Hv.
-  apply elem_of_list_fmap in Hx as (z & -> & Hz).
-  repeat (apply elem_of_cons in Hz as [-> | Hz];
-          [ vm_compute in Hv; discriminate Hv | ]).
-  by apply elem_of_nil in Hz.
+  intros Hx Hv. pose proof (echo_line_byte_val x Hx) as Hb. lia.
 Qed.
 
 (* THE CYCLE THE LAST INPUT BYTE IS IN.  [cycles_of] folds the history

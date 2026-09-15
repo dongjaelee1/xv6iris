@@ -86,20 +86,33 @@ Qed.
    The third clause is what refutes the READ PATH'S SWALLOW arm (a leading
    ^D pops a byte and delivers nothing); the erase clause refutes the gap
    clause's erase disjunct. *)
+(* a byte is not a given one when its NUMBER is not -- the step that lets
+   every refutation below be [lia] against [echo_line_byte_val] *)
+Local Lemma echo_byte_ne (c : bv 8) (z : Z) :
+  bv_unsigned c <> z ->
+  bv_unsigned (mword_of_int z : mword 8) = z ->
+  eq_vec (c : mword 8) (mword_of_int z : mword 8) = false.
+Proof.
+  intros Hne Hz. apply eq_vec_false_iff. intro Hq.
+  apply (f_equal bv_unsigned) in Hq. rewrite Hz in Hq. exact (Hne Hq).
+Qed.
+
 Lemma echo_line_bytes_ok (c : bv 8) :
   c ∈ echo_line ->
   c <> (mword_of_int 13 : mword 8) /\ cons_erase c = false
   /\ bv_unsigned c <> 4%Z.
 Proof.
-  rewrite /echo_line. intros Hc.
-  apply elem_of_list_fmap in Hc as (z & -> & Hz).
-  repeat (apply elem_of_cons in Hz as [-> | Hz];
-          [ split;
-            [ intro Hq; apply (f_equal bv_unsigned) in Hq;
-              vm_compute in Hq; discriminate Hq
-            | split; [ vm_compute; reflexivity
-                     | intro Hq; vm_compute in Hq; discriminate Hq ] ] | ]).
-  by apply elem_of_nil in Hz.
+  intro Hc. pose proof (echo_line_byte_val c Hc) as Hv.
+  split_and!.
+  - intro Hq. apply (f_equal bv_unsigned) in Hq.
+    rewrite (_ : bv_unsigned (mword_of_int 13 : mword 8) = 13%Z) in Hq;
+      [lia | by vm_compute].
+  - rewrite /cons_erase.
+    rewrite (echo_byte_ne c 21 ltac:(lia) ltac:(by vm_compute)).
+    rewrite (echo_byte_ne c 8 ltac:(lia) ltac:(by vm_compute)).
+    rewrite (echo_byte_ne c 127 ltac:(lia) ltac:(by vm_compute)).
+    reflexivity.
+  - lia.
 Qed.
 
 (* THE ECHO OF A LINE BYTE IS THE BYTE ITSELF -- which is why [D]'s
@@ -130,7 +143,7 @@ Proof.
                 echo_line_pos Hlt) as Hp.
   rewrite Hlk in Hp. rewrite length_app /= Nat.add_sub.
   assert (Hr : k `mod` length echo_line < length echo_line)
-    by (apply Nat.mod_upper_bound; pose proof echo_line_length; lia).
+    by (apply Nat.mod_upper_bound; pose proof echo_line_pos; lia).
   rewrite (list_lookup_total_alt echo_line) -Hp //.
 Qed.
 
@@ -140,7 +153,7 @@ Proof.
   intros Hd He. rewrite (disc_seg_last_byte h c Hd He).
   apply elem_of_list_lookup_2 with ((length (ins h) - 1) `mod` length echo_line).
   rewrite -list_lookup_lookup_total_lt //.
-  apply Nat.mod_upper_bound. pose proof echo_line_length. lia.
+  apply Nat.mod_upper_bound. pose proof echo_line_pos. lia.
 Qed.
 
 (* the refutation the read contract's erase disjunct needs *)
@@ -251,7 +264,7 @@ Proof.
     move: Hr. by rewrite Nat.Div0.div_0_l. }
   case_decide as Hm; [| done].
   rewrite /alt_cont. f_equal. case_decide as H3; [| done].
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   assert (Hq : (1 <= k `div` length echo_line)%nat).
   { destruct (decide (k `div` length echo_line = 0)%nat) as [Hd | Hd]; [| lia].
     exfalso. pose proof (Nat.div_mod_eq k (length echo_line)) as Hdm.
@@ -295,7 +308,7 @@ Proof.
   - rewrite decide_True; [| exact Hm].
     assert (H3 : cs !!! (n `div` length echo_line - 1)%nat = 3%nat).
     { destruct Hopen as [Hn | H3]; [by destruct (H0 Hn) | exact H3]. }
-    pose proof echo_line_length as HL.
+    pose proof echo_line_pos as HL.
     assert (Hq : (1 <= n `div` length echo_line)%nat).
     { destruct (decide (n `div` length echo_line = 0)%nat) as [Hd | Hd]; [| lia].
       exfalso. pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
@@ -322,7 +335,7 @@ Lemma pro_pin_round_le (ps cs : list nat) (n : nat) :
   pro_pin ps cs n ->
   (pro_idx cs (n `div` length echo_line) <= pro_rounds ps)%nat.
 Proof.
-  pose proof echo_line_length as HL. intros Hm Ho Hpin.
+  pose proof echo_line_pos as HL. intros Hm Ho Hpin.
   destruct (decide (n = 0%nat)) as [-> | Hn0].
   { rewrite Nat.Div0.div_0_l. cbn [pro_idx]. lia. }
   assert (H3 : cs !!! (n `div` length echo_line - 1)%nat = 3%nat).
@@ -438,7 +451,7 @@ Proof.
   intros HE Hx. rewrite (HE j x Hx). apply echo_of_echo_line.
   apply elem_of_list_lookup_2 with (j `mod` length echo_line).
   rewrite -list_lookup_lookup_total_lt //.
-  apply Nat.mod_upper_bound. pose proof echo_line_length. lia.
+  apply Nat.mod_upper_bound. pose proof echo_line_pos. lia.
 Qed.
 
 Lemma E_byte_take (E : list (list mobs * bv 8)) (n : nat) :
@@ -463,11 +476,13 @@ Qed.
 Lemma sess_n_length_step ps cs n :
   length (sess_n ps cs n) < length (sess_n ps cs (S n)).
 Proof.
-  rewrite /sess_n !length_app !length_take.
-  pose proof echo_line_length as HL.
+  (* through [EchoDisc]'s length lemmas and not [length_app]: the line is
+     a JOIN now, and [!length_app] would take [length echo_line] apart *)
+  rewrite !sess_n_length.
+  pose proof echo_line_pos as HL.
   destruct (div_mod_succ n (length echo_line) echo_line_pos)
     as [(Hm & Hd & Hr)|(Hm & Hd)]; rewrite Hm Hd.
-  - rewrite alt_seq_S length_app /alt_blk length_app.
+  - rewrite alt_seq_S_length.
     pose proof (Nat.mod_upper_bound n (length echo_line) ltac:(lia)).
     lia.
   - pose proof (Nat.mod_upper_bound n (length echo_line) ltac:(lia)).
@@ -499,7 +514,7 @@ Lemma D_pending_sess (ps cs : list nat) (E : list (list mobs * bv 8)) :
 Proof.
   induction E as [|x E IH] using rev_ind; intros HE.
   - by rewrite D_nil pending_nil /= sess_n_0.
-  - pose proof echo_line_length as HL.
+  - pose proof echo_line_pos as HL.
     pose proof (E_byte_echo (E ++ [x]) (length E) x HE
                   ltac:(rewrite lookup_app_r;
                         [ by rewrite Nat.sub_diag | lia ])) as Hb.
@@ -878,7 +893,7 @@ Lemma read_window_line (E : list (list mobs * bv 8))
   snd <$> ws = echo_line.
 Proof.
   intros HE Hp Hdl Hws.
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   apply list_eq. intros k.
   destruct (decide (k < length echo_line)) as [Hk|Hk].
   - destruct (lookup_lt_is_Some_2 ws k ltac:(lia)) as [x Hwk].
@@ -945,7 +960,7 @@ Proof.
   assert (Hpp : ps `prefix_of` ps') by (rewrite /ps'; by eexists).
   exists ps', cs. split.
   { apply pro_ok_pad; [exact Hps |].
-    pose proof echo_line_length as HL.
+    pose proof echo_line_pos as HL.
     apply Nat.Div0.div_le_upper_bound. nia. }
   split; [exact Hcs|].
   rewrite /sess. etrans; [exact Hwire|].
@@ -1056,7 +1071,7 @@ Qed.
 
 Lemma alt_blk_length ps cs i : 0 < length (alt_blk ps cs i).
 Proof.
-  rewrite /alt_blk length_app. pose proof echo_line_length. lia.
+  rewrite /alt_blk length_app. pose proof echo_line_pos. lia.
 Qed.
 
 Lemma alt_seq_cons_assoc ps cs q (t : list (bv 8)) :
@@ -1086,7 +1101,7 @@ Proof.
     eapply prefix_lookup_Some; [exact Hb | exact Ht].
   - rewrite alt_seq_cons -app_assoc /alt_blk -app_assoc in Hb.
     rewrite lookup_app_l in Hb; [exact Hb |].
-    pose proof echo_line_length. lia.
+    pose proof echo_line_pos. lia.
 Qed.
 
 (* THE BLOCK STEP: two continuations below ONE wire are the same
@@ -1205,7 +1220,7 @@ Proof.
   induction q' as [| n IH];
     intros ps ps' cs cs' q t' t Hps Hps' Hlt' Hpos Hcs Hcs' Ht' Ht Hpre.
   { split; [lia |]. split; [cbn [pro_idx]; lia | reflexivity]. }
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   assert (Hp' : 0 < length (line_alts !!! (cs' !!! 0%nat))).
   { destruct (line_alts !!! (cs' !!! 0%nat)) as [| z zs] eqn:Hz;
       [ exfalso; exact (line_alts_nonnil _ (Hcs' 0%nat) Hz) | cbn; lia ]. }
@@ -1213,7 +1228,12 @@ Proof.
   { exfalso.
     rewrite alt_seq_0 app_nil_l alt_seq_cons_assoc in Hpre.
     apply prefix_length in Hpre. apply prefix_length in Ht.
-    rewrite /alt_cont !length_app in Hpre. lia. }
+    (* PINNED, as everywhere a session's length is taken apart: a bare
+       [!length_app] would split [length echo_line] too *)
+    rewrite /alt_cont (length_app echo_line _)
+      (length_app (line_alts !!! _ ++ _) _) (length_app (line_alts !!! _) _)
+      in Hpre.
+    lia. }
   rewrite !alt_seq_cons_assoc in Hpre.
   apply prefix_app_inv in Hpre.
   assert (Hset : cs' !!! 0%nat = 3%nat -> (1 < pro_rounds ps')%nat).
@@ -1277,7 +1297,7 @@ Proof.
   intros Hps [Hps' Hlt'] Hcs Hcs' Hpin Hpre.
   pose proof (cs_ok_of_Forall _ Hcs) as Hok.
   pose proof (cs_ok_of_Forall _ Hcs') as Hok'.
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   assert (Hd' : pro_done ps') by (apply pro_done_rounds; lia).
   (* the PROLOGUES: below one wire, and the primed one is settled, so they
      are the same prologue and the unprimed one is settled too *)
@@ -1369,8 +1389,8 @@ Lemma sess_n_nonnil (ps cs : list nat) (n : nat) :
   Forall (fun a => (a < length pro_alts)%nat) ps -> pro_done ps ->
   sess_n ps cs n <> [].
 Proof.
-  intros HF Hd. rewrite /sess_n. intros H.
-  apply (f_equal length) in H. rewrite !length_app /= in H.
+  intros HF Hd. intros H.
+  apply (f_equal length) in H. rewrite sess_n_length /= in H.
   assert (Hne : ps <> []) by (intros ->; by apply Exists_nil in Hd).
   pose proof (pro_of_pos ps HF Hne). lia.
 Qed.

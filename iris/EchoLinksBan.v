@@ -54,7 +54,7 @@ Proof.
   intros Ha Hw Hcs Hnm Hrs Hps Hle.
   pose proof Hrs as (HFps0 & HFcs0 & Hpin0 & Hbnd0).
   pose proof Hw as (Hpin & Hm & Hdv & HP).
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   (* the reader's line list reaches past the block's own entry *)
   assert (Hlen0 : (S (length cs) <= length cs0)%nat).
   { rewrite -Hdv. etrans; [| exact Hbnd0]. apply Nat.Div0.div_le_mono. lia. }

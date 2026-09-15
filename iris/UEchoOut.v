@@ -109,8 +109,8 @@ Definition echo_stage (ps0 cs0 : list nat) (n0 P : nat) : Prop :=
 Lemma echo_stage_pos (ps0 cs0 : list nat) (n0 P : nat) :
   echo_stage ps0 cs0 n0 P -> (0 < n0)%nat.
 Proof.
-  intros (Hn0 & _ & _). pose proof echo_line_length as HL.
-  rewrite Hn0 HL. lia.
+  intros (Hn0 & _ & _). pose proof echo_line_pos as HL.
+  rewrite Hn0. nia.
 Qed.
 
 Lemma echo_stage_mod (ps0 cs0 : list nat) (n0 P : nat) :
@@ -121,7 +121,7 @@ Lemma echo_stage_div (ps0 cs0 : list nat) (n0 P : nat) :
   echo_stage ps0 cs0 n0 P ->
   (n0 `div` length echo_line)%nat = S (length cs0).
 Proof.
-  intros (Hn0 & _ & _). pose proof echo_line_length as HL.
+  intros (Hn0 & _ & _). pose proof echo_line_pos as HL.
   rewrite Hn0. apply Nat.div_mul. lia.
 Qed.
 
@@ -131,10 +131,10 @@ Lemma echo_stage_pin0 (ps0 cs0 : list nat) (n0 P : nat) :
   echo_stage ps0 cs0 n0 P -> pro_pin ps0 (cs0 ++ [0%nat]) n0.
 Proof.
   intros Hst. destruct Hst as (Hn0 & _ & Hpin).
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   intros q Hq.
   assert (Hql : (q <= length cs0)%nat).
-  { rewrite Hn0 HL in Hq. lia. }
+  { rewrite Hn0 in Hq. nia. }
   assert (Hpre : cs0 `prefix_of` (cs0 ++ [0%nat])) by (by eexists).
   rewrite <- (pro_idx_ext cs0 (cs0 ++ [0%nat]) (length cs0)
                 (fun (j : nat) (Hj : (j < length cs0)%nat) =>
@@ -156,14 +156,14 @@ Proof.
   pose proof (echo_stage_div ps0 cs0 n0 P Hst) as Hdiv.
   pose proof (echo_stage_pos ps0 cs0 n0 P Hst) as Hpos.
   destruct Hst as (Hn0 & HP & Hpin).
-  pose proof echo_line_length as HL.
+  pose proof echo_line_pos as HL.
   assert (Hpre : proc_upto ps0 (cs0 ++ [0%nat]) n0 = proc_upto ps0 cs0 n0).
   { symmetry. rewrite /proc_upto. apply proc_upto_from_ext.
     intros j' _ Hj'.
     apply (pending_n_cs_ext ps0 cs0 (cs0 ++ [0%nat]) j').
     - by eexists.
     - assert (Hlt : (j' `div` length echo_line < S (length cs0))%nat).
-      { apply Nat.div_lt_upper_bound; [ lia | ]. rewrite HL. rewrite Hn0 HL in Hj'. lia. }
+      { apply Nat.div_lt_upper_bound; [ lia | ]. rewrite Hn0 in Hj'. nia. }
       lia. }
   rewrite proc_upto_snoc Hpre.
   rewrite lookup_app_r; [| lia ].

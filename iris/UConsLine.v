@@ -120,20 +120,9 @@ Import Defs.
 
 (* '\n' occurs in [echo_line] ONLY as its last byte -- the fact both (1)
    and (2) turn on, decided at the literal *)
-Lemma echo_line_no_early_nl_bool :
-  forallb (fun j : nat =>
-      negb (bool_decide (echo_line !! j = Some (Z_to_bv 8 10)))) (seq 0 16) = true.
-Proof. vm_compute. reflexivity. Qed.
-
 Lemma echo_line_nl_at (k : nat) :
   (k < 17)%nat -> echo_line !! k = Some (Z_to_bv 8 10) -> k = 16%nat.
-Proof.
-  intros Hk H. destruct (Nat.eq_dec k 16%nat) as [Hk16 | Hne];
-    [ exact Hk16 | exfalso ].
-  assert (Hin : In k (seq 0 16)) by (apply in_seq; lia).
-  pose proof (proj1 (forallb_forall _ _) echo_line_no_early_nl_bool k Hin) as Hb.
-  apply negb_true_iff in Hb. exact (bool_decide_eq_false_1 _ Hb H).
-Qed.
+Proof. intros _ H. exact (echo_line_nl_last k H). Qed.
 
 Lemma ush_disc_line :
   forall (q : nat) (bs : list (bv 8)),

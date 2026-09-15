@@ -198,3 +198,167 @@ Proof.
       cbn in H2. injection H2 as <-.
       apply Hbelow. by eapply elem_of_list_lookup_2.
 Qed.
+
+(* ====================================================================== *)
+(*  THE CONSOLE HISTORY, AND THE EVENTS THAT MOVE IT  (redesign lane R1)   *)
+(*                                                                        *)
+(*  PURPOSE.  Today the console boundary is THREE resources -- an output   *)
+(*  claim over the accepted bytes, an input claim over the log and the     *)
+(*  delivered inputs, and a kernel-lent window token whose only job is to  *)
+(*  refute interleavings [cons.lock] already forbids.  The redesign        *)
+(*  replaces them by ONE resource over the record below, and the token by  *)
+(*  the record's own [ch_arm] field -- which consoleintr arm is in         *)
+(*  progress, and how much of its echo has gone out.                      *)
+(*                                                                        *)
+(*  THIS SECTION IS THE PURE HALF, and it is wired to nothing: the three   *)
+(*  claims, their links and the token are untouched, and every definition  *)
+(*  above is unchanged.  It exists so that the expensive kernel lane can   *)
+(*  be attempted against a pure layer that is already proved.              *)
+(*                                                                        *)
+(*  IT IS INDEPENDENT OF THE OPEN QUESTION about the echo obligation       *)
+(*  (persistent-and-split with the arm in a kernel ghost, versus linear    *)
+(*  and justified by [cons.lock]'s own resource).  That question decides   *)
+(*  WHO PROVES [cons_ev_ok] and how; it does not change what the events    *)
+(*  are or what they do to the history.                                    *)
+(* ====================================================================== *)
+
+(* The consoleintr arm in progress: the byte [c] was accepted at history
+   [h], the echo [cs] was chosen for it, and [j] of [cs]'s bytes have
+   already reached the wire.  [None] between arms. *)
+Definition cons_arm : Type := (list mobs * bv 8 * list (bv 8) * nat)%type.
+Definition ca_hist (a : cons_arm) : list mobs := a.1.1.1.
+Definition ca_byte (a : cons_arm) : bv 8 := a.1.1.2.
+Definition ca_echo (a : cons_arm) : list (bv 8) := a.1.2.
+Definition ca_sent (a : cons_arm) : nat := a.2.
+
+Record cons_hist := MkCH {
+  ch_acc : list (bv 8);                    (* every byte the console UART accepted *)
+  ch_log : list log_entry;                 (* every accepted input, with what was echoed *)
+  ch_dl  : list (list mobs * bv 8);        (* the inputs delivered to processes *)
+  ch_arm : option cons_arm                 (* the arm in progress *)
+}.
+
+(* One ghost event per boundary step.  [EvOut] is a process byte reaching
+   the wire (write(2)); [EvOpen]/[EvByte]/[EvClose] are one consoleintr
+   arm -- a store arm is [EvOpen; EvByte; EvClose], a drop arm is
+   [EvOpen; EvClose] at [cs = []], a kill-line arm is [EvOpen; EvByte*;
+   EvClose]; [EvRead] is a consoleread handing inputs to a process. *)
+Inductive cons_ev :=
+  | EvOut  (b : bv 8)
+  | EvOpen (h : list mobs) (c : bv 8) (cs : list (bv 8))
+  | EvByte (b : bv 8)
+  | EvClose
+  | EvRead (ws : list (list mobs * bv 8)).
+
+Definition cons_step (H : cons_hist) (ev : cons_ev) : cons_hist :=
+  match ev with
+  | EvOut b => MkCH (ch_acc H ++ [b]) (ch_log H) (ch_dl H) (ch_arm H)
+  | EvOpen h c cs => MkCH (ch_acc H) (ch_log H) (ch_dl H) (Some (h, c, cs, 0%nat))
+  | EvByte b =>
+      match ch_arm H with
+      | Some (h, c, cs, j) =>
+          MkCH (ch_acc H ++ [b]) (ch_log H) (ch_dl H) (Some (h, c, cs, S j))
+      | None => H
+      end
+  | EvClose =>
+      match ch_arm H with
+      | Some (h, c, cs, j) =>
+          MkCH (ch_acc H) (ch_log H ++ [(h, c, take j cs)]) (ch_dl H) None
+      | None => H
+      end
+  | EvRead ws => MkCH (ch_acc H) (ch_log H) (ch_dl H ++ ws) (ch_arm H)
+  end.
+
+(* THE KERNEL'S PURE PREMISE at each event -- what the kernel proves from
+   its own state before firing the application's link.
+
+   [EvClose]'s [cons_echo] CLAUSE IS LOAD-BEARING AND IS NOT [j <= length
+   cs].  The entry records what actually went out, [take j cs], and
+   [log_ok] asks every entry's echo to be a LEGAL echo of its byte; but a
+   legal echo is not prefix-closed -- the erase arm's [cs] is a multiple of
+   the three bytes [consputc_bs], and stopping one or two bytes into an
+   erase leaves something that is no echo of anything.  So the arm is
+   stoppable exactly where its partial echo is itself legal, which is what
+   the live contract already demands ([WpUart.in_claim_append] and
+   [uart_inv_append] both take [ConsLog.cons_echo c cs] for the [cs] they
+   file).  Stating it as [j <= length cs] would make [cons_hist_ok_step]
+   below UNPROVABLE at [EvClose]. *)
+Definition cons_ev_ok (H : cons_hist) (ev : cons_ev) : Prop :=
+  match ev with
+  | EvOut _ => True
+  | EvOpen h c cs =>
+      ch_arm H = None
+      /\ obs_ends_in Uart0 h c
+      /\ cons_echo c cs
+      /\ (forall e, e ∈ ch_log H -> hist_ext (le_hist e) h)
+      (* the WIRE RIDER: what the application has accounted for is already
+         on the wire the kernel is about to extend *)
+      /\ obs_wire Uart0 (open_seg h) `prefix_of` ch_acc H
+  | EvByte b => exists a, ch_arm H = Some a /\ ca_echo a !! ca_sent a = Some b
+  | EvClose =>
+      exists a, ch_arm H = Some a
+                /\ cons_echo (ca_byte a) (take (ca_sent a) (ca_echo a))
+  | EvRead ws => read_ok (ch_log H) (ch_dl H) ws
+  end.
+
+(* The arm's own well-formedness, against the log it will be filed into. *)
+Definition arm_ok (L : list log_entry) (a : cons_arm) : Prop :=
+  obs_ends_in Uart0 (ca_hist a) (ca_byte a)
+  /\ cons_echo (ca_byte a) (ca_echo a)
+  /\ (ca_sent a <= length (ca_echo a))%nat
+  /\ (forall e, e ∈ L -> hist_ext (le_hist e) (ca_hist a)).
+
+(* THE INVARIANT the port carries.  [ConsoleInv.cons_ok] is a different
+   thing (the ring's three counters), hence the name. *)
+Definition cons_hist_ok (H : cons_hist) : Prop :=
+  log_ok (ch_log H) /\ from_option (arm_ok (ch_log H)) True (ch_arm H).
+
+(* ---------------------------------------------------------------------- *)
+(*  THE ONE THEOREM: the events preserve the invariant.                    *)
+(* ---------------------------------------------------------------------- *)
+
+Lemma cons_hist_ok_step (H : cons_hist) (ev : cons_ev) :
+  cons_hist_ok H -> cons_ev_ok H ev -> cons_hist_ok (cons_step H ev).
+Proof.
+  unfold cons_hist_ok, cons_ev_ok, cons_step, arm_ok,
+         ca_hist, ca_byte, ca_echo, ca_sent.
+  intros [Hlog Harm] Hev. destruct ev.
+  - (* EvOut: only [ch_acc] moves *) simpl in *. split; assumption.
+  - (* EvOpen: the arm is founded, and its facts ARE the premises *)
+    destruct Hev as (Hnone & Hends & Hecho & Hbelow & _).
+    simpl in *. split; [exact Hlog |].
+    split; [exact Hends |]. split; [exact Hecho |].
+    split; [apply Nat.le_0_l |]. exact Hbelow.
+  - (* EvByte: the counter advances into a byte the echo really has, so it
+       stays within the echo *)
+    destruct Hev as (a & Ha & Hlk). destruct a as [[[h c] cs] j].
+    rewrite Ha in Harm. rewrite Ha. simpl in *.
+    destruct Harm as (Hends & Hecho & _ & Hbelow).
+    apply lookup_lt_Some in Hlk.
+    split; [exact Hlog |].
+    split; [exact Hends |]. split; [exact Hecho |].
+    split; [exact Hlk |]. exact Hbelow.
+  - (* EvClose: the entry is filed, and the arm's facts are exactly
+       [cl_log_ok_snoc]'s premises *)
+    destruct Hev as (a & Ha & Hpre). destruct a as [[[h c] cs] j].
+    rewrite Ha in Harm. rewrite Ha. simpl in *.
+    destruct Harm as (Hends & _ & _ & Hbelow).
+    split; [| exact I].
+    exact (cl_log_ok_snoc (ch_log H) (h, c, take j cs) Hlog Hends Hpre Hbelow).
+  - (* EvRead: only [ch_dl] moves *) simpl in *. split; assumption.
+Qed.
+
+(* The log only ever grows, and only at [EvClose]. *)
+Lemma cons_step_log (H : cons_hist) (ev : cons_ev) :
+  exists suf, ch_log (cons_step H ev) = ch_log H ++ suf.
+Proof.
+  destruct ev; simpl.
+  - exists nil. rewrite app_nil_r. reflexivity.
+  - exists nil. rewrite app_nil_r. reflexivity.
+  - destruct (ch_arm H) as [[[[h c] cs] j] |];
+      (exists nil; rewrite app_nil_r; reflexivity).
+  - destruct (ch_arm H) as [[[[h c] cs] j] |].
+    + exists (cons (h, c, take j cs) nil). reflexivity.
+    + exists nil. rewrite app_nil_r. reflexivity.
+  - exists nil. rewrite app_nil_r. reflexivity.
+Qed.

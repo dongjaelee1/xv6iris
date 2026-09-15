@@ -346,6 +346,35 @@ Proof.
   pose proof (kxc_sp_le_top top len argc). lia.
 Qed.
 
+(* ...AND HOW FAR DOWN THE PUSH CAN REACH.  Each argument costs its own
+   bytes, its NUL and at most fifteen of alignment; the vector costs its
+   words and at most fifteen more.  A caller that needs ROOM LEFT BELOW
+   the block -- an entry frame, say -- gets it from this and a bound on
+   the arguments, rather than from the block's address as a number. *)
+Fixpoint kxc_span (len : nat -> nat) (i : nat) : Z :=
+  match i with
+  | O => 0
+  | S i' => kxc_span len i' + (Z.of_nat (len i') + 16)
+  end.
+
+Lemma kxc_sp_ge (top : Z) (len : nat -> nat) (i : nat) :
+  top - kxc_span len i <= kxc_sp top len i.
+Proof.
+  induction i as [| i IH]; cbn [kxc_sp kxc_span]; [lia |].
+  pose proof (kxc_round16_gt (kxc_sp top len i - (Z.of_nat (len i) + 1))).
+  lia.
+Qed.
+
+Lemma kxc_sp_final_ge (top : Z) (len : nat -> nat) (argc : nat) :
+  top - kxc_span len argc - (8 * (Z.of_nat argc + 1) + 16)
+  <= kxc_sp_final top len argc.
+Proof.
+  rewrite /kxc_sp_final.
+  pose proof (kxc_round16_gt (kxc_sp top len argc
+                              - 8 * (Z.of_nat argc + 1))).
+  pose proof (kxc_sp_ge top len argc). lia.
+Qed.
+
 (* AN ARGUMENT IS SHORTER THAN THE PAGE IT FITTED IN.  The C tested the
    pointer after every push, so [len i + 1] cannot exceed the distance the
    pointer had left -- which is what bounds a string's length without

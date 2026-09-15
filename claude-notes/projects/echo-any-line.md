@@ -72,6 +72,14 @@ the only case outside it.
   `echo_alen_le5` are deleted — nothing reads an argument's offset or length
   as a number any more. What remains is `echo_off_0 = 0` (true of every line,
   `wl_off_0`) and `echo_alen_0 = 4` (the COMMAND NAME, which stays "echo").
+- **THE ENTRY'S STACK ROOM IS AN INEQUALITY.** `echo_sp_final`'s
+  `kxc_sp_final 0x4000 alen 3 = 0x3FB0` is gone. `KexecDefs.kxc_span` /
+  `kxc_sp_ge` / `kxc_sp_final_ge` bound how far down the push can reach —
+  each argument costs its bytes, its NUL and at most fifteen of alignment;
+  the vector its words and fifteen more — and `UShEcho.echo_argv_fits` is
+  the side condition that earns echo's twelve-word frame its room. A line
+  long enough to crowd that frame off the stack page is a line the claim
+  must not be about, and now it says so.
 - **THE EXEC CHANNEL COUNTS TO `length echo_ws`.** `echo_args_det`,
   `echo_argv_is`, `UShEchoOut.echo_out_argv_of_image` and `UShEchoPay`
   state the count and the per-index rows at the word list; the `Hna`
@@ -122,13 +130,15 @@ premise once the word list is a parameter.
 
 ## What is left
 
-1. **THE ENTRY'S STACK ROOM** (`UShEcho.echo_sp_final` / `echo_room`).
-   The last literal in the chain: `kxc_sp_final 0x4000 alen 3 = 0x3FB0`,
-   the address exec's push loop lands the vector at, computed at lengths
-   4/5/5. What the entry needs of it is only that `echo`'s twelve-word
-   frame fits below it, so the shape wanted is an inequality off
-   `KexecDefs.kxc_sp_range` — the same move `echo_key_args` already made —
-   rather than the address as a number.
+1. **THE SWAP TEST.** Everything in the chain is now structural, so
+   changing `EchoDisc.echo_ws` to a different word list and rebuilding
+   should go green apart from the checks that are deliberately AT the
+   literal. Expected to fail, by design: `echo_line_length = 17`,
+   `echo_line_string`, `echo_line_out_string`/`_length`,
+   `EchoLinksLine.line_alts_len0 = 14`, and the six `demo_*` anti-vacuity
+   segments (they embed a literal wire). Anything ELSE that fails is a
+   remaining literal dependence and the next thing to fix. Run it before
+   attempting the parameterization — it measures what is actually left.
 2. **THE CALLER'S BOUNDS.** `EchoDisc.echo_ws_pos` and `echo_ws_lt10` name
    two of them (the line has a command name; fewer words than sh's
    MAXARGS). Still unnamed: the line inside `getcmd`'s 100-byte buffer

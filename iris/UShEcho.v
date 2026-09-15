@@ -210,25 +210,31 @@ Proof. unfold kexec_top. rewrite ElfUser.echo_elf_end. reflexivity. Qed.
 Lemma echo_kexec_sz : kexec_sz ElfUser.echo_elf = 0x4000.
 Proof. unfold kexec_sz. rewrite echo_kexec_top. reflexivity. Qed.
 
-(* THE ROOM echo's entry needs, at the arguments sh passes: twelve words
-   below the entry sp, which lands at 0x3FB0 -- 0xFB0 above the stack
-   page's base.  [UInitSh.init_sh_room] is the same closed computation for
+(* THE ROOM echo's entry needs: twelve words below the entry sp.  This
+   used to be the ADDRESS -- [kxc_sp_final 0x4000 alen 3 = 0x3FB0] at
+   lengths 4, 5 and 5 -- and an address is a fact about one argument
+   vector.  What the entry actually needs is an INEQUALITY, and what buys
+   it is a bound on how much stack the arguments took: their own bytes,
+   their NULs, the vector's words and at most fifteen of alignment each
+   ([KexecDefs.kxc_sp_final_ge]).
+
+   THAT BOUND IS A SIDE CONDITION ON THE LINE, and the right one: a line
+   long enough to crowd echo's frame off its own stack page is a line the
+   claim must not be about.  [UInitSh.init_sh_room] is the same shape for
    sh's frames at init's one argument. *)
-Lemma echo_sp_final (alen : nat -> nat) :
-  alen 0%nat = 4%nat -> alen 1%nat = 5%nat -> alen 2%nat = 5%nat ->
-  kxc_sp_final 0x4000 alen 3%nat = 0x3FB0.
-Proof.
-  intros H0 H1 H2. unfold kxc_sp_final. cbn [kxc_sp].
-  rewrite H0 H1 H2. vm_compute. reflexivity.
-Qed.
+Definition echo_argv_fits (alen : nat -> nat) : Prop :=
+  kxc_span alen (length echo_ws)
+    + (8 * (Z.of_nat (length echo_ws) + 1) + 16)
+  <= PGSIZE - 96.
 
 Lemma echo_room (alen : nat -> nat) :
-  alen 0%nat = 4%nat -> alen 1%nat = 5%nat -> alen 2%nat = 5%nat ->
+  echo_argv_fits alen ->
   kexec_sz ElfUser.echo_elf - PGSIZE + 96
-    <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen 3%nat.
+    <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen (length echo_ws).
 Proof.
-  intros H0 H1 H2. rewrite echo_kexec_sz. rewrite (echo_sp_final alen H0 H1 H2).
-  unfold PGSIZE. lia.
+  rewrite /echo_argv_fits. intro Hfit. rewrite echo_kexec_sz.
+  pose proof (kxc_sp_final_ge 0x4000 alen (length echo_ws)).
+  unfold PGSIZE in *. lia.
 Qed.
 
 (* ===================================================================== *)

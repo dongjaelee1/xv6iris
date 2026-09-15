@@ -239,12 +239,29 @@ Section UShEchoPay.
       iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf _ _ %Hargs Hmp [_ Hc]".
       destruct (echo_args_det_holds M s0 t g na alen afun Himg Hbytes Hargs)
         as (Hna & Halen & Hafun).
-      iApply (echo_slot_of_kexec_at na alen afun fdv W' v np Hok
-                ltac:(subst na;
-                      exact (echo_room alen
-                               (Halen 0%nat ltac:(rewrite echo_ws_length; lia))
-                               (Halen 1%nat ltac:(rewrite echo_ws_length; lia))
-                               (Halen 2%nat ltac:(rewrite echo_ws_length; lia))))
+      (* ECHO'S FRAME FITS: the arguments this line pushed leave the
+         twelve words the entry needs.  An INEQUALITY off the push
+         geometry, discharged at the lengths the parser pinned -- not the
+         vector's address as a number. *)
+      assert (Hroom : kexec_sz ElfUser.echo_elf - PGSIZE + 96
+                      <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen na).
+      { assert (Hi0 : (0 < length echo_ws)%nat)
+          by (rewrite echo_ws_length; lia).
+        assert (Hi1 : (1 < length echo_ws)%nat)
+          by (rewrite echo_ws_length; lia).
+        assert (Hi2 : (2 < length echo_ws)%nat)
+          by (rewrite echo_ws_length; lia).
+        pose proof (Halen 0%nat Hi0) as E0.
+        pose proof (Halen 1%nat Hi1) as E1.
+        pose proof (Halen 2%nat Hi2) as E2.
+        assert (A0 : UkShEcho.echo_alen 0%nat = 4%nat) by (by vm_compute).
+        assert (A1 : UkShEcho.echo_alen 1%nat = 5%nat) by (by vm_compute).
+        assert (A2 : UkShEcho.echo_alen 2%nat = 5%nat) by (by vm_compute).
+        rewrite A0 in E0. rewrite A1 in E1. rewrite A2 in E2.
+        rewrite Hna. apply echo_room.
+        rewrite /echo_argv_fits echo_ws_length. cbn [kxc_span].
+        rewrite E0 E1 E2. unfold PGSIZE. lia. }
+      iApply (echo_slot_of_kexec_at na alen afun fdv W' v np Hok Hroom
                 Hlen Hlzf Hna Halen Hafun Hfd1' Hkt
                 with "Hpin Hlk Hdep Hgen Hmp Hc"). }
     (* ---- THE TAINT ARM: the generic slot at the chosen payload ---- *)

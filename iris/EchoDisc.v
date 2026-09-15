@@ -124,6 +124,16 @@ Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 Lemma echo_ws_length : length echo_ws = 3%nat.
 Proof. reflexivity. Qed.
 
+(* THE TWO BOUNDS A CALLER OWES, named where the word list is: the line
+   has a command name to run, and it has fewer words than sh's MAXARGS.
+   Both are decidable at any given line and become premises once the word
+   list is a parameter. *)
+Lemma echo_ws_pos : (0 < length echo_ws)%nat.
+Proof. rewrite echo_ws_length. lia. Qed.
+
+Lemma echo_ws_lt10 : (length echo_ws < 10)%nat.
+Proof. rewrite echo_ws_length. lia. Qed.
+
 (* a word of the line, read back through [!!] so that [LineWords]' lemmas
    -- every one of which is keyed on [ws !! i = Some w] -- apply *)
 Lemma echo_ws_at (i : nat) :

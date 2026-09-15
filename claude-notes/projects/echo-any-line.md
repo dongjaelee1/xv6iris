@@ -72,6 +72,11 @@ the only case outside it.
   `echo_alen_le5` are deleted — nothing reads an argument's offset or length
   as a number any more. What remains is `echo_off_0 = 0` (true of every line,
   `wl_off_0`) and `echo_alen_0 = 4` (the COMMAND NAME, which stays "echo").
+- **THE ARITY IS THE WORD LIST'S, up to the node.** `UkShEcho`'s argv-node
+  vocabulary — `echo_off_lt`, `echo_toks_lookup`, `echo_cmd_args_length` /
+  `_lookup`, `echo_argv_bytes`, `echo_cmd_str` / `_word` / `_cap` — is
+  stated at `length echo_ws`, not 3. `EchoDisc.echo_ws_pos` and
+  `echo_ws_lt10` name the two bounds a caller owes.
 - **THE LENGTH IS GONE.** Three sites still name 17, and each is a
   deliberate one: the two anti-vacuity demos at a literal wire
   (`EchoOut.v`, `EchoLinksPro.v`), and `UkSh`'s check that the line fits
@@ -106,16 +111,25 @@ premise once the word list is a parameter.
 
 ## What is left
 
-1. **THE EXEC-CHANNEL PREMISES.** `UShEchoOut.echo_out_argv_of_image` and
-   `UShEchoPay` still carry `na = 3` and per-index `alen i = echo_alen i`;
-   they should read `na = length echo_ws` and quantify.
-2. **THE CALLER'S SIDE CONDITIONS**, none of which `LineWords`/`UkShWords`
-   state: at most `MAXARGS` words (sh's parser), the line inside `getcmd`'s
-   100-byte buffer and the console's 128. The argv block's fit inside exec's
-   stack page is already an inequality (`KexecDefs.kxc_len_bound`).
-3. **THE WORD LIST ITSELF.** Once 1-2 are done, `EchoDisc.echo_ws` becomes a
-   parameter with `wl_wf` and item 2's bounds and prefix-freeness as its premises, and the theorem
-   reads `forall ws, ... -> <the claim at that line>`.
+1. **THE IMAGE EXTRACTION IS STILL UNROLLED AT THREE.**
+   `UShEcho.echo_node_img` and `echo_node_img_of_cmd` read the argv node
+   out of the heap one argument at a time (twelve `iDestruct`s at indices
+   0/1/2), and `echo_args_det` / `echo_key_args`'s callers still say
+   `na = 3` and `alen i = echo_alen i` per index — as do
+   `UShEchoOut.echo_out_argv_of_image` and `UShEchoPay`. The shape wanted
+   is a one-index helper plus an induction on the count, exactly as
+   `kecho_pay_of_link_from` did for the write chain. `uheap`'s readings do
+   not consume it, so the induction can hold the heap throughout.
+2. **THE CALLER'S BOUNDS.** `EchoDisc.echo_ws_pos` and `echo_ws_lt10` name
+   two of them (the line has a command name; fewer words than sh's
+   MAXARGS). Still unnamed: the line inside `getcmd`'s 100-byte buffer
+   (flagged in place at `UkSh`) and the console's 128. The argv block's fit
+   inside exec's stack page is already an inequality
+   (`KexecDefs.kxc_len_bound`).
+3. **THE WORD LIST ITSELF.** Once 1-2 are done, `EchoDisc.echo_ws` becomes
+   a parameter with `wl_wf`, item 2's bounds and prefix-freeness as its
+   premises, and the theorem reads
+   `forall ws, ... -> <the claim at that line>`.
 
 ## The two traps this lane keeps walking into
 

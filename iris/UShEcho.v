@@ -967,22 +967,22 @@ Section UShEcho.
   Proof.
     iIntros "Hheap #Hc".
     iDestruct (UkShEcho.echo_cmd_addr with "Hc") as %[Htr _].
-    iDestruct (UkShEcho.echo_cmd_word gd t s0 g 0%nat ltac:(lia) with "Hc")
+    iDestruct (UkShEcho.echo_cmd_word gd t s0 g 0%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
       as "#Hw0".
     iDestruct (uheap_uwordq_img with "Hheap Hw0") as %Hb0.
-    iDestruct (UkShEcho.echo_cmd_word gd t s0 g 1%nat ltac:(lia) with "Hc")
+    iDestruct (UkShEcho.echo_cmd_word gd t s0 g 1%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
       as "#Hw1".
     iDestruct (uheap_uwordq_img with "Hheap Hw1") as %Hb1.
-    iDestruct (UkShEcho.echo_cmd_word gd t s0 g 2%nat ltac:(lia) with "Hc")
+    iDestruct (UkShEcho.echo_cmd_word gd t s0 g 2%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
       as "#Hw2".
     iDestruct (uheap_uwordq_img with "Hheap Hw2") as %Hb2.
     iDestruct (UkShEcho.echo_cmd_cap gd t s0 g with "Hc") as "#Hwc".
     iDestruct (uheap_uwordq_img with "Hheap Hwc") as %Hbc.
-    iDestruct (UkShEcho.echo_cmd_str gd t s0 g 0%nat ltac:(lia) with "Hc")
+    iDestruct (UkShEcho.echo_cmd_str gd t s0 g 0%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
       as "[%Hr0 #Hs0]".
-    iDestruct (UkShEcho.echo_cmd_str gd t s0 g 1%nat ltac:(lia) with "Hc")
+    iDestruct (UkShEcho.echo_cmd_str gd t s0 g 1%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
       as "[%Hr1 #Hs1]".
-    iDestruct (UkShEcho.echo_cmd_str gd t s0 g 2%nat ltac:(lia) with "Hc")
+    iDestruct (UkShEcho.echo_cmd_str gd t s0 g 2%nat ltac:(rewrite echo_ws_length; lia) with "Hc")
       as "[%Hr2 #Hs2]".
     iDestruct "Hs0" as "(_ & _ & Hbs0 & Hnl0)".
     iDestruct "Hs1" as "(_ & _ & Hbs1 & Hnl1)".
@@ -1042,7 +1042,7 @@ Section UShEcho.
       f_equal.
       rewrite <- (list_lookup_total_correct _ _ _ Hj).
       rewrite (echo_pl_line j Hjl).
-      exact (proj1 Hbytes 0%nat j ltac:(lia)
+      exact (proj1 Hbytes 0%nat j ltac:(exact echo_ws_pos)
                ltac:(rewrite UkShEcho.echo_alen_0; lia)).
     - rewrite echo_pl_len.
       rewrite (uint_avi_moi s0 (Z.of_nat 4%nat) ltac:(lia) ltac:(lia)
@@ -1140,7 +1140,7 @@ Section UShEcho.
         pose proof (proj1 Hbytes i (alen i) Hi Hlt) as Hgl.
         assert (Hidx : (UkShEcho.echo_off i + alen i
                         < length echo_line)%nat)
-          by (apply UkShEcho.echo_off_lt; lia).
+          by (apply UkShEcho.echo_off_lt; rewrite ?echo_ws_length; lia).
         apply (echo_line_nonul _ Hidx).
         rewrite <- Hgl, <- Hm2. exact (eq_sym ubyte0_moi0).
       - destruct (decide (alen i = UkShEcho.echo_alen i)) as [He | Hne];

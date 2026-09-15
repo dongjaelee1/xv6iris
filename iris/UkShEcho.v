@@ -117,7 +117,7 @@ Proof. rewrite /echo_toks wl_toks_length. vm_compute. lia. Qed.
    these words.  A caller that used to bound [echo_off i + j] by case
    analysis over the three offsets gets it from this. *)
 Lemma echo_off_lt (i j : nat) :
-  (i < 3)%nat -> (j <= echo_alen i)%nat ->
+  (i < length echo_ws)%nat -> (j <= echo_alen i)%nat ->
   (echo_off i + j < length echo_line)%nat.
 Proof.
   intros Hi Hj. rewrite /echo_off echo_line_words.
@@ -137,7 +137,7 @@ Lemma echo_alen_0 : echo_alen 0%nat = 4%nat.
 Proof. by vm_compute. Qed.
 
 Lemma echo_toks_lookup (i : nat) :
-  (i < 3)%nat ->
+  (i < length echo_ws)%nat ->
   echo_toks !! i = Some (echo_off i, (echo_off i + echo_alen i)%nat).
 Proof.
   intro Hi. rewrite /echo_toks /echo_off /echo_alen /wl_toks.
@@ -217,11 +217,13 @@ Lemma echo_cmd_ht (s0 : Z) (g : nat -> bv 8) : ush_ht (echo_cmd s0 g) = 1%nat.
 Proof. reflexivity. Qed.
 
 Lemma echo_cmd_args_length (s0 : Z) (g : nat -> bv 8) :
-  length (UkShMain.ush_args s0 g echo_toks) = 3%nat.
-Proof. rewrite UkShMain.ush_args_length. reflexivity. Qed.
+  length (UkShMain.ush_args s0 g echo_toks) = length echo_ws.
+Proof.
+  rewrite UkShMain.ush_args_length /echo_toks. exact (wl_toks_length echo_ws).
+Qed.
 
 Lemma echo_cmd_args_lookup (s0 : Z) (g : nat -> bv 8) (i : nat) :
-  (i < 3)%nat ->
+  (i < length echo_ws)%nat ->
   UkShMain.ush_args s0 g echo_toks !! i
   = Some (UArg (s0 + Z.of_nat (echo_off i)) (echo_alen i)
             (fun j : nat => g (echo_off i + j)%nat)).
@@ -244,9 +246,9 @@ Qed.
    Stated over the CUT function [g] (the tree's own), because that is the
    one the node's [ustr]s are indexed by. *)
 Definition echo_argv_bytes (g : nat -> bv 8) : Prop :=
-  (forall (i j : nat), (i < 3)%nat -> (j < echo_alen i)%nat ->
+  (forall (i j : nat), (i < length echo_ws)%nat -> (j < echo_alen i)%nat ->
      g (echo_off i + j)%nat = echo_line !!! (echo_off i + j)%nat)
-  /\ (forall i : nat, (i < 3)%nat ->
+  /\ (forall i : nat, (i < length echo_ws)%nat ->
         g (echo_off i + echo_alen i)%nat = ubyte0).
 
 (* ...and it holds of the disciplined line's cut.  [ushp_nulfold] writes a
@@ -312,7 +314,7 @@ Section UkShEcho.
   (*  [DfracDiscarded], so every one of them is free to take.              *)
   (* =================================================================== *)
   Lemma echo_cmd_str (gd : gname) (t s0 : Z) (g : nat -> bv 8) (i : nat) :
-    (i < 3)%nat ->
+    (i < length echo_ws)%nat ->
     ush_cmd gd t (echo_cmd s0 g) -∗
     ⌜ 0 < s0 + Z.of_nat (echo_off i) < 2 ^ 38 ⌝ ∗
     ustr gd DfracDiscarded (s0 + Z.of_nat (echo_off i)) (echo_alen i)
@@ -328,7 +330,7 @@ Section UkShEcho.
   Qed.
 
   Lemma echo_cmd_word (gd : gname) (t s0 : Z) (g : nat -> bv 8) (i : nat) :
-    (i < 3)%nat ->
+    (i < length echo_ws)%nat ->
     ush_cmd gd t (echo_cmd s0 g) -∗
     uwordq gd DfracDiscarded (t + 8 + 8 * Z.of_nat i)
       (mword_of_int (s0 + Z.of_nat (echo_off i))).
@@ -342,7 +344,8 @@ Section UkShEcho.
 
   Lemma echo_cmd_cap (gd : gname) (t s0 : Z) (g : nat -> bv 8) :
     ush_cmd gd t (echo_cmd s0 g) -∗
-    uwordq gd DfracDiscarded (t + 8 + 8 * Z.of_nat 3%nat) (mword_of_int 0).
+    uwordq gd DfracDiscarded (t + 8 + 8 * Z.of_nat (length echo_ws))
+      (mword_of_int 0).
   Proof.
     iIntros "#Hc".
     iDestruct (ush_cmd_exec with "Hc") as "(_ & #Hn & _)".
@@ -364,11 +367,11 @@ Section UkShEcho.
                     (fun j : nat => g (echo_off 0%nat + j)%nat)).
   Proof.
     iIntros "#Hc". iSplit.
-    - iDestruct (echo_cmd_word gd t s0 g 0%nat ltac:(lia) with "Hc") as "#Hw".
+    - iDestruct (echo_cmd_word gd t s0 g 0%nat ltac:(exact echo_ws_pos) with "Hc") as "#Hw".
       assert (E : t + 8 + 8 * Z.of_nat 0%nat = t + 8) by lia.
       iEval (rewrite E) in "Hw".
       rewrite /ush_ptr. iExact "Hw".
-    - iDestruct (echo_cmd_str gd t s0 g 0%nat ltac:(lia) with "Hc")
+    - iDestruct (echo_cmd_str gd t s0 g 0%nat ltac:(exact echo_ws_pos) with "Hc")
         as "[%Hr #Hs]".
       rewrite /ush_str. cbn [ua_ptr ua_len ua_bytes].
       iSplit; [ iPureIntro; exact Hr | iExact "Hs" ].
@@ -737,7 +740,7 @@ Section UkShEcho.
                  (fun j : nat => g (echo_off 0%nat + j)%nat))
               Hfd2 ltac:(rewrite Hs1_k4; exact Ht8) ltac:(reflexivity)
               ltac:(intros j Hj; cbn [ua_bytes];
-                    rewrite (proj1 Hbytes 0%nat j ltac:(lia) Hj);
+                    rewrite (proj1 Hbytes 0%nat j ltac:(exact echo_ws_pos) Hj);
                     rewrite echo_off_0 Nat.add_0_l; reflexivity)
               with "Hxl Hcode Hro [] [] Hstd Hcr [] Hrun").
     { rewrite Hs1_k4. cbn [ua_ptr]. iExact "Hw0". }

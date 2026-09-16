@@ -124,16 +124,17 @@ R -∗
    a basic update loses nothing ([bupd_fupd]).
    The column travels here too: an FCR write may clear the receive FIFO,
    and the output claim rides in it. *)
-(* ...AND THE INPUT CLAIM TRAVELS WITH IT (lane CONS-IO).  The CONSOLE
-   ECHO's store has to read the UART's input log to place the byte it is
-   echoing, and the log's claim lives inside THIS invariant, which only this
-   node opens -- so a leaf that needs it can get it nowhere else.  It is
-   lent and given straight back; every leaf but the echo's threads it
-   untouched, and the read node below does not carry it at all. *)
+(* ...AND THE PORT'S CONSOLE CLAIM TRAVELS WITH IT (redesign R2).  The
+   CONSOLE ECHO's store has to read what the user typed in order to place
+   the byte it is echoing, and both sides of that reading live in ONE
+   claim inside THIS invariant, which only this node opens -- so a leaf
+   that needs it can get it nowhere else.  It is lent and given straight
+   back, at the state the invariant closes at; every leaf but the echo's
+   threads it untouched, and the read node below does not carry it. *)
 (∀ u u', ⌜ uart_write u off storebyte = Some u' ⌝ -∗
-   uart_ghosts γd u -∗ uart_colE i γd u -∗ in_claim_at i γd -∗ R
+   uart_ghosts γd u -∗ uart_colE i γd u -∗ cons_claim_at i γd u -∗ R
    ={⊤ ∖ ↑uartN i}=∗
-   uart_ghosts γd u' ∗ uart_colE i γd u' ∗ in_claim_at i γd ∗ S) -∗
+   uart_ghosts γd u' ∗ uart_colE i γd u' ∗ cons_claim_at i γd u' ∗ S) -∗
 wp_next b p (fun (CID : CpuId) =>
   sie_cap_gpr kt m n b p -∗
   pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
@@ -201,9 +202,14 @@ sie_cap_gpr kt m n b p -∗
 pc_is pc -∗ instr pc is_rvc (STORE (imm, Regidx rs2, Regidx rs1, 1)) -∗
 dev_inv γd γv -∗
 R -∗
-(* the column travels here too: an FCR write may clear the receive FIFO *)
+(* the column travels here too: an FCR write may clear the receive FIFO.
+   THE ACCEPTED BYTES COME BACK AS A PURE FACT (redesign R2): the port's
+   console claim is stated over them and is NOT threaded here -- this
+   corollary is for the CONFIG registers -- so the caller, who must close
+   the invariant at [u'], gets what it needs to carry the claim across. *)
 (∀ u u', ⌜ uart_write u off storebyte = Some u' ⌝ -∗
    uart_ghosts γd u -∗ uart_colE Uart0 γd u -∗ R ==∗
+   ⌜uart_acc u' = uart_acc u⌝ ∗
    uart_ghosts γd u' ∗ uart_colE Uart0 γd u' ∗ S) -∗
 wp_next b p (fun (CID : CpuId) =>
   sie_cap_gpr kt m n b p -∗
@@ -235,9 +241,14 @@ sie_cap_gpr kt m n b p -∗
 pc_is pc -∗ instr pc is_rvc (STORE (imm, Regidx rs2, Regidx rs1, 1)) -∗
 uart_inv Uart0 γd -∗
 R -∗
-(* the column travels here too: an FCR write may clear the receive FIFO *)
+(* the column travels here too: an FCR write may clear the receive FIFO.
+   THE ACCEPTED BYTES COME BACK AS A PURE FACT (redesign R2): the port's
+   console claim is stated over them and is NOT threaded here -- this
+   corollary is for the CONFIG registers -- so the caller, who must close
+   the invariant at [u'], gets what it needs to carry the claim across. *)
 (∀ u u', ⌜ uart_write u off storebyte = Some u' ⌝ -∗
    uart_ghosts γd u -∗ uart_colE Uart0 γd u -∗ R ==∗
+   ⌜uart_acc u' = uart_acc u⌝ ∗
    uart_ghosts γd u' ∗ uart_colE Uart0 γd u' ∗ S) -∗
 wp_next b p (fun (CID : CpuId) =>
   sie_cap_gpr kt m n b p -∗

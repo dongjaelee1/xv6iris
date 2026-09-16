@@ -241,14 +241,14 @@ Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
             iDestruct "Hsi" as "[Hreg [Hmem Hdev]]".
             iDestruct "Hdev" as "(Hua & Hpldev & Hvdev)".
             iInv "Huinv" as ">Hdbody" "Hdclose".
-            iDestruct "Hdbody" as (u) "(Huf & Hg & Hcol & Hincl & Harm)".
+            iDestruct "Hdbody" as (u) "(Huf & Hg & Hcol & Hcons)".
             iDestruct (uarts_agree with "Hua Huf") as %Hduart.
             destruct (uart_write_total u off storebyte Hoff) as [u' Hwrite_u].
             iMod (dev_interp_update_uart sigma.(mdev) i u u'
                     with "[$Hua $Hpldev $Hvdev] Huf") as "[Hdev' Huf']".
-            iMod ("Hacc" $! u u' with "[//] Hg Hcol Hincl HR")
-              as "(Hg' & Hcol' & Hincl & HS)".
-            iMod ("Hdclose" with "[Huf' Hg' Hcol' Hincl Harm]") as "_".
+            iMod ("Hacc" $! u u' with "[//] Hg Hcol Hcons HR")
+              as "(Hg' & Hcol' & Hcons & HS)".
+            iMod ("Hdclose" with "[Huf' Hg' Hcol' Hcons]") as "_".
             { iApply bi.later_intro. iExists u'. iFrame. }
             iMod (fupd_mask_subseteq ∅) as "Hb2"; [set_solver|].
             iModIntro. iExists (set_duart sigma.(mdev) i u').
@@ -331,9 +331,12 @@ Qed.
     (* the primitive's ghost step is a fupd at [⊤ ∖ ↑uartN Uart0] (lane
        OUT-FUPD); this corollary's is the landed basic update, and a basic
        update is a fupd at any mask *)
-    iIntros (u u') "%Hw Hg Hcol Hin HR".
-    iMod ("Hacc" $! u u' with "[//] Hg Hcol HR") as "(Hg & Hcol & HS)".
-    iModIntro. iFrame "Hg Hcol Hin HS".
+    iIntros (u u') "%Hw Hg Hcol Hcons HR".
+    iMod ("Hacc" $! u u' with "[//] Hg Hcol HR") as "(%Hacce & Hg & Hcol & HS)".
+    (* a CONFIG write leaves the accepted bytes alone, which is exactly what
+       the caller hands back, so the port's claim rides across *)
+    iDestruct (cons_claim_at_stable Uart0 γd u u' Hacce with "Hcons") as "Hcons".
+    iModIntro. iFrame "Hg Hcol Hcons HS".
   Qed.
 
   (* The bundle-taking RESTATEMENT of the accessor leaf above, statement
@@ -531,14 +534,19 @@ Qed.
             iDestruct "Hsi" as "[Hreg [Hmem Hdev]]".
             iDestruct "Hdev" as "(Hua & Hpldev & Hvdev)".
             iInv "Huinv" as ">Hdbody" "Hdclose".
-            iDestruct "Hdbody" as (u) "(Huf & Hg & Hcol & Hincl & Harm)".
+            iDestruct "Hdbody" as (u) "(Huf & Hg & Hcol & Hcons)".
             iDestruct (uarts_agree with "Hua Huf") as %Hduart.
             destruct (uart_read_total u off Hoff) as (bt & u' & Hread_u).
             iMod (dev_interp_update_uart sigma.(mdev) i u u'
                     with "[$Hua $Hpldev $Hvdev] Huf") as "[Hdev' Huf']".
             iMod ("Hacc" $! u bt u' with "[//] Hg Hcol HR")
               as "(Hg' & Hcol' & HS)".
-            iMod ("Hdclose" with "[Huf' Hg' Hcol' Hincl Harm]") as "_".
+            (* a register read never touches the ACCEPTED bytes, so the
+               port's claim rides across the transition untouched *)
+            iDestruct (cons_claim_at_stable i γd u u'
+                         (proj1 (uart_read_stable u off bt u' Hread_u))
+                         with "Hcons") as "Hcons".
+            iMod ("Hdclose" with "[Huf' Hg' Hcol' Hcons]") as "_".
             { iApply bi.later_intro. iExists u'. iFrame. }
             iMod (fupd_mask_subseteq ∅) as "Hb2"; [set_solver|].
             iModIntro. iExists bt, (set_duart sigma.(mdev) i u').

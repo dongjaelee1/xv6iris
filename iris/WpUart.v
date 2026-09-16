@@ -2276,6 +2276,38 @@ Section DevLoops.
     iApply (out_link_of_licence k b with "Hlic"). by iApply "IH".
   Qed.
 
+  (* THE EVENT LINK STRAIGHT OFF THE LICENCE (redesign R2).  The supply
+     moves by ANY event, so a licensed holder owes nothing beyond the pure
+     premise the kernel has already discharged -- which is why the link's
+     [⌜cons_ev_ok H ev⌝] argument is dropped on the floor here. *)
+  Lemma cons_link_of_licence (k : nat) (ev : ConsLog.cons_ev) (Φ : iProp Σ) :
+    cons_licence -∗ Φ -∗ cons_link Uart0 k ev Φ.
+  Proof.
+    iIntros "#Hlic HΦ" (o H) "#Hlb Hres _".
+    iMod ("Hlic" $! k (default [] o) H ev with "Hres") as "Hres".
+    iModIntro. iExists o. by iFrame "Hlb Hres HΦ".
+  Qed.
+
+  (* ...and hence the whole arm, stop or continue, at every byte *)
+  Lemma cons_run_of_licence (k : nat) (bs : list (bv 8)) (Φ : iProp Σ) :
+    cons_licence -∗ Φ -∗ cons_run k bs Φ.
+  Proof.
+    iIntros "#Hlic HΦ". iInduction bs as [| b bs] "IH";
+      cbn [cons_run].
+    - by iApply (cons_link_of_licence with "Hlic").
+    - iSplit.
+      + by iApply (cons_link_of_licence with "Hlic").
+      + iApply (cons_link_of_licence with "Hlic"). by iApply "IH".
+  Qed.
+
+  (* the trivial application's licence: its claim is [emp], so every event
+     is a no-op on nothing *)
+  Lemma cons_licence_triv : riscv_cons_res = cons_res_triv -> ⊢ cons_licence.
+  Proof.
+    intros Hc. rewrite /cons_licence Hc /cons_res_triv.
+    iIntros "!>" (????) "_". by iModIntro.
+  Qed.
+
   (* the KERNEL'S PORT owes nothing: [out_res_at Uart1] is [emp], so every
      link is discharged out of the payload and the witness never moves *)
   Lemma out_link_triv (i : uart_id) (k : nat) (b : bv 8) (Φ : iProp Σ) :
@@ -2674,6 +2706,10 @@ Section DevLoops.
     cons_link Uart0 (S gen_id) ConsLog.EvClose Φ
     ={⊤}=∗ uart_log_hi γ (1/2) (Some h) ∗
            uart_logm γ (1/2) ((L ++ [(h, c, take j cs)])%list) ∗
+           (* THE ORDER FACT the console's own [log_ok] push needs, and the
+              arm is where it comes from: [arm_ok] carries it from the open,
+              so the close hands it back without a second derivation. *)
+           ⌜forall e, e ∈ L -> hist_ext (LogEntryDefs.le_hist e) h⌝ ∗
            uart_arm γ (1/2) None ∗ Φ.
   Proof.
     intros Hecho. iIntros "#Hinv Hhi Hlm Hmine HΨ".
@@ -2713,7 +2749,9 @@ Section DevLoops.
       iFrame "Hhi0". iPureIntro. split; [exact Hacc0 |].
       pose proof (ConsLog.cons_hist_ok_step H ConsLog.EvClose Hok Hev) as Hok'.
       by rewrite /ConsLog.cons_step Harmeq in Hok'. }
-    iModIntro. by iFrame "Hhi Hlm Hmine HΦ".
+    iModIntro. iFrame "Hhi Hlm Hmine HΦ". iPureIntro.
+    destruct Hok as [_ Harmok]. rewrite Harmeq /= in Harmok.
+    destruct Harmok as (_ & _ & _ & Hext). exact Hext.
   Qed.
 
   (* ==================================================================== *)
@@ -3001,6 +3039,14 @@ Section DevLoops.
     iModIntro. iFrame "Hout Hcol Hin HΦ".
   Qed.
 
+  (* ...and the name every writer's leaf names, kept: [EvOut]'s premise is
+     [True], so the two are one wand with an argument fewer. *)
+  Lemma store_ob_of_out_link (i : uart_id) (γ : uart_names) (b : bv 8)
+      (Φ : iProp Σ) : out_link i (S gen_id) b Φ -∗ store_ob i γ b Φ.
+  Proof.
+    iIntros "H". iApply store_ob_of_cons_link. by iApply cons_link_of_out_link.
+  Qed.
+
   Lemma store_chain_of_out_chain (i : uart_id) (γ : uart_names)
       (bs : list (bv 8)) (Φ : iProp Σ) :
     out_chain i (S gen_id) bs Φ -∗ store_chain i γ bs Φ.
@@ -3082,6 +3128,59 @@ Section DevLoops.
         exact (Hbs (S n) b' Hn). }
       iApply (store_chain_mono with "[] H"). iIntros "[Harm $]".
       by replace (j + S (length bs))%nat with (S j + length bs)%nat by lia.
+  Qed.
+
+  (* ...and the shape the arms actually hold it in: the plan SPLIT at the
+     position the arm has reached, which is what a loop that emits one
+     triple at a time carries. *)
+  Lemma store_chain_of_echo_split (γ : uart_names) (h : list mobs) (c : bv 8)
+      (pre bs post : list (bv 8)) (Φ : iProp Σ) :
+    uart_arm γ (1/2) (Some (h, c, (pre ++ bs ++ post)%list, length pre)) -∗
+    echo_chain (S gen_id) h bs Φ -∗
+    store_chain Uart0 γ bs
+      (uart_arm γ (1/2) (Some (h, c, (pre ++ bs ++ post)%list,
+                               (length pre + length bs)%nat)) ∗ Φ).
+  Proof.
+    iIntros "Harm H".
+    iApply (store_chain_of_echo_chain γ h c _ (length pre) bs Φ
+              with "Harm H").
+    intros n b Hn.
+    rewrite lookup_app_r; [| lia].
+    replace (length pre + n - length pre)%nat with n by lia.
+    by rewrite lookup_app_l; [| by eapply lookup_lt_Some].
+  Qed.
+
+  (* THE WHOLE ARM, run to the end: a holder that spends every byte of its
+     plan is left with the licence to close.  [in_run_full]'s successor. *)
+  Lemma cons_run_full (h : list mobs) (bs : list (bv 8)) (Φ : iProp Σ) :
+    cons_run (S gen_id) bs Φ -∗
+    echo_chain (S gen_id) h bs (cons_link Uart0 (S gen_id) ConsLog.EvClose Φ).
+  Proof.
+    iIntros "H". iInduction bs as [| b bs] "IH" forall (Φ);
+      cbn [cons_run echo_chain]; [iExact "H" |].
+    iDestruct "H" as "[_ H]".
+    iApply (echo_link_mono with "[] H"). iIntros "H". by iApply "IH".
+  Qed.
+
+  (* ...and ONE STEP of it, for a loop that does not know how far it will
+     go: spend the head, keep the choice at the tail. *)
+  Lemma cons_run_step (h : list mobs) (bs cs : list (bv 8)) (Φ : iProp Σ) :
+    cons_run (S gen_id) (bs ++ cs)%list Φ -∗
+    echo_chain (S gen_id) h bs (cons_run (S gen_id) cs Φ).
+  Proof.
+    iIntros "H". iInduction bs as [| b bs] "IH";
+      cbn [echo_chain]; [iExact "H" |].
+    rewrite -app_comm_cons. cbn [cons_run].
+    iDestruct "H" as "[_ H]".
+    iApply (echo_link_mono with "[] H"). iIntros "H". by iApply "IH".
+  Qed.
+
+  (* the arm may always STOP where it stands *)
+  Lemma cons_run_stop (bs : list (bv 8)) (Φ : iProp Σ) :
+    cons_run (S gen_id) bs Φ -∗ cons_link Uart0 (S gen_id) ConsLog.EvClose Φ.
+  Proof.
+    iIntros "H". destruct bs as [| b bs]; [iExact "H" |].
+    cbn [cons_run]. by iDestruct "H" as "[H _]".
   Qed.
 
   Lemma disk_inv_alloc E γd : disk_inv_body γd ={E}=∗ disk_inv γd.

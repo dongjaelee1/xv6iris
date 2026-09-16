@@ -520,6 +520,19 @@ End KexitPro.
 Section KexitLoop.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ}.
 
+  (* THE DYING PROCESS'S TABLE, NAMED, BESIDE ITS CLOSE PAYMENTS (design/
+     pipe.md, the byte queue).  [SpecKexit] hands kexit the table by name
+     and one close payment per row, because a pipe descriptor's LAST close
+     steps the pipe's exact ghost state and the dying process is the one
+     making it.  The loop peels one row per iteration, so WHICH table the
+     pair is at changes every iteration and nothing outside this row ever
+     names it -- hence the existential, which is what keeps the loop
+     invariant the same shape it had at [fd_frags_any].  The exit forgets
+     the payments: at that point every row is [FdClosed] and every payment
+     is [emp]. *)
+  Definition kx_fdpay (γd : gname) : iProp Σ :=
+    (∃ sts : list fdstate, fd_frags γd sts ∗ fileclose_cpays sts)%I.
+
   Lemma kx_loop `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
        (γft γf : gname) (fn : fclose_names)
       (j : nat) (pid : mword 32) (sv : mword 64) (gch ggen : gname)
@@ -588,7 +601,7 @@ Section KexitLoop.
       cpu_claim_ext eb pj -∗
       pc_is (mword_of_int (KX + 0x3e)) -∗
       proc_priv γf pj pid U -∗
-      fd_frags_any (pv_fdg (us_V U)) -∗
+      kx_fdpay (pv_fdg (us_V U)) -∗
       (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
       fileclose_fs_env_nopid fn 0%nat eb pj -∗
        iref_slot -∗
@@ -626,7 +639,7 @@ Section KexitLoop.
                    cpu_claim_ext eb pj -∗
                    pc_is (mword_of_int (KX + 0x3e)) -∗
                    proc_priv γf pj pid U -∗
-                   fd_frags_any (pv_fdg (us_V U)) -∗
+                   kx_fdpay (pv_fdg (us_V U)) -∗
                    (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
                    fileclose_fs_env_nopid fn 0%nat eb pj -∗
                     iref_slot -∗
@@ -652,7 +665,7 @@ Section KexitLoop.
                    cpu_claim_ext eb pj -∗
                    pc_is (mword_of_int (KX + 0x38)) -∗
                    proc_priv γf pj pid Ut -∗
-                   fd_frags_any (pv_fdg (us_V Ut)) -∗
+                   kx_fdpay (pv_fdg (us_V Ut)) -∗
                    (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
                    fileclose_fs_env_nopid fn 0%nat eb pj -∗
                    iref_slot -∗
@@ -722,6 +735,11 @@ Section KexitLoop.
                        ltac:(rewrite Hbt; wp_next_chain) with "Htce") as "Htce".
           iDestruct (cpu_claim_ext_transport CIDt CIDt2 eb pj
                        ltac:(rewrite Hbt; wp_next_chain) with "Hcce") as "Hcce".
+          (* the payments are spent: every row is closed now, and the exit
+             only ever needed the table forgetfully *)
+          iDestruct "Hfrag" as (stsq) "[Hfrq _]".
+          iAssert (fd_frags_any (pv_fdg (us_V Ut)))%I with "[Hfrq]" as "Hfrag";
+            [by iExists stsq |].
           iSpecialize ("Hqx" $! CIDt2 with "[%]"); [wp_next_chain|].
           iApply ("Hqx" $! Mt38 Ut with "[%] [%] [%] [%] [%] [%] Hcg Hown Htce Hcce Hpc Hpriv Hfrag Hpenv Hfenv Hiru").
           * split; [exact HM19|]. split; [exact HM20|]. split; [exact HMsp|].
@@ -885,12 +903,26 @@ Section KexitLoop.
         iDestruct "Hpenv" as (onk) "Hpenv".
         iDestruct (fileclose_loop_open fn onk 0%nat eb pj stf
                      with "Hpenv Hfenv") as "[Hfcenv Hfcback]".
-        iApply (Fileclose.wp_fileclose_sconf (CID := CIDn)  γft γf kf q stf fn onk M42 0 eb pj av b lks pid U
+        (* THIS ROW'S CLOSE PAYMENT, peeled off [fileclose_cpays] (design/
+           pipe.md, the byte queue).  The table is NAMED, so the state the
+           payment is keyed on and the state the array's own authority
+           carries are the same [stf] -- one agreement, taken here, before
+           the call that spends it.  The payload is [emp]: the process is
+           ending and there is nobody to tell anything to. *)
+        iDestruct "Hfrag" as (sts) "[Hfrs Hcpays]".
+        iDestruct (fd_frags_acc_lt (pv_fdg (us_V U)) sts fd
+                     ltac:(unfold NOFILE in *; lia) with "Hfrs")
+          as (stq) "(%Hlkq & Hfr & #Hrowq & Hfrback)".
+        iDestruct (fd_st_agree with "Hst Hfr") as %<-.
+        rewrite /fileclose_cpays.
+        iDestruct (big_sepL_insert_acc _ _ _ _ Hlkq with "Hcpays")
+          as "[Hcpay Hcpback]".
+        iApply (Fileclose.wp_fileclose_sconf (CID := CIDn)  γft γf kf q stf fn onk M42 0 eb pj av b lks (emp%I) pid U
                   ltac:(lia) ltac:(lia) HM42a0 Hfresh
-                  with "Hcg Hown Htce Hcce Htext Hkd Hpc Hft Hpe Href [Hpbare] Hiru Hfcenv").
+                  with "Hcg Hown Htce Hcce Htext Hkd Hpc Hft Hpe Href [Hpbare] Hiru Hfcenv Hcpay").
         all: try lkbelow.
         { iExact "Hpbare". }
-        iIntros (CIDo Hso mr) "Hcg Hown Htce Hcce Hpc %Hcs Hfdslot Hiru Hout Hpbare".
+        iIntros (CIDo Hso mr) "Hcg Hown Htce Hcce Hpc %Hcs Hfdslot Hiru Hout _ Hpbare".
         iDestruct ("Hfcback" with "Hout") as "(Hpenv & Hfenv)".
         assert (Hpc46 : ret_pc (M42 !!! Regidx (mword_of_int 1 : mword 5))
                         = mword_of_int (KX + 0x46))
@@ -932,11 +964,16 @@ Section KexitLoop.
         (* the retype, out of the bundle kexit was handed: closing a
            descriptor moves its state, and the array holds only the
            authority. *)
-        iDestruct (fd_frags_any_acc (pv_fdg (us_V U)) fd ltac:(unfold NOFILE in *; lia)
-                     with "Hfrag") as (stq) "(Hfr & _ & Hfrback)".
-        iMod (fd_st_move _ fd stf stq FdClosed with "Hst Hfr")
+        iMod (fd_st_move _ fd stf stf FdClosed with "Hst Hfr")
           as "[Hst Hfr]".
-        iDestruct ("Hfrback" with "Hfr []") as "Hfrag"; [iApply foff_row_closed |].
+        iDestruct ("Hfrback" with "Hfr []") as "Hfrs"; [iApply foff_row_closed |].
+        (* ...and the row's payment is [emp] now, which closes the pair back
+           up at the table this iteration leaves behind *)
+        iDestruct ("Hcpback" $! FdClosed with "[]") as "Hcpays";
+          [iApply fileclose_cpay_none |].
+        iAssert (kx_fdpay (pv_fdg (us_V U)))%I with "[Hfrs Hcpays]" as "Hfrag".
+        { iExists (<[fd := FdClosed]> sts). rewrite /fileclose_cpays.
+          iSplitL "Hfrs"; [iExact "Hfrs" | iExact "Hcpays"]. }
         iDestruct ("Hback" $! (zero_reg : mword 64) with "Hpbare [Hcell Hfdslot Hst]") as "Hpriv".
         { rewrite /ofile_slot. iSplitL "Hcell"; [iExact "Hcell"|].
           iLeft. iFrame "Hfdslot Hst". done. }
@@ -2131,11 +2168,11 @@ Section ProofKexit.
       (ip : mword 64) (dqi : dfrac)
       (on : option nat) (fn : fclose_names)
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
-      (pid : mword 32) (U : ustate) (cs : gset gname) (Q : Z -> iProp Σ)
+      (pid : mword 32) (U : ustate) (sts : list fdstate) (cs : gset gname) (Q : Z -> iProp Σ)
     : wp_kexit_sconf_body γft γf γw γs j γl pd pav pu
  ip dqi
 
-                          on fn m av eb b lks pid U cs Q.
+                          on fn m av eb b lks pid U sts cs Q.
   Proof.
     cbv beta delta [wp_kexit_sconf_body].
     intros pcE pj Hfn Hj Hgl HK Hgeom Hfresh. subst fn.
@@ -2143,7 +2180,7 @@ Section ProofKexit.
     iIntros "Hcg Hcloser Hown Htce Hcce #Htext #Hkd Hpc #Hprocs #Hpanenv #Hwl #Hft".
     iIntros "#Hkmem Hav0".
     iIntros "#Hbio #Hlog #Hseam #Hgen #Hdev #Hgeo #Hdlk Hbsl #Hrdy".
-    iIntros "Hinit #Hid Hsp Hir Hpriv Hfrag Hrow #Hmy HQ".
+    iIntros "Hinit #Hid Hsp Hir Hpriv Hfrag Hcpays Hrow #Hmy HQ".
     (* ---- THE FILE SYSTEM, AT THE ONLY NAMES THERE ARE ----
        kexit used to take a [fclose_ties] record here and [subst] its twelve
        equations, because every ambient name was also a BINDER of this
@@ -2535,6 +2572,10 @@ Section ProofKexit.
              carries the generation name unchanged, which is what the
              one-shot side of the disjunction is stated at *)
           iEval (rewrite Hxgen). iExact "HQ". } }
+      (* the table and its close payments, as the loop's one row *)
+      iAssert (kx_fdpay (pv_fdg (us_V U)))%I with "[Hfrag Hcpays]" as "Hfrag".
+      { iExists sts. rewrite /fileclose_cpays.
+        iSplitL "Hfrag"; [iExact "Hfrag" | iExact "Hcpays"]. }
       iApply ("Hloop" $! 0%nat A5 U with "[%] [%] [%] Hcg Hown Htce Hcce Hpc Hpriv Hfrag Hpenv Hfenv Hiru0").
       + unfold NOFILE. lia.
       + split; [exact HA5s1|]. split; [exact HA5s2|]. split; [exact HA5s3|].

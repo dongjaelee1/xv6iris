@@ -1286,8 +1286,8 @@ Section ProofFileread.
         (* piperead's window IS the dispatcher's run at [addr], so the
            post reads back at the resume image ([pipe_rpost_img_of], whose
            step is [UserPtTree.umem_wr_lookup_in]). *)
-        iDestruct (pipe_rpost_img_of _ _ _ _ _ dpr bspr _ (us_M U)
-                     (m !!! Regidx Ra1) with "Hrpost") as "Hrpost".
+        iDestruct (pipe_rpost_img_of _ _ _ _ _ _ _ dpr bspr _ (us_M U)
+                     with "Hrpost") as "Hrpost".
         set (Mpr := umem_wr (us_M U) (m !!! Regidx Ra1) dpr bspr).
         assert (Hpc6a : ret_pc (Q2 !!! Regidx Rra) = mword_of_int (FR + 0x70)).
         { rewrite HQ2ra. apply bv_eq; vm_compute; reflexivity. }

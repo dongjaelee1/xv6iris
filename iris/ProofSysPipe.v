@@ -123,6 +123,7 @@ Require Import LogInv.
 Require Import SpecMyproc SpecArgaddr SpecPipealloc SpecFdalloc SpecFileclose SpecCopyout.
 Require Import IrefSlots.
 Require Import SpecSysPipe.
+Require Import PipeQueue.   (* the pipe's byte-queue ghost: the fragment and the close links *)
 Require Import CodeSysPipe.
 From Kernel Require KernelInstrs.
 From Kernel Require KernelSyms.
@@ -664,6 +665,64 @@ Section ProofSysPipe.
      top level, at the CALLER's pid -- so what sys_pipe lends across the two
      closes is the block itself, and the two bundle forms coincide.  Both tie
      premises ([fcn_pid fn = pid], [fcn_dq fn = 1/4]) are gone with it. *)
+  (* ================================================================= *)
+  (*  THE ROLLBACK'S TWO CLOSE PAYMENTS (design/pipe.md, the byte queue) *)
+  (*  Every error path of sys_pipe closes BOTH ends of a pipe            *)
+  (*  it still holds the exact fragment of, and [SpecFileclose] wants    *)
+  (*  one payment per close.  The fragment pays the FIRST directly, at   *)
+  (*  the payload "the fragment, moved"; what pays the SECOND is         *)
+  (*  whatever the first close handed back -- the moved fragment (the    *)
+  (*  link fired, i.e. that close was the end's last), the taint, or the *)
+  (*  payment itself if the close was NOT the last.  In that last case   *)
+  (*  the unfired link is still total control of the state, BECAUSE ITS  *)
+  (*  PAYLOAD IS THE FRAGMENT: fire it and both halves are in hand, so   *)
+  (*  the state can be set to exactly what the second close's own step   *)
+  (*  demands ([sp_clink_relink]).  Nothing in the failure arm's post    *)
+  (*  names the fragment, so the second close's payload is trivial.      *)
+  (* ================================================================= *)
+  Lemma sp_clink_relink (γ : gname) (w w' : bool) (s1 : pipe_st) (Φ : iProp Σ) :
+    pipe_clink γ w (pipe_qfrag γ s1) -∗
+    (∀ s : pipe_st, pipe_qfrag γ (pst_close w' s) ={⊤}=∗ Φ) -∗
+    pipe_clink γ w' Φ.
+  Proof.
+    rewrite /pipe_clink. iIntros "Hl Hk" (s) "Ha".
+    iMod ("Hl" $! s with "Ha") as "[Ha Hf]".
+    iMod (pipe_queue_update _ _ _ (pst_close w' s) with "Ha Hf") as "[Ha Hf]".
+    iMod ("Hk" $! s with "Hf") as "HΦ". iModIntro. iFrame "Ha HΦ".
+  Qed.
+
+  Lemma sp_cpay_of_cpost (γ : gname) (w w' : bool) (s1 : pipe_st) (last : bool) :
+    pipe_cpost γ w (pipe_qfrag γ s1) last -∗ pipe_cpay γ w' True%I.
+  Proof.
+    rewrite /pipe_cpost /pipe_cpay.
+    iIntros "[Hf | [[#Ht _] | [_ Hp]]]".
+    - iLeft. iApply (pipe_clink_of_frag γ w' True%I s1 with "Hf").
+      iIntros "_". by iModIntro.
+    - iRight. iExact "Ht".
+    - rewrite /pipe_cpay. iDestruct "Hp" as "[Hl | #Ht]"; [| iRight; iExact "Ht"].
+      iLeft. iApply (sp_clink_relink γ w w' s1 True%I with "Hl").
+      iIntros (s) "_". by iModIntro.
+  Qed.
+
+  (* ...and the two at the descriptor key [SpecFileclose] states them on *)
+  Lemma sp_fc_cpay_frag (γp : pipe_names) (r w : bool) :
+    pipe_qfrag (pn_queue γp) pst0 -∗
+    fileclose_cpay (FdOpen r w (FdPipe γp))
+      (pipe_qfrag (pn_queue γp) (pst_close w pst0)).
+  Proof.
+    iIntros "Hf". rewrite /fileclose_cpay /pipe_cpay. iLeft.
+    iApply (pipe_clink_of_frag (pn_queue γp) w _ pst0 with "Hf").
+    iIntros "H". by iModIntro.
+  Qed.
+
+  Lemma sp_fc_cpay_of_cpost (γp : pipe_names) (r0 w0 r1 w1 : bool) (q : Qp)
+      (s1 : pipe_st) :
+    fileclose_cpost q (FdOpen r0 w0 (FdPipe γp)) (pipe_qfrag (pn_queue γp) s1) -∗
+    fileclose_cpay (FdOpen r1 w1 (FdPipe γp)) True%I.
+  Proof.
+    rewrite /fileclose_cpost /fileclose_cpay. iApply sp_cpay_of_cpost.
+  Qed.
+
   Lemma sp_lend_pid (γf : gname) (fn : fclose_names) (n : nat)
       (eb : bool) (p : mword 64) (pid : mword 32) (U : ustate) :
     proc_priv γf p pid U -∗ fileclose_fs_env_nopid fn n eb p -∗
@@ -686,7 +745,10 @@ Section ProofSysPipe.
       (Mt : regfile) (nav : nat) (eb : bool) (p : mword 64)
       (sp0 : mword 64) (k0 k1 : nat) (q0 q1 : Qp) (st0 st1 : fdstate)
       (za zb zc zd ze zf : Z) (imm1 imm2 : mword 21) (b : bool) (lks : gset string)
-      (pidv : mword 32) (Upr : ustate) :
+      (pidv : mword 32) (Upr : ustate)
+      (* THE TWO CLOSE PAYLOADS (design/pipe.md, "The byte queue"): what the
+         first close's link hands back, and what the second's does *)
+      (Φ0 Φ1 : iProp Σ) :
     (fileclose_stack <= nav)%nat ->
     Mt !!! Regidx Rs0 = sp0 ->
     (* the pc successors and the two relocated call targets *)
@@ -725,6 +787,13 @@ Section ProofSysPipe.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 7) (DfracOwn 1) (fnode k1) -∗
     file_ref γf k0 q0 st0 -∗
     file_ref γf k1 q1 st1 -∗
+    (* THE BYTE QUEUE'S TWO CLOSE PAYMENTS.  The first is owed outright; the
+       second is owed only as a FUNCTION of the first close's answer, since
+       a caller that pays out of a pipe's exact fragment has nothing left to
+       build the second payment from until the first close hands it back
+       (design/pipe.md, "The byte queue"; [sp_fc_cpay_of_cpost]). *)
+    fileclose_cpay st0 Φ0 -∗
+    (fileclose_cpost q0 st0 Φ0 -∗ fileclose_cpay st1 Φ1) -∗
     (* both closes run under ONE environment, threaded through: the first may
        have moved the page count, so what the second gets, and what comes
        out, is at an existential [on'] *)
@@ -761,7 +830,7 @@ Section ProofSysPipe.
   Proof.
     intros Hnav Hs0 Hr1 Hr2 Hs04 Hs812 Hs1618 Ht1 Ht2 Hbelow.
     iIntros "Hcg Hcpu Hextc Hextm #Htext #Hkd Hpc #Hftab #Hpe Hi0 Hi4 Hi8 Hic Hj10
-              Hc6 Hc7 Href0 Href1 Hpenv Hfenv Hpbare Hiru Hcont".
+              Hc6 Hc7 Href0 Href1 Hcpay0 Hcwand Hpenv Hfenv Hpbare Hiru Hcont".
     (* depth 0 forces the held set empty, so every [locks_below] the callees
        raise is [locks_below ∅ _], which [lkbelow] closes outright. *)
     iDestruct (cpu_own_zero_empty with "Hcpu") as "[%Hlkempty Hcpu]".
@@ -801,11 +870,13 @@ Section ProofSysPipe.
                  ltac:(rewrite Hb; wp_next_chain) with "Hextm") as "Hextm".
     iDestruct (fileclose_env_frame fn on 0%nat eb p st0 with "Hpenv Hfenv")
       as "[Hfcenv0 Hfcback0]".
-    iApply (Fileclose.wp_fileclose_sconf γfl γf k0 q0 st0 fn on D2 0%nat eb p nav b lks pidv Upr
+    iApply (Fileclose.wp_fileclose_sconf γfl γf k0 q0 st0 fn on D2 0%nat eb p nav b lks Φ0 pidv Upr
               Hnav sp_noff0 HD2a0 Hbelow
-              with "Hcg Hcpu Hextc Hextm Htext Hkd Hpc Hftab Hpe Href0 Hpbare Hiru Hfcenv0").
+              with "Hcg Hcpu Hextc Hextm Htext Hkd Hpc Hftab Hpe Href0 Hpbare Hiru Hfcenv0 Hcpay0").
     all: try lkbelow.
-    iIntros (CID7 Hcr7 E1) "Hcg Hcpu Hextc Hextm Hpc %HcsE1 Hunit0 Hiru Hout0 Hpbare".
+    iIntros (CID7 Hcr7 E1) "Hcg Hcpu Hextc Hextm Hpc %HcsE1 Hunit0 Hiru Hout0 Hcpost0 Hpbare".
+    (* the second close's payment, out of the first close's answer *)
+    iDestruct ("Hcwand" with "Hcpost0") as "Hcpay1".
     iDestruct ("Hfcback0" with "Hout0") as "[Hpenv Hfenv]".
     iDestruct "Hpenv" as (on1) "Hpenv".
     assert (HpcE1 : ret_pc (D2 !!! Regidx Rra) = mword_of_int zc)
@@ -851,11 +922,11 @@ Section ProofSysPipe.
                  ltac:(rewrite Hb; wp_next_chain) with "Hextm") as "Hextm".
     iDestruct (fileclose_env_frame fn on1 0%nat eb p st1 with "Hpenv Hfenv")
       as "[Hfcenv1 Hfcback1]".
-    iApply (Fileclose.wp_fileclose_sconf γfl γf k1 q1 st1 fn on1 F2 0%nat eb p nav b lks pidv Upr
+    iApply (Fileclose.wp_fileclose_sconf γfl γf k1 q1 st1 fn on1 F2 0%nat eb p nav b lks Φ1 pidv Upr
               Hnav sp_noff0 HF2a0 Hbelow
-              with "Hcg Hcpu Hextc Hextm Htext Hkd Hpc Hftab Hpe Href1 Hpbare Hiru Hfcenv1").
+              with "Hcg Hcpu Hextc Hextm Htext Hkd Hpc Hftab Hpe Href1 Hpbare Hiru Hfcenv1 Hcpay1").
     all: try lkbelow.
-    iIntros (CID10 Hcr10 G1) "Hcg Hcpu Hextc Hextm Hpc %HcsG1 Hunit1 Hiru Hout1 Hpbare".
+    iIntros (CID10 Hcr10 G1) "Hcg Hcpu Hextc Hextm Hpc %HcsG1 Hunit1 Hiru Hout1 _ Hpbare".
     iDestruct ("Hfcback1" with "Hout1") as "[Hpenv Hfenv]".
     assert (HpcG1 : ret_pc (F2 !!! Regidx Rra) = mword_of_int ze)
       by (rewrite HF2ra; exact Hr2).
@@ -1621,7 +1692,7 @@ Section ProofSysPipe.
       iLeft. iSplitR; [done|]. iFrame "Hpriv Hfrag". }
     (* ============ pipealloc succeeded ================================= *)
     iDestruct "Hsucc" as "(%Hr0 & _ & Hpipe)".
-    iDestruct "Hpipe" as (k0 k1) "(%Hklt & Hb6 & Hb7 & Href0 & Href1)".
+    iDestruct "Hpipe" as (k0 k1 γp) "(%Hklt & Hb6 & Hb7 & Href0 & Href1 & Hqf)".
     destruct Hklt as [Hk0lt Hk1lt].
     (* Nothing about the pipe appears from here on, and that is the point:
        each end rides INSIDE its file's [FileInv.file_ref], in the payload
@@ -1805,13 +1876,19 @@ Section ProofSysPipe.
       iApply (sp_close2 (CID0 := CID43)  γfl γf fn on Y0 (av - 8)%nat eb p sp0 k0 k1 1%Qp 1%Qp _ _
                 (KernelSyms.sys_pipe + 0xc8) (KernelSyms.sys_pipe + 0xcc) (KernelSyms.sys_pipe + 0xd0) (KernelSyms.sys_pipe + 0xd4) (KernelSyms.sys_pipe + 0xd8) (KernelSyms.sys_pipe + 0xda)
                 (mword_of_int 2091962 : mword 21) (mword_of_int 2091954 : mword 21) b lks pid _
+                (pipe_qfrag (pn_queue γp) (pst_close false pst0)) True%I
                 Havfc HY0s0 Hcc4a Hcc4b Hcc4c Hcc4d Hcc4e Hcc4f Hcc4g Hbelow
-                with "Hcg Hcpu Hextc Hextm Htext Hdata Hpc Hftab Hpe [] [] [] [] [] Hb6 Hb7 Href0 Href1 Hpenv Hfefull Hpbare Hiru").
+                with "Hcg Hcpu Hextc Hextm Htext Hdata Hpc Hftab Hpe [] [] [] [] [] Hb6 Hb7 Href0 Href1 [Hqf] [] Hpenv Hfefull Hpbare Hiru").
       { iApply (spi_c8 with "Htext"). }
       { iApply (spi_cc with "Htext"). }
       { iApply (spi_d0 with "Htext"). }
       { iApply (spi_d4 with "Htext"). }
       { iApply (spi_d8 with "Htext"). }
+      (* the read end's close, paid out of the fragment the kernel still
+         holds, at the payload "the fragment, moved" *)
+      { iApply (sp_fc_cpay_frag γp true false with "Hqf"). }
+      (* ...and the write end's, out of whatever that close hands back *)
+      { iIntros "H". iApply (sp_fc_cpay_of_cpost with "H"). }
       iIntros (CID44 Hcr44 Mr) "[%Hmrcs %Hmra5] Hcg Hcpu Hextc Hextm Hpc Hb6 Hb7 Hua Hub Hiru Hpenv Hfenv Hpbare".
       (* the block, back into [proc_priv] *)
       iDestruct ("Hpback" with "Hpbare Hfenv") as "[Hpriv Hfenv]".
@@ -1854,7 +1931,7 @@ Section ProofSysPipe.
        unchanged *)
     iDestruct (fd_st_agree with "Hauth0 Hfr0") as %<-.
     iMod (proc_priv_settle     γf p pid U fd0 k0 1%Qp
-                 (FdOpen true false FdPipe) FdClosed FdClosed
+                 (FdOpen true false (FdPipe γp)) FdClosed FdClosed
                  Hfd0N Hlen1 Hk0lt ltac:(discriminate)
                  with "Hcore Hof Href0 Hauth0 Hfr0") as "[Hpriv Hfr0]".
     iDestruct ("Hfrback0" with "Hfr0 []") as "Hfrag"; [iApply foff_row_pipe |].
@@ -2041,6 +2118,16 @@ Section ProofSysPipe.
          goes back to [FdClosed] -- out of the bundle, like every retype. *)
       iDestruct (fd_frags_acc_lt (pv_fdg (us_V U)) _ fd0 Hfd0N with "Hfrag")
         as (stqx) "(%Hlkstqx & Hfrx & _ & Hfrbackx)".
+      (* THE SLOT GAVE THE REFERENCE BACK AT THE PIPE'S OWN STATE.  The slot
+         quantifies the state it holds, so the row has to be read off the
+         NAMED table -- the array's authority and the table's fragment agree
+         -- before the close payment can be stated on it (design/pipe.md). *)
+      iDestruct (fd_st_agree with "Hst0 Hfrx") as %Hagx.
+      assert (Hst0eq : st0' = FdOpen true false (FdPipe γp)).
+      { rewrite Hagx. pose proof Hlkstqx as Hlkx.
+        apply list_lookup_insert_Some in Hlkx.
+        destruct Hlkx as [(_ & Hxx & _) | (Hnex & _)];
+          [ exact (eq_sym Hxx) | exfalso; exact (Hnex eq_refl) ]. }
       iMod (fd_st_move _ fd0 st0' stqx FdClosed with "Hst0 Hfrx")
         as "[Hst0 Hfrx]".
       iDestruct ("Hfrbackx" with "Hfrx []") as "Hfrag"; [iApply foff_row_closed |].
@@ -2063,13 +2150,16 @@ Section ProofSysPipe.
       iApply (sp_close2 (CID0 := CID53)  γfl γf fn on F2 (av - 8)%nat eb p sp0 k0' k1 q0' 1%Qp _ _
                 (KernelSyms.sys_pipe + 0xc8) (KernelSyms.sys_pipe + 0xcc) (KernelSyms.sys_pipe + 0xd0) (KernelSyms.sys_pipe + 0xd4) (KernelSyms.sys_pipe + 0xd8) (KernelSyms.sys_pipe + 0xda)
                 (mword_of_int 2091962 : mword 21) (mword_of_int 2091954 : mword 21) b lks pid _
+                (pipe_qfrag (pn_queue γp) (pst_close false pst0)) True%I
                 Havfc HF2s0 Hcc4a Hcc4b Hcc4c Hcc4d Hcc4e Hcc4f Hcc4g Hbelow
-                with "Hcg Hcpu Hextc Hextm Htext Hdata Hpc Hftab Hpe [] [] [] [] [] Hb6 Hb7 Href0 Href1 Hpenv Hfefull Hpbare Hiru").
+                with "Hcg Hcpu Hextc Hextm Htext Hdata Hpc Hftab Hpe [] [] [] [] [] Hb6 Hb7 Href0 Href1 [Hqf] [] Hpenv Hfefull Hpbare Hiru").
       { iApply (spi_c8 with "Htext"). }
       { iApply (spi_cc with "Htext"). }
       { iApply (spi_d0 with "Htext"). }
       { iApply (spi_d4 with "Htext"). }
       { iApply (spi_d8 with "Htext"). }
+      { rewrite Hst0eq. iApply (sp_fc_cpay_frag γp true false with "Hqf"). }
+      { rewrite Hst0eq. iIntros "H". iApply (sp_fc_cpay_of_cpost with "H"). }
       iIntros (CID54 Hcr54 Mr) "[%Hmrcs %Hmra5] Hcg Hcpu Hextc Hextm Hpc Hb6 Hb7 Hua Hub Hiru Hpenv Hfenv Hpbare".
       (* the block, back into [proc_priv] *)
       iDestruct ("Hpback" with "Hpbare Hfenv") as "[Hpriv Hfenv]".
@@ -2137,7 +2227,7 @@ Section ProofSysPipe.
        unchanged *)
     iDestruct (fd_st_agree with "Hauth1 Hfr1") as %<-.
     iMod (proc_priv_settle     γf p pid (us_ofile U fd0 (fnode k0)) fd1 k1
-                 1%Qp (FdOpen false true FdPipe) FdClosed FdClosed Hfd1N Hlen2' Hk1lt
+                 1%Qp (FdOpen false true (FdPipe γp)) FdClosed FdClosed Hfd1N Hlen2' Hk1lt
                  ltac:(discriminate)
                  with "Hcore Hof Href1 Hauth1 Hfr1") as "[Hpriv Hfr1]".
     iDestruct ("Hfrback1" with "Hfr1 []") as "Hfrag"; [iApply foff_row_pipe |].
@@ -2461,8 +2551,12 @@ Section ProofSysPipe.
            post it produces is at [sts], because writing [FdClosed] over
            two rows that were free is the identity. *)
         fd_frags (pv_fdg (us_V U))
-          (<[fd1 := FdOpen false true FdPipe]>
-             (<[fd0 := FdOpen true false FdPipe]> sts)) -∗
+          (<[fd1 := FdOpen false true (FdPipe γp)]>
+             (<[fd0 := FdOpen true false (FdPipe γp)]> sts)) -∗
+        (* ...AND THE PIPE'S EXACT FRAGMENT, still the kernel's here: this
+           tail closes both ends, and each close is paid out of it
+           (design/pipe.md, "The byte queue"). *)
+        pipe_qfrag (pn_queue γp) pst0 -∗
         fd_slot -∗ fd_slot -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 5) (DfracOwn 1) v -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 6) (DfracOwn 1) (fnode k0) -∗
@@ -2479,7 +2573,7 @@ Section ProofSysPipe.
     { iSplit; [iExact "Hepi"|]. rewrite /T7C.
       iIntros (CIDT HsT Mt P' d bs) "(%Htsp & %Hts0 & %Hts1 & %Htthr) %Hxt %Hd8 Hcg Hcpu
                        Hextc Hextm Hpc
-                       Hiru Hpenv Hfenv Hpriv Hfrag Hua Hub Hb5 Hb6 Hb7 Hlo Hhi".
+                       Hiru Hpenv Hfenv Hpriv Hfrag Hqf Hua Hub Hb5 Hb6 Hb7 Hlo Hhi".
       assert (Hlk1'' : pv_ofile (upd_ofile (upd_upt (upd_ofile (upd_ofile (us_V U) fd0 (fnode k0))
                                    fd1 (fnode k1)) P') fd0 (zero_reg : mword 64)) !! fd1
                        = Some (fnode k1)).
@@ -2527,6 +2621,16 @@ Section ProofSysPipe.
       iIntros (CID63 Hcr63 E2) "%HE2thr Hcg Hpc Hcell".
       iDestruct (fd_frags_acc_lt (pv_fdg (us_V U)) _ fd0 Hfd0N with "Hfrag")
         as (stqz) "(%Hlkstqz & Hfrz & _ & Hfrbackz)".
+      (* the read end's row, off the NAMED table (site 2's note) *)
+      iDestruct (fd_st_agree with "Hst0 Hfrz") as %Hagz.
+      assert (Hst0eq : st0' = FdOpen true false (FdPipe γp)).
+      { rewrite Hagz. pose proof Hlkstqz as Hlkz.
+        apply list_lookup_insert_Some in Hlkz.
+        destruct Hlkz as [(Heqz & _ & _) | (_ & Hlkz')];
+          [ exfalso; exact (Hne01 (eq_sym Heqz)) | ].
+        apply list_lookup_insert_Some in Hlkz'.
+        destruct Hlkz' as [(_ & Hxz & _) | (Hnez & _)];
+          [ exact (eq_sym Hxz) | exfalso; exact (Hnez eq_refl) ]. }
       iMod (fd_st_move _ fd0 st0' stqz FdClosed with "Hst0 Hfrz")
         as "[Hst0 Hfrz]".
       iDestruct ("Hfrbackz" with "Hfrz []") as "Hfrag"; [iApply foff_row_closed |].
@@ -2579,6 +2683,16 @@ Section ProofSysPipe.
       iIntros (CID65 Hcr65 E4) "%HE4thr Hcg Hpc Hcell1".
       iDestruct (fd_frags_acc_lt (pv_fdg (us_V U)) _ fd1 Hfd1N with "Hfrag")
         as (stqy) "(%Hlkstqy & Hfry & _ & Hfrbacky)".
+      (* ...and the write end's *)
+      iDestruct (fd_st_agree with "Hst1 Hfry") as %Hagy.
+      assert (Hst1eq : st1' = FdOpen false true (FdPipe γp)).
+      { rewrite Hagy. pose proof Hlkstqy as Hlky.
+        apply list_lookup_insert_Some in Hlky.
+        destruct Hlky as [(Heqy & _ & _) | (_ & Hlky')];
+          [ exfalso; exact (Hne01 Heqy) | ].
+        apply list_lookup_insert_Some in Hlky'.
+        destruct Hlky' as [(_ & Hxy & _) | (Hney & _)];
+          [ exact (eq_sym Hxy) | exfalso; exact (Hney eq_refl) ]. }
       iMod (fd_st_move _ fd1 st1' stqy FdClosed with "Hst1 Hfry")
         as "[Hst1 Hfry]".
       iDestruct ("Hfrbacky" with "Hfry []") as "Hfrag"; [iApply foff_row_closed |].
@@ -2615,13 +2729,16 @@ Section ProofSysPipe.
       iApply (sp_close2 (CID0 := CID65)  γfl γf fn on2 E4 (av - 8)%nat eb p sp0 k0' k1' q0' q1' _ _
                 (KernelSyms.sys_pipe + 0xa0) (KernelSyms.sys_pipe + 0xa4) (KernelSyms.sys_pipe + 0xa8) (KernelSyms.sys_pipe + 0xac) (KernelSyms.sys_pipe + 0xb0) (KernelSyms.sys_pipe + 0xb2)
                 (mword_of_int 2092002 : mword 21) (mword_of_int 2091994 : mword 21) b lks pid _
+                (pipe_qfrag (pn_queue γp) (pst_close false pst0)) True%I
                 Havfc HE4s0 Hc9ca Hc9cb Hc9cc Hc9cd Hc9ce Hc9cf Hc9cg Hbelow
-                with "Hcg Hcpu Hextc Hextm Htext Hdata Hpc Hftab Hpe [] [] [] [] [] Hb6 Hb7 Hrf0 Hrf1 Hpenv Hfefull Hpbare Hiru").
+                with "Hcg Hcpu Hextc Hextm Htext Hdata Hpc Hftab Hpe [] [] [] [] [] Hb6 Hb7 Hrf0 Hrf1 [Hqf] [] Hpenv Hfefull Hpbare Hiru").
       { iApply (spi_a0 with "Htext"). }
       { iApply (spi_a4 with "Htext"). }
       { iApply (spi_a8 with "Htext"). }
       { iApply (spi_ac with "Htext"). }
       { iApply (spi_b0 with "Htext"). }
+      { rewrite Hst0eq. iApply (sp_fc_cpay_frag γp true false with "Hqf"). }
+      { rewrite Hst0eq Hst1eq. iIntros "H". iApply (sp_fc_cpay_of_cpost with "H"). }
       iIntros (CID66 Hcr66 Mr) "[%Hmrcs %Hmra5] Hcg Hcpu Hextc Hextm Hpc Hb6 Hb7 Hua Hub Hiru Hpenv Hfenv Hpbare".
       (* the block, back into [proc_priv] *)
       iDestruct ("Hpback" with "Hpbare Hfenv") as "[Hpriv Hfenv]".
@@ -2666,7 +2783,7 @@ Section ProofSysPipe.
          through to [sts]. *)
       assert (Hst1c : sts !! fd1 = Some FdClosed)
         by (rewrite <- (list_lookup_insert_ne sts fd0 fd1
-                          (FdOpen true false FdPipe) Hne01);
+                          (FdOpen true false (FdPipe γp)) Hne01);
             exact Hlkstq1).
       (* BOTH re-nulls are the identity on the table.  The two [FdClosed]
          writes sit outside BOTH opens, so each has to be commuted past the
@@ -2674,7 +2791,7 @@ Section ProofSysPipe.
          then each pair collapses ([list_insert_insert]) and the survivors
          write [FdClosed] over rows that were free, hence already closed. *)
       rewrite (list_insert_commute _ fd0 fd1 FdClosed
-                 (FdOpen false true FdPipe) Hne01)
+                 (FdOpen false true (FdPipe γp)) Hne01)
               !list_insert_insert
               (list_insert_id sts fd0 FdClosed Hlkstq0)
               (list_insert_id sts fd1 FdClosed Hst1c).
@@ -2711,7 +2828,7 @@ Section ProofSysPipe.
       iSpecialize ("Ht7c" $! CID68 with "[%]"); [wp_next_chain|].
       iApply ("Ht7c" $! B0 Pa d1
                 (fun j => nth_byte (trunc32 (mword_of_int (Z.of_nat fd0) : mword 64)) j)
-                with "[%] [%] [%] Hcg Hcpu Hextc Hextm Hpc Hiru [Hpenv] Hfenv Hpriv Hfrag Hu0 Hu1 Hb5 Hb6 Hb7 Hlo Hhi").
+                with "[%] [%] [%] Hcg Hcpu Hextc Hextm Hpc Hiru [Hpenv] Hfenv Hpriv Hfrag Hqf Hu0 Hu1 Hb5 Hb6 Hb7 Hlo Hhi").
       { split; [exact HB0sp|]. split; [exact HB0s0|].
         split; [exact HB0s1 | exact HthrB0]. }
       { exact Hext1. }
@@ -3039,7 +3156,7 @@ Section ProofSysPipe.
                    ltac:(rewrite Hb; wp_next_chain) with "Hextm") as "Hextm".
       iSpecialize ("Hepi" $! CID78 with "[%]"); [wp_next_chain|].
       iApply ("Hepi" $! D1 Pb (4 + 4)%nat bsc (zero_reg : mword 64)
-                with "[%] [%] [%] Hcg Hcpu Hextc Hextm Hpc Hiru [Hpenv] Hfenv [Hb5 Hb6 Hb7] [Hlo Hhi] [Hpriv Hfrag Hu0 Hu1]").
+                with "[%] [%] [%] Hcg Hcpu Hextc Hextm Hpc Hiru [Hpenv] Hfenv [Hb5 Hb6 Hb7] [Hlo Hhi] [Hpriv Hfrag Hu0 Hu1 Hqf]").
       { split; [exact HD1sp|]. split; [exact HD1a5 | exact HthrD1]. }
       { exact Hextb. }
       { lia. }
@@ -3052,14 +3169,14 @@ Section ProofSysPipe.
          two settles installed -- which is what the post says *)
       iSplitR "Hu0 Hu1";
         [| iSplitL "Hu0"; [iExact "Hu0" | iExact "Hu1"]].
-      iRight. iExists fd0, fd1, l1, k0, k1.
+      iRight. iExists fd0, fd1, l1, k0, k1, γp.
       (* BOTH SLOTS WERE FREE, at the INCOMING table.  [Hlkstq0] is already
          there; fd1's is read off [Hlkstq1] at the FIRST insert's table and
          carried back to [sts] by [fd0 <> fd1] -- the same step the failure
          tails make to see their re-nulls are the identity. *)
       assert (Hst1c' : sts !! fd1 = Some FdClosed)
         by (rewrite <- (list_lookup_insert_ne sts fd0 fd1
-                          (FdOpen true false FdPipe) Hne01);
+                          (FdOpen true false (FdPipe γp)) Hne01);
             exact Hlkstq1).
       (* ...AND THE BYTES ARE THE TWO DESCRIPTORS.  [bsc] IS that function
          by construction -- it is what the two copyouts were handed -- so
@@ -3070,7 +3187,7 @@ Section ProofSysPipe.
           [reflexivity | exact Hfr1' | exact Hne01 | exact Hlkstq0 | exact Hst1c'
           | reflexivity
           | intros i Hi; reflexivity]|].
-      rewrite -sp_us_upt_ofile_comm. iFrame "Hpriv Hfrag".
+      rewrite -sp_us_upt_ofile_comm. iFrame "Hpriv Hfrag Hqf".
     - (* ============ copyout(&fd1) failed: the shared tail ============ *)
       (* the second run landed only a [d2 <= 4] prefix: the composed window
          is [4 + d2] -- idiom 4, re-instantiating the count already in hand *)
@@ -3098,7 +3215,7 @@ Section ProofSysPipe.
                    ltac:(rewrite Hb; wp_next_chain) with "Hextm") as "Hextm".
       iSpecialize ("Ht7c" $! CID79 with "[%]"); [wp_next_chain|].
       iApply ("Ht7c" $! D1 Pb (4 + d2)%nat bsc
-                with "[%] [%] [%] Hcg Hcpu Hextc Hextm Hpc Hiru [Hpenv] Hfenv Hpriv Hfrag Hu0 Hu1 Hb5 Hb6 Hb7 Hlo Hhi").
+                with "[%] [%] [%] Hcg Hcpu Hextc Hextm Hpc Hiru [Hpenv] Hfenv Hpriv Hfrag Hqf Hu0 Hu1 Hb5 Hb6 Hb7 Hlo Hhi").
       { split; [exact HD1sp|]. split; [exact HD1s0|].
         split; [exact HD1s1 | exact HthrD1]. }
       { exact Hextb. }

@@ -65,6 +65,7 @@ Require Import LogInv.
 Require Import IrefSlots.
 Require Import SpecArgfd SpecArgint SpecArgaddr SpecFileread.
 Require Import SpecSysRead.
+Require Import PipeQueue.   (* the pipe's byte-queue ghost: [pipe_st], the read payment *)
 Require Import CodeSysRead.
 From Kernel Require KernelInstrs.
 From Kernel Require KernelSyms.
@@ -322,9 +323,11 @@ Section ProofSysRead.
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
       (Fr : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
       (Rd : nat -> nat -> iProp Σ)
-      (Rin : list (list mobs * bv 8) -> iProp Σ) (P : iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
+      (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ)
+      (P : iProp Σ)
     : wp_sys_read_sconf_body γf γs j γlp fn pidv U sts v v1 v2 m av eb b lks
-        Fr Rd Rin P.
+        Fr Rd Rin Rp Rpe P.
   Proof.
     cbv beta delta [wp_sys_read_sconf_body].
     intros pcE pj ret_tgt Hav Hj Hgs Hlens Harg0 Harg1 Harg2 Hrp Hdq Heb.
@@ -814,7 +817,7 @@ Section ProofSysRead.
       { iApply (fileread_fs_env_out with "Henv"). }
       (* argfd answered NONE: the key is [FdClosed] and the arm is the landed
          blanket and nothing more. *)
-      { iApply (sys_read_arms_none (us_V U) v sts (sys_rw_count v2) Fr Rd _ _
+      { iApply (sys_read_arms_none (us_V U) v sts (sys_rw_count v2) Fr Rd _ _ _ _
                   (mword_of_int (-1) : mword 64) _ _ Hnone eq_refl with "HP"). }
     - (* ================= SUCCESS: the descriptor resolved ============= *)
       iDestruct "Hsucc" as (fd fv) "([%Hr %Hsome] & _ & Hfcell)".
@@ -957,14 +960,15 @@ Section ProofSysRead.
       (* THE KEYED INPUT, RELAYED: the caller's is at [sys_fd_st], this
          descriptor's row is what that key computes to, and the callee's is
          the same proposition at the same key. *)
-      iDestruct (sys_read_in_of (us_V U) v sts fd fv stf Fr Rd Rin _ Hsome Hstq
+      iDestruct (sys_read_in_of (us_V U) v sts fd fv stf (sys_rw_count v2)
+                   Fr Rd Rin Rp Rpe _ Hsome Hstq
                    with "Hin") as "Hin".
       iDestruct (read_env_frame γf fn stf with "Henv Hdev") as "[Hfenv Hfback]".
       iDestruct (cpu_own_transport CID17 CID24 0%nat eb pj b 
                    ltac:(rewrite Hb; wp_next_chain) with "Hcpu") as "Hcpu".
       iApply (Fileread.wp_fileread_sconf γf γs j γlp kk qq stf fn pidv U
                 S4 (av - 6)%nat eb (sys_rw_count v2) b
-                _ Fr Rd Rin P ltac:(lia) Hkk Hj Hgs Hlens
+                _ Fr Rd Rin Rp Rpe P ltac:(lia) Hkk Hj Hgs Hlens
                 HS4a0' HS4a2 (sys_rw_count_range v2) Heb
                 with "Hcg Hcpu Htext Hdata Hpc Hpenv Href Hcore Hkenv Hprocs Hfenv Hrow Hin HP").
       all: try lkbelow.
@@ -1034,7 +1038,7 @@ Section ProofSysRead.
          sys_read relays fileread's return value untouched -- one match in
          the tree, not two. *)
       { iApply (sys_read_arms_of (us_V U) v sts fd fv stf (sys_rw_count v2)
-                  Fr Rd _ P rv _ _ Hsome Hstq with "Harms"). }
+                  Fr Rd _ _ _ P rv _ _ Hsome Hstq with "Harms"). }
   Qed.
 
 End ProofSysRead.

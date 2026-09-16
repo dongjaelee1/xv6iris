@@ -966,9 +966,12 @@ Section UkShEcho.
 
   Lemma ushf_child_law_holds (Wc : nat -> nat -> iProp Σ) :
     ush_execfail_law_wq Wc -∗
+    (* ...and the tear-down's close payments (design/pipe.md, "The exit
+       path"): the child's two dead ends both exit(1) *)
+    UkRun.udepw_law USYS_exit -∗
     sh_exec_sup_echo_wq Wc -∗ UkShFork.ushf_child_law Wc.
   Proof.
-    iIntros "#Hxl #Hsup". rewrite /UkShFork.ushf_child_law.
+    iIntros "#Hxl #Hex2 #Hsup". rewrite /UkShFork.ushf_child_law.
     iIntros "!>" (N' h m dw dv s0 len g sz ld n np)
       "%Hpeq %Hs1 %Hline %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
        #Hcode #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
@@ -977,13 +980,14 @@ Section UkShEcho.
               (Wc np 3%nat) (Wc np 0%nat) N' Hc h m dw dv s0 len g sz ld n
               Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok
               (proj1 (proj2 Hrows)) (proj2 (proj2 Hrows))
-              with "Hcode [] [] [] [] Hpcode Hpro Hjt Hline Hws Hsy Hstd Hcwd Hch
+              with "Hcode [] [] [] [] [] Hpcode Hpro Hjt Hline Hws Hsy Hstd Hcwd Hch
                     HM Hcr Hrun").
     - iApply ("Hsup" $! np).
     - (* a child that died at the null store exits on the block it was
          lent *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iLeft. iExact "Hc".
     - iApply ("Hxl" $! np).
+    - iExact "Hex2".
     - (* a failed exec's child exits on the block written up to its prompt *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iRight. iExact "Hc".
   Qed.

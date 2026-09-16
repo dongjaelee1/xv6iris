@@ -318,7 +318,7 @@ Section UShEchoPay.
       iApply (UShPanic.ush_execfail_law_holds (PS := uprogSG_free) T γ np
                 with "Hlk"). }
     iApply (UkShEcho.ushf_child_law_holds (PS := uprogSG_free) (fun k H => H) Wc
-              with "Hxlw Hsup").
+              with "Hxlw Hxl Hsup").
   Qed.
 
 End UShEchoPay.

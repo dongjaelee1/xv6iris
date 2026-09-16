@@ -154,7 +154,7 @@ Section ProofSysUnlink.
  dqb dqs dqbs
               pid U P1 n1 Sb1 w1 dpv nf bnm0 bp bd be w4 w5 w6 w27 w30
               m Ms (m !!! Regidx csp_rs1 : mword 64) K eb b lks
-              pl iL P Pmiss Phient Phitgt Phiex Phimiss
+              pl iL v0 P Pmiss Phient Phitgt Phiex Phimiss
               HK Hnib0 Hgeom Hsize Hbm0 Hbmcov Hbmlog
               Hist0 Hcovb Hiregb Hj Hgl Heb eq_refl Hal Hregs1 Hma01 Hn1
               Hupt1
@@ -183,7 +183,7 @@ Section ProofSysUnlink.
               pid U P1 n1 Sb1 w1 kd ks kk gild gisld gyd qdi sd qs loyd tlyd
               dinum dnd bmd datd lo nf bnm0 bp bd be w5 w6 w30
               m M2 (m !!! Regidx csp_rs1 : mword 64) K eb b lks t
-              pl P Pmiss Phient Phitgt Phiex Phimiss
+              pl v0 P Pmiss Phient Phitgt Phiex Phimiss
               HK Hnib0 Hgeom Hsize Hbm0 Hbmcov Hbmlog
               Hist0 Hcovb Hiregb Hj Hgl Heb eq_refl Hal Hn1 Hupt1 Hregs2
               Hkd Hks Hdinb Htydir Hiok Hrl_datd Hdok Hddix Hdoc Hduq
@@ -221,7 +221,7 @@ Section ProofSysUnlink.
                 qdi sd qs loyd tlyd dinum dnd bmd datd lo nf bnm0 bp bd bex w6 w30
                 gili gisli gyi si qsi loyi tlyi dni bmi dati
                 m M3 (m !!! Regidx csp_rs1 : mword 64) s3x K eb b lks t
-                pl P Pmiss Phient Phitgt Phiex Phimiss
+                pl v0 P Pmiss Phient Phitgt Phiex Phimiss
                 HK Hnib0 Hgeom Hsize Hbm0
                 Hbmcov Hbmlog Hist0 Hcovb Hiregb Hj Hgl Heb eq_refl Hal Hn1
                 Hupt1 Hkd Hks Hdinb Htydir Hiok Hrl_datd Hdok Hddix Hdoc Hduq
@@ -246,7 +246,7 @@ Section ProofSysUnlink.
                 qdi sd qs loyd tlyd dinum dnd bmd datd lo nf bnm0 bp bd bex w6 w30
                 gili gisli gyi si qsi loyi tlyi dni bmi dati
                 m M3 (m !!! Regidx csp_rs1 : mword 64) s3x K eb b lks t
-                pl P Pmiss Phient Phitgt Phiex Phimiss
+                pl v0 P Pmiss Phient Phitgt Phiex Phimiss
                 HK Hnib0 Hgeom Hsize Hbm0
                 Hbmcov Hbmlog Hist0 Hcovb Hiregb Hj Hgl Heb eq_refl Hal Hn1
                 Hupt1 Hkd Hks Hdinb Htydir Hiok Hrl_datd Hdok Hddix Hdoc Hduq

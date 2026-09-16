@@ -332,7 +332,10 @@ Require Import SysUnlinkDefs.  (* THE STATEMENT LEAF: the delta's side
 Require Import PathElems.       (* [path_elems], [SLASH] *)
 Require Import FsTree.          (* [fname], [DOT], [DOTDOT] *)
 Require Import FsBytesGamma.    (* [fs_gamma_L]: the live Γ *)
-Require Import SysMknodDefs.  (* [npar_elems]                  *)
+Require Import SysMknodDefs.  (* [npar_elems], [npar_cur]: the path-fixed
+                                    bundle's cursor (lane TL-3C)       *)
+Require Import ArgPath.         (* [arg_path_of] / [arg_path_of_uniq]  *)
+Require Import FsAbsEra.        (* [ep_start]: the walk at ONE path    *)
 Require Import FsAbsMknodFire.  (* [dlookup_commit_at]; the [_at] mold *)
 Require Import AppInv.          (* [appN]/[appE]: the application's namespace, the commit mask (app-instances.md round A) *)
 Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its refund *)
@@ -411,23 +414,115 @@ Section SysUnlinkArms.
   Context `{XI : CurCtx}.
   Implicit Types Γ : fs_view_names Σ.
 
-  (* Everything the caller hands in, at the commit mask [appE].  The walk
-     premise is [FsAbsEraMknod.npar_walk_pre_era]
-     REUSED VERBATIM (it is nameiparent-generic -- the one-shot
-     ∀ pl r with only the SLASH -> ROOTINO tie, the hop family at the
-     era lend over the parent prefix [npar_elems pl]; it is what
-     [FsAbsStart.ep_start] instantiates to at the fetched string). *)
-  Definition unlink_au_pre Γ (γfs : fs_names) (cw : Z)
+  (* ================================================================= *)
+  (*  THE PATH-FIXED BUNDLE (lane TL-3C, item (M)) -- mkdir's twin, which *)
+  (*  is [SpecSysMknod.mknod_au_pre] / [mknod_au_at]'s twin.              *)
+  (*                                                                     *)
+  (*  TL-3K threaded nameiparent's terminal cursor into the entry-leg     *)
+  (*  commit ([SysUnlinkDefs.uent_commit_at]'s [Pd]) and found that       *)
+  (*  unlink COULD NOT CARRY ONE: its bundle took the [forall pl]         *)
+  (*  one-shot, so there was no ONE path for a cursor to name and the leg *)
+  (*  was handed in at [Pd := fun _ => True] -- the strength a            *)
+  (*  constraining application cannot supply, because at a [d] inside a   *)
+  (*  stranger's subtree it has no step at all ([TreeMove.v] section 4's  *)
+  (*  WALL A).  So unlink now takes the bundle AT THE PATH ARGUMENT 0     *)
+  (*  NAMES, exactly as sys_mknod, sys_mkdir and open(O_CREATE) do.       *)
+  (*                                                                     *)
+  (*  [unlink_au_pre] is the reading at ONE fetched path: the             *)
+  (*  parent-prefix walk one-shot there ([FsAbsEra.ep_start], which is    *)
+  (*  what [npar_walk_pre_era] instantiates to) and the entry leg at the  *)
+  (*  cursor [P (length (npar_elems pl))].  The other three commits are   *)
+  (*  keyed by an inum and a view, never by a string, so they do not move. *)
+  (* ================================================================= *)
+  Definition unlink_au_pre Γ (γfs : fs_names) (cw : Z) (pl : list (bv 8))
       (P Pmiss : nat -> Z -> iProp Σ)
       (Fent : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Ftgt : pfam Σ (aview -> Z -> iProp Σ))
       (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Fmiss : pfam Σ (aview -> Z -> fname -> iProp Σ)) : iProp Σ :=
-    (npar_walk_pre_era γfs cw P Pmiss
-     ∗ pf_at (uent_commit_at Γ appE (fun _ => True%I)) Fent
+    (ep_start γfs cw P Pmiss pl
+     ∗ pf_at (uent_commit_at Γ appE (P (length (npar_elems pl)))) Fent
      ∗ pf_at (utgt_commit_at Γ appE) Ftgt
      ∗ pf_at (dlookup_commit_at Γ appE) Fex
      ∗ pf_at (dmiss_commit_at Γ appE) Fmiss)%I.
+
+  (* ...AND THE SYSCALL TIER: the same bundle under the reading of
+     trapframe argument 0.  THE COMMITS STAY OUTSIDE THE WALK'S WAND,
+     because argstr can fail and then no [pl] satisfies the reading at all
+     -- the "nothing happened" arm of the fold has to hand the bundle back
+     on the nose.  The cursor rides under the SAME guard the walk carries
+     ([SysMknodDefs.npar_cur]) and is still a BARE resource. *)
+  Definition unlink_au_at Γ (γfs : fs_names) (cw : Z)
+      (M : gmap Z (bv 8)) (pv : mword 64)
+      (P Pmiss : nat -> Z -> iProp Σ)
+      (Fent : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (Ftgt : pfam Σ (aview -> Z -> iProp Σ))
+      (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (Fmiss : pfam Σ (aview -> Z -> fname -> iProp Σ)) : iProp Σ :=
+    ((∀ pl : list (bv 8), ⌜arg_path_of M pv pl⌝ -∗ ep_start γfs cw P Pmiss pl)
+     ∗ pf_at (uent_commit_at Γ appE (npar_cur M pv P)) Fent
+     ∗ pf_at (utgt_commit_at Γ appE) Ftgt
+     ∗ pf_at (dlookup_commit_at Γ appE) Fex
+     ∗ pf_at (dmiss_commit_at Γ appE) Fmiss)%I.
+
+  (* THE CURSOR'S TWO READINGS, as one move ([SpecSysMknod.
+     mknod_acre_inst] / [SpecSysMkdir.mkdir_cre_inst]'s twin at unlink's
+     entry leg): once argstr has answered, the syscall-tier cursor IS the
+     path-fixed one, in BOTH directions ([ArgPath.arg_path_of_uniq]). *)
+  Lemma unlink_uent_inst Γ (M : gmap Z (bv 8)) (pv : mword 64)
+      (pl : list (bv 8)) (P : nat -> Z -> iProp Σ)
+      (Fent : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    arg_path_of M pv pl ->
+    pf_at (uent_commit_at Γ appE (npar_cur M pv P)) Fent -∗
+    pf_at (uent_commit_at Γ appE (P (length (npar_elems pl)))) Fent.
+  Proof.
+    intros Hpl. iIntros "Hent".
+    iApply (pf_at_mono with "[] Hent"). iIntros "Hent".
+    iApply (uent_commit_at_mono Γ appE (npar_cur M pv P)
+              (P (length (npar_elems pl))) Fent.(pf_recv) with "[] [] Hent").
+    - iApply (npar_cur_out M pv pl P Hpl).
+    - iApply (npar_cur_in M pv pl P Hpl).
+  Qed.
+
+  Lemma unlink_au_at_inst Γ (γfs : fs_names) (cw : Z)
+      (M : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8))
+      (P Pmiss : nat -> Z -> iProp Σ)
+      (Fent : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (Ftgt : pfam Σ (aview -> Z -> iProp Σ))
+      (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (Fmiss : pfam Σ (aview -> Z -> fname -> iProp Σ)) :
+    arg_path_of M pv pl ->
+    unlink_au_at Γ γfs cw M pv P Pmiss Fent Ftgt Fex Fmiss -∗
+    unlink_au_pre Γ γfs cw pl P Pmiss Fent Ftgt Fex Fmiss.
+  Proof.
+    intros Hpl. iIntros "(Hw & Hent & Htgt & Hex & Hmiss)".
+    rewrite /unlink_au_pre. iFrame "Htgt Hex Hmiss".
+    iSplitL "Hw".
+    { iApply ("Hw" $! pl with "[%]"). exact Hpl. }
+    iApply (unlink_uent_inst Γ M pv pl P Fent Hpl with "Hent").
+  Qed.
+
+  (* THE GENERIC SUPPLIER'S ONE LINE ([SpecSysMknod.mknod_au_at_of_all]'s
+     twin): a family that tracks nothing owes the walk at EVERY string, and
+     that form instantiates to the one-path bundle. *)
+  Lemma unlink_au_at_of_all Γ (γfs : fs_names) (cw : Z)
+      (M : gmap Z (bv 8)) (pv : mword 64)
+      (P Pmiss : nat -> Z -> iProp Σ)
+      (Fent : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (Ftgt : pfam Σ (aview -> Z -> iProp Σ))
+      (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (Fmiss : pfam Σ (aview -> Z -> fname -> iProp Σ)) :
+    npar_walk_pre_era γfs cw P Pmiss -∗
+    pf_at (uent_commit_at Γ appE (npar_cur M pv P)) Fent -∗
+    pf_at (utgt_commit_at Γ appE) Ftgt -∗
+    pf_at (dlookup_commit_at Γ appE) Fex -∗
+    pf_at (dmiss_commit_at Γ appE) Fmiss -∗
+    unlink_au_at Γ γfs cw M pv P Pmiss Fent Ftgt Fex Fmiss.
+  Proof.
+    iIntros "Hw Hent Htgt Hex Hmiss". rewrite /unlink_au_at.
+    iFrame "Hent Htgt Hex Hmiss".
+    iIntros (pl) "_". iApply (np_start_of_mknod γfs cw P Pmiss pl with "Hw").
+  Qed.
 
   (* ret 0: the fetched path, the cursor at the parent, [unl_pre]
      restated purely at instant 1, BOTH fired receipts, the instant-2
@@ -454,21 +549,22 @@ Section SysUnlinkArms.
   (* ret -1: the header's fold -- (i) bundle back, (ii) walk dead,
      (iii) refused at the parent with the observation each refusal IS *)
   Definition unlink_post_fail Γ (γfs : fs_names) (cw : Z)
+      (M : gmap Z (bv 8)) (pv : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Fent : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Ftgt : pfam Σ (aview -> Z -> iProp Σ))
       (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Fmiss : pfam Σ (aview -> Z -> fname -> iProp Σ)) : iProp Σ :=
-    (unlink_au_pre Γ γfs cw P Pmiss Fent Ftgt Fex Fmiss
+    (unlink_au_at Γ γfs cw M pv P Pmiss Fent Ftgt Fex Fmiss
      ∨ (∃ pl : list (bv 8),
           (npar_walk_dead_era γfs P Pmiss pl
-             ∗ pf_at (uent_commit_at Γ appE (fun _ => True%I)) Fent
+             ∗ pf_at (uent_commit_at Γ appE (P (length (npar_elems pl)))) Fent
              ∗ pf_at (utgt_commit_at Γ appE) Ftgt
              ∗ pf_at (dlookup_commit_at Γ appE) Fex
              ∗ pf_at (dmiss_commit_at Γ appE) Fmiss)
           ∨ (∃ d : Z,
                P (length (npar_elems pl)) d
-               ∗ pf_at (uent_commit_at Γ appE (fun _ => True%I)) Fent
+               ∗ pf_at (uent_commit_at Γ appE (P (length (npar_elems pl)))) Fent
                ∗ pf_at (utgt_commit_at Γ appE) Ftgt
                ∗ ((* (iii-a) the name is a dot: refused BY NAME, before
                      any lookup -- pure, both observations refunded *)
@@ -510,11 +606,12 @@ Section SysUnlinkArms.
       (Ftgt : pfam Σ (aview -> Z -> iProp Σ))
       (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Fmiss : pfam Σ (aview -> Z -> fname -> iProp Σ))
+      (M : gmap Z (bv 8)) (pv : mword 64)
       (r : mword 64) : iProp Σ :=
     ((⌜r = (zero_reg : mword 64)⌝
       ∗ unlink_post_ok Γ P Fent Ftgt Fex Fmiss)
      ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝
-        ∗ unlink_post_fail Γ γfs cw P Pmiss Fent Ftgt Fex Fmiss))%I.
+        ∗ unlink_post_fail Γ γfs cw M pv P Pmiss Fent Ftgt Fex Fmiss))%I.
 
   (* the return blanket, read off the arms: the pure conjunct
      [SpecSysUnlink.sys_unlink_closer] carries, implied *)
@@ -523,8 +620,9 @@ Section SysUnlinkArms.
       (Fent : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Ftgt : pfam Σ (aview -> Z -> iProp Σ))
       (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
-      (Fmiss : pfam Σ (aview -> Z -> fname -> iProp Σ)) (r : mword 64) :
-    unlink_arms Γ γfs cw P Pmiss Fent Ftgt Fex Fmiss r ⊢ ⌜sys_unlink_ret r⌝.
+      (Fmiss : pfam Σ (aview -> Z -> fname -> iProp Σ))
+      (M : gmap Z (bv 8)) (pv : mword 64) (r : mword 64) :
+    unlink_arms Γ γfs cw P Pmiss Fent Ftgt Fex Fmiss M pv r ⊢ ⌜sys_unlink_ret r⌝.
   Proof.
     rewrite /unlink_arms /sys_unlink_ret.
     iIntros "[[%Hr _] | [%Hr _]]"; iPureIntro; [right | left]; exact Hr.
@@ -534,8 +632,8 @@ End SysUnlinkArms.
 
 (* big-op bodies behind definitions: seal them (durable-notes;
    optimization.md, "a big-op body is the predictor"). *)
-Global Typeclasses Opaque unlink_au_pre unlink_post_ok unlink_post_fail
-  unlink_arms.
+Global Typeclasses Opaque unlink_au_pre unlink_au_at unlink_post_ok
+  unlink_post_fail unlink_arms.
 
 (* ===================================================================== *)
 (*  THE WHOLE-FUNCTION FRAME, abstracted over the caller's bundle and the *)
@@ -646,8 +744,10 @@ Definition wp_sys_unlink_body
   let Γfs := fs_gamma_L fsc_fs in
   wp_sys_unlink_frame γf gs j gl pd pav pu dqb dqs dqbs
     v0 pid U m K eb b lks
-    (unlink_au_pre Γfs fsc_fs (pv_cwi (us_V U)) P Pmiss Fent Ftgt Fex Fmiss)
-    (unlink_arms Γfs fsc_fs (pv_cwi (us_V U)) P Pmiss Fent Ftgt Fex Fmiss).
+    (unlink_au_at Γfs fsc_fs (pv_cwi (us_V U)) (us_M U) v0
+       P Pmiss Fent Ftgt Fex Fmiss)
+    (unlink_arms Γfs fsc_fs (pv_cwi (us_V U)) P Pmiss Fent Ftgt Fex Fmiss
+       (us_M U) v0).
 
 (* ===================================================================== *)
 (*  ONE MODULE TYPE                                                       *)

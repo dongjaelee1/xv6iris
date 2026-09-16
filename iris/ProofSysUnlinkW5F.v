@@ -191,6 +191,7 @@ Section ProofSysUnlinkW5F.
       (m M3 : regfile) (sp0 s3x : mword 64) (K : nat) (eb b : bool)
       (lks : gset string) (t : nat)
       (pl : list (bv 8))
+      (v0 : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Phient : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Phitgt : pfam Σ (aview -> Z -> iProp Σ))
@@ -334,7 +335,8 @@ Section ProofSysUnlinkW5F.
     (* ---- THE AU SIDE, as W3's seam hands it ---- *)
     ⌜exists es e, nameiparent_of pl es e /\ bname 14 nf = e⌝ -∗
     P (length (npar_elems pl)) (bv_unsigned dinum) -∗
-    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE (fun _ => True%I)) Phient -∗
+    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE
+                          (P (length (npar_elems pl)))) Phient -∗
     pf_at (utgt_commit_at (fs_gamma_L fsc_fs) appE) Phitgt -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
     pf_at (dmiss_commit_at (fs_gamma_L fsc_fs) appE) Phimiss -∗
@@ -359,7 +361,7 @@ Section ProofSysUnlinkW5F.
       sys_unlink_closer (CID := CIDx) gf (proc_addr jx) pid U m
         (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
         dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
-                        Phient Phitgt Phiex Phimiss)) -∗
+                        Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros HK Hnib0 Hgeom Hsize Hbm0 Hbmcov
@@ -1067,7 +1069,8 @@ Section ProofSysUnlinkW5F.
     (* E2-V: the target has a row -- its record is typed ([inode_ok]) *)
     assert (Htynz0 : fn_type (era_node dni bmi dati) <> 0).
     { rewrite /fn_type era_node_rec. destruct Hioki as (_ & _ & _ & Hc & _). exact Hc. }
-    iMod (uf_uent_fire fsc_fs ⊤ (DfracOwn 1) (fun _ => True%I) Phient
+    iMod (uf_uent_fire fsc_fs ⊤ (DfracOwn 1)
+            (P (length (npar_elems pl))) Phient
             (bv_unsigned dinum) (bv_unsigned (zero_extend' 32 (dir_inum datd kk : mword 16)
                                         : mword 32))
             (dir_bname datd kk) 0%nat
@@ -1087,8 +1090,8 @@ Section ProofSysUnlinkW5F.
                ltac:(rewrite Nat.sub_0_r; exact (mkf_era_live dnd bmd datd Hdplive))
                Hentsd)
             Htynz0
-            with "[] [] Hcent [//] Htop Htopi")
-      as "(Htop & Htopi & _ & Hfire1)";
+            with "[] [] Hcent HP Htop Htopi")
+      as "(Htop & Htopi & HP & Hfire1)";
       [iApply (ireg_inv_ftop with "Hireg") | iApply (ireg_inv_app with "Hireg") |].
     iDestruct "Hfire1" as (av0) "(%Hpre0 & Hent)".
     iModIntro.

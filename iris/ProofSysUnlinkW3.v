@@ -1078,6 +1078,7 @@ Section ProofSysUnlinkW3.
          held and nothing has fired (the isdirempty refusal is a FAILURE arm,
          handled inside W3). ---- *)
       (pl : list (bv 8))
+      (v0 : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Phient : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Phitgt : pfam Σ (aview -> Z -> iProp Σ))
@@ -1181,7 +1182,8 @@ Section ProofSysUnlinkW3.
        (* the name tie, the cursor and the four commits *)
        ⌜exists es e, nameiparent_of pl es e /\ bname 14 nf = e⌝ -∗
        P (length (npar_elems pl)) (bv_unsigned dinum) -∗
-       pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE (fun _ => True%I)) Phient -∗
+       pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE
+                          (P (length (npar_elems pl)))) Phient -∗
        pf_at (utgt_commit_at (fs_gamma_L fsc_fs) appE) Phitgt -∗
        pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
        pf_at (dmiss_commit_at (fs_gamma_L fsc_fs) appE) Phimiss -∗
@@ -1207,7 +1209,7 @@ Section ProofSysUnlinkW3.
          sys_unlink_closer (CID := CIDx) gf (proc_addr jx) pid U m
            (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
            dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
-                        Phient Phitgt Phiex Phimiss)) -∗
+                        Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
        WP (Loop : expr riscv_lang))%I.
 
   Lemma su_w3_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
@@ -1226,6 +1228,7 @@ Section ProofSysUnlinkW3.
       (m M2 : regfile) (sp0 : mword 64) (K : nat) (eb b : bool)
       (lks : gset string) (t : nat)
       (pl : list (bv 8))
+      (v0 : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Phient : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Phitgt : pfam Σ (aview -> Z -> iProp Σ))
@@ -1335,7 +1338,8 @@ Section ProofSysUnlinkW3.
     (* ---- THE AU SIDE, as W2's seam hands it ---- *)
     ⌜exists es e, nameiparent_of pl es e /\ bname 14 nf = e⌝ -∗
     P (length (npar_elems pl)) (bv_unsigned dinum) -∗
-    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE (fun _ => True%I)) Phient -∗
+    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE
+                          (P (length (npar_elems pl)))) Phient -∗
     pf_at (utgt_commit_at (fs_gamma_L fsc_fs) appE) Phitgt -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
     pf_at (dmiss_commit_at (fs_gamma_L fsc_fs) appE) Phimiss -∗
@@ -1370,12 +1374,12 @@ Section ProofSysUnlinkW3.
           dqbs pid U P1 n1 Sb1 kd ks kk gild gisld gyd loyd tlyd qdi sd dinum dnd bmd
           datd lo nf bnm0 bp bd w6 w30 m sp0 K eb b lks t M3 s3x bex isdir
           gili gisli gyi si qsi loyi tlyi dni bmi dati
-          pl P Pmiss Phient Phitgt Phiex Phimiss) -∗
+          pl v0 P Pmiss Phient Phitgt Phiex Phimiss) -∗
     wp_next true (proc_addr jx) (fun (CIDx : CpuId) =>
       sys_unlink_closer (CID := CIDx) gf (proc_addr jx) pid U m
         (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
         dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
-                        Phient Phitgt Phiex Phimiss)) -∗
+                        Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros HK Hnib0 Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0

@@ -465,16 +465,24 @@ Section FsAbsInvFire.
     link_commits (fs_gamma_L γfs) (pfam_triv (fun _ _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ => True%I)).
   Proof. iIntros "#Hsup". iApply (link_commits_unit γfs with "Hsup"). Qed.
 
-  Lemma fsabs_unlink_pre (γfs : fs_names) (cw : Z) :
+  (* ...AT THE SYSCALL TIER (lane TL-3C, item (M)): unlink's bundle is now
+     path-fixed under the reading of argument 0, and the generic family
+     tracks nothing, so it owes the walk at EVERY string and
+     [unlink_au_at_of_all] instantiates that to the guarded form. *)
+  Lemma fsabs_unlink_pre (γfs : fs_names) (cw : Z)
+      (M : gmap Z (bv 8)) (pv : mword 64) :
     app_sup -∗
-    unlink_au_pre (fs_gamma_L γfs) γfs cw (fun _ _ => True%I) (fun _ _ => True%I)
+    unlink_au_at (fs_gamma_L γfs) γfs cw M pv (fun _ _ => True%I) (fun _ _ => True%I)
       (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ _ => True%I)).
   Proof.
-    iIntros "#Hsup". rewrite /unlink_au_pre.
-    iSplitR; [iApply fsabs_mknod_walk |].
-    iSplitR; [iApply (fsabs_uent with "Hsup") |].
-    iSplitR; [iApply (fsabs_utgt with "Hsup") |].
-    iSplitR; [iApply fsabs_dlookup | iApply fsabs_dmiss].
+    iIntros "#Hsup".
+    iApply (unlink_au_at_of_all (fs_gamma_L γfs) γfs cw M pv
+              with "[] [Hsup] [Hsup] [] []").
+    - iApply fsabs_mknod_walk.
+    - iApply (fsabs_uent with "Hsup").
+    - iApply (fsabs_utgt with "Hsup").
+    - iApply fsabs_dlookup.
+    - iApply fsabs_dmiss.
   Qed.
 
 End FsAbsInvFire.

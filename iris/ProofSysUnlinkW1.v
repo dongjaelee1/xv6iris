@@ -102,6 +102,8 @@ Require Import SpecNparWrapEra.   (* [NPAR_WRAP_ERA]: the era walk         *)
 Require Import CodeSysUnlink.
 Require Import SysUnlinkBudget.
 Require Import SpecSysUnlink.
+Require Import ArgPath.          (* [arg_path_of] / [arg_path_of_bview]:
+                                    the path-fixed bundle's guard (TL-3C) *)
 Require Import ProofSysUnlinkParts.
 Require Import ProofSysUnlinkTails.
 Require Import ProofSysUnlinkPure.
@@ -197,6 +199,7 @@ Section ProofSysUnlinkW1.
          pin user bytes.  The four commits and the cursor ride unspent:
          nothing in W1 fires. ---- *)
       (pl : list (bv 8)) (iL : Z)
+      (v0 : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Phient : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Phitgt : pfam Σ (aview -> Z -> iProp Σ))
@@ -239,7 +242,8 @@ Section ProofSysUnlinkW1.
           in order; nothing comes back *)
        P (length (npar_elems pl)) iL -∗
        (* the four commits, UNSPENT *)
-       pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE (fun _ => True%I)) Phient -∗
+       pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE
+                          (P (length (npar_elems pl)))) Phient -∗
        pf_at (utgt_commit_at (fs_gamma_L fsc_fs) appE) Phitgt -∗
        pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
        pf_at (dmiss_commit_at (fs_gamma_L fsc_fs) appE) Phimiss -∗
@@ -272,7 +276,7 @@ Section ProofSysUnlinkW1.
            (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
            dqb dqs dqbs
            (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
-                        Phient Phitgt Phiex Phimiss)) -∗
+                        Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
        WP (Loop : expr riscv_lang))%I.
 
   Lemma su_w1_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
@@ -330,8 +334,8 @@ Section ProofSysUnlinkW1.
     iref_slots SpecSysUnlink.sys_unlink_slots -∗
     proc_priv gf (proc_addr jx) pid U -∗
     (* ---- THE AU SIDE: the caller's whole bundle, at the mask floor ---- *)
-    unlink_au_pre (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
-                  Phient Phitgt Phiex Phimiss -∗
+    unlink_au_at (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) (us_M U) v0
+                 P Pmiss Phient Phitgt Phiex Phimiss -∗
     (* ---- THE SEAM: the fall-through, at +0x30 with [dp] resolved ---- *)
     (∀ (CIDs : CpuId) (Ms : regfile) (P1 : uptd)
        (n1 : nat) (Sb1 : gset Z) (w1 : bool) (dpv : mword 64)
@@ -340,13 +344,13 @@ Section ProofSysUnlinkW1.
        su_w1_seam_au (CIDs := CIDs)
           gf jx dqb dqs dqbs pid U
           m K eb b lks Ms P1 n1 Sb1 w1 dpv nf bp1 bnm0 bd0 be0 w4 w5 w6 w27
-          w30 pl iL P Pmiss Phient Phitgt Phiex Phimiss) -∗
+          w30 pl iL v0 P Pmiss Phient Phitgt Phiex Phimiss) -∗
     wp_next true (proc_addr jx) (fun (CIDx : CpuId) =>
       sys_unlink_closer (CID := CIDx) gf (proc_addr jx) pid U m
         (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
         dqb dqs dqbs
         (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
-                     Phient Phitgt Phiex Phimiss)) -∗
+                     Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros HK HdevR Hnib0 Hgeom Hsize Hbm0 Hbmcov
@@ -361,7 +365,7 @@ Section ProofSysUnlinkW1.
        ordinary linear resources; only the walk premise is spent here (at
        nameiparent, through [np_start_of_mknod]) and the other three ride
        to the seam or back out on a failure arm. *)
-    iEval (rewrite /unlink_au_pre) in "Hau".
+    iEval (rewrite /unlink_au_at) in "Hau".
     iDestruct "Hau" as "(Hwalk & Hcent & Hctgt & Hcex & Hcmiss)".
     iDestruct (cpu_own_zero_empty with "Hown") as "[%Hlkempty Hown]".
     assert (Hlb : forall r : string, locks_below lks r).
@@ -556,7 +560,7 @@ Section ProofSysUnlinkW1.
               su_maxpath_lt (Hlb "kmem"%string)
               with "Hcg Hown Htext Hdata Hpc Hpriv Hkenv [HbP]").
     { iEval (rewrite HM6a1). iExact "HbP". }
-    iIntros (CID9 Hq9 mas P1 bp1) "%Hcsas %Hupt1 Hcg Hown Hpc Hpriv HbP %Hfsr1 _".
+    iIntros (CID9 Hq9 mas P1 bp1) "%Hcsas %Hupt1 Hcg Hown Hpc Hpriv HbP %Hfsr1 %Hfgot1".
     iEval (rewrite HM6a1) in "HbP".
     assert (Hpc16 : ret_pc (M6 !!! Regidx Rra : mword 64)
                     = mword_of_int (SU + 0x16)) by (rewrite HM6ra; pcw).
@@ -576,6 +580,14 @@ Section ProofSysUnlinkW1.
     (* ===== +0x16 bltz a0 -> ARM A (+0x170) ===== *)
     destruct Hfsr1 as [(pk1 & Hpk1 & Hpcstr1 & Hpr1) | Hpr1].
     - (* ---------------- the path fetched: fall through ---------------- *)
+      (* THE PATH, AS THE BUNDLE IS OWED IT (lane TL-3C, item (M);
+         ProofSysMknod / ProofSysMkdir's mould): [bview pk1 bp1] is the
+         buffer argstr filled, and [Hfgot1] says those bytes are the
+         process's own at trapframe argument 0 -- so the walk wand and the
+         entry leg's cursor below are at the ONE path the caller passed. *)
+      pose proof (arg_path_of_bview (us_M U) v0 pk1 bp1
+                    (proj2 (su_len_range pk1 Hpk1)) Hpcstr1
+                    (Hfgot1 pk1 Hpk1 Hpr1)) as Hpof1.
       iApply (wp_blt_x0_fall_s_sconf (CID := CID9) (mword_of_int (SU + 0x16))
                 (mword_of_int 346 : mword 13) Ra0 mas (K - 30)%nat b
                 ltac:(nz)
@@ -728,8 +740,12 @@ Section ProofSysUnlinkW1.
          [FsAbsStart.ep_start] on the nose at every path, with only the
          SLASH -> ROOTINO tie -- and [np_start_of_mknod] is that identity,
          discharged in advance by lane A. *)
-      iDestruct (np_start_of_mknod fsc_fs (pv_cwi (us_V U)) P Pmiss (bview pk1 bp1)
-                   with "Hwalk") as "Hstart".
+      iDestruct ("Hwalk" $! (bview pk1 bp1) with "[%]") as "Hstart";
+        [exact Hpof1 |].
+      (* ...and the ENTRY LEG'S CURSOR, from the GUARDED reading to THE
+         path argstr read ([SpecSysUnlink.unlink_uent_inst], lane TL-3C). *)
+      iDestruct (unlink_uent_inst _ (us_M U) v0 (bview pk1 bp1) P Phient
+                   Hpof1 with "Hcent") as "Hcent".
       iApply (NparEra.wp_npar_wrap_era (CID := CID16) gs jx gl
                 pd pav pu gf
  pk1 bp1 bnm0
@@ -958,7 +974,7 @@ Section ProofSysUnlinkW1.
       { rewrite Heb /cpu_claim_ext. done. }
       (* ARM (i): argstr failed ABOVE begin_op, so nothing fs-visible has
          happened at all and the whole bundle goes back unspent. *)
-      rewrite /unlink_arms /unlink_post_fail /unlink_au_pre. iRight.
+      rewrite /unlink_arms /unlink_post_fail /unlink_au_at. iRight.
       iSplitR; [iPureIntro; rewrite Ha0f; reflexivity |].
       iLeft. iFrame "Hwalk Hcent Hctgt Hcex Hcmiss".
   Qed.

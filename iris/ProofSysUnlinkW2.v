@@ -199,6 +199,7 @@ Section ProofSysUnlinkW2.
       (m M : regfile) (sp0 : mword 64) (K : nat) (eb b : bool)
       (lks : gset string)
       (w4 w5 w6 w27 w30 : mword 64) (bd nfx bnm0 bp be : nat -> bv 8)
+      (v0 : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Phient : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Phitgt : pfam Σ (aview -> Z -> iProp Σ))
@@ -291,13 +292,13 @@ Section ProofSysUnlinkW2.
     (* THE ARM, ALREADY BUILT.  Both callers arrive at [bad:] having refused
        BY NAME, so the payout is arm (iii-a) at either dot; this block does
        not look at it -- it only spends it against [ARMS] at [-1]. *)
-    unlink_post_fail (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
-                     Phient Phitgt Phiex Phimiss -∗
+    unlink_post_fail (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) (us_M U) v0
+                     P Pmiss Phient Phitgt Phiex Phimiss -∗
     wp_next true (proc_addr jx) (fun (CIDx : CpuId) =>
       sys_unlink_closer (CID := CIDx) gf (proc_addr jx) pidv U m
         (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
         dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
-                        Phient Phitgt Phiex Phimiss)) -∗
+                        Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros HKup HKeo HK30 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0 Hiblk
@@ -394,6 +395,7 @@ Section ProofSysUnlinkW2.
          Nothing has fired yet: dirlookup HIT, and the found observation is
          not spent on the success path (the statement's deviation 4). ---- *)
       (pl : list (bv 8))
+      (v0 : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Phient : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Phitgt : pfam Σ (aview -> Z -> iProp Σ))
@@ -434,7 +436,8 @@ Section ProofSysUnlinkW2.
        (* the name tie, and the cursor at the parent's own index *)
        ⌜exists es e, nameiparent_of pl es e /\ bname 14 nf = e⌝ -∗
        P (length (npar_elems pl)) (bv_unsigned dinum) -∗
-       pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE (fun _ => True%I)) Phient -∗
+       pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE
+                          (P (length (npar_elems pl)))) Phient -∗
        pf_at (utgt_commit_at (fs_gamma_L fsc_fs) appE) Phitgt -∗
        pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
        pf_at (dmiss_commit_at (fs_gamma_L fsc_fs) appE) Phimiss -∗
@@ -498,7 +501,7 @@ Section ProofSysUnlinkW2.
          sys_unlink_closer (CID := CIDx) gf (proc_addr jx) pid U m
            (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
            dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
-                        Phient Phitgt Phiex Phimiss)) -∗
+                        Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
        WP (Loop : expr riscv_lang))%I.
 
   Lemma su_w2_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
@@ -514,6 +517,7 @@ Section ProofSysUnlinkW2.
       (m M : regfile) (sp0 : mword 64) (K : nat) (eb b : bool)
       (lks : gset string)
       (pl : list (bv 8)) (iL : Z)
+      (v0 : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Phient : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Phitgt : pfam Σ (aview -> Z -> iProp Σ))
@@ -570,7 +574,8 @@ Section ProofSysUnlinkW2.
     inode_held_ty_at dpv T_DIR iL -∗
     ⌜exists es e, nameiparent_of pl es e /\ bname 14 nf = e⌝ -∗
     P (length (npar_elems pl)) iL -∗
-    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE (fun _ => True%I)) Phient -∗
+    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE
+                          (P (length (npar_elems pl)))) Phient -∗
     pf_at (utgt_commit_at (fs_gamma_L fsc_fs) appE) Phitgt -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
     pf_at (dmiss_commit_at (fs_gamma_L fsc_fs) appE) Phimiss -∗
@@ -601,12 +606,12 @@ Section ProofSysUnlinkW2.
           gf jx dqb
           dqs dqbs pid U P1 n1 Sb1 nf bnm0 bp bd be w5 w6 w30 m sp0 K eb b
           lks M2 kd ks kk gild gisld gyd loyd tlyd qdi sd qs dinum dnd bmd datd lo t
-          pl P Pmiss Phient Phitgt Phiex Phimiss) -∗
+          pl v0 P Pmiss Phient Phitgt Phiex Phimiss) -∗
     wp_next true (proc_addr jx) (fun (CIDx : CpuId) =>
       sys_unlink_closer (CID := CIDx) gf (proc_addr jx) pid U m
         (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
         dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
-                        Phient Phitgt Phiex Phimiss)) -∗
+                        Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros HK Hnib0 Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
@@ -864,7 +869,7 @@ Section ProofSysUnlinkW2.
  kd (qd/2)%Qp (qd/2)%Qp gyd lod tld dinum dnd bmd n1 pid
                 dqb dqs dqbs U P1 m mn1 sp0 K eb b lks w4 w5 w6 w27 w30
                 bd nf bnm0 bp be
-                P Pmiss Phient Phitgt Phiex Phimiss
+                v0 P Pmiss Phient Phitgt Phiex Phimiss
                 Kiup Keo K30 Kpop Hkd Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
                 Hdiblk Hdiblog Hdinb Hcovb Hiu Hj Hgl Hlkempty Hsp0
                 (su_regs_sp _ _ _ _ _ _ Hn1regs) (su_regs_thr _ _ _ _ _ _ Hn1regs)
@@ -1032,7 +1037,7 @@ Section ProofSysUnlinkW2.
  kd (qd/2)%Qp (qd/2)%Qp gyd lod tld dinum dnd bmd
                   n1 pid dqb dqs dqbs U P1 m mn2 sp0 K eb b lks
                   w4 w5 w6 w27 w30 bd nf bnm0 bp be
-                  P Pmiss Phient Phitgt Phiex Phimiss
+                  v0 P Pmiss Phient Phitgt Phiex Phimiss
                   Kiup Keo K30 Kpop Hkd Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
                   Hdiblk Hdiblog Hdinb Hcovb Hiu Hj Hgl Hlkempty Hsp0
                   (su_regs_sp _ _ _ _ _ _ Hn2regs)

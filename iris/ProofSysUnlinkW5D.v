@@ -175,6 +175,7 @@ Section ProofSysUnlinkW5D.
       (m M3 : regfile) (sp0 s3x : mword 64) (K : nat) (eb b : bool)
       (lks : gset string) (t : nat)
       (pl : list (bv 8))
+      (v0 : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Phient : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Phitgt : pfam Σ (aview -> Z -> iProp Σ))
@@ -341,7 +342,8 @@ Section ProofSysUnlinkW5D.
     (* ---- THE AU SIDE, as W3's seam hands it ---- *)
     ⌜exists es e, nameiparent_of pl es e /\ bname 14 nf = e⌝ -∗
     P (length (npar_elems pl)) (bv_unsigned dinum) -∗
-    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE (fun _ => True%I)) Phient -∗
+    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE
+                          (P (length (npar_elems pl)))) Phient -∗
     pf_at (utgt_commit_at (fs_gamma_L fsc_fs) appE) Phitgt -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
     pf_at (dmiss_commit_at (fs_gamma_L fsc_fs) appE) Phimiss -∗
@@ -366,7 +368,7 @@ Section ProofSysUnlinkW5D.
       sys_unlink_closer (CID := CIDx) gf (proc_addr jx) pid U m
         (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
         dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
-                        Phient Phitgt Phiex Phimiss)) -∗
+                        Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros HK Hnib0 Hgeom Hsize Hbm0 Hbmcov
@@ -1528,7 +1530,8 @@ Section ProofSysUnlinkW5D.
        context, where [clear -Hdp2] leaves it one hypothesis. *)
     assert (Hdp2nz : (fn_nlink (era_node dnd bmd datd) - 1)%nat <> 0%nat).
     { rewrite mkf_era_nlink. clear -Hdp2. lia. }
-    iMod (uf_uent_fire fsc_fs ⊤ (DfracOwn 1) (fun _ => True%I) Phient
+    iMod (uf_uent_fire fsc_fs ⊤ (DfracOwn 1)
+            (P (length (npar_elems pl))) Phient
             (bv_unsigned dinum) (bv_unsigned (zero_extend' 32 (dir_inum datd kk : mword 16)
                                         : mword 32))
             (dir_bname datd kk) 1%nat
@@ -1548,8 +1551,8 @@ Section ProofSysUnlinkW5D.
                Hdp2nz
                HentsD)
             Htynz0
-            with "[] [] Hcent [//] Htop Htopi")
-      as "(Htop & Htopi & _ & Hfire1)";
+            with "[] [] Hcent HP Htop Htopi")
+      as "(Htop & Htopi & HP & Hfire1)";
       [iApply (ireg_inv_ftop with "Hireg") | iApply (ireg_inv_app with "Hireg") |].
     iDestruct "Hfire1" as (av0) "(%Hpre0 & Hent)".
     iModIntro.

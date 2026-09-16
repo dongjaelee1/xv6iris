@@ -165,7 +165,7 @@ Require Import SpecSysChdir.   (* [chdir_au_pre]                      *)
 Require Import SpecSysOpen.    (* [open_in]                           *)
 Require Import SpecSysMknod.   (* [mknod_au_pre] / [mknod_arms]       *)
 Require Import SysMknodDefs. (* [dev_arg]                           *)
-Require Import SpecSysUnlink.  (* [unlink_au_pre] / [unlink_arms]     *)
+Require Import SpecSysUnlink.  (* [unlink_au_at] / [unlink_arms]     *)
 Require Import SpecSysLink.    (* [link_commits] / [link_arms]        *)
 Require Import SpecSysMkdir.   (* [mkdir_au_at] / [mkdir_arms]       *)
 Require Import FsTree.         (* [fname]                             *)
@@ -565,7 +565,9 @@ Section UexecExecInst.
          (dev_arg (xk_a W 1)) (dev_arg (xk_a W 2))
          (nf_P f) (nf_Pmiss f) (nf_Farm f) (nf_Fun f) (nf_Fok f) (nf_Fex f)
      else if decide (n = 18) then
-       unlink_au_pre (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+       (* ...and unlink's, AT ITS PATH ARGUMENT (lane TL-3C, item (M)) *)
+       unlink_au_at (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+         (uvis_M W) (xk_a W 0)
          (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f)
      else if decide (n = 19) then
        link_commits (fs_gamma_L fsc_fs) (lf_Ftgt f) (lf_Fent f) (lf_Funt f)
@@ -744,7 +746,8 @@ Section UexecExecInst.
          (nf_P f) (nf_Pmiss f) (nf_Farm f) (nf_Fun f) (nf_Fok f) (nf_Fex f) r
      else if decide (n = 18) then
        unlink_arms (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
-         (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f) r
+         (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f)
+         (uvis_M W) (xk_a W 0) r
      else if decide (n = 19) then
        link_arms (fs_gamma_L fsc_fs) (lf_Ftgt f) (lf_Fent f) (lf_Funt f) r
      else if decide (n = 20) then
@@ -1230,7 +1233,8 @@ Section UexecExecInst.
 
   Lemma sbundle_at_unlink_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
     sbundle_at X 18 f W -∗
-    unlink_au_pre (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+    unlink_au_at (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+      (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
       (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f).
   Proof.
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
@@ -1509,7 +1513,8 @@ Section UexecExecInst.
   Lemma spost_at_unlink_intro (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
     unlink_arms (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
-      (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f) r -∗
+      (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f)
+      (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0)) r -∗
     spost_at X 18 f W r M' fdv' cw' cs'.
   Proof.
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.

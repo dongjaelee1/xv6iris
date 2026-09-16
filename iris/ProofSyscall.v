@@ -3322,17 +3322,19 @@ Section SyscallArms.
   Qed.
 
   Lemma sysc_dep_unlink (U : ustate) (sts : list fdstate) (gn : gname) (cs : gset gname)
-      (pid : mword 32) (f : sfam) :
+      (pid : mword 32) (f : sfam) (v0 : mword 64) :
     sysc_num (us_V U) = 18 ->
+    pv_tf (us_V U) !! tf_arg_idx 0 = Some v0 ->
     sysc_sys_in U sts gn cs pid f -∗
-    unlink_au_pre (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
+    unlink_au_at (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) (us_M U) v0
       (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f).
   Proof.
-    intros Hn. iIntros "H".
+    intros Hn Hv0. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 18 Hn ltac:(vm_compute; discriminate)
                  ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_unlink_elim uslot f _ with "H") as "H".
-    rewrite /uvis_of. cbn [uvis_cwd]. iExact "H".
+    rewrite /uvis_of /tf_w. cbn [uvis_cwd uvis_tf uvis_M].
+    rewrite (list_lookup_total_correct _ _ _ Hv0). iExact "H".
   Qed.
 
   Lemma sysc_dep_link (U : ustate) (sts : list fdstate) (gn : gname) (cs : gset gname)
@@ -3551,19 +3553,22 @@ Section SyscallArms.
   Qed.
 
   Lemma sysc_out_unlink (U : ustate) (sts : list fdstate) (gn : gname) (cs : gset gname)
-      (pid : mword 32) (f : sfam)
+      (pid : mword 32) (f : sfam) (v0 : mword 64)
       (r : mword 64) (M' : gmap Z (bv 8)) (sts' : list fdstate) (cw' : Z) (cs' : gset gname) :
     sysc_num (us_V U) = 18 ->
+    pv_tf (us_V U) !! tf_arg_idx 0 = Some v0 ->
     unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
-      (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f) r -∗
+      (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f)
+      (us_M U) v0 r -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
   Proof.
-    intros Hn. iIntros "H".
+    intros Hn Hv0. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 18 Hn
               ltac:(vm_compute; discriminate)
               ltac:(vm_compute; discriminate)).
     iApply (spost_at_unlink_intro uslot f (uvis_of U sts gn cs pid) r M' sts' cw' cs').
-    rewrite /uvis_of. cbn [uvis_cwd]. iExact "H".
+    rewrite /uvis_of /tf_w. cbn [uvis_cwd uvis_tf uvis_M].
+    rewrite (list_lookup_total_correct _ _ _ Hv0). iExact "H".
   Qed.
 
   Lemma sysc_out_link (U : ustate) (sts : list fdstate) (gn : gname) (cs : gset gname)
@@ -6311,8 +6316,8 @@ Section SyscallArms.
               with "Hcg Hcpu Htcx Hccx Htext Hdata Hpc Hpr Hbio Hlog Hseam
                     Hgen Hdevi Hgeom Hdlock Hbs Hit Hitinv Hesc Hsl2 Hireg
                     Hropen Hbmp Hisp Hsbs Hbmr Hkalloc Hprocs Hiru Hpriv [Hxin]").
-    { iApply (sysc_dep_unlink U sts gn cs pid fdep ltac:(rewrite Hnum; reflexivity)
-                with "Hxin"). }
+    { iApply (sysc_dep_unlink U sts gn cs pid fdep v0
+                ltac:(rewrite Hnum; reflexivity) Hv0 with "Hxin"). }
     iIntros (CIDy Hsy mf P')
       "%Hcs %Hextz Hcg Hcpu _ _ Hpc Hbs _ _ _ Hiru Hpriv Harms".
     (* [Hextz] is the SIZED extension the callee reports, and it is what
@@ -6374,8 +6379,8 @@ Section SyscallArms.
     (* ...and wait answers nothing here either *)
     { iApply sysc_wait_out_ne. unfold UsysMemOk.USYS_wait in *; lia. }
     iApply (sysc_exec_out_ne _ _ _ _ _ _ _ _ (sysc_num_ne7 _ _ Hnum eq_refl)).
-    iApply (sysc_out_unlink U sts gn cs pid fdep (mf !!! Regidx Ra0) _ _ _ _
-              ltac:(rewrite Hnum; reflexivity) with "Harms").
+    iApply (sysc_out_unlink U sts gn cs pid fdep v0 (mf !!! Regidx Ra0) _ _ _ _
+              ltac:(rewrite Hnum; reflexivity) Hv0 with "Harms").
   Qed.
 
 

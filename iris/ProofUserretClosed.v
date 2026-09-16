@@ -580,19 +580,23 @@ Section UserretClosed.
            the arm stays here for the round.  THE KEY IS THE LOOP'S OWN
            ([uvis_run W]): the rows carry it opaque, so nothing has to be
            transported across the save walk. ---- *)
+    (* ...AND THE KEY'S TABLE IS THE ROUND'S (design/pipe.md, "The exit
+       path"): the row is stated at the loop's own key, whose descriptor
+       view IS the [sts] this round runs at, so the new conjunct is
+       [reflexivity] exactly as the generation's is. *)
     iAssert (SpecUsertrap.ut_kill_in fdep sc (uvis_run W)
-               (uvis_gen W) ∗
+               (uvis_gen W) (uvis_fd W) ∗
              (if decide (sc = uecall_scause) then uexec_arm sc W fdep
               else emp))%I with "[Hret]" as "[Hkin Hret]".
     { rewrite /SpecUsertrap.ut_kill_in.
       destruct (decide (sc = uecall_scause)) as [Hec | Hne].
       - iSplitR; [ iSplitR; [ | done ];
-                   iPureIntro; cbn [uvis_run uvis_of_run uvis_gen];
-                   reflexivity
+                   iPureIntro; cbn [uvis_run uvis_of_run uvis_gen uvis_fd];
+                   split; reflexivity
                  | iExact "Hret" ].
       - iSplitL; [ | done ].
-        iSplitR; [ iPureIntro; cbn [uvis_run uvis_of_run uvis_gen];
-                   reflexivity | ].
+        iSplitR; [ iPureIntro; cbn [uvis_run uvis_of_run uvis_gen uvis_fd];
+                   split; reflexivity | ].
         iEval (rewrite (uexec_arm_run sc W fdep Hlen)) in "Hret".
         rewrite (uexec_arm_transparent sc (uvis_run W) fdep Hne).
         iExact "Hret". }

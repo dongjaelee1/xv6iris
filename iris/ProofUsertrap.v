@@ -810,7 +810,7 @@ Section UtDispatch.
        the fall-through below, where [SpecDevintr.devintr_ret]'s zero
        answer and the ecall test together say the cause is a
        [UexecRet.ukill_sc] one. *)
-    ut_kill_in fdep sc Wk gn -∗
+    ut_kill_in fdep sc Wk gn sts -∗
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') SY.syscall_env) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid ep sc fdep Wk) -∗
@@ -1041,7 +1041,7 @@ Section UtDispatch.
         (* THE PAIR'S RIGHT SIDE IS ALL A HANDLED INTERRUPT NEEDS (lane
            TRAP-ROWS, T3): the kernel serves the device and resumes, so it
            owes the slot back and never touches the (here empty) deposit. *)
-        iDestruct (ut_kill_in_pair fdep sc Wk gn Hscne
+        iDestruct (ut_kill_in_pair fdep sc Wk gn sts Hscne
                      with "Hkin") as "[%Hgw Hkp]".
         iDestruct (bi.and_elim_r with "Hkp") as "Hko".
         iAssert (ut_kill_out sc Wk)%I with "[Hko]" as "Hkor".
@@ -1066,18 +1066,30 @@ Section UtDispatch.
         assert (Hkill : ukill_sc sc)
           by exact (ud_devintr_zero_ukill sc Hscne
                       ltac:(rewrite <- HD4a0; exact Hdev)).
+        (* ...AND THE PAIR'S TWO PURE FACTS COME OUT HERE, before the row
+           is packaged: the key's generation is the block's, and the key's
+           TABLE is the trap's -- which is what lets the owed side's exit
+           bundle row pay the tear-down at the table kexit walks
+           (design/pipe.md, "The exit path"). *)
+        iDestruct (ut_kill_in_pair fdep sc Wk gn sts (proj1 Hkill)
+                     with "Hkin") as "[%Hgw Hkin]".
+        destruct Hgw as [Hgw Hfdw].
         (* THE ROW IS TWO-SIDED AND LINEAR NOW (lane SELF-KILL, P6b): what
            comes out is the application's TAINT or the process's OWN
            payload at -1, and setkilled takes either. *)
         (* ...AND THE RESUME SLOT COMES WITH IT (lane TRAP-ROWS, T3): what
            the process handed over is the additive PAIR, and the two arms
            below are the ones that decide which side the kernel takes. *)
-        iAssert ((□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U)))
+        (* ...AND THE OWED SIDE CARRIES THE EXIT NUMBER'S BUNDLE ROW NOW
+           (design/pipe.md, "The exit path"): a process that kills ITSELF
+           pays the closes of the table it is holding, and what pays them is
+           the deposit it made when it trapped. *)
+        iAssert ((□ riscv_kill_cred
+                  ∨ (ChildTok.kill_owed (pv_gen (us_V U))
+                     ∗ UexecSG.sbundle_at UexecRet.uslot UsysMemOk.USYS_exit fdep Wk))
                  ∧ UexecRet.uslot Wk)%I
           with "[Hkin]" as "Hkc".
         { rewrite (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))).
-          iDestruct (ut_kill_in_pair fdep sc Wk gn
-                       (proj1 Hkill) with "Hkin") as "[%Hgw Hkin]".
           iEval (rewrite Hgnq) in "Hkin".
           rewrite /ukill_cred_at.
           destruct (decide (ukill_sc sc)) as [_ | Hn];
@@ -1154,7 +1166,7 @@ Section UtDispatch.
             rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"]. }
           iApply (A.ut_d0 SY.syscall_env N U0 U pt ksp m0 D6 av nx
                     mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
- Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
+ Hfdw Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
                     Hav Hnx Htfpe Hksp Hm0sp HD6sp HD6s1 HcsD6
                     Hmiev Hmenvv (ut_round_entry ep sc U0 U Hscne Hpro)
                     (* the transparent arms' defining cause, off the dispatch's own
@@ -1236,7 +1248,7 @@ Section UtDispatch.
                rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"]. }
              iApply (A.ut_d0 SY.syscall_env N U0 U pt ksp m0 D8 av nx
                        mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
- Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
+ Hfdw Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
                        Hav Hnx Htfpe Hksp Hm0sp HD8sp HD8s1 HcsD8
                        Hmiev Hmenvv (ut_round_entry ep sc U0 U Hscne Hpro)
                        (* the transparent arms' defining cause, off the dispatch's own
@@ -1261,7 +1273,7 @@ Section UtDispatch.
                rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"]. }
              iApply (A.ut_56 SY.syscall_env N U0 U pt ksp m0 D8 av nx
                        mie_v menvcfg0 ep sc ∅ sts gn cs pid fdep Wk
- Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
+ Hfdw Hwf' ltac:(exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 Hpro)))))))
                        Hav Hnx Htfpe Hksp Hm0sp HD8sp HD8s1 HcsD8
                        Hmiev Hmenvv (ut_round_entry ep sc U0 U Hscne Hpro)
                        (* the transparent arms' defining cause, off the dispatch's own

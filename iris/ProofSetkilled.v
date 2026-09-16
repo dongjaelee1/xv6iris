@@ -71,8 +71,8 @@ Section ProofSetkilled.
 
   Lemma wp_setkilled_sconf  (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
-      (pidv : mword 32) (gn : gname)
-    : wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv gn.
+      (pidv : mword 32) (gn : gname) (self : bool)
+    : wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv gn self.
   Proof.
     cbv beta delta [wp_setkilled_sconf_body].
     intros pcE ret_tgt Ha0 Hj Hgl Hn Hav Hpidnz Hno.
@@ -283,7 +283,7 @@ Section ProofSetkilled.
        never went in and the fault arm still holds it for the kexit two
        critical sections later. *)
     iAssert (|==> pid_reg pidv (DfracOwn qeighth) gn ∗ ChildTok.kill_shot gn
-                  ∗ (□ riscv_kill_cred ∨ ChildTok.kill_owed gn)
+                  ∗ (if self then ChildTok.kill_owed gn else □ riscv_kill_cred)
                   ∗ proc_lock_res γs γl (proc_addr j))%I
       with "[Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot Hkill Hreg]"
       as ">(Hreg & #Hshot & Hback & HR2)".
@@ -299,7 +299,7 @@ Section ProofSetkilled.
          incarnation's kill one-shot, whose persistent half comes back
          here (lane SELF-KILL, P6). *)
       iMod (kill_paid_kill_two pidv kl (trunc32 (rget C1 sk_a5))
-              (DfracOwn qeighth) gn Hpidnz
+              (DfracOwn qeighth) gn self Hpidnz
               with "[] Hreg Hkill Hrow") as "(Hreg & #Hshot & Hrow & Hback)";
         [ (* the flag this store just wrote is 1 (lane TRAP-ROWS, T2/T3:
              the row's paid arm is at a nonzero flag) *)

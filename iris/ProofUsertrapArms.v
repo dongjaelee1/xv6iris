@@ -174,6 +174,21 @@ Section UtArmsCommon.
     iExact "Henv".
   Qed.
 
+  (* ...and the marker-less one, for the arm that gave the incarnation's
+     marker to setkilled ([T.ut_hold_nm], design/pipe.md "The exit path") *)
+  Lemma ua_hold_on_nm (N : ut_names) (U : ustate) (lks : gset string)
+      (sts : list fdstate) (cs : gset gname) (pid : mword 32) :
+    cpu_own 0%nat false (un_pj N) false lks -∗ trap_csrs KT1 -∗
+    cpu_claim (un_pj N) -∗ (ut_caps N ∗ T.ut_own_nm Rsys N U sts cs pid) -∗
+    T.ut_hold_nm Rsys N U false lks sts cs pid.
+  Proof.
+    iIntros "Hcpu Hcsrs Hclm Henv". rewrite /T.ut_hold_nm.
+    iSplitL "Hcpu"; [iExact "Hcpu"|].
+    iSplitL "Hcsrs"; [iExact "Hcsrs"|].
+    iSplitL "Hclm"; [iExact "Hclm"|].
+    iExact "Henv".
+  Qed.
+
   (* ==================================================================== *)
   (* THE tp PIN, three ways -- what [VMFAULT]'s un-shed raw-map premise      *)
   (* costs its callers.  ProofCopyout.v pays exactly the same three.        *)
@@ -225,6 +240,11 @@ Section Ut56.
       (gn : gname) (cs : gset gname) (pid : mword 32)
       (* the deposit's families, relayed to the tails *)
       (fdep : sfam) (Wk : UexecSlot.uvis) :
+    (* THE KEY'S TABLE IS THE TRAP'S ([SpecUsertrap.ut_kill_in], design/
+       pipe.md "The exit path"): the deposit's owed side pays the
+       tear-down's closes at the KEY's table and kexit spends them at this
+       one. *)
+    UexecSlot.uvis_fd Wk = sts ->
     ut_wf N ->
     (* THE GENERATION THE PROLOGUE KEPT, relayed to the tail below: the
        record this arm parks is the entry's incarnation, which is what the
@@ -270,7 +290,9 @@ Section Ut56.
     (* ...AND THE RESUME SLOT BESIDE IT, ADDITIVELY (lane TRAP-ROWS, T3):
        what the process handed over is the PAIR, and this arm is one of the
        two that decide which side the kernel takes. *)
-    ((□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U)))
+    ((□ riscv_kill_cred
+      ∨ (ChildTok.kill_owed (pv_gen (us_V U))
+         ∗ UexecSG.sbundle_at UexecRet.uslot UsysMemOk.USYS_exit fdep Wk))
      ∧ UexecRet.uslot Wk) -∗
     (* THE PAY FACT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
        device interrupt, an unexpected cause -- and each of them reaches a
@@ -284,7 +306,7 @@ Section Ut56.
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
+    intros Hfdk Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
@@ -311,14 +333,20 @@ Section Ut56.
     iDestruct "Hscause" as (sc) "Hscause".
     iDestruct "Hstval" as (st) "Hstval".
     (* the pid quarter, out of the process block *)
-    iDestruct (ut_own_priv with "Hown") as "(Hpv & Hufr & Hch & Hsy & Hownback)".
+    (* THE INCARNATION'S MARKER COMES OFF THE BLOCK HERE (design/pipe.md,
+       "The exit path"): if this arm's kill is the process's OWN, setkilled
+       founds <p->lock>'s killed row on the SPENT arm with it, and the rest
+       of the trap runs on the block that is left.  A third-party route
+       hands it straight back below. *)
+    iDestruct (bi.equiv_entails_1_1 _ _ (T.ut_own_unmark Rsys N U sts cs pid)
+                 with "Hown") as "[Hownm Htk]".
+    iDestruct (T.ut_own_nm_priv with "Hownm") as "(Hpv & Hufr & Hch & Hsy & Hownback)".
     (* ...AND THE FACT THAT THIS PROCESS IS LIVE (lane SELF-KILL, 4b'):
        [setkilled] below re-closes <p->lock>'s killed row, whose FREE arm
        claims a zero flag, so it must be told the slot it writes is not a
-       free one.  The block says so out of the registration it carries
-       ([ProcInv.proc_priv_pid_nz]). *)
-    iDestruct (proc_priv_pid_nz with "Hpv") as %Hpidnz.
-    iDestruct (proc_priv_pid with "Hpv") as "(Hpid & Hpidback)".
+       free one.  The block says so out of the registration it carries. *)
+    iDestruct (T.ut_pid_nz_nm with "Hpv") as %Hpidnz.
+    iDestruct (ProcInv.proc_priv_unmarked_pid with "Hpv") as "(Hpid & Hpidback)".
     (* ---- +0x56: csrr a1,scause ---- *)
     iApply (wp_csrr_scause_s_sconf (mword_of_int (UT + 0x56)) Ra1 m nx
               (DfracOwn 1) sc ltac:(vm_compute; discriminate) ltac:(rdok)
@@ -620,18 +648,48 @@ Section Ut56.
        quarter ties this process's own liveness fact to the row <p->lock>
        carries, and the eighth names the generation the deposit's right
        side is keyed at ([SpecSetkilled]'s note). *)
-    iDestruct (proc_priv_pid_reg with "Hpv") as "(Hpid & Hreg & Hpidback)".
+    iDestruct (T.ut_priv_nm_pid_reg with "Hpv") as "(Hpid & Hreg & Hpidback)".
     (* THE PAIR'S LEFT SIDE IS WHAT setkilled TAKES (lane TRAP-ROWS, T3):
        the kernel is killing, so it takes the -1 deposit and never the
-       resume slot -- which is the whole point of the additive shape. *)
+       resume slot -- which is the whole point of the additive shape.
+       WHICH PARTY PAYS (design/pipe.md, "The exit path"): the application's
+       TAINT (the generic route), or the process's OWN untainted payload
+       beside the EXIT NUMBER'S BUNDLE ROW -- the closes of the very table
+       this trap is holding, which is what kexit spends two critical
+       sections from here.  The two found <p->lock>'s killed row on
+       different arms, so [SpecSetkilled] is keyed on the party and hands
+       the same side back; [Hconv] is what each side becomes once it is. *)
     iDestruct (bi.and_elim_l with "Hkc") as "Hkcl".
+    iAssert (∃ self : bool,
+               (if self then ChildTok.kill_owed (pv_gen (us_V U))
+                          ∗ ChildTok.taken_at (pv_gen (us_V U))
+                else □ riscv_kill_cred) ∗
+               ((if self then ChildTok.kill_owed (pv_gen (us_V U))
+                 else □ riscv_kill_cred) -∗
+                ▷ (ChildTok.taken_at (pv_gen (us_V U))
+                   ∨ (SpecFileclose.fileclose_cpays sts
+                      ∗ sexit_pay fdep (-1)))))%I
+      with "[Hkcl Htk]" as (self) "[Hsk Hconv]".
+    { iDestruct "Hkcl" as "[#Hc | [Howed Hex]]".
+      - iExists false. iSplitR; [ iExact "Hc" | ].
+        iIntros "_". iNext. iLeft. iExact "Htk".
+      - iExists true. iSplitL "Howed Htk"; [ iFrame "Howed Htk" | ].
+        iIntros "Howed".
+        iDestruct (ChildTok.kill_owed_pay (pv_gen (us_V U)) (sexit_pay fdep)
+                     with "Hmyp Howed") as "HQ".
+        iAssert (SpecFileclose.fileclose_cpays sts) with "[Hex]" as "Hcp".
+        { rewrite <- Hfdk.
+          iApply (UexecExecInst.sbundle_at_exit_elim UexecRet.uslot fdep Wk
+                    with "Hex"). }
+        iNext. iRight. iFrame "Hcp HQ". }
     iApply (SK.wp_setkilled_sconf (un_s N) (un_j N) (un_l N) MC nx 0%nat false
-              (un_pj N) false lks pid (pv_gen (us_V U)) HMCa0 Hj Hjl
+              (un_pj N) false lks pid (pv_gen (us_V U)) self HMCa0 Hj Hjl
               ltac:(vm_compute; reflexivity)
-              ltac:(lia) Hpidnz with "Hkcl Hreg Hpid Hcg Hcpu Htext Hpc Hpi [-]").
+              ltac:(lia) Hpidnz with "Hsk Hreg Hpid Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
     iApply wp_next_off_intro.
-    iIntros (S1) "%HcsS1 Hcg Hcpu Hpc Hpid Hreg #Hshot".
+    iIntros (S1) "%HcsS1 Hcg Hcpu Hpc Hpid Hreg #Hshot Hback".
+    iDestruct ("Hconv" with "Hback") as "Htear".
     iDestruct ("Hpidback" with "Hpid Hreg") as "Hpv".
     assert (Hret82 : ret_pc (MC !!! Regidx Rra) = mword_of_int (UT + 0x82))
       by (rewrite HMCra; pcw).
@@ -650,14 +708,16 @@ Section Ut56.
               S1 nx false ltac:(vm_compute; reflexivity)
               with "Hcg Hpc [] [-]").
     { iApply (uti_082 with "Htext"). }
-    iApply wp_next_off_intro. iApply bi.later_intro. iIntros "Hcg Hpc".
+    (* [iNext] rather than [bi.later_intro]: this step is where the later on
+       the self-kill's payload comes off ([ChildTok.kill_owed_pay]) *)
+    iApply wp_next_off_intro. iNext. iIntros "Hcg Hpc".
     assert (Hpa6 : add_vec (mword_of_int (UT + 0x82) : mword 64)
                      (sign_extend' 64 (sign_extend' 21
                         (concat_vec (mword_of_int 18 : mword 11) ('b"0"))))
                    = mword_of_int (UT + 0xa6)) by pcw.
     iEval (rewrite Hpa6) in "Hpc".
     (* ---- the bundle back together, and on to +0xa6 ---- *)
-    iDestruct ("Hownback" $! U sts cs with "Hpv Hufr Hch Hsy") as "Hown".
+    iDestruct ("Hownback" $! U sts cs with "Hpv Hufr Hch Hsy") as "Hownm".
     iAssert (ut_exec_out fdep scv (<[tf_epc_idx := ret_pc epv]> (pv_tf (us_V U0))) (us_M U0)
                (perm_of (ud_um (pv_upt (us_V U0))) (uint (pv_sz (us_V U0))))
                (uint (pv_sz (us_V U0))) (pv_lazy (us_V U0))
@@ -702,14 +762,32 @@ Section Ut56.
               with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hri Hso Hcont]
                     Hframe Hxo Hfo Hwo Hri Hso Hmyp Hcont").
     all: try lkbelow.
-    iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu [-Hclm Hown] Hclm [-]").
-    - rewrite /trap_csrs.
-      iSplitL "Hsepc"; [iExists ep; iExact "Hsepc"|].
-      iSplitL "Hscause"; [iExists sc; iExact "Hscause"|].
-      iSplitL "Hstval"; [iExists st; iExact "Hstval"|].
-      iSplitL "Hsret"; [iExact "Hsret"|].
-      iSplitL "Hres"; [iExact "Hres"|]. iExact "Hkpt".
-    - rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
+    (* WHICH RESIDUE THE TAIL GETS.  A third-party route hands the marker
+       straight back into the block; a SELF-KILL's is in <p->lock>'s row
+       now, so what travels instead is the trap's own closes and payload
+       (design/pipe.md, "The exit path"). *)
+    iDestruct "Htear" as "[Htk | [Hcp HQd]]".
+    - iLeft.
+      iAssert (ut_own Rsys N U sts cs pid) with "[Hownm Htk]" as "Hown".
+      { iApply (bi.equiv_entails_1_2 _ _ (T.ut_own_unmark Rsys N U sts cs pid)).
+        iFrame "Hownm Htk". }
+      iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu [-Hclm Hown] Hclm [-]").
+      + rewrite /trap_csrs.
+        iSplitL "Hsepc"; [iExists ep; iExact "Hsepc"|].
+        iSplitL "Hscause"; [iExists sc; iExact "Hscause"|].
+        iSplitL "Hstval"; [iExists st; iExact "Hstval"|].
+        iSplitL "Hsret"; [iExact "Hsret"|].
+        iSplitL "Hres"; [iExact "Hres"|]. iExact "Hkpt".
+      + rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
+    - iRight. iFrame "Hshot Hcp HQd".
+      iApply (ua_hold_on_nm Rsys N U _ sts cs pid with "Hcpu [-Hclm Hownm] Hclm [-]").
+      + rewrite /trap_csrs.
+        iSplitL "Hsepc"; [iExists ep; iExact "Hsepc"|].
+        iSplitL "Hscause"; [iExists sc; iExact "Hscause"|].
+        iSplitL "Hstval"; [iExists st; iExact "Hstval"|].
+        iSplitL "Hsret"; [iExact "Hsret"|].
+        iSplitL "Hres"; [iExact "Hres"|]. iExact "Hkpt".
+      + iSplitR; [iExact "Hcaps" | iExact "Hownm"].
   Qed.
 
 End Ut56.
@@ -749,6 +827,9 @@ Section UtD0.
       (gn : gname) (cs : gset gname) (pid : mword 32)
       (* the deposit's families, relayed to the tails *)
       (fdep : sfam) (Wk : UexecSlot.uvis) :
+    (* the key's table is the trap's -- relayed to [ut_56] below, which is
+       where the deposit's owed side is spent (design/pipe.md) *)
+    UexecSlot.uvis_fd Wk = sts ->
     ut_wf N ->
     (* THE GENERATION THE PROLOGUE KEPT, relayed to the tail below: the
        record this arm parks is the entry's incarnation, which is what the
@@ -794,7 +875,9 @@ Section UtD0.
     (* ...AND THE RESUME SLOT BESIDE IT, ADDITIVELY (lane TRAP-ROWS, T3):
        what the process handed over is the PAIR, and this arm is one of the
        two that decide which side the kernel takes. *)
-    ((□ riscv_kill_cred ∨ ChildTok.kill_owed (pv_gen (us_V U)))
+    ((□ riscv_kill_cred
+      ∨ (ChildTok.kill_owed (pv_gen (us_V U))
+         ∗ UexecSG.sbundle_at UexecRet.uslot UsysMemOk.USYS_exit fdep Wk))
      ∧ UexecRet.uslot Wk) -∗
     (* THE PAY FACT, CARRIED.  These are the TRANSPARENT arms -- a fault, a
        device interrupt, an unexpected cause -- and each of them reaches a
@@ -808,7 +891,7 @@ Section UtD0.
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
+    intros Hfdk Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
@@ -1078,7 +1161,7 @@ Section UtD0.
       iDestruct ("Hownback" $! U sts cs with "Hpv Hufr Hch Hsy") as "Hown".
       iApply (ut_56 Rsys N U0 U pt ksp m0 mr av nx
                 mie_v menvcfg0 epv scv lks sts gn cs pid fdep Wk
- Hwf' Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmrsp Hmrs1 Hcsmr
+ Hfdk Hwf' Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmrsp Hmrs1 Hcsmr
                 Hmiev Hmenvv Hrd Hnec
                 with "Htext Hpc Hcg [-Hframe Hkc Hcont] Hframe Hkc Hmyp Hcont").
       iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu Hcsrs Hclm [-]").
@@ -1190,6 +1273,9 @@ Section UtD0.
                 with "Htext Hpc Hcg [-Hframe Hxo Hfo Hwo Hri Hso Hcont]
                       Hframe Hxo Hfo Hwo Hri Hso Hmyp Hcont").
       all: try lkbelow.
+      (* the kernel served the fault, so the block is intact -- marker
+         included (design/pipe.md, "The exit path") *)
+      iLeft.
       iApply (ua_hold_on Rsys N (MkUstate V' (us_M U)) _ sts cs with "Hcpu Hcsrs Hclm [-]").
       rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
   Qed.
@@ -1341,35 +1427,49 @@ Section UtE8.
        incarnation's ([ProcInv.proc_priv_pid_reg]).  Both come straight
        back -- the two agreements are pure. *)
     iDestruct (ut_own_priv with "Hown") as "(Hpv & Hufr & Hch & Hsy & Hownback)".
-    iDestruct (ProcInv.proc_priv_pid_reg with "Hpv") as "(Hqp & Hrg & Hpvback)".
+    (* ...AND THE INCARNATION'S MARKER, LENT WITH THEM (design/pipe.md, "The
+       exit path").  It is what refutes the row's SPENT arm -- a row a
+       self-kill founded is spent, and that process never traps again -- so
+       a LIVE trap's own marker is the proof that the row it reads was paid
+       by a THIRD PARTY, whose taint is what pays the tear-down's closes. *)
+    iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_unmark _ _ _ _) with "Hpv")
+      as "[Hpv Htk]".
+    iDestruct (T.ut_priv_nm_pid_reg with "Hpv") as "(Hqp & Hrg & Hpvback)".
     iAssert (∀ (pidr klr : mword 32),
                p_pid (proc_addr (un_j N)) ↦₄{DfracOwn (1/4)} pidr -∗
                SchedCtx.kill_paid pidr klr -∗
                p_pid (proc_addr (un_j N)) ↦₄{DfracOwn (1/4)} pidr ∗
                SchedCtx.kill_paid pidr klr ∗
                ((⌜klr = (mword_of_int 0 : mword 32)⌝
-                 ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                 ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred)) ∗
                 p_pid (un_pj N) ↦₄{DfracOwn (1/4)} pid ∗
-                pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U))))%I
-      with "[Hqp Hrg]" as "Hkacc".
+                pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
+                ChildTok.taken_at (pv_gen (us_V U))))%I
+      with "[Hqp Hrg Htk]" as "Hkacc".
     { iIntros (pidr klr) "Hq Hr".
       iDestruct (ctx_word4_pointsto_agree with "Hq Hqp") as %->.
-      iDestruct (SchedCtx.kill_paid_shot pid klr (DfracOwn qeighth)
-                   (pv_gen (us_V U)) with "Hr Hrg") as "(Hr & Hrg & Hs)".
-      iFrame "Hq Hr Hs Hqp Hrg". }
+      iDestruct (SchedCtx.kill_paid_shot_tear pid klr (DfracOwn qeighth)
+                   (pv_gen (us_V U)) with "Hr Hrg Htk") as "(Hr & Hrg & Htk & #Hs)".
+      iFrame "Hq Hr Hs Hqp Hrg Htk". }
     iApply (KI.wp_killed_sconf (un_s N) (un_j N) (un_l N) M2 nx 0%nat false
               (un_pj N) false lks
               (fun (klv : mword 32) =>
                  ((⌜klv = (mword_of_int 0 : mword 32)⌝
-                   ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                   ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred)) ∗
                   p_pid (un_pj N) ↦₄{DfracOwn (1/4)} pid ∗
-                  pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)))%I)
+                  pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
+                  ChildTok.taken_at (pv_gen (us_V U)))%I)
               HM2a0 Hj Hjl ltac:(vm_compute; reflexivity)
               ltac:(lia) with "Hkacc Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
     iApply wp_next_off_intro.
-    iIntros (mf kl) "[%Hcskl %Hkla0] (#Hkw & Hqp & Hrg) Hcg Hcpu Hpc".
+    iIntros (mf kl) "[%Hcskl %Hkla0] (#Hkw & Hqp & Hrg & Htk) Hcg Hcpu Hpc".
     iDestruct ("Hpvback" with "Hqp Hrg") as "Hpv".
+    (* the marker goes back into the block; the killed branch below takes it
+       out again, which is where kexit wants it *)
+    iAssert (proc_priv (un_f N) (un_pj N) pid U) with "[Hpv Htk]" as "Hpv".
+    { iApply (bi.equiv_entails_1_2 _ _ (proc_priv_unmark _ _ _ _)).
+      iFrame "Hpv Htk". }
     iDestruct ("Hownback" $! U sts cs with "Hpv Hufr Hch Hsy") as "Hown".
     assert (Hretee : ret_pc (M2 !!! Regidx Rra) = mword_of_int (UT + 0xf0))
       by (rewrite HM2ra; pcw).
@@ -1525,8 +1625,14 @@ Section UtE8.
          somebody paid for it. *)
       assert (Hknz : kl <> (mword_of_int 0 : mword 32)).
       { intro Hz0. rewrite Hz0 in Hz. vm_compute in Hz. discriminate Hz. }
-      iAssert (ChildTok.kill_shot (pv_gen (us_V U)))%I with "[]" as "#Hshot".
+      iAssert (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred)%I
+        with "[]" as "#[Hshot Hcred]".
       { iDestruct "Hkw" as "[%Hz0 | $]". exfalso; exact (Hknz Hz0). }
+      (* THE MARKER, BACK OUT OF THE BLOCK: kexit runs on the marker-less
+         one and trades the marker for <p->lock>'s payload at the park
+         (design/pipe.md, "The exit path"). *)
+      iDestruct (bi.equiv_entails_1_1 _ _ (T.ut_own_unmark Rsys N U sts cs pid)
+                   with "Hown") as "[Hown Htk]".
       iApply (T.ut_kexit Rsys N U
                 (<[Regidx Rra := regval_into_reg
                      (add_vec_int (mword_of_int (UT + 0xf8) : mword 64) 4)]> K1)
@@ -1536,9 +1642,14 @@ Section UtE8.
                         [ subst K1; apply upd_eq | vm_compute; discriminate ]
                       | vm_compute; reflexivity ])
                 ltac:(lkbelow)
-                with "Htext Hpc Hcg Hkcl4 Hmyp Hshot [-]").
-      iApply (ua_hold_on Rsys N U _ sts cs pid with "Hcpu Hcsrs Hclm [-]").
-      rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
+                with "Htext Hpc Hcg Hkcl4 Hmyp [Htk] [-]").
+      (* the tear-down's price: the KILLER's taint out of the row, beside
+         the marker the check lent it (design/pipe.md, "The exit path") *)
+      { iLeft. iFrame "Hshot Htk Hcred". }
+      rewrite /T.ut_hold_nm. iSplitL "Hcpu"; [iExact "Hcpu"|].
+      iSplitL "Hcsrs"; [iExact "Hcsrs"|].
+      iSplitL "Hclm"; [iExact "Hclm"|].
+      iSplitR; [iExact "Hcaps" | iExact "Hown"].
   Qed.
 
 End UtE8.

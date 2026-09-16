@@ -101,6 +101,13 @@ structure EraGS (GF : BundledGFunctors) where
   /-- the kernel mapping: vpn ↦ its canonical leaf entry, persistent
   elements once the kernel page table is installed (`MachCSL.KptInv`) -/
   kmapName : GName
+  /-- the kernel page table's ROOT: owned until the table is sealed, then
+  persistent, so any two `kptOn` witnesses name the same table
+  (`MachCSL.kptOn_root_agree`).  This is what makes "one kernel page
+  table" a fact rather than an assumption -- a thread that parks on one
+  hart and is dispatched on another needs the two harts' `satp` values to
+  agree (`Xv6.ProofYield`). -/
+  kptRootName : GName
 
 /-- The functors the machine needs (for adequacy: what a `BundledGFunctors`
 must contain). -/
@@ -116,6 +123,8 @@ class MachGpreS (hlc : outParam HasLC) (GF : BundledGFunctors) extends InvGpreS 
   lock_pre : GhostVarG GF (LockState × Nat)
   /-- the kernel mapping's functor -/
   kmap_pre : GhostMapG GF Nat (BitVec 64) RegMapF
+  /-- the kernel root's functor -/
+  kptroot_pre : GhostVarG GF (BitVec 44)
 
 attribute [reducible, instance] MachGpreS.reg_pre
 attribute [reducible, instance] MachGpreS.mem_pre
@@ -127,6 +136,7 @@ attribute [reducible, instance] MachGpreS.dirty_pre
 attribute [reducible, instance] MachGpreS.lockset_pre
 attribute [reducible, instance] MachGpreS.lock_pre
 attribute [reducible, instance] MachGpreS.kmap_pre
+attribute [reducible, instance] MachGpreS.kptroot_pre
 
 /-- The fixed layer: allocated once, survives every power cycle. -/
 class MachFixedGS (hlc : outParam HasLC) (GF : BundledGFunctors) where
@@ -149,6 +159,8 @@ class MachFixedGS (hlc : outParam HasLC) (GF : BundledGFunctors) where
   lockG : GhostVarG GF (LockState × Nat)
   /-- the kernel mapping's functor (`MachCSL.KptInv`) -/
   kmapG : GhostMapG GF Nat (BitVec 64) RegMapF
+  /-- the kernel root's functor (`MachCSL.KptInv`) -/
+  kptRootG : GhostVarG GF (BitVec 44)
   /-- the generation counter -/
   genName : GName
   /-- the started-generations counter -/
@@ -166,6 +178,7 @@ attribute [reducible, instance] MachFixedGS.dirtyG
 attribute [reducible, instance] MachFixedGS.lockSetG
 attribute [reducible, instance] MachFixedGS.lockG
 attribute [reducible, instance] MachFixedGS.kmapG
+attribute [reducible, instance] MachFixedGS.kptRootG
 
 /-- The ambient instance: the fixed layer, one era (its register names and
 memory heap, spelled out as fields so the heap can be an instance), and the
@@ -185,6 +198,8 @@ class MachGS (hlc : outParam HasLC) (GF : BundledGFunctors) where
   lockSetName : CPU → GName
   /-- the kernel mapping (see `EraGS.kmapName`) -/
   kmapName : GName
+  /-- the kernel page table's root (see `EraGS.kptRootName`) -/
+  kptRootName : GName
   gen : Nat
   /-- the running-proc claim of a hart (`MachCSL.KCtx.cpuClaim`): the client
   chooses it when it instantiates the machine (the xv6 client: the claimed
@@ -205,7 +220,8 @@ variable {hlc : HasLC} {GF : BundledGFunctors}
    MachGS.viewName (hlc := hlc) (GF := GF), MachGS.iviewName (hlc := hlc) (GF := GF),
    MachGS.rviewName (hlc := hlc) (GF := GF), MachGS.topName (hlc := hlc) (GF := GF),
    MachGS.authName (hlc := hlc) (GF := GF), MachGS.resvName (hlc := hlc) (GF := GF),
-   MachGS.lockSetName (hlc := hlc) (GF := GF), MachGS.kmapName (hlc := hlc) (GF := GF)⟩
+   MachGS.lockSetName (hlc := hlc) (GF := GF), MachGS.kmapName (hlc := hlc) (GF := GF),
+   MachGS.kptRootName (hlc := hlc) (GF := GF)⟩
 
 /-- The register-map ghost name of hart `cpu` in the ambient era. -/
 def regName [MachGS hlc GF] (cpu : CPU) : GName := MachGS.regName (hlc := hlc) (GF := GF) cpu

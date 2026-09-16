@@ -229,19 +229,20 @@ context (which carries the running context inside its `ctxTok`), so that a
 boot proof can run it under `wpLoop_fupd` between `kvminit` and
 `kvminithart`. -/
 theorem kctx_kptOn_seal [CurCtx] [Xv6G GF] {lent : Bool} (cpu : CPU) (k : KCtx)
-    (t : PTree) (pas : Nat → BitVec 44) (hct : curTier = KTier.bare)
+    (t : PTree) (pas : Nat → BitVec 44) (r0 : BitVec 44) (hct : curTier = KTier.bare)
     (hok : kvmTableOk t pas) :
     kctxL (GF := GF) lent cpu k ∗ ptreeOwn 2 (DFrac.own 1) t ∗
-      (MachGS.kmapName (hlc := hlc) (GF := GF) ↪●MAP KernelMap.static)
+      (MachGS.kmapName (hlc := hlc) (GF := GF) ↪●MAP KernelMap.static) ∗
+      (MachGS.kptRootName (hlc := hlc) (GF := GF) ↪VAR r0)
     ⊢ |={⊤}=> (kctxL lent cpu k ∗ kptOn t KernelMap.static) := by
-  iintro ⟨Hk, Ht, Hauth⟩
+  iintro ⟨Hk, Ht, Hauth, Hroot⟩
   icases kctx_cases cpu k $$ Hk with
     ⟨%hwf, HConf, HF, Hstack, Htrans, Harm, Hcpu, Htok, Hclock, #Hro⟩
   icases ctxTok_cases cpu curCtx $$ Htok with ⟨Hctx, %r, Hfrag⟩
   ihave Hents := (ptreeOwn_entries (DFrac.own 1) 2 t).1 $$ Ht
-  imod kptOn_seal cpu t KernelMap.static hct (kvmTableOk_kptFacts t pas hok)
-    $$ [Hctx Hents Hauth] with ⟨Hctx, #Hkpt⟩
-  · iframe Hctx Hents Hauth
+  imod kptOn_seal cpu t KernelMap.static r0 hct (kvmTableOk_kptFacts t pas hok)
+    $$ [Hctx Hents Hauth Hroot] with ⟨Hctx, #Hkpt⟩
+  · iframe Hctx Hents Hauth Hroot
   imodintro
   isplitl [HConf HF Hstack Htrans Harm Hcpu Hctx Hfrag Hclock]
   · iapply kctx_intro' cpu k hwf

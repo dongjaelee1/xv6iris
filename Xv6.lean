@@ -158,3 +158,5 @@ import Xv6.LinkSleepPrepare
 import Xv6.SpecSleep
 import Xv6.ProofSleep
 import Xv6.LinkSleep
+import Xv6.ProofYield
+import Xv6.LinkYield

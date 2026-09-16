@@ -260,6 +260,7 @@ the booted machine `σ`: the generation's certificate, every hart's register
 cells, every byte's history (the image's byte at timestamp 0), and, per
 hart, a fresh running context with its memory token. -/
 def powerBootRes [KernelMap] (E : EraGS GF) (gen : Nat) (σ : MState) : IProp GF := iprop%
+  (∃ r : BitVec 44, E.kptRootName ↪VAR r) ∗
   genCertAt gen E ∗
   ([∗list] cpu ∈ cpus, regCells (E.regName cpu) (σ.regs cpu)) ∗
   memCells E σ.mem ∗
@@ -339,10 +340,11 @@ theorem wp_power [KernelMap]
     imod (names_alloc (fun γ _ => γ ↪●MAP (∅ : StrMapF Unit))
       (fun _ => ghost_map_alloc_empty (K := String) (V := Unit) (H := StrMapF))) with ⟨%lsn, Hls⟩
     imod (ghost_map_alloc (K := Nat) (V := BitVec 64) (H := RegMapF) KernelMap.static) with ⟨%γkmap, Hkmap, Hkfrags⟩
-    imod (kmapStatic_persist ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap⟩) $$ Hkfrags with Hkst
+    imod (ghost_var_alloc (A := BitVec 44) 0#44) with ⟨%γkroot, Hkroot⟩
+    imod (kmapStatic_persist ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap, γkroot⟩) $$ Hkfrags with Hkst
     icases BigSepL.bigSepL_sep_eqv.1 $$ Hv with ⟨Hva, Hvlb⟩
-    imod (ctxs_boot ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap⟩) $$ Hvlb with Hctx
-    imod registry_insert R g.gen ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap⟩ (registryOk_none Hok)
+    imod (ctxs_boot ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap, γkroot⟩) $$ Hvlb with Hctx
+    imod registry_insert R g.gen ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap, γkroot⟩ (registryOk_none Hok)
       $$ HR with ⟨HR, #Hreg⟩
     imod startAuth_bump _ $$ Hstart with ⟨Hstart, #Hstarted⟩
     ihave #Hborn := genAuth_get_born _ $$ Hgen
@@ -351,7 +353,7 @@ theorem wp_power [KernelMap]
       (fun c => (g₂.m.resv c, (g₂.m.hr c).acq)) cpus (resvMap g₂.m) (List.nodup_finRange NCPU)
       (fun c _ => resvMap_get? g₂.m c) $$ Hfrags
     have hfrag : ∀ c : CPU, (γresv ↪◯MAP[c.val] ((g₂.m.resv c, (g₂.m.hr c).acq) : ResvVal)) ⊢@{IProp GF}
-        resvFragAt ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap⟩ c none false := by
+        resvFragAt ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap, γkroot⟩ c none false := by
       intro c
       unfold resvFragAt
       rw [(hhart0 c).2.2.2, (hhart0 c).2.2.1]
@@ -359,8 +361,11 @@ theorem wp_power [KernelMap]
       iintro H
       iexact H
     -- the boot client
-    ihave Hres : powerBootRes ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap⟩ g.gen g₂.m $$ [Hrc Hpts Hctx Hfrags' Hls Hkmap Hkst]
+    ihave Hres : powerBootRes ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap, γkroot⟩ g.gen g₂.m $$ [Hrc Hpts Hctx Hfrags' Hls Hkmap Hkst Hkroot]
     · unfold powerBootRes genCertAt memCells kmapStaticAt
+      isplitl [Hkroot]
+      · iexists 0#44
+        iexact Hkroot
       iframe Hrc Hpts Hkmap Hkst
       isplitr [Hctx Hfrags' Hls]
       · isplit
@@ -375,7 +380,7 @@ theorem wp_power [KernelMap]
           iapply BigSepL.bigSepL_mono (fun {_ c} _ => hfrag c) $$ Hfrags'
         · unfold lockSetAt locksMap
           iexact Hls
-    imod (Hboot ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap⟩ g.gen g₂.m g.image hbf) $$ Hres with Hwps
+    imod (Hboot ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap, γkroot⟩ g.gen g₂.m g.image hbf) $$ Hres with Hwps
     imodintro
     -- the state interpretation at the booted state
     rw [stateInterp_eq]
@@ -383,13 +388,13 @@ theorem wp_power [KernelMap]
     rw [hgen, show startCount g₂ = g.gen + 1 by simp [startCount, hgen, hpow']]
     iframe Hgen Hstart
     isplitl [HR Hheap Hri Hva Hiv Hrv Htop Hauth Hresv]
-    · iexists (insert R g.gen ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap⟩)
+    · iexists (insert R g.gen ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap, γkroot⟩)
       iframe HR
       isplit
       · ipureintro
         exact registryOk_insert Hok _
       rw [eraCur_true hpow', hgen]
-      iexists ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap⟩
+      iexists ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap, γkroot⟩
       isplit
       · ipureintro
         exact get?_insert_eq rfl
@@ -398,7 +403,7 @@ theorem wp_power [KernelMap]
       rw [show g₂.m.top = 0 by simp [MState.top, hlog0], hlog0, authMap_nil]
       iframe Htop Hauth
       isplitl [Hva Hiv Hrv]
-      · rw [BigSepL.bigSepL_eq (Φ := fun _ c => hartViewsAt ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap⟩ g₂.m c)
+      · rw [BigSepL.bigSepL_eq (Φ := fun _ c => hartViewsAt ⟨names, G, vn, ivn, rvn, γtop, γauth, γresv, lsn, γkmap, γkroot⟩ g₂.m c)
           (Ψ := fun _ c => iprop(MonoNat.auth_own (vn c) (DFrac.own 1) (.ofNat 0) ∗
             MonoNat.auth_own (ivn c) (DFrac.own 1) (.ofNat 0) ∗
             MonoNat.auth_own (rvn c) (DFrac.own 1) (.ofNat 0)))
@@ -474,7 +479,8 @@ free). -/
     (cI : ∀ cpu : CPU, ⊢ cP cpu 0#64) : MachGS hlc GF :=
   { regName := E.regName, mem := E.mem, viewName := E.viewName, iviewName := E.iviewName,
     rviewName := E.rviewName, topName := E.topName, authName := E.authName, resvName := E.resvName,
-    lockSetName := E.lockSetName, kmapName := E.kmapName, gen := gen, claimP := cP, claim_idle := cI }
+    lockSetName := E.lockSetName, kmapName := E.kmapName, kptRootName := E.kptRootName,
+    gen := gen, claimP := cP, claim_idle := cI }
 
 theorem wpLoop_ofEra (E : EraGS GF) (gen : Nat) (cP : CPU → BitVec 64 → IProp GF)
     (cI : ∀ cpu : CPU, ⊢ cP cpu 0#64) (cpu : CPU) :

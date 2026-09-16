@@ -3,6 +3,12 @@ Specification of `kerneltrap` (kernel/trap.c): the C handler `kernelvec`
 calls, ASSUMED as an interface for now (its proof needs devintr's cone:
 the UART and disk interrupt handlers, clockintr, and `yield`).
 
+It takes the proc table's invariant (`procsInv`, persistent) because the
+timer path calls `yield`; it needs NO proc-shape premise, because THE
+CLAIM it is handed already names the running slot
+(`Xv6.cpuClaim_proc_shape`) -- which is what makes it callable from the
+trap engine, whose `ihsF` quantifies the interrupted context freely.
+
 kerneltrap runs in the handler's context a supervisor interrupt left
 (interrupts off, `SPIE = 1`, `SPP = S`, depth 0, no locks; `KCtx.trapped`
 below kernelvec's frame) with the trap CSRs, the running proc's claim and
@@ -13,8 +19,7 @@ the registers, `sepc` written back to the trapped pc and `sstatus`
 restored, and the arm's cells of the resumed hart in hand.
 Imports only definitional files.
 -/
-import Xv6.Image
-import Xv6.UartTrace
+import Xv6.SchedCtx
 import MachCSL.WpSmodeIntr
 
 namespace Xv6
@@ -31,11 +36,13 @@ def ktSlots : Nat := kvFrameSlots - 32
 
 /-- **WP of `kerneltrap`.** -/
 def wp_kerneltrap_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
+    (Γ : SchedNames) [ClaimIs (hlc := hlc) GF Γ]
     (cpu : CPU) (k : KCtx) (epc sc : BitVec 64)
     (hsie : k.sie = false) (hspie : k.spie = true) (hspp : k.spp = true)
     (hnoff : k.noff = 0) (hlocks : k.locks = []) (htier : k.tier = KTier.kpt) (hK : ktSlots ≤ k.avail)
     (hsc : sCauseOk sc) (hepc : epc.toNat % 2 = 0) : Prop :=
-  kctx cpu k ∗ pcIs cpu kerneltrapAddr ∗ trapCsrsAt cpu epc sc 0#64 ∗ cpuClaim cpu k.proc ∗ intrRes cpu ∗
+  kctx cpu k ∗ pcIs cpu kerneltrapAddr ∗ procsInv Γ ∗
+  trapCsrsAt cpu epc sc 0#64 ∗ cpuClaim cpu k.proc ∗ intrRes cpu ∗
   wpNext true k.proc cpu (fun cpu' => iprop(∀ (R' : RegMap) (sc' tv' : BitVec 64),
     kctx cpu' (k.withRegs R') -∗ pcIs cpu' (jumpPc (k.regs 1#5)) -∗ trapCsrsAt cpu' epc sc' tv' -∗
     cpuClaim cpu' k.proc -∗ intrRes cpu' -∗ ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
@@ -44,7 +51,8 @@ def wp_kerneltrap_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv
 /-- The interface of `kerneltrap`. -/
 structure KERNELTRAP : Prop where
   wp_kerneltrap : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
+    (Γ : SchedNames) [ClaimIs (hlc := hlc) GF Γ]
     (cpu : CPU) (k : KCtx) (epc sc : BitVec 64) hsie hspie hspp hnoff hlocks htier hK hsc hepc,
-    wp_kerneltrap_body (hlc := hlc) (GF := GF) cpu k epc sc hsie hspie hspp hnoff hlocks htier hK hsc hepc
+    wp_kerneltrap_body (hlc := hlc) (GF := GF) Γ cpu k epc sc hsie hspie hspp hnoff hlocks htier hK hsc hepc
 
 end Xv6

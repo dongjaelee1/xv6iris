@@ -101,9 +101,10 @@ instance instCtxMorphKptOn (tier : KTier) (t : PTree) (M : RegMapF (BitVec 64)) 
     CtxMorph (GF := GF) (fun ξ => @kptOn hlc GF _ ⟨ξ, tier⟩ t M) :=
   @instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
     (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
-      (@instCtxMorphExists hlc GF _ _
-        (fun (fl : Nat → Nat → Nat) ξ => iprop(inv kptN (kptBody t fl) ∗ @kptKeys hlc GF _ ⟨ξ, tier⟩ t fl))
-        (fun _ => @instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _) (instCtxMorphKptKeys _ _ _))))
+      (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
+        (@instCtxMorphExists hlc GF _ _
+          (fun (fl : Nat → Nat → Nat) ξ => iprop(inv kptN (kptBody t fl) ∗ @kptKeys hlc GF _ ⟨ξ, tier⟩ t fl))
+          (fun _ => @instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _) (instCtxMorphKptKeys _ _ _)))))
 
 /-- The hart's kernel-table slot. -/
 instance instCtxMorphKptSlot (tier : KTier) (cpu : CPU) (root : BitVec 44) :

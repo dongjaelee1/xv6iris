@@ -68,9 +68,9 @@ set_option maxHeartbeats 8000000 in
 /-- **`kerneltrap` meets its specification**, given `devintr`, `myproc` and
 `yield`. -/
 theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP :=
-  ⟨fun {hlc GF} _ _ _ cpu k epc sc hsie hspie hspp hnoff hlocks htier hK hsc hepc => by
+  ⟨fun {hlc GF} _ _ _ Γ _ cpu k epc sc hsie hspie hspp hnoff hlocks htier hK hsc hepc => by
   unfold wp_kerneltrap_body
-  iintro ⟨Hk, Hpc, Hcsrs, Hclaim, Hres, HΦ⟩
+  iintro ⟨Hk, Hpc, #Hpinv, Hcsrs, Hclaim, Hres, HΦ⟩
   icases kctx_kernelText _ _ $$ Hk with ⟨#Htext, Hk⟩
   icases kctx_wf _ _ $$ Hk with ⟨%hwf, Hk⟩
   icases trapCsrsAt_cases cpu _ _ _ $$ Hcsrs with ⟨Hsepc, Hscause, Hstval⟩
@@ -308,15 +308,20 @@ theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP 
       iintro Hk Hpc
       k_step (wp_s_jal cpu _ 0x8000276e#64 false 2094990#21 1#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext $$ [- $Hk $Hpc]
       iintro Hk Hpc
-      have hyi : ∀ (k' : KCtx) (hsie' : k'.sie = false) (hnoff' : k'.noff = 0) (hlocks' : k'.locks = [])
-          (htier' : k'.tier = KTier.kpt) (hproc' : k'.proc ≠ 0#64) (hK' : yieldSlots ≤ k'.avail),
-          kctx cpu k' ∗ pcIs cpu 0x80001efc#64 ∗ trapCsrs cpu ∗ cpuClaim cpu k'.proc ∗ intrRes cpu ∗
+      -- THE CLAIM names the running slot: no proc-shape premise is needed
+      icases cpuClaim_proc_shape Γ cpu k.proc hp0 $$ Hclaim with ⟨%jp, %⟨hjN, hpj⟩, Hclaim⟩
+      have hyi : ∀ (k' : KCtx) (hj' : jp < NPROC) (hproc' : k'.proc = procAddr jp)
+          (hK' : yieldSlots ≤ k'.avail) (hsie' : k'.sie = false) (hnoff' : k'.noff = 0)
+          (hlocks' : k'.locks = []) (htier' : k'.tier = KTier.kpt),
+          kctx cpu k' ∗ pcIs cpu 0x80001efc#64 ∗ procsInv Γ ∗ trapCsrs cpu ∗ cpuClaim cpu k'.proc ∗
+          intrRes cpu ∗
           wpNext true k'.proc cpu (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ R' : RegMap,
             kctx cpu' ((k'.withSpie spie spp).withRegs R') -∗ pcIs cpu' (jumpPc (k'.regs 1#5)) -∗
             trapCsrs cpu' -∗ cpuClaim cpu' k'.proc -∗ intrRes cpu' -∗ ⌜calleeSaved k'.regs R'⌝ -∗ wpLoop cpu'))
           ⊢ wpLoop (GF := GF) cpu := by
-        intro k' hsie' hnoff' hlocks' htier' hproc' hK'
-        have h := YI.wp_yield (hlc := hlc) (GF := GF) cpu k' hsie' hnoff' hlocks' htier' hproc' hK'
+        intro k' hj' hproc' hK' hsie' hnoff' hlocks' htier'
+        have h := YI.wp_yield (hlc := hlc) (GF := GF) Γ cpu k' jp hj' hproc' hK' hsie' hnoff' hlocks'
+          htier'
         unfold wp_yield_body at h
         simp only [yieldAddr, KernelSyms.«yield»] at h
         exact h
@@ -325,13 +330,13 @@ theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP 
         ihave H := trapCsrs_intro cpu epc sc 0#64 $$ [Hsepc Hscause Hstval]
         case' _ => unfold trapCsrsAt; iframe Hsepc Hscause Hstval
         iexact H
-      iapply (hyi _ ?hsY ?hnY ?hlY ?htY ?hpY ?hKY) $$ [- $Hk $Hpc $Hcsrs $Hres]
+      iapply (hyi _ hjN ?hpY ?hKY ?hsY ?hnY ?hlY ?htY) $$ [- $Hk $Hpc $Hpinv $Hcsrs $Hres]
+      case hpY => k_norm; exact hpj
+      case hKY => k_norm; unfold yieldSlots; omega
       case hsY => k_norm
       case hnY => k_norm; exact hnoff
       case hlY => k_norm; exact hlocks
       case htY => k_norm; exact htier
-      case hpY => k_norm; exact hp0
-      case hKY => k_norm; unfold yieldSlots; omega
       k_norm
       isplitl [Hclaim]
       · iexact Hclaim

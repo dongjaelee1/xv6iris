@@ -149,6 +149,7 @@ chooses one function for the whole list by induction on it, which needs no
 argument that the addresses are distinct. -/
 def kptOn [CurCtx] (t : PTree) (M : RegMapF (BitVec 64)) : IProp GF := iprop%
   ⌜kptFacts t M⌝ ∗ (MachGS.kmapName (hlc := hlc) (GF := GF) ↪●MAP{.discard} M) ∗
+  (MachGS.kptRootName (hlc := hlc) (GF := GF) ↪VAR{.discard} t.base) ∗
   ∃ fl : Nat → Nat → Nat, inv kptN (kptBody t fl) ∗ kptKeys t fl
 
 instance kptOn_persistent [CurCtx] (t : PTree) (M : RegMapF (BitVec 64)) :
@@ -159,7 +160,7 @@ instance kptOn_persistent [CurCtx] (t : PTree) (M : RegMapF (BitVec 64)) :
 theorem kptOn_facts [CurCtx] (t : PTree) (M : RegMapF (BitVec 64)) :
     kptOn (GF := GF) t M ⊢ ⌜kptFacts t M⌝ := by
   unfold kptOn
-  iintro ⟨%h, _, _⟩
+  iintro ⟨%h, _, _, _⟩
   ipureintro
   exact h
 
@@ -167,10 +168,23 @@ theorem kptOn_kmapAt [CurCtx] (t : PTree) (M : RegMapF (BitVec 64)) (vpn : BitVe
     kptOn (GF := GF) t M ∗ kmapAt vpn v ⊢
       ⌜∃ (addr : BitVec 64) (ppn : BitVec 44) (perm : KPerm), v = kLeaf ppn perm 0#1 0#1 ∧ t.maps vpn addr ppn perm⌝ := by
   unfold kptOn kmapAt
-  iintro ⟨⟨%hf, Hauth, _⟩, Hel⟩
+  iintro ⟨⟨%hf, Hauth, _, _⟩, Hel⟩
   icases ghost_map_lookup $$ Hauth Hel with %hget
   ipureintro
   exact hf.2.2.2 vpn v hget
+
+/-- **THERE IS ONE KERNEL PAGE TABLE**: the root rides in `kptOn` as a
+persistent ghost variable, so any two installed tables -- the one a thread
+parked under and the one the hart that dispatches it runs -- have the same
+root.  This is what lets a migrating thread keep its `KCtx.root`
+(`Xv6.ProofYield`). -/
+theorem kptOn_root_agree [CurCtx] (t t' : PTree) (M M' : RegMapF (BitVec 64)) :
+    kptOn (GF := GF) t M ∗ kptOn t' M' ⊢ ⌜t.base = t'.base⌝ := by
+  unfold kptOn
+  iintro ⟨⟨_, _, #Hr, _⟩, ⟨_, _, #Hr', _⟩⟩
+  ihave %h := ghost_var_agree _ _ _ _ _ $$ Hr Hr'
+  ipureintro
+  exact h
 
 /-! ## The accessors
 
@@ -208,7 +222,7 @@ theorem kpt_readAU [CurCtx] (cpu : CPU) (t : PTree) (M : RegMapF (BitVec 64)) (a
       ownCtx cpu curCtx ∗ ∃ (K : Nat) (tsl : List (Nat × Agent)), viewLb cpu K ∗
         readAU cpu addr 8 K tsl (fun w => iprop(⌜pteVariant c w⌝)) := by
   unfold kptOn
-  iintro ⟨⟨%hf, _, %fl, #Hinv, #Hkeys⟩, Hctx⟩
+  iintro ⟨⟨%hf, _, _, %fl, #Hinv, #Hkeys⟩, Hctx⟩
   obtain ⟨i, hi⟩ := List.getElem?_of_mem hmem
   ihave #Hk8 := kptKeys_acc t fl i (addr, c) hi $$ Hkeys
   icases ownCtx_keys_vis cpu curCtx (fl i) 8 $$ [Hctx Hk8] with ⟨Hctx, %K, %tsl, #HK, #Hts, %hvis⟩
@@ -250,7 +264,7 @@ theorem kpt_exclReadAU [CurCtx] (t : PTree) (M : RegMapF (BitVec 64)) (addr c : 
     (hmem : (addr, c) ∈ t.entries 2) :
     kptOn (GF := GF) t M ⊢ exclReadAU addr 8 (fun w0 => iprop(⌜pteVariant c w0⌝)) := by
   unfold kptOn
-  iintro ⟨%hf, _, %fl, #Hinv, #Hkeys⟩
+  iintro ⟨%hf, _, _, %fl, #Hinv, #Hkeys⟩
   obtain ⟨i, hi⟩ := List.getElem?_of_mem hmem
   unfold exclReadAU
   iinv Hinv with Hbody Hclose
@@ -285,7 +299,7 @@ theorem kpt_exclWriteAU [CurCtx] (cpu : CPU) (t : PTree) (M : RegMapF (BitVec 64
     (hmem : (addr, c) ∈ t.entries 2) (w0 w' : BitVec 64) (hw' : pteVariant c w') :
     kptOn (GF := GF) t M ⊢ exclWriteAU cpu addr 8 false w0 w' emp := by
   unfold kptOn
-  iintro ⟨%hf, _, %fl, #Hinv, #Hkeys⟩
+  iintro ⟨%hf, _, _, %fl, #Hinv, #Hkeys⟩
   obtain ⟨i, hi⟩ := List.getElem?_of_mem hmem
   unfold exclWriteAU
   iinv Hinv with Hbody Hclose
@@ -440,13 +454,14 @@ owned outright at the Bare tier by the hart that built the table, become
 the shared invariant at the positions their bytes were written at; the
 keys of those positions stay with the builder's context, and the
 mapping's authority is published. -/
-theorem kptOn_seal [CurCtx] (cpu : CPU) (t : PTree) (M : RegMapF (BitVec 64))
+theorem kptOn_seal [CurCtx] (cpu : CPU) (t : PTree) (M : RegMapF (BitVec 64)) (r : BitVec 44)
     (hct : curTier = KTier.bare) (hf : kptFacts t M) :
     ownCtx (GF := GF) cpu curCtx ∗
       ([∗list] e ∈ t.entries 2, wordPointsTo e.1 8 (DFrac.own 1) e.2) ∗
-      (MachGS.kmapName (hlc := hlc) (GF := GF) ↪●MAP M)
+      (MachGS.kmapName (hlc := hlc) (GF := GF) ↪●MAP M) ∗
+      (MachGS.kptRootName (hlc := hlc) (GF := GF) ↪VAR r)
     ⊢ |={⊤}=> (ownCtx cpu curCtx ∗ kptOn t M) := by
-  iintro ⟨Hctx, Hents, Hauth⟩
+  iintro ⟨Hctx, Hents, Hauth, Hroot⟩
   ihave Hents := BigSepL.bigSepL_mono_of_forall
     (l := t.entries 2)
     (Φ := fun _ (e : BitVec 64 × BitVec 64) => iprop(wordPointsTo e.1 8 (DFrac.own 1) e.2))
@@ -459,6 +474,8 @@ theorem kptOn_seal [CurCtx] (cpu : CPU) (t : PTree) (M : RegMapF (BitVec 64))
     with ⟨%fl, Hents⟩
   icases BigSepL.bigSepL_sep_eqv.1 $$ Hents with ⟨Hbody, #Hkeys⟩
   imod ghost_map_auth_persist _ _ M $$ Hauth with #Hauth
+  imod ghost_var_update t.base _ _ $$ Hroot with Hroot
+  imod ghost_var_persist _ _ _ $$ Hroot with #Hroot
   imod inv_alloc kptN ⊤ (kptBody t fl) $$ [Hbody] with #Hinv
   · inext
     unfold kptBody
@@ -470,6 +487,8 @@ theorem kptOn_seal [CurCtx] (cpu : CPU) (t : PTree) (M : RegMapF (BitVec 64))
   · ipureintro; exact hf
   isplit
   · iexact Hauth
+  isplit
+  · iexact Hroot
   iexists fl
   isplit
   · iexact Hinv

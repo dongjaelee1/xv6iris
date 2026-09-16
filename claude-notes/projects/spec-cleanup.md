@@ -16,7 +16,10 @@ assembly, which fuses three separable obligations — (W) the resolution,
 Lanes EX-1 (entry + assembly, zero semantic change), EX-2 (the
 FRAGMENT walk supplier — the pin-free route; feasibility check first),
 EX-3 (the general argv/path reading), EX-4 (the rule, the test, the
-TR figure).  Nothing relay-shaped unless EX-2's share check fails.
+TR figure).  ~~Nothing relay-shaped unless EX-2's share check fails.~~
+EX-2's share check FAILED and it is still not relay-shaped: the block
+is a standing owner ruling (cross-syscall stability = the tree layer's
+exclusivity fact), not a kernel ask.
 
 - [x] **EX-1 ENTRY + ASSEMBLY** LANDED (branch `ex1-entry`).  New
   `iris/ExecEntry.v` — `image_entry_at` / `image_entry` /
@@ -38,6 +41,31 @@ TR figure).  Nothing relay-shaped unless EX-2's share check fails.
   `exec_bundle_of` and `pinned_exec_bundle` are closed under the global
   context; the three program entries sit at the standing platform bar.
   Echo audit 14, `make -f CoqMakefile -j16` green whole-tree.
+- [x] **EX-2 FRAGMENT WALK** — **STOPPED AT DELIVERABLE 0** (branch
+  `ex2-fragments`; notes only, ZERO Rocq).  The pin-free supplier is
+  REFUTED in the tree, three ways, all landed: (a) `ic_loaded` and
+  `ipool_alloc` carry the era leg at `DfracOwn 1`, so any client `nview`
+  share of a live inum is inconsistent (`FsAbs.top_frag_1_nview_excl`,
+  `FsAbsEra.ic_loaded_nview_excl` / `ipool_alloc_nview_excl` /
+  `apn_pin_loaded_excl`); (b) the read arm's 3/4 is what the ESCROW
+  KEEPS (`ic_rd_arm`), the quarter that leaves is the read-locking
+  KERNEL thread's (`ic_rd_held`'s `inode_rd_era` at 1/4, produced only
+  by `FsAbsEra.inode_rd_era_nview`, borrow-scoped `ilock`→`iunlock`, and
+  only at `ProofFileread.v:2374` / `ProofFilestat.v:692`) — so §1's
+  feasibility note had the fraction backwards and NOTHING is outstanding
+  for a client across an ecall; (c) exec takes the WRITE arm at both of
+  its reads anyway — namex's per-hop `ilock` and kexec's own `ilock`
+  before `readi` are `Ilock.wp_ilock_tx_sconf` (`ProofNamexEra.v:2631`,
+  `ProofNamex.v:2785`, `ProofKexecACode.v:1262`).  A supplier would
+  type-check and be vacuous, the fourth such consumer after read's
+  `wp_uk_cat_read_learns` and mknod's `mkr_chain`.  NOT A RELAY: the
+  owner already ruled (2026-08-28, and `fs-syscall-specs.md` §2's
+  "Duration of a held share, honestly") that cross-syscall stability is
+  the TREE LAYER's exclusivity fact, not a fraction — so EX-2 re-opens
+  in the tree-layer campaign and nowhere else.  The wall, with the
+  consequences for EX-3/EX-4 and the TR's fragment sentence, is
+  `design/user-exec.md` §4's EX-2 as-landed block.  Mirror: echo audit
+  14, whole tree green at `b5fb202cf3` (no Rocq touched).
 
 ## RELAY QUEUE (for upstream, via the owner's push)
 

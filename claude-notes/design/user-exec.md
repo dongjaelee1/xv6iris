@@ -61,11 +61,14 @@ suppliers:
     the terminal — and the walk's cursor family is paid hop by hop from
     them.  This is the pin-free route: a program that opened/read a file
     and kept a share, or was handed one, can exec it without any
-    application-level fs invariant.  FEASIBILITY NOTE: exec's namei and
+    application-level fs invariant.  ~~FEASIBILITY NOTE: exec's namei and
     `readi` are READS; RD-6 established that a WRITE's mover needs the
     whole γtop element (`ic_loaded` exclusivity), but `ic_rd_arm` leaves
     a 3/4 share on purpose — so held shares should survive the walk.
-    Verify at EX-2, it is the lane's first check.
+    Verify at EX-2, it is the lane's first check.~~  **REFUTED at EX-2 —
+    the note read the 3/4 backwards, and exec does not take that arm at
+    all.  §4's EX-2 block is the wall; there is no fragment supplier
+    today and the successor is the tree layer, not a kernel ask.**
 
 **(L) LOADABILITY** — `kexec_loadable f`.  For a known `f`: by
 computation (`kexec_loadable_b f = true`, `vm_compute`).  Today proved
@@ -266,17 +269,101 @@ is" is a resource, not a global claim.
   program entries sit at the standing bar (the two Sail platform
   axioms, Rocq's `PrimInt63`/`PrimString` primitives, funext).  Echo
   audit unchanged at 14.
-- [ ] **EX-2 FRAGMENT WALK** (U tier + fs seam; the feasibility lane):
-  `ex_start` paid from owned `nview` shares along the hops + the
-  terminal share as `Φo`'s receipt.  First check: the read-side share
-  survives exec's namei/readi (`ic_rd_arm`'s 3/4).  If it does not,
-  STOP with the wall written here — that would be a kernel-side ask
-  (the read path's share discipline), the only thing that could make
-  exec need upstream.  ITS SEAM IS LANDED AND EXACT: supply §2's three
-  (W) premises — `ex_start`, `pf_at (aopen_commit_at …) Fo`,
-  `ex_node_id T (P (length (path_elems pl))) Fo.(pf_recv) (MkAnode
-  (AFile f) nl)` — and `exec_bundle_of` is the rest.  Nothing in
-  `ExecBundle.v` mentions a pin, so EX-2 writes no bundle of its own.
+- [x] **EX-2 FRAGMENT WALK** — **STOPPED AT DELIVERABLE 0, NOTHING
+  LANDED.**  The lane's own first check fails, so the deliverable is
+  this wall.  (Original scope: `ex_start` paid from owned `nview` shares
+  along the hops + the terminal share as `Φo`'s receipt, into §2's three
+  (W) premises.  The seam is landed and exact and stays that way —
+  nothing in `ExecBundle.v` mentions a pin — so whoever re-opens this
+  writes a supplier and no bundle.)
+
+  **AS LANDED (EX-2, DELIVERABLE 0): THE FRAGMENT SUPPLIER IS REFUTED,
+  and not by a missing lemma.**  Three legs, each a landed lemma or a
+  landed call site:
+
+  **(a) THE CUSTODY IS TOTAL.**  `IcacheEscrow.ic_loaded` carries
+  `ic_inode_leg γfs (DfracOwn 1) …`, i.e. `FsState.top_frag` WHOLE, and
+  so does the pool row `IcacheEscrow.ipool_alloc`.  Every allocated inum
+  sits in one of those two arms whenever no thread holds it, so a
+  client-held share of a live inum is INCONSISTENT, not merely
+  unavailable: `FsAbs.top_frag_1_nview_excl` (the algebra),
+  `FsAbsEra.ic_loaded_nview_excl`, `FsAbsEra.ipool_alloc_nview_excl`,
+  and `FsAbsEra.apn_pin_loaded_excl` in the pin's own vocabulary.
+
+  **(b) THE 3/4 IS THE ESCROW'S, NOT A CLIENT'S** — §1's feasibility
+  note read it backwards.  `IcacheEscrow.ic_rd_arm` is what the escrow
+  KEEPS, at `DfracOwn (3/4)`; what leaves is `ic_rd_held`'s
+  `inode_rd_era γfs (DfracOwn (1/4))` and it goes to the READ-LOCKING
+  KERNEL THREAD (`ic_loaded_shed` / `ic_rd_join` are the only two moves,
+  and 3/4 + 1/4 = 1, so nothing is outstanding for anyone else).  The
+  single producer of a client-shaped carrier in the whole tree is
+  `FsAbsEra.inode_rd_era_nview` — that same quarter, read as `nview` —
+  and it is BORROW-SCOPED: minted at `ilock`, taken back at `iunlock`,
+  and only at the two sites that come in at `DepRd`
+  (`ProofFileread.v:2374`, `ProofFilestat.v:692`; `SpecIlock`'s own
+  note: "fileread and filestat — the only two `ilock` callers holding no
+  transaction").  No share crosses an ecall.
+
+  **(c) EXEC NEVER TOUCHES THE READ ARM ANYWAY.**  Both of exec's reads
+  take the WRITE arm at the whole element: namex's per-hop `ilock` is
+  `Ilock.wp_ilock_tx_sconf` (`ProofNamexEra.v:2631`, and the frozen
+  trio's `ProofNamex.v:2785`), and kexec's own `ilock` before the
+  `readi` of the ELF is the same call (`ProofKexecACode.v:1262`, whose
+  comment says it: "THE WRITE ARM … kexec holds this inode's lock from
+  here to phase B's `iunlockput`").  So at every inode exec touches —
+  each hop directory AND the file itself — the payload is `ic_loaded` at
+  `DfracOwn 1`, which (a) refutes outright.  Even a client quarter
+  parked under a read lock, if one existed, would not serve exec.
+
+  **WHAT A SUPPLIER WOULD LOOK LIKE** (so nobody rebuilds it to find
+  out): deliverables 1–3 are individually PROVABLE.  At a hop the client
+  sees only the lent half (`FsAbsEra.ex_hop` is `FsAbs.ax_hop (elend …)`
+  and the walk lends `dq = 1/2`), and `elend_agrees` / `elend_astate`
+  read the entry map off it — so a fragment supplier type-checks and is
+  VACUOUS, its premise unreachable.  That is the same caveat the
+  campaign already carries for read's `UkReadFile.wp_uk_cat_read_learns`
+  and mknod's `SpecSysMknod.mkr_chain` corollary ("A client `nview` share
+  against a live inum is refuted by today's whole-element payload
+  custody … vacuous until the tree layer's exclusivity fact exists",
+  `completed/fs-syscall-specs.md`).  A fourth vacuous consumer buys no
+  knowledge, so nothing was written.  (Note also that
+  `design/user-write.md`'s wall says read "has no such wall because the
+  read arm leaves a client share outstanding ON PURPOSE" — that
+  sentence is the same misreading as §1's and should be read against (b):
+  read's asymmetry is that its statement stays TRUE when the anchor
+  arrives, not that its premise is reachable today.)
+
+  **AND THIS IS NOT A RELAY.**  The way out was ruled twice, both times
+  away from the fs seam.  Option (a) — payload arms at 3/4 with a
+  cancellable client share — was REJECTED (user, 2026-08-28) in favour
+  of the era walk; and `fs-syscall-specs.md` §2's "Duration of a held
+  share, honestly" states the finding: the landed lending discipline is
+  BORROW-scoped, and CROSS-SYSCALL stability "is not a fraction fact at
+  all … what makes a subtree stable is that no other process HAS a path
+  or fd into it, an exclusivity fact the tree layer (§6) states and
+  consumes at the whole-system level".  So the pin-free (W) supplier is
+  owed by the TREE LAYER, not by the kernel; EX-2 re-opens there and
+  nowhere else, and the exec campaign stays relay-free.
+
+  **CONSEQUENCES FOR THE REST OF THE CAMPAIGN.**
+  - §2's second derived reading for the TR — "with the FRAGMENT supplier
+    a program needs no application-level invariant to exec a file it
+    holds a share of" — must NOT be written in the present tense.  The
+    two suppliers that exist are the PIN and the TAINT arm; the fragment
+    sentence is future work gated on the tree layer, and EX-4's TR
+    paragraph says that or says nothing.
+  - EX-4's consumer test takes the PIN supplier (`PinnedObs.pobs_walk`
+    off `app_inv`) or `image_entry_taint`.  `exec_bundle_of` is
+    unaffected and needs no change: (W.iii)'s deliberate weakening (the
+    NODE, not the inum) is still exactly what a share-shaped supplier
+    would want, whenever one becomes reachable.
+  - EX-3 is untouched — the argv/path reading is off the caller's own
+    `ubytesq`/`uwordq` runs and wants no fs share.
+  - ONE OWED ONE-LINER, if a later lane wants the wall total in Rocq:
+    `top_frag_1_nview_excl` is stated at `DfracOwn q` only, so the
+    DISCARDED flavour (`nview_dq Γ DfracDiscarded`, which is what
+    `SpecSysMknod.mkr_pin` uses) is refuted by the same algebra
+    (`DfracOwn 1 ⋅ DfracDiscarded` is invalid) but by no landed lemma.
 - [ ] **EX-3 ARGV READING** (U tier): one lemma reading
   `exec_path_of`/`exec_args_of` off owned `ubytesq`/`uwordq` runs at
   any layout; `init_args_det` and `echo_node_img` as instances.  EX-1
@@ -294,4 +381,7 @@ is" is a resource, not a global claim.
   gains its exec sibling from §2.
 
 Nothing in this plan is relay-shaped: the kernel already promised
-everything the general rule consumes.
+everything the general rule consumes.  EX-2 tested the one clause that
+could have broken that and it held — the fragment supplier is blocked,
+but by a standing owner ruling about where cross-syscall stability
+lives (the tree layer), not by anything the fs seam owes exec.

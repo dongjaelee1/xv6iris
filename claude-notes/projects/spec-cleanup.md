@@ -534,6 +534,93 @@ tree green on the mirror, echo audit 14, system audit unchanged.
    credential (D), the phase-2 cursor return (B's seam), and the
    path-fixed `mkdir_au_at`.
 
+**TL-3C AS LANDED (THE NAME CREDENTIAL, THE PATH-FIXED mkdir BUNDLE, AND
+WALL C's THREE ROUTES)** — branch `tl3c-ledger`; `AppEcho.v`/`AppInv.v`
+untouched, every landed TL-* statement unchanged, whole iris tree green on
+the mirror, system audit 13 / echo audit 14.  `design/user-tree.md` §7.7
+carries the full block; the headlines:
+
+1. **(D) WALL D IS CLOSED, and it cost the kernel nothing.**
+   `FsAbsCreateFire.acre_commit_at_gen` carries `⌜nm <> DOT /\ nm <> DOTDOT⌝`
+   beside `cre_pre` (unfolded, so the kernel tier keeps its altitude; it IS
+   `TreeView.fs_pname nm`, convertible).  §7.6 priced it as "from the
+   path's properness" and that was wrong in a way that made it cheaper —
+   the credential has nothing to do with the path: create reaches `dirlink`
+   only over a name its own `dirlookup` MISSED over the parent's whole
+   record range, and a live directory's records 0 and 1 ARE the two dot
+   names.  `DirView.dir_dots_miss_not_dots` is landed and BOTH fire sites
+   already apply it, so each pays with a hypothesis in scope.
+2. **(C-i) THE STOP RULE FIRED — an armed ledger in `ftop_body` is not
+   maintainable.**  TWO region movers insert a proper entry at an inum
+   nothing constrains: `InodeRegion.ireg_top_retag_gen`/`_armed_gen` (the
+   GENERIC retag every fs write goes through; its only premise,
+   `inode_local`, says nothing about which inums the new row's entries
+   name — and it has THIRTEEN caller files), and
+   `FsAbsLinkFire.lf_ent_fire` (sys_link's entry leg, at an ARBITRARY
+   target).  The ledger is TRUE of the run — `namei` resolves by entries,
+   so an armed inode is unfindable — but what keeps it true across
+   link's window is the ICACHE REFERENCE (`iget`'s ref keeps `ialloc` off
+   the row), and xv6's `sys_link` `iunlock`s BEFORE `dirlink`, so at the
+   fire no fraction of the target's top element is held and no exclusion
+   argument is available at that altitude either.  Recorded as refuted.
+3. **(C-iii) THE ROOTED VIEW — a THIRD route, cheaper than (C-i) and
+   (C-ii), and this lane's main positive finding.**  No ghost state at all.
+   `tree_body` grows the PURE conjunct `aview_rooted av` = "every SOURCE of
+   a proper edge is reachable from ROOTINO", i.e. the live namespace has no
+   ORPHAN DIRECTORY holding a proper entry — true of xv6 because a
+   directory is unlinked only when EMPTY and a fresh one holds only its
+   dots.  (The TARGET form reads better and is NOT preserved by unlink's
+   entry leg: cut one of two edges into `tg` and the surviving edge, from
+   an unreachable source, now has an unreachable target.)  The ARM's receipt then carries the PURE `⌜i ∉ dom (tv_nodes t)⌝`
+   — a fact about the owner's OWN FIXED tree, which is why WALL C (a
+   receipt cannot carry a fact about a LATER view) does not apply to it.
+   At an owner of `/` the two give `aview_no_edge_to av i` AT THE PARENT
+   LEG'S OWN VIEW.  Preservation is one line per leg off TL-1's `tview`
+   congruences, with two new premises the movers already hold (`d`
+   reachable at create's parent leg; the unlinked target has no proper
+   out-edge, which is `unl_pre`'s `dots_only` clause).  It closes the
+   child's UNARM leg too (§7.4's wall 2).  It does NOT close mkdir's second
+   credential ("the armed inum is nobody's root"); that wants one more
+   conjunct of the same kind and price, "every owner's root is reachable".
+   **So (C-iii-a) + (D) unblock `mknod` and `open(O_CREATE)` at an owner of
+   `/`; mkdir wants (C-iii-b) beside it.**
+4. **(M) mkdir's PATH-FIXED BUNDLE IS LANDED; unlink's is priced.**
+   `SpecSysMkdir.mkdir_au_at` is `mknod_au_at`'s twin (walk under
+   `ArgPath.arg_path_of` at argument 0, four legs at `npar_cur M pv P`,
+   commits OUTSIDE the walk's wand so the failure fold keeps its shape),
+   with `mkdir_au_pre` kept as the one-path reading and `mkdir_cre_inst`
+   the move between them, off a new `SpecCreate.cre_commits_mono` (the
+   cursor ISO at the whole four-leg bundle, `cre_commits_cur`'s two-way
+   twin).  Cone: `SpecCreate`, `SpecSysMkdir`, `ProofSysMkdir`,
+   `UexecExecInst`, `ProofSyscall`, `FsSyscalls`.  **So half of §7.6's
+   "mkdir and unlink cannot carry a cursor at all" is lifted.**
+   unlink's is identical in shape over a four-times-bigger proof cone
+   (~11k lines, nine files); §7.7 writes the recipe down line by line —
+   the only non-mechanical step is naming argstr's DISCARDED `Hfgot` in
+   `ProofSysUnlinkW1` (line 559) exactly as `ProofSysMkdir` now does.
+5. **(R) BOTH OFFERED FIXES ARE REFUTED; the answer is a SPLIT CURSOR, and
+   it is not on the critical path.**  "Return `Pd d` at phase 2" fails
+   because at phase 2 the owner holds the MOVED deed and `Pd` names the old
+   tree — and `t' ≠ t` is exactly the inequality `tree_claim_resync` needs.
+   "Have the parking step not need it" fails because parking the WHOLE deed
+   IS the step (it is what makes the in-flight arm unfabricable).  The fix:
+   the commits take `Pd` and return `Pd'`; generic suppliers set
+   `Pd' := Pd` and are one-line restatements (TL-3K's cone once more).
+   **BUT** at a parent prefix of LENGTH ZERO — `mkdir("/d")`,
+   `open("/f", O_CREATE)` by the owner of `/`, where the second application
+   starts — no claim law is read at all, so the owner's cursor is PURE and
+   returns itself (`UInitCons`'s `mknod("console")` is the precedent).
+   Owed only from prefix length 1 up.
+6. **DELIVERABLES 5-7 DID NOT LAND** and the reason is single: WALL C.
+   After TL-3C an owner's create supplier is missing exactly ONE of
+   `tree_acre_phases`'s premises, `aview_no_edge_to (abs_view I) i`.
+   `UkTreeWrite.wp_uk_tree_write_moves` is unchanged.  **The next lane is
+   (C-iii-a)**: one pure conjunct in `tree_body`, ~8 preservation lemmas in
+   `TreeView`, the arm's pure credential on `Farm`'s receipt — and then the
+   `open(O_CREATE)` corollary lands with the landed phases verbatim,
+   because open's bundle has been path-fixed and cursor-carrying since
+   TL-3K.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

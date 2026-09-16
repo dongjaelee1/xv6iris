@@ -704,6 +704,16 @@ subtree cannot build the step and falls to the taint arm, as §3 says.
   dissolved at any length.  §7.6 is the as-landed block; what the family
   still waits on is WALL C (an ARMED LEDGER, not a receipt) and WALL D
   (the name's properness), both stated there.
+- [x] **LEDGER/CREDENTIAL** — LANDED as **TL-3C** (branch `tl3c-ledger`),
+  §7.7: WALL D CLOSED (the name credential, paid free at both fire sites);
+  mkdir's PATH-FIXED bundle landed (`mkdir_au_at`), unlink's priced; WALL
+  C's (C-i) armed ledger REFUTED at `ftop_body`'s altitude and a third,
+  ghost-free route ((C-iii), the rooted view) designed and priced; the
+  phase-2 cursor seam RULED (a split cursor, and not on the critical path).
+  What the family now waits on is exactly ONE premise,
+  `aview_no_edge_to (abs_view I) i`.
+- [ ] **ROOTED-VIEW (C-iii)** — the next lane, and the only thing between
+  here and the first create corollary; §7.7 prices it.
 
 ### 7.4 TL-3W as landed
 
@@ -1127,3 +1137,208 @@ C) and `fs_pname nm` (WALL D).  WALL A delivered the third,
 `d ∈ dom (tv_nodes t)`, off `tree_pwalk_parent` (or
 `tree_pwalk_parent_live` now).  That is why no corollary and no extended
 test landed: `UkTreeWrite.wp_uk_tree_write_moves` is unchanged.
+
+### 7.7 TL-3C as landed — the name credential, the path-fixed mkdir bundle, and WALL C's three routes priced (one of them cheap)
+
+**WHAT LANDED** (branch `tl3c-ledger`): item (D) in full, item (M) at
+mkdir, and two RULINGS — (C-i)'s STOP RULE FIRED, and (R)'s two offered
+options are BOTH refuted, with the honest fix named.  `AppEcho.v` /
+`AppInv.v` untouched, every landed TL-* statement unchanged, whole tree
+green, system audit 13 / echo audit 14.
+
+**(D) THE NAME CREDENTIAL — LANDED, AND IT COST THE KERNEL NOTHING.**
+`FsAbsCreateFire.acre_commit_at_gen` now takes `⌜nm <> DOT /\ nm <> DOTDOT⌝`
+beside `cre_pre` (spelled unfolded, so the kernel tier does not require
+`TreeView`; it IS `fs_pname nm`, convertible, and `TreeMove.
+tree_acre_phases` takes it on the nose).  §7.6 priced it as "discharged at
+the two fire sites from the path's properness" and that reading was
+wrong in a way that makes it CHEAPER: the credential has nothing to do
+with the path.  create reaches `dirlink` only over a name its own
+`dirlookup` MISSED over the parent's whole record range, and a live
+directory's records 0 and 1 ARE the two dot names — which is
+`DirView.dir_dots_miss_not_dots`, a landed lemma both fire sites ALREADY
+apply (it is what the marker set owes at the same append).  So
+`ProofCreateAlloc` and `ProofCreateMkdir` each pay with a hypothesis
+already in scope, and the whole item is one premise plus framing across
+`caf_acre_fire`, the three movers and the four generic dischargers.
+WALL D IS CLOSED.
+
+**(C-i) THE ARMED LEDGER — THE STOP RULE FIRED.  THE LEDGER IS NOT
+MAINTAINABLE AT `ftop_body`'s ALTITUDE.**  The brief's stop rule was "if
+some region mover can insert a proper entry naming an armed inum other
+than create's parent leg, stop".  TWO do:
+
+  - **`InodeRegion.ireg_top_retag_gen` / `_armed_gen`** — the GENERIC
+    retag, which every fs write goes through.  Its new row `n'` is
+    arbitrary but for `inode_local i n'`, a RECORD-wellformedness fact
+    that says nothing about which inums the entries name.  So the generic
+    mover can replace a directory's row with one naming any inum at all,
+    and to carry the ledger it would need a new "adds no proper entry"
+    premise — propagated to its THIRTEEN caller files (`ProofIlock`,
+    `ProofFilewrite`, `ProofCreateShared/Mkdir/Fail`, `ProofSysLink`,
+    `EscrowInode`, `EscrowDeposit`, `FsAbs`, `FsAbsDefs`,
+    `FsAbsCreateFire`, `FsAbsLinkFire`, `InodeRegion` itself).
+  - **`FsAbsLinkFire.lf_ent_fire`** — sys_link's entry leg, and this one
+    is not a matter of propagating a premise: it inserts `nm ↦ t` at an
+    ARBITRARY `t`, and NOTHING at that altitude says `t` is not armed.
+
+The invariant is TRUE of the running system, and the reason is worth
+recording because it says exactly which altitude owns it: `sys_link`'s
+target came out of `namei`, which resolves by directory entries, so an
+armed inode — which nothing names — can never be link's target.  That
+argument is SELF-SUSTAINING (the ledger itself is what makes namei unable
+to find an armed inode) but it needs the inode to be unable to become
+armed between `namei` and `dirlink`, and the resource that gives that is
+the ICACHE REFERENCE (`iget`'s `ref > 0` keeps `ialloc` off the row) —
+xv6's `sys_link` does `iunlock(ip)` BEFORE `dirlink`, so at the fire the
+walk holds no fragment of `t`'s top element and no fraction argument is
+available either.  A ledger in `ftop_body` would therefore have to import
+the icache's reference discipline into the abstract-map invariant.  NOT A
+LANE: recorded as refuted.
+
+**(C-iii) THE ROOTED VIEW — A THIRD ROUTE, CHEAPER THAN (C-i) AND (C-ii),
+AND THIS LANE'S MAIN POSITIVE FINDING.**  (C-ii) as §7.6 priced it — an
+application-side ARMED SET in `tree_body` — works (and the encoding is
+TL-3W's parked-deed trick again: the arm mints an exclusive token, the
+slot is `⌜aview_no_edge_to av i⌝ ∨ tok`, the owner refutes the right arm
+while it holds the token, and create's parent-leg STEP WAND PARKS the
+token instead of updating anything, so no ghost update is needed inside
+an update-free wand).  But there is a route that needs NO ghost state at
+all, because the credential the parent leg is missing can be made a PURE
+fact about a FIXED tree.
+
+  **The conjunct**: `tree_body` grows
+  `⌜aview_rooted av⌝`, where
+  `aview_rooted av := ∀ d s i, fs_pname s → astep av d s = Some i →
+   nreach (tview av) ROOTINO d` — *every SOURCE of a proper edge is
+  reachable from the root*, i.e. **the live namespace has no orphan
+  directory holding a proper entry**.  It is TL-3's `⌜adir_at av ROOTINO⌝`
+  again, one notch stronger, and it is true of xv6 for two reasons the
+  design already carries: a directory is unlinked only when it is EMPTY
+  (`unl_pre`'s `dots_only` clause), and create's fresh directory holds
+  only its dots until its parent leg files it.
+  **THE SOURCE FORM, NOT THE TARGET FORM, AND THAT IS NOT A DETAIL.**  The
+  obvious reading — "every proper edge's TARGET is reachable" — serves the
+  consumer just as well but is NOT PRESERVED by unlink's entry leg: cut
+  `d.nm → tg` while a SECOND, UNREACHABLE directory still names `tg`, and
+  that surviving edge's target is now unreachable.  The source form has no
+  such hole, because an unreachable source is what it forbids outright, and
+  it still gives the consumer its conclusion in one extra hop
+  (`TreeView`'s `nreach` step lemma).
+
+  **The credential, and why it survives the view move that defeats WALL C**:
+  at the ARM the owner reads its claim and learns `i ∉ dom (tv_nodes t)`
+  — `av !! i = None` at that instant, and a subtree's nodes are rows of
+  the view.  `t` is the owner's OWN recorded tree, which does not move
+  between its own moves, so that is a PURE proposition about a FIXED
+  object.  It rides `Farm.(pf_recv) av i` — the arm's receipt, which the
+  application chooses — as a `⌜ ⌝`, and a pure fact needs no monotonicity
+  at all.  THAT is what WALL C says is impossible for
+  `aview_no_edge_to av i`, and the point is that it is a DIFFERENT
+  proposition: WALL C is about the whole view, `i ∉ dom (tv_nodes t)` is
+  about the owner's tree.
+
+  **The derivation, at the ROOT OWNER**: `root = ROOTINO`, so the claim
+  reads `subtree av ROOTINO = Some t`.  If some proper `d -s-> i` existed,
+  `aview_rooted` makes `i` reachable from ROOTINO, hence
+  `i ∈ dom (tv_nodes t)` — contradiction.  So
+  `aview_no_edge_to av i`, at the PARENT LEG'S OWN VIEW.  WALL C, closed,
+  for every owner of `/`.
+
+  **Preservation**, leg by leg, and each is one line off TL-1's `tview`
+  congruences (`tview_delta_*`, all twelve landed): the arm adds a LEAF (no
+  out-edges, and reachability is monotone under an added row); the dots
+  legs, write, truncate, link's target leg and unlink's target leg above
+  the last link leave `tview` alone outright, so ONE congruence lemma
+  covers all six; create's PARENT leg adds `d -nm-> i` and needs `d`
+  reachable, which the owner has (`d ∈ dom (tv_nodes t)` IS reachability,
+  `subtree_dom_reach`); unlink's ENTRY leg deletes `d.nm → tg` and needs
+  `tg` to have NO proper out-edge — which `unl_pre`'s `dots_only` clause
+  gives — and then no path to any SOURCE used the cut edge, since a path
+  through `tg` would have to leave `tg`; unlink's target leg at the last
+  link, and the child's unarm, remove a row nothing names and which is not
+  a source.  Two new premises, both already in the movers' hands.
+
+  **What it does NOT close**: mkdir's SECOND credential, "the armed inum
+  is nobody's root".  `own_wf_ent_leaf` pays it free at a NON-directory
+  child — so `mknod` and `open(O_CREATE)` are fully unblocked by (C-iii)
+  + (D) — but mkdir's child IS a directory of the view by the time the
+  parent leg fires, so a slot rooted there is not absurd from the claim
+  alone.  The fix is the SAME KIND of conjunct and the same price: "every
+  owner's root is reachable from ROOTINO", which with the credential makes
+  the unreachable armed inum nobody's root.  Call the pair (C-iii-a) and
+  (C-iii-b).
+
+  **It also closes §7.4's wall 2** (the child's UNARM leg, unpayable
+  because `delta_unarm i` is invisible only if nothing names `i`): that is
+  the very same credential at the very same instant.
+
+**(M) THE PATH-FIXED BUNDLES — mkdir LANDED, unlink PRICED.**
+`SpecSysMkdir.mkdir_au_at` is `mknod_au_at`'s twin: the parent-prefix walk
+under `ArgPath.arg_path_of` at argument 0, the four legs at the guarded
+cursor `SysMknodDefs.npar_cur M pv P`, the commits OUTSIDE the walk's wand
+(so the "argstr failed" fold still hands the bundle back on the nose), and
+`mkdir_au_pre` kept as the path-fixed reading at one `pl`.  The move
+between the two readings is `mkdir_cre_inst`, off a new
+`SpecCreate.cre_commits_mono` — the cursor ISO lifted over the whole
+four-leg bundle, `cre_commits_cur`'s two-way twin.  `mkdir_arms` and the
+contract carry `(us_M U, v)`; `ProofSysMkdir` names argstr's own `Hfgot`
+(it was discarding it) and builds `arg_path_of` exactly as `ProofSysMknod`
+does.  Cone: `SpecCreate`, `SpecSysMkdir`, `ProofSysMkdir`,
+`UexecExecInst` (row 20 and `sbundle_at_mkdir_elim`), `ProofSyscall`
+(`sysc_dep_mkdir` gains the argument word), `FsSyscalls`.
+**SO MKDIR CAN NOW CARRY A CURSOR**, which is the half of §7.6's "mkdir
+and unlink CANNOT CARRY A CURSOR AT ALL" that this lane lifts.
+
+**unlink, PRICED AND NOT TAKEN.**  Identical in shape and four times the
+proof cone (`ProofSysUnlink*` is ~11k lines over nine files).  The recipe,
+written down so the next lane does not rediscover it: `unlink_au_at` with
+the guarded walk and `uent_commit_at Γ appE (npar_cur M pv P)`;
+`unlink_au_pre` at one `pl` with the commit at
+`P (length (npar_elems pl))`; `unlink_uent_inst` off
+`SysUnlinkDefs.uent_commit_at_mono` + `npar_cur_in`/`_out`;
+`unlink_post_fail` / `unlink_arms` gain `(M, pv)`; `ProofSysUnlinkW1`
+names argstr's discarded `Hfgot` at line 559 and builds `arg_path_of`
+exactly as mkdir now does (it already uses `bview pk1 bp1` as its `pl`);
+W2/W3/W5D/W5F restate their `uent_commit_at … (fun _ => True)` at
+`P (length (npar_elems pl))` — `pl` is already a parameter of all four —
+and W5D/W5F pass the cursor they ALREADY HOLD into `uf_uent_fire` and take
+it back.  No new lemma anywhere.
+
+**(R) THE PHASE-2 CURSOR RETURN — BOTH OFFERED OPTIONS ARE REFUTED.**
+  - "Return `Pd d` at PHASE 2 instead" — **does not work**.  At phase 2
+    the owner holds the MOVED deed `tree_own r g root (top_ins d nm i … t)`,
+    and `Pd` names `t`; the move's own `t' ≠ t` (the very inequality
+    `tree_claim_resync` needs to refute the exact arm) is what makes the
+    cursor unreturnable there too.
+  - "Let phase 1 return it and have the parking step not need it" —
+    **does not work either**.  The step IS `tree_step_move_ent`, which
+    consumes the deed by construction: parking the WHOLE deed is what
+    makes the in-flight arm unfabricable and what lets a reader refute it
+    (§7.4).  A step wand that does not park is not a step.
+  - **THE RULING: a SPLIT CURSOR.**  The commits take `Pd` and return
+    `Pd'` (`acre_commit_at_gen Γ E cf Pd Pd' Farm Φ`, `uent_commit_at Γ E
+    Pd Pd' Φ`); every generic supplier instantiates `Pd' := Pd` and is a
+    one-line restatement, exactly as TL-3K's own threading was; the owner
+    takes `Pd :=` the deed-carrying terminal cursor and returns
+    `Pd' := fun _ => True`.  The syscall's ret-0 arm then reports `Pd'`.
+    Cone: TL-3K's, once more.
+  - **AND IT IS NOT ON THE CRITICAL PATH.**  At a parent prefix of LENGTH
+    ZERO — `mkdir("/d")`, `mknod("/dev")`, `open("/f", O_CREATE)` by the
+    owner of `/`, which is where the second application starts — the walk
+    reads NO claim law (`ep_hops_from` is the empty big-op, `ep_start` is
+    the start cursor alone), so the owner's cursor can be the PURE
+    `P k d := ⌜d = ROOTINO⌝ ∨ taint`, which is duplicable and returns
+    itself.  `UInitCons`'s `mknod("console")` is the landed precedent.
+    The split cursor is owed only from prefix length 1 up.
+
+**WHAT TL-4 / THE NEXT LANE INHERITS.**  After TL-3C the owner's create
+supplier is missing exactly ONE of `tree_acre_phases`'s premises —
+`aview_no_edge_to (abs_view I) i` — and (C-iii-a) is the cheapest route to
+it: one pure conjunct in `tree_body`, ~8 preservation lemmas in
+`TreeView`, the arm's pure credential on `Farm`'s receipt, and then
+`mknod` and `open(O_CREATE)` at an owner of `/` are payable with the
+landed phases verbatim.  mkdir wants (C-iii-b) beside it.  Unlink wants
+(M)-for-unlink above, and its TARGET leg wants (C-iii-a) too plus the
+rmdir-shaped wall TL-2 recorded.  No corollary and no extended test landed
+in TL-3C: `UkTreeWrite.wp_uk_tree_write_moves` is unchanged.

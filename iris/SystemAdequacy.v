@@ -277,6 +277,12 @@ Lemma in_res_triv_founded (Σ : gFunctors) (k : nat) :
   ⊢ @in_res_triv Σ k [] [] [].
 Proof. rewrite /in_res_triv. iEmpIntro. Qed.
 
+(* ...and the ONE claim's (redesign R2), which is what the founding asks
+   for now: the empty console history at the empty run. *)
+Lemma cons_res_triv_founded (Σ : gFunctors) (k : nat) :
+  ⊢ @cons_res_triv Σ k [] (LogEntryDefs.MkCH [] [] [] None).
+Proof. rewrite /cons_res_triv. iEmpIntro. Qed.
+
 (* ...and the ECHO WINDOW TOKEN's (lane CONS-IO milestone F), on the same
    mould: at the generic application the token is [emp], so the era's mint
    costs the trivial slot nothing.  The turn is discharged inline at [emp]
@@ -1824,9 +1830,9 @@ Proof.
             (fun γobs _ => obs_pred_at γobs)
             (obs_pred_at_alloc_cl (fun _ : unit => True%I))
             (fun γd γobs _ =>
-               obs_pred_at_step XV6_DISK_BYTES out_res_triv in_res_triv
+               obs_pred_at_step XV6_DISK_BYTES cons_res_triv
                  (fun _ => emp%I) win_res_triv
-                 (out_res_triv_founded Σ) (in_res_triv_founded Σ)
+                 (cons_res_triv_founded Σ)
                  (turn_triv_founded Σ) (win_res_triv_founded Σ) γd γobs)
             _ (fun g _ => phi g)
             ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
@@ -2537,9 +2543,9 @@ Proof.
             (fun γobs _ => obs_pred_at γobs)
             (obs_pred_at_alloc_cl (fun _ : unit => True%I))
             (fun γd γobs _ =>
-               obs_pred_at_step XV6_DISK_BYTES out_res_triv in_res_triv
+               obs_pred_at_step XV6_DISK_BYTES cons_res_triv
                  (fun _ => emp%I) win_res_triv
-                 (out_res_triv_founded xv6Σ) (in_res_triv_founded xv6Σ)
+                 (cons_res_triv_founded xv6Σ)
                  (turn_triv_founded xv6Σ) (win_res_triv_founded xv6Σ) γd γobs)
             _ (fun g h => obs_wf h g)
             ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;

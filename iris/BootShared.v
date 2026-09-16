@@ -1430,8 +1430,7 @@ Section BootAlloc.
          is their one consumer: [uart_ghosts_alloc] at [Uart0] founds the
          console port's invariant clause with them, and no caller sees
          them again. *)
-      out_res_at Uart0 (S gen_id) [] [] ∗
-      in_res_at Uart0 (S gen_id) [] [] [] ∗
+      chist_at Uart0 (S gen_id) [] (LogEntryDefs.MkCH [] [] [] None) ∗
       (* ...AND THE ERA'S ECHO WINDOW TOKEN AND ITS TURN (lane CONS-IO
          milestone F), the power-on step's other two yields: the token goes
          into the console port's PLIC payload at main's deposit, the turn
@@ -1446,7 +1445,7 @@ Section BootAlloc.
        wrappers ([reg_pointsto]'s notation, the strans/sie/spp/spie splits)
        are sealed, so [iFrame] must unify them one at a time. *)
     iIntros "H". rewrite /power_boot_res.
-    iDestruct "H" as "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & H22 & Hores & Hires & Htn & Hwin & H23 & H24 & H25 & H26)".
+    iDestruct "H" as "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & H22 & Hores & Htn & Hwin & H23 & H24 & H25 & H26)".
     rewrite /boot_reg_res /boot_raw_bytes /kmap_auth /kpt_unset /kptb_unset
             /hart_strans /hart_sie /hart_spp /hart_spie /hart_locks /hart_full
             /pstate_full /resv_frag /resv_fragb /uart_frag /plic_frag /virtio_frag
@@ -1485,7 +1484,6 @@ Section BootAlloc.
     iSplitL "H21"; [iExact "H21"|].
     iSplitL "H22"; [iExact "H22"|].
     iSplitL "Hores"; [iExact "Hores"|].
-    iSplitL "Hires"; [iExact "Hires"|].
     iSplitL "Htn"; [iExact "Htn"|].
     iSplitL "Hwin"; [iExact "Hwin"|].
     iSplitL "H23 H24 H25"; [| iExact "H26"].
@@ -1880,7 +1878,7 @@ Section BootAlloc.
     iDestruct (power_boot_res_unpack Rb Tn g ndisk with "H") as
       "(Hregs & Hbytes & Hkauth & Hkfrags & Hkpt & Hkptb & Hstrans & Hsie & Hspp & Hspie &
         Hlkauth & Hpark & Hpst & Hresv & Huf & Hpf & Hvf & Hdimg & Hmir & #Hswlb &
-        HRb & Hled & Hores & Hires & Htn & Hwin & #Hcinv & #Hcert & %Hera)".
+        HRb & Hled & Hores & Htn & Hwin & #Hcinv & #Hcert & %Hera)".
     (* DROPPED HERE: the lent resource this fupd carries is the CALLER's
        copy of the epoch's wrapper, already spent -- the caller split it
        off, unpacked it and handed the contents down as [Hdursnap].  At the
@@ -2164,9 +2162,9 @@ Section BootAlloc.
                reset UART's transmit pair is empty, so the POWER-ON step's
                yield (lane CONS-IO milestone E) founds the port's two
                claims exactly here. *)
-            ltac:(rewrite Hu0; reflexivity) with "Hores Hires") as (γd)
+            ltac:(rewrite Hu0; reflexivity) with "Hores") as (γd)
       "(Hacc & Hout & Htxa & Hdla & Htx & Hsent & Hdlab & Hcol & Hincl &
-        Htok & Hhi1 & Hhi2 & Hlgh & Hdvh & Hlmh & Harm1 & Harm2 & Hpre)".
+        Htok & Hhi1 & Hhi2 & Hlgh & Hdvh & Hlmh & Harm2 & Hpre)".
     (* ---- THE CONSOLE RING'S GHOSTS, beside the UART's and not before
        them: the ring's half of the receive side's HIGH-WATER MARK is one
        of the pair [uart_ghosts_alloc] just made, and the ring's names
@@ -2215,16 +2213,16 @@ Section BootAlloc.
        main's SECOND deposit, exactly as the console's do. ---- *)
     (* the KERNEL's port claims nothing, so its founding is free:
        [WpUart.out_res_at Uart1] is [emp] (lane OUT-FUPD) *)
-    iAssert (out_res_at Uart1 (Datatypes.S gen_id) [] []) as "Hores1"; [done|].
-    iAssert (in_res_at Uart1 (Datatypes.S gen_id) [] [] []) as "Hires1"; [done|].
+    iAssert (chist_at Uart1 (Datatypes.S gen_id) []
+               (LogEntryDefs.MkCH [] [] [] None)) as "Hores1"; [done|].
     iMod (uart_ghosts_alloc Uart1 (g.(gdev).(duart) Uart1)
             ltac:(rewrite Hu0; reflexivity)
             ltac:(rewrite Hu0; vm_compute; reflexivity)
             ltac:(rewrite Hu0; reflexivity)
             ltac:(rewrite Hu0; reflexivity)
-            with "Hores1 Hires1") as (γd1)
+            with "Hores1") as (γd1)
       "(Hacc1 & Hout1 & Htxa1 & Hdla1 & Htx1 & Hsent1 & Hdlab1 & Hcol1 &
-        Hincl1 & Htok1 & Hhi11 & _ & Hlgh1 & _ & _ & Harm11 & Harm12 & Hpre1)".
+        Hincl1 & Htok1 & Hhi11 & _ & Hlgh1 & _ & _ & Harm12 & Hpre1)".
     iDestruct (uart_out_auth_lb γd1 (g.(gdev).(duart) Uart1) with "Hout1")
       as "[Hout1 #Hlb1]".
     assert (Hacceq1 : uart_acc (g.(gdev).(duart) Uart1)
@@ -2232,14 +2230,13 @@ Section BootAlloc.
       by (rewrite Hu0; reflexivity).
     iEval (rewrite -Hacceq1) in "Hlb1".
     iMod (uart_inv_alloc ⊤ Uart1 γd1
-            with "[Huf1 Hacc1 Hout1 Htxa1 Hdla1 Hcol1 Hincl1 Harm11]") as "#Hdev1".
+            with "[Huf1 Hacc1 Hout1 Htxa1 Hdla1 Hcol1 Hincl1]") as "#Hdev1".
     { iExists (g.(gdev).(duart) Uart1).
       iSplitL "Huf1"; [iExact "Huf1"|].
-      iSplitR "Hcol1 Hincl1 Harm11";
-        [| iFrame "Hcol1 Hincl1"; iExists None; iExact "Harm11"].
+      iSplitR "Hcol1 Hincl1"; [| iFrame "Hcol1 Hincl1"].
       rewrite /uart_ghosts. iFrame "Hacc1 Hout1 Htxa1 Hdla1". }
     iMod (dev_inv_alloc ⊤ γd γd1 γv
-            with "[Huf Hpf Hvf Hacc Hout Htxa Hdla Hcol Hincl Harm1 Hpre Hproto] Hpre1 Hpbody Htok")
+            with "[Huf Hpf Hvf Hacc Hout Htxa Hdla Hcol Hincl Hpre Hproto] Hpre1 Hpbody Htok")
       as "(#Hdev & #Hplic & Htok)".
     { rewrite /dev_inv_body.
       iExists (g.(gdev).(duart) Uart0), (g.(gdev).(dplic)), (g.(gdev).(dvirtio)).
@@ -2249,7 +2246,6 @@ Section BootAlloc.
       iSplitL "Hvf"; [iExact "Hvf" |].
       iSplitL "Hcol"; [iExact "Hcol" |].
       iSplitL "Hincl"; [iExact "Hincl" |].
-      iSplitL "Harm1"; [iExists None; iExact "Harm1" |].
       iSplitL "Hpre"; [iExact "Hpre" |].
       iSplitL "Hproto"; [iExact "Hproto" |].
       iSplit; [iPureIntro; rewrite Hp0; exact plic_ok_plic0

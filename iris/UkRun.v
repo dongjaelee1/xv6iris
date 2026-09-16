@@ -358,10 +358,12 @@ Section UkRun.
      row is minted from nothing ([UexecExecInst.xv6_sbundle_exit_nopipe]);
      a table the caller cannot read that way costs an explicit deposit, as
      any other flagged number does. *)
-  Definition fdv_nopipe (fdv : list fdstate) : Prop :=
-    forall st : fdstate, st ∈ fdv ->
-      forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp).
-
+  (* THE TABLE PREDICATE IS [FdSlots.fdv_nopipe] and not a local copy: it
+     is the very proposition [UsysMemOk.usys_fd_ok]'s open row carries and
+     [usys_fd_ok_nopipe] preserves, so a leaf re-establishes it at the
+     table its round returned with one lemma and no translation.
+     [FdSlots.fdv_nopipe_elem] is its reading in the shape
+     [UexecExecInst.xv6_sbundle_exit_nopipe] wants. *)
   Definition ukey_table_nopipe (W : uvis) : Prop := fdv_nopipe (uvis_fd W).
 
   Definition udep : iProp Σ :=
@@ -374,7 +376,16 @@ Section UkRun.
          ⊢ □ Dsup ==∗ sbundle_pay uslot 21 Q W ⌝ ∗
      ⌜ forall (W : uvis) (Q : Z -> iProp Σ),
          ukey_table_nopipe W ->
-         ⊢ □ Dsup ==∗ sbundle_pay uslot USYS_exit Q W ⌝)%I.
+         ⊢ □ Dsup ==∗ sbundle_pay uslot USYS_exit Q W ⌝ ∗
+     (* ...AND EXIT'S ROW AT ANY TABLE AT ALL, OUT OF THE TAINT
+        (design/pipe.md, "The exit path").  A pipe row's close payment is
+        [PipeQueue.pipe_cpay], which is a close link OR the taint, so a
+        process that holds the taint owes nothing whatever its table holds
+        ([SpecFileclose.fileclose_cpays_taint]).  This is the arm a program
+        that CALLS pipe(2) exits by: it gives up [fdv_nopipe] at the pipe
+        leaf and carries the credential instead. *)
+     ⌜ forall (W : uvis) (Q : Z -> iProp Σ),
+         ⊢ □ Dsup -∗ □ riscv_kill_cred ==∗ sbundle_pay uslot USYS_exit Q W ⌝)%I.
 
   Global Instance udep_persistent : Persistent udep.
   Proof. rewrite /udep. apply _. Qed.
@@ -399,8 +410,16 @@ Section UkRun.
   Lemma udep_exit_dep (W : uvis) (Q : Z -> iProp Σ) :
     ukey_table_nopipe W -> udep -∗ |==> sbundle_pay uslot USYS_exit Q W.
   Proof.
-    intros Hnp. iIntros "[#Hs [_ [_ %Hlaw]]]".
+    intros Hnp. iIntros "[#Hs [_ [_ [%Hlaw _]]]]".
     iApply (Hlaw W Q Hnp). iExact "Hs".
+  Qed.
+
+  (* ...and the same row out of the taint, at ANY table *)
+  Lemma udep_exit_taint (W : uvis) (Q : Z -> iProp Σ) :
+    □ riscv_kill_cred -∗ udep -∗ |==> sbundle_pay uslot USYS_exit Q W.
+  Proof.
+    iIntros "#Ht [#Hs [_ [_ [_ %Hlaw]]]]".
+    iApply (Hlaw W Q with "Hs Ht").
   Qed.
 
   (* [avail] is the FREE STACK, in words, below the current sp -- the
@@ -620,70 +639,102 @@ Section UkRun.
   Qed.
 
   (* ------------------------------------------------------------------- *)
-  (* THE EXIT LEAF'S DEPOSIT, in the shapes a caller can have it            *)
-  (* (design/pipe.md, "The exit path").                                     *)
-  (*                                                                        *)
-  (* It is [udepw] at 2 with ONE extra disjunct: a caller whose own          *)
-  (* descriptor resource proves the KEY's table holds no pipe row owes       *)
-  (* nothing at all, and the leaf mints the row off the [udep] its own run   *)
-  (* carries.  No verified program can take that route TODAY --              *)
-  (* [UsysMemOk.usys_fd_ok]'s open row leaves a descriptor's type            *)
-  (* existential and the rows above [NSTD] are untracked -- so the five      *)
-  (* programs go the flagged way, at [udepw_law USYS_exit], which            *)
-  (* [UexecExecMint.udepw_law_of_sup_exit] pays out of the taint.            *)
+  (* EXIT'S ROW IS THE RUN'S OWN, AND [urun] IS WHERE IT LIVES               *)
+  (* (design/pipe.md, "The exit path").                                      *)
+  (*                                                                         *)
+  (* kexit closes every descriptor the dying process holds, so 2's bundle    *)
+  (* row is [SpecFileclose.fileclose_cpays] of the KEY's table.  At a table   *)
+  (* that holds no pipe row every payment is [emp]; at one that does, each    *)
+  (* pipe row's payment is a close link OR the taint.  Neither fact is        *)
+  (* about the exit instruction: both are about the TABLE, which is bound     *)
+  (* by [urun]'s existential and changes only at a trap.  So this rides in    *)
+  (* the run, where [UsysMemOk.usys_fd_ok_nopipe] re-establishes it at        *)
+  (* every number but pipe(2), and an exit leaf takes no deposit at all --    *)
+  (* which is why no verified program names [USYS_exit] in its deposit list.  *)
+  (*                                                                         *)
+  (* PERSISTENT, so a leaf that destructs its run keeps a copy for free.      *)
   (* ------------------------------------------------------------------- *)
-  Definition udepw_ex (N : uk_names Σ) (m : regfile) (pc : mword 64) : iProp Σ :=
-    (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
-       (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32),
-       my_pay gn (ukn_pay N) -∗
-       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
-       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
-       (⌜fdv_nopipe fdv⌝
-        ∨ ⌜psok USYS_exit /\ USYS_exit <> USYS_exec⌝
-        ∨ sbundle_pay uslot USYS_exit (ukn_pay N)
-            (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)))%I.
+  Definition urun_nopipe (fdv : list fdstate) : iProp Σ :=
+    (⌜fdv_nopipe fdv⌝ ∨ □ riscv_kill_cred)%I.
 
-  (* the forgetful direction: any deposit at 2 is one of these *)
-  Lemma udepw_ex_of_udepw (N : uk_names Σ) (m : regfile) (pc : mword 64) :
-    udepw N m pc USYS_exit -∗ udepw_ex N m pc.
+  Global Instance urun_nopipe_persistent (fdv : list fdstate) :
+    Persistent (urun_nopipe fdv).
+  Proof. rewrite /urun_nopipe. apply _. Qed.
+
+  Lemma urun_nopipe_intro (fdv : list fdstate) :
+    fdv_nopipe fdv -> ⊢ urun_nopipe fdv.
+  Proof. intros H. rewrite /urun_nopipe. iLeft. by iPureIntro. Qed.
+
+  Lemma urun_nopipe_closed (n : nat) : ⊢ urun_nopipe (replicate n FdClosed).
+  Proof. apply urun_nopipe_intro, fdv_nopipe_closed. Qed.
+
+  Lemma urun_nopipe_taint (fdv : list fdstate) :
+    □ riscv_kill_cred -∗ urun_nopipe fdv.
+  Proof. iIntros "#H". rewrite /urun_nopipe. by iRight. Qed.
+
+  (* THE ROUND'S EFFECT ON IT, at every number but pipe(2): the table the
+     round returned holds no pipe row either.  This is the twin of
+     [ucwd_auth_quiet] and [UserFd.ufd_auth_quiet] -- what a leaf runs to
+     re-close its run -- except that here the table really does move and
+     [UsysMemOk.usys_fd_ok_nopipe] is what carries the fact across. *)
+  Lemma urun_nopipe_step (n : Z) (tf : list (mword 64)) (r : mword 64)
+      (fdv fdv' : list fdstate) :
+    n <> USYS_pipe -> usys_fd_ok n tf r fdv fdv' ->
+    urun_nopipe fdv -∗ urun_nopipe fdv'.
   Proof.
-    rewrite /udepw /udepw_ex. iIntros "H" (M pm sz fdv cw gn cs pidv) "Hp Hh Hf".
-    iDestruct ("H" $! M pm sz fdv cw gn cs pidv with "Hp Hh Hf")
-      as "(Hh & Hf & [%Hok | Hb])"; iFrame "Hh Hf";
-      [ iRight; iLeft; by iPureIntro | iRight; iRight; iExact "Hb" ].
+    intros Hne Hok. rewrite /urun_nopipe.
+    iIntros "[%Hnp | #Ht]"; [ iLeft | by iRight ].
+    iPureIntro. exact (usys_fd_ok_nopipe n tf r fdv fdv' Hne Hok Hnp).
   Qed.
 
-  (* ...and the free one: the caller's own descriptor resource reads the
-     key's table and finds no pipe in it *)
-  Lemma udepw_ex_of_nopipe (N : uk_names Σ) (m : regfile) (pc : mword 64)
-      (D : iProp Σ) :
-    (forall fdv : list fdstate,
-       ufd_auth (ukn_fd N) fdv -∗ D -∗ ⌜fdv_nopipe fdv⌝) ->
-    D -∗ udepw_ex N m pc.
+  (* ...and the quiet reading, for the leaves whose round did not touch the
+     table at all *)
+  Lemma urun_nopipe_quiet (fdv fdv' : list fdstate) :
+    fdv' = fdv -> urun_nopipe fdv -∗ urun_nopipe fdv'.
+  Proof. intros ->. iIntros "$". Qed.
+
+  (* ...and the two row-shaped readings, for the leaves that hold the row
+     rather than [usys_fd_ok] itself.  OPEN installs an inode or a device
+     ([UsysMemOk.usys_fd_ok]'s open row now says so), CLOSE installs
+     [FdClosed], and DUP copies a row the table already had. *)
+  Lemma urun_nopipe_insert (fdv : list fdstate) (k : nat) (st : fdstate) :
+    fdst_nopipe st -> urun_nopipe fdv -∗ urun_nopipe (<[k := st]> fdv).
   Proof.
-    intros Hag. rewrite /udepw_ex. iIntros "HD" (M pm sz fdv cw gn cs pidv) "_ Hh Hf".
-    iDestruct (Hag fdv with "Hf HD") as %Hnp. iFrame "Hh Hf".
-    iLeft. by iPureIntro.
+    intros Hst. rewrite /urun_nopipe. iIntros "[%Hnp | #Ht]";
+      [ iLeft; iPureIntro; exact (fdv_nopipe_insert fdv k st Hnp Hst) | by iRight ].
   Qed.
 
-  (* ...AND THE MINT, at the key the exit leaf has destructed its run into *)
-  Lemma udepw_ex_mint (N : uk_names Σ) (m : regfile) (pc : mword 64)
+  Lemma urun_nopipe_dup (fdv : list fdstate) (k j : nat) (st : fdstate) :
+    fdv !! k = Some st -> urun_nopipe fdv -∗ urun_nopipe (<[j := st]> fdv).
+  Proof.
+    intros Hk. rewrite /urun_nopipe. iIntros "[%Hnp | #Ht]"; [ iLeft | by iRight ].
+    iPureIntro. apply fdv_nopipe_insert;
+      [ exact Hnp | exact (fdv_nopipe_lookup fdv k st Hnp Hk) ].
+  Qed.
+
+  Lemma urun_nopipe_copy (fdv : list fdstate) (k j : nat) :
+    urun_nopipe fdv -∗ urun_nopipe (<[j := fdv !!! k]> fdv).
+  Proof.
+    rewrite /urun_nopipe. iIntros "[%Hnp | #Ht]"; [ iLeft | by iRight ].
+    iPureIntro. apply fdv_nopipe_insert;
+      [ exact Hnp | exact (fdv_nopipe_lookup_total fdv k Hnp) ].
+  Qed.
+
+  (* ...AND WHAT IT BUYS: exit's deposit at the key the leaf has destructed
+     its run into, off the [udep] the same run carries and nothing else. *)
+  Lemma udep_exit_run (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
       (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname)
       (pidv : mword 32) :
-    udep -∗ my_pay gn (ukn_pay N) -∗ udepw_ex N m pc -∗
-    uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv ==∗
-    uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
+    udep -∗ urun_nopipe fdv ==∗
     sbundle_pay uslot USYS_exit (ukn_pay N)
       (uvis_of_run m pc M pm sz fdv cw gn cs pidv false).
   Proof.
-    iIntros "#Hdep #Hmp Hsb Hheap Hufd".
-    iDestruct ("Hsb" $! M pm sz fdv cw gn cs pidv with "Hmp Hheap Hufd")
-      as "(Hheap & Hufd & [%Hnp | [%Hok | Hb]])"; iFrame "Hheap Hufd".
+    iIntros "#Hdep [%Hnp | #Ht]".
     - iApply (udep_exit_dep (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
                 (ukn_pay N) Hnp with "Hdep").
-    - iApply (udep_dep USYS_exit _ (ukn_pay N) (proj1 Hok) (proj2 Hok) with "Hdep").
-    - by iModIntro.
+    - iApply (udep_exit_taint (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+                (ukn_pay N) with "Ht Hdep").
   Qed.
 
   (* THE EXEC DEPOSIT'S CARRIER, and why it is key-free too.  exec is the
@@ -1153,6 +1204,15 @@ Section UkRun.
           as a premise of the exit leaf instead
           ([UkRunSys.wp_uk_ecall_exit]). *)
        udep ∗
+       (* ...AND WHETHER THE TABLE HOLDS A PIPE ROW (design/pipe.md, "The
+          exit path").  PERSISTENT and PURE on its left arm, and it is here
+          because [fdv] is bound by this existential: exit's bundle row is
+          the close payments of the KEY's table, so the fact that decides
+          it is a fact about the run, re-established at every trap out of
+          [UsysMemOk.usys_fd_ok_nopipe] ([urun_nopipe_step]).  With it
+          here, [UkRunSys.wp_uk_ecall_exit] and the fault leaves' owed side
+          take no deposit at all. *)
+       urun_nopipe fdv ∗
        uvb (CID := h) (XI := xi) C pt Rfd Rut sz pm fdv cw gn cs pidv false M m pc)%I.
 
   (* THE ROUND'S EFFECT ON THE CWD, AT EVERY NUMBER BUT CHDIR.  A leaf
@@ -1228,15 +1288,19 @@ Section UkRun.
     (* the deposit supplier and its law, back at the same key -- persistent,
        so a leaf that destructed [urun] hands the very copy it read *)
     udep -∗
+    (* ...and whether the table holds a pipe row, at the same [fdv] -- the
+       run's own reading (design/pipe.md, "The exit path").  PERSISTENT
+       like the two above it, so a leaf hands back the copy it read. *)
+    urun_nopipe fdv -∗
     (∀ h : CpuId, urun N h m pc avail -∗ WP (Loop : expr riscv_lang)) -∗
     ukcq (ukn_pay N) pm M sz fdv cw gn cs pidv m pc.
   Proof.
-    iIntros "Hheap Hstk Hufd Hcwd Hch #Hmy #Hdep Hcont".
+    iIntros "Hheap Hstk Hufd Hcwd Hch #Hmy #Hdep #Hnpx Hcont".
     rewrite /ukcq. iFrame "Hmy".
     rewrite /ukc. iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzf Hb".
     iApply ("Hcont" $! h).
     iExists xi, C, pt, Rfd, Rut, sz, M, pm, fdv, cw, gn, cs, pidv.
-    iFrame "Hheap Hstk Hufd Hcwd Hch Hmy Hdep Hb". iPureIntro.
+    iFrame "Hheap Hstk Hufd Hcwd Hch Hmy Hdep Hnpx Hb". iPureIntro.
     split_and!; [ exact Hlo | exact Hpm | exact (Hlzf eq_refl) | exact HRut ].
   Qed.
 
@@ -1270,12 +1334,13 @@ Section UkRun.
     urun_ids N cs pidv -∗
     my_pay gn (ukn_pay N) -∗
     udep -∗
+    urun_nopipe fdv -∗
     (∀ h : CpuId, urun N h (<[Regidx rd := v]> m) pc' avail -∗
                   WP (Loop : expr riscv_lang)) -∗
     ukcq (ukn_pay N) pm M sz fdv cw gn cs pidv (<[Regidx rd := v]> m) pc'.
   Proof.
-    intros Hns. iIntros "Hheap Hstk Hufd Hcwd Hch #Hmy #Hdep Hcont".
-    iApply (urun_close with "Hheap [Hstk] Hufd Hcwd Hch Hmy Hdep Hcont").
+    intros Hns. iIntros "Hheap Hstk Hufd Hcwd Hch #Hmy #Hdep #Hnpx Hcont".
+    iApply (urun_close with "Hheap [Hstk] Hufd Hcwd Hch Hmy Hdep Hnpx Hcont").
     rewrite (unot_sp_upd rd v m Hns). iExact "Hstk".
   Qed.
 
@@ -1315,7 +1380,7 @@ Section UkRun.
   Proof.
     intros Hal. iIntros "#Hgen HT Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
-      "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+      "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     iDestruct ("Hgen" $! (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
                  with "HT []") as "Hslot".
@@ -1689,6 +1754,17 @@ Section UkRun.
        kernel is what hands it over -- fork through the child slot's
        premise, exec through [SpecKexec.exec_slot_pre]'s wands, and
        userinit at the trivial payload. *)
+    (* ...AND WHETHER THE PROCESS'S TABLE HOLDS A PIPE ROW (design/pipe.md,
+       "The exit path").  The run carries this between traps
+       ([urun_nopipe]) and exit's bundle row is minted off it, so an ENTRY
+       is where it comes in.  It is a fact about the key the kernel handed
+       over and it travels the way every other such fact does:
+       [SpecKexec.kexec_image_ok_fd] says an exec'd image's table IS the
+       exec'ing process's, so a chain of pipe-free programs stays pipe-free
+       and the boot process's table is [FdSlots.fdt0], all closed.  A
+       program that means to call pipe(2) comes in on the right arm
+       instead ([urun_nopipe_taint]). *)
+    urun_nopipe (uvis_fd W) -∗
     my_pay (uvis_gen W) Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
@@ -1732,7 +1808,7 @@ Section UkRun.
     -∗ uslot W.
   Proof.
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
-    iIntros "#Hdep #Hpay Hprog".
+    iIntros "#Hdep #Hnpx #Hpay Hprog".
     rewrite uslot_ukc /ukc Hlzf.
     iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
     set (sz := uvis_sz W).
@@ -1815,7 +1891,7 @@ Section UkRun.
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
     iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
-    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
+    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep Hnpx".
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].
@@ -1864,6 +1940,17 @@ Section UkRun.
        kernel is what hands it over -- fork through the child slot's
        premise, exec through [SpecKexec.exec_slot_pre]'s wands, and
        userinit at the trivial payload. *)
+    (* ...AND WHETHER THE PROCESS'S TABLE HOLDS A PIPE ROW (design/pipe.md,
+       "The exit path").  The run carries this between traps
+       ([urun_nopipe]) and exit's bundle row is minted off it, so an ENTRY
+       is where it comes in.  It is a fact about the key the kernel handed
+       over and it travels the way every other such fact does:
+       [SpecKexec.kexec_image_ok_fd] says an exec'd image's table IS the
+       exec'ing process's, so a chain of pipe-free programs stays pipe-free
+       and the boot process's table is [FdSlots.fdt0], all closed.  A
+       program that means to call pipe(2) comes in on the right arm
+       instead ([urun_nopipe_taint]). *)
+    urun_nopipe (uvis_fd W) -∗
     my_pay (uvis_gen W) Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
@@ -1904,7 +1991,7 @@ Section UkRun.
     -∗ uslot W.
   Proof.
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
-    iIntros "#Hdep #Hpay Hprog". rewrite uslot_ukc /ukc Hlzf.
+    iIntros "#Hdep #Hnpx #Hpay Hprog". rewrite uslot_ukc /ukc Hlzf.
     iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
     set (sz := uvis_sz W).
     assert (Hwf : proc_pt_wf pt)
@@ -1962,7 +2049,7 @@ Section UkRun.
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
     iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
-    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
+    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep Hnpx".
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].
@@ -2019,6 +2106,17 @@ Section UkRun.
        kernel is what hands it over -- fork through the child slot's
        premise, exec through [SpecKexec.exec_slot_pre]'s wands, and
        userinit at the trivial payload. *)
+    (* ...AND WHETHER THE PROCESS'S TABLE HOLDS A PIPE ROW (design/pipe.md,
+       "The exit path").  The run carries this between traps
+       ([urun_nopipe]) and exit's bundle row is minted off it, so an ENTRY
+       is where it comes in.  It is a fact about the key the kernel handed
+       over and it travels the way every other such fact does:
+       [SpecKexec.kexec_image_ok_fd] says an exec'd image's table IS the
+       exec'ing process's, so a chain of pipe-free programs stays pipe-free
+       and the boot process's table is [FdSlots.fdt0], all closed.  A
+       program that means to call pipe(2) comes in on the right arm
+       instead ([urun_nopipe_taint]). *)
+    urun_nopipe (uvis_fd W) -∗
     my_pay (uvis_gen W) Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
@@ -2064,7 +2162,7 @@ Section UkRun.
     -∗ uslot W.
   Proof.
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
-    iIntros "#Hdep #Hpay Hprog". rewrite uslot_ukc /ukc Hlzf.
+    iIntros "#Hdep #Hnpx #Hpay Hprog". rewrite uslot_ukc /ukc Hlzf.
     iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
     set (sz := uvis_sz W).
     assert (Hwf : proc_pt_wf pt)
@@ -2134,7 +2232,7 @@ Section UkRun.
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
     iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
-    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
+    iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep Hnpx".
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].

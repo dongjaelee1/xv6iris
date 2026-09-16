@@ -557,7 +557,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi Hrun Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -643,7 +643,7 @@ Section UkRunSys.
        [UexecRet.ukcq]'s own wand and the run keeps the copy *)
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r with "Hrun").
   Qed.
@@ -694,7 +694,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hcwd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* the key's cwd IS the one the caller's half is at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     iMod (udepw_mint N m pc _ M pm _ fdv c gn cs pidv
@@ -770,7 +770,7 @@ Section UkRunSys.
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r cw' with "[%] Hcwd Hrun").
     exact (usys_cwd_ok_chdir_fwd r c cw' Hcwrow).
@@ -856,7 +856,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -934,19 +934,23 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _ & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot -- which is the
          promise [sys_open_post] makes and the row carries, and which the
          caller's ledger turns into a NUMBER. *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
               ltac:(discriminate) with "Hufd Hstd") as "[Hufd Hh]".
       iModIntro.
+      (* ...AND THE TABLE STILL HOLDS NO PIPE (design/pipe.md, "The exit
+         path"): open installs an inode or a device and the row says so. *)
+      iDestruct (urun_nopipe_insert fdv fd (FdOpen rd wr t) Hnpo
+                   with "Hnpx") as "#Hnpo".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd := FdOpen rd wr t]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpo").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[Hh] Hrun").
       iLeft. iExists fd, rd, wr, t. iFrame "Hh". iPureIntro.
@@ -959,7 +963,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[Hstd] Hrun").
       iRight. iFrame "Hstd". iPureIntro. exact Hrm.
@@ -1016,7 +1020,7 @@ Section UkRunSys.
   Proof.
     intros Hn Harg Hstne Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hh0 Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1115,12 +1119,15 @@ Section UkRunSys.
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd1 st Hcl Hstne with "Hufd Hstd")
         as "[Hufd Hh1]".
       iModIntro.
+      (* ...and dup copies a row the table already had, so it holds no
+         pipe either (design/pipe.md, "The exit path") *)
+      iDestruct (urun_nopipe_dup fdv fd0 fd1 st Hsrc with "Hnpx") as "#Hnpo".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd1 := st]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpo").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[Hh1 Hh0] Hrun").
       iLeft. iExists fd1. iFrame "Hh1 Hh0". iPureIntro.
@@ -1146,7 +1153,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[Hstd Hh0] Hrun").
       iRight. iFrame "Hstd Hh0". iPureIntro. split; [ exact Hrm | exact Hnone ].
@@ -1180,7 +1187,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1268,20 +1275,23 @@ Section UkRunSys.
             as "[$ $]". by iModIntro. }
       iDestruct "Hstd" as (l') "Hstd".
       iModIntro.
+      (* ...and dup copies a row the table already had *)
+      iDestruct (urun_nopipe_copy fdv (Z.to_nat (usys_argfd (tf_of m pc))) fd1
+                   with "Hnpx") as "#Hnpo".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd1 := fdv !!! Z.to_nat (usys_argfd (tf_of m pc))]> fdv) cw cw' gn gn cs cs pidv false false
                  r Hx0 Hal4).
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpo").
       iIntros (h') "Hrun". iApply ("Hcont" $! h' r l' with "Hstd Hrun").
     - iModIntro.
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv fdv cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
       iIntros (h') "Hrun". iApply ("Hcont" $! h' r l with "Hstd Hrun").
   Qed.
 
@@ -1342,7 +1352,7 @@ Section UkRunSys.
   Proof.
     intros Hn Harg Hlt Hrow Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* THE LEDGER READS THE VIEW, which is the whole argument: the source
        slot is CLOSED in the table, so dup's success arm copies [FdClosed]
        into a slot the scan already found closed and the list does not
@@ -1415,7 +1425,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[] Hstd Hrun"). by iPureIntro.
   Qed.
@@ -1513,7 +1523,7 @@ Section UkRunSys.
   Proof.
     intros Hn Harg Hal4.
     iIntros "#Hi Hrun Hsb Hh Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iDestruct (ufd_agree with "Hufd Hh") as %Hi.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
@@ -1598,10 +1608,13 @@ Section UkRunSys.
     iModIntro.
     rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                (<[fd := FdClosed]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
+    (* ...and close installs [FdClosed], which is not a pipe row *)
+    iDestruct (urun_nopipe_insert fdv fd FdClosed fdst_nopipe_closed
+                 with "Hnpx") as "#Hnpo".
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpo").
     iIntros (h') "Hrun". iApply ("Hcont" $! h' r with "[%] Hrun"). exact Hr0.
   Qed.
 
@@ -1629,7 +1642,7 @@ Section UkRunSys.
   Proof.
     intros Hn Harg Hs Hkl Hne Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iDestruct (ustd_agree with "Hufd Hstd") as %Hst.
     assert (Hi : fdv !! fd = Some st).
@@ -1709,10 +1722,13 @@ Section UkRunSys.
     iModIntro.
     rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                (<[fd := FdClosed]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
+    (* ...and close installs [FdClosed], which is not a pipe row *)
+    iDestruct (urun_nopipe_insert fdv fd FdClosed fdst_nopipe_closed
+                 with "Hnpx") as "#Hnpo".
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpo").
     iIntros (h') "Hrun". iApply ("Hcont" $! h' r with "[%] Hstd Hrun"). exact Hr0.
   Qed.
 
@@ -1756,7 +1772,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1836,7 +1852,7 @@ Section UkRunSys.
                (mword_of_int (-1) : mword 64) Hx0 Hal4).
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' with "Hrun").
   Qed.
@@ -1896,7 +1912,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* the whole point of the leaf: the key's cwd IS the one the caller's
        bundle is stated at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
@@ -1977,7 +1993,7 @@ Section UkRunSys.
                (mword_of_int (-1) : mword 64) Hx0 Hal4).
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' with "Hcwd Hpayret Hrun").
   Qed.
@@ -2119,7 +2135,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hz Hal4.
     iIntros "#Hi Hrun Hsb Hch Hrd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* THE READER IS SPENT HERE, where the run is open: the pid authority
        is LENT out of the identity conjunct and put straight back, so
        nothing else in the proof sees the difference. *)
@@ -2226,7 +2242,7 @@ Section UkRunSys.
     rewrite (uslot_bump_run m pc M M pm pm sz sz fdv fdv cw cw' gn gn cs cs' pidv false false r Hx0 Hal4).
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
     iIntros (h') "Hrun".
     (* the window rides with the answer now (lane RD-7); a caller that
        passed a NULL status pointer owns no buffer to read it out of, so
@@ -2457,7 +2473,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hdst Hnz Hk4 Hal4.
     iIntros "#Hi Hrun Hsb Hch Hbuf Hpid Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* the pid reader, spent where the run is open -- [wp_uk_ecall_wait_null_pid] *)
     iDestruct (urun_ids_pid with "Hcha") as "[Hpida Hidsp]".
     iDestruct (UserChildren.upid_agree with "Hpida Hpid") as %Hpeq.
@@ -2574,7 +2590,7 @@ Section UkRunSys.
     iDestruct (urun_close_upd N (umem_write M (uint dst) d g) pm m
                  (mword_of_int 10) r sz fdv cw' gn cs' pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)
-                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hbuf Hch Hpid Ha]") as "Hkc".
+                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx [Hcont Hbuf Hch Hpid Ha]") as "Hkc".
     { iIntros (h'') "Hrun".
       iApply ("Hcont" $! h'' r cs' pidv g with "[%] Hpid [%] [Ha] Hrun Hch Hbuf").
       - exact Hpeq.
@@ -2668,7 +2684,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hwin Hcapk Hcl Hdp Hop Hpp Hwt Hal4.
     iIntros "#Hi Hrun Hsb Hbuf Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -2788,7 +2804,7 @@ Section UkRunSys.
     iDestruct (urun_close_upd N (umem_write M (uint dst) d g) pm m
                  (mword_of_int 10) r sz fdv cw' gn cs pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)
-                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hbuf]") as "Hkc";
+                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx [Hcont Hbuf]") as "Hkc";
       [ iIntros (h'') "Hrun";
         iApply ("Hcont" $! h'' r d g with "[%] [%] Hrun Hbuf");
         [ exact Hdcap | intros j Hj; apply Hgf; lia ] | ].
@@ -2874,6 +2890,16 @@ Section UkRunSys.
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     udepw N m pc USYS_pipe -∗
+    (* THE TAINT, AND THIS IS THE ONE LEAF THAT ASKS FOR IT (design/pipe.md,
+       "The exit path").  pipe(2) is the ONE number that puts a pipe row in
+       the table, so it is the one number [UsysMemOk.usys_fd_ok_nopipe] does
+       not cover and the run's [UkRun.urun_nopipe] cannot be re-established
+       after it on the free arm.  What the run carries out of here is the
+       OTHER arm -- the credential every pipe payment is payable from
+       ([PipeQueue.pipe_cpay]'s second disjunct) -- so a program that opens
+       a pipe pays its own tear-down's closes out of the taint, which is
+       exactly what the design says it must. *)
+    □ riscv_kill_cred -∗
     ustd (ukn_fd N) l -∗
     ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 10))) 8 f -∗
     (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8) (W : uvis) (fdep : sfam)
@@ -2933,8 +2959,12 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     set (dst := m !!! Regidx (mword_of_int 10)).
-    iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iIntros "#Hi Hrun Hsb #Hktnt Hstd Hbuf Hcont".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & _ & Hb)".
+    (* the run goes on at the TAINT arm from here: the table it comes back
+       with holds two pipe rows *)
+    iAssert (∀ fdv0 : list fdstate, urun_nopipe fdv0)%I as "#Hnpx";
+      [ iIntros (fdv0); iApply (urun_nopipe_taint fdv0 with "Hktnt") | ].
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -3168,10 +3198,11 @@ Section UkRunSys.
           | exact Hbytes | exact Hca | exact Hcb | exact Hfdv' ].
       - rewrite (Hfail Hr0). iModIntro. iFrame "Hufd".
         iRight. iFrame "Hstd". iPureIntro. exact Hr0. }
+    iDestruct ("Hnpx" $! fdv') as "#Hnpo".
     iDestruct (urun_close_upd N (umem_write M (uint dst) dd gg) pm m
                  (mword_of_int 10) r sz fdv' cw' gn cs pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)
-                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hbuf Hhs Hsp]") as "Hkc";
+                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpo [Hcont Hbuf Hhs Hsp]") as "Hkc";
       [ iIntros (h'') "Hrun";
         iApply ("Hcont" $! h'' r gg
                   (uvis_of_run m pc M pm sz fdv cw gn cs pidv false) fdep
@@ -3525,7 +3556,7 @@ Section UkRunSys.
       destruct (decide (USYS_read = USYS_read)) as [_ | Hc];
         [ | exfalso; exact (Hc eq_refl) ].
       rewrite Hcnt. reflexivity. }
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* THE KEY'S LOW THREE SLOTS ARE THE CALLER'S OWN LEDGER, which is both
        what the deposit is stated at and what makes row 5's arm readable *)
     iDestruct (Hag fdv with "Hufd Hstd") as %Htake.
@@ -3638,7 +3669,7 @@ Section UkRunSys.
     iDestruct (urun_close_upd N (umem_write M (uint dst) d g) pm m
                  (mword_of_int 10) r sz fdv cw' gn cs pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)
-                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hbuf Hstd Hpost]") as "Hkc".
+                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx [Hcont Hbuf Hstd Hpost]") as "Hkc".
     { iIntros (h'') "Hrun".
       iApply ("Hcont" $! h'' r d g (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
                 _ _ _ _
@@ -3852,7 +3883,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* the key's cwd IS the one the caller's PINNED bundle is stated at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     (* ...and the key's low three slots ARE the caller's own ledger, which
@@ -3915,18 +3946,21 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _ & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
               ltac:(discriminate) with "Hufd Hstd") as "[Hufd Hh]".
       iModIntro.
+      (* ...and open installs an inode or a device, never a pipe end *)
+      iDestruct (urun_nopipe_insert fdv fd (FdOpen rd wr t) Hnpo
+                   with "Hnpx") as "#Hnpi".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd := FdOpen rd wr t]> fdv) c c gn gn cs cs pidv false false r Hx0 Hal4).
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpi").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false)
                 _ _ _ _ with "[%] [%] [%] [%] [Hh] Hpost Hcwd Hrun").
@@ -3943,7 +3977,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false)
                 _ _ _ _ with "[%] [%] [%] [%] [Hstd] Hpost Hcwd Hrun").
@@ -4010,7 +4044,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     iDestruct "Hsb" as "[%Hfp Hsb]".
     iDestruct ("Hsb" $! M pm sz fdv gn cs pidv with "Hmy Hheap Hufd")
@@ -4062,7 +4096,7 @@ Section UkRunSys.
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false) cs
               with "[%] [%] [%] [%] [Hpost] Hcwd Hrun").
@@ -4287,7 +4321,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4 Hag Hsrc.
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* THE SOURCE RUN'S TWO ROWS, taken HERE because this is the one place
        where the heap the process owns and the key's own image and
        permission map are the same terms. *)
@@ -4347,7 +4381,7 @@ Section UkRunSys.
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv cw gn cs pidv false) cw cs
               with "[%] [%] [%] [%] [%] [%] Hstd Hbuf [Hpost] Hrun").
@@ -4709,7 +4743,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi #Himg Hrun Hcwd Hsb Hstd Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* the key's cwd IS the one the caller's PINNED bundle is stated at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     (* ...and the key's low three slots ARE the caller's own ledger, which
@@ -4781,18 +4815,21 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _ & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
               ltac:(discriminate) with "Hufd Hstd") as "[Hufd Hh]".
       iModIntro.
+      (* ...and open installs an inode or a device, never a pipe end *)
+      iDestruct (urun_nopipe_insert fdv fd (FdOpen rd wr t) Hnpo
+                   with "Hnpx") as "#Hnpi".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd := FdOpen rd wr t]> fdv) c c gn gn cs cs pidv false false r Hx0 Hal4).
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpi").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false)
                 _ _ _ _ with "[%] [%] [%] [%] [%] [%] [Hh] Hpost Hcwd Hrun").
@@ -4812,7 +4849,7 @@ Section UkRunSys.
       iApply ukcq_ukc.
       iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false)
                 _ _ _ _ with "[%] [%] [%] [%] [%] [%] [Hstd] Hpost Hcwd Hrun").
@@ -4858,7 +4895,7 @@ Section UkRunSys.
   Proof.
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi #Himg Hrun Hcwd Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     (* ...AND THE IMAGE ROW ([wp_uk_ecall_open_recv_img]'s) *)
     iAssert (⌜ forall (a : Z) (b : bv 8),
@@ -4917,7 +4954,7 @@ Section UkRunSys.
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
-              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false) cs
               with "[%] [%] [%] [%] [%] [Hpost] Hcwd Hrun").
@@ -5026,7 +5063,7 @@ Section UkRunSys.
       change (2 ^ 38)%Z with 274877906944%Z. lia. }
     iIntros "#Hi Hrun Hsb Hsz Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut szk M pm fdv cw gn cs pidv)
-      "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+      "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     (* the key's break IS the program's *)
@@ -5162,7 +5199,7 @@ Section UkRunSys.
       iApply (urun_close_upd N M pm m (mword_of_int 10) r sz fdv cw' gn cs pidv
                 (add_vec_int pc 4) avail
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hsz]").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx [Hcont Hsz]").
       iIntros (h'') "Hrun".
       iApply ("Hcont" $! h'' r with "[Hsz] Hrun").
       iLeft. iSplitR; [ iPureIntro; exact Hr | ]. iExact "Hsz".
@@ -5249,7 +5286,7 @@ Section UkRunSys.
       iDestruct (urun_close_upd N (umem_grow M (sz + n)) pm' m
                    (mword_of_int 10) r (sz + n) fdv cw' gn cs pidv (add_vec_int pc 4) avail
                    ltac:(unfold unot_sp; vm_compute; discriminate)
-                   with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hsz Hrun']") as "Hkc".
+                   with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx [Hcont Hsz Hrun']") as "Hkc".
       { iIntros (h'') "Hrun".
         iApply ("Hcont" $! h'' r with "[Hsz Hrun'] Hrun").
         iRight. iSplitR; [ iPureIntro; exact Hr | ]. iFrame "Hsz Hrun'". }
@@ -5278,22 +5315,21 @@ Section UkRunSys.
        KILL is the KILLER's price, paid into <p->lock>'s own killed row
        ([SchedCtx.kill_row]).  At [UkRun.ukn_triv] this is [True]. *)
     ukn_pay N (uexitst m) -∗
-    (* ...AND THE EXIT ROW (design/pipe.md, "The exit path"): exit(2) is no
-       longer a free number either -- kexit closes every descriptor, and a
-       pipe row's last close steps the byte queue -- so the deposit carries
-       [SpecFileclose.fileclose_cpays] of the key's own table.  A caller
-       whose descriptor resource proves the table pipe-free owes nothing
-       ([UkRun.udepw_ex_of_nopipe]); the five verified programs name the
-       deposit instead ([UkRun.udepw_ex_of_udepw] at [udepw_law USYS_exit]),
-       see that lemma's note. *)
-    udepw_ex N m pc -∗
+    (* ...AND THE EXIT ROW COSTS THE CALLER NOTHING (design/pipe.md, "The
+       exit path").  exit(2) is no longer a free number -- kexit closes
+       every descriptor, and a pipe row's last close steps the byte queue
+       -- so the deposit carries [SpecFileclose.fileclose_cpays] of the
+       key's own table.  But the fact that decides it is a fact about the
+       TABLE, which the run carries between traps ([UkRun.urun_nopipe]), so
+       the leaf mints the row off its own run and there is no premise here
+       at all. *)
     urun N h m pc avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hn. iIntros "#Hi Hpay Hex Hrun".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
-    iMod (udepw_ex_mint N m pc M pm sz fdv cw gn cs pidv
-                with "Hdep Hmy Hex Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
+    intros Hn. iIntros "#Hi Hpay Hrun".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
+    iMod (udep_exit_run N m pc M pm sz fdv cw gn cs pidv
+                with "Hdep Hnpx") as "Hdepn".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iApply (UkStep.wp_uk_ecall C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc fdv cw gn cs pidv Hui
               (fun (s : mstate)

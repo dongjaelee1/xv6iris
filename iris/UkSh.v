@@ -829,11 +829,11 @@ Section UkSh.
     ⌜ m !!! Regidx x0_idx = zero_reg ⌝ ∗ urun N h m pc avail.
   Proof.
     iIntros "Hrun".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     iSplitR; [ iPureIntro; exact Hx0 | ].
     iExists xi, C, pt, Rfd, Rut, sz, M, pm, fdv, cw, gn, cs, pidv.
-    iFrame "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hb".
+    iFrame "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx Hb".
     iPureIntro. split_and!; [ exact Hlo | exact Hpm | exact Hlzf | exact HRut ].
   Qed.
 

@@ -1152,12 +1152,15 @@ Section DevLoops.
       : iProp Σ :=
     (∃ (o : option (list mobs)) (H : LogEntryDefs.cons_hist),
        obs_hist_lb_o o ∗ chist_at iu (S gen_id) (default [] o) H ∗
-       ⌜LogEntryDefs.ch_acc H = uart_acc u⌝ ∗
        uart_log_hi γ (1/2) (log_top (LogEntryDefs.ch_log H)) ∗
        uart_deliv γ (1/2) (LogEntryDefs.ch_dl H) ∗
        in_log_auth γ (LogEntryDefs.ch_log H) ∗
        uart_logm γ (1/2) (LogEntryDefs.ch_log H) ∗
        uart_arm γ (1/2) (LogEntryDefs.ch_arm H) ∗
+       (* BOTH PURE FACTS LAST, so every site that rebuilds the claim ends
+          in one [iPureIntro; split] instead of threading them through the
+          middle of the separating conjunction. *)
+       ⌜LogEntryDefs.ch_acc H = uart_acc u⌝ ∗
        ⌜ConsLog.cons_hist_ok H⌝)%I.
 
   Global Instance cons_claim_at_timeless iu γ u :
@@ -2677,7 +2680,7 @@ Section DevLoops.
     iInv "Hinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
     iDestruct "Hcons" as (o H)
-      "(#Hlb & Hres & %Hacc0 & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hok)".
+      "(#Hlb & Hres & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hacc0 & %Hok)".
     rewrite /uart_logm. iDestruct (ghost_var_agree with "Hlm Hlm0") as %->.
     rewrite /uart_log_hi. iDestruct (ghost_var_agree with "Hhi Hhi0") as %Hagr.
     iDestruct (uart_arm_agree with "Hmine Harm") as %Harmeq0.
@@ -2745,7 +2748,7 @@ Section DevLoops.
     iInv "Hinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
     iDestruct "Hcons" as (o H)
-      "(#Hlb & Hres & %Hacc0 & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hok)".
+      "(#Hlb & Hres & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hacc0 & %Hok)".
     (* the log's mark: the caller's half names the claim's own top *)
     rewrite /uart_log_hi.
     iDestruct (ghost_var_agree with "Hhi Hhi0") as %Hagr.
@@ -2865,7 +2868,7 @@ Section DevLoops.
     iInv "Hinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
     iDestruct "Hcons" as (o H)
-      "(#Hlb & Hres & %Hacc0 & Hhi0 & Hdv0 & Hau & Hlm0 & Harm & %Hok)".
+      "(#Hlb & Hres & Hhi0 & Hdv0 & Hau & Hlm0 & Harm & %Hacc0 & %Hok)".
     rewrite /uart_logm. iDestruct (ghost_var_agree with "Hlm Hlm0") as %->.
     rewrite /uart_deliv. iDestruct (ghost_var_agree with "Hdv Hdv0") as %->.
     iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(#Hlb' & Hres' & HΦ)".
@@ -2936,7 +2939,7 @@ Section DevLoops.
   Proof.
     iIntros (Hacc) "HΨ Hcl".
     iDestruct "Hcl" as (o H)
-      "(Hlb & Hres & %Hacc0 & Hhi & Hdv & Hau & Hlm & Harm & %Hok)".
+      "(Hlb & Hres & Hhi & Hdv & Hau & Hlm & Harm & %Hacc0 & %Hok)".
     iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(Hlb' & Hres' & HΦ)".
     { exact I. }
     iModIntro. iFrame "HΦ".
@@ -3028,7 +3031,7 @@ Section DevLoops.
   Proof.
     intros Hlk. iIntros "Hmine HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
     iDestruct "Hin" as (o H)
-      "(#Hlb & Hres & %Hacc0 & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hok)".
+      "(#Hlb & Hres & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hacc0 & %Hok)".
     iDestruct (uart_arm_agree with "Hmine Harm") as %Harmeq0.
     assert (Harmeq : LogEntryDefs.ch_arm H = Some (h, c, cs, j))
       by (symmetry; exact Harmeq0).
@@ -3388,10 +3391,11 @@ Section DevLoops.
            LogEntryDefs.ch_arm].
       iSplitR; [done |].
       iFrame "Hres".
-      iSplitR; [iPureIntro; by rewrite Hacc0 |].
       rewrite /uart_log_hi /uart_deliv /in_log_auth /uart_logm /uart_arm /=.
-      iFrame "Hlg1 Hdv1 Hml Hlm1 Har1". iPureIntro.
-      split; [split; [intros e He; inversion He | intros i e1 e2 H1; done] | exact I]. }
+      iFrame "Hlg1 Hdv1 Hml Hlm1 Har1". iPureIntro. split.
+      - by rewrite Hacc0.
+      - split; [split; [intros e He; inversion He
+                       | intros i e1 e2 H1; done] | exact I]. }
     iSplitL "Hpo2"; [iExact "Hpo2" |].
     iSplitL "Hhi1"; [iExact "Hhi1" |].
     iSplitL "Hhi2"; [iExact "Hhi2" |].
@@ -3514,28 +3518,22 @@ Section DevLoops.
      down; [R] timeless, so the ledger's later strips. *)
   Lemma uart_obs_permit_ledger (i : uart_id) (R : list mobs -> iProp Σ)
       (Tg : list mobs -> iProp Σ)
-      (Ores : nat -> list mobs -> list (bv 8) -> iProp Σ) (γ : uart_names)
+      (Cres : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
+      (γ : uart_names)
       (HRt : forall h, Timeless (R h))
       (Heq : riscv_obs_pred = obs_ledger R)
       (* the tag family the record carries IS the client's, which is what
          lets the rx wand below discharge the permit's tag output *)
       (Htag : riscv_rx_tag = Tg)
-      (* ...AND SO IS THE OUTPUT CLAIM, which is what lets the tx wand below
-         be stated over the client's own [Ores] while the permit's argument
-         is the machine's ambient one (lane OUT-FUPD).  The wand takes the
-         resource LINEARLY and gives it back: the ledger step reads its own
-         authority against its own ledger and puts it where it found it. *)
-      (Hook : riscv_out_res = Ores)
-      (* ...AND THE INPUT LOG (lane CONS-IO), at ITS OWN witness [hi] and
-         its own [pops]/[dl]: the two claims live at independent witnesses
-         because a writer's [out_link] moves only the output's.  Taken
-         linearly and given back, exactly as the output claim is. *)
-      (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
-              list (list mobs * bv 8) -> iProp Σ)
-      (Hookin : riscv_in_res = Ires)
+      (* ...AND SO IS THE PORT'S CLAIM (redesign R2).  ONE resource at ONE
+         witness, where there were two at two -- the second existed only
+         because a writer's link moved the output's and not the input's, and
+         both move together now.  Taken linearly and given back: the ledger
+         step reads its own authority against its own ledger and puts it
+         where it found it. *)
+      (Hook : riscv_cons_res = Cres)
       (Htx : ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
-                     (ho hi : list mobs) (pops : list LogEntryDefs.log_entry)
-                     (dl : list (list mobs * bv 8)),
+                     (ho : list mobs) (H : LogEntryDefs.cons_hist),
                ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
                ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗
                ⌜u_wire u = u_out u⌝ -∗
@@ -3543,12 +3541,14 @@ Section DevLoops.
                   history is this era's, and the era's number is [S gen_id]
                   -- which is the index the two claims below are read at. *)
                ⌜obs_boots h = S gen_id⌝ -∗
-               ⌜ho `prefix_of` h⌝ -∗ ⌜hi `prefix_of` h⌝ -∗
-               (if i is Uart0 then Ores (S gen_id) ho (uart_acc u) else emp) -∗
-               (if i is Uart0 then Ires (S gen_id) hi pops dl else emp) -∗
+               ⌜ho `prefix_of` h⌝ -∗
+               (* the accepted bytes are a FIELD of the history now, so the
+                  tie the wand used to get by being handed [uart_acc u] is a
+                  premise *)
+               ⌜LogEntryDefs.ch_acc H = uart_acc u⌝ -∗
+               (if i is Uart0 then Cres (S gen_id) ho H else emp) -∗
                uart_ghosts γ u' -∗ R h ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
-               (if i is Uart0 then Ores (S gen_id) ho (uart_acc u) else emp) ∗
-               (if i is Uart0 then Ires (S gen_id) hi pops dl else emp) ∗
+               (if i is Uart0 then Cres (S gen_id) ho H else emp) ∗
                uart_ghosts γ u' ∗ R (h ++ [ObsUartOut i b])%list))
       (Hrx : ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state),
                ⌜uart_rx_push u b = Some u'⌝ -∗ ⌜trace_shape h true⌝ -∗
@@ -3560,18 +3560,15 @@ Section DevLoops.
   Proof.
     iIntros "#Hoinv". iPoseProof Htx as "#Htx". iPoseProof Hrx as "#Hrx".
     iIntros "!>" (h κ d u')
-      "%Hstep %Hsh %Hwire %Hwo %Hbts Hcl Hincl Hg Hauth".
+      "%Hstep %Hsh %Hwire %Hwo %Hbts Hcl Hg Hauth".
     (* THE CLAIM'S WITNESS, PLACED INSIDE THE RUN'S OWN HISTORY.  This is
        the only point where both the invariant's monotone bound and the
        machine's history authority are in hand, so it is where the pure
        [ho `prefix_of` h] the ledger's wand needs is produced (lane
        OUT-FUPD). *)
-    iDestruct "Hcl" as (o0) "[#Holb Hres]".
+    iDestruct "Hcl" as (o0 CH)
+      "(#Holb & Hres & Hlgh & Hdv & Hau & Hlm0 & Harm & %Hacc0 & %Hlok)".
     iDestruct (obs_hist_lb_o_prefix o0 h with "Hauth Holb") as %Hopre.
-    (* ...and the input claim's, the same way at its own witness *)
-    iDestruct "Hincl" as (o1 pops dl)
-      "(#Hilb & Hires & Hlgh & Hdv & Hau & Hlm0 & %Hlok)".
-    iDestruct (obs_hist_lb_o_prefix o1 h with "Hauth Hilb") as %Hipre.
     iInv "Hoinv" as "HP" "Hclose".
     iEval (rewrite Heq /obs_ledger) in "HP".
     iDestruct "HP" as (h') "[>Hfrag >HR]".
@@ -3587,26 +3584,24 @@ Section DevLoops.
         iMod ("Hclose" with "[Hfrag HR]") as "_".
         { iNext. rewrite Heq /obs_ledger. iExists h. iFrame. }
         iModIntro. rewrite app_nil_r.
-        iSplitL "Hres"; [iExists o0; by iFrame "Holb Hres"|].
-        iSplitL "Hires Hlgh Hdv Hau Hlm0";
-        [iExists o1, pops, dl; iFrame "Hilb Hires Hlgh Hdv Hau Hlm0"; by iPureIntro|].
+        iSplitL "Hres Hlgh Hdv Hau Hlm0 Harm".
+        { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hau Hlm0 Harm".
+          by iPureIntro. }
         iFrame "Hg Hauth"; try done.
-      + iEval (rewrite /out_res_at Hook) in "Hres".
-        iEval (rewrite /in_res_at Hookin) in "Hires".
-        iMod ("Htx" $! h b (duart d i) _ (default [] o0) (default [] o1) pops dl
-                with "[//] [//] [//] [//] [//] [//] [//] [//] Hres Hires Hg HR")
-          as "(Hres & Hires & Hg & HR)".
+      + iEval (rewrite /chist_at Hook) in "Hres".
+        iMod ("Htx" $! h b (duart d i) _ (default [] o0) CH
+                with "[//] [//] [//] [//] [//] [//] [//] [//] Hres Hg HR")
+          as "(Hres & Hg & HR)".
         iMod (obs_update _ (h ++ [ObsUartOut i b])%list
                 (ex_intro _ [ObsUartOut i b] eq_refl) with "Hauth Hfrag")
           as "[Hauth Hfrag]".
         iMod ("Hclose" with "[Hfrag HR]") as "_".
         { iNext. rewrite Heq /obs_ledger. iExists _. iFrame. }
         iModIntro.
-        iSplitL "Hres".
-        { iExists o0. iFrame "Holb". by iEval (rewrite /out_res_at Hook). }
-        iSplitL "Hires Hlgh Hdv Hau Hlm0".
-        { iExists o1, pops, dl. iFrame "Hilb Hlgh Hdv Hau Hlm0".
-          iSplitL "Hires"; [by iEval (rewrite /in_res_at Hookin) | by iPureIntro]. }
+        iSplitL "Hres Hlgh Hdv Hau Hlm0 Harm".
+        { iExists o0, CH. iFrame "Holb Hlgh Hdv Hau Hlm0 Harm".
+          iSplitL "Hres"; [by iEval (rewrite /chist_at Hook) |].
+          by iPureIntro. }
         iFrame "Hg Hauth"; try done.
     - (* a byte arrived from the outside world: the ONE arm with a tag *)
       assert (u0 = u') as -> by
@@ -3620,25 +3615,25 @@ Section DevLoops.
       iMod ("Hclose" with "[Hfrag HR]") as "_".
       { iNext. rewrite Heq /obs_ledger. iExists _. iFrame. }
       iModIntro.
-      iSplitL "Hres"; [iExists o0; by iFrame "Holb Hres"|].
-      iSplitL "Hires Hlgh Hdv Hau Hlm0";
-        [iExists o1, pops, dl; iFrame "Hilb Hires Hlgh Hdv Hau Hlm0"; by iPureIntro|].
+      iSplitL "Hres Hlgh Hdv Hau Hlm0 Harm".
+      { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hau Hlm0 Harm".
+        by iPureIntro. }
       iFrame "Hg Hauth". rewrite /uart_tag_of Htag. iExact "Htg".
     - (* the latch: silent *)
       iMod ("Hclose" with "[Hfrag HR]") as "_".
       { iNext. rewrite Heq /obs_ledger. iExists h. iFrame. }
       iModIntro. rewrite app_nil_r.
-      iSplitL "Hres"; [iExists o0; by iFrame "Holb Hres"|].
-      iSplitL "Hires Hlgh Hdv Hau Hlm0";
-        [iExists o1, pops, dl; iFrame "Hilb Hires Hlgh Hdv Hau Hlm0"; by iPureIntro|].
+      iSplitL "Hres Hlgh Hdv Hau Hlm0 Harm".
+      { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hau Hlm0 Harm".
+        by iPureIntro. }
       iFrame "Hg Hauth"; try done.
     - (* the stutter: silent *)
       iMod ("Hclose" with "[Hfrag HR]") as "_".
       { iNext. rewrite Heq /obs_ledger. iExists h. iFrame. }
       iModIntro. rewrite app_nil_r.
-      iSplitL "Hres"; [iExists o0; by iFrame "Holb Hres"|].
-      iSplitL "Hires Hlgh Hdv Hau Hlm0";
-        [iExists o1, pops, dl; iFrame "Hilb Hires Hlgh Hdv Hau Hlm0"; by iPureIntro|].
+      iSplitL "Hres Hlgh Hdv Hau Hlm0 Harm".
+      { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hau Hlm0 Harm".
+        by iPureIntro. }
       iFrame "Hg Hauth"; try done.
   Qed.
 
@@ -3711,6 +3706,10 @@ Section DevLoops.
          under LOOP it would re-enter the receiver with no observation, which
          is why the clause is there. *)
       iDestruct (uart_colE_tx_pop i γ u u' _ Htx0 with "Hcol") as "Hcol".
+      (* the claim is stated over the ACCEPTED bytes, and a tx drain moves
+         the transmitted prefix only, so it carries over unchanged *)
+      iDestruct (cons_claim_at_stable i γ u u'
+                   (uart_tx_pop_acc _ _ _ Htx0) with "Hcons") as "Hcons".
       iMod ("Hclose" with "[Hu' Hg Hcol Hcons]") as "_".
       { iNext. iExists u'. iFrame. }
       iModIntro. iFrame "Hgr Hmem Hdev' Hoauth". iApply "IH".
@@ -3737,14 +3736,14 @@ Section DevLoops.
          here, with the auth in hand and BEFORE the permit moves it. *)
       iDestruct (uart_colE_wire_out_keep i γ u with "Hcol") as "[%Hwo Hcol]".
 
-      iDestruct (uart_col_push_acc i γ u h with "Hcolb Hoauth")
+      iDestruct (uart_col_push_acc i γ u h with "Hcol Hoauth")
         as "[Hoauth Hpush]".
       iMod ("Hperm" $! h [ObsUartIn i b] d u'
-              with "[//] [//] [//] [] [//] [Hocl] Hincl Hg Hoauth")
-        as "(Hocl & Hincl & Hg & Hoauth & #Htg)".
+              with "[//] [//] [//] [] [//] [Hcons] Hg Hoauth")
+        as "(Hcons & Hg & Hoauth & #Htg)".
       { iPureIntro. rewrite Hu. exact Hwo. }
-      { rewrite Hu. iExact "Hocl". }
-      iEval (rewrite Hu) in "Hocl".
+      { rewrite Hu. iExact "Hcons". }
+      iEval (rewrite Hu) in "Hcons".
       iDestruct (obs_auth_lb with "Hoauth") as "[Hoauth #Hlbn]".
       (* THE COLUMN: the byte goes on the tail of [u_rx] and its history --
          which ends with exactly this event -- on the tail of the column. *)
@@ -3774,9 +3773,11 @@ Section DevLoops.
                                  ltac:(repeat constructor)).
         rewrite Nat.add_0_r. exact Hbts. }
       iMod ("Hpush" $! u' b with "[//] [//] [//] [//] Htg Hlbn Hwlb [//]")
-        as "Hcolb".
-      iDestruct (uart_out_claim_stable i u u'
-                   (uart_rx_push_acc u b u' Hrx) with "Hocl") as "Hocl".
+        as "Hcol".
+      (* an arrival touches the rx FIFO only, so the port's claim -- stated
+         over the ACCEPTED bytes -- carries over unchanged *)
+      iDestruct (cons_claim_at_stable i γ u u'
+                   (uart_rx_push_acc u b u' Hrx) with "Hcons") as "Hcons".
 
       iMod ("Hclose" with "[Hu' Hg Hcol Hcons]") as "_".
       { iNext. iExists u'. iFrame. }

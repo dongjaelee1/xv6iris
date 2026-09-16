@@ -1716,6 +1716,53 @@ Proof.
              Hnm Htd Hhn Hrd Hti Hleaf) //.
 Qed.
 
+(* ...AND THE PARENT LEG ON ITS OWN, which is what the fires actually
+   commit (round E2's legs): the child is already ARMED -- a row of the
+   view -- but nothing named it yet, so the owner still does not reach
+   it, and the leg is the same fresh insert. *)
+Lemma subtree_delta_ent (av : aview) (r d : Z) (nm : fname) (i : Z)
+    (a : anode) (t : ttree) (e : gmap fname Z) (nl : nat) :
+  subtree av r = Some t -> fs_pname nm ->
+  av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = None ->
+  av !! i = Some a -> tabs_leaf (tnode_of a) ->
+  ~ nreach (tview av) r i ->
+  d ∈ dom (tv_nodes t) ->
+  subtree (delta_ent d nm i av) r = Some (top_ins d nm i (tnode_of a) t).
+Proof.
+  intros Ht Hnm Hd Hnone Hi Hleaf Hunr Hdd.
+  pose proof (subtree_dom_reach av r t d Ht Hdd) as Hrd.
+  destruct (subtree_root_dir av r t Ht) as (e0 & Hr).
+  pose proof (subtree_nodes_eq av r t Ht) as Hnodes.
+  pose proof (subtree_root av r t Ht) as Hroot.
+  assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
+    by (rewrite (tview_lookup_Some av d _ Hd) //).
+  assert (Hti : tview av !! i = Some (tnode_of a))
+    by (rewrite (tview_lookup_Some av i a Hi) //).
+  assert (Hhn : hide_dots e !! nm = None) by (rewrite hide_dots_lookup //).
+  assert (Hdi : d <> i) by (intros ->; exact (Hunr Hrd)).
+  (* the child is a row the owner does not reach, so DELETING it changes
+     nothing the owner can see -- and then it is create's fresh insert *)
+  set (m1 := delete i (tview av)).
+  assert (Hag : forall j, nreach (tview av) r j -> tview av !! j = m1 !! j).
+  { intros j Hj. rewrite /m1 lookup_delete_ne; [reflexivity |].
+    intros ->. exact (Hunr Hj). }
+  assert (Hcl : nclose (tview av) r = nclose m1 r)
+    by exact (nclose_agree (tview av) m1 r Hag).
+  assert (Hrd1 : nreach m1 r d)
+    by (apply (nreach_agree (tview av) m1 r Hag); exact Hrd).
+  assert (Hd1 : m1 !! d = Some (ADir (hide_dots e)))
+    by (rewrite /m1 lookup_delete_ne; [exact Htd | congruence]).
+  assert (Hi1 : m1 !! i = None) by (rewrite /m1 lookup_delete //).
+  assert (Hback : <[i := tnode_of a]> m1 = tview av)
+    by (rewrite /m1 insert_delete //).
+  rewrite /subtree /subtree_nodes (tview_delta_ent av d nm i e nl a Hnm Hd Hi).
+  destruct (tedge_ins_dir (tview av) d nm i r e0 Hr) as (e' & Hr').
+  rewrite Hr' /top_ins Hroot Hnodes /subtree_nodes.
+  rewrite -{1}Hback
+    (nclose_tedge_ins_fresh m1 r d nm i (tnode_of a) (hide_dots e)
+       Hnm Hd1 Hhn Hrd1 Hi1 Hleaf) -Hcl //.
+Qed.
+
 (* ---- INSIDE: unlink cuts a name, and the tree RE-CLOSES ------------- *)
 
 Lemma subtree_delta_unl_ent (av : aview) (r d : Z) (nm : fname) (dec : nat)
@@ -2274,6 +2321,42 @@ Proof.
   - exact (nclosed_ins_fresh (tview av) d nm i _ _ Htd Hti Hleaf Hc).
 Qed.
 
+(* create's ARM on its own: a leaf row appears at an inum nothing names,
+   so not one edge of the namespace moves *)
+Lemma nstep_ins_leaf (m : gmap Z absnode) (i : Z) (c : absnode)
+    (x : Z) (s : fname) :
+  m !! i = None -> tabs_leaf c -> fs_pname s ->
+  nstep (<[i := c]> m) x s = nstep m x s.
+Proof.
+  intros Hi Hleaf Hs.
+  assert (Hii : <[i := c]> m !! i = Some c) by (rewrite lookup_insert //).
+  destruct (decide (x = i)) as [-> | Hx].
+  - rewrite (nstep_leaf (<[i := c]> m) i c s Hii Hleaf Hs).
+    rewrite /nstep nents_unfold Hi //.
+  - assert (Hne : <[i := c]> m !! x = m !! x)
+      by (rewrite lookup_insert_ne //).
+    rewrite (nstep_of_lookup (<[i := c]> m) m x s Hne) //.
+Qed.
+
+Lemma aview_tree_wf_arm (av : aview) (i : Z) (c : absnode) :
+  av !! i = None -> tabs_leaf (tabs_of c) ->
+  aview_tree_wf av -> aview_tree_wf (delta_arm i c av).
+Proof.
+  intros Hi Hleaf [Hu Hc].
+  assert (Hti : tview av !! i = None) by (rewrite tview_lookup Hi //).
+  rewrite /aview_uniq_parent aview_closed_nstep in Hu, Hc.
+  rewrite /aview_tree_wf /aview_uniq_parent aview_closed_nstep
+          (tview_delta_arm av i c).
+  split.
+  - intros d1 s1 d2 s2 j Hs1 Hs2 H1 H2.
+    rewrite (nstep_ins_leaf (tview av) i _ d1 s1 Hti Hleaf Hs1) in H1.
+    rewrite (nstep_ins_leaf (tview av) i _ d2 s2 Hti Hleaf Hs2) in H2.
+    exact (Hu _ _ _ _ _ Hs1 Hs2 H1 H2).
+  - intros x s j Hs Hst.
+    rewrite (nstep_ins_leaf (tview av) i _ x s Hti Hleaf Hs) in Hst.
+    rewrite dom_insert_L. pose proof (Hc x s j Hs Hst). set_solver.
+Qed.
+
 Lemma aview_tree_wf_unl_ent (av : aview) (d : Z) (nm : fname) (dec : nat)
     (e : gmap fname Z) (nl : nat) :
   av !! d = Some (MkAnode (ADir e) nl) ->
@@ -2392,6 +2475,36 @@ Section OwnPres.
       destruct (nreach_ins_fresh_inv (tview av) r d nm i (tabs_of c) (hide_dots e)
                   Htd Hti Hleaf Hcl r' Hr) as [Hc0 | Hc0]; [exact Hc0 |].
       exfalso. exact (Hnotroot g' r' t' Hg' Hc0).
+  Qed.
+
+  (* CREATE'S ARM alone: the fires commit a leg at a time, and this is
+     the first one.  Not an edge moves, so nothing but the new row's
+     presence changes -- and the fresh inum is no root. *)
+  Lemma own_wf_arm (av : aview) (own : gmap K (Z * ttree)) (i : Z)
+      (c : absnode) :
+    av !! i = None -> tabs_leaf (tabs_of c) ->
+    own_wf av own -> own_wf (delta_arm i c av) own.
+  Proof.
+    intros Hi Hleaf (Hwf & Hroots & Hnn).
+    assert (Hti : tview av !! i = None) by (rewrite tview_lookup Hi //).
+    destruct Hwf as [Hu Hcl].
+    assert (Hcln : nclosed (tview av)) by (by apply aview_closed_nstep).
+    split; [exact (aview_tree_wf_arm av i c Hi Hleaf (conj Hu Hcl)) |].
+    assert (Hnotroot : forall g r t, own !! g = Some (r, t) -> r <> i).
+    { intros g r t Hg Heq. subst r.
+      pose proof (adir_at_dom av i (Hroots g i t Hg)) as Hdom.
+      apply elem_of_dom in Hdom as [b Hb]. congruence. }
+    split.
+    - intros g r t Hg. destruct (Hroots g r t Hg) as (b & e0 & Hb & He).
+      apply adir_at_tview. rewrite (tview_delta_arm av i c).
+      exists (hide_dots e0). rewrite lookup_insert_ne;
+        [| intros Hc0; exact (Hnotroot g r t Hg (eq_sym Hc0))].
+      rewrite (tview_lookup_Some av r b Hb) /tnode_of He //.
+    - intros g g' r t r' t' Hne Hg Hg' Hr. apply (Hnn g g' r t r' t' Hne Hg Hg').
+      rewrite (tview_delta_arm av i c) in Hr.
+      apply (nreach_mono_edges (<[i := tabs_of c]> (tview av)) (tview av) r);
+        [| exact Hr].
+      intros x s c0 Hs. by rewrite (nstep_ins_leaf (tview av) i _ x s Hti Hleaf Hs).
   Qed.
 
   (* UNLINK'S ENTRY LEG: an edge leaves.  Reach only shrinks, so

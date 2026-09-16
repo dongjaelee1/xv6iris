@@ -766,7 +766,7 @@ Section UkShFork.
   Proof.
     intros Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.
-    iIntros "#Hgen Hhead #Hcode #Hro #Hjt #Hkl #Hchl #Hplaw %Hfd0 Hstd
+    iIntros "#Hgen Hhead #Hcode #Hro #Hjt #Hkl #Hchl #Hplaw #Hxl %Hfd0 Hstd
              Hdat Hsz Hbuf Hrun".
     iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpid & Hpos)".
     (* THE CONSOLE ARM APART FROM THE REST *)

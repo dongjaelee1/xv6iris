@@ -65,6 +65,7 @@ Require Import UexecSG.          (* [uexecSG] / [uprogSG]: the deposit class *)
 Require Import CtxIdDefs.
 Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.
+Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 Local Open Scope Z_scope.
 Import Defs.
 
@@ -499,6 +500,9 @@ Section UkShEcho.
         sh_exec_sup_echo Q Cr -∗
         (* the diagnostic's law, and what its end pays at the exit *)
         UkShDiag.ush_execfail_law Cr Cd -∗
+        (* ...and the tear-down's close payments (design/pipe.md, "The exit
+           path"): the diagnostic's walk ends in exit(1) *)
+        UkRun.udepw_law USYS_exit -∗
         □ (Cd -∗ Q (-1)) -∗
         ush_jtab (ukn_t N) -∗
         ush_cmd (ukn_d N) t (echo_cmd s0 g) -∗
@@ -576,7 +580,7 @@ Section UkShEcho.
        linearly for that reason and is GONE from this walk (M4b(2): the
        diagnostic goes through the links); [sh_exec_sup_echo] is still
        introduced linearly and its box stripped by an explicit unfold. *)
-    iIntros "#Hcode Hexs #Hxl #Hcd #Hjt #Htree Hsz Hstd Hcwd Hch Hcr Hrun".
+    iIntros "#Hcode Hexs #Hxl #Hex2 #Hcd #Hjt #Htree Hsz Hstd Hcwd Hch Hcr Hrun".
     rewrite /sh_exec_sup_echo. iDestruct "Hexs" as "#Hexs".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
     iDestruct (echo_cmd_addr with "Htree") as %[Htr Ht8].
@@ -742,7 +746,7 @@ Section UkShEcho.
               ltac:(intros j Hj; cbn [ua_bytes];
                     rewrite (proj1 Hbytes 0%nat j ltac:(exact echo_ws_pos) Hj);
                     rewrite echo_off_0 Nat.add_0_l; reflexivity)
-              with "Hxl Hcode Hro [] [] Hstd Hcr [] Hrun").
+              with "Hxl Hcode Hro [] [] Hstd Hcr [] Hex2 Hrun").
     { rewrite Hs1_k4. cbn [ua_ptr]. iExact "Hw0". }
     { rewrite /ush_str. cbn [ua_ptr ua_len ua_bytes].
       iSplitR; [ iPureIntro; exact Hxr | iExact "Hxs" ]. }

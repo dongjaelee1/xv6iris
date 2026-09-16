@@ -8845,11 +8845,14 @@ Section UkShDiagLeaf.
     UserFd.ustd (ukn_fd N) l -∗
     Cr -∗
     (UserFd.ustd (ukn_fd N) l -∗ Cd -∗ ukn_pay N (-1)) -∗
+    (* ...and the tear-down's close payments (design/pipe.md, "The exit
+       path"): this walk ends in exit(1) *)
+    udepw_law USYS_exit -∗
     urun N h m (mword_of_int 0xda) (ush_Dg + n) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hfd2 Hal Hxlen Hxb.
-    iIntros "#Hlaw #Hcode #Hro #Hw [%Hxr #Hxs] Hstd Hc Hpay Hrun".
+    iIntros "#Hlaw #Hcode #Hro #Hw [%Hxr #Hxs] Hstd Hc Hpay #Hxl Hrun".
     iDestruct ("Hlaw" $! N l with "[%] Hc") as (Pf) "(HPf & #Hstep & #Hdone)";
       [ exact Hfd2 | ].
     replace (ush_Dg + n)%nat with (10 + (12 + (4 + (n + 2))))%nat
@@ -8902,7 +8905,7 @@ Section UkShDiagLeaf.
               ltac:(lia)
               ltac:(exact (upd_eq m (Regidx a2_idx) (regval_into_reg _)))
               E12 E23
-              with "[] [] [] [Hstd HPf] Hcode Hro Hs [] [] [] [] [] [] [Hpay] [Hdp] Hrun").
+              with "[] [] [] [Hstd HPf] Hcode Hro Hs [] [] [] [] [] [] [Hpay] [] Hrun").
     { iModIntro. iIntros (p) "%Hp". rewrite /C1.
       rewrite (ush_execfail_w1 p ltac:(lia)).
       iApply ("Hstep" $! p (line_alts !!! 1%nat !!! p) with "[%]").
@@ -8928,7 +8931,7 @@ Section UkShDiagLeaf.
     { iApply (uis_shk_ec with "Hcode"). }
     { rewrite /C3. iIntros "[Hstd HPf]". cbn [Nat.add].
       iApply ("Hpay" with "Hstd"). iApply ("Hdone" with "HPf"). }
-    { iApply (UkSh.sh_deps_exit with "Hdp"). }
+    { iExact "Hxl". }
   Qed.
 
   (* ...AND fork1 WITH THE PANIC THE CALLER'S (M4b(2)): [UkShRun.

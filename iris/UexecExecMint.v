@@ -385,8 +385,12 @@ Section UexecExecMint.
        the caller that instantiates it here, where every number is admitted
        and echo's flagged deposit is therefore free as well. *)
     iApply (UexecCond.cond_entry_slot uprogSG_gen W ltac:(intros k _; exact I)
-              with "[] Hdep [] Hkc Hgen Hpay").
+              with "[] [] Hdep [] Hkc Hgen Hpay").
     { iApply (udepw_law_of_psok (PS := uprogSG_gen) 16
+                ltac:(exact I) ltac:(vm_compute; discriminate)). }
+    { (* ...and the exit row: at the generic instance every number is
+         admitted (design/pipe.md, "The exit path") *)
+      iApply (udepw_law_of_psok (PS := uprogSG_gen) UsysMemOk.USYS_exit
                 ltac:(exact I) ltac:(vm_compute; discriminate)). }
     { rewrite /ssupply /= /xv6_ssupply. iModIntro.
       iSplit; [ iExact "Hsup"

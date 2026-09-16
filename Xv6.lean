@@ -127,3 +127,7 @@ import Xv6.SpecInitsleeplock
 import Xv6.SpecFileinit
 import Xv6.SpecIinit
 import Xv6.SpecBinit
+import Xv6.ProofInitsleeplock
+import Xv6.LinkInitsleeplock
+import Xv6.ProofFileinit
+import Xv6.LinkFileinit

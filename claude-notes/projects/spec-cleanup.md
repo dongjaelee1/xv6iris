@@ -123,6 +123,18 @@ exclusivity fact), not a kernel ask.
   `iris/_CoqProject` gains `ExecRun.v` — the gate must regen
   `CoqMakefile` (it does).  Mirror: whole tree green, echo audit 14.
 
+## NEXT (owner ruled 2026-09-17: "ex-3, the wait/kill pair, and the tree-layer campaign")
+
+In order: EX-3 (LAUNCHED, Opus, branch `ex3-argv`, brief
+`brief-ex3-argv.md`) → RD-7 WAIT (a real status pointer: the kernel
+writes the child's exit status to user memory — the read/write
+"kernel writes user memory" row pattern) + RD-8 KILL (per-PID spec in
+place of the global predicate the TR flags) → the TREE-LAYER campaign
+(`design/fs-syscall-specs.md` §6: the client-visible fs vocabulary and
+the cross-syscall exclusivity that makes "I know what this file is" a
+resource — what unlocks pin-free exec, per EX-2).  Briefs for RD-7/8
+and the tree-layer design page follow while EX-3 runs.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

@@ -317,11 +317,58 @@ findings, each an OWNER DECISION or a priced TL-1 item:
 
 Owed by TL-1: `own_wf_ent` (create's PARENT leg alone), whose
 `aview_tree_wf` twin wants "nothing else names the armed inum" — so the
-create move is offered FUSED only.  (`own_wf_trunc` is proved in
-AppTree.v §1f', `own_wf_write`'s twin line for line; it belongs in
-TreeView.v and moves there when a TL-1 lane runs.)  The
+create move is offered FUSED only.  (`own_wf_trunc` was proved in
+AppTree.v §1f'; TL-3 MOVED it to TreeView.v §7c, its home.)  The
 last-link unlink TARGET leg is not payable at all as things stand:
 "the row is nobody's root" is a fact about the hidden ownership map.
+
+**TL-3 AS LANDED (READ SIDE)** — branch `tl3-read`, four new files
+(`iris/TreeObs.v`, `iris/TreeExec.v`, `iris/UkTreeRead.v`, plus §10 of
+`PinnedObs.v` and §6 of `ExecRun.v` as ADDITIVE sections), whole iris
+tree green on the mirror, echo audit unmoved at 14, `AppEcho.v`
+untouched, PinnedObs's landed statements unchanged.
+`design/user-tree.md` §6 carries the full as-landed block and §5.0 the
+one owner decision; the headlines:
+
+1. **Findings 2 and 4 are CLOSED.**  `exec_walk_of_own` is landed
+   (EX-2's successor: a frozen deed on a subtree answers exec's (W)
+   with no whole-fs pin), and the era's first deed has a channel —
+   `tree_body` grew `⌜adir_at av ROOTINO⌝`, every leg preserves it in
+   two lines (it is `own_wf`'s roots conjunct at the partition that owns
+   `/`), and `app_boot` is `∃ g t, tree_own r g ROOTINO t` instead of
+   `emp`.
+2. **THE ONE REAL FINDING: the landed `exec_walk_of` is UNSUPPLIABLE
+   from a namespace claim, and not by a hair.**  It names an `anode` —
+   the row WITH its link count — and two views a tree claim admits can
+   differ in exactly that count (a hard link outside the subtree), so
+   there is no `nl` at which (W) could be stated.  The price is a
+   content-level twin of ExecBundle's three lemmas (`ex_node_abs`,
+   `exec_slot_of_entry_at_abs`, …, `wp_uk_ecall_exec_run_abs`), all in
+   ExecRun.v, all the same proofs with one premise weakened, because
+   the count is never SPENT — arm (a) reads the image out of `AFile f`,
+   arm (b) refutes `~ anode_loadable`.  ExecBundle.v is untouched.
+3. **open and read LANDED, chdir and fstat RECORDED.**
+   `wp_uk_ecall_open_own`: three arms and no fourth — `-1` with the
+   ledger back, `ualloc` at `FdOpen _ _ (FdInode i γo OffParked)` (the
+   node the owner's tree records at that path, and exactly what the read
+   corollary consumes — open-then-read composes), or the taint.  `wp_uk_tree_read_learns`: the
+   cat-with-a-known-tree test, and its commit
+   (`FsAbsReadFire.aread_commit_at`) is supplied OUT OF THE CLAIM —
+   `tree_read_piece`, `PinnedObs.pobs_aopen`'s three lines at read's
+   commit — rather than out of a held `nview` share, which is EX-2's
+   whole point.  **chdir needs two things TL-3 cannot give**: a
+   `wp_uk_ecall_chdir_recv` (the landed leaf drops a receipt the kernel
+   already proves, `SpecSysChdir.chdir_receipt`, whose success arm IS
+   `cw' = i`) and, deeper, PinnedObs's ONE-PATH seam — chdir's bundle
+   owes the walk at `∀ pl` and a pin answers one path.  **fstat has no
+   U-tier leaf at all** (8 goes through the quiet leaf, which drops the
+   post), so the corollary has no carrier even though the tree holds the
+   answer.
+4. **The write side is untouched and is now an isolated DECISION**
+   (`design/user-tree.md` §5.0, for the owner): the AppInv seam
+   (`app_step` becomes `▷ … ==∗ ▷ …`; cost = every fire site) versus
+   per-syscall post-view receipts (cost = a receipt per writing row).
+   TL-3b and TL-4's mutation story wait on it; nothing else does.
 
 ## RELAY QUEUE (for upstream, via the owner's push)
 

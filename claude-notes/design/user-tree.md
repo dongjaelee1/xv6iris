@@ -187,6 +187,43 @@ application declares and its verified programs prove):
 
 ## 5. Honest limits
 
+### 5.0 THE WRITE SIDE'S OPEN DECISION (TL-3, for the owner)
+
+TL-2's finding 1 left ONE shape mismatch, and TL-3's read side is
+complete without touching it — so the question is now isolated and is a
+DECISION, not a proof.  An owner's own move (`tree_move_write`,
+`tree_move_trunc`, `tree_move_create`, `tree_move_unl_ent`) is a BASIC
+UPDATE `tree_own ∗ tree_pred av ==∗ tree_pred (δ av) ∗ (tree_own' ∨ T)`;
+what a fire can take (`AppInv.app_top_update_step`) is an UPDATE-FREE
+wand `app_pred av -∗ app_pred av'`.  Two ways to close it, both outside
+the tree layer:
+
+- **(i) THE AppInv SEAM.**  `app_step` becomes
+  `▷ app_pred av ==∗ ▷ app_pred av'`.  `AppInv.app_top_update` already
+  applies the step INSIDE its own fupd, so the invariant can take it
+  with no new machinery; upstream's own fires are what move.  COST:
+  every AU fire site that supplies a step (every `app_top_update_step`
+  caller) restates it, and the generic slot's `app_sup` arm has to be
+  re-derived at the update form.  BUYS: an owner's move is paid where
+  the move is SEEN, which is the only place its accuracy is provable;
+  every landed `tree_move_*` becomes a fire payment verbatim.
+- **(ii) PER-SYSCALL POST-VIEW RECEIPTS.**  Each writing row hands the
+  caller a receipt naming the POST view (the row already names the
+  observed PRE view; this is one more conjunct), and the owner
+  re-establishes its claim in its own `app_claim_update` AFTER the
+  call.  COST: a statement change per writing syscall (create/write/
+  trunc/unlink), each with its own cone, and the owner pays two claim
+  opens per write instead of none.  BUYS: no upstream fire moves, and
+  the tree layer's altitude keeps the whole change.
+
+TL-3's WRITE side and TL-4's mutation story wait on this.  Note what
+does NOT wait: everything in §4.1 that a reader needs, and pin-free
+exec, are landed (§6, TL-3 as-landed) — an application whose verified
+programs only READ their subtree is provable today, and an application
+that writes is provable the moment either route lands.
+
+### 5.1 The rest
+
 - **`sys_link` is not offered** (DESIGNER'S RULING, 2026-09-17, closing
   TL-1's open item).  A link whose target already has a name breaks
   `aview_uniq_parent`, which is what disjointness rests on (§3), so
@@ -405,8 +442,138 @@ application declares and its verified programs prove):
   never bumps it, so `tree_taint` is not mintable and `app_sup` is
   unobtainable; a real tree application reads an unpaid move off its
   own ledger, as echo reads a broken input discipline off its.
-- [ ] **TL-3 THE STABLE COROLLARIES**: open/read/write/mkdir/unlink at
-  an owned subtree, each an instance of a landed member + agreement;
-  the `user.tex` §7 figure for the owned-subtree `open`.
+- [x] **TL-3 THE READ SIDE** — LANDED (branch `tl3-read`): the stable
+  corollaries a FROZEN DEED buys, plus the two one-definition unblocks
+  TL-2 priced and the root conjunct finding 4 asked for.  Four new
+  results files, two landed files grown ADDITIVELY, `AppEcho.v`
+  untouched, echo audit unmoved at 14, whole tree green.  The write
+  side waits on §5.0 and is NOT touched.
+
+  **The two unblocks (finding 2, closed).**
+  - `PinnedObs.v` §10, ADDITIVE (every landed statement unchanged):
+    `pin_walks_at` (the walk alone — the start rule, the terminal inum,
+    the run — which is all `pobs_hop` ever reads), `pin_resolves_abs`
+    (that walk plus "the terminal row is this `absnode` at SOME link
+    count"), `pobs_hop_w` / `pobs_walk_w` at the weaker premise, and
+    `pobs_node_abs` — `pobs_node` with its conclusion cut to the row's
+    CONTENT.  `pin_resolves_at` implies `pin_walks_at`, so the new
+    family subsumes rather than competes.
+  - `ExecRun.v` §6, ADDITIVE: `ex_node_abs` (`ExecBundle.ex_node_id` at
+    the content), `exec_walk_of_abs`, `exec_walk_of_abs_of_walk` (the
+    forgetful direction, so the landed pin and taint suppliers feed the
+    new rule), `exec_walk_of_abs_pin`, and the bundle chain at the
+    content — `exec_slot_of_entry_at_abs` / `sys_exec_slot_of_entry_abs`
+    / `exec_bundle_of_abs` / `sbundle_pay_refR_of_exec_abs` /
+    `uexec_sup_run_abs` / `wp_uk_ecall_exec_run_abs`.
+    **WHY THE CHAIN AND NOT JUST A SUPPLIER** (the lane's one real
+    finding): `exec_walk_of` names an `anode`, and a tree claim CANNOT
+    pin one — two views the claim admits may differ in the terminal
+    row's `nlink` (a hard link OUTSIDE the subtree moves the count and
+    leaves the subtree alone), so there is no `nl` at which the landed
+    (W) could even be stated.  The count is never SPENT (arm (a) reads
+    the image out of `AFile f` and keeps the kernel's own count, arm (b)
+    refutes `~ anode_loadable`, which is a fact about `an_node`), so the
+    content-level chain is ExecBundle's three lemmas with one premise
+    weakened and the same proofs.  `ExecBundle.v` itself is untouched.
+  - `TreeExec.v`: **`exec_walk_of_own`** — EX-2's successor, finally:
+    ```
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    fs_proper (path_elems pl) -> um_start_of cw pl = d ->
+    d ∈ dom (tv_nodes t) -> resolves_from t d pl = Some (i, AFile f) ->
+    tree_pin r g root t -∗ app_inv fsc_fs -∗
+    exec_walk_of_abs cw (tree_taint c) pl (AFile f)
+    ```
+    with `exec_walk_of_own_root` at an absolute path under `/`, and the
+    consumer test `wp_uk_ecall_exec_own_test`: a process holding a
+    frozen deed execs a loadable file of its own subtree at
+    `wp_uk_ecall_exec_run_abs`, with `image_entry` and NO whole-fs pin.
+  - `TreeObs.v` is the bridge both sides share: `tree_pin_claim_law`
+    (the era's record equation turns `tree_pin_law` into the `□` shape
+    every pinned bundle takes), `tree_own_claim_law` (the linear twin),
+    and the deed's PURE content as a pin — `tree_pin_resolves_gen` at a
+    row the projection is the identity on, with `_file`, `_dev`, and the
+    absolute/relative start instances.  Two pure facts about `nchain`
+    moved into TreeView for it (`nchain_head`, `nchain_last`): a pin's
+    first two conjuncts are about the hops list ALONE and must be stated
+    with no view in hand.
+
+  **The read-side corollaries** (`UkTreeRead.v`), each an instance of a
+  landed member + agreement:
+  - `open` — LANDED.  `tree_open_bundle_abs` (PinnedOpen's bundle at the
+    content pin), `tree_open_recv_file` (the receipt read at a FILE pin:
+    the device and directory arms are REFUTED and the file arm's
+    descriptor is `FdInode ino`, the node the owner's tree records at
+    that path), `tree_open_sup` (the `udepwf_at` deposit out of the
+    deed), `tree_open_fd_tie` (the ledger says WHICH descriptor, the
+    receipt says what it is ON, and at the slot the call wrote the two
+    spellings agree — UInitConsK's console block at `FdInode`) and
+    **`wp_uk_ecall_open_own`** at
+    `UkRunSys.wp_uk_ecall_open_recv_img`: three arms and no fourth —
+    `r = -1` with the ledger back, `UserFd.ualloc` at
+    `FdOpen _ _ (FdInode i γo OffParked)` — which is EXACTLY what the
+    read corollary below consumes, so open-then-read composes — or the
+    taint with some ledger back.  At `om_create = false` and
+    `om_trunc = false`: O_TRUNC is a WRITE.
+  - `read` — LANDED.  `tree_read_piece` is the observation commit
+    (`FsAbsReadFire.aread_commit_at`) supplied OUT OF THE CLAIM rather
+    than out of a held `nview` share — `PinnedObs.pobs_aopen`'s three
+    lines at read's commit, and the point EX-2 makes about held shares
+    is exactly why it has to be this way.  `read_arms_tree_learn` reads
+    the arms, and **`wp_uk_tree_read_learns`** is the cat-with-a-known-
+    tree test: a program with a frozen deed and a descriptor on a node
+    of its subtree reads and LEARNS that the bytes in its buffer are the
+    ones its own tree records.
+  - `chdir` — **NOT LANDABLE, recorded** (UkTreeRead §5), for two
+    independent reasons.  (i) The U-tier leaf DROPS the receipt: the
+    kernel has one (`SpecSysChdir.chdir_receipt`, whose success arm IS
+    `cw' = i`) and `UexecExecInst` branch 9 pays it at the U key, but
+    `UkRunSys.wp_uk_ecall_chdir` takes the family-free `udepw` and binds
+    the post as `_` — exactly where open stood before lane OPEN-PIN; the
+    fix is a `wp_uk_ecall_chdir_recv` on `wp_uk_ecall_open_recv`'s
+    mould, a kernel-leaf lane.  (ii) DEEPER: chdir's bundle owes the
+    walk in the `∀ pl` form (`namei_walk_pre_era`), and a pin answers
+    ONE path — at any other path its cursor is false.  So chdir needs
+    PinnedObs's own one-path seam first, whatever the claim is.
+  - `fstat` — **NOT OFFERED, recorded**: there is no U-tier leaf at all
+    (8 goes through the quiet leaf, which drops the post, and is not in
+    `UexecExecInst`'s list of numbers that pay one).  The tree HAS the
+    answer (`tv_nodes t !! i` carries `AFile bs`, hence the size); there
+    is no carrier.
+  - A DIRECTORY's entry map is pinned only up to the DOTS (the tree
+    hides them), so every corollary that reads dirents needs a
+    dots-tolerant identification first.  Files and devices are on the
+    nose.
+
+  **The root conjunct (finding 4, closed).**  `tree_body` grew
+  `⌜adir_at av ROOTINO⌝`; `tree_step_gen` / `tree_move_gen` carry it as
+  a third preserved conjunct and EVERY landed leg pays it in two lines,
+  because it is the roots conjunct of `own_wf` at the partition that
+  owns `/` and nothing else (`AppTree` §1a': `root_own`, `own_wf_root`,
+  `root_of_own_wf`).  `tree_init` / `tree_init_at` gain it as a premise;
+  `tree_xfer_boot_at` is the era's first deed — the transport allocates
+  the clone's entry at `subtree av ROOTINO` OUTSIDE the later (the view
+  is available there) and the no-root arm is REFUTED from the claim it
+  was handed, so `app_boot` is no longer `emp`: the record's
+  `app_boot := tree_boot`, `∃ g t, tree_own r g ROOTINO t`, discharged
+  by `app_tree_boot`.  `Happ_init` / `Hinit_boot` stay TL-4's.
+
+  **Housekeeping**: `own_wf_trunc` MOVED to `TreeView.v` §7c (at the
+  section's `gmap K`, as its twins).  `own_wf_ent` is PRICED AND NOT
+  TAKEN, with the reason recorded where it belongs (TreeView, end of
+  `OwnPres`): `nuniq_parent_ins_fresh` wants the target inum ABSENT,
+  which the ARM leg has just made false; the honest premise is
+  `aview_no_edge_to av i` and no landed lemma proves unique parenthood
+  from it — it needs its own induction, the twin of
+  `nuniq_parent_ins_fresh` at a present-but-unnamed row.  So the create
+  move stays FUSED, which is what the fires take anyway.
+
+  **Bar**: `Print Assumptions` — `Closed under the global context` on
+  every pure and claim-level result (`pobs_node_abs`, `pinned_obs_abs`,
+  `exec_walk_of_abs_pin`, `exec_bundle_of_abs`, `exec_walk_of_own`,
+  `tree_open_recv_file`, `tree_read_piece`, `read_arms_tree_learn`,
+  `tree_xfer_boot_at`, `app_tree_boot`, `own_wf_trunc`); the three WP
+  rules and both consumer tests carry the standing platform axioms
+  (`resv_matches`, `resv_is_valid`) plus funext and nothing else.
+- [ ] **TL-3b THE WRITE SIDE**: blocked on §5.0's decision.
 - [ ] **TL-4 THE SECOND APPLICATION**: the end-to-end instance of §4.3
   at `xv6_app_adequacy`, with its own `make audit` line.

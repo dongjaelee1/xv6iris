@@ -479,13 +479,6 @@ Section ProofMain.
        and this.  Its partner is inside the port's invariant, and it is
        what licenses consoleintr's one log append per accepted byte. *)
     uart_log_hi γd (1/2) None -∗
-    (* ...AND THE ERA'S ECHO WINDOW TOKEN (lane CONS-IO milestone F), parked
-       in the SAME payload: the application minted it at this era's power-on
-       step and [RiscvAdequacy.power_boot_res] carried it here.  It is what
-       consoleintr's shift spends and its append repays, once per accepted
-       byte.  The second port has none: [WpUart.win_at] is [emp] at
-       [Uart1]. *)
-    riscv_win_res (S gen_id) -∗
     (* the consoleintr arm's half, parked in the same payload (redesign R2) *)
     uart_arm γd (1/2) None -∗
     uart_dlab_is γd (DfracOwn (1/2)) b0 -∗
@@ -545,7 +538,7 @@ Section ProofMain.
   Proof.
     intros Hn Hcnu Hconsq.
     iIntros "Hcg #Htext #Hkdata #Hdev Hpc Hfree Hcpu Hlcons Hltx0 Hltx1 Hlpr".
-    iIntros "Hkprintk Hdevsw Hrest Hring Hclean Htx Hsent Hlb Htok Hhi Hlgh Hwin Harm Hdlab".
+    iIntros "Hkprintk Hdevsw Hrest Hring Hclean Htx Hsent Hlb Htok Hhi Hlgh Harm Hdlab".
     iIntros "#Hplic #Hpinned #Huinv1 #Hubw0 #Hurw0 #Hubw1 #Hurw1".
     iIntros "Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1 #Hecho Hcont".
     iPoseProof (dev_inv_uart with "Hdev") as "#Huinv".
@@ -616,12 +609,10 @@ Section ProofMain.
     iApply fupd_wp.
     iMod (uart_rx_tok_deposit ⊤ γd γd1 Uart0 ktok hltok None None
             ltac:(solve_ndisj) (ohist_le_none hltok) (ohist_le_none hltok)
-            with "Hplic Htok Hhi Hlgh Harm [Hwin]") as "#Hinit".
-    { iApply (win_at_uart0_intro with "Hwin"). }
+            with "Hplic Htok Hhi Hlgh Harm") as "#Hinit".
     iMod (uart_rx_tok_deposit ⊤ γd γd1 Uart1 ktok1 hltok1 None None
             ltac:(solve_ndisj) (ohist_le_none hltok1) (ohist_le_none hltok1)
-            with "Hplic Htok1 Hhi1 Hlgh1 Harm1 []") as "#Hinit1";
-      [ iApply win_at_uart1 |].
+            with "Hplic Htok1 Hhi1 Hlgh1 Harm1") as "#Hinit1".
     (* [plic_unames γd γd1 Uart0] IS [γd] and [... Uart1] IS [γd1], by iota on
        the port; normalising the two one-shots here keeps every later
        [iFrame] a syntactic match rather than a conversion. *)
@@ -2453,7 +2444,7 @@ Section ProofMain.
        ([mn_grp_kvm]).  Split at the top rather than threaded group to
        group -- [SpecMain.wp_main_sconf_body]'s premise stays one row. *)
     iDestruct (WaitInv.children_boot_split with "Hchb") as "[Hipt Hchb]".
-    iIntros "#Hdev #Hwire Hbundle Htx Hsent Hlb Htok Hhi Hlgh Hwin Harm Hdlab".
+    iIntros "#Hdev #Hwire Hbundle Htx Hsent Hlb Htok Hhi Hlgh Harm Hdlab".
     (* ---- THE SECOND PORT'S THIRTEEN ROWS (bump 163d39b), all of them out
        of [BootShared.boot_shared_alloc] and none derivable below the boot
        chain: UART1's own invariant, the PLIC's at the two CONCRETE bundles
@@ -2554,7 +2545,7 @@ Section ProofMain.
               Hcnu Hconsq
               with "Hcg Htext Hkdata Hdev Hpc Hfree Hcpu Hlcons Hltx0 Hltx1 Hlpr
                     Hkprintk Hdevsw Hdevrest Hring Hclean Htx Hsent Hlb Htok
-                    Hhi Hlgh Hwin Harm Hdlab
+                    Hhi Hlgh Harm Hdlab
                     Hplic Hpinned Huinv1 Hubw0 Hurw0 Hubw1 Hurw1
                     Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1 Hecho").
     iIntros (m2) "Hcg Hpc Hfree Hcpu #Hpenv #Hccaps #Hu1caps #Hcready".

@@ -623,10 +623,6 @@ Section EchoInitBoot.
        because consoleintr files every accepted byte in the log.  All three
        are events on one resource now, so one equation carries them. *)
     @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = echo_cons γ ->
-    (* ...AND THE ECHO WINDOW TOKEN'S (lane CONS-IO milestone F), the two
-       claims' twin: at [AppEcho.echo_win]'s placeholder the token is [emp]
-       too, so the shift's new premise costs this discharge nothing. *)
-    @riscv_win_res Σ (@riscv_fixedGS Σ HR) = echo_win γ ->
     ⊢ app_inv fsc_fs -∗ echo_boot γ (S gen_id) r -∗
       (* ...AND THE ERA'S TURN (lane CONS-IO milestone F), the application's
          own per-era credential, handed over beside the boot resource.
@@ -636,7 +632,7 @@ Section EchoInitBoot.
       echo_turn γ (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Heq Htag Hkill Hcons Hwin.
+    intros Heq Htag Hkill Hcons.
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)

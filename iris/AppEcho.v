@@ -1401,17 +1401,7 @@ Section EchoApp.
      quarter of the window counter -- with the pure account of the accepted
      bytes ([EchoOut.eout_pure]) that [eout_drain] turns into
      [EchoDisc.good_out]. *)
-  Definition echo_out (γ : echo_fixed) :
-      nat -> list mobs -> list (bv 8) -> iProp Σ :=
-    EchoOut.eout (echo_taint γ) γ.
-
-  (* THE INPUT LOG: the taint, the SETTLED arm, or the chain-first WINDOW
-     arm -- the instant between the echo's store and the [WpUart.in_append]
-     that files its entry. *)
-  Definition echo_in (γ : echo_fixed) :
-      nat -> list mobs -> list LogEntryDefs.log_entry ->
-      list (list mobs * bv 8) -> iProp Σ :=
-    EchoOut.ein (echo_taint γ) γ.
+  (* [echo_out] and [echo_in] lived here. *)
 
   (* THE ERA'S TURN: <init>'s console credential, the era's cursor at ZERO
      with the two bounds a write spends -- literally
@@ -1421,11 +1411,7 @@ Section EchoApp.
   Definition echo_turn (γ : echo_fixed) : nat -> iProp Σ :=
     EchoOut.eturn γ.
 
-  (* THE ECHO WINDOW TOKEN: the half-share of the era's window counter the
-     kernel parks on the console port's PLIC payload and hands to
-     consoleintr's shift; the shift's own append gives it back. *)
-  Definition echo_win (γ : echo_fixed) : nat -> iProp Σ :=
-    EchoOut.ewin (echo_taint γ) γ.
+  (* [echo_win] lived here. *)
 
   (* THE MERGED CONSOLE CLAIM (redesign R2/R3): the era's four authorities
      over ONE console history -- what the port's invariant carries, what a
@@ -1444,11 +1430,8 @@ Section EchoApp.
              what a party a kill touched may keep is the fact the taint
              already states.  [echo_taint_of_sup] is [Happ_kill]. *)
           echo_taint
-          echo_out echo_in echo_turn echo_win
-          (* THE MERGED CONSOLE CLAIM (redesign R2/R3), and the only one the
-             record's obligations read now: [echo_out], [echo_in] and
-             [echo_win] are inert slots kept so the literal's arity is the
-             one the theorem takes. *)
+          echo_turn
+          (* THE CONSOLE CLAIM (redesign R2/R3) *)
           echo_cons
           echo_phi.
 
@@ -1488,45 +1471,13 @@ Section EchoApp.
   Qed.
 
   (* ---- THE OUTPUT CLAIM'S THREE, ALL VACUOUS AT THE PLACEHOLDER ---- *)
-  Lemma echo_Houtt (c : app_fixed app_echo) (k : nat) (h : list mobs)
-      (acc : list (bv 8)) : Timeless (app_out app_echo c k h acc).
-  Proof. cbn [app_echo app_fixed app_out echo_out] in c |- *. apply _. Qed.
-
-  Lemma echo_Hinpt (c : app_fixed app_echo) (k : nat) (h : list mobs)
-      (pops : list LogEntryDefs.log_entry) (dl : list (list mobs * bv 8)) :
-    Timeless (app_in app_echo c k h pops dl).
-  Proof. cbn [app_echo app_fixed app_in echo_in] in c |- *. apply _. Qed.
-
-  (* the echo window token's timelessness (lane CONS-IO milestone F),
-     vacuous at the [emp] placeholder *)
-  Lemma echo_Hwint (c : app_fixed app_echo) (k : nat) :
-    Timeless (app_win app_echo c k).
-  Proof. cbn [app_echo app_fixed app_win echo_win] in c |- *. apply _. Qed.
+  (* [echo_Houtt], [echo_Hinpt] and [echo_Hwint] lived here. *)
 
   Lemma echo_Hconst (c : app_fixed app_echo) (k : nat) (h : list mobs)
       (H : LogEntryDefs.cons_hist) : Timeless (app_cons app_echo c k h H).
   Proof. cbn [app_echo app_fixed app_cons echo_cons] in c |- *. apply _. Qed.
 
-  Lemma echo_Happ_in_sup (c : app_fixed app_echo) (r : app_names app_echo) :
-    AppInv.app_sup_raw (app_pred app_echo c) r
-      ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-             (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
-             app_in app_echo c k h pops dl ==∗
-             app_in app_echo c k h (pops ++ [e]) dl)
-        ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-               (dl ws : list (list mobs * bv 8)),
-               app_in app_echo c k h pops dl ==∗
-               app_in app_echo c k h pops (dl ++ ws)).
-  Proof.
-    cbn [app_echo app_fixed app_names app_in echo_in] in c, r |- *.
-    iIntros "#Hs".
-    iDestruct (echo_taint_of_sup c r with "Hs") as "#Ht". iSplit.
-    - iIntros "!>" (k h pops dl e) "Hi".
-      iApply (EchoOut.ein_sup_log (echo_taint c) c k h pops dl e with "Ht Hi").
-    - iIntros "!>" (k h pops dl ws) "Hi".
-      iApply (EchoOut.ein_sup_deliv (echo_taint c) c k h pops dl ws
-                with "Ht Hi").
-  Qed.
+  (* [echo_Happ_in_sup] lived here: one resource admits one law. *)
 
   (* ONE LICENCE (redesign R2): a holder of the supply is a party the
      discipline has already accounted for, so its claim answers ANY
@@ -1564,14 +1515,12 @@ Section EchoApp.
        else app_cons app_echo c (S (obs_boots h)) []
               (LogEntryDefs.MkCH [] [] [] None) ∗
             (* ...and the era's turn beside it: this is where the era's
-               LINEAR seed is minted out of the ledger, one copy for <init>
-               and one -- now inert -- for the kernel's payload. *)
-            app_turn app_echo c (S (obs_boots h)) ∗
-            app_win app_echo c (S (obs_boots h))).
+               LINEAR seed is minted out of the ledger, for <init>. *)
+            app_turn app_echo c (S (obs_boots h))).
   Proof.
     intros _.
     cbn [app_echo app_fixed app_R echo_R app_cons echo_cons
-         app_turn echo_turn app_win echo_win] in c |- *.
+         app_turn echo_turn] in c |- *.
     iApply (EchoOut.echo_led_pow_cl (echo_taint c) c h on).
   Qed.
 
@@ -1657,12 +1606,10 @@ Section EchoApp.
     @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag app_echo c ->
     (* ...and the window token's (lane CONS-IO milestone F): the shift TAKES
        the era's token, and the echo's own store is what splits it. *)
-    @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win app_echo c ->
     ⊢ ∀ (GEN : GenId) (XI : CurCtx), @cons_echo_shift Σ HR GEN XI.
   Proof.
-    cbn [app_echo app_fixed app_cons echo_cons
-         app_tag echo_tag app_win echo_win] in c |- *.
-    intros Hcons Htag Hwin.
+    cbn [app_echo app_fixed app_cons echo_cons app_tag echo_tag] in c |- *.
+    intros Hcons Htag.
     iApply (EchoOut.echo_happ_echo (echo_taint c) c (HRg := HR)
               Hcons Htag).
   Qed.

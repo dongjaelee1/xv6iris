@@ -1097,7 +1097,6 @@ Section echo_links.
     (* ONE claim equation since the redesign, where there were three *)
     Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = ecl T γ).
     Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HRg) = etag T).
-    Context (Hwin : @riscv_win_res Σ (@riscv_fixedGS Σ HRg) = ewin T γ).
 
     Lemma echo_links_holds : ⊢ echo_links.
     Proof.

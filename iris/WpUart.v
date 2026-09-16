@@ -842,136 +842,44 @@ Section DevLoops.
   (*  ONE [match] rather than two invariant bodies, so [wp_uart_loop] and   *)
   (*  every device leaf stay one lemma.                                    *)
   (* ==================================================================== *)
-  (* THE ERA INDEX [k] IS EXPLICIT HERE and instantiated at [S gen_id] by
-     the invariant's own clause below ([out_claim_at]).  Explicit, because
-     the LINKS -- what the application supplies and what a writer spends --
-     are stated at a BOUND [k] and proved once for every era
-     ([RiscvPtsto.riscv_out_res]'s ERA INDEX paragraph); instantiated by
-     the invariant, because the port's claim is THIS era's and nothing
-     else's, and threading a second index through [uart_inv] and its
-     hundreds of carriers would say the same thing at a much greater
-     cost. *)
-  Definition out_res_at (iu : uart_id) (k : nat) (ho : list mobs)
-      (acc : list (bv 8)) : iProp Σ :=
-    match iu with Uart0 => riscv_out_res k ho acc | Uart1 => emp end%I.
+  (* [out_res_at], [out_claim_at], [uart_out_claim] and their four laws
+     lived here: the output claim's port indexing and the clause the
+     invariant carried for it.  [chist_at] and [cons_claim_at] below are
+     the successors -- ONE claim at ONE witness, where these were the first
+     of two.
 
-  Global Instance out_res_at_timeless iu k ho acc :
-    Timeless (out_res_at iu k ho acc).
-  Proof. rewrite /out_res_at. destruct iu; apply _. Qed.
+     THE ERA INDEX [k] IS EXPLICIT in the successor, and instantiated at
+     [S gen_id] by the invariant's own clause.  Explicit, because the LINKS
+     -- what the application supplies and what a writer spends -- are stated
+     at a BOUND [k] and proved once for every era; instantiated by the
+     invariant, because the port's claim is THIS era's and nothing else's,
+     and threading a second index through [uart_inv] and its hundreds of
+     carriers would say the same thing at a much greater cost.
 
-  Lemma out_res_at_uart1 (k : nat) (ho : list mobs) (acc : list (bv 8)) :
-    ⊢ out_res_at Uart1 k ho acc.
-  Proof. done. Qed.
+     AND WHY THE WITNESS HISTORY IS EXISTENTIAL, which the successor keeps.
+     The obvious form -- the claim at the receive column's TOP history -- is
+     TRUE but NOT DISCHARGEABLE by any writer: a writer's view shift is
+     handed the history as an opaque list, and nothing it holds orders ITS
+     byte's history against the column's top.  Binding the witness instead
+     promises "there is a REAL PREFIX of the run's history for which the
+     boundary is good", the reality witnessed by the monotone lower bound
+     [RiscvPtsto.obs_hist_lb].  A shift may then MOVE the witness forward --
+     to its own byte's history, which it holds a bound on -- and the ledger
+     reads the claim at a witness it can place inside the run's own history
+     and lifts it there by the application's own input-monotonicity.
+     NOTHING IS LOST: the claim is strongest at the empty witness, no writer
+     can exhibit a witness that is not a real prefix, and no step of the
+     invariant but the transmit store touches it. *)
 
-  (* THE CLAUSE THE INVARIANT CARRIES, and WHY IT EXISTENTIALLY BINDS ITS
-     OWN WITNESS HISTORY.
+  (* [in_res_at] lived here: the input log's port indexing, the output
+     claim's twin. *)
 
-     The obvious form -- the claim at the receive column's TOP history [ht]
-     -- is TRUE but NOT DISCHARGEABLE by any writer: a writer's view shift
-     is handed the history as an opaque list, and nothing it holds orders
-     ITS byte's history against the column's top, so an echo could not show
-     that the input it is answering is in the input the claim is read at.
-     Binding the witness here instead fixes that: what the invariant
-     promises is "there is a REAL PREFIX of the run's history for which the
-     accepted bytes are good", the reality witnessed by the monotone lower
-     bound [RiscvPtsto.obs_hist_lb] the history ghost hands out.  A writer's
-     shift may then MOVE the witness forward -- to its own byte's history,
-     which it holds a bound on, comparing the two with
-     [RiscvPtsto.obs_hist_lb_cmp] -- and the ledger reads the claim at a
-     witness it can place inside the run's own history
-     ([obs_hist_lb_prefix]) and lifts it there by the application's own
-     input-monotonicity.
-
-     NOTHING IS LOST.  The claim is strongest at the empty witness and
-     weakest at the run's whole history, and no writer can exhibit a
-     witness that is not a real prefix -- so the fact that reaches the
-     ledger is exactly "the accepted bytes are good for the input the run
-     really saw", which is what [Hphi] wants.  And no step of the invariant
-     but the transmit store touches it: the witness is untouched by a push,
-     a pop and a flush, so the column owes NO monotonicity law.
-
-     [None] is the founding witness -- the empty history, at which the boot
-     hands the transport's own [O [] []] over -- spelled through
-     [obs_hist_lb_o] so that power-on costs no ghost. *)
-  Definition out_claim_at (iu : uart_id) (acc : list (bv 8)) : iProp Σ :=
-    (∃ o : option (list mobs),
-       obs_hist_lb_o o ∗ out_res_at iu (S gen_id) (default [] o) acc)%I.
-
-  Definition uart_out_claim (iu : uart_id) (u : uart_state) : iProp Σ :=
-    out_claim_at iu (uart_acc u).
-
-  (* TIMELESS BUT NOT PERSISTENT: the application's claim holds an
-     AUTHORITY (whose turn it is to write, and how far the transcript has
-     got), so it is linear and every carrier below threads it. *)
-  Global Instance out_claim_at_timeless iu acc :
-    Timeless (out_claim_at iu acc).
-  Proof. rewrite /out_claim_at. apply _. Qed.
-  Global Instance uart_out_claim_timeless iu u :
-    Timeless (uart_out_claim iu u).
-  Proof. rewrite /uart_out_claim. apply _. Qed.
-
-  (* the KERNEL's port claims nothing, so its clause is free at every
-     accepted sequence -- which is what makes the second UART's invariant
-     carry nothing new *)
-  Lemma out_claim_at_uart1 (acc : list (bv 8)) : ⊢ out_claim_at Uart1 acc.
-  Proof. iExists None. by iSplitR. Qed.
-
-  (* the founding instance: the boot hands over the application's resource
-     at the empty run (the transport's yield) and this packages it at the
-     empty witness history *)
-  Lemma out_claim_at_nil (iu : uart_id) :
-    out_res_at iu (S gen_id) [] [] -∗ out_claim_at iu [].
-  Proof. iIntros "H". iExists None. by iSplitR. Qed.
-
-  Lemma uart_out_claim_nil (iu : uart_id) (u : uart_state) :
-    uart_acc u = [] -> out_res_at iu (S gen_id) [] [] -∗ uart_out_claim iu u.
-  Proof.
-    intros Hacc. rewrite /uart_out_claim Hacc. iApply out_claim_at_nil.
-  Qed.
-
-  (* ...and it moves with any transition that does not grow the accepted
-     sequence, which is every transition but the transmit store *)
-  Lemma uart_out_claim_stable (iu : uart_id) (u u' : uart_state) :
-    uart_acc u' = uart_acc u ->
-    uart_out_claim iu u -∗ uart_out_claim iu u'.
-  Proof. iIntros (Ha) "H". by rewrite /uart_out_claim Ha. Qed.
-
-  (* ==================================================================== *)
-  (*  THE INPUT LOG (app-echo.md, lane CONS-IO; the E5 design of record).   *)
-  (*                                                                      *)
-  (*  The receive side's twin of the output claim, and AT THE CONSOLE PORT *)
-  (*  ONLY for the same reason: the theorem is about the console's wire    *)
-  (*  and the console's keyboard, and the kernel's own port carries [emp]. *)
-  (* ==================================================================== *)
-  Definition in_res_at (iu : uart_id) (k : nat) (ho : list mobs)
-      (pops : list LogEntryDefs.log_entry)
-      (dl : list (list mobs * bv 8)) : iProp Σ :=
-    match iu with Uart0 => riscv_in_res k ho pops dl | Uart1 => emp end%I.
-
-  Global Instance in_res_at_timeless iu k ho pops dl :
-    Timeless (in_res_at iu k ho pops dl).
-  Proof. rewrite /in_res_at. destruct iu; apply _. Qed.
-
-  Lemma in_res_at_uart1 (k : nat) (ho : list mobs)
-      (pops : list LogEntryDefs.log_entry)
-      (dl : list (list mobs * bv 8)) : ⊢ in_res_at Uart1 k ho pops dl.
-  Proof. done. Qed.
-
-  (* THE ECHO WINDOW TOKEN AT A PORT (lane CONS-IO milestone F), on
-     [out_res_at]/[in_res_at]'s mould and for their reason: the token is the
-     APPLICATION's per-era exclusive ([RiscvPtsto.riscv_win_res]) and the
-     application says nothing about the kernel's own port, so [Uart1]
-     carries [emp].  Unlike the two claims it lives in NO invariant: it
-     rides the PLIC payload ([uart_rx_writer] below), which is what carries
-     it to consoleintr's shift and back. *)
-  (* THE MERGED CONSOLE RESOURCE AT A PORT (redesign R2).  [Uart1] has no
-     console discipline and claims nothing, exactly as the three it
-     replaces.  NAMED [chist_at] and not [cons_res_at]: the console RING's
-     own resource already has that name ([ConsoleInv], used across
-     ProofConsoleread), and the two are different things. *)
-  (* [Uart1] has no
-     console discipline and claims nothing, exactly as the three it
-     replaces. *)
+  (* THE CONSOLE RESOURCE AT A PORT (redesign R2).  [Uart1] has no console
+     discipline and claims nothing: the theorem is about the console's wire
+     and the console's keyboard, and a kernel-port writer owes no
+     justification at all.  NAMED [chist_at] and not [cons_res_at]: the
+     console RING's own resource already has that name ([ConsoleInv], used
+     across ProofConsoleread), and the two are different things. *)
   Definition chist_at (iu : uart_id) (k : nat) (ho : list mobs)
       (H : LogEntryDefs.cons_hist) : iProp Σ :=
     match iu with Uart0 => riscv_cons_res k ho H | Uart1 => emp end%I.
@@ -984,24 +892,11 @@ Section DevLoops.
       (H : LogEntryDefs.cons_hist) : ⊢ chist_at Uart1 k ho H.
   Proof. done. Qed.
 
-  Definition win_at (iu : uart_id) (k : nat) : iProp Σ :=
-    match iu with Uart0 => riscv_win_res k | Uart1 => emp end%I.
-
-  Global Instance win_at_timeless iu k : Timeless (win_at iu k).
-  Proof. rewrite /win_at. destruct iu; apply _. Qed.
-
-  Lemma win_at_uart1 (k : nat) : ⊢ win_at Uart1 k.
-  Proof. done. Qed.
-
-  (* the console port's, in both directions: [win_at Uart0] IS the field, and
-     these two lines are what let a proof at a DESTRUCTED port hand the token
-     to a spec stated at the field ([SpecConsoleintr]'s contract) and take it
-     back into the payload. *)
-  Lemma win_at_uart0 (k : nat) : win_at Uart0 k -∗ riscv_win_res k.
-  Proof. iIntros "H". iExact "H". Qed.
-
-  Lemma win_at_uart0_intro (k : nat) : riscv_win_res k -∗ win_at Uart0 k.
-  Proof. iIntros "H". iExact "H". Qed.
+  (* [win_at] and its four lines lived here: the echo window token's port
+     indexing.  It rode the PLIC payload rather than an invariant, because
+     that is the one carrier that reaches consoleintr and comes back at
+     every interrupt -- which is what the port's half of [uart_arm] does
+     now. *)
 
   (* THE LOG'S HIGH-WATER HISTORY, in two halves, and the EXACT TWIN of
      [uart_rx_hi]: one half rides [uart_rx_writer] in the PLIC payload
@@ -1174,28 +1069,8 @@ Section DevLoops.
     cons_claim_at iu γ u -∗ cons_claim_at iu γ u'.
   Proof. iIntros (Ha) "H". by rewrite /cons_claim_at Ha. Qed.
 
-  Definition in_claim_at (iu : uart_id) (γ : uart_names) : iProp Σ :=
-    (∃ (o : option (list mobs)) (pops : list LogEntryDefs.log_entry)
-       (dl : list (list mobs * bv 8)),
-       obs_hist_lb_o o ∗ in_res_at iu (S gen_id) (default [] o) pops dl ∗
-       uart_log_hi γ (1/2) (log_top pops) ∗ uart_deliv γ (1/2) dl ∗
-       in_log_auth γ pops ∗ uart_logm γ (1/2) pops ∗
-       ⌜ConsLog.log_ok pops⌝)%I.
-
-  Global Instance in_claim_at_timeless iu γ : Timeless (in_claim_at iu γ).
-  Proof. rewrite /in_claim_at. apply _. Qed.
-
-  (* the founding instance: the transport's yield at the empty log *)
-  Lemma in_claim_at_nil (iu : uart_id) (γ : uart_names) :
-    in_res_at iu (S gen_id) [] [] [] -∗ uart_log_hi γ (1/2) None -∗
-    uart_deliv γ (1/2) [] -∗ in_log_auth γ [] -∗ uart_logm γ (1/2) [] -∗
-    in_claim_at iu γ.
-  Proof.
-    iIntros "Hres Hhi Hdv Hau Hlm". iExists None, [], [].
-    iSplitR; [done|]. iFrame "Hres". rewrite /log_top /=.
-    iFrame "Hhi Hdv Hau Hlm". iPureIntro.
-    split; [intros e He; inversion He | intros i e1 e2 H1; by rewrite lookup_nil in H1].
-  Qed.
+  (* [in_claim_at] and its founding lived here: the clause the invariant
+     carried for the input log. *)
 
   (* an INPUT event puts nothing on the wire, so the rider minted for a byte
      is a bound at its OWN post-arrival history as much as at the one
@@ -1686,18 +1561,12 @@ Section DevLoops.
      NUL, an erase) as much as on the store.  At [Uart1] there is no
      consumer and no log, so it never moves and stays at [None], exactly as
      the ring's mark does. *)
-  (* ...AND THE RIGHT TO ECHO WHAT WAS POPPED (lane CONS-IO milestone F).
-     A FOURTH conjunct, and the only one that is not the kernel's own: the
-     APPLICATION's per-era echo window token
-     ([RiscvPtsto.riscv_win_res], [win_at] above).  consoleintr's shift is
-     persistent and its run is split across two fupds, so the application
-     needs one linear thing per era to tell a first firing from a second,
-     and this payload is the one carrier that reaches consoleintr and comes
-     back at every interrupt.  At [Uart1] there is no console discipline
-     and [win_at] is [emp], exactly as the two port claims are -- which is
-     what keeps [SpecUartintr]'s port-generic writer premise suppliable at
-     the kernel's own port.  It is at the ERA's index [S gen_id]: the token
-     is minted by the era's power-on step and dies with the era. *)
+  (* THE ECHO WINDOW TOKEN was a FOURTH conjunct here until redesign R2 --
+     the application's per-era exclusive, which consoleintr's shift took
+     because the shift is persistent and its run was split across two
+     fupds.  The arm's own half below does that work: it says WHICH arm is
+     open, not merely that one may be, so a second open is refuted by the
+     ghost rather than by a counting argument. *)
   Definition uart_rx_writer (iu : uart_id) (γ : uart_names) (k : nat)
       (hl : option (list mobs)) : iProp Σ :=
     (uart_rx_tok γ k hl ∗
@@ -1706,8 +1575,7 @@ Section DevLoops.
      (* THE ARM'S OTHER HALF (redesign R2), at [None]: between interrupts no
         consoleintr arm is in progress, and this payload is the one carrier
         that reaches consoleintr and comes back at every interrupt. *)
-     uart_arm γ (1/2) None ∗
-     win_at iu (S gen_id))%I.
+     uart_arm γ (1/2) None)%I.
 
   Definition plic_payload_uart (iu : uart_id) (γ : uart_names) : iProp Σ :=
     (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer iu γ k hl)%I.
@@ -2310,7 +2178,7 @@ Section DevLoops.
     iIntros "!>" (????) "_". by iModIntro.
   Qed.
 
-  (* the KERNEL'S PORT owes nothing: [out_res_at Uart1] is [emp], so every
+  (* the KERNEL'S PORT owes nothing: [chist_at Uart1] is [emp], so every
      link is discharged out of the payload and the witness never moves *)
   Lemma out_link_triv (i : uart_id) (k : nat) (b : bv 8) (Φ : iProp Σ) :
     i = Uart1 -> Φ -∗ out_link i k b Φ.
@@ -3119,10 +2987,10 @@ Section DevLoops.
     (* ...AND THE LOG'S MARK (lane CONS-IO), on the ring mark's mould *)
     ohist_le hg hl ->
     plic_uslot iu γu cl -∗ uart_rx_tok γu k hl -∗ uart_rx_hi γu (1/2) hh -∗
-    uart_log_hi γu (1/2) hg -∗ uart_arm γu (1/2) None -∗ win_at iu (S gen_id)
+    uart_log_hi γu (1/2) hg -∗ uart_arm γu (1/2) None
       ==∗ uart_inited γu ∗ plic_uslot iu γu cl.
   Proof.
-    iIntros (Hle Hleg) "Hu Htok Hhi Hlg Harm Hwin".
+    iIntros (Hle Hleg) "Hu Htok Hhi Hlg Harm".
     iDestruct (plic_uslot_cases with "Hu") as "[Hpre | [#Hin Hrest]]".
     - iMod (uart_preinit_fire with "Hpre") as "#Hin".
       iModIntro. iSplitR; [iExact "Hin" |].
@@ -3132,8 +3000,7 @@ Section DevLoops.
       iExists k, hl. iFrame "Htok".
       iSplitL "Hhi"; [iExists hh; iFrame "Hhi"; iPureIntro; exact Hle |].
       iSplitL "Hlg"; [iExists hg; iFrame "Hlg"; iPureIntro; exact Hleg |].
-      iSplitL "Harm"; [iExact "Harm" |].
-      iExact "Hwin".
+      iExact "Harm".
     - (* the deposit has already run: the slot's own payload is the token's
          partner, so this one is spare and is simply dropped *)
       iModIntro. iSplitR; [iExact "Hin" |].
@@ -3149,20 +3016,17 @@ Section DevLoops.
     uart_rx_hi (plic_unames γ γ1 j) (1/2) hh -∗
     uart_log_hi (plic_unames γ γ1 j) (1/2) hg -∗
     (* ...the arm's half, at [None] (redesign R2)... *)
-    uart_arm (plic_unames γ γ1 j) (1/2) None -∗
-    (* ...and the era's echo window token, [emp] at the second port
-       (lane CONS-IO milestone F) *)
-    win_at j (S gen_id)
+    uart_arm (plic_unames γ γ1 j) (1/2) None
       ={E}=∗ uart_inited (plic_unames γ γ1 j).
   Proof.
-    iIntros (Hmask Hle Hleg) "#Hpinv Htok Hhi Hlg Harm Hwin".
+    iIntros (Hmask Hle Hleg) "#Hpinv Htok Hhi Hlg Harm".
     iInv "Hpinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (p) "(Hp & %Hpok & Hslots)".
     rewrite plic_slots_eq.
     destruct j; cbn [plic_unames];
       [ iDestruct "Hslots" as "[Hu Hw]" | iDestruct "Hslots" as "[Hw Hu]" ];
       (iMod (plic_uslot_deposit _ _ _ k hl hh hg Hle Hleg
-               with "Hu Htok Hhi Hlg Harm Hwin")
+               with "Hu Htok Hhi Hlg Harm")
          as "[#Hin Hu]";
        iMod ("Hclose" with "[Hp Hu Hw]") as "_";
        [ iNext; iExists p; iFrame "Hp"; iSplitR; [iPureIntro; exact Hpok|];
@@ -3196,13 +3060,13 @@ Section DevLoops.
        here, at the empty witness history, out of the resource the boot
        carries -- the TRANSPORT's yield ([SystemAdequacy.app_xfer_boot_raw]
        hands the fresh era instance its claim at [[]]/[[]]).  At [Uart1]
-       [out_res_at] is [emp], so the second port's mint costs nothing
-       ([out_res_at_uart1]).  (lane OUT-FUPD) *)
+       [chist_at] is [emp], so the second port's mint costs nothing
+       ([cons_res_at_uart1]).  (lane OUT-FUPD) *)
     uart_acc u = [] ->
     (* ...AND THE INPUT LOG IS FOUNDED HERE TOO (lane CONS-IO), out of the
        transport's fourth yield [I [] [] []]: an empty log, nothing
        delivered, at the empty witness history.  At [Uart1] it is [emp]
-       ([in_res_at_uart1]). *)
+       ([cons_res_at_uart1]). *)
     chist_at iu (S gen_id) []
       (LogEntryDefs.MkCH [] [] [] None) -∗
                 |==> ∃ γ, uart_sent_auth γ u ∗ uart_out_auth γ u ∗

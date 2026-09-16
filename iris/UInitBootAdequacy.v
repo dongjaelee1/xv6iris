@@ -153,11 +153,12 @@ Section EchoAdequacy.
     (* ...and ONE FEWER GOAL since redesign R2: [Happ_in_sup] is gone (one
        resource admits one law), and [Hconst] is fixed by unification the
        way [Houtt] is. *)
-    (* ONE MORE HOLE AGAIN since lane CONS-IO milestone F: [Hwint] is fixed
-       by unification the way [Hinpt] is (it is named in [Hphi]'s literal
-       above), so the hole list is one longer and no new goal appears. *)
+    (* ...and FOUR FEWER HOLES since redesign R4: [Houtt], [Hinpt] and
+       [Hwint] are gone with the three fields they were about, and
+       [Hconst] takes their place -- fixed by unification the way they
+       were, because [Hphi]'s own literal above names it. *)
     refine (xv6_app_adequacy Σ g sb nib cov app_echo
-              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
+              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
     - exact echo_Hbirth.
     - exact echo_Happ_kill.
     - exact echo_Happ_out_sup.
@@ -186,8 +187,7 @@ Section EchoAdequacy.
              payload and sh's tail obligation itself, off the era's links
              and the boot resource. ---- *)
       
-      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen Hcons
-             Hwin.
+      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen Hcons.
       (* the record's [app_kill] field IS [AppEcho.echo_taint] (lane
          KILL-PAY, K1); [echo_Hinit_boot] is stated at the latter, and
          unification does not delta-unfold the record literal for it. *)
@@ -207,12 +207,9 @@ Section EchoAdequacy.
          and [Heq] after, both of which carry the record's own [GenId].
          Naming it here would pin the wrong one: the [GEN] this field
          binds is not the one [app_echo] was elaborated at. *)
-      (* ...and the window token's field IS [AppEcho.echo_win] (lane
-         CONS-IO milestone F), on [app_cons]'s mould *)
-      cbn [app_echo app_win] in Hwin.
       iIntros "#Hinv Hb Hturn".
       iApply (echo_Hinit_boot HR GEN c r
-                Heq Htag Hkill Hcons Hwin with "Hinv Hb [Hturn]").
+                Heq Htag Hkill Hcons with "Hinv Hb [Hturn]").
       cbn [app_echo app_turn]. iExact "Hturn".
     - (* [Happ_echo]: [EchoOut.echo_happ_echo], the arm's open and a run
          whose every link takes nothing. *)

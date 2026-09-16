@@ -548,7 +548,7 @@ Section ProofUartintr.
     { iLöb as "IH".
       iIntros (CIDk M1) "%Hregs1 %Hls1 %Hla4 %Hla3 Hcg Hcnt Hpc Hfr Htok Hcont".
       iDestruct "Htok" as (k hl) "[Htok Hmk]".
-      iDestruct "Hmk" as "(Hhi & Hlgh & Harm & Hwin)".
+      iDestruct "Hmk" as "(Hhi & Hlgh & Harm)".
       iDestruct "Hhi" as (hh) "[Hhi %Hhle]".
       (* ...AND THE LOG'S MARK (lane CONS-IO): the third half of the
          writer's payload, on the ring mark's mould exactly.  It goes to
@@ -570,7 +570,7 @@ Section ProofUartintr.
                 ltac:(pcw) ltac:(pcw) ltac:(pcw) ltac:(pcw) ltac:(pcw) ltac:(pcw)
                 ltac:(vm_compute; reflexivity)
                 with "Hcg Hpc [] [] [] [] [] Huinv Hdlab Htok
-                      [Hcnt Hfr Hcont Hhi Hlgh Harm Hwin]").
+                      [Hcnt Hfr Hcont Hhi Hlgh Harm]").
       { iApply (uii2_46 with "Ht"). }
       { iEval (rewrite -UG.ug_cr7). iApply (uii2_4a with "Ht"). }
       { iApply (uii2_4c with "Ht"). }
@@ -589,12 +589,11 @@ Section ProofUartintr.
                      ltac:(wp_next_chain) with "Hcont") as "Hcont".
         iApply (ui_tail i γu m0 (<[Regidx Ra5 := regval_into_reg (rx_masked bt)]> M1)
                   av lvl eb pme sp0 b lks Hrx Hsp0 Hav
-                  with "Ht Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh Harm Hwin] Hcont").
+                  with "Ht Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh Harm] Hcont").
         iExists k, hl. rewrite /uart_rx_writer. iFrame "Htok".
         iSplitL "Hhi"; [iExists hh; iFrame "Hhi"; by iPureIntro |].
         iSplitL "Hlgh"; [iExists hg; iFrame "Hlgh"; by iPureIntro |].
-        iSplitL "Harm"; [iExact "Harm" |].
-        iExact "Hwin".
+        iExact "Harm".
       - (* a byte came out.  What happens to it is decided by the PORT, and
            by nothing at run time: [uart_rx_word] says what `u->rx` holds. *)
         iIntros (bt c) "_ Hcg Hpc Hh".
@@ -690,8 +689,7 @@ Section ProofUartintr.
                           Harm").
           all: try lkbelow.
           (* the contract takes the ARM's half now (redesign R2), not the
-             application's window token: the payload's [win_at] rides
-             through untouched. *)
+             application's window token, which is gone. *)
           iIntros (CIDc Hsc Mf) "[%Hcsf %Hdomf] Hcg Hcnt Ht2 Hpc Hhi Hlgh Harm".
           iEval (rewrite HH2ra) in "Hpc".
           assert (P5cr : ret_pc (add_vec_int (mword_of_int (KernelSyms.uartintr + 0x5a) : mword 64) 2)
@@ -741,7 +739,7 @@ Section ProofUartintr.
           iDestruct (ui_ret_cont_shift CIDk CIDw Uart0 γu m0 av lvl eb pme b lks
                        ltac:(wp_next_chain) with "Hcont") as "Hcont".
           iApply ("IH" $! CIDw N1
-                    with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh Harm Hwin] Hcont").
+                    with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh Harm] Hcont").
           5: { iExists (S k), (Some h). rewrite /uart_rx_writer. iFrame "Htok".
                (* consoleintr's post no longer reports the echo (lane
                   OUT-FUPD retires the receipt): only the two marks. *)
@@ -754,8 +752,7 @@ Section ProofUartintr.
                (* ...AND THE ECHO WINDOW TOKEN, back into the payload (lane
                   CONS-IO milestone F): the append the arm fired returned
                   it, so the next byte's call has it again. *)
-               iSplitL "Harm"; [iExact "Harm" |].
-               iApply (win_at_uart0_intro with "Hwin"). }
+               iExact "Harm". }
           * destruct HMfregs as (A2 & A18 & A19 & A20 & A21 & A22 & A23 & A24 & A25 & A26 & A27).
             unfold ui_regs. split_and!;
               (rewrite /N1 upd_ne; [| reg_neq]); (rewrite /N0 upd_ne; [| reg_neq]); assumption.
@@ -817,7 +814,7 @@ Section ProofUartintr.
           iDestruct (ui_ret_cont_shift CIDk CIDz Uart1 γu m0 av lvl eb pme b lks
                        ltac:(wp_next_chain) with "Hcont") as "Hcont".
           iApply ("IH" $! CIDz H1
-                    with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh Harm Hwin] Hcont").
+                    with "[%] [%] [%] [%] Hcg Hcnt Hpc Hfr [Htok Hhi Hlgh Harm] Hcont").
           5: { iExists (S k), (Some h). rewrite /uart_rx_writer. iFrame "Htok".
                iSplitL "Hhi";
                  [ iExists hh; iFrame "Hhi"; iPureIntro;
@@ -830,8 +827,7 @@ Section ProofUartintr.
                iSplitL "Hlgh";
                  [ iExists hg; iFrame "Hlgh"; iPureIntro;
                    exact (ObsTrace.ohist_le_of_ext hg h Hgext) |].
-               iSplitL "Harm"; [iExact "Harm" |].
-               iExact "Hwin". }
+               iExact "Harm". }
           * exact HH1regs.
           * exact HH1s1.
           * exact HH1a4.

@@ -496,8 +496,7 @@ Section power.
          step, [App.Hpow]) and carried to the boot, which hands it to
          <init> in the boot bundle.  A parameter and not a field, because
          it is the APPLICATION's credential and no field of the machine's
-         fixed record holds it -- unlike the echo window token below, which
-         is [RiscvPtsto.riscv_win_res] and needs no parameter. *)
+         fixed record holds it. *)
       (Tn : iProp Σ)
       (g' : gstate) : iProp Σ :=
     (([∗ list] c ∈ enum CPU, [∗ set] r ∈ D c,
@@ -615,16 +614,11 @@ Section power.
         FIXED-layer, like the three rows below: the claims are the
         application's, at the fixed record's own two fields. *)
      riscv_cons_res (S gen) [] (LogEntryDefs.MkCH [] [] [] None) ∗
-     (* ...AND THE ERA'S ECHO WINDOW TOKEN AND ITS TURN (lane CONS-IO
-        milestone F), the same arm's other two yields and carried the same
-        way.  The token goes into the console port's PLIC payload at the
-        boot's deposit ([WpUart.uart_rx_tok_deposit]), where consoleintr's
-        shift finds it; the turn goes to <init>
-        ([App.Hinit_boot], [UInitKernel.init_boot_pay]).  FIXED-layer for
-        the token (it is the record's own field) and a parameter for the
-        turn (it is the application's own [iProp]). *)
+     (* ...AND THE ERA'S TURN (lane CONS-IO milestone F), the same arm's
+        other yield and carried the same way: it goes to <init>
+        ([App.Hinit_boot], [UInitKernel.init_boot_pay]).  A parameter, not a
+        field, because it is the application's own [iProp]. *)
      Tn ∗
-     riscv_win_res (S gen) ∗
      crash_inv ∗
      gen_born gen ∗ gen_started gen ∗ era_registered gen HE ∗
      (* A6.131: the era's image, as the boot client's pure fact -- what a
@@ -653,7 +647,7 @@ Section power.
     rewrite /power_boot_res.
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 &
               H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & HRb & H22 &
-              Hores & Htn & Hwin & H23 & H24 & H25 & H26 & %H27)".
+              Hores & Htn & H23 & H24 & H25 & H26 & %H27)".
     iSplitL "HRb"; [ iExact "HRb" | ].
     iSplitL "H1"; [ iExact "H1" | ].
     iSplitL "H2"; [ iExact "H2" | ].
@@ -679,7 +673,7 @@ Section power.
     iSplitL "H22"; [ iExact "H22" | ].
     iSplitL "Hores"; [ iExact "Hores" | ].
     iSplitL "Htn"; [ iExact "Htn" | ].
-    iSplitL "Hwin"; [ iExact "Hwin" | ].
+
     iSplitL "H23"; [ iExact "H23" | ].
     iSplitL "H24"; [ iExact "H24" | ].
     iSplitL "H25"; [ iExact "H25" | ].
@@ -790,15 +784,12 @@ Section power.
               (if on then emp
                else riscv_cons_res (S (obs_boots h)) []
                       (LogEntryDefs.MkCH [] [] [] None) ∗
-                    (* ...AND THE ERA'S ECHO WINDOW TOKEN AND ITS TURN (lane
-                       CONS-IO milestone F): the same arm, the same reason
-                       -- this is the ONE step that runs the client's ledger
-                       once per era, so it is the only place a per-era
-                       linear thing can be minted.  The token is lent to the
-                       kernel (it rides the console's PLIC payload to
-                       consoleintr's shift); the turn is handed to <init>. *)
-                    Tn (S (obs_boots h)) ∗
-                    riscv_win_res (S (obs_boots h)))))
+                    (* ...AND THE ERA'S TURN (lane CONS-IO milestone F):
+                       the same arm, the same reason -- this is the ONE step
+                       that runs the client's ledger once per era, so it is
+                       the only place a per-era linear thing can be minted,
+                       and the turn is handed to <init>. *)
+                    Tn (S (obs_boots h)))))
       (* the boot client is handed the WHOLE fact set a reset machine has
          ([RiscvLang.boot_facts]: RAM total and holding the loaded image, the
          per-hart reset registers, the reset devices, power on) -- everything
@@ -914,7 +905,7 @@ Section power.
       iDestruct "Hoauth" as "[Hovar Hohist]".
       iMod (Hobs h false (v_disk (g.(gdev).(dvirtio))) Hsh
               with "Htie HPt Hovar")
-        as ">(Htie & HPt & Hovar & Hores & Htn & Hwin)".
+        as ">(Htie & HPt & Hovar & Hores & Htn)".
       (* THE ERA THE YIELD IS AT, MATCHED TO THE ERA THE BOOT MINTS (lane
          CONS-IO milestone E).  [Hobs] founds at [S (obs_boots h)]; the boot
          below is generation [ggen] and its era is [S ggen].  The two are
@@ -923,7 +914,7 @@ Section power.
       assert (Hbt : obs_boots h = g.(ggen)).
       { destruct Hwf as (_ & Hb & _). rewrite Hb Hpw. cbn. lia. }
       iEval (rewrite Hbt) in "Hores".
-      iEval (rewrite Hbt) in "Hwin". iEval (rewrite Hbt) in "Htn".
+      iEval (rewrite Hbt) in "Htn".
       iMod (obs_hist_auth_step h (h ++ [ObsPowerOn])%list
               (ex_intro _ [ObsPowerOn] eq_refl)
               with "Hohist") as "Hohist".
@@ -1060,7 +1051,7 @@ Section power.
       iEval (rewrite big_sepM_fmap) in "Htsfrags2".
       iMod (Hboot HE g.(ggen) g2 Hbf Hpure with
               "Hoinv [Helems Hbytes Hkauth Hkfrags Hkpt Hkptb2 Hs Hsie Hspp Hspie Hlks Hpark Hpst HuF HpF HvF
-                Hdfrags Hmir Hresvfrags HRb Htsfrags2 Hores Htn Hwin]")
+                Hdfrags Hmir Hresvfrags HRb Htsfrags2 Hores Htn]")
         as "(Hwps & Hwpu & Hwpd & Hwpp)".
       { rewrite /power_boot_res.
         (* the era's UART-name FUNCTION is [γu]; say so, or the framing has
@@ -1089,7 +1080,7 @@ Section power.
         (* ...and the era's window token and its turn, from the same arm
            (lane CONS-IO milestone F) *)
         iSplitL "Htn"; [iExact "Htn" |].
-        iSplitL "Hwin"; [iExact "Hwin" |].
+
         iSplitR; [iExact "Hcinv"|].
         iSplitR; [iExact "Hbornlb"|].
         iSplitR; [|iSplitR; [iExact "HRelem" | iPureIntro; reflexivity]].
@@ -1259,27 +1250,13 @@ Definition boot_fixedGS {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
        [RiscvPtsto.riscv_out_res]); TIMELESS, so the UART invariant's body
        still strips its later.  Its FOUNDING is the transport's, not a
        field and not a premise here. *)
-    (Ores : nat -> list mobs -> list (bv 8) -> iProp Σ)
-    (HOrest : forall (k : nat) (h : list mobs) (acc : list (bv 8)),
-       Timeless (Ores k h acc))
-    (* ...and the INPUT LOG (app-echo.md, lane CONS-IO), the receive side's
-       twin of [Ores] and a Coq-level argument for the same reason: what
-       the application claims of the inputs the CONSOLE UART has accepted
-       and of which of them a process has been given.  A RESOURCE and
-       TIMELESS for [Ores]'s reasons; founded by the transport, not here. *)
-    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
-            list (list mobs * bv 8) -> iProp Σ)
-    (HIrest : forall (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-                     (dl : list (list mobs * bv 8)), Timeless (Ires k h pops dl))
-    (* ...and the ECHO WINDOW TOKEN (app-echo.md, lane CONS-IO milestone F),
-       the client's per-era exclusive: the kernel carries it on the console
-       port's PLIC payload to consoleintr's shift and the shift's own append
-       hands it back.  A Coq-level argument for [Ores]'s reason, TIMELESS so
-       the payload it rides stays timeless, and founded by the power-on
-       hook rather than here. *)
-    (Wres : nat -> iProp Σ) (HWrest : forall k : nat, Timeless (Wres k))
-    (* THE MERGED CONSOLE RESOURCE (redesign R2), a Coq-level argument for
-       [Ores]'s reason and TIMELESS for its reasons. *)
+    (* THE CONSOLE RESOURCE (redesign R2), a Coq-level argument for the tag
+       family's reason: what the application claims of the whole console
+       boundary, read against an input-history prefix of the run.  A
+       RESOURCE, because a pure predicate cannot say who may write or whose
+       delivery a byte was (see [RiscvPtsto.riscv_cons_res]); TIMELESS, so
+       the UART invariant's body still strips its later.  Its FOUNDING is
+       the power-on hook's, not a field and not a premise here. *)
     (Cres : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
     (HCrest : forall (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist),
        Timeless (Cres k h H))
@@ -1296,7 +1273,7 @@ Definition boot_fixedGS {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
      are main's.  All resolve from [riscvGpreS]. *)
   RiscvFixedGS Σ Hinv _ _ _ _ _ _ _ _ _ _ _ _ _ γgen γstart _ γreg
     _ _ _ γdisk ndisk Pcp γswap _ γobs T Ptp _ γhist Tg HTg HTgt
-    Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest Cres HCrest CT c.
+    Kc HKc HKct Cres HCrest CT c.
 
 (* ---------------------------------------------------------------------- *)
 (* THE TRACE HOOK'S HELPERS -- ONE PER CONJUNCT OF [state_interp].          *)
@@ -1364,19 +1341,14 @@ Lemma disk_proj_trace {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
     (Tg : list mobs -> iProp Σ) (HTg : forall h, Persistent (Tg h))
     (HTgt : forall h, Timeless (Tg h))
     (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
-    (Ores : nat -> list mobs -> list (bv 8) -> iProp Σ)
-    (HOrest : forall k h acc, Timeless (Ores k h acc))
-    (Ires : nat -> list mobs -> list LogEntryDefs.log_entry ->
-            list (list mobs * bv 8) -> iProp Σ)
-    (HIrest : forall k h pops dl, Timeless (Ires k h pops dl))
-    (Wres : nat -> iProp Σ) (HWrest : forall k, Timeless (Wres k))
+
     (Cres : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
     (HCrest : forall k h H, Timeless (Cres k h H)) (c : CT)
     (g' : gstate) :
   ⊢ @power_interp Σ
        (boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
           (Pc γdisk γswap γreg γstart c) γobs T Ptp γhist Tg HTg HTgt
-          Kc HKc HKct Ores HOrest Ires HIrest Wres HWrest Cres HCrest CT c) g' -∗
+          Kc HKc HKct Cres HCrest CT c) g' -∗
     ▷ Pc γdisk γswap γreg γstart c -∗
     ◇ ⌜Ppure (v_disk (dvirtio (gdev g')))⌝.
 Proof.
@@ -1469,9 +1441,9 @@ Proof. iIntros "[_ H]". iApply (obs_pred_at_alloc with "H"). Qed.
    and a turn of [emp]). *)
 Lemma obs_pred_at_step {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ} (ndisk : nat)
     (C : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
-    (Tn : nat -> iProp Σ) (W : nat -> iProp Σ)
+    (Tn : nat -> iProp Σ)
     (HC : forall k : nat, ⊢ C k [] (LogEntryDefs.MkCH [] [] [] None))
-    (HTn : forall k : nat, ⊢ Tn k) (HW : forall k : nat, ⊢ W k)
+    (HTn : forall k : nat, ⊢ Tn k)
     (γdisk γobs : gname) (h : list mobs) (on : bool) (dk : Z -> bv 8) :
   trace_shape h on ->
   ⊢ disk_img_auth_sized γdisk ndisk dk -∗ ▷ obs_pred_at γobs -∗
@@ -1481,7 +1453,7 @@ Lemma obs_pred_at_step {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ} (ndisk : nat
            (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
          (if on then emp
           else C (S (obs_boots h)) [] (LogEntryDefs.MkCH [] [] [] None) ∗
-               Tn (S (obs_boots h)) ∗ W (S (obs_boots h)))).
+               Tn (S (obs_boots h)))).
 Proof.
   intros _. iIntros "Htie HP Hauth".
   iDestruct "HP" as (h') ">Hfrag".
@@ -1493,8 +1465,7 @@ Proof.
   iSplitL "Hfrag"; [iNext; iExists _; iExact "Hfrag" |].
   iSplitL "Hauth"; [iExact "Hauth" |].
   destruct on; [done |].
-  iSplitR; [iApply HC |].
-  iSplitR; [iApply HTn | iApply HW].
+  iSplitR; [iApply HC | iApply HTn].
 Qed.
 
 (* THE LEDGER at a raw gname (uart-trace.md phase 4): [RiscvPtsto.obs_ledger]'s
@@ -1542,16 +1513,15 @@ Qed.
 Lemma obs_ledger_at_step {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ} (ndisk : nat)
     (R : list mobs -> iProp Σ) (HRt : forall h, Timeless (R h))
     (C : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
-    (* ...and the window token and the turn (lane CONS-IO milestone F): the
-       ledger's step yields three things now, and this lemma passes all
-       three straight out *)
-    (Tn : nat -> iProp Σ) (W : nat -> iProp Σ)
+    (* ...and the era's turn (lane CONS-IO milestone F): the ledger's step
+       yields two things, and this lemma passes both straight out *)
+    (Tn : nat -> iProp Σ)
     (Hpow : forall (h : list mobs) (on : bool) (dk : Z -> bv 8),
        trace_shape h on ->
        ⊢ R h ==∗ R (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
          (if on then emp
           else C (S (obs_boots h)) [] (LogEntryDefs.MkCH [] [] [] None) ∗
-               Tn (S (obs_boots h)) ∗ W (S (obs_boots h))))
+               Tn (S (obs_boots h))))
     (γdisk γobs : gname) (h : list mobs) (on : bool) (dk : Z -> bv 8) :
   trace_shape h on ->
   ⊢ disk_img_auth_sized γdisk ndisk dk -∗ ▷ obs_ledger_at R γobs -∗
@@ -1561,7 +1531,7 @@ Lemma obs_ledger_at_step {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ} (ndisk : n
            (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
          (if on then emp
           else C (S (obs_boots h)) [] (LogEntryDefs.MkCH [] [] [] None) ∗
-               Tn (S (obs_boots h)) ∗ W (S (obs_boots h)))).
+               Tn (S (obs_boots h)))).
 Proof.
   intros Hsh. iIntros "Htie HP Hauth".
   iDestruct "HP" as (h') "[>Hfrag >HR]".
@@ -1709,22 +1679,7 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
        drain.  A RESOURCE and not a [Prop] ([RiscvPtsto.riscv_out_res]),
        and TIMELESS so the device invariant's body still strips its later;
        its FOUNDING is the application transport's, not this layer's. *)
-    (Ores : CT -> nat -> list mobs -> list (bv 8) -> iProp Σ)
-    (HOrest : forall (c : CT) (k : nat) (h : list mobs) (acc : list (bv 8)),
-       Timeless (Ores c k h acc))
-    (* ...and the INPUT LOG (lane CONS-IO), threaded exactly as [Ores] is *)
-    (Ires : CT -> nat -> list mobs -> list LogEntryDefs.log_entry ->
-            list (list mobs * bv 8) -> iProp Σ)
-    (HIrest : forall (c : CT) (k : nat) (h : list mobs)
-                     (pops : list LogEntryDefs.log_entry)
-                     (dl : list (list mobs * bv 8)),
-       Timeless (Ires c k h pops dl))
-    (* ...and the ECHO WINDOW TOKEN (lane CONS-IO milestone F), the third
-       claim family and the fixed record's new field: the client's per-era
-       exclusive, lent to the kernel on the console's PLIC payload.  Founded
-       by [Hobs]'s on-arm below, exactly as the two claims are. *)
-    (Wres : CT -> nat -> iProp Σ)
-    (HWrest : forall (c : CT) (k : nat), Timeless (Wres c k))
+
     (Cres : CT -> nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
     (HCrest : forall (c : CT) (k : nat) (h : list mobs)
                      (H : LogEntryDefs.cons_hist), Timeless (Cres c k h H))
@@ -1765,9 +1720,9 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
               (if on then emp
                else Cres c (S (obs_boots h)) []
                       (LogEntryDefs.MkCH [] [] [] None) ∗
-                    (* ...and the era's turn and its window token (lane
-                       CONS-IO milestone F), on the claim's mould *)
-                    Tn c (S (obs_boots h)) ∗ Wres c (S (obs_boots h)))))
+                    (* ...and the era's turn (lane CONS-IO milestone F), on
+                       the claim's mould *)
+                    Tn c (S (obs_boots h)))))
     (* THE TRACE INVARIANT (the strengthening of this theorem's conclusion).
        [Ppure]/[Hproj] above extract a pure fact from [Pc] and feed it INTO a
        boot; these two export one OUT of the whole execution.
@@ -1818,8 +1773,7 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
             (boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
                (Pc γdisk γswap γreg γstart c) γobs T (Pt γobs c) γhist
                (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
-               (Ores c) (HOrest c) (Ires c) (HIrest c)
-               (Wres c) (HWrest c) (Cres c) (HCrest c) CT c) g' -∗
+               (Cres c) (HCrest c) CT c) g' -∗
          ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
          ▷ Pc γdisk γswap γreg γstart c -∗ ▷ Pt γobs c -∗
          ◇ ⌜phi g' h⌝)
@@ -1865,8 +1819,7 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
        F = boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
              (Pc γdisk γswap γreg γstart c) γobs T (Pt γobs c) γhist
              (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
-             (Ores c) (HOrest c) (Ires c) (HIrest c)
-             (Wres c) (HWrest c) (Cres c) (HCrest c) CT c ->
+             (Cres c) (HCrest c) CT c ->
        ⊢ obs_inv -∗
          power_boot_res HE gen D nproc ndisk Mof (Rb c gen) (Tn c (S gen)) g'
          ={⊤}=∗
@@ -1947,8 +1900,7 @@ Proof.
   set (F := boot_fixedGS Hinv γgen γstart γreg γfdisk ndisk γswap
               (Pc γfdisk γswap γreg γstart c) γobs κs (Pt γobs c) γhist
               (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
-              (Ores c) (HOrest c) (Ires c) (HIrest c)
-              (Wres c) (HWrest c) (Cres c) (HCrest c) CT c).
+              (Cres c) (HCrest c) CT c).
   (* the client's trace hook at the gnames just allocated.  [F] is a local
      DEFINITION, so this statement and the one the final observation below
      faces are convertible. *)
@@ -2091,9 +2043,7 @@ Corollary riscv_trace_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
              (@rx_tag_triv_timeless Σ)
              kill_cred_triv (@kill_cred_triv_persistent Σ)
              (@kill_cred_triv_timeless Σ)
-             out_res_triv (@out_res_triv_timeless Σ)
-             in_res_triv (@in_res_triv_timeless Σ)
-             win_res_triv (@win_res_triv_timeless Σ)
+
              cons_res_triv (@cons_res_triv_timeless Σ) unit c ->
        ⊢ obs_inv -∗
          power_boot_res HE gen D nproc ndisk Mof Rb emp%I g' ={⊤}=∗
@@ -2119,19 +2069,8 @@ Proof.
            (fun _ : unit => kill_cred_triv)
            (fun _ : unit => @kill_cred_triv_persistent Σ)
            (fun _ : unit => @kill_cred_triv_timeless Σ)
-           (fun _ : unit => out_res_triv)
-           (fun (_ : unit) (k : nat) (h : list mobs) (acc : list (bv 8)) =>
-              @out_res_triv_timeless Σ k h acc)
-           (fun _ : unit => in_res_triv)
-           (fun (_ : unit) (k : nat) (h : list mobs)
-                (pops : list LogEntryDefs.log_entry)
-                (dl : list (list mobs * bv 8)) =>
-              @in_res_triv_timeless Σ k h pops dl)
-           (* the window token and the turn, both trivial at this packaged
-              theorem's generic application (lane CONS-IO milestone F) *)
-           (fun _ : unit => win_res_triv)
-           (fun (_ : unit) (k : nat) => @win_res_triv_timeless Σ k)
-           (* the merged console resource, trivial here too (redesign R2) *)
+           (* the console resource, trivial at this packaged theorem's
+              generic application (redesign R2) *)
            (fun _ : unit => cons_res_triv)
            (fun (_ : unit) (k : nat) (h : list mobs)
                 (H : LogEntryDefs.cons_hist) => @cons_res_triv_timeless Σ k h H)
@@ -2140,7 +2079,7 @@ Proof.
                             ltac:(iIntros "_"; iMod HR0 as "HR"; by iModIntro))
            (fun γdisk γobs _ =>
               obs_ledger_at_step ndisk R HRt cons_res_triv
-                (fun _ => emp%I) win_res_triv
+                (fun _ => emp%I)
                 ltac:(intros h on dk Hsh; iIntros "HR";
                       iMod (Hpow h on dk Hsh with "HR") as "HR"; iModIntro;
                       iSplitL "HR"; [iExact "HR" |];

@@ -1945,6 +1945,80 @@ Section UkRunSys.
     iApply ("Hcont" $! h' with "Hcwd Hpayret Hrun").
   Qed.
 
+  (* =================================================================== *)
+  (* KILL, AT THE TIER IT IS AVAILABLE AT (lane RD-8).                     *)
+  (*                                                                       *)
+  (* THE LEAF IS AN INSTANCE AND NOT A WALK, and that is the whole report:  *)
+  (* kill moves no byte, no descriptor, no cwd and no children reading, so  *)
+  (* [wp_uk_ecall_quiet] already covers its walk exactly.  What it does NOT *)
+  (* cover -- and what the lane set out to add -- is an ANSWER: that the    *)
+  (* target incarnation is now owed its death payment                      *)
+  (* ([ChildTok.kill_owed]).  That answer is not available, and the reason  *)
+  (* is precise enough to be worth naming here.                            *)
+  (*                                                                       *)
+  (* WHY NOT.  [SchedCtx.kill_paid]'s row is keyed at THE SLOT'S OWN pid    *)
+  (* CELL, and [SlotGen.pid_reg_agree] is exactly the step that turns a     *)
+  (* killer's registration share into the target's generation -- so on the  *)
+  (* arm where kkill's [beq] MATCHED, the deposit could be placed.  The gap *)
+  (* is the other direction: nothing kkill can reach says the scan matches  *)
+  (* AT ALL.  "Every registered pid is nonzero and is held by some slot" is *)
+  (* a real fact in this tree ([SlotGen.pid_reg_dom]) -- but it lives in    *)
+  (* <pid_lock>'s payload ([PidLock.nextpid_res_at]) and kkill never takes  *)
+  (* <pid_lock>.  [SchedCtx.procs_inv], which is all kkill gets, is the 64  *)
+  (* locks and the 64 kstacks and nothing about pids.  So a killer holding  *)
+  (* [SlotGen.pid_reg pid _ gn] still cannot rule out the -1 return, and a  *)
+  (* post that says "rv = 0 and the row moved" is unprovable.               *)
+  (*                                                                       *)
+  (* WHAT WOULD CLOSE IT: the pid register's domain fact moved out of       *)
+  (* <pid_lock>'s payload and into something kkill holds.  See              *)
+  (* claude-notes/design/user-proc.md.                                      *)
+  (*                                                                       *)
+  (* SO THE LEAF BELOW IS THE TAINT-SHAPED KILL: the program pays the       *)
+  (* application's kill price through its own deposit at number 6           *)
+  (* ([RiscvPtsto.riscv_kill_cred], which for echo IS the taint) and gets   *)
+  (* back a run and a number it knows nothing about.  It is named rather    *)
+  (* than left implicit because a caller should not have to rediscover      *)
+  (* which of [wp_uk_ecall_quiet]'s eleven side conditions kill discharges. *)
+  (* =================================================================== *)
+  (* HOME: [USYS_kill] belongs beside the other twelve in UsysMemOk.v; it
+     is here because no row of that file's tables mentions it yet -- kill
+     is quiet in every one of them. *)
+  Definition USYS_kill : Z := 6.
+
+  Lemma wp_uk_ecall_kill (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (avail : nat) :
+    usysno m = USYS_kill ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    (* THE PRICE IS IN HERE.  Number 6's row of the process's own bundle is
+       what carries [riscv_kill_cred] down to kkill ([SpecSysKill]'s
+       premise); a program with nothing to pay it with cannot mint this
+       deposit at this number. *)
+    udepw N m pc USYS_kill -∗
+    (∀ (h' : CpuId) (r : mword 64),
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m) (add_vec_int pc 4) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hn Hal4. iIntros "#Hi Hrun Hsb Hcont".
+    iApply (wp_uk_ecall_quiet N h m pc USYS_kill avail Hn
+              ltac:(unfold USYS_kill, USYS_exit; lia)
+              ltac:(unfold USYS_kill, USYS_fork; lia)
+              ltac:(unfold USYS_kill, USYS_exec; lia)
+              ltac:(unfold USYS_kill, USYS_sbrk; lia)
+              ltac:(unfold USYS_kill, USYS_wait; lia)
+              ltac:(unfold USYS_kill, USYS_pipe; lia)
+              ltac:(unfold USYS_kill, USYS_read; lia)
+              ltac:(unfold USYS_kill, USYS_fstat; lia)
+              ltac:(unfold USYS_kill, USYS_close; lia)
+              ltac:(unfold USYS_kill, USYS_dup; lia)
+              ltac:(unfold USYS_kill, USYS_open; lia)
+              ltac:(unfold USYS_kill, USYS_chdir; lia)
+              Hal4 with "Hi Hrun Hsb Hcont").
+  Qed.
+
+
   (* ------------------------------------------------------------------- *)
   (* WAIT AT A NULL STATUS POINTER.  The kernel's own [addr != 0] test     *)
   (* means nothing is copied out, so the heap the caller owns comes back   *)

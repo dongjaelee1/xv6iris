@@ -168,10 +168,8 @@ exclusivity fact), not a kernel ask.
 
 ## NEXT (owner ruled 2026-09-17: "ex-3, the wait/kill pair, and the tree-layer campaign")
 
-In order: ~~EX-3~~ (LANDED, branch `ex3-argv`) → RD-7 WAIT (a real status pointer: the kernel
-writes the child's exit status to user memory — the read/write
-"kernel writes user memory" row pattern) + RD-8 KILL (per-PID spec in
-place of the global predicate the TR flags) → the TREE-LAYER campaign
+In order: ~~EX-3~~ (LANDED, branch `ex3-argv`) → ~~RD-7 WAIT~~ (LANDED, branch
+`rd7-wait-kill`) + RD-8 KILL (per-PID spec: **WALLED**, see below) → the TREE-LAYER campaign
 (`design/fs-syscall-specs.md` §6: the client-visible fs vocabulary and
 the cross-syscall exclusivity that makes "I know what this file is" a
 resource — what unlocks pin-free exec, per EX-2).  RD-7/8's brief is cut (`brief-rd7-wait-kill.md`: wait at a real status
@@ -180,6 +178,57 @@ bytes to the escrow's status word; kill per PID on upstream's
 SELF-KILL machinery — pid_reg names the generation, kill_owed is the
 target's own −1 payload — with ONE kernel-side post strengthening on
 kkill, STOP if procs_inv cannot resolve pid to the registered slot).
+**RD-7 AS LANDED** (design of record: `design/user-proc.md`).  The bytes
+a reap copies out and the status its escrow is keyed at are now ONE
+existential all the way to the program.  The join is made once, in
+`ProofSyscall`'s wait arm, and rides a new carrier
+(`UexecRet.uwait_wr` / `uwait_ans_at_m` / `uwait_ans_pid_m`) through
+`SpecSyscall` → `SpecUsertrap` → `SpecUservec` → `UexecRet`
+(`uexec_ret_cont_gen`'s children row gains the resume image as a second
+axis).  One kernel-side clause: kwait's post now says a reap at a
+non-null pointer placed ALL FOUR bytes — a partial copyout is copyout's
+failing arm and the `blt a0,x0` at +0x5c turns it into the −1 return.
+New leaf `UkRunSys.wp_uk_ecall_wait_status` + `uwait_status` /
+`uwait_status_reaped`; consumer test `UkWaitCons.wp_uk_wait_learn_status`
+(one child, one buffer: the parent comes back with `Q (xstate_val xw)`
+redeemed from the escrow AND the same `xw` in its own memory).  Every
+existing consumer is unmoved — the null leaves weaken the window away
+(`uwait_ans_pid_m_forget`).  `Print Assumptions` on the leaf and the
+test: the two platform axioms + funext.
+  - **RD-7's own wall (open):** at a REAL status pointer the −1 arm says
+    nothing.  `UserChildren.wait_why`'s first exit (a zombie was there,
+    copyout could not place the status) is guarded on the pointer being
+    NULL, so a caller that wants the status word gives up the reason for
+    a −1.  Closing it = kwait publishes copyout's own `¬ uva_wmapped`
+    witness, the way `ConsoleInv.cons_swallow` does, and `wait_why`'s
+    first disjunct becomes a Prop parameter threaded through the same
+    five layers.  The U-tier half already exists
+    (`UkRunSys.uk_read_nofault`).  `design/user-proc.md` §4.
+  - The null leaves are NOT instances of the new one and were left
+    alone: null buys the −1 arm's reason, a real pointer buys the status
+    word.  `design/user-proc.md` §2.
+
+**RD-8 AS LANDED, AND THE WALL.**  `UkRunSys.wp_uk_ecall_kill` (+
+`USYS_kill`) is the taint-shaped kill — an instance of
+`wp_uk_ecall_quiet` at number 6, named so a caller need not rediscover
+which of its eleven side conditions kill discharges.  The PER-PID post
+(deliverable 4) is **not provable today** and the reason is exact:
+`SchedCtx.kill_paid` is keyed at the slot's own `p->pid` cell, so on the
+arm where kkill's `beq` MATCHED the deposit could be placed
+(`pid_reg_agree` + `kill_row_fire` + `kill_row_of_owed` are all there) —
+but nothing kkill can reach says the scan matches at all.  "Every
+registered pid is held by some slot" is `SlotGen.pid_reg_dom`, and it
+lives in `<pid_lock>`'s payload (`PidLock.nextpid_res_at`), which kkill
+never takes; `SchedCtx.procs_inv` is 64 locks and 64 kstacks and says
+nothing about pids.  Two ways out, costed in `design/user-proc.md` §5c:
+(1) move the domain fact out of `<pid_lock>` — an invariant refactor;
+(2) the GUARDED post (`rv = 0 → the row moved`), provable today but
+needing a kill ANSWER CHANNEL from kkill to the U tier that does not
+exist — cost it as an RD-7-sized lane.  Deliverable 6 (fork → kill →
+wait → learn `xs = −1`) is blocked on either.  **The TR's
+`\nz{kill spec … should be per-PID}` is NOT discharged; RD-TR-2 keeps
+it and cites `design/user-proc.md` §5b.**
+
 The tree-layer design is `design/user-tree.md` (TL-0): subtree
 ownership as an APPLICATION CLAIM in app_inv (echo's whole-fs pin
 generalized per process), the step discipline as the exclusivity fact,

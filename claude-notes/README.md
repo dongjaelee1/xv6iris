@@ -149,6 +149,17 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   supplier plugs into, the U-tier rule's asymmetric shape (no success
   continuation: the process continues as the entry promised), and what the
   caller's readings are doing in a program's entry statement.
+- **[`user-proc.md`](design/user-proc.md)** — the GENERIC PROCESS specs, the
+  process half of what `user-read.md` / `user-write.md` / `user-exec.md` are
+  for the file system: the principle that what the kernel proves under one
+  binder must ARRIVE under one binder, wait's two leaves and the trade
+  between them (a null status pointer buys the -1 arm's reason, a real one
+  buys the status word), the five-layer carrier `uwait_wr` and where its
+  join is made, why a reap at a real pointer places all four bytes, the one
+  wall it leaves (the copyout-failure exit is guarded on the null pointer,
+  and what publishing copyout's `uva_wmapped` witness would cost), and for
+  kill why the per-PID post is NOT provable today — `pid_reg_dom` lives in
+  `<pid_lock>`'s payload and kkill never takes it — with the two ways out.
 - **[`user-heap.md`](design/user-heap.md)** — the SEPARATION-LOGIC HEAP over
   user memory: the two `ghost_map`s (text persistent/X, data exclusive/W)
   and why that is what makes an exclusive points-to imply writability, the

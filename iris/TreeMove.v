@@ -21,6 +21,22 @@
 (* WHAT IS HERE: the WRITE chain ([tree_awrite_chain]), which is the one  *)
 (* write-kind member whose U-tier leaf can carry the receipt home         *)
 (* ([UkTreeWrite.v]).  WHAT IS NOT, AND EXACTLY WHY: section 4.           *)
+(*                                                                       *)
+(* SINCE TL-3C AND TL-3R the create/unlink family lives here too:         *)
+(*   3b   the two moves AT A GIVEN PARENT ([tree_acre_phases],           *)
+(*        [tree_uent_phases]);                                            *)
+(*   3b'  create's parent leg BY THE ROOTED ROUTE                        *)
+(*        ([tree_acre_phases_rooted]) -- the two credentials read off    *)
+(*        the claim from the arm's PURE receipt, at EVERY child kind;    *)
+(*   3c   unlink's ENTRY leg at the bundle's own shape;                   *)
+(*   3d   THE CREATE MOVE CONSUMED: all four legs from ONE deed          *)
+(*        ([tree_arm_commit] / [tree_unarm_commit] / [tree_dots_commit] / *)
+(*        [tree_acre_commit], joined by [tree_cre_commits]);              *)
+(*   3e   unlink's TARGET leg at a GIVEN target, and the two quantifier  *)
+(*        seams that are all that blocks the unlink corollary;            *)
+(*   3f   the three path-fixed BUNDLES at a parent prefix of length zero  *)
+(*        ([tree_mknod_au] / [tree_mkdir_au] / [tree_open_create_au]).    *)
+(* design/user-tree.md sections 7.7 and 7.9 are the as-landed blocks.     *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -49,6 +65,14 @@ Require Import SysUnlinkDefs.    (* [uent_commit_at], [unl_pre] (lane TL-3C
                                     section 3c: the MOVE CONSUMED)         *)
 Require Import PieceFam.         (* [pfam] / [pf_at]: a piece's receipt
                                     beside its refund                      *)
+Require Import FsAbsCreateFire.  (* create's four commits, [cre_arm_fired] *)
+Require Import SpecCreate.       (* [cre_commits], [cre_dots_leg]          *)
+Require Import FsAbsEra.         (* [ep_start], [np_elems], [um_start_of]  *)
+Require Import SysMknodDefs.     (* [npar_cur], [npar_elems]               *)
+Require Import ArgPath.          (* [arg_path_of], [arg_path_of_uniq]      *)
+Require Import SpecSysMknod.     (* [mknod_au_at]: the path-fixed bundle   *)
+Require Import SpecSysMkdir.     (* [mkdir_au_at]: its twin, at T_DIR      *)
+Require Import SysOpenDefs.      (* [open_au_create_at]: open(O_CREATE)    *)
 Require Import TreeView.         (* TL-1 *)
 Require Import AppTree.          (* TL-2 + TL-3W: the claim, the deed, the move *)
 Require Import TreeObs.          (* the claim law at the era's record *)
@@ -437,10 +461,78 @@ Section TreeMove.
     iModIntro. iFrame "Hka". iSplitL "Hdeed Htok".
     { iApply (tree_app_step_of c r d I _ Heq). rewrite Hent.
       iApply (tree_step_move_ent c r g root d nm i (MkAnode ch 1%nat) t e nl
-                (abs_view I) γi Hnm Hd Hi Hleaf Hnadir Hno Hdd
+                (abs_view I) γi Hnm Hd Hnone Hi Hleaf Hnadir Hno Hdd
                 with "Hdeed Htok"). }
     iIntros (I') "%Hav Hka'".
     iMod (tree_claim_resync γfs c r g root t (top_ins d nm i (tabs_of ch) t) I'
+            Heq ltac:(rewrite Hav Hent; exact Hpost) Hne with "Hinv Htk Hka'")
+      as "[Hka' Hout]".
+    iModIntro. iFrame "Hka' Hout".
+  Qed.
+
+  (* ---- 3b'.  ...AND THE SAME LEG BY THE ROOTED ROUTE (lane TL-3R;
+     design/user-tree.md section 7.8's RULING), AT AN OWNER OF "/".
+     This is the form the create BUNDLE can actually be supplied at, and
+     it is the lane's point: the two credentials [own_wf_ent] asks for are
+     no longer premises at all.  What the supplier hands in is ONE PURE
+     FACT ABOUT ITS OWN FIXED TREE -- [i ∉ dom (tv_nodes t)], which is
+     what the ARM's receipt records ([FsAbsCreateFire.cre_arm_fired]'s own
+     [av !! i = None] at the arm's view, read at the owner's tree) -- and
+     the claim's [aview_rooted] / [own_rooted] turn it into
+     [aview_no_edge_to av i] and "the armed inum is nobody's root" AT THE
+     PARENT LEG'S OWN VIEW.  WALL C, closed.
+
+     AND IT TAKES NO [ch <> ADir] PREMISE: mkdir's DIRECTORY child is
+     covered too, which is (C-iii-b) -- [own_wf_ent_leaf]'s free
+     discharge only ever reached a non-directory child. *)
+  Lemma tree_acre_phases_rooted (γfs : fs_names) (c : tree_fixed)
+      (r : tree_names) (g : gname) (d i : Z) (nm : fname) (ch : absnode)
+      (t : ttree) (I : gmap Z fs_node) (e : gmap fname Z) (nl : nat) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    fs_pname nm ->
+    cre_pre (abs_view I) d nm e nl i ch ->
+    tabs_leaf (tabs_of ch) ->
+    (* THE ARM'S PURE RECEIPT *)
+    i ∉ dom (tv_nodes t) ->
+    d ∈ dom (tv_nodes t) ->
+    app_inv γfs -∗ tree_own r g FsImg.ROOTINO t -∗
+    ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
+      ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
+      app_step d I (delta_create d nm i ch (abs_view I)) ∗
+      (∀ I' : gmap Z fs_node,
+         ⌜abs_view I' = delta_create d nm i ch (abs_view I)⌝ -∗
+         ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
+         ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
+         (tree_own r g FsImg.ROOTINO (top_ins d nm i (tabs_of ch) t)
+          ∨ tree_taint c)).
+  Proof.
+    intros Heq Hnm Hpre Hleaf Hni Hdd. iIntros "#Hinv Hown Hka".
+    assert (Hdi : d <> i) by (intros ->; exact (Hni Hdd)).
+    pose proof (delta_create_armed (abs_view I) d nm e nl i ch Hpre Hdi) as Hcr.
+    destruct Hpre as (Hd & Hnone & Hi).
+    assert (Hent : delta_create d nm i ch (abs_view I)
+                   = delta_ent d nm i (abs_view I)).
+    { rewrite Hcr (delta_ent_dir (abs_view I) d nm i e nl ch 1%nat Hd Hi) //. }
+    assert (Hidom : i ∈ dom (abs_view I)) by (apply elem_of_dom; by eexists).
+    iMod (tree_claim_read γfs c r g FsImg.ROOTINO t I Heq with "Hinv Hown Hka")
+      as "(Hka & Hown & [%Hsub | #HT])"; last first.
+    { iModIntro. iFrame "Hka". iSplitR.
+      { iApply (tree_app_step_taint c r d I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". by iRight. }
+    pose proof (tree_unreached_of_arm (abs_view I) t i Hsub Hidom Hni) as Hunr.
+    destruct (tree_ent_post_unr (abs_view I) FsImg.ROOTINO d nm i
+                (MkAnode ch 1%nat) t e nl Hnm Hd Hnone Hi Hleaf Hunr Hsub Hdd)
+      as [Hpost Hne].
+    iMod tok_alloc as (γi) "Htok".
+    rewrite tree_own_split. iDestruct "Hown" as "[Hdeed Htk]".
+    iModIntro. iFrame "Hka". iSplitL "Hdeed Htok".
+    { iApply (tree_app_step_of c r d I _ Heq). rewrite Hent.
+      iApply (tree_step_move_ent_rooted c r g d nm i (MkAnode ch 1%nat) t e nl
+                (abs_view I) γi Hnm Hd Hnone Hi Hleaf Hni Hdd
+                with "Hdeed Htok"). }
+    iIntros (I') "%Hav Hka'".
+    iMod (tree_claim_resync γfs c r g FsImg.ROOTINO t
+            (top_ins d nm i (tabs_of ch) t) I'
             Heq ltac:(rewrite Hav Hent; exact Hpost) Hne with "Hinv Htk Hka'")
       as "[Hka' Hout]".
     iModIntro. iFrame "Hka' Hout".
@@ -457,6 +549,11 @@ Section TreeMove.
     fs_pname nm ->
     abs_view I !! d = Some (MkAnode (ADir e) nl) ->
     e !! nm = Some tg ->
+    (* THE ENTRY LEG'S SHAPE (lane TL-3R): the target has NO PROPER
+       OUT-EDGE.  It is [unl_pre]'s own [dots_only] clause, read through
+       [unl_pre_tgt_leaf] below, and it is what makes the cut LOCAL --
+       see [AppTree.tree_step_move_unl_ent]. *)
+    (forall s : fname, fs_pname s -> astep (abs_view I) tg s = None) ->
     d ∈ dom (tv_nodes t) ->
     app_inv γfs -∗ tree_own r g root t -∗
     ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
@@ -468,7 +565,7 @@ Section TreeMove.
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
          (tree_own r g root (top_unlink d nm t) ∨ tree_taint c)).
   Proof.
-    intros Heq Hnm Hd Hnm0 Hdd. iIntros "#Hinv Hown Hka".
+    intros Heq Hnm Hd Hnm0 Hlf Hdd. iIntros "#Hinv Hown Hka".
     iMod (tree_claim_read γfs c r g root t I Heq with "Hinv Hown Hka")
       as "(Hka & Hown & [%Hsub | #HT])"; last first.
     { iModIntro. iFrame "Hka". iSplitR.
@@ -484,8 +581,8 @@ Section TreeMove.
     rewrite tree_own_split. iDestruct "Hown" as "[Hdeed Htk]".
     iModIntro. iFrame "Hka". iSplitL "Hdeed Htok".
     { iApply (tree_app_step_of c r d I _ Heq).
-      iApply (tree_step_move_unl_ent c r g root d nm dec t e nl
-                (abs_view I) γi Hd Hdd with "Hdeed Htok"). }
+      iApply (tree_step_move_unl_ent c r g root d nm dec t e nl tg
+                (abs_view I) γi Hnm Hd Hnm0 Hlf Hdd with "Hdeed Htok"). }
     iIntros (I') "%Hav Hka'".
     iMod (tree_claim_resync γfs c r g root t (top_unlink d nm t) I'
             Heq ltac:(rewrite Hav; exact Hpost) Hne with "Hinv Htk Hka'")
@@ -519,6 +616,24 @@ Section TreeMove.
   (*  target and TL-2's rmdir-shaped wall at a directory one.             *)
   (* =================================================================== *)
 
+  (* [unl_pre]'s [dots_only] clause, READ AS THE TREE LAYER NEEDS IT: the
+     target of the name being cut has no PROPER out-edge.  At a file or a
+     device there is no entry map at all; at a directory the map holds
+     nothing but the dots, which the tree hides. *)
+  Lemma unl_pre_tgt_leaf (av : aview) (d : Z) (nm : fname)
+      (ents : gmap fname Z) (nl : nat) (tg : Z) (a : anode) :
+    unl_pre av d nm ents nl tg a ->
+    forall s : fname, fs_pname s -> astep av tg s = None.
+  Proof.
+    intros (_ & _ & _ & _ & _ & Ht & _ & Hdots) s Hs.
+    rewrite /astep /aents Ht /= /anode_ents.
+    destruct (an_node a) as [bs | es | ma mi] eqn:Hn;
+      [reflexivity | | reflexivity].
+    cbn. destruct (es !! s) as [j |] eqn:He; [| reflexivity].
+    exfalso. destruct (Hdots es eq_refl s (mk_is_Some _ _ He)) as [Hc | Hc];
+      [exact (proj1 Hs Hc) | exact (proj2 Hs Hc)].
+  Qed.
+
   (* the owner's family at this piece: the RECEIPT is the moved deed (or
      the taint) and the REFUND is the deed it put in -- the [∧] of [pf_at]
      is what lets ONE deed answer both, which is design section 7.2's
@@ -540,10 +655,11 @@ Section TreeMove.
     intros Heq Hdd. iIntros "#Hinv Hown".
     rewrite /uent_commit_at.
     iIntros (I d tg nm ents nl a) "%Hpre %Hd Hka". subst d.
+    pose proof (unl_pre_tgt_leaf (abs_view I) dpar nm ents nl tg a Hpre) as Hlf.
     destruct Hpre as (Hdrow & Hent & HnD & HnDD & _ & _ & _ & _).
     iMod (tree_uent_phases γfs c r g root dpar tg nm
             (unl_dec (an_node a)) t I ents nl Heq (conj HnD HnDD)
-            Hdrow Hent Hdd with "Hinv Hown Hka") as "(Hka & Hstep & Hph2)".
+            Hdrow Hent Hlf Hdd with "Hinv Hown Hka") as "(Hka & Hstep & Hph2)".
     iModIntro. iFrame "Hka". iSplitR; [done |]. iFrame "Hstep".
     iIntros (I') "%Hav Hka'".
     iMod ("Hph2" $! I' with "[//] Hka'") as "[Hka' Hout]".
@@ -565,6 +681,528 @@ Section TreeMove.
     - cbn [pf_refund]. iExact "Hown".
   Qed.
 
+
+  (* =================================================================== *)
+  (*  3d.  THE CREATE MOVE CONSUMED: THE WHOLE FOUR-LEG BUNDLE, FROM ONE  *)
+  (*      DEED (lane TL-3R; design/user-tree.md section 7.8)              *)
+  (*                                                                     *)
+  (*  HOW ONE DEED ANSWERS FOUR [*]-JOINED LEGS, which is the shape       *)
+  (*  question this section had to settle.  It is [FsAbsCreateFire]'s own *)
+  (*  answer, at a different resource: THE DEED GOES INTO THE ARM'S LEG   *)
+  (*  and comes out in the ARM'S RECEIPT, and the two legs that can end   *)
+  (*  the armed inode -- the parent leg and the unarm -- each TAKE that   *)
+  (*  receipt ([cre_arm_fired]) and so are supplied from NOTHING but      *)
+  (*  [app_inv].  The kernel holds one permit per armed inode and fires   *)
+  (*  at most one of them, so the deed is never duplicated; and the       *)
+  (*  arm's receipt carries, beside the deed, the PURE credential         *)
+  (*  [i ∉ dom (tv_nodes t)] that the parent leg turns into               *)
+  (*  [aview_no_edge_to] through the rooted view (section 3b').           *)
+  (*                                                                     *)
+  (*  The dots leg is FREE at every owner (the tree hides the dots), and  *)
+  (*  every leg's refund is the deed itself or [True], so a syscall that  *)
+  (*  fails before the arm hands the deed straight back.                  *)
+  (* =================================================================== *)
+
+  (* create's child kinds are all LEAVES of the application tree: an empty
+     file, a device, and a directory holding nothing but its dots. *)
+  Lemma tabs_leaf_cre_c0 (tyz ma mi : Z) : tabs_leaf (tabs_of (cre_c0 tyz ma mi)).
+  Proof.
+    rewrite /cre_c0. case_decide as H1.
+    - intros e0 He0. cbn in He0. injection He0 as <-.
+      rewrite /hide_dots !delete_empty //.
+    - case_decide as H2; intros e0 He0; cbn in He0; discriminate.
+  Qed.
+
+  Lemma tabs_leaf_cre_child (tyz ma mi d i : Z) :
+    tabs_leaf (tabs_of (cre_child tyz ma mi d i)).
+  Proof.
+    rewrite /cre_child. case_decide as H1; [| apply tabs_leaf_cre_c0].
+    intros e0 He0. cbn in He0. injection He0 as <-.
+    rewrite /dots_ents /hide_dots.
+    rewrite (delete_insert_ne _ DOTDOT DOT);
+      [| intros Hc; exact (dot_ne_dotdot (eq_sym Hc))].
+    rewrite !delete_insert_delete !delete_empty //.
+  Qed.
+
+  (* THE CLAIM'S PURE CONJUNCTS, read at the fire without a deed: this is
+     [AppTree.tree_pred_facts] under [app_inv], and it is what turns the
+     arm's receipt into create's missing credential at the UNARM leg (the
+     parent leg reads them inside its own step, section 1k). *)
+  Lemma tree_claim_facts (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (I : gmap Z fs_node) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    app_inv γfs -∗
+    ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
+      ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
+      (⌜aview_tree_wf (abs_view I) /\ adir_at (abs_view I) FsImg.ROOTINO
+        /\ aview_rooted (abs_view I)⌝ ∨ tree_taint c).
+  Proof.
+    intros Heq. iIntros "#Hinv Hka".
+    iAssert (□ (∀ v : aview, app_pred app_run v -∗
+                  app_pred app_run v ∗
+                  (⌜aview_tree_wf v /\ adir_at v FsImg.ROOTINO
+                    /\ aview_rooted v⌝ ∨ tree_taint c)))%I as "#Hlaw".
+    { rewrite Heq. cbn [app_pred app_run app_names]. iIntros "!>" (v) "Hp".
+      iApply (tree_pred_facts c r v with "Hp"). }
+    iMod (inv_acc appE appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I') "(>Hh & Hp & >%Hdom & #Hx)".
+    iDestruct (ghost_map_auth_agree with "Hka Hh") as %<-.
+    iAssert (▷ (app_pred app_run (abs_view I)
+                ∗ (⌜aview_tree_wf (abs_view I)
+                    /\ adir_at (abs_view I) FsImg.ROOTINO
+                    /\ aview_rooted (abs_view I)⌝ ∨ tree_taint c)))%I
+      with "[Hp]" as "[Hp Hrest]".
+    { iNext. iDestruct ("Hlaw" $! (abs_view I) with "Hp") as "[A B]".
+      iFrame "A B". }
+    iMod "Hrest" as "Hfact".
+    iMod ("Hclose" with "[Hh Hp]") as "_".
+    { iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
+      iPureIntro. exact Hdom. }
+    iModIntro. iFrame "Hka Hfact".
+  Qed.
+
+  (* ---- THE ARM'S FAMILY: the deed parked in the receipt, beside the
+     PURE credential the parent leg needs ------------------------------ *)
+
+  Definition tree_arm_fam (c : tree_fixed) (r : tree_names) (g : gname)
+      (t : ttree) : pfam Σ (aview -> Z -> iProp Σ) :=
+    {| pf_recv := (fun (_ : aview) (i : Z) =>
+                     ((⌜i ∉ dom (tv_nodes t)⌝
+                       ∗ tree_own r g FsImg.ROOTINO t) ∨ tree_taint c)%I) ;
+       pf_refund := tree_own r g FsImg.ROOTINO t |}.
+
+  Lemma tree_arm_commit (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (g : gname) (t : ttree) (ch : absnode) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    tabs_leaf (tabs_of ch) ->
+    app_inv γfs -∗ tree_own r g FsImg.ROOTINO t -∗
+    aarm_commit_at (fs_gamma_L γfs) appE ch (tree_arm_fam c r g t).(pf_recv).
+  Proof.
+    intros Heq Hleaf. iIntros "#Hinv Hown".
+    rewrite /aarm_commit_at. iIntros (I i) "%Hnone %Hsome Hka".
+    iMod (tree_claim_read γfs c r g FsImg.ROOTINO t I Heq with "Hinv Hown Hka")
+      as "(Hka & Hown & [%Hsub | #HT])"; last first.
+    { iModIntro. iFrame "Hka". iSplitR.
+      { iApply (tree_app_step_taint c r i I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
+      by iRight. }
+    (* THE CREDENTIAL, ESTABLISHED: the armed inum is no row of the view at
+       this instant, and the owner's tree's nodes ARE rows of the view. *)
+    assert (Hni : i ∉ dom (tv_nodes t)).
+    { intros Hin.
+      pose proof (subtree_dom_view (abs_view I) FsImg.ROOTINO t i Hsub Hin) as Hd.
+      apply elem_of_dom in Hd as [a Ha]. rewrite Ha in Hnone. discriminate. }
+    iModIntro. iFrame "Hka". iSplitR "Hown".
+    { iApply (tree_app_step_of c r i I _ Heq).
+      iApply (tree_step_arm c r (abs_view I) i ch Hnone Hleaf). }
+    iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
+    iLeft. iSplitR; [by iPureIntro | iExact "Hown"].
+  Qed.
+
+  (* ---- THE UNARM LEG, FREE (design section 7.4's WALL 2, closed): the
+     arm's receipt hands back the deed AND the credential, and the rooted
+     view turns the credential into "nothing names the row" at the
+     UNARM's own view. ------------------------------------------------- *)
+
+  Definition tree_unarm_fam (c : tree_fixed) (r : tree_names) (g : gname)
+      (t : ttree) : pfam Σ (aview -> Z -> iProp Σ) :=
+    {| pf_recv := (fun (_ : aview) (_ : Z) =>
+                     (tree_own r g FsImg.ROOTINO t ∨ tree_taint c)%I) ;
+       pf_refund := True%I |}.
+
+  Lemma tree_unarm_commit (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (g : gname) (t : ttree) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    app_inv γfs -∗
+    aunarm_of_arm (fs_gamma_L γfs) appE (tree_arm_fam c r g t)
+      (tree_unarm_fam c r g t).(pf_recv).
+  Proof.
+    intros Heq. iIntros "#Hinv". rewrite /aunarm_of_arm.
+    iIntros (i) "Harm". rewrite /cre_arm_fired.
+    iDestruct "Harm" as (av0) "[_ Hrec]". cbn [pf_recv].
+    rewrite /aunarm_commit_at. iIntros (I c0) "%Hi Hka".
+    iDestruct "Hrec" as "[[%Hni Hown] | #HT]"; last first.
+    { iModIntro. iFrame "Hka". iSplitR.
+      { iApply (tree_app_step_taint c r i I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
+      by iRight. }
+    iMod (tree_claim_read γfs c r g FsImg.ROOTINO t I Heq with "Hinv Hown Hka")
+      as "(Hka & Hown & [%Hsub | #HT])"; last first.
+    { iModIntro. iFrame "Hka". iSplitR.
+      { iApply (tree_app_step_taint c r i I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
+      by iRight. }
+    iMod (tree_claim_facts γfs c r I Heq with "Hinv Hka")
+      as "(Hka & [%Hf | #HT])"; last first.
+    { iModIntro. iFrame "Hka". iSplitR.
+      { iApply (tree_app_step_taint c r i I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
+      by iRight. }
+    destruct Hf as (Hwf & Hrt & Hro).
+    assert (Hne : i <> FsImg.ROOTINO).
+    { intros ->.
+      exact (Hni (subtree_root_dom (abs_view I) FsImg.ROOTINO t Hsub)). }
+    pose proof (aview_no_edge_to_rooted (abs_view I) t i Hro (proj2 Hwf)
+                  Hsub Hni) as Hno.
+    iModIntro. iFrame "Hka". iSplitR "Hown".
+    { iApply (tree_app_step_of c r i I _ Heq).
+      iApply (tree_step_unarm c r (abs_view I) i (MkAnode c0 1%nat)
+                Hi eq_refl Hno Hne). }
+    iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
+    iLeft. iExact "Hown".
+  Qed.
+
+  (* ---- THE DOTS LEG, FREE AT EVERY OWNER: the tree hides the dots ---- *)
+
+  Lemma tree_dots_commit (γfs : fs_names) (c : tree_fixed) (r : tree_names) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    ⊢ adots_commit_at (fs_gamma_L γfs) appE (fun _ _ _ _ => True%I).
+  Proof.
+    intros Heq. rewrite /adots_commit_at.
+    iIntros (I i d full) "%Hi Hka". iModIntro. iFrame "Hka". iSplitR.
+    { iApply (tree_app_step_of c r i I _ Heq). rewrite /dots_delta.
+      destruct full; [iApply tree_step_dots | iApply tree_step_dot]. }
+    iIntros (I') "%Hav Hka'". iModIntro. by iFrame "Hka'".
+  Qed.
+
+  (* ---- THE PARENT LEG, AT THE BUNDLE'S SHAPE ------------------------- *)
+
+  Definition tree_acre_fam (c : tree_fixed) (r : tree_names) (g : gname)
+      (t : ttree) (cf : Z -> Z -> absnode)
+      : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ) :=
+    {| pf_recv := (fun (_ : aview) (d : Z) (nm : fname) (i : Z) =>
+                     (tree_own r g FsImg.ROOTINO
+                        (top_ins d nm i (tabs_of (cf d i)) t)
+                      ∨ tree_taint c)%I) ;
+       pf_refund := True%I |}.
+
+  Lemma tree_acre_commit (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (g : gname) (t : ttree) (cf : Z -> Z -> absnode) (dpar : Z) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    (forall d i : Z, tabs_leaf (tabs_of (cf d i))) ->
+    dpar ∈ dom (tv_nodes t) ->
+    app_inv γfs -∗
+    acre_commit_at_gen (fs_gamma_L γfs) appE cf (fun d : Z => ⌜d = dpar⌝%I)
+      (tree_arm_fam c r g t) (tree_acre_fam c r g t cf).(pf_recv).
+  Proof.
+    intros Heq Hleaf Hdd. iIntros "#Hinv". rewrite /acre_commit_at_gen.
+    iIntros (I d i nm ents nl) "%Hpre %Hnm Harm %Hd Hka". subst d.
+    rewrite /cre_arm_fired. iDestruct "Harm" as (av0) "[_ Hrec]".
+    cbn [pf_recv]. iDestruct "Hrec" as "[[%Hni Hown] | #HT]"; last first.
+    { iModIntro. iFrame "Hka". iSplitR; [done |]. iSplitR.
+      { iApply (tree_app_step_taint c r dpar I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
+      by iRight. }
+    iMod (tree_acre_phases_rooted γfs c r g dpar i nm (cf dpar i) t I ents nl
+            Heq Hnm Hpre (Hleaf dpar i) Hni Hdd with "Hinv Hown Hka")
+      as "(Hka & Hstep & Hph2)".
+    iModIntro. iFrame "Hka". iSplitR; [done |]. iFrame "Hstep".
+    iIntros (I') "%Hav Hka'".
+    iMod ("Hph2" $! I' with "[//] Hka'") as "[Hka' Hout]".
+    iModIntro. iFrame "Hka'". cbn [pf_recv]. iExact "Hout".
+  Qed.
+
+  (* ---- ...AND THE WHOLE BUNDLE, FROM ONE DEED ----------------------- *)
+
+  Lemma tree_cre_commits (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (g : gname) (t : ttree) (tyz ma mi dpar : Z) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    dpar ∈ dom (tv_nodes t) ->
+    app_inv γfs -∗ tree_own r g FsImg.ROOTINO t -∗
+    cre_commits (fs_gamma_L γfs) tyz ma mi (fun d : Z => ⌜d = dpar⌝%I)
+      (tree_arm_fam c r g t)
+      (pfam_triv (fun _ _ _ _ => True%I))
+      (tree_unarm_fam c r g t)
+      (tree_acre_fam c r g t (cre_child tyz ma mi)).
+  Proof.
+    intros Heq Hdd. iIntros "#Hinv Hown". rewrite /cre_commits.
+    iSplitL "Hown".
+    { rewrite /pf_at. iSplit; [| cbn [pf_refund]; iExact "Hown"].
+      iApply (tree_arm_commit γfs c r g t (cre_c0 tyz ma mi) Heq
+                (tabs_leaf_cre_c0 tyz ma mi) with "Hinv Hown"). }
+    iSplitR.
+    { iApply cre_dots_leg_of. iApply pf_at_triv.
+      iApply (tree_dots_commit γfs c r Heq). }
+    iSplitR.
+    { rewrite /pf_at. iSplit; [| cbn [pf_refund]; done].
+      iApply (tree_unarm_commit γfs c r g t Heq with "Hinv"). }
+    rewrite /pf_at. iSplit; [| cbn [pf_refund]; done].
+    iApply (tree_acre_commit γfs c r g t (cre_child tyz ma mi) dpar Heq
+              (fun d i => tabs_leaf_cre_child tyz ma mi d i) Hdd with "Hinv").
+  Qed.
+
+
+  (* =================================================================== *)
+  (*  3f.  THE MKNOD BUNDLE, AT A PARENT PREFIX OF LENGTH ZERO            *)
+  (*      (lane TL-3R; design/user-tree.md section 7.7's (R))             *)
+  (*                                                                     *)
+  (*  The owner of "/" calling [mknod("/dev", ...)].  THE CURSOR IS PURE  *)
+  (*  HERE, which is what makes the split-cursor seam (R) not a           *)
+  (*  prerequisite: at [np_elems pl = []] the walk reads NO claim law     *)
+  (*  ([ep_hops_from] is the empty big-op and [ep_start] is the start     *)
+  (*  cursor alone), so the owner's [P] can be [⌜d = ROOTINO⌝], which is  *)
+  (*  duplicable and returns itself in phase 1.                          *)
+  (*                                                                     *)
+  (*  AND THE DEED IS IN EXACTLY ONE LEG: the ARM's.  Section 3d says     *)
+  (*  why -- the parent leg and the unarm each take the arm's receipt,    *)
+  (*  and the walk and the [dirlookup] observation are free.             *)
+  (* =================================================================== *)
+
+  Lemma tabs_leaf_dev (ma mi : Z) : tabs_leaf (tabs_of (ADev ma mi)).
+  Proof. intros e0 He0. cbn in He0. discriminate. Qed.
+
+  Lemma tree_mknod_au (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (g : gname) (t : ttree) (cw ma mi : Z) (M : gmap Z (bv 8))
+      (pv : mword 64) (pl : list (bv 8)) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    arg_path_of M pv pl ->
+    (* the parent prefix is EMPTY -- "/dev", not "/a/dev" *)
+    np_elems pl = [] ->
+    (* ...and the walk starts at the era's root *)
+    um_start_of cw pl = FsImg.ROOTINO ->
+    (* the parent leg's [d ∈ dom (tv_nodes t)] at this prefix, which is a
+       fact about the owner's OWN tree: every tree the claim ever hands
+       out has its root among its nodes ([TreeView.subtree_root_dom]) *)
+    FsImg.ROOTINO ∈ dom (tv_nodes t) ->
+    app_inv γfs -∗ tree_own r g FsImg.ROOTINO t -∗
+    mknod_au_at (fs_gamma_L γfs) γfs cw M pv ma mi
+      (fun (_ : nat) (d : Z) => ⌜d = FsImg.ROOTINO⌝%I)
+      (fun _ _ => True%I)
+      (tree_arm_fam c r g t) (tree_unarm_fam c r g t)
+      (tree_acre_fam c r g t (fun _ _ => ADev ma mi))
+      (pfam_triv (fun _ _ _ _ => True%I)).
+  Proof.
+    intros Heq Hpath Hnp Hstart Hdd. iIntros "#Hinv Hown".
+    rewrite /mknod_au_at. iSplitR.
+    { (* THE WALK: no hops at all, and the start cursor is pure *)
+      iIntros (pl0) "%Hpath0".
+      rewrite (arg_path_of_uniq M pv pl0 pl Hpath0 Hpath).
+      rewrite /ep_start. iIntros (r0) "%Hr0". iModIntro. iSplitR.
+      - iPureIntro. rewrite Hr0 Hstart //.
+      - iApply (ep_hops_done γfs _ _ pl 0%nat). rewrite Hnp /=. lia. }
+    iSplitR "Hown"; last first.
+    { iSplitR.
+      { (* the [dirlookup] observation is read-only and free *)
+        iApply pf_at_triv. iApply dlookup_commit_at_unit. }
+      (* THE CHILD'S TWO LEGS: the deed goes in HERE and comes back out in
+         the arm's receipt *)
+      rewrite /cre_child_unfired. iSplitL "Hown".
+      - rewrite /pf_at /tree_arm_fam /=. iSplit; [| iExact "Hown"].
+        iApply (tree_arm_commit γfs c r g t (ADev ma mi) Heq
+                  (tabs_leaf_dev ma mi) with "Hinv Hown").
+      - rewrite /pf_at /tree_unarm_fam /=. iSplit; [| done].
+        iApply (tree_unarm_commit γfs c r g t Heq with "Hinv"). }
+    (* THE PARENT LEG, at the guarded cursor: the move between the two
+       readings is the ISO, and it costs nothing because the cursor is
+       PURE at this prefix. *)
+    rewrite /pf_at /tree_acre_fam /=. iSplit; [| done].
+    rewrite /acre_commit_at.
+    iApply (acre_commit_at_gen_mono (fs_gamma_L γfs) appE
+              (fun _ _ => ADev ma mi)
+              (fun d : Z => ⌜d = FsImg.ROOTINO⌝%I)
+              (npar_cur M pv (fun (_ : nat) (d : Z) => ⌜d = FsImg.ROOTINO⌝%I))
+              (tree_arm_fam c r g t)
+              (tree_acre_fam c r g t (fun _ _ => ADev ma mi)).(pf_recv)
+              with "[] [] []").
+    - iIntros "!>" (d) "H". rewrite /npar_cur.
+      iApply ("H" $! pl). iPureIntro. exact Hpath.
+    - iIntros "!>" (d) "%Hd". rewrite /npar_cur. iIntros (pl0) "_".
+      by iPureIntro.
+    - iApply (tree_acre_commit γfs c r g t (fun _ _ => ADev ma mi)
+                FsImg.ROOTINO Heq (fun d i => tabs_leaf_dev ma mi) Hdd
+                with "Hinv").
+  Qed.
+
+
+
+  (* ...AND open(O_CREATE)'s, which is mknod's with an empty FILE child,
+     the (read-only) open observation and -- at [O_TRUNC] CLEAR -- no
+     truncate leg at all. *)
+  Lemma tabs_leaf_file : tabs_leaf (tabs_of (AFile [])).
+  Proof. intros e0 He0. cbn in He0. discriminate. Qed.
+
+  Lemma tree_open_create_au (γfs : fs_names) (c : tree_fixed)
+      (r : tree_names) (g : gname) (t : ttree) (cw : Z)
+      (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8)) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    arg_path_of M pv pl ->
+    np_elems pl = [] ->
+    um_start_of cw pl = FsImg.ROOTINO ->
+    om_trunc vom = false ->
+    FsImg.ROOTINO ∈ dom (tv_nodes t) ->
+    app_inv γfs -∗ tree_own r g FsImg.ROOTINO t -∗
+    open_au_create_at (fs_gamma_L γfs) γfs cw M pv vom
+      (fun (_ : nat) (d : Z) => ⌜d = FsImg.ROOTINO⌝%I)
+      (fun _ _ => True%I)
+      (tree_arm_fam c r g t) (tree_unarm_fam c r g t)
+      (tree_acre_fam c r g t (fun _ _ => AFile []))
+      (pfam_triv (fun _ _ _ _ => True%I))
+      (pfam_triv (fun _ _ _ => True%I))
+      (pfam_triv (fun _ _ _ => True%I)).
+  Proof.
+    intros Heq Hpath Hnp Hstart Htr Hdd. iIntros "#Hinv Hown".
+    rewrite /open_au_create_at. iSplitR.
+    { iIntros (pl0) "%Hpath0".
+      rewrite (arg_path_of_uniq M pv pl0 pl Hpath0 Hpath).
+      rewrite /ep_start. iIntros (r0) "%Hr0". iModIntro. iSplitR.
+      - iPureIntro. rewrite Hr0 Hstart //.
+      - iApply (ep_hops_done γfs _ _ pl 0%nat). rewrite Hnp /=. lia. }
+    iSplitR "Hown"; last first.
+    { iSplitR.
+      { iApply pf_at_triv. iApply dlookup_commit_at_unit. }
+      iSplitR.
+      { (* the open observation is READ-ONLY: it reads the row and returns
+           it, and the tree claim asks nothing of it *)
+        iApply pf_at_triv. rewrite /aopen_commit_at.
+        iIntros (I i a) "%Hrow Hka". iModIntro. by iFrame "Hka". }
+      iSplitR.
+      { iApply (open_trunc_piece_none _ vom _ Htr). }
+      rewrite /cre_child_unfired. iSplitL "Hown".
+      - rewrite /pf_at /tree_arm_fam /=. iSplit; [| iExact "Hown"].
+        iApply (tree_arm_commit γfs c r g t (AFile []) Heq tabs_leaf_file
+                  with "Hinv Hown").
+      - rewrite /pf_at /tree_unarm_fam /=. iSplit; [| done].
+        iApply (tree_unarm_commit γfs c r g t Heq with "Hinv"). }
+    rewrite /pf_at /tree_acre_fam /=. iSplit; [| done].
+    rewrite /acre_commit_at.
+    iApply (acre_commit_at_gen_mono (fs_gamma_L γfs) appE
+              (fun _ _ => AFile [])
+              (fun d : Z => ⌜d = FsImg.ROOTINO⌝%I)
+              (npar_cur M pv (fun (_ : nat) (d : Z) => ⌜d = FsImg.ROOTINO⌝%I))
+              (tree_arm_fam c r g t)
+              (tree_acre_fam c r g t (fun _ _ => AFile [])).(pf_recv)
+              with "[] [] []").
+    - iIntros "!>" (d) "H". rewrite /npar_cur.
+      iApply ("H" $! pl). iPureIntro. exact Hpath.
+    - iIntros "!>" (d) "%Hd". rewrite /npar_cur. iIntros (pl0) "_".
+      by iPureIntro.
+    - iApply (tree_acre_commit γfs c r g t (fun _ _ => AFile [])
+                FsImg.ROOTINO Heq (fun d i => tabs_leaf_file) Hdd
+                with "Hinv").
+  Qed.
+
+  (* [SpecSysMkdir.mkdir_au_at] carries a [GenId] binder of its own, so
+     the mkdir bundle lives in a nested section: no landed statement of
+     this file gains a binder. *)
+  Section TreeMoveDir.
+    Context `{GEN : GenId}.
+
+  (* ...AND MKDIR'S, which is the same bundle with the DOTS leg and at a
+     DIRECTORY child -- the case [own_wf_ent_leaf] could never reach, and
+     which (C-iii-b) closes: the "armed inum is nobody's root" credential
+     comes off [own_rooted] and not off the child's kind. *)
+  Lemma tree_mkdir_au (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (g : gname) (t : ttree) (cw : Z) (M : gmap Z (bv 8))
+      (pv : mword 64) (pl : list (bv 8)) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    arg_path_of M pv pl ->
+    np_elems pl = [] ->
+    um_start_of cw pl = FsImg.ROOTINO ->
+    FsImg.ROOTINO ∈ dom (tv_nodes t) ->
+    app_inv γfs -∗ tree_own r g FsImg.ROOTINO t -∗
+    mkdir_au_at (fs_gamma_L γfs) γfs cw M pv
+      (fun (_ : nat) (d : Z) => ⌜d = FsImg.ROOTINO⌝%I)
+      (fun _ _ => True%I)
+      (tree_arm_fam c r g t)
+      (pfam_triv (fun _ _ _ _ => True%I))
+      (tree_unarm_fam c r g t)
+      (tree_acre_fam c r g t
+         (cre_child (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
+            (bv_unsigned (mword_of_int 0 : mword 16))
+            (bv_unsigned (mword_of_int 0 : mword 16))))
+      (pfam_triv (fun _ _ _ _ => True%I)).
+  Proof.
+    intros Heq Hpath Hnp Hstart Hdd. iIntros "#Hinv Hown".
+    rewrite /mkdir_au_at. iSplitR.
+    { iIntros (pl0) "%Hpath0".
+      rewrite (arg_path_of_uniq M pv pl0 pl Hpath0 Hpath).
+      rewrite /ep_start. iIntros (r0) "%Hr0". iModIntro. iSplitR.
+      - iPureIntro. rewrite Hr0 Hstart //.
+      - iApply (ep_hops_done γfs _ _ pl 0%nat). rewrite Hnp /=. lia. }
+    iSplitR.
+    { iApply pf_at_triv. iApply dlookup_commit_at_unit. }
+    iApply (cre_commits_mono (fs_gamma_L γfs) _ _ _
+              (fun d : Z => ⌜d = FsImg.ROOTINO⌝%I)
+              (npar_cur M pv (fun (_ : nat) (d : Z) => ⌜d = FsImg.ROOTINO⌝%I))
+              with "[] [] [Hown]").
+    - iIntros "!>" (d) "H". rewrite /npar_cur.
+      iApply ("H" $! pl). iPureIntro. exact Hpath.
+    - iIntros "!>" (d) "%Hd". rewrite /npar_cur. iIntros (pl0) "_".
+      by iPureIntro.
+    - iApply (tree_cre_commits γfs c r g t _ _ _ FsImg.ROOTINO Heq Hdd
+                with "Hinv Hown").
+  Qed.
+
+  End TreeMoveDir.
+
+  (* =================================================================== *)
+  (*  3e.  UNLINK'S TARGET LEG, AT A GIVEN TARGET (lane TL-3R)            *)
+  (*                                                                     *)
+  (*  THE CREDENTIAL IS NO LONGER THE BLOCKER, AND THE KIND IS NOT        *)
+  (*  EITHER.  After the ENTRY leg has cut [d.nm], the target is no node  *)
+  (*  of the owner's MOVED tree ([top_unlink]), and the rooted view turns *)
+  (*  that into BOTH of [own_wf_unl_tgt]'s premises at the target leg's   *)
+  (*  own view -- "nothing names it" and "it is nobody's root".  So       *)
+  (*  TL-2's rmdir-shaped wall falls too: a DIRECTORY's last link is      *)
+  (*  covered here, where [tree_step_unl_tgt_last] (which pays "nobody's  *)
+  (*  root" from the target's KIND) reaches only a file or a device.      *)
+  (*                                                                     *)
+  (*  WHAT IS STILL OWED, and it is a QUANTIFIER and not a credential:    *)
+  (*  [SysUnlinkDefs.utgt_commit_at] binds its target [t] INSIDE with no  *)
+  (*  cursor, so a supplier owes a step at EVERY row of every view at     *)
+  (*  count >= 1 -- including a row that IS named, where [delta_unl_tgt]  *)
+  (*  leaves a DANGLING ENTRY and no step exists for anybody.  That is    *)
+  (*  WALL A at instant 2, and its fix is TL-3K's, verbatim: a cursor     *)
+  (*  [Pt : Z -> iProp] beside the commit's premise, plus a channel from  *)
+  (*  the ENTRY leg's receipt to the target leg (the deed has to arrive   *)
+  (*  MOVED), which is [cre_arm_fired]'s trick at the unlink family.      *)
+  (*  This lemma is exactly what such a commit would consume.             *)
+  (* =================================================================== *)
+
+  Lemma tree_utgt_phases_rooted (γfs : fs_names) (c : tree_fixed)
+      (r : tree_names) (g : gname) (tg : Z) (a : anode) (t : ttree)
+      (I : gmap Z fs_node) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    abs_view I !! tg = Some a -> an_nlink a = 1%nat ->
+    tg ∉ dom (tv_nodes t) ->
+    app_inv γfs -∗ tree_own r g FsImg.ROOTINO t -∗
+    ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
+      ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
+      app_step tg I (delta_unl_tgt tg (abs_view I)) ∗
+      (∀ I' : gmap Z fs_node,
+         ⌜abs_view I' = delta_unl_tgt tg (abs_view I)⌝ -∗
+         ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
+         ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
+         (tree_own r g FsImg.ROOTINO t ∨ tree_taint c)).
+  Proof.
+    intros Heq Ha Hnl Hni. iIntros "#Hinv Hown Hka".
+    iMod (tree_claim_read γfs c r g FsImg.ROOTINO t I Heq with "Hinv Hown Hka")
+      as "(Hka & Hown & [%Hsub | #HT])"; last first.
+    { iModIntro. iFrame "Hka". iSplitR.
+      { iApply (tree_app_step_taint c r tg I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". by iRight. }
+    iMod (tree_claim_facts γfs c r I Heq with "Hinv Hka")
+      as "(Hka & [%Hf | #HT])"; last first.
+    { iModIntro. iFrame "Hka". iSplitR.
+      { iApply (tree_app_step_taint c r tg I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". by iRight. }
+    destruct Hf as (Hwf & Hrt & Hro).
+    assert (Hne : tg <> FsImg.ROOTINO).
+    { intros ->.
+      exact (Hni (subtree_root_dom (abs_view I) FsImg.ROOTINO t Hsub)). }
+    pose proof (aview_no_edge_to_rooted (abs_view I) t tg Hro (proj2 Hwf)
+                  Hsub Hni) as Hno.
+    iModIntro. iFrame "Hka". iSplitR "Hown".
+    { iApply (tree_app_step_of c r tg I _ Heq).
+      (* the row LEAVES and the tree does not move: [delta_unl_tgt] at a
+         count of one is [delta_unarm], which is free at a row nothing
+         names and which is not the era's root *)
+      rewrite -(delta_unarm_unl_tgt (abs_view I) tg a Ha Hnl).
+      iApply (tree_step_unarm c r (abs_view I) tg a Ha Hnl Hno Hne). }
+    iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". iLeft. iExact "Hown".
+  Qed.
+
 End TreeMove.
 
 (* ===================================================================== *)
@@ -572,6 +1210,16 @@ End TreeMove.
 (*      (rewritten by TL-3P; AMENDED BY TL-3K, which took WALL A's fix    *)
 (*      (i) and dissolved WALL B -- see the AS-OF-TL-3K block at the end  *)
 (*      of this section, and design/user-tree.md section 7.6)             *)
+(*                                                                       *)
+(*  LARGELY SUPERSEDED BY TL-3R (sections 3b'/3d/3e/3f above, and         *)
+(*  design/user-tree.md section 7.9).  WALL C IS CLOSED -- by the ROOTED  *)
+(*  VIEW, at EVERY child kind -- and with it section 7.4's UNARM wall,    *)
+(*  mkdir's second credential and TL-2's rmdir-shaped wall; all three     *)
+(*  create-family bundles are SUPPLIED from one live deed at a parent     *)
+(*  prefix of length zero ([tree_mknod_au] / [tree_mkdir_au] /            *)
+(*  [tree_open_create_au]).  What is left for UNLINK is NOT a credential  *)
+(*  but TWO QUANTIFIER seams at its TARGET leg -- section 3e states both. *)
+(*  Kept below as the record of what TL-3P/TL-3K saw.                     *)
 (*                                                                       *)
 (*  WHAT TL-3P CLOSED, and it is everything on the TREE LAYER'S side:     *)
 (*    - the PINNED PARENT-PREFIX WALK exists ([PinnedObs] section 11,     *)

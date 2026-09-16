@@ -60,6 +60,11 @@
      6. path resolution in a tree, and its equivalence with [arun] on the
         view
      7. [own_wf] preservation under an owner's own-subtree deltas
+     8. the parent prefix, and create's parent leg alone (lane TL-3P)
+     9. THE ROOTED VIEW (lane TL-3R): [aview_rooted] / [own_rooted], the
+        two pure conjuncts the claim carries, their preservation at every
+        landed leg, and the two credentials they buy at create's parent
+        leg -- design/user-tree.md section 7.8's RULING
 *)
 
 From Stdlib Require Import ZArith Lia List.
@@ -3087,3 +3092,640 @@ Section OwnPresEnt.
   Qed.
 
 End OwnPresEnt.
+
+(* ===================================================================== *)
+(*  9.  THE ROOTED VIEW (lane TL-3R; design/user-tree.md section 7.8)     *)
+(*                                                                        *)
+(*  ADDITIVE: nothing above this line moves.  The RULING of section 7.8   *)
+(*  adopts TWO PURE conjuncts for the tree claim, and this section is     *)
+(*  their theory: the definitions, and their preservation at every leg    *)
+(*  the claim offers a step for.                                         *)
+(*                                                                        *)
+(*  WHY THE SOURCE FORM (section 7.7, and it is not a detail): the        *)
+(*  obvious reading -- "every proper edge's TARGET is reachable" -- is    *)
+(*  NOT preserved by unlink's entry leg (cut [d.nm -> tg] while a second, *)
+(*  unreachable directory still names [tg], and that surviving edge's     *)
+(*  target is now unreachable).  The SOURCE form has no such hole,        *)
+(*  because an unreachable source is what it forbids outright, and it     *)
+(*  still gives the consumer its conclusion in one [nreach_hop].          *)
+(*                                                                        *)
+(*  WHAT IT BUYS (the whole point): at an owner of "/" the claim's own    *)
+(*  conjuncts turn the ARM's pure receipt -- [i] is no node of the        *)
+(*  owner's OWN fixed tree -- into [aview_no_edge_to av i] at the PARENT  *)
+(*  LEG's own view, which is [own_wf_ent]'s first credential and the one  *)
+(*  premise TL-3C left the create family owing.  See section 9d.          *)
+(* ===================================================================== *)
+
+(* ---- 9a.  THE TWO CONJUNCTS ---------------------------------------- *)
+
+(* THE LIVE NAMESPACE HAS NO ORPHAN DIRECTORY HOLDING A PROPER ENTRY.
+   True of xv6 for two reasons the design already carries: a directory is
+   unlinked only when it is EMPTY ([SysUnlinkDefs.unl_pre]'s [dots_only]
+   clause), and create's fresh directory holds only its dots until its
+   parent leg files it. *)
+Definition aview_rooted (av : aview) : Prop :=
+  forall (d : Z) (s : fname) (i : Z),
+    fs_pname s -> astep av d s = Some i ->
+    nreach (tview av) FsImg.ROOTINO d.
+
+(* ...and the same one notch up: EVERY OWNER'S ROOT IS REACHABLE.  The
+   era's first deed is minted at [ROOTINO] itself and [tree_grant] births
+   a child at a sub-root of its parent's tree, so the ownership map never
+   acquires an unreachable root. *)
+Section OwnRooted.
+  Context {K : Type} `{Countable K}.
+
+  Definition own_rooted (av : aview) (own : gmap K (Z * ttree)) : Prop :=
+    forall (g : K) (root : Z) (t : ttree),
+      own !! g = Some (root, t) -> nreach (tview av) FsImg.ROOTINO root.
+End OwnRooted.
+
+(* ---- 9b.  THE WORKHORSE: A LEG WHOSE PROPER EDGES DO NOT MOVE ------- *)
+
+(* [nreach] and [astep] both read the projected map through PROPER names
+   only, so a leg that leaves [nstep] alone on proper names leaves both
+   conjuncts alone.  SIX of the landed legs are this lemma: mkdir's two
+   dot legs, link's target leg, unlink's target leg above the last link,
+   write and truncate (a content edit at a FILE row moves no [nents]),
+   and create's ARM (a leaf row appears at an inum nothing names). *)
+Lemma nreach_step_cong (av av' : aview) (r j : Z) :
+  (forall (x : Z) (s : fname), fs_pname s ->
+     nstep (tview av') x s = nstep (tview av) x s) ->
+  nreach (tview av) r j -> nreach (tview av') r j.
+Proof.
+  intros Hag. apply nreach_mono_edges.
+  intros x s0 c Hs0 H0. rewrite (Hag x s0 Hs0) //.
+Qed.
+
+Lemma aview_rooted_step_cong (av av' : aview) :
+  (forall (x : Z) (s : fname), fs_pname s ->
+     nstep (tview av') x s = nstep (tview av) x s) ->
+  aview_rooted av -> aview_rooted av'.
+Proof.
+  intros Hag Hro d s i Hs Hst.
+  assert (Hold : astep av d s = Some i).
+  { rewrite -(nstep_tview av d s Hs) -(Hag d s Hs) (nstep_tview av' d s Hs) //. }
+  exact (nreach_step_cong av av' FsImg.ROOTINO d Hag (Hro d s i Hs Hold)).
+Qed.
+
+Lemma aview_rooted_cong (av av' : aview) :
+  tview av' = tview av -> aview_rooted av -> aview_rooted av'.
+Proof.
+  intros Hv. apply aview_rooted_step_cong. intros x s _. rewrite Hv //.
+Qed.
+
+(* ---- 9c.  PRESERVATION, LEG BY LEG --------------------------------- *)
+
+(* the four legs the tree does not see at all *)
+Lemma aview_rooted_dots (av : aview) (i d : Z) :
+  aview_rooted av -> aview_rooted (delta_dots i d av).
+Proof. exact (aview_rooted_cong av _ (tview_delta_dots av i d)). Qed.
+
+Lemma aview_rooted_dot (av : aview) (i : Z) :
+  aview_rooted av -> aview_rooted (delta_dot i av).
+Proof. exact (aview_rooted_cong av _ (tview_delta_dot av i)). Qed.
+
+Lemma aview_rooted_link_tgt (av : aview) (t : Z) (a : anode) :
+  av !! t = Some a -> aview_rooted av -> aview_rooted (delta_link_tgt t a av).
+Proof. intros Ha. exact (aview_rooted_cong av _ (tview_delta_link_tgt av t a Ha)). Qed.
+
+Lemma aview_rooted_unl_tgt_live (av : aview) (t : Z) (a : anode) :
+  av !! t = Some a -> (2 <= an_nlink a)%nat ->
+  aview_rooted av -> aview_rooted (delta_unl_tgt t av).
+Proof.
+  intros Ha Hnl.
+  exact (aview_rooted_cong av _ (tview_delta_unl_tgt_live av t a Ha Hnl)).
+Qed.
+
+(* WRITE and TRUNCATE: a content edit at a FILE row, so [nents] does not
+   move at any node *)
+Lemma aview_rooted_write (av : aview) (i : Z) (off : nat)
+    (new bs0 : list (bv 8)) (nl : nat) :
+  av !! i = Some (MkAnode (AFile bs0) nl) ->
+  aview_rooted av -> aview_rooted (delta_write i off new av).
+Proof.
+  intros Hi. apply aview_rooted_step_cong. intros x s Hs.
+  assert (Hti : tview av !! i = Some (AFile bs0))
+    by (rewrite (tview_lookup_Some av i _ Hi) //).
+  rewrite (tview_delta_write av i off new bs0 nl Hi).
+  exact (nstep_content_edit (tview av) i (AFile (blk_splice off new bs0))
+           (AFile bs0) x s Hti eq_refl).
+Qed.
+
+Lemma aview_rooted_trunc (av : aview) (i : Z) (bs0 : list (bv 8)) (nl : nat) :
+  av !! i = Some (MkAnode (AFile bs0) nl) ->
+  aview_rooted av -> aview_rooted (delta_trunc i av).
+Proof.
+  intros Hi. apply aview_rooted_step_cong. intros x s Hs.
+  assert (Hti : tview av !! i = Some (AFile bs0))
+    by (rewrite (tview_lookup_Some av i _ Hi) //).
+  rewrite (tview_delta_trunc av i bs0 nl Hi).
+  exact (nstep_content_edit (tview av) i (AFile []) (AFile bs0) x s Hti eq_refl).
+Qed.
+
+(* CREATE'S ARM: a LEAF row appears at an inum nothing names, so not one
+   edge of the namespace moves.  [av !! i = None] is the premise the
+   mover already holds (design section 7.8's "two new premises"). *)
+Lemma aview_rooted_arm (av : aview) (i : Z) (c : absnode) :
+  av !! i = None -> tabs_leaf (tabs_of c) ->
+  aview_rooted av -> aview_rooted (delta_arm i c av).
+Proof.
+  intros Hi Hleaf. apply aview_rooted_step_cong. intros x s Hs.
+  assert (Hti : tview av !! i = None) by (rewrite tview_lookup Hi //).
+  rewrite (tview_delta_arm av i c).
+  exact (nstep_ins_leaf (tview av) i (tabs_of c) x s Hti Hleaf Hs).
+Qed.
+
+(* ---- CREATE'S PARENT LEG: one edge appears, AT A REACHABLE SOURCE --- *)
+
+(* the edge insert at a FREE name adds edges and removes none, so
+   [nreach] can only GROW *)
+Lemma nstep_tedge_ins_sub (m : gmap Z absnode) (d : Z) (nm : fname) (i : Z)
+    (e : gmap fname Z) (x : Z) (s : fname) (c : Z) :
+  m !! d = Some (ADir e) -> e !! nm = None ->
+  nstep m x s = Some c -> nstep (tedge_ins d nm i m) x s = Some c.
+Proof.
+  intros Hd Hnone Hst. destruct (decide (x = d)) as [-> | Hx]; last first.
+  { rewrite (nstep_of_lookup _ m x s (tedge_ins_lookup_ne m d nm i x Hx)).
+    exact Hst. }
+  rewrite (nstep_tedge_ins_at m d nm i e s Hd). case_decide as Hs.
+  - exfalso. subst s. rewrite /nstep nents_unfold Hd /= Hnone in Hst. discriminate.
+  - exact Hst.
+Qed.
+
+Lemma nreach_tedge_ins_mono (m : gmap Z absnode) (r d : Z) (nm : fname)
+    (i : Z) (e : gmap fname Z) :
+  m !! d = Some (ADir e) -> e !! nm = None ->
+  forall j, nreach m r j -> nreach (tedge_ins d nm i m) r j.
+Proof.
+  intros Hd Hnone. apply nreach_mono_edges.
+  intros x s c Hs. exact (nstep_tedge_ins_sub m d nm i e x s c Hd Hnone).
+Qed.
+
+(* THE LEG THE WHOLE LANE IS FOR.  [d] reachable is what the owner has:
+   [d] is a node of its own tree and its root is reachable
+   ([own_rooted] + [subtree_dom_reach]). *)
+Lemma aview_rooted_ent (av : aview) (d : Z) (nm : fname) (i : Z)
+    (e : gmap fname Z) (nl : nat) (a : anode) :
+  fs_pname nm ->
+  av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = None ->
+  av !! i = Some a ->
+  nreach (tview av) FsImg.ROOTINO d ->
+  aview_rooted av -> aview_rooted (delta_ent d nm i av).
+Proof.
+  intros Hnm Hd Hnone Hi Hrd Hro.
+  assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
+    by (rewrite (tview_lookup_Some av d _ Hd) //).
+  assert (Hhn : hide_dots e !! nm = None)
+    by (rewrite (hide_dots_lookup e nm Hnm) //).
+  pose proof (tview_delta_ent av d nm i e nl a Hnm Hd Hi) as Hview.
+  intros x s j Hs Hst. rewrite Hview.
+  rewrite -(nstep_tview (delta_ent d nm i av) x s Hs) Hview in Hst.
+  destruct (nstep_ins_ent_inv (tview av) d nm i (hide_dots e) x s j Htd Hst)
+    as [[Hold _] | (-> & _ & _)].
+  - apply (nreach_tedge_ins_mono (tview av) FsImg.ROOTINO d nm i (hide_dots e)
+             Htd Hhn). rewrite (nstep_tview av x s Hs) in Hold.
+    exact (Hro x s j Hs Hold).
+  - exact (nreach_tedge_ins_mono (tview av) FsImg.ROOTINO d nm i (hide_dots e)
+             Htd Hhn d Hrd).
+Qed.
+
+(* ...AND THE FUSED CREATE, which is the arm followed by the parent leg
+   ([FsAbsDelta.delta_create_split]) *)
+Lemma aview_rooted_create (av : aview) (d : Z) (nm : fname) (i : Z)
+    (c : absnode) (e : gmap fname Z) (nl : nat) :
+  fs_pname nm ->
+  av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = None ->
+  av !! i = None -> tabs_leaf (tabs_of c) ->
+  nreach (tview av) FsImg.ROOTINO d ->
+  aview_rooted av -> aview_rooted (delta_create d nm i c av).
+Proof.
+  intros Hnm Hd Hnone Hi Hleaf Hrd Hro.
+  assert (Hne : d <> i) by (intros ->; rewrite Hd in Hi; discriminate).
+  assert (Hti : tview av !! i = None) by (rewrite tview_lookup Hi //).
+  assert (Harm : forall (x : Z) (s : fname), fs_pname s ->
+            nstep (tview (delta_arm i c av)) x s = nstep (tview av) x s).
+  { intros x s Hs. rewrite (tview_delta_arm av i c).
+    exact (nstep_ins_leaf (tview av) i (tabs_of c) x s Hti Hleaf Hs). }
+  rewrite (delta_create_split av d nm i c e nl Hd Hi).
+  apply (aview_rooted_ent (delta_arm i c av) d nm i e nl (MkAnode c 1%nat)
+           Hnm).
+  - rewrite (delta_arm_lookup_same av i c d Hne) //.
+  - exact Hnone.
+  - apply delta_arm_lookup_at.
+  - exact (nreach_step_cong av (delta_arm i c av) FsImg.ROOTINO d Harm Hrd).
+  - exact (aview_rooted_arm av i c Hi Hleaf Hro).
+Qed.
+
+(* ---- UNLINK'S ENTRY LEG: one edge leaves, at a TARGET WITH NO PROPER
+   OUT-EDGE ([SysUnlinkDefs.unl_pre]'s own [dots_only] clause).  Then no
+   path to any SOURCE used the cut edge, because a path through [tg]
+   would have to LEAVE [tg]. ---------------------------------------- *)
+
+Lemma nreach_tedge_del_keep (m : gmap Z absnode) (r d : Z) (nm : fname)
+    (e : gmap fname Z) (tg : Z) :
+  m !! d = Some (ADir e) -> e !! nm = Some tg ->
+  (forall s : fname, fs_pname s -> nstep m tg s = None) ->
+  forall j, nreach m r j -> nreach (tedge_del d nm m) r j \/ j = tg.
+Proof.
+  intros Hd He Hleaf.
+  apply (nreach_closed_ind m r
+           (fun j => nreach (tedge_del d nm m) r j \/ j = tg)
+           (or_introl (nreach_refl (tedge_del d nm m) r))).
+  intros d0 s c [Hd0 | ->] Hs Hst; last first.
+  { exfalso. rewrite (Hleaf s Hs) in Hst. discriminate. }
+  destruct (decide (d0 = d)) as [-> | Hx]; last first.
+  { left. apply (nreach_hop (tedge_del d nm m) r d0 s c Hd0 Hs).
+    rewrite (nstep_of_lookup _ m d0 s (tedge_del_lookup_ne m d nm d0 Hx)).
+    exact Hst. }
+  destruct (decide (s = nm)) as [-> | Hs2].
+  { right. rewrite /nstep nents_unfold Hd /= He in Hst. by injection Hst as <-. }
+  left. apply (nreach_hop (tedge_del d nm m) r d s c Hd0 Hs).
+  rewrite (nstep_tedge_del_at m d nm e s Hd).
+  case_decide as Hc; [by destruct (Hs2 Hc) | exact Hst].
+Qed.
+
+(* a node with no proper out-edge reaches nothing but itself -- the fact
+   that makes a [dots_only] target's removal local *)
+Lemma nreach_leaf_eq (m : gmap Z absnode) (x j : Z) :
+  (forall s : fname, fs_pname s -> nstep m x s = None) -> nreach m x j -> j = x.
+Proof.
+  intros Hl (p & Hp & Hw). destruct p as [| s p].
+  - cbn in Hw. by injection Hw as <-.
+  - apply fs_proper_cons in Hp as [Hs _].
+    rewrite npath_cons (Hl s Hs) in Hw. discriminate.
+Qed.
+
+Lemma aview_rooted_unl_ent (av : aview) (d : Z) (nm : fname) (dec : nat)
+    (e : gmap fname Z) (nl : nat) (tg : Z) :
+  fs_pname nm ->
+  av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = Some tg ->
+  (forall s : fname, fs_pname s -> astep av tg s = None) ->
+  aview_rooted av -> aview_rooted (delta_unl_ent d nm dec av).
+Proof.
+  intros Hnm Hd He Hlf Hro.
+  assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
+    by (rewrite (tview_lookup_Some av d _ Hd) //).
+  assert (Hhe : hide_dots e !! nm = Some tg)
+    by (rewrite (hide_dots_lookup e nm Hnm) //).
+  assert (Hleaf : forall s : fname, fs_pname s -> nstep (tview av) tg s = None).
+  { intros s Hs. rewrite (nstep_tview av tg s Hs). exact (Hlf s Hs). }
+  pose proof (tview_delta_unl_ent av d nm dec e nl Hd) as Hview.
+  intros x s j Hs Hst. rewrite Hview.
+  rewrite -(nstep_tview (delta_unl_ent d nm dec av) x s Hs) Hview in Hst.
+  pose proof (nstep_tedge_del_sub (tview av) d nm x s j Hst) as Hold.
+  destruct (nreach_tedge_del_keep (tview av) FsImg.ROOTINO d nm (hide_dots e)
+              tg Htd Hhe Hleaf x
+              (Hro x s j Hs (eq_trans (eq_sym (nstep_tview av x s Hs)) Hold)))
+    as [Hk | ->]; [exact Hk |].
+  exfalso. rewrite (Hleaf s Hs) in Hold. discriminate.
+Qed.
+
+(* ---- UNLINK'S TARGET LEG AT THE LAST LINK (and the child's UNARM):
+   the ROW leaves.  Nothing names it ([aview_no_edge_to], which the
+   entry leg itself proves), so no path to any surviving source went
+   through it. ------------------------------------------------------ *)
+
+Lemma nreach_delete_keep (m : gmap Z absnode) (i r : Z) :
+  (forall (x : Z) (s : fname), fs_pname s -> nstep m x s <> Some i) ->
+  r <> i ->
+  forall j, nreach m r j -> nreach (delete i m) r j /\ j <> i.
+Proof.
+  intros Hno Hr.
+  apply (nreach_closed_ind m r
+           (fun j => nreach (delete i m) r j /\ j <> i)
+           (conj (nreach_refl (delete i m) r) Hr)).
+  intros d s c [Hd Hdi] Hs Hst.
+  assert (Hsub : nstep (delete i m) d s = Some c).
+  { rewrite (nstep_of_lookup _ m d s
+               (lookup_delete_ne _ i d (fun Hc => Hdi (eq_sym Hc)))).
+    exact Hst. }
+  split; [exact (nreach_hop (delete i m) r d s c Hd Hs Hsub) |].
+  intros ->. exact (Hno d s Hs Hst).
+Qed.
+
+Lemma aview_rooted_unl_tgt (av : aview) (tg : Z) (a : anode) :
+  av !! tg = Some a -> an_nlink a = 1%nat ->
+  aview_no_edge_to av tg -> tg <> FsImg.ROOTINO ->
+  aview_rooted av -> aview_rooted (delta_unl_tgt tg av).
+Proof.
+  intros Ha Hnl Hno Hrt Hro.
+  assert (Hnon : forall (x : Z) (s : fname), fs_pname s ->
+            nstep (tview av) x s <> Some tg).
+  { intros x s Hs. rewrite (nstep_tview av x s Hs). exact (Hno x s Hs). }
+  pose proof (tview_delta_unl_tgt_last av tg a Ha Hnl) as Hview.
+  intros x s j Hs Hst. rewrite Hview.
+  rewrite -(nstep_tview (delta_unl_tgt tg av) x s Hs) Hview in Hst.
+  assert (Hold : nstep (tview av) x s = Some j).
+  { destruct (decide (x = tg)) as [-> | Hx].
+    - rewrite /nstep nents_unfold lookup_delete /= in Hst. discriminate.
+    - rewrite (nstep_of_lookup _ (tview av) x s
+                 (lookup_delete_ne _ tg x (fun Hc => Hx (eq_sym Hc)))) in Hst.
+      exact Hst. }
+  destruct (nreach_delete_keep (tview av) tg FsImg.ROOTINO Hnon
+              (fun Hc => Hrt (eq_sym Hc)) x
+              (Hro x s j Hs (eq_trans (eq_sym (nstep_tview av x s Hs)) Hold)))
+    as [Hk _].
+  exact Hk.
+Qed.
+
+(* the same row removal at create's UNARM leg (design section 7.4's
+   wall 2, closed by the same credential at the same instant) *)
+Lemma aview_rooted_unarm (av : aview) (i : Z) :
+  aview_no_edge_to av i -> i <> FsImg.ROOTINO ->
+  aview_rooted av -> aview_rooted (delta_unarm i av).
+Proof.
+  intros Hno Hri Hro.
+  assert (Hnon : forall (x : Z) (s : fname), fs_pname s ->
+            nstep (tview av) x s <> Some i).
+  { intros x s Hs. rewrite (nstep_tview av x s Hs). exact (Hno x s Hs). }
+  pose proof (tview_delta_unarm av i) as Hview.
+  intros x s j Hs Hst. rewrite Hview.
+  rewrite -(nstep_tview (delta_unarm i av) x s Hs) Hview in Hst.
+  assert (Hold : nstep (tview av) x s = Some j).
+  { destruct (decide (x = i)) as [-> | Hx].
+    - rewrite /nstep nents_unfold lookup_delete /= in Hst. discriminate.
+    - rewrite (nstep_of_lookup _ (tview av) x s
+                 (lookup_delete_ne _ i x (fun Hc => Hx (eq_sym Hc)))) in Hst.
+      exact Hst. }
+  destruct (nreach_delete_keep (tview av) i FsImg.ROOTINO Hnon
+              (fun Hc => Hri (eq_sym Hc)) x
+              (Hro x s j Hs (eq_trans (eq_sym (nstep_tview av x s Hs)) Hold)))
+    as [Hk _].
+  exact Hk.
+Qed.
+
+(* ---- 9d.  THE SECOND CONJUNCT, LEG BY LEG -------------------------- *)
+
+(* ---- 9f.  WHAT THE ROOTED VIEW BUYS AT CREATE'S PARENT LEG --------- *)
+(*                                                                       *)
+(*  THE DERIVATION (design section 7.8).  The ARM's receipt records the   *)
+(*  PURE fact [i ∉ dom (tv_nodes t)] -- a proposition about the OWNER'S   *)
+(*  OWN FIXED TREE, which is why WALL C does not apply to it (WALL C is   *)
+(*  about the whole VIEW, and no monotone reading of "nothing names [i]"  *)
+(*  survives an arbitrary delta).  At the parent leg's own view the       *)
+(*  claim's two conjuncts turn it back into the two credentials           *)
+(*  [own_wf_ent] asks for.                                               *)
+
+(* the converse of [subtree_dom_reach]: a REACHABLE row of the view is a
+   node of the subtree *)
+Lemma subtree_reach_dom (av : aview) (r : Z) (t : ttree) (i : Z) :
+  subtree av r = Some t -> i ∈ dom av -> nreach (tview av) r i ->
+  i ∈ dom (tv_nodes t).
+Proof.
+  intros Ht Hd Hr. rewrite (subtree_nodes_eq av r t Ht).
+  apply elem_of_dom_subtree_nodes. exact (conj Hd Hr).
+Qed.
+
+(* ...and the two readings of a subtree's domain the arm's supplier needs *)
+Lemma subtree_dom_view (av : aview) (r : Z) (t : ttree) (i : Z) :
+  subtree av r = Some t -> i ∈ dom (tv_nodes t) -> i ∈ dom av.
+Proof.
+  intros Ht Hi. rewrite (subtree_nodes_eq av r t Ht) in Hi.
+  exact (proj1 (proj1 (elem_of_dom_subtree_nodes av r i) Hi)).
+Qed.
+
+Lemma subtree_root_dom (av : aview) (r : Z) (t : ttree) :
+  subtree av r = Some t -> r ∈ dom (tv_nodes t).
+Proof.
+  intros Ht. apply (subtree_reach_dom av r t r Ht);
+    [apply adir_at_dom; exact (proj1 (subtree_Some_inv av r t Ht))
+    | apply nreach_refl].
+Qed.
+
+(* CREDENTIAL ONE: nothing names the armed row.  If something did, the
+   rooted view would make its SOURCE reachable, hence the armed row
+   itself, hence a node of the root owner's tree -- which the receipt
+   refutes. *)
+Lemma aview_no_edge_to_rooted (av : aview) (t : ttree) (i : Z) :
+  aview_rooted av -> aview_closed av ->
+  subtree av FsImg.ROOTINO = Some t -> i ∉ dom (tv_nodes t) ->
+  aview_no_edge_to av i.
+Proof.
+  intros Hro Hcl Ht Hni d s Hs Hst. apply Hni.
+  apply (subtree_reach_dom av FsImg.ROOTINO t i Ht).
+  - destruct (Hcl d s i Hs Hst) as [a Ha]. apply elem_of_dom. by exists a.
+  - apply (nreach_hop (tview av) FsImg.ROOTINO d s i (Hro d s i Hs Hst) Hs).
+    rewrite (nstep_tview av d s Hs) //.
+Qed.
+
+(* CREDENTIAL TWO -- the one [own_wf_ent_leaf] could only pay at a
+   NON-DIRECTORY child, and which mkdir's directory child owed: THE ARMED
+   INUM IS NOBODY'S ROOT.  [own_rooted] makes every owner's root
+   reachable, and a reachable row of the view is a node of the root
+   owner's tree. *)
+Lemma root_not_armed_rooted (av : aview) (t : ttree) (i root : Z) :
+  subtree av FsImg.ROOTINO = Some t -> i ∉ dom (tv_nodes t) ->
+  i ∈ dom av -> nreach (tview av) FsImg.ROOTINO root -> root <> i.
+Proof.
+  intros Ht Hni Hd Hr Heq. subst root. apply Hni.
+  exact (subtree_reach_dom av FsImg.ROOTINO t i Ht Hd Hr).
+Qed.
+
+Section OwnRootedPres.
+  Context {K : Type} `{Countable K}.
+
+  Lemma own_rooted_step_cong (av av' : aview) (own : gmap K (Z * ttree)) :
+    (forall (x : Z) (s : fname), fs_pname s ->
+       nstep (tview av') x s = nstep (tview av) x s) ->
+    own_rooted av own -> own_rooted av' own.
+  Proof.
+    intros Hag Hro g root t Hg.
+    exact (nreach_step_cong av av' FsImg.ROOTINO root Hag (Hro g root t Hg)).
+  Qed.
+
+  Lemma own_rooted_cong (av av' : aview) (own : gmap K (Z * ttree)) :
+    tview av' = tview av -> own_rooted av own -> own_rooted av' own.
+  Proof.
+    intros Hv. apply own_rooted_step_cong. intros x s _. rewrite Hv //.
+  Qed.
+
+  Lemma own_rooted_dots (av : aview) (own : gmap K (Z * ttree)) (i d : Z) :
+    own_rooted av own -> own_rooted (delta_dots i d av) own.
+  Proof. exact (own_rooted_cong av _ own (tview_delta_dots av i d)). Qed.
+
+  Lemma own_rooted_dot (av : aview) (own : gmap K (Z * ttree)) (i : Z) :
+    own_rooted av own -> own_rooted (delta_dot i av) own.
+  Proof. exact (own_rooted_cong av _ own (tview_delta_dot av i)). Qed.
+
+  Lemma own_rooted_link_tgt (av : aview) (own : gmap K (Z * ttree))
+      (t : Z) (a : anode) :
+    av !! t = Some a -> own_rooted av own -> own_rooted (delta_link_tgt t a av) own.
+  Proof.
+    intros Ha. exact (own_rooted_cong av _ own (tview_delta_link_tgt av t a Ha)).
+  Qed.
+
+  Lemma own_rooted_unl_tgt_live (av : aview) (own : gmap K (Z * ttree))
+      (t : Z) (a : anode) :
+    av !! t = Some a -> (2 <= an_nlink a)%nat ->
+    own_rooted av own -> own_rooted (delta_unl_tgt t av) own.
+  Proof.
+    intros Ha Hnl.
+    exact (own_rooted_cong av _ own (tview_delta_unl_tgt_live av t a Ha Hnl)).
+  Qed.
+
+  Lemma own_rooted_write (av : aview) (own : gmap K (Z * ttree)) (i : Z)
+      (off : nat) (new bs0 : list (bv 8)) (nl : nat) :
+    av !! i = Some (MkAnode (AFile bs0) nl) ->
+    own_rooted av own -> own_rooted (delta_write i off new av) own.
+  Proof.
+    intros Hi. apply own_rooted_step_cong. intros x s Hs.
+    assert (Hti : tview av !! i = Some (AFile bs0))
+      by (rewrite (tview_lookup_Some av i _ Hi) //).
+    rewrite (tview_delta_write av i off new bs0 nl Hi).
+    exact (nstep_content_edit (tview av) i (AFile (blk_splice off new bs0))
+             (AFile bs0) x s Hti eq_refl).
+  Qed.
+
+  Lemma own_rooted_trunc (av : aview) (own : gmap K (Z * ttree)) (i : Z)
+      (bs0 : list (bv 8)) (nl : nat) :
+    av !! i = Some (MkAnode (AFile bs0) nl) ->
+    own_rooted av own -> own_rooted (delta_trunc i av) own.
+  Proof.
+    intros Hi. apply own_rooted_step_cong. intros x s Hs.
+    assert (Hti : tview av !! i = Some (AFile bs0))
+      by (rewrite (tview_lookup_Some av i _ Hi) //).
+    rewrite (tview_delta_trunc av i bs0 nl Hi).
+    exact (nstep_content_edit (tview av) i (AFile []) (AFile bs0) x s Hti eq_refl).
+  Qed.
+
+  Lemma own_rooted_arm (av : aview) (own : gmap K (Z * ttree)) (i : Z)
+      (c : absnode) :
+    av !! i = None -> tabs_leaf (tabs_of c) ->
+    own_rooted av own -> own_rooted (delta_arm i c av) own.
+  Proof.
+    intros Hi Hleaf. apply own_rooted_step_cong. intros x s Hs.
+    assert (Hti : tview av !! i = None) by (rewrite tview_lookup Hi //).
+    rewrite (tview_delta_arm av i c).
+    exact (nstep_ins_leaf (tview av) i (tabs_of c) x s Hti Hleaf Hs).
+  Qed.
+
+  (* create's parent leg and the fused create: reach only GROWS *)
+  Lemma own_rooted_ent (av : aview) (own : gmap K (Z * ttree)) (d : Z)
+      (nm : fname) (i : Z) (e : gmap fname Z) (nl : nat) (a : anode) :
+    fs_pname nm ->
+    av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = None ->
+    av !! i = Some a ->
+    own_rooted av own -> own_rooted (delta_ent d nm i av) own.
+  Proof.
+    intros Hnm Hd Hnone Hi Hro g root t Hg.
+    assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
+      by (rewrite (tview_lookup_Some av d _ Hd) //).
+    assert (Hhn : hide_dots e !! nm = None)
+      by (rewrite (hide_dots_lookup e nm Hnm) //).
+    rewrite (tview_delta_ent av d nm i e nl a Hnm Hd Hi).
+    exact (nreach_tedge_ins_mono (tview av) FsImg.ROOTINO d nm i (hide_dots e)
+             Htd Hhn root (Hro g root t Hg)).
+  Qed.
+
+  Lemma own_rooted_create (av : aview) (own : gmap K (Z * ttree)) (d : Z)
+      (nm : fname) (i : Z) (c : absnode) (e : gmap fname Z) (nl : nat) :
+    fs_pname nm ->
+    av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = None ->
+    av !! i = None -> tabs_leaf (tabs_of c) ->
+    own_rooted av own -> own_rooted (delta_create d nm i c av) own.
+  Proof.
+    intros Hnm Hd Hnone Hi Hleaf Hro.
+    assert (Hne : d <> i) by (intros ->; rewrite Hd in Hi; discriminate).
+    rewrite (delta_create_split av d nm i c e nl Hd Hi).
+    apply (own_rooted_ent (delta_arm i c av) own d nm i e nl
+             (MkAnode c 1%nat) Hnm).
+    - rewrite (delta_arm_lookup_same av i c d Hne) //.
+    - exact Hnone.
+    - apply delta_arm_lookup_at.
+    - exact (own_rooted_arm av own i c Hi Hleaf Hro).
+  Qed.
+
+  (* unlink's ENTRY leg: the cut edge's target is [dots_only], so the only
+     node the cut can orphan is the target itself -- and the target is
+     nobody's root (at a FILE target [own_wf]'s roots conjunct pays it
+     free; at a dots-only DIRECTORY the mover's own non-nesting does). *)
+  Lemma own_rooted_unl_ent (av : aview) (own : gmap K (Z * ttree)) (d : Z)
+      (nm : fname) (dec : nat) (e : gmap fname Z) (nl : nat) (tg : Z) :
+    fs_pname nm ->
+    av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = Some tg ->
+    (forall s : fname, fs_pname s -> astep av tg s = None) ->
+    (forall (g : K) (root : Z) (t : ttree),
+       own !! g = Some (root, t) -> root <> tg) ->
+    own_rooted av own -> own_rooted (delta_unl_ent d nm dec av) own.
+  Proof.
+    intros Hnm Hd He Hlf Hnotroot Hro g root t Hg.
+    assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
+      by (rewrite (tview_lookup_Some av d _ Hd) //).
+    assert (Hhe : hide_dots e !! nm = Some tg)
+      by (rewrite (hide_dots_lookup e nm Hnm) //).
+    assert (Hleaf : forall s : fname, fs_pname s -> nstep (tview av) tg s = None).
+    { intros s Hs. rewrite (nstep_tview av tg s Hs). exact (Hlf s Hs). }
+    rewrite (tview_delta_unl_ent av d nm dec e nl Hd).
+    destruct (nreach_tedge_del_keep (tview av) FsImg.ROOTINO d nm (hide_dots e)
+                tg Htd Hhe Hleaf root (Hro g root t Hg)) as [Hk | Hc];
+      [exact Hk |].
+    exfalso. exact (Hnotroot g root t Hg Hc).
+  Qed.
+
+  (* unlink's TARGET leg at the last link, and the UNARM: a row nothing
+     names and that is not [ROOTINO] is UNREACHABLE, so it is nobody's
+     root already -- this leg needs no "nobody's root" premise at all. *)
+  Lemma own_rooted_unl_tgt (av : aview) (own : gmap K (Z * ttree))
+      (tg : Z) (a : anode) :
+    av !! tg = Some a -> an_nlink a = 1%nat ->
+    aview_no_edge_to av tg -> tg <> FsImg.ROOTINO ->
+    own_rooted av own -> own_rooted (delta_unl_tgt tg av) own.
+  Proof.
+    intros Ha Hnl Hno Hrt Hro g root t Hg.
+    assert (Hnon : forall (x : Z) (s : fname), fs_pname s ->
+              nstep (tview av) x s <> Some tg).
+    { intros x s Hs. rewrite (nstep_tview av x s Hs). exact (Hno x s Hs). }
+    rewrite (tview_delta_unl_tgt_last av tg a Ha Hnl).
+    destruct (nreach_delete_keep (tview av) tg FsImg.ROOTINO Hnon
+                (fun Hc => Hrt (eq_sym Hc)) root (Hro g root t Hg)) as [Hk _].
+    exact Hk.
+  Qed.
+
+  Lemma own_rooted_unarm (av : aview) (own : gmap K (Z * ttree)) (i : Z) :
+    aview_no_edge_to av i -> i <> FsImg.ROOTINO ->
+    own_rooted av own -> own_rooted (delta_unarm i av) own.
+  Proof.
+    intros Hno Hri Hro g root t Hg.
+    assert (Hnon : forall (x : Z) (s : fname), fs_pname s ->
+              nstep (tview av) x s <> Some i).
+    { intros x s Hs. rewrite (nstep_tview av x s Hs). exact (Hno x s Hs). }
+    rewrite (tview_delta_unarm av i).
+    destruct (nreach_delete_keep (tview av) i FsImg.ROOTINO Hnon
+                (fun Hc => Hri (eq_sym Hc)) root (Hro g root t Hg)) as [Hk _].
+    exact Hk.
+  Qed.
+
+  (* ---- 9e.  THE MAP MOVES: retree and the hand-down ---------------- *)
+
+  Lemma own_rooted_retree (av : aview) (own : gmap K (Z * ttree))
+      (g : K) (root : Z) (t t' : ttree) :
+    own !! g = Some (root, t) ->
+    own_rooted av own -> own_rooted av (<[g := (root, t')]> own).
+  Proof.
+    intros Hg Hro g0 r0 t0 H0.
+    destruct (decide (g0 = g)) as [-> | Hne].
+    - rewrite lookup_insert in H0. injection H0 as <- _. exact (Hro g root t Hg).
+    - rewrite lookup_insert_ne in H0; [| congruence]. exact (Hro g0 r0 t0 H0).
+  Qed.
+
+  (* THE HAND-DOWN pays the conjunct: the child's root is a node of the
+     parent's OWN tree, hence reachable from the parent's root, hence
+     from [ROOTINO]. *)
+  Lemma own_rooted_grant (av : aview) (own : gmap K (Z * ttree))
+      (g g' : K) (root root' : Z) (t t' : ttree) :
+    own !! g = Some (root, t) -> subtree av root = Some t ->
+    root' ∈ dom (tv_nodes t) ->
+    own_rooted av own ->
+    own_rooted av (<[g' := (root', t')]> (delete g own)).
+  Proof.
+    intros Hg Ht Hd Hro g0 r0 t0 H0.
+    destruct (decide (g0 = g')) as [-> | Hne].
+    - rewrite lookup_insert in H0. injection H0 as <- _.
+      exact (nreach_trans (tview av) FsImg.ROOTINO root root'
+               (Hro g root t Hg) (subtree_dom_reach av root t root' Ht Hd)).
+    - rewrite lookup_insert_ne in H0; [| congruence].
+      apply lookup_delete_Some in H0 as [_ H0]. exact (Hro g0 r0 t0 H0).
+  Qed.
+
+End OwnRootedPres.

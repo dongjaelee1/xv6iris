@@ -66,7 +66,7 @@
    than an accident (the section note below).  Getting there cost the dead
    context binders on [FsAbsDelta.delta_trunc],
    [SysOpenDefs.atrunc_commit_at] and the [om_*] mode readers,
-   [SpecSysOpen.open_in] and [SpecSysMkdir.mkdir_au_pre]/[mkdir_arms] --
+   [SpecSysOpen.open_in] and [SpecSysMkdir.mkdir_au_at]/[mkdir_arms] --
    TSO-rebase appends that no body ever read.
 
    WHAT EXEC'S BUNDLE IS.  [SpecSysExec.sys_exec_au_pre] at the TRAPPING
@@ -167,7 +167,7 @@ Require Import SpecSysMknod.   (* [mknod_au_pre] / [mknod_arms]       *)
 Require Import SysMknodDefs. (* [dev_arg]                           *)
 Require Import SpecSysUnlink.  (* [unlink_au_pre] / [unlink_arms]     *)
 Require Import SpecSysLink.    (* [link_commits] / [link_arms]        *)
-Require Import SpecSysMkdir.   (* [mkdir_au_pre] / [mkdir_arms]       *)
+Require Import SpecSysMkdir.   (* [mkdir_au_at] / [mkdir_arms]       *)
 Require Import FsTree.         (* [fname]                             *)
 Require Import WpUart.         (* [out_licence] -- the OUTPUT LICENCE the
                                   generic supply carries (lane OUT-FUPD) *)
@@ -570,7 +570,11 @@ Section UexecExecInst.
      else if decide (n = 19) then
        link_commits (fs_gamma_L fsc_fs) (lf_Ftgt f) (lf_Fent f) (lf_Funt f)
      else if decide (n = 20) then
-       mkdir_au_pre (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+       (* ...and mkdir's, AT ITS PATH ARGUMENT (lane TL-3C, item (M)): the
+          path-fixed bundle is what lets mkdir carry a parent cursor at
+          all -- [SpecSysMkdir.mkdir_au_at], [mknod_au_at]'s twin. *)
+       mkdir_au_at (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+         (uvis_M W) (xk_a W 0)
          (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
          (df_Fok f) (df_Fex f)
      else if decide (n = 6) then
@@ -746,7 +750,7 @@ Section UexecExecInst.
      else if decide (n = 20) then
        mkdir_arms (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
-         (df_Fok f) (df_Fex f) r
+         (df_Fok f) (df_Fex f) (uvis_M W) (xk_a W 0) r
      else emp)%I.
 
   (* THE SLOT FAMILY OCCURS IN ONE BRANCH OF THE DEPOSIT -- exec's slot wand
@@ -921,7 +925,7 @@ Section UexecExecInst.
     destruct (decide (n = 19)) as [_ | _];
       [ iModIntro; iApply (fsabs_link_pre with "Hsup") | ].
     destruct (decide (n = 20)) as [_ | _];
-      [ iModIntro; iApply (SpecSysMkdir.mkdir_au_pre_unit with "Hsup") | ].
+      [ iModIntro; iApply (SpecSysMkdir.mkdir_au_at_unit with "Hsup") | ].
     (* row 6: the kill price, straight off the supply's second conjunct *)
     destruct (decide (n = 6)) as [_ | _];
       [ iModIntro; iExact "Hkc" | ].
@@ -1245,7 +1249,8 @@ Section UexecExecInst.
 
   Lemma sbundle_at_mkdir_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
     sbundle_at X 20 f W -∗
-    mkdir_au_pre (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+    mkdir_au_at (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+      (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
       (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
       (df_Fok f) (df_Fex f).
   Proof.
@@ -1525,7 +1530,7 @@ Section UexecExecInst.
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
     mkdir_arms (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
-      (df_Fok f) (df_Fex f) r -∗
+      (df_Fok f) (df_Fex f) (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0)) r -∗
     spost_at X 20 f W r M' fdv' cw' cs'.
   Proof.
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.

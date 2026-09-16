@@ -391,7 +391,7 @@ Module FsSysMkdir (M : SYSMKDIR).
                     Hpriv []").
     { rewrite /trap_csrs_ext. done. }
     { rewrite /cpu_claim_ext. done. }
-    { iApply (SpecSysMkdir.mkdir_au_pre_unit with "Hsup"). }
+    { iApply (SpecSysMkdir.mkdir_au_at_unit with "Hsup"). }
     iIntros (CIDn) "%Hgd".
     iIntros (mf ns' P')
       "%Hcs %Hupt Hcg Hown _ _ Hpc Hbsl Hsbn Hsbi Hsbs Hsbb %Hns' Hir

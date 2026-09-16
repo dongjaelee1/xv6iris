@@ -121,6 +121,8 @@ Require Import DirentEnc.        (* [bview]                               *)
 Require Import FsAbsMknodFire.   (* [np_start_of_mknod], the walk premise *)
 Require Import CodeSysMkdir.
 Require Import SpecSysMkdir.
+Require Import ArgPath.          (* [arg_path_of] / [arg_path_of_bview]:
+                                    the path-fixed bundle's guard (TL-3C) *)
 Require Import FsTree.          (* [fname]: the parent-leg receipt's name *)
 Require Import PieceFam.       (* [pfam]/[pf_at]: the one-shot piece's pair *)
 Require Import FsAbsDefs.       (* [aview]: the receipts' view argument (round E2, lane E2-C) *)
@@ -786,7 +788,10 @@ Section ProofSysMkdirBody.
              #Hireg #Hiopen Hsbn Hsbi Hsbs Hsbb #Hbmres #Hkenv #Hprocs Hir
              Hpriv Hpre0 Hcont".
     (* the bundle, in the three pieces create's own contract takes *)
-    iEval (rewrite /mkdir_au_pre) in "Hpre0".
+    iEval (rewrite /mkdir_au_at) in "Hpre0".
+    (* [Hwp] is the walk AT THE STRING ARGUMENT 0 NAMES -- a wand under the
+       reading, not a one-shot at every path (lane TL-3C) -- so it fires
+       only once argstr has answered, below. *)
     iDestruct "Hpre0" as "(Hwp & Hdlkc & Hcre)".
     iPoseProof (printk_env_panic with "Hpre") as "#Hpe".
     iDestruct (cpu_own_zero_empty with "Hown") as "[%Hlkempty Hown]".
@@ -1026,7 +1031,7 @@ Section ProofSysMkdirBody.
               (Hlb "kmem"%string)
               with "Hcg Hown Htext Hdata Hpc Hpriv Hkenv [Hbuf]").
     { iEval (rewrite HM7a1). iExact "Hbuf". }
-    iIntros (CID11 Hq11 mas P' bf) "%Hcsas %Hupt Hcg Hown Hpc Hpriv Hbuf %Hfsr _".
+    iIntros (CID11 Hq11 mas P' bf) "%Hcsas %Hupt Hcg Hown Hpc Hpriv Hbuf %Hfsr %Hfgot".
     iEval (rewrite HM7a1) in "Hbuf".
     assert (Hpc1a : ret_pc (M7 !!! Regidx Rra : mword 64)
                     = mword_of_int (MD + 0x1a)) by (rewrite HM7ra; pcw).
@@ -1043,6 +1048,12 @@ Section ProofSysMkdirBody.
     (* ================= +0x1a bltz a0 -> ARM A ================= *)
     destruct Hfsr as [(pk & Hpk & Hpcstr & Hpr) | Hpr].
     - (* ---- the string fetched: the [bltz] FALLS THROUGH ---- *)
+      (* THE PATH, AS THE BUNDLE IS OWED IT (lane TL-3C, [SpecSysMknod]'s
+         mould): [bview pk bf] is the buffer argstr filled, and [Hfgot]
+         says those bytes are the process's own at trapframe argument 0 --
+         so every occurrence below is at the ONE path the caller passed. *)
+      pose proof (arg_path_of_bview (us_M U) v pk bf
+                    (md_plen_lt pk Hpk) Hpcstr (Hfgot pk Hpk Hpr)) as Hpof.
       iApply (wp_blt_x0_fall_s_sconf (CID := CID11) (mword_of_int (MD + 0x1a))
                 (mword_of_int 38 : mword 13) Ra0 mas (K - 18)%nat b
                 ltac:(nz)
@@ -1202,13 +1213,13 @@ Section ProofSysMkdirBody.
          call fetched IS [npar_walk_pre_era] at that string, so nothing is
          fired here -- the WALK picks the start inum (ROOTINO, or the cwd's)
          and fires it there. *)
-      iDestruct (np_start_of_mknod fsc_fs (pv_cwi (us_V U)) P Pmiss (bview pk bf)
-                   with "Hwp") as "Htr".
-      (* mkdir's bundle carries NO parent cursor (its walk premise is the
-         [forall pl] one-shot), and create's takes one: the weakening
-         ([SpecCreate.cre_commits_cur], lane TL-3K). *)
-      iDestruct (cre_commits_cur _ _ _ _ _
-                   Farm Fdots Fun Fok with "Hcre") as "Hcre".
+      iDestruct ("Hwp" $! (bview pk bf) with "[%]") as "Htr"; [exact Hpof |].
+      (* mkdir's bundle NOW CARRIES A PARENT CURSOR (lane TL-3C, item (M)):
+         it arrives at the GUARDED reading and create wants it at THE path
+         argstr read ([SpecSysMkdir.mkdir_cre_inst], [SpecSysMknod.
+         mknod_acre_inst]'s twin at the whole four-leg bundle). *)
+      iDestruct (mkdir_cre_inst _ (us_M U) v (bview pk bf)
+                   P Farm Fdots Fun Fok Hpof with "Hcre") as "Hcre".
       iApply (Create.wp_create_sconf (CID := CID17) gs j gl pd pav pu
  gf
  pk bf
@@ -1531,7 +1542,7 @@ Section ProofSysMkdirBody.
       { (* argstr failed: create never ran, so the WHOLE bundle comes home *)
         rewrite /mkdir_arms. iRight.
         iSplitR; [iPureIntro; exact Ha0f |].
-        iLeft. rewrite /mkdir_au_pre. iFrame "Hwp Hdlkc Hcre". }
+        iLeft. rewrite /mkdir_au_at. iFrame "Hwp Hdlkc Hcre". }
   Qed.
 
 End ProofSysMkdirBody.

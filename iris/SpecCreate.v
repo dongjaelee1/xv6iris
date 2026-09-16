@@ -647,6 +647,30 @@ Section CreateSpec.
               Fok.(pf_recv) with "Hac").
   Qed.
 
+  (* ...AND THE CURSOR MOVES ALONG AN ISO AT THE BUNDLE (lane TL-3C): the
+     two readings of one cursor -- the path-fixed [P (length (npar_elems
+     pl))] and the syscall tier's guarded [SysMknodDefs.npar_cur] -- carry
+     the whole four-leg bundle between them, which is what a PATH-FIXED
+     mkdir/unlink bundle needs ([SpecSysMkdir.mkdir_cre_inst]).  BOTH
+     directions, because the parent leg READS the premise and hands it
+     back ([FsAbsCreateFire.acre_commit_at_gen_mono]). *)
+  Lemma cre_commits_mono (Γ : fs_view_names Σ) (tyz ma mi : Z)
+      (Pd Pd' : Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
+      (Fun : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    □ (∀ d : Z, Pd' d -∗ Pd d) -∗ □ (∀ d : Z, Pd d -∗ Pd' d) -∗
+    cre_commits Γ tyz ma mi Pd Farm Fdots Fun Fok -∗
+    cre_commits Γ tyz ma mi Pd' Farm Fdots Fun Fok.
+  Proof.
+    rewrite /cre_commits. iIntros "#Hin #Hout (Ha & Hd & Hu & Hac)".
+    iFrame "Ha Hd Hu".
+    iApply (pf_at_mono with "[] Hac"). iIntros "Hac".
+    iApply (acre_commit_at_gen_mono Γ appE (cre_child tyz ma mi) Pd Pd' Farm
+              Fok.(pf_recv) with "Hin Hout Hac").
+  Qed.
+
   (* ARM C-OK / F-OK, keyed on [made].  Both success arms ran nameiparent,
      so both return the WALK CURSOR at the parent index and tie the name to
      the path's last element; what differs is which instant fired.  A FRESH

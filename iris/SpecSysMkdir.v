@@ -162,6 +162,9 @@ Require Import FsBlocks.        (* [fs_names] *)
 Require Import AppInv.          (* [appE], [app_sup] *)
 Require Import FsAbsEra.        (* [ep_start_triv] *)
 Require Import FsAbsMknodFire.  (* [npar_walk_pre_era], the walk premise *)
+Require Import SysMknodDefs.    (* [npar_elems], [npar_cur]: the path-fixed
+                                   bundle's cursor (lane TL-3C)            *)
+Require Import ArgPath.         (* [arg_path_of] / [arg_path_of_uniq]      *)
 Require Import FsTree.          (* [fname]: the parent-leg receipt's name *)
 Require Import FsBytesGamma.    (* [fs_gamma_L]: the live Γ *)
 Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its refund *)
@@ -208,34 +211,147 @@ End SpecSysMkdir.
    pinned at [True].  The FETCHED STRING stays existential in the arms --
    argstr picks it, not the caller. *)
 
-(* everything the caller hands in, at the commit mask [appE].  mkdir's
-   create is at [T_DIR] with both device halfwords zero, which is what pins
-   the type index of the bundle and of the two arms below. *)
+(* ===================================================================== *)
+(*  THE PATH-FIXED BUNDLE (lane TL-3C, design/user-tree.md section 7.6's   *)
+(*  item (M)) -- [SpecSysMknod.mknod_au_pre] / [mknod_au_at]'s TWIN.       *)
+(*                                                                        *)
+(*  TL-3K threaded the walk's terminal cursor into the parent leg's commit *)
+(*  ([FsAbsCreateFire.acre_commit_at_gen]'s [Pd]) and found that mkdir     *)
+(*  COULD NOT CARRY ONE: its bundle took the [forall pl] one-shot          *)
+(*  ([npar_walk_pre_era]), so there was no ONE path for a cursor to name   *)
+(*  and the leg was handed in at [Pd := fun _ => True].  That is what a    *)
+(*  constraining application cannot supply -- at a [d] inside a stranger's *)
+(*  subtree it has no step at all ([TreeMove.v] section 4's WALL A).  So   *)
+(*  mkdir now takes the bundle AT THE PATH ARGUMENT 0 NAMES, exactly as    *)
+(*  sys_mknod and open(O_CREATE) do:                                       *)
+(*    [mkdir_au_pre] -- at ONE fetched path [pl]: the parent-prefix walk   *)
+(*      one-shot there ([FsAbsEra.ep_start]) and the four legs at the      *)
+(*      cursor [P (length (npar_elems pl))];                               *)
+(*    [mkdir_au_at]  -- the SYSCALL tier: the same, under the reading of   *)
+(*      trapframe argument 0 ([ArgPath.arg_path_of]).  THE COMMITS STAY    *)
+(*      OUTSIDE THE WALK'S WAND, because argstr can fail and then no [pl]  *)
+(*      satisfies the reading at all -- the failure fold has to hand the   *)
+(*      bundle back on the nose.  The cursor rides under the SAME guard    *)
+(*      ([SysMknodDefs.npar_cur]), still a BARE resource.                  *)
+(*  mkdir's create is at [T_DIR] with both device halfwords zero, which is *)
+(*  what pins the type index of the bundle and of the two arms below.      *)
+(* ===================================================================== *)
+
 Definition mkdir_au_pre
     `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId}
-    (Γ : fs_view_names Σ) (γfs : fs_names) (cw : Z)
+    (Γ : fs_view_names Σ) (γfs : fs_names) (cw : Z) (pl : list (bv 8))
     (P Pmiss : nat -> Z -> iProp Σ)
     (Farm : pfam Σ (aview -> Z -> iProp Σ))
     (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
     (Fun : pfam Σ (aview -> Z -> iProp Σ))
     (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
     (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) : iProp Σ :=
-  (npar_walk_pre_era γfs cw P Pmiss
+  (ep_start γfs cw P Pmiss pl
    ∗ pf_at (dlookup_commit_at Γ appE) Fex
-   (* THE CURSOR-FREE COMMIT (lane TL-3K).  mkdir's bundle still carries
-      the [forall pl] walk form ([npar_walk_pre_era]), so there is no ONE
-      path for a cursor to name and the parent leg is handed in at the
-      landed strength; [SpecCreate]'s own bundle takes it up to the walk's
-      terminal cursor through [FsAbsCreateFire.acre_commit_at_gen_cur].
-      A path-fixed mkdir bundle (mknod's [mknod_au_at] twin) is what a
-      constraining application would need first -- see design/user-tree.md
-      section 7.5. *)
    ∗ cre_commits Γ
        (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
        (bv_unsigned (mword_of_int 0 : mword 16))
        (bv_unsigned (mword_of_int 0 : mword 16))
-       (fun _ => True%I)
+       (P (length (npar_elems pl)))
        Farm Fdots Fun Fok)%I.
+
+Definition mkdir_au_at
+    `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId}
+    (Γ : fs_view_names Σ) (γfs : fs_names) (cw : Z)
+    (M : gmap Z (bv 8)) (pv : mword 64)
+    (P Pmiss : nat -> Z -> iProp Σ)
+    (Farm : pfam Σ (aview -> Z -> iProp Σ))
+    (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
+    (Fun : pfam Σ (aview -> Z -> iProp Σ))
+    (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+    (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) : iProp Σ :=
+  ((∀ pl : list (bv 8), ⌜arg_path_of M pv pl⌝ -∗ ep_start γfs cw P Pmiss pl)
+   ∗ pf_at (dlookup_commit_at Γ appE) Fex
+   ∗ cre_commits Γ
+       (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
+       (bv_unsigned (mword_of_int 0 : mword 16))
+       (bv_unsigned (mword_of_int 0 : mword 16))
+       (npar_cur M pv P)
+       Farm Fdots Fun Fok)%I.
+
+(* THE CURSOR'S TWO READINGS, as one move ([SpecSysMknod.mknod_acre_inst]'s
+   twin at the whole four-leg bundle): once argstr has answered, the
+   syscall-tier cursor IS the path-fixed one, in BOTH directions
+   ([ArgPath.arg_path_of_uniq]). *)
+Lemma mkdir_cre_inst
+    `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId}
+    (Γ : fs_view_names Σ)
+    (M : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8))
+    (P : nat -> Z -> iProp Σ)
+    (Farm : pfam Σ (aview -> Z -> iProp Σ))
+    (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
+    (Fun : pfam Σ (aview -> Z -> iProp Σ))
+    (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+  arg_path_of M pv pl ->
+  cre_commits Γ
+    (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
+    (bv_unsigned (mword_of_int 0 : mword 16))
+    (bv_unsigned (mword_of_int 0 : mword 16))
+    (npar_cur M pv P) Farm Fdots Fun Fok -∗
+  cre_commits Γ
+    (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
+    (bv_unsigned (mword_of_int 0 : mword 16))
+    (bv_unsigned (mword_of_int 0 : mword 16))
+    (P (length (npar_elems pl))) Farm Fdots Fun Fok.
+Proof.
+  intros Hpl. iIntros "Hcre".
+  iApply (cre_commits_mono Γ _ _ _ (npar_cur M pv P)
+            (P (length (npar_elems pl))) Farm Fdots Fun Fok with "[] [] Hcre").
+  - iApply (npar_cur_out M pv pl P Hpl).
+  - iApply (npar_cur_in M pv pl P Hpl).
+Qed.
+
+Lemma mkdir_au_at_inst
+    `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId}
+    (Γ : fs_view_names Σ) (γfs : fs_names) (cw : Z)
+    (M : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8))
+    (P Pmiss : nat -> Z -> iProp Σ)
+    (Farm : pfam Σ (aview -> Z -> iProp Σ))
+    (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
+    (Fun : pfam Σ (aview -> Z -> iProp Σ))
+    (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+    (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+  arg_path_of M pv pl ->
+  mkdir_au_at Γ γfs cw M pv P Pmiss Farm Fdots Fun Fok Fex -∗
+  mkdir_au_pre Γ γfs cw pl P Pmiss Farm Fdots Fun Fok Fex.
+Proof.
+  intros Hpl. iIntros "(Hw & Hex & Hcre)". rewrite /mkdir_au_pre.
+  iSplitL "Hw".
+  { iApply ("Hw" $! pl with "[%]"). exact Hpl. }
+  iFrame "Hex".
+  iApply (mkdir_cre_inst Γ M pv pl P Farm Fdots Fun Fok Hpl with "Hcre").
+Qed.
+
+(* THE GENERIC SUPPLIER'S ONE LINE ([SpecSysMknod.mknod_au_at_of_all]'s
+   twin): a family that tracks nothing owes the walk at EVERY string, and
+   that form instantiates to the one-path bundle. *)
+Lemma mkdir_au_at_of_all
+    `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId}
+    (Γ : fs_view_names Σ) (γfs : fs_names) (cw : Z)
+    (M : gmap Z (bv 8)) (pv : mword 64)
+    (P Pmiss : nat -> Z -> iProp Σ)
+    (Farm : pfam Σ (aview -> Z -> iProp Σ))
+    (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
+    (Fun : pfam Σ (aview -> Z -> iProp Σ))
+    (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+    (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+  npar_walk_pre_era γfs cw P Pmiss -∗
+  pf_at (dlookup_commit_at Γ appE) Fex -∗
+  cre_commits Γ
+    (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
+    (bv_unsigned (mword_of_int 0 : mword 16))
+    (bv_unsigned (mword_of_int 0 : mword 16))
+    (npar_cur M pv P) Farm Fdots Fun Fok -∗
+  mkdir_au_at Γ γfs cw M pv P Pmiss Farm Fdots Fun Fok Fex.
+Proof.
+  iIntros "Hw Hex Hcre". rewrite /mkdir_au_at. iFrame "Hex Hcre".
+  iIntros (pl) "_". iApply (np_start_of_mknod γfs cw P Pmiss pl with "Hw").
+Qed.
 
 (* SATISFIABILITY, and what the dispatcher and the friendly packaging hand
    down: the generic application asks nothing of mkdir's walk or its legs,
@@ -243,19 +359,19 @@ Definition mkdir_au_pre
    unit, paid off the SUPPLY.  It sits here rather than in
    [FsAbsInvFire]'s [fsabs_*] family because both consumers reach this file
    and only one of them reaches that one. *)
-Lemma mkdir_au_pre_unit
+Lemma mkdir_au_at_unit
     `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId}
-    (γfs : fs_names) (cw : Z) :
+    (γfs : fs_names) (cw : Z) (M : gmap Z (bv 8)) (pv : mword 64) :
   app_sup -∗
-  mkdir_au_pre (fs_gamma_L γfs) γfs cw (fun _ _ => True%I) (fun _ _ => True%I)
+  mkdir_au_at (fs_gamma_L γfs) γfs cw M pv (fun _ _ => True%I) (fun _ _ => True%I)
     (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I))
     (pfam_triv (fun _ _ _ _ => True%I)).
 Proof.
-  iIntros "#Hsup". rewrite /mkdir_au_pre.
-  iSplitR.
+  iIntros "#Hsup".
+  iApply (mkdir_au_at_of_all (fs_gamma_L γfs) γfs cw M pv with "[] [] [Hsup]").
   { rewrite /npar_walk_pre_era. iIntros (pl r) "_". iModIntro.
     iSplit; [done |]. iApply ax_hops_triv. }
-  iSplitR; [iApply cre_dlookup_unit |].
+  { iApply cre_dlookup_unit. }
   iApply (cre_commits_unit γfs with "Hsup").
 Qed.
 
@@ -268,6 +384,7 @@ Definition mkdir_arms
     (Fun : pfam Σ (aview -> Z -> iProp Σ))
     (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
     (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+    (M : gmap Z (bv 8)) (pv : mword 64)
     (r : mword 64) : iProp Σ :=
   ((⌜r = (zero_reg : mword 64)⌝ ∗
       ∃ (pl : list (bv 8)) (i : Z),
@@ -279,7 +396,7 @@ Definition mkdir_arms
    ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
         (* argstr failed and create never ran, so the WHOLE bundle comes
            back; or create refused and its own failure fold is the payout *)
-        (mkdir_au_pre Γ γfs cw P Pmiss Farm Fdots Fun Fok Fex
+        (mkdir_au_at Γ γfs cw M pv P Pmiss Farm Fdots Fun Fok Fex
          ∨ ∃ pl : list (bv 8),
              cre_fail_arms Γ γfs
                (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
@@ -287,7 +404,7 @@ Definition mkdir_arms
                (bv_unsigned (mword_of_int 0 : mword 16))
                P Pmiss Farm Fdots Fun Fok Fex pl)))%I.
 
-Global Typeclasses Opaque mkdir_au_pre mkdir_arms.
+Global Typeclasses Opaque mkdir_au_pre mkdir_au_at mkdir_arms.
 
 Definition wp_sys_mkdir_sconf_body
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
@@ -391,7 +508,7 @@ Definition wp_sys_mkdir_sconf_body
   (* ---- THE APPLICATION'S SIDE: the walk's cursor pair, the exists
      observation and the four commits create's legs fire, at mkdir's own
      type index ---- *)
-  mkdir_au_pre (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
+  mkdir_au_at (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) (us_M U) v
     P Pmiss Farm Fdots Fun Fok Fex -∗
   (* THE CROSSING IS THE LITERAL [true], NOT [b]: sys_mkdir sleeps (begin_op,
      argstr's fault path, create and end_op all park), so it can return on
@@ -434,7 +551,7 @@ Definition wp_sys_mkdir_sconf_body
       ⌜sys_mkdir_ret (mf !!! Regidx (mword_of_int 10 : mword 5))⌝ -∗
       (* ...and the legs' receipts, keyed on that answer *)
       mkdir_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
-        P Pmiss Farm Fdots Fun Fok Fex
+        P Pmiss Farm Fdots Fun Fok Fex (us_M U) v
         (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).

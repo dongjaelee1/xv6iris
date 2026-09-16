@@ -335,10 +335,17 @@ Theorem xv6_app_adequacy Σ
        twin of KILL-ARM's [Happ_kill], and lands beside it. *)
     (* QUANTIFIED OVER THE ERA (milestone C): the generic process is any
        era's, so one licence covers them all. *)
+    (* ONE LICENCE (redesign R2), where there were two: the supply moves
+       the application's console claim by ANY boundary event.  It covers
+       the generic [write(2)]'s byte, the console interrupt's shift and
+       [read(2)] on fd 0 alike, because all three are events on one
+       resource. *)
     (Happ_out_sup : forall (c : app_fixed A) (r : app_names A),
        AppInv.app_sup_raw (app_pred A c) r
-         ⊢ □ (∀ (k : nat) (h : list mobs) (acc : list (bv 8)) (b : bv 8),
-                app_out A c k h acc ==∗ app_out A c k h (acc ++ [b])))
+         ⊢ □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
+                (ev : ConsLog.cons_ev),
+                app_cons A c k h H ==∗
+                app_cons A c k h (ConsLog.cons_step H ev)))
     (* THE INPUT LOG IS TIMELESS (lane CONS-IO), for the reason the output
        claim is: it lives in the console UART's invariant, whose body every
        device leaf strips a later off.  NOT persistent. *)
@@ -354,22 +361,8 @@ Theorem xv6_app_adequacy Σ
     (Hwint : forall (c : app_fixed A) (k : nat), Timeless (app_win A c k))
     (Hconst : forall (c : app_fixed A) (k : nat) (h : list mobs)
                      (H : LogEntryDefs.cons_hist), Timeless (app_cons A c k h H))
-    (* ...AND WHAT HOLDING THE SUPPLY ENTITLES A PROCESS TO ON THE INPUT
-       SIDE ([Happ_out_sup]'s twin, at the same price).  ONE obligation,
-       TWO conjuncts, because the kernel's generic supply has to pay for
-       BOTH boundary moves on behalf of an arbitrary application: the
-       console interrupt's shift, which FILES an accepted byte in the log,
-       and [read(2)] on fd 0, which HANDS one to a process.  The trivial
-       application pays both out of [emp]; a constraining one pays them out
-       of its own taint arm. *)
-    (Happ_in_sup : forall (c : app_fixed A) (r : app_names A),
-       AppInv.app_sup_raw (app_pred A c) r
-         ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-                (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
-                app_in A c k h pops dl ==∗ app_in A c k h (pops ++ [e]) dl)
-           ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-                  (dl ws : list (list mobs * bv 8)),
-                  app_in A c k h pops dl ==∗ app_in A c k h pops (dl ++ ws)))
+    (* [Happ_in_sup] lived here: the input side's twin of the licence
+       above.  It is gone -- one resource, one licence. *)
     (HR0 : forall c : app_fixed A, app_cl A c ⊢ |==> app_R A c [])
     (* THE POWER STEP -- AND, SINCE lane CONS-IO milestone E, THE FOUNDING
        OF THE ERA'S TWO PORT CLAIMS (e5-design REVISION 8).  Until E the
@@ -398,8 +391,8 @@ Theorem xv6_app_adequacy Σ
        ⊢ app_R A c h ==∗
          app_R A c (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
          (if on then emp
-          else app_out A c (S (obs_boots h)) [] [] ∗
-               app_in A c (S (obs_boots h)) [] [] [] ∗
+          else app_cons A c (S (obs_boots h)) []
+                 (LogEntryDefs.MkCH [] [] [] None) ∗
                (* ...AND THE ERA'S TURN AND ITS ECHO WINDOW TOKEN (lane
                   CONS-IO milestone F).  The same arm and the same reason:
                   this is the one step of the machine that runs the
@@ -445,8 +438,7 @@ Theorem xv6_app_adequacy Σ
           obligation would let a byte on the kernel's port slip past the
           claim about the console's. *)
        ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
-              (ho hi : list mobs) (pops : list LogEntryDefs.log_entry)
-              (dl : list (list mobs * bv 8)),
+              (ho : list mobs) (H : LogEntryDefs.cons_hist),
               ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
               ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗
               (* THE WIRE IS THE DRAINED SEQUENCE.  A clause of the UART
@@ -473,28 +465,20 @@ Theorem xv6_app_adequacy Σ
                  no application resource.  Conditional on the port, because
                  the kernel's own UART constrains nothing. *)
               ⌜ho `prefix_of` h⌝ -∗
-              (* ...AND THE INPUT LOG AT ITS OWN WITNESS [hi] (lane
-                 CONS-IO).  The two claims are read at INDEPENDENT witness
-                 histories, and that is forced: a writer's
-                 [WpUart.out_link] moves the OUTPUT claim's witness at
-                 every store, and nothing may drag the input claim along
-                 with it without an input-monotonicity law the application
-                 does not owe.  What ties the two together is the
-                 application's own ghost state inside them, not a shared
-                 argument. *)
-              ⌜hi `prefix_of` h⌝ -∗
+              (* ...AND THE ACCEPTED BYTES ARE THE HISTORY'S OWN FIELD
+                 (redesign R2).  It used to be an argument, because the
+                 output claim was stated over them; the merged claim keeps
+                 them inside, so the tie the drain needs is a premise. *)
+              ⌜LogEntryDefs.ch_acc H = uart_acc u⌝ -∗
               (* ...TAKEN LINEARLY AND GIVEN BACK.  The claim is the
                  application's own authority, so the ledger step reads it
                  against its own ledger and returns it to the invariant it
-                 was borrowed from. *)
-              (if i is Uart0 then app_out A c (S gen_id) ho (uart_acc u)
-               else emp) -∗
-              (if i is Uart0 then app_in A c (S gen_id) hi pops dl else emp) -∗
+                 was borrowed from.  ONE claim at ONE witness, where there
+                 were two at two. *)
+              (if i is Uart0 then app_cons A c (S gen_id) ho H else emp) -∗
               uart_ghosts γ u' -∗ app_R A c h
                 ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
-              (if i is Uart0 then app_out A c (S gen_id) ho (uart_acc u)
-               else emp) ∗
-              (if i is Uart0 then app_in A c (S gen_id) hi pops dl else emp) ∗
+              (if i is Uart0 then app_cons A c (S gen_id) ho H else emp) ∗
               uart_ghosts γ u' ∗ app_R A c (h ++ [ObsUartOut i b])%list))
     (Hrx : forall (HR : riscvGS Σ) (GEN : GenId) `{HF : !fileG Σ}
                   (c : app_fixed A) (r : app_names A)
@@ -568,16 +552,13 @@ Theorem xv6_app_adequacy Σ
             assumption about the world, and the premise that lets the
             record's predicate meet [AppInv]'s laws. *)
          @riscvF_genGS Σ (@riscv_fixedGS Σ HR) = riscv_pre_genGS ->
-         (* ...and (b'') THE OUTPUT-CLAIM EQUATION (lane OUT-FUPD), the
+         (* ...and (b'') THE CONSOLE-CLAIM EQUATION (redesign R2), the
             rx-tag equation's twin and true for the same reason: the
-            [boot_fixedGS] literal below fixes the field to [app_out A c].
+            [boot_fixedGS] literal below fixes the field to [app_cons A c].
             It is what lets a pinned <init> turn [Happ_out_sup] into the
             machine's [WpUart.out_licence] and so build its own generic
             slot ([SystemAdequacy.init_boot_of_sup]'s premise). *)
-         @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out A c ->
-         (* ...and (b''') THE INPUT-LOG EQUATION (lane CONS-IO), the output
-            claim's twin and true for the same reason *)
-         @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in A c ->
+         @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = app_cons A c ->
          (* ...and (b'''') THE WINDOW-TOKEN EQUATION (lane CONS-IO milestone
             F), the two claims' twin and true for the same reason: the
             machine's ambient echo window token IS this record's field. *)
@@ -615,11 +596,9 @@ Theorem xv6_app_adequacy Σ
        [CtxIdDefs.CtxId]. *)
     (Happ_echo :
        forall (HR : riscvGS Σ) (c : app_fixed A),
-         @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out A c ->
-         (* ...AND THE INPUT LOG'S (lane CONS-IO): the shift now FILES the
-            accepted byte as well as justifying its echo, so it reads both
-            ambient claims and both must be this record's. *)
-         @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in A c ->
+         (* the shift FILES the accepted byte and justifies its echo out
+            of ONE claim now (redesign R2), so one equation carries it *)
+         @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = app_cons A c ->
          @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag A c ->
          (* ...AND THE ECHO WINDOW TOKEN'S (lane CONS-IO milestone F): the
             shift TAKES the era's token, so the machine's ambient one has to

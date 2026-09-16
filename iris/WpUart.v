@@ -2354,24 +2354,8 @@ Section DevLoops.
      strictly above every history already logged: that is what makes the
      log arrival-ordered and what makes a byte logged ONCE (a second append
      at [h] would need [hist_ext h h]).  It does NOT move [dl]. *)
-  (* ...AND IT HANDS THE ECHO WINDOW TOKEN BACK (lane CONS-IO milestone F).
-     The run's token went in at the SHIFT ([SpecConsoleintr.cons_echo_shift]
-     takes [RiscvPtsto.riscv_win_res (S gen_id)]), which is what lets the
-     application tell the run's FIRST firing from a second; the append is
-     the run's last step, so it is where the loan is repaid -- to the arm,
-     which returns it to the PLIC payload it came from.  A licence route
-     hands back exactly what it was given ([in_append_of_licence]). *)
-  Definition in_append (k : nat) (h : list mobs) (c : bv 8) (cs : list (bv 8))
-      (Φ : iProp Σ) : iProp Σ :=
-    (∀ (o : option (list mobs)) (pops : list LogEntryDefs.log_entry)
-       (dl : list (list mobs * bv 8)),
-       obs_hist_lb_o o -∗ in_res_at Uart0 k (default [] o) pops dl -∗
-       ⌜forall e, e ∈ pops -> hist_ext (LogEntryDefs.le_hist e) h⌝
-       ={⊤ ∖ ↑uartN Uart0}=∗
-       ∃ o' : option (list mobs),
-         obs_hist_lb_o o' ∗
-         in_res_at Uart0 k (default [] o') (pops ++ [(h, c, cs)]) dl ∗
-         riscv_win_res k ∗ Φ)%I.
+  (* [in_append] lived here: the old two-step run's second half.  The run
+     is one arm over one claim now, and the close is [ConsLog.EvClose]. *)
 
   (* THE ECHO'S OWN LINK: TWO RESOURCES, ONE OF THEM READ-ONLY (coordinator's
      C2 amendment, 2026-09-13).  A plain [out_link] hands the application
@@ -2441,17 +2425,9 @@ Section DevLoops.
      after the store the wire carries exactly the transcript the log will
      account for, with the entry owed; the other order leaves the log
      claiming an echo the wire has not seen. *)
-  Fixpoint in_run (k : nat) (h : list mobs) (c : bv 8) (pre bs : list (bv 8))
-      (Φ : iProp Σ) : iProp Σ :=
-    match bs with
-    | [] => in_append k h c pre Φ
-    | b :: bs' => in_append k h c pre Φ
-                  ∧ echo_link k h b (in_run k h c (pre ++ [b]) bs' Φ)
-    end%I.
-
-  (* the whole-run form, for an arm whose output is known: run to the end *)
-  Definition in_link (k : nat) (h : list mobs) (c : bv 8) (cs : list (bv 8))
-      (Φ : iProp Σ) : iProp Σ := in_run k h c [] cs Φ.
+  (* [in_run] and [in_link] lived here.  [cons_run] above is the successor:
+     the same stoppable shape, over events, with the arm's position in the
+     kernel's own ghost instead of a [pre] argument. *)
 
   (* THE READ.  [ws] is every input this call CONSUMED -- delivered or
      swallowed -- and [ConsLog.read_ok] is the kernel's whole pure account
@@ -2467,46 +2443,9 @@ Section DevLoops.
 
   (* ---- the laws ---- *)
 
-  Lemma in_run_stop (k : nat) (h : list mobs) (c : bv 8) (pre bs : list (bv 8))
-      (Φ : iProp Σ) : in_run k h c pre bs Φ -∗ in_append k h c pre Φ.
-  Proof. destruct bs; [by iIntros "$" | by iIntros "[$ _]"]. Qed.
-
-  Lemma in_run_step (k : nat) (h : list mobs) (c : bv 8) (pre : list (bv 8))
-      (b : bv 8) (bs : list (bv 8)) (Φ : iProp Σ) :
-    in_run k h c pre (b :: bs) Φ -∗
-      echo_link k h b (in_run k h c (pre ++ [b]) bs Φ).
-  Proof. by iIntros "[_ $]". Qed.
-
-  (* THE LOOP BRIDGE, [out_chain_app]'s twin: a writer that will put out
-     [bs1] now and may or may not go on to [bs2] spends the first half of
-     the run and keeps the rest.  This is what the kill-line loop carries
-     across its back edge -- one [consputc_bs] per glyph, the log closed at
-     whatever the loop actually emitted. *)
-  Lemma in_run_app (k : nat) (h : list mobs) (c : bv 8) (pre bs1 bs2 : list (bv 8))
-      (Φ : iProp Σ) :
-    in_run k h c pre ((bs1 ++ bs2)%list) Φ -∗
-      echo_chain k h bs1 (in_run k h c ((pre ++ bs1)%list) bs2 Φ).
-  Proof.
-    iIntros "H". iInduction bs1 as [| b bs1] "IH" forall (pre).
-    - by rewrite app_nil_r.
-    - cbn [echo_chain app]. iDestruct (in_run_step with "H") as "H".
-      iApply (echo_link_mono with "[] H"). iIntros "H".
-      iSpecialize ("IH" $! ((pre ++ [b])%list) with "H").
-      by rewrite -app_assoc.
-  Qed.
-
-  (* ...and the whole run spent, which is every arm but the kill loop *)
-  Lemma in_run_full (k : nat) (h : list mobs) (c : bv 8) (pre bs : list (bv 8))
-      (Φ : iProp Σ) :
-    in_run k h c pre bs Φ -∗
-      echo_chain k h bs (in_append k h c ((pre ++ bs)%list) Φ).
-  Proof.
-    iIntros "H".
-    iDestruct (in_run_app k h c pre bs [] Φ with "[H]") as "H";
-      [by rewrite app_nil_r |].
-    iApply (echo_chain_mono with "[] H"). iIntros "H".
-    iApply (in_run_stop with "H").
-  Qed.
+  (* [in_run_stop], [in_run_step], [in_run_app] and [in_run_full] lived
+     here; [cons_run_stop], [cons_run_step] and [cons_run_full] replace
+     them. *)
 
   (* ==================================================================== *)
   (*  THE INPUT LICENCE (lane CONS-IO, C4): "this holder may log anything   *)
@@ -2519,58 +2458,17 @@ Section DevLoops.
   (* ==================================================================== *)
   (* QUANTIFIED OVER THE ERA, on [out_licence]'s mould and for its reason
      (lane CONS-IO milestone C). *)
-  Definition in_licence : iProp Σ :=
-    (□ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-          (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
-          riscv_in_res k h pops dl ==∗ riscv_in_res k h (pops ++ [e]) dl)
-     ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-            (dl ws : list (list mobs * bv 8)),
-            riscv_in_res k h pops dl ==∗ riscv_in_res k h pops (dl ++ ws)))%I.
+  (* ONE LICENCE (redesign R2).  The name is kept -- the generic supply and
+     every route above it thread it -- and it IS [out_licence]: one resource
+     admits one law, "any holder may move it by any event". *)
+  Definition in_licence : iProp Σ := cons_licence.
 
   Global Instance in_licence_persistent : Persistent in_licence.
   Proof. rewrite /in_licence. apply _. Qed.
 
-  (* THE TOKEN IS TAKEN AND GIVEN STRAIGHT BACK (lane CONS-IO milestone F).
-     A licensed appender has no discipline to protect, so it reads nothing
-     off the window token -- but the append's post owes one, and the only
-     honest source is the caller's own: the licence route may not MINT one
-     (that would let any holder of the supply forge the application's
-     per-era exclusive).  [cons_echo_shift_triv] hands it the token the
-     shift was given. *)
-  Lemma in_append_of_licence (k : nat) (h : list mobs) (c : bv 8)
-      (cs : list (bv 8))
-      (Φ : iProp Σ) : in_licence -∗ riscv_win_res k -∗ Φ -∗ in_append k h c cs Φ.
-  Proof.
-    iIntros "[#Hap _] Hwin HΦ" (o pops dl) "#Hlb Hres _".
-    iMod ("Hap" $! k (default [] o) pops dl (h, c, cs) with "Hres") as "Hres".
-    iModIntro. iExists o. by iFrame "Hlb Hres Hwin HΦ".
-  Qed.
-
-  (* the echo's link off the OUTPUT licence alone: the input claim is
-     passed straight back, so a licensed writer owes nothing for it *)
-  Lemma echo_link_of_licence (k : nat) (h : list mobs) (b : bv 8) (Φ : iProp Σ) :
-    out_licence -∗ Φ -∗ echo_link k h b Φ.
-  Proof.
-    iIntros "#Hlic HΦ" (o Hh) "#Hlb Hres _".
-    iMod ("Hlic" $! k (default [] o) Hh (ConsLog.EvByte b) with "Hres") as "Hres".
-    iModIntro. iExists o. by iFrame "Hlb Hres HΦ".
-  Qed.
-
-  (* ...AND THE RUN'S TOKEN CROSSES IT UNREAD.  The run is a CONJUNCTION at
-     every step, so the one token justifies both branches: whichever exit
-     the caller picks, the append it reaches returns the very token handed
-     in here (lane CONS-IO milestone F). *)
-  Lemma in_run_of_licence (k : nat) (h : list mobs) (c : bv 8) (pre bs : list (bv 8))
-      (Φ : iProp Σ) :
-    in_licence -∗ out_licence -∗ riscv_win_res k -∗ Φ -∗ in_run k h c pre bs Φ.
-  Proof.
-    iIntros "#Hil #Hol Hwin HΦ".
-    iInduction bs as [| b bs] "IH" forall (pre);
-      [by iApply (in_append_of_licence with "Hil Hwin HΦ") |].
-    cbn [in_run]. iSplit.
-    - by iApply (in_append_of_licence with "Hil Hwin HΦ").
-    - iApply (echo_link_of_licence k h b with "Hol"). by iApply ("IH" with "Hwin").
-  Qed.
+  (* [in_append_of_licence], [echo_link_of_licence] and [in_run_of_licence]
+     lived here; [cons_link_of_licence] and [cons_run_of_licence] cover all
+     three, because all three were events on one resource. *)
 
   Lemma read_link_of_licence (k : nat) (ws : list (list mobs * bv 8))
       (Φ : iProp Σ) :
@@ -2604,11 +2502,8 @@ Section DevLoops.
   Qed.
 
   (* the trivial application's: the claim is [emp] and both halves are free *)
-  Lemma in_licence_triv : riscv_in_res = in_res_triv -> ⊢ in_licence.
-  Proof.
-    intros Hin. rewrite /in_licence Hin /in_res_triv.
-    iSplit; iIntros "!>" (?????) "_"; by iModIntro.
-  Qed.
+  Lemma in_licence_triv : riscv_cons_res = cons_res_triv -> ⊢ in_licence.
+  Proof. rewrite /in_licence. exact cons_licence_triv. Qed.
 
   (* ==================================================================== *)
   (*  THE TWO ACCESSORS: the shift and the read, fired WITH THE PORT        *)

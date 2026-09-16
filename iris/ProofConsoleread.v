@@ -80,7 +80,7 @@ Require Import UserPtTree KvmSpec ProcPtOwn.
 Require Import FdSlots ProcInv FileInvDefs.
 Require Import ConsLog.   (* [read_ok], [log_entry]: E5's console I/O boundary *)
 Require Import ConsoleInv.
-Require Import WpUart.   (* [uart_inv_read], [cons_read_pay]: the fire at the
+Require Import WpUart.   (* [uart_inv_cons_read], [cons_read_pay]: the fire at the
                             final release (lane CONS-IO, milestone B) *)
 Require Import SchedCtx.
 Require Import SpecMyproc SpecAcquire SpecKilled SpecSleepPrepare SpecSleep.
@@ -497,7 +497,7 @@ Section CrBodies.
      instruction -- so the log's exact mirror and the committed sequence's
      authority are both in hand, which is exactly what
      [ConsoleInv.cons_read_ok_of] wants; the port invariant is opened
-     inside this fupd and closed again by [WpUart.uart_inv_read], never
+     inside this fupd and closed again by [WpUart.uart_inv_cons_read], never
      across a machine step.  The DIRTY arm fires nothing and its [dl]
      freezes. *)
   Lemma cr_out_of_rout `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ)
@@ -549,7 +549,7 @@ Section CrBodies.
           by (exact (cons_read_ok_of L0 R dv ws (proj1 Hlog)
                        (proj1 (proj2 Hlog)) HchR Hpfxr)).
         rewrite /cons_deliv /cons_logm /uart_deliv /uart_logm.
-        iMod (uart_inv_read (cn_uart cn) dv ws L0 (Rin ws) Hro
+        iMod (uart_inv_cons_read (cn_uart cn) dv ws L0 (Rin ws) Hro
                 with "Huinv Hdv Hlm [Hpay]") as "(Hdv & Hlm & HRin)";
           [ iApply "Hpay" |].
         iDestruct ("Hback" with "Ha Hlm") as "Hres".

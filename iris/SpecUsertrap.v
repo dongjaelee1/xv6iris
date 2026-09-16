@@ -1161,7 +1161,7 @@ Section UtKillRows.
   Lemma ut_kill_in_pair (f : sfam) (sc_v : mword 64) (W : uvis) (gn : gname) :
     sc_v <> uecall_scause ->
     ut_kill_in f sc_v W gn -∗
-    ⌜uvis_gen W = gn⌝ ∗ (ukill_cred_at gn sc_v ∧ uslot W).
+    ⌜uvis_gen W = gn⌝ ∗ (ukill_cred_at uslot gn sc_v W f ∧ uslot W).
   Proof.
     intro Hne. rewrite /ut_kill_in.
     destruct (decide (sc_v = uecall_scause)) as [Hc | _]; [ by exfalso | ].

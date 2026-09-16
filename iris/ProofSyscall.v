@@ -1973,12 +1973,6 @@ Section SyscallVocab.
        parks it as the ZOMBIE escrow) and every other arm hands the RIGHT
        one back out *)
     sysc_pay_in fdep U -∗
-    (* ...AND EXIT'S CLOSE PAYMENTS, one per descriptor row (design/pipe.md,
-       the byte queue): a dying process closes every descriptor, so the exit
-       arm relays them to [SpecSysExit] verbatim and every other arm drops
-       them -- gated on the number, so what the other arms drop is a wand
-       whose guard they refute. *)
-    sysc_exit_cpay U sts -∗
     WP (Loop : expr riscv_lang).
 
   (* ------------------------------------------------------------------- *)
@@ -3183,13 +3177,15 @@ Section SyscallArms.
   (* THE ARM'S OWN BRANCH, out of the one deposit row.  An arm knows its
      number ([sysc_arm_goal]'s [Hnum]) and reads that branch and no other;
      [UexecExecInst]'s eight [sbundle_at_*_elim] readers are the branches. *)
+  (* EXIT IS NO LONGER EXCLUDED (design/pipe.md, "The exit path"): its row
+     is the table's close payments, which the exit arm spends. *)
   Lemma sysc_sys_in_at (U : ustate) (sts : list fdstate) (gn : gname) (cs : gset gname)
       (pid : mword 32) (f : sfam) (k : Z) :
-    sysc_num (us_V U) = k -> k <> USYS_exit -> k <> USYS_fork ->
+    sysc_num (us_V U) = k -> k <> USYS_fork ->
     sysc_sys_in U sts gn cs pid f -∗
     sbundle_at uslot k f (uvis_of U sts gn cs pid).
   Proof.
-    intros Hn H1 H2. rewrite /sysc_sys_in. iIntros "H".
+    intros Hn H2. rewrite /sysc_sys_in. iIntros "H".
     iApply ("H" $! k with "[%]"). split_and!; assumption.
   Qed.
 
@@ -3235,8 +3231,7 @@ Section SyscallArms.
       (rf_in f) (rf_pq f) (rf_pqe f) True%I.
   Proof.
     intros Hn Hv0 Hv2. iIntros "H".
-    iDestruct (sysc_sys_in_at U sts gn cs pid f 5 Hn ltac:(vm_compute; discriminate)
-                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 5 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_read_elim uslot f _ with "H") as "H".
     rewrite /uvis_of /tf_w. cbn [uvis_tf uvis_fd].
     rewrite (list_lookup_total_correct _ _ _ Hv0)
@@ -3252,8 +3247,7 @@ Section SyscallArms.
     sysc_sys_in U sts gn cs pid f -∗ □ riscv_kill_cred.
   Proof.
     intros Hn. iIntros "H".
-    iDestruct (sysc_sys_in_at U sts gn cs pid f 6 Hn ltac:(vm_compute; discriminate)
-                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 6 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iApply (sbundle_at_kill_elim uslot f _ with "H").
   Qed.
 
@@ -3269,13 +3263,27 @@ Section SyscallArms.
       (wf_Q f) (wf_Qe f).
   Proof.
     intros Hn Hv0 Hv1 Hv2. iIntros "H".
-    iDestruct (sysc_sys_in_at U sts gn cs pid f 16 Hn ltac:(vm_compute; discriminate)
-                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 16 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_write_elim uslot f _ with "H") as "H".
     rewrite /uvis_of /tf_w. cbn [uvis_tf uvis_fd uvis_M].
     rewrite (list_lookup_total_correct _ _ _ Hv0)
             (list_lookup_total_correct _ _ _ Hv1)
             (list_lookup_total_correct _ _ _ Hv2). iExact "H".
+  Qed.
+
+  (* ...AND EXIT'S (design/pipe.md, "The exit path"): the close payments of
+     the WHOLE table, which kexit spends one per row.  exit deposits like
+     any returning number now -- what it deposits is this. *)
+  Lemma sysc_dep_exit (U : ustate) (sts : list fdstate) (gn : gname) (cs : gset gname)
+      (pid : mword 32) (f : sfam) :
+    sysc_num (us_V U) = UsysMemOk.USYS_exit ->
+    sysc_sys_in U sts gn cs pid f -∗ fileclose_cpays sts.
+  Proof.
+    intros Hn. iIntros "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f UsysMemOk.USYS_exit Hn
+                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sbundle_at_exit_elim uslot f _ with "H") as "H".
+    rewrite /uvis_of. cbn [uvis_fd]. iExact "H".
   Qed.
 
   (* ...AND CLOSE'S (design/pipe.md, the byte queue): the close payment at
@@ -3289,8 +3297,7 @@ Section SyscallArms.
     fileclose_cpay (fd_st_of_key v0 sts) (cl_P f).
   Proof.
     intros Hn Hv0. iIntros "H".
-    iDestruct (sysc_sys_in_at U sts gn cs pid f 21 Hn ltac:(vm_compute; discriminate)
-                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 21 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_close_elim uslot f _ with "H") as "H".
     rewrite /uvis_of /tf_w. cbn [uvis_tf uvis_fd].
     rewrite (list_lookup_total_correct _ _ _ Hv0). iExact "H".
@@ -3304,8 +3311,7 @@ Section SyscallArms.
       (cf_P f) (cf_Pmiss f) (cf_Fo f).
   Proof.
     intros Hn. iIntros "H".
-    iDestruct (sysc_sys_in_at U sts gn cs pid f 9 Hn ltac:(vm_compute; discriminate)
-                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 9 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_chdir_elim uslot f _ with "H") as "H".
     rewrite /uvis_of. cbn [uvis_cwd]. iExact "H".
   Qed.
@@ -3322,8 +3328,7 @@ Section SyscallArms.
       (of_Fo f) (of_Ft f).
   Proof.
     intros Hn Hv0 Hv1. iIntros "H".
-    iDestruct (sysc_sys_in_at U sts gn cs pid f 15 Hn ltac:(vm_compute; discriminate)
-                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 15 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_open_elim uslot f _ with "H") as "H".
     rewrite /uvis_of /tf_w. cbn [uvis_cwd uvis_tf uvis_M].
     rewrite (list_lookup_total_correct _ _ _ Hv0)
@@ -3343,8 +3348,7 @@ Section SyscallArms.
       (nf_P f) (nf_Pmiss f) (nf_Farm f) (nf_Fun f) (nf_Fok f) (nf_Fex f).
   Proof.
     intros Hn Hv0 Hv1 Hv2. iIntros "H".
-    iDestruct (sysc_sys_in_at U sts gn cs pid f 17 Hn ltac:(vm_compute; discriminate)
-                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 17 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_mknod_elim uslot f _ with "H") as "H".
     rewrite /uvis_of /tf_w. cbn [uvis_cwd uvis_tf uvis_M].
     rewrite (list_lookup_total_correct _ _ _ Hv0)
@@ -3360,8 +3364,7 @@ Section SyscallArms.
       (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f).
   Proof.
     intros Hn. iIntros "H".
-    iDestruct (sysc_sys_in_at U sts gn cs pid f 18 Hn ltac:(vm_compute; discriminate)
-                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 18 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_unlink_elim uslot f _ with "H") as "H".
     rewrite /uvis_of. cbn [uvis_cwd]. iExact "H".
   Qed.
@@ -3373,8 +3376,7 @@ Section SyscallArms.
     link_commits (fs_gamma_L fsc_fs) (lf_Ftgt f) (lf_Fent f) (lf_Funt f).
   Proof.
     intros Hn. iIntros "H".
-    iDestruct (sysc_sys_in_at U sts gn cs pid f 19 Hn ltac:(vm_compute; discriminate)
-                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 19 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iApply (sbundle_at_link_elim uslot f _ with "H").
   Qed.
 
@@ -3387,8 +3389,7 @@ Section SyscallArms.
       (df_Fok f) (df_Fex f).
   Proof.
     intros Hn. iIntros "H".
-    iDestruct (sysc_sys_in_at U sts gn cs pid f 20 Hn ltac:(vm_compute; discriminate)
-                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 20 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_mkdir_elim uslot f _ with "H") as "H".
     rewrite /uvis_of. cbn [uvis_cwd]. iExact "H".
   Qed.
@@ -3692,8 +3693,7 @@ Section SyscallArms.
         (pv_cwi (us_V U)) (kf_xpay f) P Pmiss Fo (us_M U) v0 v1 sts cs pid.
   Proof.
     intros Hn Hv0 Hv1. iIntros "H".
-    iDestruct (sysc_sys_in_at U sts gn cs pid f 7 Hn ltac:(vm_compute; discriminate)
-                 ltac:(vm_compute; discriminate) with "H") as "H".
+    iDestruct (sysc_sys_in_at U sts gn cs pid f 7 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_exec_elim uslot f _ with "H") as "[Hmp H]".
     cbn [uvis_gen uvis_of] in *.
     iFrame "Hmp".
@@ -3842,7 +3842,7 @@ Section SyscallArms.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
     (* a RETURNING arm takes the left conjunct and forgets the closer *)
     iDestruct "Hcont" as "[Hcont _]".
     (* the table entry's address IS [sys_getpid]'s entry pc *)
@@ -4146,7 +4146,7 @@ Section SyscallArms.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
     (* a RETURNING arm takes the left conjunct and forgets the closer *)
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 12) : mword 64)
@@ -4281,7 +4281,7 @@ Section SyscallArms.
       by (lia).
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
     (* a RETURNING arm takes the left conjunct and forgets the closer *)
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 3) : mword 64)
@@ -4439,7 +4439,7 @@ Section SyscallArms.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
     (* a RETURNING arm takes the left conjunct and forgets the closer *)
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 14) : mword 64)
@@ -4530,7 +4530,7 @@ Section SyscallArms.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hsysin _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hsysin _ Hdep".
     (* THE KILL PRICE, OUT OF THE PROCESS'S OWN DEPOSIT (lane KILL-PAY,
        K3(a)): row 6 of [UexecExecInst.xv6_sbundle].  It goes straight to
        sys_kill, which relays it to kkill. *)
@@ -4630,7 +4630,7 @@ Section SyscallArms.
       by (lia).
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
     (* a RETURNING arm takes the left conjunct and forgets the closer *)
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 13) : mword 64)
@@ -4898,7 +4898,7 @@ Section SyscallArms.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
     (* a RETURNING arm takes the left conjunct and forgets the closer *)
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 10) : mword 64)
@@ -5000,7 +5000,7 @@ Section SyscallArms.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ Hfin Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ Hfin Hdep".
     (* a RETURNING arm takes the left conjunct and forgets the closer *)
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 1) : mword 64)
@@ -5231,7 +5231,7 @@ Section SyscallArms.
       by (lia).
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
     (* a RETURNING arm takes the left conjunct and forgets the closer *)
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 7) : mword 64)
@@ -5475,7 +5475,7 @@ Section SyscallArms.
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep Hcpay".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
     (* THE PAYMENT, off the route's own row: this arm's number IS
        [USYS_exit] ([Hnum] at [k = 2]), so the row is at its TWO-ARMED
        branch and this arm takes the ∧'s LEFT conjunct -- the payload at
@@ -5558,12 +5558,13 @@ Section SyscallArms.
               Hjn Hlk Hv0 ltac:(lia) Hlg eq_refl (locks_below_empty "log")
               with "Hcg Hkcl4 Hcpu Htext Hdata Hpc Hpi Hpanic Hwaitlk Hftable
                     Hkmem Hka Hbio' Hlog Hseam Hgen Hdevi Hgeom Hdlock Hbs
-                    Hrdy Hipc Hid Hfd Hir Hpriv Hufrag [Hcpay] Hrow Hmy HQ").
-    (* THE CLOSE PAYMENTS, relayed (design/pipe.md, the byte queue): this
-       arm's number IS [USYS_exit], so the route's row is at its armed
-       branch and hands over one payment per descriptor of the dying
-       table. *)
-    iApply "Hcpay". iPureIntro. rewrite Hnum. reflexivity.
+                    Hrdy Hipc Hid Hfd Hir Hpriv Hufrag [Hxin] Hrow Hmy HQ").
+    (* THE CLOSE PAYMENTS ARE EXIT'S OWN BUNDLE ROW (design/pipe.md, "The
+       exit path"): the process deposited them when it trapped, exactly as
+       every returning number deposits its row, and kexit spends them one
+       per descriptor of the dying table. *)
+    iApply (sysc_dep_exit U sts gn cs pid fdep ltac:(rewrite Hnum; reflexivity)
+              with "Hxin").
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -5585,7 +5586,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 22) : mword 64)
                    = mword_of_int KernelSyms.sys_sync) by reflexivity.
@@ -5690,7 +5691,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 16) : mword 64)
                    = mword_of_int KernelSyms.sys_write) by reflexivity.
@@ -5865,7 +5866,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 5) : mword 64)
                    = mword_of_int KernelSyms.sys_read) by reflexivity.
@@ -6042,7 +6043,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 8) : mword 64)
                    = mword_of_int KernelSyms.sys_fstat) by reflexivity.
@@ -6162,7 +6163,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 9) : mword 64)
                    = mword_of_int KernelSyms.sys_chdir) by reflexivity.
@@ -6345,7 +6346,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 18) : mword 64)
                    = mword_of_int KernelSyms.sys_unlink) by reflexivity.
@@ -6465,7 +6466,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 19) : mword 64)
                    = mword_of_int KernelSyms.sys_link) by reflexivity.
@@ -6598,7 +6599,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 21) : mword 64)
                    = mword_of_int KernelSyms.sys_close) by reflexivity.
@@ -6811,7 +6812,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 4) : mword 64)
                    = mword_of_int KernelSyms.sys_pipe) by reflexivity.
@@ -7145,7 +7146,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 20) : mword 64)
                    = mword_of_int KernelSyms.sys_mkdir) by reflexivity.
@@ -7286,7 +7287,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 17) : mword 64)
                    = mword_of_int KernelSyms.sys_mknod) by reflexivity.
@@ -7436,7 +7437,7 @@ Section SyscallArms.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont Hxin _ Hdep".
     iDestruct "Hcont" as "[Hcont _]".
     assert (Hpce : (mword_of_int (sysc_target 15) : mword 64)
                    = mword_of_int KernelSyms.sys_open) by reflexivity.
@@ -7816,9 +7817,6 @@ Section SyscallArms.
     sysc_sys_in U sts gn cs pid fdep -∗
     sysc_fork_in fdep U sts -∗
     sysc_pay_in fdep U -∗
-    (* ...and exit's close payments, which an out-of-range number cannot be
-       owed and this arm therefore drops *)
-    sysc_exit_cpay U sts -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hj Hpj HMsp HMs1 HMother Hav Hrange.
@@ -7826,7 +7824,7 @@ Section SyscallArms.
       by (lia).
     subst pj.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
-    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep _".
+    iIntros "Hra Hs0 Hs1 Hs2 #Hdata Hcont _ _ Hdep".
     iDestruct (cpu_own_zero_empty with "Hcpu") as "[%Hlks Hcpu]". subst lks.
     iPoseProof "Henv" as "#Henvc".
     iDestruct (syscall_env_all with "Henvc") as (γp γw' γft γtk)
@@ -8164,7 +8162,7 @@ Section SyscallMain.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
-    iIntros "#Hwl Hcg Hcpu #Htext #Hdata Hpc Hprocs Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hxin Hfin Hein Hecp Hcont".
+    iIntros "#Hwl Hcg Hcpu #Htext #Hdata Hpc Hprocs Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hxin Hfin Hein Hcont".
     (* ===================== PROLOGUE (32-byte frame) ===================== *)
     set (spd := add_vec sp0 (sign_extend' 64 (sign_extend' 12 (mword_of_int 32 : mword 6)))).
     set (A0 := <[Regidx csp_rs1 := regval_into_reg
@@ -8630,7 +8628,7 @@ Section SyscallMain.
       iDestruct (cpu_own_transport CID8 CID22 0%nat true pj true Hcr8_22 with "Hcpu") as "Hcpu".
       iApply (sysc_arm_dispatch (CID := CID22) k γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m D0 fdep Hk
                 Hj Hgamma eq_refl HD0armsp HD0s2 HD0ra HD0other HD0avb Hgnq Hpidt Hsysc_num
-                with "[Hpc Hcg Hcpu Htext Hprocs HR Hbs Hip Hfd Hir Hpriv Hufrag Hrow] Hr24 Hr16 Hr8 Hr0 Hdata Hcont Hxin Hfin Hein Hecp").
+                with "[Hpc Hcg Hcpu Htext Hprocs HR Hbs Hip Hfd Hir Hpriv Hufrag Hrow] Hr24 Hr16 Hr8 Hr0 Hdata Hcont Hxin Hfin Hein").
       { iApply (sysc_arm_pre_intro with
           "Hpc Hcg Hcpu Htext Hprocs HR Hbs Hip Hfd Hir Hpriv Hufrag Hrow Hwl"). }
     - (* ---------------- OUT OF RANGE: the printk fallback ---------------- *)
@@ -8724,7 +8722,7 @@ Section SyscallMain.
       iApply (sysc_fallback (CID := CID15) γf γw pj γs j fn dqi ip pid U sts gn cs
                 lks av m B5 fdep
                 Hj eq_refl HB5armsp HB5s1 HB5other HB5avb Hrange'
-                with "[Hpc Hcg Hcpu Htext Hprocs HR Hbs Hip Hfd Hir Hpriv Hufrag Hrow] Hr24 Hr16 Hr8 Hr0 Hdata Hcont Hxin Hfin Hein Hecp").
+                with "[Hpc Hcg Hcpu Htext Hprocs HR Hbs Hip Hfd Hir Hpriv Hufrag Hrow] Hr24 Hr16 Hr8 Hr0 Hdata Hcont Hxin Hfin Hein").
       { iApply (sysc_arm_pre_intro with
           "Hpc Hcg Hcpu Htext Hprocs HR Hbs Hip Hfd Hir Hpriv Hufrag Hrow Hwl"). }
   Qed.

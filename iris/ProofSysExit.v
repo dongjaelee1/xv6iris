@@ -341,6 +341,15 @@ Section ProofSysExit.
        it is owed here.  The weakening to [fd_frags_any] that used to stand
        at this line is gone with the row -- there was nothing on the other
        side to say a table to, but there is something to PAY. *)
+    (* THE MARKER COMES OFF THE BLOCK HERE (design/pipe.md, "The exit
+       path").  kexit is stated at the marker-less block
+       ([ProcInv.proc_priv_unmarked]) because a SELF-KILL's kexit no longer
+       holds one -- the fault arm spent it founding <p->lock>'s killed row
+       on the spent arm.  A normal exit still holds its own, and drops it:
+       it takes the LEFT side of the payment, which owes no marker, and the
+       ZOMBIE block never carried one. *)
+    iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_unmark _ _ _ _)
+                 with "Hpriv") as "[Hpriv _]".
     iApply (Kexit.wp_kexit_sconf γft γf γw γs j γl pd pav pu
  ip dqi
 

@@ -533,6 +533,49 @@ Section KexitLoop.
   Definition kx_fdpay (γd : gname) : iProp Σ :=
     (∃ sts : list fdstate, fd_frags γd sts ∗ fileclose_cpays sts)%I.
 
+  (* THE MARKER-LESS BLOCK'S TWO ACCESSORS (design/pipe.md, "The exit
+     path").  kexit is stated at [ProcInv.proc_priv_unmarked] now -- a
+     self-kill spent the incarnation's marker founding <p->lock>'s killed
+     row -- and the fd loop borrows a descriptor out of that block exactly
+     as it used to out of [proc_priv].  Both are the landed lemmas'
+     readings one conjunct in: the marker sat OUTSIDE everything the loop
+     touches, so removing it changes no step. *)
+  Lemma kx_unmarked_ofile_len `{GEN : GenId} `{XI : CurCtx}
+      (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) :
+    proc_priv_unmarked γf pa pid U -∗ ⌜length (pv_ofile (us_V U)) = NOFILE⌝.
+  Proof. iIntros "(Hn & _)". iApply (proc_priv_nocwd_ofile_len with "Hn"). Qed.
+
+  Lemma kx_unmarked_bare_ofile `{GEN : GenId} `{XI : CurCtx}
+      (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) (fd : nat) (v : mword 64) :
+    pv_ofile (us_V U) !! fd = Some v ->
+    proc_priv_unmarked γf pa pid U -∗
+    proc_priv_bare pa pid U ∗ ofile_slot γf (pv_fdg (us_V U)) pa fd v ∗
+    (∀ v', proc_priv_bare pa pid U -∗ ofile_slot γf (pv_fdg (us_V U)) pa fd v' -∗
+           proc_priv_unmarked γf pa pid (us_ofile U fd v')).
+  Proof.
+    iIntros (Hfd) "(Hn & Hrest)".
+    iDestruct (proc_priv_nocwd_lazy with "Hn") as %Hlz.
+    rewrite (proc_priv_nocwd_bare γf pa pid U Hlz).
+    iDestruct "Hn" as "[Hb [%Hlen Ho]]".
+    iFrame "Hb".
+    iDestruct (big_sepL_insert_acc with "Ho") as "[$ Hback]"; first exact Hfd.
+    iIntros (v') "Hb Hslot". iDestruct ("Hback" $! v' with "Hslot") as "Ho".
+    rewrite /proc_priv_unmarked.
+    cbn [us_ofile upd_usV us_V upd_ofile pv_sz pv_upt pv_tf pv_ofile pv_cwd
+         pv_name pv_fdg pv_lazy pv_gen pv_cwi pv_chg].
+    iSplitR "Hrest"; [ | iExact "Hrest" ].
+    rewrite (proc_priv_nocwd_bare γf pa pid
+               (us_ofile U fd v')
+               ltac:(cbn [us_ofile upd_usV us_V upd_ofile pv_lazy pv_upt pv_sz];
+                     exact Hlz)).
+    cbn [us_ofile upd_usV us_V upd_ofile pv_sz pv_upt pv_tf pv_ofile pv_cwd
+         pv_name pv_fdg pv_lazy].
+    iSplitL "Hb"; [ iExact "Hb" | ].
+    iFrame "Ho". iPureIntro. rewrite length_insert. exact Hlen.
+  Qed.
+
   Lemma kx_loop `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
        (γft γf : gname) (fn : fclose_names)
       (j : nat) (pid : mword 32) (sv : mword 64) (gch ggen : gname)
@@ -584,7 +627,7 @@ Section KexitLoop.
         trap_csrs_ext KT1 eb -∗
         cpu_claim_ext eb pj -∗
         pc_is (mword_of_int (KX + 0x4c)) -∗
-        proc_priv γf pj pid Ux -∗
+        proc_priv_unmarked γf pj pid Ux -∗
         fd_frags_any (pv_fdg (us_V Ux)) -∗
         (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
         fileclose_fs_env_nopid fn 0%nat eb pj -∗
@@ -600,7 +643,7 @@ Section KexitLoop.
       trap_csrs_ext KT1 eb -∗
       cpu_claim_ext eb pj -∗
       pc_is (mword_of_int (KX + 0x3e)) -∗
-      proc_priv γf pj pid U -∗
+      proc_priv_unmarked γf pj pid U -∗
       kx_fdpay (pv_fdg (us_V U)) -∗
       (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
       fileclose_fs_env_nopid fn 0%nat eb pj -∗
@@ -627,7 +670,7 @@ Section KexitLoop.
                        trap_csrs_ext KT1 eb -∗
                        cpu_claim_ext eb pj -∗
                        pc_is (mword_of_int (KX + 0x4c)) -∗
-                       proc_priv γf pj pid Ux -∗
+                       proc_priv_unmarked γf pj pid Ux -∗
                        fd_frags_any (pv_fdg (us_V Ux)) -∗
                        (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
                        fileclose_fs_env_nopid fn 0%nat eb pj -∗
@@ -638,7 +681,7 @@ Section KexitLoop.
                    trap_csrs_ext KT1 eb -∗
                    cpu_claim_ext eb pj -∗
                    pc_is (mword_of_int (KX + 0x3e)) -∗
-                   proc_priv γf pj pid U -∗
+                   proc_priv_unmarked γf pj pid U -∗
                    kx_fdpay (pv_fdg (us_V U)) -∗
                    (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
                    fileclose_fs_env_nopid fn 0%nat eb pj -∗
@@ -664,7 +707,7 @@ Section KexitLoop.
                    trap_csrs_ext KT1 eb -∗
                    cpu_claim_ext eb pj -∗
                    pc_is (mword_of_int (KX + 0x38)) -∗
-                   proc_priv γf pj pid Ut -∗
+                   proc_priv_unmarked γf pj pid Ut -∗
                    kx_fdpay (pv_fdg (us_V Ut)) -∗
                    (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
                    fileclose_fs_env_nopid fn 0%nat eb pj -∗
@@ -728,7 +771,7 @@ Section KexitLoop.
           { apply (kx_end_of_eq j fd Hj Hfd).
             apply (proj1 (eq_vec_true_iff (p_ofile pj (S fd)) (p_cwd pj))).
             rewrite -HM9 -HM18. exact Hcmp. }
-          iDestruct (proc_priv_ofile_len with "Hpriv") as "%Hlen".
+          iDestruct (kx_unmarked_ofile_len with "Hpriv") as "%Hlen".
           iDestruct (cpu_own_transport CIDt CIDt2 0 eb pj b ltac:(wp_next_chain)
                        with "Hown") as "Hown".
           iDestruct (trap_csrs_ext_transport CIDt CIDt2 eb pj
@@ -784,12 +827,12 @@ Section KexitLoop.
             split; [exact HM20|]. split; [exact HMsp|]. exact HMdom.
           * exact Hnt. }
       (* ================= the body at +0x3e .. +0x4a ================= *)
-      iDestruct (proc_priv_ofile_len with "Hpriv") as "%Hlen".
+      iDestruct (kx_unmarked_ofile_len with "Hpriv") as "%Hlen".
       destruct (lookup_lt_is_Some_2 (pv_ofile (us_V U)) fd ltac:(rewrite Hlen; exact Hfd)) as [v Hv].
       (* the process BLOCK and the descriptor come out TOGETHER: fileclose's
          file-system arm threads the block down to bread's acquiresleep, and
          neither one-at-a-time accessor can be open while the other is. *)
-      iDestruct (proc_priv_bare_ofile γf pj pid U fd v Hv with "Hpriv")
+      iDestruct (kx_unmarked_bare_ofile γf pj pid U fd v Hv with "Hpriv")
         as "(Hpbare & Hslot & Hback)".
       iDestruct "Hslot" as "[Hcell Hpay]".
       (* +0x3e c.ld a0,0(s1) : a0 := p->ofile[fd] *)
@@ -1110,14 +1153,18 @@ Section KexitPark.
     (* the two-sided payment ([SpecKexit]): the caller's own [Q] at the
        status, or -- on the kernel's tear-down route -- the incarnation's
        kill one-shot, which the take below trades the MARKER for. *)
+    (* ...AND THE MARKER RIDES THE TEAR-DOWN SIDE (design/pipe.md, "The
+       exit path"): a self-kill spent its own founding <p->lock>'s killed
+       row, so the block does not carry one and only the route that TRADES
+       a marker for the row's payload has to bring one. *)
     (Q (xstate_of sv)
-     ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U)))) -∗
-    ChildTok.taken_at (pv_gen (us_V U)) -∗
+     ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
+        ∗ ChildTok.taken_at (pv_gen (us_V U)))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros pj Hj Hgl Hav Hregs Hof Hcwd Hfresh.
     destruct Hregs as (Hs3 & Hs4 & Hsp0 & Hdom).
-    iIntros "Hcg Hcloser Hown Htce Hcce #Htext Hpc #Hprocs #Hwl Hinit #Hid Hsp Hir Hbs Hpriv Hgq Hrow Hxb Hgh #Hmy HQ Htaken".
+    iIntros "Hcg Hcloser Hown Htce Hcce #Htext Hpc #Hprocs #Hwl Hinit #Hid Hsp Hir Hbs Hpriv Hgq Hrow Hxb Hgh #Hmy HQ".
     (* THE SCHED CROSSING NEEDS THE EXACT SINGLETON: swtch is contracted at
        [{["proc"]}] on both sides (SpecSwtch.v), xv6's own
        [panic("sched locks")] discipline.  [kx_park] enters at depth 0, so the
@@ -1516,8 +1563,8 @@ Section KexitPark.
                 ChildTok.my_pay (pv_gen (us_V U)) Qp ∗ Qp (xstate_of sv)) ∗
              SchedCtx.kill_paid pid kl ∗
              gen_halves_at pj pid (pv_gen (us_V U)))%I
-      with "[HQ Htaken Hkrow Hgh]" as "(Hpay0 & Hkrow & Hgh)".
-    { iDestruct "HQ" as "[HQ | [%Hm1 #Hshot]]".
+      with "[HQ Hkrow Hgh]" as "(Hpay0 & Hkrow & Hgh)".
+    { iDestruct "HQ" as "[HQ | (%Hm1 & #Hshot & Htaken)]".
       - iFrame "Hkrow Hgh". iExists Q. iFrame "Hmy HQ".
       - iDestruct (gen_halves_at_nz with "Hgh") as %Hnz.
         iDestruct (gen_halves_at_reg with "Hgh") as "[Hpr Hback]".
@@ -1843,7 +1890,9 @@ Section KexitRest.
     WaitInv.init_ident ip -∗
     fd_slots FDSPARE -∗
     iref_slots IREFSPARE -∗
-    proc_priv γf pj pid U -∗
+    (* THE MARKER-LESS BLOCK ([ProcInv.proc_priv_unmarked], design/pipe.md
+       "The exit path") *)
+    proc_priv_unmarked γf pj pid U -∗
     fd_frags_any (pv_fdg (us_V U)) -∗
     (* THE SLOT'S CHILDREN ROW, riding through to the park -- see
        [kx_park].  The three log/inode calls below neither read nor move
@@ -1856,7 +1905,8 @@ Section KexitRest.
     my_pay (pv_gen (us_V U)) Q -∗
     (* the two-sided payment, straight through ([SpecKexit]) *)
     (Q (xstate_of sv)
-     ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U)))) -∗
+     ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
+        ∗ ChildTok.taken_at (pv_gen (us_V U)))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros pj Hj Hgl Hav Hgeom Hregs Hof
@@ -1881,8 +1931,8 @@ Section KexitRest.
        that dies holding the exclusive boot arm has simply consumed the one
        chance to run it (the logic is affine, so the leak is sound and the
        kernel's own "at most one" is unaffected). *)
-    iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_split_cwd γf pj pid U)
-                 with "Hpriv") as "[Hpriv [Href [Hfdone [Hgq [Hxb Hgh]]]]]".
+    iEval (rewrite /proc_priv_unmarked) in "Hpriv".
+    iDestruct "Hpriv" as "[Hpriv [Href [Hfdone [Hgq [Hxb Hgh]]]]]".
     iClear "Hfdone".
     (* ...AND THE INCARNATION'S ONE-SHOT MARKER COMES OFF THE BUNDLE HERE
        (lane SELF-KILL, P6).  [SlotGen.gen_halves_priv] is the token-free
@@ -1892,7 +1942,6 @@ Section KexitRest.
        <p->lock>'s killed row is holding ([SchedCtx.kill_paid_take]) -- so
        nothing is dropped and the row's spent arm gets its one and only
        producer. *)
-    iDestruct (gen_halves_priv_split with "Hgh") as "[Hgh Htaken]".
     (* THE BLOCK, NOT A QUARTER OF [p->pid].  begin_op, iput and end_op all
        take [proc_priv_bare] now, and [p->cwd] lives INSIDE it -- so the cell
        is borrowed for the two instructions that touch it (+0x50's load and
@@ -2140,17 +2189,16 @@ Section KexitRest.
               ltac:(cbn [upd_cwd pv_cwd pv_fdg]; reflexivity)
               Hfresh_wl
               with "Hcg Hcloser Hown Htce Hcce Htext Hpc Hprocs Hwl Hinit Hid Hsp Hir Hbsl
-                    Hpriv [Hgq] Hrow Hxb [Hgh] Hmy [HQ] [Htaken]").
+                    Hpriv [Hgq] Hrow Hxb [Hgh] Hmy [HQ]").
     { (* the pair is keyed at the block's generation, which zeroing
          [p->cwd] does not touch *)
       cbn [us_cwd upd_usV us_V upd_cwd pv_gen]. iExact "Hgq". }
     { (* ...and so are the two quarters *)
       cbn [us_cwd upd_usV us_V upd_cwd pv_gen]. iExact "Hgh". }
     { (* the deposit's payload is at this call's status argument, which the
-         block does not name at all *)
-      iExact "HQ". }
-    { (* ...and so is the marker: [upd_cwd] does not touch [pv_gen] *)
-      cbn [us_cwd upd_usV us_V upd_cwd pv_gen]. iExact "Htaken". }
+         block does not name at all -- and so is the marker on its
+         tear-down side: [upd_cwd] touches neither *)
+      cbn [us_cwd upd_usV us_V upd_cwd pv_gen]. iExact "HQ". }
   Qed.
 
 End KexitRest.

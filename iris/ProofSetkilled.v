@@ -276,10 +276,17 @@ Section ProofSetkilled.
       apply kv_addv_zero. }
     (* reassemble the lock resource: [proc_pub] quantifies [killed], so the
        stored value need never be named. *)
+    (* ...AND THE SIDE THE WRITE DID NOT SPEND COMES OUT WITH THEM
+       (design/pipe.md, "The exit path"): a third-party killer's taint is
+       persistent and simply comes back; a SELF-KILL founded the row on its
+       SPENT arm with the incarnation's marker, so its own death payload
+       never went in and the fault arm still holds it for the kexit two
+       critical sections later. *)
     iAssert (|==> pid_reg pidv (DfracOwn qeighth) gn ∗ ChildTok.kill_shot gn
+                  ∗ (□ riscv_kill_cred ∨ ChildTok.kill_owed gn)
                   ∗ proc_lock_res γs γl (proc_addr j))%I
       with "[Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot Hkill Hreg]"
-      as ">(Hreg & #Hshot & HR2)".
+      as ">(Hreg & #Hshot & Hback & HR2)".
     { (* the flag is 1 from here on, so the row must be re-closed on its
          PAID arm -- and what pays is the caller's two-sided price: the
          application's TAINT, which buys the target's payload through the
@@ -293,7 +300,7 @@ Section ProofSetkilled.
          here (lane SELF-KILL, P6). *)
       iMod (kill_paid_kill_two pidv kl (trunc32 (rget C1 sk_a5))
               (DfracOwn qeighth) gn Hpidnz
-              with "[] Hreg Hkill Hrow") as "(Hreg & #Hshot & Hrow)";
+              with "[] Hreg Hkill Hrow") as "(Hreg & #Hshot & Hrow & Hback)";
         [ (* the flag this store just wrote is 1 (lane TRAP-ROWS, T2/T3:
              the row's paid arm is at a nonzero flag) *)
           iPureIntro;
@@ -303,8 +310,9 @@ Section ProofSetkilled.
           vm_compute in Hc; discriminate | ].
       iModIntro.
       iSplitL "Hreg"; [ iExact "Hreg" | ].
-      iSplitR "Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot";
+      iSplitR "Hback Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot";
         [ iExact "Hshot" | ].
+      iSplitL "Hback"; [ iExact "Hback" | ].
       iApply (proc_lock_res_intro γs γl (proc_addr j) st ch with "Hstate Hpg Hchan [-Hslot] Hslot").
       iExists _, xs, pidv. iFrame "Hkilled Hxstate Hpidq Hrow". }
     (* ===================== release(&p->lock) ===================== *)
@@ -455,7 +463,11 @@ Section ProofSetkilled.
     iDestruct (cpu_own_transport CIDrel CIDe7 n eb p b ltac:(wp_next_chain)
                  with "Hcpu") as "Hcpu".
     iSpecialize ("Hcont" $! CIDe7 with "[%]"); [wp_next_chain|].
-    iApply ("Hcont" $! E3 with "[%] Hcg Hcpu Hpc Hpidv Hreg Hshot").
+    (* ...AND THE SIDE THE WRITE DID NOT SPEND (design/pipe.md, "The exit
+       path"): a third-party killer gets its taint back (persistent), a
+       self-kill its own death payload -- the row it founded is the SPENT
+       one, so the payload never went in. *)
+    iApply ("Hcont" $! E3 with "[%] Hcg Hcpu Hpc Hpidv Hreg Hshot Hback").
     unfold callee_saved.
     split; [exact HE3csp|].
     split; [exact HE3s0|]. split; [exact HE3s1|].

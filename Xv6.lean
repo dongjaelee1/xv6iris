@@ -114,3 +114,6 @@ import Xv6.ProofKvminit
 import Xv6.LinkKvminit
 import Xv6.ProofTrapinit
 import Xv6.LinkTrapinit
+import Xv6.PtStackLemmas
+import Xv6.ProofProcMapstacks
+import Xv6.LinkProcMapstacks

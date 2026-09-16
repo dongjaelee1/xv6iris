@@ -728,10 +728,20 @@ Section EchoInitBoot.
         rewrite /UkInit.kinit_wcl. iIntros "!>" (N0 b).
         iApply (UkWriteClosed.kinit_w1_of_closed_l0 (PS := uprogSG_free) N0 b).
       - (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS (design/pipe.md, "The exit
-           path").  /init's table is pipe-free in fact and not provably so
-           at the U tier, so its exit row is paid out of the application's
-           credential -- which at this application IS the taint, held here
-           outright rather than behind an arm. *)
+           path") -- AND THIS IS THE ONE THING THE LANE COULD NOT CLOSE.
+           exit(2) left [UexecSG.free_num], so every program names its exit
+           row; /init's table is pipe-free IN FACT (its ledger is
+           [UInitFd.ufd_l0]/[ufd_l3] and it never opens above [NSTD]) but
+           NOT PROVABLY so at the U tier -- [UsysMemOk.usys_fd_ok]'s open
+           row leaves the installed descriptor's type existential and the
+           slots above [NSTD] are untracked by [UserFd] -- so the free
+           route ([UkRun.udepw_ex_of_nopipe]) is unreachable and the row
+           can only come from the application's credential.  THAT
+           CREDENTIAL IS THE TAINT HERE ([Hkill]), and /init's own die
+           paths ([UkInitMain.wp_kinit_main_die_df]'s [init_lend_cred]
+           arms at [Wp]/[Wb]) are reachable WITHOUT it, so the conjunct
+           cannot be [□ (T -∗ ...)] either.  The fix is one conjunct on the
+           open row -- see the lane's report. *)
         iApply (udepw_law_of_sup_exit (PSx := uprogSG_free)).
         rewrite Hkill. iModIntro. iExact "Ht".
       - iModIntro. iIntros "HT".
@@ -943,8 +953,9 @@ Section EchoInitBoot.
         + iApply ("Hsup" with "HT").
         + iApply ("Hlic" with "HT").
         + rewrite Hkill. iModIntro. iExact "HT".
-      - (* ...and sh's exit row, out of the era's own credential
-           (design/pipe.md, "The exit path") *)
+      - (* ...and sh's exit row -- the SAME WALL as /init's above, and for
+           the same reason: sh's top-level exit (the read loop at
+           end-of-input) is not on a taint arm either. *)
         iApply (udepw_law_of_sup_exit (PSx := uprogSG_free)).
         rewrite Hkill. iModIntro. iExact "Ht". }
     (* ---- THE CONSOLE DANCE, at whichever arm the VIEW decided

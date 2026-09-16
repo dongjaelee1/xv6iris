@@ -467,19 +467,23 @@ wpLoop cpu`).  `Hboot` hands it an era and a generation; `MachGS.ofEra`
 is the ambient instance at those, and `wpLoop_ofEra` turns the client's
 `wpLoop` into the `hartWP` the power thread forks. -/
 
-/-- The ambient instance at era `E`, generation `gen`. -/
-@[reducible] def MachGS.ofEra (E : EraGS GF) (gen : Nat) : MachGS hlc GF :=
+/-- The ambient instance at era `E`, generation `gen`, with the client's
+running-proc claim `cP` (`MachCSL.KCtx.cpuClaim`; `cI`: the idle claim is
+free). -/
+@[reducible] def MachGS.ofEra (E : EraGS GF) (gen : Nat) (cP : CPU → BitVec 64 → IProp GF)
+    (cI : ∀ cpu : CPU, ⊢ cP cpu 0#64) : MachGS hlc GF :=
   { regName := E.regName, mem := E.mem, viewName := E.viewName, iviewName := E.iviewName,
     rviewName := E.rviewName, topName := E.topName, authName := E.authName, resvName := E.resvName,
-    lockSetName := E.lockSetName, kmapName := E.kmapName, gen := gen }
+    lockSetName := E.lockSetName, kmapName := E.kmapName, gen := gen, claimP := cP, claim_idle := cI }
 
-theorem wpLoop_ofEra (E : EraGS GF) (gen : Nat) (cpu : CPU) :
-    genCertAt gen E ∗ @wpLoop hlc GF (MachGS.ofEra E gen) cpu ⊢@{IProp GF}
+theorem wpLoop_ofEra (E : EraGS GF) (gen : Nat) (cP : CPU → BitVec 64 → IProp GF)
+    (cI : ∀ cpu : CPU, ⊢ cP cpu 0#64) (cpu : CPU) :
+    genCertAt gen E ∗ @wpLoop hlc GF (MachGS.ofEra E gen cP cI) cpu ⊢@{IProp GF}
       hartWP gen cpu (pure ()) := by
   iintro ⟨Hcert, Hwp⟩
   unfold wpLoop wpHart
-  rw [show @genId hlc GF (MachGS.ofEra E gen) = gen from rfl,
-    show @genCert hlc GF (MachGS.ofEra E gen) = genCertAt gen E from rfl]
+  rw [show @genId hlc GF (MachGS.ofEra E gen cP cI) = gen from rfl,
+    show @genCert hlc GF (MachGS.ofEra E gen cP cI) = genCertAt gen E from rfl]
   iapply Hwp
   iexact Hcert
 

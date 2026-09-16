@@ -121,7 +121,7 @@ theorem wp_s_sret [CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (k : KCtx) 
     (epc sc tv : BitVec 64) (spie spp : Bool)
     (hres : trapRes true ≤ k.avail) (hwf' : (k.sretTo spie spp).wf) :
     instr (GF := GF) pc is_rvc (instruction.SRET ()) ∗ kctx cpu k ∗ pcIs cpu pc ∗
-    trapCsrsAt cpu epc sc tv ∗ cpuClaim k.proc ∗ intrRes cpu ∗
+    trapCsrsAt cpu epc sc tv ∗ cpuClaim cpu k.proc ∗ intrRes cpu ∗
     ▷ (kctx cpu (k.sretTo spie spp) -∗ pcIs cpu (epc &&& 0xFFFFFFFFFFFFFFFE#64) -∗ wpLoop cpu)
     ⊢ wpLoop cpu := by
   iintro ⟨HI, Hk, Hpc, Hcsrs, Hclaim, Hres, HΦ⟩

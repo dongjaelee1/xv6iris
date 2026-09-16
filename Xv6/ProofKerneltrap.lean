@@ -74,7 +74,6 @@ theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP 
   icases kctx_kernelText _ _ $$ Hk with ⟨#Htext, Hk⟩
   icases kctx_wf _ _ $$ Hk with ⟨%hwf, Hk⟩
   icases trapCsrsAt_cases cpu _ _ _ $$ Hcsrs with ⟨Hsepc, Hscause, Hstval⟩
-  iclear Hclaim
   have hK' : 58 ≤ k.avail := by unfold ktSlots kvFrameSlots at hK; omega
   simp only [kerneltrapAddr, KernelSyms.«kerneltrap»]
   k_norm
@@ -85,7 +84,7 @@ theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP 
       (_ : R 20#5 = k.regs 20#5 ∧ R 21#5 = k.regs 21#5 ∧ R 22#5 = k.regs 22#5 ∧ R 23#5 = k.regs 23#5 ∧
         R 24#5 = k.regs 24#5 ∧ R 25#5 = k.regs 25#5 ∧ R 26#5 = k.regs 26#5 ∧ R 27#5 = k.regs 27#5),
       kernelText ∗ kctx c (((k.pushed 6).withSpie a b).withRegs R) ∗ pcIs c 0x80002718#64 ∗
-      Register.sepc ↦ᵣ[c] e' ∗ Register.scause ↦ᵣ[c] sc' ∗ Register.stval ↦ᵣ[c] tv' ∗ intrRes c ∗
+      Register.sepc ↦ᵣ[c] e' ∗ Register.scause ↦ᵣ[c] sc' ∗ Register.stval ↦ᵣ[c] tv' ∗ cpuClaim c k.proc ∗ intrRes c ∗
       wordPointsTo (k.regs 2#5 + 0xFFFFFFFFFFFFFFF8#64) 8 (DFrac.own 1) (k.regs 1#5) ∗
       wordPointsTo (k.regs 2#5 + 0xFFFFFFFFFFFFFFF0#64) 8 (DFrac.own 1) (k.regs 8#5) ∗
       wordPointsTo (k.regs 2#5 + 0xFFFFFFFFFFFFFFE8#64) 8 (DFrac.own 1) (k.regs 9#5) ∗
@@ -94,10 +93,10 @@ theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP 
       wordPointsTo (k.regs 2#5 + 0xFFFFFFFFFFFFFFD0#64) 8 (DFrac.own 1) w5 ∗
       wpNext true k.proc cpu (fun cpu' => iprop(∀ (R' : RegMap) (sc' tv' : BitVec 64),
         kctx cpu' (k.withRegs R') -∗ pcIs cpu' (jumpPc (k.regs 1#5)) -∗ trapCsrsAt cpu' epc sc' tv' -∗
-        cpuClaim k.proc -∗ intrRes cpu' -∗ ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
+        cpuClaim cpu' k.proc -∗ intrRes cpu' -∗ ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
       ⊢ wpLoop (GF := GF) c := by
     intro c hpin a b R e' sc' tv' w5 v hv hR2 hR9 hR18 hcs
-    iintro ⟨#Htext, Hk, Hpc, Hsepc, Hscause, Hstval, Hres, C0, C1, C2, C3, C4, C5, HΦ⟩
+    iintro ⟨#Htext, Hk, Hpc, Hsepc, Hscause, Hstval, Hclaim, Hres, C0, C1, C2, C3, C4, C5, HΦ⟩
     have hsie' : (((k.pushed 6).withSpie a b).withRegs R).sie = false := hsie
     -- csrw sepc,s2
     k_step (wp_s_csrw_sepc c _ ?hs 0x80002718#64 false 18#5 e' ?hv) from (text_instr _ _ _ _ rfl rfl) Htext $$ [- $Hk $Hpc]
@@ -137,8 +136,7 @@ theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP 
     ihave HΦ' := wpNext_at _ _ _ c _ (fun h => hpin (h.resolve_left (by decide))) $$ HΦ
     ihave Hcsrs : trapCsrsAt c epc sc' tv' $$ [Hsepc Hscause Hstval]
     case' _ => unfold trapCsrsAt; iframe Hsepc Hscause Hstval
-    iapply HΦ' $$ %_ %sc' %tv' Hk Hpc Hcsrs [] Hres
-    · unfold cpuClaim; ipureintro; rfl
+    iapply HΦ' $$ %_ %sc' %tv' Hk Hpc Hcsrs Hclaim Hres
     ipureintro
     obtain ⟨h20, h21, h22, h23, h24, h25, h26, h27⟩ := hcs
     unfold calleeSaved
@@ -232,7 +230,7 @@ theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP 
     iintro Hk Pc
     ihave Hk := kctx_withSpie_of cpu (k.pushed 6) _ k.spie k.spp rfl rfl $$ Hk
     iapply (htail cpu (fun _ => rfl) k.spie k.spp _ epc sc 0#64 w5 v hv' ?hR2a ?hR9a ?hR18a ?hcsa)
-      $$ [- $Hk $Pc $Hsepc $Hscause $Hstval $Hres $C0 $C1 $C2 $C3 $C4 $C5 $HΦ]
+      $$ [- $Hk $Pc $Hsepc $Hscause $Hstval $Hclaim $Hres $C0 $C1 $C2 $C3 $C4 $C5 $HΦ]
     rotate_right 1
     iframe #
     case hR2a => simp only [RegMap.set_apply, BitVec.reduceEq, ite_false, ite_true]; exact c1_2
@@ -285,7 +283,7 @@ theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP 
       iintro Hk Pc
       ihave Hk := kctx_withSpie_of cpu (k.pushed 6) _ k.spie k.spp rfl rfl $$ Hk
       iapply (htail cpu (fun _ => rfl) k.spie k.spp _ epc sc 0#64 w5 v hv' ?hR2b ?hR9b ?hR18b ?hcsb)
-        $$ [- $Hk $Pc $Hsepc $Hscause $Hstval $Hres $C0 $C1 $C2 $C3 $C4 $C5 $HΦ]
+        $$ [- $Hk $Pc $Hsepc $Hscause $Hstval $Hclaim $Hres $C0 $C1 $C2 $C3 $C4 $C5 $HΦ]
       rotate_right 1
       iframe #
       case hR2b =>
@@ -312,10 +310,10 @@ theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP 
       iintro Hk Hpc
       have hyi : ∀ (k' : KCtx) (hsie' : k'.sie = false) (hnoff' : k'.noff = 0) (hlocks' : k'.locks = [])
           (htier' : k'.tier = KTier.kpt) (hproc' : k'.proc ≠ 0#64) (hK' : yieldSlots ≤ k'.avail),
-          kctx cpu k' ∗ pcIs cpu 0x80001efc#64 ∗ trapCsrs cpu ∗ cpuClaim k'.proc ∗ intrRes cpu ∗
+          kctx cpu k' ∗ pcIs cpu 0x80001efc#64 ∗ trapCsrs cpu ∗ cpuClaim cpu k'.proc ∗ intrRes cpu ∗
           wpNext true k'.proc cpu (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ R' : RegMap,
             kctx cpu' ((k'.withSpie spie spp).withRegs R') -∗ pcIs cpu' (jumpPc (k'.regs 1#5)) -∗
-            trapCsrs cpu' -∗ cpuClaim k'.proc -∗ intrRes cpu' -∗ ⌜calleeSaved k'.regs R'⌝ -∗ wpLoop cpu'))
+            trapCsrs cpu' -∗ cpuClaim cpu' k'.proc -∗ intrRes cpu' -∗ ⌜calleeSaved k'.regs R'⌝ -∗ wpLoop cpu'))
           ⊢ wpLoop (GF := GF) cpu := by
         intro k' hsie' hnoff' hlocks' htier' hproc' hK'
         have h := YI.wp_yield (hlc := hlc) (GF := GF) cpu k' hsie' hnoff' hlocks' htier' hproc' hK'
@@ -335,11 +333,10 @@ theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP 
       case hpY => k_norm; exact hp0
       case hKY => k_norm; unfold yieldSlots; omega
       k_norm
-      isplitl []
-      · unfold cpuClaim; ipureintro; rfl
+      isplitl [Hclaim]
+      · iexact Hclaim
       iapply wpNext_intro_pin
       iintro %c1 %hp1 %a %b %R3 Hk Hpc Hcsrs Hclaim Hres %hcs3
-      iclear Hclaim
       have hret3 : jumpPc 0x80002772#64 = 0x80002772#64 := by decide
       k_norm [hret3]
       unfold calleeSaved at hcs3
@@ -352,7 +349,7 @@ theorem kerneltrap_proof (DI : DEVINTR) (MP : MYPROC) (YI : YIELD) : KERNELTRAP 
       k_step (wp_s_j c1 _ 0x80002772#64 true 2097062#21) from (text_instr _ _ _ _ rfl rfl) Htext $$ [- $Hk $Hpc]
       iintro Hk Pc
       iapply (htail c1 (fun h => hp1 (Or.inr h)) a b R3 e' sc' tv' w5 v hv' ?hR2c ?hR9c ?hR18c ?hcsc)
-        $$ [- $Hk $Pc $Hsepc $Hscause $Hstval $Hres $C0 $C1 $C2 $C3 $C4 $C5 $HΦ]
+        $$ [- $Hk $Pc $Hsepc $Hscause $Hstval $Hclaim $Hres $C0 $C1 $C2 $C3 $C4 $C5 $HΦ]
       rotate_right 1
       iframe #
       case hR2c =>

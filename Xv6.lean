@@ -142,3 +142,6 @@ import Xv6.LinkProcinit
 import Xv6.ProofBinit
 import Xv6.LinkBinit
 import Xv6.KvmSeal
+import Xv6.SpecSwtch
+import Xv6.ProofSwtch
+import Xv6.LinkSwtch

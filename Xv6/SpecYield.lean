@@ -31,10 +31,10 @@ def wp_yield_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF
     (cpu : CPU) (k : KCtx)
     (hsie : k.sie = false) (hnoff : k.noff = 0) (hlocks : k.locks = []) (htier : k.tier = KTier.kpt)
     (hproc : k.proc ≠ 0#64) (hK : yieldSlots ≤ k.avail) : Prop :=
-  kctx cpu k ∗ pcIs cpu yieldAddr ∗ trapCsrs cpu ∗ cpuClaim k.proc ∗ intrRes cpu ∗
+  kctx cpu k ∗ pcIs cpu yieldAddr ∗ trapCsrs cpu ∗ cpuClaim cpu k.proc ∗ intrRes cpu ∗
   wpNext true k.proc cpu (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ R' : RegMap,
     kctx cpu' ((k.withSpie spie spp).withRegs R') -∗ pcIs cpu' (jumpPc (k.regs 1#5)) -∗
-    trapCsrs cpu' -∗ cpuClaim k.proc -∗ intrRes cpu' -∗ ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
+    trapCsrs cpu' -∗ cpuClaim cpu' k.proc -∗ intrRes cpu' -∗ ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
   ⊢ wpLoop (GF := GF) cpu
 
 /-- The interface of `yield`. -/

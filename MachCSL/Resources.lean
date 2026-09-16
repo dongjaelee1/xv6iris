@@ -186,6 +186,13 @@ class MachGS (hlc : outParam HasLC) (GF : BundledGFunctors) where
   /-- the kernel mapping (see `EraGS.kmapName`) -/
   kmapName : GName
   gen : Nat
+  /-- the running-proc claim of a hart (`MachCSL.KCtx.cpuClaim`): the client
+  chooses it when it instantiates the machine (the xv6 client: the claimed
+  proc's `RUNNING` state half and its hart tag).  The framework only needs
+  that the idle claim (`p = 0`) is free. -/
+  claimP : CPU → BitVec 64 → IProp GF
+  /-- the idle claim is free -/
+  claim_idle : ∀ cpu : CPU, ⊢ claimP cpu 0#64
 
 attribute [reducible, instance] MachGS.fixed
 attribute [reducible, instance] MachGS.mem

@@ -474,12 +474,18 @@ theorem kConf_intro (cpu : CPU) (tier : KTier) (root : BitVec 44) (sie spie spp 
   ipureintro
   exact h
 
-/-! ## Placeholders (named, to be filled in) -/
+/-! ## The running proc claim -/
 
-/-- The running proc claim at `p` (`0`: no current proc, the scheduler): the
-proc table's `RUNNING` state half and the hart tag, once the table is
-ported. -/
-def cpuClaim (p : BitVec 64) : IProp GF := iprop(⌜p = p⌝)
+/-- The running proc claim of hart `cpu` at `p` (`0`: no current proc, the
+scheduler): the client's `MachGS.claimP` (the xv6 client: the proc table's
+`RUNNING` state half of proc `p` and its hart tag at `cpu`).  It rides the
+interrupt arm: the enabled arm owns it, a trap hands it to the handler and
+`sret` takes it back. -/
+def cpuClaim (cpu : CPU) (p : BitVec 64) : IProp GF := MachGS.claimP cpu p
+
+/-- The idle claim is free. -/
+theorem cpuClaim_idle (cpu : CPU) : ⊢ cpuClaim (hlc := hlc) (GF := GF) cpu 0#64 :=
+  MachGS.claim_idle cpu
 
 /-- The running-thread context token (the prototype's `own_context cur_ctx`
 inside `sie_cap_gpr`): the ambient context's running token on this hart,
@@ -540,7 +546,7 @@ needs and cannot get from any frame.  Disabled: nothing; the SIE bit itself
 is tied to the index in `kConf`, and the per-cpu bookkeeping is in `cpuOwn`
 at either index. -/
 def sieArmP (S : IhsIx → IProp GF) (cpu : CPU) (sie : Bool) (p : BitVec 64) : IProp GF :=
-  if sie then iprop(trapCsrs cpu ∗ cpuClaim p ∗ intrResP S cpu) else iprop(True)
+  if sie then iprop(trapCsrs cpu ∗ cpuClaim cpu p ∗ intrResP S cpu) else iprop(True)
 
 theorem intrResP_mono (Φ Ψ : IhsIx → IProp GF) (cpu : CPU) :
     □ (∀ x, Φ x -∗ Ψ x) ⊢ intrResP Φ cpu -∗ intrResP Ψ cpu := by
@@ -978,7 +984,7 @@ def ihsF [KernelGeom] [KernelImage GF] (S : IhsIx → IProp GF) (x : IhsIx) : IP
   □ ∀ (X : CurCtx) (k : KCtx) (pc sc : BitVec 64),
     ⌜k.wf ∧ k.sie = true ∧ pc.toNat % 2 = 0 ∧ sCauseOk sc⌝ -∗
     kctxP X S false x.cpu k.trapped -∗ pcIs x.cpu x.h -∗ trapCsrsAt x.cpu pc sc 0#64 -∗
-    Register.stvec ↦ᵣ[x.cpu] x.h -∗ cpuClaim k.proc -∗
+    Register.stvec ↦ᵣ[x.cpu] x.h -∗ cpuClaim x.cpu k.proc -∗
     ▷ wpNext true k.proc x.cpu (fun cpu' => iprop(kctxP X S false cpu' k -∗ pcIs cpu' pc -∗ wpLoop cpu')) -∗
     wpLoop x.cpu
 
@@ -1116,7 +1122,7 @@ theorem KCtx.setReg_setReg_same (k : KCtx) (i : BitVec 5) (v w : BitVec 64) :
 contract. -/
 theorem sieArm_on [KernelGeom] [KernelImage GF] (cpu : CPU) (p : BitVec 64) :
     sieArm (GF := GF) cpu true p ⊢
-      ∃ h : BitVec 64, ⌜stvecDirect h⌝ ∗ trapCsrs cpu ∗ cpuClaim p ∗ Register.stvec ↦ᵣ[cpu] h ∗ □ ihs ⟨cpu, h⟩ := by
+      ∃ h : BitVec 64, ⌜stvecDirect h⌝ ∗ trapCsrs cpu ∗ cpuClaim cpu p ∗ Register.stvec ↦ᵣ[cpu] h ∗ □ ihs ⟨cpu, h⟩ := by
   unfold sieArm sieArmP intrResP
   simp only [ite_true]
   iintro ⟨Hcsrs, Hclaim, %h, %hd, Hstv, #HS⟩
@@ -1127,7 +1133,7 @@ theorem sieArm_on [KernelGeom] [KernelImage GF] (cpu : CPU) (p : BitVec 64) :
   · iexact HS
 
 theorem sieArm_on_intro [KernelGeom] [KernelImage GF] (cpu : CPU) (p h : BitVec 64) (hd : stvecDirect h) :
-    trapCsrs cpu ∗ cpuClaim p ∗ Register.stvec ↦ᵣ[cpu] h ∗ □ ihs ⟨cpu, h⟩ ⊢ sieArm (GF := GF) cpu true p := by
+    trapCsrs cpu ∗ cpuClaim cpu p ∗ Register.stvec ↦ᵣ[cpu] h ∗ □ ihs ⟨cpu, h⟩ ⊢ sieArm (GF := GF) cpu true p := by
   unfold sieArm sieArmP intrResP
   simp only [ite_true]
   iintro ⟨Hcsrs, Hclaim, Hstv, #HS⟩
@@ -1179,7 +1185,7 @@ state, with the promise to resume `k` at `pc` from the client's continuation
 `I`, on any hart the pinning allows. -/
 theorem kctx_trap_resume [X : CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (k : KCtx) (pc sc h : BitVec 64)
     (I : IProp GF) (hwf : k.wf) (hs : k.sie = true) (hpc : pc.toNat % 2 = 0) (hsc : sCauseOk sc) :
-    kctx cpu k.trapped ∗ pcIs cpu h ∗ trapCsrsAt cpu pc sc 0#64 ∗ Register.stvec ↦ᵣ[cpu] h ∗ cpuClaim k.proc ∗
+    kctx cpu k.trapped ∗ pcIs cpu h ∗ trapCsrsAt cpu pc sc 0#64 ∗ Register.stvec ↦ᵣ[cpu] h ∗ cpuClaim cpu k.proc ∗
     □ ihs ⟨cpu, h⟩ ∗ I ∗
     ▷ (∀ cpu' : CPU, ⌜k.proc = 0#64 → cpu' = cpu⌝ → I -∗ kctx cpu' k -∗ pcIs cpu' pc -∗ wpLoop cpu')
     ⊢ wpLoop (GF := GF) cpu := by

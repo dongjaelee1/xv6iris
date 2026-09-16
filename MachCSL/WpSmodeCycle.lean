@@ -692,7 +692,7 @@ def trapCont [X : CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (k : KCtx) (
     confCells cpu (DFrac.own 1) Privilege.Supervisor (trapConf (sConfOf k.tier k.root ms mdl mepc stc)) -∗
     clockCells cpu -∗ pcIs cpu h -∗ transTok cpu k.tier k.root -∗ gprFile cpu (tpPin cpu k.regs) -∗
     stackOwn k.sp (trapRes k.sie + k.avail) -∗ cpuOwn cpu lent k.sie k.noff k.intena k.proc k.locks -∗
-    trapCsrsAt cpu pc sc 0#64 -∗ Register.stvec ↦ᵣ[cpu] h -∗ cpuClaim k.proc -∗ □ ihs ⟨cpu, h⟩ -∗ I -∗ wpLoop cpu
+    trapCsrsAt cpu pc sc 0#64 -∗ Register.stvec ↦ᵣ[cpu] h -∗ cpuClaim cpu k.proc -∗ □ ihs ⟨cpu, h⟩ -∗ I -∗ wpLoop cpu
 
 /-- The obligation of a schema's step at hart `cpu'`, at the configuration
 `sConfOf k.tier k.root ms mdl mepc stc`: from the client's `I` and the

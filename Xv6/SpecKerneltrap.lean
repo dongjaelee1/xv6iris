@@ -35,10 +35,10 @@ def wp_kerneltrap_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv
     (hsie : k.sie = false) (hspie : k.spie = true) (hspp : k.spp = true)
     (hnoff : k.noff = 0) (hlocks : k.locks = []) (htier : k.tier = KTier.kpt) (hK : ktSlots ≤ k.avail)
     (hsc : sCauseOk sc) (hepc : epc.toNat % 2 = 0) : Prop :=
-  kctx cpu k ∗ pcIs cpu kerneltrapAddr ∗ trapCsrsAt cpu epc sc 0#64 ∗ cpuClaim k.proc ∗ intrRes cpu ∗
+  kctx cpu k ∗ pcIs cpu kerneltrapAddr ∗ trapCsrsAt cpu epc sc 0#64 ∗ cpuClaim cpu k.proc ∗ intrRes cpu ∗
   wpNext true k.proc cpu (fun cpu' => iprop(∀ (R' : RegMap) (sc' tv' : BitVec 64),
     kctx cpu' (k.withRegs R') -∗ pcIs cpu' (jumpPc (k.regs 1#5)) -∗ trapCsrsAt cpu' epc sc' tv' -∗
-    cpuClaim k.proc -∗ intrRes cpu' -∗ ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
+    cpuClaim cpu' k.proc -∗ intrRes cpu' -∗ ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
   ⊢ wpLoop (GF := GF) cpu
 
 /-- The interface of `kerneltrap`. -/

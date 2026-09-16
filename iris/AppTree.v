@@ -410,6 +410,36 @@ Proof.
   exact (Hex g root t Hg).
 Qed.
 
+(* UNLINK'S TARGET LEG AT THE LAST LINK, FREE (lane TL-3P).  The row
+   LEAVES the view, and that is invisible to every owner for the same
+   reason create's arm is: nothing names it ([aview_no_edge_to], which
+   unlink's OWN entry leg proves -- [TreeView.aview_no_edge_to_unl_ent]),
+   so no owner reaches it.  TL-2's "the row is nobody's root" is paid at a
+   NON-DIRECTORY target out of [own_wf]'s roots conjunct
+   ([TreeView.own_wf_unl_tgt_nodir]); a directory's last link keeps that
+   wall. *)
+Lemma tree_pres_unl_tgt_last (av : aview) (own : gmap gname (Z * ttree))
+    (tg : Z) (a : anode) :
+  av !! tg = Some a -> an_nlink a = 1%nat ->
+  aview_no_edge_to av tg -> ~ adir_at av tg ->
+  own_wf av own -> tree_exact av own -> adir_at av FsImg.ROOTINO ->
+  own_wf (delta_unl_tgt tg av) own /\ tree_exact (delta_unl_tgt tg av) own
+  /\ adir_at (delta_unl_tgt tg av) FsImg.ROOTINO.
+Proof.
+  intros Ha Hnl Hno Hnd Hwf Hex Hr.
+  pose proof Hwf as (_ & Hroots & _).
+  split; [exact (own_wf_unl_tgt_nodir av own tg a Ha Hnl Hno Hnd Hwf) |].
+  split; [| apply root_of_own_wf;
+             exact (own_wf_unl_tgt_nodir av root_own tg a Ha Hnl Hno Hnd
+                      (own_wf_root av (proj1 Hwf) Hr)) ].
+  intros g root t Hg.
+  assert (Hne : tg <> root).
+  { intros Heq. apply Hnd. rewrite Heq. exact (Hroots g root t Hg). }
+  rewrite (subtree_delta_unl_tgt_out av root tg
+             (nreach_no_edge av root tg Hno Hne)).
+  exact (Hex g root t Hg).
+Qed.
+
 (* ---- 1f.  the OWNER'S OWN legs, AT THE WHOLE-MAP EXACTNESS ---------- *)
 (*                                                                       *)
 (*  TL-2's shape, kept because it is the honest statement of what a leg   *)
@@ -866,6 +896,40 @@ Proof.
              Hfresh).
 Qed.
 
+(* CREATE'S PARENT LEG ALONE (lane TL-3P), which is the delta the landed
+   fire actually commits: at [FsAbsDelta.cre_pre]'s instant the child is
+   ALREADY ARMED, so [delta_create] has collapsed to [delta_ent]
+   ([delta_create_armed]).  Two premises the FUSED lemma got for free are
+   stated, and both are the ARM leg's own facts:
+     - [aview_no_edge_to av i] -- nothing names the armed row.  It is
+       what [TreeView.own_wf_ent] needs, and it is discharged at the arm
+       by [TreeView.aview_no_edge_to_arm];
+     - [~ adir_at av i] -- the armed child is not a directory, which is
+       how "the armed inum is nobody's root" is paid without a credential
+       ([TreeView.own_wf_ent_leaf]).  It covers open(O_CREATE)'s empty
+       FILE and mknod's DEVICE; mkdir's child is a directory and needs
+       the arm-to-ent credential instead. *)
+Lemma tree_move_ent_pure (av : aview) (own : gmap gname (Z * ttree))
+    (g : gname) (root d : Z) (nm : fname) (i : Z) (a : anode)
+    (t : ttree) (e : gmap fname Z) (nl : nat) :
+  fs_pname nm ->
+  av !! d = Some (MkAnode (ADir e) nl) ->
+  av !! i = Some a -> tabs_leaf (tnode_of a) ->
+  ~ adir_at av i -> aview_no_edge_to av i ->
+  own !! g = Some (root, t) -> subtree av root = Some t ->
+  d ∈ dom (tv_nodes t) ->
+  own_wf av own -> adir_at av FsImg.ROOTINO ->
+  tree_move_out av (delta_ent d nm i av) own g.
+Proof.
+  intros Hnm Hd Hi Hleaf Hnd Hno Hg Ht Hdd Hwf Hr. split_and!.
+  - exact (own_wf_ent_leaf av own d nm i a e nl Hnm Hd Hi Hleaf Hnd Hno Hwf).
+  - exact (adir_at_delta_ent av d nm i e nl a FsImg.ROOTINO Hd Hi Hr).
+  - intros g' root' t' Hne H'.
+    exact (subtree_delta_ent_out av root' d nm i
+             (tree_disjoint_out_at av own g g' root root' d t t'
+                Hwf Ht Hg H' (fun Hc => Hne (eq_sym Hc)) Hdd)).
+Qed.
+
 Lemma tree_move_unl_ent_pure (av : aview) (own : gmap gname (Z * ttree))
     (g : gname) (root d : Z) (nm : fname) (dec : nat)
     (t : ttree) (e : gmap fname Z) (nl : nat) :
@@ -990,6 +1054,98 @@ Proof.
     apply elem_of_dom_subtree_nodes in Hin as [Hdm _].
     apply elem_of_dom in Hdm as [a Ha]. congruence. }
   apply Hnot. rewrite -Heq /top_ins /= dom_tedge_ins dom_insert_L. set_solver.
+Qed.
+
+(* the owner's own tree records the view's ENTRY MAP, up to the dots, at a
+   directory of its subtree -- [tree_row_file]'s twin, and what unlink's
+   phase 2 needs to know its tree really moves *)
+Lemma tree_row_dir (av : aview) (root d : Z) (t : ttree)
+    (e : gmap fname Z) (nl : nat) :
+  subtree av root = Some t -> d ∈ dom (tv_nodes t) ->
+  av !! d = Some (MkAnode (ADir e) nl) ->
+  tv_nodes t !! d = Some (ADir (hide_dots e)).
+Proof.
+  intros Ht Hd Hi.
+  rewrite (subtree_nodes_eq av root t Ht) /subtree_nodes
+    (nclose_lookup_in (tview av) root d (subtree_dom_reach av root t d Ht Hd)).
+  rewrite (tview_lookup_Some av d _ Hi) //.
+Qed.
+
+(* UNLINK'S ENTRY LEG IS NEVER INVISIBLE at a PROPER name the parent
+   really carries: the tree loses that edge. *)
+Lemma tv_nodes_top_unlink (t : ttree) (d : Z) (nm : fname) :
+  tv_nodes (top_unlink d nm t)
+  = nclose (tedge_del d nm (tv_nodes t)) (tv_root t).
+Proof. reflexivity. Qed.
+
+(* BOTH ARMS OF THE RE-CLOSURE SAY THE SAME THING.  [top_unlink] is the one
+   tree op that re-closes (it is the one that can orphan), so the parent's
+   row after it is either the map's -- the entry gone -- or ABSENT, if the
+   deletion cut the parent off from the root.  Either way it is not the row
+   the tree had. *)
+Lemma top_unlink_ne (t : ttree) (d : Z) (nm : fname) (e' : gmap fname Z)
+    (tg : Z) :
+  tv_nodes t !! d = Some (ADir e') -> e' !! nm = Some tg ->
+  top_unlink d nm t <> t.
+Proof.
+  intros Hd Hnm Heq.
+  assert (Hl : tv_nodes (top_unlink d nm t) !! d = tv_nodes t !! d)
+    by (by rewrite Heq).
+  rewrite tv_nodes_top_unlink in Hl.
+  destruct (decide (nreach (tedge_del d nm (tv_nodes t)) (tv_root t) d))
+    as [Hr | Hr].
+  - rewrite (nclose_lookup_in (tedge_del d nm (tv_nodes t)) (tv_root t) d Hr)
+      in Hl.
+    rewrite (tedge_del_lookup_at (tv_nodes t) d nm e' Hd) Hd in Hl.
+    injection Hl as Hde.
+    assert (Hx : delete nm e' !! nm = e' !! nm) by (by rewrite Hde).
+    rewrite lookup_delete Hnm in Hx. discriminate.
+  - rewrite (nclose_lookup_out (tedge_del d nm (tv_nodes t)) (tv_root t) d Hr)
+      in Hl.
+    rewrite Hd in Hl. discriminate.
+Qed.
+
+(* ...AND THE PARENT LEG IS NEVER INVISIBLE EITHER, for the same reason
+   one step weaker: the child is a row the owner does not REACH (nothing
+   names it), so the owner's tree gains a node it did not have.  This is
+   [top_ins_ne] with "absent from the view" weakened to "absent from the
+   owner's closure", which is what the ARMED child satisfies. *)
+Lemma top_ins_ne_unreached (av : aview) (root d i : Z) (nm : fname)
+    (c : absnode) (t : ttree) :
+  subtree av root = Some t -> ~ nreach (tview av) root i ->
+  top_ins d nm i c t <> t.
+Proof.
+  intros Ht Hunr Heq.
+  assert (Hnot : i ∉ dom (tv_nodes t)).
+  { intros Hin. exact (Hunr (subtree_dom_reach av root t i Ht Hin)). }
+  apply Hnot. rewrite -Heq /top_ins /= dom_tedge_ins dom_insert_L. set_solver.
+Qed.
+
+(* WHAT PHASE 2 READS AT THE PARENT LEG: the post view's subtree at the
+   owner's root IS the fresh insert, and it is a DIFFERENT tree -- the two
+   facts [tree_resync] takes.  Both come off the no-edge credential: a row
+   nothing names is a row the owner does not reach
+   ([TreeView.nreach_no_edge]). *)
+Lemma tree_ent_post (av : aview) (root d : Z) (nm : fname) (i : Z)
+    (a : anode) (t : ttree) (e : gmap fname Z) (nl : nat) :
+  fs_pname nm ->
+  av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = None ->
+  av !! i = Some a -> tabs_leaf (tnode_of a) ->
+  ~ adir_at av i -> aview_no_edge_to av i ->
+  subtree av root = Some t -> d ∈ dom (tv_nodes t) ->
+  subtree (delta_ent d nm i av) root = Some (top_ins d nm i (tnode_of a) t)
+  /\ top_ins d nm i (tnode_of a) t <> t.
+Proof.
+  intros Hnm Hd Hnone Hi Hleaf Hnd Hno Ht Hdd.
+  assert (Hrootdir : adir_at av root).
+  { destruct (subtree_root_dir av root t Ht) as (e0 & He0).
+    apply adir_at_tview. by exists e0. }
+  assert (Hne : i <> root) by (intros ->; exact (Hnd Hrootdir)).
+  pose proof (nreach_no_edge av root i Hno Hne) as Hunr.
+  split.
+  - exact (subtree_delta_ent av root d nm i a t e nl Ht Hnm Hd Hnone Hi
+             Hleaf Hunr Hdd).
+  - exact (top_ins_ne_unreached av root d i nm (tnode_of a) t Ht Hunr).
 Qed.
 
 (* ===================================================================== *)
@@ -1489,6 +1645,22 @@ Section AppTree.
              (tview_delta_unl_tgt_live av i a Ha Hnl) Hwf Hex Hr).
   Qed.
 
+  (* ...AND AT THE LAST LINK, at a NON-DIRECTORY target (lane TL-3P): the
+     row LEAVES, and it is STILL free at every owner -- nothing names it,
+     so nobody reached it.  The two credentials are the entry leg's own
+     ([TreeView.aview_no_edge_to_unl_ent]) and the target's kind.  This is
+     half of TL-2's recorded wall, lifted: what is left owed is a
+     DIRECTORY's last link, which is [rmdir]-shaped. *)
+  Lemma tree_step_unl_tgt_last (c : tree_fixed) (r : tree_names) (av : aview)
+      (tg : Z) (a : anode) :
+    av !! tg = Some a -> an_nlink a = 1%nat ->
+    aview_no_edge_to av tg -> ~ adir_at av tg ->
+    tree_pred c r av -∗ tree_pred c r (delta_unl_tgt tg av).
+  Proof.
+    intros Ha Hnl Hno Hnd. iApply tree_step_gen. intros own Hwf Hex Hr.
+    exact (tree_pres_unl_tgt_last av own tg a Ha Hnl Hno Hnd Hwf Hex Hr).
+  Qed.
+
   (* ---- 4b.  CREATE'S ARM LEG: free, because a fresh inum is nobody's -- *)
 
   (* the first of create's two legs, and the reason they may be paid in
@@ -1601,6 +1773,28 @@ Section AppTree.
     intros own Hg Ht Hwf Hr.
     exact (tree_move_create_pure av own g root d nm i n t e nl
              Hnm Hd Hnone Hi Hleaf Hg Ht Hdd Hwf Hr).
+  Qed.
+
+  (* ...AND CREATE'S PARENT LEG ALONE (lane TL-3P), which is the delta the
+     landed fire commits: the child is already armed, so an owner's create
+     move is [delta_ent] and its [own_wf] preservation is TL-1's
+     [own_wf_ent].  The fused form above stays, because the pure layer
+     proves both. *)
+  Lemma tree_step_move_ent (c : tree_fixed) (r : tree_names) (g : gname)
+      (root d : Z) (nm : fname) (i : Z) (a : anode) (t : ttree)
+      (e : gmap fname Z) (nl : nat) (av : aview) (γi : gname) :
+    fs_pname nm ->
+    av !! d = Some (MkAnode (ADir e) nl) ->
+    av !! i = Some a -> tabs_leaf (tnode_of a) ->
+    ~ adir_at av i -> aview_no_edge_to av i ->
+    d ∈ dom (tv_nodes t) ->
+    tree_deed r g root t -∗ tok γi -∗
+    tree_pred c r av -∗ tree_pred c r (delta_ent d nm i av).
+  Proof.
+    intros Hnm Hd Hi Hleaf Hnd Hno Hdd. iApply tree_step_move_gen.
+    intros own Hg Ht Hwf Hr.
+    exact (tree_move_ent_pure av own g root d nm i a t e nl
+             Hnm Hd Hi Hleaf Hnd Hno Hg Ht Hdd Hwf Hr).
   Qed.
 
   (* UNLINK'S ENTRY LEG: the name goes and the tree RE-CLOSES (the one op

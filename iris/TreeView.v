@@ -2612,8 +2612,18 @@ Section OwnPres.
                    (fun Hcc => Hx (eq_sym Hcc)))). exact (fun H0 => H0).
   Qed.
 
-  (* STILL OWED, and NOT a one-liner (lane TL-3 priced it): [own_wf_ent],
-     create's PARENT leg ALONE.  The other four legs above ride a landed
+  (* [own_wf_ent] -- create's PARENT leg ALONE -- IS LANDED, in section 8c
+     (lane TL-3P).  The paragraph below is TL-3's pricing, kept because it
+     is right about the PREMISE and wrong about the proof: the honest
+     premise is indeed [aview_no_edge_to av i], but no induction of its
+     own was needed ([nuniq_parent_ins_fresh]'s case analysis goes through
+     with freshness replaced by the no-edge fact in the two mixed cases).
+     What the leg does need beyond the fresh case is a SECOND credential
+     the fresh case got free -- "the armed inum is nobody's root" -- see
+     section 8's header.
+
+     (TL-3's note, as it stood): NOT a one-liner (lane TL-3 priced it):
+     [own_wf_ent], create's PARENT leg ALONE.  The other four legs above ride a landed
      [aview_tree_wf_*]; this one would need an [aview_tree_wf_ent], and its
      UNIQUE-PARENTHOOD conjunct is not available at the leg's own premises:
      [nuniq_parent_ins_fresh] wants the target inum ABSENT from the map,
@@ -2628,3 +2638,452 @@ Section OwnPres.
 End OwnPres.
 
 (* ==== TL1-END ==== *)
+
+(* ===================================================================== *)
+(*  8.  THE PARENT PREFIX, AND CREATE'S PARENT LEG ALONE (lane TL-3P)     *)
+(*                                                                        *)
+(*  ADDITIVE: nothing above this line moves.  Two independent pieces,     *)
+(*  both of which the create/unlink write family needs and neither of     *)
+(*  which the read side did.                                             *)
+(*                                                                        *)
+(*  (a) RESOLUTION AT AN ARBITRARY ELEMENT LIST.  [resolves_from] is      *)
+(*      stated at [path_elems pl] because every READ-side consumer walks  *)
+(*      the whole path; nameiparent walks the PARENT PREFIX               *)
+(*      ([FsAbsEra.np_elems pl] = [removelast (path_elems pl)]) and a pin *)
+(*      for it needs the same three facts at that shorter list.  The      *)
+(*      general form is the landed one with [path_elems pl] replaced by a *)
+(*      parameter [ps], and [resolves_from] IS it at [path_elems pl]      *)
+(*      ([tres_from_path], [reflexivity]) -- so this subsumes rather than *)
+(*      competes, exactly as [PinnedObs] section 10 subsumes sections 5-6.*)
+(*                                                                        *)
+(*  (b) [own_wf_ent]: create's PARENT LEG ALONE, which the note at the    *)
+(*      end of [OwnPres] recorded as PRICED AND NOT TAKEN.  It is taken   *)
+(*      here.  THE PRICE WAS RIGHT ABOUT THE PREMISE AND WRONG ABOUT THE  *)
+(*      PROOF: the honest premise is indeed [aview_no_edge_to av i]       *)
+(*      (nothing else names the row the arm installed), but no            *)
+(*      induction on [nstep] is needed -- [nuniq_parent_ins_fresh]'s own  *)
+(*      case analysis goes through with the FRESHNESS of [i] replaced by  *)
+(*      the no-edge fact in exactly the two mixed cases where freshness   *)
+(*      was used (an old edge into [i] is refuted by the premise instead  *)
+(*      of by [nclosed]).  What the leg DOES need beyond the fresh case   *)
+(*      is a second premise the fresh case got for free: THE ARMED INUM   *)
+(*      IS NOBODY'S ROOT.  With [i] absent that followed from the fact    *)
+(*      that roots are rows of the view; at the leg's instant [i] IS a    *)
+(*      row (an empty directory at count 1 is [adir_at]), so it is        *)
+(*      stated, in                                                       *)
+(*      [own_wf_unl_tgt]'s shape.  It is a credential from the ARM leg --  *)
+(*      true because [own] does not move between the two legs and the     *)
+(*      arm's own view had no row at [i].                                 *)
+(* ===================================================================== *)
+
+(* ---- 8a.  RESOLUTION AT AN ARBITRARY ELEMENT LIST ------------------- *)
+
+Definition tres_from (t : ttree) (d : Z) (ps : list fname)
+    : option (Z * absnode) :=
+  match npath (tv_nodes t) d ps with
+  | Some i => match tv_nodes t !! i with
+              | Some n => Some (i, n)
+              | None => None
+              end
+  | None => None
+  end.
+
+Definition tres_hops (t : ttree) (d : Z) (ps : list fname) : list Z :=
+  nchain (tv_nodes t) d ps.
+
+Lemma tres_from_path (t : ttree) (d : Z) (pl : list (bv 8)) :
+  tres_from t d (path_elems pl) = resolves_from t d pl.
+Proof. reflexivity. Qed.
+
+Lemma tres_hops_path (t : ttree) (d : Z) (pl : list (bv 8)) :
+  tres_hops t d (path_elems pl) = resolve_hops t d pl.
+Proof. reflexivity. Qed.
+
+(* the resolved node is a node of the tree -- which at the PARENT PREFIX
+   is the fact an owner's move needs first: the directory the walk stops
+   at is one the owner's own claim records. *)
+Lemma tres_from_dom (t : ttree) (d i : Z) (n : absnode) (ps : list fname) :
+  tres_from t d ps = Some (i, n) -> i ∈ dom (tv_nodes t).
+Proof.
+  rewrite /tres_from. destruct (npath (tv_nodes t) d ps) as [j |]; [| discriminate].
+  destruct (tv_nodes t !! j) as [n0 |] eqn:Hn; [| discriminate].
+  intros Hc. injection Hc as <- <-. apply elem_of_dom. by exists n0.
+Qed.
+
+(* a PREFIX of a proper path is proper -- what the parent-prefix walk
+   needs of the program's own pure side condition *)
+Lemma fs_proper_removelast (ps : list fname) :
+  fs_proper ps -> fs_proper (removelast ps).
+Proof.
+  rewrite /fs_proper. induction ps as [| s ps IH]; [done |].
+  intros Hf. apply Forall_cons in Hf as [Hs Hps].
+  destruct ps as [| s' ps']; [constructor |].
+  cbn [removelast]. apply Forall_cons. split; [exact Hs | exact (IH Hps)].
+Qed.
+
+(* [resolves_from_arun] at the parameter: same proof, line for line *)
+Lemma tres_from_arun (av : aview) (r : Z) (t : ttree) (d i : Z)
+    (n : absnode) (ps : list fname) :
+  subtree av r = Some t -> fs_proper ps ->
+  nreach (tview av) r d ->
+  tres_from t d ps = Some (i, n) ->
+  arun av d ps (tres_hops t d ps)
+  /\ tres_hops t d ps !!! 0%nat = d
+  /\ tres_hops t d ps !!! length ps = i
+  /\ (exists a, av !! i = Some a /\ n = tnode_of a).
+Proof.
+  intros Ht Hp Hd Hres.
+  pose proof (subtree_nodes_eq av r t Ht) as Hnodes.
+  assert (Hwalk : npath (tv_nodes t) d ps = apath_at av d ps).
+  { rewrite Hnodes /subtree_nodes (npath_nclose (tview av) r ps d Hp Hd).
+    exact (npath_tview av d ps Hp). }
+  assert (Hchain : tres_hops t d ps = nchain (tview av) d ps).
+  { rewrite /tres_hops Hnodes /subtree_nodes.
+    exact (nchain_nclose (tview av) r ps d Hp Hd). }
+  rewrite /tres_from Hwalk in Hres.
+  destruct (apath_at av d ps) as [j |] eqn:Hw; [| discriminate].
+  destruct (tv_nodes t !! j) as [n0 |] eqn:Hn; [| discriminate].
+  injection Hres as <- <-.
+  assert (Hrun : arun av d ps (tres_hops t d ps)).
+  { rewrite Hchain. exact (nchain_arun av d ps j Hp Hw). }
+  split; [exact Hrun |].
+  split; [exact (arun_head av d ps _ Hrun) |].
+  split.
+  - pose proof (arun_apath_tot av d ps _ Hrun) as Htot.
+    rewrite Hw in Htot. by injection Htot as ->.
+  - rewrite Hnodes in Hn. apply subtree_nodes_lookup_Some in Hn as ((a & Ha & ->) & _).
+    by exists a.
+Qed.
+
+(* [subtree_resolves_pin] at the parameter *)
+Lemma subtree_tres_pin (t : ttree) (d i : Z) (n : absnode) (ps : list fname) :
+  fs_proper ps ->
+  tres_from t d ps = Some (i, n) ->
+  forall (av : aview) (r : Z),
+    subtree av r = Some t -> nreach (tview av) r d ->
+    arun av d ps (tres_hops t d ps)
+    /\ tres_hops t d ps !!! 0%nat = d
+    /\ tres_hops t d ps !!! length ps = i
+    /\ (exists (n' : absnode) (k : nat),
+          av !! i = Some (MkAnode n' k) /\ tabs_of n' = n).
+Proof.
+  intros Hp Hres av r Ht Hd.
+  destruct (tres_from_arun av r t d i n ps Ht Hp Hd Hres)
+    as (Hrun & H0 & Hlen & (a & Ha & Hn)).
+  split; [exact Hrun |]. split; [exact H0 |]. split; [exact Hlen |].
+  destruct a as [n0 k]. exists n0, k. split; [exact Ha |].
+  by rewrite /tnode_of /= in Hn.
+Qed.
+
+(* ...AND AT A DIRECTORY, which is what the parent prefix ends at.  The
+   projection is NOT the identity here -- the tree hides the dots -- so
+   what comes back is the view's own entry map together with the fact
+   that it agrees with the tree's on every PROPER name.  That is exactly
+   what a create/unlink consumer reads ("is [nm] an entry of my
+   parent?"), and no more is true. *)
+Lemma tabs_of_dir_inv (n' : absnode) (ents : gmap fname Z) :
+  tabs_of n' = ADir ents -> exists e, n' = ADir e /\ hide_dots e = ents.
+Proof.
+  destruct n' as [bs | e | ma mi]; cbn; try discriminate.
+  intros H. injection H as <-. by exists e.
+Qed.
+
+Lemma subtree_tres_pin_dir (t : ttree) (d i : Z) (ents : gmap fname Z)
+    (ps : list fname) :
+  fs_proper ps ->
+  tres_from t d ps = Some (i, ADir ents) ->
+  forall (av : aview) (r : Z),
+    subtree av r = Some t -> nreach (tview av) r d ->
+    arun av d ps (tres_hops t d ps)
+    /\ tres_hops t d ps !!! 0%nat = d
+    /\ tres_hops t d ps !!! length ps = i
+    /\ (exists (e : gmap fname Z) (k : nat),
+          av !! i = Some (MkAnode (ADir e) k)
+          /\ (forall s : fname, fs_pname s -> e !! s = ents !! s)).
+Proof.
+  intros Hp Hres av r Ht Hd.
+  destruct (subtree_tres_pin t d i (ADir ents) ps Hp Hres av r Ht Hd)
+    as (Hrun & H0 & Hlen & (n' & k & Ha & Hn)).
+  destruct (tabs_of_dir_inv n' ents Hn) as (e & -> & He).
+  split; [exact Hrun |]. split; [exact H0 |]. split; [exact Hlen |].
+  exists e, k. split; [exact Ha |].
+  intros s Hs. rewrite -He (hide_dots_lookup e s Hs) //.
+Qed.
+
+(* ---- 8b.  THE ARMED INUM IS NAMED BY NOTHING ------------------------ *)
+
+(* THE ARM'S CREDENTIAL, PURELY.  A fresh inum is named by no entry (no
+   entry dangles), and the arm itself installs a LEAF, so after the arm
+   nothing names the armed row either.  This is the premise
+   [aview_tree_wf_ent] below asks for, and the reason the entry-leg-first
+   order is the one that works. *)
+Lemma aview_no_edge_to_fresh (av : aview) (i : Z) :
+  aview_closed av -> av !! i = None -> aview_no_edge_to av i.
+Proof.
+  intros Hcl Hi d s Hs Hst.
+  destruct (Hcl d s i Hs Hst) as [a Ha]. congruence.
+Qed.
+
+(* ...and what it buys: a row nothing names is a row no root reaches.
+   [nreach_fresh]'s twin at a row that IS there. *)
+Lemma nreach_no_edge (av : aview) (r i : Z) :
+  aview_no_edge_to av i -> i <> r -> ~ nreach (tview av) r i.
+Proof.
+  intros Hno Hne (p & Hp & Hw). destruct (list_snoc_inv p) as [-> | (q & s & ->)].
+  { cbn in Hw. injection Hw as Hri. exact (Hne (eq_sym Hri)). }
+  apply fs_proper_app in Hp as [_ Hs]. apply fs_proper_cons in Hs as [Hs _].
+  rewrite npath_snoc in Hw.
+  destruct (npath (tview av) r q) as [d |]; [| discriminate].
+  rewrite (nstep_tview av d s Hs) in Hw. exact (Hno d s Hs Hw).
+Qed.
+
+Lemma aview_no_edge_to_arm (av : aview) (i : Z) (c : absnode) :
+  aview_closed av -> av !! i = None -> tabs_leaf (tabs_of c) ->
+  aview_no_edge_to (delta_arm i c av) i.
+Proof.
+  intros Hcl Hi Hleaf d s Hs.
+  rewrite -(nstep_tview (delta_arm i c av) d s Hs) (tview_delta_arm av i c).
+  assert (Hti : tview av !! i = None) by (rewrite tview_lookup Hi //).
+  rewrite (nstep_ins_leaf (tview av) i (tabs_of c) d s Hti Hleaf Hs).
+  rewrite (nstep_tview av d s Hs).
+  exact (aview_no_edge_to_fresh av i Hcl Hi d s Hs).
+Qed.
+
+(* ---- 8b'.  ...AND THE ENTRY LEG'S OWN CREDENTIAL --------------------- *)
+
+(* THE ENTRY-LEG-FIRST ORDER, MADE A THEOREM.  TL-1's note at
+   [aview_no_edge_to] says the [nlink]-vs-edge-count tie "is what the
+   entry-leg-first order gives"; here it is.  After unlink's ENTRY leg has
+   cut [d.nm], NOTHING names the target -- not because of any count, but
+   because UNIQUE PARENTHOOD says the edge just cut was the only one.  So
+   unlink's target leg gets its own credential from its own first leg,
+   exactly as create's parent leg gets one from the arm, and the tree
+   layer never has to carry the count tie at all. *)
+Lemma aview_no_edge_to_unl_ent (av : aview) (d : Z) (nm : fname) (dec : nat)
+    (e : gmap fname Z) (nl : nat) (tg : Z) :
+  fs_pname nm ->
+  av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = Some tg ->
+  aview_uniq_parent av ->
+  aview_no_edge_to (delta_unl_ent d nm dec av) tg.
+Proof.
+  intros Hnm Hd He Hu x s Hs Hst.
+  assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
+    by (rewrite (tview_lookup_Some av d _ Hd) //).
+  assert (Hdel : nstep (tview av) d nm = Some tg).
+  { rewrite /nstep nents_unfold Htd /= (hide_dots_lookup e nm Hnm) He //. }
+  assert (Hnone : nstep (tedge_del d nm (tview av)) d nm = None).
+  { rewrite (nstep_tedge_del_at (tview av) d nm (hide_dots e) nm Htd).
+    case_decide as Hc; [reflexivity | by destruct (Hc eq_refl)]. }
+  rewrite -(nstep_tview (delta_unl_ent d nm dec av) x s Hs)
+          (tview_delta_unl_ent av d nm dec e nl Hd) in Hst.
+  pose proof (nstep_tedge_del_sub (tview av) d nm x s tg Hst) as Hold.
+  destruct (Hu x s d nm tg Hs Hnm Hold Hdel) as [-> ->].
+  rewrite Hnone in Hst. discriminate.
+Qed.
+
+(* ---- 8c.  THE PARENT LEG'S EDGE INSERT, AT A PRESENT TARGET --------- *)
+
+(* [nstep_ins_fresh_inv]'s twin, and SIMPLER: at [x <> d] the insert does
+   not touch the row at all, so nothing has to be said about the target's
+   own row (the fresh case needed [nstep_leaf] at [i] because it had
+   INSERTED that row). *)
+Lemma nstep_ins_ent_inv (m : gmap Z absnode) (d : Z) (nm : fname) (i : Z)
+    (e : gmap fname Z) (x : Z) (s : fname) (j : Z) :
+  m !! d = Some (ADir e) ->
+  nstep (tedge_ins d nm i m) x s = Some j ->
+  (nstep m x s = Some j /\ ~ (x = d /\ s = nm)) \/ (x = d /\ s = nm /\ j = i).
+Proof.
+  intros Hd Hst. destruct (decide (x = d)) as [-> | Hx]; last first.
+  { left. rewrite (nstep_of_lookup _ m x s (tedge_ins_lookup_ne m d nm i x Hx))
+      in Hst. split; [exact Hst |]. intros [Hc _]. exact (Hx Hc). }
+  rewrite (nstep_tedge_ins_at m d nm i e s Hd) in Hst.
+  case_decide as Hs.
+  - right. injection Hst as <-. by repeat split.
+  - left. split; [exact Hst |]. intros [_ Hc]. exact (Hs Hc).
+Qed.
+
+Lemma nuniq_parent_ins_ent (m : gmap Z absnode) (d : Z) (nm : fname) (i : Z)
+    (e : gmap fname Z) :
+  m !! d = Some (ADir e) ->
+  (forall (x : Z) (s : fname), fs_pname s -> nstep m x s <> Some i) ->
+  nuniq_parent m -> nuniq_parent (tedge_ins d nm i m).
+Proof.
+  intros Hd Hno Hu d1 s1 d2 s2 j Hs1 Hs2 H1 H2.
+  destruct (nstep_ins_ent_inv m d nm i e d1 s1 j Hd H1)
+    as [[Ha1 _] | (-> & -> & Hj1)].
+  - destruct (nstep_ins_ent_inv m d nm i e d2 s2 j Hd H2)
+      as [[Ha2 _] | (-> & -> & Hj2)].
+    + exact (Hu _ _ _ _ _ Hs1 Hs2 Ha1 Ha2).
+    + exfalso. subst j. exact (Hno d1 s1 Hs1 Ha1).
+  - destruct (nstep_ins_ent_inv m d nm i e d2 s2 j Hd H2)
+      as [[Ha2 _] | (-> & -> & Hj2)].
+    + exfalso. subst j. exact (Hno d2 s2 Hs2 Ha2).
+    + by split.
+Qed.
+
+Lemma dom_tedge_ins_eq (m : gmap Z absnode) (d : Z) (nm : fname) (i : Z) :
+  dom (tedge_ins d nm i m) = dom m.
+Proof.
+  rewrite /tedge_ins. destruct (m !! d) as [n |] eqn:E; [| done].
+  destruct n as [| e |]; [done | | done].
+  assert (Hd : d ∈ dom m) by (apply elem_of_dom; by eexists).
+  rewrite dom_insert_L. set_solver.
+Qed.
+
+Lemma nclosed_ins_ent (m : gmap Z absnode) (d : Z) (nm : fname) (i : Z)
+    (e : gmap fname Z) :
+  m !! d = Some (ADir e) -> i ∈ dom m -> nclosed m ->
+  nclosed (tedge_ins d nm i m).
+Proof.
+  intros Hd Hi Hn x s j Hs Hst. rewrite dom_tedge_ins_eq.
+  destruct (nstep_ins_ent_inv m d nm i e x s j Hd Hst)
+    as [[Ha _] | (_ & _ & ->)]; [exact (Hn x s j Hs Ha) | exact Hi].
+Qed.
+
+(* the reach inversion: the target is a LEAF, so the only node newly
+   reachable is the target itself *)
+Lemma nreach_ins_ent_inv (m : gmap Z absnode) (r d : Z) (nm : fname) (i : Z)
+    (c : absnode) (e : gmap fname Z) :
+  m !! d = Some (ADir e) -> m !! i = Some c -> tabs_leaf c ->
+  forall j, nreach (tedge_ins d nm i m) r j -> nreach m r j \/ j = i.
+Proof.
+  intros Hd Hi Hleaf.
+  apply (nreach_closed_ind _ r (fun j => nreach m r j \/ j = i)
+           (or_introl (nreach_refl m r))).
+  intros d0 s c0 Hd0 Hs Hst.
+  destruct (nstep_ins_ent_inv m d nm i e d0 s c0 Hd Hst)
+    as [[Ha _] | (_ & _ & ->)]; [| by right].
+  destruct Hd0 as [Hd0 | ->].
+  - left. exact (nreach_hop m r d0 s c0 Hd0 Hs Ha).
+  - exfalso. rewrite (nstep_leaf m i c s Hi Hleaf Hs) in Ha. discriminate.
+Qed.
+
+Lemma aview_tree_wf_ent (av : aview) (d : Z) (nm : fname) (i : Z)
+    (e : gmap fname Z) (nl : nat) (a : anode) :
+  fs_pname nm ->
+  av !! d = Some (MkAnode (ADir e) nl) -> av !! i = Some a ->
+  aview_no_edge_to av i ->
+  aview_tree_wf av -> aview_tree_wf (delta_ent d nm i av).
+Proof.
+  intros Hnm Hd Hi Hno [Hu Hc].
+  assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
+    by (rewrite (tview_lookup_Some av d _ Hd) //).
+  assert (Hti : tview av !! i = Some (tnode_of a))
+    by (rewrite (tview_lookup_Some av i a Hi) //).
+  assert (Hidom : i ∈ dom (tview av)) by (apply elem_of_dom; by eexists).
+  assert (Hnon : forall (x : Z) (s : fname), fs_pname s ->
+                   nstep (tview av) x s <> Some i).
+  { intros x s Hs. rewrite (nstep_tview av x s Hs). exact (Hno x s Hs). }
+  rewrite /aview_uniq_parent aview_closed_nstep in Hu, Hc.
+  rewrite /aview_tree_wf /aview_uniq_parent aview_closed_nstep
+          (tview_delta_ent av d nm i e nl a Hnm Hd Hi).
+  split.
+  - exact (nuniq_parent_ins_ent (tview av) d nm i _ Htd Hnon Hu).
+  - exact (nclosed_ins_ent (tview av) d nm i _ Htd Hidom Hc).
+Qed.
+
+(* ...and the row at the era's root survives for free: the leg moves ONE
+   row and leaves it a directory. *)
+Lemma adir_at_delta_ent (av : aview) (d : Z) (nm : fname) (i : Z)
+    (e : gmap fname Z) (nl : nat) (a : anode) (r : Z) :
+  av !! d = Some (MkAnode (ADir e) nl) -> av !! i = Some a ->
+  adir_at av r -> adir_at (delta_ent d nm i av) r.
+Proof.
+  intros Hd Hi (b & e0 & Hb & He). destruct a as [c0 k0].
+  destruct (decide (r = d)) as [-> | Hne].
+  - exists (MkAnode (ADir (<[nm := i]> e)) (nl + acre_bump c0)%nat),
+           (<[nm := i]> e).
+    split; [exact (delta_ent_lookup_at av d nm i e nl c0 k0 Hd Hi)
+           | reflexivity].
+  - exists b, e0. split; [| exact He].
+    rewrite (delta_ent_lookup_same av d nm i r Hne). exact Hb.
+Qed.
+
+Section OwnPresEnt.
+  Context {K : Type} `{Countable K}.
+
+  (* CREATE'S PARENT LEG ALONE.  The two premises the fused lemma got for
+     free are stated: nothing names the armed row, and the armed inum is
+     nobody's root.  Both are the ARM leg's own facts, carried forward --
+     [own] does not move between the legs, and at the arm's view [i] was
+     not a row at all. *)
+  Lemma own_wf_ent (av : aview) (own : gmap K (Z * ttree)) (d : Z)
+      (nm : fname) (i : Z) (a : anode) (e : gmap fname Z) (nl : nat) :
+    fs_pname nm ->
+    av !! d = Some (MkAnode (ADir e) nl) ->
+    av !! i = Some a -> tabs_leaf (tnode_of a) ->
+    aview_no_edge_to av i ->
+    (forall g r t, own !! g = Some (r, t) -> r <> i) ->
+    own_wf av own -> own_wf (delta_ent d nm i av) own.
+  Proof.
+    intros Hnm Hd Hi Hleaf Hno Hnotroot (Hwf & Hroots & Hnn).
+    destruct Hwf as [Hu Hcl].
+    assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
+      by (rewrite (tview_lookup_Some av d _ Hd) //).
+    assert (Hti : tview av !! i = Some (tnode_of a))
+      by (rewrite (tview_lookup_Some av i a Hi) //).
+    pose proof (tview_delta_ent av d nm i e nl a Hnm Hd Hi) as Hview.
+    split; [exact (aview_tree_wf_ent av d nm i e nl a Hnm Hd Hi Hno
+                     (conj Hu Hcl)) |].
+    split.
+    - intros g r t Hg. destruct (Hroots g r t Hg) as (b & e0 & Hb & He).
+      apply adir_at_tview. rewrite Hview.
+      assert (Hr0 : tview av !! r = Some (ADir (hide_dots e0)))
+        by (rewrite (tview_lookup_Some av r b Hb) /tnode_of He //).
+      destruct (tedge_ins_dir (tview av) d nm i r (hide_dots e0) Hr0)
+        as (e' & Hr').
+      by exists e'.
+    - intros g g' r t r' t' Hne Hg Hg' Hr. apply (Hnn g g' r t r' t' Hne Hg Hg').
+      rewrite Hview in Hr.
+      destruct (nreach_ins_ent_inv (tview av) r d nm i (tnode_of a)
+                  (hide_dots e) Htd Hti Hleaf r' Hr) as [Hc0 | Hc0];
+        [exact Hc0 |].
+      exfalso. exact (Hnotroot g' r' t' Hg' Hc0).
+  Qed.
+
+  (* ...AND THE CREDENTIAL, DISCHARGED, FOR EVERY CHILD BUT A DIRECTORY.
+     An owner's root is [adir_at] by [own_wf]'s own roots conjunct, so a
+     child that is NOT a directory in the view is nobody's root and the
+     premise above is free.  That covers create's two non-directory
+     children -- open(O_CREATE)'s empty FILE and mknod's DEVICE.  mkdir's
+     child IS a directory (empty but for its dots, so still
+     [tabs_leaf]), and for it the credential has to be threaded from the
+     ARM leg, whose own view had no row at [i] at all -- the same kind of
+     credential [FsAbsCreateFire]'s UNARM leg needs, and a kernel-tier
+     lane either way. *)
+  Lemma own_wf_ent_leaf (av : aview) (own : gmap K (Z * ttree)) (d : Z)
+      (nm : fname) (i : Z) (a : anode) (e : gmap fname Z) (nl : nat) :
+    fs_pname nm ->
+    av !! d = Some (MkAnode (ADir e) nl) ->
+    av !! i = Some a -> tabs_leaf (tnode_of a) ->
+    ~ adir_at av i ->
+    aview_no_edge_to av i ->
+    own_wf av own -> own_wf (delta_ent d nm i av) own.
+  Proof.
+    intros Hnm Hd Hi Hleaf Hnd Hno Hwf.
+    apply (own_wf_ent av own d nm i a e nl Hnm Hd Hi Hleaf Hno); [| exact Hwf].
+    intros g r t Hg Heq. subst r. destruct Hwf as (_ & Hroots & _).
+    exact (Hnd (Hroots g i t Hg)).
+  Qed.
+
+  (* UNLINK'S TARGET LEG AT THE LAST LINK, WITH TL-2's WALL HALF LIFTED.
+     [own_wf_unl_tgt] asks for "the row is nobody's root", which TL-2
+     recorded as a fact about the ownership map that no mover holds.  At a
+     NON-DIRECTORY target it is not about the map at all: an owner's root
+     is [adir_at] by [own_wf]'s own roots conjunct, so a file's or a
+     device's row is nobody's root and the premise is free -- the same
+     trick [own_wf_ent_leaf] plays.  A DIRECTORY's last link (which is
+     [rmdir]-shaped) keeps TL-2's wall. *)
+  Lemma own_wf_unl_tgt_nodir (av : aview) (own : gmap K (Z * ttree)) (tg : Z)
+      (a : anode) :
+    av !! tg = Some a -> an_nlink a = 1%nat -> aview_no_edge_to av tg ->
+    ~ adir_at av tg ->
+    own_wf av own -> own_wf (delta_unl_tgt tg av) own.
+  Proof.
+    intros Ha Hnl Hno Hnd Hwf.
+    apply (own_wf_unl_tgt av own tg a Ha Hnl Hno); [| exact Hwf].
+    intros g r t Hg Heq. subst r. destruct Hwf as (_ & Hroots & _).
+    exact (Hnd (Hroots g tg t Hg)).
+  Qed.
+
+End OwnPresEnt.

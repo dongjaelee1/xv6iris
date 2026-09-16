@@ -43,6 +43,7 @@ Require Import OffGv.            (* [off_gv] *)
 Require Import AppCfg.           (* [app_pred] / [app_run] / [MkAppcfg] *)
 Require Import AppInv.           (* [app_inv], [app_body], [app_step], [appE] *)
 Require Import SysWriteDefs.     (* [wri_pre], [wchunks] *)
+Require Import FsAbsDelta.       (* [cre_pre], [delta_ent], [delta_unl_ent] *)
 Require Import FsAbsWriteFire.   (* [awrite_full_at] / [awrite_part_at] / chain *)
 Require Import TreeView.         (* TL-1 *)
 Require Import AppTree.          (* TL-2 + TL-3W: the claim, the deed, the move *)
@@ -362,72 +363,258 @@ Section TreeMove.
       iModIntro. iFrame "Hka' Hoff". iApply (IH (S k) with "Hinv Hq'").
   Qed.
 
+  (* =================================================================== *)
+  (*  3b.  THE CREATE AND UNLINK MOVES, AT A PARENT THE OWNER NAMES        *)
+  (*                                                                       *)
+  (*  The tree-layer content of section 4's two walled syscalls, in full,   *)
+  (*  and AT A GIVEN PARENT [d].  Each is [tree_awrite_phases]'s shape with *)
+  (*  the write's inum-indexed row replaced by the parent's: phase 1 reads  *)
+  (*  the claim, parks the deed and a fresh token, and hands out the very   *)
+  (*  [AppInv.app_step] the fire's commit asks for; phase 2 takes the post  *)
+  (*  view and returns the DEED AT THE MOVED TREE.                         *)
+  (*                                                                       *)
+  (*  WHY THEY ARE NOT [pf_at]-PACKAGED INTO THEIR COMMITS.  Both commits   *)
+  (*  QUANTIFY [d] INSIDE ([FsAbsCreateFire.acre_commit_at_gen],            *)
+  (*  [SysUnlinkDefs.uent_commit_at]), so a supplier owes the step at EVERY *)
+  (*  directory -- including one inside a STRANGER'S subtree, where no step *)
+  (*  exists at all.  These two lemmas are exactly the missing quantifier's *)
+  (*  other side: hand the owner its own [d] and it pays.  Section 4 states *)
+  (*  the wall and prices both fixes.                                       *)
+  (* =================================================================== *)
+
+  (* CREATE / MKNOD / OPEN(O_CREATE)'s PARENT LEG.  The delta the commit
+     names is the FUSED [delta_create], which at [cre_pre]'s instant -- the
+     child already armed -- IS the parent leg alone ([delta_create_armed]),
+     and that is the leg TL-1's [own_wf_ent] covers. *)
+  Lemma tree_acre_phases (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (g : gname) (root d i : Z) (nm : fname) (ch : absnode) (t : ttree)
+      (I : gmap Z fs_node) (e : gmap fname Z) (nl : nat) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    fs_pname nm ->
+    cre_pre (abs_view I) d nm e nl i ch ->
+    tabs_leaf (tabs_of ch) ->
+    (* the child is not a DIRECTORY: open(O_CREATE)'s file and mknod's
+       device, which is how "the armed inum is nobody's root" is paid
+       without a credential from the arm ([TreeView.own_wf_ent_leaf]) *)
+    (forall e0 : gmap fname Z, ch <> ADir e0) ->
+    (* ...and the arm's other credential: nothing names the armed row
+       ([TreeView.aview_no_edge_to_arm] discharges it at the arm) *)
+    aview_no_edge_to (abs_view I) i ->
+    d ∈ dom (tv_nodes t) ->
+    app_inv γfs -∗ tree_own r g root t -∗
+    ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
+      ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
+      app_step d I (delta_create d nm i ch (abs_view I)) ∗
+      (∀ I' : gmap Z fs_node,
+         ⌜abs_view I' = delta_create d nm i ch (abs_view I)⌝ -∗
+         ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
+         ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
+         (tree_own r g root (top_ins d nm i (tabs_of ch) t) ∨ tree_taint c)).
+  Proof.
+    intros Heq Hnm Hpre Hleaf Hnd Hno Hdd. iIntros "#Hinv Hown Hka".
+    pose proof (cre_pre_ne (abs_view I) d nm e nl i ch Hpre Hnd) as Hdi.
+    pose proof (delta_create_armed (abs_view I) d nm e nl i ch Hpre Hdi) as Hcr.
+    destruct Hpre as (Hd & Hnone & Hi).
+    assert (Hent : delta_create d nm i ch (abs_view I)
+                   = delta_ent d nm i (abs_view I)).
+    { rewrite Hcr (delta_ent_dir (abs_view I) d nm i e nl ch 1%nat Hd Hi) //. }
+    assert (Hnadir : ~ adir_at (abs_view I) i).
+    { intros (a0 & e0 & Ha0 & He0). rewrite Hi in Ha0. injection Ha0 as <-.
+      cbn in He0. exact (Hnd e0 He0). }
+    iMod (tree_claim_read γfs c r g root t I Heq with "Hinv Hown Hka")
+      as "(Hka & Hown & [%Hsub | #HT])"; last first.
+    { iModIntro. iFrame "Hka". iSplitR.
+      { iApply (tree_app_step_taint c r d I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". by iRight. }
+    destruct (tree_ent_post (abs_view I) root d nm i (MkAnode ch 1%nat) t e nl
+                Hnm Hd Hnone Hi Hleaf Hnadir Hno Hsub Hdd) as [Hpost Hne].
+    iMod tok_alloc as (γi) "Htok".
+    rewrite tree_own_split. iDestruct "Hown" as "[Hdeed Htk]".
+    iModIntro. iFrame "Hka". iSplitL "Hdeed Htok".
+    { iApply (tree_app_step_of c r d I _ Heq). rewrite Hent.
+      iApply (tree_step_move_ent c r g root d nm i (MkAnode ch 1%nat) t e nl
+                (abs_view I) γi Hnm Hd Hi Hleaf Hnadir Hno Hdd
+                with "Hdeed Htok"). }
+    iIntros (I') "%Hav Hka'".
+    iMod (tree_claim_resync γfs c r g root t (top_ins d nm i (tabs_of ch) t) I'
+            Heq ltac:(rewrite Hav Hent; exact Hpost) Hne with "Hinv Htk Hka'")
+      as "[Hka' Hout]".
+    iModIntro. iFrame "Hka' Hout".
+  Qed.
+
+  (* UNLINK'S ENTRY LEG, at a parent the owner names.  The premises are
+     [SysUnlinkDefs.unl_pre]'s first two conjuncts and the name's
+     properness -- everything else that predicate carries is about the
+     TARGET row, which the tree does not read at this leg. *)
+  Lemma tree_uent_phases (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (g : gname) (root d tg : Z) (nm : fname) (dec : nat) (t : ttree)
+      (I : gmap Z fs_node) (e : gmap fname Z) (nl : nat) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    fs_pname nm ->
+    abs_view I !! d = Some (MkAnode (ADir e) nl) ->
+    e !! nm = Some tg ->
+    d ∈ dom (tv_nodes t) ->
+    app_inv γfs -∗ tree_own r g root t -∗
+    ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
+      ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
+      app_step d I (delta_unl_ent d nm dec (abs_view I)) ∗
+      (∀ I' : gmap Z fs_node,
+         ⌜abs_view I' = delta_unl_ent d nm dec (abs_view I)⌝ -∗
+         ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
+         ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
+         (tree_own r g root (top_unlink d nm t) ∨ tree_taint c)).
+  Proof.
+    intros Heq Hnm Hd Hnm0 Hdd. iIntros "#Hinv Hown Hka".
+    iMod (tree_claim_read γfs c r g root t I Heq with "Hinv Hown Hka")
+      as "(Hka & Hown & [%Hsub | #HT])"; last first.
+    { iModIntro. iFrame "Hka". iSplitR.
+      { iApply (tree_app_step_taint c r d I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". by iRight. }
+    pose proof (tree_row_dir (abs_view I) root d t e nl Hsub Hdd Hd) as Hrow.
+    assert (Hne : top_unlink d nm t <> t).
+    { apply (top_unlink_ne t d nm (hide_dots e) tg Hrow).
+      rewrite (hide_dots_lookup e nm Hnm) //. }
+    pose proof (subtree_delta_unl_ent (abs_view I) root d nm dec t e nl
+                  Hsub Hd Hdd) as Hpost.
+    iMod tok_alloc as (γi) "Htok".
+    rewrite tree_own_split. iDestruct "Hown" as "[Hdeed Htk]".
+    iModIntro. iFrame "Hka". iSplitL "Hdeed Htok".
+    { iApply (tree_app_step_of c r d I _ Heq).
+      iApply (tree_step_move_unl_ent c r g root d nm dec t e nl
+                (abs_view I) γi Hd Hdd with "Hdeed Htok"). }
+    iIntros (I') "%Hav Hka'".
+    iMod (tree_claim_resync γfs c r g root t (top_unlink d nm t) I'
+            Heq ltac:(rewrite Hav; exact Hpost) Hne with "Hinv Htk Hka'")
+      as "[Hka' Hout]".
+    iModIntro. iFrame "Hka' Hout".
+  Qed.
+
 End TreeMove.
 
 (* ===================================================================== *)
-(*  4.  WHAT AN OWNER CANNOT PAY AT THE LANDED FIRES, AND EXACTLY WHY     *)
-(*      (the lane's STOP rule -- a precise wall beats a forced proof)     *)
+(*  4.  THE CREATE/UNLINK FAMILY: WHAT IS PAID, AND THE THREE WALLS THAT  *)
+(*      REMAIN  (rewritten by lane TL-3P; the section TL-3W left here was *)
+(*      right that ONE thing was missing and wrong about which)           *)
 (*                                                                       *)
-(*  CREATE / MKNOD / MKDIR -- NOT PAYABLE, and the wall is TL-1's, not    *)
-(*  this lane's.  [FsAbsCreateFire.acre_commit_at_gen]'s premise is       *)
-(*  [FsAbsDelta.cre_pre], whose third conjunct is                         *)
-(*  [av !! i = Some (MkAnode c 1)] -- THE CHILD IS ALREADY ARMED at the   *)
-(*  parent leg's instant.  So the delta an owner would have to pay is     *)
-(*  create's PARENT LEG ALONE ([FsAbsDelta.delta_ent], which at an armed  *)
-(*  child is what [delta_create] collapses to), and the [own_wf]          *)
-(*  preservation for that leg -- [own_wf_ent] -- is exactly what          *)
-(*  design/user-tree.md section 6 records as PRICED AND NOT TAKEN: its    *)
-(*  [aview_tree_wf] twin wants "nothing else names the armed inum"        *)
-(*  ([aview_no_edge_to av i]), which needs an induction of its own and    *)
-(*  which no party holds at the fire.  [AppTree.tree_step_move_create] is *)
-(*  landed at the FUSED delta, i.e. at a view where the child is ABSENT;  *)
-(*  that is the shape a fire would have if the two legs were one, and it  *)
-(*  is not the shape the kernel has.                                      *)
+(*  WHAT TL-3P CLOSED, and it is everything on the TREE LAYER'S side:     *)
+(*    - the PINNED PARENT-PREFIX WALK exists ([PinnedObs] section 11,     *)
+(*      [TreeWalk.tree_pwalk_of_own]): a frozen deed supplies             *)
+(*      [FsAbsEra.ep_start], which is what [SysOpenDefs.                  *)
+(*      open_au_create_at], [SpecSysMknod.mknod_au_at] and                *)
+(*      [SpecSysUnlink.unlink_au_pre] owe.  It cost nothing extra at its  *)
+(*      last hop: [ep_hops_from] is [ax_hops_from] over the SHORTER list, *)
+(*      so nameiparent's own read of the parent is not a hop at all --    *)
+(*      it is the syscall's separate COMMIT.                              *)
+(*    - [own_wf_ent] is LANDED ([TreeView] section 8c), so create's       *)
+(*      PARENT LEG ALONE has its [own_wf] preservation and the move is no *)
+(*      longer offered FUSED only ([AppTree.tree_step_move_ent]);         *)
+(*    - the CREATE and UNLINK MOVES are landed in full, at a given parent *)
+(*      ([tree_acre_phases], [tree_uent_phases] above): phase 1 parks the *)
+(*      deed, phase 2 returns it at [top_ins] / [top_unlink];             *)
+(*    - unlink's TARGET leg AT THE LAST LINK is landed too, and FREE      *)
+(*      ([AppTree.tree_step_unl_tgt_last]) -- see WALL C's note.          *)
 (*                                                                       *)
-(*  ...AND EVEN AT A LANDED [own_wf_ent] the create-family BUNDLE has two *)
-(*  more walls, both worth recording because they are independent:        *)
-(*    (a) THE CHILD'S FAILURE LEG.  [FsAbsCreateFire.cre_child_unfired]   *)
-(*        asks the caller for the UNARM ([delta_unarm i], the row at [i]  *)
-(*        DISAPPEARS).  An owner cannot pay it: the row is invisible to   *)
-(*        every subtree only if NOTHING NAMES [i], and the claim's own    *)
-(*        [own_wf] does not say so -- [TreeView.nreach_fresh] wants the   *)
-(*        row ABSENT, which is false by then.  The generic supplier pays  *)
-(*        it off [AppInv.app_sup], which a constraining application does  *)
-(*        not have.  The honest fix is a credential threaded from the ARM *)
-(*        to the UNARM ([aview_no_edge_to] at the unarm's own view), i.e. *)
-(*        a change to [aarm_commit_at]'s receipt -- a kernel-tier lane.   *)
-(*    (b) THE PARENT-PREFIX WALK.  [SysOpenDefs.open_au_create_at] owes   *)
-(*        [FsAbsEra.ep_start] -- the walk to the PARENT of the path --    *)
-(*        and [PinnedObs] offers a pinned supplier for [ex_start] only    *)
-(*        ([pinned_obs] / [pinned_obs_abs]).  A parent-prefix twin is     *)
-(*        additive and is what a mkdir/mknod/open-O_CREATE corollary      *)
-(*        needs first.                                                    *)
+(*  WALL A -- THE COMMITS QUANTIFY THEIR OWN PARENT, AND THAT IS WHY THE  *)
+(*  FAMILY IS STILL NOT PAYABLE.  [FsAbsCreateFire.acre_commit_at_gen]    *)
+(*  and [SysUnlinkDefs.uent_commit_at] both bind [d] INSIDE, so a         *)
+(*  supplier owes a step at EVERY directory of every view:                *)
+(*    - at a [d] the MOVER'S OWN tree records: paid, above;               *)
+(*    - at a [d] NO owner reaches: free (TL-1's OUTSIDE lemmas);          *)
+(*    - at a [d] inside a STRANGER'S subtree: THERE IS NO STEP.  The      *)
+(*      delta moves that owner's recorded tree, only the holder of THAT   *)
+(*      deed can park it, and [tree_taint] is not mintable by an owner    *)
+(*      (it is read off the application's ledger, [AppTree] section 6).   *)
+(*  The three cases are decidable from the claim, and the mover cannot    *)
+(*  tell the second from the third.                                       *)
 (*                                                                       *)
-(*  UNLINK -- and THE REASON IT AND CREATE SHARE ONE WALL.  The tree-side *)
-(*  half of unlink's entry leg is landed ([AppTree.tree_step_move_unl_ent] *)
-(*  + [tree_resync]), but [SysUnlinkDefs.uent_commit_at] QUANTIFIES THE   *)
-(*  PARENT [d] INSIDE, so a supplier owes an answer at every directory -- *)
-(*  and at a [d] inside ANOTHER OWNER'S subtree there is no step at all:  *)
-(*  the delta moves that owner's tree, and only the party holding THAT    *)
-(*  deed could pay.  So an owner cannot supply this commit until [d] is   *)
-(*  FIXED before the commit is handed in, which is exactly what a PINNED  *)
-(*  PARENT-PREFIX WALK would do ([FsAbsEra.ep_start] /                    *)
-(*  [SysOpenDefs.npar_walk_pre_era], whose pinned supplier does not exist *)
-(*  -- [PinnedObs.pinned_obs] covers [ex_start] only).  THAT IS THE SAME  *)
-(*  MISSING PIECE create's bundle needs, so the whole create/unlink write *)
-(*  family is one lane away on this axis (and create needs [own_wf_ent]   *)
-(*  and the unarm credential besides).  It is also why WRITE goes through *)
-(*  and they do not: [awrite_full_at] is INDEXED by the descriptor's own  *)
-(*  inum, so the owner's move is at a node it already names.              *)
-(*  The unlink TARGET leg at the LAST LINK stays TL-2's own recorded wall *)
-(*  ("the row is nobody's root" is a fact about the ownership map that no *)
-(*  mover holds); above the last link it is free                          *)
-(*  ([AppTree.tree_step_unl_tgt_live]).  And the U-tier leaf is blocked   *)
-(*  anyway: [UkTreeRead] section 5 records that unlink, like chdir, still *)
-(*  carries the [∀ pl] walk form a pin cannot answer.                     *)
+(*  TL-3W's note said a pinned parent-prefix walk would FIX [d] before    *)
+(*  the commit is handed in.  IT DOES NOT, and this is the lane's main    *)
+(*  finding: the walk and the commit are SEPARATE CONJUNCTS of the bundle *)
+(*  ([SpecSysUnlink.unlink_au_pre], [SpecSysMknod.mknod_au_pre]), and the *)
+(*  walk's terminal cursor [P (length (npar_elems pl)) d] surfaces only   *)
+(*  in the syscall's POST ([unlink_post_ok]) -- after every commit has    *)
+(*  already had to be provable at every [d].  What the walk buys is real  *)
+(*  but it is on the other side of the fire.                              *)
 (*                                                                       *)
-(*  TRUNCATE -- [AppTree.tree_step_move_trunc] is landed and              *)
-(*  [SysOpenDefs.open_trunc_piece] is its fire, but O_TRUNC arrives only  *)
-(*  inside an open bundle, whose walk is the same pinned-walk question    *)
-(*  as above at [om_trunc = true].  The tree-layer half is done.          *)
+(*  TWO FIXES, PRICED.                                                    *)
+(*   (i) THREAD THE CURSOR (kernel tier, mechanical).  Give the two       *)
+(*       commits the walk's parent cursor as a premise -- [acre_commit_at *)
+(*       _gen] and [uent_commit_at] each gain [P (length (npar_elems pl)) *)
+(*       d -*] beside their [cre_pre]/[unl_pre].  The PROVER holds it at  *)
+(*       the fire instant (it is what the ret-0 arm hands back), so the   *)
+(*       kernel side is a restatement rather than a new proof; the owner  *)
+(*       then reads [d = dpar \/ taint] off [TreeWalk.tree_pwalk_parent]  *)
+(*       and pays with [tree_acre_phases] / [tree_uent_phases] verbatim.  *)
+(*       Cone: SysOpenDefs, SpecCreate, SpecSysMknod, SpecSysUnlink,      *)
+(*       SpecSysLink, FsAbs{Create,Unlink,Link}Fire, FsAbsInvFire's unit  *)
+(*       dischargers, and the ProofSys{Unlink,Link}* fire sites.          *)
+(*  (ii) CONSTRAIN THE CLAIM (tree tier).  Make "no stranger reaches [d]" *)
+(*       a consequence of the claim.  It is TRUE of every reachable tree  *)
+(*       application -- the era's first deed is ONE entry                 *)
+(*       ([AppTree.tree_xfer_boot_at]) and [tree_grant] RETIRES the       *)
+(*       parent as it births the child, so the ownership map never grows  *)
+(*       -- but the claim cannot see it.  Price: one more conjunct in     *)
+(*       [tree_body] and a third gname in [tree_names], i.e. an AppTree   *)
+(*       regrow of TL-3W's size.  Every landed statement survives, for    *)
+(*       TL-3W's own reason: [tree_names] is quantified opaquely.         *)
+(*                                                                       *)
+(*  WALL B -- THE WALK WANTS A FROZEN DEED AND THE MOVE WANTS A LIVE ONE. *)
+(*  NEW, and independent of WALL A.  [PinnedObs]'s walk premise is a [BOX]*)
+(*  claim law, because a walk reads the claim ONCE PER HOP; only          *)
+(*  [AppTree.tree_pin_law] -- a FROZEN deed -- has that shape, and a      *)
+(*  frozen deed can never be parked, so its owner can never move again.   *)
+(*  create and unlink need the walk AND the move in ONE syscall, so one   *)
+(*  owner cannot have both.  WRITE escaped this because its bundle has no *)
+(*  walk at all ([awrite_full_at] is indexed by the descriptor's inum);   *)
+(*  exec, open and read escape it because they never move.                *)
+(*    THE ONE CASE WHERE IT DOES NOT BITE, and it is the case the second  *)
+(*    application actually starts from: a parent prefix of LENGTH ZERO.   *)
+(*    At a path naming an entry of the walk's own start directory         *)
+(*    ("/foo" for an owner of "/"), [np_elems pl = []], [ep_hops_from] is *)
+(*    the empty big-op and [ep_start] is the START CURSOR ALONE -- a pure *)
+(*    fact, with no claim law read anywhere ([UInitCons.init_cons_au]'s   *)
+(*    mknod("console") is the landed precedent).  So mkdir("/d") by the   *)
+(*    owner of "/" is reachable the moment WALL A falls, while a longer   *)
+(*    prefix needs a DUPLICABLE READ of a LIVE deed besides.  AND THE     *)
+(*    LIMIT IS LENGTH 1, NOT 0 (priced, not taken): section 8's dead walk *)
+(*    already shows a walk whose claim law is LINEAR -- it takes a        *)
+(*    resource [K], spends it at hop 0 and hands it back -- so a parent   *)
+(*    prefix with exactly ONE hop could be supplied by a LIVE deed.  Two  *)
+(*    additive lemmas beside [pobs_phop] / [pobs_pwalk]; nothing consumes *)
+(*    them until WALL A falls.  A prefix of length >= 2 genuinely needs   *)
+(*    the frozen deed.                                                    *)
+(*                                                                       *)
+(*  WALL C -- THE CREDENTIALS THE LEGS OWE EACH OTHER, and they are all   *)
+(*  ONE mechanism.  Each of create's and unlink's later legs needs a fact *)
+(*  its own EARLIER leg has and the claim does not carry:                 *)
+(*    - create's PARENT leg needs [aview_no_edge_to av i], nothing names  *)
+(*      the armed row.  [TreeView.aview_no_edge_to_arm] PROVES it at      *)
+(*      the arm's view; nothing carries it to the parent leg.             *)
+(*    - create's parent leg also needs "the armed inum is nobody's root", *)
+(*      which [TreeView.own_wf_ent_leaf] pays FREE at a non-directory     *)
+(*      child (open(O_CREATE), mknod) and NOT at mkdir's directory child. *)
+(*    - the child's UNARM leg ([FsAbsCreateFire.cre_child_unfired]) needs *)
+(*      the same no-edge fact -- TL-3W's item (a), unchanged.             *)
+(*    - unlink's TARGET leg at the LAST LINK needs [aview_no_edge_to av   *)
+(*      tg], and its own ENTRY leg PROVES it                              *)
+(*      ([TreeView.aview_no_edge_to_unl_ent]): unique parenthood says the *)
+(*      edge the entry leg just cut was the only one, so the tree layer   *)
+(*      never has to carry the [nlink]-vs-edge-count tie TL-1 recorded as *)
+(*      missing.  With that credential and a NON-DIRECTORY target, the    *)
+(*      leg is FREE at every owner ([AppTree.tree_step_unl_tgt_last]) --  *)
+(*      TL-2's "the row is nobody's root" wall is HALF LIFTED: a file's   *)
+(*      or a device's row is nobody's root because roots are directories. *)
+(*      A DIRECTORY's last link ([rmdir]-shaped) keeps TL-2's wall.       *)
+(*  So WALL C is ONE kernel-tier change: a credential carried on the      *)
+(*  legs' receipts ([aarm_commit_at]'s and [uent_commit_at]'s [Phi]),     *)
+(*  serving the unarm leg, mkdir's parent leg and the last-link target    *)
+(*  leg at once.                                                          *)
+(*                                                                       *)
+(*  TRUNCATE -- unchanged: [AppTree.tree_step_move_trunc] is landed and   *)
+(*  IS inum-indexed, so O_TRUNC is only WALL B's open-bundle walk.        *)
+(*  THE U TIER -- unchanged: [UkTreeRead] section 5 records that unlink,  *)
+(*  like chdir, still carries the [forall pl] walk form a pin cannot      *)
+(*  answer, so even a payable unlink has no U-tier leaf yet.  mknod and   *)
+(*  open(O_CREATE) do ([SpecSysMknod.mknod_au_at],                        *)
+(*  [SysOpenDefs.open_au_create_at] are at the ONE path argument 0 names).*)
 (* ===================================================================== *)

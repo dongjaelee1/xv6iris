@@ -427,6 +427,54 @@ carries the full as-landed block; the headlines:
    want RD-1's HELD offset before the chain's cursor can name the splice
    (additive; today the honest post is the `twrote` relation).
 
+**TL-3P AS LANDED (THE PARENT PREFIX)** — branch `tl3p-parent`, one new
+file (`iris/TreeWalk.v`) and four grown ADDITIVELY (`TreeView.v` §8,
+`PinnedObs.v` §11, `AppTree.v`, `TreeMove.v` §3b + a rewritten §4);
+`AppEcho.v`/`AppInv.v` untouched, every TL-1/2/3/3W statement unchanged,
+whole iris tree green on the mirror, echo audit 14, every new result
+`Closed under the global context`.  `design/user-tree.md` §7.5 carries the
+full as-landed block; the headlines:
+
+1. **TL-3W's wall (c) IS CLOSED, and it was not the wall.**  The pinned
+   parent-prefix walk exists (`PinnedObs` §11 → `FsAbsEra.ep_start`,
+   `TreeWalk.tree_pwalk_of_own` out of a frozen deed), and it cost nothing
+   extra at its last hop: `ep_hops_from` ranges over the SHORTER list, so
+   nameiparent's read of the parent is not a hop but the syscall's own
+   COMMIT.  **But the walk does not fix `d` inside that commit** — the walk
+   and the commit are separate conjuncts of the bundle and the terminal
+   cursor surfaces only in the POST.  That is WALL A, and it is what the
+   whole create/unlink family now waits on.
+2. **WALL A's two fixes, priced**: (i) thread the walk's parent cursor into
+   `acre_commit_at_gen` / `uent_commit_at` as a premise — a kernel-tier
+   RESTATEMENT (the prover already holds the cursor at the fire instant),
+   and the recommended one; (ii) constrain the claim so "no stranger
+   reaches `d`" follows from it (true of every reachable tree application,
+   since `tree_grant` retires the parent it births from — price: an AppTree
+   regrow of TL-3W's size).
+3. **WALL B, NEW**: a walk reads the claim once per hop, so its premise is
+   a `□` law and only a FROZEN deed has one — while the move needs the LIVE
+   deed.  create/unlink need both in one syscall; write escaped it because
+   its bundle has no walk.  **It does not bite at a parent prefix of length
+   ZERO** (`mkdir("/d")` by the owner of `/`), where `ep_start` is the pure
+   start cursor and no claim law is read at all.
+4. **WALL C is ONE mechanism**: a credential carried on a leg's receipt.
+   create's parent leg and the UNARM leg want the arm's "nothing names `i`";
+   mkdir's parent leg additionally wants "the armed inum is nobody's root"
+   (FREE at a non-directory child, `own_wf_ent_leaf`); unlink's last-link
+   target leg wants the entry leg's no-edge fact — and the entry leg PROVES
+   it (`aview_no_edge_to_unl_ent`, off unique parenthood), so the tree layer
+   never carries the `nlink`-vs-edge-count tie.
+5. **WHAT IS PAID**: `own_wf_ent` (TreeView §8c) and so
+   `AppTree.tree_step_move_ent`; the create and unlink MOVES in full at a
+   given parent (`TreeMove.tree_acre_phases` / `tree_uent_phases`); and
+   **TL-2's last-link wall HALF LIFTED** — at a non-directory target the
+   leg is FREE at every owner (`tree_step_unl_tgt_last`), a directory's
+   last link (`rmdir`-shaped) keeps it.
+6. **NO corollary and NO extended test**: every syscall the brief's
+   "own → mkdir → open(O_CREATE) → write → freeze → read-learns" test would
+   add is behind WALL A, so `UkTreeWrite.wp_uk_tree_write_moves` is
+   unchanged.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

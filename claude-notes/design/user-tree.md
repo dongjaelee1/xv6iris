@@ -243,11 +243,19 @@ that writes is provable the moment either route lands.
   lemma at a target the owner already reaches; the landed `own_wf`
   lemmas do not cover it.
 - **An owner never unlinks a root** (TL-1's side condition, stated as
-  the step's premise), and TL-2 found that the LAST-LINK target leg
-  cannot be paid at all as things stand: "the row is nobody's root" is
-  a fact about the ownership map, which no mover holds.  It is payable
-  only as a strengthening of the claim (every root is named, or is
-  `ROOTINO`); recorded, not taken.
+  the step's premise).  TL-2 found that the LAST-LINK target leg could
+  not be paid at all — "the row is nobody's root" is a fact about the
+  ownership map, which no mover holds.  **HALF LIFTED by TL-3P** (§7.5):
+  at a NON-DIRECTORY target it is not about the map at all, because
+  `own_wf`'s own roots conjunct says every root is `adir_at`, so a file's
+  or a device's row is nobody's root by kind
+  (`TreeView.own_wf_unl_tgt_nodir`); and the other premise,
+  `aview_no_edge_to`, is PROVED by unlink's own entry leg
+  (`aview_no_edge_to_unl_ent`: unique parenthood says the edge just cut
+  was the only one), so the tree layer never carries the
+  `nlink`-vs-edge-count tie.  The leg is then FREE at every owner
+  (`AppTree.tree_step_unl_tgt_last`).  A DIRECTORY's last link —
+  `rmdir`-shaped — keeps TL-2's wall.
 - Exclusivity is declared, not enforced: an unverified process can
   scribble anywhere; the claim taints.  This is xv6, not a capability
   OS, and the theorem says so.
@@ -564,9 +572,14 @@ that writes is provable the moment either route lands.
   by `app_tree_boot`.  `Happ_init` / `Hinit_boot` stay TL-4's.
 
   **Housekeeping**: `own_wf_trunc` MOVED to `TreeView.v` §7c (at the
-  section's `gmap K`, as its twins).  `own_wf_ent` is PRICED AND NOT
-  TAKEN, with the reason recorded where it belongs (TreeView, end of
-  `OwnPres`): `nuniq_parent_ins_fresh` wants the target inum ABSENT,
+  section's `gmap K`, as its twins).  `own_wf_ent` was PRICED AND NOT
+  TAKEN — **TAKEN by TL-3P**, `TreeView.v` §8c; the pricing below is right
+  about the PREMISE and wrong about the proof (no induction of its own is
+  needed — `nuniq_parent_ins_fresh`'s case analysis goes through with
+  freshness replaced by the no-edge fact), and what the leg really wants
+  beyond the fresh case is a SECOND credential, "the armed inum is
+  nobody's root".  The note as it stood:
+  `nuniq_parent_ins_fresh` wants the target inum ABSENT,
   which the ARM leg has just made false; the honest premise is
   `aview_no_edge_to av i` and no landed lemma proves unique parenthood
   from it — it needs its own induction, the twin of
@@ -582,6 +595,12 @@ that writes is provable the moment either route lands.
   (`resv_matches`, `resv_is_valid`) plus funext and nothing else.
 - [x] **TL-3b / TL-3W THE WRITE SIDE** — LANDED, §7.4: §5.0's decision was
   ruled in §7 (route (ii), no seam change) and the lane landed on it.
+- [x] **TL-3P THE PARENT PREFIX** — LANDED, §7.5: the pinned nameiparent
+  walk (`iris/TreeWalk.v`, `PinnedObs.v` §11), `own_wf_ent`
+  (`TreeView.v` §8), the create and unlink MOVES at a given parent
+  (`TreeMove.v` §3b), and unlink's last-link target leg.  The
+  create/unlink family is still not payable, and §7.5 names the three
+  walls that are left — one of which is NOT the one TL-3W predicted.
 - [ ] **TL-4 THE SECOND APPLICATION**: the end-to-end instance of §4.3
   at `xv6_app_adequacy`, with its own `make audit` line.
 
@@ -676,9 +695,12 @@ subtree cannot build the step and falls to the taint arm, as §3 says.
   §7.2, `iris/TreeMove.v` and `iris/UkTreeWrite.v` new, `AppEcho.v` /
   `AppInv.v` untouched, every TL-2/TL-3 statement unchanged, whole tree
   green, echo audit 14.  §7.4 is the as-landed block.
+- [x] **TL-3P** — LANDED (branch `tl3p-parent`): §7.5.
 - [ ] **SEAM-I** (deferred; ready): §7.1 as one mechanical lane if a
   consumer appears.  TL-3W did NOT need it, which is the ruling
   confirmed: the fire's own phase 2 is the return channel.
+- [ ] **PARENT-CURSOR** (priced, not taken; §7.5's WALL A fix (i)): the
+  one kernel-tier lane the whole create/unlink write family now waits on.
 
 ### 7.4 TL-3W as landed
 
@@ -786,8 +808,11 @@ chain's prefix cursor), and a ghost-map half rides it home.  That was the
 lane's one predicted wall and it is not a wall.
 
 **WHAT IS NOT LANDED, AND EXACTLY WHY** (`TreeMove.v` §4 carries this in
-full).  The brief's test was "own → mkdir → create → write → read-learns";
-the first two steps are not landable, for THREE independent reasons:
+full).  **SUPERSEDED BY §7.5**: TL-3P closed reasons 1 and 3 and found that
+3 was not in fact what blocked the family.  Kept as the record of what
+TL-3W saw.  The brief's test was "own → mkdir → create → write →
+read-learns"; the first two steps are not landable, for THREE independent
+reasons:
 
 1. **create/mknod/mkdir: `own_wf_ent`.**  `FsAbsDelta.cre_pre`'s third
    conjunct is `av !! i = Some (MkAnode c 1)` — at the parent leg's instant
@@ -846,3 +871,115 @@ and reads through a second open instead.)
   the chain's cursor could name the splice and the corollary would read "my
   tree records exactly the bytes I sent".  Additive, and the one upgrade
   this member is waiting for.
+
+### 7.5 TL-3P as landed — the parent prefix, and the three walls left
+
+**WHAT LANDED.**  Four files grown ADDITIVELY (`TreeView.v` §8,
+`PinnedObs.v` §11, `AppTree.v`, `TreeMove.v` §3b) and one new
+(`iris/TreeWalk.v`); `AppEcho.v` / `AppInv.v` untouched, every landed
+TL-1/2/3/3W statement unchanged, echo audit unmoved, whole tree green.
+Every new result is `Closed under the global context` — not even funext.
+
+- **The pinned parent-prefix walk.**  `PinnedObs` §11 is §10's family over
+  `FsAbsEra.np_elems pl = removelast (path_elems pl)`: `pin_pwalks_at`,
+  `pin_pdir_at` (the terminal directory's entry map, UP TO THE DOTS — all a
+  create/unlink consumer spends, since it asks about its own proper `nm`),
+  `pobs_phop` / `pobs_pwalk` → `FsAbsEra.ep_start`, and `pobs_pterm`, the
+  terminal cursor read as "this is the pinned parent, or the taint".
+  `TreeWalk.tree_pwalk_of_own` is the deed route, `TreeExec`'s shape one
+  element short.
+  **`ep_hops_from` COSTS NOTHING EXTRA AT ITS LAST HOP**, which is the one
+  thing this family was expected to cost: it is `ax_hops_from` over the
+  SHORTER list, so its hops are `0 .. L-1` and there is no hop at `L`.
+  nameiparent's own read of the parent is not a hop at all — it is the
+  syscall's separate COMMIT.  The parent-prefix walk is a strict PREFIX of
+  the namei walk and its supplier is §10's with one list swapped.
+- **`own_wf_ent`** (`TreeView` §8c), so create's parent leg alone has its
+  preservation and `AppTree.tree_step_move_ent` exists.  Two credentials,
+  not one: `aview_no_edge_to av i` (proved at the arm by
+  `aview_no_edge_to_arm`) and "the armed inum is nobody's root", which
+  `own_wf_ent_leaf` pays FREE at a non-directory child and which mkdir's
+  directory child still owes.
+- **The create and unlink MOVES, in full, at a given parent**
+  (`TreeMove.tree_acre_phases` / `tree_uent_phases`): phase 1 parks the
+  deed and a fresh token and hands out the very `AppInv.app_step` the fire
+  asks for; phase 2 returns the deed at `top_ins` / `top_unlink`.
+- **Unlink's last-link target leg**, FREE at every owner at a
+  non-directory target — see §5.1.
+
+**WALL A — THE COMMITS QUANTIFY THEIR OWN PARENT.**  This is the lane's
+main finding and it CORRECTS §7.4's wall 3.
+`FsAbsCreateFire.acre_commit_at_gen` and `SysUnlinkDefs.uent_commit_at`
+bind `d` INSIDE, so a supplier owes a step at EVERY directory of every
+view: at the mover's own `d` it is paid, at a `d` no owner reaches it is
+free, and **at a `d` inside a stranger's subtree there is no step at all**
+— the delta moves that owner's recorded tree, only the holder of THAT deed
+can park it, and `tree_taint` is not mintable by an owner.  The mover
+cannot tell the second case from the third.
+§7.4 said a pinned parent-prefix walk would FIX `d` before the commit is
+handed in.  **It does not.**  The walk and the commit are separate
+conjuncts of the bundle (`unlink_au_pre`, `mknod_au_pre`), and the walk's
+terminal cursor surfaces only in the syscall's POST — after every commit
+has had to be provable at every `d`.  Two fixes:
+  - **(i) THREAD THE CURSOR** (kernel tier, mechanical, and the lane
+    RECOMMENDS it): give the two commits `P (length (npar_elems pl)) d` as
+    a premise beside their `cre_pre`/`unl_pre`.  The prover holds it at the
+    fire instant (it is what the ret-0 arm hands back), so the kernel side
+    is a restatement rather than a new proof, and the owner then reads
+    `d = dpar ∨ taint` off `TreeWalk.tree_pwalk_parent` and pays with the
+    landed phases verbatim.  Cone: SysOpenDefs, SpecCreate, SpecSysMknod,
+    SpecSysUnlink, SpecSysLink, `FsAbs{Create,Unlink,Link}Fire`,
+    FsAbsInvFire's unit dischargers, the `ProofSys{Unlink,Link}*` fire
+    sites.
+  - **(ii) CONSTRAIN THE CLAIM** (tree tier): make "no stranger reaches
+    `d`" a consequence of the claim.  It is TRUE of every reachable tree
+    application — the era's first deed is ONE entry and `tree_grant`
+    RETIRES the parent as it births the child, so the ownership map never
+    grows — but the claim cannot see it.  Price: one more conjunct in
+    `tree_body` and a third gname in `tree_names`, i.e. an AppTree regrow
+    of TL-3W's size; every landed statement survives because `tree_names`
+    is quantified opaquely.
+
+**WALL B — THE WALK WANTS A FROZEN DEED AND THE MOVE WANTS A LIVE ONE.**
+New, and independent of WALL A.  A walk reads the claim ONCE PER HOP, so
+`PinnedObs`'s premise is a `□` claim law, and only `tree_pin_law` — a
+FROZEN deed — has that shape; a frozen deed can never be parked, so its
+owner can never move again.  create and unlink need the walk AND the move
+in ONE syscall.  WRITE escaped this because its bundle has no walk
+(`awrite_full_at` is inum-indexed); exec/open/read escape it because they
+never move.
+**THE ONE CASE WHERE IT DOES NOT BITE** — and it is where the second
+application starts: a parent prefix of LENGTH ZERO.  At a path naming an
+entry of the walk's own start directory (`"/foo"` for an owner of `/`),
+`np_elems pl = []`, `ep_hops_from` is the empty big-op and `ep_start` is
+the START CURSOR ALONE — a pure fact, no claim law read anywhere
+(`UInitCons`'s `mknod("console")` is the landed precedent).  So
+`mkdir("/d")` by the owner of `/` is reachable the moment WALL A falls,
+while a longer prefix needs a DUPLICABLE READ of a LIVE deed besides.
+**AND THE LIMIT IS LENGTH 1, NOT 0** (priced, not taken): `pobs_walk_dead`
+already shows the shape of a walk whose claim law is LINEAR — it takes a
+resource `K`, spends it at hop 0 and hands it back, and every later hop is
+reached only under the taint.  A parent prefix of length ONE has exactly
+one hop, so a `pobs_phop`/`pobs_pwalk` pair at that linear law would let a
+LIVE deed supply the walk for `open("/d/f", O_CREATE)` too.  Two additive
+lemmas, and nothing consumes them until WALL A falls, which is why TL-3P
+records rather than lands them.  A prefix of length ≥ 2 genuinely needs the
+frozen deed.
+
+**WALL C — THE CREDENTIALS THE LEGS OWE EACH OTHER, and they are ONE
+mechanism.**  create's parent leg needs the arm's no-edge fact; the
+child's UNARM leg needs the same one (§7.4's item (a), unchanged); mkdir's
+parent leg needs "the armed inum is nobody's root", which only the arm's
+own view has; unlink's last-link target leg needs the entry leg's no-edge
+fact — and that one the entry leg PROVES
+(`TreeView.aview_no_edge_to_unl_ent`).  So WALL C is ONE kernel-tier
+change: a credential carried on the legs' receipts (`aarm_commit_at`'s and
+`uent_commit_at`'s `Φ`), serving all four at once.
+
+**WHAT TL-4 INHERITS.**  The read side and the write side of the OWNED
+subtree are complete; the create/unlink family is one kernel-tier lane
+(WALL A fix (i), plus WALL C's credential for mkdir and the unarm) from
+being payable, and its first corollary — `mkdir` at the owner's own root —
+does not even need WALL B lifted.  No corollary and no extended test
+landed in TL-3P: `UkTreeWrite.wp_uk_tree_write_moves` is unchanged, because
+every syscall the extended test would add is behind WALL A.

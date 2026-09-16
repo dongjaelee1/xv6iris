@@ -791,3 +791,187 @@ Section PinnedObsAbs.
   Qed.
 
 End PinnedObsAbs.
+
+(* ===================================================================== *)
+(*  11.  THE PARENT-PREFIX PIN: nameiparent's walk, out of the same claim *)
+(*                                                                        *)
+(*  ADDITIVE, and nothing above it moves (lane TL-3P).  Sections 5-7 and  *)
+(*  10 supply [FsAbsEra.ex_start] -- the FULL-path walk namei runs, which *)
+(*  exec, open and read take.  The create/unlink write family             *)
+(*  ([SysOpenDefs.open_au_create_at], [SpecSysMknod.mknod_au_at],         *)
+(*  [SpecSysUnlink.unlink_au_pre]) owes [FsAbsEra.ep_start] instead: the  *)
+(*  walk nameiparent runs, over [FsAbsEra.np_elems pl] =                  *)
+(*  [removelast (path_elems pl)].  Until now the only supplier was        *)
+(*  [FsAbsEra.ep_start_triv], the caller who tracks nothing.              *)
+(*                                                                        *)
+(*  WHAT [ep_hops_from] DEMANDS AT ITS LAST HOP: NOTHING EXTRA, and that  *)
+(*  is worth stating because it was the one thing this family was         *)
+(*  expected to cost.  [ep_hops_from] is [ax_hops_from] over the SHORTER  *)
+(*  list, so its hops are indexed [0 .. L-1] for [L = length (np_elems    *)
+(*  pl)] and there is NO hop at index [L].  nameiparent's own read of the *)
+(*  parent's entry map -- the "one short" step -- is not a hop at all: it *)
+(*  is the syscall's own COMMIT ([FsAbsCreateFire.dlookup_commit_at],     *)
+(*  [SysUnlinkDefs.uent_commit_at]), a separate piece of the bundle.  So  *)
+(*  the parent-prefix walk is a STRICT PREFIX of the namei walk and its   *)
+(*  supplier is section 10's with one list swapped; [pobs_phop]'s proof   *)
+(*  is [pobs_hop_w]'s, line for line.                                     *)
+(*                                                                        *)
+(*  THE DUPLICATION IS DELIBERATE AND ITS FACTORING IS ONE LEMMA AWAY.    *)
+(*  [ex_hop] and [ep_hop] are BOTH [FsAbs.ax_hop] at the same lend, and   *)
+(*  [ex_start] / [ep_start] differ only in the list, so ONE hop lemma and *)
+(*  ONE walk lemma parametric in [ps : list fname] would subsume sections *)
+(*  10 and 11 both.  Taking it means RE-PROVING two landed results as     *)
+(*  instances, which this lane's bar forbids (PinnedObs is additive-only  *)
+(*  here); it is the shape to move to the next time this file is opened   *)
+(*  for its own sake.                                                     *)
+(*                                                                        *)
+(*  WHAT THE PIN CARRIES BESIDE THE WALK, and who spends it: the TERMINAL *)
+(*  cursor names the PARENT [d] ([pobs_pterm]), and [pin_pdir_at] says    *)
+(*  what that parent's entry map is up to the dots.  Neither is needed to *)
+(*  BUILD [ep_start]; both are what a create/unlink consumer reads, and   *)
+(*  [pobs_pterm] is precisely the ingredient a [d]-indexed commit would   *)
+(*  use (see [TreeMove.v] section 4).                                     *)
+(* ===================================================================== *)
+
+(* the walk alone, over the PARENT PREFIX: the start rule, the terminal
+   PARENT inum, and the run.  [pin_walks_at]'s twin at [np_elems]. *)
+Definition pin_pwalks_at (Pin : aview -> Prop) (cw : Z) (pl : list (bv 8))
+    (hops : list Z) (d : Z) : Prop :=
+  um_start_of cw pl = hops !!! 0%nat
+  /\ hops !!! (length (np_elems pl)) = d
+  /\ (forall v : aview, Pin v -> arun v (hops !!! 0%nat) (np_elems pl) hops).
+
+(* ...and what the terminal directory is: a row of the view whose PROPER
+   entries are [ents].  UP TO THE DOTS, and that is not a weakening of
+   convenience -- an application whose claim is about the NAMESPACE
+   cannot see "." and ".." at all ([TreeView]'s [hide_dots]), and no
+   consumer needs them (a create asks whether its own [nm] is there, and
+   [nm] is proper). *)
+Definition pin_pdir_at (Pin : aview -> Prop) (d : Z)
+    (ents : gmap fname Z) : Prop :=
+  forall v : aview,
+    Pin v ->
+    exists (e : gmap fname Z) (k : nat),
+      v !! d = Some (MkAnode (ADir e) k)
+      /\ (forall s : fname, s <> DOT -> s <> DOTDOT -> e !! s = ents !! s).
+
+Definition pin_presolves_at (Pin : aview -> Prop) (cw : Z) (pl : list (bv 8))
+    (hops : list Z) (d : Z) (ents : gmap fname Z) : Prop :=
+  pin_pwalks_at Pin cw pl hops d /\ pin_pdir_at Pin d ents.
+
+Lemma pin_pwalks_at_of_presolves (Pin : aview -> Prop) (cw : Z)
+    (pl : list (bv 8)) (hops : list Z) (d : Z) (ents : gmap fname Z) :
+  pin_presolves_at Pin cw pl hops d ents -> pin_pwalks_at Pin cw pl hops d.
+Proof. intros [Hw _]. exact Hw. Qed.
+
+Section PinnedObsPar.
+  (* section 2's binder list verbatim *)
+  Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ}.
+
+  (* ONE HOP of the parent prefix.  [pobs_hop_w]'s proof with [np_elems]
+     in place of [path_elems]: a hop is a hop ([FsAbsEra.ep_hop_is_ax_hop]
+     -- [ep_hop] and [ex_hop] are the SAME [FsAbs.ax_hop] at the same
+     lend), and what changes is only the list the run is over. *)
+  Lemma pobs_phop (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (d : Z)
+      (k : nat) (s : fname) :
+    pin_pwalks_at Pin cw pl hops d ->
+    np_elems pl !! k = Some s ->
+    pobs_miss_taint T Pmiss -∗
+    □ (∀ v : aview, app_pred app_run v -∗
+                      app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv γfs -∗
+    ep_hop γfs (pobs_P T hops) Pmiss k s.
+  Proof.
+    intros (_ & _ & Hpin) Hk. iIntros "#Hmt #Hcl #Hinv".
+    rewrite /ep_hop /ax_hop /pobs_P.
+    iIntros (d0 ents dqv) "HP HF".
+    iDestruct "HP" as "[%Hd | #HT]"; last first.
+    { iModIntro. iFrame "HF".
+      destruct (ents !! s) as [c |]; [ by iRight | iApply ("Hmt" with "HT") ]. }
+    subst d0.
+    iMod (inv_acc ⊤ appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I) "(>Hh & Hp & >%Hdom & #Hx)".
+    iAssert (▷ (app_pred app_run (abs_view I) ∗ (⌜Pin (abs_view I)⌝ ∨ T)))%I
+      with "[Hp]" as "Hpc".
+    { iNext. iApply ("Hcl" with "Hp"). }
+    iDestruct "Hpc" as "[Hp Hc]".
+    iMod "Hc".
+    iDestruct (pobs_elend_astep γfs (1/2)%Qp I (hops !!! k) dqv ents s
+                 with "Hh HF") as %Hae.
+    iMod ("Hclose" with "[Hh Hp]") as "_".
+    { iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
+      iPureIntro. exact Hdom. }
+    iModIntro. iFrame "HF".
+    iDestruct "Hc" as "[%HP | #HT]"; last first.
+    { destruct (ents !! s) as [c |]; [ by iRight | iApply ("Hmt" with "HT") ]. }
+    pose proof (arun_step_tot (abs_view I) (hops !!! 0%nat) (np_elems pl)
+                  hops k s (Hpin (abs_view I) HP) Hk) as Hst.
+    rewrite Hae in Hst. rewrite Hst. by iLeft.
+  Qed.
+
+  (* THE WHOLE PARENT-PREFIX WALK, at the ONE path the pin is about.
+     [pobs_walk_w]'s proof at [FsAbsEra.ep_start] / [ep_hops_from]. *)
+  Lemma pobs_pwalk (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (d : Z) :
+    pin_pwalks_at Pin cw pl hops d ->
+    pobs_miss_taint T Pmiss -∗
+    □ (∀ v : aview, app_pred app_run v -∗
+                      app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv γfs -∗
+    ep_start γfs cw (pobs_P T hops) Pmiss pl.
+  Proof.
+    intros Hres. iIntros "#Hmt #Hcl #Hinv".
+    pose proof Hres as Hres'. destruct Hres' as (Hstart & _ & _).
+    rewrite /ep_start. iIntros (r Hr). iModIntro. iSplitR.
+    { rewrite /pobs_P. iLeft. iPureIntro. by rewrite Hr Hstart. }
+    rewrite /ep_hops_from /ax_hops_from.
+    iApply big_sepL_intro. iIntros "!>" (j s Hj).
+    rewrite lookup_drop in Hj.
+    iApply (pobs_phop γfs Pin T Pmiss cw pl hops d (0 + j)%nat s Hres Hj
+              with "Hmt Hcl Hinv").
+  Qed.
+
+  (* THE TERMINAL READING: the cursor the walk hands back at index
+     [length (np_elems pl)] IS the pinned parent, or the taint.  A pure
+     cursor reading -- there is no receipt to pair it with, because a
+     nameiparent walk observes nothing of its own. *)
+  Lemma pobs_pterm (Pin : aview -> Prop) (T : iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (d d' : Z) :
+    pin_pwalks_at Pin cw pl hops d ->
+    pobs_P T hops (length (np_elems pl)) d' -∗ ⌜d' = d⌝ ∨ T.
+  Proof.
+    intros (_ & Hfin & _). rewrite /pobs_P.
+    iIntros "[%Hd | HT]"; [ | iRight; iExact "HT" ].
+    iLeft. iPureIntro. by rewrite Hd Hfin.
+  Qed.
+
+  (* THE GENERAL LEMMA at the parent prefix: the walk, and the terminal
+     identification of the parent. *)
+  Lemma pinned_pobs (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (d : Z)
+      (ents : gmap fname Z) :
+    pin_presolves_at Pin cw pl hops d ents ->
+    pobs_miss_taint T Pmiss -∗
+    □ (∀ v : aview, app_pred app_run v -∗
+                      app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv γfs -∗
+      ep_start γfs cw (pobs_P T hops) Pmiss pl
+      ∗ □ (∀ d' : Z,
+             pobs_P T hops (length (np_elems pl)) d' -∗ ⌜d' = d⌝ ∨ T).
+  Proof.
+    intros Hres. iIntros "#Hmt #Hcl #Hinv". iSplitL.
+    { iApply (pobs_pwalk γfs Pin T Pmiss cw pl hops d
+                (pin_pwalks_at_of_presolves _ _ _ _ _ _ Hres)
+                with "Hmt Hcl Hinv"). }
+    iModIntro. iIntros (d') "HP".
+    iApply (pobs_pterm Pin T cw pl hops d d'
+              (pin_pwalks_at_of_presolves _ _ _ _ _ _ Hres) with "HP").
+  Qed.
+
+End PinnedObsPar.

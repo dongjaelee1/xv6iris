@@ -133,7 +133,17 @@ rulings the sketch above got wrong, both forced by the landed entries:
   is a finding, not a preference.  (The alternative — an agreement lemma
   for `exec_args_of` plus a congruence for `kexec_image_ok`, letting the
   assembly fix one shape — is real but is EX-3's, and it would not be
-  zero-semantic-change here.)
+  zero-semantic-change here.)  **EX-3 BUILT THAT ALTERNATIVE, AND IT DOES
+  NOT OVERTURN THE RULING.**  `ExecArgs.exec_args_of_agree` +
+  `ExecArgs.kexec_image_ok_ext` give `ExecArgs.image_entry_of_at_reading`:
+  an entry proved at ONE argument shape, plus ONE reading of the caller's
+  image, IS `image_entry`.  So the reading is still a premise — the entry
+  is still stated at `M` and `av` — but it is now consumed ONCE by the
+  program instead of re-proved at every shape the kernel might quantify,
+  and what a NEW program owes is `image_entry_at` alone.  The lift's
+  content is that `kexec_image_ok` reads `alen` only below the count and
+  `afun` only below each length, so the agreement's range is exactly
+  enough.
 
 ## 2. The general assembly and the U-tier rule
 
@@ -288,6 +298,14 @@ key's children set and pid (/init's, for the shell it starts);
   echo_elf` := the bridge from `echo_uexec_slot`.  `UShEcho`'s bundle at
   its exact statement; `echo_node_img` (sh's malloc'd-argv reading)
   becomes an instance of the general argv reading (§4, EX-3).
+  LANDED AT EX-3: `UShEcho.echo_args_det_holds` is
+  `ExecArgs.uargv_det` at `UShEcho.echo_uargv_shape` +
+  `echo_uargv_img`, and the node is a general vector outright
+  (`UShEcho.uargv_exec_of_cmd` at any `UExec` node,
+  `echo_uargv_exec_of_cmd` at /echo's).  `echo_node_img` STAYS as the
+  file's own summary — the PATH reading consumes it and its `2 ^ 38`
+  bounds are strictly stronger than the general layout's — so the bridge
+  is one direction only.
   LANDED: `UShEcho.echo_image_entry` (the UNPAID entry — §6's
   anti-vacuity witness, `Pay := emp`), beside the new pure
   `UShEcho.echo_room_of_det`.  The PAID one is still
@@ -443,7 +461,8 @@ The deposit introduction `sbundle_pay_exec_intro_refR` MOVED out of
     DISCARDED flavour (`nview_dq Γ DfracDiscarded`, which is what
     `SpecSysMknod.mkr_pin` uses) is refuted by the same algebra
     (`DfracOwn 1 ⋅ DfracDiscarded` is invalid) but by no landed lemma.
-- [ ] **EX-3 ARGV READING** (U tier): one lemma reading
+- [x] **EX-3 ARGV READING** (U tier) — LANDED (the as-landed block ends
+  this entry).  Original scope: one lemma reading
   `exec_path_of`/`exec_args_of` off owned `ubytesq`/`uwordq` runs at
   any layout; `init_args_det` and `echo_node_img` as instances.  EX-1
   fixed where it plugs in: `ExecEntry.image_entry_of_at` is the step
@@ -477,6 +496,95 @@ The deposit introduction `sbundle_pay_exec_intro_refR` MOVED out of
   induction kept.  The second prize (the agreement lemma) is what EX-4's
   §2 block names as the only way to lift the entry back out of the key's
   ∀, and is the reason to do this lane at all.
+
+  **AS LANDED (EX-3, `iris/ExecArgs.v`).**  One new file, FOUR layers,
+  and the shape the sketch above priced is right about the content and
+  wrong about the carrier — the U tier already owned the vector:
+
+  - **THE CARRIER IS `UserHeap.uarg`, NOT A FOUR-TUPLE OF FUNCTIONS.**
+    `UserHeap.uargv γd av (args : list uarg)` — the pointer array paired
+    with the string each element names — has been there since /cat's and
+    /echo's own mains, and `UkShRun.ush_cmd_exec` already hands it out for
+    an `UExec` node together with the NULL cap word.  So the file does not
+    invent a layout: it names the list's own indices in exec's function
+    spelling (`ua_alen args i`, `ua_afun args i j`, via `ua_nth`) and
+    bridges.  Layer 1 is the pure `uargv_img M av args` (where the vector
+    is, in the image) beside `uargv_shape args` (what it is: below MAXARG,
+    no NULL pointer, each string `ByteBuf.bb_cstr` and under a page), with
+    `exec_args_of_uargv_img` turning the pair into
+    `SpecSysExec.exec_args_of M (mword_of_int av) (length args)
+    (ua_alen args) (ua_afun args)`.
+  - **THE AGREEMENT IS NOT THE SECOND PRIZE, IT IS THE FIRST.**
+    `exec_args_of_agree` — two readings of ONE image at ONE address agree
+    on the count, the lengths below it and each string's bytes up to its
+    terminator (off `uimg_word_agree` and the same terminator-versus-
+    interior-byte cut `ArgPath.arg_path_of_uniq` uses) — is what makes
+    layer 1 ENOUGH.  A program no longer shows that the kernel's vector is
+    its own; it shows that its own IS a reading, and `uargv_det` (layers
+    1+2 composed) says every other reading agrees.  Both instances are
+    that lemma and a projection, which is why they shrank by ~150 lines.
+  - **THE LIFT LANDED** (§1's amended ruling): `kexec_image_ok_ext` —
+    `kexec_image_ok` reads `alen` only below the count (`kxc_sp`'s
+    recursion, `kxc_sp_final`, `kxc_stack_ok`, `kexec_ustack`,
+    `kexec_arg_addr`) and `afun` only below each length — and, on it,
+    `image_entry_of_at_reading : exec_args_of M av na alen afun ->
+    image_entry_at f na alen afun … -∗ image_entry f M av …`.  The payoff
+    is shown, as a corollary and not a restatement, at
+    `ExecRun.uexec_sup_run_of_entry_at`: (E) stated OUTSIDE the key's ∀ at
+    the reading's shape, beside the new `ExecRun.uexec_args_reading` (the
+    argv twin of `uexec_path_reading`).  `uexec_sup_run`'s statement is
+    untouched.  **WHAT THE LIFT DOES NOT DO:** `fdv`, `cs` and `pidv` stay
+    under the ∀ — they are the RECORD's data, not the image's, and no
+    reading determines them — so the entry comes out of the ∀ only for a
+    program that quantifies over all three, which is exactly echo's shape.
+  - **THE RESOURCE LAYER, AND A FINDING ABOUT THE RANGE BOUNDS.**
+    `uargv_exec γd av args` is `uargv` + the NULL cap + `uargv_shape`
+    (i.e. `ush_cmd_exec`'s output plus the pure part), and
+    `uargv_img_of_uargv` / `exec_args_of_uargv` read it off the lent heap,
+    PURE, so the heap survives.  §4 above priced "the two range bounds
+    EX-4 named"; only ONE is really owed — that a pointer is non-NULL,
+    which is what refutes "argv[i] IS the terminator" and which no heap
+    fact implies.  Every UPPER bound falls out of `UserHeap.uheap`'s own
+    canonicity clause, so on the resource route the caller supplies none,
+    and the pure layout asks only for the `< 2 ^ 64` that keeps
+    `add_vec_int` from wrapping.  THE PATH NEEDED NO NEW RESOURCE AT ALL:
+    `UserHeap.ustr`'s no-interior-NUL clause and length bound ARE
+    `ArgPath.arg_path_shape`, so `upath γd dq pa pl := ustr γd dq pa
+    (length pl) (λ j, pl !!! j)` and `exec_path_of_upath` is ten lines.
+  - **THE TWO INSTANCES, at their exact statements.**
+    `UInitSh.init_args_det` is `uargv_det` at `init_argv_args` (ONE
+    `uarg`, the two-byte name at `0x9a8`), whose `uargv_shape` and
+    `uargv_img` are three `vm_compute`s — including the new
+    `init_ro_sh_bytes_bool`, which reads the name AND its terminator off
+    the dump in one boolean so the use site needs no case split.
+    `UShEcho.echo_args_det_holds` is `uargv_det` at
+    `UShEcho.echo_uargv_shape` (a fact about the LINE sh parsed, plus the
+    node's base being positive) + `echo_uargv_img`.  The general
+    `UShEcho.uargv_exec_of_cmd` (ANY `UExec` node is a `uargv_exec` once
+    its shape is known) and `echo_uargv_exec_of_cmd` are the brief's
+    `uargv_of_cmd`.
+    **ONE DEVIATION, with its reason:** `echo_node_img` and
+    `echo_node_img_of_cmd` were NOT retired.  `echo_node_img`'s bounds are
+    `0 < t < 2 ^ 38` and `0 < s0 + off i < 2 ^ 38` — STRICTLY STRONGER
+    than the general layout's `< 2 ^ 64` (the general one cannot be
+    tightened: `t < 2 ^ 38` does not give `t + 40 ≤ 2 ^ 38`) — and
+    `sh_echo_path_of` consumes them.  So the bridge `echo_uargv_img` runs
+    one way and the file keeps its own summary; the resource route is
+    there for the next program, which will have no summary to keep.
+  - `UShEcho`'s two dfrac-generic heap readings (`uheap_ubytesq_img`,
+    `uheap_uwordq_img`) MOVED to `ExecArgs.v` at their exact statements —
+    nothing about them is echo's — beside the new `uheap_ubytesq_range` /
+    `uheap_uwordq_range`, which are how the canonicity finding above is
+    cashed.  `ExecArgs` sits just above `ExecEntry` and `UserHeap`; the
+    lift is in its own section binding only `ChildTok.ctokG`, exactly as
+    `ExecEntry` does, and the heap layer binds only `riscvGS` / `ufdG` /
+    `ghost_varG Σ Z`.
+  - `Print Assumptions`: `exec_args_of_uargv_img`, `exec_args_of_uargv`,
+    `exec_path_of_upath`, `exec_args_of_agree`, `kexec_image_ok_ext`,
+    `image_entry_of_at_reading`, `init_args_det` and
+    `echo_args_det_holds` are ALL **closed under the global context**;
+    `ExecRun.uexec_sup_run_of_entry_at` is at the two Sail platform axioms
+    and nothing else.  Echo audit unchanged at 14, whole tree green.
 - [x] **EX-4 THE RULE + THE TEST + THE TR** — LANDED.  One new file,
   `iris/ExecRun.v`: the seam (`sbundle_pay_refR_of_exec`: an exec bundle
   at ONE key IS the deposit the exec leaf consumes), the supply

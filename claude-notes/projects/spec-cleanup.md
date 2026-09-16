@@ -72,8 +72,51 @@ exclusivity fact), not a kernel ask.
   by the same algebra (`DfracOwn 1 ⋅ DfracDiscarded` is invalid) and by
   no landed lemma — write it if a later lane wants the wall total in
   Rocq.
-- [ ] **EX-3 ARGV READING** — STILL OPEN; EX-4's budget went to the rule
-  and the TR, and nothing was attempted.  The shape is priced in
+- [x] **EX-3 ARGV READING** LANDED (branch `ex3-argv`).  New
+  `iris/ExecArgs.v` — the argument vector read at ANY layout, plus the
+  agreement lemma that EX-1 and EX-4 both named as the prize:
+  - THE CARRIER IS `UserHeap.uarg`, which was already there:
+    `UserHeap.uargv γd av (args : list uarg)` is what /cat's and /echo's
+    mains walk and what `UkShRun.ush_cmd_exec` hands out for an `UExec`
+    node.  So the file names the list's indices in exec's function
+    spelling (`ua_nth` / `ua_alen` / `ua_afun`) and bridges; it invents no
+    layout.
+  - `uargv_shape` (pure, decidable: below MAXARG, no NULL pointer, each
+    string `bb_cstr` and under a page) + `uargv_img M av args` (where the
+    vector is, in the image) + `exec_args_of_uargv_img` — the reading.
+  - `exec_args_of_agree` — TWO readings of one image at one address agree,
+    on the count, the lengths below it and each string's bytes to its
+    terminator.  This is what makes the layout layer enough, and it is why
+    both instances collapsed: `uargv_det` = the two composed, and
+    `UInitSh.init_args_det` / `UShEcho.echo_args_det_holds` are that lemma
+    plus a projection (~150 lines of cornering gone).
+  - THE LIFT: `kexec_image_ok_ext` (the congruence — `kexec_image_ok`
+    reads `alen` only below the count and `afun` only below each length,
+    `kxc_sp`'s recursion included) and `image_entry_of_at_reading`
+    (ONE reading turns `image_entry_at` into `image_entry`).  Payoff shown
+    as a COROLLARY at `ExecRun.uexec_sup_run_of_entry_at` — (E) outside
+    the key's ∀ at the reading's shape, beside the new
+    `ExecRun.uexec_args_reading`; `uexec_sup_run`'s statement untouched.
+    `fdv`/`cs`/`pidv` stay under the ∀ (record data, not image data).
+  - THE RESOURCE `uargv_exec` (= `uargv` + the NULL cap + the shape) with
+    `uargv_img_of_uargv` / `exec_args_of_uargv` off the lent heap, PURE;
+    `UShEcho.uargv_exec_of_cmd` is the general "any `UExec` node is one".
+    THE PATH NEEDED NO NEW RESOURCE: `UserHeap.ustr`'s own clauses ARE
+    `ArgPath.arg_path_shape`, so `upath` is a `ustr` at the list.
+  - FINDING: of "the two range bounds EX-4 named", only pointer
+    POSITIVITY is really owed — every upper bound falls out of
+    `UserHeap.uheap`'s canonicity clause.  ONE DEVIATION:
+    `UShEcho.echo_node_img` was NOT retired — its `2 ^ 38` bounds are
+    strictly stronger than the general layout's `< 2 ^ 64` and
+    `sh_echo_path_of` consumes them — so the bridge runs one way.
+  - `UShEcho`'s `uheap_ubytesq_img` / `uheap_uwordq_img` MOVED to
+    `ExecArgs.v` at their exact statements, beside new `_range` twins.
+  `Print Assumptions`: the reading, the agreement, the congruence, the
+  lift and BOTH instances are **closed under the global context**;
+  `uexec_sup_run_of_entry_at` is at the two Sail platform axioms alone.
+  `iris/_CoqProject` gains `ExecArgs.v` — the gate must regen
+  `CoqMakefile` (it does).  Mirror: whole tree green, echo audit 14.
+  Original scope: the shape was priced in
   `design/user-exec.md` §4's EX-3 entry: one layout-abstract reading
   (`n+1` `uwordq` vector words at `av + 8i`, each string's `ubytesq`
   bytes and terminator, two range bounds — i.e. `UShEcho.echo_node_img`
@@ -125,8 +168,7 @@ exclusivity fact), not a kernel ask.
 
 ## NEXT (owner ruled 2026-09-17: "ex-3, the wait/kill pair, and the tree-layer campaign")
 
-In order: EX-3 (LAUNCHED, Opus, branch `ex3-argv`, brief
-`brief-ex3-argv.md`) → RD-7 WAIT (a real status pointer: the kernel
+In order: ~~EX-3~~ (LANDED, branch `ex3-argv`) → RD-7 WAIT (a real status pointer: the kernel
 writes the child's exit status to user memory — the read/write
 "kernel writes user memory" row pattern) + RD-8 KILL (per-PID spec in
 place of the global predicate the TR flags) → the TREE-LAYER campaign

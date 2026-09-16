@@ -160,6 +160,14 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   and what publishing copyout's `uva_wmapped` witness would cost), and for
   kill why the per-PID post is NOT provable today — `pid_reg_dom` lives in
   `<pid_lock>`'s payload and kkill never takes it — with the two ways out.
+- **[`user-tree.md`](design/user-tree.md)** — the TREE LAYER: a program's
+  cross-syscall knowledge of the file system as a CLAIM in the application
+  invariant (which process owns which subtree of the live view) rather than
+  a ghost share, the step discipline that keeps the partition true, subtree
+  disjointness and what it really needs (unique proper parenthood — NOT
+  acyclicity, and not "directories form a tree" alone), the tree deltas
+  over the landed `FsAbsDelta` legs, and pin-free exec as EX-2's successor.
+  The pure layer is `iris/TreeView.v`.
 - **[`user-heap.md`](design/user-heap.md)** — the SEPARATION-LOGIC HEAP over
   user memory: the two `ghost_map`s (text persistent/X, data exclusive/W)
   and why that is what makes an exclusive points-to imply writability, the

@@ -234,6 +234,39 @@ ownership as an APPLICATION CLAIM in app_inv (echo's whole-fs pin
 generalized per process), the step discipline as the exclusivity fact,
 pin-free exec as a one-lemma successor of EX-2; lanes TL-1..TL-4.
 
+**TL-1 AS LANDED** — `iris/TreeView.v`, the campaign's whole proof
+content, pure Rocq (no `iProp`, no ghost, below `AppInv`), every
+result `Closed under the global context`; a leaf nothing imports yet,
+so the echo audit cannot move and does not.  Three findings the design
+page now carries, two of which CORRECT the sketch:
+
+1. **Disjointness does not need acyclicity, and "directories form a
+   tree" is not enough.**  A diamond is acyclic and shares a node: one
+   file hard-linked under two unrelated directories sits in both
+   subtrees, and then an owner's own-subtree write moves another
+   owner's tree.  The premise is UNIQUE PROPER PARENTHOOD
+   (`aview_uniq_parent`, a conjunct of `own_wf`).  The
+   directories-only fact is proved too and is the honest weaker
+   statement (`nreach_common_dir`: a shared node is never a
+   directory).  `fs_dirs_acyclic` is used nowhere; its aview twin is
+   minted only because `fs-syscall-specs.md` §6.2 promises one.
+   **Open for TL-2/TL-3**: `sys_link` at a target already named
+   elsewhere breaks unique parenthood — forbid it, or carry the weaker
+   premise and accept shared files.
+2. **The tree's node type is `absnode`, not `FsTree.fsnode`.**
+   Extending `fsnode` with a device arm (the brief's recommendation)
+   was declined: `fsnode` is what `node_of` is total onto, so the arm
+   changes the KERNEL-boundary reading and touches FsTree's cone for an
+   application need.  `absnode` is `anode` minus `nlink` already.
+3. **The tree forgets `nlink`**, which is what makes mkdir's interior
+   legs and link's/unlink's count legs free — and means
+   `PinnedObs.pin_resolves_at`'s `anode` row comes back with the count
+   EXISTENTIALLY quantified (`subtree_resolves_pin`).  At a
+   non-directory the projection is the identity, so exec's (W) gets its
+   row on the nose (`subtree_resolves_pin_file`).  If TL-2 wants
+   `pin_resolves_at` verbatim at a directory it needs a one-line
+   absnode-level variant of that definition.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

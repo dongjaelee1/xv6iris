@@ -30,13 +30,34 @@ the per-process general case.
   (`fnode := dinode_at ∗ inode_blocks …`), the F1/F1.5 fragment algebra
   of `fs-fragments.md`, whose job is kernel-INTERNAL — traversing
   tree-broken states, retiring the span axiom.  NOT this campaign.
-- **The application tree** (this page): a PURE reading of `aview`, the
-  live namespace (`FsAbsDefs.abs_view`, §4's "the view is the live
-  namespace"), at a root: `subtree av r : fstree` (the nodes reachable
-  from `r` by directory entries, dots hidden, `fsnode`/`anode` are the
-  same shape modulo `nlink` and `ADev`).  It lives in `app_pred`,
+- **The application tree** (this page, `iris/TreeView.v`): a PURE reading
+  of `aview`, the live namespace (`FsAbsDefs.abs_view`, §4's "the view is
+  the live namespace"), at a root: `subtree av r : option ttree` (the
+  nodes reachable from `r` by PROPER directory entries — dots hidden —
+  `None` if `r` is not a directory of the view).  It lives in `app_pred`,
   never in a kernel invariant (the owner's rule: nothing
   application-specific inside a kernel fs invariant).
+
+  **The node type is `FsAbsDefs.absnode`, not `FsTree.fsnode`** (TL-1's
+  ruling).  `fsnode` has two arms and reads a DEVICE as `NFile []` — right
+  for the kernel tree, wrong here, because a program that mknod's a device
+  and opens it must tell its node from an empty file.  Extending `fsnode`
+  was declined: it is the type `FsTree.node_of` is total onto, so the arm
+  would force a decision inside the KERNEL-boundary reading and touch
+  FsTree's cone for an application-tier need — the conflation this section
+  exists to prevent.  `absnode` is already `anode` minus `nlink`, so the
+  projection is `tnode_of a := an_node a` with the dots deleted from a
+  directory's map, and `ttree` is `fstree`'s shape (`MkTTree nodes root`)
+  over it.
+  **`nlink` is dropped**, and that is load-bearing in both directions: it
+  makes `delta_dots`, `delta_dot`, `delta_link_tgt` (at a row the view
+  has) and `delta_unl_tgt` (above the last link) INVISIBLE in the tree, so
+  an owner pays nothing for mkdir's interior legs; and it means the claim
+  pins a node's CONTENT but not its link count, so `PinnedObs.
+  pin_resolves_at`'s `anode` row is supplied with the count existentially
+  quantified (`TreeView.subtree_resolves_pin`).  At a non-directory the
+  projection is the identity, so exec's (W) gets the row on the nose
+  (`subtree_resolves_pin_file`).
 
 ## 2. The claim, and why the machinery is already there
 
@@ -80,9 +101,38 @@ application declares and its verified programs prove):
   `δ_unlink`/`δ_write`, at a node `d ∈ subtree av root_P`) updates its
   own entry — `t_P ↦ tree_op δ t_P` (a ghost-map update of both halves,
   which is why the wand is an iProp and not a Prop) — and leaves every
-  other entry unchanged by DISJOINTNESS: non-nested roots + directories
-  form a tree (no directory hard links) ⇒ subtrees are node-disjoint ⇒
-  a move at `d` inside `t_P` is outside every `t_Q`.  The premise the
+  other entry unchanged by DISJOINTNESS: non-nested roots + UNIQUE PROPER
+  PARENTHOOD ⇒ subtrees are node-disjoint ⇒ a move at `d` inside `t_P` is
+  outside every `t_Q`.
+
+  **What disjointness actually needs** (TL-1, and this corrects the
+  earlier sketch): not acyclicity — `fs_dirs_acyclic` is never used, and
+  is neither necessary nor sufficient — and not "directories form a tree"
+  alone.  A diamond is acyclic and shares a node: one FILE hard-linked
+  under two unrelated directories is in both subtrees, and then an
+  owner's write inside its own subtree changes another owner's tree.  The
+  premise is `TreeView.aview_uniq_parent`: every node has at most one
+  proper in-edge (`nuniq_parent`, a conjunct of `own_wf` through
+  `aview_tree_wf`).  With unique parenthood restricted to DIRECTORIES
+  (xv6's own invariant, since link refuses a directory and there is no
+  rename) the honest theorem is weaker and still true:
+  `TreeView.nreach_common_dir` — a node two unrelated owners both reach
+  is a hard-linked non-directory, never a directory.
+  **Consequence for `sys_link`**: a link whose target is already named
+  elsewhere breaks `aview_uniq_parent`.  Inside ONE owner's subtree that
+  is harmless for disjointness (the node is in one subtree either way)
+  but it is not covered by the landed preservation lemma, so a tree
+  application either forbids cross-name links or carries the weaker
+  directories-only premise and accepts that files may be shared.  The
+  aview twin of the landed acyclicity fact is minted anyway
+  (`aview_dirs_acyclic`, tied to `FsTree.fs_dirs_acyclic` by
+  `aview_dirs_acyclic_tree`) because §6.2 of `fs-syscall-specs.md`
+  promises it; nothing uses it.
+
+  The second conjunct of `aview_tree_wf` is `aview_closed`: NO ENTRY
+  DANGLES.  It is what makes a fresh inum unreachable, hence create's arm
+  invisible to every subtree — which is why create's two legs may be paid
+  in either order.  The premise the
   program needs — "this path resolves inside my subtree" — is a pure
   fact about its path and its cwd/root, discharged by its code proof
   (relative paths from a cwd inside `t_P`; absolute paths under
@@ -146,12 +196,42 @@ application declares and its verified programs prove):
 
 ## 6. Lanes
 
-- [ ] **TL-1 THE PURE LAYER** (Opus; zero Iris): `subtree`, `own_wf`,
-  subtree disjointness from non-nested roots + `fs_dirs_acyclic`, the
-  δ lemmas (inside ⇒ tree op; outside ⇒ unchanged) over §4's landed
-  `FsAbsDelta` legs, `resolves_in` (path resolution in a tree) ⇔
-  `arun` on the view.  All closed lemmas; the whole campaign's proof
-  content is here.
+- [x] **TL-1 THE PURE LAYER** — LANDED, `iris/TreeView.v` (zero Iris,
+  every result `Closed under the global context`).  What is there, and
+  what TL-2 builds on:
+  - `subtree av r : option ttree` over `tview av` (the projected view),
+    computed as a SATURATING closure: `nreach_set` iterates the kid
+    expansion `S (size m)` times, which is enough because the iteration
+    lives in `{[r]} ∪ dom m` and each round that adds nothing is final.
+    Nothing outside §3a of the file unfolds the iteration — everything
+    downstream uses `nreach` (∃ a proper path) and its spec, and `nreach`
+    is DECIDABLE (`nreach_dec`), which is what makes the δ proofs
+    pointwise `map_eq`s.
+  - **The one law the whole layer turns on**: `nclose_agree` — two maps
+    that agree on what the root reaches have the same subtree.  The
+    OUTSIDE half of every δ is one line off it (`subtree_out_row`,
+    `subtree_out_row2`).
+  - `own_wf` (a section over any `Countable` key: `aview_tree_wf` + roots
+    are directories + roots pairwise non-nested) and `subtree_disjoint` /
+    `subtree_disjoint_trees`.
+  - The δ lemmas, INSIDE and OUTSIDE, over the landed legs: write/trunc
+    (`nclose_content_edit`), create's arm+parent leg (`top_ins`, the
+    fresh-leaf insert), link's parent leg (`top_link`), unlink's entry
+    leg (`top_unlink`, the ONE op that re-closes, because it is the only
+    one that can orphan), and the four invisible legs.  `subtree_delta_*`
+    is the naming.
+  - `resolves_from` / `resolves_in` / `resolve_hops` and the equivalence
+    with `arun` on the view, both directions, plus the relative form from
+    a cwd inside the subtree.  Paths are PROPER (`fs_proper (path_elems
+    pl)`): `..` at the root leaves the subtree, which is the one move the
+    claim cannot answer — a pure side condition on the program's own
+    string.
+  - `own_wf` preservation per δ (`own_wf_write`, `own_wf_create`,
+    `own_wf_unl_ent`, `own_wf_unl_tgt`).  Two side conditions fell out
+    and are stated where they bite: an owner may not unlink a ROOT (its
+    own or anyone's), and the row may only leave when nothing names it
+    (`aview_no_edge_to` — the `nlink`-vs-edge-count tie, which the tree
+    layer does not carry, and which the entry-leg-first order gives).
 - [ ] **TL-2 THE APPLICATION** (Opus): `AppTree.v` — the record
   instance with `tree_pred`, the claim law, the step wands per δ for an
   owner's deposit (the `_step` payments), grant at fork/exec, boot at

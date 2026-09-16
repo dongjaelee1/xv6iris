@@ -76,6 +76,59 @@ Section EchoAdequacy.
   (* the echo claims' class (lane ECHO-OUT part 5) *)
   Context `{!echoOutG Σ}.
 
+  (* ====================================================================
+     THE ECHO APPLICATION'S LAWS, as the instance (redesign R4).
+
+     Eleven [ltac:] blocks inside one [refine] until now, which is what the
+     documented elaboration hazards were about (47 GB, then 493 GB, both
+     killed).  As a class instance each field is checked against a type
+     that is already known, and the theorem's [refine] is left with the two
+     laws that are about an IMAGE.
+     ==================================================================== *)
+  Global Instance echo_laws : App.xv6_app_laws app_echo.
+  Proof.
+    split.
+    - exact echo_Hbirth.
+    - exact echo_HRt.
+    - exact echo_Happ_kill.
+    - exact echo_Happ_out_sup.
+    - exact echo_HR0.
+    - exact echo_Hpow.
+    - (* POINTWISE, not as one term.  [echo_Htx]/[echo_Hrx] state the era
+         identification with [fileG] and [uartGhostG] as INSTANCE binders,
+         ahead of [HR]; the field puts [HR] first and [fileG] after it.
+         [exact echo_Htx] therefore asks for one unification of two
+         [box]-quantified UART bodies at once, and it does not come back
+         (measured: 34 GB RSS in 45 seconds).  Introducing the field's own
+         binders first turns it into an application at known arguments. *)
+      intros HR GEN HF c r i γ Heq Huart.
+      exact (echo_Htx (HF := HF) HR GEN c r i γ Heq Huart).
+    - intros HR GEN HF c r i γ Heq Huart.
+      exact (echo_Hrx (HF := HF) HR GEN c r i γ Heq Huart).
+    - exact echo_Happ_boot.
+    - (* ---- [al_programs]: E2's own, and the only law of the class this
+             lane owes.  Everything it needs is at
+             [UexecExecInst.uprogSG_free], and [echo_Hinit_boot] takes NO
+             Coq-level entailment about the shell's program: it builds
+             /init's slot, sh's entry payload and sh's tail obligation
+             itself, off the era's links and the boot resource. ---- *)
+      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Hiface Hgen.
+      (* the record's [app_ifc] field IS [AppEcho.echo_ifc] (redesign R4);
+         [echo_Hinit_boot] is stated at the latter, and unification does not
+         delta-unfold the record literal for it. *)
+      cbn [app_echo app_ifc] in Hiface.
+      (* [GEN] is IMPLICIT and fixed by unification -- from [Hw16] first and
+         [Heq] after, both of which carry the record's own [GenId].  Naming
+         it here would pin the wrong one: the [GEN] this field binds is not
+         the one [app_echo] was elaborated at. *)
+      iIntros "#Hinv Hb Hturn".
+      iApply (echo_Hinit_boot HR GEN c r Heq Hiface with "Hinv Hb [Hturn]").
+      cbn [app_echo app_turn]. iExact "Hturn".
+    - (* [al_echo]: [EchoOut.echo_happ_echo], the arm's open and a run whose
+         every link takes nothing. *)
+      exact echo_Happ_echo.
+  Qed.
+
   (* THE NAME IS KEPT AND IT IS NOW A MISNOMER: the theorem is no longer
      modulo [Hphi] (lane ECHO-OUT part 5 closed it), and as of lane R3 it
      is not modulo anything about the shell's program either -- [Hsh_owed]
@@ -157,72 +210,21 @@ Section EchoAdequacy.
        [Htagt], [Hkillp], [Hkillt] and [Hconst] ride [app_ifc] now, so they
        are not obligations at all. *)
     refine (xv6_app_adequacy Σ g sb nib cov app_echo
-              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
-    - exact echo_Hbirth.
-    - exact echo_Happ_kill.
-    - exact echo_Happ_out_sup.
-    - exact echo_HR0.
-    - exact echo_Hpow.
-    - (* POINTWISE, not as one term.  [echo_Htx]/[echo_Hrx] state the era
-         identification with [fileG] and [uartGhostG] as INSTANCE binders,
-         ahead of [HR]; the record field puts [HR] first and [fileG] after
-         it.  [exact echo_Htx] therefore asks for one unification of two
-         [box]-quantified UART bodies at once, and it does not come back
-         (measured: 34 GB RSS in 45 seconds).  Introducing the field's own
-         binders first turns it into an application at known arguments. *)
-      
-      intros HR GEN HF c r γ Heq Huart.
-      exact (echo_Htx (HF := HF) HR GEN c r γ Heq Huart).
-    - 
-      intros HR GEN HF c r γ Heq Huart.
-      exact (echo_Hrx (HF := HF) HR GEN c r γ Heq Huart).
-    - exact echo_Happ_boot.
-    - exact (echo_Happ_init g sb nib cov Himg Hdk Hsb Hcov).
-    - (* ---- [Hinit_boot]: E2's own, and the only obligation of the
-             record this lane owes.  Everything it needs is at
-             [UexecExecInst.uprogSG_free],
-             and [echo_Hinit_boot] now takes NO Coq-level entailment about
-             the shell's program: it builds /init's slot, sh's entry
-             payload and sh's tail obligation itself, off the era's links
-             and the boot resource. ---- *)
-      
-      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Hiface Hgen.
-      (* the record's [app_ifc] field IS [AppEcho.echo_ifc] (redesign R4);
-         [echo_Hinit_boot] is stated at the latter, and unification does not
-         delta-unfold the record literal for it. *)
-      cbn [app_echo app_ifc] in Hiface.
-      (* THE TWO LAYERS NO LONGER HAVE TO MEET (lane ECHO-OUT part 5).  Until
-         part 5 [Heq]/[Htag]/[Hkill] arrived carrying [AppEcho.echo_taint]
-         at the record's PRE-STRUCTURE [mono_natG] while [echo_Hinit_boot]
-         and every [AppInv] law its proof uses were at the FIXED layer's,
-         and [Hgen] was rewritten to reconcile them.  The taint is stated at
-         [EchoOut.echoOutG]'s own [eo_mono_nat] now -- a class this section
-         binds ONCE and hands to both sides -- so there is nothing left to
-         move and [Hgen] is a premise this discharge does not read. *)
-      (* [GEN] is IMPLICIT and fixed by unification -- from [Hw16] first
-         and [Heq] after, both of which carry the record's own [GenId].
-         Naming it here would pin the wrong one: the [GEN] this field
-         binds is not the one [app_echo] was elaborated at. *)
-      iIntros "#Hinv Hb Hturn".
-      iApply (echo_Hinit_boot HR GEN c r Heq Hiface with "Hinv Hb [Hturn]").
-      cbn [app_echo app_turn]. iExact "Hturn".
-    - (* [Happ_echo]: [EchoOut.echo_happ_echo], the arm's open and a run
-         whose every link takes nothing. *)
-      exact echo_Happ_echo.
-    - (* ---- [Hphi]: CLOSED (lane ECHO-OUT part 5).  The conclusion is a
-             PURE reading of the application's trace ledger, so the crash
-             slot and the power interpretation are dropped and what is left
-             is [RiscvAdequacy.obs_ledger_at_phi] at [echo_Hphi_R] -- the
-             ledger's own [EchoOut.echo_led_phi], whose taint premise is
-             [AppEcho.echo_taint] by definition. ---- *)
-      intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h.
-      iIntros "_ Hauth _ _ Hled".
-      iApply (obs_ledger_at_phi (app_R app_echo c) (echo_HRt c)
-                (app_phi app_echo g') (fun h' => echo_Hphi_R c g' h')
-                γobs h with "Hauth Hled").
-    - exact Hgen0.
-    - exact Hpow0.
-    - exact Himg.
+              (* the eleven laws arrive as [echo_laws] above; only the two
+                 about the IMAGE are arguments (redesign R4) *)
+              (echo_Happ_init g sb nib cov Himg Hdk Hsb Hcov)
+              _ Hgen0 Hpow0 Himg n κs t2 g2 Hn).
+    (* ---- [Hphi]: CLOSED (lane ECHO-OUT part 5).  The conclusion is a PURE
+           reading of the application's trace ledger, so the crash slot and
+           the power interpretation are dropped and what is left is
+           [RiscvAdequacy.obs_ledger_at_phi] at [echo_Hphi_R] -- the
+           ledger's own [EchoOut.echo_led_phi], whose taint premise is
+           [AppEcho.echo_taint] by definition. ---- *)
+    intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h.
+    iIntros "_ Hauth _ _ Hled".
+    iApply (obs_ledger_at_phi (app_R app_echo c) (al_Rt c)
+              (app_phi app_echo g') (fun h' => echo_Hphi_R c g' h')
+              γobs h with "Hauth Hled").
   Qed.
 
 

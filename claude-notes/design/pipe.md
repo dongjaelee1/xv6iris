@@ -461,6 +461,16 @@ two drafts the proof lanes refuted):
   caller splits the marker off with `proc_priv_unmark`), and the marker
   rides the tear-down side of the payment instead.
 
+- **a program that never calls pipe(2)** pays nothing: `UsysMemOk.
+  usys_fd_ok`'s open row says the installed descriptor is not a pipe end
+  (`FdSlots.fdst_nopipe`, carried out of `SpecSysOpen`'s three arms exactly
+  as `fdst_parked` is), every number but pipe(2) preserves `fdv_nopipe` of
+  the table (`usys_fd_ok_nopipe`), and the exit row at a pipe-free table
+  is minted from nothing (`xv6_sbundle_exit_nopipe`,
+  `fileclose_cpays_nopipe`).  Without that conjunct no verified program
+  could STATE its table held no pipe, and every exit was tainted (lane
+  PQ-D's finding).
+
 Why the marker matters: a row founded by a self-kill is spent, and the
 process that founded it never traps again -- so a LIVE trap's own marker
 (still in its block) is what refutes the spent arm at a killed check and

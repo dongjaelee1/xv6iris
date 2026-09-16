@@ -1,23 +1,20 @@
 # pipe-queue — the pipe's contents as exact ghost state
 
-STATUS (2026-09-16, evening): branch `pipe-queue` at `9067f6a79`.  Landed
-and green: the definitional layer (`996ddf76a`), the post repair
-(`f636385f0`), lane A (all four kernel pipe proofs), lane B (the file
-layer), lane C's first eight files (sys_read/write/close/pipe, kexit,
-sys_exit, syscall, usertrap parts -- the last four to be re-touched), lane
-D's first pass (the user tier at the pipe posts and the close row).  The
-tear-down design was settled in `55207260e` (design/pipe.md, "The exit
-path": the killer's taint in the kill row, exit's bundle row 2, the
-self-kill's own deposit; kexit at the marker-less block).  Lanes C and D
-are porting to it (briefs `scratch/C2.md`, `scratch/D2.md` in their
-clones): C the kernel proofs that found or read the kill row or call kexit
-(ProofSetkilled, ProofKexit, ProofSysExit, ProofSyscall's exit arm,
-ProofUsertrap*, ProofUservec, ProofUserretClosed, ProofKkill/Killed if
-red); D the exit row at the user tier (`udep`'s third law, UkRunSys's exit
-leaf, UkStore's owed side, UexecExecMint, the programs' exit sites, the
-boot/adequacy text).  Lane clones `/shared/xv6iris-3-pq-{A,B,C,D}` at
-branches `pq-{A,B,C,D}`, remote trees seeded warm (memory:
-seed-lane-remote-trees).
+STATUS (2026-09-16, night): branch `pipe-queue` at `4fab0298e`.  All four
+lanes' first rounds are merged and green on the full tree except the
+user tier's exit row: lanes A (kernel pipe proofs), B (file layer), C
+(syscall layer, trap route, kill row -- three rounds), D (user tier at the
+pipe posts, the close row, the exit row).  The tear-down design
+(`55207260e`, `d3b6bb7b2`) is closed on the kernel side.  Last open
+round: `4fab0298e` put `fdst_nopipe` on the open row so a program can
+carry `fdv_nopipe` of its table and mint exit's row from nothing; lane C
+ports ProofSyscall's arm 15 to it, lane D carries the fact through the
+user tier and deletes the taint premises it had to thread (UInitBoot was
+the one red file: /init's and sh's exits could not be paid untainted).
+Then: full build, both audits (system: thirteen; echo: fourteen), merge
+`origin/main` (six console-redesign commits, eight overlapping files),
+rebuild, push.  Lane clones `/shared/xv6iris-3-pq-{A,B,C,D}` at branches
+`pq-{A,B,C,D}`, remote trees seeded warm (memory: seed-lane-remote-trees).
 Design of record: `design/pipe.md`, "The byte queue".  Read it first; this
 file is only what is left to do and who does it.
 
@@ -137,9 +134,9 @@ file is only what is left to do and who does it.
 - Row 16 carries no `filewrite_ret` blanket: a tainted pipe writer reads
   no count (a link-paying one reads it off `pipe_wpost`'s cursor) --
   recorded in `UkWritePipe.v`'s header (lane D).
-- `UsysMemOk.usys_fd_ok`'s open row leaves the descriptor's type
-  existential, so cat's close pays `udepw_law 21` (taint at the free
-  instance); pinning "open never installs FD_PIPE" there would make it
-  free again (lane D).
+- `UsysMemOk.usys_fd_ok`'s open row now says "not a pipe"
+  (`fdst_nopipe`, `4fab0298e`); cat's close-row deposit (`udepw_law 21`,
+  paid by the taint at the free instance) can likewise become free once
+  `ukey_nonpipe` is read off `fdv_nopipe` -- lane D's call.
 - Promotion candidates from the lanes' local lemmas: `ProofSysPipe`'s
   `sp_clink_relink` into `PipeQueue.v`.

@@ -94,3 +94,8 @@ import Xv6.LinkInitlock
 import Xv6.PtOwn
 import Xv6.SpecWalk
 import Xv6.SpecMappages
+import Xv6.KmemGhost
+import Xv6.SpecKinit
+import Xv6.SpecKvmmap
+import Xv6.ProofKinit
+import Xv6.LinkKinit

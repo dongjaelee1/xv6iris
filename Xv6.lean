@@ -68,3 +68,6 @@ import Xv6.LinkKernelvec
 import Xv6.SpecTrapinithart
 import Xv6.ProofTrapinithart
 import Xv6.LinkTrapinithart
+import Xv6.SpecKvminithart
+import Xv6.ProofKvminithart
+import Xv6.LinkKvminithart

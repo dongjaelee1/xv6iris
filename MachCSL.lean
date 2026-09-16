@@ -24,6 +24,9 @@ import MachCSL.WpSmodeRules
 import MachCSL.WpSmodeIntr
 import MachCSL.WpSmodeSret
 import MachCSL.WpSmodeStvec
+import MachCSL.WpSmodeSfence
+import MachCSL.WpSmodeSatp
+import MachCSL.WpSmodeKpt
 import MachCSL.CallConv
 import MachCSL.WpSmodeFrame
 import MachCSL.WpStagesM

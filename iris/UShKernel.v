@@ -647,7 +647,7 @@ Section UShKernel.
     iAssert (shk_rodata (ukn_t N)) as "#Hro".
     { iApply (shk_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (shk_img_data _ Hsub) Hx with "Ht"). }
-    iApply (wp_ksh_start N γp T Hpsok_free Wc Wb Hwbwc Hwbl Pm
+    iApply (wp_ksh_start N γp T Wc Wb Hwbwc Hwbl Pm
               (fun i => Hpm1 N i Hpayeq)
               (fun i => Hpm3 N i Hpayeq)
               (fun i Hb => Hpmwb N i Hpayeq Hb)

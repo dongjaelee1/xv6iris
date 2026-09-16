@@ -217,7 +217,7 @@ Section UkReadPipe.
     st = FdOpen true wb (FdPipe γp) ->
     fileread_extra_core gn pt st n (rf_F fm) (rf_ret fm) (rf_in fm)
       Rp Rpe r M' addr -∗
-    pipe_rpost_img (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn)
+    pipe_rpost_img pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn)
       (Z.to_nat n) r M' addr.
   Proof. intros ->. by iIntros "$". Qed.
 
@@ -283,7 +283,7 @@ Section UkReadPipe.
     pipe_rpay (pn_queue γp) Rp Rpe cap -∗
     ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k f -∗
     (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8)
-       (M' : gmap Z (bv 8)) (Rk : iProp Σ),
+       (M' : gmap Z (bv 8)) (Pt : uptd) (Rk : iProp Σ),
        ⌜ (d <= cap)%nat ⌝ -∗
        ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
        ⌜ uread_pipe_ans cap r ⌝ -∗
@@ -300,7 +300,7 @@ Section UkReadPipe.
           reason -- request met, ring observed empty (an end-of-file when
           nothing came), copy-out fault, or the reader's kill shot [Rk] --
           or the taint with the payment back. *)
-       pipe_rpost_img (pn_queue γp) Rp Rpe Rk cap r M'
+       pipe_rpost_img Pt (pn_queue γp) Rp Rpe Rk cap r M'
          (m !!! Regidx a1_idx) -∗
        UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdPipe γp)) -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
@@ -348,7 +348,7 @@ Section UkReadPipe.
     rewrite Hcnt in Hret.
     rewrite Hcnt Nat2Z.id.
     rewrite Nat2Z.id in Hd.
-    iApply ("Hcont" $! h' r d g M' (ChildTok.kill_shot (uvis_gen W))
+    iApply ("Hcont" $! h' r d g M' P (ChildTok.kill_shot (uvis_gen W))
               with "[%] [%] [%] [%] [%] Hrp Hufdh Hrun Hbuf");
       [ exact Hd | exact Hgf | exact (uread_pipe_ans_of_ret cap r Hret)
       | exact Hlin | exact Himg ].

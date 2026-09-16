@@ -711,9 +711,14 @@ Section EchoInitBoot.
                 with "[] [] [] []").
       - (* write, under the taint: the supply and the output licence *)
         iModIntro. iIntros "#HT".
-        iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] []").
+        iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] [] []").
         + iApply ("Hsup" with "HT").
         + iApply ("Hlic" with "HT").
+        + (* ...AND THE TAINT (design/pipe.md, "The byte queue"): write's
+             PIPE arm is the byte queue's write chain, and the generic
+             supply pays it out of the kill credential -- which at this
+             application IS the taint the arm is already under. *)
+          rewrite Hkill. iModIntro. iExact "HT".
       - (* ...and the closed-fd leaf, at every record *)
         rewrite /UkInit.kinit_wcl. iIntros "!>" (N0 b).
         iApply (UkWriteClosed.kinit_w1_of_closed_l0 (PS := uprogSG_free) N0 b).
@@ -918,9 +923,10 @@ Section EchoInitBoot.
       - iApply (udep_free).
       - (* sh's write deposit, under the taint (lane EXEC-SEAM, (D)) *)
         iModIntro. iIntros "#HT".
-        iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] []").
+        iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] [] []").
         + iApply ("Hsup" with "HT").
-        + iApply ("Hlic" with "HT"). }
+        + iApply ("Hlic" with "HT").
+        + rewrite Hkill. iModIntro. iExact "HT". }
     (* ---- THE CONSOLE DANCE, at whichever arm the VIEW decided
            ([AppEcho.echo_boot]).  Built through [UInitKernel]'s two intro
            lemmas, which is the one place this file names its vocabulary:

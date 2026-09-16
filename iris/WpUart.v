@@ -1139,33 +1139,37 @@ Section DevLoops.
      THE ARM'S HALF IS HERE, not beside it: it is a field of the history the
      resource is about, so keeping it anywhere else would need a second
      agreement to say the two describe the same arm. *)
-  (* THE PORT'S CLAIM SLOT (redesign R2), and WHY IT HOLDS ONLY THE ARM SO
-     FAR.  The finished clause is
+  (* THE PORT'S ONE CLAIM (redesign R2), replacing [out_claim_at] and
+     [in_claim_at].  The application's resource at ONE witness, the kernel's
+     four log halves against the history's own fields, the arm's half, and
+     the history's well-formedness -- which subsumes [log_ok] and adds the
+     arm's.
 
-       ∃ o H, obs_hist_lb_o o ∗ chist_at iu (S gen_id) (default [] o) H
-              ∗ ⌜ch_acc H = uart_acc u⌝ ∗ <the kernel's four log halves>
-              ∗ uart_arm γ (1/2) (ch_arm H) ∗ ⌜cons_hist_ok H⌝
+     THE ARM'S HALF IS HERE and not beside it: it is a FIELD of the history
+     the resource is about, so keeping it anywhere else would need a second
+     agreement to say the two describe the same arm. *)
+  Definition cons_claim_at (iu : uart_id) (γ : uart_names) (u : uart_state)
+      : iProp Σ :=
+    (∃ (o : option (list mobs)) (H : LogEntryDefs.cons_hist),
+       obs_hist_lb_o o ∗ chist_at iu (S gen_id) (default [] o) H ∗
+       ⌜LogEntryDefs.ch_acc H = uart_acc u⌝ ∗
+       uart_log_hi γ (1/2) (log_top (LogEntryDefs.ch_log H)) ∗
+       uart_deliv γ (1/2) (LogEntryDefs.ch_dl H) ∗
+       in_log_auth γ (LogEntryDefs.ch_log H) ∗
+       uart_logm γ (1/2) (LogEntryDefs.ch_log H) ∗
+       uart_arm γ (1/2) (LogEntryDefs.ch_arm H) ∗
+       ⌜ConsLog.cons_hist_ok H⌝)%I.
 
-     and none of the three additions can be made on its own:
-
-     - [chist_at] has to be FOUNDED at boot, as [out_res_at] and [in_res_at]
-       are, by the application's transport.  The kernel cannot conjure it:
-       the field is opaque there, and that it happens to be [emp] for both
-       applications today is not something the kernel may use.
-     - the [uart_acc] tie can only hold once every transmit store STEPS the
-       history, or a THR store breaks it.
-     - the kernel's four log halves are held by [in_claim_at] and cannot be
-       held twice.
-
-     So the claim's founding, its tie to the machine state and its firing
-     sites are ONE change, which is what the redesign plan means by the
-     kernel lane being unsplittable. *)
-  Definition cons_claim_at (iu : uart_id) (γ : uart_names) : iProp Σ :=
-    (∃ a : option LogEntryDefs.cons_arm, uart_arm γ (1/2) a)%I.
-
-  Global Instance cons_claim_at_timeless iu γ :
-    Timeless (cons_claim_at iu γ).
+  Global Instance cons_claim_at_timeless iu γ u :
+    Timeless (cons_claim_at iu γ u).
   Proof. rewrite /cons_claim_at. apply _. Qed.
+
+  (* the claim is about the ACCEPTED bytes, so a transition that leaves them
+     alone carries it over -- [uart_out_claim_stable]'s twin *)
+  Lemma cons_claim_at_stable (iu : uart_id) (γ : uart_names) (u u' : uart_state) :
+    uart_acc u' = uart_acc u ->
+    cons_claim_at iu γ u -∗ cons_claim_at iu γ u'.
+  Proof. iIntros (Ha) "H". by rewrite /cons_claim_at Ha. Qed.
 
   Definition in_claim_at (iu : uart_id) (γ : uart_names) : iProp Σ :=
     (∃ (o : option (list mobs)) (pops : list LogEntryDefs.log_entry)
@@ -1608,8 +1612,7 @@ Section DevLoops.
   Definition dev_inv_body (γ : uart_names) (γd : disk_names) : iProp Σ :=
     (∃ (u : uart_state) (p : plic_state) (v : virtio_state),
        uart_frag Uart0 u ∗ plic_frag p ∗ virtio_frag v ∗
-       uart_ghosts γ u ∗ uart_colE Uart0 γ u ∗ in_claim_at Uart0 γ ∗
-       cons_claim_at Uart0 γ ∗
+       uart_ghosts γ u ∗ uart_colE Uart0 γ u ∗ cons_claim_at Uart0 γ u ∗
        uart_preinit γ ∗
        virtio_proto γd v ∗
        ⌜ plic_ok p ⌝ ∗ ⌜ virtio_isr_ok v ⌝)%I.
@@ -1648,7 +1651,7 @@ Section DevLoops.
      open the invariant to reach it. *)
   Definition uart_inv_body (i : uart_id) (γ : uart_names) : iProp Σ :=
     (∃ u : uart_state, uart_frag i u ∗ uart_ghosts γ u ∗ uart_colE i γ u
-       ∗ in_claim_at i γ ∗ cons_claim_at i γ)%I.
+       ∗ cons_claim_at i γ u)%I.
 
   (* ------------------------------------------------------------------ *)
   (*  THE PLIC INVARIANT'S PER-SOURCE SLOTS.                             *)
@@ -2877,15 +2880,39 @@ Section DevLoops.
   (*  ONE consputc -- and [out_link]'s own surface is untouched, which is  *)
   (*  what keeps the write path (and [cons_out_chain]) exactly as landed.  *)
   (* ==================================================================== *)
+  (* ---- THE TRANSMIT STORE MOVES THE PORT'S CLAIM (redesign R2).  The
+     accepted bytes are a FIELD of the history now, so the store steps the
+     history by [EvOut] where it used to move the output claim's [acc]
+     argument.  Same place, same shape; one resource instead of two. ---- *)
+  Lemma cons_claim_at_store (iu : uart_id) (γ : uart_names) (u u' : uart_state)
+      (b : bv 8) (Φ : iProp Σ) :
+    uart_acc u' = (uart_acc u ++ [b])%list ->
+    cons_link iu (S gen_id) (ConsLog.EvOut b) Φ -∗ cons_claim_at iu γ u
+    ={⊤ ∖ ↑uartN iu}=∗ cons_claim_at iu γ u' ∗ Φ.
+  Proof.
+    iIntros (Hacc) "HΨ Hcl".
+    iDestruct "Hcl" as (o H)
+      "(Hlb & Hres & %Hacc0 & Hhi & Hdv & Hau & Hlm & Harm & %Hok)".
+    iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(Hlb' & Hres' & HΦ)".
+    { exact I. }
+    iModIntro. iFrame "HΦ".
+    iExists o', (ConsLog.cons_step H (ConsLog.EvOut b)).
+    cbn [ConsLog.cons_step LogEntryDefs.ch_acc LogEntryDefs.ch_log
+         LogEntryDefs.ch_dl LogEntryDefs.ch_arm].
+    iFrame "Hlb' Hres' Hhi Hdv Hau Hlm Harm". iPureIntro. split.
+    - by rewrite Hacc0 Hacc.
+    - by apply (ConsLog.cons_hist_ok_step H (ConsLog.EvOut b) Hok I).
+  Qed.
+
   Definition store_ob (i : uart_id) (γ : uart_names) (b : bv 8)
       (Φ : iProp Σ) : iProp Σ :=
     (∀ u u' : uart_state,
        ⌜u_rx u' = u_rx u⌝ -∗ ⌜uart_loopback u' = uart_loopback u⌝ -∗
        ⌜u_wire u' = u_wire u⌝ -∗ ⌜u_out u' = u_out u⌝ -∗
        ⌜uart_acc u' = (uart_acc u ++ [b])%list⌝ -∗
-       uart_out_auth γ u -∗ uart_colE i γ u -∗ in_claim_at i γ
+       uart_out_auth γ u -∗ uart_colE i γ u -∗ cons_claim_at i γ u
        ={⊤ ∖ ↑uartN i}=∗
-       uart_out_auth γ u ∗ uart_colE i γ u' ∗ in_claim_at i γ ∗ Φ)%I.
+       uart_out_auth γ u ∗ uart_colE i γ u' ∗ cons_claim_at i γ u' ∗ Φ)%I.
 
   (* the per-byte chain of them, [out_chain]'s twin one level down *)
   Fixpoint store_chain (i : uart_id) (γ : uart_names) (bs : list (bv 8))

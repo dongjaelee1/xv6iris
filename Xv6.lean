@@ -163,3 +163,11 @@ import Xv6.LinkYield
 import Xv6.SpecScheduler
 import Xv6.ProofScheduler
 import Xv6.LinkScheduler
+import Xv6.UPtDefs
+import Xv6.SpecUvmcreate
+import Xv6.SpecWalkaddr
+import Xv6.SpecUvmunmap
+import Xv6.SpecFreewalk
+import Xv6.SpecUvmfree
+import Xv6.SpecUvmalloc
+import Xv6.SpecVmfault

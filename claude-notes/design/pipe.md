@@ -430,29 +430,49 @@ pipewrite/piperead port, 2026-09-16):
 
 **The exit path** is the one place a payment is demanded over a whole
 table: `kexit` closes every descriptor, so its contract takes the table
-named and `fileclose_cpays sts`.  The generic slot pays it out of the
-taint.  Two things the first draft got wrong here (found by the syscall
-port, 2026-09-16):
+named and `fileclose_cpays sts`.  Who pays it (settled 2026-09-16, after
+two drafts the proof lanes refuted):
 
-- **The payment is owed at every trap, not only at exit(2).**  usertrap
-  runs `kexit(-1)` itself at its three killed checks, and a process can be
-  found killed at ANY trap (a killed `read(2)` reaches the first check
-  with a table that may hold pipes and nothing in hand but the kill shot:
-  the kill row carries the victim's exit payload, not the killer's
-  credential, and a self-kill is paid by `kill_owed` without any taint).
-  So `SpecUsertrap.ut_exit_cpay` is `fileclose_cpays sts` ungated, owed by
-  `SpecUservec` too; only the dispatcher's `sysc_exit_cpay` stays gated on
-  the number.
-- **The kernel gives nothing back on the resume path.**  A verified
-  program that pays links out of its fragments at a trap that does NOT
-  kill it has lost them -- kexit's payload is `emp`, nobody is there to
-  receive it.  So a program that keeps a pipe's fragment across traps
-  cannot use this row as it stands; it needs either a refund on the resume
-  route (the slot mechanism `ut_kill_out` already refunds the non-ecall
-  kill deposit, and the syscall post rows would have to carry the ecall
-  side) or a kill protocol whose row carries the killer's taint.  Both are
-  application-tier design, recorded as open in `projects/pipe-queue.md`;
-  the kernel side is closed either way.
+- **exit(2)**: the process, as the BUNDLE ROW of the exit number.
+  `UexecExecInst.xv6_sbundle` at 2 is `fileclose_cpays (uvis_fd W)`, the
+  exit ecall deposits it like any returning number (`UexecRet.uexec_dep_F`
+  no longer special-cases exit; `ut_sys_in`/`sysc_sys_in` cover it), and
+  the dispatcher's exit arm reads it with `sbundle_at_exit_elim`.  2 left
+  `free_num`; a pipe-free table mints it from nothing
+  (`xv6_sbundle_exit_nopipe`, `fileclose_cpays_nopipe`), the generic slot
+  from the taint.
+- **a kill by a third party** (`kkill`): the KILLER, with its taint.
+  `SchedCtx.kill_row`'s paid arm is now `kill_owed ∗ □ riscv_kill_cred`,
+  and usertrap's three killed checks read the credential out of the row
+  through `killed()`'s lending wand (`kill_paid_shot_tear`) and pay the
+  tear-down with `fileclose_cpays_taint` -- for ANY table, including the
+  one a syscall left behind, which is why this cannot be a deposit.
+- **a self-kill** (setkilled at a deliberate fault, lane SELF-KILL's
+  untainted `kill_owed` route, which `UkStore`/`UkLoad` use): the process,
+  in the SAME trap.  `UexecRet.ukill_cred_at`'s owed side is now
+  `kill_owed gn ∗ sbundle_at X 2 f W` -- the exit row again -- additively
+  with the resume slot, so nothing is lost when the kernel serves the
+  fault instead.  The fault arm founds the killed row on the SPENT arm
+  with the incarnation's marker (`kill_paid_kill_two`'s right side;
+  `SpecSetkilled` takes `kill_owed ∗ taken_at` and hands `kill_owed`
+  back), keeps the payload and the closes in hand, and its kexit takes
+  the LEFT side of `SpecKexit`'s payment at -1.  kexit is therefore stated
+  at the marker-less block (`ProcInv.proc_priv_unmarked`; every other
+  caller splits the marker off with `proc_priv_unmark`), and the marker
+  rides the tear-down side of the payment instead.
+
+Why the marker matters: a row founded by a self-kill is spent, and the
+process that founded it never traps again -- so a LIVE trap's own marker
+(still in its block) is what refutes the spent arm at a killed check and
+proves the paid arm, with the killer's credential, is the one it reads.
+Without that, the kernel could not tell a third-party kill from the
+impossible "self-killed earlier and still running".
+
+What the first two drafts got wrong: a gated `ut_exit_cpay` (exit ecall
+only) left usertrap's killed dead ends unpaid; an UNGATED one (every trap)
+would have made a program that keeps a pipe's fragment lose it at its
+first trap, since kexit refunds nothing.  Neither survives; nothing named
+`ut_exit_cpay`/`sysc_exit_cpay` exists any more.
 
 A verified program's exit leaf has its own `fdv` in hand inside the
 deposit and pays a link for every pipe row -- which it can do only if its

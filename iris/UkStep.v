@@ -804,7 +804,7 @@ Section UkArms.
        dispatched cause is one devintr handles, so no kill can follow it. *)
     (* THE PAIR (lane TRAP-ROWS, T3), and its left is free here *)
     iSplit.
-    { iApply (ukill_cred_at_not _ _
+    { iApply (ukill_cred_at_not _ _ _ _ _
                 (utrap_scause_intr_not_kill i
                    (register_lookup (R_bitvector_64 scause) rsA) Hi)). }
     rewrite (uslot_run m pc M π sz fdv cw gn cs pidv Hx0 Hal2).

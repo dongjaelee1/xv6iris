@@ -1707,14 +1707,25 @@ Section UexecRet.
          and pays for its own death with no taint at all.
      The row is therefore NOT persistent any more, and the consumer that
      used to duplicate it now MOVES it. *)
-  Definition ukill_cred_at (gn : gname) (sc : mword 64) : iProp Σ :=
+  (* ...AND THE RIGHT SIDE CARRIES THE TEAR-DOWN'S CLOSE PAYMENTS
+     (design/pipe.md, "The exit path"): a process the kernel tears down
+     closes every descriptor it holds, and a pipe descriptor's last close
+     steps the pipe's exact ghost state.  A third-party killer pays that
+     with its taint into <p->lock>'s killed row; a process paying for its
+     OWN death pays it here, as the bundle row of the exit number
+     ([UexecExecInst.xv6_sbundle] at 2 is the table's close payments) --
+     which is why the row now reads the families and the key. *)
+  Definition ukill_cred_at (X : uvis -d> iPropO Σ) (gn : gname) (sc : mword 64)
+      (W : uvis) (f : sfam) : iProp Σ :=
     (if decide (ukill_sc sc)
-     then (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) else emp)%I.
+     then (□ riscv_kill_cred
+           ∨ (ChildTok.kill_owed gn ∗ sbundle_at X USYS_exit f W)) else emp)%I.
 
   (* ...and at any cause the kernel HANDLES the row is [emp] and free: the
      interrupt arms discharge it this way ([UkStep.utrap_scause_intr_not_kill]) *)
-  Lemma ukill_cred_at_not (gn : gname) (sc : mword 64) :
-    ~ ukill_sc sc -> ⊢ ukill_cred_at gn sc.
+  Lemma ukill_cred_at_not (X : uvis -d> iPropO Σ) (gn : gname) (sc : mword 64)
+      (W : uvis) (f : sfam) :
+    ~ ukill_sc sc -> ⊢ ukill_cred_at X gn sc W f.
   Proof.
     intros Hn. rewrite /ukill_cred_at.
     destruct (decide (ukill_sc sc)) as [Hk | _]; [ exfalso; exact (Hn Hk) | done ].
@@ -1722,24 +1733,27 @@ Section UexecRet.
 
   (* ...and at a cause the kernel KILLS at, the row is the taint -- the
      generic route's side *)
-  Lemma ukill_cred_at_of_cred (gn : gname) (sc : mword 64) :
-    □ riscv_kill_cred -∗ ukill_cred_at gn sc.
+  Lemma ukill_cred_at_of_cred (X : uvis -d> iPropO Σ) (gn : gname) (sc : mword 64)
+      (W : uvis) (f : sfam) :
+    □ riscv_kill_cred -∗ ukill_cred_at X gn sc W f.
   Proof.
     rewrite /ukill_cred_at. iIntros "#H".
     destruct (decide (ukill_sc sc)) as [_ | _]; [ iLeft; iExact "H" | done ].
   Qed.
 
-  (* ...or the process's own payment -- the deliberate side *)
-  Lemma ukill_cred_at_of_owed (gn : gname) (sc : mword 64) :
-    ChildTok.kill_owed gn -∗ ukill_cred_at gn sc.
+  (* ...or the process's own payment beside its table's close payments --
+     the deliberate side *)
+  Lemma ukill_cred_at_of_owed (X : uvis -d> iPropO Σ) (gn : gname) (sc : mword 64)
+      (W : uvis) (f : sfam) :
+    ChildTok.kill_owed gn -∗ sbundle_at X USYS_exit f W -∗
+    ukill_cred_at X gn sc W f.
   Proof.
-    rewrite /ukill_cred_at. iIntros "H".
-    destruct (decide (ukill_sc sc)) as [_ | _]; [ iRight; iExact "H" | done ].
+    rewrite /ukill_cred_at. iIntros "H Hb".
+    destruct (decide (ukill_sc sc)) as [_ | _]; [ iRight; iFrame "H Hb" | done ].
   Qed.
 
-  (* at the ecall cause there is no kill row: [ukill_sc]'s first conjunct
-     is exactly "not the ecall cause" *)
-  Lemma ukill_cred_at_ecall (gn : gname) : ⊢ ukill_cred_at gn uecall_scause.
+  Lemma ukill_cred_at_ecall (X : uvis -d> iPropO Σ) (gn : gname) (W : uvis) (f : sfam) :
+    ⊢ ukill_cred_at X gn uecall_scause W f.
   Proof.
     rewrite /ukill_cred_at.
     destruct (decide (ukill_sc uecall_scause)) as [Hk | _];
@@ -1760,7 +1774,7 @@ Section UexecRet.
      [uexec_kill_arm_F_not] pays the left for nothing. *)
   Definition uexec_kill_arm_F (X : uvis -d> iPropO Σ) (sc : mword 64)
       (W : uvis) (f : sfam) : iProp Σ :=
-    (ukill_cred_at (uvis_gen W) sc ∧ X W)%I.
+    (ukill_cred_at X (uvis_gen W) sc W f ∧ X W)%I.
 
   (* the pair, read: either side, and the kernel takes exactly one *)
   Lemma uexec_kill_arm_F_slot (X : uvis -d> iPropO Σ) (sc : mword 64)
@@ -1770,7 +1784,7 @@ Section UexecRet.
 
   Lemma uexec_kill_arm_F_cred (X : uvis -d> iPropO Σ) (sc : mword 64)
       (W : uvis) (f : sfam) :
-    uexec_kill_arm_F X sc W f -∗ ukill_cred_at (uvis_gen W) sc.
+    uexec_kill_arm_F X sc W f -∗ ukill_cred_at X (uvis_gen W) sc W f.
   Proof. rewrite /uexec_kill_arm_F. iIntros "H". iApply (bi.and_elim_l with "H"). Qed.
 
   (* ...and built at a cause the kernel HANDLES, where the left is free *)
@@ -1779,7 +1793,7 @@ Section UexecRet.
     ~ ukill_sc sc -> X W -∗ uexec_kill_arm_F X sc W f.
   Proof.
     intro Hnk. rewrite /uexec_kill_arm_F. iIntros "H". iSplit;
-      [ iApply (ukill_cred_at_not (uvis_gen W) sc Hnk) | iExact "H" ].
+      [ iApply (ukill_cred_at_not X (uvis_gen W) sc W f Hnk) | iExact "H" ].
   Qed.
 
   (* ...and out of a PERSISTENT taint beside the slot: the generic route's
@@ -1789,7 +1803,7 @@ Section UexecRet.
     □ riscv_kill_cred -∗ X W -∗ uexec_kill_arm_F X sc W f.
   Proof.
     rewrite /uexec_kill_arm_F. iIntros "#Hkc H". iSplit;
-      [ iApply (ukill_cred_at_of_cred (uvis_gen W) sc with "Hkc") | iExact "H" ].
+      [ iApply (ukill_cred_at_of_cred X (uvis_gen W) sc W f with "Hkc") | iExact "H" ].
   Qed.
 
   Definition uexec_arm_F (X : uvis -d> iPropO Σ) (sc : mword 64) (W : uvis)
@@ -1809,8 +1823,10 @@ Section UexecRet.
     (uexec_pay_dep sc W f ∗
      (if decide (sc = uecall_scause) then
         let n := usys_num (uvis_tf W) in
-        if decide (n = USYS_exit) then emp
-        else if decide (n = USYS_fork) then
+        (* EXIT DEPOSITS ITS BUNDLE ROW LIKE ANY RETURNING NUMBER
+           (design/pipe.md, "The exit path"): the row is the table's close
+           payments, one per descriptor, which kexit spends. *)
+        if decide (n = USYS_fork) then
           uexec_fork_child_F X W (sfork_pay f) (sfork_lend f)
         else sbundle_at X n f W
       (* ...AND THE NON-ECALL BRANCH IS EMPTY NOW (lane TRAP-ROWS, T3):
@@ -1836,7 +1852,7 @@ Section UexecRet.
        uexec_pay_dep sc W f ∗
        (if decide (sc = uecall_scause) then
           let n := usys_num (uvis_tf W) in
-          if decide (n = USYS_exit) then emp
+          if decide (n = USYS_exit) then sbundle_at X n f W
           else if decide (n = USYS_fork) then uexec_fork_F X W f
           else if decide (n = USYS_wait) then
             (sbundle_at X n f W ∗ uexec_wait_F X n f W)
@@ -2009,7 +2025,7 @@ Section UexecRet.
   Local Instance uslot_F_contractive : Contractive uslot_F.
   Proof.
     rewrite /uslot_F /uvb_F /ukont_F /ukb_F /uexec_ret_F /uexec_kill_arm_F
-            /uexec_fork_F
+            /ukill_cred_at /uexec_fork_F
             /uexec_fork_parent_F /ufork_ans /uexec_ret_cont_F
             /uexec_wait_F /uwait_ans /uwait_ans_pid
             /uwait_ans_pid_m /uwait_ans_at_m /uexec_ret_cont_gen.
@@ -2257,7 +2273,7 @@ Section UexecRet.
     (∃ f : sfam,
      uexec_pay_dep sc W f ∗
      (let n := usys_num (uvis_tf W) in
-      if decide (n = USYS_exit) then emp
+      if decide (n = USYS_exit) then sbundle_at uslot n f W
       else if decide (n = USYS_fork) then
        (* FORK'S TWO LEGS, AT THE FAMILIES THE PROCESS CHOSE -- which is
           where its child's EXIT PAYLOAD lives ([UexecSG.sfork_pay]).  The
@@ -2391,7 +2407,7 @@ Section UexecRet.
   Proof. exact (uexec_kill_arm_F_slot uslot sc W f). Qed.
 
   Lemma uexec_kill_arm_cred (sc : mword 64) (W : uvis) (f : sfam) :
-    uexec_kill_arm sc W f -∗ ukill_cred_at (uvis_gen W) sc.
+    uexec_kill_arm sc W f -∗ ukill_cred_at uslot (uvis_gen W) sc W f.
   Proof. exact (uexec_kill_arm_F_cred uslot sc W f). Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -2416,8 +2432,9 @@ Section UexecRet.
     (* EXIT SPLITS THE OTHER WAY ROUND from every returning number: its
        DEPOSIT is the payment and its ARM is [emp], because exit does not
        return. *)
-    destruct (decide (usys_num (uvis_tf W) = USYS_exit));
-      [ iFrame "Hpay H" |].
+    destruct (decide (usys_num (uvis_tf W) = USYS_exit)) as [Hx | Hnx];
+      [ destruct (decide (usys_num (uvis_tf W) = USYS_fork)) as [Hf | _];
+        [ exfalso; rewrite Hx in Hf; discriminate Hf | iFrame "Hpay H" ] |].
     (* FORK SPLITS FOR REAL: the child conjunct is the deposit and the
        parent conjunct the arm, and the child's [∀ fdv' cw'] guards
        collapse by reflexivity on the way down
@@ -2441,8 +2458,10 @@ Section UexecRet.
     rewrite /uexec_ret_F /uexec_dep_F /uexec_arm_F. cbv zeta.
     iIntros "[Hpay Hd] Ha". iExists f.
     destruct (decide (sc = uecall_scause)); [| iFrame "Hpay Ha"].
-    (* exit's payment is the DEPOSIT half; its arm is [emp] *)
-    destruct (decide (usys_num (uvis_tf W) = USYS_exit)); [ iFrame "Hpay Hd" |].
+    (* exit's payment and bundle row are the DEPOSIT half; its arm is [emp] *)
+    destruct (decide (usys_num (uvis_tf W) = USYS_exit)) as [Hx | Hnx];
+      [ destruct (decide (usys_num (uvis_tf W) = USYS_fork)) as [Hf | _];
+        [ exfalso; rewrite Hx in Hf; discriminate Hf | iFrame "Hpay Hd" ] |].
     (* ...and joins back: the deposit's one record re-guards
        ([uexec_fork_child_to]) *)
     destruct (decide (usys_num (uvis_tf W) = USYS_fork)).
@@ -2539,10 +2558,21 @@ Section UexecRet.
          (* the deposit's non-ecall branch is [emp] now (T3): the row moved
             into the arm *)
          | done ]]].
-    destruct (decide (usys_num (uvis_tf W) = USYS_exit)) as [Hxi | Hnx];
-      [iModIntro; iExists fR; iSplitR; [ done | iSplitL;
-       [ iApply (uexec_pay_dep_const R sc W fR HfR with "Hpay HRb")
-       | done ]] |].
+    (* THE EXIT DEPOSIT IS A BUNDLE ROW NOW (design/pipe.md, "The exit
+       path"): the mint below answers it at every number, so exit's case is
+       the general one with its payload paid at the status word *)
+    destruct (decide (usys_num (uvis_tf W) = USYS_exit)) as [Hxi | Hnx].
+    { iAssert (□ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗
+                               □ R -∗ X W'))%I as "#Hallb".
+      { iModIntro. iIntros (W') "Hp #Hr". iApply ("Hall" with "Hp").
+        iModIntro. iIntros "_". iExact "Hr". }
+      iMod (sbundle_of_supply X (usys_num (uvis_tf W)) W R
+              with "Hpay Hsup HRb Hallb") as (f) "[%Hfp Hb]".
+      iModIntro. iExists f. iSplitR; [ done | ].
+      destruct (decide (usys_num (uvis_tf W) = USYS_fork)) as [Hf | _];
+        [ exfalso; rewrite Hxi in Hf; discriminate Hf | ].
+      iSplitR "Hb"; [ | iExact "Hb" ].
+      iApply (uexec_pay_dep_const R sc W f Hfp with "Hpay HRb"). }
     (* fork's deposit is a slot at ONE record, which the generic family
        has at every record -- AND THE KERNEL HANDS IT THE CHILD'S PAY
        FACT, at the payload this family forks with ([UexecSG.sfam_pay] of

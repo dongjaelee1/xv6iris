@@ -715,7 +715,7 @@ Class uprogSG (Σ : gFunctors) := {
                  explicitly, at the state its handle names. *)
 Definition free_num (n : Z) : Prop :=
   n <> USYS_exec /\ n <> 5 /\ n <> 6 /\ n <> 15 /\ n <> 16 /\ n <> 17 /\
-  n <> 18 /\ n <> 19 /\ n <> 20 /\ n <> 21.
+  n <> 18 /\ n <> 19 /\ n <> 20 /\ n <> 21 /\ n <> USYS_exit.
 
 Global Instance free_num_dec (n : Z) : Decision (free_num n).
 Proof. rewrite /free_num. apply _. Defined.

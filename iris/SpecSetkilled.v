@@ -108,7 +108,13 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
          faults ON PURPOSE pays for its own death with no taint at all.
      Keyed at the target's generation, which is what the registration
      eighth below names. *)
-  (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) -∗
+  (* ...AND THE RIGHT SIDE BRINGS THE INCARNATION'S MARKER (design/pipe.md,
+     "The exit path"): a self-kill closes every descriptor the process
+     holds, which its own trap deposit pays, so the row it founds is the
+     SPENT one -- marker in, payload kept (it comes back below, for the
+     kexit two critical sections later).  The taint's side founds the paid
+     arm as any third-party killer does. *)
+  (□ riscv_kill_cred ∨ (ChildTok.kill_owed gn ∗ ChildTok.taken_at gn)) -∗
   (* ...AND THE CALLER'S REGISTRATION EIGHTH, LENT (lane SELF-KILL, P6b):
      what says the [gn] the payment is keyed at IS the generation
      <p->lock>'s row is at ([SlotGen.pid_reg_agree]).  usertrap's fault arm
@@ -148,6 +154,10 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
          flag will never read zero again, which is what refutes the
          not-killed branch of the killed() check this arm walks into. *)
       ChildTok.kill_shot gn -∗
+      (* ...AND THE SIDE THE WRITE DID NOT SPEND: the taint back (it is
+         persistent), or the process's own death payload, which the fault
+         arm hands its kexit directly ([SpecKexit]'s left side at -1) *)
+      (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

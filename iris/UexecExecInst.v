@@ -614,6 +614,13 @@ Section UexecExecInst.
           generic slot pays it out of the taint, a program at the state its
           handle names. *)
        fileclose_cpay (fd_st_of_key (xk_a W 0) (uvis_fd W)) (cl_P f)
+     else if decide (n = USYS_exit) then
+       (* EXIT(2) PAYS THE CLOSE OF EVERY ROW OF ITS TABLE (design/pipe.md,
+          "The exit path"): kexit closes them all, and a pipe row's last
+          close steps the byte queue.  The generic slot pays it out of the
+          taint; a program at the table its key names.  LAST in the match
+          so every reader above keeps its skip count. *)
+       fileclose_cpays (uvis_fd W)
      else emp)%I.
 
   (* ...AND THE ARMED POST BACK, at the same key and the same families.
@@ -978,6 +985,9 @@ Section UexecExecInst.
        credential, read as [PipeQueue.pipe_taint_cred] *)
     destruct (decide (n = 21)) as [_ | _];
       [ iModIntro; iApply (fileclose_cpay_taint with "Hkc") | ].
+    (* row 2: the table's close links, paid by the same taint *)
+    destruct (decide (n = USYS_exit)) as [_ | _];
+      [ iModIntro; iApply (fileclose_cpays_taint with "Hkc") | ].
     by iModIntro.
   Qed.
 
@@ -1173,7 +1183,7 @@ Section UexecExecInst.
     xv6_free n ->
     ⊢ |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X n f W.
   Proof.
-    intros (Hx & H5 & H6 & H15 & H16 & H17 & H18 & H19 & H20 & H21).
+    intros (Hx & H5 & H6 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & H2).
     iAssert (|==> xv6_sbundle X n (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
           iSplitR; [ done | iExact "Hb" ] ].
@@ -1191,6 +1201,7 @@ Section UexecExecInst.
     destruct (decide (n = 20)) as [He | _]; [ exfalso; exact (H20 He) | ].
     destruct (decide (n = 6)) as [He | _]; [ exfalso; exact (H6 He) | ].
     destruct (decide (n = 21)) as [He | _]; [ exfalso; exact (H21 He) | ].
+    destruct (decide (n = USYS_exit)) as [He | _]; [ exfalso; exact (H2 He) | ].
     by iModIntro.
   Qed.
 
@@ -1231,6 +1242,39 @@ Section UexecExecInst.
     (* [destruct ... eqn:] rewrote the guard's own hypothesis too, so what
        is left of it is the reflexive instance *)
     exfalso. exact (Hnp rb wb gp eq_refl).
+  Qed.
+
+  (* ...AND EXIT'S ROW AT A TABLE THAT HOLDS NO PIPE (design/pipe.md, "The
+     exit path").  2 left [xv6_free] because at a table with a pipe row its
+     row is a step of the pipe's exact ghost state; at a pipe-free table
+     every row's payment is [emp] and the deposit is minted from nothing.
+     The guard is on the KEY's own table, which an exit leaf holding the
+     descriptor view can discharge. *)
+  Lemma xv6_sbundle_exit_nopipe (X : uvis -d> iPropO Σ) (W : uvis)
+      (Q : Z -> iProp Σ) :
+    (forall st : fdstate, st ∈ uvis_fd W ->
+       forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp)) ->
+    ⊢ |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X USYS_exit f W.
+  Proof.
+    intros Hnp.
+    iAssert (|==> xv6_sbundle X USYS_exit (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
+      [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
+          iSplitR; [ done | iExact "Hb" ] ].
+    rewrite /xv6_sbundle /xfam_at /xfam_pt /xfam_exec /=.
+    destruct (decide (USYS_exit = USYS_exec)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 5)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 9)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 15)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 16)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 17)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 18)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 19)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 20)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 6)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 21)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = USYS_exit)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    iModIntro. iApply (fileclose_cpays_nopipe _ Hnp).
   Qed.
 
   (* ...AND THE VERIFIED PROGRAM'S OWN DEPOSIT DATA: NO SUPPLIER AT ALL and
@@ -1282,6 +1326,14 @@ Section UexecExecInst.
   Proof.
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     do 10 xv6_skip. xv6_take. iExact "H".
+  Qed.
+
+  (* exit's row: the table's close payments, which kexit spends *)
+  Lemma sbundle_at_exit_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
+    sbundle_at X USYS_exit f W -∗ fileclose_cpays (uvis_fd W).
+  Proof.
+    iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
+    do 11 xv6_skip. xv6_take. iExact "H".
   Qed.
 
   Lemma sbundle_at_chdir_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :

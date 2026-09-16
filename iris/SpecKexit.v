@@ -282,7 +282,12 @@ Definition wp_kexit_sconf_body
      ([ProcInv.proc_priv_core]), which this function joins with <p->lock>'s
      at [p->xstate = status], re-splits, and parks beside the escrow keyed
      at what the cell then reads ([ProcDefs.proc_dormant]). *)
-  proc_priv γf pj pid U -∗
+  (* ...WITHOUT THE INCARNATION'S MARKER ([ProcInv.proc_priv_unmarked],
+     design/pipe.md "The exit path"): the marker is spent into <p->lock>'s
+     killed row either by the take below (the tear-down route) or by the
+     fault arm that founded the row for a self-kill, so it is a premise of
+     the tear-down route's side of the payment and not of the block. *)
+  proc_priv_unmarked γf pj pid U -∗
   (* THE fd-STATE FRAGMENT BUNDLE.  kexit closes every descriptor, and after
      [ProcInv]'s auth/frag split a close is a retype that needs both halves.
      It is NOT given back: the process is ending, and the bundle dies with
@@ -336,7 +341,8 @@ Definition wp_kexit_sconf_body
      kernel's own tear-down uses; a process exiting with -1 of its own
      accord takes the LEFT side and pays as any other exit does. *)
   (Q (kexit_status m)
-   ∨ (⌜kexit_status m = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U)))) -∗
+   ∨ (⌜kexit_status m = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
+      ∗ ChildTok.taken_at (pv_gen (us_V U)))) -∗
   (* NO continuation: kexit does not return.  See the header. *)
   WP (Loop : expr riscv_lang).
 

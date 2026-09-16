@@ -380,7 +380,10 @@ Section SyscExec.
       (cs : gset gname) (pid : mword 32) (f : sfam)
       : iProp Σ :=
     (∀ n : Z,
-       ⌜sysc_num (us_V U) = n /\ n <> USYS_exit /\ n <> USYS_fork⌝ -∗
+       (* ...AND EXIT DEPOSITS LIKE ANY RETURNING NUMBER (design/pipe.md,
+          "The exit path"): its row is the table's close payments, which
+          the exit arm hands kexit ([UexecExecInst.sbundle_at_exit_elim]). *)
+       ⌜sysc_num (us_V U) = n /\ n <> USYS_fork⌝ -∗
        sbundle_at uslot n f (uvis_of U sts gn cs pid))%I.
 
   (* ...AND WHAT COMES BACK, at the same key and the SAME families: the
@@ -493,19 +496,6 @@ Section SyscExec.
      at ONE predicate. *)
   Definition sysc_pay_in (f : sfam) (U : ustate) : iProp Σ :=
     upay_at (pv_gen (us_V U)) uecall_scause (pv_tf (us_V U)) f.
-
-  (* THE EXIT ROW'S CLOSE PAYMENTS (design/pipe.md, "The byte queue"): a
-     process that exits closes every descriptor, and a pipe descriptor's
-     last close is a step of the pipe's exact ghost state, so exit's
-     deposit carries one close payment per row of the table -- a link, or
-     the taint.  Gated on the number, so every returning arm pays it for
-     nothing.  [SpecUsertrap.ut_exit_cpay] is the trap's row for it. *)
-  Definition sysc_exit_cpay (U : ustate) (sts : list fdstate) : iProp Σ :=
-    (⌜sysc_num (us_V U) = UsysMemOk.USYS_exit⌝ -∗ fileclose_cpays sts)%I.
-
-  Lemma sysc_exit_cpay_ne (U : ustate) (sts : list fdstate) :
-    sysc_num (us_V U) <> UsysMemOk.USYS_exit -> ⊢ sysc_exit_cpay U sts.
-  Proof. intros Hne. rewrite /sysc_exit_cpay. iIntros (Heq). exfalso. exact (Hne Heq). Qed.
 
   (* THERE IS NO ROW COMING BACK (lane SELF-KILL, P6b).  The payload at the
      kill status is the KILLER's price and is paid into <p->lock>'s own
@@ -832,9 +822,6 @@ Definition wp_syscall_sconf_body
   (* ...and the PAYMENT, which is neither and is owed at every number --
      see [sysc_pay_in] *)
   sysc_pay_in f U -∗
-  (* ...and exit's close payments, one per descriptor row -- see
-     [sysc_exit_cpay] *)
-  sysc_exit_cpay U sts -∗
   (* THE EXIT SLOT IS AN ADDITIVE CONJUNCTION, AND THAT IS WHAT LETS ONE
      TABLE ENTRY NOT RETURN WITHOUT THE CONTRACT SAYING WHICH ONE.
 

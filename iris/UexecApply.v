@@ -498,7 +498,13 @@ Section Apply.
              share ([Hgn]). *)
         rewrite Hgn;
         apply bi.and_proper;
-        [ reflexivity
+        [ (* ...and the left's own right side reads the exit row, which
+             transports as every bundle row does ([sbundle_at_cong]) *)
+          rewrite /ukill_cred_at;
+          destruct (decide (ukill_sc sc)) as [_ | _]; [ | reflexivity ];
+          apply bi.or_proper; [ reflexivity | ];
+          apply bi.sep_proper; [ reflexivity | ];
+          exact (sbundle_at_cong S USYS_exit f W W' Hsk)
         | exact (HS W W' Hg Hp HM Hpi Hsz Hfd Hcw Hgn Hch Hpid Hlz) ] ].
     (* [Hfd] joins the other four: the returning arm's row reads the ENTRY
        descriptor view, so both sides have to name the same one before the

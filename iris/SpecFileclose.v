@@ -437,6 +437,22 @@ Section SpecFileclose.
   Definition fileclose_cpays (sts : list fdstate) : iProp Σ :=
     ([∗ list] st ∈ sts, fileclose_cpay st emp)%I.
 
+  (* ...and at a table that holds no pipe row, every payment is [emp] *)
+  Lemma fileclose_cpays_nopipe (sts : list fdstate) :
+    (forall st : fdstate, st ∈ sts ->
+       forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp)) ->
+    ⊢ fileclose_cpays sts.
+  Proof.
+    intros Hnp. rewrite /fileclose_cpays.
+    induction sts as [| st sts IH]; [ done | ].
+    rewrite big_sepL_cons. iSplitR.
+    - rewrite /fileclose_cpay.
+      destruct st as [| rb wb [i g om | gp | mj]]; try by iEmpIntro.
+      exfalso. exact (Hnp _ (elem_of_list_here _ _) rb wb gp eq_refl).
+    - iApply IH. intros st' Hin. apply Hnp.
+      apply elem_of_list_further. exact Hin.
+  Qed.
+
   Lemma fileclose_cpays_taint sts : pipe_taint_cred -∗ fileclose_cpays sts.
   Proof.
     iIntros "#Ht". rewrite /fileclose_cpays. iApply big_sepL_intro.

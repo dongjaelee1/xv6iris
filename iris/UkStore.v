@@ -1097,8 +1097,8 @@ Section UkStorePostFetch.
     { iPoseProof Hkcw as "Hkcw".
       iDestruct "Hret" as "[Hkcx _]".
       iDestruct ("Hkcw" with "[$Hkcx $Hmyp]") as "[#Hkl | Hkr]";
-        [ iApply (ukill_cred_at_of_cred _ _ with "Hkl")
-        | iApply (ukill_cred_at_of_owed _ _ with "Hkr") ]. }
+        [ iApply (ukill_cred_at_of_cred _ _ _ _ _ with "Hkl")
+        | iApply (ukill_cred_at_of_owed _ _ _ _ _ with "Hkr") ]. }
     iDestruct "Hret" as "[_ Hret]". iExact "Hret".
   Qed.
 

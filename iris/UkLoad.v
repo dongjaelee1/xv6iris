@@ -923,7 +923,7 @@ Section UkLoadPostFetch.
     (* THE PAIR (lane TRAP-ROWS, T3) *)
     iSplit.
     { iPoseProof Hkcw as "#Hkcw".
-      iApply (ukill_cred_at_of_cred _ _ with "Hkcw"). }
+      iApply (ukill_cred_at_of_cred _ _ _ _ _ with "Hkcw"). }
     iExact "Hret".
   Qed.
 

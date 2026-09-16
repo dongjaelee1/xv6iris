@@ -2731,16 +2731,13 @@ Section UkShRun.
       = add_vec_int (mword_of_int pc1 : mword 64) 4 ->
     eq_vec (access_vec_dec (mword_of_int ShSyms.exit : mword 64) 0) ('b"0")
       = true ->
-    (* the tear-down's close payments, named (design/pipe.md, "The exit
-       path"): exit(2) left [UexecSG.free_num] with the byte queue *)
-    udepw_law USYS_exit -∗
     shk_code (ukn_t N) -∗
     uinstr_is (ukn_t N) (mword_of_int pc0) true (C_LI (k, Regidx a0_idx)) -∗
     uinstr_is (ukn_t N) (mword_of_int pc1) false (JAL (imm, Regidx ra_idx)) -∗
     urun N h m (mword_of_int pc0) avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hpx E01 Hsym Hret Hal. iIntros "#Hxl #Hcode #Hi0 #Hi1 Hrun".
+    intros Hpx E01 Hsym Hret Hal. iIntros "#Hcode #Hi0 #Hi1 Hrun".
     iApply (wp_uk_cli N h m (mword_of_int pc0) k a0_idx avail
               ltac:(unfold unot_sp; vm_compute; discriminate)
               ltac:(vm_compute; discriminate) with "Hi0 Hrun").
@@ -2749,7 +2746,7 @@ Section UkShRun.
               Hsym Hret Hal with "Hi1 Hrun").
     iIntros (h2) "Hrun".
     iDestruct Hpx as "Hpay".
-    iApply (wp_ksh_exit N h2 _ avail with "Hxl Hcode Hpay Hrun").
+    iApply (wp_ksh_exit N h2 _ avail with "Hcode Hpay Hrun").
   Qed.
 
   (* ===================================================================== *)
@@ -2766,13 +2763,11 @@ Section UkShRun.
          [UkRun.ukn_pay_free_of_triv] discharges it. *)
     (⊢ ukn_pay N (-1)) ->
     m !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ->
-    (* the tear-down's close payments, named -- see [wp_kshr_exit0] *)
-    udepw_law USYS_exit -∗
     shk_code (ukn_t N) -∗
     urun N h m (mword_of_int ShSyms.runcmd) (6 + n) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hpx Ha0. iIntros "#Hxl #Hcode Hrun".
+    intros Hpx Ha0. iIntros "#Hcode Hrun".
     rewrite shr_runcmd.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     remember (m !!! Regidx csp_rs1) as sp0 eqn:Hsp0.
@@ -2892,7 +2887,7 @@ Section UkShRun.
               ltac:(apply bv_eq; vm_compute; reflexivity)
               ltac:(apply bv_eq; vm_compute; reflexivity)
               ltac:(vm_compute; reflexivity)
-              with "Hxl Hcode [] [] Hrun").
+              with "Hcode [] [] Hrun").
     { iApply (uis_shk_bc with "Hcode"). }
     { iApply (uis_shk_be with "Hcode"). }
   Qed.
@@ -3102,7 +3097,6 @@ Section UkShRun.
                    | l IHl r IHr | c1 IH ];
       intros Hs N Hcst h m t szv ld n Hpx Ha0;
       iIntros "#Hdp #Hcode #Hexs #Hkw #Hjt #Htree Hsz Hstd Hcwd Hch Hrun";
-      iDestruct (UkSh.sh_deps_exit with "Hdp") as "#Hxl";
       iDestruct (ush_jtab_ro with "Hjt") as "#Hro";
       iDestruct (ush_cmd_addr with "Htree") as %[Htr Ht8];
       assert (Ht4 : t mod 4 = 0)
@@ -3157,7 +3151,7 @@ Section UkShRun.
                   ltac:(apply bv_eq; vm_compute; reflexivity)
                   ltac:(apply bv_eq; vm_compute; reflexivity)
                   ltac:(vm_compute; reflexivity)
-                  with "Hxl Hcode [] [] Hrun").
+                  with "Hcode [] [] Hrun").
         { iApply (uis_shk_f0 with "Hcode"). }
         { iApply (uis_shk_f2 with "Hcode"). }
       + (* ---- argv[0] is a string: exec, and it can only come back -1 ---- *)
@@ -3525,7 +3519,7 @@ Section UkShRun.
                   ltac:(apply bv_eq; vm_compute; reflexivity)
                   ltac:(apply bv_eq; vm_compute; reflexivity)
                   ltac:(vm_compute; reflexivity)
-                  with "Hxl Hcode [] [] Hrun").
+                  with "Hcode [] [] Hrun").
         { iApply (uis_shk_ea with "Hcode"). }
         { iApply (uis_shk_ec with "Hcode"). }
       + (* ---- the CHILD: runcmd(bcmd->cmd), in the background ---- *)

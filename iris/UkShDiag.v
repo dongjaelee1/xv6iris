@@ -130,7 +130,6 @@ Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 Require Import UserCwd.  (* [ucwd] / [ucwd_any] -- the process's own view of its working directory *)
 Require Import UserChildren.  (* [uch_any] -- the process's own half of its children set *)
-Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 
 Section UkShDiagStr.
   Context `{!riscvGS Σ}.
@@ -7988,8 +7987,6 @@ Section UkShDiagRun.
       (fa : Z) (flen fq : nat) (sa : Z) (slen : nat) (sf : nat -> bv 8)
       (C1 C2 C3 : nat -> iProp Σ)
       (h : CpuId) (m : regfile) (n : nat) :
-    (* the tear-down's close payments, named (design/pipe.md, "The exit
-       path"): this walk ends in exit(1) *)
     shd_die_lits p0 p1 p2 p3 p4 p5 hi lo j3 j5 kx fa flen fq ->
     sa <> 0 ->
     m !!! Regidx a2_idx = mword_of_int sa ->
@@ -8016,16 +8013,13 @@ Section UkShDiagRun.
     (* the exit payload, out of the program's own hand (lane KILL-PAY,
        K4(a)): this walk ends in [exit] *)
     (C3 flen -∗ ukn_pay N (-1)) -∗
-    (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS (design/pipe.md, "The exit
-       path"): exit(2) left [UexecSG.free_num] with the byte queue. *)
-    udepw_law USYS_exit -∗
     urun N h m (mword_of_int p0) (10 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros (Hok & Hnp & Hfa0 & Hfahi & Hq2 & Hpq & Hps & Hc1d & Hc1u & Hc1x
             & Hc2set & E0 & E1 & E2 & E3 & E4 & Efa & Ejf & Eje & Eret)
            Hsanz Ha2 Heq1 Heq2.
-    iIntros "#Hb1 #Hb2 #Hb3 HC #Hcode #Hro Hsstr #Ci0 #Ci1 #Ci2 #Ci3 #Ci4 #Ci5 Hpay #Hxl Hrun".
+    iIntros "#Hb1 #Hb2 #Hb3 HC #Hcode #Hro Hsstr #Ci0 #Ci1 #Ci2 #Ci3 #Ci4 #Ci5 Hpay Hrun".
     iDestruct (shd_fmt_str γt fa flen Hok ltac:(lia) with "Hro") as "#Hfstr".
     (* ---- p0  auipc a1,0x1 ---- *)
     iApply (wp_uk_auipc N h m (mword_of_int p0) hi a1_idx
@@ -8131,7 +8125,7 @@ Section UkShDiagRun.
               with "Ci5 Hrun").
     iIntros (h7) "Hrun".
     iApply (wp_ksh_exit N h7 _ (10 + (12 + (4 + n)))
-              with "Hxl Hcode Hpay Hrun").
+              with "Hcode Hpay Hrun").
   Qed.
 
   (* ...AND THE OLD STATEMENT, VERBATIM. *)
@@ -8171,7 +8165,7 @@ Section UkShDiagRun.
               (fun _ => emp)%I (fun _ => emp)%I (fun _ => emp)%I h m n
               Hlits Hsanz Ha2 eq_refl eq_refl
               with "[] [] [] [] Hcode Hro Hsstr Ci0 Ci1 Ci2 Ci3 Ci4 Ci5
-                    [Hpay] [Hdp] Hrun").
+                    [Hpay] Hrun").
     { iModIntro. iIntros (p) "_".
       iApply (ksh_w1_of_law N (mword_of_int 2) (shd_lit fa p) with "Hdp"). }
     { iModIntro. iIntros (p) "_".
@@ -8180,7 +8174,6 @@ Section UkShDiagRun.
       iApply (ksh_w1_of_law N (mword_of_int 2) (shd_lit fa p) with "Hdp"). }
     { done. }
     { iIntros "_". iExact "Hpay". }
-    { iApply (UkSh.sh_deps_exit with "Hdp"). }
   Qed.
 
   (* --------------------------------------------------------------------- *)
@@ -8217,14 +8210,12 @@ Section UkShDiagRun.
     (* the exit payload, out of the program's own hand (lane KILL-PAY,
        K4(a)): this walk ends in [exit] *)
     (C3 3%nat -∗ ukn_pay N (-1)) -∗
-    (* ...and the tear-down's close payments (design/pipe.md) *)
-    udepw_law USYS_exit -∗
     urun N h m (mword_of_int ShSyms.panic)
       (2 + (10 + (12 + (4 + n)))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hsanz Ha0 Heq1 Heq2.
-    iIntros "#Hb1 #Hb2 #Hb3 HC #Hcode #Hro Hsstr Hpay #Hxl Hrun".
+    iIntros "#Hb1 #Hb2 #Hb3 HC #Hcode #Hro Hsstr Hpay Hrun".
     rewrite shd_pin_panic.
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom'].
     remember (m !!! Regidx csp_rs1) as sp0 eqn:Hsp0e.
@@ -8345,7 +8336,7 @@ Section UkShDiagRun.
               (mword_of_int 1 : mword 6)
               0x1290 3%nat 0%nat sa slen sf C1 C2 C3 h5 m3 n
               Hlits54 Hsanz Ha2_3 Heq1 Heq2
-              with "Hb1 Hb2 Hb3 HC Hcode Hro Hsstr [] [] [] [] [] [] Hpay Hxl Hrun").
+              with "Hb1 Hb2 Hb3 HC Hcode Hro Hsstr [] [] [] [] [] [] Hpay Hrun").
     { iApply (uis_shk_54 with "Hcode"). }
     { iApply (uis_shk_58 with "Hcode"). }
     { iApply (uis_shk_5c with "Hcode"). }
@@ -8376,7 +8367,7 @@ Section UkShDiagRun.
     iApply (wp_kshd_panic_chain tx dqs sa slen sf
               (fun _ => emp)%I (fun _ => emp)%I (fun _ => emp)%I h m n
               Hsanz Ha0 eq_refl eq_refl
-              with "[] [] [] [] Hcode Hro Hsstr [Hpay] [Hdp] Hrun").
+              with "[] [] [] [] Hcode Hro Hsstr [Hpay] Hrun").
     { iModIntro. iIntros (p) "_".
       iApply (ksh_w1_of_law N (mword_of_int 2) (shd_lit 0x1290 p) with "Hdp"). }
     { iModIntro. iIntros (p) "_".
@@ -8385,7 +8376,6 @@ Section UkShDiagRun.
       iApply (ksh_w1_of_law N (mword_of_int 2) (shd_lit 0x1290 p) with "Hdp"). }
     { done. }
     { iIntros "_". iExact "Hpay". }
-    { iApply (UkSh.sh_deps_exit with "Hdp"). }
   Qed.
 
 End UkShDiagRun.
@@ -8719,13 +8709,10 @@ Section UkShDiagLeaf.
     UserFd.ustd (ukn_fd N) l -∗
     Wc np 3%nat -∗
     (UserFd.ustd (ukn_fd N) l -∗ Wb np -∗ ukn_pay N (-1)) -∗
-    (* ...and the tear-down's close payments (design/pipe.md, "The exit
-       path"): this walk ends in exit(1) *)
-    udepw_law USYS_exit -∗
     urun N h m (mword_of_int ShSyms.panic) (ush_Dg + n) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hfd2 Hmsg. iIntros "#Hlaw #Hcode #Hro Hstd Hc Hpay #Hxl Hrun".
+    intros Hfd2 Hmsg. iIntros "#Hlaw #Hcode #Hro Hstd Hc Hpay Hrun".
     iDestruct ("Hlaw" $! N np l with "[%] Hc") as (Pf) "(HPf & #Hstep & #Hdone)";
       [ exact Hfd2 | ].
     replace (ush_Dg + n)%nat with (2 + (10 + (12 + (4 + n))))%nat
@@ -8743,7 +8730,7 @@ Section UkShDiagLeaf.
     assert (E23 : C2 4%nat = C3 2%nat) by reflexivity.
     iApply (wp_kshd_panic_chain N true DfracDiscarded 0x1298 4%nat
               (shd_lit 0x1298) C1 C2 C3 h m n ltac:(lia) Ha0 E12 E23
-              with "[] [] [] [Hstd HPf] Hcode Hro Hs [Hpay] [] Hrun").
+              with "[] [] [] [Hstd HPf] Hcode Hro Hs [Hpay] Hrun").
     { iModIntro. iIntros (p) "%Hp". exfalso. lia. }
     { iModIntro. iIntros (p) "%Hp". rewrite /C2.
       rewrite (ush_fork_msg_byte p Hp).
@@ -8757,7 +8744,6 @@ Section UkShDiagLeaf.
     { rewrite /C1. iFrame "Hstd HPf". }
     { rewrite /C3. iIntros "[Hstd HPf]". cbn [Nat.add].
       iApply ("Hpay" with "Hstd"). iApply ("Hdone" with "HPf"). }
-    { iExact "Hxl". }
   Qed.
 
   (* ===================================================================== *)
@@ -8845,14 +8831,11 @@ Section UkShDiagLeaf.
     UserFd.ustd (ukn_fd N) l -∗
     Cr -∗
     (UserFd.ustd (ukn_fd N) l -∗ Cd -∗ ukn_pay N (-1)) -∗
-    (* ...and the tear-down's close payments (design/pipe.md, "The exit
-       path"): this walk ends in exit(1) *)
-    udepw_law USYS_exit -∗
     urun N h m (mword_of_int 0xda) (ush_Dg + n) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hfd2 Hal Hxlen Hxb.
-    iIntros "#Hlaw #Hcode #Hro #Hw [%Hxr #Hxs] Hstd Hc Hpay #Hxl Hrun".
+    iIntros "#Hlaw #Hcode #Hro #Hw [%Hxr #Hxs] Hstd Hc Hpay Hrun".
     iDestruct ("Hlaw" $! N l with "[%] Hc") as (Pf) "(HPf & #Hstep & #Hdone)";
       [ exact Hfd2 | ].
     replace (ush_Dg + n)%nat with (10 + (12 + (4 + (n + 2))))%nat
@@ -8905,7 +8888,7 @@ Section UkShDiagLeaf.
               ltac:(lia)
               ltac:(exact (upd_eq m (Regidx a2_idx) (regval_into_reg _)))
               E12 E23
-              with "[] [] [] [Hstd HPf] Hcode Hro Hs [] [] [] [] [] [] [Hpay] [] Hrun").
+              with "[] [] [] [Hstd HPf] Hcode Hro Hs [] [] [] [] [] [] [Hpay] Hrun").
     { iModIntro. iIntros (p) "%Hp". rewrite /C1.
       rewrite (ush_execfail_w1 p ltac:(lia)).
       iApply ("Hstep" $! p (line_alts !!! 1%nat !!! p) with "[%]").
@@ -8931,7 +8914,6 @@ Section UkShDiagLeaf.
     { iApply (uis_shk_ec with "Hcode"). }
     { rewrite /C3. iIntros "[Hstd HPf]". cbn [Nat.add].
       iApply ("Hpay" with "Hstd"). iApply ("Hdone" with "HPf"). }
-    { iExact "Hxl". }
   Qed.
 
   (* ...AND fork1 WITH THE PANIC THE CALLER'S (M4b(2)): [UkShRun.

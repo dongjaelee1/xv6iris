@@ -272,6 +272,12 @@ Section UInitKernel.
        so it is an obligation HERE, on [uvis_cwd W = ROOTINO]'s footing,
        and ARM-c / E2 discharges it from userinit's own table. *)
     take NSTD (uvis_fd W) = ufd_l0 ->
+    (* ...AND THE WHOLE TABLE HOLDS NO PIPE ROW (design/pipe.md, "The exit
+       path").  The run carries this between traps ([UkRun.urun_nopipe])
+       and /init's exit stub mints its bundle row off it; userinit parks
+       <init> at [FdSlots.fdt0], which is all closed, so the same site that
+       discharges the ledger row above discharges this. *)
+    fdv_nopipe (uvis_fd W) ->
     (* the map stops at the break -- [UkRun.uslot_of_urun_all]'s own premise *)
     (forall (p : mword 27) (q : uperm), uvis_perm W !! p = Some q ->
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
@@ -373,8 +379,8 @@ Section UInitKernel.
     my_pay (uvis_gen W) (fun _ => True)%I -∗
     uslot W.
   Proof.
-    intros Hne Hkt Hpc Hsub Hx Hwd Hszd Hbase Hal8 Hroom Hstk Hfdlen Hl0 Hstop Hcw
-           Hpsok_free Hlzf.
+    intros Hne Hkt Hpc Hsub Hx Hwd Hszd Hbase Hal8 Hroom Hstk Hfdlen Hl0 Hnpk
+           Hstop Hcw Hpsok_free Hlzf.
     (* [Hdp] LINEARLY, and that is not a style choice: [UkInit.init_deps]
        is persistent, but its [T]-indexed conjuncts send the [Persistent]
        search for the WHOLE bundle off unfolding [udepw]'s wand chain and
@@ -382,8 +388,10 @@ Section UInitKernel.
        intro is what it wants; the destructuring [#(Hwr & Hwl15 & Hwl17)]
        the walk uses checks each conjunct on its own and is fine. *)
     iIntros "Hdp #Hdep #Hxs Hdn Hrd Hrd0 Hbn #Hblaw #Hdlaw #Hmp".
+    iAssert (UkRun.urun_nopipe (uvis_fd W)) as "#Hnpw";
+      [ iApply (UkRun.urun_nopipe_intro _ Hnpk) | ].
     iApply (uslot_of_urun_all W (2 + (4 + (12 + (12 + (4 + n0))))) (fun _ => True)%I
-              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
+              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hnpw Hmp").
     (* init's own half of its children set travels with its cwd: nothing
        on init's walk READS it, but fork MOVES it, so the fragment goes
        down the chain index-free ([UserChildren.uch_any]). *)

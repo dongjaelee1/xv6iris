@@ -88,7 +88,6 @@ Require Import UserCwd.  (* [ucwd] / [ucwd_any] -- the process's own view of its
 Require Import UserChildren.  (* [uch_any] -- the process's own half of its children set *)
 
 Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
-Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 (* A PID IN [1, PIDMAX] DOES NOT SIGN-EXTEND TO -1 (lane RESIDUALS, (A)):
    the fork answer's pid arm carries the range, and the shell's fork-failed
    branch (fork1's [-1] test) refutes that arm with it.  Pure, on [Z], at
@@ -755,9 +754,6 @@ Section UkShFork.
     ushf_child_law -∗
     (* ...and the law of sh's own panic (M4b(2)) *)
     UkShDiag.ush_panic_law Wc Wb -∗
-    (* ...and the tear-down's close payments (design/pipe.md, "The exit
-       path"): the panic arm ends in exit(1) *)
-    udepw_law USYS_exit -∗
     (* the row the console preamble established (lane SH-OPEN): the PARENT
        keeps its ledger across fork1 -- a REDIR runs in the child -- so the
        row goes straight back into the head *)
@@ -770,7 +766,7 @@ Section UkShFork.
   Proof.
     intros Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.
-    iIntros "#Hgen Hhead #Hcode #Hro #Hjt #Hkl #Hchl #Hplaw #Hxl %Hfd0 Hstd
+    iIntros "#Hgen Hhead #Hcode #Hro #Hjt #Hkl #Hchl #Hplaw %Hfd0 Hstd
              Hdat Hsz Hbuf Hrun".
     iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpid & Hpos)".
     (* THE CONSOLE ARM APART FROM THE REST *)
@@ -809,7 +805,7 @@ Section UkShFork.
         iDestruct "Hans" as "[(_ & _ & HRc) | Hpid']".
         * iApply (UkShDiag.wp_kshd_panic_paid N Wc Wb l h' m' (66 + n) np
                     (proj2 (proj2 Hrow)) Hmsg
-                    with "Hplaw Hcode Hro Hustd' HRc [Hpm'] Hxl Hrun'").
+                    with "Hplaw Hcode Hro Hustd' HRc [Hpm'] Hrun'").
           iIntros "_ Hwb".
           iDestruct (Hpmwb np Hbnd with "Hpm' Hwb") as "Hat".
           iEval (rewrite /UkSh.ush_at) in "Hat".
@@ -936,8 +932,6 @@ Section UkShFork.
     ushf_kill_law -∗
     ushf_child_law -∗
     UkShDiag.ush_panic_law Wc Wb -∗
-    (* ...and the tear-down's close payments -- see [wp_kshf_fork] *)
-    udepw_law USYS_exit -∗
     ⌜ UkSh.ush_fd0p l ⌝ -∗
     ush_bstate l -∗
     ushl_dat -∗ usz γs sz -∗
@@ -947,7 +941,7 @@ Section UkShFork.
   Proof.
     intros Hregs Hs1 Ha5 Hnn Hnul Hkl Hns Htoks Htlen Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.
-    iIntros "#Hgen Hhead #Hcode #Hro #Hpcode #Hjt #Hkl #Hchl #Hplaw #Hxl %Hfd0
+    iIntros "#Hgen Hhead #Hcode #Hro #Hpcode #Hjt #Hkl #Hchl #Hplaw %Hfd0
              Hstd Hdat Hsz Hbuf Hrun".
     assert (Hbr : forall j : nat, 0 <= bv_unsigned (f j) < Z64).
     { intros j. pose proof (bv_unsigned_in_range 8 (f j)) as H0.
@@ -980,7 +974,7 @@ Section UkShFork.
     iApply (wp_kshf_fork h1 m f k len toks sz l n
               Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline
               Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl
-              with "Hgen Hhead Hcode Hro Hjt Hkl Hchl Hplaw Hxl [%] Hstd Hdat
+              with "Hgen Hhead Hcode Hro Hjt Hkl Hchl Hplaw [%] Hstd Hdat
                     Hsz Hbuf Hrun").
     exact Hfd0.
   Qed.
@@ -1085,12 +1079,10 @@ Section UkShFork.
     (* ...and the law of sh's own panic (M4b(2)), [UShPanic.
        ush_panic_law_holds] *)
     UkShDiag.ush_panic_law Wc Wb -∗
-    (* ...and the tear-down's close payments -- see [wp_kshf_fork] *)
-    udepw_law USYS_exit -∗
     UkSh.ush_rest_l N γp T Wc Wb Pm (UkShLoop.ushl_R N sz).
   Proof.
     intros Hlex Hszlo Hszal Hszok Hwbl.
-    iIntros "#Hkl #Hchl #Hplaw #Hxl".
+    iIntros "#Hkl #Hchl #Hplaw".
     (* THE RECORD'S OWN THREE COME OUT OF THE OBLIGATION now (lane SH-LINE
        2b, (b)): sh's text, its jump table and the constancy of its exit
        payload are facts about the record the KERNEL minted, so the entry
@@ -1116,7 +1108,7 @@ Section UkShFork.
     iApply (wp_kshm_body h m f k len toks sz l n
               Hregs Hs1 Ha5 Hnn Hnul ltac:(lia) Hns Htoks Htlen Hline
               Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl
-              with "Hgen [Hhead] Hcode Hro [] Hjt Hkl Hchl Hplaw Hxl [%] Hstd
+              with "Hgen [Hhead] Hcode Hro [] Hjt Hkl Hchl Hplaw [%] Hstd
                     Hdat Hsz Hbuf Hrun").
     - iApply (UkShLoop.ushl_head_of_R N γp with "Hhead").
     - iApply (ushf_code_shp with "Hcode").

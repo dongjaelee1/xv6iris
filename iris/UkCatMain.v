@@ -474,7 +474,7 @@ Section UkCatMain.
     { iApply (uis_cat_f2 with "Hcode"). }
     iIntros (h8) "Hrun".
     iApply (wp_kcat_exit N h8 _ (10 + (12 + (4 + n)))
-              with "Hdp Hcode Hrun").
+              with "Hcode Hrun").
   Qed.
 
   (* --------------------------------------------------------------------- *)
@@ -920,7 +920,7 @@ Section UkCatMain.
       { iApply (uis_cat_c8 with "Hcode"). }
       iIntros (h4) "Hrun".
       iApply (wp_kcat_exit N h4 _ (8 + (10 + (12 + (4 + n))))
-                with "Hdp Hcode Hrun").
+                with "Hcode Hrun").
     - (* more files to come ---- *)
       assert (Hne : (S i)%nat <> length args) by lia.
       assert (Ht : true
@@ -1250,7 +1250,7 @@ Section UkCatMain.
       { iApply (uis_cat_da with "Hcode"). }
       iIntros (h13) "Hrun".
       iApply (wp_kcat_exit N h13 _ (8 + (10 + (12 + (4 + n))))
-                with "Hdp Hcode Hrun").
+                with "Hcode Hrun").
     - (* AT LEAST ONE FILE: set up the walk over argv ---- *)
       assert (Hnt : false
                     = uv_btaken BGE (m3 !!! Regidx a5_idx)

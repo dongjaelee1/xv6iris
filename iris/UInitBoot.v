@@ -332,15 +332,12 @@ Section UInitBoot.
        under the taint, and the closed-fd leaf at every record *)
     □ (T -∗ UkRun.udepw_law (PS := PSx) 16) -∗
     UkInit.kinit_wcl (PS := PSx) -∗
-    (* ...and the tear-down's close payments (design/pipe.md, "The exit
-       path"), which /init's every dead end owes *)
-    UkRun.udepw_law (PS := PSx) UsysMemOk.USYS_exit -∗
     □ (T -∗ UkRun.udepw_law (PS := PSx) 15) -∗
     □ (T -∗ UkRun.udepw_law (PS := PSx) 17) -∗
     □ UkInit.init_deps (PS := PSx) T.
   Proof.
-    iIntros "#Hwr #Hwcl #Hxl #H15 #H17 !>". rewrite /UkInit.init_deps /UkInit.kinit_wlaw.
-    iSplit; [ iSplit; [ iModIntro; iExact "Hwr" | iSplit; [ iExact "Hwcl" | iExact "Hxl" ] ] | ]. iSplit.
+    iIntros "#Hwr #Hwcl #H15 #H17 !>". rewrite /UkInit.init_deps /UkInit.kinit_wlaw.
+    iSplit; [ iSplit; [ iModIntro; iExact "Hwr" | iExact "Hwcl" ] | ]. iSplit.
     - iModIntro. iExact "H15".
     - iModIntro. iExact "H17".
   Qed.
@@ -441,8 +438,6 @@ Section UInitBoot.
     (forall n : nat, ⊢ Wp n -∗ Wc n 0%nat) ->
     udep (PS := uprogSG_free) -∗
     □ (echo_taint γ -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
-    (* ...and sh's exit row, ungated (design/pipe.md, "The exit path") *)
-    UkRun.udepw_law (PS := uprogSG_free) UsysMemOk.USYS_exit -∗
     UShKernel.sh_prompt_law (PS := uprogSG_free) Wc -∗
     UInitSh.init_sh_slot (echo_taint γ)
       (UInitSh.sh_pay (echo_taint γ) Wc Wb Pm Rsh n0) -∗
@@ -451,7 +446,7 @@ Section UInitBoot.
       Wp Wb Rdl.
   Proof.
     intros Heq Hpsok_free Hn0 Hst Hrl Hpm1 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw.
-    iIntros "#Hdep #Hdp #Hxl #Hplaw #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
+    iIntros "#Hdep #Hdp #Hplaw #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
     - iIntros "!> #Hcns".
       iDestruct "Hcore" as "#Hcore'".
       (* [Persistent K] is an INSTANCE binder there, so it is not passed
@@ -459,7 +454,7 @@ Section UInitBoot.
       iApply (UInitSh.init_exec_sup_of_sh_slot (echo_taint γ) cn st
                 (cons_never r) Rdl Pm Wc Wb Wp Rsh n0 Hpsok_free Hn0 Hst
                 Hrl Hpm1 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw
-                with "Hdep Hdp Hxl Hplaw [] Hcore'").
+                with "Hdep Hdp Hplaw [] Hcore'").
       iApply (ush_cons_in_of_Cns γ r Heq with "[] Hcns").
       iDestruct "Hcore'" as "(#Hinv & _)". iExact "Hinv".
     - iIntros "!> #HT".
@@ -713,7 +708,7 @@ Section EchoInitBoot.
     iAssert (□ UkInit.init_deps (PS := uprogSG_free) (echo_taint γ))%I
       as "#Hdp".
     { iApply (init_deps_of_laws (PSx := uprogSG_free) (echo_taint γ)
-                with "[] [] [] [] []").
+                with "[] [] [] []").
       - (* write, under the taint: the supply and the output licence *)
         iModIntro. iIntros "#HT".
         iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] [] []").
@@ -727,23 +722,6 @@ Section EchoInitBoot.
       - (* ...and the closed-fd leaf, at every record *)
         rewrite /UkInit.kinit_wcl. iIntros "!>" (N0 b).
         iApply (UkWriteClosed.kinit_w1_of_closed_l0 (PS := uprogSG_free) N0 b).
-      - (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS (design/pipe.md, "The exit
-           path") -- AND THIS IS THE ONE THING THE LANE COULD NOT CLOSE.
-           exit(2) left [UexecSG.free_num], so every program names its exit
-           row; /init's table is pipe-free IN FACT (its ledger is
-           [UInitFd.ufd_l0]/[ufd_l3] and it never opens above [NSTD]) but
-           NOT PROVABLY so at the U tier -- [UsysMemOk.usys_fd_ok]'s open
-           row leaves the installed descriptor's type existential and the
-           slots above [NSTD] are untracked by [UserFd] -- so the free
-           route ([UkRun.udepw_ex_of_nopipe]) is unreachable and the row
-           can only come from the application's credential.  THAT
-           CREDENTIAL IS THE TAINT HERE ([Hkill]), and /init's own die
-           paths ([UkInitMain.wp_kinit_main_die_df]'s [init_lend_cred]
-           arms at [Wp]/[Wb]) are reachable WITHOUT it, so the conjunct
-           cannot be [□ (T -∗ ...)] either.  The fix is one conjunct on the
-           open row -- see the lane's report. *)
-        iApply (udepw_law_of_sup_exit (PSx := uprogSG_free)).
-        rewrite Hkill. iModIntro. iExact "Ht".
       - iModIntro. iIntros "HT".
         iApply (udepw_law_of_sup (PSx := uprogSG_free) 15
                   (or_introl eq_refl)).
@@ -799,12 +777,8 @@ Section EchoInitBoot.
          unfolding here is the same one [Hsh_wbr] does below. *)
       iIntros (γp N). rewrite /UInitBanner.kinit_ban.
       iApply (UShRest.sh_rest_holds (echo_taint γ) γ γp N Hktaint
-                with "Hlks [] [] Hslot Hpine").
-      { iApply (udep_free). }
-      (* sh's exit row, out of the era's own credential (design/pipe.md,
-         "The exit path") *)
-      { iApply (udepw_law_of_sup_exit (PSx := uprogSG_free)).
-        rewrite Hkill. iModIntro. iExact "Ht". } }
+                with "Hlks [] Hslot Hpine").
+      iApply (udep_free). }
     (* THE TWO READINGS OF THE SUPPLY, at Coq level: the console ring's
        dirty credential read AS THE TAINT and back
        ([AppEcho.echo_taint_of_sup] / [echo_sup_of_taint]).  They were
@@ -945,19 +919,14 @@ Section EchoInitBoot.
                 ltac:(reflexivity)
                 Hsh_rdleaf Hsh_pm1 Hsh_pm3 Hsh_pmwb Hsh_wc
                 Hsh_wbwc Hsh_wbl Hsh_wbr Hsh_bd Hpw
-                with "[] [] [] Hplaw Hsh").
+                with "[] [] Hplaw Hsh").
       - iApply (udep_free).
       - (* sh's write deposit, under the taint (lane EXEC-SEAM, (D)) *)
         iModIntro. iIntros "#HT".
         iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] [] []").
         + iApply ("Hsup" with "HT").
         + iApply ("Hlic" with "HT").
-        + rewrite Hkill. iModIntro. iExact "HT".
-      - (* ...and sh's exit row -- the SAME WALL as /init's above, and for
-           the same reason: sh's top-level exit (the read loop at
-           end-of-input) is not on a taint arm either. *)
-        iApply (udepw_law_of_sup_exit (PSx := uprogSG_free)).
-        rewrite Hkill. iModIntro. iExact "Ht". }
+        + rewrite Hkill. iModIntro. iExact "HT". }
     (* ---- THE CONSOLE DANCE, at whichever arm the VIEW decided
            ([AppEcho.echo_boot]).  Built through [UInitKernel]'s two intro
            lemmas, which is the one place this file names its vocabulary:

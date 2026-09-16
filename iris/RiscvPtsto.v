@@ -760,6 +760,20 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
      whole point.  The trivial application sets it to [win_res_triv]. *)
   riscv_win_res : nat -> iProp Σ;
   riscv_win_res_timeless : forall k : nat, Timeless (riscv_win_res k);
+  (* THE MERGED CONSOLE RESOURCE (redesign R2).  The three fields above --
+     the output claim, the input claim and the lent window token -- become
+     this one, over the whole console history: the bytes the UART has
+     accepted, the accepted-input log, what has been delivered, and the arm
+     in progress.  The window token is unnecessary once the arm is in the
+     history (see [ConsLog.cons_hist] and the redesign plan): the two
+     descriptions the token kept in step are one description here.
+
+     ERA-INDEXED and TIMELESS for the reasons the three are; NOT persistent,
+     for the reason the input claim is not. *)
+  riscv_cons_res : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ;
+  riscv_cons_res_timeless :
+    forall (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist),
+      Timeless (riscv_cons_res k h H);
   (* THE APPLICATION'S FIXED PART (claude-notes/projects/app-instances.md
      §6 ruling 1, round D0).  The machine no longer owns a counter: the
      application declares whatever [Type] its fixed part has, and its BIRTH
@@ -784,6 +798,7 @@ Global Existing Instance riscv_out_res_timeless.
 Global Existing Instance riscv_in_res_timeless.
 (* ...and the echo window token's (lane CONS-IO milestone F) *)
 Global Existing Instance riscv_win_res_timeless.
+Global Existing Instance riscv_cons_res_timeless.
 
 Class riscvGS (Σ : gFunctors) := RiscvGS {
   riscv_fixedGS :: riscvFixedGS Σ;
@@ -1091,6 +1106,13 @@ Proof. rewrite /in_res_triv. apply _. Qed.
 (* ...and the echo window token's (lane CONS-IO milestone F): the generic
    application has no echo discipline to protect, so it lends the kernel
    nothing and every route that returns the token returns [emp]. *)
+Definition cons_res_triv {Σ : gFunctors} :
+    nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ := fun _ _ _ => emp%I.
+Global Instance cons_res_triv_timeless {Σ : gFunctors} (k : nat)
+    (h : list mobs) (H : LogEntryDefs.cons_hist) :
+  Timeless (cons_res_triv (Σ := Σ) k h H).
+Proof. rewrite /cons_res_triv. apply _. Qed.
+
 Definition win_res_triv {Σ : gFunctors} : nat -> iProp Σ := fun _ => emp%I.
 Global Instance win_res_triv_timeless {Σ : gFunctors} (k : nat) :
   Timeless (win_res_triv (Σ := Σ) k).

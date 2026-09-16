@@ -89,13 +89,8 @@ Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
 Require Import UserPerm.
-Require Import ProcPtOwn.
-Require Import UserPtTree.
-Require Import UmodeArith.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import VcGen.              (* [trunc32] *)
-Require Import PieceFam.
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
+Require Import UexecSlot UexecRet UexecSG.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import UkReadRows.         (* [udepwf_st] / [ufd_key_agree] *)
@@ -106,12 +101,11 @@ Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import SpecCopyin.         (* [ubytes_at] -- the content seam *)
 Require Import SysWriteDefs.       (* [wchunks] *)
 Require Import AppInv.             (* [appE] / [app_sup] *)
-Require Import FsAbsDefs.
 Require Import FsBytesGamma.       (* [fs_gamma_L] *)
 Require Import FsAbsWriteFire.     (* [awrite_chain] and its cursor *)
 Require Import FsAbsInvFire.       (* [fsabs_awrite_chain] *)
 Require Import FsCfg.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

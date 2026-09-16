@@ -67,7 +67,7 @@ Require Import UserPtTree.
 Require Import UserPerm.   (* [lazy_free] -- the residue's fill row *)
 Require Import KptTree.
 Require Import TrampPt.
-Require Import DiskPtsto WpUart LogInv.
+Require Import WpUart LogInv.
 Require Import Xv6Cameras.
 Require Import SpecFileclose.
 Require Import IrefSlots.

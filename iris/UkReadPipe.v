@@ -107,24 +107,15 @@ Require Import FileInvDefs.
 Require Import PipeInvDefs.         (* [pipe_rw_ret] -- what read answers here *)
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
-Require Import ProcPtOwn.
-Require Import UserPtTree.
-Require Import UmodeArith.
 Require Import ProcGeom.            (* [NOFILE] / [NSTD] / [tf_arg_idx] *)
 Require Import VcGen.               (* [trunc32] *)
-Require Import PieceFam.
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
-Require Import UexecExecInst.       (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import UkReadRows.          (* the shared key-level rows *)
-Require Import UkReadFile.          (* [udepwf_st] / [ufd_key_agree] -- the
-                                       ARM-INDEPENDENT handle deposit, see
-                                       the header's last paragraph *)
 Require Import SpecArgfd.           (* [fd_st_of_key] *)
 Require Import SpecFileread.        (* [fileread_in] / [fileread_ret] *)
 Require Import SpecSysRead.         (* [sys_rw_count] *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

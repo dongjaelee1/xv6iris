@@ -645,6 +645,9 @@ Section WpSconfUartAccess.
     - iIntros (u u') "%Hwrite Hg Hcol Hin [Htok HR]".
       destruct (uart_write_fcr_rx u sb u' Hwrite) as [Hrxe Hlbe].
       iMod ("Hstep" $! u u' with "[//] Hg HR") as "(%Hacce & Hg & HS)".
+      (* an FCR write leaves the ACCEPTED bytes alone, so the port's console
+         claim rides across the transition the invariant closes at *)
+      iDestruct (cons_claim_at_stable i γd u u' Hacce with "Hin") as "Hin".
       destruct (uart_fcr_clr_rx u sb) eqn:Hclr.
       + iMod (uart_colE_flush i γd u u' k hl Hrxe Hlbe
                 ltac:(exact (uart_write_wire _ _ _ _ Hwrite))

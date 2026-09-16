@@ -152,6 +152,7 @@ Require Import FsAbsDelta.       (* the landed delta legs *)
 Require Import FsImg.            (* [ROOTINO]: the era's root inum, as a [Z] *)
 Require Import TreeView.         (* TL-1: [subtree], [own_wf], the deltas *)
 Require Import AppInv.           (* [app_sup_raw], [app_xfer_raw] *)
+Require ConsLog.               (* [cons_step] / [cons_ev]: the merged console claim's event type *)
 Require Import SystemAdequacy.   (* [app_xfer_boot_raw]: [App.Happ_boot] *)
 Require Import App.              (* [xv6_app], [MkApp] *)
 
@@ -1159,6 +1160,9 @@ Section AppTreeRecord.
           (fun _ _ _ _ _ => emp%I)           (* app_in *)
           (fun _ _ => emp%I)                 (* app_turn *)
           (fun _ _ => emp%I)                 (* app_win *)
+          (* the merged console claim (upstream redesign R2/R3): a tree
+             application claims nothing of the console *)
+          (fun _ _ _ _ => emp%I)             (* app_cons *)
           (fun _ _ => True).                 (* app_phi *)
 
   (* ---- the obligations of [App.xv6_app_adequacy] that are lemmas ---- *)
@@ -1209,6 +1213,21 @@ Section AppTreeRecord.
   Proof.
     cbn [app_tree app_out]. iIntros "_ !>" (k h acc b) "_". by iModIntro.
   Qed.
+
+  (* ONE LICENCE over the merged console claim (redesign R2): the tree
+     application's claim is [emp], so every console event on it is free;
+     and its timelessness, vacuous at [emp]. *)
+  Lemma app_tree_cons_sup (c : app_fixed app_tree) (r : app_names app_tree) :
+    app_sup_raw (app_pred app_tree c) r
+      ⊢ □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
+             (ev : ConsLog.cons_ev),
+             app_cons app_tree c k h H ==∗
+             app_cons app_tree c k h (ConsLog.cons_step H ev)).
+  Proof. cbn [app_tree app_cons]. iIntros "_ !>" (k h H ev) "_". by iModIntro. Qed.
+
+  Lemma app_tree_const (c : app_fixed app_tree) (k : nat) (h : list mobs)
+      (H : LogEntryDefs.cons_hist) : Timeless (app_cons app_tree c k h H).
+  Proof. cbn [app_tree app_cons]. apply _. Qed.
 
   Lemma app_tree_in_sup (c : app_fixed app_tree) (r : app_names app_tree) :
     app_sup_raw (app_pred app_tree c) r

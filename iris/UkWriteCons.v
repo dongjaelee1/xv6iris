@@ -61,23 +61,14 @@ Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
 Require Import UserPerm.
-Require Import ProcPtOwn.
-Require Import UserPtTree.
-Require Import UmodeArith.
-Require Import ProcGeom.
-Require Import VcGen.              (* [trunc32] *)
-Require Import PieceFam.
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
+Require Import UexecSlot UexecSG.
 Require Import UkRun UkRunSys.
-Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import UkWriteLeaf.        (* row 16's family, supply and post *)
-Require Import SpecArgfd.          (* [fd_st_of_key] *)
-Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
 Require Import SpecConsolewrite.   (* [cons_out_chain] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import ConsoleInv.         (* [CONSOLE] *)
 Require Import WpUart.             (* [out_link] / [out_licence] *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

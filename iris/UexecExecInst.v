@@ -907,7 +907,7 @@ Section UexecExecInst.
     destruct (decide (n = USYS_exec)) as [He | _];
       [ exfalso; exact (Hne He) | ].
     destruct (decide (n = 5)) as [_ | _];
-      [ iModIntro; iApply (fsabs_fileread_in with "Hilic Hsup") | ].
+      [ iModIntro; iApply (fsabs_fileread_in with "Hlic Hsup") | ].
     destruct (decide (n = 9)) as [_ | _];
       [ iModIntro; iApply fsabs_chdir_pre | ].
     destruct (decide (n = 15)) as [_ | _];

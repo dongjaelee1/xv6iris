@@ -75,7 +75,7 @@ Require Import UShKernel.          (* [sh_prompt_law]: the conversion of
 Require Import EchoDisc.
 Require Import EchoOut.
 Require Import EchoLinks.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.ShSyms.
 (* as in EchoDisc / UEchoOut: the Sail imports leave string_scope on top
    and [++] would elaborate as String.append *)

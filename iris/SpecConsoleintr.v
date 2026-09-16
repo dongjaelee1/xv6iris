@@ -209,43 +209,43 @@ Section EchoShift.
      is PURE from the stamp -- a comparison of the byte's history against
      the ledger's own is unprovable inside a link, because the observation
      authority lives in the state interpretation and no link holds it. *)
-  (* THE ECHO WINDOW TOKEN (lane CONS-IO milestone F), and it is the ONE
-     linear thing this persistent builder takes.  The shift is [□] and its
-     run is SPLIT -- the bytes go out through [WpUart.echo_link] and the log
-     entry is filed later through [WpUart.in_append] -- so an application
-     that claims a transcript has to answer for interleavings cons.lock
-     forbids but no premise here states (a second echo of one byte, an echo
-     after the append, two appends).  Nothing pure refutes them and nothing
-     the application owns crosses the two fupds: both port claims are read
-     out of the invariant and put straight back.  So the KERNEL lends the
-     application ITS OWN per-era exclusive here
-     ([RiscvPtsto.riscv_win_res], on the PLIC payload beside the receive
-     token) and the run's [in_append] hands it back: one firing per accepted
-     byte, provable from the application's own ghost state.  It is at the
-     era's index for the reason the claims are. *)
+  (* NO WINDOW TOKEN (redesign R2, option A).  The shift used to take a
+     per-era exclusive the kernel lent the application, because the run was
+     SPLIT -- the bytes went out through one claim and the log entry was
+     filed later through another -- and nothing the application owned
+     crossed the two fupds, so it could not refute interleavings cons.lock
+     forbids (a second echo of one byte, an echo after the append, two
+     appends).  The port now carries ONE claim over ONE console history
+     whose [ch_arm] field IS the open arm, and every event steps it with
+     the port invariant open: a second open, a byte after the close, a
+     second close are refuted by [ConsLog.cons_ev_ok] on the kernel's side
+     and by the history's own shape on the application's.  The exclusion
+     cons.lock provides is thereby stated in the ghost state itself
+     ([WpUart.uart_arm]), and no token has to stand in for it.
+
+     THE ERA'S INDEX is still [S gen_id], for the reason the claim's is. *)
   Definition cons_echo_shift `{XI : CurCtx} : iProp Σ :=
     (□ ∀ (h : list mobs) (c : bv 8) (cs : list (bv 8)) (Φ : iProp Σ),
         ⌜obs_ends_in Uart0 h c⌝ -∗ ⌜obs_boots h = S gen_id⌝ -∗
         ⌜cons_echo c cs⌝ -∗
-        riscv_rx_tag h -∗ obs_hist_lb h -∗ riscv_win_res (S gen_id) -∗
-        Φ -∗ in_run (S gen_id) h c [] cs Φ)%I.
+        riscv_rx_tag h -∗ obs_hist_lb h -∗
+        Φ -∗ cons_link Uart0 (S gen_id) (ConsLog.EvOpen h c cs)
+                       (cons_run (S gen_id) cs Φ))%I.
 
   Global Instance cons_echo_shift_persistent `{XI : CurCtx} :
     Persistent (cons_echo_shift (XI := XI)).
   Proof. rewrite /cons_echo_shift. apply _. Qed.
 
-  (* THE TRIVIAL APPLICATION'S DISCHARGE.  When the machine's output claim
-     is [RiscvPtsto.out_res_triv] every link is free, so the echo justifies
+  (* THE TRIVIAL APPLICATION'S DISCHARGE.  When the machine's console claim
+     is [RiscvPtsto.cons_res_triv] every link is free, so the echo justifies
      itself. *)
   Lemma cons_echo_shift_triv `{XI : CurCtx} :
-    riscv_out_res = out_res_triv -> riscv_in_res = in_res_triv ->
-    ⊢ cons_echo_shift (XI := XI).
+    riscv_cons_res = cons_res_triv -> ⊢ cons_echo_shift (XI := XI).
   Proof.
-    intros Hout Hin. iIntros "!>" (h c cs Φ) "_ _ _ _ _ Hwin HΦ".
-    iApply (in_run_of_licence with "[] [] Hwin HΦ").
-    - by iApply in_licence_triv.
-    - rewrite /out_licence Hout /out_res_triv.
-      iIntros "!>" (k' h' acc b) "_". by iModIntro.
+    intros Hc. iIntros "!>" (h c cs Φ) "_ _ _ _ _ HΦ".
+    iAssert cons_licence as "#Hlic"; [by iApply cons_licence_triv|].
+    iApply (cons_link_of_licence with "Hlic").
+    by iApply (cons_run_of_licence with "Hlic HΦ").
   Qed.
 
 End EchoShift.
@@ -391,14 +391,15 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
      Like the ring's mark, it is a RESOURCE and not a pure premise: nothing
      else can say which of two histories came first. *)
   uart_log_hi γu (1/2) hg -∗
-  (* THE ECHO WINDOW TOKEN (lane CONS-IO milestone F), the fourth thing the
-     PLIC payload carries and the only one that is not the kernel's own: the
-     application's per-era exclusive, which [cons_echo_shift] takes and the
-     arm's append gives back.  It comes IN with the byte and goes OUT
-     unconditionally, on every arm, because every arm logs -- so uartintr
-     re-assembles the payload with it and the next byte's call has it
-     again. *)
-  riscv_win_res (S gen_id) -∗
+  (* THE ARM'S OWN HALF, AT [None] (redesign R2), the fourth thing the PLIC
+     payload carries: no arm is open.  It is what the application's per-era
+     window token used to stand for, except that it is the KERNEL's ghost
+     and it says WHICH arm is open -- cons.lock's exclusion, in the ghost
+     state.  It comes IN with the byte and goes OUT unconditionally, on
+     every arm, because every arm opens and closes exactly one arm, so
+     uartintr re-assembles the payload with it and the next byte's call has
+     it again. *)
+  uart_arm γu (1/2) None -∗
   wp_next b pme (fun (CID : CpuId) =>
   ∀ Mf : regfile,
       ⌜ callee_saved m Mf /\ (forall r : regidx, r ∈ dom (rf_to_gmap Mf)) ⌝ -∗
@@ -422,9 +423,9 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
       (* ...AND THE LOG'S MARK, AT THIS BYTE.  No existential and no
          disjunction: the byte was logged, on every arm. *)
       uart_log_hi γu (1/2) (Some hb) -∗
-      (* ...AND THE ECHO WINDOW TOKEN, BACK (lane CONS-IO milestone F): the
-         append that closed this byte's log entry returned it. *)
-      riscv_win_res (S gen_id) -∗
+      (* ...AND THE ARM'S HALF, BACK AT [None] (redesign R2): the close that
+         ended this byte's log entry returned it. *)
+      uart_arm γu (1/2) None -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

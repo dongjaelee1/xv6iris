@@ -72,8 +72,6 @@ Require Import UkRunExecRef.    (* [udepw_at_refR] / [sbundle_pay_refR] and
 Require Import UexecExecInst.   (* THE INSTANCE: [xfam_exec] / [sbundle_at] *)
 Require Import ElfFile.         (* [elf_bytes] *)
 Require Import PathElems.       (* [path_elems] *)
-Require Import PageGeom.
-Require Import KexecDefs.
 Require Import SpecKexec.       (* [kexec_loadable] *)
 Require Import SpecSysExec.     (* [exec_path_of] / [sys_exec_au_pre] *)
 Require Import PieceFam.        (* [pfam] / [pf_at] *)

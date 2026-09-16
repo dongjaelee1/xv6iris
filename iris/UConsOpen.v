@@ -73,7 +73,7 @@ Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       [mono_natG], so it is the taint's one
                                       instance here too. *)
 Require Import UInitCons.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require FsImg.
 Require User.InitSyms.
 Import Defs.

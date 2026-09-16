@@ -60,7 +60,7 @@ Require Import WpUart.            (* [out_licence]: the generic slot's output li
 (* THE GHOST BINDER LIST'S DEFINING MODULES, each IMPORTED and not merely
    required ([PinnedExec.v]'s note: a field instance is inert wherever its
    module is not imported). *)
-Require Import TsoCtx.            (* [CurCtx] -- see the note above *)
+Require Import CtxIdDefs.            (* [CurCtx] -- see the note above *)
 Require Import Xv6Cameras.
 Require Import Xv6G.
 Require Import FdSlots.
@@ -104,7 +104,6 @@ Require Import UInitBanner.       (* [kinit_banner0_holds] -- the era's
 Require Import UInitCons.         (* [init_cons_fd] / [init_cons_cred] *)
 Require Import UInitConsK.        (* the two arms' discharges at echo's era *)
 Require Import UInitSh.           (* [init_cons_sup_of_sh_slot] *)
-Require Import UShOut.            (* [sh_prompt_law_holds] *)
 Require Import UShPanic.          (* [sh_prompt_law_holds_line]: the prompt's law at the tight family (step 4) *)
 Require Import UShRest.           (* [sh_rest_holds]: the shell's tail
                                      obligation, discharged at the era's
@@ -617,21 +616,13 @@ Section EchoInitBoot.
        equation over exactly as it hands the rx-tag one, and the taint arm's
        generic mint spends it there. *)
     riscv_kill_cred = echo_taint γ ->
-    (* ...AND THE OUTPUT CLAIM'S (lane OUT-FUPD).  Same mould, same reason:
-       the generic slot the taint arm buys now carries an OUTPUT LICENCE
-       ([WpUart.out_licence]) beside the supply and the kill credential,
-       because an unverified program may [write(2)] on the console.  At
-       [AppEcho.echo_out]'s E5 PLACEHOLDER the claim is [emp], so the
-       licence is free -- E5 replaces the placeholder and this line is
-       where its price will be paid. *)
-    @riscv_out_res Σ (@riscv_fixedGS Σ HR) = echo_out γ ->
-    (* ...AND THE INPUT LOG'S (lane CONS-IO), on the same mould and for the
-       same reason: the generic slot the taint arm buys carries an INPUT
-       LICENCE ([WpUart.in_licence]) too, because an unverified program may
-       [read(2)] fd 0 and because consoleintr files every accepted byte in
-       the console UART's log.  At [AppEcho.echo_in]'s E5 PLACEHOLDER the
-       claim is [emp], so this licence is free as well. *)
-    @riscv_in_res Σ (@riscv_fixedGS Σ HR) = echo_in γ ->
+    (* ...AND THE CONSOLE CLAIM'S (redesign R2).  Same mould, same reason:
+       the generic slot the taint arm buys carries the port's ONE LICENCE
+       beside the supply and the kill credential, because an unverified
+       program may [write(2)] on the console and [read(2)] fd 0, and
+       because consoleintr files every accepted byte in the log.  All three
+       are events on one resource now, so one equation carries them. *)
+    @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = echo_cons γ ->
     (* ...AND THE ECHO WINDOW TOKEN'S (lane CONS-IO milestone F), the two
        claims' twin: at [AppEcho.echo_win]'s placeholder the token is [emp]
        too, so the shift's new premise costs this discharge nothing. *)
@@ -645,34 +636,25 @@ Section EchoInitBoot.
       echo_turn γ (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Heq Htag Hkill Hout Hin Hwin.
+    intros Heq Htag Hkill Hcons Hwin.
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)
     assert (Hktaint : ⊢ □ riscv_kill_cred -∗ echo_taint γ).
     { rewrite Hkill. iIntros "#H". iExact "H". }
-    (* ...AND THE OUTPUT LICENCE IS THE TAINT'S (lane ECHO-OUT part 5).  It
-       was free while [AppEcho.echo_out] was [emp]; the claim is real now,
-       so the generic slot's console write is paid out of the TAINT ARM --
-       which is exactly what [App.Happ_out_sup] says and what
-       [EchoOut.eout_sup] proves.  A wand from the credential, because the
+    (* ...AND THE LICENCE IS THE TAINT'S (redesign R2).  The generic slot's
+       console write, its read and consoleintr's shift are paid out of the
+       TAINT ARM -- exactly what [App.Happ_out_sup] says and what
+       [EchoOut.ecl_sup] proves.  A wand from the credential, because the
        only holder of a generic slot is one the taint has already accounted
-       for. *)
+       for.  ONE licence where there were two: [in_licence] IS
+       [out_licence]. *)
     iAssert (□ (echo_taint γ -∗ out_licence))%I as "#Hlic".
-    { iIntros "!> #Ht". rewrite /out_licence Hout /echo_out.
-      iIntros "!>" (k h acc b) "Ho".
-      iApply (EchoOut.eout_sup (echo_taint γ) γ k h acc b with "Ht Ho"). }
-    (* ...and the INPUT licence, on the same mould and for the same reason
-       (lane CONS-IO / ECHO-OUT part 5): both conjuncts out of
-       [EchoOut.ein_sup_log] / [ein_sup_deliv]. *)
+    { iIntros "!> #Ht". rewrite /out_licence /cons_licence Hcons /echo_cons.
+      iIntros "!>" (k h H ev) "Ho".
+      iApply (EchoOut.ecl_sup (echo_taint γ) γ k h H ev with "Ht Ho"). }
     iAssert (□ (echo_taint γ -∗ in_licence))%I as "#Hilic".
-    { iIntros "!> #Ht". rewrite /in_licence Hin /echo_in. iSplit.
-      - iIntros "!>" (k h pops dl e) "Hi".
-        iApply (EchoOut.ein_sup_log (echo_taint γ) γ k h pops dl e
-                  with "Ht Hi").
-      - iIntros "!>" (k h pops dl ws) "Hi".
-        iApply (EchoOut.ein_sup_deliv (echo_taint γ) γ k h pops dl ws
-                  with "Ht Hi"). }
+    { iIntros "!> #Ht". rewrite /in_licence. by iApply "Hlic". }
     iIntros "#Hinv Hb Hturn". iModIntro.
     (* ---- THE ERA'S PIN, out of the turn and back (lane R3).  The pin is
            persistent and the turn is not, so the pin is read off here and
@@ -755,9 +737,9 @@ Section EchoInitBoot.
     (* THE LINKS, ONCE: the law the read leaf and the banner both spend,
        proved exactly where the record's four equations are. *)
     iAssert (EchoLinks.echo_links (echo_taint γ) γ) as "#Hlks";
-      [ iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin) | ].
+      [ iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hcons) | ].
     assert (Hlkc : ⊢ EchoLinks.echo_links (echo_taint γ) γ)
-      by (iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hout Hin)).
+      by (iApply (EchoLinks.echo_links_holds (echo_taint γ) γ Hcons)).
     (* ---- /echo's PINNED ENTRY, as the paid child's law needs it (lane
            R3): the file-system invariant, the claim law projected at
            echo's pins, and the taint's generic mint -- the three pieces

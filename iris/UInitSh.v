@@ -46,7 +46,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 Require Import WpMmodeLeafBase.  (* [csp_rs1] *)
-Require Import UmodeArith UmodeAbi.
+Require Import UmodeAbi.
 Require Import ProcGeom.
 (* THE GHOST BINDER LIST, each module IMPORTED and not merely required:
    naming [xv6G] / [fileG] / [irefslotG] / [pavG] without their defining
@@ -61,14 +61,11 @@ Require Import FileInvDefs.     (* [fileG], and its [appcfg] / [icfg] fields *)
 Require Import UserFd.
 Require Import UserHeap.
 Require Import ChildTok.  (* [my_pay]: the exec wands' pay fact *)
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
+Require Import UexecSlot UexecRet UexecSG.
 Require Import UInitFd.  (* [ufd_head] / [ufd_head_row] -- init's own
                             descriptor head, and the row sh's entry reads
                             off it against the lent authority *)
 Require Import UkRun.
-Require Import UkRunExecRef.    (* [udepw_at_refR] / [sbundle_pay_refR]: the
-                                   exec deposit at the LEND's own refund
-                                   (lane M6b) *)
 Require Import UCodeInit UkInit.
 Require Import UkSh UShKernel.
 Require Import UkShParse.       (* the two lexer tables' addresses and
@@ -97,7 +94,6 @@ Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
 Require Import PageGeom.           (* [PGSIZE] *)
 Require Import KexecDefs.
 Require Import SpecKexec.
-Require Import SpecCopyin.         (* [uimg_word_at] *)
 Require Export UImgWordDefs.  (* [img_word_of_bytes], [uimg_word_det]
                                  -- split out of this file for [UShEcho].
                                  EXPORT: existing importers unchanged. *)
@@ -125,7 +121,7 @@ Require Import UexecExecInst.      (* [sbundle_exec_intro] -- THE INSTANCE *)
 Require Import Xv6Cameras.         (* [uartGhostG] *)
 Require Import UartNames.          (* [cons_names] *)
 Require Import UserConsole.        (* [ucons_pay] / [upos] *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.InitData.
 Import Defs.
 

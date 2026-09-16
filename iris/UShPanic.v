@@ -82,7 +82,7 @@ Require Import EchoDisc.
 Require Import EchoOut.
 Require Import EchoLinks.
 Require Import EchoLinksLine.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.ShSyms.
 (* as in EchoDisc / UEchoOut / UShOut: the Sail imports leave string_scope
    on top and [++] would elaborate as String.append *)

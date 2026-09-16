@@ -268,6 +268,7 @@ Section ProofUartinitone.
       destruct (uart_write_1_stable uu _ uu' Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_rx_stable uu 1 _ uu' ltac:(lia) ltac:(lia) Hw)
         as [Hrxe Hlbe].
+      iDestruct (cons_claim_at_stable i γd uu uu' Ha with "Hin") as "Hin".
       iModIntro. iSplitL "Hg";
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";
@@ -333,6 +334,7 @@ Section ProofUartinitone.
         as [Hrxe Hlbe].
       assert (Hdt : uart_dlab uu' = true)
         by (rewrite Hdb Hblcr1; vm_compute; reflexivity).
+      iDestruct (cons_claim_at_stable i γd uu uu' Ha with "Hin") as "Hin".
       iMod (ui_lcr_step γd uu uu' b0 Ha Ho with "Hg Hd") as "[Hg' Hd']".
       iEval (rewrite Hdt) in "Hd'".
       iModIntro. iSplitL "Hg'"; [ iExact "Hg'" |].
@@ -398,6 +400,7 @@ Section ProofUartinitone.
       destruct (uart_write_0_dlab_stable uu _ uu' Hdu Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_rx_stable uu 0 _ uu' ltac:(lia) ltac:(lia) Hw)
         as [Hrxe Hlbe].
+      iDestruct (cons_claim_at_stable i γd uu uu' Ha with "Hin") as "Hin".
       iModIntro. iSplitL "Hg";
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";
@@ -444,6 +447,7 @@ Section ProofUartinitone.
       destruct (uart_write_1_stable uu _ uu' Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_rx_stable uu 1 _ uu' ltac:(lia) ltac:(lia) Hw)
         as [Hrxe Hlbe].
+      iDestruct (cons_claim_at_stable i γd uu uu' Ha with "Hin") as "Hin".
       iModIntro. iSplitL "Hg";
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";
@@ -494,6 +498,7 @@ Section ProofUartinitone.
         as [Hrxe Hlbe].
       assert (Hdt : uart_dlab uu' = false)
         by (rewrite Hdb Hblcr2; vm_compute; reflexivity).
+      iDestruct (cons_claim_at_stable i γd uu uu' Ha with "Hin") as "Hin".
       iMod (ui_lcr_step γd uu uu' true Ha Ho with "Hg Hd") as "[Hg' Hd']".
       iEval (rewrite Hdt) in "Hd'".
       iModIntro. iSplitL "Hg'"; [ iExact "Hg'" |].
@@ -561,6 +566,7 @@ Section ProofUartinitone.
       iDestruct (ui_tx_empty γd uu l with "Hg Ht Hlb") as %Htxe.
       destruct (uart_write_2_stable uu _ uu' Htxe Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_fcr_rx uu _ uu' Hw) as [Hrxe Hlbe].
+      iDestruct (cons_claim_at_stable i γd uu uu' Ha with "Hin") as "Hin".
       match type of Hrxe with
       | u_rx uu' = (if ?cl then [] else _) => destruct cl eqn:Hclr
       end.
@@ -659,6 +665,7 @@ Section ProofUartinitone.
       destruct (uart_write_1_stable uu _ uu' Hw) as (Ha & Ho & Hdb).
       destruct (uart_write_rx_stable uu 1 _ uu' ltac:(lia) ltac:(lia) Hw)
         as [Hrxe Hlbe].
+      iDestruct (cons_claim_at_stable i γd uu uu' Ha with "Hin") as "Hin".
       iModIntro. iSplitL "Hg";
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";

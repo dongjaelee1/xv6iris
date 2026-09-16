@@ -687,10 +687,12 @@ Section ProofUartintr.
                     ltac:(lia) HH2a0 Hlast Hbts Hhext Hgext
                     Hlen ltac:(lia) Hbelow
                     with "Hcg Hcnt Ht Hpc Hpinv Hdinv Hccaps Htg Hlbh Hwlb Hhi Hlgh
-                          [Hwin]").
+                          Harm").
           all: try lkbelow.
-          { iApply (win_at_uart0 with "Hwin"). }
-          iIntros (CIDc Hsc Mf) "[%Hcsf %Hdomf] Hcg Hcnt Ht2 Hpc Hhi Hlgh Hwin".
+          (* the contract takes the ARM's half now (redesign R2), not the
+             application's window token: the payload's [win_at] rides
+             through untouched. *)
+          iIntros (CIDc Hsc Mf) "[%Hcsf %Hdomf] Hcg Hcnt Ht2 Hpc Hhi Hlgh Harm".
           iEval (rewrite HH2ra) in "Hpc".
           assert (P5cr : ret_pc (add_vec_int (mword_of_int (KernelSyms.uartintr + 0x5a) : mword 64) 2)
                          = mword_of_int (KernelSyms.uartintr + 0x5c)) by pcw.

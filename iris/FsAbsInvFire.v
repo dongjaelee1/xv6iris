@@ -283,16 +283,17 @@ Section FsAbsInvFire.
      Nothing is duplicated: what the console arm owes is [∀ cur dc, |==>
      P ∗ True], and a [∀] over a constant is that constant -- the caller
      takes its [P] back at ONE position, the one the read landed on. *)
-  (* ...AND THE INPUT LICENCE PAYS THE CONSOLE ARM'S SECOND HALF (lane
-     CONS-IO, milestone B, B4).  Read's console deposit now carries the
-     boundary's input link as well as the ring's payment, and the generic
-     slot's supply already holds [WpUart.in_licence]
-     ([UexecExecInst.xv6_ssupply]'s fourth conjunct) -- so this arm costs
-     the generic process nothing new: it claims nothing about the window
-     ([rf_in] at [fun _ => True]) and the licence hands over a link at any
-     [ws] whatever. *)
+  (* ...AND THE CONSOLE LICENCE PAYS THE CONSOLE ARM'S SECOND HALF (lane
+     CONS-IO, milestone B, B4).  Read's console deposit carries the
+     boundary's read link as well as the ring's payment, and the generic
+     slot's supply already holds [WpUart.out_licence]
+     ([UexecExecInst.xv6_ssupply]'s third conjunct) -- which since the
+     redesign is the port's ONE licence, good for any event -- so this arm
+     costs the generic process nothing new: it claims nothing about what
+     came in ([rf_in] at [fun _ => True]) and the licence hands over a link
+     at any [ws] whatever. *)
   Lemma fsabs_fileread_in (st : fdstate) (P : iProp Σ) :
-    WpUart.in_licence -∗
+    WpUart.out_licence -∗
     app_sup -∗ fileread_in st (pfam_triv (fun _ _ _ _ => True%I))
                             (fun _ _ => True%I) (fun _ => True%I) P.
   Proof.

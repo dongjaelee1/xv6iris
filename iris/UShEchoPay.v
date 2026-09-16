@@ -50,7 +50,11 @@ Require Import FsImg.
 Require Import PinnedExec.
 Require Import FsEchoPin.
 Require Import SpecKexec SpecSysExec.
-Require Import UInitSh.           (* [sbundle_pay_exec_intro_refR] *)
+Require Import UInitSh.
+Require Import ExecEntry.         (* [image_entry] / [image_entry_taint] *)
+Require Import FsAbsDefs.         (* [anode] / [MkAnode] / [AFile] *)
+Require Import ExecRun.           (* THE U-TIER EXEC RULE this supply is an
+                                     instance of *)
 Require Import UShKernel.
 Require Import KexecDefs.
 Require Import UexecExecInst.
@@ -192,10 +196,12 @@ Section UShEchoPay.
   (* =================================================================== *)
   (*  2.  THE ASSEMBLY: sh's pinned bundle pays its exec supply, PAID      *)
   (*                                                                      *)
-  (*  [UShEcho]'s section 7 at the paid entry: the resolving arm is       *)
-  (*  [echo_slot_of_kexec_at], the taint arm the generic slot at the       *)
-  (*  chosen payload, the deposit's refund the ledger fragment and the     *)
-  (*  lend ([UInitSh.sbundle_pay_exec_intro_refR]).                        *)
+  (*  [UShEcho]'s section 7 at the paid entry.  IT IS AN INSTANCE OF THE   *)
+  (*  U-TIER RULE ([ExecRun.udepw_at_refR_of_sup], lane EX-4) and what is  *)
+  (*  left here is sh's own supply: the node it malloc'd read off the lent *)
+  (*  heap, the PIN as (W)'s supplier ([ExecRun.exec_walk_of_pin]), the    *)
+  (*  resolving arm [echo_slot_of_kexec_at] as (E), the taint arm at the   *)
+  (*  chosen payload, and the refund -- the ledger fragment and the lend.  *)
   (* =================================================================== *)
   Lemma sh_exec_sup_echo_wq_holds :
     (⊢ □ riscv_kill_cred -∗ T) ->
@@ -207,7 +213,35 @@ Section UShEchoPay.
     rewrite /UkShEcho.sh_exec_sup_echo_wq. iIntros "!>" (np).
     rewrite /UkShEcho.sh_exec_sup_echo.
     iIntros "!>" (N' m pc s0 t g ld) "%Hpeq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
-    rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
+    (* the lend, pinned *)
+    rewrite /EchoLinksLine.ewc_lcred. iDestruct "Hcr" as (v) "[#Hpin Hcr]".
+    (* ---- THE TAINT ARM: the generic slot at the chosen payload.  It names
+       no key, so it is built before the deposit's own ∀. ---- *)
+    iAssert (image_entry_taint T (fun _ : Z => Wq np) uslot)%I as "#Hgen'".
+    { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
+      iApply ("Hgen" $! (Wq np) W' with "HT Hmp []").
+      iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
+      iApply (EchoLinksLine.ewc_lcred_taint T γ (S gen_id) np 0%nat v
+                with "Hpin [Hk]").
+      iApply Hkt. iModIntro. iExact "Hk". }
+    (* ---- ...AND THE REST IS THE U-TIER RULE (lane EX-4).
+       [ExecRun.udepw_at_refR_of_sup] is the general step from an exec
+       bundle to the deposit the exec leaf consumes; what is left here is
+       sh's own SUPPLY -- the node it malloc'd, read off the lent heap, the
+       PIN as (W)'s supplier, and echo's PAID entry. ---- *)
+    iApply (udepw_at_refR_of_sup N' m pc
+              (mword_of_int s0) (mword_of_int (t + 8))
+              FsImg.ROOTINO T echo_pl ElfUser.echo_elf 1%nat
+              (UserFd.ustd (ukn_fd N') ld
+               ∗ EchoLinksLine.ewc_lpr T v np 3%nat)%I
+              _ echo_elf_loadable Ha0 Ha1 with "[] [] [Hstd Hcr]").
+    (* THE REFUND IS THE LEND, WHOLE: the fragment and the block credential
+       come back to the child whose exec failed *)
+    { iIntros "!> [$ Hc]". rewrite /EchoLinksLine.ewc_lcred.
+      iExists v. iFrame "Hpin Hc". }
+    { rewrite Hpeq. iExact "Hgen'". }
+    rewrite /uexec_sup_run.
+    iIntros (M pm sz fdv cs pidv) "Hheap Hufd".
     (* the node, read ONCE off the lent heap *)
     iAssert (⌜ echo_node_img M s0 t g ⌝)%I as %Himg.
     { iApply (echo_node_img_of_cmd with "Hheap Hcmd"). }
@@ -217,96 +251,31 @@ Section UShEchoPay.
     iDestruct (ustd_agree (ukn_fd N') fdv ld with "Hufd Hstd") as %Hl.
     assert (Hfd1' : UkSh.ush_fd1p (take NSTD fdv)) by (rewrite Hl; exact Hfd1).
     iFrame "Hheap Hufd".
-    (* the lend, pinned *)
-    rewrite /EchoLinksLine.ewc_lcred. iDestruct "Hcr" as (v) "[#Hpin Hcr]".
-    (* ---- THE RESOLVING ARM: echo's paid entry, at the pinned image ---- *)
-    iAssert (□ (∀ (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-                  (W' : uvis),
-                  ⌜kexec_image_ok ElfUser.echo_elf na alen afun fdv W'⌝ -∗
-                  ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗
-                  ⌜uvis_lazy W' = false⌝ -∗
-                  (* the two identity rows (lane EXEC-SEAM): echo reads
-                     neither *)
-                  ⌜uvis_ch W' = cs⌝ -∗
-                  ⌜uvis_pid W' = pidv⌝ -∗
-                  ⌜exec_args_of M (mword_of_int (t + 8) : mword 64)
-                     na alen afun⌝ -∗
-                  my_pay (uvis_gen W') (fun _ : Z => Wq np) -∗
-                  (UserFd.ustd (ukn_fd N') ld
-                   ∗ EchoLinksLine.ewc_lpr T v np 3%nat) -∗
-                  uslot W'))%I as "#Hcon".
-    { iModIntro.
+    (* ---- (W)'s PURE INPUT: argv[0]'s string IS the path exec resolves --- *)
+    iSplitR "Hstd Hcr".
+    { iPureIntro. exact (sh_echo_path_of_holds M s0 t g Himg Hbytes). }
+    (* ---- (W) ITSELF, AT THE PIN SUPPLIER ---- *)
+    iSplitR "Hstd Hcr".
+    { iApply (exec_walk_of_pin FsEchoPin.era0_echo_pins T FsImg.ROOTINO
+                echo_pl [FsImg.ROOTINO; FsEchoPin.ECHO_INO]
+                FsEchoPin.ECHO_INO
+                (MkAnode (AFile ElfUser.echo_elf) 1%nat) sh_echo_pin_resolves
+                with "Hcl Hinv"). }
+    (* ---- (E): echo's PAID entry, at the pinned image ---- *)
+    iSplitR "Hstd Hcr".
+    { rewrite Hpeq. rewrite /image_entry. iModIntro.
       iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf _ _ %Hargs Hmp [_ Hc]".
       destruct (echo_args_det_holds M s0 t g na alen afun Himg Hbytes Hargs)
         as (Hna & Halen & Hafun).
       (* ECHO'S FRAME FITS: the arguments this line pushed leave the
          twelve words the entry needs.  An INEQUALITY off the push
          geometry, discharged at the lengths the parser pinned -- not the
-         vector's address as a number. *)
-      assert (Hroom : kexec_sz ElfUser.echo_elf - PGSIZE + 96
-                      <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen na).
-      { assert (Hi0 : (0 < length echo_ws)%nat)
-          by (rewrite echo_ws_length; lia).
-        assert (Hi1 : (1 < length echo_ws)%nat)
-          by (rewrite echo_ws_length; lia).
-        assert (Hi2 : (2 < length echo_ws)%nat)
-          by (rewrite echo_ws_length; lia).
-        pose proof (Halen 0%nat Hi0) as E0.
-        pose proof (Halen 1%nat Hi1) as E1.
-        pose proof (Halen 2%nat Hi2) as E2.
-        assert (A0 : UkShEcho.echo_alen 0%nat = 4%nat) by (by vm_compute).
-        assert (A1 : UkShEcho.echo_alen 1%nat = 5%nat) by (by vm_compute).
-        assert (A2 : UkShEcho.echo_alen 2%nat = 5%nat) by (by vm_compute).
-        rewrite A0 in E0. rewrite A1 in E1. rewrite A2 in E2.
-        rewrite Hna. apply echo_room.
-        rewrite /echo_argv_fits echo_ws_length. cbn [kxc_span].
-        rewrite E0 E1 E2. unfold PGSIZE. lia. }
-      iApply (echo_slot_of_kexec_at na alen afun fdv W' v np Hok Hroom
+         vector's address as a number ([UShEcho.echo_room_of_det]). *)
+      iApply (echo_slot_of_kexec_at na alen afun fdv W' v np Hok
+                (echo_room_of_det na alen Hna Halen)
                 Hlen Hlzf Hna Halen Hafun Hfd1' Hkt
                 with "Hpin Hlk Hdep Hgen Hmp Hc"). }
-    (* ---- THE TAINT ARM: the generic slot at the chosen payload ---- *)
-    iAssert (□ (∀ W' : uvis, T -∗
-                  my_pay (uvis_gen W') (fun _ : Z => Wq np) -∗
-                  uslot W'))%I as "#Hgen'".
-    { iModIntro. iIntros (W') "#HT #Hmp".
-      iApply ("Hgen" $! (Wq np) W' with "HT Hmp []").
-      iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
-      iApply (EchoLinksLine.ewc_lcred_taint T γ (S gen_id) np 0%nat v
-                with "Hpin [Hk]").
-      iApply Hkt. iModIntro. iExact "Hk". }
-    (* ---- THE BUNDLE ---- *)
-    iDestruct (pinned_exec_bundle fsc_fs uslot FsEchoPin.era0_echo_pins T
-                 FsImg.ROOTINO echo_pl
-                 [FsImg.ROOTINO; FsEchoPin.ECHO_INO] FsEchoPin.ECHO_INO
-                 ElfUser.echo_elf 1%nat
-                 (UserFd.ustd (ukn_fd N') ld
-                  ∗ EchoLinksLine.ewc_lpr T v np 3%nat)%I
-                 (fun _ : Z => Wq np)
-                 M (mword_of_int s0) (mword_of_int (t + 8)) fdv cs pidv
-                 sh_echo_pin_resolves echo_elf_loadable
-                 (sh_echo_path_of_holds M s0 t g Himg Hbytes)
-                 with "Hcl Hinv Hcon Hgen' [Hstd Hcr]") as (P Pmiss Fo) "Hb";
-      [ iFrame "Hstd Hcr" | ].
-    assert (Ea0 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv
-                                  FsImg.ROOTINO gn cs pidv false))
-                    (tf_arg_idx 0) = (mword_of_int s0 : mword 64))
-      by (etransitivity; [ exact (tf_of_arg0 m pc) | exact Ha0 ]).
-    assert (Ea1 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv
-                                  FsImg.ROOTINO gn cs pidv false))
-                    (tf_arg_idx 1) = (mword_of_int (t + 8) : mword 64))
-      by (etransitivity; [ exact (tf_of_arg1 m pc) | exact Ha1 ]).
-    (* THE REFUND IS THE LEND, WHOLE: the fragment and the block credential
-       come back to the child whose exec failed *)
-    iApply (sbundle_pay_exec_intro_refR uslot
-              (uvis_of_run m pc M pm sz fdv FsImg.ROOTINO gn cs pidv false)
-              (ukn_pay N') (UserFd.ustd (ukn_fd N') ld ∗ Wc np 3%nat)
-              P Pmiss Fo
-              (UserFd.ustd (ukn_fd N') ld
-               ∗ EchoLinksLine.ewc_lpr T v np 3%nat)%I).
-    { iIntros "!> [$ Hc]". rewrite /EchoLinksLine.ewc_lcred.
-      iExists v. iFrame "Hpin Hc". }
-    { cbn [uvis_gen uvis_of_run]. iExact "Hmpay". }
-    rewrite Hpeq Ea0 Ea1. iExact "Hb".
+    iFrame "Hstd Hcr".
   Qed.
 
   (* =================================================================== *)

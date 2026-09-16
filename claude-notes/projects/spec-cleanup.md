@@ -66,6 +66,62 @@ exclusivity fact), not a kernel ask.
   consequences for EX-3/EX-4 and the TR's fragment sentence, is
   `design/user-exec.md` §4's EX-2 as-landed block.  Mirror: echo audit
   14, whole tree green at `b5fb202cf3` (no Rocq touched).
+  ONE OWED ONE-LINER out of it: `FsAbs.top_frag_1_nview_excl` is stated
+  at `DfracOwn q` only, so the DISCARDED flavour (`nview_dq Γ
+  DfracDiscarded`, which is what `SpecSysMknod.mkr_pin` uses) is refuted
+  by the same algebra (`DfracOwn 1 ⋅ DfracDiscarded` is invalid) and by
+  no landed lemma — write it if a later lane wants the wall total in
+  Rocq.
+- [ ] **EX-3 ARGV READING** — STILL OPEN; EX-4's budget went to the rule
+  and the TR, and nothing was attempted.  The shape is priced in
+  `design/user-exec.md` §4's EX-3 entry: one layout-abstract reading
+  (`n+1` `uwordq` vector words at `av + 8i`, each string's `ubytesq`
+  bytes and terminator, two range bounds — i.e. `UShEcho.echo_node_img`
+  with the offsets abstract), with `UInitSh.init_args_det` (constant
+  image, literal addresses) and `UShEcho.echo_args_det` /
+  `echo_node_img_of_cmd` (malloc'd node, induction on the count) as
+  instances at their statements.  The prize is the agreement lemma that
+  would lift `M`/`av` out of `image_entry` and the entry out of the
+  key's ∀ (EX-4's §2 block).
+- [x] **EX-4 THE RULE + THE TEST + THE TR** LANDED (branch `ex4-rule`).
+  New `iris/ExecRun.v` — the U-tier exec rule over
+  `ExecBundle.exec_bundle_of`:
+  - `sbundle_pay_refR_of_exec` — THE SEAM, one key: an exec bundle at
+    `uvis_of_run m pc M pm sz fdv c gn cs pidv false` IS the deposit the
+    exec leaf consumes.  Both program supplies ended in these four lines
+    inline; it is here once.
+  - `uexec_sup_run` / `uexec_sup_run_ids` — the supply: the bundle at
+    EVERY key the run may be at, lent the heap and the fd authority (and
+    the identity authorities, for a caller that reads the resumed key's
+    children set and pid), with `Pay` handed over inside.
+  - `wp_uk_ecall_exec_run` / `_ids` — THE RULE: (L) pure, the taint arm
+    and `□ (Pay -∗ R)` beside it, ONE continuation (the −1 arm), no
+    success case — success is `X` inside `image_entry`.
+  - `exec_walk_of` — (W) as one resource, families closed — with its
+    two suppliers `exec_walk_of_pin` (`PinnedObs` off `app_inv`) and
+    `exec_walk_of_taint`; `ex_start_triv` (`FsAbsEra.ep_start_triv`'s
+    missing twin) is proved here rather than in the fs seam.
+  - THE CONSUMER TESTS `wp_uk_ecall_exec_pin_test` and
+    `wp_uk_ecall_exec_taint_test`, plus `image_entry_of_taint` and
+    `uexec_path_reading` (the path read back off whatever heap the run
+    is at — the shape both landed programs have).
+  THE TWO PROGRAM SUPPLIES ARE NOW INSTANCES, at their exact statements:
+  `UInitSh.init_exec_sup_of_sh_slot` through
+  `udepw_at_refR_ids_of_sup_ids`, `UShEchoPay.sh_exec_sup_echo_wq_holds`
+  through `udepw_at_refR_of_sup`; each still spells only its own
+  readings.  `sbundle_pay_exec_intro_refR` MOVED from `UInitSh` (a
+  program file) to `ExecRun` at its exact statement — `UShEchoPay` gains
+  the import.  NO SEAM GAP: neither program's exec site consumes
+  anything the rule does not offer.  `Print Assumptions`: the seam
+  `sbundle_pay_refR_of_exec` is CLOSED UNDER THE GLOBAL CONTEXT; both
+  rules and both consumer tests sit at the standing bar (the two Sail
+  platform axioms + funext, no `PrimInt63`/`PrimString`).  TR: `xv6iris-doc` `63d2ff8`, `fig:uk-exec` in
+  `user.tex` §7 with the entry-as-theorem prose, the taint reading, and
+  the pin-free supplier as FUTURE work gated on the tree layer.
+  Also fixed `design/user-write.md`'s "the read side has no such wall"
+  misreading (twice: the design page and this worklist's RD-6 entry).
+  `iris/_CoqProject` gains `ExecRun.v` — the gate must regen
+  `CoqMakefile` (it does).  Mirror: whole tree green, echo audit 14.
 
 ## RELAY QUEUE (for upstream, via the owner's push)
 
@@ -520,8 +576,12 @@ Derived corollaries, in order of what applications actually use:
   mover needs the WHOLE γtop element to update the row, and that is what
   `IcacheEscrow.ic_loaded` holds while the inode is ilock'd
   (`FsAbs.top_frag_1_nview_excl` is the algebra), so any client `nview`
-  share contradicts the chain node's own premises.  The read side has no
-  such wall because its arm leaves a client share outstanding on purpose.
+  share contradicts the chain node's own premises.  (The read side has
+  the SAME wall — EX-2 refuted the "its arm leaves a client share
+  outstanding on purpose" reading: the 3/4 is the escrow's, the quarter
+  that leaves goes to the read-locking kernel thread, and nothing
+  crosses an ecall.  What read has is that its STATEMENT stays true when
+  the anchor arrives.)
   What is NOT missing is the R-c pattern: `awrite_full_at`'s phase 1
   already hands the caller the offset, the chunk bytes AND the row's
   pre-content (`FsAbsWriteFire.wri_pre`), and phase 2 the delta, all in

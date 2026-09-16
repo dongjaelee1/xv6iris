@@ -206,9 +206,68 @@ postcondition.
 Two derived readings the TR should say in prose: (i) exec'ing an
 UNVERIFIED binary is the same rule at `image_entry_taint` — the program
 learns nothing about what runs next, and the system stays safe; (ii)
-with the FRAGMENT supplier a program needs no application-level
+~~with the FRAGMENT supplier a program needs no application-level
 invariant to exec a file it holds a share of — "I know what this file
-is" is a resource, not a global claim.
+is" is a resource, not a global claim.~~ **(ii) IS FUTURE WORK, NOT A
+CLAIM** — EX-2 refuted the fragment supplier (§4); the TR says it as
+future work gated on the tree layer or says nothing.
+
+**AS LANDED (EX-4, `iris/ExecRun.v`).**  The sketch above is right about
+the shape and wrong about three placements, each forced by the landed
+tiers:
+
+    uexec_sup_run N pv av c T pl f nl Pay :=                  (W)+(E)+Pay AT EVERY KEY
+      ∀ M pm sz fdv cs pidv,
+        uheap … M pm sz -∗ ufd_auth … fdv -∗
+        uheap … ∗ ufd_auth … ∗
+        ⌜exec_path_of M pv pl⌝ ∗                               (the path, off the LENT heap)
+        exec_walk_of c T pl (MkAnode (AFile f) nl) ∗            (W), families closed
+        image_entry f M av fdv c cs pidv (ukn_pay N) Pay uslot ∗
+        Pay
+
+    wp_uk_ecall_exec_run :
+      usysno m = USYS_exec → m[a0] = pv → m[a1] = av →
+      aligned(pc+4) → kexec_loadable f →                          (L)
+      uinstr_is … -∗ urun N h m pc avail -∗ ucwd (ukn_cwd N) c -∗
+      □ (Pay -∗ R) -∗                                          (what a failed exec is worth)
+      image_entry_taint T (ukn_pay N) uslot -∗                 (the taint arm)
+      uexec_sup_run N pv av c T pl f nl Pay -∗
+      (∀ h'. ucwd … c -∗ R -∗ urun N h' m[a0 := −1] (pc+4) avail -∗ wpcycle) -∗
+      wpcycle
+
+- **THE ENTRY AND THE WALK ARE UNDER THE KEY'S ∀, not beside the rule.**
+  `image_entry` names the caller's IMAGE `M` and its argv pointer (§1's
+  second ruling: the argument reading is IN the entry), and `urun` binds
+  `M`, `pm`, `sz`, `fdv`, `cs`, `pidv` under its own existential — so no
+  lemma stated where a program is can name them.  What a program carries
+  is the bundle AT EVERY key, LENT the heap and the fd authority, which
+  is exactly the shape both landed suppliers already had
+  (`UkRun.udepw_at`'s own note).  EX-3's second prize (an `exec_args_of`
+  agreement lemma plus a `kexec_image_ok` congruence) is what would lift
+  `M`/`av` back out of `image_entry` and the entry back out of the ∀;
+  nothing else will.
+- **`Pay` IS INSIDE THE SUPPLY TOO**, and that is forced rather than
+  tidy: a supplier may need the loan to read its own payload against the
+  key's authorities — sh's child reads fd 1's row off the table its own
+  ledger fragment agrees with — and a `Pay` taken outside the ∀ is not
+  in scope where the authorities are.
+- **THE REFUND IS A PARAMETER `R` WITH `□ (Pay -∗ R)`,** not
+  `ukn_pay (−1)`: what a failed exec hands back is whatever went in, and
+  for /init's child that is the lend with its credential, which does not
+  fit the record's own exit family (`UkRunExecRef.v`'s header).  `R :=
+  Pay` at the identity wand is the general reading.
+
+Beside the rule: `exec_walk_of` is (W) as ONE resource with the
+supplier's cursor families closed (a rule must close them — the process
+does not choose the cursor family of the walk it is about to run), and
+it has exactly the two suppliers that exist, `exec_walk_of_pin` (off
+`app_inv` + a claim law, `PinnedObs`'s three lemmas) and
+`exec_walk_of_taint` (every cursor `True`, the node identified only by
+`T`; `ex_start_triv` is `FsAbsEra.ep_start_triv`'s missing twin and is
+proved here).  `wp_uk_ecall_exec_run_ids` is the same rule at a supply
+that is lent `urun_ids` as well, for a caller that reads the resumed
+key's children set and pid (/init's, for the shell it starts);
+`uexec_sup_run_ids_of_sup` is the forgetful direction.
 
 ## 3. What each existing program becomes
 
@@ -237,6 +296,26 @@ is" is a resource, not a global claim.
   it is a one-lemma follow-up, not a finding.
 - A NEW program: its author proves `image_entry f_P …` from its code
   proof and chooses a (W) supplier; nothing else.
+  LANDED as the two consumer tests beside the rule (EX-4):
+  `ExecRun.wp_uk_ecall_exec_pin_test` — a claim law for a pin of the
+  author's own choosing, `app_inv`, `uexec_path_reading` (the path
+  string read back off whatever heap the run is at, which is the shape
+  both landed programs have), `kexec_loadable` by computation and the
+  entry, and the continuation is the entry's `X` — and
+  `ExecRun.wp_uk_ecall_exec_taint_test`, the same rule at the taint,
+  where the entry is `image_entry_of_taint` and the continuation is the
+  generic slot.  Both are the rule with NO new machinery; both sit at
+  the standing platform bar (the two Sail axioms + funext).
+
+**AND BOTH LANDED SUPPLIES ARE INSTANCES OF THE RULE.**
+`UInitSh.init_exec_sup_of_sh_slot` is `udepw_at_refR_ids_of_sup_ids` at
+`exec_walk_of_pin` + `init_sh_image_entry`, and
+`UShEchoPay.sh_exec_sup_echo_wq_holds` is `udepw_at_refR_of_sup` at
+`exec_walk_of_pin` + `echo_slot_of_kexec_at`; both keep their exact
+statements, and what each still spells for itself is only its OWN
+readings (init's two `uimg_sub`s off its catalogs, sh's malloc'd node).
+The deposit introduction `sbundle_pay_exec_intro_refR` MOVED out of
+`UInitSh` — a program file — into `ExecRun`, at its exact statement.
 
 ## 4. Lanes
 
@@ -375,10 +454,39 @@ is" is a resource, not a global claim.
   `kexec_image_ok` reads) plus a congruence for `kexec_image_ok` would
   let an assembly fix ONE argument shape and drop `M`/`av` from
   `image_entry` altogether.
-- [ ] **EX-4 THE RULE + THE TEST + THE TR**: `wp_uk_ecall_exec_run`
-  over the general bundle; a consumer test (a program holding fragments
-  for a file execs it and lands at `X`); `user.tex` §7's fork figure
-  gains its exec sibling from §2.
+  **STILL OPEN AFTER EX-4, WITH THE SHAPE PRICED** (EX-4's budget ran
+  out at the rule and the TR; nothing was attempted).  What the general
+  lemma has to span is two readings that look nothing alike, and that IS
+  the work:
+  - `UInitSh.init_args_det` reads a CONSTANT image — its hypotheses are
+    `uimg_sub UCodeInit.init_argv_map M` and `uimg_sub UCodeInit.init_ro
+    M`, i.e. two catalog inclusions, and the vector's addresses are
+    literals (`0x1000`, `0x9a8`).
+  - `UShEcho.echo_args_det` reads a MALLOC'd node — its hypothesis is
+    the pure summary `echo_node_img M s0 t g` (six conjuncts: the
+    word-array at `t+8+8i`, the NUL cap, the strings at `s0+off i`, the
+    terminators), which `echo_node_img_of_cmd` extracts ONCE off the
+    lent heap because the readings are consumed inside a persistent
+    constructor that cannot hold it.
+  The common shape is `echo_node_img` with the offsets abstract: a
+  LAYOUT `(ptr : nat -> Z, len : nat -> nat, byte : nat -> nat -> bv 8,
+  n : nat)`, the vector's `n+1` words at `av + 8i` (`uwordq`), each
+  string's bytes and its terminator (`ubytesq`), plus the two range
+  bounds.  `init_args_det` is that at `ptr i = 0x9a8`, `n = 1`; the
+  extraction lemma off the heap is `echo_node_img_of_cmd` with its
+  induction kept.  The second prize (the agreement lemma) is what EX-4's
+  §2 block names as the only way to lift the entry back out of the key's
+  ∀, and is the reason to do this lane at all.
+- [x] **EX-4 THE RULE + THE TEST + THE TR** — LANDED.  One new file,
+  `iris/ExecRun.v`: the seam (`sbundle_pay_refR_of_exec`: an exec bundle
+  at ONE key IS the deposit the exec leaf consumes), the supply
+  (`uexec_sup_run` / `_ids`), the two rules (`wp_uk_ecall_exec_run` /
+  `_ids`), (W) as one resource with its two suppliers
+  (`exec_walk_of_pin`, `exec_walk_of_taint`), and the two consumer
+  tests.  §2's as-landed block has the statement and the three
+  placements the sketch got wrong; §3 has the instances.  The TR figure
+  is `fig:uk-exec` in `xv6iris-doc` `63d2ff8`.  Echo audit 14, whole
+  tree green.
 
 Nothing in this plan is relay-shaped: the kernel already promised
 everything the general rule consumes.  EX-2 tested the one clause that

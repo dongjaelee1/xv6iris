@@ -274,9 +274,16 @@ the tree:
    contradicts the chain node's own premises, and every cursor it could
    build would be proved by `False`.
 
-The read side has no such wall because the read arm leaves a client share
-outstanding ON PURPOSE (`ic_rd_arm` at 3/4) — which is what makes
-`wp_uk_cat_read_learns` non-vacuous.
+The read side's asymmetry is NOT that its premise is reachable — that
+reading of `ic_rd_arm`'s 3/4 is backwards, and EX-2 refuted it: the 3/4
+is what the ESCROW keeps, the quarter that leaves is `ic_rd_held`'s and
+goes to the read-LOCKING kernel thread, and the one client-shaped
+carrier in the tree (`FsAbsEra.inode_rd_era_nview`) is borrow-scoped
+between `ilock` and `iunlock`, so no share crosses an ecall.
+`wp_uk_cat_read_learns` is vacuous today for exactly the same reason
+this wall is a wall.  What read really has is that its STATEMENT stays
+true when the anchor arrives; see `design/user-exec.md` §4's EX-2 block,
+which is the wall in full and names the tree layer as its successor.
 
 **AND THE R-c PATTERN IS NOT WHAT IS MISSING — THE ANCHOR IS.**  Read's
 R-c is "the offset is REPORTED by the receipt instead of owned", and the

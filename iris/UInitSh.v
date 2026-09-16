@@ -108,6 +108,9 @@ Require Import FsImgCheck.         (* [fname_sh] *)
 Require Import FsShPin.            (* [era0_sh_pins] / [sh_path] / [SH_INO] *)
 Require Import FsAbsDefs.          (* [aview] / [arun] / [AFile] *)
 Require Import PinnedExec.
+Require Import ExecRun.            (* [sbundle_pay_exec_intro_refR] and the
+                                      U-tier exec rule this file's supply is
+                                      an instance of *)
 Require Import ExecEntry.       (* [image_entry] / [image_entry_taint]:
                                    obligation (E), named (lane EX-1) *)
 Require Import PieceFam.           (* [pfam] / [MkPfam] -- the exec deposit's
@@ -880,31 +883,12 @@ Section UInitSh.
   (* ------------------------------------------------------------------- *)
   (* THE ASSEMBLY: init's pinned bundle pays its exec supply.              *)
   (* ------------------------------------------------------------------- *)
-  (* [UexecExecInst.sbundle_pay_exec_intro_ref] with the refund's
-     consequence a parameter (lane M6b): the same deposit, its refund wand
-     stated at whatever the supplier wants back instead of the record's
-     exit payload.  Same proof. *)
-  Lemma sbundle_pay_exec_intro_refR (X : uvis -d> iPropO Σ) (W : uvis)
-      (Q : Z -> iProp Σ) (R : iProp Σ)
-      (P Pmiss : nat -> Z -> iProp Σ)
-      (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) (Rs : iProp Σ) :
-    □ (Rs -∗ R) -∗
-    my_pay (uvis_gen W) Q -∗
-    sys_exec_au_pre (MkPfam X Rs) (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
-      Q P Pmiss Fo
-      (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
-      (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) -∗
-    sbundle_pay_refR X Q R W.
-  Proof.
-    iIntros "#Hrf Hmp H". rewrite /sbundle_pay_refR.
-    iExists (xfam_at Q (xfam_exec P Pmiss Fo Rs)).
-    iSplitR; [ done | ].
-    iSplitR; [ iExact "Hrf" | ].
-    rewrite /sbundle_at /= /xv6_sbundle.
-    destruct (decide (USYS_exec = USYS_exec)) as [_ | Hc];
-      [ | exfalso; exact (Hc eq_refl) ].
-    rewrite /exec_sbundle /=. iFrame "Hmp". iExact "H".
-  Qed.
+  (* The deposit introduction this used to carry
+     ([sbundle_pay_exec_intro_refR]) is [ExecRun]'s now: it is the general
+     step from an exec bundle to the deposit and is not /init's.  The
+     assembly below ([init_exec_sup_of_sh_slot]) is an INSTANCE of the
+     U-tier rule ([ExecRun.udepw_at_refR_ids_of_sup_ids], lane EX-4) and
+     spells only /init's own readings. *)
 
   (* /init's all-closed ledger is the closed-arm shape at zero opens
      (step 4) *)
@@ -1265,8 +1249,53 @@ Section UInitSh.
        ([UserFd.ufd_auth_len]) rather than off the ledger. *)
     iModIntro. iIntros (γp np N m pc l)
       "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
-    rewrite /udepw_at_refR_ids.
-    iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd Hids".
+    (* ...and the taint arm at the SAME payload: a tainted process runs on
+       the generic family, which exists at any constant payload and HOLDS
+       the resource it names ([UexecExecMint.uslot_mint_pay]).  The payload
+       is literally the constant function at what the kill status names
+       ([UserConsole.ucons_pay_eta]).  It names no key, so it is built
+       before the deposit's own ∀ and not inside it. *)
+    (* ...AND THE TAINT ARM IS HANDED NOTHING AT ALL NOW (lane SELF-KILL,
+       P6b): the generic family's constant payload is carried
+       PERSISTENTLY ([UexecExecMint.uslot_mint_all] at
+       [□ (riscv_kill_cred -∗ R)]), and the arm builds it out of the TAINT
+       it is already holding ([UserConsole.ucons_pay_taint]) -- which is
+       the whole reason a tainted process needs no lease. *)
+    iAssert (image_entry_taint T
+               (ucons_pay cn γp T (UkInit.init_rd Rdl Wb)) uslot)%I as "#Hgen'".
+    { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
+      iApply ("Hgen" $! (ucons_pay cn γp T (UkInit.init_rd Rdl Wb) (-1)) W' with "HT [Hmp] []").
+      - rewrite ucons_pay_eta. iExact "Hmp".
+      - iModIntro. iIntros "_". iApply (ucons_pay_taint with "HT"). }
+    (* ---- AND THE WHOLE OF THE REST IS THE U-TIER RULE (lane EX-4).
+       [ExecRun.udepw_at_refR_ids_of_sup_ids] is the general step from an
+       exec bundle to the deposit the leaf consumes; what is left below is
+       /init's own SUPPLY -- its readings of its own image and of the
+       record's authorities, the PIN as (W)'s supplier, and sh's entry. ---- *)
+    iApply (udepw_at_refR_ids_of_sup_ids N m pc
+              (mword_of_int 0x9a8) (mword_of_int 0x1000)
+              FsImg.ROOTINO T init_sh_pl ElfUser.sh_elf 1%nat
+              (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
+                 ∗ ucons_pay cn γp T Rdl (-1)
+                 ∗ (UserFd.ustd (ukn_fd N) l
+                    ∗ UkInit.init_lend_cred T
+                        (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
+                        Wp Wb l np))%I
+              _ sh_elf_loadable Ha0 Ha1
+              with "[] [] [Hstd Hrow Hcred Hpos Hlease Hchf Hpidf]").
+    (* ---- THE REFUND IS THE LEND ITSELF (lane KILL-PAY, K4(a), ruling R-A;
+       lane M6b): what init's child put into this deposit is the bundle's
+       [Pay] -- sh's entry payload, the position, the lease, the ledger and
+       the credential -- and a FAILED exec hands the last four back at the
+       shapes they went in at ([UkInit.init_lend_ref]), which is what pays
+       the child's diagnostic through the link and then its own [exit(1)]
+       ([UkInitMain.wp_kinit_main_die_de]).  The wand drops only [sh_pay],
+       which is persistent anyway. ---- *)
+    { iIntros "!> (_ & Hps & Hls & Hstd & Hcred)".
+      rewrite /UkInit.init_lend_ref. iFrame "Hstd Hps Hls Hcred". }
+    { rewrite Hpeq. iExact "Hgen'". }
+    rewrite /uexec_sup_run_ids.
+    iIntros (M pm sz fdv cs pidv) "Hheap Hufd Hids".
     (* ---- THE TWO IDENTITY READINGS (lane EXEC-SEAM), off the lent
        authorities against the child's own fragments: the key's children
        set is EMPTY and its pid is not <init>'s.  Both are pure, so the
@@ -1312,25 +1341,25 @@ Section UInitSh.
        where it is built ([Hcon] below), and the refund wand hands the four
        back without looking at them. *)
     iFrame "Hheap Hufd Hids".
+    (* ---- (W)'s PURE INPUT: the path /init's a0 names, off its rodata ---- *)
+    iSplitR "Hpos Hlease Hstd Hcred".
+    { iPureIntro. exact (init_sh_path_of M Hsro). }
+    (* ---- (W) ITSELF, AT THE PIN SUPPLIER: era-0's claim about /sh, read
+       out of the application's invariant ([ExecRun.exec_walk_of_pin]) ---- *)
+    iSplitR "Hpos Hlease Hstd Hcred".
+    { iApply (exec_walk_of_pin FsShPin.era0_sh_pins T FsImg.ROOTINO
+                init_sh_pl [FsImg.ROOTINO; FsShPin.SH_INO] FsShPin.SH_INO
+                (MkAnode (AFile ElfUser.sh_elf) 1%nat) init_sh_pin_resolves
+                with "Hcl Hinv"). }
+    iSplitR "Hpos Hlease Hstd Hcred".
     (* ---- sh's constructor, at every key the image fact admits ---- *)
     (* THE PAYLOAD RIDES WITH THE PAY FACT ([SpecKexec.exec_slot_pre]): the
        kernel holds the exec'ing process's own payment across this call and
        hands it to whatever slot answers, so sh's entry gets its exit
        payload -- the console reader token -- from here and from nowhere
        else (EXEC-PAY, GENERIC-PAY). *)
-    (* ...and the taint arm at the SAME payload: a tainted process runs on
-       the generic family, which exists at any constant payload and HOLDS
-       the resource it names ([UexecExecMint.uslot_mint_pay]).  The payload
-       is literally the constant function at what the kill status names
-       ([UserConsole.ucons_pay_eta]). *)
-    (* ...AND THE TAINT ARM IS HANDED NOTHING AT ALL NOW (lane SELF-KILL,
-       P6b): the generic family's constant payload is carried
-       PERSISTENTLY ([UexecExecMint.uslot_mint_all] at
-       [□ (riscv_kill_cred -∗ R)]), and the arm builds it out of the TAINT
-       it is already holding ([UserConsole.ucons_pay_taint]) -- which is
-       the whole reason a tainted process needs no lease. *)
     (* (* RA-2: held case here *) THE TAINT ARM, AT THE KEY sh RESUMES AT.
-       Under RA-2's narrowing this assertion gains
+       Under RA-2's narrowing [Hgen'] above gains
        [⌜FdSlots.fdv_all_parked (uvis_fd W')⌝] and the key's table is
        [fdv] -- init's OWN table at the exec, since exec keeps it
        ([SpecKexec.kexec_image_ok_parked] is the crossing).  init's table
@@ -1340,14 +1369,8 @@ Section UInitSh.
        [UInitFd.ufd_row] facts above, i.e. the low three slots.  The rest
        of the table is unconstrained at this tier, which is why the
        premise must ride the kexec SLOT WANDS (kernel-supplied, off
-       [ProcInv.proc_priv_parked]) and not this assertion -- see the same
+       [ProcInv.proc_priv_parked]) and not that assertion -- see the same
        note at [PinnedExec.pex_slot]'s taint arm. *)
-    iAssert (□ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') (ucons_pay cn γp T (UkInit.init_rd Rdl Wb)) -∗
-                  uslot W'))%I as "#Hgen'".
-    { iModIntro. iIntros (W') "#HT #Hmp".
-      iApply ("Hgen" $! (ucons_pay cn γp T (UkInit.init_rd Rdl Wb) (-1)) W' with "HT [Hmp] []").
-      - rewrite ucons_pay_eta. iExact "Hmp".
-      - iModIntro. iIntros "_". iApply (ucons_pay_taint with "HT"). }
     (* THE LINEAR HALF OF [Pay] IS THE POSITION: [UInitSh.sh_pay] is
        persistent, so what actually crosses [PinnedExec]'s one linear slot
        is [UserConsole.upos] at the pair init minted for this round.  The
@@ -1356,60 +1379,17 @@ Section UInitSh.
     (* [init_sh_image_entry] above: obligation (E) at /sh, with /init's own
        four readings as the parameters they are equations against.  It was
        written here inline. *)
-    iPoseProof (init_sh_image_entry T cn K Rdl Pm Wc Wb Wp Rsh n0 γp np N l
-                  M fdv cs pidv Hpsok_free Hn0 Hsav Hsro Hl Hcs
-                  ltac:(rewrite Hpv; exact Hp1) Hlen
-                  (Hrl γp) (Hpm1 γp) (Hpm3 γp) (Hpmwb γp) (Hwc γp)
-                  Hwbwc Hwbl (Hwbr γp) (fun N0 l0 n1 => Hbd γp N0 l0 n1) Hpw
-                  with "Hdep Hdp Hplaw Hcons Hfd0 Hgen'") as "#Hcon".
-    iDestruct (pinned_exec_bundle fsc_fs uslot FsShPin.era0_sh_pins T
-                 FsImg.ROOTINO init_sh_pl [FsImg.ROOTINO; FsShPin.SH_INO]
-                 FsShPin.SH_INO ElfUser.sh_elf 1%nat
-                 (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
-                    ∗ ucons_pay cn γp T Rdl (-1)
-                    ∗ (UserFd.ustd (ukn_fd N) l
-                       ∗ UkInit.init_lend_cred T
-                           (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
-                           Wp Wb l np))%I
-                 (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
-                 M (mword_of_int 0x9a8) (mword_of_int 0x1000) fdv cs pidv
-                 init_sh_pin_resolves sh_elf_loadable
-                 (init_sh_path_of M Hsro)
-                 with "Hcl Hinv Hcon Hgen' [Hpos Hlease Hstd Hcred]")
-      as (P Pmiss Fo) "Hb".
-    { iFrame "Hpay Hpos Hlease Hstd Hcred". }
-    assert (Ea0 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv FsImg.ROOTINO gn cs pidv false))
-                    (tf_arg_idx 0) = (mword_of_int 0x9a8 : mword 64))
-      by (etransitivity; [ exact (tf_of_arg0 m pc) | exact Ha0 ]).
-    assert (Ea1 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv FsImg.ROOTINO gn cs pidv false))
-                    (tf_arg_idx 1) = (mword_of_int 0x1000 : mword 64))
-      by (etransitivity; [ exact (tf_of_arg1 m pc) | exact Ha1 ]).
-    (* THE DEPOSIT IS WANTED AT THIS PROGRAM'S OWN PAYLOAD (app-echo.md,
-       "SH-LINE RULING", R1, at exec): exec's bundle READS the payload --
-       it is what the kernel hands the new image's slot -- so the bundle is
-       introduced AT that payload rather than re-keyed afterwards.  init's
-       own is the trivial one ([Hpeq], userinit's choice). *)
-    (* THE REFUND IS THE LEND ITSELF (lane KILL-PAY, K4(a), ruling R-A;
-       lane M6b): what init's child put into this deposit is
-       [PinnedExec]'s [Pay] -- sh's entry payload, the position, the lease,
-       the ledger and the credential -- and a FAILED exec hands the last
-       four back at the shapes they went in at ([UkInit.init_lend_ref]),
-       which is what pays the child's diagnostic through the link and then
-       its own [exit(1)] ([UkInitMain.wp_kinit_main_die_de]).  The wand
-       drops only [sh_pay], which is persistent anyway. *)
-    iApply (sbundle_pay_exec_intro_refR uslot
-              (uvis_of_run m pc M pm sz fdv FsImg.ROOTINO gn cs pidv false)
-              (ukn_pay N) _ P Pmiss Fo
-              (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
-                 ∗ ucons_pay cn γp T Rdl (-1)
-                 ∗ (UserFd.ustd (ukn_fd N) l
-                    ∗ UkInit.init_lend_cred T
-                        (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
-                        Wp Wb l np))%I).
-    { iIntros "!> (_ & Hps & Hls & Hstd & Hcred)".
-      rewrite /UkInit.init_lend_ref. iFrame "Hstd Hps Hls Hcred". }
-    { cbn [uvis_gen uvis_of_run]. iExact "Hmpay". }
-    rewrite Hpeq Ea0 Ea1. iExact "Hb".
+    { rewrite Hpeq.
+      iApply (init_sh_image_entry T cn K Rdl Pm Wc Wb Wp Rsh n0 γp np N l
+                M fdv cs pidv Hpsok_free Hn0 Hsav Hsro Hl Hcs
+                ltac:(rewrite Hpv; exact Hp1) Hlen
+                (Hrl γp) (Hpm1 γp) (Hpm3 γp) (Hpmwb γp) (Hwc γp)
+                Hwbwc Hwbl (Hwbr γp) (fun N0 l0 n1 => Hbd γp N0 l0 n1) Hpw
+                with "Hdep Hdp Hplaw Hcons Hfd0 Hgen'"). }
+    (* ...AND THE LINEAR PAYLOAD, WHOLE: [PinnedExec]'s one [Pay] slot is
+       sh's persistent state, the position init minted for this round, the
+       lease, and the ledger with its credential. *)
+    iFrame "Hpay Hpos Hlease Hstd Hcred".
   Qed.
 
   (* =================================================================== *)

@@ -1371,3 +1371,31 @@ carries the name's properness itself), but its TARGET leg
 last link plus the rmdir-shaped wall TL-2 recorded, so no unlink corollary
 lands either.  No corollary and no extended test landed
 in TL-3C: `UkTreeWrite.wp_uk_tree_write_moves` is unchanged.
+
+### 7.8 RULING (2026-09-19, Fable): the rooted view is adopted — (C-iii-a) and (C-iii-b) are built
+
+TL-3C recorded (C-iii) rather than built it because it is a claim-level
+change.  The designer's ruling: BUILD IT.  Grounds: it is PURE (no ghost
+state), TRUE of xv6's live namespace (a directory is unlinked only when
+empty, a fresh one holds only its dots, so no orphan directory ever
+holds a proper entry), PRESERVED by every landed leg off TL-1's twelve
+`tview_delta_*` congruences with premises the movers already hold, and
+it is the SOURCE form — the one TL-3C showed survives unlink's entry
+leg — not the target form.  Both conjuncts go in together:
+
+    aview_rooted av := ∀ d s i, fs_pname s → astep av d s = Some i →
+                       nreach (tview av) FsImg.ROOTINO d
+    own_rooted av own := ∀ g root t, own !! g = Some (root, t) →
+                         nreach (tview av) FsImg.ROOTINO root
+
+`tree_body` gains `⌜aview_rooted av⌝ ∗ ⌜own_rooted av own⌝` beside
+`adir_at av ROOTINO`.  The arm's receipt carries the pure
+`⌜i ∉ dom (tv_nodes t)⌝` (a fact about the owner's own fixed tree —
+WALL C does not apply to it), and at the parent leg's own view the two
+give `aview_no_edge_to av i` and "the armed inum is nobody's root" —
+`own_wf_ent`'s two credentials.  Consequence: mknod and open(O_CREATE)
+at any owner are payable with the landed phases verbatim; mkdir too;
+unlink's target leg at a file likewise (a directory's last link — the
+rmdir shape — stays owed, TL-2's wall).  The split-cursor seam (R) is
+owed only from prefix length 1; the first corollaries and the test
+live at length 0, where the cursor is pure.

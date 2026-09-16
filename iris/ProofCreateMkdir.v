@@ -140,6 +140,7 @@ Require Import SpecIunlockput.
 Require Import SpecDirlookup SpecDirlink.
 Require Import SpecCreate.
 Require Import FsAbsDelta.       (* [acre_bump], [dots_ents]: the deltas the legs' rows are stated at (round E2, lane E2-C) *)
+Require Import SysMknodDefs.     (* [npar_elems]: the PARENT prefix (TL-3K) *)
 Require Import FsAbsMknodFire.   (* the parent-leg fire [caf_acre_fire], [mkf_era_is_dir]/[mkf_era_live] (round E2, lane E2-C) *)
 Require Import PieceFam.       (* [pfam]/[pf_at]: the one-shot piece's pair *)
 Require Import FsAbsDefs.        (* [aview], [abs_of], [abs_of_dir] *)
@@ -2264,6 +2265,7 @@ Section ProofCreateMkdir.
           iEval (rewrite top_frag_1) in "Hctop".
           iMod (caf_acre_fire fsc_fs ⊤
                   (cre_child (bv_unsigned ty) (bv_unsigned major) (bv_unsigned minor))
+                  (P (length (npar_elems (bview plen pfun))))
                   Farm Fok (bv_unsigned dind) (bv_unsigned cinum) (bname 14 nf) (DfracOwn 1)
                   (era_node dn bm data)
                   (era_node (cr_setf dp3 (di_major dp3) (di_minor dp3)
@@ -2285,7 +2287,7 @@ Section ProofCreateMkdir.
                   (mkf_era_is_dir dn bm data Hdntdir)
                   (mkf_era_live dn bm data Hdnnlnz)
                   Hnonep Habsp' Habsc
-                  with "[] [] Hacre Harmr Htop Hctop") as "(Htop & Hctop & Hokr)";
+                  with "[] [] Hacre Harmr HPpar Htop Hctop") as "(Htop & Hctop & HPpar & Hokr)";
             [iApply (ireg_inv_ftop with "Hiregi") | iApply (ireg_inv_app with "Hiregi") |].
           iEval (rewrite -top_frag_1) in "Hctop".
           iModIntro.

@@ -974,4 +974,126 @@ Section PinnedObsPar.
               (pin_pwalks_at_of_presolves _ _ _ _ _ _ Hres) with "HP").
   Qed.
 
+
+  (* ------------------------------------------------------------------ *)
+  (*  11a.  THE LINEAR LAW: A LIVE CLAIM SUPPLIES THE WALK TOO            *)
+  (*        (lane TL-3K, design/user-tree.md section 7.5's WALL B)        *)
+  (*                                                                      *)
+  (*  Sections 5-7, 10 and 11 read the claim under a [BOX] whose body      *)
+  (*  takes NOTHING, so the only tree-claim law with that shape is         *)
+  (*  [AppTree.tree_pin_law] -- a FROZEN deed, which can never be parked,  *)
+  (*  so its owner can never MOVE again.  create and unlink need the walk  *)
+  (*  AND the move in ONE syscall, which is section 7.5's WALL B.          *)
+  (*                                                                      *)
+  (*  THE FIX, AND IT IS SMALLER THAN SECTION 7.5 PRICED.  Section 8's     *)
+  (*  dead walk reads a LINEAR law ([AppTree.tree_claim_law]'s own shape:  *)
+  (*  the deed goes in and comes back) and spends its [K] at hop 0.  The   *)
+  (*  reason that looked limited to one hop is that section 8 THREW [K]    *)
+  (*  AWAY afterwards.  Put [K] ON THE CURSOR instead and a hop takes it   *)
+  (*  out of its INPUT cursor and puts it back into its OUTPUT one, so     *)
+  (*  the hop resource itself is built from persistent things alone --     *)
+  (*  the [BOX] law and [app_inv] -- and the big-op of hops needs no       *)
+  (*  linear threading at all.  The walk then works at ANY prefix length,  *)
+  (*  and the terminal cursor hands the owner its LIVE deed back beside    *)
+  (*  the parent's identity ([pobs_pterm_lin]).                            *)
+  (*                                                                      *)
+  (*  WHAT IT COSTS: under the taint (or a miss) the cursor's right        *)
+  (*  disjunct is [T] and [K] is gone -- a tainted owner loses the deed it *)
+  (*  put on the walk.  That is the honest price of putting a linear       *)
+  (*  resource on a cursor whose other arm is a give-up flag.              *)
+  (* ------------------------------------------------------------------ *)
+
+  (* THE LINEAR CURSOR: the pinned inum AND the resource, at every index.
+     [K] rides the cursor from hop to hop, so a hop needs nothing linear of
+     its own -- which is why this family is NOT limited to one hop. *)
+  Definition pobs_P_lin (T : iProp Σ) (hops : list Z) (K : iProp Σ)
+      (k : nat) (d : Z) : iProp Σ :=
+    ((⌜d = hops !!! k⌝ ∗ K) ∨ T)%I.
+
+  (* ONE HOP, OUT OF A LINEAR CLAIM LAW.  [pobs_phop]'s proof with
+     [pobs_hop_dead]'s threading of [K] -- except that [K] comes IN through
+     the cursor and goes OUT through it, so the hop resource itself is
+     built from persistent things alone. *)
+  Lemma pobs_phop_lin (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (K : iProp Σ) `{!Timeless K}
+      (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (d : Z)
+      (k : nat) (s : fname) :
+    pin_pwalks_at Pin cw pl hops d ->
+    np_elems pl !! k = Some s ->
+    pobs_miss_taint T Pmiss -∗
+    □ (∀ v : aview, K -∗ app_pred app_run v -∗
+                      app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv γfs -∗
+    ep_hop γfs (pobs_P_lin T hops K) Pmiss k s.
+  Proof.
+    intros (_ & _ & Hpin) Hk. iIntros "#Hmt #Hcl #Hinv".
+    rewrite /ep_hop /ax_hop /pobs_P_lin.
+    iIntros (d0 ents dqv) "HP HF".
+    iDestruct "HP" as "[[%Hd HK] | #HT]"; last first.
+    { iModIntro. iFrame "HF".
+      destruct (ents !! s) as [c |]; [ by iRight | iApply ("Hmt" with "HT") ]. }
+    subst d0.
+    iMod (inv_acc ⊤ appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I) "(>Hh & Hp & >%Hdom & #Hx)".
+    iAssert (▷ (app_pred app_run (abs_view I) ∗ K ∗ (⌜Pin (abs_view I)⌝ ∨ T)))%I
+      with "[Hp HK]" as "Hpc".
+    { iNext. iApply ("Hcl" with "HK Hp"). }
+    iDestruct "Hpc" as "[Hp [HK Hc]]".
+    iMod "Hc". iMod "HK".
+    iDestruct (pobs_elend_astep γfs (1/2)%Qp I (hops !!! k) dqv ents s
+                 with "Hh HF") as %Hae.
+    iMod ("Hclose" with "[Hh Hp]") as "_".
+    { iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
+      iPureIntro. exact Hdom. }
+    iModIntro. iFrame "HF".
+    iDestruct "Hc" as "[%HP | #HT]"; last first.
+    { destruct (ents !! s) as [c |]; [ by iRight | iApply ("Hmt" with "HT") ]. }
+    pose proof (arun_step_tot (abs_view I) (hops !!! 0%nat) (np_elems pl)
+                  hops k s (Hpin (abs_view I) HP) Hk) as Hst.
+    rewrite Hae in Hst. rewrite Hst. iLeft. iFrame "HK". by iPureIntro.
+  Qed.
+
+  (* THE WHOLE PARENT-PREFIX WALK OUT OF A LIVE CLAIM, AT ANY LENGTH.
+     [K] is spent into the START cursor and every hop hands it on, so the
+     only thing the hops need is the [BOX] LINEAR law -- which a LIVE deed
+     has ([AppTree.tree_claim_law]).  That is the whole of WALL B's fix and
+     it is not limited to one hop, which is more than section 7.5 priced. *)
+  Lemma pobs_pwalk_lin (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (K : iProp Σ) `{!Timeless K}
+      (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (d : Z) :
+    pin_pwalks_at Pin cw pl hops d ->
+    pobs_miss_taint T Pmiss -∗
+    □ (∀ v : aview, K -∗ app_pred app_run v -∗
+                      app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv γfs -∗
+    K -∗
+    ep_start γfs cw (pobs_P_lin T hops K) Pmiss pl.
+  Proof.
+    intros Hres. iIntros "#Hmt #Hcl #Hinv HK".
+    pose proof Hres as Hres'. destruct Hres' as (Hstart & _ & _).
+    rewrite /ep_start. iIntros (r Hr). iModIntro. iSplitL "HK".
+    { rewrite /pobs_P_lin. iLeft. iFrame "HK". iPureIntro.
+      by rewrite Hr Hstart. }
+    rewrite /ep_hops_from /ax_hops_from.
+    iApply big_sepL_intro. iIntros "!>" (j s Hj).
+    rewrite lookup_drop in Hj.
+    iApply (pobs_phop_lin γfs Pin T K Pmiss cw pl hops d (0 + j)%nat s
+              Hres Hj with "Hmt Hcl Hinv").
+  Qed.
+
+  (* THE TERMINAL READING, LINEAR: the cursor the walk hands back names the
+     pinned parent AND RETURNS [K]. *)
+  Lemma pobs_pterm_lin (Pin : aview -> Prop) (T : iProp Σ) (K : iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (d d' : Z) :
+    pin_pwalks_at Pin cw pl hops d ->
+    pobs_P_lin T hops K (length (np_elems pl)) d' -∗ (⌜d' = d⌝ ∗ K) ∨ T.
+  Proof.
+    intros (_ & Hfin & _). rewrite /pobs_P_lin.
+    iIntros "[[%Hd HK] | HT]"; [ | iRight; iExact "HT" ].
+    iLeft. iFrame "HK". iPureIntro. by rewrite Hd Hfin.
+  Qed.
+
 End PinnedObsPar.

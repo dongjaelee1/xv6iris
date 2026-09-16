@@ -139,6 +139,7 @@ Require Import SpecIlock SpecIunlockput.
 Require Import SpecDirlookup SpecDirlink.
 Require Import SpecCreate.
 Require Import FsAbsDelta.       (* [acre_bump], [dots_ents]: the deltas the legs' rows are stated at (round E2, lane E2-C) *)
+Require Import SysMknodDefs.     (* [npar_elems]: the PARENT prefix (TL-3K) *)
 Require Import FsAbsMknodFire.   (* the parent-leg fire [caf_acre_fire], [caf_made_row], [mkf_parent_row] (round E2, lane E2-C) *)
 Require Import PieceFam.       (* [pfam]/[pf_at]: the one-shot piece's pair *)
 Require Import FsAbsDefs.        (* [aview], [abs_of] *)
@@ -1342,6 +1343,7 @@ Section ProofCreateAlloc.
              iEval (rewrite top_frag_1) in "Hctop".
              iMod (caf_acre_fire fsc_fs ⊤
                      (cre_child (bv_unsigned ty) (bv_unsigned major) (bv_unsigned minor))
+                     (P (length (npar_elems (bview plen pfun))))
                      Farm Fok (bv_unsigned dind) (bv_unsigned cinum) (bname 14 nf) (DfracOwn 1)
                      (era_node dn bm data) (era_node dn' bm' data')
                      (era_node (cr_setf dnc major minor
@@ -1352,7 +1354,7 @@ Section ProofCreateAlloc.
                      (mkf_era_is_dir dn bm data Hdz)
                      (mkf_era_live dn bm data (cr_nl0z dn Hnl0))
                      Hnonep Habsp' Habsc
-                     with "[] [] Hacre Harmr Htop Hctop") as "(Htop & Hctop & Hokr)";
+                     with "[] [] Hacre Harmr HPpar Htop Hctop") as "(Htop & Hctop & HPpar & Hokr)";
                [iApply (ireg_inv_ftop with "Hiregi") | iApply (ireg_inv_app with "Hiregi") |].
              iEval (rewrite -top_frag_1) in "Hctop".
              iModIntro.
@@ -1973,7 +1975,9 @@ Section ProofCreateAlloc.
          lookup missed and ialloc never got as far as a delta, so the
          cursor comes home with all four commits. *)
       iAssert (cre_commits (fs_gamma_L fsc_fs) (bv_unsigned ty)
-                 (bv_unsigned major) (bv_unsigned minor) Farm Fdots Fun Fok)
+                 (bv_unsigned major) (bv_unsigned minor)
+                 (P (length (npar_elems (bview plen pfun))))
+                 Farm Fdots Fun Fok)
         with "[Harm Hdots Hun Hacre]" as "Hcre".
       { rewrite /cre_commits. iFrame "Harm Hdots Hun Hacre". }
       iDestruct (cr_fail_of_cursor fsc_fs (bv_unsigned ty) (bv_unsigned major)

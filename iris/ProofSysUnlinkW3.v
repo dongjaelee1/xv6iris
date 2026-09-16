@@ -1181,7 +1181,7 @@ Section ProofSysUnlinkW3.
        (* the name tie, the cursor and the four commits *)
        ⌜exists es e, nameiparent_of pl es e /\ bname 14 nf = e⌝ -∗
        P (length (npar_elems pl)) (bv_unsigned dinum) -∗
-       pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE) Phient -∗
+       pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE (fun _ => True%I)) Phient -∗
        pf_at (utgt_commit_at (fs_gamma_L fsc_fs) appE) Phitgt -∗
        pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
        pf_at (dmiss_commit_at (fs_gamma_L fsc_fs) appE) Phimiss -∗
@@ -1335,7 +1335,7 @@ Section ProofSysUnlinkW3.
     (* ---- THE AU SIDE, as W2's seam hands it ---- *)
     ⌜exists es e, nameiparent_of pl es e /\ bname 14 nf = e⌝ -∗
     P (length (npar_elems pl)) (bv_unsigned dinum) -∗
-    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE) Phient -∗
+    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE (fun _ => True%I)) Phient -∗
     pf_at (utgt_commit_at (fs_gamma_L fsc_fs) appE) Phitgt -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
     pf_at (dmiss_commit_at (fs_gamma_L fsc_fs) appE) Phimiss -∗

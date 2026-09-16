@@ -341,7 +341,7 @@ Section ProofSysUnlinkW5D.
     (* ---- THE AU SIDE, as W3's seam hands it ---- *)
     ⌜exists es e, nameiparent_of pl es e /\ bname 14 nf = e⌝ -∗
     P (length (npar_elems pl)) (bv_unsigned dinum) -∗
-    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE) Phient -∗
+    pf_at (uent_commit_at (fs_gamma_L fsc_fs) appE (fun _ => True%I)) Phient -∗
     pf_at (utgt_commit_at (fs_gamma_L fsc_fs) appE) Phitgt -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
     pf_at (dmiss_commit_at (fs_gamma_L fsc_fs) appE) Phimiss -∗
@@ -1528,7 +1528,7 @@ Section ProofSysUnlinkW5D.
        context, where [clear -Hdp2] leaves it one hypothesis. *)
     assert (Hdp2nz : (fn_nlink (era_node dnd bmd datd) - 1)%nat <> 0%nat).
     { rewrite mkf_era_nlink. clear -Hdp2. lia. }
-    iMod (uf_uent_fire fsc_fs ⊤ (DfracOwn 1) Phient
+    iMod (uf_uent_fire fsc_fs ⊤ (DfracOwn 1) (fun _ => True%I) Phient
             (bv_unsigned dinum) (bv_unsigned (zero_extend' 32 (dir_inum datd kk : mword 16)
                                         : mword 32))
             (dir_bname datd kk) 1%nat
@@ -1548,7 +1548,8 @@ Section ProofSysUnlinkW5D.
                Hdp2nz
                HentsD)
             Htynz0
-            with "[] [] Hcent Htop Htopi") as "(Htop & Htopi & Hfire1)";
+            with "[] [] Hcent [//] Htop Htopi")
+      as "(Htop & Htopi & _ & Hfire1)";
       [iApply (ireg_inv_ftop with "Hireg") | iApply (ireg_inv_app with "Hireg") |].
     iDestruct "Hfire1" as (av0) "(%Hpre0 & Hent)".
     iModIntro.

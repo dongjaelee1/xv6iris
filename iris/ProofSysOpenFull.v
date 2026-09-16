@@ -103,6 +103,7 @@ Require Import SpecNameiEra.
 Require Import DirentEnc.       (* [bview]: argstr's buffer as a list *)
 Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
                                    argument 0, which the walk is at *)
+Require Import SysMknodDefs.     (* [npar_elems]: the PARENT prefix (TL-3K) *)
 Require Import SysOpenDefs.
 Require Import SpecCreate.           (* [CREATE]: create's one contract   *)
 Require Import SpecSysOpen.   (* the ONE contract: the frame, the arms, [SYSOPEN] *)
@@ -868,6 +869,11 @@ Section ProofSysOpenFullBody.
                  ltac:(wp_next_chain) with "Hown") as "Hown".
     iDestruct (wp_next_shift (b := true) (CIDa := CID21) (CIDb := CID22)
                  ltac:(wp_next_chain) with "Hcont0") as "Hcont0".
+    (* the bundle's commit is at the GUARDED cursor and the create tier
+       wants it at THE path argstr read ([SysOpenDefs.open_acre_inst],
+       lane TL-3K) *)
+    iDestruct (open_acre_inst _ (us_M U) v (bview pk bf)
+                 P Farm Fok Hpof with "Hac") as "Hac".
     iApply (EntryC.so_entry_c_au (CID0 := CID22) gfl gf gs j gl pd pav
               pu
  pk bf (arg_int32 vom) (word_lo u23) ns Sb0

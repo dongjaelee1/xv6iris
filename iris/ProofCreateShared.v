@@ -1798,7 +1798,8 @@ Section ProofCreateMain.
       (pl : list (bv 8)) (d : Z) :
     P (length (npar_elems pl)) d -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Fex -∗
-    cre_commits (fs_gamma_L fsc_fs) tyz ma mi Farm Fdots Fun Fok -∗
+    cre_commits (fs_gamma_L fsc_fs) tyz ma mi (P (length (npar_elems pl)))
+      Farm Fdots Fun Fok -∗
     cre_fail_arms (fs_gamma_L fsc_fs) γfs tyz ma mi P Pmiss
       Farm Fdots Fun Fok Fex pl.
   Proof.
@@ -1820,7 +1821,8 @@ Section ProofCreateMain.
       (pl : list (bv 8)) :
     np_dead γfs P Pmiss pl -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Fex -∗
-    cre_commits (fs_gamma_L fsc_fs) tyz ma mi Farm Fdots Fun Fok -∗
+    cre_commits (fs_gamma_L fsc_fs) tyz ma mi (P (length (npar_elems pl)))
+      Farm Fdots Fun Fok -∗
     cre_fail_arms (fs_gamma_L fsc_fs) γfs tyz ma mi P Pmiss
       Farm Fdots Fun Fok Fex pl.
   Proof.
@@ -1844,7 +1846,8 @@ Section ProofCreateMain.
     list_basics.last (path_elems pl) = Some nm ->
     P (length (npar_elems pl)) d -∗
     cre_ex_fired Fex d nm i -∗
-    cre_commits (fs_gamma_L fsc_fs) tyz ma mi Farm Fdots Fun Fok -∗
+    cre_commits (fs_gamma_L fsc_fs) tyz ma mi (P (length (npar_elems pl)))
+      Farm Fdots Fun Fok -∗
     cre_fail_arms (fs_gamma_L fsc_fs) γfs tyz ma mi P Pmiss
       Farm Fdots Fun Fok Fex pl.
   Proof.
@@ -1867,7 +1870,8 @@ Section ProofCreateMain.
       (pl : list (bv 8)) (d i : Z) :
     P (length (npar_elems pl)) d -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Fex -∗
-    pf_at (acre_commit_at_gen (fs_gamma_L fsc_fs) appE (cre_child tyz ma mi) Farm) Fok -∗
+    pf_at (acre_commit_at_gen (fs_gamma_L fsc_fs) appE (cre_child tyz ma mi)
+             (P (length (npar_elems pl))) Farm) Fok -∗
     ((∃ full : bool, cre_dots_fired Fdots i d full)
      ∨ cre_dots_leg (fs_gamma_L fsc_fs) tyz Fdots) -∗
     cre_unarm_fired Fun i -∗
@@ -1891,7 +1895,8 @@ Section ProofCreateMain.
     list_basics.last (path_elems pl) = Some nm ->
     P (length (npar_elems pl)) d -∗
     cre_ex_fired Fex d nm i -∗
-    cre_commits (fs_gamma_L fsc_fs) tyz ma mi Farm Fdots Fun Fok -∗
+    cre_commits (fs_gamma_L fsc_fs) tyz ma mi (P (length (npar_elems pl)))
+      Farm Fdots Fun Fok -∗
     cre_ok_arms (fs_gamma_L fsc_fs) tyz ma mi P Farm Fdots Fun Fok Fex
       pl false i.
   Proof.
@@ -2417,7 +2422,8 @@ Section ProofCreateMain.
        P (length (npar_elems (bview plen pfun))) (bv_unsigned dind) -∗
        pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Fex -∗
        cre_commits (fs_gamma_L fsc_fs) (bv_unsigned ty) (bv_unsigned major)
-         (bv_unsigned minor) Farm Fdots Fun Fok -∗
+         (bv_unsigned minor) (P (length (npar_elems (bview plen pfun))))
+         Farm Fdots Fun Fok -∗
        (* and the contract's own continuation, ANCHORED AT THE ENTRY HART
           (ProofDirlink's [dl_after_body]): the block's own proof does the
           retargeting, so this file hands over [Hcont] untouched. *)
@@ -2644,7 +2650,8 @@ Section ProofCreateMain.
        pf_at (aunarm_of_arm (fs_gamma_L fsc_fs) appE Farm) Fun -∗
        pf_at (acre_commit_at_gen (fs_gamma_L fsc_fs) appE
                 (cre_child (bv_unsigned ty) (bv_unsigned major)
-                           (bv_unsigned minor)) Farm) Fok -∗
+                           (bv_unsigned minor))
+                (P (length (npar_elems (bview plen pfun)))) Farm) Fok -∗
        wp_next (CID0 := CID) true (proc_addr j)
          (fun CIDc : CpuId =>
             cr_cont_body γf
@@ -2872,7 +2879,8 @@ Section ProofCreateMain.
        pf_at (aunarm_of_arm (fs_gamma_L fsc_fs) appE Farm) Fun -∗
        pf_at (acre_commit_at_gen (fs_gamma_L fsc_fs) appE
                 (cre_child (bv_unsigned ty) (bv_unsigned major)
-                           (bv_unsigned minor)) Farm) Fok -∗
+                           (bv_unsigned minor))
+                (P (length (npar_elems (bview plen pfun)))) Farm) Fok -∗
        wp_next (CID0 := CID) true (proc_addr j)
          (fun CIDc : CpuId =>
             cr_cont_body γf
@@ -3151,7 +3159,8 @@ Section ProofCreateMain.
        pf_at (aunarm_of_arm (fs_gamma_L fsc_fs) appE Farm) Fun -∗
        pf_at (acre_commit_at_gen (fs_gamma_L fsc_fs) appE
                 (cre_child (bv_unsigned ty) (bv_unsigned major)
-                           (bv_unsigned minor)) Farm) Fok -∗
+                           (bv_unsigned minor))
+                (P (length (npar_elems (bview plen pfun)))) Farm) Fok -∗
        wp_next (CID0 := CID) true (proc_addr j)
          (fun CIDc : CpuId =>
             cr_cont_body γf

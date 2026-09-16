@@ -178,7 +178,8 @@ Section ProofSysOpenCreArm.
        ⌜ents !! nm = Some i0⌝ ∗
        P (length (npar_elems pl)) d ∗
        Phiex.(pf_recv) av d nm i0 ∗
-       pf_at (acre_commit_at (fs_gamma_L fsc_fs) appE (AFile []) Phiarm) Phiok ∗
+       pf_at (acre_commit_at (fs_gamma_L fsc_fs) appE (AFile [])
+                (P (length (npar_elems pl))) Phiarm) Phiok ∗
        (* the name was already there: create's child legs are whole *)
        cre_child_unfired (fs_gamma_L fsc_fs) (AFile []) Phiarm Phiun)%I.
 

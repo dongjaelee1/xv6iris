@@ -196,4 +196,78 @@ Section TreeWalk.
              cw pl Heq Hp (um_start_of_slash cw pl Hsl) Hd Hres).
   Qed.
 
+
+  (* =================================================================== *)
+  (*  3.  THE LIVE-DEED ROUTE, AT ANY PARENT PREFIX                       *)
+  (*      (lane TL-3K; design/user-tree.md section 7.5's WALL B)           *)
+  (*                                                                      *)
+  (*  Section 2 needs a FROZEN deed, and a frozen deed can never be        *)
+  (*  parked -- so the owner that walks can never MOVE, which is exactly   *)
+  (*  what create and unlink need in the same syscall.  [PinnedObs] 11a    *)
+  (*  lifts that: with the deed ON THE CURSOR, the LINEAR claim law        *)
+  (*  ([TreeObs.tree_own_claim_law], the deed in and out) supplies the     *)
+  (*  walk at ANY length, and the deed comes home inside the terminal      *)
+  (*  cursor ([PinnedObs.pobs_pterm_lin]).                                 *)
+  (*                                                                      *)
+  (*  WHAT A CONSUMER MUST THEN DO, and it is the seam this lane records   *)
+  (*  rather than closes: the terminal cursor now CARRIES the deed, and    *)
+  (*  the cursor is what the cursor-threaded commits take as their premise *)
+  (*  ([FsAbsCreateFire.acre_commit_at_gen]'s [Pd]).  Those commits READ   *)
+  (*  the premise and hand it back IN PHASE 1, while an owner's move parks *)
+  (*  the deed in phase 1 and only gets it back (MOVED) in phase 2 -- so a *)
+  (*  deed-carrying cursor wants the commit to return [Pd d] at PHASE 2,   *)
+  (*  at the moved deed.  That is a further kernel-tier restatement, and   *)
+  (*  it is what a length-1 corollary needs on top of this file.           *)
+  (* =================================================================== *)
+
+  Lemma tree_pwalk_of_own_live (γfs : fs_names) (c : tree_fixed)
+      (r : tree_names) (g : gname) (root d0 dpar : Z) (t : ttree)
+      (ents : gmap fname Z) (cw : Z) (pl : list (bv 8)) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    fs_proper (path_elems pl) ->
+    um_start_of cw pl = d0 ->
+    d0 ∈ dom (tv_nodes t) ->
+    tres_from t d0 (np_elems pl) = Some (dpar, ADir ents) ->
+    app_inv γfs -∗
+    tree_own r g root t -∗
+    ep_start γfs cw
+      (pobs_P_lin (tree_taint c) (tres_hops t d0 (np_elems pl))
+         (tree_own r g root t))
+      (pobs_Pmiss (tree_taint c)) pl.
+  Proof.
+    intros Heq Hp Hstart Hd Hres. iIntros "#Hinv Hown".
+    iDestruct (tree_own_claim_law c r Heq) as "#Hlaw".
+    iApply (pobs_pwalk_lin γfs (fun v => subtree v root = Some t) (tree_taint c)
+              (tree_own r g root t) (pobs_Pmiss (tree_taint c)) cw pl
+              (tres_hops t d0 (np_elems pl)) dpar
+              (pin_pwalks_at_of_presolves _ _ _ _ _ _
+                 (tree_pin_presolves root d0 dpar t ents cw pl Hp Hstart Hd Hres))
+              with "[] [] Hinv Hown").
+    { iApply pobs_miss_taint_Pmiss. }
+    iIntros "!>" (v) "Hown Hp".
+    iDestruct ("Hlaw" $! v g root t with "Hown Hp") as "(A & B & C)".
+    iFrame "A B C".
+  Qed.
+
+  (* ...and the terminal reading: the parent the owner's own tree resolves
+     the prefix to, WITH THE LIVE DEED BACK. *)
+  Lemma tree_pwalk_parent_live (c : tree_fixed) (r : tree_names) (g : gname)
+      (root d0 dpar : Z) (t : ttree) (ents : gmap fname Z)
+      (cw : Z) (pl : list (bv 8)) (d' : Z) :
+    fs_proper (path_elems pl) ->
+    um_start_of cw pl = d0 ->
+    d0 ∈ dom (tv_nodes t) ->
+    tres_from t d0 (np_elems pl) = Some (dpar, ADir ents) ->
+    pobs_P_lin (tree_taint c) (tres_hops t d0 (np_elems pl))
+      (tree_own r g root t) (length (np_elems pl)) d' -∗
+    (⌜d' = dpar⌝ ∗ tree_own r g root t) ∨ tree_taint c.
+  Proof.
+    intros Hp Hstart Hd Hres.
+    iApply (pobs_pterm_lin (fun v => subtree v root = Some t) (tree_taint c)
+              (tree_own r g root t) cw pl (tres_hops t d0 (np_elems pl))
+              dpar d'
+              (pin_pwalks_at_of_presolves _ _ _ _ _ _
+                 (tree_pin_presolves root d0 dpar t ents cw pl Hp Hstart Hd Hres))).
+  Qed.
+
 End TreeWalk.

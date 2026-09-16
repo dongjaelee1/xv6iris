@@ -176,14 +176,17 @@ Section FsAbsInvFire.
     - done.
   Qed.
 
-  Lemma fsabs_acre (γfs : fs_names) (c : absnode)
+  (* [Pd] IS FREE HERE (lane TL-3K): the generic application ignores the
+     parent cursor, so it discharges the commit at whatever cursor the
+     bundle it is being handed to carries. *)
+  Lemma fsabs_acre (γfs : fs_names) (c : absnode) (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ)) :
     app_sup -∗
-    pf_at (acre_commit_at (fs_gamma_L γfs) appE c Farm)
+    pf_at (acre_commit_at (fs_gamma_L γfs) appE c Pd Farm)
       (pfam_triv (fun _ _ _ _ => True%I)).
   Proof.
     iIntros "#Hsup". iApply pf_at_triv.
-    iApply (acre_commit_at_unit γfs appE c Farm with "Hsup").
+    iApply (acre_commit_at_unit γfs appE c Pd Farm with "Hsup").
   Qed.
 
   (* CREATE'S CHILD LEGS (round E2, lane E2-C): the arm and the unarm, both
@@ -201,12 +204,13 @@ Section FsAbsInvFire.
     iApply (aunarm_of_arm_unit γfs appE _ with "Hsup").
   Qed.
 
-  Lemma fsabs_uent (γfs : fs_names) :
+  Lemma fsabs_uent (γfs : fs_names) (Pd : Z -> iProp Σ) :
     app_sup -∗
-    pf_at (uent_commit_at (fs_gamma_L γfs) appE) (pfam_triv (fun _ _ _ _ => True%I)).
+    pf_at (uent_commit_at (fs_gamma_L γfs) appE Pd)
+      (pfam_triv (fun _ _ _ _ => True%I)).
   Proof.
     iIntros "#Hsup". iApply pf_at_triv.
-    iApply (uent_commit_at_unit γfs appE with "Hsup").
+    iApply (uent_commit_at_unit γfs appE Pd with "Hsup").
   Qed.
 
   Lemma fsabs_utgt (γfs : fs_names) :

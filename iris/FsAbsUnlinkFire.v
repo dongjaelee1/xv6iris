@@ -374,6 +374,7 @@ Section UnlinkFire.
      back untouched.  [dec] is [unl_dec] of the target's own node, so the
      FILE arm instantiates it at 0 and the DIR arm at 1. *)
   Lemma uf_uent_fire (γfs : fs_names) (E : coPset) (dqt : dfrac)
+      (Pd : Z -> iProp Σ)
       (Fent : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (d t : Z) (nm : fname) (dec : nat) (np np' nt : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
@@ -390,17 +391,21 @@ Section UnlinkFire.
       = Some (MkAnode (ADir (delete nm (dir_entries np))) (fn_nlink np - dec)%nat) ->
     fn_type nt <> 0 ->
     ftop_inv γfs -∗ app_inv γfs -∗
-    pf_at (uent_commit_at (fs_gamma_L γfs) appE) Fent -∗
+    pf_at (uent_commit_at (fs_gamma_L γfs) appE Pd) Fent -∗
+    (* THE PARENT CURSOR (lane TL-3K): READ by the commit and handed
+       straight back ([SysUnlinkDefs.uent_commit_at]'s note at [Pd]). *)
+    Pd d -∗
     top_frag (fs_gamma_L γfs) d np -∗
     top_frag_q (fs_gamma_L γfs) dqt t nt ={E}=∗
       top_frag (fs_gamma_L γfs) d np'
       ∗ top_frag_q (fs_gamma_L γfs) dqt t nt
+      ∗ Pd d
       ∗ ∃ av : aview,
           ⌜unl_pre av d nm (dir_entries np) (fn_nlink np) t (abs_row nt)⌝
           ∗ Fent.(pf_recv) av d nm t.
   Proof.
     intros HE Hloc Hdir Hnm HnD HnDD Hnlp Hnlt Hdots Hdec Habsp' Hnzt.
-    iIntros "#Hi #Hai Hcm Hfp Hft".
+    iIntros "#Hi #Hai Hcm HPd Hfp Hft".
     iDestruct (pf_at_au with "Hcm") as "Hcm".
     rewrite /top_frag /top_frag_q /fs_gamma_L /=.
     iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [solve_ndisj |].
@@ -433,7 +438,7 @@ Section UnlinkFire.
       rewrite /delta_unl_ent Hrowp /=. reflexivity. }
     iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
     iMod ("Hcm" $! I d t nm (dir_entries np) (fn_nlink np) (abs_row nt)
-            with "[//] Hta") as "(Hta & Hstep & Hph2)".
+            with "[//] HPd Hta") as "(Hta & HPd & Hstep & Hph2)".
     (* THE MOVE, at the whole authority: the application's half comes out
        of [appN] beside its claim, which the caller's step re-establishes
        under the later ([AppInv.app_top_update]) *)
@@ -451,7 +456,7 @@ Section UnlinkFire.
       - rewrite lookup_insert in Hj. injection Hj as <-. exact Hloc.
       - rewrite lookup_insert_ne in Hj; [| exact (not_eq_sym Hne)].
         exact (Hcl jj mm Hj Hun). }
-    iModIntro. iFrame "Hfp Hft". iExists (abs_view I).
+    iModIntro. iFrame "Hfp Hft HPd". iExists (abs_view I).
     iSplitR; [by iPureIntro |]. iExact "HΦ".
   Qed.
 

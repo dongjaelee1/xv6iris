@@ -567,7 +567,7 @@ Section UInitCons.
     { iApply pf_at_intro. iSplit; last first.
       { rewrite /init_mk_Fok /=. done. }
       rewrite /acre_commit_at /acre_commit_at_gen.
-      iIntros (I d i nm ents nl) "%Hpre Hperm Hka".
+      iIntros (I d i nm ents nl) "%Hpre Hperm HPd Hka".
       rewrite /init_mk_Farm /cre_arm_fired /=.
       iDestruct "Hperm" as (av0) "[%Hfree Hpay]".
       destruct (decide (d = FsImg.ROOTINO /\ nm = fname_console))
@@ -575,7 +575,7 @@ Section UInitCons.
       - (* THE CONSOLE'S OWN CREATE *)
         subst d nm.
         iDestruct "Hpay" as "[[%Hp0 [%Hpv0 HK0]] | #HT]".
-        + iModIntro. iFrame "Hka". iSplitL "HK0".
+        + iModIntro. iFrame "Hka HPd". iSplitL "HK0".
           { rewrite /app_step. iIntros (n') "%Heq Hp". rewrite Heq. iNext.
             iApply ("Hmk" $! (abs_view I) ents nl i with "[%] HK0 Hp").
             exact Hpre. }
@@ -595,7 +595,7 @@ Section UInitCons.
             iPureIntro. exact Hdom. }
           iModIntro. iFrame "Hka". rewrite /init_cons_fok. iRight. iExact "Hm".
         + iDestruct ("Hsup" with "HT") as "#Hs".
-          iModIntro. iFrame "Hka". iSplitR.
+          iModIntro. iFrame "Hka HPd". iSplitR.
           { iApply (app_step_acc FsImg.ROOTINO I _ with "Hs"). }
           iIntros (I') "%Heq' Hka". iModIntro. iFrame "Hka".
           rewrite /init_cons_fok. iRight. iRight. iExact "HT".
@@ -604,14 +604,14 @@ Section UInitCons.
         { destruct (decide (d = FsImg.ROOTINO)) as [-> | Hd]; [| by left].
           right. intros ->. exact (Hother (conj eq_refl eq_refl)). }
         iDestruct "Hpay" as "[[%Hp0 [%Hpv0 HK0]] | #HT]".
-        + iModIntro. iFrame "Hka". iSplitR.
+        + iModIntro. iFrame "Hka HPd". iSplitR.
           { rewrite /app_step. iIntros (n') "%Heq Hp". rewrite Heq. iNext.
             iApply ("Hoth" $! (abs_view I) d nm ents nl i with "[%] [%] Hp");
               [ exact Hpre | exact Hne ]. }
           iIntros (I') "%Heq' Hka". iModIntro. iFrame "Hka".
           rewrite /init_cons_fok. iLeft. iFrame "HK0". by iPureIntro.
         + iDestruct ("Hsup" with "HT") as "#Hs".
-          iModIntro. iFrame "Hka". iSplitR.
+          iModIntro. iFrame "Hka HPd". iSplitR.
           { iApply (app_step_acc d I _ with "Hs"). }
           iIntros (I') "%Heq' Hka". iModIntro. iFrame "Hka".
           rewrite /init_cons_fok. iRight. iRight. iExact "HT". }

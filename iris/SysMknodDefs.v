@@ -64,6 +64,8 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Export SwtchCtx.
 Require Import FsAbsCreateFire. (* [T_DEVICE], [create_made]                *)
 Require Import PathElems.       (* [path_elems], [SLASH] *)
+Require Import ArgPath.         (* [arg_path_of] / [arg_path_of_uniq]:
+                                   the syscall-tier cursor's guard (TL-3K) *)
 Require Import FsTree.          (* [fname] *)
 Require Import FsAbsDefs.           (* the abstract state *)
 From Kernel Require KernelSyms.
@@ -114,3 +116,72 @@ Qed.
    created NAME, tied in the post arms) *)
 Definition npar_elems (pl : list (bv 8)) : list fname :=
   removelast (path_elems pl).
+
+(* ===================================================================== *)
+(*  THE SYSCALL-TIER PARENT CURSOR (lane TL-3K, design/user-tree.md       *)
+(*  section 7.5's WALL A)                                                 *)
+(*                                                                       *)
+(*  A create/unlink COMMIT now takes the walk's terminal cursor as a      *)
+(*  premise ([FsAbsCreateFire.acre_commit_at_gen]'s [Pd]), and at the     *)
+(*  CREATE tier the path is fixed, so the instance is                     *)
+(*  [P (length (npar_elems pl))].  At the SYSCALL tier it is not: the     *)
+(*  bundle is stated before argstr has answered, and the commits stay     *)
+(*  OUTSIDE the walk's path wand on purpose (a failed argstr must hand    *)
+(*  them back on the nose -- [SysOpenDefs.open_au_create_at]'s note).     *)
+(*  So the syscall-tier cursor is the same cursor UNDER THE SAME GUARD    *)
+(*  the walk carries: at whatever path argument 0 reads, the terminal     *)
+(*  cursor at [d].  It is a BARE resource (not a wand around the whole    *)
+(*  bundle), so the failure fold keeps its shape, and                     *)
+(*  [ArgPath.arg_path_of_uniq] makes the two readings interchangeable in  *)
+(*  BOTH directions -- which is what the commit's iso                     *)
+(*  ([FsAbsCreateFire.acre_commit_at_gen_mono]) needs.                    *)
+(* ===================================================================== *)
+
+Definition npar_cur {Σ : gFunctors} (M : gmap Z (bv 8)) (pv : mword 64)
+    (P : nat -> Z -> iProp Σ) (d : Z) : iProp Σ :=
+  (∀ pl : list (bv 8),
+     ⌜arg_path_of M pv pl⌝ -∗ P (length (npar_elems pl)) d)%I.
+
+Section NparCur.
+  Context {Σ : gFunctors}.
+
+  (* the reading is a function of [(M, pv)], so a cursor at THE path the
+     syscall read IS the guarded one *)
+  Lemma npar_cur_intro (M : gmap Z (bv 8)) (pv : mword 64)
+      (pl : list (bv 8)) (P : nat -> Z -> iProp Σ) (d : Z) :
+    arg_path_of M pv pl ->
+    P (length (npar_elems pl)) d -∗ npar_cur M pv P d.
+  Proof.
+    intros Hpl. iIntros "HP". rewrite /npar_cur. iIntros (pl') "%Hpl'".
+    rewrite (arg_path_of_uniq M pv pl' pl Hpl' Hpl). iExact "HP".
+  Qed.
+
+  Lemma npar_cur_elim (M : gmap Z (bv 8)) (pv : mword 64)
+      (pl : list (bv 8)) (P : nat -> Z -> iProp Σ) (d : Z) :
+    arg_path_of M pv pl ->
+    npar_cur M pv P d -∗ P (length (npar_elems pl)) d.
+  Proof.
+    intros Hpl. iIntros "H". rewrite /npar_cur.
+    iApply ("H" $! pl with "[%]"). exact Hpl.
+  Qed.
+
+  (* ...and the two iso halves the commit's [_mono] asks for *)
+  Lemma npar_cur_in (M : gmap Z (bv 8)) (pv : mword 64)
+      (pl : list (bv 8)) (P : nat -> Z -> iProp Σ) :
+    arg_path_of M pv pl ->
+    ⊢ □ (∀ d : Z, npar_cur M pv P d -∗ P (length (npar_elems pl)) d).
+  Proof.
+    intros Hpl. iIntros "!>" (d) "H".
+    iApply (npar_cur_elim M pv pl P d Hpl with "H").
+  Qed.
+
+  Lemma npar_cur_out (M : gmap Z (bv 8)) (pv : mword 64)
+      (pl : list (bv 8)) (P : nat -> Z -> iProp Σ) :
+    arg_path_of M pv pl ->
+    ⊢ □ (∀ d : Z, P (length (npar_elems pl)) d -∗ npar_cur M pv P d).
+  Proof.
+    intros Hpl. iIntros "!>" (d) "H".
+    iApply (npar_cur_intro M pv pl P d Hpl with "H").
+  Qed.
+
+End NparCur.

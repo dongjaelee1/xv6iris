@@ -313,15 +313,34 @@ Section CreateFire.
      pays nothing: every fire site already holds the arm's receipt at the
      instant it fires the parent leg (the arm ran at [ialloc], the create
      at [dirlink]), and the generic supplier drops it. *)
+  (* THE PARENT CURSOR IS A PREMISE (lane TL-3K, design/user-tree.md
+     section 7.5's WALL A, fix (i)).  [d] is quantified INSIDE this
+     definition, so without [Pd] a supplier owes a step at EVERY directory
+     of every view -- including one inside a STRANGER's subtree, where a
+     constraining application has no step at all and cannot tell that case
+     from the free one ([TreeMove.v] section 4).  [Pd] is the walk's
+     TERMINAL CURSOR, i.e. [P (length (npar_elems pl))] at the syscall
+     altitude: nameiparent has already run when this leg fires, so the
+     prover HOLDS it (it is what the ret-0 arm hands back --
+     [SpecCreate.cre_ok_arms], [SpecSysMknod], [SpecSysUnlink]), and the
+     kernel side of the change is a restatement.
+
+     IT IS READ, NOT SPENT: phase 1 hands [Pd d] straight back, because the
+     cursor is also the syscall's own post and the caller's [P] is an
+     arbitrary (possibly linear) predicate the kernel may not duplicate.
+     A supplier that does not care instantiates [Pd] at anything and
+     returns it unread ([acre_commit_at_gen_unit]). *)
   Definition acre_commit_at_gen Γ (E : coPset) (cf : Z -> Z -> absnode)
+      (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) : iProp Σ :=
     (∀ (I : gmap Z fs_node) (d i : Z) (nm : fname) (ents : gmap fname Z)
        (nl : nat),
        ⌜cre_pre (abs_view I) d nm ents nl i (cf d i)⌝ -∗
        cre_arm_fired Farm i -∗
+       Pd d -∗
        ghost_map_auth (γtop Γ) (1/2) I ={E}=∗
-       ghost_map_auth (γtop Γ) (1/2) I ∗
+       ghost_map_auth (γtop Γ) (1/2) I ∗ Pd d ∗
          (* THE CALLER'S STEP (app-instances.md section 7): its claim about
             the pre-view survives the delta, at the RAW insert the mover
             performs ([AppInv.app_step]; the delta is its reading) *)
@@ -334,9 +353,10 @@ Section CreateFire.
   (* ...and the CONSTANT-content instance the two pinned AU twins carry
      (a device at mknod, an empty file at open(O_CREATE)) *)
   Definition acre_commit_at Γ (E : coPset) (c : absnode)
+      (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) : iProp Σ :=
-    acre_commit_at_gen Γ E (fun _ _ => c) Farm Φ.
+    acre_commit_at_gen Γ E (fun _ _ => c) Pd Farm Φ.
 
   (* the child-content index is used POINTWISE, so a pointwise equality
      moves the commit.  Named because the two type-pinned readings of
@@ -344,15 +364,55 @@ Section CreateFire.
      and are only convertible (durable-notes, "Terms that print
      identically"): [iApply] this rather than [rewrite]. *)
   Lemma acre_commit_at_gen_ext Γ (E : coPset) (cf cf' : Z -> Z -> absnode)
+      (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     (forall d i, cf d i = cf' d i) ->
-    acre_commit_at_gen Γ E cf Farm Φ -∗ acre_commit_at_gen Γ E cf' Farm Φ.
+    acre_commit_at_gen Γ E cf Pd Farm Φ -∗ acre_commit_at_gen Γ E cf' Pd Farm Φ.
   Proof.
     intros Hext. rewrite /acre_commit_at_gen. iIntros "H".
-    iIntros (I d i nm ents nl) "%Hpre Harm Ha".
+    iIntros (I d i nm ents nl) "%Hpre Harm HPd Ha".
     rewrite -(Hext d i) in Hpre. rewrite -(Hext d i).
-    iApply ("H" with "[//] Harm Ha").
+    iApply ("H" with "[//] Harm HPd Ha").
+  Qed.
+
+  (* ...and the cursor MOVES ALONG AN ISO: two readings of the same cursor
+     (the one-path form [P (length (npar_elems pl))] and the syscall
+     tier's guarded form, [SysMknodDefs.npar_cur]) carry the commit
+     between them.  BOTH directions are needed because the commit READS the
+     premise and HANDS IT BACK. *)
+  Lemma acre_commit_at_gen_mono Γ (E : coPset) (cf : Z -> Z -> absnode)
+      (Pd Pd' : Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
+    □ (∀ d : Z, Pd' d -∗ Pd d) -∗ □ (∀ d : Z, Pd d -∗ Pd' d) -∗
+    acre_commit_at_gen Γ E cf Pd Farm Φ -∗ acre_commit_at_gen Γ E cf Pd' Farm Φ.
+  Proof.
+    rewrite /acre_commit_at_gen. iIntros "#Hin #Hout H".
+    iIntros (I d i nm ents nl) "%Hpre Harm HPd Ha".
+    iDestruct ("Hin" $! d with "HPd") as "HPd".
+    iMod ("H" $! I d i nm ents nl with "[//] Harm HPd Ha")
+      as "(Ha & HPd & Hstep & Hph2)".
+    iDestruct ("Hout" $! d with "HPd") as "HPd".
+    iModIntro. by iFrame "Ha HPd Hstep Hph2".
+  Qed.
+
+  (* THE CURSOR IS A WEAKENING, and this is the one line every GENERIC
+     supplier takes: a commit that holds at every [d] with no cursor at all
+     holds a fortiori when one is handed in.  It is why the landed unit and
+     pinned dischargers keep their proofs. *)
+  Lemma acre_commit_at_gen_cur Γ (E : coPset) (cf : Z -> Z -> absnode)
+      (Pd : Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
+    acre_commit_at_gen Γ E cf (fun _ => True%I) Farm Φ -∗
+    acre_commit_at_gen Γ E cf Pd Farm Φ.
+  Proof.
+    rewrite /acre_commit_at_gen. iIntros "H".
+    iIntros (I d i nm ents nl) "%Hpre Harm HPd Ha".
+    iMod ("H" $! I d i nm ents nl with "[//] Harm [//] Ha")
+      as "(Ha & _ & Hstep & Hph2)".
+    iModIntro. by iFrame "Ha HPd Hstep Hph2".
   Qed.
 
   (* THE ARM: the row APPEARS.  The view has no row at [i] (the claim box
@@ -492,23 +552,24 @@ Section CreateFire.
   (* the write-kind ones owe the caller's step, paid at the live Γ out of
      the SUPPLY ([AppInv.app_step_acc]) *)
   Lemma acre_commit_at_gen_unit (γfs : fs_names) E (cf : Z -> Z -> absnode)
+      (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ)) :
     app_sup -∗
-    acre_commit_at_gen (fs_gamma_L γfs) E cf Farm (fun _ _ _ _ => True%I).
+    acre_commit_at_gen (fs_gamma_L γfs) E cf Pd Farm (fun _ _ _ _ => True%I).
   Proof.
     iIntros "#Hsup". rewrite /acre_commit_at_gen.
-    iIntros (I d i nm ents nl) "%Hpre _ Ha".
+    iIntros (I d i nm ents nl) "%Hpre _ HPd Ha".
     iDestruct (app_step_acc d I _ with "Hsup") as "Hstep".
-    iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
+    iModIntro. iFrame "Ha HPd Hstep". iIntros (I') "%Heq Ha'". iModIntro.
     by iFrame "Ha'".
   Qed.
 
-  Lemma acre_commit_at_unit (γfs : fs_names) E c
+  Lemma acre_commit_at_unit (γfs : fs_names) E c (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ)) :
-    app_sup -∗ acre_commit_at (fs_gamma_L γfs) E c Farm (fun _ _ _ _ => True%I).
+    app_sup -∗ acre_commit_at (fs_gamma_L γfs) E c Pd Farm (fun _ _ _ _ => True%I).
   Proof.
     iIntros "#Hsup". rewrite /acre_commit_at.
-    iApply (acre_commit_at_gen_unit γfs E _ Farm with "Hsup").
+    iApply (acre_commit_at_gen_unit γfs E _ Pd Farm with "Hsup").
   Qed.
 
   (* the arm's step is paid although the VIEW has no row: the supply holds
@@ -617,33 +678,35 @@ Section CreateFire.
   Qed.
 
   Lemma acre_commit_at_gen_pinned (γfs : fs_names) E (cf : Z -> Z -> absnode)
+      (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (q : Qp) (jpin : Z) (a : anode) (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     app_sup -∗
     nview (fs_gamma_L γfs) q jpin a -∗
     (∀ (av : aview) (d : Z) (nm : fname) (i : Z),
        ⌜av !! jpin = Some a⌝ -∗ nview (fs_gamma_L γfs) q jpin a -∗ Φ av d nm i) -∗
-    acre_commit_at_gen (fs_gamma_L γfs) E cf Farm Φ.
+    acre_commit_at_gen (fs_gamma_L γfs) E cf Pd Farm Φ.
   Proof.
     iIntros "#Hsup Hn HΦ". rewrite /acre_commit_at_gen.
-    iIntros (I d i nm ents nl) "%Hpre _ Ha".
+    iIntros (I d i nm ents nl) "%Hpre _ HPd Ha".
     iDestruct (mkf_auth_nview with "Ha Hn") as %Hav.
     iDestruct (app_step_acc d I _ with "Hsup") as "Hstep".
-    iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
+    iModIntro. iFrame "Ha HPd Hstep". iIntros (I') "%Heq Ha'". iModIntro.
     iFrame "Ha'". iApply ("HΦ" $! (abs_view I) d nm i with "[%] Hn"). done.
   Qed.
 
   Lemma acre_commit_at_pinned (γfs : fs_names) E (c : absnode)
+      (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ)) (q : Qp) (jpin : Z)
       (a : anode) (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     app_sup -∗
     nview (fs_gamma_L γfs) q jpin a -∗
     (∀ (av : aview) (d : Z) (nm : fname) (i : Z),
        ⌜av !! jpin = Some a⌝ -∗ nview (fs_gamma_L γfs) q jpin a -∗ Φ av d nm i) -∗
-    acre_commit_at (fs_gamma_L γfs) E c Farm Φ.
+    acre_commit_at (fs_gamma_L γfs) E c Pd Farm Φ.
   Proof.
     iIntros "#Hsup Hn HΦ". rewrite /acre_commit_at.
-    iApply (acre_commit_at_gen_pinned γfs E _ Farm q jpin a Φ with "Hsup Hn HΦ").
+    iApply (acre_commit_at_gen_pinned γfs E _ Pd Farm q jpin a Φ with "Hsup Hn HΦ").
   Qed.
 
   Lemma aarm_commit_at_pinned (γfs : fs_names) E (c : absnode) (q : Qp) (jpin : Z)

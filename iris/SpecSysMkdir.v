@@ -222,10 +222,19 @@ Definition mkdir_au_pre
     (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) : iProp Σ :=
   (npar_walk_pre_era γfs cw P Pmiss
    ∗ pf_at (dlookup_commit_at Γ appE) Fex
+   (* THE CURSOR-FREE COMMIT (lane TL-3K).  mkdir's bundle still carries
+      the [forall pl] walk form ([npar_walk_pre_era]), so there is no ONE
+      path for a cursor to name and the parent leg is handed in at the
+      landed strength; [SpecCreate]'s own bundle takes it up to the walk's
+      terminal cursor through [FsAbsCreateFire.acre_commit_at_gen_cur].
+      A path-fixed mkdir bundle (mknod's [mknod_au_at] twin) is what a
+      constraining application would need first -- see design/user-tree.md
+      section 7.5. *)
    ∗ cre_commits Γ
        (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
        (bv_unsigned (mword_of_int 0 : mword 16))
        (bv_unsigned (mword_of_int 0 : mword 16))
+       (fun _ => True%I)
        Farm Fdots Fun Fok)%I.
 
 (* SATISFIABILITY, and what the dispatcher and the friendly packaging hand

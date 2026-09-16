@@ -176,6 +176,7 @@ Require Import FsAbsEra.        (* [elend]: the era lend the hops fire;
                                    stated over *)
 Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
                                    argument 0, shared with sys_exec *)
+Require Import SysMknodDefs.     (* [npar_elems]: the PARENT prefix (TL-3K) *)
 Require Import FsAbsMknodFire.  (* [acre_commit_at], [dlookup_commit_at],
                                    [mkf_auth_nview] *)
 Require Import AppInv.          (* [appN]/[appE]: the application's namespace, the commit mask (app-instances.md round A) *)
@@ -503,7 +504,9 @@ Section OpenDefs.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) : iProp Σ :=
     (ep_start γfs cw P Pmiss pl
-     ∗ pf_at (acre_commit_at Γ appE (AFile []) Farm) Fok
+     (* THE PARENT CURSOR rides the commit (lane TL-3K, WALL A fix (i)) *)
+     ∗ pf_at (acre_commit_at Γ appE (AFile [])
+                (P (length (npar_elems pl))) Farm) Fok
      ∗ pf_at (dlookup_commit_at Γ appE) Fex
      ∗ pf_at (aopen_commit_at Γ appE) Fo
      ∗ open_trunc_piece Γ vom Ft
@@ -551,7 +554,7 @@ Section OpenDefs.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) : iProp Σ :=
     ((∀ pl : list (bv 8), ⌜arg_path_of M pv pl⌝ -∗ ep_start γfs cw P Pmiss pl)
-     ∗ pf_at (acre_commit_at Γ appE (AFile []) Farm) Fok
+     ∗ pf_at (acre_commit_at Γ appE (AFile []) (npar_cur M pv P) Farm) Fok
      ∗ pf_at (dlookup_commit_at Γ appE) Fex
      ∗ pf_at (aopen_commit_at Γ appE) Fo
      ∗ open_trunc_piece Γ vom Ft
@@ -573,6 +576,27 @@ Section OpenDefs.
     iApply ("Hw" $! pl with "[%]"). exact Hpl.
   Qed.
 
+  (* THE CURSOR'S TWO READINGS, as one move (lane TL-3K);
+     [SpecSysMknod.mknod_acre_inst]'s twin at the file child. *)
+  Lemma open_acre_inst Γ (M : gmap Z (bv 8)) (pv : mword 64)
+      (pl : list (bv 8)) (P : nat -> Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    arg_path_of M pv pl ->
+    pf_at (acre_commit_at Γ appE (AFile []) (npar_cur M pv P) Farm) Fok -∗
+    pf_at (acre_commit_at Γ appE (AFile [])
+             (P (length (npar_elems pl))) Farm) Fok.
+  Proof.
+    intros Hpl. iIntros "Hok".
+    rewrite /acre_commit_at. iApply (pf_at_mono with "[] Hok").
+    iIntros "Hok".
+    iApply (acre_commit_at_gen_mono Γ appE (fun _ _ => AFile [])
+              (npar_cur M pv P) (P (length (npar_elems pl))) Farm
+              Fok.(pf_recv) with "[] [] Hok").
+    - iApply (npar_cur_out M pv pl P Hpl).
+    - iApply (npar_cur_in M pv pl P Hpl).
+  Qed.
+
   Lemma open_au_create_at_inst Γ (γfs : fs_names) (cw : Z)
       (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8))
       (P Pmiss : nat -> Z -> iProp Σ)
@@ -585,8 +609,11 @@ Section OpenDefs.
     open_au_pre_create Γ γfs cw pl vom P Pmiss Farm Fun Fok Fex Fo Ft.
   Proof.
     iIntros (Hpl) "(Hw & Hok & Hex & Ho & Ht & Hch)".
-    rewrite /open_au_pre_create. iFrame "Hok Hex Ho Ht Hch".
-    iApply ("Hw" $! pl with "[%]"). exact Hpl.
+    rewrite /open_au_pre_create.
+    iSplitL "Hw".
+    { iApply ("Hw" $! pl with "[%]"). exact Hpl. }
+    iFrame "Hex Ho Ht Hch".
+    iApply (open_acre_inst Γ M pv pl P Farm Fok Hpl with "Hok").
   Qed.
 
   (* THE GENERIC SUPPLIER'S ONE LINE.  A family that tracks nothing owes
@@ -617,7 +644,7 @@ Section OpenDefs.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
     npar_walk_pre_era γfs cw P Pmiss -∗
-    pf_at (acre_commit_at Γ appE (AFile []) Farm) Fok -∗
+    pf_at (acre_commit_at Γ appE (AFile []) (npar_cur M pv P) Farm) Fok -∗
     pf_at (dlookup_commit_at Γ appE) Fex -∗
     pf_at (aopen_commit_at Γ appE) Fo -∗
     open_trunc_piece Γ vom Ft -∗
@@ -653,7 +680,8 @@ Section OpenDefs.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
     npar_walk_pre_era γfs cw P Pmiss -∗
-    pf_at (acre_commit_at Γ appE (AFile []) Farm) Fok -∗
+    pf_at (acre_commit_at Γ appE (AFile [])
+             (P (length (npar_elems pl))) Farm) Fok -∗
     pf_at (dlookup_commit_at Γ appE) Fex -∗
     pf_at (aopen_commit_at Γ appE) Fo -∗
     open_trunc_piece Γ vom Ft -∗

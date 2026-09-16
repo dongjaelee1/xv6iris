@@ -142,6 +142,7 @@ Require Import SpecCreate.
 Require Import DirentEnc.        (* [bview]: the path buffer's reading    *)
 Require Import PathElems.        (* [path_elems]: the name tie's list     *)
 Require Import FsAbsEra.         (* [ep_start]: the walk's deferred start  *)
+Require Import SysMknodDefs.     (* [npar_elems]: the PARENT prefix (TL-3K) *)
 Require Import FsAbsMknodFire.   (* the era walk's package and FIRE 1      *)
 Require Import FsTree.           (* [fname] *)
 Require Import FsBytesGamma.     (* [fs_gamma_L]: the live Γ the commits are at *)
@@ -291,7 +292,8 @@ Section ProofCreateFound.
     ep_start fsc_fs (pv_cwi (us_V U)) P Pmiss (bview plen pfun) -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Fex -∗
     cre_commits (fs_gamma_L fsc_fs) (bv_unsigned ty) (bv_unsigned major)
-      (bv_unsigned minor) Farm Fdots Fun Fok -∗
+      (bv_unsigned minor) (P (length (npar_elems (bview plen pfun))))
+      Farm Fdots Fun Fok -∗
     (* ---- THE PARKED ALLOCATE HALF, as a HYPOTHESIS ---- *)
     wp_next true (proc_addr j) (fun CIDa : CpuId =>
       cr_alloc_body (CID := CID) γs j γl pd pav pu γf

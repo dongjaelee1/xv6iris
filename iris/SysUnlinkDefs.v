@@ -265,13 +265,22 @@ Section UnlinkDefs.
      [unl_pre], phase 2 witnesses the parent half applied; the prover
      fires the pair around the parent's [ireg_top_retag_*] inside one
      [ftopN] critical section). *)
-  Definition uent_commit_at Γ (E : coPset)
+  (* THE PARENT CURSOR IS A PREMISE (lane TL-3K, design/user-tree.md
+     section 7.5's WALL A, fix (i)), for [FsAbsCreateFire.
+     acre_commit_at_gen]'s reason exactly: [d] is quantified INSIDE, so
+     without [Pd] a supplier owes a step at EVERY directory of every view,
+     and at a [d] inside a stranger's subtree there is no step at all.
+     [Pd] is nameiparent's TERMINAL CURSOR ([P (length (npar_elems pl))] at
+     the syscall altitude), which the prover holds when this leg fires.
+     READ, NOT SPENT: phase 1 hands it straight back. *)
+  Definition uent_commit_at Γ (E : coPset) (Pd : Z -> iProp Σ)
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) : iProp Σ :=
     (∀ (I : gmap Z fs_node) (d t : Z) (nm : fname)
        (ents : gmap fname Z) (nl : nat) (a : anode),
        ⌜unl_pre (abs_view I) d nm ents nl t a⌝ -∗
+       Pd d -∗
        ghost_map_auth (γtop Γ) (1/2) I ={E}=∗
-       ghost_map_auth (γtop Γ) (1/2) I ∗
+       ghost_map_auth (γtop Γ) (1/2) I ∗ Pd d ∗
          (* THE CALLER'S STEP (app-instances.md section 7): its claim about
             the pre-view survives the delta, at the RAW insert the mover
             performs ([AppInv.app_step]; the delta is its reading) *)
@@ -281,6 +290,35 @@ Section UnlinkDefs.
              = delta_unl_ent d nm (unl_dec (an_node a)) (abs_view I)⌝ -∗
             ghost_map_auth (γtop Γ) (1/2) I' ={E}=∗
             ghost_map_auth (γtop Γ) (1/2) I' ∗ Φ (abs_view I) d nm t))%I.
+
+  (* ...and the cursor's ISO, [FsAbsCreateFire.acre_commit_at_gen_mono]'s
+     twin *)
+  Lemma uent_commit_at_mono Γ (E : coPset) (Pd Pd' : Z -> iProp Σ)
+      (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
+    □ (∀ d : Z, Pd' d -∗ Pd d) -∗ □ (∀ d : Z, Pd d -∗ Pd' d) -∗
+    uent_commit_at Γ E Pd Φ -∗ uent_commit_at Γ E Pd' Φ.
+  Proof.
+    rewrite /uent_commit_at. iIntros "#Hin #Hout H".
+    iIntros (I d t nm ents nl a) "%Hpre HPd Ha".
+    iDestruct ("Hin" $! d with "HPd") as "HPd".
+    iMod ("H" $! I d t nm ents nl a with "[//] HPd Ha")
+      as "(Ha & HPd & Hstep & Hph2)".
+    iDestruct ("Hout" $! d with "HPd") as "HPd".
+    iModIntro. by iFrame "Ha HPd Hstep Hph2".
+  Qed.
+
+  (* the cursor is a WEAKENING, exactly as at create
+     ([FsAbsCreateFire.acre_commit_at_gen_cur]) *)
+  Lemma uent_commit_at_cur Γ (E : coPset) (Pd : Z -> iProp Σ)
+      (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
+    uent_commit_at Γ E (fun _ => True%I) Φ -∗ uent_commit_at Γ E Pd Φ.
+  Proof.
+    rewrite /uent_commit_at. iIntros "H".
+    iIntros (I d t nm ents nl a) "%Hpre HPd Ha".
+    iMod ("H" $! I d t nm ents nl a with "[//] [//] Ha")
+      as "(Ha & _ & Hstep & Hph2)".
+    iModIntro. by iFrame "Ha HPd Hstep Hph2".
+  Qed.
 
   (* INSTANT 2 -- the target-row commit, same mold.  No name, no parent:
      by this instant only the target's identity is in the machine's
@@ -326,13 +364,13 @@ Section UnlinkDefs.
      the caller's side (the family's [*_unit] discipline) *)
   (* the two write-kind shapes owe the caller's step, paid here out of the
      SUPPLY ([AppInv.app_step_acc]) at the live Γ *)
-  Lemma uent_commit_at_unit (γfs : fs_names) E :
-    app_sup -∗ uent_commit_at (fs_gamma_L γfs) E (fun _ _ _ _ => True%I).
+  Lemma uent_commit_at_unit (γfs : fs_names) E (Pd : Z -> iProp Σ) :
+    app_sup -∗ uent_commit_at (fs_gamma_L γfs) E Pd (fun _ _ _ _ => True%I).
   Proof.
     iIntros "#Hsup". rewrite /uent_commit_at.
-    iIntros (I d t nm ents nl a) "%Hpre Ha".
+    iIntros (I d t nm ents nl a) "%Hpre HPd Ha".
     iDestruct (app_step_acc d I _ with "Hsup") as "Hstep".
-    iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
+    iModIntro. iFrame "Ha HPd Hstep". iIntros (I') "%Heq Ha'". iModIntro.
     by iFrame "Ha'".
   Qed.
 

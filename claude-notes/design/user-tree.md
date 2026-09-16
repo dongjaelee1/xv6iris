@@ -699,8 +699,11 @@ subtree cannot build the step and falls to the taint arm, as §3 says.
 - [ ] **SEAM-I** (deferred; ready): §7.1 as one mechanical lane if a
   consumer appears.  TL-3W did NOT need it, which is the ruling
   confirmed: the fire's own phase 2 is the return channel.
-- [ ] **PARENT-CURSOR** (priced, not taken; §7.5's WALL A fix (i)): the
-  one kernel-tier lane the whole create/unlink write family now waits on.
+- [x] **PARENT-CURSOR** — LANDED as **TL-3K** (branch `tl3k-cursor`):
+  §7.5's WALL A fix (i) threaded through the whole cone, and WALL B
+  dissolved at any length.  §7.6 is the as-landed block; what the family
+  still waits on is WALL C (an ARMED LEDGER, not a receipt) and WALL D
+  (the name's properness), both stated there.
 
 ### 7.4 TL-3W as landed
 
@@ -922,7 +925,7 @@ conjuncts of the bundle (`unlink_au_pre`, `mknod_au_pre`), and the walk's
 terminal cursor surfaces only in the syscall's POST — after every commit
 has had to be provable at every `d`.  Two fixes:
   - **(i) THREAD THE CURSOR** (kernel tier, mechanical, and the lane
-    RECOMMENDS it): give the two commits `P (length (npar_elems pl)) d` as
+    RECOMMENDS it) — **TAKEN AND LANDED by TL-3K, §7.6**: give the two commits `P (length (npar_elems pl)) d` as
     a premise beside their `cre_pre`/`unl_pre`.  The prover holds it at the
     fire instant (it is what the ret-0 arm hands back), so the kernel side
     is a restatement rather than a new proof, and the owner then reads
@@ -941,6 +944,8 @@ has had to be provable at every `d`.  Two fixes:
     is quantified opaquely.
 
 **WALL B — THE WALK WANTS A FROZEN DEED AND THE MOVE WANTS A LIVE ONE.**
+(SUPERSEDED BY §7.6: TL-3K dissolved it at EVERY length, not just 0/1 —
+the resource rides the CURSOR.  Kept as TL-3P's reading.)
 New, and independent of WALL A.  A walk reads the claim ONCE PER HOP, so
 `PinnedObs`'s premise is a `□` claim law, and only `tree_pin_law` — a
 FROZEN deed — has that shape; a frozen deed can never be parked, so its
@@ -967,7 +972,9 @@ records rather than lands them.  A prefix of length ≥ 2 genuinely needs the
 frozen deed.
 
 **WALL C — THE CREDENTIALS THE LEGS OWE EACH OTHER, and they are ONE
-mechanism.**  create's parent leg needs the arm's no-edge fact; the
+mechanism.**  (CORRECTED BY §7.6: it is ONE mechanism, but NOT a
+receipt-carried credential — a receipt cannot carry a fact about a LATER
+view.  §7.6 prices the two that work.)  create's parent leg needs the arm's no-edge fact; the
 child's UNARM leg needs the same one (§7.4's item (a), unchanged); mkdir's
 parent leg needs "the armed inum is nobody's root", which only the arm's
 own view has; unlink's last-link target leg needs the entry leg's no-edge
@@ -983,3 +990,140 @@ being payable, and its first corollary — `mkdir` at the owner's own root —
 does not even need WALL B lifted.  No corollary and no extended test
 landed in TL-3P: `UkTreeWrite.wp_uk_tree_write_moves` is unchanged, because
 every syscall the extended test would add is behind WALL A.
+
+### 7.6 TL-3K as landed — the cursor threaded, WALL B dissolved, and the two credentials that are left
+
+**WHAT LANDED** (branch `tl3k-cursor`): WALL A's fix (i) in full, as a
+kernel-tier RESTATEMENT across the whole create/unlink cone; WALL B's fix,
+and it is smaller than §7.5 priced — a LIVE deed supplies the parent-prefix
+walk at ANY length, not just at length 0 or 1.  `AppEcho.v` / `AppInv.v`
+untouched, every landed TL-1/2/3/3W/3P statement unchanged except for the
+two commits' new parameter, whole tree green, echo audit 14.
+
+**WALL A, FIX (i), AS LANDED.**  `FsAbsCreateFire.acre_commit_at_gen` and
+`SysUnlinkDefs.uent_commit_at` each gain a cursor parameter
+`Pd : Z -> iProp Σ` and, beside `cre_pre` / `unl_pre`, the premise `Pd d`:
+
+    acre_commit_at_gen Γ E cf Pd Farm Φ :=
+      ∀ I d i nm ents nl,
+        ⌜cre_pre (abs_view I) d nm ents nl i (cf d i)⌝ -∗
+        cre_arm_fired Farm i -∗ Pd d -∗
+        ghost_map_auth (γtop Γ) (1/2) I ={E}=∗
+        ghost_map_auth (γtop Γ) (1/2) I ∗ Pd d ∗ app_step … ∗ (phase 2)
+
+**IT IS READ AND HANDED BACK, IN PHASE 1**, and that is forced: the
+caller's `P` is an arbitrary — possibly linear — predicate the kernel may
+not duplicate, and the syscall's own POST owes the same cursor
+(`cre_ok_arms`, `mknod_post_ok`, `unlink_post_ok` all carry
+`P (length (npar_elems pl)) d`).  A supplier that does not care
+instantiates `Pd` at anything and returns it unread; the generic
+dischargers (`acre_commit_at_gen_unit`, `_pinned`, `uent_commit_at_unit`,
+`FsAbsInvFire.fsabs_acre` / `fsabs_uent`) quantify `Pd` freely and their
+proofs are unchanged but for framing it.
+
+Three moves make every consumer a restatement:
+  - `acre_commit_at_gen_cur` / `uent_commit_at_cur` — the cursor is a
+    WEAKENING (a commit that holds at every `d` with no cursor holds a
+    fortiori when one is handed in), and `SpecCreate.cre_commits_cur`
+    lifts it over the whole four-leg bundle;
+  - `acre_commit_at_gen_mono` / `uent_commit_at_mono` — the cursor moves
+    along an ISO (both directions, because the commit reads the premise
+    AND hands it back);
+  - `SysMknodDefs.npar_cur M pv P d := ∀ pl, ⌜arg_path_of M pv pl⌝ -∗
+    P (length (npar_elems pl)) d`, with `npar_cur_in` / `_out` off
+    `ArgPath.arg_path_of_uniq`.
+
+**THE CURSOR HAS TWO READINGS, AND WHICH ONE A BUNDLE CARRIES IS A FACT
+ABOUT THAT BUNDLE'S WALK PREMISE.**  This is the lane's first new finding.
+  - At the CREATE tier the path is fixed (`bview plen pfun`), so the
+    instance is `P (length (npar_elems pl))` and `wp_create`'s bundle
+    names it.
+  - At the SYSCALL tier the bundle is stated BEFORE argstr has answered
+    and the commits deliberately sit OUTSIDE the walk's path wand (a
+    failed argstr must hand them back on the nose), so the instance is
+    `npar_cur M pv P` — the same cursor under the same `arg_path_of`
+    guard the walk carries, and still a BARE resource, so every failure
+    fold keeps its shape.  `mknod_acre_inst` / `open_acre_inst` are the
+    one-line moves between the two readings at the path argstr read.
+  - **mkdir and unlink CANNOT CARRY A CURSOR AT ALL.**  Their bundles
+    still take the raw `∀ pl` one-shot (`npar_walk_pre_era`), so there is
+    no ONE path for a cursor to name; their commits are handed in at
+    `Pd := fun _ => True` (the landed strength, zero semantic change) and
+    lifted to create's cursor-threaded one by the weakening.  **So §7.5's
+    "mkdir("/d") by the owner of / is reachable the moment WALL A falls"
+    is WRONG**: mkdir waits on a path-fixed `mkdir_au_at` (mknod's
+    `mknod_au_at` twin, additive) before WALL A can help it, and unlink
+    waits on the same seam `UkTreeRead` §5 already records.
+
+**THE STOP RULE DID NOT FIRE.**  Every fire site holds the cursor at the
+fire instant, as §7.5 read it: `ProofCreateAlloc` and `ProofCreateMkdir`
+both hold `HPpar : P (length (npar_elems (bview plen pfun))) (bv_unsigned
+dind)` across `caf_acre_fire` and still need it afterwards (`cr_ok_of_made`),
+which is exactly why the commit must hand the cursor back;
+`ProofSysUnlinkW5D` / `W5F` hold theirs across `uf_uent_fire`.
+
+**WALL B IS DISSOLVED, AND AT ANY LENGTH** (`PinnedObs` §11a,
+`TreeWalk` §3).  §7.5 priced a linear-law hop PAIR reaching length 1.  The
+reason length looked binding was that §8's dead walk THROWS `K` AWAY after
+hop 0.  Put `K` ON THE CURSOR instead —
+
+    pobs_P_lin T hops K k d := (⌜d = hops !!! k⌝ ∗ K) ∨ T
+
+— and a hop takes `K` out of its INPUT cursor and puts it back into its
+OUTPUT one, so the hop RESOURCE is built from persistent things alone (the
+`□` linear law and `app_inv`) and the big-op needs no threading.
+`pobs_phop_lin` / `pobs_pwalk_lin` / `pobs_pterm_lin` are the family;
+`TreeWalk.tree_pwalk_of_own_live` / `tree_pwalk_parent_live` are the deed
+route, out of `TreeObs.tree_own_claim_law` (the LIVE deed's own law), at
+**any** parent prefix.  THE PRICE: under the taint (or a miss) the cursor's
+right disjunct is `T` and `K` is gone — a tainted owner loses the deed it
+put on the walk.
+
+**THE SEAM THE LIVE WALK OPENS, and the one piece a corollary now needs.**
+The terminal cursor CARRIES the deed, and the terminal cursor is exactly
+what the cursor-threaded commit takes as `Pd d` — but the commit returns
+`Pd d` in PHASE 1, while an owner's move PARKS the deed in phase 1 and gets
+it back (moved) only in phase 2.  So a deed-carrying cursor wants the
+commit to return `Pd d` AT PHASE 2, at the moved deed.  That is one more
+kernel-tier restatement of the same shape as this lane's.
+
+**WALL C IS NOT A RECEIPT-CARRIED CREDENTIAL** — the lane's main negative
+finding, and it corrects §7.5.  What create's parent leg needs is
+`aview_no_edge_to av i` AT ITS OWN VIEW; what the arm proves
+(`aview_no_edge_to_arm`) is the same fact at the ARM's view, and between
+the two instants the view moves arbitrarily as far as the logic can see.  A
+receipt carries a RESOURCE, not a fact about a later view, and "nothing
+names `i`" has no monotone reading that survives an arbitrary delta.  The
+two honest mechanisms, both lanes of their own:
+  - **(C-i) an ARMED LEDGER in the fs invariant** (kernel tier, NOT a
+    restatement): `InodeRegion.ftop_body` gains "for every inum whose arm
+    permit is out, no proper entry of the view names it".  It is
+    MAINTAINED for a structural reason that is already in the design: the
+    only way to insert an entry at `i` is the create leg, and that leg
+    SPENDS the arm's permit (`cre_arm_fired`, the exclusive one-shot per
+    armed inode — `acre_commit_at_gen`'s own note); the arm establishes it
+    by freshness (`aview_no_edge_to_fresh`).  Price: one invariant
+    conjunct and the three legs' preservation.
+  - **(C-ii) an APPLICATION-side armed set** (tree tier): the owner
+    records `i` in a ledger inside `tree_body` at the arm's phase 2 and
+    reads it back at the parent leg; every step must then preserve it,
+    which reproduces the same exclusion argument one tier up.
+Unlink's last-link leg is the one case §7.5 is right about, and only
+because `aview_no_edge_to_unl_ent` proves the credential at the ENTRY
+LEG's own POST view — but the two legs are still separate commits, so it
+needs the same channel.
+
+**WALL D, NEW: the create leg does not know its name is proper.**
+`TreeMove.tree_acre_phases` asks for `fs_pname nm`, and
+`acre_commit_at_gen` quantifies `nm` with nothing said about it.  It is
+TRUE at every reachable fire — create's own `dirlookup` returns the FOUND
+arm at "." and "..", so `dirlink` is never reached with a dot name — but
+the commit's altitude cannot see it.  Cheapest fix: `⌜fs_pname nm⌝` beside
+`cre_pre`, discharged at the two fire sites from the path's properness.
+
+**SO, AFTER TL-3K, AN OWNER'S CREATE SUPPLIER IS MISSING EXACTLY TWO OF
+`tree_acre_phases`'s PREMISES** — `aview_no_edge_to (abs_view I) i` (WALL
+C) and `fs_pname nm` (WALL D).  WALL A delivered the third,
+`d ∈ dom (tv_nodes t)`, off `tree_pwalk_parent` (or
+`tree_pwalk_parent_live` now).  That is why no corollary and no extended
+test landed: `UkTreeWrite.wp_uk_tree_write_moves` is unchanged.

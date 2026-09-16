@@ -123,6 +123,7 @@ Require Import FsTree.
 Require Import FsBytesGamma.
 Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
                                    argument 0, which the walk is at *)
+Require Import SysMknodDefs.     (* [npar_elems]: the PARENT prefix (TL-3K) *)
 Require Import SysOpenDefs.
 Require Import FsAbsCreateFire.
 Require Import FsAbsEra.          (* [ep_start]: the walk one-shot AT ONE PATH *)
@@ -323,7 +324,8 @@ Section ProofSysOpenEntryC.
        at this buffer, so what reaches this block is already create's
        [FsAbsEra.ep_start] at the one path. *)
     ep_start fsc_fs (pv_cwi (us_V U)) P Pmiss (bview plen bp) -∗
-    pf_at (acre_commit_at (fs_gamma_L fsc_fs) appE (AFile []) Phiarm) Phiok -∗
+    pf_at (acre_commit_at (fs_gamma_L fsc_fs) appE (AFile [])
+             (P (length (npar_elems (bview plen bp)))) Phiarm) Phiok -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
     pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Phio -∗
     open_trunc_piece (fs_gamma_L fsc_fs) vom Phit -∗
@@ -491,6 +493,7 @@ Section ProofSysOpenEntryC.
        the builder produces it out of the type inequality and nothing has to
        be manufactured here. *)
     iDestruct (cre_commits_of_file (fs_gamma_L fsc_fs) 0 0
+                 (P (length (npar_elems (bview plen bp))))
                  Phiarm Phiun Phiok with "Hac Hclegs") as "Hcre".
     iApply (Create.wp_create_sconf (CID := CID5) gs jx gl pd pav pu
               gf plen bp

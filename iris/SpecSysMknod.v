@@ -272,7 +272,12 @@ Section SysMknod.
       (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) : iProp Σ :=
     (ep_start γfs cw P Pmiss pl
-     ∗ pf_at (acre_commit_at Γ appE (ADev ma mi) Farm) Fok
+     (* THE PARENT CURSOR rides the commit (lane TL-3K, design/user-tree.md
+        section 7.5's WALL A): at THIS path the walk's terminal cursor is
+        [P (length (npar_elems pl))], and the parent leg fires only at the
+        [d] it names. *)
+     ∗ pf_at (acre_commit_at Γ appE (ADev ma mi)
+                (P (length (npar_elems pl))) Farm) Fok
      ∗ pf_at (dlookup_commit_at Γ appE) Fex
      (* ...and the CHILD's two legs, unfired *)
      ∗ cre_child_unfired Γ (ADev ma mi) Farm Fun)%I.
@@ -295,12 +300,74 @@ Section SysMknod.
       (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) : iProp Σ :=
     ((∀ pl : list (bv 8), ⌜arg_path_of M pv pl⌝ -∗ ep_start γfs cw P Pmiss pl)
-     ∗ pf_at (acre_commit_at Γ appE (ADev ma mi) Farm) Fok
+     (* the cursor UNDER THE SAME GUARD the walk carries -- a bare
+        resource, so the failure fold still hands the commit back on the
+        nose ([SysMknodDefs.npar_cur]'s header) *)
+     ∗ pf_at (acre_commit_at Γ appE (ADev ma mi) (npar_cur M pv P) Farm) Fok
      ∗ pf_at (dlookup_commit_at Γ appE) Fex
      ∗ cre_child_unfired Γ (ADev ma mi) Farm Fun)%I.
 
   (* ...and the INSTANCE, the step sys_mknod's proof takes once argstr has
      answered: at the path it read, the walk wand fires. *)
+  (* THE CURSOR'S TWO READINGS, as one move (lane TL-3K): the syscall-tier
+     commit is at the guarded cursor, the create-tier one at THE path
+     argstr read, and [ArgPath.arg_path_of_uniq] makes them
+     interchangeable in both directions -- which is what the commit's iso
+     needs, since it READS the premise and hands it back. *)
+  Lemma mknod_acre_inst Γ (M : gmap Z (bv 8)) (pv : mword 64)
+      (pl : list (bv 8)) (ma mi : Z) (P : nat -> Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    arg_path_of M pv pl ->
+    pf_at (acre_commit_at Γ appE (ADev ma mi) (npar_cur M pv P) Farm) Fok -∗
+    pf_at (acre_commit_at Γ appE (ADev ma mi)
+             (P (length (npar_elems pl))) Farm) Fok.
+  Proof.
+    intros Hpl. iIntros "Hok".
+    rewrite /acre_commit_at. iApply (pf_at_mono with "[] Hok").
+    iIntros "Hok".
+    iApply (acre_commit_at_gen_mono Γ appE (fun _ _ => ADev ma mi)
+              (npar_cur M pv P) (P (length (npar_elems pl))) Farm
+              Fok.(pf_recv) with "[] [] Hok").
+    - iApply (npar_cur_out M pv pl P Hpl).
+    - iApply (npar_cur_in M pv pl P Hpl).
+  Qed.
+
+  (* ...and the TRIVIAL reading, which the stable corollary lives at: at
+     [P := fun _ _ => True] the guarded cursor and [True] are the same
+     resource up to the iso, with no [arg_path_of] needed either way. *)
+  Lemma mknod_acre_triv_in Γ (M : gmap Z (bv 8)) (pv : mword 64) (ma mi : Z)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    pf_at (acre_commit_at Γ appE (ADev ma mi)
+             (npar_cur M pv (fun _ _ => True%I)) Farm) Fok -∗
+    pf_at (acre_commit_at Γ appE (ADev ma mi) (fun _ => True%I) Farm) Fok.
+  Proof.
+    iIntros "Hok". rewrite /acre_commit_at.
+    iApply (pf_at_mono with "[] Hok"). iIntros "Hok".
+    iApply (acre_commit_at_gen_mono Γ appE (fun _ _ => ADev ma mi)
+              (npar_cur M pv (fun _ _ => True%I)) (fun _ => True%I) Farm
+              Fok.(pf_recv) with "[] [] Hok").
+    - iIntros "!>" (d) "_". rewrite /npar_cur. by iIntros (pl) "_".
+    - by iIntros "!>" (d) "_".
+  Qed.
+
+  Lemma mknod_acre_triv_out Γ (M : gmap Z (bv 8)) (pv : mword 64) (ma mi : Z)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    pf_at (acre_commit_at Γ appE (ADev ma mi) (fun _ => True%I) Farm) Fok -∗
+    pf_at (acre_commit_at Γ appE (ADev ma mi)
+             (npar_cur M pv (fun _ _ => True%I)) Farm) Fok.
+  Proof.
+    iIntros "Hok". rewrite /acre_commit_at.
+    iApply (pf_at_mono with "[] Hok"). iIntros "Hok".
+    iApply (acre_commit_at_gen_mono Γ appE (fun _ _ => ADev ma mi)
+              (fun _ => True%I) (npar_cur M pv (fun _ _ => True%I)) Farm
+              Fok.(pf_recv) with "[] [] Hok").
+    - by iIntros "!>" (d) "_".
+    - iIntros "!>" (d) "_". rewrite /npar_cur. by iIntros (pl) "_".
+  Qed.
+
   Lemma mknod_au_at_inst Γ (γfs : fs_names) (cw : Z)
       (M : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8)) (ma mi : Z)
       (P Pmiss : nat -> Z -> iProp Σ)
@@ -311,7 +378,10 @@ Section SysMknod.
     mknod_au_pre Γ γfs cw pl ma mi P Pmiss Farm Fun Fok Fex.
   Proof.
     iIntros (Hpl) "(Hw & Hok & Hex & Hch)". rewrite /mknod_au_pre.
-    iFrame "Hok Hex Hch". iApply ("Hw" $! pl with "[%]"). exact Hpl.
+    iSplitL "Hw".
+    { iApply ("Hw" $! pl with "[%]"). exact Hpl. }
+    iFrame "Hex Hch".
+    iApply (mknod_acre_inst Γ M pv pl ma mi P Farm Fok Hpl with "Hok").
   Qed.
 
   (* THE GENERIC SUPPLIER'S ONE LINE: a family that tracks nothing owes the
@@ -323,7 +393,7 @@ Section SysMknod.
       (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
     npar_walk_pre_era γfs cw P Pmiss -∗
-    pf_at (acre_commit_at Γ appE (ADev ma mi) Farm) Fok -∗
+    pf_at (acre_commit_at Γ appE (ADev ma mi) (npar_cur M pv P) Farm) Fok -∗
     pf_at (dlookup_commit_at Γ appE) Fex -∗
     cre_child_unfired Γ (ADev ma mi) Farm Fun -∗
     mknod_au_at Γ γfs cw M pv ma mi P Pmiss Farm Fun Fok Fex.
@@ -338,7 +408,8 @@ Section SysMknod.
       (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
     npar_walk_pre_era γfs cw P Pmiss -∗
-    pf_at (acre_commit_at Γ appE (ADev ma mi) Farm) Fok -∗
+    pf_at (acre_commit_at Γ appE (ADev ma mi)
+             (P (length (npar_elems pl))) Farm) Fok -∗
     pf_at (dlookup_commit_at Γ appE) Fex -∗
     cre_child_unfired Γ (ADev ma mi) Farm Fun -∗
     mknod_au_pre Γ γfs cw pl ma mi P Pmiss Farm Fun Fok Fex.
@@ -392,12 +463,14 @@ Section SysMknod.
              fired (ARM F-BAD) or not, and the child's legs whole or the
              do-then-undo PAIR (ruling Q-h). *)
           ((npar_walk_dead_era γfs P Pmiss pl
-              ∗ pf_at (acre_commit_at Γ appE (ADev ma mi) Farm) Fok
+              ∗ pf_at (acre_commit_at Γ appE (ADev ma mi)
+                         (P (length (npar_elems pl))) Farm) Fok
               ∗ pf_at (dlookup_commit_at Γ appE) Fex
               ∗ cre_child_unfired Γ (ADev ma mi) Farm Fun)
            ∨ (∃ d : Z,
                 P (length (npar_elems pl)) d
-                ∗ pf_at (acre_commit_at Γ appE (ADev ma mi) Farm) Fok
+                ∗ pf_at (acre_commit_at Γ appE (ADev ma mi)
+                           (P (length (npar_elems pl))) Farm) Fok
                 ∗ ((∃ (av : aview) (i : Z) (nm : fname)
                       (ents : gmap fname Z) (nl : nat),
                       ⌜list_basics.last (path_elems pl) = Some nm⌝ ∗
@@ -520,11 +593,14 @@ Section SysMknod.
      bundle itself.  The surviving distinction is the one a client can act
      on: either NOTHING FIRED (both commits back, unspent), or the
      exists-observation fired at a name the parent already held. *)
+  (* THE STABLE READING KEEPS THE CURSOR-FREE COMMIT (lane TL-3K): it is
+     stated at the TRIVIAL cursor family, so both folds it comes from are
+     carried to [fun _ => True] by the commit's iso. *)
   Definition mknod_stable_fail Γ (ma mi : Z) (root : Z)
       (ps : list fname) (ds : list Z)
       (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) : iProp Σ :=
-    ((pf_at (acre_commit_at Γ appE (ADev ma mi) Farm) Fok
+    ((pf_at (acre_commit_at Γ appE (ADev ma mi) (fun _ => True%I) Farm) Fok
       ∗ pf_at (dlookup_commit_at Γ appE) Fex
       (* the child's legs: whole, or the do-then-undo PAIR (ruling Q-h) --
          "nothing fired" and "the walk died" collapse into one arm here, and
@@ -537,7 +613,7 @@ Section SysMknod.
           ⌜av !! d = Some (MkAnode (ADir ents) nl)⌝ ∗
           ⌜ents !! nm = Some i⌝ ∗
           ⌜arun av root ps ds⌝ ∗
-          pf_at (acre_commit_at Γ appE (ADev ma mi) Farm) Fok ∗
+          pf_at (acre_commit_at Γ appE (ADev ma mi) (fun _ => True%I) Farm) Fok ∗
           Fex.(pf_recv) av d nm i
           (* ...and the child's legs: whole, or the do-then-undo PAIR
              (ruling Q-h) *)
@@ -779,7 +855,7 @@ Definition wp_sys_mknod_stable_body
   wp_sys_mknod_frame γf gs j gl pd pav pu ns dqb dqs dqbs dqn
     v0 v1 v2 pid U m K eb b lks
     (mkr_chain Γfs avc ds ps
-     ∗ pf_at (acre_commit_at Γfs appE (ADev ma mi) Farm) Fok
+     ∗ pf_at (acre_commit_at Γfs appE (ADev ma mi) (fun _ => True%I) Farm) Fok
      ∗ pf_at (dlookup_commit_at Γfs appE) Fex
      ∗ cre_child_unfired Γfs (ADev ma mi) Farm Fun)%I
     (mknod_stable_arms Γfs ma mi root ps ds Farm Fun Fok Fex).

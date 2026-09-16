@@ -1204,6 +1204,11 @@ Section ProofSysMkdirBody.
          and fires it there. *)
       iDestruct (np_start_of_mknod fsc_fs (pv_cwi (us_V U)) P Pmiss (bview pk bf)
                    with "Hwp") as "Htr".
+      (* mkdir's bundle carries NO parent cursor (its walk premise is the
+         [forall pl] one-shot), and create's takes one: the weakening
+         ([SpecCreate.cre_commits_cur], lane TL-3K). *)
+      iDestruct (cre_commits_cur _ _ _ _ _
+                   Farm Fdots Fun Fok with "Hcre") as "Hcre".
       iApply (Create.wp_create_sconf (CID := CID17) gs j gl pd pav pu
  gf
  pk bf

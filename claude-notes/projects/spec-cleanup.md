@@ -475,6 +475,65 @@ full as-landed block; the headlines:
    add is behind WALL A, so `UkTreeWrite.wp_uk_tree_write_moves` is
    unchanged.
 
+**TL-3K AS LANDED (THE PARENT CURSOR)** — branch `tl3k-cursor`, ~30 files
+touched, all of them RESTATEMENTS but for the two commits' new parameter
+and the two additive families; `AppEcho.v`/`AppInv.v` untouched, whole iris
+tree green on the mirror, echo audit 14, system audit unchanged.
+`design/user-tree.md` §7.6 carries the full as-landed block; the headlines:
+
+1. **WALL A's fix (i) IS LANDED, as a kernel-tier restatement.**
+   `FsAbsCreateFire.acre_commit_at_gen` and `SysUnlinkDefs.uent_commit_at`
+   each take a cursor `Pd : Z -> iProp Σ` and the premise `Pd d` beside
+   `cre_pre`/`unl_pre`.  **It is READ AND HANDED BACK in phase 1**, which
+   is forced: the caller's `P` may be linear and the syscall's own POST
+   owes the same cursor.  Three moves keep every consumer mechanical —
+   `_cur` (the cursor is a weakening), `_mono` (it moves along an ISO, both
+   directions, because the commit returns it), and `SysMknodDefs.npar_cur`
+   (the same cursor under the walk's own `arg_path_of` guard, so the
+   syscall-tier commit stays a BARE resource and every failure fold keeps
+   its shape).  **The STOP rule did not fire**: every fire site holds the
+   cursor, and needs it afterwards, which is why the commit returns it.
+2. **NEW: which bundles can carry a cursor at all is a fact about their
+   WALK premise.**  mknod and open(O_CREATE) can (their bundles are guarded
+   by `arg_path_of` at argument 0); **mkdir and unlink cannot** — they
+   still take the raw `∀ pl` one-shot, so there is no ONE path to name and
+   their commits are handed in at `Pd := fun _ => True`.  **So §7.5's
+   "mkdir("/d") is reachable the moment WALL A falls" is wrong**: mkdir
+   first needs a path-fixed `mkdir_au_at` (mknod's `mknod_au_at` twin,
+   additive); unlink needs the seam `UkTreeRead` §5 already records.
+3. **WALL B IS DISSOLVED, AT ANY LENGTH** (`PinnedObs` §11a, `TreeWalk`
+   §3) — more than §7.5 priced.  Put the resource ON THE CURSOR
+   (`pobs_P_lin T hops K k d := (⌜d = hops !!! k⌝ ∗ K) ∨ T`) and a hop
+   takes `K` out of its input cursor and puts it back in its output, so the
+   hop resource is built from persistent things alone and the big-op needs
+   no threading.  `tree_pwalk_of_own_live` supplies `ep_start` from a LIVE
+   deed at any parent prefix.  PRICE: under the taint (or a miss) `K` is
+   gone.  SEAM IT OPENS: the terminal cursor now carries the deed and the
+   commit returns `Pd d` at PHASE 1, while a move parks the deed in phase 1
+   and gets it back only in phase 2 — so a deed-carrying cursor wants the
+   commit to return the cursor at PHASE 2.  One more restatement.
+4. **WALL C IS NOT A RECEIPT-CARRIED CREDENTIAL** (corrects §7.5).  The
+   fact create's parent leg needs (`aview_no_edge_to av i`) is about ITS
+   OWN view; the arm proves it at the ARM's view and the view moves in
+   between.  A receipt carries a resource, not a fact about a later view.
+   The two honest mechanisms: **(C-i) an ARMED LEDGER in `ftop_body`**
+   ("no proper entry names an inum whose arm permit is out"), maintained
+   because the only entry-insert at `i` is the create leg and it SPENDS the
+   permit; or **(C-ii) an application-side armed set in `tree_body`**.
+   Either is a lane of its own; neither is a restatement.
+5. **WALL D, NEW: the create leg does not know its name is proper.**
+   `tree_acre_phases` wants `fs_pname nm`; the commit quantifies `nm` with
+   nothing said.  True at every reachable fire (dirlookup returns the FOUND
+   arm at "." / ".."), invisible at the commit's altitude.  Fix:
+   `⌜fs_pname nm⌝` beside `cre_pre`, discharged at the two fire sites.
+6. **SO DELIVERABLES 4-6 DID NOT LAND.**  After WALL A an owner's create
+   supplier is missing exactly two of `tree_acre_phases`'s premises (WALL C
+   and WALL D); WALL A delivered the third (`d ∈ dom (tv_nodes t)`).
+   No corollary, no extended test: `UkTreeWrite.wp_uk_tree_write_moves` is
+   unchanged.  **TL-4 inherits**: the armed ledger (C-i), the name
+   credential (D), the phase-2 cursor return (B's seam), and the
+   path-fixed `mkdir_au_at`.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

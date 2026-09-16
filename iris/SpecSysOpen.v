@@ -656,7 +656,8 @@ Section SysOpenArms.
            ⌜avx !! d = Some (MkAnode (ADir entsx) nlx)⌝ ∗
            ⌜entsx !! nm = Some i⌝ ∗
            Fex.(pf_recv) avx d nm i ∗
-           pf_at (acre_commit_at Γ appE (AFile []) Farm) Fok ∗
+           pf_at (acre_commit_at Γ appE (AFile [])
+                     (P (length (npar_elems pl))) Farm) Fok ∗
            (* the name was already there: create's child legs are whole *)
            cre_child_unfired Γ (AFile []) Farm Fun ∗
            (∃ (av : aview) (nl : nat),
@@ -697,7 +698,8 @@ Section SysOpenArms.
      ∨ (∃ pl : list (bv 8),
           ⌜arg_path_of M pv pl⌝ ∗
           ((npar_walk_dead_era γfs P Pmiss pl
-             ∗ pf_at (acre_commit_at Γ appE (AFile []) Farm) Fok
+             ∗ pf_at (acre_commit_at Γ appE (AFile [])
+                     (P (length (npar_elems pl))) Farm) Fok
              ∗ pf_at (dlookup_commit_at Γ appE) Fex
              ∗ pf_at (aopen_commit_at Γ appE) Fo
              ∗ open_trunc_piece Γ vom Ft
@@ -726,7 +728,8 @@ Section SysOpenArms.
                      ⌜av !! d = Some (MkAnode (ADir ents) nl)⌝ ∗
                      ⌜ents !! nm = Some i⌝ ∗
                      Fex.(pf_recv) av d nm i
-                     ∗ pf_at (acre_commit_at Γ appE (AFile []) Farm) Fok
+                     ∗ pf_at (acre_commit_at Γ appE (AFile [])
+                     (P (length (npar_elems pl))) Farm) Fok
                      (* create's child legs: whole, or the do-then-undo
                         PAIR -- the fold does not separate the two here
                         (round E2, lane E2-C) *)
@@ -737,7 +740,8 @@ Section SysOpenArms.
                              ⌜arow_at av' i a⌝ ∗ Fo.(pf_recv) av' i a)))
                   ∨ (* (c) nothing observed: the nlink guard, out of
                        inodes, dirlink failure, "/" *)
-                  (pf_at (acre_commit_at Γ appE (AFile []) Farm) Fok
+                  (pf_at (acre_commit_at Γ appE (AFile [])
+                     (P (length (npar_elems pl))) Farm) Fok
                    ∗ pf_at (dlookup_commit_at Γ appE) Fex
                    ∗ pf_at (aopen_commit_at Γ appE) Fo
                    (* the guards and "out of inodes" fired nothing; a failed
@@ -1024,7 +1028,8 @@ Section SysOpenArms.
               ⌜avx !! d = Some (MkAnode (ADir entsx) nlx)⌝ ∗
               ⌜entsx !! nm = Some i⌝ ∗
               Fex.(pf_recv) avx d nm i ∗
-              pf_at (acre_commit_at Γ appE (AFile []) Farm) Fok ∗
+              pf_at (acre_commit_at Γ appE (AFile [])
+                     (P (length (npar_elems pl))) Farm) Fok ∗
               cre_child_unfired Γ (AFile []) Farm Fun ∗
               (∃ (av : aview) (nl : nat),
                  ((∃ bs0 : list (bv 8),

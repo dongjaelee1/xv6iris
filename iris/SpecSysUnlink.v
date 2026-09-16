@@ -424,7 +424,7 @@ Section SysUnlinkArms.
       (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Fmiss : pfam Σ (aview -> Z -> fname -> iProp Σ)) : iProp Σ :=
     (npar_walk_pre_era γfs cw P Pmiss
-     ∗ pf_at (uent_commit_at Γ appE) Fent
+     ∗ pf_at (uent_commit_at Γ appE (fun _ => True%I)) Fent
      ∗ pf_at (utgt_commit_at Γ appE) Ftgt
      ∗ pf_at (dlookup_commit_at Γ appE) Fex
      ∗ pf_at (dmiss_commit_at Γ appE) Fmiss)%I.
@@ -462,13 +462,13 @@ Section SysUnlinkArms.
     (unlink_au_pre Γ γfs cw P Pmiss Fent Ftgt Fex Fmiss
      ∨ (∃ pl : list (bv 8),
           (npar_walk_dead_era γfs P Pmiss pl
-             ∗ pf_at (uent_commit_at Γ appE) Fent
+             ∗ pf_at (uent_commit_at Γ appE (fun _ => True%I)) Fent
              ∗ pf_at (utgt_commit_at Γ appE) Ftgt
              ∗ pf_at (dlookup_commit_at Γ appE) Fex
              ∗ pf_at (dmiss_commit_at Γ appE) Fmiss)
           ∨ (∃ d : Z,
                P (length (npar_elems pl)) d
-               ∗ pf_at (uent_commit_at Γ appE) Fent
+               ∗ pf_at (uent_commit_at Γ appE (fun _ => True%I)) Fent
                ∗ pf_at (utgt_commit_at Γ appE) Ftgt
                ∗ ((* (iii-a) the name is a dot: refused BY NAME, before
                      any lookup -- pure, both observations refunded *)

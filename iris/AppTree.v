@@ -1295,6 +1295,11 @@ Section AppTree.
     tree_own r g root t ⊣⊢ tree_deed r g root t ∗ tree_tkt r g root t.
   Proof. reflexivity. Qed.
 
+  (* ...and it is TIMELESS, which is what lets a deed ride a walk's cursor
+     out from under the invariant's later ([PinnedObs] section 11a). *)
+  Global Instance tree_own_timeless r g root t : Timeless (tree_own r g root t).
+  Proof. rewrite /tree_own /tree_deed /tree_tkt. apply _. Qed.
+
   (* ...AND ITS FROZEN FORM: the element PERSISTED.  An owner that will
      never move its subtree again may trade the deed for a persistent one
      -- and what it buys is the [□]-shaped claim law below, which is what

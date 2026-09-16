@@ -1287,8 +1287,8 @@ contract carry `(us_M U, v)`; `ProofSysMkdir` names argstr's own `Hfgot`
 does.  Cone: `SpecCreate`, `SpecSysMkdir`, `ProofSysMkdir`,
 `UexecExecInst` (row 20 and `sbundle_at_mkdir_elim`), `ProofSyscall`
 (`sysc_dep_mkdir` gains the argument word), `FsSyscalls`.
-**SO MKDIR CAN NOW CARRY A CURSOR**, which is the half of §7.6's "mkdir
-and unlink CANNOT CARRY A CURSOR AT ALL" that this lane lifts.
+**SO MKDIR CAN NOW CARRY A CURSOR** — half of §7.6's "mkdir and unlink
+CANNOT CARRY A CURSOR AT ALL"; unlink's half is below.
 
 **unlink, LANDED TOO** (four times the proof cone — `ProofSysUnlink*` is
 ~11k lines over nine files — and identical in shape, exactly as the recipe
@@ -1365,8 +1365,8 @@ it: one pure conjunct in `tree_body`, ~8 preservation lemmas in
 `TreeView`, the arm's pure credential on `Farm`'s receipt, and then
 `mknod` and `open(O_CREATE)` at an owner of `/` are payable with the
 landed phases verbatim.  mkdir wants (C-iii-b) beside it.  Unlink's ENTRY leg is
-payable the moment its bundle is supplied (it needs no credential at all —
-`unl_pre` carries the name's properness itself), but its TARGET leg
+SUPPLIED ALREADY (§3c, and it needed no credential at all — `unl_pre`
+carries the name's properness itself), but its TARGET leg
 (`utgt_commit_at`, which quantifies its own `t`) wants (C-iii-a) at the
 last link plus the rmdir-shaped wall TL-2 recorded, so no unlink corollary
 lands either.  No corollary and no extended test landed

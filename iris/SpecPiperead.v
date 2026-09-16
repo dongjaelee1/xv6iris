@@ -157,12 +157,13 @@ Definition wp_piperead_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
       pc_is ret_tgt -∗
       pipe_ref γp w q -∗
       (* THE QUEUE'S POST ([PipeQueue.pipe_rpost]): the chain at the
-         dequeued bytes, which the window [bs] holds (one more may have been
-         dequeued than delivered: a byte whose copy-out faulted is consumed,
-         as in the C), and the stop's reason -- request met, ring observed
-         empty (an end-of-file if nothing came), copy-out fault, or the
-         kill shot -- or the taint with the payment back. *)
-      pipe_rpost (pn_queue γp) Q Qe (kill_shot (pv_gen (us_V U)))
+         dequeued bytes, which the window [bs] holds (a byte is dequeued
+         only once its copy-out succeeded, so the dequeued bytes ARE the
+         delivered ones), and the stop's reason -- request met, ring
+         observed empty (an end-of-file if nothing came), copy-out fault at
+         the entry table, or the kill shot -- or the taint with the payment
+         back. *)
+      pipe_rpost (pv_upt (us_V U)) (pn_queue γp) addr Q Qe (kill_shot (pv_gen (us_V U)))
         (Z.to_nat n) d bs (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
       proc_priv_core pj pid
         (upd_usM (us_upt U P') (umem_wr (us_M U) addr d bs)) -∗

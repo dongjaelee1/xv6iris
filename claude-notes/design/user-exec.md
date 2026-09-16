@@ -241,7 +241,13 @@ is" is a resource, not a global claim.
   files, `iris/ExecEntry.v` (§1's as-landed block) and
   `iris/ExecBundle.v` (§2's), both with no ghost machinery of their own:
   `ExecEntry` binds only `ChildTok.ctokG` (the class `Xv6G` carries as a
-  field instance), `ExecBundle` the syscall bundle's own list.
+  field instance, so a consumer binding the bundle resolves at the same
+  instance `my_pay` itself does there), `ExecBundle` the syscall
+  bundle's own list.  `ExecEntry` sits just above `SpecSysExec` and not
+  above `SpecKexec` alone, and that is forced by the argv ruling:
+  `exec_args_of` is `SpecSysExec`'s.  `UShKernel` gains it as a new
+  import, which widens that file's cone by `SpecSysExec` and nothing
+  else.
   `PinnedExec`'s four lemmas are re-derived at their BYTE-IDENTICAL
   statements (`pex_slot_at`, `pex_slot`, `pinned_exec_bundle_at`,
   `pinned_exec_bundle_boot_at`; `pinned_exec_bundle` and

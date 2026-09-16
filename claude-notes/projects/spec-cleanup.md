@@ -132,8 +132,16 @@ writes the child's exit status to user memory — the read/write
 place of the global predicate the TR flags) → the TREE-LAYER campaign
 (`design/fs-syscall-specs.md` §6: the client-visible fs vocabulary and
 the cross-syscall exclusivity that makes "I know what this file is" a
-resource — what unlocks pin-free exec, per EX-2).  Briefs for RD-7/8
-and the tree-layer design page follow while EX-3 runs.
+resource — what unlocks pin-free exec, per EX-2).  RD-7/8's brief is cut (`brief-rd7-wait-kill.md`: wait at a real status
+pointer via the kept-post mechanism — SpecKwait already ties the copied
+bytes to the escrow's status word; kill per PID on upstream's
+SELF-KILL machinery — pid_reg names the generation, kill_owed is the
+target's own −1 payload — with ONE kernel-side post strengthening on
+kkill, STOP if procs_inv cannot resolve pid to the registered slot).
+The tree-layer design is `design/user-tree.md` (TL-0): subtree
+ownership as an APPLICATION CLAIM in app_inv (echo's whole-fs pin
+generalized per process), the step discipline as the exclusivity fact,
+pin-free exec as a one-lemma successor of EX-2; lanes TL-1..TL-4.
 
 ## RELAY QUEUE (for upstream, via the owner's push)
 

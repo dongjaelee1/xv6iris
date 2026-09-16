@@ -122,3 +122,4 @@ import Xv6.KvmCounts
 import Xv6.ProofKvmRegions
 import Xv6.ProofKvmmake
 import Xv6.LinkKvmmake
+import Xv6.SpecProcinit

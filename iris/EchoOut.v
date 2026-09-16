@@ -2462,6 +2462,50 @@ Section echo_out.
     rewrite /ewin. iRight. iExists v, 0%nat. iFrame "Hpin Hwh".
   Qed.
 
+  (* ...AND THE SAME AT THE MERGED CLAIM (redesign R3).  The era's four
+     authorities go into ONE claim over the EMPTY console history, and the
+     window counter is not split at all -- there is no window to count. *)
+  Lemma era_full_split_cl (k : nat) (v : era_pins) :
+    era_pin k v -∗ era_full v -∗
+      ecl k [] (LogEntryDefs.MkCH [] [] [] None) ∗ eturn k ∗ ewin k.
+  Proof.
+    iIntros "#Hpin (Ht & Hcs & Hps & HE & Hw & Hdl)".
+    iAssert (turn_lb v 0%nat) as "#Htlb0".
+    { rewrite /turn_lb. iApply (mono_nat_lb_own_get with "Ht"). }
+    iEval (rewrite -Qp.half_half) in "Ht".
+    iDestruct "Ht" as "[Ht1 Ht2]".
+    iEval (rewrite -Qp.half_half) in "Hdl".
+    iDestruct (ghost_var_split with "Hdl") as "[Hdl1 Hdl2]".
+    iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
+    iDestruct (ps_lb_get with "Hps") as "[Hps #Hpslb]".
+    iDestruct (Elist_lb_get with "HE") as "[HE #HElb]".
+    iSplitL "Ht1 Hcs Hps HE Hdl1".
+    { rewrite /ecl. iRight. iExists v, ostage0.
+      cbn [o_ps o_cs o_E o_w ostage0 length LogEntryDefs.ch_dl].
+      rewrite pcount_nil.
+      iFrame "Hpin Ht1 Hcs Hps HE Hdl1". iPureIntro.
+      rewrite /ecl_pure.
+      cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
+           LogEntryDefs.ch_arm].
+      split_and!.
+      - exact (eout_pure_0 k []).
+      - exact cs_len_ok_0.
+      - exact ps_len_ok_0.
+      - exact (ein_pure_0 k).
+      - by cbn [ch_arm_era].
+      - rewrite /ch_E. cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
+        rewrite app_nil_r. by rewrite seg_of_echoed_nil. }
+    iSplitL "Ht2 Hdl2".
+    { rewrite /eturn. iExists v. iFrame "Hpin Ht2 Hdl2 Hcslb Hpslb".
+      iApply (E_lb_of_lb v [] 0%nat); [cbn; lia | iExact "HElb"]. }
+    (* the window counter is INERT: the claim does not read it and the
+       token it backs is no longer a premise of anything, so the era's
+       other half is simply dropped here. *)
+    iEval (rewrite -Qp.half_half) in "Hw".
+    iDestruct (ghost_var_split with "Hw") as "[_ Hwh]".
+    rewrite /ewin. iRight. iExists v, 0%nat. iFrame "Hpin Hwh".
+  Qed.
+
   (* ...and THE WHOLE LEDGER, which is what [AppEcho.echo_R] becomes. *)
   Definition echo_led (h : list mobs) : iProp Σ :=
     (mono_nat_auth_own (eg_taint γ) 1 (if decide (disc h) then 0%nat else 1%nat)
@@ -2585,6 +2629,42 @@ Section echo_out.
      CONSOLE's wire, so a byte on the other UART cannot falsify a cycle that
      was good ([phi_step_io]).  That is why the caller owes the segment's
      goodness only at [Uart0]. *)
+  (* ...AND THE POWER STEP AT THE MERGED CLAIM (redesign R3), which is what
+     [App.Hpow] owes now: ONE claim founded at the empty console history,
+     beside the era's turn and its (now inert) window token. *)
+  Lemma echo_led_pow_cl (h : list mobs) (on : bool) :
+    echo_led h ==∗
+      echo_led (h ++ [if on then ObsPowerOff else ObsPowerOn])
+      ∗ (if on then emp
+         else ecl (S (obs_boots h)) [] (LogEntryDefs.MkCH [] [] [] None)
+              ∗ eturn (S (obs_boots h)) ∗ ewin (S (obs_boots h))).
+  Proof.
+    iIntros "(Ht & Hpm & Hphi)". rewrite /echo_led.
+    rewrite (decide_ext _ (disc h) 0%nat 1%nat (disc_power h on)).
+    destruct on.
+    - iDestruct (pin_map_step h ObsPowerOff eq_refl with "Hpm") as "Hpm".
+      iModIntro. iSplitR ""; [| done]. iFrame "Ht Hpm".
+      rewrite cycles_of_off. iExact "Hphi".
+    - iMod era_full_alloc as (v) "Hfull".
+      iMod (pin_map_on h v with "Hpm") as "[Hpm #Hpin]".
+      iDestruct (era_full_split_cl (S (obs_boots h)) v with "Hpin Hfull")
+        as "(Hcl & Hturn & Hwin)".
+      iModIntro. iSplitR "Hcl Hturn Hwin".
+      + iFrame "Ht Hpm".
+        rewrite cycles_of_on.
+        iDestruct "Hphi" as "[%Hg | HT]"; [| by iRight].
+        iLeft. iPureIntro. apply Forall_app. split; [exact Hg |].
+        apply Forall_singleton. exact good_out_nil.
+      + iFrame "Hcl Hturn Hwin".
+  Qed.
+
+  (* THE SUPPLY'S LAW AT THE MERGED CLAIM: a tainted era answers any event
+     out of its taint arm, which is the whole of [App.Happ_out_sup]. *)
+  Lemma ecl_sup (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist)
+      (ev : ConsLog.cons_ev) :
+    T -∗ ecl k ho H ==∗ ecl k ho (ConsLog.cons_step H ev).
+  Proof. iIntros "#HT _". iModIntro. rewrite /ecl. by iLeft. Qed.
+
   Lemma echo_led_tx (h : list mobs) (i : uart_id) (b : bv 8) :
     trace_shape h true ->
     (T ∨ ⌜i = Uart0 -> good_out (open_seg h ++ [ObsUartOut i b])⌝) -∗

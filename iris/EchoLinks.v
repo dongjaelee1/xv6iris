@@ -1094,8 +1094,8 @@ Section echo_links.
   (*  where [UInitBoot.echo_Hinit_boot] already stands.                  *)
   (* ================================================================== *)
   Section echo_links_holds.
-    Context (Hout : @riscv_out_res Σ (@riscv_fixedGS Σ HRg) = eout T γ).
-    Context (Hin : @riscv_in_res Σ (@riscv_fixedGS Σ HRg) = ein T γ).
+    (* ONE claim equation since the redesign, where there were three *)
+    Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = ecl T γ).
     Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HRg) = etag T).
     Context (Hwin : @riscv_win_res Σ (@riscv_fixedGS Σ HRg) = ewin T γ).
 
@@ -1122,12 +1122,11 @@ Section echo_links.
         iApply (echo_write_link_taint T γ with "HT HΦ"); try assumption.
       - iIntros "!>" (k v n ws Φ) "Hpin Hdl HΦ".
         iApply (echo_read_link with "Hpin Hdl HΦ"); try assumption.
-      - iIntros "!>" (k ws Φ) "#HT HΦ".
-        iIntros (o pops dl) "#Hlb Hres _".
-        rewrite /in_res_at Hin.
-        iMod (ein_sup_deliv T γ k (default [] o) pops dl ws
-                with "HT Hres") as "Hres".
-        iModIntro. iExists o. iFrame "Hlb Hres". by iApply "HΦ".
+      - (* the read's taint route is the ONE taint route now: every event
+           on a tainted claim is free *)
+        iIntros "!>" (k ws Φ) "#HT HΦ".
+        iApply (cons_link_of_taint T γ with "HT [HΦ]"); try assumption.
+        by iApply "HΦ".
     Qed.
   End echo_links_holds.
 

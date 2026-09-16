@@ -1427,6 +1427,14 @@ Section EchoApp.
   Definition echo_win (γ : echo_fixed) : nat -> iProp Σ :=
     EchoOut.ewin (echo_taint γ) γ.
 
+  (* THE MERGED CONSOLE CLAIM (redesign R2/R3): the era's four authorities
+     over ONE console history -- what the port's invariant carries, what a
+     writer's link moves by [EvOut], what consoleintr's arm moves by
+     [EvOpen]/[EvByte]/[EvClose] and what a read moves by [EvRead]. *)
+  Definition echo_cons (γ : echo_fixed) :
+      nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ :=
+    EchoOut.ecl (echo_taint γ) γ.
+
   Definition app_echo : xv6_app Σ :=
     MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R echo_tag
           (* THE KILL CREDENTIAL IS THE TAINT (app-echo.md, lane KILL-PAY,
@@ -1437,11 +1445,11 @@ Section EchoApp.
              already states.  [echo_taint_of_sup] is [Happ_kill]. *)
           echo_taint
           echo_out echo_in echo_turn echo_win
-          (* THE MERGED CONSOLE CLAIM (redesign R2/R3): [emp] until the flip
-             that replaces [echo_out]/[echo_in]/[echo_win] by
-             [EchoOut.ecl].  Nothing holds it yet, so nothing has to found
-             it. *)
-          (fun _ _ _ _ => emp%I)
+          (* THE MERGED CONSOLE CLAIM (redesign R2/R3), and the only one the
+             record's obligations read now: [echo_out], [echo_in] and
+             [echo_win] are inert slots kept so the literal's arity is the
+             one the theorem takes. *)
+          echo_cons
           echo_phi.
 
   (* ---- THE BIRTH STEP ---- *)
@@ -1495,6 +1503,10 @@ Section EchoApp.
     Timeless (app_win app_echo c k).
   Proof. cbn [app_echo app_fixed app_win echo_win] in c |- *. apply _. Qed.
 
+  Lemma echo_Hconst (c : app_fixed app_echo) (k : nat) (h : list mobs)
+      (H : LogEntryDefs.cons_hist) : Timeless (app_cons app_echo c k h H).
+  Proof. cbn [app_echo app_fixed app_cons echo_cons] in c |- *. apply _. Qed.
+
   Lemma echo_Happ_in_sup (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r
       ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
@@ -1516,16 +1528,22 @@ Section EchoApp.
                 with "Ht Hi").
   Qed.
 
+  (* ONE LICENCE (redesign R2): a holder of the supply is a party the
+     discipline has already accounted for, so its claim answers ANY
+     boundary event -- out of the taint arm, which is what holding the
+     supply buys ([echo_taint_of_sup]). *)
   Lemma echo_Happ_out_sup (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r
-      ⊢ □ (∀ (k : nat) (h : list mobs) (acc : list (bv 8)) (b : bv 8),
-             app_out app_echo c k h acc ==∗ app_out app_echo c k h (acc ++ [b])).
+      ⊢ □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
+             (ev : ConsLog.cons_ev),
+             app_cons app_echo c k h H ==∗
+             app_cons app_echo c k h (ConsLog.cons_step H ev)).
   Proof.
-    cbn [app_echo app_fixed app_names app_out echo_out] in c, r |- *.
+    cbn [app_echo app_fixed app_names app_cons echo_cons] in c, r |- *.
     iIntros "#Hs".
     iDestruct (echo_taint_of_sup c r with "Hs") as "#Ht".
-    iIntros "!>" (k h acc b) "Ho".
-    iApply (EchoOut.eout_sup (echo_taint c) c k h acc b with "Ht Ho").
+    iIntros "!>" (k h H ev) "Ho".
+    iApply (EchoOut.ecl_sup (echo_taint c) c k h H ev with "Ht Ho").
   Qed.
 
   Lemma echo_HR0 (c : app_fixed app_echo) :
@@ -1543,20 +1561,18 @@ Section EchoApp.
     ⊢ app_R app_echo c h ==∗
       app_R app_echo c (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
       (if on then emp
-       else app_out app_echo c (S (obs_boots h)) [] [] ∗
-            app_in app_echo c (S (obs_boots h)) [] [] [] ∗
-            (* ...and the era's turn and its window token (lane CONS-IO
-               milestone F), both [emp] placeholders until ECHO-OUT part 5:
-               this is where the era's LINEAR seed will be minted out of the
-               ledger, one copy for <init> and one for the kernel to lend to
-               consoleintr's shift. *)
+       else app_cons app_echo c (S (obs_boots h)) []
+              (LogEntryDefs.MkCH [] [] [] None) ∗
+            (* ...and the era's turn beside it: this is where the era's
+               LINEAR seed is minted out of the ledger, one copy for <init>
+               and one -- now inert -- for the kernel's payload. *)
             app_turn app_echo c (S (obs_boots h)) ∗
             app_win app_echo c (S (obs_boots h))).
   Proof.
     intros _.
-    cbn [app_echo app_fixed app_R echo_R app_out echo_out app_in echo_in
+    cbn [app_echo app_fixed app_R echo_R app_cons echo_cons
          app_turn echo_turn app_win echo_win] in c |- *.
-    iApply (EchoOut.echo_led_pow (echo_taint c) c h on).
+    iApply (EchoOut.echo_led_pow_cl (echo_taint c) c h on).
   Qed.
 
   (* the two UART arms, at the theorem's literal shape: the device ghosts
@@ -1571,39 +1587,31 @@ Section EchoApp.
     @file_app Σ HF = MkAppcfg (app_names app_echo) (app_pred app_echo c) r ->
     (i = Uart0 -> FsCfg.fsc_uart = γ) ->
     ⊢ □ (∀ (h : list mobs) (b : bv 8) (u u' : uart_state)
-           (ho hi : list mobs) (pops : list LogEntryDefs.log_entry)
-           (dl : list (list mobs * bv 8)),
+           (ho : list mobs) (H : LogEntryDefs.cons_hist),
            ⌜uart_tx_pop u = Some (b, u')⌝ -∗ ⌜uart_loopback u = false⌝ -∗
            ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire u⌝ -∗
-           (* the LOOP-off rider and the two witness histories' reality, the
-              first new in lane OUT-FUPD, the second in CONS-IO, and all of
-              them unread at the placeholder claims *)
+           (* the LOOP-off rider, the witness history's reality, and the
+              accepted bytes as the history's own field (redesign R2) *)
            ⌜u_wire u = u_out u⌝ -∗ ⌜obs_boots h = S gen_id⌝ -∗
-           ⌜ho `prefix_of` h⌝ -∗ ⌜hi `prefix_of` h⌝ -∗
-           (if i is Uart0 then app_out app_echo c (S gen_id) ho (uart_acc u)
-            else emp) -∗
-           (if i is Uart0 then app_in app_echo c (S gen_id) hi pops dl
-            else emp) -∗
+           ⌜ho `prefix_of` h⌝ -∗
+           ⌜LogEntryDefs.ch_acc H = uart_acc u⌝ -∗
+           (if i is Uart0 then app_cons app_echo c (S gen_id) ho H else emp) -∗
            uart_ghosts γ u' -∗ app_R app_echo c h
              ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
-           (if i is Uart0 then app_out app_echo c (S gen_id) ho (uart_acc u)
-            else emp) ∗
-           (if i is Uart0 then app_in app_echo c (S gen_id) hi pops dl
-            else emp) ∗
+           (if i is Uart0 then app_cons app_echo c (S gen_id) ho H else emp) ∗
            uart_ghosts γ u' ∗ app_R app_echo c (h ++ [ObsUartOut i b])%list).
   Proof.
     intros _ _.
-    cbn [app_echo app_fixed app_R echo_R app_out echo_out app_in echo_in]
-      in c |- *.
-    iIntros "!>" (h b u u' ho hi pops dl)
-      "%Htxp %Hlp %Hsh %Hwi %Hwo %Hbt %Hpo %Hpi Ho Hi Hg Hled".
+    cbn [app_echo app_fixed app_R echo_R app_cons echo_cons] in c |- *.
+    iIntros "!>" (h b u u' ho H)
+      "%Htxp %Hlp %Hsh %Hwi %Hwo %Hbt %Hpo %Hacc Ho Hg Hled".
     (* THE GOODNESS OF THE DRAINED SEGMENT, at the console and nowhere else
        (handover 5 §7b).  [EchoOut.eout_drain] reads the claim at its own
        witness [ho] and returns it untouched; its two arithmetic premises
        are that an OUTPUT adds no input, and that the wire extended by this
        byte is a prefix of what the port has accepted. *)
     iAssert (|==> (if i is Uart0
-                   then EchoOut.eout (echo_taint c) c (S gen_id) ho (uart_acc u)
+                   then EchoOut.ecl (echo_taint c) c (S gen_id) ho H
                    else emp)
                   ∗ (echo_taint c
                      ∨ ⌜i = Uart0 ->
@@ -1626,15 +1634,16 @@ Section EchoApp.
         rewrite -(DevModel.uart_tx_pop_acc u b u' Htxp) /DevModel.uart_acc
                 (DevModel.uart_tx_pop_out u b u' Htxp).
         exists (u_tx u'). by rewrite -app_assoc. }
-      iDestruct (EchoOut.eout_drain (echo_taint c) c (S gen_id) h ho
-                   (uart_acc u) (open_seg h ++ [ObsUartOut Uart0 b])
-                   Hsh Hbt Hpo Hins Hpre with "Ho") as "[Ho Hgo]".
+      iDestruct (EchoOut.ecl_drain (echo_taint c) c (S gen_id) h ho H
+                   (open_seg h ++ [ObsUartOut Uart0 b])
+                   Hsh Hbt Hpo Hins ltac:(rewrite Hacc; exact Hpre)
+                   with "Ho") as "[Ho Hgo]".
       iModIntro. iFrame "Ho".
       iDestruct "Hgo" as "[HT | %Hg]"; [by iLeft |].
       iRight. iPureIntro. by intros _. }
     iMod (EchoOut.echo_led_tx (echo_taint c) c h i b Hsh with "Hgo Hled")
       as "Hled".
-    iModIntro. iFrame "Ho Hi Hg Hled".
+    iModIntro. iFrame "Ho Hg Hled".
   Qed.
 
   (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3; REAL since lane ECHO-OUT
@@ -1644,19 +1653,18 @@ Section EchoApp.
      every firing after the discipline has broken.  All this file does is
      hand it the FOUR record equations at the [boot_fixedGS] literal. *)
   Lemma echo_Happ_echo (HR : riscvGS Σ) (c : app_fixed app_echo) :
-    @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out app_echo c ->
-    @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in app_echo c ->
+    @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = app_cons app_echo c ->
     @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag app_echo c ->
     (* ...and the window token's (lane CONS-IO milestone F): the shift TAKES
        the era's token, and the echo's own store is what splits it. *)
     @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win app_echo c ->
     ⊢ ∀ (GEN : GenId) (XI : CurCtx), @cons_echo_shift Σ HR GEN XI.
   Proof.
-    cbn [app_echo app_fixed app_out echo_out app_in echo_in
+    cbn [app_echo app_fixed app_cons echo_cons
          app_tag echo_tag app_win echo_win] in c |- *.
-    intros Hout Hin Htag Hwin.
+    intros Hcons Htag Hwin.
     iApply (EchoOut.echo_happ_echo (echo_taint c) c (HRg := HR)
-              Hout Hin Htag Hwin).
+              Hcons Htag).
   Qed.
 
   Lemma echo_Hrx `{!uartGhostG Σ} `{HF : !fileG Σ}

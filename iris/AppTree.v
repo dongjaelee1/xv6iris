@@ -133,7 +133,13 @@
        it belongs in TreeView.v and moves there when a TL-1 lane runs.
        The PER-LEG create (its parent leg alone) is a harder one: it
        needs an [aview_tree_wf_ent], whose unique-parenthood conjunct
-       wants "nothing else names the armed inum".
+       wants "nothing else names the armed inum".  LANE TL-3W FOUND
+       WHERE THAT BITES: [FsAbsDelta.cre_pre] puts the child's row IN
+       the pre-view, so the leg a fire actually offers an owner is the
+       parent leg alone and the FUSED move below does not reach it.  See
+       [TreeMove.v] section 4 for the full accounting (and for the two
+       further walls on the create-family BUNDLE: the child's unarm leg,
+       and the missing pinned parent-prefix walk).
      - the unlink TARGET leg at the last link needs "the row is nobody's
        root" -- design section 3's "an owner never unlinks a root" --
        which is a fact about the HIDDEN ownership map that no mover
@@ -202,7 +208,10 @@ Proof. solve_inG. Qed.
 (*                                                                       *)
 (*  ZERO Iris in this section: it is TL-1's layer, read at the ownership  *)
 (*  map the claim carries.  Every step wand below is one of these lemmas  *)
-(*  plus [tree_step_gen] / [tree_move_gen].                               *)
+(*  plus [tree_step_gen] (the free steps) or [tree_step_move_gen] (an     *)
+(*  owner's own move, section 1i).  [tree_exact] survives as the SHAPE    *)
+(*  TL-2's engine hypothesis is stated at, and section 1h says how the    *)
+(*  slotted claim still answers it; the claim itself no longer carries it.*)
 (* ===================================================================== *)
 
 (* THE CLAIM'S THIRD CONJUNCT: every entry's recorded tree IS the view's
@@ -401,7 +410,12 @@ Proof.
   exact (Hex g root t Hg).
 Qed.
 
-(* ---- 1f.  the OWNER'S OWN legs ------------------------------------- *)
+(* ---- 1f.  the OWNER'S OWN legs, AT THE WHOLE-MAP EXACTNESS ---------- *)
+(*                                                                       *)
+(*  TL-2's shape, kept because it is the honest statement of what a leg   *)
+(*  does to a partition that is exact everywhere, and because [own_wf_*]  *)
+(*  is read out of it below.  What the SLOTTED claim uses is section 1i,  *)
+(*  whose per-entry form asks only the MOVER'S own exactness.             *)
 
 Lemma tree_pres_write (av : aview) (own : gmap gname (Z * ttree))
     (g : gname) (root i : Z) (t : ttree) (off : nat)

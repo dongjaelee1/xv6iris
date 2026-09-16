@@ -332,12 +332,15 @@ Section UInitBoot.
        under the taint, and the closed-fd leaf at every record *)
     □ (T -∗ UkRun.udepw_law (PS := PSx) 16) -∗
     UkInit.kinit_wcl (PS := PSx) -∗
+    (* ...and the tear-down's close payments (design/pipe.md, "The exit
+       path"), which /init's every dead end owes *)
+    UkRun.udepw_law (PS := PSx) UsysMemOk.USYS_exit -∗
     □ (T -∗ UkRun.udepw_law (PS := PSx) 15) -∗
     □ (T -∗ UkRun.udepw_law (PS := PSx) 17) -∗
     □ UkInit.init_deps (PS := PSx) T.
   Proof.
-    iIntros "#Hwr #Hwcl #H15 #H17 !>". rewrite /UkInit.init_deps /UkInit.kinit_wlaw.
-    iSplit; [ iSplit; [ iModIntro; iExact "Hwr" | iExact "Hwcl" ] | ]. iSplit.
+    iIntros "#Hwr #Hwcl #Hxl #H15 #H17 !>". rewrite /UkInit.init_deps /UkInit.kinit_wlaw.
+    iSplit; [ iSplit; [ iModIntro; iExact "Hwr" | iSplit; [ iExact "Hwcl" | iExact "Hxl" ] ] | ]. iSplit.
     - iModIntro. iExact "H15".
     - iModIntro. iExact "H17".
   Qed.
@@ -708,7 +711,7 @@ Section EchoInitBoot.
     iAssert (□ UkInit.init_deps (PS := uprogSG_free) (echo_taint γ))%I
       as "#Hdp".
     { iApply (init_deps_of_laws (PSx := uprogSG_free) (echo_taint γ)
-                with "[] [] [] []").
+                with "[] [] [] [] []").
       - (* write, under the taint: the supply and the output licence *)
         iModIntro. iIntros "#HT".
         iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] [] []").
@@ -722,6 +725,13 @@ Section EchoInitBoot.
       - (* ...and the closed-fd leaf, at every record *)
         rewrite /UkInit.kinit_wcl. iIntros "!>" (N0 b).
         iApply (UkWriteClosed.kinit_w1_of_closed_l0 (PS := uprogSG_free) N0 b).
+      - (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS (design/pipe.md, "The exit
+           path").  /init's table is pipe-free in fact and not provably so
+           at the U tier, so its exit row is paid out of the application's
+           credential -- which at this application IS the taint, held here
+           outright rather than behind an arm. *)
+        iApply (udepw_law_of_sup_exit (PSx := uprogSG_free)).
+        rewrite Hkill. iModIntro. iExact "Ht".
       - iModIntro. iIntros "HT".
         iApply (udepw_law_of_sup (PSx := uprogSG_free) 15
                   (or_introl eq_refl)).
@@ -777,8 +787,12 @@ Section EchoInitBoot.
          unfolding here is the same one [Hsh_wbr] does below. *)
       iIntros (γp N). rewrite /UInitBanner.kinit_ban.
       iApply (UShRest.sh_rest_holds (echo_taint γ) γ γp N Hktaint
-                with "Hlks [] Hslot Hpine").
-      iApply (udep_free). }
+                with "Hlks [] [] Hslot Hpine").
+      { iApply (udep_free). }
+      (* sh's exit row, out of the era's own credential (design/pipe.md,
+         "The exit path") *)
+      { iApply (udepw_law_of_sup_exit (PSx := uprogSG_free)).
+        rewrite Hkill. iModIntro. iExact "Ht". } }
     (* THE TWO READINGS OF THE SUPPLY, at Coq level: the console ring's
        dirty credential read AS THE TAINT and back
        ([AppEcho.echo_taint_of_sup] / [echo_sup_of_taint]).  They were

@@ -420,10 +420,20 @@ Section UkRunMem.
        a caller that still has the free payload derives this in one
        [iPoseProof] ([UkRun.ukn_pay_free_of_triv]). *)
     ukn_pay N (-1) -∗
+    (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS (design/pipe.md, "The exit
+       path").  A deliberate fault IS an exit at -1, and xv6's kexit closes
+       every descriptor, so the process owes the exit number's bundle row
+       -- one close payment per row of its table.  It enters in the shape
+       every exit site's does ([UkRun.udepw_ex]): free at a table the
+       caller can read as pipe-free, and named otherwise. *)
+    udepw_ex N m pc -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Ha. iIntros "#Hi #Ht Hrun Hpay".
+    intros Ha. iIntros "#Hi #Ht Hrun Hpay Hex".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iMod (udepw_ex_mint N m pc M pm sz fdv cw gn cs pidv
+                with "Hdep Hmy Hex Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
+    iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iDestruct (uheap_text with "Hheap Ht") as %(HM & Hx & Hbnd).
     iDestruct (uheap_text_nw with "Hheap Ht") as %Hnw.
@@ -439,7 +449,8 @@ Section UkRunMem.
       exfalso. apply Hnw. exists q. exact (conj Hq Ew). }
     iApply (UkStore.wp_uk_sb_denied C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc
               fdv cw gn cs pidv imm rs1 rs2 (mword_of_int a) (m !!! Regidx rs2)
-              Hui Htgt eq_refl Hden Hcan with "Hb Hmy Hpay").
+              fdep Hfp Hui Htgt eq_refl Hden Hcan
+              with "Hb Hmy Hpay Hdepn").
   Qed.
 
   Lemma wp_uk_ld (N : uk_names Σ) (h : CpuId) (m : regfile) (pc : mword 64)

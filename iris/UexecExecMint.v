@@ -97,12 +97,17 @@ Section UexecExecMint.
         [ iExact "Hsup"
         | iSplit; [ iExact "Hkc"
                   | iSplit; [ iExact "Hlic" | iExact "Hilic" ] ] ] | ].
+    iSplitR; [ iPureIntro; intros n W Q _ Hne;
+               exact (sbundle_of_supply_ne uslot n W Q Hne) | ].
     iSplit; iPureIntro.
-    - intros n W Q _ Hne. exact (sbundle_of_supply_ne uslot n W Q Hne).
     - (* close's key-guarded row: at the generic instance every number is
          admitted, so it is the same law read at 21 (design/pipe.md) *)
       intros W Q _.
       exact (sbundle_of_supply_ne uslot 21 W Q ltac:(vm_compute; discriminate)).
+    - (* ...and exit's, for the same reason *)
+      intros W Q _.
+      exact (sbundle_of_supply_ne uslot USYS_exit W Q
+               ltac:(vm_compute; discriminate)).
   Qed.
 
   (* ===================================================================== *)
@@ -122,11 +127,10 @@ Section UexecExecMint.
   Proof.
     rewrite /udep /Dsup /=.
     iSplit; [ iModIntro; done | ].
+    iSplitR; [ iPureIntro; intros n W Q Hok _; iIntros "_";
+               rewrite /sbundle_pay /sbundle_at /sexit_pay /=;
+               iApply (xv6_sbundle_free uslot n W Q Hok) | ].
     iSplit; iPureIntro.
-    - intros n W Q Hok _.
-      iIntros "_".
-      rewrite /sbundle_pay /sbundle_at /sexit_pay /=.
-      iApply (xv6_sbundle_free uslot n W Q Hok).
     - (* ...AND CLOSE'S ROW, which left the free set with the byte queue
          (design/pipe.md, "The byte queue") and is [emp] at every
          descriptor that is not a pipe end. *)
@@ -134,6 +138,13 @@ Section UexecExecMint.
       iIntros "_".
       rewrite /sbundle_pay /sbundle_at /sexit_pay /=.
       iApply (xv6_sbundle_close_nonpipe uslot W Q Hnp).
+    - (* ...AND EXIT'S, which left it for the same reason one table over
+         (design/pipe.md, "The exit path"): at a table with no pipe row
+         every one of kexit's closes is [emp]. *)
+      intros W Q Hnp.
+      iIntros "_".
+      rewrite /sbundle_pay /sbundle_at /sexit_pay /=.
+      iApply (xv6_sbundle_exit_nopipe uslot W Q Hnp).
   Qed.
 
   (* ...and what a generic-route LEAF takes, at the free instance: the
@@ -311,6 +322,49 @@ Section UexecExecMint.
     iIntros "!>" (N m pc). iApply (udepw_of_sup_close N m pc with "Hkc").
   Qed.
 
+  (* ...AND EXIT'S, AT EVERY KEY, OUT OF THE TAINT (design/pipe.md, "The
+     exit path").  Exit's row is the close payment of EVERY row of the
+     key's table, and a verified program cannot read that table today:
+     [UsysMemOk.usys_fd_ok]'s open row leaves a descriptor's type
+     existential and the slots above [NSTD] are untracked, so "my table
+     holds no pipe" -- true of init, sh, cat, echo and sync -- is not
+     statable at the U tier.  The five programs therefore name this
+     deposit and it is paid, like write's, out of the application's
+     credential. *)
+  Lemma udepw_of_sup_exit `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
+      (pc : mword 64) :
+    □ riscv_kill_cred -∗ udepw (PS := PSx) N m pc USYS_exit.
+  Proof.
+    iIntros "#Hkc".
+    rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
+    iFrame "Hheap Hufd". iRight.
+    rewrite /sbundle_pay. iExists (xfam_at (ukn_pay N) xfam_pt).
+    iSplitR; [ done | ].
+    rewrite /sbundle_at /= /xv6_sbundle /xfam_at /xfam_pt /xfam_exec /=.
+    destruct (decide (USYS_exit = UsysMemOk.USYS_exec)) as [He | _];
+      [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 5)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 9)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 15)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 16)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 17)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 18)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 19)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 20)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 6)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 21)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = USYS_exit)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    iApply (fileclose_cpays_taint with "Hkc").
+  Qed.
+
+  Lemma udepw_law_of_sup_exit `{PSx : uprogSG Σ} :
+    □ riscv_kill_cred -∗ udepw_law (PS := PSx) USYS_exit.
+  Proof.
+    iIntros "#Hkc". rewrite /udepw_law.
+    iIntros "!>" (N m pc). iApply (udepw_of_sup_exit N m pc with "Hkc").
+  Qed.
+
   (* the loop's mint: the generic slot at every key, out of the supply.
      [UexecCond.cond_entry_slot]'s [psok] premise is the instance's own
      (every number is admitted); its [□ ssupply] is the credential. *)
@@ -331,8 +385,12 @@ Section UexecExecMint.
        the caller that instantiates it here, where every number is admitted
        and echo's flagged deposit is therefore free as well. *)
     iApply (UexecCond.cond_entry_slot uprogSG_gen W ltac:(intros k _; exact I)
-              with "[] Hdep [] Hkc Hgen Hpay").
+              with "[] [] Hdep [] Hkc Hgen Hpay").
     { iApply (udepw_law_of_psok (PS := uprogSG_gen) 16
+                ltac:(exact I) ltac:(vm_compute; discriminate)). }
+    { (* ...and the exit row: at the generic instance every number is
+         admitted (design/pipe.md, "The exit path") *)
+      iApply (udepw_law_of_psok (PS := uprogSG_gen) UsysMemOk.USYS_exit
                 ltac:(exact I) ltac:(vm_compute; discriminate)). }
     { rewrite /ssupply /= /xv6_ssupply. iModIntro.
       iSplit; [ iExact "Hsup"

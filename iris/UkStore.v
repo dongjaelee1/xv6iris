@@ -70,6 +70,7 @@ Require Import FdSlots.      (* [fdstate] -- the key's descriptor view *)
 Require Import TsoCtx.   (* [CurCtx]: ambient, per the WpUmode* precedent *)
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
 Require Import UserPermDenied.  (* the DENIED leaf: a page without W faults *)
+Require Import UsysMemOk.       (* [USYS_exit] -- the tear-down's bundle row *)
 Local Open Scope Z_scope.
 Import Defs.
 Set Printing Depth 40.
@@ -773,7 +774,13 @@ Section UkStorePostFetch.
          ADDITIVE pair ([UexecRet.uexec_kill_arm_F]) -- so a LINEAR left
          side (a process paying for its own death with its own exit
          payload) reaches the credential without costing the slot. *)
-      (Kcx : iProp Σ) :
+      (Kcx : iProp Σ)
+      (* ...AND THE FAMILY THE DEPOSIT IS AT (design/pipe.md, "The exit
+         path"): a SELF-KILL is a tear-down, so the owed side of the kill
+         row now carries the exit number's bundle row -- the table's close
+         payments -- and that row is read at a family. *)
+      (fx : sfam) :
+    sexit_pay fx = Qp ->
     ustore_width kk ->
     uv_redirect i o ->
     uv_exp i o = STORE (imm, Regidx sr2, Regidx sr1, kk) ->
@@ -809,7 +816,9 @@ Section UkStorePostFetch.
        a LINEAR payload -- a forked child hands over [Qp (-1)] itself
        rather than a proof that it is free. *)
     (⊢ (Kcx ∗ ChildTok.my_pay gn Qp -∗
-        (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)) ->
+        (□ riscv_kill_cred ∨ (ChildTok.kill_owed gn ∗
+            sbundle_at uslot USYS_exit fx
+              (uvis_of_run m pc M π sz fdv cw gn cs pidv false))) : iProp Σ)) ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     uva_inj pt Mp ->
     match o with
@@ -857,7 +866,7 @@ Section UkStorePostFetch.
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rsE (Step_Execute (r, ib'))) ib).
   Proof.
-    intros Hkw Hred Hexp Hva Hwval Hfault Hkcw Hpg Hinj Hg1
+    intros Hfx Hkw Hred Hexp Hva Hwval Hfault Hkcw Hpg Hinj Hg1
       Hpins2 Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2 Lmie2 Lmdl2 Lmedl2 Lmenv2
       Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2 Lmi2 Hagd2 Htok' Hpure.
     destruct Hkw as (Hvw & Hwrite_plain).
@@ -1082,11 +1091,11 @@ Section UkStorePostFetch.
        P6): a page fault is not the exit ecall, so the payment row is free
        ([UexecRet.uexec_pay_dep_ne]). *)
     iDestruct "Hret" as "(#Hmyp & Hret)".
-    iExists (sfam_at Qp sfam_pt).
+    iExists fx.
     iSplitR;
-      [ iApply (uexec_pay_dep_ne _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false) _ (sfam_at Qp sfam_pt)
+      [ iApply (uexec_pay_dep_ne _ (uvis_of_run m pc M π sz fdv cw gn cs pidv false) _ fx
                   (utrap_scause_samo_ne (register_lookup (R_bitvector_64 scause) rsx))
-                  (sexit_pay_at Qp sfam_pt) with "Hmyp") | ].
+                  Hfx with "Hmyp") | ].
     (* THE KILL ROW, out of the fault witness -- the LEFT side of the
        two-sided deposit, which is the tainted route's (lane SELF-KILL,
        P6b; [UexecRet.ukill_cred_at]) *)
@@ -1096,9 +1105,9 @@ Section UkStorePostFetch.
     iSplit.
     { iPoseProof Hkcw as "Hkcw".
       iDestruct "Hret" as "[Hkcx _]".
-      iDestruct ("Hkcw" with "[$Hkcx $Hmyp]") as "[#Hkl | Hkr]";
+      iDestruct ("Hkcw" with "[$Hkcx $Hmyp]") as "[#Hkl | [Hkr Hkb]]";
         [ iApply (ukill_cred_at_of_cred _ _ _ _ _ with "Hkl")
-        | iApply (ukill_cred_at_of_owed _ _ _ _ _ with "Hkr") ]. }
+        | iApply (ukill_cred_at_of_owed _ _ _ _ _ with "Hkr Hkb") ]. }
     iDestruct "Hret" as "[_ Hret]". iExact "Hret".
   Qed.
 
@@ -1131,7 +1140,11 @@ Section UkStoreObl.
       (* THE STEP'S OWN LEFT SIDE, carried whole to the fault leaf (lane
          TRAP-ROWS, T3 / the IO-LEAF review) -- see
          [uk_store_fault_post_fetch]. *)
-      (Kcx : iProp Σ) :
+      (Kcx : iProp Σ)
+      (* ...and the family the self-kill's exit row is read at, carried to
+         [uk_store_fault_post_fetch] *)
+      (fx : sfam) :
+    sexit_pay fx = Qp ->
     uv_pre C pt Mp m pc t rs1 rsA usatp pcfg paddr ->
     uk_pt_pure pt sz M Mp ->
     udecode_base w i ->
@@ -1160,7 +1173,9 @@ Section UkStoreObl.
        dies at a LINEAR payload can pay for its own death. *)
     (u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va ->
      ⊢ (Kcx ∗ ChildTok.my_pay gn Qp -∗
-        (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)) ->
+        (□ riscv_kill_cred ∨ (ChildTok.kill_owed gn ∗
+            sbundle_at uslot USYS_exit fx
+              (uvis_of_run m pc M π sz fdv cw gn cs pidv false))) : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     is_aligned_vaddr (Virtaddr va) kk = true ->
@@ -1185,7 +1200,7 @@ Section UkStoreObl.
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
   Proof.
-    intros Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hva Hwval
+    intros Hfx Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hva Hwval
       Hdisp Hkcf Hcanon Hpg Hal.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
                         HgagA & LstvecA & LmieA & LmdlA & LmedlA & LmenvA &
@@ -1265,7 +1280,7 @@ Section UkStoreObl.
       exists w_st. exact (conj Hl (conj Hchk (conj Hntx HMb))).
     - iApply (uk_store_fault_post_fetch C pt Rfd R Rut sz π M Mp m pc 4 kk i o imm sr1 sr2 va wval
               (zero_extend' 32 w) t' usatp pcfg paddr rs1 rs2 fdv cw gn cs pidv
-              Kcx Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
+              Kcx fx Hfx Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
               Hpins2
               (T2 _ _ u_in_PC ltac:(vm_compute; reflexivity) LpcA)
               (T2 _ _ u_in_hart ltac:(vm_compute; reflexivity) LhsA)
@@ -1300,7 +1315,11 @@ Section UkStoreObl.
       (* THE STEP'S OWN LEFT SIDE, carried whole to the fault leaf (lane
          TRAP-ROWS, T3 / the IO-LEAF review) -- see
          [uk_store_fault_post_fetch]. *)
-      (Kcx : iProp Σ) :
+      (Kcx : iProp Σ)
+      (* ...and the family the self-kill's exit row is read at, carried to
+         [uk_store_fault_post_fetch] *)
+      (fx : sfam) :
+    sexit_pay fx = Qp ->
     uv_pre C pt Mp m pc t rs1 rsA usatp pcfg paddr ->
     uk_pt_pure pt sz M Mp ->
     udecode_rvc h i ->
@@ -1329,7 +1348,9 @@ Section UkStoreObl.
        dies at a LINEAR payload can pay for its own death. *)
     (u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va ->
      ⊢ (Kcx ∗ ChildTok.my_pay gn Qp -∗
-        (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)) ->
+        (□ riscv_kill_cred ∨ (ChildTok.kill_owed gn ∗
+            sbundle_at uslot USYS_exit fx
+              (uvis_of_run m pc M π sz fdv cw gn cs pidv false))) : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     is_aligned_vaddr (Virtaddr va) kk = true ->
@@ -1354,7 +1375,7 @@ Section UkStoreObl.
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
   Proof.
-    intros Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hva Hwval
+    intros Hfx Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hva Hwval
       Hdisp Hkcf Hcanon Hpg Hal.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
                         HgagA & LstvecA & LmieA & LmdlA & LmedlA & LmenvA &
@@ -1439,7 +1460,7 @@ Section UkStoreObl.
       exists w_st. exact (conj Hl (conj Hchk (conj Hntx HMb))).
     - iApply (uk_store_fault_post_fetch C pt Rfd R Rut sz π M Mp m pc 2 kk i o imm sr1 sr2 va wval
               (zero_extend' 32 h) t' usatp pcfg paddr rs1 rs2 fdv cw gn cs pidv
-              Kcx Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
+              Kcx fx Hfx Hkw Hred Hexp Hva Hwval Hfault (Hkcf Hfault) Hpg Hinj Hg1
               Hpins2
               (T2 _ _ u_in_PC ltac:(vm_compute; reflexivity) LpcA)
               (T2 _ _ u_in_hart ltac:(vm_compute; reflexivity) LhsA)
@@ -1605,7 +1626,11 @@ Section UkStore.
        So a verified program pays NOTHING for the kill it cannot suffer. *)
     assert (Hkcf : u_fault_flavor (Store Data) (ud_tfp pt') (ud_um pt') va ->
                    ⊢ ((True : iProp Σ) ∗ ChildTok.my_pay gn Qp -∗
-                      (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)).
+                      (□ riscv_kill_cred ∨
+                       (ChildTok.kill_owed gn ∗
+                        sbundle_at uslot USYS_exit (sfam_at Qp sfam_pt)
+                          (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))
+                      : iProp Σ)).
     { intros Hfl. exfalso.
       destruct (lazy_free_wmapped pt' sz (svpn_of va) q Hwf' Hlf'
                   ltac:(rewrite Hpm'; exact Hq) Hqw) as (w0 & Hw0 & _ & _).
@@ -1663,12 +1688,14 @@ Section UkStore.
     - iDestruct "Hf" as (h) "[[%HisRVC %Hdecrvc] Hbridge]".
       iApply (uk_store_obl_rvc C' pt' Rfd' R Rut' sz π M Mp' m pc h i o k imm rs1 rs2 va wval
                 t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv (True : iProp Σ)
+                (sfam_at Qp sfam_pt) (sexit_pay_at Qp sfam_pt)
                 Hpre Hpure Hdecrvc Hkw Hred Hg1 Hexp
                 Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
     - iDestruct "Hf" as (w) "[[%HnRVC %Hdecbase] Hbridge]".
       iApply (uk_store_obl_base C' pt' Rfd' R Rut' sz π M Mp' m pc w i o k imm rs1 rs2 va wval
                 t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv (True : iProp Σ)
+                (sfam_at Qp sfam_pt) (sexit_pay_at Qp sfam_pt)
                 Hpre Hpure Hdecbase Hkw Hred Hg1 Hexp
                 Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
@@ -1744,7 +1771,10 @@ Section UkStore.
       (cs : gset gname) (pidv : mword 32) (is_rvc : bool)
       (i : instruction) (o : option instruction)
       (imm : mword 12) (rs1 rs2 : mword 5) (k : Z)
-      (va wval : mword 64) :
+      (va wval : mword 64) (fx : sfam) :
+    (* THE FAMILY THE TEAR-DOWN'S EXIT ROW IS READ AT (design/pipe.md,
+       "The exit path") *)
+    sexit_pay fx = Qp ->
     ustore_width k ->
     uk_instr π M pc is_rvc i ->
     uv_redirect i o ->
@@ -1770,14 +1800,31 @@ Section UkStore.
        fault leaf is handed, so it reaches the credential without costing
        the resume slot. *)
     Qp (-1) -∗
+    (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS, the exit number's bundle row
+       at the key this fault traps from ([UexecExecInst.xv6_sbundle] at 2).
+       A self-kill IS an exit: the process pays what its exit owes, and
+       since xv6's kexit closes every descriptor that now includes one
+       close payment per row of its table. *)
+    sbundle_at uslot USYS_exit fx
+      (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hden Hcanon Hpg Hal.
+    intros Hfx Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hden Hcanon Hpg Hal.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
     pose proof (ui_al2 _ _ _ _ _ Hui0) as Hal2.
-    iIntros "Hb #Hmy Hpay".
-    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut Hlf0 (Qp (-1)) Qp M m pc
-              fdv cw gn cs pidv Hal2 with "Hb [] [$Hmy $Hpay]").
+    iIntros "Hb #Hmy Hpay Hrow".
+    (* the step's left side is the PAIR now: the payload at the kill status
+       and the tear-down's close payments *)
+    iAssert (▷ (ChildTok.my_pay gn Qp ∗
+                (Qp (-1) ∗ sbundle_at uslot USYS_exit fx
+                             (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I
+      with "[Hpay Hrow]" as "Hkc";
+      [ iNext; iFrame "Hmy Hpay Hrow" | ].
+    iApply (wp_uk_step C pt Rfd Rut π sz Hlo Hpm HRut Hlf0
+              (Qp (-1) ∗ sbundle_at uslot USYS_exit fx
+                           (uvis_of_run m pc M π sz fdv cw gn cs pidv false))%I
+              Qp M m pc
+              fdv cw gn cs pidv Hal2 with "Hb [] Hkc").
     iModIntro.
     rewrite /uk_step_obl.
     iIntros (R CIDo XIo C' pt' Rfd' Rut' HRut' Mp' t rs1s rsA usatp pcfg paddr)
@@ -1801,9 +1848,13 @@ Section UkStore.
       exact (uleaf_ok_denied_excl (Store Data) w_st Hchk Hd0). }
     (* THE PRICE, and it is the process's own ([ChildTok.kill_owed]) *)
     assert (Hkcf : u_fault_flavor (Store Data) (ud_tfp pt') (ud_um pt') va ->
-                   ⊢ (Qp (-1) ∗ ChildTok.my_pay gn Qp -∗
-                      (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) : iProp Σ)).
-    { intros _. iIntros "(Hp & #Hm)". iRight.
+                   ⊢ ((Qp (-1) ∗ sbundle_at uslot USYS_exit fx
+                                   (uvis_of_run m pc M π sz fdv cw gn cs pidv false))
+                      ∗ ChildTok.my_pay gn Qp -∗
+                      (□ riscv_kill_cred ∨ (ChildTok.kill_owed gn ∗
+                       sbundle_at uslot USYS_exit fx
+                         (uvis_of_run m pc M π sz fdv cw gn cs pidv false))) : iProp Σ)).
+    { intros _. iIntros "((Hp & Hb) & #Hm)". iRight. iFrame "Hb".
       iApply (ChildTok.kill_owed_of gn Qp with "Hm Hp"). }
     iPoseProof "Hamb" as "(#Hhw & _ & _)".
     iPoseProof "Hhw" as (misa0 mseccfg0 pmar0 elp0)
@@ -1818,7 +1869,9 @@ Section UkStore.
                  (add_vec_int pc (if is_rvc then 2 else 4)) -∗
                WP (Loop : expr riscv_lang))
               ∧ UkStep.uk_paycont Qp gn
-                  (Qp (-1) ∧ uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
+                  ((Qp (-1) ∗ sbundle_at uslot USYS_exit fx
+                                (uvis_of_run m pc M π sz fdv cw gn cs pidv false))
+                   ∧ uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hrut & Hfdr & Hkb & Hkc)".
       iFrame "Hrut Hfdr Hkb". iSplit.
       - (* the RETIRE leg is UNREACHABLE and says so *)
@@ -1839,13 +1892,19 @@ Section UkStore.
     destruct is_rvc.
     - iDestruct "Hf" as (h) "[[%HisRVC %Hdecrvc] Hbridge]".
       iApply (uk_store_obl_rvc C' pt' Rfd' R Rut' sz π M Mp' m pc h i o k imm rs1 rs2 va wval
-                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv (Qp (-1))
+                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv
+                (Qp (-1) ∗ sbundle_at uslot USYS_exit fx
+                             (uvis_of_run m pc M π sz fdv cw gn cs pidv false))%I
+                fx Hfx
                 Hpre Hpure Hdecrvc Hkw Hred Hg1 Hexp
                 Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
     - iDestruct "Hf" as (w) "[[%HnRVC %Hdecbase] Hbridge]".
       iApply (uk_store_obl_base C' pt' Rfd' R Rut' sz π M Mp' m pc w i o k imm rs1 rs2 va wval
-                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv (Qp (-1))
+                t usatp pcfg paddr rs1s rsA fdv cw gn cs pidv
+                (Qp (-1) ∗ sbundle_at uslot USYS_exit fx
+                             (uvis_of_run m pc M π sz fdv cw gn cs pidv false))%I
+                fx Hfx
                 Hpre Hpure Hdecbase Hkw Hred Hg1 Hexp
                 Hva Hwval Hdisp Hkcf Hcanon Hpg Hal
                 with "Hcert Hamb Hbridge Hk Hany Hrw Hro Hctx Hmm Hres").
@@ -1939,7 +1998,8 @@ Section UkStore.
      store. *)
   Lemma wp_uk_sb_denied (M : gmap Z (bv 8)) (m : regfile)
       (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) (imm : mword 12) (rs1 rs2 : mword 5)
-      (va wval : mword 64) :
+      (va wval : mword 64) (fx : sfam) :
+    sexit_pay fx = Qp ->
     uk_instr π M pc false (STORE (imm, Regidx rs2, Regidx rs1, 1)) ->
     va = add_vec (m !!! Regidx rs1) (sign_extend' 64 imm) ->
     wval = m !!! Regidx rs2 ->
@@ -1949,16 +2009,19 @@ Section UkStore.
     ChildTok.my_pay gn Qp -∗
     (* the payload at the kill status, as a RESOURCE (the IO-LEAF review) *)
     Qp (-1) -∗
+    (* ...and the tear-down's close payments (design/pipe.md) *)
+    sbundle_at uslot USYS_exit fx
+      (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hui Hva Hwval Hden Hcanon.
-    iIntros "Hb Hmy Hpay".
+    intros Hfx Hui Hva Hwval Hden Hcanon.
+    iIntros "Hb Hmy Hpay Hrow".
     iApply (wp_uk_store_denied M m pc fdv cw gn cs pidv false
               (STORE (imm, Regidx rs2, Regidx rs1, 1)) None
-              imm rs1 rs2 1 va wval
-              ustore_width_1 Hui ltac:(intro s; exact I) I eq_refl eq_refl
+              imm rs1 rs2 1 va wval fx
+              Hfx ustore_width_1 Hui ltac:(intro s; exact I) I eq_refl eq_refl
               Hva Hwval Hden Hcanon (uinpage_byte va) (is_aligned_vaddr_1 va)
-              with "Hb Hmy Hpay").
+              with "Hb Hmy Hpay Hrow").
   Qed.
 
   Lemma wp_uk_csdsp (M : gmap Z (bv 8)) (m : regfile)

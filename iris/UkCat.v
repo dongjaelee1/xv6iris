@@ -44,6 +44,7 @@ Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for
                             which rides inside [urun] *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
+Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 
 Section UkCat.
   Context `{!riscvGS Σ}.
@@ -99,8 +100,16 @@ Section UkCat.
      own [open] returned, whose TYPE [UsysMemOk.usys_fd_ok]'s open row
      leaves existential, so cat cannot take the free route
      ([UkRun.udepw_cl_nonpipe]) and names the deposit here instead. *)
+  (* ...AND exit(2) IS IN IT TOO (design/pipe.md, "The exit path"): kexit
+     closes every descriptor the dying process holds, so the exit number's
+     bundle row is one close payment per row of the KEY's table.  cat's
+     table is pipe-free in fact, but not provably so at the U tier -- the
+     rows above [NSTD] are untracked and [UsysMemOk.usys_fd_ok]'s open row
+     leaves a descriptor's type existential -- so cat names the deposit
+     here rather than taking [UkRun.udepw_ex_of_nopipe]'s free route. *)
   Definition cat_deps : iProp Σ :=
-    (udepw_law 5 ∗ udepw_law 15 ∗ udepw_law 16 ∗ udepw_law 21)%I.
+    (udepw_law 5 ∗ udepw_law 15 ∗ udepw_law 16 ∗ udepw_law 21
+     ∗ udepw_law USYS_exit)%I.
 
   Global Instance cat_deps_persistent : Persistent cat_deps.
   Proof. rewrite /cat_deps. apply _. Qed.
@@ -189,7 +198,7 @@ Section UkCat.
     { iApply (uis_cat_3ee with "Hcode"). }
     (* THE FLAGGED DEPOSIT: open(15) (P4) *)
     { iApply (udepw_of_law N m1 (mword_of_int 0x3ee) 15 with "[Hdp]").
-      iDestruct "Hdp" as "(_ & $ & _ & _)". }
+      iDestruct "Hdp" as "(_ & $ & _ & _ & _)". }
     assert (E1open : add_vec_int (mword_of_int 0x3ee : mword 64) 4
                    = mword_of_int 0x3f2)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -290,7 +299,7 @@ Section UkCat.
     { iApply (uis_cat_3d6 with "Hcode"). }
     { iApply (udepw_cl_of_udepw N m1 (mword_of_int 0x3d6) st).
       iApply (udepw_of_law N m1 (mword_of_int 0x3d6) 21 with "[Hdp]").
-      iDestruct "Hdp" as "(_ & _ & _ & $)". }
+      iDestruct "Hdp" as "(_ & _ & _ & $ & _)". }
     assert (E1close : add_vec_int (mword_of_int 0x3d6 : mword 64) 4
                    = mword_of_int 0x3da)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -368,7 +377,7 @@ Section UkCat.
     { iApply (uis_cat_3ce with "Hcode"). }
     (* THE FLAGGED DEPOSIT: write(16) (P4) *)
     { iApply (udepw_of_law N m1 (mword_of_int 0x3ce) 16 with "[Hdp]").
-      iDestruct "Hdp" as "(_ & _ & $ & _)". }
+      iDestruct "Hdp" as "(_ & _ & $ & _ & _)". }
     assert (E1write : add_vec_int (mword_of_int 0x3ce : mword 64) 4
                    = mword_of_int 0x3d2)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -398,11 +407,13 @@ Section UkCat.
   (* exit @0x3ac -- no continuation.                                        *)
   (* --------------------------------------------------------------------- *)
   Lemma wp_kcat_exit (h : CpuId) (m : regfile) (avail : nat) :
+    (* the exit row's deposit, off cat's own named ones (design/pipe.md) *)
+    cat_deps -∗
     cat_code γt -∗
     urun N h m (mword_of_int CatSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode Hrun".
+    iIntros "#Hdp #Hcode Hrun".
     destruct cat_syms_pins
       as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hexit).
     rewrite Hexit.
@@ -428,11 +439,15 @@ Section UkCat.
                     rewrite (upd_eq m (Regidx a7_idx)
                                (mword_of_int 2 : mword 64));
                     vm_compute; reflexivity)
-              with "[] [] Hrun").
+              with "[] [] [Hdp] Hrun").
     { iApply (uis_cat_3ae with "Hcode"). }
     (* AT THE TRIVIAL PAYLOAD THE EXIT LEAF'S ONE PAYMENT IS FREE: this
        program owes its parent nothing ([UkRun.ukn_triv]). *)
     { rewrite (ukn_triv_eq (N := N)). done. }
+    (* ...AND THE EXIT ROW comes from cat's named deposit *)
+    { iApply udepw_ex_of_udepw.
+      iApply (udepw_of_law N m1 (mword_of_int 0x3ae) USYS_exit with "[Hdp]").
+      iDestruct "Hdp" as "(_ & _ & _ & _ & $)". }
   Qed.
 
   (* --------------------------------------------------------------------- *)
@@ -502,7 +517,7 @@ Section UkCat.
     { iApply (uis_cat_3c6 with "Hcode"). }
     (* THE FLAGGED DEPOSIT: read(5) (P4) *)
     { iApply (udepw_of_law N m1 (mword_of_int 0x3c6) 5 with "[Hdp]").
-      iDestruct "Hdp" as "($ & _ & _ & _)". }
+      iDestruct "Hdp" as "($ & _ & _ & _ & _)". }
     assert (E1r : add_vec_int (mword_of_int 0x3c6 : mword 64) 4
                   = mword_of_int 0x3ca)
       by (apply bv_eq; vm_compute; reflexivity).

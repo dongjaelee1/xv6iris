@@ -554,6 +554,12 @@ Section UShKernel.
        supplier: [udep] above is at the program's OWN instance, where the
        admitted numbers are [UexecSG.free_num] and nothing more. *)
     □ (T -∗ UkSh.sh_deps) -∗
+    (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS, UNGATED (design/pipe.md, "The
+       exit path").  exit(2) left [UexecSG.free_num] with the byte queue,
+       and sh's TOP-LEVEL exit -- the one the read loop takes at
+       end-of-input -- is not on the taint arm the bundle above is handed
+       on, so this conjunct is not behind [T]. *)
+    UkRun.udepw_law UsysMemOk.USYS_exit -∗
     (* ...AND THE TAG'S READING (lane SH-LINE 2b, L4; app-echo.md,
        "SH-LINE PHASE 1 LANDED", ruling (3)).  [RiscvPtsto.riscv_rx_tag] is
        a field of the machine's FIXED ghost state and nothing below the top
@@ -614,7 +620,7 @@ Section UShKernel.
     uslot W.
   Proof.
     intros Hbd HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf Hch0 Hpid1.
-    iIntros "#Hpay #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 Hin #Hgen #Hmp Hpos
+    iIntros "#Hpay #Hdep #Hdp #Hxl #Htag #Hplaw #Hrest #Hfd0 Hin #Hgen #Hmp Hpos
              Hlease Hwcp".
     iApply (uslot_of_urun_all W (2 + (8 + (16 + (ush_Dbody + n0)))) Q
               Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
@@ -657,7 +663,7 @@ Section UShKernel.
               (fun l0 => Hrl N l0 Hpayeq)
               (R (ukn_t N) (ukn_d N) (ukn_s N)) K h _ f n0
               (take NSTD (uvis_fd W))
-              with "Hdp Htag [] Hr [] [] Hro Hgen' Hfd0 Hin [Hstd] [Hcwf]
+              with "Hxl Hdp Htag [] Hr [] [] Hro Hgen' Hfd0 Hin [Hstd] [Hcwf]
                     [Hchf] [Hpidf] [Hpos Hlease Hwcp] HR Hbs [Hrun]").
     - (* the prompt's law at this record, against sh's own .rodata (SS1c) *)
       iApply ("Hplaw" $! N with "Hro").
@@ -770,6 +776,9 @@ Section UShKernel.
        through: see [sh_uexec_slot] and [UkSh.sh_deps] *)
     udep -∗
     □ (T -∗ UkSh.sh_deps) -∗
+    (* ...and the tear-down's close payments, ungated -- see
+       [sh_uexec_slot] (design/pipe.md, "The exit path") *)
+    UkRun.udepw_law UsysMemOk.USYS_exit -∗
     (* the tag's reading, passed straight through: see [sh_uexec_slot] *)
     UkSh.ush_tag_law T -∗
     (* ...and the prompt's law at every boundary, passed straight through:
@@ -978,6 +987,9 @@ Section UShKernel.
         |==> ∃ f : nat -> bv 8, R γt γd γs ∗ ubytes γd sh_buf sh_nbuf f) -∗
     udep -∗
     □ (T -∗ UkSh.sh_deps) -∗
+    (* ...and the tear-down's close payments, ungated -- see
+       [sh_uexec_slot] (design/pipe.md, "The exit path") *)
+    UkRun.udepw_law UsysMemOk.USYS_exit -∗
     UkSh.ush_tag_law T -∗
     sh_prompt_law Wc -∗
     (∀ N : uk_names Σ,
@@ -993,7 +1005,7 @@ Section UShKernel.
       uslot.
   Proof.
     intros Hbd HQc Hroom Hlen -> Hpid1.
-    iIntros "#Hpay #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 #Hin #Hgen".
+    iIntros "#Hpay #Hdep #Hdp #Hxl #Htag #Hplaw #Hrest #Hfd0 #Hin #Hgen".
     rewrite /image_entry_at. iIntros "!>" (W')
       "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq Hmp (Hpos & Hlease & Hwcp)".
     assert (Hch0 : uvis_ch W' = ∅) by exact Hchq.
@@ -1002,7 +1014,7 @@ Section UShKernel.
     iApply (sh_slot_of_kexec R γp cn T K Q Ql Pm Wc Wb Hrl Hpm1 Hpm3 Hpmwb
               Hwc Hwbwc Hwbl Hwbr na alen afun sts W' n0 n Hbd HQc Hok Hcwd0
               Hroom Hlen Hlzf Hch0 Hpid1'
-              with "[] Hdep Hdp Htag Hplaw Hrest Hfd0 [] [] Hmp Hpos Hlease
+              with "[] Hdep Hdp Hxl Htag Hplaw Hrest Hfd0 [] [] Hmp Hpos Hlease
                     Hwcp").
     - (* the payload at THIS key, off the [∀]-over-keys wand *)
       iModIntro. iIntros (γt γd γs) "Hsz Hlo".

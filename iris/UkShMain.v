@@ -555,6 +555,7 @@ Section UkShMain.
     intros Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38 Hpx.
     iIntros "#Hdp #Hcode #Hxs #Hkw #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd
              Hch HM Hrun".
+    iDestruct (UkSh.sh_deps_exit with "Hdp") as "#Hxl".
     (* the line's own bytes are non-NUL, which is what makes each token a
        string once the cut lands *)
     iDestruct (ustr_nonul with "Hline") as %Hnn0.
@@ -624,7 +625,7 @@ Section UkShMain.
               h2 m2 dw dv s0 len f toks
               (8 + (UkShDiag.ush_Dg + n))
               Ha0_2 Hns Htoks Htlen Hs0 Hs64
-              with "Hpcode Hpro Hline Hws Hsy HM Hpxw Hpay Hrun").
+              with "Hpcode Hpro Hline Hws Hsy HM Hpxw Hxl Hpay Hrun").
     iIntros (p) "%Hparses Hnode Hline %Hcut Hws Hsy".
     (* the payload comes back unspent on the arm where the allocation
        succeeded; this walk still has it for free, so it is dropped *)
@@ -729,6 +730,7 @@ Section UkShMain.
     intros Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hpx.
     iIntros "#Hdp #Hcode #Hxs #Hkw #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd
              Hch HM Hrun".
+    iDestruct (UkSh.sh_deps_exit with "Hdp") as "#Hxl".
     iApply (wp_kshm_child (UkShMalloc.ushm_fresh N sz) (sz + 65536)
               (UkShMalloc.ushm_malloc_ok_holds N Hpsok_free sz
                  Hszlo Hszal Hszok)

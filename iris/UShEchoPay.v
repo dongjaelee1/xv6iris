@@ -65,6 +65,7 @@ Require Import UEchoOut.          (* [echo_uexec_slot_at] / [ech] / [echo_stage]
 Require Import UShEcho.           (* the pinned bundle's inputs *)
 Require Import UShEchoOut.        (* [echo_out_argv_of_image] *)
 Require Import UShPanic.          (* [ush_execfail_law_holds]: the exec-failed diagnostic's law (M4b(2)) *)
+Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 Require User.EchoSyms.
 
 (* ECHO'S .rodata IS IN THE EXEC IMAGE, as its text is: the image is the
@@ -133,6 +134,8 @@ Section UShEchoPay.
     (⊢ □ riscv_kill_cred -∗ T) ->
     ⊢ era_pin γ (S gen_id) v -∗
       echo_links T γ -∗
+      (* ...and echo's exit row (design/pipe.md, "The exit path") *)
+      udepw_law (PS := uprogSG_free) USYS_exit -∗
       udep (PS := uprogSG_free) -∗
       (* the taint's generic slot, at any constant payload *)
       □ (∀ (R : iProp Σ) (W : uvis),
@@ -143,7 +146,7 @@ Section UShEchoPay.
       uslot W'.
   Proof.
     intros Hok Hroom Hfdl Hlzf Hna Halen Hafun Hfd1 Hkt.
-    iIntros "#Hpin #Hlk #Hdep #Hgen Hmp Hc".
+    iIntros "#Hpin #Hlk #Hxl #Hdep #Hgen Hmp Hc".
     destruct (echo_kexec_pages na alen afun sts W' Hok)
       as (Hpc & Hsub & Hx & Hwr & Hrp).
     destruct (echo_kexec_entry_rows na alen afun sts W' Hok Hroom Hfdl Hwr Hrp)
@@ -177,7 +180,7 @@ Section UShEchoPay.
               ltac:(intros x y; reflexivity)
               Hst Hargv Hl1 Hpc Hsub Hsub2 Hx Hroom96 Hal8 Hstkrow Hargsrow
               Havd Havs Hfdlen Hstop Hlzf
-              with "[] Hpin Hlk Hdep Hmp [Htn]").
+              with "[] Hpin Hlk Hxl Hdep Hmp [Htn]").
     - (* THE BLOCK'S END PAYS THE EXIT: twelve bytes on, the choice filed,
          the credential is the shell's next prompt's *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iRight.
@@ -201,11 +204,12 @@ Section UShEchoPay.
   (* =================================================================== *)
   Lemma sh_exec_sup_echo_wq_holds :
     (⊢ □ riscv_kill_cred -∗ T) ->
-    ⊢ echo_links T γ -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot T -∗
+    ⊢ echo_links T γ -∗ udepw_law (PS := uprogSG_free) USYS_exit -∗
+      udep (PS := uprogSG_free) -∗ sh_echo_slot T -∗
       UkShEcho.sh_exec_sup_echo_wq Wc.
   Proof.
     intros Hkt.
-    iIntros "#Hlk #Hdep (#Hinv & #Hcl & #Hgen)".
+    iIntros "#Hlk #Hxl #Hdep (#Hinv & #Hcl & #Hgen)".
     rewrite /UkShEcho.sh_exec_sup_echo_wq. iIntros "!>" (np).
     rewrite /UkShEcho.sh_exec_sup_echo.
     iIntros "!>" (N' m pc s0 t g ld) "%Hpeq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
@@ -270,7 +274,7 @@ Section UShEchoPay.
       iApply (echo_slot_of_kexec_at na alen afun fdv W' v np Hok
                 (echo_room_of_det na alen Hna Halen)
                 Hlen Hlzf Hna Halen Hafun Hfd1' Hkt
-                with "Hpin Hlk Hdep Hgen Hmp Hc"). }
+                with "Hpin Hlk Hxl Hdep Hgen Hmp Hc"). }
     iFrame "Hstd Hcr".
   Qed.
 
@@ -293,16 +297,17 @@ Section UShEchoPay.
      that says the composition exists *)
   Lemma ushf_child_law_holds_at :
     (⊢ □ riscv_kill_cred -∗ T) ->
-    ⊢ echo_links T γ -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot T -∗
+    ⊢ echo_links T γ -∗ udepw_law (PS := uprogSG_free) USYS_exit -∗
+      udep (PS := uprogSG_free) -∗ sh_echo_slot T -∗
       UkShFork.ushf_child_law (PS := uprogSG_free) Wc.
   Proof.
-    intros Hkt. iIntros "#Hlk #Hdep #Hslot".
+    intros Hkt. iIntros "#Hlk #Hxl #Hdep #Hslot".
     (* at [uprogSG_free] the numbers sh admits are the free ones: the
        hypothesis is the identity *)
     (* the two laws first, as named hypotheses: an [iApply ... with "[] []"]
        here sends the [Persistent] search down the child law's wand chain
        (durable-notes, "iIntros #H on a bundle of wands") *)
-    iPoseProof (sh_exec_sup_echo_wq_holds Hkt with "Hlk Hdep Hslot") as "Hsup".
+    iPoseProof (sh_exec_sup_echo_wq_holds Hkt with "Hlk Hxl Hdep Hslot") as "Hsup".
     (* ...PINNED at [uprogSG_free] on both sides (durable-notes, "instance
        pinning"): left to instance search the assertion lands at another
        [uprogSG] and the [iApply] below unfolds the child law trying to
@@ -313,7 +318,7 @@ Section UShEchoPay.
       iApply (UShPanic.ush_execfail_law_holds (PS := uprogSG_free) T γ np
                 with "Hlk"). }
     iApply (UkShEcho.ushf_child_law_holds (PS := uprogSG_free) (fun k H => H) Wc
-              with "Hxlw Hsup").
+              with "Hxlw Hxl Hsup").
   Qed.
 
 End UShEchoPay.

@@ -5278,11 +5278,22 @@ Section UkRunSys.
        KILL is the KILLER's price, paid into <p->lock>'s own killed row
        ([SchedCtx.kill_row]).  At [UkRun.ukn_triv] this is [True]. *)
     ukn_pay N (uexitst m) -∗
+    (* ...AND THE EXIT ROW (design/pipe.md, "The exit path"): exit(2) is no
+       longer a free number either -- kexit closes every descriptor, and a
+       pipe row's last close steps the byte queue -- so the deposit carries
+       [SpecFileclose.fileclose_cpays] of the key's own table.  A caller
+       whose descriptor resource proves the table pipe-free owes nothing
+       ([UkRun.udepw_ex_of_nopipe]); the five verified programs name the
+       deposit instead ([UkRun.udepw_ex_of_udepw] at [udepw_law USYS_exit]),
+       see that lemma's note. *)
+    udepw_ex N m pc -∗
     urun N h m pc avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hn. iIntros "#Hi Hpay Hrun".
+    intros Hn. iIntros "#Hi Hpay Hex Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iMod (udepw_ex_mint N m pc M pm sz fdv cw gn cs pidv
+                with "Hdep Hmy Hex Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iApply (UkStep.wp_uk_ecall C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc fdv cw gn cs pidv Hui
               (fun (s : mstate)
@@ -5302,17 +5313,19 @@ Section UkRunSys.
     rewrite Hnum. cbv zeta.
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
       [ | exfalso; exact (Hpne eq_refl) ].
-    destruct (decide (USYS_exit = USYS_exit)) as [_ | Hne];
-      [ | exfalso; exact (Hne eq_refl) ].
-    (* THE DEPOSIT: the run's own [my_pay] and the payload at the status
-       this exit stores.  Exit has no arm, so nothing comes back. *)
-    iExists (sfam_at (ukn_pay N) sfam_pt).
-    rewrite (sexit_pay_at (ukn_pay N) sfam_pt).
+    destruct (decide (USYS_exit = USYS_fork)) as [He | _];
+      [ exfalso; vm_compute in He; discriminate | ].
+    (* THE DEPOSIT: the run's own [my_pay], the payload at the status this
+       exit stores, AND THE EXIT NUMBER'S BUNDLE ROW -- the table's close
+       payments, which kexit spends (design/pipe.md, "The exit path").
+       Exit has no arm, so nothing comes back.  The family is the one the
+       mint chose, exactly as at every other depositing leaf. *)
+    iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
+    iExists fdep. rewrite Hfp.
     cbn [uvis_gen uvis_tf uvis_of_run].
-    iSplitL; [ | done ].
-    iFrame "Hmy".
-    rewrite (uexitst_exit_xs m pc).
-    iExact "Hpay".
+    iSplitL "Hpay".
+    { iFrame "Hmy". rewrite (uexitst_exit_xs m pc). iExact "Hpay". }
+    iExact "Hdepn".
   Qed.
 
 End UkRunSys.

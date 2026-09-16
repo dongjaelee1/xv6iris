@@ -637,10 +637,24 @@ Section UkSh.
   (* sibling files -- go through the minting law at [psok := free_num] and  *)
   (* cost nothing, which is what [Hpsok_free] above says.                   *)
   (* ===================================================================== *)
-  Definition sh_deps : iProp Σ := udepw_law 16.
+  (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS BESIDE IT (design/pipe.md, "The
+     exit path"): exit(2) left [UexecSG.free_num] with the byte queue, so
+     every walk of sh's that ENDS -- runcmd's exit(1), the diagnostics'
+     dead ends -- names its exit row here.  sh's own top-level exit takes
+     it separately ([wp_ksh_exit]'s premise), because that walk is not
+     under the taint arm this bundle is handed on. *)
+  Definition sh_deps : iProp Σ := (udepw_law 16 ∗ udepw_law USYS_exit)%I.
 
   Global Instance sh_deps_persistent : Persistent sh_deps.
   Proof. rewrite /sh_deps. apply _. Qed.
+
+  (* the two readings, so a walk that wants one does not have to destruct
+     the bundle (and lose it: the pair is persistent and its holders pass
+     it on) *)
+  Lemma sh_deps_write : sh_deps -∗ udepw_law 16.
+  Proof. rewrite /sh_deps. iIntros "[$ _]". Qed.
+  Lemma sh_deps_exit : sh_deps -∗ udepw_law USYS_exit.
+  Proof. rewrite /sh_deps. iIntros "[_ $]". Qed.
 
   Local Notation ra_idx := (mword_of_int 1 : mword 5).
   Local Notation s0_idx := (mword_of_int 8 : mword 5).
@@ -1103,12 +1117,21 @@ Section UkSh.
      ([UkSh.ush_at]).  ONE conjunct, since P6b: the exit leaf owes the
      payload at the status it exits with and nothing else. *)
   Lemma wp_ksh_exit (h : CpuId) (m : regfile) (avail : nat) :
+    (* THE TEAR-DOWN'S CLOSE PAYMENTS, NAMED (design/pipe.md, "The exit
+       path"): kexit closes every descriptor, so exit's bundle row is one
+       close payment per row of the KEY's table.  This program's table is
+       pipe-free in fact and not provably so at the U tier (the rows above
+       [NSTD] are untracked, and [UsysMemOk.usys_fd_ok]'s open row leaves a
+       descriptor's type existential), so the deposit is NAMED here as
+       write's is, and is paid out of the application's taint
+       ([UexecExecMint.udepw_law_of_sup_exit]). *)
+    udepw_law USYS_exit -∗
     shk_code γt -∗
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode Hpay Hrun".
+    iIntros "#Hxl #Hcode Hpay Hrun".
     rewrite shp_exit.
     (* ---- 0xc86  c.li a7,2 ---- *)
     iApply (wp_uk_cli N h m (mword_of_int 0xc86)
@@ -1132,12 +1155,15 @@ Section UkSh.
               ltac:(unfold m1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 2 : mword 64));
                     vm_compute; reflexivity)
-              with "[] [Hpay] Hrun").
+              with "[] [Hpay] [] Hrun").
     { iApply (uis_shk_c88 with "Hcode"). }
     (* AT A PAYLOAD THAT DOES NOT READ THE STATUS the one copy the program
        holds is the one the leaf owes ([UkRun.ukn_const]): sh's exit owes
        its parent the console reader token ([UserConsole.ucons_pay]). *)
     { rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)). iExact "Hpay". }
+    (* ...AND THE EXIT ROW, out of the named deposit *)
+    { iApply udepw_ex_of_udepw.
+      iApply (udepw_of_law N m1 (mword_of_int 0xc88) USYS_exit with "Hxl"). }
   Qed.
 
 
@@ -1173,7 +1199,7 @@ Section UkSh.
               ltac:(apply bv_eq; vm_compute; reflexivity)
               ltac:(vm_compute; reflexivity)
               with "[Hdp] [] [] [] Hrun Hcont").
-    { iExact "Hdp". }
+    { iDestruct "Hdp" as "[$ _]". }
     { iApply (uis_shk_ca6 with "Hcode"). }
     { iApply (uis_shk_ca8 with "Hcode"). }
     { iApply (uis_shk_cac with "Hcode"). }
@@ -2646,10 +2672,15 @@ Section UkSh.
        premise one level up, and a caller that still has the free payload
        is one [iPoseProof] away from it. *)
     ukn_pay N (-1) -∗
+    (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS (design/pipe.md, "The exit
+       path"): this deliberate fault IS an exit at -1, and kexit closes
+       every descriptor, so the process owes the exit number's bundle row.
+       Named here for [wp_ksh_exit]'s reason. *)
+    udepw_law USYS_exit -∗
     urun N h m (mword_of_int ShSyms.memset) (2 + nn) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Halo Hahi0 Ha0 Ha2 HN0 HN31. iIntros "#Hcode #Ht0 Hpay Hrun".
+    intros Halo Hahi0 Ha0 Ha2 HN0 HN31. iIntros "#Hcode #Ht0 Hpay #Hxl Hrun".
     rewrite shp_memset.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     assert (Hahi : a + Z.of_nat Nb < 274877906944)
@@ -2877,8 +2908,10 @@ Section UkSh.
               ltac:(rewrite Ha5_6; replace (a + Z.of_nat 0) with a by lia;
                     rewrite (uint_moi a ltac:(unfold Z64; lia));
                     vm_compute uoff_i12; lia)
-              with "[] Ht0 Hrun Hpay").
-    iApply (uis_shk_a70 with "Hcode").
+              with "[] Ht0 Hrun Hpay [Hxl]").
+    { iApply (uis_shk_a70 with "Hcode"). }
+    iApply udepw_ex_of_udepw.
+    iApply (udepw_of_law N m6 (mword_of_int 0xa70) USYS_exit with "Hxl").
   Qed.
 
   (* ...AND THE PROCESS'S FIRST TEXT BYTE, which is what a store to the NULL
@@ -7117,6 +7150,8 @@ Section UkSh.
 
   (* ---- 0x9ca  the loop's only exit: exit(0) --------------------------- *)
   Local Lemma wp_ksh_die (h : CpuId) (mc : regfile) (n : nat) :
+    (* the tear-down's close payments, named -- see [wp_ksh_exit] *)
+    udepw_law USYS_exit -∗
     shk_code γt -∗
     (* the loop's exit is sh's OWN exit, so the payload is sh's own lease
        (lane KILL-PAY, K4(a)) *)
@@ -7124,7 +7159,7 @@ Section UkSh.
     urun N h mc (mword_of_int 0x9ca) n -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode Hpay Hrun".
+    iIntros "#Hxl #Hcode Hpay Hrun".
     iApply (wp_uk_cli N h mc (mword_of_int 0x9ca)
               (mword_of_int 0 : mword 6) a0_idx n
               ltac:(unfold unot_sp; vm_compute; discriminate)
@@ -7148,7 +7183,7 @@ Section UkSh.
               with "[] Hrun").
     { iApply (uis_shk_9cc with "Hcode"). }
     iIntros (h2) "Hrun".
-    iApply (wp_ksh_exit h2 _ n with "Hcode Hpay Hrun").
+    iApply (wp_ksh_exit h2 _ n with "Hxl Hcode Hpay Hrun").
   Qed.
 
 
@@ -7231,6 +7266,8 @@ Section UkSh.
   (* ---- the loop itself: 0x938..0x976, under one iLöb ------------------ *)
   (* DEPENDS ON [ush_read_leaf] (through getcmd).                          *)
   Local Lemma wp_ksh_loop (R : iProp Σ) (l : list fdstate) :
+    (* the tear-down's close payments, named -- see [wp_ksh_exit] *)
+    udepw_law USYS_exit -∗
     □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     ush_prompt_law -∗
@@ -7245,7 +7282,7 @@ Section UkSh.
        them, so a general line has to carry this as a premise. *)
     assert (Hnble : (length echo_line < sh_nbuf)%nat)
       by (rewrite echo_line_length; vm_compute; lia).
-    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hgen".
+    iIntros "#Hxl #Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hgen".
     iLöb as "IH".
     iIntros (h m f n0) "%Hregs %Hfd0 Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
@@ -7366,7 +7403,7 @@ Section UkSh.
           by (vm_compute; reflexivity).
         rewrite (proj2 Ha0m Hg0) Hz in Htk40. discriminate Htk40. }
       iDestruct (ush_pos_pay with "Hpos") as "Hpay".
-      iApply (wp_ksh_die h5 mR (16 + n) with "Hcode Hpay Hrun"). }
+      iApply (wp_ksh_die h5 mR (16 + n) with "Hxl Hcode Hpay Hrun"). }
     assert (E940 : add_vec_int (mword_of_int 0x940 : mword 64) 4
                    = mword_of_int 0x944)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -7692,6 +7729,8 @@ Section UkSh.
   (* ===================================================================== *)
   Lemma wp_ksh_cmd_head (R : iProp Σ) (h : CpuId) (m : regfile)
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
+    (* the tear-down's close payments, named -- see [wp_ksh_exit] *)
+    udepw_law USYS_exit -∗
     □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     ush_prompt_law -∗
@@ -7706,7 +7745,7 @@ Section UkSh.
     urun N h m (mword_of_int 0x914) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hgen %Hfd0 Hstd HR Hbs Hrun".
+    iIntros "#Hxl #Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hgen %Hfd0 Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
     (* ---- 0x914  li s3,100 ---- *)
     iApply (wp_uk_li N h m (mword_of_int 0x914)
@@ -7855,7 +7894,7 @@ Section UkSh.
                  (regval_into_reg (mword_of_int 99 : mword 64))).
       - exact (upd_eq m5 (Regidx s6_idx)
                  (regval_into_reg (mword_of_int 32 : mword 64))). }
-    iDestruct (wp_ksh_loop R l with "Hdp Hlaw Hplaw Hrest Hcode Hjt Hgen")
+    iDestruct (wp_ksh_loop R l with "Hxl Hdp Hlaw Hplaw Hrest Hcode Hjt Hgen")
       as "Hhead".
     iApply ("Hhead" $! h7 m6 f n0 with "[%] [%] Hstd HR Hbs Hrun");
       [ exact Hregs | exact Hfd0 ].
@@ -7909,6 +7948,8 @@ Section UkSh.
      started from. *)
   Local Lemma wp_ksh_console (R K : iProp Σ) (h : CpuId) (m : regfile)
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
+    (* the tear-down's close payments, named -- see [wp_ksh_exit] *)
+    udepw_law USYS_exit -∗
     □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     ush_prompt_law -∗
@@ -7931,7 +7972,7 @@ Section UkSh.
     urun N h m (mword_of_int 0x900) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen".
+    iIntros "#Hxl #Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen".
     set (n := (16 + (ush_Dbody + n0))%nat).
     iLöb as "IH" forall (h m l).
     iIntros "%Hs1 %Hs2 %Hfd0 Hin Hstd Hcwd Hch Hpid Hpos HR Hbs Hrun".
@@ -8093,7 +8134,7 @@ Section UkSh.
          the row that ledger satisfies *)
       iIntros (h5) "Hrun".
       iApply (wp_ksh_cmd_head R h5 mD f n0 l'
-                with "Hdp Hlaw Hplaw Hrest Hcode Hjt Hgen [%]
+                with "Hxl Hdp Hlaw Hplaw Hrest Hcode Hjt Hgen [%]
                       [Hstd Hcwd Hch Hpid Hpos] HR Hbs Hrun");
         [ exact Hfd0' | ].
       rewrite /ush_pstate /ush_std. iFrame "Hstd Hcwd Hch Hpid Hpos". }
@@ -8174,7 +8215,7 @@ Section UkSh.
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Eret2.
     iApply (wp_ksh_cmd_head R h8 _ f n0 l'
-              with "Hdp Hlaw Hplaw Hrest Hcode Hjt Hgen [%]
+              with "Hxl Hdp Hlaw Hplaw Hrest Hcode Hjt Hgen [%]
                     [Hstd Hcwd Hch Hpid Hpos] HR Hbs Hrun");
       [ exact Hfd0' | ].
     rewrite /ush_pstate /ush_std. iFrame "Hstd Hcwd Hch Hpid Hpos".
@@ -8190,6 +8231,8 @@ Section UkSh.
   (* ===================================================================== *)
   Lemma wp_ksh_main (R K : iProp Σ) (h : CpuId) (m : regfile)
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
+    (* the tear-down's close payments, named -- see [wp_ksh_exit] *)
+    udepw_law USYS_exit -∗
     □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     ush_prompt_law -∗
@@ -8215,7 +8258,7 @@ Section UkSh.
       (8 + (16 + (ush_Dbody + n0))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen %Hfd0 Hin Hstd Hcwd Hch Hpid Hpos
+    iIntros "#Hxl #Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen %Hfd0 Hin Hstd Hcwd Hch Hpid Hpos
              HR Hbs Hrun".
     set (n := (16 + (ush_Dbody + n0))%nat).
     rewrite shp_main.
@@ -8431,7 +8474,7 @@ Section UkSh.
        [bge s1,a0] at 0x90c is what tells a descriptor above the standard
        streams from one that landed on a closed standard stream. *)
     iApply (wp_ksh_console R K he _ f n0 l
-              with "Hdp Hlaw Hplaw Hrest Hcode Hjt Hro Hgen [] [] [%] Hin Hstd Hcwd Hch
+              with "Hxl Hdp Hlaw Hplaw Hrest Hcode Hjt Hro Hgen [] [] [%] Hin Hstd Hcwd Hch
                     Hpid Hpos HR Hbs Hrun");
       [ | | exact Hfd0 ].
     - (* s1 is O_RDWR, off the [c.li] at 0x8f6 *)
@@ -8462,6 +8505,8 @@ Section UkSh.
   (* ===================================================================== *)
   Lemma wp_ksh_start (R K : iProp Σ) (h : CpuId) (m : regfile)
       (f : nat -> bv 8) (n0 : nat) (l : list fdstate) :
+    (* the tear-down's close payments, named -- see [wp_ksh_exit] *)
+    udepw_law USYS_exit -∗
     □ (T -∗ sh_deps) -∗
     ush_tag_law -∗
     (* ...and the prompt's law at every line boundary (lane IO-LEAF,
@@ -8504,7 +8549,7 @@ Section UkSh.
       (2 + (8 + (16 + (ush_Dbody + n0)))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen #Hfd0 Hin Hstd Hcwd Hch Hpid Hpos
+    iIntros "#Hxl #Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen #Hfd0 Hin Hstd Hcwd Hch Hpid Hpos
              HR Hbs Hrun".
     (* THE TAINT ARM GOES GENERIC AT ONCE, and this is the ONE place it can:
        every walk below is sh's own code, and sh's console open is PINNED --
@@ -8618,7 +8663,7 @@ Section UkSh.
        [uinstr_is] hypotheses holding the literal into the context. *)
     rewrite <- ?shp_main.
     iApply (wp_ksh_main R K h5 _ f n0 l
-              with "Hdp Hlaw Hplaw Hrest Hcode Hjt Hro Hgen [%] Hin Hstd Hcwd Hch Hpid Hpos
+              with "Hxl Hdp Hlaw Hplaw Hrest Hcode Hjt Hro Hgen [%] Hin Hstd Hcwd Hch Hpid Hpos
                     HR Hbs Hrun").
     exact Hfd0.
   Qed.

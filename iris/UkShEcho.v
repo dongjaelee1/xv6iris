@@ -65,6 +65,7 @@ Require Import UexecSG.          (* [uexecSG] / [uprogSG]: the deposit class *)
 Require Import CtxIdDefs.
 Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.
+Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 Local Open Scope Z_scope.
 Import Defs.
 
@@ -499,6 +500,9 @@ Section UkShEcho.
         sh_exec_sup_echo Q Cr -∗
         (* the diagnostic's law, and what its end pays at the exit *)
         UkShDiag.ush_execfail_law Cr Cd -∗
+        (* ...and the tear-down's close payments (design/pipe.md, "The exit
+           path"): the diagnostic's walk ends in exit(1) *)
+        UkRun.udepw_law USYS_exit -∗
         □ (Cd -∗ Q (-1)) -∗
         ush_jtab (ukn_t N) -∗
         ush_cmd (ukn_d N) t (echo_cmd s0 g) -∗
@@ -576,7 +580,7 @@ Section UkShEcho.
        linearly for that reason and is GONE from this walk (M4b(2): the
        diagnostic goes through the links); [sh_exec_sup_echo] is still
        introduced linearly and its box stripped by an explicit unfold. *)
-    iIntros "#Hcode Hexs #Hxl #Hcd #Hjt #Htree Hsz Hstd Hcwd Hch Hcr Hrun".
+    iIntros "#Hcode Hexs #Hxl #Hex2 #Hcd #Hjt #Htree Hsz Hstd Hcwd Hch Hcr Hrun".
     rewrite /sh_exec_sup_echo. iDestruct "Hexs" as "#Hexs".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
     iDestruct (echo_cmd_addr with "Htree") as %[Htr Ht8].
@@ -742,7 +746,7 @@ Section UkShEcho.
               ltac:(intros j Hj; cbn [ua_bytes];
                     rewrite (proj1 Hbytes 0%nat j ltac:(exact echo_ws_pos) Hj);
                     rewrite echo_off_0 Nat.add_0_l; reflexivity)
-              with "Hxl Hcode Hro [] [] Hstd Hcr [] Hrun").
+              with "Hxl Hcode Hro [] [] Hstd Hcr [] Hex2 Hrun").
     { rewrite Hs1_k4. cbn [ua_ptr]. iExact "Hw0". }
     { rewrite /ush_str. cbn [ua_ptr ua_len ua_bytes].
       iSplitR; [ iPureIntro; exact Hxr | iExact "Hxs" ]. }
@@ -789,6 +793,9 @@ Section UkShEcho.
            where the exec FAILED (M4b(2)) *)
         □ (Cr -∗ Q (-1)) -∗
         UkShDiag.ush_execfail_law Cr Cd -∗
+        (* ...and the tear-down's close payments (design/pipe.md, "The exit
+           path"): both dead ends of this walk end in exit(1) *)
+        UkRun.udepw_law USYS_exit -∗
         □ (Cd -∗ Q (-1)) -∗
         shp_code (ukn_t N) -∗ shp_rodata (ukn_t N) -∗ ush_jtab (ukn_t N) -∗
         ustr (ukn_d N) (DfracOwn 1) s0 len f -∗
@@ -820,7 +827,7 @@ Section UkShEcho.
        spent exactly once, at the arm below, and introducing it with [#]
        does not return here.  No [UkSh.sh_deps] anywhere on this walk
        (M4b(2)). *)
-    iIntros "#Hcode Hexs #Hcq #Hxl #Hcd #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd
+    iIntros "#Hcode Hexs #Hcq #Hxl #Hex2 #Hcd #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd
              Hcwd Hch HM Hcr Hrun".
     (* the line's own bytes are non-NUL, which is what makes each token a
        string once the cut lands *)
@@ -890,7 +897,7 @@ Section UkShEcho.
               h2 m2 dw dv s0 len f echo_toks
               (8 + (UkShDiag.ush_Dg + n))
               Ha0_2 Hns Htoks Htlen Hs0 Hs64
-              with "Hpcode Hpro Hline Hws Hsy HM Hpxw Hcr Hrun").
+              with "Hpcode Hpro Hline Hws Hsy HM Hpxw Hex2 Hcr Hrun").
     iIntros (p) "%Hparses Hnode Hline %Hcut Hws Hsy".
     iIntros (h3 m3) "%Hcs3 %Ha0_3 Hsz Hcr Hrun".
     rewrite Hra_2.
@@ -928,7 +935,7 @@ Section UkShEcho.
     iApply (wp_kshr_exec_echo_holds Q Cr Cd N _ h4 m4 p (sz + 65536) s0
               (ushp_nulfold echo_toks (ushp_ext len f)) ld ((60 + n)%nat)
               Hpeq Ha0_4 Hbytes Hfd1 Hfd2
-              with "Hcode Hexs Hxl Hcd Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
+              with "Hcode Hexs Hxl Hex2 Hcd Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
   Qed.
 
   (* =================================================================== *)
@@ -959,9 +966,12 @@ Section UkShEcho.
 
   Lemma ushf_child_law_holds (Wc : nat -> nat -> iProp Σ) :
     ush_execfail_law_wq Wc -∗
+    (* ...and the tear-down's close payments (design/pipe.md, "The exit
+       path"): the child's two dead ends both exit(1) *)
+    UkRun.udepw_law USYS_exit -∗
     sh_exec_sup_echo_wq Wc -∗ UkShFork.ushf_child_law Wc.
   Proof.
-    iIntros "#Hxl #Hsup". rewrite /UkShFork.ushf_child_law.
+    iIntros "#Hxl #Hex2 #Hsup". rewrite /UkShFork.ushf_child_law.
     iIntros "!>" (N' h m dw dv s0 len g sz ld n np)
       "%Hpeq %Hs1 %Hline %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
        #Hcode #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
@@ -970,13 +980,14 @@ Section UkShEcho.
               (Wc np 3%nat) (Wc np 0%nat) N' Hc h m dw dv s0 len g sz ld n
               Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok
               (proj1 (proj2 Hrows)) (proj2 (proj2 Hrows))
-              with "Hcode [] [] [] [] Hpcode Hpro Hjt Hline Hws Hsy Hstd Hcwd Hch
+              with "Hcode [] [] [] [] [] Hpcode Hpro Hjt Hline Hws Hsy Hstd Hcwd Hch
                     HM Hcr Hrun").
     - iApply ("Hsup" $! np).
     - (* a child that died at the null store exits on the block it was
          lent *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iLeft. iExact "Hc".
     - iApply ("Hxl" $! np).
+    - iExact "Hex2".
     - (* a failed exec's child exits on the block written up to its prompt *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iRight. iExact "Hc".
   Qed.

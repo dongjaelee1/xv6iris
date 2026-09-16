@@ -1,21 +1,23 @@
 # pipe-queue — the pipe's contents as exact ghost state
 
-STATUS (2026-09-16): definitional layer LANDED on branch `pipe-queue`
-(`996ddf76a`, repaired by `f636385f0` -- the write/read posts -- and
-`62d557bbe` -- the trap route's close payments; both repairs came out of
-the proof lanes and are described in `design/pipe.md`).  Lanes: PQ-B DONE
-and merged (`aae0c244f`); PQ-C 8 of 13 files done and merged
-(`e9157e38d`), the five trap-route files in progress against `62d557bbe`;
-PQ-A pipeclose/pipealloc done (`5914d67e9`, not yet merged), pipewrite/
-piperead in progress against `f636385f0`; PQ-D in progress.  Lane
-clones `/shared/xv6iris-3-pq-{A,B,C,D}` at branches `pq-{A,B,C,D}`,
-remote trees seeded warm from the lead's (memory: seed-lane-remote-trees),
-briefs in each clone's `scratch/`.  The red proof files at the branch
-point were: ProofFileclose, ProofFileread, ProofFilestat, ProofFilewrite,
-ProofKexit, ProofPipealloc, ProofPipeclose, ProofPiperead, ProofPipewrite,
-ProofSysClose, ProofSysExit, ProofSysOpenParts, ProofSysPipe, ProofSysRead,
-ProofSysWrite, ProofSyscall, ProofUsertrapTail, ProofUservec, UkRunSys --
-none depends on another (the Module Types separate them).
+STATUS (2026-09-16, evening): branch `pipe-queue` at `9067f6a79`.  Landed
+and green: the definitional layer (`996ddf76a`), the post repair
+(`f636385f0`), lane A (all four kernel pipe proofs), lane B (the file
+layer), lane C's first eight files (sys_read/write/close/pipe, kexit,
+sys_exit, syscall, usertrap parts -- the last four to be re-touched), lane
+D's first pass (the user tier at the pipe posts and the close row).  The
+tear-down design was settled in `55207260e` (design/pipe.md, "The exit
+path": the killer's taint in the kill row, exit's bundle row 2, the
+self-kill's own deposit; kexit at the marker-less block).  Lanes C and D
+are porting to it (briefs `scratch/C2.md`, `scratch/D2.md` in their
+clones): C the kernel proofs that found or read the kill row or call kexit
+(ProofSetkilled, ProofKexit, ProofSysExit, ProofSyscall's exit arm,
+ProofUsertrap*, ProofUservec, ProofUserretClosed, ProofKkill/Killed if
+red); D the exit row at the user tier (`udep`'s third law, UkRunSys's exit
+leaf, UkStore's owed side, UexecExecMint, the programs' exit sites, the
+boot/adequacy text).  Lane clones `/shared/xv6iris-3-pq-{A,B,C,D}` at
+branches `pq-{A,B,C,D}`, remote trees seeded warm (memory:
+seed-lane-remote-trees).
 Design of record: `design/pipe.md`, "The byte queue".  Read it first; this
 file is only what is left to do and who does it.
 
@@ -121,25 +123,23 @@ file is only what is left to do and who does it.
   `free_num` or the supply.
 
 ## Open, recorded
-- The teardown deposit at the U tier (design/pipe.md, "The exit path"):
-  `ut_exit_cpay` is `fileclose_cpays sts` at EVERY trap (a process can be
-  found killed at any trap), and nothing is refunded on resume, so a
-  verified program that keeps a pipe's fragment across traps cannot pay
-  it with links today.  Two candidate repairs, both application-tier: a
-  refund on the resume route (`ut_kill_out` already refunds the non-ecall
-  kill deposit; the syscall post rows would have to carry the ecall
-  side), or a kill row that carries the killer's taint (`kkill` has the
-  credential; `setkilled`'s `kill_owed` arm does not, so the self-kill
-  would need its own source).  Also: two rows on one pipe cannot be paid
-  by two independent links from one exclusive fragment -- kexit's table
-  payment would need to be sequential (the second row's payment as a
-  function of the first's post, as `ProofSysPipe`'s rollback does) for a
-  program holding both ends.  The generic slot is unaffected (taint).
+- The application-tier shape of the exit row: `fileclose_cpays sts` is a
+  `[∗ list]` of independent payments, so two rows on one pipe (both ends
+  right after `pipe()`, or a `dup`) cannot be paid by links from one
+  exclusive fragment.  A program holding both ends pays with the taint
+  today; the honest repair is a SEQUENTIAL payment (the second row's as a
+  function of the first close's post, as `ProofSysPipe`'s rollback does),
+  or a fire-or-skip close link whose skipped side also yields the payload.
+  Kernel side is closed either way.
 - `fileclose_cpost`'s `last` flag is `bool_decide (q = 1)`: a last close
   by a partial-fraction holder still gets the fired arm but cannot be told
   it was last (lane B).  Sound; weaker than the name suggests.
+- Row 16 carries no `filewrite_ret` blanket: a tainted pipe writer reads
+  no count (a link-paying one reads it off `pipe_wpost`'s cursor) --
+  recorded in `UkWritePipe.v`'s header (lane D).
+- `UsysMemOk.usys_fd_ok`'s open row leaves the descriptor's type
+  existential, so cat's close pays `udepw_law 21` (taint at the free
+  instance); pinning "open never installs FD_PIPE" there would make it
+  free again (lane D).
 - Promotion candidates from the lanes' local lemmas: `ProofSysPipe`'s
-  `sp_clink_relink` (a close link whose payload is the exact fragment can
-  be re-aimed at the other end once fired) into `PipeQueue.v`.
-- A lease-style "nobody else moved it" upgrade is unnecessary now: the
-  fragment is exact, and interference shows up as the taint.
+  `sp_clink_relink` into `PipeQueue.v`.

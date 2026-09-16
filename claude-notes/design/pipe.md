@@ -431,10 +431,37 @@ pipewrite/piperead port, 2026-09-16):
 **The exit path** is the one place a payment is demanded over a whole
 table: `kexit` closes every descriptor, so its contract takes the table
 named and `fileclose_cpays sts`.  The generic slot pays it out of the
-taint.  A verified program's exit leaf has its own `fdv` in hand inside the
+taint.  Two things the first draft got wrong here (found by the syscall
+port, 2026-09-16):
+
+- **The payment is owed at every trap, not only at exit(2).**  usertrap
+  runs `kexit(-1)` itself at its three killed checks, and a process can be
+  found killed at ANY trap (a killed `read(2)` reaches the first check
+  with a table that may hold pipes and nothing in hand but the kill shot:
+  the kill row carries the victim's exit payload, not the killer's
+  credential, and a self-kill is paid by `kill_owed` without any taint).
+  So `SpecUsertrap.ut_exit_cpay` is `fileclose_cpays sts` ungated, owed by
+  `SpecUservec` too; only the dispatcher's `sysc_exit_cpay` stays gated on
+  the number.
+- **The kernel gives nothing back on the resume path.**  A verified
+  program that pays links out of its fragments at a trap that does NOT
+  kill it has lost them -- kexit's payload is `emp`, nobody is there to
+  receive it.  So a program that keeps a pipe's fragment across traps
+  cannot use this row as it stands; it needs either a refund on the resume
+  route (the slot mechanism `ut_kill_out` already refunds the non-ecall
+  kill deposit, and the syscall post rows would have to carry the ecall
+  side) or a kill protocol whose row carries the killer's taint.  Both are
+  application-tier design, recorded as open in `projects/pipe-queue.md`;
+  the kernel side is closed either way.
+
+A verified program's exit leaf has its own `fdv` in hand inside the
 deposit and pays a link for every pipe row -- which it can do only if its
 application invariant holds the fragments of every pipe any of its
-processes can hold (a fork inherits pipe rows but not the fragment).  That
+processes can hold (a fork inherits pipe rows but not the fragment), and
+only ONE link per pipe at a time: two rows on the same pipe (both ends
+right after `pipe()`) cannot be paid by two independent links from one
+exclusive fragment, which is why `sys_pipe`'s own rollback pays its second
+close as a function of the first close's post (`ProofSysPipe`).  That
 is an application-level invariant, not a kernel one, and it is where the
 `uheld`-style ledger question of `user-read.md` §8.4 would resurface for a
 program that wants to reason about rows it did not create.

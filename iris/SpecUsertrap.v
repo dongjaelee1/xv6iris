@@ -1059,29 +1059,32 @@ Definition ut_pay_in `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : C
     (f : sfam) (sc_v : mword 64) (tf : list (mword 64)) (U : ustate) : iProp Σ :=
   upay_at (pv_gen (us_V U)) sc_v tf f.
 
-(* THE EXIT ROW'S CLOSE PAYMENTS (design/pipe.md, "The byte queue"): at an
-   exit ecall the dying process closes every descriptor, and a pipe
-   descriptor's last close steps the pipe's exact ghost state, so the
-   trap's deposit at that number carries one close payment per row of the
-   table -- a link, or the taint.  Gated on the cause and the number, so
-   every other trap owes nothing.  Relayed to the dispatcher's
-   [SpecSyscall.sysc_exit_cpay] verbatim.  The generic slot pays it out of
-   the kill credential its supply carries; a verified program's exit leaf
-   pays it at the table it holds. *)
+(* THE TEARDOWN'S CLOSE PAYMENTS (design/pipe.md, "The byte queue"): a
+   dying process closes every descriptor, and a pipe descriptor's last
+   close steps the pipe's exact ghost state, so the trap's deposit carries
+   one close payment per row of the table -- a link, or the taint.  OWED AT
+   EVERY CAUSE AND EVERY NUMBER, not only at an exit ecall: usertrap runs
+   [kexit(-1)] itself at its three killed checks (before the syscall, after
+   it, and after a device interrupt), and a process can be found killed at
+   ANY trap -- a killed [read(2)] reaches the first check with a table that
+   may hold pipes and nothing in hand but the kill shot.  The generic slot
+   pays it out of the kill credential its supply carries
+   ([ut_exit_cpay_taint]); a verified program pays it at the table it
+   holds, and gets nothing back on the resume path -- so a program that
+   keeps a pipe's fragment across a trap is an application-design question
+   still open (design/pipe.md, "The exit path").  Relayed to the
+   dispatcher's [SpecSyscall.sysc_exit_cpay], which stays gated on the
+   number because the dispatcher's only kexit is its exit arm.  The cause
+   and the frame are kept as parameters so the row keeps its place in
+   every premise list. *)
 Definition ut_exit_cpay `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     (sc_v : mword 64) (tf : list (mword 64)) (sts : list fdstate) : iProp Σ :=
-  (⌜sc_v = uecall_scause /\ usys_num tf = USYS_exit⌝ -∗ fileclose_cpays sts)%I.
-
-Lemma ut_exit_cpay_ne `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
-    (sc_v : mword 64) (tf : list (mword 64)) (sts : list fdstate) :
-  ~ (sc_v = uecall_scause /\ usys_num tf = USYS_exit) ->
-  ⊢ ut_exit_cpay sc_v tf sts.
-Proof. intros Hne. rewrite /ut_exit_cpay. iIntros (H). exfalso. exact (Hne H). Qed.
+  fileclose_cpays sts.
 
 Lemma ut_exit_cpay_taint `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     (sc_v : mword 64) (tf : list (mword 64)) (sts : list fdstate) :
   pipe_taint_cred -∗ ut_exit_cpay sc_v tf sts.
-Proof. iIntros "#Ht %_". by iApply fileclose_cpays_taint. Qed.
+Proof. iIntros "#Ht". by iApply fileclose_cpays_taint. Qed.
 
 (* the row's congruence: it reads the number and argument 0, both of which
    [TfUser.tf_ueq] carries (its second clause covers indices 5..35, and
@@ -1748,7 +1751,8 @@ Definition wp_usertrap_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, 
      every number, at the same frame fork's row is stated at
      -- [ut_pay_in] *)
   ut_pay_in f sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U))) U -∗
-  (* ...AND EXIT'S CLOSE PAYMENTS, one per descriptor row, at the same frame
+  (* ...AND THE TEARDOWN'S CLOSE PAYMENTS, one per descriptor row, owed at
+     EVERY cause because usertrap's own killed checks run kexit
      -- [ut_exit_cpay] *)
   ut_exit_cpay sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U))) sts -∗
   (* ...AND THE KILL ROW, owed at every cause and empty at all but the ones

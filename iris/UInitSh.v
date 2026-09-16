@@ -46,7 +46,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 Require Import WpMmodeLeafBase.  (* [csp_rs1] *)
-Require Import UmodeAbi.
+Require Import UmodeArith UmodeAbi.   (* [Z64]: EX-3's reading needs it; the sweep predates it *)
 Require Import ProcGeom.
 (* THE GHOST BINDER LIST, each module IMPORTED and not merely required:
    naming [xv6G] / [fileG] / [irefslotG] / [pavG] without their defining
@@ -61,7 +61,7 @@ Require Import FileInvDefs.     (* [fileG], and its [appcfg] / [icfg] fields *)
 Require Import UserFd.
 Require Import UserHeap.
 Require Import ChildTok.  (* [my_pay]: the exec wands' pay fact *)
-Require Import UexecSlot UexecRet UexecSG.
+Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UInitFd.  (* [ufd_head] / [ufd_head_row] -- init's own
                             descriptor head, and the row sh's entry reads
                             off it against the lent authority *)
@@ -122,6 +122,9 @@ Require Import Xv6Cameras.         (* [uartGhostG] *)
 Require Import UartNames.          (* [cons_names] *)
 Require Import UserConsole.        (* [ucons_pay] / [upos] *)
 Require Import CtxIdDefs.
+Require Import TsoCtx.
+Require Import UkRunExecRef.    (* [udepw_at_refR] / [sbundle_pay_refR]: EX-4's instances *)
+Require Import SpecCopyin.         (* [uimg_word_at] *)
 Require User.InitData.
 Import Defs.
 

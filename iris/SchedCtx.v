@@ -546,18 +546,20 @@ Section SchedCtx.
      the step hand the ONE-SHOT back: after this write the flag is monotone
      for this incarnation, and [ChildTok.kill_shot] is that fact. *)
   Lemma kill_paid_kill_two (pid : mword 32) (kl kl' : mword 32) (dq : dfrac)
-      (gn : gname) :
+      (gn : gname) (self : bool) :
     bv_unsigned pid <> 0 ->
     ⌜kl' <> (mword_of_int 0 : mword 32)⌝ -∗
     pid_reg pid dq gn -∗
     (* the taint, or the process's OWN death payload beside the
        incarnation's marker (design/pipe.md, "The exit path"): a self-kill
        founds the row on the SPENT arm, keeps its payload in hand for the
-       kexit two critical sections later, and gets it back below *)
-    (□ riscv_kill_cred ∨ (ChildTok.kill_owed gn ∗ ChildTok.taken_at gn)) -∗
+       kexit two critical sections later, and gets it back below.  KEYED
+       on the party, so the caller knows which side comes back. *)
+    (if self then ChildTok.kill_owed gn ∗ ChildTok.taken_at gn
+     else □ riscv_kill_cred) -∗
     kill_paid pid kl ==∗
     pid_reg pid dq gn ∗ ChildTok.kill_shot gn ∗ kill_paid pid kl' ∗
-    (□ riscv_kill_cred ∨ ChildTok.kill_owed gn).
+    (if self then ChildTok.kill_owed gn else □ riscv_kill_cred).
   Proof.
     intro Hpnz. rewrite /kill_paid.
     iIntros "%Hknz Hmine Hpay [[%Hz _] | [%Hnz Hr]]".
@@ -567,9 +569,19 @@ Section SchedCtx.
                    with "Hmine Hr") as %->.
       iMod (kill_row_fire with "Hrow") as "#Hs".
       iModIntro. iFrame "Hmine". iSplitL ""; [ iExact "Hs" | ].
-      iDestruct "Hpay" as "[#Hc | [Howed Ht]]".
+      destruct self.
+      + (* the process's own: the marker goes in, the payload comes back *)
+        iDestruct "Hpay" as "[Howed Ht]".
+        iSplitR "Howed"; [ | iExact "Howed" ].
+        iRight. iSplitR; [ iPureIntro; exact Hnz | ].
+        iExists gn', Q.
+        iSplitL "Hr"; [ iExact "Hr" | ].
+        iSplitR; [ iExact "Hmy" | ].
+        iSplitR; [ iModIntro; iExact "Hw" | ].
+        iApply (kill_row_of_taken _ _ Hknz with "Hs Ht").
       + (* the killer's credential buys the payload through the row's wand *)
-        iSplitL "Hr"; [ | iLeft; iExact "Hc" ].
+        iDestruct "Hpay" as "#Hc".
+        iSplitL "Hr"; [ | iExact "Hc" ].
         iRight. iSplitR; [ iPureIntro; exact Hnz | ].
         iExists gn', Q.
         iSplitL "Hr"; [ iExact "Hr" | ].
@@ -577,14 +589,6 @@ Section SchedCtx.
         iSplitR; [ iModIntro; iExact "Hw" | ].
         iApply (kill_row_of_owed _ _ Hknz with "Hs Hc").
         iApply (ChildTok.kill_owed_of with "Hmy"). iApply "Hw". iExact "Hc".
-      + (* the process's own: the marker goes in, the payload comes back *)
-        iSplitR "Howed"; [ | iRight; iExact "Howed" ].
-        iRight. iSplitR; [ iPureIntro; exact Hnz | ].
-        iExists gn', Q.
-        iSplitL "Hr"; [ iExact "Hr" | ].
-        iSplitR; [ iExact "Hmy" | ].
-        iSplitR; [ iModIntro; iExact "Hw" | ].
-        iApply (kill_row_of_taken _ _ Hknz with "Hs Ht").
   Qed.
 
   (* ...AND WHAT AN UNUSED SLOT'S PAYLOAD SAYS ABOUT THE FLAG: either it

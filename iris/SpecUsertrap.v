@@ -1106,12 +1106,15 @@ Qed.
    pair and nothing is owed. *)
 Definition ut_kill_in `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
-    (f : sfam) (sc_v : mword 64) (W : uvis) (gn : gname) : iProp Σ :=
+    (f : sfam) (sc_v : mword 64) (W : uvis) (gn : gname) (sts : list fdstate)
+    : iProp Σ :=
   (* ...AND THE KEY'S GENERATION IS THE BLOCK'S, carried as a PURE conjunct
      rather than a Coq premise: the key is opaque to the kernel, and this is
      the one thing setkilled has to know about it -- which row its charge
-     lands on. *)
-  (⌜uvis_gen W = gn⌝ ∗
+     lands on.  AND THE KEY'S TABLE IS THE TRAP'S (design/pipe.md, "The exit
+     path"): the owed side of the pair pays the tear-down's closes at the
+     key's table, and kexit spends them at the trap's. *)
+  (⌜uvis_gen W = gn /\ uvis_fd W = sts⌝ ∗
    (if decide (sc_v = uecall_scause) then emp
     else uexec_kill_arm sc_v W f))%I.
 
@@ -1143,10 +1146,10 @@ Section UtKillRows.
   Context `{!riscvGS Σ, !xv6G Σ, !fileG Σ}.
   Context `{GEN : GenId} `{XI : CurCtx} {SG : uexecSG Σ}.
 
-  Lemma ut_kill_in_ecall (f : sfam) (W : uvis) (gn : gname) :
-    uvis_gen W = gn -> ⊢ ut_kill_in f uecall_scause W gn.
+  Lemma ut_kill_in_ecall (f : sfam) (W : uvis) (gn : gname) (sts : list fdstate) :
+    uvis_gen W = gn -> uvis_fd W = sts -> ⊢ ut_kill_in f uecall_scause W gn sts.
   Proof.
-    intro Hg. rewrite /ut_kill_in. iSplitR; [ by iPureIntro | ].
+    intros Hg Hfd. rewrite /ut_kill_in. iSplitR; [ by iPureIntro | ].
     case_decide as Hc; [ done | exfalso; by apply Hc ].
   Qed.
 
@@ -1158,15 +1161,16 @@ Section UtKillRows.
   Proof. rewrite /ut_resume_in. case_decide as Hc; [ done | exfalso; by apply Hc ]. Qed.
 
   (* the pair's two sides, at the cause that has one *)
-  Lemma ut_kill_in_pair (f : sfam) (sc_v : mword 64) (W : uvis) (gn : gname) :
+  Lemma ut_kill_in_pair (f : sfam) (sc_v : mword 64) (W : uvis) (gn : gname)
+      (sts : list fdstate) :
     sc_v <> uecall_scause ->
-    ut_kill_in f sc_v W gn -∗
-    ⌜uvis_gen W = gn⌝ ∗ (ukill_cred_at uslot gn sc_v W f ∧ uslot W).
+    ut_kill_in f sc_v W gn sts -∗
+    ⌜uvis_gen W = gn /\ uvis_fd W = sts⌝ ∗ (ukill_cred_at uslot gn sc_v W f ∧ uslot W).
   Proof.
     intro Hne. rewrite /ut_kill_in.
     destruct (decide (sc_v = uecall_scause)) as [Hc | _]; [ by exfalso | ].
     iIntros "[%Hg H]". iSplitR; [ by iPureIntro | ].
-    rewrite -Hg. rewrite /uexec_kill_arm /uexec_kill_arm_F. iExact "H".
+    destruct Hg as [Hg _]. rewrite -Hg. rewrite /uexec_kill_arm /uexec_kill_arm_F. iExact "H".
   Qed.
 
   (* ...and the resume row, built from either of the two things an arm may
@@ -1735,7 +1739,7 @@ Definition wp_usertrap_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, 
      the SAVE WALK's, which the boundary above cannot name, so a Coq
      premise here would pin it to the wrong one. *)
   ⌜gn = pv_gen (us_V U)⌝ -∗
-  ut_kill_in f sc_v Wk gn -∗
+  ut_kill_in f sc_v Wk gn sts -∗
   (* THE CROSSING: usertrap parks (yield, and every sleeping syscall), so it
      may return on a different hart -- and the bundle comes back at THAT
      hart, which is why [R] is a family (see the note above). *)

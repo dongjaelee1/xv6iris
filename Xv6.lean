@@ -160,3 +160,6 @@ import Xv6.ProofSleep
 import Xv6.LinkSleep
 import Xv6.ProofYield
 import Xv6.LinkYield
+import Xv6.SpecScheduler
+import Xv6.ProofScheduler
+import Xv6.LinkScheduler

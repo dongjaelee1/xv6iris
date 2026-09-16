@@ -292,6 +292,13 @@ Section ExecRun.
       (Pay : iProp Σ) : iProp Σ :=
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
        (fdv : list fdstate) (cs : gset gname) (pidv : mword 32),
+       (* ...and whether that table holds a pipe row (design/pipe.md, "The
+          exit path"): the new image's entry (E) asks for it, because the
+          run it builds carries it and the exit leaf mints the tear-down's
+          bundle row off it.  It is a fact about the EXEC'ING process's
+          table ([SpecKexec.kexec_image_ok_fd]), i.e. about this very
+          [fdv], and it is persistent, so nothing comes back. *)
+       urun_nopipe fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
        (* (W)'s pure input: the path the caller's a0 names, off its image *)
@@ -319,6 +326,13 @@ Section ExecRun.
       (Pay : iProp Σ) : iProp Σ :=
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
        (fdv : list fdstate) (cs : gset gname) (pidv : mword 32),
+       (* ...and whether that table holds a pipe row (design/pipe.md, "The
+          exit path"): the new image's entry (E) asks for it, because the
+          run it builds carries it and the exit leaf mints the tear-down's
+          bundle row off it.  It is a fact about the EXEC'ING process's
+          table ([SpecKexec.kexec_image_ok_fd]), i.e. about this very
+          [fdv], and it is persistent, so nothing comes back. *)
+       urun_nopipe fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        urun_ids N cs pidv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
@@ -338,8 +352,8 @@ Section ExecRun.
     uexec_sup_run_ids N pv av c T pl f nl Pay.
   Proof.
     rewrite /uexec_sup_run /uexec_sup_run_ids.
-    iIntros "H" (M pm sz fdv cs pidv) "Hh Hf Hids".
-    iDestruct ("H" $! M pm sz fdv cs pidv with "Hh Hf") as "(Hh & Hf & Hr)".
+    iIntros "H" (M pm sz fdv cs pidv) "#Hnpw Hh Hf Hids".
+    iDestruct ("H" $! M pm sz fdv cs pidv with "Hnpw Hh Hf") as "(Hh & Hf & Hr)".
     iFrame "Hh Hf Hids Hr".
   Qed.
 
@@ -357,9 +371,9 @@ Section ExecRun.
     udepw_at_refR N m pc c R.
   Proof.
     intros Hload Ha0 Ha1. iIntros "#Hrf #Hgen Hsup".
-    rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "Hmp Hh Hf".
+    rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf".
     rewrite /uexec_sup_run.
-    iDestruct ("Hsup" $! M pm sz fdv cs pidv with "Hh Hf")
+    iDestruct ("Hsup" $! M pm sz fdv cs pidv with "Hnpw Hh Hf")
       as "(Hh & Hf & %Hpath & Hw & #Hcon & HPay)".
     iFrame "Hh Hf".
     iApply (sbundle_pay_refR_of_exec uslot T N m pc M pm sz fdv c gn cs pidv
@@ -380,9 +394,9 @@ Section ExecRun.
     udepw_at_refR_ids N m pc c R.
   Proof.
     intros Hload Ha0 Ha1. iIntros "#Hrf #Hgen Hsup".
-    rewrite /udepw_at_refR_ids. iIntros (M pm sz fdv gn cs pidv) "Hmp Hh Hf Hids".
+    rewrite /udepw_at_refR_ids. iIntros (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf Hids".
     rewrite /uexec_sup_run_ids.
-    iDestruct ("Hsup" $! M pm sz fdv cs pidv with "Hh Hf Hids")
+    iDestruct ("Hsup" $! M pm sz fdv cs pidv with "Hnpw Hh Hf Hids")
       as "(Hh & Hf & Hids & %Hpath & Hw & #Hcon & HPay)".
     iFrame "Hh Hf Hids".
     iApply (sbundle_pay_refR_of_exec uslot T N m pc M pm sz fdv c gn cs pidv
@@ -549,7 +563,7 @@ Section ExecRun.
     uexec_sup_run N pv av c T pl f nl Pay.
   Proof.
     iIntros "#Hrd #Hra Hw #Hcon HPay".
-    rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "Hheap Hufd".
+    rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
     iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
     iDestruct ("Hra" $! M pm sz with "Hheap") as %Hargs.
     iFrame "Hheap Hufd". iSplitR; [ by iPureIntro | ]. iFrame "Hw".
@@ -606,7 +620,7 @@ Section ExecRun.
     iIntros "#Hi Hrun Hcwd #Hcl #Hinv #Hrd #Hcon #Hgen #Hrf HPay Hcont".
     iApply (wp_uk_ecall_exec_run N h m pc avail c T pv av pl f nl Pay R
               Hn Ha0 Ha1 Hal4 Hload with "Hi Hrun Hcwd Hrf Hgen [HPay] Hcont").
-    rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "Hheap Hufd".
+    rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
     iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
     iFrame "Hheap Hufd". iSplitR; [ by iPureIntro | ].
     iSplitR "HPay"; [ | iSplitR; [ iApply "Hcon" | iExact "HPay" ] ].
@@ -652,7 +666,7 @@ Section ExecRun.
               Hn Ha0 eq_refl Hal4 Hload
               with "Hi Hrun Hcwd [] Hgen [] [Hcont]").
     - iIntros "!> _". done.
-    - rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "Hheap Hufd".
+    - rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
       iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
       iFrame "Hheap Hufd". iSplitR; [ by iPureIntro | ].
       iSplitR; [ iApply (exec_walk_of_taint with "HT") | ].
@@ -894,6 +908,13 @@ Section ExecRun.
       (Pay : iProp Σ) : iProp Σ :=
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
        (fdv : list fdstate) (cs : gset gname) (pidv : mword 32),
+       (* ...and whether that table holds a pipe row (design/pipe.md, "The
+          exit path"): the new image's entry (E) asks for it, because the
+          run it builds carries it and the exit leaf mints the tear-down's
+          bundle row off it.  It is a fact about the EXEC'ING process's
+          table ([SpecKexec.kexec_image_ok_fd]), i.e. about this very
+          [fdv], and it is persistent, so nothing comes back. *)
+       urun_nopipe fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
        ⌜exec_path_of M pv pl⌝ ∗
@@ -914,9 +935,9 @@ Section ExecRun.
     udepw_at_refR N m pc c R.
   Proof.
     intros Hload Ha0 Ha1. iIntros "#Hrf #Hgen Hsup".
-    rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "Hmp Hh Hf".
+    rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf".
     rewrite /uexec_sup_run_abs.
-    iDestruct ("Hsup" $! M pm sz fdv cs pidv with "Hh Hf")
+    iDestruct ("Hsup" $! M pm sz fdv cs pidv with "Hnpw Hh Hf")
       as "(Hh & Hf & %Hpath & Hw & #Hcon & HPay)".
     iFrame "Hh Hf".
     iApply (sbundle_pay_refR_of_exec_abs uslot T N m pc M pm sz fdv c gn cs pidv

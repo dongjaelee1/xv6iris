@@ -1277,6 +1277,38 @@ Section UexecExecInst.
     iModIntro. iApply (fileclose_cpays_nopipe _ Hnp).
   Qed.
 
+  (* ...AND THE SAME ROW OUT OF THE TAINT, AT ANY TABLE AT ALL
+     (design/pipe.md, "The exit path").  A pipe row's close payment is
+     [PipeQueue.pipe_cpay], which is a close link OR the credential, so a
+     process that holds the credential owes nothing whatever its table
+     holds ([SpecFileclose.fileclose_cpays_taint]).  This is the arm a
+     program that CALLED pipe(2) exits by. *)
+  Lemma xv6_sbundle_exit_taint (X : uvis -d> iPropO Σ) (W : uvis)
+      (Q : Z -> iProp Σ) :
+    □ riscv_kill_cred -∗
+    |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X USYS_exit f W.
+  Proof.
+    iIntros "#Ht".
+    iAssert (|==> xv6_sbundle X USYS_exit (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
+      [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
+          iSplitR; [ done | iExact "Hb" ] ].
+    rewrite /xv6_sbundle /xfam_at /xfam_pt /xfam_exec /=.
+    destruct (decide (USYS_exit = USYS_exec)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 5)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 9)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 15)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 16)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 17)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 18)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 19)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 20)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 6)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = 21)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide (USYS_exit = USYS_exit)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    iModIntro. iApply (fileclose_cpays_taint _ with "Ht").
+  Qed.
+
   (* ...AND THE VERIFIED PROGRAM'S OWN DEPOSIT DATA: NO SUPPLIER AT ALL and
      the free numbers.  NOT a [Global Instance] -- [uprogSG_gen] is the one
      instance typeclass resolution may find, and a second one would make

@@ -88,7 +88,6 @@ Require Import EchoOutPure.
 Require Import EchoOut.
 Require Import EchoLinks.
 Require Import CtxIdDefs.
-Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 Require User.EchoSyms.
 Local Open Scope Z_scope.
 Import Defs.
@@ -838,9 +837,13 @@ Section UEchoOut.
     □ (ech v ps0 cs0 n0 P (length echo_line_out) -∗ Q (-1)) -∗
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
-    (* ...and echo's exit row (design/pipe.md, "The exit path"): exit(2)
-       left [UexecSG.free_num] with the byte queue *)
-    udepw_law USYS_exit -∗
+    (* ...AND WHETHER THE PROCESS'S TABLE HOLDS A PIPE ROW (design/pipe.md,
+       "The exit path").  The run carries this between traps
+       ([UkRun.urun_nopipe]) and the exit leaf mints its bundle row off it,
+       so an entry is where it comes in.  This program's table is the
+       exec'ing process's ([SpecKexec.kexec_image_ok_fd]) and what says so
+       reaches here from the caller. *)
+    UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗
     my_pay (uvis_gen W) Q -∗
     ech v ps0 cs0 n0 P 0%nat -∗
@@ -848,14 +851,14 @@ Section UEchoOut.
   Proof.
     intros HQc Hst Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
            Havd Havs Hfdlen Hstop Hlzf.
-    iIntros "#Hq #Hpin #Hlk #Hxl #Hdep Hpay Hc".
+    iIntros "#Hq #Hpin #Hlk #Hnpw #Hdep Hpay Hc".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
     iApply (uslot_of_urun_ro W 12 Q
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
-              with "Hdep Hpay").
+              with "Hdep Hnpw Hpay").
     iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd _ _ _ #HA Hrun".
     pose proof (ukn_const_of_eq N _ Hpayeq HQc) as Htc.
     rewrite Hpc.
@@ -868,7 +871,7 @@ Section UEchoOut.
                     rewrite (Z2Nat.id (uvis_argc W) Hargc0);
                     unfold uvis_argc; symmetry; apply moi_of_uint)
               ltac:(unfold uvis_av; symmetry; apply moi_of_uint)
-              with "Hxl [] [] [] [Hstd Hc] Hrun").
+              with "[] [] [] [Hstd Hc] Hrun").
     { iApply (kecho_pay_of_link N v ps0 cs0 n0 P (uvis_av W)
                 (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W)))
                 (take NSTD (uvis_fd W)) rb Hst Hargv1 Hl1

@@ -271,8 +271,12 @@ Section UexecCond.
   Lemma sync_gate_slot (PF : uprogSG Σ) (W : uvis) :
     (forall k : Z, free_num k -> @psok Σ PF k) ->
     sync_gate W ->
-    (* sync's exit row (design/pipe.md, "The exit path") *)
-    udepw_law (PS := PF) UsysMemOk.USYS_exit -∗
+    (* ...and whether the key's table holds a pipe row (design/pipe.md,
+       "The exit path"): the entry constructor puts it in the run, where
+       the exit leaf mints the tear-down's bundle row off it.  The generic
+       tail below holds the credential, which is the arm that answers at
+       ANY table. *)
+    UkRun.urun_nopipe (uvis_fd W) -∗
     udep (PS := PF) -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof.
     intros Hpsok_free (Hteq & Hpc & Hxo & Hroom & Hal8 & Hstk & Hfdlen & Hlzf
@@ -295,8 +299,12 @@ Section UexecCond.
   Lemma echo_gate_slot (PF : uprogSG Σ) (W : uvis) :
     echo_gate W ->
     udepw_law (PS := PF) 16 -∗
-    (* ...and echo's exit row (design/pipe.md, "The exit path") *)
-    udepw_law (PS := PF) UsysMemOk.USYS_exit -∗
+    (* ...and whether the key's table holds a pipe row (design/pipe.md,
+       "The exit path"): the entry constructor puts it in the run, where
+       the exit leaf mints the tear-down's bundle row off it.  The generic
+       tail below holds the credential, which is the arm that answers at
+       ANY table. *)
+    UkRun.urun_nopipe (uvis_fd W) -∗
     udep (PS := PF) -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof.
     intros (Hteq & Hpc & Hxo & Hroom & Hal8 & Hstk & Hargs & Havd & Havs
@@ -331,11 +339,6 @@ Section UexecCond.
   Lemma cond_entry_slot (PF : uprogSG Σ) (W : uvis) :
     (forall k : Z, free_num k -> @psok Σ PF k) ->
     udepw_law (PS := PF) 16 -∗
-    (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS (design/pipe.md, "The exit
-       path"), which both gated arms owe: exit(2) left [UexecSG.free_num]
-       with the byte queue.  The generic tail pays it out of the kill
-       credential below. *)
-    udepw_law (PS := PF) UsysMemOk.USYS_exit -∗
     (* ...AND THE KILL CREDENTIAL, which only the GENERIC tail spends (lane
        KILL-PAY, K3(b)): a slot that answers at every cause answers at the
        causes usertrap kills at, and the deposit there is the price of a
@@ -345,11 +348,17 @@ Section UexecCond.
     udep (PS := PF) -∗ □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
     my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof.
-    intros Hpsok_free. iIntros "#Hwr #Hxl #Hdep #Hsup #Hkc #Hgen #Hpay".
+    intros Hpsok_free. iIntros "#Hwr #Hdep #Hsup #Hkc #Hgen #Hpay".
+    (* THE TABLE FACT THE TWO GATED ARMS NEED IS THE CREDENTIAL ITSELF
+       (design/pipe.md, "The exit path"): this slot answers at every cause,
+       so it already holds the kill credential, and that is the arm of
+       [UkRun.urun_nopipe] that is good at ANY table. *)
+    iAssert (UkRun.urun_nopipe (uvis_fd W)) as "#Hnpw";
+      [ iApply (UkRun.urun_nopipe_taint _ with "Hkc") | ].
     destruct (decide (sync_gate W)) as [Hgate | _].
-    { iApply (sync_gate_slot PF W Hpsok_free Hgate with "Hxl Hdep Hpay"). }
+    { iApply (sync_gate_slot PF W Hpsok_free Hgate with "Hnpw Hdep Hpay"). }
     destruct (decide (echo_gate W)) as [Hgate | _].
-    { iApply (echo_gate_slot PF W Hgate with "Hwr Hxl Hdep Hpay"). }
+    { iApply (echo_gate_slot PF W Hgate with "Hwr Hnpw Hdep Hpay"). }
     iApply (uexec_wp_uslot_triv W with "Hsup Hkc Hgen Hpay").
   Qed.
 

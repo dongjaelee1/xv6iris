@@ -49,7 +49,6 @@ Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for
                             which rides inside [urun] *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
-Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 
 Section UkSync.
   Context `{!riscvGS Σ}.
@@ -107,20 +106,11 @@ Section UkSync.
   (* [c.jr ra] at 0x2ce is dead code (the catalog omits it).               *)
   (* ------------------------------------------------------------------- *)
   Lemma wp_ksync_exit (h : CpuId) (m : regfile) (avail : nat) :
-    (* THE TEAR-DOWN'S CLOSE PAYMENTS, NAMED (design/pipe.md, "The exit
-       path"): kexit closes every descriptor, so exit's bundle row is one
-       close payment per row of the KEY's table.  This program's table is
-       pipe-free in fact and not provably so at the U tier (the rows above
-       [NSTD] are untracked, and [UsysMemOk.usys_fd_ok]'s open row leaves a
-       descriptor's type existential), so the deposit is NAMED here as
-       write's is, and is paid out of the application's taint
-       ([UexecExecMint.udepw_law_of_sup_exit]). *)
-    udepw_law USYS_exit -∗
     sync_code γt -∗
     urun N h m (mword_of_int SyncSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hxl #Hcode Hrun".
+    iIntros "#Hcode Hrun".
     destruct sync_syms_pins as (Hsmain & Hsstart & Hsexit & Hssync).
     rewrite Hsexit.
     (* 0x2c8  c.li a7,2 *)
@@ -145,14 +135,11 @@ Section UkSync.
               ltac:(unfold m1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 2 : mword 64));
                     vm_compute; reflexivity)
-              with "[] [] [] Hrun").
+              with "[] [] Hrun").
     { iApply (uis_sync_2ca with "Hcode"). }
     (* AT THE TRIVIAL PAYLOAD THE EXIT LEAF'S ONE PAYMENT IS FREE: this
        program owes its parent nothing ([UkRun.ukn_triv]). *)
     { rewrite (ukn_triv_eq (N := N)). done. }
-    (* ...AND THE EXIT ROW, out of the named deposit *)
-    { iApply udepw_ex_of_udepw.
-      iApply (udepw_of_law N m1 (mword_of_int 0x2ca) USYS_exit with "Hxl"). }
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -250,13 +237,11 @@ Section UkSync.
   (* ------------------------------------------------------------------- *)
   Lemma wp_ksync_main (h : CpuId) (m : regfile) (sp0 : mword 64) (n : nat) :
     m !!! Regidx csp_rs1 = sp0 ->
-    (* the tear-down's close payments, named -- see [wp_ksync_exit] *)
-    udepw_law USYS_exit -∗
     sync_code γt -∗
     urun N h m (mword_of_int SyncSyms.main) (2 + n) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hsp. iIntros "#Hxl #Hcode Hrun".
+    intros Hsp. iIntros "#Hcode Hrun".
     (* the free stack the run already owns says sp is aligned and has room *)
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom'].
     rewrite Hsp in Hal8', Hroom'.
@@ -382,7 +367,7 @@ Section UkSync.
               with "[] Hrun").
     { iApply (uis_sync_0e with "Hcode"). }
     iIntros (h8) "Hrun".
-    iApply (wp_ksync_exit h8 _ n with "Hxl [] Hrun").
+    iApply (wp_ksync_exit h8 _ n with "[] Hrun").
     iExact "Hcode".
   Qed.
 
@@ -398,13 +383,11 @@ Section UkSync.
   (* ------------------------------------------------------------------- *)
   Lemma wp_ksync_start (h : CpuId) (m : regfile) (sp0 : mword 64) (n : nat) :
     m !!! Regidx csp_rs1 = sp0 ->
-    (* the tear-down's close payments, named -- see [wp_ksync_exit] *)
-    udepw_law USYS_exit -∗
     sync_code γt -∗
     urun N h m (mword_of_int SyncSyms.start) (2 + (2 + n)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hsp. iIntros "#Hxl #Hcode Hrun".
+    intros Hsp. iIntros "#Hcode Hrun".
     (* the free stack the run already owns says sp is aligned and has room *)
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom'].
     rewrite Hsp in Hal8', Hroom'.
@@ -505,7 +488,7 @@ Section UkSync.
                      (regval_into_reg (add_vec_int (add_vec_int sp0 (-16)) 16))
                      ltac:(vm_compute; discriminate))
                   Hsp1)). }
-    iApply (wp_ksync_main h5 m3 (add_vec_int sp0 (-16)) n Hsp3 with "Hxl [] Hrun").
+    iApply (wp_ksync_main h5 m3 (add_vec_int sp0 (-16)) n Hsp3 with "[] Hrun").
     iExact "Hcode".
   Qed.
 

@@ -41,7 +41,6 @@ Require Import UkShParseTok.
 Require Import UkShParseRedir.
 
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
-Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 
 Section UkShParseExec.
   Context `{!riscvGS Σ}.
@@ -1098,9 +1097,6 @@ Section UkShParseExec.
        that turns the lend into its exit payload; the walk carries the lend
        and spends the law only where it dies. *)
     □ (Pex -∗ ukn_pay N (-1)) -∗
-    (* ...and the tear-down's close payments (design/pipe.md, "The exit
-       path"), for the arm where this walk dies *)
-    udepw_law USYS_exit -∗
     Pex -∗
     urun N h m (mword_of_int ShSyms.parseexec) (16 + (24 + nn)) -∗
     (∀ p : Z,
@@ -1121,7 +1117,7 @@ Section UkShParseExec.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx #Hxl Hpay Hrun Hcont".
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
     rewrite shpp_parseexec.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     set (sp0 := m !!! Regidx csp_rs1) in *.
@@ -1537,7 +1533,7 @@ Section UkShParseExec.
                  (regval_into_reg (mword_of_int 0x5c6 : mword 64))).
       apply bv_eq; vm_compute; reflexivity. }
     rewrite <- shpp_execcmd.
-    iApply (wp_kshp_execcmd h13 m10 s0 (10 + nn) with "Hcode HM Hpx Hxl Hpay Hrun").
+    iApply (wp_kshp_execcmd h13 m10 s0 (10 + nn) with "Hcode HM Hpx Hpay Hrun").
     iIntros (h14 m11 p) "%Hcs1011 %Ha0_11 %Hpb Hnode HM' Hpay Hrun".
     rewrite Eret10.
     destruct Hpb as [ Hp0 [ Hp16 Hpsz ] ].

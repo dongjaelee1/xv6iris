@@ -48,7 +48,6 @@ Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for
                             which rides inside [urun] *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
-Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 
 Section USyncKernel.
   Context `{!riscvGS Σ}.
@@ -175,19 +174,20 @@ Section USyncKernel.
     (* THE PAY FACT, at the trivial payload: sync's exit owes its parent
        nothing this lane, and the entry constructor is what puts it in the
        record ([UkRun.ukn_pay]). *)
-    (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS (design/pipe.md, "The exit
-       path"): exit(2) left [UexecSG.free_num] with the byte queue, so the
-       admission above no longer covers sync's own exit and the deposit is
-       named.  The application pays it out of its taint
-       ([UexecExecMint.udepw_law_of_sup_exit]). *)
-    udepw_law USYS_exit -∗
+    (* ...AND WHETHER THE PROCESS'S TABLE HOLDS A PIPE ROW (design/pipe.md,
+       "The exit path").  The run carries this between traps
+       ([UkRun.urun_nopipe]) and the exit leaf mints its bundle row off it,
+       so an entry is where it comes in.  This program's table is the
+       exec'ing process's ([SpecKexec.kexec_image_ok_fd]) and what says so
+       reaches here from the caller. *)
+    UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof.
     intros Hpc Hsub Hx Hroom Hal8 Hdata Hfdlen Hstop Hpsok_free Hlzf.
-    iIntros "#Hxl #Hdep #Hpay".
+    iIntros "#Hnpw #Hdep #Hpay".
     iApply (uslot_of_urun W 4 (fun _ => True)%I
               Hal8 ltac:(lia) Hdata Hfdlen
-              Hstop Hlzf with "Hdep Hpay").
+              Hstop Hlzf with "Hdep Hnpw Hpay").
     (* sync makes no descriptor call, so its ledger is dropped here *)
     (* sync makes no descriptor call and no chdir, so its ledger and its
        working directory are both dropped here *)
@@ -196,7 +196,7 @@ Section USyncKernel.
     rewrite Hpc.
     iApply (wp_ksync_start N Hpsok_free h (tf_resume_gpr0 (uvis_tf W))
               (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) 0
-              eq_refl with "Hxl [] Hrun").
+              eq_refl with "[] Hrun").
     iApply (sync_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W) Hsub Hx with "Ht").
   Qed.
 

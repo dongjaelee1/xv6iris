@@ -46,7 +46,6 @@ Require Import UkShParseLex.
 Require Import UkShParseExec.
 
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
-Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 
 Section UkShParseCmd.
   Context `{!riscvGS Σ}.
@@ -169,9 +168,6 @@ Section UkShParseCmd.
        that turns the lend into its exit payload; the walk carries the lend
        and spends the law only where it dies. *)
     □ (Pex -∗ ukn_pay N (-1)) -∗
-    (* ...and the tear-down's close payments (design/pipe.md, "The exit
-       path"), for the arm where this walk dies *)
-    udepw_law USYS_exit -∗
     Pex -∗
     urun N h m (mword_of_int ShSyms.parsepipe)
       (6 + (16 + (24 + nn))) -∗
@@ -193,7 +189,7 @@ Section UkShParseCmd.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx #Hxl Hpay Hrun Hcont".
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
     rewrite shpp_parsepipe.
     assert (Elen0 : (len + ushp_skipws (len - len) len f)%nat = len)
       by (rewrite Nat.sub_diag; cbn [ushp_skipws]; lia).
@@ -348,7 +344,7 @@ Section UkShParseCmd.
     iApply (wp_kshp_parseexec h5 m5 dq dw dv ps s0 len off f w0 toks nn
               Ha0_5 Ha1_5 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64
               Hps0 Hps8 Hpssz
-              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpx Hxl Hpay Hrun").
+              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpx Hpay Hrun").
     iIntros (p) "%Hpsz Hnode Hcur Hstr Hws Hsy".
     iIntros (h6 m6) "%Hcs56 %Ha0_6 HM' Hpay Hrun".
     rewrite Eret5.
@@ -675,9 +671,6 @@ Section UkShParseCmd.
        that turns the lend into its exit payload; the walk carries the lend
        and spends the law only where it dies. *)
     □ (Pex -∗ ukn_pay N (-1)) -∗
-    (* ...and the tear-down's close payments (design/pipe.md, "The exit
-       path"), for the arm where this walk dies *)
-    udepw_law USYS_exit -∗
     Pex -∗
     urun N h m (mword_of_int ShSyms.parseline)
       (6 + (6 + (16 + (24 + nn)))) -∗
@@ -699,7 +692,7 @@ Section UkShParseCmd.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx #Hxl Hpay Hrun Hcont".
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
     rewrite shpp_parseline.
     assert (Elen0 : (len + ushp_skipws (len - len) len f)%nat = len)
       by (rewrite Nat.sub_diag; cbn [ushp_skipws]; lia).
@@ -835,7 +828,7 @@ Section UkShParseCmd.
     iApply (wp_kshp_parsepipe h4 m4 dq dw dv ps s0 len off f w0 toks nn
               Ha0_4 Ha1_4 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64
               Hps0 Hps8 Hpssz
-              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpx Hxl Hpay Hrun").
+              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpx Hpay Hrun").
     iIntros (p) "%Hpsz Hnode Hcur Hstr Hws Hsy".
     iIntros (h5 m5) "%Hcs45 %Ha0_5 HM' Hpay Hrun".
     rewrite Eret4.
@@ -2535,9 +2528,6 @@ Section UkShParseCmd.
        that turns the lend into its exit payload; the walk carries the lend
        and spends the law only where it dies. *)
     □ (Pex -∗ ukn_pay N (-1)) -∗
-    (* ...and the tear-down's close payments (design/pipe.md, "The exit
-       path"), for the arm where this walk dies *)
-    udepw_law USYS_exit -∗
     Pex -∗
     urun N h m (mword_of_int ShSyms.parsecmd)
       (8 + (6 + (6 + (16 + (24 + nn))))) -∗
@@ -2557,7 +2547,7 @@ Section UkShParseCmd.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Hnosym Htoks Htlen Hs0 Hs64.
-    iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx #Hxl Hpay Hrun Hcont".
+    iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
     rewrite shpp_parsecmd.
     iDestruct (ustr_len with "Hstr") as %Hlen31.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -2927,7 +2917,7 @@ Section UkShParseCmd.
               ltac:(f_equal; lia)
               Hnosym Htoks Htlen ltac:(lia) ltac:(lia)
               Hcur0 Hcur8 Hcurz
-              with "Hcode Hro Lcur Hstr Hws Hsy HM Hpx Hxl Hpay Hrun").
+              with "Hcode Hro Lcur Hstr Hws Hsy HM Hpx Hpay Hrun").
     iIntros (p) "%Hpsz Hnode Lcur Hstr Hws Hsy".
     iIntros (h15 m13) "%Hcs1213 %Ha0_13 HM' Hpay Hrun".
     rewrite Eret12.
@@ -3443,9 +3433,6 @@ Section UkShParseCmd.
        that turns the lend into its exit payload; the walk carries the lend
        and spends the law only where it dies. *)
     □ (Pex -∗ ukn_pay N (-1)) -∗
-    (* ...and the tear-down's close payments (design/pipe.md, "The exit
-       path"), for the arm where this walk dies *)
-    udepw_law USYS_exit -∗
     Pex -∗
     urun N h m (mword_of_int ShSyms.parsecmd) (60 + nn) -∗
     (∀ p : Z,
@@ -3467,10 +3454,10 @@ Section UkShParseCmd.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Hnosym Htoks Htlen Hs0 Hs64.
-    iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx #Hxl Hpay Hrun Hcont".
+    iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
     iApply (wp_kshp_parsecmd h m dw dv s0 len f toks nn
               Ha0 Hnosym Htoks Htlen Hs0 Hs64
-              with "Hcode Hro Hstr Hws Hsy HM Hpx Hxl Hpay Hrun").
+              with "Hcode Hro Hstr Hws Hsy HM Hpx Hpay Hrun").
     iIntros (p) "Hnode Hline Hws Hsy".
     iApply ("Hcont" $! p with "[] Hnode Hline [] Hws Hsy").
     - iPureIntro. exists toks. split; [ exact Htoks | ].

@@ -90,7 +90,6 @@ Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for
                             which rides inside [urun] *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
-Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 
 Section UEchoKernel.
   Context `{!riscvGS Σ}.
@@ -444,26 +443,26 @@ Section UEchoKernel.
        claim; [UexecExecMint.uslot_mint] pays it out of [AppInv.app_sup],
        which is what a process on the generic path always had. *)
     udepw_law 16 -∗
-    (* ...AND ITS SECOND, exit(2)'s (design/pipe.md, "The exit path"):
-       kexit closes every descriptor the dying process holds, so the exit
-       number's bundle row is one close payment per row of the key's table
-       and 2 left [UexecSG.free_num].  echo's table is pipe-free in fact
-       and not provably so at the U tier, so the deposit is named here and
-       the application pays it out of its own credential. *)
-    udepw_law USYS_exit -∗
     (* THE PAY FACT, at the trivial payload: echo's exit owes its parent
        nothing this lane ([UkRun.ukn_pay] is what the record carries). *)
+    (* ...AND WHETHER THE PROCESS'S TABLE HOLDS A PIPE ROW (design/pipe.md,
+       "The exit path").  The run carries this between traps
+       ([UkRun.urun_nopipe]) and the exit leaf mints its bundle row off it,
+       so an entry is where it comes in.  This program's table is the
+       exec'ing process's ([SpecKexec.kexec_image_ok_fd]) and what says so
+       reaches here from the caller. *)
+    UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof.
     intros Hpc Hsub Hx Hroom Hal8 Hstk Hargs Havd Havs Hfdlen Hstop Hlzf.
-    iIntros "#Hwr #Hxl #Hdep #Hpay".
+    iIntros "#Hwr #Hnpw #Hdep #Hpay".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
     iApply (uslot_of_urun_ro W 12 (fun _ => True)%I
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
-              with "Hdep Hpay").
+              with "Hdep Hnpw Hpay").
     (* echo makes no descriptor call, so its ledger is dropped here *)
     (* echo makes no descriptor call, no chdir and no fork, so its ledger,
        its working directory and its children set are all dropped here *)
@@ -481,7 +480,7 @@ Section UEchoKernel.
                     rewrite (Z2Nat.id (uvis_argc W) Hargc0);
                     unfold uvis_argc; symmetry; apply moi_of_uint)
               ltac:(unfold uvis_av; symmetry; apply moi_of_uint)
-              with "Hxl [] [] [] [] Hrun").
+              with "[] [] [] [] Hrun").
     (* echo's one deposit, at this round's own record: the walk's per-write
        obligation, paid from the flagged deposit at the trivial cursor --
        which is what echo did before lane IO-LEAF and what a process

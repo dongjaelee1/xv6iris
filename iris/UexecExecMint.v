@@ -99,7 +99,7 @@ Section UexecExecMint.
                   | iSplit; [ iExact "Hlic" | iExact "Hilic" ] ] ] | ].
     iSplitR; [ iPureIntro; intros n W Q _ Hne;
                exact (sbundle_of_supply_ne uslot n W Q Hne) | ].
-    iSplit; iPureIntro.
+    iSplit; [ iPureIntro | iSplit; iPureIntro ].
     - (* close's key-guarded row: at the generic instance every number is
          admitted, so it is the same law read at 21 (design/pipe.md) *)
       intros W Q _.
@@ -108,6 +108,12 @@ Section UexecExecMint.
       intros W Q _.
       exact (sbundle_of_supply_ne uslot USYS_exit W Q
                ltac:(vm_compute; discriminate)).
+    - (* ...and exit's out of the TAINT, which the generic instance does
+         not even need to look at (design/pipe.md, "The exit path") *)
+      intros W Q. iIntros "#Hs _".
+      iApply (sbundle_of_supply_ne uslot USYS_exit W Q
+                ltac:(vm_compute; discriminate)).
+      iExact "Hs".
   Qed.
 
   (* ===================================================================== *)
@@ -130,7 +136,7 @@ Section UexecExecMint.
     iSplitR; [ iPureIntro; intros n W Q Hok _; iIntros "_";
                rewrite /sbundle_pay /sbundle_at /sexit_pay /=;
                iApply (xv6_sbundle_free uslot n W Q Hok) | ].
-    iSplit; iPureIntro.
+    iSplit; [ iPureIntro | iSplit; iPureIntro ].
     - (* ...AND CLOSE'S ROW, which left the free set with the byte queue
          (design/pipe.md, "The byte queue") and is [emp] at every
          descriptor that is not a pipe end. *)
@@ -144,7 +150,14 @@ Section UexecExecMint.
       intros W Q Hnp.
       iIntros "_".
       rewrite /sbundle_pay /sbundle_at /sexit_pay /=.
-      iApply (xv6_sbundle_exit_nopipe uslot W Q Hnp).
+      iApply (xv6_sbundle_exit_nopipe uslot W Q (fdv_nopipe_elem (uvis_fd W) Hnp)).
+    - (* ...AND THE SAME ROW OUT OF THE TAINT, at any table at all: a pipe
+         row's close payment is a link OR the credential
+         ([PipeQueue.pipe_cpay]), and this is the arm a program that
+         called pipe(2) exits by. *)
+      intros W Q. iIntros "_ #Ht".
+      rewrite /sbundle_pay /sbundle_at /sexit_pay /=.
+      iApply (xv6_sbundle_exit_taint uslot W Q with "Ht").
   Qed.
 
   (* ...and what a generic-route LEAF takes, at the free instance: the
@@ -385,12 +398,8 @@ Section UexecExecMint.
        the caller that instantiates it here, where every number is admitted
        and echo's flagged deposit is therefore free as well. *)
     iApply (UexecCond.cond_entry_slot uprogSG_gen W ltac:(intros k _; exact I)
-              with "[] [] Hdep [] Hkc Hgen Hpay").
+              with "[] Hdep [] Hkc Hgen Hpay").
     { iApply (udepw_law_of_psok (PS := uprogSG_gen) 16
-                ltac:(exact I) ltac:(vm_compute; discriminate)). }
-    { (* ...and the exit row: at the generic instance every number is
-         admitted (design/pipe.md, "The exit path") *)
-      iApply (udepw_law_of_psok (PS := uprogSG_gen) UsysMemOk.USYS_exit
                 ltac:(exact I) ltac:(vm_compute; discriminate)). }
     { rewrite /ssupply /= /xv6_ssupply. iModIntro.
       iSplit; [ iExact "Hsup"

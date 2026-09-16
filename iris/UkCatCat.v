@@ -522,7 +522,7 @@ Section UkCatCat.
               with "[] Hrun").
     { iApply (uis_cat_50 with "Hcode"). }
     iIntros (hcwg) "Hrun".
-    iApply (wp_kcat_exit N hcwg _ (10 + (12 + (4 + n))) with "Hdp Hcode Hrun").
+    iApply (wp_kcat_exit N hcwg _ (10 + (12 + (4 + n))) with "Hcode Hrun").
   Qed.
 
   Lemma wp_kcat_cat_die_cr (hcr : CpuId) (mcr0 : regfile) (n : nat) :
@@ -649,7 +649,7 @@ Section UkCatCat.
               with "[] Hrun").
     { iApply (uis_cat_7a with "Hcode"). }
     iIntros (hcrg) "Hrun".
-    iApply (wp_kcat_exit N hcrg _ (10 + (12 + (4 + n))) with "Hdp Hcode Hrun").
+    iApply (wp_kcat_exit N hcrg _ (10 + (12 + (4 + n))) with "Hcode Hrun").
   Qed.
 
 

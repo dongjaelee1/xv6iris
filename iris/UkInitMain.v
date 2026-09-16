@@ -236,7 +236,7 @@ Section UkInitMain.
     urun N' hdf mdf0 (mword_of_int 0x84) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "Hpay #(Hwrl & Hwcl & Hxl) #[Hxlaw Hflaw] #Hcode #Hro Hstd Hcred Hrun".
+    iIntros "Hpay #[Hwrl Hwcl] #[Hxlaw Hflaw] #Hcode #Hro Hstd Hcred Hrun".
     destruct init_syms_pins
       as (_ & _ & Hprintf & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hexit).
     assert (Hokdf : init_lit_ok 0x990 18%nat = true)
@@ -363,7 +363,7 @@ Section UkInitMain.
               with "[] Hrun").
     { iApply (uis_init_92 with "Hcode"). }
     iIntros (hdf6) "Hrun".
-    iApply (wp_kinit_exit N' hdf6 _ (12 + (12 + (4 + n))) with "Hxl Hcode Hpay Hrun").
+    iApply (wp_kinit_exit N' hdf6 _ (12 + (12 + (4 + n))) with "Hcode Hpay Hrun").
   Qed.
 
   (* "init: exec sh failed\n" -- THE CHILD'S, PAID THROUGH THE LINK ON THE
@@ -393,7 +393,7 @@ Section UkInitMain.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hpeq.
-    iIntros "#(Hwrl & Hwcl & Hxl) #[Hxlaw Hflaw] #Hcode #Hro (Hstd & Hpos & Hlease & Hcred) Hrun".
+    iIntros "#[Hwrl Hwcl] #[Hxlaw Hflaw] #Hcode #Hro (Hstd & Hpos & Hlease & Hcred) Hrun".
     destruct init_syms_pins
       as (_ & _ & Hprintf & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hexit).
     assert (Hokde : init_lit_ok 0x9b0 21%nat = true)
@@ -548,7 +548,7 @@ Section UkInitMain.
               with "[] Hrun").
     { iApply (uis_init_b8 with "Hcode"). }
     iIntros (hde6) "Hrun".
-    iApply (wp_kinit_exit N' hde6 _ (12 + (12 + (4 + n))) with "Hxl Hcode Hpay Hrun").
+    iApply (wp_kinit_exit N' hde6 _ (12 + (12 + (4 + n))) with "Hcode Hpay Hrun").
   Qed.
 
 
@@ -1168,7 +1168,7 @@ Section UkInitMain.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Ha0.
-    iIntros "#(Hwrl & Hwcl & Hxl) #Hblaw #Hcode #Hstr Htk Hstd Hrun Hcont".
+    iIntros "#[Hwrl Hwcl] #Hblaw #Hcode #Hstr Htk Hstd Hrun Hcont".
     assert (HokS : init_lit_ok LIT_START 18%nat = true)
       by (vm_compute; reflexivity).
     iDestruct (UInitFd.ufd_head_open_row with "Hstd") as (l) "(Hstd & #Hrow & _)".

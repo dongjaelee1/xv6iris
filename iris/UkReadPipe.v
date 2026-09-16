@@ -410,6 +410,13 @@ Section UkReadPipe.
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     udepw N m pc USYS_pipe -∗
+    (* THE TAINT, straight through to [UkRunSys.wp_uk_ecall_pipe]: pipe(2)
+       is the one number that puts a pipe row in the table, so it is the
+       one number after which the run's [UkRun.urun_nopipe] can only be
+       the credential arm -- and the credential is what every pipe payment
+       is payable from ([PipeQueue.pipe_cpay]).  A program that opens a
+       pipe pays its own tear-down's closes out of it. *)
+    □ riscv_kill_cred -∗
     ustd (ukn_fd N) l -∗
     ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 f -∗
     (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8),
@@ -440,9 +447,9 @@ Section UkReadPipe.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hn Hal Hnone.
-    iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
+    iIntros "#Hi Hrun Hsb #Hkt Hstd Hbuf Hcont".
     iApply (wp_uk_ecall_pipe N h m pc l f avail Hn Hal
-              with "Hi Hrun Hsb Hstd Hbuf").
+              with "Hi Hrun Hsb Hkt Hstd Hbuf").
     iIntros (h' r g W fdep M' fdv' cw' cs') "Harm Hsp Hrun Hbuf".
     iApply ("Hcont" $! h' r g with "[Harm Hsp] Hrun Hbuf").
     iDestruct "Harm" as "[Hok | Hbad]"; [ | iRight; iExact "Hbad" ].

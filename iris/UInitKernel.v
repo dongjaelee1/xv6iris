@@ -272,6 +272,12 @@ Section UInitKernel.
        so it is an obligation HERE, on [uvis_cwd W = ROOTINO]'s footing,
        and ARM-c / E2 discharges it from userinit's own table. *)
     take NSTD (uvis_fd W) = ufd_l0 ->
+    (* ...AND THE WHOLE TABLE HOLDS NO PIPE ROW (design/pipe.md, "The exit
+       path").  The run carries this between traps ([UkRun.urun_nopipe])
+       and /init's exit stub mints its bundle row off it; userinit parks
+       <init> at [FdSlots.fdt0], which is all closed, so the same site that
+       discharges the ledger row above discharges this. *)
+    fdv_nopipe (uvis_fd W) ->
     (* the map stops at the break -- [UkRun.uslot_of_urun_all]'s own premise *)
     (forall (p : mword 27) (q : uperm), uvis_perm W !! p = Some q ->
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
@@ -373,8 +379,8 @@ Section UInitKernel.
     my_pay (uvis_gen W) (fun _ => True)%I -∗
     uslot W.
   Proof.
-    intros Hne Hkt Hpc Hsub Hx Hwd Hszd Hbase Hal8 Hroom Hstk Hfdlen Hl0 Hstop Hcw
-           Hpsok_free Hlzf.
+    intros Hne Hkt Hpc Hsub Hx Hwd Hszd Hbase Hal8 Hroom Hstk Hfdlen Hl0 Hnpk
+           Hstop Hcw Hpsok_free Hlzf.
     (* [Hdp] LINEARLY, and that is not a style choice: [UkInit.init_deps]
        is persistent, but its [T]-indexed conjuncts send the [Persistent]
        search for the WHOLE bundle off unfolding [udepw]'s wand chain and
@@ -382,8 +388,10 @@ Section UInitKernel.
        intro is what it wants; the destructuring [#(Hwr & Hwl15 & Hwl17)]
        the walk uses checks each conjunct on its own and is fine. *)
     iIntros "Hdp #Hdep #Hxs Hdn Hrd Hrd0 Hbn #Hblaw #Hdlaw #Hmp".
+    iAssert (UkRun.urun_nopipe (uvis_fd W)) as "#Hnpw";
+      [ iApply (UkRun.urun_nopipe_intro _ Hnpk) | ].
     iApply (uslot_of_urun_all W (2 + (4 + (12 + (12 + (4 + n0))))) (fun _ => True)%I
-              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
+              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hnpw Hmp").
     (* init's own half of its children set travels with its cwd: nothing
        on init's walk READS it, but fork MOVES it, so the fragment goes
        down the chain index-free ([UserChildren.uch_any]). *)
@@ -461,6 +469,10 @@ Section UInitKernel.
     length sts = NOFILE ->
     (* the entry ledger is all-closed: see [init_uexec_slot] *)
     take NSTD sts = ufd_l0 ->
+    (* ...AND NO PIPE ROW IN IT (design/pipe.md, "The exit path"): the run
+       carries this between traps and /init's exit stub mints its bundle
+       row off it.  <init>'s table is [FdSlots.fdt0], all closed. *)
+    fdv_nopipe sts ->
     (* THE PROCESS IS AT THE ROOT.  userinit's [namei("/")] is what put it
        there, and this is the one entry premise the image fact does not
        carry -- exec does not chdir, so the key's [uvis_cwd] is whatever
@@ -501,7 +513,7 @@ Section UInitKernel.
     UkInitMain.kinit_diag_law stc Wp Wb -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
   Proof.
-    intros Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok_free Hlzf.
+    intros Hne Hkt Hok Hroom Hlen Hl0 Hnpk Hcw Hpsok_free Hlzf.
     (* THE MAP STOPS AT THE BREAK, off the image fact's own row --
        [UShKernel.sh_slot_of_kexec]'s note is the reasoning. *)
     pose proof (kexec_image_ok_below _ _ _ _ _ _ Hok) as Hstop.
@@ -593,6 +605,7 @@ Section UInitKernel.
       + rewrite Hszv. clear -Hj1 Hspv; lia.
     - rewrite Hfd. exact Hlen.
     - rewrite Hfd. exact Hl0.
+    - rewrite Hfd. exact Hnpk.
     - exact Hstop.
     - exact Hcw.
     - exact Hpsok_free.
@@ -671,6 +684,10 @@ Section UInitKernel.
       <= kxc_sp_final (kexec_sz ElfUser.init_elf) alen na ->
     length sts = NOFILE ->
     take NSTD sts = ufd_l0 ->
+    (* ...AND NO PIPE ROW IN IT (design/pipe.md, "The exit path"): the run
+       carries this between traps and /init's exit stub mints its bundle
+       row off it.  <init>'s table is [FdSlots.fdt0], all closed. *)
+    fdv_nopipe sts ->
     (forall k : Z, free_num k -> psok k) ->
     (* THE BOX IS IN THE STATEMENT, and that is not decoration.  The
        conclusion is a [□], so the deposits have to be intuitionistic here;
@@ -696,11 +713,11 @@ Section UInitKernel.
        straight out into [init_slot_of_kexec]'s own linear premise.  No
        [Persistent] search, no [iFrame] against a [□]-wand -- see the
        statement's note. *)
-    intros Hne Hkt Hroom Hlen Hl0 Hpsok.
+    intros Hne Hkt Hroom Hlen Hl0 Hnpk Hpsok.
     iIntros "#Hdp #Hdep #Hxs !>"
       (W') "%Hok %Hcw %Hlz #Hmp (Hdn & Hrd & Hrd0 & Hbn & #Hblaw & #Hdlaw)".
     iApply (init_slot_of_kexec T Cns stc Wp Wb Rdl cn na alen afun sts W' n0
-              Hne Hkt Hok Hroom Hlen Hl0 Hcw Hpsok Hlz
+              Hne Hkt Hok Hroom Hlen Hl0 Hnpk Hcw Hpsok Hlz
               with "Hdp Hdep Hxs Hdn Hrd Hrd0 Hbn Hblaw Hdlaw Hmp").
   Qed.
 

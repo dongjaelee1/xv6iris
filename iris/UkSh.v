@@ -637,10 +637,24 @@ Section UkSh.
   (* sibling files -- go through the minting law at [psok := free_num] and  *)
   (* cost nothing, which is what [Hpsok_free] above says.                   *)
   (* ===================================================================== *)
-  Definition sh_deps : iProp Σ := udepw_law 16.
+  (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS BESIDE IT (design/pipe.md, "The
+     exit path"): exit(2) left [UexecSG.free_num] with the byte queue, so
+     every walk of sh's that ENDS -- runcmd's exit(1), the diagnostics'
+     dead ends -- names its exit row here.  sh's own top-level exit takes
+     it separately ([wp_ksh_exit]'s premise), because that walk is not
+     under the taint arm this bundle is handed on. *)
+  Definition sh_deps : iProp Σ := (udepw_law 16 ∗ udepw_law USYS_exit)%I.
 
   Global Instance sh_deps_persistent : Persistent sh_deps.
   Proof. rewrite /sh_deps. apply _. Qed.
+
+  (* the two readings, so a walk that wants one does not have to destruct
+     the bundle (and lose it: the pair is persistent and its holders pass
+     it on) *)
+  Lemma sh_deps_write : sh_deps -∗ udepw_law 16.
+  Proof. rewrite /sh_deps. iIntros "[$ _]". Qed.
+  Lemma sh_deps_exit : sh_deps -∗ udepw_law USYS_exit.
+  Proof. rewrite /sh_deps. iIntros "[_ $]". Qed.
 
   Local Notation ra_idx := (mword_of_int 1 : mword 5).
   Local Notation s0_idx := (mword_of_int 8 : mword 5).
@@ -1185,7 +1199,7 @@ Section UkSh.
               ltac:(apply bv_eq; vm_compute; reflexivity)
               ltac:(vm_compute; reflexivity)
               with "[Hdp] [] [] [] Hrun Hcont").
-    { iExact "Hdp". }
+    { iDestruct "Hdp" as "[$ _]". }
     { iApply (uis_shk_ca6 with "Hcode"). }
     { iApply (uis_shk_ca8 with "Hcode"). }
     { iApply (uis_shk_cac with "Hcode"). }

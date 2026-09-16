@@ -2016,8 +2016,13 @@ Section InitDeps.
   Global Instance kinit_wcl_persistent : Persistent kinit_wcl.
   Proof. rewrite /kinit_wcl. apply _. Qed.
 
+  (* ...AND THE TEAR-DOWN'S CLOSE PAYMENTS BESIDE THEM (design/pipe.md,
+     "The exit path"): exit(2) left [UexecSG.free_num] with the byte queue,
+     so /init's own exit names its deposit.  UNGATED, unlike the write
+     law's first arm: an exit is not on the taint arm of anything, it is
+     what every one of /init's dead ends does. *)
   Definition kinit_wlaw (T : iProp Σ) : iProp Σ :=
-    (□ (T -∗ udepw_law 16) ∗ kinit_wcl)%I.
+    (□ (T -∗ udepw_law 16) ∗ kinit_wcl ∗ udepw_law USYS_exit)%I.
 
   Global Instance kinit_wlaw_persistent T : Persistent (kinit_wlaw T).
   Proof. rewrite /kinit_wlaw. apply _. Qed.

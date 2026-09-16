@@ -179,7 +179,7 @@ Section ProofFilestat.
     | _ => False
     end -> filestat_env fn st -∗ filestat_fs_env fn.
   Proof.
-    destruct st as [|? ? [? ? ?| |?]]; cbn; intros H; [contradiction| |contradiction|];
+    destruct st as [|? ? [? ? ?|?|?]]; cbn; intros H; [contradiction| |contradiction|];
       by iIntros "$".
   Qed.
 
@@ -189,7 +189,7 @@ Section ProofFilestat.
     | _ => False
     end -> filestat_fs_out fn -∗ filestat_env_out fn st.
   Proof.
-    destruct st as [|? ? [? ? ?| |?]]; cbn; intros H; [contradiction| |contradiction|];
+    destruct st as [|? ? [? ? ?|?|?]]; cbn; intros H; [contradiction| |contradiction|];
       by iIntros "$".
   Qed.
 
@@ -220,7 +220,7 @@ Section ProofFilestat.
     (* the state the caller keyed its environment on, related to the content
        the code is about to branch on *)
     iDestruct (file_pay_st_ok with "Hrpay") as "[%Hokx Hrpay]".
-    destruct Hokx as (inumx & γox & Hok).
+    destruct Hokx as (inumx & γox & γpx & Hok).
     iEval (rewrite /file_fields) in "Hrfields".
     iDestruct "Hrfields" as "(Hcty & Hcrd & Hcwr & Hcpp & Hcip & Hcmaj)".
     (* =================================================================
@@ -531,8 +531,8 @@ Section ProofFilestat.
                      | FdOpen _ _ (FdInode _ _ _) | FdOpen _ _ (FdDevice _) => True
                      | _ => False end).
       { destruct Hin as [Ht | Ht];
-          [ destruct (fdstate_ok_inode _ _ _ _ Hok Ht) as (? & ? & ->)
-          | destruct (fdstate_ok_device _ _ _ _ Hok Ht) as (? & ? & ->) ]; done. }
+          [ destruct (fdstate_ok_inode _ _ _ _ _ Hok Ht) as (? & ? & ->)
+          | destruct (fdstate_ok_device _ _ _ _ _ Hok Ht) as (? & ? & ->) ]; done. }
       iDestruct (fst_env_in fn st Hin' with "Henv") as "Henv".
       iEval (rewrite /filestat_fs_env) in "Henv".
       iDestruct "Henv" as "(%Hlg & %Hist & %Hgeo &

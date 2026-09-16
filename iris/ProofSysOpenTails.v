@@ -1717,6 +1717,12 @@ Section ProofSysOpenTails.
     is_ftable gfl gf -∗
     file_ref gf kf qf stf -∗
     fileclose_env fn on 0 eb (proc_addr jx) stf -∗
+    (* THE BYTE QUEUE'S CLOSE PAYMENT (design/pipe.md, "The byte queue"),
+       threaded OPAQUELY exactly as the environment beside it is: the file
+       this arm closes is filealloc's untyped one, so the payment is [emp]
+       -- but the type is the WALK's knowledge, not this tail's, so this
+       tail takes the row and the walk pays it ([fileclose_cpay_none]). *)
+    fileclose_cpay stf emp -∗
     bio_ctx fsc_bio (fs_view fsc_fs fsc_disk icfg_dev fsc_cov) -∗
     log_ctx icfg_log fsc_bio fsc_fs fsc_cov fsc_logst icfg_dev -∗
     fs_crash_seam fsc_cov fsc_logst -∗
@@ -1793,7 +1799,7 @@ Section ProofSysOpenTails.
     intros HKup HKeo HKfc HK24 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hiblk Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1
            HMs2 Hal.
-    iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hftab Hfref Hfenv
+    iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hftab Hfref Hfenv Hfcpay
               #Hbio #Hlog Hseam Hgen
               #Hitab #Hitinv #Hesck #Hireg #Hropen #Hslkk Hslkd %Hley #Hfly #Hclaimsy Hdep Hoffr Hidev
               Hiinum Hivalid Hload #Hshot Hfrz Hkeep Hru Hsbb Hsbi #Hbmres Hpid #Hprocs
@@ -1852,11 +1858,15 @@ Section ProofSysOpenTails.
     iDestruct (cpu_claim_ext_transport CID0 CID2 eb (proc_addr jx)
                  ltac:(rewrite Hb; wp_next_chain) with "Hcce") as "Hcce".
     iApply (Fileclose.wp_fileclose_sconf (CID := CID2) gfl gf kf qf stf fn on
-              M2 0%nat eb (proc_addr jx) (K - 24)%nat b lks
+              M2 0%nat eb (proc_addr jx) (K - 24)%nat b lks emp%I
               pidv Upr HKfc so_noff0 HM2a0
               ltac:(rewrite Hlkempty; apply locks_below_empty)
-              with "Hcg Hown Htce Hcce Htext Hkd Hpc Hftab Hpenv Hfref Hpid Hiru Hfenv").
-    iIntros (CID3 Hq3 mfc) "Hcg Hown Htce Hcce Hpc %Hcsfc Hfd Hiru Hfout Hpid".
+              with "Hcg Hown Htce Hcce Htext Hkd Hpc Hftab Hpenv Hfref Hpid Hiru Hfenv
+                    Hfcpay").
+    (* the close post is [emp] at the untyped descriptor this arm closes,
+       and nothing downstream is owed it. *)
+    iIntros (CID3 Hq3 mfc) "Hcg Hown Htce Hcce Hpc %Hcsfc Hfd Hiru Hfout Hcpost Hpid".
+    iClear "Hcpost".
     assert (Hpc2 : ret_pc (M2 !!! Regidx Rra : mword 64)
                    = mword_of_int (SO + 0x12c)) by (rewrite HM2ra; pcw).
     iEval (rewrite Hpc2) in "Hpc".

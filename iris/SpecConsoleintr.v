@@ -391,14 +391,15 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
      Like the ring's mark, it is a RESOURCE and not a pure premise: nothing
      else can say which of two histories came first. *)
   uart_log_hi γu (1/2) hg -∗
-  (* THE ECHO WINDOW TOKEN (lane CONS-IO milestone F), the fourth thing the
-     PLIC payload carries and the only one that is not the kernel's own: the
-     application's per-era exclusive, which [cons_echo_shift] takes and the
-     arm's append gives back.  It comes IN with the byte and goes OUT
-     unconditionally, on every arm, because every arm logs -- so uartintr
-     re-assembles the payload with it and the next byte's call has it
-     again. *)
-  riscv_win_res (S gen_id) -∗
+  (* THE ARM'S OWN HALF, AT [None] (redesign R2), the fourth thing the PLIC
+     payload carries: no arm is open.  It is what the application's per-era
+     window token used to stand for, except that it is the KERNEL's ghost
+     and it says WHICH arm is open -- cons.lock's exclusion, in the ghost
+     state.  It comes IN with the byte and goes OUT unconditionally, on
+     every arm, because every arm opens and closes exactly one arm, so
+     uartintr re-assembles the payload with it and the next byte's call has
+     it again. *)
+  uart_arm γu (1/2) None -∗
   wp_next b pme (fun (CID : CpuId) =>
   ∀ Mf : regfile,
       ⌜ callee_saved m Mf /\ (forall r : regidx, r ∈ dom (rf_to_gmap Mf)) ⌝ -∗
@@ -422,9 +423,9 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
       (* ...AND THE LOG'S MARK, AT THIS BYTE.  No existential and no
          disjunction: the byte was logged, on every arm. *)
       uart_log_hi γu (1/2) (Some hb) -∗
-      (* ...AND THE ECHO WINDOW TOKEN, BACK (lane CONS-IO milestone F): the
-         append that closed this byte's log entry returned it. *)
-      riscv_win_res (S gen_id) -∗
+      (* ...AND THE ARM'S HALF, BACK AT [None] (redesign R2): the close that
+         ended this byte's log entry returned it. *)
+      uart_arm γu (1/2) None -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

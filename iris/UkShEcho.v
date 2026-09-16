@@ -62,7 +62,7 @@ Require Import UConsLine.        (* [ush_line_is]: the buffer IS [echo_line] *)
 Require Import EchoDisc.         (* [echo_line], [sb], [nlb] *)
 Require Import FsImg.            (* [ROOTINO] -- the cwd the pin resolves at *)
 Require Import UexecSG.          (* [uexecSG] / [uprogSG]: the deposit class *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.
 Local Open Scope Z_scope.

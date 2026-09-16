@@ -64,15 +64,11 @@ Require Import UserHeap.
 Require Import UserPerm.           (* [perm_of] / [lazy_free] *)
 Require Import ProcPtOwn.          (* [uptd] / [ud_um] / [proc_pt_wf] *)
 Require Import UserPtTree.         (* [uva_wmapped] / [umem_write] *)
-Require Import UserBits.           (* [uint_add_vec_int_small] -- no-wrap *)
 Require Import UmodeArith.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import VcGen.              (* [trunc32] *)
 Require Import PieceFam.           (* [pfam] / [pf_at] / [pfam_triv] *)
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
-Require Import UkStep.             (* [wp_uk_ecall] / [uvb_x0] -- the walk *)
 Require Import UkRun UkRunSys.
-Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6], [xfam] *)
 Require Import UkReadRows.         (* the read leaf's SHARED key-level rows:
                                       [xfam_rdf], the intro/elim pair, the
                                       two [fd_st_of_key] readings *)
@@ -88,7 +84,7 @@ Require Import FsBytesGamma.       (* [fs_gamma_L] *)
 Require Import FsAbsReadFire.      (* [aread_commit_at] / [read_arms] *)
 Require Import FsAbs.              (* [nview] -- LAST (FsAbs's own rule) *)
 Require Import FsCfg.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

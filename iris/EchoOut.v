@@ -87,7 +87,7 @@ Require Import RiscvPtsto.       (* [obsN], [obs_hist_lb_o], [riscv_out_res],
 Require Import WpUart.           (* [out_link], [read_link], [in_append],
                                     [in_run], [out_res_at], [in_res_at],
                                     [uartN] *)
-Require Import TsoCtx.           (* [CurCtx]: the echo obligation's context *)
+Require Import CtxIdDefs.           (* [CurCtx]: the echo obligation's context *)
 Require Import SpecConsoleintr.  (* [cons_echo_shift], which is what
                                     [App.Happ_echo] asks of the
                                     application *)

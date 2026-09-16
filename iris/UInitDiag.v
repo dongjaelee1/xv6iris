@@ -76,7 +76,7 @@ Require Import EchoLinks.
 Require Import EchoLinksPro.       (* [ewc_pro] / [ewc_pdiag] / the steps *)
 Require Import UInitBanner.        (* the mould: the halves, [kbn_fam],
                                       [kinit_ban] / [kinit_own] *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require User.InitSyms.
 Local Open Scope Z_scope.
 Import Defs.

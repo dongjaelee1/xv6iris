@@ -43,14 +43,11 @@ Require Import UkRun.
 Require Import UserFd.
 Require Import ChildTok.
 Require Import ElfFile ElfUser.
-Require Import FsCfg.             (* [fsc_fs] *)
 Require Import PageGeom.          (* [PGSIZE] *)
 Require Import UmodeAbi.
 Require Import FsImg.
-Require Import PinnedExec.
 Require Import FsEchoPin.
-Require Import SpecKexec SpecSysExec.
-Require Import UInitSh.
+Require Import SpecKexec.
 Require Import ExecEntry.         (* [image_entry] / [image_entry_taint] *)
 Require Import FsAbsDefs.         (* [anode] / [MkAnode] / [AFile] *)
 Require Import ExecRun.           (* THE U-TIER EXEC RULE this supply is an
@@ -60,7 +57,6 @@ Require Import KexecDefs.
 Require Import UexecExecInst.
 Require Import UCodeEcho.         (* [echo_img_sub] / [echo_data_sub] *)
 Require Import UkSh UkShFork UkShEcho.
-Require Import UkRunExecRef.      (* [udepw_at_refR] *)
 Require Import EchoDisc.
 Require Import EchoOut.           (* [era_pin] / [turn] / [ps_lb] *)
 Require Import EchoLinks.         (* [echo_links] / [wr_blk] *)

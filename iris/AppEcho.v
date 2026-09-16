@@ -131,7 +131,7 @@ Require Import DevModel.         (* [uart_state], [uart_tx_pop], [uart_loopback]
 Require Import UartNames.        (* [uart_names] *)
 Require Import RiscvPtsto.       (* [riscvGS], [obsN] *)
 Require Import WpUart.           (* [uart_ghosts], [uartN] *)
-Require Import TsoCtx.           (* [CurCtx]: the echo obligation's context *)
+Require Import CtxIdDefs.           (* [CurCtx]: the echo obligation's context *)
 Require Import SpecConsoleintr. (* [cons_echo_shift]: the echo obligation   *)
 Require Import FileInvDefs.      (* [fileG]/[file_app]: the era's classes, which
                                     the tx/rx wands' identification premise

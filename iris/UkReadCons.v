@@ -68,18 +68,13 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.           (* [perm_of] / [lazy_free] *)
-Require Import ProcPtOwn.          (* [uptd] / [ud_um] / [proc_pt_wf] *)
 Require Import UserPtTree.         (* [uva_wmapped] *)
 Require Import UmodeArith.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import VcGen.              (* [trunc32] *)
-Require Import PieceFam.
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import UkReadRows.         (* the shared key-level rows *)
-Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFileread.       (* [fileread_in] / [console_receipt] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import AppInv.             (* [app_sup] *)
@@ -88,8 +83,7 @@ Require Import ConsoleInv.         (* [cons_acc] / [cons_window] / [CONSOLE] *)
 Require Import WpUart.             (* [cons_read_pay] -- the console history's AU *)
 Require Import UartNames.          (* [cons_names] *)
 Require Import UserConsole.        (* [ucons_stored_lb] / [ucons_swallow] *)
-Require Import ConsLog.            (* [read_ok] -- what [read_link] carries *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

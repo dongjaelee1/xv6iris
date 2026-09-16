@@ -55,7 +55,7 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes ObsTrace.
+Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 (* THE GHOST BINDER LIST, each module IMPORTED and not merely required --
    naming a class without its defining module in scope introduces a FRESH
@@ -69,13 +69,6 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.           (* [perm_of] / [lazy_free] *)
-Require Import ProcPtOwn.          (* [uptd] / [ud_um] / [proc_pt_wf] *)
-Require Import UserPtTree.         (* [uva_wmapped] *)
-Require Import UmodeArith.
-Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import VcGen.              (* [trunc32] *)
-Require Import PieceFam.
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
@@ -102,14 +95,14 @@ Require UkInit.                    (* [init_rd]: the exit family, the pair *)
    neither the boot record nor its four equations -- the law arrives as a
    premise, exactly as [UkSh.sh_deps] does.  [EchoOut] requires nothing
    above [SpecConsoleintr], so there is no cycle with the U tier. *)
-Require Import ConsLog.            (* [log_entry] / [read_ok] *)
+Require Import LogEntryDefs.            (* [log_entry] / [read_ok] *)
 Require Import EchoDisc.           (* [echo_line] *)
 Require Import EchoOutPure.        (* [E_byte] / [echoed] *)
 Require Import EchoOut.            (* [era_pin] / [dl_cnt] / [read_ret] *)
 Require Import EchoLinksLine.      (* [ewc_lcred]: the loop's tight family (step 4) *)
 Require Import EchoLinks.          (* [echo_links] and its two read
                                       projections *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

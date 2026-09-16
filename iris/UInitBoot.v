@@ -60,7 +60,7 @@ Require Import WpUart.            (* [out_licence]: the generic slot's output li
 (* THE GHOST BINDER LIST'S DEFINING MODULES, each IMPORTED and not merely
    required ([PinnedExec.v]'s note: a field instance is inert wherever its
    module is not imported). *)
-Require Import TsoCtx.            (* [CurCtx] -- see the note above *)
+Require Import CtxIdDefs.            (* [CurCtx] -- see the note above *)
 Require Import Xv6Cameras.
 Require Import Xv6G.
 Require Import FdSlots.
@@ -104,7 +104,6 @@ Require Import UInitBanner.       (* [kinit_banner0_holds] -- the era's
 Require Import UInitCons.         (* [init_cons_fd] / [init_cons_cred] *)
 Require Import UInitConsK.        (* the two arms' discharges at echo's era *)
 Require Import UInitSh.           (* [init_cons_sup_of_sh_slot] *)
-Require Import UShOut.            (* [sh_prompt_law_holds] *)
 Require Import UShPanic.          (* [sh_prompt_law_holds_line]: the prompt's law at the tight family (step 4) *)
 Require Import UShRest.           (* [sh_rest_holds]: the shell's tail
                                      obligation, discharged at the era's

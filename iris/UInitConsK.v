@@ -97,7 +97,7 @@ Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
 Require Import UInitCons.
 Require Import UConsOpen.   (* the shared console open: the dead walk, the
                                two suppliers, the two key-level rows *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require FsImg.
 Require User.InitSyms.
 Import Defs.

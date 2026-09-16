@@ -34,7 +34,7 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes ObsTrace.
+Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 Require Import Xv6Cameras.
 Require Import Xv6G.
@@ -47,7 +47,6 @@ Require Import UserHeap.
 Require Import UserPerm.           (* [perm_of] / [lazy_free] *)
 Require Import ProcPtOwn.          (* [uptd] / [ud_um] / [proc_pt_wf] *)
 Require Import UserPtTree.
-Require Import UmodeArith.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
 Require Import VcGen.              (* [trunc32] *)
 Require Import PieceFam.           (* [pfam] / [pfam_triv] *)
@@ -58,7 +57,7 @@ Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFileread.       (* [fileread_in] / [fileread_extra_core] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import FsAbsDefs.          (* [aview] / [anode] *)
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
 

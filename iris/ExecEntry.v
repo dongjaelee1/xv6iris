@@ -68,7 +68,6 @@ From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import ghost_map invariants.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import Riscv.rv64d_types Riscv.rv64d.
-Require Import RiscvLang RiscvPtsto.
 Require Import FdSlots.         (* [fdstate] *)
 Require Import ChildTok.        (* [my_pay]: the exec wands' pay fact, and
                                    [ctokG] -- THE ONLY ghost class this file

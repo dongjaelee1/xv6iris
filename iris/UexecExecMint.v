@@ -110,9 +110,10 @@ Section UexecExecMint.
                ltac:(vm_compute; discriminate)).
     - (* ...and exit's out of the TAINT, which the generic instance does
          not even need to look at (design/pipe.md, "The exit path") *)
-      intros W Q. iIntros "_ _".
+      intros W Q. iIntros "#Hs _".
       iApply (sbundle_of_supply_ne uslot USYS_exit W Q
                 ltac:(vm_compute; discriminate)).
+      iExact "Hs".
   Qed.
 
   (* ===================================================================== *)

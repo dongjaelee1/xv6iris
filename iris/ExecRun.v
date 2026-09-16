@@ -563,7 +563,7 @@ Section ExecRun.
     uexec_sup_run N pv av c T pl f nl Pay.
   Proof.
     iIntros "#Hrd #Hra Hw #Hcon HPay".
-    rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "Hheap Hufd".
+    rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
     iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
     iDestruct ("Hra" $! M pm sz with "Hheap") as %Hargs.
     iFrame "Hheap Hufd". iSplitR; [ by iPureIntro | ]. iFrame "Hw".
@@ -620,7 +620,7 @@ Section ExecRun.
     iIntros "#Hi Hrun Hcwd #Hcl #Hinv #Hrd #Hcon #Hgen #Hrf HPay Hcont".
     iApply (wp_uk_ecall_exec_run N h m pc avail c T pv av pl f nl Pay R
               Hn Ha0 Ha1 Hal4 Hload with "Hi Hrun Hcwd Hrf Hgen [HPay] Hcont").
-    rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "Hheap Hufd".
+    rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
     iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
     iFrame "Hheap Hufd". iSplitR; [ by iPureIntro | ].
     iSplitR "HPay"; [ | iSplitR; [ iApply "Hcon" | iExact "HPay" ] ].
@@ -666,7 +666,7 @@ Section ExecRun.
               Hn Ha0 eq_refl Hal4 Hload
               with "Hi Hrun Hcwd [] Hgen [] [Hcont]").
     - iIntros "!> _". done.
-    - rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "Hheap Hufd".
+    - rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
       iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
       iFrame "Hheap Hufd". iSplitR; [ by iPureIntro | ].
       iSplitR; [ iApply (exec_walk_of_taint with "HT") | ].

@@ -8743,7 +8743,7 @@ Section UkShDiagLeaf.
     assert (E23 : C2 4%nat = C3 2%nat) by reflexivity.
     iApply (wp_kshd_panic_chain N true DfracDiscarded 0x1298 4%nat
               (shd_lit 0x1298) C1 C2 C3 h m n ltac:(lia) Ha0 E12 E23
-              with "[] [] [] [Hstd HPf] Hcode Hro Hs [Hpay] [Hdp] Hrun").
+              with "[] [] [] [Hstd HPf] Hcode Hro Hs [Hpay] [] Hrun").
     { iModIntro. iIntros (p) "%Hp". exfalso. lia. }
     { iModIntro. iIntros (p) "%Hp". rewrite /C2.
       rewrite (ush_fork_msg_byte p Hp).

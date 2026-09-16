@@ -577,3 +577,101 @@ that writes is provable the moment either route lands.
 - [ ] **TL-3b THE WRITE SIDE**: blocked on §5.0's decision.
 - [ ] **TL-4 THE SECOND APPLICATION**: the end-to-end instance of §4.3
   at `xv6_app_adequacy`, with its own `make audit` line.
+
+## 7. The owner's move — the design of record (2026-09-18, Fable, on the owner's "let's do (i) ourselves")
+
+Designing (i) exactly (§7.1) showed it NECESSARY for a wand-side ghost
+update and NOT SUFFICIENT for the tree layer: a step wand's conclusion
+is `▷ app_pred av'` and nothing else, so an updated deed made inside
+it never reaches the owner.  The fire's commit shape already supplies
+the return channel (§7.2): every write-kind commit
+(`FsAbsCreateFire.acre_commit_at_gen` and its siblings) is TWO-PHASE —
+phase 1 hands out the step; phase 2 runs AFTER the mover, is handed
+`I'` with `⌜abs_view I' = δ (abs_view I)⌝` and the fs-top auth half, is
+a fancy update at a mask containing `appN`, and produces the caller's
+own receipt `Φ`.  That is TL-2's route (ii), pre-existing.  RULING:
+the write side lands on §7.2 with NO seam change; §7.1 stays designed
+and ready for a claim that genuinely needs a wand-side update.
+
+### 7.1 Seam (i), exactly — designed, not (yet) applied
+
+- `AppInv.app_step i I av' := ∀ n', ⌜abs_view (<[i:=n']> I) = av'⌝ -∗
+  ▷ app_pred app_run (abs_view I) ==∗ ▷ app_pred app_run (abs_view (<[i:=n']> I))`
+  (one `-∗` → `==∗`).
+- `app_top_update`: the step premise likewise; proof: `iMod ("Hstep"
+  with "[//] Hp") as "Hp"` (inside its `={E}=∗` after `inv_acc`).
+- `app_top_update_step`: statement UNCHANGED (update-free wand), proof
+  lifts by `iModIntro`; add `app_top_update_bupd`, the `==∗` twin.
+- `app_step_at`: conclusion `==∗`; `app_step_acc`, `app_step_id`: `iModIntro`.
+- Statements naming `app_step` (the fire pieces; SpecCreate, SpecSysLink,
+  SysOpenDefs, SysUnlinkDefs, SpecFilewrite, SpecSysOpen, ProofFilewrite,
+  UexecSG/UexecExecInst): text unchanged.  Proofs that BUILD an
+  `app_step` (UInitCons:579-ish, PinnedOpen ×2, UkWriteFile, UkTreeRead,
+  AppEcho ×1, AppTree ×3): one `iModIntro` each at the right depth
+  (`|==> ▷ …`: `iModIntro` then `iNext`).  Mover callers
+  (FsAbs{Create,Write,Link,Unlink,Open,Mknod}Fire): `iApply` of an
+  `app_step_at` into `app_top_update`'s slot still typechecks; a site
+  that `iDestruct`s the wand's result becomes `iMod`.
+- Bar: zero semantic change for every consumer; echo audit at 14.
+
+### 7.2 The two-phase owner move — what TL-3 (write) lands
+
+THE DEED IN HALVES.  `tree_own r g root t := g ↪[γown r]{#1/2} (root, t)`;
+the claim's live arm holds the auth (whole) and, per entry, the OTHER
+half plus the entry's SLOT:
+
+    slot av g (root, t) :=  ⌜subtree av root = Some t⌝              -- exact
+                          ∨ (g ↪{#1/2} (root, t) ∗ ∃ γi, tok γi)   -- in flight
+
+`tok γi` is an exclusive one-shot (`own γi (Excl ())`), FRESH per move
+(allocated by the owner in phase 1), so nothing is lost when a move
+turns out invisible.  Reading (the stable form) is agreement of the
+owner's half with the claim's half + the exact arm; the in-flight arm
+is refuted for a READER by the same exactness once the mover finished
+(§7.2's phase 2 always restores the exact arm before the fire returns).
+
+THE STEP (update-free, so today's `app_step` takes it verbatim):
+    tree_step_move g d δ :
+      ⌜d ∈ dom (subtree av root)⌝ → ⌜tree_op δ t ≠ t⌝ →
+      g ↪{#1/2} (root,t) ∗ tok γi ∗ tree_pred c r av -∗ tree_pred c r (δ av)
+— moves g's slot from exact to in-flight by PARKING the owner's half
+and the token (no ghost update); every other entry by
+`subtree_disjoint` + the OUTSIDE δ lemma; `own_wf`/`adir_at` by TL-1's
+preservation lemmas.  A move with `tree_op δ t = t` (a write of the
+same bytes, the invisible legs) takes the FREE step instead — the
+owner decides by computation on its own tree.
+
+PHASE 1 (the owner's commit callback, mask E ⊇ ↑appN, before the
+mover): open `app_inv`, agree the entry, read `subtree av root = t`,
+close; allocate `tok γi`; hand the fire `tree_step_move` with the half
+and the token captured.  PHASE 2 (after the mover, given `I'` with
+`abs_view I' = δ av` and the auth half): open `app_inv` (the tree
+claim is timeless — `▷` strips), agree the entry is still `(root, t)`;
+the exact arm is REFUTED (`subtree (δ av) root = tree_op δ t ≠ t`, TL-1's
+INSIDE lemma); in the in-flight arm take the half and the token,
+update the entry to `(root, tree_op δ t)` (auth + both halves = full),
+put one half back, close in the exact arm (`subtree (δ av) root =
+tree_op δ t` — the INSIDE lemma again), and return the other half as
+the receipt `Φ`.  The receipt reaches the U tier through the kept-post
+walk exactly as read's does (`UkReadFile`/`UkTreeRead`'s shape).
+
+THE REFUND ARM: `pf_at AU F = AU ∧ refund` — the owner supplies the
+same half and token to both conjuncts, so a syscall that fails before
+firing hands them straight back.
+
+EXCLUSIVITY, restated: entering the in-flight arm needs the owner's
+half; leaving it needs both halves.  A non-owner's move inside `g`'s
+subtree cannot build the step and falls to the taint arm, as §3 says.
+
+### 7.3 Lanes
+
+- [ ] **TL-3W** (Opus): the halves, the slot, `tree_step_move`, the
+  two phases as ONE lemma per write-kind member (`tree_move_at` for
+  create/mknod/unlink/write over the landed fires), the U-tier
+  write-side corollaries (`UkTreeWrite.v`: mkdir/mknod/unlink/write at
+  an owned subtree, each an instance of the landed member + this
+  page's phases), and the consumer test: make a directory and a file,
+  read it back — the second application's core, with no whole-fs pin.
+  TL-2's `tree_move_*` bupd lemmas retire into §7.2's shape.
+- [ ] **SEAM-I** (deferred; ready): §7.1 as one mechanical lane if a
+  consumer appears.

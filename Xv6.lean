@@ -105,3 +105,5 @@ import Xv6.LinkMappages
 import Xv6.KvmDefs
 import Xv6.SpecProcMapstacks
 import Xv6.SpecKvmmake
+import Xv6.ProofKvmmap
+import Xv6.LinkKvmmap

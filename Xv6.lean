@@ -117,3 +117,8 @@ import Xv6.LinkTrapinit
 import Xv6.PtStackLemmas
 import Xv6.ProofProcMapstacks
 import Xv6.LinkProcMapstacks
+import Xv6.KvmLemmas
+import Xv6.KvmCounts
+import Xv6.ProofKvmRegions
+import Xv6.ProofKvmmake
+import Xv6.LinkKvmmake

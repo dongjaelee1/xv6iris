@@ -1233,40 +1233,25 @@ Section DevLoops.
      because they travel through the same places -- every leaf's ghost step
      already hands [uart_colE] over and takes it back, so the output side
      costs no third leg on any leaf's wand. *)
+  (* THE COLUMN ALONE (redesign R2).  It used to bundle the output claim
+     beside the receive column; the accepted bytes are a field of the
+     history the port's ONE claim is about, so there is nothing left to
+     pair it with. *)
   Definition uart_colE (iu : uart_id) (γ : uart_names) (u : uart_state) : iProp Σ :=
-    (uart_out_claim iu u ∗ ∃ hs np nk hl ht, uart_col iu γ u hs np nk hl ht)%I.
-
-  (* the two projections, so a lemma below reads one half without naming
-     the pairing *)
-  Lemma uart_colE_out (iu : uart_id) (γ : uart_names) (u : uart_state) :
-    uart_colE iu γ u -∗ uart_out_claim iu u.
-  Proof. by iIntros "[$ _]". Qed.
+    (∃ hs np nk hl ht, uart_col iu γ u hs np nk hl ht)%I.
 
   (* the wire clause WITHOUT SPENDING the column: it is pure, so it comes
-     out and the column goes back.  There is no such reader for the output
-     claim -- it is LINEAR, so a reader takes it and puts it back by hand
-     ([uart_colE_split]/[uart_colE_intro]). *)
+     out and the column goes back.  [uart_colE_split]/[uart_colE_intro] are
+     GONE with the pairing they split: the column is all there is. *)
   Lemma uart_colE_wire_out_keep (iu : uart_id) (γ : uart_names) (u : uart_state) :
     uart_colE iu γ u -∗ ⌜u_wire u = u_out u⌝ ∗ uart_colE iu γ u.
   Proof.
-    iIntros "[Ho H]".
+    iIntros "H".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iSplitR; [iPureIntro; exact (proj1 (proj2 (proj2 (proj2 Hok))))|].
-    iFrame "Ho". iExists hs, np, nk, hl, ht. iFrame "Ha Hk Hts Hht".
+    iExists hs, np, nk, hl, ht. iFrame "Ha Hk Hts Hht".
     iPureIntro. exact Hok.
   Qed.
-
-  (* lend the claim out and take the rest: the shape every caller that has
-     to hand the application's resource to a view shift uses *)
-  Lemma uart_colE_split (iu : uart_id) (γ : uart_names) (u : uart_state) :
-    uart_colE iu γ u -∗
-    uart_out_claim iu u ∗ (∃ hs np nk hl ht, uart_col iu γ u hs np nk hl ht).
-  Proof. by iIntros "[$ $]". Qed.
-
-  Lemma uart_colE_intro (iu : uart_id) (γ : uart_names) (u : uart_state) :
-    uart_out_claim iu u -∗
-    (∃ hs np nk hl ht, uart_col iu γ u hs np nk hl ht) -∗ uart_colE iu γ u.
-  Proof. iIntros "H1 H2". iFrame. Qed.
 
   Global Instance uart_col_timeless iu γ u hs np nk hl ht :
     Timeless (uart_col iu γ u hs np nk hl ht).
@@ -1278,7 +1263,7 @@ Section DevLoops.
   Lemma uart_colE_loopback (iu : uart_id) (γ : uart_names) (u : uart_state) :
     uart_colE iu γ u -∗ ⌜uart_loopback u = false⌝.
   Proof.
-    iIntros "[_ H]". iDestruct "H" as (hs np nk hl ht) "(_ & _ & _ & _ & %Hok)".
+    iIntros "H". iDestruct "H" as (hs np nk hl ht) "(_ & _ & _ & _ & %Hok)".
     iPureIntro. exact (proj1 (proj2 (proj2 Hok))).
   Qed.
 
@@ -1289,7 +1274,7 @@ Section DevLoops.
   Lemma uart_colE_wire_out (iu : uart_id) (γ : uart_names) (u : uart_state) :
     uart_colE iu γ u -∗ ⌜u_wire u = u_out u⌝.
   Proof.
-    iIntros "[_ H]". iDestruct "H" as (hs np nk hl ht) "(_ & _ & _ & _ & %Hok)".
+    iIntros "H". iDestruct "H" as (hs np nk hl ht) "(_ & _ & _ & _ & %Hok)".
     iPureIntro. exact (proj1 (proj2 (proj2 (proj2 Hok)))).
   Qed.
 
@@ -1311,8 +1296,7 @@ Section DevLoops.
     uart_acc u' = uart_acc u ->
     uart_colE iu γ u -∗ uart_colE iu γ u'.
   Proof.
-    iIntros (Hrx Hlb Hw Ho Hacc) "[Hout H]".
-    iSplitL "Hout"; [by iApply (uart_out_claim_stable iu u u' Hacc)|].
+    iIntros (Hrx Hlb Hw Ho Hacc) "H".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iExists hs, np, nk, hl, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
     destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
@@ -1328,9 +1312,7 @@ Section DevLoops.
     uart_tx_pop u = Some (b, u') ->
     uart_colE iu γ u -∗ uart_colE iu γ u'.
   Proof.
-    iIntros (Hpop) "[Hout H]".
-    iSplitL "Hout";
-      [by iApply (uart_out_claim_stable iu u u' (uart_tx_pop_acc _ _ _ Hpop))|].
+    iIntros (Hpop) "H".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hok)".
     pose proof Hok as Hok'.
     destruct Hok' as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
@@ -1459,7 +1441,7 @@ Section DevLoops.
     uart_colE iu γ u -∗ uart_rx_tok γ k hl -∗
       uart_colE iu γ u ∗ uart_rx_tok γ k hl ∗ uart_rx_pushed_lb γ (S k).
   Proof.
-    iIntros (Hne) "[Hout H] Htok".
+    iIntros (Hne) "H Htok".
     iDestruct "H" as (hs np nk hl0 ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iDestruct (uart_rx_tok_agree with "Hk Htok") as %[<- <-].
     destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
@@ -1470,8 +1452,7 @@ Section DevLoops.
        two halves must be placed by hand: [iFrame] would put the caller's
        token into the column's own slot. *)
     iSplitR "Htok".
-    - iSplitL "Hout"; [iExact "Hout"|].
-      iExists hs, np, nk, hl0, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
+    - iExists hs, np, nk, hl0, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
       rewrite /uart_col_ok. split_and!; assumption.
     - iSplitL "Htok"; [iExact "Htok"|].
       rewrite /uart_rx_pushed_lb.
@@ -1506,7 +1487,7 @@ Section DevLoops.
             ⌜obs_boots h = S gen_id⌝ ∗
             uart_rx_tok γ (S k) (Some h)).
   Proof.
-    iIntros (Hpop Hw Ho Hacc) "[Hout H] Htok #Hlb".
+    iIntros (Hpop Hw Ho Hacc) "H Htok #Hlb".
     iDestruct "H" as (hs np nk hl0 ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iDestruct (uart_rx_tok_agree with "Hk Htok") as %[<- <-].
     destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
@@ -1521,8 +1502,7 @@ Section DevLoops.
     iMod (uart_rx_tok_update γ nk (S nk) hl0 (Some hh) with "Hk Htok")
       as "[Hk Htok]".
     iModIntro. iSplitR "Htok".
-    - iSplitL "Hout"; [by iApply (uart_out_claim_stable iu u u' Hacc)|].
-      iExists hs', np, (S nk), (Some hh), ht. iFrame "Ha Hk Hts Hht".
+    - iExists hs', np, (S nk), (Some hh), ht. iFrame "Ha Hk Hts Hht".
       iPureIntro.
       rewrite /uart_col_ok Hrx' Hlb' Hw Ho. cbn [length] in H1, H2.
       split_and!; [lia | lia | exact H3 | exact Hwo | | | | |].
@@ -1557,13 +1537,12 @@ Section DevLoops.
     uart_colE iu γ u -∗ uart_rx_tok γ k hl ==∗
       uart_colE iu γ u' ∗ ∃ k' hl', uart_rx_tok γ k' hl'.
   Proof.
-    iIntros (Hrx Hlb Hw Ho Hacc) "[Hout H] Htok".
+    iIntros (Hrx Hlb Hw Ho Hacc) "H Htok".
     iDestruct "H" as (hs np nk hl0 ht) "(Ha & Hk & Hts & #Hht & %Hok)".
     iDestruct (uart_rx_tok_agree with "Hk Htok") as %[<- <-].
     destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
     iMod (uart_rx_tok_update γ nk np hl0 ht with "Hk Htok") as "[Hk Htok]".
     iModIntro. iSplitR "Htok"; [| iExists np, ht; iExact "Htok"].
-    iSplitL "Hout"; [by iApply (uart_out_claim_stable iu u u' Hacc)|].
     iExists [], np, np, ht, ht. iFrame "Ha Hk Hht".
     iSplitR; [done|].
     iPureIntro. rewrite /uart_col_ok Hrx Hlb Hw Ho H3.
@@ -2102,150 +2081,6 @@ Section DevLoops.
      SECOND argument and it is what a stale writer cannot forge: a process
      of a dead era holds links at ITS era's number, and the port invariant
      only ever meets links at [S gen_id]. *)
-  Definition out_link (i : uart_id) (k : nat) (b : bv 8) (Φ : iProp Σ) : iProp Σ :=
-    (∀ (o : option (list mobs)) (acc : list (bv 8)),
-       obs_hist_lb_o o -∗ out_res_at i k (default [] o) acc
-       ={⊤ ∖ ↑uartN i}=∗
-       ∃ o' : option (list mobs),
-         obs_hist_lb_o o' ∗ out_res_at i k (default [] o') (acc ++ [b]) ∗ Φ)%I.
-
-  (* THE CHAIN: one link per byte of a run, the payload at the end.  A
-     [Fixpoint] and not a big-op, so that [out_chain_app] -- the loop
-     bridge every multi-byte writer's invariant is stated over -- is a
-     structural induction and not a rewrite. *)
-  Fixpoint out_chain (i : uart_id) (k : nat) (bs : list (bv 8))
-      (Φ : iProp Σ) : iProp Σ :=
-    match bs with
-    | [] => Φ
-    | b :: bs' => out_link i k b (out_chain i k bs' Φ)
-    end%I.
-
-  (* THE STOPPABLE CHAIN, for a writer that may return SHORT (consolewrite's
-     copy fault, and hence filewrite's console arm and the syscall row above
-     it).  [Q k] is the payload after [k] bytes, and the writer may cash it
-     at any prefix -- an additive conjunction, so the choice is the
-     writer's and the caller owes both sides. *)
-  Fixpoint out_run (i : uart_id) (k : nat) (bs : list (bv 8))
-      (Q : nat -> iProp Σ) : iProp Σ :=
-    match bs with
-    | [] => Q 0%nat
-    | b :: bs' => Q 0%nat ∧ out_link i k b (out_run i k bs' (fun j => Q (S j)))
-    end%I.
-
-  (* ---- the laws ---- *)
-
-  (* THE STEP.  The store's ghost step in one line: the claim at [u], the
-     head link, and the accepted sequence grown by exactly that byte
-     ([DevModel.uart_write_thr_acc]). *)
-  Lemma out_link_at (i : uart_id) (b : bv 8) (Φ : iProp Σ) (acc : list (bv 8)) :
-    out_link i (S gen_id) b Φ -∗ out_claim_at i acc ={⊤ ∖ ↑uartN i}=∗
-      out_claim_at i (acc ++ [b]) ∗ Φ.
-  Proof.
-    iIntros "HΨ Hcl". iDestruct "Hcl" as (o) "[#Hlb Hres]".
-    iMod ("HΨ" $! o acc with "Hlb Hres") as (o') "(#Hlb' & Hres' & HΦ)".
-    iModIntro. iFrame "HΦ". iExists o'. by iFrame "Hlb' Hres'".
-  Qed.
-
-  Lemma out_link_step (i : uart_id) (b : bv 8) (Φ : iProp Σ) (u u' : uart_state) :
-    uart_acc u' = (uart_acc u ++ [b])%list ->
-    out_link i (S gen_id) b Φ -∗ uart_out_claim i u ={⊤ ∖ ↑uartN i}=∗
-      uart_out_claim i u' ∗ Φ.
-  Proof.
-    iIntros (Hacc) "HΨ Hcl". rewrite /uart_out_claim Hacc.
-    iApply (out_link_at i b Φ (uart_acc u) with "HΨ Hcl").
-  Qed.
-
-  Lemma out_chain_step (i : uart_id) (b : bv 8) (bs : list (bv 8))
-      (Φ : iProp Σ) (u u' : uart_state) :
-    uart_acc u' = (uart_acc u ++ [b])%list ->
-    out_chain i (S gen_id) (b :: bs) Φ -∗ uart_out_claim i u
-      ={⊤ ∖ ↑uartN i}=∗
-      uart_out_claim i u' ∗ out_chain i (S gen_id) bs Φ.
-  Proof. exact (out_link_step i b (out_chain i (S gen_id) bs Φ) u u'). Qed.
-
-  (* THE LOOP BRIDGE: a writer's invariant carries the chain over what it
-     has NOT yet pushed ([drop k bs]), and this is what splits it. *)
-  Lemma out_chain_app (i : uart_id) (k : nat) (bs1 bs2 : list (bv 8))
-      (Φ : iProp Σ) :
-    out_chain i k (bs1 ++ bs2) Φ ⊣⊢ out_chain i k bs1 (out_chain i k bs2 Φ).
-  Proof.
-    induction bs1 as [| b bs1 IH]; [done|].
-    cbn [out_chain app]. rewrite /out_link.
-    do 2 (f_equiv; intro). f_equiv. f_equiv. f_equiv. f_equiv. intro.
-    f_equiv. f_equiv. exact IH.
-  Qed.
-
-  (* the single link's monotonicity, [out_chain_mono]'s base case, split
-     out because the input side's run bridge needs it on ONE link *)
-  Lemma out_link_mono (i : uart_id) (k : nat) (b : bv 8) (Φ Φ' : iProp Σ) :
-    (Φ -∗ Φ') -∗ out_link i k b Φ -∗ out_link i k b Φ'.
-  Proof.
-    iIntros "HΦ H" (o acc) "Hlb Hres".
-    iMod ("H" $! o acc with "Hlb Hres") as (o') "(Hlb' & Hres' & HP)".
-    iModIntro. iExists o'. iFrame "Hlb' Hres'". by iApply "HΦ".
-  Qed.
-
-  Lemma out_chain_mono (i : uart_id) (k : nat) (bs : list (bv 8))
-      (Φ Φ' : iProp Σ) :
-    (Φ -∗ Φ') -∗ out_chain i k bs Φ -∗ out_chain i k bs Φ'.
-  Proof.
-    iIntros "HΦ H". iInduction bs as [| b bs] "IH" forall (Φ Φ'); [by iApply "HΦ"|].
-    cbn [out_chain]. iIntros (o acc) "Hlb Hres".
-    iMod ("H" $! o acc with "Hlb Hres") as (o') "(Hlb' & Hres' & Hrest)".
-    iModIntro. iExists o'. iFrame "Hlb' Hres'".
-    iApply ("IH" with "HΦ Hrest").
-  Qed.
-
-  (* THE MESSAGE-SHAPED CONSEQUENCE, DERIVED ONE WAY ONLY.  A chain gives a
-     shift for the whole run; a shift for the whole run does NOT give a
-     chain, because tx_lock is taken per byte and another hart's bytes may
-     be accepted between two of ours. *)
-  Lemma out_chain_at (i : uart_id) (bs : list (bv 8)) (Φ : iProp Σ)
-      (acc : list (bv 8)) :
-    out_chain i (S gen_id) bs Φ -∗ out_claim_at i acc ={⊤ ∖ ↑uartN i}=∗
-      out_claim_at i (acc ++ bs) ∗ Φ.
-  Proof.
-    iIntros "H Hcl". iInduction bs as [| b bs] "IH" forall (acc).
-    - rewrite app_nil_r. by iFrame "H Hcl".
-    - cbn [out_chain].
-      iMod (out_link_at i b _ acc with "H Hcl") as "[Hcl H]".
-      iMod ("IH" $! (acc ++ [b])%list with "H Hcl") as "[Hcl $]".
-      iModIntro. by rewrite -app_assoc.
-  Qed.
-
-  Lemma out_chain_shift (i : uart_id) (bs : list (bv 8)) (Φ : iProp Σ)
-      (u u' : uart_state) :
-    uart_acc u' = (uart_acc u ++ bs)%list ->
-    out_chain i (S gen_id) bs Φ -∗ uart_out_claim i u ={⊤ ∖ ↑uartN i}=∗
-      uart_out_claim i u' ∗ Φ.
-  Proof.
-    iIntros (Hacc) "H Hcl". rewrite /uart_out_claim Hacc.
-    iApply (out_chain_at i bs Φ (uart_acc u) with "H Hcl").
-  Qed.
-
-  (* ==================================================================== *)
-  (*  THE OUTPUT LICENCE (lane OUT-FUPD): "this holder may put ANY byte on   *)
-  (*  the console".                                                         *)
-  (*                                                                       *)
-  (*  WHY IT EXISTS.  The kernel's GENERIC SUPPLY -- what an arbitrary,      *)
-  (*  unverified process runs its syscalls on ([UexecExecInst.xv6_ssupply])  *)
-  (*  -- must pay for [write(2)] on the console, and under the resource      *)
-  (*  claim that payment is no longer free: the whole point of making the    *)
-  (*  claim a resource is that it can say WHO may write.  So the supply      *)
-  (*  carries a licence, the application decides what a licence costs        *)
-  (*  ([App.xv6_app]'s [Happ_out_sup]: whoever holds the application's       *)
-  (*  supply holds one), and the generic write builds its chain out of it.   *)
-  (*  For the trivial application the claim is [emp] and the licence is      *)
-  (*  free; for a constraining one the licence is what its supply's TAINT    *)
-  (*  arm pays for, which is exactly how KILL-ARM's credential works.        *)
-  (*                                                                       *)
-  (*  PERSISTENT BY CONSTRUCTION, so it rides every context and every        *)
-  (*  bundle that carries the supply.                                       *)
-  (* ==================================================================== *)
-  (* QUANTIFIED OVER THE ERA (lane CONS-IO milestone C): the licence is the
-     GENERIC process's payment and the generic process is any era's, so the
-     one persistent resource covers them all -- and the application pays it
-     out of the taint arm of whichever era's claim it is handed. *)
   (* ==================================================================== *)
   (*  THE LINK FAMILY, OVER EVENTS (redesign R2).                          *)
   (*                                                                       *)
@@ -2293,9 +2128,119 @@ Section DevLoops.
   Global Instance cons_licence_persistent : Persistent cons_licence.
   Proof. rewrite /cons_licence. apply _. Qed.
 
-  Definition out_licence : iProp Σ :=
-    (□ ∀ (k : nat) (h : list mobs) (acc : list (bv 8)) (b : bv 8),
-        riscv_out_res k h acc ==∗ riscv_out_res k h (acc ++ [b]))%I.
+  (* A PROCESS BYTE REACHING THE WIRE (redesign R2).  The name and the
+     shape every writer threads are unchanged; what moves underneath is the
+     port's ONE claim, by [EvOut].  Keeping the name is what leaves the
+     dozen files that only PASS an [out_link] along untouched. *)
+  Definition out_link (i : uart_id) (k : nat) (b : bv 8) (Φ : iProp Σ) : iProp Σ :=
+    (∀ (o : option (list mobs)) (H : LogEntryDefs.cons_hist),
+       obs_hist_lb_o o -∗ chist_at i k (default [] o) H
+       ={⊤ ∖ ↑uartN i}=∗
+       ∃ o' : option (list mobs),
+         obs_hist_lb_o o' ∗
+         chist_at i k (default [] o') (ConsLog.cons_step H (ConsLog.EvOut b))
+         ∗ Φ)%I.
+
+  (* [EvOut]'s premise is [True], so the two are the same wand with one
+     argument fewer -- which is what keeps every writer's application site
+     unchanged. *)
+  Lemma out_link_of_cons_link (i : uart_id) (k : nat) (b : bv 8) (Φ : iProp Σ) :
+    cons_link i k (ConsLog.EvOut b) Φ -∗ out_link i k b Φ.
+  Proof.
+    iIntros "H" (o Hh) "Hlb Hres".
+    by iMod ("H" $! o Hh with "Hlb Hres [//]") as (o') "?"; iModIntro; iExists o'.
+  Qed.
+
+  Lemma cons_link_of_out_link (i : uart_id) (k : nat) (b : bv 8) (Φ : iProp Σ) :
+    out_link i k b Φ -∗ cons_link i k (ConsLog.EvOut b) Φ.
+  Proof. iIntros "H" (o Hh) "Hlb Hres _". by iApply ("H" with "Hlb Hres"). Qed.
+
+  (* THE CHAIN: one link per byte of a run, the payload at the end.  A
+     [Fixpoint] and not a big-op, so that [out_chain_app] -- the loop
+     bridge every multi-byte writer's invariant is stated over -- is a
+     structural induction and not a rewrite. *)
+  Fixpoint out_chain (i : uart_id) (k : nat) (bs : list (bv 8))
+      (Φ : iProp Σ) : iProp Σ :=
+    match bs with
+    | [] => Φ
+    | b :: bs' => out_link i k b (out_chain i k bs' Φ)
+    end%I.
+
+  (* THE STOPPABLE CHAIN, for a writer that may return SHORT (consolewrite's
+     copy fault, and hence filewrite's console arm and the syscall row above
+     it).  [Q k] is the payload after [k] bytes, and the writer may cash it
+     at any prefix -- an additive conjunction, so the choice is the
+     writer's and the caller owes both sides. *)
+  Fixpoint out_run (i : uart_id) (k : nat) (bs : list (bv 8))
+      (Q : nat -> iProp Σ) : iProp Σ :=
+    match bs with
+    | [] => Q 0%nat
+    | b :: bs' => Q 0%nat ∧ out_link i k b (out_run i k bs' (fun j => Q (S j)))
+    end%I.
+
+  (* ---- the laws ---- *)
+
+  (* THE STEP.  The store's ghost step in one line: the claim at [u], the
+     head link, and the accepted sequence grown by exactly that byte
+     ([DevModel.uart_write_thr_acc]). *)
+
+
+
+  (* the single link's monotonicity, [out_chain_mono]'s base case, split
+     out because the input side's run bridge needs it on ONE link *)
+  Lemma out_link_mono (i : uart_id) (k : nat) (b : bv 8) (Φ Φ' : iProp Σ) :
+    (Φ -∗ Φ') -∗ out_link i k b Φ -∗ out_link i k b Φ'.
+  Proof.
+    iIntros "HΦ H" (o acc) "Hlb Hres".
+    iMod ("H" $! o acc with "Hlb Hres") as (o') "(Hlb' & Hres' & HP)".
+    iModIntro. iExists o'. iFrame "Hlb' Hres'". by iApply "HΦ".
+  Qed.
+
+  Lemma out_chain_mono (i : uart_id) (k : nat) (bs : list (bv 8))
+      (Φ Φ' : iProp Σ) :
+    (Φ -∗ Φ') -∗ out_chain i k bs Φ -∗ out_chain i k bs Φ'.
+  Proof.
+    iIntros "HΦ H". iInduction bs as [| b bs] "IH" forall (Φ Φ'); [by iApply "HΦ"|].
+    cbn [out_chain]. iIntros (o acc) "Hlb Hres".
+    iMod ("H" $! o acc with "Hlb Hres") as (o') "(Hlb' & Hres' & Hrest)".
+    iModIntro. iExists o'. iFrame "Hlb' Hres'".
+    iApply ("IH" with "HΦ Hrest").
+  Qed.
+
+  (* THE MESSAGE-SHAPED CONSEQUENCE, DERIVED ONE WAY ONLY.  A chain gives a
+     shift for the whole run; a shift for the whole run does NOT give a
+     chain, because tx_lock is taken per byte and another hart's bytes may
+     be accepted between two of ours. *)
+
+
+  (* ==================================================================== *)
+  (*  THE OUTPUT LICENCE (lane OUT-FUPD): "this holder may put ANY byte on   *)
+  (*  the console".                                                         *)
+  (*                                                                       *)
+  (*  WHY IT EXISTS.  The kernel's GENERIC SUPPLY -- what an arbitrary,      *)
+  (*  unverified process runs its syscalls on ([UexecExecInst.xv6_ssupply])  *)
+  (*  -- must pay for [write(2)] on the console, and under the resource      *)
+  (*  claim that payment is no longer free: the whole point of making the    *)
+  (*  claim a resource is that it can say WHO may write.  So the supply      *)
+  (*  carries a licence, the application decides what a licence costs        *)
+  (*  ([App.xv6_app]'s [Happ_out_sup]: whoever holds the application's       *)
+  (*  supply holds one), and the generic write builds its chain out of it.   *)
+  (*  For the trivial application the claim is [emp] and the licence is      *)
+  (*  free; for a constraining one the licence is what its supply's TAINT    *)
+  (*  arm pays for, which is exactly how KILL-ARM's credential works.        *)
+  (*                                                                       *)
+  (*  PERSISTENT BY CONSTRUCTION, so it rides every context and every        *)
+  (*  bundle that carries the supply.                                       *)
+  (* ==================================================================== *)
+  (* QUANTIFIED OVER THE ERA (lane CONS-IO milestone C): the licence is the
+     GENERIC process's payment and the generic process is any era's, so the
+     one persistent resource covers them all -- and the application pays it
+     out of the taint arm of whichever era's claim it is handed. *)
+  (* "ANY HOLDER OF THE SUPPLY MAY MOVE THE RESOURCE BY ANY EVENT"
+     (redesign R2).  The name is kept -- every licensed writer threads it --
+     but there is ONE licence now where there were two, because there is one
+     resource. *)
+  Definition out_licence : iProp Σ := cons_licence.
 
   Global Instance out_licence_persistent : Persistent out_licence.
   Proof. rewrite /out_licence. apply _. Qed.
@@ -2305,8 +2250,8 @@ Section DevLoops.
   Lemma out_link_of_licence (k : nat) (b : bv 8) (Φ : iProp Σ) :
     out_licence -∗ Φ -∗ out_link Uart0 k b Φ.
   Proof.
-    iIntros "#Hlic HΦ" (o acc) "#Hlb Hres".
-    iMod ("Hlic" $! k (default [] o) acc b with "Hres") as "Hres".
+    iIntros "#Hlic HΦ" (o Hh) "#Hlb Hres".
+    iMod ("Hlic" $! k (default [] o) Hh (ConsLog.EvOut b) with "Hres") as "Hres".
     iModIntro. iExists o. by iFrame "Hlb Hres HΦ".
   Qed.
 
@@ -2407,32 +2352,13 @@ Section DevLoops.
      THE WRITE PATH IS UNTOUCHED.  [out_link] and [cons_out_chain] are what
      a process's own [write(2)] spends, and a writer that is not answering
      an input needs no order fact. *)
+  (* THE ECHO'S BYTE REACHING THE WIRE (redesign R2).  One event, where
+     today this is a two-resource wand that moves the output claim and hands
+     the input claim back unread -- the order fact and the wire rider it
+     needed are proved once at the arm's OPEN now, not per echoed byte.  The
+     [h] argument is kept so every caller's arity is unchanged. *)
   Definition echo_link (k : nat) (h : list mobs) (b : bv 8) (Φ : iProp Σ) : iProp Σ :=
-    (∀ (o o' : option (list mobs)) (acc : list (bv 8))
-       (pops : list LogEntryDefs.log_entry) (dl : list (list mobs * bv 8)),
-       obs_hist_lb_o o -∗ out_res_at Uart0 k (default [] o) acc -∗
-       obs_hist_lb_o o' -∗ in_res_at Uart0 k (default [] o') pops dl -∗
-       ⌜forall e, e ∈ pops -> hist_ext (LogEntryDefs.le_hist e) h⌝ -∗
-       (* ...AND THE WIRE BELOW THE ACCEPTED SEQUENCE, AT THE BYTE'S OWN
-          HISTORY (the coordinator's second C2 amendment).  The application
-          has to place the transcript it owes -- which the discipline pins
-          BELOW the wire as it stood when the byte was typed -- inside the
-          bytes the UART has accepted, and no other premise reaches from
-          one to the other.
-
-          THE WITNESS HISTORY IS [h] ITSELF and there is no separate [hc]:
-          [h] is exactly the point the discipline speaks at, the shift's
-          own [obs_hist_lb h] already witnesses its reality, and a later
-          history would give a LONGER wire, which is not what D2 wants.
-          The kernel proves it at the store from a persistent bound on the
-          drained prefix filed beside the byte's tag when it arrived -- see
-          [uart_col]'s column -- so no trace authority is needed at a CPU
-          MMIO step and the mask stays the open port invariant's. *)
-       ⌜obs_wire Uart0 (open_seg h) `prefix_of` acc⌝
-       ={⊤ ∖ ↑uartN Uart0}=∗
-       ∃ o'' : option (list mobs),
-         obs_hist_lb_o o'' ∗ out_res_at Uart0 k (default [] o'') (acc ++ [b]) ∗
-         obs_hist_lb_o o' ∗ in_res_at Uart0 k (default [] o') pops dl ∗ Φ)%I.
+    cons_link Uart0 k (ConsLog.EvByte b) Φ.
 
   (* the per-byte chain of them, [out_chain]'s twin on the echo path *)
   Fixpoint echo_chain (k : nat) (h : list mobs) (bs : list (bv 8))
@@ -2445,10 +2371,9 @@ Section DevLoops.
   Lemma echo_link_mono (k : nat) (h : list mobs) (b : bv 8) (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ echo_link k h b Φ -∗ echo_link k h b Φ'.
   Proof.
-    iIntros "HΦ H" (o o' acc pops dl) "Hlb Hres Hlb' Hires %Hord %Hwire".
-    iMod ("H" $! o o' acc pops dl with "Hlb Hres Hlb' Hires [//] [//]")
-      as (o'') "(Hlb'' & Hres' & Hlb2 & Hires' & HP)".
-    iModIntro. iExists o''. iFrame "Hlb'' Hres' Hlb2 Hires'". by iApply "HΦ".
+    iIntros "HΦ H" (o Hh) "Hlb Hres %Hev".
+    iMod ("H" $! o Hh with "Hlb Hres [//]") as (o'') "(Hlb'' & Hres' & HP)".
+    iModIntro. iExists o''. iFrame "Hlb'' Hres'". by iApply "HΦ".
   Qed.
 
   Lemma echo_chain_mono (k : nat) (h : list mobs) (bs : list (bv 8))
@@ -2595,9 +2520,9 @@ Section DevLoops.
   Lemma echo_link_of_licence (k : nat) (h : list mobs) (b : bv 8) (Φ : iProp Σ) :
     out_licence -∗ Φ -∗ echo_link k h b Φ.
   Proof.
-    iIntros "#Hlic HΦ" (o o' acc pops dl) "#Hlb Hres #Hlb' Hires _ _".
-    iMod ("Hlic" $! k (default [] o) acc b with "Hres") as "Hres".
-    iModIntro. iExists o. by iFrame "Hlb Hres Hlb' Hires HΦ".
+    iIntros "#Hlic HΦ" (o Hh) "#Hlb Hres _".
+    iMod ("Hlic" $! k (default [] o) Hh (ConsLog.EvByte b) with "Hres") as "Hres".
+    iModIntro. iExists o. by iFrame "Hlb Hres HΦ".
   Qed.
 
   (* ...AND THE RUN'S TOKEN CROSSES IT UNREAD.  The run is a CONJUNCTION at
@@ -2730,29 +2655,136 @@ Section DevLoops.
      [⊤ ∖ ↑uartN Uart0] -- what the STORE leaf's open port invariant leaves,
      which is what fixes it -- so the only mask this accessor can be stated
      at is the one whose opening produces exactly that. *)
-  Lemma uart_inv_append (γ : uart_names) (hg : option (list mobs))
-      (h : list mobs) (c : bv 8) (cs : list (bv 8))
+  (* ---- CLOSING THE ARM (redesign R2), with the port invariant opened
+     here.  This is [uart_inv_append]'s successor, and the difference is
+     where the entry comes from: today the caller passes [h], [c], [cs] as
+     arguments; here they come off the ARM, so what is filed is what
+     actually went out ([take j cs]) and the caller cannot name anything
+     else.  The [cons_echo] side condition is on the PARTIAL echo, which is
+     what [ConsLog]'s [EvClose] premise asks and what [log_ok] needs. ---- *)
+  Lemma uart_inv_cons_close (γ : uart_names) (h : list mobs) (c : bv 8)
+      (cs : list (bv 8)) (j : nat) (hg : option (list mobs))
       (L : list LogEntryDefs.log_entry) (Φ : iProp Σ) :
+    ConsLog.cons_echo c (take j cs) ->
+    uart_inv Uart0 γ -∗ uart_log_hi γ (1/2) hg -∗ uart_logm γ (1/2) L -∗
+    uart_arm γ (1/2) (Some (h, c, cs, j)) -∗
+    cons_link Uart0 (S gen_id) ConsLog.EvClose Φ
+    ={⊤}=∗ uart_log_hi γ (1/2) (Some h) ∗
+           uart_logm γ (1/2) ((L ++ [(h, c, take j cs)])%list) ∗
+           uart_arm γ (1/2) None ∗ Φ.
+  Proof.
+    intros Hecho. iIntros "#Hinv Hhi Hlm Hmine HΨ".
+    iInv "Hinv" as ">Hbody" "Hclose".
+    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
+    iDestruct "Hcons" as (o H)
+      "(#Hlb & Hres & %Hacc0 & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hok)".
+    rewrite /uart_logm. iDestruct (ghost_var_agree with "Hlm Hlm0") as %->.
+    rewrite /uart_log_hi. iDestruct (ghost_var_agree with "Hhi Hhi0") as %Hagr.
+    iDestruct (uart_arm_agree with "Hmine Harm") as %Harmeq0.
+    assert (Harmeq : LogEntryDefs.ch_arm H = Some (h, c, cs, j))
+      by (symmetry; exact Harmeq0).
+    iEval (rewrite Harmeq) in "Harm".
+    assert (Hev : ConsLog.cons_ev_ok H ConsLog.EvClose).
+    { cbn [ConsLog.cons_ev_ok]. exists (h, c, cs, j).
+      split; [exact Harmeq | exact Hecho]. }
+    iEval (rewrite Hagr) in "Hhi".
+    iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(#Hlb' & Hres' & HΦ)";
+      [exact Hev |].
+    iMod (ghost_var_update_halves (Some h) with "Hhi Hhi0") as "[Hhi Hhi0]".
+    iMod (in_log_auth_snoc γ (LogEntryDefs.ch_log H) (h, c, take j cs)
+            with "Hau") as "Hau".
+    iMod (ghost_var_update_halves
+            ((LogEntryDefs.ch_log H ++ [(h, c, take j cs)])%list)
+            with "Hlm Hlm0") as "[Hlm Hlm0]".
+    iMod (uart_arm_update γ (Some (h, c, cs, j)) (Some (h, c, cs, j)) None
+            with "Hmine Harm") as "[Hmine Harm]".
+    iMod ("Hclose" with "[Hu Hg Hcol Hres' Hhi0 Hdv Hau Hlm0 Harm]") as "_".
+    { iNext. iExists u. iFrame "Hu Hg Hcol".
+      iExists o', (ConsLog.cons_step H ConsLog.EvClose).
+      rewrite /ConsLog.cons_step Harmeq.
+      cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
+           LogEntryDefs.ch_arm].
+      iFrame "Hlb' Hres' Hdv Hau Hlm0 Harm".
+      rewrite /log_top (ConsLog.cl_top_snoc (LogEntryDefs.ch_log H)
+                          (h, c, take j cs)) /=.
+      iFrame "Hhi0". iPureIntro. split; [exact Hacc0 |].
+      pose proof (ConsLog.cons_hist_ok_step H ConsLog.EvClose Hok Hev) as Hok'.
+      by rewrite /ConsLog.cons_step Harmeq in Hok'. }
+    iModIntro. by iFrame "Hhi Hlm Hmine HΦ".
+  Qed.
+
+  (* ==================================================================== *)
+  (*  OPENING AN ARM (redesign R2), with the port invariant opened here.    *)
+  (*                                                                       *)
+  (*  This is where option A pays.  The kernel proves [EvOpen]'s premises   *)
+  (*  from its OWN state: "no arm is in progress" off its half of           *)
+  (*  [uart_arm], the order fact off the log's mark against the claim's     *)
+  (*  half and [ConsLog.log_ok]'s chain, and the wire rider off             *)
+  (*  [uart_out_auth] against the transmitted-prefix bound -- the same two  *)
+  (*  derivations [store_ob_of_echo_link] does today, moved to the arm's    *)
+  (*  entry where they belong.                                             *)
+  (*                                                                       *)
+  (*  A SECOND ARM CANNOT OPEN while this one is in progress: the caller    *)
+  (*  holds its half at [Some ...] until the close, so the agreement below  *)
+  (*  fails for anyone else.  That is cons.lock's exclusion, stated.        *)
+  (* ==================================================================== *)
+  Lemma uart_inv_cons_open (γ : uart_names) (h : list mobs) (c : bv 8)
+      (cs : list (bv 8)) (hg : option (list mobs)) (Φ : iProp Σ) :
     ohist_ext hg h ->
     obs_ends_in Uart0 h c ->
     ConsLog.cons_echo c cs ->
-    uart_inv Uart0 γ -∗ uart_log_hi γ (1/2) hg -∗ uart_logm γ (1/2) L -∗
-    in_append (S gen_id) h c cs Φ
-      ={⊤}=∗ uart_log_hi γ (1/2) (Some h) ∗
-             uart_logm γ (1/2) ((L ++ [(h, c, cs)])%list) ∗
-             ⌜forall e, e ∈ L -> hist_ext (LogEntryDefs.le_hist e) h⌝ ∗
-             (* ...and the window token, back (lane CONS-IO milestone F) *)
-             riscv_win_res (S gen_id) ∗ Φ.
+    uart_inv Uart0 γ -∗
+    uart_out_lb γ (obs_wire Uart0 (open_seg h)) -∗
+    uart_log_hi γ (1/2) hg -∗
+    uart_arm γ (1/2) None -∗
+    cons_link Uart0 (S gen_id) (ConsLog.EvOpen h c cs) Φ
+    ={⊤}=∗ uart_log_hi γ (1/2) hg ∗
+           uart_arm γ (1/2) (Some (h, c, cs, 0%nat)) ∗ Φ.
   Proof.
-    intros Hx Hends Hecho. iIntros "#Hinv Hhi Hlm Hap".
+    intros Hx Hends Hecho. iIntros "#Hinv #Hwlb Hhi Hmine HΨ".
     iInv "Hinv" as ">Hbody" "Hclose".
-    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl & Harm)".
-    iMod (in_claim_append Uart0 γ hg h c cs L Φ eq_refl Hx Hends Hecho
-            with "Hincl Hhi Hlm Hap")
-      as "(Hincl & Hhi & Hlm & %Hbelow & Hwin & HΦ)".
-    iMod ("Hclose" with "[Hu Hg Hcol Hincl Harm]") as "_".
-    { iNext. iExists u. iFrame "Hu Hg Hcol Hincl Harm". }
-    iModIntro. iFrame "Hhi Hlm Hwin HΦ". iPureIntro. exact Hbelow.
+    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
+    iDestruct "Hcons" as (o H)
+      "(#Hlb & Hres & %Hacc0 & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hok)".
+    (* the log's mark: the caller's half names the claim's own top *)
+    rewrite /uart_log_hi.
+    iDestruct (ghost_var_agree with "Hhi Hhi0") as %Hagr.
+    (* no arm is in progress: the caller's half says so *)
+    iDestruct (uart_arm_agree with "Hmine Harm") as %Hnone0.
+    assert (Hnone : LogEntryDefs.ch_arm H = None) by (symmetry; exact Hnone0).
+    iEval (rewrite Hnone) in "Harm".
+    (* the order fact, off the mark and the log's chain *)
+    pose proof Hok as Hok2. destruct Hok2 as [Hlog _].
+    assert (Hbelow : forall e, e ∈ LogEntryDefs.ch_log H ->
+                       hist_ext (LogEntryDefs.le_hist e) h).
+    { apply (ConsLog.cl_log_ok_last_ext _ h Hlog).
+      intros el Hel. rewrite Hagr /log_top Hel /= in Hx. exact Hx. }
+    (* the wire rider, off the transmitted-prefix bound *)
+    iDestruct "Hg" as "(Hsent & Hout & Htx & Hdl)".
+    iDestruct (uart_out_prefix with "Hout Hwlb") as %Hpre.
+    assert (Hwire : obs_wire Uart0 (open_seg h)
+                    `prefix_of` LogEntryDefs.ch_acc H).
+    { rewrite Hacc0 /uart_acc. etrans; [exact Hpre |]. by apply prefix_app_r. }
+    (* fire the event *)
+    iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(#Hlb' & Hres' & HΦ)".
+    { cbn [ConsLog.cons_ev_ok]. split_and!;
+        [exact Hnone | exact Hends | exact Hecho | exact Hbelow | exact Hwire]. }
+    (* and move both halves with the history *)
+    iMod (uart_arm_update γ None None (Some (h, c, cs, 0%nat))
+            with "Hmine Harm") as "[Hmine Harm]".
+    iMod ("Hclose" with "[Hu Hsent Hout Htx Hdl Hcol Hres' Hhi0 Hdv Hau Hlm0 Harm]")
+      as "_".
+    { iNext. iExists u. iFrame "Hu Hcol". iSplitL "Hsent Hout Htx Hdl";
+        [rewrite /uart_ghosts; iFrame "Hsent Hout Htx Hdl" |].
+      iExists o', (ConsLog.cons_step H (ConsLog.EvOpen h c cs)).
+      cbn [ConsLog.cons_step LogEntryDefs.ch_acc LogEntryDefs.ch_log
+           LogEntryDefs.ch_dl LogEntryDefs.ch_arm].
+      iFrame "Hlb' Hres' Hhi0 Hdv Hau Hlm0 Harm". iPureIntro. split.
+      - exact Hacc0.
+      - apply (ConsLog.cons_hist_ok_step H (ConsLog.EvOpen h c cs) Hok).
+        cbn [ConsLog.cons_ev_ok]. split_and!;
+          [exact Hnone | exact Hends | exact Hecho | exact Hbelow | exact Hwire]. }
+    iModIntro. by iFrame "Hhi Hmine HΦ".
   Qed.
 
   (* ------------------------------------------------------------------ *)
@@ -2822,21 +2854,33 @@ Section DevLoops.
      two halves, and [uart_inv_body] is TIMELESS, so the fire is one
      [|={⊤}=>] with no machine step.  [uart_inv_append]'s twin, and stated
      at [⊤] for its reason. *)
-  Lemma uart_inv_read (γ : uart_names) (dv ws : list (list mobs * bv 8))
+  Lemma uart_inv_cons_read (γ : uart_names) (dv ws : list (list mobs * bv 8))
       (L : list LogEntryDefs.log_entry) (Φ : iProp Σ) :
     ConsLog.read_ok L dv ws ->
     uart_inv Uart0 γ -∗ uart_deliv γ (1/2) dv -∗ uart_logm γ (1/2) L -∗
-    read_link (S gen_id) ws Φ
+    cons_link Uart0 (S gen_id) (ConsLog.EvRead ws) Φ
       ={⊤}=∗ uart_deliv γ (1/2) (dv ++ ws) ∗ uart_logm γ (1/2) L ∗ Φ.
   Proof.
-    intros Hread. iIntros "#Hinv Hdv Hlm Hrd".
+    intros Hread. iIntros "#Hinv Hdv Hlm HΨ".
     iInv "Hinv" as ">Hbody" "Hclose".
-    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl & Harm)".
-    iMod (in_claim_read Uart0 γ dv ws L Φ eq_refl Hread
-            with "Hincl Hdv Hlm Hrd") as "(Hincl & Hdv & Hlm & HΦ)".
-    iMod ("Hclose" with "[Hu Hg Hcol Hincl Harm]") as "_".
-    { iNext. iExists u. iFrame "Hu Hg Hcol Hincl Harm". }
-    iModIntro. iFrame "Hdv Hlm HΦ".
+    iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
+    iDestruct "Hcons" as (o H)
+      "(#Hlb & Hres & %Hacc0 & Hhi0 & Hdv0 & Hau & Hlm0 & Harm & %Hok)".
+    rewrite /uart_logm. iDestruct (ghost_var_agree with "Hlm Hlm0") as %->.
+    rewrite /uart_deliv. iDestruct (ghost_var_agree with "Hdv Hdv0") as %->.
+    iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(#Hlb' & Hres' & HΦ)".
+    { cbn [ConsLog.cons_ev_ok]. exact Hread. }
+    iMod (ghost_var_update_halves
+            ((LogEntryDefs.ch_dl H ++ ws)%list) with "Hdv Hdv0") as "[Hdv Hdv0]".
+    iMod ("Hclose" with "[Hu Hg Hcol Hres' Hhi0 Hdv0 Hau Hlm0 Harm]") as "_".
+    { iNext. iExists u. iFrame "Hu Hg Hcol".
+      iExists o', (ConsLog.cons_step H (ConsLog.EvRead ws)).
+      cbn [ConsLog.cons_step LogEntryDefs.ch_acc LogEntryDefs.ch_log
+           LogEntryDefs.ch_dl LogEntryDefs.ch_arm].
+      iFrame "Hlb' Hres' Hhi0 Hdv0 Hau Hlm0 Harm". iPureIntro.
+      split; [exact Hacc0 |].
+      by apply (ConsLog.cons_hist_ok_step H (ConsLog.EvRead ws) Hok Hread). }
+    iModIntro. by iFrame "Hdv Hlm HΦ".
   Qed.
 
   (* THE COLUMN ACROSS THE ONE TRANSITION THAT GROWS THE ACCEPTED SEQUENCE.
@@ -2844,19 +2888,19 @@ Section DevLoops.
      an MCR loop-back change) and the output claim moves by the caller's
      link.  This is the whole of what [WpSconfUartAccess]'s THR leaf has to
      do with the column. *)
+  (* THE COLUMN ACROSS A TRANSMIT STORE.  It no longer carries the
+     application's claim -- that moves by [cons_claim_at_store] at the same
+     transition -- so this is the column's own carry-over and nothing
+     else. *)
   Lemma uart_colE_store (iu : uart_id) (γ : uart_names) (u u' : uart_state)
-      (b : bv 8) (Φ : iProp Σ) :
+      (b : bv 8) :
     u_rx u' = u_rx u ->
     uart_loopback u' = uart_loopback u ->
     u_wire u' = u_wire u ->
     u_out u' = u_out u ->
-    uart_acc u' = (uart_acc u ++ [b])%list ->
-    out_link iu (S gen_id) b Φ -∗ uart_colE iu γ u ={⊤ ∖ ↑uartN iu}=∗
-      uart_colE iu γ u' ∗ Φ.
+    uart_colE iu γ u -∗ uart_colE iu γ u'.
   Proof.
-    iIntros (Hrx Hlb Hw Ho Hacc) "HΨ [Hcl H]".
-    iMod (out_link_step iu b Φ u u' Hacc with "HΨ Hcl") as "[Hcl HΦ]".
-    iModIntro. iFrame "HΦ Hcl".
+    iIntros (Hrx Hlb Hw Ho) "H".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iExists hs, np, nk, hl, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
     destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
@@ -2932,14 +2976,25 @@ Section DevLoops.
     iModIntro. iFrame "Hout Hcol Hin". by iApply "HΦ".
   Qed.
 
-  (* THE PLAIN WRITER'S: the input claim is passed straight back and the
-     column moves by [uart_colE_store], exactly as the landed leaf did. *)
-  Lemma store_ob_of_out_link (i : uart_id) (γ : uart_names) (b : bv 8)
-      (Φ : iProp Σ) : out_link i (S gen_id) b Φ -∗ store_ob i γ b Φ.
+  Lemma store_chain_mono (i : uart_id) (γ : uart_names) (bs : list (bv 8))
+      (Φ Φ' : iProp Σ) :
+    (Φ -∗ Φ') -∗ store_chain i γ bs Φ -∗ store_chain i γ bs Φ'.
+  Proof.
+    iIntros "HΦ H". iInduction bs as [| b bs] "IH" forall (Φ Φ').
+    - cbn [store_chain]. by iApply "HΦ".
+    - cbn [store_chain]. iApply (store_ob_mono with "[HΦ] H").
+      iIntros "H". by iApply ("IH" with "HΦ H").
+  Qed.
+
+
+  (* THE PLAIN WRITER'S: the port's claim steps by [EvOut] and the column
+     carries over.  One link where there were two resources to move. *)
+  Lemma store_ob_of_cons_link (i : uart_id) (γ : uart_names) (b : bv 8)
+      (Φ : iProp Σ) : cons_link i (S gen_id) (ConsLog.EvOut b) Φ -∗ store_ob i γ b Φ.
   Proof.
     iIntros "HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
-    iMod (uart_colE_store i γ u u' b Φ H1 H2 H3 H4 H5 with "HΨ Hcol")
-      as "[Hcol HΦ]".
+    iMod (cons_claim_at_store i γ u u' b Φ H5 with "HΨ Hin") as "[Hin HΦ]".
+    iDestruct (uart_colE_store i γ u u' b H1 H2 H3 H4 with "Hcol") as "Hcol".
     iModIntro. iFrame "Hout Hcol Hin HΦ".
   Qed.
 
@@ -2948,7 +3003,8 @@ Section DevLoops.
     out_chain i (S gen_id) bs Φ -∗ store_chain i γ bs Φ.
   Proof.
     iIntros "H". iInduction bs as [| b bs] "IH" forall (Φ); [by iFrame |].
-    cbn [out_chain store_chain]. iApply store_ob_of_out_link.
+    cbn [out_chain store_chain].
+    iApply store_ob_of_cons_link. iApply cons_link_of_out_link.
     iApply (out_link_mono with "[] H"). iIntros "H". by iApply "IH".
   Qed.
 
@@ -2959,59 +3015,70 @@ Section DevLoops.
      definition ([u_out] is a prefix of the accepted sequence).  The mark is
      LENT, not moved: the append that moves it fires once per byte, at the
      arm's exit, and not per echoed byte. *)
+  (* THE ECHO'S STORE (redesign R2).  The order fact and the wire rider it
+     used to prove here are proved ONCE at the arm's open now, so what is
+     left is the byte itself: the arm says which byte is next, the event
+     steps the history, and both halves of the arm advance with it. *)
   Lemma store_ob_of_echo_link (γ : uart_names) (b : bv 8) (h : list mobs)
-      (hg : option (list mobs)) (Φ : iProp Σ) :
-    ohist_ext hg h ->
-    uart_out_lb γ (obs_wire Uart0 (open_seg h)) -∗
-    uart_log_hi γ (1/2) hg -∗ echo_link (S gen_id) h b Φ -∗
-    store_ob Uart0 γ b (uart_log_hi γ (1/2) hg ∗ Φ).
+      (c : bv 8) (cs : list (bv 8)) (j : nat) (Φ : iProp Σ) :
+    cs !! j = Some b ->
+    uart_arm γ (1/2) (Some (h, c, cs, j)) -∗
+    cons_link Uart0 (S gen_id) (ConsLog.EvByte b) Φ -∗
+    store_ob Uart0 γ b (uart_arm γ (1/2) (Some (h, c, cs, S j)) ∗ Φ).
   Proof.
-    intros Hx. iIntros "#Hwlb Hhi HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
-    iDestruct "Hin" as (o1 pops dl)
-      "(#Hilb & Hires & Hhi0 & Hdv & Hau & Hlm0 & %Hok)".
-    rewrite /uart_log_hi.
-    iDestruct (ghost_var_agree with "Hhi Hhi0") as %Hagr.
-    assert (Hbelow : forall e, e ∈ pops -> hist_ext (LogEntryDefs.le_hist e) h).
-    { apply (ConsLog.cl_log_ok_last_ext pops h Hok).
-      intros el Hel. rewrite Hagr /log_top Hel /= in Hx. exact Hx. }
-    iDestruct (uart_out_prefix with "Hout Hwlb") as %Hpre.
-    assert (Hwire : obs_wire Uart0 (open_seg h) `prefix_of` uart_acc u).
-    { rewrite /uart_acc. etrans; [exact Hpre |]. by apply prefix_app_r. }
-    iDestruct "Hcol" as "[Hocl Hcolb]".
-    rewrite /uart_out_claim /out_claim_at.
-    iDestruct "Hocl" as (o0) "[#Holb Hres]".
-    iMod ("HΨ" $! o0 o1 (uart_acc u) pops dl
-            with "Holb Hres Hilb Hires [%] [%]")
-      as (o2) "(#Holb2 & Hres2 & _ & Hires2 & HΦ)";
-      [exact Hbelow | exact Hwire |].
-    iModIntro. iFrame "Hout HΦ Hhi".
-    iSplitR "Hires2 Hhi0 Hdv Hau Hlm0".
-    - iApply (uart_colE_intro Uart0 γ u' with "[Hres2] [Hcolb]").
-      + rewrite /uart_out_claim /out_claim_at H5. iExists o2.
-        iFrame "Holb2 Hres2".
-      + iDestruct "Hcolb" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hcok)".
-        iExists hs, np, nk, hl, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
-        destruct Hcok as (C1 & C2 & C3 & Cwo & C4 & C5 & C6 & C7 & C8).
-        rewrite /uart_col_ok H1 H2 H3 H4. split_and!; assumption.
-    - iExists o1, pops, dl. iFrame "Hilb Hires2 Hhi0 Hdv Hau Hlm0".
-      by iPureIntro.
+    intros Hlk. iIntros "Hmine HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
+    iDestruct "Hin" as (o H)
+      "(#Hlb & Hres & %Hacc0 & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hok)".
+    iDestruct (uart_arm_agree with "Hmine Harm") as %Harmeq0.
+    assert (Harmeq : LogEntryDefs.ch_arm H = Some (h, c, cs, j))
+      by (symmetry; exact Harmeq0).
+    assert (Hev : ConsLog.cons_ev_ok H (ConsLog.EvByte b)).
+    { cbn [ConsLog.cons_ev_ok]. exists (h, c, cs, j).
+      split; [exact Harmeq | exact Hlk]. }
+    iEval (rewrite Harmeq) in "Harm".
+    iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(#Hlb' & Hres' & HΦ)";
+      [exact Hev |].
+    iMod (uart_arm_update γ (Some (h, c, cs, j)) (Some (h, c, cs, j))
+            (Some (h, c, cs, S j)) with "Hmine Harm") as "[Hmine Harm]".
+    iDestruct (uart_colE_store Uart0 γ u u' b H1 H2 H3 H4 with "Hcol") as "Hcol".
+    iModIntro. iFrame "Hout Hcol HΦ Hmine".
+    iExists o', (ConsLog.cons_step H (ConsLog.EvByte b)).
+    rewrite /ConsLog.cons_step Harmeq.
+    cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
+         LogEntryDefs.ch_arm].
+    iFrame "Hlb' Hres' Hhi0 Hdv Hau Hlm0 Harm". iPureIntro. split.
+    - by rewrite Hacc0 H5.
+    - pose proof (ConsLog.cons_hist_ok_step H (ConsLog.EvByte b) Hok Hev) as Hok'.
+      by rewrite /ConsLog.cons_step Harmeq in Hok'.
   Qed.
 
-  Lemma store_chain_of_echo_chain (γ : uart_names) (h : list mobs)
-      (hg : option (list mobs)) (bs : list (bv 8)) (Φ : iProp Σ) :
-    ohist_ext hg h ->
-    uart_out_lb γ (obs_wire Uart0 (open_seg h)) -∗
-    uart_log_hi γ (1/2) hg -∗ echo_chain (S gen_id) h bs Φ -∗
-    store_chain Uart0 γ bs (uart_log_hi γ (1/2) hg ∗ Φ).
+  (* THE ECHO'S CHAIN.  The arm's counter advances with the bytes, so the
+     premise is per-byte: the n-th byte of what goes out is the (j+n)-th of
+     the echo the arm chose.  The log's mark is not lent here any more --
+     the order fact it justified is proved at the open. *)
+  Lemma store_chain_of_echo_chain (γ : uart_names) (h : list mobs) (c : bv 8)
+      (cs : list (bv 8)) (j : nat) (bs : list (bv 8)) (Φ : iProp Σ) :
+    (forall (n : nat) (b : bv 8), bs !! n = Some b -> cs !! (j + n)%nat = Some b) ->
+    uart_arm γ (1/2) (Some (h, c, cs, j)) -∗
+    echo_chain (S gen_id) h bs Φ -∗
+    store_chain Uart0 γ bs
+      (uart_arm γ (1/2) (Some (h, c, cs, (j + length bs)%nat)) ∗ Φ).
   Proof.
-    intros Hx. iIntros "#Hwlb".
-    iInduction bs as [| b bs] "IH" forall (Φ).
-    - iIntros "Hhi H". cbn [store_chain]. iFrame "Hhi H".
-    - iIntros "Hhi H". cbn [echo_chain store_chain].
-      iDestruct (store_ob_of_echo_link γ b h hg (echo_chain (S gen_id) h bs Φ) Hx
-                   with "Hwlb Hhi H") as "H".
-      iApply (store_ob_mono with "[] H"). iIntros "[Hhi H]".
-      iApply ("IH" with "Hhi H").
+    iIntros (Hbs) "Harm H".
+    iInduction bs as [| b bs] "IH" forall (j Hbs Φ).
+    - cbn [store_chain length]. rewrite Nat.add_0_r. iFrame "Harm H".
+    - cbn [echo_chain store_chain length].
+      assert (Hb : cs !! j = Some b).
+      { pose proof (Hbs 0%nat b eq_refl) as Hb0. by rewrite Nat.add_0_r in Hb0. }
+      iDestruct (store_ob_of_echo_link γ b h c cs j
+                   (echo_chain (S gen_id) h bs Φ) Hb with "Harm H") as "H".
+      iApply (store_ob_mono with "[] H"). iIntros "[Harm H]".
+      iDestruct ("IH" $! (S j) with "[%] Harm H") as "H".
+      { intros n b' Hn.
+        replace (S j + n)%nat with (j + S n)%nat by lia.
+        exact (Hbs (S n) b' Hn). }
+      iApply (store_chain_mono with "[] H"). iIntros "[Harm $]".
+      by replace (j + S (length bs))%nat with (S j + length bs)%nat by lia.
   Qed.
 
   Lemma disk_inv_alloc E γd : disk_inv_body γd ={E}=∗ disk_inv γd.
@@ -3102,9 +3169,9 @@ Section DevLoops.
   Proof.
     iIntros "Hbody Hpre1 Hperm Htok". rewrite /dev_inv_body.
     iDestruct "Hbody" as (u p v)
-      "(Hu & Hp & Hv & Hg & Hcol & Hin & Harm & Hpre & Hproto & %Hpok & %Hvok)".
-    iMod (uart_inv_alloc E Uart0 γ with "[Hu Hg Hcol Hin Harm]") as "#Huinv".
-    { iExists u. iFrame "Hu Hg Hcol Hin Harm". }
+      "(Hu & Hp & Hv & Hg & Hcol & Hcons & Hpre & Hproto & %Hpok & %Hvok)".
+    iMod (uart_inv_alloc E Uart0 γ with "[Hu Hg Hcol Hcons]") as "#Huinv".
+    { iExists u. iFrame "Hu Hg Hcol Hcons". }
     iMod (plic_inv_alloc E γ γ1 with "[Hp Hpre Hpre1]") as "#Hpinv".
     { iExists p. iFrame "Hp". iSplitR; [iPureIntro; exact Hpok|].
       rewrite plic_slots_eq.
@@ -3232,7 +3299,8 @@ Section DevLoops.
        transport's fourth yield [I [] [] []]: an empty log, nothing
        delivered, at the empty witness history.  At [Uart1] it is [emp]
        ([in_res_at_uart1]). *)
-    out_res_at iu (S gen_id) [] [] -∗ in_res_at iu (S gen_id) [] [] [] -∗
+    chist_at iu (S gen_id) []
+      (LogEntryDefs.MkCH [] [] [] None) -∗
                 |==> ∃ γ, uart_sent_auth γ u ∗ uart_out_auth γ u ∗
                 uart_tx_auth γ u ∗ uart_dlab_auth γ u ∗
                 uart_tx_own γ (uart_acc u) ∗ uart_sent γ (uart_acc u) ∗
@@ -3240,7 +3308,7 @@ Section DevLoops.
                 (* the receive side: the column at an empty FIFO, the token
                    the boot chain carries, and the one-shot the PLIC
                    invariant's pre-deposit arm holds *)
-                uart_colE iu γ u ∗ in_claim_at iu γ ∗ uart_rx_tok γ 0 None ∗
+                uart_colE iu γ u ∗ cons_claim_at iu γ u ∗ uart_rx_tok γ 0 None ∗
                 uart_rx_hi γ (1/2) None ∗ uart_rx_hi γ (1/2) None ∗
                 uart_log_hi γ (1/2) None ∗ uart_deliv γ (1/2) [] ∗
                 (* ...AND THE LOG'S EXACT MIRROR, whose other half went into
@@ -3248,13 +3316,12 @@ Section DevLoops.
                    console port it goes to the ring, at [Uart1] it is
                    dropped like the second high-water half. *)
                 uart_logm γ (1/2) [] ∗
-                (* ...AND THE ARM'S TWO HALVES (redesign R2), both at [None]:
-                   one goes into the invariant body beside the input claim,
-                   the other rides the PLIC payload. *)
-                uart_arm γ (1/2) None ∗ uart_arm γ (1/2) None ∗
+                (* ...AND THE ARM'S PAYLOAD HALF (redesign R2), at [None]:
+                   the invariant's half is inside the port's claim above. *)
+                uart_arm γ (1/2) None ∗
                 uart_preinit γ.
   Proof.
-    intros Hrx Hlb Hwo Hacc0. iIntros "Hres Hires".
+    intros Hrx Hlb Hwo Hacc0. iIntros "Hres".
     iMod (own_alloc (●ML (uart_acc u : list (leibnizO (bv 8))))) as (γa) "Ha";
       [apply mono_list_auth_valid|].
     iMod (own_alloc (●ML (u_out u : list (leibnizO (bv 8))))) as (γb) "Hb";
@@ -3307,30 +3374,30 @@ Section DevLoops.
     iFrame "Ha Hb Hc1 Hd1 Hc2 Hsent Hd2".
     (* the column's own half of the pop counter and the caller's token are
        the SAME proposition, so the rest are placed by hand *)
-    iSplitR "Hires Hlg1 Hml Hdv1 Hlm1 Hpo2 Hhi1 Hhi2 Hlg2 Hdv2 Hlm2 Har1 Har2 Hin".
-    { iSplitL "Hres";
-        [iApply (uart_out_claim_nil iu u Hacc0 with "Hres")|].
-      iExists [], 0%nat, 0%nat, None, None. iFrame "Hpu Hpo1".
+    iSplitR "Hres Hlg1 Hml Hdv1 Hlm1 Hpo2 Hhi1 Hhi2 Hlg2 Hdv2 Hlm2 Har1 Har2 Hin".
+    { iExists [], 0%nat, 0%nat, None, None. iFrame "Hpu Hpo1".
       iSplitR; [done|]. iSplitR; [done|].
       iPureIntro. rewrite /uart_col_ok Hrx Hlb. cbn [length].
       split_and!; [done | done | done | exact Hwo | intros j b h Hj; done
                   | intros i j hi hj Hi; done | intros j h Hj; done
                   | exact I | intros j h Hj; done]. }
-    iSplitL "Hires Hlg1 Hml Hdv1 Hlm1".
-    { iApply (in_claim_at_nil iu
-                (UartNames γa γb γc γd γpu γpo γhi γin γlg γml γdv γlm γar)
-                with "Hires [Hlg1] [Hdv1] [Hml] [Hlm1]").
-      - rewrite /uart_log_hi /=. iExact "Hlg1".
-      - rewrite /uart_deliv /=. iExact "Hdv1".
-      - rewrite /in_log_auth /=. iExact "Hml".
-      - rewrite /uart_logm /=. iExact "Hlm1". }
+    iSplitL "Hres Hlg1 Hml Hdv1 Hlm1 Har1".
+    { (* the port's ONE claim, founded at the empty history *)
+      iExists None, (LogEntryDefs.MkCH [] [] [] None).
+      cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
+           LogEntryDefs.ch_arm].
+      iSplitR; [done |].
+      iFrame "Hres".
+      iSplitR; [iPureIntro; by rewrite Hacc0 |].
+      rewrite /uart_log_hi /uart_deliv /in_log_auth /uart_logm /uart_arm /=.
+      iFrame "Hlg1 Hdv1 Hml Hlm1 Har1". iPureIntro.
+      split; [split; [intros e He; inversion He | intros i e1 e2 H1; done] | exact I]. }
     iSplitL "Hpo2"; [iExact "Hpo2" |].
     iSplitL "Hhi1"; [iExact "Hhi1" |].
     iSplitL "Hhi2"; [iExact "Hhi2" |].
     iSplitL "Hlg2"; [rewrite /uart_log_hi /=; iExact "Hlg2" |].
     iSplitL "Hdv2"; [rewrite /uart_deliv /=; iExact "Hdv2" |].
     iSplitL "Hlm2"; [rewrite /uart_logm /=; iExact "Hlm2" |].
-    iSplitL "Har1"; [rewrite /uart_arm /=; iExact "Har1" |].
     iSplitL "Har2"; [rewrite /uart_arm /=; iExact "Har2" | iExact "Hin"].
   Qed.
 
@@ -3407,13 +3474,14 @@ Section DevLoops.
           makes the ledger's per-era state addressable without any
           comparison of histories inside a link. *)
        ⌜obs_boots h = S gen_id⌝ -∗
-       out_claim_at i (uart_acc (duart d i)) -∗
-       (* ...AND THE INPUT CLAIM (lane CONS-IO), taken linearly and given
-          back: the ledger reads what the user typed against what came out,
-          and this is its only channel to the log. *)
-       in_claim_at i γ -∗
+       (* THE PORT'S ONE CLAIM (redesign R2), taken linearly and given
+          back.  It used to be two -- the output claim at the accepted
+          bytes and the input claim -- read at two witnesses; the ledger
+          reads what the user typed against what came out, and that is one
+          reading of one resource now. *)
+       cons_claim_at i γ (duart d i) -∗
        uart_ghosts γ u' -∗ obs_auth h ={⊤ ∖ ↑uartN i}=∗
-       out_claim_at i (uart_acc (duart d i)) ∗ in_claim_at i γ ∗
+       cons_claim_at i γ (duart d i) ∗
        uart_ghosts γ u' ∗ obs_auth (h ++ κ)%list ∗ uart_tag_of h κ)%I.
 
   Lemma uart_obs_permit_triv (i : uart_id) (γ : uart_names) :
@@ -3424,7 +3492,7 @@ Section DevLoops.
     obs_inv -∗ uart_obs_permit i γ.
   Proof.
     intros Heq Htag. iIntros "#Hoinv !>" (h κ d u')
-      "%Hstep %Hsh %Hwire %Hwo %Hbts Hcl Hin Hg Hauth".
+      "%Hstep %Hsh %Hwire %Hwo %Hbts Hcl Hg Hauth".
     iInv "Hoinv" as "HP" "Hclose".
     iEval (rewrite Heq /obs_pred_triv) in "HP".
     iDestruct "HP" as (h') ">Hfrag".
@@ -3433,7 +3501,7 @@ Section DevLoops.
             with "Hauth Hfrag") as "[Hauth Hfrag]".
     iMod ("Hclose" with "[Hfrag]") as "_".
     { iNext. rewrite Heq /obs_pred_triv. iExists (h ++ κ)%list. iExact "Hfrag". }
-    iModIntro. iFrame "Hcl Hin Hg Hauth". iApply uart_tag_of_triv. exact Htag.
+    iModIntro. iFrame "Hcl Hg Hauth". iApply uart_tag_of_triv. exact Htag.
   Qed.
 
   (* THE PERMIT FROM A LEDGER (uart-trace.md phase 4).  The client's trace
@@ -3599,7 +3667,7 @@ Section DevLoops.
     - (* a byte leaves the tx FIFO: it moves from the head of [u_tx] to the
          tail of [u_out], so the accepted trace is UNCHANGED. *)
       iInv "Huinv" as ">Hbody" "Hclose".
-      iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl & Harm)".
+      iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
       iDestruct (dev_interp_agree_uart with "Hdev Hu") as %Hu.
       rewrite Hu in Htx0.
       iMod (dev_interp_update_uart _ i u u' with "Hdev Hu") as "[Hdev' Hu']".
@@ -3625,31 +3693,30 @@ Section DevLoops.
          inside the machine's own history HERE, against [obs_auth], because
          that is the only place both are in hand. *)
       iDestruct (uart_colE_wire_out_keep i γ u with "Hcol") as "[%Hwo Hcol]".
-      iDestruct (uart_colE_split i γ u with "Hcol") as "[Hocl Hcolb]".
+
       (* the tx arm's tag output is [emp] ([uart_tag_of] mints one only for
          an rx event), so the column takes nothing here.  The OUTPUT CLAIM
          is lent to the permit and comes straight back: the ledger reads its
          own authority against its own ledger and puts it where it found
          it. *)
       iMod ("Hperm" $! h _ d u'
-              with "[//] [//] [//] [] [//] [Hocl] Hincl Hg Hoauth")
-        as "(Hocl & Hincl & Hg & Hoauth & _)".
+              with "[//] [//] [//] [] [//] [Hcons] Hg Hoauth")
+        as "(Hcons & Hg & Hoauth & _)".
       { iPureIntro. rewrite Hu. exact Hwo. }
-      { rewrite Hu. iExact "Hocl". }
-      iEval (rewrite Hu) in "Hocl".
-      iAssert (uart_colE i γ u) with "[Hocl Hcolb]" as "Hcol";
-        [rewrite /uart_colE; iFrame "Hocl Hcolb"|].
+      { rewrite Hu. iExact "Hcons". }
+      iEval (rewrite Hu) in "Hcons".
+
       (* THE COLUMN: with LOOP off ([uart_col]'s own clause, read off the
          state the invariant is at) the drain does not touch [u_rx] at all;
          under LOOP it would re-enter the receiver with no observation, which
          is why the clause is there. *)
       iDestruct (uart_colE_tx_pop i γ u u' _ Htx0 with "Hcol") as "Hcol".
-      iMod ("Hclose" with "[Hu' Hg Hcol Hincl Harm]") as "_".
+      iMod ("Hclose" with "[Hu' Hg Hcol Hcons]") as "_".
       { iNext. iExists u'. iFrame. }
       iModIntro. iFrame "Hgr Hmem Hdev' Hoauth". iApply "IH".
     - (* a byte arrives from the outside world: rx only, trace untouched *)
       iInv "Huinv" as ">Hbody" "Hclose".
-      iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl & Harm)".
+      iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
       iDestruct (dev_interp_agree_uart with "Hdev Hu") as %Hu.
       rewrite Hu in Hrx.
       iMod (dev_interp_update_uart _ i u u' with "Hdev Hu") as "[Hdev' Hu']".
@@ -3669,7 +3736,7 @@ Section DevLoops.
          [h ++ [ObsUartIn b]], strictly after.  So the accessor is taken
          here, with the auth in hand and BEFORE the permit moves it. *)
       iDestruct (uart_colE_wire_out_keep i γ u with "Hcol") as "[%Hwo Hcol]".
-      iDestruct (uart_colE_split i γ u with "Hcol") as "[Hocl Hcolb]".
+
       iDestruct (uart_col_push_acc i γ u h with "Hcolb Hoauth")
         as "[Hoauth Hpush]".
       iMod ("Hperm" $! h [ObsUartIn i b] d u'
@@ -3710,9 +3777,8 @@ Section DevLoops.
         as "Hcolb".
       iDestruct (uart_out_claim_stable i u u'
                    (uart_rx_push_acc u b u' Hrx) with "Hocl") as "Hocl".
-      iAssert (uart_colE i γ u') with "[Hocl Hcolb]" as "Hcol";
-        [rewrite /uart_colE; iFrame "Hocl Hcolb"|].
-      iMod ("Hclose" with "[Hu' Hg Hcol Hincl Harm]") as "_".
+
+      iMod ("Hclose" with "[Hu' Hg Hcol Hcons]") as "_".
       { iNext. iExists u'. iFrame. }
       iModIntro. iFrame "Hgr Hmem Hdev' Hoauth". iApply "IH".
     - (* the gateway latches the UART's interrupt level.  This is the ONE

@@ -150,7 +150,7 @@ Section UexecExecMint.
       intros W Q Hnp.
       iIntros "_".
       rewrite /sbundle_pay /sbundle_at /sexit_pay /=.
-      iApply (xv6_sbundle_exit_nopipe uslot W Q Hnp).
+      iApply (xv6_sbundle_exit_nopipe uslot W Q (fdv_nopipe_elem (uvis_fd W) Hnp)).
     - (* ...AND THE SAME ROW OUT OF THE TAINT, at any table at all: a pipe
          row's close payment is a link OR the credential
          ([PipeQueue.pipe_cpay]), and this is the arm a program that
@@ -398,12 +398,8 @@ Section UexecExecMint.
        the caller that instantiates it here, where every number is admitted
        and echo's flagged deposit is therefore free as well. *)
     iApply (UexecCond.cond_entry_slot uprogSG_gen W ltac:(intros k _; exact I)
-              with "[] [] Hdep [] Hkc Hgen Hpay").
+              with "[] Hdep [] Hkc Hgen Hpay").
     { iApply (udepw_law_of_psok (PS := uprogSG_gen) 16
-                ltac:(exact I) ltac:(vm_compute; discriminate)). }
-    { (* ...and the exit row: at the generic instance every number is
-         admitted (design/pipe.md, "The exit path") *)
-      iApply (udepw_law_of_psok (PS := uprogSG_gen) UsysMemOk.USYS_exit
                 ltac:(exact I) ltac:(vm_compute; discriminate)). }
     { rewrite /ssupply /= /xv6_ssupply. iModIntro.
       iSplit; [ iExact "Hsup"

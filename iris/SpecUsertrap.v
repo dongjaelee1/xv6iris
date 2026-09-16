@@ -595,23 +595,29 @@ Qed.
 (* together, on the reaping arm, with the reaped child's escrow and the    *)
 (* pid uniqueness that names its generation.                               *)
 (* ===================================================================== *)
+(* ...AND THE WINDOW RIDES WITH IT (lane RD-7): the image the round
+   entered at and the one it left at, so that the status the escrow is
+   keyed at and the bytes the reap wrote stay ONE binder all the way to
+   the process ([UexecRet.uwait_ans_at_m]). *)
 Definition ut_wait_out `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
-    (sc_v : mword 64) (tf : list (mword 64)) (r : mword 64)
+    (sc_v : mword 64) (tf : list (mword 64)) (M M' : gmap Z (bv 8))
+    (r : mword 64)
     (cs cs' : gset gname) (gn : gname) (pidv : mword 32)
     : iProp Σ :=
   (⌜sc_v = uecall_scause /\ usys_num tf = USYS_wait⌝ -∗
-     uwait_ans_at r cs cs' gn
+     uwait_ans_at_m r M M' (tf !!! tf_arg_idx 0) cs cs' gn
        (bool_decide (tf !!! tf_arg_idx 0 = (zero_reg : mword 64))) pidv)%I.
 
 Lemma ut_wait_out_cong `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
-    (sc_v : mword 64) (tf1 tf2 : list (mword 64)) (r1 r2 : mword 64)
+    (sc_v : mword 64) (tf1 tf2 : list (mword 64)) (M M' : gmap Z (bv 8))
+    (r1 r2 : mword 64)
     (cs cs' : gset gname) (gn : gname) (pidv : mword 32) :
   usys_num tf1 = usys_num tf2 -> r1 = r2 ->
   tf1 !!! tf_arg_idx 0 = tf2 !!! tf_arg_idx 0 ->
-  ut_wait_out sc_v tf1 r1 cs cs' gn pidv -∗
-  ut_wait_out sc_v tf2 r2 cs cs' gn pidv.
+  ut_wait_out sc_v tf1 M M' r1 cs cs' gn pidv -∗
+  ut_wait_out sc_v tf2 M M' r2 cs cs' gn pidv.
 Proof.
   intros Hn Hr Ha0. rewrite /ut_wait_out. subst r2. rewrite Ha0.
   iIntros "H %Hc".
@@ -625,15 +631,16 @@ Qed.
    ([ut_live_out]).  (lane TRAP-ROWS, T4) *)
 Lemma ut_wait_out_forget `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
-    (sc_v : mword 64) (tf : list (mword 64)) (r : mword 64)
+    (sc_v : mword 64) (tf : list (mword 64)) (M M' : gmap Z (bv 8))
+    (r : mword 64)
     (cs cs' : gset gname) (gn : gname) (pidv : mword 32) :
-  ut_wait_out sc_v tf r cs cs' gn pidv -∗
+  ut_wait_out sc_v tf M M' r cs cs' gn pidv -∗
   (⌜sc_v = uecall_scause /\ usys_num tf = USYS_wait⌝ -∗
      uwait_ans r cs cs').
 Proof.
   rewrite /ut_wait_out. iIntros "H %Hc".
   iDestruct ("H" with "[%]") as "H"; [exact Hc |].
-  iApply (uwait_ans_of with "H").
+  iApply uwait_ans_of. iApply (uwait_ans_at_m_forget with "H").
 Qed.
 
 (* ...AND THE FORM THE RESUME ACTUALLY DELIVERS (lane TRAP-ROWS-4, B1b).
@@ -644,11 +651,12 @@ Qed.
    still absorbed -- those the U tier genuinely cannot name. *)
 Lemma ut_wait_out_pid `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
-    (sc_v : mword 64) (tf : list (mword 64)) (r : mword 64)
+    (sc_v : mword 64) (tf : list (mword 64)) (M M' : gmap Z (bv 8))
+    (r : mword 64)
     (cs cs' : gset gname) (gn : gname) (pidv : mword 32) :
-  ut_wait_out sc_v tf r cs cs' gn pidv -∗
+  ut_wait_out sc_v tf M M' r cs cs' gn pidv -∗
   (⌜sc_v = uecall_scause /\ usys_num tf = USYS_wait⌝ -∗
-     uwait_ans_pid r cs cs' pidv).
+     uwait_ans_pid_m r M M' (tf !!! tf_arg_idx 0) cs cs' pidv).
 Proof.
   rewrite /ut_wait_out. iIntros "H %Hc".
   iDestruct ("H" with "[%]") as "H"; [exact Hc |].
@@ -833,9 +841,10 @@ Qed.
 
 Lemma ut_wait_out_quiet `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
-    (sc_v : mword 64) (tf : list (mword 64)) (r : mword 64)
+    (sc_v : mword 64) (tf : list (mword 64)) (M M' : gmap Z (bv 8))
+    (r : mword 64)
     (cs cs' : gset gname) (gn : gname) (pidv : mword 32) :
-  sc_v <> uecall_scause -> ⊢ ut_wait_out sc_v tf r cs cs' gn pidv.
+  sc_v <> uecall_scause -> ⊢ ut_wait_out sc_v tf M M' r cs cs' gn pidv.
 Proof.
   intros Hne. rewrite /ut_wait_out. iIntros "%Hc". exfalso.
   exact (Hne (proj1 Hc)).
@@ -843,9 +852,10 @@ Qed.
 
 Lemma ut_wait_out_quiet_n `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
     {SG : uexecSG Σ}
-    (sc_v : mword 64) (tf : list (mword 64)) (r : mword 64)
+    (sc_v : mword 64) (tf : list (mword 64)) (M M' : gmap Z (bv 8))
+    (r : mword 64)
     (cs cs' : gset gname) (gn : gname) (pidv : mword 32) :
-  usys_num tf <> USYS_wait -> ⊢ ut_wait_out sc_v tf r cs cs' gn pidv.
+  usys_num tf <> USYS_wait -> ⊢ ut_wait_out sc_v tf M M' r cs cs' gn pidv.
 Proof.
   intros Hne. rewrite /ut_wait_out. iIntros "%Hc". exfalso.
   exact (Hne (proj2 Hc)).
@@ -1603,6 +1613,7 @@ Definition usertrap_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fi
     (* ...AND WAIT'S: what the reap left the caller's reading -- see
        [ut_wait_out] *)
     ut_wait_out sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U)))
+      (us_M U) (us_M U')
       (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' gn pid -∗
     (* ...AND WHAT A RESUME ITSELF PROVES (lane TRAP-ROWS, T2(iii) / T4):
        the two rows above answer at the incarnation, the process cannot

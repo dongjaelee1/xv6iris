@@ -2117,6 +2117,11 @@ Section UkRunSys.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
     iIntros (h') "Hrun".
+    (* the window rides with the answer now (lane RD-7); a caller that
+       passed a NULL status pointer owns no buffer to read it out of, so
+       this leaf drops it ([UexecRet.uwait_ans_pid_m_forget]).  The leaf
+       that KEEPS it is [wp_uk_ecall_wait_status] below. *)
+    iDestruct (uwait_ans_pid_m_forget with "Hans") as "Hans".
     iApply ("Hcont" $! h' r cs' pidv with "HP [%] Hans Hrun Hch").
     (* THE ROW, OFF THE RESUME'S OWN PURE CONJUNCT.  [Hliverow]'s wait
        clause is guarded on the null status pointer, which is this leaf's
@@ -2222,6 +2227,257 @@ Section UkRunSys.
     iIntros (h' r Sc') "_ Hans Hrun Hch".
     iApply ("Hcont" $! h' r Sc' with "Hans Hrun Hch").
   Qed.
+
+  (* =================================================================== *)
+  (* WAIT AT A REAL STATUS POINTER (lane RD-7).                            *)
+  (*                                                                       *)
+  (* THE LEAF THE NULL ONE COULD NOT BE.  Every wait leaf above forces      *)
+  (* [a0 = 0], which is exactly the case where the kernel copies nothing:   *)
+  (* a program that passed a pointer got its children reading moved and     *)
+  (* NOTHING about the four bytes the reap wrote into its own buffer.  The  *)
+  (* carrier that fixes that is [UexecRet.uwait_ans_pid_m] -- the answer    *)
+  (* and the window under ONE binder, joined once at the dispatcher's wait  *)
+  (* arm -- and this is the leaf that spends it.                            *)
+  (*                                                                       *)
+  (* WHY IT IS WAIT'S OWN AND NOT [wp_uk_ecall_window]'s.  The window leaf  *)
+  (* re-closes the run at the children set it opened at, and a reap MOVES   *)
+  (* that set; wait is excluded there by name.  So this leaf is the window  *)
+  (* walk and the null leaf's children move in one -- which is also why it  *)
+  (* can hand back what neither could: the bytes AND the escrow.            *)
+  (*                                                                       *)
+  (* THE COUNT IS NOT A RESIDUE.  [UexecRet.uwait_wr]'s third clause says a *)
+  (* reap at a non-null pointer placed all four bytes (a partial copyout is *)
+  (* copyout's FAILING arm and kwait returns -1 on it, [SpecKwait]'s own    *)
+  (* guard), so on the reaping arm the caller reads the WHOLE status word   *)
+  (* out of its own buffer and not a prefix of it.                          *)
+  (* =================================================================== *)
+  (* WHAT A PARENT READS OUT OF ITS OWN BUFFER: the kernel's answer, and   *)
+  (* -- on the arm that reaped -- the four bytes of the very word the      *)
+  (* escrow is keyed at.  [nth_byte] is the model's own little-endian      *)
+  (* reading ([RiscvModelBytes]), so byte [j] is bits [8j..8j+7] of the    *)
+  (* 32-bit status and [ProcGeom.xstate_val] is its SIGNED value -- which  *)
+  (* is what [exit_tok] carries and what a [ChildTok.child_tok]'s payload  *)
+  (* is redeemed at.                                                       *)
+  Definition uwait_status (r : mword 64) (cs cs' : gset gname)
+      (pidv : mword 32) (g : nat -> bv 8) : iProp Σ :=
+    (∃ (gn : gname) (b : bool) (rv xw : mword 32),
+       ⌜r = (sign_extend' 64 rv : mword 64)⌝ ∗
+       ⌜r <> (mword_of_int (-1) : mword 64) ->
+        forall j : nat, (j < 4)%nat -> g j = nth_byte xw j⌝ ∗
+       UserChildren.wait_ans rv (xstate_val xw) cs cs' gn b pidv)%I.
+
+  (* the answer alone, for a caller that does not read its buffer *)
+  Lemma uwait_status_ans (r : mword 64) (cs cs' : gset gname)
+      (pidv : mword 32) (g : nat -> bv 8) :
+    uwait_status r cs cs' pidv g -∗ uwait_ans_pid r cs cs' pidv.
+  Proof.
+    iIntros "(%gn & %b & %rv & %xw & %Hr & _ & Ha)".
+    iExists gn, b, rv, (xstate_val xw).
+    iSplitR; [ iPureIntro; exact Hr | iExact "Ha" ].
+  Qed.
+
+  (* ...AND THE WHOLE OF WHAT A REAPING PARENT LEARNS, in one step: which
+     generation left its set, the escrow that generation's exit parked, the
+     pid uniqueness that makes the returned number name it, and -- the part
+     no earlier leaf could state -- that its own four bytes ARE that
+     escrow's status word.  [UexecRet.uwait_ans_pid_mine]'s reading, with
+     the window kept. *)
+  Lemma uwait_status_reaped (r : mword 64) (cs cs' : gset gname)
+      (pidv : mword 32) (g : nat -> bv 8) :
+    pidv <> (mword_of_int 1 : mword 32) ->
+    r <> (mword_of_int (-1) : mword 64) ->
+    uwait_status r cs cs' pidv g -∗
+    ∃ (γ' : gname) (rv xw : mword 32),
+      ⌜r = (sign_extend' 64 rv : mword 64) /\ cs' = cs ∖ {[γ']} /\
+       γ' ∈ cs /\ (1 <= bv_unsigned rv <= PIDMAX)%Z /\
+       (forall j : nat, (j < 4)%nat -> g j = nth_byte xw j)⌝ ∗
+      ChildTok.exit_tok γ' rv (xstate_val xw) ∗ ChildTok.gen_uniq cs rv γ'.
+  Proof.
+    intros Hne Hm1.
+    iIntros "(%gn & %b & %rv & %xw & %Hr & %Hby & Ha)".
+    iDestruct "Ha" as "[[%Hf _] | (%γ' & %Hrng & %Hoci & Hesc & Huniq)]".
+    - exfalso. apply Hm1. rewrite Hr (proj1 Hf).
+      apply bv_eq; vm_compute; reflexivity.
+    - iExists γ', rv, xw. iFrame "Hesc Huniq". iPureIntro.
+      split; [ exact Hr | ].
+      split; [ exact (proj1 Hrng) | ].
+      split; [ destruct Hoci as [Hin | Heq];
+                 [ exact Hin | exfalso; exact (Hne Heq) ] | ].
+      split; [ exact (proj2 Hrng) | exact (Hby Hm1) ].
+  Qed.
+
+  Lemma wp_uk_ecall_wait_status (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (dst : mword 64) (k : nat) (f : nat -> bv 8)
+      (avail : nat) (Sc : gset gname) (p : Z) :
+    usysno m = USYS_wait ->
+    m !!! Regidx (mword_of_int 10) = dst ->
+    (* THE POINTER IS REAL, which is the whole difference from the leaves
+       above -- and what makes the window's third clause fire. *)
+    dst <> (zero_reg : mword 64) ->
+    (4 <= k)%nat ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    udepw N m pc USYS_wait -∗
+    uch (ukn_ch N) Sc -∗
+    ubytes (ukn_d N) (uint dst) k f -∗
+    UserChildren.upid (ukn_pid N) p -∗
+    (∀ (h' : CpuId) (r : mword 64) (Sc' : gset gname) (pidv : mword 32)
+       (g : nat -> bv 8),
+       ⌜bv_unsigned pidv = p⌝ -∗
+       UserChildren.upid (ukn_pid N) p -∗
+       (* NOTHING IS PROMISED ABOUT A -1 HERE, and the reason is precise:
+          [UserChildren.wait_why]'s first exit -- "a zombie child was there
+          and the copyout could not place its status" -- is guarded on the
+          status pointer being NULL, which is exactly what this leaf's
+          caller gave up.  Refuting it needs kwait to publish copyout's own
+          [~ UserPtTree.uva_wmapped] witness the way consoleread's swallow
+          arm does; until it does, a real status pointer costs the -1 arm's
+          reason.  See claude-notes/design/user-proc.md. *)
+       (* everything OUTSIDE the four-byte window is the caller's own *)
+       ⌜ forall j : nat, (4 <= j < k)%nat -> g j = f j ⌝ -∗
+       uwait_status r Sc Sc' pidv g -∗
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
+         (add_vec_int pc 4) avail -∗
+       uch (ukn_ch N) Sc' -∗
+       ubytes (ukn_d N) (uint dst) k g -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hn Hdst Hnz Hk4 Hal4.
+    iIntros "#Hi Hrun Hsb Hch Hbuf Hpid Hcont".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    (* the pid reader, spent where the run is open -- [wp_uk_ecall_wait_null_pid] *)
+    iDestruct (urun_ids_pid with "Hcha") as "[Hpida Hidsp]".
+    iDestruct (UserChildren.upid_agree with "Hpida Hpid") as %Hpeq.
+    iDestruct ("Hidsp" with "Hpida") as "Hcha".
+    iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
+                with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
+    iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
+    iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
+    (* THE NO-WRAP FACT, off the ownership rather than off a premise *)
+    iDestruct (uheap_ubytes_run (ukn_t N) (ukn_d N) (ukn_s N) M pm sz (DfracOwn 1) (uint dst) k f
+                 with "Hheap Hbuf") as %Hbnd.
+    assert (Hlin : forall i : nat, (i < k)%nat ->
+              uint (add_vec_int dst (Z.of_nat i)) = (uint dst + Z.of_nat i)%Z).
+    { intros i Hi. destruct (Hbnd i Hi) as [_ Hc].
+      change (2 ^ 38) with 274877906944 in Hc.
+      rewrite !uint_unsigned in Hc |- *.
+      apply uint_add_vec_int_small; lia. }
+    iApply (UkStep.wp_uk_ecall C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc fdv cw gn cs pidv Hui
+              (fun (s : mstate)
+                   (Hp : register_lookup cur_privilege s.(sregs) = User)
+                   (Hc : register_lookup (R_bitvector_64 PC) s.(sregs) = pc) =>
+                 UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
+                   s pc ltac:(vm_compute; reflexivity)
+                   ltac:(vm_compute; reflexivity) Hp Hc)
+              with "Hb Hmy").
+    rewrite (uexec_ret_ecall _ _ eq_refl).
+    assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)) = USYS_wait).
+    { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
+    rewrite /uexec_pay_dep /upay_at.
+    rewrite Hnum. cbv zeta.
+    destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
+      [ | exfalso; exact (Hpne eq_refl) ].
+    destruct (decide (USYS_wait = USYS_exit)) as [He | _];
+      [ exfalso; unfold USYS_wait, USYS_exit in He; discriminate He | ].
+    destruct (decide (USYS_wait = USYS_fork)) as [He | _];
+      [ exfalso; unfold USYS_wait, USYS_fork in He; discriminate He | ].
+    destruct (decide (USYS_wait = USYS_wait)) as [_ | Hwne];
+      [ | exfalso; exact (Hwne eq_refl) ].
+    iDestruct "Hdepn" as (fdep) "[%Hfp Hdepn]".
+    iExists fdep. rewrite Hfp.
+    cbn [uvis_gen uvis_of_run].
+    iSplitR; [ iFrame "Hmy" | ].
+    iSplitL "Hdepn"; [ iExact "Hdepn" | ].
+    iIntros (r M' pm' sz' fdv' cw' gn' cs' lz') "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hliverow Hans _".
+    assert (Hlzq : lz' = false)
+      by (refine (usys_mem_ok_lazy _ _ _ _ _ _ _ _ _ _ _ _ Hok);
+          first [ assumption | vm_compute; discriminate ]).
+    subst lz'.
+    assert (Hcw : cw' = cw)
+      by (refine (usys_cwd_ok_quiet _ _ _ _ _ Hcwrow); vm_compute; discriminate).
+    iDestruct (ucwd_auth_quiet N cw cw' Hcw with "Hcwda") as "Hcwda".
+    assert (Hgnq : gn' = gn) by exact (usys_gen_ok_quiet _ _ _ Hgnrow).
+    subst gn'.
+    (* THE WINDOW, OFF THE ANSWER.  [uwait_ans_pid_m] is the joined form,
+       so the memory equation comes out of the same binder as the status
+       the escrow is keyed at -- which is the whole point of the lane. *)
+    iDestruct "Hans" as (gn2 b2 rv xw) "[%Hr [%Hwr Ha]]".
+    cbn [uvis_M uvis_tf uvis_ch uvis_pid uvis_of_run] in Hwr.
+    rewrite tf_of_arg0 Hdst in Hwr.
+    destruct Hwr as (d & Hdle & _ & Hfull & HM').
+    (* the caller's bytes: the kernel's below [d], its own above -- the
+       window leaf's own idiom ([wp_uk_ecall_window]). *)
+    assert (Hg : exists g : nat -> bv 8,
+              (forall j : nat, (j < d)%nat -> g j = nth_byte xw j) /\
+              (forall j : nat, (d <= j)%nat -> g j = f j)).
+    { exists (fun j => if decide (j < d)%nat then nth_byte xw j else f j).
+      split; intros j Hj; case_decide as Hc;
+        [ reflexivity | exfalso; lia | exfalso; lia | reflexivity ]. }
+    destruct Hg as (g & Hgb & Hgf).
+    assert (Hdk : (d <= k)%nat) by lia.
+    rewrite (umem_wr_ext M dst d (fun i => nth_byte xw i) g
+               ltac:(intros i Hi; symmetry; exact (Hgb i Hi))) in HM'.
+    rewrite (umem_wr_write M dst d g
+               ltac:(intros i Hi; apply Hlin; lia)) in HM'.
+    subst M'.
+    (* the children halves move together, as in the null leaf *)
+    iDestruct (urun_ids_ch with "Hcha") as "[Hcha Hidsback]".
+    iDestruct (uch_agree with "Hcha Hch") as %<-.
+    iApply uslot_bupd.
+    iMod (uch_update (ukn_ch N) cs cs cs' with "Hcha Hch") as "[Hcha Hch]".
+    iDestruct ("Hidsback" $! cs' with "Hcha") as "Hcha".
+    iModIntro.
+    assert (Hview : fdv' = fdv).
+    { refine (usys_fd_ok_quiet _ _ _ _ _ _ _ _ _ Hfdok);
+        vm_compute; discriminate. }
+    subst fdv'.
+    (* the permission map and the break: wait is not sbrk, so the row is
+       the identity at both ([UsysMemOk]'s wait clause, read here rather
+       than through a named lemma -- it is two projections). *)
+    assert (Hpsz : pm' = pm /\ sz' = sz).
+    { clear - Hok. unfold usys_mem_ok in Hok.
+      destruct (decide (USYS_wait = USYS_exec)) as [Hc | _];
+        [ unfold USYS_wait, USYS_exec in Hc; discriminate Hc | ].
+      destruct (decide (USYS_wait = USYS_sbrk)) as [Hc | _];
+        [ unfold USYS_wait, USYS_sbrk in Hc; discriminate Hc | ].
+      destruct (decide (USYS_wait = USYS_wait)) as [_ | Hc];
+        [ | exfalso; exact (Hc eq_refl) ].
+      destruct Hok as (_ & Hp & Hs & _). exact (conj Hp Hs). }
+    destruct Hpsz as [-> ->].
+    cbn [uvis_M uvis_perm uvis_sz uvis_of_run].
+    rewrite (uslot_bump_run m pc M (umem_write M (uint dst) d g) pm pm sz sz
+               fdv fdv cw cw' gn gn cs cs' pidv false false r Hx0 Hal4).
+    rewrite /ukc. iIntros (h' xi' C' pt' Rfd' Rut') "%Hlo' %Hpm' %Hlzf' Hb'".
+    iEval (rewrite (ubytes_split (ukn_d N) (uint dst) d k f Hdk)) in "Hbuf".
+    iDestruct "Hbuf" as "[Hblo Hbhi]".
+    iMod (uheap_store_run (ukn_t N) (ukn_d N) (ukn_s N) M pm sz (uint dst) d f g with "Hheap Hblo")
+      as "[Hheap Hblo]".
+    iDestruct (ubytes_ext (ukn_d N) (uint dst + Z.of_nat d) (k - d)
+                 (fun j => f (d + j)%nat) (fun j => g (d + j)%nat)
+                 ltac:(intros j _; symmetry; apply Hgf; lia) with "Hbhi")
+      as "Hbhi".
+    iAssert (ubytes (ukn_d N) (uint dst) k g) with "[Hblo Hbhi]" as "Hbuf".
+    { rewrite (ubytes_split (ukn_d N) (uint dst) d k g Hdk). iFrame "Hblo Hbhi". }
+    iDestruct (urun_close_upd N (umem_write M (uint dst) d g) pm m
+                 (mword_of_int 10) r sz fdv cw' gn cs' pidv (add_vec_int pc 4) avail
+                 ltac:(unfold unot_sp; vm_compute; discriminate)
+                 with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep [Hcont Hbuf Hch Hpid Ha]") as "Hkc".
+    { iIntros (h'') "Hrun".
+      iApply ("Hcont" $! h'' r cs' pidv g with "[%] Hpid [%] [Ha] Hrun Hch Hbuf").
+      - exact Hpeq.
+      - intros j Hj. apply Hgf. lia.
+      - iExists gn2, b2, rv, xw.
+        iSplitR; [ iPureIntro; exact Hr | ].
+        iSplitR; [ | iExact "Ha" ].
+        iPureIntro. intros Hm1 j Hj.
+        rewrite (Hgb j ltac:(rewrite (Hfull Hnz Hm1); exact Hj)). reflexivity. }
+    iDestruct (ukcq_ukc with "Hkc") as "Hkc".
+    iApply ("Hkc" $! h' xi' C' pt' Rfd' Rut' with "[%] [%] [%] Hb'");
+      [ exact Hlo' | exact Hpm' | exact Hlzf' ].
+  Qed.
+
 
   (* ...AND THE INDEX-FREE FORM -- DELETED (lane IO-LEAF, M3a).
      [wp_uk_ecall_wait_any] took the set behind an existential and

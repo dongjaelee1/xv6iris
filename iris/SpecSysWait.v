@@ -149,6 +149,13 @@ Definition wp_sys_wait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
          [addr != 0] test, relayed.  [v0] is the syscall's argument 0, so a
          caller passing a null status pointer keeps every byte it held. *)
       ⌜ v0 = (zero_reg : mword 64) -> d = 0%nat ⌝ -∗
+      (* ...AND A REAP AT A REAL POINTER PLACED THE WHOLE WORD, kwait's own
+         guard relayed ([SpecKwait]): copyout answers 0 or -1, a partial
+         write is the -1 arm's, and kwait's [blt a0,x0] turns that into the
+         -1 return.  This is what lets a parent read the four bytes of the
+         status out of its own buffer. *)
+      ⌜ v0 <> (zero_reg : mword 64) ->
+        rv <> (mword_of_int (-1) : mword 32) -> d = 4%nat ⌝ -∗
       (* ...AND WHAT THE CALL ANSWERED, kwait's verbatim
          ([UserChildren.wait_ans]): -1 with nothing moved, or the reaped
          child's pid with its escrow -- at the status word this call

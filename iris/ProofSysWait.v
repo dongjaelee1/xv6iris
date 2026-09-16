@@ -302,8 +302,8 @@ Section ProofSysWait.
               with "Hcg Hcpu Htext Hpc Hprocs Hlk Henv Hplk Hpriv Hmyrow Hipis").
     all: try lkbelow.
     iIntros (CID11 Hk11 Mkw P' rv d xw cs')
-      "%Hkw %Hext %Hdle %Hnull Hans Hcg Hcpu Hpc Hpriv Hmyrow".
-    rewrite HB2a0 in Hnull.
+      "%Hkw %Hext %Hdle %Hnull %Hfull Hans Hcg Hcpu Hpc Hpriv Hmyrow".
+    rewrite HB2a0 in Hnull. rewrite HB2a0 in Hfull.
     destruct Hkw as (HcsKw & HKwa0).
     iEval (rewrite HB2a0) in "Hpriv".
     assert (Hpp1a : ret_pc (B2 !!! Regidx Rra) = mword_of_int (SW + 0x1a))
@@ -423,7 +423,7 @@ Section ProofSysWait.
     iDestruct (cpu_own_transport CID11 CID15 0%nat eb pj b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
     iSpecialize ("Hcont" $! CID15 with "[%]"); [wp_next_chain|].
     iApply ("Hcont" $! E2 P' rv d xw cs'
-              with "[%] [%] [%] [%] Hans Hcg Hcpu Hpc Hpriv Hmyrow").
+              with "[%] [%] [%] [%] [%] Hans Hcg Hcpu Hpc Hpriv Hmyrow").
     { split; [| exact HE2a0].
       unfold callee_saved.
       split; [exact HE2sp|]. split; [exact HE2s0|].
@@ -432,6 +432,7 @@ Section ProofSysWait.
     { exact Hext. }
     { exact Hdle. }
     { exact Hnull. }
+    { exact Hfull. }
   Qed.
 
 End ProofSysWait.

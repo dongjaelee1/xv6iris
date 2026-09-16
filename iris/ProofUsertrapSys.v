@@ -1165,10 +1165,14 @@ Section UtSysBlock.
       assert (Hgnw : pv_gen V1 = gn)
         by (rewrite HV1gen Hgnq; exact Hpr6).
       iAssert (ut_wait_out scv (<[tf_epc_idx := ret_pc epv]> (pv_tf (us_V U0)))
+                 (us_M U0) (us_M (MkUstate V2 M2))
                  (pv_tf (us_V (MkUstate V2 M2)) !!! tf_arg_idx 0) cs csR gn pid)%I
         with "[Hwo]" as "Hwo".
       { rewrite /ut_wait_out /sysc_wait_out.
-        cbn [us_V]. rewrite Ha0w. rewrite Hgnw.
+        cbn [us_V us_M]. rewrite Ha0w. rewrite Hgnw.
+        (* the window's entry image is the PROLOGUE's, which is the round's:
+           one trapframe word moved and no byte ([ut_pro]) *)
+        rewrite <- Hpr4.
         iIntros "%Hc".
         iApply "Hwo". iPureIntro. destruct Hc as [_ Hc7].
         cbn [us_V]. rewrite <- Hn0. rewrite usys_num_epc in Hc7. exact Hc7. }

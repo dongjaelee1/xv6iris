@@ -1502,6 +1502,7 @@ UCodeShK.v
 UkReadRows.v
 UkReadFile.v
 UkReadCons.v
+UkWaitCons.v
 UkReadPipe.v
 UkRunBr.v
 UkSh.v

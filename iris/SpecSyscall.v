@@ -547,17 +547,27 @@ Section SyscExec.
      already has. *)
   (* ...AND THE TWO PIDS THE REAPING ARM NAMES (lane TRAP-ROWS-3/4, T4(b)):
      the caller's own and <init>'s, both PURE. *)
-  Definition sysc_wait_out (U : ustate) (r : mword 64)
+  (* ...AND IT CARRIES THE WINDOW BESIDE THE ANSWER (lane RD-7).  This is
+     the ONE place in the tower where the bytes kwait copied out and the
+     status its escrow is keyed at are in the same hand, so it is the one
+     place the join can be made: [SpecKwait]'s post writes [nth_byte xw]
+     into the image and keys the escrow at [xstate_val xw] under a single
+     binder, and [UexecRet.uwait_ans_at_m] is that binder kept.  Every
+     layer above transports it; a caller that passed a null status pointer,
+     or that does not read its buffer, weakens it away
+     ([UexecRet.uwait_ans_at_m_forget]). *)
+  Definition sysc_wait_out (U : ustate) (M' : gmap Z (bv 8)) (r : mword 64)
       (cs cs' : gset gname) (pidv : mword 32) : iProp Σ :=
     (⌜sysc_num (us_V U) = UsysMemOk.USYS_wait⌝ -∗
-       uwait_ans_at r cs cs' (pv_gen (us_V U))
+       uwait_ans_at_m r (us_M U) M' (pv_tf (us_V U) !!! tf_arg_idx 0)
+         cs cs' (pv_gen (us_V U))
          (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0
                        = (zero_reg : mword 64))) pidv)%I.
 
-  Lemma sysc_wait_out_ne (U : ustate) (r : mword 64) (cs cs' : gset gname)
-      (pidv : mword 32) :
+  Lemma sysc_wait_out_ne (U : ustate) (M' : gmap Z (bv 8)) (r : mword 64)
+      (cs cs' : gset gname) (pidv : mword 32) :
     sysc_num (us_V U) <> UsysMemOk.USYS_wait ->
-    ⊢ sysc_wait_out U r cs cs' pidv.
+    ⊢ sysc_wait_out U M' r cs cs' pidv.
   Proof.
     intros Hne. rewrite /sysc_wait_out. iIntros "%Hc". exfalso. exact (Hne Hc).
   Qed.
@@ -566,16 +576,20 @@ Section SyscExec.
      re-keyed at the a0 WORD the arm is indexed by.  There is nothing to
      fabricate -- the escrow and the uniqueness are resources, so the only
      way to this row is the call's own post. *)
-  Lemma sysc_wait_out_of (U : ustate) (r : mword 64) (rv : mword 32) (xs : Z)
+  Lemma sysc_wait_out_of (U : ustate) (M' : gmap Z (bv 8)) (r : mword 64)
+      (rv : mword 32) (xw : mword 32)
       (cs cs' : gset gname) (pidv : mword 32) :
     r = (sign_extend' 64 rv : mword 64) ->
-    wait_ans rv xs cs cs' (pv_gen (us_V U))
+    uwait_wr (pv_tf (us_V U) !!! tf_arg_idx 0) (us_M U) M'
+      (sign_extend' 64 rv : mword 64) xw ->
+    wait_ans rv (xstate_val xw) cs cs' (pv_gen (us_V U))
       (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0 = (zero_reg : mword 64)))
       pidv -∗
-    sysc_wait_out U r cs cs' pidv.
+    sysc_wait_out U M' r cs cs' pidv.
   Proof.
-    intros ->. rewrite /sysc_wait_out /uwait_ans_at. iIntros "H %Hn".
-    iExists rv, xs. iSplitR; [done | iExact "H"].
+    intros -> Hwr. rewrite /sysc_wait_out /uwait_ans_at_m. iIntros "H %Hn".
+    iExists rv, xw. iSplitR; [done |].
+    iSplitR; [iPureIntro; exact Hwr | iExact "H"].
   Qed.
 
   (* ...AND THE PURE HALF, for the twenty entries that keep the set.  fork
@@ -1032,7 +1046,7 @@ Definition wp_syscall_sconf_body
       sysc_fork_out f U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
       (* ...and WAIT'S: the set its children reading shrank to -- see
          [sysc_wait_out] *)
-      sysc_wait_out U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' pid -∗
+      sysc_wait_out U (us_M U') (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' pid -∗
       WP (Loop : expr riscv_lang))
    ∧ kstack_closer pj (m !!! Regidx csp_rs1) (trap_res true + av)) -∗
   WP (Loop : expr riscv_lang).

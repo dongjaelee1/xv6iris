@@ -505,6 +505,9 @@ Section Apply.
        trapframe transport can be the only difference left.  [Hcw] the
        same: the cwd row reads the entry inum. *)
     rewrite Hn HM Hpi Hsz Hfd Hcw Hgn Hch Hpid Hlz.
+    (* ...AND WAIT'S WINDOW READS THE STATUS POINTER, which is one of the
+       three argument words the two keys share (lane RD-7). *)
+    rewrite Ha0.
     destruct (decide (usys_num (uvis_tf W') = USYS_exit)) as [_ | _];
       [ reflexivity | ].
     destruct (decide (usys_num (uvis_tf W') = USYS_fork)) as [_ | _].
@@ -854,7 +857,7 @@ Section LoopApply.
          reason: twenty entries answer with the pure "it did not move" and
          wait answers with [uwait_ans].  The two instances below are the
          only ones. *)
-      (CH : mword 64 -> gset gname -> iProp Σ) :
+      (CH : mword 64 -> gmap Z (bv 8) -> gset gname -> iProp Σ) :
     length (uvis_tf W) = TFWORDS ->
     (* the generation is the trapped key's: no returning entry
        re-incarnates its caller ([UsysMemOk.usys_gen_ok] is the identity at
@@ -899,7 +902,7 @@ Section LoopApply.
        identifies it with the round's own [r]. *)
     (* ...AND THE CHILDREN ROW THE KERNEL ANSWERED WITH, at the same a0
        word and at the set the round resumes on. *)
-    CH (uvis_tf W' !!! tf_arg_idx 0) (uvis_ch W') -∗
+    CH (uvis_tf W' !!! tf_arg_idx 0) (uvis_M W') (uvis_ch W') -∗
     spost_at S (usys_num (uvis_tf (uvis_run W))) f (uvis_run W)
       (uvis_tf W' !!! tf_arg_idx 0) (uvis_M W') (uvis_fd W') (uvis_cwd W')
       (uvis_ch W') -∗
@@ -918,7 +921,7 @@ Section LoopApply.
        ⌜usys_ret_pid (usys_num (uvis_tf (uvis_run W))) r' (uvis_pid W)⌝ -∗
        ⌜uexec_live_ok (usys_num (uvis_tf (uvis_run W))) (uvis_tf (uvis_run W))
                       (uvis_fd W) r' cs'⌝ -∗
-       CH r' cs' -∗
+       CH r' M' cs' -∗
        spost_at S (usys_num (uvis_tf (uvis_run W))) f (uvis_run W) r'
          M' fdv' cw' cs' -∗
        S (bump (uvis_run W) r' M' π' szv' fdv' cw' gn' cs' lz')) -∗
@@ -1090,8 +1093,9 @@ Section LoopApply.
        ecall; every other arm refutes the guard. *)
     (⌜sc = uecall_scause
       /\ usys_num (uvis_tf (uvis_run W)) = USYS_wait⌝ -∗
-     uwait_ans_pid (uvis_tf W' !!! tf_arg_idx 0) (uvis_ch W) (uvis_ch W')
-       (uvis_pid W)) -∗
+     uwait_ans_pid_m (uvis_tf W' !!! tf_arg_idx 0) (uvis_M W) (uvis_M W')
+       (uvis_tf (uvis_run W) !!! tf_arg_idx 0)
+       (uvis_ch W) (uvis_ch W') (uvis_pid W)) -∗
     (* ...AND THE ARMED POST the deposit bought, at the value the round
        bound.  Owed only on the RETURNING arm -- exit hands nothing back and
        fork pays no receipt (what its deposit buys is the CHILD's
@@ -1154,7 +1158,8 @@ Section LoopApply.
                          (uvis_cwd W) (uvis_cwd W')).
           { rewrite Hcwx. exact (usys_cwd_ok_refl_at _ USYS_exec r _ Hexec Hnec). }
           iApply (uexec_ret_F_returning uslot uslot_key_cong W W' f r
-                    (fun (r' : mword 64) (cs2 : gset gname) =>
+                    (fun (r' : mword 64) (_ : gmap Z (bv 8))
+                         (cs2 : gset gname) =>
                        ⌜usys_ch_ok (usys_num (uvis_tf (uvis_run W))) r'
                           (uvis_ch W) cs2⌝%I)
                     Hl Hgn Hb Hm
@@ -1283,8 +1288,11 @@ Section LoopApply.
                 caller's buffer, and that is what [usys_mem_ok]'s wait row
                 already says. *)
              iApply (uexec_ret_F_returning uslot uslot_key_cong W W' f r
-                       (fun (r' : mword 64) (cs2 : gset gname) =>
-                          uwait_ans_pid r' (uvis_ch W) cs2 (uvis_pid W))
+                       (fun (r' : mword 64) (M2 : gmap Z (bv 8))
+                            (cs2 : gset gname) =>
+                          uwait_ans_pid_m r' (uvis_M (uvis_run W)) M2
+                            (uvis_tf (uvis_run W) !!! tf_arg_idx 0)
+                            (uvis_ch W) cs2 (uvis_pid W))
                        Hl Hgn Hb Hm
                        (Hfdrow Hec) (Hpiperow Hec) Hc (Hpidrow Hec)
                     (Hliverow Hec) Hpidk
@@ -1296,7 +1304,8 @@ Section LoopApply.
                by (apply Hch; intros [_ [Hx | Hx]];
                    [ exact (Hnfk Hx) | exact (Hnwt Hx) ]).
              iApply (uexec_ret_F_returning uslot uslot_key_cong W W' f r
-                       (fun (r' : mword 64) (cs2 : gset gname) =>
+                       (fun (r' : mword 64) (_ : gmap Z (bv 8))
+                            (cs2 : gset gname) =>
                           ⌜usys_ch_ok (usys_num (uvis_tf (uvis_run W))) r'
                              (uvis_ch W) cs2⌝%I)
                        Hl Hgn Hb Hm
@@ -1403,8 +1412,9 @@ Section LoopApply.
     (* ...and WAIT'S, forwarded the same way *)
     (⌜sc = uecall_scause
       /\ usys_num (tf_of g (ret_pc sepc_v)) = USYS_wait⌝ -∗
-     uwait_ans_pid (pv_tf (us_V U') !!! tf_arg_idx 0) (uvis_ch W) cs'
-       (uvis_pid W)) -∗
+     uwait_ans_pid_m (pv_tf (us_V U') !!! tf_arg_idx 0) (uvis_M W) (us_M U')
+       (tf_of g (ret_pc sepc_v) !!! tf_arg_idx 0)
+       (uvis_ch W) cs' (uvis_pid W)) -∗
     (⌜sc = uecall_scause
       /\ usys_num (tf_of g (ret_pc sepc_v)) <> USYS_exit
       /\ usys_num (tf_of g (ret_pc sepc_v)) <> USYS_fork⌝ -∗

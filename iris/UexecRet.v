@@ -95,6 +95,7 @@ Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuil
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras.
+Require Import RiscvModelBytes.   (* [nth_byte] -- the status word a reap copies out *)
 Require Import RegFile InstrBytes WpGpr.
 Require Import AlignBits.    (* [update_bit0_zero_of_aligned2] *)
 Require Import ProcGeom.     (* [tf_epc_idx] / [tf_arg_idx] / [TFWORDS] *)
@@ -1114,6 +1115,118 @@ Section UexecRet.
       exact (proj2 Hrng).
   Qed.
 
+  (* ===================================================================== *)
+  (* ...AND THE ONE THING THE ANSWER ALONE COULD NEVER SAY: WHERE THE       *)
+  (* STATUS WENT (lane RD-7).                                              *)
+  (*                                                                       *)
+  (* [UsysMemOk.usys_mem_ok]'s wait row says the kernel wrote [d <= 4]      *)
+  (* bytes at argument 0 FROM SOME FUNCTION, and [uwait_ans_at] above says  *)
+  (* the escrow is keyed at SOME status; the two existentials are           *)
+  (* unrelated, so a parent that passed a real status pointer learned       *)
+  (* nothing at all about the word in its own buffer.  They are the same    *)
+  (* existential in the kernel -- [SpecKwait]'s post writes                 *)
+  (* [nth_byte xw] and keys the escrow at [xstate_val xw] under ONE binder  *)
+  (* -- and the only thing that was ever missing is a carrier that keeps    *)
+  (* them together on the way up.  This is that carrier.                    *)
+  (*                                                                       *)
+  (* THE JOIN IS MADE ONCE, at the dispatcher's wait arm                    *)
+  (* ([SpecSyscall.sysc_wait_out_of]), where both come out of the same      *)
+  (* call; every layer above transports it and the weakenings below throw   *)
+  (* it away again for the callers that do not read their buffer.           *)
+  (* ===================================================================== *)
+  (* WHAT THE REAP WROTE, purely: the count, the null guard, and -- the     *)
+  (* clause that makes the row usable -- THE WHOLE WORD ON A REAP.  A       *)
+  (* partial copyout is copyout's FAILING arm and kwait turns that into the *)
+  (* -1 return ([SpecKwait]'s own guard), so an answer that is not -1, at a *)
+  (* status pointer that is not null, placed all four bytes.                *)
+  Definition uwait_wr (addr : mword 64) (M M' : gmap Z (bv 8))
+      (r : mword 64) (xw : mword 32) : Prop :=
+    exists d : nat,
+      (d <= 4)%nat /\
+      (addr = (zero_reg : mword 64) -> d = 0%nat) /\
+      (addr <> (zero_reg : mword 64) ->
+       r <> (mword_of_int (-1) : mword 64) -> d = 4%nat) /\
+      M' = umem_wr M addr d (fun i => nth_byte xw i).
+
+  (* the two readings a caller wants off it *)
+  Lemma uwait_wr_full (addr : mword 64) (M M' : gmap Z (bv 8))
+      (r : mword 64) (xw : mword 32) :
+    addr <> (zero_reg : mword 64) ->
+    r <> (mword_of_int (-1) : mword 64) ->
+    uwait_wr addr M M' r xw ->
+    M' = umem_wr M addr 4 (fun i => nth_byte xw i).
+  Proof.
+    intros Hne Hm1 (d & _ & _ & Hfull & HM). rewrite <- (Hfull Hne Hm1). exact HM.
+  Qed.
+
+  Lemma uwait_wr_null (addr : mword 64) (M M' : gmap Z (bv 8))
+      (r : mword 64) (xw : mword 32) :
+    addr = (zero_reg : mword 64) -> uwait_wr addr M M' r xw -> M' = M.
+  Proof.
+    intros Hz (d & _ & Hnull & _ & HM). rewrite HM (Hnull Hz). reflexivity.
+  Qed.
+
+  (* the quiet row, for the arms that moved nothing *)
+  Lemma uwait_wr_refl (addr : mword 64) (M : gmap Z (bv 8)) (xw : mword 32) :
+    uwait_wr addr M M (mword_of_int (-1) : mword 64) xw.
+  Proof.
+    exists 0%nat. split; [lia |]. split; [reflexivity |].
+    split; [intros _ Hne; exfalso; exact (Hne eq_refl) | reflexivity].
+  Qed.
+
+  (* THE ANSWER AND THE WINDOW, under one binder. *)
+  Definition uwait_ans_at_m (r : mword 64) (M M' : gmap Z (bv 8))
+      (addr : mword 64) (cs cs' : gset gname)
+      (gn : gname) (nullst : bool) (pidv : mword 32) : iProp Σ :=
+    (∃ (rv : mword 32) (xw : mword 32),
+       ⌜r = (sign_extend' 64 rv : mword 64)⌝ ∗
+       ⌜uwait_wr addr M M' r xw⌝ ∗
+       wait_ans rv (xstate_val xw) cs cs' gn nullst pidv)%I.
+
+  Definition uwait_ans_pid_m (r : mword 64) (M M' : gmap Z (bv 8))
+      (addr : mword 64) (cs cs' : gset gname) (pidv : mword 32) : iProp Σ :=
+    (∃ (gn : gname) (b : bool), uwait_ans_at_m r M M' addr cs cs' gn b pidv)%I.
+
+  (* ...and the weakenings, which is how every caller that does not read
+     its buffer keeps the statement it always had. *)
+  Lemma uwait_ans_at_m_forget (r : mword 64) (M M' : gmap Z (bv 8))
+      (addr : mword 64) (cs cs' : gset gname)
+      (gn : gname) (b : bool) (pidv : mword 32) :
+    uwait_ans_at_m r M M' addr cs cs' gn b pidv -∗
+    uwait_ans_at r cs cs' gn b pidv.
+  Proof.
+    iIntros "(%rv & %xw & %Hr & _ & Ha)". iExists rv, (xstate_val xw).
+    iSplitR; [ iPureIntro; exact Hr | iExact "Ha" ].
+  Qed.
+
+  Lemma uwait_ans_pid_m_forget (r : mword 64) (M M' : gmap Z (bv 8))
+      (addr : mword 64) (cs cs' : gset gname) (pidv : mword 32) :
+    uwait_ans_pid_m r M M' addr cs cs' pidv -∗ uwait_ans_pid r cs cs' pidv.
+  Proof.
+    iIntros "(%gn & %b & H)". iExists gn, b.
+    iApply (uwait_ans_at_m_forget with "H").
+  Qed.
+
+  Lemma uwait_ans_m_forget (r : mword 64) (M M' : gmap Z (bv 8))
+      (addr : mword 64) (cs cs' : gset gname) (pidv : mword 32) :
+    uwait_ans_pid_m r M M' addr cs cs' pidv -∗ uwait_ans r cs cs'.
+  Proof.
+    iIntros "H". iApply uwait_ans_of_pid.
+    iApply (uwait_ans_pid_m_forget with "H").
+  Qed.
+
+  (* the failing arm, at the window that moved nothing *)
+  Lemma uwait_ans_at_m_neg1 (M : gmap Z (bv 8)) (addr : mword 64)
+      (cs : gset gname) (gn : gname) (b : bool) (pidv : mword 32) :
+    (⌜b = false⌝ ∨ ⌜cs = (∅ : gset gname)⌝ ∨ ChildTok.kill_shot gn) -∗
+    uwait_ans_at_m (mword_of_int (-1) : mword 64) M M addr cs cs gn b pidv.
+  Proof.
+    iIntros "Hwhy". iExists (mword_of_int (-1) : mword 32), (mword_of_int 0 : mword 32).
+    iSplitR; [iPureIntro; symmetry; exact sext_neg1_64 |].
+    iSplitR; [iPureIntro; exact (uwait_wr_refl addr M _) |].
+    iApply (wait_ans_neg with "Hwhy").
+  Qed.
+
 
   (* the parent's arm: a NONZERO return, the key it trapped at bumped, and
      fork's answer at that return value. *)
@@ -1383,8 +1496,14 @@ Section UexecRet.
      the reading answer with a resource and the other twenty with a pure
      row: [uexec_ret_cont_F] is this at the pure one, [uexec_wait_F] at
      wait's answer.  One continuation, one varying axis. *)
+  (* ...AND THE ROW'S SECOND AXIS IS THE RESUME IMAGE (lane RD-7).  Twenty
+     entries answer with a pure "the set did not move" and read nothing of
+     [M']; wait's answer is the one that has to name it, because the status
+     it hands back and the bytes it wrote are the same word
+     ([uwait_ans_pid_m]). *)
   Definition uexec_ret_cont_gen (X : uvis -d> iPropO Σ) (n : Z) (f : sfam)
-      (W : uvis) (CH : mword 64 -> gset gname -> iProp Σ) : iProp Σ :=
+      (W : uvis)
+      (CH : mword 64 -> gmap Z (bv 8) -> gset gname -> iProp Σ) : iProp Σ :=
     (∀ (r : mword 64) (M' : gmap Z (bv 8)) (π' : gmap (mword 27) uperm)
        (szv' : Z) (fdv' : list fdstate) (cw' : Z) (g' : gname)
        (cs' : gset gname) (lz' : bool),
@@ -1454,7 +1573,7 @@ Section UexecRet.
        (* ...AND THE CHILDREN SET, off the same return value: the row the
           number's own answer carries -- pure and quiet at the twenty
           entries that keep the reading, [uwait_ans] at wait, which reaps. *)
-       CH r cs' -∗
+       CH r M' cs' -∗
        (* THE SYSCALL'S ARMED POST, back under the same ∀: the unfired
           pieces of the bundle the process deposited, its receipts and its
           cursors.  [emp] at every number without a contract, and at exec,
@@ -1479,7 +1598,8 @@ Section UexecRet.
   Definition uexec_ret_cont_F (X : uvis -d> iPropO Σ) (n : Z) (f : sfam)
       (W : uvis) : iProp Σ :=
     uexec_ret_cont_gen X n f W
-      (fun (r : mword 64) (cs' : gset gname) => ⌜usys_ch_ok n r (uvis_ch W) cs'⌝%I).
+      (fun (r : mword 64) (_ : gmap Z (bv 8)) (cs' : gset gname) =>
+         ⌜usys_ch_ok n r (uvis_ch W) cs'⌝%I).
 
   (* ...AND WAIT'S OWN ARM, on fork's footing: the reap MOVED the reading,
      so the row is the kernel's answer and not a claim that nothing
@@ -1496,8 +1616,9 @@ Section UexecRet.
   Definition uexec_wait_F (X : uvis -d> iPropO Σ) (n : Z) (f : sfam)
       (W : uvis) : iProp Σ :=
     uexec_ret_cont_gen X n f W
-      (fun (r : mword 64) (cs' : gset gname) =>
-         uwait_ans_pid r (uvis_ch W) cs' (uvis_pid W)).
+      (fun (r : mword 64) (M' : gmap Z (bv 8)) (cs' : gset gname) =>
+         uwait_ans_pid_m r (uvis_M W) M' (uvis_tf W !!! tf_arg_idx 0)
+           (uvis_ch W) cs' (uvis_pid W)).
 
   (* THE ARM WITHOUT THE DEPOSIT -- today's return, read at the fixpoint
      variable.  The trap loop's round is stated over this
@@ -1890,7 +2011,8 @@ Section UexecRet.
     rewrite /uslot_F /uvb_F /ukont_F /ukb_F /uexec_ret_F /uexec_kill_arm_F
             /uexec_fork_F
             /uexec_fork_parent_F /ufork_ans /uexec_ret_cont_F
-            /uexec_wait_F /uwait_ans /uwait_ans_pid /uexec_ret_cont_gen.
+            /uexec_wait_F /uwait_ans /uwait_ans_pid
+            /uwait_ans_pid_m /uwait_ans_at_m /uexec_ret_cont_gen.
     solve_contractive_wide.
   Qed.
 
@@ -2180,7 +2302,8 @@ Section UexecRet.
            ⌜usys_ret_pid n r (uvis_pid W)⌝ -∗
            (* ...and what the resume proves (lane TRAP-ROWS, T2(iii)) *)
            ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r cs'⌝ -∗
-           uwait_ans_pid r (uvis_ch W) cs' (uvis_pid W) -∗
+           uwait_ans_pid_m r (uvis_M W) M' (uvis_tf W !!! tf_arg_idx 0)
+             (uvis_ch W) cs' (uvis_pid W) -∗
            spost_at uslot n f W r M' fdv' cw' cs' -∗
            uslot (bump W r M' π' szv' fdv' cw' g' cs' lz')))
      else

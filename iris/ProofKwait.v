@@ -625,6 +625,9 @@ Section ProofKwait.
         ⌜ uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P' ⌝ -∗
         ⌜ (d <= 4)%nat ⌝ -∗
         ⌜ addr = (zero_reg : mword 64) -> d = 0%nat ⌝ -∗
+        (* a reap at a real pointer placed the whole word -- SpecKwait.v *)
+        ⌜ addr <> (zero_reg : mword 64) ->
+          rv <> (mword_of_int (-1) : mword 32) -> d = 4%nat ⌝ -∗
         wait_ans_gen rv (xstate_val xw) cs cs' (pv_gen (us_V U))
           (bool_decide (addr = (zero_reg : mword 64))) -∗
         sie_cap_gpr KT1 mf K eb pme -∗
@@ -1867,6 +1870,9 @@ Section ProofKwait.
         ⌜ uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P' ⌝ -∗
         ⌜ (d <= 4)%nat ⌝ -∗
         ⌜ addr = (zero_reg : mword 64) -> d = 0%nat ⌝ -∗
+        (* a reap at a real pointer placed the whole word -- SpecKwait.v *)
+        ⌜ addr <> (zero_reg : mword 64) ->
+          rv <> (mword_of_int (-1) : mword 32) -> d = 4%nat ⌝ -∗
         wait_ans_gen rv (xstate_val xw) cs cs' (pv_gen (us_V U))
           (bool_decide (addr = (zero_reg : mword 64))) -∗
         sie_cap_gpr KT1 mf K eb pme -∗
@@ -1942,13 +1948,22 @@ Section ProofKwait.
          pointer copies nothing ([d = 0]), and the word the answer's escrow
          is keyed at is the zombie's [p->xstate], which is what this arm
          would have copied had the pointer been non-null. *)
+      (* the branch's own reading of the C's [addr != 0] test, on this side:
+         the whole-word guard is discharged from it, because nothing was
+         copied here at all. *)
+      assert (Haz : addr = (zero_reg : mword 64)).
+      { pose proof Hz as Hz'.
+        rewrite (rget_ne (CID := CIDf) F0 Rs7
+                   ltac:(vm_compute; discriminate)) HF0s7 in Hz'.
+        exact (proj1 (eq_vec_true_iff _ _) Hz'). }
       iApply ("Hcont" $! mf (pv_upt (us_V U)) pidc 0%nat xs cs'
-                with "[%] [%] [%] [%] [%] Hans Hcg Hown Hpc [Hpriv] Hmyrow").
+                with "[%] [%] [%] [%] [%] [%] Hans Hcg Hown Hpc [Hpriv] Hmyrow").
       { exact Hcsf. }
       { exact Ha0. }
       { apply uptd_ext_sz_refl. }
       { lia. }
       { intros _; reflexivity. }
+      { intros Hne; exfalso; exact (Hne Haz). }
       { cbn [umem_wr]. rewrite us_upt_id upd_usM_id. iExact "Hpriv". }
     - (* ===== addr != 0: copyout(p->pagetable, addr, &pp->xstate, 4) ===== *)
       (* the branch's own reading of the C's [addr != 0] test, named here
@@ -2189,12 +2204,19 @@ Section ProofKwait.
          [copyout_wrote] applies: both name the SAME bytes ([fun i =>
          nth_byte xs i], the [xstate] word copyout was handed), and differ
          only in the count -- exactly [readi]'s idiom (campaign idiom 4). *)
+      (* ...AND THE COUNT IS NOT COLLAPSED AWAY: which arm ran is legible
+         from copyout's own ANSWER, and that is what the contract's
+         whole-word guard is proved from below.  A full write is the
+         [a0 = 0] arm; every partial one returns -1. *)
       assert (Hex : exists d : nat, (d <= 4)%nat /\
+                (mco !!! Regidx Ra0 = (mword_of_int 0 : mword 64) -> d = 4%nat) /\
                 Mco = umem_wr (us_M U) addr d (fun i => nth_byte xs i)).
-      { destruct Hwrote as [(_ & HMco) | (_ & d0 & Hd0 & HMco & _)].
-        - exists 4%nat. split; [lia | exact HMco].
-        - exists d0. split; [lia | exact HMco]. }
-      destruct Hex as (d & Hdle & HMco).
+      { destruct Hwrote as [(_ & HMco) | (Hrm & d0 & Hd0 & HMco & _)].
+        - exists 4%nat. split; [lia |]. split; [intros _; reflexivity | exact HMco].
+        - exists d0. split; [lia |]. split; [| exact HMco].
+          intros Hz0. exfalso. rewrite Hrm in Hz0.
+          apply (f_equal bv_unsigned) in Hz0. vm_compute in Hz0. discriminate. }
+      destruct Hex as (d & Hdle & Hdfull & HMco).
       subst Mco.
       iDestruct ("Hback" $! P' (umem_wr (us_M U) addr d (fun i => nth_byte xs i))
                    with "[%] Hsz Hpg Hpt") as "Hpriv"; [exact Hext |].
@@ -2240,12 +2262,14 @@ Section ProofKwait.
         iIntros (CIDz) "%Hsz". iIntros (mf) "%Hcsf %Ha0 Hcg Hown Hpc".
         iSpecialize ("Hcont" $! CIDz with "[%]"); [wp_next_chain |].
         iApply ("Hcont" $! mf P' (mword_of_int (-1) : mword 32) d xs cs
-                  with "[%] [%] [%] [%] [%] [] Hcg Hown Hpc Hpriv Hmyrow").
+                  with "[%] [%] [%] [%] [%] [%] [] Hcg Hown Hpc Hpriv Hmyrow").
         { exact Hcsf. }
         { rewrite Ha0. apply bv_eq; vm_compute; reflexivity. }
         { exact Hext. }
         { exact Hdle. }
         { intros Hc; exfalso; exact (Hane Hc). }
+        (* the whole-word guard is vacuous on a -1 exit *)
+        { intros _ Hne; exfalso; exact (Hne eq_refl). }
         (* a copyout that could not place the status reaps nothing: the row
            is untouched and there is no escrow to hand over.  ITS REASON is
            the guard's own refutation -- this exit is reachable only at a
@@ -2264,6 +2288,15 @@ Section ProofKwait.
                        = mword_of_int (KW + 0x60))
           by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hp60) in "Hpc".
+        (* THE BRANCH'S OWN READING OF copyout's ANSWER: this arm is the one
+           the [blt a0,x0] did NOT take, and copyout answers 0 or -1 and
+           nothing between -- so the call placed all four bytes. *)
+        assert (Hr0 : mco !!! Regidx Ra0 = (mword_of_int 0 : mword 64)).
+        { destruct Hwrote as [(H0 & _) | (Hrm & _)]; [ exact H0 | ].
+          exfalso.
+          rewrite (rget_ne (CID := CIDf) mco Ra0
+                     ltac:(vm_compute; discriminate)) Hrm in Hblt.
+          vm_compute in Hblt. discriminate. }
         (* ...and the same lend on the copy-out arm *)
         iDestruct (proc_priv_slot_gen with "Hpriv") as "(Hsgq & _ & Hsgback)".
         iApply (kw_reap γs γa γp γw γk mm mco pme k K eb pidc kl xs ch ps γrow cs lks
@@ -2278,12 +2311,14 @@ Section ProofKwait.
         (* the bytes this arm placed ARE the word the answer's escrow is
            keyed at: copyout was handed [p->xstate]'s own bytes. *)
         iApply ("Hcont" $! mf P' pidc d xs cs'
-                  with "[%] [%] [%] [%] [%] Hans Hcg Hown Hpc Hpriv Hmyrow").
+                  with "[%] [%] [%] [%] [%] [%] Hans Hcg Hown Hpc Hpriv Hmyrow").
         { exact Hcsf. }
         { exact Ha0. }
         { exact Hext. }
         { exact Hdle. }
         { intros Hc; exfalso; exact (Hane Hc). }
+        (* ...AND THE WHOLE WORD LANDED, off copyout's own answer *)
+        { intros _ _; exact (Hdfull Hr0). }
   Qed.
 
   (* ================================================================== *)
@@ -2861,12 +2896,14 @@ Section ProofKwait.
     iSpecialize ("Hqfn" $! CIDx with "[%]"); [exact Hsx |].
     iApply ("Hqfn" $! mf (pv_upt (us_V U)) (mword_of_int (-1) : mword 32) 0%nat
               (mword_of_int 0 : mword 32) cs
-              with "[%] [%] [%] [%] [%] [] Hcgx Hownx Hpcx [Hpriv] Hmyrow").
+              with "[%] [%] [%] [%] [%] [%] [] Hcgx Hownx Hpcx [Hpriv] Hmyrow").
     { exact Hcsx. }
     { rewrite Ha0x. apply bv_eq; vm_compute; reflexivity. }
     { apply uptd_ext_sz_refl. }
     { lia. }
     { intros _; reflexivity. }
+    (* the whole-word guard is vacuous on a -1 exit *)
+    { intros _ Hne; exfalso; exact (Hne eq_refl). }
     (* the two tails that return -1 without finding a zombie reap nothing:
        the row is untouched and there is no escrow ([UserChildren.wait_ans]'s
        first arm).  The status word is a placeholder -- nothing was copied.
@@ -4019,7 +4056,7 @@ Section ProofKwaitMain.
       with "[Hcont]" as "Hqfn".
     { rewrite /kw_exit_fn.
       iIntros (CIDx Hsx mf P' rv d xw cs')
-        "%Hcsx %Ha0x %Hextx %Hdx %Hnullx Hansx Hcgx Hownx Hpcx Hprivx Hrowx".
+        "%Hcsx %Ha0x %Hextx %Hdx %Hnullx %Hfullx Hansx Hcgx Hownx Hpcx Hprivx Hrowx".
       iSpecialize ("Hcont" $! CIDx with "[%]"); [wp_next_chain |].
       (* THE STEP ACROSS, taken once (lane TRAP-ROWS-3/4, T4(b)) *)
       iDestruct (wait_ans_of_gen with "Hgpme Hipis Hansx") as "Hansx".
@@ -4027,11 +4064,12 @@ Section ProofKwaitMain.
          (lane TRAP-ROWS, T4) *)
       iEval (rewrite Hadr) in "Hansx".
       iApply ("Hcont" $! mf P' rv d xw cs'
-                with "[%] [%] [%] [%] Hansx Hcgx Hownx Hpcx [Hprivx] Hrowx").
+                with "[%] [%] [%] [%] [%] Hansx Hcgx Hownx Hpcx [Hprivx] Hrowx").
       { split; [exact Hcsx | exact Ha0x]. }
       { exact Hextx. }
       { exact Hdx. }
       { intros Hc. apply Hnullx. rewrite Hadr. exact Hc. }
+      { intros Hne Hrne. apply Hfullx; [ rewrite Hadr; exact Hne | exact Hrne ]. }
       { rewrite Hadr. iExact "Hprivx". } }
     (* ==================== THE OUTER LOOP (iLöb) ==================== *)
     iAssert (kw_round CID γf γw j m pj adr av eb pid U (pv_chg (us_V U)) cs lks)

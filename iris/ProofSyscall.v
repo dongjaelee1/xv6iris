@@ -1841,7 +1841,7 @@ Section SyscallVocab.
         sysc_fork_out f U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
         (* ...and WAIT'S: the set its children reading shrank to --
            see [SpecSyscall.sysc_wait_out] *)
-        sysc_wait_out U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' pid -∗
+        sysc_wait_out U (us_M U') (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' pid -∗
         WP (Loop : expr riscv_lang))%I).
 
   (* THE EXIT SLOT, as the dispatch sees it: the caller's return
@@ -2105,7 +2105,7 @@ Section SyscallVocab.
     (* AT THE RECORD'S OWN a0 WORD, like the syscall channel's row below *)
     sysc_fork_out f U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' -∗
     (* ...AND WAIT'S, on fork's footing exactly *)
-    sysc_wait_out U (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' pid -∗
+    sysc_wait_out U (us_M U') (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' pid -∗
     (* the exec channel's answer, carried like the rows above it *)
     sysc_exec_out f U U' sts sts' gn cs pid -∗
     (* ...and the syscall channel's, carried the same way: the epilogue
@@ -2888,7 +2888,7 @@ Section SyscallRet.
        arm that owes nothing discharges it in the hole after [Hcont] *)
     sysc_fork_out f U (E !!! Regidx Ra0) cs cs' -∗
     (* ...AND WAIT'S, at the same word *)
-    sysc_wait_out U (E !!! Regidx Ra0) cs cs' pid -∗
+    sysc_wait_out U (us_M U') (E !!! Regidx Ra0) cs cs' pid -∗
     sysc_exec_out f U
       (us_tf U' (<[tf_arg_idx 0 := E !!! Regidx Ra0]> (pv_tf (us_V U'))))
       sts sts' gn cs pid -∗
@@ -4239,7 +4239,7 @@ Section SyscallArms.
               Hj Hgamma Hv0 ltac:(lia) eq_refl
               with "Hcg Hcpu Htext Hdata Hpc Hprocs Hwaitlk Hkalloc Hnextpid Hpriv Hrow Hipis").
     iIntros (CIDy Hsy mf P' rv dw xw cs')
-      "%Hcs %Hext %Hdwle %Hnullw Hans Hcg Hcpu Hpc Hpriv Hrow".
+      "%Hcs %Hext %Hdwle %Hnullw %Hfullw Hans Hcg Hcpu Hpc Hpriv Hrow".
     destruct Hcs as [Hcs Ha0w].
     assert (Htfp' : ud_tfp P' = ud_tfp (pv_upt (us_V U))).
     { destruct (uptd_ext_sz_ext (pv_sz (us_V U)) (pv_upt (us_V U)) P' Hext) as (_ & Htf & _).
@@ -4311,8 +4311,23 @@ Section SyscallArms.
          (lane TRAP-ROWS, T4) *)
       assert (Hv0w : v0 = pv_tf (us_V U) !!! tf_arg_idx 0)
         by (symmetry; apply list_lookup_total_correct, Hv0).
+      (* ...AND THE WINDOW BESIDE IT (lane RD-7): this arm is where the
+         bytes kwait placed and the status its escrow is keyed at are in
+         one hand, so it is where the two existentials are JOINED.  The
+         whole-word clause is kwait's own guard, read at the 64-bit answer
+         the caller sees. *)
+      assert (Hwr : uwait_wr (pv_tf (us_V U) !!! tf_arg_idx 0) (us_M U)
+                      (umem_wr (us_M U) v0 dw (fun i => nth_byte xw i))
+                      (sign_extend' 64 rv : mword 64) xw).
+      { rewrite <- Hv0w. exists dw. split_and!.
+        - exact Hdwle.
+        - exact Hnullw.
+        - intros Hne Hrm1. apply Hfullw; [ exact Hne | ].
+          intros Hc. apply Hrm1. rewrite Hc.
+          apply bv_eq; vm_compute; reflexivity.
+        - reflexivity. }
       iEval (rewrite Hv0w) in "Hans".
-      iApply (sysc_wait_out_of U _ rv (xstate_val xw) cs cs' pid Ha0w
+      iApply (sysc_wait_out_of U _ _ rv xw cs cs' pid Ha0w Hwr
                 with "Hans"). }
     iApply (sysc_exec_out_ne _ _ _ _ _ _ _ _ (sysc_num_ne7 _ _ Hnum eq_refl)).
     iApply (sysc_sys_out_quiet U sts gn cs pid fdep _ _ _ _ _ _ Hnum

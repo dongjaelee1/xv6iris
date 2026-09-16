@@ -249,6 +249,16 @@ Definition wp_kwait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
          everything it held across the call.  Without this the row would
          still permit a four-byte write at address 0. *)
       ⌜ addr = (zero_reg : mword 64) -> d = 0%nat ⌝ -∗
+      (* ...AND A REAP AT A REAL POINTER PLACED THE WHOLE WORD.  copyout
+         answers 0 or -1 and nothing between, and a PARTIAL write is the
+         -1 arm's ([SpecCopyout.copyout_wrote]); kwait's own [blt a0,x0] at
+         +0x5c turns that answer into the -1 return.  So a call that came
+         back with a pid, at a status pointer that is not null, copied all
+         four bytes -- which is what lets a parent read the status word out
+         of its own buffer rather than a prefix of it.  The three -1 exits
+         discharge the guard from its own premise. *)
+      ⌜ addr <> (zero_reg : mword 64) ->
+        rv <> (mword_of_int (-1) : mword 32) -> d = 4%nat ⌝ -∗
       (* ...AND WHAT THE CALL ANSWERED, in wait's two arms
          ([UserChildren.wait_ans]): -1 and nothing moved, or the reaped
          child's pid with its ESCROW, the pid uniqueness that makes the

@@ -342,6 +342,7 @@ Section UtRet2.
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
+      (us_M U0) (us_M U)
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 gn pid -∗
     (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3) *)
     ut_kill_out scw Wk -∗
@@ -895,6 +896,7 @@ Section UtRet.
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
+      (us_M U0) (us_M U)
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 gn pid -∗
     (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3) *)
     ut_kill_out scw Wk -∗
@@ -1207,6 +1209,7 @@ Section UtA6.
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
+      (us_M U0) (us_M U)
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 gn pid -∗
     (* ...AND THE UNTAKEN CONTINUATION, OR THE FACT THAT THERE IS NO RESUME
        (lane TRAP-ROWS, T3).  This arm is the second [killed()] check, so it
@@ -1377,6 +1380,7 @@ Section UtA6.
                     (pv_tf (us_V U) !!! tf_arg_idx 0)⌝ -∗
                  ⌜cs2 = cs⌝ ∗ wait_why cs (pv_gen (us_V U)) true)) ∗
              ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
+               (us_M U0) (us_M U)
                (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 gn pid)%I
       with "[Hwo]" as "(#Hwwhy & Hwo)".
     { destruct (decide (ut_live_wait_g scw
@@ -1390,19 +1394,20 @@ Section UtA6.
           by (apply bool_decide_eq_true_2; exact (zero_reg_of_uint _ Hga0)).
         iDestruct ("Hwo" with "[%]") as "Hw"; [ exact (conj Hge Hgn) | ].
         rewrite Hnull.
-        iDestruct "Hw" as (rv xs) "[%Hr Ha]".
+        iDestruct "Hw" as (rv xw) "[%Hr [%Hwr Ha]]".
         assert (Hsm1 : (sign_extend' 64 rv : mword 64)
                        = (mword_of_int (-1) : mword 64))
           by (rewrite <- Hr; exact Hgm1).
-        iDestruct (wait_ans_m1 rv xs cs cs2 gn true pid Hsm1 with "Ha")
+        iDestruct (wait_ans_m1 rv (xstate_val xw) cs cs2 gn true pid Hsm1 with "Ha")
           as "[%Hf #Hwhy]".
         destruct Hf as (Hrm & Hcse).
         iEval (rewrite (Hgna Hge)) in "Hwhy".
         iSplitR.
         + iModIntro. iIntros "_". iSplitR; [ iPureIntro; exact Hcse | ].
           iExact "Hwhy".
-        + iIntros "_". rewrite Hnull. iExists rv, xs.
+        + iIntros "_". rewrite Hnull. iExists rv, xw.
           iSplitR; [ iPureIntro; exact Hr | ].
+          iSplitR; [ iPureIntro; exact Hwr | ].
           rewrite Hrm Hcse. iApply wait_ans_neg.
           iEval (rewrite <- (Hgna Hge)) in "Hwhy". iExact "Hwhy".
       - iSplitR.
@@ -1790,6 +1795,7 @@ Section UtFa.
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 -∗
     (* ...and WAIT'S, beside it -- [SpecUsertrap.ut_wait_out] *)
     ut_wait_out scw (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0)))
+      (us_M U0) (us_M U)
       (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs2 gn pid -∗
     (* ...AND THE UNTAKEN CONTINUATION (lane TRAP-ROWS, T3) *)
     ut_kill_out scw Wk -∗

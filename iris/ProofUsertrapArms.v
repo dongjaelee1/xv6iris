@@ -671,8 +671,9 @@ Section Ut56.
     (* ...and wait's, refuted through the same cause *)
     iAssert (ut_wait_out scv
                (<[tf_epc_idx := ret_pc epv]> (pv_tf (us_V U0)))
+               (us_M U0) (us_M U)
                (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs gn pid) as "Hwo".
-    { iApply (ut_wait_out_quiet _ _ _ _ _ _ _ Hnec). }
+    { iApply (ut_wait_out_quiet _ _ _ _ _ _ _ _ _ Hnec). }
     iAssert (∀ n : Z, ut_sys_out n fdep scv (pv_tf (us_V U0)) U0 sts gn cs pid
                (pv_tf (us_V U) !!! tf_arg_idx 0) (us_M U) sts
                (pv_cwi (us_V U)) cs)%I as "Hso".
@@ -1156,8 +1157,9 @@ Section UtD0.
     (* ...and wait's, refuted through the same cause *)
     iAssert (ut_wait_out scv
                (<[tf_epc_idx := ret_pc epv]> (pv_tf (us_V U0)))
+               (us_M U0) (us_M U)
                (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs gn pid) as "Hwo".
-    { iApply (ut_wait_out_quiet _ _ _ _ _ _ _ Hnec). }
+    { iApply (ut_wait_out_quiet _ _ _ _ _ _ _ _ _ Hnec). }
     iAssert (∀ n : Z, ut_sys_out n fdep scv (pv_tf (us_V U0)) U0 sts gn cs pid
                  (pv_tf (us_V (MkUstate V' (us_M U))) !!! tf_arg_idx 0)
                  (us_M (MkUstate V' (us_M U)))
@@ -1412,8 +1414,9 @@ Section UtE8.
     (* ...and wait's, refuted through the same cause *)
     iAssert (ut_wait_out scv
                (<[tf_epc_idx := ret_pc epv]> (pv_tf (us_V U0)))
+               (us_M U0) (us_M U)
                (pv_tf (us_V U) !!! tf_arg_idx 0) cs cs gn pid) as "Hwo".
-    { iApply (ut_wait_out_quiet _ _ _ _ _ _ _ Hnec). }
+    { iApply (ut_wait_out_quiet _ _ _ _ _ _ _ _ _ Hnec). }
     iAssert (∀ n : Z, ut_sys_out n fdep scv (pv_tf (us_V U0)) U0 sts gn cs pid
                  (pv_tf (us_V U) !!! tf_arg_idx 0) (us_M U) sts
                  (pv_cwi (us_V U)) cs)%I as "Hso".

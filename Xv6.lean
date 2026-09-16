@@ -171,3 +171,6 @@ import Xv6.SpecFreewalk
 import Xv6.SpecUvmfree
 import Xv6.SpecUvmalloc
 import Xv6.SpecVmfault
+import Xv6.UMem
+import Xv6.SpecCopyout
+import Xv6.SpecUvmcopy

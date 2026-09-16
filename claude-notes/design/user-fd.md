@@ -135,7 +135,7 @@ process entry and someone owns it.  Consequences:
   resource and NO binder.  `init` USED to carry that; since OPEN-PIN it carries
   `UInitFd.ufd_head T st γfd` (slot 0 = console ∨ all closed ∨ the taint) from
   its second open to the fork, because sh's fd 0 must be KNOWN to be the
-  console device for the input line (`projects/app-echo.md`, "OPEN-PIN
+  console device for the input line (`completed/app-echo.md`, "OPEN-PIN
   COMPLETE").
 - `cat` carries the ledger with `⌜fd_lowest_closed l = None⌝` through its
   main loop, which is what says its `open` lands above the standard streams
@@ -195,7 +195,7 @@ The other side of that premise is earned too: `UkFork.wp_uk_ecall_fork` gives
 the parent a CHILD ARM (the child's run at its own names, with the parent's
 ledger states, the exit payload `Q` chosen by the parent, and `my_pay`), and
 `UkInitMain.wp_kinit_fork` instantiates it for init's child
-(`projects/app-echo.md`, "WX-WAIT LANDED" and "SH-LINE RULING").
+(`completed/app-echo.md`, "WX-WAIT LANDED" and "SH-LINE RULING").
 
 ## 6  What this does NOT yet do
 

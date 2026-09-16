@@ -202,51 +202,6 @@ Proof.
     + rewrite Hnode init_bytes_elf. reflexivity.
 Qed.
 
-(* =================================================================== *)
-(*  THE CONSOLE CREDENTIAL                                              *)
-(* =================================================================== *)
-(*  The six predicates the console's supply is parametric in.  They used *)
-(*  to travel as six separate arguments through every lemma of the seam, *)
-(*  which is why [init_cons_sup_of_sh_slot] below once read as five      *)
-(*  predicates and ten law hypotheses: the application had to hand each  *)
-(*  one over at the call.  Bundled here, the application builds the      *)
-(*  record ONCE ([AppEcho]'s side: [echo_cc]) and discharges the laws    *)
-(*  ONCE ([echo_cc_holds]), and the seam takes a pair.                   *)
-(*                                                                      *)
-(*  The taint is NOT a field: it comes from the application's interface  *)
-(*  ([RiscvPtsto.app_iface]'s [ai_kill]) and is already threaded         *)
-(*  separately everywhere the credential goes.  A second copy here would *)
-(*  be a second name for the same resource, and the seam's lemmas would  *)
-(*  then need an equation between them.                                 *)
-(*                                                                      *)
-(*  This record's home is really [UShKernel.v], next to [sh_prompt_law], *)
-(*  so that [sh_slot_of_kexec] and the rest of the U tier can take the   *)
-(*  pair too.  It sits here because that move touches 190 sites across   *)
-(*  17 files of a tier another lane is live in; the collapse at the      *)
-(*  APPLICATION's boundary -- which is what the redesign is about -- is  *)
-(*  contained to this file.                                             *)
-Record cons_cred (Σ : gFunctors) := MkConsCred {
-  (* the per-position credential on the lease (lane IO-LEAF, M5) *)
-  cc_rd : nat -> iProp Σ;
-  cc_rd_timeless : forall i : nat, Timeless (cc_rd i);
-  (* ...and the mid-line pieces of the same lease (M5(3)) *)
-  cc_mid : gname -> nat -> iProp Σ;
-  (* ...the era's write credential as the command loop carries it (M6a(3)) *)
-  cc_wc : nat -> nat -> iProp Σ;
-  (* ...the banner-owed one (step 3) *)
-  cc_wb : nat -> iProp Σ;
-  cc_wb_timeless : forall i : nat, Timeless (cc_wb i);
-  (* ...and the round-open one /init lends on the console row (M6b) *)
-  cc_wp : nat -> iProp Σ;
-}.
-Arguments MkConsCred {Σ} _ _ _ _ _ _ _.
-Arguments cc_rd {Σ} _ _.
-Arguments cc_mid {Σ} _ _ _.
-Arguments cc_wc {Σ} _ _ _.
-Arguments cc_wb {Σ} _ _.
-Arguments cc_wp {Σ} _ _.
-Global Existing Instance cc_rd_timeless.
-Global Existing Instance cc_wb_timeless.
 
 Section UInitBoot.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
@@ -423,49 +378,6 @@ Section UInitBoot.
      it execs both run at [UexecExecInst.uprogSG_free], which is what keeps
      their [UkRun.udep] clear of the application's supply.  See the note at
      [UInitSh.init_exec_sup_of_sh_slot]. *)
-  (* The ten laws the console's supply asks of the application's
-     credential.  Gathered VERBATIM from what used to be
-     [init_cons_sup_of_sh_slot]'s hypothesis list; each one is used at
-     [UInitSh.init_exec_sup_of_sh_slot], which still takes them apart. *)
-  Definition cons_cred_holds (cn : cons_names) (T : iProp Σ)
-      (Cr : cons_cred Σ) : Prop :=
-    (* the read leaf sh runs on *)
-    (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) ->
-       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T
-           (cc_mid Cr γp) cn l)
-    (* the lease's three laws *)
-    /\ (forall (γp : gname) (N : uk_names Σ) (i : nat),
-          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) ->
-          ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T (cc_mid Cr γp) i)
-    /\ (forall (γp : gname) (N : uk_names Σ) (i : nat),
-          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) ->
-          ⊢ T -∗ cc_mid Cr γp i -∗ UkSh.ush_at N γp i)
-    /\ (forall (γp : gname) (N : uk_names Σ) (i : nat),
-          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) ->
-          UkSh.ush_bnd i ->
-          ⊢ cc_mid Cr γp i -∗ cc_wb Cr i -∗ UkSh.ush_at N γp i)
-    (* the loop's step on the era's write credential *)
-    /\ (forall (γp : gname) (n : nat),
-          ⊢ cc_mid Cr γp (n + length EchoDisc.echo_line)%nat -∗
-            cc_wc Cr n 2%nat -∗
-            cc_mid Cr γp (n + length EchoDisc.echo_line)%nat
-            ∗ cc_wc Cr (n + length EchoDisc.echo_line)%nat 3%nat)
-    (* the three conversions of step 4 *)
-    /\ (forall n : nat, ⊢ cc_wb Cr n -∗ cc_wc Cr n 0%nat)
-    /\ (forall n : nat, ⊢ cc_wc Cr n 3%nat -∗ cc_wc Cr n 0%nat)
-    /\ (forall (γp : gname) (n : nat),
-          ⊢ cc_mid Cr γp (n + length EchoDisc.echo_line)%nat -∗
-            cc_wb Cr n -∗
-            cc_mid Cr γp (n + length EchoDisc.echo_line)%nat ∗ T)
-    (* the cursor's boundary *)
-    /\ (forall (γp : gname) (N : uk_names Σ) (l : list fdstate) (i : nat),
-          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) ->
-          ⊢ upos γp i -∗ ucons_pay cn γp T (cc_rd Cr) (-1) -∗
-            (UkSh.ush_wcp (cc_wc Cr) (cc_wb Cr) l i 0%nat ∨ T) -∗
-            UkSh.ush_posb N γp T (cc_wc Cr) (cc_wb Cr) (cc_mid Cr γp) l 0%nat)
-    (* the lend's conversion at the shell's entry (lane M6b) *)
-    /\ (forall n : nat, ⊢ cc_wp Cr n -∗ cc_wc Cr n 0%nat).
 
   (* AT THE FREE INSTANCE, NAMED, all the way through: /init and the shell
      it execs both run at [UexecExecInst.uprogSG_free], which is what keeps
@@ -487,22 +399,18 @@ Section UInitBoot.
     □ (echo_taint γ -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
     UShKernel.sh_prompt_law (PS := uprogSG_free) (cc_wc Cr) -∗
     UInitSh.init_sh_slot (echo_taint γ)
-      (UInitSh.sh_pay (echo_taint γ) (cc_wc Cr) (cc_wb Cr) (cc_mid Cr) Rsh n0) -∗
+      (UInitSh.sh_pay (echo_taint γ) Cr Rsh n0) -∗
     UkInit.init_cons_sup cn (echo_taint γ)
-      (init_cons_cred (echo_taint γ) r) st
-      (cc_wp Cr) (cc_wb Cr) (cc_rd Cr).
+      (init_cons_cred (echo_taint γ) r) st Cr.
   Proof.
-    intros Heq Hpsok_free Hn0 Hst
-      (Hrl & Hpm1 & Hpm3 & Hpmwb & Hwc & Hwbwc & Hwbl & Hwbr & Hbd & Hpw).
+    intros Heq Hpsok_free Hn0 Hst HCr.
     iIntros "#Hdep #Hdp #Hplaw #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
     - iIntros "!> #Hcns".
       iDestruct "Hcore" as "#Hcore'".
       (* [Persistent K] is an INSTANCE binder there, so it is not passed
          positionally; [cons_never_persistent] answers it. *)
       iApply (UInitSh.init_exec_sup_of_sh_slot (echo_taint γ) cn st
-                (cons_never r) (cc_rd Cr) (cc_mid Cr) (cc_wc Cr) (cc_wb Cr)
-                (cc_wp Cr) Rsh n0 Hpsok_free Hn0 Hst
-                Hrl Hpm1 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw
+                (cons_never r) Cr Rsh n0 Hpsok_free Hn0 Hst HCr
                 with "Hdep Hdp Hplaw [] Hcore'").
       iApply (ush_cons_in_of_Cns γ r Heq with "[] Hcns").
       iDestruct "Hcore'" as "(#Hinv & _)". iExact "Hinv".
@@ -987,16 +895,12 @@ Section EchoInitBoot.
        lease's read side ([UShLine.ush_rd_pin]) and the exit family the
        pair of the last two ([UShLine.ush_rd_x] = [UkInit.init_rd]). *)
     iAssert (UInitSh.init_sh_slot (echo_taint γ)
-               (UInitSh.sh_pay (echo_taint γ)
-                  (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id))
-                  (UInitBanner.kinit_ban (echo_taint γ) γ) (UShLine.ush_mid γ)
+               (UInitSh.sh_pay (echo_taint γ) (echo_cc HR GEN γ)
                   UInitSh.sh_Rsh 0%nat))%I as "#Hsh".
     { rewrite /UInitSh.init_sh_slot /UInitSh.init_sh_slot_core.
       iSplitR; [ iExact "Hinv" | ]. iSplitR; [ iExact "Hfs" | ].
       iSplitR; [ iExact "Hmint" | ].
-      iApply (UInitSh.sh_pay_of_parts (echo_taint γ)
-                (EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id))
-                (UInitBanner.kinit_ban (echo_taint γ) γ) (UShLine.ush_mid γ)
+      iApply (UInitSh.sh_pay_of_parts (echo_taint γ) (echo_cc HR GEN γ)
                 UInitSh.sh_Rsh 0%nat
                 with "[] [] Htg");
         [ iApply UInitSh.sh_pay_state_holds | ].
@@ -1018,9 +922,7 @@ Section EchoInitBoot.
        ([kinit_banner_law_pro_holds]). *)
     iAssert (UkInit.init_cons_sup fsc_cons (echo_taint γ)
                (init_cons_cred (echo_taint γ) r) init_cons_fd
-               (UInitDiag.kinit_pro (echo_taint γ) γ)
-               (UInitBanner.kinit_ban (echo_taint γ) γ)
-               (UShLine.ush_rd_pin γ))%I as "#Hxs".
+               (echo_cc HR GEN γ))%I as "#Hxs".
     { iApply (init_cons_sup_of_sh_slot γ r fsc_cons init_cons_fd
                 (echo_cc HR GEN γ)
                 UInitSh.sh_Rsh 0%nat Heq (fun k H => H)
@@ -1065,16 +967,12 @@ Section EchoInitBoot.
                     (echo_taint γ)
                     (init_cons_cred (echo_taint γ) r)
                     fsc_cons init_cons_fd
-                    (UInitDiag.kinit_pro (echo_taint γ) γ)
-                    (UInitBanner.kinit_ban (echo_taint γ) γ)
-                    (UShLine.ush_rd_pin γ)
+                    (echo_cc HR GEN γ)
                     -∗ uslot W'))%I as "#Hcon".
     { iApply (UInitKernel.init_boot_con (PS := uprogSG_free)
                 (echo_taint γ)
                 (init_cons_cred (echo_taint γ) r) init_cons_fd
-                (UInitDiag.kinit_pro (echo_taint γ) γ)
-                (UInitBanner.kinit_ban (echo_taint γ) γ)
-                (UShLine.ush_rd_pin γ)
+                (echo_cc HR GEN γ)
                 fsc_cons
                 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
                 init_cons_fd_ne Hktaint
@@ -1088,9 +986,7 @@ Section EchoInitBoot.
               (UInitKernel.init_boot_pay (PS := uprogSG_free)
                  (echo_taint γ)
                  (init_cons_cred (echo_taint γ) r) fsc_cons init_cons_fd
-                 (UInitDiag.kinit_pro (echo_taint γ) γ)
-                 (UInitBanner.kinit_ban (echo_taint γ) γ)
-                 (UShLine.ush_rd_pin γ))
+                 (echo_cc HR GEN γ))
               with "Hcl Hinv Hcon [] [Hdn Hturn]").
     - iIntros "!>" (W') "#Ht Hp".
       iApply ("Hmint" $! True%I W' with "Ht Hp []").

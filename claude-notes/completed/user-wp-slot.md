@@ -2,7 +2,7 @@
 
 **RETIRED 2026-09-14.**  All four items of §0′'s "WHAT IS LEFT" are closed,
 and all four by the applications effort rather than from this side
-(`../projects/app-echo.md`):
+(`app-echo.md`):
 
 1. the exec-site forcing function, in the AU form (`SpecKexecAU.exec_slot_pre`
    / `kexec_image_ok`), and then the pinned exec bundle (PINNED-EXEC D,

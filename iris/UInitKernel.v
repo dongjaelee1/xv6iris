@@ -228,8 +228,7 @@ Section UInitKernel.
   Qed.
 
   Lemma init_uexec_slot (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
-      `{HRdl : !forall i : nat, Timeless (Rdl i)} `{HWb : !forall i : nat, Timeless (Wb i)}
+      (stc : fdstate) (Cr : cons_cred Σ)
       (cn : cons_names)
       (W : uvis) (n0 : nat) :
     stc <> FdClosed ->
@@ -313,7 +312,7 @@ Section UInitKernel.
        which credential the shell it execs is handed is decided by /init's
        OWN mknod, mid-walk, so the supply is assembled there and not
        here. *)
-    UkInit.init_cons_sup cn T Cns stc Wp Wb Rdl -∗
+    UkInit.init_cons_sup cn T Cns stc Cr -∗
     (* ...AND THE CONSOLE DANCE, at whichever arm the application's boot
        resource decided ([App.app_boot]; [AppEcho.echo_boot] is
        [cons_key r ∨ ∃ i, cons_made r i], and THE ARM IS DECIDED BY THE
@@ -336,7 +335,7 @@ Section UInitKernel.
        -- for the echo era, the reader half of [EchoOut.dl_cnt]), and it
        travels with the token because it moves with the cursor.  At boot
        both are at 0. *)
-    Rdl 0%nat -∗
+    (cc_rd Cr) 0%nat -∗
     (* ...AND THE ERA'S TURN (lane CONS-IO milestone F), beside the reader
        token and travelling with it: the APPLICATION's own per-era
        credential, minted at the power-on step, carried by the boot
@@ -355,19 +354,19 @@ Section UInitKernel.
        M6a(2), step 3).  It used to be the PAYMENT itself, linear and spent
        once, so only round 0 could reach the wire through the application's
        own ledger; what crosses now is the banner-owed credential AT COUNT 0
-       ([Wb 0], riding the console lease from here on -- the lease's payload
-       per count is the pair [UkInit.init_rd Rdl Wb]) and a PERSISTENT
+       ([(cc_wb Cr) 0], riding the console lease from here on -- the lease's payload
+       per count is the pair [UkInit.init_rd (cc_rd Cr) (cc_wb Cr)]) and a PERSISTENT
        conversion of it into the payment at any count and any record, so
        /init's restart loop keeps the conversion and pays whenever the
        lease comes back with one.  What the payment's last byte leaves is
-       the round-open credential at the same count ([Wp n], lane M6b). *)
-    Wb 0%nat -∗
+       the round-open credential at the same count ([(cc_wp Cr) n], lane M6b). *)
+    (cc_wb Cr) 0%nat -∗
     □ (∀ (n : nat) (N' : uk_names Σ),
-         Wb n -∗ UkInitMain.kinit_banner0 N' stc (Wp n)) -∗
+         (cc_wb Cr) n -∗ UkInitMain.kinit_banner0 N' stc ((cc_wp Cr) n)) -∗
     (* ...AND THE TWO DIAGNOSTICS' CONVERSIONS (lane M6b), persistent for
        the same reason: "init: exec sh failed" and "init: fork failed" are
        paid from the round-open credential the banner leaves. *)
-    UkInitMain.kinit_diag_law stc Wp Wb -∗
+    UkInitMain.kinit_diag_law stc (cc_wp Cr) (cc_wb Cr) -∗
     (* THE PAY FACT, at the trivial payload: <init> has no parent, so its
        exit owes nobody anything -- userinit's choice, which the entry
        constructor writes into the record ([UkRun.ukn_pay]) and which
@@ -420,7 +419,7 @@ Section UInitKernel.
     rewrite Hpc.
     iApply (wp_kinit_start N Hpsok_free
               (ukn_pay_free_of_triv N (Hpayeq : UkRun.ukn_triv N))
-              T Cns stc Wp Wb Rdl cn (uvis_sz W) h
+              T Cns stc Cr cn (uvis_sz W) h
               (tf_resume_gpr0 (uvis_tf W)) n0 Hne Hkt
               with "Hdp [] [] [] Hxs [Hdn] [] [] Hszf [Hstd] [Hcwf] [Hchf]
                     [Hrd Hrd0 Hbn] Hrun").
@@ -439,7 +438,7 @@ Section UInitKernel.
     - iApply (uch_any_of with "Hchf").
     (* init's round starts at the token's own position, which at boot is
        the empty prefix ([UserConsole.uinit_tok_0]) *)
-    - iApply (uinit_tok_0 cn T (UkInit.init_rd Rdl Wb) with "Hrd [Hrd0 Hbn]").
+    - iApply (uinit_tok_0 cn T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) with "Hrd [Hrd0 Hbn]").
       rewrite /UkInit.init_rd /UkInit.init_rd_cred. iFrame "Hrd0". iExact "Hbn".
   Qed.
 
@@ -447,8 +446,7 @@ Section UInitKernel.
   (* SS2 THE BRIDGE from the kernel's image fact.                          *)
   (* ------------------------------------------------------------------- *)
   Lemma init_slot_of_kexec (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
-      `{HRdl : !forall i : nat, Timeless (Rdl i)} `{HWb : !forall i : nat, Timeless (Wb i)}
+      (stc : fdstate) (Cr : cons_cred Σ)
       (cn : cons_names)
       (na : nat) (alen : nat -> nat)
       (afun : nat -> nat -> bv 8) (sts : list fdstate)
@@ -486,31 +484,31 @@ Section UInitKernel.
        [init_uexec_slot] and [UkInit.init_deps] *)
     UkInit.init_deps T -∗
     (* the pay fact, passed straight through: see [init_uexec_slot] *)
-    udep -∗ UkInit.init_cons_sup cn T Cns stc Wp Wb Rdl -∗
+    udep -∗ UkInit.init_cons_sup cn T Cns stc Cr -∗
     init_cons_dance_all T Cns stc -∗
     (* the console reader token, passed straight through: see
        [init_uexec_slot] *)
     ucons_reader cn 0%nat -∗
     (* ...and the application's own credential at that position, likewise
        straight through (lane IO-LEAF, M5) *)
-    Rdl 0%nat -∗
+    (cc_rd Cr) 0%nat -∗
     (* ...and the era's turn beside it, likewise straight through (lane
        CONS-IO milestone F / IO-LEAF) *)
     (* ...AND THE BANNER'S CREDENTIAL AND CONVERSION (lane IO-LEAF,
        M6a(2), step 3).  It used to be the PAYMENT itself, linear and spent
        once, so only round 0 could reach the wire through the application's
        own ledger; what crosses now is the banner-owed credential AT COUNT 0
-       ([Wb 0], riding the console lease from here on -- the lease's payload
-       per count is the pair [UkInit.init_rd Rdl Wb]) and a PERSISTENT
+       ([(cc_wb Cr) 0], riding the console lease from here on -- the lease's payload
+       per count is the pair [UkInit.init_rd (cc_rd Cr) (cc_wb Cr)]) and a PERSISTENT
        conversion of it into the payment at any count and any record, so
        /init's restart loop keeps the conversion and pays whenever the
        lease comes back with one.  What the payment's last byte leaves is
-       the round-open credential at the same count ([Wp n], lane M6b). *)
-    Wb 0%nat -∗
+       the round-open credential at the same count ([(cc_wp Cr) n], lane M6b). *)
+    (cc_wb Cr) 0%nat -∗
     □ (∀ (n : nat) (N' : uk_names Σ),
-         Wb n -∗ UkInitMain.kinit_banner0 N' stc (Wp n)) -∗
+         (cc_wb Cr) n -∗ UkInitMain.kinit_banner0 N' stc ((cc_wp Cr) n)) -∗
     (* ...and the two diagnostics' conversions (lane M6b), likewise *)
-    UkInitMain.kinit_diag_law stc Wp Wb -∗
+    UkInitMain.kinit_diag_law stc (cc_wp Cr) (cc_wb Cr) -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
   Proof.
     intros Hne Hkt Hok Hroom Hlen Hl0 Hnpk Hcw Hpsok_free Hlzf.
@@ -589,7 +587,7 @@ Section UInitKernel.
               0x3000 <= spv - 8 * Z.of_nat (2 + (4 + (12 + (12 + (4 + n0)))))
                         + Z.of_nat j < spv)
       by (intros j Hj; clear -Hj Hroom; lia).
-    iApply (init_uexec_slot T Cns stc Wp Wb Rdl cn W' n0 Hne Hkt).
+    iApply (init_uexec_slot T Cns stc Cr cn W' n0 Hne Hkt).
     - rewrite Hpc. exact init_start_pc.
     - exact (init_img_sub_of_elf M Himg).
     - exact Hx.
@@ -640,34 +638,33 @@ Section UInitKernel.
      exactly as era-local as the lease is; an opaque [iProp] threaded the
      way [T] is. *)
   (* ...AND THE CREDENTIAL THE BANNER HANDS ON (lane IO-LEAF, M4a(2), step
-     3; M6b) is [Wp n], a family: what the payment's last byte leaves behind at
+     3; M6b) is [(cc_wp Cr) n], a family: what the payment's last byte leaves behind at
      line boundary [n] is the APPLICATION's to say, and this tier cannot
      name it. *)
   (* ...AND ITS THIRD CONJUNCT (lane IO-LEAF, M5) is the application's own
-     per-position READ credential at 0 -- the [Rdl] half of the console
-     lease's payload ([UkInit.init_rd Rdl Wb]), which the shell gets at
+     per-position READ credential at 0 -- the [(cc_rd Cr)] half of the console
+     lease's payload ([UkInit.init_rd (cc_rd Cr) (cc_wb Cr)]), which the shell gets at
      every fork and gives back at every reap.  For the echo era it is
      [EchoOut.eturn]'s own [dl_cnt v (1/2) 0], which is why it arrives here
      on the SAME boot resource as the turn.  ITS FOURTH (step 3) is the
-     write half of the same turn: the banner-owed credential at 0, [Wb 0],
+     write half of the same turn: the banner-owed credential at 0, [(cc_wb Cr) 0],
      which the pair carries beside the read half and every later round
      gets back from the shell it reaped. *)
   Definition init_boot_pay (T Cns : iProp Σ) (cn : cons_names)
-      (stc : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
+      (stc : fdstate) (Cr : cons_cred Σ)
       : iProp Σ :=
-    (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat ∗ Rdl 0%nat
-     ∗ Wb 0%nat
+    (init_cons_dance_all T Cns stc ∗ ucons_reader cn 0%nat ∗ (cc_rd Cr) 0%nat
+     ∗ (cc_wb Cr) 0%nat
      ∗ □ (∀ (n : nat) (N' : uk_names Σ),
-            Wb n -∗ UkInitMain.kinit_banner0 N' stc (Wp n))
+            (cc_wb Cr) n -∗ UkInitMain.kinit_banner0 N' stc ((cc_wp Cr) n))
      (* ...AND THE TWO DIAGNOSTICS' CONVERSIONS (lane M6b), LAST: "init:
-        exec sh failed" (21 bytes, leaving the next sub-round's [Wb n]) and
+        exec sh failed" (21 bytes, leaving the next sub-round's [(cc_wb Cr) n]) and
         "init: fork failed" (18 bytes, leaving nothing), both paid from the
-        round-open credential [Wp n] the banner leaves. *)
-     ∗ UkInitMain.kinit_diag_law stc Wp Wb)%I.
+        round-open credential [(cc_wp Cr) n] the banner leaves. *)
+     ∗ UkInitMain.kinit_diag_law stc (cc_wp Cr) (cc_wb Cr))%I.
 
   Lemma init_boot_con (T Cns : iProp Σ) `{!Persistent T} `{!Timeless T}
-      (stc : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
-      `{HRdl : !forall i : nat, Timeless (Rdl i)} `{HWb : !forall i : nat, Timeless (Wb i)}
+      (stc : fdstate) (Cr : cons_cred Σ)
       (cn : cons_names)
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (n0 : nat) :
@@ -701,13 +698,13 @@ Section UInitKernel.
        wands").  With the [□] written down, the intro is structural and no
        search runs; the caller pays the box once
        ([UInitBoot.init_deps_of_sup]). *)
-    □ UkInit.init_deps T -∗ udep -∗ UkInit.init_cons_sup cn T Cns stc Wp Wb Rdl -∗
+    □ UkInit.init_deps T -∗ udep -∗ UkInit.init_cons_sup cn T Cns stc Cr -∗
     □ (∀ W' : uvis,
          ⌜kexec_image_ok ElfUser.init_elf na alen afun sts W'⌝ -∗
          ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗
          ⌜uvis_lazy W' = false⌝ -∗
          my_pay (uvis_gen W') (fun _ => True)%I -∗
-         init_boot_pay T Cns cn stc Wp Wb Rdl -∗ uslot W').
+         init_boot_pay T Cns cn stc Cr -∗ uslot W').
   Proof.
     (* THE BUNDLE IS NEVER TAKEN APART: it goes in through the box and
        straight out into [init_slot_of_kexec]'s own linear premise.  No
@@ -716,7 +713,7 @@ Section UInitKernel.
     intros Hne Hkt Hroom Hlen Hl0 Hnpk Hpsok.
     iIntros "#Hdp #Hdep #Hxs !>"
       (W') "%Hok %Hcw %Hlz #Hmp (Hdn & Hrd & Hrd0 & Hbn & #Hblaw & #Hdlaw)".
-    iApply (init_slot_of_kexec T Cns stc Wp Wb Rdl cn na alen afun sts W' n0
+    iApply (init_slot_of_kexec T Cns stc Cr cn na alen afun sts W' n0
               Hne Hkt Hok Hroom Hlen Hl0 Hnpk Hcw Hpsok Hlz
               with "Hdp Hdep Hxs Hdn Hrd Hrd0 Hbn Hblaw Hdlaw Hmp").
   Qed.

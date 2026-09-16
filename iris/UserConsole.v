@@ -60,6 +60,52 @@ Local Open Scope Z_scope.
 (* ===================================================================== *)
 (*  1.  THE POSITION PAIR, AND THE TOKEN AT THE NARROW CLASS              *)
 (* ===================================================================== *)
+(* =================================================================== *)
+(*  THE CONSOLE CREDENTIAL                                              *)
+(* =================================================================== *)
+(*  The six predicates the console's supply is parametric in.  They used *)
+(*  to travel as six separate arguments through every lemma of the seam, *)
+(*  which is why [init_cons_sup_of_sh_slot] below once read as five      *)
+(*  predicates and ten law hypotheses: the application had to hand each  *)
+(*  one over at the call.  Bundled here, the application builds the      *)
+(*  record ONCE ([AppEcho]'s side: [echo_cc]) and discharges the laws    *)
+(*  ONCE ([echo_cc_holds]), and the seam takes a pair.                   *)
+(*                                                                      *)
+(*  The taint is NOT a field: it comes from the application's interface  *)
+(*  ([RiscvPtsto.app_iface]'s [ai_kill]) and is already threaded         *)
+(*  separately everywhere the credential goes.  A second copy here would *)
+(*  be a second name for the same resource, and the seam's lemmas would  *)
+(*  then need an equation between them.                                 *)
+(*                                                                      *)
+(*  IT LIVES HERE, at the console lease's own altitude, because both    *)
+(*  branches of the U tier have to see it: /init's chain ([UkInit],      *)
+(*  [UkInitMain], [UInitKernel]) takes it where it took [Wp Wb Rdl] and  *)
+(*  two [Timeless] binders, and sh's ([UInitSh]) where it took five      *)
+(*  predicates and ten laws.  [UkInit] and [UkSh] are siblings; this     *)
+(*  file is below both.                                                  *)
+Record cons_cred (Σ : gFunctors) := MkConsCred {
+  (* the per-position credential on the lease (lane IO-LEAF, M5) *)
+  cc_rd : nat -> iProp Σ;
+  cc_rd_timeless : forall i : nat, Timeless (cc_rd i);
+  (* ...and the mid-line pieces of the same lease (M5(3)) *)
+  cc_mid : gname -> nat -> iProp Σ;
+  (* ...the era's write credential as the command loop carries it (M6a(3)) *)
+  cc_wc : nat -> nat -> iProp Σ;
+  (* ...the banner-owed one (step 3) *)
+  cc_wb : nat -> iProp Σ;
+  cc_wb_timeless : forall i : nat, Timeless (cc_wb i);
+  (* ...and the round-open one /init lends on the console row (M6b) *)
+  cc_wp : nat -> iProp Σ;
+}.
+Arguments MkConsCred {Σ} _ _ _ _ _ _ _.
+Arguments cc_rd {Σ} _ _.
+Arguments cc_mid {Σ} _ _ _.
+Arguments cc_wc {Σ} _ _ _.
+Arguments cc_wb {Σ} _ _.
+Arguments cc_wp {Σ} _ _.
+Global Existing Instance cc_rd_timeless.
+Global Existing Instance cc_wb_timeless.
+
 Section UserConsole.
   (* [Xv6Cameras.uartGhostG] and NOT [Xv6G.xv6G]: this file is meant to be
      named from the user-program tier, which binds the narrow classes

@@ -1,7 +1,21 @@
 # Project: the ECHO application — `echo hello world` end to end, file system unmodified
 
+**STATUS: COMPLETE, ARCHIVED 2026-09-16.**  The theorem is closed
+(`UInitBootAdequacy.echo_adequacy_echoΣ`, audited by `make
+audit-echo-only`), nothing is owed by any lane, and the post-QED redesign
+that re-cut the console claim underneath it has landed too
+([`post-qed-redesign.md`](post-qed-redesign.md), archived beside it).  Its WAIT-EXIT
+design shipped too — see the section at the end of this file for where each
+piece lives.
+
+READ THE SOURCE, NOT THIS FILE, for anything that is in the tree today:
+`../design/applications.md` for the two-instance claim and the trace side,
+`../design/user-*.md` for the program tier, and `iris/EchoOut.v` /
+`iris/WpUart.v` for the console claim (§E5 below describes the design the
+redesign REPLACED — see the banner there).
+
 Design of record: [`../design/applications.md`](../design/applications.md).
-This file is what is LEFT to make `AppEcho` an instance of
+This file was what is LEFT to make `AppEcho` an instance of
 `App.xv6_app_adequacy`, in execution order.  The scaffold itself — the
 record, the theorem, the two-instance claim (running in `app_inv`, durable
 in the crash slot), the transport, the birth step, the era mint — is
@@ -61,8 +75,8 @@ md5 `a78bf9a051fb56b084795d782df04045`.
 > Where a design has since been implemented, the source is the authority and
 > the subsystem note is the account — `../design/applications.md` for the
 > two-instance claim and the trace side, `../design/user-*.md` for the
-> program tier. What is PROPOSED but not owed is in
-> [`post-qed-redesign.md`](post-qed-redesign.md).
+> program tier. The redesign that was PROPOSED here landed and is archived
+> beside this file ([`post-qed-redesign.md`](post-qed-redesign.md)).
 
 ## What is in `iris/AppEcho.v` today
 
@@ -180,17 +194,22 @@ and echo's bundles landed with it, and Q4 stopped being provisional when
 `AppEcho.echo_pred` shipped as `echo_taint ∨ (⌜echo_fs_pure av⌝ ∗
 cons_state r av)`.
 
-WHAT IS PROPOSED BUT NOT OWED lives in
-[`post-qed-redesign.md`](post-qed-redesign.md) (one console I/O invariant;
-R1's pure half landed, the rest waits on the owner's choice between a
-persistent-and-split echo obligation and a linear one).  The one change that
-would make the theorem SAY more is the trace predicate's known widening,
-recorded in [`../design/applications.md`](../design/applications.md) §5.
+THE REDESIGN THAT WAS PROPOSED HERE LANDED (R1-R4, 2026-09-14 to -16; see
+[`post-qed-redesign.md`](post-qed-redesign.md), archived beside this file).
+The echo obligation went the persistent-and-split way, with the arm in a
+kernel ghost (`WpUart.uart_arm`).  Only its optional R5 is left, and nothing
+waits on it.  The one change that would make the theorem SAY more is the
+trace predicate's known widening, recorded in
+[`../design/applications.md`](../design/applications.md) §5.
 
-## E5 — the console I/O claim: the design that is in the tree
+## E5 — the console I/O claim: the design that WAS in the tree (SUPERSEDED)
 
-(The redesign that would replace it is `post-qed-redesign.md`; this is
-what the code does today.)
+**This section describes the THREE-claim console boundary
+(`riscv_out_res` / `riscv_in_res` / `riscv_win_res`) that the post-QED
+redesign replaced with ONE claim over a `ConsLog.cons_hist`.  None of the
+three exists any more.  It is kept because the reasoning that forced each
+piece is what the merged claim had to keep answering; for what the code
+does TODAY read `iris/ConsLog.v`, `iris/WpUart.v` and `iris/EchoOut.v`.**
 
 E5 -- THE CONSOLE I/O CLAIM: DESIGN OF RECORD (coordinator, 2026-09-13,
 REVISED after the owner's ruling "the ring doesn't matter, it's internal to
@@ -298,8 +317,36 @@ u_out u`, `expected_rel_ins_prefix`/`expected_rel_out_mono`.
 - Hphi: the ledger `echo_R γ h` records `good_out` per cycle off `Htx`'s
   claim at the pop; `echo_phi h` follows with `echo_R_untainted`.
 
+## WAIT-EXIT — designed 2026-09-09, and SHIPPED
 
-## Designed but never scheduled
+**The design below is IN THE TREE.**  It was written as a proposal on the
+owner's ruling of 2026-09-09 and the lanes landed; the "NOT SCHEDULED YET"
+line at the end of it is stale (it survived the bulk deletion of this file's
+landing history — the "WX-WAIT LANDED" marker that used to sit beside it is
+still quoted in `../design/user-fd.md`).  Where each piece lives:
+
+- **the payment rule** — `ChildTok.gen_pay : child_tok γ pid Q -∗ exit_tok γ
+  pid xs -∗ ▷ Q xs` ("what the whole file exists for"), with
+  `gen_pay_timeless` for a payload the parent can strip without a step.
+- **fork's two pieces** — `UkFork.wp_uk_ecall_fork` gives the parent
+  `ChildTok.child_tok γ pidv Q`, the payload chosen by the parent.
+- **the escrow** — `ChildTok.exit_tok γ pid xs` (the child's own `my_pay`
+  reading beside `Q' xs`); a KILLED child pays `Q (-1)` through
+  `ChildTok.kill_owed_pay`.
+- **wait returns it** — `UserChildren.wait_ans`'s reaping arm carries
+  `exit_tok γ' rv xs ∗ gen_uniq cs rv γ'`, relayed by
+  `UkRunSys.wp_uk_ecall_wait_status` and up through `UexecRet.uwait_ans`.
+- **stale tokens cannot combine** — keyed by GENERATION, not pid
+  (`ChildTok.exit_tok_tok_ne`, `gen_uniq`), which is WX-KEY's content.
+- **init** — `UkInit.wp_kinit_wait`, which cashes "into the payload its fork
+  chose (`ChildTok.gen_pay`)".
+
+**What is NOT shipped is the USE, and it is not a wait-exit task.**  The last
+line of the plan — "L7 then hands the console-input resource as `Q`" — waits
+on there being a user-tier console-INPUT resource to hand over.  The landed
+echo theorem does not need one: it is about the console WIRE against the
+input discipline.  Whoever states a console-input theorem inherits a
+mechanism that is already there.
 
 #### WAIT-EXIT — DESIGN OF RECORD (2026-09-09, owner asked for design + implementation)
 
@@ -441,6 +488,7 @@ THE SHAPE (to be designed in full when scheduled).  A per-child EXIT DEPOSIT:
   resource into sh (`init_sh_slot`'s `Pay` is where it enters); sh's exit
   returns it; init's wait gets it back and re-forks with it.  The theorem's
   console-input statement (L7) then has exactly one reader at a time.
-NOT SCHEDULED YET ("at some point"); depends on L7's user-tier input resource
-to have something to hand over.  Prerequisite reading for whoever designs it:
-proc-struct.md §2 (pid cell ownership), SpecKexit/SpecKwait headers, WaitInv.
+~~NOT SCHEDULED YET ("at some point"); depends on L7's user-tier input
+resource to have something to hand over.~~  STALE — the mechanism shipped;
+see this section's banner.  Only the last clause still holds: the console-
+input resource L7 would hand over as `Q` does not exist yet.

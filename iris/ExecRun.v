@@ -663,4 +663,303 @@ Section ExecRun.
     - iIntros (h') "Hcwd _ Hrun". iApply ("Hcont" with "Hcwd Hrun").
   Qed.
 
+  (* ------------------------------------------------------------------ *)
+  (*  6.  (W) AT A CLAIM THAT DOES NOT PIN THE LINK COUNT                 *)
+  (*                                                                      *)
+  (*  design/user-tree.md section 6, TL-2's FINDING 2, and this is the     *)
+  (*  ExecRun half of its price (the other is                             *)
+  (*  [PinnedObs.pin_resolves_abs], section 10 there).                     *)
+  (*                                                                      *)
+  (*  WHY IT IS NEEDED.  [exec_walk_of] names an [anode] -- a node WITH    *)
+  (*  its link count -- because [ExecBundle.ex_node_id] concludes [b = a]. *)
+  (*  An application whose claim is about the NAMESPACE (AppTree's owned   *)
+  (*  subtree) pins a row's CONTENT and not its count, and the count is    *)
+  (*  genuinely not determined: two views the claim admits may differ in   *)
+  (*  the terminal row's [nlink] (a hard link outside the subtree), so     *)
+  (*  there is no [a] the identification could be stated at.  Hence a      *)
+  (*  CONTENT-level twin of the triple, and a rule at it.                  *)
+  (*                                                                      *)
+  (*  WHY IT COSTS NOTHING.  The count is never SPENT: exec's arm (a)      *)
+  (*  reads the image out of [AFile f] and substitutes the count it was    *)
+  (*  handed, and its arm (b) refutes [~ anode_loadable a], which is a     *)
+  (*  fact about [an_node a] alone.  So the three lemmas below are         *)
+  (*  [ExecBundle]'s three with [ex_node_id] replaced by [ex_node_abs] and *)
+  (*  the same proofs; ExecBundle's own statements are untouched, and      *)
+  (*  [exec_walk_of_abs_of_walk] makes every landed [exec_walk_of]         *)
+  (*  supplier -- the pin's and the taint's -- feed the new rule as well.  *)
+  (* ------------------------------------------------------------------ *)
+
+  (* [ExecBundle.ex_node_id] at the observed row's CONTENT *)
+  Definition ex_node_abs (T : iProp Σ) (Pfin : Z -> iProp Σ)
+      (Φo : aview -> Z -> anode -> iProp Σ) (nd : absnode) : iProp Σ :=
+    (□ (∀ (v : aview) (i : Z) (b : anode),
+          Pfin i -∗ Φo v i b -∗ ⌜an_node b = nd⌝ ∨ T))%I.
+
+  Global Instance ex_node_abs_persistent T Pfin Φo nd :
+    Persistent (ex_node_abs T Pfin Φo nd).
+  Proof. rewrite /ex_node_abs. apply _. Qed.
+
+  Lemma ex_node_abs_of_id (T : iProp Σ) (Pfin : Z -> iProp Σ)
+      (Φo : aview -> Z -> anode -> iProp Σ) (a : anode) :
+    ex_node_id T Pfin Φo a -∗ ex_node_abs T Pfin Φo (an_node a).
+  Proof.
+    rewrite /ex_node_id /ex_node_abs. iIntros "#Hid !>" (v i b) "HP Hr".
+    iDestruct ("Hid" $! v i b with "HP Hr") as "[%Hb | HT]";
+      [ iLeft; iPureIntro; by rewrite Hb | iRight; iExact "HT" ].
+  Qed.
+
+  Definition exec_walk_of_abs (cw : Z) (T : iProp Σ) (pl : list (bv 8))
+      (nd : absnode) : iProp Σ :=
+    (∃ (P Pmiss : nat -> Z -> iProp Σ)
+       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)),
+       ex_start fsc_fs cw P Pmiss pl ∗
+       pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Fo ∗
+       ex_node_abs T (P (length (path_elems pl))) Fo.(pf_recv) nd)%I.
+
+  (* the forgetful direction: an [anode]-level walk is a content-level one *)
+  Lemma exec_walk_of_abs_of_walk (cw : Z) (T : iProp Σ) (pl : list (bv 8))
+      (a : anode) :
+    exec_walk_of cw T pl a -∗ exec_walk_of_abs cw T pl (an_node a).
+  Proof.
+    rewrite /exec_walk_of /exec_walk_of_abs.
+    iIntros "H". iDestruct "H" as (P Pmiss Fo) "(Hst & Hobs & #Hid)".
+    iExists P, Pmiss, Fo. iFrame "Hst Hobs".
+    iApply (ex_node_abs_of_id with "Hid").
+  Qed.
+
+  (* SUPPLIER: A CONTENT PIN ([PinnedObs.pin_resolves_abs]).  The tree
+     application's frozen deed is one ([TreeExec.exec_walk_of_own]); so is
+     any pin that names a row up to its count. *)
+  Lemma exec_walk_of_abs_pin (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T}
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (ino : Z) (nd : absnode) :
+    pin_resolves_abs Pin cw pl hops ino nd ->
+    □ (∀ v : aview, app_pred app_run v -∗
+                      app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv fsc_fs -∗
+    exec_walk_of_abs cw T pl nd.
+  Proof.
+    intros Hres. iIntros "#Hcl #Hinv". rewrite /exec_walk_of_abs.
+    iExists (pobs_P T hops), (pobs_Pmiss T), (pobs_Fo Pin T).
+    iDestruct (pinned_obs_abs fsc_fs Pin T (pobs_Pmiss T) cw pl hops ino nd
+                 Hres with "[] Hcl Hinv") as "(Hw & Ho & #Hid)";
+      [ iApply pobs_miss_taint_Pmiss | ].
+    iFrame "Hw Ho". rewrite /ex_node_abs /pobs_Fo /pfam_triv. cbn [pf_recv].
+    iIntros "!>" (v i b) "HP Hr".
+    iDestruct ("Hid" $! v i b with "HP Hr") as "[%Hid' | HT]";
+      [ iLeft; iPureIntro; exact (proj2 Hid') | iRight; iExact "HT" ].
+  Qed.
+
+  Lemma exec_walk_of_abs_taint (T : iProp Σ) (cw : Z) (pl : list (bv 8))
+      (nd : absnode) :
+    □ T -∗ exec_walk_of_abs cw T pl nd.
+  Proof.
+    iIntros "#HT".
+    iPoseProof (exec_walk_of_taint T cw pl (MkAnode nd 0%nat) with "HT") as "Hw".
+    iApply (exec_walk_of_abs_of_walk cw T pl (MkAnode nd 0%nat) with "Hw").
+  Qed.
+
+  (* ---- 6a.  THE BUNDLE, AT THE CONTENT ------------------------------- *)
+
+  (* [ExecBundle.exec_slot_of_entry_at]'s proof, at [ex_node_abs]: arm (a)
+     reads [f] out of the content and keeps the kernel's own count, arm (b)
+     refutes [~ anode_loadable] from the content alone. *)
+  Lemma exec_slot_of_entry_at_abs (X : uvis -d> iPropO Σ) (T : iProp Σ)
+      (Pfin : Z -> iProp Σ) (Φo : aview -> Z -> anode -> iProp Σ)
+      (f : elf_bytes) (Pay : iProp Σ) (Q : Z -> iProp Σ)
+      (cw : Z) (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
+    kexec_loadable f ->
+    ex_node_abs T Pfin Φo (AFile f) -∗
+    image_entry_at f na alen afun sts cw cs pidv Q Pay X -∗
+    image_entry_taint T Q X -∗
+    Pay -∗
+    exec_slot_pre X Q Pfin Φo cw na alen afun sts cs pidv.
+  Proof.
+    intros Hload. iIntros "#Hid #Hcon #Hgen HPay".
+    rewrite /exec_slot_pre /ex_node_abs /image_entry_at /image_entry_taint.
+    iSplitL "HPay".
+    - (* ---- ARM (a): the observed content IS the caller's file ---- *)
+      iIntros (av' i f' nl' W') "HP Hrecv %Hload' %Hok %Hcwq %Hlzq %Hchq %Hpiq #Hp".
+      iPoseProof ("Hid" $! av' i (MkAnode (AFile f') nl')) as "Hid'".
+      iDestruct ("Hid'" with "HP Hrecv") as "[%Hnode | HT]"; last first.
+      { iApply ("Hgen" with "HT Hp"). }
+      cbn [an_node] in Hnode. injection Hnode as Hf. subst f'.
+      iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
+        [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq ].
+    - (* ---- ARM (b): a loadable content IS loadable ---- *)
+      iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq #Hp".
+      iPoseProof ("Hid" $! av' i a) as "Hid'".
+      iDestruct ("Hid'" with "HP Hrecv") as "[%Hnode | HT]"; last first.
+      { iApply ("Hgen" with "HT Hp"). }
+      exfalso. apply Hnload. exists f, (an_nlink a).
+      split; [ | exact Hload ].
+      destruct a as [nd k]. cbn [an_node an_nlink] in Hnode |- *.
+      by rewrite Hnode.
+  Qed.
+
+  Lemma sys_exec_slot_of_entry_abs (X : uvis -d> iPropO Σ) (T : iProp Σ)
+      (P : nat -> Z -> iProp Σ) (Φo : aview -> Z -> anode -> iProp Σ)
+      (f : elf_bytes) (Pay : iProp Σ) (Q : Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (M : gmap Z (bv 8)) (pv av : mword 64)
+      (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
+    kexec_loadable f ->
+    exec_path_of M pv pl ->
+    ex_node_abs T (P (length (path_elems pl))) Φo (AFile f) -∗
+    image_entry f M av sts cw cs pidv Q Pay X -∗
+    image_entry_taint T Q X -∗
+    Pay -∗
+    pf_at (fun S => sys_exec_slot_pre S Q P Φo cw M pv av sts cs pidv)
+      (MkPfam X Pay).
+  Proof.
+    intros Hload Hpath. iIntros "#Hid #Hcon #Hgen HPay".
+    rewrite /pf_at. cbn [pf_recv pf_refund]. iSplit; [ | iExact "HPay" ].
+    rewrite /sys_exec_slot_pre. iIntros (pl' na alen afun) "%Hpath' %Hargs".
+    rewrite (exec_path_of_uniq M pv pl' pl Hpath' Hpath).
+    iApply (exec_slot_of_entry_at_abs X T (P (length (path_elems pl))) Φo f
+              Pay Q cw na alen afun sts cs pidv Hload with "Hid [] Hgen HPay").
+    iApply (image_entry_at_of f M av sts cw cs pidv Q Pay X na alen afun Hargs
+              with "Hcon").
+  Qed.
+
+  Lemma exec_bundle_of_abs (X : uvis -d> iPropO Σ) (T : iProp Σ)
+      (P Pmiss : nat -> Z -> iProp Σ)
+      (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
+      (cw : Z) (pl : list (bv 8)) (f : elf_bytes)
+      (Pay : iProp Σ) (Q : Z -> iProp Σ)
+      (M : gmap Z (bv 8)) (pv av : mword 64) (sts : list fdstate)
+      (cs : gset gname) (pidv : mword 32) :
+    kexec_loadable f ->
+    exec_path_of M pv pl ->
+    ex_start fsc_fs cw P Pmiss pl -∗
+    pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Fo -∗
+    ex_node_abs T (P (length (path_elems pl))) Fo.(pf_recv) (AFile f) -∗
+    image_entry f M av sts cw cs pidv Q Pay X -∗
+    image_entry_taint T Q X -∗
+    Pay -∗
+    sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L fsc_fs) fsc_fs cw Q P Pmiss Fo
+      M pv av sts cs pidv.
+  Proof.
+    intros Hload Hpath. iIntros "Hwalk Hobs #Hid #Hcon #Hgen HPay".
+    rewrite /sys_exec_au_pre. iSplitL "Hwalk".
+    { iIntros (pl') "%Hpath'".
+      rewrite (exec_path_of_uniq M pv pl' pl Hpath' Hpath). iExact "Hwalk". }
+    iSplitL "Hobs"; [ iExact "Hobs" | ].
+    iApply (sys_exec_slot_of_entry_abs X T P Fo.(pf_recv) f Pay Q cw pl M pv av
+              sts cs pidv Hload Hpath with "Hid Hcon Hgen HPay").
+  Qed.
+
+  (* ---- 6b.  THE DEPOSIT AND THE RULE, AT THE CONTENT ----------------- *)
+
+  Lemma sbundle_pay_refR_of_exec_abs (X : uvis -d> iPropO Σ) (T : iProp Σ)
+      (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
+      (fdv : list fdstate) (c : Z) (gn : gname) (cs : gset gname)
+      (pidv : mword 32) (pv av : mword 64)
+      (pl : list (bv 8)) (f : elf_bytes) (Pay R : iProp Σ) :
+    kexec_loadable f ->
+    m !!! Regidx a0_idx = pv ->
+    m !!! Regidx a1_idx = av ->
+    exec_path_of M pv pl ->
+    □ (Pay -∗ R) -∗
+    my_pay gn (ukn_pay N) -∗
+    exec_walk_of_abs c T pl (AFile f) -∗
+    image_entry f M av fdv c cs pidv (ukn_pay N) Pay X -∗
+    image_entry_taint T (ukn_pay N) X -∗
+    Pay -∗
+    sbundle_pay_refR X (ukn_pay N) R
+      (uvis_of_run m pc M pm sz fdv c gn cs pidv false).
+  Proof.
+    intros Hload Ha0 Ha1 Hpath.
+    iIntros "#Hrf Hmp Hw #Hcon #Hgen HPay".
+    iDestruct "Hw" as (P Pmiss Fo) "(Hst & Hobs & #Hid)".
+    assert (Ea0 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false))
+                    (tf_arg_idx 0) = pv)
+      by (etransitivity; [ exact (tf_of_arg0 m pc) | exact Ha0 ]).
+    assert (Ea1 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false))
+                    (tf_arg_idx 1) = av)
+      by (etransitivity; [ exact (tf_of_arg1 m pc) | exact Ha1 ]).
+    iApply (sbundle_pay_exec_intro_refR X
+              (uvis_of_run m pc M pm sz fdv c gn cs pidv false)
+              (ukn_pay N) R P Pmiss Fo Pay with "Hrf [Hmp]").
+    { cbn [uvis_gen uvis_of_run]. iExact "Hmp". }
+    rewrite Ea0 Ea1. cbn [uvis_M uvis_cwd uvis_fd uvis_ch uvis_pid uvis_of_run].
+    iApply (exec_bundle_of_abs X T P Pmiss Fo c pl f Pay (ukn_pay N)
+              M pv av fdv cs pidv Hload Hpath
+              with "Hst Hobs Hid Hcon Hgen HPay").
+  Qed.
+
+  (* [uexec_sup_run] at the content: the same loan, the same entry, the
+     walk at a node the caller knows only up to its link count. *)
+  Definition uexec_sup_run_abs (N : uk_names Σ) (pv av : mword 64)
+      (c : Z) (T : iProp Σ) (pl : list (bv 8)) (f : elf_bytes)
+      (Pay : iProp Σ) : iProp Σ :=
+    (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
+       (fdv : list fdstate) (cs : gset gname) (pidv : mword 32),
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
+       ⌜exec_path_of M pv pl⌝ ∗
+       exec_walk_of_abs c T pl (AFile f) ∗
+       image_entry f M av fdv c cs pidv (ukn_pay N) Pay uslot ∗
+       Pay)%I.
+
+  Lemma udepw_at_refR_of_sup_abs (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (pv av : mword 64)
+      (c : Z) (T : iProp Σ) (pl : list (bv 8)) (f : elf_bytes)
+      (Pay R : iProp Σ) :
+    kexec_loadable f ->
+    m !!! Regidx a0_idx = pv ->
+    m !!! Regidx a1_idx = av ->
+    □ (Pay -∗ R) -∗
+    image_entry_taint T (ukn_pay N) uslot -∗
+    uexec_sup_run_abs N pv av c T pl f Pay -∗
+    udepw_at_refR N m pc c R.
+  Proof.
+    intros Hload Ha0 Ha1. iIntros "#Hrf #Hgen Hsup".
+    rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "Hmp Hh Hf".
+    rewrite /uexec_sup_run_abs.
+    iDestruct ("Hsup" $! M pm sz fdv cs pidv with "Hh Hf")
+      as "(Hh & Hf & %Hpath & Hw & #Hcon & HPay)".
+    iFrame "Hh Hf".
+    iApply (sbundle_pay_refR_of_exec_abs uslot T N m pc M pm sz fdv c gn cs pidv
+              pv av pl f Pay R Hload Ha0 Ha1 Hpath
+              with "Hrf Hmp Hw Hcon Hgen HPay").
+  Qed.
+
+  (* THE RULE at a content-level walk.  [wp_uk_ecall_exec_run]'s statement
+     with the link count gone -- nothing else about it moves, and the two
+     are interderivable at a supply that names a count
+     ([exec_walk_of_abs_of_walk]). *)
+  Lemma wp_uk_ecall_exec_run_abs (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (avail : nat) (c : Z) (T : iProp Σ)
+      (pv av : mword 64)
+      (pl : list (bv 8)) (f : elf_bytes) (Pay R : iProp Σ) :
+    usysno m = USYS_exec ->
+    m !!! Regidx a0_idx = pv ->
+    m !!! Regidx a1_idx = av ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    kexec_loadable f ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    UserCwd.ucwd (ukn_cwd N) c -∗
+    □ (Pay -∗ R) -∗
+    image_entry_taint T (ukn_pay N) uslot -∗
+    uexec_sup_run_abs N pv av c T pl f Pay -∗
+    (∀ h' : CpuId,
+       UserCwd.ucwd (ukn_cwd N) c -∗
+       R -∗
+       urun N h'
+         (<[Regidx (mword_of_int 10) := (mword_of_int (-1) : mword 64)]> m)
+         (add_vec_int pc 4) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof.
+    intros Hn Ha0 Ha1 Hal4 Hload.
+    iIntros "#Hi Hrun Hcwd #Hrf #Hgen Hsup Hcont".
+    iApply (wp_uk_ecall_exec_at_cwd_refR N h m pc avail c R Hn Hal4
+              with "Hi Hrun Hcwd [Hsup] Hcont").
+    iApply (udepw_at_refR_of_sup_abs N m pc pv av c T pl f Pay R
+              Hload Ha0 Ha1 with "Hrf Hgen Hsup").
+  Qed.
+
 End ExecRun.

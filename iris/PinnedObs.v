@@ -599,3 +599,195 @@ Section PinnedObs.
   Qed.
 
 End PinnedObs.
+
+(* ===================================================================== *)
+(*  10.  THE ABSNODE PIN: a claim that pins a node's CONTENT and not its  *)
+(*       LINK COUNT                                                       *)
+(*                                                                       *)
+(*  ADDITIVE, and nothing above it moves (design/user-tree.md section 6,  *)
+(*  TL-2's FINDING 2).  [pin_resolves_at] pins the terminal row as an     *)
+(*  [anode] -- link count INCLUDED -- and an application whose claim is   *)
+(*  about the NAMESPACE rather than about link counts cannot supply it:   *)
+(*  [AppTree]'s tree claim pins a node's content (TL-1 dropped [nlink]    *)
+(*  from [absnode] on purpose), so the count is whatever the view happens *)
+(*  to carry AT EACH ADMITTED VIEW and no single [anode] is good at all   *)
+(*  of them.                                                             *)
+(*                                                                       *)
+(*  WHAT THE SPLIT IS.  Nothing in the WALK ever reads the count          *)
+(*  ([pobs_hop] uses only the [arun] conjunct), so the walk's premise is  *)
+(*  factored out as [pin_walks_at] and proved once more at it; what does  *)
+(*  read the row is the terminal IDENTIFICATION, and [pobs_node_abs] is   *)
+(*  [pobs_node] with its conclusion cut to the row's CONTENT -- which is  *)
+(*  all [ExecBundle.ex_node_id]'s consumers ever spend (exec's arm (a)    *)
+(*  reads the file out of [AFile f] and its arm (b) refutes               *)
+(*  [~ anode_loadable], both content-only) and all open's file arm needs. *)
+(*                                                                       *)
+(*  [pin_resolves_at] IMPLIES [pin_walks_at] ([pin_walks_at_of_resolves]) *)
+(*  so the two families below subsume sections 5-6 rather than competing  *)
+(*  with them; the landed statements are untouched.                       *)
+(* ===================================================================== *)
+
+(* the walk alone: the start rule, the terminal inum, and the run -- with
+   NOTHING said about the row at the end of it *)
+Definition pin_walks_at (Pin : aview -> Prop) (cw : Z) (pl : list (bv 8))
+    (hops : list Z) (ino : Z) : Prop :=
+  um_start_of cw pl = hops !!! 0%nat
+  /\ hops !!! (length (path_elems pl)) = ino
+  /\ (forall v : aview, Pin v -> arun v (hops !!! 0%nat) (path_elems pl) hops).
+
+(* ...and the pin at the CONTENT: the same walk, and at every view the
+   claim admits the terminal row is the [absnode] [nd] at SOME link count. *)
+Definition pin_resolves_abs (Pin : aview -> Prop) (cw : Z) (pl : list (bv 8))
+    (hops : list Z) (ino : Z) (nd : absnode) : Prop :=
+  pin_walks_at Pin cw pl hops ino
+  /\ (forall v : aview,
+        Pin v -> exists k : nat, v !! ino = Some (MkAnode nd k)).
+
+Lemma pin_walks_at_of_resolves (Pin : aview -> Prop) (cw : Z)
+    (pl : list (bv 8)) (hops : list Z) (ino : Z) (a : anode) :
+  pin_resolves_at Pin cw pl hops ino a -> pin_walks_at Pin cw pl hops ino.
+Proof.
+  intros (H0 & Hfin & Hpin). split_and!; [exact H0 | exact Hfin |].
+  intros v HP. exact (proj1 (Hpin v HP)).
+Qed.
+
+(* an [anode] pin is an [absnode] pin at the count it names *)
+Lemma pin_resolves_abs_of_at (Pin : aview -> Prop) (cw : Z)
+    (pl : list (bv 8)) (hops : list Z) (ino : Z) (nd : absnode) (k : nat) :
+  pin_resolves_at Pin cw pl hops ino (MkAnode nd k) ->
+  pin_resolves_abs Pin cw pl hops ino nd.
+Proof.
+  intros Hres. split; [exact (pin_walks_at_of_resolves _ _ _ _ _ _ Hres) |].
+  destruct Hres as (_ & _ & Hpin). intros v HP.
+  exists k. exact (proj2 (Hpin v HP)).
+Qed.
+
+Lemma pin_walks_at_of_abs (Pin : aview -> Prop) (cw : Z)
+    (pl : list (bv 8)) (hops : list Z) (ino : Z) (nd : absnode) :
+  pin_resolves_abs Pin cw pl hops ino nd -> pin_walks_at Pin cw pl hops ino.
+Proof. intros [Hw _]. exact Hw. Qed.
+
+Section PinnedObsAbs.
+  (* section 2's binder list verbatim *)
+  Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ}.
+
+  (* ONE HOP, at the walk-only premise.  [pobs_hop]'s proof with the pin's
+     third conjunct read as the run and nothing else. *)
+  Lemma pobs_hop_w (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (ino : Z)
+      (k : nat) (s : fname) :
+    pin_walks_at Pin cw pl hops ino ->
+    path_elems pl !! k = Some s ->
+    pobs_miss_taint T Pmiss -∗
+    □ (∀ v : aview, app_pred app_run v -∗
+                      app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv γfs -∗
+    ex_hop γfs (pobs_P T hops) Pmiss k s.
+  Proof.
+    intros (_ & _ & Hpin) Hk. iIntros "#Hmt #Hcl #Hinv".
+    rewrite /ex_hop /ax_hop /pobs_P.
+    iIntros (d ents dqv) "HP HF".
+    iDestruct "HP" as "[%Hd | #HT]"; last first.
+    { iModIntro. iFrame "HF".
+      destruct (ents !! s) as [c |]; [ by iRight | iApply ("Hmt" with "HT") ]. }
+    subst d.
+    iMod (inv_acc ⊤ appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I) "(>Hh & Hp & >%Hdom & #Hx)".
+    iAssert (▷ (app_pred app_run (abs_view I) ∗ (⌜Pin (abs_view I)⌝ ∨ T)))%I
+      with "[Hp]" as "Hpc".
+    { iNext. iApply ("Hcl" with "Hp"). }
+    iDestruct "Hpc" as "[Hp Hc]".
+    iMod "Hc".
+    iDestruct (pobs_elend_astep γfs (1/2)%Qp I (hops !!! k) dqv ents s
+                 with "Hh HF") as %Hae.
+    iMod ("Hclose" with "[Hh Hp]") as "_".
+    { iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
+      iPureIntro. exact Hdom. }
+    iModIntro. iFrame "HF".
+    iDestruct "Hc" as "[%HP | #HT]"; last first.
+    { destruct (ents !! s) as [c |]; [ by iRight | iApply ("Hmt" with "HT") ]. }
+    pose proof (arun_step_tot (abs_view I) (hops !!! 0%nat) (path_elems pl)
+                  hops k s (Hpin (abs_view I) HP) Hk) as Hst.
+    rewrite Hae in Hst. rewrite Hst. by iLeft.
+  Qed.
+
+  (* THE WHOLE WALK, at the walk-only premise ([pobs_walk]'s proof). *)
+  Lemma pobs_walk_w (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (ino : Z) :
+    pin_walks_at Pin cw pl hops ino ->
+    pobs_miss_taint T Pmiss -∗
+    □ (∀ v : aview, app_pred app_run v -∗
+                      app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv γfs -∗
+    ex_start γfs cw (pobs_P T hops) Pmiss pl.
+  Proof.
+    intros Hres. iIntros "#Hmt #Hcl #Hinv".
+    pose proof Hres as Hres'. destruct Hres' as (Hstart & _ & _).
+    rewrite /ex_start. iIntros (r Hr). iModIntro. iSplitR.
+    { rewrite /pobs_P. iLeft. iPureIntro. by rewrite Hr Hstart. }
+    rewrite /ex_hops_from /ax_hops_from.
+    iApply big_sepL_intro. iIntros "!>" (j s Hj).
+    rewrite lookup_drop in Hj.
+    iApply (pobs_hop_w γfs Pin T Pmiss cw pl hops ino (0 + j)%nat s Hres Hj
+              with "Hmt Hcl Hinv").
+  Qed.
+
+  (* THE IDENTIFICATION, CUT TO THE CONTENT ([pobs_node]'s proof): the
+     terminal cursor says the observed inum is the pin's and the receipt's
+     row is a row of a view the pin holds of, so the observed node's
+     CONTENT is the pinned one -- the count is whatever that view carried
+     and is never claimed. *)
+  Lemma pobs_node_abs (Pin : aview -> Prop) (T : iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (ino : Z) (nd : absnode)
+      (v : aview) (i : Z) (b : anode) :
+    pin_resolves_abs Pin cw pl hops ino nd ->
+    pobs_P T hops (length (path_elems pl)) i -∗
+    pobs_recv Pin T v i b -∗
+    ⌜i = ino /\ an_node b = nd⌝ ∨ T.
+  Proof.
+    intros ((_ & Hfin & _) & Hpin).
+    rewrite /pobs_P /pobs_recv.
+    iIntros "HP [%Hrow Hc]".
+    iDestruct "HP" as "[%Hi | HT]"; [ | iRight; iExact "HT" ].
+    iDestruct "Hc" as "[%HP | HT]"; [ | iRight; iExact "HT" ].
+    destruct (Hpin v HP) as (k & Hrowpin).
+    rewrite Hfin in Hi. subst i.
+    destruct (decide (an_nlink b = 0%nat)) as [Hz | Hnz].
+    { exfalso. rewrite (arow_at_gone v ino b Hrow Hz) in Hrowpin.
+      discriminate Hrowpin. }
+    rewrite (arow_at_live v ino b Hrow Hnz) in Hrowpin.
+    apply Some_inj in Hrowpin. subst b.
+    iLeft. iPureIntro. split; reflexivity.
+  Qed.
+
+  (* THE GENERAL LEMMA at the content pin: [pinned_obs]'s three pieces,
+     the third one cut to the row's content. *)
+  Lemma pinned_obs_abs (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (ino : Z) (nd : absnode) :
+    pin_resolves_abs Pin cw pl hops ino nd ->
+    pobs_miss_taint T Pmiss -∗
+    □ (∀ v : aview, app_pred app_run v -∗
+                      app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv γfs -∗
+      ex_start γfs cw (pobs_P T hops) Pmiss pl
+      ∗ pf_at (aopen_commit_at (fs_gamma_L γfs) appE) (pobs_Fo Pin T)
+      ∗ □ (∀ (v : aview) (i : Z) (b : anode),
+             pobs_P T hops (length (path_elems pl)) i -∗
+             pobs_recv Pin T v i b -∗ ⌜i = ino /\ an_node b = nd⌝ ∨ T).
+  Proof.
+    intros Hres. iIntros "#Hmt #Hcl #Hinv".
+    iSplitL.
+    { iApply (pobs_walk_w γfs Pin T Pmiss cw pl hops ino
+                (pin_walks_at_of_abs _ _ _ _ _ _ Hres) with "Hmt Hcl Hinv"). }
+    iSplitR.
+    { iApply (pobs_aopen γfs Pin T with "Hcl Hinv"). }
+    iModIntro. iIntros (v i b) "HP Hr".
+    iApply (pobs_node_abs Pin T cw pl hops ino nd v i b Hres with "HP Hr").
+  Qed.
+
+End PinnedObsAbs.

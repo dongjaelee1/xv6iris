@@ -215,19 +215,22 @@ application declares and its verified programs prove):
     are directories + roots pairwise non-nested) and `subtree_disjoint` /
     `subtree_disjoint_trees`.
   - The δ lemmas, INSIDE and OUTSIDE, over the landed legs: write/trunc
-    (`nclose_content_edit`), create's arm+parent leg (`top_ins`, the
-    fresh-leaf insert), link's parent leg (`top_link`), unlink's entry
-    leg (`top_unlink`, the ONE op that re-closes, because it is the only
-    one that can orphan), and the four invisible legs.  `subtree_delta_*`
-    is the naming.
+    (`nclose_content_edit`), create — fused (`subtree_delta_create`) AND
+    leg by leg, since the fires commit a leg at a time: the arm is
+    invisible (`subtree_delta_arm_fresh`, a fresh inum is unreachable)
+    and the parent leg is the fresh insert at an armed child
+    (`subtree_delta_ent`, `top_ins`) — link's parent leg (`top_link`),
+    unlink's entry leg (`top_unlink`, the ONE op that re-closes, because
+    it is the only one that can orphan), and the four invisible legs.
+    `subtree_delta_*` is the naming.
   - `resolves_from` / `resolves_in` / `resolve_hops` and the equivalence
     with `arun` on the view, both directions, plus the relative form from
     a cwd inside the subtree.  Paths are PROPER (`fs_proper (path_elems
     pl)`): `..` at the root leaves the subtree, which is the one move the
     claim cannot answer — a pure side condition on the program's own
     string.
-  - `own_wf` preservation per δ (`own_wf_write`, `own_wf_create`,
-    `own_wf_unl_ent`, `own_wf_unl_tgt`).  Two side conditions fell out
+  - `own_wf` preservation per δ (`own_wf_write`, `own_wf_arm`,
+    `own_wf_create`, `own_wf_unl_ent`, `own_wf_unl_tgt`).  Two side conditions fell out
     and are stated where they bite: an owner may not unlink a ROOT (its
     own or anyone's), and the row may only leave when nothing names it
     (`aview_no_edge_to` — the `nlink`-vs-edge-count tie, which the tree

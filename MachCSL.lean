@@ -67,3 +67,4 @@ import MachCSL.WpSmodeAlu4
 import MachCSL.KCtxMove
 import MachCSL.SwtchCtx
 import MachCSL.WpSmodeSwtch
+import MachCSL.WpSmodeWait

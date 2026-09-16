@@ -77,6 +77,9 @@ Require Import ElfFile.
 Require Import KexecDefs.      (* [kxc_sp_final] / [kxc_round16] *)
 Require Import KexecBuilt.     (* [kxb_perm_ok] / [kexec_pg] / [kexec_seg_perm] *)
 Require Import SpecKexec.    (* [kexec_image_ok] *)
+Require Import ExecEntry.    (* [image_entry_at] / [image_entry_taint]:
+                                obligation (E), named (design/user-exec.md
+                                section 1) -- SS3b below is sh's proof of it *)
 Require FsImg.               (* [ROOTINO] -- the directory the console pin
                                 resolves "console" from (lane SH-OPEN) *)
 Require Import UmodeAbi.       (* [uimg_sub] -- the image inclusion *)
@@ -897,6 +900,116 @@ Section UShKernel.
     - exact Hlzf.
     - exact Hch0.
     - exact Hpid1.
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (* SS3b THE SAME BRIDGE AS THE NAMED OBLIGATION (E) (lane EX-1).         *)
+  (*                                                                       *)
+  (*  [ExecEntry.image_entry_at] is what an exec bundle takes of the        *)
+  (*  program it is about to run, and [sh_slot_of_kexec] is sh's proof of   *)
+  (*  it -- one key at a time, with the key's four rows as Coq premises.    *)
+  (*  This lemma is the SAME CONTENT at the bundle's own shape: the rows    *)
+  (*  move inside the [□ ∀ W'], the caller's readings become the            *)
+  (*  parameters they are equations against ([cw] is [FsImg.ROOTINO], sh's  *)
+  (*  pinned open of the console is at the root; [cs] is the exec'ing       *)
+  (*  child's children set and [pidv] its pid, which sh's wait redeems      *)
+  (*  against), and sh's [Pay] is named: the position, the lease and the    *)
+  (*  loop's credential slot.                                              *)
+  (*                                                                       *)
+  (*  THE PAYLOAD PREMISE IS THE [∀]-OVER-KEYS ONE ([UInitSh.sh_pay_state]) *)
+  (*  and not [sh_slot_of_kexec]'s at one key, for the reason every other   *)
+  (*  W'-mentioning premise moves: the key is quantified here.  The step    *)
+  (*  down to the fixed key is [sh_pay_key_of_kexec], off the very image    *)
+  (*  fact and room bound this lemma is handed.                            *)
+  (*                                                                       *)
+  (*  WHAT IS NOT HERE: the ARGUMENT READING.  [image_entry_at] is at ONE   *)
+  (*  argument shape, and sh's room bound is an inequality about that       *)
+  (*  shape -- so it stays a Coq premise, and the caller that knows what    *)
+  (*  its argv holds ([UInitSh.init_sh_image_entry], through                *)
+  (*  [ExecEntry.image_entry_of_at]) is where the two meet.                 *)
+  (* ------------------------------------------------------------------- *)
+  Lemma sh_image_entry_at (R : gname -> gname -> gname -> iProp Σ)
+      (γp : gname) (cn : cons_names) (T K : iProp Σ)
+      `{!Persistent T} `{!Persistent K}
+      (Q Ql : Z -> iProp Σ) (Pm : nat -> iProp Σ)
+      (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ)
+      (Hrl : forall (N : uk_names Σ) (l : list fdstate),
+         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
+      (Hpm1 : forall (N : uk_names Σ) (i : nat),
+         ukn_pay N = Q -> ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i)
+      (Hpm3 : forall (N : uk_names Σ) (i : nat),
+         ukn_pay N = Q -> ⊢ T -∗ Pm i -∗ UkSh.ush_at N γp i)
+      (Hpmwb : forall (N : uk_names Σ) (i : nat),
+         ukn_pay N = Q -> UkSh.ush_bnd i ->
+         ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i)
+      (Hwc : forall n : nat,
+         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
+           Pm (n + length EchoDisc.echo_line)%nat
+           ∗ Wc (n + length EchoDisc.echo_line)%nat 3%nat)
+      (Hwbwc : forall n : nat, ⊢ Wb n -∗ Wc n 0%nat)
+      (Hwbl : forall n : nat, ⊢ Wc n 3%nat -∗ Wc n 0%nat)
+      (Hwbr : forall n : nat,
+         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wb n -∗
+           Pm (n + length EchoDisc.echo_line)%nat ∗ T)
+      (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
+      (sts : list fdstate) (n0 n : nat)
+      (cs : gset gname) (pidv : mword 32) :
+    (forall (N : uk_names Σ) (l : list fdstate) (n : nat),
+       ukn_pay N = Q ->
+       ⊢ upos γp n -∗ Ql (-1) -∗ (UkSh.ush_wcp Wc Wb l n 0%nat ∨ T) -∗
+         UkSh.ush_posb N γp T Wc Wb Pm l 0%nat) ->
+    (forall x y : Z, Q x = Q y) ->
+    kexec_sz sh_elf - PGSIZE + 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0))))
+      <= kxc_sp_final (kexec_sz sh_elf) alen na ->
+    length sts = NOFILE ->
+    (* the two identity readings the CALLER makes, as equations against
+       what [image_entry_at] relays (lane EXEC-SEAM) *)
+    cs = ∅ ->
+    bv_unsigned pidv <> 1 ->
+    □ (∀ (W' : uvis) (γt γd γs : gname),
+        ⌜ sh_pay_key W' n0 ⌝ -∗
+        usz γs (uvis_sz W') -∗
+        ([∗ map] k ↦ b ∈ base.filter
+              (fun kv : Z * bv 8 =>
+                 kv.1 < uint (tf_resume_gpr0 (uvis_tf W') !!! Regidx csp_rs1)
+                        - 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0)))))
+              (udata_lo (uvis_M W') (uvis_perm W') (uvis_sz W')),
+           ubyte γd k b) -∗
+        |==> ∃ f : nat -> bv 8, R γt γd γs ∗ ubytes γd sh_buf sh_nbuf f) -∗
+    udep -∗
+    □ (T -∗ UkSh.sh_deps) -∗
+    UkSh.ush_tag_law T -∗
+    sh_prompt_law Wc -∗
+    (∀ N : uk_names Σ,
+       ush_rest_l N γp T Wc Wb Pm (R (ukn_t N) (ukn_d N) (ukn_s N))) -∗
+    UkSh.ush_fd0 T (take NSTD sts) -∗
+    (□ (∀ N : uk_names Σ, UkSh.ush_open_console_leaf N T)
+     ∨ (□ (∀ N : uk_names Σ, UkSh.ush_open_absent_leaf N T K) ∗ K)
+     ∨ T) -∗
+    image_entry_taint T Q uslot -∗
+    image_entry_at sh_elf na alen afun sts FsImg.ROOTINO cs pidv Q
+      (upos γp n ∗ Ql (-1)
+       ∗ (UkSh.ush_wcp Wc Wb (take NSTD sts) n 0%nat ∨ T))
+      uslot.
+  Proof.
+    intros Hbd HQc Hroom Hlen -> Hpid1.
+    iIntros "#Hpay #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 #Hin #Hgen".
+    rewrite /image_entry_at. iIntros "!>" (W')
+      "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq Hmp (Hpos & Hlease & Hwcp)".
+    assert (Hch0 : uvis_ch W' = ∅) by exact Hchq.
+    assert (Hpid1' : bv_unsigned (uvis_pid W') <> 1)
+      by (rewrite Hpiq; exact Hpid1).
+    iApply (sh_slot_of_kexec R γp cn T K Q Ql Pm Wc Wb Hrl Hpm1 Hpm3 Hpmwb
+              Hwc Hwbwc Hwbl Hwbr na alen afun sts W' n0 n Hbd HQc Hok Hcwd0
+              Hroom Hlen Hlzf Hch0 Hpid1'
+              with "[] Hdep Hdp Htag Hplaw Hrest Hfd0 [] [] Hmp Hpos Hlease
+                    Hwcp").
+    - (* the payload at THIS key, off the [∀]-over-keys wand *)
+      iModIntro. iIntros (γt γd γs) "Hsz Hlo".
+      iApply ("Hpay" $! W' γt γd γs with "[%] Hsz Hlo").
+      exact (sh_pay_key_of_kexec na alen afun sts W' n0 Hok Hroom).
+    - iExact "Hin".
+    - rewrite /image_entry_taint. iExact "Hgen".
   Qed.
 
 End UShKernel.

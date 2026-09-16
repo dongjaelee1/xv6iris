@@ -1455,6 +1455,8 @@ KexecImageAlg.v
 ElfLoadable.v
 KexecBridge.v
 SpecSysExec.v
+ExecEntry.v
+ExecBundle.v
 PinnedObs.v
 PinnedExec.v
 PinnedOpen.v

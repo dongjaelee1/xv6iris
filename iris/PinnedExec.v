@@ -95,6 +95,14 @@ Require Import FsAbsDefs.       (* [arun], [arow_at], [aents], [astep], [abs_vie
 Require Import PinnedObs.       (* the pinned observation family, factored:
                                    [pin_resolves_at], [pobs_P]/[pobs_Pmiss],
                                    [pobs_recv]/[pobs_Fo], [pinned_obs] *)
+Require Import ExecEntry.       (* (E): [image_entry] / [image_entry_at] /
+                                   [image_entry_taint] -- the two [□]
+                                   constructor premises below, NAMED *)
+Require Import ExecBundle.      (* the general assembly this file is now one
+                                   instance of: [ex_node_id],
+                                   [exec_slot_of_entry_at],
+                                   [sys_exec_slot_of_entry], [exec_bundle_of],
+                                   [exec_bundle_of_at] *)
 Import Defs.
 
 Local Open Scope Z_scope.
@@ -141,6 +149,29 @@ Section PinnedExec.
   (* ------------------------------------------------------------------ *)
 
   (* ------------------------------------------------------------------ *)
+  (*  5b.  THE PIN AS A SUPPLIER OF (W)'s THIRD PIECE                     *)
+  (*                                                                      *)
+  (*  [ExecBundle.ex_node_id] is what an exec bundle actually spends of   *)
+  (*  the walk: the node the observation reports at the last hop is the   *)
+  (*  one the caller says it is, or the taint.  [pobs_node] proves it     *)
+  (*  from the pin, and says one thing more (the INUM is the pin's) that  *)
+  (*  exec never reads -- so the step down to the general premise is the  *)
+  (*  projection, and it is the whole of what makes this file an          *)
+  (*  INSTANCE of [ExecBundle] rather than a second copy of it.           *)
+  (* ------------------------------------------------------------------ *)
+  Lemma pobs_node_id (Pin : aview -> Prop) (T : iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (ino : Z) (a : anode) :
+    pin_resolves_at Pin cw pl hops ino a ->
+    ⊢ ex_node_id T (pobs_P T hops (length (path_elems pl)))
+        (pobs_recv Pin T) a.
+  Proof.
+    intros Hres. rewrite /ex_node_id. iIntros "!>" (v i b) "HP Hr".
+    iDestruct (pobs_node Pin T cw pl hops ino a v i b Hres with "HP Hr")
+      as "[%Hid | HT]"; [ | iRight; iExact "HT" ].
+    iLeft. iPureIntro. exact (proj2 Hid).
+  Qed.
+
+  (* ------------------------------------------------------------------ *)
   (*  6.  THE SLOT PIECE                                                  *)
   (* ------------------------------------------------------------------ *)
 
@@ -184,31 +215,18 @@ Section PinnedExec.
     Pay -∗
     exec_slot_pre X Q (pobs_P T hops (length (path_elems pl)))
       (pobs_recv Pin T) cw na alen afun sts cs pidv.
+  (* ...AND IT IS [ExecBundle.exec_slot_of_entry_at] AT THE PIN.  The two
+     arms are stated and proved there, over an ARBITRARY supplier of
+     [ex_node_id]; what is left here is which supplier, and the [□]
+     constructor premise is [ExecEntry.image_entry_at] spelled out. *)
   Proof.
     intros Hres Hload. iIntros "#Hcon #Hgen HPay".
-    rewrite /exec_slot_pre. iSplitL "HPay".
-    - (* ---- ARM (a): the observed node IS the pinned file ---- *)
-      iIntros (av' i f' nl' W') "HP Hrecv %Hload' %Hok %Hcwq %Hlzq %Hchq %Hpiq #Hp".
-      iDestruct (pobs_node Pin T cw pl hops ino (MkAnode (AFile f) nl)
-                   av' i (MkAnode (AFile f') nl') Hres with "HP Hrecv")
-        as "[%Hid | #HT]"; last first.
-      { iApply ("Hgen" with "HT Hp"). }
-      (* [subst f' nl'] and not a bare [subst]: the two rows introduced
-         just above are equations on [cw] and on [uvis_lazy W'] (lane
-         LAZY-FLAG). *)
-      destruct Hid as [_ Hnode]. injection Hnode; intros Hnl Hf.
-      subst f' nl'.
-      iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
-        [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq ].
-    - (* ---- ARM (b): a pinned file IS loadable, so this arm is dead ---- *)
-      iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq #Hp".
-      iDestruct (pobs_node Pin T cw pl hops ino (MkAnode (AFile f) nl)
-                   av' i a Hres with "HP Hrecv")
-        as "[%Hid | #HT]"; last first.
-      { iApply ("Hgen" with "HT Hp"). }
-      destruct Hid as [_ ->].
-      exfalso. apply Hnload. exists f, nl.
-      split; [ reflexivity | exact Hload ].
+    iApply (exec_slot_of_entry_at X T (pobs_P T hops (length (path_elems pl)))
+              (pobs_recv Pin T) f nl Pay Q cw na alen afun sts cs pidv Hload
+              with "[] [] [] HPay").
+    - iApply (pobs_node_id Pin T cw pl hops ino (MkAnode (AFile f) nl) Hres).
+    - rewrite /image_entry_at. iExact "Hcon".
+    - rewrite /image_entry_taint. iExact "Hgen".
   Qed.
 
   Lemma pex_slot (γfs : fs_names) (X : uvis -d> iPropO Σ)
@@ -278,35 +296,17 @@ Section PinnedExec.
     Pay -∗
     pf_at (fun S => sys_exec_slot_pre S Q (pobs_P T hops) (pobs_recv Pin T)
                       cw M pv av sts cs pidv) (MkPfam X Pay).
+  (* ...AND IT IS [ExecBundle.sys_exec_slot_of_entry] AT THE PIN: the path
+     reading's uniqueness, the argument reading's relay into the entry and
+     the two arms are all stated there; the pin supplies [ex_node_id]. *)
   Proof.
     intros Hres Hload Hpath. iIntros "#Hcon #Hgen HPay".
-    rewrite /pf_at. cbn [pf_recv pf_refund]. iSplit; [ | iExact "HPay" ].
-    rewrite /sys_exec_slot_pre. iIntros (pl' na alen afun) "%Hpath' %Hargs".
-    rewrite (exec_path_of_uniq M pv pl' pl Hpath' Hpath).
-    rewrite /exec_slot_pre. iSplitL "HPay".
-    - (* ---- ARM (a): the observed node IS the pinned file ---- *)
-      iIntros (av' i f' nl' W') "HP Hrecv %Hload' %Hok %Hcwq %Hlzq %Hchq %Hpiq #Hp".
-      iDestruct (pobs_node Pin T cw pl hops ino (MkAnode (AFile f) nl)
-                   av' i (MkAnode (AFile f') nl') Hres with "HP Hrecv")
-        as "[%Hid | #HT]"; last first.
-      { iApply ("Hgen" with "HT Hp"). }
-      (* [subst f' nl'] and not a bare [subst]: the two rows introduced just
-         above are equations on [cw] and on [uvis_lazy W'], and a bare
-         [subst] would spend the [cw] one instead (lane LAZY-FLAG). *)
-      destruct Hid as [_ Hnode]. injection Hnode; intros Hnl Hf.
-      subst f' nl'.
-      iApply ("Hcon" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hp HPay");
-        [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq
-        | exact Hargs ].
-    - (* ---- ARM (b): a pinned file IS loadable, so this arm is dead ---- *)
-      iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq #Hp".
-      iDestruct (pobs_node Pin T cw pl hops ino (MkAnode (AFile f) nl)
-                   av' i a Hres with "HP Hrecv")
-        as "[%Hid | #HT]"; last first.
-      { iApply ("Hgen" with "HT Hp"). }
-      destruct Hid as [_ ->].
-      exfalso. apply Hnload. exists f, nl.
-      split; [ reflexivity | exact Hload ].
+    iApply (sys_exec_slot_of_entry X T (pobs_P T hops) (pobs_recv Pin T)
+              f nl Pay Q cw pl M pv av sts cs pidv Hload Hpath
+              with "[] [] [] HPay").
+    - iApply (pobs_node_id Pin T cw pl hops ino (MkAnode (AFile f) nl) Hres).
+    - rewrite /image_entry. iExact "Hcon".
+    - rewrite /image_entry_taint. iExact "Hgen".
   Qed.
 
   (* ------------------------------------------------------------------ *)
@@ -349,21 +349,24 @@ Section PinnedExec.
     Pay -∗
     sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) M pv av sts cs pidv.
+  (* ...AND IT IS [ExecBundle.exec_bundle_of] AT THE PIN SUPPLIER OF (W):
+     the walk is [PinnedObs.pobs_walk], the observation [pobs_aopen] and
+     the node identification [pobs_node_id].  Nothing about exec is
+     re-stated here -- (L) and (E) go straight through. *)
   Proof.
     intros Hres Hload Hpath.
     iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
-    rewrite /sys_exec_au_pre. iSplitR.
-    { iIntros (pl') "%Hpath'".
-      rewrite (exec_path_of_uniq M pv pl' pl Hpath' Hpath).
-      iApply (pobs_walk γfs Pin T (pobs_Pmiss T) cw pl hops ino
-                (MkAnode (AFile f) nl) Hres
-                with "[] Hcl Hinv").
-      iApply pobs_miss_taint_Pmiss. }
-    iSplitR.
-    { iApply (pobs_aopen γfs Pin T with "Hcl Hinv"). }
-    rewrite /pobs_Fo /pfam_triv. cbn [pf_recv].
-    iApply (pex_slot γfs X Pin T cw pl hops ino f nl Pay Q M pv av sts cs pidv
-              Hres Hload Hpath with "Hcon Hgen HPay").
+    iApply (exec_bundle_of γfs X T (pobs_P T hops) (pobs_Pmiss T)
+              (pobs_Fo Pin T) cw pl f nl Pay Q M pv av sts cs pidv
+              Hload Hpath with "[] [] [] [] [] HPay").
+    - iApply (pobs_walk γfs Pin T (pobs_Pmiss T) cw pl hops ino
+                (MkAnode (AFile f) nl) Hres with "[] Hcl Hinv").
+      iApply pobs_miss_taint_Pmiss.
+    - iApply (pobs_aopen γfs Pin T with "Hcl Hinv").
+    - rewrite /pobs_Fo /pfam_triv. cbn [pf_recv].
+      iApply (pobs_node_id Pin T cw pl hops ino (MkAnode (AFile f) nl) Hres).
+    - rewrite /image_entry. iExact "Hcon".
+    - rewrite /image_entry_taint. iExact "Hgen".
   Qed.
 
   (* ...and the shape a deposit site takes it at: the families are the
@@ -455,21 +458,27 @@ Section PinnedExec.
     exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) pl na alen afun sts
       cs pidv.
+  (* ...AND IT IS [ExecBundle.exec_bundle_of_at] AT THE SAME SUPPLIER: the
+     boot call's only difference is the two readings it does not do, so
+     (E) arrives at [ExecEntry.image_entry_at] -- the entry at THE
+     argument shape -- and the two identity rows the boot constructor
+     does not read are dropped where it is built. *)
   Proof.
     intros Hres Hload. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
-    rewrite /exec_au_pre. iSplitR.
-    { iApply (pobs_walk γfs Pin T (pobs_Pmiss T) cw pl hops ino
+    iApply (exec_bundle_of_at γfs X T (pobs_P T hops) (pobs_Pmiss T)
+              (pobs_Fo Pin T) cw pl f nl Pay Q na alen afun sts cs pidv
+              Hload with "[] [] [] [] [] HPay").
+    - iApply (pobs_walk γfs Pin T (pobs_Pmiss T) cw pl hops ino
                 (MkAnode (AFile f) nl) Hres with "[] Hcl Hinv").
-      iApply pobs_miss_taint_Pmiss. }
-    iSplitR.
-    { iApply (pobs_aopen γfs Pin T with "Hcl Hinv"). }
-    rewrite /pobs_Fo /pfam_triv. cbn [pf_recv].
-    rewrite /pf_at. cbn [pf_recv pf_refund]. iSplit; [ | iExact "HPay" ].
-    iApply (pex_slot_at γfs X Pin T cw pl hops ino f nl Pay Q na alen afun
-              sts cs pidv Hres Hload with "[] Hgen HPay").
-    iIntros "!>" (W') "%Hok %Hcwq %Hlzq _ _ Hp HPay".
-    iApply ("Hcon" $! W' with "[%] [%] [%] Hp HPay");
-      [ exact Hok | exact Hcwq | exact Hlzq ].
+      iApply pobs_miss_taint_Pmiss.
+    - iApply (pobs_aopen γfs Pin T with "Hcl Hinv").
+    - rewrite /pobs_Fo /pfam_triv. cbn [pf_recv].
+      iApply (pobs_node_id Pin T cw pl hops ino (MkAnode (AFile f) nl) Hres).
+    - rewrite /image_entry_at.
+      iIntros "!>" (W') "%Hok %Hcwq %Hlzq _ _ Hp HPay".
+      iApply ("Hcon" $! W' with "[%] [%] [%] Hp HPay");
+        [ exact Hok | exact Hcwq | exact Hlzq ].
+    - rewrite /image_entry_taint. iExact "Hgen".
   Qed.
 
   (* ...and the shape [InitBoot.init_boot_bundle] takes it at: the families

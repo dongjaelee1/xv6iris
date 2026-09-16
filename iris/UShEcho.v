@@ -57,6 +57,8 @@ Require Import FsImg FsImgCheck.
 Require Import FsAbsDefs FsAbsEra.
 Require Import AppCfg AppInv.
 Require Import PinnedExec.
+Require Import ExecEntry.        (* [image_entry]: obligation (E), named
+                                    (design/user-exec.md section 1) *)
 Require Import FsEchoPin.
 Require Import ArgPath.           (* [arg_path_shape] / [arg_path_of] *)
 Require Import SpecKexec SpecSysExec SpecCopyin.
@@ -1247,6 +1249,77 @@ Section UShEcho.
     iIntros "#Hwr #Hdep #Hmp".
     iApply (echo_uexec_slot W' Hpc Hsub Hx Hroom96 Hal8 Hstkrow Hargsrow
               Havd Havs Hfdlen Hstop Hlzf with "Hwr Hdep Hmp").
+  Qed.
+
+  (* ---- THE ROOM BOUND, OFF THE ARGUMENT READING (lane EX-1) ---------- *)
+  (*                                                                       *)
+  (*  echo's entry needs twelve words below the block the caller pushed,   *)
+  (*  which is an inequality about [alen] and [na] -- FALSE for a big      *)
+  (*  enough argument vector, and therefore not something echo's entry can *)
+  (*  be stated without.  What discharges it is the CALLER's reading of    *)
+  (*  its own argv ([echo_args_det]): this line pushed three words of four *)
+  (*  and five bytes.  Stated as a lemma of its own because the entry      *)
+  (*  below and [UShEchoPay]'s paid one both need it.                      *)
+  Lemma echo_room_of_det (na : nat) (alen : nat -> nat) :
+    na = length echo_ws ->
+    (forall i : nat, (i < length echo_ws)%nat ->
+       alen i = UkShEcho.echo_alen i) ->
+    kexec_sz ElfUser.echo_elf - PGSIZE + 96
+      <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen na.
+  Proof.
+    intros Hna Halen.
+    assert (Hi0 : (0 < length echo_ws)%nat) by (rewrite echo_ws_length; lia).
+    assert (Hi1 : (1 < length echo_ws)%nat) by (rewrite echo_ws_length; lia).
+    assert (Hi2 : (2 < length echo_ws)%nat) by (rewrite echo_ws_length; lia).
+    pose proof (Halen 0%nat Hi0) as E0.
+    pose proof (Halen 1%nat Hi1) as E1.
+    pose proof (Halen 2%nat Hi2) as E2.
+    assert (A0 : UkShEcho.echo_alen 0%nat = 4%nat) by (by vm_compute).
+    assert (A1 : UkShEcho.echo_alen 1%nat = 5%nat) by (by vm_compute).
+    assert (A2 : UkShEcho.echo_alen 2%nat = 5%nat) by (by vm_compute).
+    rewrite A0 in E0. rewrite A1 in E1. rewrite A2 in E2.
+    rewrite Hna. apply echo_room.
+    rewrite /echo_argv_fits echo_ws_length. cbn [kxc_span].
+    rewrite E0 E1 E2. unfold PGSIZE. lia.
+  Qed.
+
+  (* ---- ...AND ECHO'S ENTRY AS THE NAMED OBLIGATION (E) --------------- *)
+  (*                                                                       *)
+  (*  [ExecEntry.image_entry] at /echo: section 6's bridge, moved onto the *)
+  (*  shape an exec bundle takes it at ([ExecBundle.exec_bundle_of]'s      *)
+  (*  third premise).  Three things are worth reading off the statement:   *)
+  (*                                                                       *)
+  (*  - [cw], [cs] and [pidv] are FREE.  echo reads no identity row, so    *)
+  (*    its entry holds at whatever the caller's are -- which is what      *)
+  (*    "the rows are the caller's knowledge, not the program's" means.    *)
+  (*    sh's entry ([UShKernel.sh_image_entry_at]) fixes all three.        *)
+  (*                                                                       *)
+  (*  - [Pay] is [emp]: this is the UNPAID entry, the anti-vacuity witness *)
+  (*    of echo's own constructor.  The PAID one -- the era's turn bundle  *)
+  (*    as [Pay] -- is [UShEchoPay.echo_slot_of_kexec_at], and the caller  *)
+  (*    that assembles it is [UShEchoPay.sh_exec_sup_echo_wq_holds].       *)
+  (*                                                                       *)
+  (*  - the ARGUMENT READING is consumed here, through                     *)
+  (*    [ExecEntry.image_entry_of_at]: the entry is owed at every shape    *)
+  (*    the kernel might build, and what makes that payable is that the    *)
+  (*    caller's own image DETERMINES the shape ([echo_args_det]).         *)
+  Lemma echo_image_entry (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32) :
+    echo_node_img M s0 t g ->
+    UkShEcho.echo_argv_bytes g ->
+    length sts = NOFILE ->
+    udepw_law 16 -∗ udep -∗
+    image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv (fun _ : Z => True)%I emp uslot.
+  Proof.
+    intros Himg Hbytes Hfdl. iIntros "#Hwr #Hdep".
+    iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
+    destruct (echo_args_det_holds M s0 t g na alen afun Himg Hbytes Hargs)
+      as (Hna & Halen & _).
+    rewrite /image_entry_at. iIntros "!>" (W') "%Hok _ %Hlzf _ _ Hmp _".
+    iApply (echo_slot_of_kexec_holds na alen afun sts W' Hok
+              (echo_room_of_det na alen Hna Halen) Hfdl Hlzf
+              with "Hwr Hdep Hmp").
   Qed.
 
   (* =================================================================== *)

@@ -108,6 +108,8 @@ Require Import FsImgCheck.         (* [fname_sh] *)
 Require Import FsShPin.            (* [era0_sh_pins] / [sh_path] / [SH_INO] *)
 Require Import FsAbsDefs.          (* [aview] / [arun] / [AFile] *)
 Require Import PinnedExec.
+Require Import ExecEntry.       (* [image_entry] / [image_entry_taint]:
+                                   obligation (E), named (lane EX-1) *)
 Require Import PieceFam.           (* [pfam] / [MkPfam] -- the exec deposit's
                                       one-shot piece, named by the refund
                                       twin below (lane M6b) *)
@@ -915,6 +917,176 @@ Section UInitSh.
       | exact UInitFd.ufd_l0_row2 | lia ].
   Qed.
 
+  (* =================================================================== *)
+  (*  SH'S ENTRY, AS THE NAMED OBLIGATION (E) (lane EX-1)                  *)
+  (*                                                                      *)
+  (*  [ExecEntry.image_entry] at /sh, with /init as the caller: exactly    *)
+  (*  the [□]-constructor [PinnedExec.pinned_exec_bundle] takes, named.    *)
+  (*  It was written inline inside [init_exec_sup_of_sh_slot] below, which *)
+  (*  is where it stopped being visible as a THEOREM ABOUT SH; hoisted, it *)
+  (*  is one of the two obligations an exec bundle consumes and it can be  *)
+  (*  read without the deposit around it.                                  *)
+  (*                                                                      *)
+  (*  WHAT THE STATEMENT SAYS ABOUT THE SEAM.  Four of the parameters are  *)
+  (*  the CALLER's readings and sh fixes three of them: the working        *)
+  (*  directory is [FsImg.ROOTINO] (sh's pinned open of the console is a   *)
+  (*  path, so the cwd is part of what it is told), the children set is    *)
+  (*  empty and the pid is not <init>'s (sh's wait redeems one child       *)
+  (*  against those two).  The fourth, the descriptor view [fdv], is       *)
+  (*  /init's own table, and the one row sh reads off it is fd 0's.  The   *)
+  (*  fifth and sixth -- the caller's image [M] and its argv pointer --    *)
+  (*  are what [init_args_det] is about: sh's ROOM bound is an inequality  *)
+  (*  about the vector, and /init's is the constant one its image holds.   *)
+  (*                                                                      *)
+  (*  THE CHAIN TO [UShKernel.sh_image_entry_at] IS NOT TAKEN HERE, and    *)
+  (*  the reason is [Pay]: this lemma's payload is /init's quadruple       *)
+  (*  (sh's persistent state, the position, the lease and the ledger row   *)
+  (*  with its credential) while sh's own entry is stated at the triple    *)
+  (*  its body consumes, and the step between them is the credential       *)
+  (*  conversion below -- which reads /init's ledger and so belongs on     *)
+  (*  this side.  Both lemmas are [sh_slot_of_kexec] at the named          *)
+  (*  obligation; neither restates it.                                     *)
+  (* =================================================================== *)
+  Lemma init_sh_image_entry (T : iProp Σ) `{!Persistent T}
+      (cn : cons_names) (K : iProp Σ) `{!Persistent K}
+      (Rdl : nat -> iProp Σ) (Pm : gname -> nat -> iProp Σ)
+      (Wc : nat -> nat -> iProp Σ) (Wb Wp : nat -> iProp Σ)
+      (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat)
+      (γp : gname) (np : nat) (N : uk_names Σ) (l : list fdstate)
+      (M : gmap Z (bv 8)) (fdv : list fdstate)
+      (cs : gset gname) (pidv : mword 32) :
+    (forall k : Z, free_num k -> @psok Σ uprogSG_free k) ->
+    8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0)))) <= 0xFE0 ->
+    (* the two readings of /init's own image the argument vector is
+       determined by ([init_args_det]) *)
+    uimg_sub UCodeInit.init_argv_map M ->
+    uimg_sub UCodeInit.init_ro M ->
+    (* /init's ledger, its children set and its pid, as the caller holds
+       them *)
+    take NSTD fdv = l ->
+    cs = ∅ ->
+    bv_unsigned pidv <> 1 ->
+    length fdv = NOFILE ->
+    (* the laws, at THIS round's position ghost: see
+       [init_exec_sup_of_sh_slot], which is where they are quantified *)
+    (forall (N : uk_names Σ) (l : list fdstate),
+       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
+       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T (Pm γp) cn l) ->
+    (forall (N : uk_names Σ) (i : nat),
+       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
+       ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T (Pm γp) i) ->
+    (forall (N : uk_names Σ) (i : nat),
+       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
+       ⊢ T -∗ Pm γp i -∗ UkSh.ush_at N γp i) ->
+    (forall (N : uk_names Σ) (i : nat),
+       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) -> UkSh.ush_bnd i ->
+       ⊢ Pm γp i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
+    (forall n : nat,
+       ⊢ Pm γp (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
+         Pm γp (n + length EchoDisc.echo_line)%nat
+         ∗ Wc (n + length EchoDisc.echo_line)%nat 3%nat) ->
+    (forall n : nat, ⊢ Wb n -∗ Wc n 0%nat) ->
+    (forall n : nat, ⊢ Wc n 3%nat -∗ Wc n 0%nat) ->
+    (forall n : nat,
+       ⊢ Pm γp (n + length EchoDisc.echo_line)%nat -∗ Wb n -∗
+         Pm γp (n + length EchoDisc.echo_line)%nat ∗ T) ->
+    (forall (N : uk_names Σ) (l : list fdstate) (i : nat),
+       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
+       ⊢ upos γp i -∗ ucons_pay cn γp T Rdl (-1) -∗
+         (UkSh.ush_wcp Wc Wb l i 0%nat ∨ T) -∗
+         UkSh.ush_posb N γp T Wc Wb (Pm γp) l 0%nat) ->
+    (forall n : nat, ⊢ Wp n -∗ Wc n 0%nat) ->
+    udep (PS := uprogSG_free) -∗
+    □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
+    UShKernel.sh_prompt_law (PS := uprogSG_free) Wc -∗
+    (□ (∀ N : uk_names Σ,
+          UkSh.ush_open_console_leaf (PS := uprogSG_free) N T)
+     ∨ (□ (∀ N : uk_names Σ,
+             UkSh.ush_open_absent_leaf (PS := uprogSG_free) N T K) ∗ K)
+     ∨ T) -∗
+    UkSh.ush_fd0 T (take NSTD fdv) -∗
+    image_entry_taint T (ucons_pay cn γp T (UkInit.init_rd Rdl Wb)) uslot -∗
+    image_entry ElfUser.sh_elf M (mword_of_int 0x1000 : mword 64) fdv
+      FsImg.ROOTINO cs pidv
+      (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
+      (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
+         ∗ ucons_pay cn γp T Rdl (-1)
+         ∗ (UserFd.ustd (ukn_fd N) l
+            ∗ UkInit.init_lend_cred T
+                (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
+                Wp Wb l np))%I
+      uslot.
+  Proof.
+    intros Hpsok_free Hn0 Hsav Hsro Hl Hcs Hpid Hlen
+           Hrl Hpm1 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw.
+    iIntros "#Hdep #Hdp #Hplaw #Hcons #Hfd0 #Hgen'".
+    rewrite /image_entry. iModIntro.
+    iIntros (na alen afun W')
+      "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq %Hargs #Hmp
+       [[#Hp1 [#Hp2 #Htag]] [Hps [Hls [Hstd' Hcred]]]]".
+    assert (Hch0 : uvis_ch W' = ∅) by (rewrite Hchq; exact Hcs).
+    assert (Hpid1 : bv_unsigned (uvis_pid W') <> 1)
+      by (rewrite Hpiq; exact Hpid).
+    (* ...AND THE CREDENTIAL, AT THE SAME LEDGER (step 3; M6b): /init
+       lent it correlated with the row ([UkInit.init_lend_cred]), so it
+       lands in the loop's slot on the arm the row names -- the
+       both-console arm, through the lend's conversion [Hpw]; the closed
+       arm (slot 2 of the all-closed ledger); or the affine one.  The old
+       record's ledger fragment is dropped: the process that execs is
+       replaced. *)
+    iAssert (UkSh.ush_wcp Wc Wb (take NSTD fdv) np 0%nat ∨ T)%I
+      with "[Hcred]" as "Hwcp".
+    { rewrite Hl /UkInit.init_lend_cred /UkSh.ush_wcp.
+      iDestruct "Hcred" as "[[%Hl3 Hc] | [[%Hl0 Hb] | #HT]]".
+      - iLeft. iLeft. iSplitR.
+        + iPureIntro. rewrite Hl3. split_and!.
+          * exists true. exact (ufd_l3_row0 _).
+          * exists true. exact (ufd_l3_row1 _).
+          * exists true. exact (ufd_l3_row2 _).
+        + iPoseProof (Hpw np) as "Hpw'". iApply ("Hpw'" with "Hc").
+      - (* the all-closed ledger, with none of the preamble's opens landed
+           yet (step 4: [UkSh.ush_lcl] at 0) *)
+        iLeft. iRight. iFrame "Hb". iPureIntro. rewrite Hl0.
+        split; [ | lia ]. exists 0%nat. split; [ lia | exact ufd_l0_lcl ].
+      - (* the taint: a tainted shell runs on the generic slot, and the
+           entry law's right arm is where it goes (lane EXEC-SEAM, (C)) *)
+        iRight. iExact "HT". }
+    iClear "Hstd'".
+    destruct (init_args_det M na alen afun Hsav Hsro Hargs) as [-> Halen].
+    idtac "MARK-s4b-args-det".
+    (* STAGED, AND WITH BOTH CLASS ARGUMENTS GIVEN.  [sh_slot_of_kexec]
+       is polymorphic in the PAIR ([UShKernel.v] binds [{SG : uexecSG}]
+       and [{PS : uprogSG}] as section variables), so leaving [SG] to
+       [iApply] means solving it against the goal while [PS] is already
+       fixed -- and that unification runs inside [UexecSG.sbundle]'s
+       tower and does not return.  The [pose proof] elaborates the
+       INSTANTIATED lemma with no goal in play; the [iApply] then has
+       only the resource list to do. *)
+    pose proof (UShKernel.sh_slot_of_kexec (SG := uexecSG_xv6)
+                  (PS := uprogSG_free)
+                  Hpsok_free Rsh γp cn T K
+                  (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
+                  (ucons_pay cn γp T Rdl)
+                  (Pm γp) Wc Wb Hrl Hpm1 Hpm3
+                  Hpmwb Hwc Hwbwc Hwbl Hwbr
+                  1%nat alen afun fdv W' n0 np
+                  Hbd
+                  (ucons_pay_const cn γp T (UkInit.init_rd Rdl Wb)) Hok Hcwd0
+                  (init_sh_room alen n0 Halen Hn0) Hlen Hlzf Hch0 Hpid1) as Hsk.
+    idtac "MARK-s4c-pose-ok".
+    iApply (Hsk with "[] Hdep Hdp Htag Hplaw [] [] Hcons Hgen' Hmp Hps
+                      Hls Hwcp").
+    - (* THE KEY'S OWN READING (lane SH-STATE): [sh_pay_state]'s wand
+         takes [UShKernel.sh_pay_key], and the two facts it is derived
+         from are the very ones handed to [sh_slot_of_kexec] above. *)
+      iModIntro. iIntros (γt γd γs) "Hsz Hlo".
+      iApply ("Hp1" $! W' γt γd γs with "[%] Hsz Hlo").
+      exact (UShKernel.sh_pay_key_of_kexec 1%nat alen afun fdv W' n0 Hok
+               (init_sh_room alen n0 Halen Hn0)).
+    - iIntros (N0). iApply ("Hp2" $! γp N0).
+    - iExact "Hfd0".
+  Qed.
+
   Lemma init_exec_sup_of_sh_slot (T : iProp Σ) `{!Persistent T} `{!Timeless T}
       (cn : cons_names) (st : fdstate) (K : iProp Σ) `{!Persistent K}
       (* ...AND THE APPLICATION'S PER-POSITION CREDENTIAL (lane IO-LEAF,
@@ -1181,100 +1353,15 @@ Section UInitSh.
        is [UserConsole.upos] at the pair init minted for this round.  The
        exit payload is NOT there -- it arrives at the constructor wand from
        the kernel's own payment. *)
-    iAssert (□ (∀ (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
-                  (W' : uvis),
-                  ⌜kexec_image_ok ElfUser.sh_elf na alen afun fdv W'⌝ -∗
-                  (* THE TWO ROWS [SpecKexec.exec_slot_pre] carries, in
-                     [PinnedExec.pex_slot]'s own order (beside
-                     [kexec_image_ok], before the pay fact).  THE CWD ROW
-                     is proved there from [SpecKexec.kexec_ok_exec_cwi]:
-                     exec INHERITS the working directory, and /init's is
-                     the root -- sh's console preamble needs it because a
-                     pinned open is about a PATH ([UkRun.udepwf_at] fixes
-                     the cwd).  THE LAZY ROW is [false] because exec's
-                     image is EAGER (lane LAZY-FLAG's K4).  Both are read
-                     off the wand here and restated nowhere. *)
-                  ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗
-                  ⌜uvis_lazy W' = false⌝ -∗
-                  (* ...AND THE TWO IDENTITY ROWS (lane EXEC-SEAM): the
-                     key's children set and pid are the exec'ing child's,
-                     read above as [∅] and as a pid other than 1. *)
-                  ⌜uvis_ch W' = cs⌝ -∗
-                  ⌜uvis_pid W' = pidv⌝ -∗
-                  ⌜exec_args_of M (mword_of_int 0x1000 : mword 64)
-                     na alen afun⌝ -∗
-                  my_pay (uvis_gen W') (ucons_pay cn γp T (UkInit.init_rd Rdl Wb)) -∗
-                  (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
-                     ∗ ucons_pay cn γp T Rdl (-1)
-                     ∗ (UserFd.ustd (ukn_fd N) l
-                        ∗ UkInit.init_lend_cred T
-                            (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
-                            Wp Wb l np)) -∗ uslot W'))%I
-      as "#Hcon".
-    { iModIntro.
-      iIntros (na alen afun W')
-        "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq %Hargs #Hmp [[#Hp1 [#Hp2 #Htag]] [Hps [Hls [Hstd' Hcred]]]]".
-      assert (Hch0 : uvis_ch W' = ∅) by (rewrite Hchq; exact Hcs).
-      assert (Hpid1 : bv_unsigned (uvis_pid W') <> 1)
-        by (rewrite Hpiq Hpv; exact Hp1).
-      (* ...AND THE CREDENTIAL, AT THE SAME LEDGER (step 3; M6b): /init
-         lent it correlated with the row ([UkInit.init_lend_cred]), so it
-         lands in the loop's slot on the arm the row names -- the
-         both-console arm (/init's two dups pinned fds 1 and 2 to the
-         descriptor its open installed, so fd 2 IS the console, which is
-         what [UShOut.ksh_w_of_link_prompt] asks of sh's table), through
-         the lend's conversion [Hpw]; the closed arm (slot 2 of the
-         all-closed ledger); or the affine one.  The old record's ledger
-         fragment is dropped: the process that execs is replaced. *)
-      iAssert (UkSh.ush_wcp Wc Wb (take NSTD fdv) np 0%nat ∨ T)%I
-        with "[Hcred]" as "Hwcp".
-      { rewrite Hl /UkInit.init_lend_cred /UkSh.ush_wcp.
-        iDestruct "Hcred" as "[[%Hl3 Hc] | [[%Hl0 Hb] | #HT]]".
-        - iLeft. iLeft. iSplitR.
-          + iPureIntro. rewrite Hl3. split_and!.
-            * exists true. exact (ufd_l3_row0 _).
-            * exists true. exact (ufd_l3_row1 _).
-            * exists true. exact (ufd_l3_row2 _).
-          + iPoseProof (Hpw np) as "Hpw'". iApply ("Hpw'" with "Hc").
-        - (* the all-closed ledger, with none of the preamble's opens landed
-             yet (step 4: [UkSh.ush_lcl] at 0) *)
-          iLeft. iRight. iFrame "Hb". iPureIntro. rewrite Hl0.
-          split; [ | lia ]. exists 0%nat. split; [ lia | exact ufd_l0_lcl ].
-        - (* the taint: a tainted shell runs on the generic slot, and the
-             entry law's right arm is where it goes (lane EXEC-SEAM, (C)) *)
-          iRight. iExact "HT". }
-      iClear "Hstd'".
-      destruct (init_args_det M na alen afun Hsav Hsro Hargs) as [-> Halen].
-      idtac "MARK-s4b-args-det".
-      (* STAGED, AND WITH BOTH CLASS ARGUMENTS GIVEN.  [sh_slot_of_kexec]
-         is polymorphic in the PAIR ([UShKernel.v] binds [{SG : uexecSG}]
-         and [{PS : uprogSG}] as section variables), so leaving [SG] to
-         [iApply] means solving it against the goal while [PS] is already
-         fixed -- and that unification runs inside [UexecSG.sbundle]'s
-         tower and does not return.  The [pose proof] elaborates the
-         INSTANTIATED lemma with no goal in play; the [iApply] then has
-         only the resource list to do. *)
-      pose proof (sh_slot_of_kexec (SG := uexecSG_xv6) (PS := uprogSG_free)
-                    Hpsok_free Rsh γp cn T K (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
-                    (ucons_pay cn γp T Rdl)
-                    (Pm γp) Wc Wb (Hrl γp) (Hpm1 γp) (Hpm3 γp)
-                    (Hpmwb γp) (Hwc γp) Hwbwc Hwbl (Hwbr γp)
-                    1%nat alen afun fdv W' n0 np
-                    (fun N0 l0 n1 => Hbd γp N0 l0 n1)
-                    (ucons_pay_const cn γp T (UkInit.init_rd Rdl Wb)) Hok Hcwd0
-                    (init_sh_room alen n0 Halen Hn0) Hlen Hlzf Hch0 Hpid1) as Hsk.
-      idtac "MARK-s4c-pose-ok".
-      iApply (Hsk with "[] Hdep Hdp Htag Hplaw [] [] Hcons Hgen' Hmp Hps
-                        Hls Hwcp").
-      - (* THE KEY'S OWN READING (lane SH-STATE): [sh_pay_state]'s wand
-           takes [UShKernel.sh_pay_key], and the two facts it is derived
-           from are the very ones handed to [sh_slot_of_kexec] above. *)
-        iModIntro. iIntros (γt γd γs) "Hsz Hlo".
-        iApply ("Hp1" $! W' γt γd γs with "[%] Hsz Hlo").
-        exact (UShKernel.sh_pay_key_of_kexec 1%nat alen afun fdv W' n0 Hok
-                 (init_sh_room alen n0 Halen Hn0)).
-      - iIntros (N0). iApply ("Hp2" $! γp N0).
-      - iExact "Hfd0". }
+    (* [init_sh_image_entry] above: obligation (E) at /sh, with /init's own
+       four readings as the parameters they are equations against.  It was
+       written here inline. *)
+    iPoseProof (init_sh_image_entry T cn K Rdl Pm Wc Wb Wp Rsh n0 γp np N l
+                  M fdv cs pidv Hpsok_free Hn0 Hsav Hsro Hl Hcs
+                  ltac:(rewrite Hpv; exact Hp1) Hlen
+                  (Hrl γp) (Hpm1 γp) (Hpm3 γp) (Hpmwb γp) (Hwc γp)
+                  Hwbwc Hwbl (Hwbr γp) (fun N0 l0 n1 => Hbd γp N0 l0 n1) Hpw
+                  with "Hdep Hdp Hplaw Hcons Hfd0 Hgen'") as "#Hcon".
     iDestruct (pinned_exec_bundle fsc_fs uslot FsShPin.era0_sh_pins T
                  FsImg.ROOTINO init_sh_pl [FsImg.ROOTINO; FsShPin.SH_INO]
                  FsShPin.SH_INO ElfUser.sh_elf 1%nat

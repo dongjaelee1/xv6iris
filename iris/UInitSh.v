@@ -1092,7 +1092,7 @@ Section UInitSh.
        only the resource list to do. *)
     pose proof (UShKernel.sh_slot_of_kexec (SG := uexecSG_xv6)
                   (PS := uprogSG_free)
-                  Hpsok_free Rsh γp cn T K
+                  Rsh γp cn T K
                   (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
                   (ucons_pay cn γp T Rdl)
                   (Pm γp) Wc Wb Hrl Hpm1 Hpm3
@@ -1431,7 +1431,7 @@ Section UInitSh.
                 ltac:(rewrite Hpv; exact Hp1) Hlen
                 (Hrl γp) (Hpm1 γp) (Hpm3 γp) (Hpmwb γp) (Hwc γp)
                 Hwbwc Hwbl (Hwbr γp) (fun N0 l0 n1 => Hbd γp N0 l0 n1) Hpw
-                with "Hdep Hdp Hplaw Hcons Hfd0 Hgen'"). }
+                with "Hdep Hdp Hxl Hplaw Hcons Hfd0 Hgen'"). }
     (* ...AND THE LINEAR PAYLOAD, WHOLE: [PinnedExec]'s one [Pay] slot is
        sh's persistent state, the position init minted for this round, the
        lease, and the ledger with its credential. *)

@@ -1541,6 +1541,40 @@ Lemma ecl_pure_E (k : nat) (ho : list mobs) (so : ostage)
   ecl_pure k ho so H -> o_E so = ch_E H.
 Proof. by intros (_ & _ & _ & _ & _ & HE). Qed.
 
+(* THE READER'S STAGE FACT, off the claim's own pure part.  It used to be a
+   STORED field of [ein]'s two arms ([rd_stage ps0 cs0 (length (echoed
+   pops))]), carried there because the reader and the writer read two
+   different resources; with one claim it is a CONSEQUENCE of
+   [eout_pure]'s pin and [cs_len_ok]'s length law, so nothing has to keep
+   the two in step. *)
+Lemma ecl_pure_rd_stage (k : nat) (ho : list mobs) (so : ostage)
+    (H : LogEntryDefs.cons_hist) :
+  ecl_pure k ho so H -> rd_stage (o_ps so) (o_cs so) (length (o_E so)).
+Proof.
+  intros (Hout & Hcsl & _ & _ & _ & _).
+  destruct Hout as (_ & _ & _ & _ & Hpsb & Hpin & Hcsb & _).
+  rewrite /rd_stage. split_and!;
+    [exact Hpsb | exact Hcsb | exact Hpin |].
+  rewrite Hcsl.
+  destruct (decide (o_w so = []
+        /\ (length (o_E so) `mod` length echo_line)%nat = 0%nat)) as [Hd | _];
+    cycle 1.
+  { apply Nat.Div0.div_le_mono. lia. }
+  (* AT A BLOCK BOUNDARY the list is one short, so the bound is strict: the
+     era has completed [q] lines and recorded [q-1] choices. *)
+  destruct Hd as [_ Hmod].
+  destruct (decide (length (o_E so) = 0%nat)) as [HE0 | HE0].
+  { rewrite HE0. replace (0 - 1)%nat with 0%nat by lia.
+    rewrite !Nat.Div0.div_0_l. lia. }
+  assert (Hex : length (o_E so)
+                = (length echo_line * (length (o_E so) `div` length echo_line))%nat)
+    by (apply Nat.Div0.div_exact; exact Hmod).
+  assert (Hlt : ((length (o_E so) - 1) `div` length echo_line
+                 < length (o_E so) `div` length echo_line)%nat).
+  { apply Nat.Div0.div_lt_upper_bound. rewrite -Hex. lia. }
+  lia.
+Qed.
+
 (* ---- FILING THE ENTRY PRESERVES THE CLAIM, WITH THE STAGE UNCHANGED.
    This is what the settled/window split costs today and what the merge
    buys: there is no arm to choose, no counter to agree with, and the
@@ -4321,7 +4355,17 @@ Section echo_out.
            ∗ ⌜length (LogEntryDefs.ch_dl CH) = n⌝
            ∗ ⌜(LogEntryDefs.ch_dl CH ++ ws) `prefix_of` echoed (LogEntryDefs.ch_log CH)⌝
            ∗ ⌜E_index (seg_of (echoed (LogEntryDefs.ch_log CH)))⌝
-           ∗ ⌜E_byte (seg_of (echoed (LogEntryDefs.ch_log CH)))⌝).
+           ∗ ⌜E_byte (seg_of (echoed (LogEntryDefs.ch_log CH)))⌝
+           (* ...AND THE STAGE A LATER WRITE SPENDS, for a non-empty
+              window: the two bounds, the cursor's floor and the reader's
+              stage fact, all read off the ONE claim. *)
+           ∗ (⌜ws = []⌝
+              ∨ ∃ cs0 ps0 : list nat,
+                  cs_lb v cs0 ∗ ps_lb v ps0 ∗ E_lb v (n + length ws)%nat
+                  ∗ ⌜((n + length ws) `div` length echo_line
+                      <= S (length cs0))%nat⌝
+                  ∗ turn_lb v (length (proc_upto ps0 cs0 (n + length ws)))
+                  ∗ ⌜rd_stage ps0 cs0 (n + length ws)⌝)).
   Proof.
     intros Hread. iIntros "#Hpinr Hdlr Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
@@ -4335,6 +4379,17 @@ Section echo_out.
     destruct Hin2 as (_ & _ & _ & _ & Hidx & Hbyte & _).
     destruct (ein_read_pure k (LogEntryDefs.ch_log CH) (LogEntryDefs.ch_dl CH) ws
                 (o_cs so) Hread Hin) as (Hpref & Hp' & Hbnd').
+    (* the window's far end is inside the era's echoed list, which is what
+       makes every bound below nameable *)
+    assert (HEle : (n + length ws <= length (o_E so))%nat).
+    { pose proof (prefix_length _ _ Hpref) as HL.
+      rewrite length_app in HL.
+      rewrite (ecl_pure_E k ho so CH Hall0) /ch_E length_app seg_of_length.
+      lia. }
+    iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
+    iDestruct (ps_lb_get with "Hps") as "[Hps #Hpslb]".
+    iDestruct (Elist_lb_get with "HE") as "[HE #HElb]".
+    iDestruct (turn_lb_get with "Hta") as "#Htlb".
     iMod (dl_cnt_update v (length (LogEntryDefs.ch_dl CH)) n (n + length ws)%nat
             with "Hdl Hdlr") as "[Hdl Hdlr]".
     iModIntro. iSplitL "Hta Hcs Hps HE Hdl".
@@ -4342,8 +4397,20 @@ Section echo_out.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
       rewrite length_app Hdleq. iFrame "Hpin Hta Hcs Hps HE Hdl".
       iPureIntro. exact (ecl_pure_read k ho so CH ws Hpref Hall0). }
-    iRight. iFrame "Hdlr". iPureIntro. split_and!;
-      [exact Hdleq | exact Hpref | exact Hidx | exact Hbyte].
+    iRight. iFrame "Hdlr".
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iRight. iExists (o_cs so), (o_ps so). iFrame "Hcslb Hpslb".
+    iSplitR.
+    { iApply (E_lb_of_lb v (o_E so) (n + length ws)%nat HEle). iExact "HElb". }
+    iSplitR.
+    { iPureIntro. rewrite -Hdleq -length_app. exact Hbnd'. }
+    iSplitR.
+    { iApply (turn_lb_weaken with "Htlb").
+      rewrite /pcount -proc_upto_length.
+      etrans; [apply prefix_length, proc_upto_mono; exact HEle | lia]. }
+    iPureIntro.
+    exact (rd_stage_le _ _ _ _ HEle (ecl_pure_rd_stage k ho so CH Hall0)).
   Qed.
 
   Lemma ein_step_read (k : nat) (v : era_pins) (n : nat) (hi : list mobs)

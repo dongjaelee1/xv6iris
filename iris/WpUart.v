@@ -2097,11 +2097,17 @@ Section DevLoops.
   (*  makes [Htx] need a second; here the resource is one and so is the     *)
   (*  witness it is held at.                                               *)
   (* ==================================================================== *)
+  (* THE HISTORY'S OWN INVARIANT COMES WITH IT.  Every firing site holds
+     [cons_claim_at], which carries [ConsLog.cons_hist_ok] as a pure
+     conjunct, so handing it over costs the kernel nothing -- and it is
+     what lets the application read the OPEN ARM at a byte it did not see
+     opened: between two bytes of one arm an unrelated writer's [EvOut] may
+     have moved the history, and [arm_ok] is what survives that. *)
   Definition cons_link (i : uart_id) (k : nat) (ev : ConsLog.cons_ev)
       (Φ : iProp Σ) : iProp Σ :=
     (∀ (o : option (list mobs)) (H : LogEntryDefs.cons_hist),
        obs_hist_lb_o o -∗ chist_at i k (default [] o) H -∗
-       ⌜ConsLog.cons_ev_ok H ev⌝
+       ⌜ConsLog.cons_hist_ok H⌝ -∗ ⌜ConsLog.cons_ev_ok H ev⌝
        ={⊤ ∖ ↑uartN i}=∗
        ∃ o' : option (list mobs),
          obs_hist_lb_o o' ∗
@@ -2147,16 +2153,12 @@ Section DevLoops.
   (* [EvOut]'s premise is [True], so the two are the same wand with one
      argument fewer -- which is what keeps every writer's application site
      unchanged. *)
-  Lemma out_link_of_cons_link (i : uart_id) (k : nat) (b : bv 8) (Φ : iProp Σ) :
-    cons_link i k (ConsLog.EvOut b) Φ -∗ out_link i k b Φ.
-  Proof.
-    iIntros "H" (o Hh) "Hlb Hres".
-    by iMod ("H" $! o Hh with "Hlb Hres [//]") as (o') "?"; iModIntro; iExists o'.
-  Qed.
-
+  (* [EvOut]'s premises are [True] and an invariant the writer does not
+     read, so the two are the same wand with two arguments fewer -- which
+     is what keeps every writer's application site unchanged. *)
   Lemma cons_link_of_out_link (i : uart_id) (k : nat) (b : bv 8) (Φ : iProp Σ) :
     out_link i k b Φ -∗ cons_link i k (ConsLog.EvOut b) Φ.
-  Proof. iIntros "H" (o Hh) "Hlb Hres _". by iApply ("H" with "Hlb Hres"). Qed.
+  Proof. iIntros "H" (o Hh) "Hlb Hres _ _". by iApply ("H" with "Hlb Hres"). Qed.
 
   (* THE CHAIN: one link per byte of a run, the payload at the end.  A
      [Fixpoint] and not a big-op, so that [out_chain_app] -- the loop
@@ -2283,7 +2285,7 @@ Section DevLoops.
   Lemma cons_link_of_licence (k : nat) (ev : ConsLog.cons_ev) (Φ : iProp Σ) :
     cons_licence -∗ Φ -∗ cons_link Uart0 k ev Φ.
   Proof.
-    iIntros "#Hlic HΦ" (o H) "#Hlb Hres _".
+    iIntros "#Hlic HΦ" (o H) "#Hlb Hres _ _".
     iMod ("Hlic" $! k (default [] o) H ev with "Hres") as "Hres".
     iModIntro. iExists o. by iFrame "Hlb Hres HΦ".
   Qed.
@@ -2390,8 +2392,8 @@ Section DevLoops.
   Lemma echo_link_mono (k : nat) (h : list mobs) (b : bv 8) (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ echo_link k h b Φ -∗ echo_link k h b Φ'.
   Proof.
-    iIntros "HΦ H" (o Hh) "Hlb Hres %Hev".
-    iMod ("H" $! o Hh with "Hlb Hres [//]") as (o'') "(Hlb'' & Hres' & HP)".
+    iIntros "HΦ H" (o Hh) "Hlb Hres %Hok %Hev".
+    iMod ("H" $! o Hh with "Hlb Hres [//] [//]") as (o'') "(Hlb'' & Hres' & HP)".
     iModIntro. iExists o''. iFrame "Hlb'' Hres'". by iApply "HΦ".
   Qed.
 
@@ -2563,7 +2565,7 @@ Section DevLoops.
     { cbn [ConsLog.cons_ev_ok]. exists (h, c, cs, j).
       split; [exact Harmeq | exact Hecho]. }
     iEval (rewrite Hagr) in "Hhi".
-    iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(#Hlb' & Hres' & HΦ)";
+    iMod ("HΨ" $! o H with "Hlb Hres [//] [%]") as (o') "(#Hlb' & Hres' & HΦ)";
       [exact Hev |].
     iMod (ghost_var_update_halves (Some h) with "Hhi Hhi0") as "[Hhi Hhi0]".
     iMod (in_log_auth_snoc γ (LogEntryDefs.ch_log H) (h, c, take j cs)
@@ -2587,7 +2589,7 @@ Section DevLoops.
       by rewrite /ConsLog.cons_step Harmeq in Hok'. }
     iModIntro. iFrame "Hhi Hlm Hmine HΦ". iPureIntro.
     destruct Hok as [_ Harmok]. rewrite Harmeq /= in Harmok.
-    destruct Harmok as (_ & _ & _ & Hext). exact Hext.
+    destruct Harmok as (_ & _ & _ & Hext & _). exact Hext.
   Qed.
 
   (* ==================================================================== *)
@@ -2643,7 +2645,7 @@ Section DevLoops.
                     `prefix_of` LogEntryDefs.ch_acc H).
     { rewrite Hacc0 /uart_acc. etrans; [exact Hpre |]. by apply prefix_app_r. }
     (* fire the event *)
-    iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(#Hlb' & Hres' & HΦ)".
+    iMod ("HΨ" $! o H with "Hlb Hres [//] [%]") as (o') "(#Hlb' & Hres' & HΦ)".
     { cbn [ConsLog.cons_ev_ok]. split_and!;
         [exact Hnone | exact Hends | exact Hecho | exact Hbelow | exact Hwire]. }
     (* and move both halves with the history *)
@@ -2709,7 +2711,7 @@ Section DevLoops.
       "(#Hlb & Hres & Hhi0 & Hdv0 & Hau & Hlm0 & Harm & %Hacc0 & %Hok)".
     rewrite /uart_logm. iDestruct (ghost_var_agree with "Hlm Hlm0") as %->.
     rewrite /uart_deliv. iDestruct (ghost_var_agree with "Hdv Hdv0") as %->.
-    iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(#Hlb' & Hres' & HΦ)".
+    iMod ("HΨ" $! o H with "Hlb Hres [//] [%]") as (o') "(#Hlb' & Hres' & HΦ)".
     { cbn [ConsLog.cons_ev_ok]. exact Hread. }
     iMod (ghost_var_update_halves
             ((LogEntryDefs.ch_dl H ++ ws)%list) with "Hdv Hdv0") as "[Hdv Hdv0]".
@@ -2778,7 +2780,7 @@ Section DevLoops.
     iIntros (Hacc) "HΨ Hcl".
     iDestruct "Hcl" as (o H)
       "(Hlb & Hres & Hhi & Hdv & Hau & Hlm & Harm & %Hacc0 & %Hok)".
-    iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(Hlb' & Hres' & HΦ)".
+    iMod ("HΨ" $! o H with "Hlb Hres [//] [%]") as (o') "(Hlb' & Hres' & HΦ)".
     { exact I. }
     iModIntro. iFrame "HΦ".
     iExists o', (ConsLog.cons_step H (ConsLog.EvOut b)).
@@ -2885,7 +2887,7 @@ Section DevLoops.
     { cbn [ConsLog.cons_ev_ok]. exists (h, c, cs, j).
       split; [exact Harmeq | exact Hlk]. }
     iEval (rewrite Harmeq) in "Harm".
-    iMod ("HΨ" $! o H with "Hlb Hres [%]") as (o') "(#Hlb' & Hres' & HΦ)";
+    iMod ("HΨ" $! o H with "Hlb Hres [//] [%]") as (o') "(#Hlb' & Hres' & HΦ)";
       [exact Hev |].
     iMod (uart_arm_update γ (Some (h, c, cs, j)) (Some (h, c, cs, j))
             (Some (h, c, cs, S j)) with "Hmine Harm") as "[Hmine Harm]".

@@ -297,17 +297,29 @@ Definition cons_ev_ok (H : cons_hist) (ev : cons_ev) : Prop :=
   | EvRead ws => read_ok (ch_log H) (ch_dl H) ws
   end.
 
-(* The arm's own well-formedness, against the log it will be filed into. *)
-Definition arm_ok (L : list log_entry) (a : cons_arm) : Prop :=
+(* The arm's own well-formedness, against the log it will be filed into AND
+   the accepted bytes it is echoing into.
+
+   THE WIRE CLAUSE IS WHY [acc] IS AN ARGUMENT.  [EvOpen] takes "what the
+   application has accounted for is already on the wire the kernel is about
+   to extend" as a premise; the application needs it again at EVERY byte of
+   the arm, and between two bytes an unrelated writer's [EvOut] may have
+   grown [acc].  Carrying it here is what makes it survive: every event
+   either leaves [acc] alone or appends to it, and a prefix of a list is a
+   prefix of its extension. *)
+Definition arm_ok (L : list log_entry) (acc : list (bv 8))
+    (a : cons_arm) : Prop :=
   obs_ends_in Uart0 (ca_hist a) (ca_byte a)
   /\ cons_echo (ca_byte a) (ca_echo a)
   /\ (ca_sent a <= length (ca_echo a))%nat
-  /\ (forall e, e ∈ L -> hist_ext (le_hist e) (ca_hist a)).
+  /\ (forall e, e ∈ L -> hist_ext (le_hist e) (ca_hist a))
+  /\ obs_wire Uart0 (open_seg (ca_hist a)) `prefix_of` acc.
 
 (* THE INVARIANT the port carries.  [ConsoleInv.cons_ok] is a different
    thing (the ring's three counters), hence the name. *)
 Definition cons_hist_ok (H : cons_hist) : Prop :=
-  log_ok (ch_log H) /\ from_option (arm_ok (ch_log H)) True (ch_arm H).
+  log_ok (ch_log H)
+  /\ from_option (arm_ok (ch_log H) (ch_acc H)) True (ch_arm H).
 
 (* ---------------------------------------------------------------------- *)
 (*  THE ONE THEOREM: the events preserve the invariant.                    *)
@@ -319,29 +331,39 @@ Proof.
   unfold cons_hist_ok, cons_ev_ok, cons_step, arm_ok,
          ca_hist, ca_byte, ca_echo, ca_sent.
   intros [Hlog Harm] Hev. destruct ev.
-  - (* EvOut: only [ch_acc] moves *) simpl in *. split; assumption.
+  - (* EvOut: only [ch_acc] moves, and it GROWS -- which is what the arm's
+       wire clause needs *)
+    simpl in *. split; [exact Hlog |].
+    destruct (ch_arm H) as [[[[h c] cs] j] |]; [| exact I].
+    simpl in *. destruct Harm as (Hends & Hecho & Hle & Hbelow & Hwire).
+    split; [exact Hends |]. split; [exact Hecho |].
+    split; [exact Hle |]. split; [exact Hbelow |].
+    etrans; [exact Hwire | by apply prefix_app_r].
   - (* EvOpen: the arm is founded, and its facts ARE the premises *)
-    destruct Hev as (Hnone & Hends & Hecho & Hbelow & _).
+    destruct Hev as (Hnone & Hends & Hecho & Hbelow & Hwire).
     simpl in *. split; [exact Hlog |].
     split; [exact Hends |]. split; [exact Hecho |].
-    split; [apply Nat.le_0_l |]. exact Hbelow.
+    split; [apply Nat.le_0_l |]. split; [exact Hbelow | exact Hwire].
   - (* EvByte: the counter advances into a byte the echo really has, so it
-       stays within the echo *)
+       stays within the echo; [ch_acc] grows, as at [EvOut] *)
     destruct Hev as (a & Ha & Hlk). destruct a as [[[h c] cs] j].
     rewrite Ha in Harm. rewrite Ha. simpl in *.
-    destruct Harm as (Hends & Hecho & _ & Hbelow).
+    destruct Harm as (Hends & Hecho & _ & Hbelow & Hwire).
     apply lookup_lt_Some in Hlk.
     split; [exact Hlog |].
     split; [exact Hends |]. split; [exact Hecho |].
-    split; [exact Hlk |]. exact Hbelow.
+    split; [exact Hlk |]. split; [exact Hbelow |].
+    etrans; [exact Hwire | by apply prefix_app_r].
   - (* EvClose: the entry is filed, and the arm's facts are exactly
        [cl_log_ok_snoc]'s premises *)
     destruct Hev as (a & Ha & Hpre). destruct a as [[[h c] cs] j].
     rewrite Ha in Harm. rewrite Ha. simpl in *.
-    destruct Harm as (Hends & _ & _ & Hbelow).
+    destruct Harm as (Hends & _ & _ & Hbelow & _).
     split; [| exact I].
     exact (cl_log_ok_snoc (ch_log H) (h, c, take j cs) Hlog Hends Hpre Hbelow).
-  - (* EvRead: only [ch_dl] moves *) simpl in *. split; assumption.
+  - (* EvRead: only [ch_dl] moves *)
+    simpl in *. split; [exact Hlog |].
+    destruct (ch_arm H) as [[[[h c] cs] j] |]; [| exact I]. exact Harm.
 Qed.
 
 (* The log only ever grows, and only at [EvClose]. *)

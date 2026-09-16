@@ -142,12 +142,14 @@
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Import ghost_map mono_nat invariants.
+From iris.algebra Require Import excl dfrac.
+From iris.base_logic.lib Require Import own ghost_map mono_nat invariants.
 Require Import RiscvLang.        (* [mobs] *)
 Require Import ObsTrace.         (* [trace_shape], [obs_boots], [ObsPowerOn] *)
 Require Import PathElems.        (* [path_elems] *)
 Require Import FsTree.           (* [fname], [fs_proper] *)
 Require Import FsAbsDefs.        (* [aview], [anode], [absnode], [abs_view] *)
+Require Import FsBlocks.         (* [blk_splice]: the write leg's splice *)
 Require Import FsAbsDelta.       (* the landed delta legs *)
 Require Import FsImg.            (* [ROOTINO]: the era's root inum, as a [Z] *)
 Require Import TreeView.         (* TL-1: [subtree], [own_wf], the deltas *)
@@ -162,19 +164,23 @@ Local Open Scope Z_scope.
 (*  0.  THE GHOST CLASS                                                   *)
 (* ===================================================================== *)
 
-(* ONE class, bundling the two cameras the claim is made of: the taint
+(* ONE class, bundling the cameras the claim is made of: the taint
    counter (echo's [mono_nat], for the same reason -- a counter that has
    left 0 can never come back, so its lower bound is a permanent,
-   persistent fact) and the ownership map. *)
+   persistent fact), the ownership map (used TWICE, at two names -- see
+   [tree_names] below) and the MOVE TOKEN's exclusive unit
+   (design/user-tree.md section 7.2's [tok]). *)
 Class treeG (Σ : gFunctors) := TreeG {
   tr_mono_nat : mono_natG Σ;
   tr_own_map  : ghost_mapG Σ gname (Z * ttree);
+  tr_tok      : inG Σ (exclR unitO);
 }.
 Global Existing Instance tr_mono_nat.
 Global Existing Instance tr_own_map.
+Global Existing Instance tr_tok.
 
 Definition treeΣ : gFunctors :=
-  #[ mono_natΣ; ghost_mapΣ gname (Z * ttree) ].
+  #[ mono_natΣ; ghost_mapΣ gname (Z * ttree); GFunctor (exclR unitO) ].
 
 Global Instance subG_treeΣ {Σ} : subG treeΣ Σ -> treeG Σ.
 Proof. solve_inG. Qed.
@@ -270,14 +276,17 @@ Qed.
 (* THE ONE FACT EVERY OWNER'S MOVE TURNS ON: a node of MY tree is outside
    every other owner's reach.  [TreeView.subtree_disjoint] with the claim's
    own exactness supplying the two subtrees. *)
-Lemma tree_disjoint_out (av : aview) (own : gmap gname (Z * ttree))
+(* ...and the form the SLOTTED claim reads it at (lane TL-3W): the mover's
+   OWN exactness is all the fact needs -- no other owner's, which is what
+   makes it usable when other entries are mid-move (their slots carry no
+   exactness at all). *)
+Lemma tree_disjoint_out_at (av : aview) (own : gmap gname (Z * ttree))
     (g g' : gname) (root root' d : Z) (t t' : ttree) :
-  own_wf av own -> tree_exact av own ->
+  own_wf av own -> subtree av root = Some t ->
   own !! g = Some (root, t) -> own !! g' = Some (root', t') -> g <> g' ->
   d ∈ dom (tv_nodes t) -> ~ nreach (tview av) root' d.
 Proof.
-  intros Hwf Hex Hg Hg' Hne Hd Hr.
-  pose proof (Hex g root t Hg) as Ht.
+  intros Hwf Ht Hg Hg' Hne Hd Hr.
   pose proof (subtree_nodes_eq av root t Ht) as Hnodes.
   assert (Hdom : d ∈ dom av).
   { rewrite Hnodes in Hd. by apply elem_of_dom_subtree_nodes in Hd as [Hd _]. }
@@ -286,6 +295,17 @@ Proof.
     by (apply elem_of_dom_subtree_nodes; split; assumption).
   pose proof (subtree_disjoint av own g g' root root' t t' Hwf Hne Hg Hg') as Hdis.
   rewrite elem_of_disjoint in Hdis. exact (Hdis d Hin Hin').
+Qed.
+
+Lemma tree_disjoint_out (av : aview) (own : gmap gname (Z * ttree))
+    (g g' : gname) (root root' d : Z) (t t' : ttree) :
+  own_wf av own -> tree_exact av own ->
+  own !! g = Some (root, t) -> own !! g' = Some (root', t') -> g <> g' ->
+  d ∈ dom (tv_nodes t) -> ~ nreach (tview av) root' d.
+Proof.
+  intros Hwf Hex Hg Hg' Hne Hd.
+  exact (tree_disjoint_out_at av own g g' root root' d t t'
+           Hwf (Hex g root t Hg) Hg Hg' Hne Hd).
 Qed.
 
 (* ...and the same at the OWNER'S OWN root: a node it does not have is
@@ -583,6 +603,369 @@ Proof.
     + destruct (Hlk g0 r0 t0 Hne H0) as (_ & H1). exact (Hex g0 r0 t0 H1).
 Qed.
 
+(* ...and the HAND-DOWN's [own_wf] alone, off the parent's OWN exactness
+   (lane TL-3W: the slotted claim has no global [tree_exact] to offer). *)
+Lemma own_wf_grant (av : aview) (own : gmap gname (Z * ttree))
+    (g g' : gname) (root root' : Z) (t t' : ttree) (e : gmap fname Z) :
+  own !! g = Some (root, t) -> subtree av root = Some t ->
+  tv_nodes t !! root' = Some (ADir e) ->
+  own_wf av own ->
+  own_wf av (<[g' := (root', t')]> (delete g own)).
+Proof.
+  intros Hg Ht Hr' Hwf.
+  pose proof Hwf as (Hwf0 & Hroots & Hnn).
+  assert (Hdom' : root' ∈ dom (tv_nodes t))
+    by (apply elem_of_dom; by exists (ADir e)).
+  assert (Hreach : nreach (tview av) root root')
+    by exact (subtree_dom_reach av root t root' Ht Hdom').
+  assert (Hout : forall (g0 : gname) (r0 : Z) (t0 : ttree),
+             g0 <> g -> own !! g0 = Some (r0, t0) ->
+             ~ nreach (tview av) r0 root').
+  { intros g0 r0 t0 Hne H0.
+    exact (tree_disjoint_out_at av own g g0 root r0 root' t t0
+             Hwf Ht Hg H0 (fun Hc => Hne (eq_sym Hc)) Hdom'). }
+  assert (Hout2 : forall (g0 : gname) (r0 : Z) (t0 : ttree),
+             g0 <> g -> own !! g0 = Some (r0, t0) ->
+             ~ nreach (tview av) root' r0).
+  { intros g0 r0 t0 Hne H0 Hc.
+    exact (Hnn g g0 root t r0 t0 (fun Hc0 => Hne (eq_sym Hc0)) Hg H0
+             (nreach_trans (tview av) root root' r0 Hreach Hc)). }
+  assert (Hlk : forall (g0 : gname) (r0 : Z) (t0 : ttree),
+             g0 <> g' -> <[g' := (root', t')]> (delete g own) !! g0 = Some (r0, t0) ->
+             g0 <> g /\ own !! g0 = Some (r0, t0)).
+  { intros g0 r0 t0 Hne H0. rewrite lookup_insert_ne in H0; [| congruence].
+    destruct (decide (g0 = g)) as [-> | Hg0].
+    - rewrite lookup_delete in H0. discriminate.
+    - rewrite lookup_delete_ne in H0; [| congruence]. split; assumption. }
+  split_and!; [exact Hwf0 | ..].
+  - intros g0 r0 t0 H0. destruct (decide (g0 = g')) as [-> | Hne].
+    + rewrite lookup_insert in H0. injection H0 as <- <-.
+      exact (tree_sub_dir av root root' t e Ht Hr').
+    + destruct (Hlk g0 r0 t0 Hne H0) as (_ & H1).
+      exact (Hroots g0 r0 t0 H1).
+  - intros g1 g2 r1 t1 r2 t2 Hne H1 H2.
+    destruct (decide (g1 = g')) as [-> | Hne1].
+    + rewrite lookup_insert in H1. injection H1 as <- <-.
+      destruct (Hlk g2 r2 t2 (fun Hc => Hne (eq_sym Hc)) H2) as (Hd2 & K2).
+      exact (Hout2 g2 r2 t2 Hd2 K2).
+    + destruct (Hlk g1 r1 t1 Hne1 H1) as (Hd1 & K1).
+      destruct (decide (g2 = g')) as [-> | Hne2].
+      { rewrite lookup_insert in H2. injection H2 as <- <-.
+        exact (Hout g1 r1 t1 Hd1 K1). }
+      destruct (Hlk g2 r2 t2 Hne2 H2) as (Hd2 & K2).
+      exact (Hnn g1 g2 r1 t1 r2 t2 Hne K1 K2).
+Qed.
+
+(* ---- 1h.  THE SLOTTED CLAIM'S PURE LAYER (lane TL-3W) ---------------- *)
+(*                                                                        *)
+(*  design/user-tree.md section 7.2.  The claim no longer carries the      *)
+(*  GLOBAL [tree_exact]: an entry whose owner is mid-move carries no       *)
+(*  exactness at all (its SLOT is in the in-flight arm), so every pure     *)
+(*  fact below is stated PER ENTRY.                                       *)
+(*                                                                        *)
+(*  [own_sync] is what keeps TL-2's engine [tree_step_gen] provable at its *)
+(*  EXACT statement over the slotted claim: the hypothesis is a [∀ own]    *)
+(*  gated on [tree_exact av own], which the slotted body cannot supply --  *)
+(*  so it is applied at the map whose every recorded tree is REPLACED by   *)
+(*  the view's own subtree at that entry's root.  That map is exact by     *)
+(*  construction, it has the same roots (so [own_wf] transfers both ways,  *)
+(*  which reads roots and never trees), and its exactness at the POST view *)
+(*  says precisely "no owner's root moved" -- which is what each surviving *)
+(*  exact slot needs.                                                      *)
+
+Definition own_sync (av : aview) (own : gmap gname (Z * ttree))
+    : gmap gname (Z * ttree) :=
+  (fun p : Z * ttree => (p.1, MkTTree (subtree_nodes av p.1) p.1)) <$> own.
+
+Lemma own_sync_lookup (av : aview) (own : gmap gname (Z * ttree))
+    (g : gname) (root : Z) (t : ttree) :
+  own !! g = Some (root, t) ->
+  own_sync av own !! g = Some (root, MkTTree (subtree_nodes av root) root).
+Proof. intros H. rewrite /own_sync lookup_fmap H //. Qed.
+
+Lemma own_sync_lookup_inv (av : aview) (own : gmap gname (Z * ttree))
+    (g : gname) (root : Z) (t : ttree) :
+  own_sync av own !! g = Some (root, t) ->
+  exists t0 : ttree, own !! g = Some (root, t0).
+Proof.
+  rewrite /own_sync lookup_fmap. intros H.
+  destruct (own !! g) as [p |] eqn:E; [| discriminate].
+  destruct p as [r0 t0]. cbn in H. injection H as <- _. by exists t0.
+Qed.
+
+(* the shape every [subtree] answer has: at a directory the reading is the
+   closure, so an entry that IS exact records exactly that tree *)
+Lemma subtree_sync_eq (av : aview) (root : Z) (t : ttree) :
+  subtree av root = Some t -> t = MkTTree (subtree_nodes av root) root.
+Proof.
+  intros Ht. pose proof (subtree_Some_inv av root t Ht) as (Hd & _).
+  rewrite (subtree_of_dir av root Hd) in Ht. by injection Ht as <-.
+Qed.
+
+Lemma own_wf_sync (av : aview) (own : gmap gname (Z * ttree)) :
+  own_wf av own -> own_wf av (own_sync av own).
+Proof.
+  intros (Hwf & Hroots & Hnn). split_and!; [exact Hwf | ..].
+  - intros g r t Hg. destruct (own_sync_lookup_inv av own g r t Hg) as (t0 & H0).
+    exact (Hroots g r t0 H0).
+  - intros g1 g2 r1 t1 r2 t2 Hne H1 H2.
+    destruct (own_sync_lookup_inv av own g1 r1 t1 H1) as (u1 & K1).
+    destruct (own_sync_lookup_inv av own g2 r2 t2 H2) as (u2 & K2).
+    exact (Hnn g1 g2 r1 u1 r2 u2 Hne K1 K2).
+Qed.
+
+Lemma own_wf_of_sync (av av' : aview) (own : gmap gname (Z * ttree)) :
+  own_wf av' (own_sync av own) -> own_wf av' own.
+Proof.
+  intros (Hwf & Hroots & Hnn). split_and!; [exact Hwf | ..].
+  - intros g r t Hg.
+    exact (Hroots g r (MkTTree (subtree_nodes av r) r)
+             (own_sync_lookup av own g r t Hg)).
+  - intros g1 g2 r1 t1 r2 t2 Hne H1 H2.
+    exact (Hnn g1 g2 r1 _ r2 _ Hne
+             (own_sync_lookup av own g1 r1 t1 H1)
+             (own_sync_lookup av own g2 r2 t2 H2)).
+Qed.
+
+Lemma tree_exact_sync (av : aview) (own : gmap gname (Z * ttree)) :
+  own_wf av own -> tree_exact av (own_sync av own).
+Proof.
+  intros (_ & Hroots & _) g r t Hg.
+  destruct (own_sync_lookup_inv av own g r t Hg) as (t0 & H0).
+  rewrite (own_sync_lookup av own g r t0 H0) in Hg. injection Hg as <-.
+  exact (subtree_of_dir av r (Hroots g r t0 H0)).
+Qed.
+
+(* THE BRIDGE: TL-2's [∀ own] step hypothesis, read per entry. *)
+Lemma tree_step_pure (av av' : aview) (own : gmap gname (Z * ttree)) :
+  (forall own0 : gmap gname (Z * ttree),
+     own_wf av own0 -> tree_exact av own0 -> adir_at av FsImg.ROOTINO ->
+     own_wf av' own0 /\ tree_exact av' own0 /\ adir_at av' FsImg.ROOTINO) ->
+  own_wf av own -> adir_at av FsImg.ROOTINO ->
+  own_wf av' own /\ adir_at av' FsImg.ROOTINO
+  /\ (forall (g : gname) (root : Z) (t : ttree),
+        own !! g = Some (root, t) -> subtree av root = Some t ->
+        subtree av' root = Some t).
+Proof.
+  intros Hstep Hwf Hr.
+  destruct (Hstep (own_sync av own) (own_wf_sync av own Hwf)
+              (tree_exact_sync av own Hwf) Hr) as (Hwf' & Hex' & Hr').
+  split_and!; [exact (own_wf_of_sync av av' own Hwf') | exact Hr' |].
+  intros g root t Hg Ht.
+  rewrite (subtree_sync_eq av root t Ht).
+  exact (Hex' g root _ (own_sync_lookup av own g root t Hg)).
+Qed.
+
+(* ---- 1i.  THE OWNER'S MOVE, PER ENTRY (design section 7.2) ----------- *)
+(*                                                                        *)
+(*  What [tree_step_move] owes at each landed leg: the map is WELL FORMED  *)
+(*  at the post view, the era still has its root, and EVERY OTHER entry's  *)
+(*  reading is literally unchanged (an EQUATION, so a surviving exact slot *)
+(*  transfers by rewriting).  The mover's own entry owes nothing here --   *)
+(*  its slot goes IN FLIGHT.                                              *)
+
+Definition tree_move_out (av av' : aview) (own : gmap gname (Z * ttree))
+    (g : gname) : Prop :=
+  own_wf av' own /\ adir_at av' FsImg.ROOTINO
+  /\ (forall (g' : gname) (root' : Z) (t' : ttree),
+        g' <> g -> own !! g' = Some (root', t') ->
+        subtree av' root' = subtree av root').
+
+Lemma tree_move_write_pure (av : aview) (own : gmap gname (Z * ttree))
+    (g : gname) (root i : Z) (t : ttree) (off : nat)
+    (new bs0 : list (bv 8)) (nl : nat) :
+  av !! i = Some (MkAnode (AFile bs0) nl) ->
+  own !! g = Some (root, t) -> subtree av root = Some t ->
+  i ∈ dom (tv_nodes t) ->
+  own_wf av own -> adir_at av FsImg.ROOTINO ->
+  tree_move_out av (delta_write i off new av) own g.
+Proof.
+  intros Hi Hg Ht Hd Hwf Hr. split_and!.
+  - exact (own_wf_write av own i off new bs0 nl Hi Hwf).
+  - apply root_of_own_wf.
+    exact (own_wf_write av root_own i off new bs0 nl Hi
+             (own_wf_root av (proj1 Hwf) Hr)).
+  - intros g' root' t' Hne H'.
+    exact (subtree_delta_write_out av root' i off new
+             (tree_disjoint_out_at av own g g' root root' i t t'
+                Hwf Ht Hg H' (fun Hc => Hne (eq_sym Hc)) Hd)).
+Qed.
+
+Lemma tree_move_trunc_pure (av : aview) (own : gmap gname (Z * ttree))
+    (g : gname) (root i : Z) (t : ttree) (bs0 : list (bv 8)) (nl : nat) :
+  av !! i = Some (MkAnode (AFile bs0) nl) ->
+  own !! g = Some (root, t) -> subtree av root = Some t ->
+  i ∈ dom (tv_nodes t) ->
+  own_wf av own -> adir_at av FsImg.ROOTINO ->
+  tree_move_out av (delta_trunc i av) own g.
+Proof.
+  intros Hi Hg Ht Hd Hwf Hr. split_and!.
+  - exact (own_wf_trunc av own i bs0 nl Hi Hwf).
+  - apply root_of_own_wf.
+    exact (own_wf_trunc av root_own i bs0 nl Hi
+             (own_wf_root av (proj1 Hwf) Hr)).
+  - intros g' root' t' Hne H'.
+    exact (subtree_delta_trunc_out av root' i
+             (tree_disjoint_out_at av own g g' root root' i t t'
+                Hwf Ht Hg H' (fun Hc => Hne (eq_sym Hc)) Hd)).
+Qed.
+
+Lemma tree_move_create_pure (av : aview) (own : gmap gname (Z * ttree))
+    (g : gname) (root d : Z) (nm : fname) (i : Z) (c : absnode)
+    (t : ttree) (e : gmap fname Z) (nl : nat) :
+  fs_pname nm ->
+  av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = None ->
+  av !! i = None -> tabs_leaf (tabs_of c) ->
+  own !! g = Some (root, t) -> subtree av root = Some t ->
+  d ∈ dom (tv_nodes t) ->
+  own_wf av own -> adir_at av FsImg.ROOTINO ->
+  tree_move_out av (delta_create d nm i c av) own g.
+Proof.
+  intros Hnm Hd Hnone Hi Hleaf Hg Ht Hdd Hwf Hr.
+  pose proof Hwf as (Hcl & Hroots & _). split_and!.
+  - exact (own_wf_create av own d nm i c e nl Hnm Hd Hi Hleaf Hwf).
+  - apply root_of_own_wf.
+    exact (own_wf_create av root_own d nm i c e nl Hnm Hd Hi Hleaf
+             (own_wf_root av (proj1 Hwf) Hr)).
+  - intros g' root' t' Hne H'.
+    assert (Hfresh : ~ nreach (tview av) root' i).
+    { assert (Hne0 : i <> root').
+      { intros Heq. rewrite Heq in Hi.
+        pose proof (adir_at_dom av root' (Hroots g' root' t' H')) as Hdm.
+        apply elem_of_dom in Hdm as [a Ha]. congruence. }
+      exact (nreach_fresh av root' i (proj2 Hcl) Hi Hne0). }
+    exact (subtree_delta_create_out av root' d nm i c
+             (tree_disjoint_out_at av own g g' root root' d t t'
+                Hwf Ht Hg H' (fun Hc => Hne (eq_sym Hc)) Hdd)
+             Hfresh).
+Qed.
+
+Lemma tree_move_unl_ent_pure (av : aview) (own : gmap gname (Z * ttree))
+    (g : gname) (root d : Z) (nm : fname) (dec : nat)
+    (t : ttree) (e : gmap fname Z) (nl : nat) :
+  av !! d = Some (MkAnode (ADir e) nl) ->
+  own !! g = Some (root, t) -> subtree av root = Some t ->
+  d ∈ dom (tv_nodes t) ->
+  own_wf av own -> adir_at av FsImg.ROOTINO ->
+  tree_move_out av (delta_unl_ent d nm dec av) own g.
+Proof.
+  intros Hd Hg Ht Hdd Hwf Hr. split_and!.
+  - exact (own_wf_unl_ent av own d nm dec e nl Hd Hwf).
+  - apply root_of_own_wf.
+    exact (own_wf_unl_ent av root_own d nm dec e nl Hd
+             (own_wf_root av (proj1 Hwf) Hr)).
+  - intros g' root' t' Hne H'.
+    exact (subtree_delta_unl_ent_out av root' d nm dec
+             (tree_disjoint_out_at av own g g' root root' d t t'
+                Hwf Ht Hg H' (fun Hc => Hne (eq_sym Hc)) Hdd)).
+Qed.
+
+(* ---- 1j.  WHEN A MOVE IS INVISIBLE: THE VIEW ITSELF DOES NOT MOVE ---- *)
+(*                                                                        *)
+(*  design section 7.2's "a move with [tree_op δ t = t] takes the FREE     *)
+(*  step instead -- the owner decides by computation on its own tree".     *)
+(*  At write and truncate the decision is even cheaper than that: an       *)
+(*  invisible splice leaves the ROW where it was, so the delta is the      *)
+(*  IDENTITY on the view and the free step is [tree_step_gen] at a         *)
+(*  congruence.  (It matters because the KERNEL picks the offset and the   *)
+(*  bytes, so an owner supplying a write chain must answer both cases.)    *)
+
+Lemma delta_write_id (av : aview) (i : Z) (off : nat)
+    (new bs0 : list (bv 8)) (nl : nat) :
+  av !! i = Some (MkAnode (AFile bs0) nl) ->
+  blk_splice off new bs0 = bs0 ->
+  delta_write i off new av = av.
+Proof.
+  intros Hi Hsp. rewrite /delta_write Hi /=. cbn [an_node an_nlink].
+  rewrite Hsp. exact (insert_id av i (MkAnode (AFile bs0) nl) Hi).
+Qed.
+
+Lemma delta_trunc_id (av : aview) (i : Z) (bs0 : list (bv 8)) (nl : nat) :
+  av !! i = Some (MkAnode (AFile bs0) nl) ->
+  bs0 = [] ->
+  delta_trunc i av = av.
+Proof.
+  intros Hi ->. rewrite /delta_trunc Hi /=. cbn [an_node an_nlink].
+  exact (insert_id av i (MkAnode (AFile []) nl) Hi).
+Qed.
+
+(* ...and the reading that makes the decision a computation on the TREE:
+   at a file row the owner's tree records, the splice is invisible in the
+   tree exactly when it is invisible in the view. *)
+Lemma top_write_id_inv (t : ttree) (i : Z) (off : nat)
+    (new bs0 : list (bv 8)) :
+  tv_nodes t !! i = Some (AFile bs0) ->
+  top_write i off new t = t -> blk_splice off new bs0 = bs0.
+Proof.
+  intros Hi Heq. rewrite /top_write Hi in Heq.
+  pose proof (f_equal tv_nodes Heq) as Hn. cbn [tv_nodes] in Hn.
+  pose proof (f_equal (fun m : gmap Z absnode => m !! i) Hn) as Hl.
+  cbn beta in Hl. rewrite lookup_insert Hi in Hl. by injection Hl as ->.
+Qed.
+
+Lemma top_trunc_id_inv (t : ttree) (i : Z) (bs0 : list (bv 8)) :
+  tv_nodes t !! i = Some (AFile bs0) -> top_trunc i t = t -> bs0 = [].
+Proof.
+  intros Hi Heq. rewrite /top_trunc Hi in Heq.
+  pose proof (f_equal tv_nodes Heq) as Hn. cbn [tv_nodes] in Hn.
+  pose proof (f_equal (fun m : gmap Z absnode => m !! i) Hn) as Hl.
+  cbn beta in Hl. rewrite lookup_insert Hi in Hl. by injection Hl as ->.
+Qed.
+
+(* the owner's own tree records the view's bytes at a node of its subtree *)
+Lemma tree_row_file (av : aview) (root i : Z) (t : ttree)
+    (bs0 : list (bv 8)) (nl : nat) :
+  subtree av root = Some t -> i ∈ dom (tv_nodes t) ->
+  av !! i = Some (MkAnode (AFile bs0) nl) ->
+  tv_nodes t !! i = Some (AFile bs0).
+Proof.
+  intros Ht Hd Hi.
+  rewrite (subtree_nodes_eq av root t Ht) /subtree_nodes
+    (nclose_lookup_in (tview av) root i (subtree_dom_reach av root t i Ht Hd)).
+  rewrite (tview_lookup_Some av i _ Hi) //.
+Qed.
+
+(* ...and the converse, which is what a WRITE's phase 1 reads: the owner's
+   tree records a file at [i], so the VIEW has that file there, and the
+   fire's own [arow_at] row is then pinned to it. *)
+Lemma tree_file_row (av : aview) (root i : Z) (t : ttree) (bs : list (bv 8)) :
+  subtree av root = Some t -> tv_nodes t !! i = Some (AFile bs) ->
+  exists nl : nat, av !! i = Some (MkAnode (AFile bs) nl).
+Proof.
+  intros Ht Hi. rewrite (subtree_nodes_eq av root t Ht) in Hi.
+  apply subtree_nodes_lookup_Some in Hi as ((a & Ha & Hn) & _).
+  destruct a as [n0 nl]. cbn in Hn. exists nl.
+  rewrite (tabs_of_file_inv n0 bs (eq_sym Hn)) in Ha. exact Ha.
+Qed.
+
+Lemma tree_file_dom (root i : Z) (t : ttree) (bs : list (bv 8)) :
+  tv_nodes t !! i = Some (AFile bs) -> i ∈ dom (tv_nodes t).
+Proof. intros H. apply elem_of_dom. by exists (AFile bs). Qed.
+
+(* CREATE IS NEVER INVISIBLE: the child is a fresh inum, so the owner's
+   tree gains a node it did not have. *)
+Lemma dom_tedge_ins (m : gmap Z absnode) (d : Z) (nm : fname) (i : Z) :
+  dom (tedge_ins d nm i m) = dom m.
+Proof.
+  rewrite /tedge_ins. destruct (m !! d) as [n |] eqn:E; [| done].
+  destruct n as [| e |]; [done | | done].
+  assert (Hd : d ∈ dom m) by (apply elem_of_dom; by eexists).
+  rewrite dom_insert_L. set_solver.
+Qed.
+
+Lemma top_ins_ne (av : aview) (root d i : Z) (nm : fname) (c : absnode)
+    (t : ttree) :
+  subtree av root = Some t -> av !! i = None ->
+  top_ins d nm i c t <> t.
+Proof.
+  intros Ht Hi Heq.
+  assert (Hnot : i ∉ dom (tv_nodes t)).
+  { intros Hin. rewrite (subtree_nodes_eq av root t Ht) in Hin.
+    apply elem_of_dom_subtree_nodes in Hin as [Hdm _].
+    apply elem_of_dom in Hdm as [a Ha]. congruence. }
+  apply Hnot. rewrite -Heq /top_ins /= dom_tedge_ins dom_insert_L. set_solver.
+Qed.
+
 (* ===================================================================== *)
 (*  2.  THE TAINT, THE FIXED PART, THE CLAIM                              *)
 (* ===================================================================== *)
@@ -593,7 +976,28 @@ Section AppTree.
   (* THE FIXED PART: the taint counter's name, born once, echo's
      [echo_fixed] exactly. *)
   Definition tree_fixed : Type := gname.
-  Definition tree_names : Type := gname.
+
+  (* THE CLAIM'S INSTANCE NAMES, A PAIR (lane TL-3W, and the one deviation
+     from design section 7.2's letter).  The deed is now SPLIT ACROSS TWO
+     GHOST LOCATIONS and it has to be, for a reason the design page's phase
+     2 states but does not price: phase 2 must "agree the entry is still
+     [(root, t)]" while holding NOTHING of the entry -- the whole point of
+     the in-flight arm is that the owner's element is PARKED there, and it
+     has to be parked WHOLE, because only [DfracOwn 1] in the claim refutes
+     the in-flight arm for a reader, and a FROZEN reader ([tree_pin],
+     [DfracDiscarded]) is refutable at no smaller fraction.  So the owner
+     keeps a MOVE TICKET at a second ghost map that carries the SAME map:
+       [tn_own r] -- the deed proper, parked whole while a move is in flight;
+       [tn_tk  r] -- the ticket, HALF held by the owner at all times and
+                     half by the claim's slot, which is what identifies the
+                     owner's entry at phase 2 (and what phase 2 spends,
+                     with the slot's half, to update the entry).
+     Everything downstream quantifies [tree_names] opaquely, so no landed
+     statement moves. *)
+  Definition tree_names : Type := gname * gname.
+
+  Definition tn_own (r : tree_names) : gname := r.1.
+  Definition tn_tk (r : tree_names) : gname := r.2.
 
   (* THE TAINT: the counter has left 0 and can never come back, so its
      lower bound at 1 is a permanent, persistent fact -- "some move of
@@ -623,15 +1027,50 @@ Section AppTree.
 
   (* ---- 2a.  THE CLAIM ------------------------------------------------ *)
 
-  (* THE CLAIM'S BODY.  Three pure conjuncts and the authority: the map is
-     well formed at the view, it is exact, and -- TL-3's landing of TL-2's
-     finding 4 -- THE ERA HAS A ROOT, [adir_at av ROOTINO], which is what
-     gives the era's first deed a channel ([tree_xfer_boot_at]).  Every
-     landed leg preserves it for free (section 1a'). *)
+  (* THE MOVE TOKEN (design section 7.2): an exclusive one-shot, FRESH per
+     move, allocated by the owner in phase 1 and spent in phase 2.  It is
+     what makes the in-flight arm a resource NO party can fabricate inside
+     an update-free wand; nothing is lost when a move turns out invisible,
+     because the owner simply drops it. *)
+  Definition tok (γi : gname) : iProp Σ := own γi (Excl ()).
+
+  Global Instance tok_timeless γi : Timeless (tok γi).
+  Proof. rewrite /tok. apply _. Qed.
+
+  Lemma tok_alloc : ⊢ |==> ∃ γi : gname, tok γi.
+  Proof. rewrite /tok. iApply own_alloc. done. Qed.
+
+  (* THE ENTRY'S SLOT (design section 7.2).  Half the ticket, always -- the
+     owner holds the other half -- and then the entry is EXACT or IN FLIGHT:
+
+       exact      the view's subtree at this root IS the recorded tree;
+       in flight  the owner has parked its deed and a fresh token here, and
+                  the entry's reading says nothing until phase 2 resyncs it.
+
+     A READER REFUTES THE IN-FLIGHT ARM BY EXCLUSIVITY: the parked deed is
+     [DfracOwn 1] at that key, so it is incompatible with ANY further
+     fraction -- a linear deed and a frozen one alike.  That is why the
+     whole deed is parked and why the ticket exists. *)
+  Definition tree_slot (r : tree_names) (av : aview) (g : gname)
+      (p : Z * ttree) : iProp Σ :=
+    (g ↪[tn_tk r]{# (1/2)%Qp} p ∗
+     (⌜subtree av p.1 = Some p.2⌝
+      ∨ (g ↪[tn_own r] p ∗ ∃ γi : gname, tok γi)))%I.
+
+  Global Instance tree_slot_timeless r av g p : Timeless (tree_slot r av g p).
+  Proof. rewrite /tree_slot. apply _. Qed.
+
+  (* THE CLAIM'S BODY.  The two authorities at ONE map, the two pure
+     conjuncts that read the ROOTS alone -- the map is well formed at the
+     view, and (TL-3's landing of TL-2's finding 4) THE ERA HAS A ROOT --
+     and the per-entry SLOTS, which is where TL-2's global [tree_exact]
+     went: exactness is now a per-entry fact, because an entry whose owner
+     is mid-move has none. *)
   Definition tree_body (r : tree_names) (av : aview) : iProp Σ :=
     (∃ own : gmap gname (Z * ttree),
-       ghost_map_auth r 1 own ∗ ⌜own_wf av own⌝ ∗ ⌜tree_exact av own⌝
-       ∗ ⌜adir_at av FsImg.ROOTINO⌝)%I.
+       ghost_map_auth (tn_own r) 1 own ∗ ghost_map_auth (tn_tk r) 1 own
+       ∗ ⌜own_wf av own⌝ ∗ ⌜adir_at av FsImg.ROOTINO⌝
+       ∗ ([∗ map] g ↦ p ∈ own, tree_slot r av g p))%I.
 
   Definition tree_pred (c : tree_fixed) (r : tree_names) (av : aview)
       : iProp Σ := (tree_taint c ∨ tree_body r av)%I.
@@ -641,20 +1080,38 @@ Section AppTree.
   Global Instance tree_pred_timeless c r av : Timeless (tree_pred c r av).
   Proof. rewrite /tree_pred. apply _. Qed.
 
+  (* the mint's shape: a map that is EXACT at every entry, so every slot is
+     built in its exact arm out of the ticket halves the allocation gave *)
   Lemma tree_body_intro (r : tree_names) (av : aview)
       (own : gmap gname (Z * ttree)) :
     own_wf av own -> tree_exact av own -> adir_at av FsImg.ROOTINO ->
-    ghost_map_auth r 1 own -∗ tree_body r av.
+    ghost_map_auth (tn_own r) 1 own -∗ ghost_map_auth (tn_tk r) 1 own -∗
+    ([∗ map] g ↦ p ∈ own, g ↪[tn_tk r]{# (1/2)%Qp} p) -∗
+    tree_body r av.
   Proof.
-    intros Hwf Hex Hr. iIntros "Ha". iExists own. iFrame "Ha".
-    iSplit; [by iPureIntro |]. iSplit; iPureIntro; assumption.
+    intros Hwf Hex Hr. iIntros "Ha Hk Hm". iExists own. iFrame "Ha Hk".
+    iSplit; [by iPureIntro |]. iSplit; [by iPureIntro |].
+    iApply (big_sepM_mono with "Hm"). intros g [root t] Hg. cbn.
+    iIntros "Htk". rewrite /tree_slot. iFrame "Htk". iLeft. iPureIntro.
+    exact (Hex g root t Hg).
   Qed.
 
-  (* ---- 2b.  THE DEED, AND THE FROZEN DEED ---------------------------- *)
+  (* ---- 2b.  THE DEED, THE TICKET, AND THE FROZEN DEED ---------------- *)
 
-  (* "I own the subtree [t] at [root]" -- the map element, EXCLUSIVE. *)
+  (* "I own the subtree [t] at [root]" -- the map element, EXCLUSIVE, and
+     the ticket half beside it (see [tree_names]). *)
+  Definition tree_deed (r : tree_names) (g : gname) (root : Z) (t : ttree)
+      : iProp Σ := (g ↪[tn_own r] (root, t))%I.
+
+  Definition tree_tkt (r : tree_names) (g : gname) (root : Z) (t : ttree)
+      : iProp Σ := (g ↪[tn_tk r]{# (1/2)%Qp} (root, t))%I.
+
   Definition tree_own (r : tree_names) (g : gname) (root : Z) (t : ttree)
-      : iProp Σ := (g ↪[r] (root, t))%I.
+      : iProp Σ := (tree_deed r g root t ∗ tree_tkt r g root t)%I.
+
+  Lemma tree_own_split (r : tree_names) (g : gname) (root : Z) (t : ttree) :
+    tree_own r g root t ⊣⊢ tree_deed r g root t ∗ tree_tkt r g root t.
+  Proof. reflexivity. Qed.
 
   (* ...AND ITS FROZEN FORM: the element PERSISTED.  An owner that will
      never move its subtree again may trade the deed for a persistent one
@@ -662,9 +1119,11 @@ Section AppTree.
      a walk (many hops, each reading the claim) needs and which no linear
      deed can pay.  The trade is one-way by construction: a persisted
      element cannot be updated, so a frozen owner's subtree is frozen for
-     the whole application (any move inside it taints). *)
+     the whole application (any move inside it taints) -- and, now that a
+     move PARKS the deed, a frozen owner cannot even enter the in-flight
+     arm, because it holds no [DfracOwn] of its element at all. *)
   Definition tree_pin (r : tree_names) (g : gname) (root : Z) (t : ttree)
-      : iProp Σ := (g ↪[r]□ (root, t))%I.
+      : iProp Σ := (g ↪[tn_own r]□ (root, t) ∗ g ↪[tn_tk r]□ (root, t))%I.
 
   Global Instance tree_pin_persistent r g root t : Persistent (tree_pin r g root t).
   Proof. rewrite /tree_pin. apply _. Qed.
@@ -673,15 +1132,105 @@ Section AppTree.
 
   Lemma tree_freeze (r : tree_names) (g : gname) (root : Z) (t : ttree) :
     tree_own r g root t ==∗ tree_pin r g root t.
-  Proof. rewrite /tree_own /tree_pin. iApply ghost_map_elem_persist. Qed.
+  Proof.
+    rewrite /tree_own /tree_deed /tree_tkt /tree_pin. iIntros "[H1 H2]".
+    iMod (ghost_map_elem_persist with "H1") as "$".
+    iMod (ghost_map_elem_persist with "H2") as "$". done.
+  Qed.
+
+  (* the exclusion the in-flight arm rests on: a PARKED deed is the whole
+     element, so it stands beside no further fraction -- linear or frozen *)
+  Lemma tree_elem_excl (γ : gname) (g : gname) (dq : dfrac) (p q : Z * ttree) :
+    g ↪[γ] p -∗ g ↪[γ]{dq} q -∗ False.
+  Proof.
+    iIntros "H1 H2".
+    iDestruct (ghost_map_elem_valid_2 with "H1 H2") as %[Hv _].
+    iPureIntro. exact (exclusive_l (DfracOwn 1) dq Hv).
+  Qed.
 
   (* two deeds at one generation are two authorities at one key *)
   Lemma tree_own_excl (r : tree_names) (g : gname) (root root' : Z)
       (t t' : ttree) :
     tree_own r g root t -∗ tree_own r g root' t' -∗ False.
   Proof.
-    rewrite /tree_own. iIntros "H1 H2".
-    iDestruct (ghost_map_elem_ne with "H1 H2") as %Hne. done.
+    rewrite /tree_own /tree_deed. iIntros "[H1 _] [H2 _]".
+    iDestruct (tree_elem_excl with "H1 H2") as %[].
+  Qed.
+
+  (* ---- 2b'.  THE THREE MOVES ON THE BODY ----------------------------- *)
+
+  (* (i) THE PURE FACTS EVERY MINT AND EVERY TRANSPORT READS, without
+     spending the body: the view is tree shaped and the era has a root. *)
+  Lemma tree_body_facts (r : tree_names) (av : aview) :
+    tree_body r av -∗
+      tree_body r av ∗ ⌜aview_tree_wf av /\ adir_at av FsImg.ROOTINO⌝.
+  Proof.
+    iIntros "Hb". iDestruct "Hb" as (own) "(Ha & Hk & %Hwf & %Hr & Hm)".
+    iSplitR "".
+    - iExists own. iFrame "Ha Hk Hm". iSplit; by iPureIntro.
+    - iPureIntro. exact (conj (proj1 Hwf) Hr).
+  Qed.
+
+  (* (ii) THE EMPTY PARTITION, which is what every fresh instance is born
+     at (the transport's clone, era 0's mint). *)
+  Lemma tree_body_empty (r : tree_names) (av : aview) :
+    aview_tree_wf av -> adir_at av FsImg.ROOTINO ->
+    ghost_map_auth (tn_own r) 1 ∅ -∗ ghost_map_auth (tn_tk r) 1 ∅ -∗
+    tree_body r av.
+  Proof.
+    intros Hwf Hr. iIntros "Ha Hk".
+    iApply (tree_body_intro r av ∅ _ _ Hr with "Ha Hk []").
+    { by rewrite big_sepM_empty. }
+    Unshelve.
+    2: { intros g root t Hg. rewrite lookup_empty in Hg. discriminate. }
+    split_and!; [exact Hwf | ..]; intros g *; rewrite lookup_empty; discriminate.
+  Qed.
+
+  (* (iii) THE READ, at ANY fraction of the deed's own element -- linear or
+     frozen.  The IN-FLIGHT arm is refuted by exclusivity: it parks the
+     WHOLE element, which stands beside no further fraction. *)
+  Lemma tree_body_read (r : tree_names) (av : aview) (g : gname) (dq : dfrac)
+      (root : Z) (t : ttree) :
+    g ↪[tn_own r]{dq} (root, t) -∗ tree_body r av -∗
+      ⌜subtree av root = Some t⌝ ∗ g ↪[tn_own r]{dq} (root, t) ∗ tree_body r av.
+  Proof.
+    iIntros "Hg Hb". iDestruct "Hb" as (own) "(Ha & Hk & %Hwf & %Hr & Hm)".
+    iDestruct (ghost_map_lookup with "Ha Hg") as %Hlk.
+    iDestruct (big_sepM_lookup_acc _ own g (root, t) Hlk with "Hm")
+      as "[Hs Hback]".
+    iDestruct "Hs" as "[Htk [%Hex | [Hpark _]]]"; last first.
+    { iDestruct (tree_elem_excl with "Hpark Hg") as %[]. }
+    iSplitR; [by iPureIntro |]. iFrame "Hg".
+    iExists own. iFrame "Ha Hk". iSplit; [by iPureIntro |].
+    iSplit; [by iPureIntro |]. iApply "Hback". rewrite /tree_slot.
+    iFrame "Htk". iLeft. by iPureIntro.
+  Qed.
+
+  (* (iv) THE TICKET SPLITS, which is what makes the owner's half and the
+     slot's half two readings of one element. *)
+  Lemma tk_split (γ g : gname) (p : Z * ttree) :
+    g ↪[γ] p ⊣⊢ g ↪[γ]{# (1/2)%Qp} p ∗ g ↪[γ]{# (1/2)%Qp} p.
+  Proof.
+    rewrite -(ghost_map_elem_fractional g γ p (1/2)%Qp (1/2)%Qp) Qp.div_2 //.
+  Qed.
+
+  (* (v) THE MINT AT ONE ENTRY: a FRESH instance owning exactly [g].  The
+     era-0 mints and the transport's first deed are both this. *)
+  Lemma tree_mint_singleton (g : gname) (root : Z) (t : ttree) :
+    ⊢ |==> ∃ r : tree_names,
+        ghost_map_auth (tn_own r) 1 ({[ g := (root, t) ]} : gmap gname (Z * ttree))
+        ∗ ghost_map_auth (tn_tk r) 1 ({[ g := (root, t) ]} : gmap gname (Z * ttree))
+        ∗ g ↪[tn_tk r]{# (1/2)%Qp} (root, t)
+        ∗ tree_deed r g root t ∗ tree_tkt r g root t.
+  Proof.
+    iMod (ghost_map_alloc ({[ g := (root, t) ]} : gmap gname (Z * ttree)))
+      as (γa) "[Ha Hea]".
+    iMod (ghost_map_alloc ({[ g := (root, t) ]} : gmap gname (Z * ttree)))
+      as (γb) "[Hb Heb]".
+    rewrite !big_sepM_singleton.
+    iEval (rewrite tk_split) in "Heb". iDestruct "Heb" as "[Hb1 Hb2]".
+    iModIntro. iExists (γa, γb). rewrite /tn_own /tn_tk /tree_deed /tree_tkt /=.
+    iFrame "Ha Hb Hb1 Hea Hb2".
   Qed.
 
   (* ---- 2c.  THE SUPPLY AND THE TRANSPORT ----------------------------- *)
@@ -705,22 +1254,19 @@ Section AppTree.
   Lemma tree_xfer (c : tree_fixed) : ⊢ app_xfer_raw (tree_pred c).
   Proof.
     rewrite /app_xfer_raw. iIntros "!>" (r av) "H".
-    iMod (ghost_map_alloc_empty (K := gname) (V := Z * ttree)) as (r') "Ha".
-    iAssert (▷ (tree_pred c r av ∗ tree_pred c r' av))%I with "[H Ha]" as "HH";
-      last first.
-    { iDestruct "HH" as "[H1 H2]". iModIntro. iFrame "H1". iExists r'.
-      iExact "H2". }
+    iMod (ghost_map_alloc_empty (K := gname) (V := Z * ttree)) as (γa) "Ha".
+    iMod (ghost_map_alloc_empty (K := gname) (V := Z * ttree)) as (γb) "Hb".
+    iAssert (▷ (tree_pred c r av ∗ tree_pred c (γa, γb) av))%I
+      with "[H Ha Hb]" as "HH"; last first.
+    { iDestruct "HH" as "[H1 H2]". iModIntro. iFrame "H1".
+      iExists (γa, γb). iExact "H2". }
     iNext. rewrite /tree_pred.
-    iDestruct "H" as "[#Ht | Hb]".
+    iDestruct "H" as "[#Ht | Hb0]".
     { iSplitR; [by iLeft | by iLeft]. }
-    iDestruct "Hb" as (own) "(Hau & %Hwf & %Hex & %Hr)".
-    iSplitL "Hau".
-    { iRight. iApply (tree_body_intro r av own Hwf Hex Hr with "Hau"). }
-    iRight. iApply (tree_body_intro r' av ∅ _ _ Hr with "Ha").
-    Unshelve.
-    2: { intros g root t Hg. rewrite lookup_empty in Hg. discriminate. }
-    split_and!; [exact (proj1 Hwf) | ..];
-      intros g *; rewrite lookup_empty; discriminate.
+    iDestruct (tree_body_facts with "Hb0") as "[Hb0 %Hf]".
+    destruct Hf as (Hwf & Hr).
+    iSplitL "Hb0"; [by iRight |].
+    iRight. iApply (tree_body_empty (γa, γb) av Hwf Hr with "Ha Hb").
   Qed.
 
   (* ...AND THE ERA'S FIRST DEED, WHICH IS WHAT THE ROOT CONJUNCT BUYS
@@ -744,30 +1290,30 @@ Section AppTree.
        SUBTREE -- unconditionally, because the deed is only ever cashed
        through the claim law, whose taint arm covers a tainted era. *)
     set (t0 := MkTTree (subtree_nodes av FsImg.ROOTINO) FsImg.ROOTINO).
-    iMod (ghost_map_alloc ({[ 1%positive := (FsImg.ROOTINO, t0) ]}
-                            : gmap gname (Z * ttree))) as (r') "[Ha Hel]".
-    rewrite big_sepM_singleton.
-    iAssert (▷ (tree_pred c r av ∗ tree_pred c r' av))%I with "[H Ha]" as "HH";
-      last first.
+    iMod (tree_mint_singleton 1%positive FsImg.ROOTINO t0)
+      as (r') "(Ha & Hk & Htk & Hown & Hel)".
+    iAssert (▷ (tree_pred c r av ∗ tree_pred c r' av))%I
+      with "[H Ha Hk Htk]" as "HH"; last first.
     { iDestruct "HH" as "[H1 H2]". iModIntro. iFrame "H1". iExists r'.
-      iFrame "H2". iExists 1%positive, t0. iExact "Hel". }
+      iFrame "H2". iExists 1%positive, t0. rewrite /tree_own. iFrame "Hown Hel". }
     iNext. rewrite /tree_pred.
     iDestruct "H" as "[#Ht | Hb]".
     { iSplitR; [by iLeft | by iLeft]. }
-    iDestruct "Hb" as (own) "(Hau & %Hwf & %Hex & %Hr)".
+    iDestruct (tree_body_facts with "Hb") as "[Hb %Hf]".
+    destruct Hf as (Hwf & Hr).
     (* THE ARM THAT BLOCKED THIS is refuted here, from the claim's own
        root conjunct: the era HAS a root directory, so its subtree is a
        [Some] and the clone's single entry is exact at it. *)
     pose proof (subtree_root_of_claim av Hr) as Hsub.
-    iSplitL "Hau".
-    { iRight. iApply (tree_body_intro r av own Hwf Hex Hr with "Hau"). }
-    iRight. iApply (tree_body_intro r' av _ _ _ Hr with "Ha").
+    iSplitL "Hb"; [by iRight |].
+    iRight. iApply (tree_body_intro r' av _ _ _ Hr with "Ha Hk [Htk]").
+    { by rewrite big_sepM_singleton. }
     Unshelve.
     2: { intros g0 r0 t1 H0. destruct (decide (g0 = 1%positive)) as [-> | Hne].
          - rewrite lookup_singleton in H0. injection H0 as <- <-. exact Hsub.
          - rewrite lookup_singleton_ne in H0; [discriminate | congruence]. }
     split_and!.
-    - exact (proj1 Hwf).
+    - exact Hwf.
     - intros g0 r0 t1 H0. destruct (decide (g0 = 1%positive)) as [-> | Hne].
       + rewrite lookup_singleton in H0. injection H0 as <- <-. exact Hr.
       + rewrite lookup_singleton_ne in H0; [discriminate | congruence].
@@ -797,11 +1343,11 @@ Section AppTree.
   Proof.
     iIntros "!>" (v g root t) "Hg [#HT | Hb]".
     { iSplitR; [by iLeft |]. iFrame "Hg". iRight. iExact "HT". }
-    iDestruct "Hb" as (own) "(Ha & %Hwf & %Hex & %Hr)".
-    iDestruct (ghost_map_lookup with "Ha Hg") as %Hlk.
-    iSplitL "Ha".
-    { iRight. iApply (tree_body_intro r v own Hwf Hex Hr with "Ha"). }
-    iFrame "Hg". iLeft. iPureIntro. exact (Hex g root t Hlk).
+    iDestruct "Hg" as "[Hd Htk]".
+    iDestruct (tree_body_read r v g (DfracOwn 1) root t with "Hd Hb")
+      as "(%Hex & Hd & Hb)".
+    iSplitL "Hb"; [by iRight |]. rewrite /tree_own. iFrame "Hd Htk".
+    iLeft. by iPureIntro.
   Qed.
 
   (* ...AND THE [□] FORM, at a FROZEN deed: this is
@@ -817,11 +1363,10 @@ Section AppTree.
   Proof.
     iIntros "#Hg !>" (v) "[#HT | Hb]".
     { iSplitR; [by iLeft |]. iRight. iExact "HT". }
-    iDestruct "Hb" as (own) "(Ha & %Hwf & %Hex & %Hr)".
-    iDestruct (ghost_map_lookup with "Ha Hg") as %Hlk.
-    iSplitL "Ha".
-    { iRight. iApply (tree_body_intro r v own Hwf Hex Hr with "Ha"). }
-    iLeft. iPureIntro. exact (Hex g root t Hlk).
+    iDestruct "Hg" as "[#Hd #Hk]".
+    iDestruct (tree_body_read r v g DfracDiscarded root t with "Hd Hb")
+      as "(%Hex & _ & Hb)".
+    iSplitL "Hb"; [by iRight |]. iLeft. by iPureIntro.
   Qed.
 
   (* THE PIN'S CONTENT (finding 2), as the walk families want it and as
@@ -864,9 +1409,16 @@ Section AppTree.
     tree_pred c r av -∗ tree_pred c r av'.
   Proof.
     intros Hstep. iIntros "[#HT | Hb]"; [by iLeft |].
-    iDestruct "Hb" as (own) "(Ha & %Hwf & %Hex & %Hr)".
-    destruct (Hstep own Hwf Hex Hr) as (Hwf' & Hex' & Hr').
-    iRight. iApply (tree_body_intro r av' own Hwf' Hex' Hr' with "Ha").
+    iDestruct "Hb" as (own) "(Ha & Hk & %Hwf & %Hr & Hm)".
+    (* the [∀ own] hypothesis is applied at the SYNCED map (section 1h):
+       the slotted body has no global exactness to hand it. *)
+    destruct (tree_step_pure av av' own Hstep Hwf Hr) as (Hwf' & Hr' & Hslot).
+    iRight. iExists own. iFrame "Ha Hk". iSplit; [by iPureIntro |].
+    iSplit; [by iPureIntro |].
+    iApply (big_sepM_mono with "Hm"). intros g [root t] Hg. cbn.
+    rewrite /tree_slot /=. iIntros "[Htk Harm]". iFrame "Htk".
+    iDestruct "Harm" as "[%Hex | Hfl]"; [| by iRight].
+    iLeft. iPureIntro. exact (Hslot g root t Hg Hex).
   Qed.
 
   (* ---- 4a.  THE INVISIBLE LEGS: free, and at EVERY owner ------------- *)
@@ -926,99 +1478,194 @@ Section AppTree.
     exact (tree_pres_arm av own i n Hi Hleaf Hwf Hex Hr).
   Qed.
 
-  (* ---- 4c.  AN OWNER'S OWN MOVES (finding 1) ------------------------- *)
+  (* ---- 4c.  AN OWNER'S OWN MOVE: THE TWO PHASES (section 7.2) -------- *)
+  (*                                                                      *)
+  (*  TL-2's FINDING 1, CLOSED -- and closed with NO [AppInv] seam (design *)
+  (*  section 7.1 stays designed and deferred).  An owner's move is        *)
+  (*                                                                      *)
+  (*    PHASE 1  an UPDATE-FREE STEP ([tree_step_move_*] below), which is  *)
+  (*             exactly what [AppInv.app_step] takes: the deed and a      *)
+  (*             fresh token are PARKED in the entry's slot, which moves   *)
+  (*             from EXACT to IN FLIGHT and then says nothing at all;     *)
+  (*    PHASE 2  a RESYNC ([tree_resync]), run in the fire's own second    *)
+  (*             phase, where the POST view and the delta's equation are   *)
+  (*             in hand: the exact arm is REFUTED, the parked deed and    *)
+  (*             the token come back, the entry is updated to the post     *)
+  (*             tree, and the slot closes EXACT again.                    *)
+  (*                                                                      *)
+  (*  TL-2's [tree_move_gen] / [tree_move_write] / [tree_move_trunc] /     *)
+  (*  [tree_move_create] / [tree_move_unl_ent] basic updates are RETIRED   *)
+  (*  into this shape: their content is the pure layer of section 1i,      *)
+  (*  which both phases read.                                             *)
 
-  (* THE ENGINE for a move INSIDE the mover's own subtree: the deed goes
-     in, the recorded tree moves by the tree op, the deed comes back.
-     A BASIC UPDATE, and that is the seam: [AppInv.app_step] is a plain
-     wand, so this cannot be handed to a fire as it stands.  See the
-     header's finding 1. *)
-  Lemma tree_move_gen (c : tree_fixed) (r : tree_names) (g : gname)
-      (root : Z) (t t' : ttree) (av av' : aview) :
+  (* PHASE 1's ENGINE.  Nothing comes back: that is what makes it a plain
+     wand.  The mover's own slot is refuted in the IN-FLIGHT arm first --
+     two parked deeds at one key are two whole elements -- so an owner can
+     have at most one move in flight, which is design section 7.2's
+     "EXCLUSIVITY, restated". *)
+  Lemma tree_step_move_gen (c : tree_fixed) (r : tree_names) (g : gname)
+      (root : Z) (t : ttree) (γi : gname) (av av' : aview) :
     (forall own : gmap gname (Z * ttree),
-       own !! g = Some (root, t) -> own_wf av own -> tree_exact av own ->
-       adir_at av FsImg.ROOTINO ->
-       own_wf av' (<[g := (root, t')]> own)
-       /\ tree_exact av' (<[g := (root, t')]> own)
-       /\ adir_at av' FsImg.ROOTINO) ->
-    tree_own r g root t -∗ tree_pred c r av ==∗
-      tree_pred c r av' ∗ (tree_own r g root t' ∨ tree_taint c).
+       own !! g = Some (root, t) -> subtree av root = Some t ->
+       own_wf av own -> adir_at av FsImg.ROOTINO ->
+       tree_move_out av av' own g) ->
+    tree_deed r g root t -∗ tok γi -∗ tree_pred c r av -∗ tree_pred c r av'.
   Proof.
-    intros Hstep. iIntros "Hg [#HT | Hb]".
-    { iModIntro. iSplitR; [by iLeft |]. iRight. iExact "HT". }
-    iDestruct "Hb" as (own) "(Ha & %Hwf & %Hex & %Hr)".
-    iDestruct (ghost_map_lookup with "Ha Hg") as %Hlk.
-    destruct (Hstep own Hlk Hwf Hex Hr) as (Hwf' & Hex' & Hr').
-    rewrite /tree_own.
-    iMod (ghost_map_update (root, t') with "Ha Hg") as "[Ha Hg]".
-    iModIntro. iSplitL "Ha".
-    { iRight. iApply (tree_body_intro r av' _ Hwf' Hex' Hr' with "Ha"). }
-    iLeft. iExact "Hg".
+    intros Hstep. iIntros "Hd Htok [#HT | Hb]"; [by iLeft |].
+    rewrite /tree_deed.
+    iDestruct "Hb" as (own) "(Ha & Hk & %Hwf & %Hr & Hm)".
+    iDestruct (ghost_map_lookup with "Ha Hd") as %Hlk.
+    iDestruct (big_sepM_delete _ own g (root, t) Hlk with "Hm") as "[Hs Hm]".
+    iDestruct "Hs" as "[Htk [%Hex | [Hpark _]]]"; last first.
+    { iDestruct (tree_elem_excl with "Hpark Hd") as %[]. }
+    destruct (Hstep own Hlk Hex Hwf Hr) as (Hwf' & Hr' & Hout).
+    iRight. iExists own. iFrame "Ha Hk". iSplit; [by iPureIntro |].
+    iSplit; [by iPureIntro |].
+    iApply (big_sepM_delete _ own g (root, t) Hlk). iSplitR "Hm".
+    - rewrite /tree_slot /=. iFrame "Htk". iRight. iFrame "Hd".
+      iExists γi. iExact "Htok".
+    - iApply (big_sepM_mono with "Hm"). intros g' [root' t'] Hg'. cbn.
+      apply lookup_delete_Some in Hg' as [Hne Hg'].
+      rewrite /tree_slot /=. iIntros "[Htk' Harm]". iFrame "Htk'".
+      iDestruct "Harm" as "[%Hex' | Hfl]"; [| by iRight].
+      iLeft. iPureIntro.
+      rewrite (Hout g' root' t' (fun Hc => Hne (eq_sym Hc)) Hg'). exact Hex'.
   Qed.
 
-  (* WRITE: the owner's file's bytes are spliced; every other owner's subtree is
-     untouched, by disjointness. *)
-  Lemma tree_move_write (c : tree_fixed) (r : tree_names) (g : gname)
+  (* WRITE: the owner's file's bytes are spliced.  Every other owner's
+     subtree is untouched by DISJOINTNESS (section 1i). *)
+  Lemma tree_step_move_write (c : tree_fixed) (r : tree_names) (g : gname)
       (root i : Z) (t : ttree) (off : nat) (new bs0 : list (bv 8))
-      (nl : nat) (av : aview) :
+      (nl : nat) (av : aview) (γi : gname) :
     av !! i = Some (MkAnode (AFile bs0) nl) ->
     i ∈ dom (tv_nodes t) ->
-    tree_own r g root t -∗ tree_pred c r av ==∗
-      tree_pred c r (delta_write i off new av) ∗
-      (tree_own r g root (top_write i off new t) ∨ tree_taint c).
+    tree_deed r g root t -∗ tok γi -∗
+    tree_pred c r av -∗ tree_pred c r (delta_write i off new av).
   Proof.
-    intros Hi Hd. iApply tree_move_gen. intros own Hg Hwf Hex Hr.
-    exact (tree_pres_write av own g root i t off new bs0 nl Hi Hg Hd Hwf Hex Hr).
+    intros Hi Hd. iApply tree_step_move_gen. intros own Hg Ht Hwf Hr.
+    exact (tree_move_write_pure av own g root i t off new bs0 nl
+             Hi Hg Ht Hd Hwf Hr).
   Qed.
 
-  (* TRUNCATE, on [own_wf_trunc] above *)
-  Lemma tree_move_trunc (c : tree_fixed) (r : tree_names) (g : gname)
-      (root i : Z) (t : ttree) (bs0 : list (bv 8)) (nl : nat) (av : aview) :
+  Lemma tree_step_move_trunc (c : tree_fixed) (r : tree_names) (g : gname)
+      (root i : Z) (t : ttree) (bs0 : list (bv 8)) (nl : nat) (av : aview)
+      (γi : gname) :
     av !! i = Some (MkAnode (AFile bs0) nl) ->
     i ∈ dom (tv_nodes t) ->
-    tree_own r g root t -∗ tree_pred c r av ==∗
-      tree_pred c r (delta_trunc i av) ∗
-      (tree_own r g root (top_trunc i t) ∨ tree_taint c).
+    tree_deed r g root t -∗ tok γi -∗
+    tree_pred c r av -∗ tree_pred c r (delta_trunc i av).
   Proof.
-    intros Hi Hd. iApply tree_move_gen. intros own Hg Hwf Hex Hr.
-    exact (tree_pres_trunc av own g root i t bs0 nl Hi Hg Hd Hwf Hex Hr).
+    intros Hi Hd. iApply tree_step_move_gen. intros own Hg Ht Hwf Hr.
+    exact (tree_move_trunc_pure av own g root i t bs0 nl Hi Hg Ht Hd Hwf Hr).
   Qed.
 
-  (* CREATE, FUSED (TL-1 landed [own_wf_create] at the fused delta; the
-     per-leg parent form waits on an [own_wf_ent]): a fresh leaf is hung
-     under a directory of the owner's own tree. *)
-  Lemma tree_move_create (c : tree_fixed) (r : tree_names) (g : gname)
+  (* CREATE, FUSED (TL-1 landed [own_wf_create] at the fused delta): a
+     fresh leaf hung under a directory of the owner's own tree. *)
+  Lemma tree_step_move_create (c : tree_fixed) (r : tree_names) (g : gname)
       (root d : Z) (nm : fname) (i : Z) (n : absnode) (t : ttree)
-      (e : gmap fname Z) (nl : nat) (av : aview) :
+      (e : gmap fname Z) (nl : nat) (av : aview) (γi : gname) :
     fs_pname nm ->
     av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = None ->
     av !! i = None -> tabs_leaf (tabs_of n) ->
     d ∈ dom (tv_nodes t) ->
-    tree_own r g root t -∗ tree_pred c r av ==∗
-      tree_pred c r (delta_create d nm i n av) ∗
-      (tree_own r g root (top_ins d nm i (tabs_of n) t) ∨ tree_taint c).
+    tree_deed r g root t -∗ tok γi -∗
+    tree_pred c r av -∗ tree_pred c r (delta_create d nm i n av).
   Proof.
-    intros Hnm Hd Hnone Hi Hleaf Hdd. iApply tree_move_gen.
-    intros own Hg Hwf Hex Hr.
-    exact (tree_pres_create av own g root d nm i n t e nl
-             Hnm Hd Hnone Hi Hleaf Hg Hdd Hwf Hex Hr).
+    intros Hnm Hd Hnone Hi Hleaf Hdd. iApply tree_step_move_gen.
+    intros own Hg Ht Hwf Hr.
+    exact (tree_move_create_pure av own g root d nm i n t e nl
+             Hnm Hd Hnone Hi Hleaf Hg Ht Hdd Hwf Hr).
   Qed.
 
-  (* UNLINK'S ENTRY LEG: the name goes, and the tree RE-CLOSES (the one op
+  (* UNLINK'S ENTRY LEG: the name goes and the tree RE-CLOSES (the one op
      that can orphan).  The TARGET leg at the last link is not offered --
      see the header. *)
-  Lemma tree_move_unl_ent (c : tree_fixed) (r : tree_names) (g : gname)
+  Lemma tree_step_move_unl_ent (c : tree_fixed) (r : tree_names) (g : gname)
       (root d : Z) (nm : fname) (dec : nat) (t : ttree)
-      (e : gmap fname Z) (nl : nat) (av : aview) :
+      (e : gmap fname Z) (nl : nat) (av : aview) (γi : gname) :
     av !! d = Some (MkAnode (ADir e) nl) ->
     d ∈ dom (tv_nodes t) ->
-    tree_own r g root t -∗ tree_pred c r av ==∗
-      tree_pred c r (delta_unl_ent d nm dec av) ∗
-      (tree_own r g root (top_unlink d nm t) ∨ tree_taint c).
+    tree_deed r g root t -∗ tok γi -∗
+    tree_pred c r av -∗ tree_pred c r (delta_unl_ent d nm dec av).
   Proof.
-    intros Hd Hdd. iApply tree_move_gen. intros own Hg Hwf Hex Hr.
-    exact (tree_pres_unl_ent av own g root d nm dec t e nl Hd Hg Hdd Hwf Hex Hr).
+    intros Hd Hdd. iApply tree_step_move_gen. intros own Hg Ht Hwf Hr.
+    exact (tree_move_unl_ent_pure av own g root d nm dec t e nl
+             Hd Hg Ht Hdd Hwf Hr).
   Qed.
+
+  (* ---- 4d.  THE FREE ARM OF A WRITE (section 7.2's "[tree_op δ t = t]
+     takes the FREE step instead").  The KERNEL picks the offset and the
+     bytes, so an owner supplying a write chain has to answer both cases --
+     and the invisible one is free at every owner, because the delta is the
+     IDENTITY on the view (section 1j). *)
+  Lemma tree_step_write_free (c : tree_fixed) (r : tree_names) (i : Z)
+      (off : nat) (new bs0 : list (bv 8)) (nl : nat) (av : aview) :
+    av !! i = Some (MkAnode (AFile bs0) nl) ->
+    blk_splice off new bs0 = bs0 ->
+    tree_pred c r av -∗ tree_pred c r (delta_write i off new av).
+  Proof.
+    intros Hi Hsp. rewrite (delta_write_id av i off new bs0 nl Hi Hsp).
+    iIntros "$".
+  Qed.
+
+  Lemma tree_step_trunc_free (c : tree_fixed) (r : tree_names) (i : Z)
+      (nl : nat) (av : aview) :
+    av !! i = Some (MkAnode (AFile []) nl) ->
+    tree_pred c r av -∗ tree_pred c r (delta_trunc i av).
+  Proof.
+    intros Hi. rewrite (delta_trunc_id av i [] nl Hi eq_refl). iIntros "$".
+  Qed.
+
+  (* ---- 4e.  PHASE 2: THE RESYNC -------------------------------------- *)
+  (*                                                                      *)
+  (*  What the fire's SECOND phase runs, with the post view in hand.  The  *)
+  (*  owner presents its MOVE TICKET -- the half it never parted with --   *)
+  (*  which identifies its entry against the claim's own half; the EXACT   *)
+  (*  arm is refuted by the delta's INSIDE lemma ([t' <> t] is exactly     *)
+  (*  design section 7.2's [tree_op δ t ≠ t]); the parked deed and the     *)
+  (*  token come back; the entry moves to the post tree and the slot       *)
+  (*  closes EXACT.  What the owner gets is its DEED AT THE MOVED TREE --  *)
+  (*  the receipt the U tier carries home.                                 *)
+  Lemma tree_resync (c : tree_fixed) (r : tree_names) (g : gname)
+      (root : Z) (t t' : ttree) (av' : aview) :
+    subtree av' root = Some t' -> t' <> t ->
+    tree_tkt r g root t -∗ tree_pred c r av' ==∗
+      tree_pred c r av' ∗ (tree_own r g root t' ∨ tree_taint c).
+  Proof.
+    intros Ht' Hne. iIntros "Htk [#HT | Hb]".
+    { iModIntro. iSplitR; [by iLeft |]. iRight. iExact "HT". }
+    rewrite /tree_tkt.
+    iDestruct "Hb" as (own) "(Ha & Hk & %Hwf & %Hr & Hm)".
+    iDestruct (ghost_map_lookup with "Hk Htk") as %Hlk.
+    iDestruct (big_sepM_delete _ own g (root, t) Hlk with "Hm") as "[Hs Hm]".
+    iDestruct "Hs" as "[Htk2 [%Hex | [Hpark Htok]]]".
+    { exfalso. rewrite Hex in Ht'. injection Ht' as Heq.
+      exact (Hne (eq_sym Heq)). }
+    iAssert (g ↪[tn_tk r]{DfracOwn 1} (root, t))%I with "[Htk Htk2]" as "Htkf".
+    { rewrite tk_split. iFrame "Htk Htk2". }
+    iMod (ghost_map_update (root, t') with "Ha Hpark") as "[Ha Hd]".
+    iMod (ghost_map_update (root, t') with "Hk Htkf") as "[Hk Htkf]".
+    iEval (rewrite tk_split) in "Htkf". iDestruct "Htkf" as "[Htk1 Htk2]".
+    iModIntro. iSplitR "Hd Htk1"; last first.
+    { iLeft. rewrite /tree_own /tree_deed /tree_tkt. iFrame "Hd Htk1". }
+    iRight. iExists (<[g := (root, t')]> own). iFrame "Ha Hk".
+    iSplit.
+    { iPureIntro. exact (own_wf_retree av' own g root t t' Hlk Hwf). }
+    iSplit; [by iPureIntro |].
+    iApply (big_sepM_delete _ (<[g := (root, t')]> own) g (root, t')
+              (lookup_insert own g (root, t'))).
+    iSplitR "Hm".
+    - rewrite /tree_slot /=. iFrame "Htk2". iLeft. by iPureIntro.
+    - rewrite delete_insert_delete. iExact "Hm".
+  Qed.
+
+  (* ...and the REFUND (design section 7.2's "THE REFUND ARM"): a syscall
+     that fails before firing hands the deed and the ticket straight back,
+     which is exactly [tree_own_split] read right to left.  Nothing to
+     prove -- it is stated so the fire sites can name it. *)
+  Lemma tree_move_refund (r : tree_names) (g : gname) (root : Z) (t : ttree) :
+    tree_deed r g root t -∗ tree_tkt r g root t -∗ tree_own r g root t.
+  Proof. iIntros "Hd Ht". rewrite /tree_own. iFrame "Hd Ht". Qed.
 
   (* ===================================================================== *)
   (*  5.  THE MINTS: era 0, the boot owner, and the hand-down               *)
@@ -1033,13 +1680,11 @@ Section AppTree.
     aview_tree_wf av -> adir_at av FsImg.ROOTINO ->
     ⊢ |==> ∃ r : tree_names, tree_pred c r av.
   Proof.
-    intros Hwf Hr. iMod (ghost_map_alloc_empty (K := gname) (V := Z * ttree))
-      as (r) "Ha".
-    iModIntro. iExists r. iRight.
-    iApply (tree_body_intro r av ∅ _ _ Hr with "Ha").
-    Unshelve.
-    2: { intros g root t Hg. rewrite lookup_empty in Hg. discriminate. }
-    split_and!; [exact Hwf | ..]; intros g *; rewrite lookup_empty; discriminate.
+    intros Hwf Hr.
+    iMod (ghost_map_alloc_empty (K := gname) (V := Z * ttree)) as (γa) "Ha".
+    iMod (ghost_map_alloc_empty (K := gname) (V := Z * ttree)) as (γb) "Hb".
+    iModIntro. iExists (γa, γb). iRight.
+    iApply (tree_body_empty (γa, γb) av Hwf Hr with "Ha Hb").
   Qed.
 
   (* ...AND THE ERA'S FIRST OWNER BESIDE IT: the boot process owns the
@@ -1052,11 +1697,10 @@ Section AppTree.
     ⊢ |==> ∃ r : tree_names, tree_pred c r av ∗ tree_own r g root t.
   Proof.
     intros Hwf Hroot Ht.
-    iMod (ghost_map_alloc ({[ g := (root, t) ]} : gmap gname (Z * ttree)))
-      as (r) "[Ha Hel]".
-    rewrite big_sepM_singleton.
-    iModIntro. iExists r. iFrame "Hel". iRight.
-    iApply (tree_body_intro r av _ _ _ Hroot with "Ha").
+    iMod (tree_mint_singleton g root t) as (r) "(Ha & Hk & Htk & Hd & Ht2)".
+    iModIntro. iExists r. rewrite /tree_own. iFrame "Hd Ht2". iRight.
+    iApply (tree_body_intro r av _ _ _ Hroot with "Ha Hk [Htk]").
+    { by rewrite big_sepM_singleton. }
     Unshelve.
     2: { intros g0 r0 t0 H0. destruct (decide (g0 = g)) as [-> | Hne].
          - rewrite lookup_singleton in H0. injection H0 as <- <-. exact Ht.
@@ -1091,27 +1735,43 @@ Section AppTree.
   Proof.
     intros Hr'. iIntros "Hg [#HT | Hb]".
     { iModIntro. iSplitR; [by iLeft |]. iRight. iExact "HT". }
-    iDestruct "Hb" as (own) "(Ha & %Hwf & %Hex & %Hroot)".
-    rewrite /tree_own.
-    iDestruct (ghost_map_lookup with "Ha Hg") as %Hlk.
-    pose proof (Hex g root t Hlk) as Ht.
+    rewrite /tree_own /tree_deed /tree_tkt. iDestruct "Hg" as "[Hd Htk]".
+    iDestruct "Hb" as (own) "(Ha & Hk & %Hwf & %Hroot & Hm)".
+    iDestruct (ghost_map_lookup with "Ha Hd") as %Hlk.
+    iDestruct (big_sepM_delete _ own g (root, t) Hlk with "Hm") as "[Hs Hm]".
+    iDestruct "Hs" as "[Htk2 [%Ht | [Hpark _]]]"; last first.
+    { iDestruct (tree_elem_excl with "Hpark Hd") as %[]. }
+    iAssert (g ↪[tn_tk r]{DfracOwn 1} (root, t))%I with "[Htk Htk2]" as "Htkf".
+    { rewrite tk_split. iFrame "Htk Htk2". }
     pose proof (tree_sub_dir av root root' t e Ht Hr') as Hdir.
     pose proof (subtree_of_dir av root' Hdir) as Ht'.
     set (g' := fresh (dom own)).
     assert (Hfresh : own !! g' = None).
     { apply not_elem_of_dom. rewrite /g'. apply is_fresh. }
-    iMod (ghost_map_delete with "Ha Hg") as "Ha".
-    iMod (ghost_map_insert g' (root', MkTTree (subtree_nodes av root') root')
-            with "Ha") as "[Ha Hg']".
+    assert (Hfd : delete g own !! g' = None).
     { rewrite lookup_delete_ne; [exact Hfresh |].
       intros ->. by rewrite Hfresh in Hlk. }
-    destruct (tree_pres_grant av own g g' root root'
-                t (MkTTree (subtree_nodes av root') root') e
-                Hlk Hfresh Hr' Ht' Hwf Hex) as [Hwf' Hex'].
-    iModIntro. iSplitL "Ha".
-    { iRight. iApply (tree_body_intro r av _ Hwf' Hex' Hroot with "Ha"). }
-    iLeft. iExists g', (MkTTree (subtree_nodes av root') root').
-    iFrame "Hg'". iPureIntro. exact Ht'.
+    iMod (ghost_map_delete with "Ha Hd") as "Ha".
+    iMod (ghost_map_delete with "Hk Htkf") as "Hk".
+    iMod (ghost_map_insert g' (root', MkTTree (subtree_nodes av root') root')
+            with "Ha") as "[Ha Hd']"; [exact Hfd |].
+    iMod (ghost_map_insert g' (root', MkTTree (subtree_nodes av root') root')
+            with "Hk") as "[Hk Hk']"; [exact Hfd |].
+    iEval (rewrite tk_split) in "Hk'". iDestruct "Hk'" as "[Hk1 Hk2]".
+    pose proof (own_wf_grant av own g g' root root' t
+                  (MkTTree (subtree_nodes av root') root') e
+                  Hlk Ht Hr' Hwf) as Hwf'.
+    iModIntro. iSplitR "Hd' Hk1"; last first.
+    { iLeft. iExists g', (MkTTree (subtree_nodes av root') root').
+      iFrame "Hd' Hk1". iPureIntro. exact Ht'. }
+    iRight. iExists (<[g' := (root', MkTTree (subtree_nodes av root') root')]>
+                       (delete g own)).
+    iFrame "Ha Hk". iSplit; [by iPureIntro |]. iSplit; [by iPureIntro |].
+    iApply (big_sepM_insert _ (delete g own) g'
+              (root', MkTTree (subtree_nodes av root') root') Hfd).
+    iSplitR "Hm".
+    - rewrite /tree_slot /=. iFrame "Hk2". iLeft. by iPureIntro.
+    - iExact "Hm".
   Qed.
 
 End AppTree.

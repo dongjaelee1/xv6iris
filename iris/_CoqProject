@@ -1557,5 +1557,7 @@ UShEchoOut.v
 UShEchoPay.v
 UShRest.v
 TreeObs.v
+TreeMove.v
 TreeExec.v
 UkTreeRead.v
+UkTreeWrite.v

@@ -5,51 +5,46 @@
    ledger-anchored shape of REVISIONS 4-8: CLAIM-RESIDENT STATE, NO LEDGER
    IN ANY LINK.
 
-   WHY THE STATE IS IN THE CLAIMS AND NOT IN THE LEDGER.  The two things
+   WHY THE STATE IS IN THE CLAIM AND NOT IN THE LEDGER.  The two things
    that forced the ledger-anchored shape are both gone.  [App.Happ_boot]
    founds nothing any more (milestone E moved the founding to [App.Hpow],
    which is the ONE step per era that runs the ledger and may mint linear
    content), and [App.Happ_echo] is a CLOSED entailment with no observation
    handle, so a link fired inside the echo shift cannot reach the ledger at
    all.  So each era's authorities -- its cursor, its line choices, its
-   echoed list and its window counter -- live in the PORT CLAIMS, and the
+   echoed list and its delivered count -- live in the PORT'S CLAIM, and the
    ledger keeps only what is about the HISTORY: the taint counter, the era
-   map (whose authority is spent at [echo_led_pow] and nowhere else) and
+   map (whose authority is spent at [echo_led_pow_cl] and nowhere else) and
    the phi conjunct.
 
    THE INDEX IS THE ERA NUMBER [k := S gen_id] (ambient [RiscvLang.GenId]),
-   not a ghost name: [riscv_out_res k ho acc], [riscv_in_res k ho pops dl],
-   every link at [k], [app_out/app_in/app_boot A c k].  The kernel STAMPS
-   every history it hands the application with [⌜obs_boots h = S gen_id⌝].
-   A link at [k] therefore knows [k = obs_boots h] purely, and no history is
-   ever compared against the ledger's inside a link -- which is essential,
-   because the observation AUTHORITY lives in the state interpretation.
+   not a ghost name: [riscv_cons_res k ho H], every link at [k],
+   [app_cons/app_boot A c k].  The kernel STAMPS every history it hands the
+   application with [⌜obs_boots h = S gen_id⌝].  A link at [k] therefore
+   knows [k = obs_boots h] purely, and no history is ever compared against
+   the ledger's inside a link -- which is essential, because the observation
+   AUTHORITY lives in the state interpretation.
 
-   THE SHAPE.  [eout k ho acc] is the TAINT (what the licences pay through)
-   or the era's PAIRED arm, which holds the era's pin and its four
-   authorities.  [ein k hi pops dl] is the taint, the SETTLED arm, or the
-   WINDOW arm -- the chain-first window, between the echo's store and the
-   [WpUart.in_append] that files its entry.
+   THE SHAPE (redesign R2/R3).  [ecl k ho H] is the TAINT (what the licence
+   pays through) or the era's own arm, which holds the era's pin, its four
+   authorities and the delivered count, together with [ecl_pure]'s account
+   of the whole console history [H].
 
-   THE WINDOW COUNTER AND THE KERNEL-LENT TOKEN (the page's section 1, K1).
-   [WpUart.echo_link] returns the input claim at exactly the [pops]/[dl] it
-   was handed, and [SpecConsoleintr.cons_echo_shift] is persistent, so the
-   application's spec has to be total over interleavings the kernel forbids
-   with cons.lock but never states.  The kernel therefore LENDS the
-   application its own per-era exclusive -- [riscv_win_res (S gen_id)],
-   which is [ewin] below -- on the PLIC payload beside the receive token; it
-   is a premise of the shift and comes back in [in_append]'s post.  One
-   [ghost_var nat] per era, [wcnt], carries it in QUARTERS: one in the
-   output claim (at [length (o_E so)]), one in the input claim, and a HALF
-   in the token.  The echo splits the half it is handed: a quarter stays in
-   the input claim's window arm (which therefore holds a half) and a quarter
-   travels to the append inside [ein_pend].  So
-     - the three shares the echo holds agree, which is what gives it
-       [seg_of (echoed pops) = o_E so] -- the tie the old [stage_tie] was;
-     - the quarter the append carries AGREES with the window arm's half, so
-       the append knows the arm is the one its own echo left;
-     - a SECOND link of the run meets the window arm holding a half, and
-       [1/4 + 1/2 + 1/2] is five quarters: [ghost_var_valid_2] refutes it.
+   THERE IS NO WINDOW COUNTER AND NO KERNEL-LENT TOKEN.  There were both,
+   and here is why they are gone.  The echo's run used to be SPLIT -- the
+   bytes went out through the output claim and the log entry was filed
+   later through the input claim -- so [WpUart.echo_link] returned the input
+   claim at exactly the log it was handed, [SpecConsoleintr.cons_echo_shift]
+   was persistent, and the application's spec had to be total over
+   interleavings cons.lock forbids but never states.  The kernel therefore
+   LENT the application a per-era exclusive on the PLIC payload, and a
+   [ghost_var nat] in QUARTERS made a second firing of one run meet five
+   quarters.  Since the redesign the arm is a FIELD of the console history
+   ([ConsLog.cons_hist]'s [ch_arm]) and every event steps it with the port
+   invariant open, so a second open, a byte after the close and a second
+   close are refuted by [ConsLog.cons_ev_ok] on the kernel's side and by the
+   history's own shape on the application's.  The two descriptions the
+   counter kept in step are ONE description.
 
    THE ERA'S FIRST WRITE needs no special step: [app_turn] (init's console
    credential, minted beside the claims at [echo_led_pow] and carried to
@@ -82,11 +77,10 @@ Require Import EchoOutPure.
    application's claims are wrapped onto, and the observation invariant the
    ledger lives in.  This file is BELOW [AppEcho] and ABOVE [WpUart], which
    is where the _CoqProject entry has always said the links belong. *)
-Require Import RiscvPtsto.       (* [obsN], [obs_hist_lb_o], [riscv_out_res],
-                                    [riscv_in_res], [riscvGS] *)
-Require Import WpUart.           (* [out_link], [read_link], [in_append],
-                                    [in_run], [out_res_at], [in_res_at],
-                                    [uartN] *)
+Require Import RiscvPtsto.       (* [obsN], [obs_hist_lb_o],
+                                    [riscv_cons_res], [riscvGS] *)
+Require Import WpUart.           (* [out_link], [read_link], [cons_link],
+                                    [cons_run], [chist_at], [uartN] *)
 Require Import CtxIdDefs.           (* [CurCtx]: the echo obligation's context *)
 Require Import SpecConsoleintr.  (* [cons_echo_shift], which is what
                                     [App.Happ_echo] asks of the
@@ -1300,9 +1294,6 @@ Record era_pins := MkPins {
   ep_gE  : gname;   (* mono_list (list mobs * bv 8): the era's ECHOED LIST;
                        the output claim holds the authority, the input claim
                        a lower bound at the log's own slice *)
-  ep_gw  : gname;   (* ghost_var nat: the WINDOW COUNTER, in four quarters:
-                       one in the output claim, one in the input claim, two
-                       in the kernel-lent token [ewin] *)
   ep_gdl : gname;   (* ghost_var nat: the DELIVERED COUNT, in two halves --
                        one in the input claim at [length dl], one in the
                        READER's hand.  A read hands its half over and gets
@@ -2245,12 +2236,11 @@ Section echo_out.
     iPureIntro. by apply pin_dom_insert.
   Qed.
 
-  (* ---- THE ERA'S GHOSTS AT FULL OWNERSHIP, and their split into the two
-         claims, init's credential and the kernel's token ---- *)
+  (* ---- THE ERA'S GHOSTS AT FULL OWNERSHIP, and their split into the
+         port's claim and init's credential ---- *)
   Definition era_full (v : era_pins) : iProp Σ :=
     (mono_nat_auth_own (ep_go v) 1 0%nat ∗ cs_auth v [] ∗ ps_auth v []
-     ∗ Elist_auth v []
-     ∗ ghost_var (ep_gw v) 1 0%nat ∗ ghost_var (ep_gdl v) 1 0%nat)%I.
+     ∗ Elist_auth v [] ∗ ghost_var (ep_gdl v) 1 0%nat)%I.
 
   Global Instance era_full_timeless v : Timeless (era_full v).
   Proof. rewrite /era_full. apply _. Qed.
@@ -2264,11 +2254,10 @@ Section echo_out.
       [apply mono_list_auth_valid |].
     iMod (own_alloc (●ML ([] : list (leibnizO (list mobs * bv 8)))))
       as (gE) "HE"; [apply mono_list_auth_valid |].
-    iMod (ghost_var_alloc 0%nat) as (gw) "Hw".
     iMod (ghost_var_alloc 0%nat) as (gdl) "Hdl".
-    iModIntro. iExists (MkPins go gcs gps gE gw gdl).
+    iModIntro. iExists (MkPins go gcs gps gE gdl).
     rewrite /era_full /cs_auth /ps_auth /Elist_auth /=.
-    iFrame "Ht Hcs Hps HE Hw Hdl".
+    iFrame "Ht Hcs Hps HE Hdl".
   Qed.
 
   Lemma pcount_nil (ps cs : list nat) : pcount ps cs [] [] = 0%nat.
@@ -2283,7 +2272,7 @@ Section echo_out.
     era_pin k v -∗ era_full v -∗
       ecl k [] (LogEntryDefs.MkCH [] [] [] None) ∗ eturn k.
   Proof.
-    iIntros "#Hpin (Ht & Hcs & Hps & HE & Hw & Hdl)".
+    iIntros "#Hpin (Ht & Hcs & Hps & HE & Hdl)".
     iAssert (turn_lb v 0%nat) as "#Htlb0".
     { rewrite /turn_lb. iApply (mono_nat_lb_own_get with "Ht"). }
     iEval (rewrite -Qp.half_half) in "Ht".
@@ -2309,8 +2298,6 @@ Section echo_out.
       - by cbn [ch_arm_era].
       - rewrite /ch_E. cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
         rewrite app_nil_r. by rewrite seg_of_echoed_nil. }
-    (* the window counter is INERT: nothing reads it any more, so the era's
-       share is simply dropped here. *)
     rewrite /eturn. iExists v. iFrame "Hpin Ht2 Hdl2 Hcslb Hpslb".
     iApply (E_lb_of_lb v [] 0%nat); [cbn; lia | iExact "HElb"].
   Qed.

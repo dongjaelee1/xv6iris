@@ -319,7 +319,7 @@ Theorem xv6_app_adequacy Σ
        claims were founded by the TRANSPORT ([Happ_boot] below yielded them
        at [[]]), and that was unsound as a discipline: [app_xfer_boot_raw]
        is a [□] over a bupd whose only input it hands straight back, so
-       [app_out A c k [] []] was derivable UNBOUNDEDLY from nothing and no
+       [app_cons A c k [] H0] was derivable UNBOUNDEDLY from nothing and no
        ledger fact could refute a claim "reset" to the founded arm.  The
        power-ON arm is the one step of the machine that runs the
        application's LEDGER and runs ONCE PER ERA, so it is where a LINEAR

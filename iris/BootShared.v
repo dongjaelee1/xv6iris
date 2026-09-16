@@ -1656,7 +1656,7 @@ Section BootAlloc.
        they ride [power_boot_res] itself: [power_boot_res_unpack] above
        hands them out and this fupd feeds them straight to
        [WpUart.uart_ghosts_alloc] at [Uart0].  The kernel's port founds its
-       own out of nothing ([WpUart.out_res_at_uart1]). *)
+       own out of nothing ([WpUart.cons_res_at_uart1]). *)
     (* the transport and the crash seam at the application's guest, both
        straight through to the mint, which parks the one and puts both on
        fsinit's kit (round C) *)
@@ -2207,7 +2207,7 @@ Section BootAlloc.
        receipt, DLAB half and receive pair leave for [uartinit] and for
        main's SECOND deposit, exactly as the console's do. ---- *)
     (* the KERNEL's port claims nothing, so its founding is free:
-       [WpUart.out_res_at Uart1] is [emp] (lane OUT-FUPD) *)
+       [WpUart.chist_at Uart1] is [emp] (redesign R2) *)
     iAssert (chist_at Uart1 (Datatypes.S gen_id) []
                (LogEntryDefs.MkCH [] [] [] None)) as "Hores1"; [done|].
     iMod (uart_ghosts_alloc Uart1 (g.(gdev).(duart) Uart1)

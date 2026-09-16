@@ -1487,6 +1487,7 @@ EchoLinksLine.v
 EchoLinksBan.v
 EchoFsPure.v
 AppEcho.v
+AppTree.v
 
 FsAbsUnlinkFire.v
 FsAbsLinkFire.v

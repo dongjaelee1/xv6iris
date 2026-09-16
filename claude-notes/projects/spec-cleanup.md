@@ -267,6 +267,62 @@ page now carries, two of which CORRECT the sketch:
    `pin_resolves_at` verbatim at a directory it needs a one-line
    absnode-level variant of that definition.
 
+**TL-2 AS LANDED** — `iris/AppTree.v` (branch `tl2-apptree`), the
+`App.xv6_app` instance over TL-1's pure layer: the claim `tree_pred`,
+the deed `tree_own`, both claim laws, the step wands, the mints, the
+record.  Every result `Closed under the global context` (not even
+funext); echo audit 14, whole iris tree green on the mirror; a leaf
+nothing imports, so the echo cone cannot move and does not.
+`design/user-tree.md` §6 carries the full as-landed block; the three
+findings, each an OWNER DECISION or a priced TL-1 item:
+
+1. **THE SEAM (the brief's STOP rule fired).**  An owner's own move
+   CANNOT be paid at a fire: `AppInv.app_step` / `app_top_update_step`
+   take an UPDATE-FREE wand, and moving an owner's recorded subtree is
+   a ghost-map update.  All three workarounds fail for one reason —
+   only the step wand sees the view move, and it cannot write anything
+   down (a `|==>`-wrapped claim kills the claim law; a window leaves
+   the owner unable to prove accuracy at a view it cannot see).  The
+   owner's legs are landed as BASIC UPDATES (`tree_move_write` /
+   `_create` / `_unl_ent`), so the whole tree content is proved and ONE
+   shape mismatch is left.  Closing it: (i) `app_step` becomes
+   `▷ app_pred av ==∗ ▷ app_pred av'` — `app_top_update` already
+   applies the step inside its own fupd, so the invariant can take it;
+   the cost is every AU fire site; or (ii) each syscall ROW hands back
+   a receipt about the POST view (TL-3's altitude).  **Owner's call,
+   and TL-3 is blocked on it for the WRITE side.**
+2. **exec's (W) needs the absnode-level pin**, which is TL-1's finding
+   3 biting at the terminal IDENTIFICATION rather than at the walk:
+   `pin_resolves_at` pins the row's `nlink`, the tree claim does not.
+   `exec_walk_of_own` is therefore NOT landed; `tree_resolves_abs` is
+   its content at an existential count.  Unblocking it is one additive
+   definition in `PinnedObs.v` and one in `ExecRun.v`.
+3. **Grant is a HAND-DOWN**: a parent cannot keep a hole-punched
+   subtree (exact claim + non-nested roots), so `tree_grant` retires
+   the parent's entry and births the child's at a sub-root.  Keeping
+   the parent needs a new pure reading in TL-1 (`subtree_except`) and a
+   disjointness theorem at it — price it before promising a fork grant
+   that keeps the parent.
+
+4. **The era's first deed has no channel.**  A deed at `/` cannot be
+   minted from a running claim (the insert wants non-nesting with every
+   existing root, i.e. an EMPTY map, which the claim cannot see), and
+   `Happ_init`'s instance never reaches a boot — so it must ride
+   `App.app_boot`, which the transport can build (the view is available
+   OUTSIDE the later, echo's `cons_inum av` trick).  It does not, yet,
+   because `app_boot` is av-free and the no-root arm has no av-free
+   spelling.  ONE CONJUNCT fixes it — `⌜adir_at av ROOTINO⌝` in the
+   claim, preserved by every landed leg — and TL-4 needs it before it
+   can hand /init anything.
+
+Owed by TL-1: `own_wf_ent` (create's PARENT leg alone), whose
+`aview_tree_wf` twin wants "nothing else names the armed inum" — so the
+create move is offered FUSED only.  (`own_wf_trunc` is proved in
+AppTree.v §1f', `own_wf_write`'s twin line for line; it belongs in
+TreeView.v and moves there when a TL-1 lane runs.)  The
+last-link unlink TARGET leg is not payable at all as things stand:
+"the row is nobody's root" is a fact about the hidden ownership map.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

@@ -1,20 +1,16 @@
 # pipe-queue — the pipe's contents as exact ghost state
 
-STATUS (2026-09-16, night): branch `pipe-queue` at `4fab0298e`.  All four
-lanes' first rounds are merged and green on the full tree except the
-user tier's exit row: lanes A (kernel pipe proofs), B (file layer), C
-(syscall layer, trap route, kill row -- three rounds), D (user tier at the
-pipe posts, the close row, the exit row).  The tear-down design
-(`55207260e`, `d3b6bb7b2`) is closed on the kernel side.  Last open
-round: `4fab0298e` put `fdst_nopipe` on the open row so a program can
-carry `fdv_nopipe` of its table and mint exit's row from nothing; lane C
-ports ProofSyscall's arm 15 to it, lane D carries the fact through the
-user tier and deletes the taint premises it had to thread (UInitBoot was
-the one red file: /init's and sh's exits could not be paid untainted).
-Then: full build, both audits (system: thirteen; echo: fourteen), merge
-`origin/main` (six console-redesign commits, eight overlapping files),
-rebuild, push.  Lane clones `/shared/xv6iris-3-pq-{A,B,C,D}` at branches
-`pq-{A,B,C,D}`, remote trees seeded warm (memory: seed-lane-remote-trees).
+STATUS (2026-09-17): DONE on branch `pipe-queue`, merged with
+`origin/main` (the console credential redesign R4).  All four lanes are
+merged; the full `iris` tree is green with no admits; both audits match
+the baselines (system: the thirteen; echo: the fourteen).  The user tier
+carries `FdSlots.fdv_nopipe` of its table in `UkRun.urun` (`urun_nopipe`,
+`⌜fdv_nopipe fdv⌝ ∨ □ riscv_kill_cred`), so exit(2)'s close payments are
+free for every program that never calls pipe(2); pipe(2)'s own leaf
+(`UkRunSys.wp_uk_ecall_pipe`) takes the credential, i.e. a pipe-using
+program's tear-down is paid from the taint today (see Open).  Lane clones
+`/shared/xv6iris-3-pq-{A,B,C,D}` can be deleted once the branch is on
+`main`.
 Design of record: `design/pipe.md`, "The byte queue".  Read it first; this
 file is only what is left to do and who does it.
 
@@ -120,6 +116,12 @@ file is only what is left to do and who does it.
   `free_num` or the supply.
 
 ## Open, recorded
+- A verified program that HOLDS a pipe: `urun_nopipe`'s right arm is the
+  credential, because `urun` hands the two close links' fragments to the
+  program and no persistent proposition but the taint pays `pipe_cpay`.
+  A pipe program outside the tainted era needs that arm to become
+  something duplicable a pipe's close link can be built from -- an owner
+  ruling before anyone writes such a program (lane D).
 - The application-tier shape of the exit row: `fileclose_cpays sts` is a
   `[∗ list]` of independent payments, so two rows on one pipe (both ends
   right after `pipe()`, or a `dup`) cannot be paid by links from one

@@ -1,12 +1,22 @@
 # pipe-queue — the pipe's contents as exact ghost state
 
-STATUS: definitional layer written (the algebra, the lock payload, the
-descriptor type, every contract that names a pipe); PROOFS NOT YET PORTED.
+STATUS: definitional layer LANDED as `996ddf76a` on branch `pipe-queue`
+(compiles through the whole spec cone: SpecSysWrite, SpecSyscall,
+SpecUsertrap, FsAbsInvFire, UexecExecInst, UkWriteLeaf).  The proof port is
+running in four lanes (2026-09-16): clones `/shared/xv6iris-3-pq-{A,B,C,D}`
+at branches `pq-{A,B,C,D}`, remote trees seeded warm from the lead's
+(memory: seed-lane-remote-trees), briefs in each clone's `scratch/`.  Red
+proof files at the branch point (pq16 build): ProofFileclose 151,
+ProofFileread 432, ProofFilestat 534, ProofFilewrite 1095, ProofKexit 888,
+ProofPipealloc 743, ProofPipeclose 116, ProofPiperead 627, ProofPipewrite
+623, ProofSysClose 331, ProofSysExit 139, ProofSysOpenParts 991,
+ProofSysPipe 804, ProofSysRead 327, ProofSysWrite 337, ProofSyscall 3223,
+ProofUsertrapTail 205, ProofUservec 1636, UkRunSys 487 -- none depends on
+another (the Module Types separate them), so the lanes are independent.
 Design of record: `design/pipe.md`, "The byte queue".  Read it first; this
 file is only what is left to do and who does it.
 
-## What changed, file by file (the spec layer -- landed, compiles from
-## PipeNames.v through FileInvDefs.v; the rest of the cone is being built)
+## What changed, file by file (the spec layer, `996ddf76a`)
 
 - `PipeNames.v` (new): `pipe_st = {ps_ws; ps_rp; ps_ro; ps_wo}`, `pst0`,
   `pst_write/read/close`, `pst_empty/eof/next`; `pipe_names` (moved here

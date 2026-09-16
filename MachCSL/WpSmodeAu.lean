@@ -51,9 +51,10 @@ set_option swp_run.memStop true in
 /-- A 4-byte aligned racy load from RAM: the accessor's read. -/
 theorem swp_checked_mem_read_load4_S_au (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Bool)
     (hok : SConfPhys (GF := GF) c sie)
-    (pa : BitVec 64) (hram : inRam pa 4) (hal : pa.toNat % 4 = 0) (K : Nat) (Ψ : BitVec (8 * 4) → IProp GF)
+    (pa : BitVec 64) (hram : inRam pa 4) (hal : pa.toNat % 4 = 0) (K : Nat)
+    (ts : List (Nat × Agent)) (Ψ : BitVec (8 * 4) → IProp GF)
     (Φ : Result ((BitVec (8 * 4)) × Unit) (physaddr × ExceptionType) → IProp GF) :
-    confCells cpu dq Privilege.Supervisor c ∗ viewLb cpu K ∗ readAU cpu pa 4 K Ψ ∗
+    confCells cpu dq Privilege.Supervisor c ∗ viewLb cpu K ∗ readAU cpu pa 4 K ts Ψ ∗
     ▷ (confCells cpu dq Privilege.Supervisor c -∗ ∀ w, Ψ w -∗ Φ (.Ok (w, ())))
     ⊢ swp cpu (checked_mem_read (MemoryAccessType.Load mem_payload.Data) page_based_mem_type.PBMT_PMA
         Privilege.Supervisor (physaddr.Physaddr pa) 4 false false false false) Φ := by
@@ -61,10 +62,10 @@ theorem swp_checked_mem_read_load4_S_au (cpu : CPU) (dq : DFrac) (c : MConf) (si
   unfold checked_mem_read
   checked_mem_S_au_prefix pa 4 hram hal
   iapply swp_bind
-  iapply (swp_sail_mem_read_plain_au cpu _ rfl K)
+  iapply (swp_sail_mem_read_plain_au cpu _ rfl K ts)
   isplit
   · iexact HK
-  iapply readAU_wand cpu pa 4 K Ψ $$ HAU
+  iapply readAU_wand cpu pa 4 K ts Ψ $$ HAU
   inext
   iintro %w HΨ
   swp_run 60
@@ -77,9 +78,10 @@ set_option swp_run.memStop true in
 /-- An 8-byte aligned racy load from RAM: the accessor's read. -/
 theorem swp_checked_mem_read_load8_S_au (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Bool)
     (hok : SConfPhys (GF := GF) c sie)
-    (pa : BitVec 64) (hram : inRam pa 8) (hal : pa.toNat % 8 = 0) (K : Nat) (Ψ : BitVec (8 * 8) → IProp GF)
+    (pa : BitVec 64) (hram : inRam pa 8) (hal : pa.toNat % 8 = 0) (K : Nat)
+    (ts : List (Nat × Agent)) (Ψ : BitVec (8 * 8) → IProp GF)
     (Φ : Result ((BitVec (8 * 8)) × Unit) (physaddr × ExceptionType) → IProp GF) :
-    confCells cpu dq Privilege.Supervisor c ∗ viewLb cpu K ∗ readAU cpu pa 8 K Ψ ∗
+    confCells cpu dq Privilege.Supervisor c ∗ viewLb cpu K ∗ readAU cpu pa 8 K ts Ψ ∗
     ▷ (confCells cpu dq Privilege.Supervisor c -∗ ∀ w, Ψ w -∗ Φ (.Ok (w, ())))
     ⊢ swp cpu (checked_mem_read (MemoryAccessType.Load mem_payload.Data) page_based_mem_type.PBMT_PMA
         Privilege.Supervisor (physaddr.Physaddr pa) 8 false false false false) Φ := by
@@ -87,10 +89,10 @@ theorem swp_checked_mem_read_load8_S_au (cpu : CPU) (dq : DFrac) (c : MConf) (si
   unfold checked_mem_read
   checked_mem_S_au_prefix pa 8 hram hal
   iapply swp_bind
-  iapply (swp_sail_mem_read_plain_au cpu _ rfl K)
+  iapply (swp_sail_mem_read_plain_au cpu _ rfl K ts)
   isplit
   · iexact HK
-  iapply readAU_wand cpu pa 8 K Ψ $$ HAU
+  iapply readAU_wand cpu pa 8 K ts Ψ $$ HAU
   inext
   iintro %w HΨ
   swp_run 60

@@ -61,3 +61,4 @@ import MachCSL.WpSmodeCycle
 import MachCSL.WpSmodeTrapCsr
 import MachCSL.WpSmodeSltu
 import MachCSL.ByteWord
+import MachCSL.WpSmodeMint

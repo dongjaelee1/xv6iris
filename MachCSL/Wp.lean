@@ -142,6 +142,15 @@ theorem wpLoop_bupd (cpu : CPU) : (|==> wpLoop (GF := GF) cpu) ⊢ wpLoop cpu :=
   imodintro
   iapply H $$ Hcert
 
+/-- A fancy update before the loop (the WP absorbs the fancy update at `⊤`). -/
+theorem wpLoop_fupd (cpu : CPU) : (|={⊤}=> wpLoop (GF := GF) cpu) ⊢ wpLoop cpu := by
+  unfold wpLoop wpHart hartWP
+  iintro H #Hcert
+  iapply fupd_wp
+  imod H
+  imodintro
+  iapply H $$ Hcert
+
 /-- The generic lifting lemma for one hart event, and the single per-hart
 framing point.  The caller shows, from the ambient era's interpretation, that
 the hart can step, and re-establishes the interpretation at every possible

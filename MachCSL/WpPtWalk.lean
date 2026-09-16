@@ -23,9 +23,10 @@ set_option swp_run.memStop true in
 /-- The physical read of an entry (`Load PageTableEntry`): the accessor's read. -/
 theorem swp_checked_mem_read_pte8_S_au (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Bool)
     (hok : SConfPhys (GF := GF) c sie)
-    (pa : BitVec 64) (hram : inRam pa 8) (hal : pa.toNat % 8 = 0) (K : Nat) (Ψ : BitVec (8 * 8) → IProp GF)
+    (pa : BitVec 64) (hram : inRam pa 8) (hal : pa.toNat % 8 = 0) (K : Nat)
+    (ts : List (Nat × Agent)) (Ψ : BitVec (8 * 8) → IProp GF)
     (Φ : Result ((BitVec (8 * 8)) × Unit) (physaddr × ExceptionType) → IProp GF) :
-    confCells cpu dq Privilege.Supervisor c ∗ viewLb cpu K ∗ readAU cpu pa 8 K Ψ ∗
+    confCells cpu dq Privilege.Supervisor c ∗ viewLb cpu K ∗ readAU cpu pa 8 K ts Ψ ∗
     ▷ (confCells cpu dq Privilege.Supervisor c -∗ ∀ w, Ψ w -∗ Φ (.Ok (w, ())))
     ⊢ swp cpu (checked_mem_read (MemoryAccessType.Load mem_payload.PageTableEntry) page_based_mem_type.PBMT_PMA
         Privilege.Supervisor (physaddr.Physaddr pa) 8 false false false false) Φ := by
@@ -33,10 +34,10 @@ theorem swp_checked_mem_read_pte8_S_au (cpu : CPU) (dq : DFrac) (c : MConf) (sie
   unfold checked_mem_read
   checked_mem_S_au_prefix pa 8 hram hal
   iapply swp_bind
-  iapply (swp_sail_mem_read_plain_au cpu _ rfl K)
+  iapply (swp_sail_mem_read_plain_au cpu _ rfl K ts)
   isplit
   · iexact HK
-  iapply readAU_wand cpu pa 8 K Ψ $$ HAU
+  iapply readAU_wand cpu pa 8 K ts Ψ $$ HAU
   inext
   iintro %w HΨ
   swp_run 60
@@ -48,16 +49,17 @@ set_option swp_run.memStop true in
 /-- `read_pte`: the entry at `pa`, through the accessor. -/
 theorem swp_read_pte (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Bool)
     (hok : SConfPhys (GF := GF) c sie)
-    (pa : BitVec 64) (hram : inRam pa 8) (hal : pa.toNat % 8 = 0) (K : Nat) (Ψ : BitVec (8 * 8) → IProp GF)
+    (pa : BitVec 64) (hram : inRam pa 8) (hal : pa.toNat % 8 = 0) (K : Nat)
+    (ts : List (Nat × Agent)) (Ψ : BitVec (8 * 8) → IProp GF)
     (Φ : Result (BitVec (8 * 8)) (physaddr × ExceptionType) → IProp GF) :
-    confCells cpu dq Privilege.Supervisor c ∗ viewLb cpu K ∗ readAU cpu pa 8 K Ψ ∗
+    confCells cpu dq Privilege.Supervisor c ∗ viewLb cpu K ∗ readAU cpu pa 8 K ts Ψ ∗
     ▷ (confCells cpu dq Privilege.Supervisor c -∗ ∀ w, Ψ w -∗ Φ (.Ok w))
     ⊢ swp cpu (read_pte (physaddr.Physaddr pa) 8) Φ := by
   iintro ⟨HmConf, #HK, HAU, HΦ⟩
   unfold read_pte mem_read_priv mem_read_priv_meta
   swp_run 20
   iapply swp_bind
-  iapply (swp_checked_mem_read_pte8_S_au cpu dq c sie hok pa hram hal K Ψ)
+  iapply (swp_checked_mem_read_pte8_S_au cpu dq c sie hok pa hram hal K ts Ψ)
   iframe HmConf HAU
   isplit
   · iexact HK
@@ -323,12 +325,13 @@ theorem vpnIdx_zero' (vpn : BitVec 27) : BitVec.extractLsb' 0 9 vpn = vpnIdx vpn
 theorem swp_read_pte_pow (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Bool)
     (hok : SConfPhys (GF := GF) c sie)
     (pa : BitVec 64) (hram : inRam pa 8) (hal : pa.toNat % 8 = 0) (K : Nat)
+    (ts : List (Nat × Agent))
     (Ψ : BitVec (8 * ((2 : Int) ^ (3 : Int)).toNat) → IProp GF)
     (Φ : Result (BitVec (8 * ((2 : Int) ^ (3 : Int)).toNat)) (physaddr × ExceptionType) → IProp GF) :
-    confCells cpu dq Privilege.Supervisor c ∗ viewLb cpu K ∗ readAU cpu pa 8 K Ψ ∗
+    confCells cpu dq Privilege.Supervisor c ∗ viewLb cpu K ∗ readAU cpu pa 8 K ts Ψ ∗
     ▷ (confCells cpu dq Privilege.Supervisor c -∗ ∀ w, Ψ w -∗ Φ (.Ok w))
     ⊢ swp cpu (read_pte (physaddr.Physaddr pa) ((2 : Int) ^ (3 : Int)).toNat) Φ :=
-  swp_read_pte cpu dq c sie hok pa hram hal K Ψ Φ
+  swp_read_pte cpu dq c sie hok pa hram hal K ts Ψ Φ
 
 /-- `pt_walk` at Sv39 with the root typed plainly. -/
 noncomputable def pt_walk39 (vpn : BitVec 27) (acc : MemoryAccessType mem_payload) (priv : Privilege)
@@ -376,7 +379,7 @@ theorem swp_pt_walk_kpt [CurCtx] (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Boo
   icases kpt_readAU cpu t M _ _ m2 $$ [Hkpt Hctx] with ⟨Hctx, %K, HK, HAU⟩
   · iframe Hctx; iexact Hkpt
   iapply swp_bind
-  iapply (swp_read_pte cpu dq c sie hok (pteAddr t.base (vpnIdx vpn 2)) (hents _ m2).1 (hents _ m2).2 K _)
+  iapply (swp_read_pte cpu dq c sie hok (pteAddr t.base (vpnIdx vpn 2)) (hents _ m2).1 (hents _ m2).2 K [] _)
   iframe HmConf HK HAU
   inext
   iintro HmConf %w %hw2
@@ -401,7 +404,7 @@ theorem swp_pt_walk_kpt [CurCtx] (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Boo
   icases kpt_readAU cpu t M _ _ m1 $$ [Hkpt Hctx] with ⟨Hctx, %K1, HK, HAU⟩
   · iframe Hctx; iexact Hkpt
   iapply swp_bind
-  iapply (swp_read_pte cpu dq c sie hok (pteAddr b1 (vpnIdx vpn 1)) (hents _ m1).1 (hents _ m1).2 K1 _)
+  iapply (swp_read_pte cpu dq c sie hok (pteAddr b1 (vpnIdx vpn 1)) (hents _ m1).1 (hents _ m1).2 K1 [] _)
   iframe HmConf HK HAU
   inext
   iintro HmConf %w %hw1
@@ -427,7 +430,7 @@ theorem swp_pt_walk_kpt [CurCtx] (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Boo
   icases kpt_readAU cpu t M _ _ m0 $$ [Hkpt Hctx] with ⟨Hctx, %K0, HK, HAU⟩
   · iframe Hctx; iexact Hkpt
   iapply swp_bind
-  iapply (swp_read_pte cpu dq c sie hok (pteAddr b0 (vpnIdx vpn 0)) (hents _ m0).1 (hents _ m0).2 K0 _)
+  iapply (swp_read_pte cpu dq c sie hok (pteAddr b0 (vpnIdx vpn 0)) (hents _ m0).1 (hents _ m0).2 K0 [] _)
   iframe HmConf HK HAU
   inext
   iintro HmConf %w %hw0

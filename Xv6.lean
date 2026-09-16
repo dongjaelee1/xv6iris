@@ -88,3 +88,6 @@ import Xv6.ProofFreerange
 import Xv6.LinkFreerange
 import Xv6.ProofKalloc
 import Xv6.LinkKalloc
+import Xv6.SpecInitlock
+import Xv6.ProofInitlock
+import Xv6.LinkInitlock

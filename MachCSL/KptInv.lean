@@ -165,7 +165,8 @@ theorem kptBody_acc (t : PTree) (lo : Nat) (addr c : BitVec 64) (hmem : (addr, c
 theorem kpt_readAU [CurCtx] (cpu : CPU) (t : PTree) (M : RegMapF (BitVec 64)) (addr c : BitVec 64)
     (hmem : (addr, c) ∈ t.entries 2) :
     kptOn (GF := GF) t M ∗ ownCtx cpu curCtx ⊢
-      ownCtx cpu curCtx ∗ ∃ K : Nat, viewLb cpu K ∗ readAU cpu addr 8 K (fun w => iprop(⌜pteVariant c w⌝)) := by
+      ownCtx cpu curCtx ∗ ∃ K : Nat, viewLb cpu K ∗
+        readAU cpu addr 8 K [] (fun w => iprop(⌜pteVariant c w⌝)) := by
   unfold kptOn
   iintro ⟨⟨%hf, _, %lo, #Hinv, #Hfl⟩, Hctx⟩
   icases ownCtx_floor_view cpu curCtx lo $$ [Hctx Hfl] with ⟨Hctx, ⟨%K, #HK, %hloK⟩⟩
@@ -175,6 +176,8 @@ theorem kpt_readAU [CurCtx] (cpu : CPU) (t : PTree) (M : RegMapF (BitVec 64)) (a
   isplit
   · iexact HK
   unfold readAU
+  isplitl []
+  · exact BigSepL.bigSepL_nil_intro
   iinv Hinv with Hbody Hclose
   icases Hbody with >Hbody
   icases kptBody_acc t lo addr c hmem $$ Hbody with ⟨Hcell, Hback⟩
@@ -187,7 +190,7 @@ theorem kpt_readAU [CurCtx] (cpu : CPU) (t : PTree) (M : RegMapF (BitVec 64)) (a
   isplit
   · ipureintro; exact fun j hj => WordHist.hist_ne_nil W Hold htail j hj
   inext
-  iintro %w %tvn %hKt %hrd Hb
+  iintro %w %tvn %hKt %hrd %_ Hb
   imod Hmask
   ihave Hw := wordCell_intro addr 8 lo v0 W Hold htail $$ Hb
   ihave Hcell := pteCell_intro addr c lo v0 W hpin $$ Hw
@@ -195,7 +198,7 @@ theorem kpt_readAU [CurCtx] (cpu : CPU) (t : PTree) (M : RegMapF (BitVec 64)) (a
   imod Hcl
   imodintro
   ipureintro
-  rcases WordHist.read_cases W Hold (hartAgent cpu) tvn lo v0 w (by decide) htail (by omega) hrd with
+  rcases WordHist.read_cases_floor W Hold (hartAgent cpu) tvn lo v0 w (by decide) htail (by omega) hrd with
     ⟨_, e, _, _, _, _, rfl⟩ | ⟨_, rfl⟩
   · exact hpin.2 e (by simp_all)
   · exact hpin.1

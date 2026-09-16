@@ -5,7 +5,7 @@ The byte histories of an aligned word written only by whole-word stores
 share their timestamps and authors: they are the projections of ONE list of
 word entries.  `wordCell pa n lo v0 W` owns the `n` byte histories of the
 window at `pa` as `W`'s projections on top of an arbitrary tail whose head
-entries (the value `v0`, at positions at most `lo`) are what the window
+entries (the value `v0`, all at the position `lo`) are what the window
 held before it was placed under a word discipline.
 
 What this buys: a racy plain load of the window by any hart at any view
@@ -46,9 +46,22 @@ theorem WEnt.proj_visible (j : Nat) (h : Agent) (tv : Nat) (e : WEnt n) :
 def WordHist.hist (W : WordHist n) (Hold : Nat → Hist) (j : Nat) : Hist :=
   W.map (WEnt.proj j) ++ Hold j
 
-/-- The tails: nonempty, heads spelling `v0` at positions at most `lo`. -/
+/-- The tails: nonempty, heads spelling `v0` at EXACTLY the position `lo`
+(`lo = 0` for a window never written since the image; the timestamp of the
+one store that minted the word otherwise).  The exactness is what lets a
+reader who authored the store at `lo` certify the head as visible. -/
 def tailOk (n lo : Nat) (v0 : BitVec (8 * n)) (Hold : Nat → Hist) : Prop :=
-  ∀ j, j < n → ∃ e H, Hold j = e :: H ∧ e.v = nthByte v0 j ∧ e.t ≤ lo
+  ∀ j, j < n → ∃ e H, Hold j = e :: H ∧ e.v = nthByte v0 j ∧ e.t = lo
+
+/-- The head of a tail: its value and its (exact) position. -/
+theorem tailOk_head {n lo : Nat} {v0 : BitVec (8 * n)} {Hold : Nat → Hist}
+    (htail : tailOk n lo v0 Hold) (j : Nat) (hj : j < n) (e : HEnt) (H : Hist)
+    (hH : Hold j = e :: H) : e.v = nthByte v0 j ∧ e.t = lo := by
+  obtain ⟨e', H', hH', hv, ht⟩ := htail j hj
+  rw [hH] at hH'
+  simp only [List.cons.injEq] at hH'
+  obtain ⟨rfl, rfl⟩ := hH'
+  exact ⟨hv, ht⟩
 
 /-- The current value of the word. -/
 def curVal (W : WordHist n) (v0 : BitVec (8 * n)) : BitVec (8 * n) :=
@@ -75,10 +88,12 @@ theorem WordHist.find?_hist (W : WordHist n) (Hold : Nat → Hist) (h : Agent) (
   rw [List.find?_append, List.find?_map]
   rfl
 
-/-- A plain read of the window past `lo` returns the first visible entry of
-`W`, or the tail's `v0` if none is visible. -/
+/-- A plain read of the window whose tail heads are visible to the reader
+returns the first visible entry of `W`, or the tail's `v0` if none is
+visible. -/
 theorem WordHist.read_cases (W : WordHist n) (Hold : Nat → Hist) (h : Agent) (tvn lo : Nat)
-    (v0 w : BitVec (8 * n)) (hn : 0 < n) (htail : tailOk n lo v0 Hold) (hlo : lo ≤ tvn)
+    (v0 w : BitVec (8 * n)) (hn : 0 < n) (htail : tailOk n lo v0 Hold)
+    (hvis : ∀ j, j < n → ∀ e H, Hold j = e :: H → e.visible h tvn = true)
     (hrd : readsAre h tvn (W.hist Hold) n w) :
     (∃ W1 e W2, W = W1 ++ e :: W2 ∧ e.visible h tvn = true ∧ (∀ x ∈ W1, x.visible h tvn = false) ∧
       w = e.v) ∨
@@ -104,10 +119,62 @@ theorem WordHist.read_cases (W : WordHist n) (Hold : Nat → Hist) (h : Agent) (
     have := hrd j hj
     obtain ⟨e, H, hH, hev, het⟩ := htail j hj
     unfold Hist.read at this
-    have hvis : HEnt.visible h tvn e = true := HEnt.visible_of_le h tvn e (by omega)
+    have hvis' : HEnt.visible h tvn e = true := hvis j hj e H hH
     rw [WordHist.find?_hist, hf, Option.map_none, Option.none_or, hH] at this
-    simp only [List.find?_cons, hvis, Option.map_some, Option.some.injEq] at this
+    simp only [List.find?_cons, hvis', Option.map_some, Option.some.injEq] at this
     rw [← this, hev]
+
+/-- The reader's view has passed the tails' position: they are visible. -/
+theorem WordHist.read_cases_floor (W : WordHist n) (Hold : Nat → Hist) (h : Agent) (tvn lo : Nat)
+    (v0 w : BitVec (8 * n)) (hn : 0 < n) (htail : tailOk n lo v0 Hold) (hlo : lo ≤ tvn)
+    (hrd : readsAre h tvn (W.hist Hold) n w) :
+    (∃ W1 e W2, W = W1 ++ e :: W2 ∧ e.visible h tvn = true ∧ (∀ x ∈ W1, x.visible h tvn = false) ∧
+      w = e.v) ∨
+    ((∀ x ∈ W, x.visible h tvn = false) ∧ w = v0) :=
+  WordHist.read_cases W Hold h tvn lo v0 w hn htail
+    (fun j hj e H hH => HEnt.visible_of_le h tvn e (by
+      rw [(tailOk_head htail j hj e H hH).2]; exact hlo)) hrd
+
+/-- The reader AUTHORED the tails' entries: they are visible to it at every
+view (store-to-load forwarding). -/
+theorem WordHist.read_cases_own (W : WordHist n) (Hold : Nat → Hist) (h : Agent) (tvn lo : Nat)
+    (v0 w : BitVec (8 * n)) (hn : 0 < n) (htail : tailOk n lo v0 Hold)
+    (hown : ∀ j, j < n → ∀ e H, Hold j = e :: H → e.tid = h)
+    (hrd : readsAre h tvn (W.hist Hold) n w) :
+    (∃ W1 e W2, W = W1 ++ e :: W2 ∧ e.visible h tvn = true ∧ (∀ x ∈ W1, x.visible h tvn = false) ∧
+      w = e.v) ∨
+    ((∀ x ∈ W, x.visible h tvn = false) ∧ w = v0) :=
+  WordHist.read_cases W Hold h tvn lo v0 w hn htail
+    (fun j hj e H hH => HEnt.visible_of_own h tvn e (hown j hj e H hH)) hrd
+
+/-- The tail heads are visible to a reader that either has a view past the
+tails' position or AUTHORED the entries there -- the two arms of a lock
+floor (`MachCSL.lkFloor`), as the read accessor's authorship bundle `ts`
+reports them. -/
+theorem tailOk_visible {n f K tvn : Nat} {v0 : BitVec (8 * n)} {Hold : Nat → Hist}
+    (W : WordHist n) (h : Agent) (ts : List (Nat × Agent)) (htail : tailOk n f v0 Hold)
+    (hKt : K ≤ tvn) (hvis : f ≤ K ∨ (f, h) ∈ ts) (hauth : authorsAre ts n (W.hist Hold)) :
+    ∀ j, j < n → ∀ e H, Hold j = e :: H → e.visible h tvn = true := by
+  intro j hj e H hH
+  have het := (tailOk_head htail j hj e H hH).2
+  rcases hvis with hle | hmem
+  · exact HEnt.visible_of_le h tvn e (by omega)
+  · refine HEnt.visible_of_own h tvn e (hauth (f, h) hmem j hj e ?_ het)
+    unfold WordHist.hist
+    rw [hH]
+    exact List.mem_append_right _ List.mem_cons_self
+
+/-- The read cases at a lock floor: the reader's view has passed it, or the
+reader authored the store that minted the window. -/
+theorem WordHist.read_cases_vis (W : WordHist n) (Hold : Nat → Hist) (h : Agent) (tvn K f : Nat)
+    (ts : List (Nat × Agent)) (v0 w : BitVec (8 * n)) (hn : 0 < n) (htail : tailOk n f v0 Hold)
+    (hKt : K ≤ tvn) (hvis : f ≤ K ∨ (f, h) ∈ ts) (hauth : authorsAre ts n (W.hist Hold))
+    (hrd : readsAre h tvn (W.hist Hold) n w) :
+    (∃ W1 e W2, W = W1 ++ e :: W2 ∧ e.visible h tvn = true ∧ (∀ x ∈ W1, x.visible h tvn = false) ∧
+      w = e.v) ∨
+    ((∀ x ∈ W, x.visible h tvn = false) ∧ w = v0) :=
+  WordHist.read_cases W Hold h tvn f v0 w hn htail
+    (tailOk_visible W h ts htail hKt hvis hauth) hrd
 
 /-- The heads of the window spell the current value. -/
 theorem WordHist.heads_eq (W : WordHist n) (Hold : Nat → Hist) {lo : Nat} (v0 w : BitVec (8 * n))
@@ -181,7 +248,7 @@ theorem WordHist.hist_nil (Hold : Nat → Hist) : WordHist.hist ([] : WordHist n
 theorem wordCell_of_fresh (pa : PAddr) (n : Nat) (v0 : BitVec (8 * n)) (tids : Nat → Agent) :
     histBytes (GF := GF) pa n (fun _ => DFrac.own 1) (fun j => [⟨0, tids j, nthByte v0 j⟩]) ⊢
       wordCell pa n 0 v0 [] := by
-  have htail : tailOk n 0 v0 (fun j => [⟨0, tids j, nthByte v0 j⟩]) := fun j _ => ⟨_, _, rfl, rfl, le_refl _⟩
+  have htail : tailOk n 0 v0 (fun j => [⟨0, tids j, nthByte v0 j⟩]) := fun j _ => ⟨_, _, rfl, rfl, rfl⟩
   have e := wordCell_intro (GF := GF) pa n 0 v0 [] _ htail
   rw [WordHist.hist_nil] at e
   exact e

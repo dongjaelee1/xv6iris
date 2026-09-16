@@ -224,6 +224,48 @@ theorem memModel_store_excl (σ : MState) (cpu : CPU) (pa : PAddr) (n : Nat) (w 
         · iexact Hvlb
         · unfold topLbAt; iright; iexact Htoplb
 
+/-! ## Authorship of the entries of a history
+
+A fragment `authoredBy t h` of the author log names the hart that made the
+store at position `t`; a well-formed history's entries at that position are
+that hart's (`histOk`).  A client of the read accessor can therefore hand
+the leaf a bundle of authorship fragments and get back, about the very
+histories it reads, "every entry at `t` is `h`'s" -- which is what makes
+such an entry visible to `h` at every view. -/
+
+/-- An entry of a well-formed history at a timestamp the author log maps is
+that author's. -/
+theorem histOk_author_eq (log : List Agent) (H : Hist) (hH : histOk log H) (e : HEnt) (he : e ∈ H)
+    (t : Nat) (a : Agent) (ht : 1 ≤ t) (hl : log[t - 1]? = some a) (het : e.t = t) : e.tid = a := by
+  rcases (hH.2 e he).2 with h0 | h0
+  · exfalso; omega
+  · rw [het, hl] at h0
+    exact (Option.some.inj h0).symm
+
+/-- The machine's author log agrees with a bundle of fragments. -/
+theorem memModel_authors (σ : MState) : ∀ ts : List (Nat × Agent),
+    memModelAt E σ ∗ ([∗list] p ∈ ts, authoredByAt E p.1 p.2) ⊢@{IProp GF}
+      ⌜∀ p ∈ ts, 1 ≤ p.1 ∧ σ.log[p.1 - 1]? = some p.2⌝
+  | [] => by
+    iintro ⟨_, _⟩
+    ipureintro
+    intro p hp
+    cases hp
+  | p :: ts => by
+    iintro ⟨Hmm, Hl⟩
+    icases BigSepL.bigSepL_cons.1 $$ Hl with ⟨H0, Hs⟩
+    ihave %h0 : ⌜1 ≤ p.1 ∧ σ.log[p.1 - 1]? = some p.2⌝ $$ [Hmm H0]
+    · iapply memModel_authored E σ p.1 p.2 $$ [Hmm H0]
+      iframe
+    ihave %hs : ⌜∀ q ∈ ts, 1 ≤ q.1 ∧ σ.log[q.1 - 1]? = some q.2⌝ $$ [Hmm Hs]
+    · iapply memModel_authors σ ts $$ [Hmm Hs]
+      iframe
+    ipureintro
+    intro q hq
+    rcases List.mem_cons.1 hq with rfl | hq
+    · exact h0
+    · exact hs q hq
+
 end fixed
 
 section ambient
@@ -368,12 +410,22 @@ abbrev headsAre (Hs : Nat → Hist) (n : Nat) (w : BitVec (8 * n)) : Prop :=
 abbrev readsAre (h : Agent) (tvn : Nat) (Hs : Nat → Hist) (n : Nat) (w : BitVec (8 * n)) : Prop :=
   ∀ j, j < n → Hist.read h tvn (Hs j) = some (nthByte w j)
 
-/-- The accessor of a plain load by `cpu`, whose view is at least `K`. -/
-def readAU (cpu : CPU) (pa : PAddr) (n K : Nat) (Ψ : BitVec (8 * n) → IProp GF) : IProp GF := iprop%
-  |={⊤,∅}=> ∃ (dqs : Nat → DFrac) (Hs : Nat → Hist),
+/-- The authorship the client's fragments `ts` pin down in the histories:
+every entry at one of their timestamps is that agent's. -/
+abbrev authorsAre (ts : List (Nat × Agent)) (n : Nat) (Hs : Nat → Hist) : Prop :=
+  ∀ p ∈ ts, ∀ j, j < n → ∀ e ∈ Hs j, e.t = p.1 → e.tid = p.2
+
+/-- The accessor of a plain load by `cpu`, whose view is at least `K`: the
+client also offers authorship fragments `ts` (persistent), and the
+continuation learns that the entries of the histories at their timestamps
+are theirs (`authorsAre`). -/
+def readAU (cpu : CPU) (pa : PAddr) (n K : Nat) (ts : List (Nat × Agent))
+    (Ψ : BitVec (8 * n) → IProp GF) : IProp GF := iprop%
+  ([∗list] p ∈ ts, authoredBy p.1 p.2) ∗
+  (|={⊤,∅}=> ∃ (dqs : Nat → DFrac) (Hs : Nat → Hist),
     histBytes pa n dqs Hs ∗ ⌜∀ j, j < n → Hs j ≠ []⌝ ∗
     ▷ (∀ (w : BitVec (8 * n)) (tvn : Nat), ⌜K ≤ tvn⌝ -∗ ⌜readsAre (hartAgent cpu) tvn Hs n w⌝ -∗
-        histBytes pa n dqs Hs ={∅,⊤}=∗ Ψ w)
+        ⌜authorsAre ts n Hs⌝ -∗ histBytes pa n dqs Hs ={∅,⊤}=∗ Ψ w))
 
 /-- The accessor of a plain store of `w'` by `cpu`: the continuation gets
 the histories grown by the hart's entries at the next position `t`. -/
@@ -412,12 +464,12 @@ def amoAU (cpu : CPU) (pa : PAddr) (n : Nat) (acq : Bool) (w' : BitVec (8 * n))
 each byte's history read at one view (at least `K`) by this hart. -/
 theorem swp_sail_mem_read_plain_au (cpu : CPU) {n vasize : Nat}
     (req : Mem_read_request n vasize Arch.pa Arch.translation Arch.arch_ak)
-    (hk : akPlain req.access_kind = true) (K : Nat)
+    (hk : akPlain req.access_kind = true) (K : Nat) (ts : List (Nat × Agent))
     (Φ : Result ((BitVec (8 * n)) × (Option Bool)) Arch.abort → IProp GF) :
-    viewLb cpu K ∗ readAU cpu req.pa n K (fun w => Φ (.Ok (w, none)))
+    viewLb cpu K ∗ readAU cpu req.pa n K ts (fun w => Φ (.Ok (w, none)))
     ⊢ swp cpu (ConcurrencyInterfaceV1.sail_mem_read req) Φ := by
   unfold ConcurrencyInterfaceV1.sail_mem_read PreSail.sail_mem_read PreSail.emit readAU
-  iintro ⟨#HK, H⟩
+  iintro ⟨#HK, #Hts, H⟩
   have hk' : akIfetch req.access_kind = false ∧ akExcl req.access_kind = false := by
     unfold akPlain at hk
     simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true] at hk
@@ -439,6 +491,14 @@ theorem swp_sail_mem_read_plain_au (cpu : CPU) {n vasize : Nat}
   · iapply memModel_viewLb _ σ cpu K $$ [Hmm HK]
     iframe Hmm
     iexact HK
+  ihave %hau : ⌜∀ p ∈ ts, 1 ≤ p.1 ∧ σ.log[p.1 - 1]? = some p.2⌝ $$ [Hmm Hts]
+  · iapply memModel_authors _ σ ts $$ [Hmm Hts]
+    iframe Hmm
+    iexact Hts
+  have hauthors : authorsAre ts n Hs := by
+    intro p hp j hj e he het
+    exact histOk_author_eq σ.log (Hs j) (hmm.1 _ _ (hget j hj)) e he p.1 p.2
+      (hau p hp).1 (hau p hp).2 het
   imodintro
   isplit
   · ipureintro
@@ -459,7 +519,7 @@ theorem swp_sail_mem_read_plain_au (cpu : CPU) {n vasize : Nat}
       unfold FlatMem.read at this
       rw [hget j hj, Option.bind_some] at this
       exact this
-    imod Hcont $$ %w' %tvn %(by omega) %hreads Hb with HΦ
+    imod Hcont $$ %w' %tvn %(by omega) %hreads %hauthors Hb with HΦ
     imodintro
     isplitl [Hregs Hmem Hmm Hclose]
     · iapply Hclose $$ %(σ.afterLoad cpu req.pa n tvn) %(fun _ _ => rfl) Hregs Hmem Hmm
@@ -708,10 +768,12 @@ theorem swp_sail_mem_write_excl_au (cpu : CPU) {n vasize : Nat}
 /-! ## Monotonicity of the accessors (the stage lemmas compose them with
 the rest of the instruction) -/
 
-theorem readAU_wand (cpu : CPU) (pa : PAddr) (n K : Nat) (Ψ Ψ' : BitVec (8 * n) → IProp GF) :
-    readAU cpu pa n K Ψ ⊢ ▷ (∀ w, Ψ w -∗ Ψ' w) -∗ readAU cpu pa n K Ψ' := by
+theorem readAU_wand (cpu : CPU) (pa : PAddr) (n K : Nat) (ts : List (Nat × Agent))
+    (Ψ Ψ' : BitVec (8 * n) → IProp GF) :
+    readAU cpu pa n K ts Ψ ⊢ ▷ (∀ w, Ψ w -∗ Ψ' w) -∗ readAU cpu pa n K ts Ψ' := by
   unfold readAU
-  iintro H HW
+  iintro ⟨#Hts, H⟩ HW
+  iframe Hts
   imod H with ⟨%dqs, %Hs, Hb, %hne, Hcont⟩
   imodintro
   iexists dqs, Hs
@@ -719,8 +781,8 @@ theorem readAU_wand (cpu : CPU) (pa : PAddr) (n K : Nat) (Ψ Ψ' : BitVec (8 * n
   isplit
   · ipureintro; exact hne
   inext
-  iintro %w %tvn %h1 %h2 Hb
-  imod Hcont $$ %w %tvn %h1 %h2 Hb with HΨ
+  iintro %w %tvn %h1 %h2 %h3 Hb
+  imod Hcont $$ %w %tvn %h1 %h2 %h3 Hb with HΨ
   imodintro
   iapply HW $$ HΨ
 

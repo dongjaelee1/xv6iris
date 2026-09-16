@@ -92,7 +92,7 @@ macro "load_file_S_au_proof" lem:ident hrd:term:max va:term:max n:num spl:term:m
     conf_intro HmConf
     iapply swp_bind
     ispecialize HAUw $$ Htok
-    iapply ($lem:ident (hok := hok') (hram := hram) (hal := hal) (K := K) (Ψ := Ψ))
+    iapply ($lem:ident (hok := hok') (hram := hram) (hal := hal) (K := K) (ts := ts) (Ψ := Ψ))
     iframe HmConf HAUw
     isplit
     · iexact HK
@@ -119,13 +119,14 @@ accessor: sign-extended. -/
 theorem execSpecF_lw_au [CurCtx] (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Bool)
     (root : BitVec 44) (hok : SConfAt (GF := GF) curTier c root sie)
     (pc npc₀ : BitVec 64) (imm : BitVec 12) (rd rs1 : BitVec 5) (hrd : rd ≠ 0#5) (R : RegMap)
-    (K : Nat) (Ψ : BitVec (8 * 4) → IProp GF) (hram : inRam (RegMap.get R rs1 + BitVec.signExtend 64 imm) 4)
+    (K : Nat) (ts : List (Nat × Agent)) (Ψ : BitVec (8 * 4) → IProp GF)
+    (hram : inRam (RegMap.get R rs1 + BitVec.signExtend 64 imm) 4)
     (hal : (RegMap.get R rs1 + BitVec.signExtend 64 imm).toNat % 4 = 0) :
     execSpecPP (GF := GF) cpu dq Privilege.Supervisor c Privilege.Supervisor c
       (instruction.LOAD (imm, regidx.Regidx rs1, regidx.Regidx rd, false, 4)) pc npc₀ npc₀
       iprop(transTok cpu curTier root ∗ kmapId (RegMap.get R rs1 + BitVec.signExtend 64 imm) ∗
         gprFile cpu R ∗ viewLb cpu K ∗
-        (ctxTok cpu curCtx -∗ readAU cpu (RegMap.get R rs1 + BitVec.signExtend 64 imm) 4 K Ψ))
+        (ctxTok cpu curCtx -∗ readAU cpu (RegMap.get R rs1 + BitVec.signExtend 64 imm) 4 K ts Ψ))
       iprop(transSlotAt cpu curTier root ∗
         ∃ w : BitVec (8 * 4), gprFile cpu (RegMap.set R rd (BitVec.signExtend 64 w)) ∗ Ψ w) := by
   load_file_S_au_proof swp_checked_mem_read_load4_S_au hrd (RegMap.get R rs1 + BitVec.signExtend 64 imm) 4 (split_on_page_boundary_4 (RegMap.get R rs1 + BitVec.signExtend 64 imm) hal)
@@ -136,13 +137,14 @@ set_option maxRecDepth 100000 in
 theorem execSpecF_ld_au [CurCtx] (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Bool)
     (root : BitVec 44) (hok : SConfAt (GF := GF) curTier c root sie)
     (pc npc₀ : BitVec 64) (imm : BitVec 12) (rd rs1 : BitVec 5) (hrd : rd ≠ 0#5) (R : RegMap)
-    (K : Nat) (Ψ : BitVec (8 * 8) → IProp GF) (hram : inRam (RegMap.get R rs1 + BitVec.signExtend 64 imm) 8)
+    (K : Nat) (ts : List (Nat × Agent)) (Ψ : BitVec (8 * 8) → IProp GF)
+    (hram : inRam (RegMap.get R rs1 + BitVec.signExtend 64 imm) 8)
     (hal : (RegMap.get R rs1 + BitVec.signExtend 64 imm).toNat % 8 = 0) :
     execSpecPP (GF := GF) cpu dq Privilege.Supervisor c Privilege.Supervisor c
       (instruction.LOAD (imm, regidx.Regidx rs1, regidx.Regidx rd, false, 8)) pc npc₀ npc₀
       iprop(transTok cpu curTier root ∗ kmapId (RegMap.get R rs1 + BitVec.signExtend 64 imm) ∗
         gprFile cpu R ∗ viewLb cpu K ∗
-        (ctxTok cpu curCtx -∗ readAU cpu (RegMap.get R rs1 + BitVec.signExtend 64 imm) 8 K Ψ))
+        (ctxTok cpu curCtx -∗ readAU cpu (RegMap.get R rs1 + BitVec.signExtend 64 imm) 8 K ts Ψ))
       iprop(transSlotAt cpu curTier root ∗
         ∃ w : BitVec (8 * 8), gprFile cpu (RegMap.set R rd w) ∗ Ψ w) := by
   load_file_S_au_proof swp_checked_mem_read_load8_S_au hrd (RegMap.get R rs1 + BitVec.signExtend 64 imm) 8 (split_on_page_boundary_8 (RegMap.get R rs1 + BitVec.signExtend 64 imm) hal)

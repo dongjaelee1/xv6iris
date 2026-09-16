@@ -1698,10 +1698,10 @@ Section UkInit.
      "init: exec sh failed" and then its own exit
      ([UkInitMain.wp_kinit_main_die_de]). *)
   Definition init_lend_ref (cn : cons_names) (T : iProp Σ) (st : fdstate)
-      (Wp Wb Rdl : nat -> iProp Σ) (γfd' : gname)
+      (Cr : cons_cred Σ) (γfd' : gname)
       (l : list fdstate) (γ : gname) (n : nat) : iProp Σ :=
-    (UserFd.ustd γfd' l ∗ upos γ n ∗ ucons_pay cn γ T Rdl (-1)
-     ∗ init_lend_cred T st Wp Wb l n)%I.
+    (UserFd.ustd γfd' l ∗ upos γ n ∗ ucons_pay cn γ T (cc_rd Cr) (-1)
+     ∗ init_lend_cred T st (cc_wp Cr) (cc_wb Cr) l n)%I.
 
   (*  THE DESCRIPTOR ROW IS THE LEDGER AND ITS ARM, not the head as a
       disjunction: sh's entry is told one thing about its table -- fd 0 is
@@ -1712,17 +1712,17 @@ Section UkInit.
       crosses at the SAME ledger ([init_lend_cred]), which is what lets
       the shell's entry put it in the slot its own prompt reads. *)
   Definition init_exec_sup_pos (cn : cons_names) (T : iProp Σ) (st : fdstate)
-      (Wp Wb Rdl : nat -> iProp Σ)
+      (Cr : cons_cred Σ)
       (γ : gname) (n : nat) : iProp Σ :=
     (∀ (N' : uk_names Σ) (m : regfile) (pc : mword 64) (l : list fdstate),
-       ⌜ ukn_pay N' = ucons_pay cn γ T (init_rd Rdl Wb) ⌝ -∗
+       ⌜ ukn_pay N' = ucons_pay cn γ T (init_rd (cc_rd Cr) (cc_wb Cr)) ⌝ -∗
        ⌜ m !!! Regidx a0_idx = (mword_of_int 0x9a8 : mword 64) ⌝ -∗
        ⌜ m !!! Regidx a1_idx = (mword_of_int 0x1000 : mword 64) ⌝ -∗
        init_rodata (ukn_t N') -∗
        init_argv (ukn_d N') -∗
        UserFd.ustd (ukn_fd N') l -∗
        UInitFd.ufd_row T st l -∗
-       init_lend_cred T st Wp Wb l n -∗
+       init_lend_cred T st (cc_wp Cr) (cc_wb Cr) l n -∗
        upos γ n -∗
        (* ...AND THE LEASE ITSELF (lane KILL-PAY, K4(a)), at the READ
           family: the console reader token used to ride in the child's own
@@ -1730,7 +1730,7 @@ Section UkInit.
           is a WAND from the kill credential now, so the token crosses
           [PinnedExec]'s [Pay] beside the position and lands in the
           shell's loop as its PIECES ([UkSh.ush_posb]). *)
-       ucons_pay cn γ T Rdl (-1) -∗
+       ucons_pay cn γ T (cc_rd Cr) (-1) -∗
        (* ...AND THE CHILD'S TWO IDENTITY FRAGMENTS (lane EXEC-SEAM): a
           fork child has no children yet and is not <init>
           ([UkFork.wp_uk_ecall_fork]'s child arm), and the shell's entry
@@ -1746,15 +1746,15 @@ Section UkInit.
           from.  [UkRun.udepw_at_ref] could only name the record's own
           exit payload, and the credential does not fit in that family. *)
        udepw_at_refR_ids N' m pc FsImg.ROOTINO
-         (init_lend_ref cn T st Wp Wb Rdl (ukn_fd N') l γ n))%I.
+         (init_lend_ref cn T st Cr (ukn_fd N') l γ n))%I.
 
   Definition init_exec_sup_lend (cn : cons_names) (T : iProp Σ)
-      (st : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
+      (st : fdstate) (Cr : cons_cred Σ)
       : iProp Σ :=
-    (□ (∀ (γ : gname) (n : nat), init_exec_sup_pos cn T st Wp Wb Rdl γ n))%I.
+    (□ (∀ (γ : gname) (n : nat), init_exec_sup_pos cn T st Cr γ n))%I.
 
-  Global Instance init_exec_sup_lend_persistent cn T st Wp Wb Rdl :
-    Persistent (init_exec_sup_lend cn T st Wp Wb Rdl).
+  Global Instance init_exec_sup_lend_persistent cn T st Cr :
+    Persistent (init_exec_sup_lend cn T st Cr).
   Proof. rewrite /init_exec_sup_lend. apply _. Qed.
 
   (* ...AND THE SAME SUPPLY AS A WAND FROM THE CONSOLE CREDENTIAL (lane E2).
@@ -1766,18 +1766,18 @@ Section UkInit.
      pays it under the taint (where the shell proves nothing anyway).
      Both halves are [□], so the restart loop applies them per round. *)
   Definition init_cons_sup (cn : cons_names) (T Cns : iProp Σ)
-      (st : fdstate) (Wp Wb Rdl : nat -> iProp Σ)
+      (st : fdstate) (Cr : cons_cred Σ)
       : iProp Σ :=
-    (□ (Cns -∗ init_exec_sup_lend cn T st Wp Wb Rdl) ∗ □ (T -∗ Cns))%I.
+    (□ (Cns -∗ init_exec_sup_lend cn T st Cr) ∗ □ (T -∗ Cns))%I.
 
-  Global Instance init_cons_sup_persistent cn T Cns st Wp Wb Rdl :
-    Persistent (init_cons_sup cn T Cns st Wp Wb Rdl).
+  Global Instance init_cons_sup_persistent cn T Cns st Cr :
+    Persistent (init_cons_sup cn T Cns st Cr).
   Proof. rewrite /init_cons_sup. apply _. Qed.
 
   Lemma init_cons_sup_taint (cn : cons_names) (T Cns : iProp Σ)
-      (st : fdstate) (Wp Wb Rdl : nat -> iProp Σ) :
-    init_cons_sup cn T Cns st Wp Wb Rdl -∗ T -∗
-    init_exec_sup_lend cn T st Wp Wb Rdl.
+      (st : fdstate) (Cr : cons_cred Σ) :
+    init_cons_sup cn T Cns st Cr -∗ T -∗
+    init_exec_sup_lend cn T st Cr.
   Proof.
     iIntros "[#Hw #Ht] HT". iApply "Hw". iApply ("Ht" with "HT").
   Qed.

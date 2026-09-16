@@ -81,3 +81,6 @@ import Xv6.LinkMemset
 import Xv6.KallocDefs
 import Xv6.SpecKfree
 import Xv6.SpecKalloc
+import Xv6.SpecFreerange
+import Xv6.ProofKfree
+import Xv6.LinkKfree

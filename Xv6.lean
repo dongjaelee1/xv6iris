@@ -86,3 +86,5 @@ import Xv6.ProofKfree
 import Xv6.LinkKfree
 import Xv6.ProofFreerange
 import Xv6.LinkFreerange
+import Xv6.ProofKalloc
+import Xv6.LinkKalloc

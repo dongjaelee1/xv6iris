@@ -28,7 +28,7 @@
        asks its caller for a JUSTIFICATION CHAIN over the bytes it pushes, and
        [SpecConsputc.v] even names WHICH bytes, because the console's echo has
        to be matched to the byte it echoes.  There is no such obligation at the
-       second port: [WpUart.out_res_at Uart1] is [emp], so the chain
+       second port: [WpUart.chist_at Uart1] is [emp], so the chain
        uartputc_sync still asks for is built inside the proof out of the
        payload itself ([WpUart.out_chain_triv]) and the payload it returns is
        dropped.

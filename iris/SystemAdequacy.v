@@ -1020,7 +1020,7 @@ End SystemBoot.
 
 (* ...AND THE OUTPUT LICENCE THE GENERIC SUPPLY NOW CARRIES (lane
    OUT-FUPD), as a Coq-level premise rather than a resource argument: the
-   application's supply is what BUYS it ([App.xv6_app]'s [Happ_out_sup]),
+   application's supply is what BUYS it ([App]'s [al_sup]),
    read at the era's fixed-record equation for the output claim
    ([Houtfix], the twin of [Hinit_boot]'s rx-tag equation), so a caller
    that already hands over [app_sup] hands over nothing new. *)
@@ -1038,16 +1038,11 @@ Lemma init_boot_of_sup {Σ}
      boot exactly as the supply does ([xv6_power_adequacy_gen]'s
      [Hkill_sup]); the LICENCE is a Coq-level premise rather than a
      resource argument, because the application's supply is what BUYS it
-     ([App.xv6_app]'s [Happ_out_sup]) read at the era's fixed-record
+     ([App]'s [al_sup]) read at the era's fixed-record
      equation for the output claim ([Houtfix], the twin of [Hinit_boot]'s
      rx-tag equation) -- so a caller that already hands over [app_sup]
      hands over nothing new. *)
-  (app_sup ⊢ out_licence) ->
-  (* ...AND THE INPUT LICENCE (lane CONS-IO), on the same mould and for the
-     same reason: the generic slot has to pay consoleintr's shift and
-     [read(2)] on fd 0 for an arbitrary application, and [App.Happ_in_sup]
-     is where the supply buys it. *)
-  (app_sup ⊢ in_licence) ->
+  (app_sup ⊢ cons_licence) ->
   (* (* RA-2: held case here *) THE MINT SITE'S ALL-PARKED FACT
      (design/user-read.md SS8.1's finding 3, SS8.3).  When
      [UexecExecMint.uslot_mint] is narrowed to keys whose table is
@@ -1062,11 +1057,10 @@ Lemma init_boot_of_sup {Σ}
      [fdv_all_parked_fdt0] at every caller. *)
   app_sup -∗ □ riscv_kill_cred -∗ init_boot_bundle cw sts.
 Proof.
-  intros Hlic Hilic. iIntros "#Hsup #Hkc".
-  iAssert out_licence as "#Hlic"; [by iApply Hlic|].
-  iAssert in_licence as "#Hilic"; [by iApply Hilic|].
+  intros Hlic. iIntros "#Hsup #Hkc".
+  iAssert cons_licence as "#Hlic"; [by iApply Hlic|].
   iPoseProof LinkUserinit.UG.uexec_wp_gen as "#Hgen".
-  iDestruct (UexecExecMint.uslot_mint with "Hsup Hkc Hlic Hilic Hgen") as "#Hmk".
+  iDestruct (UexecExecMint.uslot_mint with "Hsup Hkc Hlic Hgen") as "#Hmk".
   iApply (init_boot_bundle_triv with "Hmk").
 Qed.
 
@@ -1086,8 +1080,7 @@ Lemma init_boot_of_triv {Σ}
   ⊢ init_boot_bundle cw sts.
 Proof.
   intros Htriv Hkc Hcons. iApply (init_boot_of_sup cw sts).
-  { iIntros "_". rewrite /out_licence. by iApply cons_licence_triv. }
-  { iIntros "_". rewrite /in_licence. by iApply cons_licence_triv. }
+  { iIntros "_". by iApply cons_licence_triv. }
   { iApply app_sup_of_triv. exact Htriv. }
   rewrite Hkc /kill_cred_triv. iModIntro. done.
 Qed.
@@ -1144,8 +1137,8 @@ Theorem xv6_power_adequacy_gen Σ
        carries it ([WpUart.uart_out_claim] inside [WpUart.uart_colE]) and
        the one transmit store re-establishes it from the writer's own view
        shift; the kernel's port carries [emp] instead
-       ([WpUart.out_res_at]).  A RESOURCE and not a [Prop]
-       ([RiscvPtsto.riscv_out_res]), TIMELESS so the device invariant's body
+       ([WpUart.chist_at]).  A RESOURCE and not a [Prop]
+       ([RiscvPtsto.riscv_cons_res]), TIMELESS so the device invariant's body
        still strips its later; its FOUNDING is the application transport's
        ([app_xfer_boot_raw]'s third component), which is why there is no
        founding premise here -- and which is why it is DECLARED BEFORE
@@ -1198,12 +1191,12 @@ Theorem xv6_power_adequacy_gen Σ
        AppInv.app_sup_raw (app_fs c) r ⊢ □ ai_kill (Ai c))
     (* WHAT HOLDING THE APPLICATION'S SUPPLY ENTITLES A PROCESS TO (lane
        OUT-FUPD, the generic write's payment): the kernel's generic supply
-       carries an OUTPUT LICENCE ([WpUart.out_licence]) and this sets its
-       price.  [App.xv6_app]'s [Happ_out_sup] is this obligation. *)
+       carries an OUTPUT LICENCE ([WpUart.cons_licence]) and this sets its
+       price.  [App]'s [al_sup] is this obligation. *)
     (* ONE LICENCE (redesign R2), covering the generic [write(2)]'s byte,
        consoleintr's shift and [read(2)] on fd 0 alike: all three are
-       events on one resource.  [App.xv6_app]'s [Happ_out_sup] is this
-       obligation, and [Happ_in_sup] is gone. *)
+       events on one resource.  [App]'s [al_sup] is this
+       obligation, and [al_sup] is gone. *)
     (Hout_sup : forall (c : CT) (r : app_names),
        AppInv.app_sup_raw (app_fs c) r
          ⊢ □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
@@ -1817,7 +1810,7 @@ Theorem xv6_trace_adequacy Σ
        surface.
        (ii) THE GENERIC SLOT'S WRITE HAS TO BE LICENSED.  Every user
        process here runs on the generic user-execution slot, whose
-       [write(2)] on the console is paid out of [WpUart.out_licence]; with
+       [write(2)] on the console is paid out of [WpUart.cons_licence]; with
        [Ores] arbitrary only the client can say that its claim survives an
        arbitrary byte.  A client whose claim does NOT survive one does not
        use this theorem: it uses [App.xv6_app_adequacy] with a constraining
@@ -1863,9 +1856,7 @@ Proof.
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
                          Heq Hiface Hgeni;
                   iIntros "_ _ _"; iModIntro; iApply init_boot_of_sup;
-                  [ rewrite /out_licence /cons_licence /riscv_cons_res Hiface;
-                    iIntros "_"; iApply Hout_lic
-                  | rewrite /in_licence /cons_licence /riscv_cons_res Hiface;
+                  [ rewrite /cons_licence /riscv_cons_res Hiface;
                     iIntros "_"; iApply Hout_lic
                   | iApply app_sup_of_triv; rewrite Heq; intros r' av;
                     reflexivity

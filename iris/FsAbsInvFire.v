@@ -286,14 +286,14 @@ Section FsAbsInvFire.
   (* ...AND THE CONSOLE LICENCE PAYS THE CONSOLE ARM'S SECOND HALF (lane
      CONS-IO, milestone B, B4).  Read's console deposit carries the
      boundary's read link as well as the ring's payment, and the generic
-     slot's supply already holds [WpUart.out_licence]
+     slot's supply already holds [WpUart.cons_licence]
      ([UexecExecInst.xv6_ssupply]'s third conjunct) -- which since the
      redesign is the port's ONE licence, good for any event -- so this arm
      costs the generic process nothing new: it claims nothing about what
      came in ([rf_in] at [fun _ => True]) and the licence hands over a link
      at any [ws] whatever. *)
   Lemma fsabs_fileread_in (st : fdstate) (P : iProp Σ) :
-    WpUart.out_licence -∗
+    WpUart.cons_licence -∗
     app_sup -∗ fileread_in st (pfam_triv (fun _ _ _ _ => True%I))
                             (fun _ _ => True%I) (fun _ => True%I) P.
   Proof.
@@ -336,13 +336,13 @@ Section FsAbsInvFire.
      mintable by anyone.  Under the resource claim the point of the whole
      lane is that the kernel can say WHO may write, so an arbitrary
      process's [write(2)] on the console is paid out of the OUTPUT LICENCE
-     its supply carries ([WpUart.out_licence], the last conjunct of
+     its supply carries ([WpUart.cons_licence], the last conjunct of
      [UexecExecInst.xv6_ssupply]) -- and the application sets that
-     licence's price ([App.xv6_app]'s [Happ_out_sup]).  The licence is
+     licence's price ([App]'s [al_sup]).  The licence is
      therefore a PREMISE here, exactly as [app_sup] is. *)
   Lemma fsabs_filewrite_in (st : fdstate) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) :
-    app_sup -∗ out_licence -∗ |==> filewrite_in st n M ua (fun _ => True%I).
+    app_sup -∗ cons_licence -∗ |==> filewrite_in st n M ua (fun _ => True%I).
   Proof.
     iIntros "#Hsup #Hlic".
     rewrite /filewrite_in.

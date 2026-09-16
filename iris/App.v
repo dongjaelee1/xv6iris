@@ -160,7 +160,7 @@ Record xv6_app (Σ : gFunctors) := MkApp {
      observes [p->killed], the -1 the process exits with, the -1 a console
      read returns -- is handed this, so a verified continuation goes GENERIC
      where a kill could have happened instead of being refuted.  PERSISTENT
-     and BOUGHT BY THE SUPPLY ([Happ_kill]), which is what lets the kernel
+     and BOUGHT BY THE SUPPLY ([al_kill]), which is what lets the kernel
      charge the kill price at a trap it cannot rule out without charging any
      verified program.  For echo it is the TAINT; [True] for an application
      that puts no price on a kill.

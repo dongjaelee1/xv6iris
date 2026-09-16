@@ -937,7 +937,7 @@ Proof. rewrite /kill_cred_triv. apply _. Qed.
 (* THE TRIVIAL OUTPUT CLAIM: an application that claims nothing of the
    console's accepted bytes.  Every writer's view shift is discharged out of
    nothing at it and the founding is [emp].  It is also, by
-   [WpUart.out_res_at]'s [match], what the KERNEL's own port carries under
+   [WpUart.chist_at]'s [match], what the KERNEL's own port carries under
    EVERY application -- the owner's ruling that UART1's output is
    unconstrained, made literal. *)
 (* [out_res_triv] and [in_res_triv] lived here. *)

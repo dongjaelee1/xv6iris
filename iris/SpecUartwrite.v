@@ -21,7 +21,7 @@
    bundle -- which is also strictly easier for a console caller, who projects
    it with [WpUart.dev_inv_uart].  ONE CONTRACT AT BOTH PORTS: the owner's
    ruling is that nothing has to TRACK port 1's output, not that the THR write
-   stops landing, and [WpUart.out_res_at Uart1] is [emp] -- so the
+   stops landing, and [WpUart.chist_at Uart1] is [emp] -- so the
    justification premise below is a real obligation at [Uart0] and free at
    [Uart1] ([WpUart.out_chain_triv]), and neither port costs this contract a
    binder of its own.

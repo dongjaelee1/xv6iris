@@ -90,8 +90,8 @@ Section EchoAdequacy.
     split.
     - exact echo_Hbirth.
     - exact echo_HRt.
-    - exact echo_Happ_kill.
-    - exact echo_Happ_out_sup.
+    - exact echo_al_kill.
+    - exact echo_al_sup.
     - exact echo_HR0.
     - exact echo_Hpow.
     - (* POINTWISE, not as one term.  [echo_Htx]/[echo_Hrx] state the era
@@ -199,11 +199,11 @@ Section EchoAdequacy.
        this order (read off the elaborator, not guessed). *)
     (* THREE MORE HOLES since lane KILL-PAY (K1): [Hkillp] and [Hkillt] are
        fixed by unification the way [Htagp]/[Htagt] are (they are named in
-       [Hphi]'s own literal above), so only [Happ_kill] becomes a goal.
+       [Hphi]'s own literal above), so only [al_kill] becomes a goal.
        THREE MORE AGAIN since lane OUT-FUPD: [Houtt] is fixed the same way
        (it too is named in [Hphi]'s literal), so the two that become goals
-       are [Happ_out_sup] and [Happ_echo]. *)
-    (* ...and ONE FEWER GOAL since redesign R2: [Happ_in_sup] is gone (one
+       are [al_sup] and [Happ_echo]. *)
+    (* ...and ONE FEWER GOAL since redesign R2: [al_sup] is gone (one
        resource admits one law), and [Hconst] is fixed by unification the
        way [Houtt] is. *)
     (* ...and FIVE FEWER HOLES AGAIN since R4's interface pass: [Htagp],

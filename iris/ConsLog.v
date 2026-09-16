@@ -146,7 +146,9 @@ Qed.
    exactly what [WpUart.uart_log_hi]'s two halves buy consoleintr's shift:
    the mark IS the log's top, so one comparison against the byte being
    accepted orders it against the WHOLE log -- which is the premise
-   [WpUart.in_append] asks for, and hence why a byte can be logged only
+   the arm's order premise asks for ([arm_ok]'s fourth clause, which
+   [WpUart.in_append] used to carry per byte), and hence why a byte can be
+   logged only
    once and the log is in arrival order. *)
 Lemma cl_log_ok_last_ext (pops : list log_entry) (h : list mobs) :
   log_ok pops ->

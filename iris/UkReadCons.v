@@ -16,7 +16,7 @@
 (*     token at the caller's own cursor, or the credential a tainted or    *)
 (*     generic caller already holds;                                       *)
 (*   - THE CONSOLE HISTORY's, [WpUart.cons_read_pay (S gen_id) Rin], which *)
-(*     is [∀ ws, WpUart.read_link (S gen_id) ws (Rin ws)] -- and           *)
+(*     is [∀ ws, WpUart.cons_link (S gen_id) ws (Rin ws)] -- and           *)
 (*     [read_link] IS ConsLog's [EvRead] EVENT, spelled as an atomic       *)
 (*     update: it takes the port's input resource at [(pops, dl)], the     *)
 (*     kernel's pure premise [ConsLog.read_ok pops dl ws] (which is        *)

@@ -207,13 +207,13 @@ Section ConsSentCnt.
 
   (* ...AND THE GENERIC WRITE'S OWN (lane OUT-FUPD).  An arbitrary process's
      [write(2)] on the console is paid out of the OUTPUT LICENCE its supply
-     carries ([WpUart.out_licence], [UexecExecInst.xv6_ssupply]): a licensed
+     carries ([WpUart.cons_licence], [UexecExecInst.xv6_ssupply]): a licensed
      writer claims nothing about the input, so every node is the licence's
      one-byte step at the trivial payload -- AT EVERY ERA, because the
      licence is quantified over the index. *)
   Lemma cons_out_chain_of_licence (k : nat) (M : gmap Z (bv 8)) (ua : mword 64)
       (j cnt : nat) :
-    out_licence -∗ cons_out_chain k M ua (fun _ => True%I) j cnt.
+    cons_licence -∗ cons_out_chain k M ua (fun _ => True%I) j cnt.
   Proof.
     iIntros "#Hlic". iInduction cnt as [| cnt] "IH" forall (j); [done|].
     cbn [cons_out_chain]. iSplit; [done|].

@@ -308,7 +308,7 @@ Section SchedCtx.
 
      AND [riscv_kill_cred] IS NO LONGER A KILL CREDENTIAL.  It is the
      APPLICATION'S TAINT on the fixed record (echo instantiates it as
-     [AppEcho.echo_taint]; [App.Happ_kill] is where the supply buys it),
+     [AppEcho.echo_taint]; [App.al_kill] is where the supply buys it),
      and after this lane it survives ONLY as the antecedent of this wand.
      Nothing else asks for it: no verified program produces it, no payload
      row carries a -1 wand ([UexecSlot.upay_neg] is gone), and the deposit

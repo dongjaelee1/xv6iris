@@ -56,7 +56,7 @@ From iris.proofmode Require Import proofmode.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvLang RiscvPtsto.
-Require Import WpUart.            (* [out_licence]: the generic slot's output licence *)
+Require Import WpUart.            (* [cons_licence]: the generic slot's output licence *)
 (* THE GHOST BINDER LIST'S DEFINING MODULES, each IMPORTED and not merely
    required ([PinnedExec.v]'s note: a field instance is inert wherever its
    module is not imported). *)
@@ -872,17 +872,15 @@ Section EchoInitBoot.
     { rewrite Hkill. iIntros "#H". iExact "H". }
     (* ...AND THE LICENCE IS THE TAINT'S (redesign R2).  The generic slot's
        console write, its read and consoleintr's shift are paid out of the
-       TAINT ARM -- exactly what [App.Happ_out_sup] says and what
+       TAINT ARM -- exactly what [App.al_sup] says and what
        [EchoOut.ecl_sup] proves.  A wand from the credential, because the
        only holder of a generic slot is one the taint has already accounted
-       for.  ONE licence where there were two: [in_licence] IS
-       [out_licence]. *)
-    iAssert (□ (echo_taint γ -∗ out_licence))%I as "#Hlic".
-    { iIntros "!> #Ht". rewrite /out_licence /cons_licence Hcons /echo_cons.
+       for.  ONE licence where there were two: lane OUT-FUPD's and lane
+       CONS-IO's are both [WpUart.cons_licence] now. *)
+    iAssert (□ (echo_taint γ -∗ cons_licence))%I as "#Hlic".
+    { iIntros "!> #Ht". rewrite /cons_licence Hcons /echo_cons.
       iIntros "!>" (k h H ev) "Ho".
       iApply (EchoOut.ecl_sup (echo_taint γ) γ k h H ev with "Ht Ho"). }
-    iAssert (□ (echo_taint γ -∗ in_licence))%I as "#Hilic".
-    { iIntros "!> #Ht". rewrite /in_licence. by iApply "Hlic". }
     iIntros "#Hinv Hb Hturn". iModIntro.
     (* ---- THE ERA'S PIN, out of the turn and back (lane R3).  The pin is
            persistent and the turn is not, so the pin is read off here and
@@ -912,7 +910,6 @@ Section EchoInitBoot.
       iAssert (□ riscv_kill_cred)%I as "#Hkc";
         [ rewrite Hkill; iModIntro; iExact "Ht" | ].
       iDestruct ("Hlic" with "Ht") as "#Hlc".
-      iDestruct ("Hilic" with "Ht") as "#Hilc".
       (* (* RA-2: held case here *) THE TAINT ARM'S MINT IS AT AN ARBITRARY
          KEY, which is what RA-2's narrowing bites: [uslot_mint_all] will
          ask for [FdSlots.fdv_all_parked (uvis_fd W)] and this [W] is
@@ -922,7 +919,7 @@ Section EchoInitBoot.
          process's own ([SpecKexec.kexec_image_ok_parked] /
          [exec_key_ok_parked]) -- so the premise travels IN to this
          assertion from there, not out of it. *)
-      iApply (uslot_mint_all with "Hs Hkc Hlc Hilc Hwp Hp HR"). }
+      iApply (uslot_mint_all with "Hs Hkc Hlc Hwp Hp HR"). }
     (* ---- the pins law, and /init's own row out of it ---- *)
     iAssert (□ (∀ v : aview, AppCfg.app_pred AppCfg.app_run v -∗
                   AppCfg.app_pred AppCfg.app_run v ∗ (⌜echo_fs_pure v⌝ ∨ echo_taint γ)))%I

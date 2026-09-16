@@ -1464,7 +1464,7 @@ Section EchoApp.
 
   (* the supply buys the credential, and at echo the two are the same
      reading of the counter ([echo_taint_of_sup]) *)
-  Lemma echo_Happ_kill (c : app_fixed app_echo) (r : app_names app_echo) :
+  Lemma echo_al_kill (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r ⊢ □ app_kill app_echo c.
   Proof.
     rewrite /app_kill.
@@ -1476,13 +1476,13 @@ Section EchoApp.
   (* [echo_Houtt], [echo_Hinpt], [echo_Hwint] and [echo_Hconst] lived here:
      the claims' instances, which ride [echo_ifc] now. *)
 
-  (* [echo_Happ_in_sup] lived here: one resource admits one law. *)
+  (* [echo_al_sup] lived here: one resource admits one law. *)
 
   (* ONE LICENCE (redesign R2): a holder of the supply is a party the
      discipline has already accounted for, so its claim answers ANY
      boundary event -- out of the taint arm, which is what holding the
      supply buys ([echo_taint_of_sup]). *)
-  Lemma echo_Happ_out_sup (c : app_fixed app_echo) (r : app_names app_echo) :
+  Lemma echo_al_sup (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r
       ⊢ □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
              (ev : ConsLog.cons_ev),
@@ -1506,7 +1506,7 @@ Section EchoApp.
      e5-design REVISION 8; the claims are real since lane ECHO-OUT part 5).
      This is where the era's ghosts are allocated, its pin is minted in the
      ledger's era map, and the four shares are split out:
-     [EchoOut.echo_led_pow] is exactly this obligation's shape. *)
+     [EchoOut.echo_led_pow_cl] is exactly this obligation's shape. *)
   Lemma echo_Hpow (c : app_fixed app_echo) (h : list mobs) (on : bool)
       (dk : Z -> bv 8) :
     trace_shape h on ->

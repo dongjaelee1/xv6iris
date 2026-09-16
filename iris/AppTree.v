@@ -1246,7 +1246,7 @@ End AppTreeRecord.
 (*  7.  WHAT THE RECORD STILL OWES ([App.xv6_app_adequacy]'s binders)     *)
 (*                                                                       *)
 (*  Discharged above, as lemmas at the record's fields: [Hbirth], [HRt],  *)
-(*  [Happ_kill], [Happ_out_sup], [HR0], [Hpow], [Happ_boot].               *)
+(*  [al_kill], [al_sup], [HR0], [Hpow], [Happ_boot].               *)
 (*                                                                       *)
 (*  Trivial at this record's fields and left to the instance site (they   *)
 (*  are [app_triv]'s one-liners at [emp] claims -- see                    *)

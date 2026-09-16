@@ -190,7 +190,7 @@ Section EchoShift.
   (* SINCE lane CONS-IO IT PAYS BOTH RESOURCES AT ONCE.  The output side is
      unchanged -- one link per echoed byte -- but the SAME shift now also
      files the accepted byte in the console UART's INPUT LOG, which is what
-     makes the log say what the reader did NOT get.  [WpUart.in_run] is the
+     makes the log say what the reader did NOT get.  [WpUart.cons_run] is the
      two together: the bytes first, the log entry last, and STOPPABLE at
      every prefix, because the kill-line arm's glyph count is the ring's
      content and the shift is fired before the loop runs.  [cs] is then an

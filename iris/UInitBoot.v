@@ -787,8 +787,12 @@ Section EchoInitBoot.
          unfolding here is the same one [Hsh_wbr] does below. *)
       iIntros (γp N). rewrite /UInitBanner.kinit_ban.
       iApply (UShRest.sh_rest_holds (echo_taint γ) γ γp N Hktaint
-                with "Hlks [] Hslot Hpine").
-      iApply (udep_free). }
+                with "Hlks [] [] Hslot Hpine").
+      { iApply (udep_free). }
+      (* sh's exit row, out of the era's own credential (design/pipe.md,
+         "The exit path") *)
+      { iApply (udepw_law_of_sup_exit (PSx := uprogSG_free)).
+        rewrite Hkill. iModIntro. iExact "Ht". } }
     (* THE TWO READINGS OF THE SUPPLY, at Coq level: the console ring's
        dirty credential read AS THE TAINT and back
        ([AppEcho.echo_taint_of_sup] / [echo_sup_of_taint]).  They were

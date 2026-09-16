@@ -50,6 +50,7 @@ Require Import UShLine.           (* [ush_mid] *)
 Require Import UShPanic.          (* [ush_panic_law_holds] *)
 Require Import UShEchoPay.        (* the paid child's two laws *)
 Require Import UInitSh.           (* [sh_Rsh] *)
+Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 
 (* ===================================================================== *)
 (*  0.  THE LINE THE DISCIPLINE ADMITS LEXES -- E4's closed computation    *)
@@ -138,6 +139,8 @@ Section UShRest.
          deposit's [uprogSG] is what [UShEchoPay]'s laws are stated at, and
          a bare [udep] here resolves to the ambient generic one. *)
       udep (PS := uprogSG_free) -∗
+      (* ...and sh's exit row (design/pipe.md, "The exit path") *)
+      udepw_law (PS := uprogSG_free) USYS_exit -∗
       UShEcho.sh_echo_slot T -∗
       (∃ v : era_pins, era_pin γ (S gen_id) v) -∗
       UkSh.ush_rest_l (PS := uprogSG_free) N γp T Wc Wbn
@@ -151,11 +154,11 @@ Section UShRest.
               ⊢ EchoLinksLine.ewc_lcred T γ (S gen_id) i 3%nat -∗
                 EchoLinksLine.ewc_lcred T γ (S gen_id) i 0%nat)
       by (intro i; exact (EchoLinksLine.ewc_lcred_blk_line T γ (S gen_id) i)).
-    iIntros "#Hlk #Hdep #Hslot #Hpin".
+    iIntros "#Hlk #Hdep #Hxl #Hslot #Hpin".
     iDestruct "Hpin" as (v) "#Hp".
     (* ---- the three era laws, as named hypotheses ---- *)
     iPoseProof (UShEchoPay.ushf_child_law_holds_at T γ Hkt
-                  with "Hlk Hdep Hslot") as "#Hchl".
+                  with "Hlk Hxl Hdep Hslot") as "#Hchl".
     iPoseProof (UShEchoPay.ushf_kill_law_holds T γ v Hkt with "Hp") as "#Hkl".
     iPoseProof (UShPanic.ush_panic_law_holds (PS := uprogSG_free) T γ
                   with "Hlk") as "#Hplaw".
@@ -167,7 +170,7 @@ Section UShRest.
                   N γp T Wc Wbn (UShLine.ush_mid γ γp)
                   (fun k H => H) (kexec_sz ElfUser.sh_elf)
                   ush_line_lexable_holds sh_sz_lo sh_sz_al sh_sz_ok Hwbl
-                  with "Hkl Hchl Hplaw") as "Hb".
+                  with "Hkl Hchl Hplaw Hxl") as "Hb".
     rewrite /UkSh.ush_rest_l.
     iDestruct ("Hb" $! l with "[%]") as "Hb'"; [ exact Hc | iExact "Hb'" ].
   Qed.

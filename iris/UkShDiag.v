@@ -8719,10 +8719,13 @@ Section UkShDiagLeaf.
     UserFd.ustd (ukn_fd N) l -∗
     Wc np 3%nat -∗
     (UserFd.ustd (ukn_fd N) l -∗ Wb np -∗ ukn_pay N (-1)) -∗
+    (* ...and the tear-down's close payments (design/pipe.md, "The exit
+       path"): this walk ends in exit(1) *)
+    udepw_law USYS_exit -∗
     urun N h m (mword_of_int ShSyms.panic) (ush_Dg + n) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Hfd2 Hmsg. iIntros "#Hlaw #Hcode #Hro Hstd Hc Hpay Hrun".
+    intros Hfd2 Hmsg. iIntros "#Hlaw #Hcode #Hro Hstd Hc Hpay #Hxl Hrun".
     iDestruct ("Hlaw" $! N np l with "[%] Hc") as (Pf) "(HPf & #Hstep & #Hdone)";
       [ exact Hfd2 | ].
     replace (ush_Dg + n)%nat with (2 + (10 + (12 + (4 + n))))%nat
@@ -8754,7 +8757,7 @@ Section UkShDiagLeaf.
     { rewrite /C1. iFrame "Hstd HPf". }
     { rewrite /C3. iIntros "[Hstd HPf]". cbn [Nat.add].
       iApply ("Hpay" with "Hstd"). iApply ("Hdone" with "HPf"). }
-    { iApply (UkSh.sh_deps_exit with "Hdp"). }
+    { iExact "Hxl". }
   Qed.
 
   (* ===================================================================== *)

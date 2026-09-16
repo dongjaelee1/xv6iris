@@ -142,66 +142,13 @@ theorem pContext_inj {j j' : Nat} (hj : j < NPROC) (hj' : j' < NPROC)
 section
 variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF]
 
-/-! ## The domination transport of a parked token
+/-! ## Transport
 
-`ctxParked ξo ξ` is the only context dependence of the per-proc lock
-payload (the parked record's token).  It transports along a domination
-because domination is TRANSITIVE (the Rocq prototype's
-`TsoCtx.ctx_dom_at_dom` / `ctx_parked_morph`); that lemma is not in the
-Lean `MachCSL.CtxLaws` yet, so it is proved here. -/
+`ctxDomAt_dom` (domination is transitive) and `instCtxMorphParked` (a
+parked record's token re-indexes) now live in `MachCSL.CtxLaws`, beside
+the relation itself. -/
 
 local notation "era" => MachGS.era (hlc := hlc) (GF := GF)
-
-theorem ctxDomAt_dom (ξ ξ' ξ'' : CtxId) (q : Qp) :
-    ctxDom (GF := GF) ξ' ξ'' ∗ ctxDomAt ξ ξ' q ⊢ ctxDom ξ' ξ'' ∗ ctxDomAt ξ ξ'' q := by
-  iintro ⟨Hd, Hat⟩
-  icases ctxDomAt_cases ξ' ξ'' _ $$ Hd with ⟨%B', %D', Hat', #Hfl', #Hels', #Hkeys'⟩
-  icases ctxDomAt_cases ξ ξ' q $$ Hat with ⟨%B, %D, Hat, #Hfl, #Hels, #Hkeys⟩
-  -- ξ's bound is under ξ''s
-  ihave %hBB' : ⌜B ≤ B'⌝ $$ [Hat' Hfl]
-  · iapply ctxAt_floor ξ' _ B' D' B $$ [Hat' Hfl]
-    iframe Hat'
-    iexact Hfl
-  -- ξ's dirty keys are under ξ''s bound or in ξ''s dirty set
-  ihave %hks : ⌜∀ k h, get? D k = some h → k ≤ B' ∨ get? D' k = some h⌝ $$ [Hat' Hels Hkeys]
-  · iapply dom_keys_pure ξ ξ' _ B' D D' $$ [Hat' Hels Hkeys]
-    iframe Hat'
-    isplit
-    · iexact Hels
-    · iexact Hkeys
-  isplitl [Hat']
-  · iapply ctxDomAt_intro ξ' ξ'' _ B' D'
-    iframe Hat'
-    isplit
-    · iexact Hfl'
-    isplit
-    · iexact Hels'
-    · iexact Hkeys'
-  iapply ctxDomAt_intro ξ ξ'' q B D
-  iframe Hat
-  isplit
-  · iapply ctxFloor_le ξ'' B' B hBB'
-    iexact Hfl'
-  isplit
-  · iexact Hels
-  imodintro
-  iintro %k %h %hk
-  rcases hks k h hk with hkB | hkD
-  · unfold keyAt
-    ileft
-    iapply ctxFloor_le ξ'' B' k hkB
-    iexact Hfl'
-  · iapply Hkeys' $$ %k %h %hkD
-
-/-- A parked record's token re-indexes along a domination of the context it
-is parked under. -/
-instance instCtxMorphParked (ξ : CtxId) : CtxMorph (GF := GF) (fun ξ' => ctxParked ξ ξ') where
-  morph ξ' ξ'' := by
-    iintro ⟨Hd, Hp⟩
-    icases ctxDomAt_dom ξ ξ' ξ'' 1 $$ [Hd Hp] with ⟨Hd, Hp⟩
-    · iframe
-    imodintro
-    iframe
 
 /-- A payload that is a disjunction of two transporting payloads. -/
 instance instCtxMorphOr (R1 R2 : CtxId → IProp GF) [CtxMorph R1] [CtxMorph R2] :
@@ -276,6 +223,17 @@ theorem hart_join (Γ : SchedNames) (j : Nat) (hh : CPU) :
   have e := hartOwn_join (GF := GF) Γ j (1 : Qp).half (1 : Qp).half hh
   rw [Qp.half_add_half] at e
   exact e
+
+/-- **The hart tag of a slot nobody runs retargets**: the whole tag is the
+right to say which hart the slot's thread will resume on (the scheduler
+takes it at a dispatch). -/
+theorem hart_update (Γ : SchedNames) (j : Nat) (h h' : CPU) :
+    hartFull (GF := GF) Γ j h ⊢ |==> hartFull Γ j h' := by
+  unfold hartFull hartOwn
+  iintro Hg
+  imod ghost_var_update h' _ _ $$ Hg with Hg
+  imodintro
+  iexact Hg
 
 /-- A half and a whole tag cannot both exist. -/
 theorem hart_excl (Γ : SchedNames) (j : Nat) (h h' : CPU) :
@@ -808,7 +766,7 @@ RESUMING hart; the two disjuncts are discriminated by the resumed context's
 own address `c`: the CPU context (a proc parking) or a proc context (the
 scheduler dispatching). -/
 def pSched (Γ : SchedNames) : VcPay GF := fun h A' c cret tpv p back ξ => iprop%
-  ⌜tpv = hartId h⌝ ∗ trapCsrs h ∗ intrRes h ∗
+  ⌜tpv = hartId h⌝ ∗ trapCsrs h ∗ @intrRes hlc GF _ ⟨ξ, KTier.kpt⟩ _ _ h ∗
   ((⌜c = cpuCtxAddr h ∧ A' = none⌝ ∗
      ∃ (j : Nat) (st : BitVec 32) (ch : BitVec 64),
        ⌜cret = pContext (procAddr j) 0 ∧ p = procAddr j ∧ j < NPROC ∧ parkOk st ∧
@@ -829,8 +787,8 @@ instance instCtxMorphPSched (Γ : SchedNames) (h : CPU) (A' : CtxAdm) (c cret tp
 /-- Build the PARKING proc's payload (what `sched` supplies at its swtch). -/
 theorem pSched_to_cpu (Γ : SchedNames) (ξ : CtxId) (i : CPU) (j : Nat) (st : BitVec 32)
     (ch : BitVec 64) (hj : j < NPROC) (hst : parkOk st) :
-    trapCsrs (GF := GF) i ∗ intrRes i ∗ procHeldAt Γ ξ i j st ch ∗ hartFull Γ j i ∗
-      parkPayAt ξ (procAddr j) st ⊢
+    trapCsrs (GF := GF) i ∗ @intrRes hlc GF _ ⟨ξ, KTier.kpt⟩ _ _ i ∗ procHeldAt Γ ξ i j st ch ∗
+      hartFull Γ j i ∗ parkPayAt ξ (procAddr j) st ⊢
       pSched Γ i none (cpuCtxAddr i) (pContext (procAddr j) 0) (hartId i) (procAddr j)
         (decide (needsCtx st)) ξ := by
   unfold pSched
@@ -849,7 +807,8 @@ theorem pSched_to_cpu (Γ : SchedNames) (ξ : CtxId) (i : CPU) (j : Nat) (st : B
 /-- Build the DISPATCH payload (what the scheduler supplies at its swtch). -/
 theorem pSched_to_proc (Γ : SchedNames) (ξ : CtxId) (i : CPU) (j : Nat) (ch : BitVec 64)
     (hj : j < NPROC) :
-    trapCsrs (GF := GF) i ∗ intrRes i ∗ procHeldAt Γ ξ i j RUNNING ch ∗ hartFull Γ j i ⊢
+    trapCsrs (GF := GF) i ∗ @intrRes hlc GF _ ⟨ξ, KTier.kpt⟩ _ _ i ∗ procHeldAt Γ ξ i j RUNNING ch ∗
+      hartFull Γ j i ⊢
       pSched Γ i (some i) (pContext (procAddr j) 0) (cpuCtxAddr i) (hartId i) (procAddr j) true ξ := by
   unfold pSched
   iintro ⟨Htc, Hir, Hheld, Htag⟩
@@ -867,7 +826,8 @@ theorem pSched_at_proc (Γ : SchedNames) (ξ : CtxId) (i : CPU) (A' : CtxAdm) (j
     (cret tpv p : BitVec 64) (back : Bool) (hj : j < NPROC) :
     pSched (GF := GF) Γ i A' (pContext (procAddr j) 0) cret tpv p back ξ ⊢
       ⌜tpv = hartId i ∧ cret = cpuCtxAddr i ∧ p = procAddr j ∧ A' = some i ∧ back = true⌝ ∗
-      trapCsrs i ∗ intrRes i ∗ ∃ ch : BitVec 64, procHeldAt Γ ξ i j RUNNING ch ∗ hartFull Γ j i := by
+      trapCsrs i ∗ @intrRes hlc GF _ ⟨ξ, KTier.kpt⟩ _ _ i ∗
+      ∃ ch : BitVec 64, procHeldAt Γ ξ i j RUNNING ch ∗ hartFull Γ j i := by
   unfold pSched
   iintro ⟨%htp, Htc, Hir, ⟨⟨%hc, _⟩ | ⟨%j', %ch, %hf, Hheld, Htag⟩⟩⟩
   · exact absurd hc.1 (cpuCtxAddr_ne_pContext i j hj).symm
@@ -884,7 +844,8 @@ proc holding its own lock in a parked state. -/
 theorem pSched_at_cpu (Γ : SchedNames) (ξ : CtxId) (i : CPU) (A' : CtxAdm) (j : Nat)
     (cret tpv : BitVec 64) (back : Bool) (hj : j < NPROC) :
     pSched (GF := GF) Γ i A' (cpuCtxAddr i) cret tpv (procAddr j) back ξ ⊢
-      ⌜tpv = hartId i ∧ cret = pContext (procAddr j) 0 ∧ A' = none⌝ ∗ trapCsrs i ∗ intrRes i ∗
+      ⌜tpv = hartId i ∧ cret = pContext (procAddr j) 0 ∧ A' = none⌝ ∗ trapCsrs i ∗
+      @intrRes hlc GF _ ⟨ξ, KTier.kpt⟩ _ _ i ∗
       ∃ (st : BitVec 32) (ch : BitVec 64),
         ⌜parkOk st ∧ back = decide (needsCtx st)⌝ ∗
         procHeldAt Γ ξ i j st ch ∗ hartFull Γ j i ∗ parkPayAt ξ (procAddr j) st := by
@@ -1056,6 +1017,38 @@ theorem procSlots_park_gen (Γ : SchedNames) (ξl : CtxId) (pa : BitVec 64) (st 
     iapply (@procDormant_split hlc GF _ ⟨ξl, KTier.kpt⟩ pa ZOMBIE).mpr
     iframe Hpay Hc
 
+/-- **The slot a park hands back**, in the shape the crossing produces:
+`pSched`'s `back` flag is the BOOLEAN `decide (needsCtx st)`, and the
+parking thread hands over its whole tag rather than an anonymous one. -/
+theorem procSlots_park_gen' (Γ : SchedNames) (ξl : CtxId) (n : Nat) (hn : n < NPROC)
+    (st : BitVec 32) (hpark : parkOk st) (h : CPU) :
+    ((if (decide (needsCtx st) : Bool) then
+        ∃ ξo : CtxId, parkTokAt (GF := GF) ξl none ξo ∗
+          ▷ validCtx (pSched Γ) ⟨none, pContext (procAddr n) 0, procAddr n, ξo⟩
+      else @ownCtxCells hlc GF _ ⟨ξl, KTier.kpt⟩ (pContext (procAddr n) 0)) ∗
+    hartFull Γ n h ∗ parkPayAt ξl (procAddr n) st) ⊢ procSlotsAt Γ ξl (procAddr n) st := by
+  by_cases hnc : needsCtx st
+  · rw [decide_eq_true hnc]
+    simp only [reduceIte]
+    iintro ⟨⟨%ξo, Htok, Hvc⟩, Htag, Hpay⟩
+    iapply (procSlots_park_gen Γ ξl (procAddr n) st hpark)
+    rw [if_pos hnc]
+    isplitl [Htok Hvc]
+    · iapply procCtx_of_tok Γ ξl ξo (procAddr n) $$ [$Htok $Hvc]
+    isplitl [Htag]
+    · iapply hartAtAny_intro Γ n h hn $$ Htag
+    · iexact Hpay
+  · rw [decide_eq_false hnc]
+    simp only [Bool.false_eq_true, if_false]
+    iintro ⟨Hc, Htag, Hpay⟩
+    iapply (procSlots_park_gen Γ ξl (procAddr n) st hpark)
+    rw [if_neg hnc]
+    isplitl [Hc]
+    · iexact Hc
+    isplitl [Htag]
+    · iapply hartAtAny_intro Γ n h hn $$ Htag
+    · iexact Hpay
+
 /-- Presenting a tag half at an acquired proc lock proves the state is
 RUNNING and collapses the arm's existential hart to the caller's own. -/
 theorem procSlots_running (Γ : SchedNames) (ξl : CtxId) (j : Nat) (h : CPU) (st : BitVec 32)
@@ -1194,6 +1187,130 @@ theorem procsInv_lookup (Γ : SchedNames) (j : Nat) (hj : j < NPROC) :
     (show (List.range NPROC)[j]? = some j from by
       rw [List.getElem?_range (by exact hj)]) $$ H with H
   iexact H
+
+/-! ## The kernel table, out of a bundle
+
+`kptOn` is persistent and carries the table's root as a ghost variable, so
+a bundle at the Kpt tier publishes THE kernel table without being spent --
+which is how a thread resumed on another hart proves that hart's `satp`
+root is its own (`MachCSL.kptOn_root_agree`). -/
+
+/-- The installed table of a Kpt bundle, without spending the bundle. -/
+theorem transSlot_kptOn (cpu : CPU) (tier : KTier) (root : BitVec 44) (ht : tier = KTier.kpt) :
+    transSlot (GF := GF) cpu tier root ⊢
+      (∃ (t : PTree) (M : RegMapF (BitVec 64)), ⌜t.base = root⌝ ∗ kptOn t M) ∗
+      transSlot cpu tier root := by
+  subst ht
+  unfold transSlot transSlotAt kptSlot
+  iintro ⟨%htc, %t, %M, #Hkpt, %hb, Htlb⟩
+  isplitl []
+  · iexists t, M
+    isplitl []
+    · ipureintro; exact hb
+    · iexact Hkpt
+  · isplitl []
+    · ipureintro; exact htc
+    · iexists t, M
+      iframe Htlb
+      isplitl []
+      · iexact Hkpt
+      · ipureintro; exact hb
+
+/-- The installed table of a Kpt bundle. -/
+theorem kctx_kptOn {lent : Bool} (cpu : CPU) (k : KCtx) (ht : k.tier = KTier.kpt) :
+    kctxL (GF := GF) lent cpu k ⊢
+      (∃ (t : PTree) (M : RegMapF (BitVec 64)), ⌜t.base = k.root⌝ ∗ kptOn t M) ∗ kctxL lent cpu k := by
+  iintro Hk
+  icases kctx_cases cpu k $$ Hk with ⟨%hwf, HC, HF, Hst, Htr, Ha, Hc, Htok, Hcl, #Hro⟩
+  icases transSlot_kptOn cpu k.tier k.root ht $$ Htr with ⟨Hk2, Htr⟩
+  iframe Hk2
+  iapply kctx_intro' cpu k hwf
+  iframe HC HF Hst Htr Ha Hc Htok Hcl Hro
+
+/-- Two Kpt bundles run the same kernel table, hence the same root. -/
+theorem kctx_root_agree {lent lent' : Bool} (cpu cpu' : CPU) (k k' : KCtx)
+    (ht : k.tier = KTier.kpt) (ht' : k'.tier = KTier.kpt) :
+    kctxL (GF := GF) lent cpu k ∗ kctxL lent' cpu' k' ⊢
+      ⌜k'.root = k.root⌝ ∗ kctxL lent cpu k ∗ kctxL lent' cpu' k' := by
+  iintro ⟨Hk, Hk'⟩
+  icases kctx_kptOn cpu k ht $$ Hk with ⟨⟨%t, %M, %hb, #Hkpt⟩, Hk⟩
+  icases kctx_kptOn cpu' k' ht' $$ Hk' with ⟨⟨%t', %M', %hb', #Hkpt'⟩, Hk'⟩
+  ihave %hbb := kptOn_root_agree t t' M M' $$ [$Hkpt $Hkpt']
+  iframe Hk Hk'
+  ipureintro
+  rw [← hb', ← hbb]; exact hb
+
+end
+
+/-! ## THE HANDLER ENVIRONMENT (Rocq `SpecKernelvec.kernelvec_env`)
+
+The trap handler closes over the proc table: `kernelvec` calls
+`kerneltrap`, whose timer path yields, and `yield` needs `procsInv`.  A
+trap arrives at whatever context the interrupted hart runs, and
+`procsInv` is context-relative (every lock handle carries its creator's
+floor), so the invariant travels with the installed handler
+(`MachCSL.KCtx.intrResP`) as `MachGS.envP`, the ambient instance's
+environment family.  `EnvIs` is the client's choice of that family, the
+way `ClaimIs` is its choice of the claim. -/
+
+/-- `procsInv` mentions the context only through its lock handles, so it
+transports along a domination. -/
+instance instCtxMorphProcsInv (Γ : SchedNames) :
+    CtxMorph (GF := GF) (fun ξ => @procsInv hlc GF _ _ ⟨ξ, KTier.kpt⟩ Γ) :=
+  ctxMorph_bigSepL (List.range NPROC)
+    (fun _ j ξ => @isLock hlc GF _ _ ⟨ξ, KTier.kpt⟩ (Γ.lock j) (procAddr j) "proc" (procLockPay Γ j))
+    (fun _ _ => instCtxMorphIsLock _ _ _ _ _)
+
+/-- The tier is irrelevant to the table's invariant. -/
+theorem procsInv_toKpt (X : CurCtx) (Γ : SchedNames) :
+    @procsInv hlc GF _ _ X Γ = @procsInv hlc GF _ _ ⟨X.curCtx, KTier.kpt⟩ Γ := rfl
+
+/-- **The client's choice, as a class**: the boot instantiates `MachGS`
+with `envP := fun ξ => procsInv Γ` (at ξ), and the instance is `rfl`. -/
+class EnvIs (GF : BundledGFunctors) [MachGS hlc GF] [Xv6G GF] (Γ : SchedNames) : Prop where
+  eq : ∀ ξ : CtxId, MachGS.envP (hlc := hlc) (GF := GF) ξ = @procsInv hlc GF _ _ ⟨ξ, KTier.kpt⟩ Γ
+
+/-- The environment family, spelled out. -/
+theorem envP_eq (Γ : SchedNames) [EnvIs (hlc := hlc) GF Γ] (ξ : CtxId) :
+    MachGS.envP (hlc := hlc) (GF := GF) ξ = @procsInv hlc GF _ _ ⟨ξ, KTier.kpt⟩ Γ := EnvIs.eq ξ
+
+/-- The environment's re-homing witness, discharged: `procsInv` transports. -/
+theorem envMorph_procsInv (Γ : SchedNames) [EnvIs (hlc := hlc) GF Γ] :
+    ⊢ envMorph (hlc := hlc) (GF := GF) := by
+  unfold envMorph
+  iintro !> %ξ %ξ' Hdom He
+  rw [envP_eq Γ ξ, envP_eq Γ ξ']
+  imod CtxMorph.morph (R := fun ζ => @procsInv hlc GF _ _ ⟨ζ, KTier.kpt⟩ Γ) ξ ξ'
+    $$ [$Hdom $He] with ⟨Hdom, He⟩
+  imodintro
+  iframe
+
+section
+variable (Γ : SchedNames) [EnvIs (hlc := hlc) GF Γ]
+
+/-- The table, out of the environment. -/
+theorem procsInv_of_envAt (ξ : CtxId) :
+    envAt (hlc := hlc) (GF := GF) ξ ⊢ @procsInv hlc GF _ _ ⟨ξ, KTier.kpt⟩ Γ := by
+  rw [← envP_eq Γ ξ]
+  exact envAt_env ξ
+
+/-- ...and back: the table IS the environment (with its witness). -/
+theorem envAt_of_procsInv (ξ : CtxId) :
+    @procsInv hlc GF _ _ ⟨ξ, KTier.kpt⟩ Γ ⊢ envAt (hlc := hlc) (GF := GF) ξ := by
+  iintro #H
+  iapply envAt_intro ξ
+  isplitl []
+  · rw [envP_eq Γ ξ]; iexact H
+  · iapply envMorph_procsInv Γ
+
+/-- The table at the AMBIENT context, out of the environment. -/
+theorem procsInv_of_envAt' [X : CurCtx] : envAt (hlc := hlc) (GF := GF) curCtx ⊢ procsInv Γ := by
+  rw [procsInv_toKpt X Γ]
+  exact procsInv_of_envAt Γ curCtx
+
+theorem envAt_of_procsInv' [X : CurCtx] : procsInv (GF := GF) Γ ⊢ envAt (hlc := hlc) (GF := GF) curCtx := by
+  rw [procsInv_toKpt X Γ]
+  exact envAt_of_procsInv Γ curCtx
 
 end
 

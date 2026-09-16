@@ -250,6 +250,64 @@ instance instCtxMorphBytes (pa : PAddr) (n : Nat) (dq : DFrac) (w : BitVec (8 * 
   exact ctxMorph_bigSepL (List.range n) (fun _ j ξ => ctxByte ξ (pa + BitVec.ofNat 64 j) dq (nthByte w j))
     (fun _ j => instCtxMorphByte _ _ _)
 
+/-! ## The handler environment
+
+`MachGS.envP` is the client's handler environment, a family indexed by the
+context it is held at (the xv6 client: the proc table's `procsInv`, whose
+lock handles carry their creator's floor).  The installed handler
+(`MachCSL.KCtx.intrResP`) carries it together with the WITNESS that it
+re-homes along a domination -- the Rocq prototype's `IntrDefs.env_move`,
+carried inside `intr_res` rather than assumed globally, since the
+domination relation is stated over the very instance the environment is a
+field of. -/
+
+/-- The environment's re-homing witness (Rocq `IntrDefs.env_move`). -/
+def envMorph : IProp GF := iprop%
+  □ ∀ (ξ ξ' : CtxId), ctxDom ξ ξ' -∗ MachGS.envP ξ -∗ |==> (ctxDom ξ ξ' ∗ MachGS.envP ξ')
+
+instance envMorph_persistent : Persistent (envMorph (hlc := hlc) (GF := GF)) := by
+  unfold envMorph; infer_instance
+
+/-- The witness, applied. -/
+theorem envMorph_use (ξ ξ' : CtxId) :
+    envMorph ∗ ctxDom (GF := GF) ξ ξ' ∗ MachGS.envP ξ ⊢ |==> (ctxDom ξ ξ' ∗ MachGS.envP ξ') := by
+  unfold envMorph
+  iintro ⟨#Hm, Hd, He⟩
+  iapply Hm $$ %ξ %ξ' Hd He
+
+/-- The handler environment AT a context, with its witness: what the
+installed handler carries. -/
+def envAt (ξ : CtxId) : IProp GF := iprop(□ MachGS.envP ξ ∗ envMorph)
+
+instance envAt_persistent (ξ : CtxId) : Persistent (envAt (hlc := hlc) (GF := GF) ξ) := by
+  unfold envAt; infer_instance
+
+theorem envAt_intro (ξ : CtxId) :
+    MachGS.envP ξ ∗ envMorph ⊢@{IProp GF} envAt ξ := by
+  unfold envAt
+  iintro ⟨#He, #Hm⟩
+  isplit
+  · imodintro; iexact He
+  · iexact Hm
+
+theorem envAt_env (ξ : CtxId) : envAt (hlc := hlc) (GF := GF) ξ ⊢ MachGS.envP ξ := by
+  unfold envAt
+  iintro ⟨#He, _⟩
+  iexact He
+
+/-- The environment transports: the witness moves it, and it is persistent
+at the destination. -/
+instance instCtxMorphEnvAt : CtxMorph (GF := GF) (envAt (hlc := hlc) (GF := GF)) where
+  morph ξ ξ' := by
+    iintro ⟨Hdom, HE⟩
+    icases (show envAt ξ ⊢ iprop(□ MachGS.envP ξ ∗ envMorph) from .rfl) $$ HE with ⟨#He, #Hm⟩
+    imod envMorph_use ξ ξ' $$ [$Hm $Hdom $He] with ⟨Hdom, He⟩
+    imodintro
+    iframe Hdom
+    iapply envAt_intro ξ'
+    iframe He
+    iexact Hm
+
 /-! ## The token's receipts -/
 
 /-- A floor of the running context is a view receipt of its hart. -/
@@ -769,5 +827,60 @@ theorem ctx_move (R : CtxId → IProp GF) [CtxMorph R] (cpu : CPU) (ξ0 ξ1 : Ct
   isplit
   · ipureintro; exact hok
   · iexact Hels
+
+/-! ## Domination is transitive; the parked token transports
+
+(The Rocq prototype's `TsoCtx.ctx_dom_at_dom` / `ctx_parked_morph`.) -/
+
+theorem ctxDomAt_dom (ξ ξ' ξ'' : CtxId) (q : Qp) :
+    ctxDom (GF := GF) ξ' ξ'' ∗ ctxDomAt ξ ξ' q ⊢ ctxDom ξ' ξ'' ∗ ctxDomAt ξ ξ'' q := by
+  iintro ⟨Hd, Hat⟩
+  icases ctxDomAt_cases ξ' ξ'' _ $$ Hd with ⟨%B', %D', Hat', #Hfl', #Hels', #Hkeys'⟩
+  icases ctxDomAt_cases ξ ξ' q $$ Hat with ⟨%B, %D, Hat, #Hfl, #Hels, #Hkeys⟩
+  -- ξ's bound is under ξ''s
+  ihave %hBB' : ⌜B ≤ B'⌝ $$ [Hat' Hfl]
+  · iapply ctxAt_floor ξ' _ B' D' B $$ [Hat' Hfl]
+    iframe Hat'
+    iexact Hfl
+  -- ξ's dirty keys are under ξ''s bound or in ξ''s dirty set
+  ihave %hks : ⌜∀ k h, get? D k = some h → k ≤ B' ∨ get? D' k = some h⌝ $$ [Hat' Hels Hkeys]
+  · iapply dom_keys_pure ξ ξ' _ B' D D' $$ [Hat' Hels Hkeys]
+    iframe Hat'
+    isplit
+    · iexact Hels
+    · iexact Hkeys
+  isplitl [Hat']
+  · iapply ctxDomAt_intro ξ' ξ'' _ B' D'
+    iframe Hat'
+    isplit
+    · iexact Hfl'
+    isplit
+    · iexact Hels'
+    · iexact Hkeys'
+  iapply ctxDomAt_intro ξ ξ'' q B D
+  iframe Hat
+  isplit
+  · iapply ctxFloor_le ξ'' B' B hBB'
+    iexact Hfl'
+  isplit
+  · iexact Hels
+  imodintro
+  iintro %k %h %hk
+  rcases hks k h hk with hkB | hkD
+  · unfold keyAt
+    ileft
+    iapply ctxFloor_le ξ'' B' k hkB
+    iexact Hfl'
+  · iapply Hkeys' $$ %k %h %hkD
+
+/-- A parked record's token re-indexes along a domination of the context it
+is parked under. -/
+instance instCtxMorphParked (ξ : CtxId) : CtxMorph (GF := GF) (fun ξ' => ctxParked ξ ξ') where
+  morph ξ' ξ'' := by
+    iintro ⟨Hd, Hp⟩
+    icases ctxDomAt_dom ξ ξ' ξ'' 1 $$ [Hd Hp] with ⟨Hd, Hp⟩
+    · iframe
+    imodintro
+    iframe
 
 end MachCSL

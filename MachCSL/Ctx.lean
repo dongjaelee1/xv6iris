@@ -143,12 +143,9 @@ end era
 
 /-! ## Contexts -/
 
-/-- A context: a thread of control's ghost identity -- its bound (a monotone
-counter) and its dirty set (a ghost map keyed by timestamp). -/
-structure CtxId where
-  bound : GName
-  dirty : GName
-  deriving DecidableEq, Inhabited
+-- `CtxId` (a context: a bound and a dirty set) is declared in
+-- `MachCSL.Resources`, beside the ambient instance whose handler
+-- environment is a family indexed by it.
 
 /-- The kernel's address-translation tier: Bare (`satp = 0`), or the kernel
 page table (Sv39 at the kernel root). -/

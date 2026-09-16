@@ -536,29 +536,34 @@ structure IhsIx where
 instance : OFE IhsIx := OFE.ofDiscrete _
 
 /-- The installed handler (the prototype's `intr_res`), over an abstract
-contract `S`: `stvec` in direct mode at `h`, and the contract at `h`. -/
-def intrResP (S : IhsIx → IProp GF) (cpu : CPU) : IProp GF := iprop%
-  ∃ h : BitVec 64, ⌜stvecDirect h⌝ ∗ Register.stvec ↦ᵣ[cpu] h ∗ □ S ⟨cpu, h⟩
+contract `S`: `stvec` in direct mode at `h`, the contract at `h`, and the
+handler's ENVIRONMENT at the context the bundle runs -- what the handler
+closes over and cannot get from any frame (`MachCSL.CtxLaws.envAt`: the
+environment together with the witness that re-homes it across a
+domination, so the bundle re-homes with its arm). -/
+def intrResP [CurCtx] (S : IhsIx → IProp GF) (cpu : CPU) : IProp GF := iprop%
+  ∃ h : BitVec 64, ⌜stvecDirect h⌝ ∗ Register.stvec ↦ᵣ[cpu] h ∗ □ S ⟨cpu, h⟩ ∗ envAt curCtx
 
 /-- The interrupt arm, over an abstract contract.  Enabled: the trap CSRs,
-the running proc claim and the installed handler -- what a preempting trap
-needs and cannot get from any frame.  Disabled: nothing; the SIE bit itself
+the running proc claim and the installed handler (with the handler's
+environment at this context) -- what a preempting trap needs and cannot
+get from any frame.  Disabled: nothing; the SIE bit itself
 is tied to the index in `kConf`, and the per-cpu bookkeeping is in `cpuOwn`
 at either index. -/
-def sieArmP (S : IhsIx → IProp GF) (cpu : CPU) (sie : Bool) (p : BitVec 64) : IProp GF :=
+def sieArmP [CurCtx] (S : IhsIx → IProp GF) (cpu : CPU) (sie : Bool) (p : BitVec 64) : IProp GF :=
   if sie then iprop(trapCsrs cpu ∗ cpuClaim cpu p ∗ intrResP S cpu) else iprop(True)
 
-theorem intrResP_mono (Φ Ψ : IhsIx → IProp GF) (cpu : CPU) :
+theorem intrResP_mono [CurCtx] (Φ Ψ : IhsIx → IProp GF) (cpu : CPU) :
     □ (∀ x, Φ x -∗ Ψ x) ⊢ intrResP Φ cpu -∗ intrResP Ψ cpu := by
   unfold intrResP
-  iintro #Hm ⟨%h, %hd, Hstv, #HS⟩
+  iintro #Hm ⟨%h, %hd, Hstv, #HS, #Henv⟩
   iexists h
-  iframe Hstv
+  iframe Hstv Henv
   isplit
   · ipureintro; exact hd
   · iapply Hm $$ HS
 
-theorem sieArmP_mono (Φ Ψ : IhsIx → IProp GF) (cpu : CPU) (sie : Bool) (p : BitVec 64) :
+theorem sieArmP_mono [CurCtx] (Φ Ψ : IhsIx → IProp GF) (cpu : CPU) (sie : Bool) (p : BitVec 64) :
     □ (∀ x, Φ x -∗ Ψ x) ⊢ sieArmP Φ cpu sie p -∗ sieArmP Ψ cpu sie p := by
   unfold sieArmP
   cases sie
@@ -984,7 +989,7 @@ def ihsF [KernelGeom] [KernelImage GF] (S : IhsIx → IProp GF) (x : IhsIx) : IP
   □ ∀ (X : CurCtx) (k : KCtx) (pc sc : BitVec 64),
     ⌜k.wf ∧ k.sie = true ∧ pc.toNat % 2 = 0 ∧ sCauseOk sc⌝ -∗
     kctxP X S false x.cpu k.trapped -∗ pcIs x.cpu x.h -∗ trapCsrsAt x.cpu pc sc 0#64 -∗
-    Register.stvec ↦ᵣ[x.cpu] x.h -∗ cpuClaim x.cpu k.proc -∗
+    Register.stvec ↦ᵣ[x.cpu] x.h -∗ envAt X.curCtx -∗ cpuClaim x.cpu k.proc -∗
     ▷ wpNext true k.proc x.cpu (fun cpu' => iprop(kctxP X S false cpu' k -∗ pcIs cpu' pc -∗ wpLoop cpu')) -∗
     wpLoop x.cpu
 
@@ -993,9 +998,9 @@ instance ihsF_mono [KernelGeom] [KernelImage GF] : BIMonoPred (ihsF (GF := GF)) 
     iintro #Hm %x HF
     unfold ihsF
     iintuitionistic HF
-    iintro !> %X %k %pc %sc %hp Hk Hpc Hcsrs Hstv Hclaim Hcont
+    iintro !> %X %k %pc %sc %hp Hk Hpc Hcsrs Hstv Henv Hclaim Hcont
     ihave Hk' := kctxP_off X Ψ Φ false x.cpu k.trapped rfl $$ Hk
-    iapply HF $$ %X %k %pc %sc %hp Hk' Hpc Hcsrs Hstv Hclaim
+    iapply HF $$ %X %k %pc %sc %hp Hk' Hpc Hcsrs Hstv Henv Hclaim
     inext
     iapply wpNext_mono $$ Hcont
     iintro %cpu' HK Hk Hpc
@@ -1013,10 +1018,19 @@ theorem ihs_fold [KernelGeom] [KernelImage GF] (x : IhsIx) : ihsF (GF := GF) ihs
   greatest_fixpoint_unfold_mpr _
 
 /-- The installed handler. -/
-def intrRes [KernelGeom] [KernelImage GF] (cpu : CPU) : IProp GF := intrResP ihs cpu
+def intrRes [CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) : IProp GF := intrResP ihs cpu
 
 /-- The interrupt arm (see `sieArmP`). -/
-def sieArm [KernelGeom] [KernelImage GF] (cpu : CPU) (sie : Bool) (p : BitVec 64) : IProp GF := sieArmP ihs cpu sie p
+def sieArm [CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (sie : Bool) (p : BitVec 64) : IProp GF :=
+  sieArmP ihs cpu sie p
+
+/-- The arm and the installed handler mention the context only through the
+environment: the tier is irrelevant. -/
+theorem intrResP_toKpt (X : CurCtx) (S : IhsIx → IProp GF) (cpu : CPU) :
+    @intrResP hlc GF _ X S cpu = @intrResP hlc GF _ ⟨X.curCtx, KTier.kpt⟩ S cpu := rfl
+
+theorem intrRes_toKpt (X : CurCtx) [KernelGeom] [KernelImage GF] (cpu : CPU) :
+    @intrRes hlc GF _ X _ _ cpu = @intrRes hlc GF _ ⟨X.curCtx, KTier.kpt⟩ _ _ cpu := rfl
 
 /-- The kernel execution context resource of hart `cpu` (see `kctxP`), with
 the `c->intena` cell lent out when `lent` (see `intenaCell`). -/
@@ -1120,31 +1134,35 @@ theorem KCtx.setReg_setReg_same (k : KCtx) (i : BitVec 5) (v w : BitVec 64) :
 
 /-- The enabled arm, opened: the trap CSRs, the claim, the vector and the
 contract. -/
-theorem sieArm_on [KernelGeom] [KernelImage GF] (cpu : CPU) (p : BitVec 64) :
+theorem sieArm_on [X : CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (p : BitVec 64) :
     sieArm (GF := GF) cpu true p ⊢
-      ∃ h : BitVec 64, ⌜stvecDirect h⌝ ∗ trapCsrs cpu ∗ cpuClaim cpu p ∗ Register.stvec ↦ᵣ[cpu] h ∗ □ ihs ⟨cpu, h⟩ := by
+      ∃ h : BitVec 64, ⌜stvecDirect h⌝ ∗ trapCsrs cpu ∗ cpuClaim cpu p ∗ Register.stvec ↦ᵣ[cpu] h ∗
+        □ ihs ⟨cpu, h⟩ ∗ envAt curCtx := by
   unfold sieArm sieArmP intrResP
   simp only [ite_true]
-  iintro ⟨Hcsrs, Hclaim, %h, %hd, Hstv, #HS⟩
+  iintro ⟨Hcsrs, Hclaim, %h, %hd, Hstv, #HS, #Henv⟩
   iexists h
-  iframe Hcsrs Hclaim Hstv
+  iframe Hcsrs Hclaim Hstv Henv
   isplit
   · ipureintro; exact hd
   · iexact HS
 
-theorem sieArm_on_intro [KernelGeom] [KernelImage GF] (cpu : CPU) (p h : BitVec 64) (hd : stvecDirect h) :
-    trapCsrs cpu ∗ cpuClaim cpu p ∗ Register.stvec ↦ᵣ[cpu] h ∗ □ ihs ⟨cpu, h⟩ ⊢ sieArm (GF := GF) cpu true p := by
+theorem sieArm_on_intro [X : CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (p h : BitVec 64)
+    (hd : stvecDirect h) :
+    trapCsrs cpu ∗ cpuClaim cpu p ∗ Register.stvec ↦ᵣ[cpu] h ∗ □ ihs ⟨cpu, h⟩ ∗ envAt curCtx ⊢
+      sieArm (GF := GF) cpu true p := by
   unfold sieArm sieArmP intrResP
   simp only [ite_true]
-  iintro ⟨Hcsrs, Hclaim, Hstv, #HS⟩
+  iintro ⟨Hcsrs, Hclaim, Hstv, #HS, #Henv⟩
   iframe Hcsrs Hclaim
   iexists h
-  iframe Hstv
+  iframe Hstv Henv
   isplit
   · ipureintro; exact hd
   · iexact HS
 
-theorem sieArm_off [KernelGeom] [KernelImage GF] (cpu : CPU) (p : BitVec 64) : ⊢ sieArm (GF := GF) cpu false p := by
+theorem sieArm_off [CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (p : BitVec 64) :
+    ⊢ sieArm (GF := GF) cpu false p := by
   unfold sieArm sieArmP
   simp only [Bool.false_eq_true, ite_false]
   ipureintro; trivial
@@ -1185,15 +1203,16 @@ state, with the promise to resume `k` at `pc` from the client's continuation
 `I`, on any hart the pinning allows. -/
 theorem kctx_trap_resume [X : CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (k : KCtx) (pc sc h : BitVec 64)
     (I : IProp GF) (hwf : k.wf) (hs : k.sie = true) (hpc : pc.toNat % 2 = 0) (hsc : sCauseOk sc) :
-    kctx cpu k.trapped ∗ pcIs cpu h ∗ trapCsrsAt cpu pc sc 0#64 ∗ Register.stvec ↦ᵣ[cpu] h ∗ cpuClaim cpu k.proc ∗
+    kctx cpu k.trapped ∗ pcIs cpu h ∗ trapCsrsAt cpu pc sc 0#64 ∗ Register.stvec ↦ᵣ[cpu] h ∗ envAt curCtx ∗
+    cpuClaim cpu k.proc ∗
     □ ihs ⟨cpu, h⟩ ∗ I ∗
     ▷ (∀ cpu' : CPU, ⌜k.proc = 0#64 → cpu' = cpu⌝ → I -∗ kctx cpu' k -∗ pcIs cpu' pc -∗ wpLoop cpu')
     ⊢ wpLoop (GF := GF) cpu := by
-  iintro ⟨Hk, Hpc, Hcsrs, Hstv, Hclaim, #HS, HI, IH⟩
+  iintro ⟨Hk, Hpc, Hcsrs, Hstv, #Henv, Hclaim, #HS, HI, IH⟩
   ihave #HF := ihs_unfold ⟨cpu, h⟩ $$ HS
   unfold ihsF kctx kctxL
   dsimp only
-  iapply HF $$ %X %k %pc %sc %⟨hwf, hs, hpc, hsc⟩ Hk Hpc Hcsrs Hstv Hclaim
+  iapply HF $$ %X %k %pc %sc %⟨hwf, hs, hpc, hsc⟩ Hk Hpc Hcsrs Hstv Henv Hclaim
   inext
   unfold wpNext
   iintro %cpu' %hpin Hk Hpc

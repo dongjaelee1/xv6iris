@@ -402,16 +402,18 @@ theorem sleep_proof (MP : MYPROC) (AC : ACQUIRE) (RE : RELEASE) (SC : SCHED) : S
       exact hhi3
     iapply (sleep_tail RE Γ cpu k j hj hsie hnoff hlocks htier hproc hintena
       (by unfold sleepSlots at hK; omega) (R3.set 15#5 ch) g2 g9 ghi ch kl xs pid)
-    k_norm [sleepExitK_regs, sleepExitK_avail]
+    k_norm
     iframe Hk Hpc Hpinv Hlocked Hpstw Hstate Hchan Hrest Hcells Hfull Hvc Hframe Htc Hir
     iintro %R' Hk Hpc Htc Hclaim Hir %hcs
     ihave HΦ := wpNext_at true (procAddr j) cpu cpu
-      (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ root' : BitVec 44, ∀ R' : RegMap,
-        kctx cpu' (sleepExitK k spie spp root' R') -∗ pcIs cpu' (jumpPc (k.regs 1#5)) -∗
+      (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ R' : RegMap,
+        kctx cpu' ((k.withSpie spie spp).withRegs R') -∗ pcIs cpu' (jumpPc (k.regs 1#5)) -∗
         trapCsrs cpu' -∗ cpuClaim cpu' (procAddr j) -∗ intrRes cpu' -∗
         ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu')) (fun _ => rfl) $$ Hnext
-    rw [← sleepExitK_self k R'] at *
-    iapply HΦ $$ %k.spie %k.spp %k.root %R' Hk Hpc Htc Hclaim Hir
+    ihave Hk := (show kctx (GF := GF) cpu (k.withRegs R') ⊢
+        kctx cpu ((k.withSpie k.spie k.spp).withRegs R') from by
+      rw [KCtx.withSpie_self' k k.spie k.spp rfl rfl]) $$ Hk
+    iapply HΦ $$ %k.spie %k.spp %R' Hk Hpc Htc Hclaim Hir
     ipureintro
     exact hcs
   · -- THE PARK: p->state = SLEEPING and into the scheduler
@@ -443,9 +445,9 @@ theorem sleep_proof (MP : MYPROC) (AC : ACQUIRE) (RE : RELEASE) (SC : SCHED) : S
         ownCtxCells (pContext (procAddr j) 0) ∗ hartFull Γ j cpu ∗
         ▷ schedVcAt Γ cpu (cpuCtxAddr cpu) (procAddr j) ∗
         wpNext true k'.proc cpu (fun cpu' => iprop(∀ (R' : RegMap) (spie spp : Bool)
-          (root' : BitVec 44) (ch' : BitVec 64),
+          (ch' : BitVec 64),
           ⌜calleeSaved k'.regs R'⌝ -∗
-          kctx cpu' (resumedK R' spie spp k'.avail k'.intena root' (procAddr j)) -∗
+          kctx cpu' (resumedK R' spie spp k'.avail k'.intena k'.root (procAddr j)) -∗
           pcIs cpu' (jumpPc (k'.regs 1#5)) -∗
           procHeld Γ cpu' j RUNNING ch' -∗ trapCsrs cpu' -∗ intrRes cpu' -∗
           ownCtxCells (pContext (procAddr j) 0) -∗ hartFull Γ j cpu' -∗
@@ -474,7 +476,7 @@ theorem sleep_proof (MP : MYPROC) (AC : ACQUIRE) (RE : RELEASE) (SC : SCHED) : S
     -- into the scheduler; back on the hart that resumed us
     iapply wpNext_intro_pin
     iintro %h %_
-    iintro %R9 %spie %spp %root %ch' %hcsS Hk Hpc Hheld Htc Hir Hcells Hfull Hvc
+    iintro %R9 %spie %spp %ch' %hcsS Hk Hpc Hheld Htc Hir Hcells Hfull Hvc
     k_norm [sl_ret_f84]
     have hhiS := sl_savedHigh_of_calleeSaved hcsS
     k_norm at hhiS
@@ -486,26 +488,26 @@ theorem sleep_proof (MP : MYPROC) (AC : ACQUIRE) (RE : RELEASE) (SC : SCHED) : S
     have hhi9 : sl_savedHigh k.regs R9 := sl_savedHigh_trans hhi3 hhiS
     icases procHeldAt_cases Γ curCtx h j RUNNING ch' $$ Hheld with
       ⟨Hlocked, Hpstw, %kl', %xs', %pid', Hstate, Hchan, Hrest⟩
-    have hctx2 : resumedK R9 spie spp (k.avail - 4) k.intena root (procAddr j) =
-        (((sleepExitK k spie spp root k.regs).pushed 4).pushOff.withRegs R9).withLocks ["proc"] := by
-      unfold resumedK sleepExitK KCtx.pushed KCtx.pushOff KCtx.withRegs KCtx.withLocks
+    have hctx2 : resumedK R9 spie spp (k.avail - 4) k.intena k.root (procAddr j) =
+        (((k.withSpie spie spp).pushed 4).pushOff.withRegs R9).withLocks ["proc"] := by
+      unfold resumedK KCtx.withSpie KCtx.pushed KCtx.pushOff KCtx.withRegs KCtx.withLocks
       simp only [hnoff, hproc, hintena, hsie, htier]
     rw [hctx2]
-    iapply (sleep_tail RE Γ h (sleepExitK k spie spp root k.regs) j hj hsie hnoff hlocks htier
-      hproc hintena (by unfold sleepSlots at hK; simp only [sleepExitK_avail]; omega) R9 f2 f9
+    iapply (sleep_tail RE Γ h (k.withSpie spie spp) j hj hsie hnoff hlocks htier
+      hproc hintena (by unfold sleepSlots at hK; simp only [KCtx.withSpie_avail]; omega) R9 f2 f9
       hhi9 ch' kl' xs' pid')
-    k_norm [sleepExitK_regs, sleepExitK_avail]
+    k_norm
     iframe Hk Hpc Hpinv Hlocked Hpstw Hstate Hchan Hrest Hcells Hfull Hvc Hframe Htc Hir
     iintro %R' Hk Hpc Htc Hclaim Hir %hcs
-    k_norm [sleepExitK_withRegs]
+    k_norm
     ihave HΦ := wpNext_at true (procAddr j) cpu h
-      (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ root' : BitVec 44, ∀ R' : RegMap,
-        kctx cpu' (sleepExitK k spie spp root' R') -∗ pcIs cpu' (jumpPc (k.regs 1#5)) -∗
+      (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ R' : RegMap,
+        kctx cpu' ((k.withSpie spie spp).withRegs R') -∗ pcIs cpu' (jumpPc (k.regs 1#5)) -∗
         trapCsrs cpu' -∗ cpuClaim cpu' (procAddr j) -∗ intrRes cpu' -∗
         ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
       (fun hc => Or.elim hc (fun hx => absurd hx (by decide))
         (fun hx => absurd hx (procAddr_nonzero hj))) $$ Hnext
-    iapply HΦ $$ %spie %spp %root %R' Hk Hpc Htc Hclaim Hir
+    iapply HΦ $$ %spie %spp %R' Hk Hpc Htc Hclaim Hir
     ipureintro
     exact hcs⟩
 

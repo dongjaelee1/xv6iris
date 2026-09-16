@@ -423,6 +423,9 @@ theorem sched_proof (SW : SWTCH) (MP : MYPROC) (HO : HOLDING) : SCHED :=
   icases kctx_kernelText _ _ $$ Hk with ⟨#Htext, Hk⟩
   have ht0 : t0 = KTier.kpt := hct.symm.trans htier
   subst ht0
+  -- THE KERNEL TABLE, kept: the hart that dispatches this thread back runs
+  -- the same one, so its `satp` root is the parking hart's (`kptOn_root_agree`)
+  icases kctx_kptOn cpu k htier $$ Hk with ⟨⟨%t1, %M1, %hb1, #Hkpt1⟩, Hk⟩
   icases procHeldAt_cases Γ ξ0 cpu j st ch $$ Hheld with
     ⟨Hlocked, Hpst, %kl, %xs, %pid, Hstate, Hchan, Hrest⟩
   simp only [schedAddr, KernelSyms.«sched»]
@@ -744,11 +747,18 @@ theorem sched_proof (SW : SWTCH) (MP : MYPROC) (HO : HOLDING) : SCHED :=
     have e8_26 : R8 26#5 = R 26#5 := e8o 26#5 (by decide) (by decide)
     have e8_27 : R8 27#5 = R 27#5 := e8o 27#5 (by decide) (by decide)
     k_norm
+    -- THE ROOT of the dispatching hart is this kernel's: one table
+    icases kctx_kptOn h ((resumedK R spie spp (k.avail - 6) eb' root (procAddr j)).withRegs R8) rfl
+      $$ Hk with ⟨⟨%t2, %M2, %hb2, #Hkpt2⟩, Hk⟩
+    ihave %hbb := kptOn_root_agree t1 t2 M1 M2 $$ [$Hkpt1 $Hkpt2]
+    simp only [KCtx.withRegs_root, resumedK_root] at hb2
+    have hroot : root = k.root := by rw [← hb2, ← hbb]; exact hb1
+    subst hroot
     -- sw s3,172(s2): restore c->intena
     k_step (wp_s_sw_intena h
-        ((resumedK R spie spp (k.avail - 6) eb' root (procAddr j)).withRegs R8) rfl (Nat.le_refl 1)
+        ((resumedK R spie spp (k.avail - 6) eb' k.root (procAddr j)).withRegs R8) rfl (Nat.le_refl 1)
         0x80001eba#64 false 172#12 18#5 19#5 ?haS k.intena ?hvS
-        (resumedK_wf R8 spie spp (k.avail - 6) k.intena root (procAddr j)))
+        (resumedK_wf R8 spie spp (k.avail - 6) k.intena k.root (procAddr j)))
       from (text_instr _ _ _ _ rfl rfl) Htext $$ [- $Hk $Hpc]
       with [resumedK_regs, resumedK_sie, resumedK_spie, resumedK_spp, resumedK_avail,
         resumedK_noff, resumedK_intena, resumedK_locks, resumedK_tier, resumedK_root,
@@ -763,8 +773,8 @@ theorem sched_proof (SW : SWTCH) (MP : MYPROC) (HO : HOLDING) : SCHED :=
       cases k.intena <;> decide
     iintro Hk Hpc
     -- the epilogue
-    have hctx : ((resumedK R spie spp (k.avail - 6) eb' root (procAddr j)).withRegs R8).withCpu
-        R8 1 k.intena = resumedK R8 spie spp (k.avail - 6) k.intena root (procAddr j) := rfl
+    have hctx : ((resumedK R spie spp (k.avail - 6) eb' k.root (procAddr j)).withRegs R8).withCpu
+        R8 1 k.intena = resumedK R8 spie spp (k.avail - 6) k.intena k.root (procAddr j) := rfl
     rw [hctx]
     have hsp2 : R8 2#5 = k.regs 2#5 + 0xFFFFFFFFFFFFFFD0#64 := by
       rw [e8_2, g2]
@@ -802,17 +812,17 @@ theorem sched_proof (SW : SWTCH) (MP : MYPROC) (HO : HOLDING) : SCHED :=
       rw [e8_27, g27]
       try simp only [KCtx.withRegs_regs, RegMap.set_apply, BitVec.reduceEq, ite_false]
       rw [e6_27, e5_27, e4_27, c3_27, c2_27]
-    iapply (sched_epilogue h (resumedK R8 spie spp (k.avail - 6) k.intena root (procAddr j)) rfl
+    iapply (sched_epilogue h (resumedK R8 spie spp (k.avail - 6) k.intena k.root (procAddr j)) rfl
         (k.regs 2#5) hsp2 (k.regs 1#5) (k.regs 8#5) (k.regs 9#5) (k.regs 18#5) (k.regs 19#5))
       $$ [- $Hk $Hpc $Hframe]
     inext
     iintro Hk Hpc
-    have hfin : ((resumedK R8 spie spp (k.avail - 6) k.intena root (procAddr j)).withAvail
-        ((resumedK R8 spie spp (k.avail - 6) k.intena root (procAddr j)).avail + 6)).withRegs
-        (schedRegs (resumedK R8 spie spp (k.avail - 6) k.intena root (procAddr j)).regs (k.regs 2#5)
+    have hfin : ((resumedK R8 spie spp (k.avail - 6) k.intena k.root (procAddr j)).withAvail
+        ((resumedK R8 spie spp (k.avail - 6) k.intena k.root (procAddr j)).avail + 6)).withRegs
+        (schedRegs (resumedK R8 spie spp (k.avail - 6) k.intena k.root (procAddr j)).regs (k.regs 2#5)
           (k.regs 1#5) (k.regs 8#5) (k.regs 9#5) (k.regs 18#5) (k.regs 19#5))
         = resumedK (schedRegs R8 (k.regs 2#5) (k.regs 1#5) (k.regs 8#5) (k.regs 9#5) (k.regs 18#5)
-            (k.regs 19#5)) spie spp k.avail k.intena root (procAddr j) := by
+            (k.regs 19#5)) spie spp k.avail k.intena k.root (procAddr j) := by
       unfold schedSlots at hK
       simp only [resumedK_regs, resumedK_avail, show k.avail - 6 + 6 = k.avail from by omega]
       rfl
@@ -832,16 +842,16 @@ theorem sched_proof (SW : SWTCH) (MP : MYPROC) (HO : HOLDING) : SCHED :=
       · exact f26
       · exact f27
     ihave HΦ' := wpNext_at true (procAddr j) cpu h
-      (fun cpu' => iprop(∀ (R' : RegMap) (spie spp : Bool) (root' : BitVec 44) (ch' : BitVec 64),
+      (fun cpu' => iprop(∀ (R' : RegMap) (spie spp : Bool) (ch' : BitVec 64),
         ⌜calleeSaved k.regs R'⌝ -∗
-        kctx cpu' (resumedK R' spie spp k.avail k.intena root' (procAddr j)) -∗
+        kctx cpu' (resumedK R' spie spp k.avail k.intena k.root (procAddr j)) -∗
         pcIs cpu' (jumpPc (k.regs 1#5)) -∗
         procHeld Γ cpu' j RUNNING ch' -∗ trapCsrs cpu' -∗ intrRes cpu' -∗
         ownCtxCells (pContext (procAddr j) 0) -∗ hartFull Γ j cpu' -∗
         ▷ schedVcAt Γ cpu' (cpuCtxAddr cpu') (procAddr j) -∗ wpLoop cpu'))
       (fun hc => Or.elim hc (fun hx => absurd hx (by decide))
         (fun hx => absurd hx (procAddr_nonzero hj))) $$ HΦ
-    iapply HΦ' $$ %_ %spie %spp %root %ch' %hcsF Hk Hpc Hheld' Htc' Hir' Hcells Htag' Hvc'
+    iapply HΦ' $$ %_ %spie %spp %ch' %hcsF Hk Hpc Hheld' Htc' Hir' Hcells Htag' Hvc'
   · -- THE PARK THAT NEVER RETURNS: no record is left, and the whole stack
     -- region sched was called with goes to the slot
     have hz : st = ZOMBIE := by

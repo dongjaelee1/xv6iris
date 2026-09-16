@@ -494,18 +494,20 @@ def KCtx.popExit (k : KCtx) (reen : Bool) : KCtx := if reen then k.popOff.intrOn
 
 /-- What `pop_off` takes to re-enable interrupts: the arm the outermost
 push_off paid out (nothing otherwise). -/
-def popArm [KernelGeom] [KernelImage GF] (cpu : CPU) (k : KCtx) (reen : Bool) : IProp GF :=
+def popArm [CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (k : KCtx) (reen : Bool) : IProp GF :=
   if reen then sieArm cpu true k.proc else emp
 
 @[simp] theorem KCtx.popExit_false (k : KCtx) : k.popExit false = k.popOff := rfl
 @[simp] theorem KCtx.popExit_true (k : KCtx) : k.popExit true = k.popOff.intrOn := rfl
-@[simp] theorem popArm_false [KernelGeom] [KernelImage GF] (cpu : CPU) (k : KCtx) : popArm (GF := GF) cpu k false = emp := rfl
-@[simp] theorem popArm_true [KernelGeom] [KernelImage GF] (cpu : CPU) (k : KCtx) :
+@[simp] theorem popArm_false [CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (k : KCtx) :
+    popArm (GF := GF) cpu k false = emp := rfl
+@[simp] theorem popArm_true [CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (k : KCtx) :
     popArm (GF := GF) cpu k true = sieArm cpu true k.proc := rfl
 
 
 /-- The arm depends on the context only through `proc`. -/
-theorem popArm_proc [KernelGeom] [KernelImage GF] (cpu : CPU) (k k' : KCtx) (r : Bool) (hp : k'.proc = k.proc) :
+theorem popArm_proc [CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (k k' : KCtx) (r : Bool)
+    (hp : k'.proc = k.proc) :
     popArm (GF := GF) cpu k r ⊢ popArm cpu k' r := by
   unfold popArm
   cases r
@@ -596,7 +598,7 @@ theorem KCtx.reen_of_wf (k : KCtx) (hwf : k.wf) : k.sie = (decide (k.noff + 1 = 
     simp [hn, hi]
 
 /-- The arm a balanced pair takes back is the one its push paid out. -/
-theorem popArm_sie [KernelGeom] [KernelImage GF] (cpu : CPU) (k k' : KCtx) (hp : k'.proc = k.proc) :
+theorem popArm_sie [CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (k k' : KCtx) (hp : k'.proc = k.proc) :
     sieArm (GF := GF) cpu k.sie k.proc ⊢ popArm cpu k' k.sie := by
   unfold popArm
   cases k.sie

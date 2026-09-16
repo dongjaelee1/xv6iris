@@ -22,13 +22,9 @@ claim and the slot's half, the payload is rebuilt (`procSlots_running_intro`,
 `procLockRes_intro`) and released, and the epilogue lands on the caller's
 own context -- at the dispatching hart.
 
-THE ROOT: the resumed bundle carries the DISPATCHING hart's `satp`
-(`validCtx`'s resume wand quantifies it), while the caller's exit -- and
-the trap engine above it -- wants the parking hart's.  They agree because
-there is exactly ONE kernel page table: `kptOn` carries the table's root
-as a persistent ghost variable, so the `kptOn` kept (persistently) from
-the entry bundle and the one read out of the resumed bundle agree
-(`MachCSL.kptOn_root_agree`).
+THE ROOT is `sched`'s business now: its contract returns the caller's own
+`k.root`, because there is exactly ONE kernel page table
+(`Xv6.SchedCtx.kctx_root_agree` over `MachCSL.kptOn_root_agree`).
 -/
 import MachCSL.WpSmodeFrame
 import Xv6.SpecYield
@@ -46,39 +42,6 @@ open LeanRV64D
 attribute [local semireducible] LeanRV64D.Functions.hartSupports LeanRV64D.Functions.currentlyEnabled
 
 variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF]
-
-/-- The installed table of a Kpt bundle, without spending the bundle
-(`kptOn` is persistent). -/
-theorem transSlot_kptOn [CurCtx] (cpu : CPU) (tier : KTier) (root : BitVec 44)
-    (ht : tier = KTier.kpt) :
-    transSlot (GF := GF) cpu tier root ⊢
-      (∃ (t : PTree) (M : RegMapF (BitVec 64)), ⌜t.base = root⌝ ∗ kptOn t M) ∗
-      transSlot cpu tier root := by
-  subst ht
-  unfold transSlot transSlotAt kptSlot
-  iintro ⟨%htc, %t, %M, #Hkpt, %hb, Htlb⟩
-  isplitl []
-  · iexists t, M
-    isplitl []
-    · ipureintro; exact hb
-    · iexact Hkpt
-  · isplitl []
-    · ipureintro; exact htc
-    · iexists t, M
-      iframe Htlb
-      isplitl []
-      · iexact Hkpt
-      · ipureintro; exact hb
-
-theorem kctx_kptOn [CurCtx] {lent : Bool} (cpu : CPU) (k : KCtx) (ht : k.tier = KTier.kpt) :
-    kctxL (GF := GF) lent cpu k ⊢
-      (∃ (t : PTree) (M : RegMapF (BitVec 64)), ⌜t.base = k.root⌝ ∗ kptOn t M) ∗ kctxL lent cpu k := by
-  iintro Hk
-  icases kctx_cases cpu k $$ Hk with ⟨%hwf, HC, HF, Hst, Htr, Ha, Hc, Htok, Hcl, #Hro⟩
-  icases transSlot_kptOn cpu k.tier k.root ht $$ Htr with ⟨Hk2, Htr⟩
-  iframe Hk2
-  iapply kctx_intro' cpu k hwf
-  iframe HC HF Hst Htr Ha Hc Htok Hcl Hro
 
 theorem yield_pState (pa : BitVec 64) : pa + 24#64 = pState pa := rfl
 
@@ -99,7 +62,6 @@ theorem yield_proof (MP : MYPROC) (AC : ACQUIRE) (RE : RELEASE) (SC : SCHED) : Y
   icases kctx_wf _ _ $$ Hk with ⟨%hwf, Hk⟩
   have ht0 : t0 = KTier.kpt := hct.symm.trans htier
   subst ht0
-  icases kctx_kptOn cpu k htier $$ Hk with ⟨⟨%t1, %M1, %hb1, #Hkpt1⟩, Hk⟩
   have hint : k.intena = false := (hwf.1 hnoff).symm.trans hsie
   simp only [yieldAddr, KernelSyms.«yield»]
   k_norm
@@ -233,9 +195,9 @@ theorem yield_proof (MP : MYPROC) (AC : ACQUIRE) (RE : RELEASE) (SC : SCHED) : Y
       trapCsrs cpu ∗ intrRes cpu ∗ ownCtxCells (pContext (procAddr j) 0) ∗ hartFull Γ j cpu ∗
       ▷ schedVcAt Γ cpu (cpuCtxAddr cpu) (procAddr j) ∗
       wpNext true k'.proc cpu (fun cpu' => iprop(∀ (R' : RegMap) (spie spp : Bool)
-        (root' : BitVec 44) (ch'' : BitVec 64),
+        (ch'' : BitVec 64),
         ⌜calleeSaved k'.regs R'⌝ -∗
-        kctx cpu' (resumedK R' spie spp k'.avail k'.intena root' (procAddr j)) -∗
+        kctx cpu' (resumedK R' spie spp k'.avail k'.intena k'.root (procAddr j)) -∗
         pcIs cpu' (jumpPc (k'.regs 1#5)) -∗
         procHeld Γ cpu' j RUNNING ch'' -∗ trapCsrs cpu' -∗ intrRes cpu' -∗
         ownCtxCells (pContext (procAddr j) 0) -∗ hartFull Γ j cpu' -∗
@@ -265,15 +227,7 @@ theorem yield_proof (MP : MYPROC) (AC : ACQUIRE) (RE : RELEASE) (SC : SCHED) : Y
     rw [if_neg (by decide : ¬ invDormant RUNNABLE)]
     iempintro
   iapply wpNext_intro_pin
-  iintro %h1 %hp1 %R4 %spie %spp %root' %ch2 %hcs4 Hk Hpc Hheld Htc Hres Hcells Htag Hvc
-  -- THE ROOT of the hart that dispatched us is this kernel's: one table
-  icases kctx_kptOn h1 (resumedK R4 spie spp _ _ root' (procAddr j)) rfl $$ Hk with
-    ⟨⟨%t2, %M2, %hb2, #Hkpt2⟩, Hk⟩
-  ihave %hbb := kptOn_root_agree t1 t2 M1 M2 $$ [$Hkpt1 $Hkpt2]
-  simp only [resumedK_root] at hb2
-  have hroot : root' = k.root := by
-    rw [← hb2, ← hbb]; exact hb1
-  subst hroot
+  iintro %h1 %hp1 %R4 %spie %spp %ch2 %hcs4 Hk Hpc Hheld Htc Hres Hcells Htag Hvc
   have hretB : jumpPc 0x80001f18#64 = 0x80001f18#64 := by decide
   k_norm [hint, hretB, trapRes_off, resumedK_regs, resumedK_sie, resumedK_spie, resumedK_spp, resumedK_avail,
     resumedK_noff, resumedK_intena, resumedK_locks, resumedK_tier, resumedK_root, resumedK_proc,

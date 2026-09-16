@@ -560,6 +560,21 @@ def isLock [CurCtx] (γ : GName) (lk : BitVec 64) (s : String) (R : CtxId → IP
   ⌜lockAddrOk lk⌝ ∗ kmapId lk ∗ kmapId (lk + 16#64) ∗
   ∃ lo lc : Nat, inv lockN (lockBody γ lk s R lo lc) ∗ lkFloor curCtx lo ∗ lkFloor curCtx lc
 
+/-- A lock HANDLE transports: it is persistent, and its only context
+dependence is the pair of floors its creator certified (`lkFloor`). -/
+instance instCtxMorphIsLock (tier : KTier) (γ : GName) (lk : BitVec 64) (s : String)
+    (R : CtxId → IProp GF) :
+    CtxMorph (GF := GF) (fun ξ => @isLock hlc GF _ _ ⟨ξ, tier⟩ γ lk s R) :=
+  @instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
+    (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
+      (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
+        (@instCtxMorphExists hlc GF _ _
+          (fun (lo : Nat) ξ => iprop(∃ lc : Nat, inv lockN (lockBody γ lk s R lo lc) ∗
+            lkFloor ξ lo ∗ lkFloor ξ lc))
+          (fun _ => @instCtxMorphExists hlc GF _ _ _ (fun _ =>
+            @instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
+              (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphLkFloor _) (instCtxMorphLkFloor _)))))))
+
 instance isLock_persistent [CurCtx] (γ : GName) (lk : BitVec 64) (s : String) (R : CtxId → IProp GF) :
     Persistent (isLock (GF := GF) γ lk s R) := by
   unfold isLock

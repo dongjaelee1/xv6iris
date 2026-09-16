@@ -474,22 +474,25 @@ is the ambient instance at those, and `wpLoop_ofEra` turns the client's
 
 /-- The ambient instance at era `E`, generation `gen`, with the client's
 running-proc claim `cP` (`MachCSL.KCtx.cpuClaim`; `cI`: the idle claim is
-free). -/
+free) and its handler environment `eP` (`MachCSL.KCtx.intrResP`; `ePe`: the
+environment is persistent). -/
 @[reducible] def MachGS.ofEra (E : EraGS GF) (gen : Nat) (cP : CPU → BitVec 64 → IProp GF)
-    (cI : ∀ cpu : CPU, ⊢ cP cpu 0#64) : MachGS hlc GF :=
+    (cI : ∀ cpu : CPU, ⊢ cP cpu 0#64) (eP : CtxId → IProp GF)
+    (ePe : ∀ ξ : CtxId, Persistent (eP ξ)) : MachGS hlc GF :=
   { regName := E.regName, mem := E.mem, viewName := E.viewName, iviewName := E.iviewName,
     rviewName := E.rviewName, topName := E.topName, authName := E.authName, resvName := E.resvName,
     lockSetName := E.lockSetName, kmapName := E.kmapName, kptRootName := E.kptRootName,
-    gen := gen, claimP := cP, claim_idle := cI }
+    gen := gen, claimP := cP, claim_idle := cI, envP := eP, env_persistent := ePe }
 
 theorem wpLoop_ofEra (E : EraGS GF) (gen : Nat) (cP : CPU → BitVec 64 → IProp GF)
-    (cI : ∀ cpu : CPU, ⊢ cP cpu 0#64) (cpu : CPU) :
-    genCertAt gen E ∗ @wpLoop hlc GF (MachGS.ofEra E gen cP cI) cpu ⊢@{IProp GF}
+    (cI : ∀ cpu : CPU, ⊢ cP cpu 0#64) (eP : CtxId → IProp GF)
+    (ePe : ∀ ξ : CtxId, Persistent (eP ξ)) (cpu : CPU) :
+    genCertAt gen E ∗ @wpLoop hlc GF (MachGS.ofEra E gen cP cI eP ePe) cpu ⊢@{IProp GF}
       hartWP gen cpu (pure ()) := by
   iintro ⟨Hcert, Hwp⟩
   unfold wpLoop wpHart
-  rw [show @genId hlc GF (MachGS.ofEra E gen cP cI) = gen from rfl,
-    show @genCert hlc GF (MachGS.ofEra E gen cP cI) = genCertAt gen E from rfl]
+  rw [show @genId hlc GF (MachGS.ofEra E gen cP cI eP ePe) = gen from rfl,
+    show @genCert hlc GF (MachGS.ofEra E gen cP cI eP ePe) = genCertAt gen E from rfl]
   iapply Hwp
   iexact Hcert
 

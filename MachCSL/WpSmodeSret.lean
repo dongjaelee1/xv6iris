@@ -161,11 +161,11 @@ theorem wp_s_sret [CurCtx] [KernelGeom] [KernelImage GF] (cpu : CPU) (k : KCtx) 
   ihave Hcpu := cpuOwn_zero cpu false false true k.noff k.intena true k.proc k.locks hn0 (fun h => nomatch h) $$ Hcpu
   -- the arm, from the trap CSRs, the claim and the handler
   unfold intrRes intrResP
-  icases Hres with ⟨%h, %hd, Hstv, #HS⟩
+  icases Hres with ⟨%h, %hd, Hstv, #HS, #Henv⟩
   ihave Hcsrs := trapCsrs_intro cpu epc sc tv $$ [Hsepc Hscause Hstval]
   case' _ => unfold trapCsrsAt; iframe Hsepc Hscause Hstval
-  ihave HarmOn := sieArm_on_intro cpu k.proc h hd $$ [Hcsrs Hclaim Hstv HS]
-  case' _ => iframe Hcsrs Hclaim Hstv HS
+  ihave HarmOn := sieArm_on_intro cpu k.proc h hd $$ [Hcsrs Hclaim Hstv HS Henv]
+  case' _ => iframe Hcsrs Hclaim Hstv HS Henv
   iapply HΦ $$ [HConf HF Hstack Htrans HarmOn Hcpu Htok Hclock] Hpc
   iapply (kctx_intro' cpu (k.sretTo spie spp) hwf')
   have hst : trapRes true + (k.avail - trapRes true) = k.avail := Nat.add_sub_cancel' hres

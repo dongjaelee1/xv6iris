@@ -7,10 +7,11 @@ Three groups of lemmas:
 
 * `CtxMorph` instances for the context-dependent parts of `kctxP` at a
   FIXED tier -- the stack (`stackOwn`), the per-cpu cells (`cpuCells`,
-  `cpuOwn`) and the translation slot (`transSlot`, whose `kptOn` carries
-  the entries' keys at the context).  The register file, the
-  configuration, the interrupt arm, the clock cells and the read-only
-  image mention no context at all.
+  `cpuOwn`), the translation slot (`transSlot`, whose `kptOn` carries the
+  entries' keys at the context) and the interrupt arm (`sieArmP`, whose
+  installed handler carries the handler ENVIRONMENT at the context, with
+  its own re-homing witness).  The register file, the configuration, the
+  clock cells and the read-only image mention no context at all.
 * `kctx_rehome`: with the destination's running token in hand, swap it
   against the bundle's own and move everything else across
   (`MachCSL.CtxLaws.ctx_move`).
@@ -129,6 +130,40 @@ instance instCtxMorphTransSlot [KernelGeom] (tier : KTier) (cpu : CPU) (tr : KTi
     (fun ξ => @transSlotAt hlc GF _ ⟨ξ, tier⟩ cpu tr root)
     (instCtxMorphConst _) (instCtxMorphTransSlotAt _ _ _ _)
 
+/-- The installed handler at a fixed tier: only the environment it carries
+depends on the context, and the environment carries its own re-homing
+witness (`MachCSL.CtxLaws.envAt`). -/
+instance instCtxMorphIntrResP (tier : KTier) (S : IhsIx → IProp GF) (cpu : CPU) :
+    CtxMorph (GF := GF) (fun ξ => @intrResP hlc GF _ ⟨ξ, tier⟩ S cpu) :=
+  @instCtxMorphExists hlc GF _ _
+    (fun (h : BitVec 64) ξ => iprop(⌜stvecDirect h⌝ ∗ Register.stvec ↦ᵣ[cpu] h ∗ □ S ⟨cpu, h⟩ ∗ envAt ξ))
+    (fun _ => @instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
+      (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
+        (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _) instCtxMorphEnvAt)))
+
+/-- The interrupt arm at a fixed tier. -/
+instance instCtxMorphSieArmP (tier : KTier) (S : IhsIx → IProp GF) (cpu : CPU) (sie : Bool)
+    (p : BitVec 64) :
+    CtxMorph (GF := GF) (fun ξ => @sieArmP hlc GF _ ⟨ξ, tier⟩ S cpu sie p) := by
+  unfold sieArmP
+  cases sie
+  · simp only [Bool.false_eq_true, ite_false]
+    exact instCtxMorphConst _
+  · simp only [ite_true]
+    exact @instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
+      (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _) (instCtxMorphIntrResP tier S cpu))
+
+/-- The bundle's interrupt arm at a fixed tier. -/
+instance instCtxMorphSieArm [KernelGeom] [KernelImage GF] (tier : KTier) (cpu : CPU) (sie : Bool)
+    (p : BitVec 64) :
+    CtxMorph (GF := GF) (fun ξ => @sieArm hlc GF _ ⟨ξ, tier⟩ _ _ cpu sie p) :=
+  instCtxMorphSieArmP tier ihs cpu sie p
+
+/-- The installed handler. -/
+instance instCtxMorphIntrRes [KernelGeom] [KernelImage GF] (tier : KTier) (cpu : CPU) :
+    CtxMorph (GF := GF) (fun ξ => @intrRes hlc GF _ ⟨ξ, tier⟩ _ _ cpu) :=
+  instCtxMorphIntrResP tier ihs cpu
+
 /-! ## Re-homing the bundle -/
 
 /-- **The hart bundle changes thread**: with the destination context's
@@ -150,6 +185,8 @@ theorem kctx_rehome (tier : KTier) (ξ ξ' : CtxId) [KernelGeom] [KernelImage GF
     $$ [$Hξ $Hξ' $Htrans] with ⟨Hξ, Hξ', Htrans⟩
   imod ctx_move (fun ζ => @cpuOwn hlc GF _ ⟨ζ, tier⟩ _ cpu lent k.sie k.noff k.intena k.proc k.locks) cpu ξ ξ'
     $$ [$Hξ $Hξ' $Hcpu] with ⟨Hξ, Hξ', Hcpu⟩
+  imod ctx_move (fun ζ => @sieArm hlc GF _ ⟨ζ, tier⟩ _ _ cpu k.sie k.proc) cpu ξ ξ'
+    $$ [$Hξ $Hξ' $Harm] with ⟨Hξ, Hξ', Harm⟩
   imodintro
   iframe Hξ
   iapply (@kctx_intro' hlc GF _ ⟨ξ', tier⟩ _ _ lent cpu k hwf)

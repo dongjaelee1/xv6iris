@@ -26,7 +26,11 @@ dying thread has to leave a whole kernel stack behind.
 The resumed configuration keeps `noff = 1`, `locks = ["proc"]`,
 `sie = false`, `proc = &proc[j]` and the SAME `c->intena` -- sched's own
 `s3` save/restore around the swtch is exactly that -- while `SPIE`/`SPP`
-and the kernel root are the RESUMING hart's, hence quantified.
+are the RESUMING hart's, hence quantified.  THE KERNEL ROOT IS NOT: the
+resumed bundle carries the dispatching hart's `satp`, but there is
+exactly one kernel page table (`MachCSL.kptOn_root_agree` over the
+persistent root ghost, `Xv6.SchedCtx.kctx_root_agree`), so it is the
+parking hart's own `k.root`.
 
 Imports only definitional files.
 -/
@@ -59,9 +63,9 @@ def wp_sched_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF
   ▷ schedVcAt Γ cpu (cpuCtxAddr cpu) (procAddr j) ∗
   (if needsCtx st then
      wpNext true k.proc cpu (fun cpu' => iprop(∀ (R' : RegMap) (spie spp : Bool)
-       (root' : BitVec 44) (ch' : BitVec 64),
+       (ch' : BitVec 64),
        ⌜calleeSaved k.regs R'⌝ -∗
-       kctx cpu' (resumedK R' spie spp k.avail k.intena root' (procAddr j)) -∗
+       kctx cpu' (resumedK R' spie spp k.avail k.intena k.root (procAddr j)) -∗
        pcIs cpu' (jumpPc (k.regs 1#5)) -∗
        procHeld Γ cpu' j RUNNING ch' -∗ trapCsrs cpu' -∗ intrRes cpu' -∗
        ownCtxCells (pContext (procAddr j) 0) -∗ hartFull Γ j cpu' -∗

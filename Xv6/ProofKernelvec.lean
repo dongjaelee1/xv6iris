@@ -40,21 +40,20 @@ theorem bv5_cases (i : BitVec 5) : i = 0#5 ∨ i = 1#5 ∨ i = 2#5 ∨ i = 3#5 �
 
 set_option maxHeartbeats 8000000 in
 /-- **`kernelvec` meets the handler contract**, given `kerneltrap`. -/
-theorem kernelvec_proof (KT : KERNELTRAP) : KERNELVEC := ⟨fun {hlc GF} _ _ Γ _ cpu₀ => by
-  suffices h : procsInvAll (GF := GF) Γ ⊢ ∀ cpu : CPU, ihs ⟨cpu, kernelvecAddr⟩ by
-    iintro #Henv
-    iapply h $$ Henv
-  iintro #Henv
+theorem kernelvec_proof (KT : KERNELTRAP) : KERNELVEC := ⟨fun {hlc GF} _ _ Γ _ _ cpu₀ => by
+  suffices h : ⊢@{IProp GF} ∀ cpu : CPU, ihs ⟨cpu, kernelvecAddr⟩ by
+    exact h.trans (by iintro H; iapply H $$ %cpu₀)
+  iintro
   -- Löb over every hart: the resumed context's arm names this contract
   iloeb as IH
   iintuitionistic IH
   iintro %cpu
   iapply (ihs_fold ⟨cpu, kernelvecAddr⟩)
   unfold ihsF
-  iintro !> %X %k %pc %sc %⟨hwf, hs, hpc, hsc⟩ Hk Hpc Hcsrs Hstv Hclaim Hcont
-  -- the handler's environment at THIS trap's context
+  iintro !> %X %k %pc %sc %⟨hwf, hs, hpc, hsc⟩ Hk Hpc Hcsrs Hstv #Henv Hclaim Hcont
+  -- THE HANDLER'S ENVIRONMENT, at THIS trap's context: the proc table
   ihave #Hpinv : procsInv (GF := GF) Γ $$ [Henv]
-  case' _ => unfold procsInvAll; iapply Henv $$ %X
+  case' _ => iapply procsInv_of_envAt' Γ $$ Henv
   have hn0 : k.noff = 0 := (hwf.2.2.1 hs).1
   have hi : k.intena = true := (hwf.2.2.1 hs).2.1
   have hl : k.locks = [] := (hwf.2.2.1 hs).2.2.1
@@ -151,7 +150,7 @@ theorem kernelvec_proof (KT : KERNELTRAP) : KERNELVEC := ⟨fun {hlc GF} _ _ Γ 
   case' _ =>
     unfold intrRes intrResP
     iexists (0x800055c0#64)
-    iframe Hstv
+    iframe Hstv Henv
     isplit
     · ipureintro; exact kernelvecAddr_direct
     · imodintro; iapply IH

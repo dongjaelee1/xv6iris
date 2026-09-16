@@ -613,15 +613,6 @@ theorem sc_parkOk_RUNNABLE : parkOk RUNNABLE := ⟨Or.inl sc_needsCtx_RUNNABLE, 
 
 theorem sc_unclaimed_RUNNABLE : unclaimed RUNNABLE := ⟨by decide, by decide⟩
 
-/-- The hart tag of a slot nobody runs retargets. -/
-theorem sc_hart_update [Xv6G GF] (Γ : SchedNames) (j : Nat) (h h' : CPU) :
-    hartFull (GF := GF) Γ j h ⊢ |==> hartFull Γ j h' := by
-  unfold hartFull hartOwn
-  iintro Hg
-  imod ghost_var_update h' _ _ $$ Hg with Hg
-  imodintro
-  iexact Hg
-
 /-- The callee-saved image, componentwise (a copy of `ProofSched.calleeImg_eq`). -/
 theorem sc_calleeImg_eq {R R' : RegMap} (h : calleeImg R = calleeImg R') :
     R 1#5 = R' 1#5 ∧ R 2#5 = R' 2#5 ∧ R 8#5 = R' 8#5 ∧ R 9#5 = R' 9#5 ∧ R 18#5 = R' 18#5 ∧
@@ -651,36 +642,6 @@ theorem sc_schedBase' (cpu : CPU) :
     BitVec.ofNat 64 (128 * cpu.val) + scPidLockAddr = schedBase cpu := by
   unfold schedBase scPidLockAddr
   bv_omega
-
-/-- The slot a park hands back, in the shape `procSlotsAt` wants. -/
-theorem sc_park_slot [Xv6G GF] (Γ : SchedNames) (ξl : CtxId) (n : Nat) (hn : n < NPROC)
-    (st : BitVec 32) (hpark : parkOk st) (h : CPU) :
-    ((if (decide (needsCtx st) : Bool) then
-        ∃ ξo : CtxId, parkTokAt (GF := GF) ξl none ξo ∗
-          ▷ validCtx (pSched Γ) ⟨none, pContext (procAddr n) 0, procAddr n, ξo⟩
-      else @ownCtxCells hlc GF _ ⟨ξl, KTier.kpt⟩ (pContext (procAddr n) 0)) ∗
-    hartFull Γ n h ∗ parkPayAt ξl (procAddr n) st) ⊢ procSlotsAt Γ ξl (procAddr n) st := by
-  by_cases hnc : needsCtx st
-  · rw [decide_eq_true hnc]
-    simp only [reduceIte]
-    iintro ⟨⟨%ξo, Htok, Hvc⟩, Htag, Hpay⟩
-    iapply (procSlots_park_gen Γ ξl (procAddr n) st hpark)
-    rw [if_pos hnc]
-    isplitl [Htok Hvc]
-    · iapply procCtx_of_tok Γ ξl ξo (procAddr n) $$ [$Htok $Hvc]
-    isplitl [Htag]
-    · iapply hartAtAny_intro Γ n h hn $$ Htag
-    · iexact Hpay
-  · rw [decide_eq_false hnc]
-    simp only [Bool.false_eq_true, if_false]
-    iintro ⟨Hc, Htag, Hpay⟩
-    iapply (procSlots_park_gen Γ ξl (procAddr n) st hpark)
-    rw [if_neg hnc]
-    isplitl [Hc]
-    · iexact Hc
-    isplitl [Htag]
-    · iapply hartAtAny_intro Γ n h hn $$ Htag
-    · iexact Hpay
 
 set_option maxHeartbeats 4000000 in
 /-- `0x80001df4 .. 0x80001e18`: the dispatch of a RUNNABLE slot -- mark it
@@ -715,7 +676,7 @@ theorem scheduler_dispatch (SW : SWTCH) [Xv6G GF] [X : CurCtx] (Γ : SchedNames)
       iempintro
   iapply wpLoop_bupd
   imod (pstateWhole_update Γ (procAddr n) RUNNABLE RUNNING) $$ [$Hpw] with Hpw
-  imod (sc_hart_update Γ n h0 cpu) $$ [$Htag] with Htag
+  imod (hart_update Γ n h0 cpu) $$ [$Htag] with Htag
   imodintro
   -- sw s8,24(s1): p->state = RUNNING
   k_step (wp_s_sw cpu _ 0x80001df4#64 false 24#12 9#5 24#5 (by decide) RUNNABLE)
@@ -811,7 +772,7 @@ theorem scheduler_dispatch (SW : SWTCH) [Xv6G GF] [X : CurCtx] (Γ : SchedNames)
   subst hA'
   subst hcret
   subst hback
-  ihave Hsl := sc_park_slot Γ ξ0 n hn st hpark cpu $$ [$Hrec' $Htag2 $Hpay2]
+  ihave Hsl := procSlots_park_gen' Γ ξ0 n hn st hpark cpu $$ [$Hrec' $Htag2 $Hpay2]
   icases procHeldAt_cases Γ ξ0 cpu n st ch2 $$ Hheld2 with
     ⟨Hlocked2, Hpw2, %kl2, %xs2, %pid2, Hstate2, Hchan2, Hrest2⟩
   icases (pstateWhole_split Γ (procAddr n) st).mp $$ Hpw2 with ⟨Hpl2, _⟩

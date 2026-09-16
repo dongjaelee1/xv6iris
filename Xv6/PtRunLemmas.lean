@@ -68,6 +68,11 @@ theorem zeroNode_wf (b : BitVec 44) (lvl : Nat) : (PTree.zeroNode b).wf lvl := b
   | zero => intro i; exact ⟨rfl, Or.inl rfl⟩
   | succ l => intro i; simp only [zeroNode_kids, zeroNode_ents]
 
+theorem zeroNode_wfU (b : BitVec 44) (lvl : Nat) : (PTree.zeroNode b).wfU lvl := by
+  cases lvl with
+  | zero => intro i; exact ⟨rfl, Or.inl rfl⟩
+  | succ l => intro i; simp only [zeroNode_kids, zeroNode_ents]
+
 theorem zeroNode_walk (b : BitVec 44) (lvl : Nat) (vpn : BitVec 27) :
     (PTree.zeroNode b).walk lvl vpn = none := by
   cases lvl with
@@ -220,8 +225,36 @@ theorem wf_fill (lvl : Nat) (t : PTree) (vpn : BitVec 27) (fr : List (BitVec 44)
             ih (PTree.zeroNode b) fr' (zeroNode_wf b lvl)⟩
         · rw [if_neg hj, if_neg hj]; exact hwf j
 
+theorem wfU_fill (lvl : Nat) (t : PTree) (vpn : BitVec 27) (fr : List (BitVec 44))
+    (hwf : t.wfU lvl) : (t.fill lvl vpn fr).1.wfU lvl := by
+  induction lvl generalizing t fr with
+  | zero => exact hwf
+  | succ lvl ih =>
+    simp only [PTree.fill]
+    cases hk : t.kids (vpnIdx vpn (lvl+1)) with
+    | some c =>
+      have hc := hwf (vpnIdx vpn (lvl+1))
+      rw [hk] at hc
+      intro j
+      simp only [PTree.setKid, PTree.kids_node, PTree.ents_node]
+      by_cases hj : j = vpnIdx vpn (lvl+1)
+      · rw [if_pos hj, hj, hc.1]
+        exact ⟨by rw [base_fill lvl c vpn fr], ih c fr hc.2⟩
+      · rw [if_neg hj]; exact hwf j
+    | none =>
+      cases fr with
+      | nil => exact hwf
+      | cons b fr' =>
+        intro j
+        simp only [PTree.setKid, PTree.setEnt, PTree.kids_node, PTree.ents_node]
+        by_cases hj : j = vpnIdx vpn (lvl+1)
+        · rw [if_pos hj, if_pos hj]
+          exact ⟨by rw [base_fill lvl (PTree.zeroNode b) vpn fr', zeroNode_base],
+            ih (PTree.zeroNode b) fr' (zeroNode_wfU b lvl)⟩
+        · rw [if_neg hj, if_neg hj]; exact hwf j
+
 theorem walk_fill (lvl : Nat) (t : PTree) (vpn : BitVec 27) (fr : List (BitVec 44))
-    (hwf : t.wf lvl) (w : BitVec 27) : (t.fill lvl vpn fr).1.walk lvl w = t.walk lvl w := by
+    (hwf : t.wfU lvl) (w : BitVec 27) : (t.fill lvl vpn fr).1.walk lvl w = t.walk lvl w := by
   induction lvl generalizing t fr with
   | zero => rfl
   | succ lvl ih =>
@@ -260,7 +293,7 @@ theorem walk_fill (lvl : Nat) (t : PTree) (vpn : BitVec 27) (fr : List (BitVec 4
             simp only [PTree.setKid, PTree.kids_node, ite_true]
           simp only [PTree.walk, hj]
           simp only [h1, hk, hz, ite_true]
-          rw [ih (PTree.zeroNode b) fr' (zeroNode_wf b lvl)]
+          rw [ih (PTree.zeroNode b) fr' (zeroNode_wfU b lvl)]
           exact zeroNode_walk b lvl w
         · simp only [PTree.walk, PTree.setKid, PTree.setEnt, PTree.kids_node, PTree.ents_node,
             PTree.base_node, if_neg hj]
@@ -425,6 +458,31 @@ theorem wf_setLeaf_complete (lvl : Nat) (t : PTree) (vpn : BitVec 27) (ppn : Bit
       exact ⟨by rw [PTree.base_setLeaf], ih c hwc.2 hcc⟩
     · rw [if_neg hj]; exact hwf j
 
+/-- The same for a user table: any valid leaf (`V` and some of `R`/`W`/`X`)
+keeps `wfU`. -/
+theorem wfU_setLeaf_complete (lvl : Nat) (t : PTree) (vpn : BitVec 27) (v : BitVec 64)
+    (hv : v.getLsbD 0 = true ∧ v &&& 0xE#64 ≠ 0#64) (hwf : t.wfU lvl) (hc : t.complete lvl vpn) :
+    (t.setLeaf lvl vpn v).wfU lvl := by
+  induction lvl generalizing t with
+  | zero =>
+    intro j
+    refine ⟨(hwf j).1, ?_⟩
+    simp only [PTree.setLeaf, PTree.setEnt, PTree.ents_node]
+    by_cases hj : j = vpnIdx vpn 0
+    · rw [if_pos hj]; exact Or.inr hv
+    · rw [if_neg hj]; exact (hwf j).2
+  | succ lvl ih =>
+    obtain ⟨c, hk, hcc⟩ := (complete_succ_iff lvl t vpn).mp hc
+    have hwc := hwf (vpnIdx vpn (lvl+1))
+    rw [hk] at hwc
+    simp only [PTree.setLeaf, hk]
+    intro j
+    simp only [PTree.setKid, PTree.kids_node, PTree.ents_node]
+    by_cases hj : j = vpnIdx vpn (lvl+1)
+    · rw [if_pos hj, hj, hwc.1]
+      exact ⟨by rw [PTree.base_setLeaf], ih c hwc.2 hcc⟩
+    · rw [if_neg hj]; exact hwf j
+
 /-- Writing a leaf does not disturb another page's (blocked) walk. -/
 theorem walk_setLeaf_ne (t : PTree) (vpn vpn' : BitVec 27) (v : BitVec 64)
     (hc : t.complete 2 vpn) (hne : vpn ≠ vpn') :
@@ -438,6 +496,44 @@ theorem entAt_eq_zero (lvl : Nat) (t : PTree) (vpn : BitVec 27) (h : t.walk lvl 
   by_cases he : t.entAt lvl vpn = 0#64
   · exact he
   · rw [if_neg he] at h; exact absurd h (by simp)
+
+/-! ## A walk's slot is one of the tree's pages -/
+
+theorem slot_mem_pages (lvl : Nat) (t : PTree) (vpn : BitVec 27) :
+    (t.slot lvl vpn).1 ∈ t.pages lvl := by
+  induction lvl generalizing t with
+  | zero => exact List.Mem.head _
+  | succ lvl ih =>
+    cases hk : t.kids (vpnIdx vpn (lvl+1)) with
+    | none =>
+      simp only [PTree.slot, PTree.pages, hk]
+      exact List.Mem.head _
+    | some c =>
+      simp only [PTree.slot, PTree.pages, hk]
+      refine List.Mem.tail _ (List.mem_flatMap.mpr ⟨vpnIdx vpn (lvl+1), mem_allIdx _, ?_⟩)
+      rw [hk]
+      exact ih c
+
+theorem pageValid_ne_zero (p : BitVec 64) (h : pageValid p) : p ≠ 0#64 := by
+  intro he; subst he; exact h.2.1 (by decide)
+
+theorem pteAddr_ne_zero (b : BitVec 44) (i : BitVec 9) (h : pageAddr b ≠ 0#64) :
+    pteAddr b i ≠ 0#64 := by
+  intro hc
+  refine h ?_
+  have hb : b = 0#44 := by
+    unfold pteAddr LeanRV64D.zero_extend Sail.BitVec.zeroExtend at hc
+    revert hc; bv_decide
+  rw [hb]
+  unfold pageAddr pteAddr LeanRV64D.zero_extend Sail.BitVec.zeroExtend
+  bv_decide
+
+/-- The address a completed walk returns is never `0`, since every node page
+is a valid allocator page. -/
+theorem walk_slot_ne_zero (t : PTree) (vpn : BitVec 27)
+    (hpg : ∀ b ∈ t.pages 2, pageValid (pageAddr b)) :
+    pteAddr (t.slot 2 vpn).1 (vpnIdx vpn 0) ≠ 0#64 :=
+  pteAddr_ne_zero _ _ (pageValid_ne_zero _ (hpg _ (slot_mem_pages 2 t vpn)))
 
 /-! ## The same shape: what `missingOn`/`missingRun` depend on -/
 
@@ -575,11 +671,11 @@ theorem missingOn_le_missingRun (t : PTree) (vpn : BitVec 27) (m : Nat) :
 
 /-- One page of a run: the fill consumes the prefix of the supply, the leaf
 is written, the rest of the run continues on the next page. -/
-theorem mapRun_succ (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : KPerm) (m : Nat)
+theorem mapRun_succ (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : BitVec 64) (m : Nat)
     (fr gr : List (BitVec 44)) (hlen : fr.length = t.missingOn 2 vpn)
     (hc : (t.fill 2 vpn fr).1.complete 2 vpn) :
     t.mapRun vpn ppn perm (m+1) (fr ++ gr) =
-      (let s := ((t.fill 2 vpn fr).1.setLeaf 2 vpn (kLeaf ppn perm 0#1 0#1)).mapRun
+      (let s := ((t.fill 2 vpn fr).1.setLeaf 2 vpn (leafOf ppn perm)).mapRun
         (vpn + 1#27) (ppn + 1#44) perm m gr
        (s.1, s.2.1, s.2.2 + 1)) := by
   have h1 : (t.fill 2 vpn (fr ++ gr)).1 = (t.fill 2 vpn fr).1 :=
@@ -589,15 +685,22 @@ theorem mapRun_succ (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : KPer
   simp only [PTree.mapRun, h1, h2, if_pos hc]
 
 /-- The last page of a run. -/
-theorem mapRun_one (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : KPerm)
+theorem mapRun_one (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : BitVec 64)
     (fr : List (BitVec 44)) (hlen : fr.length = t.missingOn 2 vpn)
     (hc : (t.fill 2 vpn fr).1.complete 2 vpn) :
     t.mapRun vpn ppn perm 1 fr =
-      ((t.fill 2 vpn fr).1.setLeaf 2 vpn (kLeaf ppn perm 0#1 0#1), [], 1) := by
+      ((t.fill 2 vpn fr).1.setLeaf 2 vpn (leafOf ppn perm), [], 1) := by
   have h := mapRun_succ t vpn ppn perm 0 fr [] hlen hc
   rw [List.append_nil] at h
   rw [h]
   simp only [PTree.mapRun]
+
+/-- A run that cannot complete the first page's path leaves the tree as the
+fill left it and maps nothing. -/
+theorem mapRun_fail (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : BitVec 64) (m : Nat)
+    (fr : List (BitVec 44)) (hc : ¬ (t.fill 2 vpn fr).1.complete 2 vpn) :
+    t.mapRun vpn ppn perm (m+1) fr = ((t.fill 2 vpn fr).1, (t.fill 2 vpn fr).2, 0) := by
+  simp only [PTree.mapRun, if_neg hc]
 
 /-- The node count of a run, split at the first page: the pages the fill
 consumed, then the count of the rest (which depends only on the shape). -/
@@ -610,6 +713,92 @@ theorem missingRun_step (t : PTree) (vpn : BitVec 27) (m : Nat) (fr : List (BitV
   refine congrArg _ (missingRun_congr m _ _ _ ?_)
   exact sameShape_setLeaf 2 _ _ vpn _ _
     (sameShape_fill 2 t t vpn _ fr (sameShape_refl 2 t) (by simp only [List.length_replicate, hlen]))
+
+/-- A run that exhausts its supply used at most the nodes the count allows. -/
+theorem mapRun_len_le (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : BitVec 64)
+    (fr : List (BitVec 44)) (h : (t.mapRun vpn ppn perm n fr).2.1 = []) :
+    fr.length ≤ t.missingRun vpn n := by
+  induction n generalizing t vpn ppn fr with
+  | zero =>
+    simp only [PTree.mapRun] at h
+    simp only [h, List.length_nil, PTree.missingRun, Nat.le_refl]
+  | succ n ih =>
+    by_cases hc : (t.fill 2 vpn fr).1.complete 2 vpn
+    · have hmo : t.missingOn 2 vpn ≤ fr.length := (complete_fill 2 t vpn fr).mp hc
+      have hsp : (t.fill 2 vpn fr).2 = fr.drop (t.missingOn 2 vpn) := supply_fill 2 t vpn fr
+      have hlen : (fr.take (t.missingOn 2 vpn)).length = t.missingOn 2 vpn := by
+        rw [List.length_take]; omega
+      have hsplit : fr = fr.take (t.missingOn 2 vpn) ++ fr.drop (t.missingOn 2 vpn) :=
+        (List.take_append_drop _ _).symm
+      have hcf : (t.fill 2 vpn (fr.take (t.missingOn 2 vpn))).1.complete 2 vpn :=
+        (complete_fill 2 t vpn _).mpr (by omega)
+      have hstep := mapRun_succ t vpn ppn perm n (fr.take (t.missingOn 2 vpn))
+        (fr.drop (t.missingOn 2 vpn)) hlen hcf
+      rw [← hsplit] at hstep
+      have hfe : (t.fill 2 vpn (fr.take (t.missingOn 2 vpn))).1 = (t.fill 2 vpn fr).1 := by
+        have hfa := fill_append 2 t vpn (fr.take (t.missingOn 2 vpn))
+          (fr.drop (t.missingOn 2 vpn)) (by omega)
+        rw [List.take_append_drop] at hfa
+        exact hfa.symm
+      rw [hstep] at h
+      simp only at h
+      have hih := ih ((t.fill 2 vpn fr).1.setLeaf 2 vpn (leafOf ppn perm)) (vpn + 1#27)
+        (ppn + 1#44) (fr.drop (t.missingOn 2 vpn)) (by rw [← hfe]; exact h)
+      have hcnt := missingRun_step t vpn n (fr.take (t.missingOn 2 vpn)) (leafOf ppn perm) hlen
+      rw [hfe] at hcnt
+      rw [hcnt, hlen]
+      have : fr.length = t.missingOn 2 vpn + (fr.drop (t.missingOn 2 vpn)).length := by
+        rw [List.length_drop]; omega
+      omega
+    · rw [mapRun_fail t vpn ppn perm n fr hc] at h
+      simp only at h
+      rw [supply_fill] at h
+      have hle : fr.length ≤ t.missingOn 2 vpn := by
+        have := congrArg List.length h
+        rw [List.length_drop, List.length_nil] at this
+        omega
+      exact le_trans hle (missingOn_le_missingRun t vpn n)
+
+/-- A run that mapped every page and exhausted its supply used exactly the
+nodes the count predicts. -/
+theorem mapRun_len_full (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44)
+    (perm : BitVec 64) (fr : List (BitVec 44)) (h : (t.mapRun vpn ppn perm n fr).2 = ([], n)) :
+    fr.length = t.missingRun vpn n := by
+  induction n generalizing t vpn ppn fr with
+  | zero =>
+    simp only [PTree.mapRun, Prod.mk.injEq] at h
+    simp only [h.1, List.length_nil, PTree.missingRun]
+  | succ n ih =>
+    by_cases hc : (t.fill 2 vpn fr).1.complete 2 vpn
+    · have hmo : t.missingOn 2 vpn ≤ fr.length := (complete_fill 2 t vpn fr).mp hc
+      have hlen : (fr.take (t.missingOn 2 vpn)).length = t.missingOn 2 vpn := by
+        rw [List.length_take]; omega
+      have hsplit : fr = fr.take (t.missingOn 2 vpn) ++ fr.drop (t.missingOn 2 vpn) :=
+        (List.take_append_drop _ _).symm
+      have hcf : (t.fill 2 vpn (fr.take (t.missingOn 2 vpn))).1.complete 2 vpn :=
+        (complete_fill 2 t vpn _).mpr (by omega)
+      have hstep := mapRun_succ t vpn ppn perm n (fr.take (t.missingOn 2 vpn))
+        (fr.drop (t.missingOn 2 vpn)) hlen hcf
+      rw [← hsplit] at hstep
+      have hfe : (t.fill 2 vpn (fr.take (t.missingOn 2 vpn))).1 = (t.fill 2 vpn fr).1 := by
+        have hfa := fill_append 2 t vpn (fr.take (t.missingOn 2 vpn))
+          (fr.drop (t.missingOn 2 vpn)) (by omega)
+        rw [List.take_append_drop] at hfa
+        exact hfa.symm
+      rw [hstep] at h
+      simp only [Prod.mk.injEq] at h
+      have hih := ih ((t.fill 2 vpn fr).1.setLeaf 2 vpn (leafOf ppn perm)) (vpn + 1#27)
+        (ppn + 1#44) (fr.drop (t.missingOn 2 vpn))
+        (by rw [← hfe]; exact Prod.ext h.1 (by omega))
+      have hcnt := missingRun_step t vpn n (fr.take (t.missingOn 2 vpn)) (leafOf ppn perm) hlen
+      rw [hfe] at hcnt
+      rw [hcnt, hlen]
+      have : fr.length = t.missingOn 2 vpn + (fr.drop (t.missingOn 2 vpn)).length := by
+        rw [List.length_drop]; omega
+      omega
+    · rw [mapRun_fail t vpn ppn perm n fr hc] at h
+      simp only [Prod.mk.injEq] at h
+      omega
 
 /-! ## Ownership: the level-0 entry of a complete path -/
 

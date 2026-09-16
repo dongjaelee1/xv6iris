@@ -45,12 +45,13 @@ variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF]
 set_option maxHeartbeats 1000000 in
 /-- `mappages`' contract at its entry address, as a rule. -/
 theorem kvm_mappages_call (MP : MAPPAGES) [CurCtx] (c : CPU) (k' : KCtx)
-    (γl : GName) (γk : KmemNames) (nb : Nat) (t : PTree) (n : Nat) (perm : KPerm)
+    (γl : GName) (γk : KmemNames) (nb : Nat) (t : PTree) (n : Nat) (perm : BitVec 64)
     (hnoff : k'.noff + 1 < 2 ^ 31) (hK : 32 ≤ k'.avail) (hlk : "kmem" ∉ k'.locks)
     (hroot : k'.regs 10#5 = pageAddr t.base)
     (hargs : mappagesArgs t (k'.regs 11#5) (k'.regs 12#5) (k'.regs 13#5) n)
-    (hperm : k'.regs 14#5 = permBits perm)
-    (hwf : t.wf 2) (hnd : t.pagesNodup 2)
+    (hperm : k'.regs 14#5 = perm) (hmask : perm &&& ~~~0x3FF#64 = 0#64)
+    (hrwx : perm &&& 0xE#64 ≠ 0#64)
+    (hwf : t.wfU 2) (hnd : t.pagesNodup 2)
     (hpgt : ∀ b ∈ t.pages 2, pageValid (pageAddr b))
     (hcount : t.missingRun (vpnOf (k'.regs 11#5)) n < nb) :
     kctx c k' ∗ pcIs c 0x80000fe4#64 ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗
@@ -69,7 +70,7 @@ theorem kvm_mappages_call (MP : MAPPAGES) [CurCtx] (c : CPU) (k' : KCtx)
         fresh.Nodup ∧ (∀ b ∈ fresh, pageValid (pageAddr b) ∧ b ∉ t.pages 2)⌝ -∗ wpLoop cpu'))
     ⊢ wpLoop (GF := GF) c := by
   have h := MP.wp_mappages (hlc := hlc) (GF := GF) c k' γl γk nb t n perm hnoff hK hlk hroot
-    hargs hperm hwf hnd hpgt hcount
+    hargs hperm hmask hrwx hwf hnd hpgt hcount
   unfold wp_mappages_body at h
   simp only [mappagesAddr, KernelSyms.«mappages»] at h
   exact h
@@ -78,8 +79,8 @@ theorem kvm_mappages_call (MP : MAPPAGES) [CurCtx] (c : CPU) (k' : KCtx)
 
 set_option maxHeartbeats 4000000 in
 theorem kvmmap_proof (MP : MAPPAGES) : KVMMAP :=
-  ⟨fun {hlc GF} _ _ _ cpu k γl γk nb t n perm hnoff hK hlk hroot hargs hperm hwf hnd hpgt
-      hcount => by
+  ⟨fun {hlc GF} _ _ _ cpu k γl γk nb t n perm hnoff hK hlk hroot hargs hperm hmask hrwx hwf hnd
+      hpgt hcount => by
   unfold wp_kvmmap_body
   simp only [kvmmapAddr, KernelSyms.«kvmmap»]
   iintro ⟨Hk, Hpc, #Hlk, Htree, Hav, HΦ⟩
@@ -109,8 +110,8 @@ theorem kvmmap_proof (MP : MAPPAGES) : KVMMAP :=
   iintro Hk Hpc
   have hpin5 : k.sie = false ∨ k.proc = 0#64 → c5 = cpu := fun h =>
     (hp5 h).trans ((hp4 h).trans ((hp3 h).trans ((hp2 h).trans (hp1 h))))
-  iapply (kvm_mappages_call MP c5 _ γl γk nb t n perm ?hn ?hKm ?hl ?hro ?hag ?hpm hwf hnd hpgt
-    ?hct) $$ [- $Hk $Hpc]
+  iapply (kvm_mappages_call MP c5 _ γl γk nb t n perm ?hn ?hKm ?hl ?hro ?hag ?hpm hmask hrwx hwf
+    hnd hpgt ?hct) $$ [- $Hk $Hpc]
   rotate_right 1
   k_norm_g
   iframe #

@@ -286,7 +286,7 @@ theorem pms_kvmmap_call (KM : KVMMAP) [CurCtx] (c : CPU) (k' : KCtx) (γl : GNam
     (hroot : k'.regs 10#5 = pageAddr T.base) (h11 : k'.regs 11#5 = va)
     (h12 : k'.regs 12#5 = pa) (h13 : k'.regs 13#5 = 4096#64) (h14 : k'.regs 14#5 = 6#64)
     (hargs : mappagesArgs T va 4096#64 pa 1)
-    (hwf : T.wf 2) (hnd : T.pagesNodup 2)
+    (hwf : T.wfU 2) (hnd : T.pagesNodup 2)
     (hpgT : ∀ b ∈ T.pages 2, pageValid (pageAddr b))
     (hcount : T.missingRun (vpnOf va) 1 < nb) :
     kctx c k' ∗ pcIs c 0x8000109a#64 ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗
@@ -296,15 +296,16 @@ theorem pms_kvmmap_call (KM : KVMMAP) [CurCtx] (c : CPU) (k' : KCtx) (γl : GNam
       ⌜k'.sie = false → spie = k'.spie ∧ spp = k'.spp⌝ -∗
       kctx cpu' ((k'.withSpie spie spp).withRegs R') -∗ pcIs cpu' (jumpPc (k'.regs 1#5)) -∗
       ptreeOwn 2 (DFrac.own 1)
-        (T.mapRun (vpnOf va) (BitVec.extractLsb' 12 44 pa) .rw 1 fresh).1 -∗
+        (T.mapRun (vpnOf va) (BitVec.extractLsb' 12 44 pa) (permBits .rw) 1 fresh).1 -∗
       kallocAvail γk (some (nb - fresh.length)) -∗
       ⌜calleeSaved k'.regs R' ∧
         fresh.length = T.missingRun (vpnOf va) 1 ∧
-        (T.mapRun (vpnOf va) (BitVec.extractLsb' 12 44 pa) .rw 1 fresh).2 = ([], 1) ∧
+        (T.mapRun (vpnOf va) (BitVec.extractLsb' 12 44 pa) (permBits .rw) 1 fresh).2 = ([], 1) ∧
         fresh.Nodup ∧ (∀ b ∈ fresh, pageValid (pageAddr b) ∧ b ∉ T.pages 2)⌝ -∗ wpLoop cpu'))
     ⊢ wpLoop (GF := GF) c := by
-  have h := KM.wp_kvmmap (hlc := hlc) (GF := GF) c k' γl γk nb T 1 KPerm.rw hnoff hK hlk hroot
-    (by rw [h11, h12, h13]; exact hargs) (by rw [h14]; rfl) hwf hnd hpgT
+  have h := KM.wp_kvmmap (hlc := hlc) (GF := GF) c k' γl γk nb T 1 (permBits KPerm.rw) hnoff hK
+    hlk hroot (by rw [h11, h12, h13]; exact hargs) (by rw [h14]; rfl) (by decide) (by decide)
+    hwf hnd hpgT
     (by rw [h11]; exact hcount)
   unfold wp_kvmmap_body at h
   simp only [kvmmapAddr, KernelSyms.«kvmmap», h11, h12] at h
@@ -338,12 +339,12 @@ theorem pms_iter (KA : KALLOC) (KM : KVMMAP) [CurCtx]
       ⌜k.sie = false → spie2 = spie ∧ spp2 = spp⌝ -∗
       kctx cpu' (((k.pushed 10).withSpie spie2 spp2).withRegs R2) -∗
       pcIs cpu' (if i + 1 = 64 then 0x800017cc#64 else 0x8000179e#64) -∗
-      ptreeOwn 2 (DFrac.own 1) (T.mapRun (kstackVpn i) p .rw 1 fresh).1 -∗
+      ptreeOwn 2 (DFrac.own 1) (T.mapRun (kstackVpn i) p (permBits .rw) 1 fresh).1 -∗
       ([∗list] j ∈ List.range (i+1),
         byteBuf (pageAddr (PtStack.pasUpd pas i p j)) (DFrac.own 1) (List.replicate 4096 5#8)) -∗
       kallocAvail γk (some (nb - (i+1) - (fr ++ fresh).length)) -∗
       ⌜pmsKept R R2 ∧ R2 9#5 = 2147559352#64 + BitVec.ofNat 64 (360 * (i+1)) ∧
-        PtStack.StackInv t (T.mapRun (kstackVpn i) p .rw 1 fresh).1
+        PtStack.StackInv t (T.mapRun (kstackVpn i) p (permBits .rw) 1 fresh).1
           (PtStack.pasUpd pas i p) (i+1) (fr ++ fresh)⌝ -∗ wpLoop cpu'))
     ⊢ wpLoop (GF := GF) cur := by
   iintro ⟨Hk, Hpc, #Hlk, Htree, Hav, Hpages, HΦ⟩
@@ -501,7 +502,7 @@ theorem pms_iter (KA : KALLOC) (KM : KVMMAP) [CurCtx]
       $$ [Hpages Hbuf2]
     case' _ => iframe
     icases PtStack.stackPages_nodup' (T.mapRun (kstackVpn i) (BitVec.extractLsb' 12 44 (R2 10#5))
-      .rw 1 fresh).1 (i+1) (PtStack.pasUpd pas i (BitVec.extractLsb' 12 44 (R2 10#5)))
+      (permBits .rw) 1 fresh).1 (i+1) (PtStack.pasUpd pas i (BitVec.extractLsb' 12 44 (R2 10#5)))
       $$ [Htree Hpages] with ⟨%hnd2, Htree, Hpages⟩
     case' _ => iframe
     have hpnd : ((List.range (i+1)).map
@@ -509,7 +510,8 @@ theorem pms_iter (KA : KALLOC) (KM : KVMMAP) [CurCtx]
       (List.nodup_append.mp hnd2).2.1
     have hpnm : ∀ j, j < i+1 →
         PtStack.pasUpd pas i (BitVec.extractLsb' 12 44 (R2 10#5)) j ∉
-          (T.mapRun (kstackVpn i) (BitVec.extractLsb' 12 44 (R2 10#5)) .rw 1 fresh).1.pages 2 := by
+          (T.mapRun (kstackVpn i) (BitVec.extractLsb' 12 44 (R2 10#5)) (permBits .rw) 1
+            fresh).1.pages 2 := by
       intro j hj
       exact PtStack.notMem_of_nodup_append _ _ hnd2 _
         (List.mem_map.mpr ⟨j, List.mem_range.mpr hj, rfl⟩)

@@ -166,16 +166,17 @@ theorem km_kvmmap_call (KM : KVMMAP) [CurCtx] (c : CPU) (k' : KCtx)
       ⌜k'.sie = false → spie = k'.spie ∧ spp = k'.spp⌝ -∗
       kctx cpu' ((k'.withSpie spie spp).withRegs R') -∗ pcIs cpu' (jumpPc (k'.regs 1#5)) -∗
       ptreeOwn 2 (DFrac.own 1)
-        (t.mapRun (vpnOf (k'.regs 11#5)) (BitVec.extractLsb' 12 44 (k'.regs 12#5)) perm n fresh).1 -∗
+        (t.mapRun (vpnOf (k'.regs 11#5)) (BitVec.extractLsb' 12 44 (k'.regs 12#5)) (permBits perm) n fresh).1 -∗
       kallocAvail γk (some (nb - fresh.length)) -∗
       ⌜calleeSaved k'.regs R' ∧
         fresh.length = t.missingRun (vpnOf (k'.regs 11#5)) n ∧
-        (t.mapRun (vpnOf (k'.regs 11#5)) (BitVec.extractLsb' 12 44 (k'.regs 12#5)) perm n fresh).2
+        (t.mapRun (vpnOf (k'.regs 11#5)) (BitVec.extractLsb' 12 44 (k'.regs 12#5)) (permBits perm) n fresh).2
           = ([], n) ∧
         fresh.Nodup ∧ (∀ b ∈ fresh, pageValid (pageAddr b) ∧ b ∉ t.pages 2)⌝ -∗ wpLoop cpu'))
     ⊢ wpLoop (GF := GF) c := by
-  have h := KM.wp_kvmmap (hlc := hlc) (GF := GF) c k' γl γk nb t n perm hnoff hK hlk hroot
-    hargs hperm hwf hnd hpgt hcount
+  have h := KM.wp_kvmmap (hlc := hlc) (GF := GF) c k' γl γk nb t n (permBits perm) hnoff hK hlk
+    hroot hargs hperm (by cases perm <;> decide) (by cases perm <;> decide) (PTree.wf_wfU 2 t hwf) hnd hpgt
+    hcount
   unfold wp_kvmmap_body at h
   simp only [kvmmapAddr, KernelSyms.«kvmmap»] at h
   exact h
@@ -205,7 +206,7 @@ theorem km_mapstacks_call (PM : PROC_MAPSTACKS) [CurCtx] (c : CPU) (k' : KCtx)
       wpLoop cpu'))
     ⊢ wpLoop (GF := GF) c := by
   have h := PM.wp_proc_mapstacks (hlc := hlc) (GF := GF) c k' γl γk nb t hnoff hK hlk hroot
-    hwf hnd hpgt hunm hcount
+    (PTree.wf_wfU 2 t hwf) hnd hpgt hunm hcount
   unfold wp_proc_mapstacks_body at h
   simp only [procMapstacksAddr, KernelSyms.«proc_mapstacks»] at h
   exact h

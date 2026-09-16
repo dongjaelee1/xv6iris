@@ -29,7 +29,7 @@ def kstackVpn (i : Nat) : BitVec 27 := BitVec.ofNat 27 (0x3FFFFFF - 2 * (i + 1))
 
 /-- One region mapped (the supply consumed by its nodes). -/
 def _root_.MachCSL.PTree.mapRegion (t : PTree) (r : KvmRegion) (fr : List (BitVec 44)) : PTree × List (BitVec 44) :=
-  let s := t.mapRun r.vpn r.ppn r.perm r.n fr
+  let s := t.mapRun r.vpn r.ppn (permBits r.perm) r.n fr
   (s.1, s.2.1)
 
 /-- The regions mapped in order. -/
@@ -44,7 +44,7 @@ def _root_.MachCSL.PTree.mapStacks : PTree → (Nat → BitVec 44) → Nat → L
   | t, _, 0, fr => (t, fr)
   | t, pas, i+1, fr =>
       let r := t.mapStacks pas i fr
-      r.1.mapRun (kstackVpn i) (pas i) .rw 1 r.2 |> fun s => (s.1, s.2.1)
+      r.1.mapRun (kstackVpn i) (pas i) (permBits .rw) 1 r.2 |> fun s => (s.1, s.2.1)
 
 /-- The nodes a run of stacks creates when the supply never runs out. -/
 def _root_.MachCSL.PTree.missingStacks : PTree → Nat → Nat

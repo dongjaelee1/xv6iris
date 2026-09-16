@@ -39,7 +39,7 @@ def wp_proc_mapstacks_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF]
     (cpu : CPU) (k : KCtx) (γl : GName) (γk : KmemNames) (nb : Nat) (t : PTree)
     (hnoff : k.noff + 1 < 2 ^ 31) (hK : 44 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
     (hroot : k.regs 10#5 = pageAddr t.base)
-    (hwf : t.wf 2) (hnd : t.pagesNodup 2)
+    (hwf : t.wfU 2) (hnd : t.pagesNodup 2)
     (hpg : ∀ b ∈ t.pages 2, pageValid (pageAddr b))
     (hunm : ∀ i, i < 64 → t.walk 2 (kstackVpn i) = none)
     (hcount : 64 + t.missingStacks 64 < nb) : Prop :=

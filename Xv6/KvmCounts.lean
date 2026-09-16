@@ -36,11 +36,11 @@ theorem dsup_length : dsup.length = 64 := List.length_replicate
 allocator besides the root and the stacks. -/
 theorem dcounts :
     ((PTree.zeroNode 0#44)).missingRun 0x10000#27 1 = 2 ∧
-    ((((PTree.zeroNode 0#44)).mapRun 0x10000#27 0x10000#44 KPerm.rw 1 dsup).1).missingRun 0x10001#27 1 = 0 ∧
-    ((((((PTree.zeroNode 0#44)).mapRun 0x10000#27 0x10000#44 KPerm.rw 1 dsup).1).mapRun 0x10001#27 0x10001#44 KPerm.rw 1 dsup).1).missingRun 0xC000#27 0x4000 = 32 ∧
-    ((((((((PTree.zeroNode 0#44)).mapRun 0x10000#27 0x10000#44 KPerm.rw 1 dsup).1).mapRun 0x10001#27 0x10001#44 KPerm.rw 1 dsup).1).mapRun 0xC000#27 0xC000#44 KPerm.rw 0x4000 dsup).1).missingRun 0x80000#27 7 = 2 ∧
-    ((((((((((PTree.zeroNode 0#44)).mapRun 0x10000#27 0x10000#44 KPerm.rw 1 dsup).1).mapRun 0x10001#27 0x10001#44 KPerm.rw 1 dsup).1).mapRun 0xC000#27 0xC000#44 KPerm.rw 0x4000 dsup).1).mapRun 0x80000#27 0x80000#44 KPerm.rx 7 dsup).1).missingRun 0x80007#27 0x7FF9 = 63 ∧
-    ((((((((((((PTree.zeroNode 0#44)).mapRun 0x10000#27 0x10000#44 KPerm.rw 1 dsup).1).mapRun 0x10001#27 0x10001#44 KPerm.rw 1 dsup).1).mapRun 0xC000#27 0xC000#44 KPerm.rw 0x4000 dsup).1).mapRun 0x80000#27 0x80000#44 KPerm.rx 7 dsup).1).mapRun 0x80007#27 0x80007#44 KPerm.rw 0x7FF9 dsup).1).missingRun 0x3FFFFFF#27 1 = 2 := by
+    ((((PTree.zeroNode 0#44)).mapRun 0x10000#27 0x10000#44 (permBits KPerm.rw) 1 dsup).1).missingRun 0x10001#27 1 = 0 ∧
+    ((((((PTree.zeroNode 0#44)).mapRun 0x10000#27 0x10000#44 (permBits KPerm.rw) 1 dsup).1).mapRun 0x10001#27 0x10001#44 (permBits KPerm.rw) 1 dsup).1).missingRun 0xC000#27 0x4000 = 32 ∧
+    ((((((((PTree.zeroNode 0#44)).mapRun 0x10000#27 0x10000#44 (permBits KPerm.rw) 1 dsup).1).mapRun 0x10001#27 0x10001#44 (permBits KPerm.rw) 1 dsup).1).mapRun 0xC000#27 0xC000#44 (permBits KPerm.rw) 0x4000 dsup).1).missingRun 0x80000#27 7 = 2 ∧
+    ((((((((((PTree.zeroNode 0#44)).mapRun 0x10000#27 0x10000#44 (permBits KPerm.rw) 1 dsup).1).mapRun 0x10001#27 0x10001#44 (permBits KPerm.rw) 1 dsup).1).mapRun 0xC000#27 0xC000#44 (permBits KPerm.rw) 0x4000 dsup).1).mapRun 0x80000#27 0x80000#44 (permBits KPerm.rx) 7 dsup).1).missingRun 0x80007#27 0x7FF9 = 63 ∧
+    ((((((((((((PTree.zeroNode 0#44)).mapRun 0x10000#27 0x10000#44 (permBits KPerm.rw) 1 dsup).1).mapRun 0x10001#27 0x10001#44 (permBits KPerm.rw) 1 dsup).1).mapRun 0xC000#27 0xC000#44 (permBits KPerm.rw) 0x4000 dsup).1).mapRun 0x80000#27 0x80000#44 (permBits KPerm.rx) 7 dsup).1).mapRun 0x80007#27 0x80007#44 (permBits KPerm.rw) 0x7FF9 dsup).1).missingRun 0x3FFFFFF#27 1 = 2 := by
   native_decide
 
 /-! ## The state between the calls -/
@@ -70,7 +70,7 @@ theorem sOk_step (b : BitVec 44) (T D : PTree) (Q : Nat → Prop) (v : BitVec 27
     (perm : KPerm) (n : Nat) (fr : List (BitVec 44)) (h : sOk b T D Q)
     (hspan : vn + n ≤ 2 ^ 27) (hlen : fr.length = T.missingRun v n)
     (hdc : D.missingRun v n ≤ 64) (hv : ∀ z ∈ fr, pageValid (pageAddr z)) :
-    sOk b (T.mapRun v p perm n fr).1 (D.mapRun v q perm n dsup).1
+    sOk b (T.mapRun v p (permBits perm) n fr).1 (D.mapRun v q (permBits perm) n dsup).1
       (fun x => Q x ∧ ¬(vn ≤ x ∧ x < vn + n)) := by
   obtain ⟨hwf, hb, hsh, hnone, hpg⟩ := h
   subst hvn
@@ -144,12 +144,12 @@ the trampoline's mapping already completed the stacks' paths. -/
 theorem kvmmake_six (b : BitVec 44) (f1 f2 f3 f4 f5 f6 : List (BitVec 44))
     (T0 T1 T2 T3 T4 T5 T6 : PTree)
     (e0 : T0 = PTree.zeroNode b)
-    (e1 : T1 = (T0.mapRun 0x10000#27 0x10000#44 KPerm.rw 1 f1).1)
-    (e2 : T2 = (T1.mapRun 0x10001#27 0x10001#44 KPerm.rw 1 f2).1)
-    (e3 : T3 = (T2.mapRun 0xC000#27 0xC000#44 KPerm.rw 0x4000 f3).1)
-    (e4 : T4 = (T3.mapRun 0x80000#27 0x80000#44 KPerm.rx 7 f4).1)
-    (e5 : T5 = (T4.mapRun 0x80007#27 0x80007#44 KPerm.rw 0x7FF9 f5).1)
-    (e6 : T6 = (T5.mapRun 0x3FFFFFF#27 0x80006#44 KPerm.rx 1 f6).1)
+    (e1 : T1 = (T0.mapRun 0x10000#27 0x10000#44 (permBits KPerm.rw) 1 f1).1)
+    (e2 : T2 = (T1.mapRun 0x10001#27 0x10001#44 (permBits KPerm.rw) 1 f2).1)
+    (e3 : T3 = (T2.mapRun 0xC000#27 0xC000#44 (permBits KPerm.rw) 0x4000 f3).1)
+    (e4 : T4 = (T3.mapRun 0x80000#27 0x80000#44 (permBits KPerm.rx) 7 f4).1)
+    (e5 : T5 = (T4.mapRun 0x80007#27 0x80007#44 (permBits KPerm.rw) 0x7FF9 f5).1)
+    (e6 : T6 = (T5.mapRun 0x3FFFFFF#27 0x80006#44 (permBits KPerm.rx) 1 f6).1)
     (hb : pageValid (pageAddr b))
     (hv1 : ∀ q ∈ f1, pageValid (pageAddr q))
     (hv2 : ∀ q ∈ f2, pageValid (pageAddr q))
@@ -157,12 +157,12 @@ theorem kvmmake_six (b : BitVec 44) (f1 f2 f3 f4 f5 f6 : List (BitVec 44))
     (hv4 : ∀ q ∈ f4, pageValid (pageAddr q))
     (hv5 : ∀ q ∈ f5, pageValid (pageAddr q))
     (hv6 : ∀ q ∈ f6, pageValid (pageAddr q))
-    (hc1 : (T0.mapRun 0x10000#27 0x10000#44 KPerm.rw 1 f1).2.2 = 1)
-    (hc2 : (T1.mapRun 0x10001#27 0x10001#44 KPerm.rw 1 f2).2.2 = 1)
-    (hc3 : (T2.mapRun 0xC000#27 0xC000#44 KPerm.rw 0x4000 f3).2.2 = 0x4000)
-    (hc4 : (T3.mapRun 0x80000#27 0x80000#44 KPerm.rx 7 f4).2.2 = 7)
-    (hc5 : (T4.mapRun 0x80007#27 0x80007#44 KPerm.rw 0x7FF9 f5).2.2 = 0x7FF9)
-    (hc6 : (T5.mapRun 0x3FFFFFF#27 0x80006#44 KPerm.rx 1 f6).2.2 = 1)
+    (hc1 : (T0.mapRun 0x10000#27 0x10000#44 (permBits KPerm.rw) 1 f1).2.2 = 1)
+    (hc2 : (T1.mapRun 0x10001#27 0x10001#44 (permBits KPerm.rw) 1 f2).2.2 = 1)
+    (hc3 : (T2.mapRun 0xC000#27 0xC000#44 (permBits KPerm.rw) 0x4000 f3).2.2 = 0x4000)
+    (hc4 : (T3.mapRun 0x80000#27 0x80000#44 (permBits KPerm.rx) 7 f4).2.2 = 7)
+    (hc5 : (T4.mapRun 0x80007#27 0x80007#44 (permBits KPerm.rw) 0x7FF9 f5).2.2 = 0x7FF9)
+    (hc6 : (T5.mapRun 0x3FFFFFF#27 0x80006#44 (permBits KPerm.rx) 1 f6).2.2 = 1)
     (hunm : ∀ i, i < 64 → T6.walk 2 (kstackVpn i) = none) :
     kvmSix b T6 := by
   have hw0 : T0.wf 2 := by rw [e0]; exact zeroNode_wf b 2

@@ -490,7 +490,7 @@ zero node (`0x80000f50`), or gives up (`0x80000f62`, `a0 = 0`). -/
 theorem walk_descend (KA : KALLOC) (MS : MEMSET) [Xv6G GF] [CurCtx]
     (cpu : CPU) (kb : KCtx) (γl : GName) (γk : KmemNames) (on : Option Nat)
     (hnoff : kb.noff + 1 < 2 ^ 31) (hK : 14 ≤ kb.avail) (hlk : "kmem" ∉ kb.locks)
-    (lvl : Nat) (sh : Nat) (t : PTree) (va : BitVec 64) (hwf : t.wf (lvl+1))
+    (lvl : Nat) (sh : Nat) (t : PTree) (va : BitVec 64) (hwf : t.wfU (lvl+1))
     (i : BitVec 9) (hi : i = vpnIdx (vpnOf va) (lvl+1))
     (hidx : ∀ b : BitVec 44,
       ((va >>> (Sail.BitVec.extractLsb (BitVec.ofNat 64 sh) 5 0) &&& 511#64) <<< 3) + pageAddr b
@@ -511,7 +511,7 @@ theorem walk_descend (KA : KALLOC) (MS : MEMSET) [Xv6G GF] [CurCtx]
       kallocAvail γk (availSub on fresh.length) -∗
       ⌜(∀ fr : List (BitVec 44), t.fill (lvl+1) (vpnOf va) (fresh ++ fr)
            = (u.setKid i (c.fill lvl (vpnOf va) fr).1, (c.fill lvl (vpnOf va) fr).2)) ∧
-        c.wf lvl ∧ (∀ b ∈ fresh, pageValid (pageAddr b)) ∧
+        c.wfU lvl ∧ (∀ b ∈ fresh, pageValid (pageAddr b)) ∧
         R' 9#5 = pageAddr c.base ∧ walkPres R R'⌝ -∗ wpLoop cpu')) ∗
     wpNext kb.sie kb.proc cpu (fun cpu' => iprop(∀ (spie spp : Bool) (R' : RegMap),
       ⌜kb.sie = false → spie = kb.spie ∧ spp = kb.spp⌝ -∗
@@ -642,7 +642,7 @@ theorem walk_descend (KA : KALLOC) (MS : MEMSET) [Xv6G GF] [CurCtx]
         %(setKidO (t.setEnt i (kPtr b)) i (some (PTree.zeroNode b)))
         %(PTree.zeroNode b) %hsp Hk Hpc HR1 HR2 HR3 Hc Hcl2 Hav
       ipureintro
-      refine ⟨?_, PTree.zeroNode_wf b lvl, ?_, h9', ?_⟩
+      refine ⟨?_, PTree.zeroNode_wfU b lvl, ?_, h9', ?_⟩
       · intro fr
         simp only [List.cons_append, List.nil_append, PTree.fill, ← hi, hk, setKidO,
           PTree.setKid_setKid]
@@ -1095,7 +1095,7 @@ set_option maxHeartbeats 4000000 in
 /-- One level of the descent with `alloc = 0`. -/
 theorem walk_nd_descend [CurCtx]
     (cpu : CPU) (kb : KCtx) (dq : DFrac)
-    (lvl : Nat) (sh : Nat) (t : PTree) (va : BitVec 64) (hwf : t.wf (lvl+1))
+    (lvl : Nat) (sh : Nat) (t : PTree) (va : BitVec 64) (hwf : t.wfU (lvl+1))
     (i : BitVec 9) (_hi : i = vpnIdx (vpnOf va) (lvl+1))
     (hidx : ∀ b : BitVec 44,
       ((va >>> (Sail.BitVec.extractLsb (BitVec.ofNat 64 sh) 5 0) &&& 511#64) <<< 3) + pageAddr b
@@ -1275,7 +1275,7 @@ theorem walk_noalloc_proof : WALK_NOALLOC :=
     obtain ⟨hk2, h9a', hpres1⟩ := hf1
     obtain ⟨p2, p8, p19, p20, p21, p22, p23, p24, p25, p26, p27⟩ := hpres1
     have hpina : k.sie = false ∨ k.proc = 0#64 → ca = cpu := fun h => (hpa h).trans (hpin9 h)
-    have hwf1 : c1'.wf 1 := by have := hwf (vpnIdx (vpnOf (k.regs 11#5)) 2); rw [hk2] at this; exact this.2
+    have hwf1 : c1'.wfU 1 := by have := hwf (vpnIdx (vpnOf (k.regs 11#5)) 2); rw [hk2] at this; exact this.2
     k_step_gen (wp_s_addiw ca _ 0x80000f50#64 true 4087#12 20#5 20#5 (by decide))
       from (text_instr _ _ _ _ rfl rfl) Htext $$ [- $Hk $Hpc] with [p20] next cb hpb
     iintro Hk Hpc

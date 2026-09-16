@@ -89,7 +89,53 @@ end Xv6
 
 namespace Xv6
 
-open MachCSL
+open MachCSL Sail
+open LeanRV64D LeanRV64D.Functions
+
+/-! ## Pure: the leaf `mappages` writes -/
+
+/-- The `perm` argument of `mappages` for a kernel permission (`PTE_R|PTE_W`,
+`PTE_R|PTE_X`). -/
+def permBits : KPerm → BitVec 64
+  | .rw => 6#64
+  | .rx => 10#64
+
+/-- The entry `mappages` stores: `PA2PTE(pa) | perm | PTE_V`.  `perm` is any
+of the ten flag bits (`uvmcopy` passes `PTE_FLAGS(*pte)`), so the leaf is
+kept as a raw word rather than a `KPerm`. -/
+def leafOf (ppn : BitVec 44) (perm : BitVec 64) : BitVec 64 :=
+  (BitVec.setWidth 64 ppn <<< 10) ||| perm ||| 1#64
+
+theorem leafOf_kLeaf_rw (ppn : BitVec 44) : leafOf ppn 6#64 = kLeaf ppn .rw 0#1 0#1 := by
+  simp only [leafOf, kLeaf, pteSetAD, mkPte, KPerm.flags, Sail.BitVec.extractLsb,
+    Sail.BitVec.updateSubrange, Sail.BitVec.updateSubrange', BitVec.extractLsb,
+    _update_PTE_Flags_A, _update_PTE_Flags_D]
+  bv_decide
+
+theorem leafOf_kLeaf_rx (ppn : BitVec 44) : leafOf ppn 10#64 = kLeaf ppn .rx 0#1 0#1 := by
+  simp only [leafOf, kLeaf, pteSetAD, mkPte, KPerm.flags, Sail.BitVec.extractLsb,
+    Sail.BitVec.updateSubrange, Sail.BitVec.updateSubrange', BitVec.extractLsb,
+    _update_PTE_Flags_A, _update_PTE_Flags_D]
+  bv_decide
+
+/-- At a kernel permission the leaf is the canonical kernel leaf. -/
+theorem leafOf_permBits (ppn : BitVec 44) (perm : KPerm) :
+    leafOf ppn (permBits perm) = kLeaf ppn perm 0#1 0#1 := by
+  cases perm
+  · exact leafOf_kLeaf_rx ppn
+  · exact leafOf_kLeaf_rw ppn
+
+/-- `V` is set, so the leaf is never the invalid word. -/
+theorem leafOf_ne_zero (ppn : BitVec 44) (perm : BitVec 64) : leafOf ppn perm ≠ 0#64 := by
+  simp only [leafOf]; bv_decide
+
+/-- With one of `R`/`W`/`X` in `perm` the leaf is a valid level-0 leaf. -/
+theorem leafOf_valid (ppn : BitVec 44) (perm : BitVec 64) (h : perm &&& 0xE#64 ≠ 0#64) :
+    (leafOf ppn perm).getLsbD 0 = true ∧ (leafOf ppn perm) &&& 0xE#64 ≠ 0#64 := by
+  refine ⟨by simp only [leafOf]; bv_decide, ?_⟩
+  have he : (leafOf ppn perm) &&& 0xE#64 = perm &&& 0xE#64 := by
+    simp only [leafOf]; bv_decide
+  rw [he]; exact h
 
 /-! ## Pure: a run of mappings -/
 
@@ -97,13 +143,13 @@ open MachCSL
 permission `perm`), `walk` with allocation from the supply, then the leaf
 written; stops at the first page whose path could not be completed.
 Returns the tree, the unused supply and the number of pages mapped. -/
-def _root_.MachCSL.PTree.mapRun : PTree → BitVec 27 → BitVec 44 → KPerm → Nat → List (BitVec 44) →
+def _root_.MachCSL.PTree.mapRun : PTree → BitVec 27 → BitVec 44 → BitVec 64 → Nat → List (BitVec 44) →
     PTree × List (BitVec 44) × Nat
   | t, _, _, _, 0, fr => (t, fr, 0)
   | t, vpn, ppn, perm, n+1, fr =>
       let r := t.fill 2 vpn fr
       if r.1.complete 2 vpn then
-        let s := (r.1.setLeaf 2 vpn (kLeaf ppn perm 0#1 0#1)).mapRun (vpn + 1#27) (ppn + 1#44) perm n r.2
+        let s := (r.1.setLeaf 2 vpn (leafOf ppn perm)).mapRun (vpn + 1#27) (ppn + 1#44) perm n r.2
         (s.1, s.2.1, s.2.2 + 1)
       else (r.1, r.2, 0)
 
@@ -115,11 +161,5 @@ def _root_.MachCSL.PTree.missingRun : PTree → BitVec 27 → Nat → Nat
       let m := t.missingOn 2 vpn
       let t1 := (t.fill 2 vpn (List.replicate m 0#44)).1.setLeaf 2 vpn (kLeaf 0#44 .rw 0#1 0#1)
       m + t1.missingRun (vpn + 1#27) n
-
-/-- The `perm` argument of `mappages` for a kernel permission (`PTE_R|PTE_W`,
-`PTE_R|PTE_X`). -/
-def permBits : KPerm → BitVec 64
-  | .rw => 6#64
-  | .rx => 10#64
 
 end Xv6

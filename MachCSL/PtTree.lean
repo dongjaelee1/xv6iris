@@ -96,6 +96,39 @@ def PTree.wf : Nat → PTree → Prop
       | some c => t.ents i = kPtr c.base ∧ c.wf lvl
       | none => t.ents i = 0#64
 
+/-- Well formed at level `lvl` for a user table: as `wf`, except that a
+level-0 entry need only be a *valid leaf* — `V` set and at least one of
+`R`/`W`/`X`.  (The hardware walk treats `V ∧ ¬RWX` as a pointer, which must
+not appear at level 0.)  The kernel's own leaves are of that shape, so
+`wf` implies `wfU` (`PTree.wf_wfU`). -/
+def PTree.wfU : Nat → PTree → Prop
+  | 0, t => ∀ i, t.kids i = none ∧
+      (t.ents i = 0#64 ∨ ((t.ents i).getLsbD 0 = true ∧ (t.ents i) &&& 0xE#64 ≠ 0#64))
+  | lvl+1, t => ∀ i, match t.kids i with
+      | some c => t.ents i = kPtr c.base ∧ c.wfU lvl
+      | none => t.ents i = 0#64
+
+/-- A kernel leaf is a valid leaf: `V` set and `R` set. -/
+theorem kLeaf_valid (ppn : BitVec 44) (perm : KPerm) (a d : BitVec 1) :
+    (kLeaf ppn perm a d).getLsbD 0 = true ∧ (kLeaf ppn perm a d) &&& 0xE#64 ≠ 0#64 := by
+  cases perm <;>
+    simp only [kLeaf, pteSetAD, mkPte, KPerm.flags, Sail.BitVec.extractLsb,
+      Sail.BitVec.updateSubrange, Sail.BitVec.updateSubrange', BitVec.extractLsb,
+      _update_PTE_Flags_A, _update_PTE_Flags_D] <;>
+    refine ⟨by bv_decide, by bv_decide⟩
+
+/-- A kernel table is a well-formed user-shaped table. -/
+theorem PTree.wf_wfU : ∀ (lvl : Nat) (t : PTree), t.wf lvl → t.wfU lvl
+  | 0, t, h => fun i => ⟨(h i).1, by
+      rcases (h i).2 with h0 | ⟨ppn, perm, a, d, he⟩
+      · exact Or.inl h0
+      · exact Or.inr (he ▸ kLeaf_valid ppn perm a d)⟩
+  | lvl+1, t, h => fun i => by
+      have hi := h i
+      cases hk : t.kids i with
+      | none => rw [hk] at hi; exact hi
+      | some c => rw [hk] at hi; exact ⟨hi.1, PTree.wf_wfU lvl c hi.2⟩
+
 /-! ## Pages -/
 
 /-- The pages the tree occupies, root first. -/

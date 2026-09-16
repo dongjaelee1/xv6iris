@@ -69,15 +69,17 @@ theorem vpn_ofNat_toNat (v : BitVec 27) : BitVec.ofNat 27 v.toNat = v := by
 
 theorem mapRun_succ_eq (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : KPerm) (n : Nat)
     (fr : List (BitVec 44)) :
-    t.mapRun vpn ppn perm (n + 1) fr =
+    t.mapRun vpn ppn (permBits perm) (n + 1) fr =
       (if (t.fill 2 vpn fr).1.complete 2 vpn then
         (let s := ((t.fill 2 vpn fr).1.setLeaf 2 vpn (kLeaf ppn perm 0#1 0#1)).mapRun
-            (vpn + 1#27) (ppn + 1#44) perm n (t.fill 2 vpn fr).2
+            (vpn + 1#27) (ppn + 1#44) (permBits perm) n (t.fill 2 vpn fr).2
          (s.1, s.2.1, s.2.2 + 1))
-      else ((t.fill 2 vpn fr).1, (t.fill 2 vpn fr).2, 0)) := rfl
+      else ((t.fill 2 vpn fr).1, (t.fill 2 vpn fr).2, 0)) := by
+  rw [← leafOf_permBits ppn perm]
+  rfl
 
 theorem base_mapRun (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : KPerm)
-    (fr : List (BitVec 44)) : (t.mapRun vpn ppn perm n fr).1.base = t.base := by
+    (fr : List (BitVec 44)) : (t.mapRun vpn ppn (permBits perm) n fr).1.base = t.base := by
   induction n generalizing t vpn ppn fr with
   | zero => rfl
   | succ n ih =>
@@ -89,7 +91,7 @@ theorem base_mapRun (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (p
       exact base_fill 2 t vpn fr
 
 theorem wf_mapRun (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : KPerm)
-    (fr : List (BitVec 44)) (hwf : t.wf 2) : (t.mapRun vpn ppn perm n fr).1.wf 2 := by
+    (fr : List (BitVec 44)) (hwf : t.wf 2) : (t.mapRun vpn ppn (permBits perm) n fr).1.wf 2 := by
   induction n generalizing t vpn ppn fr with
   | zero => exact hwf
   | succ n ih =>
@@ -101,7 +103,7 @@ theorem wf_mapRun (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (per
       exact wf_fill 2 t vpn fr hwf
 
 theorem mem_pages_mapRun (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : KPerm)
-    (fr : List (BitVec 44)) (b : BitVec 44) (hb : b ∈ (t.mapRun vpn ppn perm n fr).1.pages 2) :
+    (fr : List (BitVec 44)) (b : BitVec 44) (hb : b ∈ (t.mapRun vpn ppn (permBits perm) n fr).1.pages 2) :
     b ∈ t.pages 2 ∨ b ∈ fr := by
   induction n generalizing t vpn ppn fr with
   | zero => exact Or.inl hb
@@ -127,7 +129,7 @@ theorem mem_pages_mapRun (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVec 4
 theorem walk_mapRun_outside (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : KPerm)
     (fr : List (BitVec 44)) (hwf : t.wf 2) (w : BitVec 27)
     (hne : ∀ i, i < n → w ≠ vpn + BitVec.ofNat 27 i) :
-    (t.mapRun vpn ppn perm n fr).1.walk 2 w = t.walk 2 w := by
+    (t.mapRun vpn ppn (permBits perm) n fr).1.walk 2 w = t.walk 2 w := by
   induction n generalizing t vpn ppn fr with
   | zero => rfl
   | succ n ih =>
@@ -141,9 +143,9 @@ theorem walk_mapRun_outside (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVe
       rw [ih _ _ _ _ (wf_setLeaf_complete 2 _ vpn ppn perm 0#1 0#1 (wf_fill 2 t vpn fr hwf) hc)
         (fun j hj => by rw [bv_succ_add]; exact hne (j+1) (by omega))]
       rw [walk_setLeaf_ne _ vpn w _ hc (fun he => h0 he.symm)]
-      exact walk_fill 2 t vpn fr hwf w
+      exact walk_fill 2 t vpn fr (PTree.wf_wfU 2 t hwf) w
     · rw [if_neg hc]
-      exact walk_fill 2 t vpn fr hwf w
+      exact walk_fill 2 t vpn fr (PTree.wf_wfU 2 t hwf) w
 
 /-- The composable form: a page outside every region mapped so far is still
 unmapped. -/
@@ -151,7 +153,7 @@ theorem walk_none_mapRun (P : Nat → Prop) (t : PTree) (v : BitVec 27) (n : Nat
     (perm : KPerm) (fr : List (BitVec 44)) (hwf : t.wf 2) (hspan : v.toNat + n ≤ 2 ^ 27)
     (h : ∀ x, x < 2 ^ 27 → P x → t.walk 2 (BitVec.ofNat 27 x) = none) :
     ∀ x, x < 2 ^ 27 → (P x ∧ ¬(v.toNat ≤ x ∧ x < v.toNat + n)) →
-      (t.mapRun v ppn perm n fr).1.walk 2 (BitVec.ofNat 27 x) = none := by
+      (t.mapRun v ppn (permBits perm) n fr).1.walk 2 (BitVec.ofNat 27 x) = none := by
   intro x hx hP
   rw [walk_mapRun_outside n t v ppn perm fr hwf _ ?ne]
   · exact h x hx hP.1
@@ -167,7 +169,7 @@ theorem walk_none_mapRun (P : Nat → Prop) (t : PTree) (v : BitVec 27) (n : Nat
 theorem mapsTo_mapRun_outside (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44)
     (perm : KPerm) (fr : List (BitVec 44)) (hwf : t.wf 2) (w : BitVec 27) (q : BitVec 44)
     (p : KPerm) (hne : ∀ i, i < n → w ≠ vpn + BitVec.ofNat 27 i) (h : t.mapsTo w q p) :
-    (t.mapRun vpn ppn perm n fr).1.mapsTo w q p := by
+    (t.mapRun vpn ppn (permBits perm) n fr).1.mapsTo w q p := by
   obtain ⟨addr, a, d, h⟩ := h
   exact ⟨addr, a, d, by rw [walk_mapRun_outside n t vpn ppn perm fr hwf w hne]; exact h⟩
 
@@ -232,14 +234,14 @@ theorem missingRun_one (t : PTree) (vpn : BitVec 27) :
 
 theorem mapRun_one_of_complete (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : KPerm)
     (fr : List (BitVec 44)) (h : t.complete 2 vpn) :
-    t.mapRun vpn ppn perm 1 fr = (t.setLeaf 2 vpn (kLeaf ppn perm 0#1 0#1), fr, 1) := by
+    t.mapRun vpn ppn (permBits perm) 1 fr = (t.setLeaf 2 vpn (kLeaf ppn perm 0#1 0#1), fr, 1) := by
   rw [mapRun_succ_eq, fill_of_complete 2 t vpn fr h]
   simp only [if_pos h, PTree.mapRun]
 
 /-- A one-page run that mapped its page leaves the path complete. -/
 theorem complete_mapRun_one (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : KPerm)
-    (fr : List (BitVec 44)) (hfull : (t.mapRun vpn ppn perm 1 fr).2.2 = 1) :
-    (t.mapRun vpn ppn perm 1 fr).1.complete 2 vpn := by
+    (fr : List (BitVec 44)) (hfull : (t.mapRun vpn ppn (permBits perm) 1 fr).2.2 = 1) :
+    (t.mapRun vpn ppn (permBits perm) 1 fr).1.complete 2 vpn := by
   rw [mapRun_succ_eq] at hfull ⊢
   by_cases hc : (t.fill 2 vpn fr).1.complete 2 vpn
   · rw [if_pos hc]
@@ -343,7 +345,7 @@ theorem missingRun_step' (t : PTree) (vpn : BitVec 27) (m : Nat) (fr : List (Bit
 theorem mapRun_shape (n : Nat) (t u : PTree) (vpn : BitVec 27) (ppn qpn : BitVec 44) (perm : KPerm)
     (fr gr : List (BitVec 44)) (h : sameShape 2 t u) (hf : t.missingRun vpn n ≤ fr.length)
     (hg : u.missingRun vpn n ≤ gr.length) :
-    sameShape 2 (t.mapRun vpn ppn perm n fr).1 (u.mapRun vpn qpn perm n gr).1 := by
+    sameShape 2 (t.mapRun vpn ppn (permBits perm) n fr).1 (u.mapRun vpn qpn (permBits perm) n gr).1 := by
   induction n generalizing t u vpn ppn qpn fr gr with
   | zero => exact h
   | succ n ih =>
@@ -369,8 +371,8 @@ theorem mapRun_shape (n : Nat) (t u : PTree) (vpn : BitVec 27) (ppn qpn : BitVec
 
 theorem mapsTo_mapRun (n : Nat) (t : PTree) (vpn : BitVec 27) (ppn : BitVec 44) (perm : KPerm)
     (fr : List (BitVec 44)) (hwf : t.wf 2) (hspan : vpn.toNat + n ≤ 2 ^ 27)
-    (hfull : (t.mapRun vpn ppn perm n fr).2.2 = n) (i : Nat) (hi : i < n) :
-    (t.mapRun vpn ppn perm n fr).1.mapsTo (vpn + BitVec.ofNat 27 i)
+    (hfull : (t.mapRun vpn ppn (permBits perm) n fr).2.2 = n) (i : Nat) (hi : i < n) :
+    (t.mapRun vpn ppn (permBits perm) n fr).1.mapsTo (vpn + BitVec.ofNat 27 i)
       (ppn + BitVec.ofNat 44 i) perm := by
   induction n generalizing t vpn ppn fr i with
   | zero => omega
@@ -422,9 +424,9 @@ theorem kstackVpn_ne (i j : Nat) (hi : i < 64) (hj : j < 64) (h : i ≠ j) :
 
 theorem mapStacks_succ (t : PTree) (pas : Nat → BitVec 44) (i : Nat) (fr : List (BitVec 44)) :
     t.mapStacks pas (i+1) fr =
-      (((t.mapStacks pas i fr).1.mapRun (kstackVpn i) (pas i) KPerm.rw 1
+      (((t.mapStacks pas i fr).1.mapRun (kstackVpn i) (pas i) (permBits KPerm.rw) 1
           (t.mapStacks pas i fr).2).1,
-       ((t.mapStacks pas i fr).1.mapRun (kstackVpn i) (pas i) KPerm.rw 1
+       ((t.mapStacks pas i fr).1.mapRun (kstackVpn i) (pas i) (permBits KPerm.rw) 1
           (t.mapStacks pas i fr).2).2.1) := rfl
 
 /-- `proc_mapstacks` on a tree whose stack paths are already complete: the
@@ -528,7 +530,7 @@ theorem walk_out (n : Nat) (t : PTree) (v : BitVec 27) (ppn : BitVec 44) (perm :
     (fr : List (BitVec 44)) (hwf : t.wf 2) (w : BitVec 27) (m i : Nat) (hi : i < m)
     (hw : w.toNat + m ≤ 2 ^ 27) (hv : v.toNat + n ≤ 2 ^ 27)
     (hdis : w.toNat + m ≤ v.toNat ∨ v.toNat + n ≤ w.toNat) :
-    (t.mapRun v ppn perm n fr).1.walk 2 (w + BitVec.ofNat 27 i)
+    (t.mapRun v ppn (permBits perm) n fr).1.walk 2 (w + BitVec.ofNat 27 i)
       = t.walk 2 (w + BitVec.ofNat 27 i) :=
   walk_mapRun_outside n t v ppn perm fr hwf _
     (fun j hj => vpn_ne w v i j (by omega) (by omega) (by omega))
@@ -539,7 +541,7 @@ theorem mapsTo_out (n : Nat) (t : PTree) (v : BitVec 27) (ppn : BitVec 44) (perm
     (m i : Nat) (hi : i < m) (hw : w.toNat + m ≤ 2 ^ 27) (hv : v.toNat + n ≤ 2 ^ 27)
     (hdis : w.toNat + m ≤ v.toNat ∨ v.toNat + n ≤ w.toNat)
     (h : t.mapsTo (w + BitVec.ofNat 27 i) q pm) :
-    (t.mapRun v ppn perm n fr).1.mapsTo (w + BitVec.ofNat 27 i) q pm :=
+    (t.mapRun v ppn (permBits perm) n fr).1.mapsTo (w + BitVec.ofNat 27 i) q pm :=
   mapsTo_mapRun_outside n t v ppn perm fr hwf _ q pm
     (fun j hj => vpn_ne w v i j (by omega) (by omega) (by omega)) h
 

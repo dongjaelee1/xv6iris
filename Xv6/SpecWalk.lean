@@ -43,7 +43,7 @@ def wp_walk_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF]
     (cpu : CPU) (k : KCtx) (γl : GName) (γk : KmemNames) (on : Option Nat) (t : PTree)
     (hnoff : k.noff + 1 < 2 ^ 31) (hK : 22 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
     (hroot : k.regs 10#5 = pageAddr t.base) (hva : (k.regs 11#5).toNat < 2 ^ 38)
-    (halloc : k.regs 12#5 = 1#64) (hwf : t.wf 2) (hnd : t.pagesNodup 2)
+    (halloc : k.regs 12#5 = 1#64) (hwf : t.wfU 2) (hnd : t.pagesNodup 2)
     (hpg : ∀ b ∈ t.pages 2, pageValid (pageAddr b)) : Prop :=
   kctx cpu k ∗ pcIs cpu walkAddr ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗
   ptreeOwn 2 (DFrac.own 1) t ∗ kallocAvail γk on ∗
@@ -72,7 +72,7 @@ def wp_walk_noalloc_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [
     (cpu : CPU) (k : KCtx) (dq : DFrac) (t : PTree)
     (hK : 8 ≤ k.avail)
     (hroot : k.regs 10#5 = pageAddr t.base) (hva : (k.regs 11#5).toNat < 2 ^ 38)
-    (halloc : k.regs 12#5 = 0#64) (hwf : t.wf 2) : Prop :=
+    (halloc : k.regs 12#5 = 0#64) (hwf : t.wfU 2) : Prop :=
   kctx cpu k ∗ pcIs cpu walkAddr ∗ ptreeOwn 2 dq t ∗
   wpNext k.sie k.proc cpu (fun cpu' => iprop(∀ R' : RegMap,
     kctx cpu' (k.withRegs R') -∗ pcIs cpu' (jumpPc (k.regs 1#5)) -∗

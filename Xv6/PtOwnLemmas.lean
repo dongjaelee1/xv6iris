@@ -75,6 +75,11 @@ theorem PTree.zeroNode_wf (b : BitVec 44) (lvl : Nat) : (PTree.zeroNode b).wf lv
   | zero => intro i; exact ⟨rfl, Or.inl rfl⟩
   | succ l => intro i; simp only [PTree.zeroNode_kids]; rfl
 
+theorem PTree.zeroNode_wfU (b : BitVec 44) (lvl : Nat) : (PTree.zeroNode b).wfU lvl := by
+  cases lvl with
+  | zero => intro i; exact ⟨rfl, Or.inl rfl⟩
+  | succ l => intro i; simp only [PTree.zeroNode_kids]; rfl
+
 theorem PTree.zeroNode_walk (b : BitVec 44) (lvl : Nat) (vpn : BitVec 27) :
     (PTree.zeroNode b).walk lvl vpn = none := by
   cases lvl with
@@ -152,10 +157,39 @@ theorem PTree.wf_fill (lvl : Nat) (t : PTree) (vpn : BitVec 27) (fr : List (BitV
             ih _ fr' (PTree.zeroNode_wf b l)⟩
         · rw [if_neg hj, if_neg hj]; exact hwf j
 
+theorem PTree.wfU_fill (lvl : Nat) (t : PTree) (vpn : BitVec 27) (fr : List (BitVec 44))
+    (hwf : t.wfU lvl) : (t.fill lvl vpn fr).1.wfU lvl := by
+  induction lvl generalizing t fr with
+  | zero => exact hwf
+  | succ l ih =>
+    simp only [PTree.fill]
+    cases hk : t.kids (vpnIdx vpn (l+1)) with
+    | some c =>
+      have hc := hwf (vpnIdx vpn (l+1))
+      rw [hk] at hc
+      obtain ⟨hc1, hc2⟩ := hc
+      intro j
+      simp only [PTree.setKid, PTree.kids_node, PTree.ents_node]
+      by_cases hj : j = vpnIdx vpn (l+1)
+      · rw [if_pos hj]
+        exact ⟨by rw [hj, hc1, PTree.base_fill], ih c fr hc2⟩
+      · rw [if_neg hj]; exact hwf j
+    | none =>
+      cases fr with
+      | nil => exact hwf
+      | cons b fr' =>
+        intro j
+        simp only [PTree.setKid, PTree.setEnt, PTree.kids_node, PTree.ents_node]
+        by_cases hj : j = vpnIdx vpn (l+1)
+        · rw [if_pos hj, if_pos hj]
+          exact ⟨by rw [PTree.base_fill, PTree.zeroNode_base],
+            ih _ fr' (PTree.zeroNode_wfU b l)⟩
+        · rw [if_neg hj, if_neg hj]; exact hwf j
+
 /-! ## Every walk is unchanged -/
 
 theorem PTree.walk_fill (lvl : Nat) (t : PTree) (vpn : BitVec 27) (fr : List (BitVec 44))
-    (hwf : t.wf lvl) (v : BitVec 27) : (t.fill lvl vpn fr).1.walk lvl v = t.walk lvl v := by
+    (hwf : t.wfU lvl) (v : BitVec 27) : (t.fill lvl vpn fr).1.walk lvl v = t.walk lvl v := by
   induction lvl generalizing t fr with
   | zero => rfl
   | succ l ih =>
@@ -180,7 +214,7 @@ theorem PTree.walk_fill (lvl : Nat) (t : PTree) (vpn : BitVec 27) (fr : List (Bi
           PTree.base_node]
         by_cases hj : vpnIdx v (l+1) = vpnIdx vpn (l+1)
         · rw [if_pos hj, if_pos hj, hj, hk, hz, if_pos rfl]
-          exact (ih _ fr' (PTree.zeroNode_wf b l)).trans (PTree.zeroNode_walk b l v)
+          exact (ih _ fr' (PTree.zeroNode_wfU b l)).trans (PTree.zeroNode_walk b l v)
         · rw [if_neg hj, if_neg hj]
 
 /-! ## The path is complete once the supply covers the gap -/

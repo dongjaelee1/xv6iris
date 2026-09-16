@@ -24,12 +24,14 @@ def kvmmapAddr : BitVec 64 := BitVec.ofNat 64 KernelSyms.«kvmmap»
 /-- The specification of `kvmmap` (counted mode): `a0 = kpgtbl`, `a1 = va`,
 `a2 = pa`, `a3 = sz`, `a4 = perm`. -/
 def wp_kvmmap_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
-    (cpu : CPU) (k : KCtx) (γl : GName) (γk : KmemNames) (nb : Nat) (t : PTree) (n : Nat) (perm : KPerm)
+    (cpu : CPU) (k : KCtx) (γl : GName) (γk : KmemNames) (nb : Nat) (t : PTree) (n : Nat)
+    (perm : BitVec 64)
     (hnoff : k.noff + 1 < 2 ^ 31) (hK : 34 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
     (hroot : k.regs 10#5 = pageAddr t.base)
     (hargs : mappagesArgs t (k.regs 11#5) (k.regs 13#5) (k.regs 12#5) n)
-    (hperm : k.regs 14#5 = permBits perm)
-    (hwf : t.wf 2) (hnd : t.pagesNodup 2)
+    (hperm : k.regs 14#5 = perm) (hmask : perm &&& ~~~0x3FF#64 = 0#64)
+    (hrwx : perm &&& 0xE#64 ≠ 0#64)
+    (hwf : t.wfU 2) (hnd : t.pagesNodup 2)
     (hpg : ∀ b ∈ t.pages 2, pageValid (pageAddr b))
     (hcount : t.missingRun (vpnOf (k.regs 11#5)) n < nb) : Prop :=
   kctx cpu k ∗ pcIs cpu kvmmapAddr ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗
@@ -50,8 +52,9 @@ def wp_kvmmap_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G G
 /-- The interface of `kvmmap`. -/
 structure KVMMAP : Prop where
   wp_kvmmap : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx] (cpu : CPU) (k : KCtx)
-    (γl : GName) (γk : KmemNames) (nb : Nat) (t : PTree) (n : Nat) (perm : KPerm)
-    hnoff hK hlk hroot hargs hperm hwf hnd hpg hcount,
-    wp_kvmmap_body (hlc := hlc) (GF := GF) cpu k γl γk nb t n perm hnoff hK hlk hroot hargs hperm hwf hnd hpg hcount
+    (γl : GName) (γk : KmemNames) (nb : Nat) (t : PTree) (n : Nat) (perm : BitVec 64)
+    hnoff hK hlk hroot hargs hperm hmask hrwx hwf hnd hpg hcount,
+    wp_kvmmap_body (hlc := hlc) (GF := GF) cpu k γl γk nb t n perm hnoff hK hlk hroot hargs hperm
+      hmask hrwx hwf hnd hpg hcount
 
 end Xv6

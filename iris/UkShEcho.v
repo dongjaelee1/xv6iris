@@ -793,6 +793,9 @@ Section UkShEcho.
            where the exec FAILED (M4b(2)) *)
         □ (Cr -∗ Q (-1)) -∗
         UkShDiag.ush_execfail_law Cr Cd -∗
+        (* ...and the tear-down's close payments (design/pipe.md, "The exit
+           path"): both dead ends of this walk end in exit(1) *)
+        UkRun.udepw_law USYS_exit -∗
         □ (Cd -∗ Q (-1)) -∗
         shp_code (ukn_t N) -∗ shp_rodata (ukn_t N) -∗ ush_jtab (ukn_t N) -∗
         ustr (ukn_d N) (DfracOwn 1) s0 len f -∗
@@ -824,7 +827,7 @@ Section UkShEcho.
        spent exactly once, at the arm below, and introducing it with [#]
        does not return here.  No [UkSh.sh_deps] anywhere on this walk
        (M4b(2)). *)
-    iIntros "#Hcode Hexs #Hcq #Hxl #Hcd #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd
+    iIntros "#Hcode Hexs #Hcq #Hxl #Hex2 #Hcd #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd
              Hcwd Hch HM Hcr Hrun".
     (* the line's own bytes are non-NUL, which is what makes each token a
        string once the cut lands *)
@@ -894,7 +897,7 @@ Section UkShEcho.
               h2 m2 dw dv s0 len f echo_toks
               (8 + (UkShDiag.ush_Dg + n))
               Ha0_2 Hns Htoks Htlen Hs0 Hs64
-              with "Hpcode Hpro Hline Hws Hsy HM Hpxw Hcr Hrun").
+              with "Hpcode Hpro Hline Hws Hsy HM Hpxw Hex2 Hcr Hrun").
     iIntros (p) "%Hparses Hnode Hline %Hcut Hws Hsy".
     iIntros (h3 m3) "%Hcs3 %Ha0_3 Hsz Hcr Hrun".
     rewrite Hra_2.
@@ -932,7 +935,7 @@ Section UkShEcho.
     iApply (wp_kshr_exec_echo_holds Q Cr Cd N _ h4 m4 p (sz + 65536) s0
               (ushp_nulfold echo_toks (ushp_ext len f)) ld ((60 + n)%nat)
               Hpeq Ha0_4 Hbytes Hfd1 Hfd2
-              with "Hcode Hexs Hxl Hcd Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
+              with "Hcode Hexs Hxl Hex2 Hcd Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
   Qed.
 
   (* =================================================================== *)

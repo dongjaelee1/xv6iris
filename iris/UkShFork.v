@@ -88,6 +88,7 @@ Require Import UserCwd.  (* [ucwd] / [ucwd_any] -- the process's own view of its
 Require Import UserChildren.  (* [uch_any] -- the process's own half of its children set *)
 
 Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
+Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 (* A PID IN [1, PIDMAX] DOES NOT SIGN-EXTEND TO -1 (lane RESIDUALS, (A)):
    the fork answer's pid arm carries the range, and the shell's fork-failed
    branch (fork1's [-1] test) refutes that arm with it.  Pure, on [Z], at
@@ -754,6 +755,9 @@ Section UkShFork.
     ushf_child_law -∗
     (* ...and the law of sh's own panic (M4b(2)) *)
     UkShDiag.ush_panic_law Wc Wb -∗
+    (* ...and the tear-down's close payments (design/pipe.md, "The exit
+       path"): the panic arm ends in exit(1) *)
+    udepw_law USYS_exit -∗
     (* the row the console preamble established (lane SH-OPEN): the PARENT
        keeps its ledger across fork1 -- a REDIR runs in the child -- so the
        row goes straight back into the head *)

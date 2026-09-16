@@ -138,7 +138,7 @@ Section ProofSysExit.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
     iIntros "Hcg Hcl Hcpu #Htext #Hdata Hpc #Hprocs #Hpenv
              #Hlk #Hft #Hkl Hkav #Hbio #Hlog #Hcrash #Hcert #Hdev #Hgeom
-             #Hdlk Hbs Hrdy Hip #Hid Hfds Hirs Hpriv Hufrag Hrow #Hmy HQ".
+             #Hdlk Hbs Hrdy Hip #Hid Hfds Hirs Hpriv Hufrag Hcpays Hrow #Hmy HQ".
     (* ===================== PROLOGUE (32-byte frame) ===================== *)
     set (M1 := <[Regidx csp_rs1 := regval_into_reg
         (add_vec (m !!! Regidx csp_rs1) (sign_extend' 64 (sign_extend' 12 (mword_of_int 32 : mword 6))))]> m).
@@ -335,21 +335,19 @@ Section ProofSysExit.
        Hb3lo/Hb4) is simply framed away in [-] -- nothing ever reloads
        them, because nothing after this call is reachable. *)
     iDestruct (cpu_own_transport CID8 CID10 0%nat eb pj b ltac:(wp_next_chain) with "Hcpu") as "Hcpu".
-    (* THE LAST WEAKENING ON THIS ROUTE, and it is a boundary rather than a
-       loss: kexit closes EVERY descriptor and never returns, so there is no
-       row it could state -- [fd_frags_any] is its premise's honest shape,
-       "at whatever table the process had".  sys_exit's own spec names the
-       table because a SPEC should; kexit's does not because there is
-       nothing on the other side to say it to. *)
-    iAssert (fd_frags_any (pv_fdg (us_V U))) with "[Hufrag]" as "Hufrag";
-      [ by iExists sts | ].
+    (* THE TABLE GOES DOWN NAMED NOW, and its close payments with it
+       (design/pipe.md, the byte queue): kexit closes EVERY descriptor, so
+       every pipe row's last close is one of ITS closes, and the payment for
+       it is owed here.  The weakening to [fd_frags_any] that used to stand
+       at this line is gone with the row -- there was nothing on the other
+       side to say a table to, but there is something to PAY. *)
     iApply (Kexit.wp_kexit_sconf γft γf γw γs j γl pd pav pu
  ip dqi
 
-              on fn B2 (av - 4)%nat eb b lks pid (upd_usM U _) cs Q Hfn Hj Hgl (sex_Kke av Hav) Hgeo Hbelow
+              on fn B2 (av - 4)%nat eb b lks pid (upd_usM U _) sts cs Q Hfn Hj Hgl (sex_Kke av Hav) Hgeo Hbelow
               with "Hcg Hcl4 Hcpu [] [] Htext Hdata Hpc Hprocs Hpenv Hlk
                     Hft Hkl Hkav Hbio Hlog Hcrash Hcert Hdev Hgeom Hdlk Hbs
-                    Hrdy Hip Hid Hfds Hirs Hpriv Hufrag Hrow Hmy [HQ]").
+                    Hrdy Hip Hid Hfds Hirs Hpriv Hufrag Hcpays Hrow Hmy [HQ]").
     all: try lkbelow.
     { rewrite Heb /trap_csrs_ext. done. }
     { rewrite Heb /cpu_claim_ext. done. }

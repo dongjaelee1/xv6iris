@@ -91,3 +91,6 @@ import Xv6.LinkKalloc
 import Xv6.SpecInitlock
 import Xv6.ProofInitlock
 import Xv6.LinkInitlock
+import Xv6.PtOwn
+import Xv6.SpecWalk
+import Xv6.SpecMappages

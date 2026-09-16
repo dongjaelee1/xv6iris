@@ -102,3 +102,6 @@ import Xv6.LinkKinit
 import Xv6.PtRunLemmas
 import Xv6.ProofMappages
 import Xv6.LinkMappages
+import Xv6.KvmDefs
+import Xv6.SpecProcMapstacks
+import Xv6.SpecKvmmake

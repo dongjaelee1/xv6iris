@@ -811,15 +811,22 @@ the first two steps are not landable, for THREE independent reasons:
    only.  A parent-prefix twin of `pinned_obs_abs` is additive and is what
    any mkdir/mknod/open-O_CREATE corollary needs first.
 
-   **unlink**: the ENTRY leg is payable in principle
-   (`tree_step_move_unl_ent` + `tree_resync`), but `uent_commit_at`
-   quantifies the parent `d` INSIDE, so a supplier owes an answer at every
-   directory (free outside the owner's subtree by `tree_not_in_own`), and
-   the TARGET leg at the LAST LINK is TL-2's own recorded wall.  Its U-tier
-   leaf is blocked anyway — `UkTreeRead` §5 records that unlink, like
-   chdir, still carries the `∀ pl` walk form a pin cannot answer.
-   **O_TRUNC**: the tree-layer half is done (`tree_step_move_trunc`); the
-   fire sits inside an open bundle, i.e. the same pinned-walk question.
+   **unlink, and why it shares wall 3 with create.**  The tree-side half of
+   unlink's entry leg is landed (`tree_step_move_unl_ent` + `tree_resync`),
+   but `uent_commit_at` QUANTIFIES THE PARENT `d` INSIDE, and at a `d`
+   inside ANOTHER owner's subtree **there is no step at all** — the delta
+   moves that owner's tree and only the holder of THAT deed could pay.  So
+   an owner cannot supply the commit until `d` is fixed BEFORE it is handed
+   in, which is precisely what a pinned parent-prefix walk would do.  That
+   is wall 3 again, so the whole create/unlink write family is one lane
+   away on this axis.  **And it is why WRITE goes through and they do
+   not**: `awrite_full_at` is INDEXED by the descriptor's own inum, so the
+   owner's move is at a node it already names.  (The unlink TARGET leg at
+   the last link stays TL-2's own recorded wall; above the last link it is
+   free.  Its U-tier leaf is blocked anyway — `UkTreeRead` §5: unlink, like
+   chdir, still carries the `∀ pl` walk form a pin cannot answer.)
+   **O_TRUNC**: the tree-layer half is done (`tree_step_move_trunc`) and it
+   IS inum-indexed, so it is only the open bundle's walk that is missing.
 
 **THE SEAM TO THE READ SIDE IS LANDED TOO** (`TreeMove` §1a):
 `resolves_from_twrote` / `twrote_read_back` turn the write's own post into

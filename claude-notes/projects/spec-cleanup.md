@@ -412,9 +412,13 @@ carries the full as-landed block; the headlines:
    invisible only if NOTHING NAMES `i`, which `own_wf` does not say — the
    honest fix is a credential threaded from the arm to the unarm, a
    kernel-tier lane); (c) there is no pinned PARENT-PREFIX walk
-   (`ep_start`), only `ex_start`'s.  unlink's entry leg is payable in
-   principle but its commit quantifies the parent inside and its U-tier
-   leaf still carries the `∀ pl` walk.
+   (`ep_start`), only `ex_start`'s.  **(c) is also unlink's wall, and it
+   explains why write goes through**: `uent_commit_at` quantifies the
+   parent `d` INSIDE, and at a `d` in another owner's subtree there is no
+   step at all, so an owner cannot supply the commit until the walk fixes
+   `d` first — whereas `awrite_full_at` is INDEXED by the descriptor's own
+   inum.  One additive lane (a parent-prefix twin of `pinned_obs`) unblocks
+   the whole create/unlink family on that axis.
 6. **THE SEAM TO THE READ SIDE IS LANDED** (`TreeMove` §1a,
    `twrote_read_back`): the write's post becomes the read corollary's
    premises at the same path with no induction, so the run

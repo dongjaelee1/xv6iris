@@ -477,7 +477,9 @@ Section UserretClosed.
       - iSplitR.
         + (* the bundle row excludes fork by its own guard *)
           iIntros (n) "%Hg". exfalso.
-          destruct Hg as (_ & Hgn & _ & Hgf). apply Hgf. rewrite <- Hgn.
+          (* the guard lost its exit exclusion: exit deposits a bundle row
+             like any returning number now (design/pipe.md, "The exit path") *)
+          destruct Hg as (_ & Hgn & Hgf). apply Hgf. rewrite <- Hgn.
           exact (eq_trans (uvis_run_num W) Hfk).
         + (* THE CHILD'S CONTINUATION.  The deposit's key is the TRAPPED
              frame bumped and the row's is the RUN projection's bumped, and
@@ -487,8 +489,6 @@ Section UserretClosed.
           rewrite /uexec_dep /uexec_dep_F. cbv zeta.
           destruct (decide (sc = uecall_scause)) as [_ | Hc];
             [ | exfalso; exact (Hc (proj1 Hg)) ].
-          destruct (decide (usys_num (uvis_tf W) = USYS_exit)) as [He | _];
-            [ exfalso; rewrite Hfk in He; discriminate He | ].
           destruct (decide (usys_num (uvis_tf W) = USYS_fork)) as [_ | Hc];
             [ | exfalso; exact (Hc Hfk) ].
           (* THE CHILD'S PID IS ∀-BOUND, beside its generation: the process
@@ -536,15 +536,13 @@ Section UserretClosed.
              key, which reads the same image, argument words and descriptor
              view ([UexecApply.uvis_run_arg0] / [_arg1] / [_arg2]) *)
           iIntros (n) "%Hg".
-          destruct Hg as (Hgc & Hgn & Hgx & Hgf).
+          destruct Hg as (Hgc & Hgn & Hgf).
           assert (Hn : usys_num (uvis_tf W) = n)
             by (rewrite <- (uvis_run_num W); exact Hgn).
           rewrite /uexec_dep /uexec_dep_F. cbv zeta.
           destruct (decide (sc = uecall_scause)) as [_ | Hc];
             [ | exfalso; exact (Hc Hgc) ].
           rewrite Hn.
-          destruct (decide (n = USYS_exit)) as [He | _];
-            [ exfalso; exact (Hgx He) | ].
           destruct (decide (n = USYS_fork)) as [He | _];
             [ exfalso; exact (Hgf He) | ].
           match goal with

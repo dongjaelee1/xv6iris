@@ -145,3 +145,7 @@ import Xv6.KvmSeal
 import Xv6.SpecSwtch
 import Xv6.ProofSwtch
 import Xv6.LinkSwtch
+import Xv6.SchedCtx
+import Xv6.SpecSched
+import Xv6.ProofSched
+import Xv6.LinkSched

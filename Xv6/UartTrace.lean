@@ -23,9 +23,13 @@ class Xv6G (GF : BundledGFunctors) where
   [gvListG : GhostVarG GF (List (BitVec 8))]
   [gvNatG : GhostVarG GF Nat]
   [gvUnitG : GhostVarG GF Unit]
+  /-- the per-proc hart tag (`SchedCtx.hartOwn`) -/
+  [gvCpuG : GhostVarG GF CPU]
+  /-- the per-proc state mirror (`SchedCtx.pstateOwn`) -/
+  [gvW32G : GhostVarG GF (BitVec 32)]
 
 attribute [instance] Xv6G.monoListG Xv6G.gvListG
-attribute [reducible, instance] Xv6G.gvNatG Xv6G.gvUnitG
+attribute [reducible, instance] Xv6G.gvNatG Xv6G.gvUnitG Xv6G.gvCpuG Xv6G.gvW32G
 
 /-- The names of the console's ghosts: the accepted trace and the
 transmitter's half. -/

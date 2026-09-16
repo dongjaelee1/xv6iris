@@ -4,7 +4,8 @@ once, in the kernel execution context.
 
 `kvmmap(kpgtbl, va, pa, sz, perm)` is `mappages` with `pa`/`sz` swapped,
 panicking on failure; in the counted mode (the caller's count of free
-pages exceeds the nodes the run creates) it cannot fail.  The function
+pages exceeds the nodes the run creates) it cannot fail.  The tree's pages
+are required to be valid allocator pages (`hpg`), as `mappages` needs.  The function
 needs 34 of the caller's stack slots (its frame of 2, then `mappages`'s
 32) and returns them; the callee-saved registers are preserved.
 
@@ -29,6 +30,7 @@ def wp_kvmmap_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G G
     (hargs : mappagesArgs t (k.regs 11#5) (k.regs 13#5) (k.regs 12#5) n)
     (hperm : k.regs 14#5 = permBits perm)
     (hwf : t.wf 2) (hnd : t.pagesNodup 2)
+    (hpg : ∀ b ∈ t.pages 2, pageValid (pageAddr b))
     (hcount : t.missingRun (vpnOf (k.regs 11#5)) n < nb) : Prop :=
   kctx cpu k ∗ pcIs cpu kvmmapAddr ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗
   ptreeOwn 2 (DFrac.own 1) t ∗ kallocAvail γk (some nb) ∗
@@ -49,7 +51,7 @@ def wp_kvmmap_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G G
 structure KVMMAP : Prop where
   wp_kvmmap : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx] (cpu : CPU) (k : KCtx)
     (γl : GName) (γk : KmemNames) (nb : Nat) (t : PTree) (n : Nat) (perm : KPerm)
-    hnoff hK hlk hroot hargs hperm hwf hnd hcount,
-    wp_kvmmap_body (hlc := hlc) (GF := GF) cpu k γl γk nb t n perm hnoff hK hlk hroot hargs hperm hwf hnd hcount
+    hnoff hK hlk hroot hargs hperm hwf hnd hpg hcount,
+    wp_kvmmap_body (hlc := hlc) (GF := GF) cpu k γl γk nb t n perm hnoff hK hlk hroot hargs hperm hwf hnd hpg hcount
 
 end Xv6

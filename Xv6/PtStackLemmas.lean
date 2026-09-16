@@ -186,6 +186,7 @@ structure StackInv (t T : PTree) (pas : Nat → BitVec 44) (i : Nat) (fr : List 
   wf : T.wf 2
   ndp : T.pagesNodup 2
   sub : ∀ b, b ∈ t.pages 2 ∨ b ∈ fr → b ∈ T.pages 2
+  sup : ∀ b ∈ T.pages 2, b ∈ t.pages 2 ∨ b ∈ fr
   unm : ∀ j, i ≤ j → j < 64 → T.walk 2 (kstackVpn j) = none
   ndup : (fr ++ (List.range i).map pas).Nodup
   valid : ∀ b ∈ fr ++ (List.range i).map pas, pageValid (pageAddr b) ∧ b ∉ t.pages 2
@@ -203,6 +204,7 @@ theorem stackInv_init (t : PTree) (pas : Nat → BitVec 44) (hwf : t.wf 2) (hnd 
     rcases hb with h | h
     · exact h
     · exact absurd h (by simp)
+  sup := fun b hb => Or.inl hb
   unm := fun j _ hj => hunm j hj
   ndup := by simp
   valid := by simp
@@ -256,13 +258,22 @@ theorem stackInv_step (t T : PTree) (pas : Nat → BitVec 44) (i : Nat) (fr fres
     · rcases List.mem_append.mp hb with hb | hb
       · exact Or.inl (hinv.sub b (Or.inr hb))
       · exact Or.inr hb
+  have hsup' : ∀ b ∈ (T.mapRun (kstackVpn i) p .rw 1 fresh).1.pages 2,
+      b ∈ t.pages 2 ∨ b ∈ fr ++ fresh := by
+    intro b hb
+    rw [hTT, PTree.pages_setLeaf] at hb
+    rcases (PtRun.mem_pages_fill 2 T (kstackVpn i) fresh b).mp hb with h | h
+    · rcases hinv.sup b h with h' | h'
+      · exact Or.inl h'
+      · exact Or.inr (List.mem_append.mpr (Or.inl h'))
+    · exact Or.inr (List.mem_append.mpr (Or.inr (List.mem_of_mem_take h)))
   have hfrfresh : (fr ++ fresh).Nodup := by
     refine List.nodup_append.mpr ⟨?_, hfnd, ?_⟩
     · exact (List.nodup_append.mp hinv.ndup).1
     · intro a ha b hb he
       subst he
       exact (hfv a hb).2 (hinv.sub a (Or.inr ha))
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, hsub', ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, hsub', hsup', ?_, ?_, ?_⟩
   · -- supply
     intro gr
     have hcg : t.mapStacks (pasUpd pas i p) i ((fr ++ fresh) ++ gr)

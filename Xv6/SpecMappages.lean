@@ -9,8 +9,9 @@ misaligned `va`/`pa`, a zero size, or an entry already valid.  Stated in
 the counted mode only (the Rocq `wp_mappages_sconf`'s live arm): the
 caller's count of free pages exceeds the nodes the run creates
 (`missingRun`), so no `walk` fails and the result is `0`, the tree
-`PTree.mapRun` over the pages `kalloc` handed out.  Stated at either
-interrupt index (the exit as `kalloc`'s).  The function needs 32 of the
+`PTree.mapRun` over the pages `kalloc` handed out.  The tree's pages are
+required to be valid allocator pages (`hpg`), as `walk` needs.  Stated at
+either interrupt index (the exit as `kalloc`'s).  The function needs 32 of the
 caller's stack slots (its frame of 10, then `walk`'s 22) and returns
 them; the callee-saved registers are preserved.
 
@@ -46,6 +47,7 @@ def wp_mappages_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G
     (hargs : mappagesArgs t (k.regs 11#5) (k.regs 12#5) (k.regs 13#5) n)
     (hperm : k.regs 14#5 = permBits perm)
     (hwf : t.wf 2) (hnd : t.pagesNodup 2)
+    (hpg : ∀ b ∈ t.pages 2, pageValid (pageAddr b))
     (hcount : t.missingRun (vpnOf (k.regs 11#5)) n < nb) : Prop :=
   kctx cpu k ∗ pcIs cpu mappagesAddr ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗
   ptreeOwn 2 (DFrac.own 1) t ∗ kallocAvail γk (some nb) ∗
@@ -66,7 +68,7 @@ def wp_mappages_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G
 structure MAPPAGES : Prop where
   wp_mappages : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx] (cpu : CPU) (k : KCtx)
     (γl : GName) (γk : KmemNames) (nb : Nat) (t : PTree) (n : Nat) (perm : KPerm)
-    hnoff hK hlk hroot hargs hperm hwf hnd hcount,
-    wp_mappages_body (hlc := hlc) (GF := GF) cpu k γl γk nb t n perm hnoff hK hlk hroot hargs hperm hwf hnd hcount
+    hnoff hK hlk hroot hargs hperm hwf hnd hpg hcount,
+    wp_mappages_body (hlc := hlc) (GF := GF) cpu k γl γk nb t n perm hnoff hK hlk hroot hargs hperm hwf hnd hpg hcount
 
 end Xv6

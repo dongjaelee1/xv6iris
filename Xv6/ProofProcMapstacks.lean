@@ -286,7 +286,9 @@ theorem pms_kvmmap_call (KM : KVMMAP) [CurCtx] (c : CPU) (k' : KCtx) (γl : GNam
     (hroot : k'.regs 10#5 = pageAddr T.base) (h11 : k'.regs 11#5 = va)
     (h12 : k'.regs 12#5 = pa) (h13 : k'.regs 13#5 = 4096#64) (h14 : k'.regs 14#5 = 6#64)
     (hargs : mappagesArgs T va 4096#64 pa 1)
-    (hwf : T.wf 2) (hnd : T.pagesNodup 2) (hcount : T.missingRun (vpnOf va) 1 < nb) :
+    (hwf : T.wf 2) (hnd : T.pagesNodup 2)
+    (hpgT : ∀ b ∈ T.pages 2, pageValid (pageAddr b))
+    (hcount : T.missingRun (vpnOf va) 1 < nb) :
     kctx c k' ∗ pcIs c 0x8000109a#64 ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗
     ptreeOwn 2 (DFrac.own 1) T ∗ kallocAvail γk (some nb) ∗
     wpNext k'.sie k'.proc c (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool,
@@ -302,7 +304,8 @@ theorem pms_kvmmap_call (KM : KVMMAP) [CurCtx] (c : CPU) (k' : KCtx) (γl : GNam
         fresh.Nodup ∧ (∀ b ∈ fresh, pageValid (pageAddr b) ∧ b ∉ T.pages 2)⌝ -∗ wpLoop cpu'))
     ⊢ wpLoop (GF := GF) c := by
   have h := KM.wp_kvmmap (hlc := hlc) (GF := GF) c k' γl γk nb T 1 KPerm.rw hnoff hK hlk hroot
-    (by rw [h11, h12, h13]; exact hargs) (by rw [h14]; rfl) hwf hnd (by rw [h11]; exact hcount)
+    (by rw [h11, h12, h13]; exact hargs) (by rw [h14]; rfl) hwf hnd hpgT
+    (by rw [h11]; exact hcount)
   unfold wp_kvmmap_body at h
   simp only [kvmmapAddr, KernelSyms.«kvmmap», h11, h12] at h
   exact h
@@ -317,6 +320,7 @@ theorem pms_iter (KA : KALLOC) (KM : KVMMAP) [CurCtx]
     (hnoff : k.noff + 1 < 2 ^ 31) (hK : 44 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
     (i : Nat) (hi : i < 64) (T : PTree) (pas : Nat → BitVec 44) (fr : List (BitVec 44))
     (nb : Nat) (hinv : PtStack.StackInv t T pas i fr)
+    (hpgt : ∀ b ∈ t.pages 2, pageValid (pageAddr b))
     (hcount : 64 + t.missingStacks 64 < nb)
     (spie spp : Bool) (R : RegMap)
     (h9 : R 9#5 = 2147559352#64 + BitVec.ofNat 64 (360 * i))
@@ -344,6 +348,11 @@ theorem pms_iter (KA : KALLOC) (KM : KVMMAP) [CurCtx]
     ⊢ wpLoop (GF := GF) cur := by
   iintro ⟨Hk, Hpc, #Hlk, Htree, Hav, Hpages, HΦ⟩
   icases kctx_kernelText _ _ $$ Hk with ⟨#Htext, Hk⟩
+  have hpgT : ∀ b ∈ T.pages 2, pageValid (pageAddr b) := by
+    intro b hb
+    rcases hinv.sup b hb with h | h
+    · exact hpgt b h
+    · exact (hinv.valid b (List.mem_append.mpr (Or.inl h))).1
   have hgap : t.missingStacks (i+1) = fr.length + T.missingRun (kstackVpn i) 1 :=
     PtStack.missingStacks_step t T pas i fr hinv
   have hmle : t.missingStacks (i+1) ≤ t.missingStacks 64 :=
@@ -449,7 +458,7 @@ theorem pms_iter (KA : KALLOC) (KM : KVMMAP) [CurCtx]
       omega
     rw [show availDec (some (nb - i - fr.length)) = some (nb - i - fr.length - 1) from rfl]
     iapply (pms_kvmmap_call KM c15 _ γl γk (nb - i - fr.length - 1) T (pmsVa i) (R2 10#5)
-      ?kn ?kK ?kl ?kro ?k11 ?k12 ?k13 ?k14 hargs hinv.wf hinv.ndp hcnt) $$ [- $Hk $Hpc]
+      ?kn ?kK ?kl ?kro ?k11 ?k12 ?k13 ?k14 hargs hinv.wf hinv.ndp hpgT hcnt) $$ [- $Hk $Hpc]
     rotate_right 1
     k_norm_g
     iframe #
@@ -542,7 +551,8 @@ epilogue at `0x800017cc`.  The hart is quantified inside the induction. -/
 theorem pms_loop (KA : KALLOC) (KM : KVMMAP) [CurCtx]
     (k : KCtx) (γl : GName) (γk : KmemNames) (t : PTree)
     (hnoff : k.noff + 1 < 2 ^ 31) (hK : 44 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
-    (nb : Nat) (hcount : 64 + t.missingStacks 64 < nb) (fuel : Nat) :
+    (nb : Nat) (hpgt : ∀ b ∈ t.pages 2, pageValid (pageAddr b))
+    (hcount : 64 + t.missingStacks 64 < nb) (fuel : Nat) :
     ∀ (i : Nat) (_ : 64 - i = fuel + 1) (T : PTree) (pas : Nat → BitVec 44)
       (fr : List (BitVec 44)) (_ : PtStack.StackInv t T pas i fr)
       (spie spp : Bool) (R : RegMap)
@@ -573,7 +583,7 @@ theorem pms_loop (KA : KALLOC) (KM : KVMMAP) [CurCtx]
     have hi : i < 64 := by omega
     have hlast : i + 1 = 64 := by omega
     iintro ⟨Hk, Hpc, #Hlk, Htree, Hav, Hpages, HΦ⟩
-    iapply (pms_iter KA KM k γl γk t hnoff hK hlk i hi T pas fr nb hinv hcount spie spp R
+    iapply (pms_iter KA KM k γl γk t hnoff hK hlk i hi T pas fr nb hinv hpgt hcount spie spp R
       h9 h18 h19 h20 h21 h22 h23 h24 cur) $$ [- $Hk $Hpc $Htree $Hav $Hpages]
     rotate_right 1
     iframe #
@@ -594,7 +604,7 @@ theorem pms_loop (KA : KALLOC) (KM : KVMMAP) [CurCtx]
     have hi : i < 64 := by omega
     have hlast : ¬ (i + 1 = 64) := by omega
     iintro ⟨Hk, Hpc, #Hlk, Htree, Hav, Hpages, HΦ⟩
-    iapply (pms_iter KA KM k γl γk t hnoff hK hlk i hi T pas fr nb hinv hcount spie spp R
+    iapply (pms_iter KA KM k γl γk t hnoff hK hlk i hi T pas fr nb hinv hpgt hcount spie spp R
       h9 h18 h19 h20 h21 h22 h23 h24 cur) $$ [- $Hk $Hpc $Htree $Hav $Hpages]
     rotate_right 1
     iframe #
@@ -757,7 +767,7 @@ theorem pms_add_ofNat_zero (w : Nat) (x : BitVec w) : x + BitVec.ofNat w 0 = x :
 
 set_option maxHeartbeats 4000000 in
 theorem proc_mapstacks_proof (KA : KALLOC) (KM : KVMMAP) : PROC_MAPSTACKS :=
-  ⟨fun {hlc GF} _ _ _ cpu k γl γk nb t hnoff hK hlk hroot hwf hnd hunm hcount => by
+  ⟨fun {hlc GF} _ _ _ cpu k γl γk nb t hnoff hK hlk hroot hwf hnd hpgt hunm hcount => by
   unfold wp_proc_mapstacks_body
   simp only [procMapstacksAddr, KernelSyms.«proc_mapstacks»]
   iintro ⟨Hk, Hpc, #Hlk, Htree, Hav, HΦ⟩
@@ -874,7 +884,7 @@ theorem proc_mapstacks_proof (KA : KALLOC) (KM : KVMMAP) : PROC_MAPSTACKS :=
             (hpin12 h)))))))))))))))))))
   -- the loop
   rw [pms_pushed_spie_self k 10]
-  iapply (pms_loop KA KM k γl γk t hnoff hK hlk nb hcount 63 0 (by omega) t (fun _ => 0#44) []
+  iapply (pms_loop KA KM k γl γk t hnoff hK hlk nb hpgt hcount 63 0 (by omega) t (fun _ => 0#44) []
     (PtStack.stackInv_init t (fun _ => 0#44) hwf hnd hunm) k.spie k.spp _
     ?g9 ?g18 ?g19 ?g20 ?g21 ?g22 ?g23 ?g24 c31) $$ [- $Hk $Hpc $Htree $Hav]
   rotate_right 1

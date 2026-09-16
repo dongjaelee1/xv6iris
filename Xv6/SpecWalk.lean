@@ -8,8 +8,11 @@ in the kernel execution context.
 `0` when the path is incomplete and `alloc` is off or `kalloc` failed.
 The tree is owned whole (`ptreeOwn 2`); its shape after the call is
 `PTree.fill` over the pages `kalloc` handed out (`fresh`); the caller's
-count of free pages goes down by their number.  Stated at either
-interrupt index (the exit as `kalloc`'s).  The function needs 22 of the
+count of free pages goes down by their number.  The tree's pages are
+required to be valid allocator pages (`hpg`): without it no node page is
+known to be nonzero, and the entry address a successful walk returns could
+be `0`, which the last conjunct of the postcondition rules out.  Stated at
+either interrupt index (the exit as `kalloc`'s).  The function needs 22 of the
 caller's stack slots (its frame of 8, then `kalloc`'s 14) and returns
 them; the callee-saved registers are preserved.
 
@@ -40,7 +43,8 @@ def wp_walk_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF]
     (cpu : CPU) (k : KCtx) (γl : GName) (γk : KmemNames) (on : Option Nat) (t : PTree)
     (hnoff : k.noff + 1 < 2 ^ 31) (hK : 22 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
     (hroot : k.regs 10#5 = pageAddr t.base) (hva : (k.regs 11#5).toNat < 2 ^ 38)
-    (halloc : k.regs 12#5 = 1#64) (hwf : t.wf 2) (hnd : t.pagesNodup 2) : Prop :=
+    (halloc : k.regs 12#5 = 1#64) (hwf : t.wf 2) (hnd : t.pagesNodup 2)
+    (hpg : ∀ b ∈ t.pages 2, pageValid (pageAddr b)) : Prop :=
   kctx cpu k ∗ pcIs cpu walkAddr ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗
   ptreeOwn 2 (DFrac.own 1) t ∗ kallocAvail γk on ∗
   wpNext k.sie k.proc cpu (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ (R' : RegMap) (fresh : List (BitVec 44)),
@@ -59,8 +63,8 @@ def wp_walk_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF]
 /-- The interface of `walk` (allocating). -/
 structure WALK : Prop where
   wp_walk : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx] (cpu : CPU) (k : KCtx)
-    (γl : GName) (γk : KmemNames) (on : Option Nat) (t : PTree) hnoff hK hlk hroot hva halloc hwf hnd,
-    wp_walk_body (hlc := hlc) (GF := GF) cpu k γl γk on t hnoff hK hlk hroot hva halloc hwf hnd
+    (γl : GName) (γk : KmemNames) (on : Option Nat) (t : PTree) hnoff hK hlk hroot hva halloc hwf hnd hpg,
+    wp_walk_body (hlc := hlc) (GF := GF) cpu k γl γk on t hnoff hK hlk hroot hva halloc hwf hnd hpg
 
 /-- The specification of `walk` with `alloc = 0`: no allocation, the tree
 (at any fraction) unchanged. -/

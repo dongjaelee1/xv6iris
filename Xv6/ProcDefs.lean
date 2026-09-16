@@ -37,12 +37,12 @@ variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
 
 /-! ## Geometry (Rocq `ProcGeom.v`) -/
 
-/-- `proc[NPROC]` (kernel/proc.c), from the ELF symbol table of
-`xv6-riscv/kernel/kernel` (`objdump -t`: `800127e8 g O .bss 5a00 proc`,
-= `cpus` + 8·128); corroborated by `allocproc`'s `auipc s1,0x11; addi
-s1,s1,-810`.  (The Rocq `KernelSyms.proc` is 0x80012768: a different
-build of the same kernel.) -/
-def procsAddr : BitVec 64 := 0x80012768#64
+/-- `proc[NPROC]` (kernel/proc.c) in this image: `procinit`'s and
+`proc_mapstacks`' `auipc s1,0x11; addi s1,s1,-116` / `addi s1,s1,82`
+both land on `0x800127b8`, and `&proc[NPROC] = 0x800181b8 = tickslock`
+(`0x800127b8 + 64 * 360`).  (The Rocq `KernelSyms.proc` is 0x80012768: a
+different build of the same kernel.) -/
+def procsAddr : BitVec 64 := 0x800127b8#64
 
 /-- `NPROC`. -/
 def NPROC : Nat := 64

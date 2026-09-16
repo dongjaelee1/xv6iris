@@ -110,6 +110,8 @@ import Xv6.ProofKvmmap
 import Xv6.LinkKvmmap
 import Xv6.SpecKvminit
 import Xv6.SpecTrapinit
+import Xv6.ProofWalk
+import Xv6.LinkWalk
 import Xv6.ProofKvminit
 import Xv6.LinkKvminit
 import Xv6.ProofTrapinit
@@ -119,7 +121,6 @@ import Xv6.ProofProcMapstacks
 import Xv6.LinkProcMapstacks
 import Xv6.KvmLemmas
 import Xv6.KvmCounts
-import Xv6.ProofKvmRegions
 import Xv6.ProofKvmmake
 import Xv6.LinkKvmmake
 import Xv6.SpecProcinit
@@ -131,3 +132,5 @@ import Xv6.ProofInitsleeplock
 import Xv6.LinkInitsleeplock
 import Xv6.ProofFileinit
 import Xv6.LinkFileinit
+import Xv6.ProofIinit
+import Xv6.LinkIinit

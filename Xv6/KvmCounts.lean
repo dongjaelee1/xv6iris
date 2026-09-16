@@ -51,12 +51,17 @@ formed, rooted at the allocated page, of the same shape as the dummy tree
 far (`Q`). -/
 def sOk (b : BitVec 44) (T D : PTree) (Q : Nat → Prop) : Prop :=
   T.wf 2 ∧ T.base = b ∧ sameShape 2 T D ∧
-  (∀ x, x < 2 ^ 27 → Q x → T.walk 2 (BitVec.ofNat 27 x) = none)
+  (∀ x, x < 2 ^ 27 → Q x → T.walk 2 (BitVec.ofNat 27 x) = none) ∧
+  (∀ q ∈ T.pages 2, pageValid (pageAddr q))
 
-theorem sOk_zero (b : BitVec 44) :
+theorem sOk_zero (b : BitVec 44) (hb : pageValid (pageAddr b)) :
     sOk b (PTree.zeroNode b) (PTree.zeroNode 0#44) (fun _ => True) :=
   ⟨zeroNode_wf b 2, rfl, sameShape_zeroNode 2 b 0#44,
-   fun x _ _ => zeroNode_walk b 2 (BitVec.ofNat 27 x)⟩
+   fun x _ _ => zeroNode_walk b 2 (BitVec.ofNat 27 x),
+   fun q hq => by
+     rw [zeroNode_pages] at hq
+     simp only [List.mem_singleton] at hq
+     rw [hq]; exact hb⟩
 
 /-- One `kvmmap` call: the tree keeps its root and its shape, and only the
 region just mapped stops being unmapped. -/
@@ -64,16 +69,20 @@ theorem sOk_step (b : BitVec 44) (T D : PTree) (Q : Nat → Prop) (v : BitVec 27
     (hvn : v.toNat = vn) (p q : BitVec 44)
     (perm : KPerm) (n : Nat) (fr : List (BitVec 44)) (h : sOk b T D Q)
     (hspan : vn + n ≤ 2 ^ 27) (hlen : fr.length = T.missingRun v n)
-    (hdc : D.missingRun v n ≤ 64) :
+    (hdc : D.missingRun v n ≤ 64) (hv : ∀ z ∈ fr, pageValid (pageAddr z)) :
     sOk b (T.mapRun v p perm n fr).1 (D.mapRun v q perm n dsup).1
       (fun x => Q x ∧ ¬(vn ≤ x ∧ x < vn + n)) := by
-  obtain ⟨hwf, hb, hsh, hnone⟩ := h
+  obtain ⟨hwf, hb, hsh, hnone, hpg⟩ := h
   subst hvn
-  refine ⟨wf_mapRun n T v p perm fr hwf, ?_, ?_, ?_⟩
+  refine ⟨wf_mapRun n T v p perm fr hwf, ?_, ?_, ?_, ?_⟩
   · rw [base_mapRun]; exact hb
   · refine mapRun_shape n T D v p q perm fr dsup hsh (by omega) ?_
     rw [dsup_length]; exact hdc
   · exact walk_none_mapRun Q T v n p perm fr hwf hspan hnone
+  · intro z hz
+    rcases mem_pages_mapRun n T v p perm fr z hz with hz' | hz'
+    · exact hpg z hz'
+    · exact hv z hz'
 
 /-- The count the tree shows is the dummy tree's. -/
 theorem count_of_sOk {b : BitVec 44} {T D : PTree} {Q : Nat → Prop} (h : sOk b T D Q)
@@ -87,14 +96,14 @@ theorem unmapped_of_sOk {b : BitVec 44} {T D : PTree} {Q : Nat → Prop} (h : sO
     ∀ i, i < n → T.walk 2 (v + BitVec.ofNat 27 i) = none := by
   intro i hi
   rw [vpn_add_eq v i (by omega), hv]
-  exact h.2.2.2 _ (by omega) (hQ i hi)
+  exact h.2.2.2.1 _ (by omega) (hQ i hi)
 
 /-- The kernel stacks are unmapped before `proc_mapstacks` runs. -/
 theorem stacks_unmapped_of_sOk {b : BitVec 44} {T D : PTree} {Q : Nat → Prop} (h : sOk b T D Q)
     (hQ : ∀ i, i < 64 → Q (0x3FFFFFF - 2 * (i + 1))) :
     ∀ i, i < 64 → T.walk 2 (kstackVpn i) = none := by
   intro i hi
-  exact h.2.2.2 _ (by omega) (hQ i hi)
+  exact h.2.2.2.1 _ (by omega) (hQ i hi)
 
 /-- A mapping outside the stacks survives `proc_mapstacks`. -/
 theorem mapsTo_stacks_out (T : PTree) (pas : Nat → BitVec 44) (fs : List (BitVec 44))

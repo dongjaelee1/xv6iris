@@ -15,6 +15,7 @@ Imports only definitional files (never a `Code*` or `Proof*` file).
 -/
 import Xv6.SpecInitlock
 import Xv6.KvmDefs
+import Xv6.ProcDefs
 
 namespace Xv6
 
@@ -30,9 +31,9 @@ def nextpidNameAddr : BitVec 64 := 0x80007160#64
 def waitLockNameAddr : BitVec 64 := 0x80007168#64
 /-- The `"proc"` literal. -/
 def procNameAddr : BitVec 64 := 0x80007178#64
-/-- `&proc[i]` (`sizeof(struct proc) = 360`); its lock is its first field,
-`state` at `+24`, `kstack` at `+64`. -/
-def procAddr (i : Nat) : BitVec 64 := 0x800127b8#64 + BitVec.ofNat 64 (360 * i)
+/-- `&proc[i]` is `ProcDefs.procAddr` (`sizeof(struct proc) = 360`); its
+lock is its first field, `state` at `+24`, `kstack` at `+64`. -/
+theorem procAddr_eq (i : Nat) : procAddr i = 0x800127b8#64 + BitVec.ofNat 64 (360 * i) := rfl
 /-- `KSTACK(i)`. -/
 def kstackVa (i : Nat) : BitVec 64 := 0x3ffffff000#64 - BitVec.ofNat 64 ((i + 1) * 8192)
 

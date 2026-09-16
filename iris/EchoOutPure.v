@@ -1024,15 +1024,20 @@ Qed.
 
    DECIDABLE, so it is a computation at any given line and a premise once
    the word list becomes a parameter. *)
+(* AT THIS LINE.  The general reading is [EchoDisc.line_alts_of_prefix_det]
+   and this is it applied: the two things a caller owes are that the line
+   is well formed and that its output is neither diagnostic, and at a
+   given word list both are a computation. *)
 Lemma line_alts_prefix_det (a b : nat) :
   a < length line_alts -> b < length line_alts ->
   line_alts !!! a `prefix_of` line_alts !!! b -> a = b.
 Proof.
   rewrite line_alts_length. intros Ha Hb.
-  destruct a as [|[|[|[|a]]]]; destruct b as [|[|[|[|b]]]]; try lia;
-    try reflexivity;
-    intros H; exfalso; revert H;
-    apply (bool_decide_unpack _); vm_compute; exact I.
+  apply (line_alts_of_prefix_det echo_ws a b);
+    [ apply (bool_decide_unpack _); vm_compute; exact I
+    | apply (bool_decide_unpack _); vm_compute; exact I
+    | apply (bool_decide_unpack _); vm_compute; exact I
+    | exact Ha | exact Hb ].
 Qed.
 
 (* out of range [!!!] reads [0], which IS in range, so this is the honest

@@ -834,11 +834,111 @@ Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 Lemma echo_line_out_length : length echo_line_out = 12%nat.
 Proof. vm_compute. reflexivity. Qed.
 
-Definition line_alts : list (list (bv 8)) :=
-  [ echo_line_out ++ sb "$ "%string;
+(* THE FOUR CONTINUATIONS AT ANY LINE.  Only the first depends on what was
+   typed; the other three are sh's own diagnostics and the prompt.  So the
+   list is a FUNCTION of the line, and [line_alts] is its instance -- the
+   shape [echo_line = wl_line echo_ws] already uses. *)
+Definition line_alts_of (ws : list (list (bv 8))) : list (list (bv 8)) :=
+  [ wl_line (drop 1 ws) ++ sb "$ "%string;
     sb "exec echo failed"%string ++ nlb ++ sb "$ "%string;
     sb "$ "%string;
     sb "fork"%string ++ nlb ].
+
+Definition line_alts : list (list (bv 8)) := line_alts_of echo_ws.
+
+(* SH'S TWO DIAGNOSTICS ARE THEMSELVES WORD LINES -- alphanumeric words,
+   single blanks, one closing newline.  That is not a coincidence worth
+   working around: it is exactly WHY they can collide with echo's output,
+   and stating them in the same vocabulary is what turns the collision
+   into a decidable condition on the word list instead of a condition on
+   bytes. *)
+Definition dg_exec : list (list (bv 8)) :=
+  [ sb "exec"%string; sb "echo"%string; sb "failed"%string ].
+Definition dg_fork : list (list (bv 8)) := [ sb "fork"%string ].
+
+Lemma dg_exec_line : wl_line dg_exec = sb "exec echo failed"%string ++ nlb.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma dg_fork_line : wl_line dg_fork = sb "fork"%string ++ nlb.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* '$' is not a byte any line carries, so a bare prompt is never the head
+   of an echoed line -- the one comparison involving the output that needs
+   no side condition at all. *)
+Lemma line_prompt_not_out (ws : list (list (bv 8))) :
+  wl_wf ws -> ~ (sb "$ "%string `prefix_of` wl_line ws ++ sb "$ "%string).
+Proof.
+  intros Hwf [k Hk].
+  assert (Hb : wl_line ws !! 0%nat = Some (Z_to_bv 8 36%Z)).
+  { rewrite -(lookup_app_l (wl_line ws) (sb "$ "%string) 0%nat (wl_line_pos ws))
+      Hk (lookup_app_l (sb "$ "%string) k 0%nat ltac:(vm_compute; lia)).
+    by vm_compute. }
+  pose proof (wl_line_byte_val ws (Z_to_bv 8 36%Z) Hwf
+                (elem_of_list_lookup_2 _ _ _ Hb)) as Hv.
+  rewrite (_ : bv_unsigned (Z_to_bv 8 36%Z) = 36%Z) in Hv;
+    [lia | by vm_compute].
+Qed.
+
+(* THE LINE CHOICE IS READABLE, AND THIS IS EXACTLY WHEN.  The four
+   alternatives are pairwise prefix-free precisely when echo's output is
+   neither of sh's two diagnostics.  Those diagnostics ARE word lines, so
+   [wl_line]'s parse settles every comparison the output takes part in and
+   the remaining pairs are closed literals -- which is what reduces the
+   condition from a statement about bytes to two inequalities on the WORD
+   LIST:
+
+       you may type anything except  echo fork
+                              and    echo exec echo failed
+
+   Both are decidable, so at any given line they are a computation, and
+   they are the whole of what the claim excludes. *)
+Lemma line_alts_of_prefix_det (ws : list (list (bv 8))) (a b : nat) :
+  wl_wf (drop 1 ws) ->
+  drop 1 ws <> dg_exec -> drop 1 ws <> dg_fork ->
+  (a < 4)%nat -> (b < 4)%nat ->
+  line_alts_of ws !!! a `prefix_of` line_alts_of ws !!! b -> a = b.
+Proof.
+  intros Hwf Hne Hnf Ha Hb.
+  assert (HE : wl_wf dg_exec)
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (HF : wl_wf dg_fork)
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (HA0 : line_alts_of ws !!! 0%nat
+                = wl_line (drop 1 ws) ++ sb "$ "%string) by reflexivity.
+  assert (HA1 : line_alts_of ws !!! 1%nat
+                = wl_line dg_exec ++ sb "$ "%string).
+  { apply (bool_decide_unpack _). vm_compute. exact I. }
+  assert (HA2 : line_alts_of ws !!! 2%nat = sb "$ "%string) by reflexivity.
+  assert (HA3 : line_alts_of ws !!! 3%nat = wl_line dg_fork).
+  { apply (bool_decide_unpack _). vm_compute. exact I. }
+  destruct a as [|[|[|[|a]]]]; destruct b as [|[|[|[|b]]]]; try lia;
+    intros Hp; try reflexivity; exfalso; revert Hp.
+  (* the six pairs among sh's own diagnostics and the prompt are closed *)
+  all: try (apply (bool_decide_unpack _); vm_compute; exact I).
+  (* ...and the six that involve the output are the parse *)
+  - (* 0 <= 1 : the output would BE the exec diagnostic *)
+    rewrite HA0 HA1. intros Hp.
+    destruct (wl_line_prefix_det _ _ _ _ Hwf HE Hp) as [H _]. exact (Hne H).
+  - (* 0 <= 2 : an output and a prompt cannot fit in a prompt *)
+    rewrite HA0 HA2. intros Hp.
+    pose proof (prefix_length _ _ Hp) as Hl.
+    rewrite length_app in Hl. pose proof (wl_line_pos (drop 1 ws)).
+    rewrite (_ : length (sb "$ "%string) = 2%nat) in Hl;
+      [lia | by vm_compute].
+  - (* 0 <= 3 : the output would BE the fork diagnostic *)
+    rewrite HA0 HA3. intros Hp.
+    rewrite -(app_nil_r (wl_line dg_fork)) in Hp.
+    destruct (wl_line_prefix_det _ _ _ _ Hwf HF Hp) as [H _]. exact (Hnf H).
+  - (* 1 <= 0 : and the same collision read the other way *)
+    rewrite HA0 HA1. intros Hp.
+    destruct (wl_line_prefix_det _ _ _ _ HE Hwf Hp) as [H _].
+    exact (Hne (eq_sym H)).
+  - (* 2 <= 0 : no line opens on '$' *)
+    rewrite HA0 HA2. exact (line_prompt_not_out (drop 1 ws) Hwf).
+  - (* 3 <= 0 *)
+    rewrite HA0 HA3. intros Hp.
+    exact (Hnf (eq_sym (wl_line_of_wire _ _ _ HF Hwf Hp))).
+Qed.
 
 Lemma line_alts_0 : line_alts !!! 0%nat = echo_line_out ++ sb "$ "%string.
 Proof. reflexivity. Qed.

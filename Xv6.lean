@@ -99,3 +99,6 @@ import Xv6.SpecKinit
 import Xv6.SpecKvmmap
 import Xv6.ProofKinit
 import Xv6.LinkKinit
+import Xv6.PtRunLemmas
+import Xv6.ProofMappages
+import Xv6.LinkMappages

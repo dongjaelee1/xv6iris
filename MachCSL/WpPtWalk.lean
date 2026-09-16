@@ -376,10 +376,10 @@ theorem swp_pt_walk_kpt [CurCtx] (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Boo
   reduce_closed_widths
   swp_run 40
   rw [vpnIdx_two']; erw [pteAddr_setWidth]
-  icases kpt_readAU cpu t M _ _ m2 $$ [Hkpt Hctx] with ⟨Hctx, %K, HK, HAU⟩
+  icases kpt_readAU cpu t M _ _ m2 $$ [Hkpt Hctx] with ⟨Hctx, %K, %tsl, HK, HAU⟩
   · iframe Hctx; iexact Hkpt
   iapply swp_bind
-  iapply (swp_read_pte cpu dq c sie hok (pteAddr t.base (vpnIdx vpn 2)) (hents _ m2).1 (hents _ m2).2 K [] _)
+  iapply (swp_read_pte cpu dq c sie hok (pteAddr t.base (vpnIdx vpn 2)) (hents _ m2).1 (hents _ m2).2 K tsl _)
   iframe HmConf HK HAU
   inext
   iintro HmConf %w %hw2
@@ -401,10 +401,10 @@ theorem swp_pt_walk_kpt [CurCtx] (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Boo
   reduce_closed_widths
   swp_run 40
   rw [vpnIdx_one']; erw [pteAddr_setWidth]
-  icases kpt_readAU cpu t M _ _ m1 $$ [Hkpt Hctx] with ⟨Hctx, %K1, HK, HAU⟩
+  icases kpt_readAU cpu t M _ _ m1 $$ [Hkpt Hctx] with ⟨Hctx, %K1, %tsl1, HK, HAU⟩
   · iframe Hctx; iexact Hkpt
   iapply swp_bind
-  iapply (swp_read_pte cpu dq c sie hok (pteAddr b1 (vpnIdx vpn 1)) (hents _ m1).1 (hents _ m1).2 K1 [] _)
+  iapply (swp_read_pte cpu dq c sie hok (pteAddr b1 (vpnIdx vpn 1)) (hents _ m1).1 (hents _ m1).2 K1 tsl1 _)
   iframe HmConf HK HAU
   inext
   iintro HmConf %w %hw1
@@ -427,10 +427,10 @@ theorem swp_pt_walk_kpt [CurCtx] (cpu : CPU) (dq : DFrac) (c : MConf) (sie : Boo
   swp_run 40
   rw [vpnIdx_zero']; erw [pteAddr_setWidth]
   subst haddr
-  icases kpt_readAU cpu t M _ _ m0 $$ [Hkpt Hctx] with ⟨Hctx, %K0, HK, HAU⟩
+  icases kpt_readAU cpu t M _ _ m0 $$ [Hkpt Hctx] with ⟨Hctx, %K0, %tsl0, HK, HAU⟩
   · iframe Hctx; iexact Hkpt
   iapply swp_bind
-  iapply (swp_read_pte cpu dq c sie hok (pteAddr b0 (vpnIdx vpn 0)) (hents _ m0).1 (hents _ m0).2 K0 [] _)
+  iapply (swp_read_pte cpu dq c sie hok (pteAddr b0 (vpnIdx vpn 0)) (hents _ m0).1 (hents _ m0).2 K0 tsl0 _)
   iframe HmConf HK HAU
   inext
   iintro HmConf %w %hw0

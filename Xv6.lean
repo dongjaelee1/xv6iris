@@ -141,3 +141,4 @@ import Xv6.ProofProcinit
 import Xv6.LinkProcinit
 import Xv6.ProofBinit
 import Xv6.LinkBinit
+import Xv6.KvmSeal

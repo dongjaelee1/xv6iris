@@ -332,6 +332,61 @@ theorem ownCtx_key_vis (cpu : CPU) (ξ : CtxId) (t : Nat) :
           iexact Hau
         · ipureintro; exact Or.inr (by simp)
 
+/-- MANY keys of the running context at once, cashed against ONE view
+receipt (the token's own `K`) and ONE authorship bundle: what a client
+holding a word whose bytes were written at eight different positions
+presents to the read accessor (`WordHist.read_cases_visT`). -/
+theorem ownCtx_keys_vis (cpu : CPU) (ξ : CtxId) (f : Nat → Nat) :
+    ∀ n : Nat, ownCtx (GF := GF) cpu ξ ∗ ([∗list] j ∈ List.range n, keyAt era ξ (f j)) ⊢
+      ownCtx cpu ξ ∗ ∃ (K : Nat) (tsl : List (Nat × Agent)),
+        viewLb cpu K ∗ ([∗list] p ∈ tsl, authoredBy p.1 p.2) ∗
+        ⌜∀ j, j < n → f j ≤ K ∨ (f j, hartAgent cpu) ∈ tsl⌝
+  | 0 => by
+    iintro ⟨Hctx, _⟩
+    icases ownCtx_key_vis cpu ξ 0 $$ [Hctx] with ⟨Hctx, %K, %tsl, #HK, #Hts, %h0⟩
+    · iframe Hctx
+      iapply keyAt_0
+    iframe Hctx
+    iexists K, tsl
+    isplit
+    · iexact HK
+    isplit
+    · iexact Hts
+    · ipureintro
+      intro j hj
+      omega
+  | n + 1 => by
+    rw [List.range_succ]
+    iintro ⟨Hctx, H⟩
+    icases BigSepL.bigSepL_snoc.1 $$ H with ⟨#H1, #H2⟩
+    icases ownCtx_keys_vis cpu ξ f n $$ [Hctx H1] with ⟨Hctx, %K1, %ts1, #HK1, #Hts1, %h1⟩
+    · iframe Hctx
+      iexact H1
+    icases ownCtx_key_vis cpu ξ (f n) $$ [Hctx H2] with ⟨Hctx, %K2, %ts2, #HK2, #Hts2, %h2⟩
+    · iframe Hctx
+      iexact H2
+    iframe Hctx
+    iexists (max K1 K2), (ts1 ++ ts2)
+    isplit
+    · iapply viewLb_max cpu K1 K2
+      isplit
+      · iexact HK1
+      · iexact HK2
+    isplit
+    · iapply BigSepL.bigSepL_append.2
+      isplit
+      · iexact Hts1
+      · iexact Hts2
+    · ipureintro
+      intro j hj
+      rcases Nat.lt_succ_iff_lt_or_eq.1 hj with hj | rfl
+      · rcases h1 j hj with h | h
+        · exact Or.inl (by omega)
+        · exact Or.inr (List.mem_append_left _ h)
+      · rcases h2 with h | h
+        · exact Or.inl (by omega)
+        · exact Or.inr (List.mem_append_right _ h)
+
 /-- The bound of the running context rises to any view receipt of its hart. -/
 theorem ctx_absorb (cpu : CPU) (ξ : CtxId) (K' : Nat) :
     ownCtx (GF := GF) cpu ξ ∗ viewLb cpu K' ⊢ |==> (ownCtx cpu ξ ∗ ctxFloor ξ K') := by

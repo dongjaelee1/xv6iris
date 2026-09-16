@@ -609,20 +609,18 @@ Section EchoInitBoot.
        proof, and [UInitBootAdequacy]'s [Hsh_owed] is GONE (lane R3). *)
     (* ---- and the two equations [Hinit_boot] hands over ---- *)
     @file_app Σ HF = MkAppcfg echo_names (echo_pred γ) r ->
-    riscv_rx_tag = echo_tag γ ->
-    (* ...AND THE KILL CREDENTIAL'S (lane KILL-PAY, K1/§1c).  This file sits
-       ABOVE the instantiation, so it cannot know that the machine's kill
-       credential is the taint; the top theorem's [Hinit_boot] hands the
-       equation over exactly as it hands the rx-tag one, and the taint arm's
-       generic mint spends it there. *)
-    riscv_kill_cred = echo_taint γ ->
-    (* ...AND THE CONSOLE CLAIM'S (redesign R2).  Same mould, same reason:
-       the generic slot the taint arm buys carries the port's ONE LICENCE
-       beside the supply and the kill credential, because an unverified
-       program may [write(2)] on the console and [read(2)] fd 0, and
-       because consoleintr files every accepted byte in the log.  All three
-       are events on one resource now, so one equation carries them. *)
-    @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = echo_cons γ ->
+    (* ...AND THE INTERFACE EQUATION (redesign R4), ONE where there were
+       three.  This file sits ABOVE the instantiation, so it cannot know
+       that the machine's tag family is echo's, that its kill credential is
+       the taint, or that its console claim is echo's; the top theorem's
+       [Hinit_boot] hands the interface over and each of the three is a
+       projection of it.  What they buy here: the tag for
+       [UConsLine.ush_tag_law], the credential for the taint arm's generic
+       mint, and the claim for the port's ONE LICENCE beside the supply --
+       an unverified program may [write(2)] on the console and [read(2)] fd
+       0, and consoleintr files every accepted byte in the log, and all
+       three are events on one resource. *)
+    @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = echo_ifc γ ->
     ⊢ app_inv fsc_fs -∗ echo_boot γ (S gen_id) r -∗
       (* ...AND THE ERA'S TURN (lane CONS-IO milestone F), the application's
          own per-era credential, handed over beside the boot resource.
@@ -632,7 +630,14 @@ Section EchoInitBoot.
       echo_turn γ (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Heq Htag Hkill Hcons.
+    intros Heq Hiface.
+    (* the three projections, off the one equation *)
+    assert (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = echo_tag γ)
+      by (rewrite /riscv_rx_tag Hiface; by cbn [echo_ifc ai_tag]).
+    assert (Hkill : @riscv_kill_cred Σ (@riscv_fixedGS Σ HR) = echo_taint γ)
+      by (rewrite /riscv_kill_cred Hiface; by cbn [echo_ifc ai_kill]).
+    assert (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = echo_cons γ)
+      by (rewrite /riscv_cons_res Hiface; by cbn [echo_ifc ai_cons]).
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)

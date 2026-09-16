@@ -1227,39 +1227,16 @@ Definition boot_fixedGS {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
        ([RiscvPtsto.obs_hist_lb]): both are allocated in the same step of
        [riscv_power_adequacy] below, at the empty history. *)
     (γhist : gname)
-    (* the INPUT TAG FAMILY (app-echo.md, lane L5), the ambient twin of the
-       trace predicate: what the application claims of every byte the
-       environment pushes into the UART, at the history it arrived at.  A
-       Coq-level argument for the reason [Ptp] is one -- the client writes it
-       in a context that has no [riscvFixedGS] yet. *)
-    (Tg : list mobs -> iProp Σ) (HTg : forall h, Persistent (Tg h))
-    (HTgt : forall h, Timeless (Tg h))
-    (* THE KILL CREDENTIAL (app-echo.md, lane KILL-PAY, K1), the ambient
-       twin of the tag family on the OUTPUT side of a kill: the price an
-       application puts on [p->killed] becoming nonzero.  A Coq-level
-       argument for the reason [Tg] is one -- the client writes it in a
-       context that has no [riscvFixedGS] yet -- and, like [Tg], read by no
-       hook of this layer: it is produced by the application's supply and
-       spent in the kernel's kill path. *)
-    (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
-    (* the OUTPUT CLAIM (app-echo.md, lane OUT-FUPD), the transmit side's
-       twin of the tag family and a Coq-level argument for the same reason:
-       what the application claims of the bytes the CONSOLE UART has
-       accepted, read against an input-history prefix of the run.  A
-       RESOURCE, because a pure predicate cannot say who may write (see
-       [RiscvPtsto.riscv_out_res]); TIMELESS, so the UART invariant's body
-       still strips its later.  Its FOUNDING is the transport's, not a
-       field and not a premise here. *)
-    (* THE CONSOLE RESOURCE (redesign R2), a Coq-level argument for the tag
-       family's reason: what the application claims of the whole console
-       boundary, read against an input-history prefix of the run.  A
-       RESOURCE, because a pure predicate cannot say who may write or whose
-       delivery a byte was (see [RiscvPtsto.riscv_cons_res]); TIMELESS, so
-       the UART invariant's body still strips its later.  Its FOUNDING is
-       the power-on hook's, not a field and not a premise here. *)
-    (Cres : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
-    (HCrest : forall (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist),
-       Timeless (Cres k h H))
+    (* THE APPLICATION'S CONSOLE INTERFACE (redesign R4): the tag family,
+       the kill credential and the console claim, as ONE Coq-level argument
+       where there were three with five instance arguments beside them.  A
+       Coq-level argument for the reason [Ptp] is one -- the client writes
+       it in a context that has no [riscvFixedGS] yet -- and read by no hook
+       of this layer: the tag is produced by the rx wand and copied out by
+       readers of the FIFO, the credential by the application's supply and
+       spent in the kernel's kill path, the claim founded by the power-on
+       hook and read at the drain. *)
+    (Ai : app_iface Σ)
     (* the application's FIXED PART (app-instances.md §6 ruling 1): its
        type and the one value [riscv_power_adequacy]'s birth step produced,
        before the crash slot *)
@@ -1272,8 +1249,7 @@ Definition boot_fixedGS {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
      runs of underscores are one longer each; the trace fields at the end
      are main's.  All resolve from [riscvGpreS]. *)
   RiscvFixedGS Σ Hinv _ _ _ _ _ _ _ _ _ _ _ _ _ γgen γstart _ γreg
-    _ _ _ γdisk ndisk Pcp γswap _ γobs T Ptp _ γhist Tg HTg HTgt
-    Kc HKc HKct Cres HCrest CT c.
+    _ _ _ γdisk ndisk Pcp γswap _ γobs T Ptp _ γhist Ai CT c.
 
 (* ---------------------------------------------------------------------- *)
 (* THE TRACE HOOK'S HELPERS -- ONE PER CONJUNCT OF [state_interp].          *)
@@ -1338,17 +1314,11 @@ Lemma disk_proj_trace {Σ : gFunctors} `{!xv6G Σ, !riscvGpreS Σ}
             ▷ Pc γdisk γsw γreg γst c ∗ ⌜Ppure dk⌝))
     (Hinv : invGS Σ) (γgen γstart γreg γdisk γswap : gname)
     (γobs : gname) (T : list mobs) (Ptp : iProp Σ) (γhist : gname)
-    (Tg : list mobs -> iProp Σ) (HTg : forall h, Persistent (Tg h))
-    (HTgt : forall h, Timeless (Tg h))
-    (Kc : iProp Σ) (HKc : Persistent Kc) (HKct : Timeless Kc)
-
-    (Cres : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
-    (HCrest : forall k h H, Timeless (Cres k h H)) (c : CT)
+    (Ai : app_iface Σ) (c : CT)
     (g' : gstate) :
   ⊢ @power_interp Σ
        (boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
-          (Pc γdisk γswap γreg γstart c) γobs T Ptp γhist Tg HTg HTgt
-          Kc HKc HKct Cres HCrest CT c) g' -∗
+          (Pc γdisk γswap γreg γstart c) γobs T Ptp γhist Ai CT c) g' -∗
     ▷ Pc γdisk γswap γreg γstart c -∗
     ◇ ⌜Ppure (v_disk (dvirtio (gdev g')))⌝.
 Proof.
@@ -1660,29 +1630,9 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
        carries it; no hook of this layer reads it -- the UART thread's
        permit is where it is produced and the console ledger where it is
        spent. *)
-    (Tg : CT -> list mobs -> iProp Σ)
-    (HTg : forall (c : CT) (h : list mobs), Persistent (Tg c h))
-    (HTgt : forall (c : CT) (h : list mobs), Timeless (Tg c h))
-    (* THE KILL CREDENTIAL, at the application's fixed part (app-echo.md
-       lane KILL-PAY, K1).  A SLOT of the fixed record like the tag family,
-       so it is a parameter here and the record literal below carries it;
-       no hook of this layer reads it. *)
-    (Kc : CT -> iProp Σ)
-    (HKc : forall c : CT, Persistent (Kc c))
-    (HKct : forall c : CT, Timeless (Kc c))
-    (* THE OUTPUT PREDICATE, at the application's fixed part (app-echo.md
-       lane OUT-FUPD).  A SLOT of the fixed record like the tag family, so
-       it is a parameter here and the record literal below carries it; no
-       hook of this layer reads it -- the CONSOLE UART's invariant carries
-       it ([WpUart.uart_out_claim]), the transmit store re-establishes it
-       from the writer's view shift, and the trace ledger reads it at a
-       drain.  A RESOURCE and not a [Prop] ([RiscvPtsto.riscv_out_res]),
-       and TIMELESS so the device invariant's body still strips its later;
-       its FOUNDING is the application transport's, not this layer's. *)
-
-    (Cres : CT -> nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ)
-    (HCrest : forall (c : CT) (k : nat) (h : list mobs)
-                     (H : LogEntryDefs.cons_hist), Timeless (Cres c k h H))
+    (Ai : CT -> app_iface Σ)
+    (* the console claim, as a projection of the interface above: this
+       layer reads it at the power hook's founding and nowhere else *)
     (* ...and the ERA'S TURN (lane CONS-IO milestone F), which is NOT a
        field: the application's per-era credential for <init>, produced by
        the same arm and carried by [power_boot_res] to the boot bundle. *)
@@ -1718,7 +1668,7 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
               ghost_var γobs (1/2)
                 (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
               (if on then emp
-               else Cres c (S (obs_boots h)) []
+               else ai_cons (Ai c) (S (obs_boots h)) []
                       (LogEntryDefs.MkCH [] [] [] None) ∗
                     (* ...and the era's turn (lane CONS-IO milestone F), on
                        the claim's mould *)
@@ -1772,8 +1722,7 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
        ⊢ @power_interp Σ
             (boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
                (Pc γdisk γswap γreg γstart c) γobs T (Pt γobs c) γhist
-               (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
-               (Cres c) (HCrest c) CT c) g' -∗
+               (Ai c) CT c) g' -∗
          ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
          ▷ Pc γdisk γswap γreg γstart c -∗ ▷ Pt γobs c -∗
          ◇ ⌜phi g' h⌝)
@@ -1818,8 +1767,7 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
               (c : CT) (T : list mobs),
        F = boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
              (Pc γdisk γswap γreg γstart c) γobs T (Pt γobs c) γhist
-             (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
-             (Cres c) (HCrest c) CT c ->
+             (Ai c) CT c ->
        ⊢ obs_inv -∗
          power_boot_res HE gen D nproc ndisk Mof (Rb c gen) (Tn c (S gen)) g'
          ={⊤}=∗
@@ -1899,8 +1847,7 @@ Proof.
      lets [state_interp] tie the history so far to the future *)
   set (F := boot_fixedGS Hinv γgen γstart γreg γfdisk ndisk γswap
               (Pc γfdisk γswap γreg γstart c) γobs κs (Pt γobs c) γhist
-              (Tg c) (HTg c) (HTgt c) (Kc c) (HKc c) (HKct c)
-              (Cres c) (HCrest c) CT c).
+              (Ai c) CT c).
   (* the client's trace hook at the gnames just allocated.  [F] is a local
      DEFINITION, so this statement and the one the final observation below
      faces are convertible. *)
@@ -2039,12 +1986,7 @@ Corollary riscv_trace_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
               (c : unit) (T : list mobs),
        F = boot_fixedGS Hinv γgen γstart γreg γdisk ndisk γswap
              (Pc γdisk γswap γreg γstart) γobs T (obs_ledger_at R γobs) γhist
-             rx_tag_triv (@rx_tag_triv_persistent Σ)
-             (@rx_tag_triv_timeless Σ)
-             kill_cred_triv (@kill_cred_triv_persistent Σ)
-             (@kill_cred_triv_timeless Σ)
-
-             cons_res_triv (@cons_res_triv_timeless Σ) unit c ->
+             (app_iface_triv Σ) unit c ->
        ⊢ obs_inv -∗
          power_boot_res HE gen D nproc ndisk Mof Rb emp%I g' ={⊤}=∗
           ([∗ list] c ∈ enum CPU,
@@ -2063,17 +2005,9 @@ Proof.
            Ppure (fun γdisk γsw γreg γst _ => Hproj γdisk γsw γreg γst)
            Mof (fun _ _ => Rb) (fun γdisk γsw γreg γst _ => Hswap γdisk γsw γreg γst)
            (fun γobs _ => obs_ledger_at R γobs)
-           (fun _ : unit => rx_tag_triv)
-           (fun (_ : unit) (h : list mobs) => @rx_tag_triv_persistent Σ h)
-           (fun (_ : unit) (h : list mobs) => @rx_tag_triv_timeless Σ h)
-           (fun _ : unit => kill_cred_triv)
-           (fun _ : unit => @kill_cred_triv_persistent Σ)
-           (fun _ : unit => @kill_cred_triv_timeless Σ)
-           (* the console resource, trivial at this packaged theorem's
-              generic application (redesign R2) *)
-           (fun _ : unit => cons_res_triv)
-           (fun (_ : unit) (k : nat) (h : list mobs)
-                (H : LogEntryDefs.cons_hist) => @cons_res_triv_timeless Σ k h H)
+           (* the console interface, trivial at this packaged theorem's
+              generic application (redesign R2/R4) *)
+           (fun _ : unit => app_iface_triv Σ)
            (fun (_ : unit) (_ : nat) => emp%I)
            (fun γobs _ => obs_ledger_at_alloc_cl R γobs True%I
                             ltac:(iIntros "_"; iMod HR0 as "HR"; by iModIntro))

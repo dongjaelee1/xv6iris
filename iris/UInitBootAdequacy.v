@@ -153,12 +153,11 @@ Section EchoAdequacy.
     (* ...and ONE FEWER GOAL since redesign R2: [Happ_in_sup] is gone (one
        resource admits one law), and [Hconst] is fixed by unification the
        way [Houtt] is. *)
-    (* ...and FOUR FEWER HOLES since redesign R4: [Houtt], [Hinpt] and
-       [Hwint] are gone with the three fields they were about, and
-       [Hconst] takes their place -- fixed by unification the way they
-       were, because [Hphi]'s own literal above names it. *)
+    (* ...and FIVE FEWER HOLES AGAIN since R4's interface pass: [Htagp],
+       [Htagt], [Hkillp], [Hkillt] and [Hconst] ride [app_ifc] now, so they
+       are not obligations at all. *)
     refine (xv6_app_adequacy Σ g sb nib cov app_echo
-              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
+              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
     - exact echo_Hbirth.
     - exact echo_Happ_kill.
     - exact echo_Happ_out_sup.
@@ -187,14 +186,11 @@ Section EchoAdequacy.
              payload and sh's tail obligation itself, off the era's links
              and the boot resource. ---- *)
       
-      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen Hcons.
-      (* the record's [app_kill] field IS [AppEcho.echo_taint] (lane
-         KILL-PAY, K1); [echo_Hinit_boot] is stated at the latter, and
-         unification does not delta-unfold the record literal for it. *)
-      cbn [app_echo app_kill] in Hkill.
-      (* ...and the [app_cons] field IS [AppEcho.echo_cons], for the same
-         reason (redesign R2) *)
-      cbn [app_echo app_cons] in Hcons.
+      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Hiface Hgen.
+      (* the record's [app_ifc] field IS [AppEcho.echo_ifc] (redesign R4);
+         [echo_Hinit_boot] is stated at the latter, and unification does not
+         delta-unfold the record literal for it. *)
+      cbn [app_echo app_ifc] in Hiface.
       (* THE TWO LAYERS NO LONGER HAVE TO MEET (lane ECHO-OUT part 5).  Until
          part 5 [Heq]/[Htag]/[Hkill] arrived carrying [AppEcho.echo_taint]
          at the record's PRE-STRUCTURE [mono_natG] while [echo_Hinit_boot]
@@ -208,8 +204,7 @@ Section EchoAdequacy.
          Naming it here would pin the wrong one: the [GEN] this field
          binds is not the one [app_echo] was elaborated at. *)
       iIntros "#Hinv Hb Hturn".
-      iApply (echo_Hinit_boot HR GEN c r
-                Heq Htag Hkill Hcons with "Hinv Hb [Hturn]").
+      iApply (echo_Hinit_boot HR GEN c r Heq Hiface with "Hinv Hb [Hturn]").
       cbn [app_echo app_turn]. iExact "Hturn".
     - (* [Happ_echo]: [EchoOut.echo_happ_echo], the arm's open and a run
          whose every link takes nothing. *)

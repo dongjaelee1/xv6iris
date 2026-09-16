@@ -1417,23 +1417,34 @@ Section EchoApp.
      over ONE console history -- what the port's invariant carries, what a
      writer's link moves by [EvOut], what consoleintr's arm moves by
      [EvOpen]/[EvByte]/[EvClose] and what a read moves by [EvRead]. *)
+  (* THE APPLICATION'S CONSOLE INTERFACE (redesign R4), as one value: the
+     tag beside a received byte, the kill credential (which IS the taint --
+     a kill under this discipline is impossible, so what a party a kill
+     touched may keep is the fact the taint already states), and the
+     console claim. *)
   Definition echo_cons (γ : echo_fixed) :
       nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ :=
     EchoOut.ecl (echo_taint γ) γ.
 
+  Global Instance echo_cons_timeless γ k h H :
+    Timeless (echo_cons γ k h H).
+  Proof. rewrite /echo_cons. apply _. Qed.
+
+  (* THE APPLICATION'S CONSOLE INTERFACE (redesign R4), as one value: the
+     tag beside a received byte, the kill credential (which IS the taint --
+     a kill under this discipline is impossible, so what a party a kill
+     touched may keep is the fact the taint already states), and the console
+     claim.  The three instances ride with them, where they were five
+     obligations of [App.xv6_app_adequacy]. *)
+  Definition echo_ifc (γ : echo_fixed) : app_iface Σ :=
+    MkAppIface (echo_tag γ) (echo_tag_persistent γ) (echo_tag_timeless γ)
+               (echo_taint γ) (echo_taint_persistent γ)
+               (echo_taint_timeless γ)
+               (echo_cons γ) (echo_cons_timeless γ).
+
   Definition app_echo : xv6_app Σ :=
-    MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R echo_tag
-          (* THE KILL CREDENTIAL IS THE TAINT (app-echo.md, lane KILL-PAY,
-             K1).  The record's [app_kill] slot has to be filled for the
-             literal to typecheck, and there is exactly one honest value:
-             a kill under this application's discipline is impossible, so
-             what a party a kill touched may keep is the fact the taint
-             already states.  [echo_taint_of_sup] is [Happ_kill]. *)
-          echo_taint
-          echo_turn
-          (* THE CONSOLE CLAIM (redesign R2/R3) *)
-          echo_cons
-          echo_phi.
+    MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R
+          echo_ifc echo_turn echo_phi.
 
   (* ---- THE BIRTH STEP ---- *)
   Lemma echo_Hbirth : ⊢ |==> ∃ c : app_fixed app_echo, app_cl app_echo c.
@@ -1444,18 +1455,8 @@ Section EchoApp.
     Timeless (app_R app_echo c h).
   Proof. cbn [app_echo app_fixed app_R] in c |- *. apply _. Qed.
 
-  Lemma echo_Htagp (c : app_fixed app_echo) (h : list mobs) :
-    Persistent (app_tag app_echo c h).
-  Proof. cbn [app_echo app_fixed app_tag] in c |- *. apply _. Qed.
-
-  Lemma echo_Htagt (c : app_fixed app_echo) (h : list mobs) :
-    Timeless (app_tag app_echo c h).
-  Proof. cbn [app_echo app_fixed app_tag] in c |- *. apply _. Qed.
-
-  (* ---- THE KILL CREDENTIAL'S THREE (lane KILL-PAY, K1) ---- *)
-  Lemma echo_Hkillp (c : app_fixed app_echo) :
-    Persistent (app_kill app_echo c).
-  Proof. cbn [app_echo app_fixed app_kill] in c |- *. apply _. Qed.
+  (* [echo_Htagp], [echo_Htagt], [echo_Hkillp] and [echo_Hkillt] lived
+     here: they ride [echo_ifc] now (redesign R4). *)
 
   Lemma echo_Hkillt (c : app_fixed app_echo) :
     Timeless (app_kill app_echo c).
@@ -1466,16 +1467,14 @@ Section EchoApp.
   Lemma echo_Happ_kill (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r ⊢ □ app_kill app_echo c.
   Proof.
-    cbn [app_echo app_fixed app_names app_pred app_kill] in c, r |- *.
+    rewrite /app_kill.
+    cbn [app_echo app_fixed app_names app_pred app_ifc echo_ifc ai_kill]
+      in c, r |- *.
     iIntros "#Hs". iModIntro. iApply (echo_taint_of_sup c r with "Hs").
   Qed.
 
-  (* ---- THE OUTPUT CLAIM'S THREE, ALL VACUOUS AT THE PLACEHOLDER ---- *)
-  (* [echo_Houtt], [echo_Hinpt] and [echo_Hwint] lived here. *)
-
-  Lemma echo_Hconst (c : app_fixed app_echo) (k : nat) (h : list mobs)
-      (H : LogEntryDefs.cons_hist) : Timeless (app_cons app_echo c k h H).
-  Proof. cbn [app_echo app_fixed app_cons echo_cons] in c |- *. apply _. Qed.
+  (* [echo_Houtt], [echo_Hinpt], [echo_Hwint] and [echo_Hconst] lived here:
+     the claims' instances, which ride [echo_ifc] now. *)
 
   (* [echo_Happ_in_sup] lived here: one resource admits one law. *)
 
@@ -1490,7 +1489,9 @@ Section EchoApp.
              app_cons app_echo c k h H ==∗
              app_cons app_echo c k h (ConsLog.cons_step H ev)).
   Proof.
-    cbn [app_echo app_fixed app_names app_cons echo_cons] in c, r |- *.
+    rewrite /app_cons.
+    cbn [app_echo app_fixed app_names app_ifc echo_ifc ai_cons echo_cons]
+      in c, r |- *.
     iIntros "#Hs".
     iDestruct (echo_taint_of_sup c r with "Hs") as "#Ht".
     iIntros "!>" (k h H ev) "Ho".
@@ -1519,7 +1520,8 @@ Section EchoApp.
             app_turn app_echo c (S (obs_boots h))).
   Proof.
     intros _.
-    cbn [app_echo app_fixed app_R echo_R app_cons echo_cons
+    rewrite /app_cons.
+    cbn [app_echo app_fixed app_R echo_R app_ifc echo_ifc ai_cons echo_cons
          app_turn echo_turn] in c |- *.
     iApply (EchoOut.echo_led_pow_cl (echo_taint c) c h on).
   Qed.
@@ -1551,7 +1553,9 @@ Section EchoApp.
            uart_ghosts γ u' ∗ app_R app_echo c (h ++ [ObsUartOut i b])%list).
   Proof.
     intros _ _.
-    cbn [app_echo app_fixed app_R echo_R app_cons echo_cons] in c |- *.
+    rewrite /app_cons.
+    cbn [app_echo app_fixed app_R echo_R app_ifc echo_ifc ai_cons echo_cons]
+      in c |- *.
     iIntros "!>" (h b u u' ho H)
       "%Htxp %Hlp %Hsh %Hwi %Hwo %Hbt %Hpo %Hacc Ho Hg Hled".
     (* THE GOODNESS OF THE DRAINED SEGMENT, at the console and nowhere else
@@ -1602,16 +1606,17 @@ Section EchoApp.
      every firing after the discipline has broken.  All this file does is
      hand it the FOUR record equations at the [boot_fixedGS] literal. *)
   Lemma echo_Happ_echo (HR : riscvGS Σ) (c : app_fixed app_echo) :
-    @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = app_cons app_echo c ->
-    @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag app_echo c ->
-    (* ...and the window token's (lane CONS-IO milestone F): the shift TAKES
-       the era's token, and the echo's own store is what splits it. *)
+    (* ONE EQUATION (redesign R4): the shift reads the machine's ambient tag
+       family and its ambient console claim, and both are projections of the
+       interface this record sets. *)
+    @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = app_ifc app_echo c ->
     ⊢ ∀ (GEN : GenId) (XI : CurCtx), @cons_echo_shift Σ HR GEN XI.
   Proof.
-    cbn [app_echo app_fixed app_cons echo_cons app_tag echo_tag] in c |- *.
-    intros Hcons Htag.
-    iApply (EchoOut.echo_happ_echo (echo_taint c) c (HRg := HR)
-              Hcons Htag).
+    cbn [app_echo app_fixed app_ifc] in c |- *.
+    intros Hiface.
+    iApply (EchoOut.echo_happ_echo (echo_taint c) c (HRg := HR)).
+    - rewrite /riscv_cons_res Hiface. by cbn [echo_ifc ai_cons echo_cons].
+    - rewrite /riscv_rx_tag Hiface. by cbn [echo_ifc ai_tag].
   Qed.
 
   Lemma echo_Hrx `{!uartGhostG Σ} `{HF : !fileG Σ}

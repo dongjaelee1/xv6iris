@@ -58,3 +58,4 @@ import MachCSL.KptInv
 import MachCSL.WpPtWalk
 import MachCSL.Translate
 import MachCSL.WpSmodeCycle
+import MachCSL.WpSmodeTrapCsr

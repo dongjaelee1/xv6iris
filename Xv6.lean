@@ -71,3 +71,7 @@ import Xv6.LinkTrapinithart
 import Xv6.SpecKvminithart
 import Xv6.ProofKvminithart
 import Xv6.LinkKvminithart
+import Xv6.SpecDevintr
+import Xv6.SpecYield
+import Xv6.ProofKerneltrap
+import Xv6.LinkKerneltrap

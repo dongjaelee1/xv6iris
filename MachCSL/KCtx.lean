@@ -331,9 +331,10 @@ macro "stack_cells" : tactic =>
       BitVec.reduceMul, BitVec.reduceNeg, Nat.reduceAdd])
 
 /-- The slots the trap path pushes below the interrupted thread's `sp`
-(kernelvec's 256-byte frame and kerneltrap's own frames): owed by the bundle
-exactly when interrupts are enabled. -/
-def kvFrameSlots : Nat := 78
+(kernelvec's 256-byte frame, kerneltrap's 6 slots and the 52 of devintr's
+cone, the Rocq `devintr_stack`): owed by the bundle exactly when
+interrupts are enabled. -/
+def kvFrameSlots : Nat := 90
 
 def trapRes (sie : Bool) : Nat := if sie then kvFrameSlots else 0
 

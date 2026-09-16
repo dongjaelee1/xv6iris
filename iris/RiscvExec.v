@@ -1108,7 +1108,7 @@ Section WPDev.
      belongs to THIS generation's era, and the number of that era is
      readable from the history alone.  It is what lets every application
      fact stated about a history be tied to the era's indexed claim
-     ([RiscvPtsto.riscv_out_res]'s ERA INDEX paragraph) without any
+     ([RiscvPtsto.riscv_cons_res]'s ERA INDEX paragraph) without any
      comparison against an authority the callback does not hold. *)
   Lemma wp_uart_step (i : uart_id) :
     gen_cert -∗

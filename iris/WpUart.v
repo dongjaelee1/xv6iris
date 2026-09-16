@@ -969,7 +969,7 @@ Section DevLoops.
     iMod (ghost_var_update_halves a' with "H1 H2") as "[$ $]". done.
   Qed.
 
-  (* THE KERNEL'S MIRROR OF THE LOG.  The application owns [riscv_in_res];
+  (* THE KERNEL'S MIRROR OF THE LOG.  The application owns [riscv_cons_res];
      the kernel keeps a mono_list beside it so that the console ring can
      hold a PERSISTENT lower bound on the log and state its gap facts
      against that bound rather than against a resource it cannot see. *)
@@ -1955,15 +1955,20 @@ Section DevLoops.
   (* ==================================================================== *)
   (*  THE LINK FAMILY, OVER EVENTS (redesign R2).                          *)
   (*                                                                       *)
-  (*  ONE wand per boundary event, where today there are four link shapes   *)
+  (*  ONE wand per boundary event, where there were four link shapes       *)
   (*  ([out_link], [in_append], [echo_link], [read_link]) over two          *)
   (*  resources at two witnesses.  The application supplies it and the      *)
   (*  kernel fires it with the port invariant open, having proved the       *)
   (*  event's pure premise ([ConsLog.cons_ev_ok]) from its own state.       *)
   (*                                                                       *)
-  (*  ONE WITNESS.  The two claims carry their own today, which is what     *)
-  (*  makes [Htx] need a second; here the resource is one and so is the     *)
-  (*  witness it is held at.                                               *)
+  (*  ONE WITNESS.  Two claims carried one each, which is what made [Htx]   *)
+  (*  need a second; the resource is one now and so is the witness it is    *)
+  (*  held at.                                                              *)
+  (*                                                                       *)
+  (*  [out_link] and its chain below are NOT a fifth shape: they are this   *)
+  (*  wand at [EvOut] with the two premises a plain writer never reads      *)
+  (*  dropped, which is what keeps the write path's ~30 producers at the    *)
+  (*  arity they were proved at.  [cons_link_of_out_link] is the bridge.    *)
   (* ==================================================================== *)
   (* THE HISTORY'S OWN INVARIANT COMES WITH IT.  Every firing site holds
      [cons_claim_at], which carries [ConsLog.cons_hist_ok] as a pure
@@ -1981,7 +1986,18 @@ Section DevLoops.
          obs_hist_lb_o o' ∗
          chist_at i k (default [] o') (ConsLog.cons_step H ev) ∗ Φ)%I.
 
-  (* THE ARM'S RUN, stoppable exactly where today's [in_run] is: at each
+  (* the single link's monotonicity: strengthening the payload.  The echo
+     chain's bridges and the arm's two spend rules are all this lemma. *)
+  Lemma cons_link_mono (i : uart_id) (k : nat) (ev : ConsLog.cons_ev)
+      (Φ Φ' : iProp Σ) :
+    (Φ -∗ Φ') -∗ cons_link i k ev Φ -∗ cons_link i k ev Φ'.
+  Proof.
+    iIntros "HΦ H" (o Hh) "Hlb Hres %Hok %Hev".
+    iMod ("H" $! o Hh with "Hlb Hres [//] [//]") as (o'') "(Hlb'' & Hres' & HP)".
+    iModIntro. iExists o''. iFrame "Hlb'' Hres'". by iApply "HΦ".
+  Qed.
+
+  (* THE ARM'S RUN, stoppable exactly where [in_run] was: at each
      byte the holder chooses to close the arm or to emit the next one.  The
      [∧] is Iris's additive conjunction, as it is today -- the choice is the
      KERNEL's, and it is what lets one law cover an arm that emits fewer
@@ -1994,9 +2010,34 @@ Section DevLoops.
         ∧ cons_link Uart0 k (ConsLog.EvByte b) (cons_run k bs' Φ)
     end%I.
 
-  (* THE LICENCE: "any holder of the supply may move the resource by any
-     event".  One conjunct where there are two today ([out_licence] and
-     [in_licence]), because there is one resource. *)
+  (* ==================================================================== *)
+  (*  THE LICENCE: "any holder of the supply may move the resource by any  *)
+  (*  event".                                                              *)
+  (*                                                                       *)
+  (*  WHY IT EXISTS.  The kernel's GENERIC SUPPLY -- what an arbitrary,     *)
+  (*  unverified process runs its syscalls on ([UexecExecInst.xv6_ssupply])*)
+  (*  -- must pay for [write(2)] on the console, for consoleintr's shift   *)
+  (*  and for [read(2)] on fd 0, and under the resource claim none of      *)
+  (*  those is free: the whole point of making the claim a resource is     *)
+  (*  that it can say WHO may move it.  So the supply carries a licence,   *)
+  (*  the application decides what a licence costs ([App]'s [al_sup]:      *)
+  (*  whoever holds the application's supply holds one), and the generic   *)
+  (*  routes build their links out of it.  For the trivial application the *)
+  (*  claim is [emp] and the licence is free; for a constraining one the   *)
+  (*  licence is what its supply's TAINT arm pays for, which is exactly    *)
+  (*  how KILL-ARM's credential works.                                     *)
+  (*                                                                       *)
+  (*  ONE LICENCE (redesign R2), where lane OUT-FUPD's [cons_licence] and   *)
+  (*  lane CONS-IO's [cons_licence] were two names for it: one resource      *)
+  (*  admits one law.                                                      *)
+  (*                                                                       *)
+  (*  QUANTIFIED OVER THE ERA (lane CONS-IO milestone C): the licence is   *)
+  (*  the GENERIC process's payment and the generic process is any era's,  *)
+  (*  so the one persistent resource covers them all.                      *)
+  (*                                                                       *)
+  (*  PERSISTENT BY CONSTRUCTION, so it rides every context and every      *)
+  (*  bundle that carries the supply.                                      *)
+  (* ==================================================================== *)
   Definition cons_licence : iProp Σ :=
     (□ ∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
          (ev : ConsLog.cons_ev),
@@ -2086,42 +2127,12 @@ Section DevLoops.
      be accepted between two of ours. *)
 
 
-  (* ==================================================================== *)
-  (*  THE OUTPUT LICENCE (lane OUT-FUPD): "this holder may put ANY byte on   *)
-  (*  the console".                                                         *)
-  (*                                                                       *)
-  (*  WHY IT EXISTS.  The kernel's GENERIC SUPPLY -- what an arbitrary,      *)
-  (*  unverified process runs its syscalls on ([UexecExecInst.xv6_ssupply])  *)
-  (*  -- must pay for [write(2)] on the console, and under the resource      *)
-  (*  claim that payment is no longer free: the whole point of making the    *)
-  (*  claim a resource is that it can say WHO may write.  So the supply      *)
-  (*  carries a licence, the application decides what a licence costs        *)
-  (*  ([App.xv6_app]'s [Happ_out_sup]: whoever holds the application's       *)
-  (*  supply holds one), and the generic write builds its chain out of it.   *)
-  (*  For the trivial application the claim is [emp] and the licence is      *)
-  (*  free; for a constraining one the licence is what its supply's TAINT    *)
-  (*  arm pays for, which is exactly how KILL-ARM's credential works.        *)
-  (*                                                                       *)
-  (*  PERSISTENT BY CONSTRUCTION, so it rides every context and every        *)
-  (*  bundle that carries the supply.                                       *)
-  (* ==================================================================== *)
-  (* QUANTIFIED OVER THE ERA (lane CONS-IO milestone C): the licence is the
-     GENERIC process's payment and the generic process is any era's, so the
-     one persistent resource covers them all -- and the application pays it
-     out of the taint arm of whichever era's claim it is handed. *)
-  (* "ANY HOLDER OF THE SUPPLY MAY MOVE THE RESOURCE BY ANY EVENT"
-     (redesign R2).  The name is kept -- every licensed writer threads it --
-     but there is ONE licence now where there were two, because there is one
-     resource. *)
-  Definition out_licence : iProp Σ := cons_licence.
-
-  Global Instance out_licence_persistent : Persistent out_licence.
-  Proof. rewrite /out_licence. apply _. Qed.
+  (* ---- WHAT THE LICENCE PAYS, on the write path ---- *)
 
   (* the licence pays ONE link, at the witness it was handed: a licensed
      writer moves no witness, because it claims nothing about the input *)
   Lemma out_link_of_licence (k : nat) (b : bv 8) (Φ : iProp Σ) :
-    out_licence -∗ Φ -∗ out_link Uart0 k b Φ.
+    cons_licence -∗ Φ -∗ out_link Uart0 k b Φ.
   Proof.
     iIntros "#Hlic HΦ" (o Hh) "#Hlb Hres".
     iMod ("Hlic" $! k (default [] o) Hh (ConsLog.EvOut b) with "Hres") as "Hres".
@@ -2129,7 +2140,7 @@ Section DevLoops.
   Qed.
 
   Lemma out_chain_of_licence (k : nat) (bs : list (bv 8)) (Φ : iProp Σ) :
-    out_licence -∗ Φ -∗ out_chain Uart0 k bs Φ.
+    cons_licence -∗ Φ -∗ out_chain Uart0 k bs Φ.
   Proof.
     iIntros "#Hlic HΦ". iInduction bs as [| b bs] "IH"; [iExact "HΦ"|].
     cbn [out_chain]. iApply (out_link_of_licence k b with "Hlic").
@@ -2139,7 +2150,7 @@ Section DevLoops.
   (* ...and the stoppable chain at the TRIVIAL payload, which is what the
      generic supply's [write(16)] row needs *)
   Lemma out_run_of_licence (k : nat) (bs : list (bv 8)) :
-    out_licence -∗ out_run Uart0 k bs (fun _ => True%I).
+    cons_licence -∗ out_run Uart0 k bs (fun _ => True%I).
   Proof.
     iIntros "#Hlic". iInduction bs as [| b bs] "IH"; [done|].
     cbn [out_run]. iSplit; [done|].
@@ -2220,58 +2231,28 @@ Section DevLoops.
   (*  the same reason: both fire with [uartN Uart0] open.                   *)
   (* ==================================================================== *)
 
-  (* THE APPEND.  The kernel files [(h, c, cs)] and PROVES that [h] is
-     strictly above every history already logged: that is what makes the
-     log arrival-ordered and what makes a byte logged ONCE (a second append
-     at [h] would need [hist_ext h h]).  It does NOT move [dl]. *)
-  (* [in_append] lived here: the old two-step run's second half.  The run
-     is one arm over one claim now, and the close is [ConsLog.EvClose]. *)
-
-  (* THE ECHO'S OWN LINK: TWO RESOURCES, ONE OF THEM READ-ONLY (coordinator's
-     C2 amendment, 2026-09-13).  A plain [out_link] hands the application
-     only the OUTPUT claim, and with the bytes going out BEFORE the log
-     entry is filed that is not enough: at the store the application has to
-     decide that this byte is the echo of the NEXT input, and nothing but
-     the ORDER FACT -- every history already logged is strictly below [h] --
-     refutes a re-echo of an input it has already accounted for.  That fact
-     lives inside the port invariant (the log's high-water half against
-     [log_top pops]), so the echo's link is handed the input claim as well,
-     AT ITS OWN WITNESS AND UNCHANGED: only the output moves.
-
-     THE WRITE PATH IS UNTOUCHED.  [out_link] and [cons_out_chain] are what
-     a process's own [write(2)] spends, and a writer that is not answering
-     an input needs no order fact. *)
-  (* THE ECHO'S BYTE REACHING THE WIRE (redesign R2).  One event, where
-     today this is a two-resource wand that moves the output claim and hands
-     the input claim back unread -- the order fact and the wire rider it
-     needed are proved once at the arm's OPEN now, not per echoed byte.  The
-     [h] argument is kept so every caller's arity is unchanged. *)
-  Definition echo_link (k : nat) (h : list mobs) (b : bv 8) (Φ : iProp Σ) : iProp Σ :=
-    cons_link Uart0 k (ConsLog.EvByte b) Φ.
-
-  (* the per-byte chain of them, [out_chain]'s twin on the echo path *)
-  Fixpoint echo_chain (k : nat) (h : list mobs) (bs : list (bv 8))
-      (Φ : iProp Σ) : iProp Σ :=
+  (* [in_append] lived here -- the old two-step run's second half, which
+     filed [(h, c, cs)] and proved [h] strictly above every history already
+     logged.  The run is one arm over one claim now, that order fact is
+     proved ONCE at the arm's open, and the close is [ConsLog.EvClose]. *)
+  (* THE ECHO'S BYTES, one [EvByte] each: [out_chain]'s twin on the echo
+     path.  There is no [echo_link] beside it any more -- the echo's byte
+     IS [cons_link ... (EvByte b)], and the order fact and the wire rider a
+     separate link once carried are proved ONCE at the arm's open.  The
+     [h] argument went with it: the chain says nothing about the history,
+     only the arm does. *)
+  Fixpoint echo_chain (k : nat) (bs : list (bv 8)) (Φ : iProp Σ) : iProp Σ :=
     match bs with
     | [] => Φ
-    | b :: bs' => echo_link k h b (echo_chain k h bs' Φ)
+    | b :: bs' => cons_link Uart0 k (ConsLog.EvByte b) (echo_chain k bs' Φ)
     end%I.
 
-  Lemma echo_link_mono (k : nat) (h : list mobs) (b : bv 8) (Φ Φ' : iProp Σ) :
-    (Φ -∗ Φ') -∗ echo_link k h b Φ -∗ echo_link k h b Φ'.
-  Proof.
-    iIntros "HΦ H" (o Hh) "Hlb Hres %Hok %Hev".
-    iMod ("H" $! o Hh with "Hlb Hres [//] [//]") as (o'') "(Hlb'' & Hres' & HP)".
-    iModIntro. iExists o''. iFrame "Hlb'' Hres'". by iApply "HΦ".
-  Qed.
-
-  Lemma echo_chain_mono (k : nat) (h : list mobs) (bs : list (bv 8))
-      (Φ Φ' : iProp Σ) :
-    (Φ -∗ Φ') -∗ echo_chain k h bs Φ -∗ echo_chain k h bs Φ'.
+  Lemma echo_chain_mono (k : nat) (bs : list (bv 8)) (Φ Φ' : iProp Σ) :
+    (Φ -∗ Φ') -∗ echo_chain k bs Φ -∗ echo_chain k bs Φ'.
   Proof.
     iIntros "HΦ H". iInduction bs as [| b bs] "IH" forall (Φ Φ');
       [by iApply "HΦ" |].
-    cbn [echo_chain]. iApply (echo_link_mono with "[HΦ] H").
+    cbn [echo_chain]. iApply (cons_link_mono with "[HΦ] H").
     iIntros "H". iApply ("IH" with "HΦ H").
   Qed.
 
@@ -2304,12 +2285,8 @@ Section DevLoops.
      of it: the bytes are logged echoes, the delivered histories increase,
      and every input the reader did NOT get in between was dropped without
      an echo or edited away.  The log itself does not move. *)
-  (* ...and it is the [EvRead] link (redesign R2).  The name is kept -- the
-     reader's contract and every route above it thread it -- and what moves
-     underneath is the port's ONE claim. *)
-  Definition read_link (k : nat) (ws : list (list mobs * bv 8))
-      (Φ : iProp Σ) : iProp Σ :=
-    cons_link Uart0 k (ConsLog.EvRead ws) Φ.
+  (* ...and it IS [ConsLog.EvRead] (redesign R2).  There is no [read_link]
+     beside [cons_link] any more: the reader's contract names the event. *)
 
   (* ---- the laws ---- *)
 
@@ -2317,36 +2294,11 @@ Section DevLoops.
      here; [cons_run_stop], [cons_run_step] and [cons_run_full] replace
      them. *)
 
-  (* ==================================================================== *)
-  (*  THE INPUT LICENCE (lane CONS-IO, C4): "this holder may log anything   *)
-  (*  and deliver anything".                                               *)
-  (*                                                                      *)
-  (*  ONE definition, TWO conjuncts, for [out_licence]'s reason exactly:    *)
-  (*  the generic supply has to pay consoleintr's shift on behalf of an     *)
-  (*  arbitrary application and has to pay [read(0,..)] for an arbitrary    *)
-  (*  process, and under a resource claim neither is free any more.        *)
-  (* ==================================================================== *)
-  (* QUANTIFIED OVER THE ERA, on [out_licence]'s mould and for its reason
-     (lane CONS-IO milestone C). *)
-  (* ONE LICENCE (redesign R2).  The name is kept -- the generic supply and
-     every route above it thread it -- and it IS [out_licence]: one resource
-     admits one law, "any holder may move it by any event". *)
-  Definition in_licence : iProp Σ := cons_licence.
-
-  Global Instance in_licence_persistent : Persistent in_licence.
-  Proof. rewrite /in_licence. apply _. Qed.
-
-  (* [in_append_of_licence], [echo_link_of_licence] and [in_run_of_licence]
-     lived here; [cons_link_of_licence] and [cons_run_of_licence] cover all
-     three, because all three were events on one resource. *)
-
-  Lemma read_link_of_licence (k : nat) (ws : list (list mobs * bv 8))
-      (Φ : iProp Σ) :
-    cons_licence -∗ Φ -∗ read_link k ws Φ.
-  Proof.
-    iIntros "#Hlic HΦ". rewrite /read_link.
-    by iApply (cons_link_of_licence with "Hlic").
-  Qed.
+  (* lane CONS-IO C4's INPUT LICENCE lived here, and lane OUT-FUPD's output
+     licence above: [cons_licence] is both (redesign R2), and
+     [in_append_of_licence], [echo_link_of_licence] and [in_run_of_licence]
+     are all [cons_link_of_licence] / [cons_run_of_licence] -- because all
+     of them were events on one resource. *)
 
   (* ==================================================================== *)
   (*  WHAT ROW 5'S CONSOLE ARM CARRIES IN (lane CONS-IO, milestone B, B4). *)
@@ -2360,7 +2312,8 @@ Section DevLoops.
   (* ==================================================================== *)
   Definition cons_read_pay (k : nat)
       (R : list (list mobs * bv 8) -> iProp Σ) : iProp Σ :=
-    (∀ ws : list (list mobs * bv 8), read_link k ws (R ws))%I.
+    (∀ ws : list (list mobs * bv 8),
+       cons_link Uart0 k (ConsLog.EvRead ws) (R ws))%I.
 
   (* the generic process's, out of the licence the supply already carries
      ([UexecExecInst.xv6_ssupply]'s fourth conjunct): it claims nothing
@@ -2368,12 +2321,10 @@ Section DevLoops.
   Lemma cons_read_pay_triv (k : nat) :
     cons_licence -∗ cons_read_pay k (fun _ => True%I).
   Proof.
-    iIntros "#Hlic" (ws). iApply (read_link_of_licence with "Hlic"). done.
+    iIntros "#Hlic" (ws). iApply (cons_link_of_licence with "Hlic"). done.
   Qed.
 
   (* the trivial application's: the claim is [emp] and both halves are free *)
-  Lemma in_licence_triv : riscv_cons_res = cons_res_triv -> ⊢ in_licence.
-  Proof. rewrite /in_licence. exact cons_licence_triv. Qed.
 
   (* ==================================================================== *)
   (*  THE TWO ACCESSORS: the shift and the read, fired WITH THE PORT        *)
@@ -2468,7 +2419,7 @@ Section DevLoops.
   (*  [uart_arm], the order fact off the log's mark against the claim's     *)
   (*  half and [ConsLog.log_ok]'s chain, and the wire rider off             *)
   (*  [uart_out_auth] against the transmitted-prefix bound -- the same two  *)
-  (*  derivations [store_ob_of_echo_link] does today, moved to the arm's    *)
+  (*  derivations [store_ob_of_cons_byte] does today, moved to the arm's    *)
   (*  entry where they belong.                                             *)
   (*                                                                       *)
   (*  A SECOND ARM CANNOT OPEN while this one is in progress: the caller    *)
@@ -2623,15 +2574,14 @@ Section DevLoops.
   (*                                                                      *)
   (*  [out_link] was the leaf's premise while a process's own [write(2)]   *)
   (*  was the only mover of the accepted sequence.  The console ECHO moves *)
-  (*  it too, and its link ([echo_link]) needs two more things AT THE      *)
-  (*  STORE: the INPUT CLAIM -- to place the byte it is echoing against    *)
-  (*  the log -- and the ORDER FACT, which is read off the log's mark.     *)
-  (*  Neither can be handed down from above: the claim lives inside the    *)
+  (*  it too, and what it needs AT THE STORE the arm supplies: which byte  *)
+  (*  is next ([uart_arm]'s half) and the pure premise of [EvByte].        *)
+  (*  Neither can be handed down from above -- the claim lives inside the  *)
   (*  port invariant, and only the store's own device node opens it.       *)
   (*                                                                      *)
   (*  So the leaf's premise is the GHOST STEP ITSELF, and the two writers  *)
   (*  build it their own way ([store_ob_of_out_link] for the plain one,    *)
-  (*  [store_ob_of_echo_link] for the echo).  ONE leaf, ONE uartputc_sync, *)
+  (*  [store_ob_of_cons_byte] for the echo).  ONE leaf, ONE uartputc_sync, *)
   (*  ONE consputc -- and [out_link]'s own surface is untouched, which is  *)
   (*  what keeps the write path (and [cons_out_chain]) exactly as landed.  *)
   (* ==================================================================== *)
@@ -2738,7 +2688,7 @@ Section DevLoops.
      used to prove here are proved ONCE at the arm's open now, so what is
      left is the byte itself: the arm says which byte is next, the event
      steps the history, and both halves of the arm advance with it. *)
-  Lemma store_ob_of_echo_link (γ : uart_names) (b : bv 8) (h : list mobs)
+  Lemma store_ob_of_cons_byte (γ : uart_names) (b : bv 8) (h : list mobs)
       (c : bv 8) (cs : list (bv 8)) (j : nat) (Φ : iProp Σ) :
     cs !! j = Some b ->
     uart_arm γ (1/2) (Some (h, c, cs, j)) -∗
@@ -2779,7 +2729,7 @@ Section DevLoops.
       (cs : list (bv 8)) (j : nat) (bs : list (bv 8)) (Φ : iProp Σ) :
     (forall (n : nat) (b : bv 8), bs !! n = Some b -> cs !! (j + n)%nat = Some b) ->
     uart_arm γ (1/2) (Some (h, c, cs, j)) -∗
-    echo_chain (S gen_id) h bs Φ -∗
+    echo_chain (S gen_id) bs Φ -∗
     store_chain Uart0 γ bs
       (uart_arm γ (1/2) (Some (h, c, cs, (j + length bs)%nat)) ∗ Φ).
   Proof.
@@ -2789,8 +2739,8 @@ Section DevLoops.
     - cbn [echo_chain store_chain length].
       assert (Hb : cs !! j = Some b).
       { pose proof (Hbs 0%nat b eq_refl) as Hb0. by rewrite Nat.add_0_r in Hb0. }
-      iDestruct (store_ob_of_echo_link γ b h c cs j
-                   (echo_chain (S gen_id) h bs Φ) Hb with "Harm H") as "H".
+      iDestruct (store_ob_of_cons_byte γ b h c cs j
+                   (echo_chain (S gen_id) bs Φ) Hb with "Harm H") as "H".
       iApply (store_ob_mono with "[] H"). iIntros "[Harm H]".
       iDestruct ("IH" $! (S j) with "[%] Harm H") as "H".
       { intros n b' Hn.
@@ -2806,7 +2756,7 @@ Section DevLoops.
   Lemma store_chain_of_echo_split (γ : uart_names) (h : list mobs) (c : bv 8)
       (pre bs post : list (bv 8)) (Φ : iProp Σ) :
     uart_arm γ (1/2) (Some (h, c, (pre ++ bs ++ post)%list, length pre)) -∗
-    echo_chain (S gen_id) h bs Φ -∗
+    echo_chain (S gen_id) bs Φ -∗
     store_chain Uart0 γ bs
       (uart_arm γ (1/2) (Some (h, c, (pre ++ bs ++ post)%list,
                                (length pre + length bs)%nat)) ∗ Φ).
@@ -2822,27 +2772,27 @@ Section DevLoops.
 
   (* THE WHOLE ARM, run to the end: a holder that spends every byte of its
      plan is left with the licence to close.  [in_run_full]'s successor. *)
-  Lemma cons_run_full (h : list mobs) (bs : list (bv 8)) (Φ : iProp Σ) :
+  Lemma cons_run_full (bs : list (bv 8)) (Φ : iProp Σ) :
     cons_run (S gen_id) bs Φ -∗
-    echo_chain (S gen_id) h bs (cons_link Uart0 (S gen_id) ConsLog.EvClose Φ).
+    echo_chain (S gen_id) bs (cons_link Uart0 (S gen_id) ConsLog.EvClose Φ).
   Proof.
     iIntros "H". iInduction bs as [| b bs] "IH" forall (Φ);
       cbn [cons_run echo_chain]; [iExact "H" |].
     iDestruct "H" as "[_ H]".
-    iApply (echo_link_mono with "[] H"). iIntros "H". by iApply "IH".
+    iApply (cons_link_mono with "[] H"). iIntros "H". by iApply "IH".
   Qed.
 
   (* ...and ONE STEP of it, for a loop that does not know how far it will
      go: spend the head, keep the choice at the tail. *)
-  Lemma cons_run_step (h : list mobs) (bs cs : list (bv 8)) (Φ : iProp Σ) :
+  Lemma cons_run_step (bs cs : list (bv 8)) (Φ : iProp Σ) :
     cons_run (S gen_id) (bs ++ cs)%list Φ -∗
-    echo_chain (S gen_id) h bs (cons_run (S gen_id) cs Φ).
+    echo_chain (S gen_id) bs (cons_run (S gen_id) cs Φ).
   Proof.
     iIntros "H". iInduction bs as [| b bs] "IH";
       cbn [echo_chain]; [iExact "H" |].
     rewrite -app_comm_cons. cbn [cons_run].
     iDestruct "H" as "[_ H]".
-    iApply (echo_link_mono with "[] H"). iIntros "H". by iApply "IH".
+    iApply (cons_link_mono with "[] H"). iIntros "H". by iApply "IH".
   Qed.
 
   (* the arm may always STOP where it stands *)

@@ -33,7 +33,7 @@
    THERE IS NO WINDOW COUNTER AND NO KERNEL-LENT TOKEN.  There were both,
    and here is why they are gone.  The echo's run used to be SPLIT -- the
    bytes went out through the output claim and the log entry was filed
-   later through the input claim -- so [WpUart.echo_link] returned the input
+   later through the input claim -- so [WpUart.cons_link] returned the input
    claim at exactly the log it was handed, [SpecConsoleintr.cons_echo_shift]
    was persistent, and the application's spec had to be total over
    interleavings cons.lock forbids but never states.  The kernel therefore
@@ -47,7 +47,7 @@
    counter kept in step are ONE description.
 
    THE ERA'S FIRST WRITE needs no special step: [app_turn] (init's console
-   credential, minted beside the claims at [echo_led_pow] and carried to
+   credential, minted beside the claim at [echo_led_pow_cl] and carried to
    [App.Hinit_boot] by the kernel) is the era's cursor at zero, and at
    [P = 0] the paired claim's own [turn_auth] plus [pcount_zero] DERIVE
    [o_E so = [] /\ o_w so = []], hence [acc = []].  There is no founded arm
@@ -1019,17 +1019,18 @@ Proof.
       [ vm_compute in Hz; discriminate | exists c; reflexivity ].
 Qed.
 
-(* the INPUT claim's pure fact, in BOTH its arms (the settled one and the
-   chain-first window): the log's own account of the era, plus the two index
-   laws for the entries the log has echoed and the bound on the era's line
-   choices that a READER hands on to a later block-first WRITE.
+(* the log's own account of the era, plus the two index laws for the
+   entries the log has echoed and the bound on the era's line choices that a
+   READER hands on to a later block-first WRITE.
 
-   IT IS THE SAME PROPOSITION IN BOTH ARMS.  What separates them is the
-   window counter -- [length (echoed pops)] in the settled arm, one more in
-   the window arm -- and nothing pure: the entry the window owes is named by
-   [ein_pend] below, which the echo hands to the append, and never by the
-   port's own claim.  That is what makes the DROP arm ([cs = []], which does
-   not move [echoed pops]) leave both arms exactly where they stood.
+   IT WAS THE INPUT CLAIM'S PURE FACT, the same proposition in both of that
+   claim's non-taint arms (the settled one and the chain-first window).
+   What separated those was the window counter and nothing pure -- the entry
+   the window owed was named by [ein_pend], which the echo handed to the
+   append, never by the port's own claim -- which is what made the DROP arm
+   ([cs = []], which does not move [echoed pops]) leave both exactly where
+   they stood.  The merged claim has ONE arm (redesign R1) and this survives
+   inside [ecl_pure].
 
    [E_index]/[E_byte] ARE HERE and not only in the output claim because
    SH-LINE reads the line off the READ's window ([ein_read_line]) and holds
@@ -1190,7 +1191,8 @@ Proof.
 Qed.
 
 (* THE ECHO'S OWN ENTRY IS NOT IN THE LOG, and that is a PURE fact about the
-   two histories: [WpUart.in_append]'s order premise puts every logged
+   two histories: the arm's order premise ([ConsLog.arm_ok]'s fourth clause,
+   which [WpUart.in_append] used to carry per byte) puts every logged
    history strictly below [h], the era stamps put the two in one cycle, and
    an [open_seg] can only grow when the history does.  This is what refutes
    the SETTLED arm at the append (an arm that says the entry has already
@@ -1364,12 +1366,12 @@ Proof. solve_inG. Qed.
 (*  then not a free existential but a FUNCTION of the history, and that    *)
 (*  function is what makes the window counter unnecessary.                 *)
 (*                                                                        *)
-(*  TODAY the input claim has two non-taint arms differing only in the     *)
-(*  counter: SETTLED (the log and the era's list agree) and the chain-     *)
-(*  first WINDOW (the echo's byte is on the wire, its log entry still      *)
-(*  owed, so the era's list is ONE AHEAD).  The window arm holds a HALF of *)
-(*  [wcnt] so that a second firing of the run meets five quarters.  With   *)
-(*  the arm in the history the two arms are ONE: [ch_E] counts the         *)
+(*  The input claim HAD two non-taint arms differing only in the counter:  *)
+(*  SETTLED (the log and the era's list agree) and the chain-first WINDOW  *)
+(*  (the echo's byte is on the wire, its log entry still owed, so the      *)
+(*  era's list is ONE AHEAD).  The window arm held a HALF of [wcnt] so     *)
+(*  that a second firing of the run met five quarters.  With the arm in    *)
+(*  the history the two arms are ONE: [ch_E] counts the                    *)
 (*  in-flight entry as soon as its byte is out, and                        *)
 (*  [ch_E_close] below says the list DOES NOT MOVE when the entry is       *)
 (*  filed -- the window closes by construction, with nothing to refute.    *)
@@ -1550,7 +1552,7 @@ Lemma ecl_pure_E (k : nat) (ho : list mobs) (so : ostage)
 Proof. by intros (_ & _ & _ & _ & _ & HE). Qed.
 
 (* THE READER'S STAGE FACT, off the claim's own pure part.  It used to be a
-   STORED field of [ein]'s two arms ([rd_stage ps0 cs0 (length (echoed
+   STORED field of the input claim's two arms ([rd_stage ps0 cs0 (length (echoed
    pops))]), carried there because the reader and the writer read two
    different resources; with one claim it is a CONSEQUENCE of
    [eout_pure]'s pin and [cs_len_ok]'s length law, so nothing has to keep
@@ -2120,16 +2122,17 @@ Section echo_out.
        ∗ cs_lb v [] ∗ ps_lb v [] ∗ E_lb v 0%nat)%I.
 
   (* ====================================================================== *)
-  (*  THE MERGED CLAIM (redesign lane R1), wired to nothing yet.            *)
+  (*  THE MERGED CLAIM (redesign lane R1) -- THE application's claim since  *)
+  (*  R2; [eout] and [ein] are gone.                                        *)
   (*                                                                        *)
-  (*  [eout] and [ein] above, over ONE stage and ONE console history, with  *)
-  (*  NO WINDOW COUNTER.  The two arms [ein] needs -- settled, and the      *)
-  (*  chain-first window where the era's list is one ahead of the log --    *)
-  (*  are one arm here, because [ch_E] counts the in-flight entry as soon   *)
-  (*  as its byte is out and [ch_E_close] says filing the entry does not    *)
-  (*  move the list.  There is nothing left for [wcnt] to refute, and the   *)
-  (*  lower bounds [ein] carries ([Elist_lb], [cs_lb], [ps_lb], [turn_lb])  *)
-  (*  are unnecessary too: one claim holds the AUTHORITIES.                 *)
+  (*  [eout] and [ein] AT ONCE, over ONE stage and ONE console history,     *)
+  (*  with NO WINDOW COUNTER.  The two arms [ein] needed -- settled, and    *)
+  (*  the chain-first window where the era's list is one ahead of the log   *)
+  (*  -- are one arm here, because [ch_E] counts the in-flight entry as     *)
+  (*  soon as its byte is out and [ch_E_close] says filing the entry does   *)
+  (*  not move the list.  There was nothing left for [wcnt] to refute, and  *)
+  (*  the lower bounds [ein] carried ([Elist_lb], [cs_lb], [ps_lb],         *)
+  (*  [turn_lb]) went too: one claim holds the AUTHORITIES.                 *)
   (* ====================================================================== *)
   Definition ecl (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist) : iProp Σ :=
     ( T
@@ -2147,9 +2150,9 @@ Section echo_out.
 
   (* ---- FILING THE LOG ENTRY NEEDS NO GHOST UPDATE AT ALL.
 
-     This is the sharpest statement of what the merge buys.  Today the same
-     move is a view shift: it picks between [ein]'s settled and window arms,
-     re-splits [wcnt], and hands the lent token back.  Here the stage, all
+     This is the sharpest statement of what the merge bought.  The same move
+     used to be a view shift: it picked between [ein]'s settled and window
+     arms, re-split [wcnt], and handed the lent token back.  Here the stage, all
      four authorities and the delivered count are untouched -- only the pure
      side moves, by [ecl_pure_close] -- so the step is an ENTAILMENT, with
      no [==*], no invariant to open and no resource to find. ---- *)
@@ -2200,7 +2203,7 @@ Section echo_out.
   Global Instance eturn_timeless k : Timeless (eturn k).
   Proof. rewrite /eturn. apply _. Qed.
 
-  (* ---- THE LICENCES ([App.Happ_out_sup] / [Happ_in_sup]) ---- *)
+  (* ---- THE LICENCES ([App.al_sup] / [al_sup]) ---- *)
 
 
 
@@ -2422,7 +2425,7 @@ Section echo_out.
   Qed.
 
   (* THE SUPPLY'S LAW AT THE MERGED CLAIM: a tainted era answers any event
-     out of its taint arm, which is the whole of [App.Happ_out_sup]. *)
+     out of its taint arm, which is the whole of [App.al_sup]. *)
   Lemma ecl_sup (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist)
       (ev : ConsLog.cons_ev) :
     T -∗ ecl k ho H ==∗ ecl k ho (ConsLog.cons_step H ev).
@@ -3222,9 +3225,9 @@ Section echo_out.
       by apply prefix_length.
   Qed.
 
-  (* ---- THE READ, ON THE MERGED CLAIM.  Today this step has TWO identical
-     branches, one per arm of [ein], differing only in which counter share
-     they put back; here there is one.  The pure work is unchanged --
+  (* ---- THE READ, ON THE MERGED CLAIM.  This step used to have TWO
+     identical branches, one per arm of [ein], differing only in which
+     counter share they put back; here there is one.  The pure work is unchanged --
      [ein_read_pure] turns [ConsLog.read_ok] into the delivered-prefix fact
      the claim needs -- and it is exactly the premise [ecl_pure_read] takes.
 
@@ -3636,7 +3639,7 @@ Section echo_out.
     Lemma echo_read_link (k : nat) (v : era_pins) (n : nat)
         (ws : list (list mobs * bv 8)) (Φ : iProp Σ) :
       era_pin k v -∗ dl_cnt v (1/2) n -∗ (read_ret k v n ws -∗ Φ) -∗
-      read_link k ws Φ.
+      cons_link Uart0 k (ConsLog.EvRead ws) Φ.
     Proof.
       iIntros "#Hpin Hdlr HΦ" (o H) "#Hlb Hres _ %Hread".
       rewrite !chist_at0.

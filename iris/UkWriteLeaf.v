@@ -69,7 +69,7 @@ Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
 Require Import SpecConsolewrite.   (* [cons_out_chain] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import PipeInvDefs.        (* [pipe_rw_ret]: what [filewrite_ret] is *)
-Require Import WpUart.             (* [out_licence] / [out_link] *)
+Require Import WpUart.             (* [cons_licence] / [out_link] *)
 Require Import ConsoleInv.         (* [CONSOLE] *)
 Require Import CtxIdDefs.
 Local Open Scope Z_scope.
@@ -335,7 +335,7 @@ Section UkWriteLeaf.
   Lemma cons_out_chain_of_licence_bnd (M : gmap Z (bv 8)) (ua : mword 64)
       (Q : nat -> iProp Σ) (k cnt : nat) :
     (forall j : nat, (k <= j <= k + cnt)%nat -> ⊢ Q j) ->
-    out_licence -∗ cons_out_chain (S gen_id) M ua Q k cnt.
+    cons_licence -∗ cons_out_chain (S gen_id) M ua Q k cnt.
   Proof.
     revert k. induction cnt as [| cnt IH]; intros k HQ.
     - iIntros "_". cbn [cons_out_chain].
@@ -355,7 +355,7 @@ Section UkWriteLeaf.
     (i < NSTD)%nat ->
     l !! i = Some (FdOpen rb true (FdDevice mj)) ->
     sys_rw_count (m !!! Regidx a2_idx) = 2 ->
-    out_licence -∗
+    cons_licence -∗
     udepwf_std N m pc 16 (xfam_wr uwr_demo_Q (ukn_pay N)) l.
   Proof.
     intros H0 Hi Hli Hcnt. iIntros "#Hlic".

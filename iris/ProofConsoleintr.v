@@ -1267,7 +1267,7 @@ Section ProofConsoleintr.
             (cons_run (S gen_id) cs Φ) Hx Hends Hecho
             with "Hinv Hwlb Hlgh Harm [HΦ]") as "(Hlgh & Harm & Hrun)".
     { iApply ("Hp" $! cs Φ with "[%] HΦ"). exact Hecho. }
-    iDestruct (cons_run_full hb cs Φ with "Hrun") as "Hch".
+    iDestruct (cons_run_full cs Φ with "Hrun") as "Hch".
     iDestruct (store_chain_of_echo_chain γu hb cb cs 0%nat cs
                  (cons_link Uart0 (S gen_id) ConsLog.EvClose Φ)
                  ltac:(intros n b Hn; exact Hn) with "Harm Hch") as "H".
@@ -1293,7 +1293,7 @@ Section ProofConsoleintr.
        cons_run (S gen_id) bs Φ).
   Proof.
     iIntros "Hlgh Harm Hrun".
-    iDestruct (cons_run_step hb consputc_bs bs Φ with "Hrun") as "Hch".
+    iDestruct (cons_run_step consputc_bs bs Φ with "Hrun") as "Hch".
     iDestruct (store_chain_of_echo_split γu hb cb pre consputc_bs bs
                  (cons_run (S gen_id) bs Φ) with "Harm Hch") as "H".
     iApply (store_chain_mono with "[Hlgh] H"). iIntros "[Harm Hrun]".

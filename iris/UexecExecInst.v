@@ -171,7 +171,7 @@ Require Import SpecSysUnlink.  (* [unlink_au_pre] / [unlink_arms]     *)
 Require Import SpecSysLink.    (* [link_commits] / [link_arms]        *)
 Require Import SpecSysMkdir.   (* [mkdir_au_pre] / [mkdir_arms]       *)
 Require Import FsTree.         (* [fname]                             *)
-Require Import WpUart.         (* [out_licence] -- the OUTPUT LICENCE the
+Require Import WpUart.         (* [cons_licence] -- the OUTPUT LICENCE the
                                   generic supply carries (lane OUT-FUPD) *)
 Require Import AppInv.         (* [app_sup] -- THE SUPPLY.  Required
                                   DIRECTLY: the definition is named in a
@@ -308,7 +308,7 @@ Section UexecExecInst.
     (* ---- read (5), third piece: WHAT THE CALLER ASKS TO BE TOLD ABOUT
        THE INPUT IT CONSUMED ---- (app-echo.md, lane CONS-IO, milestone B,
        B4).  The application owns the console UART's accepted-input log and
-       the sequence delivered out of it ([RiscvPtsto.riscv_in_res]); a
+       the sequence delivered out of it ([RiscvPtsto.riscv_cons_res]); a
        console read moves the second, and it moves it through ONE fupd the
        process supplies -- [WpUart.cons_read_pay (rf_in f)], carried on
        read's deposit beside the ring's payment and fired by consoleread at
@@ -427,7 +427,7 @@ Section UexecExecInst.
           n = 5. *)
        rf_ret   := fun _ _ => True%I;
        (* ...AND IT CLAIMS NOTHING ABOUT WHAT IT READ EITHER, so read's
-          input link is payable out of [WpUart.in_licence] alone -- which
+          input link is payable out of [WpUart.cons_licence] alone -- which
           is what keeps [xv6_sbundle_of_supply_ne] provable at n = 5. *)
        rf_in    := fun _ => True%I;
        (* ...and nothing about any pipe: the four arms are then payable out
@@ -920,23 +920,21 @@ Section UexecExecInst.
      [UexecRet.uexec_ret_F]'s non-ecall arm) -- and may [write(2)] on the
      CONSOLE, which since lane OUT-FUPD costs the licence: the console
      UART's invariant carries the application's own claim about the bytes
-     it has accepted ([RiscvPtsto.riscv_out_res]), so putting a byte out is
+     it has accepted ([RiscvPtsto.riscv_cons_res]), so putting a byte out is
      no longer free.  All three are bought by the application at the SAME
-     place ([App.Happ_kill] and [App.Happ_out_sup]: the supply buys both),
+     place ([App.al_kill] and [App.al_sup]: the supply buys both),
      so bundling them here charges an application nothing it was not
      already paying, and keeps every verified program -- whose slot is at
      [uprogSG_free] and touches none of the three -- free.  The licence is
      LAST. *)
-  (* ...AND SINCE lane CONS-IO IT IS THE QUADRUPLE, with the INPUT LICENCE
-     LAST.  The console UART's invariant now carries the application's
-     account of what was TYPED as well as of what came out
-     ([RiscvPtsto.riscv_in_res]), so consoleintr's shift and [read(2)] on
-     fd 0 cost a licence exactly as [write(2)] does; [App.Happ_in_sup] is
-     where an application sets its price, beside [Happ_out_sup].  It is
-     LAST so that removing the kill conjunct (lane SELF-KILL) and adding
-     this one do not collide. *)
+  (* ...AND IT IS BACK TO THE TRIPLE (redesign R4).  Lane CONS-IO made it a
+     quadruple because the port carried TWO claims and so needed two
+     licences -- one for [write(2)] and one for consoleintr's shift and
+     [read(2)] on fd 0.  There is ONE claim now ([RiscvPtsto.riscv_cons_res])
+     and therefore ONE law over it ([WpUart.cons_licence]), which the
+     application prices once ([App]'s [al_sup]). *)
   Definition xv6_ssupply : iProp Σ :=
-    (app_sup ∗ □ riscv_kill_cred ∗ □ out_licence ∗ □ in_licence)%I.
+    (app_sup ∗ □ riscv_kill_cred ∗ □ cons_licence)%I.
 
   (* THE BUPD IS WRITE'S, AND ONLY WRITE'S: the console arm carries the trace
      seed [WpUart.uart_sent γu []], a mono-list lower bound at the empty
@@ -955,7 +953,7 @@ Section UexecExecInst.
     n <> USYS_exec ->
     ⊢ □ xv6_ssupply ==∗ ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X n f W.
   Proof.
-    intros Hne. rewrite /xv6_ssupply. iIntros "#(Hsup & Hkc & Hlic & Hilic)".
+    intros Hne. rewrite /xv6_ssupply. iIntros "#(Hsup & Hkc & Hlic)".
     iAssert (|==> xv6_sbundle X n (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
           iSplitR; [ done | iExact "Hb" ] ].
@@ -1019,7 +1017,7 @@ Section UexecExecInst.
       ∃ f : xfam, ⌜kf_xpay f = (fun _ => R)%I⌝ ∗ xv6_sbundle X n f W.
   Proof.
     rewrite /xv6_ssupply.
-    iIntros "#Hpay #(Hsup & Hkc & Hlic & Hilic) #HR #Hs".
+    iIntros "#Hpay #(Hsup & Hkc & Hlic) #HR #Hs".
     destruct (decide (n = USYS_exec)) as [He | Hne].
     - iModIntro. iExists (xfam_at (fun _ => R)%I xfam_pt). iSplitR; [done |].
       rewrite /xv6_sbundle. destruct (decide (n = USYS_exec)) as [_ | Hc];
@@ -1056,9 +1054,7 @@ Section UexecExecInst.
       + iIntros (av' i a W') "_ _ _ _ _ _ _ _ Hp". iApply ("Hs" with "Hp HR").
     - iApply (xv6_sbundle_of_supply_ne X n W (fun _ => R)%I Hne).
       rewrite /xv6_ssupply. iModIntro.
-      iSplit; [ iExact "Hsup"
-              | iSplit; [ iExact "Hkc"
-                        | iSplit; [ iExact "Hlic" | iExact "Hilic" ] ] ].
+      iSplit; [ iExact "Hsup" | iSplit; [ iExact "Hkc" | iExact "Hlic" ] ].
   Qed.
 
   (* THE RE-KEYING PASSES THROUGH BOTH BUNDLE ROWS ([UexecSG.sbundle_at_at]

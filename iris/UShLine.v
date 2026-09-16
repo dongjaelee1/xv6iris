@@ -22,7 +22,7 @@
 (*      the reader lease and the boundary's INPUT LICENCE, and             *)
 (*      [ush_read_recv_leaf_holds] discharged [UkSh.ush_read_recv_leaf]    *)
 (*      from the two.  At the echo application's REAL input claim          *)
-(*      ([EchoOut.ein]) the flat [WpUart.in_licence] is FALSE -- the       *)
+(*      ([EchoOut.ecl]) the flat [WpUart.cons_licence] is FALSE -- the       *)
 (*      claim's non-taint arms pin the delivered sequence and its count,   *)
 (*      so moving [dl] needs the READER's half of [EchoOut.dl_cnt], which  *)
 (*      the lease does not carry yet.  The leaf is therefore OWED, at the  *)
@@ -243,15 +243,15 @@ Section UShLine.
   (*  arm is [ConsoleInv.cons_acc … ∗ WpUart.cons_read_pay (S gen_id)      *)
   (*  Rin]: the ring's own payment, which the lease pays, BESIDE the       *)
   (*  application's delivered-sequence link.  While the application's      *)
-  (*  input claim was [emp] the link was free ([WpUart.in_licence] at      *)
+  (*  input claim was [emp] the link was free ([WpUart.cons_licence] at      *)
   (*  [RiscvPtsto.in_res_triv]) and this file took that licence as a       *)
   (*  Coq-level premise; at the echo application's REAL claim              *)
-  (*  ([EchoOut.ein]) the flat licence is FALSE -- the claim's two         *)
+  (*  ([EchoOut.ecl]) the flat licence is FALSE -- the claim's two         *)
   (*  non-taint arms carry [⌜(dl ++ ws) `prefix_of` echoed pops⌝] and the  *)
   (*  delivered count [EchoOut.dl_cnt v (1/2) (length dl)], so an          *)
   (*  arbitrary window is refuted and moving [dl] at all needs the         *)
   (*  READER's other half of that ghost.  Only the taint arm is free,      *)
-  (*  which is exactly what [App.Happ_in_sup] says, and the payload's      *)
+  (*  which is exactly what [App.al_sup] says, and the payload's      *)
   (*  LEASE arm ([UserConsole.ucons_pay]) carries no taint.                *)
   (*                                                                      *)
   (*  SO THE LEAF IS OWED, NOT PROVED: it is a Coq-level premise of        *)
@@ -259,7 +259,7 @@ Section UShLine.
   (*  [UInitBootAdequacy]'s [Hsh_owed], on [UkSh.sh_deps]'s mould, and     *)
   (*  lane IO-LEAF discharges it -- it puts [EchoOut.era_pin] and the      *)
   (*  reader's [dl_cnt] half on sh's lease and runs the leaf through       *)
-  (*  [EchoOut.echo_read_link], whose [WpUart.read_link] hands over        *)
+  (*  [EchoOut.echo_read_link], whose [WpUart.cons_link] hands over        *)
   (*  [⌜ConsLog.read_ok pops dl ws⌝].                                      *)
   (*  WHAT SURVIVES HERE is everything that never touched the licence:     *)
   (*  the read family, the two [sbundle] adapters, the two [fd_st]         *)
@@ -621,7 +621,7 @@ Section UShLine.
   (*  console arm asks for them: the RING's ([ConsoleInv.cons_acc]), paid *)
   (*  by the reader lease sh carries, and the BOUNDARY's                  *)
   (*  ([WpUart.cons_read_pay]), which used to be bought outright from     *)
-  (*  [WpUart.in_licence] and is now the era's read link at sh's own      *)
+  (*  [WpUart.cons_licence] and is now the era's read link at sh's own      *)
   (*  delivered count -- READ OFF THE SAME LEASE.  Both arms of the lease *)
   (*  answer both payments: the token arm pays the ring with the token    *)
   (*  and the boundary with the half beside it, and the taint arm pays    *)
@@ -663,7 +663,7 @@ Section UShLine.
       iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE & #Hres)".
       iSplitR "Hdl"; last first.
       { (* THE CONSOLE HISTORY'S HALF: the era's read link at sh's own
-           count, which is ONE answer to [WpUart.read_link]'s atomic
+           count, which is ONE answer to [WpUart.cons_link]'s atomic
            update -- ConsLog's [EvRead] event. *)
         iIntros (ws).
         iApply ("Hrdl" $! (S gen_id) v n ws with "Hpin Hdl").

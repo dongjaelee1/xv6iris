@@ -141,7 +141,7 @@ Definition wp_consoleread_sconf_body
     (* WHAT THE PROCESS ASKS TO BE TOLD ABOUT THE INPUT IT CONSUMED
        (app-echo.md, lane CONS-IO, milestone B, B3).  The application owns
        the console UART's accepted-input log and the sequence delivered out
-       of it ([RiscvPtsto.riscv_in_res]); a read moves the second, and it
+       of it ([RiscvPtsto.riscv_cons_res]); a read moves the second, and it
        moves it through ONE fupd the process supplies,
        [WpUart.cons_read_pay (S gen_id) Rin], fired HERE -- at the final release, on
        the CLEAN arm, where the ring's own account of the window is still

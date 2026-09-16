@@ -675,17 +675,17 @@ Section echo_links.
          (ws : list (list mobs * bv 8)) (Φ : iProp Σ),
         era_pin γ k v -∗ dl_cnt v (1/2) n -∗
         (read_ret T k v n ws -∗ Φ) -∗
-        read_link k ws Φ)%I.
+        cons_link Uart0 k (ConsLog.EvRead ws) Φ)%I.
 
   (* THE READ SIDE'S TAINT ROUTE, [echo_link_taint]'s twin and needed for
      the same reason (lane IO-LEAF, M5): what sh's lease carries is the
      era's delivered-count half OR the taint, and on the taint arm the
      read must still be able to move the boundary's [dl].
      [EchoOut.ein_sup_deliv] is exactly that move, and it is the READ half
-     of what [App.Happ_in_sup] gives the licence route. *)
+     of what [App.al_sup] gives the licence route. *)
   Definition echo_link_rd_taint : iProp Σ :=
     (□ ∀ (k : nat) (ws : list (list mobs * bv 8)) (Φ : iProp Σ),
-        T -∗ (T -∗ Φ) -∗ read_link k ws Φ)%I.
+        T -∗ (T -∗ Φ) -∗ cons_link Uart0 k (ConsLog.EvRead ws) Φ)%I.
 
   Definition echo_links : iProp Σ :=
     (echo_link_w ∗ echo_link_blk ∗ echo_link_pro ∗ echo_link_taint

@@ -327,31 +327,36 @@ Section PipeQueue.
     pipe_cpay γ w Φ -∗ pipe_cpost γ w Φ false.
   Proof. iIntros "Hp". rewrite /pipe_cpost. iRight. iRight. by iFrame "Hp". Qed.
 
-  (* A WRITE'S POST.  FIRED: the chain at the stop cursor [k] (the bytes
-     pushed) and the answer -- [k] itself, either the whole request or with
-     copyin's reason for stopping (byte [k] of the run is not readable at
-     the table the call was handed; [copyin_read]'s -1 arm, stated at the
-     ENTRY descriptor because the map only grows), or -1 with its reason:
-     the read end is shut, observed at node [k] ([Qe k s] at [ps_ro s =
-     false]), or the writer was killed ([Rk], the incarnation's kill shot).
-     Both -1 exits are inside the loop, so strictly short.  OR TAINT: the
-     pipe was, or is now, disconnected -- the payment comes back untouched
-     beside the credential.  A write is not atomic (it sleeps when the ring
-     is full) so there is no snapshot: what a caller learns per byte, it
-     learns in its own cursor. *)
+  (* A WRITE'S POST.  FIRED, at the stop cursor [k] (the bytes pushed) with
+     the answer: [k] itself -- the whole request, or copyin's reason for
+     stopping (byte [k] of the run is not readable at the table the call
+     was handed; [copyin_read]'s -1 arm, stated at the ENTRY descriptor
+     because the map only grows), where the C answers -1 instead of 0 when
+     the very first byte is the unreadable one (and the file layer's sign
+     guard answers -1 at the empty count) -- or -1 with its reason: the
+     writer was killed while the ring was full (node [k] untouched, [Rk] the
+     incarnation's kill shot), or the read end is shut, OBSERVED at node [k]
+     -- and an observation SPENDS the node: a chain node is [Q k ∧ olink ∧
+     wlinks], one additive conjunction, so the observing arm hands back
+     [Qe k s] and nothing else at [k] (a caller that wants its cursor back
+     there puts it inside its own [Qe k]).  OR TAINT: the pipe was, or is
+     now, disconnected -- the payment comes back untouched beside the
+     credential.  A write is not atomic (it sleeps when the ring is full)
+     so there is no snapshot: what a caller learns per byte, it learns in
+     its own cursor. *)
   Definition pipe_wpost (P : uptd) (γ : gname) (M : gmap Z (bv 8)) (ua : mword 64)
       (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) (Rk : iProp Σ)
       (n : nat) (r : mword 64) : iProp Σ :=
     ((∃ k : nat,
         ⌜(k <= n)%nat⌝ ∗
-        ((⌜r = (mword_of_int (Z.of_nat k) : mword 64)⌝ ∗
-          ⌜k = n \/ ~ uva_rmapped P (uint (add_vec_int ua (Z.of_nat k)))⌝)
+        ((⌜r = (mword_of_int (Z.of_nat k) : mword 64)
+           \/ (k = 0%nat /\ r = (mword_of_int (-1) : mword 64))⌝ ∗
+          ⌜k = n \/ ~ uva_rmapped P (uint (add_vec_int ua (Z.of_nat k)))⌝ ∗
+          pipe_wchain γ M ua Q Qe k (n - k))
+         ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜(k < n)%nat⌝ ∗ Rk ∗
+            pipe_wchain γ M ua Q Qe k (n - k))
          ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜(k < n)%nat⌝ ∗
-            ((∃ s : pipe_st, ⌜ps_ro s = false⌝ ∗ Qe k s) ∨ Rk))
-         (* ...or the file layer's own sign guard: a negative request is
-            answered -1 above the dispatch, at the empty count *)
-         ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜n = 0%nat⌝)) ∗
-        pipe_wchain γ M ua Q Qe k (n - k))
+            ∃ s : pipe_st, ⌜ps_ro s = false⌝ ∗ Qe k s)))
      ∨ (pipe_taint_cred ∗ pipe_wpay γ M ua Q Qe n))%I.
 
   (* the sign guard's exit, from the payment alone *)
@@ -361,77 +366,117 @@ Section PipeQueue.
   Proof.
     intros ->. iIntros "[Hch | #Ht]".
     - iLeft. iExists 0%nat. iSplitR; [by iPureIntro |].
-      iSplitR; [iRight; iRight; by iPureIntro |]. iExact "Hch".
+      iLeft. iSplitR; [iPureIntro; by right |].
+      iSplitR; [iPureIntro; by left |]. iExact "Hch".
     - iRight. iSplitR; [iExact "Ht" |]. by iApply pipe_wpay_taint.
   Qed.
 
+  (* what every arm leaves at the cursor: the caller's own [Q k] wherever
+     the node is untouched, the observation where it was spent *)
   Lemma pipe_wpost_cursor P γ M ua Q Qe Rk n r :
     pipe_wpost P γ M ua Q Qe Rk n r -∗
     (∃ k : nat,
        ⌜(k <= n)%nat⌝ ∗
-       ((⌜r = (mword_of_int (Z.of_nat k) : mword 64)⌝ ∗
-         ⌜k = n \/ ~ uva_rmapped P (uint (add_vec_int ua (Z.of_nat k)))⌝)
+       ((⌜r = (mword_of_int (Z.of_nat k) : mword 64)
+          \/ (k = 0%nat /\ r = (mword_of_int (-1) : mword 64))⌝ ∗
+         ⌜k = n \/ ~ uva_rmapped P (uint (add_vec_int ua (Z.of_nat k)))⌝ ∗ Q k)
+        ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜(k < n)%nat⌝ ∗ Rk ∗ Q k)
         ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜(k < n)%nat⌝ ∗
-           ((∃ s : pipe_st, ⌜ps_ro s = false⌝ ∗ Qe k s) ∨ Rk))
-        ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜n = 0%nat⌝)) ∗ Q k)
+           ∃ s : pipe_st, ⌜ps_ro s = false⌝ ∗ Qe k s)))
     ∨ (pipe_taint_cred ∗ pipe_wpay γ M ua Q Qe n).
   Proof.
     iIntros "[H | H]"; [| iRight; iExact "H"].
-    iDestruct "H" as (k) "(%Hk & Hr & Hch)". iLeft. iExists k.
-    iDestruct (pipe_wchain_cursor with "Hch") as "$". iFrame "Hr". by iPureIntro.
+    iDestruct "H" as (k) "(%Hk & [(%Hr & %Hs & Hch) | [(%Hr & %Hs & Hk & Hch) | Hobs]])";
+      iLeft; iExists k; (iSplitR; [by iPureIntro |]).
+    - iLeft. iDestruct (pipe_wchain_cursor with "Hch") as "$". by iPureIntro.
+    - iRight. iLeft. iDestruct (pipe_wchain_cursor with "Hch") as "$". iFrame "Hk". by iPureIntro.
+    - iRight. iRight. iExact "Hobs".
   Qed.
 
-  (* A READ'S POST, at piperead's own window ([d] delivered bytes, the
-     written function [bs]).  FIRED: the chain at the dequeued bytes [acc],
-     the caller's buffer holding them -- with the one xv6 subtlety that a
-     byte whose copy-out faults HAS been dequeued, so [acc] may be one longer
-     than the window -- and the STOP, one of four: the request was met; the
-     ring ran dry, observed at node [acc] ([Qe acc s] at [pst_empty s], and
-     when nothing at all was delivered the write end is shut too --
-     [pst_eof s] -- since the wait loop only lets an empty ring through when
-     it is); the copy-out faulted at the byte just dequeued; the reader was
-     killed while it waited ([Rk], nothing dequeued).  OR TAINT, the
-     payment back. *)
-  Definition pipe_rstop (Qe : list (bv 8) -> pipe_st -> iProp Σ) (Rk : iProp Σ)
-      (n : nat) (acc : list (bv 8)) (d : nat) (r : mword 64) : iProp Σ :=
-    ((⌜length acc = n /\ d = n /\ r = (mword_of_int (Z.of_nat d) : mword 64)⌝)
-     ∨ (⌜(length acc < n)%nat /\ length acc = d
-         /\ r = (mword_of_int (Z.of_nat d) : mword 64)⌝ ∗
-        ∃ s : pipe_st, ⌜pst_empty s /\ (d = 0%nat -> ps_wo s = false)⌝ ∗ Qe acc s)
-     ∨ (⌜length acc = S d /\ r = (mword_of_int (Z.of_nat d) : mword 64)⌝)
-     ∨ (⌜acc = [] /\ d = 0%nat /\ r = (mword_of_int (-1) : mword 64)⌝ ∗ Rk)
-     (* ...or the file layer's own sign guard, at the empty count *)
-     ∨ (⌜acc = [] /\ d = 0%nat /\ n = 0%nat /\ r = (mword_of_int (-1) : mword 64)⌝))%I.
+  (* A READ'S STOP, at piperead's own window: [acc] the bytes dequeued --
+     which are EXACTLY the bytes delivered, [d] of them, because the C
+     dequeues a byte only after its copy-out succeeded -- and the reason,
+     one of five.  The request was met.  The ring ran dry, OBSERVED at node
+     [acc] ([Qe acc s] at [pst_empty s]; when nothing at all was delivered
+     the write end is shut too, [ps_wo s = false], since the wait loop only
+     lets an empty ring through when it is) -- and the observation spends
+     the node, as at a write.  The copy-out of byte [d] faulted
+     ([copyout_wrote]'s reason at the ENTRY table, the table only grows):
+     that byte stays in the ring, and the answer is the count delivered, or
+     -1 when it is nothing.  The reader was killed while it waited ([Rk],
+     nothing dequeued).  Or the file layer's own sign guard, at the empty
+     count.  The four non-observing reasons are [pipe_rstop_noobs]; they
+     leave node [acc] untouched. *)
+  Definition pipe_rstop_noobs (P : uptd) (addr : mword 64) (Rk : iProp Σ)
+      (n d : nat) (r : mword 64) : iProp Σ :=
+    ((⌜d = n /\ r = (mword_of_int (Z.of_nat d) : mword 64)⌝)
+     ∨ (⌜(d < n)%nat /\ ~ uva_wmapped P (uint (add_vec_int addr (Z.of_nat d)))
+         /\ ((0 < d)%nat /\ r = (mword_of_int (Z.of_nat d) : mword 64)
+             \/ d = 0%nat /\ r = (mword_of_int (-1) : mword 64))⌝)
+     ∨ (⌜d = 0%nat /\ r = (mword_of_int (-1) : mword 64)⌝ ∗ Rk)
+     ∨ (⌜d = 0%nat /\ n = 0%nat /\ r = (mword_of_int (-1) : mword 64)⌝))%I.
 
-  Definition pipe_rpost (γ : gname) (Q : list (bv 8) -> iProp Σ)
+  Definition pipe_rstop (P : uptd) (addr : mword 64)
+      (Qe : list (bv 8) -> pipe_st -> iProp Σ) (Rk : iProp Σ)
+      (n : nat) (acc : list (bv 8)) (d : nat) (r : mword 64) : iProp Σ :=
+    (⌜length acc = d⌝ ∗
+     ((⌜(d < n)%nat /\ r = (mword_of_int (Z.of_nat d) : mword 64)⌝ ∗
+       ∃ s : pipe_st, ⌜pst_empty s /\ (d = 0%nat -> ps_wo s = false)⌝ ∗ Qe acc s)
+      ∨ pipe_rstop_noobs P addr Rk n d r))%I.
+
+  (* A READ'S POST: the stop, the window [bs] holding the delivered bytes,
+     and the chain at [acc] wherever the stop did not spend it. *)
+  Definition pipe_rpost (P : uptd) (γ : gname) (addr : mword 64)
+      (Q : list (bv 8) -> iProp Σ)
       (Qe : list (bv 8) -> pipe_st -> iProp Σ) (Rk : iProp Σ)
       (n d : nat) (bs : nat -> bv 8) (r : mword 64) : iProp Σ :=
     ((∃ acc : list (bv 8),
         ⌜(length acc <= n)%nat⌝ ∗
         ⌜forall j : nat, (j < d)%nat -> bs j = acc !!! j⌝ ∗
-        pipe_rstop Qe Rk n acc d r ∗
-        pipe_rchain γ Q Qe acc (n - length acc))
+        ((⌜(d < n)%nat /\ length acc = d
+           /\ r = (mword_of_int (Z.of_nat d) : mword 64)⌝ ∗
+          ∃ s : pipe_st, ⌜pst_empty s /\ (d = 0%nat -> ps_wo s = false)⌝ ∗ Qe acc s)
+         ∨ (⌜length acc = d⌝ ∗ pipe_rstop_noobs P addr Rk n d r ∗
+            pipe_rchain γ Q Qe acc (n - length acc))))
      ∨ (pipe_taint_cred ∗ pipe_rpay γ Q Qe n))%I.
 
   (* the sign guard's exit, from the payment alone *)
-  Lemma pipe_rpost_neg γ Q Qe Rk (bs : nat -> bv 8) r :
+  Lemma pipe_rpost_neg P γ addr Q Qe Rk (bs : nat -> bv 8) r :
     r = (mword_of_int (-1) : mword 64) ->
-    pipe_rpay γ Q Qe 0 -∗ pipe_rpost γ Q Qe Rk 0 0 bs r.
+    pipe_rpay γ Q Qe 0 -∗ pipe_rpost P γ addr Q Qe Rk 0 0 bs r.
   Proof.
     intros ->. iIntros "[Hch | #Ht]".
     - iLeft. iExists []. iSplitR; [by iPureIntro |].
       iSplitR; [iPureIntro; intros j Hj; lia |].
-      iSplitR; [rewrite /pipe_rstop; iRight; iRight; iRight; iRight; by iPureIntro |].
+      iRight. iSplitR; [by iPureIntro |].
+      iSplitR; [rewrite /pipe_rstop_noobs; iRight; iRight; iRight; by iPureIntro |].
       iExact "Hch".
     - iRight. iSplitR; [iExact "Ht" |]. by iApply pipe_rpay_taint.
   Qed.
 
+  (* the stop alone, whichever arm: [pipe_rstop] out of a fired post, with
+     the chain where the stop left it *)
+  Lemma pipe_rpost_stop P γ addr Q Qe Rk n d bs r :
+    pipe_rpost P γ addr Q Qe Rk n d bs r -∗
+    (∃ acc : list (bv 8),
+       ⌜(length acc <= n)%nat⌝ ∗
+       ⌜forall j : nat, (j < d)%nat -> bs j = acc !!! j⌝ ∗
+       pipe_rstop P addr Qe Rk n acc d r)
+    ∨ (pipe_taint_cred ∗ pipe_rpay γ Q Qe n).
+  Proof.
+    iIntros "[H | H]"; [| iRight; iExact "H"].
+    iDestruct "H" as (acc) "(%H1 & %H2 & [(%H3 & Hobs) | (%H3 & Hno & _)])";
+      iLeft; iExists acc; (iSplitR; [by iPureIntro |]); (iSplitR; [by iPureIntro |]);
+      rewrite /pipe_rstop.
+    - iSplitR; [iPureIntro; tauto |]. iLeft. iSplitR; [iPureIntro; tauto |]. iExact "Hobs".
+    - iSplitR; [by iPureIntro |]. iRight. iExact "Hno".
+  Qed.
 
   (* ...AND THE SAME AT THE IMAGE, which is what the fileread tier and the
      trap post speak ([FsAbsReadFire.read_post_ok]'s convention, word for
      word): the bytes are read back out of the resume image under the
      caller's OWN linearity of its buffer. *)
-  Definition pipe_rpost_img (γ : gname) (Q : list (bv 8) -> iProp Σ)
+  Definition pipe_rpost_img (P : uptd) (γ : gname) (Q : list (bv 8) -> iProp Σ)
       (Qe : list (bv 8) -> pipe_st -> iProp Σ) (Rk : iProp Σ)
       (n : nat) (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
     ((∃ (acc : list (bv 8)) (d : nat),
@@ -440,49 +485,61 @@ Section PipeQueue.
             uint (add_vec_int addr (Z.of_nat i)) = (uint addr + Z.of_nat i)%Z) ->
          forall j : nat, (j < d)%nat ->
            M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (acc !!! j)⌝ ∗
-        pipe_rstop Qe Rk n acc d r ∗
-        pipe_rchain γ Q Qe acc (n - length acc))
+        ((⌜(d < n)%nat /\ length acc = d
+           /\ r = (mword_of_int (Z.of_nat d) : mword 64)⌝ ∗
+          ∃ s : pipe_st, ⌜pst_empty s /\ (d = 0%nat -> ps_wo s = false)⌝ ∗ Qe acc s)
+         ∨ (⌜length acc = d⌝ ∗ pipe_rstop_noobs P addr Rk n d r ∗
+            pipe_rchain γ Q Qe acc (n - length acc))))
      ∨ (pipe_taint_cred ∗ pipe_rpay γ Q Qe n))%I.
 
   (* the one step between them: piperead's window IS the image's run *)
-  Lemma pipe_rpost_img_of γ Q Qe Rk n d bs r (M : gmap Z (bv 8)) (addr : mword 64) :
-    pipe_rpost γ Q Qe Rk n d bs r -∗
-    pipe_rpost_img γ Q Qe Rk n r (umem_wr M addr d bs) addr.
+  Lemma pipe_rpost_img_of P γ addr Q Qe Rk n d bs r (M : gmap Z (bv 8)) :
+    pipe_rpost P γ addr Q Qe Rk n d bs r -∗
+    pipe_rpost_img P γ Q Qe Rk n r (umem_wr M addr d bs) addr.
   Proof.
     iIntros "[H | H]"; [iLeft | iRight; iExact "H"].
-    iDestruct "H" as (acc) "(%Hle & %Hbs & Hstop & Hch)".
-    iExists acc, d. iFrame "Hstop Hch". iPureIntro. split; [exact Hle |].
+    iDestruct "H" as (acc) "(%Hle & %Hbs & Hst)".
+    iExists acc, d. iFrame "Hst". iPureIntro. split; [exact Hle |].
     intros Hlin j Hj. rewrite (umem_wr_lookup_in M addr d bs j Hj Hlin).
     rewrite (Hbs j Hj). reflexivity.
   Qed.
 
   (* the sign guard's exit at the image, from the payment alone *)
-  Lemma pipe_rpost_img_neg γ Q Qe Rk r (M' : gmap Z (bv 8)) (addr : mword 64) :
+  Lemma pipe_rpost_img_neg P γ Q Qe Rk r (M' : gmap Z (bv 8)) (addr : mword 64) :
     r = (mword_of_int (-1) : mword 64) ->
-    pipe_rpay γ Q Qe 0 -∗ pipe_rpost_img γ Q Qe Rk 0 r M' addr.
+    pipe_rpay γ Q Qe 0 -∗ pipe_rpost_img P γ Q Qe Rk 0 r M' addr.
   Proof.
     intros ->. iIntros "[Hch | #Ht]".
     - iLeft. iExists [], 0%nat. iSplitR; [by iPureIntro |].
       iSplitR; [iPureIntro; intros _ j Hj; lia |].
-      iSplitR; [rewrite /pipe_rstop; iRight; iRight; iRight; iRight; by iPureIntro |].
+      iRight. iSplitR; [by iPureIntro |].
+      iSplitR; [rewrite /pipe_rstop_noobs; iRight; iRight; iRight; by iPureIntro |].
       iExact "Hch".
     - iRight. iSplitR; [iExact "Ht" |]. by iApply pipe_rpay_taint.
   Qed.
 
-  Lemma pipe_rpost_img_cursor γ Q Qe Rk n r M' addr :
-    pipe_rpost_img γ Q Qe Rk n r M' addr -∗
+  (* what every arm leaves at the cursor: the caller's own [Q acc] wherever
+     the node is untouched, the observation where it was spent *)
+  Lemma pipe_rpost_img_cursor P γ Q Qe Rk n r M' addr :
+    pipe_rpost_img P γ Q Qe Rk n r M' addr -∗
     (∃ (acc : list (bv 8)) (d : nat),
        ⌜(length acc <= n)%nat⌝ ∗
        ⌜(forall i : nat, (i < d)%nat ->
            uint (add_vec_int addr (Z.of_nat i)) = (uint addr + Z.of_nat i)%Z) ->
         forall j : nat, (j < d)%nat ->
           M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (acc !!! j)⌝ ∗
-       pipe_rstop Qe Rk n acc d r ∗ Q acc)
+       ((⌜(d < n)%nat /\ length acc = d
+          /\ r = (mword_of_int (Z.of_nat d) : mword 64)⌝ ∗
+         ∃ s : pipe_st, ⌜pst_empty s /\ (d = 0%nat -> ps_wo s = false)⌝ ∗ Qe acc s)
+        ∨ (⌜length acc = d⌝ ∗ pipe_rstop_noobs P addr Rk n d r ∗ Q acc)))
     ∨ (pipe_taint_cred ∗ pipe_rpay γ Q Qe n).
   Proof.
     iIntros "[H | H]"; [| iRight; iExact "H"].
-    iDestruct "H" as (acc d) "(%H1 & %H2 & Hstop & Hch)". iLeft. iExists acc, d.
-    iDestruct (pipe_rchain_cursor with "Hch") as "$". iFrame "Hstop". by iPureIntro.
+    iDestruct "H" as (acc d) "(%H1 & %H2 & [Hobs | (%H3 & Hno & Hch)])"; iLeft; iExists acc, d;
+      (iSplitR; [by iPureIntro |]); (iSplitR; [by iPureIntro |]).
+    - iLeft. iExact "Hobs".
+    - iRight. iSplitR; [by iPureIntro |]. iFrame "Hno".
+      iDestruct (pipe_rchain_cursor with "Hch") as "$".
   Qed.
 
 End PipeQueue.

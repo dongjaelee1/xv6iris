@@ -408,6 +408,26 @@ own sign guard has its own arm at the empty count.  `close(2)` is no longer
 a free number (`UexecSG.free_num`): a program pays its close deposits at
 the state its handle names, `emp` everywhere but a pipe.
 
+Two facts about the posts that the first draft got wrong (found by the
+pipewrite/piperead port, 2026-09-16):
+
+- **An observation spends its node.**  A chain node is one ADDITIVE
+  conjunction, `Q k ∧ olink (Qe k) ∧ wlinks`, so the arm that fired the
+  observation hands back `Qe k s` and nothing else at cursor `k` -- not the
+  chain at `k`, not `Q k`.  A caller that wants its cursor back at that
+  exit puts it inside its own `Qe k`.  The other arms leave the node
+  untouched and hand the chain back at the cursor (`pipe_wpost_cursor`,
+  `pipe_rpost_img_cursor` say exactly which).
+- **The exits are the pinned kernel's, not the C's comments'.**  pipewrite
+  answers -1, not 0, when the very FIRST byte is unreadable (`if (i == 0) i
+  = -1`), so its answered arm is `r = k ∨ (k = 0 ∧ r = -1)` with the same
+  reason.  piperead dequeues a byte only AFTER its copy-out succeeded, so
+  the dequeued bytes ARE the delivered ones (`length acc = d` in every
+  arm); a copy-out fault leaves that byte in the ring and answers the
+  count delivered, or -1 when it is nothing, with `copyout_wrote`'s reason
+  at the entry table (`pipe_rstop_noobs`, which is why the read post now
+  takes the table and the address).
+
 **The exit path** is the one place a payment is demanded over a whole
 table: `kexit` closes every descriptor, so its contract takes the table
 named and `fileclose_cpays sts`.  The generic slot pays it out of the

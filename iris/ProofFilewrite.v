@@ -1091,8 +1091,8 @@ Section ProofFilewrite.
     fc_type Cf' = FD_INODE \/ fc_type Cf' = FD_DEVICE ->
     file_pay_st γf' kk qq Cf' st' -∗
     ∃ (ik : nat) (inum : mword 32) (s : Qp) (g : gname) (ty : bv 16)
-      (lo tl : nat) (γb : Xv6Cameras.box_names) (γo : gname),
-      ⌜fdstate_ok inum γo Cf' st'⌝ ∗
+      (lo tl : nat) (γb : Xv6Cameras.box_names) (γo : gname) (γp : pipe_names),
+      ⌜fdstate_ok inum γo γp Cf' st'⌝ ∗
       ⌜fc_ip Cf' = ientry ik⌝ ∗ ⌜(ik < NINODE)%nat⌝ ∗
       ⌜(bv_unsigned inum < 16 * Z.of_nat icfg_nib)%Z⌝ ∗
       ⌜fc_wbool Cf' = true -> bv_unsigned ty <> T_DIR_z⌝ ∗
@@ -1123,7 +1123,7 @@ Section ProofFilewrite.
     iDestruct "Hs" as (ik lo tl) "(%Hipk & %Hik & %Hinb & %Hle & #Hfl & Hshr)".
     iDestruct "Hwt" as (ty) "(#Hshot & %Hnd & %Hdv)".
     iExists ik, (fp_inum pn), (qq * fp_iq pn)%Qp, (fp_ig pn), ty, lo, tl,
-      (fp_obox pn), (fp_ooff pn).
+      (fp_obox pn), (fp_ooff pn), (fp_pipe pn).
     iSplitR; [done|]. iSplitR; [done|]. iSplitR; [done|]. iSplitR; [done|].
     iSplitR; [done|]. iSplitR; [done|].
     iSplitR; [done|]. iSplitR; [iExact "Hfl"|].
@@ -1397,19 +1397,21 @@ Section ProofFilewrite.
      on [f->type]; [fdstate_ok] is what makes those the same question, and
      these four bridges are where the two meet. *)
   Local Lemma fw_env_dev (γf' : gname) (fn' : fwrite_names)
-      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname) :
-    fdstate_ok inum γo Cf' st' -> fc_type Cf' = FD_DEVICE ->
+      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname)
+      (γp : pipe_names) :
+    fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_DEVICE ->
     filewrite_env γf' fn' st' -∗ filewrite_dev_env fn' (dev_major Cf').
   Proof.
-    intros Hok Ht. destruct (fdstate_ok_device inum γo Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
+    intros Hok Ht. destruct (fdstate_ok_device inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
   Local Lemma fw_env_out_dev (fn' : fwrite_names)
-      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname) :
-    fdstate_ok inum γo Cf' st' -> fc_type Cf' = FD_DEVICE ->
+      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname)
+      (γp : pipe_names) :
+    fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_DEVICE ->
     filewrite_dev_env fn' (dev_major Cf') -∗ filewrite_env_out fn' st'.
   Proof.
-    intros Hok Ht. destruct (fdstate_ok_device inum γo Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
+    intros Hok Ht. destruct (fdstate_ok_device inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
   Local Lemma fw_dev_in (fn' : fwrite_names) (Cf' : fcontent) :
@@ -1462,20 +1464,22 @@ Section ProofFilewrite.
      [bool_decide]s, and they exist so that no [vm_compute] on an
      [fcontent] runs at a call site. ------------------------------------ *)
   Local Lemma fw_env_fs (gf' : gname) (fn' : fwrite_names)
-      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname) :
-    fdstate_ok inum γo Cf' st' -> fc_type Cf' = FD_INODE ->
+      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname)
+      (γp : pipe_names) :
+    fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_INODE ->
     filewrite_env gf' fn' st' -∗ filewrite_fs_env gf' fn'.
   Proof.
-    intros Hok Ht. destruct (fdstate_ok_inode inum γo Cf' st' Hok Ht) as (? & ? & ->).
+    intros Hok Ht. destruct (fdstate_ok_inode inum γo γp Cf' st' Hok Ht) as (? & ? & ->).
     by iIntros "$".
   Qed.
 
   Local Lemma fw_env_out_fs (fn' : fwrite_names)
-      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname) :
-    fdstate_ok inum γo Cf' st' -> fc_type Cf' = FD_INODE ->
+      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname)
+      (γp : pipe_names) :
+    fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_INODE ->
     filewrite_fs_out fn' -∗ filewrite_env_out fn' st'.
   Proof.
-    intros Hok Ht. destruct (fdstate_ok_inode inum γo Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
+    intros Hok Ht. destruct (fdstate_ok_inode inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
   (* =================================================================== *)
@@ -2049,7 +2053,7 @@ Section ProofFilewrite.
        whatever content the reference happens to hold this time round. *)
     iDestruct "Href" as (Cf) "(Hrtok & Hrfields & Hrpay & Hrlv)".
     iDestruct (file_pay_st_ok with "Hrpay") as "[%Hex Hrpay]".
-    destruct Hex as (inumx & γox & Hokx).
+    destruct Hex as (inumx & γox & γpx & Hokx).
     pose proof Hokx as Hokc. rewrite Hstx in Hokc.
     destruct Hokc as (Hrdc & Hwrc & Htyi & Hnxeq & Hgxeq & _).
     assert (Hwb : fc_wbool Cf = true).
@@ -2201,7 +2205,7 @@ Section ProofFilewrite.
        names below are local to the iteration and everything derived from
        them is re-derived on the next one. ---- *)
     iDestruct (fwau_pay_carve gf kx qx Cf _ (or_introl Htyi) with "Hrpay")
-      as (ik inum sh g ty lox tlx γb0 γo0)
+      as (ik inum sh g ty lox tlx γb0 γo0 γp0)
          "(%Pst & %P8 & %P9 & %P5 & %P10 & %P10d & %Hlex & #Hflx & #Hty & Hshr &
            Hoh & Hpayback)".
     (* the off output IS the fd's off box handle on this arm *)
@@ -3499,7 +3503,7 @@ Section ProofFilewrite.
         { exact Hcsf. }
         { exact Hupt2. }
         { exact Hrv. }
-        { iApply (fw_env_out_fs fn stx Cf inumx _ Hokx Htyi). iExact "Hout". }
+        { iApply (fw_env_out_fs fn stx Cf inumx _ _ Hokx Htyi). iExact "Hout". }
         { (* THE ARMS, AT THE EXHAUSTED EXIT.  The chunk that reached it was
              FULL ([Hcrz]), so it FIRED, so [tf = t + c = iz + c = n]: this
              exit takes the ok arm and no other. *)
@@ -3642,7 +3646,7 @@ Section ProofFilewrite.
       { exact Hcsf. }
       { exact Hupt2. }
       { exact Hrv. }
-      { iApply (fw_env_out_fs fn stx Cf inumx _ Hokx Htyi). iExact "Hout". }
+      { iApply (fw_env_out_fs fn stx Cf inumx _ _ Hokx Htyi). iExact "Hout". }
       { rewrite /write_arms_at. iRight.
         iSplitR; [iPureIntro; exact Hrvm1 |].
         assert (Hfailex : (tf < n)%Z \/ (n < 0)%Z /\ pf = 0%nat)
@@ -3656,7 +3660,8 @@ Section ProofFilewrite.
       (pidv : mword 32) (U : ustate)
       (m : regfile) (K : nat) (eb : bool) (n : Z) (b : bool)
       (lks : gset string) (Q : nat -> iProp Σ)
-    : wp_filewrite_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks Q.
+      (Qe : nat -> pipe_st -> iProp Σ)
+    : wp_filewrite_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks Q Qe.
   Proof.
     cbv beta delta [wp_filewrite_sconf_body].
     intros pcE pj ret_tgt uaddr HK Hk Hj Hgs Hlens Hfnj Hfnps Hconw
@@ -3682,7 +3687,7 @@ Section ProofFilewrite.
        fraction, so the loaded words ARE [fc_writable Cf] / [fc_type Cf]. *)
     iDestruct "Href" as (Cf) "(Hrtok & Hrfields & Hrpay & Hrlv)".
     iDestruct (file_pay_st_ok with "Hrpay") as "[%Hokx Hrpay]".
-    destruct Hokx as (inumx & γox & Hok).
+    destruct Hokx as (inumx & γox & γpx & Hok).
     iEval (rewrite /file_fields) in "Hrfields".
     iDestruct "Hrfields" as "(Hcty & Hcrd & Hcwr & Hcpp & Hcip & Hcmaj)".
     (* =================================================================
@@ -3786,8 +3791,8 @@ Section ProofFilewrite.
            WRITABLE descriptor, which [fdstate_ok] refutes here. *)
         rewrite /filewrite_arms.
         iSplitR; [iPureIntro; apply filewrite_ret_m1 |].
-        iApply (filewrite_extra_unwritable _ inumx γox Cf st n (us_M U) uaddr
-                  Q (mword_of_int (-1)) Hok Hwrz). }
+        iApply (filewrite_extra_unwritable _ _ inumx γox _ Cf st n (us_M U) uaddr
+                  Q Qe (mword_of_int (-1)) Hok Hwrz). }
     - (* ===============================================================
          WRITABLE.  [fw_wbool_of_fall] turns the FALL into the boolean
          [filewrite_fs_env]'s last pure field is conditioned on -- the
@@ -4008,7 +4013,7 @@ Section ProofFilewrite.
              same cursor; the console arm's NEG disjunct is pure. *)
           rewrite /filewrite_arms.
           iSplitR; [iPureIntro; apply filewrite_ret_m1 |].
-          iApply (filewrite_extra_neg _ st n (us_M U) uaddr Q Hneg
+          iApply (filewrite_extra_neg _ _ st n (us_M U) uaddr Q Qe Hneg
                     with "Hfin"). } }
       (* ---- 0 <= n : [Hn0] is now a fact of the code, not a premise ---- *)
       assert (Hn0 : (0 <= n)%Z) by lia.
@@ -4094,13 +4099,26 @@ Section ProofFilewrite.
           by (apply eq_vec_true_iff; exact Hp1).
         (* the STATE's shape, for the armed post: a pipe descriptor arms
            nothing ([filewrite_extra_pipe]) -- a pipe AU is out of scope. *)
-        destruct (fdstate_ok_pipe inumx γox Cf st Hok Htyp) as (rp & wp2 & Hstpp).
         iDestruct "Hrpay" as (pn) "(%Hstp & Hpn & Hpl)".
+        (* THE STATE'S PIPE IS THE PAYLOAD'S ([fdstate_ok]'s pipe arm), which
+           is what makes the caller's links and pipewrite's queue one name. *)
+        destruct (fdstate_ok_pipe _ _ _ Cf st Hstp Htyp) as (rp & wp2 & Hstpp).
+        assert (Hwp2 : wp2 = true).
+        { destruct (fdstate_ok_rw _ _ _ Cf rp wp2 (FdPipe (fp_pipe pn))
+                      ltac:(rewrite -Hstpp; exact Hstp)) as [_ Hwrc].
+          destruct wp2; [reflexivity |]. exfalso.
+          rewrite /fc_wbool Hwrc in Hwb. by vm_compute in Hwb. }
+        subst wp2.
         iEval (rewrite /file_core /file_core_noff Htyp bool_decide_eq_true_2;
                [| reflexivity]) in "Hpl".
         (* the entry's iref unit rides the pipe arm now ([file_core]); it is
            not piperead's business, so it stays here and goes back below. *)
         iDestruct "Hpl" as "[(#Hpipe & Hpref & Hiru) Hoh]".
+        (* THE BYTE QUEUE'S PAYMENT (design/pipe.md, "The byte queue"): the
+           caller's write chain over THIS pipe's queue, one node per byte,
+           or the taint. *)
+        iDestruct (filewrite_in_pipe rp (fp_pipe pn) n (us_M U) uaddr Q Qe
+                     with "[Hfin]") as "Hpay"; [rewrite Hstpp; iExact "Hfin" |].
         assert (Htgt54 : add_vec (mword_of_int (FW + 0x28) : mword 64)
                   (sign_extend' 64 (mword_of_int 52 : mword 13))
                   = mword_of_int (FW + 0x5c))
@@ -4167,15 +4185,29 @@ Section ProofFilewrite.
           rewrite /P2 upd_ne; [| regne].
           rewrite /P1 upd_ne; [| regne].
           exact (HG5thr c Hcs N2 N8 N18 N21 N22). }
+        (* pipewrite's SOURCE RUN is the dispatcher's own [uaddr]: a1 is
+           never written between fileread's entry and the [jal]. *)
+        assert (HP2a1 : P2 !!! Regidx Ra1 = m !!! Regidx Ra1).
+        { rewrite /P2 upd_ne; [| vm_compute; discriminate].
+          rewrite /P1 upd_ne; [| vm_compute; discriminate].
+          rewrite /G5 upd_ne; [| vm_compute; discriminate].
+          rewrite /G4 upd_ne; [| vm_compute; discriminate].
+          rewrite /G3g upd_ne; [| vm_compute; discriminate].
+          rewrite /G3 upd_ne; [| vm_compute; discriminate].
+          rewrite /G2 upd_ne; [| vm_compute; discriminate].
+          rewrite /G1 upd_ne; [| vm_compute; discriminate].
+          exact HMa1. }
+        iEval (rewrite /uaddr -HP2a1) in "Hpay".
         iDestruct (cpu_own_transport CID CID11 0%nat eb pj b ltac:(rewrite Hb; wp_next_chain)
                      with "Hcnt") as "Hcnt".
         iApply (Pipewrite.wp_pipewrite_sconf fsc_kalloc γf γs j γlp (fp_lock pn) (fp_pipe pn)
-                  (fc_wbool Cf) q P2 (K - 12)%nat eb pidv U n b lks
+                  (fc_wbool Cf) q P2 (K - 12)%nat eb pidv U n b lks Q Qe
                   Hj Hgs Hlens HP2a2 (fw_n_range n Hn01) (fw_av_pipe K HK) Heb
-                  with "Hcg Hcnt Htext Hpc [] Hpref Hpriv Hkenv Hprocs").
+                  with "Hcg Hcnt Htext Hpc [] Hpref Hpay Hpriv Hkenv Hprocs").
         all: try lkbelow.
         { iEval (rewrite HP2a0). iExact "Hpipe". }
-        iIntros (CIDpw Hspw mf P') "%Hcspw %Hupt %Hretpw Hcg Hcnt Hpc Hpref Hpriv".
+        iIntros (CIDpw Hspw mf P')
+          "%Hcspw %Hupt %Hretpw Hcg Hcnt Hpc Hpref Hwpost Hpriv".
         assert (Hpc5a : ret_pc (P2 !!! Regidx Rra) = mword_of_int (FW + 0x62)).
         { rewrite HP2ra. apply bv_eq; vm_compute; reflexivity. }
         iEval (rewrite Hpc5a) in "Hpc".
@@ -4219,7 +4251,7 @@ Section ProofFilewrite.
         iApply ("Hcont" $! mfin (mf !!! Regidx Ra0) P'
                   with "[%] [%] [%] Hcg Hcnt [Hpc]
                         [Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hpn Hpref Hiru Hoh Hrlv]
-                        Hpriv [Henv] []").
+                        Hpriv [Henv] [Hwpost]").
         { exact Hcsf. }
         { exact Hupt. }
         { exact Hrv. }
@@ -4233,7 +4265,8 @@ Section ProofFilewrite.
         { by iApply filewrite_env_out_of_env. }
         { rewrite /filewrite_arms.
           iSplitR; [iPureIntro; by apply fw_ret_of_pipe |].
-          rewrite Hstpp. iApply filewrite_extra_pipe. }
+          rewrite Hstpp /uaddr -HP2a1.
+          iApply (filewrite_extra_pipe with "Hwpost"). }
       + (* ---- +0x24 c.li a4,3 ; +0x26 beq a5,a4 -> +0x5c (FD_DEVICE) ---- *)
         iApply (wp_beq_fall_s_sconf (mword_of_int (FW + 0x28))
                   (mword_of_int 52 : mword 13) Ra4 Ra5 G5 (K - 12)%nat b
@@ -4293,7 +4326,7 @@ Section ProofFilewrite.
              consolewrite, whose contract is the functor's parameter. *)
           assert (Htyd : fc_type Cf = FD_DEVICE)
             by (apply eq_vec_true_iff; exact Hp3).
-          iDestruct (fw_env_dev γf fn st Cf inumx _ Hok Htyd with "Henv") as "Henv".
+          iDestruct (fw_env_dev γf fn st Cf inumx _ _ Hok Htyd with "Henv") as "Henv".
           (* ---- THE STATE'S SHAPE, THE SEED AND THE PIN ------------------
              The armed post is keyed on [st], so the arm names it; the
              write mode comes off the [f->writable] fall.  Then, ONCE for
@@ -4307,17 +4340,17 @@ Section ProofFilewrite.
              used to be free (the mono-list unit) and the chain is not, so
              one walk serves both majors only if the caller pays at both.  The devsw PIN, which refutes the null slot, is still
              the console's alone. *)
-          destruct (fdstate_ok_device inumx γox Cf st Hok Htyd)
+          destruct (fdstate_ok_device inumx γox γpx Cf st Hok Htyd)
             as (rd & wd & Hstd).
           assert (Hwd : wd = true).
-          { destruct (fdstate_ok_rw inumx γox Cf rd wd
+          { destruct (fdstate_ok_rw inumx γox γpx Cf rd wd
                         (FdDevice (bv_unsigned (fc_major Cf)))
                         ltac:(rewrite -Hstd; exact Hok)) as [_ Hwrc].
             destruct wd; [reflexivity |]. exfalso.
             rewrite /fc_wbool Hwrc in Hwb. by vm_compute in Hwb. }
           subst wd.
           iDestruct (filewrite_in_cons rd (bv_unsigned (fc_major Cf)) n
-                       (us_M U) uaddr Q with "[Hfin]") as "Hseed";
+                       (us_M U) uaddr Q Qe with "[Hfin]") as "Hseed";
             [rewrite Hstd; iExact "Hfin" |].
           (* the pin is the CONTRACT'S OWN premise, read at the major this
              arm is on *)
@@ -4549,7 +4582,7 @@ Section ProofFilewrite.
                 { rewrite /file_ref /file_fields.
                   iFrame "Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv". }
                 { rewrite HVid. iExact "Hpriv". }
-                { iApply (fw_env_out_dev fn st Cf inumx _ Hok Htyd).
+                { iApply (fw_env_out_dev fn st Cf inumx _ _ Hok Htyd).
                   iApply (fw_dev_in_back fn Cf Hin with "[%] Hslot Hdevinv Htxlk Hupin").
                   by left. }
                 { (* THE NULL SLOT.  At the console the PIN refutes it; at
@@ -4562,8 +4595,8 @@ Section ProofFilewrite.
                   - exfalso. rewrite /dev_major (Hpin Hc) in Hwp0.
                     apply (f_equal (@bv_unsigned 64)) in Hwp0.
                     by vm_compute in Hwp0.
-                  - iApply (filewrite_extra_dev_other _ rd true
-                              (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q
+                  - iApply (filewrite_extra_dev_other _ _ rd true
+                              (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q Qe
                               (mword_of_int (-1)) Hnc). }
              ** (* ---- consolewrite: the INDIRECT CALL at +0x7e ---- *)
                 iApply (wp_cbeqz_fall_s_sconf (mword_of_int (FW + 0x82))
@@ -4727,7 +4760,7 @@ Section ProofFilewrite.
                 { iEval (rewrite /ret_tgt). iExact "Hpc". }
                 { rewrite /file_ref /file_fields.
                   iFrame "Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv". }
-                { iApply (fw_env_out_dev fn st Cf inumx _ Hok Htyd).
+                { iApply (fw_env_out_dev fn st Cf inumx _ _ Hok Htyd).
                   iApply (fw_dev_in_back fn Cf Hin with "[%] Hslot Hdevinv Htxlk Hupin").
                   by right. }
                 { (* THE COUNT-TO-ARMS BRIDGE.  The FD_DEVICE arm relays [r]
@@ -4744,9 +4777,9 @@ Section ProofFilewrite.
                   - assert (Hmaxn : Z.max 0 n = n) by lia.
                     assert (Hrn : (0 <= r <= n)%Z) by (rewrite Hmaxn in Hrr; lia).
                     rewrite Hc.
-                    iApply (filewrite_extra_cons (pv_upt (us_V U)) rd
+                    iApply (filewrite_extra_cons _ (pv_upt (us_V U)) rd
                               ConsoleInv.CONSOLE n (us_M U)
-                              uaddr Q (mword_of_int r) eq_refl).
+                              uaddr Q Qe (mword_of_int r) eq_refl).
                     (* THE SHORT ARM'S REASON (lane TRAP-ROWS, T1), relayed
                        verbatim from consolewrite's post at the same table
                        and the same buffer. *)
@@ -4756,8 +4789,8 @@ Section ProofFilewrite.
                                     [ exact (Hshort Hlt) | lia ])
                               with "Hrcpt").
                   - iClear "Hrcpt".
-                    iApply (filewrite_extra_dev_other _ rd true
-                              (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q
+                    iApply (filewrite_extra_dev_other _ _ rd true
+                              (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q Qe
                               (mword_of_int r) Hnc). }
           ++ (* ---------- OUT OF RANGE: the [bltu] is taken to +0x126 ------- *)
              assert (Hmjgt : (9 < bv_unsigned (fc_major Cf))%Z)
@@ -4823,12 +4856,12 @@ Section ProofFilewrite.
              { rewrite /file_ref /file_fields.
                iFrame "Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv". }
              { rewrite HVid. iExact "Hpriv". }
-             { by iApply (fw_env_out_dev fn st Cf inumx _ Hok Htyd). }
+             { by iApply (fw_env_out_dev fn st Cf inumx _ _ Hok Htyd). }
              { rewrite /filewrite_arms.
                iSplitR; [iPureIntro; apply filewrite_ret_m1 |].
                rewrite Hstd.
-               iApply (filewrite_extra_dev_other _ rd true
-                         (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q
+               iApply (filewrite_extra_dev_other _ _ rd true
+                         (bv_unsigned (fc_major Cf)) n (us_M U) uaddr Q Qe
                          (mword_of_int (-1)) Hnconr). }
         * (* ---- +0x2a c.li a4,2 ; +0x2c bne a5,a4 -> +0x10a (panic) ---- *)
           iApply (wp_beq_fall_s_sconf (mword_of_int (FW + 0x2e))
@@ -4899,10 +4932,10 @@ Section ProofFilewrite.
              (* THE STATE'S SHAPE, HOISTED ABOVE THE ZERO-TRIP SPLIT.  Both
                 sub-branches need it now: the armed post is keyed on [st],
                 and the loop takes the state rather than the content. *)
-             destruct (fdstate_ok_inode inumx γox Cf st Hok Htyi)
+             destruct (fdstate_ok_inode inumx γox γpx Cf st Hok Htyi)
                as (rx & wx & Hstx).
              assert (Hwx : wx = true).
-             { destruct (fdstate_ok_rw inumx γox Cf rx wx
+             { destruct (fdstate_ok_rw inumx γox γpx Cf rx wx
                            (FdInode (bv_unsigned inumx) γox OffParked)
                            ltac:(rewrite -Hstx; exact Hok)) as [_ Hwrc].
                destruct wx; [reflexivity |]. exfalso.
@@ -5400,7 +5433,7 @@ Section ProofFilewrite.
                  assert (Hpos : (0 < n)%Z).
                  { destruct (Z.le_gt_cases n 0) as [Hle | Hgt]; [| exact Hgt].
                    exfalso. rewrite (proj2 (Z.geb_le 0 n) Hle) in Hz0. discriminate. }
-                 iPoseProof (fw_env_fs _ _ st Cf inumx _ Hok Htyi with "Henv") as "Henv".
+                 iPoseProof (fw_env_fs _ _ st Cf inumx _ _ Hok Htyi with "Henv") as "Henv".
                  iEval (rewrite /filewrite_fs_env) in "Henv".
                  (* 25 conjuncts, not 31: the six per-inode fields (the two
                     slot facts, the two point geometry facts, the share and
@@ -5456,7 +5489,7 @@ Section ProofFilewrite.
                  { (* the chain, at the loop's entry state *)
                    iApply fw_au_raw_init.
                    iApply (filewrite_in_inode rx (bv_unsigned inumx) γox n
-                             (us_M U) uaddr Q with "[Hfin]").
+                             (us_M U) uaddr Q Qe with "[Hfin]").
                    rewrite Hstx. iExact "Hfin". }
                  iIntros (CIDx Hsx mf rv P')
                    "%Hcs %Hup %Hra Hcg Hcnt Hpc Href Hpriv Henvo Harms".

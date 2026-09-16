@@ -393,6 +393,45 @@ Section SpecFileclose.
     fileclose_cpost q st Φc -∗ fileclose_cpost_any st Φc.
   Proof. iIntros "H". by iExists q. Qed.
 
+  (* ---- THE TWO STEPS fileclose's LAST close takes, at the key the walk
+     holds after the [ff.type == FD_PIPE] branch: the file's CONTENT, not a
+     state shape it would have to re-derive.  Pure consequences of the two
+     definitions above and [PipeQueue.pipe_cpost]. ----
+
+     The pipe arm: pipeclose ALWAYS clears its flag word, so its post is the
+     FIRED one ([pipe_cpost ... true]) -- and a fired post holds at every
+     [last], in particular at this closer's own [bool_decide (q = 1)]. *)
+  Lemma fileclose_cpost_of_fired (q : Qp) (st : fdstate) (Φc : iProp Σ)
+      (r w : bool) (γp : pipe_names) :
+    st = FdOpen r w (FdPipe γp) ->
+    pipe_cpost (pn_queue γp) w Φc true -∗ fileclose_cpost q st Φc.
+  Proof.
+    intros ->. rewrite /fileclose_cpost.
+    iIntros "[HΦ | [[#Ht Hp] | [%Hf _]]]".
+    - by iApply pipe_cpost_fired.
+    - by iApply (pipe_cpost_taint with "Ht Hp").
+    - discriminate.
+  Qed.
+
+  (* the pipe arm's INPUT, at the same key: what the closer hands pipeclose *)
+  Lemma fileclose_cpay_pipe (st : fdstate) (r w : bool) (γp : pipe_names)
+      (Φc : iProp Σ) :
+    st = FdOpen r w (FdPipe γp) ->
+    fileclose_cpay st Φc -∗ pipe_cpay (pn_queue γp) w Φc.
+  Proof. intros ->. by iIntros "$". Qed.
+
+  (* ...and the arms that are not a pipe at all: both payment and post are
+     [emp] there, but only the file's type says so. *)
+  Lemma fileclose_cpost_nonpipe (inum : mword 32) (γo : gname) (γp : pipe_names)
+      (C : fcontent) (st : fdstate) (q : Qp) (Φc : iProp Σ) :
+    fdstate_ok inum γo γp C st -> fc_type C <> FD_PIPE ->
+    fileclose_cpay st Φc -∗ fileclose_cpost q st Φc.
+  Proof.
+    intros Hok Hne. rewrite /fileclose_cpay /fileclose_cpost.
+    destruct st as [| rb wb [i g om | g | mj]]; try (by iIntros "_").
+    exfalso. apply Hne. by destruct Hok as (_ & _ & Ht & _).
+  Qed.
+
   (* kexit's: one payment per row of the dying process's table, at the
      trivial payload -- the process never resumes to be told anything *)
   Definition fileclose_cpays (sts : list fdstate) : iProp Σ :=

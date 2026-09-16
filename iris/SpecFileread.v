@@ -1316,7 +1316,7 @@ Section SpecFileread.
        empty (an end-of-file if nothing came), copy-out fault, the kill
        shot -- or the taint with the payment back ([PipeQueue.pipe_rpost_img]). *)
     | FdOpen true _ (FdPipe γp) =>
-        pipe_rpost_img (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn) (Z.to_nat n) r M' addr
+        pipe_rpost_img pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn) (Z.to_nat n) r M' addr
     (* A DESCRIPTOR THAT CANNOT BE READ RETURNS -1, and the post says so.
        fileread's first test is [f->readable == 0], and sys_read never
        reaches fileread at all on a closed slot (argfd fails), so both of
@@ -1425,7 +1425,7 @@ Section SpecFileread.
      readable non-console device.  The two that CANNOT be read pay the -1
      claim instead, so they are keyed at the exit's own return value. *)
   Lemma fileread_extra_pipe (gn : gname) (pt : uptd) wb (γp : pipe_names) n F Rd Rin Rp Rpe P r M' addr :
-    P -∗ pipe_rpost_img (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn) (Z.to_nat n) r M' addr -∗
+    P -∗ pipe_rpost_img pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn) (Z.to_nat n) r M' addr -∗
     fileread_extra gn pt (FdOpen true wb (FdPipe γp)) n F Rd Rin Rp Rpe P r M' addr.
   Proof.
     rewrite /fileread_extra /fileread_extra_core. iIntros "HP H".
@@ -1514,7 +1514,7 @@ Section SpecFileread.
        never reaches the type dispatch. *)
     eq_vec (zero_extend' 64 (fc_readable C : mword 8) : mword 64)
            (zero_reg : mword 64) = false ->
-    P -∗ pipe_rpost_img (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn) (Z.to_nat n) r M' addr -∗
+    P -∗ pipe_rpost_img pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn) (Z.to_nat n) r M' addr -∗
     fileread_extra gn pt st n F Rd Rin Rp Rpe P r M' addr.
   Proof.
     intros Hok Ht Hrd.

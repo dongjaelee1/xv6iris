@@ -107,3 +107,4 @@ import Xv6.SpecProcMapstacks
 import Xv6.SpecKvmmake
 import Xv6.ProofKvmmap
 import Xv6.LinkKvmmap
+import Xv6.SpecKvminit

@@ -317,6 +317,27 @@ Proof.
     [exact Hr | rewrite Hn in Hw; discriminate].
 Qed.
 
+(* ...AND THE TWO ENDS OF THE CHAIN, PURELY (lane TL-3).  [resolves_from]
+   answers the walk at every view the claim admits, but
+   [PinnedObs.pin_walks_at]'s first two conjuncts are about the hops list
+   ALONE -- "the walk starts where the start rule says" and "it ends at the
+   inum the resolution names" -- and a pin must state them without any view
+   in hand (there may be no view at all at which the claim holds).  Both
+   are facts about [nchain]. *)
+Lemma nchain_head (m : gmap Z absnode) (d : Z) (ps : list fname) :
+  nchain m d ps !!! 0%nat = d.
+Proof. destruct ps; reflexivity. Qed.
+
+Lemma nchain_last (m : gmap Z absnode) (d : Z) (ps : list fname) (i : Z) :
+  npath m d ps = Some i -> nchain m d ps !!! length ps = i.
+Proof.
+  revert d. induction ps as [| s ps IH]; intros d Hw.
+  - cbn in Hw |- *. by injection Hw as <-.
+  - rewrite npath_cons in Hw.
+    destruct (nstep m d s) as [c |] eqn:Hst; [| discriminate].
+    cbn [nchain length]. rewrite Hst. cbn. exact (IH c Hw).
+Qed.
+
 (* ===================================================================== *)
 (*  3.  REACHABILITY, THE CLOSURE, AND [subtree]                          *)
 (* ===================================================================== *)
@@ -2439,6 +2460,39 @@ Section OwnPres.
       rewrite lookup_insert Hti //.
   Qed.
 
+  (* ...AND ITS TWIN AT [delta_trunc], line for line (lane TL-3's
+     housekeeping: it was proved in [AppTree.v]'s section 1f' so that TL-2
+     had the truncate move without waiting for a TL-1 lane, and its note
+     said it belonged here).  The row's CONTENT is edited and nothing
+     else: no edge moves, and the row being edited is a FILE, so no root
+     is it. *)
+  Lemma own_wf_trunc (av : aview) (own : gmap K (Z * ttree)) (i : Z)
+      (bs0 : list (bv 8)) (nl : nat) :
+    av !! i = Some (MkAnode (AFile bs0) nl) ->
+    own_wf av own -> own_wf (delta_trunc i av) own.
+  Proof.
+    intros Hi (Hwf & Hroots & Hnn).
+    assert (Hti : tview av !! i = Some (AFile bs0))
+      by (rewrite (tview_lookup_Some av i _ Hi) //).
+    pose proof (tview_delta_trunc av i bs0 nl Hi) as Hview.
+    split; [exact (aview_tree_wf_trunc av i bs0 nl Hi Hwf) |].
+    split.
+    - intros g r t Hg. destruct (Hroots g r t Hg) as (a & e & Ha & He).
+      apply adir_at_tview. rewrite Hview.
+      destruct (decide (r = i)) as [-> | Hne].
+      { exfalso. assert (a = MkAnode (AFile bs0) nl) as -> by congruence.
+        cbn in He. discriminate. }
+      rewrite lookup_insert_ne; [| congruence].
+      apply adir_at_tview. by exists a, e.
+    - intros g g' r t r' t' Hne Hg Hg' Hr. apply (Hnn g g' r t r' t' Hne Hg Hg').
+      rewrite Hview in Hr.
+      apply (nreach_nents_cong (<[i := AFile []]> (tview av)) (tview av) r r');
+        [| exact Hr].
+      intros j. symmetry. rewrite !nents_unfold.
+      destruct (decide (j = i)) as [-> | Hj]; [| by rewrite lookup_insert_ne].
+      rewrite lookup_insert Hti //.
+  Qed.
+
   (* CREATE: the fresh inum is a NEW LEAF under an existing root, and it
      is not a root itself (roots are rows of the view, and it was not).
      Nothing else in [own] can see it. *)
@@ -2557,6 +2611,20 @@ Section OwnPres.
       + rewrite (nstep_of_lookup _ (tview av) x s (lookup_delete_ne _ tg x
                    (fun Hcc => Hx (eq_sym Hcc)))). exact (fun H0 => H0).
   Qed.
+
+  (* STILL OWED, and NOT a one-liner (lane TL-3 priced it): [own_wf_ent],
+     create's PARENT leg ALONE.  The other four legs above ride a landed
+     [aview_tree_wf_*]; this one would need an [aview_tree_wf_ent], and its
+     UNIQUE-PARENTHOOD conjunct is not available at the leg's own premises:
+     [nuniq_parent_ins_fresh] wants the target inum ABSENT from the map,
+     which is exactly what the ARM leg has just made false.  The honest
+     premise is the armed-inum one -- [aview_no_edge_to av i], "nothing
+     else names the row the arm installed" -- and no landed lemma proves
+     [nuniq_parent (tedge_ins d nm i m)] from it: it needs its own
+     induction on [nstep], the twin of [nuniq_parent_ins_fresh] at a
+     present-but-unnamed row.  Until it lands the create MOVE is offered
+     FUSED only ([AppTree.tree_move_create]), which is what the fires
+     actually take when both legs are paid in one step. *)
 End OwnPres.
 
 (* ==== TL1-END ==== *)

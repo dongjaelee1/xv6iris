@@ -92,6 +92,46 @@ console lease); for most programs it is `emp`.  And the generic entry
 `image_entry_taint T` (X := the generic slot, from `T`) is the taint arm,
 already there.
 
+**AS LANDED (EX-1, `iris/ExecEntry.v`).** Two shapes and the step
+between them, plus the taint arm:
+
+    image_entry_at f na alen afun sts cw cs pidv Q Pay X :=
+      □ ∀ W', ⌜kexec_image_ok f na alen afun sts W'⌝ -∗
+              ⌜uvis_cwd W' = cw⌝ -∗ ⌜uvis_lazy W' = false⌝ -∗
+              ⌜uvis_ch W' = cs⌝ -∗ ⌜uvis_pid W' = pidv⌝ -∗
+              my_pay (uvis_gen W') Q -∗ Pay -∗ X W'
+    image_entry f M av sts cw cs pidv Q Pay X :=
+      □ ∀ na alen afun W', …the same rows… -∗
+              ⌜exec_args_of M av na alen afun⌝ -∗ …
+    image_entry_taint T Q X := □ ∀ W', T -∗ my_pay (uvis_gen W') Q -∗ X W'
+    image_entry_of_at : □ (∀ na alen afun, ⌜exec_args_of M av na alen afun⌝
+                             -∗ image_entry_at …) -∗ image_entry …
+    image_entry_at_of : exec_args_of M av na alen afun ->
+                          image_entry … -∗ image_entry_at …
+
+Both are verbatim `pex_slot_at`'s / `pex_slot`'s □ premise, so every
+consumer is an instance by unfolding and nothing was restated.  Two
+rulings the sketch above got wrong, both forced by the landed entries:
+
+- **THE CALLER'S READINGS ARE PARAMETERS, not universals.** `f Q Pay X`
+  is not enough: the four rows are EQUATIONS against the caller's own
+  `cw`/`cs`/`pidv`/`sts`, and a program that reads any of them needs the
+  caller's value in its statement.  sh reads all four; echo reads none,
+  and its entry is stated at free `cw`, `cs`, `pidv` — which is exactly
+  where the difference between the two programs shows up.
+- **THE ARGV READING IS IN, not on the assembly side.** The entry is
+  owed at every `(na, alen, afun)` the kernel might build, and NO
+  verified program's entry holds at every argument vector: both landed
+  entries need a ROOM bound (sh's frame, echo's 96 bytes), an inequality
+  about `alen`/`na` that is false for a big enough vector.  What
+  discharges it is the caller's own reading (`init_args_det`,
+  `echo_args_det`), so the reading must be a premise the entry may
+  consume.  Leaving it outside would make both entries UNPROVABLE — this
+  is a finding, not a preference.  (The alternative — an agreement lemma
+  for `exec_args_of` plus a congruence for `kexec_image_ok`, letting the
+  assembly fix one shape — is real but is EX-3's, and it would not be
+  zero-semantic-change here.)
+
 ## 2. The general assembly and the U-tier rule
 
     exec_bundle_of :  (W) -∗ ⌜(L)⌝ -∗ (E) -∗ (taint arm) -∗ Pay -∗
@@ -100,6 +140,46 @@ already there.
 `pinned_exec_bundle` becomes `exec_bundle_of` at the PIN supplier of (W)
 and the per-image (L); init's and sh's bundles re-derive as instances
 at their exact statements.
+
+**AS LANDED (EX-1, `iris/ExecBundle.v`).** `(W)` is THREE PREMISES, and
+this is the shape EX-2's fragment supplier must plug into — it is stated
+here once, exactly:
+
+    ex_node_id T Pfin Φo a := □ ∀ v i b, Pfin i -∗ Φo v i b -∗ ⌜b = a⌝ ∨ T
+
+    exec_bundle_of γfs X T P Pmiss Fo cw pl f nl Pay Q M pv av sts cs pidv :
+      kexec_loadable f ->                                   (L)
+      exec_path_of M pv pl ->
+      ex_start γfs cw P Pmiss pl -∗                         (W.i)   the walk, at THE path
+      pf_at (aopen_commit_at (fs_gamma_L γfs) appE) Fo -∗   (W.ii)  the terminal observation
+      ex_node_id T (P (length (path_elems pl)))
+                 Fo.(pf_recv) (MkAnode (AFile f) nl) -∗     (W.iii) the node it reports
+      image_entry f M av sts cw cs pidv Q Pay X -∗          (E)
+      image_entry_taint T Q X -∗ Pay -∗
+      sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
+        M pv av sts cs pidv
+
+Four things EX-2 should read off it:
+
+- `P`, `Pmiss` and `Fo` are the SUPPLIER's own families and are
+  PARAMETERS: nothing here says a cursor is a pin's.  The ∃ is left to
+  the deposit site (`pinned_exec_bundle` does the `iExists`).
+- **(W.iii) is weaker than `PinnedObs.pobs_node`** on purpose: the pinned
+  step also concludes `i = ino`, and exec never reads it (the cursor is
+  spent at the wand).  A supplier that knows the NODE but not the INUM —
+  a held `nview` share is about a node — answers this one.
+- The wand in `ex_node_id` CONSUMES both arguments, so a fragment
+  supplier may carry the terminal share inside `Fo`'s own receipt; the
+  `□` is needed because the bundle owes BOTH slot wands and each applies
+  it once.
+- (W.i) is taken at the ONE path, linearly; the `∀ pl` form of
+  `sys_exec_au_pre`'s first conjunct is recovered inside from
+  `exec_path_of_uniq`.
+
+`exec_bundle_of_at` is the same at `SpecKexec.exec_au_pre` (the boot
+call: literal path, literal vector, so (E) is `image_entry_at`).
+`exec_slot_of_entry_at` / `sys_exec_slot_of_entry` are the slot piece
+alone, for a consumer that wants only it.
 
 THE U-TIER RULE `wp_uk_ecall_exec_run`, in `user.tex`'s `urun` style
 (§7 "Processes", beside fork):
@@ -132,30 +212,76 @@ is" is a resource, not a global claim.
 - init execs /sh: `exec_bundle_of` at the PIN supplier (era-0 pins,
   unchanged) with `image_entry sh_elf` := the lemma extracted from
   `sh_slot_of_kexec`.  `UInitSh`'s bundle at its exact statement.
+  LANDED: `UShKernel.sh_image_entry_at` (sh's own theorem, at one
+  argument shape) and `UInitSh.init_sh_image_entry` (the same under
+  /init's argv reading, at /init's ledger and credential).  The two are
+  NOT chained: init's goes to `sh_slot_of_kexec` directly, because its
+  `Pay` is /init's quadruple — sh's persistent state, the position, the
+  lease, and the ledger row with its credential — while sh's entry is
+  stated at the triple its body consumes, and the credential conversion
+  between them reads /init's ledger.  A `Pay`-weakening lemma on
+  `image_entry_at` would chain them; it was not needed and is not
+  written.
 - sh execs /echo: same at `FsEchoPin.era0_echo_pins`, `image_entry
   echo_elf` := the bridge from `echo_uexec_slot`.  `UShEcho`'s bundle at
   its exact statement; `echo_node_img` (sh's malloc'd-argv reading)
   becomes an instance of the general argv reading (§4, EX-3).
+  LANDED: `UShEcho.echo_image_entry` (the UNPAID entry — §6's
+  anti-vacuity witness, `Pay := emp`), beside the new pure
+  `UShEcho.echo_room_of_det`.  The PAID one is still
+  `UShEchoPay.echo_slot_of_kexec_at` with its bundle assembled inline;
+  it is the same shape at the era's turn bundle as `Pay` and re-deriving
+  it is a one-lemma follow-up, not a finding.
 - A NEW program: its author proves `image_entry f_P …` from its code
   proof and chooses a (W) supplier; nothing else.
 
 ## 4. Lanes
 
-- [ ] **EX-1 ENTRY + ASSEMBLY** (U tier; mechanical): name
-  `image_entry`, cut `exec_bundle_of` out of `pinned_exec_bundle` with
-  (W)/(L)/(E) as premises, re-derive `pinned_exec_bundle`, init's and
-  sh's bundles as instances at their exact statements; (L) as the
-  decision lemma.  Zero semantic change; echo audit at 14.
+- [x] **EX-1 ENTRY + ASSEMBLY** — LANDED, zero semantic change.  Two new
+  files, `iris/ExecEntry.v` (§1's as-landed block) and
+  `iris/ExecBundle.v` (§2's), both with no ghost machinery of their own:
+  `ExecEntry` binds only `ChildTok.ctokG` (the class `Xv6G` carries as a
+  field instance), `ExecBundle` the syscall bundle's own list.
+  `PinnedExec`'s four lemmas are re-derived at their BYTE-IDENTICAL
+  statements (`pex_slot_at`, `pex_slot`, `pinned_exec_bundle_at`,
+  `pinned_exec_bundle_boot_at`; `pinned_exec_bundle` and
+  `pinned_exec_bundle_boot` unchanged), the pin's own step down to the
+  general premise being the new `PinnedExec.pobs_node_id`; every
+  consumer compiles untouched.  (L) NEEDED NOTHING:
+  `ElfLoadable.kexec_loadable_of_b` is the decision lemma and is already
+  there.  The two per-image instances (`sh_elf_loadable`,
+  `init_elf_loadable`) were NOT re-derived through it, deliberately:
+  they cite `elf_wf` from `ElfUser`'s own theorem — the one conjunct
+  that walks the whole file — and `vm_compute` only the three that read
+  the header and the phdr table, so routing them through the whole
+  boolean would recompute the expensive conjunct (ElfLoadable.v's own
+  header says so).  `Print Assumptions`: `exec_bundle_of` and
+  `pinned_exec_bundle` are CLOSED under the global context; the three
+  program entries sit at the standing bar (the two Sail platform
+  axioms, Rocq's `PrimInt63`/`PrimString` primitives, funext).  Echo
+  audit unchanged at 14.
 - [ ] **EX-2 FRAGMENT WALK** (U tier + fs seam; the feasibility lane):
   `ex_start` paid from owned `nview` shares along the hops + the
   terminal share as `Φo`'s receipt.  First check: the read-side share
   survives exec's namei/readi (`ic_rd_arm`'s 3/4).  If it does not,
   STOP with the wall written here — that would be a kernel-side ask
   (the read path's share discipline), the only thing that could make
-  exec need upstream.
+  exec need upstream.  ITS SEAM IS LANDED AND EXACT: supply §2's three
+  (W) premises — `ex_start`, `pf_at (aopen_commit_at …) Fo`,
+  `ex_node_id T (P (length (path_elems pl))) Fo.(pf_recv) (MkAnode
+  (AFile f) nl)` — and `exec_bundle_of` is the rest.  Nothing in
+  `ExecBundle.v` mentions a pin, so EX-2 writes no bundle of its own.
 - [ ] **EX-3 ARGV READING** (U tier): one lemma reading
   `exec_path_of`/`exec_args_of` off owned `ubytesq`/`uwordq` runs at
-  any layout; `init_args_det` and `echo_node_img` as instances.
+  any layout; `init_args_det` and `echo_node_img` as instances.  EX-1
+  fixed where it plugs in: `ExecEntry.image_entry_of_at` is the step
+  that consumes a reading, so EX-3's output is what its `⌜exec_args_of
+  M av na alen afun⌝` premise is discharged from.  A second, bigger
+  prize is named in §1's second ruling: an AGREEMENT lemma for
+  `exec_args_of` (it pins `na`, `alen` and `afun` only on the range
+  `kexec_image_ok` reads) plus a congruence for `kexec_image_ok` would
+  let an assembly fix ONE argument shape and drop `M`/`av` from
+  `image_entry` altogether.
 - [ ] **EX-4 THE RULE + THE TEST + THE TR**: `wp_uk_ecall_exec_run`
   over the general bundle; a consumer test (a program holding fragments
   for a file execs it and lands at `X`); `user.tex` §7's fork figure

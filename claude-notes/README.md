@@ -139,6 +139,16 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   reading), the ONE write walk and the source-run reading only a leaf can
   state, the inode/console/pipe members, why a program cannot hold a pin
   across its own write, and why row 16 carries no return blanket.
+- **[`user-exec.md`](design/user-exec.md)** — the GENERIC exec-success spec:
+  why the KERNEL side is already general (the slot wands quantify the file,
+  `kexec_image_ok` is near-functional, loadability is decidable, an
+  unverified target is served by the taint arm), the three separable
+  obligations the U-tier assembly used to fuse — (W) the resolution, (L)
+  loadability, (E) the exec'd program's own entry theorem `image_entry` —
+  the general assembly `exec_bundle_of` and the (W) triple a pin-free
+  supplier plugs into, the U-tier rule's asymmetric shape (no success
+  continuation: the process continues as the entry promised), and what the
+  caller's readings are doing in a program's entry statement.
 - **[`user-heap.md`](design/user-heap.md)** — the SEPARATION-LOGIC HEAP over
   user memory: the two `ghost_map`s (text persistent/X, data exclusive/W)
   and why that is what makes an exclusive points-to imply writability, the

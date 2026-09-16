@@ -18,6 +18,27 @@ FRAGMENT walk supplier — the pin-free route; feasibility check first),
 EX-3 (the general argv/path reading), EX-4 (the rule, the test, the
 TR figure).  Nothing relay-shaped unless EX-2's share check fails.
 
+- [x] **EX-1 ENTRY + ASSEMBLY** LANDED (branch `ex1-entry`).  New
+  `iris/ExecEntry.v` — `image_entry_at` / `image_entry` /
+  `image_entry_taint`, the two readings of obligation (E), plus
+  `image_entry_of_at` / `image_entry_at_of` between them — and
+  `iris/ExecBundle.v` — `ex_node_id`, `exec_slot_of_entry_at`,
+  `sys_exec_slot_of_entry`, `exec_bundle_of`, `exec_bundle_of_at`, the
+  assembly with (W)/(L)/(E) as premises and NO pin anywhere in it.
+  `PinnedExec` re-derives at byte-identical statements through the new
+  `pobs_node_id`; `UInitSh`, `UShEchoPay`, `UInitBoot` untouched by the
+  change and green.  Extracted entries: `UShKernel.sh_image_entry_at`,
+  `UInitSh.init_sh_image_entry` (which now IS the constructor that was
+  inline in `init_exec_sup_of_sh_slot`), `UShEcho.echo_image_entry`
+  with its new pure `echo_room_of_det`.  (L) needed nothing —
+  `ElfLoadable.kexec_loadable_of_b` was already the decision lemma.
+  Two rulings recorded in `design/user-exec.md` §1: the caller's four
+  readings are PARAMETERS of the entry, and the argv reading is INSIDE
+  it (without it neither landed entry's room bound is provable).
+  `exec_bundle_of` and `pinned_exec_bundle` are closed under the global
+  context; the three program entries sit at the standing platform bar.
+  Echo audit 14, `make -f CoqMakefile -j16` green whole-tree.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

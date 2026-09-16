@@ -4,10 +4,18 @@ Design of record: [`../design/applications.md`](../design/applications.md) for
 the application seam, [`../completed/app-echo.md`](../completed/app-echo.md) for the theorem this
 generalises.
 
-The landed theorem is about `echo hello world`. The target is
-`∀ ws, wf ws → <the same theorem at that line>` for a word list of short
-alphanumeric words — which is what a console session can actually type, and
-what makes the claim worth more than one literal.
+The landed theorem is about `echo hello world`, typed over and over.
+
+**THE TARGET IS A SESSION IN WHICH EACH ROUND TYPES ITS OWN LINE** —
+`echo foo` answered by `foo`, then `echo bar baz` answered by `bar baz`, and
+so on. NOT `∀ ws, <the theorem at that one line>`: quantifying the whole
+session over a single word list still says the user types the same thing
+every round, which is the hard-coding, only hidden behind a binder.
+
+The distinction decides the work. Generalising WHICH line is a statement-level
+change and is essentially done (below). Generalising so that each ROUND
+carries its own line is a change to the SESSION MODEL, and that is where the
+remaining cost is.
 
 **The method is IN-PLACE.** A general lemma may be developed in a fresh file
 and then moved in, but the specialised thing it replaces is DELETED: no
@@ -109,46 +117,114 @@ the only case outside it.
   `UkShEcho.echo_off_lt` are stated at it, and `ush_line_toks` reports it —
   none of them says 17. `EchoDisc.echo_line_nl_at_end` is where the closing
   newline is, positionally.
+- **THE WIRE SAYS WHAT WAS TYPED.** This is the fact the whole target rests
+  on: a claim "echo prints back whatever you type" is empty unless the
+  observer can recover WHAT was typed, and with the line hard-coded that
+  question never arose. `LineWords.wl_line_det` settles it — two lines
+  followed by two remainders make the same wire only if they are the same
+  line and the same remainder. Its core is one splitting lemma,
+  `wl_split_pred`: a run of bytes satisfying `P` followed by something that
+  does not start with `P` splits uniquely. Both parses are instances — a
+  WORD ends at the first blank (`P = wl_alnum`) and a LINE ends at the first
+  newline (`P = wl_body_byte`) — because a word is alphanumeric and both
+  separators are not. `wl_line_prefix_det` and `wl_line_of_wire` are the
+  forms the discipline spends, the prefix witness folded into the remainder.
 - The assumption audit is unchanged throughout (`make audit-echo-only`,
   fourteen assumptions, md5 `a78bf9a051fb56b084795d782df04045`).
 
-## The ruling on the line choice (owner, this lane)
+## The ruling on the line choice (owner, this lane), and where it landed
 
 The claim used to read WHICH alternative ran off ONE byte of the wire —
 `h`, `e`, `$`, `f` are distinct. That is a property of what echo happens to
 print, and at an arbitrary line it fails.
 
-**Ported down, not side-conditioned.** `EchoOutPure.line_alts_prefix_det` is
-the prologue's whole-block reading (`EchoDisc.pro_alts_prefix_det`) at the
-line: the four alternatives are pairwise PREFIX-FREE. That excludes exactly
-two outputs — `fork\n` and `exec echo failed\n`, where the observer genuinely
-cannot tell echo's printing from sh's own diagnostic — where distinct heads
-would have excluded every line whose first printed word begins with `e` or
-`f`. The exclusion belongs to sh's diagnostics, not to any letter, and the
-property is decidable, so it is a computation at any given line and becomes a
-premise once the word list is a parameter.
+**Ported down, not side-conditioned** — and the port turned out to pay for
+itself. `EchoDisc.line_alts_of_prefix_det` states prefix-freeness at ANY
+line, and proving it in the word vocabulary collapses the side condition to
+two inequalities:
+
+```coq
+drop 1 ws <> dg_exec    (* [exec; echo; failed] *)
+drop 1 ws <> dg_fork    (* [fork] *)
+```
+
+**You may type anything except `echo fork` and `echo exec echo failed`.**
+
+That reduction is not a coincidence to be worked around: sh's two diagnostics
+ARE well-formed word lines (`dg_exec_line`, `dg_fork_line` — alphanumeric
+words, single blanks, one closing newline), which is exactly WHY they can
+collide with echo's output. Stating them in the same vocabulary makes
+`wl_line_det`'s parse settle every comparison the output takes part in; the
+other six pairs are closed literals. The remaining pair — the bare prompt
+against an echoed line — needs no condition at all, because `'$'` is not a
+byte any line carries (`line_prompt_not_out`).
+
+`EchoOutPure.line_alts_prefix_det` is now that lemma applied at `echo_ws`,
+with the two inequalities discharged by computation; the literal case-bash
+over sixteen pairs is gone.
 
 ## What is left
 
-1. **THE PARAMETERIZATION.** `EchoDisc.echo_ws` is still a `Definition`.
-   The swap test (below) says the tree no longer depends on WHICH word list
-   it is, so what is left is the mechanism for making it a variable. A
-   Section does not span files, so the options are a module functor (the
-   `design/spec-modules.md` pattern) or one more `Context` class threaded
-   the way `riscvGS Σ` already is through every file. THAT IS AN
-   ARCHITECTURAL CHOICE and wants the owner's ruling, not a unilateral
-   pick — and it is the whole of what stands between here and
-   `forall ws, wf ws -> <the claim at that line>`.
-2. **THE CALLER'S BOUNDS.** `EchoDisc.echo_ws_pos` and `echo_ws_lt10` name
-   two of them (the line has a command name; fewer words than sh's
-   MAXARGS). Still unnamed: the line inside `getcmd`'s 100-byte buffer
+The blocker is `EchoDisc.sess_n`, which finds the round by DIVIDING the wire
+position by the line length:
+
+```coq
+Definition sess_n (ps cs : list nat) (n : nat) : list (bv 8) :=
+  pro_of ps ++ alt_seq ps cs (n `div` length echo_line)
+            ++ take (n `mod` length echo_line) echo_line.
+```
+
+and `alt_blk ps cs i = echo_line ++ alt_cont ps cs i`, the SAME line in every
+block. The round list `cs` records only WHICH OF FOUR OUTCOMES round `i` had.
+Division is meaningful only because every round is the same length, so rounds
+of differing length break it directly.
+
+0. **THE INPUT PREDICATE IS THE ROOT OF THE HARD-CODING**, and it is one
+   line:
+
+   ```coq
+   Definition disc_seg (seg : list mobs) : Prop := star_prefix echo_line (ins seg).
+   ```
+
+   `star_prefix pat l` says `l` is a prefix of `pat` REPEATED. The general
+   form is a prefix of a CONCATENATION of lines, which is
+   `LineWords.wl_lines`, already landed with its determinism.
+
+   **It must stay DECIDABLE.** `EchoDisc.disc_seg_dec` feeds
+   `disc_seg'_dec` -> `disc_dec`, and `EchoOut.v:2310` spends
+   `decide (disc h)` inside the taint ghost state. `star_prefix` got
+   decidability free from a closed-form `take`; `wl_lines` will not, so
+   this needs a PARSER: split the input at newlines, each complete segment
+   being a valid body and the trailing one a valid partial. A valid body is
+   `[]`, or alphanumeric runs separated by SINGLE blanks with no leading or
+   trailing blank; a valid partial is the same minus the trailing-blank
+   ban. Uniqueness of the parse is already proved (`wl_body_inj`), so what
+   is owed is existence-decidability, not well-definedness.
+   Do NOT reach for a bounded search over word lists instead: it is finite
+   but astronomical, and the anti-vacuity demos `vm_compute` through this.
+1. **THE ROUND CARRIES ITS OWN WORD LIST.** `cs : list nat` becomes a list of
+   rounds, each a word list and an outcome; `alt_blk` opens with
+   `wl_line` of that round's words.
+2. **THE ROUND INDEX BECOMES A CUMULATIVE OFFSET.** `n `div` length echo_line`
+   / `n `mod` length echo_line` become a walk over the rounds' lengths.
+   `LineWords.wl_lines_prefix_det` is the law that stands in for the
+   division: the rounds do not have to be COMPUTED from a position,
+   because a wire already determines them.
+   **This is the bulk of the work**: ~400 sites over 11 files, ~110 of them in
+   lemma STATEMENTS and ~290 inside proofs. The proof-body ones are the
+   expensive half and not for a dull reason — `lia` knows div and mod
+   natively, so those sites are free today; a cumulative-offset function is
+   opaque to `lia` and each becomes a lemma application. `EchoOut.v` alone
+   holds 164.
+3. **THE ITERATED CLAIM.** The Iris side (`UShLine`, `UShOut`, `UkShLoop`)
+   must carry the remaining word lists in the loop invariant rather than
+   re-proving one fixed round. NOT YET SCOPED.
+4. **THE CALLER'S BOUNDS**, unchanged from before: `EchoDisc.echo_ws_pos` and
+   `echo_ws_lt10` name two (the line has a command name; fewer words than
+   sh's MAXARGS). Still unnamed: the line inside `getcmd`'s 100-byte buffer
    (flagged in place at `UkSh`) and the console's 128. The argv block's fit
    inside exec's stack page is already an inequality
    (`KexecDefs.kxc_len_bound`).
-3. **THE WORD LIST ITSELF.** Once 1-2 are done, `EchoDisc.echo_ws` becomes
-   a parameter with `wl_wf`, item 2's bounds and prefix-freeness as its
-   premises, and the theorem reads
-   `forall ws, ... -> <the claim at that line>`.
 
 ## The swap test, and what it measured
 

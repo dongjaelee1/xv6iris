@@ -1065,10 +1065,12 @@ defining one as the symbol directly compiles, but `unfold` then leaves something
   sites: prove the length decompositions ONCE beside the definition, with each
   `length_app` instance pinned by its first argument, and let nobody above take
   the term apart with `length_app` again.
-- **`vm_compute in H` changes the atom.** A hypothesis `f x = g 13` normalised
-  with `vm_compute` also normalises `f x`, so it no longer matches the `f x` a
-  sibling hypothesis names and `lia` fails. Compute only the closed side:
-  `rewrite (_ : g 13 = 13%Z) in H; [lia | by vm_compute]`.
+- **Reducing a hypothesis in place changes its atom** — `vm_compute in H`,
+  `cbn in H` and `simpl in H` alike. A hypothesis `f x = g 13` normalised that
+  way also normalises `f x`, so it no longer matches the `f x` a sibling
+  hypothesis names and `lia` fails. Reduce only the closed side, by rewriting
+  it (`rewrite (_ : g 13 = 13%Z) in H; [lia | by vm_compute]`) or by naming it
+  exactly (`change (length (@nil (bv 8))) with 0%nat in H`).
 - **`vm_compute` turns an arithmetic goal into one `lia` cannot see** — `x < y`
   is `Z.compare x y = Lt`, so a closed comparison leaves `Lt = Lt`. Finish with
   `reflexivity`; use `lia` instead of `vm_compute` when variables remain.

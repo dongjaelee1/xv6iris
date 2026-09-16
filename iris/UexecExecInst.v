@@ -1194,6 +1194,45 @@ Section UexecExecInst.
     by iModIntro.
   Qed.
 
+  (* ...AND CLOSE'S ROW AT A DESCRIPTOR THAT IS NOT A PIPE (design/pipe.md,
+     "The byte queue").  21 left [xv6_free] because at a PIPE key its row is
+     a step of the pipe's exact ghost state; everywhere else the row is
+     [emp] and the deposit is minted from nothing, exactly as a free
+     number's is.  The guard is the KEY's own reading of argument 0, which
+     is what a close leaf holding the descriptor's handle can discharge
+     ([UkRun.ukey_nonpipe]). *)
+  Lemma xv6_sbundle_close_nonpipe (X : uvis -d> iPropO Σ) (W : uvis)
+      (Q : Z -> iProp Σ) :
+    (forall (rb wb : bool) (gp : pipe_names),
+       fd_st_of_key (xk_a W 0) (uvis_fd W) <> FdOpen rb wb (FdPipe gp)) ->
+    ⊢ |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X 21 f W.
+  Proof.
+    intros Hnp.
+    iAssert (|==> xv6_sbundle X 21 (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
+      [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
+          iSplitR; [ done | iExact "Hb" ] ].
+    rewrite /xv6_sbundle /xfam_at /xfam_pt /xfam_exec /=.
+    destruct (decide ((21 : Z) = USYS_exec)) as [He | _];
+      [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 5)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 9)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 15)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 16)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 17)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 18)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 19)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 20)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 6)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 21)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    iModIntro. rewrite /fileclose_cpay.
+    destruct (fd_st_of_key (xk_a W 0) (uvis_fd W))
+      as [| rb wb [i g om | gp | mj]] eqn:Hst; try by iEmpIntro.
+    (* [destruct ... eqn:] rewrote the guard's own hypothesis too, so what
+       is left of it is the reflexive instance *)
+    exfalso. exact (Hnp rb wb gp eq_refl).
+  Qed.
+
   (* ...AND THE VERIFIED PROGRAM'S OWN DEPOSIT DATA: NO SUPPLIER AT ALL and
      the free numbers.  NOT a [Global Instance] -- [uprogSG_gen] is the one
      instance typeclass resolution may find, and a second one would make
@@ -1636,6 +1675,25 @@ Section UexecExecInst.
                      (<[a := FdOpen true false (FdPipe γp)]> (uvis_fd W))⌝ ∗
        pipe_qfrag (pn_queue γp) pst0) -∗
     spost_at X USYS_pipe f W r M' fdv' cw' cs'.
+  Proof.
+    iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
+    do 9 xv6_skip. xv6_take. iExact "H".
+  Qed.
+
+  (* ...and pipe's ELIM, the converse of the introduction above: the leaf
+     that spends the row is stated over the CLASS ([UkRunSys] binds
+     [uexecSG] as a variable), so the fragment is read out one level up
+     ([UkReadPipe.wp_uk_pipe_read_end]). *)
+  Lemma spost_at_pipe_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
+      (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
+    spost_at X USYS_pipe f W r M' fdv' cw' cs' -∗
+    (⌜uint r = 0⌝ -∗
+     ∃ (a b : nat) (γp : pipe_names),
+       ⌜a <> b /\ fd_least_closed (uvis_fd W) a
+        /\ fd_least_closed (<[a := FdOpen true false (FdPipe γp)]> (uvis_fd W)) b
+        /\ fdv' = <[b := FdOpen false true (FdPipe γp)]>
+                     (<[a := FdOpen true false (FdPipe γp)]> (uvis_fd W))⌝ ∗
+       pipe_qfrag (pn_queue γp) pst0).
   Proof.
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     do 9 xv6_skip. xv6_take. iExact "H".

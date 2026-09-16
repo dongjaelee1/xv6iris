@@ -7,86 +7,52 @@
 (* descriptor resource [D] and the pure reading [K] of the key's table)    *)
 (* and the deposit an instance of [UkRunSys.udepwf_K].                     *)
 (*                                                                        *)
-(* WHAT THE SURVEY FOUND, AND IT DECIDES THIS FILE.  Section 3 asks for    *)
-(* "an AU on the pipe's byte queue at the read end" and a content post     *)
-(* "delivered bytes = a prefix of the queue, queue advanced".  RD-4's      *)
-(* console finding was that the payment was ALREADY an AU one level below  *)
-(* the merged claim; the pipe's answer is the opposite, and it is not a    *)
-(* gap in the U tier:                                                      *)
+(* THE BYTE QUEUE LANDED, and with it everything this file's first version *)
+(* recorded as owed (design/pipe.md, "The byte queue").  A pipe now        *)
+(* carries a fifth ghost name, [PipeNames.pn_queue], over an [excl_auth]   *)
+(* of [PipeNames.pipe_st] -- every byte ever written, the read pointer and *)
+(* the two open flags -- whose AUTHORITY sits in [pi->lock]'s payload      *)
+(* coupled to the ring ([PipeInvDefs.pipe_qres]) and whose EXACT FRAGMENT  *)
+(* [sys_pipe] hands the creating process.  So:                             *)
 (*                                                                        *)
-(*   THERE IS NO BYTE-QUEUE GHOST TO STATE AN AU ON.  [PipeInvDefs]'s      *)
-(*   [pipe_names] carries FOUR gnames and every one of them is about the   *)
-(*   ENDS -- [pn_read]/[pn_write] are the two reference fractions and      *)
-(*   [pn_mread]/[pn_mwrite] the two open marks.  The ring's contents are   *)
-(*   the [bs] existentially bound inside [pipe_res_at], i.e. inside the    *)
-(*   payload of the pipe's own SPINLOCK, and the queue coupling that would *)
-(*   say which of those 512 bytes are live is not imposed: what IS imposed *)
-(*   is the pure counter bound [pipe_count_ok nr nw], and                  *)
-(*   design/pipe.md says of it, in terms, "Nothing consumes it yet -- the  *)
-(*   CONTENTS of the live window stay existential; it and [pipe_data]'s    *)
-(*   tracked byte list are the hooks a future contents-indexed refinement  *)
-(*   builds on."  [SpecPiperead]'s own contract says the same thing at the *)
-(*   function tier: "[bs] is what came out of the pipe, which no contract  *)
-(*   at this tier can name".                                               *)
+(*  - THE PAYMENT IS NO LONGER [emp].  [SpecFileread.fileread_in] at       *)
+(*    [FdOpen true _ (FdPipe γp)] is the caller's payload BESIDE           *)
+(*    [PipeQueue.pipe_rpay]: a per-byte READ CHAIN at the caller's own     *)
+(*    cursor over what it dequeues, with an OBSERVATION node fired where   *)
+(*    the ring runs dry -- or the taint.  [udepwf_st_read_pipe] takes it   *)
+(*    as it stands; building it out of the fragment                        *)
+(*    ([PipeQueue.pipe_rlink_of_frag] / [pipe_olink_of_frag]) is the       *)
+(*    holder's business, not this file's.                                  *)
+(*  - AND THE POST TELLS SOMETHING.  [fileread_extra_core]'s pipe arm is   *)
+(*    [PipeQueue.pipe_rpost_img]: the chain at the bytes actually          *)
+(*    dequeued, those bytes read back out of the RESUME IMAGE (which the   *)
+(*    walk's own two pure rows turn into a statement about the caller's    *)
+(*    buffer function), and the STOP's reason -- request met, ring         *)
+(*    observed empty, copy-out fault, or the reader's kill shot.  EOF is   *)
+(*    then a fact about the ghost state and not an owed row: the empty     *)
+(*    stop at nothing delivered carries [ps_wo s = false]                  *)
+(*    ([PipeQueue.pipe_rstop]'s second arm).                               *)
 (*                                                                        *)
-(*   SO THE KERNEL'S READ CONTRACT AT A PIPE DESCRIPTOR IS A NO-OP ON BOTH *)
-(*   SIDES, and this is landed definition, not an omission to be repaired  *)
-(*   from above: [SpecFileread.fileread_in] at [FdOpen true _ FdPipe] is   *)
-(*   the [_ => P] arm (it takes NOTHING), and                              *)
-(*   [SpecFileread.fileread_extra_core] at the same state is [emp] (it     *)
-(*   tells NOTHING).  Section 3's Pipe row is therefore, TODAY, exactly    *)
-(*   its "Dev (other)" row -- "the base weak form (bytes exist, tail       *)
-(*   pinned) -- honest, since the device model gives nothing to name".     *)
-(*                                                                        *)
-(* WHAT THIS FILE THEREFORE IS.  The pipe member at its honest strength,   *)
-(* which is worth landing for three reasons and is worth no more than      *)
-(* that:                                                                   *)
-(*                                                                        *)
-(*  - THE PAYMENT SIDE IS FINISHED, not weak.  A pipe read costs its       *)
-(*    caller NOTHING beyond its own handle ([udepwf_st_read_pipe] below is *)
-(*    proved from [emp]), which is section 1's "the per-arm payment is a   *)
-(*    resource the PROGRAM owns and understands" at its limit case.  When  *)
-(*    a queue ghost lands, this supplier gains an argument and nothing     *)
-(*    else about the file moves.                                           *)
-(*  - THE ARM DISPATCH WORKS AT THE PIPE HANDLE.  The one walk's [D]/[K]   *)
-(*    parametrization fits a pipe end with nothing added: a pipe end is a  *)
-(*    descriptor a program was GIVEN (by [sys_pipe]) rather than one the   *)
-(*    ledger can reach, so the reading is [UkReadRows.ufd_fd_st_of_key]'s  *)
-(*    -- the same route the file arm takes, and for the same reason.       *)
-(*  - AND WHAT THE PROGRAM IS TOLD IS STATED RATHER THAN LOST:             *)
-(*    [uread_pipe_ans] below is [PipeInvDefs.pipe_rw_ret] read at the      *)
-(*    caller's own [nat] count.  -1 is NOT refuted here and that is        *)
-(*    correct: [UexecRet.uexec_live_ok] refutes it only at the console,    *)
-(*    and piperead really does answer -1 (killed while asleep, or the very *)
-(*    first copyout faulted).                                              *)
-(*                                                                        *)
-(* THE EOF ROW IS OWED, and it is owed one level down.  Section 3's "EOF:  *)
-(* writer end closed and queue empty -> r = 0" is a fact about the pipe's  *)
-(* OPEN MARKS ([pipe_endstate]) and its counters, both of which live under *)
-(* the pipe's lock; [fileread_extra_core]'s [emp] is where it would have   *)
-(* to come through, and it does not.  No U-tier statement can mint it.     *)
-(*                                                                        *)
-(* ...AND SO IS THE COUNT/WINDOW JOIN, which is the sharper of the two     *)
-(* owed rows and is the exact analogue of [UsysMemOk]'s SS2c.  The walk    *)
-(* hands out a window length [d] (the bytes [usys_mem_ok] says the call    *)
-(* wrote) and the post hands out a return value [r]; at the INODE arm      *)
-(* [FsAbsReadFire.read_post_ok] ties them ([Z.of_nat d = bv_unsigned r])   *)
-(* and at the CONSOLE arm [SpecFileread.console_receipt] does, but at the  *)
-(* pipe arm NOTHING does -- so a program reading a pipe cannot conclude    *)
-(* that the bytes of its buffer ABOVE the returned count are unchanged.    *)
-(* That is a kernel-side row ([fileread_extra_core]'s pipe arm), not a     *)
-(* U-tier one; the continuation below therefore hands [d] and [r] over     *)
+(* WHAT IS STILL NOT SAID, and it is the same gap as before: the           *)
+(* COUNT/WINDOW JOIN.  The walk hands out a window length [d] (the bytes   *)
+(* [UsysMemOk.usys_mem_ok] says the call wrote) and the post hands out a   *)
+(* return value [r]; at the INODE arm [FsAbsReadFire.read_post_ok] ties    *)
+(* them and at the CONSOLE arm [SpecFileread.console_receipt] does.  At a  *)
+(* pipe the post's own [pipe_rstop] ties [r] to the delivered count, but   *)
+(* nothing ties either to the WALK's [d], so a program still cannot        *)
+(* conclude that its buffer above [r] is unchanged.  That is a kernel-side *)
+(* row, not a U-tier one; the continuation below hands [d] and [r] over    *)
 (* separately and claims no equation between them.                         *)
 (*                                                                        *)
-(* ON [UkReadFile]: this file takes two ARM-INDEPENDENT names from it,     *)
-(* [udepwf_st] (the STATE-fixed deposit, which is [UkRunSys.udepwf_K] at   *)
-(* the handle reading) and [ufd_key_agree] (that reading, taken where both *)
-(* halves are in one hand).  Neither says anything about files -- the      *)
-(* "file" leaf is really the HANDLE leaf -- and their proper home is       *)
-(* [UkReadRows.v] beside the two [fd_st_of_key] readings that are already  *)
-(* there.  They are not moved here for RD-1's operational reason: an edit  *)
-(* to [UkReadRows.v] invalidates [UShLine.vo] and with it the whole echo   *)
-(* chain above it, for a move with no proof content.  Recorded as owed.    *)
+(* [uread_pipe_ans] survives unchanged: it is [PipeInvDefs.pipe_rw_ret] at *)
+(* the caller's own [nat] count, and -1 is NOT refuted here (a pipe read   *)
+(* really does answer -1 when the reader is killed asleep, or when the     *)
+(* very first copy-out faults).                                            *)
+(*                                                                        *)
+(* ON [UkReadFile]: this file takes two ARM-INDEPENDENT names from         *)
+(* [UkReadRows.v] -- [udepwf_st] (the STATE-fixed deposit, which is        *)
+(* [UkRunSys.udepwf_K] at the handle reading) and [ufd_key_agree] (that    *)
+(* reading, taken where both halves are in one hand).                      *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -105,6 +71,11 @@ Require Import IrefSlots.
 Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import PipeInvDefs.         (* [pipe_rw_ret] -- what read answers here *)
+Require Import PipeNames.           (* [pipe_names] / [pipe_st] / [pst0] *)
+Require Import PipeQueue.           (* [pipe_rpay] / [pipe_rpost_img] / [pipe_qfrag] *)
+Require Import ChildTok.            (* [kill_shot] -- the -1-by-kill arm *)
+Require Import UexecExecInst.       (* THE INSTANCE: [spost_at_pipe_elim], [xfam] *)
+Require Import UserPtTree.          (* [uptd] -- the page-table view the post is at *)
 Require Import UserFd.
 Require Import UserHeap.
 Require Import ProcGeom.            (* [NOFILE] / [NSTD] / [tf_arg_idx] *)
@@ -139,43 +110,116 @@ Section UkReadPipe.
   (* =================================================================== *)
   (*  1.  THE FAMILY                                                      *)
   (* =================================================================== *)
-  (* THE CHOICE IS IMMATERIAL HERE, AND THAT IS THE FINDING.  The two
-     family records are the two ARMS ([UkReadRows.v]'s header):
-     [xfam_rd] names [rf_ret]/[rf_in] (what the CONSOLE caller asks to be
-     told) and [xfam_rdf] names [rf_F] (the INODE caller's observation
-     receipt).  The pipe arm of [SpecFileread.fileread_in] and of
-     [fileread_extra_core] reads NONE of the three, so any record with the
-     right exit payload serves; it is spelled as [xfam_rd] at the trivial
-     readings, which is "a caller that asks to be told nothing" -- the
-     shape the row will keep when a queue ghost gives it something to ask
-     for. *)
-  Definition read_pipe_fam (Q : Z -> iProp Σ) : sfam :=
-    xfam_rd Q (fun _ _ => True%I) (fun _ => True%I).
+  (* THE CHOICE IS NO LONGER IMMATERIAL (design/pipe.md, "The byte
+     queue").  Row 5's pipe arm reads TWO family fields now -- [rf_pq], the
+     caller's cursor over the bytes it takes OUT of the pipe, and [rf_pqe],
+     its observation at a stop on an empty ring -- so the member is stated
+     at a caller's own pair.  Everything else is [UkReadRows.xfam_rd] at
+     the trivial readings: the console fields and the inode receipt are
+     unread at a pipe descriptor. *)
+  Definition read_pipe_fam (Q : Z -> iProp Σ)
+      (Rp : list (bv 8) -> iProp Σ)
+      (Rpe : list (bv 8) -> pipe_st -> iProp Σ) : sfam :=
+    let f0 := xfam_rd Q (fun _ _ => True%I) (fun _ => True%I) in
+    {| xf_P      := xf_P f0;
+       xf_Pmiss  := xf_Pmiss f0;
+       xf_Fo     := xf_Fo f0;
+       xf_Rs     := xf_Rs f0;
+       rf_F      := rf_F f0;
+       cf_P      := cf_P f0;
+       cf_Pmiss  := cf_Pmiss f0;
+       cf_Fo     := cf_Fo f0;
+       of_P      := of_P f0;
+       of_Pmiss  := of_Pmiss f0;
+       of_Farm   := of_Farm f0;
+       of_Fun    := of_Fun f0;
+       of_Fok    := of_Fok f0;
+       of_Fex    := of_Fex f0;
+       of_Fo     := of_Fo f0;
+       of_Ft     := of_Ft f0;
+       wf_Q      := wf_Q f0;
+       nf_P      := nf_P f0;
+       nf_Pmiss  := nf_Pmiss f0;
+       nf_Farm   := nf_Farm f0;
+       nf_Fun    := nf_Fun f0;
+       nf_Fok    := nf_Fok f0;
+       nf_Fex    := nf_Fex f0;
+       uf_P      := uf_P f0;
+       uf_Pmiss  := uf_Pmiss f0;
+       uf_Fent   := uf_Fent f0;
+       uf_Ftgt   := uf_Ftgt f0;
+       uf_Fex    := uf_Fex f0;
+       uf_Fmiss  := uf_Fmiss f0;
+       lf_Ftgt   := lf_Ftgt f0;
+       lf_Fent   := lf_Fent f0;
+       lf_Funt   := lf_Funt f0;
+       df_P      := df_P f0;
+       df_Pmiss  := df_Pmiss f0;
+       df_Farm   := df_Farm f0;
+       df_Fdots  := df_Fdots f0;
+       df_Fun    := df_Fun f0;
+       df_Fok    := df_Fok f0;
+       df_Fex    := df_Fex f0;
+       kf_pay    := kf_pay f0;
+       kf_lend   := kf_lend f0;
+       kf_xpay   := kf_xpay f0;
+       rf_ret    := rf_ret f0;
+       rf_in     := rf_in f0;
+       rf_pq     := Rp;
+       rf_pqe    := Rpe;
+       wf_Qe     := wf_Qe f0;
+       cl_P      := cl_P f0 |}.
 
   (* =================================================================== *)
-  (*  2.  THE DEPOSIT'S SUPPLIER: NOTHING AT ALL                          *)
+  (*  2.  THE DEPOSIT'S SUPPLIER: THE PIPE'S REAL PAYMENT                  *)
   (* =================================================================== *)
-  (* The whole price of a pipe read, and it is [emp].  Compare the file
-     arm ([UkReadFile.udepwf_st_read_file]: one observation commit) and the
-     console arm ([UkReadCons.udepwf_std_read_cons]: the ring's payment and
-     one AU on the console history).  A pipe read's arm of
-     [SpecFileread.fileread_in] is the [_ => P] one, so the supplier hands
-     the caller's exit payload straight back and owes nothing beside it. *)
+  (* The whole price of a pipe read, and it is no longer [emp]:
+     [SpecFileread.fileread_in] at [FdOpen true _ (FdPipe γp)] is the
+     caller's own payload BESIDE [PipeQueue.pipe_rpay] -- one read link per
+     byte the call may dequeue, at the caller's cursor, or the taint.  A
+     holder of the pipe's exact fragment builds the chain out of
+     [PipeQueue.pipe_rlink_of_frag] and [pipe_olink_of_frag]; a caller with
+     neither pays the taint ([pipe_rpay_taint]).  The supplier takes it as
+     it stands, which is what keeps this file out of the business of
+     deciding which. *)
   Lemma udepwf_st_read_pipe (N : uk_names Σ) (m : regfile) (pc : mword 64)
-      (wb : bool) :
-    ⊢ udepwf_st N m pc USYS_read (read_pipe_fam (ukn_pay N))
-        (FdOpen true wb FdPipe).
+      (wb : bool) (γp : pipe_names)
+      (Rp : list (bv 8) -> iProp Σ)
+      (Rpe : list (bv 8) -> pipe_st -> iProp Σ) :
+    pipe_rpay (pn_queue γp) Rp Rpe
+      (Z.to_nat (sys_rw_count (m !!! Regidx a2_idx))) -∗
+    udepwf_st N m pc USYS_read (read_pipe_fam (ukn_pay N) Rp Rpe)
+      (FdOpen true wb (FdPipe γp)).
   Proof.
+    iIntros "Hpay".
     rewrite /udepwf_st. iSplit; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Hkey _ Hheap Hufd".
     iFrame "Hheap Hufd".
-    iApply (sbundle_at_read_intro uslot (read_pipe_fam (ukn_pay N))
+    iApply (sbundle_at_read_intro uslot (read_pipe_fam (ukn_pay N) Rp Rpe)
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
-              (m !!! Regidx a0_idx) fdv
-              (tf_of_arg0 m pc)
+              (m !!! Regidx a0_idx) (m !!! Regidx a2_idx) fdv
+              (tf_of_arg0 m pc) (tf_of_arg2 m pc)
               (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)).
-    rewrite Hkey. rewrite /fileread_in /=. by iIntros "$".
+    rewrite Hkey. rewrite /fileread_in /=. iIntros "$". iExact "Hpay".
   Qed.
+
+  (* ...AND THE POST'S PIPE ARM, read off [fileread_extra_core] at a state
+     the walk holds through an equation.  [SpecFileread] states the
+     introduction ([fileread_extra_pipe]); this is the elimination, and it
+     is the match at one constructor. *)
+  (* the family's three READ fields go in through the record rather than by
+     name, so this file does not have to import the vocabulary of the two
+     arms it is not about *)
+  Lemma uread_pipe_core (gn : gname) (pt : uptd) (st : fdstate) (wb : bool)
+      (γp : pipe_names) (n : Z) (fm : xfam)
+      (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ)
+      (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) :
+    st = FdOpen true wb (FdPipe γp) ->
+    fileread_extra_core gn pt st n (rf_F fm) (rf_ret fm) (rf_in fm)
+      Rp Rpe r M' addr -∗
+    pipe_rpost_img (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn)
+      (Z.to_nat n) r M' addr.
+  Proof. intros ->. by iIntros "$". Qed.
 
   (* =================================================================== *)
   (*  3.  THE CONTENT POST                                                *)
@@ -217,7 +261,9 @@ Section UkReadPipe.
      join between them is the owed row in the header. *)
   Lemma wp_uk_ecall_read_pipe (N : uk_names Σ) (h : CpuId) (m : regfile)
       (pc : mword 64) (k cap : nat) (f : nat -> bv 8) (avail : nat)
-      (fd : nat) (wb : bool) :
+      (fd : nat) (wb : bool) (γp : pipe_names)
+      (Rp : list (bv 8) -> iProp Σ)
+      (Rpe : list (bv 8) -> pipe_st -> iProp Σ) :
     usysno m = USYS_read ->
     (* THE DESCRIPTOR IS THE ONE THE HANDLE NAMES; a0 carries it as a C
        [int], so the reading is the signed low word *)
@@ -231,51 +277,81 @@ Section UkReadPipe.
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
-    UserFd.ufd (ukn_fd N) fd (FdOpen true wb FdPipe) -∗
+    UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdPipe γp)) -∗
+    (* THE PAYMENT: the caller's own read chain over the byte queue, or the
+       taint (design/pipe.md, "The byte queue") *)
+    pipe_rpay (pn_queue γp) Rp Rpe cap -∗
     ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k f -∗
-    (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8),
+    (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8)
+       (M' : gmap Z (bv 8)) (Rk : iProp Σ),
        ⌜ (d <= cap)%nat ⌝ -∗
        ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
        ⌜ uread_pipe_ans cap r ⌝ -∗
-       UserFd.ufd (ukn_fd N) fd (FdOpen true wb FdPipe) -∗
+       (* THE RESUME IMAGE HOLDS THE CALLER'S BUFFER, which is what turns
+          the post's IMAGE reading of the dequeued bytes into a statement
+          about [g] -- the two pure rows the walk alone can state. *)
+       ⌜ forall i : nat, (i < k)%nat ->
+           uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat i))
+           = (uint (m !!! Regidx a1_idx) + Z.of_nat i)%Z ⌝ -∗
+       ⌜ forall j : nat, (j < k)%nat ->
+           M' !! uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))
+           = Some (g j) ⌝ -∗
+       (* ...AND THE ANSWER: the chain at the dequeued bytes, the stop's
+          reason -- request met, ring observed empty (an end-of-file when
+          nothing came), copy-out fault, or the reader's kill shot [Rk] --
+          or the taint with the payment back. *)
+       pipe_rpost_img (pn_queue γp) Rp Rpe Rk cap r M'
+         (m !!! Regidx a1_idx) -∗
+       UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdPipe γp)) -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hn Ha0 Hfdlt Ha2 Hcapk Hcap31 Hal.
-    iIntros "#Hi Hrun Hufdh Hbuf Hcont".
+    iIntros "#Hi Hrun Hufdh Hpay Hbuf Hcont".
     assert (Hcnt : sys_rw_count (m !!! Regidx a2_idx) = Z.of_nat cap)
       by exact (uread_count_is_cap (m !!! Regidx a2_idx) cap Ha2 Hcap31).
     assert (Hcw : bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0
                              : mword 32) = Z.of_nat cap).
     { rewrite /sys_rw_count trunc32_subrange in Hcnt. exact Hcnt. }
-    iPoseProof (udepwf_st_read_pipe N m pc wb) as "Hsb".
+    iPoseProof (udepwf_st_read_pipe N m pc wb γp Rp Rpe with "[Hpay]") as "Hsb";
+      [ rewrite Hcnt Nat2Z.id; iExact "Hpay" | ].
     iApply (wp_uk_ecall_read_at N h m pc (Z.of_nat cap) k f avail
-              (read_pipe_fam (ukn_pay N))
-              (UserFd.ufd (ukn_fd N) fd (FdOpen true wb FdPipe))
+              (read_pipe_fam (ukn_pay N) Rp Rpe)
+              (UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdPipe γp)))
               (fun fdv => fd_st_of_key (m !!! Regidx a0_idx) fdv
-                          = FdOpen true wb FdPipe)
+                          = FdOpen true wb (FdPipe γp))
               Hn Hcw ltac:(rewrite Nat2Z.id; exact Hcapk) Hal
-              (ufd_key_agree N fd (FdOpen true wb FdPipe)
+              (ufd_key_agree N fd (FdOpen true wb (FdPipe γp))
                  (m !!! Regidx a0_idx) Ha0 Hfdlt)
               with "Hi Hrun [Hsb] Hufdh Hbuf").
     { rewrite /udepwf_st /udepwf_K. iExact "Hsb". }
     iIntros (h' r d g W M' fdv' cw' cs')
       "%Hd %Hgf %Hlin %Himg %Hnf %H0 %H1 %H2 %Hkey %Hlz %Hlive
        Hufdh Hpost Hrun Hbuf".
-    iDestruct (spost_at_read_elim uslot (read_pipe_fam (ukn_pay N)) W
+    iDestruct (spost_at_read_elim uslot (read_pipe_fam (ukn_pay N) Rp Rpe) W
                  (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
                  (m !!! Regidx a2_idx) (uvis_fd W) r M' fdv' cw' cs'
                  H0 H1 H2 eq_refl with "Hpost")
-      as "[%Hret _]".
-    (* THE ARM TELLS NOTHING ([fileread_extra_core] at [FdOpen true _
-       FdPipe] is [emp]), so the post's only content is its RETURN row --
-       which is the one the pipe's two functions share. *)
+      as "[%Hret Hcore]".
+    iDestruct "Hcore" as (P) "(%Hpmp & %Hwfp & %Hlzp & Hcore)".
+    (* THE ARM IS THE PIPE'S OWN POST NOW (design/pipe.md): the chain at
+       the bytes the call dequeued, the buffer holding them in the RESUME
+       IMAGE, and the stop's reason. *)
+    iDestruct (uread_pipe_core (uvis_gen W) P
+                 (fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W)) wb γp
+                 (sys_rw_count (m !!! Regidx a2_idx))
+                 (read_pipe_fam (ukn_pay N) Rp Rpe)
+                 Rp Rpe r M' (m !!! Regidx a1_idx) Hkey with "Hcore")
+      as "Hrp".
     rewrite Hcnt in Hret.
+    rewrite Hcnt Nat2Z.id.
     rewrite Nat2Z.id in Hd.
-    iApply ("Hcont" $! h' r d g with "[%] [%] [%] Hufdh Hrun Hbuf");
-      [ exact Hd | exact Hgf | exact (uread_pipe_ans_of_ret cap r Hret) ].
+    iApply ("Hcont" $! h' r d g M' (ChildTok.kill_shot (uvis_gen W))
+              with "[%] [%] [%] [%] [%] Hrp Hufdh Hrun Hbuf");
+      [ exact Hd | exact Hgf | exact (uread_pipe_ans_of_ret cap r Hret)
+      | exact Hlin | exact Himg ].
   Qed.
 
   (* =================================================================== *)
@@ -311,16 +387,17 @@ Section UkReadPipe.
      which is where any program that has not just closed a standard stream
      is, and the only case in which pipe's two arms are HANDLES rather than
      ledger writes. *)
-  Lemma upipe_ends_handles (N : uk_names Σ) (l : list fdstate) (a b : nat) :
+  Lemma upipe_ends_handles (N : uk_names Σ) (l : list fdstate) (a b : nat)
+      (γp : pipe_names) :
     fd_lowest_closed l = None ->
-    ualloc_at (ukn_fd N) l a (FdOpen true false FdPipe) -∗
-    ualloc_at (ukn_fd N) (ustd_after l (FdOpen true false FdPipe)) b
-      (FdOpen false true FdPipe) -∗
-    UserFd.ufd (ukn_fd N) a (FdOpen true false FdPipe) ∗
-    UserFd.ufd (ukn_fd N) b (FdOpen false true FdPipe).
+    ualloc_at (ukn_fd N) l a (FdOpen true false (FdPipe γp)) -∗
+    ualloc_at (ukn_fd N) (ustd_after l (FdOpen true false (FdPipe γp))) b
+      (FdOpen false true (FdPipe γp)) -∗
+    UserFd.ufd (ukn_fd N) a (FdOpen true false (FdPipe γp)) ∗
+    UserFd.ufd (ukn_fd N) b (FdOpen false true (FdPipe γp)).
   Proof.
     intros Hnone.
-    rewrite (ustd_after_none l (FdOpen true false FdPipe) Hnone).
+    rewrite (ustd_after_none l (FdOpen true false (FdPipe γp)) Hnone).
     rewrite /ualloc_at Hnone.
     iIntros "[_ Ha] [_ Hb]". iFrame "Ha Hb".
   Qed.
@@ -336,7 +413,7 @@ Section UkReadPipe.
     ustd (ukn_fd N) l -∗
     ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 f -∗
     (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8),
-       ((∃ a b : nat,
+       ((∃ (a b : nat) (γp : pipe_names),
            ⌜ uint r = 0 /\ a <> b /\ (a < NOFILE)%nat /\ (b < NOFILE)%nat
              /\ (forall i : nat, (i < 8)%nat ->
                    g i = if (i <? 4)%nat
@@ -348,10 +425,14 @@ Section UkReadPipe.
                                           : mword 64)) (i - 4)%nat) ⌝ ∗
            (* THE TWO ENDS, AT THE TWO MEMBERS' OWN PREMISES: [a] is
               [wp_uk_ecall_read_pipe]'s handle and [b] is the write
-              member's. *)
-           UserFd.ufd (ukn_fd N) a (FdOpen true false FdPipe) ∗
-           UserFd.ufd (ukn_fd N) b (FdOpen false true FdPipe) ∗
-           ustd (ukn_fd N) l)
+              member's -- AND BOTH NAME ONE PIPE, [γp]. *)
+           UserFd.ufd (ukn_fd N) a (FdOpen true false (FdPipe γp)) ∗
+           UserFd.ufd (ukn_fd N) b (FdOpen false true (FdPipe γp)) ∗
+           ustd (ukn_fd N) l ∗
+           (* ...AND THE BYTE QUEUE'S EXACT FRAGMENT AT THE BIRTH STATE
+              (design/pipe.md, "The byte queue"), which is what the two
+              members' payments are built out of. *)
+           pipe_qfrag (pn_queue γp) pst0)
         ∨ (⌜ uint r <> 0 ⌝ ∗ ustd (ukn_fd N) l)) -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 g -∗
@@ -362,17 +443,32 @@ Section UkReadPipe.
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
     iApply (wp_uk_ecall_pipe N h m pc l f avail Hn Hal
               with "Hi Hrun Hsb Hstd Hbuf").
-    iIntros (h' r g) "Harm Hrun Hbuf".
-    iApply ("Hcont" $! h' r g with "[Harm] Hrun Hbuf").
+    iIntros (h' r g W fdep M' fdv' cw' cs') "Harm Hsp Hrun Hbuf".
+    iApply ("Hcont" $! h' r g with "[Harm Hsp] Hrun Hbuf").
     iDestruct "Harm" as "[Hok | Hbad]"; [ | iRight; iExact "Hbad" ].
-    iDestruct "Hok" as (a b) "(%Hpure & Hra & Hrb & Hstd)".
-    iDestruct (upipe_ends_handles N l a b Hnone with "Hra Hrb") as "[Hha Hhb]".
+    iDestruct "Hok" as (a b γp) "(%Hpure & Hra & Hrb & Hstd)".
+    destruct Hpure as (Hr0 & Hne & Halt & Hblt & Hbytes & Hca & Hcb & Hfdv').
+    (* THE ROW-4 POST, READ HERE: the leaf is stated over the CLASS and
+       cannot open it, so it hands it on and this is where the pipe's
+       fragment comes out.  The post's two slots are a SECOND least-closed
+       scan of the same table, so [UkRunSys.upipe_names_agree] identifies
+       the pipe it is about with the one the two handles are ends of. *)
+    iDestruct (spost_at_pipe_elim uslot fdep W r M' fdv' cw' cs' with "Hsp")
+      as "Hsp".
+    iSpecialize ("Hsp" with "[%]"); [ exact Hr0 | ].
+    iDestruct "Hsp" as (a2 b2 γp2) "[%Hp2 Hfrag]".
+    destruct Hp2 as (Hne2 & Hca2 & Hcb2 & Hfdv2).
+    pose proof (upipe_names_agree (uvis_fd W) fdv' a b a2 b2 γp γp2
+                  Hca Hcb Hfdv' Hca2 Hcb2 Hfdv2) as Hgamma.
+    subst γp2.
+    iDestruct (upipe_ends_handles N l a b γp Hnone with "Hra Hrb")
+      as "[Hha Hhb]".
     (* the ledger comes home UNMOVED: both allocations landed above the
        standard streams, so [ustd_after] is the identity at each step *)
-    rewrite (ustd_after_none l (FdOpen true false FdPipe) Hnone).
-    rewrite (ustd_after_none l (FdOpen false true FdPipe) Hnone).
-    iLeft. iExists a, b. iSplitR; [ by iPureIntro | ].
-    iFrame "Hha Hhb Hstd".
+    rewrite (ustd_after_none l (FdOpen true false (FdPipe γp)) Hnone).
+    rewrite (ustd_after_none l (FdOpen false true (FdPipe γp)) Hnone).
+    iLeft. iExists a, b, γp. iSplitR; [ by iPureIntro | ].
+    iFrame "Hha Hhb Hstd Hfrag".
   Qed.
 
 End UkReadPipe.

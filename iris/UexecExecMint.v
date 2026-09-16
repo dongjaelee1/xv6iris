@@ -48,6 +48,9 @@ Require Import FsAbsInvFire.    (* [fsabs_open_in] / [fsabs_mknod_pre]: the two
 Require Import SpecFilewrite.    (* [filewrite_in]: row 16's keyed input, for
                                     [filewrite_in_of_sup] (lane EXEC-SEAM, (D)) *)
 Require Import SpecConsolewrite. (* [cons_out_chain_of_licence]: its console arm *)
+Require Import SpecFileclose.    (* [fileclose_cpay_taint]: close's pipe row, paid
+                                    out of the application's taint *)
+Require Import PipeQueue.        (* [pipe_wpay_taint]: write's pipe arm, likewise *)
 Require Import UsysMemOk.       (* [USYS_exec] *)
 Require Import RegFile.         (* [regfile] -- [udepw]'s register argument *)
 Require Import UkRun.           (* [udep] -- the supplier and its key-free law *)
@@ -94,8 +97,12 @@ Section UexecExecMint.
         [ iExact "Hsup"
         | iSplit; [ iExact "Hkc"
                   | iSplit; [ iExact "Hlic" | iExact "Hilic" ] ] ] | ].
-    iPureIntro. intros n W Q _ Hne.
-    exact (sbundle_of_supply_ne uslot n W Q Hne).
+    iSplit; iPureIntro.
+    - intros n W Q _ Hne. exact (sbundle_of_supply_ne uslot n W Q Hne).
+    - (* close's key-guarded row: at the generic instance every number is
+         admitted, so it is the same law read at 21 (design/pipe.md) *)
+      intros W Q _.
+      exact (sbundle_of_supply_ne uslot 21 W Q ltac:(vm_compute; discriminate)).
   Qed.
 
   (* ===================================================================== *)
@@ -115,10 +122,18 @@ Section UexecExecMint.
   Proof.
     rewrite /udep /Dsup /=.
     iSplit; [ iModIntro; done | ].
-    iPureIntro. intros n W Q Hok _.
-    iIntros "_".
-    rewrite /sbundle_pay /sbundle_at /sexit_pay /=.
-    iApply (xv6_sbundle_free uslot n W Q Hok).
+    iSplit; iPureIntro.
+    - intros n W Q Hok _.
+      iIntros "_".
+      rewrite /sbundle_pay /sbundle_at /sexit_pay /=.
+      iApply (xv6_sbundle_free uslot n W Q Hok).
+    - (* ...AND CLOSE'S ROW, which left the free set with the byte queue
+         (design/pipe.md, "The byte queue") and is [emp] at every
+         descriptor that is not a pipe end. *)
+      intros W Q Hnp.
+      iIntros "_".
+      rewrite /sbundle_pay /sbundle_at /sexit_pay /=.
+      iApply (xv6_sbundle_close_nonpipe uslot W Q Hnp).
   Qed.
 
   (* ...and what a generic-route LEAF takes, at the free instance: the
@@ -205,25 +220,32 @@ Section UexecExecMint.
      has none -- which is what lets a program's write deposit be paid
      UNDER THE TAINT ([T -∗ app_sup], [T -∗ out_licence]) instead of being
      admitted at the top as a free law. *)
+  (* ...AND THE PIPE ARM IS THE TAINT (design/pipe.md, "The byte queue"):
+     a generic write at a pipe descriptor disconnects the pipe's exact
+     ghost state, and its price is the application's kill credential --
+     which the generic supply carries beside [app_sup] and the output
+     licence ([UexecExecInst.xv6_ssupply]), so every caller already has it.
+     [FsAbsInvFire.fsabs_filewrite_in] took the same argument. *)
   Lemma filewrite_in_of_sup (st : fdstate) (n : Z) (M : gmap Z (bv 8))
       (ua : mword 64) :
-    app_sup -∗ out_licence -∗ filewrite_in st n M ua (fun _ => True%I).
+    app_sup -∗ out_licence -∗ □ riscv_kill_cred -∗
+    filewrite_in st n M ua (fun _ => True%I) (fun _ _ => True%I).
   Proof.
-    iIntros "#Hsup #Hlic".
+    iIntros "#Hsup #Hlic #Hkc".
     rewrite /filewrite_in.
     destruct st as [| rb wb ty]; [ iEmpIntro | ].
     destruct wb; [| iEmpIntro ].
-    destruct ty as [i γo om | | ma].
+    destruct ty as [i γo om | γp | ma].
     - iApply (fsabs_awrite_chain _ i γo M ua 0%nat _ with "Hsup").
-    - iEmpIntro.
+    - iApply (pipe_wpay_taint with "Hkc").
     - iApply (cons_out_chain_of_licence with "Hlic").
   Qed.
 
   Lemma udepw_of_sup_write `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
       (pc : mword 64) :
-    app_sup -∗ out_licence -∗ udepw (PS := PSx) N m pc 16.
+    app_sup -∗ out_licence -∗ □ riscv_kill_cred -∗ udepw (PS := PSx) N m pc 16.
   Proof.
-    iIntros "#Hsup #Hlic".
+    iIntros "#Hsup #Hlic #Hkc".
     rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
     iFrame "Hheap Hufd". iRight.
     rewrite /sbundle_pay. iExists (xfam_at (ukn_pay N) xfam_pt).
@@ -239,14 +261,54 @@ Section UexecExecMint.
       [ exfalso; discriminate He | ].
     destruct (decide ((16 : Z) = 16)) as [_ | Hc];
       [ | exfalso; exact (Hc eq_refl) ].
-    iApply (filewrite_in_of_sup with "Hsup Hlic").
+    iApply (filewrite_in_of_sup with "Hsup Hlic Hkc").
   Qed.
 
   Lemma udepw_law_of_sup_write `{PSx : uprogSG Σ} :
-    app_sup -∗ out_licence -∗ udepw_law (PS := PSx) 16.
+    app_sup -∗ out_licence -∗ □ riscv_kill_cred -∗ udepw_law (PS := PSx) 16.
   Proof.
-    iIntros "#Hsup #Hlic". rewrite /udepw_law.
-    iIntros "!>" (N m pc). iApply (udepw_of_sup_write N m pc with "Hsup Hlic").
+    iIntros "#Hsup #Hlic #Hkc". rewrite /udepw_law.
+    iIntros "!>" (N m pc). iApply (udepw_of_sup_write N m pc with "Hsup Hlic Hkc").
+  Qed.
+
+  (* ...AND CLOSE'S, AT EVERY KEY, OUT OF THE TAINT (design/pipe.md, "The
+     byte queue").  A caller that does NOT know its descriptor's type --
+     [UsysMemOk.usys_fd_ok]'s open row leaves it existential -- cannot take
+     [UkRun.udepw_cl_nonpipe]'s free route, so its close deposit is a
+     flagged one like write's, and the pipe arm of
+     [SpecFileclose.fileclose_cpay] is payable out of the application's
+     kill credential ([fileclose_cpay_taint]) and out of nothing else. *)
+  Lemma udepw_of_sup_close `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
+      (pc : mword 64) :
+    □ riscv_kill_cred -∗ udepw (PS := PSx) N m pc 21.
+  Proof.
+    iIntros "#Hkc".
+    rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
+    iFrame "Hheap Hufd". iRight.
+    rewrite /sbundle_pay. iExists (xfam_at (ukn_pay N) xfam_pt).
+    iSplitR; [ done | ].
+    rewrite /sbundle_at /= /xv6_sbundle /xfam_at /xfam_pt /xfam_exec /=.
+    destruct (decide ((21 : Z) = UsysMemOk.USYS_exec)) as [He | _];
+      [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 5)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 9)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 15)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 16)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 17)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 18)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 19)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 20)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 6)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 21)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    iApply (fileclose_cpay_taint with "Hkc").
+  Qed.
+
+  Lemma udepw_law_of_sup_close `{PSx : uprogSG Σ} :
+    □ riscv_kill_cred -∗ udepw_law (PS := PSx) 21.
+  Proof.
+    iIntros "#Hkc". rewrite /udepw_law.
+    iIntros "!>" (N m pc). iApply (udepw_of_sup_close N m pc with "Hkc").
   Qed.
 
   (* the loop's mint: the generic slot at every key, out of the supply.

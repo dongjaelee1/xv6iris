@@ -982,6 +982,13 @@ Section UkSh.
   Local Lemma wp_ksh_cstub (h : CpuId) (m : regfile) (pc0 pc1 pc2 : Z)
       (imm : mword 6) (fd : nat) (st : fdstate) (avail : nat) :
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (* ...AND THE DESCRIPTOR IS NOT A PIPE END (design/pipe.md, "The byte
+       queue").  close(2) is no longer a free number: at a pipe descriptor
+       its deposit steps the pipe's exact ghost state, and sh closes only
+       descriptors whose type it knows ([wp_ksh_close]'s one call site is
+       the console). *)
+    (forall (rb wb : bool) (gp : PipeNames.pipe_names),
+       st <> FdOpen rb wb (FdPipe gp)) ->
     (sign_extend' 64 imm : mword 64) = mword_of_int USYS_close ->
     usysno (<[Regidx a7_idx := (mword_of_int USYS_close : mword 64)]> m) = USYS_close ->
         (* the three exclusions are NOT here: this stub IS the open one. *)
@@ -1001,7 +1008,7 @@ Section UkSh.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Harg Himm Hno E01 E12 Hal2.
+    intros Harg Hnp Himm Hno E01 E12 Hal2.
     iIntros "#Ci0 #Ci1 #Ci2 Hrun Hfdh Hcont".
     (* ---- pc0  c.li a7,USYS_close ---- *)
     iApply (wp_uk_cli N h m (mword_of_int pc0) imm a7_idx avail
@@ -1023,8 +1030,7 @@ Section UkSh.
                     exact Harg)
               ltac:(rewrite E12; exact Hal2)
               with "Ci1 Hrun [] Hfdh").
-    { iApply udepw_of_psok; [ apply Hpsok_free; free_lit | ];
-      (discriminate || assumption || (vm_compute; discriminate)). }
+    { iApply (udepw_cl_nonpipe N m1 (mword_of_int pc1) st Hnp). }
     rewrite E12.
     (* close of an OPEN descriptor returns 0; sh does not read it *)
     iIntros (h2 ret) "_ Hrun".
@@ -1053,6 +1059,9 @@ Section UkSh.
   Lemma wp_ksh_close (h : CpuId) (m : regfile) (fd : nat) (st : fdstate)
       (avail : nat) :
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (* ...and the descriptor is not a pipe end -- see [wp_ksh_cstub] *)
+    (forall (rb wb : bool) (gp : PipeNames.pipe_names),
+       st <> FdOpen rb wb (FdPipe gp)) ->
     shk_code γt -∗
     urun N h m (mword_of_int ShSyms.close) avail -∗
     ufd γfd fd st -∗
@@ -1064,11 +1073,11 @@ Section UkSh.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Harg. iIntros "#Hcode Hrun Hfdh Hcont".
+    intros Harg Hnp. iIntros "#Hcode Hrun Hfdh Hcont".
     rewrite shp_close.
     iApply (wp_ksh_cstub h m 0xcae 0xcb0 0xcb4
               (mword_of_int 21 : mword 6) fd st avail
-              Harg
+              Harg Hnp
               ltac:(apply bv_eq; vm_compute; reflexivity)
               ltac:(unfold usysno;
                     rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 21 : mword 64));
@@ -8157,6 +8166,7 @@ Section UkSh.
         by (vm_compute; reflexivity).
       rewrite Hh32. unfold NOFILE in Hfdlt. lia. }
     iApply (wp_ksh_close h7 mE fd (FdOpen true true (FdDevice CONSOLE)) n Ha0E
+              ltac:(intros ? ? ?; discriminate)
               with "Hcode Hrun Hh").
     iIntros (h8 ret2) "Hrun".
     rewrite HraE.

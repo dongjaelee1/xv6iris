@@ -45,6 +45,9 @@ Require Import UserPtTree UserExec ProcPtOwn.
 Require Import UmodeMem UmodeArith UmodeText.
 Require Import UserPerm UexecWp UexecSlot UexecRet.
 Require Import FdSlots.      (* [fdstate] -- the key's descriptor view *)
+Require Import PipeNames.    (* [pipe_names] -- what a pipe descriptor carries *)
+Require Import SpecArgfd.    (* [fd_st_of_key] -- the descriptor argument 0 names,
+                                which is what decides close's deposit *)
 Require Import WpMmodeLeafBase.
 Require Import UptTree.
 Require Import WpUmodeStore.
@@ -331,11 +334,29 @@ Section UkRun.
      licenses at read.  Every [Q] is admissible: read's console arm is
      payable out of the persistent credential at any [P]
      ([FsAbsInvFire.fsabs_fileread_in]). *)
+  (* ...AND CLOSE(21) IS A SECOND, KEY-GUARDED LAW (design/pipe.md, "The
+     byte queue").  Clearing a pipe end's flag word steps the pipe's EXACT
+     ghost state, so [UexecSG.free_num] no longer admits 21 and the
+     key-free law above cannot mint it: at a PIPE key the deposit is a
+     close link, payable only by a holder of the fragment or by the taint.
+     At every OTHER descriptor it is [emp] -- and that is a fact about the
+     KEY, not about the number, which is why it cannot be a clause of
+     [psok] and is a law of its own.  The close leaves hold the HANDLE that
+     decides ([UkRunSys.wp_uk_ecall_close]), so a caller of theirs that
+     closes anything but a pipe carries no row at all. *)
+  Definition ukey_nonpipe (W : uvis) : Prop :=
+    forall (rb wb : bool) (gp : pipe_names),
+      fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W)
+      <> FdOpen rb wb (FdPipe gp).
+
   Definition udep : iProp Σ :=
     (□ Dsup ∗
      ⌜ forall (n : Z) (W : uvis) (Q : Z -> iProp Σ),
          psok n -> n <> USYS_exec ->
-         ⊢ □ Dsup ==∗ sbundle_pay uslot n Q W ⌝)%I.
+         ⊢ □ Dsup ==∗ sbundle_pay uslot n Q W ⌝ ∗
+     ⌜ forall (W : uvis) (Q : Z -> iProp Σ),
+         ukey_nonpipe W ->
+         ⊢ □ Dsup ==∗ sbundle_pay uslot 21 Q W ⌝)%I.
 
   Global Instance udep_persistent : Persistent udep.
   Proof. rewrite /udep. apply _. Qed.
@@ -344,8 +365,16 @@ Section UkRun.
   Lemma udep_dep (n : Z) (W : uvis) (Q : Z -> iProp Σ) :
     psok n -> n <> USYS_exec -> udep -∗ |==> sbundle_pay uslot n Q W.
   Proof.
-    intros Hok Hne. iIntros "[#Hs %Hlaw]".
+    intros Hok Hne. iIntros "[#Hs [%Hlaw _]]".
     iApply (Hlaw n W Q Hok Hne). iExact "Hs".
+  Qed.
+
+  (* ...and the close row's own, at a key whose argument 0 is not a pipe *)
+  Lemma udep_close_dep (W : uvis) (Q : Z -> iProp Σ) :
+    ukey_nonpipe W -> udep -∗ |==> sbundle_pay uslot 21 Q W.
+  Proof.
+    intros Hnp. iIntros "[#Hs [_ %Hlaw]]".
+    iApply (Hlaw W Q Hnp). iExact "Hs".
   Qed.
 
   (* [avail] is the FREE STACK, in words, below the current sp -- the
@@ -498,6 +527,70 @@ Section UkRun.
       as "(Hheap & Hufd & [%Hok | Hb])"; iFrame "Hheap Hufd";
       [ iApply (udep_dep n _ (ukn_pay N) (proj1 Hok) (proj2 Hok) with "Hdep")
       | by iModIntro ].
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (* THE CLOSE LEAF'S DEPOSIT, IN THE TWO SHAPES A CALLER CAN HAVE IT       *)
+  (* (design/pipe.md, "The byte queue").                                    *)
+  (*                                                                        *)
+  (* LEFT: the caller KNOWS its descriptor is not a pipe -- a console, an    *)
+  (* inode, a device -- and owes nothing at all; the leaf mints the row out  *)
+  (* of the key-guarded law above, off the [udep] its own run carries.       *)
+  (* RIGHT: the caller does NOT know (a descriptor [open] returned carries   *)
+  (* an existential type: [UsysMemOk.usys_fd_ok]'s open row does not pin     *)
+  (* it), and then it hands over a deposit at 21 like any other flagged      *)
+  (* number ([udepw_law], which the pipe arm makes payable out of the        *)
+  (* taint -- [UexecExecMint.udepw_law_of_sup_close]).                       *)
+  (* ------------------------------------------------------------------- *)
+  Definition udepw_cl (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (st : fdstate) : iProp Σ :=
+    (⌜forall (rb wb : bool) (gp : pipe_names),
+        st <> FdOpen rb wb (FdPipe gp)⌝
+     ∨ udepw N m pc 21)%I.
+
+  Lemma udepw_cl_nonpipe (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (st : fdstate) :
+    (forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp)) ->
+    ⊢ udepw_cl N m pc st.
+  Proof. intros Hnp. rewrite /udepw_cl. iLeft. by iPureIntro. Qed.
+
+  Lemma udepw_cl_of_udepw (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (st : fdstate) :
+    udepw N m pc 21 -∗ udepw_cl N m pc st.
+  Proof. iIntros "H". rewrite /udepw_cl. by iRight. Qed.
+
+  (* ...AND THE MINT, at the key the leaf has destructed its run into.  The
+     reading of argument 0 against that key's own table is what the leaf's
+     handle buys ([UserFd.ufd_agree]), and it is what turns "my descriptor
+     is not a pipe" into "this key's close row is [emp]". *)
+  Lemma udepw_cl_mint (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (st : fdstate) (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
+      (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname)
+      (pidv : mword 32) :
+    fd_st_of_key (m !!! Regidx (mword_of_int 10 : mword 5)) fdv = st ->
+    udep -∗ my_pay gn (ukn_pay N) -∗ udepw_cl N m pc st -∗
+    uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv ==∗
+    uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
+    sbundle_pay uslot 21 (ukn_pay N)
+      (uvis_of_run m pc M pm sz fdv cw gn cs pidv false).
+  Proof.
+    intros Hkey. iIntros "#Hdep #Hmp [%Hnp | Hsb] Hheap Hufd".
+    - iFrame "Hheap Hufd".
+      assert (Hnpk : ukey_nonpipe
+                       (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)).
+      { rewrite /ukey_nonpipe.
+        (* the key's argument 0 IS a0, and its table IS [fdv]: both by
+           [reflexivity] at [uvis_of_run] *)
+        assert (Ha0 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv cw gn cs pidv false))
+                        (tf_arg_idx 0) = m !!! Regidx (mword_of_int 10 : mword 5))
+          by reflexivity.
+        assert (Hfd : uvis_fd (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+                      = fdv) by reflexivity.
+        rewrite Ha0 Hfd Hkey. exact Hnp. }
+      iApply (udep_close_dep (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+                (ukn_pay N) Hnpk with "Hdep").
+    - iApply (udepw_mint N m pc 21 M pm sz fdv cw gn cs pidv
+                with "Hdep Hmp Hsb Hheap Hufd").
   Qed.
 
   (* THE EXEC DEPOSIT'S CARRIER, and why it is key-free too.  exec is the

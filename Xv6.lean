@@ -152,3 +152,9 @@ import Xv6.LinkSched
 import Xv6.SpecWakeup
 import Xv6.ProofWakeup
 import Xv6.LinkWakeup
+import Xv6.SpecSleepPrepare
+import Xv6.ProofSleepPrepare
+import Xv6.LinkSleepPrepare
+import Xv6.SpecSleep
+import Xv6.ProofSleep
+import Xv6.LinkSleep

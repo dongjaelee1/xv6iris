@@ -69,6 +69,8 @@ import Xv6.SpecTrapinithart
 import Xv6.ProofTrapinithart
 import Xv6.LinkTrapinithart
 import Xv6.SpecKvminithart
+import Xv6.ProofKvminithart
+import Xv6.LinkKvminithart
 import Xv6.SpecDevintr
 import Xv6.SpecYield
 import Xv6.ProofKerneltrap
@@ -107,5 +109,7 @@ import Xv6.ProofKvmmap
 import Xv6.LinkKvmmap
 import Xv6.SpecKvminit
 import Xv6.SpecTrapinit
+import Xv6.ProofKvminit
+import Xv6.LinkKvminit
 import Xv6.ProofTrapinit
 import Xv6.LinkTrapinit

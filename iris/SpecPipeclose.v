@@ -41,6 +41,7 @@ Require Import SchedCtx.
 Require Import WpLock.
 Require Import KallocInv.
 Require Import PipeInvDefs.
+Require Import PipeQueue.   (* [pipe_cpay] / [pipe_cpost]: the close step of the byte queue *)
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import ProcAvail.
@@ -54,7 +55,10 @@ Definition wp_pipeclose_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
     (γl : gname) (γp : pipe_names) (w : bool)
     (γkl : gname) (γk : gname * gname) (klk kfl : mword 64) (on : option nat)
     (m : regfile) (n : nat) (eb : bool) (pme : mword 64) (av : nat)
-    (b : bool) (lks : gset string) :=
+    (b : bool) (lks : gset string)
+    (* THE CLOSER'S PAYLOAD (design/pipe.md, "The byte queue"): what its
+       close link hands back once the ghost flag of end [w] is cleared *)
+    (Φ : iProp Σ) :=
   let pcE : mword 64 := mword_of_int KernelSyms.pipeclose in
   let pi := m !!! Regidx (mword_of_int 10 : mword 5) in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
@@ -83,6 +87,12 @@ Definition wp_pipeclose_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
   kernel_text -∗ pc_is pcE -∗
   is_pipe γl γp pi -∗
   pipe_ref γp w 1 -∗
+  (* THE CLOSE STEP OF THE BYTE QUEUE: clearing [pi->{read,write}open] is a
+     ghost step of the exact state (its [ps_ro]/[ps_wo]), so the caller
+     pays a close link -- or the taint, which disconnects the ghost for
+     good.  pipeclose ALWAYS clears its flag, so this call is the last
+     close of the end and the post is the fired one. *)
+  pipe_cpay (pn_queue γp) w Φ -∗
   (* kfree's resources: the kmem lock and the page count *)
   is_lock γkl klk "kmem"%string (λ ξ : CtxId, kmem_res (XIk := ξ) γk kfl) -∗
   kalloc_avail γk on -∗
@@ -97,6 +107,8 @@ Definition wp_pipeclose_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
     (* the page came back iff this was the LAST reference; the caller cannot
        tell, and does not need to *)
     (kalloc_avail γk on ∨ kalloc_avail γk (avail_inc on)) -∗
+    (* the link fired, or the pipe is tainted and the payment comes back *)
+    pipe_cpost (pn_queue γp) w Φ true -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
@@ -107,6 +119,6 @@ Module Type PIPECLOSE.
       (γl : gname) (γp : pipe_names) (w : bool)
       (γkl : gname) (γk : gname * gname) (klk kfl : mword 64) (on : option nat)
       (m : regfile) (n : nat) (eb : bool) (pme : mword 64) (av : nat)
-      (b : bool) (lks : gset string),
-      wp_pipeclose_sconf_body γs γl γp w γkl γk klk kfl on m n eb pme av b lks.
+      (b : bool) (lks : gset string) (Φ : iProp Σ),
+      wp_pipeclose_sconf_body γs γl γp w γkl γk klk kfl on m n eb pme av b lks Φ.
 End PIPECLOSE.

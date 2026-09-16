@@ -129,6 +129,7 @@ Local Open Scope Z_scope.
    and what makes pipealloc the deepest is the fileclose on its own error
    path -- copyout wants 52, argaddr 18, fdalloc 14, myproc 10. *)
 Notation sys_pipe_stack := (102%nat) (only parsing).
+Require Import PipeQueue.   (* the pipe's byte-queue ghost: names, links, payments *)
 Require Import RiscvModelBytes.  (* [nth_byte] -- pipe reports its
                                     descriptors by writing them *)
 Section SpecSysPipe.
@@ -177,7 +178,10 @@ Section SpecSysPipe.
      ∨
      (* SUCCESS.  The two least free descriptors now hold the read and the
         write end, in that order. *)
-     (∃ (fd0 fd1 : nat) (l : list nat) (k0 k1 : nat),
+     (* ...AND THE TWO DESCRIPTORS NAME ONE PIPE, whose byte-queue fragment
+        comes out beside them at its birth state (design/pipe.md, "The byte
+        queue"): exact and exclusive, the application's to keep. *)
+     (∃ (fd0 fd1 : nat) (l : list nat) (k0 k1 : nat) (γp : pipe_names),
        (* THE TWO ARE DISTINCT, and the post says so: a caller reading the
           row needs it to know the two inserts commute, and pipe's own proof
           has the fact already (the second descriptor is still free after
@@ -217,8 +221,9 @@ Section SpecSysPipe.
           [fd_frees]), so the two inserts commute and the order is a
           presentation choice, not a constraint. *)
        fd_frags (pv_fdg (us_V UW))
-         (<[fd1 := FdOpen false true FdPipe]>
-            (<[fd0 := FdOpen true false FdPipe]> sts))))
+         (<[fd1 := FdOpen false true (FdPipe γp)]>
+            (<[fd0 := FdOpen true false (FdPipe γp)]> sts)) ∗
+       pipe_qfrag (pn_queue γp) pst0))
     ∗ fd_slot ∗ fd_slot.
 
   (* THE LANDED SHAPE, DERIVED -- [SpecSysOpen.sys_open_post_any]'s twin,
@@ -230,15 +235,16 @@ Section SpecSysPipe.
       (d : nat) (bs : nat -> bv 8) (r : mword 64) :
     sys_pipe_post γf p pid UW sts d bs r ⊢
     ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ proc_priv γf p pid UW
-      ∨ ∃ (fd0 fd1 : nat) (l : list nat) (k0 k1 : nat),
+      ∨ ∃ (fd0 fd1 : nat) (l : list nat) (k0 k1 : nat) (γp : pipe_names),
           ⌜r = (zero_reg : mword 64) /\
            fd_frees (pv_ofile (us_V UW)) = fd0 :: fd1 :: l /\ fd0 <> fd1⌝ ∗
           proc_priv γf p pid
-            (upd_usV UW (upd_ofile (upd_ofile (us_V UW) fd0 (fnode k0)) fd1 (fnode k1))))
+            (upd_usV UW (upd_ofile (upd_ofile (us_V UW) fd0 (fnode k0)) fd1 (fnode k1))) ∗
+          pipe_qfrag (pn_queue γp) pst0)
      ∗ fd_frags_any (pv_fdg (us_V UW)) ∗ fd_slot ∗ fd_slot).
   Proof.
     rewrite /sys_pipe_post /fd_frags_any.
-    iIntros "[[(%Hr & Hp & Hb) | (%fd0 & %fd1 & %l & %k0 & %k1 & %Hpu & Hp & Hb)]
+    iIntros "[[(%Hr & Hp & Hb) | (%fd0 & %fd1 & %l & %k0 & %k1 & %γp & %Hpu & Hp & Hb & Hq)]
               [Hu0 Hu1]]".
     (* split the big disjunct off FIRST: [iFrame "Hu0 Hu1"] walks past it and
        past [fd_frags_any] once per name (claude-notes/optimization.md, "the
@@ -249,10 +255,10 @@ Section SpecSysPipe.
       iSplitL "Hu0"; [iExact "Hu0"|]. iExact "Hu1".
     - iSplitR "Hu0 Hu1 Hb"; last first.
       { iSplitL "Hb";
-          [by iExists (<[fd1 := FdOpen false true FdPipe]>
-                         (<[fd0 := FdOpen true false FdPipe]> sts))|].
+          [by iExists (<[fd1 := FdOpen false true (FdPipe γp)]>
+                         (<[fd0 := FdOpen true false (FdPipe γp)]> sts))|].
         iSplitL "Hu0"; [iExact "Hu0"|]. iExact "Hu1". }
-      iRight. iExists fd0, fd1, l, k0, k1. iFrame "Hp". iPureIntro.
+      iRight. iExists fd0, fd1, l, k0, k1, γp. iFrame "Hp Hq". iPureIntro.
       destruct Hpu as (H1 & H2 & H3 & _ & _). exact (conj H1 (conj H2 H3)).
   Qed.
 

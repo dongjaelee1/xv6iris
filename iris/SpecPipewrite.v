@@ -64,6 +64,7 @@ Require Import ProcPtOwn.
 Require Import FdSlots ProcInv.
 Require Import FileInvDefs.
 Require Import PipeInvDefs.
+Require Import ChildTok.   (* [kill_shot]: the -1-by-kill exit's evidence *)
 Require Import SchedCtx.
 Require Export SwtchCtx.
 From Kernel Require KernelSyms.
@@ -84,10 +85,18 @@ Definition wp_pipewrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
     (γs : list gname) (j : nat) (γlp : gname)
     (γl : gname) (γp : pipe_names) (w : bool) (q : Qp)
     (m : regfile) (av : nat) (eb : bool)
-    (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string) :=
+    (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string)
+    (* THE CALLER'S CURSOR AND OBSERVATION FAMILIES over the pipe's byte
+       queue (design/pipe.md, "The byte queue"; [PipeQueue.pipe_wchain]):
+       [Q j] is what the caller knows after [j] bytes landed, [Qe j s] what
+       it asks to be told if the loop stops at byte [j] because the read
+       end is shut, at the ghost state [s] of that instant. *)
+    (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) :=
   let pcE : mword 64 := mword_of_int KernelSyms.pipewrite in
   let pj := proc_addr j in
   let pi := m !!! Regidx (mword_of_int 10 : mword 5) in
+  (* a1 = addr, the user source the bytes are copied from *)
+  let addr := m !!! Regidx (mword_of_int 11 : mword 5) in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   (* the process running here is proc j (sleep/killed's linkage) *)
   (j < NPROC)%nat ->
@@ -116,6 +125,11 @@ Definition wp_pipewrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
   (* the pipe, and a share of one end -- the whole credential *)
   is_pipe γl γp pi -∗
   pipe_ref γp w q -∗
+  (* THE BYTE QUEUE'S PAYMENT: one link per byte the caller may push, each
+     pinned to the byte its own image holds at [addr + j] -- or the taint,
+     which disconnects the queue from the ring for good.  The link fires at
+     the [sw] of [nwrite++], where the ring takes the byte. *)
+  pipe_wpay (pn_queue γp) (us_M U) addr Q Qe (Z.to_nat n) -∗
   (* the process block (copyin's tier is reached via proc_priv_copy) *)
   proc_priv_core pj pid U -∗
   kalloc_env γa None -∗
@@ -136,6 +150,14 @@ Definition wp_pipewrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
       cpu_own 0%nat eb pj b lks -∗
       pc_is ret_tgt -∗
       pipe_ref γp w q -∗
+      (* THE QUEUE'S POST ([PipeQueue.pipe_wpost]): the chain at the stop
+         cursor with the answer's reason -- the request met, copyin's
+         unreadable byte, the read end observed shut, or the kill shot --
+         or the taint with the payment back.  The short reason is stated at
+         the ENTRY table, which is the one the caller can name. *)
+      pipe_wpost (pv_upt (us_V U)) (pn_queue γp) (us_M U) addr Q Qe
+        (kill_shot (pv_gen (us_V U))) (Z.to_nat n)
+        (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
       proc_priv_core pj pid (us_upt U P') -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
@@ -146,6 +168,7 @@ Module Type PIPEWRITE.
       (γa : gname) (γf : gname) (γs : list gname) (j : nat) (γlp : gname)
       (γl : gname) (γp : pipe_names) (w : bool) (q : Qp)
       (m : regfile) (av : nat) (eb : bool)
-      (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string),
-      wp_pipewrite_sconf_body γa γf γs j γlp γl γp w q m av eb pid U n b lks.
+      (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string)
+      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ),
+      wp_pipewrite_sconf_body γa γf γs j γlp γl γp w q m av eb pid U n b lks Q Qe.
 End PIPEWRITE.

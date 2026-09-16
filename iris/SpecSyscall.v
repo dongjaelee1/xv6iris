@@ -494,6 +494,19 @@ Section SyscExec.
   Definition sysc_pay_in (f : sfam) (U : ustate) : iProp Σ :=
     upay_at (pv_gen (us_V U)) uecall_scause (pv_tf (us_V U)) f.
 
+  (* THE EXIT ROW'S CLOSE PAYMENTS (design/pipe.md, "The byte queue"): a
+     process that exits closes every descriptor, and a pipe descriptor's
+     last close is a step of the pipe's exact ghost state, so exit's
+     deposit carries one close payment per row of the table -- a link, or
+     the taint.  Gated on the number, so every returning arm pays it for
+     nothing.  [SpecUsertrap.ut_exit_cpay] is the trap's row for it. *)
+  Definition sysc_exit_cpay (U : ustate) (sts : list fdstate) : iProp Σ :=
+    (⌜sysc_num (us_V U) = UsysMemOk.USYS_exit⌝ -∗ fileclose_cpays sts)%I.
+
+  Lemma sysc_exit_cpay_ne (U : ustate) (sts : list fdstate) :
+    sysc_num (us_V U) <> UsysMemOk.USYS_exit -> ⊢ sysc_exit_cpay U sts.
+  Proof. intros Hne. rewrite /sysc_exit_cpay. iIntros (Heq). exfalso. exact (Hne Heq). Qed.
+
   (* THERE IS NO ROW COMING BACK (lane SELF-KILL, P6b).  The payload at the
      kill status is the KILLER's price and is paid into <p->lock>'s own
      killed row ([SchedCtx.kill_row]), so nothing is handed down at a
@@ -629,9 +642,12 @@ Section SyscExec.
      own table index by [lia] *)
   (* ...AND exec (7) IS IN THE LIST NOW (lane KILL-PAY, K4(a), ruling
      R-A): its post used to be [emp] and is the failing exec's refund. *)
+  (* ...AND pipe (4) AND close (21) ARE IN IT TOO (design/pipe.md, "The byte
+     queue"): pipe's post hands the process the new pipe's fragment, close's
+     the answer to its close payment. *)
   Definition sysc_num_nofs (k : Z) : Prop :=
     ~ (k = 5 \/ k = 9 \/ k = 15 \/ k = 16 \/ k = 17 \/ k = 18 \/ k = 19
-       \/ k = 20 \/ k = 7).
+       \/ k = 20 \/ k = 7 \/ k = 4 \/ k = 21).
 
   Lemma sysc_sys_out_quiet (U : ustate) (sts : list fdstate) (gn : gname)
       (cs : gset gname) (pid : mword 32) (f : sfam)
@@ -816,6 +832,9 @@ Definition wp_syscall_sconf_body
   (* ...and the PAYMENT, which is neither and is owed at every number --
      see [sysc_pay_in] *)
   sysc_pay_in f U -∗
+  (* ...and exit's close payments, one per descriptor row -- see
+     [sysc_exit_cpay] *)
+  sysc_exit_cpay U sts -∗
   (* THE EXIT SLOT IS AN ADDITIVE CONJUNCTION, AND THAT IS WHAT LETS ONE
      TABLE ENTRY NOT RETURN WITHOUT THE CONTRACT SAYING WHICH ONE.
 

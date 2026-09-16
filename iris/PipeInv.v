@@ -347,18 +347,21 @@ Section PipeInv.
   (*  Construction: pipealloc's ghost step                               *)
   (* ------------------------------------------------------------------ *)
 
-  (* the four end ghosts: a reference and a marker per end. *)
+  (* the four end ghosts -- a reference and a marker per end -- and the
+     byte queue at its empty state, authority and first snapshot. *)
   Lemma pipe_ends_alloc :
     ⊢ |==> ∃ γp : pipe_names,
              pipe_end_full γp false ∗ pipe_end_full γp true ∗
-             pipe_openmark γp false ∗ pipe_openmark γp true.
+             pipe_openmark γp false ∗ pipe_openmark γp true ∗
+             pipe_qauth (pn_queue γp) pst0 ∗ pipe_qfrag (pn_queue γp) pst0.
   Proof.
     iMod (own_alloc (1%Qp : fracR)) as (γr) "Hr"; [done|].
     iMod (own_alloc (1%Qp : fracR)) as (γw) "Hw"; [done|].
     iMod (own_alloc (DfracOwn 1)) as (γmr) "Hmr"; [done|].
     iMod (own_alloc (DfracOwn 1)) as (γmw) "Hmw"; [done|].
-    iModIntro. iExists (MkPipeNames γr γw γmr γmw).
-    by iFrame "Hr Hw Hmr Hmw".
+    iMod pipe_queue_alloc as (γq) "[Hqa Hqf]".
+    iModIntro. iExists (MkPipeNames γr γw γmr γmw γq).
+    by iFrame "Hr Hw Hmr Hmw Hqa Hqf".
   Qed.
 
   (* The state pipealloc has in hand once initlock returns: the four fields it
@@ -384,7 +387,11 @@ Section PipeInv.
     pipe_slack pi -∗
     own_context cur_ctx
     ={E}=∗ own_context cur_ctx ∗ ∃ (γl : gname) (γp : pipe_names),
-             is_pipe γl γp pi ∗ pipe_ref γp false 1 ∗ pipe_ref γp true 1.
+             is_pipe γl γp pi ∗ pipe_ref γp false 1 ∗ pipe_ref γp true 1 ∗
+             (* the queue's fragment at its birth state -- empty, nothing
+                read, both ends open -- what sys_pipe hands the process
+                (design/pipe.md, "The byte queue") *)
+             pipe_qfrag (pn_queue γp) pst0.
   Proof.
     iIntros (Hpv Hlen) "Hnm Hword Hready Hnr Hnw Hro Hwo Hdata Hslack Hrun".
     (* A6.105: unbundle the floor that travels with the owner cell; it becomes
@@ -393,20 +400,26 @@ Section PipeInv.
     iDestruct "Hready" as (lo) "[Hcpu #Hfl]".
     (* the lock's state gname FIRST: [pipe_dead] mentions it. *)
     iMod (newlock_d E lo pi with "Hword Hcpu") as (γl) "Hmake".
-    iMod pipe_ends_alloc as (γp) "(Hrd & Hwr & Hm0 & Hm1)".
+    iMod pipe_ends_alloc as (γp) "(Hrd & Hwr & Hm0 & Hm1 & Hqa & Hqf)".
     (* A6.67: the DELAYED form takes [CtxMorph] as a pure premise and the
        running token beside the payload (A6.66); both come straight back. *)
     iMod ("Hmake" $! (pipe_res_at γp pi) (pipe_dead γl γp) with "[%] Hrun
-            [Hnm Hnr Hnw Hro Hwo Hdata Hslack Hm0 Hm1]") as "[Hrun #Hlk]".
+            [Hnm Hnr Hnw Hro Hwo Hdata Hslack Hm0 Hm1 Hqa]") as "[Hrun #Hlk]".
     { apply _. }
     { iExists (mword_of_int 0 : mword 32), (mword_of_int 0 : mword 32),
               (mword_of_int 1 : mword 32), (mword_of_int 1 : mword 32), vname, bs.
       iFrame "Hnm Hnr Hnw Hro Hwo Hdata Hslack".
       iSplitL "Hm0"; [by iApply (pipe_endstate_open_intro _ _ _ pflag_one_open with "Hm0")|].
       iSplitL "Hm1"; [by iApply (pipe_endstate_open_intro _ _ _ pflag_one_open with "Hm1")|].
-      iSplit; [iPureIntro; exact pipe_count_ok_00 | done]. }
+      iSplit; [iPureIntro; exact pipe_count_ok_00 |].
+      iSplit; [done |].
+      (* the queue is born COUPLED, at its birth state: both flag words are
+         1, so both ghost flags are [true] *)
+      rewrite /pipe_qres. iLeft. iExists [], 0%nat.
+      iSplit; [iPureIntro; exact (pipe_queue_ok_00 bs) |].
+      rewrite /pflag_bool (bool_decide_eq_true_2 _ pflag_one_open). iExact "Hqa". }
     iModIntro. iFrame "Hrun". iExists γl, γp.
-    rewrite /is_pipe. iFrame "Hrd Hwr".
+    rewrite /is_pipe. iFrame "Hrd Hwr Hqf".
     iSplit; [done|]. iExists lo. iFrame "Hlk Hfl".
   Qed.
 

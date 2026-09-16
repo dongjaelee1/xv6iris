@@ -59,21 +59,10 @@ pipe), and `pipe_slack pi` — the 4 padding bytes inside `struct spinlock` plus
 everything past offset 552. Nothing reads the slack; it is held only so the
 whole page can go back to `kfree`, which memsets all 4096 bytes.
 
-The queue coupling is the pure conjunct `pipe_count_ok nr nw` — the
-free-running uint32 counters never hold more than PIPESIZE live bytes:
-`(uint32 nw − uint32 nr) mod 2^32 ≤ 512`.  It is established by `new_pipe`
-(0/0), rides through pipeclose untouched, and is maintained by exactly the
-two guarded increments: pipewrite's `nwrite++` behind the failed
-`nwrite == nread + PIPESIZE` test (`pipe_count_incr_w`) and piperead's
-`nread++` behind the failed `nread == nwrite` test (`pipe_count_decr_r`).
-Nothing consumes it yet — the CONTENTS of the live window stay existential;
-it and `pipe_data`'s tracked byte list are the hooks a future contents-indexed
-refinement builds on.  (copyin/copyout used to be contents-existential too,
-so no observable contract COULD say more.  They no longer are —
-`SpecCopyin.wp_copyin_sconf_mem` / `SpecCopyout.wp_copyout_sconf_mem` run at
-`proc_ptm P (uint szv) M` and name what they read and wrote; see
-claude-notes/completed/proc-pagetable-ownership.md.  The pipe still speaks the
-existential-`M` corollaries, so this is now a choice, not a limit.)
+The counter coupling `pipe_count_ok nr nw` (the free-running uint32
+counters never hold more than PIPESIZE live bytes) stays as its own pure
+conjunct; what says WHICH bytes are live is the byte queue's coupled arm,
+`pipe_qres` -- see "The byte queue" below.
 
 ## The reference count: two ends, not one number
 
@@ -325,3 +314,112 @@ record, proof structure, and the gotchas they turned up are in
   (and walk/mappages) chain off its `lvl = 0` artifacts.  At that call site
   `eb = true`, so sleep's two extra premises are `emp`
   (`trap_csrs_ext true` / `cpu_claim_ext true pj`).
+
+## The byte queue: a pipe's contents as ghost state
+
+Every pipe carries ONE more ghost name, `pn_queue γp` (`PipeNames.pipe_names`,
+which `FdSlots.FdPipe` now carries whole), over the camera
+`Xv6Cameras.pipeqR := excl_authR (leibnizO pipe_st)` (theory: `iris/PipeQueue.v`).
+Its state is
+
+    pipe_st = { ps_ws : list (bv 8);  -- every byte ever written, in order
+                ps_rp : nat;          -- the read pointer: ws[rp] is the next byte read
+                ps_ro, ps_wo : bool } -- readopen / writeopen, as bools
+
+with two faces, `pipe_qauth γ s := own γ (●E s)` (the AUTHORITY, the kernel's,
+inside `pi->lock`'s payload) and `pipe_qfrag γ s := own γ (◯E s)` (the
+FRAGMENT: an EXACT view, exclusive; the two agree and neither moves without
+the other).  `sys_pipe` hands the fragment out at the birth state `pst0`
+beside the two descriptors, which both name `γp` -- "the two are ends of the
+same pipe", which the pointer equation could never say.  Where the fragment
+lives is the APPLICATION's business (the design says: in its invariant, so
+its claim can state precisely what is in every pipe); the kernel never
+holds it after `sys_pipe` returns.
+
+**The coupling, or the taint.**  `pipe_res_at`'s last conjunct is
+`pipe_qres`:
+
+    (∃ ws rp, ⌜pipe_queue_ok ws rp nr nw bs⌝ ∗
+              pipe_qauth (pn_queue γp) (MkPipeSt ws rp (pflag_bool ro) (pflag_bool wo)))
+    ∨ pipe_taint_cred
+
+The COUPLED arm says the ghost state IS the physical one: `rp ≤ |ws| ≤ rp +
+PIPESIZE`, the two counters are the two lengths mod 2^32, every live byte
+sits in the ring at its index mod PIPESIZE (`pipe_queue_ok`; it subsumes
+`pipe_count_ok`, which stays as its own conjunct so nothing else moved), and
+the two ghost flags are the two flag words.  `pipe_queue_push` /
+`pipe_queue_pop` are the two guarded steps (keyed on the same failed
+full/empty tests as before), and they also give the ring index the code's
+`%PIPESIZE` computes.  The TAINT arm is a disconnect: somebody moved the
+pipe without the fragment, the authority is dropped, and from then on the
+ghost says nothing about this pipe -- permanently, since no fresh authority
+can be minted at an existing name.
+
+**Why a taint arm and not an application registry.**  The generic-safety
+supply law (`UexecSG.sbundle_of_supply_ne`) must pay every syscall's
+deposit at every key out of a PERSISTENT supply; an exact fragment cannot
+be in it, and the kernel cannot refuse a read/write/close from a process
+that holds none.  So every pipe payment is a disjunction, LINKS ∨ TAINT,
+and every post is FIRED ∨ TAINT.  The price of the disconnect is
+`pipe_taint_cred := □ riscv_kill_cred`, the application's own taint
+(bought by the generic supply, never held by a verified program under an
+untainted discipline -- `App.Happ_kill`'s shape), so a fragment holder's
+claim reads "exact, or the application is tainted", exactly echo's
+`pristine ∨ taint` and the console's `cons_dirty_cred`.  The alternative --
+the application keeping a registry of every live pipe's fragment that the
+kernel could always reach -- was rejected: it puts a resource of the
+application's inside every generic step, and the exit path would still
+need the taint.
+
+**The links.**  Each step of the exact state goes through one fupd the
+fragment's holder supplies, at mask ⊤ (the payload is HELD, no invariant is
+open):
+
+    pipe_olink γ Φ   := ∀ s, auth s ={⊤}=∗ auth s ∗ Φ s                      -- observe
+    pipe_wlink γ b Φ := ∀ s, auth s ={⊤}=∗ auth (pst_write b s) ∗ Φ
+    pipe_rlink γ Φ   := ∀ s b, ⌜pst_next s = Some b⌝ -∗ auth s ={⊤}=∗ auth (pst_read s) ∗ Φ b
+    pipe_clink γ w Φ := ∀ s, auth s ={⊤}=∗ auth (pst_close w s) ∗ Φ
+
+`*_of_frag` are the holder's constructors (lend the fragment, get it back
+moved, under its own fupd).  A write is a per-byte chain at the caller's
+prefix cursor with the byte pinned to the lent image, as
+`SpecConsolewrite.cons_out_chain`, plus an OBSERVATION node fired where
+the write stops on a shut read end (`pipe_wchain γ M ua Q Qe`); a read is a
+per-byte chain over the DEQUEUED bytes, plus the observation fired where
+the ring runs dry (`pipe_rchain γ Q Qe acc cnt`) -- an end-of-file is then a
+fact about the ghost state, `pst_eof s`.  The observations are what let a
+fragment holder tie an answer of 0 (or -1) to the state at that instant;
+the flags in the state are what let it PREDICT one.
+
+**Where the steps fire, and what pays them.**
+
+| step | fires at | payment (`link ∨ taint`) taken by |
+|---|---|---|
+| write byte | pipewrite's `sw` of `nwrite++` | `SpecPipewrite` (`pipe_wpay`), via `SpecFilewrite.filewrite_in`'s pipe arm, `xv6_sbundle` row 16 (`wf_Q`, `wf_Qe`) |
+| read byte | piperead's `sw` of `nread++` | `SpecPiperead` (`pipe_rpay`), via `SpecFileread.fileread_in`'s pipe arm (which now takes the count `n`), `xv6_sbundle` row 5 (`rf_pq`, `rf_pqe`) |
+| close end `w` | pipeclose's store of the flag word, i.e. the LAST `fileclose` of that end | `SpecPipeclose` (`pipe_cpay`), via `SpecFileclose.fileclose_cpay st Φc` beside the environment, from `sys_close` (row 21, `cl_P`), from `kexit` (`fileclose_cpays sts`, one per row of the dying table, threaded from `sys_exit`), and from `sys_pipe`'s own failure arms (the kernel still holds the fresh fragment there) |
+
+The posts hand back FIRED ∨ TAINT (`pipe_wpost`, `pipe_rpost` /
+`pipe_rpost_img` at the image, `pipe_cpost` keyed on whether the closer
+held the whole reference -- the coupling is what forces the link to fire at
+the last close, so a payment handed back proves the close was not the
+last).  The -1-by-kill exits carry `ChildTok.kill_shot`; the file layer's
+own sign guard has its own arm at the empty count.  `close(2)` is no longer
+a free number (`UexecSG.free_num`): a program pays its close deposits at
+the state its handle names, `emp` everywhere but a pipe.
+
+**The exit path** is the one place a payment is demanded over a whole
+table: `kexit` closes every descriptor, so its contract takes the table
+named and `fileclose_cpays sts`.  The generic slot pays it out of the
+taint.  A verified program's exit leaf has its own `fdv` in hand inside the
+deposit and pays a link for every pipe row -- which it can do only if its
+application invariant holds the fragments of every pipe any of its
+processes can hold (a fork inherits pipe rows but not the fragment).  That
+is an application-level invariant, not a kernel one, and it is where the
+`uheld`-style ledger question of `user-read.md` §8.4 would resurface for a
+program that wants to reason about rows it did not create.
+
+What is deliberately NOT here: a snapshot form of the fragment (rejected
+first -- it cannot say what is in the pipe now), and closedness as a
+separate persistent receipt (`pipe_shut` still exists inside the lock for
+the reclaim argument, but the user-facing flags are the exact state's).

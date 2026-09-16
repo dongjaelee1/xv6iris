@@ -35,6 +35,7 @@ From iris.base_logic.lib Require Import own.
 Require Import ProcGeom.
 Require Import RiscvPtsto Xv6Cameras.   (* [riscvGS] / [offboxG] -- the classes the offset row binds; IMPORTED, or the binder below generalises them silently *)
 Require Import OffGv.   (* [off_user_inv] / [off_permit] -- the fd row's offset shadow *)
+Require Import PipeNames.   (* [pipe_names]: what a pipe descriptor's state carries *)
 Local Open Scope Z_scope.
 
 (* param.h: open files per process.  (NPROC comes from ProcGeom.) *)
@@ -177,9 +178,17 @@ Global Instance offmode_eq_dec : EqDecision offmode.
 Proof. solve_decision. Defined.
 Global Instance offmode_inhabited : Inhabited offmode := populate OffParked.
 
+(* [FdPipe] CARRIES ITS PIPE'S GHOST NAMES (design/pipe.md, "The byte
+   queue"): [pn_queue] is the byte queue whose authority the kernel keeps
+   inside [pi->lock] and whose exact fragment [sys_pipe] hands the process
+   -- what a program's read/write/close links are stated on -- and the four
+   end names beside it.  Tied to the payload's [fp_pipe] by
+   [FileInvDefs.fdstate_ok]'s pipe arm exactly as [FdInode]'s [γo] is tied
+   to the offset shadow.  The two ends of one pipe carry the SAME record,
+   which is how a descriptor table says they are ends of the same pipe. *)
 Inductive fdtype :=
 | FdInode (inum : Z) (γo : gname) (om : offmode)
-| FdPipe
+| FdPipe (γp : pipe_names)
 | FdDevice (major : Z).
 
 (* THE TWO MODE FLAGS RIDE ON [FdOpen], NOT ON THE TYPE.  [f->readable] and
@@ -236,7 +245,7 @@ Definition fdst_parked (st : fdstate) : Prop :=
   end.
 
 Global Instance fdst_parked_dec (st : fdstate) : Decision (fdst_parked st).
-Proof. destruct st as [|? ? [? ? [|]| |?]]; cbn; apply _. Defined.
+Proof. destruct st as [|? ? [? ? [|]|?|?]]; cbn; apply _. Defined.
 
 Definition fdv_all_parked (l : list fdstate) : Prop := Forall fdst_parked l.
 
@@ -255,7 +264,7 @@ Proof. unfold fdv_all_parked. apply _. Defined.
    did not say so). ---- *)
 Lemma fdst_parked_closed : fdst_parked FdClosed.
 Proof. exact I. Qed.
-Lemma fdst_parked_pipe (r w : bool) : fdst_parked (FdOpen r w FdPipe).
+Lemma fdst_parked_pipe (r w : bool) (γp : pipe_names) : fdst_parked (FdOpen r w (FdPipe γp)).
 Proof. exact I. Qed.
 Lemma fdst_parked_dev (r w : bool) (mj : Z) : fdst_parked (FdOpen r w (FdDevice mj)).
 Proof. exact I. Qed.
@@ -632,11 +641,11 @@ Section FdSlots.
     | _ => True
     end.
   Global Instance foff_row_persistent st : Persistent (foff_row st).
-  Proof. destruct st as [|? ? [? ? [|]| |?]]; apply _. Qed.
+  Proof. destruct st as [|? ? [? ? [|]|?|?]]; apply _. Qed.
 
   Lemma foff_row_closed : ⊢ foff_row FdClosed.
   Proof. done. Qed.
-  Lemma foff_row_pipe (r w : bool) : ⊢ foff_row (FdOpen r w FdPipe).
+  Lemma foff_row_pipe (r w : bool) (γp : pipe_names) : ⊢ foff_row (FdOpen r w (FdPipe γp)).
   Proof. done. Qed.
   Lemma foff_row_dev (r w : bool) (mj : Z) : ⊢ foff_row (FdOpen r w (FdDevice mj)).
   Proof. done. Qed.

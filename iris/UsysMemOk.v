@@ -64,7 +64,8 @@ Require Import UserPtTree.   (* [umem_wr] / [umem_grow] / [umem_del] *)
 Require Import ProcPtOwn.    (* [pgroundup] on words *)
 Require Import UserPerm.     (* [uperm] / [uperm_rw] -- the permission view *)
 Require Import RiscvExtras.  (* [trunc32] -- the C [int] reading *)
-Require Import FdSlots.      (* [fdstate] / [fdtype] -- the descriptor view *)
+Require Import FdSlots.
+Require Import PipeNames.   (* [pipe_names]: what a pipe descriptor's state carries *)      (* [fdstate] / [fdtype] -- the descriptor view *)
 Require Import RiscvModelBytes. (* [nth_byte] -- pipe's two stored words *)
 Local Open Scope Z_scope.
 
@@ -546,7 +547,7 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
        row's [bs].  The two tables would have to be read together, which is
        the refinement this entry is waiting on. *)
     (if decide (uint r = 0)
-     then (exists a b : nat,
+     then (exists (a b : nat) (γp : pipe_names),
              a <> b /\
              (* ...AND EACH IS THE LOWEST FREE SLOT AT THE MOMENT ITS OWN
                 fdalloc RAN, which is what makes the pair deterministic.
@@ -557,9 +558,9 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
                 written in that same order for the same reason; they
                 commute ([a <> b]), so a caller may read them either way. *)
              fd_least_closed sts a /\
-             fd_least_closed (<[a := FdOpen true false FdPipe]> sts) b /\
-             sts' = <[b := FdOpen false true FdPipe]>
-                      (<[a := FdOpen true false FdPipe]> sts))
+             fd_least_closed (<[a := FdOpen true false (FdPipe γp)]> sts) b /\
+             sts' = <[b := FdOpen false true (FdPipe γp)]>
+                      (<[a := FdOpen true false (FdPipe γp)]> sts))
      else sts' = sts)
   else
     (* EVERY OTHER ENTRY LEAVES THE TABLE ALONE -- but read that carefully
@@ -665,7 +666,7 @@ Definition usys_pipe_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
     (M M' : gmap Z (bv 8)) (sts sts' : list fdstate) : Prop :=
   n = USYS_pipe ->
   uint r = 0 ->
-  exists (a b : nat) (bs : nat -> bv 8),
+  exists (a b : nat) (γp : pipe_names) (bs : nat -> bv 8),
     a <> b /\
     (* THE TWO SLOTS WERE THE LOWEST FREE ONES, restated here rather than
        left to [usys_fd_ok]'s own pipe row.  The two rows bind their
@@ -676,15 +677,15 @@ Definition usys_pipe_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
        allocation order as there: read end first, write end against the
        table the first call left. *)
     fd_least_closed sts a /\
-    fd_least_closed (<[a := FdOpen true false FdPipe]> sts) b /\
+    fd_least_closed (<[a := FdOpen true false (FdPipe γp)]> sts) b /\
     M' = umem_wr M (tf !!! tf_arg_idx 0) 8 bs /\
     (forall i : nat, (i < 8)%nat ->
        bs i = if (i <? 4)%nat
               then nth_byte (trunc32 (mword_of_int (Z.of_nat a) : mword 64)) i
               else nth_byte (trunc32 (mword_of_int (Z.of_nat b) : mword 64))
                      (i - 4)%nat) /\
-    sts' = <[b := FdOpen false true FdPipe]>
-             (<[a := FdOpen true false FdPipe]> sts).
+    sts' = <[b := FdOpen false true (FdPipe γp)]>
+             (<[a := FdOpen true false (FdPipe γp)]> sts).
 
 (* the quiet reading: the other twenty-one entries owe nothing here *)
 Lemma usys_pipe_ok_quiet (n : Z) (tf : list (mword 64)) (r : mword 64)
@@ -756,7 +757,7 @@ Proof.
       [apply length_insert | reflexivity]. }
   destruct (decide (n = USYS_pipe)) as [_ | _].
   { destruct (decide (uint r = 0)) as [_ | _].
-    - destruct H as (a & b & _ & _ & _ & ->).
+    - destruct H as (a & b & γp & _ & _ & _ & ->).
       rewrite length_insert. apply length_insert.
     - subst. reflexivity. }
   subst. reflexivity.
@@ -803,11 +804,11 @@ Proof.
     rewrite He. apply fdv_all_parked_insert; [ exact Hpk | exact Hop ]. }
   destruct (decide (n = USYS_pipe)) as [_ | _].
   { destruct (decide (uint r = 0)) as [_ | _].
-    - destruct H as (a & b & _ & _ & _ & ->).
+    - destruct H as (a & b & γp & _ & _ & _ & ->).
       apply fdv_all_parked_insert;
         [ apply fdv_all_parked_insert;
-          [ exact Hpk | exact (fdst_parked_pipe true false) ]
-        | exact (fdst_parked_pipe false true) ].
+          [ exact Hpk | exact (fdst_parked_pipe true false γp) ]
+        | exact (fdst_parked_pipe false true γp) ].
     - subst. exact Hpk. }
   subst. exact Hpk.
 Qed.

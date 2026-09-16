@@ -142,7 +142,11 @@ Section UkWriteLeaf.
        rf_ret   := fun _ _ => True%I;
        (* the console's input link, at the trivial claim (lane CONS-IO,
           milestone B): this program says nothing about what it read *)
-       rf_in    := fun _ => True%I |}.
+       rf_in    := fun _ => True%I ;
+       rf_pq    := fun _ => True%I;
+       rf_pqe   := fun _ _ => True%I;
+       wf_Qe    := fun _ _ => True%I;
+       cl_P     := True%I |}.
 
   (* the payload row [UkRun.udepwf_std] asks for, by computation *)
   Lemma xfam_wr_pay (Q : nat -> iProp Σ) (Xp : Z -> iProp Σ) :
@@ -175,7 +179,7 @@ Section UkWriteLeaf.
     tf_w (uvis_tf W) (tf_arg_idx 2) = v2 ->
     uvis_fd W = sts ->
     uvis_M W = Mv ->
-    filewrite_in (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) -∗
+    filewrite_in (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) (wf_Qe f) -∗
     sbundle_at X 16 f W.
   Proof.
     intros H0 H1 H2 Hfd HM. iIntros "H".
@@ -204,7 +208,8 @@ Section UkWriteLeaf.
       ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
       ⌜ProcPtOwn.proc_pt_wf P⌝ ∗
       ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
-      filewrite_extra P (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) r.
+      filewrite_extra (uvis_gen W) P (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1
+        (wf_Q f) (wf_Qe f) r.
   Proof.
     intros H0 H1 H2 Hfd HM. iIntros "H".
     rewrite -H0 -H1 -H2 -Hfd -HM.

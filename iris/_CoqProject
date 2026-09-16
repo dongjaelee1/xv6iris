@@ -668,6 +668,7 @@ ProofFilecloseParts.v
 LinkFilealloc.v
 PageFields.v
 KstackOwn.v
+PipeQueue.v
 PipeInvDefs.v
 PipeInv.v
 CodePipealloc.v
@@ -1363,6 +1364,7 @@ TxPin.v
 ProcDefs.v
 BioDefs.v
 ChildTok.v
+PipeNames.v
 Xv6Cameras.v
 Xv6G.v
 InodeDefs.v

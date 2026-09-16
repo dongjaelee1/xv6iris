@@ -157,6 +157,7 @@ Require Import UserPtTree.
 Require Import KvmSpec.
 Require Import ProcPtOwn.
 Require Import PipeInvDefs.
+Require Import ChildTok.   (* [kill_shot]: the pipe arm's -1-by-kill evidence *)
 Require Import ProcInv.
 Require Import FileInvDefs.
 Require Import BitmapInv.
@@ -532,7 +533,7 @@ Section SpecFilewrite.
   Definition filewrite_env (γf : gname)
       (fn : fwrite_names) (st : fdstate) : iProp Σ :=
     (match st with
-     | FdOpen _ _ FdPipe        => emp
+     | FdOpen _ _ (FdPipe _)    => emp
      | FdOpen _ _ (FdDevice mj) => filewrite_dev_env fn mj
      | FdOpen _ _ (FdInode _ _ _)   => filewrite_fs_env γf fn
      | FdClosed             => emp
@@ -541,7 +542,7 @@ Section SpecFilewrite.
   Definition filewrite_env_out (fn : fwrite_names) (st : fdstate)
       : iProp Σ :=
     (match st with
-     | FdOpen _ _ FdPipe        => emp
+     | FdOpen _ _ (FdPipe _)    => emp
      | FdOpen _ _ (FdDevice mj) => filewrite_dev_out fn mj
      | FdOpen _ _ (FdInode _ _ _)   => filewrite_fs_out fn
      | FdClosed             => emp
@@ -786,12 +787,22 @@ Section SpecFilewrite.
      alone, because only there does the caller know the callee was
      consolewrite.) *)
   Definition filewrite_in (st : fdstate) (n : Z)
-      (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
+      (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
+      (* THE PIPE ARM'S OBSERVATION FAMILY (design/pipe.md, "The byte
+         queue"): what the caller asks to be told if its write stops at
+         byte [j] because the read end is shut, at that instant's ghost
+         state.  Unread by the other two arms. *)
+      (Qe : nat -> pipe_st -> iProp Σ) : iProp Σ :=
     match st with
     | FdOpen _ true (FdInode i γo _) =>
         awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua Q 0%nat (wchunks n)
     | FdOpen _ true (FdDevice _) =>
         cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n)
+    (* the pipe: the caller's links over the byte queue at its cursor, one
+       per byte, each pinned to the byte its image holds -- or the taint,
+       which is what the generic supply pays *)
+    | FdOpen _ true (FdPipe γp) =>
+        pipe_wpay (pn_queue γp) M ua Q Qe (Z.to_nat n)
     | _ => emp
     end%I.
 
@@ -804,8 +815,12 @@ Section SpecFilewrite.
      buffer bytes the kernel could read, and that is a fact about this
      table and nothing else.  The other arms neither have one nor need
      one. *)
-  Definition filewrite_extra (P : uptd) (st : fdstate) (n : Z)
+  (* [gn] IS THE PROCESS'S GENERATION, for the pipe arm alone: its -1 by
+     kill carries the incarnation's kill shot, exactly as the read side's
+     console receipt does. *)
+  Definition filewrite_extra (gn : gname) (P : uptd) (st : fdstate) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
+      (Qe : nat -> pipe_st -> iProp Σ)
       (r : mword 64) : iProp Σ :=
     match st with
     | FdOpen _ true (FdInode i γo _) =>
@@ -814,6 +829,10 @@ Section SpecFilewrite.
         if decide (ma = ConsoleInv.CONSOLE)
         then write_cons_arms P ua Q n r
         else emp
+    (* the pipe: the chain at the stop cursor and the answer's reason, or
+       the taint with the payment back ([PipeQueue.pipe_wpost]) *)
+    | FdOpen _ true (FdPipe γp) =>
+        pipe_wpost P (pn_queue γp) M ua Q Qe (ChildTok.kill_shot gn) (Z.to_nat n) r
     | _ => emp
     end%I.
 
@@ -821,41 +840,42 @@ Section SpecFilewrite.
      arm's extra.  Stating the blanket unconditionally rather than deriving
      it per arm is what makes "the unified contract implies each landed
      form" true BY CONSTRUCTION -- there is nothing to check. *)
-  Definition filewrite_arms (P : uptd) (st : fdstate) (n : Z)
+  Definition filewrite_arms (gn : gname) (P : uptd) (st : fdstate) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
+      (Qe : nat -> pipe_st -> iProp Σ)
       (r : mword 64) : iProp Σ :=
-    (⌜filewrite_ret n r⌝ ∗ filewrite_extra P st n M ua Q r)%I.
+    (⌜filewrite_ret n r⌝ ∗ filewrite_extra gn P st n M ua Q Qe r)%I.
 
-  Lemma filewrite_arms_ret P st n M ua Q r :
-    filewrite_arms P st n M ua Q r -∗ ⌜filewrite_ret n r⌝.
+  Lemma filewrite_arms_ret gn P st n M ua Q Qe r :
+    filewrite_arms gn P st n M ua Q Qe r -∗ ⌜filewrite_ret n r⌝.
   Proof. iIntros "[%H _]". by iPureIntro. Qed.
 
   (* ---- READING THE KEYED INPUT, BUILDING THE KEYED OUTPUT -------------
      Eight one-liners, so that no walk ever has to unfold the two matches
      and every arm names the fact it is standing on. *)
 
-  Lemma filewrite_in_inode rb i γo n M ua Q :
-    filewrite_in (FdOpen rb true (FdInode i γo OffParked)) n M ua Q -∗
+  Lemma filewrite_in_inode rb i γo n M ua Q Qe :
+    filewrite_in (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe -∗
     awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua Q 0%nat (wchunks n).
   Proof. by iIntros "$". Qed.
 
   (* the device arm's input is now the OUTPUT CHAIN (lane OUT-FUPD), the
      inode arm's twin: one node per byte instead of a trace seed, and at
      EVERY major because the cell is null-or-consolewrite at every major *)
-  Lemma filewrite_in_cons rb (mj : Z) n M ua Q :
-    filewrite_in (FdOpen rb true (FdDevice mj)) n M ua Q -∗
+  Lemma filewrite_in_cons rb (mj : Z) n M ua Q Qe :
+    filewrite_in (FdOpen rb true (FdDevice mj)) n M ua Q Qe -∗
     cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n).
   Proof. by iIntros "$". Qed.
 
-  Lemma filewrite_extra_inode P rb i γo n M ua Q r :
+  Lemma filewrite_extra_inode gn P rb i γo n M ua Q Qe r :
     write_arms_at (fs_gamma_L fsc_fs) i γo n M ua Q r -∗
-    filewrite_extra P (FdOpen rb true (FdInode i γo OffParked)) n M ua Q r.
+    filewrite_extra gn P (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe r.
   Proof. by iIntros "$". Qed.
 
-  Lemma filewrite_extra_cons P rb (mj : Z) n M ua Q r :
+  Lemma filewrite_extra_cons gn P rb (mj : Z) n M ua Q Qe r :
     mj = ConsoleInv.CONSOLE ->
     write_cons_arms P ua Q n r -∗
-    filewrite_extra P (FdOpen rb true (FdDevice mj)) n M ua Q r.
+    filewrite_extra gn P (FdOpen rb true (FdDevice mj)) n M ua Q Qe r.
   Proof.
     intros Hmj. rewrite /filewrite_extra.
     case_decide as Hc; [by iIntros "$" | by exfalso].
@@ -863,28 +883,40 @@ Section SpecFilewrite.
 
   (* a device at any OTHER major writes no receipt: the cell is null there
      (nothing but consoleinit fills the table) and the arm is a -1 *)
-  Lemma filewrite_extra_dev_other P rb wb (mj : Z) n M ua Q r :
+  Lemma filewrite_extra_dev_other gn P rb wb (mj : Z) n M ua Q Qe r :
     mj <> ConsoleInv.CONSOLE ->
-    ⊢ filewrite_extra P (FdOpen rb wb (FdDevice mj)) n M ua Q r.
+    ⊢ filewrite_extra gn P (FdOpen rb wb (FdDevice mj)) n M ua Q Qe r.
   Proof.
     intros Hne. rewrite /filewrite_extra. destruct wb; [| done].
     case_decide as Hc; [by exfalso | done].
   Qed.
 
-  Lemma filewrite_extra_pipe P rb wb n M ua Q r :
-    ⊢ filewrite_extra P (FdOpen rb wb FdPipe) n M ua Q r.
-  Proof. rewrite /filewrite_extra. by destruct wb. Qed.
+  (* the pipe arm: the chain's stop node comes back on the WRITABLE end
+     ([PipeQueue.pipe_wpost]); an unwritable pipe descriptor pays nothing *)
+  Lemma filewrite_in_pipe rb (γp : pipe_names) n M ua Q Qe :
+    filewrite_in (FdOpen rb true (FdPipe γp)) n M ua Q Qe -∗
+    pipe_wpay (pn_queue γp) M ua Q Qe (Z.to_nat n).
+  Proof. by iIntros "$". Qed.
+
+  Lemma filewrite_extra_pipe gn P rb (γp : pipe_names) n M ua Q Qe r :
+    pipe_wpost P (pn_queue γp) M ua Q Qe (ChildTok.kill_shot gn) (Z.to_nat n) r -∗
+    filewrite_extra gn P (FdOpen rb true (FdPipe γp)) n M ua Q Qe r.
+  Proof. by iIntros "$". Qed.
+
+  Lemma filewrite_extra_pipe_ro gn P rb (γp : pipe_names) n M ua Q Qe r :
+    ⊢ filewrite_extra gn P (FdOpen rb false (FdPipe γp)) n M ua Q Qe r.
+  Proof. rewrite /filewrite_extra. done. Qed.
 
   (* the [f->writable == 0] early return: no arm of the match is armed
      there, because every armed one is a WRITABLE descriptor *)
-  Lemma filewrite_extra_unwritable (P : uptd) (inum : mword 32) (γo : gname)
-      (C : fcontent) (st : fdstate) n M ua Q r :
-    fdstate_ok inum γo C st ->
+  Lemma filewrite_extra_unwritable (gn : gname) (P : uptd) (inum : mword 32) (γo : gname)
+      (γp : pipe_names) (C : fcontent) (st : fdstate) n M ua Q Qe r :
+    fdstate_ok inum γo γp C st ->
     (* the WORD the code tested, not a re-reading of it: the walk arrives
        with [beq a5,x0]'s own boolean *)
     eq_vec (zero_extend' 64 (fc_writable C : mword 8) : mword 64)
            (zero_reg : mword 64) = true ->
-    ⊢ filewrite_extra P st n M ua Q r.
+    ⊢ filewrite_extra gn P st n M ua Q Qe r.
   Proof.
     destruct st as [| rb wb ty]; [by iIntros |].
     destruct wb; [| rewrite /filewrite_extra; by iIntros].
@@ -915,16 +947,19 @@ Section SpecFilewrite.
     simpl. iExact "Hc".
   Qed.
 
-  Lemma filewrite_extra_neg P st n M ua Q :
+  Lemma filewrite_extra_neg gn P st n M ua Q Qe :
     (n < 0)%Z ->
-    filewrite_in st n M ua Q -∗
-    filewrite_extra P st n M ua Q (mword_of_int (-1) : mword 64).
+    filewrite_in st n M ua Q Qe -∗
+    filewrite_extra gn P st n M ua Q Qe (mword_of_int (-1) : mword 64).
   Proof.
     intros Hn. destruct st as [| rb wb ty]; [by iIntros |].
     destruct wb; [| by iIntros].
-    destruct ty as [i γo om | | mj]; rewrite /filewrite_in /filewrite_extra.
+    destruct ty as [i γo om | γp | mj]; rewrite /filewrite_in /filewrite_extra.
     - iIntros "Hc". by iApply (write_arms_at_neg with "Hc").
-    - by iIntros.
+    - (* a negative request never reaches the pipe: the payment comes back
+         at the empty count *)
+      assert (Hn0 : Z.to_nat n = 0%nat) by (destruct n; [lia | lia | reflexivity]).
+      rewrite Hn0. iApply pipe_wpost_neg. reflexivity.
     - case_decide as Hc; [| by iIntros].
       iIntros "_". iRight. iRight. iPureIntro. split; [reflexivity | exact Hn].
   Qed.
@@ -932,10 +967,10 @@ Section SpecFilewrite.
   (* ...and at a NON-console major nothing is armed, so the chain is simply
      dropped: what the caller justified was pushed (or not) by a callee this
      layer cannot name, and there is nothing true left to say about it. *)
-  Lemma filewrite_extra_dev_drop P rb (mj : Z) n M ua Q r :
+  Lemma filewrite_extra_dev_drop gn P rb (mj : Z) n M ua Q Qe r :
     mj <> ConsoleInv.CONSOLE ->
-    filewrite_in (FdOpen rb true (FdDevice mj)) n M ua Q -∗
-    filewrite_extra P (FdOpen rb true (FdDevice mj)) n M ua Q r.
+    filewrite_in (FdOpen rb true (FdDevice mj)) n M ua Q Qe -∗
+    filewrite_extra gn P (FdOpen rb true (FdDevice mj)) n M ua Q Qe r.
   Proof.
     intros Hne. rewrite /filewrite_extra.
     case_decide as Hc; [by exfalso | by iIntros "_"].
@@ -957,7 +992,10 @@ Definition wp_filewrite_sconf_body
        the console arm.  The console arm's trace seed [tr0] is gone with
        the located receipts it fed.  A caller that does not care
        instantiates it trivially ([fun _ => True]). *)
-    (Q : nat -> iProp Σ) :=
+    (Q : nat -> iProp Σ)
+    (* ...and the pipe arm's OBSERVATION family, what the caller asks to be
+       told where its write stops on a shut read end (design/pipe.md) *)
+    (Qe : nat -> pipe_st -> iProp Σ) :=
   let pcE : mword 64 := mword_of_int KernelSyms.filewrite in
   let pj := proc_addr j in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
@@ -1038,7 +1076,7 @@ Definition wp_filewrite_sconf_body
      retag pays the application's claim out of the chain's own node
      ([FsAbsWriteFire.awrite_full_at]'s [app_step]), so this contract asks
      for no blanket license of its own. *)
-  filewrite_in st n (us_M U) uaddr Q -∗
+  filewrite_in st n (us_M U) uaddr Q Qe -∗
   (* THE CROSSING IS [true], NOT [b].  Every arm of this function parks, and
      the porting guide's rule is that a PARKING function's [wp_next] index is
      [true] unconditionally -- a swtch moves the hart whatever SIE was doing.
@@ -1067,7 +1105,7 @@ Definition wp_filewrite_sconf_body
          descriptor selects proved: the chunk arms and the cursor at the
          stop position on an inode, the accepted-trace receipt on the
          console, nothing anywhere else. *)
-      filewrite_arms (pv_upt (us_V U)) st n (us_M U) uaddr Q r -∗
+      filewrite_arms (pv_gen (us_V U)) (pv_upt (us_V U)) st n (us_M U) uaddr Q Qe r -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
@@ -1083,6 +1121,6 @@ Module Type FILEWRITE.
       (fn : fwrite_names)
       (pidv : mword 32) (U : ustate)
       (m : regfile) (K : nat) (eb : bool) (n : Z) (b : bool) (lks : gset string)
-      (Q : nat -> iProp Σ),
-      wp_filewrite_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks Q.
+      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ),
+      wp_filewrite_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks Q Qe.
 End FILEWRITE.

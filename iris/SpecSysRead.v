@@ -175,6 +175,7 @@ Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its
 Require Import FsAbsDefs.  (* LAST (FsAbs's own rule) *)
 Import Defs.
 Require Import CtxIdDefs.
+Require Import PipeQueue.   (* the pipe's byte-queue ghost: names, links, payments *)
 
 Local Open Scope Z_scope.
 
@@ -277,11 +278,12 @@ Section SpecSysRead.
   (* [P] IS THE CALLER'S EXIT PAYLOAD, RELAYED (app-echo.md, "SH-LINE
      RULING", R1): the input is a wand from it and the arms give it back,
      both verbatim [SpecFileread]'s at this caller's key. *)
-  Definition sys_read_in (V : pprivate) (v : mword 64) (sts : list fdstate)
+  Definition sys_read_in (V : pprivate) (v : mword 64) (sts : list fdstate) (n : Z)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
       (Rd : nat -> nat -> iProp Σ)
-      (Rin : list (list mobs * bv 8) -> iProp Σ) (P : iProp Σ) : iProp Σ :=
-    fileread_in (sys_fd_st v (pv_ofile V) sts) F Rd Rin P.
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
+      (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ) (P : iProp Σ) : iProp Σ :=
+    fileread_in (sys_fd_st v (pv_ofile V) sts) n F Rd Rin Rp Rpe P.
 
   (* the LANDED return clause, verbatim, plus the arm's extra.  Stating the
      blanket unconditionally is what makes "the unified contract implies the
@@ -290,13 +292,14 @@ Section SpecSysRead.
   Definition sys_read_arms (V : pprivate) (v : mword 64) (sts : list fdstate)
       (n : Z) (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
       (Rd : nat -> nat -> iProp Σ)
-      (Rin : list (list mobs * bv 8) -> iProp Σ) (P : iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
+      (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ) (P : iProp Σ)
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
     (⌜sys_read_ret V v n r⌝ ∗
-     fileread_extra (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin P r M' addr)%I.
+     fileread_extra (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin Rp Rpe P r M' addr)%I.
 
-  Lemma sys_read_arms_ret V v sts n F Rd Rin P r M' addr :
-    sys_read_arms V v sts n F Rd Rin P r M' addr -∗ ⌜sys_read_ret V v n r⌝.
+  Lemma sys_read_arms_ret V v sts n F Rd Rin Rp Rpe P r M' addr :
+    sys_read_arms V v sts n F Rd Rin Rp Rpe P r M' addr -∗ ⌜sys_read_ret V v n r⌝.
   Proof. iIntros "[%H _]". by iPureIntro. Qed.
 
   (* ...and the other projection, which is what the process gets back: the
@@ -304,17 +307,17 @@ Section SpecSysRead.
      a kernel array, so it cannot ride the trap contract's per-number post
      row ([UexecExecInst.xv6_spost]) -- and it does not need to: the round
      already carries [UsysMemOk.usys_mem_ok] and [usys_fd_ok]. *)
-  Lemma sys_read_arms_extra V v sts n F Rd Rin P r M' addr :
-    sys_read_arms V v sts n F Rd Rin P r M' addr -∗
-    fileread_extra (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin P r M' addr.
+  Lemma sys_read_arms_extra V v sts n F Rd Rin Rp Rpe P r M' addr :
+    sys_read_arms V v sts n F Rd Rin Rp Rpe P r M' addr -∗
+    fileread_extra (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin Rp Rpe P r M' addr.
   Proof. iIntros "[_ $]". Qed.
 
   (* ...AND THE PAYLOAD OFF IT, which is what the dispatcher's read arm
      hands [SpecSyscall.sysc_pay_out]: the arm's own payout for the
      process is the [_core], the payload is the kernel's. *)
-  Lemma sys_read_arms_pay V v sts n F Rd Rin P r M' addr :
-    sys_read_arms V v sts n F Rd Rin P r M' addr -∗
-    P ∗ fileread_extra_core (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin r M' addr.
+  Lemma sys_read_arms_pay V v sts n F Rd Rin Rp Rpe P r M' addr :
+    sys_read_arms V v sts n F Rd Rin Rp Rpe P r M' addr -∗
+    P ∗ fileread_extra_core (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin Rp Rpe r M' addr.
   Proof. iIntros "[_ H]". iApply (fileread_extra_pay with "H"). Qed.
 
   (* ---- the key, read at the two shapes the walk reaches it in --------
@@ -324,11 +327,12 @@ Section SpecSysRead.
       (n : Z) (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
       (Rd : nat -> nat -> iProp Σ)
       (Rin : list (list mobs * bv 8) -> iProp Σ)
+      (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ)
       (P : iProp Σ)
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) :
     arg_fd v (pv_ofile V) = None ->
     r = (mword_of_int (-1) : mword 64) ->
-    P -∗ sys_read_arms V v sts n F Rd Rin P r M' addr.
+    P -∗ sys_read_arms V v sts n F Rd Rin Rp Rpe P r M' addr.
   Proof.
     intros Hnone Hr. rewrite /sys_read_arms /sys_fd_st Hnone. iIntros "HP".
     iSplitR; [| rewrite Hr; iApply (fileread_extra_closed with "HP")].
@@ -336,13 +340,14 @@ Section SpecSysRead.
   Qed.
 
   Lemma sys_read_in_of (V : pprivate) (v : mword 64) (sts : list fdstate)
-      (fd : nat) (fv : mword 64) (st : fdstate)
+      (fd : nat) (fv : mword 64) (st : fdstate) (n : Z)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (Rd : nat -> nat -> iProp Σ)
       (Rin : list (list mobs * bv 8) -> iProp Σ)
+      (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ)
       (P : iProp Σ) :
     arg_fd v (pv_ofile V) = Some (fd, fv) ->
     sts !! fd = Some st ->
-    sys_read_in V v sts F Rd Rin P -∗ fileread_in st F Rd Rin P.
+    sys_read_in V v sts n F Rd Rin Rp Rpe P -∗ fileread_in st n F Rd Rin Rp Rpe P.
   Proof.
     intros Hsome Hst. rewrite /sys_read_in /sys_fd_st Hsome Hst /=.
     by iIntros "$".
@@ -352,12 +357,13 @@ Section SpecSysRead.
       (fd : nat) (fv : mword 64) (st : fdstate) (n : Z)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (Rd : nat -> nat -> iProp Σ)
       (Rin : list (list mobs * bv 8) -> iProp Σ)
+      (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ)
       (P : iProp Σ)
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) :
     arg_fd v (pv_ofile V) = Some (fd, fv) ->
     sts !! fd = Some st ->
-    fileread_arms (pv_gen V) (pv_upt V) st n F Rd Rin P r M' addr -∗
-    sys_read_arms V v sts n F Rd Rin P r M' addr.
+    fileread_arms (pv_gen V) (pv_upt V) st n F Rd Rin Rp Rpe P r M' addr -∗
+    sys_read_arms V v sts n F Rd Rin Rp Rpe P r M' addr.
   Proof.
     intros Hsome Hst. rewrite /sys_read_arms /sys_fd_st Hsome Hst /=.
     iIntros "[%Hret $]". iPureIntro. right. by exists fd, fv.
@@ -382,6 +388,7 @@ Definition wp_sys_read_sconf_body
        [None] is a caller that claims no window *)
     (Rd : nat -> nat -> iProp Σ)
       (Rin : list (list mobs * bv 8) -> iProp Σ)
+      (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ)
     (* the caller's exit payload, relayed to fileread (R1) *)
     (P : iProp Σ) :=
   let pcE : mword 64 := mword_of_int KernelSyms.sys_read in
@@ -452,7 +459,7 @@ Definition wp_sys_read_sconf_body
      ([sys_read_in], which is [SpecFileread.fileread_in] at [sys_fd_st]):
      the observation commit conjoined with the caller's refund on an open,
      readable inode, [emp] everywhere else. ---- *)
-  sys_read_in (us_V U) v sts F Rd Rin P -∗
+  sys_read_in (us_V U) v sts (sys_rw_count v2) F Rd Rin Rp Rpe P -∗
   (* ...and the payload the input is a wand from, lent for the call *)
   P -∗
   (* THE CROSSING IS THE LITERAL [true]: fileread parks, and a park moves the
@@ -502,7 +509,7 @@ Definition wp_sys_read_sconf_body
       (* ---- THE ARMED OUTPUT ([sys_read_arms]): the blanket
          ⌜sys_read_ret⌝, and beside it what the arm the descriptor selects
          proved. ---- *)
-      sys_read_arms (us_V U) v sts (sys_rw_count v2) F Rd Rin P r
+      sys_read_arms (us_V U) v sts (sys_rw_count v2) F Rd Rin Rp Rpe P r
         (umem_wr (us_M U) v1 d bs) v1 -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
@@ -523,7 +530,8 @@ Module Type SYSREAD.
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (Rd : nat -> nat -> iProp Σ)
       (Rin : list (list mobs * bv 8) -> iProp Σ)
+      (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ)
       (P : iProp Σ),
       wp_sys_read_sconf_body γf γs j γlp fn pidv U sts v v1 v2 m av eb b lks
-        F Rd Rin P.
+        F Rd Rin Rp Rpe P.
 End SYSREAD.

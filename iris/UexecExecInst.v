@@ -161,6 +161,8 @@ Require Import SpecArgfd.      (* [fd_st_of_key] -- the descriptor key a
 Require Import SpecFileread.   (* [fileread_in] / [fileread_extra]    *)
 Require Import SpecFilewrite.  (* [filewrite_in] / [filewrite_extra]  *)
 Require Import SpecSysRead.    (* [sys_rw_count]                      *)
+Require Import SpecFileclose.  (* [fileclose_cpay] / [fileclose_cpost_any]: close's pipe row *)
+Require Import PipeQueue.      (* [pipe_qfrag] / [pst0]: pipe's post *)
 Require Import SpecSysChdir.   (* [chdir_au_pre]                      *)
 Require Import SpecSysOpen.    (* [open_in]                           *)
 Require Import SpecSysMknod.   (* [mknod_au_pre] / [mknod_arms]       *)
@@ -317,6 +319,18 @@ Section UexecExecInst.
        holds ([FsAbsInvFire.fsabs_fileread_in]).
        LAST, so every positional builder only gained a trailing argument. *)
     rf_in    : list (list mobs * bv 8) -> iProp Σ;
+    (* ---- THE PIPE'S FOUR (design/pipe.md, "The byte queue"), LAST so every
+       positional builder only gained trailing arguments.  read (5): the
+       caller's cursor over the bytes it takes out of a pipe and its
+       observation at an empty stop; write (16): its observation at a shut
+       read end (the write cursor is [wf_Q]); close (21): the payload its
+       close link hands back at the end's last close.  A generic process
+       claims nothing at any of them, and the generic supply pays every pipe
+       arm out of the TAINT ([FsAbsInvFire]). ---- *)
+    rf_pq    : list (bv 8) -> iProp Σ;
+    rf_pqe   : list (bv 8) -> pipe_st -> iProp Σ;
+    wf_Qe    : nat -> pipe_st -> iProp Σ;
+    cl_P     : iProp Σ;
   }.
 
   (* THE RE-KEYING ([UexecSG.sfam_at]): the same families at another
@@ -346,7 +360,11 @@ Section UexecExecInst.
        kf_lend  := kf_lend f;
        kf_xpay  := Q;
        rf_ret   := rf_ret f;
-       rf_in    := rf_in f |}.
+       rf_in    := rf_in f;
+       rf_pq    := rf_pq f;
+       rf_pqe   := rf_pqe f;
+       wf_Qe    := wf_Qe f;
+       cl_P     := cl_P f |}.
 
   (* THE RECORD AT EXEC'S FOUR AND THE TRIVIAL FAMILIES ELSEWHERE.  The
      eight other numbers' fields are spelled at exactly the families the
@@ -411,7 +429,13 @@ Section UexecExecInst.
        (* ...AND IT CLAIMS NOTHING ABOUT WHAT IT READ EITHER, so read's
           input link is payable out of [WpUart.in_licence] alone -- which
           is what keeps [xv6_sbundle_of_supply_ne] provable at n = 5. *)
-       rf_in    := fun _ => True%I |}.
+       rf_in    := fun _ => True%I;
+       (* ...and nothing about any pipe: the four arms are then payable out
+          of the taint the supply carries *)
+       rf_pq    := fun _ => True%I;
+       rf_pqe   := fun _ _ => True%I;
+       wf_Qe    := fun _ _ => True%I;
+       cl_P     := True%I |}.
 
   (* ...AT THE TRIVIAL PAYLOAD, which is what every generic process forks
      with: a generic child's exit owes its parent nothing.  The four-argument
@@ -538,8 +562,9 @@ Section UexecExecInst.
           ([AppInv.app_sup], which is what the generic slot's supply law
           hands over -- [FsAbsInvFire.fsabs_fileread_in], unchanged and
           stated at ANY [P]). *)
-       fileread_in (fd_st_of_key (xk_a W 0) (uvis_fd W)) (rf_F f) (rf_ret f)
-         (rf_in f) True%I
+       fileread_in (fd_st_of_key (xk_a W 0) (uvis_fd W))
+         (sys_rw_count (xk_a W 2)) (rf_F f) (rf_ret f)
+         (rf_in f) (rf_pq f) (rf_pqe f) True%I
      else if decide (n = 9) then
        chdir_au_pre (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (cf_P f) (cf_Pmiss f) (cf_Fo f)
@@ -556,7 +581,7 @@ Section UexecExecInst.
          (of_Fo f) (of_Ft f)
      else if decide (n = 16) then
        filewrite_in (fd_st_of_key (xk_a W 0) (uvis_fd W))
-         (sys_rw_count (xk_a W 2)) (uvis_M W) (xk_a W 1) (wf_Q f)
+         (sys_rw_count (xk_a W 2)) (uvis_M W) (xk_a W 1) (wf_Q f) (wf_Qe f)
      else if decide (n = 17) then
        (* ...and mknod's, at ITS path argument beside the two device
           numbers, for open's reason *)
@@ -583,6 +608,12 @@ Section UexecExecInst.
           costs the theorem nothing.  It is the only branch of this match
           that is not about the file system. *)
        (□ riscv_kill_cred)
+     else if decide (n = 21) then
+       (* CLOSE(21) PAYS THE BYTE QUEUE'S CLOSE LINK AT A PIPE KEY (design/
+          pipe.md, "The byte queue"), and nothing at any other -- the
+          generic slot pays it out of the taint, a program at the state its
+          handle names. *)
+       fileclose_cpay (fd_st_of_key (xk_a W 0) (uvis_fd W)) (cl_P f)
      else emp)%I.
 
   (* ...AND THE ARMED POST BACK, at the same key and the same families.
@@ -706,8 +737,8 @@ Section UexecExecInst.
           ⌜ProcPtOwn.proc_pt_wf P⌝ ∗
           ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
           fileread_extra_core (uvis_gen W) P (fd_st_of_key (xk_a W 0) (uvis_fd W))
-            (sys_rw_count (xk_a W 2)) (rf_F f) (rf_ret f) (rf_in f) r M'
-            (xk_a W 1))
+            (sys_rw_count (xk_a W 2)) (rf_F f) (rf_ret f) (rf_in f)
+            (rf_pq f) (rf_pqe f) r M' (xk_a W 1))
      else if decide (n = 9) then
        chdir_receipt (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (cf_P f) (cf_Pmiss f) (cf_Fo f) r cw'
@@ -730,9 +761,9 @@ Section UexecExecInst.
           ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
           ⌜ProcPtOwn.proc_pt_wf P⌝ ∗
           ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
-          filewrite_extra P (fd_st_of_key (xk_a W 0) (uvis_fd W))
+          filewrite_extra (uvis_gen W) P (fd_st_of_key (xk_a W 0) (uvis_fd W))
             (sys_rw_count (xk_a W 2)) (uvis_M W) (xk_a W 1)
-            (wf_Q f) r)
+            (wf_Q f) (wf_Qe f) r)
      else if decide (n = 17) then
        mknod_arms (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (uvis_M W) (xk_a W 0)
@@ -747,6 +778,24 @@ Section UexecExecInst.
        mkdir_arms (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
          (df_Fok f) (df_Fex f) r
+     else if decide (n = USYS_pipe) then
+       (* PIPE(4) HANDS THE PROCESS THE NEW PIPE'S FRAGMENT (design/pipe.md,
+          "The byte queue"): the two descriptors it installed name one
+          pipe, and its byte queue's exact fragment comes out at the birth
+          state.  Which two descriptors is restated here rather than read
+          off [UsysMemOk.usys_fd_ok]'s pipe row, because that row binds
+          its witnesses independently; the two scans make them the same. *)
+       (⌜uint r = 0⌝ -∗
+        ∃ (a b : nat) (γp : pipe_names),
+          ⌜a <> b /\ fd_least_closed (uvis_fd W) a
+           /\ fd_least_closed (<[a := FdOpen true false (FdPipe γp)]> (uvis_fd W)) b
+           /\ fdv' = <[b := FdOpen false true (FdPipe γp)]>
+                        (<[a := FdOpen true false (FdPipe γp)]> (uvis_fd W))⌝ ∗
+          pipe_qfrag (pn_queue γp) pst0)
+     else if decide (n = 21) then
+       (* CLOSE(21): the close payment's answer -- the link fired (the
+          end's last close), or the payment back *)
+       fileclose_cpost_any (fd_st_of_key (xk_a W 0) (uvis_fd W)) (cl_P f)
      else emp)%I.
 
   (* THE SLOT FAMILY OCCURS IN ONE BRANCH OF THE DEPOSIT -- exec's slot wand
@@ -907,13 +956,13 @@ Section UexecExecInst.
     destruct (decide (n = USYS_exec)) as [He | _];
       [ exfalso; exact (Hne He) | ].
     destruct (decide (n = 5)) as [_ | _];
-      [ iModIntro; iApply (fsabs_fileread_in with "Hlic Hsup") | ].
+      [ iModIntro; iApply (fsabs_fileread_in with "Hlic Hsup Hkc") | ].
     destruct (decide (n = 9)) as [_ | _];
       [ iModIntro; iApply fsabs_chdir_pre | ].
     destruct (decide (n = 15)) as [_ | _];
       [ iModIntro; iApply (fsabs_open_in with "Hsup") | ].
     destruct (decide (n = 16)) as [_ | _];
-      [ iApply (fsabs_filewrite_in with "Hsup Hlic") | ].
+      [ iApply (fsabs_filewrite_in with "Hsup Hlic Hkc") | ].
     destruct (decide (n = 17)) as [_ | _];
       [ iModIntro; iApply (fsabs_mknod_pre with "Hsup") | ].
     destruct (decide (n = 18)) as [_ | _];
@@ -925,6 +974,10 @@ Section UexecExecInst.
     (* row 6: the kill price, straight off the supply's second conjunct *)
     destruct (decide (n = 6)) as [_ | _];
       [ iModIntro; iExact "Hkc" | ].
+    (* row 21: a pipe's close link, paid by the taint -- the same
+       credential, read as [PipeQueue.pipe_taint_cred] *)
+    destruct (decide (n = 21)) as [_ | _];
+      [ iModIntro; iApply (fileclose_cpay_taint with "Hkc") | ].
     by iModIntro.
   Qed.
 
@@ -1120,7 +1173,7 @@ Section UexecExecInst.
     xv6_free n ->
     ⊢ |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X n f W.
   Proof.
-    intros (Hx & H5 & H6 & H15 & H16 & H17 & H18 & H19 & H20).
+    intros (Hx & H5 & H6 & H15 & H16 & H17 & H18 & H19 & H20 & H21).
     iAssert (|==> xv6_sbundle X n (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
           iSplitR; [ done | iExact "Hb" ] ].
@@ -1137,6 +1190,7 @@ Section UexecExecInst.
     destruct (decide (n = 19)) as [He | _]; [ exfalso; exact (H19 He) | ].
     destruct (decide (n = 20)) as [He | _]; [ exfalso; exact (H20 He) | ].
     destruct (decide (n = 6)) as [He | _]; [ exfalso; exact (H6 He) | ].
+    destruct (decide (n = 21)) as [He | _]; [ exfalso; exact (H21 He) | ].
     by iModIntro.
   Qed.
 
@@ -1175,10 +1229,20 @@ Section UexecExecInst.
   Lemma sbundle_at_read_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
     sbundle_at X 5 f W -∗
     fileread_in (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
-      (rf_F f) (rf_ret f) (rf_in f) True%I.
+      (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2)))
+      (rf_F f) (rf_ret f) (rf_in f) (rf_pq f) (rf_pqe f) True%I.
   Proof.
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_take. iExact "H".
+  Qed.
+
+  (* ...and close's (design/pipe.md): the pipe arm's close payment *)
+  Lemma sbundle_at_close_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
+    sbundle_at X 21 f W -∗
+    fileclose_cpay (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W)) (cl_P f).
+  Proof.
+    iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
+    do 10 xv6_skip. xv6_take. iExact "H".
   Qed.
 
   Lemma sbundle_at_chdir_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
@@ -1206,7 +1270,7 @@ Section UexecExecInst.
     sbundle_at X 16 f W -∗
     filewrite_in (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (uvis_M W)
-      (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f).
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f) (wf_Qe f).
   Proof.
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
@@ -1401,7 +1465,7 @@ Section UexecExecInst.
     (uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)) ->
     fileread_extra_core (uvis_gen W) P (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (rf_F f) (rf_ret f)
-      (rf_in f) r M' (tf_w (uvis_tf W) (tf_arg_idx 1)) -∗
+      (rf_in f) (rf_pq f) (rf_pqe f) r M' (tf_w (uvis_tf W) (tf_arg_idx 1)) -∗
     spost_at X 5 f W r M' fdv' cw' cs'.
   Proof.
     intros Hret Hpm Hwf Hlz. iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
@@ -1434,7 +1498,7 @@ Section UexecExecInst.
     rewrite Hfd.
     iDestruct (fileread_extra_core_m1_why (uvis_gen W) P rb
                  (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2)))
-                 (rf_F f) (rf_ret f) (rf_in f) r M'
+                 (rf_F f) (rf_ret f) (rf_in f) (rf_pq f) (rf_pqe f) r M'
                  (tf_w (uvis_tf W) (tf_arg_idx 1)) Hlt Hr
                  with "Hcore") as "(#Hwhy & Hcore)".
     iSplitR "Hcore"; [ iExact "Hwhy" | ].
@@ -1477,9 +1541,9 @@ Section UexecExecInst.
     perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
     ProcPtOwn.proc_pt_wf P ->
     (uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)) ->
-    filewrite_extra P (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
+    filewrite_extra (uvis_gen W) P (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (uvis_M W)
-      (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f) r -∗
+      (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f) (wf_Qe f) r -∗
     spost_at X 16 f W r M' fdv' cw' cs'.
   Proof.
     intros Hpm Hwf Hlz. iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
@@ -1540,7 +1604,7 @@ Section UexecExecInst.
   Lemma spost_at_emp (X : uvis -d> iPropO Σ) (n : Z) (f : xfam) (W : uvis)
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
     ~ (n = 5 \/ n = 9 \/ n = 15 \/ n = 16 \/ n = 17 \/ n = 18 \/ n = 19
-       \/ n = 20 \/ n = 7) ->
+       \/ n = 20 \/ n = 7 \/ n = 4 \/ n = 21) ->
     ⊢ spost_at X n f W r M' fdv' cw' cs'.
   Proof.
     intros Hne. rewrite /spost_at /= /xv6_spost.
@@ -1554,7 +1618,36 @@ Section UexecExecInst.
     destruct (decide (n = 18)) as [He | _]; [ exfalso; apply Hne; tauto |].
     destruct (decide (n = 19)) as [He | _]; [ exfalso; apply Hne; tauto |].
     destruct (decide (n = 20)) as [He | _]; [ exfalso; apply Hne; tauto |].
+    destruct (decide (n = USYS_pipe)) as [He | _];
+      [ exfalso; apply Hne; unfold USYS_pipe in He; tauto |].
+    destruct (decide (n = 21)) as [He | _]; [ exfalso; apply Hne; tauto |].
     done.
+  Qed.
+
+  (* ...AND THE TWO NEW POST INTRODUCTIONS (design/pipe.md): pipe's, at the
+     descriptors the dispatcher's own arm names, and close's. *)
+  Lemma spost_at_pipe_intro (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
+      (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
+    (⌜uint r = 0⌝ -∗
+     ∃ (a b : nat) (γp : pipe_names),
+       ⌜a <> b /\ fd_least_closed (uvis_fd W) a
+        /\ fd_least_closed (<[a := FdOpen true false (FdPipe γp)]> (uvis_fd W)) b
+        /\ fdv' = <[b := FdOpen false true (FdPipe γp)]>
+                     (<[a := FdOpen true false (FdPipe γp)]> (uvis_fd W))⌝ ∗
+       pipe_qfrag (pn_queue γp) pst0) -∗
+    spost_at X USYS_pipe f W r M' fdv' cw' cs'.
+  Proof.
+    iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
+    do 9 xv6_skip. xv6_take. iExact "H".
+  Qed.
+
+  Lemma spost_at_close_intro (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
+      (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
+    fileclose_cpost_any (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W)) (cl_P f) -∗
+    spost_at X 21 f W r M' fdv' cw' cs'.
+  Proof.
+    iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
+    do 10 xv6_skip. xv6_take. iExact "H".
   Qed.
 
 End UexecExecInst.

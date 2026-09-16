@@ -131,6 +131,8 @@ Require Import UexecApply.     (* [uslot_key_cong] -- the slot across the re-key
 Require Import UexecExecInst.  (* the class INSTANCE: the process's exec bundle *)
 Require Import SpecSysRead.    (* [sys_rw_count] -- the read's count, for [ut_live_out] *)
 Require Import SpecArgfd.      (* [fd_st_of_key] -- the descriptor the read names *)
+Require Import SpecFileclose.  (* [fileclose_cpays] -- exit's close payments *)
+Require Import PipeQueue.      (* [pipe_taint_cred] *)
 Require Import ConsoleInv.     (* [CONSOLE] -- the device the read row is about *)
 Require Import StackOwn.       (* [uint_zero_reg] *)
 Require Import FirstTok.       (* [fsabs_env] -- what the loop mints the bundle from *)
@@ -1057,6 +1059,30 @@ Definition ut_pay_in `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : C
     (f : sfam) (sc_v : mword 64) (tf : list (mword 64)) (U : ustate) : iProp Σ :=
   upay_at (pv_gen (us_V U)) sc_v tf f.
 
+(* THE EXIT ROW'S CLOSE PAYMENTS (design/pipe.md, "The byte queue"): at an
+   exit ecall the dying process closes every descriptor, and a pipe
+   descriptor's last close steps the pipe's exact ghost state, so the
+   trap's deposit at that number carries one close payment per row of the
+   table -- a link, or the taint.  Gated on the cause and the number, so
+   every other trap owes nothing.  Relayed to the dispatcher's
+   [SpecSyscall.sysc_exit_cpay] verbatim.  The generic slot pays it out of
+   the kill credential its supply carries; a verified program's exit leaf
+   pays it at the table it holds. *)
+Definition ut_exit_cpay `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
+    (sc_v : mword 64) (tf : list (mword 64)) (sts : list fdstate) : iProp Σ :=
+  (⌜sc_v = uecall_scause /\ usys_num tf = USYS_exit⌝ -∗ fileclose_cpays sts)%I.
+
+Lemma ut_exit_cpay_ne `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
+    (sc_v : mword 64) (tf : list (mword 64)) (sts : list fdstate) :
+  ~ (sc_v = uecall_scause /\ usys_num tf = USYS_exit) ->
+  ⊢ ut_exit_cpay sc_v tf sts.
+Proof. intros Hne. rewrite /ut_exit_cpay. iIntros (H). exfalso. exact (Hne H). Qed.
+
+Lemma ut_exit_cpay_taint `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : CurCtx}
+    (sc_v : mword 64) (tf : list (mword 64)) (sts : list fdstate) :
+  pipe_taint_cred -∗ ut_exit_cpay sc_v tf sts.
+Proof. iIntros "#Ht %_". by iApply fileclose_cpays_taint. Qed.
+
 (* the row's congruence: it reads the number and argument 0, both of which
    [TfUser.tf_ueq] carries (its second clause covers indices 5..35, and
    [tf_arg_idx 0] is 14). *)
@@ -1722,6 +1748,9 @@ Definition wp_usertrap_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, 
      every number, at the same frame fork's row is stated at
      -- [ut_pay_in] *)
   ut_pay_in f sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U))) U -∗
+  (* ...AND EXIT'S CLOSE PAYMENTS, one per descriptor row, at the same frame
+     -- [ut_exit_cpay] *)
+  ut_exit_cpay sc_v (<[tf_epc_idx := ret_pc sepc_v]> (pv_tf (us_V U))) sts -∗
   (* ...AND THE KILL ROW, owed at every cause and empty at all but the ones
      usertrap kills at -- [ut_kill_in] *)
   (* THE KEY'S GENERATION IS THE BLOCK'S (lane TRAP-ROWS, T2/T3).  Every

@@ -87,6 +87,7 @@ Require Import SpecConsolewrite.   (* [cons_out_chain_of_licence]: the
                                       of the supply's OUTPUT LICENCE *)
 Require Import SpecFilewrite.      (* [filewrite_in]: the one keyed input *)
 Require Import SpecFileread.       (* [fileread_in]: read's keyed input *)
+Require Import PipeQueue.          (* [pipe_taint_cred], [pipe_rpay_taint] / [pipe_wpay_taint]: the pipe arms' price *)
 Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its refund *)
 Import Defs.
 Require Import CtxIdDefs.
@@ -292,17 +293,23 @@ Section FsAbsInvFire.
      costs the generic process nothing new: it claims nothing about what
      came in ([rf_in] at [fun _ => True]) and the licence hands over a link
      at any [ws] whatever. *)
-  Lemma fsabs_fileread_in (st : fdstate) (P : iProp Σ) :
+  (* ...AND THE PIPE ARM IS PAID BY THE TAINT (design/pipe.md, "The byte
+     queue"): the generic process holds no fragment of any pipe, so its
+     read disconnects the pipe's ghost state at the application's taint --
+     the kill credential, which the supply already carries. *)
+  Lemma fsabs_fileread_in (st : fdstate) (n : Z) (P : iProp Σ) :
     WpUart.out_licence -∗
-    app_sup -∗ fileread_in st (pfam_triv (fun _ _ _ _ => True%I))
-                            (fun _ _ => True%I) (fun _ => True%I) P.
+    app_sup -∗ pipe_taint_cred -∗
+    fileread_in st n (pfam_triv (fun _ _ _ _ => True%I))
+                     (fun _ _ => True%I) (fun _ => True%I)
+                     (fun _ => True%I) (fun _ _ => True%I) P.
   Proof.
-    rewrite /fileread_in. iIntros "#Hilic #Hsup HP".
+    rewrite /fileread_in. iIntros "#Hilic #Hsup #Htaint HP".
     destruct st as [| rb wb ty]; [iExact "HP" |].
     destruct rb; [| iExact "HP"].
-    destruct ty as [i γo om | | ma].
+    destruct ty as [i γo om | γp | ma].
     - iFrame "HP". iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
-    - iExact "HP".
+    - iFrame "HP". by iApply pipe_rpay_taint.
     - case_decide; [| iExact "HP"].
       iSplitL "HP".
       + iApply (ConsoleInv.cons_acc_cred fsc_cons app_sup
@@ -342,17 +349,19 @@ Section FsAbsInvFire.
      therefore a PREMISE here, exactly as [app_sup] is. *)
   Lemma fsabs_filewrite_in (st : fdstate) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) :
-    app_sup -∗ out_licence -∗ |==> filewrite_in st n M ua (fun _ => True%I).
+    app_sup -∗ out_licence -∗ pipe_taint_cred -∗
+    |==> filewrite_in st n M ua (fun _ => True%I) (fun _ _ => True%I).
   Proof.
-    iIntros "#Hsup #Hlic".
+    iIntros "#Hsup #Hlic #Htaint".
     rewrite /filewrite_in.
     destruct st as [| rb wb ty]; [by iModIntro |].
     destruct wb; [| by iModIntro].
-    destruct ty as [i γo om | | ma].
+    destruct ty as [i γo om | γp | ma].
     - iModIntro.
       iApply (fsabs_awrite_chain fsc_fs i γo M ua 0%nat (wchunks n)
                 with "Hsup").
-    - by iModIntro.
+    - (* the pipe arm: the taint *)
+      iModIntro. by iApply pipe_wpay_taint.
     - iModIntro. iApply (cons_out_chain_of_licence with "Hlic").
   Qed.
 

@@ -125,7 +125,11 @@ Section UkReadRows.
        kf_lend  := emp%I;
        kf_xpay  := Q;
        rf_ret   := Rd;
-       rf_in    := Rin |}.
+       rf_in    := Rin ;
+       rf_pq    := fun _ => True%I;
+       rf_pqe   := fun _ _ => True%I;
+       wf_Qe    := fun _ _ => True%I;
+       cl_P     := True%I |}.
 
   (* THE INODE MEMBER: [rf_F] is the observation commit's receipt, and the
      two console fields are the unit. *)
@@ -174,7 +178,11 @@ Section UkReadRows.
        kf_lend  := emp%I;
        kf_xpay  := Q;
        rf_ret   := fun _ _ => True%I;
-       rf_in    := fun _ => True%I |}.
+       rf_in    := fun _ => True%I ;
+       rf_pq    := fun _ => True%I;
+       rf_pqe   := fun _ _ => True%I;
+       wf_Qe    := fun _ _ => True%I;
+       cl_P     := True%I |}.
 
   (* =================================================================== *)
   (*  2.  THE PAIR                                                        *)
@@ -196,15 +204,18 @@ Section UkReadRows.
      enter as PURE premises, because a program names the argument word and
      the table it believes the key carries, not the key. *)
   Lemma sbundle_at_read_intro (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
-      (v0 : mword 64) (sts : list fdstate) :
-    tf_w (uvis_tf W) (tf_arg_idx 0) = v0 -> uvis_fd W = sts ->
-    fileread_in (fd_st_of_key v0 sts) (rf_F f) (rf_ret f) (rf_in f) True%I -∗
+      (v0 v2 : mword 64) (sts : list fdstate) :
+    tf_w (uvis_tf W) (tf_arg_idx 0) = v0 ->
+    tf_w (uvis_tf W) (tf_arg_idx 2) = v2 ->
+    uvis_fd W = sts ->
+    fileread_in (fd_st_of_key v0 sts) (sys_rw_count v2) (rf_F f) (rf_ret f) (rf_in f)
+      (rf_pq f) (rf_pqe f) True%I -∗
     sbundle_at X USYS_read f W.
   Proof.
-    intros H0 Hfd. iIntros "H".
+    intros H0 H2 Hfd. iIntros "H".
     (* the REWRITE GOES FIRST, against the lemma's own variables
        ([UConsOpen.sbundle_at_open_intro_at]'s note) *)
-    rewrite -H0 -Hfd.
+    rewrite -H0 -H2 -Hfd.
     rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -228,7 +239,7 @@ Section UkReadRows.
       ⌜proc_pt_wf P⌝ ∗
       ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
       fileread_extra_core (uvis_gen W) P (fd_st_of_key v0 sts) (sys_rw_count v2)
-        (rf_F f) (rf_ret f) (rf_in f) r M' v1.
+        (rf_F f) (rf_ret f) (rf_in f) (rf_pq f) (rf_pqe f) r M' v1.
   Proof.
     intros H0 H1 H2 Hfd. iIntros "H".
     rewrite -H0 -H1 -H2 -Hfd.

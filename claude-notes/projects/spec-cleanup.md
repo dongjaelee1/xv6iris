@@ -638,6 +638,55 @@ carries the full block; the headlines:
    because open's bundle has been path-fixed and cursor-carrying since
    TL-3K.
 
+**TL-3R AS LANDED (THE ROOTED VIEW; WALL C CLOSED; THE CREATE FAMILY'S
+BUNDLES SUPPLIED)** — branch `tl3r-rooted`; `AppEcho.v`/`AppInv.v`
+untouched, whole iris tree green on the mirror, system audit 13 / echo
+audit 14.  `design/user-tree.md` §7.9 carries the full block; the
+headlines:
+
+1. **§7.8's RULING BUILT, and it closes FOUR walls at once.**  `TreeView`
+   §9 is the rooted view (`aview_rooted` / `own_rooted`, source form) with
+   its preservation at every landed leg; `AppTree.tree_body` carries both.
+   WALL C, §7.4's wall 2 (the child's UNARM), mkdir's second credential
+   ((C-iii-b) — it needed NO second mechanism, it is the same conjunct at
+   the same instant) and TL-2's rmdir-shaped wall all fall.
+2. **THE ARM'S CREDENTIAL COST THE KERNEL NOTHING.**  §7.8 priced a change
+   to `aarm_commit_at`'s receipt; `FsAbsCreateFire.cre_arm_fired` ALREADY
+   carries an `∃ av, ⌜av !! i = None⌝` beside the application's own
+   receipt, so the tree's `Farm` simply records the pure
+   `⌜i ∉ dom (tv_nodes t)⌝`.  Kernel tier untouched.
+3. **ONE DEED ANSWERS FOUR `∗`-JOINED LEGS** — the shape finding, and the
+   reason a bundle is suppliable at all: the deed goes into the ARM's leg
+   and rides the arm's RECEIPT to whichever of the parent leg / unarm
+   fires, which is `FsAbsCreateFire`'s own permit argument at a different
+   resource.  `TreeMove.tree_cre_commits` is the whole four-leg bundle from
+   one deed; `tree_mknod_au`, `tree_mkdir_au` and `tree_open_create_au`
+   supply the three path-fixed bundles at a parent prefix of LENGTH ZERO,
+   with the PURE cursor `⌜d = ROOTINO⌝` — so (R)'s split cursor is STILL
+   not on the critical path.
+4. **TWO NEW PREMISES, and one of them §7.8 did not name.**  create's
+   parent leg needs `e !! nm = None` (an edge insert at an OCCUPIED name
+   destroys an edge, so reach can SHRINK) — it is `cre_pre`'s own second
+   conjunct.  unlink's entry leg needs its target's SHAPE ("no proper
+   out-edge"), which is `unl_pre`'s `dots_only`.  "Nobody's root" is
+   DERIVED at both, never premised.
+5. **UNLINK: THE BLOCKER IS A QUANTIFIER, NOT A CREDENTIAL** — corrects
+   §7.7.  `TreeMove.tree_utgt_phases_rooted` pays the target leg AT A GIVEN
+   TARGET at ANY kind.  What is left is two kernel-tier seams, both
+   TL-3K-shaped: (i) `utgt_commit_at` binds its target inside with NO
+   CURSOR, so a supplier owes a step at a row that IS named, where the
+   delta leaves a dangling entry and nobody has a step; (ii) there is no
+   channel from the ENTRY leg's receipt to the TARGET leg, so the moved
+   deed cannot reach it (`cre_arm_fired`'s trick, at the unlink family).
+6. **DELIVERABLES 4-5 DID NOT LAND** and what is left is U-TIER ASSEMBLY
+   ONLY, with a landed model (`UInitCons`'s mknod step: `udepwf_at` out of
+   `mknod_arms`, the `spost_at` read, the success/fail folds; mkdir is row
+   20, `open(O_CREATE)` row 15).  No new tree-tier lemma is needed.
+   `UkTreeWrite.wp_uk_tree_write_moves` is unchanged.  Also owed: era 0's
+   mint now takes `aview_rooted` of the mkfs image (`tree_init` /
+   `tree_init_at`), a pure computation TL-4 already owed `aview_tree_wf`
+   for.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

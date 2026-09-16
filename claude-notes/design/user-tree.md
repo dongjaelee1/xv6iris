@@ -712,8 +712,12 @@ subtree cannot build the step and falls to the taint arm, as §3 says.
   ((C-iii), the rooted view) designed and priced; the phase-2 cursor seam
   RULED (a split cursor, and not on the critical path).  What the family
   now waits on is exactly ONE premise, `aview_no_edge_to (abs_view I) i`.
-- [ ] **ROOTED-VIEW (C-iii)** — the next lane, and the only thing between
-  here and the first create corollary; §7.7 prices it.
+- [x] **ROOTED-VIEW (C-iii)** — LANDED as **TL-3R** (branch `tl3r-rooted`),
+  §7.9: both conjuncts in, WALL C closed at EVERY child kind ((C-iii-a)
+  AND (C-iii-b)), §7.4's wall 2 closed, TL-2's rmdir wall lifted, and all
+  three create-family bundles SUPPLIED from one live deed at a length-zero
+  prefix.  What is left for the first create corollary is U-tier assembly
+  only; unlink waits on two kernel-tier seams §7.9(8) names.
 
 ### 7.4 TL-3W as landed
 
@@ -1358,7 +1362,14 @@ There is no create twin of §3c, for the same single reason.
     itself.  `UInitCons`'s `mknod("console")` is the landed precedent.
     The split cursor is owed only from prefix length 1 up.
 
-**WHAT TL-4 / THE NEXT LANE INHERITS.**  After TL-3C the owner's create
+**WHAT TL-4 / THE NEXT LANE INHERITS.**  (SUPERSEDED BY §7.9: TL-3R built
+(C-iii-a) AND (C-iii-b), and the paragraph below is right about the route
+and wrong in three details — the arm's credential cost the KERNEL nothing
+(`cre_arm_fired` already carries the arm's freshness, so the pure fact
+rides the APPLICATION's own `Farm`), the preservation sketch missed
+create's `e !! nm = None`, and what blocks unlink's target leg turned out
+to be a QUANTIFIER and not a credential.  Read §7.9 for the as-landed
+account; kept here as TL-3C's own pricing.)  After TL-3C the owner's create
 supplier is missing exactly ONE of `tree_acre_phases`'s premises —
 `aview_no_edge_to (abs_view I) i` — and (C-iii-a) is the cheapest route to
 it: one pure conjunct in `tree_body`, ~8 preservation lemmas in
@@ -1399,3 +1410,166 @@ unlink's target leg at a file likewise (a directory's last link — the
 rmdir shape — stays owed, TL-2's wall).  The split-cursor seam (R) is
 owed only from prefix length 1; the first corollaries and the test
 live at length 0, where the cursor is pure.
+
+### 7.9 TL-3R as landed — the rooted view, WALL C CLOSED, and the create family's bundles supplied from one deed
+
+**WHAT LANDED** (branch `tl3r-rooted`): §7.8's RULING in full — both
+conjuncts, source form — and with it WALL C, §7.4's wall 2, mkdir's
+second credential and TL-2's rmdir-shaped wall.  All three
+create-family bundles (`mknod`, `mkdir`, `open(O_CREATE)`) are now
+SUPPLIED at an owner of `/` from ONE live deed at a parent prefix of
+length zero.  `AppEcho.v` / `AppInv.v` untouched, whole tree green,
+system audit 13 / echo audit 14.
+
+**(1) THE TWO CONJUNCTS, AND WHERE THEY COST SOMETHING.**  `TreeView`
+§9 carries `aview_rooted` / `own_rooted` at §7.8's exact definitions,
+the edge-congruence workhorse (`aview_rooted_step_cong`: a leg that
+leaves `nstep` alone on PROPER names leaves both conjuncts alone —
+six of the landed legs are one line off it), and a preservation lemma
+per leg.  `tree_body` grows `⌜aview_rooted av⌝ ∗ ⌜own_rooted av own⌝`.
+
+THE ONE DEVIATION FROM "every landed statement unchanged", and it is
+forced: the two ENGINES — `AppTree.tree_step_gen` and
+`tree_step_move_gen` — take the rooted conjuncts IN and hand them OUT.
+Nothing weaker works: the old hypothesis is satisfiable by a step that
+files an entry at an unreachable source, so it cannot imply the new
+conjuncts.  Everything else is at its exact text: all twelve
+`tree_pres_*` / `tree_move_*_pure`, every `own_wf_*`, every
+`aview_tree_wf_*`, `tree_exact`, `own_sync`, `tree_resync`,
+`tree_grant`, both claim laws, and every step wand except the two that
+gain the premises (2) names.  (`tree_body_intro` / `_facts` / `_empty`
+move with the body, and `tree_init` / `tree_init_at` take the new
+conjunct at the mint — see (10).)  (`tree_step_pure` gains the same two
+inputs, for the same reason; `own_rooted_sync` / `_of_sync` are
+`own_wf_sync`'s twins and transfer it across the synced map.)
+
+**(2) THE TWO NEW PREMISES, AND ONE OF THEM IS NOT THE ONE §7.8
+NAMED.**
+  - **create's parent leg wants `e !! nm = None`** — NOT mentioned in
+    §7.7's preservation sketch, and it is not optional: `tedge_ins` at
+    an OCCUPIED name DESTROYS the edge that was there, so reach can
+    SHRINK and a source reachable only through the old target stops
+    being reachable.  It is `cre_pre`'s own second conjunct, so the
+    mover holds it and the fires pay nothing.
+  - **unlink's entry leg wants its target's SHAPE**: `fs_pname nm`,
+    `e !! nm = Some tg`, and "`tg` has no PROPER out-edge" — which is
+    `unl_pre`'s `dots_only` clause read through the new
+    `TreeMove.unl_pre_tgt_leaf`.  That is §7.7's "a path through `tg`
+    would have to leave `tg`", stated where it bites.
+    "The target is nobody's root" is NOT a premise: it is DERIVED, a
+    stranger's root by `own_wf`'s non-nesting (the mover reaches `tg`)
+    and the MOVER'S OWN root by the target's own shape (a node with no
+    proper out-edge reaches nothing but itself, so `d` would have to BE
+    `tg`, which its own edge refutes).
+
+**(3) THE ARM'S CREDENTIAL COST THE KERNEL NOTHING — the lane's first
+finding.**  §7.8 priced it as a change to `aarm_commit_at`'s receipt.
+It is not a change at all: `FsAbsCreateFire.cre_arm_fired Farm i` is
+ALREADY `∃ av, ⌜av !! i = None⌝ ∗ Farm.(pf_recv) av i`, so the
+APPLICATION's own `Farm` records `⌜i ∉ dom (tv_nodes t)⌝` and the
+kernel tier is untouched.  `TreeMove.tree_arm_fam` is that family; its
+supplier `tree_arm_commit` reads the claim at the arm's instant (where
+the row is absent from the VIEW and the tree's nodes ARE rows of the
+view) and parks the fact in the receipt.
+
+**(4) THE DERIVATION, AND IT CLOSES BOTH (C-iii-a) AND (C-iii-b).**
+`TreeView.aview_no_edge_to_rooted` (rooted + closed + the root owner's
+exactness + the receipt ⇒ `aview_no_edge_to av i`) and
+`root_not_armed_rooted` (a reachable row of the view is a node of the
+root owner's tree, so the armed inum is nobody's root).  Both feed
+`own_wf_ent` — the full one, not `own_wf_ent_leaf` — so
+`AppTree.tree_step_move_ent_rooted` and
+`TreeMove.tree_acre_phases_rooted` take NEITHER `aview_no_edge_to` nor
+`~ adir_at av i`, **and therefore cover MKDIR's DIRECTORY child**.
+(C-iii-b) needed no second mechanism: it is the same conjunct read at
+the same instant.
+
+**(5) HOW ONE DEED ANSWERS FOUR `∗`-JOINED LEGS — the lane's shape
+finding, and the reason a bundle is suppliable at all.**  `cre_commits`
+is a `∗` of four pieces and an owner has ONE deed, so the deed can sit
+in only one of them.  It goes in the **ARM's**, and rides the arm's
+RECEIPT to whichever of the two legs that can END the armed inode
+actually fires — the parent leg and the unarm each take
+`cre_arm_fired Farm i`, so each is supplied from `app_inv` alone.  That
+is `FsAbsCreateFire`'s own exclusion argument ("the kernel holds one
+permit per armed inode") at a different resource, and it is what makes
+`TreeMove.tree_cre_commits` — the WHOLE four-leg bundle — a lemma with
+one deed in its premise.  The dots leg is free at every owner (the tree
+hides the dots) and every other leg's refund is `True`, so a syscall
+that fails before the arm hands the deed straight back through `Farm`'s
+refund.
+
+**(6) §7.4's WALL 2 IS CLOSED.**  `AppTree.tree_step_unarm` is free at
+a row nothing names that is not `ROOTINO`, and `tree_pres_unarm` pays
+"nobody's root" out of `own_rooted` rather than out of the row's KIND —
+so the unarm works at mkdir's directory child too.  `TreeMove.
+tree_unarm_commit` is the supplier, off the same arm receipt.
+
+**(7) THE THREE BUNDLES, AT A LENGTH-ZERO PREFIX.**
+`TreeMove.tree_mknod_au`, `tree_mkdir_au` and `tree_open_create_au`
+supply `SpecSysMknod.mknod_au_at`, `SpecSysMkdir.mkdir_au_at` and
+`SysOpenDefs.open_au_create_at` from `app_inv` and a LIVE deed at
+`ROOTINO`.  The walk is the start cursor alone (`np_elems pl = []`, so
+`ep_hops_from` is `ep_hops_done`), the cursor is the PURE
+`⌜d = ROOTINO⌝` and the two-way iso to `npar_cur M pv P` is free — so
+(R)'s SPLIT CURSOR is still not on the critical path, exactly as §7.7
+predicted.  `dlookup`, the open observation and (at `O_TRUNC` clear)
+the truncate piece are free.  Premises: the path's parent prefix is
+empty, the walk starts at `ROOTINO`, and `ROOTINO ∈ dom (tv_nodes t)`
+(a fact about the owner's own tree — `TreeView.subtree_root_dom` is
+why every deed the claim ever hands out has it).
+
+**(8) UNLINK: THE CREDENTIAL IS NO LONGER THE BLOCKER, AND NEITHER IS
+THE KIND — the lane's main negative finding, and it CORRECTS §7.7.**
+`TreeMove.tree_utgt_phases_rooted` is the target leg AT A GIVEN
+TARGET: after the entry leg cut `d.nm`, the target is no node of the
+owner's MOVED tree, and the rooted view turns that into BOTH of
+`own_wf_unl_tgt`'s premises at the target leg's own view.  **So TL-2's
+rmdir-shaped wall falls too**: a DIRECTORY's last link is covered here,
+where `tree_step_unl_tgt_last` (which pays "nobody's root" from the
+target's KIND) reaches only a file or a device.
+What blocks the unlink corollary is now TWO KERNEL-TIER SEAMS, both
+TL-3K-shaped, and neither is a credential:
+  - **WALL A AT INSTANT 2.**  `SysUnlinkDefs.utgt_commit_at` binds its
+    target `t` INSIDE with no cursor, so a supplier owes a step at
+    EVERY row of every view at count ≥ 1 — including a row that IS
+    named, where `delta_unl_tgt` leaves a DANGLING ENTRY, breaks
+    `aview_closed`, and **no application has a step at all**.  The fix
+    is TL-3K's verbatim: a cursor `Pt : Z -> iProp Σ` beside the
+    commit's premise, read and handed back.
+  - **NO CHANNEL FROM THE ENTRY LEG TO THE TARGET LEG.**  create's two
+    child legs share the arm's receipt (`cre_arm_fired`); unlink's two
+    legs share nothing, so the MOVED deed the entry leg returns cannot
+    reach the target leg's AU.  The fix is `cre_arm_fired`'s trick at
+    the unlink family: `utgt_commit_at` takes the entry leg's receipt.
+Until both land there is no unlink corollary, and `tree_uent_commit`
+(TL-3C) stands at its new premises.
+
+**(9) THE STOP RULE DID NOT FIRE.**  Leg by leg: the dots, the dot,
+link's target leg and unlink's target leg above the last link leave
+`tview` alone; write and truncate edit a FILE row, so `nents` does not
+move; create's ARM adds a leaf at an inum nothing names; create's
+PARENT leg files an entry at a source the owner REACHES (its own tree's
+node, and its root is reachable by `own_rooted`); unlink's ENTRY leg
+cuts an edge whose target has no proper out-edge; unlink's TARGET leg
+and the UNARM remove a row nothing names and which is not `ROOTINO`.
+NO landed leg files an entry at an unreachable source.  (`sys_link`'s
+entry leg is not a leg of this claim — the tree layer offers no step
+for it and never did; §7.7's (C-i) refutation is about the FS
+invariant, not about `tree_body`.)
+
+**(10) WHAT TL-4 INHERITS.**  Everything SPEC-TIER for the create
+family is supplied.  What is left for the first corollary is U-TIER
+ASSEMBLY ONLY, and it has a landed model: `UInitCons`'s mknod step is
+the shape — `udepwf_at N m pc 17 fdep c` out of `mknod_arms`, the
+`spost_at` read at row 17, and the success/fail folds; `mkdir` is row
+20 and `open(O_CREATE)` row 15.  No new tree-tier lemma is needed for
+any of the three.  Beside that:
+  - `tree_init` / `tree_init_at` now take `aview_rooted av` (and
+    `tree_init_at` a `nreach (tview av) ROOTINO root`), so ERA 0's mint
+    owes a pure computation about the mkfs image — additive, and it is
+    where §7.4's "TL-4 must compute `aview_tree_wf` of the image"
+    already pointed.
+  - the unlink corollary waits on §7.9(8)'s two kernel-tier seams.
+  - `UkTreeWrite.wp_uk_tree_write_moves` is UNCHANGED: no corollary and
+    no extended test landed in TL-3R.

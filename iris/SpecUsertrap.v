@@ -1270,9 +1270,9 @@ Lemma ut_sys_in_cong `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : C
   ut_sys_in n f sc_v tf' U' sts gn cs pid.
 Proof.
   intros Hn HM Ha0 Ha1 Ha2 Hcw Hpi Hsz Hlz. rewrite /ut_sys_in. iIntros "H %Hc".
-  destruct Hc as (Hce & Hcn & Hcx & Hcf).
+  destruct Hc as (Hce & Hcn & Hcf).
   iDestruct ("H" with "[%]") as "H";
-    [ split_and!; [ exact Hce | rewrite Hn; exact Hcn | exact Hcx | exact Hcf ] |].
+    [ split_and!; [ exact Hce | rewrite Hn; exact Hcn | exact Hcf ] |].
   iEval (rewrite (sbundle_at_cong uslot n f (uvis_of U sts gn cs pid)
                     (uvis_of U' sts gn cs pid)
                     ltac:(rewrite /skey_eq; split_and!;

@@ -107,3 +107,5 @@ import Xv6.ProofKvmmap
 import Xv6.LinkKvmmap
 import Xv6.SpecKvminit
 import Xv6.SpecTrapinit
+import Xv6.ProofTrapinit
+import Xv6.LinkTrapinit

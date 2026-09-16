@@ -1,18 +1,21 @@
 # pipe-queue — the pipe's contents as exact ghost state
 
-STATUS: definitional layer LANDED as `996ddf76a` on branch `pipe-queue`
-(compiles through the whole spec cone: SpecSysWrite, SpecSyscall,
-SpecUsertrap, FsAbsInvFire, UexecExecInst, UkWriteLeaf).  The proof port is
-running in four lanes (2026-09-16): clones `/shared/xv6iris-3-pq-{A,B,C,D}`
-at branches `pq-{A,B,C,D}`, remote trees seeded warm from the lead's
-(memory: seed-lane-remote-trees), briefs in each clone's `scratch/`.  Red
-proof files at the branch point (pq16 build): ProofFileclose 151,
-ProofFileread 432, ProofFilestat 534, ProofFilewrite 1095, ProofKexit 888,
-ProofPipealloc 743, ProofPipeclose 116, ProofPiperead 627, ProofPipewrite
-623, ProofSysClose 331, ProofSysExit 139, ProofSysOpenParts 991,
-ProofSysPipe 804, ProofSysRead 327, ProofSysWrite 337, ProofSyscall 3223,
-ProofUsertrapTail 205, ProofUservec 1636, UkRunSys 487 -- none depends on
-another (the Module Types separate them), so the lanes are independent.
+STATUS (2026-09-16): definitional layer LANDED on branch `pipe-queue`
+(`996ddf76a`, repaired by `f636385f0` -- the write/read posts -- and
+`62d557bbe` -- the trap route's close payments; both repairs came out of
+the proof lanes and are described in `design/pipe.md`).  Lanes: PQ-B DONE
+and merged (`aae0c244f`); PQ-C 8 of 13 files done and merged
+(`e9157e38d`), the five trap-route files in progress against `62d557bbe`;
+PQ-A pipeclose/pipealloc done (`5914d67e9`, not yet merged), pipewrite/
+piperead in progress against `f636385f0`; PQ-D in progress.  Lane
+clones `/shared/xv6iris-3-pq-{A,B,C,D}` at branches `pq-{A,B,C,D}`,
+remote trees seeded warm from the lead's (memory: seed-lane-remote-trees),
+briefs in each clone's `scratch/`.  The red proof files at the branch
+point were: ProofFileclose, ProofFileread, ProofFilestat, ProofFilewrite,
+ProofKexit, ProofPipealloc, ProofPipeclose, ProofPiperead, ProofPipewrite,
+ProofSysClose, ProofSysExit, ProofSysOpenParts, ProofSysPipe, ProofSysRead,
+ProofSysWrite, ProofSyscall, ProofUsertrapTail, ProofUservec, UkRunSys --
+none depends on another (the Module Types separate them).
 Design of record: `design/pipe.md`, "The byte queue".  Read it first; this
 file is only what is left to do and who does it.
 
@@ -118,10 +121,25 @@ file is only what is left to do and who does it.
   `free_num` or the supply.
 
 ## Open, recorded
-- The exit deposit at the U tier: a verified program pays
-  `fileclose_cpays fdv` at its exit leaf with its own `fdv` in hand; for a
-  pipe row it did not create (a fork inherits rows, not fragments) the link
-  comes from the application invariant holding the fragment.  Application
-  design, not kernel.
+- The teardown deposit at the U tier (design/pipe.md, "The exit path"):
+  `ut_exit_cpay` is `fileclose_cpays sts` at EVERY trap (a process can be
+  found killed at any trap), and nothing is refunded on resume, so a
+  verified program that keeps a pipe's fragment across traps cannot pay
+  it with links today.  Two candidate repairs, both application-tier: a
+  refund on the resume route (`ut_kill_out` already refunds the non-ecall
+  kill deposit; the syscall post rows would have to carry the ecall
+  side), or a kill row that carries the killer's taint (`kkill` has the
+  credential; `setkilled`'s `kill_owed` arm does not, so the self-kill
+  would need its own source).  Also: two rows on one pipe cannot be paid
+  by two independent links from one exclusive fragment -- kexit's table
+  payment would need to be sequential (the second row's payment as a
+  function of the first's post, as `ProofSysPipe`'s rollback does) for a
+  program holding both ends.  The generic slot is unaffected (taint).
+- `fileclose_cpost`'s `last` flag is `bool_decide (q = 1)`: a last close
+  by a partial-fraction holder still gets the fired arm but cannot be told
+  it was last (lane B).  Sound; weaker than the name suggests.
+- Promotion candidates from the lanes' local lemmas: `ProofSysPipe`'s
+  `sp_clink_relink` (a close link whose payload is the exact fragment can
+  be re-aimed at the other end once fired) into `PipeQueue.v`.
 - A lease-style "nobody else moved it" upgrade is unnecessary now: the
   fragment is exact, and interference shows up as the taint.

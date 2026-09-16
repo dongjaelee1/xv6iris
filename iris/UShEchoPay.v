@@ -133,6 +133,11 @@ Section UShEchoPay.
     (⊢ □ riscv_kill_cred -∗ T) ->
     ⊢ era_pin γ (S gen_id) v -∗
       echo_links T γ -∗
+      (* ...and whether the exec'ing process's table held a pipe row
+         (design/pipe.md, "The exit path"): echo's table IS sh's
+         ([SpecKexec.kexec_image_ok_fd]), echo's run carries the fact, and
+         echo's exit leaf mints the tear-down's bundle row off it. *)
+      UkRun.urun_nopipe sts -∗
       udep (PS := uprogSG_free) -∗
       (* the taint's generic slot, at any constant payload *)
       □ (∀ (R : iProp Σ) (W : uvis),
@@ -143,7 +148,7 @@ Section UShEchoPay.
       uslot W'.
   Proof.
     intros Hok Hroom Hfdl Hlzf Hna Halen Hafun Hfd1 Hkt.
-    iIntros "#Hpin #Hlk #Hdep #Hgen Hmp Hc".
+    iIntros "#Hpin #Hlk #Hnpw #Hdep #Hgen Hmp Hc".
     destruct (echo_kexec_pages na alen afun sts W' Hok)
       as (Hpc & Hsub & Hx & Hwr & Hrp).
     destruct (echo_kexec_entry_rows na alen afun sts W' Hok Hroom Hfdl Hwr Hrp)
@@ -155,6 +160,9 @@ Section UShEchoPay.
     assert (Hfd : uvis_fd W' = sts)
       by (destruct Hok as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H & _); exact H).
     destruct Hfd1 as [rb Hl1]. rewrite <- Hfd in Hl1.
+    (* ...and the table fact at the RESUMED key, by the same equation *)
+    iAssert (UkRun.urun_nopipe (uvis_fd W')) as "#Hnpw'";
+      [ rewrite Hfd; iExact "Hnpw" | ].
     (* echo's .rodata, off the same image as its text *)
     assert (Hsub2 : echo_data_sub (uvis_M W')).
     { destruct Hok as (_ & _ & _ & _ & _ & Himg & _).
@@ -177,7 +185,7 @@ Section UShEchoPay.
               ltac:(intros x y; reflexivity)
               Hst Hargv Hl1 Hpc Hsub Hsub2 Hx Hroom96 Hal8 Hstkrow Hargsrow
               Havd Havs Hfdlen Hstop Hlzf
-              with "[] Hpin Hlk Hdep Hmp [Htn]").
+              with "[] Hpin Hlk Hnpw' Hdep Hmp [Htn]").
     - (* THE BLOCK'S END PAYS THE EXIT: twelve bytes on, the choice filed,
          the credential is the shell's next prompt's *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iRight.
@@ -237,7 +245,7 @@ Section UShEchoPay.
       iExists v. iFrame "Hpin Hc". }
     { rewrite Hpeq. iExact "Hgen'". }
     rewrite /uexec_sup_run.
-    iIntros (M pm sz fdv cs pidv) "Hheap Hufd".
+    iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
     (* the node, read ONCE off the lent heap *)
     iAssert (⌜ echo_node_img M s0 t g ⌝)%I as %Himg.
     { iApply (echo_node_img_of_cmd with "Hheap Hcmd"). }
@@ -270,7 +278,7 @@ Section UShEchoPay.
       iApply (echo_slot_of_kexec_at na alen afun fdv W' v np Hok
                 (echo_room_of_det na alen Hna Halen)
                 Hlen Hlzf Hna Halen Hafun Hfd1' Hkt
-                with "Hpin Hlk Hdep Hgen Hmp Hc"). }
+                with "Hpin Hlk Hnpw Hdep Hgen Hmp Hc"). }
     iFrame "Hstd Hcr".
   Qed.
 

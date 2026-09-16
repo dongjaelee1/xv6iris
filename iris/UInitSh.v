@@ -1022,6 +1022,11 @@ Section UInitSh.
          (UkSh.ush_wcp Wc Wb l i 0%nat ∨ T) -∗
          UkSh.ush_posb N γp T Wc Wb (Pm γp) l 0%nat) ->
     (forall n : nat, ⊢ Wp n -∗ Wc n 0%nat) ->
+    (* ...and whether /init's own table holds a pipe row (design/pipe.md,
+       "The exit path"): sh's table IS this one
+       ([SpecKexec.kexec_image_ok_fd]), sh's run carries the fact between
+       traps, and sh's exit leaf mints the tear-down's bundle row off it. *)
+    UkRun.urun_nopipe fdv -∗
     udep (PS := uprogSG_free) -∗
     □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
     UShKernel.sh_prompt_law (PS := uprogSG_free) Wc -∗
@@ -1045,7 +1050,7 @@ Section UInitSh.
   Proof.
     intros Hpsok_free Hn0 Hsav Hsro Hl Hcs Hpid Hlen
            Hrl Hpm1 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw.
-    iIntros "#Hdep #Hdp #Hplaw #Hcons #Hfd0 #Hgen'".
+    iIntros "#Hnpw #Hdep #Hdp #Hplaw #Hcons #Hfd0 #Hgen'".
     rewrite /image_entry. iModIntro.
     iIntros (na alen afun W')
       "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq %Hargs #Hmp
@@ -1100,7 +1105,7 @@ Section UInitSh.
                   (ucons_pay_const cn γp T (UkInit.init_rd Rdl Wb)) Hok Hcwd0
                   (init_sh_room alen n0 Halen Hn0) Hlen Hlzf Hch0 Hpid1) as Hsk.
     idtac "MARK-s4c-pose-ok".
-    iApply (Hsk with "[] Hdep Hdp Htag Hplaw [] [] Hcons Hgen' Hmp Hps
+    iApply (Hsk with "[] Hnpw Hdep Hdp Htag Hplaw [] [] Hcons Hgen' Hmp Hps
                       Hls Hwcp").
     - (* THE KEY'S OWN READING (lane SH-STATE): [sh_pay_state]'s wand
          takes [UShKernel.sh_pay_key], and the two facts it is derived
@@ -1337,7 +1342,7 @@ Section UInitSh.
       rewrite /UkInit.init_lend_ref. iFrame "Hstd Hps Hls Hcred". }
     { rewrite Hpeq. iExact "Hgen'". }
     rewrite /uexec_sup_run_ids.
-    iIntros (M pm sz fdv cs pidv) "Hheap Hufd Hids".
+    iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd Hids".
     (* ---- THE TWO IDENTITY READINGS (lane EXEC-SEAM), off the lent
        authorities against the child's own fragments: the key's children
        set is EMPTY and its pid is not <init>'s.  Both are pure, so the
@@ -1427,7 +1432,7 @@ Section UInitSh.
                 ltac:(rewrite Hpv; exact Hp1) Hlen
                 (Hrl γp) (Hpm1 γp) (Hpm3 γp) (Hpmwb γp) (Hwc γp)
                 Hwbwc Hwbl (Hwbr γp) (fun N0 l0 n1 => Hbd γp N0 l0 n1) Hpw
-                with "Hdep Hdp Hplaw Hcons Hfd0 Hgen'"). }
+                with "Hnpw Hdep Hdp Hplaw Hcons Hfd0 Hgen'"). }
     (* ...AND THE LINEAR PAYLOAD, WHOLE: [PinnedExec]'s one [Pay] slot is
        sh's persistent state, the position init minted for this round, the
        lease, and the ledger with its credential. *)

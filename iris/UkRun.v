@@ -837,6 +837,15 @@ Section UkRun.
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
        (fdv : list fdstate) (gn : gname) (cs : gset gname) (pidv : mword 32),
        my_pay gn (ukn_pay N) -∗
+       (* ...AND WHETHER THE KEY'S TABLE HOLDS A PIPE ROW, LENT WITH THEM
+          (design/pipe.md, "The exit path").  A pinned exec supply builds
+          the NEW image's entry, and an entry constructor now asks whether
+          the process's table holds a pipe row -- which is a fact about the
+          exec'ING process's table ([SpecKexec.kexec_image_ok_fd]) and
+          therefore about the very [fdv] this loan is at.  The leaf has it
+          in its run and it is persistent, so lending it costs nothing and
+          nothing comes back. *)
+       urun_nopipe fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
        (⌜psok n /\ n <> USYS_exec⌝
@@ -853,7 +862,7 @@ Section UkRun.
       (n : Z) (c : Z) :
     udepw N m pc n -∗ udepw_at N m pc n c.
   Proof.
-    iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp Hh Hf".
+    iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp _ Hh Hf".
     iApply ("Hd" $! M pm sz fdv c gn cs pidv with "Hmp Hh Hf").
   Qed.
 
@@ -872,7 +881,7 @@ Section UkRun.
        sbundle uslot n (uvis_of_run m pc M pm sz fdv c gn cs pidv false)) -∗
     udepw_at N m pc n c.
   Proof.
-    intros Hne Hnx. iIntros "Hb" (M pm sz fdv gn cs pidv) "_ Hh Hf".
+    intros Hne Hnx. iIntros "Hb" (M pm sz fdv gn cs pidv) "_ _ Hh Hf".
     iFrame "Hh Hf". iRight.
     iApply (sbundle_pay_of_sbundle uslot n (ukn_pay N) _ Hne Hnx). iApply "Hb".
   Qed.
@@ -882,7 +891,7 @@ Section UkRun.
       (m : regfile) (pc : mword 64) (c : Z) :
     uxsup -∗ udepw_at N m pc USYS_exec c.
   Proof.
-    iIntros "#Hx" (M pm sz fdv gn cs pidv) "_ Hh Hf".
+    iIntros "#Hx" (M pm sz fdv gn cs pidv) "_ _ Hh Hf".
     iFrame "Hh Hf". iRight. rewrite (ukn_triv_eq (N := N)). iApply "Hx".
   Qed.
 
@@ -899,7 +908,7 @@ Section UkRun.
       (m : regfile) (pc : mword 64) (c : Z) :
     uxsup_at (ukn_pay N) -∗ udepw_at N m pc USYS_exec c.
   Proof.
-    iIntros "#Hx" (M pm sz fdv gn cs pidv) "_ Hh Hf".
+    iIntros "#Hx" (M pm sz fdv gn cs pidv) "_ _ Hh Hf".
     iFrame "Hh Hf". iRight. iApply "Hx".
   Qed.
 
@@ -907,13 +916,13 @@ Section UkRun.
   Lemma udepw_at_mint (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (n : Z) (c : Z) (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm)
       (sz : Z) (fdv : list fdstate) (gn : gname) (cs : gset gname) (pidv : mword 32) :
-    udep -∗ my_pay gn (ukn_pay N) -∗ udepw_at N m pc n c -∗
+    udep -∗ my_pay gn (ukn_pay N) -∗ urun_nopipe fdv -∗ udepw_at N m pc n c -∗
     uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv ==∗
     uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
     sbundle_pay uslot n (ukn_pay N) (uvis_of_run m pc M pm sz fdv c gn cs pidv false).
   Proof.
-    iIntros "#Hdep #Hmp Hsb Hheap Hufd".
-    iDestruct ("Hsb" $! M pm sz fdv gn cs with "Hmp Hheap Hufd")
+    iIntros "#Hdep #Hmp #Hnpw Hsb Hheap Hufd".
+    iDestruct ("Hsb" $! M pm sz fdv gn cs with "Hmp Hnpw Hheap Hufd")
       as "(Hheap & Hufd & [%Hok | Hb])"; iFrame "Hheap Hufd";
       [ iApply (udep_dep n _ (ukn_pay N) (proj1 Hok) (proj2 Hok) with "Hdep")
       | by iModIntro ].
@@ -945,6 +954,15 @@ Section UkRun.
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
        (fdv : list fdstate) (gn : gname) (cs : gset gname) (pidv : mword 32),
        my_pay gn (ukn_pay N) -∗
+       (* ...AND WHETHER THE KEY'S TABLE HOLDS A PIPE ROW, LENT WITH THEM
+          (design/pipe.md, "The exit path").  A pinned exec supply builds
+          the NEW image's entry, and an entry constructor now asks whether
+          the process's table holds a pipe row -- which is a fact about the
+          exec'ING process's table ([SpecKexec.kexec_image_ok_fd]) and
+          therefore about the very [fdv] this loan is at.  The leaf has it
+          in its run and it is persistent, so lending it costs nothing and
+          nothing comes back. *)
+       urun_nopipe fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
        sbundle_pay_ref uslot (ukn_pay N)
@@ -956,8 +974,8 @@ Section UkRun.
     udepw_at_ref N m pc c -∗ udepw_at N m pc USYS_exec c.
   Proof.
     rewrite /udepw_at_ref /udepw_at.
-    iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp Hh Hf".
-    iDestruct ("Hd" $! M pm sz fdv gn cs pidv with "Hmp Hh Hf")
+    iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf".
+    iDestruct ("Hd" $! M pm sz fdv gn cs pidv with "Hmp Hnpw Hh Hf")
       as "(Hh & Hf & Hb)".
     iFrame "Hh Hf". iRight.
     iApply (sbundle_pay_of_ref with "Hb").
@@ -968,7 +986,7 @@ Section UkRun.
       (m : regfile) (pc : mword 64) (c : Z) :
     uxsup -∗ udepw_at_ref N m pc c.
   Proof.
-    iIntros "#Hx" (M pm sz fdv gn cs pidv) "_ Hh Hf".
+    iIntros "#Hx" (M pm sz fdv gn cs pidv) "_ _ Hh Hf".
     iFrame "Hh Hf".
     iAssert (sbundle_pay uslot USYS_exec (fun _ => True)%I
                (uvis_of_run m pc M pm sz fdv c gn cs pidv false)) as "Hb";
@@ -1032,7 +1050,7 @@ Section UkRun.
     udepwf_at N m pc n fdep c -∗ udepw_at N m pc n c.
   Proof.
     rewrite /udepwf_at /udepw_at. iIntros "[%Hpay Hd]".
-    iIntros (M pm sz fdv gn cs pidv) "Hmp Hh Hf".
+    iIntros (M pm sz fdv gn cs pidv) "Hmp _ Hh Hf".
     iDestruct ("Hd" $! M pm sz fdv gn cs pidv with "Hmp Hh Hf")
       as "(Hh & Hf & Hb)".
     iFrame "Hh Hf". iRight. iExists fdep.

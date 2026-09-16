@@ -1916,7 +1916,7 @@ Section UkRunSys.
     (* the whole point of the leaf: the key's cwd IS the one the caller's
        bundle is stated at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
-    iDestruct ("Hsb" $! M pm sz fdv gn cs pidv with "Hmy Hheap Hufd")
+    iDestruct ("Hsb" $! M pm sz fdv gn cs pidv with "Hmy Hnpx Hheap Hufd")
       as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".

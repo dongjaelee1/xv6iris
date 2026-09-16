@@ -1282,7 +1282,12 @@ Section UShEcho.
          [UShKernel.sh_slot_of_kexec]; the caller reads it off
          [SpecKexec.exec_slot_pre]'s wand ([PinnedExec.pex_slot]'s row). *)
       uvis_lazy W' = false ->
-      ⊢ udepw_law 16 -∗ udep -∗
+      ⊢ udepw_law 16 -∗
+        (* ...and whether the exec'ing process's table held a pipe row
+           (design/pipe.md, "The exit path"): echo's run carries it and its
+           exit leaf mints the tear-down's bundle row off it.  echo's table
+           IS the exec'ing process's ([SpecKexec.kexec_image_ok_fd]). *)
+        UkRun.urun_nopipe sts -∗ udep -∗
         my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
 
   Lemma echo_slot_of_kexec_holds : echo_slot_of_kexec.
@@ -1293,9 +1298,13 @@ Section UShEcho.
     destruct (echo_kexec_entry_rows na alen afun sts W' Hok Hroom Hfdl Hwr Hrp)
       as (Hroom96 & Hal8 & Hstkrow & Hargsrow & Havd & Havs
           & Hfdlen & Hstop).
-    iIntros "#Hwr #Hdep #Hmp".
+    iIntros "#Hwr #Hnpw #Hdep #Hmp".
+    (* echo's table IS the exec'ing process's, so the fact crosses by the
+       image row's own equation ([SpecKexec.kexec_image_ok_fd]) *)
+    iAssert (UkRun.urun_nopipe (uvis_fd W')) as "#Hnpw'";
+      [ rewrite (kexec_image_ok_fd _ na alen afun sts W' Hok); iExact "Hnpw" | ].
     iApply (echo_uexec_slot W' Hpc Hsub Hx Hroom96 Hal8 Hstkrow Hargsrow
-              Havd Havs Hfdlen Hstop Hlzf with "Hwr Hdep Hmp").
+              Havd Havs Hfdlen Hstop Hlzf with "Hwr Hnpw' Hdep Hmp").
   Qed.
 
   (* ---- THE ROOM BOUND, OFF THE ARGUMENT READING (lane EX-1) ---------- *)
@@ -1355,18 +1364,21 @@ Section UShEcho.
     echo_node_img M s0 t g ->
     UkShEcho.echo_argv_bytes g ->
     length sts = NOFILE ->
-    udepw_law 16 -∗ udep -∗
+    udepw_law 16 -∗
+    (* ...and the exec'ing process's table, pipe-free (design/pipe.md,
+       "The exit path") *)
+    UkRun.urun_nopipe sts -∗ udep -∗
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv (fun _ : Z => True)%I emp uslot.
   Proof.
-    intros Himg Hbytes Hfdl. iIntros "#Hwr #Hdep".
+    intros Himg Hbytes Hfdl. iIntros "#Hwr #Hnpw #Hdep".
     iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
     destruct (echo_args_det_holds M s0 t g na alen afun Himg Hbytes Hargs)
       as (Hna & Halen & _).
     rewrite /image_entry_at. iIntros "!>" (W') "%Hok _ %Hlzf _ _ Hmp _".
     iApply (echo_slot_of_kexec_holds na alen afun sts W' Hok
               (echo_room_of_det na alen Hna Halen) Hfdl Hlzf
-              with "Hwr Hdep Hmp").
+              with "Hwr Hnpw Hdep Hmp").
   Qed.
 
   (* =================================================================== *)

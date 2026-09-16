@@ -270,7 +270,14 @@ Section UexecCond.
      the two constructors need. *)
   Lemma sync_gate_slot (PF : uprogSG Σ) (W : uvis) :
     (forall k : Z, free_num k -> @psok Σ PF k) ->
-    sync_gate W -> udep (PS := PF) -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
+    sync_gate W ->
+    (* ...and whether the key's table holds a pipe row (design/pipe.md,
+       "The exit path"): the entry constructor puts it in the run, where
+       the exit leaf mints the tear-down's bundle row off it.  The generic
+       tail below holds the credential, which is the arm that answers at
+       ANY table. *)
+    UkRun.urun_nopipe (uvis_fd W) -∗
+    udep (PS := PF) -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof.
     intros Hpsok_free (Hteq & Hpc & Hxo & Hroom & Hal8 & Hstk & Hfdlen & Hlzf
                       & Hstop).
@@ -292,6 +299,12 @@ Section UexecCond.
   Lemma echo_gate_slot (PF : uprogSG Σ) (W : uvis) :
     echo_gate W ->
     udepw_law (PS := PF) 16 -∗
+    (* ...and whether the key's table holds a pipe row (design/pipe.md,
+       "The exit path"): the entry constructor puts it in the run, where
+       the exit leaf mints the tear-down's bundle row off it.  The generic
+       tail below holds the credential, which is the arm that answers at
+       ANY table. *)
+    UkRun.urun_nopipe (uvis_fd W) -∗
     udep (PS := PF) -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof.
     intros (Hteq & Hpc & Hxo & Hroom & Hal8 & Hstk & Hargs & Havd & Havs
@@ -336,10 +349,16 @@ Section UexecCond.
     my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof.
     intros Hpsok_free. iIntros "#Hwr #Hdep #Hsup #Hkc #Hgen #Hpay".
+    (* THE TABLE FACT THE TWO GATED ARMS NEED IS THE CREDENTIAL ITSELF
+       (design/pipe.md, "The exit path"): this slot answers at every cause,
+       so it already holds the kill credential, and that is the arm of
+       [UkRun.urun_nopipe] that is good at ANY table. *)
+    iAssert (UkRun.urun_nopipe (uvis_fd W)) as "#Hnpw";
+      [ iApply (UkRun.urun_nopipe_taint _ with "Hkc") | ].
     destruct (decide (sync_gate W)) as [Hgate | _].
-    { iApply (sync_gate_slot PF W Hpsok_free Hgate with "Hdep Hpay"). }
+    { iApply (sync_gate_slot PF W Hpsok_free Hgate with "Hnpw Hdep Hpay"). }
     destruct (decide (echo_gate W)) as [Hgate | _].
-    { iApply (echo_gate_slot PF W Hgate with "Hwr Hdep Hpay"). }
+    { iApply (echo_gate_slot PF W Hgate with "Hwr Hnpw Hdep Hpay"). }
     iApply (uexec_wp_uslot_triv W with "Hsup Hkc Hgen Hpay").
   Qed.
 

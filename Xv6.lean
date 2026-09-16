@@ -135,3 +135,5 @@ import Xv6.LinkFileinit
 import Xv6.ProofIinit
 import Xv6.LinkIinit
 import Xv6.SpecPrintkinit
+import Xv6.ProofPrintkinit
+import Xv6.LinkPrintkinit

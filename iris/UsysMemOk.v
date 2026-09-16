@@ -530,7 +530,13 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
            proposition the tier threads.  With it here,
            [usys_fd_ok_parked] is a THEOREM rather than a lemma with an
            owed premise. *)
-        fdst_parked (FdOpen rd wr t))
+        fdst_parked (FdOpen rd wr t)
+        (* ...AND NOT A PIPE (design/pipe.md, "The exit path"): open
+           installs an inode or a device, never a pipe end, and this is
+           what lets a program that never calls pipe(2) say its table
+           holds none -- which is what makes exit's close payments free
+           for it ([FdSlots.fdv_nopipe]). *)
+        /\ fdst_nopipe (FdOpen rd wr t))
      (* ...or the call failed, which it reports as -1 -- see dup's row for
         why the failure arm is guarded rather than bare. *)
      \/ (r = (mword_of_int (-1) : mword 64) /\ sts' = sts))
@@ -800,7 +806,7 @@ Proof.
         [ exact Hpk | apply fdv_all_parked_lookup_total; exact Hpk ]
       | exact Hpk ]. }
   destruct (decide (n = USYS_open)) as [_ | _].
-  { destruct H as [(fd & rd & wr & t & _ & _ & He & Hop) | [_ ->]]; [| exact Hpk].
+  { destruct H as [(fd & rd & wr & t & _ & _ & He & Hop & _) | [_ ->]]; [| exact Hpk].
     rewrite He. apply fdv_all_parked_insert; [ exact Hpk | exact Hop ]. }
   destruct (decide (n = USYS_pipe)) as [_ | _].
   { destruct (decide (uint r = 0)) as [_ | _].
@@ -810,6 +816,36 @@ Proof.
           [ exact Hpk | exact (fdst_parked_pipe true false γp) ]
         | exact (fdst_parked_pipe false true γp) ].
     - subst. exact Hpk. }
+  subst. exact Hpk.
+Qed.
+
+(* ...AND THE SAME FOR "NO PIPE ROW" (design/pipe.md, "The exit path"),
+   at every number but pipe(2), which is the one call that installs one.
+   This is what lets a program that never calls pipe(2) carry
+   [FdSlots.fdv_nopipe] of its table across every trap and mint exit's
+   close payments from nothing ([UexecExecInst.xv6_sbundle_exit_nopipe]). *)
+Lemma usys_fd_ok_nopipe (n : Z) (tf : list (mword 64)) (r : mword 64)
+    (sts sts' : list fdstate) :
+  n <> USYS_pipe ->
+  usys_fd_ok n tf r sts sts' ->
+  fdv_nopipe sts ->
+  fdv_nopipe sts'.
+Proof.
+  unfold usys_fd_ok. intros Hnp H Hpk.
+  destruct (decide (n = USYS_close)) as [_ | _].
+  { destruct H as [H _].
+    destruct (decide (uint r = 0)); subst;
+      [ apply fdv_nopipe_insert; [exact Hpk | exact fdst_nopipe_closed]
+      | exact Hpk ]. }
+  destruct (decide (n = USYS_dup)) as [_ | _].
+  { destruct H as [(fd1 & _ & _ & _ & ->) | (_ & -> & _)];
+      [ apply fdv_nopipe_insert;
+        [ exact Hpk | apply fdv_nopipe_lookup_total; exact Hpk ]
+      | exact Hpk ]. }
+  destruct (decide (n = USYS_open)) as [_ | _].
+  { destruct H as [(fd & rd & wr & t & _ & _ & He & _ & Hop) | [_ ->]]; [| exact Hpk].
+    rewrite He. apply fdv_nopipe_insert; [ exact Hpk | exact Hop ]. }
+  destruct (decide (n = USYS_pipe)) as [He | _]; [ exfalso; exact (Hnp He) | ].
   subst. exact Hpk.
 Qed.
 

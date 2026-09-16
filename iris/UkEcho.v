@@ -46,6 +46,7 @@ Require Import UexecSlot UexecRet ProcGeom FdSlots.
 Require Import UserPerm.    (* [perm_of] / [lazy_free] *)
 Require Import ProcPtOwn.   (* [proc_pt_wf] *)
 Require Import UserPtTree.  (* [uva_rmapped] *)
+Require Import UsysMemOk.   (* [USYS_exit] -- the tear-down's bundle row *)
 
 Section UkEcho.
   Context `{!riscvGS Σ}.
@@ -931,12 +932,21 @@ Section UkEcho.
      a0 happens to hold.  At the generic entry ([UkRun.ukn_triv]) the
      premise is free and every caller that had none still has none. *)
   Lemma wp_kecho_exit (h : CpuId) (m : regfile) (avail : nat) :
+    (* THE TEAR-DOWN'S CLOSE PAYMENTS, NAMED (design/pipe.md, "The exit
+       path"): kexit closes every descriptor, so exit's bundle row is one
+       close payment per row of the KEY's table.  This program's table is
+       pipe-free in fact and not provably so at the U tier (the rows above
+       [NSTD] are untracked, and [UsysMemOk.usys_fd_ok]'s open row leaves a
+       descriptor's type existential), so the deposit is NAMED here as
+       write's is, and is paid out of the application's taint
+       ([UexecExecMint.udepw_law_of_sup_exit]). *)
+    udepw_law USYS_exit -∗
     echo_code γt -∗
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int EchoSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode Hpay Hrun".
+    iIntros "#Hxl #Hcode Hpay Hrun".
     destruct echo_syms_pins as (_ & _ & _ & Hexit & _). rewrite Hexit.
     (* ---- 0x332  c.li a7,2 ---- *)
     iApply (wp_uk_cli N h m (mword_of_int 0x332)
@@ -960,11 +970,14 @@ Section UkEcho.
               ltac:(unfold m1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 2 : mword 64));
                     vm_compute; reflexivity)
-              with "[] [Hpay] Hrun").
+              with "[] [Hpay] [] Hrun").
     { iApply (uis_echo_334 with "Hcode"). }
     (* THE ONE PAYMENT, at the status a0 carries -- which is the payload
        the caller handed in, because echo's record is status-independent. *)
     { by rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)). }
+    (* ...AND THE EXIT ROW, out of the named deposit *)
+    { iApply udepw_ex_of_udepw.
+      iApply (udepw_of_law N m1 (mword_of_int 0x334) USYS_exit with "Hxl"). }
   Qed.
 
   (* THE WRITE DEPOSIT, AS A PREMISE (lane SUPPLY-SPLIT, P4).  echo's
@@ -1449,12 +1462,14 @@ Section UkEcho.
 
   (* the exit path at 0x76, reached from three places *)
   Local Lemma wp_kecho_main_exit (h : CpuId) (mc : regfile) (n : nat) :
+    (* the tear-down's close payments, named -- see [wp_kecho_exit] *)
+    udepw_law USYS_exit -∗
     echo_code γt -∗
     ukn_pay N (-1) -∗
     urun N h mc (mword_of_int 0x76) n -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode Hpay Hrun".
+    iIntros "#Hxl #Hcode Hpay Hrun".
     destruct echo_syms_pins as (_ & _ & _ & Hexit & _).
     (* ---- 0x76  c.li a0,0 ---- *)
     iApply (wp_uk_cli N h mc (mword_of_int 0x76)
@@ -1478,7 +1493,7 @@ Section UkEcho.
               with "[] Hrun").
     { iApply (uis_echo_78 with "Hcode"). }
     iIntros (h2) "Hrun".
-    iApply (wp_kecho_exit h2 _ n with "Hcode Hpay Hrun").
+    iApply (wp_kecho_exit h2 _ n with "Hxl Hcode Hpay Hrun").
   Qed.
 
   (* ONE ITERATION'S BODY, 0x4e..0x62:                                      *)
@@ -1986,6 +2001,8 @@ Section UkEcho.
     mc !!! Regidx s4_idx = mword_of_int (av + 8 * Z.of_nat (length args)) ->
     mc !!! Regidx s5_idx = mword_of_int (av + 8 * Z.of_nat (length args) - 8) ->
     mc !!! Regidx s6_idx = mword_of_int echo_sep_ptr ->
+    (* the tear-down's close payments, named -- see [wp_kecho_exit] *)
+    udepw_law USYS_exit -∗
     kecho_pay args k i Ci (ukn_pay N (-1)) -∗
     echo_code γt -∗
     uargv γd av args -∗
@@ -1995,7 +2012,7 @@ Section UkEcho.
   Proof.
     intros k. induction k as [| k IH ];
       intros i h mc n Ci Hlen Hav0 Hav38 Hs1 Hs3 Hs4 Hs5 Hs6;
-      iIntros "Hpay #Hcode Hargv HCi Hrun";
+      iIntros "#Hxl Hpay #Hcode Hargv HCi Hrun";
       destruct (lookup_lt_is_Some_2 args i ltac:(lia)) as [g Hg];
       destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite);
       iSpecialize ("Hpay" $! g with "[%]"); [ exact Hg | | exact Hg | ].
@@ -2135,7 +2152,7 @@ Section UkEcho.
       rewrite Eret76.
       iIntros (h7 ret) "Hpay Hrun".
       (* ---- 0x76 onwards: exit(0) ---- *)
-      iApply (wp_kecho_main_exit h7 _ (2 + n) with "Hcode Hpay Hrun").
+      iApply (wp_kecho_main_exit h7 _ (2 + n) with "Hxl Hcode Hpay Hrun").
     - (* NOT the last: print it, then a separator, then go round again *)
       iDestruct "Hpay" as (Cm Cn) "(Hw & Hsep & Hpay)".
       iApply (wp_kecho_main_body av args i g h mc n (mword_of_int 0x3e)
@@ -2176,7 +2193,7 @@ Section UkEcho.
                                  ltac:(vm_compute; discriminate));
                       rewrite (Hpres1 s6_idx ltac:(vm_compute; reflexivity)
                                  ltac:(vm_compute; discriminate)); exact Hs6)
-                with "Hpay Hcode Hargv HCn Hrun").
+                with "Hxl Hpay Hcode Hargv HCn Hrun").
   Qed.
 
   (* ===================================================================== *)
@@ -2186,6 +2203,8 @@ Section UkEcho.
       (n : nat) (Ci : iProp Σ) :
     m !!! Regidx a0_idx = mword_of_int (Z.of_nat (length args)) ->
     m !!! Regidx a1_idx = mword_of_int av ->
+    (* the tear-down's close payments, named -- see [wp_kecho_exit] *)
+    udepw_law USYS_exit -∗
     kecho_pay_all args Ci (ukn_pay N (-1)) -∗
     echo_code γt -∗
     uargv γd av args -∗
@@ -2193,7 +2212,7 @@ Section UkEcho.
     urun N h m (mword_of_int EchoSyms.main) (8 + (2 + n)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Ha0 Ha1. iIntros "Hpay #Hcode Hargv HCi Hrun".
+    intros Ha0 Ha1. iIntros "#Hxl Hpay #Hcode Hargv HCi Hrun".
     destruct echo_syms_pins as (Hmain & _ & _ & _ & _). rewrite Hmain.
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom].
     iDestruct (uargv_align with "Hargv") as %[Hal Hargc31].
@@ -2418,7 +2437,7 @@ Section UkEcho.
         by (apply Z.geb_le; lia).
       rewrite Etrue. iIntros (hx) "Hrun".
       iDestruct "Hpay" as "[Hpay _]".
-      iApply (wp_kecho_main_exit hx _ (2 + n) with "Hcode [Hpay HCi] Hrun").
+      iApply (wp_kecho_main_exit hx _ (2 + n) with "Hxl Hcode [Hpay HCi] Hrun").
       iApply ("Hpay" with "[%] HCi"). exact Hsmall. }
     iDestruct "Hpay" as "[_ Hpay]".
     iSpecialize ("Hpay" with "[%]"); [ lia | ].
@@ -2741,7 +2760,7 @@ Section UkEcho.
       rewrite /echo_sep_ptr. apply bv_eq; vm_compute; reflexivity. }
     iApply (wp_kecho_main_loop av args (length args - 2)%nat 1%nat ho mM n Ci
               ltac:(lia) Hav0 Hav38 Hs1M Hs3M Hs4M Hs5M Hs6M
-              with "Hpay Hcode Hargv HCi Hrun").
+              with "Hxl Hpay Hcode Hargv HCi Hrun").
   Qed.
 
 
@@ -2758,6 +2777,8 @@ Section UkEcho.
       (n : nat) (Ci : iProp Σ) :
     m !!! Regidx a0_idx = mword_of_int (Z.of_nat (length args)) ->
     m !!! Regidx a1_idx = mword_of_int av ->
+    (* the tear-down's close payments, named -- see [wp_kecho_exit] *)
+    udepw_law USYS_exit -∗
     kecho_pay_all args Ci (ukn_pay N (-1)) -∗
     echo_code γt -∗
     uargv γd av args -∗
@@ -2765,7 +2786,7 @@ Section UkEcho.
     urun N h m (mword_of_int EchoSyms.start) (2 + (8 + (2 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Ha0 Ha1. iIntros "Hpay #Hcode Hargv HCi Hrun".
+    intros Ha0 Ha1. iIntros "#Hxl Hpay #Hcode Hargv HCi Hrun".
     destruct echo_syms_pins as (Hmain & Hstart & _ & _ & _). rewrite Hstart.
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom].
     remember (m !!! Regidx csp_rs1) as sp0 eqn:Hsp0.
@@ -2880,7 +2901,7 @@ Section UkEcho.
                      ltac:(vm_compute; discriminate)).
       exact Ha1. }
     iApply (wp_kecho_main h5 m3 av args n Ci Ha03 Ha13
-              with "Hpay Hcode Hargv HCi Hrun").
+              with "Hxl Hpay Hcode Hargv HCi Hrun").
   Qed.
 
 End UkEcho.

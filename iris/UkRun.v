@@ -349,6 +349,21 @@ Section UkRun.
       fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W)
       <> FdOpen rb wb (FdPipe gp).
 
+  (* ...AND EXIT(2) IS A THIRD ONE, close's twin over a WHOLE TABLE
+     (design/pipe.md, "The exit path").  kexit closes every descriptor the
+     dying process holds, so the exit number's bundle row is
+     [SpecFileclose.fileclose_cpays] of the KEY's own table
+     ([UexecExecInst.xv6_sbundle] at 2), and 2 left [UexecSG.free_num] with
+     it.  At a table that holds no pipe row every payment is [emp] and the
+     row is minted from nothing ([UexecExecInst.xv6_sbundle_exit_nopipe]);
+     a table the caller cannot read that way costs an explicit deposit, as
+     any other flagged number does. *)
+  Definition fdv_nopipe (fdv : list fdstate) : Prop :=
+    forall st : fdstate, st ∈ fdv ->
+      forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp).
+
+  Definition ukey_table_nopipe (W : uvis) : Prop := fdv_nopipe (uvis_fd W).
+
   Definition udep : iProp Σ :=
     (□ Dsup ∗
      ⌜ forall (n : Z) (W : uvis) (Q : Z -> iProp Σ),
@@ -356,7 +371,10 @@ Section UkRun.
          ⊢ □ Dsup ==∗ sbundle_pay uslot n Q W ⌝ ∗
      ⌜ forall (W : uvis) (Q : Z -> iProp Σ),
          ukey_nonpipe W ->
-         ⊢ □ Dsup ==∗ sbundle_pay uslot 21 Q W ⌝)%I.
+         ⊢ □ Dsup ==∗ sbundle_pay uslot 21 Q W ⌝ ∗
+     ⌜ forall (W : uvis) (Q : Z -> iProp Σ),
+         ukey_table_nopipe W ->
+         ⊢ □ Dsup ==∗ sbundle_pay uslot USYS_exit Q W ⌝)%I.
 
   Global Instance udep_persistent : Persistent udep.
   Proof. rewrite /udep. apply _. Qed.
@@ -373,7 +391,15 @@ Section UkRun.
   Lemma udep_close_dep (W : uvis) (Q : Z -> iProp Σ) :
     ukey_nonpipe W -> udep -∗ |==> sbundle_pay uslot 21 Q W.
   Proof.
-    intros Hnp. iIntros "[#Hs [_ %Hlaw]]".
+    intros Hnp. iIntros "[#Hs [_ [%Hlaw _]]]".
+    iApply (Hlaw W Q Hnp). iExact "Hs".
+  Qed.
+
+  (* ...and the exit row's, at a key whose TABLE holds no pipe *)
+  Lemma udep_exit_dep (W : uvis) (Q : Z -> iProp Σ) :
+    ukey_table_nopipe W -> udep -∗ |==> sbundle_pay uslot USYS_exit Q W.
+  Proof.
+    intros Hnp. iIntros "[#Hs [_ [_ %Hlaw]]]".
     iApply (Hlaw W Q Hnp). iExact "Hs".
   Qed.
 
@@ -591,6 +617,73 @@ Section UkRun.
                 (ukn_pay N) Hnpk with "Hdep").
     - iApply (udepw_mint N m pc 21 M pm sz fdv cw gn cs pidv
                 with "Hdep Hmp Hsb Hheap Hufd").
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (* THE EXIT LEAF'S DEPOSIT, in the shapes a caller can have it            *)
+  (* (design/pipe.md, "The exit path").                                     *)
+  (*                                                                        *)
+  (* It is [udepw] at 2 with ONE extra disjunct: a caller whose own          *)
+  (* descriptor resource proves the KEY's table holds no pipe row owes       *)
+  (* nothing at all, and the leaf mints the row off the [udep] its own run   *)
+  (* carries.  No verified program can take that route TODAY --              *)
+  (* [UsysMemOk.usys_fd_ok]'s open row leaves a descriptor's type            *)
+  (* existential and the rows above [NSTD] are untracked -- so the five      *)
+  (* programs go the flagged way, at [udepw_law USYS_exit], which            *)
+  (* [UexecExecMint.udepw_law_of_sup_exit] pays out of the taint.            *)
+  (* ------------------------------------------------------------------- *)
+  Definition udepw_ex (N : uk_names Σ) (m : regfile) (pc : mword 64) : iProp Σ :=
+    (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
+       (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32),
+       my_pay gn (ukn_pay N) -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
+       (⌜fdv_nopipe fdv⌝
+        ∨ ⌜psok USYS_exit /\ USYS_exit <> USYS_exec⌝
+        ∨ sbundle_pay uslot USYS_exit (ukn_pay N)
+            (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)))%I.
+
+  (* the forgetful direction: any deposit at 2 is one of these *)
+  Lemma udepw_ex_of_udepw (N : uk_names Σ) (m : regfile) (pc : mword 64) :
+    udepw N m pc USYS_exit -∗ udepw_ex N m pc.
+  Proof.
+    rewrite /udepw /udepw_ex. iIntros "H" (M pm sz fdv cw gn cs pidv) "Hp Hh Hf".
+    iDestruct ("H" $! M pm sz fdv cw gn cs pidv with "Hp Hh Hf")
+      as "(Hh & Hf & [%Hok | Hb])"; iFrame "Hh Hf";
+      [ iRight; iLeft; by iPureIntro | iRight; iRight; iExact "Hb" ].
+  Qed.
+
+  (* ...and the free one: the caller's own descriptor resource reads the
+     key's table and finds no pipe in it *)
+  Lemma udepw_ex_of_nopipe (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (D : iProp Σ) :
+    (forall fdv : list fdstate,
+       ufd_auth (ukn_fd N) fdv -∗ D -∗ ⌜fdv_nopipe fdv⌝) ->
+    D -∗ udepw_ex N m pc.
+  Proof.
+    intros Hag. rewrite /udepw_ex. iIntros "HD" (M pm sz fdv cw gn cs pidv) "_ Hh Hf".
+    iDestruct (Hag fdv with "Hf HD") as %Hnp. iFrame "Hh Hf".
+    iLeft. by iPureIntro.
+  Qed.
+
+  (* ...AND THE MINT, at the key the exit leaf has destructed its run into *)
+  Lemma udepw_ex_mint (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
+      (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname)
+      (pidv : mword 32) :
+    udep -∗ my_pay gn (ukn_pay N) -∗ udepw_ex N m pc -∗
+    uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv ==∗
+    uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
+    sbundle_pay uslot USYS_exit (ukn_pay N)
+      (uvis_of_run m pc M pm sz fdv cw gn cs pidv false).
+  Proof.
+    iIntros "#Hdep #Hmp Hsb Hheap Hufd".
+    iDestruct ("Hsb" $! M pm sz fdv cw gn cs pidv with "Hmp Hheap Hufd")
+      as "(Hheap & Hufd & [%Hnp | [%Hok | Hb]])"; iFrame "Hheap Hufd".
+    - iApply (udep_exit_dep (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+                (ukn_pay N) Hnp with "Hdep").
+    - iApply (udep_dep USYS_exit _ (ukn_pay N) (proj1 Hok) (proj2 Hok) with "Hdep").
+    - by iModIntro.
   Qed.
 
   (* THE EXEC DEPOSIT'S CARRIER, and why it is key-free too.  exec is the

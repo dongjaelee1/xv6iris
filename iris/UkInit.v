@@ -1490,6 +1490,15 @@ Section UkInit.
      forks it from nobody -- so the premise is the equation and the payment
      is [I]. *)
   Lemma wp_kinit_exit (h : CpuId) (m : regfile) (avail : nat) :
+    (* THE TEAR-DOWN'S CLOSE PAYMENTS, NAMED (design/pipe.md, "The exit
+       path"): kexit closes every descriptor, so exit's bundle row is one
+       close payment per row of the KEY's table.  This program's table is
+       pipe-free in fact and not provably so at the U tier (the rows above
+       [NSTD] are untracked, and [UsysMemOk.usys_fd_ok]'s open row leaves a
+       descriptor's type existential), so the deposit is NAMED here as
+       write's is, and is paid out of the application's taint
+       ([UexecExecMint.udepw_law_of_sup_exit]). *)
+    udepw_law USYS_exit -∗
     init_code γt -∗
     (* THE PAYMENT COMES OUT OF THE PROGRAM'S OWN HAND (lane KILL-PAY,
        K4(a)): [UkRun.urun]'s payload row is a WAND from the kill
@@ -1501,7 +1510,7 @@ Section UkInit.
     urun N h m (mword_of_int InitSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    iIntros "#Hcode Hpay Hrun".
+    iIntros "#Hxl #Hcode Hpay Hrun".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hexit.
     iApply (wp_uk_cli N h m (mword_of_int 0x372)
               (mword_of_int 2 : mword 6) a7_idx avail
@@ -1523,11 +1532,14 @@ Section UkInit.
               ltac:(unfold m1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 2 : mword 64));
                     vm_compute; reflexivity)
-              with "[] [Hpay] Hrun").
+              with "[] [Hpay] [] Hrun").
     { iApply (uis_init_374 with "Hcode"). }
     (* AT A CONSTANT PAYLOAD the one resource the program holds is exactly
        what the exit leaf owes ([UkRun.ukn_const]). *)
     { rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)). iExact "Hpay". }
+    (* ...AND THE EXIT ROW, out of the named deposit *)
+    { iApply udepw_ex_of_udepw.
+      iApply (udepw_of_law N m1 (mword_of_int 0x374) USYS_exit with "Hxl"). }
   Qed.
 
   (* ===================================================================== *)

@@ -149,3 +149,6 @@ import Xv6.SchedCtx
 import Xv6.SpecSched
 import Xv6.ProofSched
 import Xv6.LinkSched
+import Xv6.SpecWakeup
+import Xv6.ProofWakeup
+import Xv6.LinkWakeup

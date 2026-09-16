@@ -123,3 +123,7 @@ import Xv6.ProofKvmRegions
 import Xv6.ProofKvmmake
 import Xv6.LinkKvmmake
 import Xv6.SpecProcinit
+import Xv6.SpecInitsleeplock
+import Xv6.SpecFileinit
+import Xv6.SpecIinit
+import Xv6.SpecBinit

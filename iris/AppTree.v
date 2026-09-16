@@ -32,33 +32,45 @@
 
    ============ THE THREE FINDINGS, and what they cost ============
 
-   FINDING 1 (THE SEAM, and the brief's STOP rule).  An OWNER'S OWN MOVE
-   CANNOT BE PAID AT THE FIRE, because [AppInv.app_top_update_step]'s --
-   and [AppInv.app_step]'s -- step is an UPDATE-FREE wand
-   ([app_pred av -∗ app_pred av'], applied under the invariant's later),
-   and moving an owner's recorded subtree is a GHOST MAP UPDATE.  There
-   is no way around it inside the tree layer:
+   FINDING 1 (THE SEAM) -- CLOSED BY LANE TL-3W, design/user-tree.md
+   section 7.2, AND CLOSED WITH NO SEAM.  What TL-2 found stands as
+   stated: [AppInv.app_step] is an UPDATE-FREE wand applied under the
+   invariant's later, and moving an owner's recorded subtree is a GHOST
+   MAP UPDATE, so an owner's move cannot be paid BY THE STEP ALONE --
      - a plain wand can TRANSFER resources but cannot run a frame-
-       preserving update, and any change of recorded ghost information is
-       one;
+       preserving update;
      - wrapping the claim in [|==>] makes the wand able to update, but
        then the CLAIM LAW is unprovable: a pure fact cannot be read out
        from under a basic update;
-     - a WINDOW (desync at a claim-update before the call, resync at one
-       after it, echo's mknod two-phase shape) re-establishes nothing: at
-       the resync the owner must prove [subtree av root = Some t_new] at
-       the invariant's CURRENT view, which only the party that SEES the
-       move -- the step wand -- knows.  Whatever the window records, the
-       ambiguity "did my commit fire?" survives it.
-   So the owner's moves land here in their TRUE shape, as BASIC UPDATES
-   ([tree_move_write], [tree_move_create], [tree_move_unl_ent]): the
-   whole tree content is proved (disjointness, [own_wf] preservation, the
-   INSIDE and OUTSIDE delta lemmas), and what is left over is ONE shape
-   mismatch.  Closing it is an [AppInv] seam and not a tree-layer proof:
-   [app_step] would have to be [▷ app_pred av ==∗ ▷ app_pred av'] (and
-   [app_top_update] can already take it -- it applies the step inside its
-   own fupd), which moves every fire site.  That is TL-3's/an AppInv
-   lane's decision, recorded in design/user-tree.md section 6.
+     - a WINDOW made of two CLAIM-UPDATES re-establishes nothing: at the
+       resync the owner must prove [subtree av root = Some t_new] at the
+       invariant's CURRENT view, which only the party that SEES the move
+       knows.
+   WHAT TL-2 DID NOT USE is that every write-kind fire is ALREADY
+   TWO-PHASE and its SECOND phase is handed [I'] with
+   [abs_view I' = δ (abs_view I)]: that is the window, and it is a window
+   that sees the move.  So the move splits, with no [AppInv] change at
+   all (the seam of section 7.1 stays designed and deferred):
+     PHASE 1  [tree_step_move_gen] and its legs -- an update-free wand,
+              which [app_step] takes verbatim: the owner's DEED and a
+              fresh TOKEN are PARKED in the entry's SLOT, which leaves
+              the exact arm and says nothing until phase 2;
+     PHASE 2  [tree_resync] -- the ticket identifies the entry, the exact
+              arm is REFUTED by TL-1's INSIDE lemma at the post view, the
+              deed comes back, the entry moves, the slot closes exact.
+   TL-2's [tree_move_write] / [tree_move_trunc] / [tree_move_create] /
+   [tree_move_unl_ent] / [tree_move_gen] are RETIRED into that shape;
+   their content is section 1i's pure layer, which both phases read.
+   [TreeMove.v] joins the two phases at the write fire and [UkTreeWrite.v]
+   carries the receipt to the U tier.
+
+   THE SHAPE OF THE CLAIM MOVED WITH IT (section 2a below): TL-2's global
+   [tree_exact] became a PER-ENTRY SLOT, because an entry whose owner is
+   mid-move has no exactness at all; and the deed is SPLIT ACROSS TWO
+   GHOST MAPS, because phase 2 must identify its entry while holding
+   nothing of it and the parked deed must be the WHOLE element (only
+   [DfracOwn 1] in the claim refutes the in-flight arm for a FROZEN
+   reader).  See [tree_names] for the full argument.
 
    FINDING 2 (exec's (W)).  [PinnedObs.pin_resolves_at] -- what
    [ExecRun.exec_walk_of_pin] and [pobs_walk] take -- pins the walk's

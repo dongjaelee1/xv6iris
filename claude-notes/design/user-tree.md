@@ -187,7 +187,13 @@ application declares and its verified programs prove):
 
 ## 5. Honest limits
 
-### 5.0 THE WRITE SIDE'S OPEN DECISION (TL-3, for the owner)
+### 5.0 THE WRITE SIDE'S OPEN DECISION — RULED AND LANDED (see §7/§7.4)
+
+RULED 2026-09-18 in §7: route (ii), the fire's own two-phase commit, with
+NO `AppInv` seam.  LANDED by TL-3W, §7.4.  The section below is kept as the
+record of what the two routes cost.
+
+#### 5.0 (as it stood)
 
 TL-2's finding 1 left ONE shape mismatch, and TL-3's read side is
 complete without touching it — so the question is now isolated and is a
@@ -574,7 +580,8 @@ that writes is provable the moment either route lands.
   `tree_xfer_boot_at`, `app_tree_boot`, `own_wf_trunc`); the three WP
   rules and both consumer tests carry the standing platform axioms
   (`resv_matches`, `resv_is_valid`) plus funext and nothing else.
-- [ ] **TL-3b THE WRITE SIDE**: blocked on §5.0's decision.
+- [x] **TL-3b / TL-3W THE WRITE SIDE** — LANDED, §7.4: §5.0's decision was
+  ruled in §7 (route (ii), no seam change) and the lane landed on it.
 - [ ] **TL-4 THE SECOND APPLICATION**: the end-to-end instance of §4.3
   at `xv6_app_adequacy`, with its own `make audit` line.
 
@@ -665,13 +672,170 @@ subtree cannot build the step and falls to the taint arm, as §3 says.
 
 ### 7.3 Lanes
 
-- [ ] **TL-3W** (Opus): the halves, the slot, `tree_step_move`, the
-  two phases as ONE lemma per write-kind member (`tree_move_at` for
-  create/mknod/unlink/write over the landed fires), the U-tier
-  write-side corollaries (`UkTreeWrite.v`: mkdir/mknod/unlink/write at
-  an owned subtree, each an instance of the landed member + this
-  page's phases), and the consumer test: make a directory and a file,
-  read it back — the second application's core, with no whole-fs pin.
-  TL-2's `tree_move_*` bupd lemmas retire into §7.2's shape.
+- [x] **TL-3W** — LANDED (branch `tl3w-move`): `AppTree.v` regrown at
+  §7.2, `iris/TreeMove.v` and `iris/UkTreeWrite.v` new, `AppEcho.v` /
+  `AppInv.v` untouched, every TL-2/TL-3 statement unchanged, whole tree
+  green, echo audit 14.  §7.4 is the as-landed block.
 - [ ] **SEAM-I** (deferred; ready): §7.1 as one mechanical lane if a
-  consumer appears.
+  consumer appears.  TL-3W did NOT need it, which is the ruling
+  confirmed: the fire's own phase 2 is the return channel.
+
+### 7.4 TL-3W as landed
+
+**THE CLAIM, REGROWN.**  `tree_body` keeps `own_wf` and
+`⌜adir_at av ROOTINO⌝` GLOBAL — both read the ROOTS and never the trees —
+and replaces TL-2's global `tree_exact` by a PER-ENTRY SLOT, because an
+entry whose owner is mid-move has no exactness at all:
+
+    tree_slot r av g p := g ↪[tn_tk r]{#1/2} p
+                          ∗ ( ⌜subtree av p.1 = Some p.2⌝          -- exact
+                            ∨ (g ↪[tn_own r] p ∗ ∃ γi, tok γi) )   -- in flight
+
+with `tok γi := own γi (Excl ())` at a new `treeG` field
+(`tr_tok : inG Σ (exclR unitO)`, `treeΣ` gains `GFunctor (exclR unitO)`);
+`tree_body r av := ∃ own, ghost_map_auth (tn_own r) 1 own ∗
+ghost_map_auth (tn_tk r) 1 own ∗ ⌜own_wf⌝ ∗ ⌜adir_at⌝ ∗ [∗ map] g ↦ p ∈ own,
+tree_slot r av g p`.
+
+**THE ONE DEVIATION FROM §7.2's LETTER, AND IT IS FORCED.**  §7.2 says
+phase 2 "agrees the entry is still `(root, t)`" and does not price that
+agreement — but at phase 2 the owner holds NOTHING of its entry, and the
+disagreement is not decidable from the claim.  Nor can the owner keep a
+fraction of the deed: the in-flight arm has to be refuted by a READER,
+including a FROZEN one (`tree_pin_law` must survive at its exact
+statement), and `DfracOwn q ⋅ DfracDiscarded` is valid for every `q < 1`
+— **only `DfracOwn 1` in the claim refutes a pin**.  So the deed is parked
+WHOLE and the owner keeps a MOVE TICKET at a SECOND ghost map carrying the
+same map:
+
+    tree_deed r g root t := g ↪[tn_own r] (root, t)      -- parked while in flight
+    tree_tkt  r g root t := g ↪[tn_tk  r]{#1/2} (root,t) -- the owner's ticket
+    tree_own  r g root t := tree_deed ∗ tree_tkt
+    tree_pin  r g root t := both, persisted
+
+`tree_names` is therefore `gname * gname` (`tn_own`/`tn_tk`).  Every landed
+statement quantifies `tree_names` opaquely, so `TreeObs.v`, `TreeExec.v` and
+`UkTreeRead.v` compile with no edit at all.
+
+**THE READER-WINDOW QUESTION, ANSWERED: THERE IS NO WINDOW.**  A reader
+holding any fraction of the deed refutes the in-flight arm by exclusivity
+(`tree_body_read` is ONE lemma at an arbitrary `dfrac`, and both claim laws
+are instances of it), so `tree_claim_law` and `tree_pin_law` keep their
+EXACT statements and their fact does NOT weaken to a disjunction.  The
+reason is structural rather than lucky: entering the in-flight arm costs
+the whole deed, so an owner that can read is an owner that is not moving,
+and a concurrent *other* owner's flight is invisible (slots are per entry).
+
+**`tree_step_gen` SURVIVES AT ITS EXACT STATEMENT**, which is not obvious:
+its hypothesis is a `∀ own` gated on `tree_exact av own`, which the slotted
+body cannot supply.  It is applied at the SYNCED map
+(`own_sync av own`, every recorded tree replaced by the view's own subtree
+at that entry's root): exact by construction, same roots — so `own_wf`
+transfers both ways — and its exactness at the POST view says precisely
+"no owner's root moved", which is what each surviving exact slot needs.
+The four free steps and create's arm leg are then unchanged, line for line.
+
+**THE TWO PHASES.**  `tree_step_move_gen` (+ `_write` / `_trunc` /
+`_create` / `_unl_ent`) is the update-free step `AppInv.app_step` takes
+verbatim: the deed and a fresh token go in, the slot moves exact →
+in flight, every other entry rides TL-1's OUTSIDE lemma at the mover's own
+exactness (`tree_disjoint_out_at` — the mover's, and no one else's, which
+is what makes it usable beside in-flight entries).  `tree_resync` is
+phase 2: the ticket identifies the entry, the exact arm is refuted by
+`t' ≠ t` (§7.2's `tree_op δ t ≠ t`), the parked deed and token come back,
+both maps move to `(root, t')`, the slot closes exact, and the owner gets
+`tree_own r g root t'` — the receipt.  `tree_move_refund` is the refund
+arm.  **TL-2's `tree_move_*` basic updates are RETIRED** (their content is
+the pure layer both phases read).
+
+**THE INVISIBLE ARM IS FREE, AND CHEAPER THAN §7.2 SAID.**  The kernel
+picks a write's offset and bytes, so an owner supplying a chain must answer
+both cases; but at write and truncate an invisible move leaves the ROW
+where it was, so the delta is the IDENTITY on the view
+(`delta_write_id` / `delta_trunc_id`) and the free step is a congruence.
+The decision is `decide (blk_splice off bs bs0 = bs0)` on the pre-row the
+fire itself hands phase 1.
+
+**WHAT A MEMBER SUPPLIES AND GETS BACK** (`TreeMove.v`).  At the write
+fire: phase 1 (`tree_claim_read`) opens `app_inv`, agrees the map the
+kernel lent, reads `subtree (abs_view I) root = Some t' ∨ taint`, decides
+visibility, and hands `app_step i I (delta_write i off bs (abs_view I))`;
+phase 2 (`tree_claim_resync`) takes `I'` with the delta equation and
+returns the deed at `top_write i off bs t'`.  `tree_awrite_phases` is the
+pair for ONE chunk (the FULL and the PARTIAL arm are the same proof — they
+differ only in the bytes they claim, never in the delta), and
+`tree_awrite_chain` is `FsAbsWriteFire.awrite_chain_unit` with
+`AppInv.app_sup` replaced by a DEED, at the cursor
+
+    tree_wq c r g root i t := (∃ t', tree_own r g root t' ∗ ⌜twrote i t t'⌝)
+                              ∨ tree_taint c
+
+where `twrote i t t'` is "same root, same nodes away from `i`, and `i` is a
+FILE in both".  That relation is the honest post: the kernel picks every
+chunk's offset, so the owner cannot name the bytes — see the owed item
+below.
+
+**THE U TIER** (`UkTreeWrite.v`).  `tree_write_sup` is
+`UkWriteFile.udepwf_st_write_file` with the chain paid by the deed, and
+**`wp_uk_tree_write_moves`** is the consumer test: a program owning a
+subtree, holding a descriptor on a file of it, writes its bytes, learns
+the committed bytes are its own, AND gets its deed back moved.  So THE
+RECEIPT TYPE IS NOT PURE-ONLY — the write member's kept-post walk carries
+an arbitrary `iProp` (row 16's family field `UexecExecInst.wf_Q`, the
+chain's prefix cursor), and a ghost-map half rides it home.  That was the
+lane's one predicted wall and it is not a wall.
+
+**WHAT IS NOT LANDED, AND EXACTLY WHY** (`TreeMove.v` §4 carries this in
+full).  The brief's test was "own → mkdir → create → write → read-learns";
+the first two steps are not landable, for THREE independent reasons:
+
+1. **create/mknod/mkdir: `own_wf_ent`.**  `FsAbsDelta.cre_pre`'s third
+   conjunct is `av !! i = Some (MkAnode c 1)` — at the parent leg's instant
+   the child is ALREADY ARMED — so an owner's create move is create's
+   PARENT LEG ALONE, whose `own_wf` preservation is exactly the
+   `own_wf_ent` §6 records as PRICED AND NOT TAKEN (its `aview_tree_wf`
+   twin wants `aview_no_edge_to av i`).  `tree_step_move_create` is landed
+   at the FUSED delta, i.e. at a view where the child is ABSENT — the shape
+   a fire would have if the two legs were one, and not the shape the kernel
+   has.
+2. **The child's UNARM leg is unpayable from a claim.**
+   `cre_child_unfired` asks for `delta_unarm i`; the row is invisible to
+   every subtree only if NOTHING NAMES `i`, and the claim's `own_wf` does
+   not say so (`nreach_fresh` wants the row ABSENT, which is false by
+   then).  The generic supplier pays it off `app_sup`, which a constraining
+   application has not got.  Honest fix: a credential threaded from the ARM
+   to the UNARM — a change to `aarm_commit_at`'s receipt, a kernel-tier
+   lane.
+3. **No pinned parent-prefix walk.**  `open_au_create_at` owes
+   `FsAbsEra.ep_start`; `PinnedObs` offers a pinned supplier for `ex_start`
+   only.  A parent-prefix twin of `pinned_obs_abs` is additive and is what
+   any mkdir/mknod/open-O_CREATE corollary needs first.
+
+   **unlink**: the ENTRY leg is payable in principle
+   (`tree_step_move_unl_ent` + `tree_resync`), but `uent_commit_at`
+   quantifies the parent `d` INSIDE, so a supplier owes an answer at every
+   directory (free outside the owner's subtree by `tree_not_in_own`), and
+   the TARGET leg at the LAST LINK is TL-2's own recorded wall.  Its U-tier
+   leaf is blocked anyway — `UkTreeRead` §5 records that unlink, like
+   chdir, still carries the `∀ pl` walk form a pin cannot answer.
+   **O_TRUNC**: the tree-layer half is done (`tree_step_move_trunc`); the
+   fire sits inside an open bundle, i.e. the same pinned-walk question.
+
+**THE SEAM TO THE READ SIDE IS LANDED TOO** (`TreeMove` §1a):
+`resolves_from_twrote` / `twrote_read_back` turn the write's own post into
+the read corollary's premises at the same path — no induction, because a
+walk reads DIRECTORY entries and a file's `nents` is `None` in both trees,
+so `TreeView.npath_nents_cong` closes it in a line.  So the caller of
+`wp_uk_tree_write_moves` may `tree_freeze` the deed it gets back and hand
+it to `UkTreeRead.wp_uk_tree_read_learns`: **own → open → write → freeze →
+read-back, with no whole-fs pin anywhere in the run.**  (The freeze is
+one-way, as always: a program that will write again keeps the live deed
+and reads through a second open instead.)
+
+**OWED, NAMED, PRICED.**
+- **The write post does not name the bytes**, for `UkWriteFile.v`'s own
+  reason one tier down: the offset is the descriptor's, which this member's
+  program does not hold.  With a HELD offset (`OffGv`'s `uoff`, lane RD-1)
+  the chain's cursor could name the splice and the corollary would read "my
+  tree records exactly the bytes I sent".  Additive, and the one upgrade
+  this member is waiting for.

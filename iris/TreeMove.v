@@ -35,6 +35,7 @@ Require Import FdSlots.          (* [fdslotG] *)
 Require Import IrefSlots.        (* [irefslotG] *)
 Require Import ProcAvail.        (* [pavG] *)
 Require Import FileInvDefs.      (* [fileG], and its [appcfg] field [file_app] *)
+Require Import PathElems.        (* [path_elems] *)
 Require Import FsTree.           (* [fname] *)
 Require Import FsBlocks.         (* [fs_names], [blk_splice] *)
 Require Import FsBytesGamma.     (* [fs_gamma_L] *)
@@ -94,6 +95,65 @@ Proof.
     apply lookup_insert_ne. congruence.
   - exists bs, (blk_splice off new bs). split; [exact H |].
     rewrite /top_write /= H lookup_insert //.
+Qed.
+
+(* ---- 1a.  ...AND WHAT IT DOES NOT DO: MOVE A PATH ------------------- *)
+(*                                                                       *)
+(*  THE SEAM BETWEEN THE WRITE SIDE AND THE READ SIDE.  A write moves one *)
+(*  FILE's content and nothing else, and a walk reads DIRECTORY ENTRIES   *)
+(*  only, so every path that resolved before resolves to the same inum    *)
+(*  after -- with the new bytes there.  One congruence                    *)
+(*  ([TreeView.npath_nents_cong]) and no induction of its own, because a  *)
+(*  file's [nents] is [None] in both trees.                              *)
+
+Lemma twrote_dom (i : Z) (t t' : ttree) :
+  twrote i t t' -> dom (tv_nodes t') = dom (tv_nodes t).
+Proof.
+  intros (_ & H2 & (b & b' & Hb & Hb')). apply set_eq. intros j.
+  rewrite !elem_of_dom. destruct (decide (j = i)) as [-> | Hne].
+  - rewrite Hb Hb'. split; intros _; by eexists.
+  - rewrite (H2 j Hne). reflexivity.
+Qed.
+
+Lemma twrote_nents (i : Z) (t t' : ttree) :
+  twrote i t t' -> forall j : Z, nents (tv_nodes t') j = nents (tv_nodes t) j.
+Proof.
+  intros (_ & H2 & (b & b' & Hb & Hb')) j. rewrite !nents_unfold.
+  destruct (decide (j = i)) as [-> | Hne].
+  - rewrite Hb Hb' //.
+  - rewrite (H2 j Hne) //.
+Qed.
+
+Lemma resolves_from_twrote (i : Z) (t t' : ttree) (d : Z)
+    (bs bs' : list (bv 8)) (pl : list (bv 8)) :
+  twrote i t t' -> tv_nodes t' !! i = Some (AFile bs') ->
+  resolves_from t d pl = Some (i, AFile bs) ->
+  resolves_from t' d pl = Some (i, AFile bs').
+Proof.
+  intros Hw Hi' Hres. rewrite /resolves_from in Hres |- *.
+  rewrite (npath_nents_cong (tv_nodes t') (tv_nodes t) d (path_elems pl)
+             (twrote_nents i t t' Hw)).
+  destruct (npath (tv_nodes t) d (path_elems pl)) as [j |]; [| discriminate].
+  destruct (tv_nodes t !! j) as [n |] eqn:Hn0; [| discriminate].
+  injection Hres as Hj Hn. subst j. rewrite Hi' //.
+Qed.
+
+(* ...and the form the composition actually takes: what the WRITE hands
+   back is [∃ t', tree_own … t' ∗ ⌜twrote i t t'⌝], and this turns that
+   [t'] into the read side's own premises at the SAME path. *)
+Lemma twrote_read_back (i : Z) (t t' : ttree) (d : Z) (bs : list (bv 8))
+    (pl : list (bv 8)) :
+  twrote i t t' -> d ∈ dom (tv_nodes t) ->
+  resolves_from t d pl = Some (i, AFile bs) ->
+  exists bs' : list (bv 8),
+    d ∈ dom (tv_nodes t') /\ resolves_from t' d pl = Some (i, AFile bs')
+    /\ tv_nodes t' !! i = Some (AFile bs').
+Proof.
+  intros Hw Hd Hres. destruct (twrote_file i t t' Hw) as (bs' & Hi').
+  exists bs'. split_and!.
+  - by rewrite (twrote_dom i t t' Hw).
+  - exact (resolves_from_twrote i t t' d bs bs' pl Hw Hi' Hres).
+  - exact Hi'.
 Qed.
 
 Section TreeMove.

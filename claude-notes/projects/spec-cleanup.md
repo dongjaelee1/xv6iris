@@ -369,6 +369,59 @@ one owner decision; the headlines:
    (`app_step` becomes `▷ … ==∗ ▷ …`; cost = every fire site) versus
    per-syscall post-view receipts (cost = a receipt per writing row).
    TL-3b and TL-4's mutation story wait on it; nothing else does.
+   **RULED (§7) and LANDED by TL-3W, below: route (ii), no seam change.**
+
+**TL-3W AS LANDED (THE WRITE SIDE)** — branch `tl3w-move`, `AppTree.v`
+regrown plus two new files (`iris/TreeMove.v`, `iris/UkTreeWrite.v`),
+`AppEcho.v`/`AppInv.v` untouched, every TL-2/TL-3 statement unchanged and
+`TreeObs.v`/`TreeExec.v`/`UkTreeRead.v` compiling with no edit, whole iris
+tree green on the mirror, echo audit 14.  `design/user-tree.md` §7.4
+carries the full as-landed block; the headlines:
+
+1. **FINDING 1 IS CLOSED WITH NO SEAM.**  An owner's move is (phase 1) an
+   UPDATE-FREE step that PARKS the deed and a fresh token in the entry's
+   SLOT, which `AppInv.app_step` takes verbatim, and (phase 2) a RESYNC run
+   inside the fire's own second phase, where the post view and the delta
+   equation are in hand.  `tree_move_*` retires.
+2. **THE ONE DEVIATION, AND IT IS FORCED.**  §7.2's phase 2 "agrees the
+   entry is still `(root,t)`" holding nothing of it.  The deed cannot be
+   split to pay for that agreement, because the in-flight arm must be
+   refuted by a FROZEN reader too and `DfracOwn q ⋅ DfracDiscarded` is
+   valid for every `q < 1` — only `DfracOwn 1` in the claim refutes a pin.
+   So the deed parks WHOLE and the owner keeps a MOVE TICKET at a second
+   ghost map over the same map; `tree_names` becomes a pair of gnames,
+   which every downstream statement quantifies opaquely.
+3. **THE READER WINDOW DOES NOT EXIST.**  Entering the in-flight arm costs
+   the whole deed, so a reader that can read is not moving; both claim laws
+   are instances of ONE lemma at an arbitrary `dfrac` and keep their exact
+   statements.  `tree_step_gen` also survives exactly — its `∀ own`
+   hypothesis is applied at the SYNCED map (`own_sync`), whose exactness at
+   the post view says "no owner's root moved".
+4. **THE WRITE MEMBER LANDS, RECEIPT AND ALL.**  `TreeMove.tree_awrite_chain`
+   is `FsAbsWriteFire.awrite_chain_unit` with `app_sup` replaced by a DEED,
+   and `UkTreeWrite.wp_uk_tree_write_moves` is the consumer test: the bytes
+   land, and the deed comes back at a tree that differs from the one the
+   program started with only at the file it wrote (`twrote`).  **The U-tier
+   kept-post walk carries an arbitrary `iProp`** (row 16's `wf_Q`), so a
+   ghost-map half rides home — the lane's predicted wall is not one.
+5. **THREE INDEPENDENT WALLS ON THE CREATE FAMILY**, so the brief's
+   "own → mkdir → create → write → read-learns" test stops at write:
+   (a) `cre_pre` puts the child's row in the PRE view, so an owner's create
+   move is create's PARENT LEG alone and wants the `own_wf_ent` §6 already
+   prices; (b) the child's UNARM leg is unpayable from a claim (the row is
+   invisible only if NOTHING NAMES `i`, which `own_wf` does not say — the
+   honest fix is a credential threaded from the arm to the unarm, a
+   kernel-tier lane); (c) there is no pinned PARENT-PREFIX walk
+   (`ep_start`), only `ex_start`'s.  unlink's entry leg is payable in
+   principle but its commit quantifies the parent inside and its U-tier
+   leaf still carries the `∀ pl` walk.
+6. **THE SEAM TO THE READ SIDE IS LANDED** (`TreeMove` §1a,
+   `twrote_read_back`): the write's post becomes the read corollary's
+   premises at the same path with no induction, so the run
+   **own → open → write → freeze → read-back** composes with no whole-fs
+   pin anywhere.  **OWED, NAMED, PRICED**: the write post's BYTES, which
+   want RD-1's HELD offset before the chain's cursor can name the splice
+   (additive; today the honest post is the `twrote` relation).
 
 ## RELAY QUEUE (for upstream, via the owner's push)
 

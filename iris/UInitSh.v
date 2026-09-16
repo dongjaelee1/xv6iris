@@ -113,6 +113,10 @@ Require Import ExecRun.            (* [sbundle_pay_exec_intro_refR] and the
                                       an instance of *)
 Require Import ExecEntry.       (* [image_entry] / [image_entry_taint]:
                                    obligation (E), named (lane EX-1) *)
+Require Import ExecArgs.        (* [uargv_img] / [uargv_shape] / [uargv_det]:
+                                   the argument reading at ANY layout
+                                   (lane EX-3); /init's is this one at a
+                                   CONSTANT layout *)
 Require Import PieceFam.           (* [pfam] / [MkPfam] -- the exec deposit's
                                       one-shot piece, named by the refund
                                       twin below (lane M6b) *)
@@ -222,16 +226,66 @@ Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 (*  same one: ONE argument, of length two.  That is what prices sh's       *)
 (*  frames, and it is why the pinned route needs [exec_args_of] and not    *)
 (*  merely [exec_args_shape].                                              *)
+(*                                                                        *)
+(*  AS RE-DERIVED (lane EX-3).  This used to be sixty lines of its own --  *)
+(*  two pointer words unwrapped by [vm_compute], the count cornered        *)
+(*  against the NULL cap, the length cornered against three rodata bytes.  *)
+(*  It is now [ExecArgs.uargv_det] at /init's layout, and the layout is    *)
+(*  the only thing this file still spells: ONE [UserHeap.uarg] at a        *)
+(*  literal pointer, whose two premises are three [vm_compute]s.  The      *)
+(*  statement is unchanged, and so is everything downstream.               *)
 (* ===================================================================== *)
-Lemma init_args_det (M : gmap Z (bv 8)) (na : nat) (alen : nat -> nat)
-    (afun : nat -> nat -> bv 8) :
+
+(* THE VECTOR, in the U tier's own spelling.  [ua_bytes] is a FUNCTION,
+   so the terminator has to be a value of it and not merely a byte of the
+   image -- [default ubyte0] past the end of the name is exactly that,
+   and it is what [ByteBuf.bb_cstr] asks for. *)
+Definition init_argv_args : list uarg :=
+  [UArg 0x9a8 2%nat (fun j : nat => default ubyte0 (init_sh_pl !! j))].
+
+Lemma init_argv_args_length : length init_argv_args = 1%nat.
+Proof. reflexivity. Qed.
+
+Lemma init_argv_args_lookup (i : nat) (x : uarg) :
+  init_argv_args !! i = Some x ->
+  i = 0%nat
+  /\ x = UArg 0x9a8 2%nat (fun j : nat => default ubyte0 (init_sh_pl !! j)).
+Proof.
+  intro Hi. rewrite /init_argv_args in Hi.
+  destruct i as [| i]; cbn in Hi; [ | discriminate Hi ].
+  injection Hi as <-. split; reflexivity.
+Qed.
+
+Lemma init_argv_shape : uargv_shape init_argv_args.
+Proof.
+  split; [ rewrite init_argv_args_length; unfold MAXARG; lia | ].
+  intros i x Hi.
+  destruct (init_argv_args_lookup i x Hi) as [_ ->].
+  cbn [ua_ptr ua_len ua_bytes].
+  split_and!; [ lia | lia | split ].
+  - intros j Hj.
+    destruct j as [| [| j]]; [ | | exfalso; lia ];
+      (intro Hc; apply (f_equal bv_unsigned) in Hc;
+       vm_compute in Hc; discriminate Hc).
+  - apply bv_eq. vm_compute. reflexivity.
+Qed.
+
+(* the three bytes of the name AND its terminator, in one [vm_compute] over
+   the dump -- [init_ro_sh_bool] with the byte function above in place of
+   the list lookups, so the reading needs no case split at the use site *)
+Lemma init_ro_sh_bytes_bool :
+  forallb (fun j : nat =>
+      bool_decide (UCodeInit.init_ro !! (0x9a8 + Z.of_nat j)
+                   = Some (default ubyte0 (init_sh_pl !! j))))
+    (seq 0 3) = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma init_argv_img (M : gmap Z (bv 8)) :
   uimg_sub UCodeInit.init_argv_map M ->
   uimg_sub UCodeInit.init_ro M ->
-  exec_args_of M (mword_of_int 0x1000 : mword 64) na alen afun ->
-  na = 1%nat /\ alen 0%nat = 2%nat.
+  uargv_img M 0x1000 init_argv_args.
 Proof.
-  intros Hav Hro (Hshape & avf & Hptr & Hnz & Hnul & Hstr).
-  destruct Hshape as (_ & Hcstr & _).
+  intros Hav Hro.
   (* the two windows, in the contract's spelling *)
   assert (Hb0 : forall k : nat, (k < 8)%nat ->
             M !! (0x1000 + Z.of_nat k)
@@ -243,55 +297,44 @@ Proof.
             = bv_to_little_endian 8 8 0 !! k).
   { apply img_word_of_bytes. intros k Hk.
     exact (Hav _ _ (proj2 (init_argv_words k Hk))). }
-  (* ---- the two pointer words ---- *)
-  assert (E0 : uint (add_vec_int (mword_of_int 0x1000 : mword 64)
-                       (8 * Z.of_nat 0%nat)) = 0x1000)
-    by (vm_compute; reflexivity).
-  assert (E1 : uint (add_vec_int (mword_of_int 0x1000 : mword 64)
-                       (8 * Z.of_nat 1%nat)) = 0x1008)
-    by (vm_compute; reflexivity).
-  assert (Hne : (mword_of_int 0x9a8 : mword 64) <> mword_of_int 0).
-  { intro Hc. apply (f_equal bv_unsigned) in Hc.
-    vm_compute in Hc. discriminate Hc. }
-  assert (Hna1 : na = 1%nat).
-  { destruct (decide (na = 0%nat)) as [-> | Hn0].
-    - exfalso. pose proof (Hptr 0%nat (Nat.le_refl 0%nat)) as Hw.
-      rewrite E0 in Hw.
-      assert (Hz0 : 0 <= 0x9a8 < 2 ^ 64) by (clear; lia).
-      rewrite (uimg_word_det M 0x1000 (avf 0%nat) 0x9a8 Hz0 Hw Hb0) in Hnul.
-      exact (Hne Hnul).
-    - destruct (decide (na = 1%nat)) as [-> | Hn1]; [ reflexivity | exfalso ].
-      pose proof (Hptr 1%nat ltac:(lia)) as Hw. rewrite E1 in Hw.
-      pose proof (Hnz 1%nat ltac:(lia)) as Hz.
-      assert (Hz1 : 0 <= 0 < 2 ^ 64) by (clear; lia).
-      exact (Hz (uimg_word_det M 0x1008 (avf 1%nat) 0 Hz1 Hw Hb1)). }
-  subst na.
-  (* ---- the string at 0x9a8 ---- *)
-  split; [ reflexivity | ].
-  pose proof (Hptr 0%nat ltac:(lia)) as Hw. rewrite E0 in Hw.
-  assert (Hz0 : 0 <= 0x9a8 < 2 ^ 64) by (clear; lia).
-  assert (Hp0 : avf 0%nat = (mword_of_int 0x9a8 : mword 64))
-    by exact (uimg_word_det M 0x1000 (avf 0%nat) 0x9a8 Hz0 Hw Hb0).
-  pose proof (Hstr 0%nat ltac:(lia)) as Hs. rewrite Hp0 in Hs.
-  destruct (Hcstr 0%nat ltac:(lia)) as [Hno Hnl].
-  pose proof (bool_decide_eq_true_1 _ init_ro_sh_bool) as (Hr0 & Hr1 & Hr2).
-  destruct (decide (alen 0%nat = 2%nat)) as [Hok | Hbad]; [ exact Hok | ].
-  exfalso.
-  destruct (decide (alen 0%nat < 2)%nat) as [Hlt | Hge].
-  - (* the string would end at 0x9a8 or 0x9a9, and neither byte is NUL *)
-    pose proof (Hs (alen 0%nat) (Nat.le_refl _)) as Hj.
-    destruct (decide (alen 0%nat = 0%nat)) as [Hz | Hz].
-    + rewrite Hz in Hj. rewrite Hz in Hnl. rewrite (Hro _ _ Hr0) in Hj.
-      injection Hj as Hj. rewrite <- Hj in Hnl.
-      vm_compute in Hnl. discriminate Hnl.
-    + assert (Ha : alen 0%nat = 1%nat) by lia.
-      rewrite Ha in Hj. rewrite Ha in Hnl. rewrite (Hro _ _ Hr1) in Hj.
-      injection Hj as Hj. rewrite <- Hj in Hnl.
-      vm_compute in Hnl. discriminate Hnl.
-  - (* ...and past 0x9aa the string would have to continue through a NUL *)
-    pose proof (Hs 2%nat ltac:(lia)) as Hj.
-    rewrite (Hro _ _ Hr2) in Hj. injection Hj as Hj.
-    exact (Hno 2%nat ltac:(lia) (eq_trans (eq_sym Hj) bv0_moi0)).
+  pose proof (proj1 (forallb_forall _ (seq 0 3)) init_ro_sh_bytes_bool) as Hb3.
+  rewrite /uargv_img init_argv_args_length. split_and!.
+  - lia.
+  - unfold Z64. lia.
+  - intros i x Hi.
+    destruct (init_argv_args_lookup i x Hi) as [_ ->].
+    cbn [ua_ptr ua_len]. unfold Z64. lia.
+  - intros i x Hi.
+    destruct (init_argv_args_lookup i x Hi) as [-> ->].
+    cbn [ua_ptr]. intros k Hk.
+    replace (0x1000 + 8 * Z.of_nat 0%nat + Z.of_nat k)
+      with (0x1000 + Z.of_nat k) by lia.
+    exact (Hb0 k Hk).
+  - intros k Hk.
+    replace (0x1000 + 8 * Z.of_nat 1%nat + Z.of_nat k)
+      with (0x1008 + Z.of_nat k) by lia.
+    exact (Hb1 k Hk).
+  - intros i x Hi.
+    destruct (init_argv_args_lookup i x Hi) as [_ ->].
+    cbn [ua_ptr ua_len ua_bytes]. intros j Hj.
+    assert (Hin : In j (seq 0 3)) by (apply in_seq; lia).
+    pose proof (bool_decide_eq_true_1 _ (Hb3 j Hin)) as Hrow.
+    exact (Hro _ _ Hrow).
+Qed.
+
+Lemma init_args_det (M : gmap Z (bv 8)) (na : nat) (alen : nat -> nat)
+    (afun : nat -> nat -> bv 8) :
+  uimg_sub UCodeInit.init_argv_map M ->
+  uimg_sub UCodeInit.init_ro M ->
+  exec_args_of M (mword_of_int 0x1000 : mword 64) na alen afun ->
+  na = 1%nat /\ alen 0%nat = 2%nat.
+Proof.
+  intros Hav Hro Hargs.
+  destruct (uargv_det M 0x1000 init_argv_args na alen afun
+              init_argv_shape (init_argv_img M Hav Hro) Hargs) as (Hn & Hl & _).
+  assert (Hn1 : na = 1%nat) by (rewrite Hn init_argv_args_length; reflexivity).
+  split; [ exact Hn1 | ].
+  rewrite (Hl 0%nat ltac:(rewrite Hn1; lia)). reflexivity.
 Qed.
 
 (* ===================================================================== *)

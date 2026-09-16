@@ -59,6 +59,9 @@ Require Import AppCfg AppInv.
 Require Import PinnedExec.
 Require Import ExecEntry.        (* [image_entry]: obligation (E), named
                                     (design/user-exec.md section 1) *)
+Require Import ExecArgs.         (* [uargv_exec] / [uargv_img] / [uargv_det]
+                                    and the two heap readings: the argument
+                                    vector at ANY layout (lane EX-3) *)
 Require Import FsEchoPin.
 Require Import ArgPath.           (* [arg_path_shape] / [arg_path_of] *)
 Require Import SpecKexec SpecSysExec SpecCopyin.
@@ -844,40 +847,10 @@ Section UShEcho.
   Local Notation a0_idx := (mword_of_int 10 : mword 5).
   Local Notation a1_idx := (mword_of_int 11 : mword 5).
 
-  (* [UserHeap.uheap_ubytes_img] at ANY dfrac.  The node's runs are all
-     [DfracDiscarded] -- that is what makes the tree persistent and lets it
-     cross sh's fork -- so the owned-run form cannot read them. *)
-  Lemma uheap_ubytesq_img (gt gd gs : gname) (M : gmap Z (bv 8))
-      (pm : gmap (mword 27) uperm) (sz : Z) (dq : dfrac) (a : Z) (n : nat)
-      (f : nat -> bv 8) :
-    uheap gt gd gs M pm sz -∗ ubytesq gd dq a n f -∗
-    ⌜ forall k : nat, (k < n)%nat -> M !! (a + Z.of_nat k)%Z = Some (f k) ⌝.
-  Proof.
-    iIntros "Hheap Hbs".
-    iInduction n as [ | k IH ] "IH" forall (f).
-    { iPureIntro. intros j Hj. exfalso. lia. }
-    rewrite /ubytesq seq_S big_sepL_app /=.
-    iDestruct "Hbs" as "[Hlo [Hhi _]]".
-    iDestruct ("IH" $! f with "Hheap Hlo") as %Hlo.
-    iDestruct (uheap_ubyte with "Hheap Hhi") as %(HM & _ & _).
-    iPureIntro. intros j Hj.
-    destruct (decide (j = k)) as [-> | Hne];
-      [ exact HM | exact (Hlo j ltac:(lia)) ].
-  Qed.
-
-  (* ...and the word form, in the spelling [SpecCopyin.uimg_word_at] and
-     [UImgWordDefs.img_word_of_bytes] take. *)
-  Lemma uheap_uwordq_img (gt gd gs : gname) (M : gmap Z (bv 8))
-      (pm : gmap (mword 27) uperm) (sz : Z) (dq : dfrac) (a z : Z) :
-    uheap gt gd gs M pm sz -∗
-    uwordq gd dq a (mword_of_int z : mword 64) -∗
-    ⌜ forall k : nat, (k < 8)%nat ->
-        M !! (a + Z.of_nat k)%Z = bv_to_little_endian 8 8 z !! k ⌝.
-  Proof.
-    iIntros "Hheap Hw". rewrite /uwordq.
-    iDestruct (uheap_ubytesq_img with "Hheap Hw") as %Hb.
-    iPureIntro. exact (img_word_of_bytes M a z Hb).
-  Qed.
+  (* [uheap_ubytesq_img] and [uheap_uwordq_img] -- [UserHeap.uheap_ubytes_img]
+     at ANY dfrac, which is what a node whose runs are all [DfracDiscarded]
+     needs -- MOVED to [ExecArgs.v] (lane EX-3): they are how the general
+     argument reading reads a heap, and nothing about them is echo's. *)
 
   (* =================================================================== *)
   (*  4.  THE INGREDIENTS -- [UInitSh.init_sh_slot] at /echo              *)
@@ -1084,10 +1057,150 @@ Section UShEcho.
       exact Hn4.
   Qed.
 
+  (* =================================================================== *)
+  (*  5b.  THE NODE IS A GENERAL ARGUMENT VECTOR (lane EX-3)              *)
+  (*                                                                      *)
+  (*  [ExecArgs] states the argument reading at an arbitrary layout -- a   *)
+  (*  [list UserHeap.uarg] at an address -- and sh's node already IS one:  *)
+  (*  [UkShRun.ush_cmd_exec] hands out [UserHeap.uargv] together with the  *)
+  (*  NULL cap word, which is [ExecArgs.uargv_exec] once the vector's pure *)
+  (*  SHAPE is known.  So what this file still spells is only its own two  *)
+  (*  facts -- the shape (a fact about the LINE sh parsed) and the layout  *)
+  (*  ([echo_node_img], re-indexed) -- and the reading is general.         *)
+  (* =================================================================== *)
+
+  (* THE GENERAL STEP, at ANY exec node: [ush_cmd_exec] and the shape, and
+     it names neither /echo nor its word list.  This is what a second
+     program sh learns to run would take. *)
+  Lemma uargv_exec_of_cmd (gd : gname) (t : Z) (args : list uarg) :
+    uargv_shape args ->
+    ush_cmd gd t (UExec args) -∗ uargv_exec gd (t + 8) args.
+  Proof.
+    intro Hsh. iIntros "#Hc".
+    iDestruct (ush_cmd_exec with "Hc") as "(#Hv & #Hn & _)".
+    rewrite /uargv_exec /ush_ptr.
+    iSplitR; [ by iPureIntro | ]. iFrame "Hv Hn".
+  Qed.
+
+  (* THE SHAPE, at /echo's word list: fewer words than MAXARG, each string
+     inside the line (hence far under a page) and its terminator the cut's
+     ([UkShEcho.echo_argv_bytes]'s second conjunct).  The one thing the
+     line cannot say is that no pointer is NULL, and that is the node's own
+     base address. *)
+  Lemma echo_uargv_shape (s0 : Z) (g : nat -> bv 8) :
+    0 < s0 -> UkShEcho.echo_argv_bytes g ->
+    uargv_shape (UkShMain.ush_args s0 g UkShEcho.echo_toks).
+  Proof.
+    intros Hs0 Hbytes. split.
+    - rewrite UkShEcho.echo_cmd_args_length.
+      pose proof echo_ws_lt10. unfold MAXARG. lia.
+    - intros i x Hi.
+      assert (Hi' : (i < length echo_ws)%nat).
+      { pose proof (lookup_lt_Some _ _ _ Hi) as Hlt.
+        rewrite UkShEcho.echo_cmd_args_length in Hlt. exact Hlt. }
+      assert (Hx : x = UArg (s0 + Z.of_nat (UkShEcho.echo_off i))
+                        (UkShEcho.echo_alen i)
+                        (fun j : nat => g (UkShEcho.echo_off i + j)%nat)).
+      { rewrite (UkShEcho.echo_cmd_args_lookup s0 g i Hi') in Hi.
+        injection Hi as Hi. exact (eq_sym Hi). }
+      rewrite Hx. cbn [UserHeap.ua_ptr UserHeap.ua_len UserHeap.ua_bytes].
+      refine (conj _ (conj _ (conj _ _))).
+      + pose proof (Nat2Z.is_nonneg (UkShEcho.echo_off i)). lia.
+      + pose proof (UkShEcho.echo_off_lt i (UkShEcho.echo_alen i) Hi'
+                      ltac:(lia)) as Hb.
+        rewrite echo_line_length in Hb. lia.
+      + intros j Hj.
+        rewrite (proj1 Hbytes i j Hi' Hj).
+        rewrite <- ubyte0_moi0.
+        exact (echo_line_nonul (UkShEcho.echo_off i + j)%nat
+                 (UkShEcho.echo_off_lt i j Hi' ltac:(lia))).
+      + rewrite (proj2 Hbytes i Hi'). exact ubyte0_moi0.
+  Qed.
+
+  (* ...and the node's own base is positive, which is what [echo_cmd_str]
+     says at argument 0 ([UkShEcho.echo_off_0]). *)
+  Lemma echo_node_img_s0_pos (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8) :
+    echo_node_img M s0 t g -> 0 < s0.
+  Proof.
+    intros (_ & Hri & _ & _ & _ & _).
+    pose proof (Hri 0%nat echo_ws_pos) as Hr.
+    rewrite UkShEcho.echo_off_0 in Hr. cbn in Hr. lia.
+  Qed.
+
+  (* THE LAYOUT.  [echo_node_img] stays this file's own summary -- the PATH
+     reading consumes it too, and its [2 ^ 38] bounds are STRONGER than the
+     general layout's [< 2 ^ 64] -- so the bridge is a re-indexing:
+     argument [i]'s four rows are the [i]th element's.  The terminator row
+     is the one place the line's own cut is needed, because the general
+     layout asks for the string's bytes at [j <= len] in ONE clause (which
+     is [SpecCopyinstr.copyinstr_got]'s spelling) and the node's summary
+     keeps the NUL apart. *)
+  Lemma echo_uargv_img (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8) :
+    echo_node_img M s0 t g -> UkShEcho.echo_argv_bytes g ->
+    uargv_img M (t + 8) (UkShMain.ush_args s0 g UkShEcho.echo_toks).
+  Proof.
+    intros Himg Hbytes.
+    pose proof Himg as (Htr & Hri & Hword & Hbc & Hgi & Hzi).
+    change (2 ^ 38) with 274877906944 in Htr.
+    assert (Hlen : length (UkShMain.ush_args s0 g UkShEcho.echo_toks)
+                   = length echo_ws)
+      by exact (UkShEcho.echo_cmd_args_length s0 g).
+    assert (Hel : forall (i : nat) (x : uarg),
+              UkShMain.ush_args s0 g UkShEcho.echo_toks !! i = Some x ->
+              (i < length echo_ws)%nat
+              /\ x = UArg (s0 + Z.of_nat (UkShEcho.echo_off i))
+                       (UkShEcho.echo_alen i)
+                       (fun j : nat => g (UkShEcho.echo_off i + j)%nat)).
+    { intros i x Hi.
+      assert (Hi' : (i < length echo_ws)%nat).
+      { pose proof (lookup_lt_Some _ _ _ Hi) as Hlt.
+        rewrite Hlen in Hlt. exact Hlt. }
+      rewrite (UkShEcho.echo_cmd_args_lookup s0 g i Hi') in Hi.
+      injection Hi as Hi. split; [ exact Hi' | exact (eq_sym Hi) ]. }
+    pose proof echo_ws_lt10 as Hws.
+    rewrite /uargv_img Hlen. split_and!.
+    - lia.
+    - unfold Z64. lia.
+    - intros i x Hi. destruct (Hel i x Hi) as [Hi' ->].
+      cbn [UserHeap.ua_ptr UserHeap.ua_len].
+      pose proof (Hri i Hi') as Hr. change (2 ^ 38) with 274877906944 in Hr.
+      pose proof (UkShEcho.echo_off_lt i (UkShEcho.echo_alen i) Hi'
+                    ltac:(lia)) as Hb.
+      rewrite echo_line_length in Hb. unfold Z64. lia.
+    - intros i x Hi. destruct (Hel i x Hi) as [Hi' ->].
+      cbn [UserHeap.ua_ptr]. intros k Hk. exact (Hword i Hi' k Hk).
+    - exact Hbc.
+    - intros i x Hi. destruct (Hel i x Hi) as [Hi' ->].
+      cbn [UserHeap.ua_ptr UserHeap.ua_len UserHeap.ua_bytes]. intros j Hj.
+      destruct (decide (j = UkShEcho.echo_alen i)) as [-> | Hne].
+      + rewrite (Hzi i Hi'). f_equal. exact (eq_sym (proj2 Hbytes i Hi')).
+      + exact (Hgi i Hi' j ltac:(lia)).
+  Qed.
+
+  (* ...AND THE NODE IS A [uargv_exec] OUTRIGHT, off the heap the deposit
+     lends.  This is the route a program with a malloc'd vector takes when
+     it has no pure summary of its own to keep: one lemma instead of an
+     induction over the word count. *)
+  Lemma echo_uargv_exec_of_cmd (gd : gname) (t s0 : Z) (g : nat -> bv 8) :
+    0 < s0 -> UkShEcho.echo_argv_bytes g ->
+    ush_cmd gd t (UkShEcho.echo_cmd s0 g) -∗
+    uargv_exec gd (t + 8) (UkShMain.ush_args s0 g UkShEcho.echo_toks).
+  Proof.
+    intros Hs0 Hbytes. iIntros "#Hc".
+    iApply (uargv_exec_of_cmd gd t (UkShMain.ush_args s0 g UkShEcho.echo_toks)
+              (echo_uargv_shape s0 g Hs0 Hbytes)).
+    rewrite /UkShEcho.echo_cmd. iExact "Hc".
+  Qed.
+
   (* THE VECTOR: sh's arguments are DETERMINED by the node it built.
      [UInitSh.init_args_det] is this lemma at init's constant image; the
      conclusion is stronger here because echo's entry reads the BYTES and
-     not only the count and the lengths. *)
+     not only the count and the lengths.
+
+     AS RE-DERIVED (lane EX-3): both are now [ExecArgs.uargv_det] at their
+     own layout, and what was ninety lines of cornering the count against
+     the NULL cap and each length against its terminator is the general
+     agreement lemma ([ExecArgs.exec_args_of_agree]). *)
   Definition echo_args_det : Prop :=
     forall (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8)
            (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8),
@@ -1103,99 +1216,33 @@ Section UShEcho.
 
   Lemma echo_args_det_holds : echo_args_det.
   Proof.
-    intros M s0 t g na alen afun
-      (Htr & Hri & Hword & Hbc & Hgi & Hzi) Hbytes Hargs.
-    destruct Hargs as (Hshape & avf & Hptr & Hnz & Hnul & Hstr).
-    destruct Hshape as (_ & Hcstr & Hlen4k).
-    (* ---- the key's argv address, unwrapped ---- *)
-    (* the vector's own addresses are in range because there are FEWER
-       WORDS THAN sh's MAXARGS -- which is where that bound earns its
-       keep, and the only thing the count is used for here. *)
-    assert (Ea : forall i : nat, (i <= length echo_ws)%nat ->
-              uint (add_vec_int (mword_of_int (t + 8) : mword 64)
-                      (8 * Z.of_nat i)) = t + 8 + 8 * Z.of_nat i)
-      by (intros i Hi; apply uint_avi_moi;
-          pose proof echo_ws_lt10; unfold Z64; lia).
-    (* ---- THE COUNT ---- *)
-    assert (Hna : na = length echo_ws).
-    { destruct (decide (na < length echo_ws)%nat) as [Hlt | Hge].
-      - exfalso.
-        pose proof (Hptr na (Nat.le_refl na)) as Hw.
-        rewrite (Ea na ltac:(lia)) in Hw.
-        pose proof (Hri na Hlt) as Hrr.
-        pose proof (uimg_word_det M (t + 8 + 8 * Z.of_nat na) (avf na)
-                      (s0 + Z.of_nat (UkShEcho.echo_off na))
-                      ltac:(lia) Hw (Hword na Hlt)) as Hv.
-        assert (Hcz : (mword_of_int (s0 + Z.of_nat (UkShEcho.echo_off na))
-                       : mword 64) = mword_of_int 0)
-          by (rewrite <- Hv; exact Hnul).
-        apply (f_equal uint) in Hcz.
-        rewrite (uint_moi (s0 + Z.of_nat (UkShEcho.echo_off na))
-                   ltac:(unfold Z64; lia)) in Hcz.
-        rewrite (uint_moi 0 ltac:(unfold Z64; lia)) in Hcz.
-        lia.
-      - destruct (decide (na = length echo_ws)) as [He | Hne];
-          [ exact He | exfalso ].
-        pose proof (Hptr (length echo_ws) ltac:(lia)) as Hw.
-        rewrite (Ea (length echo_ws) ltac:(lia)) in Hw.
-        exact (Hnz (length echo_ws) ltac:(lia)
-                 (uimg_word_det M (t + 8 + 8 * Z.of_nat (length echo_ws))
-                    (avf (length echo_ws)) 0 ltac:(lia) Hw Hbc)). }
-    subst na.
-    (* ---- THE THREE POINTERS ---- *)
-    assert (Hpi : forall i : nat, (i < length echo_ws)%nat ->
-              avf i = (mword_of_int (s0 + Z.of_nat (UkShEcho.echo_off i))
-                       : mword 64)).
-    { intros i Hi.
-      pose proof (Hptr i ltac:(lia)) as Hw. rewrite (Ea i ltac:(lia)) in Hw.
-      pose proof (Hri i Hi) as Hrr.
-      exact (uimg_word_det M (t + 8 + 8 * Z.of_nat i) (avf i)
-               (s0 + Z.of_nat (UkShEcho.echo_off i)) ltac:(lia) Hw
-               (Hword i Hi)). }
-    (* ---- WHAT THE COPY LOOP READ, at the node's own addresses ---- *)
-    assert (Hsi : forall i : nat, (i < length echo_ws)%nat ->
-              forall j : nat, (j <= alen i)%nat ->
-                M !! (s0 + Z.of_nat (UkShEcho.echo_off i) + Z.of_nat j)
-                = Some (afun i j)).
-    { intros i Hi j Hj.
-      pose proof (Hstr i ltac:(lia)) as Hs. rewrite (Hpi i Hi) in Hs.
-      pose proof (Hs j Hj) as Hsj.
-      pose proof (Hri i Hi) as Hrr.
-      pose proof (Hlen4k i ltac:(lia)) as H4k.
-      rewrite (uint_avi_moi (s0 + Z.of_nat (UkShEcho.echo_off i)) (Z.of_nat j)
-                 ltac:(lia) ltac:(lia) ltac:(unfold Z64; lia)) in Hsj.
-      exact Hsj. }
-    (* ---- THE THREE LENGTHS ---- *)
-    assert (Halen : forall i : nat, (i < length echo_ws)%nat ->
-              alen i = UkShEcho.echo_alen i).
-    { intros i Hi.
-      destruct (Hcstr i ltac:(lia)) as [Hno Hnl].
-      destruct (decide (alen i < UkShEcho.echo_alen i)%nat) as [Hlt | Hge].
-      - exfalso.
-        pose proof (Hsi i Hi (alen i) (Nat.le_refl _)) as Hm1.
-        rewrite Hnl in Hm1.
-        pose proof (Hgi i Hi (alen i) Hlt) as Hm2.
-        rewrite Hm1 in Hm2. injection Hm2 as Hm2.
-        pose proof (proj1 Hbytes i (alen i) Hi Hlt) as Hgl.
-        assert (Hidx : (UkShEcho.echo_off i + alen i
-                        < length echo_line)%nat)
-          by (apply UkShEcho.echo_off_lt; lia).
-        apply (echo_line_nonul _ Hidx).
-        rewrite <- Hgl, <- Hm2. exact (eq_sym ubyte0_moi0).
-      - destruct (decide (alen i = UkShEcho.echo_alen i)) as [He | Hne];
-          [ exact He | exfalso ].
-        pose proof (Hno (UkShEcho.echo_alen i) ltac:(lia)) as Hnn.
-        pose proof (Hsi i Hi (UkShEcho.echo_alen i) ltac:(lia)) as Hm1.
-        pose proof (Hzi i Hi) as Hm2.
-        rewrite Hm1 in Hm2. injection Hm2 as Hm2.
-        apply Hnn. rewrite Hm2. exact ubyte0_moi0. }
-    (* ---- ...AND THE BYTES ---- *)
-    split_and!; [ reflexivity | exact Halen | ].
-    intros i j Hi Hj.
-    pose proof (Hsi i Hi j ltac:(rewrite (Halen i Hi); lia)) as Hm1.
-    pose proof (Hgi i Hi j Hj) as Hm2.
-    rewrite Hm1 in Hm2. injection Hm2 as Hm2.
-    rewrite Hm2. exact (proj1 Hbytes i j Hi Hj).
+    intros M s0 t g na alen afun Himg Hbytes Hargs.
+    (* the [i]th element of the node's vector, named once *)
+    assert (Hnth : forall i : nat, (i < length echo_ws)%nat ->
+              ua_nth (UkShMain.ush_args s0 g UkShEcho.echo_toks) i
+              = UArg (s0 + Z.of_nat (UkShEcho.echo_off i))
+                  (UkShEcho.echo_alen i)
+                  (fun j : nat => g (UkShEcho.echo_off i + j)%nat))
+      by (intros i Hi;
+          exact (ua_nth_lookup _ i _ (UkShEcho.echo_cmd_args_lookup s0 g i Hi))).
+    destruct (uargv_det M (t + 8) (UkShMain.ush_args s0 g UkShEcho.echo_toks)
+                na alen afun
+                (echo_uargv_shape s0 g (echo_node_img_s0_pos M s0 t g Himg)
+                   Hbytes)
+                (echo_uargv_img M s0 t g Himg Hbytes) Hargs)
+      as (Hn & Hl & Hb).
+    assert (Hna : na = length echo_ws)
+      by (rewrite Hn; exact (UkShEcho.echo_cmd_args_length s0 g)).
+    split_and!.
+    - exact Hna.
+    - intros i Hi. rewrite (Hl i ltac:(rewrite Hna; lia)).
+      rewrite /ua_alen (Hnth i Hi). reflexivity.
+    - intros i j Hi Hj.
+      rewrite (Hb i j ltac:(rewrite Hna; lia)
+                 ltac:(rewrite (Hl i ltac:(rewrite Hna; lia));
+                       rewrite /ua_alen (Hnth i Hi); cbn [UserHeap.ua_len]; lia)).
+      rewrite /ua_afun (Hnth i Hi). cbn [UserHeap.ua_bytes].
+      exact (proj1 Hbytes i j Hi Hj).
   Qed.
 
 

@@ -84,6 +84,9 @@ Require Import FsCfg.           (* [fsc_fs]: THE file-system configuration the
 Require Import FsBlocks.        (* [fs_names] *)
 Require Import FsBytesGamma.    (* [fs_gamma_L] *)
 Require Import ExecEntry.       (* [image_entry] / [image_entry_taint] *)
+Require Import ExecArgs.        (* [image_entry_of_at_reading]: EX-3's lift,
+                                   which is what lets the entry below be
+                                   stated OUTSIDE the key's forall *)
 Require Import ExecBundle.      (* [ex_node_id] / [exec_bundle_of] *)
 Require Import PinnedObs.       (* [pobs_walk] / [pobs_aopen]: THE PIN SUPPLIER *)
 Require Import PinnedExec.      (* [pin_resolves] / [pobs_node_id] *)
@@ -508,6 +511,55 @@ Section ExecRun.
     (□ (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
           uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
           ⌜exec_path_of M pv pl⌝))%I.
+
+  (* ...AND THE ARGUMENT READING BESIDE IT (lane EX-3).  The vector a
+     program laid out, read back off whatever heap the run turns out to be
+     at: [ExecArgs.exec_args_of_uargv] is what a program with an owned
+     vector discharges it with, [ExecArgs.exec_args_of_uargv_img] what one
+     with a constant image does. *)
+  Definition uexec_args_reading (N : uk_names Σ) (av : mword 64)
+      (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8) : iProp Σ :=
+    (□ (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
+          uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
+          ⌜exec_args_of M av na alen afun⌝))%I.
+
+  (* EX-3'S PAYOFF ON THE SUPPLY.  [uexec_sup_run] carries (E) INSIDE the
+     key's [∀] because [image_entry] names the caller's image [M] and its
+     argv pointer -- design/user-exec.md section 2's first placement, whose
+     own note says an [exec_args_of] agreement lemma is the only thing that
+     would lift them out.  It exists now
+     ([ExecArgs.exec_args_of_agree], with the [kexec_image_ok] congruence
+     [ExecArgs.kexec_image_ok_ext]), so the entry may be stated OUTSIDE the
+     [∀] at the ONE argument shape the caller's own reading names -- which
+     is the form a program proof is naturally in.
+
+     [fdv], [cs] and [pidv] STAY under the [∀]: they are the RECORD's data,
+     not the image's, and no reading determines them.  A program that reads
+     none of them quantifies over all three, which is exactly the shape
+     echo's landed entry already has.  [uexec_sup_run]'s statement is
+     untouched; this is a corollary. *)
+  Lemma uexec_sup_run_of_entry_at (N : uk_names Σ) (pv av : mword 64)
+      (c : Z) (T : iProp Σ) (pl : list (bv 8)) (f : elf_bytes) (nl : nat)
+      (Pay : iProp Σ) (na : nat) (alen : nat -> nat)
+      (afun : nat -> nat -> bv 8) :
+    uexec_path_reading N pv pl -∗
+    uexec_args_reading N av na alen afun -∗
+    exec_walk_of c T pl (MkAnode (AFile f) nl) -∗
+    □ (∀ (fdv : list fdstate) (cs : gset gname) (pidv : mword 32),
+         image_entry_at f na alen afun fdv c cs pidv (ukn_pay N) Pay uslot) -∗
+    Pay -∗
+    uexec_sup_run N pv av c T pl f nl Pay.
+  Proof.
+    iIntros "#Hrd #Hra Hw #Hcon HPay".
+    rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "Hheap Hufd".
+    iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
+    iDestruct ("Hra" $! M pm sz with "Hheap") as %Hargs.
+    iFrame "Hheap Hufd". iSplitR; [ by iPureIntro | ]. iFrame "Hw".
+    iSplitR "HPay"; [ | iExact "HPay" ].
+    iDestruct ("Hcon" $! fdv cs pidv) as "#He".
+    iApply (image_entry_of_at_reading f M av fdv c cs pidv (ukn_pay N) Pay
+              uslot na alen afun Hargs with "He").
+  Qed.
 
   (* ---- TEST ONE: A PROGRAM WITH A PIN EXECS THE FILE IT PINNED --------
      Everything a new program's author writes is here and nothing else: a

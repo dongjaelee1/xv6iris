@@ -21,8 +21,11 @@ open Iris Iris.ProgramLogic Iris.BI Iris.ProofMode Std MachCSL
 class Xv6G (GF : BundledGFunctors) where
   [monoListG : MonoListG GF (BitVec 8)]
   [gvListG : GhostVarG GF (List (BitVec 8))]
+  [gvNatG : GhostVarG GF Nat]
+  [gvUnitG : GhostVarG GF Unit]
 
 attribute [instance] Xv6G.monoListG Xv6G.gvListG
+attribute [reducible, instance] Xv6G.gvNatG Xv6G.gvUnitG
 
 /-- The names of the console's ghosts: the accepted trace and the
 transmitter's half. -/
@@ -68,7 +71,7 @@ theorem uartSentSub_nil (γ : UartNames) (bs : List (BitVec 8)) :
 def txRes (γ : UartNames) : IProp GF := iprop% ∃ l : List (BitVec 8), γ.tx ↪VAR{.own (1 : Qp).half} l
 
 /-- `tx_lock` (`kernel/uart.c`). -/
-def txLockAddr : BitVec 64 := 0x80012380#64
+def txLockAddr : BitVec 64 := 0x80012350#64
 
 /-- The transmit lock, as the printing cone holds it (persistent). -/
 def isTxLock [CurCtx] (γl : GName) (γ : UartNames) : IProp GF :=

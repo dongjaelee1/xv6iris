@@ -75,3 +75,9 @@ import Xv6.SpecDevintr
 import Xv6.SpecYield
 import Xv6.ProofKerneltrap
 import Xv6.LinkKerneltrap
+import Xv6.SpecMemset
+import Xv6.ProofMemset
+import Xv6.LinkMemset
+import Xv6.KallocDefs
+import Xv6.SpecKfree
+import Xv6.SpecKalloc

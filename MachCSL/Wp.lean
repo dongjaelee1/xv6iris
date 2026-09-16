@@ -133,6 +133,15 @@ def wpLoop (cpu : CPU) : IProp GF := wpHart (GF := GF) cpu (pure ())
 
 theorem wpLoop_eq (cpu : CPU) : wpLoop (GF := GF) cpu = wpHart (GF := GF) cpu (pure ()) := rfl
 
+/-- A ghost update before the loop (the WP absorbs the basic update). -/
+theorem wpLoop_bupd (cpu : CPU) : (|==> wpLoop (GF := GF) cpu) ⊢ wpLoop cpu := by
+  unfold wpLoop wpHart hartWP
+  iintro H #Hcert
+  iapply fupd_wp
+  imod H
+  imodintro
+  iapply H $$ Hcert
+
 /-- The generic lifting lemma for one hart event, and the single per-hart
 framing point.  The caller shows, from the ambient era's interpretation, that
 the hart can step, and re-establishes the interpretation at every possible

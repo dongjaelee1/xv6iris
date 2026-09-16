@@ -59,3 +59,5 @@ import MachCSL.WpPtWalk
 import MachCSL.Translate
 import MachCSL.WpSmodeCycle
 import MachCSL.WpSmodeTrapCsr
+import MachCSL.WpSmodeSltu
+import MachCSL.ByteWord

@@ -1,16 +1,18 @@
 # pipe-queue — the pipe's contents as exact ghost state
 
-STATUS (2026-09-17): DONE on branch `pipe-queue`, merged with
-`origin/main` (the console credential redesign R4).  All four lanes are
-merged; the full `iris` tree is green with no admits; both audits match
-the baselines (system: the thirteen; echo: the fourteen).  The user tier
-carries `FdSlots.fdv_nopipe` of its table in `UkRun.urun` (`urun_nopipe`,
-`⌜fdv_nopipe fdv⌝ ∨ □ riscv_kill_cred`), so exit(2)'s close payments are
-free for every program that never calls pipe(2); pipe(2)'s own leaf
-(`UkRunSys.wp_uk_ecall_pipe`) takes the credential, i.e. a pipe-using
-program's tear-down is paid from the taint today (see Open).  Lane clones
-`/shared/xv6iris-3-pq-{A,B,C,D}` can be deleted once the branch is on
-`main`.
+**STATUS: COMPLETE, ARCHIVED 2026-09-17.**  Landed on `main` as
+`1b67b0819` (59 commits over `d4505040e`, 101 files).  The full `iris` tree
+is green with no admits and both audits match the baselines: thirteen for
+the system theorem, fourteen for the echo one.  All four lanes are merged
+and their clones `/shared/xv6iris-3-pq-{A,B,C,D}` are disposable.
+
+ONE THING IS LEFT AND IS DEFERRED (owner, 2026-09-17): a verified program
+that HOLDS a pipe pays its own tear-down out of the taint, because
+`UkRun.urun` cannot hold the close links it has handed to the program.  It
+is the first bullet of "Open, recorded" below, and the ruling is gated on an
+application that has to do pipe reasoning; nothing in the tree is blocked by
+it today.
+
 Design of record: `design/pipe.md`, "The byte queue".  Read it first; this
 file is only what is left to do and who does it.
 

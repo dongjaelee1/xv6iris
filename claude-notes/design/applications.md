@@ -11,7 +11,9 @@ builds on [`adequacy.md`](adequacy.md)
 and the abstract view `aview`), [`user-wp-slot.md`](user-wp-slot.md) (the process's trap contract; how a
 process hands the kernel a payload at an ecall is §2 below — the fd-row
 pilot that first tried it is retired to `completed/fd-row-pilot.md`).  The worklist for the
-first application is [`../projects/app-echo.md`](../projects/app-echo.md).
+first application is [`../completed/app-echo.md`](../completed/app-echo.md)
+(archived 2026-09-16: the theorem is closed and the post-QED redesign that
+re-cut the console claim under it has landed).
 
 ## 0. The two applications, and what separates them
 

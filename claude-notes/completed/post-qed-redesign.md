@@ -1,5 +1,27 @@
 # POST-QED REDESIGN: one console I/O invariant, and what an application is
 
+**STATUS: COMPLETE, ARCHIVED 2026-09-16.**  R1-R4 all landed (R1 the pure
+event layer, R2 the kernel's one claim, R3 the application on it, R4 the
+interface record + the laws class + `cons_cred` + the U tier's parameter
+lists; commits `0c1bd10ab`, `fb0f6acbc`, `f7192449c`, `b42809784`, plus the
+legacy-name fold `f9a453556`).  At every landing the full tree was green and
+`Print Assumptions` stayed at 14 (echo) / 13 (system).  §4b records what the
+verification of the delete list found.
+
+**ONLY R5 IS LEFT, and it is deferred to a later project** (owner,
+2026-09-16): taking the application's kill credential off the machine's
+fixed record.  It is gated on a second application wanting a different kill
+price; `AppTree` landed as a second application but runs at the trivial
+price, so nothing forces it.  Since R4 it is already a projection of
+`riscvF_app_iface`, so what is left is about whether the MACHINE should own
+an application proposition at all — see §4's R5 bullet, and
+`SchedCtx.kill_paid`'s header for why the fixed record is how a low-altitude
+file names it without taking an application binder.
+
+---
+
+*The original status line, kept for the record:*
+
 **STATUS (2026-09-14): NOT STARTED, and none of it is owed.** The echo
 theorem closed without it (`UInitBootAdequacy.echo_adequacy_echoΣ`); this is
 a cleanup proposal, not debt. Two of §5's three questions to the owner are

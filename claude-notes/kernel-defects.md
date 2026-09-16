@@ -267,7 +267,7 @@ itself from its child: both resume with `a0 = 0`. `kill(pid)` and `wait`
 are unaffected in the kernel (they compare pids by equality), the damage
 is entirely in the user-visible convention.
 
-**Found by the proof, 2026-09-08 (FORK-ROW, projects/app-echo.md).** The
+**Found by the proof, 2026-09-08 (FORK-ROW, completed/app-echo.md).** The
 process's fork continuation has a parent arm guarded by `r <> 0`, and the
 kernel cannot discharge the guard: `PidLock.nextpid_res_at` is an
 existential value, and no invariant `0 < nextpid` is inductive across the

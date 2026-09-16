@@ -9,7 +9,7 @@ were never swept, so read them against this:
 
 * **INIT / SH — done elsewhere.**  Init's blocker `uki_wait_ok` and the
   `usys_window` row it was about no longer exist; the u-tier syscall row was
-  reshaped and both programs closed inside `projects/app-echo.md`
+  reshaped and both programs closed inside `app-echo.md`
   (sh is `iris/UkSh*.v`).
 * **P4 / P5b — dead.**  They belong to the FD-ROW PILOT section, retired
   2026-09-09 ([`fd-row-pilot.md`](fd-row-pilot.md)); its files are deleted and

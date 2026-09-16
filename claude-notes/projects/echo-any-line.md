@@ -1,7 +1,7 @@
 # Project: the echo application at ANY disciplined line
 
 Design of record: [`../design/applications.md`](../design/applications.md) for
-the application seam, [`app-echo.md`](app-echo.md) for the theorem this
+the application seam, [`../completed/app-echo.md`](../completed/app-echo.md) for the theorem this
 generalises.
 
 The landed theorem is about `echo hello world`. The target is

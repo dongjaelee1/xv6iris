@@ -567,7 +567,7 @@ Section UInitCons.
     { iApply pf_at_intro. iSplit; last first.
       { rewrite /init_mk_Fok /=. done. }
       rewrite /acre_commit_at /acre_commit_at_gen.
-      iIntros (I d i nm ents nl) "%Hpre Hperm HPd Hka".
+      iIntros (I d i nm ents nl) "%Hpre %Hpnm Hperm HPd Hka".
       rewrite /init_mk_Farm /cre_arm_fired /=.
       iDestruct "Hperm" as (av0) "[%Hfree Hpay]".
       destruct (decide (d = FsImg.ROOTINO /\ nm = fname_console))

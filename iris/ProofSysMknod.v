@@ -2210,9 +2210,9 @@ Section MknodStable.
       acre_commit_at Γ E c Pd Farm (mkr_recv root ps ds Φ).
   Proof.
     intros Hr. iIntros "#Hc Hcm". rewrite /acre_commit_at /acre_commit_at_gen.
-    iIntros (I d i nm ents nl) "%Hpre Harm HPd Ha".
+    iIntros (I d i nm ents nl) "%Hpre %Hnm Harm HPd Ha".
     iDestruct (mkr_chain_run Γ I avc root ps ds Hr with "Ha Hc") as %Hrun.
-    iMod ("Hcm" $! I d i nm ents nl with "[//] Harm HPd Ha")
+    iMod ("Hcm" $! I d i nm ents nl with "[//] [//] Harm HPd Ha")
       as "(Ha & HPd & Hstep & Hph2)".
     iModIntro. iFrame "Ha HPd Hstep". iIntros (I') "%Heq Ha'".
     iMod ("Hph2" $! I' with "[//] Ha'") as "[Ha' HΦ]".
@@ -2253,8 +2253,8 @@ Section MknodStable.
     acre_commit_at Γ E c Pd Farm Φ.
   Proof.
     iIntros "Hcm". rewrite /acre_commit_at /acre_commit_at_gen.
-    iIntros (I d i nm ents nl) "%Hpre Harm HPd Ha".
-    iMod ("Hcm" $! I d i nm ents nl with "[//] Harm HPd Ha")
+    iIntros (I d i nm ents nl) "%Hpre %Hnm Harm HPd Ha".
+    iMod ("Hcm" $! I d i nm ents nl with "[//] [//] Harm HPd Ha")
       as "(Ha & HPd & Hstep & Hph2)".
     iModIntro. iFrame "Ha HPd Hstep". iIntros (I') "%Heq Ha'".
     iMod ("Hph2" $! I' with "[//] Ha'") as "[Ha' HΦ]".

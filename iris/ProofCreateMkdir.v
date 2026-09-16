@@ -2286,7 +2286,7 @@ Section ProofCreateMkdir.
                         Hp3setfsz eq_refl Hp3ddix))
                   (mkf_era_is_dir dn bm data Hdntdir)
                   (mkf_era_live dn bm data Hdnnlnz)
-                  Hnonep Habsp' Habsc
+                  Hnonep (conj Hnfd'm Hnfdd'm) Habsp' Habsc
                   with "[] [] Hacre Harmr HPpar Htop Hctop") as "(Htop & Hctop & HPpar & Hokr)";
             [iApply (ireg_inv_ftop with "Hiregi") | iApply (ireg_inv_app with "Hiregi") |].
           iEval (rewrite -top_frag_1) in "Hctop".

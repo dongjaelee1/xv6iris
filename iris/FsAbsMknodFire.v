@@ -687,6 +687,12 @@ Section CreateFire.
     fn_is_dir np = true ->
     fn_nlink np <> 0%nat ->
     dir_entries np !! nm = None ->
+    (* THE NAME CREDENTIAL (lane TL-3C): the commit asks that the name
+       dirlink is about to file be a PROPER one, and the walk has it --
+       [DirView.dir_dots_miss_not_dots] reads it straight off the missed
+       lookup over a live directory's record range.  See
+       [FsAbsCreateFire.acre_commit_at_gen]'s note. *)
+    nm <> DOT /\ nm <> DOTDOT ->
     abs_of np' = Some (MkAnode (ADir (<[nm := i]> (dir_entries np)))
                                (fn_nlink np + acre_bump (cf d i))%nat) ->
     abs_of nc = Some (MkAnode (cf d i) 1%nat) ->
@@ -709,7 +715,7 @@ Section CreateFire.
           ⌜cre_pre av d nm (dir_entries np) (fn_nlink np) i (cf d i)⌝
           ∗ Fok.(pf_recv) av d nm i.
   Proof.
-    intros HE Hloc Hdir Hnl Hnone Habsp' Habsc.
+    intros HE Hloc Hdir Hnl Hnone Hpnm Habsp' Habsc.
     iIntros "#Hi #Hai Hcm Harm HPd Hfp Hfc".
     iDestruct (pf_at_au with "Hcm") as "Hcm".
     (* the re-spelling is needed because
@@ -740,7 +746,7 @@ Section CreateFire.
                     (fn_nlink np) i (cf d i) Hpre Hne). }
     iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
     iMod ("Hcm" $! I d i nm (dir_entries np) (fn_nlink np)
-            with "[//] Harm HPd Hta") as "(Hta & HPd & Hstep & Hph2)".
+            with "[//] [//] Harm HPd Hta") as "(Hta & HPd & Hstep & Hph2)".
     (* THE MOVE, at the whole authority: the application's half comes out
        of [appN] beside its claim, which the caller's step re-establishes
        under the later ([AppInv.app_top_update]) *)
@@ -772,6 +778,7 @@ Section CreateFire.
     fn_is_dir np = true ->
     fn_nlink np <> 0%nat ->
     dir_entries np !! nm = None ->
+    nm <> DOT /\ nm <> DOTDOT ->
     abs_of np' = Some (MkAnode (ADir (<[nm := i]> (dir_entries np))) (fn_nlink np)) ->
     abs_of nc = Some (MkAnode (AFile []) 1%nat) ->
     ftop_inv γfs -∗ app_inv γfs -∗
@@ -787,10 +794,10 @@ Section CreateFire.
           ⌜cre_pre av d nm (dir_entries np) (fn_nlink np) i (AFile [])⌝
           ∗ Fok.(pf_recv) av d nm i.
   Proof.
-    intros HE Hloc Hdir Hnl Hnone Habsp' Habsc.
+    intros HE Hloc Hdir Hnl Hnone Hpnm Habsp' Habsc.
     iIntros "Hi Hai Hcm Harm HPd Hfp Hfc".
     iApply (caf_acre_fire γfs E (fun _ _ => AFile []) Pd Farm Fok d i nm dqc
-              np np' nc HE Hloc Hdir Hnl Hnone
+              np np' nc HE Hloc Hdir Hnl Hnone Hpnm
               ltac:(rewrite Habsp'; cbn [acre_bump]; by rewrite Nat.add_0_r)
               Habsc with "Hi Hai Hcm Harm HPd Hfp Hfc").
   Qed.

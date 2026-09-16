@@ -1353,7 +1353,7 @@ Section ProofCreateAlloc.
                         dn' bm' data' Hiok' Hrl' Hduq' Hddix')
                      (mkf_era_is_dir dn bm data Hdz)
                      (mkf_era_live dn bm data (cr_nl0z dn Hnl0))
-                     Hnonep Habsp' Habsc
+                     Hnonep (conj Hnfd' Hnfdd') Habsp' Habsc
                      with "[] [] Hacre Harmr HPpar Htop Hctop") as "(Htop & Hctop & HPpar & Hokr)";
                [iApply (ireg_inv_ftop with "Hiregi") | iApply (ireg_inv_app with "Hiregi") |].
              iEval (rewrite -top_frag_1) in "Hctop".

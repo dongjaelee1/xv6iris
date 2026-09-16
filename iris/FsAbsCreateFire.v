@@ -337,6 +337,19 @@ Section CreateFire.
     (∀ (I : gmap Z fs_node) (d i : Z) (nm : fname) (ents : gmap fname Z)
        (nl : nat),
        ⌜cre_pre (abs_view I) d nm ents nl i (cf d i)⌝ -∗
+       (* THE NAME CREDENTIAL (lane TL-3C, design/user-tree.md section 7.6's
+          WALL D).  [nm] is quantified INSIDE, and the tree layer's own
+          [own_wf] preservation ([TreeView.own_wf_ent], through
+          [TreeView.fs_pname]) is FALSE at a dot name -- inserting ["."] or
+          [".."] as a PROPER edge would break unique parenthood.  It is true
+          at every reachable fire and the KERNEL pays it: create's own
+          [dirlookup] returns the FOUND arm at a dot name, so [dirlink] is
+          reached only over a name the parent's record range MISSED, and a
+          live directory's records 0 and 1 ARE the two dot names
+          ([DirView.dir_dots_miss_not_dots]).  Spelled unfolded (it IS
+          [TreeView.fs_pname nm], convertible) so this file keeps its
+          altitude: the kernel tier does not require the tree layer. *)
+       ⌜nm <> DOT /\ nm <> DOTDOT⌝ -∗
        cre_arm_fired Farm i -∗
        Pd d -∗
        ghost_map_auth (γtop Γ) (1/2) I ={E}=∗
@@ -371,9 +384,9 @@ Section CreateFire.
     acre_commit_at_gen Γ E cf Pd Farm Φ -∗ acre_commit_at_gen Γ E cf' Pd Farm Φ.
   Proof.
     intros Hext. rewrite /acre_commit_at_gen. iIntros "H".
-    iIntros (I d i nm ents nl) "%Hpre Harm HPd Ha".
+    iIntros (I d i nm ents nl) "%Hpre %Hnm Harm HPd Ha".
     rewrite -(Hext d i) in Hpre. rewrite -(Hext d i).
-    iApply ("H" with "[//] Harm HPd Ha").
+    iApply ("H" with "[//] [//] Harm HPd Ha").
   Qed.
 
   (* ...and the cursor MOVES ALONG AN ISO: two readings of the same cursor
@@ -389,9 +402,9 @@ Section CreateFire.
     acre_commit_at_gen Γ E cf Pd Farm Φ -∗ acre_commit_at_gen Γ E cf Pd' Farm Φ.
   Proof.
     rewrite /acre_commit_at_gen. iIntros "#Hin #Hout H".
-    iIntros (I d i nm ents nl) "%Hpre Harm HPd Ha".
+    iIntros (I d i nm ents nl) "%Hpre %Hnm Harm HPd Ha".
     iDestruct ("Hin" $! d with "HPd") as "HPd".
-    iMod ("H" $! I d i nm ents nl with "[//] Harm HPd Ha")
+    iMod ("H" $! I d i nm ents nl with "[//] [//] Harm HPd Ha")
       as "(Ha & HPd & Hstep & Hph2)".
     iDestruct ("Hout" $! d with "HPd") as "HPd".
     iModIntro. by iFrame "Ha HPd Hstep Hph2".
@@ -409,8 +422,8 @@ Section CreateFire.
     acre_commit_at_gen Γ E cf Pd Farm Φ.
   Proof.
     rewrite /acre_commit_at_gen. iIntros "H".
-    iIntros (I d i nm ents nl) "%Hpre Harm HPd Ha".
-    iMod ("H" $! I d i nm ents nl with "[//] Harm [//] Ha")
+    iIntros (I d i nm ents nl) "%Hpre %Hnm Harm HPd Ha".
+    iMod ("H" $! I d i nm ents nl with "[//] [//] Harm [//] Ha")
       as "(Ha & _ & Hstep & Hph2)".
     iModIntro. by iFrame "Ha HPd Hstep Hph2".
   Qed.
@@ -558,7 +571,7 @@ Section CreateFire.
     acre_commit_at_gen (fs_gamma_L γfs) E cf Pd Farm (fun _ _ _ _ => True%I).
   Proof.
     iIntros "#Hsup". rewrite /acre_commit_at_gen.
-    iIntros (I d i nm ents nl) "%Hpre _ HPd Ha".
+    iIntros (I d i nm ents nl) "%Hpre %Hnm _ HPd Ha".
     iDestruct (app_step_acc d I _ with "Hsup") as "Hstep".
     iModIntro. iFrame "Ha HPd Hstep". iIntros (I') "%Heq Ha'". iModIntro.
     by iFrame "Ha'".
@@ -688,7 +701,7 @@ Section CreateFire.
     acre_commit_at_gen (fs_gamma_L γfs) E cf Pd Farm Φ.
   Proof.
     iIntros "#Hsup Hn HΦ". rewrite /acre_commit_at_gen.
-    iIntros (I d i nm ents nl) "%Hpre _ HPd Ha".
+    iIntros (I d i nm ents nl) "%Hpre %Hnm _ HPd Ha".
     iDestruct (mkf_auth_nview with "Ha Hn") as %Hav.
     iDestruct (app_step_acc d I _ with "Hsup") as "Hstep".
     iModIntro. iFrame "Ha HPd Hstep". iIntros (I') "%Heq Ha'". iModIntro.

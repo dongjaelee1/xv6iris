@@ -30,6 +30,7 @@ Require Import KernelDecode15.
 Require Import KernelDecode16.
 Require Import KernelDecode18.
 Require Import KernelDecode20.
+Require Import KernelDecode21.
 Require Import KernelDecode23.
 Require Import KernelDecode25.
 Require Import KernelDecode26.
@@ -99,9 +100,9 @@ Section CodeArgfd.
   Proof. mk_base (KernelSyms.argfd + 0x1e) (mword_of_int 0x02e7ea63 : mword 32)
     (mword_of_int (KernelSyms.argfd + 0x1e) : mword 64) (BTYPE (mword_of_int 52 : mword 13, Regidx (mword_of_int 14), Regidx (mword_of_int 15), BLTU)) kd_02e7ea63. Qed.
 
-  Lemma afi_22 : kernel_text -∗ instr (mword_of_int (KernelSyms.argfd + 0x22) : mword 64) false (JAL (mword_of_int 2084176 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.argfd + 0x22) (mword_of_int 0xd51fc0ef : mword 32)
-    (mword_of_int (KernelSyms.argfd + 0x22) : mword 64) (JAL (mword_of_int 2084176 : mword 21, Regidx (mword_of_int 1))) kd_d51fc0ef. Qed.
+  Lemma afi_22 : kernel_text -∗ instr (mword_of_int (KernelSyms.argfd + 0x22) : mword 64) false (JAL (mword_of_int 2084192 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.argfd + 0x22) (mword_of_int 0xd61fc0ef : mword 32)
+    (mword_of_int (KernelSyms.argfd + 0x22) : mword 64) (JAL (mword_of_int 2084192 : mword 21, Regidx (mword_of_int 1))) kd_d61fc0ef. Qed.
 
   Lemma afi_26 : kernel_text -∗ instr (mword_of_int (KernelSyms.argfd + 0x26) : mword 64) false (LOAD (mword_of_int 4060 : mword 12, Regidx (mword_of_int 8), Regidx (mword_of_int 14), false, 4)).
   Proof. mk_base (KernelSyms.argfd + 0x26) (mword_of_int 0xfdc42703 : mword 32)

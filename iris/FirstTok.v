@@ -3,14 +3,22 @@
 
     forkret's first act after [release(&p->lock)] is
 
-        if (__atomic_load_n(&first, __ATOMIC_ACQUIRE)) { fsinit(); ...; }
+        if (first) { fsinit(); ...; first = 0; ...; }
 
     and the branch is decided by WHICH ARM OF THIS DISJUNCTION the running
     process holds.  That is the whole design: no invariant, no mask, no
-    atomicity argument.  The resource decides the branch, and the two arms
-    are mutually exclusive as resources, so the kernel's own "exactly one
-    process ever takes it" is a theorem about ownership rather than a claim
-    about scheduling.
+    atomicity argument.  Upstream used to spell the read and the write as
+    [__atomic_load_n(&first, __ATOMIC_ACQUIRE)] / [__atomic_store_n(&first,
+    0, __ATOMIC_RELEASE)]; the plain variable is the SAME one-shot here,
+    because what made it one is the exclusivity of [first_addr |-> 1] and
+    not the fences.  Nothing below changes: the fences were never
+    load-bearing (they walked as state-preserving no-ops over an SC ptsto
+    model), and the store still sits between [fsinit] and [kexec].
+
+    The resource decides the branch, and the two arms are mutually
+    exclusive as resources, so the kernel's own "exactly one process ever
+    takes it" is a theorem about ownership rather than a claim about
+    scheduling.
 
       - [first_addr ↦₄ 1] is EXCLUSIVE.  At most one process can hold it,
         and holding it is the right to run the boot arm: fsinit, the store
@@ -19,7 +27,7 @@
 
       - [first_addr ↦₄□ 0 ∗ fs_ready] is PERSISTENT, hence free for every
         process forever.  A process holding it reads 0, so the [c.beqz] at
-        forkret+0x24 is TAKEN and the boot arm is dead -- and it already
+        forkret+0x1c is TAKEN and the boot arm is dead -- and it already
         has the file system it would otherwise have had to build.
 
     The two cannot coexist: [DfracOwn 1] and [DfracDiscarded] at one

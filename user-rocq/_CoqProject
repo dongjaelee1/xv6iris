@@ -15,8 +15,8 @@ InitInstrs.v
 InitData.v
 InitSyms.v
 InitElfRaw.v
-# cat.  No CatElfRaw.v: the rocq-raw dump refuses this ELF (it embeds its
-# own build directory), and nothing needs it -- ElfUser.v's boot story is
+# cat.  CatElfRaw.v is dumped (since the xv6 build became build-dir-free)
+# but deliberately NOT listed: nothing needs it -- ElfUser.v's boot story is
 # stated for echo and init only.
 CatInstrs.v
 CatData.v

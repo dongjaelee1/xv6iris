@@ -228,8 +228,8 @@ Definition forkret_park_pkg
           [fs_ready] as a conjunct, the syscall environment is derived from
           it, and that environment's LAST conjunct is [first_done] -- whose
           discarded [first_addr ↦₄□ 0] half is minted by exactly one
-          instruction in the kernel, the release store on forkret's own boot
-          arm.  So a closer that had to OWN either could not be built by
+          instruction in the kernel, the [first = 0] store on forkret's own
+          boot arm.  So a closer that had to OWN either could not be built by
           userinit, which parks the very process that runs that store.
           forkret pays both instead (SpecForkret.v, "...AND THE CLOSER IS
           HANDED [first_done]") and the builder here owes only the

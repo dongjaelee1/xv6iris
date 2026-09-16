@@ -105,9 +105,9 @@ Section CodePipewrite.
   Proof. mk_rvc (KernelSyms.pipewrite + 0x16) (mword_of_int 0x8a32 : mword 16)
     (mword_of_int (KernelSyms.pipewrite + 0x16) : mword 64) (RTYPE (Regidx (mword_of_int 12), zreg, Regidx (mword_of_int 20), ADD)) kd_8a32 exec_execute_C_MV. Qed.
 
-  Lemma pwi_18 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x18) : mword 64) false (JAL (mword_of_int 2085620 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipewrite + 0x18) (mword_of_int 0xaf4fd0ef : mword 32)
-    (mword_of_int (KernelSyms.pipewrite + 0x18) : mword 64) (JAL (mword_of_int 2085620 : mword 21, Regidx (mword_of_int 1))) kd_af4fd0ef. Qed.
+  Lemma pwi_18 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x18) : mword 64) false (JAL (mword_of_int 2085636 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipewrite + 0x18) (mword_of_int 0xb04fd0ef : mword 32)
+    (mword_of_int (KernelSyms.pipewrite + 0x18) : mword 64) (JAL (mword_of_int 2085636 : mword 21, Regidx (mword_of_int 1))) kd_b04fd0ef. Qed.
 
   Lemma pwi_1c : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x1c) : mword 64) true (RTYPE (Regidx (mword_of_int 10), zreg, Regidx (mword_of_int 19), ADD)).
   Proof. mk_rvc (KernelSyms.pipewrite + 0x1c) (mword_of_int 0x89aa : mword 16)
@@ -117,9 +117,9 @@ Section CodePipewrite.
   Proof. mk_rvc (KernelSyms.pipewrite + 0x1e) (mword_of_int 0x8526 : mword 16)
     (mword_of_int (KernelSyms.pipewrite + 0x1e) : mword 64) (RTYPE (Regidx (mword_of_int 9), zreg, Regidx (mword_of_int 10), ADD)) kd_8526 exec_execute_C_MV. Qed.
 
-  Lemma pwi_20 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x20) : mword 64) false (JAL (mword_of_int 2082236 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipewrite + 0x20) (mword_of_int 0xdbcfc0ef : mword 32)
-    (mword_of_int (KernelSyms.pipewrite + 0x20) : mword 64) (JAL (mword_of_int 2082236 : mword 21, Regidx (mword_of_int 1))) kd_dbcfc0ef. Qed.
+  Lemma pwi_20 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x20) : mword 64) false (JAL (mword_of_int 2082252 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipewrite + 0x20) (mword_of_int 0xdccfc0ef : mword 32)
+    (mword_of_int (KernelSyms.pipewrite + 0x20) : mword 64) (JAL (mword_of_int 2082252 : mword 21, Regidx (mword_of_int 1))) kd_dccfc0ef. Qed.
 
   Lemma pwi_24 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x24) : mword 64) false (BTYPE (mword_of_int 244 : mword 13, Regidx (mword_of_int 20), zreg, BGE)).
   Proof. mk_base (KernelSyms.pipewrite + 0x24) (mword_of_int 0x0f405a63 : mword 32)
@@ -177,9 +177,9 @@ Section CodePipewrite.
   Proof. mk_rvc (KernelSyms.pipewrite + 0x46) (mword_of_int 0x8526 : mword 16)
     (mword_of_int (KernelSyms.pipewrite + 0x46) : mword 64) (RTYPE (Regidx (mword_of_int 9), zreg, Regidx (mword_of_int 10), ADD)) kd_8526 exec_execute_C_MV. Qed.
 
-  Lemma pwi_48 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x48) : mword 64) false (JAL (mword_of_int 2082332 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipewrite + 0x48) (mword_of_int 0xe1cfc0ef : mword 32)
-    (mword_of_int (KernelSyms.pipewrite + 0x48) : mword 64) (JAL (mword_of_int 2082332 : mword 21, Regidx (mword_of_int 1))) kd_e1cfc0ef. Qed.
+  Lemma pwi_48 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x48) : mword 64) false (JAL (mword_of_int 2082348 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipewrite + 0x48) (mword_of_int 0xe2cfc0ef : mword 32)
+    (mword_of_int (KernelSyms.pipewrite + 0x48) : mword 64) (JAL (mword_of_int 2082348 : mword 21, Regidx (mword_of_int 1))) kd_e2cfc0ef. Qed.
 
   Lemma pwi_4c : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x4c) : mword 64) true (ITYPE (sign_extend' 12 (mword_of_int 63 : mword 6), zreg, Regidx (mword_of_int 18), ADDI)).
   Proof. mk_rvc (KernelSyms.pipewrite + 0x4c) (mword_of_int 0x597d : mword 16)
@@ -265,9 +265,9 @@ Section CodePipewrite.
   Proof. mk_rvc (KernelSyms.pipewrite + 0x78) (mword_of_int 0x8526 : mword 16)
     (mword_of_int (KernelSyms.pipewrite + 0x78) : mword 64) (RTYPE (Regidx (mword_of_int 9), zreg, Regidx (mword_of_int 10), ADD)) kd_8526 exec_execute_C_MV. Qed.
 
-  Lemma pwi_7a : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x7a) : mword 64) false (JAL (mword_of_int 2082282 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipewrite + 0x7a) (mword_of_int 0xdeafc0ef : mword 32)
-    (mword_of_int (KernelSyms.pipewrite + 0x7a) : mword 64) (JAL (mword_of_int 2082282 : mword 21, Regidx (mword_of_int 1))) kd_deafc0ef. Qed.
+  Lemma pwi_7a : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x7a) : mword 64) false (JAL (mword_of_int 2082298 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipewrite + 0x7a) (mword_of_int 0xdfafc0ef : mword 32)
+    (mword_of_int (KernelSyms.pipewrite + 0x7a) : mword 64) (JAL (mword_of_int 2082298 : mword 21, Regidx (mword_of_int 1))) kd_dfafc0ef. Qed.
 
   Lemma pwi_7e : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x7e) : mword 64) false (JAL (mword_of_int 2087192 : mword 21, Regidx (mword_of_int 1))).
   Proof. mk_base (KernelSyms.pipewrite + 0x7e) (mword_of_int 0x919fd0ef : mword 32)
@@ -277,9 +277,9 @@ Section CodePipewrite.
   Proof. mk_rvc (KernelSyms.pipewrite + 0x82) (mword_of_int 0x8526 : mword 16)
     (mword_of_int (KernelSyms.pipewrite + 0x82) : mword 64) (RTYPE (Regidx (mword_of_int 9), zreg, Regidx (mword_of_int 10), ADD)) kd_8526 exec_execute_C_MV. Qed.
 
-  Lemma pwi_84 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x84) : mword 64) false (JAL (mword_of_int 2082136 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipewrite + 0x84) (mword_of_int 0xd58fc0ef : mword 32)
-    (mword_of_int (KernelSyms.pipewrite + 0x84) : mword 64) (JAL (mword_of_int 2082136 : mword 21, Regidx (mword_of_int 1))) kd_d58fc0ef. Qed.
+  Lemma pwi_84 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x84) : mword 64) false (JAL (mword_of_int 2082152 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipewrite + 0x84) (mword_of_int 0xd68fc0ef : mword 32)
+    (mword_of_int (KernelSyms.pipewrite + 0x84) : mword 64) (JAL (mword_of_int 2082152 : mword 21, Regidx (mword_of_int 1))) kd_d68fc0ef. Qed.
 
   Lemma pwi_88 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x88) : mword 64) false (BTYPE (mword_of_int 118 : mword 13, Regidx (mword_of_int 20), Regidx (mword_of_int 18), BGE)).
   Proof. mk_base (KernelSyms.pipewrite + 0x88) (mword_of_int 0x07495b63 : mword 32)
@@ -341,9 +341,9 @@ Section CodePipewrite.
   Proof. mk_base (KernelSyms.pipewrite + 0xb6) (mword_of_int 0x0509b503 : mword 32)
     (mword_of_int (KernelSyms.pipewrite + 0xb6) : mword 64) (LOAD (mword_of_int 80 : mword 12, Regidx (mword_of_int 19), Regidx (mword_of_int 10), false, 8)) kd_0509b503. Qed.
 
-  Lemma pwi_ba : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0xba) : mword 64) false (JAL (mword_of_int 2084690 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipewrite + 0xba) (mword_of_int 0xf53fc0ef : mword 32)
-    (mword_of_int (KernelSyms.pipewrite + 0xba) : mword 64) (JAL (mword_of_int 2084690 : mword 21, Regidx (mword_of_int 1))) kd_f53fc0ef. Qed.
+  Lemma pwi_ba : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0xba) : mword 64) false (JAL (mword_of_int 2084706 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipewrite + 0xba) (mword_of_int 0xf63fc0ef : mword 32)
+    (mword_of_int (KernelSyms.pipewrite + 0xba) : mword 64) (JAL (mword_of_int 2084706 : mword 21, Regidx (mword_of_int 1))) kd_f63fc0ef. Qed.
 
   Lemma pwi_be : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0xbe) : mword 64) false (BTYPE (mword_of_int 34 : mword 13, Regidx (mword_of_int 22), Regidx (mword_of_int 10), BEQ)).
   Proof. mk_base (KernelSyms.pipewrite + 0xbe) (mword_of_int 0x03650163 : mword 32)
@@ -473,9 +473,9 @@ Section CodePipewrite.
   Proof. mk_rvc (KernelSyms.pipewrite + 0x110) (mword_of_int 0x8526 : mword 16)
     (mword_of_int (KernelSyms.pipewrite + 0x110) : mword 64) (RTYPE (Regidx (mword_of_int 9), zreg, Regidx (mword_of_int 10), ADD)) kd_8526 exec_execute_C_MV. Qed.
 
-  Lemma pwi_112 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x112) : mword 64) false (JAL (mword_of_int 2082130 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.pipewrite + 0x112) (mword_of_int 0xd52fc0ef : mword 32)
-    (mword_of_int (KernelSyms.pipewrite + 0x112) : mword 64) (JAL (mword_of_int 2082130 : mword 21, Regidx (mword_of_int 1))) kd_d52fc0ef. Qed.
+  Lemma pwi_112 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x112) : mword 64) false (JAL (mword_of_int 2082146 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.pipewrite + 0x112) (mword_of_int 0xd62fc0ef : mword 32)
+    (mword_of_int (KernelSyms.pipewrite + 0x112) : mword 64) (JAL (mword_of_int 2082146 : mword 21, Regidx (mword_of_int 1))) kd_d62fc0ef. Qed.
 
   Lemma pwi_116 : kernel_text -∗ instr (mword_of_int (KernelSyms.pipewrite + 0x116) : mword 64) true (JAL (sign_extend' 21 (concat_vec (mword_of_int 1953 : mword 11) ('b"0")), zreg)).
   Proof. mk_rvc (KernelSyms.pipewrite + 0x116) (mword_of_int 0xb789 : mword 16)

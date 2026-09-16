@@ -92,9 +92,9 @@ Section CodeSysSbrk.
   Proof. mk_base (KernelSyms.sys_sbrk + 0x1a) (mword_of_int 0xeb3ff0ef : mword 32)
     (mword_of_int (KernelSyms.sys_sbrk + 0x1a) : mword 64) (JAL (mword_of_int 2096818 : mword 21, Regidx (mword_of_int 1))) kd_eb3ff0ef. Qed.
 
-  Lemma ssi_1e : kernel_text -∗ instr (mword_of_int (KernelSyms.sys_sbrk + 0x1e) : mword 64) false (JAL (mword_of_int 2092818 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.sys_sbrk + 0x1e) (mword_of_int 0xf13fe0ef : mword 32)
-    (mword_of_int (KernelSyms.sys_sbrk + 0x1e) : mword 64) (JAL (mword_of_int 2092818 : mword 21, Regidx (mword_of_int 1))) kd_f13fe0ef. Qed.
+  Lemma ssi_1e : kernel_text -∗ instr (mword_of_int (KernelSyms.sys_sbrk + 0x1e) : mword 64) false (JAL (mword_of_int 2092834 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.sys_sbrk + 0x1e) (mword_of_int 0xf23fe0ef : mword 32)
+    (mword_of_int (KernelSyms.sys_sbrk + 0x1e) : mword 64) (JAL (mword_of_int 2092834 : mword 21, Regidx (mword_of_int 1))) kd_f23fe0ef. Qed.
 
   Lemma ssi_22 : kernel_text -∗ instr (mword_of_int (KernelSyms.sys_sbrk + 0x22) : mword 64) true (LOAD (mword_of_int 72 : mword 12, Regidx (mword_of_int 10), Regidx (mword_of_int 9), false, 8)).
   Proof. mk_rvc (KernelSyms.sys_sbrk + 0x22) (mword_of_int 0x6524 : mword 16)
@@ -144,9 +144,9 @@ Section CodeSysSbrk.
   Proof. mk_base (KernelSyms.sys_sbrk + 0x44) (mword_of_int 0x0297e863 : mword 32)
     (mword_of_int (KernelSyms.sys_sbrk + 0x44) : mword 64) (BTYPE (mword_of_int 48 : mword 13, Regidx (mword_of_int 9), Regidx (mword_of_int 15), BLTU)) kd_0297e863. Qed.
 
-  Lemma ssi_48 : kernel_text -∗ instr (mword_of_int (KernelSyms.sys_sbrk + 0x48) : mword 64) false (JAL (mword_of_int 2092776 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.sys_sbrk + 0x48) (mword_of_int 0xee9fe0ef : mword 32)
-    (mword_of_int (KernelSyms.sys_sbrk + 0x48) : mword 64) (JAL (mword_of_int 2092776 : mword 21, Regidx (mword_of_int 1))) kd_ee9fe0ef. Qed.
+  Lemma ssi_48 : kernel_text -∗ instr (mword_of_int (KernelSyms.sys_sbrk + 0x48) : mword 64) false (JAL (mword_of_int 2092792 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.sys_sbrk + 0x48) (mword_of_int 0xef9fe0ef : mword 32)
+    (mword_of_int (KernelSyms.sys_sbrk + 0x48) : mword 64) (JAL (mword_of_int 2092792 : mword 21, Regidx (mword_of_int 1))) kd_ef9fe0ef. Qed.
 
   Lemma ssi_4c : kernel_text -∗ instr (mword_of_int (KernelSyms.sys_sbrk + 0x4c) : mword 64) false (LOAD (mword_of_int 4056 : mword 12, Regidx (mword_of_int 8), Regidx (mword_of_int 14), false, 4)).
   Proof. mk_base (KernelSyms.sys_sbrk + 0x4c) (mword_of_int 0xfd842703 : mword 32)

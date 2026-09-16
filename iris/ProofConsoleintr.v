@@ -1661,7 +1661,7 @@ Section ProofConsoleintr.
                     = mword_of_int (CT + 0x166)) by pcw.
     iEval (rewrite Hp166) in "Hpc".
     (* +0x166 jal ra,wakeup *)
-    iApply (wp_jal_s_sconf (mword_of_int (CT + 0x166)) Rra (mword_of_int 7188 : mword 21)
+    iApply (wp_jal_s_sconf (mword_of_int (CT + 0x166)) Rra (mword_of_int 7172 : mword 21)
               W3 (trap_res (match lvl with O => eb | S _ => false end) + (K - 6))%nat false
               ltac:(nz) ltac:(rdok) ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (cnti_166 with "Ht"). }
@@ -1669,7 +1669,7 @@ Section ProofConsoleintr.
     set (W4 := <[Regidx Rra := regval_into_reg
         (add_vec_int (mword_of_int (CT + 0x166) : mword 64) 4)]> W3).
     assert (Hjwk : add_vec (mword_of_int (CT + 0x166) : mword 64)
-                     (sign_extend' 64 (mword_of_int 7188 : mword 21))
+                     (sign_extend' 64 (mword_of_int 7172 : mword 21))
                    = mword_of_int KernelSyms.wakeup) by pcw.
     iEval (rewrite Hjwk) in "Hpc".
     assert (HW4ra : W4 !!! Regidx Rra

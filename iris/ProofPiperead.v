@@ -1430,7 +1430,7 @@ Section ProofPiperead.
     iEval (rewrite Hpc18) in "Hpc".
     clear Hpc18.
     (* ============ 0x18: jal ra,myproc ============ *)
-    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0x18)) Rra (mword_of_int 2085336 : mword 21)
+    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0x18)) Rra (mword_of_int 2085352 : mword 21)
               P4 (av - 12)%nat true ltac:(nz) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
     { iApply (pri_18 with "Htext"). }
@@ -1438,7 +1438,7 @@ Section ProofPiperead.
     pose (P5 := <[Regidx Rra := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.piperead + 0x18) : mword 64) 4)]> P4).
     change (<[Regidx Rra := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.piperead + 0x18) : mword 64) 4)]> P4) with P5.
     assert (Hjmp : add_vec (mword_of_int (KernelSyms.piperead + 0x18) : mword 64)
-                     (sign_extend' 64 (mword_of_int 2085336 : mword 21)) = mword_of_int KernelSyms.myproc)
+                     (sign_extend' 64 (mword_of_int 2085352 : mword 21)) = mword_of_int KernelSyms.myproc)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hjmp) in "Hpc".
     clear Hjmp.
@@ -1508,7 +1508,7 @@ Section ProofPiperead.
     iEval (rewrite Hpc20) in "Hpc".
     clear Hpc20.
     (* ============ 0x20: jal ra,acquire ============ *)
-    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0x20)) Rra (mword_of_int 2081952 : mword 21)
+    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0x20)) Rra (mword_of_int 2081968 : mword 21)
               A2 (av - 12)%nat true ltac:(nz) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
     { iApply (pri_20 with "Htext"). }
@@ -1516,7 +1516,7 @@ Section ProofPiperead.
     pose (A3 := <[Regidx Rra := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.piperead + 0x20) : mword 64) 4)]> A2).
     change (<[Regidx Rra := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.piperead + 0x20) : mword 64) 4)]> A2) with A3.
     assert (Hjaq : add_vec (mword_of_int (KernelSyms.piperead + 0x20) : mword 64)
-                     (sign_extend' 64 (mword_of_int 2081952 : mword 21)) = mword_of_int KernelSyms.acquire)
+                     (sign_extend' 64 (mword_of_int 2081968 : mword 21)) = mword_of_int KernelSyms.acquire)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hjaq) in "Hpc".
     clear Hjaq.
@@ -1887,7 +1887,7 @@ Section ProofPiperead.
         iEval (rewrite Hpda) in "Hpc".
         clear Hpda.
         (* 0xde jal release *)
-        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0xde)) Rra (mword_of_int 2081898 : mword 21)
+        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0xde)) Rra (mword_of_int 2081914 : mword 21)
                   X3 (trap_res true + (av - 12))%nat false ltac:(nz) ltac:(rdok) ltac:(vm_compute; reflexivity)
                   with "Hcg Hpc []").
         { iApply (pri_de with "Htext"). }
@@ -1897,7 +1897,7 @@ Section ProofPiperead.
         change (<[Regidx Rra := regval_into_reg
             (add_vec_int (mword_of_int (KernelSyms.piperead + 0xde) : mword 64) 4)]> X3) with X4.
         assert (Hjrl : add_vec (mword_of_int (KernelSyms.piperead + 0xde) : mword 64)
-                         (sign_extend' 64 (mword_of_int 2081898 : mword 21)) = mword_of_int KernelSyms.release)
+                         (sign_extend' 64 (mword_of_int 2081914 : mword 21)) = mword_of_int KernelSyms.release)
           by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hjrl) in "Hpc".
         clear Hjrl.
@@ -2383,7 +2383,7 @@ Section ProofPiperead.
         iEval (rewrite Hqb6) in "Hpc".
         clear Hqb6.
         (* 0xba jal copyout *)
-        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0xba)) Rra (mword_of_int 2084208 : mword 21)
+        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0xba)) Rra (mword_of_int 2084224 : mword 21)
                   K9 (trap_res true + (av - 12))%nat false ltac:(nz) ltac:(rdok) ltac:(vm_compute; reflexivity)
                   with "Hcg Hpc []").
         { iApply (pri_ba with "Htext"). }
@@ -2393,7 +2393,7 @@ Section ProofPiperead.
         change (<[Regidx Rra := regval_into_reg
             (add_vec_int (mword_of_int (KernelSyms.piperead + 0xba) : mword 64) 4)]> K9) with K10.
         assert (Hjco : add_vec (mword_of_int (KernelSyms.piperead + 0xba) : mword 64)
-                         (sign_extend' 64 (mword_of_int 2084208 : mword 21)) = mword_of_int KernelSyms.copyout)
+                         (sign_extend' 64 (mword_of_int 2084224 : mword 21)) = mword_of_int KernelSyms.copyout)
           by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hjco) in "Hpc".
         clear Hjco.
@@ -3177,7 +3177,7 @@ Section ProofPiperead.
         iEval (rewrite Hw76) in "Hpc".
         clear Hw76.
         (* 0x76 jal release *)
-        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0x76)) Rra (mword_of_int 2082002 : mword 21)
+        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0x76)) Rra (mword_of_int 2082018 : mword 21)
                   N1 (trap_res true + (av - 12))%nat false ltac:(nz) ltac:(rdok) ltac:(vm_compute; reflexivity)
                   with "Hcg Hpc []").
         { iApply (pri_76 with "Htext"). }
@@ -3187,7 +3187,7 @@ Section ProofPiperead.
         change (<[Regidx Rra := regval_into_reg
             (add_vec_int (mword_of_int (KernelSyms.piperead + 0x76) : mword 64) 4)]> N1) with N2.
         assert (Hjrl1 : add_vec (mword_of_int (KernelSyms.piperead + 0x76) : mword 64)
-                          (sign_extend' 64 (mword_of_int 2082002 : mword 21)) = mword_of_int KernelSyms.release)
+                          (sign_extend' 64 (mword_of_int 2082018 : mword 21)) = mword_of_int KernelSyms.release)
           by (apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hjrl1) in "Hpc".
         clear Hjrl1.
@@ -3400,7 +3400,7 @@ Section ProofPiperead.
       iEval (rewrite Hw4a) in "Hpc".
       clear Hw4a.
       (* 0x4a jal release -- the caller's own release of pi->lock *)
-      iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0x4a)) Rra (mword_of_int 2082046 : mword 21)
+      iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0x4a)) Rra (mword_of_int 2082062 : mword 21)
                 Sl3 (trap_res true + (av - 12))%nat false ltac:(nz) ltac:(rdok) ltac:(vm_compute; reflexivity)
                 with "Hcg Hpc []").
       { iApply (pri_4a with "Htext"). }
@@ -3410,7 +3410,7 @@ Section ProofPiperead.
       change (<[Regidx Rra := regval_into_reg
           (add_vec_int (mword_of_int (KernelSyms.piperead + 0x4a) : mword 64) 4)]> Sl3) with Sl4.
       assert (Hjrl0 : add_vec (mword_of_int (KernelSyms.piperead + 0x4a) : mword 64)
-                        (sign_extend' 64 (mword_of_int 2082046 : mword 21)) = mword_of_int KernelSyms.release)
+                        (sign_extend' 64 (mword_of_int 2082062 : mword 21)) = mword_of_int KernelSyms.release)
         by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hjrl0) in "Hpc".
       clear Hjrl0.
@@ -3500,7 +3500,7 @@ Section ProofPiperead.
       clear Hw54.
       (* 0x54 jal acquire -- the caller's own re-acquire, on the pipe's
          reference exactly as at +0x20 *)
-      iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0x54)) Rra (mword_of_int 2081900 : mword 21)
+      iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.piperead + 0x54)) Rra (mword_of_int 2081916 : mword 21)
                 Sl6 (av - 12)%nat true ltac:(nz) ltac:(rdok) ltac:(vm_compute; reflexivity)
                 with "Hcg Hpc []").
       { iApply (pri_54 with "Htext"). }
@@ -3510,7 +3510,7 @@ Section ProofPiperead.
       change (<[Regidx Rra := regval_into_reg
           (add_vec_int (mword_of_int (KernelSyms.piperead + 0x54) : mword 64) 4)]> Sl6) with Sl7.
       assert (Hjaq2 : add_vec (mword_of_int (KernelSyms.piperead + 0x54) : mword 64)
-                        (sign_extend' 64 (mword_of_int 2081900 : mword 21)) = mword_of_int KernelSyms.acquire)
+                        (sign_extend' 64 (mword_of_int 2081916 : mword 21)) = mword_of_int KernelSyms.acquire)
         by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hjaq2) in "Hpc".
       clear Hjaq2.

@@ -33,7 +33,6 @@ Require Import KernelDecode18.
 Require Import KernelDecode19.
 Require Import KernelDecode20.
 Require Import KernelDecode21.
-Require Import KernelDecode23.
 Require Import KernelDecode24.
 Require Import KernelDecode26.
 Require Import KernelDecode27.
@@ -71,9 +70,9 @@ Section CodeSysChdir.
   Proof. mk_rvc (KernelSyms.sys_chdir + 0x8) (mword_of_int 0x1100 : mword 16)
     (mword_of_int (KernelSyms.sys_chdir + 0x8) : mword 64) (ITYPE (caddi4spn_imm (mword_of_int 40 : mword 8), sp, creg2reg_idx (Cregidx (mword_of_int 0)), ADDI)) kd_1100 exec_execute_C_ADDI4SPN. Qed.
 
-  Lemma schdi_0a : kernel_text -∗ instr (mword_of_int (KernelSyms.sys_chdir + 0xa) : mword 64) false (JAL (mword_of_int 2082158 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.sys_chdir + 0xa) (mword_of_int 0xd6efc0ef : mword 32)
-    (mword_of_int (KernelSyms.sys_chdir + 0xa) : mword 64) (JAL (mword_of_int 2082158 : mword 21, Regidx (mword_of_int 1))) kd_d6efc0ef. Qed.
+  Lemma schdi_0a : kernel_text -∗ instr (mword_of_int (KernelSyms.sys_chdir + 0xa) : mword 64) false (JAL (mword_of_int 2082174 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.sys_chdir + 0xa) (mword_of_int 0xd7efc0ef : mword 32)
+    (mword_of_int (KernelSyms.sys_chdir + 0xa) : mword 64) (JAL (mword_of_int 2082174 : mword 21, Regidx (mword_of_int 1))) kd_d7efc0ef. Qed.
 
   Lemma schdi_0e : kernel_text -∗ instr (mword_of_int (KernelSyms.sys_chdir + 0xe) : mword 64) true (RTYPE (Regidx (mword_of_int 10), zreg, Regidx (mword_of_int 18), ADD)).
   Proof. mk_rvc (KernelSyms.sys_chdir + 0xe) (mword_of_int 0x892a : mword 16)

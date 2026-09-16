@@ -2,13 +2,13 @@
    its AUIPC/ADDI, LUI/ADDI/SLLI, JAL and branch immediates encode.
 
    Every one of these is a LAYOUT FACT -- that [first.1] really does sit at
-   forkret+0x14's auipc target minus 1712, that [userret] is 0x9c past
-   [_trampoline], that the [c.beqz] at +0x24 really does skip to +0x64 --
+   forkret+0x14's auipc target minus 1822, that [userret] is 0x9c past
+   [_trampoline], that the [c.beqz] at +0x1c really does skip to +0x54 --
    so a relayout should break one named lemma here rather than a step of
    the walk.  All closed, all [vm_compute], with the two exceptions noted
    below.
 
-   The [if (first)] arm (+0x26 .. +0xa2 -- [fsinit(ROOTDEV)], the release
+   The [if (first)] arm (+0x1e .. +0x92 -- [fsinit(ROOTDEV)], the [first = 0]
    store, [kexec("/init", {"/init", 0})] and the [panic("exec")] tail) adds
    the three [jal] targets, a second reading of [&first], the two rodata
    literals, the [beq] to the panic tail and the two frame slots the argv
@@ -53,13 +53,17 @@ Notation FR := KernelSyms.forkret.
    just past [etext] -- so they are SPELLED here, once, and every lemma below
    is stated against the name rather than against a bare hex constant.  The
    dump agrees: [kernel.asm] annotates the two auipc/addi pairs with
-   [# 80007180 <etext+0x180>] and [# 80007188 <etext+0x188>] respectively. *)
+   [# 80007188 <etext+0x188>] and [# 80007190 <etext+0x190>] respectively. *)
 Definition fkr_init_path : Z := 0x80007188.   (* the string "/init" *)
 Definition fkr_exec_msg  : Z := 0x80007190.   (* the string "exec"  *)
 
-(* ---- +0x14 auipc a5,0x9 / +0x18 addi a5,a5,-1712 : &first ---- *)
-(* the immediate READS as 2384 and SIGN-EXTENDS to -1712; read as positive
-   it lands 0x1000 too high, which is the usual confusing failure. *)
+(* ---- +0x14 auipc a5,0x9 / +0x18 lw a5,-1822(a5) : &first ---- *)
+(* the immediate READS as 2274 and SIGN-EXTENDS to -1822; read as positive
+   it lands 0x1000 too high, which is the usual confusing failure.
+   Upstream dropped the [__atomic_load_n], so the [addi] that used to
+   compute &first and the [c.lw] off it are now ONE base [lw] carrying the
+   displacement -- the address arithmetic below is unchanged, only the
+   instruction that consumes it is. *)
 (* SPELLED [KernelSyms.first_1], NOT [FirstTok.first_addr], and the two are
    the SAME TERM -- [first_addr]'s body is this.  Naming it here would drag
    [FirstTok]'s whole file-system cone into a file of closed [vm_compute]s,
@@ -72,26 +76,26 @@ Lemma fkr_first_addr :
   = (mword_of_int KernelSyms.first_1 : mword 64).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0x24 c.beqz a5, +0x64 : the [first == 0] skip ---- *)
+(* ---- +0x1c c.beqz a5, +0x54 : the [first == 0] skip ---- *)
 Definition fkr_beqz_imm : mword 13 :=
-  sign_extend' 13 (concat_vec (mword_of_int 32 : mword 8) ('b"0")).
+  sign_extend' 13 (concat_vec (mword_of_int 28 : mword 8) ('b"0")).
 
 Lemma fkr_beqz_tgt :
-  add_vec (mword_of_int (FR + 0x24) : mword 64) (sign_extend' 64 fkr_beqz_imm)
-  = mword_of_int (FR + 0x64).
+  add_vec (mword_of_int (FR + 0x1c) : mword 64) (sign_extend' 64 fkr_beqz_imm)
+  = mword_of_int (FR + 0x54).
 Proof. rewrite /fkr_beqz_imm. apply bv_eq. vm_compute. reflexivity. Qed.
 
 Lemma fkr_beqz_align :
   eq_vec (access_vec_dec
-            (add_vec (mword_of_int (FR + 0x24) : mword 64)
+            (add_vec (mword_of_int (FR + 0x1c) : mword 64)
                (sign_extend' 64 fkr_beqz_imm)) 0) ('b"0") = true.
 Proof. rewrite /fkr_beqz_imm. vm_compute. reflexivity. Qed.
 
 (* ===================================================================== *)
-(*  The [if (first)] arm: +0x26 .. +0xa2.                                 *)
+(*  The [if (first)] arm: +0x1e .. +0x92.                                 *)
 (* ===================================================================== *)
 
-(* ---- +0x26 c.li a0,1 : fsinit's [ROOTDEV] argument ---- *)
+(* ---- +0x1e c.li a0,1 : fsinit's [ROOTDEV] argument ---- *)
 (* [C_LI] executes as [ADDI rd, zreg, sign_extend' 12 imm], so what lands in
    a0 is the [add_vec] off [zero_reg] -- that is the shape the walk sees.
    [SpecFsinit] asks for [sign_extend' 64 (dev : mword 32)] at
@@ -106,36 +110,36 @@ Lemma fkr_rootdev :
   = sign_extend' 64 (mword_of_int 1 : mword 32).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0x28 jal fsinit ---- *)
+(* ---- +0x20 jal fsinit ---- *)
 Lemma fkr_fsinit_tgt :
-  add_vec (mword_of_int (FR + 0x28) : mword 64)
-    (sign_extend' 64 (mword_of_int 7256 : mword 21))
+  add_vec (mword_of_int (FR + 0x20) : mword 64)
+    (sign_extend' 64 (mword_of_int 7248 : mword 21))
   = (mword_of_int KernelSyms.fsinit : mword 64).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0x2c auipc a5,0x9 / +0x30 addi a5,a5,-1736 : &first, AGAIN ---- *)
-(* the release store recomputes the address rather than reusing the a5 the
-   acquire load left, because the [jal fsinit] in between clobbers it.  A
-   DIFFERENT auipc/addi pair from +0x14/+0x18's (different pc, so a different
-   immediate: 2360 sign-extends to -1736, not -1712) reaching the SAME
+(* ---- +0x24 auipc a5,0x9 / +0x28 sw zero,-1838(a5) : &first, AGAIN ---- *)
+(* the [first = 0] store recomputes the address rather than reusing the a5
+   the load left, because the [jal fsinit] in between clobbers it.  A
+   DIFFERENT auipc pair from +0x14/+0x18's (different pc, so a different
+   displacement: 2258 sign-extends to -1838, not -1822) reaching the SAME
    symbol, which is exactly the fact worth pinning.  Spelled
    [KernelSyms.first_1] for [fkr_first_addr]'s reason. *)
 Lemma fkr_first_addr2 :
-  add_vec (add_vec (mword_of_int (FR + 0x2c) : mword 64)
+  add_vec (add_vec (mword_of_int (FR + 0x24) : mword 64)
              (auipc_off (mword_of_int 9 : mword 20)))
-    (sign_extend' 64 (mword_of_int 2250 : mword 12))
+    (sign_extend' 64 (mword_of_int 2258 : mword 12))
   = (mword_of_int KernelSyms.first_1 : mword 64).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0x3c auipc a5,0x6 / +0x40 addi a5,a5,-1992 : the "/init" literal ---- *)
+(* ---- +0x2c auipc a5,0x5 / +0x30 addi a5,a5,1954 : the "/init" literal ---- *)
 Lemma fkr_init_path_addr :
-  add_vec (add_vec (mword_of_int (FR + 0x3c) : mword 64)
+  add_vec (add_vec (mword_of_int (FR + 0x2c) : mword 64)
              (auipc_off (mword_of_int 5 : mword 20)))
-    (sign_extend' 64 (mword_of_int 1938 : mword 12))
+    (sign_extend' 64 (mword_of_int 1954 : mword 12))
   = (mword_of_int fkr_init_path : mword 64).
 Proof. rewrite /fkr_init_path. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0x44 sd a5,-48(s0) / +0x48 sd zero,-40(s0) : the argv array ---- *)
+(* ---- +0x34 sd a5,-48(s0) / +0x38 sd zero,-40(s0) : the argv array ---- *)
 (* forkret's frame is six slots and its frame pointer is the ENTRY sp, so
    [s0 = ksp] and the two words of the [(char *[]){"/init", 0}] compound
    literal are the BOTTOM two slots: -48 is [pa_stk ksp 6] (the same address
@@ -143,7 +147,7 @@ Proof. rewrite /fkr_init_path. apply bv_eq. vm_compute. reflexivity. Qed.
    lemmas in this file that are not closed -- [ksp] stays symbolic, which is
    the whole point, so [vm_compute] never sees it and the residual closed
    equation is the immediate's sign-extension alone ([stk_push]).
-   The [addi a1,s0,-48] at +0x4c that hands kexec the array's BASE carries
+   The [addi a1,s0,-48] at +0x3c that hands kexec the array's BASE carries
    the same immediate 4048, so it re-uses [fkr_argv0_slot] verbatim -- it is
    the same layout fact read as a value rather than as a store target. *)
 Lemma fkr_argv0_slot (ksp : mword 64) :
@@ -154,15 +158,15 @@ Lemma fkr_argv1_slot (ksp : mword 64) :
   add_vec ksp (sign_extend' 64 (mword_of_int 4056 : mword 12)) = pa_stk ksp 5.
 Proof. apply stk_push. apply bv_eq; vm_compute; reflexivity. Qed.
 
-(* ---- +0x52 jal kexec ---- *)
+(* ---- +0x42 jal kexec ---- *)
 Lemma fkr_kexec_tgt :
-  add_vec (mword_of_int (FR + 0x52) : mword 64)
+  add_vec (mword_of_int (FR + 0x42) : mword 64)
     (sign_extend' 64 (mword_of_int 11952 : mword 21))
   = (mword_of_int KernelSyms.kexec : mword 64).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0x5e c.li a5,-1 : kexec's failure return ---- *)
-(* 63 is -1 in the six-bit [c.li] field; the value the +0x60 [beq] compares
+(* ---- +0x4e c.li a5,-1 : kexec's failure return ---- *)
+(* 63 is -1 in the six-bit [c.li] field; the value the +0x50 [beq] compares
    [p->trapframe->a0] against, in the [mword_of_int (-1)] spelling kexec's
    contract states its error return at, so the comparison is syntactic. *)
 Lemma fkr_minus_one :
@@ -171,66 +175,66 @@ Lemma fkr_minus_one :
   = (mword_of_int (-1) : mword 64).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0x60 beq a4,a5, +0x9a : the [a0 == -1] jump to the panic tail ---- *)
+(* ---- +0x50 beq a4,a5, +0x8a : the [a0 == -1] jump to the panic tail ---- *)
 (* the target is the [auipc a0,0x5] that materializes "exec"; unlike the
-   [c.beqz] at +0x24 the immediate is a plain thirteen-bit field, so no
+   [c.beqz] at +0x1c the immediate is a plain thirteen-bit field, so no
    [fkr_beq_imm] reassembly is needed. *)
 Lemma fkr_beq_tgt :
-  add_vec (mword_of_int (FR + 0x60) : mword 64)
+  add_vec (mword_of_int (FR + 0x50) : mword 64)
     (sign_extend' 64 (mword_of_int 58 : mword 13))
-  = mword_of_int (FR + 0x9a).
+  = mword_of_int (FR + 0x8a).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
 Lemma fkr_beq_align :
   eq_vec (access_vec_dec
-            (add_vec (mword_of_int (FR + 0x60) : mword 64)
+            (add_vec (mword_of_int (FR + 0x50) : mword 64)
                (sign_extend' 64 (mword_of_int 58 : mword 13))) 0) ('b"0") = true.
 Proof. vm_compute. reflexivity. Qed.
 
-(* ---- +0x9a auipc a0,0x5 / +0x9e addi a0,a0,2018 : the "exec" literal ---- *)
+(* ---- +0x8a auipc a0,0x5 / +0x8e addi a0,a0,1868 : the "exec" literal ---- *)
 (* the only forward-reaching pair in forkret whose addi immediate is
    POSITIVE, so it is the one place where reading the field as signed and
    reading it as unsigned agree. *)
 Lemma fkr_exec_msg_addr :
-  add_vec (add_vec (mword_of_int (FR + 0x9a) : mword 64)
+  add_vec (add_vec (mword_of_int (FR + 0x8a) : mword 64)
              (auipc_off (mword_of_int 5 : mword 20)))
-    (sign_extend' 64 (mword_of_int 1852 : mword 12))
+    (sign_extend' 64 (mword_of_int 1868 : mword 12))
   = (mword_of_int fkr_exec_msg : mword 64).
 Proof. rewrite /fkr_exec_msg. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0xa2 jal panic : the arm's only exit that is not a fall-through ---- *)
-(* 2092646 is a NEGATIVE twenty-one-bit displacement (-4506): [panic] sits
+(* ---- +0x92 jal panic : the arm's only exit that is not a fall-through ---- *)
+(* 2092524 is a NEGATIVE twenty-one-bit displacement (-4628): [panic] sits
    far below forkret in the image. *)
 Lemma fkr_panic_tgt :
-  add_vec (mword_of_int (FR + 0xa2) : mword 64)
-    (sign_extend' 64 (mword_of_int 2092508 : mword 21))
+  add_vec (mword_of_int (FR + 0x92) : mword 64)
+    (sign_extend' 64 (mword_of_int 2092524 : mword 21))
   = (mword_of_int KernelSyms.panic : mword 64).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0x74 auipc a5,0x4 / +0x78 addi a5,a5,1820 : &userret ---- *)
+(* ---- +0x64 auipc a5,0x4 / +0x68 addi a5,a5,1662 : &userret ---- *)
 Lemma fkr_userret_addr :
-  add_vec (add_vec (mword_of_int (FR + 0x74) : mword 64)
+  add_vec (add_vec (mword_of_int (FR + 0x64) : mword 64)
              (auipc_off (mword_of_int 4 : mword 20)))
-    (sign_extend' 64 (mword_of_int 1646 : mword 12))
+    (sign_extend' 64 (mword_of_int 1662 : mword 12))
   = (mword_of_int KernelSyms.userret : mword 64).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0x7c auipc a3,0x4 / +0x80 addi a3,a3,1656 : &_trampoline ---- *)
+(* ---- +0x6c auipc a3,0x4 / +0x70 addi a3,a3,1498 : &_trampoline ---- *)
 Lemma fkr_trampoline_addr :
-  add_vec (add_vec (mword_of_int (FR + 0x7c) : mword 64)
+  add_vec (add_vec (mword_of_int (FR + 0x6c) : mword 64)
              (auipc_off (mword_of_int 4 : mword 20)))
-    (sign_extend' 64 (mword_of_int 1482 : mword 12))
+    (sign_extend' 64 (mword_of_int 1498 : mword 12))
   = (mword_of_int KernelSyms.trampoline : mword 64).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0x84 c.sub a5,a5,a3 : userret - trampoline = 0x9c ---- *)
+(* ---- +0x74 c.sub a5,a5,a3 : userret - trampoline = 0x9c ---- *)
 Lemma fkr_userret_off :
   sub_vec (mword_of_int KernelSyms.userret : mword 64)
           (mword_of_int KernelSyms.trampoline : mword 64)
   = (mword_of_int 0x9c : mword 64).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
-(* ---- +0x86 c.add a5,a5,a4 : TRAMPOLINE + (userret - trampoline) ---- *)
+(* ---- +0x76 c.add a5,a5,a4 : TRAMPOLINE + (userret - trampoline) ---- *)
 (* [uservec_tvec] is [SpecPrepareReturn]'s name for [mword_of_int TRAMPOLINE]
    -- the value the same three instructions build there. *)
 Lemma fkr_tramp_userret :
@@ -239,7 +243,7 @@ Proof.
   rewrite /uservec_tvec /uva /TRAMPOLINE. apply bv_eq. vm_compute. reflexivity.
 Qed.
 
-(* ---- +0x8e c.jalr a5 : the target is 2-aligned, so [ret_pc] is the
+(* ---- +0x7e c.jalr a5 : the target is 2-aligned, so [ret_pc] is the
        identity on it ---- *)
 Lemma fkr_ret_pc : ret_pc (uva 0x9c) = uva 0x9c.
 Proof. rewrite /uva /TRAMPOLINE. apply bv_eq. vm_compute. reflexivity. Qed.
@@ -258,8 +262,8 @@ Proof. vm_compute. reflexivity. Qed.
 (*  file -- that the six bytes at [fkr_init_path] really spell "/init"    *)
 (*  and the five at [fkr_exec_msg] really spell "exec" -- read off        *)
 (*  [KernelData.kernel_data] and pinned here rather than in the walk.     *)
-(*  (Checked: 0x80007188..85 = 47 105 110 105 116 0, and                  *)
-(*  0x80007190..8c = 101 120 101 99 0.)                                   *)
+(*  (Checked: 0x80007188..8d = 47 105 110 105 116 0, and                  *)
+(*  0x80007190..94 = 101 120 101 99 0.)                                   *)
 (* ===================================================================== *)
 
 (* The path bytes are [InitBoot.init_boot_bytes] -- the naming FUNCTION
@@ -320,7 +324,7 @@ Section ForkretRodata.
   Context `{!riscvGS Σ}.
   Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
 
-  (* ---- +0x4c addi a1,s0,-48 / a0 = the "/init" pointer: the SIX bytes
+  (* ---- +0x3c addi a1,s0,-48 / a0 = the "/init" pointer: the SIX bytes
          kexec's path premise owns, [seq]-indexed.  The real fact is the
          KT0 window [kernel_data] hands out -- .rodata is identity-mapped
          -- and that is this lemma; every tier above it is a weakening of
@@ -358,7 +362,7 @@ Section ForkretRodata.
     iApply (TsoCtx.ctx_pointsto_ktier_mono _ KT1 with "H").
   Qed.
 
-  (* ---- +0x9e a0 = the "exec" pointer: the resource [panic]'s contract
+  (* ---- +0x8e a0 = the "exec" pointer: the resource [panic]'s contract
          names as [pk_desc_res msg dm] at [dm = PkAStr DfracDiscarded
          "exec"] -- the string points-to plus the two pure conjuncts.
          [.rodata] is [DfracDiscarded] in [kernel_data], which is why the

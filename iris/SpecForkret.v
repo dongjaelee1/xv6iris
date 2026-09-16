@@ -6,7 +6,7 @@
        static int first = 1;
        struct proc *p = myproc();
        release(&p->lock);                      // still held from scheduler()
-       if (__atomic_load_n(&first, __ATOMIC_ACQUIRE)) {
+       if (first) {
          fsinit(ROOTDEV); ...; kexec("/init", ...); ...
        }
        prepare_return();
@@ -15,19 +15,19 @@
      }
 
 
-   @ KernelSyms.forkret, 166 bytes / 45 instructions (CodeForkret.v).
+   @ KernelSyms.forkret, 150 bytes / 52 instructions (CodeForkret.v).
 
    ==== THE [first] BRANCH IS DECIDED BY A RESOURCE ======================
 
    This contract takes NO premise about [first] at all.  The branch at
-   +0x24 is decided by [FirstTok]'s two arms, which the process that runs
+   +0x1c is decided by [FirstTok]'s two arms, which the process that runs
    forkret carries -- so it holds, as a resource, which arm of the [if] it
    is entitled to:
 
      - the BOOT arm ([FirstTok.first_boot]: [first_addr ↦₄ 1] beside
        main's persistent rows, the sealed page count and fsinit's whole
-       premise pile) reads 1, falls through, and runs fsinit / the release
-       store / kexec("/init");
+       premise pile) reads 1, falls through, and runs fsinit / the
+       [first = 0] store / kexec("/init");
 
      - the STEADY arm ([first_addr ↦₄□ 0] beside [FsReady.fs_ready]) reads
        0, takes the [c.beqz], and the boot arm is dead.
@@ -84,7 +84,7 @@
 
    ==== forkret DOES NOT RETURN ==========================================
 
-   The [c.jalr a5] at +0x8e enters userret at [TRAMPOLINE + 0x9c] with
+   The [c.jalr a5] at +0x7e enters userret at [TRAMPOLINE + 0x9c] with
    a0 = MAKE_SATP(p->pagetable), and userret sret's to user mode.  So the
    contract concludes in [WP Loop] directly, via
    [SpecUserretClosed.wp_userret_closed] -- the CLOSED trap loop, entered
@@ -162,16 +162,16 @@
      - the STEADY arm reads it straight out of [FirstTok.first_tok]'s
        steady disjunct, which IS this resource, persistent, so putting the
        token back into the block costs nothing;
-     - the BOOT arm mints it itself -- [fs_ready_establish] at the release
-       store at +0x38, beside the [first_addr ↦₄□ 0] that same store
-       discards -- and holds it to the [c.jalr].
+     - the BOOT arm mints it itself -- [fs_ready_establish] at the
+       [first = 0] store at +0x28, beside the [first_addr ↦₄□ 0] that
+       same store discards -- and holds it to the [c.jalr].
 
    THE ARGUMENT IS [FirstTok.first_done], NOT [fs_ready], and the extra
    half is load-bearing rather than convenient.  [ProofSyscall.syscall_env]
    has FOUR conjuncts and its last is [first_done] itself -- the steady arm
    of proc.c's [static int first], which fork hands to every child.  Its
    [first_addr ↦₄□ 0] half is minted by exactly one instruction in the
-   kernel, the release store on forkret's boot arm, so a closer given only
+   kernel, the [first = 0] store on forkret's boot arm, so a closer given only
    [fs_ready] would still be missing a row that userinit -- which parks the
    very process that will run that store -- could not possibly supply.
    [first_done] is what both arms hold and is what closes the environment.

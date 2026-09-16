@@ -150,18 +150,17 @@ Section EchoAdequacy.
        THREE MORE AGAIN since lane OUT-FUPD: [Houtt] is fixed the same way
        (it too is named in [Hphi]'s literal), so the two that become goals
        are [Happ_out_sup] and [Happ_echo]. *)
-    (* ONE MORE HOLE since lane CONS-IO: [Hinpt] is fixed by unification the
-       way [Houtt] is (it is named in [Hphi]'s literal above), so the only
-       new goal is [Happ_in_sup]. *)
+    (* ...and ONE FEWER GOAL since redesign R2: [Happ_in_sup] is gone (one
+       resource admits one law), and [Hconst] is fixed by unification the
+       way [Houtt] is. *)
     (* ONE MORE HOLE AGAIN since lane CONS-IO milestone F: [Hwint] is fixed
        by unification the way [Hinpt] is (it is named in [Hphi]'s literal
        above), so the hole list is one longer and no new goal appears. *)
     refine (xv6_app_adequacy Σ g sb nib cov app_echo
-              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
+              _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ n κs t2 g2 Hn).
     - exact echo_Hbirth.
     - exact echo_Happ_kill.
     - exact echo_Happ_out_sup.
-    - exact echo_Happ_in_sup.
     - exact echo_HR0.
     - exact echo_Hpow.
     - (* POINTWISE, not as one term.  [echo_Htx]/[echo_Hrx] state the era
@@ -187,15 +186,15 @@ Section EchoAdequacy.
              payload and sh's tail obligation itself, off the era's links
              and the boot resource. ---- *)
       
-      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen Hout Hin
+      intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Htag Hkill Hgen Hcons
              Hwin.
       (* the record's [app_kill] field IS [AppEcho.echo_taint] (lane
          KILL-PAY, K1); [echo_Hinit_boot] is stated at the latter, and
          unification does not delta-unfold the record literal for it. *)
       cbn [app_echo app_kill] in Hkill.
-      (* ...and the [app_out] field IS [AppEcho.echo_out], for the same
-         reason (lane OUT-FUPD) *)
-      cbn [app_echo app_out] in Hout.
+      (* ...and the [app_cons] field IS [AppEcho.echo_cons], for the same
+         reason (redesign R2) *)
+      cbn [app_echo app_cons] in Hcons.
       (* THE TWO LAYERS NO LONGER HAVE TO MEET (lane ECHO-OUT part 5).  Until
          part 5 [Heq]/[Htag]/[Hkill] arrived carrying [AppEcho.echo_taint]
          at the record's PRE-STRUCTURE [mono_natG] while [echo_Hinit_boot]
@@ -208,16 +207,15 @@ Section EchoAdequacy.
          and [Heq] after, both of which carry the record's own [GenId].
          Naming it here would pin the wrong one: the [GEN] this field
          binds is not the one [app_echo] was elaborated at. *)
-      cbn [app_echo app_in] in Hin.
       (* ...and the window token's field IS [AppEcho.echo_win] (lane
-         CONS-IO milestone F), on [app_in]'s mould *)
+         CONS-IO milestone F), on [app_cons]'s mould *)
       cbn [app_echo app_win] in Hwin.
       iIntros "#Hinv Hb Hturn".
       iApply (echo_Hinit_boot HR GEN c r
-                Heq Htag Hkill Hout Hin Hwin with "Hinv Hb [Hturn]").
+                Heq Htag Hkill Hcons Hwin with "Hinv Hb [Hturn]").
       cbn [app_echo app_turn]. iExact "Hturn".
-    - (* [Happ_echo]: at [AppEcho.echo_out]'s E5 placeholder the console's
-         output claim is trivial, so the echo justifies itself. *)
+    - (* [Happ_echo]: [EchoOut.echo_happ_echo], the arm's open and a run
+         whose every link takes nothing. *)
       exact echo_Happ_echo.
     - (* ---- [Hphi]: CLOSED (lane ECHO-OUT part 5).  The conclusion is a
              PURE reading of the application's trace ledger, so the crash

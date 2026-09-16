@@ -1794,20 +1794,17 @@ Proof.
             (fun _ : unit => @kill_cred_triv_persistent Σ)
             (fun _ : unit => @kill_cred_triv_timeless Σ)
             ltac:(intros ci ri; iIntros "_"; iModIntro; done)
-            ltac:(intros ci ri; rewrite /out_res_triv;
-                  iIntros "_ !>" (k h acc b) "_"; by iModIntro)
-            ltac:(intros ci ri; rewrite /in_res_triv;
-                  iIntros "_"; iSplit; iIntros "!>" (?????) "_"; by iModIntro)
+            ltac:(intros ci ri; rewrite /cons_res_triv;
+                  iIntros "_ !>" (k h H ev) "_"; by iModIntro)
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
-                         Heq Htag Hkill Hgeni Hout Hin Hwin;
+                         Heq Htag Hkill Hgeni Hcons Hwin;
                   iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
-                  | exact Hkill | exact Hout | exact Hin ])
-            (* THE ECHO'S JUSTIFICATION, at the TRIVIAL output claim: every
+                  | exact Hkill | exact Hcons ])
+            (* THE ECHO'S JUSTIFICATION, at the TRIVIAL console claim: every
                link is free, so the echo justifies itself. *)
-            ltac:(intros HRi ci Houti Hini Htagi Hwini; iIntros (GEN XI);
-                  iApply (cons_echo_shift_triv (XI := XI));
-                  [ exact Houti | exact Hini ])
+            ltac:(intros HRi ci Hconsi Htagi Hwini; iIntros (GEN XI);
+                  iApply (cons_echo_shift_triv (XI := XI)); exact Hconsi)
             (fun γobs _ => obs_pred_at γobs)
             (obs_pred_at_alloc_cl (fun _ : unit => True%I))
             (fun γd γobs _ =>
@@ -2029,7 +2026,7 @@ Proof.
   (* the permit at the ledger: the client's two wands *)
   intros HRg GEN HFi ri i γ
          (Hi & Gg & Gs & Gr & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & _ & _).
-  refine (uart_obs_permit_ledger i R Tg Cres γ HRt _ _
+  refine (uart_obs_permit_ledger i R Tg Cres γ HRt _ _ _
             (Htx HRg GEN i γ) (Hrx HRg GEN i γ));
     rewrite Heq; reflexivity.
 Qed.
@@ -2483,20 +2480,17 @@ Proof.
             (fun _ : unit => @kill_cred_triv_persistent xv6Σ)
             (fun _ : unit => @kill_cred_triv_timeless xv6Σ)
             ltac:(intros ci ri; iIntros "_"; iModIntro; done)
-            ltac:(intros ci ri; rewrite /out_res_triv;
-                  iIntros "_ !>" (k h acc b) "_"; by iModIntro)
-            ltac:(intros ci ri; rewrite /in_res_triv;
-                  iIntros "_"; iSplit; iIntros "!>" (?????) "_"; by iModIntro)
+            ltac:(intros ci ri; rewrite /cons_res_triv;
+                  iIntros "_ !>" (k h H ev) "_"; by iModIntro)
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
-                         Heq Htag Hkill Hgeni Hout Hin Hwin;
+                         Heq Htag Hkill Hgeni Hcons Hwin;
                   iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
-                  | exact Hkill | exact Hout | exact Hin ])
-            (* THE ECHO'S JUSTIFICATION, at the TRIVIAL output claim: every
+                  | exact Hkill | exact Hcons ])
+            (* THE ECHO'S JUSTIFICATION, at the TRIVIAL console claim: every
                link is free, so the echo justifies itself. *)
-            ltac:(intros HRi ci Houti Hini Htagi Hwini; iIntros (GEN XI);
-                  iApply (cons_echo_shift_triv (XI := XI));
-                  [ exact Houti | exact Hini ])
+            ltac:(intros HRi ci Hconsi Htagi Hwini; iIntros (GEN XI);
+                  iApply (cons_echo_shift_triv (XI := XI)); exact Hconsi)
             (fun γobs _ => obs_pred_at γobs)
             (obs_pred_at_alloc_cl (fun _ : unit => True%I))
             (fun γd γobs _ =>

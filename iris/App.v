@@ -666,8 +666,8 @@ Proof.
   { intros HRg GEN HFi ri i γ
       (Hi & Gg & Gs & Gr & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & Happ & Huart).
     refine (uart_obs_permit_ledger i (app_R A Gcl) (app_tag A Gcl)
-              (app_out A Gcl) γ (HRt Gcl)
-              _ _ _ (app_in A Gcl) _ (Htx HRg GEN HFi Gcl ri i γ Happ Huart)
+              (app_cons A Gcl) γ (HRt Gcl)
+              _ _ _ (Htx HRg GEN HFi Gcl ri i γ Happ Huart)
                     (Hrx HRg GEN HFi Gcl ri i γ Happ Huart));
       rewrite Heq; reflexivity. }
   exact (xv6_power_adequacy_gen Σ g sb nib cov
@@ -678,14 +678,14 @@ Proof.
            (app_turn A) Happ_boot Happ_init
            (app_tag A) Htagp Htagt
            (app_kill A) Hkillp Hkillt Happ_kill
-           Happ_out_sup Happ_in_sup Hinit_boot
+           Happ_out_sup Hinit_boot
            Happ_echo
            (fun γobs c => obs_ledger_at (app_R A c) γobs)
            (fun γobs c =>
               obs_ledger_at_alloc_cl (app_R A c) γobs (app_cl A c) (HR0 c))
            (fun γd γobs c =>
               obs_ledger_at_step XV6_DISK_BYTES (app_R A c) (HRt c)
-                (app_out A c) (app_in A c) (app_turn A c) (app_win A c)
+                (app_cons A c) (app_turn A c) (app_win A c)
                 (Hpow c) γd γobs)
            Hperm (app_phi A) Hphi Hgen0 Hpow0 Himg).
 Qed.
@@ -748,12 +748,9 @@ Section AppTriv.
     (* ...and the generation-counter equation (lane APP-IFACE (b')), which
        the generic application takes and does not use *)
     @riscvF_genGS Σ (@riscv_fixedGS Σ HR) = riscv_pre_genGS ->
-    (* ...and the output-claim equation (lane OUT-FUPD), which pays the
+    (* ...and the console-claim equation (redesign R2), which pays the
        other new side: the generic application's claim is [emp] *)
-    @riscv_out_res Σ (@riscv_fixedGS Σ HR) = app_out (app_triv Σ) c ->
-    (* ...and the input-log equation (lane CONS-IO), which the generic
-       application takes and does not use: its log claim is [emp] too *)
-    @riscv_in_res Σ (@riscv_fixedGS Σ HR) = app_in (app_triv Σ) c ->
+    @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = app_cons (app_triv Σ) c ->
     (* ...and the echo window token's (lane CONS-IO milestone F), which the
        generic application takes and does not use: its token is [emp] *)
     @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win (app_triv Σ) c ->
@@ -762,15 +759,14 @@ Section AppTriv.
       app_turn (app_triv Σ) c (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Heq _ Hkc _ Hout Hin _. iIntros "_ _ _". iModIntro.
+    intros Heq _ Hkc _ Hcons _. iIntros "_ _ _". iModIntro.
     (* the rewrite goes BEFORE the [intros]: [r'] is typed at
        [app_names file_app], so rewriting under it is a dependent rewrite *)
     iApply init_boot_of_triv.
     - rewrite Heq. intros r' av.
       cbn [app_triv app_pred app_names]. reflexivity.
     - rewrite Hkc. cbn [app_triv app_kill]. reflexivity.
-    - rewrite Hout. cbn [app_triv app_out]. reflexivity.
-    - rewrite Hin. cbn [app_triv app_in]. reflexivity.
+    - rewrite Hcons. cbn [app_triv app_cons]. reflexivity.
   Qed.
 
   Lemma app_triv_R0 (c : app_fixed (app_triv Σ)) :
@@ -808,36 +804,35 @@ Proof.
            ltac:(intros c r; cbn [app_triv app_kill];
                  iIntros "_"; iModIntro; done)
            ltac:(intros c k h acc; cbn [app_triv app_out]; apply _)
-           ltac:(intros c r; cbn [app_triv app_out];
-                 iIntros "_ !>" (k h acc b) "_"; by iModIntro)
+           (* ONE LICENCE (redesign R2): the generic claim is [emp], so every
+              event on it is free *)
+           ltac:(intros c r; cbn [app_triv app_cons];
+                 iIntros "_ !>" (k h H ev) "_"; by iModIntro)
            ltac:(intros c k h pops dl; cbn [app_triv app_in]; apply _)
            (* the echo window token's timelessness (lane CONS-IO milestone
               F), vacuous at the generic application's [emp] *)
            ltac:(intros c k; cbn [app_triv app_win]; apply _)
            (* the merged console claim's timelessness (redesign R2) *)
            ltac:(intros c k h H; cbn [app_triv app_cons]; apply _)
-           ltac:(intros c r; cbn [app_triv app_in];
-                 iIntros "_"; iSplit; iIntros "!>" (?????) "_"; by iModIntro)
            app_triv_R0
            ltac:(intros c h on dk _;
-                 cbn [app_triv app_R app_out app_in app_turn app_win];
+                 cbn [app_triv app_R app_cons app_turn app_win];
                  iIntros "_"; iModIntro; iSplitR; [done |];
                  destruct on; by repeat iSplitR)
            ltac:(intros HR GEN HFi c r i γ _ _; cbn [app_triv app_R];
-                 iIntros "!>" (h b u u' ho hi pops dl)
-                   "_ _ _ _ _ _ _ _ Ho Hi Hg _"; iModIntro;
-                 iFrame "Ho Hi Hg"; done)
+                 iIntros "!>" (h b u u' ho H)
+                   "_ _ _ _ _ _ _ _ Ho Hg _"; iModIntro;
+                 iFrame "Ho Hg"; done)
            ltac:(intros HR GEN HFi c r i γ _ _; cbn [app_triv app_R app_tag];
                  iIntros "!>" (h b u u') "_ _ _ Hg _"; iModIntro;
                  iFrame "Hg"; auto)
            app_triv_xfer
            ltac:(intros c; exact (app_triv_init c _))
            app_triv_init_boot
-           (* the echo justifies itself at the trivial output claim *)
-           ltac:(intros HR c Hout Hin _ _; iIntros (GEN XI);
+           (* the echo justifies itself at the trivial console claim *)
+           ltac:(intros HR c Hcons _ _; iIntros (GEN XI);
                  iApply (SpecConsoleintr.cons_echo_shift_triv (XI := XI));
-                 [ rewrite Hout; cbn [app_triv app_out]; reflexivity
-                 | rewrite Hin; cbn [app_triv app_in]; reflexivity ])
+                 rewrite Hcons; cbn [app_triv app_cons]; reflexivity)
            ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
                  iIntros "_ _ _ _ _"; iModIntro; iPureIntro; exact Logic.I)
            Hgen0 Hpow0 _ n κs t2 g2 Hn)).

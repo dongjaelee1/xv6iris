@@ -45,6 +45,10 @@ Require Import AppInv.           (* [app_inv], [app_body], [app_step], [appE] *)
 Require Import SysWriteDefs.     (* [wri_pre], [wchunks] *)
 Require Import FsAbsDelta.       (* [cre_pre], [delta_ent], [delta_unl_ent] *)
 Require Import FsAbsWriteFire.   (* [awrite_full_at] / [awrite_part_at] / chain *)
+Require Import SysUnlinkDefs.    (* [uent_commit_at], [unl_pre] (lane TL-3C
+                                    section 3c: the MOVE CONSUMED)         *)
+Require Import PieceFam.         (* [pfam] / [pf_at]: a piece's receipt
+                                    beside its refund                      *)
 Require Import TreeView.         (* TL-1 *)
 Require Import AppTree.          (* TL-2 + TL-3W: the claim, the deed, the move *)
 Require Import TreeObs.          (* the claim law at the era's record *)
@@ -487,6 +491,78 @@ Section TreeMove.
             Heq ltac:(rewrite Hav; exact Hpost) Hne with "Hinv Htk Hka'")
       as "[Hka' Hout]".
     iModIntro. iFrame "Hka' Hout".
+  Qed.
+
+  (* =================================================================== *)
+  (*  3c.  THE MOVE CONSUMED: unlink's ENTRY LEG, AS THE BUNDLE TAKES IT  *)
+  (*      (lane TL-3C; design/user-tree.md section 7.7)                   *)
+  (*                                                                     *)
+  (*  This is section 3b's [tree_uent_phases] at the shape               *)
+  (*  [SpecSysUnlink.unlink_au_at] actually asks for, and it exists       *)
+  (*  because THREE things landed: WALL A's cursor (TL-3K), the          *)
+  (*  path-fixed unlink bundle (TL-3C item (M)) and -- for free --       *)
+  (*  [unl_pre]'s own [nm <> DOT /\ nm <> DOTDOT], which is [fs_pname nm] *)
+  (*  and is the premise create needed a whole credential for (WALL D).   *)
+  (*                                                                     *)
+  (*  WHAT THE CURSOR DOES HERE, in one line: [uent_commit_at] quantifies *)
+  (*  its parent [d] INSIDE, and an owner has NO STEP at a [d] inside a   *)
+  (*  stranger's subtree (section 4's WALL A).  At [Pd d := d = dpar] the *)
+  (*  premise DECIDES [d], so the supplier owes one step and not a        *)
+  (*  family of them.  The cursor is PURE, so it is read and handed back  *)
+  (*  for nothing -- which is exactly why a parent prefix of LENGTH ZERO  *)
+  (*  needs no phase-2 cursor return (section 7.7's (R)).                 *)
+  (*                                                                     *)
+  (*  WHAT IS STILL MISSING FOR A COROLLARY, and it is not this leg:      *)
+  (*  unlink's TARGET leg ([SysUnlinkDefs.utgt_commit_at]) quantifies its *)
+  (*  own [t] with no cursor at all, and at the LAST LINK the row LEAVES  *)
+  (*  -- so it wants [aview_no_edge_to av t] (WALL C) at a non-directory  *)
+  (*  target and TL-2's rmdir-shaped wall at a directory one.             *)
+  (* =================================================================== *)
+
+  (* the owner's family at this piece: the RECEIPT is the moved deed (or
+     the taint) and the REFUND is the deed it put in -- the [∧] of [pf_at]
+     is what lets ONE deed answer both, which is design section 7.2's
+     refund arm. *)
+  Definition tree_uent_fam (c : tree_fixed) (r : tree_names) (g : gname)
+      (root : Z) (t : ttree) : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ) :=
+    {| pf_recv := (fun (_ : aview) (d : Z) (nm : fname) (_ : Z) =>
+                     (tree_own r g root (top_unlink d nm t) ∨ tree_taint c)%I) ;
+       pf_refund := tree_own r g root t |}.
+
+  Lemma tree_uent_commit (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (g : gname) (root dpar : Z) (t : ttree) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    dpar ∈ dom (tv_nodes t) ->
+    app_inv γfs -∗ tree_own r g root t -∗
+    uent_commit_at (fs_gamma_L γfs) appE (fun d : Z => ⌜d = dpar⌝%I)
+      (tree_uent_fam c r g root t).(pf_recv).
+  Proof.
+    intros Heq Hdd. iIntros "#Hinv Hown".
+    rewrite /uent_commit_at.
+    iIntros (I d tg nm ents nl a) "%Hpre %Hd Hka". subst d.
+    destruct Hpre as (Hdrow & Hent & HnD & HnDD & _ & _ & _ & _).
+    iMod (tree_uent_phases γfs c r g root dpar tg nm
+            (unl_dec (an_node a)) t I ents nl Heq (conj HnD HnDD)
+            Hdrow Hent Hdd with "Hinv Hown Hka") as "(Hka & Hstep & Hph2)".
+    iModIntro. iFrame "Hka". iSplitR; [done |]. iFrame "Hstep".
+    iIntros (I') "%Hav Hka'".
+    iMod ("Hph2" $! I' with "[//] Hka'") as "[Hka' Hout]".
+    iModIntro. iFrame "Hka'". cbn [pf_recv]. iExact "Hout".
+  Qed.
+
+  (* ...and THE PIECE, as [SpecSysUnlink.unlink_au_at]'s first commit row
+     takes it: the AU conjoined with its refund, both out of the ONE deed. *)
+  Lemma tree_uent_piece (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (g : gname) (root dpar : Z) (t : ttree) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    dpar ∈ dom (tv_nodes t) ->
+    app_inv γfs -∗ tree_own r g root t -∗
+    pf_at (uent_commit_at (fs_gamma_L γfs) appE (fun d : Z => ⌜d = dpar⌝%I))
+      (tree_uent_fam c r g root t).
+  Proof.
+    intros Heq Hdd. iIntros "#Hinv Hown". iApply pf_at_intro. iSplit.
+    - iApply (tree_uent_commit γfs c r g root dpar t Heq Hdd with "Hinv Hown").
+    - cbn [pf_refund]. iExact "Hown".
   Qed.
 
 End TreeMove.

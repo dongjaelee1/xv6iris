@@ -1313,6 +1313,24 @@ not one proof step of the nine files changed beyond those lines.
 lifted: every create/unlink-family bundle is now path-fixed and
 cursor-carrying.**
 
+**THE MOVE CONSUMED — unlink's ENTRY LEG, AT THE SHAPE THE BUNDLE ASKS
+FOR** (`TreeMove.v` §3c, new).  `tree_uent_commit` turns a LIVE deed into
+`SysUnlinkDefs.uent_commit_at (fs_gamma_L γfs) appE (fun d => ⌜d = dpar⌝)`
+at the owner's own family, and `tree_uent_piece` is that AU conjoined with
+its refund — the `∧` of `PieceFam.pf_at` is what lets ONE deed answer both,
+which is §7.2's refund arm.  It exists because THREE things landed: WALL
+A's cursor (TL-3K) decides `d` from inside the commit's own premise, so the
+supplier owes ONE step and not a family of them; item (M) gives unlink a
+bundle that can name a cursor at all; and `unl_pre`'s own
+`nm <> DOT /\ nm <> DOTDOT` IS `fs_pname nm`, so unlink never needed WALL
+D's credential.  THE CURSOR IS PURE HERE (`⌜d = dpar⌝`), read and handed
+back for nothing — the concrete case of (R)'s "not on the critical path".
+**What still blocks the unlink COROLLARY is the TARGET leg and only it**:
+`utgt_commit_at` quantifies its own `t` with no cursor, and at the last
+link the row LEAVES, so it wants `aview_no_edge_to av t` (WALL C) at a
+non-directory target and TL-2's rmdir-shaped wall at a directory one.
+There is no create twin of §3c, for the same single reason.
+
 **(R) THE PHASE-2 CURSOR RETURN — BOTH OFFERED OPTIONS ARE REFUTED.**
   - "Return `Pd d` at PHASE 2 instead" — **does not work**.  At phase 2
     the owner holds the MOVED deed `tree_own r g root (top_ins d nm i … t)`,

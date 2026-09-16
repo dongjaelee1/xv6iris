@@ -604,6 +604,17 @@ carries the full block; the headlines:
    `v0` plumbed through the eight W-lemmas that name `unlink_arms`.
    **So §7.6's "mkdir and unlink cannot carry a cursor at all" is fully
    lifted: every create/unlink-family bundle is path-fixed now.**
+4b. **THE MOVE CONSUMED, for unlink's ENTRY leg** (`TreeMove.v` §3c, new):
+   `tree_uent_commit` / `tree_uent_piece` turn a LIVE deed into the
+   `uent_commit_at … (fun d => ⌜d = dpar⌝)` piece `unlink_au_at`'s first
+   commit row asks for, refund and all.  It is the demonstration that the
+   lane's items compose: WALL A's cursor decides `d` INSIDE the commit's
+   premise (so the supplier owes ONE step, not a family), (M) gives unlink
+   a bundle that can name a cursor, and `unl_pre` carries `fs_pname nm`
+   itself.  The cursor here is PURE, so (R)'s seam does not arise.  There
+   is no create twin, and no unlink corollary either: the TARGET leg
+   (`utgt_commit_at`, its own `t` quantified inside, the row LEAVING at the
+   last link) wants WALL C plus TL-2's rmdir wall.
 5. **(R) BOTH OFFERED FIXES ARE REFUTED; the answer is a SPLIT CURSOR, and
    it is not on the critical path.**  "Return `Pd d` at phase 2" fails
    because at phase 2 the owner holds the MOVED deed and `Pd` names the old

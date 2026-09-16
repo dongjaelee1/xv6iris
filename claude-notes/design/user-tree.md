@@ -706,12 +706,12 @@ subtree cannot build the step and falls to the taint arm, as §3 says.
   (the name's properness), both stated there.
 - [x] **LEDGER/CREDENTIAL** — LANDED as **TL-3C** (branch `tl3c-ledger`),
   §7.7: WALL D CLOSED (the name credential, paid free at both fire sites);
-  mkdir's PATH-FIXED bundle landed (`mkdir_au_at`), unlink's priced; WALL
-  C's (C-i) armed ledger REFUTED at `ftop_body`'s altitude and a third,
-  ghost-free route ((C-iii), the rooted view) designed and priced; the
-  phase-2 cursor seam RULED (a split cursor, and not on the critical path).
-  What the family now waits on is exactly ONE premise,
-  `aview_no_edge_to (abs_view I) i`.
+  BOTH path-fixed bundles landed (`mkdir_au_at`, `unlink_au_at`), so every
+  create/unlink-family bundle carries a cursor now; WALL C's (C-i) armed
+  ledger REFUTED at `ftop_body`'s altitude and a third, ghost-free route
+  ((C-iii), the rooted view) designed and priced; the phase-2 cursor seam
+  RULED (a split cursor, and not on the critical path).  What the family
+  now waits on is exactly ONE premise, `aview_no_edge_to (abs_view I) i`.
 - [ ] **ROOTED-VIEW (C-iii)** — the next lane, and the only thing between
   here and the first create corollary; §7.7 prices it.
 
@@ -1138,10 +1138,10 @@ C) and `fs_pname nm` (WALL D).  WALL A delivered the third,
 `tree_pwalk_parent_live` now).  That is why no corollary and no extended
 test landed: `UkTreeWrite.wp_uk_tree_write_moves` is unchanged.
 
-### 7.7 TL-3C as landed — the name credential, the path-fixed mkdir bundle, and WALL C's three routes priced (one of them cheap)
+### 7.7 TL-3C as landed — the name credential, the path-fixed mkdir and unlink bundles, and WALL C's three routes priced (one of them cheap)
 
-**WHAT LANDED** (branch `tl3c-ledger`): item (D) in full, item (M) at
-mkdir, and two RULINGS — (C-i)'s STOP RULE FIRED, and (R)'s two offered
+**WHAT LANDED** (branch `tl3c-ledger`): item (D) in full, item (M) in
+full (mkdir AND unlink), and two RULINGS — (C-i)'s STOP RULE FIRED, and (R)'s two offered
 options are BOTH refuted, with the honest fix named.  `AppEcho.v` /
 `AppInv.v` untouched, every landed TL-* statement unchanged, whole tree
 green, system audit 13 / echo audit 14.
@@ -1273,7 +1273,7 @@ fact about a FIXED tree.
   because `delta_unarm i` is invisible only if nothing names `i`): that is
   the very same credential at the very same instant.
 
-**(M) THE PATH-FIXED BUNDLES — mkdir LANDED, unlink PRICED.**
+**(M) THE PATH-FIXED BUNDLES — BOTH LANDED.**
 `SpecSysMkdir.mkdir_au_at` is `mknod_au_at`'s twin: the parent-prefix walk
 under `ArgPath.arg_path_of` at argument 0, the four legs at the guarded
 cursor `SysMknodDefs.npar_cur M pv P`, the commits OUTSIDE the walk's wand
@@ -1290,20 +1290,28 @@ does.  Cone: `SpecCreate`, `SpecSysMkdir`, `ProofSysMkdir`,
 **SO MKDIR CAN NOW CARRY A CURSOR**, which is the half of §7.6's "mkdir
 and unlink CANNOT CARRY A CURSOR AT ALL" that this lane lifts.
 
-**unlink, PRICED AND NOT TAKEN.**  Identical in shape and four times the
-proof cone (`ProofSysUnlink*` is ~11k lines over nine files).  The recipe,
-written down so the next lane does not rediscover it: `unlink_au_at` with
-the guarded walk and `uent_commit_at Γ appE (npar_cur M pv P)`;
-`unlink_au_pre` at one `pl` with the commit at
-`P (length (npar_elems pl))`; `unlink_uent_inst` off
-`SysUnlinkDefs.uent_commit_at_mono` + `npar_cur_in`/`_out`;
-`unlink_post_fail` / `unlink_arms` gain `(M, pv)`; `ProofSysUnlinkW1`
-names argstr's discarded `Hfgot` at line 559 and builds `arg_path_of`
-exactly as mkdir now does (it already uses `bview pk1 bp1` as its `pl`);
-W2/W3/W5D/W5F restate their `uent_commit_at … (fun _ => True)` at
-`P (length (npar_elems pl))` — `pl` is already a parameter of all four —
-and W5D/W5F pass the cursor they ALREADY HOLD into `uf_uent_fire` and take
-it back.  No new lemma anywhere.
+**unlink, LANDED TOO** (four times the proof cone — `ProofSysUnlink*` is
+~11k lines over nine files — and identical in shape, exactly as the recipe
+predicted).  `SpecSysUnlink.unlink_au_at` carries the guarded walk and
+`uent_commit_at Γ appE (npar_cur M pv P)`; `unlink_au_pre` is the reading
+at one `pl` with the entry leg at `P (length (npar_elems pl))`;
+`unlink_uent_inst` is the move between them (off `uent_commit_at_mono` +
+`npar_cur_in`/`_out`), with `unlink_au_at_inst` and `unlink_au_at_of_all`
+beside it.  `unlink_post_fail` / `unlink_arms` gain `(M, pv)`.
+`ProofSysUnlinkW1` was DISCARDING argstr's `Hfgot` exactly as ProofSysMkdir
+was; it now names it, builds `arg_path_of` at `bview pk1 bp1` (the `pl` it
+already used), fires the walk wand there and moves the entry leg's cursor
+with `unlink_uent_inst`.  W2/W3/W5D/W5F restate their
+`uent_commit_at … (fun _ => True)` at `P (length (npar_elems pl))` — `pl`
+was already a parameter of all four — and W5D/W5F pass the cursor they
+ALREADY HOLD into `uf_uent_fire` and take it back, which is what TL-3K's
+STOP-rule check predicted.  The one piece of plumbing: `unlink_arms` now
+mentions the path argument, so the eight W-lemmas and seam definitions that
+name the arms take `v0` as a parameter.  NO NEW LEMMA in the kernel, and
+not one proof step of the nine files changed beyond those lines.
+**So §7.6's "mkdir and unlink CANNOT CARRY A CURSOR AT ALL" is fully
+lifted: every create/unlink-family bundle is now path-fixed and
+cursor-carrying.**
 
 **(R) THE PHASE-2 CURSOR RETURN — BOTH OFFERED OPTIONS ARE REFUTED.**
   - "Return `Pd d` at PHASE 2 instead" — **does not work**.  At phase 2
@@ -1338,7 +1346,10 @@ supplier is missing exactly ONE of `tree_acre_phases`'s premises —
 it: one pure conjunct in `tree_body`, ~8 preservation lemmas in
 `TreeView`, the arm's pure credential on `Farm`'s receipt, and then
 `mknod` and `open(O_CREATE)` at an owner of `/` are payable with the
-landed phases verbatim.  mkdir wants (C-iii-b) beside it.  Unlink wants
-(M)-for-unlink above, and its TARGET leg wants (C-iii-a) too plus the
-rmdir-shaped wall TL-2 recorded.  No corollary and no extended test landed
+landed phases verbatim.  mkdir wants (C-iii-b) beside it.  Unlink's ENTRY leg is
+payable the moment its bundle is supplied (it needs no credential at all —
+`unl_pre` carries the name's properness itself), but its TARGET leg
+(`utgt_commit_at`, which quantifies its own `t`) wants (C-iii-a) at the
+last link plus the rmdir-shaped wall TL-2 recorded, so no unlink corollary
+lands either.  No corollary and no extended test landed
 in TL-3C: `UkTreeWrite.wp_uk_tree_write_moves` is unchanged.

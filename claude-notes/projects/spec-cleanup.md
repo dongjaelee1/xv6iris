@@ -584,7 +584,7 @@ carries the full block; the headlines:
    conjunct of the same kind and price, "every owner's root is reachable".
    **So (C-iii-a) + (D) unblock `mknod` and `open(O_CREATE)` at an owner of
    `/`; mkdir wants (C-iii-b) beside it.**
-4. **(M) mkdir's PATH-FIXED BUNDLE IS LANDED; unlink's is priced.**
+4. **(M) BOTH PATH-FIXED BUNDLES ARE LANDED.**
    `SpecSysMkdir.mkdir_au_at` is `mknod_au_at`'s twin (walk under
    `ArgPath.arg_path_of` at argument 0, four legs at `npar_cur M pv P`,
    commits OUTSIDE the walk's wand so the failure fold keeps its shape),
@@ -594,10 +594,16 @@ carries the full block; the headlines:
    twin).  Cone: `SpecCreate`, `SpecSysMkdir`, `ProofSysMkdir`,
    `UexecExecInst`, `ProofSyscall`, `FsSyscalls`.  **So half of §7.6's
    "mkdir and unlink cannot carry a cursor at all" is lifted.**
-   unlink's is identical in shape over a four-times-bigger proof cone
-   (~11k lines, nine files); §7.7 writes the recipe down line by line —
-   the only non-mechanical step is naming argstr's DISCARDED `Hfgot` in
-   `ProofSysUnlinkW1` (line 559) exactly as `ProofSysMkdir` now does.
+   `SpecSysUnlink.unlink_au_at` is the same over a four-times-bigger proof
+   cone (~11k lines, nine files) and it went through with NO new kernel
+   lemma: `unlink_uent_inst` off `uent_commit_at_mono`, `ProofSysUnlinkW1`
+   naming argstr's DISCARDED `Hfgot` (exactly as `ProofSysMkdir` was), the
+   seven `uent_commit_at … (fun _ => True)` restatements at
+   `P (length (npar_elems pl))` (`pl` was already a parameter everywhere),
+   W5D/W5F passing into `uf_uent_fire` the cursor they ALREADY HELD, and
+   `v0` plumbed through the eight W-lemmas that name `unlink_arms`.
+   **So §7.6's "mkdir and unlink cannot carry a cursor at all" is fully
+   lifted: every create/unlink-family bundle is path-fixed now.**
 5. **(R) BOTH OFFERED FIXES ARE REFUTED; the answer is a SPLIT CURSOR, and
    it is not on the critical path.**  "Return `Pd d` at phase 2" fails
    because at phase 2 the owner holds the MOVED deed and `Pd` names the old

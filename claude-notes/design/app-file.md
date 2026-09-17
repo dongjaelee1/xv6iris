@@ -317,19 +317,33 @@ member.  FOUR coupled facts, each adopted as a ruling:
 3. **The publish reads the caller's mode** (`ProofSysOpenPub`:
    `off_pub_park` or `off_pub_hand`, `fp_om` set to match, the held half
    `uoff γo 0` in the receipt at `OffHeld`).
-4. **The exec crossing takes the surrender bundle.**  A generic slot's
-   mint needed `fdv_all_parked` of the whole table, which no U-tier
-   program can prove (a dropped `ufd` handle leaves an open row it cannot
-   name).  The premise is now `FdPark.uoff_surr_at`: all parked, or a
-   surrender (`off_user_inv γo`, persistent) per held row; and a
-   verified program pays it because `urun` carries a COUNTER of held rows
-   (`uheld n`, one half beside `ufd_auth`, the other the program's;
-   a hand-open increments, a close or dup of a held row moves it, fork
-   copies it with the table), so a program holding `n` held handles knows
-   they are all the held rows there are and surrenders each
-   (`uoff_park`) before an exec to an unverified target or a fork.  A
-   surrendered row keeps its `OffHeld` tag (the tag is the object's) and
-   is paid like a parked one, from the surrender.
+4. **The exec crossing takes the surrender bundle — on the TAINT arm only.**
+   A generic slot's mint needed `fdv_all_parked` of the whole table; lane
+   OFF-HAND-2 put that row on the exec crossing's wands, kernel-paid from
+   the pin, and OFF-HAND-3 relayed it into every ENTRY as a received
+   premise.  That is right for the taint arm (the generic mint is the
+   row's only consumer) and WRONG for a verified entry: an entry that
+   receives "the table is all parked" can never be entered with a held
+   row, and the redirect child execs /echo holding `f` at a held offset.
+   RULED (2026-09-17): the verified entries (`image_entry`,
+   `image_entry_at`) DROP the row — the held halves reach the new image
+   through `my_pay`, which both arms receive at the call — and the taint
+   arm (`image_entry_taint`, the generic mint) takes the SURRENDER bundle
+   `FdPark.uoff_surr_at` instead, which the caller's taint-arm proof
+   builds itself under a fancy update from the `uoff`s in its payload
+   (`uoff_park`, one persistent `off_user_inv` per held row).  The
+   carrier is the SET of descriptors a record may hold, `ukn_held : gset
+   nat` on `uk_names` (OFF-HAND-3's static bit generalised: `∅` is
+   "answers for its offsets"; the row `urun_rows` keeps is "every held
+   row of the table is in the set"; a hand-open needs its slot in the
+   set; a forking parent chooses the child's set; the redirect child's is
+   `{1}`, cat's is the tail `[NSTD, NOFILE)`), because a program that
+   execs must know WHICH rows to surrender and a count cannot say
+   (OFF-HAND-3's finding 2).  A ghost carrier is refuted three ways
+   (OFF-HAND-3's finding 1) and is not to be re-proposed.  The generic
+   slot is minted at the key and its surrender bundle, its Löb carrying
+   the bundle across rounds (a generic process never hand-opens; dup
+   shares the object's surrender; close drops the row).
 
 Lane OFF-HAND-2 landed the exec crossing's all-parked row (the kernel pays
 it) and found that facts 1–3 sit BEHIND the counter: the generic

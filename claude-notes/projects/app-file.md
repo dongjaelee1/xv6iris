@@ -5384,3 +5384,117 @@ SH-ROUND is the kernel-tier device refutation (S3) if the round wants
 leaf (`wp_uk_ecall_open_recv_img_held`), which re-instantiates this
 corollary by the one swap F-OPEN-4 recorded plus `UserOff.uoff γo 0` in
 the fd arms.
+
+### OFF-HAND-7 (STOPPED, 2026-09-17) — NOTHING LANDED BEYOND THE MERGE; THE U-TIER PRICE OF OFF-HAND-6's ADVANCING ROW IS MEASURED AND NAMED
+
+**The lane's verdict in one line: stopped by the owner's review before J1
+landed, with NO commit of its own — the branch `app-file/off-hand` is a
+FAST-FORWARD to main at `79d0e349e`, whole-tree green (426 files rebuilt,
+zero `Error`, `EXIT` clean) on the lane's remote tree.  What the lane
+produced is the merge's fix-forward (derived independently and identical
+to main's, so main's copies are what the branch carries) and two
+MEASUREMENTS that price the shape the review has now replaced.**
+
+**BRANCH STATE.** `git merge main` from `4bc427216` fast-forwarded through
+`da12f4845` to `79d0e349e`.  No lane commit, no half-sweep: the in-progress
+J1 edit to `iris/FileInvDefs.v` was `git checkout`ed away rather than
+landed.  `claude-notes/design/app-file.md` is main's copy, untouched.
+
+**THE MERGE'S FIX-FORWARD** (three files; all three were breakages of the
+OFF-HAND-6 + F-OPEN-5 + CAT-WALK-2 + upstream combination, not of this
+lane, and main now carries the same fixes):
+
+- `UkRunSys.v:5083` — the dead `Hpko` argument to `urun_rows_insert` in
+  CAT-WALK-2's `wp_uk_ecall_open_recv_gimg` copy, against OFF-HAND-6's
+  premise-free row.
+- `UkFileOpen.v` section 5 — `file_create_sup_v` and
+  `wp_uk_ecall_open_create_deed_v` were merged at the PRE-F-OPEN-5
+  signature (`file_create_fam c r jc s`, `fown r s`) into a file whose
+  definition and section 4 had already moved to the escrow's
+  (`file_create_fam c r jc n s g`, `esc_key`/`fesc_res`,
+  `file_open_create_au` / `file_open_create_recv` with the mask and the
+  key).  Regenerated from section 4 with `uimg_view` /
+  `wp_uk_ecall_open_recv_gimg` in place of `utext_img` /
+  `wp_uk_ecall_open_recv_img`, and `_d`'s statement narrowed to match (the
+  fd arm `fown r (Some (i, [])) ∨ file_taint c`, the device arm
+  `(∃ i, fown r (Some (i, []))) ∨ file_taint c`).
+- `UInitTreeExec.v` — four dead arguments against OFF-HAND-6's deletions:
+  `image_entry_taint`'s `%Hpk` intro, the `urun_rows_parked` destruct and
+  its `Hpk0` argument to `ExecRun.image_entry_of_taint`,
+  `fdv_all_parked_fdt0` at `UInitKernel.init_boot_con`, and `Hhd` at
+  `ExecRun.udepw_at_refR_ids_of_sup_ids`.
+
+**J1 REACHED AND DISCARDED.** `iris/FileInvDefs.v` alone was green under
+`--check-proof` with the coupled change's payload half: `fdstate_ok`'s
+FD_INODE arm dropping `m = OffParked`; `fdstate_ok_inode` existential in
+the mode; `fdstate_ok_parked` deleted and `fdstate_ok_adv` in its place;
+`fdstate_ok_inj` taking both states' parkedness; NEW `fpay_tok_valid`
+(`own_valid_2` on the frac component, `⌜(q1 + q2 ≤ 1)%Qp⌝`);
+`file_pay_st` gaining `⌜¬ fdst_parked st -> q = 1%Qp⌝`; `file_pay_st_split`
+taking `fdst_parked st`; NEW `file_pay_st_parked2` / `file_pay_st_adv`;
+`file_pay_st_agree` re-proved through them; `file_ref_parked` and
+`file_ref_parked_keep` deleted and `file_ref_parked2` / `file_ref_adv` in
+their place; `foff_row_of_ok` taking `fdst_parked st`; the
+`file_pay_st_morph` `CtxMorph` instance gaining one `ctx_morph_sep` for
+the new pure conjunct.  **None of it is committed and nothing downstream
+was touched**, so the tree is exactly main's.
+
+**THE TWO MEASUREMENTS WORTH KEEPING** (both are about OFF-HAND-6's
+advancing-row shape, which the review deletes; they are the evidence for
+why it had to go, and the second one survives the new design as a fact
+about `filedup`):
+
+1. **THE `_parked` CHAIN IS CONSUMER-FREE AND THE COUNT PIN HAS EXACTLY
+   FOUR CUSTOMERS.**  `ProcInv.ofile_slot_parked` → `ofile_slots_parked` →
+   `proc_ofiles_parked` → `proc_priv_parked`, and
+   `FileInvDefs.file_ref_parked`, have NO application anywhere in the tree
+   — every hit outside their own files is a COMMENT (`FdPark:598`,
+   `PinnedExec:310`, `ProofSyscall:5289`, `SpecKexec:878` and `:1357`).
+   `file_ref_parked_keep` has exactly the four row-copying sites OFF-HAND-6
+   named: `ProofSysDup:1046`, `ProofKforkB3:782`, `ProofSysRead:967`,
+   `ProofSysWrite:983`.  So deleting the chain is free whichever shape the
+   offset takes.
+
+2. **THE ADVANCING ROW HAS NO ATTACHMENT POINT ABOVE `UkRun.urun`, AND
+   THAT — NOT PROOF EFFORT — IS WHAT STOPPED J1.**  `usys_fd_ok`'s
+   read/write row moves the successor table
+   (`sts' = <[fd := fdst_adv (sts !!! fd) d]> sts`), so every U-tier leaf
+   that admits read(5) or write(16) must either absorb a moved table or
+   prove the call's descriptor parked.  It can do NEITHER:
+   - `UkRun.urun` HIDES the descriptor view (`fdv` sits inside `urun`'s
+     existential), so "the row at the call's argument fd is parked" cannot
+     be stated as a leaf premise at all — and the one proposition that
+     could carry it, `UkRun.urun_parked_row`, was deleted by OFF-HAND-6
+     (H3) to let a record be minted at a key with a held descriptor;
+   - `UserFd.ufd_auth` is a `ghost_map_auth` at fraction 1, so a leaf
+     cannot move ONE slot without that slot's fragment, which a generic
+     leaf does not hold.
+   The sites: `UkRunSys.wp_uk_ecall_quiet` (`:528`, already excludes read
+   and ADMITS write(16) — instantiated at 16 by `UkEcho:1012`,
+   `UkInit:1223`, `UkCat:402`, and at a symbolic number by `UkSh:949`),
+   `wp_uk_ecall_window` (`:2664`, admits read(5), and
+   `wp_uk_ecall_read_win` `:3244` routes through it),
+   `wp_uk_ecall_quiet_recv` (`:4035`), `wp_uk_ecall_quiet_recv_img`
+   (`:5170`), `wp_uk_ecall_write_at` (`:4293`), plus `UexecApply:1236` and
+   `UkRunExecRef:214` / `:366`.  Under the review's design
+   (`foff_row := True`, the half in the program's `Pay`, the chain nodes
+   taking the kernel half in and returning it advanced) `usys_fd_ok`'s
+   rows do not move at all and every one of these sites is untouched,
+   which is the point.
+3. **AND THE COUNT PIN REACHES `filedup`, NOT ONLY THE COPY SITE.**
+   `FileInv.file_dup_step` (`:378`) splits `file_pay_st` at `q/2`
+   (`iEval (rewrite -{1}(Qp.div_2 q) file_pay_st_split)`, `:410`), so with
+   the pin `⌜¬ fdst_parked st -> q = 1⌝` on the payload the SPLIT itself
+   is illegal at a held row — the premise is `fdst_parked st` on
+   `file_dup_step`, and it propagates through `wp_filedup_sconf` and
+   `ProofSysDup.wp_sys_dup_sconf` to the U-tier dup leaf.  OFF-HAND-6
+   priced dup's discharge at the copy site (two shares in hand); the
+   split happens EARLIER, with one share in hand, and no count can pay it
+   there.  This is a fact about filedup under any "a held object has one
+   row" pin, so a design that keeps such a pin must put `⌜fdst_parked⌝ ∨
+   taint` on `file_dup_step`, not on `ProofSysDup`'s copy.
+
+**WHAT THE NEXT LANE INHERITS.** A green branch identical to main; no
+statement moved by this lane; the J1 payload half above as a recipe if any
+part of the count pin is reused; and measurements 2 and 3 as the price
+list for any shape that makes a read or a write move the descriptor table.

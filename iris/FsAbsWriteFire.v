@@ -588,7 +588,7 @@ Section WriteFire.
        ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
        ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs⌝ -∗
        ⌜Z.of_nat (length bs) = wchunk_at n k⌝ -∗
-       ghost_map_auth (γtop Γ) (1/2) I -∗ off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+       ghost_map_auth (γtop Γ) (1/2) I -∗ off_link γo (Z.of_nat off) ={E}=∗
        ghost_map_auth (γtop Γ) (1/2) I ∗
          (* THE CALLER'S STEP (app-instances.md section 7): its claim about
             the pre-view survives the delta, at the RAW insert the mover
@@ -662,7 +662,7 @@ Section WriteFire.
        ⌜(r < length bs)%nat -> wr_fail_why P ua (Z.to_nat n)⌝ -∗
        ⌜wi_blocks off (Z.to_nat (wchunk_at n k)) = 1%nat -> r = 0%nat⌝ -∗
        ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) (take r bs)⌝ -∗
-       ghost_map_auth (γtop Γ) (1/2) I -∗ off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+       ghost_map_auth (γtop Γ) (1/2) I -∗ off_link γo (Z.of_nat off) ={E}=∗
        ghost_map_auth (γtop Γ) (1/2) I ∗
          app_step i I (delta_write i off bs (abs_view I)) ∗
          (∀ I' : gmap Z fs_node,
@@ -785,13 +785,13 @@ Section WriteFire.
       iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen Ha Hk".
       iDestruct (app_step_acc i I _ with "Hsup") as "Hstep".
       iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
-      iFrame "Ha'". iSplitL "Hk"; [iApply (off_ret_keep with "Hk") |].
+      iFrame "Ha'". iSplitL "Hk"; [iApply (off_ret_of_link with "Hk") |].
       iApply (IH with "Hsup").
     - rewrite /awrite_part_at.
       iIntros (I off r bs bs0 nl) "%Hpre %Hr %Hgap %Hshort %Hwhy %Hsb1 %Hby Ha Hk".
       iDestruct (app_step_acc i I _ with "Hsup") as "Hstep".
       iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
-      iFrame "Ha'". iSplitL "Hk"; [iApply (off_ret_keep with "Hk") |].
+      iFrame "Ha'". iSplitL "Hk"; [iApply (off_ret_of_link with "Hk") |].
       iApply (IH with "Hsup").
   Qed.
 
@@ -834,9 +834,9 @@ Section WriteFire.
     ftop_inv γfs -∗ app_inv γfs -∗ off_supply γo E off (length bs) ROff -∗
     awrite_full_at (fs_gamma_L γfs) appE i γo M ua cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
-    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    off_link γo (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
-      ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
+      ∗ off_link γo (Z.of_nat (off + length bs))
       ∗ ROff ∗ REST.
   Proof using .
     intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen.
@@ -910,9 +910,9 @@ Section WriteFire.
     ftop_inv γfs -∗ app_inv γfs -∗ off_user_inv γo -∗
     awrite_full_at (fs_gamma_L γfs) appE i γo M ua cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
-    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    off_link γo (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
-      ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
+      ∗ off_link γo (Z.of_nat (off + length bs))
       ∗ REST.
   Proof using .
     intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen.
@@ -949,14 +949,15 @@ Section WriteFire.
     ftop_inv γfs -∗ app_inv γfs -∗ uoff γo off -∗
     awrite_full_at (fs_gamma_L γfs) appE i γo M ua cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
-    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    off_link γo (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
-      ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
-      ∗ uoff γo (off + length bs) ∗ REST.
+      ∗ off_link γo (Z.of_nat (off + length bs))
+      ∗ (uoff γo (off + length bs)
+         ∨ (uoff γo off ∗ app_taint)) ∗ REST.
   Proof using .
     intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen.
     iIntros "#Hi #Hai Hu Hcm Hf Hg".
-    iApply (wrf_awrite_fire_gen γfs E i γo M ua cnt k REST (uoff γo (off + length bs))
+    iApply (wrf_awrite_fire_gen γfs E i γo M ua cnt k REST (uoff γo (off + length bs) ∨ (uoff γo off ∗ app_taint))%I
               off bs bs0 nl n n'
               HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen
               with "Hi Hai [Hu] Hcm Hf Hg").
@@ -991,9 +992,9 @@ Section WriteFire.
     ftop_inv γfs -∗ app_inv γfs -∗ off_supply γo E off r ROff -∗
     awrite_part_at (fs_gamma_L γfs) appE i γo M ua P cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
-    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    off_link γo (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
-      ∗ off_gv γo (1/2) (Z.of_nat (off + r))
+      ∗ off_link γo (Z.of_nat (off + r))
       ∗ ROff ∗ REST.
   Proof using .
     intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort Hwhy Hsb1.
@@ -1062,9 +1063,9 @@ Section WriteFire.
     ftop_inv γfs -∗ app_inv γfs -∗ off_user_inv γo -∗
     awrite_part_at (fs_gamma_L γfs) appE i γo M ua P cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
-    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    off_link γo (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
-      ∗ off_gv γo (1/2) (Z.of_nat (off + r))
+      ∗ off_link γo (Z.of_nat (off + r))
       ∗ REST.
   Proof using .
     intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort Hwhy Hsb1.
@@ -1103,14 +1104,14 @@ Section WriteFire.
     ftop_inv γfs -∗ app_inv γfs -∗ uoff γo off -∗
     awrite_part_at (fs_gamma_L γfs) appE i γo M ua P cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
-    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    off_link γo (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
-      ∗ off_gv γo (1/2) (Z.of_nat (off + r))
-      ∗ uoff γo (off + r) ∗ REST.
+      ∗ off_link γo (Z.of_nat (off + r))
+      ∗ (uoff γo (off + r) ∨ (uoff γo off ∗ app_taint)) ∗ REST.
   Proof using .
     intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort Hwhy Hsb1.
     iIntros "#Hi #Hai Hu Hcm Hf Hg".
-    iApply (wrf_apart_fire_gen γfs E i γo M ua P cnt k REST (uoff γo (off + r))
+    iApply (wrf_apart_fire_gen γfs E i γo M ua P cnt k REST (uoff γo (off + r) ∨ (uoff γo off ∗ app_taint))%I
               off r bs bs0 nl n n'
               HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort Hwhy Hsb1
               with "Hi Hai [Hu] Hcm Hf Hg").

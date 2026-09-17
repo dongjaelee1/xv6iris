@@ -103,15 +103,23 @@ Section FileOffCell.
      A checkout takes cell and half out together; a checkin puts them back
      at the new word, having moved the ghost with the process's permit
      ([off_resident_intro]). *)
+  (* ...AND ITS GHOST IS THE COUPLING OR THE TAINT (lane OFF-LINK-2's L3;
+     design/pipe.md, "The coupling, or the taint", on [PipeInvDefs.
+     pipe_qres]'s model): the kernel's half at the value the cell holds,
+     or -- once a fire has run at a HELD row with no link -- the
+     application's taint and NO GHOST AT ALL, permanently.  The CELL is
+     kept in both arms (the store [f->off += r] needs it); only the tie to
+     the shadow is dropped, and a [ghost_var] half cannot be re-minted at
+     an existing name. *)
   Definition off_resident (γo : gname) (k : nat) : iProp Σ :=
-    (∃ v : mword 32, a_foff k ↦₄ v ∗ ⌜off_wf v⌝ ∗ off_gv γo (1/2) (bv_unsigned v))%I.
+    (∃ v : mword 32, a_foff k ↦₄ v ∗ ⌜off_wf v⌝ ∗ off_link γo (bv_unsigned v))%I.
 
   (* THE CHECKIN when the shadow has ALREADY moved -- the AU paths, whose
      fs commit moved both halves at the fire: a wf word and the kernel's
      half at exactly that word re-form the resident cell, no ghost step. *)
   Lemma off_resident_of γo (k : nat) (v : mword 32) :
     off_wf v ->
-    a_foff k ↦₄ v -∗ off_gv γo (1/2) (bv_unsigned v) -∗ off_resident γo k.
+    a_foff k ↦₄ v -∗ off_link γo (bv_unsigned v) -∗ off_resident γo k.
   Proof using . iIntros (Hwf) "Hc Hg". iExists v. iFrame "Hc Hg". iPureIntro. exact Hwf. Qed.
 
   (* THE CHECKIN WITH THE PROCESS'S PERMIT -- the landed paths: a wf word,
@@ -123,6 +131,7 @@ Section FileOffCell.
   Proof using .
     iIntros (Hwf) "Hc Hg #Hperm".
     iMod ("Hperm" $! z (bv_unsigned v) with "Hg") as "Hg".
-    iModIntro. iExists v. iFrame "Hc Hg". iPureIntro. exact Hwf.
+    iModIntro. iExists v. iFrame "Hc". iSplitR; [ iPureIntro; exact Hwf | ].
+    by iApply off_link_of.
   Qed.
 End FileOffCell.

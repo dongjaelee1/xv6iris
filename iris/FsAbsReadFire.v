@@ -250,7 +250,7 @@ Section ReadFire.
       (Φ : aview -> nat -> anode -> nat -> iProp Σ) : iProp Σ :=
     (∀ (I : gmap Z fs_node) (off : nat) (a : anode) (d : nat),
        ⌜ard_pre (abs_view I) i off a⌝ -∗
-       ghost_map_auth (γtop Γ) (1/2) I -∗ off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+       ghost_map_auth (γtop Γ) (1/2) I -∗ off_link γo (Z.of_nat off) ={E}=∗
        ghost_map_auth (γtop Γ) (1/2) I ∗
        (* THE HALF COMES BACK AT ONE OF TWO VALUES (lane WRITE-RELAY, for
           lane SKELETON's [Hoff_link]), the write nodes' shape at the read:
@@ -270,7 +270,7 @@ Section ReadFire.
   Proof using .
     rewrite /aread_commit_at. iIntros (I off a d) "%Hpre Ha Hk".
     iModIntro. iFrame "Ha". iSplitL "Hk";
-      [iApply (off_ret_keep with "Hk") | done].
+      [iApply (off_ret_of_link with "Hk") | done].
   Qed.
 
   (* THE AGREEMENT AT THE RAW AUTHORITY.  [astate_nview] reads a client
@@ -303,7 +303,7 @@ Section ReadFire.
     iIntros (I off a d) "%Hpre Ha Hk".
     iDestruct (arf_auth_nview with "Ha Hn") as %Hav.
     (* the reading is all the seed needs, and it is the borrow's own *)
-    iModIntro. iFrame "Ha". iSplitL "Hk"; [iApply (off_ret_keep with "Hk") |].
+    iModIntro. iFrame "Ha". iSplitL "Hk"; [iApply (off_ret_of_link with "Hk") |].
     iApply ("HΦ" $! (abs_view I) off a d with "[%] Hn").
     exact Hav.
   Qed.
@@ -322,7 +322,7 @@ Section ReadFire.
     iDestruct (arf_auth_nview with "Ha Hn") as %Hav.
     destruct Hpre as (Hrow & _ & _).
     assert (a = b) as -> by exact (arow_at_pinned _ _ _ _ Hrow Hav).
-    iModIntro. iFrame "Ha". iSplitL "Hk"; [iApply (off_ret_keep with "Hk") |].
+    iModIntro. iFrame "Ha". iSplitL "Hk"; [iApply (off_ret_of_link with "Hk") |].
     iApply ("HΦ" $! (abs_view I) off d with "[%] Hn").
     exact Hav.
   Qed.
@@ -543,9 +543,9 @@ Section ReadFire.
     ftop_inv γfs -∗ off_supply γo E off d R -∗
     pf_at (aread_commit_at (fs_gamma_L γfs) appE i γo) F -∗
     top_frag_q (fs_gamma_L γfs) dq i n -∗
-    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    off_link γo (Z.of_nat off) ={E}=∗
       top_frag_q (fs_gamma_L γfs) dq i n
-      ∗ off_gv γo (1/2) (Z.of_nat (off + d))
+      ∗ off_link γo (Z.of_nat (off + d))
       ∗ R
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
@@ -592,9 +592,9 @@ Section ReadFire.
     ftop_inv γfs -∗ off_user_inv γo -∗
     pf_at (aread_commit_at (fs_gamma_L γfs) appE i γo) F -∗
     top_frag_q (fs_gamma_L γfs) dq i n -∗
-    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    off_link γo (Z.of_nat off) ={E}=∗
       top_frag_q (fs_gamma_L γfs) dq i n
-      ∗ off_gv γo (1/2) (Z.of_nat (off + d))
+      ∗ off_link γo (Z.of_nat (off + d))
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
   Proof using .
@@ -623,15 +623,15 @@ Section ReadFire.
     ftop_inv γfs -∗ uoff γo off -∗
     pf_at (aread_commit_at (fs_gamma_L γfs) appE i γo) F -∗
     top_frag_q (fs_gamma_L γfs) dq i n -∗
-    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    off_link γo (Z.of_nat off) ={E}=∗
       top_frag_q (fs_gamma_L γfs) dq i n
-      ∗ off_gv γo (1/2) (Z.of_nat (off + d))
-      ∗ uoff γo (off + d)
+      ∗ off_link γo (Z.of_nat (off + d))
+      ∗ (uoff γo (off + d) ∨ (uoff γo off ∗ app_taint))
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
   Proof using .
     intros HE Hoff Hsz Hnz. iIntros "#Hi Hu Hcm Hf Hg".
-    iApply (arf_read_fire_gen γfs E dq (uoff γo (off + d)) F i γo off d n
+    iApply (arf_read_fire_gen γfs E dq (uoff γo (off + d) ∨ (uoff γo off ∗ app_taint))%I F i γo off d n
               HE Hoff Hsz Hnz with "Hi [Hu] Hcm Hf Hg").
     iApply (off_supply_held E γo off d with "Hu").
   Qed.
@@ -648,9 +648,9 @@ Section ReadFire.
     ftop_inv γfs -∗ off_user_inv γo -∗
     pf_at (aread_commit_at (fs_gamma_L γfs) appE i γo) F -∗
     top_frag (fs_gamma_L γfs) i n -∗
-    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    off_link γo (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n
-      ∗ off_gv γo (1/2) (Z.of_nat (off + d))
+      ∗ off_link γo (Z.of_nat (off + d))
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
   Proof using .
@@ -671,10 +671,10 @@ Section ReadFire.
     ftop_inv γfs -∗ uoff γo off -∗
     pf_at (aread_commit_at (fs_gamma_L γfs) appE i γo) F -∗
     top_frag (fs_gamma_L γfs) i n -∗
-    off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    off_link γo (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n
-      ∗ off_gv γo (1/2) (Z.of_nat (off + d))
-      ∗ uoff γo (off + d)
+      ∗ off_link γo (Z.of_nat (off + d))
+      ∗ (uoff γo (off + d) ∨ (uoff γo off ∗ app_taint))
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
   Proof using .

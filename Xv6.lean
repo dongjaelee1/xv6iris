@@ -218,3 +218,6 @@ import Xv6.ProofEither
 import Xv6.LinkEither
 import Xv6.UPtPptLemmas
 import Xv6.LinkProcPagetable
+import Xv6.UPtAllocLemmas
+import Xv6.ProofGrowproc
+import Xv6.LinkGrowproc

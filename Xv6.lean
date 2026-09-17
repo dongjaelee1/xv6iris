@@ -225,3 +225,5 @@ import Xv6.ProofUvmcopy
 import Xv6.LinkUvmcopy
 import Xv6.ProofVmfault
 import Xv6.LinkVmfault
+import Xv6.ProofCopyout
+import Xv6.LinkCopyout

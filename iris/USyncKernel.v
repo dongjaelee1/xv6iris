@@ -171,6 +171,13 @@ Section USyncKernel.
        build a slot for a key that says so.  exec's slot post is what will
        supply it ([SpecKexec.exec_slot_pre], lane LAZY-FLAG's K4). *)
     uvis_lazy W = false ->
+    (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): this
+       program answers for its own offsets ([UkRun.ukn_park] at [true]),
+       and a record may claim that only at a key with no offset half
+       outside the kernel.  The caller reads it off
+       [SpecKexec.exec_slot_pre]'s wands, relayed through
+       [ExecEntry.image_entry_at]. *)
+    FdSlots.fdv_all_parked (uvis_fd W) ->
     (* THE PAY FACT, at the trivial payload: sync's exit owes its parent
        nothing this lane, and the entry constructor is what puts it in the
        record ([UkRun.ukn_pay]). *)
@@ -183,11 +190,11 @@ Section USyncKernel.
     UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof using ghost_varG0 ghost_varG1 ufdG0.
-    intros Hpc Hsub Hx Hroom Hal8 Hdata Hfdlen Hstop Hpsok_free Hlzf.
+    intros Hpc Hsub Hx Hroom Hal8 Hdata Hfdlen Hstop Hpsok_free Hlzf Hpark.
     iIntros "#Hnpw #Hdep #Hpay".
-    iApply (uslot_of_urun W 4 (fun _ => True)%I false
+    iApply (uslot_of_urun W 4 (fun _ => True)%I true
               Hal8 ltac:(lia) Hdata Hfdlen
-              Hstop Hlzf ltac:(discriminate) with "Hdep Hnpw Hpay").
+              Hstop Hlzf ltac:(intros _; exact Hpark) with "Hdep Hnpw Hpay").
     (* sync makes no descriptor call, so its ledger is dropped here *)
     (* sync makes no descriptor call and no chdir, so its ledger and its
        working directory are both dropped here *)

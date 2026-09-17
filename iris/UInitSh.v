@@ -1082,7 +1082,7 @@ Section UInitSh.
     iIntros "#Hnpw #Hdep #Hdp #Hplaw #Hcons #Hfd0 #Hgen'".
     rewrite /image_entry. iModIntro.
     iIntros (na alen afun W')
-      "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq %Hargs #Hmp
+      "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq %Hpkq %Hargs #Hmp
        [[#Hp1 [#Hp2 #Htag]] [Hps [Hls [Hstd' Hcred]]]]".
     assert (Hch0 : uvis_ch W' = ∅) by (rewrite Hchq; exact Hcs).
     assert (Hpid1 : bv_unsigned (uvis_pid W') <> 1)
@@ -1139,7 +1139,8 @@ Section UInitSh.
                   1%nat alen afun fdv W' n0 np
                   Hbd
                   (ucons_pay_const cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) Hok Hcwd0
-                  (init_sh_room alen n0 Halen Hn0) Hlen Hlzf Hch0 Hpid1) as Hsk.
+                  (init_sh_room alen n0 Halen Hn0) Hlen Hlzf Hch0 Hpid1
+                  Hpkq) as Hsk.
     idtac "MARK-s4c-pose-ok".
     iApply (Hsk with "[] Hnpw Hdep Hdp Htag Hplaw [] [] Hcons Hgen' Hmp Hps
                       Hls Hwcp").
@@ -1272,7 +1273,7 @@ Section UInitSh.
        the whole reason a tainted process needs no lease. *)
     iAssert (image_entry_taint T
                (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) uslot)%I as "#Hgen'".
-    { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
+    { rewrite /image_entry_taint. iModIntro. iIntros (W') "_ #HT #Hmp".
       iApply ("Hgen" $! (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) (-1)) W' with "HT [Hmp] []").
       - rewrite ucons_pay_eta. iExact "Hmp".
       - iModIntro. iIntros "_". iApply (ucons_pay_taint with "HT"). }

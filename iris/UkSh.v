@@ -6499,8 +6499,22 @@ Section UkSh.
   (* ([UkRun.urun_gen]).  That is also why no [udepw_law 15] remains in     *)
   (* this file: nothing here ever routes open through the key-free law.     *)
   (* ===================================================================== *)
+  (* ...AND IT CARRIES THE RECORD'S PARK BIT (lane OFF-HAND-3, R1).  The
+     family the taint runs on is narrowed to ALL-PARKED KEYS
+     ([ExecEntry.image_entry_taint]), and the key a running process is at
+     is bound by [UkRun.urun]'s own existential -- so the only thing that
+     can pay that row at [ush_gen_run] is the run's own, which is guarded
+     by [UkRun.ukn_park].  THE BIT RIDES HERE, IN THE SLOT, and not as a
+     section hypothesis: a section hypothesis would have to be named in the
+     [Proof using] of every lemma on sh's walk between the entry and the
+     taint, and none of them says anything about it.  The slot is already
+     threaded to exactly those lemmas, it is already persistent, and its
+     producer ([UShKernel.sh_uexec_slot]) holds the equation the entry
+     constructor handed over. *)
   Definition ush_gen_slot : iProp Σ :=
-    (□ (∀ W : uvis,
+    (⌜ukn_park N = true⌝ ∗
+     □ (∀ W : uvis,
+          ⌜fdv_all_parked (uvis_fd W)⌝ -∗
           T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W))%I.
 
   Global Instance ush_gen_slot_persistent : Persistent ush_gen_slot.
@@ -6510,8 +6524,8 @@ Section UkSh.
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     ush_gen_slot -∗ T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
   Proof using .
-    intro Hal. rewrite /ush_gen_slot. iIntros "#Hg HT Hrun".
-    iApply (urun_gen N T h m pc avail Hal with "Hg HT Hrun").
+    intro Hal. rewrite /ush_gen_slot. iIntros "[%Hpk #Hg] HT Hrun".
+    iApply (urun_gen N T h m pc avail Hal Hpk with "Hg HT Hrun").
   Qed.
 
   (* THE TAG'S READING ([ush_tag_law]) IS STATED ABOVE THE READ LEAF now

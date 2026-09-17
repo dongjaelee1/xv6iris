@@ -834,6 +834,13 @@ Section UEchoOut.
     (forall (p : mword 27) (q : uperm), uvis_perm W !! p = Some q ->
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     uvis_lazy W = false ->
+    (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): this
+       program answers for its own offsets ([UkRun.ukn_park] at [true]),
+       and a record may claim that only at a key with no offset half
+       outside the kernel.  The caller reads it off
+       [SpecKexec.exec_slot_pre]'s wands, relayed through
+       [ExecEntry.image_entry_at]. *)
+    fdv_all_parked (uvis_fd W) ->
     □ (ech v ps0 cs0 I0 P (length (wl_line (drop 1 ws))) -∗ Q (-1)) -∗
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
@@ -850,15 +857,15 @@ Section UEchoOut.
     uslot W.
   Proof using Persistent0 ghost_varG0 ghost_varG1 ufdG0.
     intros HQc Hws2 Hst Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
-           Havd Havs Hfdlen Hstop Hlzf.
+           Havd Havs Hfdlen Hstop Hlzf Hpark.
     iIntros "#Hq #Hpin #Hlk #Hnpw #Hdep Hpay Hc".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
-    iApply (uslot_of_urun_ro W 12 Q false
+    iApply (uslot_of_urun_ro W 12 Q true
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
-              ltac:(discriminate) with "Hdep Hnpw Hpay").
+              ltac:(intros _; exact Hpark) with "Hdep Hnpw Hpay").
     iIntros (N h) "%Hpayeq %Hparkeq %Hsz Hszf #Ht Hstd _ _ _ #HA Hrun".
     pose proof (ukn_const_of_eq N _ Hpayeq HQc) as Htc.
     rewrite Hpc.

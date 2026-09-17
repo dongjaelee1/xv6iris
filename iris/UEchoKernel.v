@@ -433,6 +433,13 @@ Section UEchoKernel.
        it; exec's slot post is what will supply it there
        ([SpecKexec.exec_slot_pre], lane LAZY-FLAG's K4). *)
     uvis_lazy W = false ->
+    (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): this
+       program answers for its own offsets ([UkRun.ukn_park] at [true]),
+       and a record may claim that only at a key with no offset half
+       outside the kernel.  The caller reads it off
+       [SpecKexec.exec_slot_pre]'s wands, relayed through
+       [ExecEntry.image_entry_at]. *)
+    FdSlots.fdv_all_parked (uvis_fd W) ->
     (* ECHO'S ONE DEPOSIT.  write(16)'s branch of
        [UexecExecInst.xv6_sbundle] is the write chain at a key whose
        descriptor row may be an inode, and the minting law is key-free, so
@@ -454,15 +461,15 @@ Section UEchoKernel.
     UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof using ghost_varG1.
-    intros Hpc Hsub Hx Hroom Hal8 Hstk Hargs Havd Havs Hfdlen Hstop Hlzf.
+    intros Hpc Hsub Hx Hroom Hal8 Hstk Hargs Havd Havs Hfdlen Hstop Hlzf Hpark.
     iIntros "#Hwr #Hnpw #Hdep #Hpay".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
-    iApply (uslot_of_urun_ro W 12 (fun _ => True)%I false
+    iApply (uslot_of_urun_ro W 12 (fun _ => True)%I true
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
-              ltac:(discriminate) with "Hdep Hnpw Hpay").
+              ltac:(intros _; exact Hpark) with "Hdep Hnpw Hpay").
     (* echo makes no descriptor call, so its ledger is dropped here *)
     (* echo makes no descriptor call, no chdir and no fork, so its ledger,
        its working directory and its children set are all dropped here *)

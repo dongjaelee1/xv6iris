@@ -111,6 +111,15 @@ Section ExecEntry.
           ⌜uvis_lazy W' = false⌝ -∗
           ⌜uvis_ch W' = cs⌝ -∗
           ⌜uvis_pid W' = pidv⌝ -∗
+          (* ...AND THE RESUMED KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3,
+             R1).  [SpecKexec.exec_slot_pre]'s wands have carried this row
+             since lane OFF-HAND-2, and until now every producer DROPPED
+             it.  It is relayed here because the entry is where a program's
+             record is minted, and a record that answers for its offsets
+             ([UkRun.ukn_park]) may only be minted at an all-parked key --
+             [UkRun.uslot_of_urun*]'s own premise.  A program that does not
+             care drops it, exactly as it drops the four identity rows. *)
+          ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
           my_pay (uvis_gen W') Q -∗ Pay -∗ X W'))%I.
 
   (* ------------------------------------------------------------------ *)
@@ -130,6 +139,9 @@ Section ExecEntry.
           ⌜uvis_lazy W' = false⌝ -∗
           ⌜uvis_ch W' = cs⌝ -∗
           ⌜uvis_pid W' = pidv⌝ -∗
+          (* ...and the resumed key's all-parked row -- [image_entry_at]'s
+             note (lane OFF-HAND-3, R1) *)
+          ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
           ⌜exec_args_of M av na alen afun⌝ -∗
           my_pay (uvis_gen W') Q -∗ Pay -∗ X W'))%I.
 
@@ -137,21 +149,22 @@ Section ExecEntry.
   (*  3.  THE TAINT'S ENTRY                                               *)
   (* ------------------------------------------------------------------ *)
 
-  (* WHY THIS ARM DOES *NOT* TAKE THE KEY'S ALL-PARKED ROW, although
-     [SpecKexec.exec_slot_pre]'s wands now carry it (lane OFF-HAND-2).  It
-     would be the natural place -- the taint arm is the one that runs on
-     the GENERIC family ([UexecExecMint.uslot_mint_all]), and that family
-     must eventually be narrowed to keys with no offset half outside the
-     kernel.  But a VERIFIED program's taint arm is built from its own
-     [UkSh.ush_gen_slot]-shaped slot, which is quantified over EVERY key
-     and spent inside [UkRun.urun]'s existential ([UkSh.ush_gen_run]), so
-     narrowing this arm pushes the obligation onto a table the U tier
-     cannot name.  The carrier that closes it is the U-tier held-row
-     counter (design/user-read.md SS8.4); until it exists the row stops at
-     the wand, where the kernel pays it. *)
+  (* ...AND IT TAKES THE KEY'S ALL-PARKED ROW TOO (lane OFF-HAND-3).  Lane
+     OFF-HAND-2 attempted this and reverted it, for a reason that is now
+     gone: a VERIFIED program's taint arm is built from its own
+     [UkSh.ush_gen_slot]-shaped slot, quantified over EVERY key and spent
+     inside [UkRun.urun]'s existential ([UkSh.ush_gen_run]), so narrowing
+     the arm used to push the obligation onto a table the U tier could not
+     name.  It can name it now: [UkRun.urun] carries the row
+     ([urun_rows]), guarded by the record's own [ukn_park] bit, and every
+     verified program's entry constructor mints its record at [true].  So
+     the row goes all the way to the family the taint runs on, which is
+     what lets [UexecExecInst.xv6_sbundle]'s fire rows be narrowed in
+     their turn (design/user-read.md SS8.1). *)
   Definition image_entry_taint (T : iProp Σ) (Q : Z -> iProp Σ)
       (X : uvis -d> iPropO Σ) : iProp Σ :=
-    (□ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W'))%I.
+    (□ (∀ W' : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
+                     T -∗ my_pay (uvis_gen W') Q -∗ X W'))%I.
 
   Global Instance image_entry_at_persistent f na alen afun sts cw cs pidv
       Q Pay X :
@@ -184,11 +197,12 @@ Section ExecEntry.
     image_entry f M av sts cw cs pidv Q Pay X.
   Proof using .
     iIntros "#H". rewrite /image_entry. iIntros "!>" (na alen afun W')
-      "%Hok %Hcw %Hlz %Hch %Hpid %Hargs Hp HPay".
+      "%Hok %Hcw %Hlz %Hch %Hpid %Hpk %Hargs Hp HPay".
     iDestruct ("H" $! na alen afun with "[%]") as "#He"; [ exact Hargs | ].
     rewrite /image_entry_at.
-    iApply ("He" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
-      [ exact Hok | exact Hcw | exact Hlz | exact Hch | exact Hpid ].
+    iApply ("He" $! W' with "[%] [%] [%] [%] [%] [%] Hp HPay");
+      [ exact Hok | exact Hcw | exact Hlz | exact Hch | exact Hpid
+      | exact Hpk ].
   Qed.
 
   (* ...and back, at any shape the reading admits *)
@@ -201,11 +215,11 @@ Section ExecEntry.
     image_entry_at f na alen afun sts cw cs pidv Q Pay X.
   Proof using .
     intros Hargs. iIntros "#H". rewrite /image_entry_at.
-    iIntros "!>" (W') "%Hok %Hcw %Hlz %Hch %Hpid Hp HPay".
+    iIntros "!>" (W') "%Hok %Hcw %Hlz %Hch %Hpid %Hpk Hp HPay".
     rewrite /image_entry.
-    iApply ("H" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hp HPay");
+    iApply ("H" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] [%] Hp HPay");
       [ exact Hok | exact Hcw | exact Hlz | exact Hch | exact Hpid
-      | exact Hargs ].
+      | exact Hpk | exact Hargs ].
   Qed.
 
 End ExecEntry.

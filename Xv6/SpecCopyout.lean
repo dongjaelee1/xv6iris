@@ -4,7 +4,7 @@ kernel reading or writing a process's memory through its page table,
 faulting in lazily allocated pages on the way (`vmfault`, the uncounted
 mode).  Each returns `0`, or `-1` after a prefix (a failed fault, a
 page without `PTE_W` for copyout, no NUL within `max` for copyinstr).
-copyout needs 52 slots, copyin 44, copyinstr 46.
+copyout needs 52 slots, copyin 50, copyinstr 50.
 
 Imports only definitional files (never a `Code*` or `Proof*` file).
 -/
@@ -55,7 +55,7 @@ structure COPYOUT : Prop where
 def wp_copyin_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
     (cpu : CPU) (k : KCtx) (γl : GName) (γk : KmemNames) (P : UPtd) (M : Nat → List (BitVec 8))
     (old : List (BitVec 8))
-    (hnoff : k.noff + 1 < 2 ^ 31) (hK : 44 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
+    (hnoff : k.noff + 1 < 2 ^ 31) (hK : 50 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
     (hroot : k.regs 10#5 = pageAddr P.root) (hsz : (k.regs 11#5).toNat ≤ 2 ^ 38)
     (hlen : k.regs 14#5 = BitVec.ofNat 64 old.length) (hlen' : old.length < 2 ^ 63) : Prop :=
   kctx cpu k ∗ pcIs cpu copyinAddr ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗ kallocAvail γk none ∗
@@ -83,7 +83,7 @@ string from `srcva` (at most `max` bytes, NUL included) into `dst`. -/
 def wp_copyinstr_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
     (cpu : CPU) (k : KCtx) (γl : GName) (γk : KmemNames) (P : UPtd) (M : Nat → List (BitVec 8))
     (old : List (BitVec 8))
-    (hnoff : k.noff + 1 < 2 ^ 31) (hK : 46 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
+    (hnoff : k.noff + 1 < 2 ^ 31) (hK : 50 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
     (hroot : k.regs 10#5 = pageAddr P.root) (hsz : (k.regs 11#5).toNat ≤ 2 ^ 38)
     (hmax : k.regs 14#5 = BitVec.ofNat 64 old.length) (hmax' : old.length < 2 ^ 63) : Prop :=
   kctx cpu k ∗ pcIs cpu copyinstrAddr ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗ kallocAvail γk none ∗

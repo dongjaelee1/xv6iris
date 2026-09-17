@@ -54,7 +54,7 @@ def eitherCopyinAddr : BitVec 64 := BitVec.ofNat 64 KernelSyms.«either_copyin»
 both fit inside that). -/
 def eitherCopyoutSlots : Nat := 58
 /-- six own slots, plus `copyin`'s 44. -/
-def eitherCopyinSlots : Nat := 50
+def eitherCopyinSlots : Nat := 56
 
 section
 variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]

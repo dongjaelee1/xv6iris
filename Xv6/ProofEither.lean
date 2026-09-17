@@ -290,7 +290,7 @@ set_option maxHeartbeats 1000000 in
 /-- `copyin`'s contract as a rule. -/
 theorem ec_copyin_call (CI : COPYIN) [CurCtx] (c : CPU) (k' : KCtx) (γl : GName) (γk : KmemNames)
     (P : UPtd) (M : Nat → List (BitVec 8)) (old : List (BitVec 8))
-    (hnoff : k'.noff + 1 < 2 ^ 31) (hK : 44 ≤ k'.avail) (hlk : "kmem" ∉ k'.locks)
+    (hnoff : k'.noff + 1 < 2 ^ 31) (hK : 50 ≤ k'.avail) (hlk : "kmem" ∉ k'.locks)
     (hroot : k'.regs 10#5 = pageAddr P.root) (hsz : (k'.regs 11#5).toNat ≤ 2 ^ 38)
     (hlen : k'.regs 14#5 = BitVec.ofNat 64 old.length) (hlen' : old.length < 2 ^ 63) :
     kctx c k' ∗ pcIs c 0x800015da#64 ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗
@@ -630,7 +630,7 @@ theorem either_copyin_proof (MP : MYPROC) (CI : COPYIN) (MM : MEMMOVE) : EITHER_
   unfold wp_either_copyin_body
   simp only [eitherCopyinAddr, KernelSyms.«either_copyin»]
   iintro ⟨Hk, Hpc, #Hlk, Hav, Hold, Harm, HΦ⟩
-  have hK50 : 50 ≤ k.avail := hK
+  have hK56 : 56 ≤ k.avail := hK
   icases kctx_kernelText _ _ $$ Hk with ⟨#Htext, Hk⟩
   k_norm_g
   -- the prologue

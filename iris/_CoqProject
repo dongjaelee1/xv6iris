@@ -1506,6 +1506,8 @@ FileDeltas.v
 FileWrite.v
 FileOut.v
 FileLinks.v
+FileLinksLine.v
+FileLinkInst.v
 AppFileRec.v
 AppTree.v
 

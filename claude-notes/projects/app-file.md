@@ -5947,3 +5947,288 @@ no `tools/ucode_manifest.json` was touched.
   (`Hsz : (cnt + nr)%nat = 512%nat`) instead.  Same class as the notes'
   "`rewrite <- t1 t2` is not two rewrites" (it parses as one `<-` and a
   stray term).
+
+### SKELETON (2026-09-17) — the program tier's STATEMENTS compile; the dependency graph is closed
+
+Branch `app-file/program-tier`, worktree `/shared/xv6iris-3-lanes/program-tier`,
+merged from `main` at `3327a0dc7`.  Review §D4's recommendation, taken:
+`iris/UEchoFile.v`, `iris/UShRound.v`, `iris/UInitFile.v` are in
+`iris/_CoqProject` and COMPILE (`make -f CoqMakefile UEchoFile.vo
+UShRound.vo UInitFile.vo`, EXIT=0); every proof is `Admitted` and every
+owed fact is a NAMED SECTION HYPOTHESIS with its exact statement.
+`make audit-all-only` and `make audit-file-only` both re-run green and
+unchanged (`FileAssumptions.v` requires only `UFileBootAdequacy`, which
+imports none of these files).  No landed statement moved: the whole diff
+is three new files plus five lines of `iris/_CoqProject`.
+
+Commits: `fa8c6b093` (K1), `08f648a25` (K2), `18a4b977f` (K3).
+
+#### 1. The three files' top-level statements
+
+**K1 `iris/UEchoFile.v`** — echo's entry at a HELD fd 1 on `f`.  The
+cursor, the exit payload and the exec `Pay`:
+
+```coq
+  Definition efq (i : Z) (γo : gname) (ws : wordline) (sel : list nat)
+      : iProp Σ :=
+    (file_wq c r i ws sel (length (subseq (echo_chunks ws) sel))
+     ∗ uoff γo (length (subseq (echo_chunks ws) sel)))%I.
+
+  Definition ef_exit (i : Z) (γo : gname) (ws : wordline) : iProp Σ :=
+    (Wq ∗ ∃ sel : list nat, efq i γo ws sel)%I.
+
+  Definition ef_pay (i : Z) (γo : gname) (ws : wordline) : iProp Σ :=
+    (Wq ∗ efq i γo ws [])%I.
+```
+
+the PAID entry (`UEchoOut.echo_uexec_slot_at`'s mould, key premises
+verbatim, the two that are new marked):
+
+```coq
+  Lemma efile_uexec_slot_at (W : uvis) (i : Z) (γo : gname) (om : offmode)
+      (rb : bool) (ws : wordline) (Q : Z -> iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
+    (2 <= length ws)%nat ->
+    UEchoOut.echo_out_argv ws
+      (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W))) ->
+    (* NEW: the ledger row, where the console twin asks for
+       [FdOpen rb true (FdDevice CONSOLE)] *)
+    take NSTD (uvis_fd W) !! 1%nat
+      = Some (FdOpen rb true (FdInode i γo om)) ->
+    tf_resume_pc (uvis_tf W) = (mword_of_int EchoSyms.start : mword 64) ->
+    echo_text_sub (uvis_M W) -> echo_data_sub (uvis_M W) ->
+    ... (echo's eleven key/stack/argv rows, verbatim) ...
+    uvis_lazy W = false ->
+    i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
+    □ (ef_exit i γo ws -∗ Q (-1)) -∗
+    app_inv fsc_fs -∗
+    UkRun.urun_nopipe (uvis_fd W) -∗
+    udep (PS := uprogSG_free) -∗
+    my_pay (uvis_gen W) Q -∗
+    (* NEW: the lend -- Hexec_pay's content *)
+    Wq -∗ efq i γo ws [] -∗
+    uslot W.
+```
+
+and the exec crossing, which is where `Hexec_pay` is answered:
+
+```coq
+  Lemma efile_image_entry (ws : wordline) (M : gmap Z (bv 8))
+      (s0 t : Z) (g : nat -> bv 8) (sts : list fdstate)
+      (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (i : Z) (γo : gname) (om : offmode) (rb : bool) :
+    EchoDisc.line_ok ws ->
+    UShEcho.echo_node_img ws M s0 t g ->
+    UkShEcho.echo_argv_bytes ws g ->
+    length sts = NOFILE ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb true (FdInode i γo om)) ->
+    i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
+    □ (ef_exit i γo ws -∗ ef_exit i γo ws) -∗
+    app_inv fsc_fs -∗ UkRun.urun_nopipe sts -∗ udep (PS := uprogSG_free) -∗
+    image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv (fun _ : Z => ef_exit i γo ws) (ef_pay i γo ws) uslot.
+```
+
+**Hexec_pay, answered:** `ExecEntry.image_entry`'s `Pay` carries
+`Wq ∗ fown r (Some (i, [])) ∗ uoff γo 0` (plus the deed's two pure rows,
+inside `file_wq`).  The fd-1 row is NOT in `Pay`: it is a PURE premise
+about `sts`, the exec'ing process's own table, which `SpecKexec.
+kexec_image_ok`'s fd clause carries to the key verbatim.  That is the
+whole of what the crossing costs — and it is why the review's §A4 is
+right that nothing is needed at fork, dup or the generic tier.
+
+**Does echo close fd 1?**  NO.  `user/echo.c` has no `close`; the row is
+torn down by `exit`, so the deed and the ADVANCED fragment ride the exit
+payload (`ef_exit`) and the descriptor goes with the process.
+
+**K2 `iris/UShRound.v`** — sh's round at the file application.  The
+ruling this lane makes, and the round's conclusion:
+
+```coq
+  Definition sh_hold (I : list (bv 8)) : iProp Σ :=
+    ((∃ (cs0 : list nat) (s0 : fst) (s : dst) (v : era_pins)
+        (vf : file_era),
+        fown r s
+        ∗ ⌜UCatOut.cat_tie cs0 s0 I s⌝
+        ∗ f_typed (fgn_cl g) s
+        ∗ era_pin (fgn_echo g) (S gen_id) v ∗ cs_lb v cs0
+        ∗ file_era_pin g (S gen_id) vf ∗ f0_lb vf s0)
+     ∨ T)%I.
+
+  Definition Wcf (I : list (bv 8)) (p : nat) : iProp Σ :=
+    (Wcl I p ∗ sh_hold I)%I.
+  Definition Wbf (I : list (bv 8)) : iProp Σ :=
+    (Wbl I ∗ sh_hold I)%I.
+
+  Lemma sh_round_holds_file (N : uk_names Σ) :
+    ⊢ udep (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot T -∗
+      (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v) -∗
+      (∃ vf : file_era, file_era_pin g (S gen_id) vf) -∗
+      UkSh.ush_rest_l (PS := uprogSG_free) N γp T Wcf Wbf
+        (UShLine.ush_mid (fgn_echo g) γp)
+        (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
+```
+
+with the redirect child's two open-receipt payloads, the prompt link at
+the deed and the cat lend:
+
+```coq
+  Definition redir_K (ty : fdtype) : iProp Σ :=
+    (∃ (i : Z) (γo : gname) (om : offmode),
+       ⌜ty = FdInode i γo om⌝ ∗ fown r (Some (i, [])) ∗ uoff γo 0%nat)%I.
+
+  Definition redir_Kf (s : dst) : iProp Σ :=
+    (fown r s ∨ ∃ i : Z, fown r (Some (i, [])))%I.
+
+  Lemma sh_prompt_alt_of_deed (k : nat) (v : era_pins) (vf : file_era)
+      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fst)
+      (I0 : list (bv 8)) (s : dst) (Φ : iProp Σ) :
+    I0 <> [] -> rest_of I0 = [] ->
+    (nlines I0 <= S (length cs0))%nat -> pro_pin_f ps0 cs0 I0 ->
+    P = length (proc_before_f ps0 cs0 (Some s0) I0) ->
+    UCatOut.cat_tie cs0 s0 I0 s ->                 (* THE DEED DECIDES *)
+    ralt_ok (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a) ->
+    cont (dst_content s)
+         (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a)
+      !! 0%nat = Some b ->
+    ... -∗ out_link Uart0 k b Φ.
+
+  Definition cat_hold (N : uk_names Σ) (fd : nat) (wb : bool) (i : Z)
+      (γo : gname) (om : offmode) (q : Qp) (bs : list (bv 8))
+      : nat -> iProp Σ :=
+    fun p => (UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo om))
+              ∗ uoff γo p ∗ fdq r q (Some (i, bs)))%I.
+```
+
+**K3 `iris/UInitFile.v`** — `file_prog_law` named, not restated, and the
+one-line corollary:
+
+```coq
+  Theorem file_Hinit_boot : file_prog_law (Σ := Σ).
+  Proof using. Admitted.
+
+Corollary file_adequacy_closed
+    (g : gstate)
+    (Hgen0 : g.(ggen) = 0%nat) (Hpow0 : g.(gpow) = false)
+    (Hdisk : v_disk (g.(gdev).(dvirtio)) = fsimg_dk) :
+  forall (n : nat) (κs : list mobs) t2 g2,
+    language.nsteps n ([PowerLoopE : language.expr riscv_lang], g)
+      κs (t2, g2) ->
+    (forall e2, e2 ∈ t2 -> language.reducible (Λ := riscv_lang) e2 g2)
+    /\ FileDisc.file_phi κs.
+Proof.
+  exact (file_adequacy_fileΣ (file_Hinit_boot (Σ := fileΣ))
+           g Hgen0 Hpow0 Hdisk).
+Qed.
+```
+
+`file_adequacy_closed` is Admitted TRANSITIVELY and is deliberately NOT
+added to `iris/FileAssumptions.v`.
+
+#### 2. THE OBLIGATION LIST (K4) — the campaign's dependency graph
+
+Every section hypothesis of the three files, its statement, whether the
+tree has it, and who owns it.
+
+| # | name (file) | what it says | in the tree? | lane / price |
+|---|---|---|---|---|
+| 1 | `Hoff_link` (UEchoFile) | `ef_full_adv_raw γfs i γo M ua k REST ⊢ awrite_full_at (fs_gamma_L γfs) appE i γo M ua k REST` — i.e. the kernel's write node hands the offset half back **advanced** (`off_gv γo (1/2) (Z.of_nat (off + length bs))`) instead of unmoved | NO. `FsAbsWriteFire.awrite_full_at` (`:567`) returns it unmoved | **OFF-LINK**. After the lane it is a definitional identity. Today it is not derivable: a node holding ONE half cannot both return it at `off` and keep it at `off + d`. Price: design §3's block (box taint arm, three nodes, three fire lemmas, two `*_in` at `link ∨ taint`, the publish, the open's fd arm, `foff_row := True`, delete `FdPark.v`) |
+| 2 | `Hrelay3` (UEchoFile) | `ef_full_adv γfs i γo M ua k bsk REST ⊢ ef_full_adv_raw …` — the node may assume `⌜bs = bsk⌝`, the chunk the chain is at | NO. `wri_pre` bounds only capacity; `SpecCopyin.ubytes_at` is prefix-closed | **WRITE-RELAY** (RELAY 3). Price: `SysWriteDefs.wri_pre`/the chain carrying `n`, then the node. Review §C1.1 folds it into OFF-LINK's node sweep |
+| 3 | `Hrelay4` (UEchoFile) | `usrc_ok M pmv sz ua nb f -> ⊢ awrite_part_at (fs_gamma_L γfs) appE i γo M ua k REST` — at a source run the caller owns, the PARTIAL node is vacuously suppliable | NO | **WRITE-RELAY** (RELAY 4), READ-RELAY's twin: `SpecCopyin`'s failing address from `SpecWritei`'s `-1` through `ProofWritei` into `ProofFilewrite`'s partial fire and `awrite_part_at`, refuted by `usrc_ok`'s mapped row (`FsAbsReadFire.read_arms_mapped` / `SysReadDefs.rd_fail_why_refute` are the landed shape) |
+| 4 | `Hdep1` (UEchoFile) | `UkWriteFile.udepwf_st_write_file` at `udepwf_std`: `l !! 1 = Some (FdOpen rb true (FdInode i γo om))` and `a0 = 1` give the chunk-chain deposit at the LEDGER instead of at `fd_st_of_key` | NO | **NEW**, ~20 lines. Provable today from `UkWriteFile.udepwf_st_write_file` + `UserFd.ustd_agree`; it is a hypothesis only because this lane may not edit `UkWriteFile.v` |
+| 5 | `Hwrite1` (UEchoFile) | the ledger-slot write leaf: `UkWriteFile.wp_uk_ecall_write_file` with `UserFd.ufd`→`UserFd.ustd` and `udepwf_st`→`udepwf_std`, at `a0 = 1` | NO. Every landed inode write leaf is handle-fixed at `NSTD ≤ fd`; echo writes fd 1 | **NEW**, ~20 lines beside `UkWriteFile.wp_uk_ecall_write_file`, over `UkRunSys.wp_uk_ecall_write_at` at `K fdv := take NSTD fdv = l`. Review §D7 |
+| 6 | `Hwbl` (UShRound) | `Wcl I 3 -∗ Wcl I 0` | echo's is `EchoLinksLine.ewc_lcred_blk_line` | **LINK-GEN** |
+| 7 | `Hwbwc` (UShRound) | `Wbl I -∗ Wcl I 0` | echo's is `UInitBoot`'s `Hsh_wbwc` | **LINK-GEN** |
+| 8 | `Hcltaint` (UShRound) | `T -∗ Wcl I p` | echo's is `EchoLinksLine.ewc_lcred_taint` | **LINK-GEN** |
+| 9 | `Hwc` (UShRound) | `wl_nl ∉ l -> ush_mid … (I++l++[nl]) -∗ Wcl I 2 -∗ ush_mid … ∗ Wcl (I++l++[nl]) 3` | echo's is the `Hwc` `UShKernel.sh_image_entry_at` takes | **LINK-GEN** |
+| 10 | `Hwbr` (UShRound) | `wl_nl ∉ l -> ush_mid … -∗ Wbl I -∗ ush_mid … ∗ T` | echo's is `UShLine.ush_wb_read_holds` | **LINK-GEN** |
+| 11 | `Hktaint` (UShRound) | `□ riscv_kill_cred -∗ T` | derivable from the record's interface equation, as in `UInitBoot`'s `Hktaint` | **K3** supplies it; free |
+| 12 | `Hopen_hand` (UShRound) | `UkFileOpen.wp_uk_ecall_open_create_deed_d` as an `ush_open_call2` at `redir_K` / `redir_Kf s`, with **`uoff γo 0` on the fd arm** and no DEVICE arm | PARTLY: `UkFileOpen.wp_uk_ecall_open_create_deed_d` (`:1319`) has the three arms and NO `uoff` | **OFF-LINK** (the publish hands the fragment: `ProofSysOpenPub` calls `UserOff.off_pub_hand_0`, and it rides the open's fd arm to the U tier) + **F-OPEN-6** (the device sub-arm). Then it is `ush_open_call2`'s wrapper, ~40 lines |
+| 13 | `Hlexr` (UShRound) | `UkShLoop.ush_line_lexable_redir` | the PREDICATE exists (`UkShLoop.v:101`); nothing proves it and nothing threads it | **NEW / SH-MALLOC-3's last paragraph**. `UkShEcho.ush_line_toks_holds`'s twin at `ushs_line_is`, plus one premise on `UkShFork.ushf_rest_of_body` |
+| 14 | `Hchild_echo` (UShRound) | `UkShEcho.sh_exec_sup_echo_wq Wcf` | echo's is `UShEchoPay.sh_exec_sup_echo_wq_holds` (`:227`) | **LINK-GEN**: an instantiation with it, a ~1,250-line twin without |
+| 15 | `Hexecfail` (UShRound) | `UkShEcho.ush_execfail_law_wq Wcf` | echo's is `UShPanic.ush_execfail_law_holds` | **LINK-GEN** |
+| 16 | `Hpanic` (UShRound) | `UkShDiag.ush_panic_law Wcf Wbf` | echo's is `UShPanic.ush_panic_law_holds` | **LINK-GEN** |
+| 17 | `Hchild_cat` (UShRound) | `image_entry ElfUser.cat_elf M av sts cw cs pidv (fun _ => ushf_wq Wcf I) (cat_pay I q) uslot` at `length sts = NOFILE`, `cw = ROOTINO` | NO. `UCatKernel` has a ROUND (`cat_round_at`) and **no entry** | **CAT-ENTRY-2**. The `Hold` instantiation is `cat_hold` above (`ufd … ∗ uoff γo p ∗ fdq r q (Some (i, bs))`), which is one line of its brief; the entry itself is items 2–4 of CAT-WALK-2's list |
+| 18 | `Hchild_redir` (UShRound) | `sh_redir_child_law`: `UkShFork.ushf_child_law`'s body with `UkSh.ush_line_is` replaced by `UkShRedirLine.ushs_line_is ws file fb 0 len` | NO | **NEW (SH-ROUND's own)**. Assembled from `UkShRedirSeam.wp_kshm_child_alloc_redir` (`:584`) with `Hopen_hand` as the call premise, K1's `efile_image_entry` after `exec /echo`, and `Hexecfail` on the failing arm. The largest single item of K2 |
+| 19 | `Hcons` / `Htag` (UShRound) | `riscv_cons_res = fecl g`, `riscv_rx_tag = ftag g` | the record equations, as in `UInitBoot` | **K3** supplies them; free |
+| 20 | (K3's header, not a Coq hypothesis) | the `FileLinks` links BUNDLE — one persistent record of the eight links, `EchoLinks.echo_links`'s shape | NO. `FileLinks.v` has the links and not the bundle | **LINK-GEN**; CAT-ENTRY already asked for it |
+| 21 | (K3's header) | `UkSh.ush_tag_law`'s conclusion generalised from `⌜EchoDisc.disc h⌝` to a parameter `D : list mobs -> Prop` | NO | **NEW**, and see §3 below: this is a shape that does not compile as stated |
+| 22 | (K3's header) | `UInitKernel.init_boot_pay` with the DEED in `Pay` (`AppFile.file_boot`'s `fown r s` riding the bundle's one linear slot beside `fturn`) | NO | **NEW (INIT-FILE's own)**, echo's `UInitKernel.init_boot_pay` (`:683`) is the mould and is abstract in the payload |
+
+Counting by lane: OFF-LINK 2 (items 1, 12 in part), WRITE-RELAY 2 (2, 3),
+LINK-GEN 8 (6–10, 14–16, 20), F-OPEN-6 1 (12 in part), CAT-ENTRY-2 1 (17),
+NEW 6 (4, 5, 13, 18, 21, 22), free 2 (11, 19).
+
+#### 3. What we learned about shapes that DO NOT compile as stated
+
+1. **`UkSh.ush_tag_law` is echo-specific in its CONCLUSION.**  It is
+   `□ (∀ h, riscv_rx_tag h -∗ ⌜EchoDisc.disc h⌝ ∨ T)`.  At this
+   application the tag is `FileOut.ftag`, whose second conjunct is
+   `⌜FileDisc.disc_f h⌝ ∨ file_taint`, and lane STAGE's own ruling says
+   `disc_f h` does NOT imply `disc h` (a `cat` line is not an echo line).
+   So the file era cannot supply `ush_tag_law` and `UInitSh.
+   sh_pay_of_parts` cannot be applied at it.  `disc` has to become a
+   parameter.  This does NOT surface in K2 — `UkSh.ush_rest_l` does not
+   mention the tag — which is exactly why the skeleton had to go all the
+   way up to `file_prog_law` to find it.
+2. **`UkShFork.ushf_wq` needs no twin, because `Wc` is already
+   abstract.**  The design asked for "`ushf_wq`'s twin with the deed".
+   The cheaper reading is that the DEED RIDES INSIDE THE CREDENTIAL
+   FAMILY: `Wcf I p := Wcl I p ∗ sh_hold I`.  Then `ushf_wq Wcf I` IS
+   "the block owed or the block written, and the deed back", and
+   `ushf_child_law`, `ush_panic_law`, `ush_rest_l`,
+   `UkShEcho.sh_exec_sup_echo_wq` and `UkShFork.ushf_kill_law` all
+   typecheck at it with NO edit to `UkShFork.v`/`UkSh.v`.  It is also
+   forced: sh READS ITS DEED BEFORE IT PRINTS (CAT-ENTRY ruling (b)), so
+   a credential spendable without the deed in hand would be spendable at
+   the wrong alternative.
+3. **RELAY 2 is free the moment the half is the program's — and only
+   then.**  `awrite_full_at` hands the node `off_gv γo (1/2)
+   (Z.of_nat off)`; a closure holding `UserOff.uoff γo off0` reads
+   `off = off0` off `OffGv.off_gv_agree` with nothing owed
+   (`UserOff.uoff_agree_k` is the landed lemma).  That is `ef_node`'s
+   whole content, and it confirms review §A1 against fact 4: under
+   OFF-HAND-6's shape the half is in the kernel's bundle, the closure
+   has nothing, and RELAY 2 needs a premise slot nobody supplies.
+4. **But RELAY 2 being free is NOT enough: phase 2 must ADVANCE.**  This
+   is the thing the skeleton found that neither the design nor the review
+   states outright.  `awrite_full_at`'s phase 2 returns the kernel half
+   UNMOVED, and the node must leave the cursor at `off + |chunk|`; a node
+   holding one half cannot do both, and the kernel's own supplier
+   (`off_supply_parked`, via `off_user_inv`) is not available at a held
+   row.  So `ef_full_adv` — phase 2 returning `off_gv γo (1/2)
+   (Z.of_nat (off + length bs))` — is not an optimisation of OFF-LINK, it
+   is the lane's load-bearing statement, and `UserOff.uoff_advance`
+   (`iris/UserOff.v:113`) is exactly the step it enables.
+5. **One echo write = one chain node.**  `FileState.echo_chunks` is one
+   chunk per `write` CALL (a1, " ", a2, "\n"), while `awrite_chain`'s
+   nodes are per `FW_MAX`-block of ONE call.  Every echo chunk is a word
+   of a line or a single blank and `FW_MAX = 3072`, so `wchunks n = 1`
+   and the whole per-call chain is a single `awrite_full_at` beside a
+   single `awrite_part_at`.  `ef_chain` carries `(0 < nb)%nat` and
+   `(Z.of_nat nb <= FW_MAX)%Z` as premises for that reason.
+6. **The exec crossing costs one `Pay` and one PURE row.**  The fd-1 row
+   is not a resource at the crossing: `SpecKexec.kexec_image_ok`'s fd
+   clause carries the exec'ing process's table to the key verbatim, so
+   `take NSTD sts !! 1 = Some (FdOpen rb true (FdInode i γo om))` is a
+   premise of `efile_image_entry` and nothing more.  `ExecEntry.
+   image_entry`'s `Pay` slot takes the credential, the deed and the
+   fragment.  Nothing at fork, dup, or the generic tier — review §A4
+   confirmed at the statement.
+7. **`offmode` is not in the way.**  Every statement in these three files
+   binds the mode as a parameter `om : offmode` rather than naming
+   `OffParked` or `OffHeld`, so they are indifferent to whether OFF-LINK
+   freezes the field or deletes it.
+8. **`UCatKernel` has a round and no entry, and that is the honest limit
+   of what this skeleton could state for cat.**  `Hchild_cat` is stated
+   at `ExecEntry.image_entry` with the channel, the table length, the cwd
+   and the payload (`cat_pay I q`, a deed FRACTION plus the pure tie) —
+   the image/argv premises (`UShEcho.echo_node_img`'s twin) do not exist
+   to be written down.  That is CAT-ENTRY-2's remaining content.
+9. **Build notes.**  A stale non-empty `iris/FileState.vos` poisoned the
+   first `--check` of a file above it with the documented bogus
+   "inconsistent assumptions over library xv6iris.FileState"; truncating
+   it fixed it (durable-notes' probe, `find iris -name '*.vos' -size
+   +0c`).  `tools/comment_quote_check.py` caught two quotations wrapped
+   across comment lines before any build.

@@ -605,13 +605,18 @@ Section SpecFilewrite.
      inside the phase 2 that builds the next node, and
      [awrite_chain … Q (length bss) _] IS [Q (length bss)] at the stop
      ([FsAbsWriteFire.awrite_chain_cursor]). *)
-  Definition write_post_ok_at Γ (i : Z) (γo : gname) (n : Z)
+  (* [P] IS THE WRITER'S OWN TABLE (lane WRITE-RELAY-2), the one
+     [filewrite_extra] already carries for the console arm's short return:
+     the chain the caller gets BACK names it, because its partial arms carry
+     the reason a copy gave up ([FsAbsWriteFire.awrite_part_at]).  Nothing
+     above [filewrite_extra] moved -- exactly the read side's finding. *)
+  Definition write_post_ok_at Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
     (∃ bss : list (list (bv 8)),
        ⌜Z.of_nat (length (concat bss)) = n⌝ ∗
        ⌜(length bss <= wchunks n)%nat⌝ ∗
        ⌜ubytes_at M ua (concat bss)⌝ ∗
-       awrite_chain Γ appE i γo M ua n Q (length bss)
+       awrite_chain_at Γ appE i γo M ua P n Q (length bss)
          (wchunks n - length bss)%nat)%I.
 
   (* ret -1: filewrite's honest partial arm.  A PREFIX of chunks fired --
@@ -625,14 +630,14 @@ Section SpecFilewrite.
      the never-entered loop nothing moved ([x = 0]).  The cursor's position
      is the whole of what says which of the two happened -- there is no
      separate short-chunk receipt. *)
-  Definition write_post_fail_at Γ (i : Z) (γo : gname) (n : Z)
+  Definition write_post_fail_at Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
     (∃ (bss : list (list (bv 8))) (x : nat),
        ⌜Z.of_nat (length (concat bss)) < n \/ (n < 0 /\ bss = [])⌝ ∗
        ⌜(length bss + x <= wchunks n)%nat⌝ ∗
        ⌜(x <= 1)%nat⌝ ∗
        ⌜ubytes_at M ua (concat bss)⌝ ∗
-       awrite_chain Γ appE i γo M ua n Q (length bss + x)
+       awrite_chain_at Γ appE i γo M ua P n Q (length bss + x)
          (wchunks n - length bss - x)%nat)%I.
 
   (* THERE IS NO THIRD ARM ("the row does not read as a FILE"):
@@ -640,19 +645,19 @@ Section SpecFilewrite.
      conjunct, and [SpecWritei]'s success arm reports [off <= di_size] of the
      pre-write record, so no chunk the loop completes has to be skipped and
      the two arms are keyed on the return value alone. *)
-  Definition write_arms_at Γ (i : Z) (γo : gname) (n : Z)
+  Definition write_arms_at Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
       (r : mword 64) : iProp Σ :=
     ((⌜r = (mword_of_int n : mword 64) /\ 0 <= n⌝
-      ∗ write_post_ok_at Γ i γo n M ua Q)
+      ∗ write_post_ok_at Γ i γo P n M ua Q)
      ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝
-        ∗ write_post_fail_at Γ i γo n M ua Q))%I.
+        ∗ write_post_fail_at Γ i γo P n M ua Q))%I.
 
   (* the arms refine the landed blanket: each pins [r] *)
-  Lemma write_arms_at_ret Γ (i : Z) (γo : gname) (n : Z)
+  Lemma write_arms_at_ret Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
       (r : mword 64) :
-    write_arms_at Γ i γo n M ua Q r -∗ ⌜filewrite_ret n r⌝.
+    write_arms_at Γ i γo P n M ua Q r -∗ ⌜filewrite_ret n r⌝.
   Proof using .
     rewrite /write_arms_at. iIntros "[[%Hok _] | [%Hm1 _]]"; iPureIntro.
     - destruct Hok as [Hr Hn]. rewrite Hr. exact (filewrite_ret_all n Hn).
@@ -824,7 +829,7 @@ Section SpecFilewrite.
       (r : mword 64) : iProp Σ :=
     match st with
     | FdOpen _ true (FdInode i γo _) =>
-        write_arms_at (fs_gamma_L fsc_fs) i γo n M ua Q r
+        write_arms_at (fs_gamma_L fsc_fs) i γo P n M ua Q r
     | FdOpen _ true (FdDevice ma) =>
         if decide (ma = ConsoleInv.CONSOLE)
         then write_cons_arms P ua Q n r
@@ -868,7 +873,7 @@ Section SpecFilewrite.
   Proof using . by iIntros "$". Qed.
 
   Lemma filewrite_extra_inode gn P rb i γo n M ua Q Qe r :
-    write_arms_at (fs_gamma_L fsc_fs) i γo n M ua Q r -∗
+    write_arms_at (fs_gamma_L fsc_fs) i γo P n M ua Q r -∗
     filewrite_extra gn P (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe r.
   Proof using . by iIntros "$". Qed.
 
@@ -931,12 +936,15 @@ Section SpecFilewrite.
      input IS the cursor at the empty prefix and the fail arm's refund is
      that same cursor; the console arm's NEG disjunct is pure; every other
      arm is [emp]. *)
-  Lemma write_arms_at_neg Γ i γo n M ua Q :
+  Lemma write_arms_at_neg Γ i γo (P : uptd) n M ua Q :
     (n < 0)%Z ->
     awrite_chain Γ appE i γo M ua n Q 0%nat (wchunks n) -∗
-    write_arms_at Γ i γo n M ua Q (mword_of_int (-1) : mword 64).
+    write_arms_at Γ i γo P n M ua Q (mword_of_int (-1) : mword 64).
   Proof using .
-    intros Hn. iIntros "Hc". rewrite /write_arms_at. iRight.
+    intros Hn. iIntros "Hc".
+    iDestruct (awrite_chain_at_of Γ appE i γo M ua n Q 0%nat (wchunks n) P
+                 with "Hc") as "Hc".
+    rewrite /write_arms_at. iRight.
     iSplitR; [done |]. rewrite /write_post_fail_at.
     rewrite (wchunks_nonpos n ltac:(lia)).
     iExists [], 0%nat.

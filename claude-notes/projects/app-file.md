@@ -7802,3 +7802,135 @@ statement, at the mask, at the persistence, and at the home across exec):
 - What they still cannot do is OPEN in hand mode or READ/WRITE a held row:
   that is L2+L3+L4, whose remaining blocker is the node's LEND (REFUTED 2) and
   whose statements are all above.
+
+### WRITE-RELAY-2 (2026-09-17) — RELAY 4's CARRYING HALF LANDS UP TO THE NODE, AND THE REFUTATION IS A THEOREM; THE SINGLE-BLOCK CONJUNCT WAS ALREADY IN writei's POST
+
+**The lane's verdict in one line: `SysWriteDefs.wr_fail_why` rides
+`either_copyin`'s failure through writei's post, filewrite's fold and into
+`FsAbsWriteFire.awrite_part_at`, and at a mapped source with a single-block chunk
+the partial arm is now REFUTED OUTRIGHT
+(`awrite_part_at_mapped_single` / `awrite_chain_mapped_single`) — and the
+single-block half needed NO new writei clause at all, because
+`SpecWritei.wi16_atomic` (the sixteen-byte seam's, landed long ago) IS
+`wi_blocks off n = 1 -> tot = 0 \/ tot = n`.**
+
+Branch `app-file/write-relay`, one commit on top of main (`27c79fdd7`).  Whole
+tree green on the lane's remote tree (`--proofs -k`, `EXIT=0`, zero `Error`,
+1592/1592 `.vo`, no non-empty `.vos`); `make audit-all-only` / `audit-tree-only`
+/ `audit-file-only` all `EXIT=0` and unchanged (echo FOURTEEN, system THIRTEEN,
+tree THIRTEEN, file FOURTEEN); no new `Admitted` (`UEchoFile.ef_node` /
+`ef_chain` stay SKELETON's); `Proof using` on every new result;
+`tools/comment_quote_check.py iris` clean.
+
+**THE ONE THING THAT WAS CHEAPER THAN PRICED.**  The brief's second conjunct —
+`⌜wi_blocks off n = 1%nat -> (tot < n)%nat -> tot = 0%nat \/ wr_fail_why P src n⌝`
+— is implied by a clause writei's post has carried since the sixteen-byte seam:
+`SpecWritei.wi16_atomic off n tot := wi_blocks off n = 1%nat -> tot = 0%nat \/
+tot = n` (`iris/SpecWritei.v:516`), whose own header already says "every break
+arm exits WITHOUT advancing `tot`, the part-way copy included".  It is STRONGER
+than the brief's (no reason disjunct) and it was already relayed to
+`ProofFilewrite` as `%Hwi16at`.  So writei's post gained exactly ONE clause, and
+`ProofWritei`'s five exits needed exactly ONE new obligation each.
+
+**WHAT LANDED, file by file.**
+
+1. `SysWriteDefs.v` — `wr_fail_why P src n := ∃ d, (d < n)%nat /\ ~ uva_rmapped P
+   (uint (add_vec_int src (Z.of_nat d)))` (`:192`), the exact twin of
+   `SysReadDefs.rd_fail_why` one test weaker (`uva_rmapped`, not `uva_wmapped`:
+   copyin has no PTE_R re-walk), with `wr_nrmapped_entry`, `wr_fail_why_entry`,
+   `wr_fail_why_mono`, `wr_fail_why_shift` (the chunk's base moved to the
+   request's — what filewrite's fold needs) and `wr_fail_why_refute`.  The file
+   gains `Require Import UserPtTree` / `ProcPtOwn`.
+2. `SpecWritei.v` — BOTH bodies (`wp_writei_sconf_body`, `wp_writei_gen_body`)
+   gain ONE post clause, after `⌜user = false -> dist = 0%nat⌝`:
+   `⌜(0 < dist)%nat -> wr_fail_why (pv_upt (us_V U)) src n⌝`.  Nothing else in
+   the contract moved; `wi16_atomic` was already there.
+3. `ProofWritei.v` — the relay, `ProofReadi.v:1887-1913` mirrored.  `wi_cont`
+   and the three block lemmas (`wi_ret`, `wi_join`, `wi_size`) gain the clause;
+   the copyin break's `Hnorm` carries the failing byte in its `-1` disjunct and
+   `wr_nrmapped_entry` brings it to the entry table; the four `dist = 0%nat`
+   exits discharge it by `lia`.  The reason's index is `tot + d` off writei's own
+   a2 (`InstrBytes.pa_add_add`) and is inside the request because
+   `d < mm <= n - tot`.
+4. `FsAbsWriteFire.awrite_part_at` — gains `(P : uptd)` and TWO arrows:
+   `⌜(r < length bs)%nat -> wr_fail_why P ua (Z.to_nat n)⌝` (the unnamed tail's
+   reason) and `⌜wi_blocks off (Z.to_nat (wchunk_at n k)) = 1%nat -> r = 0%nat⌝`
+   (`wi16_atomic` read at this arm).
+5. `FsAbsWriteFire.awrite_chain_at` — NEW: the chain, INDEXED BY `P`.
+   **`awrite_chain` keeps its name, arity and every argument** and is now
+   `∀ P : uptd, awrite_chain_at … P …`.  That is the whole trick that kept
+   `SpecFilewrite.filewrite_in` BYTE-IDENTICAL, and with it `xv6_sbundle`'s row
+   16, `SpecSysWrite`, `ProofSyscall.sysc_dep_write` and all six U-tier write
+   suppliers.  Lane WRITE-RELAY-3 replaces the bare `∀ P` with the guarded
+   `∀ P, ⌜TB P⌝ -∗` at `filewrite_in`, and nothing else moves then either.
+   Consequent: `awrite_chain_at_0/_S/_cursor/_unit` (the real lemmas),
+   `awrite_chain_0/_cursor/_unit` (the wrapper's, via `uptd0`),
+   `awrite_chain_at_of` (the kernel's one-table reading).
+6. `FsAbsWriteFire.wrf_apart_fire_gen` / `wrf_apart_fire` / `wrf_apart_fire_held`
+   — gain `(P : uptd)` and the two matching premises.  `wrf_awrite_fire*` (lane
+   OFF-LINK's) did NOT move.
+7. **`FsAbsWriteFire.awrite_part_at_mapped_single`** — THE REFUTATION.  At a
+   source run every byte of which is `uva_rmapped` in `P`, and a chunk that
+   cannot straddle a block boundary at any offset the fire can be at, the node
+   is VACUOUS: the reason arrow gives `r = length bs` (nothing unnamed landed),
+   the single-block arrow then gives `r = 0`, and `wri_pre`'s own
+   `0 < length bs` closes it.  `⊢ awrite_part_at …` — the arm costs its client
+   nothing, at any `REST`.
+8. **`FsAbsWriteFire.awrite_fchain` / `awrite_chain_mapped_single`** — the
+   chain of FULL nodes alone, and the lemma that turns it into the real chain.
+   This is design/app-file.md section 0's limit 1 AS A THEOREM, at the two
+   premises the U tier and the deed supply: `UkRunSys.usrc_ok`'s SECOND conjunct
+   is the mapped row, and the line's own length bound
+   (`FileDeltas.f_bytes_typed_short`, `EchoDisc.line_max` = 100 < BSIZE) is the
+   straddle premise.
+9. `ProofFilewriteChain.fw_au_raw` and its five moves — gain `(P : uptd)`;
+   `_init` fixes the walk's table once out of the `∀ P` chain
+   (`awrite_chain_at_of`).
+10. `SpecFilewrite.write_post_ok_at` / `write_post_fail_at` / `write_arms_at` /
+    `write_arms_at_ret` / `write_arms_at_neg` / `filewrite_extra`'s inode branch
+    — gain `(P : uptd)`, fed by the `P` `filewrite_extra` ALREADY carries for
+    the console arm's short return.  **`filewrite_in` is untouched**, so
+    nothing above `filewrite_extra` moved — the read side's finding, again.
+11. `ProofFilewrite.v` — the partial fire supplies both node facts: `Hwhyn`
+    (writei's reason, shifted to the request's base by `wr_fail_why_shift` and
+    brought to the entry table by `wr_fail_why_entry`, since filewrite calls
+    writei at the already-grown `PI`) and `Hsb1n` (`wi16_atomic` at `Hcw`'s
+    `c = wchunk_at n p`, with `rz <> c` ruling out the `tot = n` disjunct).
+12. `TreeMove.tree_awrite_chain` — `iIntros (P)`; it introduces and drops both
+    arrows, as before.  `UkWriteFile.write_arms_file_learn` gains `(P : uptd)`.
+    `FsAbsInvFire`, `UexecExecMint`, `UkTreeWrite` — UNTOUCHED (their statements
+    are the wrapper's).
+13. `ProofDirlink.v`, `ProofSysUnlinkW5F.v`, `ProofSysUnlinkW5D.v` —
+    PROOF-SCRIPT ONLY: one extra `%` in the writei continuation's intro pattern,
+    the write side's twin of READ-RELAY's six `discriminate` sites.
+14. `UEchoFile.v` — **THREE HYPOTHESES BECOME LEMMAS**: `Hoff_link` is
+    `ef_off_link` (the advanced node IS a kernel node, by `OffGv.off_ret_adv`),
+    `Hrelay3` is `ef_full_adv_of` (by `SpecCopyin.ubytes_at_inj` at the node's
+    length arrow), and `Hrelay4` is `ef_relay4` (by
+    `awrite_part_at_mapped_single` at `usrc_ok`'s second conjunct).  Only
+    `Hdep1` and `Hwrite1` (the two ledger-slot pieces the engine owes) remain
+    hypotheses; `ef_node` / `ef_chain` stay `Admitted` skeletons, as SKELETON
+    left them.
+
+**WHAT IS NOT LANDED, AND WHY IT IS COUPLED (OFF-LINK's REFUTED 2).**  The ask
+is that phase 1's LENT half become `UserOff.off_link γo (Z.of_nat off)` =
+`off_gv γo (1/2) off ∨ □ riscv_kill_cred`, so a DISCONNECTED box can still run
+the node.  **It cannot land alone, and the reason is a resource home, checked at
+the statement (process rule §3.6).**  A node LENT the taint has no half to give
+back, so phase 2's answer must gain a taint arm too — and then a node lent a REAL
+half may answer with the taint and the fire LOSES the half it lent.  So
+`UserOff.off_supply`'s output and the fire's conclusion must become
+`off_link γo (Z.of_nat (off + d)) ∗ R`, which is exactly OFF-LINK's
+`UserOff.off_settle` (branch `app-file/off-hand`, commit `e274708f7`) — and the
+fires' CALLERS (`ProofFilewrite`, `ProofFileread`) then owe their posts on the
+taint branch, which needs `FileOffCell.off_resident`'s taint arm.  **The two
+halves are one change**, and the order that works is: merge `app-file/off-hand`
+(it holds `off_link`, `off_settle`, `off_ret_case` and does NOT touch
+`FsAbsWriteFire.v`, `SpecFilewrite.v`, `ProofFilewriteChain.v`, `TreeMove.v`,
+`SpecWritei.v`, `ProofWritei.v` or `SysWriteDefs.v`, so the merge is small), then
+land phase 1's `off_link` and phase 2's third disjunct against `off_settle` in
+ONE commit.  `off_ret`'s shape for that step is
+`∃ v : Z, off_link γo v ∗ ⌜v = Z.of_nat off \/ v = Z.of_nat (off + d)⌝`
+— the disjunction INSIDE, so "what it was lent, moved or not" stays one
+definition and `off_ret_keep` / `off_ret_adv` keep their statements through
+`off_link_of`.

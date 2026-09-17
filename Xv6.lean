@@ -195,3 +195,5 @@ import Xv6.ProofFreewalk
 import Xv6.LinkFreewalk
 import Xv6.ProofUvmfree
 import Xv6.LinkUvmfree
+import Xv6.ProofKilled
+import Xv6.LinkKilled

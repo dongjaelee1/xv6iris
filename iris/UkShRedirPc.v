@@ -395,7 +395,7 @@ Section UkShRedirPc.
     { rewrite (Hm4 a0_idx ltac:(vm_compute; discriminate))
               (Hm3 a0_idx ltac:(vm_compute; discriminate)). exact Ha0_2. }
     rewrite <- shpp_strlen.
-    iApply (wp_kshp_strlen h6 m4 (DfracOwn 1) s0 len f (50 + nn)
+    iApply (wp_kshp_strlen h6 m4 (DfracOwn 1) s0 len f (58 + nn)
               Ha0_4 ltac:(lia) ltac:(lia) with "Hcode Hstr Hrun").
     iIntros "Hstr" (h7 m5) "%Hcs45 %Ha0_5 Hrun".
     rewrite Eret4.
@@ -586,8 +586,8 @@ Section UkShRedirPc.
     iIntros (p pe) "%Hpsz Hrnode Hnode Lcur Hstr Hws Hsy".
     iIntros (h15 m13) "%Hcs1213 %Ha0_13 HM' Hpay Hrun".
     rewrite Eret12.
-    iDestruct (ushp_redir_node_addr with "Hrnode")
-      as %(Hp0 & Hp8 & Hpz40).
+    iDestruct (ushp_redir_node_addr with "Hrnode") as "[%Hraddr Hrnode]".
+    destruct Hraddr as (Hp0 & Hp8 & Hpz40).
     iDestruct "Hnode" as "(%Hnl & %Hpe0 & %Hpe8 & Hty & Hav & Hev)".
     iAssert (ushp_exec_at s0 pe toks) with "[Hty Hav Hev]" as "Hnode".
     { rewrite /ushp_exec_at.
@@ -748,7 +748,7 @@ Section UkShRedirPc.
     iApply (wp_kshp_peek h21 m19 (DfracOwn 1) dw true DfracDiscarded
               (uint sp0 - 56) s0 ushp_T_none len len 0 f
               (ushp_lit ushp_T_none)
-              (mword_of_int (s0 + Z.of_nat len)) (42 + nn)
+              (mword_of_int (s0 + Z.of_nat len)) (50 + nn)
               Ha0_19 Ha1_19 Ha2_19 ltac:(lia) eq_refl ltac:(lia) ltac:(lia)
               ltac:(unfold ushp_T_none; lia)
               ltac:(unfold ushp_T_none, Z64; lia) Hcur0 Hcur8 Hcurz

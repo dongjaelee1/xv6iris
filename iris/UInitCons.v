@@ -453,10 +453,10 @@ Section UInitCons.
      at the FLAG arm that is "the console is at [i] at the view the arm
      fired at" ([FsConsPin.cons_present_unarm_fresh]'s [av0] premise).  At
      the KEY arm [Pv] is [cons_absent] and the conjunct is not read. *)
-  Definition init_mk_Farm (Pv : aview -> Prop) (T K : iProp Σ)
+  Definition init_mk_Farm (Pure Pv : aview -> Prop) (T K : iProp Σ)
       : pfam Σ (aview -> Z -> iProp Σ) :=
     MkPfam (fun (av : aview) (_ : Z) =>
-              ((⌜echo_fs_pure av⌝ ∗ ⌜Pv av⌝ ∗ K) ∨ T)%I) K.
+              ((⌜Pure av⌝ ∗ ⌜Pv av⌝ ∗ K) ∨ T)%I) K.
 
   (* the unarm hands the key back -- a mknod whose dirlink failed leaves
      init holding what it went in with *)
@@ -467,15 +467,15 @@ Section UInitCons.
      any other the key back, or the taint.  Stated as a disjunction because
      the commit fires wherever the call reached and the claim must survive
      either. *)
-  Definition init_cons_fok (r : echo_names) (T K : iProp Σ)
+  Definition init_cons_fok (Made : Z -> iProp Σ) (T K : iProp Σ)
       : aview -> Z -> fname -> Z -> iProp Σ :=
     fun (av : aview) (d : Z) (nm : fname) (i : Z) =>
       ((⌜d <> FsImg.ROOTINO \/ nm <> fname_console⌝ ∗ K)
-       ∨ cons_made r i ∨ T)%I.
+       ∨ Made i ∨ T)%I.
 
-  Definition init_mk_Fok (r : echo_names) (T K : iProp Σ)
+  Definition init_mk_Fok (Made : Z -> iProp Σ) (T K : iProp Σ)
       : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ) :=
-    MkPfam (init_cons_fok r T K) True%I.
+    MkPfam (init_cons_fok Made T K) True%I.
 
   Definition init_mk_Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ) :=
     pfam_triv (fun (_ : aview) (_ : Z) (_ : fname) (_ : Z) => True%I).
@@ -483,12 +483,13 @@ Section UInitCons.
   (* ...and what init reads out of [Fok] once its own walk cursor has said
      the parent IS the root and its own path reading has said the name IS
      `console`: the flag at the created inum, or the taint. *)
-  Definition init_cons_made_of_fok (r : echo_names) (T : iProp Σ)
-      (i : Z) : iProp Σ := (cons_made r i ∨ T)%I.
+  Definition init_cons_made_of_fok (Made : Z -> iProp Σ) (T : iProp Σ)
+      (i : Z) : iProp Σ := (Made i ∨ T)%I.
 
-  Lemma init_cons_fok_at (r : echo_names) (T K : iProp Σ) (av : aview) (i : Z) :
-    init_cons_fok r T K av FsImg.ROOTINO fname_console i -∗
-    init_cons_made_of_fok r T i.
+  Lemma init_cons_fok_at (Made : Z -> iProp Σ) (T K : iProp Σ)
+      (av : aview) (i : Z) :
+    init_cons_fok Made T K av FsImg.ROOTINO fname_console i -∗
+    init_cons_made_of_fok Made T i.
   Proof using .
     rewrite /init_cons_fok /init_cons_made_of_fok.
     iIntros "[[%Hne _] | H]"; [| iExact "H"].
@@ -513,7 +514,8 @@ Section UInitCons.
   (*  They are premises because this file is stated over the AMBIENT       *)
   (*  [appcfg] and only an era whose record is echo's can name it.         *)
   (* =================================================================== *)
-  Lemma init_cons_mknod_bundle (γfs : fs_names) (r : echo_names)
+  Lemma init_cons_mknod_bundle (γfs : fs_names)
+      (Pure : aview -> Prop) (Made : Z -> iProp Σ)
       (Pv : aview -> Prop)
       (T K : iProp Σ) `{!Persistent T} `{!Timeless T} `{!Timeless K}
       `{HTL : forall v : aview, Timeless (app_pred app_run v)}
@@ -521,13 +523,13 @@ Section UInitCons.
     arg_path_of M pv init_cons_pl ->
     □ (T -∗ app_sup) -∗
     □ (∀ v : aview, app_pred app_run v -∗
-         app_pred app_run v ∗ (⌜echo_fs_pure v⌝ ∨ T)) -∗
+         app_pred app_run v ∗ (⌜Pure v⌝ ∨ T)) -∗
     init_cons_pin_law Pv T K -∗
     □ (∀ (av : aview) (i : Z), ⌜av !! i = None⌝ -∗
          app_pred app_run av -∗
          app_pred app_run (delta_arm i (ADev CONSOLE 0) av)) -∗
     □ (∀ (av0 av : aview) (i : Z),
-         ⌜av0 !! i = None⌝ -∗ ⌜echo_fs_pure av0⌝ -∗ ⌜Pv av0⌝ -∗ ⌜Pv av⌝ -∗
+         ⌜av0 !! i = None⌝ -∗ ⌜Pure av0⌝ -∗ ⌜Pv av0⌝ -∗ ⌜Pv av⌝ -∗
          app_pred app_run av -∗
          app_pred app_run (delta_unarm i av)) -∗
     □ (∀ (av : aview) (ents : gmap fname Z) (nl : nat) (i : Z),
@@ -543,12 +545,13 @@ Section UInitCons.
          app_pred app_run (delta_create d nmn i (ADev CONSOLE 0) av)) -∗
     □ (∀ (av : aview) (i : Z), ⌜cons_present_at i av⌝ -∗
          app_pred app_run av ==∗
-         app_pred app_run av ∗ (cons_made r i ∨ T)) -∗
+         app_pred app_run av ∗ (Made i ∨ T)) -∗
     app_inv γfs -∗
     K -∗
     mknod_au_at (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv CONSOLE 0
       (init_mk_P T) (fun _ _ => True%I)
-      (init_mk_Farm Pv T K) (init_mk_Fun T K) (init_mk_Fok r T K) init_mk_Fex.
+      (init_mk_Farm Pure Pv T K) (init_mk_Fun T K) (init_mk_Fok Made T K)
+      init_mk_Fex.
   Proof using .
     intros Hpath.
     iIntros "#Hsup #Hpure #Habs #Harml #Hunl #Hmk #Hoth #Hshoot #Hinv HK".
@@ -632,7 +635,7 @@ Section UInitCons.
       iDestruct "Hbody" as (I0) "(>Hh & Hp & >%Hdom & #Hx)".
       iDestruct (ghost_map_auth_agree with "Hka Hh") as %<-.
       iAssert (▷ (app_pred app_run (abs_view I)
-                  ∗ (⌜echo_fs_pure (abs_view I)⌝ ∨ T)))%I
+                  ∗ (⌜Pure (abs_view I)⌝ ∨ T)))%I
         with "[Hp]" as "Hpc".
       { iNext. iApply ("Hpure" with "Hp"). }
       iDestruct "Hpc" as "[Hp Hc]". iMod "Hc".
@@ -704,13 +707,15 @@ Section UInitCons.
      chose.  The cursor says the parent was the root and the path reading
      says the name was `console`, so [init_cons_fok]'s left arm is refuted
      and the receipt collapses. *)
-  Lemma init_cons_mknod_recv (γfs : fs_names) (r : echo_names)
+  Lemma init_cons_mknod_recv (γfs : fs_names)
+      (Pure : aview -> Prop) (Made : Z -> iProp Σ)
       (Pv : aview -> Prop) (T K : iProp Σ)
       (M : gmap Z (bv 8)) (pv : mword 64) :
     arg_path_of M pv init_cons_pl ->
     mknod_post_ok (fs_gamma_L γfs) M pv CONSOLE 0 (init_mk_P T)
-      (init_mk_Farm Pv T K) (init_mk_Fun T K) (init_mk_Fok r T K) init_mk_Fex -∗
-      ((∃ i : Z, cons_made r i) ∨ T).
+      (init_mk_Farm Pure Pv T K) (init_mk_Fun T K) (init_mk_Fok Made T K)
+      init_mk_Fex -∗
+      ((∃ i : Z, Made i) ∨ T).
   Proof using .
     intros Hpath. rewrite /mknod_post_ok. iIntros "H".
     iDestruct "H" as (pl i) "(%Hpath' & %Hb & H)".
@@ -721,7 +726,7 @@ Section UInitCons.
     iDestruct "HP" as "[%Hp | HT]"; [| iRight; iExact "HT" ].
     destruct Hp as [_ Hd]. subst d.
     rewrite /init_mk_Fok /=.
-    iDestruct (init_cons_fok_at r T K av i with "Hok") as "H".
+    iDestruct (init_cons_fok_at Made T K av i with "Hok") as "H".
     rewrite /init_cons_made_of_fok.
     iDestruct "H" as "[Hm | HT]";
       [ iLeft; iExists i; iExact "Hm" | iRight; iExact "HT" ].
@@ -731,12 +736,13 @@ Section UInitCons.
      the arm piece's refund on every path where the arm never fired, and the
      unarm's own receipt on the path where the do-then-undo pair did.  This
      is the CLOSED arm's input: init's SECOND open is §5's MISS pin again. *)
-  Lemma init_cons_mknod_fail_recv (γfs : fs_names) (r : echo_names)
+  Lemma init_cons_mknod_fail_recv (γfs : fs_names)
+      (Pure : aview -> Prop) (Made : Z -> iProp Σ)
       (Pv : aview -> Prop) (T K : iProp Σ) (Pmiss : nat -> Z -> iProp Σ)
       (M : gmap Z (bv 8)) (pv : mword 64) :
     mknod_post_fail (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv CONSOLE 0
-      (init_mk_P T) Pmiss (init_mk_Farm Pv T K) (init_mk_Fun T K)
-      (init_mk_Fok r T K) init_mk_Fex -∗ (K ∨ T).
+      (init_mk_P T) Pmiss (init_mk_Farm Pure Pv T K) (init_mk_Fun T K)
+      (init_mk_Fok Made T K) init_mk_Fex -∗ (K ∨ T).
   Proof using .
     rewrite /mknod_post_fail /cre_child_unfired /cre_child_pair. iIntros "H".
     iDestruct "H" as "[Hau | Hf]".
@@ -992,13 +998,13 @@ Section UInitCons.
   (*  the key beside it, and E2's boot arm routes it into /init's entry    *)
   (*  ([UkInitMain.wp_kinit_start_body]'s [K] premise).                    *)
   (* =================================================================== *)
-  Definition init_cons_laws_at (Pv : aview -> Prop) (T K : iProp Σ)
-      (r : echo_names) : iProp Σ :=
+  Definition init_cons_laws_at (Pure : aview -> Prop) (Made : Z -> iProp Σ)
+      (Pv : aview -> Prop) (T K : iProp Σ) : iProp Σ :=
     ((* (a) the supply, off the taint *)
      □ (T -∗ app_sup)
      (* (b) the claim's PURE half, read off without spending it *)
      ∗ □ (∀ v : aview, app_pred app_run v -∗
-            app_pred app_run v ∗ (⌜echo_fs_pure v⌝ ∨ T))
+            app_pred app_run v ∗ (⌜Pure v⌝ ∨ T))
      (* (c) the CREDENTIAL's law -- what the FIRST open runs on.  At the
         KEY arm [Pv] is [cons_absent]; at the FLAG arm it is
         [cons_present_at i]. *)
@@ -1009,7 +1015,7 @@ Section UInitCons.
             app_pred app_run (delta_arm i (ADev CONSOLE 0) av))
      (* (e) the unarm leg *)
      ∗ □ (∀ (av0 av : aview) (i : Z),
-            ⌜av0 !! i = None⌝ -∗ ⌜echo_fs_pure av0⌝ -∗ ⌜Pv av0⌝ -∗
+            ⌜av0 !! i = None⌝ -∗ ⌜Pure av0⌝ -∗ ⌜Pv av0⌝ -∗
             ⌜Pv av⌝ -∗
             app_pred app_run av -∗
             app_pred app_run (delta_unarm i av))
@@ -1029,22 +1035,26 @@ Section UInitCons.
      (* (h) the SHOOT: phase 2 of the commit, and the flag out *)
      ∗ □ (∀ (av : aview) (i : Z), ⌜cons_present_at i av⌝ -∗
             app_pred app_run av ==∗
-            app_pred app_run av ∗ (cons_made r i ∨ T))
+            app_pred app_run av ∗ (Made i ∨ T))
      (* (i) ...AND THE PRESENT LAW THE SECOND OPEN RUNS ON.  Not one of the
         mknod step's eight: it is a CONSEQUENCE of the flag the step mints,
         and it is what turns the flag into the pin the resolving open is
         stated at. *)
-     ∗ □ (∀ i : Z, cons_made r i -∗
+     ∗ □ (∀ i : Z, Made i -∗
             □ (∀ v : aview, app_pred app_run v -∗
                  app_pred app_run v ∗ (⌜cons_present_at i v⌝ ∨ T))))%I.
 
   (* ...and the landed name, at the ABSENT arm: every consumer that does
-     not care which credential is in play keeps working by delta. *)
+     not care which credential is in play keeps working by delta.  IT IS
+     THE ECHO INSTANCE, DEFINITIONAL: the pure half of the claim is
+     [EchoFsPure.echo_fs_pure] and the flag is [AppEcho.cons_made r], so
+     every consumer stated at [init_cons_laws] is unchanged by the
+     parameterisation. *)
   Definition init_cons_laws (T K : iProp Σ) (r : echo_names) : iProp Σ :=
-    init_cons_laws_at cons_absent T K r.
+    init_cons_laws_at echo_fs_pure (cons_made r) cons_absent T K.
 
-  Global Instance init_cons_laws_at_persistent Pv (T K : iProp Σ)
-      (r : echo_names) : Persistent (init_cons_laws_at Pv T K r).
+  Global Instance init_cons_laws_at_persistent Pure Made Pv (T K : iProp Σ) :
+    Persistent (init_cons_laws_at Pure Made Pv T K).
   Proof using . rewrite /init_cons_laws_at /init_cons_pin_law. apply _. Qed.
 
   Global Instance init_cons_laws_persistent (T K : iProp Σ) (r : echo_names) :
@@ -1086,22 +1096,24 @@ Section UInitCons.
 
   (* ---- the three bundles, restated against the bundle ---- *)
 
-  Lemma init_cons_laws_mknod_bundle (γfs : fs_names) (r : echo_names)
+  Lemma init_cons_laws_mknod_bundle (γfs : fs_names)
+      (Pure : aview -> Prop) (Made : Z -> iProp Σ)
       (Pv : aview -> Prop)
       (T K : iProp Σ) `{!Persistent T} `{!Timeless T} `{!Timeless K}
       `{HTL : forall v : aview, Timeless (app_pred app_run v)}
       (M : gmap Z (bv 8)) (pv : mword 64) :
     arg_path_of M pv init_cons_pl ->
-    init_cons_laws_at Pv T K r -∗
+    init_cons_laws_at Pure Made Pv T K -∗
     app_inv γfs -∗
     K -∗
     mknod_au_at (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv CONSOLE 0
       (init_mk_P T) (fun _ _ => True%I)
-      (init_mk_Farm Pv T K) (init_mk_Fun T K) (init_mk_Fok r T K) init_mk_Fex.
+      (init_mk_Farm Pure Pv T K) (init_mk_Fun T K) (init_mk_Fok Made T K)
+      init_mk_Fex.
   Proof using .
     intros Hpath. rewrite /init_cons_laws_at.
     iIntros "(#Ha & #Hb & #Hc & #Hd & #He & #Hf & #Hg & #Hh & _) #Hinv HK".
-    iApply (init_cons_mknod_bundle γfs r Pv T K M pv Hpath
+    iApply (init_cons_mknod_bundle γfs Pure Made Pv T K M pv Hpath
               with "Ha Hb Hc Hd He Hf Hg Hh Hinv HK").
   Qed.
 
@@ -1128,7 +1140,8 @@ Section UInitCons.
               Farm Fun Fok Fex Hom Hpath with "Hc Hfree Hinv HK").
   Qed.
 
-  Lemma init_cons_laws_open_console (γfs : fs_names) (r : echo_names)
+  Lemma init_cons_laws_open_console (γfs : fs_names)
+      (Pure : aview -> Prop) (Made : Z -> iProp Σ)
       (Pv : aview -> Prop)
       (T K : iProp Σ) `{!Persistent T} `{!Timeless T} (i : Z)
       (M : gmap Z (bv 8)) (pv vom : mword 64)
@@ -1137,15 +1150,18 @@ Section UInitCons.
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
     om_arg vom = 2 ->
     arg_path_of M pv init_cons_pl ->
-    init_cons_laws_at Pv T K r -∗
-    cons_made r i -∗
+    init_cons_laws_at Pure Made Pv T K -∗
+    Made i -∗
     app_inv γfs -∗
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T) Farm Fun Fok Fex
       (pobs_Fo (cons_present_at i) T) Ft.
   Proof using .
     intros Hom Hpath. rewrite /init_cons_laws_at.
-    iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & #Hi) #Hm #Hinv".
+    (* THE FLAG IS SPENT LINEARLY HERE, which is what keeps the lemma
+       usable at a claim whose [Made] is a DEED and not a persistent flag:
+       law (i) reads it once and what comes back is the [□] pin law. *)
+    iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & #Hi) Hm #Hinv".
     iDestruct ("Hi" $! i with "Hm") as "#Hcl".
     iApply (init_cons_open_bundle_rdwr γfs T i M pv vom Ft
               Farm Fun Fok Fex Hom Hpath with "Hcl Hinv").
@@ -1201,7 +1217,8 @@ Section UInitCons.
   Lemma init_cons_laws_made_echo (γ : echo_fixed) (r : echo_names) (i0 : Z) :
     file_app = MkAppcfg echo_names (echo_pred γ) r ->
     cons_made r i0 -∗
-    init_cons_laws_at (cons_present_at i0) (echo_taint γ) (cons_made r i0) r.
+    init_cons_laws_at echo_fs_pure (cons_made r) (cons_present_at i0)
+      (echo_taint γ) (cons_made r i0).
   Proof using .
     intros Heq. rewrite /init_cons_laws_at /init_cons_pin_law.
     rewrite Heq. rewrite /app_sup. cbn [app_pred app_run app_names].

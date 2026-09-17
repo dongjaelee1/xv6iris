@@ -247,12 +247,12 @@ Section FsAbsInvFire.
   Qed.
 
   Lemma fsabs_awrite_chain (γfs : fs_names) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k cnt : nat) :
+      (M : gmap Z (bv 8)) (ua : mword 64) (n : Z) (k cnt : nat) :
     app_sup -∗
-    awrite_chain (fs_gamma_L γfs) appE i γo M ua (fun _ => True%I) k cnt.
+    awrite_chain (fs_gamma_L γfs) appE i γo M ua n (fun _ => True%I) k cnt.
   Proof using .
     iIntros "#Hsup".
-    iApply (awrite_chain_unit γfs appE i γo M ua k cnt with "Hsup").
+    iApply (awrite_chain_unit γfs appE i γo M ua n k cnt with "Hsup").
   Qed.
 
   (* READ'S WHOLE INPUT, at the trivial receipt and the trivial refund, AND
@@ -367,7 +367,7 @@ Section FsAbsInvFire.
     destruct wb; [| by iModIntro].
     destruct ty as [i γo om | γp | ma].
     - iModIntro.
-      iApply (fsabs_awrite_chain fsc_fs i γo M ua 0%nat (wchunks n)
+      iApply (fsabs_awrite_chain fsc_fs i γo M ua n 0%nat (wchunks n)
                 with "Hsup").
     - (* the pipe arm: the taint *)
       iModIntro. by iApply pipe_wpay_taint.

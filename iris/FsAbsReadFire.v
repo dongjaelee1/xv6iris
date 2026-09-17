@@ -251,7 +251,15 @@ Section ReadFire.
     (∀ (I : gmap Z fs_node) (off : nat) (a : anode) (d : nat),
        ⌜ard_pre (abs_view I) i off a⌝ -∗
        ghost_map_auth (γtop Γ) (1/2) I -∗ off_gv γo (1/2) (Z.of_nat off) ={E}=∗
-       ghost_map_auth (γtop Γ) (1/2) I ∗ off_gv γo (1/2) (Z.of_nat off) ∗
+       ghost_map_auth (γtop Γ) (1/2) I ∗
+       (* THE HALF COMES BACK AT ONE OF TWO VALUES (lane WRITE-RELAY, for
+          lane SKELETON's [Hoff_link]), the write nodes' shape at the read:
+          UNMOVED, which is all a client with no user half can do, or
+          ADVANCED BY THE COUNT [d], which a client whose closure holds
+          [UserOff.uoff] must do -- cat's held read advances by what it
+          read.  The choice is the CLIENT's; every commit in the tree today
+          proves it with [UserOff.off_ret_keep] and nothing else moved. *)
+       off_ret γo off d ∗
        Φ (abs_view I) off a d)%I.
 
   (* satisfiability, FROM NOTHING: the borrow comes back exactly as it was
@@ -261,7 +269,8 @@ Section ReadFire.
     ⊢ aread_commit_at Γ E i γo (fun _ _ _ _ => True%I).
   Proof using .
     rewrite /aread_commit_at. iIntros (I off a d) "%Hpre Ha Hk".
-    iModIntro. by iFrame "Ha Hk".
+    iModIntro. iFrame "Ha". iSplitL "Hk";
+      [iApply (off_ret_keep with "Hk") | done].
   Qed.
 
   (* THE AGREEMENT AT THE RAW AUTHORITY.  [astate_nview] reads a client
@@ -294,7 +303,7 @@ Section ReadFire.
     iIntros (I off a d) "%Hpre Ha Hk".
     iDestruct (arf_auth_nview with "Ha Hn") as %Hav.
     (* the reading is all the seed needs, and it is the borrow's own *)
-    iModIntro. iFrame "Ha Hk".
+    iModIntro. iFrame "Ha". iSplitL "Hk"; [iApply (off_ret_keep with "Hk") |].
     iApply ("HΦ" $! (abs_view I) off a d with "[%] Hn").
     exact Hav.
   Qed.
@@ -313,7 +322,7 @@ Section ReadFire.
     iDestruct (arf_auth_nview with "Ha Hn") as %Hav.
     destruct Hpre as (Hrow & _ & _).
     assert (a = b) as -> by exact (arow_at_pinned _ _ _ _ Hrow Hav).
-    iModIntro. iFrame "Ha Hk".
+    iModIntro. iFrame "Ha". iSplitL "Hk"; [iApply (off_ret_keep with "Hk") |].
     iApply ("HΦ" $! (abs_view I) off d with "[%] Hn").
     exact Hav.
   Qed.

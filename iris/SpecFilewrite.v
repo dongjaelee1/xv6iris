@@ -611,7 +611,7 @@ Section SpecFilewrite.
        ⌜Z.of_nat (length (concat bss)) = n⌝ ∗
        ⌜(length bss <= wchunks n)%nat⌝ ∗
        ⌜ubytes_at M ua (concat bss)⌝ ∗
-       awrite_chain Γ appE i γo M ua Q (length bss)
+       awrite_chain Γ appE i γo M ua n Q (length bss)
          (wchunks n - length bss)%nat)%I.
 
   (* ret -1: filewrite's honest partial arm.  A PREFIX of chunks fired --
@@ -632,7 +632,7 @@ Section SpecFilewrite.
        ⌜(length bss + x <= wchunks n)%nat⌝ ∗
        ⌜(x <= 1)%nat⌝ ∗
        ⌜ubytes_at M ua (concat bss)⌝ ∗
-       awrite_chain Γ appE i γo M ua Q (length bss + x)
+       awrite_chain Γ appE i γo M ua n Q (length bss + x)
          (wchunks n - length bss - x)%nat)%I.
 
   (* THERE IS NO THIRD ARM ("the row does not read as a FILE"):
@@ -795,7 +795,7 @@ Section SpecFilewrite.
       (Qe : nat -> pipe_st -> iProp Σ) : iProp Σ :=
     match st with
     | FdOpen _ true (FdInode i γo _) =>
-        awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua Q 0%nat (wchunks n)
+        awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n)
     | FdOpen _ true (FdDevice _) =>
         cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n)
     (* the pipe: the caller's links over the byte queue at its cursor, one
@@ -856,7 +856,7 @@ Section SpecFilewrite.
 
   Lemma filewrite_in_inode rb i γo n M ua Q Qe :
     filewrite_in (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe -∗
-    awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua Q 0%nat (wchunks n).
+    awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n).
   Proof using . by iIntros "$". Qed.
 
   (* the device arm's input is now the OUTPUT CHAIN (lane OUT-FUPD), the
@@ -933,7 +933,7 @@ Section SpecFilewrite.
      arm is [emp]. *)
   Lemma write_arms_at_neg Γ i γo n M ua Q :
     (n < 0)%Z ->
-    awrite_chain Γ appE i γo M ua Q 0%nat (wchunks n) -∗
+    awrite_chain Γ appE i γo M ua n Q 0%nat (wchunks n) -∗
     write_arms_at Γ i γo n M ua Q (mword_of_int (-1) : mword 64).
   Proof using .
     intros Hn. iIntros "Hc". rewrite /write_arms_at. iRight.

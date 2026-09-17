@@ -76,6 +76,7 @@ Require Import InodeInv.           (* [MAXFILE] *)
 Require Import BioDefs.            (* [BSIZE] *)
 Require Import UserPtTree.         (* [uptd]: the table the read's -1 reason is at *)
 Require Import FsAbsReadFire.      (* [aread_commit_at] / [read_arms] *)
+Require Import OffGv.              (* [off_ret_keep]: the commit's answer *)
 Require Import FsAbsEra.
 Require Import TreeView.
 Require Import AppTree.
@@ -429,7 +430,8 @@ Section UkTreeRead.
     iMod ("Hclose" with "[Hh Hp]") as "_".
     { iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
       iPureIntro. exact Hdom. }
-    iModIntro. iFrame "Hka Hoff". iExact "Hc".
+    iModIntro. iFrame "Hka".
+    iSplitL "Hoff"; [iApply (off_ret_keep with "Hoff") |]. iExact "Hc".
   Qed.
 
   (* ...AND THE ARMS, READ.  [UkReadFile.read_arms_file_learn] with the

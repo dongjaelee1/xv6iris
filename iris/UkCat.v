@@ -40,6 +40,7 @@ Local Open Scope Z_scope.
 Import Defs.
 
 Require Import FdSlots.   (* [fdstate]/[fdtype] -- what a handle names *)
+Require Import PipeNames. (* [pipe_names] -- what a pipe descriptor carries *)
 Require Import ProcGeom.  (* [NOFILE] -- how many slots a table has *)
 Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for
@@ -146,10 +147,11 @@ Section UkCat.
      with all three open (its own [fprintf(2, ...)] assumes as much) and
      therefore never opens onto one.  The ledger goes in and comes straight
      back: cat's open does not touch it, and neither does its close. *)
+  (* ...AT THE ONE LAW IT SPENDS (lane CAT-WALK, W1). *)
   Lemma wp_kcat_open (h : CpuId) (m : regfile) (l : list fdstate)
       (avail : nat) :
     fd_lowest_closed l = None ->
-    cat_deps -∗
+    udepw_law 15 -∗
     cat_code γt -∗
     urun N h m (mword_of_int CatSyms.open) avail -∗
     ustd γfd l -∗
@@ -203,8 +205,7 @@ Section UkCat.
               with "[] Hrun [] Hstd").
     { iApply (uis_cat_3ee with "Hcode"). }
     (* THE FLAGGED DEPOSIT: open(15) (P4) *)
-    { iApply (udepw_of_law N m1 (mword_of_int 0x3ee) 15 with "[Hdp]").
-      iDestruct "Hdp" as "(_ & $ & _ & _)". }
+    { iApply (udepw_of_law N m1 (mword_of_int 0x3ee) 15 with "Hdp"). }
     assert (E1open : add_vec_int (mword_of_int 0x3ee : mword 64) 4
                    = mword_of_int 0x3f2)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -248,13 +249,40 @@ Section UkCat.
      descriptor in a0 IS the one the handle is for -- read as [argfd] reads
      it -- which is what the caller establishes from open's own return
      equation. *)
+  (* THE CLOSE ROW, ABSTRACTLY (lane CAT-WALK, W1/W3).  design/pipe.md
+     makes close(21) a claim number: a pipe descriptor's last close steps
+     the pipe's ghost state.  Whether cat's row is free is a fact about
+     the TYPE its own open returned, and the two arms differ:
+     [wp_kcat_open]'s U-tier row leaves the type existential and the close
+     is paid from the flagged deposit ([kcat_cldep_of_law]), while
+     [UkFileOpen.wp_uk_ecall_open_read_deed]'s hands back
+     [FdInode i γo OffParked], which is not a pipe, and the close costs
+     NOTHING ([kcat_cldep_nonpipe]).  So THE DEED ARM MOVES 21 OUT OF
+     [cat_deps]: it is the one law of the four a deed-aware entry does not
+     have to supply. *)
+  Definition kcat_cldep (st : fdstate) : iProp Σ :=
+    (□ ∀ (m : regfile) (pc : mword 64), udepw_cl N m pc st)%I.
+
+  Lemma kcat_cldep_of_law (st : fdstate) : udepw_law 21 -∗ kcat_cldep st.
+  Proof using .
+    iIntros "#H !>" (m pc).
+    iApply (udepw_cl_of_udepw N m pc st).
+    iApply (udepw_of_law N m pc 21 with "H").
+  Qed.
+
+  Lemma kcat_cldep_nonpipe (st : fdstate) :
+    (forall (rb wb : bool) (gp : pipe_names),
+       st <> FdOpen rb wb (FdPipe gp)) ->
+    ⊢ kcat_cldep st.
+  Proof using .
+    intros Hnp. iIntros "!>" (m pc).
+    iApply (udepw_cl_nonpipe N m pc st Hnp).
+  Qed.
+
   Lemma wp_kcat_close (h : CpuId) (m : regfile) (fd : nat) (st : fdstate)
       (avail : nat) :
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
-    (* THE CLOSE DEPOSIT (design/pipe.md): cat's descriptor came from
-       [open], whose U-tier row leaves the type existential, so the row is
-       paid from cat's own named deposits rather than from the free law. *)
-    cat_deps -∗
+    kcat_cldep st -∗
     cat_code γt -∗
     urun N h m (mword_of_int CatSyms.close) avail -∗
     ufd γfd fd st -∗
@@ -303,9 +331,7 @@ Section UkCat.
               ltac:(vm_compute; reflexivity)
               with "[] Hrun [] Hfdh").
     { iApply (uis_cat_3d6 with "Hcode"). }
-    { iApply (udepw_cl_of_udepw N m1 (mword_of_int 0x3d6) st).
-      iApply (udepw_of_law N m1 (mword_of_int 0x3d6) 21 with "[Hdp]").
-      iDestruct "Hdp" as "(_ & _ & _ & $)". }
+    { iApply "Hdp". }
     assert (E1close : add_vec_int (mword_of_int 0x3d6 : mword 64) 4
                    = mword_of_int 0x3da)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -1059,6 +1085,81 @@ Section UkCat.
               with "Hrd Hcode Hbs Hrun").
     iIntros (h' ret g) "Hbs Hrun".
     iApply ("Hcont" $! h' ret g with "[HRi] Hbs Hrun"). by iApply Hm.
+  Qed.
+
+  (* ===================================================================== *)
+  (* WHAT main's TURN SPENDS PER open AND PER close (lane CAT-WALK, W1/W3). *)
+  (*                                                                       *)
+  (* [kcat_w]'s and [kcat_r]'s twins at open(15) and close(21), and they    *)
+  (* exist for W3's reason: the FREE leaf's post leaves the descriptor's    *)
+  (* TYPE existential and ties it to nothing, while                         *)
+  (* [UkFileOpen.wp_uk_ecall_open_read_deed] hands back a handle ON THE     *)
+  (* DEED'S OWN INUM and [wp_uk_ecall_open_miss_deed] refutes the success   *)
+  (* arm outright.  The two leaves take DIFFERENT deposits, so no single    *)
+  (* stub can be both: what the walk names is the obligation, and each      *)
+  (* leaf is one instance of it.  THE LEDGER RIDES IN [Oi]/[Oo] for the     *)
+  (* same reason -- the free arm gives [ustd] back untouched and the deed   *)
+  (* arm gives [ualloc] -- which is why the walk above no longer mentions   *)
+  (* [UserFd.ustd] at all.                                                 *)
+  (* ===================================================================== *)
+  Definition kcat_o (pv : mword 64) (Oi : iProp Σ)
+      (Oo : mword 64 -> iProp Σ) : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (avail : nat),
+       ⌜m !!! Regidx a0_idx = pv⌝ -∗
+       ⌜m !!! Regidx a1_idx = (mword_of_int 0 : mword 64)⌝ -∗
+       cat_code γt -∗
+       Oi -∗
+       urun N h m (mword_of_int CatSyms.open) avail -∗
+       (∀ (h' : CpuId) (ret : mword 64),
+          Oo ret -∗
+          urun N h'
+            (<[Regidx a0_idx := ret]>
+               (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
+            (ret_pc (m !!! Regidx ra_idx)) avail -∗
+          WP (Loop : expr riscv_lang)) -∗
+       WP (Loop : expr riscv_lang))%I.
+
+  Lemma kcat_o_of_law (pv : mword 64) (l : list fdstate) (Oi : iProp Σ)
+      (Oo : mword 64 -> iProp Σ) :
+    fd_lowest_closed l = None ->
+    (forall ret : mword 64,
+       ((((∃ (fd : nat) (rd wr : bool) (t : fdtype),
+             ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
+              /\ (fd < NOFILE)%nat⌝ ∗ ufd γfd fd (FdOpen rd wr t))
+          ∨ ⌜ret = (mword_of_int (-1) : mword 64)⌝)
+         ∗ ustd γfd l) ∗ Oi) ⊢ Oo ret) ->
+    udepw_law 15 -∗ ustd γfd l -∗ kcat_o pv Oi Oo.
+  Proof using .
+    intros Hnone Hm. iIntros "#Hop Hstd" (h m avail) "_ _ #Hcode HOi Hrun Hcont".
+    iApply (wp_kcat_open h m l avail Hnone with "Hop Hcode Hrun Hstd").
+    iIntros (h' ret) "Hfdh Hstd Hrun".
+    iApply ("Hcont" $! h' ret with "[Hfdh Hstd HOi] Hrun").
+    iApply (Hm ret). iFrame "Hfdh Hstd HOi".
+  Qed.
+
+  Definition kcat_cl (fd : nat) (Ci Co : iProp Σ) : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (avail : nat),
+       ⌜bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd⌝ -∗
+       cat_code γt -∗
+       Ci -∗
+       urun N h m (mword_of_int CatSyms.close) avail -∗
+       (∀ (h' : CpuId) (ret : mword 64),
+          Co -∗
+          urun N h'
+            (<[Regidx a0_idx := ret]>
+               (<[Regidx a7_idx := (mword_of_int 21 : mword 64)]> m))
+            (ret_pc (m !!! Regidx ra_idx)) avail -∗
+          WP (Loop : expr riscv_lang)) -∗
+       WP (Loop : expr riscv_lang))%I.
+
+  Lemma kcat_cl_of_dep (fd : nat) (st : fdstate) (Ci Co : iProp Σ) :
+    (Ci ⊢ Co) ->
+    kcat_cldep st -∗ ufd γfd fd st -∗ kcat_cl fd Ci Co.
+  Proof using .
+    intros Hm. iIntros "#Hdp Hfdh" (h m avail) "%Ha0 #Hcode HCi Hrun Hcont".
+    iApply (wp_kcat_close h m fd st avail Ha0 with "Hdp Hcode Hrun Hfdh").
+    iIntros (h' ret) "Hrun".
+    iApply ("Hcont" $! h' ret with "[HCi] Hrun"). by iApply Hm.
   Qed.
 
 End UkCat.

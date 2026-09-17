@@ -1,20 +1,4 @@
 (* ===================================================================== *)
-(*  NOT YET IN [iris/_CoqProject] -- LANE LINK-GEN-2's WORK IN PROGRESS.  *)
-(*                                                                       *)
-(*  This file is the FILE application's half of [LinkRec]: the pure       *)
-(*  algebra is written and the credential families are written, and       *)
-(*  NEITHER HAS BEEN COMPILED, because the post-merge rebuild that would  *)
-(*  produce its dependencies ([AppEcho.vo] and everything above it, after *)
-(*  lane SUP-ONE's rename) was still running when the lane reported.  It  *)
-(*  is committed UNREGISTERED so that nothing builds it and nothing is    *)
-(*  lost; add the line to [_CoqProject] and iterate.                      *)
-(*                                                                       *)
-(*  AND IT CANNOT CLOSE AS IT STANDS: [LinkRec.lk_pan] and [lk_exf] are   *)
-(*  typed [nat] and must be [list (bv 8) -> nat] (see the lane's findings *)
-(*  in claude-notes/projects/app-file.md), so [file_link_inst] is blocked *)
-(*  on a five-line change to [LinkRec.v] that lane LINK-GEN-3 owns.       *)
-(* ===================================================================== *)
-(* ===================================================================== *)
 (*  FileLinksLine.v -- THE FILE APPLICATION'S CREDENTIAL FAMILIES.        *)
 (*                                                                       *)
 (*  Lane LINK-GEN-2.  [LinkRec.LinkRec]'s fields at the FILE claim:       *)
@@ -1039,6 +1023,7 @@ Proof using.
   - left.
     pose proof (alts_pre_at I0 cs0 (nlines I - 1)%nat Hao Hlt) as Hok.
     destruct (bodies_of_prefix I I0 Hp) as [z Hz].
+    rewrite /nlines in Hq.
     rewrite Hz list_lookup_total_alt lookup_app_l in Hok;
       [| rewrite /nlines; lia].
     by rewrite -list_lookup_total_alt in Hok.
@@ -1065,6 +1050,7 @@ Proof using.
   destruct Hw as [Hw | Hw]; last first.
   { (* THE BLOCK IS OWED: its first byte is unwritten *)
     pose proof (wr_blk_nonnil_f ps cs s0 I P Hw) as Hnil.
+    pose proof (wr_blk_started_f ps cs s0 I P Hw) as Hstar.
     pose proof Hw as (Hpin & Hm & Hdv & HP).
     assert (Hb1 : (nlines (removelast I) <= length cs)%nat)
       by (rewrite (fop_nlines_removelast I Hm); lia).
@@ -1172,6 +1158,7 @@ Section file_links_line.
             !fileOutG Σ}.
   Context (g : file_gn).
   Context `{HRg : !riscvGS Σ}.
+  Context `{GEN : GenId}.
 
   Local Notation FT := (file_taint (fgn_cl g)).
 
@@ -1530,11 +1517,536 @@ Section file_links_line.
                     (length (fab I (fpan_of (fline I))))
                   = cs ++ [fpan_of (fline I)]).
     { rewrite (fab_pan I) alt_panic_len5. reflexivity. }
-    rewrite Hbc Nat.add_0_r.
+    rewrite Hbc.
     iLeft. iExists ps, (cs ++ [fpan_of (fline I)]), s0,
       (P + length (fab I (fpan_of (fline I))))%nat.
     iFrame "Htn Hps Hcs HE Hf". iPureIntro. cbn [wr_banp_f].
     exact (wr_blk_ban_f ps cs s0 I P Hw).
+  Qed.
+
+
+  (* =================================================================== *)
+  (*  S9  THE STEPS, THROUGH [FileLinks.file_links]                       *)
+  (* =================================================================== *)
+  Local Notation FPIN := (era_pin (fgn_echo g)).
+
+  Lemma fi_pin_epin (k : nat) (v : era_pins) :
+    era_pin (fgn_echo g) k v -∗ era_pin (fgn_echo g) k v.
+  Proof using . by iIntros "$". Qed.
+
+  (* ---- /init's banner ---- *)
+  Lemma fban_step (k : nat) (v : era_pins) (I : list (bv 8)) (i : nat)
+      (b : bv 8) (Φ : iProp Σ) :
+    u_banner !! i = Some b ->
+    FPIN k v -∗ file_links g -∗ fwc_ban k v I i -∗
+    (fwc_ban k v I (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iDestruct (file_links_w with "Hlk") as "#Hw".
+    iDestruct (file_links_pro with "Hlk") as "#Hpro".
+    iDestruct (file_links_first with "Hlk") as "#Hfst".
+    iDestruct (file_links_taint with "Hlk") as "#Ht".
+    rewrite {1}/fwc_ban.
+    iDestruct "Hc" as "[Hl | [[%Hi0 Hh] | #HT]]"; last first.
+    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
+      iIntros "#HT'". iApply "HΦ". by iApply fwc_ban_taint. }
+    { (* THE ERA'S HEAD: the first byte FILES the boot state *)
+      subst i. rewrite /fhead.
+      iDestruct "Hh" as "(-> & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
+      iDestruct "Hvf" as (vf) "#Hvf".
+      iDestruct "Hpre" as (s0) "[%Hok Hty]".
+      iApply ("Hfst" $! (S gen_id) v vf 3%nat b s0 Φ
+                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hty [HΦ]").
+      { exact Hok. }
+      { rewrite pro_alts_length. lia. }
+      { exact (EchoLinks.wr_ban_head b Hb). }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_ban.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0) | #HT]";
+        last by (iRight; iRight).
+      iLeft. iExists [3%nat], [], s0, 0%nat.
+      rewrite Nat.add_0_l. iFrame "Htn' Hps' Hcs' HE'".
+      iSplitR.
+      { iPureIntro. cbn [wr_banp_f]. exists []. split; [reflexivity |].
+        exact (wr_ban_round0_f s0). }
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0". }
+    iDestruct "Hl" as (ps cs s0 P)
+      "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    destruct i as [| i'].
+    - (* the first byte FILES the banner letter *)
+      cbn [wr_banp_f] in Hw.
+      pose proof (wr_ban_pro_f ps cs s0 I P Hw) as Hpr.
+      pose proof Hw as (Hpin0 & Hm & Hdv & Hr & _).
+      destruct Hpr as (_ & _ & _ & _ & Hnd & HP).
+      rewrite Nat.add_0_r.
+      rewrite /f0w. iDestruct "Hf" as "[%Hk Hvf]".
+      iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
+      iApply ("Hpro" $! k v vf P 3%nat b ps cs s0 I Φ
+                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+      { exact Hm. }
+      { exact Hr. }
+      { lia. }
+      { exact Hpin0. }
+      { exact Hnd. }
+      { exact HP. }
+      { rewrite pro_alts_length. lia. }
+      { exact (EchoLinks.wr_ban_head b Hb). }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_ban.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+        last by (iRight; iRight).
+      iLeft. iExists (ps ++ [3%nat]), cs, s0, P.
+      replace (P + 1)%nat with (S P) by lia.
+      iFrame "Htn' Hps' Hcs' HE'".
+      iSplitR; [iPureIntro; cbn [wr_banp_f]; by exists ps |].
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+    - (* every later byte is an ordinary write of the filed letter *)
+      cbn [wr_banp_f] in Hw. destruct Hw as (ps' & -> & Hw).
+      pose proof (wr_ban_byte_f ps' cs s0 I P (S i') b Hw Hb) as Hby.
+      pose proof Hw as (Hpin0 & Hm & Hdv & Hr & _).
+      rewrite /f0w. iDestruct "Hf" as "[%Hk Hvf]".
+      iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
+      iApply ("Hw" $! k v vf (P + S i')%nat b (ps' ++ [3%nat]) cs s0 I Φ
+                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+      { lia. }
+      { exact (pro_pin_f_mono ps' (ps' ++ [3%nat]) cs I ltac:(by eexists)
+                 Hpin0). }
+      { exact Hby. }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_ban.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+        last by (iRight; iRight).
+      iLeft. iExists (ps' ++ [3%nat]), cs, s0, P.
+      replace (P + S (S i'))%nat with (S (P + S i'))%nat by lia.
+      iFrame "Htn' Hps' Hcs' HE'".
+      iSplitR; [iPureIntro; cbn [wr_banp_f]; by exists ps' |].
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+  Qed.
+
+  (* ---- one byte of a block ---- *)
+  Lemma fblk_step (k : nat) (v : era_pins) (I : list (bv 8)) (a i : nat)
+      (b : bv 8) (Φ : iProp Σ) :
+    fab I a !! i = Some b ->
+    FPIN k v -∗ file_links g -∗ fwc_blk k v I a i -∗
+    (fwc_blk k v I a (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iDestruct (file_links_w with "Hlk") as "#Hw".
+    iDestruct (file_links_blk with "Hlk") as "#Hblk".
+    iDestruct (file_links_taint with "Hlk") as "#Ht".
+    destruct (fab_ok I a i b Hb) as [Hok Hfr].
+    rewrite {1}/fwc_blk. iDestruct "Hc" as "[Hl | #HT]"; last first.
+    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
+      iIntros "#HT'". iApply "HΦ". by iApply fwc_blk_taint. }
+    iDestruct "Hl" as (ps cs s0 P)
+      "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    pose proof (proj1 Hw) as Hwb.
+    pose proof Hwb as (Hpin0 & Hr & Hn & HP).
+    pose proof (wr_blk_nonnil_f ps cs s0 I P Hwb) as Hne.
+    rewrite /f0w. iDestruct "Hf" as "[%Hk Hvf]".
+    iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
+    destruct i as [| i'].
+    - (* THE BLOCK-FIRST BYTE files the alternative *)
+      cbn [blkcs_f]. rewrite Nat.add_0_r.
+      iApply ("Hblk" $! k v vf P a b ps cs s0 I Φ
+                with "[%] [%] [%] [%] [%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+      { exact Hne. }
+      { exact Hr. }
+      { rewrite Hn. lia. }
+      { exact Hpin0. }
+      { exact HP. }
+      { rewrite -/(fline I). exact Hok. }
+      { rewrite -/(fline I) -(fab_at I a _ Hok Hfr). exact Hb. }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_blk.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+        last by iRight.
+      iLeft. iExists ps, cs, s0, P. cbn [blkcs_f].
+      replace (P + 1)%nat with (S P) by lia.
+      iFrame "Htn' Hps' Hcs' HE'". iSplitR; [by iPureIntro |].
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+    - (* every byte after it, at the choice list the first one extended *)
+      cbn [blkcs_f].
+      iApply ("Hw" $! k v vf (P + S i')%nat b ps (cs ++ [a]) s0 I Φ
+                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+      { rewrite length_app Hn. cbn [length]. lia. }
+      { exact (wr_blk_pin_snoc_f ps cs s0 I P a Hwb). }
+      { pose proof (wr_blk_pending_pre_f ps cs s0 I P a Hwb Hok Hfr) as Hpre.
+        rewrite /proc_stream_f (wr_blk_low_f ps cs s0 I P a Hwb)
+                lookup_app_r; [| lia].
+        replace (P + S i' - length (proc_before_f ps cs (Some s0) I))%nat
+          with (S i') by lia.
+        exact (prefix_lookup_Some _ _ _ _ Hb Hpre). }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_blk.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+        last by iRight.
+      iLeft. iExists ps, cs, s0, P. cbn [blkcs_f].
+      replace (P + S (S i'))%nat with (S (P + S i'))%nat by lia.
+      iFrame "Htn' Hps' Hcs' HE'". iSplitR; [by iPureIntro |].
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+  Qed.
+
+  (* ---- the era's very first byte, as the shell's bare prompt ---- *)
+  Lemma wr_sp_f_head (s0 : fst) : wr_sp_f [0%nat] [] s0 [] 1%nat.
+  Proof using .
+    assert (Hstr : proc_stream_f [0%nat] [] (Some s0) [] = u_prompt).
+    { rewrite /proc_stream_f proc_before_f_nil pending_at_f_nil app_nil_l.
+      by vm_compute. }
+    split.
+    - rewrite /wr_open_f. split_and!.
+      + exact pro_pin_f_nil.
+      + exact rest_of_nil.
+      + by rewrite nlines_nil.
+      + rewrite nlines_nil. cbn [pro_idx_f].
+        rewrite EchoLinks.pro_rounds_one. lia.
+      + rewrite Hstr EchoLinks.wr_prompt_len. reflexivity.
+    - rewrite Hstr. exact EchoLinks.wr_prompt_tail.
+  Qed.
+
+  (* the head arm's '$': [file_write_link_first] at alternative 0 *)
+  Lemma fhead_dollar (k : nat) (v : era_pins) (I : list (bv 8))
+      (b : bv 8) (Φ : iProp Σ) :
+    b = u_prompt !!! 0%nat ->
+    FPIN k v -∗ file_links g -∗ fhead k v I -∗
+    (fwc_sp k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb. iIntros "#Hpin #Hlk Hh HΦ".
+    iDestruct (file_links_first with "Hlk") as "#Hfst".
+    rewrite /fhead.
+    iDestruct "Hh" as "(-> & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
+    iDestruct "Hvf" as (vf) "#Hvf".
+    iDestruct "Hpre" as (s0) "[%Hok Hty]".
+    iApply ("Hfst" $! (S gen_id) v vf 0%nat b s0 Φ
+              with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hty [HΦ]").
+    { exact Hok. }
+    { rewrite pro_alts_length. lia. }
+    { rewrite EchoLinks.wr_pro_alts_0 Hb. exact EchoLinks.wr_prompt_head. }
+    iIntros "Hres". iApply "HΦ". rewrite /fwc_sp.
+    iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0) | #HT]";
+      last by iRight.
+    iLeft. iExists [0%nat], [], s0, 1%nat.
+    iFrame "Htn' Hps' Hcs' HE'".
+    iSplitR; [iPureIntro; exact (wr_sp_f_head s0) |].
+    rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0".
+  Qed.
+
+  (* ---- the prompt's '$' at the LOOSE boundary ---- *)
+  Lemma fprompt_dollar (k : nat) (v : era_pins) (I : list (bv 8))
+      (b : bv 8) (Φ : iProp Σ) :
+    b = u_prompt !!! 0%nat ->
+    FPIN k v -∗ file_links g -∗ fwc_owed k v I -∗
+    (fwc_sp k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iDestruct (file_links_blk with "Hlk") as "#Hblk".
+    iDestruct (file_links_pro with "Hlk") as "#Hpro".
+    iDestruct (file_links_taint with "Hlk") as "#Ht".
+    rewrite {1}/fwc_owed.
+    iDestruct "Hc" as "[Hl | [Hh | #HT]]"; last first.
+    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
+      iIntros "#HT'". iApply "HΦ". by iApply fwc_sp_taint. }
+    { iApply (fhead_dollar k v I b Φ Hb with "Hpin Hlk Hh HΦ"). }
+    iDestruct "Hl" as (ps cs s0 P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    rewrite /f0w. iDestruct "Hf" as "[%Hk Hvf]".
+    iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
+    destruct Hw as [Hw | Hw].
+    - (* the round's prologue is open: the '$' files alternative 0 *)
+      pose proof (wr_pro_dollar_f ps cs s0 I P Hw) as Hsp.
+      destruct Hw as (Hpin0 & Hm & Hdv & Hr & Hnd & HP).
+      iApply ("Hpro" $! k v vf P 0%nat b ps cs s0 I Φ
+                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+      { exact Hm. } { exact Hr. } { lia. } { exact Hpin0. }
+      { exact Hnd. } { exact HP. }
+      { rewrite pro_alts_length. lia. }
+      { rewrite EchoLinks.wr_pro_alts_0 Hb. exact EchoLinks.wr_prompt_head. }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_sp.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+        last by iRight.
+      iLeft. iExists (ps ++ [0%nat]), cs, s0, (S P).
+      iFrame "Htn' Hps' Hcs' HE'". iSplitR; [by iPureIntro |].
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+    - (* the round is settled: the '$' is the line's block-first byte *)
+      pose proof (wr_blk_dollar_f ps cs s0 I P Hw) as Hsp.
+      pose proof (wr_blk_nonnil_f ps cs s0 I P Hw) as Hne.
+      pose proof Hw as (Hpin0 & Hm & Hdv & HP).
+      iApply ("Hblk" $! k v vf P (fnoc_of (fline I)) b ps cs s0 I Φ
+                with "[%] [%] [%] [%] [%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+      { exact Hne. } { exact Hm. } { rewrite Hdv. lia. } { exact Hpin0. }
+      { exact HP. }
+      { rewrite -/(fline I). exact (fnoc_of_ok (fline I)). }
+      { rewrite -/(fline I) (cont_fnoc _ (fline I)) Hb.
+        exact EchoLinks.wr_prompt_head. }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_sp.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+        last by iRight.
+      iLeft. iExists ps, (cs ++ [fnoc_of (fline I)]), s0, (S P).
+      iFrame "Htn' Hps' Hcs' HE'". iSplitR; [by iPureIntro |].
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+  Qed.
+
+  (* ---- the ' ' after it ---- *)
+  Lemma fprompt_space (k : nat) (v : era_pins) (I : list (bv 8))
+      (b : bv 8) (Φ : iProp Σ) :
+    b = u_prompt !!! 1%nat ->
+    FPIN k v -∗ file_links g -∗ fwc_sp k v I -∗
+    (fwc_open k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iDestruct (file_links_w with "Hlk") as "#Hw".
+    iDestruct (file_links_taint with "Hlk") as "#Ht".
+    rewrite {1}/fwc_sp. iDestruct "Hc" as "[Hl | #HT]"; last first.
+    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
+      iIntros "#HT'". iApply "HΦ". by iApply fwc_open_taint. }
+    iDestruct "Hl" as (ps cs s0 P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    rewrite /f0w. iDestruct "Hf" as "[%Hk Hvf]".
+    iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
+    destruct Hw as [Hop Hby].
+    pose proof Hop as (Hpin0 & Hm & Hdv & Hrd & HP).
+    iApply ("Hw" $! k v vf P b ps cs s0 I Φ
+              with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+    { lia. } { exact Hpin0. } { rewrite Hby Hb. reflexivity. }
+    iIntros "Hres". iApply "HΦ". rewrite /fwc_open.
+    iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+      last by iRight.
+    iLeft. iExists ps, cs, s0, (S P).
+    iFrame "Htn' Hps' Hcs' HE'".
+    iSplitR; [iPureIntro; exact (wr_sp_open_f ps cs s0 I P (conj Hop Hby)) |].
+    rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+  Qed.
+
+  Lemma fprompt_dollar_ban (k : nat) (v : era_pins) (I : list (bv 8))
+      (b : bv 8) (Φ : iProp Σ) :
+    b = u_prompt !!! 0%nat ->
+    FPIN k v -∗ file_links g -∗ fwc_ban k v I 0%nat -∗
+    (fwc_sp k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iApply (fprompt_dollar k v I b Φ Hb with "Hpin Hlk [Hc] HΦ").
+    iApply (fwc_ban_owed with "Hc").
+  Qed.
+
+  (* ---- the prompt at the TIGHT shapes ---- *)
+  Lemma fprompt_dollar_post (k : nat) (v : era_pins) (I : list (bv 8))
+      (a : nat) (b : bv 8) (Φ : iProp Σ) :
+    fapr I a -> b = u_prompt !!! 0%nat ->
+    FPIN k v -∗ file_links g -∗
+    fwc_blk k v I a (length (fab I a) - 2)%nat -∗
+    (fwc_sp_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Ha Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    pose proof (fab_len_ge2 I a Ha) as Hlen.
+    assert (Hby : fab I a !! (length (fab I a) - 2)%nat = Some b)
+      by (rewrite Hb; exact (fab_dollar I a Ha)).
+    iApply (fblk_step k v I a (length (fab I a) - 2)%nat b Φ Hby
+              with "Hpin Hlk Hc [HΦ]").
+    iIntros "Hc". iApply "HΦ".
+    replace (S (length (fab I a) - 2))%nat
+      with (length (fab I a) - 1)%nat by lia.
+    iApply (fwc_blk_sp k v I a Ha with "Hc").
+  Qed.
+
+  Lemma fprompt_space_t (k : nat) (v : era_pins) (I : list (bv 8))
+      (b : bv 8) (Φ : iProp Σ) :
+    b = u_prompt !!! 1%nat ->
+    FPIN k v -∗ file_links g -∗ fwc_sp_t k v I -∗
+    (fwc_open_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iDestruct (file_links_w with "Hlk") as "#Hw".
+    iDestruct (file_links_taint with "Hlk") as "#Ht".
+    rewrite {1}/fwc_sp_t. iDestruct "Hc" as "[Hl | #HT]"; last first.
+    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
+      iIntros "#HT'". iApply "HΦ". by iApply fwc_open_t_taint. }
+    iDestruct "Hl" as (ps cs s0 P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    rewrite /f0w. iDestruct "Hf" as "[%Hk Hvf]".
+    iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
+    destruct Hw as [[Hop Hby] Htl].
+    pose proof Hop as (Hpin0 & Hm & Hdv & Hrd & HP).
+    iApply ("Hw" $! k v vf P b ps cs s0 I Φ
+              with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+    { lia. } { exact Hpin0. } { rewrite Hby Hb. reflexivity. }
+    iIntros "Hres". iApply "HΦ". rewrite /fwc_open_t.
+    iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+      last by iRight.
+    iLeft. iExists ps, cs, s0, (S P).
+    iFrame "Htn' Hps' Hcs' HE'".
+    iSplitR;
+      [iPureIntro;
+       exact (wr_sp_open_t_f ps cs s0 I P (conj (conj Hop Hby) Htl)) |].
+    rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+  Qed.
+
+  Lemma fprompt_dollar_line (k : nat) (v : era_pins) (I : list (bv 8))
+      (b : bv 8) (Φ : iProp Σ) :
+    b = u_prompt !!! 0%nat ->
+    FPIN k v -∗ file_links g -∗ fwc_line k v I -∗
+    (fwc_sp_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    rewrite {1}/fwc_line. iDestruct "Hc" as "[Hc | Hc]"; last first.
+    { iDestruct "Hc" as (a) "[%Ha Hc]".
+      iApply (fprompt_dollar_post k v I a b Φ Ha Hb with "Hpin Hlk Hc HΦ"). }
+    iDestruct (file_links_pro with "Hlk") as "#Hpro".
+    iDestruct (file_links_first with "Hlk") as "#Hfst".
+    iDestruct (file_links_taint with "Hlk") as "#Ht".
+    rewrite {1}/fwc_pro. iDestruct "Hc" as "[Hl | [Hh | #HT]]"; last first.
+    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
+      iIntros "#HT'". iApply "HΦ". by iApply fwc_sp_t_taint. }
+    { (* the era's head: the '$' is its first byte, and it lands TIGHT *)
+      rewrite /fhead.
+      iDestruct "Hh" as "(-> & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
+      iDestruct "Hvf" as (vf) "#Hvf".
+      iDestruct "Hpre" as (s0) "[%Hok Hty]".
+      iApply ("Hfst" $! (S gen_id) v vf 0%nat b s0 Φ
+                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hty [HΦ]").
+      { exact Hok. }
+      { rewrite pro_alts_length. lia. }
+      { rewrite EchoLinks.wr_pro_alts_0 Hb. exact EchoLinks.wr_prompt_head. }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_sp_t.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0) | #HT]";
+        last by iRight.
+      iLeft. iExists [0%nat], [], s0, 1%nat.
+      iFrame "Htn' Hps' Hcs' HE'".
+      iSplitR.
+      { iPureIntro. split; [exact (wr_sp_f_head s0) |].
+        rewrite /wr_tail_f. cbn [length pro_idx_f]. by vm_compute. }
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0". }
+    iDestruct "Hl" as (ps cs s0 P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    rewrite /f0w. iDestruct "Hf" as "[%Hk Hvf]".
+    iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
+    pose proof (wr_pro_dollar_t_f ps cs s0 I P Hw) as Hsp.
+    destruct Hw as (Hpin0 & Hm & Hdv & Hr & Hnd & HP).
+    iApply ("Hpro" $! k v vf P 0%nat b ps cs s0 I Φ
+              with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+    { exact Hm. } { exact Hr. } { lia. } { exact Hpin0. }
+    { exact Hnd. } { exact HP. }
+    { rewrite pro_alts_length. lia. }
+    { rewrite EchoLinks.wr_pro_alts_0 Hb. exact EchoLinks.wr_prompt_head. }
+    iIntros "Hres". iApply "HΦ". rewrite /fwc_sp_t.
+    iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+      last by iRight.
+    iLeft. iExists (ps ++ [0%nat]), cs, s0, (S P).
+    iFrame "Htn' Hps' Hcs' HE'". iSplitR; [by iPureIntro |].
+    rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+  Qed.
+
+  (* ---- the era's turn, and what it comes apart into ---- *)
+  Definition fturn_pre (k : nat) : iProp Σ :=
+    (⌜k = S gen_id⌝ ∗ FileOut.fturn g k ∗ f0pre)%I.
+
+  Lemma fturn0 (k : nat) :
+    fturn_pre k -∗
+    (∃ v : era_pins, FPIN k v ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
+    ∗ (∃ v : era_pins, FPIN k v ∗ fwc_ban k v [] 0%nat).
+  Proof using .
+    rewrite /fturn_pre /FileOut.fturn.
+    iIntros "(%Hk & Ht & Hpre)".
+    iDestruct "Ht" as (v vf)
+      "(#Hpin & #Hvf & Htn & Hdl & #Hcs & #Hps & #HE)".
+    iSplitL "Hdl"; [iExists v; by iFrame "Hpin Hdl HE" |].
+    iExists v. iFrame "Hpin". rewrite /fwc_ban. iRight. iLeft.
+    iSplitR; [by iPureIntro |]. rewrite /fhead.
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iFrame "Htn Hps Hcs HE Hpre". iExists vf. iExact "Hvf".
+  Qed.
+
+  (* ---- a read past a boundary whose prompt is unwritten is the taint ---- *)
+  Lemma fowed_read_taint (k : nat) (v : era_pins) (n : nat)
+      (I : list (bv 8)) (ws : list (list mobs * bv 8)) :
+    length I = n -> (0 < length ws)%nat ->
+    fwc_owed k v I -∗ fread_ret g k v n ws -∗ FT.
+  Proof using .
+    intros HIn Hws. iIntros "Hc Hr".
+    rewrite /fread_ret.
+    iDestruct "Hr" as "[[#HT _] | [Hdlr Hfacts]]"; [iExact "HT" |].
+    iDestruct "Hfacts" as (pops dl)
+      "(%Hrok & %Hdl & %Hpref & %Hidx & %Hdsc & #Hinp & %Hdi & Hrest)".
+    iDestruct "Hrest" as "[%Hws0 | Hbb]".
+    { exfalso. rewrite Hws0 in Hws. cbn in Hws. lia. }
+    iDestruct "Hbb" as (cs0 ps0 vf s0)
+      "(#Hcs0 & #Hps0 & #Hvf & #Hf0 & %Hbd & #Htlb & %Hrs)".
+    set (J := (snd <$> (dl ++ ws))%list).
+    assert (Hlen : length J = (n + length ws)%nat).
+    { rewrite /J length_fmap length_app Hdl. reflexivity. }
+    rewrite /fwc_owed.
+    iDestruct "Hc" as "[Hl | [Hh | #HT]]"; last by iExact "HT".
+    - iDestruct "Hl" as (ps cs s1 P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+      rewrite /f0w. iDestruct "Hf" as "[%Hk Hvf']".
+      iDestruct "Hvf'" as (vf') "[#Hvf' #Hf0']".
+      iDestruct (file_era_pin_agree with "Hvf' Hvf") as %<-.
+      iDestruct (f0_lb_agree with "Hf0' Hf0") as %<-.
+      iDestruct (ps_lb_cmp with "Hps Hps0") as %Hpsc.
+      iDestruct (cs_lb_cmp with "Hcs Hcs0") as %Hcsc.
+      iDestruct (turn_lb_le with "Htn Htlb") as %Hle.
+      iDestruct (inp_lb_cmp with "HE Hinp") as %Hic.
+      iExFalso. iPureIntro.
+      assert (HI : I `prefix_of` J).
+      { destruct Hic as [Hc | Hc]; [exact Hc |].
+        exfalso. apply prefix_length in Hc. lia. }
+      assert (Hne : I <> J) by (intros Hq; rewrite Hq Hlen in HIn; lia).
+      exact (wr_owed_read_refute_f ps cs ps0 cs0 s1 I J P Hw HI Hne Hrs
+               Hpsc Hcsc Hle).
+    - rewrite /fhead.
+      iDestruct "Hh" as "(-> & %Hk & Htn & #Hps & #Hcs & #HE & _ & _)".
+      iDestruct (turn_lb_le with "Htn Htlb") as %Hle.
+      iExFalso. iPureIntro.
+      assert (HI : ([] : list (bv 8)) `prefix_of` J) by apply prefix_nil.
+      assert (Hne : ([] : list (bv 8)) <> J).
+      { intros Hq. rewrite -Hq in Hlen. cbn [length] in Hlen.
+        cbn [length] in HIn. lia. }
+      refine (wr_owed_read_refute_f [] [] ps0 cs0 s0 [] J 0%nat _ HI Hne Hrs
+                ltac:(left; apply prefix_nil) ltac:(left; apply prefix_nil)
+                ltac:(lia)).
+      left. rewrite /wr_pro_f. split_and!.
+      + exact pro_pin_f_nil.
+      + exact rest_of_nil.
+      + by rewrite nlines_nil.
+      + by left.
+      + rewrite nlines_nil. cbn [pro_idx_f pro_from].
+        rewrite -pro_fail_0. exact (pro_done_fail 0%nat).
+      + rewrite /proc_stream_f proc_before_f_nil pending_at_f_nil.
+        by cbn [app pro_of length].
+  Qed.
+
+  Lemma fban_read_taint (k : nat) (v : era_pins) (I l : list (bv 8)) :
+    wl_nl ∉ l ->
+    fwc_ban k v I 0%nat -∗ fwc_rres v (I ++ l ++ [wl_nl]) -∗ FT.
+  Proof using .
+    intros Hnl. iIntros "Hc #Hres".
+    rewrite /fwc_rres.
+    iDestruct "Hres" as (ps0 cs0 s0) "(%Hrs & #Htlb & #Hps0 & #Hcs0 & #Hf0)".
+    assert (Hpre : I `prefix_of` (I ++ l ++ [wl_nl])) by (by eexists).
+    assert (Hne : I <> I ++ l ++ [wl_nl]).
+    { intro Heq. apply (f_equal length) in Heq.
+      rewrite !length_app length_cons in Heq. lia. }
+    rewrite /fwc_ban.
+    iDestruct "Hc" as "[Hl | [[_ Hh] | #HT]]"; last by iExact "HT".
+    - iDestruct "Hl" as (ps cs s1 P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+      cbn [wr_banp_f] in Hw.
+      iDestruct (f0w_agree with "Hf Hf0") as %<-.
+      iDestruct (ps_lb_cmp with "Hps Hps0") as %Hpsc.
+      iDestruct (cs_lb_cmp with "Hcs Hcs0") as %Hcsc.
+      rewrite Nat.add_0_r.
+      iDestruct (turn_lb_le with "Htn Htlb") as %Hle.
+      iExFalso. iPureIntro.
+      exact (wr_owed_read_refute_f ps cs ps0 cs0 s1 I (I ++ l ++ [wl_nl]) P
+               (or_introl (wr_ban_pro_f ps cs s1 I P Hw)) Hpre Hne Hrs
+               Hpsc Hcsc Hle).
+    - rewrite /fhead.
+      iDestruct "Hh" as "(-> & %Hk & Htn & #Hps & #Hcs & #HE & _ & _)".
+      iDestruct (turn_lb_le with "Htn Htlb") as %Hle.
+      iExFalso. iPureIntro.
+      refine (wr_owed_read_refute_f [] [] ps0 cs0 s0 [] (l ++ [wl_nl]) 0%nat
+                _ ltac:(apply prefix_nil) _ Hrs
+                ltac:(left; apply prefix_nil) ltac:(left; apply prefix_nil)
+                ltac:(lia)).
+      + left. rewrite /wr_pro_f. split_and!.
+        * exact pro_pin_f_nil.
+        * exact rest_of_nil.
+        * by rewrite nlines_nil.
+        * by left.
+        * rewrite nlines_nil. cbn [pro_idx_f pro_from].
+          rewrite -pro_fail_0. exact (pro_done_fail 0%nat).
+        * rewrite /proc_stream_f proc_before_f_nil pending_at_f_nil.
+          by cbn [app pro_of length].
+      + intro Hq. apply (f_equal length) in Hq.
+        rewrite length_app length_cons in Hq. cbn [length] in Hq. lia.
   Qed.
 
 End file_links_line.

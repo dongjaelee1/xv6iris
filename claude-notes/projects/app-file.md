@@ -4533,3 +4533,286 @@ theorem's axiom list THIRTEEN and the ECHO theorem's FOURTEEN, both
 unchanged.  `make audit-tree-only` was not run and does not need to be:
 cat's walk is in no theorem's cone --- nothing outside `UkCat*.v`
 requires it --- so the tree theorem cannot have moved.
+
+### CAT-WALK-2 (2026-09-17) — THE DEED OPEN REACHES A PATH IN HEAP DATA; `UkCatDeed` IS BACK IN THE BUILD AND THE DIVERGENCE WAS A SECOND CLASS INSTANCE; THE ROUND IS STATED AND PROVED AT THE OFFSET-PINNED OBLIGATION
+
+Branch `app-file/cat-entry`, on top of lane CAT-WALK's `7ff508011`, merged
+with `main` at `9ec014914` (clean; nothing in `iris/` conflicted, and the
+merged tree was built green before a line was written: `TREE_EXIT=0`, 187
+files, zero `Error`).
+
+**THE LANE'S VERDICT IN ONE LINE: all three of CAT-WALK's stops are
+gone.  The open leaf now reads its caller's path off EITHER heap half, so
+cat's `argv[1]` and the redirect child's line buffer discharge it; the
+read arm's non-terminating `iApply` was never an `iApply` problem at all
+— it was a SECOND `uexecSG`/`uprogSG` instance, and with the two section
+binders dropped the file compiles in seven seconds with the ORIGINAL
+application; and the loop's round is proved at the offset-pinned read, so
+the entry is one instantiation once OFF-HAND-6's held leaf lands.**
+
+**K1 — THE PATH THAT LIVES IN DATA: LANDS.**  The blocker CAT-WALK named
+is one `iDestruct` in one landed leaf, and the fix is to make the ROW the
+premise rather than the resource that yields it.
+
+- `UkRunSys.uimg_view N Img` — `□ (∀ M pm sz, uheap (ukn_t N) (ukn_d N)
+  (ukn_s N) M pm sz -∗ ⌜∀ a b, Img !! a = Some b → M !! a = Some b⌝)`, a
+  boxed wand off the run's own heap authority.  It is the ONLY thing the
+  landed walk ever does with the caller's persistent view, and it is
+  `UConsOpen.cons_ro_sub`'s conclusion with the supplier abstracted.
+  `uimg_view_sub` is the reading; `uimg_view_persistent` the instance.
+- `UkRunSys.uimg_view_text` — `utext_img (ukn_t N) Img -∗ uimg_view N
+  Img`, which is literally the `iDestruct` the landed leaf runs, hoisted
+  out of its walk.
+- `UkRunSys.uimg_view_data` — `([∗ map] a ↦ b ∈ Img, ubyteq (ukn_d N)
+  DfracDiscarded a b) -∗ uimg_view N Img`, through `UserHeap.uheap_ubyte`
+  (the fractional twin of `uheap_text`).  **THAT IS THE EXACT PREDICATE**
+  the brief asked to be named: it is what `UserHeap.uargv` is built out of
+  (`ustr … DfracDiscarded`, whose bytes are `ubyteq γd DfracDiscarded`),
+  what `ExecArgs.uargv_img_of_uargv` reads the argv layout off, and what
+  `UkFork.v:595` already carries as a map-shaped bundle across fork.
+- `UkRunSys.wp_uk_ecall_open_recv_gimg` — the landed leaf's ~130-line walk
+  with `utext_img` replaced by `uimg_view` and the one `iAssert` replaced
+  by `uimg_view_sub`.  **THE WALK IS WRITTEN ONCE MORE AND NOT TWICE**,
+  and the reason is the additivity rule, not proof economy: the landed
+  `wp_uk_ecall_open_recv_img` could have become a two-line corollary of it
+  (`uimg_view_text` then apply), but lane OFF-HAND-6 is editing
+  `UkRunSys.v` beside that lemma, so its proof body was left untouched and
+  the generic copy appended after its `Qed.`  Merging costs nothing; the
+  duplication is one walk and it is deliberate.
+- `UkRunSys.wp_uk_ecall_open_recv_dimg` — five lines over the generic
+  leaf, at the data image.  **Its post is the text leaf's word for word**:
+  the same image row comes back at `uvis_M W'`.
+- `UkFileOpen` section 5: `file_open_sup_v` / `file_miss_sup_v` /
+  `file_create_sup_v` and `wp_uk_ecall_open_read_deed_v` / `_miss_deed_v`
+  / `_create_deed_v` are sections 1/2/4 verbatim with `uimg_view` in place
+  of `utext_img` — the bodies are unchanged, only which persistent view
+  supplies `uimg_sub` moves — and `wp_uk_ecall_open_read_deed_d` /
+  `_miss_deed_d` / `_create_deed_d` are ONE application each at the data
+  image.  Sections 1/2/4 are untouched.
+
+**K2 — `UkCatDeed.v` IS BACK IN `_CoqProject` AND GREEN IN 6.8 s.  THE
+UNSHELVE HOIST IS NOT WHAT UNBLOCKED IT, AND THIS IS THE LANE'S MOST
+USEFUL FINDING.**  CAT-WALK's diagnosis — "`optimization.md`'s inline
+`ltac:` in argument position, in its slowest form" — is REFUTED.  What
+happened:
+
+1. The hoist was run as prescribed (`iPoseProof` at the twenty-five
+   explicit arguments, then `iApply` on the resulting ground chain of
+   wands).  The compile then TERMINATED — in ninety seconds, with an
+   error instead of a `.vo`:
+
+       iSpecialize: cannot instantiate
+         (urun N h1 m1 (mword_of_int 966) avail -∗ … ) with
+         (urun N h1 m1 (mword_of_int 966) avail)
+
+   — two propositions that print identically.  **So the hoist's value
+   here was DIAGNOSTIC: it converted a non-terminating unification into a
+   readable failure at the hypothesis that caused it.**
+2. The cause is CAT-WALK's own `ghost_varG`/`ctokG` note ONE CLASS
+   FURTHER OUT.  `UkFileOpen.v` declares NO `uexecSG` and NO `uprogSG`
+   section variable, so every `UkRun.urun` in its statements is at the
+   AMBIENT pair resolution finds — `UexecExecInst.uexecSG_xv6` and
+   `uprogSG_gen`.  `UkCatDeed.v` declared both as section variables.  A
+   section variable of a class type is a LOCAL INSTANCE and wins
+   resolution, so the file's own `urun` was a different proposition from
+   the one the leaf's statement is about.
+3. With the two binders dropped the file compiles in 6.8 s — **and so
+   does the original, un-hoisted `iApply`** (measured: 6.8 s).  The hoist
+   is kept anyway, with the finding written at the site, because it costs
+   nothing and it is what makes such a failure readable.
+
+`UEchoOut.v`'s header already records the `uexecSG` half of this rule
+("NO `uexecSG` VARIABLE … this file reads row 16's CONCRETE arm").  **The
+`uprogSG` half is new, and it has a consequence worth stating: the deed
+corollaries are PINNED to the generic-slot instance.**  Any application
+file that wants to apply `UkFileOpen`'s or `UkCatDeed`'s lemmas must
+declare neither class, and is thereby at `uprogSG_gen`.
+
+What is in the file now.  Restored unchanged from `8d692f26c`:
+`wp_kcat_read_deed`, `kcat_deed_hold`, `kcat_r_of_deed`,
+`kcat_r_of_deed_at` (plus two import fixes `main` made necessary —
+`VcGen` for `trunc32_mword_of_int`, `FsAbsEra` for `um_start_of` — and
+one comment whose `"…"` closed on the next line, which upstream's
+`comment-terminator-in-string` rejects).  NEW, cat's OPEN at the deed
+over K1's data-image leaves:
+
+- `UkCatDeed.wp_kcat_open_read_deed` / `wp_kcat_open_miss_deed` —
+  `UkCat.wp_kcat_open`'s three instructions (0x3ec `c.li a7,15`, 0x3ee
+  `ecall`, 0x3f2 `c.jr ra`) with the ecall at
+  `UkFileOpen.wp_uk_ecall_open_read_deed_d` / `_miss_deed_d`.  The mode
+  word is `0`, so `om_create`/`om_trunc` are `false` and the stored pair
+  is `(true, false)` by `vm_compute`.
+- `UkCatDeed.kcat_open_hold`, `kcat_o_of_deed`, `kcat_o_of_deed_miss` —
+  `UkCat.kcat_o_of_law`'s twins.  The ledger and the working directory
+  ride in the obligation's two halves (both linear; main's loop opens once
+  per argument); the PRESENT arm hands back `UserFd.ualloc γfd l fd
+  (FdOpen true false (FdInode i γo OffParked))` — the deed's OWN INUM,
+  whose type is not a pipe, so cat's close is free
+  (`UkCat.kcat_cldep_nonpipe`) — and the ABSENT arm hands the ledger back
+  UNTOUCHED at `-1` with the fraction home.  **`kcat_o`'s deed instance
+  therefore exists, which is CAT-ENTRY's blocker (3) closed.**
+
+**K3 — `UCatKernel.cat_round_at`: THE ROUND LANDS, AND THE SHAPE OF ITS
+CREDIT IS THE FINDING.**  `iris/UCatKernel.v` is new and green (8.1 s).
+
+- `cat_round_line` (pure) — the heart.  From the deed-aware read's two
+  outputs (`Z.to_nat (bv_unsigned rv) = ard_count 512 p (length bs)` and
+  `∀ j < rv, gb j = bs !!! (p + j)`) it derives exactly the row
+  `UCatOut.cch_chain` asks for: `cont (cat_st cs0 s0 I0) LCat (ralt_dec
+  (ralt_enc RCRan)) !! (p + j) = Some (gb j)`.  It goes through
+  `UCatOut.cat_out_of_tie` (`cont … RCRan = bs ++ u_prompt`), and the
+  prompt is never reached because the count stops at `length bs`.
+  `cat_round_cursor` is its arithmetic twin (`p + count ≤ length bs`).
+- `cat_round_inv Hold l bs v vf ps0 cs0 s0 I0 P` — the ledger, and AT ONE
+  AND THE SAME position the deed's handle and the console cursor:
+  `ustd γfd l ∗ ∃ p, ⌜p ≤ length bs⌝ ∗ Hold p ∗ UCatOut.cch g … p`.
+- `cat_round_at` — `UkCatCat.kcat_round N (mword_of_int (Z.of_nat fd))
+  (cat_round_inv …) Cend`, proved.  The `cat: read error` arm is
+  discharged from the boxed diagnostic and is VACUOUS at a deed anyway
+  (READ-RELAY); the normal exit hands the pieces to `Cend`'s wand; the
+  write arm goes through `UkCat.kcat_w_mono` at the cursor and is funded
+  by `Hw`.  The TAINT disjunct funds every arm from `cch`'s own right
+  disjunct.
+- `cat_pinned_read_at` — the SHAPE GUARD: given the row at ONE `off0`,
+  `UkCatDeed.kcat_r_of_deed_at` yields exactly the proposition
+  `cat_round_at` takes boxed over the cursor.  So the round's read premise
+  is inhabited and the lemma is not vacuously true.
+
+**THE EXACT `Hpin`, AND WHAT THE HELD LEAF MUST DISCHARGE IT FROM.  TWO
+SHAPES ARE VACUOUS AND BOTH WERE TRIED AND REJECTED IN THIS LANE — this
+is the part worth reading.**
+
+CAT-WALK named the premise as the ROW
+
+    □ (∀ rv gb off, ⌜Z.to_nat (bv_unsigned rv) = ard_count cnt off
+                      (length bs)⌝ -∗
+                    ⌜∀ j < Z.to_nat (bv_unsigned rv),
+                       gb j = bs !!! (off + j)⌝ -∗ ⌜off = off0⌝)
+
+and that is right AT A FIXED `off0` — it is `kcat_r_of_deed_at`'s premise.
+It may NOT be boxed over `off0` as well: at two different `off0` the box
+is inconsistent, so a round built on it says nothing.  (Written that way
+first; caught before it landed.)
+
+Nor may the OBLIGATION be boxed over the cursor at a FIXED handle: one
+descriptor has one offset, so "at any `p` I can read at `p`" is
+unsuppliable, and the round would again be an unusable statement.  (Second
+shape; also caught before it landed.)
+
+**The shape that is neither is the one `cat_round_at` takes**: the
+obligation boxed over the cursor at a handle that is ITSELF a function of
+the cursor —
+
+    □ (∀ p : nat, ⌜p ≤ length bs⌝ -∗
+         UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) CatSyms.buf 512
+           (Hold p)
+           (fun rv gb =>
+              (⌜Z.to_nat (bv_unsigned rv) = ard_count 512 p (length bs)⌝
+               ∗ ⌜∀ j < Z.to_nat (bv_unsigned rv), gb j = bs !!! (p + j)⌝
+               ∗ Hold (p + Z.to_nat (bv_unsigned rv)))
+              ∨ ((∃ p', ⌜p' ≤ length bs⌝ ∗ Hold p') ∗ file_taint c)))
+
+**WHAT OFF-HAND-6 MUST DISCHARGE IT FROM, exactly.**  `Hold p` is
+`UserFd.ufd γfd fd (FdOpen true wb (FdInode i γo (OffHeld p))) ∗
+UserOff.uoff γo p ∗ FileOpen.fdq r q (Some (i, bs))` — the held
+descriptor row AT `p`, its offset half, and the deed's fraction.  The held
+read leaf must (a) report `off = p` from `OffHeld p` and the half, and
+(b) ADVANCE the row and the half to `p + count`, so that `Hold` comes
+back at the new position.  Nothing else is owed: the count and the bytes
+are already `wp_uk_read_deed_learns_mapped`'s own outputs, and the
+payer-side tie *the deed's offset IS the console cursor* is
+`cat_round_inv`'s single existential, which is what makes "cat's output
+is the file's content IN ORDER" a statement about one number.
+
+**WHAT `UCatKernel`'s ENTRY STILL NEEDS, in order.**
+
+1. **OFF-HAND-6's held read leaf**, for `Hpin` above.  Until it lands a
+   caller can only take `UkCatDeed.kcat_r_of_deed`'s existential offset,
+   and the ordering is unprovable — not by any amount of payer-side work.
+2. **`Hw`, the turn's write at the cursor — the cat twin of
+   `UEchoOut.kecho_w_of_link_data`, and it has ONE resource-algebra step
+   this lane did not take.**  Everything else is in place:
+   `UkCat.wp_kcat_write_chain` is the stub, `UkWriteLeaf.uwrite_chain_sup`
+   builds the deposit, `uwrite_no_short` reads the post, and
+   `UCatOut.cch_chain` supplies the chain from `cat_round_line`'s row.
+   THE STEP: `uwrite_chain_sup`'s deposit premise is a wand `∀ M pm sz,
+   uheap -∗ uheap ∗ cons_out_chain …`, and the image row inside it comes
+   from `UkRunSys.uheap_ubytes_wat` applied to the SOURCE RUN — which
+   echo can do because its run is `ustr … DfracDiscarded`, PERSISTENT, and
+   cat cannot because its run is the 512-byte read buffer at `DfracOwn 1`.
+   Splitting the prefix off is free (`UserHeap.ubytes_app`); splitting the
+   FRACTION is not — there is no `ubytesq` fractional-split lemma in
+   `UserHeap.v`, and the half put into the closure is CONSUMED there, so
+   the buffer cannot be rebuilt for `kcat_w`'s `Co`.  Two ways out, both
+   small: (i) add `ubytesq γd (DfracOwn 1) a n f ⊣⊢ ubytesq γd (DfracOwn
+   (1/2)) a n f ∗ ubytesq γd (DfracOwn (1/2)) a n f` (Iris's
+   `ghost_map_elem_fractional` plus `Qp.half_half`, ~10 lines) AND carry
+   the half back out through the chain's own `Q` — which needs
+   `cons_out_chain` framed, and its nodes are ADDITIVE `∧`, so a frame
+   lemma is provable but wants `out_link` monotone in its continuation;
+   or (ii) a variant of `uwrite_chain_sup` whose deposit premise returns
+   the caller's source run beside the chain.  **(ii) is the cheaper one
+   and it is a `UkWriteLeaf` change, not an application one.**
+3. **`kcat_dg_cw`, the `cat: write error` tail — AND IT IS NOT FUNDABLE
+   FROM THE CURSOR, contrary to CAT-WALK's reading.**  `UkCatCat.kcat_dg_cw`
+   is `kcat_pay_seq N (mword_of_int 2) (cat_lit 0x9b0) 0 17 emp (ukn_pay
+   N (-1))` — seventeen bytes of a literal at fd 2 — and it sits under an
+   ADDITIVE `∧` in `kcat_round`'s write output, so the payer must fund it
+   whether or not the write is short.  `UCatOut.cch_step` can only fund a
+   byte the MODEL's continuation holds at the cursor, and at `RCRan` that
+   continuation is `bs ++ u_prompt` (`cat_out_of_tie`): "cat: write error"
+   is not in it at any position.  `kcat_dg_cr` is in the same position.
+   So `cat_round_at` takes both as `□` premises and names them; the entry
+   cannot discharge them from the stage as it stands.  **THE DESIGNER'S
+   CHOICE, and it is a ruling this lane cannot make:** either (a) the
+   model grows an alternative whose continuation IS the write-error
+   diagnostic (the `RCReadErr` that READ-RELAY made unnecessary for the
+   read, now needed for the WRITE), or (b) `kcat_round`'s write output
+   loses its additive `∧ kcat_dg_cw` in favour of an arm the write leaf's
+   own no-short row refutes — which is possible, because
+   `UkWriteLeaf.uwrite_no_short` DOES give `r = mword_of_int (Z.of_nat
+   nb)` at a console fd whose destination the caller owns, exactly as the
+   read's `-1` arm was refuted.  **(b) is the same move READ-RELAY made
+   one syscall over, and it costs `UkCatCat.kcat_round` one restatement
+   and cat's `beq`-walk nothing.**
+4. Then `UCatKernel.cat_image_entry` is `UShEcho.echo_image_entry`'s shape
+   with `kcat_o_of_deed` for the open (LANDED), `cat_round_at` for the
+   content (LANDED, at 1–3), `UkCatMain.kcat_dg_open` over
+   `UCatOut.cch_step` for the diagnostic, `UkCat.kcat_cldep_nonpipe` for
+   the close, and `UCatOut.catq_filed`/`catq_unfiled` for the payload.
+
+**ONE SMALLER FINDING, for whoever writes `Hw`.**  `UkCatCat.kcat_round`'s
+write arm is `∀ nb, ⌜ret = mword_of_int (Z.of_nat nb)⌝ -∗ ⌜0 < nb⌝ -∗
+kcat_w … nb …`, and that equation does NOT identify `nb` above `2^64`.  So
+a payer may not compute the cursor's advance from `nb`; it must read it
+off the returned WORD (`Z.to_nat (bv_unsigned ret)`), which is also what
+the kernel's `sys_rw_count` will read.  `cat_round_at` is stated that way
+throughout.
+
+**EVERY STATEMENT THAT MOVED, EXHAUSTIVELY: NONE.  Everything is
+additive.**  `iris/UkRunSys.v` gains seven results after
+`wp_uk_ecall_open_recv_img`'s `Qed.` (`uimg_view`,
+`uimg_view_persistent`, `uimg_view_sub`, `uimg_view_text`,
+`uimg_view_data`, `wp_uk_ecall_open_recv_gimg`,
+`wp_uk_ecall_open_recv_dimg`) and NO landed line changes, so lane
+OFF-HAND-6's parallel edit beside that lemma merges trivially.
+`iris/UkFileOpen.v` gains a section 5 of nine results before `End`;
+sections 1–4 are byte-identical.  `iris/UkCatDeed.v` returns (five
+restored results, five new).  `iris/UCatKernel.v` is new (five results).
+`iris/_CoqProject` gains two lines, `UkCatDeed.v` after `UkShRedirAns.v`
+and `UCatKernel.v` after `UCatOut.v`.  `FileOpen.v` and `AppFile.v` (lane
+F-OPEN-5) and `UkReadFile.v` (lane OFF-HAND-6) were not touched.
+
+**THE BAR.**  WHOLE TREE GREEN on the lane's remote tree: `make -f
+CoqMakefile -j8 -k` over all of `iris/_CoqProject` finishes `TREE_EXIT=0`
+with ZERO `Error`, and a re-run is *Nothing to be done for 'real-all'*.
+Compile times: `UkRunSys.vo` 28 s, `UkFileOpen.vo` 10 s, `UkCatDeed.vo`
+6.8 s, `UCatKernel.vo` 8.1 s — no step came near ten minutes once the
+instance defect was out.  Nothing is `Admitted`; every new result carries
+`Proof using` (the three bare `Proof.` in `UkRunSys.v` are pre-existing
+and above the section).  `make audit-all-only` and `make audit-tree-only`
+from the tree root: `AUDIT_EXIT=0` / `AUDITTREE_EXIT=0`, the ECHO
+theorem's axiom list FOURTEEN, the SYSTEM theorem's THIRTEEN and the TREE
+theorem's THIRTEEN, all unchanged.  `make gen-ucode` prints *unchanged*
+for all seven catalogs; no `UCode*.v` and no `tools/ucode_manifest.json`
+was touched.

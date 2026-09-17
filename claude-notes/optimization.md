@@ -537,6 +537,17 @@ lever. Do not expect a spelled-out Sail term to be why a `Qed` is slow.
   dispatch guard.
 - **Never `vm_compute` a goal containing a symbolic `mword` or a built-up
   `mstate`.** Compute only the CLOSED offset.
+- **An image reading indexed by BLOCK re-decodes that block on every byte.**
+  `FsImg.fs_data_of` is `fun k => … P (addr k) …`, so a `vm_compute` over a
+  reading built on it (`dir_view`, a whole-directory scan) pays one 1024-byte
+  decode out of the 2 MB image PER BYTE ACCESS — measured ~9,000 decodes and
+  15 minutes for one directory. HOIST THE BLOCK: name it once, read the scan
+  off a CONSTANT function of it, and tie the two back with the agreement lemma
+  (`FsDurImg.dir_view_agree` and its `dir_win_agree` side condition). Same file,
+  18 seconds. Then make the computed constants `Opaque` — a later `simplify_eq`
+  or `injection` on a hypothesis that merely MENTIONS them will normalise to
+  expose a constructor and reach gigabytes; finish such a proof with an explicit
+  `f_equal` term instead.
 - **`exact_no_check` does not make a `vm_compute`d `Definition … Defined`
   cheaper** — `Defined` re-checks the term the tactic skipped, so the cost moves
   rather than going away. A definition built by running the model's own chain is

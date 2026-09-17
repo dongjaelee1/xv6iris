@@ -687,6 +687,66 @@ headlines:
    `tree_init_at`), a pure computation TL-4 already owed `aview_tree_wf`
    for.
 
+**TL-4 AS LANDED, AND THE STOP** — branch `tl4-app`; `AppEcho.v` /
+`AppInv.v` untouched, every landed TL-*/EX-* statement unchanged, whole
+iris tree green on the mirror, system audit 13 / echo audit 14, **tree
+audit 10**.  `design/user-tree.md` §8 carries the full block; the
+headlines:
+
+1. **DELIVERABLE 1 LANDED** — `iris/TreeImg.v`:
+   `App.xv6_app_adequacy`'s `Happ_init` at `AppTree.app_tree`, at the
+   theorem's own binder and at the literal mkfs image
+   (`TreeImg.tree_Happ_init`), on `AppEcho.echo_Happ_init`'s mould.  Plus
+   `iris/TreeAssumptions.v` and `make audit-tree{,-only}` — the third
+   audit, because no two of the three cones contain each other.
+   **TEN axioms**: the ten Rocq `PrimString`/`PrimInt63` primitives and
+   nothing else (no funext, neither reservation `Parameter`, no module
+   parameter).
+2. **`aview_rooted` IS FREE at the image** and it pays for the other two:
+   `FsImgCheck.fsimg_dir_root` says the image has exactly ONE directory
+   and it is the root.  Unique parenthood then collapses to the root's
+   entry map being injective ON PROPER NAMES (the dots are not — the
+   root's `".."` is the root), and closedness to its values being live.
+   The ONE clause no landed sweep carried is "a TYPED record has a
+   nonzero link count" (`FsImg.fs_region_nlink` sweeps the converse, W3
+   skips a type-0 record); `TreeImg.fs_region_live_nlink` is that sweep,
+   `fs_region_free`'s idiom, same thirteen inode blocks.
+3. **A COST RULE, measured**: reading the root's entry map as
+   `dir_view fsimg_root_data nrec` costs FIFTEEN MINUTES, because
+   `fs_data_of` is a function of the BLOCK INDEX and each of the
+   O(nrec²) byte accesses re-decodes a block out of the 2 MB image.
+   Hoisting the one block the records live in (tied back by
+   `FsDurImg.dir_view_agree`) makes the whole file 18 s.  The same trap
+   bit twice more via `simplify_eq`/`injection` normalising a hypothesis
+   that mentions the computed map (5 GB RSS), hence the `Global Opaque`
+   at the end of the file's section 2.
+4. **DELIVERABLES 2-4 STOPPED: `Hinit_boot` at this record is
+   UNPROVABLE**, and the reasons are three and separate (§8.2).
+   (a) **THE TAINT HAS NO MINT** — `tree_cl` lives in the ledger and no
+   obligation hands it out, so `AppInv.app_sup` is unobtainable and with
+   it the generic bundle, the pinned bundle's TAINT ARM, and every
+   `T`-guarded deposit `/init`'s walk is stated at.  It is NOT fixable
+   "the way echo's is": echo's taint is a TRACE-visible break; an unpaid
+   FS move is not, so a ledger mint is dead or vacuous.
+   (b) **THE ERA'S FIRST DEED HAS NO PURE CONTENT** — `tree_boot` is
+   `∃ g t, tree_own r g ROOTINO t` with `t` existential (av-free by
+   `App.app_boot`'s type, TL-3's deliberate choice), so the pinned
+   route's `pin_resolves_at` has nothing to read.
+   (c) **EXEC AT A DEED IS EXEC AT A FROZEN DEED** — `pobs_walk`'s claim
+   law is `□`, so the boot would hand `/init` a tree it can never move,
+   and `/init`'s first act is `mknod("/console")`.
+   The brief's expected wall — sh's `Pay` is the console lease
+   quadruple, not `emp` — is REAL and is the SECOND one you hit (§8.3);
+   its fallback (`ExecEntry.image_entry_taint`) is a wand FROM the taint,
+   so (a) kills it too.
+5. **THE FIX IS SEAM-I** (`design/user-tree.md` §7.1, "ready as one
+   mechanical lane if a consumer appears").  A consumer has appeared:
+   with `app_step` at `==∗` the tree claim's BODY can carry the taint
+   counter's authority and an unpaid mover BUMPS it — design §3's own
+   sentence, made a resource, neither dead nor vacuous.  Two owner
+   decisions are queued at §8.4, and SEAM-I touches `AppInv.v`, which
+   this campaign's bar has kept untouched — hence the relay entry below.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`
@@ -703,6 +763,12 @@ headlines:
 3. **The count/window join** at the pipe read receipt, and **row 16's
    missing return blanket** (`design/user-write.md`): one conjunct
    each, wide cones, both priced in the design pages.
+4. **SEAM-I** (`design/user-tree.md` §7.1, consumer named at §8.2/§8.4):
+   `AppInv.app_step` at `▷ app_pred av ==∗ ▷ app_pred av'` — one `-∗`
+   becomes `==∗`, every site costed leg by leg in §7.1, zero semantic
+   change for every existing consumer.  It is what makes the tree
+   application's taint MINTABLE (at the unpaid move, where design §3 puts
+   it) and hence `Hinit_boot` provable at all.  It touches `AppInv.v`.
 
 OPENED 2026-09-15 (owner: "focus on cleanup... the read system
 call spec needs generalization... a generic read spec... will allow us

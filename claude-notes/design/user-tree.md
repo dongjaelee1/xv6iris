@@ -696,9 +696,12 @@ subtree cannot build the step and falls to the taint arm, as §3 says.
   `AppInv.v` untouched, every TL-2/TL-3 statement unchanged, whole tree
   green, echo audit 14.  §7.4 is the as-landed block.
 - [x] **TL-3P** — LANDED (branch `tl3p-parent`): §7.5.
-- [ ] **SEAM-I** (deferred; ready): §7.1 as one mechanical lane if a
-  consumer appears.  TL-3W did NOT need it, which is the ruling
-  confirmed: the fire's own phase 2 is the return channel.
+- [ ] **SEAM-I** (deferred; ready — **AND A CONSUMER HAS APPEARED**, §8.4):
+  §7.1 as one mechanical lane.  TL-3W did NOT need it, which is the ruling
+  confirmed: the fire's own phase 2 is the return channel.  What DOES need
+  it is the TAINT'S MINT — `tree_taint` is unmintable today, so every arm
+  keyed on it is dead and `Hinit_boot` is unprovable (§8.2(a)).  Awaiting
+  the owner's word (§8.4).
 - [x] **PARENT-CURSOR** — LANDED as **TL-3K** (branch `tl3k-cursor`):
   §7.5's WALL A fix (i) threaded through the whole cone, and WALL B
   dissolved at any length.  §7.6 is the as-landed block; what the family
@@ -724,6 +727,11 @@ subtree cannot build the step and falls to the taint arm, as §3 says.
   unlink is exactly §7.9(8)'s two kernel-tier seams, restated at §7.10(8);
   the one strengthening the create side wants is §7.10(6)'s claim-reading
   `Fex`.
+- [~] **TL-4 — THE SECOND APPLICATION** (branch `tl4-app`), §8:
+  DELIVERABLE 1 LANDED (`iris/TreeImg.v`: `Happ_init` at `app_tree`, at the
+  literal image; tree audit TEN).  Deliverables 2–4 STOPPED: `Hinit_boot`
+  at this record is UNPROVABLE, three walls, §8.2.  The fix is SEAM-I above
+  and the owner decisions are §8.4.
 
 ### 7.4 TL-3W as landed
 
@@ -1725,3 +1733,182 @@ but a HANG: `iFrame` refuses the hypothesis outright, while the
 `with "H"` path drops into a conversion between two ghost-map instances
 that does not come back.  `UkTreeCreate.v` carries the note at its own
 `Context` block; the cost of not knowing it was most of this lane.
+
+## 8. The second application — TL-4 as landed, and the three walls at `Hinit_boot`
+
+**WHAT LANDED** (branch `tl4-app`, ONE new file `iris/TreeImg.v`, plus the
+audit file `iris/TreeAssumptions.v` and `make audit-tree{,-only}`):
+DELIVERABLE 1 ONLY — `App.xv6_app_adequacy`'s `Happ_init` at
+`AppTree.app_tree`, at the theorem's own binder and at the literal mkfs
+image (`TreeImg.tree_Happ_init`), on `AppEcho.echo_Happ_init`'s mould.
+`AppEcho.v` / `AppInv.v` untouched, every landed TL-*/EX-* statement
+unchanged, whole tree green, system audit 13 / echo audit 14 / **tree
+audit TEN** (the ten Rocq `PrimString`/`PrimInt63` primitives and NOTHING
+else: no `functional_extensionality_dep`, neither reservation
+`Parameter`, no `Spec*`/`Link*` module parameter).
+
+**Deliverables 2–4 did not land, and §8.2 is why: `Hinit_boot` at this
+record is not hard, it is UNPROVABLE.** Three separate reasons, each
+with a named fix; §8.4 is the one lane that closes all three.
+
+### 8.1 Era 0, and what the image actually has to be checked for
+
+`AppTree.tree_init` takes `aview_tree_wf av`, `adir_at av ROOTINO` and
+(since TL-3R) `aview_rooted av`, at
+`abs_view (fss_inodes (FsDurImg.img_state (fs_blocks dk) sb nib))` —
+the image's OWN canonical state, not an arbitrary snapshot, so all three
+are computations on the mkfs image.  What they cost:
+
+- **`aview_rooted` IS FREE.**  `FsImgCheck.fsimg_dir_root` says the image
+  has exactly ONE directory and it is the root, so every proper edge of
+  the view leaves `ROOTINO` — which reaches itself (`nreach_refl`).
+  That one landed check is also what collapses the other two.
+- **`aview_uniq_parent` collapses to the root's entry map being
+  INJECTIVE ON PROPER NAMES.**  Not on all names: the root's `".."` IS
+  the root, so the unhidden map is not injective and never could be,
+  which is why the check is stated at `TreeView.hide_dots`.
+- **`aview_closed` is that map's values being LIVE ROWS**, and it needs
+  one clause NO landed image sweep carries: **a TYPED record of the
+  region has a nonzero link count.**  `FsImg.fs_region_nlink` sweeps the
+  CONVERSE (a type-0 record has `nlink = 0`) and W3 skips a type-0
+  record entirely.  `TreeImg.fs_region_live_nlink` is that sweep, in
+  `fs_region_free`'s own idiom, over the same thirteen inode blocks and
+  forcing no file contents.  Everything else is cited: the values land
+  in `[1 .. 22]` by one `forallb` over the root's map, and
+  `FsImgCheck.fsimg_live_iff` turns that into "typed, and in range" with
+  no new computation.
+- **`adir_at ROOTINO`** is `fsimg_root_type` beside `fsimg_root_link`.
+
+**THE COST FINDING, AND IT IS A RULE.**  Reading the root's entry map the
+naive way — `dir_view fsimg_root_data fsimg_root_nrec` — costs FIFTEEN
+MINUTES, and the reason generalises: `FsImg.fs_data_of` reads a FUNCTION
+OF THE BLOCK INDEX, so each of `dir_view`'s O(nrec²) byte accesses
+re-decodes a 1024-byte block out of the 2 MB image (~9,000 decodes per
+`dir_view`, ~50 ms each).  Naming the ONE block the root's records live
+in and reading the view off a CONSTANT function of it
+(`TreeImg.img_root_blk`, the two readings tied by
+`FsDurImg.dir_view_agree` under `img_root_nrec_leb`) pays the decode
+ONCE: 18 s for the whole file.  This is `FsImgCheck.v`'s own header rule
+("state the FORM TO COMPUTE WITH") one level up, and it bit twice more in
+the same lane: a `simplify_eq` and an `injection` on a hypothesis
+mentioning the computed map each tried to normalise it to expose a
+constructor and reached 5 GB RSS.  `TreeImg.v` therefore closes section 2
+with `Global Opaque` on all four computed constants and finishes that
+proof with an explicit `f_equal` term instead of a tactic.
+
+### 8.2 `Hinit_boot` is not provable at this record — the three walls
+
+`App.xv6_app_adequacy`'s `Hinit_boot` is `InitBoot.init_boot_bundle`, the
+kernel's caller-side bundle for `kexec("/init")` at forkret's boot arm.
+There are exactly TWO routes to one and the tree application can take
+neither.
+
+**(a) WALL 1 — THE TAINT HAS NO MINT, so every arm keyed on it is dead.**
+`AppTree.tree_taint c` is `mono_nat_lb_own c 1` and `tree_cl c` is the
+counter's authority; `tree_taint_mint` is landed but UNREACHABLE,
+because the authority lives in the ledger (`AppTree.tree_R`) and no
+obligation of the record ever hands it out — `Hinit_boot` is given
+`app_inv`, the boot resource and the era's turn, and nothing else.  So
+`AppInv.app_sup` (which for this claim IS the taint,
+`AppTree.tree_sup_of_taint`) is UNOBTAINABLE, and with it
+`SystemAdequacy.init_boot_of_sup` / `InitBoot.init_boot_bundle_triv` —
+the generic route — and also the TAINT ARM of the pinned route, and also
+every `T`-guarded deposit `/init`'s own walk is stated at
+(`UkInit.init_deps` is `□ (T -∗ udepw_law 15/16/17)`).
+**This is not fixable by "making the taint mintable the way echo's is".**
+Echo's taint is minted by its LEDGER, at a console event that breaks the
+discipline — a TRACE-VISIBLE break.  The tree claim's break is an unpaid
+FS MOVE, which no trace event witnesses, so a ledger mint for it is
+either dead (never fires) or vacuous (fires at every power-on, and then
+`tree_pred` is `True ∨ …` and the whole claim says nothing).  §8.4 is the
+mint that is neither.
+
+**(b) WALL 2 — THE ERA'S FIRST DEED HAS NO PURE CONTENT.**  The pinned
+route (`UInitBoot.init_boot_bundle_of_pinned`, i.e.
+`PinnedExec.pinned_exec_bundle_boot`) wants
+`□ ∀ v, app_pred v -∗ app_pred v ∗ (⌜Pin v⌝ ∨ T)` at a `Pin` satisfying
+`PinnedObs.pin_resolves_at` — a PURE resolution of `"/init"` to
+`init_elf`.  Echo has one because its claim CARRIES the pins
+(`EchoFsPure.echo_fs_pure` is a `Prop` on the view).  The tree claim
+carries no pin at all — that is its whole point — so the only candidate
+is a deed, and `AppTree.tree_boot` is `∃ g t, tree_own r g ROOTINO t`
+with **`t` existentially quantified**: it is av-FREE because
+`App.app_boot`'s type is, and TL-3 made it so deliberately (§7.4).  From
+`subtree v ROOTINO = Some t` at an unknown `t` nothing about `/init`
+follows.  Strengthening `tree_boot` to name the image's tree does not
+work either: its producer is the TRANSPORT
+(`AppTree.tree_xfer_boot_at`), which is `∀ av` and at a LATER era's view
+can only answer with the taint arm — wall (a) again.
+
+**(c) WALL 3 — EXEC AT A DEED IS EXEC AT A *FROZEN* DEED.**  Even given
+(b), `PinnedObs.pobs_walk`'s claim law is `□` — a walk reads the claim
+once per hop — so an owner supplies it only through `AppTree.tree_pin`,
+the ONE-WAY `tree_freeze`.  `TreeExec.v`'s own header says this.  A boot
+that froze the era's first deed to pin `/init` hands `/init` a tree it
+can never move, and `/init`'s first act is `mknod("/console")`.
+
+**THE COMBINED READING.**  `AppInv.app_sup` is exactly "this process may
+move the view arbitrarily", so an application that cannot mint it MUST
+verify every process in the system against its claim.  For the tree
+application that means xv6's real `/init` and `/sh` — the whole
+`UkInit`/`UInitCons`/`UInitKernel`/`UkSh` tier, at the tree claim instead
+of echo's.  That is a campaign, not a lane, and TL-3U's
+`UkTreeCreate.wp_uk_tree_app_core` is the shape its first step takes.
+
+### 8.3 sh's `Pay` — the wall the brief expected, priced anyway
+
+It is real and it is the SECOND one you would hit.
+`UShKernel.sh_image_entry_at` / `UInitSh.init_sh_image_entry` state sh's
+entry at
+`Pay := sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np ∗ ucons_pay cn γp T Rdl (-1)
+        ∗ (UserFd.ustd (ukn_fd N) l ∗ UkInit.init_lend_cred T … Wp Wb l np)`
+— the console lease quadruple, not `emp`, and the entry additionally
+demands `UkSh.ush_fd0`, `sh_prompt_law Wc`, `ush_rest_l`, `ush_tag_law T`
+and `□ (T -∗ UkSh.sh_deps)`.  **sh's entry CANNOT be stated at
+`Pay := emp`**: the position and the lease are `/init`'s own console
+ghosts, minted by `/init`'s dance, and sh's body consumes them.  So the
+brief's fallback — "take sh's entry at the taint" — is the right shape,
+and it is `ExecEntry.image_entry_taint`, which is a WAND FROM the taint:
+free to supply, unusable without wall (a)'s mint.
+
+### 8.4 THE FIX IS ONE ALREADY-DESIGNED LANE: SEAM-I (§7.1)
+
+§7.1 says of SEAM-I: "deferred; ready: as one mechanical lane if a
+consumer appears".  **A consumer has appeared, and it is the taint's
+mint.**  With `AppInv.app_step` at `▷ app_pred av ==∗ ▷ app_pred av'`
+(one `-∗` → `==∗`, the whole change costed leg by leg in §7.1), the tree
+claim's own BODY can carry the taint counter's authority, and then the
+step an unpaid mover needs is: open the body, BUMP the counter, leave in
+the taint arm.  That is design §3's own sentence — "a move nobody pays
+TAINTS … the first unpaid move is recorded as the taint" — made a
+resource, and it is neither dead nor vacuous: the counter is at 0 until
+somebody actually moves unpaid, and `tree_R` reads it for the
+conclusion.  With it:
+
+- wall (a) falls: `Hinit_boot` mints the taint out of `app_inv` (which it
+  holds), gets `app_sup`, and takes `InitBoot.init_boot_bundle_triv` —
+  the honest "the era's first process is not verified against the tree,
+  and the claim records it at boot" arm;
+- walls (b) and (c) stop mattering for the BOOT bundle, because the
+  pinned route is no longer the only one;
+- and the tree application becomes a real second instance of
+  `App.xv6_app_adequacy`, whose CONTENT then grows exactly as far as its
+  verified programs do.
+
+**OWNER DECISIONS QUEUED.**  (1) Is the tainted-at-boot arm the second
+application we want, or is the goal a verified `/init` at the tree claim
+(the campaign §8.2 ends with)?  (2) SEAM-I is a tree-wide restatement
+(§7.1 lists every site); it is mechanical and zero-semantic-change for
+every existing consumer, but it touches `AppInv.v`, which this campaign's
+bar has so far kept untouched.
+
+### 8.5 What TL-5 inherits
+
+- `TreeImg.v` is the era-0 mint, done, and nothing in it changes when
+  `Hinit_boot` lands.
+- `make audit-tree` exists and its target is `TreeImg.tree_Happ_init`;
+  when the closed corollary lands, retarget `iris/TreeAssumptions.v` and
+  change nothing else.
+- Unlink still waits on §7.10(8)'s two kernel-tier seams, and the create
+  side still wants §7.10(6)'s claim-reading `Fex`.  Neither is on
+  `Hinit_boot`'s path.

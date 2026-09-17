@@ -66,11 +66,13 @@ redesign).
     uline_ok (LEchoF ws) := EchoDisc.line_ok ws /\ length (line_bytes _) < line_max
     uline_ok LCat := True
 
-`parse_line : list (bv 8) -> option uline` is the inverse on the bodies
-`LineWords.bodies_of` cuts, decidable, prefix-closed the way `disc_input`
-is (`disc_input_f`).  sh's lexer sees `>` as a symbol token; the redirect
-is canonical (one blank each side, at the end), which is what the sh walk
-(§5.1) is stated at.
+`parse_line : list (bv 8) -> option uline` inverts `line_body` (the
+line without its newline: the bodies `LineWords.bodies_of` cuts have it
+stripped), decidable; `disc_input_f` is prefix-closed the way
+`disc_input` is, with the partial line's bytes `fbody_byte := wl_body_byte
+∨ '>'` (a user halfway through `echo hi > f` is at a `>`).  sh's lexer
+sees `>` as a symbol token; the redirect is canonical (one blank each
+side, at the end), which is what the sh walk (§5.1) is stated at.
 
 **The file's content.**  echo writes its arguments as separate `write`s:
 
@@ -103,6 +105,8 @@ continuation and its f-effect are decided by ONE alternative:
 
     ralt_ok (l : uline) (a : ralt) : Prop      -- which alternatives a line shape admits, and sel's shape
     fsm (s : fst) (l : uline) (a : ralt) : fst  -- the f-effect above; RFOpenM only at s = None
+                                                --   (xv6 truncates only AFTER filealloc succeeds, so an open
+                                                --    that fails at a PRESENT f moved nothing: that is RFOpenU)
     cont (s : fst) (l : uline) (a : ralt) : list (bv 8)   -- the continuation bytes (EchoDisc.line_alts_of at REcho)
 
 `RFOpenU`/`RFOpenM` print the same bytes and differ in f: the observer
@@ -129,13 +133,13 @@ chosen existentially inside the admissible set:
       fun s => s = None \/ exists ws sel, ws ∈ Ls /\ sel_ok (echo_chunks ws) sel /\ s = Some (subseq (echo_chunks ws) sel)
     -- Ls = the `echo … > f` word lists typed in ALL earlier cycles (limit 2)
 
-    good_out_f (Ls : …) (s0 : fst) (seg : list mobs) : Prop :=
-      exists ps cs, pro_ok ps cs _ /\ Forall2 ralt_ok (lines of ins seg) cs
+    good_out_f (s0 : fst) (seg : list mobs) : Prop :=
+      exists ps cs, pro_ok_f ps cs _ /\ alts_ok (ins seg) cs      -- Forall2 ralt_ok against lines_of, pinning length cs
                     /\ obs_wire Uart0 seg `prefix_of` sessf ps cs s0 (ins seg)
 
     file_phi h := disc_f h ->
       exists s0s : list fst, length s0s = length (cycles_of h)
-        /\ s0s !! 0 = Some None                               -- the mkfs image has no `f`
+        /\ (forall s, s0s !! 0 = Some s -> s = None)          -- the mkfs image has no `f` (guarded: the empty history has no cycle)
         /\ (forall k s, s0s !! S k = Some s -> fadm_boot (echof_lines_before h (S k)) s)
         /\ Forall2 (good_out_f …) s0s (cycles_of h).
 
@@ -143,7 +147,12 @@ chosen existentially inside the admissible set:
 rate bound (`disc_pt` reads `sessf`, so D1/D2 are unchanged in shape).
 Five machine transcripts are checked as witnesses by `vm_compute`
 (`FileDisc.demo_*`), including "echo, power off, cat" and "echo, crash
-mid-round, cat shows a prefix" — the vacuity rule of `durable-notes.md`.
+mid-round, cat shows a prefix", and one NEGATIVE witness (`demo_f_bad`:
+`cat f` printing `goodbye` after only `echo hello world > f` is refuted) —
+the vacuity rule of `durable-notes.md`.  The determinacy proof
+(`sessf_prefix_det`) runs on one observation, `cont_shape`: every
+non-panic alternative's output is a `$`-free run followed by the prompt,
+so no table of alternatives is compared.
 
 ## 2. The claim (`iris/AppFile.v`)
 

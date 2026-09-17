@@ -2195,3 +2195,231 @@ payload-free.  What SH-ROUND must NOT assume is a 0x601 bundle: until
 seam 1's three restatements land, `FileOpen.file_open_create_au` takes the
 truncate piece as a PREMISE, so the redirect child's open is suppliable
 only at `om_trunc = false` (`file_open_create_au_notrunc`).
+
+### CAT-ENTRY (2026-09-17) — C1 LANDS; C2/C3 ARE STOPPED, AND THE BLOCKER IS THAT cat's WALK WAS LANDED CLAIM-FREE
+
+Branch `app-file/cat-entry`.  Whole tree GREEN on the lane's remote tree
+(`run-on-gcp --proofs -k`, `EXIT=0`, zero `Error`); **both audits
+unchanged** (`make audit-all-only`: the echo theorem's FOURTEEN, the
+system theorem's thirteen).  ONE new file, `iris/UCatOut.v`; the diff to
+existing files is ONE LINE of `iris/_CoqProject`.  Nothing is `Admitted`,
+every result carries `Proof using`, and `Print Assumptions` on
+`cat_blk_byte`, `cat_out_of_tie`, `cch_step` and `cch_chain` is *Closed
+under the global context* — no axioms at all, not even PrimString.
+
+**THE LANE'S VERDICT IN ONE LINE: echo's and sh's walks were landed over
+ABSTRACT PER-CALL OBLIGATIONS and a NAMED exit payload, and cat's was
+landed over the FREE deposit laws and the TRIVIAL payload — so cat's
+console bytes, its open, its read and its exit are all claim-free by
+STATEMENT, and no entry constructor can pay them at the file
+application without restating the walk.  C1's payment lands (it is what
+such a restatement will consume); C2 and C3 stop.**
+
+**WHAT LANDED** (`iris/UCatOut.v`, ~450 lines).
+
+- **The stage**: `cat_stage` (`UEchoOut.echo_stage` with the round's line
+  named BY ITS SHAPE — `uline_of (bodies_of I0 !!! (nlines I0 - 1)) =
+  LCat` — instead of by its words), `cat_st` (= `fst_upto cs0 s0
+  (bodies_of I0) (nlines I0 - 1)`, the state cat's round starts at), and
+  the pure tie `cat_tie cs0 s0 I0 s := dst_content s = cat_st cs0 s0 I0`
+  — "the value my deed fraction agrees on IS the model's state at my
+  round".  That, plus `FileOpen.fdq_agree`, is the whole of what the
+  stage needs of the claim.
+- **The block arithmetic**: `cat_stage_nonnil`, `cat_stage_last`,
+  `cat_stage_nstarted`, `cat_stage_pin_snoc`, `cat_blk_low`,
+  `cat_blk_pending`, `cat_blk_byte` — `EchoLinksLine.wr_blk_*`'s twins at
+  the FILE session, which `FileOutPure` does not state (see below).
+- **The alternatives**: `cat_ralt_ok_ran` / `_noopen`,
+  `cat_ralt_panic_ran` / `_noopen`, `cat_cont_ran_some`,
+  `cat_cont_ran_nil`, `cat_cont_ran_none`, `cat_cont_noopen`,
+  `cat_cont_none_eq`, and the two deed readings `cat_out_of_tie` /
+  `cat_out_of_tie_none`.
+- **The cursor family and the links**: `catcs`, `catcs_pos`, `cch`,
+  `cch_0_alt`, `cch_step` (the block-first byte files the alternative
+  through `FileLinks.file_write_link_blk`, every byte after it goes
+  through the plain `file_write_link`, and the taint arm continues the
+  tower on its own), `cch_chain` (`SpecConsolewrite.cons_out_chain` at
+  cat's cursor, `UEchoOut.ech_chain` verbatim).
+- **The two exit payloads**: `catq_filed` / `catq_unfiled`, their
+  status-independence, and `cch_empty_unfiled`.
+
+**WHAT THE DESIGN SAID THAT THE PROOFS CORRECTED — two, both forced by
+`FileDisc.cont` and both in the lane brief.**
+
+1. **AN ABSENT `f` IS `RCRan`, NOT `RCNoOpen`.**  The brief pairs
+   `RCNoOpen` with cat's `-1` return.  `FileDisc.cont` (`FileDisc.v:740`)
+   reads `cont None LCat RCRan = alt_catopen` — at an ABSENT file the
+   round's continuation ALREADY IS the cannot-open diagnostic, so cat's
+   `-1` at `fdq r q None` files `RCRan`, and `RCNoOpen` is reserved for
+   the PRESENT file whose `filealloc`/`fdalloc` failed (design section 1
+   spells it exactly so: *"`RCNoOpen` — `cat: cannot open f\n$ ` (f
+   present…)"*).  The two print the SAME bytes
+   (`cat_cont_none_eq`), so cat cannot tell them apart from its own
+   return value — **THE DEED IS WHAT DECIDES WHICH IS FILED**, exactly as
+   it decides `RFOpenU` vs `RFOpenM` on the redirect side.  A cat that
+   filed `RCNoOpen` at an absent deed would be filing a false
+   alternative: `fsm` at `RCNoOpen` keeps the state, which is right, but
+   `ralt_ok`/`good_out_f` would then admit a resolution the claim's own
+   deed contradicts.
+2. **THE EMPTY CONTENT NEEDS NO SECOND STAGE SHAPE** — the brief's own
+   alternative reading is the true one.  At `s = Some []`,
+   `cont (Some []) LCat RCRan = [] ++ u_prompt = u_prompt`
+   (`cat_cont_ran_nil`), so the BLOCK'S FIRST BYTE IS THE PROMPT'S, which
+   sh writes after it reaps; sh files `RCRan` at it through
+   `FileLinks.file_write_link_blk` with no help from cat.  cat writes
+   nothing, files nothing, and hands the era's credential back exactly as
+   lent (`cch_empty_unfiled`, and `cch_0_alt`: at cursor 0 the family does
+   not mention the alternative at all).  So the stage is unchanged and
+   only CAT's own exit payload has two shapes, `catq_filed` and
+   `catq_unfiled`.
+
+**WHAT `FileOutPure` DOES NOT STATE, and which this lane had to prove.**
+`EchoLinksLine` has the block-byte family (`wr_blk_low`, `wr_blk_pending`,
+`wr_blk_alt`, `wr_blk_byte`, `wr_blk_pin_snoc`) that every echo-stage
+writer applies; the FILE stage has NO twin — lane STAGE landed the
+`pending_at_f` / `proc_before_f` prefix machinery but not the
+snoc-a-choice reading on top of it.  `UCatOut`'s section 1 is that
+family, stated once at a NON-PANIC alternative (which is all `RCRan`,
+`RCNoOpen` and every `RF*` but `RFFork` are) and hence with no prologue
+tail.  **It is not cat-specific and the redirect child and sh's own
+rounds should be stated at it rather than re-proving it** — the only
+cat-shaped premise in it is `uline_of … = LCat`, which is a parameter one
+`destruct` away from being general.
+
+**STOPPED: C2 (`UCatKernel.cat_image_entry`) AND C3 (cat's PAID entry).
+FIVE INDEPENDENT STATEMENT-LEVEL BLOCKERS, ALL IN LANDED FILES, ALL THE
+SAME SHAPE.**
+
+1. **THE CONSOLE WRITE IS PAID BY THE FREE WRITE LAW, AND AT THE FILE
+   APPLICATION THAT LAW IS THE TAINT.**  `UkCat.cat_deps`
+   (`iris/UkCat.v:102`) is `udepw_law 5 ∗ udepw_law 15 ∗ udepw_law 16 ∗
+   udepw_law 21`, and it is a premise of EVERY lemma of cat's walk
+   (`UkCat.wp_kcat_write`, `:320`, routes write(16) through
+   `UkRunSys.wp_uk_ecall_quiet` at `udepw_of_law … 16` and DISCARDS the
+   post — its conclusion names neither the descriptor nor the byte;
+   `UkCatPutc.wp_kcat_putc`, `:118`, is the same one byte at a time, and
+   `UkCatCat.v:1311` is the read/write loop's call).  `UkRun.udepw_law n`
+   (`iris/UkRun.v:565`) is `□ ∀ N m pc, udepw N m pc n` — a PERSISTENT
+   claim at EVERY key — while the era's console obligation is the LINEAR
+   turn.  The only producer at a claim-bearing instance is
+   `UexecExecMint.udepw_law_of_sup_write` (`iris/UexecExecMint.v:289`):
+   `app_sup -∗ cons_licence -∗ □ riscv_kill_cred -∗ udepw_law 16`, and
+   `AppFile.file_taint_of_sup` (`iris/AppFile.v:591`) turns `app_sup` into
+   `file_taint`.  (`WpUart.cons_licence` is independently FALSE at a real
+   console claim — `UShLine.v:25`.)  So a cat entry that supplies
+   `cat_deps` is a TAINTED entry and proves nothing about the wire.
+   **Contrast: echo's and sh's walks take the era's obligation as an
+   ABSTRACT PER-CALL CHAIN** — `UkEcho.kecho_pay_all` (`UkEcho.v:1405`, converted by
+   `UEchoOut.kecho_pay_of_link`, `UEchoOut.v:747`) and `UkSh.ksh_w`
+   (`UkSh.v:1422`) — with the free law reachable only as ONE instance
+   (`UEchoKernel.echo_uexec_slot`, `:400`, at `udepw_law 16`) and sh's
+   free route gated behind `□ (T -∗ sh_deps)` (`UShKernel.v:573`).  cat's
+   walk has no such chain and no such gate.
+2. **cat's EXIT PAYLOAD IS PINNED TRIVIAL BY A CLASS CONSTRAINT.**  Every
+   file of the walk carries ``Context `{Hpay : !ukn_triv N}`` —
+   `UkCat.v:63`, `UkCatPutc.v:43`, `UkCatVprintf.v:46`,
+   `UkCatVprintfS.v:64`, `UkCatFprintf.v:54`, `UkCatCat.v:69`,
+   `UkCatMain.v:74` — i.e. `ukn_pay N = fun _ => True`.
+   `ExecEntry.image_entry` (`iris/ExecEntry.v:132`) hands the program's
+   record at `my_pay (uvis_gen W') Q`, and `UkRun.uslot_of_urun_ro` mints
+   the record with `ukn_pay N = Q`; so instantiating cat's walk forces
+   `Q = fun _ => True`.  **cat therefore cannot return ANYTHING to sh**:
+   not the deed fraction, not the advanced console credential
+   (`catq_filed`), not the filed alternative.  echo's paid entry
+   (`UEchoOut.echo_uexec_slot_at`, `:800`) exists precisely because
+   `UkEcho`'s walk is stated at a STATUS-INDEPENDENT payload instead of
+   the trivial one.
+3. **THE OPEN IS THE GENERIC LEAF.**  `UkCat.wp_kcat_open`
+   (`iris/UkCat.v:134`) calls `UkRunSys.wp_uk_ecall_open` and returns
+   `∃ fd rd wr t, … ∗ ufd γfd fd (FdOpen rd wr t)` — the descriptor's TYPE
+   is existential, so nothing ties it to the deed's inum.  F-OPEN-2's
+   `UkFileOpen.wp_uk_ecall_open_read_deed` (`:152`) and
+   `wp_uk_ecall_open_miss_deed` (`:288`) are the deed-aware leaves and
+   take a DIFFERENT deposit (`file_open_sup` / `file_miss_sup` built from
+   `fdq`), so cat's open stub would have to be re-proved to reach them.
+4. **THE READ IS THE GENERIC LEAF.**  `UkCat.wp_kcat_read`
+   (`iris/UkCat.v:444`) hands the buffer back at an ARBITRARY `g : nat ->
+   bv 8` and ties neither the bytes nor the count to anything.
+   `UkFileOpen.wp_uk_read_deed_learns` (`:356`) is the one that learns
+   `g j = bs !!! (off + j)`, and again it takes a different deposit.  So
+   the bytes cat prints are, through the landed walk, unrelated to the
+   deed by STATEMENT.
+5. **CONSEQUENTLY C3 HAS NOTHING TO CONSTRUCT.**
+   `UShEchoPay.echo_slot_of_kexec_at` (`:119`) is the mould and every
+   premise of it has a cat twin except the last two, which are exactly
+   (1) and (2): it ends `my_pay (uvis_gen W') (fun _ : Z => Wq I) -∗
+   ewc_lpr T v I 3 -∗ uslot W'`, and cat's `uslot` can only be built at
+   `fun _ => True` and only out of the free laws.
+
+**WHAT WOULD UNBLOCK C2/C3, priced.**  ONE lane, and it is a RESTATEMENT
+of cat's walk on echo's mould, not new mathematics: give `UkCat` a
+per-call write obligation `kcat_w fdw ua nb Ci Co` (`UkSh.ksh_w`'s shape,
+`UkSh.v:1422`) and a payment chain `kcat_pay_all` threaded through
+`UkCatPutc` / `UkCatVprintf` / `UkCatVprintfS` / `UkCatFprintf` /
+`UkCatCat` / `UkCatMain`; drop `ukn_triv` for a status-independent
+payload parameter (`UkRun.ukn_const`); and split the open and the read
+stubs into a deed arm (over `UkFileOpen`'s three corollaries) beside the
+free arm.  That is ~10,000 lines of landed walk whose STATEMENTS move —
+which this lane was told not to do ("new files only") and which is
+exactly the shape `durable-notes.md`'s guiding principle says to take
+rather than work around.  Until it lands, `UCatOut.v` is the payment
+waiting for it, and **cat runs on the generic slot**
+(`UexecCond.cond_entry_slot`'s tail, `:348`) — i.e. tainted, which is
+what `FileLinks.file_write_link_taint` already answers.
+
+**THE `cat: read error` TAIL IS NOT REFUTABLE AT THE U TIER, AND THE
+KERNEL RELAY IT NEEDS IS NAMED.**  design section 5.3 hopes to refute it
+("the read's `-1` arm at an inode needs a copyout failure, which the
+mapped row excludes").  It does not: `FsAbsReadFire.read_arms`
+(`iris/FsAbsReadFire.v:398`) is `read_post_ok … ∨ (⌜r = -1⌝ ∗
+read_post_fail …)` and `read_post_fail` (`:390`) is
+`(⌜n < 0⌝ ∗ pf_at …) ∨ (⌜0 <= n⌝ ∗ ∃ av off a, ⌜ard_pre av i off a⌝ ∗
+F.(pf_recv) av off a 0)` — **the failure arm NAMES NO ADDRESS**.  It says
+only "the fire's count was 0", so a caller holding `ubytes` over the whole
+destination buffer has nothing to contradict, and
+`UkFileOpen.wp_uk_read_deed_learns` (`:356`) carries the `-1` disjunct
+into the U tier verbatim (`FileOpen.file_read_arms_learn`,
+`FileOpen.v:760`, hands it back at both fail sub-arms).  The relay that
+would refute it is READ's twin of the write chain's RELAY 4 (design
+section 0 / section 3): `read_post_fail`'s `0 <= n` arm must carry
+`SpecCopyout`'s reason — an address the process's page table does not map
+FOR WRITING — at which point a U-tier caller whose buffer is mapped
+refutes it in one line, exactly as `usrc_ok`'s mapped row refutes the
+partial write node.  Kernel sites: `FsAbsReadFire` (`read_post_fail`,
+`read_arms`), `SpecFileread`'s fold and `SpecSysRead`'s.  **TAKEN AS A
+STOP; NOT WIDENED.**  If it is ever taken honestly instead, the
+alternative section 1 would need is
+`RCReadErr (j : nat)` with
+`cont s LCat (RCReadErr j) := take j (default [] s) ++ dg_readerr ++
+u_prompt` and `fsm` unchanged — the ONLY alternative in the list whose
+output is not a function of the state alone (it carries how much came out
+before the fault), which is why it should be refuted rather than added.
+
+**TWO SMALLER FINDINGS FOR THE DESIGNER.**
+- **`--check` and `--check-proof` are BROKEN on a tree built the ordinary
+  way**, and the lane lost time to it: `run-on-gcp --check FileLinks.v` at
+  a clean HEAD reports *"Compiled library xv6iris.FileDisc … makes
+  inconsistent assumptions over library xv6iris.FileState"*, because the
+  `-vos`/`-vok` modes prefer the EMPTY `.vos` stubs `coqc` writes beside
+  each `.vo` (durable-notes, "Staleness"), and `FileState`'s stub is not
+  the library `FileDisc.vo` was built against.  It is not this lane's file
+  and not this lane's edit.  The working loop is
+  `run-on-gcp --no-sync bash -c 'cd <remote>/iris && coq_makefile -f
+  _CoqProject -o CoqMakefile && make -f CoqMakefile -j8 <F>.vo'`.
+- `FileLinks.v` has no `EchoLinks.echo_links`-style BUNDLE, so every
+  program-side file must re-take `Hcons : riscv_cons_res = fecl g` as a
+  section hypothesis and thread `g` and `Hcons` through every application.
+  One `file_links g` definition with three accessors would make the
+  program files read like `UEchoOut` does.
+
+**THE ONE THING LANE SH-ROUND NEEDS FIRST.**  Not cat's entry — it cannot
+have one yet.  What it needs is `UCatOut.cat_cont_ran_nil` and
+`cat_stage`: **sh must file `RCRan` AT ITS OWN PROMPT BYTE whenever the
+deed's content is empty**, because in that case cat writes nothing and the
+block's first byte is sh's.  So sh's prompt write after `wait` is not
+always the plain `file_write_link`: at an `LCat` round whose deed is
+`Some (i, [])` — and only there — it is `file_write_link_blk` at
+`a := ralt_enc RCRan`, and sh decides which by reading its own deed
+(`FileOpen.fdq_agree`) before it prints.  Getting this wrong is not a
+missing lemma but a WRONG cursor: sh would write the prompt at an
+unopened block and the stage's `cs_len_ok_f` would refuse it.

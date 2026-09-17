@@ -181,3 +181,8 @@ import Xv6.SpecFreeproc
 import Xv6.SpecAllocproc
 import Xv6.SpecKilled
 import Xv6.SpecGrowproc
+import Xv6.ProofUvmcreate
+import Xv6.LinkUvmcreate
+import Xv6.UPtWalkaddrLemmas
+import Xv6.ProofWalkaddr
+import Xv6.LinkWalkaddr

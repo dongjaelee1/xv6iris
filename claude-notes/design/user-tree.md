@@ -2354,3 +2354,112 @@ unchanged; land it with the φ it is for, not before.
 three unmoved.  `UInitTree.tree_init_kill_law` is **closed under the
 global context**; the four write-side lemmas are at the standing bar (the
 two reservation `Parameter`s + `functional_extensionality_dep`).
+
+### 9.6 TL-7 as landed — the nine laws off `echo_names`, /init's console setup at the deed, and the ONE premise still open
+
+Branch `tl7-init-cons`, two commits, builds on the EC2 mirror only.
+`AppEcho.v` / `AppInv.v` / `UkInit.v` / `UInitKernel.v` / `UInitSh.v` /
+`UInitBoot.v` untouched; `UInitBootAdequacy.echo_adequacy_echoΣ`
+byte-identical; echo audit **14**, unmoved.
+
+**(1) D1 — `UInitCons.v` IS OFF `echo_names`, AND THE ECHO INSTANCE IS
+DEFINITIONAL.**  `init_cons_laws_at` and everything under it now take an
+abstract pure predicate `Pure : aview -> Prop` and an abstract flag
+`Made : Z -> iProp Σ` where they named `EchoFsPure.echo_fs_pure` and
+`AppEcho.cons_made r`: `init_mk_Farm`, `init_cons_fok` / `init_mk_Fok`,
+`init_cons_made_of_fok` / `init_cons_fok_at`, `init_cons_mknod_bundle`,
+`init_cons_mknod_recv` / `_fail_recv`, and the two restated bundles
+`init_cons_laws_mknod_bundle` / `init_cons_laws_open_console`.  The landed
+name survives unchanged as the instance —
+
+> `init_cons_laws T K r := init_cons_laws_at echo_fs_pure (cons_made r) cons_absent T K`
+
+— so `UShConsK`, `UConsOpen` and `TreeObs`'s reading of it are untouched,
+and `UInitConsK.v` took instantiation edits ONLY (nine call sites gain
+`echo_fs_pure (cons_made r)`).  ONE statement really changed shape, and it
+is the one the tree needed: `init_cons_laws_open_console` now spends the
+flag **linearly** (law (i) reads it once and what comes back is the `□`
+pin law), which is what makes the lemma usable at a claim whose `Made` is
+a DEED and not a persistent flag.  `UConsOpen.cons_sup_console` moved the
+same way.
+
+**(2) D2 — THE SETUP'S LEAVES AT THE DEED** (`iris/UInitTreeCons.v`, new).
+Every arm hands the claim back as the **deed** (`AppTree.tree_own`), never
+as the taint, so the claim's live arm covers `mknod("/console")` and both
+opens:
+
+| statement | what it is |
+| --- | --- |
+| `tree_cons_absent` | a subtree whose ROOT has no `console` entry is a view whose root has none (`TreeView.npath_nclose` + `npath_tview` at the one-element path) |
+| `tree_cons_abs_law` | `UInitCons.init_cons_abs_law (tree_taint c) (tree_own r g ROOTINO t)`, = `TreeObs.tree_own_claim_law` + the step above |
+| `tree_open_absent_leaf_holds` | `□ uki_open_absent_leaf` — **`UInitConsK.init_open_absent_leaf_holds` verbatim**, which is what the claim-generic statement was for |
+| `tree_open_recv_dev`, `tree_open_sup_dev`, `wp_uk_ecall_open_dev_own` | open at a DEVICE inside the owned subtree — `UkTreeRead`'s FILE corollary one node kind over, at `PinnedOpen.pinned_open_dev`'s collapse, descriptor `FdDevice ma` |
+| `tree_open_console_leaf_holds` | `□ uki_open_console_leaf` at that corollary and /init's own literal |
+| `tree_mknod_leaf_holds` | `□ uki_mknod_leaf` at `UkTreeCreate.tree_mknod_sup`: the deed goes in LIVE and comes back moved or untouched |
+| `tree_init_cons_leaves` | `UkInit.init_cons_leaves` at the tree |
+| `UInitTreeBoot.tree_init_cons_dance_all` | `UInitKernel.init_cons_dance_all` — §9.5(5)'s FIRST entry, CLOSED |
+
+Two design points worth keeping.  **The moved deed is FROZEN**
+(`AppTree.tree_freeze`) inside the mknod's success arm and spent on the
+second open's leaf: a walk reads the claim once per hop, so it needs the
+`□`-shaped law, and /init never moves the namespace again — the trade
+costs it nothing.  **`Cns := True`**: the credential /init hands the shell
+is echo's reading of the console's state and a tree application makes no
+console claim.
+
+**(3) THE DEPOSIT INSTANCE IS A WALL IN THE TREE FILES, and the shape of
+the fix is measured.**  `UkTreeRead.wp_uk_ecall_open_own`
+(`UkTreeRead.v:294`) and `UkTreeCreate.wp_uk_ecall_mknod_own`
+(`UkTreeCreate.v:480`) are pinned at `UexecExecInst.uprogSG_gen` through
+their `UkRun.urun`, while /init must run at `uprogSG_free`
+(`UInitBoot.v`'s ruling: at `gen` its `udep` IS `AppInv.app_sup`, so a
+slot outside the taint arm is a vacuous arm), and the two records are not
+convertible.  `Context `{PS : uprogSG Σ}` in either tree file **wedges its
+own compile** — measured: `UkTreeRead.v` at 6+ minutes, RSS climbing ~32
+MB/45 s, killed.  So the two ecall walks are re-derived in
+`UInitTreeCons.v` from the PS-FREE pieces (`tree_open_bundle_abs`,
+`tree_mknod_sup`, `tree_mknod_fam`, `tree_mknod_ok_recv` /
+`_fail_recv`, `UInitConsK`'s two dispatcher rows), with the instance
+written on every PS-indexed head.  Note for anyone tempted: `udepwf_at`
+is SG-indexed and takes no `PS` — only `urun` and the `wp_uk_*` leaves do.
+
+**(4) D3 IS WALLED, AND THE WALL IS ONE ENTAILMENT — a ruling, not a
+proof.**  `UkInit.init_cons_sup` has exactly ONE producer in the tree,
+`UInitSh.init_exec_sup_of_sh_slot` (`UInitSh.v:1157`), whose Coq-level
+premise is `UInitSh.cons_cred_holds` (`UInitSh.v:532`).  At the tree's
+console record (`UInitTree.tree_cc`) its EIGHTH conjunct
+(`UInitSh.v:562`) reduces, with the two trivial families unfolded, to
+
+> `⊢ tree_turn c -∗ tree_taint c` — the era's UNSPENT LICENCE becomes the
+> taint, **update-free**
+
+and `UInitTreeBoot.tree_cc_wb_conj8_is_turn_to_taint` PROVES that
+reduction in both directions (closed under the global context), so
+nothing is left to judgement.  The licence is a linear `ghost_map`
+element and the taint is that element PERSISTED
+(`AppTree.tree_taint_mint` is one `ghost_map_elem_persist`), so no such
+entailment exists — and it must not: it is `tree_bump_free_is_vacuous`
+one premise over.  **The ruling that unblocks it is §9.4's, verbatim, one
+premise over: re-cut `cons_cred_holds`'s eighth conjunct as an UPDATE**
+(`==∗` for `-∗`), which echo discharges with one `iModIntro` and the tree
+discharges by SPENDING the licence — exactly as `UkInit.init_kill_law`
+already does for the kill row.  *Not* an option: dropping the licence arm
+from `cc_wb`, which is what makes the banner the mint (§9.5(3)).
+
+Two smaller entries are owed beside it, both the same record's:
+`cons_cred_holds`'s FIRST conjunct (`UInitSh.v:535`) is sh's read leaf as
+a CLOSED entailment with no taint in hand; and the HIT arm of the dance
+(`UkInit.uki_mknod_hit_leaf`, `UkInit.v:499`) wants a credential-free,
+`□`-shaped mknod, which the tree's corollary cannot give — it needs the
+LIVE deed, and echo pays that arm from its persistent FLAG.  So a
+verified-`/init` theorem will read "at an era whose namespace has no
+`/console` yet" until someone prices a frozen-pin mknod-fails corollary.
+
+**(5) D4 NOT LANDED, and (4) is exactly why.**
+`UInitKernel.init_boot_con` takes `UkInit.init_cons_sup` at
+`UInitKernel.v:720`; with that premise unpayable there is no behavioural
+`tree_Hinit_boot` to point `UTreeAdequacy.tree_adequacy_treeΣ` at, so the
+at-boot form stands unrenamed and the tree audit is unmoved.  What the
+theorem says is therefore still §9.3(2)'s; what the lane bought is that
+the premise list is down from TWO open entries to ONE, and that one is a
+ruling.

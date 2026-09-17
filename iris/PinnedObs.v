@@ -1097,3 +1097,189 @@ Section PinnedObsPar.
   Qed.
 
 End PinnedObsPar.
+
+(* ===================================================================== *)
+(*  12.  THE FULL-PATH WALK OUT OF A LIVE CLAIM (lane TL-5, deliverable   *)
+(*       3; design/user-tree.md section 9.2's "exec from a live deed")    *)
+(*                                                                       *)
+(*  Section 11a put the walk's resource ON THE CURSOR so that a LIVE      *)
+(*  claim -- a deed its owner may still move -- supplies the PARENT       *)
+(*  PREFIX's walk.  This is the same construction one list longer: at     *)
+(*  [FsAbsEra.ex_start], the full path namei runs, which exec and open    *)
+(*  take.  It is what dissolves design section 8.2's WALL 3: exec at a    *)
+(*  deed no longer means exec at a FROZEN deed, so a process that has     *)
+(*  already moved its tree (<init>, whose first act is                    *)
+(*  mknod("/console")) can still exec out of it.                          *)
+(*                                                                       *)
+(*  WHAT IT COSTS, and it is section 11a's price at the same shape: the   *)
+(*  terminal IDENTIFICATION reads the cursor and hands back a PURE fact   *)
+(*  ([ex_node_abs] is a [□] wand into [⌜_⌝ ∨ T]), so the [K] the walk     *)
+(*  carried is dropped there.  For exec that is exactly right -- the      *)
+(*  image is replaced, and its deed with it -- and it is why this file    *)
+(*  states no [_lin] twin of [pinned_obs] that returns [K].               *)
+(* ===================================================================== *)
+Section PinnedObsAbsLin.
+  (* section 2's binder list verbatim *)
+  Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ}.
+
+  (* ONE HOP: [pobs_hop_w]'s proof with [pobs_phop_lin]'s threading of
+     [K] -- in through the cursor and out through it, so the hop resource
+     itself is built from persistent things alone. *)
+  Lemma pobs_hop_w_lin (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (K : iProp Σ) `{!Timeless K}
+      (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (ino : Z)
+      (k : nat) (s : fname) :
+    pin_walks_at Pin cw pl hops ino ->
+    path_elems pl !! k = Some s ->
+    pobs_miss_taint T Pmiss -∗
+    □ (∀ v : aview, K -∗ app_pred app_run v -∗
+                      app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv γfs -∗
+    ex_hop γfs (pobs_P_lin T hops K) Pmiss k s.
+  Proof.
+    intros (_ & _ & Hpin) Hk. iIntros "#Hmt #Hcl #Hinv".
+    rewrite /ex_hop /ax_hop /pobs_P_lin.
+    iIntros (d0 ents dqv) "HP HF".
+    iDestruct "HP" as "[[%Hd HK] | #HT]"; last first.
+    { iModIntro. iFrame "HF".
+      destruct (ents !! s) as [c |]; [ by iRight | iApply ("Hmt" with "HT") ]. }
+    subst d0.
+    iMod (inv_acc ⊤ appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I) "(>Hh & Hp & >%Hdom & #Hx)".
+    iAssert (▷ (app_pred app_run (abs_view I) ∗ K ∗ (⌜Pin (abs_view I)⌝ ∨ T)))%I
+      with "[Hp HK]" as "Hpc".
+    { iNext. iApply ("Hcl" with "HK Hp"). }
+    iDestruct "Hpc" as "[Hp [HK Hc]]".
+    iMod "Hc". iMod "HK".
+    iDestruct (pobs_elend_astep γfs (1/2)%Qp I (hops !!! k) dqv ents s
+                 with "Hh HF") as %Hae.
+    iMod ("Hclose" with "[Hh Hp]") as "_".
+    { iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
+      iPureIntro. exact Hdom. }
+    iModIntro. iFrame "HF".
+    iDestruct "Hc" as "[%HP | #HT]"; last first.
+    { destruct (ents !! s) as [c |]; [ by iRight | iApply ("Hmt" with "HT") ]. }
+    pose proof (arun_step_tot (abs_view I) (hops !!! 0%nat) (path_elems pl)
+                  hops k s (Hpin (abs_view I) HP) Hk) as Hst.
+    rewrite Hae in Hst. rewrite Hst. iLeft. iFrame "HK". by iPureIntro.
+  Qed.
+
+  (* THE WHOLE WALK, AT THE FULL PATH, OUT OF A LIVE CLAIM. *)
+  Lemma pobs_walk_w_lin (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (K : iProp Σ) `{!Timeless K}
+      (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (ino : Z) :
+    pin_walks_at Pin cw pl hops ino ->
+    pobs_miss_taint T Pmiss -∗
+    □ (∀ v : aview, K -∗ app_pred app_run v -∗
+                      app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv γfs -∗
+    K -∗
+    ex_start γfs cw (pobs_P_lin T hops K) Pmiss pl.
+  Proof.
+    intros Hres. iIntros "#Hmt #Hcl #Hinv HK".
+    pose proof Hres as Hres'. destruct Hres' as (Hstart & _ & _).
+    rewrite /ex_start. iIntros (r Hr). iModIntro. iSplitL "HK".
+    { rewrite /pobs_P_lin. iLeft. iFrame "HK". iPureIntro.
+      by rewrite Hr Hstart. }
+    rewrite /ex_hops_from /ax_hops_from.
+    iApply big_sepL_intro. iIntros "!>" (j s Hj).
+    rewrite lookup_drop in Hj.
+    iApply (pobs_hop_w_lin γfs Pin T K Pmiss cw pl hops ino (0 + j)%nat s
+              Hres Hj with "Hmt Hcl Hinv").
+  Qed.
+
+  (* THE IDENTIFICATION, CUT TO THE CONTENT ([pobs_node_abs]'s proof at the
+     linear cursor): the terminal cursor's LEFT arm names the pinned inum
+     and carries [K]; the fact that comes out is pure, so [K] is dropped
+     here -- the price section 11a names, at the walk that ends in an
+     exec. *)
+  Lemma pobs_node_abs_lin (Pin : aview -> Prop) (T : iProp Σ) (K : iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (hops : list Z) (ino : Z) (nd : absnode)
+      (v : aview) (i : Z) (b : anode) :
+    pin_resolves_abs Pin cw pl hops ino nd ->
+    pobs_P_lin T hops K (length (path_elems pl)) i -∗
+    pobs_recv Pin T v i b -∗
+    ⌜i = ino /\ an_node b = nd⌝ ∨ T.
+  Proof.
+    intros ((_ & Hfin & _) & Hpin).
+    rewrite /pobs_P_lin /pobs_recv.
+    iIntros "HP [%Hrow Hc]".
+    iDestruct "HP" as "[[%Hi _] | HT]"; [ | iRight; iExact "HT" ].
+    iDestruct "Hc" as "[%HP | HT]"; [ | iRight; iExact "HT" ].
+    destruct (Hpin v HP) as (k & Hrowpin).
+    rewrite Hfin in Hi. subst i.
+    destruct (decide (an_nlink b = 0%nat)) as [Hz | Hnz].
+    { exfalso. rewrite (arow_at_gone v ino b Hrow Hz) in Hrowpin.
+      discriminate Hrowpin. }
+    rewrite (arow_at_live v ino b Hrow Hnz) in Hrowpin.
+    apply Some_inj in Hrowpin. subst b.
+    iLeft. iPureIntro. split; reflexivity.
+  Qed.
+
+  (* THE OBSERVATION, OUT OF A LIVE CLAIM TOO: [pobs_aopen]'s proof with
+     the deed spent inside the commit's own fupd, where [appN] is open --
+     [PieceFam.pf_at] is a CONJUNCTION, so the refund branch hands the
+     resource straight back if the observation never fires. *)
+  Lemma pobs_aopen_lin (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (K : iProp Σ) `{!Timeless K} :
+    □ (∀ v : aview, K -∗ app_pred app_run v -∗
+                      app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
+    app_inv γfs -∗
+    K -∗
+    pf_at (aopen_commit_at (fs_gamma_L γfs) appE)
+      (MkPfam (pobs_recv Pin T) K).
+  Proof.
+    iIntros "#Hcl #Hinv HK". rewrite /pf_at. cbn [pf_recv pf_refund].
+    iSplit; [| iExact "HK" ].
+    rewrite /aopen_commit_at /pobs_recv. iIntros (I i a) "%Hrow Hka".
+    iMod (inv_acc appE appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I') "(>Hh & Hp & >%Hdom & #Hx)".
+    iDestruct (ghost_map_auth_agree with "Hka Hh") as %<-.
+    iAssert (▷ (app_pred app_run (abs_view I) ∗ K ∗ (⌜Pin (abs_view I)⌝ ∨ T)))%I
+      with "[Hp HK]" as "Hpc".
+    { iNext. iApply ("Hcl" with "HK Hp"). }
+    iDestruct "Hpc" as "[Hp [_ Hc]]".
+    iMod "Hc".
+    iMod ("Hclose" with "[Hh Hp]") as "_".
+    { iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
+      iPureIntro. exact Hdom. }
+    iModIntro. iFrame "Hka".
+    iSplitR; [ by iPureIntro | ]. iExact "Hc".
+  Qed.
+
+  (* ------------------------------------------------------------------ *)
+  (*  THE WALL THIS SECTION DOES NOT CLIMB, AND IT CORRECTS DESIGN        *)
+  (*  SECTION 9.2 ("the full-path twin is the same construction one list  *)
+  (*  longer").  IT IS NOT, AND THE OBSTRUCTION IS NOT THE WALK.          *)
+  (*                                                                     *)
+  (*  [ExecRun.exec_walk_of_abs] is THREE pieces: the walk, the OPEN      *)
+  (*  OBSERVATION's piece, and the terminal identification.  With a       *)
+  (*  FROZEN deed all three come off one [□] claim law                    *)
+  (*  ([pinned_obs_abs]).  With a LIVE one there is ONE deed and TWO      *)
+  (*  places that must read the claim -- every hop (above) and the        *)
+  (*  observation ([pobs_aopen_lin]) -- and they are INDEPENDENT pieces   *)
+  (*  the kernel is handed up front, so the deed can sit in only one.     *)
+  (*  Putting it on the cursor does not help: the terminal               *)
+  (*  identification ([ExecRun.ex_node_abs]) is a [□] wand into a PURE    *)
+  (*  fact with no fupd, so the deed it receives there cannot be cashed   *)
+  (*  against the invariant, and the receipt it is paired with says       *)
+  (*  nothing about the view unless the OBSERVATION read the claim.       *)
+  (*                                                                     *)
+  (*  THE FIX IS A KERNEL-TIER SEAM ALREADY PRICED FOR UNLINK             *)
+  (*  (design/user-tree.md section 7.9(8)(a) / 7.10(8)(a), TL-3K's        *)
+  (*  cursor verbatim): [SysOpenDefs.aopen_commit_at] takes a cursor      *)
+  (*  [Pd : Z -> iProp Σ] beside its row premise, reads it and hands it   *)
+  (*  back -- i.e. the walk's TERMINAL CURSOR reaches the observation.    *)
+  (*  Then the deed rides the hops here, is spent at the observation by   *)
+  (*  [pobs_aopen_lin], and the identification is [pobs_node_abs_lin] as  *)
+  (*  it stands.  Until then a LIVE owner's exec goes through the taint   *)
+  (*  arm ([ExecRun.exec_walk_of_abs_taint]), which is free and is what   *)
+  (*  [UTreeAdequacy]'s boot bundle spends.                               *)
+  (* ------------------------------------------------------------------ *)
+
+End PinnedObsAbsLin.

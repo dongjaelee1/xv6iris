@@ -2582,3 +2582,127 @@ has NO echo-indexed premise left — the setup is proved against the deed
 generic slot bought with the taint (TL-8) — and the two things still owed
 are a ruling about the era licence's algebra and one deed-indexed twin of
 echo's boot-bundle lemma.
+
+### 9.8 TL-9 as landed — the exec supply's UPDATE DOOR, `Cns := True`, /init's whole entry slot at the tree claim, and why D4 still walls
+
+Branch `tl9-hinit-boot`. Five files: `UkInit.v`, `UInitSh.v`,
+`UkInitMain.v`, `UInitTree.v`, `UInitTreeExec.v`.
+`UInitBootAdequacy.echo_adequacy_echoΣ` byte-identical; echo audit **14**,
+file audit unmoved, tree audit unmoved.
+
+**(1) THE UPDATE DOOR, AND IT IS THE OWNER'S RULING OF §9.4 ONE PREMISE
+OVER.** `UkInit.init_exec_sup_pos` ends in `|==> udepw_at_refR_ids …` now
+instead of `udepw_at_refR_ids …`. Nothing else of the node moved: it is
+handed the same round credential (`UkInit.init_lend_cred`), builds the
+same deposit and names the same refund (`UkInit.init_lend_ref`).
+
+- **ECHO pays one token.** `UInitSh.init_exec_sup_of_sh_slot` gains one
+  `iModIntro` before its `udepw_at_refR_ids_of_sup_ids` — echo's
+  credential is the taint, which is persistent, so nothing is spent.
+- **THE CONSUMER IS ONE SITE, and the shape is a hoist.**
+  `UkInitMain.wp_kinit_main_die_de`'s exec (`UkInitMain.v:757`) used to
+  fill `wp_kinit_exec`'s deposit slot with `iApply ("Hxs" $! …)` inside a
+  `{ }` premise goal; a premise goal is not a place an update runs. The
+  node is applied FIRST, at the `WP` goal, with `iMod … as "Hdepx"`, and
+  the leaf then takes `"Hdepx"`. The four `UkInitMain` lemmas that merely
+  thread `init_exec_sup_lend` are untouched.
+
+**(2) WHAT THE DOOR BUYS: THE SUPPLY AT `Cns := True`, AND TL-8's WALL IS
+RETIRED.** §9.7(2) refuted `UInitTreeExec.tree_init_cons_sup` at
+`Cns := True` on a token count — with the conclusion update-free there was
+nowhere INSIDE the node's construction to mint the taint out of the era's
+licence, and outside it the supply is a `□`. With the door there is:
+
+| statement | what it is |
+| --- | --- |
+| `UInitTree.tree_lend_taint` | `init_lend_cred … ==∗ init_lend_cred … ∗ tree_taint c` — the taint off the lend's THREE arms: read on the console row (`tree_cc_wp`), MINTED on the closed row (`tree_cc_wbn_mint`, the row where the banner was never written and the licence is still unspent), free on the taint arm. The lend comes back on its taint arm, so the deposit's refund is untouched. `tree_init_kill_law` is now this lemma plus three tokens — the two consumers are the same move |
+| `UInitTreeExec.tree_init_exec_sup_pos` | TL-8's whole body, with the taint as a PREMISE and the door opened for free |
+| `UInitTreeExec.tree_init_exec_sup_lend` | the wand form from the taint, one line on the body |
+| `UInitTreeExec.tree_init_exec_sup_lend_of_lend` | the CLOSED form: `⊢ init_exec_sup_lend cn (tree_taint c) stc (tree_cc c)`, the mint inside the node |
+| `UInitTreeExec.tree_init_cons_sup` | `⊢ init_cons_sup cn (tree_taint c) True stc (tree_cc c)` — both halves one line |
+
+It costs the era nothing the dance does not already pay: the taint is
+persistent once minted, so the `□` re-derives it per round from whatever
+credential that round carries, and on a round where the banner HAS run
+the credential is already the taint and the mint does not fire.
+
+**(3) ONE LICENCE PER ERA IS NOW ENOUGH, which is §9.7(4) closed.**
+`UInitTreeExec.tree_init_boot_con` is re-instantiated at `Cns := True` and
+`tree_init_boot_pay` takes TL-7's dance AS LANDED
+(`UInitTreeBoot.tree_init_cons_dance_all`, `Cns := True`, whose linear
+credential is the era's DEED) and the era's licence `tree_turn c`
+(`UInitTree.tree_cc_wbn_of_turn`) for `cc_wbn 0`. The two `∗`-separated
+conjuncts of `init_boot_pay` that used to want a licence each now want
+one between them. **The fractional licence §9.7(4) priced is NOT taken
+and `tree_turn` is untouched.**
+
+**(4) /INIT'S WHOLE ENTRY SLOT AT THE TREE CLAIM.**
+`UInitTreeExec.tree_init_boot_uslot` is `UInitKernel.init_boot_con`
+APPLIED at the payload `tree_init_boot_pay` builds: from `app_inv fsc_fs`,
+the era's first deed `tree_own r g ROOTINO t` (LIVE — the dance's mknod
+moves it), the era's licence `tree_turn c`, the kernel's reader token and
+the key the kernel resumes `<init>` at, it hands out `uslot W'`. The
+image premise is a fact about the DEED's own tree
+(`tv_nodes t !! ROOTINO = Some (ADir e)`, `e !! fname_console = None`) —
+TL-7's miss arm. **So /init's walk at the tree claim is paid end to end:
+the setup against the deed (TL-7), the banner minting at its first byte
+(TL-6), the exec of /sh on the generic slot bought with the taint the
+round's own credential mints (TL-8 + this lane), and the shell as the
+taint entry.**
+
+**(5) D4 IS NOT LANDED, AND THE WALL IS NOT A TOKEN COUNT — IT IS THE
+SHAPE OF THE BOOT WALK'S PIN.** `UTreeAdequacy.tree_Hinit_boot` still has
+its at-boot form and `tree_adequacy_treeΣ` still points at it. What
+`tree_init_boot_uslot` does NOT reach is `InitBoot.init_boot_bundle`: the
+kernel's own `kexec("/init")`, which is a PINNED exec and whose bundle is
+`PinnedExec.pinned_exec_bundle_boot` (`PinnedExec.v:537`). Two independent
+refutations of the brief's `init_boot_bundle_of_own`, both at named
+statements:
+
+- **The pin law is `□`, and a live deed cannot pay a `□`.**
+  `pinned_exec_bundle_boot` takes
+  `□ (∀ v, app_pred app_run v -∗ app_pred app_run v ∗ (⌜Pin v⌝ ∨ T))` and
+  spends it in three places (`pobs_walk`, `pobs_aopen`, `pobs_node_id`) —
+  a walk reads the claim once per hop. At the tree claim the only
+  producer is `TreeExec.exec_walk_of_own` (`TreeExec.v:89`), which takes
+  `AppTree.tree_pin`, the FROZEN deed; `AppTree.tree_own`
+  (`AppTree.v:1515`) is exclusive and `AppTree.tree_freeze`
+  (`AppTree.v:1545`) is one-way. Freezing the era's ONE boot deed to pay
+  the boot walk therefore leaves `UInitTreeBoot.tree_init_cons_dance_all`
+  (`UInitTreeBoot.v:104`), which takes `tree_own … t` LIVE for its mknod,
+  with nothing to run on. The brief's "hand it back into `Pay`" does not
+  help: what `Pay` gets back is linear, and the law that was needed is
+  persistent.
+- **The deed's subtree is EXISTENTIAL, so nothing identifies it with the
+  image.** `AppTree.tree_boot` (`AppTree.v:2546`) is
+  `∃ g t, tree_own r g ROOTINO t`, and `App.al_programs` (`App.v:371`)
+  hands `Hinit_boot` only `app_inv`, that boot resource and `app_turn` —
+  no era-0 premise. So the pure premise
+  `resolves_from t ROOTINO init_path = Some (INIT_INO, AFile init_elf)`
+  that `TreeObs.tree_pin_resolves_abs_path` (`TreeObs.v:150`) needs
+  cannot be supplied, frozen deed or not. (There is no `tc_img c`: the
+  tree's fixed part carries no image. The deed is minted at
+  `MkTTree (subtree_nodes av ROOTINO) ROOTINO` for whatever `av` the
+  crossing is at — `AppTree.tree_xfer_boot_at`, `AppTree.v:1753` — and
+  `App.app_boot` is required to be av-FREE.)
+
+The nlink half of the brief's third worry is NOT a wall: the tree pins a
+row's CONTENT and not its count, and `ExecRun.v` §6
+(`ex_node_abs` / `exec_walk_of_abs` / `PinnedObs.pin_resolves_abs`) was
+built for exactly that. What is missing on that route is only a boot twin
+of it — `pinned_exec_bundle_boot_at` is stated at `ex_node_id` through
+`ExecBundle.exec_bundle_of_at`, and the `_abs` assembly ExecRun has is the
+SYSCALL one (`exec_bundle_of_abs`). That twin is cheap and worth having
+whichever way the two refutations above are ruled; it buys nothing on its
+own.
+
+**WHAT THE THEOREM SAYS TODAY.** Unchanged from §9.3(2). What this lane
+buys is that /init's premise list at the tree claim is now EMPTY — there
+is no echo-indexed entry and no open licence question left in it
+(`tree_init_boot_uslot` is the receipt) — and that the remaining gap is a
+single, sharply stated question about the ALGEBRA OF THE BOOT DEED: the
+era's first process needs its namespace deed both persistently (to have
+its own image pinned for the walk that starts it) and linearly (to move
+that namespace afterwards). The two owner-level shapes that would answer
+it are a deed with a persistent READ half beside a linear MOVE half, and
+an era-0 image premise on `App.al_programs`. Neither is TL-9's to take.
